@@ -22,6 +22,7 @@ import {
   type EstadoCarga,
 } from './clienteEstados';
 import { CuerpoInforme, Fila, PaginaInforme, Tabla, useCifra } from './PiezasEstado';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 
 const TONO: Record<EstadoNota, 'exito' | 'advertencia' | 'neutro'> = { completa: 'exito', por_revisar: 'advertencia', sin_datos: 'neutro' };
 
@@ -31,6 +32,8 @@ export function NotasEstadosPage() {
   const cifra = useCifra(formatear);
   const permisos = usePermisosFinanzas();
   const { hasta, setHasta, hoy } = usePeriodo();
+  // En el visor de Reportes el corte es el fin de su periodo.
+  const enVisor = !!useVisorInforme();
   const { config, estado: estadoConfig, recargar } = useConfiguracionEstados();
   const [libros, setLibros] = useState<{ actual: LibroInventarios; anterior: LibroInventarios } | null>(null);
   const [estadoLibro, setEstadoLibro] = useState<EstadoCarga>('cargando');
@@ -119,12 +122,14 @@ export function NotasEstadosPage() {
         </>
       )}
     >
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-surface p-4">
-        <label className="block min-w-40 space-y-1 text-xs text-fg-secondary">
-          <span>{t('corte')}</span>
-          <CampoFecha valor={hasta} onValorChange={setHasta} hoy={hoy} limpiable={false} />
-        </label>
-      </div>
+      {!enVisor && (
+        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-surface p-4">
+          <label className="block min-w-40 space-y-1 text-xs text-fg-secondary">
+            <span>{t('corte')}</span>
+            <CampoFecha valor={hasta} onValorChange={setHasta} hoy={hoy} limpiable={false} />
+          </label>
+        </div>
+      )}
       <CuerpoInforme estado={estado} onReintentar={() => void cargar()}>
         {config && (
           <>

@@ -10,6 +10,7 @@ import { toastSuccess } from '@/components/ui/use-toast';
 import { entregarArchivo, obtenerDescarga, prepararDescarga } from '@/lib/documents/cliente';
 import { esIdiomaDocumento } from '@/lib/documents/tipos';
 import { reportePermitido } from '@/lib/services/reportes/alcanceSucursal';
+import { esTabular } from '@/lib/services/reportes/reportesCatalogo';
 import { clienteReportes, ErrorPeticionReportes, type PedidoCierre } from '@/lib/services/reportes/clienteReportes';
 import type { ResumenCierre } from '@/lib/services/reportes/cierres/cierres.server';
 import { PLANTILLAS_CIERRE, reportesDePlantilla, type PlantillaCierre } from '@/lib/services/reportes/cierres/snapshot';
@@ -49,7 +50,8 @@ export function GenerarCierreDialog({
   const formatoCifra = useFormatoReporte();
   const anclaPrevia = useRef<HTMLElement>(null);
   const disponibles = useMemo(
-    () => ctx.grupos.flatMap((g) => g.reportes).filter((r) => reportePermitido(r, ctx.accesoTotal)),
+    // Los informes sin tabla no entran al cierre: no tienen filas que congelar.
+    () => ctx.grupos.flatMap((g) => g.reportes).filter((r) => reportePermitido(r, ctx.accesoTotal) && esTabular(r)),
     [ctx.grupos, ctx.accesoTotal],
   );
   const [periodo, setPeriodo] = useState(periodoInicial);

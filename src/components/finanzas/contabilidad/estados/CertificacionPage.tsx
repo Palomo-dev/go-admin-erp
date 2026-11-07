@@ -14,6 +14,7 @@ import { faltantesCertificacion } from '@/lib/finanzas/estados/notas';
 import type { Certificacion } from '@/lib/finanzas/estados/tipos';
 import { ErrorServidor, guardarConfiguracionEstados, useConfiguracionEstados, usePeriodo } from './clienteEstados';
 import { CuerpoInforme, PaginaInforme } from './PiezasEstado';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 
 const CAMPOS = ['representante_nombre', 'representante_cedula', 'contador_nombre', 'contador_cedula', 'contador_tarjeta'] as const;
 
@@ -25,6 +26,8 @@ export function CertificacionPage() {
   const t = useTranslations('estadosFinancieros.certificacion');
   const permisos = usePermisosFinanzas();
   const { hasta, setHasta, hoy } = usePeriodo();
+  // En el visor de Reportes el corte es el fin de su periodo.
+  const enVisor = !!useVisorInforme();
   const { config, estado, recargar } = useConfiguracionEstados();
   const [c, setC] = useState<Certificacion>({});
   const [guardando, setGuardando] = useState(false);
@@ -94,9 +97,11 @@ export function CertificacionPage() {
             )}
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="space-y-3 rounded-lg border border-line bg-surface p-4">
-                <FormField etiqueta={t('corte')}>
-                  {() => <CampoFecha valor={hasta} onValorChange={setHasta} hoy={hoy} limpiable={false} />}
-                </FormField>
+                {!enVisor && (
+                  <FormField etiqueta={t('corte')}>
+                    {() => <CampoFecha valor={hasta} onValorChange={setHasta} hoy={hoy} limpiable={false} />}
+                  </FormField>
+                )}
                 {CAMPOS.map((campo) => (
                   <FormField key={campo} etiqueta={t(`campo.${campo}`)}>
                     <Input

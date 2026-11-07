@@ -201,7 +201,34 @@ export interface ReportDefinition extends DefinicionModulo {
    * para enlaces, favoritos y el asistente: abre `destino` en la vista `vista`.
    */
   alias?: { destino: string; vista: string };
+  /**
+   * El visor pinta este informe con su componente propio
+   * (`src/components/reportes/especiales/registro.tsx`) en lugar de la tabla
+   * genérica: estados financieros, libros, mayor… El cálculo sigue siendo el
+   * de su RPC corregida; el componente solo presenta.
+   */
+  componente?: ComponenteReporte;
+  /**
+   * Sin versión tabular: `fetch` no devuelve filas. Se consulta solo en el
+   * visor y queda fuera de cierres, envíos programados, documentos y del
+   * asistente.
+   */
+  sinTabla?: boolean;
 }
+
+/** Componentes propios que el visor sabe pintar. */
+export type ComponenteReporte =
+  | 'estado-resultados'
+  | 'balance-general'
+  | 'flujo-efectivo'
+  | 'cambios-patrimonio'
+  | 'notas'
+  | 'certificacion'
+  | 'indicadores'
+  | 'libros'
+  | 'mayor-contable'
+  | 'libro-diario'
+  | 'auxiliar-tercero';
 
 /** Agrupación de reportes por módulo para la UI */
 export interface ModuloReportes {

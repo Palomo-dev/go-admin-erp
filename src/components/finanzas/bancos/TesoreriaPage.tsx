@@ -250,7 +250,7 @@ export function TesoreriaPage() {
 
         <div className="flex gap-2">
           <Button asChild variant="outline" className="dark:border-gray-600 dark:hover:bg-gray-800">
-            <Link href="/app/finanzas/reporte-categorias">Reporte por categoría</Link>
+            <Link href="/app/reportes/finanzas/categorias-tesoreria">Reporte por categoría</Link>
           </Button>
           <Button
             variant="outline"

@@ -1,13 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import React from 'react';
-import { AnomalyPanel } from '@/components/finanzas/bancos/AnomalyPanel';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
-
-// Pagina de deteccion de anomalias en transacciones bancarias.
-// Obtiene el organizationId del hook cliente y lo pasa al panel.
+// Finanzas, ronda 2 (A1): las alertas son una pestaña de Cuentas de dinero.
+// La ruta vieja sigue funcionando: lleva a esa pestaña.
 export default function AnomaliasPage() {
-  const organizationId = getOrganizationId();
-
-  return <AnomalyPanel organizationId={organizationId} />;
+  redirect('/app/finanzas/bancos?tab=alertas');
 }

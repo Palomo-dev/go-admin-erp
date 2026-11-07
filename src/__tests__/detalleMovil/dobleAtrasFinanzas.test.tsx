@@ -3,12 +3,12 @@
  *
  * Finanzas › detalles en celular (390 px): una sola «←», la del MobileHeader
  * del shell. La cotización y el egreso conservan número, estado y acciones
- * (imprimir, PDF, exportar, anular); solo su «←» pasa a lg. Las demás
+ * (imprimir, PDF, duplicar, anular); solo su «←» pasa a lg. Las demás
  * pantallas de finanzas usan el mismo cambio y las cubre el guardarraíl 44.
  */
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { simularAncho } from '@/test-utils/renderConIdioma';
-import { cabeceraPublicada, comprobarDetalleMovil, renderEnCelular } from '@/test-utils/dobleAtrasMovil';
+import { cabeceraPublicada, comprobarDetalleMovil, esperarUnaSolaFlecha, renderEnCelular, visibleEnCelular } from '@/test-utils/dobleAtrasMovil';
 import { contextoMoneda } from '@/lib/utils/moneda';
 
 const COP = { ...contextoMoneda('COP', { locale: 'es-CO' }), formatear: String, paraDocumento: () => contextoMoneda('COP', { locale: 'es-CO' }), resuelta: true };
@@ -28,6 +28,7 @@ jest.mock('@/components/shared/HtmlContentRenderer', () => ({ HtmlContentRendere
 jest.mock('@/lib/services/movimientosService', () => ({
   movimientosService: {
     getMovementByUuid: jest.fn(async () => ({ id: 71, uuid: 'm1', source: 'cash', concept: 'Compra de insumos', amount: 50000, created_at: '2026-10-08T13:00:00Z' })),
+    getAnulacion: jest.fn(async () => null),
   },
 }));
 
@@ -60,9 +61,14 @@ describe('Finanzas › detalles en celular (390 px): una sola «←»', () => {
   });
 
   test('egreso: número, «Confirmado» y acciones a la vista', async () => {
+    // Cabecera del kit (`PageHeader`, Finanzas ronda 2 · G2): en celular no se dibuja; el título y el
+    // menú «⋯» (Duplicar, Anular) van al MobileHeader y el estado queda bajo la cabecera.
     renderEnCelular(<EgresoDetalle id="m1" />);
-    await screen.findByRole('heading', { level: 1, name: 'Egreso #71' });
-    await waitFor(() => comprobarDetalleMovil('Egreso #71', ['Confirmado', 'Exportar', 'Duplicar']));
+    await screen.findByText('Confirmado');
+    esperarUnaSolaFlecha();
+    expect(cabeceraPublicada()?.titulo).toBe('Egreso #71');
+    expect(cabeceraPublicada()?.accion).toBeTruthy();
+    expect(visibleEnCelular(screen.getByText('Confirmado'))).toBe(true);
     expect(cabeceraPublicada()?.volverA).toBe('/app/finanzas/egresos');
   });
 });

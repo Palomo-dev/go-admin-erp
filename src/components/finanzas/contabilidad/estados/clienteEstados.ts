@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { primerDiaDelAnioDe } from '@/lib/services/fiscalCalendar';
 import type { ConfiguracionEstados } from '@/lib/finanzas/estados/tipos';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 
 export type EstadoCarga = 'cargando' | 'listo' | 'error' | 'sinPermiso' | 'alcance';
 
@@ -45,19 +46,25 @@ function estadoDeError(error: unknown): EstadoCarga {
   return 'error';
 }
 
-/** Periodo por defecto, en la zona de la organización: del 1 de enero a hoy. */
+/**
+ * Periodo por defecto, en la zona de la organización: del 1 de enero a hoy.
+ * Dentro del visor de Reportes manda el periodo de su barra de filtros.
+ */
 export function usePeriodo() {
   const { getToday } = useFormatDate();
   const { isLoading } = useOrgTimezone();
+  const visor = useVisorInforme();
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   useEffect(() => {
-    if (isLoading || desde) return;
+    if (visor || isLoading || desde) return;
     const hoy = getToday();
     setDesde(primerDiaDelAnioDe(hoy));
     setHasta(hoy);
-  }, [isLoading, getToday, desde]);
-  return { desde, hasta, setDesde, setHasta, hoy: isLoading ? '' : getToday() };
+  }, [visor, isLoading, getToday, desde]);
+  const hoy = isLoading ? '' : getToday();
+  if (visor) return { desde: visor.desde, hasta: visor.hasta, setDesde, setHasta, hoy };
+  return { desde, hasta, setDesde, setHasta, hoy };
 }
 
 /**
@@ -89,14 +96,20 @@ export function useInforme<T>(informe: string, desde: string, hasta: string, com
   return { estado, datos, consultar };
 }
 
-/** Consulta sola al abrir, cuando el periodo ya está en la zona de la organización. */
+/**
+ * Consulta sola al abrir, cuando el periodo ya está en la zona de la
+ * organización. En el visor de Reportes vuelve a consultar cada vez que
+ * cambia el periodo de la barra de filtros (o la consulta misma).
+ */
 export function useConsultaInicial(listo: boolean, consultar: () => Promise<void>) {
+  const visor = useVisorInforme();
   const hecho = useRef(false);
   useEffect(() => {
-    if (!listo || hecho.current) return;
+    if (!listo) return;
+    if (!visor && hecho.current) return;
     hecho.current = true;
     void consultar();
-  }, [listo, consultar]);
+  }, [listo, consultar, visor]);
 }
 
 export function useConfiguracionEstados() {

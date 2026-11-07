@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { OpcionesReporte, PeriodoCierre, ReportData, ReportDefinition, ReportesClient } from './types';
-import { getReporteById, getReportesVisibles } from './reportesCatalogo';
+import { esTabular, getReporteById, getReportesVisibles } from './reportesCatalogo';
 import { reportePermitido } from './alcanceSucursal';
 
 /**
@@ -62,7 +62,7 @@ export async function ejecutarCierre(
   const modulosVisibles = getReportesVisibles(activeModuleCodes);
   const todasDefiniciones: ReportDefinition[] = modulosVisibles
     .flatMap((m) => m.reportes)
-    .filter((def) => !def.alias && reportePermitido(def, accesoTotal));
+    .filter((def) => !def.alias && esTabular(def) && reportePermitido(def, accesoTotal));
 
   const resultados: ReportData[] = [];
   const errores: { reportId: string; titulo: string; error: string }[] = [];

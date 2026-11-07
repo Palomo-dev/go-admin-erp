@@ -22,6 +22,11 @@ export interface FixedAsset {
   cost_center_id: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Meses contabilizados en `asset_depreciations`. Con uno solo, la base no deja cambiar
+   * fecha, costo, residual, vida útil ni método (`fn_trg_activo_con_depreciacion`).
+   */
+  depreciaciones?: number;
 }
 
 export interface FixedAssetInput {
@@ -86,11 +91,14 @@ export class FixedAssetService {
     const orgId = this.getOrganizationId();
     const { data, error } = await supabase
       .from('fixed_assets')
-      .select('*')
+      .select('*, depreciaciones:asset_depreciations(count)')
       .eq('organization_id', orgId)
       .order('code');
     if (error) throw error;
-    return data || [];
+    return ((data ?? []) as (Omit<FixedAsset, 'depreciaciones'> & { depreciaciones?: { count: number }[] | null })[]).map((fila) => ({
+      ...fila,
+      depreciaciones: Number(fila.depreciaciones?.[0]?.count ?? 0),
+    }));
   }
 
   static async create(input: FixedAssetInput): Promise<FixedAsset> {

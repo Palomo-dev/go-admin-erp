@@ -295,12 +295,17 @@ describe('4. el detalle de un movimiento de banco no toca la caja', () => {
   });
 
   test('las pantallas pasan id + fuente y navegan con el uuid', () => {
-    for (const ruta of ['src/components/finanzas/ingresos/IngresoDetalle.tsx', 'src/components/finanzas/egresos/EgresoDetalle.tsx']) {
+    // Ingreso y egreso comparten el detalle desde Finanzas ronda 2 (G2): `IngresoDetalle` y
+    // `EgresoDetalle` solo le pasan el tipo.
+    for (const ruta of ['src/components/finanzas/movimientos/DetalleMovimientoTesoreria.tsx']) {
       const fuente = leer(ruta);
-      expect(fuente).toMatch(/cancelMovement\(\s*\{ id: movement\.id, source: movement\.source \}/);
-      expect(fuente).toMatch(/duplicateMovement\(\{ id: movement\.id, source: movement\.source \}/);
-      expect(fuente).toMatch(/\$\{result\.uuid\}/);
-      expect(fuente).not.toMatch(/\$\{result\.id\}/);
+      expect(fuente).toMatch(/cancelMovement\(\s*\{ id: movimiento\.id, source: movimiento\.source \}/);
+      expect(fuente).toMatch(/duplicateMovement\(\{ id: movimiento\.id, source: movimiento\.source \}/);
+      expect(fuente).toMatch(/\$\{r\.uuid\}/);
+      expect(fuente).not.toMatch(/\$\{r\.id\}/);
+    }
+    for (const [ruta, tipo] of [['src/components/finanzas/ingresos/IngresoDetalle.tsx', 'income'], ['src/components/finanzas/egresos/EgresoDetalle.tsx', 'expense']]) {
+      expect(leer(ruta)).toContain(`<DetalleMovimientoTesoreria id={id} tipo="${tipo}" />`);
     }
   });
 });
@@ -451,8 +456,8 @@ describe('9. los errores se propagan (la lista no finge estar vacía)', () => {
       'src/components/finanzas/egresos/EgresosPage.tsx',
       'src/components/finanzas/transferencias/TransferenciasPage.tsx',
       'src/components/finanzas/transferencias/TransferenciaDetalle.tsx',
-      'src/components/finanzas/ingresos/IngresoDetalle.tsx',
-      'src/components/finanzas/egresos/EgresoDetalle.tsx',
+      // Detalle compartido de ingreso y egreso (Finanzas ronda 2 · G2).
+      'src/components/finanzas/movimientos/DetalleMovimientoTesoreria.tsx',
     ]) {
       expect({ ruta, reintentar: /t\('reintentar'\)/.test(leer(ruta)) }).toEqual({ ruta, reintentar: true });
     }

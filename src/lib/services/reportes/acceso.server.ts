@@ -15,7 +15,7 @@ import { moduleManagementService } from '@/lib/services/moduleManagementService'
 import { exigirSucursalPermitida, resolverAlcanceSucursal, type AlcanceSucursal } from '@/lib/security/alcanceSucursal';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { reportePermitido } from './alcanceSucursal';
-import { getGrupos, getReporteById } from './reportesCatalogo';
+import { esTabular, getGrupos, getReporteById } from './reportesCatalogo';
 import type { ReportDefinition } from './types';
 
 export interface SujetoReportes {
@@ -59,7 +59,9 @@ export async function resolverAccesoReportes(sujeto: SujetoReportes): Promise<Ac
   const alcance = await resolverAlcanceSucursal({ ...sujeto, memberId });
   const disponibles = getGrupos(modulosActivos)
     .flatMap((g) => g.reportes)
-    .filter((d) => reportePermitido(d, alcance.accesoTotal));
+    // Los informes sin tabla solo se consultan en el visor: nada de cierres,
+    // envíos ni documentos con ellos.
+    .filter((d) => reportePermitido(d, alcance.accesoTotal) && esTabular(d));
   return { modulosActivos, alcance, disponibles };
 }
 
@@ -75,6 +77,9 @@ export function exigirReporteDisponible(acceso: AccesoReportes, reportId: string
   if (!pedido) throw new OrgContextError('Reporte no encontrado', 404, 'NOT_FOUND');
   const def = pedido.alias ? getReporteById(pedido.alias.destino) : pedido;
   if (!def) throw new OrgContextError('Reporte no encontrado', 404, 'NOT_FOUND');
+  if (!esTabular(def)) {
+    throw new OrgContextError('Este informe se consulta en su pantalla del centro de reportes: no tiene versión tabular', 400, 'REPORTE_SIN_TABLA');
+  }
   if (!acceso.disponibles.some((d) => d.id === def.id)) {
     const enPlan = getGrupos(acceso.modulosActivos).some((g) => g.reportes.some((r) => r.id === def.id));
     throw enPlan

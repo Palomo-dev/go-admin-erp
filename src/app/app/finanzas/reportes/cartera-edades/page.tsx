@@ -1,5 +1,10 @@
-import { CarteraEdadesPage } from '@/components/finanzas/reportes';
+import { redirect } from 'next/navigation';
+import { destinoReporteFinanzas } from '@/lib/services/reportes/redireccionesFinanzas';
 
-export default function Page() {
-  return <CarteraEdadesPage />;
+/**
+ * Finanzas no tiene reportes propios: este informe vive en el centro de
+ * reportes. La ruta vieja se conserva y redirige con su periodo.
+ */
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  redirect(destinoReporteFinanzas('/app/finanzas/reportes/cartera-edades', await searchParams));
 }

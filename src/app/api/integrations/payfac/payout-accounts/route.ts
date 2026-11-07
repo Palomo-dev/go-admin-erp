@@ -19,6 +19,7 @@ import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { assertRecordOfOrg, PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { payoutService } from '@/lib/services/integrations/payfac';
 import { enmascararCuentaDispersion } from '@/lib/services/integrations/payfac/enmascarar';
+import { TITULAR_NO_COINCIDE } from '@/lib/services/integrations/payfac/cuentaAbonoReglas';
 
 const RUTA = 'payfac/payout-accounts';
 
@@ -99,6 +100,14 @@ export const POST = withOrg(async (ctx, request) => {
       },
       ctx.organizationId,
     );
+
+    // El titular tiene que ser la organizacion (Finanzas ronda 2, A10).
+    if (account.codigo === TITULAR_NO_COINCIDE) {
+      return NextResponse.json(
+        { error: 'El titular de la cuenta debe ser la organizacion (razon social o NIT)', code: TITULAR_NO_COINCIDE },
+        { status: 422 },
+      );
+    }
 
     if (account.error || !account.id) {
       console.error(`[${RUTA}] No se pudo crear la cuenta de dispersion`, { organizationId: ctx.organizationId });

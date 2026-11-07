@@ -7,6 +7,7 @@ import { CampoFecha, EmptyState, PageHeader, clasesBoton } from '@/components/ki
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
 import type { EstadoCarga } from './clienteEstados';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 
 /** Importe de un estado: negativo entre paréntesis, como en Figma. */
 export function useCifra(formatear: (valor: number) => string) {
@@ -32,6 +33,16 @@ export function PaginaInforme({
   children: ReactNode;
 }) {
   const t = useTranslations('estadosFinancieros.comun');
+  const enVisor = !!useVisorInforme();
+  // En el visor de Reportes el encabezado, las migas y el periodo son del visor.
+  if (enVisor) {
+    return (
+      <div className="space-y-4">
+        {acciones && <div className="flex flex-wrap justify-end gap-2">{acciones}</div>}
+        {children}
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen space-y-4 bg-subtle p-4 sm:p-6 lg:p-8">
       <PageHeader
@@ -74,16 +85,24 @@ export function FiltrosPeriodo({
   children?: ReactNode;
 }) {
   const t = useTranslations('estadosFinancieros.comun');
+  // En el visor de Reportes las fechas salen de su barra de filtros; aquí
+  // quedan las opciones propias del informe (comparativo, presentación…).
+  const enVisor = !!useVisorInforme();
+  if (enVisor && !children && !onComparar) return null;
   return (
     <div className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-surface p-4">
-      <label className="block min-w-40 space-y-1 text-xs text-fg-secondary">
-        <span>{t('desde')}</span>
-        <CampoFecha valor={desde} onValorChange={onDesde} max={hasta || undefined} hoy={hoy} limpiable={false} />
-      </label>
-      <label className="block min-w-40 space-y-1 text-xs text-fg-secondary">
-        <span>{t('hasta')}</span>
-        <CampoFecha valor={hasta} onValorChange={onHasta} min={desde || undefined} hoy={hoy} limpiable={false} />
-      </label>
+      {!enVisor && (
+        <>
+          <label className="block min-w-40 space-y-1 text-xs text-fg-secondary">
+            <span>{t('desde')}</span>
+            <CampoFecha valor={desde} onValorChange={onDesde} max={hasta || undefined} hoy={hoy} limpiable={false} />
+          </label>
+          <label className="block min-w-40 space-y-1 text-xs text-fg-secondary">
+            <span>{t('hasta')}</span>
+            <CampoFecha valor={hasta} onValorChange={onHasta} min={desde || undefined} hoy={hoy} limpiable={false} />
+          </label>
+        </>
+      )}
       {children}
       {onComparar && (
         <label className="flex h-10 items-center gap-2 text-sm text-fg">

@@ -16,6 +16,7 @@ import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { consentService, type CreateConsentInput } from '@/lib/services/integrations/openFinance/consentService';
 import { linkDeLaOrganizacion } from '@/lib/services/integrations/openFinance/seguridadRutas';
+import { nombrePerfil } from '@/lib/services/integrations/openFinance/alertasBancarias';
 
 const RUTA = 'open-finance/consents';
 const TIPOS_VALIDOS = ['data_access', 'payment_initiation', 'account_validation'];
@@ -31,7 +32,20 @@ export const GET = withOrg(async (ctx, request) => {
     const consentType = searchParams.get('consentType') || undefined;
 
     const consents = await consentService.listConsents(ctx.organizationId, { status, consentType });
-    return NextResponse.json({ success: true, data: consents });
+
+    // Quien autorizo, con nombre (Finanzas r2 · A5: «12 sep 2026 · <nombre>»).
+    // Perfiles con el cliente de la sesion; si no se leen, sale sin nombre.
+    const ids = [...new Set(consents.map((c) => c.granted_by).filter((x): x is string => !!x))];
+    const nombres = new Map<string, string>();
+    if (ids.length > 0) {
+      const { data: perfiles } = await ctx.supabase.from('profiles').select('id, first_name, last_name, email').in('id', ids);
+      for (const p of (perfiles ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }>) {
+        const nombre = nombrePerfil(p);
+        if (nombre) nombres.set(p.id, nombre);
+      }
+    }
+    const data = consents.map((c) => ({ ...c, granted_by_name: c.granted_by ? nombres.get(c.granted_by) ?? null : null }));
+    return NextResponse.json({ success: true, data });
   } catch (error) {
     return routeErrorResponse('Open Finance Consents GET', error);
   }

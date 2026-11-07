@@ -20,8 +20,15 @@ export const GET = withOrg(async (ctx, request) => {
     await readOrgBody(ctx, request, { route: RUTA });
     await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const summary = await anomalyDetectionService.getAllAnomalies(ctx.organizationId);
-    return NextResponse.json({ success: true, data: summary });
+    // Revisiones con el cliente de la sesion (RLS); la deteccion sigue igual.
+    const [summary, revisiones] = await Promise.all([
+      anomalyDetectionService.getAllAnomalies(ctx.organizationId),
+      anomalyDetectionService.listarRevisiones(ctx.supabase, ctx.organizationId),
+    ]);
+    return NextResponse.json({
+      success: true,
+      data: { ...summary, revisiones: revisiones.revisiones, revisionesDisponibles: revisiones.disponible },
+    });
   } catch (error) {
     return routeErrorResponse('Open Finance Anomalies GET', error);
   }

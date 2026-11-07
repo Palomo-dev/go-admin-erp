@@ -10,6 +10,7 @@ import { ReportesContablesService, BalanceSheetRow, type ModoBalance } from '../
 import { useFormatDate, useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { BranchBadge } from '@/components/inventario/BranchBadge';
+import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
@@ -56,6 +57,8 @@ export function BalanceGeneralPage() {
   // organizacion, y se pone cuando el contexto ya la sabe.
   const { getToday } = useFormatDate();
   const { isLoading: tzLoading } = useOrgTimezone();
+  // Dentro del visor de Reportes la fecha de corte es el fin de su periodo.
+  const visor = useVisorInforme();
   const [asOfDate, setAsOfDate] = useState('');
   const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
   const [modo, setModo] = useState<ModoBalance>('puc');
@@ -68,13 +71,21 @@ export function BalanceGeneralPage() {
   const arrancado = useRef(false);
 
   useEffect(() => {
+    if (visor) return;
     if (tzLoading || arrancado.current) return;
     arrancado.current = true;
     const hoy = getToday();
     setAsOfDate(hoy);
     loadData(hoy, 'puc');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tzLoading, getToday]);
+  }, [visor, tzLoading, getToday]);
+
+  useEffect(() => {
+    if (!visor) return;
+    setAsOfDate(visor.hasta);
+    void loadData(visor.hasta);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visor?.hasta]);
 
   const loadData = async (corte: string = asOfDate, presentacion: ModoBalance = modo) => {
     if (!corte) return;
@@ -102,8 +113,8 @@ export function BalanceGeneralPage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <PageHeaderSkeleton />
+      <div className={visor ? 'space-y-4' : 'p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen'}>
+        {!visor && <PageHeaderSkeleton />}
         <StatsSkeleton count={4} />
         <CardListSkeleton cards={3} columns="1" />
       </div>
@@ -133,26 +144,32 @@ export function BalanceGeneralPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-          <Scale className="h-6 w-6 text-purple-600" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{TITULO_SITUACION_FINANCIERA}</h1>
-          <p className="text-gray-500 dark:text-gray-400">Activos, pasivos y patrimonio a la fecha de corte (antes «Balance general»)</p>
-        </div>
-      </div>
+    <div className={visor ? 'space-y-4' : 'p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen'}>
+      {!visor && (
+        <>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
+              <Scale className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{TITULO_SITUACION_FINANCIERA}</h1>
+              <p className="text-gray-500 dark:text-gray-400">Activos, pasivos y patrimonio a la fecha de corte (antes «Balance general»)</p>
+            </div>
+          </div>
 
-      <BranchBadge className="mb-3" />
+          <BranchBadge className="mb-3" />
+        </>
+      )}
 
       <Card className="dark:bg-gray-800 dark:border-gray-700">
         <CardContent className="py-4">
           <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Fecha de Corte</Label>
-              <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
-            </div>
+            {!visor && (
+              <div className="space-y-2">
+                <Label className="text-gray-700 dark:text-gray-300">Fecha de Corte</Label>
+                <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="dark:bg-gray-900 dark:border-gray-600" />
+              </div>
+            )}
             <SelectorNivel valor={nivel} onChange={setNivel} />
             <label className="space-y-2 block">
               <span className="text-sm text-gray-700 dark:text-gray-300">Presentación</span>

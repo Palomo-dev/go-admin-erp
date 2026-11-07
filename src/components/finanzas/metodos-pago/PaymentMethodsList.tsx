@@ -53,16 +53,9 @@ import {
   Settings,
   Trash2
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/kit";
+import { useTranslations } from "next-intl";
+import { accionQuitarMetodo } from "./metodosPagoLogica";
 import Link from "next/link";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import { nombreVisibleMetodo, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
@@ -130,10 +123,10 @@ function SortableRow({
           href="/app/integraciones/conexiones"
           className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
         >
-          <Badge variant="outline" className="text-xs bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800">
+          <Badge variant="outline" className="text-xs bg-success-subtle text-success-text border-line-success">
             {gateway || 'Conectado'}
           </Badge>
-          <Settings className="h-3 w-3 text-gray-400" />
+          <Settings className="h-3 w-3 text-fg-muted" />
         </Link>
       );
     }
@@ -145,7 +138,7 @@ function SortableRow({
           href="/app/integraciones/conexiones"
           className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
         >
-          <Badge variant="outline" className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800">
+          <Badge variant="outline" className="text-xs bg-warning-subtle text-warning-text border-line-warning">
             <Zap className="h-3 w-3 mr-1" />
             Conectar
           </Badge>
@@ -155,33 +148,33 @@ function SortableRow({
     
     // Métodos manuales/nativos
     if (['cash', 'card', 'transfer', 'check', 'credit'].includes(lowerCode)) {
-      return <Badge variant="secondary" className="text-xs dark:bg-gray-700 dark:text-gray-300">Nativo</Badge>;
+      return <Badge variant="secondary" className="text-xs">Nativo</Badge>;
     }
-    return <span className="text-xs text-gray-500 dark:text-gray-400">—</span>;
+    return <span className="text-xs text-fg-secondary">—</span>;
   };
 
   return (
     <TableRow 
       ref={setNodeRef} 
       style={style} 
-      className={`dark:border-gray-700 ${isDragging ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+      className={isDragging ? 'bg-brand-tint' : undefined}
     >
       <TableCell className="w-8 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
-        <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
+        <GripVertical className="h-4 w-4 text-fg-muted hover:text-fg" />
       </TableCell>
-      <TableCell className="dark:text-gray-300">
+      <TableCell>
         {getPaymentIcon(method.payment_method_code)}
       </TableCell>
-      <TableCell className="font-medium text-xs sm:text-sm dark:text-gray-200">
+      <TableCell className="font-medium text-xs sm:text-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-1">
           <span>{nombreVisibleMetodo(method.settings, method.payment_method?.name, method.payment_method_code)}</span>
           <SucursalesMetodoBadges organizationId={method.organization_id} branchIds={method.branch_ids} />
           {method.payment_method?.is_system && (
-            <Badge variant="secondary" className="text-xs w-fit dark:bg-gray-700 dark:text-gray-300">Sistema</Badge>
+            <Badge variant="secondary" className="text-xs w-fit">Sistema</Badge>
           )}
         </div>
       </TableCell>
-      <TableCell className="hidden md:table-cell text-xs sm:text-sm dark:text-gray-300">
+      <TableCell className="hidden md:table-cell text-xs sm:text-sm">
         {method.payment_method_code}
       </TableCell>
       <TableCell className="hidden lg:table-cell">
@@ -194,8 +187,8 @@ function SortableRow({
                   variant="outline" 
                   className={`text-[10px] px-1.5 py-0 ${
                     c.is_recommended 
-                      ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700' 
-                      : 'dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
+                      ? 'bg-success-subtle text-success-text border-line-success' 
+                      : ''
                   }`}
                 >
                   {c.country_code}
@@ -209,35 +202,35 @@ function SortableRow({
                     variant="outline" 
                     className={`text-[10px] px-1.5 py-0 ${
                       c.is_recommended 
-                        ? 'bg-green-50 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700' 
-                        : 'dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600'
+                        ? 'bg-success-subtle text-success-text border-line-success' 
+                        : ''
                     }`}
                   >
                     {c.country_code}
                   </Badge>
                 ))}
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 dark:bg-gray-600">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   +{method.payment_method.countries.length - 2}
                 </Badge>
               </>
             )}
           </div>
         ) : (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 dark:bg-gray-600">
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
             Global
           </Badge>
         )}
       </TableCell>
       <TableCell className="hidden xl:table-cell">
         {isRecommended(method.payment_method_code) ? (
-          <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700">
+          <Badge className="bg-brand-tint text-brand-deep border-line-brand">
             ★ Recomendado {countryCode && `(${countryCode})`}
           </Badge>
         ) : (
           <span className="text-muted-foreground">-</span>
         )}
       </TableCell>
-      <TableCell className="hidden 2xl:table-cell text-xs sm:text-sm dark:text-gray-300">
+      <TableCell className="hidden 2xl:table-cell text-xs sm:text-sm">
         {requiereReferenciaMetodo(method.settings, method.payment_method?.requires_reference) ? "Sí" : "No"}
       </TableCell>
       <TableCell className="hidden sm:table-cell">
@@ -248,7 +241,7 @@ function SortableRow({
           checked={method.show_on_website ?? false}
           disabled={updatingWebsite === method.payment_method_code || method.id === 0}
           onCheckedChange={() => handleToggleWebsite(method)}
-          className="data-[state=checked]:bg-green-600"
+         
         />
       </TableCell>
       <TableCell>
@@ -256,50 +249,50 @@ function SortableRow({
           checked={method.is_active}
           disabled={updatingStatus === method.payment_method_code || method.id === 0}
           onCheckedChange={() => handleToggleActive(method)}
-          className="data-[state=checked]:bg-blue-600"
+         
         />
       </TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0 dark:hover:bg-gray-700">
+            <Button variant="ghost" className="h-8 w-8 p-0">
               <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4 dark:text-gray-300" />
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="dark:bg-gray-800 dark:border-gray-700">
-            <DropdownMenuLabel className="dark:text-gray-200">Acciones</DropdownMenuLabel>
-            <DropdownMenuSeparator className="dark:bg-gray-700" />
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+            <DropdownMenuSeparator />
             <DropdownMenuItem 
               onClick={() => onEdit(method)}
               disabled={isLoading}
-              className="dark:text-gray-300 dark:focus:bg-gray-700 dark:focus:text-gray-100"
+             
             >
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </DropdownMenuItem>
             {!method.payment_method?.is_system && (
               <>
-                <DropdownMenuSeparator className="dark:bg-gray-700" />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={() => onDelete(method)}
                   disabled={isLoading}
-                  className="text-red-600 dark:text-red-400 dark:focus:bg-red-900/20 dark:focus:text-red-300"
+                  className="text-danger-text"
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Eliminar
+                  Quitar
                 </DropdownMenuItem>
               </>
             )}
             {GATEWAY_METHODS.includes(method.payment_method_code.toLowerCase()) && (
               <>
-                <DropdownMenuSeparator className="dark:bg-gray-700" />
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link 
                     href={`/app/integraciones/conexiones/nueva?provider=${method.payment_method_code.toLowerCase()}&return=/app/finanzas/metodos-pago`}
-                    className="dark:text-gray-300 dark:focus:bg-gray-700 dark:focus:text-gray-100 cursor-pointer"
+                    className="cursor-pointer"
                   >
-                    <Zap className="mr-2 h-4 w-4 text-blue-500" />
+                    <Zap className="mr-2 h-4 w-4 text-brand" />
                     Configurar Integración
                   </Link>
                 </DropdownMenuItem>
@@ -334,8 +327,13 @@ export default function PaymentMethodsList({
   const { toast } = useToast();
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [updatingWebsite, setUpdatingWebsite] = useState<string | null>(null);
+  const t = useTranslations("finanzasCobrosR2");
   const [deleteTarget, setDeleteTarget] = useState<OrganizationPaymentMethod | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Pagos registrados con el método (`payments.method` = código): null mientras se cuentan
+  // o si no se pudieron contar (entonces se trata como «con pagos»: se desactiva, no se borra).
+  const [pagosTarget, setPagosTarget] = useState<number | null>(null);
+  const [contandoPagos, setContandoPagos] = useState(false);
   
   // Estado local para actualizaciones optimistas
   const [localOrgMethods, setLocalOrgMethods] = useState<OrganizationPaymentMethod[]>(orgPaymentMethods);
@@ -502,6 +500,37 @@ export default function PaymentMethodsList({
     }
   };
 
+  // «Quitar» (Finanzas ronda 2, A12): un método con pagos se desactiva; sin pagos se elimina.
+  const abrirQuitar = async (method: OrganizationPaymentMethod) => {
+    setDeleteTarget(method);
+    setPagosTarget(null);
+    setContandoPagos(true);
+    try {
+      const { count, error } = await supabase
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", method.organization_id)
+        .eq("method", method.payment_method_code);
+      if (error) throw error;
+      setPagosTarget(count ?? 0);
+    } catch (error: unknown) {
+      console.error("Error al contar los pagos del método:", error);
+      setPagosTarget(null);
+    } finally {
+      setContandoPagos(false);
+    }
+  };
+
+  const accionQuitar = deleteTarget
+    ? accionQuitarMetodo({ esSistema: Boolean(deleteTarget.payment_method?.is_system), pagos: pagosTarget, activo: deleteTarget.is_active })
+    : "ninguna";
+
+  const desactivarTarget = async () => {
+    if (!deleteTarget) return;
+    await handleToggleActive({ ...deleteTarget, is_active: true });
+    setDeleteTarget(null);
+  };
+
   // Función para quitar un método de pago de la organización.
   // GO-sec (2026-09-28): solo se borra el VÍNCULO de esta organización. La fila
   // de `payment_methods` es del catálogo global (con ON DELETE CASCADE a los
@@ -520,7 +549,11 @@ export default function PaymentMethodsList({
         .delete()
         .eq('id', deleteTarget.id)
         .select('id');
-      if (orgError) throw orgError;
+      if (orgError) {
+        // Trigger propuesto (20261107220000, sin aplicar): la base rechaza borrar un método con pagos.
+        if (/metodo_con_pagos/.test(String(orgError.message))) throw new Error(t("metodos.quitar.conPagosError"));
+        throw orgError;
+      }
       if (!borradas || borradas.length === 0) {
         throw new Error(
           'No se pudo eliminar el método de pago: tu cargo o rol no tiene el permiso de facturación.'
@@ -616,7 +649,7 @@ export default function PaymentMethodsList({
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+        <p className="text-xs text-fg-secondary flex items-center gap-1">
           <GripVertical className="h-3 w-3" />
           Arrastra para reordenar la prioridad en el website
         </p>
@@ -624,14 +657,14 @@ export default function PaymentMethodsList({
           variant="outline" 
           onClick={onRefresh} 
           disabled={isLoading}
-          className="dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 h-9 text-xs sm:text-sm"
+          className="h-9 text-xs sm:text-sm"
         >
           <RefreshCcw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
           <span className="hidden sm:inline">Actualizar</span>
         </Button>
       </div>
       
-      <div className="border rounded-md dark:border-gray-700 overflow-x-auto">
+      <div className="border rounded-md overflow-x-auto">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -639,25 +672,25 @@ export default function PaymentMethodsList({
         >
           <Table>
             <TableHeader>
-              <TableRow className="dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <TableHead className="w-8 dark:text-gray-300"></TableHead>
-                <TableHead className="w-8 sm:w-10 dark:text-gray-300"></TableHead>
-                <TableHead className="text-xs sm:text-sm dark:text-gray-300">Método de Pago</TableHead>
-                <TableHead className="hidden md:table-cell text-xs sm:text-sm dark:text-gray-300">Código</TableHead>
-                <TableHead className="hidden lg:table-cell text-xs sm:text-sm dark:text-gray-300">Países</TableHead>
-                <TableHead className="hidden xl:table-cell text-xs sm:text-sm dark:text-gray-300">Recomendación</TableHead>
-                <TableHead className="hidden 2xl:table-cell text-xs sm:text-sm dark:text-gray-300">Requiere Ref.</TableHead>
-                <TableHead className="hidden sm:table-cell text-xs sm:text-sm dark:text-gray-300">Integración</TableHead>
-                <TableHead className="text-xs sm:text-sm dark:text-gray-300">Website</TableHead>
-                <TableHead className="text-xs sm:text-sm dark:text-gray-300">Estado</TableHead>
-                <TableHead className="text-right text-xs sm:text-sm dark:text-gray-300">Acciones</TableHead>
+              <TableRow className="bg-subtle">
+                <TableHead className="w-8"></TableHead>
+                <TableHead className="w-8 sm:w-10"></TableHead>
+                <TableHead className="text-xs sm:text-sm">Método de Pago</TableHead>
+                <TableHead className="hidden md:table-cell text-xs sm:text-sm">Código</TableHead>
+                <TableHead className="hidden lg:table-cell text-xs sm:text-sm">Países</TableHead>
+                <TableHead className="hidden xl:table-cell text-xs sm:text-sm">Recomendación</TableHead>
+                <TableHead className="hidden 2xl:table-cell text-xs sm:text-sm">Requiere Ref.</TableHead>
+                <TableHead className="hidden sm:table-cell text-xs sm:text-sm">Integración</TableHead>
+                <TableHead className="text-xs sm:text-sm">Website</TableHead>
+                <TableHead className="text-xs sm:text-sm">Estado</TableHead>
+                <TableHead className="text-right text-xs sm:text-sm">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
               <TableBody>
                 {isLoading ? (
-                  <TableRow className="dark:border-gray-700">
-                    <TableCell colSpan={11} className="text-center py-8 text-sm dark:text-gray-400">
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-8 text-sm">
                       <div className="flex items-center justify-center gap-2">
                         <RefreshCcw className="h-4 w-4 animate-spin" />
                         Cargando métodos de pago...
@@ -665,8 +698,8 @@ export default function PaymentMethodsList({
                     </TableCell>
                   </TableRow>
                 ) : sortedMethods.length === 0 ? (
-                  <TableRow className="dark:border-gray-700">
-                    <TableCell colSpan={11} className="text-center py-8 text-sm dark:text-gray-400">
+                  <TableRow>
+                    <TableCell colSpan={11} className="text-center py-8 text-sm">
                       No se encontraron métodos de pago.
                     </TableCell>
                   </TableRow>
@@ -683,7 +716,7 @@ export default function PaymentMethodsList({
                       handleToggleActive={handleToggleActive}
                       handleToggleWebsite={handleToggleWebsite}
                       onEdit={onEdit}
-                      onDelete={setDeleteTarget}
+                      onDelete={(m) => void abrirQuitar(m)}
                       isLoading={isLoading}
                     />
                   ))
@@ -694,29 +727,39 @@ export default function PaymentMethodsList({
         </DndContext>
       </div>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-gray-100">¿Eliminar método de pago?</AlertDialogTitle>
-            <AlertDialogDescription className="dark:text-gray-400">
-              Estás a punto de eliminar <strong>{deleteTarget?.payment_method?.name}</strong> ({deleteTarget?.payment_method_code}).
-              Esta acción no se puede deshacer. El método dejará de estar disponible para tu organización.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600" disabled={isDeleting}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-red-600 hover:bg-red-700 text-white dark:bg-red-600 dark:hover:bg-red-700"
-            >
-              {isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        abierto={!!deleteTarget}
+        onAbiertoChange={(open) => !open && !isDeleting && setDeleteTarget(null)}
+        titulo={
+          contandoPagos
+            ? t("metodos.quitar.titulo")
+            : accionQuitar === "eliminar"
+              ? t("metodos.quitar.tituloEliminar")
+              : accionQuitar === "desactivar"
+                ? t("metodos.quitar.tituloDesactivar")
+                : t("metodos.quitar.titulo")
+        }
+        descripcion={
+          contandoPagos
+            ? t("metodos.quitar.contando")
+            : accionQuitar === "eliminar"
+              ? t("metodos.quitar.descripcionEliminar", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "" })
+              : accionQuitar === "desactivar"
+                ? pagosTarget === null
+                  ? t("metodos.quitar.descripcionDesactivarSinConteo", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "" })
+                  : t("metodos.quitar.descripcionDesactivar", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "", n: pagosTarget })
+                : t("metodos.quitar.descripcionNinguna", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "" })
+        }
+        textoConfirmar={
+          accionQuitar === "eliminar" ? t("metodos.quitar.eliminar") : accionQuitar === "desactivar" ? t("metodos.quitar.desactivar") : t("metodos.quitar.entendido")
+        }
+        tono={accionQuitar === "eliminar" ? "peligro" : "advertencia"}
+        icono={Trash2}
+        cargando={isDeleting || contandoPagos}
+        onConfirmar={() =>
+          accionQuitar === "eliminar" ? handleDelete() : accionQuitar === "desactivar" ? desactivarTarget() : setDeleteTarget(null)
+        }
+      />
     </div>
   );
 }

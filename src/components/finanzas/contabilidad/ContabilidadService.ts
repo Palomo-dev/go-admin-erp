@@ -54,8 +54,28 @@ export interface FilaLibroDiario extends JournalEntry {
 export interface PaginaLibroDiario {
   filas: FilaLibroDiario[];
   total: number;
-  /** Originales revertidos quitados de esta página con «Ocultar pares revertidos». */
+  /**
+   * Se conserva por compatibilidad: desde `fn_libro_diario_trabajo` el filtro
+   * «Ocultar pares revertidos» es exacto en la base y no se quita nada de la
+   * página ya leída. Vale siempre 0.
+   */
   paresOcultos: number;
+}
+
+/** Respuesta de `fn_libro_diario_trabajo` → página del libro (sin confiar en su forma). */
+export function paginaLibroDiarioDeRpc(datos: unknown): PaginaLibroDiario {
+  const d = (datos && typeof datos === 'object' ? datos : {}) as { total?: unknown; filas?: unknown };
+  const filas = (Array.isArray(d.filas) ? d.filas : []).map((f) => {
+    const { importe, revertido_por, ...asiento } = (f ?? {}) as Record<string, unknown>;
+    const revertido = Number(revertido_por);
+    return {
+      ...(asiento as unknown as JournalEntry),
+      importe: Math.round((Number(importe) || 0) * 100) / 100,
+      revertidoPor: revertido_por != null && Number.isFinite(revertido) ? revertido : null,
+    } as FilaLibroDiario;
+  });
+  const total = Number(d.total);
+  return { filas, total: Number.isFinite(total) ? total : filas.length, paresOcultos: 0 };
 }
 
 export interface ResumenLibroDiario {
@@ -542,92 +562,42 @@ export class ContabilidadService {
   }
 
   /**
-   * Libro diario de trabajo paginado en el servidor (Contabilidad v2 §4.3).
-   * Los extremos son días de la organización y se convierten a instantes en
-   * su zona. Además de la página trae el importe de cada asiento (Σ débitos)
-   * y el contra-asiento que lo revirtió, en dos consultas pequeñas por página.
+   * Libro diario de trabajo paginado en el servidor (Contabilidad v2 §4.3) por
+   * `fn_libro_diario_trabajo` (aplicada el 2026-11-08). Una sola lectura trae la
+   * página, el total, el importe de cada asiento (Σ débitos) y el contra-asiento
+   * que lo revirtió. Los extremos son días de la organización y se convierten a
+   * instantes en su zona. La función es invoker: aplica la RLS de
+   * `journal_entries` (pertenencia y sucursal), igual que la consulta anterior.
    *
-   * «Ocultar pares revertidos» quita del servidor los contra-asientos; los
-   * originales revertidos se quitan de la página ya leída (`paresOcultos`),
-   * porque PostgREST no filtra por la existencia de otro asiento. La RPC
-   * propuesta `fn_libro_diario_trabajo` lo resuelve en la base.
+   * «Ocultar pares revertidos» es exacto en la base: quita el contra-asiento y
+   * el original que tiene uno (`fact_key = 'reversal:<id>'`, la clave que pone
+   * `fn_revertir_asiento_nucleo`), y el total ya los descuenta. `paresOcultos`
+   * se conserva en el contrato y vale siempre 0.
    */
   static async listarLibroDiario(filtros: FiltrosLibroDiario): Promise<PaginaLibroDiario> {
     const organizationId = this.getOrganizationId();
-    const conCuenta = !!filtros.cuenta;
-    let query = supabase
-      .from('journal_entries')
-      .select(conCuenta ? '*, journal_lines!inner(account_code)' : '*', { count: 'exact' })
-      .eq('organization_id', organizationId);
-
+    let desde: string | null = null;
+    let hasta: string | null = null;
     if (filtros.desde && filtros.hasta) {
       const timezone = await resolveTimezone(organizationId);
-      const { start, end } = getDateRange(filtros.desde, filtros.hasta, timezone);
-      query = query.gte('entry_date', start).lte('entry_date', end);
+      ({ start: desde, end: hasta } = getDateRange(filtros.desde, filtros.hasta, timezone));
     }
-    if (filtros.estado === 'publicados') query = query.eq('posted', true);
-    if (filtros.estado === 'borradores') query = query.eq('posted', false);
-    if (filtros.fuentes && filtros.fuentes.length > 0) query = query.in('source', filtros.fuentes);
-    if (filtros.branchId != null) query = query.eq('branch_id', filtros.branchId);
-    if (conCuenta) query = query.eq('journal_lines.account_code', filtros.cuenta as string);
-    if (filtros.ocultarPares) query = query.or('source.is.null,source.neq.reversal');
-    if (filtros.texto) {
-      const condiciones = [`memo.ilike.%${filtros.texto}%`];
-      if (filtros.numero != null) condiciones.push(`id.eq.${filtros.numero}`);
-      query = query.or(condiciones.join(','));
-    }
-
-    const { data, error, count } = await query
-      .order('entry_date', { ascending: false })
-      .order('id', { ascending: false })
-      .range(filtros.desplazamiento, filtros.desplazamiento + filtros.limite - 1);
+    const { data, error } = await supabase.rpc('fn_libro_diario_trabajo', {
+      p_organization_id: organizationId,
+      p_desde: desde,
+      p_hasta: hasta,
+      p_estado: filtros.estado ?? 'todos',
+      p_fuentes: filtros.fuentes && filtros.fuentes.length > 0 ? filtros.fuentes : null,
+      p_cuenta: filtros.cuenta || null,
+      p_branch_id: filtros.branchId ?? null,
+      p_texto: filtros.texto || null,
+      p_numero: filtros.numero ?? null,
+      p_ocultar_pares: !!filtros.ocultarPares,
+      p_limite: filtros.limite,
+      p_desplazamiento: filtros.desplazamiento,
+    });
     if (error) throw error;
-
-    const asientos = ((data ?? []) as unknown as (JournalEntry & { journal_lines?: unknown })[]).map(({ journal_lines: _l, ...a }) => a as JournalEntry);
-    const ids = asientos.map((a) => a.id);
-    const importes = new Map<number, number>();
-    const revertidoPor = new Map<number, number>();
-    if (ids.length > 0) {
-      const [lineas, porOrigen, porClave] = await Promise.all([
-        supabase.from('journal_lines').select('journal_entry_id, debit').in('journal_entry_id', ids),
-        supabase
-          .from('journal_entries')
-          .select('id, source_id')
-          .eq('organization_id', organizationId)
-          .eq('source', 'reversal')
-          .in('source_id', ids.map(String)),
-        supabase
-          .from('journal_entries')
-          .select('id, fact_key')
-          .eq('organization_id', organizationId)
-          .in('fact_key', ids.map((id) => `reversal:${id}`)),
-      ]);
-      if (lineas.error) throw lineas.error;
-      for (const l of (lineas.data ?? []) as { journal_entry_id: number; debit: number | string | null }[]) {
-        importes.set(l.journal_entry_id, (importes.get(l.journal_entry_id) ?? 0) + (Number(l.debit) || 0));
-      }
-      for (const r of (porOrigen.data ?? []) as { id: number; source_id: string | null }[]) {
-        const original = Number(r.source_id);
-        if (Number.isFinite(original)) revertidoPor.set(original, r.id);
-      }
-      for (const r of (porClave.data ?? []) as { id: number; fact_key: string | null }[]) {
-        const original = Number(String(r.fact_key ?? '').replace('reversal:', ''));
-        if (Number.isFinite(original) && !revertidoPor.has(original)) revertidoPor.set(original, r.id);
-      }
-    }
-
-    let filas: FilaLibroDiario[] = asientos.map((a) => ({
-      ...a,
-      importe: Math.round((importes.get(a.id) ?? 0) * 100) / 100,
-      revertidoPor: revertidoPor.get(a.id) ?? null,
-    }));
-    let paresOcultos = 0;
-    if (filtros.ocultarPares) {
-      const antes = filas.length;
-      filas = filas.filter((f) => !f.revertidoPor);
-      paresOcultos = antes - filas.length;
-    }
-    return { filas, total: count ?? filas.length, paresOcultos };
+    return paginaLibroDiarioDeRpc(data);
   }
 
   /**

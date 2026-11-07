@@ -41598,7 +41598,6 @@
       "todoElLibro": "Tout le journal",
       "comprobante": "Pièce",
       "etiquetaFila": "Écriture {numero}",
-      "paresOcultos": "{n, plural, one {# écriture contrepassée masquée sur cette page.} other {# écritures contrepassées masquées sur cette page.}}",
       "kpis": {
         "etiqueta": "Résumé du journal",
         "asientos": "Écritures de la période",
@@ -42469,7 +42468,7 @@
       "inactivo": {
         "corto": "pas encore activé",
         "titulo": "Contrôle pas encore activé",
-        "descripcion": "Rapprocher chaque écriture de son document demande la fonction de santé comptable dans la base. Elle est écrite et attend l’approbation ; d’ici là cet onglet n’affiche aucun chiffre, pour qu’une valeur non vérifiée ne passe jamais pour un zéro."
+        "descripcion": "Rapprocher chaque écriture de son document demande la fonction de santé comptable, qui n’est pas disponible dans cette base. Tant qu’elle manque, cet onglet n’affiche aucun chiffre : une valeur non vérifiée ne passe jamais pour un zéro."
       },
       "enOrden": {
         "titulo": "Tout est comptabilisé",
@@ -44639,7 +44638,13 @@
         "totalAyuda": "Tous les comptes bancaires",
         "entradas": "Entrées prévues (90 jours)",
         "salidas": "Sorties prévues (90 jours)",
-        "neto": "Flux net prévu"
+        "neto": "Flux net prévu",
+        "efectivoHoy": "Trésorerie aujourd'hui",
+        "porCobrar": "À encaisser 90 jours",
+        "porCobrarAyuda": "Inclut les échus",
+        "porPagar": "À payer 90 jours",
+        "porPagarAyuda": "Dettes fournisseurs à échéance",
+        "proyeccion90": "Projection à 90 jours"
       },
       "cuentasTitulo": "Position par compte",
       "columnas": {
@@ -44696,7 +44701,33 @@
         "alertas": "les alertes",
         "concentracion": "la concentration des paiements"
       },
-      "reintentar": "Réessayer"
+      "reintentar": "Réessayer",
+      "exportar": "Exporter la position",
+      "grafica": {
+        "titulo": "Solde prévu sur 90 jours",
+        "descripcion": "Le solde d'aujourd'hui plus ce qui arrive à échéance à encaisser et à payer, jour par jour.",
+        "resumen": "Aujourd'hui {hoy} ; à 90 jours {final} ; le point le plus bas est {minimo}.",
+        "saldo": "Solde",
+        "entra": "Entrée",
+        "sale": "Sortie",
+        "negativo": "La projection passe sous zéro (minimum {minimo}) : revoyez les paiements ou encaissements avant cette date."
+      },
+      "tramos": {
+        "titulo": "Projection par période",
+        "0-30": "30 prochains jours",
+        "31-60": "31 à 60 jours",
+        "61-90": "61 à 90 jours",
+        "columnas": {
+          "periodo": "Période",
+          "entradas": "Entrées",
+          "salidas": "Sorties",
+          "saldo": "Solde final"
+        }
+      },
+      "porCuenta": {
+        "titulo": "Solde comptable par compte",
+        "descripcion": "Comptes en {moneda}, du plus élevé au plus bas."
+      }
     },
     "cuentaBancaria": {
       "migaCuentas": "Comptes de trésorerie",
@@ -44785,7 +44816,10 @@
         "titulo": "Données du compte",
         "saldoInicial": "Solde initial",
         "estado": "Statut",
-        "creada": "Créé"
+        "creada": "Créé",
+        "alCorte": "au {fecha}",
+        "fechaCorte": "Date d’arrêté",
+        "sinFechaCorte": "Sans date d’arrêté"
       },
       "puc": {
         "titulo": "Sans compte comptable",
@@ -44843,8 +44877,12 @@
           "nombre": "Saisissez le nom du compte.",
           "banco": "Choisissez la banque.",
           "cuentaContable": "Le compte comptable est obligatoire (plan comptable 1110, 1120 ou un autre compte bancaire).",
-          "saldoInicial": "Le solde initial ne peut pas être négatif."
-        }
+          "saldoInicial": "Le solde initial ne peut pas être négatif.",
+          "fechaCorte": "Choisissez la date d’arrêté du solde initial.",
+          "fechaCorteFutura": "La date d’arrêté ne peut pas être dans le futur."
+        },
+        "fechaCorte": "Date d’arrêté du solde initial",
+        "fechaCorteAyuda": "Le solde initial est celui du relevé à cette date."
       },
       "manual": {
         "titulo": "Mouvement manuel",
@@ -44980,6 +45018,96 @@
           "periodo": "Choisissez la période de rapprochement.",
           "orden": "La date de début doit être antérieure à la date de fin.",
           "crear": "Le rapprochement n'a pas pu être créé."
+        },
+        "saldoInicialCorte": "Solde initial du compte : {saldo} au {fecha}. Le solde d’ouverture est le solde actuel dans le système.",
+        "antesDelCorte": "La période commence avant la date d’arrêté du solde initial ({fecha}) : les mouvements antérieurs ne sont pas dans le système."
+      },
+      "corte": {
+        "saldoInicial": "Solde initial du compte : {saldo} au {fecha}.",
+        "antes": "La période commence avant la date d’arrêté du solde initial ({fecha}) : les mouvements antérieurs ne sont pas dans le système."
+      },
+      "extracto": {
+        "titulo": "Lignes du relevé ({n})",
+        "ayuda": "Associé par montant, date (jusqu’à 3 jours) et référence.",
+        "importar": {
+          "titulo": "Importer un relevé",
+          "descripcion": "CSV ou Excel de la banque.",
+          "elegir": "Glissez le relevé ou choisissez un fichier",
+          "leido": "{nombre} · {lineas} lignes",
+          "cargar": "Charger",
+          "cargarN": "Charger {n} lignes"
+        },
+        "columnas": {
+          "fecha": "Date",
+          "descripcion": "Libellé bancaire",
+          "valor": "Montant",
+          "libro": "Mouvement comptable",
+          "accion": "Action"
+        },
+        "sinDescripcion": "Sans description",
+        "emparejada": "Associée",
+        "creada": "Créée depuis le relevé",
+        "sinMovimiento": "Sans mouvement",
+        "elegirMovimiento": "Choisir le mouvement",
+        "emparejar": "Associer",
+        "crear": {
+          "gmf": "Créer la taxe bancaire",
+          "comision": "Créer la commission",
+          "interes": "Créer les intérêts"
+        },
+        "vacio": {
+          "titulo": "Sans relevé",
+          "descripcion": "Ce rapprochement n’a pas encore de relevé."
+        },
+        "errorLeer": "Le relevé n’a pas pu être lu",
+        "sinLineas": "Le fichier n’a pas de lignes avec une date et un montant",
+        "ilegible": "Le fichier n’a pas pu être lu",
+        "cargado": "Relevé chargé : {emparejadas} sur {lineas} associées",
+        "errorImportar": "Le relevé n’a pas pu être importé",
+        "eligeMovimiento": "Choisissez le mouvement comptable",
+        "emparejadaOk": "Ligne associée",
+        "valorDistinto": "Le montant ne correspond pas",
+        "errorEmparejar": "Impossible d’associer",
+        "creadoOk": "Mouvement créé depuis le relevé",
+        "periodoCerrado": "La période de cette date est clôturée",
+        "errorCrear": "Le mouvement n’a pas pu être créé"
+      },
+      "sugerencias": {
+        "titulo": "Suggestions",
+        "descripcion": "Paiements qui correspondent à des mouvements bancaires.",
+        "encontradas": "{n, plural, =0 {Aucune suggestion en attente} one {# suggestion trouvée} other {# suggestions trouvées}}",
+        "actualizar": "Actualiser",
+        "autoConciliar": "Rapprocher automatiquement (confiance élevée)",
+        "conciliando": "Rapprochement…",
+        "columnas": {
+          "banco": "Mouvement bancaire",
+          "candidato": "Paiement candidat",
+          "valor": "Montant",
+          "confianza": "Confiance"
+        },
+        "niveles": {
+          "alta": "Élevée",
+          "media": "Moyenne",
+          "baja": "Faible"
+        },
+        "confianzaPuntos": "{nivel} · {puntos}",
+        "desglose": "Montant {monto}/40 · date {fecha}/30 · référence {referencia}/20 · description {descripcion}/10",
+        "regla": "La confiance additionne : montant (jusqu’à 40), date (30), référence (20) et description (10).",
+        "sinDescripcion": "Sans description",
+        "sinReferencia": "Sans référence",
+        "aceptar": "Accepter",
+        "rechazar": "Rejeter",
+        "aceptarAria": "Accepter la suggestion pour {banco}",
+        "rechazarAria": "Rejeter la suggestion pour {banco}",
+        "aceptada": "Suggestion acceptée et rapprochée",
+        "rechazada": "Suggestion rejetée",
+        "autoConciliadas": "{n, plural, one {# mouvement rapproché automatiquement} other {# mouvements rapprochés automatiquement}}",
+        "errorCargar": "Les suggestions n’ont pas pu être chargées",
+        "errorAceptar": "La suggestion n’a pas pu être acceptée",
+        "errorAuto": "Impossible de rapprocher automatiquement",
+        "vacio": {
+          "titulo": "Aucune suggestion en attente",
+          "descripcion": "Quand un paiement correspond à un mouvement bancaire, il apparaît ici."
         }
       }
     },

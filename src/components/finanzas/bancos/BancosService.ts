@@ -15,6 +15,8 @@ export interface BankAccount {
   currency: string | null;
   balance: number;
   initial_balance: number | null;
+  /** Fecha de corte del saldo inicial (`date`, migración 20261108020500). Null en cuentas viejas. */
+  initial_balance_date?: string | null;
   is_active: boolean;
   created_by: string | null;
   created_at: string;
@@ -210,6 +212,7 @@ export class BancosService {
           currency: cuenta.currency || null,
           balance: cuenta.initial_balance || 0,
           initial_balance: cuenta.initial_balance || 0,
+          initial_balance_date: cuenta.initial_balance_date || null,
           is_active: true,
           account_code: cuenta.account_code,
           created_at: new Date().toISOString(),
@@ -404,7 +407,7 @@ export class BancosService {
         .from('bank_reconciliations')
         .select(`
           *,
-          bank_accounts:bank_account_id(id, name, bank_name, account_number, balance, currency)
+          bank_accounts:bank_account_id(id, name, bank_name, account_number, balance, currency, initial_balance, initial_balance_date)
         `)
         .eq('id', reconciliationId)
         .eq('organization_id', organizationId)

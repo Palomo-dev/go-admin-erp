@@ -149,18 +149,35 @@ export interface FormCuentaBancaria {
   currency: string;
   account_code: string;
   initial_balance: number | null;
+  /** Fecha de corte del saldo inicial, `YYYY-MM-DD` (vacía = sin fecha). */
+  initial_balance_date: string;
 }
 
-export type ErrorFormCuenta = 'nombre' | 'banco' | 'cuentaContable' | 'saldoInicial';
+export type ErrorFormCuenta = 'nombre' | 'banco' | 'cuentaContable' | 'saldoInicial' | 'fechaCorte' | 'fechaCorteFutura';
 
-/** Las mismas reglas del formulario viejo: nombre, banco y PUC obligatorios; saldo inicial ≥ 0. */
-export function validarCuentaBancaria(f: FormCuentaBancaria): ErrorFormCuenta[] {
+/**
+ * Las mismas reglas del formulario viejo (nombre, banco y PUC obligatorios;
+ * saldo inicial ≥ 0) más la fecha de corte del saldo inicial: obligatoria al
+ * crear (Figma 1009:85183) y nunca futura en el día de la organización. Al
+ * editar una cuenta vieja sin fecha se puede dejar vacía.
+ */
+export function validarCuentaBancaria(f: FormCuentaBancaria, opciones: { nueva?: boolean; hoy?: string } = {}): ErrorFormCuenta[] {
   const errores: ErrorFormCuenta[] = [];
   if (!f.name.trim()) errores.push('nombre');
   if (!f.bank_name.trim()) errores.push('banco');
   if (!f.account_code) errores.push('cuentaContable');
   if (f.initial_balance !== null && (!Number.isFinite(f.initial_balance) || f.initial_balance < 0)) errores.push('saldoInicial');
+  if (!f.initial_balance_date) {
+    if (opciones.nueva) errores.push('fechaCorte');
+  } else if (opciones.hoy && f.initial_balance_date > opciones.hoy) {
+    errores.push('fechaCorteFutura');
+  }
   return errores;
+}
+
+/** El periodo de una conciliación empieza antes de la fecha de corte: lo anterior no está en el sistema. */
+export function periodoAntesDelCorte(inicioPeriodo: string | null | undefined, fechaCorte: string | null | undefined): boolean {
+  return !!inicioPeriodo && !!fechaCorte && inicioPeriodo < fechaCorte;
 }
 
 export interface MovimientoBancoResumen {

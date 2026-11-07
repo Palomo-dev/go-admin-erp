@@ -14,7 +14,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Landmark } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { CampoNumero, FormField, PanelAdaptable, RelatedLinkCard, clasesBoton } from '@/components/kit';
+import { CampoFecha, CampoNumero, FormField, PanelAdaptable, RelatedLinkCard, clasesBoton } from '@/components/kit';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { Input } from '@/components/ui/input';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
 import { BancosService, type BankAccount } from '@/components/finanzas/bancos/BancosService';
@@ -46,10 +47,11 @@ export function CuentaBancariaPanel({ abierto, onAbiertoChange, cuenta, onGuarda
   const tc = useTranslations('finanzasTesoreriaR3.comun');
   const { code: monedaBase } = useMonedaOrganizacion();
   const { selectedBranchId } = useBranch();
+  const { getToday } = useFormatDate();
   const edicion = !!cuenta;
   const [plan, setPlan] = useState<Plan[]>([]);
   const [monedas, setMonedas] = useState<{ code: string; name: string }[]>([]);
-  const [form, setForm] = useState<FormCuentaBancaria>({ name: '', bank_name: '', account_number: '', account_type: 'savings', currency: '', account_code: '', initial_balance: null });
+  const [form, setForm] = useState<FormCuentaBancaria>({ name: '', bank_name: '', account_number: '', account_type: 'savings', currency: '', account_code: '', initial_balance: null, initial_balance_date: '' });
   const [sucursal, setSucursal] = useState<number | null>(selectedBranchId);
   const [errores, setErrores] = useState<ErrorFormCuenta[]>([]);
   const [guardando, setGuardando] = useState(false);
@@ -67,20 +69,21 @@ export function CuentaBancariaPanel({ abierto, onAbiertoChange, cuenta, onGuarda
             currency: cuenta.currency ?? monedaBase,
             account_code: cuenta.account_code ?? '',
             initial_balance: cuenta.initial_balance,
+            initial_balance_date: cuenta.initial_balance_date ?? '',
           }
-        : { name: '', bank_name: '', account_number: '', account_type: 'savings', currency: monedaBase, account_code: '', initial_balance: null },
+        : { name: '', bank_name: '', account_number: '', account_type: 'savings', currency: monedaBase, account_code: '', initial_balance: null, initial_balance_date: getToday() },
     );
     setSucursal(cuenta?.branch_id ?? selectedBranchId);
     BancosService.obtenerPlanCuentas().then(setPlan).catch(() => setPlan([]));
     BancosService.obtenerMonedasOrganizacion().then(setMonedas).catch(() => setMonedas([]));
-  }, [abierto, cuenta, monedaBase, selectedBranchId]);
+  }, [abierto, cuenta, monedaBase, selectedBranchId, getToday]);
 
   const elegibles = useMemo(() => cuentasBancariasElegibles(plan), [plan]);
   const cambiar = <K extends keyof FormCuentaBancaria>(k: K, v: FormCuentaBancaria[K]) => setForm((f) => ({ ...f, [k]: v }));
   const error = (k: ErrorFormCuenta) => (errores.includes(k) ? t(`errores.${k}`) : null);
 
   const guardar = async () => {
-    const e = validarCuentaBancaria(form);
+    const e = validarCuentaBancaria(form, { nueva: !cuenta, hoy: getToday() });
     setErrores(e);
     if (e.length > 0) return;
     setGuardando(true);
@@ -92,6 +95,8 @@ export function CuentaBancariaPanel({ abierto, onAbiertoChange, cuenta, onGuarda
           account_number: form.account_number.trim() || null,
           account_type: form.account_type,
           account_code: form.account_code,
+          // La fecha de corte se corrige al editar (dato del extracto); el saldo inicial no.
+          initial_balance_date: form.initial_balance_date || null,
         });
         toast.success(t('guardada'));
         onGuardada(cuenta.id);
@@ -104,6 +109,7 @@ export function CuentaBancariaPanel({ abierto, onAbiertoChange, cuenta, onGuarda
           currency: form.currency || null,
           initial_balance: form.initial_balance ?? 0,
           account_code: form.account_code,
+          initial_balance_date: form.initial_balance_date || null,
           branch_id: sucursal ?? undefined,
         });
         toast.success(t('creada'));
@@ -201,6 +207,22 @@ export function CuentaBancariaPanel({ abierto, onAbiertoChange, cuenta, onGuarda
             </FormField>
           </div>
         )}
+        <FormField
+          etiqueta={t('fechaCorte')}
+          obligatorio={!edicion}
+          error={error('fechaCorte') ?? error('fechaCorteFutura')}
+          ayuda={t('fechaCorteAyuda')}
+        >
+          {(c) => (
+            <CampoFecha
+              id={c.id}
+              valor={form.initial_balance_date}
+              onValorChange={(d) => cambiar('initial_balance_date', d)}
+              limpiable={edicion}
+              aria-labelledby={c.idEtiqueta}
+            />
+          )}
+        </FormField>
         <RelatedLinkCard icono={Landmark} etiqueta={t('conectar.etiqueta')} valor={t('conectar.valor')} href="/app/finanzas/open-finance" textoAccion={t('conectar.accion')} />
       </div>
     </PanelAdaptable>

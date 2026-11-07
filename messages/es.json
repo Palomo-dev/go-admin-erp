@@ -41613,7 +41613,6 @@
       "todoElLibro": "Todo el libro",
       "comprobante": "Comprobante",
       "etiquetaFila": "Asiento {numero}",
-      "paresOcultos": "{n, plural, one {Se ocultó # asiento revertido de esta página.} other {Se ocultaron # asientos revertidos de esta página.}}",
       "kpis": {
         "etiqueta": "Resumen del libro diario",
         "asientos": "Asientos del periodo",
@@ -42484,7 +42483,7 @@
       "inactivo": {
         "corto": "pendiente de activar",
         "titulo": "Revisión pendiente de activar",
-        "descripcion": "Para cruzar cada asiento con su documento hace falta la función de salud contable en la base. Está escrita y espera aprobación; mientras tanto esta pestaña no muestra cifras, para no hacer pasar un dato sin revisar por un cero."
+        "descripcion": "Para cruzar cada asiento con su documento hace falta la función de salud contable, y no está disponible en esta base. Mientras falte, esta pestaña no muestra cifras: un dato sin revisar no se hace pasar por un cero."
       },
       "enOrden": {
         "titulo": "Todo contabilizado",
@@ -44654,7 +44653,13 @@
         "totalAyuda": "Todas las cuentas bancarias",
         "entradas": "Entradas proyectadas (90 días)",
         "salidas": "Salidas proyectadas (90 días)",
-        "neto": "Flujo neto proyectado"
+        "neto": "Flujo neto proyectado",
+        "efectivoHoy": "Efectivo hoy",
+        "porCobrar": "Por cobrar 90 días",
+        "porCobrarAyuda": "Incluye vencidos",
+        "porPagar": "Por pagar 90 días",
+        "porPagarAyuda": "Cuentas por pagar con vencimiento",
+        "proyeccion90": "Proyección a 90 días"
       },
       "cuentasTitulo": "Posición por cuenta",
       "columnas": {
@@ -44711,7 +44716,33 @@
         "alertas": "las alertas",
         "concentracion": "la concentración de pagos"
       },
-      "reintentar": "Reintentar"
+      "reintentar": "Reintentar",
+      "exportar": "Exportar posición",
+      "grafica": {
+        "titulo": "Saldo proyectado a 90 días",
+        "descripcion": "Saldo de hoy más lo que vence por cobrar y por pagar, día a día.",
+        "resumen": "Hoy {hoy}; a 90 días {final}; el punto más bajo es {minimo}.",
+        "saldo": "Saldo",
+        "entra": "Entra",
+        "sale": "Sale",
+        "negativo": "La proyección baja de cero (mínimo {minimo}): revisa pagos o cobros antes de esa fecha."
+      },
+      "tramos": {
+        "titulo": "Proyección por periodo",
+        "0-30": "Próximos 30 días",
+        "31-60": "31 a 60 días",
+        "61-90": "61 a 90 días",
+        "columnas": {
+          "periodo": "Periodo",
+          "entradas": "Entradas",
+          "salidas": "Salidas",
+          "saldo": "Saldo final"
+        }
+      },
+      "porCuenta": {
+        "titulo": "Saldo en libros por cuenta",
+        "descripcion": "Cuentas en {moneda}, de mayor a menor."
+      }
     },
     "cuentaBancaria": {
       "migaCuentas": "Cuentas de dinero",
@@ -44800,7 +44831,10 @@
         "titulo": "Datos de la cuenta",
         "saldoInicial": "Saldo inicial",
         "estado": "Estado",
-        "creada": "Creada"
+        "creada": "Creada",
+        "alCorte": "al {fecha}",
+        "fechaCorte": "Fecha de corte",
+        "sinFechaCorte": "Sin fecha de corte"
       },
       "puc": {
         "titulo": "Sin cuenta contable",
@@ -44858,8 +44892,12 @@
           "nombre": "Escribe el nombre de la cuenta.",
           "banco": "Elige el banco.",
           "cuentaContable": "La cuenta contable es obligatoria (PUC 1110, 1120 u otra de bancos).",
-          "saldoInicial": "El saldo inicial no puede ser negativo."
-        }
+          "saldoInicial": "El saldo inicial no puede ser negativo.",
+          "fechaCorte": "Elige la fecha de corte del saldo inicial.",
+          "fechaCorteFutura": "La fecha de corte no puede ser futura."
+        },
+        "fechaCorte": "Fecha de corte del saldo inicial",
+        "fechaCorteAyuda": "El saldo inicial es el del extracto a esta fecha."
       },
       "manual": {
         "titulo": "Movimiento manual",
@@ -44995,6 +45033,96 @@
           "periodo": "Elige el periodo de conciliación.",
           "orden": "La fecha de inicio debe ser anterior a la fecha de fin.",
           "crear": "No se pudo crear la conciliación."
+        },
+        "saldoInicialCorte": "Saldo inicial de la cuenta: {saldo} al {fecha}. El saldo de apertura es el saldo actual en sistema.",
+        "antesDelCorte": "El periodo empieza antes de la fecha de corte del saldo inicial ({fecha}): los movimientos anteriores no están en el sistema."
+      },
+      "corte": {
+        "saldoInicial": "Saldo inicial de la cuenta: {saldo} al {fecha}.",
+        "antes": "El periodo empieza antes de la fecha de corte del saldo inicial ({fecha}): los movimientos anteriores no están en el sistema."
+      },
+      "extracto": {
+        "titulo": "Líneas del extracto ({n})",
+        "ayuda": "Se empareja por valor, fecha (hasta 3 días) y referencia.",
+        "importar": {
+          "titulo": "Importar extracto",
+          "descripcion": "CSV o Excel del banco.",
+          "elegir": "Arrastra el extracto o elige un archivo",
+          "leido": "{nombre} · {lineas} líneas",
+          "cargar": "Cargar",
+          "cargarN": "Cargar {n} líneas"
+        },
+        "columnas": {
+          "fecha": "Fecha",
+          "descripcion": "Descripción del banco",
+          "valor": "Valor",
+          "libro": "Movimiento del libro",
+          "accion": "Acción"
+        },
+        "sinDescripcion": "Sin descripción",
+        "emparejada": "Emparejada",
+        "creada": "Creada desde el extracto",
+        "sinMovimiento": "Sin movimiento",
+        "elegirMovimiento": "Elegir movimiento",
+        "emparejar": "Emparejar",
+        "crear": {
+          "gmf": "Crear GMF",
+          "comision": "Crear comisión",
+          "interes": "Crear intereses"
+        },
+        "vacio": {
+          "titulo": "Sin extracto",
+          "descripcion": "Todavía no hay un extracto en esta conciliación."
+        },
+        "errorLeer": "No se pudo leer el extracto",
+        "sinLineas": "El archivo no tiene líneas con fecha y valor",
+        "ilegible": "No se pudo leer el archivo",
+        "cargado": "Extracto cargado: {emparejadas} de {lineas} emparejadas",
+        "errorImportar": "No se pudo importar el extracto",
+        "eligeMovimiento": "Elige el movimiento del libro",
+        "emparejadaOk": "Línea emparejada",
+        "valorDistinto": "El valor no coincide",
+        "errorEmparejar": "No se pudo emparejar",
+        "creadoOk": "Movimiento creado desde el extracto",
+        "periodoCerrado": "El periodo de esa fecha está cerrado",
+        "errorCrear": "No se pudo crear el movimiento"
+      },
+      "sugerencias": {
+        "titulo": "Sugerencias",
+        "descripcion": "Pagos que coinciden con movimientos del banco.",
+        "encontradas": "{n, plural, =0 {Sin sugerencias pendientes} one {# sugerencia encontrada} other {# sugerencias encontradas}}",
+        "actualizar": "Actualizar",
+        "autoConciliar": "Auto-conciliar alta confianza",
+        "conciliando": "Conciliando…",
+        "columnas": {
+          "banco": "Movimiento del banco",
+          "candidato": "Pago candidato",
+          "valor": "Valor",
+          "confianza": "Confianza"
+        },
+        "niveles": {
+          "alta": "Alta",
+          "media": "Media",
+          "baja": "Baja"
+        },
+        "confianzaPuntos": "{nivel} · {puntos}",
+        "desglose": "Monto {monto}/40 · fecha {fecha}/30 · referencia {referencia}/20 · descripción {descripcion}/10",
+        "regla": "La confianza suma: monto (hasta 40), fecha (30), referencia (20) y descripción (10).",
+        "sinDescripcion": "Sin descripción",
+        "sinReferencia": "Sin referencia",
+        "aceptar": "Aceptar",
+        "rechazar": "Rechazar",
+        "aceptarAria": "Aceptar la sugerencia de {banco}",
+        "rechazarAria": "Rechazar la sugerencia de {banco}",
+        "aceptada": "Sugerencia aceptada y conciliada",
+        "rechazada": "Sugerencia rechazada",
+        "autoConciliadas": "{n, plural, one {# movimiento auto-conciliado} other {# movimientos auto-conciliados}}",
+        "errorCargar": "No se pudieron cargar las sugerencias",
+        "errorAceptar": "No se pudo aceptar la sugerencia",
+        "errorAuto": "No se pudo auto-conciliar",
+        "vacio": {
+          "titulo": "Sin sugerencias pendientes",
+          "descripcion": "Cuando un pago coincida con un movimiento del banco, aparecerá aquí."
         }
       }
     },

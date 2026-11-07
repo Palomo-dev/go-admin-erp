@@ -290,3 +290,35 @@ permisos BK-13 (`fn_puc_migracion_aplicar/_revertir` y centros sin permiso propi
 base (solo en pantalla); cartera libro ≠ documentos en Salud (`v_salud_contable` es solo `service_role`); vista previa
 de regla con el último documento real; comprobante por el motor de documentos; código muerto
 `src/components/finanzas/periodos-contables/*`.
+
+**Actualización (2026-11-08, tras aplicar las dos migraciones):** `fn_libro_diario_trabajo` y `fn_salud_contable`
+están aplicadas (las aplicó el coordinador con orden del dueño; verificado por MCP: invoker y definer, sin `anon`).
+- `ContabilidadService.listarLibroDiario` llama a `fn_libro_diario_trabajo` en una sola lectura y conserva su contrato
+  (`filas` con `importe` y `revertidoPor`, `total`; `paresOcultos` queda en 0 por compatibilidad). «Ocultar pares
+  revertidos» es exacto en la base: el total y la paginación dejan de ser aproximados, y se quitó el aviso de la página
+  y su texto en los 4 idiomas. La exportación CSV recorre las páginas sin el ajuste que hacía falta antes.
+- Salud contable: Descuadres y Huérfanos leen `fn_salud_contable`. «Pendiente de activar» aparece solo si la función
+  no existe (PGRST202, 42883 o «Could not find the function public.fn_salud_contable»); sin permiso u otro error se ve
+  como error, nunca como vacío. Cruce en solo lectura sobre los datos actuales: 0 descuadres y 0 huérfanos en las 4
+  organizaciones con asientos, así que hoy las pestañas muestran su vacío revisado («Sin descuadres», «Sin asientos
+  huérfanos»).
+- Pruebas: `__tests__/libroDiarioYSaludServidor.test.ts` (parámetros de la RPC, conversión de filas, errores, `null`
+  solo con la función ausente) y un caso nuevo en `SaludContablePage.render.test.tsx`. Rollbacks actualizados: quitar
+  `fn_libro_diario_trabajo` exige volver antes a la versión del servicio que consultaba por PostgREST.
+
+#### Frente T · tercera tanda (2026-11-07, después del commit d3f1560ec)
+
+- **Posición con gráfica** (Cuentas de dinero › Posición, base «Tesorería consolidada» `2335:142203`, captura
+  `86-tesoreria-consolidada.png`): KPIs del diseño (Efectivo hoy · Por cobrar 90 días · Por pagar 90 días · Proyección
+  a 90 días), gráfica de **saldo proyectado a 90 días** (una serie, área de 2 px, cero marcado si baja de cero, cruz y
+  tooltip) con su tabla de tramos (próximos 30 · 31–60 · 61–90 días: entradas, salidas, saldo final), y **saldo en
+  libros por cuenta** en barras horizontales con etiqueta directa. Recharts con tokens del tema (`--brand-primary`,
+  `--border-default`, `--text-*`), sin hex. Validador de dataviz: claro pasa; oscuro avisa contraste 2,91:1, cubierto
+  con etiquetas directas y tablas. Exportar posición (CSV). Lógica: `src/lib/finanzas/tesoreria/posicionTesoreria.ts`.
+- **Extracto y Sugerencias de conciliación con el kit** (`2329:129657`, `2329:130286`): `ImportarExtracto` y
+  `AIMatchingPanel` reescritos con `DataTable`, `StatusBadge`, `Tarjeta` y botones del kit, textos en 4 idiomas. Lógica y
+  servicios intactos (`importarExtracto`, `emparejarLinea`, `crearMovimientoDesdeLinea`, `suggest-matches` GET/POST,
+  `matchTransaccion`).
+- **Fecha de corte del saldo inicial** (`bank_accounts.initial_balance_date`, migración aplicada
+  `20261108020500`): obligatoria al crear la cuenta, editable después (nunca futura); se ve en Datos de la cuenta, en
+  la nueva conciliación (con aviso si el periodo empieza antes del corte) y en el detalle de la conciliación.

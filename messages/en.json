@@ -41598,7 +41598,6 @@
       "todoElLibro": "Whole journal",
       "comprobante": "Voucher",
       "etiquetaFila": "Entry {numero}",
-      "paresOcultos": "{n, plural, one {# reversed entry was hidden from this page.} other {# reversed entries were hidden from this page.}}",
       "kpis": {
         "etiqueta": "Journal summary",
         "asientos": "Entries in the period",
@@ -42469,7 +42468,7 @@
       "inactivo": {
         "corto": "not yet enabled",
         "titulo": "Check not yet enabled",
-        "descripcion": "Matching each entry with its document needs the accounting health function in the database. It is written and awaiting approval; until then this tab shows no figures, so an unchecked value never looks like a zero."
+        "descripcion": "Matching each entry with its document needs the accounting health function, and it is not available in this database. While it is missing, this tab shows no figures: an unchecked value never passes for a zero."
       },
       "enOrden": {
         "titulo": "Everything posted",
@@ -44639,7 +44638,13 @@
         "totalAyuda": "All bank accounts",
         "entradas": "Projected inflows (90 days)",
         "salidas": "Projected outflows (90 days)",
-        "neto": "Projected net flow"
+        "neto": "Projected net flow",
+        "efectivoHoy": "Cash today",
+        "porCobrar": "Receivable 90 days",
+        "porCobrarAyuda": "Includes overdue",
+        "porPagar": "Payable 90 days",
+        "porPagarAyuda": "Payables coming due",
+        "proyeccion90": "90-day projection"
       },
       "cuentasTitulo": "Position by account",
       "columnas": {
@@ -44696,7 +44701,33 @@
         "alertas": "the alerts",
         "concentracion": "the payment concentration"
       },
-      "reintentar": "Retry"
+      "reintentar": "Retry",
+      "exportar": "Export position",
+      "grafica": {
+        "titulo": "Projected balance over 90 days",
+        "descripcion": "Today's balance plus what falls due to collect and to pay, day by day.",
+        "resumen": "Today {hoy}; in 90 days {final}; the lowest point is {minimo}.",
+        "saldo": "Balance",
+        "entra": "In",
+        "sale": "Out",
+        "negativo": "The projection goes below zero (minimum {minimo}): review payments or collections before that date."
+      },
+      "tramos": {
+        "titulo": "Projection by period",
+        "0-30": "Next 30 days",
+        "31-60": "31 to 60 days",
+        "61-90": "61 to 90 days",
+        "columnas": {
+          "periodo": "Period",
+          "entradas": "Inflows",
+          "salidas": "Outflows",
+          "saldo": "Ending balance"
+        }
+      },
+      "porCuenta": {
+        "titulo": "Book balance by account",
+        "descripcion": "Accounts in {moneda}, highest to lowest."
+      }
     },
     "cuentaBancaria": {
       "migaCuentas": "Money accounts",
@@ -44785,7 +44816,10 @@
         "titulo": "Account details",
         "saldoInicial": "Opening balance",
         "estado": "Status",
-        "creada": "Created"
+        "creada": "Created",
+        "alCorte": "as of {fecha}",
+        "fechaCorte": "Cutoff date",
+        "sinFechaCorte": "No cutoff date"
       },
       "puc": {
         "titulo": "No ledger account",
@@ -44843,8 +44877,12 @@
           "nombre": "Type the account name.",
           "banco": "Choose the bank.",
           "cuentaContable": "The ledger account is required (chart of accounts 1110, 1120 or another bank account).",
-          "saldoInicial": "The opening balance can't be negative."
-        }
+          "saldoInicial": "The opening balance can't be negative.",
+          "fechaCorte": "Choose the opening balance cutoff date.",
+          "fechaCorteFutura": "The cutoff date can't be in the future."
+        },
+        "fechaCorte": "Opening balance cutoff date",
+        "fechaCorteAyuda": "The opening balance is the statement balance on this date."
       },
       "manual": {
         "titulo": "Manual movement",
@@ -44980,6 +45018,96 @@
           "periodo": "Choose the reconciliation period.",
           "orden": "The start date must be before the end date.",
           "crear": "The reconciliation couldn't be created."
+        },
+        "saldoInicialCorte": "Account opening balance: {saldo} as of {fecha}. The reconciliation's opening balance is the current system balance.",
+        "antesDelCorte": "The period starts before the opening balance cutoff date ({fecha}): earlier movements aren't in the system."
+      },
+      "corte": {
+        "saldoInicial": "Account opening balance: {saldo} as of {fecha}.",
+        "antes": "The period starts before the opening balance cutoff date ({fecha}): earlier movements aren't in the system."
+      },
+      "extracto": {
+        "titulo": "Statement lines ({n})",
+        "ayuda": "Matched by amount, date (up to 3 days) and reference.",
+        "importar": {
+          "titulo": "Import statement",
+          "descripcion": "The bank's CSV or Excel.",
+          "elegir": "Drag the statement or choose a file",
+          "leido": "{nombre} · {lineas} lines",
+          "cargar": "Load",
+          "cargarN": "Load {n} lines"
+        },
+        "columnas": {
+          "fecha": "Date",
+          "descripcion": "Bank description",
+          "valor": "Amount",
+          "libro": "Book movement",
+          "accion": "Action"
+        },
+        "sinDescripcion": "No description",
+        "emparejada": "Matched",
+        "creada": "Created from the statement",
+        "sinMovimiento": "No movement",
+        "elegirMovimiento": "Choose movement",
+        "emparejar": "Match",
+        "crear": {
+          "gmf": "Create bank tax",
+          "comision": "Create fee",
+          "interes": "Create interest"
+        },
+        "vacio": {
+          "titulo": "No statement",
+          "descripcion": "This reconciliation has no statement yet."
+        },
+        "errorLeer": "The statement couldn't be read",
+        "sinLineas": "The file has no lines with a date and an amount",
+        "ilegible": "The file couldn't be read",
+        "cargado": "Statement loaded: {emparejadas} of {lineas} matched",
+        "errorImportar": "The statement couldn't be imported",
+        "eligeMovimiento": "Choose the book movement",
+        "emparejadaOk": "Line matched",
+        "valorDistinto": "The amount doesn't match",
+        "errorEmparejar": "Couldn't match",
+        "creadoOk": "Movement created from the statement",
+        "periodoCerrado": "The period for that date is closed",
+        "errorCrear": "The movement couldn't be created"
+      },
+      "sugerencias": {
+        "titulo": "Suggestions",
+        "descripcion": "Payments that match bank movements.",
+        "encontradas": "{n, plural, =0 {No pending suggestions} one {# suggestion found} other {# suggestions found}}",
+        "actualizar": "Refresh",
+        "autoConciliar": "Auto-reconcile high confidence",
+        "conciliando": "Reconciling…",
+        "columnas": {
+          "banco": "Bank movement",
+          "candidato": "Candidate payment",
+          "valor": "Amount",
+          "confianza": "Confidence"
+        },
+        "niveles": {
+          "alta": "High",
+          "media": "Medium",
+          "baja": "Low"
+        },
+        "confianzaPuntos": "{nivel} · {puntos}",
+        "desglose": "Amount {monto}/40 · date {fecha}/30 · reference {referencia}/20 · description {descripcion}/10",
+        "regla": "Confidence adds up: amount (up to 40), date (30), reference (20) and description (10).",
+        "sinDescripcion": "No description",
+        "sinReferencia": "No reference",
+        "aceptar": "Accept",
+        "rechazar": "Reject",
+        "aceptarAria": "Accept the suggestion for {banco}",
+        "rechazarAria": "Reject the suggestion for {banco}",
+        "aceptada": "Suggestion accepted and reconciled",
+        "rechazada": "Suggestion rejected",
+        "autoConciliadas": "{n, plural, one {# movement auto-reconciled} other {# movements auto-reconciled}}",
+        "errorCargar": "The suggestions couldn't be loaded",
+        "errorAceptar": "The suggestion couldn't be accepted",
+        "errorAuto": "Couldn't auto-reconcile",
+        "vacio": {
+          "titulo": "No pending suggestions",
+          "descripcion": "When a payment matches a bank movement, it shows up here."
         }
       }
     },

@@ -1,8 +1,10 @@
 /**
- * Lecturas de «Salud contable». Todo es lectura de funciones que ya existen,
- * salvo `fn_salud_contable` (propuesta sin aplicar: `supabase/migrations/
- * 20261108070000_salud_contable.sql`). Mientras no exista, `cruce()` devuelve
- * `null` y la pantalla dice que esa revisión está pendiente de activar.
+ * Lecturas de «Salud contable». Todo es lectura de funciones existentes:
+ * `fn_salud_contable` (aplicada el 2026-11-08, `supabase/migrations/
+ * 20261108070000_salud_contable.sql`) para descuadres y huérfanos. Si la función
+ * no existe en la base (y solo en ese caso), `cruce()` devuelve `null` y la
+ * pantalla dice que esa revisión está pendiente de activar; cualquier otro
+ * error se lanza y se ve como error.
  */
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';

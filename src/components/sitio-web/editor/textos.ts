@@ -922,7 +922,14 @@ export const TEXTOS_EDITOR = {
       colores: 'Colores',
       colorFondo: 'Fondo del botón',
       colorTexto: 'Texto del botón',
-      nota: 'Más adelante este mismo control servirá también para el segundo botón y para los botones de las secciones.',
+      nota: 'El mismo control sirve para el segundo botón (Contenido › Segundo botón). Los botones de las secciones se ajustan en Estilo del sitio › Botones de las secciones.',
+    },
+    segundoBoton: {
+      titulo: 'Segundo botón',
+      migas: 'Encabezado · botón con borde junto al principal',
+      abrir: 'Forma, tamaño, estilo e ícono',
+      abrirAyuda: 'Abre las opciones del segundo botón',
+      nota: 'Sin forma ni tamaño elegidos, el segundo botón usa el redondeo y el relleno del principal. No tiene ancho, alto, sombra ni colores propios: toma el color del texto del encabezado.',
     },
     movilEncabezado: {
       titulo: 'Celular',

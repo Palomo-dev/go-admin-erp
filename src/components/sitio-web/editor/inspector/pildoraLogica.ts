@@ -1,7 +1,8 @@
 /**
  * Lógica pura de los controles nuevos del encabezado (Figma «Editor · Encabezado píldora, menú
  * inferior y botones», 2026-11-07): el grupo «Píldora» de Diseño (P1) y la vista «Botón principal»
- * (P2). Sin React ni servicios.
+ * (P2), que sirve también para el segundo botón (`header_cta2_*`, 2026-11-07). Sin React ni
+ * servicios.
  *
  * Regla del contrato (`mapeoAjustes.ts`, todas `porDefecto: null`): sin la clave, el sitio pinta lo
  * de hoy. Por eso cada control muestra el valor efectivo cuando la clave falta y, si se elige
@@ -85,7 +86,46 @@ export function cambioSeparacion(v: number | null): Ajustes {
   return { header_float_offset: enteroEnRango('header_float_offset', v) };
 }
 
-// ─── Botón principal (P2) ──────────────────────────────────────────────────────────────────────
+// ─── Botón principal (P2) y segundo botón ──────────────────────────────────────────────────────
+
+/**
+ * Botón del encabezado que edita la vista: el principal (`header_cta_*`, más los `cta_*` que ya
+ * existían) o el segundo (`header_cta2_*`). Figma P2: «El mismo control sirve para el segundo
+ * botón». El segundo solo tiene en el contrato forma, tamaño, estilo, ícono con su lado y
+ * mayúsculas: sin ancho, alto, relleno, sombra ni colores propios (usa el relleno y el radio del
+ * principal, como hoy). Cada función recibe el botón al final; sin él, el principal.
+ */
+export type BotonEncabezado = 'principal' | 'segundo';
+
+/** Clave del contrato de cada control, por botón. */
+export const CLAVES_BOTON = {
+  principal: {
+    forma: 'header_cta_shape',
+    tamano: 'header_cta_size',
+    estilo: 'header_cta_style',
+    icono: 'header_cta_icon',
+    lado: 'header_cta_icon_side',
+    mayusculas: 'header_cta_uppercase',
+  },
+  segundo: {
+    forma: 'header_cta2_shape',
+    tamano: 'header_cta2_size',
+    estilo: 'header_cta2_style',
+    icono: 'header_cta2_icon',
+    lado: 'header_cta2_icon_side',
+    mayusculas: 'header_cta2_uppercase',
+  },
+} as const satisfies Record<BotonEncabezado, Record<string, keyof typeof OPCIONES_SHELL>>;
+
+/** Controles de la vista según el botón: el segundo solo muestra los que tienen clave propia. */
+export const CONTROLES_BOTON = {
+  principal: ['forma', 'tamano', 'ancho', 'alto', 'relleno', 'estilo', 'icono', 'lado', 'mayusculas', 'sombra', 'colores'],
+  segundo: ['forma', 'tamano', 'estilo', 'icono', 'lado', 'mayusculas'],
+} as const;
+export type ControlBoton = (typeof CONTROLES_BOTON)['principal'][number];
+export function muestraControl(b: BotonEncabezado, c: ControlBoton): boolean {
+  return (CONTROLES_BOTON[b] as readonly ControlBoton[]).includes(c);
+}
 
 /** Las 4 formas en el orden del diseño (Píldora · Redondeado · Cuadrado · Círculo). */
 export const FORMAS_BOTON = ['pill', 'rounded', 'square', 'circle'] as const satisfies readonly (typeof FORMAS_BOTON_ENCABEZADO)[number][];
@@ -98,26 +138,33 @@ export function radioDeHoy(a: Ajustes): number {
 }
 
 /** Forma elegida o `null` = la de hoy (radio `cta_border_radius`, que se respeta tal cual). */
-export function formaBoton(a: Ajustes): FormaBoton | null {
-  const v = normalizarOpcionShell('header_cta_shape', a.header_cta_shape);
+export function formaBoton(a: Ajustes, b: BotonEncabezado = 'principal'): FormaBoton | null {
+  const k = CLAVES_BOTON[b].forma;
+  const v = normalizarOpcionShell(k, a[k]);
   return typeof v === 'string' ? (v as FormaBoton) : null;
 }
-export function cambioFormaBoton(v: FormaBoton | null): Ajustes {
-  return { header_cta_shape: v === null ? null : normalizarOpcionShell('header_cta_shape', v) };
+export function cambioFormaBoton(v: FormaBoton | null, b: BotonEncabezado = 'principal'): Ajustes {
+  const k = CLAVES_BOTON[b].forma;
+  return { [k]: v === null ? null : normalizarOpcionShell(k, v) };
 }
 
 /** Alto de cada tamaño (contrato: 36 / 44 / 50 px). */
 export const ALTO_TAMANO = { sm: 36, md: 44, lg: 50 } as const;
 export type TamanoBoton = (typeof TAMANOS_BOTON_ENCABEZADO)[number];
-export function tamanoBoton(a: Ajustes): TamanoBoton | null {
-  const v = normalizarOpcionShell('header_cta_size', a.header_cta_size);
+export function tamanoBoton(a: Ajustes, b: BotonEncabezado = 'principal'): TamanoBoton | null {
+  const k = CLAVES_BOTON[b].tamano;
+  const v = normalizarOpcionShell(k, a[k]);
   return typeof v === 'string' ? (v as TamanoBoton) : null;
 }
-/** `null` = el relleno de hoy. Si el alto guardado es justo el del tamaño nuevo, sobra: se borra. */
-export function cambioTamanoBoton(a: Ajustes, v: TamanoBoton | null): Ajustes {
-  const valido = v === null ? null : (normalizarOpcionShell('header_cta_size', v) as TamanoBoton | null);
-  const cambios: Ajustes = { header_cta_size: valido };
-  if (valido && altoBoton(a) === ALTO_TAMANO[valido]) cambios.header_cta_height = null;
+/**
+ * `null` = el relleno de hoy. En el principal, si el alto guardado es justo el del tamaño nuevo,
+ * sobra: se borra (el segundo no tiene alto propio).
+ */
+export function cambioTamanoBoton(a: Ajustes, v: TamanoBoton | null, b: BotonEncabezado = 'principal'): Ajustes {
+  const k = CLAVES_BOTON[b].tamano;
+  const valido = v === null ? null : (normalizarOpcionShell(k, v) as TamanoBoton | null);
+  const cambios: Ajustes = { [k]: valido };
+  if (b === 'principal' && valido && altoBoton(a) === ALTO_TAMANO[valido]) cambios.header_cta_height = null;
   return cambios;
 }
 
@@ -163,14 +210,20 @@ export function cambioRellenoX(v: number): Ajustes {
 
 export const ESTILOS_BOTON = ESTILOS_BOTON_ENCABEZADO;
 export type EstiloBoton = (typeof ESTILOS_BOTON_ENCABEZADO)[number];
-/** Sin la clave: sólido con `cta_bg_color` (lo de hoy). */
-export function estiloBoton(a: Ajustes): EstiloBoton {
-  const v = normalizarOpcionShell('header_cta_style', a.header_cta_style);
-  return typeof v === 'string' ? (v as EstiloBoton) : 'solido';
+/**
+ * Lo que el sitio pinta sin la clave: el principal, sólido con `cta_bg_color`; el segundo, con
+ * borde (`HeaderCTA2` de goadmin-websites, «Con borde, al lado del principal»).
+ */
+export const ESTILO_DE_HOY: Record<BotonEncabezado, EstiloBoton> = { principal: 'solido', segundo: 'contorno' };
+export function estiloBoton(a: Ajustes, b: BotonEncabezado = 'principal'): EstiloBoton {
+  const k = CLAVES_BOTON[b].estilo;
+  const v = normalizarOpcionShell(k, a[k]);
+  return typeof v === 'string' ? (v as EstiloBoton) : ESTILO_DE_HOY[b];
 }
-export function cambioEstiloBoton(v: EstiloBoton): Ajustes {
-  const valido = normalizarOpcionShell('header_cta_style', v);
-  return { header_cta_style: valido === 'solido' ? null : valido };
+export function cambioEstiloBoton(v: EstiloBoton, b: BotonEncabezado = 'principal'): Ajustes {
+  const k = CLAVES_BOTON[b].estilo;
+  const valido = normalizarOpcionShell(k, v);
+  return { [k]: valido === ESTILO_DE_HOY[b] ? null : valido };
 }
 
 /**
@@ -196,41 +249,48 @@ export const ICONOS_BOTON = [
   'search',
 ] as const;
 /** Ícono guardado (cualquier nombre válido para el contrato) o `null` = sin ícono. */
-export function iconoBoton(a: Ajustes): string | null {
-  const v = normalizarOpcionShell('header_cta_icon', a.header_cta_icon);
+export function iconoBoton(a: Ajustes, b: BotonEncabezado = 'principal'): string | null {
+  const k = CLAVES_BOTON[b].icono;
+  const v = normalizarOpcionShell(k, a[k]);
   return typeof v === 'string' ? v : null;
 }
-export function cambioIconoBoton(v: string | null): Ajustes {
-  return { header_cta_icon: v === null ? null : normalizarOpcionShell('header_cta_icon', v) };
+export function cambioIconoBoton(v: string | null, b: BotonEncabezado = 'principal'): Ajustes {
+  const k = CLAVES_BOTON[b].icono;
+  return { [k]: v === null ? null : normalizarOpcionShell(k, v) };
 }
 
 export type LadoIcono = (typeof LADOS_ICONO_BOTON)[number];
 export const LADOS_ICONO = LADOS_ICONO_BOTON;
 /** Sin la clave: izquierda; encima en el círculo. */
-export function ladoIconoDeHoy(a: Ajustes): LadoIcono {
-  return formaBoton(a) === 'circle' ? 'encima' : 'izquierda';
+export function ladoIconoDeHoy(a: Ajustes, b: BotonEncabezado = 'principal'): LadoIcono {
+  return formaBoton(a, b) === 'circle' ? 'encima' : 'izquierda';
 }
-export function ladoIcono(a: Ajustes): LadoIcono {
-  const v = normalizarOpcionShell('header_cta_icon_side', a.header_cta_icon_side);
-  return typeof v === 'string' ? (v as LadoIcono) : ladoIconoDeHoy(a);
+export function ladoIcono(a: Ajustes, b: BotonEncabezado = 'principal'): LadoIcono {
+  const k = CLAVES_BOTON[b].lado;
+  const v = normalizarOpcionShell(k, a[k]);
+  return typeof v === 'string' ? (v as LadoIcono) : ladoIconoDeHoy(a, b);
 }
-export function cambioLadoIcono(a: Ajustes, v: LadoIcono): Ajustes {
-  const valido = normalizarOpcionShell('header_cta_icon_side', v);
-  return { header_cta_icon_side: valido === ladoIconoDeHoy(a) ? null : valido };
+export function cambioLadoIcono(a: Ajustes, v: LadoIcono, b: BotonEncabezado = 'principal'): Ajustes {
+  const k = CLAVES_BOTON[b].lado;
+  const valido = normalizarOpcionShell(k, v);
+  return { [k]: valido === ladoIconoDeHoy(a, b) ? null : valido };
 }
-/** El lado solo importa si hay ícono: el elegido, o el calendario del círculo que lleva a reservas. */
-export function ladoAplica(a: Ajustes): boolean {
-  return iconoBoton(a) !== null || formaBoton(a) === 'circle';
+/**
+ * El lado solo importa si hay ícono: el elegido o, en el principal, el calendario del círculo que
+ * lleva a reservas (lo de hoy; el contrato no le da ese ícono por defecto al segundo).
+ */
+export function ladoAplica(a: Ajustes, b: BotonEncabezado = 'principal'): boolean {
+  return iconoBoton(a, b) !== null || (b === 'principal' && formaBoton(a, b) === 'circle');
 }
 
 /** Mayúsculas: `sitio` = sin la clave (lo de hoy, `buttons_uppercase_active`). */
 export type Mayusculas = 'sitio' | 'si' | 'no';
-export function mayusculasBoton(a: Ajustes): Mayusculas {
-  const v = a.header_cta_uppercase;
+export function mayusculasBoton(a: Ajustes, b: BotonEncabezado = 'principal'): Mayusculas {
+  const v = a[CLAVES_BOTON[b].mayusculas];
   return v === true ? 'si' : v === false ? 'no' : 'sitio';
 }
-export function cambioMayusculas(v: Mayusculas): Ajustes {
-  return { header_cta_uppercase: v === 'si' ? true : v === 'no' ? false : null };
+export function cambioMayusculas(v: Mayusculas, b: BotonEncabezado = 'principal'): Ajustes {
+  return { [CLAVES_BOTON[b].mayusculas]: v === 'si' ? true : v === 'no' ? false : null };
 }
 
 /** Sombra (`cta_shadow`, existente: none | sm | md | lg; `none` por defecto). */

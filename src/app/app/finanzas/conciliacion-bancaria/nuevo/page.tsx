@@ -1,8 +1,6 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { destinoConciliacion } from '@/lib/finanzas/tesoreria/rutas';
 
-import React from 'react';
-import { NuevaConciliacionForm } from '@/components/finanzas/conciliacion-bancaria/NuevaConciliacionForm';
-
-export default function NuevaConciliacionPage() {
-  return <NuevaConciliacionForm />;
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  redirect(destinoConciliacion('nuevo', await searchParams));
 }

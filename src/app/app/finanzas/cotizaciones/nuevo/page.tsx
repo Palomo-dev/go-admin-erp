@@ -1,11 +1,12 @@
 'use client';
 
-import { NuevaCotizacionForm } from '@/components/finanzas/cotizaciones/nueva-cotizacion/NuevaCotizacionForm';
+import { FormularioCotizacion } from '@/components/finanzas/cotizaciones/formulario/FormularioCotizacion';
 
-export default function NuevoPage() {
+/** Nueva cotización (también `?cliente=`): las piezas del formulario v2 de factura de venta. */
+export default function NuevaCotizacionPage() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <NuevaCotizacionForm />
+    <div className="p-4 sm:p-6">
+      <FormularioCotizacion />
     </div>
   );
 }

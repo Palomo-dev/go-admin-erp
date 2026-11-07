@@ -1,27 +1,48 @@
 'use client';
 
+/**
+ * Nuevo ingreso / egreso — UNA sola pieza para Ingresos, Egresos y
+ * Movimientos (requisito del dueño; se importa desde
+ * `@/components/finanzas/tesoreria/compartido/formularios`).
+ *
+ * Diseño: Tesorería v2 `1004:82085` (ingreso en caja con «Efecto en la
+ * cuenta»), `1004:82267` (egreso que supera el disponible), `1004:82618` (sin
+ * caja abierta) y «Nuevo egreso — pago de impuesto» `2334:134963` (la
+ * categoría trae la cuenta; un impuesto cancela el pasivo).
+ *
+ * Lógica que se conserva del formulario de la ronda 2 (sin cambiar el
+ * servicio): categorías imputables con su cuenta sugerida, rol de impuesto y
+ * cuenta obligatoria, vista previa del asiento (`fn_vista_previa_asiento_tesoreria`),
+ * tercero, centro de costo o distribución, soporte en `soportes-tesoreria`,
+ * caja abierta de la sucursal por `fn_caja_abierta_para` (nunca la última de
+ * la organización) y banco por su cuenta. Nuevo: selector de cuenta de dinero
+ * con opciones deshabilitadas y su motivo, «Efecto en la cuenta» (el esperado
+ * de la caja viene del servidor con el cierre ciego aplicado), y la regla del
+ * dueño: superar el disponible BLOQUEA en bancos y AVISA en caja.
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Building2, Loader2, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, Paperclip } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { SearchSelect } from '@/components/ui/search-select';
 import { BranchSelectorField } from '@/components/inventario/BranchSelectorField';
+import {
+  AvisoTonal,
+  CampoNumero,
+  Dialogo,
+  FormField,
+  TarjetaSeleccionable,
+  ThirdPartyPicker,
+  clasesBoton,
+  useAtajos,
+  type TerceroElegido,
+} from '@/components/kit';
 import { supabase } from '@/lib/supabase/config';
 import { getCurrentUserId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { movimientosService, type BankAccount } from '@/lib/services/movimientosService';
 import {
   cuentaPermitidaParaRol,
@@ -30,8 +51,10 @@ import {
   rolImpuesto,
   type RolImpuesto,
 } from '@/lib/finanzas/categoriasTesoreria';
-import { formatCurrency } from '@/utils/Utils';
-import { ThirdPartyPicker, useAtajos, type TerceroElegido } from '@/components/kit';
+import { efectoEnCuenta } from '@/lib/finanzas/tesoreria/efectoEnCuenta';
+import { opcionesCuentaDinero, type ValorCuentaDinero } from '@/lib/finanzas/tesoreria/cuentaDineroSelector';
+import { EfectoEnCuentaTarjeta, SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
+import { useCajasDinero } from '@/components/finanzas/tesoreria/compartido/useCajasDinero';
 import { SelectorCategoria, type OpcionCategoria } from './SelectorCategoria';
 
 type TipoFormulario = 'ingreso' | 'egreso';
@@ -76,19 +99,31 @@ const MIME_SOPORTE: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-export function FormularioMovimientoTesoreria({
-  tipo,
-  open,
-  onOpenChange,
-  onSuccess,
-}: {
+export interface FormularioMovimientoTesoreriaProps {
   tipo: TipoFormulario;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-}) {
+  /** Movimientos: el diálogo deja cambiar entre Ingreso · Egreso · Traslado. */
+  permitirCambiarTipo?: boolean;
+  /** «Traslado» abre el diálogo de transferencia (solo con `permitirCambiarTipo`). */
+  onTraslado?: () => void;
+}
+
+export function FormularioMovimientoTesoreria({
+  tipo: tipoInicial,
+  open,
+  onOpenChange,
+  onSuccess,
+  permitirCambiarTipo = false,
+  onTraslado,
+}: FormularioMovimientoTesoreriaProps) {
   const t = useTranslations('tesoreria');
+  const tf = useTranslations('finanzasTesoreriaR3.formulario');
+  const { formatear } = useMonedaOrganizacion();
   const { selectedBranchId } = useBranch();
+  const [tipo, setTipo] = useState<TipoFormulario>(tipoInicial);
+  const { cajas, estado: estadoCajas, modo } = useCajasDinero(open);
   const [branchId, setBranchId] = useState<number | null>(selectedBranchId);
   const [categorias, setCategorias] = useState<CategoriaFormulario[]>([]);
   const [cuentas, setCuentas] = useState<CuentaPlan[]>([]);
@@ -98,13 +133,13 @@ export function FormularioMovimientoTesoreria({
   const [bancos, setBancos] = useState<BankAccount[]>([]);
   const [categoriaId, setCategoriaId] = useState<number | null>(null);
   const [cuenta, setCuenta] = useState('');
-  const [origen, setOrigen] = useState<'cash' | 'bank'>('cash');
-  const [bancoId, setBancoId] = useState('');
+  const [cuentaDinero, setCuentaDinero] = useState<ValorCuentaDinero>('');
+  const [sesionSucursal, setSesionSucursal] = useState<number | null | undefined>(undefined);
   const [tercero, setTercero] = useState<TerceroElegido | null>(null);
   const [terceroAbierto, setTerceroAbierto] = useState(false);
   const [centroId, setCentroId] = useState('');
   const [distribucionId, setDistribucionId] = useState('');
-  const [monto, setMonto] = useState('');
+  const [monto, setMonto] = useState<number | null>(null);
   const [concepto, setConcepto] = useState('');
   const [conceptoTocado, setConceptoTocado] = useState(false);
   const [notas, setNotas] = useState('');
@@ -113,6 +148,10 @@ export function FormularioMovimientoTesoreria({
   const [vistaCargando, setVistaCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [sembrando, setSembrando] = useState(false);
+  const [intento, setIntento] = useState(false);
+
+  const origen: 'cash' | 'bank' = cuentaDinero.startsWith('banco:') ? 'bank' : 'cash';
+  const bancoId = origen === 'bank' ? cuentaDinero.slice('banco:'.length) : '';
 
   const categoriaElegida = categorias.find((fila) => fila.id === categoriaId);
   const rolElegido = categoriaElegida?.rol ?? null;
@@ -127,7 +166,7 @@ export function FormularioMovimientoTesoreria({
     { activo: open },
   );
 
-  const cargar = useCallback(async (sede?: number | null) => {
+  const cargar = useCallback(async (sede: number | null | undefined, tipoCarga: TipoFormulario) => {
     const orgId = getOrganizationId();
     if (!orgId) return;
     const [cats, plan, costos, sedes, cuentasBanco, dists] = await Promise.all([
@@ -135,7 +174,7 @@ export function FormularioMovimientoTesoreria({
         .from('categorias_tesoreria')
         .select('id, nombre, icono, cuenta_sugerida, clave, padre_id')
         .eq('organization_id', orgId)
-        .eq('tipo', tipo)
+        .eq('tipo', tipoCarga)
         .eq('activa', true)
         .order('orden'),
       supabase
@@ -198,29 +237,73 @@ export function FormularioMovimientoTesoreria({
     setCentroId((sede != null ? mapa[sede] : null) || administracion);
     setDistribuciones(dists.error ? [] : (dists.data ?? []) as Distribucion[]);
     setBancos(cuentasBanco);
-  }, [tipo]);
+  }, []);
 
+  // Al abrir: todo en blanco y el tipo que pidió la pantalla.
   useEffect(() => {
     if (!open) return;
+    setTipo(tipoInicial);
     setBranchId(selectedBranchId);
     setCategoriaId(null);
     setCuenta('');
-    setOrigen('cash');
-    setBancoId('');
+    setCuentaDinero('');
+    setSesionSucursal(undefined);
     setTercero(null);
     setTerceroAbierto(false);
     setCentroId('');
     setDistribucionId('');
-    setMonto('');
+    setMonto(null);
     setConcepto('');
     setConceptoTocado(false);
     setNotas('');
     setArchivo(null);
     setVista(null);
-    void cargar(selectedBranchId).catch(() => {
+    setIntento(false);
+  }, [open, tipoInicial, selectedBranchId]);
+
+  // Categorías del tipo elegido (cambiar Ingreso ↔ Egreso las recarga).
+  useEffect(() => {
+    if (!open) return;
+    setCategoriaId(null);
+    void cargar(selectedBranchId, tipo).catch(() => {
       toast({ title: t('errorTitulo'), description: t('errorCarga.cuentasBancarias'), variant: 'destructive' });
     });
-  }, [open, selectedBranchId, cargar, t]);
+  }, [open, tipo, selectedBranchId, cargar, t]);
+
+  // La caja donde escribe el servidor: la abierta de la sucursal (modo de caja incluido).
+  useEffect(() => {
+    if (!open) return;
+    let vivo = true;
+    setSesionSucursal(undefined);
+    movimientosService
+      .getOpenSessionIdForBranch(branchId)
+      .then((id) => vivo && setSesionSucursal(id))
+      .catch(() => vivo && setSesionSucursal(null));
+    return () => {
+      vivo = false;
+    };
+  }, [open, branchId]);
+
+  const opciones = useMemo(
+    () =>
+      opcionesCuentaDinero({
+        sesionSucursal: sesionSucursal ?? null,
+        cajas,
+        bancos: bancos.map((b) => ({ id: b.id, nombre: b.name, saldo: Number(b.balance) })),
+        modo,
+      }),
+    [sesionSucursal, cajas, bancos, modo],
+  );
+  const sinCajaAbierta = sesionSucursal === null;
+
+  // Elección por defecto: la caja abierta de la sucursal; si no hay, nada (el aviso lo dice).
+  useEffect(() => {
+    if (!open || cuentaDinero || sesionSucursal === undefined) return;
+    if (sesionSucursal !== null) setCuentaDinero('caja');
+  }, [open, cuentaDinero, sesionSucursal]);
+  useEffect(() => {
+    if (cuentaDinero === 'caja' && sinCajaAbierta) setCuentaDinero('');
+  }, [cuentaDinero, sinCajaAbierta]);
 
   const elegirCategoria = (id: number) => {
     setCategoriaId(id);
@@ -280,14 +363,18 @@ export function FormularioMovimientoTesoreria({
       .map((fila) => ({ value: fila.account_code, label: `${fila.account_code} · ${fila.name}` })),
     [cuentas, rolElegido],
   );
-  const opcionesBanco = useMemo(
-    () => bancos.map((fila) => ({ value: String(fila.id), label: fila.name })),
-    [bancos],
-  );
   const opcionesCentro = useMemo(
     () => centros.map((fila) => ({ value: fila.id, label: `${fila.code} · ${fila.name}` })),
     [centros],
   );
+
+  const opcionElegida = opciones.find((o) => o.valor === cuentaDinero) ?? null;
+  const efecto = efectoEnCuenta({
+    saldo: opcionElegida ? opcionElegida.saldo : null,
+    importe: monto,
+    sentido: tipo === 'ingreso' ? 'entrada' : 'salida',
+    cuenta: origen === 'bank' ? 'banco' : 'caja',
+  });
 
   const sembrar = async () => {
     const orgId = getOrganizationId();
@@ -299,7 +386,7 @@ export function FormularioMovimientoTesoreria({
       toast({ title: t('errorTitulo'), description: t('categorias.errorGuardar'), variant: 'destructive' });
       return;
     }
-    await cargar(branchId);
+    await cargar(branchId, tipo);
   };
 
   const subirSoporte = async (orgId: number): Promise<string | null> => {
@@ -322,42 +409,21 @@ export function FormularioMovimientoTesoreria({
     return path;
   };
 
-  const guardar = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const guardar = async () => {
+    setIntento(true);
     const orgId = getOrganizationId();
-    const valor = Number(monto.replace(',', '.'));
-    if (!orgId) {
-      toast({ title: t('errorTitulo'), description: t('errores.sin_organizacion'), variant: 'destructive' });
-      return;
-    }
-    if (!categoriaId) {
-      toast({ title: t('errorTitulo'), description: t('movimiento.faltaCategoria'), variant: 'destructive' });
-      return;
-    }
-    if (!cuenta || vista?.fallo) {
-      toast({ title: t('errorTitulo'), description: vista?.fallo || t('movimiento.faltaCuenta'), variant: 'destructive' });
-      return;
-    }
-    if (!concepto.trim()) {
-      toast({ title: t('errorTitulo'), description: t('movimiento.faltaConcepto'), variant: 'destructive' });
-      return;
-    }
-    if (!Number.isFinite(valor) || valor <= 0) {
-      toast({ title: t('errorTitulo'), description: t('movimiento.faltaMonto'), variant: 'destructive' });
-      return;
-    }
-    if (origen === 'bank' && !bancoId) {
-      toast({ title: t('errorTitulo'), description: t('movimiento.faltaBanco'), variant: 'destructive' });
-      return;
-    }
-    if (exigeCentro && !centroId) {
-      toast({ title: t('errorTitulo'), description: t('movimiento.faltaCentro'), variant: 'destructive' });
-      return;
-    }
-    if (exigeTercero && !tercero) {
-      toast({ title: t('errorTitulo'), description: t('movimiento.faltaTercero'), variant: 'destructive' });
-      return;
-    }
+    const valor = monto ?? 0;
+    const fallo = (descripcion: string) => toast({ title: t('errorTitulo'), description: descripcion, variant: 'destructive' });
+    if (!orgId) return fallo(t('errores.sin_organizacion'));
+    if (!cuentaDinero) return fallo(tf('errores.cuentaDinero'));
+    if (!categoriaId) return fallo(t('movimiento.faltaCategoria'));
+    if (!cuenta || vista?.fallo) return fallo(vista?.fallo || t('movimiento.faltaCuenta'));
+    if (!concepto.trim()) return fallo(t('movimiento.faltaConcepto'));
+    if (!Number.isFinite(valor) || valor <= 0) return fallo(t('movimiento.faltaMonto'));
+    if (origen === 'bank' && !bancoId) return fallo(t('movimiento.faltaBanco'));
+    if (efecto.bloquea) return fallo(tf('superaBanco'));
+    if (exigeCentro && !centroId) return fallo(t('movimiento.faltaCentro'));
+    if (exigeTercero && !tercero) return fallo(t('movimiento.faltaTercero'));
 
     setGuardando(true);
     let soporte: string | null = null;
@@ -388,11 +454,7 @@ export function FormularioMovimientoTesoreria({
         : await movimientosService.createBankTransaction(payload);
       if (!resultado.success) {
         if (soporte) await supabase.storage.from('soportes-tesoreria').remove([soporte]);
-        toast({
-          title: t('errorTitulo'),
-          description: t(`errores.${resultado.codigo ?? 'desconocido'}`),
-          variant: 'destructive',
-        });
+        fallo(t(`errores.${resultado.codigo ?? 'desconocido'}`));
         return;
       }
       toast({ description: tipo === 'ingreso' ? t('movimiento.exitoIngreso') : t('movimiento.exitoEgreso') });
@@ -400,16 +462,11 @@ export function FormularioMovimientoTesoreria({
     } catch (error) {
       if (soporte) await supabase.storage.from('soportes-tesoreria').remove([soporte]);
       const codigo = error instanceof Error && error.message === 'soporte_invalido' ? null : 'desconocido';
-      if (codigo) {
-        toast({ title: t('errorTitulo'), description: t('errores.desconocido'), variant: 'destructive' });
-      }
+      if (codigo) fallo(t('errores.desconocido'));
     } finally {
       setGuardando(false);
     }
   };
-
-  const valorVista = Number(monto.replace(',', '.'));
-  const importeVista = Number.isFinite(valorVista) && valorVista > 0 ? formatCurrency(valorVista) : '—';
 
   const nombreCuenta = (codigo: string | null) => {
     if (!codigo) return '';
@@ -417,16 +474,46 @@ export function FormularioMovimientoTesoreria({
     return fila ? `${codigo} · ${fila.name}` : codigo;
   };
 
+  const etiquetaPrimario = efecto.avisa
+    ? tf('registrarDeTodosModos', { tipo })
+    : tf('registrar', { tipo });
+  const deshabilitado = guardando || vistaCargando || !vista || !!vista.fallo || efecto.bloquea || !cuentaDinero;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{tipo === 'ingreso' ? t('movimiento.tituloIngreso') : t('movimiento.tituloEgreso')}</DialogTitle>
-          <DialogDescription>
-            {tipo === 'ingreso' ? t('movimiento.descripcionIngreso') : t('movimiento.descripcionEgreso')}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={(event) => void guardar(event)} className="space-y-4">
+    <Dialogo
+      abierto={open}
+      onAbiertoChange={(a) => !guardando && onOpenChange(a)}
+      titulo={permitirCambiarTipo ? tf('tituloMovimiento') : tipo === 'ingreso' ? t('movimiento.tituloIngreso') : t('movimiento.tituloEgreso')}
+      descripcion={tf('descripcion')}
+      icono={tipo === 'ingreso' ? ArrowDownCircle : ArrowUpCircle}
+      ancho={1024}
+      textoCancelar={t('movimiento.cancelar')}
+      primario={{
+        etiqueta: guardando ? t('movimiento.guardando') : etiquetaPrimario,
+        onClick: () => void guardar(),
+        cargando: guardando,
+        deshabilitada: deshabilitado,
+        destructiva: efecto.avisa,
+        motivo: efecto.bloquea ? tf('superaBanco') : !cuentaDinero ? tf('errores.cuentaDinero') : undefined,
+      }}
+    >
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-4">
+          {permitirCambiarTipo && (
+            <div role="radiogroup" aria-label={tf('tipo.etiqueta')} className="grid grid-cols-3 gap-2">
+              <TarjetaSeleccionable titulo={tf('tipo.ingreso')} descripcion={tf('tipo.ingresoAyuda')} icono={ArrowDownCircle} seleccionada={tipo === 'ingreso'} onSeleccionar={() => setTipo('ingreso')} />
+              <TarjetaSeleccionable titulo={tf('tipo.egreso')} descripcion={tf('tipo.egresoAyuda')} icono={ArrowUpCircle} seleccionada={tipo === 'egreso'} onSeleccionar={() => setTipo('egreso')} />
+              <TarjetaSeleccionable
+                titulo={tf('tipo.traslado')}
+                descripcion={tf('tipo.trasladoAyuda')}
+                icono={ArrowLeftRight}
+                seleccionada={false}
+                onSeleccionar={() => onTraslado?.()}
+                deshabilitada={!onTraslado}
+              />
+            </div>
+          )}
+
           <BranchSelectorField
             value={branchId}
             onChange={(id) => {
@@ -437,17 +524,58 @@ export function FormularioMovimientoTesoreria({
             }}
           />
 
+          {sinCajaAbierta && (
+            <AvisoTonal
+              tono="advertencia"
+              titulo={tf('sinCaja.titulo')}
+              acciones={[
+                { etiqueta: tf('sinCaja.abrir'), href: '/app/pos/cajas' },
+                ...(opciones.some((o) => o.tipo === 'banco' && !o.motivo)
+                  ? [{ etiqueta: tf('sinCaja.banco'), onClick: () => setCuentaDinero(opciones.find((o) => o.tipo === 'banco' && !o.motivo)?.valor ?? '') }]
+                  : []),
+              ]}
+            />
+          )}
+
+          <FormField
+            etiqueta={tf('cuentaDinero')}
+            obligatorio
+            error={intento && !cuentaDinero ? tf('errores.cuentaDinero') : null}
+            ayuda={estadoCajas === 'error' ? tf('cajasError') : undefined}
+          >
+            {(c) => (
+              <SelectNativo
+                id={c.id}
+                valor={cuentaDinero}
+                onCambiar={(v) => setCuentaDinero(v as ValorCuentaDinero)}
+                vacio={tf('elegirCuenta')}
+                aria-invalid={c['aria-invalid']}
+                aria-describedby={c['aria-describedby']}
+                opciones={opciones.map((o) => ({
+                  valor: o.valor,
+                  deshabilitada: !!o.motivo,
+                  etiqueta: [
+                    o.tipo === 'caja'
+                      ? tf(o.propia ? 'opcion.miCaja' : 'opcion.caja', { nombre: o.nombre ?? tf('opcion.todas') })
+                      : o.nombre,
+                    o.saldo === null ? (o.tipo === 'caja' ? tf('opcion.oculto') : null) : formatear(o.saldo),
+                    o.motivo ? tf(`motivos.${o.motivo}`) : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · '),
+                }))}
+              />
+            )}
+          </FormField>
+
           {categorias.length === 0 ? (
-            <div className="rounded-md border border-dashed p-3 text-sm">
-              <p className="mb-2">{t('movimiento.sinCategorias')}</p>
-              <Button type="button" variant="outline" onClick={() => void sembrar()} disabled={sembrando}>
-                {sembrando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {t('movimiento.completarPredefinidas')}
-              </Button>
-            </div>
+            <AvisoTonal
+              tono="informacion"
+              titulo={t('movimiento.sinCategorias')}
+              accion={{ etiqueta: t('movimiento.completarPredefinidas'), onClick: () => void sembrar(), cargando: sembrando }}
+            />
           ) : (
-            <div className="space-y-1.5">
-              <Label>{t('movimiento.categoria')}</Label>
+            <FormField etiqueta={t('movimiento.categoria')} obligatorio>
               <SelectorCategoria
                 categorias={categorias}
                 value={categoriaId}
@@ -456,11 +584,21 @@ export function FormularioMovimientoTesoreria({
                 buscar={t('movimiento.buscarCategoria')}
                 vacio={t('movimiento.sinCategorias')}
               />
-            </div>
+            </FormField>
           )}
 
-          <div className="space-y-1.5">
-            <Label>{t('movimiento.cuenta')}</Label>
+          <FormField
+            etiqueta={t('movimiento.cuenta')}
+            obligatorio
+            ayuda={
+              rolElegido === 'pasivo'
+                ? t('movimiento.ayudaPasivo')
+                : rolElegido === 'gasto'
+                  ? t('movimiento.ayudaGasto')
+                  : tf('cuentaAyuda')
+            }
+            error={exigeCuentaAlUsar(rolElegido, categoriaElegida?.clave) && !categoriaElegida?.cuenta ? t('movimiento.ayudaSinCuenta') : null}
+          >
             <SearchSelect
               options={opcionesCuenta}
               value={cuenta}
@@ -468,60 +606,46 @@ export function FormularioMovimientoTesoreria({
               placeholder={t('movimiento.cuenta')}
               searchPlaceholder={t('movimiento.buscarCuenta')}
             />
-            {rolElegido === 'pasivo' ? <p className="text-xs font-medium text-fg-muted">{t('movimiento.ayudaPasivo')}</p> : null}
-            {rolElegido === 'gasto' ? <p className="text-xs font-medium text-fg-muted">{t('movimiento.ayudaGasto')}</p> : null}
-            {exigeCuentaAlUsar(rolElegido, categoriaElegida?.clave) && !categoriaElegida?.cuenta ? (
-              <p className="text-xs font-medium text-warning-text">{t('movimiento.ayudaSinCuenta')}</p>
-            ) : null}
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label>{t('movimiento.origen')}</Label>
-            <RadioGroup value={origen} onValueChange={(valor) => setOrigen(valor as 'cash' | 'bank')} className="flex gap-4">
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="cash" id="origen-caja" />
-                <Label htmlFor="origen-caja" className="flex items-center gap-1 font-normal">
-                  <Wallet className="h-4 w-4" /> {t('movimiento.caja')}
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="bank" id="origen-banco" />
-                <Label htmlFor="origen-banco" className="flex items-center gap-1 font-normal">
-                  <Building2 className="h-4 w-4" /> {t('movimiento.banco')}
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {origen === 'bank' ? (
-            <div className="space-y-1.5">
-              <Label>{t('movimiento.cuentaBancaria')}</Label>
-              <SearchSelect
-                options={opcionesBanco}
-                value={bancoId}
-                onValueChange={setBancoId}
-                placeholder={t('movimiento.cuentaBancaria')}
-                searchPlaceholder={t('movimiento.buscarCuenta')}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField
+              etiqueta={tf('importe')}
+              obligatorio
+              error={efecto.bloquea ? tf('superaBanco') : efecto.avisa && efecto.antes !== null ? tf('superaCaja', { disponible: formatear(efecto.antes) }) : null}
+            >
+              {(c) => <CampoNumero id={c.id} valor={monto} onValorChange={setMonto} minimo={0} alinear="derecha" aria-invalid={c['aria-invalid']} aria-describedby={c['aria-describedby']} />}
+            </FormField>
+            <FormField etiqueta={t('movimiento.concepto')} obligatorio>
+              <Input
+                value={concepto}
+                maxLength={200}
+                onChange={(event) => {
+                  setConceptoTocado(true);
+                  setConcepto(event.target.value);
+                }}
               />
-            </div>
-          ) : null}
-
-          <div className="space-y-1.5">
-            <Label>{t('movimiento.tercero')}</Label>
-            <ThirdPartyPicker
-              valor={tercero}
-              onCambiar={setTercero}
-              onQuitar={() => setTercero(null)}
-              sucursal={branchId}
-              abierto={terceroAbierto}
-              onAbiertoChange={setTerceroAbierto}
-            />
+            </FormField>
           </div>
+
+          <FormField etiqueta={tf('tercero')} ayuda={tf('terceroAyuda')}>
+            {(c) => (
+              <div id={c.id}>
+                <ThirdPartyPicker
+                  valor={tercero}
+                  onCambiar={setTercero}
+                  onQuitar={() => setTercero(null)}
+                  sucursal={branchId}
+                  abierto={terceroAbierto}
+                  onAbiertoChange={setTerceroAbierto}
+                />
+              </div>
+            )}
+          </FormField>
 
           {modoCentro === 'no_aplica' ? null : (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>{t('movimiento.centroCosto')}</Label>
+              <FormField etiqueta={t('movimiento.centroCosto')} obligatorio={exigeCentro}>
                 <SearchSelect
                   options={opcionesCentro}
                   value={centroId || 'none'}
@@ -533,9 +657,8 @@ export function FormularioMovimientoTesoreria({
                   placeholder={t('movimiento.centroCosto')}
                   searchPlaceholder={t('movimiento.buscarCuenta')}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t('movimiento.distribucion')}</Label>
+              </FormField>
+              <FormField etiqueta={t('movimiento.distribucion')}>
                 <SearchSelect
                   options={distribuciones.map((fila) => ({ value: fila.id, label: fila.nombre }))}
                   value={distribucionId || 'none'}
@@ -547,84 +670,76 @@ export function FormularioMovimientoTesoreria({
                   placeholder={t('movimiento.distribucion')}
                   searchPlaceholder={t('movimiento.buscarCuenta')}
                 />
-              </div>
+              </FormField>
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="monto-tesoreria">{t('movimiento.monto')}</Label>
-              <Input id="monto-tesoreria" inputMode="decimal" value={monto} onChange={(event) => setMonto(event.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="concepto-tesoreria">{t('movimiento.concepto')}</Label>
-              <Input
-                id="concepto-tesoreria"
-                value={concepto}
-                onChange={(event) => {
-                  setConceptoTocado(true);
-                  setConcepto(event.target.value);
-                }}
+          <FormField etiqueta={tf('referencia')}>
+            <Textarea value={notas} onChange={(event) => setNotas(event.target.value)} rows={2} />
+          </FormField>
+
+          <div className="space-y-1">
+            <label className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'cursor-pointer text-brand' })}>
+              <Paperclip className="h-4 w-4" aria-hidden />
+              {archivo ? archivo.name : tf('adjuntar')}
+              <input
+                type="file"
+                className="sr-only"
+                accept="application/pdf,image/jpeg,image/png,image/webp"
+                onChange={(event) => setArchivo(event.target.files?.[0] ?? null)}
               />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="notas-tesoreria">{t('movimiento.notas')}</Label>
-            <Textarea id="notas-tesoreria" value={notas} onChange={(event) => setNotas(event.target.value)} />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="soporte-tesoreria">{t('movimiento.soporte')}</Label>
-            <Input
-              id="soporte-tesoreria"
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,image/webp"
-              onChange={(event) => setArchivo(event.target.files?.[0] ?? null)}
-            />
-            <p className="text-xs text-fg-muted">{t('movimiento.soporteAyuda')}</p>
+            </label>
+            <p className="text-xs text-fg-tertiary">{t('movimiento.soporteAyuda')}</p>
             {archivo ? (
-              <Button type="button" variant="ghost" className="h-8 px-2" onClick={() => setArchivo(null)}>
+              <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => setArchivo(null)}>
                 {t('movimiento.quitarSoporte')}
-              </Button>
+              </button>
             ) : null}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-line text-sm">
-            <div className="flex items-center bg-subtle px-3 py-2.5 text-xs font-semibold text-fg-secondary">
+          {efecto.avisa && <AvisoTonal tono="advertencia" titulo={tf('avisoArqueo')} compacto />}
+        </div>
+
+        <div className="space-y-3">
+          {opcionElegida ? (
+            <EfectoEnCuentaTarjeta
+              cuenta={opcionElegida.tipo === 'caja' ? tf('opcion.caja', { nombre: opcionElegida.nombre ?? tf('opcion.todas') }) : opcionElegida.nombre ?? ''}
+              efecto={efecto}
+              formatear={formatear}
+              cargando={estadoCajas === 'cargando' && opcionElegida.tipo === 'caja'}
+            />
+          ) : (
+            <section className="rounded-xl border border-line bg-surface p-4">
+              <h3 className="text-sm font-semibold text-fg">{tf('efectoTitulo')}</h3>
+              <p className="mt-2 text-xs text-fg-secondary">{tf('efectoVacio')}</p>
+            </section>
+          )}
+          <section aria-label={t('movimiento.vistaPrevia')} className="overflow-hidden rounded-xl border border-line text-sm">
+            <div className="flex items-center bg-subtle px-3 py-2 text-xs font-semibold text-fg-secondary">
               <span className="min-w-0 flex-1">{t('movimiento.vistaPrevia')}</span>
-              <span className="w-28 text-right sm:w-32">{t('movimiento.debito')}</span>
-              <span className="w-28 text-right sm:w-32">{t('movimiento.credito')}</span>
+              <span className="w-24 text-right">{t('movimiento.debito')}</span>
+              <span className="w-24 text-right">{t('movimiento.credito')}</span>
             </div>
-            {vistaCargando ? <Loader2 className="m-3 h-4 w-4 animate-spin" /> : null}
-            {vista?.fallo ? <p className="px-3 py-2.5 text-danger-text">{vista.fallo}</p> : null}
+            {vistaCargando ? <p className="px-3 py-2 text-xs text-fg-secondary">…</p> : null}
+            {vista?.fallo ? <p className="px-3 py-2 text-danger-text">{vista.fallo}</p> : null}
+            {!vista && !vistaCargando ? <p className="px-3 py-2 text-xs text-fg-secondary">{tf('vistaVacia')}</p> : null}
             {vista && !vista.fallo ? (
               <>
-                <div className="flex items-center border-t border-line px-3 py-2.5 text-fg">
+                <div className="flex items-center border-t border-line px-3 py-2 text-fg">
                   <span className="min-w-0 flex-1 truncate">{nombreCuenta(vista.debito)}</span>
-                  <span className="w-28 text-right sm:w-32">{importeVista}</span>
-                  <span className="w-28 sm:w-32" />
+                  <span className="w-24 text-right tabular-nums">{monto ? formatear(monto) : '—'}</span>
+                  <span className="w-24" />
                 </div>
-                <div className="flex items-center border-t border-line px-3 py-2.5 text-fg">
+                <div className="flex items-center border-t border-line px-3 py-2 text-fg">
                   <span className="min-w-0 flex-1 truncate">{nombreCuenta(vista.credito)}</span>
-                  <span className="w-28 sm:w-32" />
-                  <span className="w-28 text-right sm:w-32">{importeVista}</span>
+                  <span className="w-24" />
+                  <span className="w-24 text-right tabular-nums">{monto ? formatear(monto) : '—'}</span>
                 </div>
               </>
             ) : null}
-          </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('movimiento.cancelar')}
-            </Button>
-            <Button type="submit" disabled={guardando || vistaCargando || !vista || !!vista.fallo}>
-              {guardando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {guardando ? t('movimiento.guardando') : t('movimiento.guardar')}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+          </section>
+        </div>
+      </div>
+    </Dialogo>
   );
 }

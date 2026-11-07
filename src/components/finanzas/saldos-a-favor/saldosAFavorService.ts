@@ -1,4 +1,3 @@
-import { supabase } from '@/lib/supabase/config';
 import { getCurrentBranchId, getOrganizationId } from '@/lib/hooks/useOrganization';
 import type {
   ContextoSaldoFavor,
@@ -10,6 +9,7 @@ import type {
   SaldoAFavorFila,
   FacturaAbiertaSaldo,
 } from '@/lib/finanzas/saldosAFavor/contrato';
+import type { DetalleSaldo, FilaListadoSaldo, KpisSaldos } from '@/lib/finanzas/saldosAFavor/listadoLogica';
 
 export type { ContextoSaldoFavor };
 /** Fila del listado con el estado vivo (vencido) que resuelve el servidor. */
@@ -72,9 +72,12 @@ export function nuevaClaveIdempotencia(prefijo: string): string {
   return `${prefijo}:${aleatorio}`;
 }
 
-export interface ClienteSimple {
-  id: string;
-  full_name: string;
+/** Respuesta de `GET /api/saldos-a-favor/listado`. */
+export interface RespuestaListadoSaldos {
+  filas: FilaListadoSaldo[];
+  total: number;
+  kpis: KpisSaldos;
+  hoy: string;
 }
 
 export interface CrearSaldoInput {
@@ -112,15 +115,19 @@ export const saldosAFavorService = {
     return (await leer<{ saldos: SaldoAFavor[] }>(r)).saldos;
   },
 
-  /** Lista los clientes de la organización para el selector. */
-  async listarClientes(organizationId: number): Promise<ClienteSimple[]> {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id, full_name')
-      .eq('organization_id', organizationId)
-      .order('full_name', { ascending: true });
-    if (error) throw error;
-    return (data || []) as ClienteSimple[];
+  /**
+   * Listado de la pantalla, paginado y filtrado en el servidor, con KPI
+   * (`GET /api/saldos-a-favor/listado`).
+   */
+  async listado(consulta: URLSearchParams): Promise<RespuestaListadoSaldos> {
+    const r = await fetch(`/api/saldos-a-favor/listado?${consulta.toString()}`, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras() });
+    return leer<RespuestaListadoSaldos>(r);
+  },
+
+  /** Detalle de un saldo con sus movimientos (`GET /api/saldos-a-favor/[id]`). */
+  async detalle(creditId: string): Promise<DetalleSaldo> {
+    const r = await fetch(`/api/saldos-a-favor/${encodeURIComponent(creditId)}`, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras() });
+    return leer<DetalleSaldo>(r);
   },
 
   /**
@@ -169,7 +176,7 @@ export const saldosAFavorService = {
 
   /**
    * Anula un anticipo que no se ha usado (`POST /api/saldos-a-favor/[id]/anular`).
-   * Sin botón todavía: el rediseño de la pantalla decide dónde va.
+   * Desde la hoja de detalle y el menú de la fila.
    */
   async anular(creditId: string, motivo: string): Promise<ResultadoAnularSaldo> {
     return enviar<ResultadoAnularSaldo>(`/api/saldos-a-favor/${encodeURIComponent(creditId)}/anular`, { motivo });
@@ -177,7 +184,7 @@ export const saldosAFavorService = {
 
   /**
    * Devuelve en dinero todo o parte del saldo (`POST /api/saldos-a-favor/[id]/devolver`).
-   * Sin botón todavía: el rediseño de la pantalla decide dónde va.
+   * Desde la fila, la hoja de detalle y su menú.
    */
   async devolver(
     creditId: string,

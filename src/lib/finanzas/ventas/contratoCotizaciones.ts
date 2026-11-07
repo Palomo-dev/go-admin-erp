@@ -203,7 +203,25 @@ export interface CotizacionResumen {
   customers: { id: string; full_name: string; email?: string; phone?: string } | null;
 }
 
+/**
+ * Evento del historial del detalle. No hay tabla de eventos de cotización:
+ * sale de la fila (creada, convertida) y de los correos enviados
+ * (`email_messages` con related_type 'quotations').
+ */
+export interface EventoCotizacion {
+  tipo: 'creada' | 'enviada' | 'vista' | 'convertida';
+  /** timestamptz (se pinta con la zona de la organización). */
+  fecha: string;
+  /** Correo de destino (enviada, vista) o número de la factura (convertida). */
+  detalle: string | null;
+}
+
 export interface CotizacionDetalle extends Omit<CotizacionResumen, 'customers'> {
+  /** Nombres para la tarjeta «Cliente y condiciones» (opcionales: los llena el detalle, no el listado). */
+  branch_name?: string | null;
+  salesperson_name?: string | null;
+  opportunity_name?: string | null;
+  historial?: EventoCotizacion[];
   notes: string | null;
   terms_conditions: string | null;
   tax_included: boolean;

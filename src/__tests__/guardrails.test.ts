@@ -2466,7 +2466,8 @@ describe('28. Generadores de documentos: sin moneda fija', () => {
     'components/finanzas/cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx',
     'components/finanzas/egresos/EgresoDetalle.tsx',
     'components/finanzas/ingresos/IngresoDetalle.tsx',
-    'components/finanzas/transferencias/TransferenciaDetalle.tsx',
+    // Ronda 3 de Finanzas: el detalle de transferencia pasó a Tesorería (comprobante en texto).
+    'components/finanzas/tesoreria/transferencias/TransferenciaDetalle.tsx',
     'app/app/parking/sesiones/[id]/page.tsx',
     'app/app/pos/pedidos-online/page.tsx',
   ];

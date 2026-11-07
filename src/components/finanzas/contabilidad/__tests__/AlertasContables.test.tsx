@@ -79,7 +79,7 @@ describe('AlertasContables', () => {
 
     expect(await screen.findByText('1 documento sin contabilizar')).toBeTruthy();
     expect(screen.getByText('Periodo cerrado')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Ver pendientes' }).getAttribute('href')).toBe('/app/finanzas/contabilidad/pendientes');
+    expect(screen.getByRole('link', { name: 'Ver pendientes' }).getAttribute('href')).toBe('/app/finanzas/contabilidad/salud');
   });
 
   it('avisa cuando la lista llegó al tope', async () => {

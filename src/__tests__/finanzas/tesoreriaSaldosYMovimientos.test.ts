@@ -350,8 +350,8 @@ describe('6. movimiento manual del banco con los valores del CHECK', () => {
 
   test('ninguna pantalla de bancos ni conciliación pregunta por credit/debit ni filtra por pending', () => {
     for (const ruta of [
-      'src/components/finanzas/bancos/cuentas/MovimientosPage.tsx',
-      'src/components/finanzas/bancos/cuentas/CuentaDetailPage.tsx',
+      // Ronda 3: el detalle y los movimientos de la cuenta son una sola pantalla.
+      'src/components/finanzas/tesoreria/cuentas/CuentaBancariaDetalle.tsx',
       'src/components/finanzas/conciliacion-bancaria/ConciliacionDetailPage.tsx',
       'src/components/finanzas/conciliacion-bancaria/AIMatchingPanel.tsx',
       'src/lib/services/integrations/qrShared/paymentConfirmation.ts',
@@ -360,7 +360,7 @@ describe('6. movimiento manual del banco con los valores del CHECK', () => {
       const fuente = leer(ruta);
       expect({ ruta, credit: /transaction_type === 'credit'|transaction_type: 'credit'|'credit' : 'debit'/.test(fuente) }).toEqual({ ruta, credit: false });
     }
-    expect(leer('src/components/finanzas/bancos/cuentas/MovimientosPage.tsx')).not.toMatch(/value="pending"/);
+    expect(leer('src/components/finanzas/tesoreria/cuentas/CuentaBancariaDetalle.tsx')).not.toMatch(/value="pending"|'pending'/);
   });
 });
 
@@ -452,23 +452,25 @@ describe('9. los errores se propagan (la lista no finge estar vacía)', () => {
 
   test('las pantallas ofrecen «Reintentar»', () => {
     for (const ruta of [
-      'src/components/finanzas/ingresos/IngresosPage.tsx',
-      'src/components/finanzas/egresos/EgresosPage.tsx',
-      'src/components/finanzas/transferencias/TransferenciasPage.tsx',
-      'src/components/finanzas/transferencias/TransferenciaDetalle.tsx',
+      // Ronda 3: Movimientos, Ingresos y Egresos son una sola lista (ListaTesoreria),
+      // y Transferencias tiene lista y detalle propios con el kit. El «Reintentar» de
+      // una lista lo pinta el DataTable con `onReintentar`.
+      'src/components/finanzas/tesoreria/compartido/ListaTesoreria.tsx',
+      'src/components/finanzas/tesoreria/transferencias/TransferenciasLista.tsx',
+      'src/components/finanzas/tesoreria/transferencias/TransferenciaDetalle.tsx',
       // Detalle compartido de ingreso y egreso (Finanzas ronda 2 · G2).
       'src/components/finanzas/movimientos/DetalleMovimientoTesoreria.tsx',
     ]) {
-      expect({ ruta, reintentar: /t\('reintentar'\)/.test(leer(ruta)) }).toEqual({ ruta, reintentar: true });
+      expect({ ruta, reintentar: /t\('reintentar'\)|onReintentar=/.test(leer(ruta)) }).toEqual({ ruta, reintentar: true });
     }
   });
 });
 
 // ---------------------------------------------------------------------------
-describe('10. CuentaDetailPage y open_finance_accounts', () => {
+describe('10. Detalle de cuenta bancaria y open_finance_accounts', () => {
   test('filtra por organización y usa maybeSingle', () => {
-    const fuente = leer('src/components/finanzas/bancos/cuentas/CuentaDetailPage.tsx');
-    const consulta = fuente.slice(fuente.indexOf(".from('open_finance_accounts')"), fuente.indexOf('setOfLink('));
+    const fuente = leer('src/components/finanzas/tesoreria/cuentas/CuentaBancariaDetalle.tsx');
+    const consulta = fuente.slice(fuente.indexOf(".from('open_finance_accounts')"), fuente.indexOf('setVinculo('));
     expect(consulta).toMatch(/\.eq\('organization_id', getOrganizationId\(\)\)/);
     expect(consulta).toMatch(/\.maybeSingle\(\)/);
     expect(consulta).not.toMatch(/\.single\(\)/);

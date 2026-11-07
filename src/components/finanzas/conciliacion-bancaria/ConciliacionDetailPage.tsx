@@ -3,17 +3,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import {
-  ArrowLeft, ArrowRightLeft, RefreshCw, CheckCircle,
+  ArrowRightLeft, RefreshCw, CheckCircle,
   XCircle, Lock, Link2
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { ConciliacionService } from './ConciliacionService';
 import { esEntradaBancaria } from '@/lib/finanzas/movimientoBancario';
 import { AIMatchingPanel } from './AIMatchingPanel';
@@ -22,7 +16,8 @@ import { CerrarConciliacionDialog, SaldoExtractoDialog } from './CerrarConciliac
 import { PartidasConciliacion } from './PartidasConciliacion';
 import type { PartidasDeConciliacion } from './ConciliacionService';
 import { BankReconciliation, BankReconciliationItem, BankTransaction } from '../bancos/BancosService';
-import { AvisoTonal, KpiStrip, StatCard } from '@/components/kit';
+import { AvisoTonal, KpiStrip, PageHeader, Skeleton, StatCard, StatusBadge, TabBar, Tarjeta, clasesBoton, idPanel, idPestana } from '@/components/kit';
+import { RUTAS_TESORERIA } from '@/lib/finanzas/tesoreria/rutas';
 import {
   diferenciaConciliacion,
   errorCierre,
@@ -44,9 +39,13 @@ interface ConciliacionDetailPageProps {
   reconciliationId: string;
 }
 
+const ID_PESTANAS = 'conciliacion-detalle';
+
 export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailPageProps) {
   const router = useRouter();
   const t = useTranslations('conciliacionCierre');
+  const tr = useTranslations('finanzasTesoreriaR3.conciliacion');
+  const [pestana, setPestana] = useState<'manual' | 'extracto' | 'ai'>('manual');
   const permisos = usePermisosFinanzas();
   const { formatDate: formatDateInstante, formatDateTime } = useFormatDate();
   const { paraDocumento } = useMonedaOrganizacion();
@@ -82,7 +81,7 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
 
       if (!recData) {
         toast.error('Conciliación no encontrada');
-        router.push('/app/finanzas/conciliacion-bancaria');
+        router.push(RUTAS_TESORERIA.conciliacion);
         return;
       }
 
@@ -184,25 +183,12 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return <Badge className="bg-gray-100 text-gray-700">Borrador</Badge>;
-      case 'in_progress':
-        return <Badge className="bg-blue-100 text-blue-700">En Progreso</Badge>;
-      case 'closed':
-        return <Badge className="bg-green-100 text-green-700">Cerrada</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
   // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
-  useCabeceraMovil({ modo: 'page', titulo: 'Conciliación Bancaria', subtitulo: reconciliation?.bank_account?.name, volverA: '/app/finanzas/conciliacion-bancaria' });
+  useCabeceraMovil({ modo: 'page', titulo: tr('titulo'), subtitulo: reconciliation?.bank_account?.name, volverA: RUTAS_TESORERIA.conciliacion });
 
   if (isLoading) {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 min-h-screen">
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
         <Skeleton className="h-12 w-64" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28" />)}
@@ -241,47 +227,34 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
       ].filter(Boolean).join(' · ');
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
-          <Link href="/app/finanzas/conciliacion-bancaria" className="hidden lg:block">
-            <Button variant="ghost" size="icon" className="hover:bg-gray-100">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="p-2 bg-blue-100 rounded-xl">
-            <ArrowRightLeft className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Conciliación Bancaria
-            </h1>
-            <p className="text-gray-500">
-              {reconciliation.bank_account?.name} • {periodo}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {getStatusBadge(reconciliation.status)}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Actualizar
-          </Button>
-          {!cerrada && permisos.crear && (
-            <Button onClick={abrirCierre} disabled={partidas === null}>
-              <Lock className="h-4 w-4 mr-2" />
-              {t('cerrar.titulo')}
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        variante="detail"
+        titulo={tr('tituloDetalle', { cuenta: reconciliation.bank_account?.name ?? '' })}
+        subtitulo={periodo}
+        icono={ArrowRightLeft}
+        badge={<StatusBadge estado={reconciliation.status} etiqueta={tr(`estados.${reconciliation.status}`)} />}
+        volverA={RUTAS_TESORERIA.conciliacion}
+        migas={[
+          { etiqueta: tr('migaTesoreria'), href: RUTAS_TESORERIA.movimientos },
+          { etiqueta: tr('titulo'), href: RUTAS_TESORERIA.conciliacion },
+          { etiqueta: `${reconciliation.bank_account?.name ?? ''} · ${periodo}` },
+        ]}
+        acciones={
+          <>
+            <button type="button" onClick={handleRefresh} disabled={isRefreshing} className={clasesBoton({ variante: 'secundario' })}>
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden />
+              {tr('actualizar')}
+            </button>
+            {!cerrada && permisos.crear && (
+              <button type="button" onClick={abrirCierre} disabled={partidas === null} className={clasesBoton({ variante: 'primario' })}>
+                <Lock className="h-4 w-4" aria-hidden />
+                {t('cerrar.titulo')}
+              </button>
+            )}
+          </>
+        }
+      />
 
       <KpiStrip etiqueta={t('tarjetas.resumen')}>
         <StatCard
@@ -342,136 +315,119 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
         />
       )}
 
-      {/* Main Content - Tabs: Conciliacion manual / Sugerencias */}
-      <Tabs defaultValue="manual" className="w-full">
-        <TabsList>
-          <TabsTrigger value="manual">Conciliacion manual</TabsTrigger>
-          <TabsTrigger value="extracto">Extracto</TabsTrigger>
-          <TabsTrigger value="ai">Sugerencias</TabsTrigger>
-        </TabsList>
+      <TabBar
+        id={ID_PESTANAS}
+        etiqueta={tr('pestanas.etiqueta')}
+        valor={pestana}
+        onValorChange={setPestana}
+        pestanas={[
+          { valor: 'manual', etiqueta: tr('pestanas.emparejar'), contador: pendingTransactions.length },
+          { valor: 'extracto', etiqueta: tr('pestanas.extracto') },
+          { valor: 'ai', etiqueta: tr('pestanas.sugerencias') },
+        ]}
+      />
 
-        <TabsContent value="manual">
+      <div role="tabpanel" id={idPanel(ID_PESTANAS, 'manual')} aria-labelledby={idPestana(ID_PESTANAS, 'manual')} hidden={pestana !== 'manual'}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Panel A: Transacciones Pendientes */}
-        <Card className="bg-white border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-gray-900">
-              Movimientos Bancarios Pendientes ({pendingTransactions.length})
-            </CardTitle>
-            <CardDescription>
-              Transacciones sin conciliar en el período
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Tarjeta titulo={tr('pendientes.titulo', { n: pendingTransactions.length })} descripcion={tr('pendientes.descripcion')}>
             {pendingTransactions.length === 0 ? (
               <div className="text-center py-8">
-                <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  Todas las transacciones están conciliadas
-                </p>
+                <CheckCircle className="mx-auto mb-4 h-12 w-12 text-success-text" aria-hidden />
+                <p className="text-fg-secondary">{tr('pendientes.vacio')}</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {pendingTransactions.map(tx => (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between rounded-lg bg-subtle p-3"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">
-                        {tx.description || 'Sin descripción'}
+                      <p className="text-sm font-medium text-fg">
+                        {tx.description || tr('sinDescripcion')}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-fg-secondary">
                         {formatDateTime(tx.trans_date)}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className={`font-semibold ${
                         esEntradaBancaria(tx)
-                          ? 'text-green-600'
-                          : 'text-red-600'
+                          ? 'text-success-text'
+                          : 'text-danger-text'
                       }`}>
                         {esEntradaBancaria(tx) ? '+' : '-'}
                         {formatearCuenta(Math.abs(tx.amount))}
                       </span>
                       {!cerrada && (
-                        <Button
-                          size="sm"
-                          variant="outline"
+                        <button
+                          type="button"
+                          aria-label={tr('conciliar')}
+                          title={tr('conciliar')}
                           onClick={() => handleMatchTransaction(tx.id)}
+                          className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}
                         >
-                          <Link2 className="h-3 w-3" />
-                        </Button>
+                          <Link2 className="h-3 w-3" aria-hidden />
+                        </button>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </Tarjeta>
 
         {/* Panel B: Items Conciliados */}
-        <Card className="bg-white border-gray-200">
-          <CardHeader>
-            <CardTitle className="text-gray-900">
-              Items Conciliados ({items.filter(i => i.is_matched).length})
-            </CardTitle>
-            <CardDescription>
-              Transacciones ya conciliadas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <Tarjeta titulo={tr('conciliados.titulo', { n: items.filter(i => i.is_matched).length })} descripcion={tr('conciliados.descripcion')}>
             {items.filter(i => i.is_matched).length === 0 ? (
               <div className="text-center py-8">
-                <ArrowRightLeft className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">
-                  Aún no hay items conciliados
-                </p>
+                <ArrowRightLeft className="mx-auto mb-4 h-12 w-12 text-fg-tertiary" aria-hidden />
+                <p className="text-fg-secondary">{tr('conciliados.vacio')}</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {items.filter(i => i.is_matched).map(item => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200"
+                    className="flex items-center justify-between rounded-lg border border-success-subtle bg-success-subtle p-3"
                   >
                     <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <CheckCircle className="h-4 w-4 text-success-text" aria-hidden />
                       <div>
-                        <p className="font-medium text-gray-900 text-sm">
-                          {item.match_type === 'payment' ? 'Pago' : item.match_type === 'journal' ? 'Asiento' : 'Manual'}
+                        <p className="text-sm font-medium text-fg">
+                          {tr(`tipoItem.${item.match_type === 'payment' || item.match_type === 'journal' ? item.match_type : 'manual'}`)}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          {item.match_date ? formatDateTime(item.match_date) : 'Sin fecha'}
+                        <p className="text-xs text-fg-secondary">
+                          {item.match_date ? formatDateTime(item.match_date) : tr('sinFecha')}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-green-600">
+                      <span className="font-semibold text-success-text">
                         {formatearCuenta(importeItem(item))}
                       </span>
                       {!cerrada && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
+                        <button
+                          type="button"
+                          aria-label={tr('deshacer')}
+                          title={tr('deshacer')}
                           onClick={() => handleUnmatchItem(item)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: 'text-danger-text' })}
                         >
-                          <XCircle className="h-3 w-3" />
-                        </Button>
+                          <XCircle className="h-3 w-3" aria-hidden />
+                        </button>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+        </Tarjeta>
       </div>
-        </TabsContent>
+      </div>
 
-        <TabsContent value="extracto">
+      <div role="tabpanel" id={idPanel(ID_PESTANAS, 'extracto')} aria-labelledby={idPestana(ID_PESTANAS, 'extracto')} hidden={pestana !== 'extracto'}>
           <ImportarExtracto
             reconciliationId={reconciliationId}
             bankAccountId={reconciliation.bank_account_id}
@@ -480,17 +436,16 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
             onCambio={loadData}
             formatear={formatearCuenta}
           />
-        </TabsContent>
+      </div>
 
-        {/* Tab: Sugerencias */}
-        <TabsContent value="ai">
+      {/* Sugerencias */}
+      <div role="tabpanel" id={idPanel(ID_PESTANAS, 'ai')} aria-labelledby={idPestana(ID_PESTANAS, 'ai')} hidden={pestana !== 'ai'}>
           <AIMatchingPanel
             reconciliationId={reconciliationId}
             onMatchComplete={loadData}
             monedaCuenta={reconciliation.bank_account?.currency}
           />
-        </TabsContent>
-      </Tabs>
+      </div>
 
       {plan && (
         <CerrarConciliacionDialog

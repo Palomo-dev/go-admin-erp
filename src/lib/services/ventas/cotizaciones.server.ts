@@ -31,7 +31,17 @@ import {
   type LineaCotizacionDetalle,
   type ResultadoConversion,
   type ResultadoGuardarCotizacion,
+  type EventoCotizacion,
 } from '@/lib/finanzas/ventas/contratoCotizaciones';
+import {
+  aFila,
+  construirListado,
+  type Enriquecimiento,
+  type ParametrosListadoCotizaciones,
+  type RespuestaListadoCotizaciones,
+} from '@/lib/finanzas/ventas/listadoCotizaciones';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { todayInTz } from '@/lib/utils/dateCore';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 type CtxCorreo = Pick<
@@ -105,6 +115,55 @@ export async function listarCotizaciones(ctx: Ctx, filtros: FiltrosCotizacion): 
   return ((data ?? []) as FilaListado[]).map(resumen);
 }
 
+/**
+ * Listado paginado de la pantalla (`GET /api/cotizaciones?vista=listado`).
+ * La RPC entrega todas las de la sucursal con el estado vivo; filtros, orden,
+ * página y KPI salen de `construirListado` (una sola lógica, probada). Solo
+ * para las filas de la página se leen el documento del cliente, el nombre del
+ * vendedor y el de la oportunidad.
+ */
+export async function listadoCotizaciones(ctx: Ctx, p: ParametrosListadoCotizaciones): Promise<RespuestaListadoCotizaciones> {
+  const filtros: Record<string, unknown> = { limite: 1000 };
+  if (p.sucursal) filtros.branch_id = p.sucursal;
+  const [{ data, error }, zona] = await Promise.all([
+    ctx.supabase.rpc('fn_cotizaciones_listado', { p_org: ctx.organizationId, p_filtros: filtros }),
+    getOrganizationTimezone(ctx.organizationId, ctx.supabase),
+  ]);
+  if (error) lanzar('fn_cotizaciones_listado', ctx, error);
+  const hoy = todayInTz(zona);
+  const base = ((data ?? []) as FilaListado[]).map((f) => aFila(resumen(f), hoy));
+  const r = construirListado(base, p, hoy);
+
+  const clientes = [...new Set(r.filas.map((f) => f.cliente_id).filter((x): x is string => !!x))];
+  const vendedores = [...new Set(r.filas.map((f) => f.vendedor_id).filter((x): x is string => !!x))];
+  const oportunidades = [...new Set(r.filas.map((f) => f.oportunidad_id).filter((x): x is string => !!x))];
+  const [docs, perfiles, opos] = await Promise.all([
+    clientes.length
+      ? ctx.supabase.from('customers').select('id, identification_type, identification_number').eq('organization_id', ctx.organizationId).in('id', clientes)
+      : Promise.resolve({ data: [] }),
+    vendedores.length ? ctx.supabase.from('profiles').select('id, first_name, last_name, email').in('id', vendedores) : Promise.resolve({ data: [] }),
+    oportunidades.length
+      ? ctx.supabase.from('opportunities').select('id, name').eq('organization_id', ctx.organizationId).in('id', oportunidades)
+      : Promise.resolve({ data: [] }),
+  ]);
+  const extra: Enriquecimiento = {
+    documentos: new Map(
+      ((docs.data ?? []) as { id: string; identification_type: string | null; identification_number: string | null }[]).map((c) => [
+        c.id,
+        c.identification_number ? `${(c.identification_type ?? '').toUpperCase()} ${c.identification_number}`.trim() : null,
+      ]),
+    ),
+    vendedores: new Map(((perfiles.data ?? []) as { id: string; first_name: string | null; last_name: string | null; email: string | null }[]).map((u) => [u.id, nombrePerfil(u)])),
+    oportunidades: new Map(((opos.data ?? []) as { id: string; name: string }[]).map((o) => [o.id, o.name])),
+  };
+  const porId = new Map(((data ?? []) as FilaListado[]).map((f) => [String(f.id), resumen(f)]));
+  return { ...r, filas: r.filas.map((f) => aFila(porId.get(f.id) as CotizacionResumen, hoy, extra)) };
+}
+
+function nombrePerfil(p: { first_name?: string | null; last_name?: string | null; email?: string | null } | null | undefined): string {
+  return `${p?.first_name ?? ''} ${p?.last_name ?? ''}`.trim() || p?.email || '';
+}
+
 /** Detalle: cabecera con el estado vivo, líneas, cliente y número de la factura convertida. 404 si no es de la sesión. */
 export async function detalleCotizacion(ctx: Ctx, id: string): Promise<CotizacionDetalle> {
   const { data, error } = await ctx.supabase.rpc('fn_cotizaciones_listado', { p_org: ctx.organizationId, p_filtros: { id } });
@@ -130,6 +189,33 @@ export async function detalleCotizacion(ctx: Ctx, id: string): Promise<Cotizacio
       ? ctx.supabase.from('invoice_sales').select('number').eq('id', cab.converted_invoice_id).eq('organization_id', ctx.organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
+  const [sucursalRes, vendedorRes, oportunidadRes, correosRes] = await Promise.all([
+    cab.branch_id != null
+      ? ctx.supabase.from('branches').select('name').eq('id', cab.branch_id).eq('organization_id', ctx.organizationId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    cab.salesperson_id ? ctx.supabase.from('profiles').select('first_name, last_name, email').eq('id', cab.salesperson_id).maybeSingle() : Promise.resolve({ data: null }),
+    cab.opportunity_id
+      ? ctx.supabase.from('opportunities').select('name').eq('id', cab.opportunity_id).eq('organization_id', ctx.organizationId).maybeSingle()
+      : Promise.resolve({ data: null }),
+    ctx.supabase
+      .from('email_messages')
+      .select('to_email, status, sent_at, created_at, first_opened_at')
+      .eq('organization_id', ctx.organizationId)
+      .eq('related_type', 'quotations')
+      .eq('related_id', id)
+      .order('created_at', { ascending: false }),
+  ]);
+  const historial: EventoCotizacion[] = [];
+  const numeroFactura = ((facturaRes as { data: { number?: string | null } | null }).data?.number as string | undefined) ?? null;
+  if (cab.status === 'converted') historial.push({ tipo: 'convertida', fecha: cab.updated_at, detalle: numeroFactura });
+  for (const m of (correosRes.data ?? []) as { to_email: string | null; status: string | null; sent_at: string | null; created_at: string; first_opened_at: string | null }[]) {
+    if (m.status === 'failed' || m.status === 'bounced') continue;
+    if (m.first_opened_at) historial.push({ tipo: 'vista', fecha: m.first_opened_at, detalle: m.to_email });
+    historial.push({ tipo: 'enviada', fecha: m.sent_at ?? m.created_at, detalle: m.to_email });
+  }
+  historial.push({ tipo: 'creada', fecha: cab.created_at, detalle: null });
+  historial.sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0));
+
   const extra = (extraRes.data ?? {}) as { notes?: string | null; terms_conditions?: string | null };
   const items: LineaCotizacionDetalle[] = ((itemsRes.data ?? []) as Record<string, unknown>[]).map((i) => ({
     id: String(i.id),
@@ -148,7 +234,11 @@ export async function detalleCotizacion(ctx: Ctx, id: string): Promise<Cotizacio
     notes: extra.notes ?? null,
     terms_conditions: extra.terms_conditions ?? null,
     tax_included: items.some((i) => i.tax_included),
-    converted_invoice_number: ((facturaRes as { data: { number?: string | null } | null }).data?.number as string | undefined) ?? null,
+    converted_invoice_number: numeroFactura,
+    branch_name: ((sucursalRes as { data: { name?: string | null } | null }).data?.name as string | undefined) ?? null,
+    salesperson_name: vendedorRes.data ? nombrePerfil(vendedorRes.data as { first_name: string | null; last_name: string | null; email: string | null }) || null : null,
+    opportunity_name: ((oportunidadRes as { data: { name?: string | null } | null }).data?.name as string | undefined) ?? null,
+    historial,
     customers: (clienteRes.data as CotizacionDetalle['customers']) ?? cab.customers,
     quotation_items: items,
   };

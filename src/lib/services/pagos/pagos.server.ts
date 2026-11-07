@@ -158,7 +158,9 @@ async function documentosCobro(
   const abiertas = filas.filter((f) => {
     const inv = f.invoice_sales;
     if (f.status === 'cancelled') return false;
-    if (inv && (inv.status === 'draft' || inv.status === 'void' || inv.status === 'voided' || (inv.document_type ?? 'invoice') !== 'invoice')) {
+    // La nota débito es un documento por cobrar propio (cartera propia, migración
+    // 20261108030000): se cobra igual que una factura. Las notas crédito no.
+    if (inv && (inv.status === 'draft' || inv.status === 'void' || inv.status === 'voided' || !['invoice', 'debit_note'].includes(inv.document_type ?? 'invoice'))) {
       return false;
     }
     return true;

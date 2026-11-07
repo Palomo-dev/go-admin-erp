@@ -1,47 +1,61 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+/**
+ * Detalle de asiento (Contabilidad v2 §4.4). Figma: automático `985:66805`,
+ * con descuadre `985:67647`, manual publicado `985:68446`, revertido
+ * `985:69165`, contra-asiento `985:69884`, borrador `985:70600`, no encontrado
+ * `985:71310`, compra con retenciones `1485:117655`; tableta `988:625268`;
+ * móvil `989:75990` y `989:76241`.
+ *
+ * Acciones por tipo (`asientosLogica.accionesAsiento`):
+ * - borrador: Publicar · Descartar (con confirmación) · Duplicar · Imprimir;
+ * - manual publicado: Revertir (permiso «Revertir asientos»; sin él, deshabilitado
+ *   con motivo) · Duplicar · Imprimir;
+ * - automático: Imprimir e «Ir al documento». No se revierte aquí ni se duplica
+ *   (duplicarlo repetía el hecho como asiento manual);
+ * - contra-asiento: Ver original · Imprimir.
+ */
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import {FileText, Check, Copy, Trash2, ArrowLeft, Undo2, Loader2, Printer} from 'lucide-react';
+import { BookOpen, Check, Copy, Printer, Trash2, Undo2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { AvisoTonal, ConfirmDialog, DocumentoCabecera, EmptyState, Skeleton, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
 import { esTipoComprobante, NOMBRE_COMPROBANTE, textoComprobante } from '@/lib/finanzas/contabilidad/comprobante';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Separator } from '@/components/ui/separator';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { ContabilidadService, JournalEntry, EstadoReversion } from '../ContabilidadService';
-import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { DetailSkeleton } from '@/components/common/PageSkeletons';
-import { AvisoTonal } from '@/components/kit';
 import { useFormatDateFor } from '@/lib/context/OrganizationTimezoneContext';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { reversaEsCopiaExacta } from '@/lib/finanzas/contabilidad/redondeoReversa';
+import { accionesAsiento, tipoAsiento } from '@/lib/finanzas/contabilidad/asientosLogica';
+import { documentoDeOrigen } from '@/lib/finanzas/contabilidad/origenAsiento';
+import { EtiquetaOrigen, MarcaReversion, TablaContable, useNumeroAsiento, type LineaTablaContable } from '../piezas';
+import { ContabilidadService, type JournalEntry, type EstadoReversion } from '../ContabilidadService';
 import { OrigenCompraAsiento } from './OrigenCompraAsiento';
 import { DatosAsiento } from './DatosAsiento';
-import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
+import { RevertirAsientoDialog } from './RevertirAsientoDialog';
 
 interface AsientoDetailPageProps {
   entryId: number;
 }
 
+type Carga = 'cargando' | 'listo' | 'noEncontrado';
+
 export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
+  const t = useTranslations('finanzasContabilidadR3.detalle');
+  const tc = useTranslations('finanzasContabilidadR3.comun');
+  const tr = useTranslations('redondeoReversa.asiento');
+  const tk = useTranslations('kit.documento.tipos');
   const router = useRouter();
+  const numero = useNumeroAsiento();
   // Los importes contables se llevan en la moneda base de la organizacion.
   const { formatear } = useMonedaOrganizacion();
   const [asiento, setAsiento] = useState<JournalEntry | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [carga, setCarga] = useState<Carga>('cargando');
+  const [procesando, setProcesando] = useState(false);
   const [reversion, setReversion] = useState<EstadoReversion>({ revertidoPor: null, reversionDe: null });
   const [puedeRevertir, setPuedeRevertir] = useState(false);
   const [dialogoRevertir, setDialogoRevertir] = useState(false);
-  const [motivo, setMotivo] = useState('');
-  const tl = useTranslations('asientoContable.lineas');
-  const tr = useTranslations('redondeoReversa.asiento');
+  const [confirmarDescarte, setConfirmarDescarte] = useState(false);
   const { formatDate } = useFormatDateFor(asiento?.branch_id);
   const [centros, setCentros] = useState<Map<string, { code: string; name: string }>>(new Map());
   const [sede, setSede] = useState<string | null>(null);
@@ -50,11 +64,10 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
 
   const loadAsiento = useCallback(async () => {
     try {
-      setIsLoading(true);
       const data = await ContabilidadService.obtenerAsiento(entryId);
       if (!data) {
-        toast.error('Asiento no encontrado');
-        router.push('/app/finanzas/contabilidad/asientos');
+        setAsiento(null);
+        setCarga('noEncontrado');
         return;
       }
       setAsiento(data);
@@ -75,334 +88,244 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
         setMotivoReversa(motivoTexto);
         setCopiaExacta(!asientoOriginal?.lines || reversaEsCopiaExacta(asientoOriginal.lines, data.lines ?? []));
       }
+      setCarga('listo');
     } catch (error) {
       console.error('Error cargando asiento:', error);
-      toast.error('Error al cargar el asiento');
-    } finally {
-      setIsLoading(false);
+      toast.error(t('errorCargar'));
+      setCarga('listo');
     }
-  }, [entryId, router]);
+  }, [entryId, t]);
 
   useEffect(() => {
-    loadAsiento();
+    setCarga('cargando');
+    void loadAsiento();
     ContabilidadService.puedeRevertir().then(setPuedeRevertir).catch(() => setPuedeRevertir(false));
   }, [loadAsiento]);
 
   const handlePublish = async () => {
     if (!asiento) return;
+    setProcesando(true);
     try {
-      setIsProcessing(true);
       await ContabilidadService.publicarAsiento(asiento.id);
-      toast.success('Asiento publicado exitosamente');
-      loadAsiento();
+      toast.success(t('toast.publicado'));
+      await loadAsiento();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al publicar el asiento');
+      toast.error(error instanceof Error ? error.message : t('toast.errorPublicar'));
     } finally {
-      setIsProcessing(false);
+      setProcesando(false);
     }
   };
 
   const handleDuplicate = async () => {
     if (!asiento) return;
+    setProcesando(true);
     try {
-      setIsProcessing(true);
-      const newEntry = await ContabilidadService.duplicarAsiento(asiento.id);
-      toast.success('Asiento duplicado como borrador');
-      router.push(`/app/finanzas/contabilidad/asientos/${newEntry.id}`);
+      const nuevo = await ContabilidadService.duplicarAsiento(asiento.id);
+      toast.success(t('toast.duplicado'));
+      router.push(`/app/finanzas/contabilidad/asientos/${nuevo.id}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al duplicar el asiento');
+      toast.error(error instanceof Error ? error.message : t('toast.errorDuplicar'));
     } finally {
-      setIsProcessing(false);
+      setProcesando(false);
     }
   };
 
   const handleDelete = async () => {
     if (!asiento || asiento.posted) return;
-    if (!confirm('¿Descartar este borrador? Un borrador nunca se publicó y no deja rastro contable.')) return;
+    setProcesando(true);
     try {
-      setIsProcessing(true);
       await ContabilidadService.eliminarAsiento(asiento.id);
-      toast.success('Borrador descartado');
+      toast.success(t('toast.descartado'));
       router.push('/app/finanzas/contabilidad/asientos');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al descartar el borrador');
+      toast.error(error instanceof Error ? error.message : t('toast.errorDescartar'));
     } finally {
-      setIsProcessing(false);
+      setProcesando(false);
     }
   };
 
-  const handleRevertir = async () => {
-    if (!asiento) return;
-    try {
-      setIsProcessing(true);
-      const contraAsiento = await ContabilidadService.revertirAsiento(asiento.id, motivo.trim());
-      if (contraAsiento) {
-        toast.success(tr('revertido', { id: contraAsiento }));
-      } else {
-        toast.warning(tr('reversaPendiente'));
-      }
-      setDialogoRevertir(false);
-      setMotivo('');
-      loadAsiento();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Error al revertir el asiento');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  const tituloReversa = asiento?.source === 'reversal' && reversion.reversionDe ? tr('reversaTitulo', { id: reversion.reversionDe }) : null;
+  const comprobante = asiento ? textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero) : null;
+  const titulo = !asiento
+    ? t('titulo')
+    : tituloReversa ??
+      (comprobante
+        ? `${esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : t('comprobante')} ${comprobante}`
+        : t('tituloNumero', { numero: numero(asiento.id) }));
 
-  // Solo los manuales publicados se revierten directo; los automáticos, anulando su documento.
-  const esManual = asiento?.source === 'manual';
-  const esContraAsiento = asiento?.source === 'reversal';
-  const revertible = !!asiento?.posted && esManual && !reversion.revertidoPor;
-
-  // Reversa: tercero, centro, sede y moneda, cada columna solo si hay datos. La descripción sobra: es la del original.
-  const hayTercero = !!asiento?.lines?.some((l) => l.tercero_nit);
-  const monedaDe = (linea: { currency_code?: string | null }) => linea.currency_code ?? asiento?.currency_code ?? null;
-  const hayMoneda = esContraAsiento && !!asiento?.lines?.some((l) => monedaDe(l));
-  const haySede = esContraAsiento && !!sede;
-  const hayRedondeo = !!asiento?.lines?.some((l) => l.redondeo_traza);
-  const tituloReversa = esContraAsiento && reversion.reversionDe ? tr('reversaTitulo', { id: reversion.reversionDe }) : null;
-
-  const getTotalDebits = () => asiento?.lines?.reduce((sum, l) => sum + (l.debit || 0), 0) || 0;
-  const getTotalCredits = () => asiento?.lines?.reduce((sum, l) => sum + (l.credit || 0), 0) || 0;
-
-  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
-  useCabeceraMovil({ modo: 'page', titulo: asiento ? `Asiento #${asiento.id}` : undefined, subtitulo: asiento?.memo || undefined, volverA: '/app/finanzas/contabilidad/asientos' });
-
-  if (isLoading) {
+  if (carga === 'cargando') {
     return (
-      <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <DetailSkeleton />
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8" aria-busy="true">
+        <DocumentoCabecera titulo={t('titulo')} cargando />
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Skeleton className="h-64 lg:col-span-2" />
+          <Skeleton className="h-64" />
+        </div>
       </div>
     );
   }
 
-  if (!asiento) return null;
+  if (!asiento) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8">
+        <EmptyState
+          variante="search"
+          titulo={t('noEncontrado.titulo')}
+          descripcion={t('noEncontrado.descripcion', { numero: numero(entryId) })}
+          accion={{ etiqueta: t('noEncontrado.volver'), href: '/app/finanzas/contabilidad/asientos' }}
+        />
+      </div>
+    );
+  }
+
+  const tipo = tipoAsiento(asiento);
+  const acciones = accionesAsiento(asiento);
+  const esContraAsiento = tipo === 'contraAsiento';
+  const documento = tipo === 'automatico' ? documentoDeOrigen(asiento.source, asiento.source_id) : null;
+  const monedaDe = (linea: { currency_code?: string | null }) => linea.currency_code ?? asiento.currency_code ?? null;
+  const hayMoneda = esContraAsiento && !!asiento.lines?.some((l) => monedaDe(l));
+  const haySede = esContraAsiento && !!sede;
+  const hayRedondeo = !!asiento.lines?.some((l) => l.redondeo_traza);
+  const motivoSinPermiso = !puedeRevertir ? t('acciones.sinPermisoRevertir') : undefined;
+
+  const lineas: LineaTablaContable[] = (asiento.lines ?? []).map((line) => {
+    const centro = line.cost_center_id ? centros.get(line.cost_center_id) : undefined;
+    return {
+      id: line.id,
+      cuenta: line.account_code,
+      nombreCuenta: line.account?.name ?? null,
+      descripcion: line.redondeo_traza ? tr('lineaRedondeo') : line.description,
+      tercero: line.tercero_nit ? `${line.tercero_nombre ? `${line.tercero_nombre} · ` : ''}${line.tercero_nit}` : null,
+      centro: centro ? `${centro.code} · ${centro.name}` : null,
+      debito: Number(line.debit) || 0,
+      credito: Number(line.credit) || 0,
+      resaltada: !!line.redondeo_traza,
+      monedaLinea: monedaDe(line),
+    } as LineaTablaContable & { monedaLinea: string | null };
+  });
+
+  const subtitulo = [asiento.memo || t('sinDescripcion'), formatDate(asiento.entry_date)].join(' · ');
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
-          <Link href="/app/finanzas/contabilidad/asientos" className="hidden lg:block">
-            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <FileText className="h-6 w-6 text-blue-600" />
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <DocumentoCabecera
+        variante="detalle"
+        tipo="asiento"
+        icono={BookOpen}
+        titulo={titulo}
+        subtitulo={tituloReversa ? [asiento.posted ? tr('publicado', { fecha: formatDate(asiento.entry_date) }) : null, motivoReversa ? tr('motivo', { motivo: motivoReversa }) : null].filter(Boolean).join(' · ') : subtitulo}
+        volverA="/app/finanzas/contabilidad/asientos"
+        migas={[
+          { etiqueta: tc('migas.finanzas'), href: '/app/finanzas' },
+          { etiqueta: t('migaLibro'), href: '/app/finanzas/contabilidad/asientos' },
+          { etiqueta: titulo },
+        ]}
+        insignias={
+          <span className="flex flex-wrap items-center gap-1.5">
+            <StatusBadge estado={asiento.posted ? 'publicado' : 'borrador'} etiqueta={asiento.posted ? t('estado.publicado') : t('estado.borrador')} />
+            <EtiquetaOrigen source={asiento.source} />
+            {reversion.revertidoPor && <MarcaReversion rol="revertido" numero={reversion.revertidoPor} />}
+            {reversion.reversionDe && <MarcaReversion rol="contraAsiento" numero={reversion.reversionDe} />}
+          </span>
+        }
+        acciones={
+          <div className="flex flex-wrap gap-2">
+            {reversion.reversionDe && (
+              <Link href={`/app/finanzas/contabilidad/asientos/${reversion.reversionDe}`} className={clasesBoton({ variante: 'secundario' })}>
+                {tr('verOriginal')}
+              </Link>
+            )}
+            {documento?.href && (
+              <Link href={documento.href} className={clasesBoton({ variante: 'secundario' })}>
+                {t('acciones.irDocumento', { documento: tk(documento.tipo) })}
+              </Link>
+            )}
+            <Link href={`/app/finanzas/contabilidad/asientos/${asiento.id}/comprobante`} className={clasesBoton({ variante: 'secundario' })}>
+              <Printer aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.imprimir')}
+            </Link>
+            {acciones.duplicar && (
+              <button type="button" onClick={() => void handleDuplicate()} disabled={procesando} className={clasesBoton({ variante: 'secundario' })}>
+                <Copy aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.duplicar')}
+              </button>
+            )}
+            {acciones.descartar && (
+              <button type="button" onClick={() => setConfirmarDescarte(true)} disabled={procesando} className={clasesBoton({ variante: 'secundario' })}>
+                <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.descartar')}
+              </button>
+            )}
+            {acciones.publicar && (
+              <button type="button" onClick={() => void handlePublish()} disabled={procesando} className={clasesBoton({ variante: 'primario' })}>
+                <Check aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.publicar')}
+              </button>
+            )}
+            {acciones.revertir && (
+              <button
+                type="button"
+                onClick={() => setDialogoRevertir(true)}
+                disabled={procesando || !!motivoSinPermiso}
+                title={motivoSinPermiso}
+                aria-describedby={motivoSinPermiso ? 'motivo-revertir' : undefined}
+                className={clasesBoton({ variante: 'destructivo' })}
+              >
+                <Undo2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.revertir')}
+              </button>
+            )}
+            {motivoSinPermiso && acciones.revertir && (
+              <span id="motivo-revertir" className="sr-only">
+                {motivoSinPermiso}
+              </span>
+            )}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {tituloReversa ?? (textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)
-                ? `${esTipoComprobante(asiento.comprobante_tipo) ? NOMBRE_COMPROBANTE[asiento.comprobante_tipo] : 'Comprobante'} ${textoComprobante(asiento.comprobante_prefijo, asiento.comprobante_numero)}`
-                : `Asiento #${asiento.id}`)}
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              {tituloReversa
-                ? [asiento.posted ? tr('publicado', { fecha: formatDate(asiento.entry_date) }) : null, motivoReversa ? tr('motivo', { motivo: motivoReversa }) : null].filter(Boolean).join(' · ')
-                : asiento.memo || 'Sin descripción'}
-            </p>
-          </div>
-          {asiento.posted
-            ? <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Publicado</Badge>
-            : <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">Borrador</Badge>
-          }
-          {reversion.revertidoPor && (
-            <Link href={`/app/finanzas/contabilidad/asientos/${reversion.revertidoPor}`}>
-              <Badge variant="outline" className="border-red-300 text-red-700 dark:border-red-700 dark:text-red-400">
-                Revertido por #{reversion.revertidoPor}
-              </Badge>
-            </Link>
-          )}
-          {reversion.reversionDe && (
-            <Link href={`/app/finanzas/contabilidad/asientos/${reversion.reversionDe}`}>
-              <Badge variant="outline" className="border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
-                Reversión de #{reversion.reversionDe}
-              </Badge>
-            </Link>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {reversion.reversionDe && (
-            <Link href={`/app/finanzas/contabilidad/asientos/${reversion.reversionDe}`}>
-              <Button variant="outline">{tr('verOriginal')}</Button>
-            </Link>
-          )}
-          <Link href={`/app/finanzas/contabilidad/asientos/${asiento.id}/comprobante`}>
-            <Button variant="outline" className="dark:border-gray-600">
-              <Printer className="h-4 w-4 mr-2" />
-              Imprimir
-            </Button>
-          </Link>
-          {!asiento.posted && (
-            <Button onClick={handlePublish} disabled={isProcessing} className="bg-green-600 hover:bg-green-700">
-              <Check className="h-4 w-4 mr-2" />
-              Publicar
-            </Button>
-          )}
-          {revertible && puedeRevertir && (
-            <Button variant="outline" onClick={() => setDialogoRevertir(true)} disabled={isProcessing} className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
-              <Undo2 className="h-4 w-4 mr-2" />
-              Revertir
-            </Button>
-          )}
-          {!esContraAsiento && (
-            <Button variant="outline" onClick={handleDuplicate} disabled={isProcessing} className="dark:border-gray-600">
-              <Copy className="h-4 w-4 mr-2" />
-              Duplicar
-            </Button>
-          )}
-          {!asiento.posted && (
-            <Button variant="outline" onClick={handleDelete} disabled={isProcessing} className="text-red-600 border-red-600 hover:bg-red-50 dark:hover:bg-red-900/20">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Descartar borrador
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+      />
 
       {asiento.source === 'invoice_purchase' && asiento.source_id && <OrigenCompraAsiento facturaId={asiento.source_id} />}
 
-      {asiento.posted && !esManual && !esContraAsiento && !reversion.revertidoPor && asiento.source !== 'invoice_purchase' && (
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Este asiento es automático: no se edita ni se borra. Para revertirlo, anula el documento que lo originó.
-        </p>
+      {tipo === 'automatico' && !reversion.revertidoPor && asiento.source !== 'invoice_purchase' && (
+        <AvisoTonal
+          tono="informacion"
+          titulo={t('automatico.titulo')}
+          descripcion={documento ? t('automatico.conDocumento', { documento: tk(documento.tipo) }) : t('automatico.sinDocumento')}
+        />
       )}
 
-      <Dialog open={dialogoRevertir} onOpenChange={(abierto) => { setDialogoRevertir(abierto); if (!abierto) setMotivo(''); }}>
-        <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">Revertir asiento #{asiento.id}</DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Se registra un contra-asiento con los débitos y créditos invertidos. El asiento original no se modifica.
-              Si su periodo está cerrado, el contra-asiento queda con la fecha de hoy.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="motivo-reversion" className="text-gray-700 dark:text-gray-300">Motivo *</Label>
-            <Textarea
-              id="motivo-reversion"
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Por qué se revierte este asiento"
-              className="dark:bg-gray-900 dark:border-gray-600"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogoRevertir(false)} className="dark:border-gray-600">
-              Cancelar
-            </Button>
-            <Button onClick={handleRevertir} disabled={isProcessing || motivo.trim().length < 5} className="bg-red-600 hover:bg-red-700">
-              {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Revertir
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {esContraAsiento && reversion.reversionDe && (
+        <MarcaReversion
+          rol="contraAsiento"
+          variante="extendida"
+          numero={reversion.reversionDe}
+          fecha={asiento.posted ? formatDate(asiento.entry_date) : null}
+          motivo={motivoReversa}
+        />
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-      {/* Líneas */}
-      <Card className="dark:bg-gray-800 dark:border-gray-700 lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-white">Líneas del Asiento</CardTitle>
-          <CardDescription className="dark:text-gray-400">
-            {asiento.lines?.length || 0} líneas registradas
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="dark:border-gray-700">
-                <TableHead className="dark:text-gray-300">Cuenta</TableHead>
-                {!esContraAsiento && <TableHead className="dark:text-gray-300">Descripción</TableHead>}
-                {hayTercero && <TableHead className="dark:text-gray-300">{tl('tercero')}</TableHead>}
-                {centros.size > 0 && <TableHead className="dark:text-gray-300">{tl('centroCosto')}</TableHead>}
-                {haySede && <TableHead>{tr('sede')}</TableHead>}
-                {hayMoneda && <TableHead>{tr('moneda')}</TableHead>}
-                <TableHead className="text-right dark:text-gray-300">Débito</TableHead>
-                <TableHead className="text-right dark:text-gray-300">Crédito</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {asiento.lines?.map((line) => (
-                <TableRow key={line.id} className={`dark:border-gray-700 ${line.redondeo_traza ? 'bg-info-subtle font-medium' : ''}`}>
-                  <TableCell>
-                    <div>
-                      <span className="font-mono text-sm text-gray-600 dark:text-gray-400">
-                        {line.account_code}
-                      </span>
-                      {line.account && (
-                        <span className="ml-2 text-gray-900 dark:text-white">
-                          {line.account.name}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  {!esContraAsiento && (
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      {line.redondeo_traza ? tr('lineaRedondeo') : line.description || '-'}
-                    </TableCell>
-                  )}
-                  {hayTercero && (
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      {line.tercero_nit ? `${line.tercero_nombre ? `${line.tercero_nombre} · ` : ''}${line.tercero_nit}` : '-'}
-                    </TableCell>
-                  )}
-                  {centros.size > 0 && (
-                    <TableCell className="text-gray-700 dark:text-gray-300">
-                      {line.cost_center_id && centros.get(line.cost_center_id)
-                        ? `${centros.get(line.cost_center_id)?.code} · ${centros.get(line.cost_center_id)?.name}`
-                        : '-'}
-                    </TableCell>
-                  )}
-                  {haySede && <TableCell className="text-fg-secondary">{sede}</TableCell>}
-                  {hayMoneda && <TableCell className="text-fg-secondary">{monedaDe(line) ?? '-'}</TableCell>}
-                  <TableCell className="text-right font-mono text-gray-900 dark:text-white">
-                    {line.debit > 0 ? formatear(line.debit) : '-'}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-gray-900 dark:text-white">
-                    {line.credit > 0 ? formatear(line.credit) : '-'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-
-          <Separator className="my-4 dark:bg-gray-700" />
-
-          {/* Totales */}
-          <div className="flex justify-end gap-8">
-            <div className="text-right">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Débitos</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatear(getTotalDebits())}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total Créditos</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">
-                {formatear(getTotalCredits())}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Balance</p>
-              <p className={`text-xl font-bold ${Math.abs(getTotalDebits() - getTotalCredits()) < 0.01 ? 'text-green-600' : 'text-red-600'}`}>
-                {Math.abs(getTotalDebits() - getTotalCredits()) < 0.01 ? '✓ Balanceado' : formatear(Math.abs(getTotalDebits() - getTotalCredits()))}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <DatosAsiento asiento={asiento} />
+      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+        <Tarjeta titulo={t('lineas', { n: lineas.length })} className="lg:col-span-2" sinRelleno>
+          <TablaContable
+            lineas={lineas}
+            formatear={(v) => formatear(v)}
+            conDescripcion={!esContraAsiento}
+            conTercero={lineas.some((l) => l.tercero)}
+            conCentro={centros.size > 0}
+            etiqueta={t('lineasEtiqueta')}
+            columnasExtra={[
+              ...(haySede ? [{ id: 'sede', encabezado: tr('sede'), valor: () => sede }] : []),
+              ...(hayMoneda
+                ? [{ id: 'moneda', encabezado: tr('moneda'), valor: (l: LineaTablaContable) => (l as LineaTablaContable & { monedaLinea: string | null }).monedaLinea }]
+                : []),
+            ]}
+            className="rounded-none border-0"
+          />
+        </Tarjeta>
+        <DatosAsiento asiento={asiento} />
       </div>
 
-      {hayRedondeo && !esContraAsiento && (
-        <AvisoTonal tono="informacion" titulo={tr('cuadradoTitulo')} descripcion={tr('cuadradoTexto')} />
-      )}
+      {hayRedondeo && !esContraAsiento && <AvisoTonal tono="informacion" titulo={tr('cuadradoTitulo')} descripcion={tr('cuadradoTexto')} />}
       {esContraAsiento && reversion.reversionDe && (
         <AvisoTonal
           tono="informacion"
@@ -410,6 +333,28 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
           descripcion={copiaExacta ? tr('copiaTexto') : tr('auxiliarTexto')}
         />
       )}
+
+      {acciones.revertir && (
+        <RevertirAsientoDialog
+          asiento={asiento}
+          abierto={dialogoRevertir}
+          onAbiertoChange={setDialogoRevertir}
+          puedeRevertir={puedeRevertir}
+          revertidoPor={reversion.revertidoPor}
+          onRevertido={() => void loadAsiento()}
+        />
+      )}
+
+      <ConfirmDialog
+        abierto={confirmarDescarte}
+        onAbiertoChange={setConfirmarDescarte}
+        titulo={t('descartar.titulo', { numero: numero(asiento.id) })}
+        descripcion={t('descartar.descripcion')}
+        textoConfirmar={t('descartar.confirmar')}
+        tono="peligro"
+        cargando={procesando}
+        onConfirmar={handleDelete}
+      />
     </div>
   );
 }

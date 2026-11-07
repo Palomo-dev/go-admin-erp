@@ -152,7 +152,7 @@ export class CostCenterService {
       .eq('organization_id', orgId)
       .eq('activo', true)
       .order('nombre');
-    if (error) return [];
+    if (error) throw error;
     return (data || []).map((fila) => ({
       id: String(fila.id),
       nombre: String(fila.nombre),
@@ -168,12 +168,14 @@ export class CostCenterService {
   static async guardarDistribucion(
     nombre: string,
     lineas: { cost_center_id: string; porcentaje: number }[],
+    id: string | null = null,
   ): Promise<string> {
+    // Con `id` la RPC reemplaza las líneas de esa distribución (editar).
     const { data, error } = await supabase.rpc('fn_distribucion_guardar', {
       p_organization_id: this.getOrganizationId(),
       p_nombre: nombre,
       p_lineas: lineas,
-      p_id: null,
+      p_id: id,
     });
     if (error) throw new Error(error.message);
     return String(data);

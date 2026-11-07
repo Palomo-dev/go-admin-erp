@@ -1,8 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { destinoTesoreriaConsolidada } from '@/lib/finanzas/tesoreria/rutas';
 
-import React from 'react';
-import { TesoreriaPage } from '@/components/finanzas/bancos/TesoreriaPage';
-
-export default function TesoreriaAppPage() {
-  return <TesoreriaPage />;
+/** La tesorería consolidada es la pestaña «Posición» de Cuentas de dinero. */
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  redirect(destinoTesoreriaConsolidada(await searchParams));
 }

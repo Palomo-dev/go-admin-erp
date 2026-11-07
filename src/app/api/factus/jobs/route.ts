@@ -1,6 +1,6 @@
 /**
  * API Route: Gestión de Jobs de Facturación Electrónica
- * GET /api/factus/jobs - Lista jobs de la organización de la sesión
+ * GET /api/factus/jobs - Lista jobs de la organización de la sesión (filtros de la bandeja)
  * POST /api/factus/jobs - Reintentar job (body: { jobId, action: 'retry' })
  * DELETE /api/factus/jobs?jobId= - Cancelar job
  *
@@ -26,6 +26,7 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError, type ServerOrgContext } from '@/lib/utils/orgContext';
 import { PERMISOS_FINANZAS, requireOrgPermission, routeErrorResponse } from '@/lib/security/orgGuards';
 import { getServiceClient } from '@/lib/supabase/server-service';
+import { leerParametros, listarEnvios } from '@/lib/services/einvoicing/bandeja.server';
 
 const RUTA = 'factus/jobs';
 
@@ -70,33 +71,16 @@ export const GET = withOrg(async (ctx, request) => {
     await readOrgBody(ctx, request, { route: RUTA });
     await requireOrgPermission(ctx, PERMISOS_FINANZAS.VER, RUTA);
 
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status');
-    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50', 10) || 50));
-    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0);
-
-    let query = ctx.supabase
-      .from('electronic_invoicing_jobs')
-      .select(`
-        *,
-        invoice:invoice_sales(
-          id,
-          number,
-          total,
-          customer:customers(first_name, last_name, company_name)
-        )
-      `, { count: 'exact' })
-      .eq('organization_id', ctx.organizationId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (status && status !== 'all') {
-      query = query.eq('status', status);
-    }
-
-    const { data, error, count } = await query;
-
-    if (error) {
+    // Bandeja (2026-11-07, Finanzas R3 · Frente D): además de `status`,
+    // `limit` y `offset` (sin cambios), acepta `vista`, `estado` (con
+    // «retenido»), `tipo`, `q`, `desde`/`hasta` (día de la organización),
+    // `sucursal` y `pagina`/`tamano`. Devuelve `data` como antes y `filas`
+    // normalizadas para la bandeja (sin JSON crudo).
+    const params = leerParametros(new URL(request.url).searchParams);
+    let resultado;
+    try {
+      resultado = await listarEnvios(ctx.supabase, ctx.organizationId, params);
+    } catch {
       return NextResponse.json(
         { error: 'Error obteniendo jobs' },
         { status: 500 }
@@ -105,10 +89,11 @@ export const GET = withOrg(async (ctx, request) => {
 
     return NextResponse.json({
       success: true,
-      data,
-      total: count,
-      limit,
-      offset,
+      data: resultado.data,
+      filas: resultado.filas,
+      total: resultado.total,
+      limit: params.limit,
+      offset: params.offset,
     });
   } catch (error: unknown) {
     return routeErrorResponse('Factus jobs GET', error);

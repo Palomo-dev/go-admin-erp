@@ -4449,13 +4449,11 @@
       "finanzas_facturas-venta": "Faturas de venda",
       "finanzas_cotizaciones": "Cotações",
       "finanzas_facturas-compra": "Faturas de compra",
-      "finanzas_notas-credito": "Notas de crédito",
+      "finanzas_notas-credito": "Notas de crédito e débito",
       "finanzas_documentos-soporte": "Documentos de suporte",
       "finanzas_facturacion-electronica": "Faturamento eletrônico",
       "finanzas_ingresos": "Entradas",
       "finanzas_egresos": "Saídas",
-      "finanzas_transferencias": "Transferências",
-      "finanzas_bancos": "Bancos",
       "finanzas_open-finance": "Conectar banco",
       "finanzas_payfac_dispersiones": "Recebimentos e repasses",
       "finanzas_cuentas-por-cobrar": "Contas a receber",
@@ -4464,7 +4462,7 @@
       "finanzas_contabilidad": "Contabilidade",
       "finanzas_contabilidad_plan-cuentas": "Plano de contas",
       "finanzas_contabilidad_actualizar-puc": "Atualizar plano de contas",
-      "finanzas_contabilidad_asientos": "Lançamentos",
+      "finanzas_contabilidad_asientos": "Diário",
       "finanzas_contabilidad_plantillas": "Modelos de lançamentos",
       "finanzas_contabilidad_mayor-contable": "Razão",
       "finanzas_contabilidad_libro-diario": "Livro diário",
@@ -4472,7 +4470,7 @@
       "finanzas_contabilidad_balance-comprobacion": "Balancete de verificação",
       "finanzas_contabilidad_estado-resultados": "Demonstração do resultado abrangente",
       "finanzas_contabilidad_balance-general": "Demonstração da posição financeira",
-      "finanzas_contabilidad_periodos-fiscales": "Períodos fiscais",
+      "finanzas_contabilidad_periodos-fiscales": "Períodos contábeis",
       "finanzas_reglas-contables": "Regras contábeis",
       "finanzas_centro-costos": "Centros de custo",
       "finanzas_activos-fijos": "Ativo imobilizado",
@@ -4575,7 +4573,12 @@
       "finanzas_contabilidad_informes_certificacion": "Certificação das demonstrações financeiras",
       "finanzas_contabilidad_informes_indicadores": "Indicadores financeiros",
       "finanzas_contabilidad_informes_presupuesto-real": "Orçamento versus realizado",
-      "finanzas_contabilidad_informes_libros": "Livros contábeis"
+      "finanzas_contabilidad_informes_libros": "Livros contábeis",
+      "finanzas_tesoreria_movimientos": "Movimentos",
+      "finanzas_tesoreria_cuentas": "Contas de dinheiro",
+      "finanzas_tesoreria_conciliacion": "Conciliação",
+      "finanzas_tesoreria_transferencias": "Transferências",
+      "finanzas_contabilidad_salud": "Saúde contábil"
     },
     "grupos": {
       "venta": "Venda",
@@ -38488,9 +38491,9 @@
         "palabras": "papéis, funções, permissões, acessos, cargos"
       },
       "facturacionResumen": {
-        "titulo": "Resumo",
-        "descripcion": "Credenciais, faixas DIAN e sempre faturar eletronicamente",
-        "palabras": "fatura eletrônica, dian, faixas, resolução, numeração, credenciais, sempre eletrônica"
+        "titulo": "Resoluções e numeração",
+        "descripcion": "Resoluções DIAN, faixas por filial, consumo e vigência",
+        "palabras": "fatura eletrônica, dian, faixas, resolução, numeração, vigência"
       },
       "facturacionServicio": {
         "titulo": "Serviço",
@@ -41592,5 +41595,3531 @@
       }
     },
     "reportes": "Relatórios de Finanças → módulo Relatórios"
+  },
+  "finanzasContabilidadR3": {
+    "asientos": {
+      "titulo": "Diário",
+      "subtitulo": "{asientos, number} lançamentos · {contra, number} estornos · toda a organização",
+      "subtituloCorto": "Lançamentos contábeis de toda a organização",
+      "exportar": "Exportar",
+      "nuevoAsiento": "Novo lançamento",
+      "sinPermisoCrear": "Você precisa da permissão para criar em Finanças",
+      "buscar": "Buscar n.º ou descrição",
+      "todoElLibro": "Todo o diário",
+      "comprobante": "Comprovante",
+      "etiquetaFila": "Lançamento {numero}",
+      "paresOcultos": "{n, plural, one {# lançamento estornado oculto nesta página.} other {# lançamentos estornados ocultos nesta página.}}",
+      "kpis": {
+        "etiqueta": "Resumo do diário",
+        "asientos": "Lançamentos do período",
+        "asientosDetalle": "sem contar {n, number} estornos",
+        "movimiento": "Movimento do período",
+        "movimientoDetalle": "débitos publicados = créditos",
+        "borradores": "Rascunhos",
+        "borradoresDetalle": "não publicados no período",
+        "rango": "Período",
+        "rangoDetalle": "altere o intervalo na barra de filtros"
+      },
+      "columnas": {
+        "numero": "N.º",
+        "fecha": "Data",
+        "descripcion": "Descrição",
+        "origen": "Origem e documento",
+        "sucursal": "Filial",
+        "importe": "Valor",
+        "estado": "Status"
+      },
+      "estado": {
+        "publicado": "Publicado",
+        "borrador": "Rascunho"
+      },
+      "acciones": {
+        "ver": "Ver",
+        "publicar": "Publicar",
+        "duplicar": "Duplicar",
+        "descartar": "Descartar rascunho"
+      },
+      "toast": {
+        "publicado": "Lançamento {numero} publicado",
+        "errorPublicar": "Não foi possível publicar o lançamento",
+        "duplicado": "Cópia criada como rascunho {numero}",
+        "errorDuplicar": "Não foi possível duplicar o lançamento",
+        "descartado": "Rascunho descartado"
+      },
+      "filtros": {
+        "origen": "Origem",
+        "estado": "Status",
+        "estados": {
+          "todos": "Todos",
+          "publicados": "Publicados",
+          "borradores": "Rascunhos"
+        },
+        "cuenta": "Conta",
+        "quitarCuenta": "Remover a conta",
+        "sucursal": "Filial (opcional)",
+        "todasSucursales": "Todas as filiais",
+        "ocultarPares": "Ocultar pares estornados",
+        "ocultarParesAyuda": "Desligado: o diário aparece completo, cada estorno junto ao original",
+        "ver": "Ver {n, number} lançamentos"
+      },
+      "chips": {
+        "estado": "Status: {valor}",
+        "origen": "Origem: {valor}",
+        "cuenta": "Conta: {valor}",
+        "sucursal": "Filial: {valor}"
+      },
+      "vacio": {
+        "titulo": "Ainda não há lançamentos neste período",
+        "descripcion": "São criados automaticamente com vendas, compras, pagamentos e movimentos de caixa. Você também pode registrar um manual."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à contabilidade",
+        "descripcion": "Peça a um administrador a permissão para ver Finanças."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar o diário",
+        "descripcion": "Verifique sua conexão e tente novamente. Nada foi perdido."
+      },
+      "sustantivo": {
+        "singular": "lançamento",
+        "plural": "lançamentos"
+      },
+      "descartar": {
+        "titulo": "Descartar o rascunho {numero}",
+        "descripcion": "Um rascunho nunca foi publicado e não deixa rastro contábil. Não pode ser desfeito.",
+        "confirmar": "Descartar"
+      },
+      "resultado": {
+        "tituloPublicado": "Lançamento publicado",
+        "tituloBorrador": "Rascunho salvo",
+        "publicado": "Lançamento {numero} publicado",
+        "borrador": "Rascunho {numero} salvo",
+        "ver": "Ver lançamento",
+        "otro": "Registrar outro",
+        "cerrar": "Fechar"
+      },
+      "csv": {
+        "numero": "Número",
+        "fecha": "Data",
+        "descripcion": "Descrição",
+        "origen": "Origem",
+        "documento": "Documento",
+        "sucursal": "Filial",
+        "importe": "Valor",
+        "estado": "Status",
+        "archivo": "diario.csv",
+        "error": "Não foi possível exportar o diário"
+      },
+      "nuevo": {
+        "titulo": "Novo lançamento",
+        "descripcion": "Registre um lançamento manual. Os automáticos são criados a cada venda, compra, pagamento ou movimento de caixa.",
+        "fecha": "Data contábil",
+        "sucursal": "Filial",
+        "sucursalElegir": "Escolha a filial",
+        "periodo": "Período",
+        "periodoCerrado": {
+          "titulo": "O período de {mes} está fechado",
+          "descripcion": "Escolha uma data de um período aberto ou peça a reabertura em Períodos contábeis."
+        },
+        "descripcionCampo": "Descrição",
+        "descripcionPlaceholder": "Por exemplo: reclassificação de tarifas bancárias de setembro",
+        "lineas": "Linhas",
+        "lineasAyuda": "Somente contas analíticas · digitar Débito limpa Crédito",
+        "lineaN": "Linha {n}",
+        "columnas": {
+          "cuenta": "Conta",
+          "descripcion": "Descrição",
+          "centro": "Centro de custo",
+          "debito": "Débito",
+          "credito": "Crédito"
+        },
+        "linea": {
+          "cuenta": "Conta da linha {n}",
+          "descripcion": "Descrição da linha {n}",
+          "centro": "Centro de custo da linha {n}",
+          "debito": "Débito da linha {n}",
+          "credito": "Crédito da linha {n}",
+          "quitar": "Remover a linha {n}",
+          "distribucion": "Distribuição da linha {n}",
+          "centroObligatorio": "Centro de custo *",
+          "centroOpcional": "Opcional",
+          "sinDistribucion": "Sem distribuição"
+        },
+        "agregarLinea": "Adicionar linha",
+        "enterUltimaFila": "Enter na última linha",
+        "avisoTercero": "Salvo como rascunho. Para publicar, falta o terceiro em: {cuentas}",
+        "pie": {
+          "nota": "«Publicar» é habilitado quando débitos e créditos são iguais",
+          "borrador": "Salvar rascunho",
+          "publicar": "Publicar",
+          "publicarSiCuadra": "Débitos e créditos devem ser iguais para publicar"
+        },
+        "errores": {
+          "fechaRequerida": "A data é obrigatória",
+          "sucursalRequerida": "Escolha a filial do lançamento",
+          "descripcionRequerida": "Escreva a descrição do lançamento",
+          "minimoLineas": "São necessárias pelo menos 2 linhas com valores",
+          "cuentaTitulo": "{cuenta} é uma conta sintética e não recebe lançamentos. Escolha uma conta analítica.",
+          "noCuadra": "O lançamento deve fechar: débitos = créditos",
+          "centroObligatorio": "A conta {cuenta} exige um centro de custo",
+          "periodoCerrado": "O período dessa data está fechado",
+          "faltaTercero": "Para publicar, falta o terceiro em: {cuentas}",
+          "guardar": "Não foi possível salvar o lançamento"
+        }
+      }
+    },
+    "centros": {
+      "titulo": "Centros de custo",
+      "subtitulo": "Árvore por código, filial e status",
+      "migas": {
+        "finanzas": "Finanças",
+        "contabilidad": "Contabilidade"
+      },
+      "aplicarPlantilla": "Aplicar modelo",
+      "nuevo": "Novo",
+      "buscar": "Buscar por código ou nome",
+      "todas": "Todas",
+      "hijo": "+ Filho",
+      "activo": "Ativo",
+      "inactivo": "Inativo",
+      "columnas": {
+        "centro": "Centro",
+        "sucursal": "Filial",
+        "estado": "Status"
+      },
+      "filtros": {
+        "titulo": "Filtros",
+        "estado": "Status",
+        "todos": "Todos",
+        "activos": "Ativos",
+        "inactivos": "Inativos",
+        "sucursal": "Filial",
+        "todasSucursales": "Todas as filiais",
+        "sinSucursal": "Toda a organização"
+      },
+      "acciones": {
+        "editar": "Editar",
+        "agregarHijo": "Adicionar subcentro",
+        "agregarHijoDe": "Adicionar subcentro a {nombre}",
+        "activar": "Ativar",
+        "desactivar": "Desativar"
+      },
+      "vacio": {
+        "titulo": "Ainda não há centros de custo",
+        "descripcion": "Os centros de custo distribuem as despesas por área, filial ou projeto. Comece com um modelo ou crie o primeiro."
+      },
+      "exito": {
+        "creado": "Centro de custo criado",
+        "actualizado": "Centro de custo atualizado",
+        "activado": "Centro ativado",
+        "desactivado": "Centro desativado"
+      },
+      "errores": {
+        "codigoNombre": "Código e nome são obrigatórios.",
+        "ciclo": "Esse pai formaria um ciclo: escolha outro.",
+        "codigoRepetido": "Já existe um centro com esse código.",
+        "conMovimientos": "O centro tem lançamentos: desative-o em vez de excluí-lo.",
+        "desconocido": "Não foi possível salvar o centro.",
+        "estado": "Não foi possível alterar o status.",
+        "plantillaVista": "Não foi possível calcular o modelo.",
+        "plantillaAplicar": "Não foi possível aplicar o modelo."
+      },
+      "formulario": {
+        "tituloNuevo": "Novo centro de custo",
+        "tituloEditar": "Editar centro de custo",
+        "descripcion": "Os lançamentos das contas de resultado são distribuídos por centro.",
+        "codigo": "Código",
+        "codigoFijo": "O código não muda depois de criado.",
+        "nombre": "Nome",
+        "padre": "Centro pai",
+        "sinPadre": "Sem pai (raiz)",
+        "padreCiclo": "É este centro ou um de seus subcentros",
+        "sucursal": "Filial",
+        "sucursalAyuda": "«Todas» se o centro é de toda a organização.",
+        "activo": "Ativo",
+        "guardar": "Salvar"
+      },
+      "desactivar": {
+        "titulo": "Desativar centro de custo",
+        "descripcion": "«{nombre}» deixa de ser oferecido em lançamentos e rateios. Seus lançamentos são mantidos e você pode ativá-lo de novo."
+      },
+      "plantilla": {
+        "titulo": "Aplicar modelo de centros",
+        "descripcion": "Prévia antes de criar. O que já existe não é alterado.",
+        "alcance": "Modelo",
+        "alcances": {
+          "base": {
+            "titulo": "Base",
+            "detalle": "100 Administração, 200 Vendas e 300 Operação."
+          },
+          "sector": {
+            "titulo": "Setor",
+            "detalle": "A base mais os centros do tipo de organização."
+          },
+          "sucursal": {
+            "titulo": "Por filial",
+            "detalle": "A base e um subcentro de vendas por filial."
+          }
+        },
+        "vistaPrevia": "Serão criados",
+        "seCrearan": "{n, plural, one {# centro será criado} other {# centros serão criados}}. {existen, plural, =0 {} one {# já existe e não é alterado.} other {# já existem e não são alterados.}}",
+        "seCreara": "Será criado",
+        "yaExiste": "Já existe",
+        "calculando": "Calculando…",
+        "nadaQueCrear": "O modelo já está aplicado",
+        "aplicar": "Aplicar",
+        "creados": "{n, plural, one {# centro criado} other {# centros criados}}. {existian} já existiam.",
+        "yaAplicada": "O modelo já estava aplicado. Nenhuma duplicata criada."
+      },
+      "distribucion": {
+        "titulo": "Rateios",
+        "nueva": "Novo rateio",
+        "tituloEditar": "Editar rateio",
+        "descripcion": "Distribui uma despesa entre vários centros",
+        "nombre": "Nome",
+        "nombreEjemplo": "Despesas compartilhadas",
+        "reparto": "Distribuição",
+        "suma": "Soma",
+        "centro": "Centro",
+        "porcentaje": "Percentual",
+        "centroLinea": "Centro da linha {n}",
+        "porcentajeLinea": "Percentual da linha {n}",
+        "quitar": "Remover",
+        "quitarLinea": "Remover a linha {n}",
+        "elegirCentro": "Escolher centro",
+        "agregarLinea": "Adicionar linha",
+        "sumaTotal": "Soma {valor}",
+        "guardar": "Salvar",
+        "guardada": "Rateio salvo",
+        "vacioTitulo": "Sem rateios",
+        "vacioDescripcion": "Cada rateio distribui um lançamento entre centros e seus percentuais somam 100.",
+        "errores": {
+          "nombre": "O nome é obrigatório.",
+          "minimo": "Um rateio precisa de pelo menos dois centros.",
+          "linea": "Cada linha precisa de um centro e um percentual entre 0 e 100.",
+          "repetido": "Um centro não pode se repetir.",
+          "suma": "Os percentuais devem somar 100 %.",
+          "nombreRepetido": "Já existe um rateio com esse nome.",
+          "centroInvalido": "Há um centro inativo ou de outra organização.",
+          "desconocido": "Não foi possível salvar o rateio."
+        }
+      }
+    },
+    "comprobante": {
+      "cargando": "Carregando comprovante…",
+      "noEncontrado": "Este lançamento não existe ou é de outra organização.",
+      "volver": "Voltar ao lançamento",
+      "imprimir": "Imprimir",
+      "nit": "NIT {nit}",
+      "comprobanteContable": "Comprovante contábil",
+      "asiento": "Lançamento {numero}",
+      "fecha": "Data: {fecha}",
+      "memo": "Memo: {memo}",
+      "sucursal": "Filial: {sucursal}",
+      "cuenta": "Conta",
+      "detalle": "Detalhe",
+      "tercero": "Terceiro",
+      "debito": "Débito",
+      "credito": "Crédito",
+      "totales": "Totais",
+      "elaboro": "Elaborou",
+      "aprobo": "Aprovou",
+      "borrador": "Rascunho: não é um comprovante definitivo"
+    },
+    "comun": {
+      "origen": {
+        "venta": "Venda",
+        "factura": "Fatura",
+        "cobro": "Recebimento",
+        "compra": "Compra",
+        "pago": "Pagamento",
+        "kardex": "Estoque",
+        "caja": "Caixa",
+        "banco": "Banco",
+        "comision": "Comissão",
+        "nomina": "Folha",
+        "pms": "Hotel",
+        "manual": "Manual",
+        "contraAsiento": "Estorno",
+        "cierre": "Encerramento",
+        "otro": "Outro"
+      },
+      "reversion": {
+        "revertidoPor": "Estornado por {numero}",
+        "reversionDe": "Estorno de {numero}",
+        "neutraliza": "Anula o lançamento {numero}",
+        "neutralizadoPor": "Anulado pelo estorno {numero}",
+        "motivo": "Motivo: {motivo}"
+      },
+      "periodo": {
+        "abierto": "Aberto",
+        "enCierre": "Em encerramento",
+        "cerrado": "Fechado"
+      },
+      "cuadre": {
+        "debitos": "Débitos",
+        "creditos": "Créditos",
+        "cuadra": "Fecha",
+        "diferencia": "Diferença {valor}",
+        "sinImportes": "Sem valores"
+      },
+      "tabla": {
+        "etiqueta": "Linhas do lançamento",
+        "cuenta": "Conta",
+        "descripcion": "Descrição",
+        "tercero": "Terceiro",
+        "centro": "Centro de custo",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "totales": "Totais",
+        "totalesDC": "D {debito} · C {credito}"
+      },
+      "migas": {
+        "finanzas": "Finanças",
+        "contabilidad": "Contabilidade"
+      }
+    },
+    "detalle": {
+      "titulo": "Lançamento",
+      "tituloNumero": "Lançamento {numero}",
+      "comprobante": "Comprovante",
+      "sinDescripcion": "Sem descrição",
+      "migaLibro": "Diário",
+      "errorCargar": "Não foi possível carregar o lançamento",
+      "lineas": "Linhas · {n, number}",
+      "lineasEtiqueta": "Linhas do lançamento",
+      "estado": {
+        "publicado": "Publicado",
+        "borrador": "Rascunho"
+      },
+      "acciones": {
+        "imprimir": "Imprimir",
+        "duplicar": "Duplicar",
+        "descartar": "Descartar rascunho",
+        "publicar": "Publicar",
+        "revertir": "Estornar",
+        "sinPermisoRevertir": "Você precisa da permissão «Estornar lançamentos»",
+        "irDocumento": "Ir para {documento}"
+      },
+      "toast": {
+        "publicado": "Lançamento publicado",
+        "errorPublicar": "Não foi possível publicar o lançamento",
+        "duplicado": "Lançamento duplicado como rascunho",
+        "errorDuplicar": "Não foi possível duplicar o lançamento",
+        "descartado": "Rascunho descartado",
+        "errorDescartar": "Não foi possível descartar o rascunho"
+      },
+      "automatico": {
+        "titulo": "Lançamento automático",
+        "conDocumento": "Gerado pelo documento «{documento}». Não se edita nem se apaga: para estornar, anule esse documento.",
+        "sinDocumento": "Não se edita nem se apaga: para estornar, anule o documento de origem."
+      },
+      "noEncontrado": {
+        "titulo": "Lançamento não encontrado",
+        "descripcion": "O lançamento {numero} não existe ou é de outra organização.",
+        "volver": "Voltar ao diário"
+      },
+      "descartar": {
+        "titulo": "Descartar o rascunho {numero}",
+        "descripcion": "Um rascunho nunca foi publicado e não deixa rastro contábil. Não pode ser desfeito.",
+        "confirmar": "Descartar"
+      },
+      "revertir": {
+        "titulo": "Estornar lançamento {numero}",
+        "descripcion": "É registrado um estorno com débitos e créditos invertidos. O lançamento original não é alterado.",
+        "confirmar": "Estornar",
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Por que este lançamento é estornado",
+        "motivos": {
+          "cuenta": "Conta errada",
+          "importe": "Valor errado",
+          "duplicado": "Duplicado"
+        },
+        "consecuencias": {
+          "titulo": "O que acontece ao estornar",
+          "invertido": "É criado um estorno com as mesmas contas, terceiro e centro, com débito e crédito invertidos.",
+          "fechaOriginal": "O estorno usa a data do original ({fecha}): seu período está aberto.",
+          "fechaHoy": "O estorno usa a data de hoje ({fecha}) porque o período do original está fechado.",
+          "fechaRegla": "Se o período do original estiver fechado, o estorno usa a data de hoje.",
+          "original": "O original continua no diário, marcado como estornado. Um lançamento só é estornado uma vez."
+        },
+        "bloqueo": {
+          "yaRevertido": "Já tem o estorno {numero}. Um lançamento só é estornado uma vez.",
+          "sinPermiso": "Você precisa da permissão «Estornar lançamentos».",
+          "periodoCerrado": "Nem o período do lançamento nem o atual estão abertos. Reabra um em Períodos contábeis."
+        },
+        "error": "Não foi possível estornar o lançamento",
+        "resultado": {
+          "titulo": "Lançamento estornado",
+          "creado": "Estorno {numero} criado",
+          "descripcion": "O lançamento {numero} foi neutralizado. Se necessário, registre agora o lançamento corrigido.",
+          "ver": "Ver estorno",
+          "cerrar": "Fechar"
+        }
+      }
+    },
+    "inicio": {
+      "titulo": "Contabilidade",
+      "subtitulo": "Toda a organização · período atual: {mes} ({estado})",
+      "subtituloCorto": "Toda a organização",
+      "actualizar": "Atualizar",
+      "nuevoAsiento": "Novo lançamento",
+      "abrir": "Abrir",
+      "revisar": "Revisar",
+      "crear": "Criar",
+      "aviso": {
+        "ambos": "{pendientes, plural, one {# fato sem contabilizar} other {# fatos sem contabilizar}} e {descuadres, plural, one {# divergência} other {# divergências}}",
+        "pendientes": "{n, plural, one {# fato sem contabilizar} other {# fatos sem contabilizar}}",
+        "descuadres": "{n, plural, one {# lançamento não confere com o documento} other {# lançamentos não conferem com o documento}}",
+        "descripcion": "Os relatórios não incluem esses fatos. Revise-os antes de fechar {mes}.",
+        "abrirSalud": "Abrir saúde contábil"
+      },
+      "enOrden": "Tudo contabilizado: 0 pendências e o balancete fecha.",
+      "periodo": {
+        "sinCerrar": "{n, plural, one {{mes} sem fechar} other {# meses sem fechar}}",
+        "alDia": "meses anteriores fechados",
+        "sinGenerar": "Não gerado"
+      },
+      "kpis": {
+        "resumen": "Resumo contábil",
+        "asientosDe": "Lançamentos de {mes}",
+        "asientosMes": "Lançamentos do mês",
+        "sinContraAsientos": "sem contar estornos",
+        "periodoActual": "Período atual",
+        "pendientes": "Pendentes de contabilizar",
+        "verSalud": "Ver na saúde contábil",
+        "descuadres": "Divergências",
+        "descuadresInactivo": "verificação ainda não ativada",
+        "descuadresDetalle": "lançamento ≠ documento"
+      },
+      "informes": {
+        "titulo": "Relatórios",
+        "libroDiario": "Diário",
+        "libroDiarioValor": "{n, plural, one {# lançamento} other {# lançamentos}} em {mes}",
+        "libroDiarioDesc": "Lançamentos do dia a dia",
+        "mayor": "Razão",
+        "mayorDesc": "Saldo acumulado por conta",
+        "balancePrueba": "Balancete",
+        "balancePruebaDesc": "Débitos e créditos por conta",
+        "noCuadra": "Não fecha",
+        "estadoResultados": "Demonstração do resultado",
+        "estadoResultadosDesc": "Receitas, custos e despesas do período",
+        "balanceGeneral": "Balanço patrimonial",
+        "balanceGeneralDesc": "Ativo = Passivo + Patrimônio"
+      },
+      "configuracion": {
+        "titulo": "Configuração",
+        "plan": "Plano de contas",
+        "planValor": "{cuentas} contas · {agrupadoras} sintéticas",
+        "planDesc": "Catálogo de contas PUC",
+        "reglas": "Regras contábeis",
+        "reglasValor": "{n, plural, one {# regra} other {# regras}}",
+        "reglasConAvisos": "{n} regras · {avisos} com contas a corrigir",
+        "reglasDesc": "Lançamentos automáticos por evento",
+        "periodos": "Períodos contábeis",
+        "periodosDesc": "Abertura e fechamento de períodos",
+        "salud": "Saúde contábil",
+        "saludDesc": "Pendências, divergências, órfãos e estrutura",
+        "centros": "Centros de custo",
+        "centrosVacio": "Ainda não há centros",
+        "centrosValor": "{n, plural, one {# centro} other {# centros}}",
+        "centrosDesc": "Distribui despesas por área ou projeto",
+        "plantillas": "Modelos de lançamento",
+        "plantillasDesc": "Lançamentos recorrentes",
+        "cuentasAutomaticas": "Configuração contábil",
+        "cuentasAutomaticasDesc": "Contas padrão da organização",
+        "puc": "Atualizar PUC",
+        "pucDesc": "Prévia e transferência para o plano corrigido",
+        "activos": "Ativos imobilizados",
+        "activosDesc": "Registro e depreciação",
+        "presupuestos": "Orçamentos",
+        "presupuestosDesc": "Planejado contra realizado"
+      }
+    },
+    "mayor": {
+      "titulo": "Razão",
+      "cuenta": "Conta",
+      "periodo": "Período",
+      "exportar": "Exportar",
+      "todaLaOrganizacion": "toda a organização",
+      "subtituloSinCuenta": "Escolha uma conta para ver seus movimentos",
+      "columnas": {
+        "fecha": "Data",
+        "asiento": "Lançamento",
+        "documento": "Documento",
+        "descripcion": "Descrição da linha",
+        "saldo": "Saldo"
+      },
+      "saldoInicial": "Saldo inicial",
+      "saldoFinalTras": "{n, plural, one {Saldo final (após # movimento)} other {Saldo final (após # movimentos)}}",
+      "csv": {
+        "fecha": "Data",
+        "asiento": "Lançamento",
+        "descripcion": "Descrição da linha",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "saldo": "Saldo",
+        "archivo": "razao-{cuenta}.csv"
+      },
+      "filtros": {
+        "nota": "Com filtros, o saldo inicial não se aplica: você vê o acumulado do filtro.",
+        "sucursal": "Filial",
+        "todas": "Todas as filiais",
+        "tercero": "Terceiro (NIT)",
+        "terceroAyuda": "Digite o NIT e pressione Enter",
+        "centro": "Centro de custo",
+        "todos": "Todos"
+      },
+      "kpis": {
+        "resumen": "Resumo do razão",
+        "saldoInicial": "Saldo inicial",
+        "inicialConFiltros": "não se aplica com filtros",
+        "debitos": "Débitos",
+        "movimientos": "{n, plural, one {# movimento} other {# movimentos}}",
+        "creditos": "Créditos",
+        "acumulado": "Acumulado do filtro",
+        "saldoFinal": "Saldo final"
+      },
+      "sinCuenta": {
+        "titulo": "Escolha uma conta",
+        "descripcion": "Busque por código ou nome. Uma conta sintética soma suas subcontas."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar o razão",
+        "descripcion": "A consulta falhou. Tente de novo.",
+        "reintentar": "Tentar de novo"
+      },
+      "truncado": {
+        "titulo": "Mostrando as primeiras 400 linhas",
+        "descripcion": "Os saldos inicial e final e os totais são do período completo. Encurte o período para ver todas as linhas."
+      },
+      "filtrado": {
+        "titulo": "Razão filtrado",
+        "descripcion": "Os números vêm das linhas do filtro; o saldo acumulado começa em zero."
+      },
+      "tabla": "Movimentos da conta",
+      "sustantivo": {
+        "singular": "linha",
+        "plural": "linhas"
+      }
+    },
+    "periodos": {
+      "titulo": "Períodos contábeis",
+      "subtitulo": "{anio} · {meses, plural, one {# mês} other {# meses}}",
+      "subtituloSinCerrar": "{anio} · {meses, plural, one {# mês} other {# meses}} · {lista} sem fechar",
+      "generar": "Gerar {anio}",
+      "masAcciones": "Mais ações",
+      "actualizar": "Atualizar",
+      "anios": "Ano",
+      "anio": "Ano {anio}",
+      "cierreAnual": "Encerramento anual",
+      "cierreAnualSinPermiso": "Você precisa da permissão Encerrar exercício",
+      "rejilla": "Meses de {anio}",
+      "otros": "Outros períodos de {anio}",
+      "periodoAnual": "Período anual",
+      "periodoTrimestral": "Trimestre {n}",
+      "tarjeta": {
+        "actual": "{mes} · atual",
+        "asientos": "{n, plural, one {# lançamento} other {# lançamentos}}",
+        "sinMovimiento": "Sem movimento",
+        "pendientes": "{n, plural, =0 {0 pendentes} one {# pendente de contabilizar} other {# pendentes de contabilizar}}",
+        "borradores": "{n, plural, one {# rascunho} other {# rascunhos}}",
+        "rango": "De {desde} a {hasta}",
+        "cerradoPor": "Fechado por {nombre} · {fecha}",
+        "cerradoEl": "Fechado em {fecha}",
+        "reabierto": "Reaberto em {fecha}: {motivo}",
+        "enCurso": "Em andamento",
+        "futuro": "Futuro",
+        "pendienteCierre": "Pendente de fechamento",
+        "sinCrear": "Não criado",
+        "crearMes": "Criar mês",
+        "cerrar": "Fechar",
+        "reabrir": "Reabrir",
+        "notas": "Notas: {notas}"
+      },
+      "vacio": {
+        "titulo": "Gere os períodos de {anio}",
+        "descripcion": "Sem períodos não é possível fechar nem reabrir um mês. Gerá-los não cria lançamentos.",
+        "accion": "Gerar períodos"
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os períodos",
+        "descripcion": "Verifique a conexão e tente novamente. Nada foi fechado nem reaberto.",
+        "sinPermisoTitulo": "Você não tem acesso aos períodos",
+        "sinPermisoDescripcion": "Peça a um administrador acesso à Contabilidade."
+      },
+      "errores": {
+        "sinPermiso": "Você não tem permissão para esta ação.",
+        "faltanCuentasCierre": "Falta a conta de movimento 3605, ou 3610 para registrar o prejuízo.",
+        "periodoNoAbierto": "Esse período não está aberto.",
+        "periodoNoCerrado": "Esse período não está fechado.",
+        "conPendientes": "Não é possível fechar: há rascunhos ou pendências no período.",
+        "motivo": "Escreva o motivo da reabertura (mínimo 5 caracteres).",
+        "sinSucursal": "A organização não tem filial.",
+        "duplicado": "Esse período já existe.",
+        "desconocido": "Não foi possível concluir a ação. Tente novamente."
+      },
+      "exito": {
+        "cerrado": "{periodo} foi fechado",
+        "reabierto": "{periodo} foi reaberto",
+        "generadosMes": "12 períodos mensais gerados para {anio}",
+        "generadoAnual": "Período anual gerado para {anio}",
+        "mesCreado": "{periodo} criado",
+        "ejercicio": "Exercício {anio} encerrado em {cuenta} ({n, plural, one {# lançamento} other {# lançamentos}})"
+      },
+      "cerrar": {
+        "titulo": "Fechar {periodo}",
+        "descripcion": "Ninguém poderá registrar nem estornar lançamentos com data de {periodo}. Pode ser reaberto com motivo.",
+        "confirmar": "Fechar período",
+        "revisando": "Verificando o período…",
+        "pie": "Os avisos não bloqueiam o fechamento",
+        "bloqueado": "Resolva os itens em vermelho para fechar",
+        "sinPermiso": "Você precisa da permissão Fechar período contábil",
+        "notas": "Notas do fechamento",
+        "notasAyuda": "Opcional. Ficam no período.",
+        "items": {
+          "balanceOk": "O balancete fecha",
+          "balanceOkDetalle": "Débitos = créditos em {periodo}",
+          "balanceMal": "O balancete não fecha",
+          "balanceMalDetalle": "Diferença {valor}. Verifique em Saúde contábil",
+          "balanceSinDato": "Não foi possível verificar o balancete",
+          "pendientes": "{n, plural, =0 {0 fatos pendentes de contabilizar} one {# fato pendente de contabilizar} other {# fatos pendentes de contabilizar}}",
+          "pendientesOk": "Tudo de {periodo} tem lançamento",
+          "pendientesMal": "Bloqueia o fechamento · veja em Saúde contábil",
+          "borradores": "{n, plural, =0 {0 rascunhos} one {# rascunho} other {# rascunhos}}",
+          "borradoresOk": "Todos os lançamentos de {periodo} estão publicados",
+          "borradoresMal": "Bloqueia o fechamento · publique ou descarte",
+          "pendientesSinDato": "Não foi possível contar pendências e rascunhos",
+          "consecutivosOk": "Numeração de comprovantes sem saltos",
+          "consecutivosAviso": "{n, plural, one {Falta # número} other {Faltam # números}} na numeração",
+          "consecutivosDetalle": "Não bloqueia o fechamento",
+          "consecutivo": "{tipo}: de {desde} a {hasta} ({cantidad})",
+          "faltan": "faltam {lista}",
+          "ver": "Ver",
+          "verBorradores": "Ver rascunhos"
+        }
+      },
+      "reabrir": {
+        "titulo": "Reabrir {periodo}",
+        "descripcion": "Permite registrar novamente lançamentos com data em {periodo}.",
+        "confirmar": "Reabrir",
+        "consecuencia1": "Reabrir não estorna o lançamento de encerramento.",
+        "consecuencia2": "Fica registrado quem reabriu, quando e por quê.",
+        "etiquetaMotivo": "Motivo da reabertura",
+        "placeholder": "Ex.: ajuste de uma nota de fornecedor recebida tarde"
+      },
+      "generarDialogo": {
+        "titulo": "Gerar períodos fiscais",
+        "descripcion": "Cria os períodos do ano",
+        "anio": "Ano",
+        "tipo": "Tipo de período",
+        "mensuales": "Mensais (12 períodos)",
+        "anual": "Anual (1 período)",
+        "confirmar": "Gerar",
+        "yaExiste": "Já existem períodos desse tipo em {anio}",
+        "anioInvalido": "Digite um ano entre 2000 e 2100"
+      },
+      "ejercicio": {
+        "titulo": "Encerrar exercício {anio}",
+        "descripcion": "Transfere o resultado do ano ao patrimônio",
+        "anio": "Ano",
+        "borradoresTitulo": "{n, plural, one {Resta # rascunho} other {Restam # rascunhos}}",
+        "borradoresTexto": "Não é possível encerrar o ano com rascunhos. Publique ou descarte.",
+        "resultado": "Resultado do exercício",
+        "cuentaDestino": "Conta de destino",
+        "valor": "Valor",
+        "utilidad": "Lucro",
+        "perdida": "Prejuízo",
+        "cuenta3605": "3605 · Lucro do exercício",
+        "cuenta3610": "3610 · Prejuízo do exercício",
+        "calculando": "Calculando o resultado…",
+        "sinDato": "Não foi possível calcular o resultado. O encerramento o calcula no banco mesmo assim.",
+        "nota": "Se o ano der prejuízo, vai para a 3610. Reabrir não estorna o lançamento de encerramento.",
+        "confirmar": "Encerrar exercício"
+      }
+    },
+    "puc": {
+      "titulo": "Atualizar plano de contas",
+      "subtitulo": "A prévia não grava nada. Aplicar cria o lançamento de transferência e inativa as contas de origem.",
+      "subtituloMovil": "Prévia da transferência",
+      "aplicar": "Aplicar atualização",
+      "aplicarMotivo": "Marque a caixa de confirmação para aplicar",
+      "masAcciones": "Mais ações",
+      "recargar": "Atualizar prévia",
+      "revertir": "Reverter a última atualização",
+      "sector": "Setor: {sector}",
+      "kpis": {
+        "resumen": "Resumo da atualização",
+        "renombres": "Renomeações",
+        "reclasificaciones": "Reclassificações",
+        "conMovimientos": "Com movimentos",
+        "reglas": "Regras a ajustar",
+        "editadas": "{n, plural, one {# editada à mão não muda} other {# editadas à mão não mudam}}"
+      },
+      "reclasificaciones": {
+        "titulo": "Reclassificações com movimentos",
+        "descripcion": "O saldo líquido passa ao destino com um lançamento. A conta de origem fica inativa e mantém o histórico.",
+        "origen": "Origem",
+        "destino": "Destino",
+        "debito": "Débito",
+        "credito": "Crédito",
+        "neto": "Líquido",
+        "motivo": "Motivo",
+        "netoCredito": "{valor} C",
+        "vacio": "Não há saldos a transferir."
+      },
+      "renombres": {
+        "titulo": "Renomeações sem movimento",
+        "codigo": "Código",
+        "actual": "Nome atual",
+        "propuesto": "Nome do decreto",
+        "vacio": "Não há nomes a corrigir."
+      },
+      "reglas": {
+        "titulo": "Regras contábeis",
+        "descripcion": "Só mudam as que ainda têm o código anterior. As editadas à mão são informadas e não mudam.",
+        "regla": "Regra",
+        "origen": "Origem",
+        "lado": "Lado",
+        "actual": "Atual",
+        "propuesto": "Proposto",
+        "estado": "Status",
+        "seActualiza": "Será atualizada",
+        "editada": "Editada, não muda",
+        "vacio": "Não há regras a reatribuir."
+      },
+      "confirmar": "Confirmo a transferência. Pode ser revertida com o estorno da execução.",
+      "vacio": {
+        "titulo": "Seu plano já está em dia",
+        "descripcion": "Não há contas a renomear, saldos a transferir nem regras a ajustar."
+      },
+      "error": {
+        "titulo": "Não foi possível ler a prévia",
+        "descripcion": "Nada foi aplicado. Tente novamente.",
+        "reintentar": "Tentar novamente"
+      },
+      "resultado": {
+        "aplicado": "Transferência registrada",
+        "yaAplicado": "Já estava aplicado",
+        "corrida": "Execução {id}",
+        "verAsiento": "Ver lançamento de transferência #{id}"
+      },
+      "toast": {
+        "aplicado": "Plano de contas atualizado",
+        "yaAplicado": "Esta organização já tinha a transferência",
+        "revertido": "Atualização revertida com seu estorno",
+        "error": "Não foi possível concluir: {detalle}",
+        "sinCorrida": "Não há atualização aplicada para reverter.",
+        "sinOrganizacion": "Não há organização ativa"
+      },
+      "revertirDialogo": {
+        "titulo": "Reverter a última atualização do plano",
+        "descripcion": "O estorno da transferência é registrado e as regras voltam ao código anterior. Lançamentos publicados não são apagados.",
+        "confirmar": "Reverter"
+      }
+    },
+    "reglas": {
+      "permiso": "Requer a permissão «Criar em Finanças».",
+      "noSePuedeGuardar": "Não é possível salvar: uma conta é sintética, está inativa ou não existe.",
+      "campo": {
+        "agrupadora": "{cuenta} é sintética: escolha uma subconta.",
+        "agrupadoraCon": "{cuenta} é sintética: escolha uma subconta ({subcuenta}).",
+        "inactiva": "{cuenta} está inativa.",
+        "inexistente": "{cuenta} não existe no seu plano de contas."
+      },
+      "vista": {
+        "titulo": "Prévia",
+        "sinDatos": "Escolha as contas de débito e crédito para ver o lançamento que a regra geraria.",
+        "ejemplo": "Com um documento de exemplo ({documento}, {total}) esta regra geraria:",
+        "documento": "documento",
+        "lado": {
+          "debito": "Débito da regra",
+          "credito": "Crédito da regra",
+          "impuesto": "IVA do documento"
+        },
+        "agrupadora": "Sintética: não recebe lançamentos",
+        "inexistente": "Não existe no plano",
+        "estado": {
+          "cuadra": "O lançamento fecha.",
+          "agrupadora": "Não é possível salvar: uma conta é sintética.",
+          "inexistente": "Não é possível salvar: uma conta não existe ou está inativa.",
+          "sinDatos": "Escolha as contas para ver o lançamento."
+        },
+        "aviso": {
+          "agrupadora": "Uma conta é sintética: os documentos com esta regra ficarão pendentes de contabilização.",
+          "inexistente": "Uma conta não existe ou está inativa: os documentos com esta regra ficarão pendentes de contabilização."
+        }
+      }
+    },
+    "salud": {
+      "titulo": "Saúde contábil",
+      "subtitulo": "Toda a organização",
+      "subtituloRevisado": "Verificado às {hora} · toda a organização",
+      "actualizar": "Atualizar",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à contabilidade",
+        "descripcion": "Peça a um administrador a permissão para ver Finanças."
+      },
+      "kpis": {
+        "resumen": "Resumo da saúde contábil",
+        "balance": "Balancete",
+        "cuadra": "Fecha",
+        "noCuadra": "Não fecha",
+        "cuadraDetalle": "Σ débitos = Σ créditos",
+        "diferencia": "Diferença {valor}",
+        "descuadresDetalle": "lançamento ≠ documento",
+        "huerfanosDetalle": "documento excluído"
+      },
+      "pestanas": {
+        "pendientes": "Pendentes de contabilizar",
+        "descuadres": "Divergências",
+        "huerfanos": "Órfãos",
+        "estructura": "Estrutura"
+      },
+      "inactivo": {
+        "corto": "ainda não ativada",
+        "titulo": "Verificação ainda não ativada",
+        "descripcion": "Cruzar cada lançamento com seu documento exige a função de saúde contábil no banco. Ela está escrita e aguarda aprovação; até lá esta aba não mostra números, para que um dado não verificado nunca pareça zero."
+      },
+      "enOrden": {
+        "titulo": "Tudo contabilizado",
+        "descripcion": "0 pendências, 0 divergências e o balancete fecha."
+      },
+      "balanceMal": {
+        "titulo": "O balancete não fecha",
+        "descripcion": "Os débitos e créditos publicados diferem em {valor}. Revise o balancete antes de fechar um período."
+      },
+      "error": {
+        "titulo": "Não foi possível verificar",
+        "descripcion": "A consulta falhou. Isso não significa que está tudo certo.",
+        "reintentar": "Tentar de novo"
+      },
+      "columnas": {
+        "documento": "Documento",
+        "tipo": "Tipo",
+        "totalDocumento": "Total do documento",
+        "totalAsiento": "Total do lançamento",
+        "diferencia": "Diferença",
+        "asiento": "Lançamento",
+        "fecha": "Data",
+        "origen": "Origem",
+        "motivo": "Motivo",
+        "importe": "Valor",
+        "cuenta": "Conta",
+        "subcuentas": "Subcontas",
+        "movimientos": "Movimentos",
+        "saldo": "Saldo",
+        "lado": "Lado",
+        "estado": "Status",
+        "propuesta": "Proposta"
+      },
+      "subtipos": {
+        "asiento_distinto": "Lançamento ≠ documento",
+        "devengo_duplicado": "Provisão duplicada",
+        "borrador_con_asiento": "Rascunho com lançamento"
+      },
+      "vacios": {
+        "descuadres": {
+          "titulo": "Sem divergências",
+          "descripcion": "Cada fatura confere com seu lançamento."
+        },
+        "huerfanos": {
+          "titulo": "Sem lançamentos órfãos",
+          "descripcion": "Todos os lançamentos têm seu documento."
+        },
+        "agrupadoras": {
+          "titulo": "Nenhuma conta sintética com movimento",
+          "descripcion": "Os movimentos estão em contas analíticas."
+        },
+        "reglas": {
+          "titulo": "Todas as regras apontam para contas válidas",
+          "descripcion": "Nenhuma regra usa conta sintética, inativa ou inexistente."
+        }
+      },
+      "limite": "Mostrando {n} de {total}.",
+      "soloLectura": "Somente leitura: uma divergência se corrige com estorno e reemissão do documento, nunca editando o lançamento.",
+      "motivos": {
+        "documento_eliminado": "O documento não existe mais",
+        "sin_lineas": "Lançamento sem linhas"
+      },
+      "huerfanosAyuda": "O documento que originou estes lançamentos foi excluído. Revise-os com o contador antes de estorná-los.",
+      "estructura": {
+        "agrupadorasTitulo": "Contas sintéticas com movimento",
+        "agrupadorasAyuda": "Têm subcontas e mesmo assim recebem lançamentos próprios: o saldo fica fora das subcontas.",
+        "reglasTitulo": "Regras com contas a corrigir",
+        "reglasAyuda": "Enquanto uma regra apontar para conta sintética, inativa ou inexistente, seus documentos ficam pendentes.",
+        "irReglas": "Ir para regras contábeis"
+      },
+      "lados": {
+        "debito": "Débito",
+        "credito": "Crédito",
+        "impuesto": "Imposto",
+        "descuento": "Desconto"
+      },
+      "estadosCuenta": {
+        "inexistente": "Inexistente",
+        "inactiva": "Inativa",
+        "titulo": "Conta sintética"
+      }
+    }
+  },
+  "finanzasDocumentosR3": {
+    "bandeja": {
+      "titulo": "Faturação eletrônica",
+      "subtitulo": {
+        "activo": "Envios à autoridade fiscal (DIAN) · serviço da GO Admin ativo desde {fecha}",
+        "pendiente": "Envios à autoridade fiscal (DIAN) · serviço da GO Admin pendente de ativação",
+        "suspendido": "Envios à autoridade fiscal (DIAN) · serviço da GO Admin suspenso",
+        "movilActivo": "Serviço da GO Admin · ativo",
+        "movilPendiente": "Serviço da GO Admin · não ativado"
+      },
+      "migas": {
+        "finanzas": "Finanças"
+      },
+      "servicioYResoluciones": "Serviço e resoluções",
+      "actualizar": "Atualizar",
+      "exportar": "Exportar",
+      "exportando": "Exportando…",
+      "archivoExportacion": "envios_dian",
+      "tabla": "Envios à DIAN",
+      "sinNumero": "Sem número",
+      "sustantivo": {
+        "singular": "envio",
+        "plural": "envios"
+      },
+      "avisos": {
+        "pendienteTitulo": "Sua conta ainda não está ativa",
+        "pendienteDescripcion": "A GO Admin ativa a faturação eletrônica da sua organização. Enquanto isso, o que você faturar como eletrônico fica guardado aqui como retido.",
+        "suspendidoTitulo": "O serviço de faturação eletrônica está suspenso",
+        "suspendidoDescripcion": "Nenhum documento é enviado à DIAN. Fale com o suporte da GO Admin para reativá-lo; o que você faturar fica guardado.",
+        "verPasos": "Ver passos para ativar",
+        "retenidosTitulo": "{count, plural, one {# documento aguarda sua confirmação} other {# documentos aguardam sua confirmação}}",
+        "retenidosDescripcion": "Foram guardados antes de ativar o serviço. Se você enviá-los, a DIAN os emite com a data de hoje; se não, são cancelados com registro.",
+        "revisar": "Revisar"
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos envios",
+        "enCola": "Na fila",
+        "enColaDetalle": "Enviado em menos de 2 minutos",
+        "retenidos": "Retidos",
+        "retenidosDetalle": "Aguardam sua confirmação",
+        "retenidosPendiente": "Aguardam a ativação do serviço",
+        "aceptadosMes": "Aceitos · {mes}",
+        "exito": "{pct} % de sucesso",
+        "rechazados": "Rejeitados",
+        "rechazadosDetalle": "Corrija e reenvie"
+      },
+      "pestanas": {
+        "etiqueta": "Envios por status",
+        "todos": "Todos",
+        "atender": "Para resolver",
+        "aceptados": "Aceitos",
+        "radian": "Recebidos (RADIAN) · fase 2",
+        "radianMotivo": "Os eventos de faturas recebidas (RADIAN) chegam na fase 2: a aba ainda não tem ações."
+      },
+      "buscar": {
+        "placeholder": "Buscar por número, cliente ou código único (CUFE)",
+        "etiqueta": "Buscar envios"
+      },
+      "filtros": {
+        "periodo": "Período",
+        "tipo": "Tipo de documento",
+        "estado": "Status",
+        "sucursal": "Filial",
+        "todos": "Todos",
+        "todasSucursales": "Todas as filiais",
+        "limpiar": "Limpar filtros",
+        "verN": "{count, plural, one {Ver # envio} other {Ver # envios}}",
+        "chipPeriodo": "Período: {rango}",
+        "chipEstado": "Status: {estado}",
+        "chipTipo": "Tipo: {tipo}",
+        "chipSucursal": "Filial: {sucursal}"
+      },
+      "columnas": {
+        "documento": "Documento",
+        "tipo": "Tipo",
+        "tercero": "Terceiro",
+        "total": "Total",
+        "estado": "Status",
+        "estadoDian": "Status DIAN",
+        "intentos": "Tentativas",
+        "respuesta": "Última resposta",
+        "fecha": "Data",
+        "proximoPaso": "Próximo passo",
+        "codigoUnico": "Código único (CUFE)"
+      },
+      "tipos": {
+        "invoice": "Fatura de venda",
+        "credit_note": "Nota de crédito",
+        "debit_note": "Nota de débito",
+        "support_document": "Documento de suporte"
+      },
+      "estados": {
+        "retenido": "Retido",
+        "en_cola": "Na fila",
+        "reintento": "Erro",
+        "procesando": "Enviando",
+        "enviado": "Enviado",
+        "aceptado": "Aceita DIAN",
+        "rechazado": "Rejeitada DIAN",
+        "error": "Não enviado",
+        "cancelado": "Cancelado"
+      },
+      "intentos": {
+        "ninguno": "Sem tentativas",
+        "de": "{n} de {max} tentativas"
+      },
+      "respuesta": {
+        "retenido": "Guardado antes de ativar o serviço",
+        "aceptado": "Aceito pela DIAN",
+        "cancelado": "Envio cancelado",
+        "enCola": "Na fila para envio",
+        "esperando": "Aguardando resposta da DIAN",
+        "servicioNoActivo": "O serviço de faturação eletrônica não está ativo",
+        "datosIncompletos": "Faltam dados do documento para enviá-lo",
+        "esperandoFactura": "Aguardando a DIAN aceitar a fatura de origem",
+        "sinRespuesta": "A DIAN não respondeu; nova tentativa automática",
+        "rechazo": "A DIAN rejeitou o documento",
+        "error": "Não foi possível enviar o documento"
+      },
+      "paso": {
+        "confirmar": "Sua confirmação",
+        "corregir": "Corrigir e reenviar",
+        "envio_pronto": "Enviado em menos de 2 minutos",
+        "esperando": "Aguardando a DIAN",
+        "reintentar": "Revisar e tentar de novo",
+        "reintentoA": "Nova tentativa às {hora}",
+        "reintentoPronto": "Nova tentativa automática"
+      },
+      "rapidas": {
+        "enviarHoy": "Enviar hoje",
+        "corregir": "Corrigir",
+        "reintentar": "Tentar de novo",
+        "pdfXml": "PDF e XML"
+      },
+      "acciones": {
+        "verDetalle": "Ver detalhe do envio",
+        "verDocumento": "Ver documento",
+        "descargarPdf": "Baixar PDF oficial",
+        "descargarXml": "Baixar XML",
+        "enviarHoy": "Enviar com a data de hoje",
+        "reintentar": "Tentar de novo",
+        "cancelar": "Cancelar o envio"
+      },
+      "motivos": {
+        "servicio_inactivo": "Pode ser enviado quando a GO Admin ativar o serviço",
+        "sin_permiso": "Você precisa da permissão de aprovar em Finanças"
+      },
+      "lote": {
+        "enviarHoy": "Enviar retidos hoje ({n})",
+        "reintentar": "Tentar de novo ({n})",
+        "cancelar": "Cancelar envios ({n})",
+        "maximo": "Máximo de {n} documentos por envio",
+        "sinRetenidos": "A seleção não tem documentos retidos que você possa enviar",
+        "sinReintentables": "A seleção não tem envios para tentar de novo",
+        "sinCancelables": "A seleção não tem envios que possam ser cancelados"
+      },
+      "liberar": {
+        "titulo": "{count, plural, one {Enviar # documento retido} other {Enviar # documentos retidos}}",
+        "descripcion": "Foram guardados antes de ativar o serviço. Ao enviá-los, a DIAN os emite com a data de hoje.",
+        "avisoTitulo": "A DIAN os emite com a data de hoje ({fecha})",
+        "avisoDescripcion": "Não é possível usar a data da venda. Se você não os enviar, são cancelados com registro e a venda continua válida como documento interno.",
+        "confirmar": "Enviar com data {fecha}",
+        "cancelar": "Cancelar",
+        "del": "de {fecha}"
+      },
+      "cancelarEnvio": {
+        "titulo": "{count, plural, one {Cancelar o envio?} other {Cancelar # envios?}}",
+        "descripcion": "O documento não é enviado à DIAN e fica como documento interno. Você pode tentar de novo depois.",
+        "confirmar": "Cancelar o envio",
+        "volver": "Voltar"
+      },
+      "toast": {
+        "reintentados": "{count, plural, one {Envio programado para nova tentativa} other {# envios programados para nova tentativa}}",
+        "reintentadosAyuda": "Enviado em menos de 2 minutos.",
+        "errorReintentar": "{count, plural, one {Não foi possível tentar de novo um envio} other {Não foi possível tentar de novo # envios}}",
+        "liberados": "{count, plural, one {Documento enviado à DIAN} other {# documentos enviados à DIAN}}",
+        "liberadosFallidos": "{count, plural, one {Um documento não pôde ser enviado} other {# documentos não puderam ser enviados}}",
+        "errorLiberar": "Não foi possível enviar os documentos",
+        "sinPermiso": "Você não tem permissão para esta ação",
+        "cancelados": "{count, plural, one {Envio cancelado} other {# envios cancelados}}",
+        "errorCancelar": "{count, plural, one {Não foi possível cancelar um envio} other {Não foi possível cancelar # envios}}",
+        "errorDescarga": "Não foi possível baixar o {tipo}",
+        "errorExportar": "Não foi possível exportar"
+      },
+      "vacio": {
+        "titulo": "Ainda não há documentos enviados",
+        "descripcion": "Quando você faturar como eletrônico, cada envio à DIAN aparece aqui com sua resposta.",
+        "nadaPorAtender": "Nada para resolver: nenhum envio retido, rejeitado ou com erro."
+      },
+      "vacioServicio": {
+        "titulo": "Você ainda não emite fatura eletrônica",
+        "descripcion": "Quando a GO Admin ativar sua conta, o que você faturar como eletrônico será enviado automaticamente à DIAN e aparecerá aqui.",
+        "descripcionRetenidos": "Quando a GO Admin ativar sua conta, o que você faturar como eletrônico será enviado automaticamente à DIAN e aparecerá aqui. {count, plural, one {Seu documento retido continua guardado.} other {Seus # documentos retidos continuam guardados.}}",
+        "verRetenidos": "Ver retidos"
+      },
+      "sinResultados": "Nenhum envio corresponde à busca ou aos filtros.",
+      "errorCarga": "Não foi possível carregar os envios",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à faturação eletrônica",
+        "descripcion": "Peça a um administrador a permissão de ver Finanças."
+      },
+      "detalle": {
+        "cargando": "Carregando envio…",
+        "documentoDel": "documento de {fecha}",
+        "quePaso": "O que aconteceu",
+        "queHacer": "O que fazer",
+        "queHacerCliente": "Corrija os dados do cliente (NIT, dígito verificador, e-mail) na ficha dele.",
+        "queHacerProveedor": "Corrija os dados do fornecedor (NIT, dígito verificador, e-mail) na ficha dele.",
+        "queHacerReenviar": "Volte aqui e toque em «Reenviar». É enviado com a mesma numeração.",
+        "queHacerError": "Revise o documento e toque em «Tentar de novo». Se o erro se repetir, fale com o suporte da GO Admin.",
+        "retenidoAvisoTitulo": "Se você enviar, a DIAN o emite com a data de hoje ({fecha})",
+        "retenidoAvisoDescripcion": "Não é possível usar a data da venda. Se você não enviar, é cancelado com registro e a venda continua válida como documento interno.",
+        "retenidoAvisoPendiente": "Poderá ser enviado quando a GO Admin ativar o serviço. Enquanto isso, a venda continua válida como documento interno.",
+        "cancelarEnvio": "Cancelar o envio",
+        "enviarHoy": "Enviar com a data de hoje",
+        "corregirCliente": "Corrigir o cliente",
+        "corregirProveedor": "Corrigir o fornecedor",
+        "reenviar": "Reenviar",
+        "reintentar": "Tentar de novo",
+        "documentoAceptado": "Documento aceito",
+        "pdfOficial": "PDF oficial",
+        "xml": "XML",
+        "numeroDian": "Número DIAN",
+        "codigoUnico": "Código único (CUFE)",
+        "copiar": "Copiar o código único",
+        "copiado": "Código copiado",
+        "validado": "Validado",
+        "notificaciones": "Notificações da DIAN",
+        "tecnicos": "Detalhes técnicos",
+        "codigo": "Código {codigo}",
+        "codigoTecnico": "Código",
+        "mensajeTecnico": "Mensagem",
+        "intentos": "Tentativas",
+        "noEncontrado": "Não encontramos este envio",
+        "error": "Não foi possível carregar o envio"
+      },
+      "linea": {
+        "creado": "Documento criado",
+        "retenido": "Retido",
+        "retenidoDetalle": "O serviço de faturação eletrônica não estava ativo. Não se tentou enviar.",
+        "enviado": "Enviado à DIAN",
+        "aceptado": "Aceito pela DIAN",
+        "aceptadoDetalle": "Número {numero}",
+        "rechazado": "Rejeitado pela DIAN",
+        "error": "Não foi possível enviar",
+        "reintentoManual": "Nova tentativa solicitada",
+        "liberado": "Envio autorizado",
+        "liberadoDetalle": "É emitido com a data do dia em que a DIAN o validar.",
+        "cancelado": "Envio cancelado",
+        "envioDian": "Envio à DIAN",
+        "esperaConfirmacion": "Aguarda sua confirmação.",
+        "proximoIntento": "Próxima tentativa",
+        "respuestaDian": "Resposta da DIAN"
+      }
+    },
+    "cotizaciones": {
+      "titulo": "Orçamentos",
+      "migas": {
+        "finanzas": "Finanças",
+        "ventas": "Vendas"
+      },
+      "estados": {
+        "draft": "Rascunho",
+        "sent": "Enviado",
+        "accepted": "Aceito",
+        "rejected": "Recusado",
+        "expired": "Vencido",
+        "converted": "Convertido"
+      },
+      "listado": {
+        "sustantivo": {
+          "singular": "orçamento",
+          "plural": "orçamentos"
+        },
+        "todasLasSucursales": "Todas as filiais",
+        "tambienCrm": "inclusive as propostas do CRM",
+        "exportar": "Exportar",
+        "exportando": "Exportando…",
+        "exportarError": "Não foi possível exportar. Tente novamente.",
+        "archivoExportacion": "orcamentos",
+        "nueva": "Novo orçamento",
+        "buscar": "Buscar por número, cliente ou documento",
+        "buscarEtiqueta": "Buscar orçamentos",
+        "vacio": {
+          "titulo": "Crie seu primeiro orçamento",
+          "descripcion": "Envie ao cliente preços e condições; quando ele aceitar, converta em fatura. Também são criados a partir de uma oportunidade do CRM."
+        },
+        "sinResultados": "Nenhum orçamento corresponde à busca ou aos filtros.",
+        "errorCarga": "Não foi possível carregar os orçamentos.",
+        "sinPermiso": "Você não tem acesso aos orçamentos",
+        "sinPermisoDescripcion": "Peça a um administrador a permissão de ver finanças ou de gerenciar vendas."
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos orçamentos",
+        "abiertas": "Abertos",
+        "abiertasDetalle": "{valor} em rascunho e enviados",
+        "porVencer": "Vencem em 7 dias",
+        "vencidas": "Vencidos sem resposta",
+        "vencidasDetalle": "Duplique-os para renová-los",
+        "sinVencidas": "Nenhum vencido",
+        "conversion": "Convertidos · {periodo}",
+        "conversionDetalle": "{convertidas} de {enviadas} enviados"
+      },
+      "columnas": {
+        "numero": "Número",
+        "cliente": "Cliente",
+        "documento": "Documento",
+        "emision": "Emissão",
+        "validaHasta": "Válido até",
+        "moneda": "Moeda",
+        "total": "Total",
+        "estado": "Status",
+        "vendedor": "Vendedor",
+        "oportunidad": "Oportunidade"
+      },
+      "vigencia": {
+        "vencio": "{dias, plural, one {venceu há # dia} other {venceu há # dias}}",
+        "venceHoy": "vence hoje",
+        "venceEn": "{dias, plural, one {vence em # dia} other {vence em # dias}}"
+      },
+      "filtros": {
+        "periodo": "Período de emissão",
+        "periodoChip": "Emitidos: {rango}",
+        "estado": "Status",
+        "estadoChip": "Status: {estado}",
+        "todos": "Todos",
+        "abiertas": "Abertos (rascunho e enviados)",
+        "vigenciaEtiqueta": "Validade",
+        "porVencerCorto": "A vencer",
+        "vencidasCorto": "Vencidos",
+        "vigencia": {
+          "por_vencer": "Vencem em 7 dias",
+          "vencidas": "Vencidos sem resposta"
+        },
+        "cliente": "Cliente",
+        "clienteChip": "Cliente: {nombre}",
+        "vendedor": "Vendedor",
+        "vendedorChip": "Vendedor: {nombre}",
+        "buscarVendedor": "Buscar vendedor",
+        "oportunidadEtiqueta": "Oportunidade do CRM",
+        "conOportunidad": "Com oportunidade",
+        "sinOportunidad": "Sem oportunidade",
+        "oportunidad": {
+          "con": "Com oportunidade do CRM",
+          "sin": "Sem oportunidade do CRM"
+        },
+        "montoMin": "Total a partir de",
+        "montoMax": "Total até",
+        "montoMinChip": "A partir de {monto}",
+        "montoMaxChip": "Até {monto}",
+        "verN": "{count, plural, one {Ver {n} orçamento} other {Ver {n} orçamentos}}",
+        "limpiar": "Limpar filtros"
+      },
+      "acciones": {
+        "ver": "Ver detalhe",
+        "enviar": "Enviar",
+        "convertir": "Converter",
+        "verFactura": "Ver fatura",
+        "editar": "Editar",
+        "duplicar": "Duplicar",
+        "duplicada": "O orçamento {numero} foi criado como rascunho.",
+        "descargarPdf": "Baixar PDF",
+        "imprimir": "Imprimir",
+        "marcarRechazada": "Marcar recusado",
+        "eliminarBorrador": "Excluir rascunho",
+        "marcarEnviada": "Marcar enviado (sem e-mail)"
+      },
+      "estado": {
+        "aceptada": "O orçamento {numero} foi aceito.",
+        "rechazada": "O orçamento {numero} foi recusado.",
+        "enviada": "O orçamento {numero} foi marcado como enviado."
+      },
+      "eliminar": {
+        "titulo": "Excluir o orçamento {numero}?",
+        "descripcion": "O orçamento em rascunho é excluído e não pode ser recuperado.",
+        "confirmar": "Excluir orçamento",
+        "hecho": "O orçamento {numero} foi excluído."
+      },
+      "rechazar": {
+        "titulo": "Marcar o orçamento {numero} como recusado?",
+        "descripcion": "O cliente não o aceitou. Um orçamento recusado não é mais editado nem convertido em fatura; você pode duplicá-lo para fazer outro.",
+        "confirmar": "Marcar recusado"
+      },
+      "enviar": {
+        "titulo": "Enviar o orçamento {numero}",
+        "descripcion": "É enviado por e-mail com o PDF do orçamento anexado. Se estiver em rascunho, passa a enviado.",
+        "enviada": "Orçamento enviado",
+        "enviadaA": "Enviado para {destino} com o PDF anexado.",
+        "enviadaSinAdjunto": "Enviado para {destino} sem o PDF: não foi possível gerá-lo agora."
+      },
+      "convertir": {
+        "titulo": "Converter {numero} em fatura",
+        "lineas": "{count, plural, one {# linha} other {# linhas}}",
+        "sucursal": "Filial da fatura",
+        "sucursalAyuda": "A numeração vem da resolução desta filial ao emitir.",
+        "eligeSucursal": "Escolha a filial da fatura.",
+        "queSeCopia": "O que é copiado",
+        "clienteCondiciones": "Cliente e condições",
+        "plazo": "Prazo de {dias} dias",
+        "contado": "À vista",
+        "vendedor": "vendedor {nombre}",
+        "lineasEtiqueta": "Linhas",
+        "lineasConDescuento": "{count, plural, one {#, com seu desconto} other {#, com seus descontos}}",
+        "impuesto": "Imposto",
+        "total": "Total",
+        "nacerBorrador": "A fatura nasce como rascunho",
+        "nacerBorradorDetalle": "Revise-a e emita-a no seu detalhe: ali é tomado o número da resolução, os números de série são vendidos e, se for eletrônica, ela é enviada à DIAN. O orçamento fica «Convertido» e vinculado.",
+        "confirmar": "Criar fatura em rascunho"
+      },
+      "detalle": {
+        "titulo": "Orçamento {numero}",
+        "cargando": "Carregando orçamento…",
+        "procesando": "Processando…",
+        "sinCliente": "Sem cliente",
+        "noEncontrada": "Orçamento não encontrado",
+        "noEncontradaDescripcion": "O orçamento que você procura não existe nesta organização ou foi excluído.",
+        "volverListado": "Voltar aos orçamentos",
+        "errorCarga": "Não foi possível carregar o orçamento.",
+        "validaHasta": "válido até {fecha}",
+        "vencioEl": "venceu em {fecha}",
+        "impuesto": "Imposto",
+        "acciones": {
+          "enviar": "Enviar",
+          "reenviar": "Enviar novamente",
+          "convertir": "Converter em fatura",
+          "ver_factura": "Ver fatura",
+          "duplicar": "Duplicar",
+          "renovar": "Duplicar válido a partir de hoje",
+          "editar": "Editar",
+          "aceptar": "Marcar aceito",
+          "rechazar": "Marcar recusado",
+          "eliminar": "Excluir rascunho",
+          "pdf": "Baixar PDF",
+          "imprimir": "Imprimir",
+          "marcar_enviada": "Marcar enviado (sem e-mail)"
+        },
+        "avisoVencida": {
+          "titulo": "Venceu em {fecha}",
+          "descripcion": "Um orçamento vencido não é convertido em fatura. Duplique-o válido a partir de hoje: linhas e preços são mantidos; revise-os antes de enviar."
+        },
+        "avisoConvertida": {
+          "titulo": "Convertido na fatura {numero}",
+          "descripcion": "A fatura nasceu como rascunho com estas linhas e impostos. Revise-a e emita-a no seu detalhe."
+        },
+        "clienteCondiciones": "Cliente e condições",
+        "cliente": "Cliente",
+        "emision": "Emissão",
+        "validaHastaEtiqueta": "Válido até",
+        "vigenciaVencio": "{fecha} · {dias, plural, one {venceu há # dia} other {venceu há # dias}}",
+        "vigenciaHoy": "{fecha} · vence hoje",
+        "vigenciaVenceEn": "{fecha} · {dias, plural, one {vence em # dia} other {vence em # dias}}",
+        "plazo": "Prazo de pagamento",
+        "dias": "{dias} dias",
+        "contado": "À vista",
+        "sucursal": "Filial",
+        "vendedor": "Vendedor",
+        "moneda": "Moeda",
+        "lineas": "Linhas do orçamento",
+        "descuentos": "Descontos",
+        "terminos": "Termos e condições",
+        "notas": "Notas internas",
+        "respuesta": {
+          "titulo": "Resposta do cliente",
+          "descripcion": "O cliente respondeu? Marque para que a oportunidade do CRM avance.",
+          "rechazar": "Recusar"
+        },
+        "cadena": {
+          "titulo": "Cadeia",
+          "oportunidad": "Oportunidade do CRM",
+          "factura": "Fatura",
+          "alConvertir": "Ao converter",
+          "noSeConvierte": "Não é convertido: está vencido",
+          "rechazada": "Não é convertido: foi recusado"
+        },
+        "historial": {
+          "titulo": "Histórico",
+          "creada": "Criado",
+          "creadaDesde": "Criado a partir da oportunidade «{oportunidad}»",
+          "enviada": "Enviado para {destino}",
+          "vista": "{destino} abriu o e-mail",
+          "convertida": "Convertido na fatura {numero}"
+        }
+      },
+      "formulario": {
+        "tituloNueva": "Novo orçamento",
+        "tituloEditar": "Editar orçamento {numero}",
+        "sinGuardar": "Não salvo",
+        "guardarBorrador": "Salvar rascunho",
+        "guardarCambios": "Salvar alterações",
+        "guardarYEnviar": "Salvar e enviar",
+        "creada": "O orçamento {numero} foi criado.",
+        "guardada": "As alterações do orçamento {numero} foram salvas.",
+        "errorGuardar": "Não foi possível salvar o orçamento. Tente novamente.",
+        "errorCarga": "Não foi possível carregar o formulário.",
+        "total": "Total",
+        "impuestoLinea": "+ {importe} de imposto",
+        "impuestoIncluido": "Inclui {importe} de imposto",
+        "duplicarLinea": "Duplicar linha",
+        "lineasVacio": "Ainda não há linhas",
+        "lineasVacioDescripcion": "Busque produtos ou adicione um item manual.",
+        "buscarProducto": "Buscar produto",
+        "itemManual": "Item manual",
+        "noEditable": {
+          "titulo": "O orçamento {numero} não pode mais ser editado",
+          "descripcion": "Só se editam orçamentos em rascunho ou enviados. No detalhe você pode duplicá-lo para fazer um novo.",
+          "verCotizacion": "Ver o orçamento"
+        },
+        "atajos": {
+          "cliente": "Escolher cliente",
+          "productos": "Buscar produtos",
+          "manual": "Adicionar item manual",
+          "guardar": "Salvar rascunho"
+        },
+        "secciones": {
+          "datos": "Dados do orçamento",
+          "cliente": "Cliente",
+          "lineas": "Linhas ({n})",
+          "lineasEtiqueta": "Linhas do orçamento",
+          "terminos": "Termos e notas",
+          "impuestos": "Impostos"
+        },
+        "campos": {
+          "sucursal": "Filial",
+          "elegirSucursal": "Escolha a filial",
+          "emision": "Emissão",
+          "validaHasta": "Válido até",
+          "validaHastaAyuda": "Depois desta data o orçamento vence e não pode mais ser convertido em fatura.",
+          "atajosVigencia": "Validade rápida",
+          "dias": "{dias} dias",
+          "plazo": "Prazo de pagamento",
+          "contado": "À vista",
+          "formaPago": "Forma de pagamento",
+          "sinDefinir": "Não definida",
+          "moneda": "Moeda",
+          "vendedor": "Vendedor",
+          "elegirVendedor": "Escolha o vendedor",
+          "buscarVendedor": "Buscar vendedor",
+          "sinVendedor": "Sem vendedor",
+          "oportunidad": "Oportunidade do CRM",
+          "oportunidadAyuda": "Se o orçamento ainda não tem linhas, os produtos da oportunidade são trazidos.",
+          "sinOportunidad": "Sem oportunidade",
+          "buscarOportunidad": "Buscar oportunidade",
+          "terminosCondiciones": "Termos e condições",
+          "terminosCondicionesAyuda": "O cliente os vê no PDF: sinal, entrega, garantia.",
+          "notas": "Notas internas",
+          "notasAyuda": "Só para sua equipe.",
+          "preciosIncluidos": "Preços com imposto incluído",
+          "preciosIncluidosAyuda": "Ative se os preços das linhas já incluem o imposto."
+        },
+        "errores": {
+          "cliente": "Escolha o cliente.",
+          "sucursal": "Escolha a filial.",
+          "lineas": "Adicione pelo menos uma linha.",
+          "vigencia": "A validade não pode ser anterior à emissão.",
+          "linea": "Revise uma linha: {detalle}",
+          "descripcion": "falta a descrição",
+          "cantidad": "a quantidade deve ser maior que zero",
+          "precio": "o preço não é válido",
+          "descuento": "o desconto não pode superar o valor da linha"
+        }
+      }
+    },
+    "notas": {
+      "migas": {
+        "finanzas": "Finanças",
+        "facturacion": "Faturamento",
+        "notas": "Notas"
+      },
+      "titulo": "Notas",
+      "subtituloSufijo": "notas de crédito e débito sobre suas faturas",
+      "pestanas": {
+        "etiqueta": "Tipo de nota",
+        "credito": "Crédito",
+        "debito": "Débito"
+      },
+      "listado": {
+        "nuevaCredito": "Nova nota de crédito",
+        "nuevaDebito": "Nova nota de débito",
+        "exportar": "Exportar",
+        "exportando": "Exportando…",
+        "exportarError": "Não foi possível exportar a lista.",
+        "archivo": "notas",
+        "todasLasSucursales": "Todas as filiais",
+        "todasLasFechas": "Todas as datas",
+        "truncado": "Há mais notas do que é possível contar aqui: reduza o período para ver números exatos.",
+        "kpis": {
+          "etiqueta": "Resumo das notas",
+          "acreditado": "Creditado no período",
+          "debitado": "Cobrado no período",
+          "notas": "{count, plural, =0 {Sem notas} one {# nota} other {# notas}}",
+          "excedente": "Excedentes em crédito do cliente",
+          "conExcedente": "{count, plural, =0 {Nenhuma nota deixou crédito ao cliente} one {# nota sobre faturas pagas} other {# notas sobre faturas pagas}}",
+          "anuladas": "Anuladas",
+          "anuladasDetalle": "Com seu estorno",
+          "sinEnviar": "Não enviadas à DIAN",
+          "sinEnviarDetalle": "Só contam as de faturas aceitas",
+          "porCobrar": "A receber",
+          "porCobrarDetalle": "Saldo das notas de débito"
+        },
+        "buscar": {
+          "placeholder": "Buscar por número, fatura ou cliente",
+          "etiqueta": "Buscar notas"
+        },
+        "filtros": {
+          "periodo": "Período",
+          "todasLasFechas": "Todas as datas",
+          "estado": "Status",
+          "dian": "DIAN",
+          "cliente": "Cliente",
+          "clienteChip": "Cliente escolhido",
+          "todos": "Todos",
+          "limpiar": "Limpar filtros",
+          "verN": "{count, plural, =0 {Sem notas} one {Ver # nota} other {Ver # notas}}"
+        },
+        "columnas": {
+          "numero": "Número",
+          "factura": "Fatura",
+          "cliente": "Cliente",
+          "fecha": "Data",
+          "concepto": "Conceito DIAN",
+          "valor": "Valor",
+          "saldo": "Saldo",
+          "estado": "Status",
+          "dian": "DIAN",
+          "sucursal": "Filial",
+          "motivo": "Motivo"
+        },
+        "sustantivo": {
+          "singular": "nota",
+          "plural": "notas",
+          "genero": "femenino"
+        },
+        "detalleConcepto": {
+          "productos": "Com produtos",
+          "sinMercancia": "Sem mercadoria",
+          "excedente": "Excedente em crédito do cliente",
+          "anulada": "Anulada: {motivo}",
+          "anuladaSinMotivo": "Anulada",
+          "porCobrar": "Saldo {saldo}"
+        },
+        "vacio": {
+          "tituloCredito": "Ainda não há notas de crédito",
+          "descripcionCredito": "Uma nota de crédito reduz ou anula uma fatura emitida: devoluções, abatimentos ou erros de preço.",
+          "tituloDebito": "Ainda não há notas de débito",
+          "descripcionDebito": "São emitidas a partir de uma fatura para cobrar juros, despesas ou um ajuste de preço."
+        },
+        "sinResultados": "Nenhuma nota corresponde à busca ou aos filtros.",
+        "errorCarga": "Não foi possível carregar as notas.",
+        "sinNumero": "Sem número",
+        "sinCliente": "Sem cliente",
+        "acciones": {
+          "ver": "Ver detalhe",
+          "pdf": "Ver PDF",
+          "imprimir": "Imprimir",
+          "verFactura": "Ver fatura",
+          "anular": "Anular",
+          "registrarPago": "Registrar pagamento"
+        }
+      },
+      "estados": {
+        "issued": "Emitida",
+        "void": "Anulada",
+        "paid": "Paga",
+        "partial": "Pagamento parcial",
+        "draft": "Rascunho"
+      },
+      "dian": {
+        "no_aplica": "Não se aplica",
+        "espera_factura": "Aguarda a fatura",
+        "sin_enviar": "Não enviada",
+        "retenido": "Retida",
+        "en_cola": "Na fila",
+        "en_envio": "Em envio",
+        "aceptada": "Aceita DIAN",
+        "rechazada": "Rejeitada",
+        "error": "Com erro"
+      },
+      "dianDetalle": {
+        "titulo": "Faturamento eletrônico",
+        "no_aplica": "{factura} não é eletrônica, então esta nota também não é enviada à DIAN.",
+        "espera_factura": "{factura} ainda não foi aceita pela DIAN: a nota sai quando a fatura for aceita.",
+        "sin_enviar": "{factura} foi aceita pela DIAN e esta nota ainda não foi enviada.",
+        "retenido": "Está salva e será enviada quando a GO Admin ativar seu serviço de faturamento eletrônico.",
+        "en_cola": "Na fila: será enviada nos próximos minutos.",
+        "en_envio": "Está sendo enviada à DIAN. Aguarde a resposta.",
+        "aceptada": "A DIAN aceitou a nota.",
+        "rechazada": "A DIAN rejeitou a nota. Verifique o motivo, corrija e reenvie.",
+        "error": "O envio falhou. Ele é repetido sozinho ou você pode tentar agora.",
+        "estado": "Status",
+        "numero": "Número DIAN",
+        "cude": "Código único (CUDE)",
+        "motivo": "Resposta",
+        "actualizado": "Última novidade",
+        "enviar": "Enviar à DIAN",
+        "reintentar": "Tentar o envio de novo",
+        "enviando": "Enviando…",
+        "enviada": "A nota entrou na fila da DIAN.",
+        "errorEnvio": "Não foi possível enviar a nota à DIAN.",
+        "debitoPendiente": "O envio de notas de débito à DIAN será habilitado quando a fila de faturamento o suportar. A nota fica registrada."
+      },
+      "conceptos": {
+        "credito": {
+          "1": "1 · Devolução parcial",
+          "2": "2 · Anulação de fatura eletrônica",
+          "3": "3 · Abatimento ou desconto",
+          "4": "4 · Ajuste de preço",
+          "5": "5 · Outros"
+        },
+        "debito": {
+          "1": "1 · Juros",
+          "2": "2 · Despesas de cobrança",
+          "3": "3 · Alteração do valor",
+          "4": "4 · Outros"
+        }
+      },
+      "detalle": {
+        "tituloCredito": "Nota de crédito {numero}",
+        "tituloDebito": "Nota de débito {numero}",
+        "sobre": "sobre {factura}",
+        "cargando": "Carregando nota…",
+        "noEncontrada": "Não encontramos esta nota",
+        "noEncontradaDescripcion": "Ela não existe ou pertence a outra organização.",
+        "volver": "Voltar a Notas",
+        "sinPermiso": "Você não tem permissão para ver notas",
+        "sinPermisoDescripcion": "Peça a um administrador a permissão de ver finanças.",
+        "errorCarga": "Não foi possível carregar a nota.",
+        "origenCredito": "Fatura de origem e motivo",
+        "origenDebito": "Fatura de origem e conceito",
+        "factura": "Fatura",
+        "facturaValor": "{numero} · {fecha} · {total}",
+        "facturaAceptada": "{numero} · {fecha} · aceita pela DIAN",
+        "conceptoDian": "Conceito DIAN",
+        "motivo": "Motivo",
+        "saldoFactura": "Saldo da fatura",
+        "excedente": "Excedente",
+        "excedenteValor": "{monto} em crédito do cliente",
+        "devolucionValor": "{monto} devolvidos ao cliente",
+        "inventario": "Estoque",
+        "inventarioValor": "{count, plural, one {# produto devolvido ao estoque} other {# produtos devolvidos ao estoque}}",
+        "sinInventario": "Sem devolução de mercadoria ao estoque",
+        "vence": "Vence",
+        "lineas": "Linhas da nota",
+        "impuesto": "Imposto",
+        "totalesCredito": "Totais da nota",
+        "totalesDebito": "Totais",
+        "cliente": "Cliente",
+        "sinCliente": "Sem cliente",
+        "cadena": "Cadeia",
+        "cartera": "Conta a receber",
+        "saldoAFavor": "Crédito do cliente",
+        "devolucion": "Devolução",
+        "asiento": "Lançamento",
+        "pago": "Pagamento",
+        "pagos": "Pagamentos",
+        "sinPagos": "Ainda não tem pagamentos.",
+        "historial": "Histórico",
+        "anularTitulo": "Anular",
+        "anularTextoCredito": "Estorna lançamento, estoque e crédito do cliente em uma transação. Pede motivo e permissão de anulação.",
+        "anularTextoDebito": "Estorna o lançamento e cancela a conta a receber. Pede motivo e permissão de anulação.",
+        "anularBotonCredito": "Anular nota de crédito",
+        "anularBotonDebito": "Anular nota de débito",
+        "descargarPdf": "Baixar PDF",
+        "imprimir": "Imprimir",
+        "verPdf": "Ver PDF",
+        "verFactura": "Ver fatura",
+        "verSaldoAFavor": "Ver crédito do cliente",
+        "registrarPago": "Registrar pagamento",
+        "pdfError": "Não foi possível baixar o PDF.",
+        "pdfDebitoPendiente": "O PDF da nota de débito chega com seu modelo no motor de documentos.",
+        "enviarPendiente": "O envio das notas por e-mail chega com o diálogo de envio de documentos."
+      },
+      "anular": {
+        "tituloCredito": "Anular nota de crédito {numero}",
+        "tituloDebito": "Anular nota de débito {numero}",
+        "descripcion": "A nota fica anulada. Não é possível desfazer.",
+        "confirmar": "Anular nota",
+        "hecho": "Nota anulada",
+        "hechoDescripcion": "A nota {numero} foi anulada.",
+        "consecuenciasTitulo": "Ao anular",
+        "consecuencias": {
+          "factura_vuelve": "A fatura {factura} volta a dever o que a nota tinha descontado.",
+          "asiento": "O lançamento é estornado com um contralançamento.",
+          "inventario": "Os produtos devolvidos ao estoque saem de novo do estoque.",
+          "saldo_a_favor": "O crédito do cliente de {monto} é cancelado.",
+          "devolucion": "A devolução de dinheiro ao cliente é anulada.",
+          "cartera_nd": "A conta a receber da nota é cancelada."
+        },
+        "rapidos": {
+          "error": "Erro ao emitir a nota",
+          "duplicada": "Nota duplicada",
+          "cliente": "O cliente não aceitou o ajuste"
+        },
+        "bloqueadoTitulo": "Esta nota não pode ser anulada",
+        "bloqueadoSubtitulo": "{numero} · aceita pela DIAN",
+        "porQue": "Por quê",
+        "bloqueos": {
+          "ya_anulada": "A nota já está anulada.",
+          "aceptada_dian": "Uma nota aceita pela DIAN não é anulada no sistema.",
+          "aceptada_dian_salida_credito": "Para desfazer seu efeito, emita uma nota de débito sobre {factura} pelo mesmo valor.",
+          "aceptada_dian_salida_debito": "Para desfazer seu efeito, emita uma nota de crédito sobre a nota de débito.",
+          "en_envio_dian": "Se a nota estiver em envio, aguarde a resposta da DIAN.",
+          "con_pagos": "A nota de débito tem pagamentos: anule-os primeiro.",
+          "sin_permiso": "Você não tem permissão para anular notas."
+        },
+        "emitirNotaDebito": "Emitir nota de débito",
+        "cerrar": "Fechar",
+        "errores": {
+          "error_desconocido": "Não foi possível anular a nota. Tente de novo.",
+          "sin_permiso": "Você não tem permissão para anular notas.",
+          "nota_no_encontrada": "A nota não existe ou pertence a outra organização.",
+          "motivo_obligatorio": "Escreva o motivo (pelo menos 5 caracteres).",
+          "nota_aceptada_dian": "A DIAN já aceitou esta nota: ela não é anulada.",
+          "nota_en_envio_dian": "A nota está sendo enviada à DIAN: aguarde a resposta.",
+          "nota_con_pagos": "A nota de débito tem pagamentos: anule-os primeiro.",
+          "nota_debito_no_disponible": "A nota de débito ainda não está ativa nesta instalação."
+        }
+      },
+      "nueva": {
+        "tituloCredito": "Nova nota de crédito",
+        "tituloDebito": "Nova nota de débito",
+        "descripcion": "Escolha a fatura emitida sobre a qual a nota é feita.",
+        "factura": "Fatura",
+        "buscarPlaceholder": "Buscar por número, cliente ou NIT",
+        "titulo": "Faturas emitidas",
+        "vacio": "Digite para buscar uma fatura.",
+        "sinResultados": "Nenhuma fatura emitida corresponde.",
+        "error": "Não foi possível buscar faturas.",
+        "cambiar": "Trocar fatura",
+        "quitar": "Remover fatura",
+        "continuar": "Continuar",
+        "cancelar": "Cancelar",
+        "elegirPrimero": "Escolha uma fatura",
+        "saldo": "Saldo {saldo}",
+        "meta": "{fecha} · {total}"
+      },
+      "notaDebito": {
+        "titulo": "Nota de débito sobre {numero}",
+        "subtitulo": "{cliente} · saldo {saldo}",
+        "subtituloAceptada": "{cliente} · fatura aceita pela DIAN · saldo {saldo}",
+        "cargando": "Carregando a fatura…",
+        "errorCarga": "Não foi possível carregar a fatura.",
+        "concepto": "Conceito DIAN",
+        "conceptoPlaceholder": "Escolha o conceito",
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Por que este valor é cobrado",
+        "lineas": {
+          "etiqueta": "Linhas a cobrar",
+          "descripcion": "Descrição",
+          "descripcionPlaceholder": "Ex.: Despesas de cobrança",
+          "cantidad": "Qtd.",
+          "valorUnitario": "Valor unit.",
+          "impuesto": "Imposto",
+          "total": "Total",
+          "sinImpuesto": "Sem imposto",
+          "agregar": "Adicionar linha",
+          "quitar": "Remover linha {n}",
+          "manual": "Item manual"
+        },
+        "subtotal": "Subtotal",
+        "total": "Total da nota de débito",
+        "quePasaTitulo": "O que acontece ao emitir",
+        "quePasa": "É criada uma conta a receber própria de {total} com o mesmo prazo da fatura, paga com «Registrar pagamento». {factura} não muda.",
+        "quePasaDian": "A fatura foi aceita pela DIAN: a nota fica pendente de envio até a fila de notas de débito estar ativa.",
+        "quePasaSinDian": "A fatura não é eletrônica: a nota não é enviada à DIAN.",
+        "emitir": "Emitir nota de débito",
+        "emitiendo": "Emitindo…",
+        "emitida": "Nota de débito {numero} emitida",
+        "emitidaDetalle": "Total {total}. Sua conta a receber já existe.",
+        "noDisponibleTitulo": "Nota de débito pendente de ativação",
+        "noDisponible": "A nota de débito já está desenhada, mas sua função no banco de dados ainda não está ativa. Quando a GO Admin a ativar, você poderá emiti-la daqui.",
+        "noAdmite": "A nota de débito só é emitida sobre uma fatura emitida e vigente.",
+        "sinImpuestos": "A organização não tem impostos configurados: as linhas irão sem imposto.",
+        "faltan": {
+          "concepto": "Escolha o conceito DIAN.",
+          "motivo": "Escreva o motivo (pelo menos 5 caracteres).",
+          "lineas": "Adicione pelo menos uma linha com descrição, quantidade e valor.",
+          "lineaIncompleta": "Complete ou remova as linhas preenchidas pela metade."
+        },
+        "errores": {
+          "error_desconocido": "Não foi possível emitir a nota de débito. Tente de novo.",
+          "datos_invalidos": "Revise os dados da nota.",
+          "no_autenticado": "Sua sessão terminou. Entre de novo.",
+          "sin_permiso": "Você não tem permissão para emitir notas de débito.",
+          "factura_no_encontrada": "A fatura não existe ou pertence a outra organização.",
+          "nota_no_encontrada": "A nota não existe ou pertence a outra organização.",
+          "sin_acceso_sucursal": "Você não tem acesso à filial da fatura.",
+          "clave_idempotencia_invalida": "Abra o diálogo de novo e tente outra vez.",
+          "concepto_invalido": "Escolha um conceito DIAN válido.",
+          "motivo_obligatorio": "Escreva o motivo (pelo menos 5 caracteres).",
+          "documento_invalido": "Só é emitida sobre uma fatura de venda.",
+          "factura_borrador": "A fatura está em rascunho: emita-a primeiro.",
+          "ya_anulada": "A fatura está anulada.",
+          "sin_lineas": "Adicione pelo menos uma linha.",
+          "demasiadas_lineas": "A nota aceita até 50 linhas.",
+          "linea_invalida": "Revise as linhas: descrição, quantidade e valor maiores que zero.",
+          "impuesto_invalido": "Um dos impostos não está mais ativo. Escolha outro.",
+          "monto_invalido": "O total da nota deve ser maior que zero.",
+          "sin_numeracion": "A filial não tem numeração de notas de débito vigente. Configure-a em Resoluções e numeração.",
+          "nota_aceptada_dian": "A DIAN já aceitou esta nota.",
+          "nota_en_envio_dian": "A nota está sendo enviada à DIAN.",
+          "nota_con_pagos": "A nota de débito tem pagamentos.",
+          "nota_debito_no_disponible": "A nota de débito ainda não está ativa nesta instalação."
+        }
+      }
+    },
+    "resoluciones": {
+      "titulo": "Resoluções e numeração",
+      "descripcion": "Faixas autorizadas pela DIAN, por tipo de documento e filial",
+      "sucursal": "Filial a sincronizar",
+      "sincronizar": "Sincronizar com o provedor",
+      "sincronizadas": "Faixas sincronizadas",
+      "resumenSincronizacion": "{importados} importadas, {desactivados} desativadas.",
+      "motivos": {
+        "eligeSucursal": "Escolha a filial"
+      },
+      "servicio": {
+        "linea": "Serviço de faturação eletrônica da GO Admin:",
+        "ver": "Ver serviço",
+        "estados": {
+          "active": "Ativo",
+          "pending_activation": "Pendente de ativação",
+          "suspended": "Suspenso"
+        }
+      },
+      "avisos": {
+        "agotada": {
+          "titulo": "A numeração de {tipo} ({prefijo}) se esgotou",
+          "descripcion": "Não restam números. Solicite uma nova resolução no portal da DIAN e peça à GO Admin para registrá-la."
+        },
+        "por_agotar": {
+          "titulo": "A numeração de {tipo} ({prefijo}) está acabando",
+          "descripcion": "{count, plural, one {Resta # número.} other {Restam # números.}} Solicite uma nova resolução no portal da DIAN."
+        },
+        "vencida": {
+          "titulo": "A resolução de {tipo} ({prefijo}) venceu",
+          "descripcion": "Não é mais possível emitir com ela. Solicite uma nova no portal da DIAN."
+        },
+        "por_vencer": {
+          "titulo": "{count, plural, one {A resolução de {tipo} ({prefijo}) vence em # dia} other {A resolução de {tipo} ({prefijo}) vence em # dias}}",
+          "descripcion": "Solicite a nova com antecedência no portal da DIAN."
+        },
+        "otros": "{count, plural, one {Há mais # aviso na tabela.} other {Há mais # avisos na tabela.}}"
+      },
+      "buscar": {
+        "placeholder": "Buscar por prefixo ou número de resolução",
+        "etiqueta": "Buscar faixas"
+      },
+      "alcance": {
+        "etiqueta": "Faixas a mostrar",
+        "activas": "Ativas",
+        "todas": "Todas"
+      },
+      "columnas": {
+        "tipo": "Tipo",
+        "prefijo": "Prefixo",
+        "resolucion": "Resolução",
+        "rango": "Faixa",
+        "consumo": "Consumo",
+        "vigencia": "Vigência",
+        "estado": "Status"
+      },
+      "tipos": {
+        "invoice": "Fatura eletrônica",
+        "credit_note": "Nota de crédito",
+        "debit_note": "Nota de débito",
+        "support_document": "Documento de suporte"
+      },
+      "estados": {
+        "vigente": "Vigente",
+        "por_agotar": "Acabando",
+        "por_vencer": "Vencendo",
+        "agotada": "Esgotada",
+        "vencida": "Vencida",
+        "inactiva": "Inativa",
+        "futura": "Ainda não vigente"
+      },
+      "todasSucursales": "Todas as filiais",
+      "noRequiere": "Não exige resolução",
+      "numeracionPropia": "Numeração própria",
+      "sinResolucionRegistrada": "Sem resolução registrada",
+      "del": "de {fecha}",
+      "consumoQuedan": "{usados} de {total} · restam {quedan}",
+      "consumoAgotado": "{usados} de {total} · sem números",
+      "consumoDe": "Consumo da faixa {prefijo}",
+      "sinVencimiento": "Sem vencimento",
+      "hasta": "Até {fecha}",
+      "vencio": "Venceu em {fecha}",
+      "venceEn": "{count, plural, one {Vence em # dia} other {Vence em # dias}}",
+      "acciones": {
+        "editar": "Editar faixa"
+      },
+      "vacio": {
+        "titulo": "Ainda não há faixas de numeração",
+        "descripcion": "Sincronize uma filial com o provedor ou peça à GO Admin para registrar sua resolução."
+      },
+      "sinResultados": "Nenhuma faixa corresponde à busca.",
+      "nota": "As notas de crédito e débito usam numeração própria sem resolução. Ao emitir, usa-se a faixa ativa da filial do documento; se houver duas ativas do mesmo tipo, usa-se a mais recente.",
+      "errores": {
+        "carga": "Não foi possível carregar as faixas",
+        "sinPermiso": "Você não tem permissão para esta ação",
+        "sincronizar": "Não foi possível sincronizar as faixas",
+        "guardar": "Não foi possível salvar a faixa",
+        "duplicado": "Esse prefixo já existe para a filial e o tipo de documento",
+        "datosInvalidos": "Revise os dados da faixa"
+      },
+      "editar": {
+        "titulo": "Editar faixa {prefijo}",
+        "descripcion": "Corrija os dados da resolução. As mudanças valem para os próximos documentos.",
+        "guardar": "Salvar",
+        "guardando": "Salvando…",
+        "cancelar": "Cancelar",
+        "guardado": "Faixa salva",
+        "tipo": "Tipo de documento",
+        "sucursal": "Filial",
+        "prefijo": "Prefixo",
+        "idProveedor": "Id da faixa no provedor",
+        "idProveedorAyuda": "Vem de «Sincronizar». Mude apenas se o suporte indicar.",
+        "desde": "De",
+        "hasta": "Até",
+        "actual": "Último número usado",
+        "actualAyuda": "0 se ainda não foi usado nenhum.",
+        "alerta": "Avisar quando restarem",
+        "alertaAyuda": "Números restantes que ativam o aviso «Acabando».",
+        "resolucion": "Número da resolução DIAN",
+        "fechaResolucion": "Data da resolução",
+        "validoDesde": "Válida desde",
+        "validoHasta": "Válida até",
+        "claveTecnica": "Chave técnica",
+        "claveTecnicaGuardada": "Há uma chave salva. Digite apenas se quiser trocá-la.",
+        "claveTecnicaPlaceholder": "Salva",
+        "setPruebas": "Id do conjunto de testes",
+        "activo": "Faixa ativa",
+        "errores": {
+          "tipo": "Escolha o tipo de documento",
+          "prefijo": "Digite um prefixo de até 10 caracteres",
+          "rango": "«Até» deve ser maior ou igual a «De»",
+          "actual": "O último número usado deve estar dentro da faixa",
+          "vigencia": "A data final deve ser posterior à inicial"
+        }
+      }
+    },
+    "saldos": {
+      "titulo": "Saldos a favor",
+      "subtitulo": "o que você deve aos seus clientes",
+      "todasLasSucursales": "Todas as filiais",
+      "migas": {
+        "finanzas": "Finanças",
+        "cartera": "Contas a receber"
+      },
+      "cargando": "Carregando…",
+      "sinCliente": "Sem cliente",
+      "sinVencimiento": "Sem vencimento",
+      "deValor": "de {valor}",
+      "etiquetaFila": "Saldo a favor de {cliente}: {monto} disponível",
+      "archivoExportacion": "saldos_a_favor",
+      "exportando": "Exportando…",
+      "exportarError": "Não foi possível exportar. Tente novamente.",
+      "errorCarga": "Não foi possível carregar os saldos a favor.",
+      "sinResultados": "Nenhum saldo corresponde à busca ou aos filtros.",
+      "sustantivo": {
+        "singular": "saldo",
+        "plural": "saldos",
+        "genero": "masculino"
+      },
+      "vacio": {
+        "titulo": "Ainda não há saldos a favor",
+        "descripcion": "Aqui aparecem os adiantamentos e o que você deve aos seus clientes: sobras de um pagamento, devoluções e notas de crédito."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso aos saldos a favor",
+        "descripcion": "Peça a um administrador permissão para ver Finanças."
+      },
+      "acciones": {
+        "registrarAnticipo": "Registrar adiantamento",
+        "exportar": "Exportar",
+        "aplicar": "Aplicar",
+        "aplicarDe": "Aplicar o saldo de {cliente}",
+        "aplicarAFactura": "Aplicar a uma fatura",
+        "devolver": "Devolver",
+        "devolverDe": "Devolver o saldo de {cliente}",
+        "anular": "Anular",
+        "verMovimientos": "Ver movimentos",
+        "verCliente": "Ver cliente",
+        "verRecibo": "Ver recibo",
+        "verOrigen": "Ver nota de crédito"
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos saldos a favor",
+        "disponible": "Disponível",
+        "enClientes": "{count, plural, =0 {Nenhum cliente com saldo} one {Em # cliente} other {Em {n} clientes}}",
+        "vencidos": "Vencidos",
+        "vencidosDetalle": "{count, plural, one {# saldo · não pode mais ser aplicado} other {{n} saldos · não podem mais ser aplicados}}",
+        "sinVencidos": "Nenhum vencido",
+        "aplicado": "Aplicado em {mes}",
+        "facturas": "{count, plural, =0 {Nenhuma fatura} one {# fatura} other {{n} faturas}}",
+        "devuelto": "Devolvido em {mes}",
+        "devoluciones": "{count, plural, =0 {Nenhuma devolução} one {# devolução} other {{n} devoluções}}",
+        "devolucionesEfectivo": "{count, plural, one {# devolução em dinheiro} other {{n} devoluções em dinheiro}}"
+      },
+      "buscar": {
+        "placeholder": "Buscar cliente ou documento",
+        "etiqueta": "Buscar saldos a favor"
+      },
+      "filtros": {
+        "estado": "Status",
+        "origen": "Origem",
+        "cliente": "Cliente",
+        "clienteChip": "cliente escolhido",
+        "periodo": "Data",
+        "saldo": "Saldo",
+        "conSaldo": "Só com saldo",
+        "todos": "Todos",
+        "limpiar": "Limpar filtros",
+        "verN": "{count, plural, =0 {Sem resultados} one {Ver # saldo} other {Ver {n} saldos}}"
+      },
+      "columnas": {
+        "cliente": "Cliente",
+        "documento": "Documento do cliente",
+        "origen": "Origem",
+        "fecha": "Data",
+        "valor": "Valor",
+        "usado": "Usado",
+        "disponible": "Disponível",
+        "vence": "Vence",
+        "estado": "Status"
+      },
+      "estados": {
+        "disponible": "Disponível",
+        "vencido": "Vencido",
+        "usado": "Usado",
+        "anulado": "Anulado"
+      },
+      "origenes": {
+        "pago": "Adiantamento",
+        "nota_credito": "Nota de crédito",
+        "devolucion": "Devolução",
+        "otro": "Outro"
+      },
+      "detalle": {
+        "titulo": "Saldo a favor de {cliente}",
+        "cargando": "Saldo a favor",
+        "valor": "Valor",
+        "usado": "Usado",
+        "disponible": "Disponível",
+        "movimientos": "Movimentos",
+        "datos": "Dados",
+        "cliente": "Cliente",
+        "origen": "Origem",
+        "recibo": "Recibo",
+        "sucursal": "Filial",
+        "vence": "Vence",
+        "venceEl": "Vence em {fecha}",
+        "notas": "Notas",
+        "noEncontrado": "Saldo a favor não encontrado",
+        "error": "Não foi possível carregar o saldo a favor.",
+        "movimiento": {
+          "origen": {
+            "pago": "Recibo",
+            "nota_credito": "Nota de crédito",
+            "devolucion": "Devolução",
+            "otro": "Origem"
+          },
+          "metodo": "Método {metodo}",
+          "factura": "Fatura",
+          "aplicado": "Aplicado {monto} · {fecha}",
+          "devolucion": "Devolução em dinheiro",
+          "devolucionSinRef": "Devolução ao cliente",
+          "devuelto": "Devolvido {monto} · {metodo} · {fecha}",
+          "anulacion": "Anulado",
+          "saldo": "Saldo a favor"
+        }
+      },
+      "aplicar": {
+        "titulo": "Aplicar saldo a favor",
+        "descripcion": "{cliente} · disponível {disponible}",
+        "factura": "Fatura do cliente",
+        "facturaPlaceholder": "Escolha uma fatura com saldo",
+        "opcionFactura": "{numero} · saldo {saldo} · {fecha}",
+        "sinFacturas": "Este cliente não tem faturas com saldo pendente.",
+        "errorFacturas": "Não foi possível carregar as faturas do cliente.",
+        "eligeFactura": "Escolha a fatura à qual se aplica.",
+        "monto": "Valor a aplicar",
+        "hasta": "Até {monto}",
+        "quePasaTitulo": "O que acontece ao aplicar",
+        "quePasa": "A fatura {factura} diminui {monto} e fica devendo {restante}. O cliente fica com {disponible} a favor.",
+        "confirmar": "Aplicar",
+        "confirmarMonto": "Aplicar {monto}",
+        "exito": "{monto} aplicados à fatura {factura}."
+      },
+      "devolver": {
+        "titulo": "Devolver dinheiro ao cliente",
+        "descripcion": "{cliente} · disponível {disponible}",
+        "valor": "Valor a devolver",
+        "hasta": "Até {monto}",
+        "como": "Como é devolvido",
+        "cuenta": "Conta bancária",
+        "cuentaPlaceholder": "A do método de pagamento",
+        "cuentaDelMetodo": "A conta do método de pagamento",
+        "saleDe": "Sai de",
+        "cajaAbierta": "Caixa aberto · turno #{id}",
+        "sinCaja": "Não há caixa aberto na filial do saldo: abra-o ou devolva por outro método.",
+        "referencia": "Referência",
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Por que o dinheiro é devolvido",
+        "quePasaTitulo": "O que acontece ao devolver",
+        "quePasaEfectivo": "Saem {monto} da contagem do caixa ({origen}), o saldo fica em {saldo} e é registrado o lançamento contra a conta de adiantamentos.",
+        "quePasaBanco": "Saem {monto} de {origen}, o saldo fica em {saldo} e é registrado o lançamento contra a conta de adiantamentos.",
+        "confirmar": "Devolver",
+        "confirmarMonto": "Devolver {monto}",
+        "exito": "{monto} devolvidos a {cliente}."
+      },
+      "anular": {
+        "titulo": "Anular adiantamento",
+        "descripcion": "{cliente} · {monto} · recibo {recibo}",
+        "confirmar": "Anular adiantamento",
+        "consecuenciasTitulo": "Ao anular",
+        "consecuencias": {
+          "pago": "O pagamento do recibo é anulado e o dinheiro sai da contagem do caixa ou do banco.",
+          "saldo": "O saldo a favor é anulado e não pode mais ser aplicado.",
+          "asiento": "É registrado o estorno do lançamento do adiantamento."
+        },
+        "rapidos": {
+          "error": "Registrado por engano",
+          "duplicado": "Adiantamento duplicado",
+          "cliente": "O cliente desistiu"
+        },
+        "bloqueos": {
+          "usado": "Este adiantamento já foi usado em faturas ou devolvido: não pode ser anulado. Devolva o que restar.",
+          "no_es_anticipo": "Este saldo não veio de um adiantamento (vem de uma nota de crédito ou de uma devolução): não se anula, se devolve em dinheiro.",
+          "sin_permiso": "Você não tem permissão para anular.",
+          "anulado": "Este saldo já está anulado."
+        },
+        "devolverEnSuLugar": "Devolver o dinheiro",
+        "exito": "O adiantamento de {cliente} foi anulado."
+      },
+      "anticipo": {
+        "titulo": "Registrar adiantamento",
+        "descripcion": "O dinheiro entra como um pagamento com seu recibo, soma ao caixa ou ao banco e fica como saldo a favor do cliente.",
+        "sucursal": "Filial",
+        "sucursalPlaceholder": "Escolha a filial",
+        "cliente": "Cliente",
+        "monto": "Valor",
+        "metodo": "Método de pagamento",
+        "cuenta": "Conta bancária",
+        "cuentaPlaceholder": "A do método de pagamento",
+        "referencia": "Referência",
+        "vence": "Vencimento (opcional)",
+        "venceAyuda": "Sem data, o saldo não vence.",
+        "notas": "Notas (opcional)",
+        "notasPlaceholder": "Para que é o adiantamento",
+        "sinCaja": "Não há caixa aberto nesta filial: abra-o ou use outro método.",
+        "confirmar": "Registrar adiantamento",
+        "confirmarMonto": "Registrar {monto}",
+        "exito": "Adiantamento de {monto} registrado com o recibo {recibo}."
+      },
+      "validacion": {
+        "vacio": "Digite um valor maior que zero.",
+        "excede_disponible": "Supera o saldo disponível ({monto}).",
+        "excede_factura": "Supera o saldo da fatura ({monto}).",
+        "cliente": "Escolha o cliente.",
+        "sucursal": "Escolha a filial.",
+        "metodo": "Escolha o método de pagamento.",
+        "referencia": "Este método exige referência.",
+        "motivo": "Digite o motivo (mínimo 3 caracteres)."
+      },
+      "errores": {
+        "no_autenticado": "Sua sessão terminou. Entre novamente.",
+        "sin_permiso": "Você não tem permissão para esta ação.",
+        "sin_acceso_sucursal": "Você não tem acesso à filial do saldo ou da fatura.",
+        "organizacion_no_permitida": "A organização não corresponde à sua sessão.",
+        "datos_invalidos": "Revise os dados.",
+        "clave_idempotencia_invalida": "Não foi possível identificar a tentativa. Abra o diálogo novamente.",
+        "clave_idempotencia_reutilizada": "Esta tentativa já foi usada com outros dados. Abra o diálogo novamente.",
+        "monto_invalido": "Digite um valor maior que zero.",
+        "saldo_no_encontrado": "Saldo a favor não encontrado.",
+        "saldo_no_disponible": "O saldo a favor não está mais disponível.",
+        "saldo_vencido": "O saldo a favor está vencido: não pode mais ser aplicado, mas pode ser devolvido.",
+        "saldo_usado": "O saldo a favor já foi usado em faturas: não pode ser anulado.",
+        "saldo_no_anulable": "Este saldo não veio de um adiantamento: não se anula, se devolve em dinheiro.",
+        "monto_excede_saldo_a_favor": "O valor supera o saldo a favor disponível.",
+        "factura_no_encontrada": "Fatura não encontrada.",
+        "documento_invalido": "O documento não é uma fatura de venda.",
+        "documento_borrador": "A fatura é um rascunho: emita-a antes de aplicar saldo.",
+        "documento_anulado": "A fatura está anulada.",
+        "cliente_distinto": "A fatura é de outro cliente.",
+        "cliente_no_encontrado": "Cliente não encontrado.",
+        "sucursal_invalida": "Escolha uma filial válida.",
+        "moneda_distinta": "A fatura está em outra moeda.",
+        "monto_excede_saldo": "O valor supera o saldo pendente da fatura.",
+        "metodo_invalido": "O método de pagamento não está disponível.",
+        "referencia_obligatoria": "Este método exige referência.",
+        "cuenta_bancaria_invalida": "A conta bancária não é válida.",
+        "sin_caja_abierta": "Não há caixa aberto: abra-o ou use outro método.",
+        "pago_en_caja_cerrada": "O dinheiro entrou em um caixa já fechado: registre uma saída de caixa.",
+        "sin_cuenta_de_dinero": "A conta de caixa ou banco do método não foi encontrada.",
+        "sin_cuenta_por_cobrar": "A organização não tem conta a receber configurada.",
+        "vencimiento_invalido": "O vencimento não pode ser anterior a hoje.",
+        "motivo_obligatorio": "Digite o motivo.",
+        "asiento_no_creado": "Não foi possível contabilizar. Revise o plano de contas e o período contábil.",
+        "error_desconocido": "Não foi possível concluir. Tente novamente."
+      }
+    },
+    "servicio": {
+      "titulo": "Faturação eletrônica — Serviço",
+      "subtitulo": {
+        "activo": "Prestado pela GO Admin · ativo desde {fecha}",
+        "pendiente": "Prestado pela GO Admin · você não carrega credenciais nem escolhe ambiente"
+      },
+      "migas": {
+        "finanzas": "Finanças",
+        "facturacion": "Faturação eletrônica",
+        "servicio": "Serviço"
+      },
+      "acciones": {
+        "verBandeja": "Ver caixa de envios",
+        "verificar": "Verificar agora",
+        "solicitarActivacion": "Solicitar ativação"
+      },
+      "motivos": {
+        "solicitudPendiente": "A solicitação por aqui chega em breve; enquanto isso, peça ao suporte da GO Admin.",
+        "sinPermiso": "Você precisa da permissão de aprovar em Finanças",
+        "eligeSucursal": "Escolha a filial"
+      },
+      "avisos": {
+        "pendienteTitulo": "Sua faturação eletrônica está pendente de ativação",
+        "pendienteDescripcion": "O que você marcar como eletrônico fica retido e não é enviado à DIAN. Nada se perde: quando a GO Admin ativar sua conta, o novo é enviado automaticamente.",
+        "suspendidoTitulo": "O serviço está suspenso",
+        "suspendidoDescripcion": "Nenhum documento é enviado à DIAN. Fale com o suporte da GO Admin para reativá-lo."
+      },
+      "pasos": {
+        "titulo": "Passos para ativar",
+        "listos": "{n} de {total} prontos",
+        "quien": {
+          "tu": "Você",
+          "goAdmin": "GO Admin",
+          "automatico": "Automático"
+        },
+        "estado": {
+          "listo": "Pronto",
+          "actual": "Em andamento",
+          "pendiente": "Pendente"
+        },
+        "emisor": {
+          "titulo": "Dados do emissor completos",
+          "descripcion": "NIT e dígito verificador, razão social, responsabilidades fiscais, município e e-mail de faturação.",
+          "faltan": "Falta: {campos}",
+          "accion": "Editar em Organização"
+        },
+        "resolucion": {
+          "titulo": "Resolução de faturação da DIAN",
+          "descripcion": "Solicite no portal da DIAN e escolha a GO Admin como provedor tecnológico. Com o número da resolução, a GO Admin a registra para você.",
+          "accion": "Ver resoluções"
+        },
+        "cuenta": {
+          "titulo": "Conta habilitada pela GO Admin",
+          "descripcion": "Criamos sua conta no provedor, carregamos a resolução e as faixas por filial e fazemos o conjunto de testes."
+        },
+        "primerDocumento": {
+          "titulo": "Primeiro documento aceito",
+          "descripcion": "Avisamos quando a DIAN aceitar o primeiro."
+        },
+        "campos": {
+          "nit": "NIT",
+          "dv": "dígito verificador",
+          "razonSocial": "razão social",
+          "responsabilidades": "responsabilidades fiscais",
+          "municipio": "município",
+          "correo": "e-mail de faturação"
+        },
+        "solicitudAyuda": "Fica disponível com os passos 1 e 2 prontos. Fica registrado quem pediu e quando.",
+        "solicitudListos": "Seus passos estão prontos."
+      },
+      "resoluciones": {
+        "titulo": "Resoluções e numeração",
+        "descripcion": "A GO Admin as registra no provedor, por filial. Aqui você vê o consumo e a vigência.",
+        "sucursal": "Filial",
+        "sincronizar": "Sincronizar",
+        "sincronizadas": "Faixas sincronizadas",
+        "resumenSincronizacion": "{importados} importadas, {desactivados} desativadas.",
+        "verTodas": "Ver todas as resoluções",
+        "vacio": "Ainda não há faixas ativas. Sincronize uma filial ou peça à GO Admin para registrar sua resolução.",
+        "todasSucursales": "Todas as filiais",
+        "numeracionPropia": "Numeração própria",
+        "del": "de {fecha}",
+        "consumo": "Consumo",
+        "consumoDe": "Consumo da faixa {prefijo}",
+        "usadosDe": "{usados} de {total}"
+      },
+      "cola": {
+        "titulo": "Fila de envios",
+        "enCola": "Na fila",
+        "retenidos": "Retidos",
+        "aceptados": "Aceitos",
+        "rechazados": "Rejeitados ou com erro",
+        "abrirBandeja": "Abrir a caixa"
+      },
+      "retenidos": {
+        "titulo": "Documentos retidos ({n})",
+        "descripcionActivo": "Foram guardados antes de ativar o serviço. Se você enviar um, a DIAN o emite com a data de hoje, não com a da venda.",
+        "descripcionPendiente": "Foram guardados porque o serviço não está ativo. Ao ativá-lo você poderá enviá-los (com a data daquele dia) ou cancelá-los com registro.",
+        "ventaDel": "Venda de {fecha}",
+        "sinNumero": "Sem número",
+        "enviar": "Enviar com a data de hoje",
+        "esperaConfirmacion": "Aguarda sua confirmação",
+        "cancelar": "Cancelar o envio",
+        "cancelarDe": "Cancelar o envio de {numero}",
+        "yMas": "e mais {n} · Ver todos na caixa",
+        "verEnBandeja": "Ver na caixa",
+        "confirmarTitulo": "Enviar este documento à DIAN?",
+        "confirmarDescripcion": "A DIAN o emite com a data de hoje ({fecha}), não com a da venda.",
+        "cancelarTitulo": "Cancelar o envio?",
+        "cancelarDescripcion": "O documento não é enviado à DIAN e fica como documento interno.",
+        "volver": "Voltar",
+        "enviado": "Documento enviado à DIAN",
+        "cancelado": "Envio cancelado"
+      },
+      "estado": {
+        "titulo": "Status do serviço",
+        "estado": "Status",
+        "estados": {
+          "active": "Ativo",
+          "pending_activation": "Pendente de ativação",
+          "suspended": "Suspenso"
+        },
+        "prestadoPor": "Prestado por",
+        "goAdmin": "GO Admin",
+        "nit": "NIT com o qual você emite",
+        "activoDesde": "Ativo desde",
+        "solicitud": "Solicitação",
+        "sinEnviar": "Não enviada",
+        "ultimaVerificacion": "Última verificação",
+        "correcta": "correta",
+        "fallida": "com erro",
+        "ayuda": "Algo não confere com seu NIT ou sua resolução? Fale com o suporte: o serviço é administrado pela GO Admin."
+      },
+      "comportamiento": {
+        "titulo": "Comportamento",
+        "siempre": "Faturar sempre como eletrônica",
+        "siempreAyuda": "Ativa «eletrônica» por padrão no PDV e nas faturas novas.",
+        "siempreActivada": "As faturas novas saem como eletrônicas",
+        "siempreDesactivada": "As faturas novas não saem mais como eletrônicas por padrão",
+        "correo": "Enviar o PDF e o XML ao cliente",
+        "correoAyuda": "O provedor os envia ao e-mail de faturação do cliente quando a DIAN aceita.",
+        "siempreActivo": "Sempre"
+      },
+      "verificacion": {
+        "activado": "Serviço ativado",
+        "ok": "Conta verificada"
+      },
+      "tipos": {
+        "invoice": "Fatura eletrônica",
+        "credit_note": "Nota de crédito",
+        "debit_note": "Nota de débito",
+        "support_document": "Documento de suporte"
+      },
+      "errores": {
+        "carga": "Não foi possível carregar o serviço",
+        "sinPermiso": "Você não tem acesso ao serviço de faturação eletrônica",
+        "sinPermisoDescripcion": "Peça a um administrador a permissão de aprovar em Finanças.",
+        "accion": "Não foi possível concluir a ação"
+      }
+    },
+    "soporte": {
+      "migas": {
+        "finanzas": "Finanças",
+        "facturacion": "Faturamento"
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso aos documentos de suporte",
+        "descripcion": "Peça a um administrador a permissão de ver finanças."
+      },
+      "listado": {
+        "titulo": "Documentos de suporte",
+        "subtitulo": "Compras de pessoas e fornecedores não obrigados a faturar",
+        "todasLasSucursales": "Todas as filiais",
+        "nuevo": "Novo documento de suporte",
+        "exportar": "Exportar",
+        "exportando": "Exportando…",
+        "exportarError": "Não foi possível exportar. Tente novamente.",
+        "archivoExportacion": "documentos-de-suporte",
+        "numeroDian": "Nº DIAN {numero}",
+        "sinNumero": "Sem número",
+        "sinVendedor": "Sem vendedor",
+        "sinCompra": "Sem fatura de compra",
+        "compraSinNumero": "Compra sem número",
+        "sinResultados": "Nenhum documento de suporte corresponde à busca ou aos filtros.",
+        "errorCarga": "Não foi possível carregar os documentos de suporte",
+        "sustantivo": {
+          "singular": "documento",
+          "plural": "documentos"
+        },
+        "buscar": {
+          "placeholder": "Buscar por referência, número ou vendedor",
+          "etiqueta": "Buscar documentos de suporte"
+        },
+        "kpis": {
+          "etiqueta": "Resumo dos documentos de suporte",
+          "emitidosMes": "Emitidos em {mes}",
+          "borradores": "Rascunhos",
+          "sinEnviar": "Não enviados à DIAN",
+          "aceptados": "Aceitos pela DIAN",
+          "validados": "Validados",
+          "rechazados": "Rejeitados",
+          "verMotivo": "Toque para ver o motivo"
+        },
+        "columnas": {
+          "referencia": "Referência",
+          "numeroDian": "Número DIAN",
+          "vendedor": "Vendedor",
+          "documentoVendedor": "Documento do vendedor",
+          "compra": "Fatura de compra",
+          "fecha": "Data",
+          "moneda": "Moeda",
+          "total": "Total",
+          "estado": "Status",
+          "dian": "DIAN"
+        },
+        "filtros": {
+          "estado": "Status",
+          "periodo": "Período",
+          "vendedor": "Vendedor",
+          "vendedorChip": "Vendedor escolhido",
+          "compra": "Fatura de compra",
+          "todos": "Todos",
+          "limpiar": "Limpar filtros",
+          "verN": "{count, plural, =0 {Sem resultados} one {Ver # documento} other {Ver {n} documentos}}",
+          "compraOpcion": {
+            "con": "Com compra",
+            "sin": "Sem compra"
+          },
+          "estados": {
+            "borrador": "Rascunhos",
+            "en_proceso": "Em processamento na DIAN",
+            "aceptado": "Aceitos pela DIAN",
+            "rechazado": "Rejeitados ou com erro",
+            "anulado": "Anulados"
+          }
+        },
+        "vacio": {
+          "titulo": "Ainda não há documentos de suporte",
+          "descripcion": "Registre um quando comprar de uma pessoa ou fornecedor que não fatura: a DIAN o exige para deduzir a compra."
+        }
+      },
+      "estadoDocumento": {
+        "borrador": "Rascunho",
+        "emitido": "Emitido",
+        "anulado": "Anulado"
+      },
+      "estadoDian": {
+        "sin_enviar": "Não enviado",
+        "retenido": "Retido",
+        "en_cola": "Na fila",
+        "enviando": "Enviando",
+        "enviado": "Enviado à DIAN",
+        "aceptado": "Aceito pela DIAN",
+        "rechazado": "Rejeitado pela DIAN",
+        "error": "Erro de envio",
+        "cancelado": "Cancelado"
+      },
+      "acciones": {
+        "ver": "Ver",
+        "editar": "Editar",
+        "corregir": "Corrigir e reenviar",
+        "enviarDian": "Enviar à DIAN",
+        "reenviar": "Reenviar à DIAN",
+        "verPdf": "Ver PDF",
+        "descargarPdf": "Baixar PDF",
+        "imprimir": "Imprimir",
+        "xml": "Baixar XML",
+        "verAsiento": "Prévia do lançamento",
+        "actualizar": "Atualizar",
+        "eliminar": "Excluir",
+        "cancelar": "Cancelar"
+      },
+      "envio": {
+        "enviando": "Enviando…",
+        "aceptado": "A DIAN aceitou o documento de suporte {referencia}",
+        "enviado": "O documento de suporte {referencia} foi enviado à DIAN",
+        "en_cola": "O documento de suporte {referencia} ficou na fila de envio à DIAN",
+        "retenido": "O documento de suporte {referencia} foi salvo: será enviado quando a GO Admin ativar seu faturamento eletrônico",
+        "rechazado": "A DIAN rejeitou o documento de suporte {referencia}",
+        "error": "Não foi possível enviar à DIAN"
+      },
+      "eliminar": {
+        "titulo": "Excluir o documento de suporte {referencia}?",
+        "descripcion": "Ele é excluído com suas linhas. A DIAN não o recebeu, então nada fica pendente com ela. Não é possível desfazer.",
+        "descripcionProveedor": "Primeiro ele é retirado do serviço de faturamento eletrônico e depois excluído com suas linhas. Não é possível desfazer.",
+        "confirmar": "Excluir",
+        "hecho": "O documento de suporte {referencia} foi excluído",
+        "error": "Não foi possível excluir o documento de suporte"
+      },
+      "detalle": {
+        "titulo": "Documento de suporte {referencia}",
+        "cargando": "Carregando documento de suporte…",
+        "noEncontrado": "Não encontramos este documento de suporte",
+        "noEncontradoDescripcion": "Ele pode ter sido excluído ou ser de outra organização.",
+        "volverListado": "Voltar aos documentos de suporte",
+        "errorCarga": "Não foi possível carregar o documento de suporte",
+        "cadena": "Cadeia do documento",
+        "vendedor": "Vendedor",
+        "nombre": "Nome",
+        "documento": "Documento",
+        "direccion": "Endereço",
+        "correo": "E-mail",
+        "telefono": "Telefone",
+        "lineas": "Linhas do documento",
+        "observaciones": "Observações",
+        "resumen": "Resumo",
+        "impuesto": "Imposto",
+        "datos": "Dados do documento",
+        "sucursal": "Filial",
+        "formaPago": "Forma de pagamento",
+        "medioPago": "Meio de pagamento",
+        "vence": "Vencimento",
+        "moneda": "Moeda",
+        "creado": "Criado",
+        "descargando": "Baixando…",
+        "errorDescarga": "Não foi possível baixar o arquivo",
+        "cargandoAsiento": "Calculando o lançamento…",
+        "errorAsiento": "Não foi possível calcular a prévia do lançamento",
+        "asientoAviso": "Assim ficaria o lançamento com as regras contábeis de hoje. É uma prévia: nada foi contabilizado.",
+        "avisoRechazo": "A DIAN rejeitou este documento",
+        "avisoError": "Não foi possível enviar este documento",
+        "avisoRetenido": "Envio retido",
+        "dian": {
+          "titulo": "Faturamento eletrônico",
+          "numero": "Número DIAN",
+          "validado": "Validado",
+          "intentos": "Tentativas",
+          "intentosValor": "{n} de {max}",
+          "proximo": "Próxima tentativa",
+          "cuds": "Código único (CUDS)",
+          "copiarCuds": "Copiar o código único",
+          "cudsCopiado": "Código único copiado",
+          "cudsNoCopiado": "Não foi possível copiar o código",
+          "historial": "Histórico de envio",
+          "sinEnviar": "Ainda não foi enviado à DIAN. Quando enviar, você verá a resposta aqui."
+        },
+        "avisoDeCompra": "Nasceu da fatura de compra {compra}: as linhas são as da compra. Para alterá-las, corrija a compra.",
+        "verCompra": "Ver a compra"
+      },
+      "eventos": {
+        "sent": "Enviado à DIAN",
+        "accepted": "Validado pela DIAN",
+        "rejected": "Rejeitado pela DIAN",
+        "retry": "Nova tentativa programada",
+        "notification": "Aviso do envio",
+        "error": "Erro ao enviar",
+        "cancelled": "Envio cancelado",
+        "otro": "Novidade do envio"
+      },
+      "formasPago": {
+        "contado": "À vista",
+        "credito": "A prazo"
+      },
+      "medios": {
+        "10": "Dinheiro",
+        "20": "Cheque",
+        "42": "Depósito bancário",
+        "47": "Transferência",
+        "48": "Cartão de crédito",
+        "49": "Cartão de débito"
+      },
+      "tiposDocumento": {
+        "11": "Registro civil",
+        "12": "Identidade (menor)",
+        "13": "C.C.",
+        "21": "Cartão de estrangeiro",
+        "22": "C.E.",
+        "31": "NIT",
+        "41": "Passaporte",
+        "42": "Documento estrangeiro",
+        "47": "PEP",
+        "48": "PPT",
+        "50": "NIT estrangeiro",
+        "91": "NUIP"
+      },
+      "formulario": {
+        "tituloNuevo": "Novo documento de suporte",
+        "tituloEditar": "Editar documento de suporte {referencia}",
+        "subtitulo": "Para compras de não obrigados a faturar",
+        "guardarBorrador": "Salvar rascunho",
+        "guardarEnviar": "Salvar e enviar à DIAN",
+        "guardado": "O documento de suporte {referencia} foi salvo",
+        "total": "Total",
+        "noEditable": "O documento de suporte {referencia} não pode mais ser editado",
+        "noEditableDescripcion": "Só se editam rascunhos e documentos que a DIAN rejeitou, e nunca enquanto estão sendo enviados.",
+        "verDocumento": "Ver o documento",
+        "buscarProducto": "Buscar produto",
+        "itemManual": "Adicionar item manual",
+        "lineasVacio": "Ainda não há linhas",
+        "lineasVacioDescripcion": "Busque um produto ou adicione um item manual com o que você comprou.",
+        "sinImpuesto": "Sem imposto: registrado com alíquota 0.",
+        "impuestoTarifa": "Imposto {tarifa} %",
+        "detalleImpuesto": "Imposto {importe}",
+        "faltaDireccion": "Falta o endereço do vendedor",
+        "faltanDatos": "Faltam dados do vendedor",
+        "faltanDatosDescripcion": "A DIAN os exige no documento de suporte: {datos}. Complete-os na ficha do fornecedor.",
+        "completar": "Completar",
+        "faltante": {
+          "identificacion": "número do documento",
+          "nombre": "nome",
+          "direccion": "endereço"
+        },
+        "secciones": {
+          "datos": "Dados gerais",
+          "vendedor": "Vendedor",
+          "vendedorDescripcion": "Pessoa ou empresa não obrigada a faturar",
+          "lineas": "{n, plural, =0 {Linhas do documento} one {Linhas do documento · # linha} other {Linhas do documento · # linhas}}",
+          "lineasEtiqueta": "Linhas do documento"
+        },
+        "campos": {
+          "sucursal": "Filial",
+          "emision": "Data de emissão",
+          "formaPago": "Forma de pagamento",
+          "medioPago": "Meio de pagamento",
+          "vence": "Vencimento",
+          "moneda": "Moeda",
+          "monedaBase": "{base} · moeda da organização",
+          "compra": "Fatura de compra relacionada",
+          "compraAyuda": "Opcional: vincule a compra que respalda este documento.",
+          "sinCompra": "Sem fatura de compra",
+          "observaciones": "Observações",
+          "observacionesAyuda": "Máximo de 500 caracteres · sai no documento",
+          "impuestoIncluido": "Os preços incluem o imposto",
+          "elegir": "Escolher…",
+          "sinMetodos": "Não há meios de pagamento ativos"
+        },
+        "atajos": {
+          "vendedor": "Escolher o vendedor",
+          "productos": "Buscar produtos",
+          "manual": "Adicionar item manual",
+          "guardar": "Salvar rascunho"
+        },
+        "resolucion": {
+          "titulo": "Resolução que será usada",
+          "eligeSucursal": "Escolha a filial para ver sua resolução.",
+          "cargando": "Buscando a resolução…",
+          "sinRango": "Esta filial não tem resolução de documento de suporte. Você pode salvar o rascunho; para enviá-lo à DIAN é preciso uma.",
+          "rango": "Documento de suporte · {prefijo}",
+          "consumo": "Consumo da numeração",
+          "consumoValor": "{usados} de {total} · restam {quedan}",
+          "numero": "Resolução {numero}",
+          "hasta": "Até {fecha}",
+          "tono": {
+            "ok": "Vigente",
+            "por_agotar": "Acabando",
+            "agotado": "Esgotada",
+            "por_vencer": "Vence em breve",
+            "vencido": "Vencida"
+          }
+        },
+        "errores": {
+          "sucursal": "Escolha a filial",
+          "proveedor": "Escolha o vendedor",
+          "proveedorIncompleto": "Complete os dados do vendedor que a DIAN exige",
+          "direccion": "Falta o endereço do vendedor",
+          "emision": "Escolha a data de emissão",
+          "medioPago": "Escolha o meio de pagamento",
+          "vence": "Escolha a data de vencimento",
+          "venceAntes": "O vencimento não pode ser antes da emissão",
+          "sinLineas": "Adicione pelo menos uma linha",
+          "descripcion": "Escreva a descrição da linha",
+          "cantidad": "A quantidade deve ser maior que zero",
+          "precio": "Revise o preço e o desconto da linha",
+          "impuesto": "Revise o imposto da linha"
+        }
+      },
+      "errores": {
+        "no_autenticado": "Sua sessão terminou. Entre novamente.",
+        "sin_permiso": "Você não tem permissão para esta ação.",
+        "sin_acceso_sucursal": "Você não tem acesso a essa filial.",
+        "datos_invalidos": "Revise os dados do documento.",
+        "documento_no_encontrado": "Não encontramos o documento de suporte.",
+        "documento_no_editable": "Este documento não pode mais ser editado: a DIAN o recebeu ou ele está anulado.",
+        "documento_no_eliminable": "Este documento não pode ser excluído: a DIAN já o validou.",
+        "documento_en_envio": "O documento está sendo enviado à DIAN. Aguarde a resposta antes de alterá-lo.",
+        "documento_sin_lineas": "Adicione pelo menos uma linha.",
+        "linea_invalida": "Uma linha tem quantidade, preço, desconto ou imposto inválidos.",
+        "producto_invalido": "Um produto das linhas não existe na sua organização.",
+        "proveedor_invalido": "O vendedor não existe na sua organização.",
+        "proveedor_incompleto": "Faltam ao vendedor dados que a DIAN exige (documento, nome ou endereço).",
+        "sucursal_invalida": "A filial não é válida.",
+        "compra_invalida": "A fatura de compra não existe na sua organização.",
+        "medio_pago_requerido": "Escolha o meio de pagamento.",
+        "vencimiento_invalido": "Com pagamento a prazo, o vencimento é obrigatório e não pode ser antes da emissão.",
+        "migracion_pendiente": "Salvar documentos de suporte ainda não está habilitado no seu banco de dados. Avise a equipe da GO Admin.",
+        "error_desconocido": "Algo deu errado. Tente novamente.",
+        "documento_de_compra": "Este documento nasceu de uma fatura de compra e usa as linhas dela: corrija a compra em vez do documento."
+      }
+    }
+  },
+  "finanzasTesoreriaR3": {
+    "comun": {
+      "migas": {
+        "finanzas": "Finanças",
+        "tesoreria": "Tesouraria"
+      },
+      "tipos": {
+        "entrada": "Entrada",
+        "salida": "Saída",
+        "traslado": "Transferência",
+        "anulado": "Anulado"
+      },
+      "caja": "Caixa",
+      "banco": "Banco",
+      "exportar": "Exportar",
+      "actualizar": "Atualizar",
+      "actualizado": "Dados atualizados",
+      "cancelar": "Cancelar",
+      "guardando": "Salvando…",
+      "reintentar": "Tentar novamente",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à Tesouraria",
+        "descripcion": "Peça a um administrador a permissão Finanças · ver."
+      }
+    },
+    "efecto": {
+      "titulo": "Efeito na conta",
+      "ahora": "Saldo agora",
+      "movimiento": "Este movimento",
+      "despues": "Saldo depois",
+      "oculto": "Oculto",
+      "ocultoAyuda": "O saldo deste caixa está oculto pelo fechamento cego.",
+      "bloqueaBanco": "Ultrapassa o saldo da conta bancária: não pode ser registrado.",
+      "avisaCaja": "Ultrapassa o dinheiro esperado do caixa. Revise antes de registrar."
+    },
+    "lista": {
+      "movimientos": {
+        "titulo": "Movimentos",
+        "subtitulo": "Entradas e saídas dos seus caixas e bancos",
+        "nuevo": "Novo movimento",
+        "vacioTitulo": "Ainda não há movimentos",
+        "vacioDescripcion": "Registre uma entrada, uma saída ou deposite o caixa no banco."
+      },
+      "ingresos": {
+        "titulo": "Entradas",
+        "subtitulo": "Entradas não relacionadas a vendas",
+        "nuevo": "Nova entrada",
+        "vacioTitulo": "Ainda não há entradas",
+        "vacioDescripcion": "Registre o dinheiro que entra em um caixa ou banco e não vem de uma venda."
+      },
+      "egresos": {
+        "titulo": "Saídas",
+        "subtitulo": "Saídas não relacionadas a compras",
+        "nuevo": "Nova saída",
+        "vacioTitulo": "Ainda não há saídas",
+        "vacioDescripcion": "Registre o dinheiro que sai de um caixa ou banco e não é o pagamento de uma compra."
+      },
+      "pestanas": {
+        "etiqueta": "Tipo de movimento",
+        "todos": "Todos",
+        "entradas": "Entradas",
+        "salidas": "Saídas",
+        "traslados": "Transferências"
+      },
+      "kpi": {
+        "etiqueta": "Resumo",
+        "entradasMes": "Entradas do mês",
+        "salidasMes": "Saídas do mês",
+        "netoMes": "Líquido do mês",
+        "trasladosMes": "Transferências do mês",
+        "trasladosAyuda": "Entre suas contas",
+        "movimientos": "{n, plural, one {# movimento} other {# movimentos}}",
+        "total": "Total acumulado",
+        "mes": "Este mês",
+        "hoy": "Hoje",
+        "registros": "Registros",
+        "porConciliar": "A conciliar",
+        "porConciliarAyuda": "{monto} em {bancos, plural, one {# banco} other {# bancos}}",
+        "alDia": "Tudo conciliado"
+      },
+      "buscar": "Buscar descrição, conta ou referência",
+      "buscarConcepto": "Buscar por descrição",
+      "columnas": {
+        "fecha": "Data",
+        "numero": "Número",
+        "tipo": "Tipo",
+        "conceptoTercero": "Descrição e terceiro",
+        "concepto": "Descrição",
+        "categoria": "Categoria",
+        "cuentaDinero": "Conta de dinheiro",
+        "origen": "Origem",
+        "importe": "Valor",
+        "monto": "Valor",
+        "conciliacion": "Conciliação"
+      },
+      "trasladoEntreCuentas": "Transferência entre contas",
+      "acciones": {
+        "ver": "Ver detalhes",
+        "duplicar": "Duplicar",
+        "anular": "Anular"
+      },
+      "nuevo": {
+        "movimiento": "Novo movimento",
+        "ingreso": "Entrada",
+        "ingresoAyuda": "Entra dinheiro em um caixa ou banco",
+        "egreso": "Saída",
+        "egresoAyuda": "Sai dinheiro de um caixa ou banco",
+        "traslado": "Transferência entre bancos",
+        "trasladoAyuda": "Mova dinheiro entre suas contas bancárias",
+        "consignar": "Depositar o caixa no banco",
+        "consignarAyuda": "Leve o dinheiro de um caixa ao seu banco"
+      },
+      "anular": {
+        "tituloIngreso": "Anular entrada",
+        "tituloEgreso": "Anular saída",
+        "tituloTraslado": "Anular transferência",
+        "boton": "Anular",
+        "consecuenciaMovimiento": "É criado um movimento contrário na mesma conta, com seu lançamento de estorno.",
+        "consecuenciaTraslado": "Os dois saldos voltam a como estavam e é gerado o lançamento de estorno."
+      },
+      "duplicadoIngreso": "Entrada duplicada",
+      "duplicadoEgreso": "Saída duplicada",
+      "anulado": "Movimento anulado",
+      "csv": {
+        "id": "ID",
+        "fecha": "Data",
+        "concepto": "Descrição",
+        "monto": "Valor",
+        "notas": "Notas",
+        "tipo": "Tipo",
+        "cuenta": "Conta"
+      },
+      "sustantivo": {
+        "uno": "movimento",
+        "otros": "movimentos"
+      },
+      "conciliacion": {
+        "pendiente": "A conciliar",
+        "conciliado": "Conciliado",
+        "noAplica": "Não se aplica"
+      }
+    },
+    "transferencia": {
+      "titulo": "Nova transferência",
+      "descripcion": "Mova dinheiro entre duas contas bancárias da organização, na mesma moeda.",
+      "origen": "Conta de origem",
+      "destino": "Conta de destino",
+      "elegir": "Escolha uma conta",
+      "monto": "Valor",
+      "fecha": "Data",
+      "referencia": "Referência",
+      "notas": "Notas",
+      "sinOrigen": "Escolha a conta de origem",
+      "asientoNota": "Um único lançamento entre as duas contas bancárias, sem afetar o resultado.",
+      "confirmar": "Transferir",
+      "confirmarCon": "Transferir {monto}",
+      "exito": "Transferência registrada",
+      "errores": {
+        "origen": "Escolha a conta de origem.",
+        "destino": "Escolha a conta de destino."
+      }
+    },
+    "consignar": {
+      "titulo": "Depositar o caixa no banco",
+      "descripcion": "Transferência entre suas contas de dinheiro: sai do caixa e entra no banco em uma única operação.",
+      "desde": "De",
+      "hacia": "Para",
+      "cargando": "Carregando caixas…",
+      "elegirCaja": "Escolha o caixa",
+      "elegirBanco": "Escolha a conta bancária",
+      "cajaGlobal": "Caixa de todas as filiais",
+      "saldoOculto": "saldo oculto",
+      "disponible": "disponível {monto}",
+      "monto": "Valor depositado",
+      "comision": "Tarifa ou imposto bancário",
+      "comisionAyuda": "Pago com o mesmo dinheiro e lançado como despesa bancária.",
+      "fecha": "Data contábil",
+      "referencia": "Referência do banco",
+      "sinCajaElegida": "Escolha o caixa",
+      "entraNota": "Entram {monto} no banco · tarifa {comision} (despesa bancária)",
+      "asientoNota": "Lançamento: bancos (1110) débito / caixa (1105) crédito; a tarifa, despesas bancárias (5305) débito / caixa crédito.",
+      "confirmar": "Depositar",
+      "confirmarCon": "Depositar {monto}",
+      "exito": "Depósito de {monto} registrado",
+      "sinCaja": {
+        "titulo": "Não há nenhum caixa aberto",
+        "descripcion": "Para depositar dinheiro, primeiro abra um caixa no ponto de venda.",
+        "abrir": "Ir para caixas"
+      },
+      "errores": {
+        "caja": "Escolha o caixa.",
+        "banco": "Escolha a conta bancária.",
+        "caja_no_encontrada": "O caixa não existe mais ou não é desta organização.",
+        "datos_invalidos": "Faltam dados do depósito. Feche o diálogo e tente novamente."
+      }
+    },
+    "cuentas": {
+      "titulo": "Contas de dinheiro",
+      "subtitulo": "{cajas, plural, one {# caixa aberto} other {# caixas abertos}} · {bancos, plural, one {# conta bancária} other {# contas bancárias}} · modo de caixa: {modo}",
+      "subtituloCorto": "Seus caixas e contas bancárias",
+      "modo": {
+        "branch": "por filial",
+        "user": "por operador"
+      },
+      "exportar": "Exportar saldos",
+      "nuevaCuenta": "Nova conta bancária",
+      "irConciliacion": "Ir para conciliação",
+      "pestanas": {
+        "etiqueta": "Visões das contas de dinheiro",
+        "cuentas": "Contas",
+        "posicion": "Posição",
+        "alertas": "Alertas"
+      },
+      "kpi": {
+        "etiqueta": "Resumo do dinheiro",
+        "disponible": "Disponível total",
+        "disponibleAyuda": "{moneda} · bancos + caixas",
+        "disponibleSinCajas": "Sem os caixas ocultos pelo fechamento cego",
+        "bancos": "Em bancos",
+        "bancosAyuda": "{n, plural, one {# conta ativa} other {# contas ativas}}",
+        "bancosSinPuc": "{n, plural, one {# conta} other {# contas}} · {sin} sem conta contábil",
+        "cajas": "Em caixas",
+        "cajasAyuda": "{n, plural, =0 {Nenhum aberto} one {# aberto} other {# abertos}}",
+        "cajasVencidas": "{n, plural, one {# aberto} other {# abertos}} · {vencidas, plural, one {# vencido} other {# vencidos}}",
+        "porConciliar": "Conciliações abertas",
+        "porConciliarAyuda": "Rascunhos e em andamento"
+      },
+      "otraMoneda": "{n, plural, one {# conta bancária está} other {# contas bancárias estão}} em outra moeda e não somam no total.",
+      "buscar": "Buscar caixa, banco ou número de conta",
+      "sinResultados": "Nenhuma conta corresponde à busca.",
+      "oculto": "Oculto",
+      "cajaGlobal": "Caixa de todas as filiais",
+      "cajas": {
+        "titulo": "Caixas",
+        "ayuda": {
+          "branch": "Modo por filial · um caixa por filial · o saldo é o dinheiro esperado",
+          "user": "Modo por operador · um caixa por pessoa · o saldo é o dinheiro esperado"
+        },
+        "vacio": "Não há caixas abertos. Seus caixas aparecem aqui ao abri-los no ponto de venda.",
+        "error": "Não foi possível carregar os caixas abertos"
+      },
+      "caja": {
+        "nombre": "Caixa {sucursal}",
+        "detalle": "{responsable} · aberto {desde}",
+        "esperado": "Dinheiro esperado",
+        "ocultoAyuda": "Oculto pelo fechamento cego",
+        "turno": "Turno nº {id}",
+        "abierta": "Aberto",
+        "vencida": "Vencido {horas} h",
+        "verTurno": "Ver turno",
+        "consignar": "Depositar no banco",
+        "cerrarArqueo": "Fechar com contagem"
+      },
+      "bancos": {
+        "titulo": "Bancos",
+        "ayuda": "Saldo contábil = saldo inicial + movimentos + transferências",
+        "vacio": "Ainda não há contas bancárias."
+      },
+      "banco": {
+        "saldoLibros": "Saldo contábil",
+        "activa": "Ativa",
+        "inactiva": "Inativa",
+        "inactivaPie": "Conta inativa",
+        "sinCuentaContable": "Sem conta contábil: seus lançamentos vão para a conta genérica de bancos",
+        "cuentaContable": "Conta contábil {codigo}",
+        "verMovimientos": "Ver movimentos",
+        "verCuenta": "Ver conta",
+        "asignarCuenta": "Atribuir conta",
+        "conciliar": "Conciliar"
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as contas",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "vacio": {
+        "titulo": "Cadastre sua primeira conta bancária",
+        "descripcion": "Seus caixas aparecem aqui ao abri-los no ponto de venda.",
+        "abrirCaja": "Ir para caixas"
+      },
+      "csv": {
+        "tipo": "Tipo",
+        "nombre": "Nome",
+        "detalle": "Detalhe",
+        "moneda": "Moeda",
+        "saldo": "Saldo"
+      }
+    },
+    "posicion": {
+      "kpi": {
+        "etiqueta": "Posição de tesouraria",
+        "total": "Saldo consolidado",
+        "totalAyuda": "Todas as contas bancárias",
+        "entradas": "Entradas previstas (90 dias)",
+        "salidas": "Saídas previstas (90 dias)",
+        "neto": "Fluxo líquido previsto"
+      },
+      "cuentasTitulo": "Posição por conta",
+      "columnas": {
+        "cuenta": "Conta",
+        "banco": "Banco",
+        "libros": "Saldo contábil",
+        "real": "Saldo segundo o banco",
+        "diferencia": "Diferença"
+      },
+      "sinConectar": "Não conectado",
+      "vacio": {
+        "titulo": "Sem contas bancárias",
+        "descripcion": "Cadastre uma conta para ver sua posição."
+      },
+      "proyeccion": {
+        "titulo": "Próximos movimentos",
+        "descripcion": "Recebimentos e pagamentos esperados nos próximos 90 dias",
+        "vacia": "Não há recebimentos nem pagamentos esperados.",
+        "error": "Não foi possível carregar a projeção."
+      },
+      "alertas": {
+        "titulo": "Alertas de tesouraria",
+        "vacia": "Sem alertas.",
+        "error": "Não foi possível carregar os alertas.",
+        "severidad": {
+          "high": "Alta",
+          "medium": "Média",
+          "low": "Baixa"
+        },
+        "tipos": {
+          "negative_balance": "Saldo negativo",
+          "overdue_payable": "Conta a pagar vencida",
+          "upcoming_payable": "Conta a pagar a vencer",
+          "concentration_risk": "Risco de concentração",
+          "balance_discrepancy": "Diferença de saldo"
+        }
+      },
+      "concentracion": {
+        "titulo": "Concentração de pagamentos do ano",
+        "proveedor": "Fornecedor",
+        "total": "Total pago",
+        "pagos": "Pagamentos",
+        "promedio": "Média",
+        "porcentaje": "% do total",
+        "vacia": "Sem pagamentos a fornecedores este ano"
+      },
+      "parcial": {
+        "titulo": "Parte da informação não carregou",
+        "descripcion": "Não foi possível ler: {partes}."
+      },
+      "partes": {
+        "posicion": "a posição",
+        "proyeccion": "a projeção",
+        "alertas": "os alertas",
+        "concentracion": "a concentração de pagamentos"
+      },
+      "reintentar": "Tentar novamente"
+    },
+    "cuentaBancaria": {
+      "migaCuentas": "Contas de dinheiro",
+      "cuentaContable": "conta contábil {codigo}",
+      "activa": "Ativa",
+      "inactiva": "Inativa",
+      "importarExtracto": "Importar extrato",
+      "movimientoManual": "Movimento manual",
+      "transferir": "Transferir para outra conta",
+      "sincronizar": "Sincronizar com o banco",
+      "sincronizando": "Sincronizando…",
+      "sinVinculo": "Esta conta não está conectada ao banco",
+      "sincronizado": "Sincronização concluída: {sincronizadas} movimentos sincronizados, {importadas} importados",
+      "errorSincronizar": "Não foi possível sincronizar com o banco",
+      "editar": "Editar",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "activada": "Conta ativada",
+      "desactivada": "Conta desativada",
+      "errorEstado": "Não foi possível mudar o status da conta",
+      "errorCarga": "Não foi possível carregar a conta bancária",
+      "noEncontrada": "Conta bancária não encontrada",
+      "volver": "Voltar para contas de dinheiro",
+      "pestanas": {
+        "etiqueta": "Seções da conta",
+        "movimientos": "Movimentos",
+        "conciliaciones": "Conciliações",
+        "datos": "Dados",
+        "extractos": "Extratos"
+      },
+      "kpi": {
+        "etiqueta": "Resumo da conta",
+        "libros": "Saldo contábil",
+        "librosAyuda": "Saldo inicial + movimentos",
+        "banco": "Saldo segundo o banco",
+        "sinConectar": "Não conectado",
+        "bancoAyuda": "Conecte o banco ou importe o extrato",
+        "bancoAl": "em {fecha}",
+        "porConciliar": "A conciliar",
+        "mes": "Movimentos do mês",
+        "mesAyuda": "+{entradas} · −{salidas}"
+      },
+      "buscar": "Buscar descrição ou referência",
+      "filtro": {
+        "etiqueta": "Conciliação",
+        "todos": "Todos",
+        "pendientes": "Pendentes",
+        "conciliados": "Conciliados"
+      },
+      "columnas": {
+        "fecha": "Data",
+        "descripcion": "Descrição e referência",
+        "origen": "Origem",
+        "entrada": "Entrada",
+        "salida": "Saída",
+        "saldo": "Saldo",
+        "conciliacion": "Conciliação"
+      },
+      "origenes": {
+        "deposit": "Depósito",
+        "withdrawal": "Saque",
+        "transfer": "Transferência",
+        "fee": "Tarifa",
+        "interest": "Rendimentos",
+        "other": "Outro"
+      },
+      "fuentes": {
+        "manual": "Manual",
+        "anulacion": "Anulação",
+        "consignacion": "Depósito de caixa",
+        "open_finance": "Banco conectado",
+        "extracto": "Extrato"
+      },
+      "conciliado": "Conciliado",
+      "porConciliar": "A conciliar",
+      "vacio": {
+        "titulo": "Sem movimentos",
+        "descripcion": "Os movimentos, transferências e recebimentos desta conta aparecem aqui."
+      },
+      "sustantivo": {
+        "uno": "movimento",
+        "otros": "movimentos"
+      },
+      "limite": "São mostrados os últimos 200 movimentos.",
+      "datos": {
+        "titulo": "Dados da conta",
+        "saldoInicial": "Saldo inicial",
+        "estado": "Status",
+        "creada": "Criada"
+      },
+      "puc": {
+        "titulo": "Sem conta contábil",
+        "descripcion": "Atribua sua subconta de bancos (1110xx ou 1120xx) para que seus lançamentos não se misturem com os de outros bancos.",
+        "asignar": "Atribuir conta",
+        "sin": "Não atribuída",
+        "guardar": "Salvar conta contábil",
+        "falta": "Escolha a conta contábil (1110, 1120…)",
+        "guardada": "Conta contábil salva",
+        "error": "Não foi possível salvar a conta contábil"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Desativar a conta?",
+        "descripcion": "Ela deixa de aparecer ao registrar movimentos e transferências. Seu histórico é mantido."
+      },
+      "confirmarActivar": {
+        "titulo": "Ativar a conta?",
+        "descripcion": "Ela volta a aparecer ao registrar movimentos e transferências."
+      },
+      "form": {
+        "tituloNueva": "Nova conta bancária",
+        "tituloEditar": "Editar conta bancária",
+        "descripcion": "O saldo se move sozinho com os movimentos, transferências e recebimentos.",
+        "nombre": "Nome",
+        "nombreEjemplo": "Ex.: Bancolombia poupança",
+        "banco": "Banco",
+        "elegir": "Escolha um banco",
+        "tipo": "Tipo de conta",
+        "tipos": {
+          "checking": "Corrente",
+          "savings": "Poupança",
+          "credit": "Linha de crédito",
+          "investment": "Investimento"
+        },
+        "numero": "Número da conta",
+        "numeroAyuda": "Exibido mascarado: {mascara}",
+        "moneda": "Moeda",
+        "monedaFija": "A moeda não pode ser alterada depois de criar a conta.",
+        "cuentaContable": "Conta contábil",
+        "cuentaContableAyuda": "Obrigatória: cada banco tem sua subconta 1110xx para que seus lançamentos não se misturem.",
+        "elegirCuenta": "Escolha a conta contábil",
+        "saldoInicial": "Saldo inicial",
+        "saldoInicialAyuda": "O saldo do extrato no dia em que você começa a registrar.",
+        "conectar": {
+          "etiqueta": "Conectar banco · serviço do GO Admin",
+          "valor": "Traz o extrato sozinho, sem colar chaves",
+          "accion": "Ativar"
+        },
+        "crear": "Criar conta",
+        "guardar": "Salvar alterações",
+        "creada": "Conta bancária criada",
+        "guardada": "Conta bancária atualizada",
+        "errorGuardar": "Não foi possível salvar a conta bancária",
+        "errores": {
+          "nombre": "Digite o nome da conta.",
+          "banco": "Escolha o banco.",
+          "cuentaContable": "A conta contábil é obrigatória (plano de contas 1110, 1120 ou outra de bancos).",
+          "saldoInicial": "O saldo inicial não pode ser negativo."
+        }
+      },
+      "manual": {
+        "titulo": "Movimento manual",
+        "descripcion": "Tarifas, impostos bancários, rendimentos e outros movimentos feitos pelo banco.",
+        "sentido": "Sentido do movimento",
+        "entrada": "Entra na conta",
+        "salida": "Sai da conta",
+        "concepto": "Descrição",
+        "conceptoEjemplo": "Ex.: Tarifa bancária de novembro",
+        "monto": "Valor",
+        "fecha": "Data",
+        "referencia": "Referência",
+        "asientoNota": "O lançamento sai da regra de ajustes bancários.",
+        "registrar": "Registrar movimento",
+        "exito": "Movimento registrado",
+        "errores": {
+          "descripcion": "Digite a descrição.",
+          "monto": "Digite um valor maior que zero.",
+          "supera": "Ultrapassa o saldo da conta bancária.",
+          "fechaFutura": "A data não pode ser futura.",
+          "guardar": "Não foi possível registrar o movimento."
+        }
+      },
+      "extractos": {
+        "columnas": {
+          "archivo": "Arquivo",
+          "importado": "Importado",
+          "lineas": "Linhas",
+          "estado": "Status",
+          "movimientos": "Entradas · saídas"
+        },
+        "sinNombre": "Extrato sem nome",
+        "pendientes": "{n, plural, one {# linha pendente} other {# linhas pendentes}}",
+        "completo": "Completo",
+        "ayuda": "Extratos importados ao conciliar. Cada um abre sua conciliação.",
+        "vacio": {
+          "titulo": "Ainda não há extratos",
+          "descripcion": "Importe o extrato do banco ao criar uma conciliação."
+        },
+        "resumenMovil": "{lineas} linhas · {pendientes} pendentes"
+      }
+    },
+    "conciliacion": {
+      "titulo": "Conciliação bancária",
+      "subtitulo": "Compare o extrato do banco com seus movimentos",
+      "tituloDetalle": "Conciliação · {cuenta}",
+      "migaTesoreria": "Tesouraria",
+      "nueva": "Nova conciliação",
+      "ver": "Ver conciliação",
+      "actualizar": "Atualizar",
+      "buscar": "Buscar por conta ou período",
+      "cuentaSinNombre": "Conta bancária",
+      "filtros": {
+        "estado": "Status",
+        "cuenta": "Conta",
+        "todosEstados": "Todos os status",
+        "todasCuentas": "Todas as contas"
+      },
+      "kpi": {
+        "etiqueta": "Resumo das conciliações",
+        "total": "Total",
+        "borradores": "Rascunhos",
+        "enProgreso": "Em andamento",
+        "cerradas": "Fechadas"
+      },
+      "columnas": {
+        "cuenta": "Conta",
+        "periodo": "Período",
+        "saldoExtracto": "Saldo do extrato",
+        "diferencia": "Diferença",
+        "estado": "Status"
+      },
+      "estados": {
+        "draft": "Rascunho",
+        "in_progress": "Em andamento",
+        "closed": "Fechada"
+      },
+      "vacio": {
+        "titulo": "Ainda não há conciliações",
+        "descripcion": "Concilie todo mês o extrato do seu banco com seus movimentos."
+      },
+      "pestanas": {
+        "etiqueta": "Seções da conciliação",
+        "emparejar": "Emparelhar",
+        "extracto": "Extrato",
+        "sugerencias": "Sugestões"
+      },
+      "pendientes": {
+        "titulo": "Movimentos pendentes ({n})",
+        "descripcion": "Movimentos da conta sem conciliar no período",
+        "vacio": "Todos os movimentos estão conciliados"
+      },
+      "conciliados": {
+        "titulo": "Conciliados ({n})",
+        "descripcion": "Movimentos já conciliados",
+        "vacio": "Ainda não há movimentos conciliados"
+      },
+      "sinDescripcion": "Sem descrição",
+      "sinFecha": "Sem data",
+      "conciliar": "Conciliar",
+      "deshacer": "Desfazer",
+      "tipoItem": {
+        "payment": "Pagamento",
+        "journal": "Lançamento",
+        "manual": "Manual"
+      },
+      "nuevaForm": {
+        "titulo": "Nova conciliação bancária",
+        "subtitulo": "O saldo atual será o de abertura",
+        "miga": "Conciliação bancária",
+        "cuenta": "Conta bancária",
+        "elegirCuenta": "Escolha a conta",
+        "saldoSistema": "Saldo atual no sistema",
+        "saldoSistemaAyuda": "É o saldo de abertura da conciliação.",
+        "inicio": "Data de início",
+        "fin": "Data de fim",
+        "saldoExtracto": "Saldo segundo o extrato bancário",
+        "saldoExtractoAyuda": "Opcional: você pode digitá-lo depois.",
+        "extracto": "Extrato",
+        "extractoElegir": "Arraste o extrato ou escolha um arquivo",
+        "extractoFormatos": "CSV ou Excel",
+        "extractoAyuda": "Opcional: é emparelhado sozinho com seus movimentos.",
+        "extractoLeido": "{lineas, plural, one {# linha lida} other {# linhas lidas}} de {nombre}",
+        "extractoVacio": "O arquivo não tem linhas com data e valor",
+        "extractoIlegible": "Não foi possível ler o arquivo. Use CSV ou Excel.",
+        "errorCuentas": "Não foi possível carregar as contas bancárias",
+        "crear": "Criar conciliação",
+        "creada": "Conciliação criada",
+        "creadaConExtracto": "Conciliação criada. Extrato carregado: {emparejadas} de {lineas} emparelhadas",
+        "creadaSinExtracto": "A conciliação foi criada, mas não foi possível carregar o extrato",
+        "errores": {
+          "cuenta": "Escolha a conta bancária.",
+          "periodo": "Escolha o período de conciliação.",
+          "orden": "A data de início deve ser anterior à data de fim.",
+          "crear": "Não foi possível criar a conciliação."
+        }
+      }
+    },
+    "transferencias": {
+      "titulo": "Transferências bancárias",
+      "subtitulo": "Movimentos entre contas bancárias",
+      "nueva": "Nova transferência",
+      "buscar": "Buscar por referência ou conta",
+      "ver": "Ver detalhes",
+      "anular": "Anular",
+      "anulada": "Transferência anulada",
+      "anularTitulo": "Anular transferência",
+      "anularConsecuencia": "Os dois saldos voltam a como estavam e é gerado o lançamento de estorno.",
+      "kpi": {
+        "etiqueta": "Resumo das transferências",
+        "total": "Total transferido",
+        "mes": "Este mês",
+        "operaciones": "Operações",
+        "pendientes": "Pendentes"
+      },
+      "columnas": {
+        "fecha": "Data",
+        "origen": "Origem",
+        "destino": "Destino",
+        "monto": "Valor",
+        "referencia": "Referência",
+        "estado": "Status"
+      },
+      "estados": {
+        "completed": "Concluída",
+        "pending": "Pendente",
+        "cancelled": "Anulada"
+      },
+      "vacio": {
+        "titulo": "Ainda não há transferências",
+        "descripcion": "Mova dinheiro entre suas contas bancárias."
+      },
+      "sustantivo": {
+        "uno": "transferência",
+        "otros": "transferências"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Data",
+        "origen": "Origem",
+        "destino": "Destino",
+        "monto": "Valor",
+        "referencia": "Referência",
+        "estado": "Status"
+      },
+      "detalleTitulo": "Transferência",
+      "detalleTituloRef": "Transferência {referencia}",
+      "descargarComprobante": "Baixar comprovante",
+      "comprobante": {
+        "titulo": "COMPROVANTE DE TRANSFERÊNCIA",
+        "id": "ID da transferência"
+      },
+      "datos": "Dados da transferência",
+      "registro": "Registro",
+      "notas": "Notas",
+      "creada": "Criada",
+      "asiento": "Lançamento",
+      "asientoAyuda": "Um único lançamento entre as duas contas bancárias",
+      "errorCarga": "Não foi possível carregar a transferência",
+      "noEncontrada": "Transferência não encontrada",
+      "volver": "Voltar para transferências"
+    },
+    "formulario": {
+      "tituloMovimiento": "Novo movimento",
+      "descripcion": "Registre o dinheiro que entra ou sai de um caixa ou banco. As vendas e os recebimentos são registrados sozinhos.",
+      "registrar": "{tipo, select, ingreso {Registrar entrada} other {Registrar saída}}",
+      "registrarDeTodosModos": "{tipo, select, ingreso {Registrar entrada mesmo assim} other {Registrar saída mesmo assim}}",
+      "tipo": {
+        "etiqueta": "Tipo de movimento",
+        "ingreso": "Entrada",
+        "ingresoAyuda": "Entra dinheiro",
+        "egreso": "Saída",
+        "egresoAyuda": "Sai dinheiro",
+        "traslado": "Transferência",
+        "trasladoAyuda": "Entre suas contas"
+      },
+      "sinCaja": {
+        "titulo": "Você não tem um caixa aberto nesta filial. Abra seu caixa no ponto de venda ou registre o movimento em um banco.",
+        "abrir": "Abrir caixa",
+        "banco": "Usar um banco"
+      },
+      "cuentaDinero": "Conta de dinheiro",
+      "elegirCuenta": "Escolha uma conta",
+      "cajasError": "Não foi possível ler os caixas abertos; os bancos continuam disponíveis.",
+      "opcion": {
+        "miCaja": "Meu caixa · {nombre}",
+        "caja": "Caixa {nombre}",
+        "todas": "todas as filiais",
+        "oculto": "saldo oculto"
+      },
+      "motivos": {
+        "otroCajero": "caixa de outro operador",
+        "otraSucursal": "caixa de outra filial"
+      },
+      "cuentaAyuda": "A categoria traz a conta; você pode mudá-la.",
+      "importe": "Valor",
+      "superaCaja": "Ultrapassa o dinheiro esperado do caixa ({disponible}).",
+      "superaBanco": "Ultrapassa o saldo da conta bancária: não pode ser registrado.",
+      "tercero": "Terceiro (opcional)",
+      "terceroAyuda": "Fornecedor, funcionário ou interno.",
+      "referencia": "Referência ou notas",
+      "adjuntar": "Anexar comprovante (foto ou PDF)",
+      "avisoArqueo": "Você pode registrar mesmo assim se a contagem física confirmar; ficará marcado para a contagem.",
+      "efectoTitulo": "Efeito na conta",
+      "efectoVacio": "Escolha uma conta de dinheiro para ver o saldo antes e depois.",
+      "vistaVacia": "Escolha a categoria ou a conta para ver o lançamento.",
+      "errores": {
+        "cuentaDinero": "Escolha um caixa aberto ou um banco."
+      }
+    },
+    "cadena": {
+      "titulo": "Cadeia do dinheiro",
+      "turno": "Turno de caixa",
+      "movimiento": "Movimento",
+      "asiento": "Lançamento",
+      "conciliacion": "Conciliação",
+      "consignacion": "Depósito no banco",
+      "sinAsiento": "Sem lançamento",
+      "publicado": "Publicado",
+      "borrador": "Rascunho",
+      "conciliado": "Conciliado",
+      "porConciliar": "A conciliar",
+      "pendiente": "Pendente",
+      "abierto": "Aberto",
+      "cerrado": "Fechado"
+    }
   }
 }

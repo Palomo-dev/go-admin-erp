@@ -182,7 +182,7 @@ describe('filtrarNavegacion', () => {
 
 describe('rutaActiva', () => {
   test('gana la página más específica', () => {
-    expect(rutaActiva('/app/finanzas/contabilidad/asientos')?.pagina?.nombre).toBe('Asientos');
+    expect(rutaActiva('/app/finanzas/contabilidad/asientos')?.pagina?.nombre).toBe('Libro diario');
     expect(rutaActiva('/app/finanzas/contabilidad')?.pagina?.nombre).toBe('Contabilidad');
   });
 

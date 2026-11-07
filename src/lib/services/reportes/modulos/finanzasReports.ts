@@ -820,13 +820,13 @@ export const finanzasReports: DefinicionModulo[] = [
 
       const lectura: ReportData['lectura'] = [];
       if (cuentas.length === 0) {
-        lectura.push({ tono: 'info', texto: 'No hay cuentas bancarias activas en este alcance.', href: '/app/finanzas/bancos', etiquetaAccion: 'Ver bancos' });
+        lectura.push({ tono: 'info', texto: 'No hay cuentas bancarias activas en este alcance.', href: '/app/finanzas/tesoreria/cuentas', etiquetaAccion: 'Ver bancos' });
       }
       if (sinConciliar > 0) {
-        lectura.push({ tono: 'aviso', texto: `${sinConciliar} movimientos del periodo siguen sin conciliar.`, href: '/app/finanzas/conciliacion-bancaria', etiquetaAccion: 'Conciliar' });
+        lectura.push({ tono: 'aviso', texto: `${sinConciliar} movimientos del periodo siguen sin conciliar.`, href: '/app/finanzas/tesoreria/conciliacion', etiquetaAccion: 'Conciliar' });
       }
       if (conDiferencia > 0) {
-        lectura.push({ tono: 'alerta', texto: `${conDiferencia} cuentas cerraron su última conciliación con diferencia.`, href: '/app/finanzas/conciliacion-bancaria', etiquetaAccion: 'Revisar' });
+        lectura.push({ tono: 'alerta', texto: `${conDiferencia} cuentas cerraron su última conciliación con diferencia.`, href: '/app/finanzas/tesoreria/conciliacion', etiquetaAccion: 'Revisar' });
       }
 
       const ESTADO_CONCILIACION: Record<string, string> = { draft: 'Borrador', in_progress: 'En curso', closed: 'Cerrada' };

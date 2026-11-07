@@ -125,7 +125,7 @@ export function PartidasConciliacion({
       celda: (p) => {
         if (p.estado === 'resuelta') {
           return p.bank_transaction_id ? (
-            <Link href="/app/finanzas/bancos" className="text-sm font-medium text-brand hover:underline">
+            <Link href="/app/finanzas/tesoreria/cuentas" className="text-sm font-medium text-brand hover:underline">
               {t('partidas.verMovimiento')}
             </Link>
           ) : null;

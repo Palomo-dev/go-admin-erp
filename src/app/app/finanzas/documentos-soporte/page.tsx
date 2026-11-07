@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
-import { SupportDocumentsPage } from '@/components/finanzas/documentos-soporte/SupportDocumentsPage';
+/** Documentos soporte: listado en el servidor con el kit (`ListadoDocumentosSoporte`). */
+import { ListadoDocumentosSoporte } from '@/components/finanzas/documentos-soporte/ListadoDocumentosSoporte';
 
 export default function DocumentosSoportePage() {
-  return <SupportDocumentsPage />;
+  return <ListadoDocumentosSoporte />;
 }

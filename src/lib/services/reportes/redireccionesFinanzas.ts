@@ -7,8 +7,12 @@
  * y botones que nadie actualizó sigan llegando al mismo informe.
  *
  * Se conservan los parámetros que tienen sentido en el visor: el periodo
- * (`desde`/`hasta` como periodo personalizado), la sucursal y la cuenta del
- * mayor. El resto se descarta.
+ * (`desde`/`hasta` como periodo personalizado) y la sucursal. El resto se
+ * descarta.
+ *
+ * Excepción: `/app/finanzas/contabilidad/mayor-contable` ya no redirige. Es la
+ * página de trabajo «Mayor contable» de Contabilidad (decisión 1 del dueño,
+ * 2026-11-07) y lee la misma función que el reporte «Mayor por cuenta».
  */
 import type { TipoCierre } from './types';
 
@@ -26,7 +30,6 @@ export const REDIRECCIONES_FINANZAS = {
   '/app/finanzas/reportes': { grupo: 'finanzas' },
   '/app/finanzas/reportes/cartera-edades': { grupo: 'finanzas', reporte: 'cxc-aging' },
   '/app/finanzas/reporte-categorias': { grupo: 'finanzas', reporte: 'categorias-tesoreria' },
-  '/app/finanzas/contabilidad/mayor-contable': { grupo: 'contabilidad', reporte: 'mayor-cuenta', periodo: 'anual', conservar: ['cuenta'] },
   '/app/finanzas/contabilidad/libro-diario': { grupo: 'contabilidad', reporte: 'libro-diario' },
   '/app/finanzas/contabilidad/auxiliar-tercero': { grupo: 'contabilidad', reporte: 'auxiliar-tercero', periodo: 'anual' },
   '/app/finanzas/contabilidad/balance-comprobacion': { grupo: 'contabilidad', reporte: 'balance-prueba' },

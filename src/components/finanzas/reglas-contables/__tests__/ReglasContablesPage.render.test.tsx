@@ -71,8 +71,13 @@ function responder(status: number, cuerpo: unknown) {
   global.fetch = jest.fn(async () => ({ ok: status < 400, status, json: async () => cuerpo })) as unknown as typeof fetch;
 }
 
+// `DataTable` pinta la tabla y, debajo de `lg`, las tarjetas: las consultas van a la tabla.
+async function tabla() {
+  return within(await screen.findByRole('table', { name: 'Reglas contables' }));
+}
+
 async function abrirMenu(regla: string) {
-  const fila = (await screen.findByText(regla)).closest('tr') as HTMLElement;
+  const fila = (await tabla()).getByText(regla).closest('tr') as HTMLElement;
   fireEvent.click(within(fila).getAllByRole('button').at(-1) as HTMLElement);
 }
 
@@ -96,26 +101,27 @@ describe('Reglas contables con cuentas inválidas', () => {
   test('avisa cuántas reglas y muestra estado y propuesta', async () => {
     renderConIdioma(<ReglasContablesPage />);
     expect(await screen.findByText('2 reglas apuntan a cuentas que no existen o son de título')).toBeTruthy();
-    expect(screen.getByText('14350101 · no existe')).toBeTruthy();
-    expect(screen.getByText('4155 · de título')).toBeTruthy();
-    expect(screen.getByText('14350501 · usada en 12 asientos')).toBeTruthy();
-    expect(screen.getByText('Pendiente del Contador')).toBeTruthy();
+    const t = await tabla();
+    expect(t.getByText('14350101 · no existe')).toBeTruthy();
+    expect(t.getByText('4155 · de título')).toBeTruthy();
+    expect(t.getByText('14350501 · usada en 12 asientos')).toBeTruthy();
+    expect(t.getByText('Pendiente del Contador')).toBeTruthy();
   });
 
   test('«Ver solo estas» deja solo las inválidas', async () => {
     renderConIdioma(<ReglasContablesPage />);
-    await screen.findByText('Cobro');
+    (await tabla()).getByText('Cobro');
     fireEvent.click(screen.getByRole('button', { name: 'Ver solo estas' }));
     expect(screen.queryByText('Cobro')).toBeNull();
-    expect(screen.getByText('Recepción de mercancía')).toBeTruthy();
+    expect((await tabla()).getByText('Recepción de mercancía')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Ver todas' }));
-    expect(screen.getByText('Cobro')).toBeTruthy();
+    expect((await tabla()).getByText('Cobro')).toBeTruthy();
   });
 
   test('sin reglas inválidas no hay aviso', async () => {
     mockDatos.DIAGNOSTICO = [];
     renderConIdioma(<ReglasContablesPage />);
-    await screen.findByText('Cobro');
+    (await tabla()).getByText('Cobro');
     expect(screen.queryByText(/apuntan a/)).toBeNull();
   });
 
@@ -164,9 +170,31 @@ describe('Reglas contables con cuentas inválidas', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  test('editar muestra la vista previa del asiento y cuadra', async () => {
+    renderConIdioma(<ReglasContablesPage />);
+    await abrirMenu('Cobro');
+    fireEvent.click(await screen.findByText('Editar'));
+    const dialogo = await screen.findByRole('dialog');
+    const vista = within(within(dialogo).getByRole('table', { name: 'Vista previa' }));
+    expect(vista.getAllByText('11050501').length).toBeGreaterThan(0);
+    expect(vista.getAllByText('1305').length).toBeGreaterThan(0);
+    expect(within(dialogo).getByText('El asiento cuadra.')).toBeTruthy();
+  });
+
+  test('una regla ya guardada con cuenta agrupadora avisa sin bloquear el guardado', async () => {
+    renderConIdioma(<ReglasContablesPage />);
+    await abrirMenu('Folio servicios');
+    fireEvent.click(await screen.findByText('Editar'));
+    const dialogo = await screen.findByRole('dialog');
+    expect(within(dialogo).getByText(/4155 es agrupadora: elige una subcuenta \(41559501/)).toBeTruthy();
+    expect(within(dialogo).getByText(/los documentos con esta regla quedarán pendientes/)).toBeTruthy();
+    const guardar = within(dialogo).getByRole('button', { name: 'Guardar cambios' }) as HTMLButtonElement;
+    expect(guardar.disabled).toBe(false);
+  });
+
   test.each(['en', 'fr', 'pt'] as const)('%s: la pantalla carga con sus textos', async (idioma) => {
     renderConIdioma(<ReglasContablesPage />, { idioma });
-    await screen.findByText('Recepción de mercancía');
+    expect(await screen.findAllByText('Recepción de mercancía')).not.toHaveLength(0);
     expect(document.body.textContent).toContain('14350101');
   });
 });

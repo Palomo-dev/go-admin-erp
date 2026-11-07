@@ -60,7 +60,7 @@ describe.each(IDIOMAS)('PanelFinanzasInicio (%s)', (idioma) => {
     const { container } = renderConIdioma(<PanelFinanzasInicio datos={datos(CON_PENDIENTES)} cifra={cifra} onReintentar={() => {}} />, { idioma });
     const filas = Array.from(container.querySelectorAll('[data-pendiente]'));
     expect(filas.map((f) => f.getAttribute('data-pendiente'))).toEqual(['pendientesContables', 'conciliacion', 'dianRechazados', 'periodosSinCerrar']);
-    expect(filas[1].querySelector('a')?.getAttribute('href')).toBe('/app/finanzas/conciliacion-bancaria/r1');
+    expect(filas[1].querySelector('a')?.getAttribute('href')).toBe('/app/finanzas/tesoreria/conciliacion/r1');
     expect(filas[3].querySelector('a')?.getAttribute('href')).toBe('/app/finanzas/contabilidad/periodos-fiscales');
     // El mes se nombra en el idioma de la interfaz.
     expect(filas[3].textContent).toContain(nombreMes({ anio: 2026, mes: 10 }, idioma));

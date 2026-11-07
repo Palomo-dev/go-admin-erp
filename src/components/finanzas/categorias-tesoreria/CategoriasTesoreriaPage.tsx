@@ -350,7 +350,7 @@ export function CategoriasTesoreriaPage() {
         icono={Tags}
         migas={[
           { etiqueta: t('categorias.migaFinanzas'), href: '/app/finanzas' },
-          { etiqueta: t('categorias.migaTesoreria'), href: '/app/finanzas/bancos' },
+          { etiqueta: t('categorias.migaTesoreria'), href: '/app/finanzas/tesoreria/movimientos' },
           { etiqueta: t('categorias.migaCategorias') },
         ]}
         acciones={(

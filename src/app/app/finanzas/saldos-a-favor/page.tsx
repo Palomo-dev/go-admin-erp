@@ -1,5 +1,11 @@
-import { SaldosAFavorPage } from '@/components/finanzas/saldos-a-favor';
+import { Suspense } from 'react';
+import { ListadoSaldosAFavor } from '@/components/finanzas/saldos-a-favor';
 
 export default function Page() {
-  return <SaldosAFavorPage />;
+  // `useSearchParams` (estado del listado y hoja `?saldo=`) pide un límite de Suspense.
+  return (
+    <Suspense fallback={null}>
+      <ListadoSaldosAFavor />
+    </Suspense>
+  );
 }

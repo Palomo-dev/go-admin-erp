@@ -1,6 +1,6 @@
 'use client';
 
-import { DetalleMovimientoTesoreria } from '@/components/finanzas/movimientos/DetalleMovimientoTesoreria';
+import { DetalleMovimientoTesoreria } from '@/components/finanzas/tesoreria/compartido/formularios';
 
 /** Detalle de un egreso: el mismo de un ingreso, con su tipo (`DetalleMovimientoTesoreria`). */
 export function EgresoDetalle({ id }: { id: string }) {

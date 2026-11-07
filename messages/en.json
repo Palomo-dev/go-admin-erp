@@ -4451,13 +4451,11 @@
       "finanzas_facturas-venta": "Sales invoices",
       "finanzas_cotizaciones": "Quotes",
       "finanzas_facturas-compra": "Purchase invoices",
-      "finanzas_notas-credito": "Credit notes",
+      "finanzas_notas-credito": "Credit and debit notes",
       "finanzas_documentos-soporte": "Support documents",
       "finanzas_facturacion-electronica": "E-invoicing",
       "finanzas_ingresos": "Income",
       "finanzas_egresos": "Expenses",
-      "finanzas_transferencias": "Transfers",
-      "finanzas_bancos": "Banks",
       "finanzas_open-finance": "Connect bank",
       "finanzas_payfac_dispersiones": "Collections and payouts",
       "finanzas_cuentas-por-cobrar": "Accounts receivable",
@@ -4466,7 +4464,7 @@
       "finanzas_contabilidad": "Accounting",
       "finanzas_contabilidad_plan-cuentas": "Chart of accounts",
       "finanzas_contabilidad_actualizar-puc": "Update chart of accounts",
-      "finanzas_contabilidad_asientos": "Journal entries",
+      "finanzas_contabilidad_asientos": "Journal",
       "finanzas_contabilidad_plantillas": "Recurring journal templates",
       "finanzas_contabilidad_mayor-contable": "General ledger",
       "finanzas_contabilidad_libro-diario": "General journal",
@@ -4474,7 +4472,7 @@
       "finanzas_contabilidad_balance-comprobacion": "Trial balance",
       "finanzas_contabilidad_estado-resultados": "Statement of comprehensive income",
       "finanzas_contabilidad_balance-general": "Statement of financial position",
-      "finanzas_contabilidad_periodos-fiscales": "Fiscal periods",
+      "finanzas_contabilidad_periodos-fiscales": "Accounting periods",
       "finanzas_reglas-contables": "Accounting rules",
       "finanzas_centro-costos": "Cost centers",
       "finanzas_activos-fijos": "Fixed assets",
@@ -4577,7 +4575,12 @@
       "finanzas_contabilidad_informes_certificacion": "Certification of financial statements",
       "finanzas_contabilidad_informes_indicadores": "Financial ratios",
       "finanzas_contabilidad_informes_presupuesto-real": "Budget versus actual",
-      "finanzas_contabilidad_informes_libros": "Accounting books"
+      "finanzas_contabilidad_informes_libros": "Accounting books",
+      "finanzas_tesoreria_movimientos": "Movements",
+      "finanzas_tesoreria_cuentas": "Money accounts",
+      "finanzas_tesoreria_conciliacion": "Reconciliation",
+      "finanzas_tesoreria_transferencias": "Transfers",
+      "finanzas_contabilidad_salud": "Accounting health"
     },
     "grupos": {
       "venta": "Sales",
@@ -38478,9 +38481,9 @@
         "palabras": "roles, permissions, access, positions"
       },
       "facturacionResumen": {
-        "titulo": "Summary",
-        "descripcion": "Credentials, DIAN ranges and always invoice electronically",
-        "palabras": "electronic invoice, dian, ranges, resolution, sequence, credentials, always electronic"
+        "titulo": "Resolutions and numbering",
+        "descripcion": "DIAN resolutions, ranges by branch, usage and validity",
+        "palabras": "electronic invoice, dian, ranges, resolution, sequence, numbering, validity"
       },
       "facturacionServicio": {
         "titulo": "Service",
@@ -41582,5 +41585,3531 @@
       }
     },
     "reportes": "Finance reports → Reports module"
+  },
+  "finanzasContabilidadR3": {
+    "asientos": {
+      "titulo": "Journal",
+      "subtitulo": "{asientos, number} entries · {contra, number} reversing entries · whole organization",
+      "subtituloCorto": "Accounting entries for the whole organization",
+      "exportar": "Export",
+      "nuevoAsiento": "New entry",
+      "sinPermisoCrear": "You need the permission to create in Finance",
+      "buscar": "Search number or description",
+      "todoElLibro": "Whole journal",
+      "comprobante": "Voucher",
+      "etiquetaFila": "Entry {numero}",
+      "paresOcultos": "{n, plural, one {# reversed entry was hidden from this page.} other {# reversed entries were hidden from this page.}}",
+      "kpis": {
+        "etiqueta": "Journal summary",
+        "asientos": "Entries in the period",
+        "asientosDetalle": "not counting {n, number} reversing entries",
+        "movimiento": "Period movement",
+        "movimientoDetalle": "posted debits = credits",
+        "borradores": "Drafts",
+        "borradoresDetalle": "unposted in the period",
+        "rango": "Period",
+        "rangoDetalle": "change the range in the filter bar"
+      },
+      "columnas": {
+        "numero": "No.",
+        "fecha": "Date",
+        "descripcion": "Description",
+        "origen": "Source and document",
+        "sucursal": "Branch",
+        "importe": "Amount",
+        "estado": "Status"
+      },
+      "estado": {
+        "publicado": "Posted",
+        "borrador": "Draft"
+      },
+      "acciones": {
+        "ver": "View",
+        "publicar": "Post",
+        "duplicar": "Duplicate",
+        "descartar": "Discard draft"
+      },
+      "toast": {
+        "publicado": "Entry {numero} posted",
+        "errorPublicar": "The entry could not be posted",
+        "duplicado": "Copy created as draft {numero}",
+        "errorDuplicar": "The entry could not be duplicated",
+        "descartado": "Draft discarded"
+      },
+      "filtros": {
+        "origen": "Source",
+        "estado": "Status",
+        "estados": {
+          "todos": "All",
+          "publicados": "Posted",
+          "borradores": "Drafts"
+        },
+        "cuenta": "Account",
+        "quitarCuenta": "Clear account",
+        "sucursal": "Branch (optional)",
+        "todasSucursales": "All branches",
+        "ocultarPares": "Hide reversed pairs",
+        "ocultarParesAyuda": "Off: the journal is shown in full, each reversing entry next to its original",
+        "ver": "Show {n, number} entries"
+      },
+      "chips": {
+        "estado": "Status: {valor}",
+        "origen": "Source: {valor}",
+        "cuenta": "Account: {valor}",
+        "sucursal": "Branch: {valor}"
+      },
+      "vacio": {
+        "titulo": "No entries in this period yet",
+        "descripcion": "They are created automatically from sales, purchases, payments and cash movements. You can also record a manual one."
+      },
+      "sinPermiso": {
+        "titulo": "You don’t have access to accounting",
+        "descripcion": "Ask an administrator for permission to view Finance."
+      },
+      "error": {
+        "titulo": "The journal could not be loaded",
+        "descripcion": "Check your connection and try again. Nothing was lost."
+      },
+      "sustantivo": {
+        "singular": "entry",
+        "plural": "entries"
+      },
+      "descartar": {
+        "titulo": "Discard draft {numero}",
+        "descripcion": "A draft was never posted and leaves no accounting trace. This cannot be undone.",
+        "confirmar": "Discard"
+      },
+      "resultado": {
+        "tituloPublicado": "Entry posted",
+        "tituloBorrador": "Draft saved",
+        "publicado": "Entry {numero} posted",
+        "borrador": "Draft {numero} saved",
+        "ver": "View entry",
+        "otro": "Record another",
+        "cerrar": "Close"
+      },
+      "csv": {
+        "numero": "Number",
+        "fecha": "Date",
+        "descripcion": "Description",
+        "origen": "Source",
+        "documento": "Document",
+        "sucursal": "Branch",
+        "importe": "Amount",
+        "estado": "Status",
+        "archivo": "journal.csv",
+        "error": "The journal could not be exported"
+      },
+      "nuevo": {
+        "titulo": "New entry",
+        "descripcion": "Record a manual entry. Automatic ones are created with each sale, purchase, payment or cash movement.",
+        "fecha": "Accounting date",
+        "sucursal": "Branch",
+        "sucursalElegir": "Choose the branch",
+        "periodo": "Period",
+        "periodoCerrado": {
+          "titulo": "The {mes} period is closed",
+          "descripcion": "Choose a date in an open period or ask for it to be reopened in Accounting periods."
+        },
+        "descripcionCampo": "Description",
+        "descripcionPlaceholder": "For example: reclassification of September bank charges",
+        "lineas": "Lines",
+        "lineasAyuda": "Detail accounts only · typing a Debit clears the Credit",
+        "lineaN": "Line {n}",
+        "columnas": {
+          "cuenta": "Account",
+          "descripcion": "Description",
+          "centro": "Cost center",
+          "debito": "Debit",
+          "credito": "Credit"
+        },
+        "linea": {
+          "cuenta": "Line {n} account",
+          "descripcion": "Line {n} description",
+          "centro": "Line {n} cost center",
+          "debito": "Line {n} debit",
+          "credito": "Line {n} credit",
+          "quitar": "Remove line {n}",
+          "distribucion": "Line {n} allocation",
+          "centroObligatorio": "Cost center *",
+          "centroOpcional": "Optional",
+          "sinDistribucion": "No allocation"
+        },
+        "agregarLinea": "Add line",
+        "enterUltimaFila": "Enter on the last row",
+        "avisoTercero": "Saved as a draft. To post it, add the third party on: {cuentas}",
+        "pie": {
+          "nota": "«Post» is enabled when debits equal credits",
+          "borrador": "Save draft",
+          "publicar": "Post",
+          "publicarSiCuadra": "Debits and credits must be equal to post"
+        },
+        "errores": {
+          "fechaRequerida": "The date is required",
+          "sucursalRequerida": "Choose the entry’s branch",
+          "descripcionRequerida": "Enter the entry description",
+          "minimoLineas": "At least 2 lines with amounts are required",
+          "cuentaTitulo": "{cuenta} is a summary account and takes no postings. Choose a detail account.",
+          "noCuadra": "The entry must balance: debits = credits",
+          "centroObligatorio": "Account {cuenta} requires a cost center",
+          "periodoCerrado": "The period for that date is closed",
+          "faltaTercero": "To post, add the third party on: {cuentas}",
+          "guardar": "The entry could not be saved"
+        }
+      }
+    },
+    "centros": {
+      "titulo": "Cost centers",
+      "subtitulo": "Tree by code, branch and status",
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting"
+      },
+      "aplicarPlantilla": "Apply template",
+      "nuevo": "New",
+      "buscar": "Search by code or name",
+      "todas": "All",
+      "hijo": "+ Child",
+      "activo": "Active",
+      "inactivo": "Inactive",
+      "columnas": {
+        "centro": "Center",
+        "sucursal": "Branch",
+        "estado": "Status"
+      },
+      "filtros": {
+        "titulo": "Filters",
+        "estado": "Status",
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive",
+        "sucursal": "Branch",
+        "todasSucursales": "All branches",
+        "sinSucursal": "Whole organization"
+      },
+      "acciones": {
+        "editar": "Edit",
+        "agregarHijo": "Add sub-center",
+        "agregarHijoDe": "Add sub-center to {nombre}",
+        "activar": "Activate",
+        "desactivar": "Deactivate"
+      },
+      "vacio": {
+        "titulo": "No cost centers yet",
+        "descripcion": "Cost centers split expenses by area, branch or project. Start from a template or create the first one."
+      },
+      "exito": {
+        "creado": "Cost center created",
+        "actualizado": "Cost center updated",
+        "activado": "Center activated",
+        "desactivado": "Center deactivated"
+      },
+      "errores": {
+        "codigoNombre": "Code and name are required.",
+        "ciclo": "That parent would create a cycle: choose another one.",
+        "codigoRepetido": "A center with that code already exists.",
+        "conMovimientos": "The center has accounting entries: deactivate it instead of deleting it.",
+        "desconocido": "The center could not be saved.",
+        "estado": "The status could not be changed.",
+        "plantillaVista": "The template could not be calculated.",
+        "plantillaAplicar": "The template could not be applied."
+      },
+      "formulario": {
+        "tituloNuevo": "New cost center",
+        "tituloEditar": "Edit cost center",
+        "descripcion": "Income and expense account entries are split by center.",
+        "codigo": "Code",
+        "codigoFijo": "The code cannot change after creation.",
+        "nombre": "Name",
+        "padre": "Parent center",
+        "sinPadre": "No parent (root)",
+        "padreCiclo": "This is the center itself or one of its sub-centers",
+        "sucursal": "Branch",
+        "sucursalAyuda": "«All» if the center belongs to the whole organization.",
+        "activo": "Active",
+        "guardar": "Save"
+      },
+      "desactivar": {
+        "titulo": "Deactivate cost center",
+        "descripcion": "«{nombre}» will no longer be offered in entries and distributions. Its entries are kept and you can activate it again."
+      },
+      "plantilla": {
+        "titulo": "Apply cost center template",
+        "descripcion": "Preview before creating. Existing centers are not modified.",
+        "alcance": "Template",
+        "alcances": {
+          "base": {
+            "titulo": "Basic",
+            "detalle": "100 Administration, 200 Sales and 300 Operations."
+          },
+          "sector": {
+            "titulo": "Industry",
+            "detalle": "The basic set plus the centers for the organization type."
+          },
+          "sucursal": {
+            "titulo": "By branch",
+            "detalle": "The basic set and a sales sub-center for each branch."
+          }
+        },
+        "vistaPrevia": "Will be created",
+        "seCrearan": "{n, plural, one {# center} other {# centers}} will be created. {existen, plural, =0 {} one {# already exists and is not modified.} other {# already exist and are not modified.}}",
+        "seCreara": "Will be created",
+        "yaExiste": "Already exists",
+        "calculando": "Calculating…",
+        "nadaQueCrear": "The template is already applied",
+        "aplicar": "Apply",
+        "creados": "{n, plural, one {# center} other {# centers}} created. {existian} already existed.",
+        "yaAplicada": "The template was already applied. No duplicates were created."
+      },
+      "distribucion": {
+        "titulo": "Distributions",
+        "nueva": "New distribution",
+        "tituloEditar": "Edit distribution",
+        "descripcion": "Split an expense across several centers",
+        "nombre": "Name",
+        "nombreEjemplo": "Shared expenses",
+        "reparto": "Split",
+        "suma": "Total",
+        "centro": "Center",
+        "porcentaje": "Percentage",
+        "centroLinea": "Center of line {n}",
+        "porcentajeLinea": "Percentage of line {n}",
+        "quitar": "Remove",
+        "quitarLinea": "Remove line {n}",
+        "elegirCentro": "Choose center",
+        "agregarLinea": "Add line",
+        "sumaTotal": "Total {valor}",
+        "guardar": "Save",
+        "guardada": "Distribution saved",
+        "vacioTitulo": "No distributions",
+        "vacioDescripcion": "Each distribution splits an entry across centers and its percentages add up to 100.",
+        "errores": {
+          "nombre": "The name is required.",
+          "minimo": "A distribution needs at least two centers.",
+          "linea": "Each line needs a center and a percentage between 0 and 100.",
+          "repetido": "A center cannot be repeated.",
+          "suma": "Percentages must add up to 100 %.",
+          "nombreRepetido": "A distribution with that name already exists.",
+          "centroInvalido": "A center is inactive or belongs to another organization.",
+          "desconocido": "The distribution could not be saved."
+        }
+      }
+    },
+    "comprobante": {
+      "cargando": "Loading voucher…",
+      "noEncontrado": "This entry does not exist or belongs to another organization.",
+      "volver": "Back to the entry",
+      "imprimir": "Print",
+      "nit": "Tax ID {nit}",
+      "comprobanteContable": "Accounting voucher",
+      "asiento": "Entry {numero}",
+      "fecha": "Date: {fecha}",
+      "memo": "Memo: {memo}",
+      "sucursal": "Branch: {sucursal}",
+      "cuenta": "Account",
+      "detalle": "Detail",
+      "tercero": "Third party",
+      "debito": "Debit",
+      "credito": "Credit",
+      "totales": "Totals",
+      "elaboro": "Prepared by",
+      "aprobo": "Approved by",
+      "borrador": "Draft: not a final voucher"
+    },
+    "comun": {
+      "origen": {
+        "venta": "Sale",
+        "factura": "Invoice",
+        "cobro": "Collection",
+        "compra": "Purchase",
+        "pago": "Payment",
+        "kardex": "Stock ledger",
+        "caja": "Cash",
+        "banco": "Bank",
+        "comision": "Commission",
+        "nomina": "Payroll",
+        "pms": "Hotel",
+        "manual": "Manual",
+        "contraAsiento": "Reversing entry",
+        "cierre": "Closing",
+        "otro": "Other"
+      },
+      "reversion": {
+        "revertidoPor": "Reversed by {numero}",
+        "reversionDe": "Reversal of {numero}",
+        "neutraliza": "Offsets entry {numero}",
+        "neutralizadoPor": "Offset by reversing entry {numero}",
+        "motivo": "Reason: {motivo}"
+      },
+      "periodo": {
+        "abierto": "Open",
+        "enCierre": "Closing",
+        "cerrado": "Closed"
+      },
+      "cuadre": {
+        "debitos": "Debits",
+        "creditos": "Credits",
+        "cuadra": "Balanced",
+        "diferencia": "Difference {valor}",
+        "sinImportes": "No amounts"
+      },
+      "tabla": {
+        "etiqueta": "Entry lines",
+        "cuenta": "Account",
+        "descripcion": "Description",
+        "tercero": "Third party",
+        "centro": "Cost center",
+        "debito": "Debit",
+        "credito": "Credit",
+        "totales": "Totals",
+        "totalesDC": "D {debito} · C {credito}"
+      },
+      "migas": {
+        "finanzas": "Finance",
+        "contabilidad": "Accounting"
+      }
+    },
+    "detalle": {
+      "titulo": "Entry",
+      "tituloNumero": "Entry {numero}",
+      "comprobante": "Voucher",
+      "sinDescripcion": "No description",
+      "migaLibro": "Journal",
+      "errorCargar": "The entry could not be loaded",
+      "lineas": "Lines · {n, number}",
+      "lineasEtiqueta": "Entry lines",
+      "estado": {
+        "publicado": "Posted",
+        "borrador": "Draft"
+      },
+      "acciones": {
+        "imprimir": "Print",
+        "duplicar": "Duplicate",
+        "descartar": "Discard draft",
+        "publicar": "Post",
+        "revertir": "Reverse",
+        "sinPermisoRevertir": "You need the «Reverse entries» permission",
+        "irDocumento": "Go to {documento}"
+      },
+      "toast": {
+        "publicado": "Entry posted",
+        "errorPublicar": "The entry could not be posted",
+        "duplicado": "Entry duplicated as a draft",
+        "errorDuplicar": "The entry could not be duplicated",
+        "descartado": "Draft discarded",
+        "errorDescartar": "The draft could not be discarded"
+      },
+      "automatico": {
+        "titulo": "Automatic entry",
+        "conDocumento": "It was generated by the «{documento}» document. It can’t be edited or deleted: to reverse it, void that document.",
+        "sinDocumento": "It can’t be edited or deleted: to reverse it, void the document that created it."
+      },
+      "noEncontrado": {
+        "titulo": "Entry not found",
+        "descripcion": "Entry {numero} does not exist or belongs to another organization.",
+        "volver": "Back to the journal"
+      },
+      "descartar": {
+        "titulo": "Discard draft {numero}",
+        "descripcion": "A draft was never posted and leaves no accounting trace. This cannot be undone.",
+        "confirmar": "Discard"
+      },
+      "revertir": {
+        "titulo": "Reverse entry {numero}",
+        "descripcion": "A reversing entry is recorded with debits and credits swapped. The original entry is not changed.",
+        "confirmar": "Reverse",
+        "motivo": "Reason",
+        "motivoPlaceholder": "Why this entry is being reversed",
+        "motivos": {
+          "cuenta": "Wrong account",
+          "importe": "Wrong amount",
+          "duplicado": "Duplicate"
+        },
+        "consecuencias": {
+          "titulo": "What happens when reversing",
+          "invertido": "A reversing entry is created with the same accounts, third party and center, debits and credits swapped.",
+          "fechaOriginal": "The reversing entry takes the original date ({fecha}): its period is open.",
+          "fechaHoy": "The reversing entry takes today’s date ({fecha}) because the original’s period is closed.",
+          "fechaRegla": "If the original’s period is closed, the reversing entry takes today’s date.",
+          "original": "The original stays in the journal, marked as reversed. An entry can only be reversed once."
+        },
+        "bloqueo": {
+          "yaRevertido": "It already has reversing entry {numero}. An entry can only be reversed once.",
+          "sinPermiso": "You need the «Reverse entries» permission.",
+          "periodoCerrado": "Neither the entry’s period nor the current one is open. Reopen one in Accounting periods."
+        },
+        "error": "The entry could not be reversed",
+        "resultado": {
+          "titulo": "Entry reversed",
+          "creado": "Reversing entry {numero} created",
+          "descripcion": "Entry {numero} is now offset. If needed, record the corrected entry now.",
+          "ver": "View reversing entry",
+          "cerrar": "Close"
+        }
+      }
+    },
+    "inicio": {
+      "titulo": "Accounting",
+      "subtitulo": "Whole organization · current period: {mes} ({estado})",
+      "subtituloCorto": "Whole organization",
+      "actualizar": "Refresh",
+      "nuevoAsiento": "New entry",
+      "abrir": "Open",
+      "revisar": "Review",
+      "crear": "Create",
+      "aviso": {
+        "ambos": "{pendientes, plural, one {# event not posted} other {# events not posted}} and {descuadres, plural, one {# mismatch} other {# mismatches}}",
+        "pendientes": "{n, plural, one {# event not posted} other {# events not posted}}",
+        "descuadres": "{n, plural, one {# entry does not match its document} other {# entries do not match their document}}",
+        "descripcion": "Reports do not include those events. Review them before closing {mes}.",
+        "abrirSalud": "Open accounting health"
+      },
+      "enOrden": "Everything posted: 0 pending and the books balance.",
+      "periodo": {
+        "sinCerrar": "{n, plural, one {{mes} not closed} other {# months not closed}}",
+        "alDia": "previous months closed",
+        "sinGenerar": "Not generated"
+      },
+      "kpis": {
+        "resumen": "Accounting summary",
+        "asientosDe": "Entries in {mes}",
+        "asientosMes": "Entries this month",
+        "sinContraAsientos": "excluding reversing entries",
+        "periodoActual": "Current period",
+        "pendientes": "Pending posting",
+        "verSalud": "See accounting health",
+        "descuadres": "Mismatches",
+        "descuadresInactivo": "check not yet enabled",
+        "descuadresDetalle": "entry ≠ document"
+      },
+      "informes": {
+        "titulo": "Reports",
+        "libroDiario": "Journal",
+        "libroDiarioValor": "{n, plural, one {# entry} other {# entries}} in {mes}",
+        "libroDiarioDesc": "Day-to-day entries",
+        "mayor": "General ledger",
+        "mayorDesc": "Running balance by account",
+        "balancePrueba": "Trial balance",
+        "balancePruebaDesc": "Debits and credits by account",
+        "noCuadra": "Out of balance",
+        "estadoResultados": "Income statement",
+        "estadoResultadosDesc": "Income, costs and expenses of the period",
+        "balanceGeneral": "Balance sheet",
+        "balanceGeneralDesc": "Assets = Liabilities + Equity"
+      },
+      "configuracion": {
+        "titulo": "Settings",
+        "plan": "Chart of accounts",
+        "planValor": "{cuentas} accounts · {agrupadoras} summary accounts",
+        "planDesc": "PUC account catalog",
+        "reglas": "Accounting rules",
+        "reglasValor": "{n, plural, one {# rule} other {# rules}}",
+        "reglasConAvisos": "{n} rules · {avisos} with accounts to fix",
+        "reglasDesc": "Automatic entries by event",
+        "periodos": "Accounting periods",
+        "periodosDesc": "Opening and closing periods",
+        "salud": "Accounting health",
+        "saludDesc": "Pending, mismatches, orphans and structure",
+        "centros": "Cost centers",
+        "centrosVacio": "No cost centers yet",
+        "centrosValor": "{n, plural, one {# center} other {# centers}}",
+        "centrosDesc": "Split expenses by area or project",
+        "plantillas": "Entry templates",
+        "plantillasDesc": "Recurring entries",
+        "cuentasAutomaticas": "Accounting settings",
+        "cuentasAutomaticasDesc": "Default accounts of the organization",
+        "puc": "Update PUC",
+        "pucDesc": "Preview and move to the corrected chart",
+        "activos": "Fixed assets",
+        "activosDesc": "Register and depreciation",
+        "presupuestos": "Budgets",
+        "presupuestosDesc": "Planned versus actual"
+      }
+    },
+    "mayor": {
+      "titulo": "General ledger",
+      "cuenta": "Account",
+      "periodo": "Period",
+      "exportar": "Export",
+      "todaLaOrganizacion": "whole organization",
+      "subtituloSinCuenta": "Choose an account to see its movements",
+      "columnas": {
+        "fecha": "Date",
+        "asiento": "Entry",
+        "documento": "Document",
+        "descripcion": "Line description",
+        "saldo": "Balance"
+      },
+      "saldoInicial": "Opening balance",
+      "saldoFinalTras": "{n, plural, one {Closing balance (after # movement)} other {Closing balance (after # movements)}}",
+      "csv": {
+        "fecha": "Date",
+        "asiento": "Entry",
+        "descripcion": "Line description",
+        "debito": "Debit",
+        "credito": "Credit",
+        "saldo": "Balance",
+        "archivo": "ledger-{cuenta}.csv"
+      },
+      "filtros": {
+        "nota": "With filters the opening balance does not apply: you see the running total of what is filtered.",
+        "sucursal": "Branch",
+        "todas": "All branches",
+        "tercero": "Third party (tax ID)",
+        "terceroAyuda": "Type the tax ID and press Enter",
+        "centro": "Cost center",
+        "todos": "All"
+      },
+      "kpis": {
+        "resumen": "Ledger summary",
+        "saldoInicial": "Opening balance",
+        "inicialConFiltros": "not applicable with filters",
+        "debitos": "Debits",
+        "movimientos": "{n, plural, one {# movement} other {# movements}}",
+        "creditos": "Credits",
+        "acumulado": "Filtered total",
+        "saldoFinal": "Closing balance"
+      },
+      "sinCuenta": {
+        "titulo": "Choose an account",
+        "descripcion": "Search by code or name. A summary account adds up its sub-accounts."
+      },
+      "error": {
+        "titulo": "Could not load the ledger",
+        "descripcion": "The query failed. Try again.",
+        "reintentar": "Retry"
+      },
+      "truncado": {
+        "titulo": "Showing the first 400 lines",
+        "descripcion": "Opening and closing balances and totals cover the whole period. Shorten the period to see every line."
+      },
+      "filtrado": {
+        "titulo": "Filtered ledger",
+        "descripcion": "Figures come from the lines that match the filter; the running balance starts at zero."
+      },
+      "tabla": "Account movements",
+      "sustantivo": {
+        "singular": "row",
+        "plural": "rows"
+      }
+    },
+    "periodos": {
+      "titulo": "Accounting periods",
+      "subtitulo": "{anio} · {meses, plural, one {# month} other {# months}}",
+      "subtituloSinCerrar": "{anio} · {meses, plural, one {# month} other {# months}} · {lista} not closed",
+      "generar": "Generate {anio}",
+      "masAcciones": "More actions",
+      "actualizar": "Refresh",
+      "anios": "Year",
+      "anio": "Year {anio}",
+      "cierreAnual": "Year-end close",
+      "cierreAnualSinPermiso": "You need the Close fiscal year permission",
+      "rejilla": "Months of {anio}",
+      "otros": "Other periods of {anio}",
+      "periodoAnual": "Yearly period",
+      "periodoTrimestral": "Quarter {n}",
+      "tarjeta": {
+        "actual": "{mes} · current",
+        "asientos": "{n, plural, one {# entry} other {# entries}}",
+        "sinMovimiento": "No activity",
+        "pendientes": "{n, plural, =0 {0 pending} one {# pending posting} other {# pending posting}}",
+        "borradores": "{n, plural, one {# draft} other {# drafts}}",
+        "rango": "From {desde} to {hasta}",
+        "cerradoPor": "Closed by {nombre} · {fecha}",
+        "cerradoEl": "Closed on {fecha}",
+        "reabierto": "Reopened on {fecha}: {motivo}",
+        "enCurso": "In progress",
+        "futuro": "Future",
+        "pendienteCierre": "Pending close",
+        "sinCrear": "Not created",
+        "crearMes": "Create month",
+        "cerrar": "Close",
+        "reabrir": "Reopen",
+        "notas": "Notes: {notas}"
+      },
+      "vacio": {
+        "titulo": "Generate the periods for {anio}",
+        "descripcion": "Without periods no month can be closed or reopened. Generating them creates no entries.",
+        "accion": "Generate periods"
+      },
+      "error": {
+        "titulo": "Periods could not be loaded",
+        "descripcion": "Check the connection and try again. Nothing was closed or reopened.",
+        "sinPermisoTitulo": "You don't have access to periods",
+        "sinPermisoDescripcion": "Ask an administrator for access to Accounting."
+      },
+      "errores": {
+        "sinPermiso": "You don't have permission for this action.",
+        "faltanCuentasCierre": "Detail account 3605 is missing, or 3610 to record the loss.",
+        "periodoNoAbierto": "That period is not open.",
+        "periodoNoCerrado": "That period is not closed.",
+        "conPendientes": "It can't be closed: there are drafts or pending items in the period.",
+        "motivo": "Write the reason for reopening (at least 5 characters).",
+        "sinSucursal": "The organization has no branch.",
+        "duplicado": "That period already exists.",
+        "desconocido": "The action could not be completed. Try again."
+      },
+      "exito": {
+        "cerrado": "{periodo} is now closed",
+        "reabierto": "{periodo} is open again",
+        "generadosMes": "12 monthly periods generated for {anio}",
+        "generadoAnual": "Yearly period generated for {anio}",
+        "mesCreado": "{periodo} created",
+        "ejercicio": "Fiscal year {anio} closed into {cuenta} ({n, plural, one {# entry} other {# entries}})"
+      },
+      "cerrar": {
+        "titulo": "Close {periodo}",
+        "descripcion": "No one will be able to post or reverse entries dated in {periodo}. It can be reopened with a reason.",
+        "confirmar": "Close period",
+        "revisando": "Checking the period…",
+        "pie": "Warnings don't block the close",
+        "bloqueado": "Resolve the items in red to close",
+        "sinPermiso": "You need the Close accounting period permission",
+        "notas": "Closing notes",
+        "notasAyuda": "Optional. Saved on the period.",
+        "items": {
+          "balanceOk": "The trial balance balances",
+          "balanceOkDetalle": "Debits = credits in {periodo}",
+          "balanceMal": "The trial balance doesn't balance",
+          "balanceMalDetalle": "Difference {valor}. Check it in Accounting health",
+          "balanceSinDato": "The balance could not be checked",
+          "pendientes": "{n, plural, =0 {0 items pending posting} one {# item pending posting} other {# items pending posting}}",
+          "pendientesOk": "Everything in {periodo} has an entry",
+          "pendientesMal": "Blocks the close · check them in Accounting health",
+          "borradores": "{n, plural, =0 {0 drafts} one {# draft} other {# drafts}}",
+          "borradoresOk": "All entries in {periodo} are posted",
+          "borradoresMal": "Blocks the close · post or discard them",
+          "pendientesSinDato": "Pending items and drafts could not be counted",
+          "consecutivosOk": "Voucher sequences without gaps",
+          "consecutivosAviso": "{n, plural, one {# number missing} other {# numbers missing}} in the sequences",
+          "consecutivosDetalle": "Doesn't block the close",
+          "consecutivo": "{tipo}: {desde} to {hasta} ({cantidad})",
+          "faltan": "missing {lista}",
+          "ver": "View",
+          "verBorradores": "View drafts"
+        }
+      },
+      "reabrir": {
+        "titulo": "Reopen {periodo}",
+        "descripcion": "Allows posting entries dated in {periodo} again.",
+        "confirmar": "Reopen",
+        "consecuencia1": "Reopening doesn't reverse the closing entry.",
+        "consecuencia2": "Who reopened it, when and why is recorded.",
+        "etiquetaMotivo": "Reason for reopening",
+        "placeholder": "E.g.: adjustment for a late supplier invoice"
+      },
+      "generarDialogo": {
+        "titulo": "Generate fiscal periods",
+        "descripcion": "Creates the periods of the year",
+        "anio": "Year",
+        "tipo": "Period type",
+        "mensuales": "Monthly (12 periods)",
+        "anual": "Yearly (1 period)",
+        "confirmar": "Generate",
+        "yaExiste": "Periods of that type already exist in {anio}",
+        "anioInvalido": "Enter a year between 2000 and 2100"
+      },
+      "ejercicio": {
+        "titulo": "Close fiscal year {anio}",
+        "descripcion": "Moves the year's results to equity",
+        "anio": "Year",
+        "borradoresTitulo": "{n, plural, one {# draft left} other {# drafts left}}",
+        "borradoresTexto": "The year can't be closed with draft entries. Post or discard them.",
+        "resultado": "Result for the year",
+        "cuentaDestino": "Target account",
+        "valor": "Amount",
+        "utilidad": "Profit",
+        "perdida": "Loss",
+        "cuenta3605": "3605 · Profit for the year",
+        "cuenta3610": "3610 · Loss for the year",
+        "calculando": "Calculating the result…",
+        "sinDato": "The result could not be calculated. The close computes it in the database anyway.",
+        "nota": "If the year shows a loss, it goes to 3610. Reopening doesn't reverse the closing entry.",
+        "confirmar": "Close fiscal year"
+      }
+    },
+    "puc": {
+      "titulo": "Update chart of accounts",
+      "subtitulo": "The preview writes nothing. Applying creates the transfer entry and deactivates the source accounts.",
+      "subtituloMovil": "Transfer preview",
+      "aplicar": "Apply update",
+      "aplicarMotivo": "Tick the confirmation box to apply",
+      "masAcciones": "More actions",
+      "recargar": "Refresh preview",
+      "revertir": "Revert the last update",
+      "sector": "Sector: {sector}",
+      "kpis": {
+        "resumen": "Update summary",
+        "renombres": "Renames",
+        "reclasificaciones": "Reclassifications",
+        "conMovimientos": "With activity",
+        "reglas": "Rules to adjust",
+        "editadas": "{n, plural, one {# hand-edited is left as is} other {# hand-edited are left as is}}"
+      },
+      "reclasificaciones": {
+        "titulo": "Reclassifications with activity",
+        "descripcion": "The net balance moves to the target with an entry. The source account is deactivated and keeps its history.",
+        "origen": "Source",
+        "destino": "Target",
+        "debito": "Debit",
+        "credito": "Credit",
+        "neto": "Net",
+        "motivo": "Reason",
+        "netoCredito": "{valor} C",
+        "vacio": "No balances to transfer."
+      },
+      "renombres": {
+        "titulo": "Renames without activity",
+        "codigo": "Code",
+        "actual": "Current name",
+        "propuesto": "Name in the decree",
+        "vacio": "No names to fix."
+      },
+      "reglas": {
+        "titulo": "Accounting rules",
+        "descripcion": "Only rules still using the old code change. Hand-edited ones are listed and left as is.",
+        "regla": "Rule",
+        "origen": "Source",
+        "lado": "Side",
+        "actual": "Current",
+        "propuesto": "Proposed",
+        "estado": "Status",
+        "seActualiza": "Will update",
+        "editada": "Edited, not changed",
+        "vacio": "No rules to reassign."
+      },
+      "confirmar": "I confirm the transfer. It can be reverted with the run's reversing entry.",
+      "vacio": {
+        "titulo": "Your chart is up to date",
+        "descripcion": "There are no accounts to rename, balances to transfer or rules to adjust."
+      },
+      "error": {
+        "titulo": "The preview could not be read",
+        "descripcion": "Nothing was applied. Try again.",
+        "reintentar": "Retry"
+      },
+      "resultado": {
+        "aplicado": "Transfer recorded",
+        "yaAplicado": "Already applied",
+        "corrida": "Run {id}",
+        "verAsiento": "View transfer entry #{id}"
+      },
+      "toast": {
+        "aplicado": "Chart of accounts updated",
+        "yaAplicado": "This organization already had the transfer",
+        "revertido": "Update reverted with its reversing entry",
+        "error": "It could not be completed: {detalle}",
+        "sinCorrida": "There is no applied update to revert.",
+        "sinOrganizacion": "There is no active organization"
+      },
+      "revertirDialogo": {
+        "titulo": "Revert the last chart update",
+        "descripcion": "The transfer's reversing entry is posted and rules go back to the old code. Posted entries are not deleted.",
+        "confirmar": "Revert"
+      }
+    },
+    "reglas": {
+      "permiso": "Requires the «Create in Finance» permission.",
+      "noSePuedeGuardar": "Cannot save: an account is a header account, inactive or missing.",
+      "campo": {
+        "agrupadora": "{cuenta} is a header account: choose a sub-account.",
+        "agrupadoraCon": "{cuenta} is a header account: choose a sub-account ({subcuenta}).",
+        "inactiva": "{cuenta} is inactive.",
+        "inexistente": "{cuenta} does not exist in your chart of accounts."
+      },
+      "vista": {
+        "titulo": "Preview",
+        "sinDatos": "Choose the debit and credit accounts to see the entry this rule would create.",
+        "ejemplo": "With a sample document ({documento}, {total}) this rule would create:",
+        "documento": "document",
+        "lado": {
+          "debito": "Rule debit",
+          "credito": "Rule credit",
+          "impuesto": "Document VAT"
+        },
+        "agrupadora": "Header account: takes no entries",
+        "inexistente": "Not in the chart",
+        "estado": {
+          "cuadra": "The entry balances.",
+          "agrupadora": "Cannot save: an account is a header account.",
+          "inexistente": "Cannot save: an account is missing or inactive.",
+          "sinDatos": "Choose the accounts to see the entry."
+        },
+        "aviso": {
+          "agrupadora": "An account is a header account: documents using this rule will stay pending.",
+          "inexistente": "An account is missing or inactive: documents using this rule will stay pending."
+        }
+      }
+    },
+    "salud": {
+      "titulo": "Accounting health",
+      "subtitulo": "Whole organization",
+      "subtituloRevisado": "Checked at {hora} · whole organization",
+      "actualizar": "Refresh",
+      "sinPermiso": {
+        "titulo": "You do not have access to accounting",
+        "descripcion": "Ask an administrator for permission to view Finance."
+      },
+      "kpis": {
+        "resumen": "Accounting health summary",
+        "balance": "Balance",
+        "cuadra": "Balanced",
+        "noCuadra": "Out of balance",
+        "cuadraDetalle": "Σ debits = Σ credits",
+        "diferencia": "Difference {valor}",
+        "descuadresDetalle": "entry ≠ document",
+        "huerfanosDetalle": "document deleted"
+      },
+      "pestanas": {
+        "pendientes": "Pending posting",
+        "descuadres": "Mismatches",
+        "huerfanos": "Orphans",
+        "estructura": "Structure"
+      },
+      "inactivo": {
+        "corto": "not yet enabled",
+        "titulo": "Check not yet enabled",
+        "descripcion": "Matching each entry with its document needs the accounting health function in the database. It is written and awaiting approval; until then this tab shows no figures, so an unchecked value never looks like a zero."
+      },
+      "enOrden": {
+        "titulo": "Everything posted",
+        "descripcion": "0 pending, 0 mismatches and the books balance."
+      },
+      "balanceMal": {
+        "titulo": "The books do not balance",
+        "descripcion": "Posted debits and credits differ by {valor}. Check the trial balance before closing a period."
+      },
+      "error": {
+        "titulo": "Could not check",
+        "descripcion": "The query failed. This does not mean everything is fine.",
+        "reintentar": "Retry"
+      },
+      "columnas": {
+        "documento": "Document",
+        "tipo": "Type",
+        "totalDocumento": "Document total",
+        "totalAsiento": "Entry total",
+        "diferencia": "Difference",
+        "asiento": "Entry",
+        "fecha": "Date",
+        "origen": "Source",
+        "motivo": "Reason",
+        "importe": "Amount",
+        "cuenta": "Account",
+        "subcuentas": "Sub-accounts",
+        "movimientos": "Movements",
+        "saldo": "Balance",
+        "lado": "Side",
+        "estado": "Status",
+        "propuesta": "Proposal"
+      },
+      "subtipos": {
+        "asiento_distinto": "Entry ≠ document",
+        "devengo_duplicado": "Duplicate accrual",
+        "borrador_con_asiento": "Draft with entry"
+      },
+      "vacios": {
+        "descuadres": {
+          "titulo": "No mismatches",
+          "descripcion": "Every invoice matches its entry."
+        },
+        "huerfanos": {
+          "titulo": "No orphan entries",
+          "descripcion": "Every entry has its document."
+        },
+        "agrupadoras": {
+          "titulo": "No summary account with movements",
+          "descripcion": "Movements are in detail accounts."
+        },
+        "reglas": {
+          "titulo": "All rules point to valid accounts",
+          "descripcion": "No rule uses a header, inactive or missing account."
+        }
+      },
+      "limite": "Showing {n} of {total}.",
+      "soloLectura": "Read only: a mismatch is fixed with a reversing entry and reissuing the document, never by editing the entry.",
+      "motivos": {
+        "documento_eliminado": "The document no longer exists",
+        "sin_lineas": "Entry without lines"
+      },
+      "huerfanosAyuda": "The document behind these entries was deleted. Review them with the accountant before reversing them.",
+      "estructura": {
+        "agrupadorasTitulo": "Summary accounts with movements",
+        "agrupadorasAyuda": "They have sub-accounts and still receive their own entries: the balance stays outside their sub-accounts.",
+        "reglasTitulo": "Rules with accounts to fix",
+        "reglasAyuda": "While a rule points to a header, inactive or missing account, its documents stay pending.",
+        "irReglas": "Go to accounting rules"
+      },
+      "lados": {
+        "debito": "Debit",
+        "credito": "Credit",
+        "impuesto": "Tax",
+        "descuento": "Discount"
+      },
+      "estadosCuenta": {
+        "inexistente": "Missing",
+        "inactiva": "Inactive",
+        "titulo": "Header account"
+      }
+    }
+  },
+  "finanzasDocumentosR3": {
+    "bandeja": {
+      "titulo": "Electronic invoicing",
+      "subtitulo": {
+        "activo": "Submissions to the tax authority (DIAN) · GO Admin service active since {fecha}",
+        "pendiente": "Submissions to the tax authority (DIAN) · GO Admin service pending activation",
+        "suspendido": "Submissions to the tax authority (DIAN) · GO Admin service suspended",
+        "movilActivo": "GO Admin service · active",
+        "movilPendiente": "GO Admin service · not active"
+      },
+      "migas": {
+        "finanzas": "Finance"
+      },
+      "servicioYResoluciones": "Service and resolutions",
+      "actualizar": "Refresh",
+      "exportar": "Export",
+      "exportando": "Exporting…",
+      "archivoExportacion": "dian_submissions",
+      "tabla": "Submissions to the DIAN",
+      "sinNumero": "No number",
+      "sustantivo": {
+        "singular": "submission",
+        "plural": "submissions"
+      },
+      "avisos": {
+        "pendienteTitulo": "Your account is not active yet",
+        "pendienteDescripcion": "GO Admin activates electronic invoicing for your organization. Meanwhile, whatever you invoice as electronic is kept here as on hold.",
+        "suspendidoTitulo": "The electronic invoicing service is suspended",
+        "suspendidoDescripcion": "No documents are sent to the DIAN. Contact GO Admin support to reactivate it; whatever you invoice is kept.",
+        "verPasos": "See activation steps",
+        "retenidosTitulo": "{count, plural, one {# document awaits your confirmation} other {# documents await your confirmation}}",
+        "retenidosDescripcion": "They were saved before the service was activated. If you send them, the DIAN issues them with today's date; otherwise they are cancelled with a record.",
+        "revisar": "Review"
+      },
+      "kpis": {
+        "etiqueta": "Submission summary",
+        "enCola": "Queued",
+        "enColaDetalle": "Sent in less than 2 minutes",
+        "retenidos": "On hold",
+        "retenidosDetalle": "Awaiting your confirmation",
+        "retenidosPendiente": "Waiting for the service to be activated",
+        "aceptadosMes": "Accepted · {mes}",
+        "exito": "{pct} % success",
+        "rechazados": "Rejected",
+        "rechazadosDetalle": "Fix and resend"
+      },
+      "pestanas": {
+        "etiqueta": "Submissions by status",
+        "todos": "All",
+        "atender": "Needs attention",
+        "aceptados": "Accepted",
+        "radian": "Received (RADIAN) · phase 2",
+        "radianMotivo": "Events for received invoices (RADIAN) arrive in phase 2: the tab has no actions yet."
+      },
+      "buscar": {
+        "placeholder": "Search by number, customer or unique code (CUFE)",
+        "etiqueta": "Search submissions"
+      },
+      "filtros": {
+        "periodo": "Period",
+        "tipo": "Document type",
+        "estado": "Status",
+        "sucursal": "Branch",
+        "todos": "All",
+        "todasSucursales": "All branches",
+        "limpiar": "Clear filters",
+        "verN": "{count, plural, one {Show # submission} other {Show # submissions}}",
+        "chipPeriodo": "Period: {rango}",
+        "chipEstado": "Status: {estado}",
+        "chipTipo": "Type: {tipo}",
+        "chipSucursal": "Branch: {sucursal}"
+      },
+      "columnas": {
+        "documento": "Document",
+        "tipo": "Type",
+        "tercero": "Third party",
+        "total": "Total",
+        "estado": "Status",
+        "estadoDian": "DIAN status",
+        "intentos": "Attempts",
+        "respuesta": "Last response",
+        "fecha": "Date",
+        "proximoPaso": "Next step",
+        "codigoUnico": "Unique code (CUFE)"
+      },
+      "tipos": {
+        "invoice": "Sales invoice",
+        "credit_note": "Credit note",
+        "debit_note": "Debit note",
+        "support_document": "Support document"
+      },
+      "estados": {
+        "retenido": "On hold",
+        "en_cola": "Queued",
+        "reintento": "Error",
+        "procesando": "Sending",
+        "enviado": "Sent",
+        "aceptado": "Accepted by DIAN",
+        "rechazado": "Rejected by DIAN",
+        "error": "Not sent",
+        "cancelado": "Cancelled"
+      },
+      "intentos": {
+        "ninguno": "No attempts",
+        "de": "{n} of {max} attempts"
+      },
+      "respuesta": {
+        "retenido": "Saved before the service was activated",
+        "aceptado": "Accepted by the DIAN",
+        "cancelado": "Submission cancelled",
+        "enCola": "Queued for sending",
+        "esperando": "Waiting for the DIAN's response",
+        "servicioNoActivo": "The electronic invoicing service is not active",
+        "datosIncompletos": "The document is missing data required to send it",
+        "esperandoFactura": "Waiting for the DIAN to accept the original invoice",
+        "sinRespuesta": "The DIAN did not respond; it will retry automatically",
+        "rechazo": "The DIAN rejected the document",
+        "error": "The document could not be sent"
+      },
+      "paso": {
+        "confirmar": "Your confirmation",
+        "corregir": "Fix and resend",
+        "envio_pronto": "Sent in less than 2 minutes",
+        "esperando": "Waiting for the DIAN",
+        "reintentar": "Review and retry",
+        "reintentoA": "Retry at {hora}",
+        "reintentoPronto": "Automatic retry"
+      },
+      "rapidas": {
+        "enviarHoy": "Send today",
+        "corregir": "Fix",
+        "reintentar": "Retry",
+        "pdfXml": "PDF and XML"
+      },
+      "acciones": {
+        "verDetalle": "View submission details",
+        "verDocumento": "View document",
+        "descargarPdf": "Download official PDF",
+        "descargarXml": "Download XML",
+        "enviarHoy": "Send with today's date",
+        "reintentar": "Retry",
+        "cancelar": "Cancel submission"
+      },
+      "motivos": {
+        "servicio_inactivo": "It can be sent once GO Admin activates the service",
+        "sin_permiso": "You need the Finance approve permission"
+      },
+      "lote": {
+        "enviarHoy": "Send on-hold today ({n})",
+        "reintentar": "Retry ({n})",
+        "cancelar": "Cancel submissions ({n})",
+        "maximo": "Up to {n} documents per batch",
+        "sinRetenidos": "The selection has no on-hold documents you can send",
+        "sinReintentables": "The selection has no submissions to retry",
+        "sinCancelables": "The selection has no submissions that can be cancelled"
+      },
+      "liberar": {
+        "titulo": "{count, plural, one {Send # on-hold document} other {Send # on-hold documents}}",
+        "descripcion": "They were saved before the service was activated. When sent, the DIAN issues them with today's date.",
+        "avisoTitulo": "The DIAN issues them with today's date ({fecha})",
+        "avisoDescripcion": "The sale date cannot be used. If you don't send them, they are cancelled with a record and the sale remains valid as an internal document.",
+        "confirmar": "Send dated {fecha}",
+        "cancelar": "Cancel",
+        "del": "from {fecha}"
+      },
+      "cancelarEnvio": {
+        "titulo": "{count, plural, one {Cancel the submission?} other {Cancel # submissions?}}",
+        "descripcion": "The document is not sent to the DIAN and remains an internal document. You can retry it later.",
+        "confirmar": "Cancel submission",
+        "volver": "Back"
+      },
+      "toast": {
+        "reintentados": "{count, plural, one {Submission scheduled for retry} other {# submissions scheduled for retry}}",
+        "reintentadosAyuda": "Sent in less than 2 minutes.",
+        "errorReintentar": "{count, plural, one {One submission could not be retried} other {# submissions could not be retried}}",
+        "liberados": "{count, plural, one {Document sent to the DIAN} other {# documents sent to the DIAN}}",
+        "liberadosFallidos": "{count, plural, one {One document could not be sent} other {# documents could not be sent}}",
+        "errorLiberar": "The documents could not be sent",
+        "sinPermiso": "You don't have permission for this action",
+        "cancelados": "{count, plural, one {Submission cancelled} other {# submissions cancelled}}",
+        "errorCancelar": "{count, plural, one {One submission could not be cancelled} other {# submissions could not be cancelled}}",
+        "errorDescarga": "The {tipo} could not be downloaded",
+        "errorExportar": "Export failed"
+      },
+      "vacio": {
+        "titulo": "No documents sent yet",
+        "descripcion": "When you invoice electronically, each submission to the DIAN appears here with its response.",
+        "nadaPorAtender": "Nothing needs attention: no on-hold, rejected or failed submissions."
+      },
+      "vacioServicio": {
+        "titulo": "You don't issue electronic invoices yet",
+        "descripcion": "Once GO Admin activates your account, whatever you invoice electronically is sent to the DIAN automatically and shows up here.",
+        "descripcionRetenidos": "Once GO Admin activates your account, whatever you invoice electronically is sent to the DIAN automatically and shows up here. {count, plural, one {Your on-hold document is still saved.} other {Your # on-hold documents are still saved.}}",
+        "verRetenidos": "View on-hold"
+      },
+      "sinResultados": "No submissions match the search or filters.",
+      "errorCarga": "Submissions could not be loaded",
+      "sinPermiso": {
+        "titulo": "You don't have access to electronic invoicing",
+        "descripcion": "Ask an administrator for the Finance view permission."
+      },
+      "detalle": {
+        "cargando": "Loading submission…",
+        "documentoDel": "document from {fecha}",
+        "quePaso": "What happened",
+        "queHacer": "What to do",
+        "queHacerCliente": "Fix the customer's data (tax ID, check digit, email) in their profile.",
+        "queHacerProveedor": "Fix the supplier's data (tax ID, check digit, email) in their profile.",
+        "queHacerReenviar": "Come back here and press \"Resend\". It is sent with the same numbering.",
+        "queHacerError": "Review the document and press \"Retry\". If the error repeats, contact GO Admin support.",
+        "retenidoAvisoTitulo": "If you send it, the DIAN issues it with today's date ({fecha})",
+        "retenidoAvisoDescripcion": "The sale date cannot be used. If you don't send it, it is cancelled with a record and the sale remains valid as an internal document.",
+        "retenidoAvisoPendiente": "It can be sent once GO Admin activates the service. Meanwhile, the sale remains valid as an internal document.",
+        "cancelarEnvio": "Cancel submission",
+        "enviarHoy": "Send with today's date",
+        "corregirCliente": "Fix customer",
+        "corregirProveedor": "Fix supplier",
+        "reenviar": "Resend",
+        "reintentar": "Retry",
+        "documentoAceptado": "Document accepted",
+        "pdfOficial": "Official PDF",
+        "xml": "XML",
+        "numeroDian": "DIAN number",
+        "codigoUnico": "Unique code (CUFE)",
+        "copiar": "Copy unique code",
+        "copiado": "Code copied",
+        "validado": "Validated",
+        "notificaciones": "DIAN notifications",
+        "tecnicos": "Technical details",
+        "codigo": "Code {codigo}",
+        "codigoTecnico": "Code",
+        "mensajeTecnico": "Message",
+        "intentos": "Attempts",
+        "noEncontrado": "We couldn't find this submission",
+        "error": "The submission could not be loaded"
+      },
+      "linea": {
+        "creado": "Document created",
+        "retenido": "On hold",
+        "retenidoDetalle": "The electronic invoicing service was not active. No attempt was made.",
+        "enviado": "Sent to the DIAN",
+        "aceptado": "Accepted by the DIAN",
+        "aceptadoDetalle": "Number {numero}",
+        "rechazado": "Rejected by the DIAN",
+        "error": "Could not be sent",
+        "reintentoManual": "Retry requested",
+        "liberado": "Submission authorized",
+        "liberadoDetalle": "Issued with the date the DIAN validates it.",
+        "cancelado": "Submission cancelled",
+        "envioDian": "Submission to the DIAN",
+        "esperaConfirmacion": "Awaiting your confirmation.",
+        "proximoIntento": "Next attempt",
+        "respuestaDian": "DIAN response"
+      }
+    },
+    "cotizaciones": {
+      "titulo": "Quotes",
+      "migas": {
+        "finanzas": "Finance",
+        "ventas": "Sales"
+      },
+      "estados": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "accepted": "Accepted",
+        "rejected": "Rejected",
+        "expired": "Expired",
+        "converted": "Converted"
+      },
+      "listado": {
+        "sustantivo": {
+          "singular": "quote",
+          "plural": "quotes"
+        },
+        "todasLasSucursales": "All branches",
+        "tambienCrm": "including CRM proposals",
+        "exportar": "Export",
+        "exportando": "Exporting…",
+        "exportarError": "Couldn't export. Try again.",
+        "archivoExportacion": "quotes",
+        "nueva": "New quote",
+        "buscar": "Search by number, customer or tax ID",
+        "buscarEtiqueta": "Search quotes",
+        "vacio": {
+          "titulo": "Create your first quote",
+          "descripcion": "Send your customer prices and terms; once they accept, convert it into an invoice. Quotes can also be created from a CRM opportunity."
+        },
+        "sinResultados": "No quote matches the search or filters.",
+        "errorCarga": "Couldn't load the quotes.",
+        "sinPermiso": "You don't have access to quotes",
+        "sinPermisoDescripcion": "Ask an administrator for the view finance or manage sales permission."
+      },
+      "kpis": {
+        "etiqueta": "Quotes summary",
+        "abiertas": "Open",
+        "abiertasDetalle": "{valor} in draft and sent",
+        "porVencer": "Expiring in 7 days",
+        "vencidas": "Expired without reply",
+        "vencidasDetalle": "Duplicate them to renew",
+        "sinVencidas": "None expired",
+        "conversion": "Converted · {periodo}",
+        "conversionDetalle": "{convertidas} of {enviadas} sent"
+      },
+      "columnas": {
+        "numero": "Number",
+        "cliente": "Customer",
+        "documento": "ID",
+        "emision": "Issued",
+        "validaHasta": "Valid until",
+        "moneda": "Currency",
+        "total": "Total",
+        "estado": "Status",
+        "vendedor": "Salesperson",
+        "oportunidad": "Opportunity"
+      },
+      "vigencia": {
+        "vencio": "{dias, plural, one {expired # day ago} other {expired # days ago}}",
+        "venceHoy": "expires today",
+        "venceEn": "{dias, plural, one {expires in # day} other {expires in # days}}"
+      },
+      "filtros": {
+        "periodo": "Issue period",
+        "periodoChip": "Issued: {rango}",
+        "estado": "Status",
+        "estadoChip": "Status: {estado}",
+        "todos": "All",
+        "abiertas": "Open (draft and sent)",
+        "vigenciaEtiqueta": "Validity",
+        "porVencerCorto": "Expiring",
+        "vencidasCorto": "Expired",
+        "vigencia": {
+          "por_vencer": "Expiring in 7 days",
+          "vencidas": "Expired without reply"
+        },
+        "cliente": "Customer",
+        "clienteChip": "Customer: {nombre}",
+        "vendedor": "Salesperson",
+        "vendedorChip": "Salesperson: {nombre}",
+        "buscarVendedor": "Search salesperson",
+        "oportunidadEtiqueta": "CRM opportunity",
+        "conOportunidad": "With opportunity",
+        "sinOportunidad": "Without opportunity",
+        "oportunidad": {
+          "con": "With CRM opportunity",
+          "sin": "Without CRM opportunity"
+        },
+        "montoMin": "Total from",
+        "montoMax": "Total up to",
+        "montoMinChip": "From {monto}",
+        "montoMaxChip": "Up to {monto}",
+        "verN": "{count, plural, one {Show {n} quote} other {Show {n} quotes}}",
+        "limpiar": "Clear filters"
+      },
+      "acciones": {
+        "ver": "View details",
+        "enviar": "Send",
+        "convertir": "Convert",
+        "verFactura": "View invoice",
+        "editar": "Edit",
+        "duplicar": "Duplicate",
+        "duplicada": "Quote {numero} was created as a draft.",
+        "descargarPdf": "Download PDF",
+        "imprimir": "Print",
+        "marcarRechazada": "Mark as rejected",
+        "eliminarBorrador": "Delete draft",
+        "marcarEnviada": "Mark as sent (no email)"
+      },
+      "estado": {
+        "aceptada": "Quote {numero} is now accepted.",
+        "rechazada": "Quote {numero} is now rejected.",
+        "enviada": "Quote {numero} is now sent."
+      },
+      "eliminar": {
+        "titulo": "Delete quote {numero}?",
+        "descripcion": "The draft quote is deleted and can't be recovered.",
+        "confirmar": "Delete quote",
+        "hecho": "Quote {numero} was deleted."
+      },
+      "rechazar": {
+        "titulo": "Mark quote {numero} as rejected?",
+        "descripcion": "The customer didn't accept it. A rejected quote can no longer be edited or converted into an invoice; you can duplicate it to make a new one.",
+        "confirmar": "Mark as rejected"
+      },
+      "enviar": {
+        "titulo": "Send quote {numero}",
+        "descripcion": "It's sent by email with the quote PDF attached. If it's a draft, it becomes sent.",
+        "enviada": "Quote sent",
+        "enviadaA": "Sent to {destino} with the PDF attached.",
+        "enviadaSinAdjunto": "Sent to {destino} without the PDF: it couldn't be generated right now."
+      },
+      "convertir": {
+        "titulo": "Convert {numero} into an invoice",
+        "lineas": "{count, plural, one {# line} other {# lines}}",
+        "sucursal": "Invoice branch",
+        "sucursalAyuda": "The number comes from this branch's resolution when it's issued.",
+        "eligeSucursal": "Choose the invoice branch.",
+        "queSeCopia": "What gets copied",
+        "clienteCondiciones": "Customer and terms",
+        "plazo": "{dias}-day terms",
+        "contado": "Cash",
+        "vendedor": "salesperson {nombre}",
+        "lineasEtiqueta": "Lines",
+        "lineasConDescuento": "{count, plural, one {#, with its discount} other {#, with their discounts}}",
+        "impuesto": "Tax",
+        "total": "Total",
+        "nacerBorrador": "The invoice starts as a draft",
+        "nacerBorradorDetalle": "Review it and issue it from its details: that's where the resolution number is taken, serial numbers are sold and, if it's electronic, it's sent to the DIAN. The quote becomes «Converted» and linked.",
+        "confirmar": "Create draft invoice"
+      },
+      "detalle": {
+        "titulo": "Quote {numero}",
+        "cargando": "Loading quote…",
+        "procesando": "Processing…",
+        "sinCliente": "No customer",
+        "noEncontrada": "Quote not found",
+        "noEncontradaDescripcion": "The quote you're looking for doesn't exist in this organization or was deleted.",
+        "volverListado": "Back to quotes",
+        "errorCarga": "Couldn't load the quote.",
+        "validaHasta": "valid until {fecha}",
+        "vencioEl": "expired on {fecha}",
+        "impuesto": "Tax",
+        "acciones": {
+          "enviar": "Send",
+          "reenviar": "Send again",
+          "convertir": "Convert into invoice",
+          "ver_factura": "View invoice",
+          "duplicar": "Duplicate",
+          "renovar": "Duplicate valid from today",
+          "editar": "Edit",
+          "aceptar": "Mark as accepted",
+          "rechazar": "Mark as rejected",
+          "eliminar": "Delete draft",
+          "pdf": "Download PDF",
+          "imprimir": "Print",
+          "marcar_enviada": "Mark as sent (no email)"
+        },
+        "avisoVencida": {
+          "titulo": "Expired on {fecha}",
+          "descripcion": "An expired quote can't be converted into an invoice. Duplicate it valid from today: lines and prices are kept; review them before sending."
+        },
+        "avisoConvertida": {
+          "titulo": "Converted into invoice {numero}",
+          "descripcion": "The invoice started as a draft with these lines and taxes. Review it and issue it from its details."
+        },
+        "clienteCondiciones": "Customer and terms",
+        "cliente": "Customer",
+        "emision": "Issued",
+        "validaHastaEtiqueta": "Valid until",
+        "vigenciaVencio": "{fecha} · {dias, plural, one {expired # day ago} other {expired # days ago}}",
+        "vigenciaHoy": "{fecha} · expires today",
+        "vigenciaVenceEn": "{fecha} · {dias, plural, one {expires in # day} other {expires in # days}}",
+        "plazo": "Payment terms",
+        "dias": "{dias} days",
+        "contado": "Cash",
+        "sucursal": "Branch",
+        "vendedor": "Salesperson",
+        "moneda": "Currency",
+        "lineas": "Quote lines",
+        "descuentos": "Discounts",
+        "terminos": "Terms and conditions",
+        "notas": "Internal notes",
+        "respuesta": {
+          "titulo": "Customer reply",
+          "descripcion": "Did the customer reply? Mark it so the CRM opportunity moves forward.",
+          "rechazar": "Reject"
+        },
+        "cadena": {
+          "titulo": "Chain",
+          "oportunidad": "CRM opportunity",
+          "factura": "Invoice",
+          "alConvertir": "On conversion",
+          "noSeConvierte": "Not converted: it expired",
+          "rechazada": "Not converted: it was rejected"
+        },
+        "historial": {
+          "titulo": "History",
+          "creada": "Created",
+          "creadaDesde": "Created from the opportunity «{oportunidad}»",
+          "enviada": "Sent to {destino}",
+          "vista": "{destino} opened the email",
+          "convertida": "Converted into invoice {numero}"
+        }
+      },
+      "formulario": {
+        "tituloNueva": "New quote",
+        "tituloEditar": "Edit quote {numero}",
+        "sinGuardar": "Not saved",
+        "guardarBorrador": "Save draft",
+        "guardarCambios": "Save changes",
+        "guardarYEnviar": "Save and send",
+        "creada": "Quote {numero} was created.",
+        "guardada": "Changes to quote {numero} were saved.",
+        "errorGuardar": "Couldn't save the quote. Try again.",
+        "errorCarga": "Couldn't load the form.",
+        "total": "Total",
+        "impuestoLinea": "+ {importe} tax",
+        "impuestoIncluido": "Includes {importe} tax",
+        "duplicarLinea": "Duplicate line",
+        "lineasVacio": "No lines yet",
+        "lineasVacioDescripcion": "Search for products or add a manual item.",
+        "buscarProducto": "Search product",
+        "itemManual": "Manual item",
+        "noEditable": {
+          "titulo": "Quote {numero} can no longer be edited",
+          "descripcion": "Only draft or sent quotes can be edited. From its details you can duplicate it to make a new one.",
+          "verCotizacion": "View the quote"
+        },
+        "atajos": {
+          "cliente": "Choose customer",
+          "productos": "Search products",
+          "manual": "Add manual item",
+          "guardar": "Save draft"
+        },
+        "secciones": {
+          "datos": "Quote details",
+          "cliente": "Customer",
+          "lineas": "Lines ({n})",
+          "lineasEtiqueta": "Quote lines",
+          "terminos": "Terms and notes",
+          "impuestos": "Taxes"
+        },
+        "campos": {
+          "sucursal": "Branch",
+          "elegirSucursal": "Choose the branch",
+          "emision": "Issue date",
+          "validaHasta": "Valid until",
+          "validaHastaAyuda": "After this date the quote expires and can no longer be converted into an invoice.",
+          "atajosVigencia": "Quick validity",
+          "dias": "{dias} days",
+          "plazo": "Payment terms",
+          "contado": "Cash",
+          "formaPago": "Payment method",
+          "sinDefinir": "Not set",
+          "moneda": "Currency",
+          "vendedor": "Salesperson",
+          "elegirVendedor": "Choose the salesperson",
+          "buscarVendedor": "Search salesperson",
+          "sinVendedor": "No salesperson",
+          "oportunidad": "CRM opportunity",
+          "oportunidadAyuda": "If the quote has no lines yet, the opportunity's products are brought in.",
+          "sinOportunidad": "No opportunity",
+          "buscarOportunidad": "Search opportunity",
+          "terminosCondiciones": "Terms and conditions",
+          "terminosCondicionesAyuda": "The customer sees them on the PDF: deposit, delivery, warranty.",
+          "notas": "Internal notes",
+          "notasAyuda": "Only for your team.",
+          "preciosIncluidos": "Prices include tax",
+          "preciosIncluidosAyuda": "Turn it on if line prices already include tax."
+        },
+        "errores": {
+          "cliente": "Choose the customer.",
+          "sucursal": "Choose the branch.",
+          "lineas": "Add at least one line.",
+          "vigencia": "The validity date can't be earlier than the issue date.",
+          "linea": "Check a line: {detalle}",
+          "descripcion": "the description is missing",
+          "cantidad": "the quantity must be greater than zero",
+          "precio": "the price isn't valid",
+          "descuento": "the discount can't exceed the line amount"
+        }
+      }
+    },
+    "notas": {
+      "migas": {
+        "finanzas": "Finance",
+        "facturacion": "Invoicing",
+        "notas": "Notes"
+      },
+      "titulo": "Notes",
+      "subtituloSufijo": "credit and debit notes on your invoices",
+      "pestanas": {
+        "etiqueta": "Note type",
+        "credito": "Credit",
+        "debito": "Debit"
+      },
+      "listado": {
+        "nuevaCredito": "New credit note",
+        "nuevaDebito": "New debit note",
+        "exportar": "Export",
+        "exportando": "Exporting…",
+        "exportarError": "The list could not be exported.",
+        "archivo": "notes",
+        "todasLasSucursales": "All branches",
+        "todasLasFechas": "All dates",
+        "truncado": "There are more notes than can be counted here: narrow the period to see exact figures.",
+        "kpis": {
+          "etiqueta": "Notes summary",
+          "acreditado": "Credited in the period",
+          "debitado": "Charged in the period",
+          "notas": "{count, plural, =0 {No notes} one {# note} other {# notes}}",
+          "excedente": "Surplus to customer credit",
+          "conExcedente": "{count, plural, =0 {No note left a customer credit} one {# note on paid invoices} other {# notes on paid invoices}}",
+          "anuladas": "Voided",
+          "anuladasDetalle": "With their reversal",
+          "sinEnviar": "Not sent to DIAN",
+          "sinEnviarDetalle": "Only notes on accepted invoices count",
+          "porCobrar": "Receivable",
+          "porCobrarDetalle": "Balance of debit notes"
+        },
+        "buscar": {
+          "placeholder": "Search by number, invoice or customer",
+          "etiqueta": "Search notes"
+        },
+        "filtros": {
+          "periodo": "Period",
+          "todasLasFechas": "All dates",
+          "estado": "Status",
+          "dian": "DIAN",
+          "cliente": "Customer",
+          "clienteChip": "Selected customer",
+          "todos": "All",
+          "limpiar": "Clear filters",
+          "verN": "{count, plural, =0 {No notes} one {See # note} other {See # notes}}"
+        },
+        "columnas": {
+          "numero": "Number",
+          "factura": "Invoice",
+          "cliente": "Customer",
+          "fecha": "Date",
+          "concepto": "DIAN concept",
+          "valor": "Amount",
+          "saldo": "Balance",
+          "estado": "Status",
+          "dian": "DIAN",
+          "sucursal": "Branch",
+          "motivo": "Reason"
+        },
+        "sustantivo": {
+          "singular": "note",
+          "plural": "notes",
+          "genero": "femenino"
+        },
+        "detalleConcepto": {
+          "productos": "With products",
+          "sinMercancia": "No goods",
+          "excedente": "Surplus to customer credit",
+          "anulada": "Voided: {motivo}",
+          "anuladaSinMotivo": "Voided",
+          "porCobrar": "Balance {saldo}"
+        },
+        "vacio": {
+          "tituloCredito": "No credit notes yet",
+          "descripcionCredito": "A credit note reduces or cancels an issued invoice: returns, discounts or price errors.",
+          "tituloDebito": "No debit notes yet",
+          "descripcionDebito": "They are issued from an invoice to charge interest, expenses or a price adjustment."
+        },
+        "sinResultados": "No note matches the search or filters.",
+        "errorCarga": "The notes could not be loaded.",
+        "sinNumero": "No number",
+        "sinCliente": "No customer",
+        "acciones": {
+          "ver": "View details",
+          "pdf": "View PDF",
+          "imprimir": "Print",
+          "verFactura": "View invoice",
+          "anular": "Void",
+          "registrarPago": "Record payment"
+        }
+      },
+      "estados": {
+        "issued": "Issued",
+        "void": "Voided",
+        "paid": "Paid",
+        "partial": "Partially paid",
+        "draft": "Draft"
+      },
+      "dian": {
+        "no_aplica": "Not applicable",
+        "espera_factura": "Waiting for invoice",
+        "sin_enviar": "Not sent",
+        "retenido": "On hold",
+        "en_cola": "Queued",
+        "en_envio": "Sending",
+        "aceptada": "Accepted by DIAN",
+        "rechazada": "Rejected",
+        "error": "With error"
+      },
+      "dianDetalle": {
+        "titulo": "Electronic invoicing",
+        "no_aplica": "{factura} is not electronic, so this note is not sent to DIAN either.",
+        "espera_factura": "{factura} has not been accepted by DIAN yet: the note is sent once the invoice is.",
+        "sin_enviar": "{factura} was accepted by DIAN and this note has not been sent yet.",
+        "retenido": "It is saved and will be sent when GO Admin activates your electronic invoicing service.",
+        "en_cola": "Queued: it will be sent in the next few minutes.",
+        "en_envio": "It is being sent to DIAN. Wait for the response.",
+        "aceptada": "DIAN accepted the note.",
+        "rechazada": "DIAN rejected the note. Check the reason, fix it and resend.",
+        "error": "Sending failed. It retries automatically or you can retry now.",
+        "estado": "Status",
+        "numero": "DIAN number",
+        "cude": "Unique code (CUDE)",
+        "motivo": "Response",
+        "actualizado": "Last update",
+        "enviar": "Send to DIAN",
+        "reintentar": "Retry sending",
+        "enviando": "Sending…",
+        "enviada": "The note entered the DIAN queue.",
+        "errorEnvio": "The note could not be sent to DIAN.",
+        "debitoPendiente": "Sending debit notes to DIAN will be enabled when the invoicing queue supports it. The note is recorded."
+      },
+      "conceptos": {
+        "credito": {
+          "1": "1 · Partial return",
+          "2": "2 · Electronic invoice cancellation",
+          "3": "3 · Rebate or discount",
+          "4": "4 · Price adjustment",
+          "5": "5 · Other"
+        },
+        "debito": {
+          "1": "1 · Interest",
+          "2": "2 · Collection expenses",
+          "3": "3 · Value change",
+          "4": "4 · Other"
+        }
+      },
+      "detalle": {
+        "tituloCredito": "Credit note {numero}",
+        "tituloDebito": "Debit note {numero}",
+        "sobre": "on {factura}",
+        "cargando": "Loading note…",
+        "noEncontrada": "We could not find this note",
+        "noEncontradaDescripcion": "It does not exist or belongs to another organization.",
+        "volver": "Back to Notes",
+        "sinPermiso": "You do not have permission to view notes",
+        "sinPermisoDescripcion": "Ask an administrator for the view finance permission.",
+        "errorCarga": "The note could not be loaded.",
+        "origenCredito": "Source invoice and reason",
+        "origenDebito": "Source invoice and concept",
+        "factura": "Invoice",
+        "facturaValor": "{numero} · {fecha} · {total}",
+        "facturaAceptada": "{numero} · {fecha} · accepted by DIAN",
+        "conceptoDian": "DIAN concept",
+        "motivo": "Reason",
+        "saldoFactura": "Invoice balance",
+        "excedente": "Surplus",
+        "excedenteValor": "{monto} as customer credit",
+        "devolucionValor": "{monto} refunded to the customer",
+        "inventario": "Inventory",
+        "inventarioValor": "{count, plural, one {# product returned to stock} other {# products returned to stock}}",
+        "sinInventario": "No goods returned to stock",
+        "vence": "Due",
+        "lineas": "Note lines",
+        "impuesto": "Tax",
+        "totalesCredito": "Note totals",
+        "totalesDebito": "Totals",
+        "cliente": "Customer",
+        "sinCliente": "No customer",
+        "cadena": "Chain",
+        "cartera": "Account receivable",
+        "saldoAFavor": "Customer credit",
+        "devolucion": "Refund",
+        "asiento": "Journal entry",
+        "pago": "Payment",
+        "pagos": "Payments",
+        "sinPagos": "No payments yet.",
+        "historial": "History",
+        "anularTitulo": "Void",
+        "anularTextoCredito": "Reverses the journal entry, inventory and customer credit in one transaction. Requires a reason and void permission.",
+        "anularTextoDebito": "Reverses the journal entry and cancels the account receivable. Requires a reason and void permission.",
+        "anularBotonCredito": "Void credit note",
+        "anularBotonDebito": "Void debit note",
+        "descargarPdf": "Download PDF",
+        "imprimir": "Print",
+        "verPdf": "View PDF",
+        "verFactura": "View invoice",
+        "verSaldoAFavor": "View customer credit",
+        "registrarPago": "Record payment",
+        "pdfError": "The PDF could not be downloaded.",
+        "pdfDebitoPendiente": "The debit note PDF comes with its template in the document engine.",
+        "enviarPendiente": "Emailing notes comes with the document sending dialog."
+      },
+      "anular": {
+        "tituloCredito": "Void credit note {numero}",
+        "tituloDebito": "Void debit note {numero}",
+        "descripcion": "The note will be voided. This cannot be undone.",
+        "confirmar": "Void note",
+        "hecho": "Note voided",
+        "hechoDescripcion": "Note {numero} was voided.",
+        "consecuenciasTitulo": "When voiding",
+        "consecuencias": {
+          "factura_vuelve": "Invoice {factura} owes again what the note had deducted.",
+          "asiento": "The journal entry is reversed with a counter-entry.",
+          "inventario": "The products returned to stock leave inventory again.",
+          "saldo_a_favor": "The customer credit of {monto} is cancelled.",
+          "devolucion": "The refund to the customer is voided.",
+          "cartera_nd": "The note's account receivable is cancelled."
+        },
+        "rapidos": {
+          "error": "Error issuing the note",
+          "duplicada": "Duplicate note",
+          "cliente": "The customer did not accept the adjustment"
+        },
+        "bloqueadoTitulo": "This note cannot be voided",
+        "bloqueadoSubtitulo": "{numero} · accepted by DIAN",
+        "porQue": "Why",
+        "bloqueos": {
+          "ya_anulada": "The note is already voided.",
+          "aceptada_dian": "A note accepted by DIAN is not voided in the system.",
+          "aceptada_dian_salida_credito": "To undo its effect, issue a debit note on {factura} for the same amount.",
+          "aceptada_dian_salida_debito": "To undo its effect, issue a credit note on the debit note.",
+          "en_envio_dian": "If the note is being sent, wait for DIAN's response.",
+          "con_pagos": "The debit note has payments: void them first.",
+          "sin_permiso": "You do not have permission to void notes."
+        },
+        "emitirNotaDebito": "Issue debit note",
+        "cerrar": "Close",
+        "errores": {
+          "error_desconocido": "The note could not be voided. Try again.",
+          "sin_permiso": "You do not have permission to void notes.",
+          "nota_no_encontrada": "The note does not exist or belongs to another organization.",
+          "motivo_obligatorio": "Write the reason (at least 5 characters).",
+          "nota_aceptada_dian": "DIAN already accepted this note: it cannot be voided.",
+          "nota_en_envio_dian": "The note is being sent to DIAN: wait for the response.",
+          "nota_con_pagos": "The debit note has payments: void them first.",
+          "nota_debito_no_disponible": "Debit notes are not active in this installation yet."
+        }
+      },
+      "nueva": {
+        "tituloCredito": "New credit note",
+        "tituloDebito": "New debit note",
+        "descripcion": "Choose the issued invoice the note is made on.",
+        "factura": "Invoice",
+        "buscarPlaceholder": "Search by number, customer or tax ID",
+        "titulo": "Issued invoices",
+        "vacio": "Type to search for an invoice.",
+        "sinResultados": "No issued invoice matches.",
+        "error": "Invoices could not be searched.",
+        "cambiar": "Change invoice",
+        "quitar": "Remove invoice",
+        "continuar": "Continue",
+        "cancelar": "Cancel",
+        "elegirPrimero": "Choose an invoice",
+        "saldo": "Balance {saldo}",
+        "meta": "{fecha} · {total}"
+      },
+      "notaDebito": {
+        "titulo": "Debit note on {numero}",
+        "subtitulo": "{cliente} · balance {saldo}",
+        "subtituloAceptada": "{cliente} · invoice accepted by DIAN · balance {saldo}",
+        "cargando": "Loading the invoice…",
+        "errorCarga": "The invoice could not be loaded.",
+        "concepto": "DIAN concept",
+        "conceptoPlaceholder": "Choose the concept",
+        "motivo": "Reason",
+        "motivoPlaceholder": "Why this amount is charged",
+        "lineas": {
+          "etiqueta": "Lines to charge",
+          "descripcion": "Description",
+          "descripcionPlaceholder": "E.g.: Collection expenses",
+          "cantidad": "Qty",
+          "valorUnitario": "Unit price",
+          "impuesto": "Tax",
+          "total": "Total",
+          "sinImpuesto": "No tax",
+          "agregar": "Add line",
+          "quitar": "Remove line {n}",
+          "manual": "Manual item"
+        },
+        "subtotal": "Subtotal",
+        "total": "Debit note total",
+        "quePasaTitulo": "What happens when issuing",
+        "quePasa": "A separate account receivable of {total} is created with the invoice's payment term and is paid with «Record payment». {factura} does not change.",
+        "quePasaDian": "The invoice was accepted by DIAN: the note stays pending until the debit note queue is active.",
+        "quePasaSinDian": "The invoice is not electronic: the note is not sent to DIAN.",
+        "emitir": "Issue debit note",
+        "emitiendo": "Issuing…",
+        "emitida": "Debit note {numero} issued",
+        "emitidaDetalle": "Total {total}. Its account receivable is ready.",
+        "noDisponibleTitulo": "Debit note pending activation",
+        "noDisponible": "The debit note is designed, but its database function is not active yet. Once GO Admin activates it, you can issue it from here.",
+        "noAdmite": "A debit note is only issued on an issued, valid invoice.",
+        "sinImpuestos": "The organization has no taxes configured: lines will have no tax.",
+        "faltan": {
+          "concepto": "Choose the DIAN concept.",
+          "motivo": "Write the reason (at least 5 characters).",
+          "lineas": "Add at least one line with description, quantity and price.",
+          "lineaIncompleta": "Complete or remove half-filled lines."
+        },
+        "errores": {
+          "error_desconocido": "The debit note could not be issued. Try again.",
+          "datos_invalidos": "Check the note data.",
+          "no_autenticado": "Your session ended. Sign in again.",
+          "sin_permiso": "You do not have permission to issue debit notes.",
+          "factura_no_encontrada": "The invoice does not exist or belongs to another organization.",
+          "nota_no_encontrada": "The note does not exist or belongs to another organization.",
+          "sin_acceso_sucursal": "You do not have access to the invoice's branch.",
+          "clave_idempotencia_invalida": "Reopen the dialog and try again.",
+          "concepto_invalido": "Choose a valid DIAN concept.",
+          "motivo_obligatorio": "Write the reason (at least 5 characters).",
+          "documento_invalido": "It is only issued on a sales invoice.",
+          "factura_borrador": "The invoice is a draft: issue it first.",
+          "ya_anulada": "The invoice is voided.",
+          "sin_lineas": "Add at least one line.",
+          "demasiadas_lineas": "The note allows up to 50 lines.",
+          "linea_invalida": "Check the lines: description, quantity and price greater than zero.",
+          "impuesto_invalido": "One of the taxes is no longer active. Choose another.",
+          "monto_invalido": "The note total must be greater than zero.",
+          "sin_numeracion": "The branch has no valid debit note numbering. Set it up in Resolutions and numbering.",
+          "nota_aceptada_dian": "DIAN already accepted this note.",
+          "nota_en_envio_dian": "The note is being sent to DIAN.",
+          "nota_con_pagos": "The debit note has payments.",
+          "nota_debito_no_disponible": "Debit notes are not active in this installation yet."
+        }
+      }
+    },
+    "resoluciones": {
+      "titulo": "Resolutions and numbering",
+      "descripcion": "Ranges authorized by the DIAN, by document type and branch",
+      "sucursal": "Branch to sync",
+      "sincronizar": "Sync with the provider",
+      "sincronizadas": "Ranges synced",
+      "resumenSincronizacion": "{importados} imported, {desactivados} deactivated.",
+      "motivos": {
+        "eligeSucursal": "Choose the branch"
+      },
+      "servicio": {
+        "linea": "GO Admin electronic invoicing service:",
+        "ver": "View service",
+        "estados": {
+          "active": "Active",
+          "pending_activation": "Pending activation",
+          "suspended": "Suspended"
+        }
+      },
+      "avisos": {
+        "agotada": {
+          "titulo": "The {tipo} numbering ({prefijo}) ran out",
+          "descripcion": "No numbers left. Request a new resolution on the DIAN portal and ask GO Admin to register it."
+        },
+        "por_agotar": {
+          "titulo": "The {tipo} numbering ({prefijo}) is running out",
+          "descripcion": "{count, plural, one {# number left.} other {# numbers left.}} Request a new resolution on the DIAN portal."
+        },
+        "vencida": {
+          "titulo": "The {tipo} resolution ({prefijo}) expired",
+          "descripcion": "It can no longer be used to issue. Request a new one on the DIAN portal."
+        },
+        "por_vencer": {
+          "titulo": "{count, plural, one {The {tipo} resolution ({prefijo}) expires in # day} other {The {tipo} resolution ({prefijo}) expires in # days}}",
+          "descripcion": "Request the new one in time on the DIAN portal."
+        },
+        "otros": "{count, plural, one {There is # more alert in the table.} other {There are # more alerts in the table.}}"
+      },
+      "buscar": {
+        "placeholder": "Search by prefix or resolution number",
+        "etiqueta": "Search ranges"
+      },
+      "alcance": {
+        "etiqueta": "Ranges to show",
+        "activas": "Active",
+        "todas": "All"
+      },
+      "columnas": {
+        "tipo": "Type",
+        "prefijo": "Prefix",
+        "resolucion": "Resolution",
+        "rango": "Range",
+        "consumo": "Usage",
+        "vigencia": "Validity",
+        "estado": "Status"
+      },
+      "tipos": {
+        "invoice": "Electronic invoice",
+        "credit_note": "Credit note",
+        "debit_note": "Debit note",
+        "support_document": "Support document"
+      },
+      "estados": {
+        "vigente": "Valid",
+        "por_agotar": "Running out",
+        "por_vencer": "Expiring",
+        "agotada": "Exhausted",
+        "vencida": "Expired",
+        "inactiva": "Inactive",
+        "futura": "Not yet valid"
+      },
+      "todasSucursales": "All branches",
+      "noRequiere": "No resolution required",
+      "numeracionPropia": "Own numbering",
+      "sinResolucionRegistrada": "No resolution registered",
+      "del": "dated {fecha}",
+      "consumoQuedan": "{usados} of {total} · {quedan} left",
+      "consumoAgotado": "{usados} of {total} · none left",
+      "consumoDe": "Usage of range {prefijo}",
+      "sinVencimiento": "No expiry",
+      "hasta": "Until {fecha}",
+      "vencio": "Expired on {fecha}",
+      "venceEn": "{count, plural, one {Expires in # day} other {Expires in # days}}",
+      "acciones": {
+        "editar": "Edit range"
+      },
+      "vacio": {
+        "titulo": "No numbering ranges yet",
+        "descripcion": "Sync a branch with the provider or ask GO Admin to register your resolution."
+      },
+      "sinResultados": "No ranges match the search.",
+      "nota": "Credit and debit notes use their own numbering without a resolution. When issuing, the active range of the document's branch is used; if two of the same type are active, the most recent one is used.",
+      "errores": {
+        "carga": "Ranges could not be loaded",
+        "sinPermiso": "You don't have permission for this action",
+        "sincronizar": "Ranges could not be synced",
+        "guardar": "The range could not be saved",
+        "duplicado": "That prefix already exists for the branch and document type",
+        "datosInvalidos": "Check the range data"
+      },
+      "editar": {
+        "titulo": "Edit range {prefijo}",
+        "descripcion": "Fix the resolution data. Changes apply to upcoming documents.",
+        "guardar": "Save",
+        "guardando": "Saving…",
+        "cancelar": "Cancel",
+        "guardado": "Range saved",
+        "tipo": "Document type",
+        "sucursal": "Branch",
+        "prefijo": "Prefix",
+        "idProveedor": "Range ID at the provider",
+        "idProveedorAyuda": "Comes from \"Sync\". Change it only if support tells you to.",
+        "desde": "From",
+        "hasta": "To",
+        "actual": "Last number used",
+        "actualAyuda": "0 if none has been used yet.",
+        "alerta": "Alert when remaining",
+        "alertaAyuda": "Remaining numbers that trigger the \"Running out\" alert.",
+        "resolucion": "DIAN resolution number",
+        "fechaResolucion": "Resolution date",
+        "validoDesde": "Valid from",
+        "validoHasta": "Valid until",
+        "claveTecnica": "Technical key",
+        "claveTecnicaGuardada": "A key is saved. Type only if you want to change it.",
+        "claveTecnicaPlaceholder": "Saved",
+        "setPruebas": "Test set ID",
+        "activo": "Active range",
+        "errores": {
+          "tipo": "Choose the document type",
+          "prefijo": "Enter a prefix of up to 10 characters",
+          "rango": "\"To\" must be greater than or equal to \"From\"",
+          "actual": "The last number used must be within the range",
+          "vigencia": "The end date must be after the start date"
+        }
+      }
+    },
+    "saldos": {
+      "titulo": "Customer credits",
+      "subtitulo": "what you owe your customers",
+      "todasLasSucursales": "All branches",
+      "migas": {
+        "finanzas": "Finance",
+        "cartera": "Receivables"
+      },
+      "cargando": "Loading…",
+      "sinCliente": "No customer",
+      "sinVencimiento": "No expiry",
+      "deValor": "of {valor}",
+      "etiquetaFila": "Credit for {cliente}: {monto} available",
+      "archivoExportacion": "customer_credits",
+      "exportando": "Exporting…",
+      "exportarError": "Could not export. Please try again.",
+      "errorCarga": "Could not load customer credits.",
+      "sinResultados": "No credit matches the search or filters.",
+      "sustantivo": {
+        "singular": "credit",
+        "plural": "credits",
+        "genero": "masculino"
+      },
+      "vacio": {
+        "titulo": "No customer credits yet",
+        "descripcion": "Advances and what you owe your customers show up here: payment overages, returns and credit notes."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to customer credits",
+        "descripcion": "Ask an administrator for permission to view Finance."
+      },
+      "acciones": {
+        "registrarAnticipo": "Record advance",
+        "exportar": "Export",
+        "aplicar": "Apply",
+        "aplicarDe": "Apply the credit of {cliente}",
+        "aplicarAFactura": "Apply to an invoice",
+        "devolver": "Refund",
+        "devolverDe": "Refund the credit of {cliente}",
+        "anular": "Void",
+        "verMovimientos": "View activity",
+        "verCliente": "View customer",
+        "verRecibo": "View receipt",
+        "verOrigen": "View credit note"
+      },
+      "kpis": {
+        "etiqueta": "Customer credits summary",
+        "disponible": "Available",
+        "enClientes": "{count, plural, =0 {No customers with credit} one {For # customer} other {For {n} customers}}",
+        "vencidos": "Expired",
+        "vencidosDetalle": "{count, plural, one {# credit · can no longer be applied} other {{n} credits · can no longer be applied}}",
+        "sinVencidos": "None expired",
+        "aplicado": "Applied in {mes}",
+        "facturas": "{count, plural, =0 {No invoices} one {# invoice} other {{n} invoices}}",
+        "devuelto": "Refunded in {mes}",
+        "devoluciones": "{count, plural, =0 {No refunds} one {# refund} other {{n} refunds}}",
+        "devolucionesEfectivo": "{count, plural, one {# cash refund} other {{n} cash refunds}}"
+      },
+      "buscar": {
+        "placeholder": "Search customer or document",
+        "etiqueta": "Search customer credits"
+      },
+      "filtros": {
+        "estado": "Status",
+        "origen": "Source",
+        "cliente": "Customer",
+        "clienteChip": "selected customer",
+        "periodo": "Date",
+        "saldo": "Balance",
+        "conSaldo": "Only with balance",
+        "todos": "All",
+        "limpiar": "Clear filters",
+        "verN": "{count, plural, =0 {No results} one {View # credit} other {View {n} credits}}"
+      },
+      "columnas": {
+        "cliente": "Customer",
+        "documento": "Customer ID",
+        "origen": "Source",
+        "fecha": "Date",
+        "valor": "Amount",
+        "usado": "Used",
+        "disponible": "Available",
+        "vence": "Expires",
+        "estado": "Status"
+      },
+      "estados": {
+        "disponible": "Available",
+        "vencido": "Expired",
+        "usado": "Used",
+        "anulado": "Voided"
+      },
+      "origenes": {
+        "pago": "Advance",
+        "nota_credito": "Credit note",
+        "devolucion": "Return",
+        "otro": "Other"
+      },
+      "detalle": {
+        "titulo": "Credit for {cliente}",
+        "cargando": "Customer credit",
+        "valor": "Amount",
+        "usado": "Used",
+        "disponible": "Available",
+        "movimientos": "Activity",
+        "datos": "Details",
+        "cliente": "Customer",
+        "origen": "Source",
+        "recibo": "Receipt",
+        "sucursal": "Branch",
+        "vence": "Expires",
+        "venceEl": "Expires on {fecha}",
+        "notas": "Notes",
+        "noEncontrado": "Customer credit not found",
+        "error": "Could not load the customer credit.",
+        "movimiento": {
+          "origen": {
+            "pago": "Receipt",
+            "nota_credito": "Credit note",
+            "devolucion": "Return",
+            "otro": "Source"
+          },
+          "metodo": "Method {metodo}",
+          "factura": "Invoice",
+          "aplicado": "Applied {monto} · {fecha}",
+          "devolucion": "Cash refund",
+          "devolucionSinRef": "Refund to customer",
+          "devuelto": "Refunded {monto} · {metodo} · {fecha}",
+          "anulacion": "Voided",
+          "saldo": "Customer credit"
+        }
+      },
+      "aplicar": {
+        "titulo": "Apply customer credit",
+        "descripcion": "{cliente} · available {disponible}",
+        "factura": "Customer invoice",
+        "facturaPlaceholder": "Choose an invoice with a balance",
+        "opcionFactura": "{numero} · balance {saldo} · {fecha}",
+        "sinFacturas": "This customer has no invoices with an outstanding balance.",
+        "errorFacturas": "Could not load the customer's invoices.",
+        "eligeFactura": "Choose the invoice to apply it to.",
+        "monto": "Amount to apply",
+        "hasta": "Up to {monto}",
+        "quePasaTitulo": "What happens when you apply",
+        "quePasa": "Invoice {factura} goes down by {monto} and still owes {restante}. The customer keeps {disponible} in credit.",
+        "confirmar": "Apply",
+        "confirmarMonto": "Apply {monto}",
+        "exito": "{monto} applied to invoice {factura}."
+      },
+      "devolver": {
+        "titulo": "Refund money to the customer",
+        "descripcion": "{cliente} · available {disponible}",
+        "valor": "Amount to refund",
+        "hasta": "Up to {monto}",
+        "como": "How it is refunded",
+        "cuenta": "Bank account",
+        "cuentaPlaceholder": "The payment method's account",
+        "cuentaDelMetodo": "The payment method's account",
+        "saleDe": "Paid from",
+        "cajaAbierta": "Open register · shift #{id}",
+        "sinCaja": "There is no open register at the credit's branch: open it or refund with another method.",
+        "referencia": "Reference",
+        "motivo": "Reason",
+        "motivoPlaceholder": "Why the money is refunded",
+        "quePasaTitulo": "What happens when you refund",
+        "quePasaEfectivo": "{monto} leaves the register count ({origen}), the credit drops to {saldo} and an entry is posted against the advances account.",
+        "quePasaBanco": "{monto} leaves {origen}, the credit drops to {saldo} and an entry is posted against the advances account.",
+        "confirmar": "Refund",
+        "confirmarMonto": "Refund {monto}",
+        "exito": "{monto} refunded to {cliente}."
+      },
+      "anular": {
+        "titulo": "Void advance",
+        "descripcion": "{cliente} · {monto} · receipt {recibo}",
+        "confirmar": "Void advance",
+        "consecuenciasTitulo": "When you void",
+        "consecuencias": {
+          "pago": "The receipt's payment is voided and the money leaves the register count or the bank.",
+          "saldo": "The customer credit is voided and can no longer be applied.",
+          "asiento": "The advance's reversing entry is posted."
+        },
+        "rapidos": {
+          "error": "Recorded by mistake",
+          "duplicado": "Duplicate advance",
+          "cliente": "The customer withdrew"
+        },
+        "bloqueos": {
+          "usado": "This advance was already used on invoices or refunded: it can't be voided. Refund what is left.",
+          "no_es_anticipo": "This credit did not come from an advance (it comes from a credit note or a return): it isn't voided, it is refunded.",
+          "sin_permiso": "You don't have permission to void.",
+          "anulado": "This credit is already voided."
+        },
+        "devolverEnSuLugar": "Refund the money",
+        "exito": "The advance for {cliente} was voided."
+      },
+      "anticipo": {
+        "titulo": "Record advance",
+        "descripcion": "The money comes in as a payment with its receipt, adds to the register or the bank and stays as the customer's credit.",
+        "sucursal": "Branch",
+        "sucursalPlaceholder": "Choose the branch",
+        "cliente": "Customer",
+        "monto": "Amount",
+        "metodo": "Payment method",
+        "cuenta": "Bank account",
+        "cuentaPlaceholder": "The payment method's account",
+        "referencia": "Reference",
+        "vence": "Expiry (optional)",
+        "venceAyuda": "Without a date, the credit doesn't expire.",
+        "notas": "Notes (optional)",
+        "notasPlaceholder": "What the advance is for",
+        "sinCaja": "There is no open register at this branch: open it or use another method.",
+        "confirmar": "Record advance",
+        "confirmarMonto": "Record {monto}",
+        "exito": "Advance of {monto} recorded with receipt {recibo}."
+      },
+      "validacion": {
+        "vacio": "Enter an amount greater than zero.",
+        "excede_disponible": "Exceeds the available credit ({monto}).",
+        "excede_factura": "Exceeds the invoice balance ({monto}).",
+        "cliente": "Choose the customer.",
+        "sucursal": "Choose the branch.",
+        "metodo": "Choose the payment method.",
+        "referencia": "This method requires a reference.",
+        "motivo": "Enter the reason (at least 3 characters)."
+      },
+      "errores": {
+        "no_autenticado": "Your session ended. Sign in again.",
+        "sin_permiso": "You don't have permission for this action.",
+        "sin_acceso_sucursal": "You don't have access to the branch of the credit or the invoice.",
+        "organizacion_no_permitida": "The organization doesn't match your session.",
+        "datos_invalidos": "Check the data.",
+        "clave_idempotencia_invalida": "The attempt could not be identified. Open the dialog again.",
+        "clave_idempotencia_reutilizada": "This attempt was already used with other data. Open the dialog again.",
+        "monto_invalido": "Enter an amount greater than zero.",
+        "saldo_no_encontrado": "Customer credit not found.",
+        "saldo_no_disponible": "The customer credit is no longer available.",
+        "saldo_vencido": "The customer credit has expired: it can't be applied, but it can be refunded.",
+        "saldo_usado": "The customer credit was already used on invoices: it can't be voided.",
+        "saldo_no_anulable": "This credit didn't come from an advance: it isn't voided, it is refunded.",
+        "monto_excede_saldo_a_favor": "The amount exceeds the available customer credit.",
+        "factura_no_encontrada": "Invoice not found.",
+        "documento_invalido": "The document is not a sales invoice.",
+        "documento_borrador": "The invoice is a draft: issue it before applying credit.",
+        "documento_anulado": "The invoice is voided.",
+        "cliente_distinto": "The invoice belongs to another customer.",
+        "cliente_no_encontrado": "Customer not found.",
+        "sucursal_invalida": "Choose a valid branch.",
+        "moneda_distinta": "The invoice is in another currency.",
+        "monto_excede_saldo": "The amount exceeds the invoice's outstanding balance.",
+        "metodo_invalido": "The payment method is not available.",
+        "referencia_obligatoria": "This method requires a reference.",
+        "cuenta_bancaria_invalida": "The bank account is not valid.",
+        "sin_caja_abierta": "There is no open register: open it or use another method.",
+        "pago_en_caja_cerrada": "The money went into a register that is already closed: record a cash withdrawal.",
+        "sin_cuenta_de_dinero": "The method's cash or bank account was not found.",
+        "sin_cuenta_por_cobrar": "The organization has no receivables account set up.",
+        "vencimiento_invalido": "The expiry can't be earlier than today.",
+        "motivo_obligatorio": "Enter the reason.",
+        "asiento_no_creado": "Could not post the entry. Check the chart of accounts and the accounting period.",
+        "error_desconocido": "Could not complete. Please try again."
+      }
+    },
+    "servicio": {
+      "titulo": "Electronic invoicing — Service",
+      "subtitulo": {
+        "activo": "Provided by GO Admin · active since {fecha}",
+        "pendiente": "Provided by GO Admin · you don't load credentials or choose an environment"
+      },
+      "migas": {
+        "finanzas": "Finance",
+        "facturacion": "Electronic invoicing",
+        "servicio": "Service"
+      },
+      "acciones": {
+        "verBandeja": "View submissions inbox",
+        "verificar": "Verify now",
+        "solicitarActivacion": "Request activation"
+      },
+      "motivos": {
+        "solicitudPendiente": "Requesting from here is coming soon; meanwhile, ask GO Admin support.",
+        "sinPermiso": "You need the Finance approve permission",
+        "eligeSucursal": "Choose the branch"
+      },
+      "avisos": {
+        "pendienteTitulo": "Your electronic invoicing is pending activation",
+        "pendienteDescripcion": "Whatever you mark as electronic is put on hold and not sent to the DIAN. Nothing is lost: once GO Admin activates your account, new documents are sent automatically.",
+        "suspendidoTitulo": "The service is suspended",
+        "suspendidoDescripcion": "No documents are sent to the DIAN. Contact GO Admin support to reactivate it."
+      },
+      "pasos": {
+        "titulo": "Activation steps",
+        "listos": "{n} of {total} done",
+        "quien": {
+          "tu": "You",
+          "goAdmin": "GO Admin",
+          "automatico": "Automatic"
+        },
+        "estado": {
+          "listo": "Done",
+          "actual": "In progress",
+          "pendiente": "Pending"
+        },
+        "emisor": {
+          "titulo": "Issuer data complete",
+          "descripcion": "Tax ID and check digit, legal name, tax responsibilities, municipality and billing email.",
+          "faltan": "Missing: {campos}",
+          "accion": "Edit in Organization"
+        },
+        "resolucion": {
+          "titulo": "DIAN invoicing resolution",
+          "descripcion": "Request it on the DIAN portal and choose GO Admin as technology provider. With the resolution number, GO Admin registers it for you.",
+          "accion": "View resolutions"
+        },
+        "cuenta": {
+          "titulo": "Account enabled by GO Admin",
+          "descripcion": "We create your account with the provider, load the resolution and ranges per branch and run the test set."
+        },
+        "primerDocumento": {
+          "titulo": "First document accepted",
+          "descripcion": "We let you know when the DIAN accepts the first one."
+        },
+        "campos": {
+          "nit": "tax ID",
+          "dv": "check digit",
+          "razonSocial": "legal name",
+          "responsabilidades": "tax responsibilities",
+          "municipio": "municipality",
+          "correo": "billing email"
+        },
+        "solicitudAyuda": "Enabled once steps 1 and 2 are done. Who requested it and when is recorded.",
+        "solicitudListos": "Your steps are done."
+      },
+      "resoluciones": {
+        "titulo": "Resolutions and numbering",
+        "descripcion": "GO Admin registers them with the provider, per branch. Here you see usage and validity.",
+        "sucursal": "Branch",
+        "sincronizar": "Sync",
+        "sincronizadas": "Ranges synced",
+        "resumenSincronizacion": "{importados} imported, {desactivados} deactivated.",
+        "verTodas": "View all resolutions",
+        "vacio": "No active ranges yet. Sync a branch or ask GO Admin to register your resolution.",
+        "todasSucursales": "All branches",
+        "numeracionPropia": "Own numbering",
+        "del": "dated {fecha}",
+        "consumo": "Usage",
+        "consumoDe": "Usage of range {prefijo}",
+        "usadosDe": "{usados} of {total}"
+      },
+      "cola": {
+        "titulo": "Submission queue",
+        "enCola": "Queued",
+        "retenidos": "On hold",
+        "aceptados": "Accepted",
+        "rechazados": "Rejected or failed",
+        "abrirBandeja": "Open the inbox"
+      },
+      "retenidos": {
+        "titulo": "On-hold documents ({n})",
+        "descripcionActivo": "They were saved before the service was activated. If you send one, the DIAN issues it with today's date, not the sale date.",
+        "descripcionPendiente": "They were saved because the service is not active. Once activated you can send them (with that day's date) or cancel them with a record.",
+        "ventaDel": "Sale from {fecha}",
+        "sinNumero": "No number",
+        "enviar": "Send with today's date",
+        "esperaConfirmacion": "Awaiting your confirmation",
+        "cancelar": "Cancel submission",
+        "cancelarDe": "Cancel submission of {numero}",
+        "yMas": "and {n} more · View all in the inbox",
+        "verEnBandeja": "View in the inbox",
+        "confirmarTitulo": "Send this document to the DIAN?",
+        "confirmarDescripcion": "The DIAN issues it with today's date ({fecha}), not the sale date.",
+        "cancelarTitulo": "Cancel the submission?",
+        "cancelarDescripcion": "The document is not sent to the DIAN and remains an internal document.",
+        "volver": "Back",
+        "enviado": "Document sent to the DIAN",
+        "cancelado": "Submission cancelled"
+      },
+      "estado": {
+        "titulo": "Service status",
+        "estado": "Status",
+        "estados": {
+          "active": "Active",
+          "pending_activation": "Pending activation",
+          "suspended": "Suspended"
+        },
+        "prestadoPor": "Provided by",
+        "goAdmin": "GO Admin",
+        "nit": "Tax ID you issue with",
+        "activoDesde": "Active since",
+        "solicitud": "Request",
+        "sinEnviar": "Not sent",
+        "ultimaVerificacion": "Last check",
+        "correcta": "OK",
+        "fallida": "with errors",
+        "ayuda": "Something off with your tax ID or resolution? Contact support: GO Admin manages the service."
+      },
+      "comportamiento": {
+        "titulo": "Behavior",
+        "siempre": "Always invoice electronically",
+        "siempreAyuda": "Turns on \"electronic\" by default in the POS and in new invoices.",
+        "siempreActivada": "New invoices are issued as electronic",
+        "siempreDesactivada": "New invoices are no longer electronic by default",
+        "correo": "Send the PDF and XML to the customer",
+        "correoAyuda": "The provider sends them to the customer's billing email when the DIAN accepts.",
+        "siempreActivo": "Always"
+      },
+      "verificacion": {
+        "activado": "Service activated",
+        "ok": "Account verified"
+      },
+      "tipos": {
+        "invoice": "Electronic invoice",
+        "credit_note": "Credit note",
+        "debit_note": "Debit note",
+        "support_document": "Support document"
+      },
+      "errores": {
+        "carga": "The service could not be loaded",
+        "sinPermiso": "You don't have access to the electronic invoicing service",
+        "sinPermisoDescripcion": "Ask an administrator for the Finance approve permission.",
+        "accion": "The action could not be completed"
+      }
+    },
+    "soporte": {
+      "migas": {
+        "finanzas": "Finance",
+        "facturacion": "Invoicing"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to support documents",
+        "descripcion": "Ask an administrator for the view finance permission."
+      },
+      "listado": {
+        "titulo": "Support documents",
+        "subtitulo": "Purchases from people and suppliers not required to invoice",
+        "todasLasSucursales": "All branches",
+        "nuevo": "New support document",
+        "exportar": "Export",
+        "exportando": "Exporting…",
+        "exportarError": "Could not export. Try again.",
+        "archivoExportacion": "support-documents",
+        "numeroDian": "DIAN No. {numero}",
+        "sinNumero": "No number",
+        "sinVendedor": "No seller",
+        "sinCompra": "No purchase invoice",
+        "compraSinNumero": "Purchase without number",
+        "sinResultados": "No support document matches the search or filters.",
+        "errorCarga": "Could not load support documents",
+        "sustantivo": {
+          "singular": "document",
+          "plural": "documents"
+        },
+        "buscar": {
+          "placeholder": "Search by reference, number or seller",
+          "etiqueta": "Search support documents"
+        },
+        "kpis": {
+          "etiqueta": "Support documents summary",
+          "emitidosMes": "Issued in {mes}",
+          "borradores": "Drafts",
+          "sinEnviar": "Not sent to the DIAN",
+          "aceptados": "Accepted by DIAN",
+          "validados": "Validated",
+          "rechazados": "Rejected",
+          "verMotivo": "Tap to see the reason"
+        },
+        "columnas": {
+          "referencia": "Reference",
+          "numeroDian": "DIAN number",
+          "vendedor": "Seller",
+          "documentoVendedor": "Seller ID",
+          "compra": "Purchase invoice",
+          "fecha": "Date",
+          "moneda": "Currency",
+          "total": "Total",
+          "estado": "Status",
+          "dian": "DIAN"
+        },
+        "filtros": {
+          "estado": "Status",
+          "periodo": "Period",
+          "vendedor": "Seller",
+          "vendedorChip": "Selected seller",
+          "compra": "Purchase invoice",
+          "todos": "All",
+          "limpiar": "Clear filters",
+          "verN": "{count, plural, =0 {No results} one {See # document} other {See {n} documents}}",
+          "compraOpcion": {
+            "con": "With purchase",
+            "sin": "Without purchase"
+          },
+          "estados": {
+            "borrador": "Drafts",
+            "en_proceso": "In process with the DIAN",
+            "aceptado": "Accepted by the DIAN",
+            "rechazado": "Rejected or failed",
+            "anulado": "Voided"
+          }
+        },
+        "vacio": {
+          "titulo": "No support documents yet",
+          "descripcion": "Record one when you buy from a person or supplier who doesn't invoice: the DIAN requires it to deduct the purchase."
+        }
+      },
+      "estadoDocumento": {
+        "borrador": "Draft",
+        "emitido": "Issued",
+        "anulado": "Voided"
+      },
+      "estadoDian": {
+        "sin_enviar": "Not sent",
+        "retenido": "On hold",
+        "en_cola": "Queued",
+        "enviando": "Sending",
+        "enviado": "Sent to the DIAN",
+        "aceptado": "Accepted by DIAN",
+        "rechazado": "Rejected by DIAN",
+        "error": "Sending error",
+        "cancelado": "Cancelled"
+      },
+      "acciones": {
+        "ver": "View",
+        "editar": "Edit",
+        "corregir": "Fix and resend",
+        "enviarDian": "Send to the DIAN",
+        "reenviar": "Resend to the DIAN",
+        "verPdf": "View PDF",
+        "descargarPdf": "Download PDF",
+        "imprimir": "Print",
+        "xml": "Download XML",
+        "verAsiento": "Journal entry preview",
+        "actualizar": "Refresh",
+        "eliminar": "Delete",
+        "cancelar": "Cancel"
+      },
+      "envio": {
+        "enviando": "Sending…",
+        "aceptado": "The DIAN accepted support document {referencia}",
+        "enviado": "Support document {referencia} was sent to the DIAN",
+        "en_cola": "Support document {referencia} is in the DIAN sending queue",
+        "retenido": "Support document {referencia} was saved: it will be sent when GO Admin activates your e-invoicing",
+        "rechazado": "The DIAN rejected support document {referencia}",
+        "error": "Could not send to the DIAN"
+      },
+      "eliminar": {
+        "titulo": "Delete support document {referencia}?",
+        "descripcion": "It is deleted with its lines. The DIAN didn't receive it, so nothing is left pending with it. This can't be undone.",
+        "descripcionProveedor": "It is first removed from the e-invoicing service and then deleted with its lines. This can't be undone.",
+        "confirmar": "Delete",
+        "hecho": "Support document {referencia} was deleted",
+        "error": "Could not delete the support document"
+      },
+      "detalle": {
+        "titulo": "Support document {referencia}",
+        "cargando": "Loading support document…",
+        "noEncontrado": "We couldn't find this support document",
+        "noEncontradoDescripcion": "It may have been deleted or belong to another organization.",
+        "volverListado": "Back to support documents",
+        "errorCarga": "Could not load the support document",
+        "cadena": "Document chain",
+        "vendedor": "Seller",
+        "nombre": "Name",
+        "documento": "ID",
+        "direccion": "Address",
+        "correo": "Email",
+        "telefono": "Phone",
+        "lineas": "Document lines",
+        "observaciones": "Notes",
+        "resumen": "Summary",
+        "impuesto": "Tax",
+        "datos": "Document details",
+        "sucursal": "Branch",
+        "formaPago": "Payment terms",
+        "medioPago": "Payment method",
+        "vence": "Due",
+        "moneda": "Currency",
+        "creado": "Created",
+        "descargando": "Downloading…",
+        "errorDescarga": "Could not download the file",
+        "cargandoAsiento": "Calculating the entry…",
+        "errorAsiento": "Could not calculate the journal entry preview",
+        "asientoAviso": "This is how the entry would look with today's accounting rules. It's a preview: nothing has been posted.",
+        "avisoRechazo": "The DIAN rejected this document",
+        "avisoError": "This document could not be sent",
+        "avisoRetenido": "Sending on hold",
+        "dian": {
+          "titulo": "Electronic invoicing",
+          "numero": "DIAN number",
+          "validado": "Validated",
+          "intentos": "Attempts",
+          "intentosValor": "{n} of {max}",
+          "proximo": "Next attempt",
+          "cuds": "Unique code (CUDS)",
+          "copiarCuds": "Copy the unique code",
+          "cudsCopiado": "Unique code copied",
+          "cudsNoCopiado": "Could not copy the code",
+          "historial": "Sending history",
+          "sinEnviar": "Not sent to the DIAN yet. Once you send it, you'll see its response here."
+        },
+        "avisoDeCompra": "Created from purchase invoice {compra}: its lines are the purchase's. To change them, fix the purchase.",
+        "verCompra": "View the purchase"
+      },
+      "eventos": {
+        "sent": "Sent to the DIAN",
+        "accepted": "Validated by the DIAN",
+        "rejected": "Rejected by the DIAN",
+        "retry": "Retry scheduled",
+        "notification": "Sending notice",
+        "error": "Sending error",
+        "cancelled": "Sending cancelled",
+        "otro": "Sending update"
+      },
+      "formasPago": {
+        "contado": "Cash",
+        "credito": "Credit"
+      },
+      "medios": {
+        "10": "Cash",
+        "20": "Check",
+        "42": "Bank deposit",
+        "47": "Transfer",
+        "48": "Credit card",
+        "49": "Debit card"
+      },
+      "tiposDocumento": {
+        "11": "Birth reg.",
+        "12": "ID card (minor)",
+        "13": "National ID",
+        "21": "Foreigner card",
+        "22": "Foreigner ID",
+        "31": "Tax ID (NIT)",
+        "41": "Passport",
+        "42": "Foreign ID",
+        "47": "PEP",
+        "48": "PPT",
+        "50": "Foreign tax ID",
+        "91": "NUIP"
+      },
+      "formulario": {
+        "tituloNuevo": "New support document",
+        "tituloEditar": "Edit support document {referencia}",
+        "subtitulo": "For purchases from parties not required to invoice",
+        "guardarBorrador": "Save draft",
+        "guardarEnviar": "Save and send to the DIAN",
+        "guardado": "Support document {referencia} was saved",
+        "total": "Total",
+        "noEditable": "Support document {referencia} can no longer be edited",
+        "noEditableDescripcion": "Only drafts and documents the DIAN rejected can be edited, and never while they are being sent.",
+        "verDocumento": "View the document",
+        "buscarProducto": "Search product",
+        "itemManual": "Add manual item",
+        "lineasVacio": "No lines yet",
+        "lineasVacioDescripcion": "Search for a product or add a manual item with what you bought.",
+        "sinImpuesto": "No tax: recorded at a 0 rate.",
+        "impuestoTarifa": "Tax {tarifa} %",
+        "detalleImpuesto": "Tax {importe}",
+        "faltaDireccion": "The seller's address is missing",
+        "faltanDatos": "Seller details are missing",
+        "faltanDatosDescripcion": "The DIAN requires them on the support document: {datos}. Complete them on the supplier's record.",
+        "completar": "Complete",
+        "faltante": {
+          "identificacion": "ID number",
+          "nombre": "name",
+          "direccion": "address"
+        },
+        "secciones": {
+          "datos": "General details",
+          "vendedor": "Seller",
+          "vendedorDescripcion": "Person or company not required to invoice",
+          "lineas": "{n, plural, =0 {Document lines} one {Document lines · # line} other {Document lines · # lines}}",
+          "lineasEtiqueta": "Document lines"
+        },
+        "campos": {
+          "sucursal": "Branch",
+          "emision": "Issue date",
+          "formaPago": "Payment terms",
+          "medioPago": "Payment method",
+          "vence": "Due",
+          "moneda": "Currency",
+          "monedaBase": "{base} · organization currency",
+          "compra": "Related purchase invoice",
+          "compraAyuda": "Optional: link the purchase that backs this document.",
+          "sinCompra": "No purchase invoice",
+          "observaciones": "Notes",
+          "observacionesAyuda": "Up to 500 characters · printed on the document",
+          "impuestoIncluido": "Prices include tax",
+          "elegir": "Choose…",
+          "sinMetodos": "No active payment methods"
+        },
+        "atajos": {
+          "vendedor": "Choose the seller",
+          "productos": "Search products",
+          "manual": "Add manual item",
+          "guardar": "Save draft"
+        },
+        "resolucion": {
+          "titulo": "Resolution to be used",
+          "eligeSucursal": "Choose the branch to see its resolution.",
+          "cargando": "Looking up the resolution…",
+          "sinRango": "This branch has no support document resolution. You can save the draft; sending it to the DIAN requires one.",
+          "rango": "Support document · {prefijo}",
+          "consumo": "Numbering usage",
+          "consumoValor": "{usados} of {total} · {quedan} left",
+          "numero": "Resolution {numero}",
+          "hasta": "Until {fecha}",
+          "tono": {
+            "ok": "Valid",
+            "por_agotar": "Running out",
+            "agotado": "Used up",
+            "por_vencer": "Expiring soon",
+            "vencido": "Expired"
+          }
+        },
+        "errores": {
+          "sucursal": "Choose the branch",
+          "proveedor": "Choose the seller",
+          "proveedorIncompleto": "Complete the seller details the DIAN requires",
+          "direccion": "The seller's address is missing",
+          "emision": "Choose the issue date",
+          "medioPago": "Choose the payment method",
+          "vence": "Choose the due date",
+          "venceAntes": "The due date can't be before the issue date",
+          "sinLineas": "Add at least one line",
+          "descripcion": "Write the line description",
+          "cantidad": "Quantity must be greater than zero",
+          "precio": "Check the line price and discount",
+          "impuesto": "Check the line tax"
+        }
+      },
+      "errores": {
+        "no_autenticado": "Your session ended. Sign in again.",
+        "sin_permiso": "You don't have permission for this action.",
+        "sin_acceso_sucursal": "You don't have access to that branch.",
+        "datos_invalidos": "Check the document details.",
+        "documento_no_encontrado": "We couldn't find the support document.",
+        "documento_no_editable": "This document can no longer be edited: the DIAN received it or it's voided.",
+        "documento_no_eliminable": "This document can't be deleted: the DIAN already validated it.",
+        "documento_en_envio": "The document is being sent to the DIAN. Wait for the response before changing it.",
+        "documento_sin_lineas": "Add at least one line.",
+        "linea_invalida": "A line has an invalid quantity, price, discount or tax.",
+        "producto_invalido": "A product in the lines doesn't exist in your organization.",
+        "proveedor_invalido": "The seller doesn't exist in your organization.",
+        "proveedor_incompleto": "The seller is missing details the DIAN requires (ID, name or address).",
+        "sucursal_invalida": "The branch isn't valid.",
+        "compra_invalida": "The purchase invoice doesn't exist in your organization.",
+        "medio_pago_requerido": "Choose the payment method.",
+        "vencimiento_invalido": "With credit terms, the due date is required and can't be before the issue date.",
+        "migracion_pendiente": "Saving support documents isn't enabled in your database yet. Let the GO Admin team know.",
+        "error_desconocido": "Something went wrong. Try again.",
+        "documento_de_compra": "This document was created from a purchase invoice and uses its lines: fix the purchase instead of the document."
+      }
+    }
+  },
+  "finanzasTesoreriaR3": {
+    "comun": {
+      "migas": {
+        "finanzas": "Finance",
+        "tesoreria": "Treasury"
+      },
+      "tipos": {
+        "entrada": "Inflow",
+        "salida": "Outflow",
+        "traslado": "Transfer",
+        "anulado": "Voided"
+      },
+      "caja": "Cash register",
+      "banco": "Bank",
+      "exportar": "Export",
+      "actualizar": "Refresh",
+      "actualizado": "Data refreshed",
+      "cancelar": "Cancel",
+      "guardando": "Saving…",
+      "reintentar": "Retry",
+      "sinPermiso": {
+        "titulo": "You don't have access to Treasury",
+        "descripcion": "Ask an administrator for the Finance · view permission."
+      }
+    },
+    "efecto": {
+      "titulo": "Effect on the account",
+      "ahora": "Balance now",
+      "movimiento": "This movement",
+      "despues": "Balance after",
+      "oculto": "Hidden",
+      "ocultoAyuda": "This register's balance is hidden by blind closing.",
+      "bloqueaBanco": "It exceeds the bank account balance: it can't be recorded.",
+      "avisaCaja": "It exceeds the register's expected cash. Check before recording."
+    },
+    "lista": {
+      "movimientos": {
+        "titulo": "Movements",
+        "subtitulo": "Money in and out of your registers and banks",
+        "nuevo": "New movement",
+        "vacioTitulo": "No movements yet",
+        "vacioDescripcion": "Record an income, an expense or deposit your register's cash at the bank."
+      },
+      "ingresos": {
+        "titulo": "Income",
+        "subtitulo": "Income not related to sales",
+        "nuevo": "New income",
+        "vacioTitulo": "No income yet",
+        "vacioDescripcion": "Record money that comes into a register or a bank and is not from a sale."
+      },
+      "egresos": {
+        "titulo": "Expenses",
+        "subtitulo": "Expenses not related to purchases",
+        "nuevo": "New expense",
+        "vacioTitulo": "No expenses yet",
+        "vacioDescripcion": "Record money that leaves a register or a bank and is not a purchase payment."
+      },
+      "pestanas": {
+        "etiqueta": "Movement type",
+        "todos": "All",
+        "entradas": "Inflows",
+        "salidas": "Outflows",
+        "traslados": "Transfers"
+      },
+      "kpi": {
+        "etiqueta": "Summary",
+        "entradasMes": "Inflows this month",
+        "salidasMes": "Outflows this month",
+        "netoMes": "Net this month",
+        "trasladosMes": "Transfers this month",
+        "trasladosAyuda": "Between your accounts",
+        "movimientos": "{n, plural, one {# movement} other {# movements}}",
+        "total": "Accumulated total",
+        "mes": "This month",
+        "hoy": "Today",
+        "registros": "Records",
+        "porConciliar": "To reconcile",
+        "porConciliarAyuda": "{monto} in {bancos, plural, one {# bank} other {# banks}}",
+        "alDia": "All reconciled"
+      },
+      "buscar": "Search concept, account or reference",
+      "buscarConcepto": "Search by concept",
+      "columnas": {
+        "fecha": "Date",
+        "numero": "Number",
+        "tipo": "Type",
+        "conceptoTercero": "Concept and third party",
+        "concepto": "Concept",
+        "categoria": "Category",
+        "cuentaDinero": "Money account",
+        "origen": "Source",
+        "importe": "Amount",
+        "monto": "Amount",
+        "conciliacion": "Reconciliation"
+      },
+      "trasladoEntreCuentas": "Transfer between accounts",
+      "acciones": {
+        "ver": "View details",
+        "duplicar": "Duplicate",
+        "anular": "Void"
+      },
+      "nuevo": {
+        "movimiento": "New movement",
+        "ingreso": "Income",
+        "ingresoAyuda": "Money comes into a register or a bank",
+        "egreso": "Expense",
+        "egresoAyuda": "Money leaves a register or a bank",
+        "traslado": "Transfer between banks",
+        "trasladoAyuda": "Move money between your bank accounts",
+        "consignar": "Deposit register cash at the bank",
+        "consignarAyuda": "Take a register's cash to your bank"
+      },
+      "anular": {
+        "tituloIngreso": "Void income",
+        "tituloEgreso": "Void expense",
+        "tituloTraslado": "Void transfer",
+        "boton": "Void",
+        "consecuenciaMovimiento": "An opposite movement is created in the same account, with its reversing entry.",
+        "consecuenciaTraslado": "Both balances go back to how they were and a reversing entry is posted."
+      },
+      "duplicadoIngreso": "Income duplicated",
+      "duplicadoEgreso": "Expense duplicated",
+      "anulado": "Movement voided",
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "concepto": "Concept",
+        "monto": "Amount",
+        "notas": "Notes",
+        "tipo": "Type",
+        "cuenta": "Account"
+      },
+      "sustantivo": {
+        "uno": "movement",
+        "otros": "movements"
+      },
+      "conciliacion": {
+        "pendiente": "To reconcile",
+        "conciliado": "Reconciled",
+        "noAplica": "N/A"
+      }
+    },
+    "transferencia": {
+      "titulo": "New transfer",
+      "descripcion": "Move money between two of the organization's bank accounts, in the same currency.",
+      "origen": "Source account",
+      "destino": "Destination account",
+      "elegir": "Choose an account",
+      "monto": "Amount",
+      "fecha": "Date",
+      "referencia": "Reference",
+      "notas": "Notes",
+      "sinOrigen": "Choose the source account",
+      "asientoNota": "A single entry between the two bank accounts, without touching profit or loss.",
+      "confirmar": "Transfer",
+      "confirmarCon": "Transfer {monto}",
+      "exito": "Transfer recorded",
+      "errores": {
+        "origen": "Choose the source account.",
+        "destino": "Choose the destination account."
+      }
+    },
+    "consignar": {
+      "titulo": "Deposit register cash at the bank",
+      "descripcion": "Transfer between your money accounts: it leaves the register and enters the bank in a single operation.",
+      "desde": "From",
+      "hacia": "To",
+      "cargando": "Loading registers…",
+      "elegirCaja": "Choose the register",
+      "elegirBanco": "Choose the bank account",
+      "cajaGlobal": "Register for all branches",
+      "saldoOculto": "balance hidden",
+      "disponible": "available {monto}",
+      "monto": "Amount deposited",
+      "comision": "Fee or bank tax",
+      "comisionAyuda": "Paid with the same cash and booked as bank charges.",
+      "fecha": "Accounting date",
+      "referencia": "Bank reference",
+      "sinCajaElegida": "Choose the register",
+      "entraNota": "{monto} enters the bank · fee {comision} (bank charge)",
+      "asientoNota": "Entry: banks (1110) debit / cash (1105) credit; the fee, bank charges (5305) debit / cash credit.",
+      "confirmar": "Deposit",
+      "confirmarCon": "Deposit {monto}",
+      "exito": "Deposit of {monto} recorded",
+      "sinCaja": {
+        "titulo": "No register is open",
+        "descripcion": "To deposit cash, first open a register in the point of sale.",
+        "abrir": "Go to registers"
+      },
+      "errores": {
+        "caja": "Choose the register.",
+        "banco": "Choose the bank account.",
+        "caja_no_encontrada": "The register no longer exists or isn't from this organization.",
+        "datos_invalidos": "Deposit data is missing. Close the dialog and try again."
+      }
+    },
+    "cuentas": {
+      "titulo": "Money accounts",
+      "subtitulo": "{cajas, plural, one {# open register} other {# open registers}} · {bancos, plural, one {# bank account} other {# bank accounts}} · register mode: {modo}",
+      "subtituloCorto": "Your registers and bank accounts",
+      "modo": {
+        "branch": "per branch",
+        "user": "per cashier"
+      },
+      "exportar": "Export balances",
+      "nuevaCuenta": "New bank account",
+      "irConciliacion": "Go to reconciliation",
+      "pestanas": {
+        "etiqueta": "Money account views",
+        "cuentas": "Accounts",
+        "posicion": "Position",
+        "alertas": "Alerts"
+      },
+      "kpi": {
+        "etiqueta": "Money summary",
+        "disponible": "Total available",
+        "disponibleAyuda": "{moneda} · banks + registers",
+        "disponibleSinCajas": "Excluding registers hidden by blind closing",
+        "bancos": "In banks",
+        "bancosAyuda": "{n, plural, one {# active account} other {# active accounts}}",
+        "bancosSinPuc": "{n, plural, one {# account} other {# accounts}} · {sin} without a ledger account",
+        "cajas": "In registers",
+        "cajasAyuda": "{n, plural, =0 {None open} one {# open} other {# open}}",
+        "cajasVencidas": "{n, plural, one {# open} other {# open}} · {vencidas, plural, one {# overdue} other {# overdue}}",
+        "porConciliar": "Open reconciliations",
+        "porConciliarAyuda": "Drafts and in progress"
+      },
+      "otraMoneda": "{n, plural, one {# bank account is} other {# bank accounts are}} in another currency and not added to the total.",
+      "buscar": "Search register, bank or account number",
+      "sinResultados": "No account matches the search.",
+      "oculto": "Hidden",
+      "cajaGlobal": "Register for all branches",
+      "cajas": {
+        "titulo": "Registers",
+        "ayuda": {
+          "branch": "Per-branch mode · one register per branch · the balance is the expected cash",
+          "user": "Per-cashier mode · one register per person · the balance is the expected cash"
+        },
+        "vacio": "No registers are open. Your registers show up here when you open them in the point of sale.",
+        "error": "The open registers couldn't be loaded"
+      },
+      "caja": {
+        "nombre": "Register {sucursal}",
+        "detalle": "{responsable} · opened {desde}",
+        "esperado": "Expected cash",
+        "ocultoAyuda": "Hidden by blind closing",
+        "turno": "Shift #{id}",
+        "abierta": "Open",
+        "vencida": "Overdue {horas} h",
+        "verTurno": "View shift",
+        "consignar": "Deposit at the bank",
+        "cerrarArqueo": "Close with count"
+      },
+      "bancos": {
+        "titulo": "Banks",
+        "ayuda": "Book balance = opening balance + movements + transfers",
+        "vacio": "No bank accounts yet."
+      },
+      "banco": {
+        "saldoLibros": "Book balance",
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "inactivaPie": "Inactive account",
+        "sinCuentaContable": "No ledger account: its entries go to the generic bank account",
+        "cuentaContable": "Ledger account {codigo}",
+        "verMovimientos": "View movements",
+        "verCuenta": "View account",
+        "asignarCuenta": "Assign account",
+        "conciliar": "Reconcile"
+      },
+      "error": {
+        "titulo": "The accounts couldn't be loaded",
+        "descripcion": "Check your connection and try again."
+      },
+      "vacio": {
+        "titulo": "Add your first bank account",
+        "descripcion": "Your registers show up here when you open them in the point of sale.",
+        "abrirCaja": "Go to registers"
+      },
+      "csv": {
+        "tipo": "Type",
+        "nombre": "Name",
+        "detalle": "Detail",
+        "moneda": "Currency",
+        "saldo": "Balance"
+      }
+    },
+    "posicion": {
+      "kpi": {
+        "etiqueta": "Treasury position",
+        "total": "Consolidated balance",
+        "totalAyuda": "All bank accounts",
+        "entradas": "Projected inflows (90 days)",
+        "salidas": "Projected outflows (90 days)",
+        "neto": "Projected net flow"
+      },
+      "cuentasTitulo": "Position by account",
+      "columnas": {
+        "cuenta": "Account",
+        "banco": "Bank",
+        "libros": "Book balance",
+        "real": "Balance per bank",
+        "diferencia": "Difference"
+      },
+      "sinConectar": "Not connected",
+      "vacio": {
+        "titulo": "No bank accounts",
+        "descripcion": "Add an account to see its position."
+      },
+      "proyeccion": {
+        "titulo": "Upcoming movements",
+        "descripcion": "Expected collections and payments in the next 90 days",
+        "vacia": "No expected collections or payments.",
+        "error": "The projection couldn't be loaded."
+      },
+      "alertas": {
+        "titulo": "Treasury alerts",
+        "vacia": "No alerts.",
+        "error": "The alerts couldn't be loaded.",
+        "severidad": {
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low"
+        },
+        "tipos": {
+          "negative_balance": "Negative balance",
+          "overdue_payable": "Overdue payable",
+          "upcoming_payable": "Payable coming due",
+          "concentration_risk": "Concentration risk",
+          "balance_discrepancy": "Balance difference"
+        }
+      },
+      "concentracion": {
+        "titulo": "Payment concentration this year",
+        "proveedor": "Supplier",
+        "total": "Total paid",
+        "pagos": "Payments",
+        "promedio": "Average",
+        "porcentaje": "% of total",
+        "vacia": "No supplier payments this year"
+      },
+      "parcial": {
+        "titulo": "Part of the information didn't load",
+        "descripcion": "Couldn't read: {partes}."
+      },
+      "partes": {
+        "posicion": "the position",
+        "proyeccion": "the projection",
+        "alertas": "the alerts",
+        "concentracion": "the payment concentration"
+      },
+      "reintentar": "Retry"
+    },
+    "cuentaBancaria": {
+      "migaCuentas": "Money accounts",
+      "cuentaContable": "ledger account {codigo}",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "importarExtracto": "Import statement",
+      "movimientoManual": "Manual movement",
+      "transferir": "Transfer to another account",
+      "sincronizar": "Sync with the bank",
+      "sincronizando": "Syncing…",
+      "sinVinculo": "This account isn't connected to the bank",
+      "sincronizado": "Sync done: {sincronizadas} movements synced, {importadas} imported",
+      "errorSincronizar": "Couldn't sync with the bank",
+      "editar": "Edit",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "activada": "Account activated",
+      "desactivada": "Account deactivated",
+      "errorEstado": "The account status couldn't be changed",
+      "errorCarga": "The bank account couldn't be loaded",
+      "noEncontrada": "Bank account not found",
+      "volver": "Back to money accounts",
+      "pestanas": {
+        "etiqueta": "Account sections",
+        "movimientos": "Movements",
+        "conciliaciones": "Reconciliations",
+        "datos": "Details",
+        "extractos": "Statements"
+      },
+      "kpi": {
+        "etiqueta": "Account summary",
+        "libros": "Book balance",
+        "librosAyuda": "Opening balance + movements",
+        "banco": "Balance per bank",
+        "sinConectar": "Not connected",
+        "bancoAyuda": "Connect the bank or import the statement",
+        "bancoAl": "as of {fecha}",
+        "porConciliar": "To reconcile",
+        "mes": "Movements this month",
+        "mesAyuda": "+{entradas} · −{salidas}"
+      },
+      "buscar": "Search description or reference",
+      "filtro": {
+        "etiqueta": "Reconciliation",
+        "todos": "All",
+        "pendientes": "Pending",
+        "conciliados": "Reconciled"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "descripcion": "Description and reference",
+        "origen": "Source",
+        "entrada": "In",
+        "salida": "Out",
+        "saldo": "Balance",
+        "conciliacion": "Reconciliation"
+      },
+      "origenes": {
+        "deposit": "Deposit",
+        "withdrawal": "Withdrawal",
+        "transfer": "Transfer",
+        "fee": "Fee",
+        "interest": "Interest",
+        "other": "Other"
+      },
+      "fuentes": {
+        "manual": "Manual",
+        "anulacion": "Void",
+        "consignacion": "Register deposit",
+        "open_finance": "Connected bank",
+        "extracto": "Statement"
+      },
+      "conciliado": "Reconciled",
+      "porConciliar": "To reconcile",
+      "vacio": {
+        "titulo": "No movements",
+        "descripcion": "This account's movements, transfers and collections show up here."
+      },
+      "sustantivo": {
+        "uno": "movement",
+        "otros": "movements"
+      },
+      "limite": "Showing the latest 200 movements.",
+      "datos": {
+        "titulo": "Account details",
+        "saldoInicial": "Opening balance",
+        "estado": "Status",
+        "creada": "Created"
+      },
+      "puc": {
+        "titulo": "No ledger account",
+        "descripcion": "Assign its bank sub-account (1110xx or 1120xx) so its entries don't mix with other banks.",
+        "asignar": "Assign account",
+        "sin": "Not assigned",
+        "guardar": "Save ledger account",
+        "falta": "Choose the ledger account (1110, 1120…)",
+        "guardada": "Ledger account saved",
+        "error": "The ledger account couldn't be saved"
+      },
+      "confirmarDesactivar": {
+        "titulo": "Deactivate the account?",
+        "descripcion": "It stops showing up when recording movements and transfers. Its history is kept."
+      },
+      "confirmarActivar": {
+        "titulo": "Activate the account?",
+        "descripcion": "It shows up again when recording movements and transfers."
+      },
+      "form": {
+        "tituloNueva": "New bank account",
+        "tituloEditar": "Edit bank account",
+        "descripcion": "The balance moves on its own with movements, transfers and collections.",
+        "nombre": "Name",
+        "nombreEjemplo": "E.g.: Bancolombia savings",
+        "banco": "Bank",
+        "elegir": "Choose a bank",
+        "tipo": "Account type",
+        "tipos": {
+          "checking": "Checking",
+          "savings": "Savings",
+          "credit": "Credit line",
+          "investment": "Investment"
+        },
+        "numero": "Account number",
+        "numeroAyuda": "Shown masked: {mascara}",
+        "moneda": "Currency",
+        "monedaFija": "The currency can't be changed after creating the account.",
+        "cuentaContable": "Ledger account",
+        "cuentaContableAyuda": "Required: each bank has its own 1110xx sub-account so its entries don't mix.",
+        "elegirCuenta": "Choose the ledger account",
+        "saldoInicial": "Opening balance",
+        "saldoInicialAyuda": "The statement balance on the day you start recording.",
+        "conectar": {
+          "etiqueta": "Connect bank · GO Admin service",
+          "valor": "Brings the statement on its own, no keys to paste",
+          "accion": "Activate"
+        },
+        "crear": "Create account",
+        "guardar": "Save changes",
+        "creada": "Bank account created",
+        "guardada": "Bank account updated",
+        "errorGuardar": "The bank account couldn't be saved",
+        "errores": {
+          "nombre": "Type the account name.",
+          "banco": "Choose the bank.",
+          "cuentaContable": "The ledger account is required (chart of accounts 1110, 1120 or another bank account).",
+          "saldoInicial": "The opening balance can't be negative."
+        }
+      },
+      "manual": {
+        "titulo": "Manual movement",
+        "descripcion": "Fees, bank taxes, interest and other movements the bank made on its own.",
+        "sentido": "Movement direction",
+        "entrada": "Comes into the account",
+        "salida": "Leaves the account",
+        "concepto": "Description",
+        "conceptoEjemplo": "E.g.: November bank fee",
+        "monto": "Amount",
+        "fecha": "Date",
+        "referencia": "Reference",
+        "asientoNota": "The entry comes from the bank adjustments rule.",
+        "registrar": "Record movement",
+        "exito": "Movement recorded",
+        "errores": {
+          "descripcion": "Type the description.",
+          "monto": "Type an amount greater than zero.",
+          "supera": "It exceeds the bank account balance.",
+          "fechaFutura": "The date can't be in the future.",
+          "guardar": "The movement couldn't be recorded."
+        }
+      },
+      "extractos": {
+        "columnas": {
+          "archivo": "File",
+          "importado": "Imported",
+          "lineas": "Lines",
+          "estado": "Status",
+          "movimientos": "In · out"
+        },
+        "sinNombre": "Unnamed statement",
+        "pendientes": "{n, plural, one {# pending line} other {# pending lines}}",
+        "completo": "Complete",
+        "ayuda": "Statements imported when reconciling. Each one opens its reconciliation.",
+        "vacio": {
+          "titulo": "No statements yet",
+          "descripcion": "Import the bank statement when you create a reconciliation."
+        },
+        "resumenMovil": "{lineas} lines · {pendientes} pending"
+      }
+    },
+    "conciliacion": {
+      "titulo": "Bank reconciliation",
+      "subtitulo": "Compare the bank statement with your movements",
+      "tituloDetalle": "Reconciliation · {cuenta}",
+      "migaTesoreria": "Treasury",
+      "nueva": "New reconciliation",
+      "ver": "View reconciliation",
+      "actualizar": "Refresh",
+      "buscar": "Search by account or period",
+      "cuentaSinNombre": "Bank account",
+      "filtros": {
+        "estado": "Status",
+        "cuenta": "Account",
+        "todosEstados": "All statuses",
+        "todasCuentas": "All accounts"
+      },
+      "kpi": {
+        "etiqueta": "Reconciliation summary",
+        "total": "Total",
+        "borradores": "Drafts",
+        "enProgreso": "In progress",
+        "cerradas": "Closed"
+      },
+      "columnas": {
+        "cuenta": "Account",
+        "periodo": "Period",
+        "saldoExtracto": "Statement balance",
+        "diferencia": "Difference",
+        "estado": "Status"
+      },
+      "estados": {
+        "draft": "Draft",
+        "in_progress": "In progress",
+        "closed": "Closed"
+      },
+      "vacio": {
+        "titulo": "No reconciliations yet",
+        "descripcion": "Reconcile your bank statement with your movements every month."
+      },
+      "pestanas": {
+        "etiqueta": "Reconciliation sections",
+        "emparejar": "Match",
+        "extracto": "Statement",
+        "sugerencias": "Suggestions"
+      },
+      "pendientes": {
+        "titulo": "Pending movements ({n})",
+        "descripcion": "Account movements not reconciled in the period",
+        "vacio": "All movements are reconciled"
+      },
+      "conciliados": {
+        "titulo": "Reconciled ({n})",
+        "descripcion": "Movements already reconciled",
+        "vacio": "No reconciled movements yet"
+      },
+      "sinDescripcion": "No description",
+      "sinFecha": "No date",
+      "conciliar": "Reconcile",
+      "deshacer": "Undo",
+      "tipoItem": {
+        "payment": "Payment",
+        "journal": "Journal entry",
+        "manual": "Manual"
+      },
+      "nuevaForm": {
+        "titulo": "New bank reconciliation",
+        "subtitulo": "The current balance will be the opening balance",
+        "miga": "Bank reconciliation",
+        "cuenta": "Bank account",
+        "elegirCuenta": "Choose the account",
+        "saldoSistema": "Current system balance",
+        "saldoSistemaAyuda": "It is the reconciliation's opening balance.",
+        "inicio": "Start date",
+        "fin": "End date",
+        "saldoExtracto": "Balance per bank statement",
+        "saldoExtractoAyuda": "Optional: you can type it later.",
+        "extracto": "Statement",
+        "extractoElegir": "Drag the statement or choose a file",
+        "extractoFormatos": "CSV or Excel",
+        "extractoAyuda": "Optional: it's matched with your movements automatically.",
+        "extractoLeido": "{lineas, plural, one {# line read} other {# lines read}} from {nombre}",
+        "extractoVacio": "The file has no lines with a date and an amount",
+        "extractoIlegible": "The file couldn't be read. Use CSV or Excel.",
+        "errorCuentas": "The bank accounts couldn't be loaded",
+        "crear": "Create reconciliation",
+        "creada": "Reconciliation created",
+        "creadaConExtracto": "Reconciliation created. Statement loaded: {emparejadas} of {lineas} matched",
+        "creadaSinExtracto": "The reconciliation was created, but the statement couldn't be loaded",
+        "errores": {
+          "cuenta": "Choose the bank account.",
+          "periodo": "Choose the reconciliation period.",
+          "orden": "The start date must be before the end date.",
+          "crear": "The reconciliation couldn't be created."
+        }
+      }
+    },
+    "transferencias": {
+      "titulo": "Bank transfers",
+      "subtitulo": "Movements between bank accounts",
+      "nueva": "New transfer",
+      "buscar": "Search by reference or account",
+      "ver": "View details",
+      "anular": "Void",
+      "anulada": "Transfer voided",
+      "anularTitulo": "Void transfer",
+      "anularConsecuencia": "Both balances go back to how they were and a reversing entry is posted.",
+      "kpi": {
+        "etiqueta": "Transfer summary",
+        "total": "Total transferred",
+        "mes": "This month",
+        "operaciones": "Operations",
+        "pendientes": "Pending"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "origen": "From",
+        "destino": "To",
+        "monto": "Amount",
+        "referencia": "Reference",
+        "estado": "Status"
+      },
+      "estados": {
+        "completed": "Completed",
+        "pending": "Pending",
+        "cancelled": "Voided"
+      },
+      "vacio": {
+        "titulo": "No transfers yet",
+        "descripcion": "Move money between your bank accounts."
+      },
+      "sustantivo": {
+        "uno": "transfer",
+        "otros": "transfers"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "origen": "From",
+        "destino": "To",
+        "monto": "Amount",
+        "referencia": "Reference",
+        "estado": "Status"
+      },
+      "detalleTitulo": "Transfer",
+      "detalleTituloRef": "Transfer {referencia}",
+      "descargarComprobante": "Download receipt",
+      "comprobante": {
+        "titulo": "TRANSFER RECEIPT",
+        "id": "Transfer ID"
+      },
+      "datos": "Transfer details",
+      "registro": "Record",
+      "notas": "Notes",
+      "creada": "Created",
+      "asiento": "Journal entry",
+      "asientoAyuda": "A single entry between the two bank accounts",
+      "errorCarga": "The transfer couldn't be loaded",
+      "noEncontrada": "Transfer not found",
+      "volver": "Back to transfers"
+    },
+    "formulario": {
+      "tituloMovimiento": "New movement",
+      "descripcion": "Record money that comes into or leaves a register or a bank. Sales and collections are recorded on their own.",
+      "registrar": "{tipo, select, ingreso {Record income} other {Record expense}}",
+      "registrarDeTodosModos": "{tipo, select, ingreso {Record income anyway} other {Record expense anyway}}",
+      "tipo": {
+        "etiqueta": "Movement type",
+        "ingreso": "Income",
+        "ingresoAyuda": "Money in",
+        "egreso": "Expense",
+        "egresoAyuda": "Money out",
+        "traslado": "Transfer",
+        "trasladoAyuda": "Between your accounts"
+      },
+      "sinCaja": {
+        "titulo": "You don't have an open register at this branch. Open your register in the point of sale or record the movement in a bank.",
+        "abrir": "Open register",
+        "banco": "Use a bank"
+      },
+      "cuentaDinero": "Money account",
+      "elegirCuenta": "Choose an account",
+      "cajasError": "The open registers couldn't be read; banks are still available.",
+      "opcion": {
+        "miCaja": "My register · {nombre}",
+        "caja": "Register {nombre}",
+        "todas": "all branches",
+        "oculto": "balance hidden"
+      },
+      "motivos": {
+        "otroCajero": "another cashier's register",
+        "otraSucursal": "another branch's register"
+      },
+      "cuentaAyuda": "The category brings the account; you can change it.",
+      "importe": "Amount",
+      "superaCaja": "It exceeds the register's expected cash ({disponible}).",
+      "superaBanco": "It exceeds the bank account balance: it can't be recorded.",
+      "tercero": "Third party (optional)",
+      "terceroAyuda": "Supplier, employee or internal.",
+      "referencia": "Reference or notes",
+      "adjuntar": "Attach support (photo or PDF)",
+      "avisoArqueo": "You can record it anyway if the physical count confirms it; it will be flagged for the count.",
+      "efectoTitulo": "Effect on the account",
+      "efectoVacio": "Choose a money account to see the balance before and after.",
+      "vistaVacia": "Choose the category or the account to see the journal entry.",
+      "errores": {
+        "cuentaDinero": "Choose an open register or a bank."
+      }
+    },
+    "cadena": {
+      "titulo": "Money chain",
+      "turno": "Register shift",
+      "movimiento": "Movement",
+      "asiento": "Journal entry",
+      "conciliacion": "Reconciliation",
+      "consignacion": "Bank deposit",
+      "sinAsiento": "No entry",
+      "publicado": "Posted",
+      "borrador": "Draft",
+      "conciliado": "Reconciled",
+      "porConciliar": "To reconcile",
+      "pendiente": "Pending",
+      "abierto": "Open",
+      "cerrado": "Closed"
+    }
   }
 }

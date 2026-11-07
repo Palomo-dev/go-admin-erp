@@ -39,6 +39,15 @@ export interface PartidasDeConciliacion {
   traidas: PartidaConciliacion[];
 }
 
+export interface ExtractoDeCuenta {
+  id: string;
+  nombre_archivo: string;
+  formato: string;
+  created_at: string;
+  reconciliation_id: string | null;
+  lineas: { estado: string; valor: number }[];
+}
+
 export interface ConciliacionStats {
   total: number;
   draft: number;
@@ -329,6 +338,32 @@ export class ConciliacionService {
       ...fila,
       valor: Number(fila.valor) || 0,
     })) as LineaExtractoGuardada[];
+  }
+
+  /**
+   * Extractos importados de una cuenta (pestaña «Extractos» del detalle de la
+   * cuenta bancaria), con el estado de sus líneas. Solo lectura, de la organización.
+   */
+  static async obtenerExtractosCuenta(bankAccountId: number): Promise<ExtractoDeCuenta[]> {
+    const organizationId = this.getOrganizationId();
+    const { data, error } = await supabase
+      .from('extractos_bancarios')
+      .select('id, nombre_archivo, formato, created_at, reconciliation_id, extracto_lineas(estado, valor)')
+      .eq('organization_id', organizationId)
+      .eq('bank_account_id', bankAccountId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map((fila) => ({
+      id: fila.id as string,
+      nombre_archivo: (fila.nombre_archivo as string | null) ?? '',
+      formato: (fila.formato as string | null) ?? '',
+      created_at: fila.created_at as string,
+      reconciliation_id: (fila.reconciliation_id as string | null) ?? null,
+      lineas: ((fila.extracto_lineas as { estado: string; valor: number | string }[] | null) ?? []).map((l) => ({
+        estado: l.estado,
+        valor: Number(l.valor) || 0,
+      })),
+    }));
   }
 
   static async importarExtracto(input: {

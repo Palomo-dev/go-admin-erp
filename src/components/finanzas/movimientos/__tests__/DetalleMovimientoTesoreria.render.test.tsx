@@ -30,6 +30,8 @@ jest.mock('@/lib/services/movimientosService', () => ({
     getAnulacion: (...a: unknown[]) => mockGetAnulacion(...a),
     cancelMovement: jest.fn(),
     duplicateMovement: jest.fn(),
+    // Ronda 3: la cadena turno → movimiento → asiento → conciliación (adorno; aquí vacía).
+    getCadena: async () => ({ turno: null, asiento: null, conciliado: null }),
   },
 }));
 

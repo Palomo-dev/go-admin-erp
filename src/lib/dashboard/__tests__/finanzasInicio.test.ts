@@ -71,7 +71,7 @@ describe('armarPendientes', () => {
 
   test('una sola conciliación abierta: «Conciliación de <mes>» abre su detalle; varias: la pestaña de Bancos', () => {
     const una = armarPendientes(crudo(), todas).filas.find((f) => f.id === 'conciliacion')!;
-    expect(una.href).toBe('/app/finanzas/conciliacion-bancaria/abc-1');
+    expect(una.href).toBe('/app/finanzas/tesoreria/conciliacion/abc-1');
     expect(una.que.clave).toBe('pendientes.que.conciliacionMes');
     expect(una.mes).toEqual({ anio: 2026, mes: 10 });
 

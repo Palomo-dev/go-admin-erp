@@ -55,12 +55,15 @@ describe('rutas viejas de Finanzas', () => {
       .toBe('/app/reportes/contabilidad/balance-prueba');
   });
 
-  test('el mayor conserva la cuenta y la sanea', () => {
-    expect(destinoReporteFinanzas('/app/finanzas/contabilidad/mayor-contable', { cuenta: '110505' }))
-      .toBe('/app/reportes/contabilidad/mayor-cuenta?periodo=anual&cuenta=110505');
-    expect(destinoReporteFinanzas('/app/finanzas/contabilidad/mayor-contable', { cuenta: '<script>' }))
-      .toBe('/app/reportes/contabilidad/mayor-cuenta?periodo=anual');
-    // Otros informes no heredan la cuenta.
+  test('el mayor contable ya no redirige: es página de trabajo (decisión 1, 2026-11-07)', () => {
+    expect(RUTAS).not.toContain('/app/finanzas/contabilidad/mayor-contable');
+    const pagina = leer('src/app/app/finanzas/contabilidad/mayor-contable/page.tsx');
+    expect(pagina).not.toContain('redirect(');
+    expect(pagina).toContain('MayorContablePage');
+    // El reporte del módulo Reportes pinta el mismo componente: una sola función de cálculo.
+    expect(leer('src/components/reportes/especiales/registro.tsx')).toContain('mayor-contable/MayorContablePage');
+    expect(leer('src/components/finanzas/contabilidad/mayor-contable/MayorContablePage.tsx')).toContain('ReportesContablesService.getLedger');
+    // Los demás informes no heredan la cuenta.
     expect(destinoReporteFinanzas('/app/finanzas/contabilidad/libro-diario', { cuenta: '110505' }))
       .toBe('/app/reportes/contabilidad/libro-diario');
   });

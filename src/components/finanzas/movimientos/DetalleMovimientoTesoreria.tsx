@@ -16,13 +16,15 @@ import {
   Tarjeta,
   clasesBoton,
   type AccionFila,
+  CadenaDocumento,
 } from '@/components/kit';
 import { toast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { DetailSkeleton } from '@/components/common/PageSkeletons';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { movimientosService, type MovementType, type UnifiedMovement } from '@/lib/services/movimientosService';
+import { movimientosService, type CadenaMovimiento, type MovementType, type UnifiedMovement } from '@/lib/services/movimientosService';
+import { eslabonesCadena } from '@/lib/finanzas/tesoreria/cadenaMovimiento';
 import { accionesPermitidas, estadoMovimiento, type AnulacionMovimiento } from '@/lib/finanzas/anulacionMovimiento';
 import { DatosContablesMovimiento } from './DatosContablesMovimiento';
 
@@ -51,6 +53,8 @@ export function DetalleMovimientoTesoreria({ id, tipo }: { id: string; tipo: Mov
   const router = useRouter();
   const t = useTranslations('finanzasContableR2.movimiento');
   const tt = useTranslations('tesoreria');
+  const tcad = useTranslations('finanzasTesoreriaR3.cadena');
+  const [cadena, setCadena] = useState<CadenaMovimiento | null>(null);
   const [movimiento, setMovimiento] = useState<UnifiedMovement | null>(null);
   const [cargando, setCargando] = useState(true);
   const [anulacion, setAnulacion] = useState<EstadoAnulacion>({ tipo: 'cargando' });
@@ -74,6 +78,14 @@ export function DetalleMovimientoTesoreria({ id, tipo }: { id: string; tipo: Mov
       const data = await movimientosService.getMovementByUuid(id, tipo);
       setMovimiento(data);
       if (data) void cargarAnulacion(data);
+      // La cadena es un adorno: si no se lee, el detalle se ve igual.
+      setCadena(null);
+      if (data) {
+        movimientosService
+          .getCadena(data)
+          .then(setCadena)
+          .catch(() => setCadena(null));
+      }
     } catch {
       toast({
         title: tt('errorTitulo'),
@@ -216,6 +228,35 @@ export function DetalleMovimientoTesoreria({ id, tipo }: { id: string; tipo: Mov
           <FilaDato etiqueta={t('datos.identificador')} valor={<span className="break-all font-mono text-xs">{movimiento.uuid}</span>} />
         </ListaDatos>
       </Tarjeta>
+
+      {cadena && (
+        <Tarjeta titulo={tcad('titulo')}>
+          <CadenaDocumento
+            etiqueta={tcad('titulo')}
+            ordenar={false}
+            eslabones={eslabonesCadena(
+              { id: movimiento.id, source: movimiento.source, fecha: movimiento.created_at },
+              cadena,
+              {
+                turno: tcad('turno'),
+                movimiento: tcad('movimiento'),
+                asiento: tcad('asiento'),
+                conciliacion: tcad('conciliacion'),
+                consignacion: tcad('consignacion'),
+                sinAsiento: tcad('sinAsiento'),
+                publicado: tcad('publicado'),
+                borrador: tcad('borrador'),
+                conciliado: tcad('conciliado'),
+                porConciliar: tcad('porConciliar'),
+                pendiente: tcad('pendiente'),
+                abierto: tcad('abierto'),
+                cerrado: tcad('cerrado'),
+              },
+              formatDate,
+            )}
+          />
+        </Tarjeta>
+      )}
 
       {hayDatosContables(movimiento) && (
         <Tarjeta titulo={t('tarjetas.contables')}>

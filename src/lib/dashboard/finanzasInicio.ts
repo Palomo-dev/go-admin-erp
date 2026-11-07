@@ -51,8 +51,10 @@ export interface CrudoFinanzasInicio {
 
 /** Páginas que resuelven cada pendiente (rutas del catálogo, `catalog.ts`). */
 export const PAGINAS_FINANZAS = {
-  pendientesContables: '/app/finanzas/contabilidad/pendientes',
-  bancos: '/app/finanzas/bancos',
+  // Salud contable absorbe la bandeja de pendientes (ronda 3, decisión 3).
+  pendientesContables: '/app/finanzas/contabilidad/salud',
+  // Conciliación vive en Tesorería (ronda 3, mapa 1009:86249); la clave sigue llamándose `bancos`.
+  bancos: '/app/finanzas/tesoreria/conciliacion',
   facturacionElectronica: '/app/finanzas/facturacion-electronica',
   periodosFiscales: '/app/finanzas/contabilidad/periodos-fiscales',
   porCobrar: '/app/finanzas/cuentas-por-cobrar',
@@ -60,9 +62,9 @@ export const PAGINAS_FINANZAS = {
   reportes: '/app/reportes',
 } as const;
 
-/** «Bancos › Conciliación» (pestaña en la URL) y el detalle de una conciliación. */
-export const RUTA_CONCILIACIONES = `${PAGINAS_FINANZAS.bancos}?tab=conciliacion`;
-export const rutaConciliacion = (id: string) => `/app/finanzas/conciliacion-bancaria/${encodeURIComponent(id)}`;
+/** «Tesorería › Conciliación» y el detalle de una conciliación. */
+export const RUTA_CONCILIACIONES = PAGINAS_FINANZAS.bancos;
+export const rutaConciliacion = (id: string) => `${PAGINAS_FINANZAS.bancos}/${encodeURIComponent(id)}`;
 
 // ─── Fechas planas ──────────────────────────────────────────────────────────
 

@@ -16,9 +16,14 @@ jest.mock('@/lib/hooks/useOrganization', () => ({
 }));
 jest.mock('@/lib/context/BranchContext', () => ({ useBranch: () => ({ selectedBranchId: 1 }) }));
 jest.mock('@/components/inventario/BranchSelectorField', () => ({ BranchSelectorField: () => null }));
-jest.mock('@/components/kit', () => ({ ThirdPartyPicker: () => null, useAtajos: () => undefined }));
+// Ronda 3: el formulario se arma con el kit real; solo el selector de tercero se apaga.
+jest.mock('@/components/kit', () => ({ ...jest.requireActual('@/components/kit'), ThirdPartyPicker: () => null, useAtajos: () => undefined }));
+jest.mock('@/lib/hooks/useOrgCurrency', () => ({ useMonedaOrganizacion: () => ({ formatear: (v: number) => `$ ${v}` }) }));
+jest.mock('@/components/finanzas/tesoreria/compartido/useCajasDinero', () => ({
+  useCajasDinero: () => ({ cajas: [], modo: 'branch', estado: 'listo', recargar: jest.fn() }),
+}));
 jest.mock('@/lib/services/movimientosService', () => ({
-  movimientosService: { getBankAccounts: async () => [] },
+  movimientosService: { getBankAccounts: async () => [], getOpenSessionIdForBranch: async () => 7 },
 }));
 jest.mock('@/lib/supabase/config', () => {
   const categorias = [
@@ -97,7 +102,7 @@ describe('Nuevo egreso con categoría de impuestos', () => {
     await abrirCategorias();
     await elegir('Impuestos › Pago de renta');
     expect(await screen.findByText('Tu plan no tiene la cuenta sugerida. Elige una o créala en el plan de cuentas.')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Guardar' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Registrar egreso' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   test('GMF sigue siendo gasto directo', async () => {

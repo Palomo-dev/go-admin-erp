@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
-import { todayInTz, toPlainDate, plainDateToInstant } from '@/lib/utils/timezone';
+import { todayInTz, toPlainDate, plainDateToInstant, getDateRange } from '@/lib/utils/timezone';
 import { obtenerOrganizacionActiva, getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import type { SaldoCuenta } from '@/lib/finanzas/planCuentasAlta';
 import type { TrazaRedondeo } from '@/lib/finanzas/contabilidad/redondeoReversa';
@@ -26,6 +26,43 @@ export interface JournalEntry {
   comprobante_prefijo?: string | null;
   comprobante_numero?: number | null;
   lines?: JournalLine[];
+}
+
+export interface FiltrosLibroDiario {
+  /** Días `YYYY-MM-DD` de la organización; sin ellos, todo el libro. */
+  desde?: string | null;
+  hasta?: string | null;
+  estado?: 'todos' | 'publicados' | 'borradores';
+  /** `source` crudos (de `fuentesDeGrupos`). */
+  fuentes?: string[];
+  cuenta?: string | null;
+  branchId?: number | null;
+  /** Ya saneado con `textoBusquedaSeguro`. */
+  texto?: string;
+  numero?: number | null;
+  ocultarPares?: boolean;
+  limite: number;
+  desplazamiento: number;
+}
+
+export interface FilaLibroDiario extends JournalEntry {
+  /** Σ débitos del asiento. */
+  importe: number;
+  revertidoPor: number | null;
+}
+
+export interface PaginaLibroDiario {
+  filas: FilaLibroDiario[];
+  total: number;
+  /** Originales revertidos quitados de esta página con «Ocultar pares revertidos». */
+  paresOcultos: number;
+}
+
+export interface ResumenLibroDiario {
+  asientos: number;
+  contraAsientos: number;
+  borradores: number;
+  movimiento: number;
 }
 
 /** Fila de `journal_entry_failures` para la pantalla de un pendiente. */
@@ -502,6 +539,138 @@ export class ContabilidadService {
     }
 
     return data || [];
+  }
+
+  /**
+   * Libro diario de trabajo paginado en el servidor (Contabilidad v2 §4.3).
+   * Los extremos son días de la organización y se convierten a instantes en
+   * su zona. Además de la página trae el importe de cada asiento (Σ débitos)
+   * y el contra-asiento que lo revirtió, en dos consultas pequeñas por página.
+   *
+   * «Ocultar pares revertidos» quita del servidor los contra-asientos; los
+   * originales revertidos se quitan de la página ya leída (`paresOcultos`),
+   * porque PostgREST no filtra por la existencia de otro asiento. La RPC
+   * propuesta `fn_libro_diario_trabajo` lo resuelve en la base.
+   */
+  static async listarLibroDiario(filtros: FiltrosLibroDiario): Promise<PaginaLibroDiario> {
+    const organizationId = this.getOrganizationId();
+    const conCuenta = !!filtros.cuenta;
+    let query = supabase
+      .from('journal_entries')
+      .select(conCuenta ? '*, journal_lines!inner(account_code)' : '*', { count: 'exact' })
+      .eq('organization_id', organizationId);
+
+    if (filtros.desde && filtros.hasta) {
+      const timezone = await resolveTimezone(organizationId);
+      const { start, end } = getDateRange(filtros.desde, filtros.hasta, timezone);
+      query = query.gte('entry_date', start).lte('entry_date', end);
+    }
+    if (filtros.estado === 'publicados') query = query.eq('posted', true);
+    if (filtros.estado === 'borradores') query = query.eq('posted', false);
+    if (filtros.fuentes && filtros.fuentes.length > 0) query = query.in('source', filtros.fuentes);
+    if (filtros.branchId != null) query = query.eq('branch_id', filtros.branchId);
+    if (conCuenta) query = query.eq('journal_lines.account_code', filtros.cuenta as string);
+    if (filtros.ocultarPares) query = query.or('source.is.null,source.neq.reversal');
+    if (filtros.texto) {
+      const condiciones = [`memo.ilike.%${filtros.texto}%`];
+      if (filtros.numero != null) condiciones.push(`id.eq.${filtros.numero}`);
+      query = query.or(condiciones.join(','));
+    }
+
+    const { data, error, count } = await query
+      .order('entry_date', { ascending: false })
+      .order('id', { ascending: false })
+      .range(filtros.desplazamiento, filtros.desplazamiento + filtros.limite - 1);
+    if (error) throw error;
+
+    const asientos = ((data ?? []) as unknown as (JournalEntry & { journal_lines?: unknown })[]).map(({ journal_lines: _l, ...a }) => a as JournalEntry);
+    const ids = asientos.map((a) => a.id);
+    const importes = new Map<number, number>();
+    const revertidoPor = new Map<number, number>();
+    if (ids.length > 0) {
+      const [lineas, porOrigen, porClave] = await Promise.all([
+        supabase.from('journal_lines').select('journal_entry_id, debit').in('journal_entry_id', ids),
+        supabase
+          .from('journal_entries')
+          .select('id, source_id')
+          .eq('organization_id', organizationId)
+          .eq('source', 'reversal')
+          .in('source_id', ids.map(String)),
+        supabase
+          .from('journal_entries')
+          .select('id, fact_key')
+          .eq('organization_id', organizationId)
+          .in('fact_key', ids.map((id) => `reversal:${id}`)),
+      ]);
+      if (lineas.error) throw lineas.error;
+      for (const l of (lineas.data ?? []) as { journal_entry_id: number; debit: number | string | null }[]) {
+        importes.set(l.journal_entry_id, (importes.get(l.journal_entry_id) ?? 0) + (Number(l.debit) || 0));
+      }
+      for (const r of (porOrigen.data ?? []) as { id: number; source_id: string | null }[]) {
+        const original = Number(r.source_id);
+        if (Number.isFinite(original)) revertidoPor.set(original, r.id);
+      }
+      for (const r of (porClave.data ?? []) as { id: number; fact_key: string | null }[]) {
+        const original = Number(String(r.fact_key ?? '').replace('reversal:', ''));
+        if (Number.isFinite(original) && !revertidoPor.has(original)) revertidoPor.set(original, r.id);
+      }
+    }
+
+    let filas: FilaLibroDiario[] = asientos.map((a) => ({
+      ...a,
+      importe: Math.round((importes.get(a.id) ?? 0) * 100) / 100,
+      revertidoPor: revertidoPor.get(a.id) ?? null,
+    }));
+    let paresOcultos = 0;
+    if (filtros.ocultarPares) {
+      const antes = filas.length;
+      filas = filas.filter((f) => !f.revertidoPor);
+      paresOcultos = antes - filas.length;
+    }
+    return { filas, total: count ?? filas.length, paresOcultos };
+  }
+
+  /**
+   * Cifras del libro en un rango de días de la organización: asientos sin
+   * contra-asientos, contra-asientos, borradores y Σ débitos publicados
+   * (`fn_saldos_cuentas`, la misma suma de los informes).
+   */
+  static async resumenLibroDiario(desde: string | null, hasta: string | null): Promise<ResumenLibroDiario> {
+    const organizationId = this.getOrganizationId();
+    let start: string | null = null;
+    let end: string | null = null;
+    if (desde && hasta) {
+      const timezone = await resolveTimezone(organizationId);
+      ({ start, end } = getDateRange(desde, hasta, timezone));
+    }
+    const contar = (aplicar: (q: ReturnType<typeof base>) => ReturnType<typeof base>) => aplicar(base()).then(({ count, error }) => {
+      if (error) throw error;
+      return count ?? 0;
+    });
+    function base() {
+      let q = supabase.from('journal_entries').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId);
+      if (start && end) q = q.gte('entry_date', start).lte('entry_date', end);
+      return q;
+    }
+    const [asientos, contraAsientos, borradores, saldos] = await Promise.all([
+      contar((q) => q.or('source.is.null,source.neq.reversal')),
+      contar((q) => q.eq('source', 'reversal')),
+      contar((q) => q.eq('posted', false)),
+      supabase.rpc('fn_saldos_cuentas', { p_organization_id: organizationId, p_desde: start, p_hasta: end }),
+    ]);
+    if (saldos.error) throw saldos.error;
+    const movimiento = ((saldos.data ?? []) as { debito: number | string | null }[]).reduce((s, f) => s + (Number(f.debito) || 0), 0);
+    return { asientos, contraAsientos, borradores, movimiento: Math.round(movimiento * 100) / 100 };
+  }
+
+  /** ¿El periodo contable de ese día (de la organización) está abierto? Misma regla que el alta y la reversa. */
+  static async periodoAbierto(dia: string): Promise<boolean> {
+    const { data, error } = await supabase.rpc('fn_is_period_open', {
+      p_organization_id: this.getOrganizationId(),
+      p_date: dia,
+    });
+    if (error) throw error;
+    return data !== false;
   }
 
   /** Código y nombre de los centros de costo de la organización con esos ids. */

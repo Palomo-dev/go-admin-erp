@@ -128,7 +128,7 @@ export function FlujoEfectivoPage() {
                   fallos: actual.avisos.fallos,
                   monto: cifra(actual.avisos.fallos_monto),
                 })}
-                accion={{ etiqueta: t('sinContabilizar.ver'), href: '/app/finanzas/contabilidad/pendientes' }}
+                accion={{ etiqueta: t('sinContabilizar.ver'), href: '/app/finanzas/contabilidad/salud' }}
               />
             )}
 

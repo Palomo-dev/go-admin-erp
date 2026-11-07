@@ -1,8 +1,7 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { destinoNuevaCuenta } from '@/lib/finanzas/tesoreria/rutas';
 
-import React from 'react';
-import { NuevaCuentaForm } from '@/components/finanzas/bancos/cuentas/NuevaCuentaForm';
-
-export default function NuevaCuentaBancariaPage() {
-  return <NuevaCuentaForm />;
+/** La nueva cuenta bancaria es un panel sobre Cuentas de dinero (Figma 1009:85183). */
+export default function Page() {
+  redirect(destinoNuevaCuenta());
 }

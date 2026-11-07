@@ -11,6 +11,11 @@
  *   { action: 'verificar' }                        → prueba la cuenta de Factus y, si el NIT coincide, activa
  *   { action: 'sincronizar_rangos', branchId }     → copia los rangos de la cuenta a la sucursal
  *   { action: 'liberar', jobId }                   → envía un documento retenido (con la fecha de hoy)
+ *   { action: 'liberar', jobIds: [...] }           → lo mismo para varios (máx. 50), uno por uno
+ *
+ * GET devuelve además `emisor` (datos que exige la DIAN y que faltan en la
+ * organización) para los «pasos para activar» del servicio. Aditivo
+ * (2026-11-07, Finanzas R3 · Frente D).
  *
  * La organización sale de la sesión (`withOrg`); los permisos se resuelven en
  * el servidor (`requireOrgAdminOrPermission`).
@@ -23,6 +28,8 @@ import { obtenerAccesoFactus, verificarYActivar, FacturacionNoActivadaError } fr
 import { leerRangosFactus, sincronizarRangos } from '@/lib/services/einvoicing/rangosFactus.server';
 import { liberarRetenido, procesarAhora } from '@/lib/services/einvoicing/colaFacturacion.server';
 import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
+import { faltantesEmisor, type OrganizacionEmisor } from '@/lib/finanzas/facturacionElectronica/servicioLogica';
+import { MAX_LOTE } from '@/lib/finanzas/facturacionElectronica/bandejaLogica';
 
 const PERMISO_CONFIGURAR = PERMISOS_FINANZAS.APROBAR;
 
@@ -33,7 +40,7 @@ export const GET = withOrg(async (ctx) => {
   const db = getServiceClient();
   const org = ctx.organizationId;
 
-  const [config, rangos, jobs, retenidos] = await Promise.all([
+  const [config, rangos, jobs, retenidos, organizacion] = await Promise.all([
     db
       .from('electronic_invoicing_config')
       .select('service_status, environment, activated_at, factus_company_nit, last_check_at, last_check_ok, last_check_message, credentials_secret_id')
@@ -49,13 +56,19 @@ export const GET = withOrg(async (ctx) => {
     db.from('electronic_invoicing_jobs').select('status, hold_reason').eq('organization_id', org),
     db
       .from('electronic_invoicing_jobs')
-      .select('id, document_type, created_at, hold_reason, invoice:invoice_sales(number, total, issue_date), support_document:support_documents(reference_code, total, issue_date)')
+      .select('id, document_type, created_at, hold_reason, invoice:invoice_sales(number, total, currency, issue_date, customer:customers(full_name, company_name)), support_document:support_documents(number, reference_code, total, currency, issue_date)')
       .eq('organization_id', org)
       .eq('status', 'pending')
       .not('hold_reason', 'is', null)
       .order('created_at', { ascending: true })
       .limit(50),
+    ctx.supabase
+      .from('organizations')
+      .select('nit, tax_id, dv, legal_name, fiscal_responsibilities, municipality_id, email')
+      .eq('id', org)
+      .maybeSingle(),
   ]);
+  const emisor = (organizacion?.data ?? null) as (OrganizacionEmisor & { nit?: string | null; tax_id?: string | null }) | null;
 
   const c = config.data as
     | {
@@ -88,12 +101,19 @@ export const GET = withOrg(async (ctx) => {
     ranges: rangos.data ?? [],
     queue: conteo,
     held: retenidos.data ?? [],
+    emisor: {
+      faltan: faltantesEmisor(emisor),
+      nit: emisor?.nit ?? emisor?.tax_id ?? null,
+      dv: emisor?.dv ?? null,
+      razonSocial: emisor?.legal_name ?? null,
+      correo: emisor?.email ?? null,
+    },
   });
 });
 
 export const POST = withOrg(async (ctx, request) => {
   try {
-    const body = await readOrgBody<{ action?: string; branchId?: number | string; jobId?: string }>(ctx, request, {
+    const body = await readOrgBody<{ action?: string; branchId?: number | string; jobId?: string; jobIds?: unknown[] }>(ctx, request, {
       route: 'factus/config',
     });
     await requireOrgAdminOrPermission(ctx, PERMISO_CONFIGURAR);
@@ -124,6 +144,25 @@ export const POST = withOrg(async (ctx, request) => {
       }
 
       case 'liberar': {
+        if (Array.isArray(body.jobIds)) {
+          // Lote: los mismos dos pasos de siempre, uno por uno; un fallo no frena los demás.
+          const ids = Array.from(new Set(body.jobIds.filter((x): x is string => typeof x === 'string' && x.length > 0)));
+          if (ids.length === 0) return NextResponse.json({ error: 'Indique los documentos (jobIds)' }, { status: 400 });
+          if (ids.length > MAX_LOTE) return NextResponse.json({ error: `Máximo ${MAX_LOTE} documentos por envío` }, { status: 400 });
+          const resultados: Array<{ jobId: string; ok: boolean; status?: string; message?: string | null; error?: string }> = [];
+          for (const id of ids) {
+            try {
+              await liberarRetenido({ jobId: id, organizationId: ctx.organizationId, actor: ctx.userId });
+              const r = await procesarAhora(id);
+              resultados.push({ jobId: id, ok: true, status: r?.estado ?? 'pending', message: r?.mensaje ?? null });
+            } catch (err) {
+              const code = (err as { code?: string } | null)?.code;
+              resultados.push({ jobId: id, ok: false, error: code === 'P0002' ? 'not_found' : code === '55000' ? 'invalid_state' : 'error' });
+            }
+          }
+          const liberados = resultados.filter((r) => r.ok).length;
+          return NextResponse.json({ success: liberados > 0, liberados, fallidos: resultados.length - liberados, resultados });
+        }
         const jobId = typeof body.jobId === 'string' ? body.jobId : null;
         if (!jobId) return NextResponse.json({ error: 'Indique el documento (jobId)' }, { status: 400 });
         await liberarRetenido({ jobId, organizationId: ctx.organizationId, actor: ctx.userId });

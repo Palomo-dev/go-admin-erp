@@ -58,6 +58,26 @@ export interface LedgerEntry {
   debit: number;
   credit: number;
   running_balance: number;
+  /** Descripción propia de la línea (el memo es del asiento). */
+  description?: string | null;
+  source_id?: string | null;
+  branch_id?: number | null;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
+  cost_center_id?: string | null;
+}
+
+/**
+ * Filtros opcionales del mayor. Sin filtros, el mayor es el de siempre (saldo
+ * inicial, totales y saldo final de toda la cuenta). Con alguno, el saldo
+ * inicial no se puede calcular en la base (`fn_saldos_cuentas` no filtra por
+ * sucursal, tercero ni centro): queda en `null`, los totales salen de las
+ * líneas filtradas y el saldo corrido es el acumulado del filtro.
+ */
+export interface FiltrosMayor {
+  branchId?: number | null;
+  terceroNit?: string | null;
+  costCenterId?: string | null;
 }
 
 export interface LedgerAccount {
@@ -71,6 +91,8 @@ export interface LedgerAccount {
   closing_balance: number;
   /** El detalle muestra a lo sumo 400 líneas. Los totales siguen siendo del periodo. */
   truncated: boolean;
+  /** Con filtros: el saldo inicial no aplica y los totales son de las líneas filtradas. */
+  filtrado?: boolean;
 }
 
 export interface LineaLibroDiario {
@@ -116,6 +138,8 @@ interface FilaAsiento {
   entry_date?: string;
   memo?: string | null;
   source?: string | null;
+  source_id?: string | null;
+  branch_id?: number | null;
   posted?: boolean;
 }
 
@@ -128,6 +152,9 @@ interface FilaLinea {
   credit: string;
   description?: string | null;
   journal_entry_id?: number;
+  tercero_nit?: string | null;
+  tercero_nombre?: string | null;
+  cost_center_id?: string | null;
   journal_entries?: FilaAsiento | FilaAsiento[] | null;
 }
 
@@ -420,8 +447,10 @@ export class ReportesContablesService {
   static async getLedger(
     accountCode: string,
     startDate: string,
-    endDate: string
+    endDate: string,
+    filtros: FiltrosMayor = {},
   ): Promise<LedgerAccount | null> {
+    const filtrado = filtros.branchId != null || !!filtros.terceroNit || !!filtros.costCenterId;
     const organizationId = this.getOrganizationId();
     const timezone = await resolveTimezone(organizationId);
     const { start, end } = getDateRange(startDate, endDate, timezone);
@@ -462,7 +491,9 @@ export class ReportesContablesService {
     // Saldo inicial sumado en la base: antes se traían las líneas sin paginar
     // y PostgREST las cortaba en 1.000 filas. Una cuenta que no es hoja
     // arrastra el saldo de todo su prefijo.
-    const saldoPrevio = sumarCodigos(await saldosPorCuenta(organizationId, null, instanteAnterior(start)));
+    const saldoPrevio = filtrado
+      ? { debit: 0, credit: 0 }
+      : sumarCodigos(await saldosPorCuenta(organizationId, null, instanteAnterior(start)));
     const openingBalance = account.type === 'asset' || account.type === 'expense'
       ? saldoPrevio.debit - saldoPrevio.credit
       : saldoPrevio.credit - saldoPrevio.debit;
@@ -470,8 +501,8 @@ export class ReportesContablesService {
     // El mayor no recorre el libro entero: 400 líneas alcanzan para la pantalla
     // y los totales salen del agregado, no de esa página.
     const TOPE_LINEAS = 400;
-    const periodo = sumarCodigos(await saldosPorCuenta(organizationId, start, end));
-    const { data: pagina, error: linesError } = await supabase
+    const periodoBase = filtrado ? null : sumarCodigos(await saldosPorCuenta(organizationId, start, end));
+    let consulta = supabase
       .from('journal_lines')
       .select(`
         id,
@@ -480,15 +511,20 @@ export class ReportesContablesService {
         credit,
         description,
         journal_entry_id,
-        journal_entries!inner(id, entry_date, memo, source, posted)
+        tercero_nit,
+        tercero_nombre,
+        cost_center_id,
+        journal_entries!inner(id, entry_date, memo, source, source_id, branch_id, posted)
       `)
       .eq('organization_id', organizationId)
       .in('account_code', codigos)
       .gte('journal_entries.entry_date', start)
       .lte('journal_entries.entry_date', end)
-      .eq('journal_entries.posted', true)
-      .order('id')
-      .limit(TOPE_LINEAS + 1);
+      .eq('journal_entries.posted', true);
+    if (filtros.branchId != null) consulta = consulta.eq('journal_entries.branch_id', filtros.branchId);
+    if (filtros.terceroNit) consulta = consulta.eq('tercero_nit', filtros.terceroNit);
+    if (filtros.costCenterId) consulta = consulta.eq('cost_center_id', filtros.costCenterId);
+    const { data: pagina, error: linesError } = await consulta.order('id').limit(TOPE_LINEAS + 1);
 
     if (linesError) throw linesError;
     const crudas = (pagina || []) as FilaLinea[];
@@ -530,8 +566,20 @@ export class ReportesContablesService {
         debit,
         credit,
         running_balance: runningBalance,
+        description: line.description ?? null,
+        source_id: je?.source_id ?? null,
+        branch_id: je?.branch_id ?? null,
+        tercero_nit: line.tercero_nit ?? null,
+        tercero_nombre: line.tercero_nombre ?? null,
+        cost_center_id: line.cost_center_id ?? null,
       };
     });
+
+    // Con filtros, los totales salen de las líneas leídas (las del filtro).
+    const periodo = periodoBase ?? entries.reduce(
+      (acc, e) => ({ debit: acc.debit + e.debit, credit: acc.credit + e.credit }),
+      { debit: 0, credit: 0 },
+    );
 
     const totalDebit = periodo.debit;
     const totalCredit = periodo.credit;
@@ -549,6 +597,7 @@ export class ReportesContablesService {
       total_credit: totalCredit,
       closing_balance: openingBalance + movimiento,
       truncated,
+      filtrado,
     };
   }
 

@@ -33,7 +33,8 @@ import {
   type JournalEntry,
 } from '../ContabilidadService';
 
-const RUTA_PENDIENTES = '/app/finanzas/contabilidad/pendientes';
+// La bandeja es la primera pestaña de Salud contable (ronda 3, decisión 3).
+const RUTA_PENDIENTES = '/app/finanzas/contabilidad/salud';
 const RUTA_ASIENTOS = '/app/finanzas/contabilidad/asientos';
 const RUTA_CONFIGURACION = '/app/finanzas/configuracion-contable';
 

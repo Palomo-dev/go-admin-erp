@@ -1,55 +1,56 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+/**
+ * Nueva conciliación bancaria (Figma `2328:130897`), con el kit. Ruta nueva
+ * `/app/finanzas/tesoreria/conciliacion/nueva` (la vieja `/conciliacion-bancaria/nuevo`
+ * redirige). `?cuenta=<id>` llega elegida desde el detalle de una cuenta.
+ *
+ * Lógica de siempre: cuenta activa, periodo (inicio ≤ fin), saldo de apertura
+ * = saldo actual en sistema, saldo del extracto opcional y extracto CSV/Excel
+ * opcional que se importa al crear (`matrizDesdeArchivo` → `importarExtracto`).
+ */
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import Link from 'next/link';
-import { ArrowLeft, ArrowRightLeft, Save, Calendar, DollarSign, Upload } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ListChecks, Upload } from 'lucide-react';
+import { CampoFecha, CampoNumero, FormField, PageHeader, clasesBoton } from '@/components/kit';
 import { ConciliacionService } from './ConciliacionService';
 import { BankAccount } from '../bancos/BancosService';
 import { LineaExtracto, matrizDesdeArchivo, parsearMatrizExtracto } from '@/lib/finanzas/conciliacion/extracto';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
+import { RUTAS_TESORERIA, rutaConciliacion } from '@/lib/finanzas/tesoreria/rutas';
+import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
 
 export function NuevaConciliacionForm() {
+  const t = useTranslations('finanzasTesoreriaR3.conciliacion.nuevaForm');
+  const tc = useTranslations('finanzasTesoreriaR3.comun');
   const router = useRouter();
+  const params = useSearchParams();
   const { paraDocumento } = useMonedaOrganizacion();
   const [isLoading, setIsLoading] = useState(false);
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
-  const [formData, setFormData] = useState({
-    bank_account_id: '',
-    period_start: '',
-    period_end: '',
-    statement_balance: ''
-  });
+  const [formData, setFormData] = useState({ bank_account_id: '', period_start: '', period_end: '' });
+  const [saldoExtracto, setSaldoExtracto] = useState<number | null>(null);
   const [archivo, setArchivo] = useState<File | null>(null);
   const [lineasExtracto, setLineasExtracto] = useState<LineaExtracto[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadAccounts();
-  }, []);
+    ConciliacionService.obtenerCuentasBancarias()
+      .then((data) => {
+        const activas = data.filter((a) => a.is_active);
+        setAccounts(activas);
+        const pedida = params?.get('cuenta');
+        if (pedida && activas.some((a) => String(a.id) === pedida)) setFormData((f) => ({ ...f, bank_account_id: pedida }));
+      })
+      .catch(() => toast.error(t('errorCuentas')));
+  }, [params, t]);
 
-  const loadAccounts = async () => {
-    try {
-      const data = await ConciliacionService.obtenerCuentasBancarias();
-      setAccounts(data.filter(a => a.is_active));
-    } catch (error) {
-      console.error('Error cargando cuentas:', error);
-      toast.error('Error al cargar las cuentas bancarias');
-    }
-  };
-
-  const handleAccountChange = (accountId: string) => {
-    const account = accounts.find(a => a.id.toString() === accountId);
-    setSelectedAccount(account || null);
-    setFormData({ ...formData, bank_account_id: accountId });
-  };
+  const selectedAccount = accounts.find((a) => a.id.toString() === formData.bank_account_id) ?? null;
+  const ctxMoneda = paraDocumento(selectedAccount?.currency);
+  const moneda = { formatear: (v: number) => formatMoneda(v, ctxMoneda) };
 
   const elegirExtracto = async (file: File | null) => {
     setArchivo(file);
@@ -58,35 +59,23 @@ export function NuevaConciliacionForm() {
     try {
       const parseadas = parsearMatrizExtracto(await matrizDesdeArchivo(file));
       if (parseadas.length === 0) {
-        toast.error('El archivo no tiene líneas con fecha y valor');
+        toast.error(t('extractoVacio'));
         return;
       }
       setLineasExtracto(parseadas);
-    } catch (error) {
-      console.error(error);
-      toast.error('No se pudo leer el archivo. Usa CSV o Excel.');
+    } catch {
+      toast.error(t('extractoIlegible'));
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!formData.bank_account_id) {
-      toast.error('Selecciona una cuenta bancaria');
-      return;
-    }
-    if (!formData.period_start || !formData.period_end) {
-      toast.error('Selecciona el período de conciliación');
-      return;
-    }
-    if (new Date(formData.period_start) > new Date(formData.period_end)) {
-      toast.error('La fecha de inicio debe ser anterior a la fecha de fin');
-      return;
-    }
-    if (archivo && lineasExtracto.length === 0) {
-      toast.error('El archivo no tiene líneas con fecha y valor');
-      return;
-    }
+    setError(null);
+    if (!formData.bank_account_id) return setError(t('errores.cuenta'));
+    if (!formData.period_start || !formData.period_end) return setError(t('errores.periodo'));
+    // Días `YYYY-MM-DD`: se comparan como texto (sin pasar por la zona del navegador).
+    if (formData.period_start > formData.period_end) return setError(t('errores.orden'));
+    if (archivo && lineasExtracto.length === 0) return setError(t('extractoVacio'));
 
     try {
       setIsLoading(true);
@@ -95,14 +84,12 @@ export function NuevaConciliacionForm() {
         period_start: formData.period_start,
         period_end: formData.period_end,
         opening_balance: selectedAccount?.balance || 0,
-        statement_balance: formData.statement_balance ? parseFloat(formData.statement_balance) : undefined
+        statement_balance: saldoExtracto ?? undefined,
       });
 
       if (archivo && lineasExtracto.length > 0) {
         try {
-          const formato = archivo.name.toLowerCase().endsWith('.csv') || archivo.name.toLowerCase().endsWith('.txt')
-            ? 'csv'
-            : 'excel';
+          const formato = archivo.name.toLowerCase().endsWith('.csv') || archivo.name.toLowerCase().endsWith('.txt') ? 'csv' : 'excel';
           const resultado = await ConciliacionService.importarExtracto({
             bankAccountId: parseInt(formData.bank_account_id),
             reconciliationId: reconciliation.id,
@@ -110,180 +97,102 @@ export function NuevaConciliacionForm() {
             formato,
             lineas: lineasExtracto,
           });
-          toast.success(`Conciliación creada. Extracto cargado: ${resultado.emparejadas} de ${resultado.lineas} emparejadas`);
-        } catch (error) {
-          console.error(error);
-          toast.error('La conciliación se creó, pero el extracto no se pudo cargar');
+          toast.success(t('creadaConExtracto', { emparejadas: resultado.emparejadas, lineas: resultado.lineas }));
+        } catch {
+          toast.error(t('creadaSinExtracto'));
         }
       } else {
-        toast.success('Conciliación creada exitosamente');
+        toast.success(t('creada'));
       }
-      router.push(`/app/finanzas/conciliacion-bancaria/${reconciliation.id}`);
-    } catch (error) {
-      console.error('Error creando conciliación:', error);
-      toast.error('Error al crear la conciliación');
+      router.push(rutaConciliacion(reconciliation.id));
+    } catch {
+      setError(t('errores.crear'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="max-w-2xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/app/finanzas/conciliacion-bancaria">
-            <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <ArrowRightLeft className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Nueva Conciliación Bancaria
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400">
-              Finanzas / Conciliación Bancaria / Nueva
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <PageHeader
+        variante="form"
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={ListChecks}
+        volverA={RUTAS_TESORERIA.conciliacion}
+        migas={[
+          { etiqueta: tc('migas.tesoreria'), href: RUTAS_TESORERIA.movimientos },
+          { etiqueta: t('miga'), href: RUTAS_TESORERIA.conciliacion },
+          { etiqueta: t('titulo') },
+        ]}
+      />
+      <form onSubmit={handleSubmit} className="mx-auto max-w-2xl space-y-4 rounded-xl border border-line bg-surface p-4 sm:p-6">
+        <FormField etiqueta={t('cuenta')} obligatorio>
+          {(c) => (
+            <SelectNativo
+              id={c.id}
+              valor={formData.bank_account_id}
+              onCambiar={(v) => setFormData((f) => ({ ...f, bank_account_id: v }))}
+              vacio={t('elegirCuenta')}
+              opciones={accounts.map((a) => ({ valor: String(a.id), etiqueta: [a.name, a.bank_name].filter(Boolean).join(' · ') }))}
+            />
+          )}
+        </FormField>
+        <FormField etiqueta={t('saldoSistema')} ayuda={t('saldoSistemaAyuda')}>
+          {(c) => (
+            <p id={c.id} className="flex h-10 items-center rounded-lg border border-line bg-subtle px-3 text-sm tabular-nums text-fg">
+              {selectedAccount ? moneda.formatear(selectedAccount.balance) : '—'}
             </p>
-          </div>
+          )}
+        </FormField>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField etiqueta={t('inicio')} obligatorio>
+            {(c) => (
+              <CampoFecha id={c.id} valor={formData.period_start} onValorChange={(d) => setFormData((f) => ({ ...f, period_start: d }))} aria-labelledby={c.idEtiqueta} />
+            )}
+          </FormField>
+          <FormField etiqueta={t('fin')} obligatorio>
+            {(c) => (
+              <CampoFecha id={c.id} valor={formData.period_end} onValorChange={(d) => setFormData((f) => ({ ...f, period_end: d }))} aria-labelledby={c.idEtiqueta} />
+            )}
+          </FormField>
         </div>
-
-        {/* Formulario */}
-        <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Datos de la Conciliación</CardTitle>
-            <CardDescription className="dark:text-gray-400">
-              Configura el período y cuenta para la conciliación
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Cuenta Bancaria */}
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">Cuenta Bancaria *</Label>
-                <Select
-                  value={formData.bank_account_id}
-                  onValueChange={handleAccountChange}
-                >
-                  <SelectTrigger className="dark:bg-gray-900 dark:border-gray-600">
-                    <SelectValue placeholder="Seleccionar cuenta" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white dark:bg-gray-800">
-                    {accounts.map(acc => (
-                      <SelectItem key={acc.id} value={acc.id.toString()}>
-                        {acc.name} - {acc.bank_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Info de cuenta seleccionada */}
-              {selectedAccount && (
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center gap-3 mb-2">
-                    <DollarSign className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium text-gray-900 dark:text-white">
-                      Saldo Actual en Sistema
-                    </span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                    {formatMoneda(selectedAccount.balance, paraDocumento(selectedAccount.currency))}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Este será el saldo de apertura de la conciliación
-                  </p>
-                </div>
-              )}
-
-              {/* Período */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    <Calendar className="h-4 w-4 inline mr-2" />
-                    Fecha Inicio *
-                  </Label>
-                  <Input
-                    type="date"
-                    value={formData.period_start}
-                    onChange={(e) => setFormData({ ...formData, period_start: e.target.value })}
-                    className="dark:bg-gray-900 dark:border-gray-600"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">
-                    <Calendar className="h-4 w-4 inline mr-2" />
-                    Fecha Fin *
-                  </Label>
-                  <Input
-                    type="date"
-                    value={formData.period_end}
-                    onChange={(e) => setFormData({ ...formData, period_end: e.target.value })}
-                    className="dark:bg-gray-900 dark:border-gray-600"
-                  />
-                </div>
-              </div>
-
-              {/* Saldo del Extracto */}
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">
-                  Saldo según Extracto Bancario
-                </Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="Ingresa el saldo del extracto bancario"
-                  value={formData.statement_balance}
-                  onChange={(e) => setFormData({ ...formData, statement_balance: e.target.value })}
-                  className="dark:bg-gray-900 dark:border-gray-600"
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Este es el saldo que aparece en tu extracto bancario para el período seleccionado
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-gray-300">
-                  <Upload className="h-4 w-4 inline mr-2" />
-                  Extracto bancario
-                </Label>
-                <input
-                  type="file"
-                  accept=".csv,.txt,.xlsx,.xls"
-                  className="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-300"
-                  onChange={(e) => { void elegirExtracto(e.target.files?.[0] ?? null); }}
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  CSV o Excel. Si lo eliges, se carga al crear la conciliación.
-                  {lineasExtracto.length > 0 ? ` ${lineasExtracto.length} líneas listas.` : ''}
-                </p>
-              </div>
-
-              {/* Botones */}
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push('/app/finanzas/conciliacion-bancaria')}
-                  className="dark:border-gray-600"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Creando...' : 'Crear Conciliación'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+        <FormField etiqueta={t('saldoExtracto')} ayuda={t('saldoExtractoAyuda')}>
+          {(c) => <CampoNumero id={c.id} valor={saldoExtracto} onValorChange={setSaldoExtracto} alinear="derecha" />}
+        </FormField>
+        <FormField etiqueta={t('extracto')} ayuda={archivo ? t('extractoLeido', { lineas: lineasExtracto.length, nombre: archivo.name }) : t('extractoAyuda')}>
+          {(c) => (
+            <label
+              htmlFor={c.id}
+              className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-fg hover:bg-subtle"
+            >
+              <Upload className="h-5 w-5 text-fg-secondary" aria-hidden />
+              <span>{archivo ? archivo.name : t('extractoElegir')}</span>
+              <span className="text-xs text-fg-tertiary">{t('extractoFormatos')}</span>
+              <input
+                id={c.id}
+                type="file"
+                accept=".csv,.txt,.xlsx,.xls"
+                className="sr-only"
+                onChange={(e) => void elegirExtracto(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          )}
+        </FormField>
+        {error && (
+          <p role="alert" className="text-sm font-medium text-danger-text">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2 border-t border-line pt-4">
+          <button type="button" onClick={() => router.push(RUTAS_TESORERIA.conciliacion)} className={clasesBoton({ variante: 'secundario' })}>
+            {tc('cancelar')}
+          </button>
+          <button type="submit" disabled={isLoading} className={clasesBoton({ variante: 'primario' })}>
+            {isLoading ? tc('guardando') : t('crear')}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
+import { destinoAnomalias } from '@/lib/finanzas/tesoreria/rutas';
 
 // Finanzas, ronda 2 (A1): las alertas son una pestaña de Cuentas de dinero.
-// La ruta vieja sigue funcionando: lleva a esa pestaña.
-export default function AnomaliasPage() {
-  redirect('/app/finanzas/bancos?tab=alertas');
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  redirect(destinoAnomalias(await searchParams));
 }

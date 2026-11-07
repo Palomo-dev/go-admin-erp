@@ -271,3 +271,10 @@ Pendiente de aprobación. Ningún cambio está hecho.
    del POS), o lo dejamos para otra fase?
 7. En la app de escritorio el permiso se concede solo. ¿Mantenemos eso para asistencia y lo
    excluimos del registro de dispositivos, o también ahí se usa solo la IP?
+
+## Actualización 2026-11-06: el diálogo se retiró
+
+Por decisión del dueño se quitó `GeolocationModal` del login: pedía un permiso que el navegador vuelve a pedir.
+La ubicación se solicita directo al navegador cuando se registra el dispositivo, ya con la sesión abierta. La cookie
+`geolocation_preference` sigue guardando el resultado, y quien ya la tenía en `denied` no recibe más preguntas.
+Sigue pendiente lo de este análisis: se guardan coordenadas con 4 decimales (unos 11 m), y ahora sin texto que explique para qué.

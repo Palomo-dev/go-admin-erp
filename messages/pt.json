@@ -48929,5 +48929,114 @@
       "anulacion_dian": "Anulação ou rejeição perante a DIAN",
       "constancia": "Certidão (documento nunca transmitido)"
     }
+  },
+  "finanzasMetodosPagoLista": {
+    "subtitulo": "{n, plural, one {# ativo} other {# ativos}} · aparecem no PDV nesta ordem",
+    "subtituloMovil": "{n, plural, one {# ativo} other {# ativos}}",
+    "lista": {
+      "etiqueta": "Métodos de pagamento da organização"
+    },
+    "columnas": {
+      "metodo": "Método",
+      "tipo": "Tipo",
+      "entraA": "Entra em",
+      "cajaAbierta": "Caixa aberto",
+      "referencia": "Referência",
+      "pos": "PDV",
+      "web": "Loja online"
+    },
+    "tipos": {
+      "efectivo": "Dinheiro",
+      "tarjeta": "Cartão",
+      "transferencia": "Transferência",
+      "billetera": "Carteira",
+      "pasarela": "Gateway",
+      "credito": "Crédito",
+      "otro": "Outro"
+    },
+    "destino": {
+      "caja": "Caixa do turno",
+      "banco": "{banco} ··{ultimos}",
+      "bancoDesconocido": "Conta bancária",
+      "pasarela": "Conforme a liquidação",
+      "sinConectar": "Gateway não conectado",
+      "cxc": "Contas a receber",
+      "sinDestino": "Sem destino"
+    },
+    "caja": {
+      "obligatoria": "Obrigatório",
+      "no": "Não"
+    },
+    "cajaMovil": "caixa obrigatório",
+    "referencia": {
+      "obligatoria": "Obrigatória",
+      "opcional": "Opcional",
+      "automatica": "Automática"
+    },
+    "referenciaMovil": "referência",
+    "canales": {
+      "pos": "PDV",
+      "web": "Web",
+      "ninguno": "Sem canal"
+    },
+    "estado": {
+      "activa": "Ativo",
+      "inactiva": "Inativo",
+      "sinConfigurar": "Não configurado"
+    },
+    "codigo": "Código {codigo}",
+    "usadoSinConfigurar": "Usado em {n, plural, one {# pagamento} other {# pagamentos}} · não configurado",
+    "usadoSinDestino": "{n, plural, one {# pagamento} other {# pagamentos}} sem destino",
+    "aviso": {
+      "titulo": "{n, plural, one {# método usado e não configurado} other {# métodos usados e não configurados}}",
+      "descripcion": "{lista}: {total, plural, one {# pagamento chegou} other {# pagamentos chegaram}} pela loja online, faturas ou PDV. Configure-os e diga para onde vai o dinheiro para vê-los em relatórios, conciliação e contas de dinheiro.",
+      "item": "{nombre} ({n})",
+      "revisar": "Revisar",
+      "verTodos": "Ver todos"
+    },
+    "soloLectura": {
+      "titulo": "Somente leitura",
+      "descripcion": "Para criar, editar, ativar ou remover métodos você precisa da permissão de faturamento da sua organização."
+    },
+    "acciones": {
+      "editar": "Editar",
+      "subir": "Subir",
+      "bajar": "Descer",
+      "conectar": "Configurar integração",
+      "verConexion": "Ver conexão",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "mostrarWeb": "Mostrar na loja online",
+      "ocultarWeb": "Ocultar da loja online",
+      "quitar": "Remover",
+      "agregar": "Adicionar",
+      "nuevo": "Novo método"
+    },
+    "aria": {
+      "pos": "Ativo no PDV: {nombre}",
+      "web": "Visível na loja online: {nombre}"
+    },
+    "toast": {
+      "activado": "Método ativado",
+      "desactivado": "Método desativado",
+      "webVisible": "Visível na loja online",
+      "webOculto": "Oculto da loja online",
+      "orden": "Ordem salva",
+      "errorTitulo": "Não foi possível salvar",
+      "errorEstado": "Não foi possível mudar o estado do método de pagamento.",
+      "errorWeb": "Não foi possível mudar a visibilidade na loja online.",
+      "errorOrden": "Não foi possível salvar a ordem.",
+      "errorEliminar": "Não foi possível excluir o método de pagamento.",
+      "sinPermisoEliminar": "Não foi possível excluir o método de pagamento: seu cargo ou função não tem a permissão de faturamento.",
+      "eliminado": "{nombre} excluído"
+    },
+    "estados": {
+      "vacioTitulo": "Você ainda não tem métodos de pagamento",
+      "vacioDescripcion": "Adicione dinheiro, cartão ou transferência para receber no PDV e na loja online.",
+      "errorTitulo": "Não foi possível carregar os métodos de pagamento",
+      "errorDescripcion": "Verifique sua conexão e tente novamente.",
+      "sinPermisoTitulo": "Você não tem acesso aos métodos de pagamento",
+      "sinPermisoDescripcion": "Peça a permissão de faturamento a um administrador da sua organização."
+    }
   }
 }

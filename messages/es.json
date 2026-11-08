@@ -48934,5 +48934,114 @@
       "anulacion_dian": "Anulación o rechazo ante la DIAN",
       "constancia": "Constancia (documento nunca transmitido)"
     }
+  },
+  "finanzasMetodosPagoLista": {
+    "subtitulo": "{n, plural, one {# activo} other {# activos}} · se muestran en el POS en este orden",
+    "subtituloMovil": "{n, plural, one {# activo} other {# activos}}",
+    "lista": {
+      "etiqueta": "Métodos de pago de la organización"
+    },
+    "columnas": {
+      "metodo": "Método",
+      "tipo": "Tipo",
+      "entraA": "Entra a",
+      "cajaAbierta": "Caja abierta",
+      "referencia": "Referencia",
+      "pos": "POS",
+      "web": "Tienda web"
+    },
+    "tipos": {
+      "efectivo": "Efectivo",
+      "tarjeta": "Tarjeta",
+      "transferencia": "Transferencia",
+      "billetera": "Billetera",
+      "pasarela": "Pasarela",
+      "credito": "Crédito",
+      "otro": "Otro"
+    },
+    "destino": {
+      "caja": "Caja del turno",
+      "banco": "{banco} ··{ultimos}",
+      "bancoDesconocido": "Cuenta bancaria",
+      "pasarela": "Según la liquidación",
+      "sinConectar": "Pasarela sin conectar",
+      "cxc": "Cuenta por cobrar",
+      "sinDestino": "Sin destino"
+    },
+    "caja": {
+      "obligatoria": "Obligatoria",
+      "no": "No"
+    },
+    "cajaMovil": "caja obligatoria",
+    "referencia": {
+      "obligatoria": "Obligatoria",
+      "opcional": "Opcional",
+      "automatica": "Automática"
+    },
+    "referenciaMovil": "referencia",
+    "canales": {
+      "pos": "POS",
+      "web": "Web",
+      "ninguno": "Sin canal"
+    },
+    "estado": {
+      "activa": "Activa",
+      "inactiva": "Inactiva",
+      "sinConfigurar": "Sin configurar"
+    },
+    "codigo": "Código {codigo}",
+    "usadoSinConfigurar": "Usado en {n, plural, one {# pago} other {# pagos}} · no configurado",
+    "usadoSinDestino": "{n, plural, one {# pago} other {# pagos}} sin destino",
+    "aviso": {
+      "titulo": "{n, plural, one {# método usado y sin configurar} other {# métodos usados y sin configurar}}",
+      "descripcion": "{lista}: {total, plural, one {# pago llegó} other {# pagos llegaron}} por la tienda web, facturas o el POS. Defínelos y di a dónde entra el dinero para verlos en reportes, conciliación y cuentas de dinero.",
+      "item": "{nombre} ({n})",
+      "revisar": "Revisar",
+      "verTodos": "Ver todos"
+    },
+    "soloLectura": {
+      "titulo": "Solo lectura",
+      "descripcion": "Para crear, editar, activar o quitar métodos necesitas el permiso de facturación de tu organización."
+    },
+    "acciones": {
+      "editar": "Editar",
+      "subir": "Subir",
+      "bajar": "Bajar",
+      "conectar": "Configurar integración",
+      "verConexion": "Ver conexión",
+      "activar": "Activar",
+      "desactivar": "Desactivar",
+      "mostrarWeb": "Mostrar en la tienda web",
+      "ocultarWeb": "Ocultar de la tienda web",
+      "quitar": "Quitar",
+      "agregar": "Agregar",
+      "nuevo": "Nuevo método"
+    },
+    "aria": {
+      "pos": "Activo en el POS: {nombre}",
+      "web": "Visible en la tienda web: {nombre}"
+    },
+    "toast": {
+      "activado": "Método activado",
+      "desactivado": "Método desactivado",
+      "webVisible": "Visible en la tienda web",
+      "webOculto": "Oculto de la tienda web",
+      "orden": "Orden guardado",
+      "errorTitulo": "No se pudo guardar",
+      "errorEstado": "No se pudo cambiar el estado del método de pago.",
+      "errorWeb": "No se pudo cambiar la visibilidad en la tienda web.",
+      "errorOrden": "No se pudo guardar el orden.",
+      "errorEliminar": "No se pudo eliminar el método de pago.",
+      "sinPermisoEliminar": "No se pudo eliminar el método de pago: tu cargo o rol no tiene el permiso de facturación.",
+      "eliminado": "{nombre} eliminado"
+    },
+    "estados": {
+      "vacioTitulo": "Aún no tienes métodos de pago",
+      "vacioDescripcion": "Agrega efectivo, tarjeta o transferencia para cobrar en el POS y en la tienda web.",
+      "errorTitulo": "No se pudieron cargar los métodos de pago",
+      "errorDescripcion": "Revisa tu conexión e inténtalo de nuevo.",
+      "sinPermisoTitulo": "No tienes acceso a los métodos de pago",
+      "sinPermisoDescripcion": "Pide a un administrador de tu organización el permiso de facturación."
+    }
   }
 }

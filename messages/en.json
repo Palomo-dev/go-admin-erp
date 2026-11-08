@@ -48919,5 +48919,114 @@
       "anulacion_dian": "Cancellation or rejection before the DIAN",
       "constancia": "Certificate (document never transmitted)"
     }
+  },
+  "finanzasMetodosPagoLista": {
+    "subtitulo": "{n, plural, one {# active} other {# active}} · shown in the POS in this order",
+    "subtituloMovil": "{n, plural, one {# active} other {# active}}",
+    "lista": {
+      "etiqueta": "Organization payment methods"
+    },
+    "columnas": {
+      "metodo": "Method",
+      "tipo": "Type",
+      "entraA": "Goes to",
+      "cajaAbierta": "Open register",
+      "referencia": "Reference",
+      "pos": "POS",
+      "web": "Online store"
+    },
+    "tipos": {
+      "efectivo": "Cash",
+      "tarjeta": "Card",
+      "transferencia": "Transfer",
+      "billetera": "Wallet",
+      "pasarela": "Gateway",
+      "credito": "Credit",
+      "otro": "Other"
+    },
+    "destino": {
+      "caja": "Shift register",
+      "banco": "{banco} ··{ultimos}",
+      "bancoDesconocido": "Bank account",
+      "pasarela": "Per settlement",
+      "sinConectar": "Gateway not connected",
+      "cxc": "Accounts receivable",
+      "sinDestino": "No destination"
+    },
+    "caja": {
+      "obligatoria": "Required",
+      "no": "No"
+    },
+    "cajaMovil": "register required",
+    "referencia": {
+      "obligatoria": "Required",
+      "opcional": "Optional",
+      "automatica": "Automatic"
+    },
+    "referenciaMovil": "reference",
+    "canales": {
+      "pos": "POS",
+      "web": "Web",
+      "ninguno": "No channel"
+    },
+    "estado": {
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "sinConfigurar": "Not set up"
+    },
+    "codigo": "Code {codigo}",
+    "usadoSinConfigurar": "Used in {n, plural, one {# payment} other {# payments}} · not set up",
+    "usadoSinDestino": "{n, plural, one {# payment} other {# payments}} with no destination",
+    "aviso": {
+      "titulo": "{n, plural, one {# method used and not set up} other {# methods used and not set up}}",
+      "descripcion": "{lista}: {total, plural, one {# payment came} other {# payments came}} from the online store, invoices or the POS. Set them up and choose where the money goes to see them in reports, reconciliation and money accounts.",
+      "item": "{nombre} ({n})",
+      "revisar": "Review",
+      "verTodos": "Show all"
+    },
+    "soloLectura": {
+      "titulo": "Read only",
+      "descripcion": "To create, edit, activate or remove methods you need your organization's billing permission."
+    },
+    "acciones": {
+      "editar": "Edit",
+      "subir": "Move up",
+      "bajar": "Move down",
+      "conectar": "Set up integration",
+      "verConexion": "View connection",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "mostrarWeb": "Show in the online store",
+      "ocultarWeb": "Hide from the online store",
+      "quitar": "Remove",
+      "agregar": "Add",
+      "nuevo": "New method"
+    },
+    "aria": {
+      "pos": "Active in the POS: {nombre}",
+      "web": "Visible in the online store: {nombre}"
+    },
+    "toast": {
+      "activado": "Method activated",
+      "desactivado": "Method deactivated",
+      "webVisible": "Visible in the online store",
+      "webOculto": "Hidden from the online store",
+      "orden": "Order saved",
+      "errorTitulo": "Could not save",
+      "errorEstado": "Could not change the payment method status.",
+      "errorWeb": "Could not change the online store visibility.",
+      "errorOrden": "Could not save the order.",
+      "errorEliminar": "Could not delete the payment method.",
+      "sinPermisoEliminar": "Could not delete the payment method: your position or role lacks the billing permission.",
+      "eliminado": "{nombre} deleted"
+    },
+    "estados": {
+      "vacioTitulo": "You have no payment methods yet",
+      "vacioDescripcion": "Add cash, card or transfer to get paid in the POS and the online store.",
+      "errorTitulo": "Payment methods could not be loaded",
+      "errorDescripcion": "Check your connection and try again.",
+      "sinPermisoTitulo": "You don't have access to payment methods",
+      "sinPermisoDescripcion": "Ask an administrator of your organization for the billing permission."
+    }
   }
 }

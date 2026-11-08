@@ -19,8 +19,61 @@ export interface Prueba {
   http?: number;
   /** Qué se verificó (para el detalle del evento): sin secretos. */
   verificado: string[];
-  /** Nombre del comercio o cuenta, si el proveedor lo da. */
-  cuenta?: string;
+  /** Con QUIÉN quedó conectado según el proveedor (sin secretos), si la prueba es correcta. */
+  cuenta?: CuentaVerificada;
+}
+
+/**
+ * Lo que el proveedor dice de la cuenta dueña de las llaves («Conectado como …»), como hacía el
+ * asistente viejo con Wompi («Conexión verificada: {nombre}»). Nunca incluye secretos. Se guarda
+ * en `integration_connections.settings.cuenta_verificada`.
+ */
+export interface CuentaVerificada {
+  nombre: string;
+  razonSocial?: string | null;
+  /** Documento del comercio («NIT 900123456»). */
+  documento?: string | null;
+  correo?: string | null;
+  pais?: string | null;
+  /** Ambiente según las llaves: 'sandbox' o 'production'. */
+  ambiente?: Ambiente | null;
+  /** Métodos de pago habilitados (Wompi). */
+  metodos?: string[];
+  /** Id de la cuenta en el proveedor (comercio, usuario, app). */
+  idExterno?: string | null;
+}
+
+const textoDe = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : typeof v === 'number' ? String(v) : null);
+
+async function leerJson(r: Response): Promise<Record<string, unknown> | null> {
+  try {
+    const d = (await r.json()) as unknown;
+    return d && typeof d === 'object' && !Array.isArray(d) ? (d as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Cuenta de Wompi desde `GET /v1/merchants/{llave_pública}` (respuesta `data`). */
+export function cuentaWompi(datos: Record<string, unknown> | null, ambiente: Ambiente): CuentaVerificada | undefined {
+  const d = datos?.data && typeof datos.data === 'object' ? (datos.data as Record<string, unknown>) : null;
+  if (!d) return undefined;
+  const nombre = textoDe(d.name) ?? textoDe(d.legal_name);
+  if (!nombre) return undefined;
+  const tipoDoc = textoDe(d.legal_id_type);
+  const doc = textoDe(d.legal_id);
+  const metodos = Array.isArray(d.accepted_payment_methods)
+    ? (d.accepted_payment_methods as unknown[]).map(textoDe).filter((x): x is string => !!x)
+    : [];
+  return {
+    nombre,
+    razonSocial: textoDe(d.legal_name),
+    documento: doc ? (tipoDoc ? tipoDoc + ' ' + doc : doc) : null,
+    correo: textoDe(d.email),
+    ambiente,
+    metodos,
+    idExterno: textoDe(d.id),
+  };
 }
 
 type Fetch = typeof fetch;
@@ -38,7 +91,7 @@ async function llamar(fetchImpl: Fetch, url: string, init: RequestInit = {}): Pr
   }
 }
 
-function porRespuesta(r: Response | null, verificado: string[], cuenta?: string): Prueba {
+function porRespuesta(r: Response | null, verificado: string[], cuenta?: CuentaVerificada): Prueba {
   if (!r) return { resultado: 'sin_respuesta', verificado };
   if (r.ok) return { resultado: 'correcta', http: r.status, verificado, cuenta };
   if (r.status === 401 || r.status === 403 || r.status === 404 || r.status === 422 || r.status === 400) {
@@ -52,13 +105,8 @@ async function probarWompi(ambiente: Ambiente, v: Record<string, string>, fetchI
   // 1. Llave pública: el comercio existe y la llave es suya.
   const comercio = await llamar(fetchImpl, `${base}/merchants/${encodeURIComponent(v.public_key ?? '')}`);
   if (!comercio || !comercio.ok) return porRespuesta(comercio, ['public_key']);
-  let cuenta: string | undefined;
-  try {
-    const json = (await comercio.json()) as { data?: { name?: unknown } };
-    cuenta = typeof json?.data?.name === 'string' ? json.data.name : undefined;
-  } catch {
-    cuenta = undefined;
-  }
+  // Con quién quedó conectado (como el asistente viejo: «Conexión verificada: {nombre}»).
+  const cuenta = cuentaWompi(await leerJson(comercio), ambiente);
   // 2. Llave privada: consultar transacciones exige la privada del mismo comercio.
   const privada = await llamar(fetchImpl, `${base}/transactions?reference=GOADMIN-PRUEBA-DE-LLAVES`, {
     headers: { Authorization: `Bearer ${v.private_key ?? ''}` },
@@ -84,11 +132,32 @@ export async function probarLlaves(
       return probarWompi(ambiente, v, fetchImpl);
     case 'mercadopago': {
       const r = await llamar(fetchImpl, 'https://api.mercadopago.com/users/me', { headers: { Authorization: `Bearer ${v.access_token}` } });
-      return porRespuesta(r, ['access_token']);
+      if (!r || !r.ok) return porRespuesta(r, ['access_token']);
+      const d = await leerJson(r);
+      const nombre = textoDe(d?.nickname) ?? textoDe(d?.first_name);
+      return porRespuesta(r, ['access_token'], nombre ? {
+        nombre,
+        razonSocial: textoDe((d?.company as Record<string, unknown> | undefined)?.brand_name),
+        correo: textoDe(d?.email),
+        pais: textoDe(d?.country_id) ?? textoDe(d?.site_id),
+        ambiente: (v.access_token ?? '').startsWith('TEST-') ? 'sandbox' : 'production',
+        idExterno: textoDe(d?.id),
+      } : undefined);
     }
     case 'stripe': {
-      const r = await llamar(fetchImpl, 'https://api.stripe.com/v1/balance', { headers: { Authorization: `Bearer ${v.secret_key}` } });
-      return porRespuesta(r, ['secret_key']);
+      const r = await llamar(fetchImpl, 'https://api.stripe.com/v1/account', { headers: { Authorization: `Bearer ${v.secret_key}` } });
+      if (!r || !r.ok) return porRespuesta(r, ['secret_key']);
+      const d = await leerJson(r);
+      const perfil = (d?.business_profile ?? {}) as Record<string, unknown>;
+      const panel = (((d?.settings ?? {}) as Record<string, unknown>).dashboard ?? {}) as Record<string, unknown>;
+      const nombre = textoDe(perfil.name) ?? textoDe(panel.display_name) ?? textoDe(d?.email) ?? textoDe(d?.id);
+      return porRespuesta(r, ['secret_key'], nombre ? {
+        nombre,
+        correo: textoDe(d?.email),
+        pais: textoDe(d?.country),
+        ambiente: /^(sk|rk)_live_/.test(v.secret_key ?? '') ? 'production' : 'sandbox',
+        idExterno: textoDe(d?.id),
+      } : undefined);
     }
     case 'paypal': {
       const base = ambiente === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
@@ -98,7 +167,10 @@ export async function probarLlaves(
         headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
         body: 'grant_type=client_credentials',
       });
-      return porRespuesta(r, ['client_id', 'client_secret']);
+      if (!r || !r.ok) return porRespuesta(r, ['client_id', 'client_secret']);
+      // El token de PayPal no trae el nombre del negocio: se muestra la app y el ambiente.
+      const app = textoDe((await leerJson(r))?.app_id);
+      return porRespuesta(r, ['client_id', 'client_secret'], app ? { nombre: app, ambiente, idExterno: app } : undefined);
     }
     case 'payu': {
       const url = ambiente === 'production'
@@ -113,8 +185,14 @@ export async function probarLlaves(
       // PayU responde 200 también cuando rechaza: manda `code`.
       try {
         const json = (await r.json()) as { code?: unknown };
+        // El PING de PayU no trae el nombre del comercio: se muestra el id de comercio y el ambiente.
         return json?.code === 'SUCCESS'
-          ? { resultado: 'correcta', http: r.status, verificado: ['api_key', 'api_login'] }
+          ? {
+              resultado: 'correcta',
+              http: r.status,
+              verificado: ['api_key', 'api_login'],
+              cuenta: v.merchant_id ? { nombre: 'PayU ' + v.merchant_id, ambiente, idExterno: v.merchant_id } : undefined,
+            }
           : { resultado: 'rechazada', http: r.status, verificado: ['api_key', 'api_login'] };
       } catch {
         return { resultado: 'sin_respuesta', http: r.status, verificado: ['api_key', 'api_login'] };
@@ -122,7 +200,13 @@ export async function probarLlaves(
     }
     case 'sendgrid': {
       const r = await llamar(fetchImpl, 'https://api.sendgrid.com/v3/scopes', { headers: { Authorization: `Bearer ${v.api_key}` } });
-      return porRespuesta(r, ['api_key']);
+      if (!r || !r.ok) return porRespuesta(r, ['api_key']);
+      // Perfil de la cuenta (opcional: una llave restringida puede no tener permiso de leerlo).
+      const perfil = await llamar(fetchImpl, 'https://api.sendgrid.com/v3/user/profile', { headers: { Authorization: `Bearer ${v.api_key}` } });
+      const d = perfil && perfil.ok ? await leerJson(perfil) : null;
+      const persona = [textoDe(d?.first_name), textoDe(d?.last_name)].filter(Boolean).join(' ');
+      const nombre = textoDe(d?.company) ?? (persona || null) ?? textoDe(v.from_email) ?? 'SendGrid';
+      return porRespuesta(r, ['api_key'], { nombre, pais: textoDe(d?.country), correo: textoDe(v.from_email), ambiente: 'production' });
     }
     default:
       return { resultado: 'sin_prueba', verificado: [] };

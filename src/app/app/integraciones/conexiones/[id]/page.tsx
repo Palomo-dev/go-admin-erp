@@ -39,6 +39,7 @@ import { CampoCopiar } from '@/components/integraciones/conexiones-v2/asistentes
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { apiConexiones, ErrorApiConexiones, type DetalleConexion, type ItemCatalogo, type Prueba } from '@/lib/services/integrations/conexiones/clienteConexiones';
+import { ConectadoComo } from '@/components/integraciones/conexiones-v2/ConectadoComo';
 
 type Pestana = 'resumen' | 'credenciales' | 'actividad';
 const ID_TABS = 'detalle-conexion';
@@ -319,6 +320,7 @@ export default function DetalleConexionPage() {
           descripcion={t(`detalle.prueba.${prueba.resultado}.descripcion`, { nombre: nombreProveedor })}
         />
       )}
+      {prueba?.resultado === 'correcta' && prueba.cuenta && <ConectadoComo cuenta={prueba.cuenta} />}
       {errorAccion && <AvisoTonal tono="peligro" rol="alert" titulo={t('detalle.errorAccion')} descripcion={errorAccion} />}
 
       <TabBar<Pestana>
@@ -363,6 +365,12 @@ export default function DetalleConexionPage() {
                 </Tarjeta>
               </div>
               <div className="flex min-w-0 flex-col gap-4">
+                {c.cuentaVerificada && (
+                  <ConectadoComo
+                    cuenta={c.cuentaVerificada}
+                    nota={c.cuentaVerificada.verificadaEn ? t('conectadoComo.verificadaEn', { fecha: formatDate(c.cuentaVerificada.verificadaEn) }) : null}
+                  />
+                )}
                 {tarjetaCredenciales}
                 <Tarjeta titulo={t('detalle.usadaPor.titulo')}>
                   {detalle.usadaPor.length === 0 ? (

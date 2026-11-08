@@ -87,7 +87,7 @@ describe('llaves: forma y máscara', () => {
   it('valida prefijos por ambiente', () => {
     const ok = { public_key: 'pub_prod_x', private_key: 'prv_prod_x', events_secret: 'prod_events_x', integrity_secret: 'prod_integrity_x' };
     expect(validarFormatoLlaves('wompi', 'production', ok)).toEqual([]);
-    expect(validarFormatoLlaves('wompi', 'production', { ...ok, private_key: 'prv_test_x' })).toEqual([{ proposito: 'private_key', motivo: 'prefijo' }]);
+    expect(validarFormatoLlaves('wompi', 'production', { ...ok, private_key: 'prv_test_x' })).toEqual([{ proposito: 'private_key', motivo: 'ambiente' }]);
     expect(validarFormatoLlaves('wompi', 'sandbox', {})).toHaveLength(4);
   });
   it('Stripe se enlaza a su método, nunca a «card»', () => {

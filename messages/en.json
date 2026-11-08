@@ -10596,6 +10596,10 @@
       "buscar": "Search country",
       "paises": "Countries",
       "sinResultados": "No countries found"
+    },
+    "campoSecreto": {
+      "mostrar": "Show",
+      "ocultar": "Hide"
     }
   },
   "inventarioEtiquetas": {
@@ -47454,7 +47458,8 @@
         "formato": {
           "requerido": "This field is required",
           "prefijo": "Must start with {prefijo}",
-          "largo": "It is too long"
+          "largo": "It is too long",
+          "ambiente": "This key belongs to the other environment: expected {prefijo}…. Check «Sandbox» or «Production»."
         },
         "notaServidor": "They are sent over a secure connection to the server, which tests them with the provider before saving. Afterwards you will only see the last 4 characters.",
         "probarLlaves": "Test keys",
@@ -47922,6 +47927,16 @@
       "error": "Could not show the credential.",
       "errorCopiar": "Could not copy.",
       "actuales": "Saved keys"
+    },
+    "conectadoComo": {
+      "titulo": "Connected as {nombre}",
+      "razonSocial": "Legal name",
+      "documento": "Tax ID",
+      "correo": "Email",
+      "pais": "Country",
+      "ambiente": "Environment",
+      "metodos": "Enabled methods",
+      "verificadaEn": "Verified with the provider on {fecha}"
     }
   },
   "consignacionesR4": {

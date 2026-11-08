@@ -131,7 +131,7 @@ export function esProveedorLlaves(v: unknown): v is ProveedorLlaves {
   return typeof v === 'string' && Object.prototype.hasOwnProperty.call(LLAVES, v);
 }
 
-export type ErrorFormato = { proposito: string; motivo: 'requerido' | 'prefijo' | 'largo' };
+export type ErrorFormato = { proposito: string; motivo: 'requerido' | 'prefijo' | 'largo' | 'ambiente' };
 
 /** Validación de forma (sin red). Los mensajes los pone la UI por `motivo`. */
 export function validarFormatoLlaves(proveedor: ProveedorLlaves, ambiente: Ambiente, valores: Record<string, string>): ErrorFormato[] {
@@ -146,7 +146,10 @@ export function validarFormatoLlaves(proveedor: ProveedorLlaves, ambiente: Ambie
     if (v.length > 500) errores.push({ proposito: c.proposito, motivo: 'largo' });
     const prefijos = c.prefijos?.[ambiente];
     if (prefijos && prefijos.length > 0 && !prefijos.some((p) => v.startsWith(p))) {
-      errores.push({ proposito: c.proposito, motivo: 'prefijo' });
+      // Llave del OTRO ambiente (p. ej. pub_test_ con «Producción»): error propio, más claro.
+      const otro: Ambiente = ambiente === 'production' ? 'sandbox' : 'production';
+      const delOtro = (c.prefijos?.[otro] ?? []).some((p) => v.startsWith(p) && !prefijos.some((q) => v.startsWith(q)));
+      errores.push({ proposito: c.proposito, motivo: delOtro ? 'ambiente' : 'prefijo' });
     }
   }
   return errores;

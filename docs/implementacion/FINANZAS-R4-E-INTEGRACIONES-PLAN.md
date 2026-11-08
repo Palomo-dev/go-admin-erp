@@ -449,3 +449,60 @@ bloqueado. Prueba en seco 15: 79/79. Listado de Consignaciones arreglado a 390 p
 
 **Pendiente (nuevo):** cuando se aplique 20261108170000 (anticipos), reemplazar la lectura de calidades de consignación por su
 evaluador. Sigue pendiente que el listado de anticipos sume `consignment_advance_crossings`.
+
+#### Frente INT · pedidos del dueño del 2026-11-08 (asistente de llaves)
+
+**Ojo en los campos secretos.**
+- Se añadió al kit `CampoSecreto`, con botón «Mostrar» / «Ocultar»:
+  - accesible: `aria-label`, `aria-pressed`, `aria-controls`;
+  - con el ratón el foco y el cursor se quedan en el campo;
+  - `autoComplete="off"`, `spellCheck={false}`, ignorado por los gestores de contraseñas.
+- No es `CampoContrasena` del acceso: aquel pide al navegador que guarde la contraseña.
+- Se usa en el asistente de llaves (Wompi, Mercado Pago, PayU, Stripe, PayPal, SendGrid y
+  «Reemplazar llave»), en logística (`ConexionLogistica`) y en los diálogos de credencial y de
+  webhook de conexión.
+- El formulario avanzado (Bold y otros) ya tenía su propio ojo.
+- Textos en `kit.campoSecreto` (4 idiomas). Prueba: `kit/__tests__/campoSecreto.test.tsx`.
+
+**«Conectado como …».** Al probar llaves correctas se muestra lo que el proveedor dice de la cuenta,
+como hacía el asistente viejo con Wompi («Conexión verificada: {nombre}»):
+
+| Proveedor | De dónde sale | Qué se muestra |
+|---|---|---|
+| Wompi | `GET /merchants/{llave pública}` | nombre, razón social, documento, correo, ambiente y métodos aceptados |
+| Mercado Pago | `/users/me` | nickname, país, id |
+| Stripe | `/v1/account` (antes `/v1/balance`) | nombre del negocio, país, modo |
+| PayPal | token | id de la app (no trae nombre del negocio) |
+| PayU | PING | id de comercio (no trae nombre) |
+| SendGrid | `/v3/user/profile` | perfil, si la llave lo permite |
+
+- Se guarda en `settings.cuenta_verificada` (fusionado, sin secretos) al guardar llaves y con
+  «Probar».
+- Se ve en el paso del webhook, al terminar, en «Mis conexiones» y en el detalle.
+- Una llave del otro ambiente (p. ej. `pub_test_` con «Producción») da un error propio de ambiente.
+- Prueba: `cuentaVerificada.test.ts`.
+
+**URL del webhook de Wompi: investigación, sin cambiar nada.** Hay dos receptores y cada uno cubre
+flujos distintos:
+
+| Receptor | Qué procesa |
+|---|---|
+| ERP `/api/integrations/wompi/webhook` | sesiones QR del POS y del folio, links de pago y pagos pendientes del ERP. Nada de `web_orders` |
+| Tienda `https://{dominio}/api/webhooks/wompi_co` (goadmin-websites) | depósitos, abonos de mesa, reservas, membresías, tiquetes, parqueo, facturas y pedidos web |
+
+- La ruta de la tienda responde 404 a cualquier otra referencia (`route.ts:245`), así que no cubre
+  el POS.
+- Wompi admite UNA URL de eventos por comercio y ambiente: ninguna de las dos cubre todo.
+
+Evidencia de la base (solo SELECT):
+- Las 5 conexiones Wompi tienen dominio propio verificado y principal.
+- No hay ningún evento entrante de Wompi registrado desde la base nueva (2026-11-03), en ninguna de
+  las dos rutas.
+- Los pedidos web se confirman en `app/checkout/resultado/page.tsx` consultando la API de Wompi.
+- `payment_qr_sessions` de Wompi: 0.
+
+Propuesta, sin implementar:
+- Que la ruta del dominio de la tienda REENVÍE al ERP, con el cuerpo crudo y la firma, todo evento
+  cuya referencia no sea de la tienda.
+- Entonces el asistente mostraría `https://{dominio principal verificado}/api/webhooks/wompi_co`.
+- Mientras tanto, la URL configurada hoy en Wompi no se toca.

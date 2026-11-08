@@ -30,10 +30,17 @@ const TIPO: Record<MovimientoEstadoCuenta['tipo'], TipoDocumento> = {
   factura: 'facturaCompra',
   cuenta: 'cuentaPorPagar',
   pago: 'pago',
+  anticipo: 'pago',
+  aplicacion_anticipo: 'cuentaPorPagar',
+  devolucion_anticipo: 'devolucion',
+  anulacion_anticipo: 'pago',
 };
 
+/** Los movimientos del anticipo llevan su rótulo delante del documento (el tipo del kit no los distingue de un pago). */
+const DE_ANTICIPO = new Set<MovimientoEstadoCuenta['tipo']>(['anticipo', 'aplicacion_anticipo', 'devolucion_anticipo', 'anulacion_anticipo']);
+
 /** Contrato de la RPC → forma del kit. */
-export function vistaEstadoCuentaProveedor(d: EstadoCuentaProveedor): EstadoCuentaVista {
+export function vistaEstadoCuentaProveedor(d: EstadoCuentaProveedor, rotulo?: (tipo: MovimientoEstadoCuenta['tipo']) => string): EstadoCuentaVista {
   return {
     saldoInicial: d.saldo_inicial,
     saldoFinal: d.saldo_final,
@@ -45,7 +52,7 @@ export function vistaEstadoCuentaProveedor(d: EstadoCuentaProveedor): EstadoCuen
       id: `${m.tipo}-${m.ref_id}`,
       dia: m.dia,
       tipo: TIPO[m.tipo],
-      documento: m.documento,
+      documento: rotulo && DE_ANTICIPO.has(m.tipo) ? [rotulo(m.tipo), m.documento].filter(Boolean).join(' · ') : m.documento,
       vence: m.vence,
       cargo: m.cargo,
       abono: m.abono,
@@ -82,7 +89,7 @@ export function EstadoCuentaProveedorDialog({ abierto, onAbiertoChange, proveedo
     if (abierto) void cargar();
   }, [abierto, cargar]);
 
-  const vista = useMemo(() => (datos ? vistaEstadoCuentaProveedor(datos) : null), [datos]);
+  const vista = useMemo(() => (datos ? vistaEstadoCuentaProveedor(datos, (tipo) => t(`movimientos.${tipo}`)) : null), [datos, t]);
   const hoy = getToday();
 
   // PDF e impresión: el servidor arma el documento desde la base con el mismo

@@ -18928,6 +18928,12 @@
         "neto": "Neto a pagar",
         "asiento": "Asiento contable",
         "orden": "Orden de compra"
+      },
+      "anticipos": {
+        "titulo": "Anticipos aplicados",
+        "linea": "{recibo} · baja la cuenta {monto}",
+        "cuenta": "cuenta {cuenta}",
+        "retencion": "Del anticipo {consumo}; retención ya practicada {retencion}"
       }
     },
     "estadoCuenta": {
@@ -18958,6 +18964,12 @@
         "cargo": "Cargo",
         "abono": "Abono",
         "saldo": "Saldo"
+      },
+      "movimientos": {
+        "anticipo": "Anticipo",
+        "aplicacion_anticipo": "Aplicación de anticipo",
+        "devolucion_anticipo": "Devolución de anticipo",
+        "anulacion_anticipo": "Anulación de anticipo"
       }
     },
     "plan": {
@@ -19417,7 +19429,11 @@
     "movimientosProveedor": {
       "factura": "Factura (neto a pagar)",
       "cuenta": "Cuenta por pagar",
-      "pago": "Pago"
+      "pago": "Pago",
+      "anticipo": "Anticipo",
+      "aplicacion_anticipo": "Aplicación de anticipo",
+      "devolucion_anticipo": "Devolución de anticipo",
+      "anulacion_anticipo": "Anulación de anticipo"
     },
     "errores": {
       "noEncontrado": "No encontramos este documento.",
@@ -40413,6 +40429,10 @@
       "ingresos_diversos": {
         "nombre": "Ingresos diversos",
         "ayuda": "Crédito de un sobrante real de inventario. Por defecto 42959501 (auxiliar de 4295). No es 4250."
+      },
+      "anticipos_proveedores": {
+        "nombre": "Anticipos a proveedores",
+        "ayuda": "Auxiliar de detalle bajo 1330 (p. ej. 13300501 bajo 133005). 1330 es título: sin esta cuenta no se registran anticipos."
       }
     }
   },
@@ -45313,7 +45333,7 @@
         "perfil": "No hay una vigencia que cubra hoy: sin régimen ni periodicidad, GO Admin no sabe qué formularios le corresponden a esta empresa.",
         "nit": "La empresa no tiene NIT: sin él no se pueden ubicar los vencimientos.",
         "periodicidad_iva": "Es responsable de IVA pero no tiene periodicidad de IVA.",
-        "regimen_simple_sin_o47": "El régimen es SIMPLE pero falta la responsabilidad O-47."
+        "revisar_perfil": "La vigencia de hoy tiene datos sin definir o viene del campo combinado anterior: revise el régimen de renta y la condición frente al IVA y guárdela de nuevo."
       },
       "vigencia": {
         "rango": "{desde} a {hasta}",
@@ -45321,16 +45341,11 @@
       },
       "columnas": {
         "vigencia": "Vigencia",
-        "regimen": "Régimen",
-        "responsabilidades": "Responsabilidades",
+        "responsabilidades": "Códigos FE",
         "iva": "IVA",
-        "ica": "ICA"
-      },
-      "regimen": {
-        "ordinario": "Ordinario",
-        "simple": "Régimen SIMPLE",
-        "no_responsable_iva": "No responsable de IVA",
-        "especial": "Régimen especial"
+        "ica": "ICA",
+        "renta": "Renta",
+        "estado": "Estado"
       },
       "periodicidadIva": {
         "bimestral": "Bimestral",
@@ -45347,19 +45362,19 @@
       },
       "vacio": {
         "titulo": "Sin perfil tributario",
-        "descripcion": "Crea la primera vigencia con el régimen, las responsabilidades del RUT y la periodicidad del IVA."
+        "descripcion": "Cree la primera vigencia con el régimen de renta, la condición frente al IVA y la periodicidad."
       },
       "empresa": {
         "titulo": "Datos de la empresa",
         "nit": "NIT",
         "sinNit": "Sin NIT",
-        "rut": "Responsabilidades en facturación electrónica",
-        "rutAyuda": "Se actualizan al guardar la vigencia de hoy.",
+        "rut": "Códigos del documento electrónico (ficha de la empresa)",
+        "rutAyuda": "Se actualizan al guardar la vigencia de hoy. Cada documento usa los de la vigencia de su fecha.",
         "editarNit": "Editar NIT y datos de la empresa"
       },
       "usos": {
         "titulo": "Para qué sirve",
-        "descripcion": "El Centro tributario usa la vigencia de cada periodo para saber qué formularios preparar y cuándo vencen. Un periodo de 2025 lee el perfil de 2025.",
+        "descripcion": "El Centro tributario usa las vigencias que tocan cada periodo. Si un periodo tiene más de una vigencia, lo señala para revisar su procedencia y no decide solo.",
         "irCentro": "Ir al Centro tributario"
       },
       "dialogo": {
@@ -45367,18 +45382,20 @@
         "tituloEditar": "Editar vigencia",
         "descripcionNueva": "La vigencia anterior termina el día antes de esta.",
         "descripcionEditar": "Corrige los datos de esta vigencia. Para otra fecha de inicio, crea una vigencia nueva.",
-        "guardar": "Guardar"
+        "guardar": "Guardar",
+        "bloqueosTitulo": "Esta combinación es contradictoria y no se puede guardar:",
+        "advertenciasTitulo": "Revise con el Contador antes de guardar:",
+        "aceptarAdvertencias": "Entiendo las advertencias y quiero guardar. Quedarán registradas en la vigencia.",
+        "motivoBloqueo": "Corrija las combinaciones contradictorias.",
+        "motivoAdvertencias": "Acepte las advertencias para guardar."
       },
       "campos": {
         "vigenteDesde": "Vigente desde",
         "vigenteDesdeAyuda": "Normalmente el 1 de enero del año.",
         "vigenteDesdeFija": "La fecha de inicio no cambia al editar.",
-        "regimen": "Régimen",
         "periodicidadIva": "Periodicidad del IVA",
         "periodicidadIvaAyuda": "Según los ingresos del año anterior. «No aplica» si no es responsable de IVA.",
-        "responsabilidades": "Responsabilidades del RUT",
-        "responsabilidadesAyuda": "Las mismas de la casilla 53 del RUT de la empresa.",
-        "agenteRetencion": "Agente de retención en la fuente",
+        "agenteRetencion": "Agente de retención en la fuente (renta)",
         "agenteRetencionAyuda": "Practica retenciones a sus proveedores y declara el formulario 350.",
         "responsableInc": "Responsable del impuesto al consumo (INC)",
         "notas": "Notas",
@@ -45390,23 +45407,120 @@
         "icaAgregar": "Agregar municipio",
         "icaBuscar": "Escribe el municipio",
         "icaBuscando": "Buscando…",
-        "icaResultados": "Municipios encontrados"
+        "icaResultados": "Municipios encontrados",
+        "regimenRenta": "Régimen de renta",
+        "regimenRentaAyuda": "Impuesto sobre la renta. Es independiente de la condición frente al IVA.",
+        "condicionIva": "Condición frente al IVA",
+        "condicionIvaAyuda": "Responsable o no responsable de IVA, según el RUT (48, o 49/53).",
+        "sinDefinir": "Sin definir",
+        "motivoCambio": "Motivo del cambio de periodicidad",
+        "motivoCambioAyuda": "La periodicidad del IVA se fija por año (ET art. 600). Un cambio que no empieza el 1 de enero necesita un motivo.",
+        "sinMotivo": "Sin motivo",
+        "calidades": "Calidades",
+        "granContribuyente": "Gran contribuyente",
+        "autorretenedor": "Autorretenedor",
+        "agenteRetencionIva": "Agente de retención de IVA",
+        "codigosFe": "Códigos del documento electrónico",
+        "codigosFeAyuda": "Los que viajan en la factura electrónica. No son la casilla 53 del RUT. La tabla está pendiente de validación del Contador.",
+        "codigosRut": "Responsabilidades del RUT, casilla 53 ({cuantos} marcadas)",
+        "codigosRutAyuda": "Opcional. Si las marca, deben coincidir con los campos de arriba.",
+        "buscarCodigo": "Buscar por código o nombre"
       },
       "errores": {
         "datos_invalidos": "Revisa los datos de la vigencia.",
         "vigencia_invalida": "Elige una fecha de inicio válida.",
-        "regimen_invalido": "Elige el régimen.",
+        "regimen_invalido": "Elija un régimen de renta válido.",
         "periodicidad_invalida": "Elige la periodicidad del IVA.",
-        "responsabilidad_invalida": "Hay una responsabilidad que no existe en el RUT.",
-        "responsabilidades_incompatibles": "No puede ser responsable (O-48) y no responsable (O-49) de IVA a la vez.",
-        "periodicidad_incoherente": "Un no responsable de IVA no tiene periodicidad de IVA: elige «No aplica».",
-        "falta_periodicidad": "Con la responsabilidad O-48 hace falta la periodicidad del IVA.",
+        "responsabilidad_invalida": "Hay un código del documento electrónico que no existe.",
         "ica_invalido": "Revisa los municipios del ICA y su tarifa.",
         "sin_permiso": "No tienes permiso para cambiar el perfil tributario.",
         "no_encontrado": "Esa vigencia ya no existe. Recarga la página.",
         "vigencia_duplicada": "Ya hay una vigencia que empieza ese día.",
         "pendiente_activar": "El perfil tributario aún no está activado.",
-        "desconocido": "No se pudo guardar. Intenta de nuevo."
+        "desconocido": "No se pudo guardar. Intenta de nuevo.",
+        "condicion_iva_invalida": "Elija la condición frente al IVA.",
+        "responsabilidad_rut_invalida": "Hay un código del RUT que no existe.",
+        "motivo_invalido": "Elija un motivo válido.",
+        "combinacion_contradictoria": "La combinación es contradictoria: corrija lo marcado.",
+        "advertencias_sin_aceptar": "Hay advertencias nuevas: revíselas y acéptelas para guardar."
+      },
+      "pendienteSeparacion": "La separación entre el régimen de renta y la condición frente al IVA se activa cuando se aplique su actualización en la base de datos. Mientras tanto puede ver el perfil, pero no guardarlo.",
+      "revisar": "Revisar",
+      "regimenRenta": {
+        "ordinario": "Régimen ordinario",
+        "simple": "Régimen SIMPLE",
+        "especial": "Régimen tributario especial (ESAL)",
+        "no_contribuyente_declarante": "No contribuyente, declarante de ingresos y patrimonio",
+        "no_contribuyente_no_declarante": "No contribuyente, no declarante"
+      },
+      "condicionIva": {
+        "responsable": "Responsable de IVA",
+        "no_responsable": "No responsable de IVA"
+      },
+      "motivo": {
+        "inicio_actividades": "Inicio de actividades",
+        "ingreso_simple": "Ingreso al SIMPLE",
+        "salida_simple": "Salida del SIMPLE",
+        "otro": "Otro (explíquelo en las notas)"
+      },
+      "estado": {
+        "revisar": "Revisar perfil",
+        "conAdvertencias": "{cuantas, plural, one {# advertencia aceptada} other {# advertencias aceptadas}}",
+        "completo": "Completo"
+      },
+      "validacion": {
+        "pendiente_validacion": "Pendiente de validación",
+        "no_vigente_por_confirmar": "No vigente, por confirmar",
+        "noVigente": "Código reemplazado; ya no se asigna."
+      },
+      "bloqueos": {
+        "falta_regimen_renta": "Falta el régimen de renta.",
+        "falta_condicion_iva": "Falta la condición frente al IVA.",
+        "no_responsable_con_periodicidad": "Un no responsable de IVA no declara IVA: la periodicidad debe ser «No aplica» (ET art. 437 par. 3).",
+        "responsable_sin_periodicidad": "Un responsable de IVA necesita periodicidad (ET art. 600).",
+        "periodicidad_anual_fuera_de_simple": "La periodicidad anual del IVA es la del SIMPLE; los demás declaran bimestral o cuatrimestral (ET arts. 600 y 915).",
+        "simple_responsable_no_anual": "En el SIMPLE, el responsable de IVA presenta una declaración anual consolidada (ET art. 915): elija «Anual».",
+        "fe_o48_y_o49": "No puede tener O-48 y O-49 a la vez.",
+        "fe_o48_no_responsable": "O-48 (responsable de IVA) contradice «No responsable de IVA».",
+        "fe_o49_responsable": "O-49 (no responsable de IVA) contradice «Responsable de IVA».",
+        "fe_o47_sin_simple": "O-47 (régimen simple) exige el régimen de renta SIMPLE.",
+        "fe_o13_sin_gran_contribuyente": "O-13 exige marcar «Gran contribuyente».",
+        "fe_o15_sin_autorretenedor": "O-15 exige marcar «Autorretenedor».",
+        "fe_o23_sin_agente_iva": "O-23 exige marcar «Agente de retención de IVA».",
+        "rut_varios_regimenes_renta": "El RUT tiene más de un régimen de renta (04, 05, 06 o 47); son excluyentes.",
+        "rut_regimen_renta_contradictorio": "El régimen de renta no coincide con el del RUT (05 ordinario, 04 especial, 47 SIMPLE, 06 ingresos y patrimonio).",
+        "rut_iva_contradictorio": "La condición frente al IVA no coincide con el RUT (48 responsable; 49 o 53 no responsable).",
+        "rut_13_sin_gran_contribuyente": "El RUT tiene 13 (gran contribuyente): marque «Gran contribuyente».",
+        "rut_15_sin_autorretenedor": "El RUT tiene 15 (autorretenedor): marque «Autorretenedor».",
+        "rut_23_sin_agente_iva": "El RUT tiene 23 (agente de retención en el IVA): marque «Agente de retención de IVA».",
+        "rut_07_sin_agente_retencion": "El RUT tiene 07 (retención en la fuente a título de renta): marque «Agente de retención en la fuente».",
+        "rut_33_sin_inc": "El RUT tiene 33 (impuesto nacional al consumo): marque «Responsable del impuesto al consumo».",
+        "periodicidad_cambio_sin_motivo": "La periodicidad del IVA cambia sin empezar el 1 de enero: indique el motivo (ET art. 600)."
+      },
+      "advertencias": {
+        "simple_con_autorretenedor": "SIMPLE y autorretenedor: el SIMPLE no practica autorretenciones salvo excepciones (ET art. 911). Confírmelo con el Contador.",
+        "simple_con_gran_contribuyente": "SIMPLE y gran contribuyente: revise los requisitos del SIMPLE (ET arts. 905 y 906).",
+        "simple_con_inc": "SIMPLE e impuesto al consumo: el INC de restaurantes y bares tiene tratamiento propio en el SIMPLE (ET arts. 908 y 915).",
+        "simple_sin_fe_o47": "Régimen SIMPLE sin el código O-47 en el documento electrónico.",
+        "gran_contribuyente_sin_fe_o13": "Gran contribuyente sin el código O-13 en el documento electrónico.",
+        "autorretenedor_sin_fe_o15": "Autorretenedor sin el código O-15 en el documento electrónico.",
+        "agente_iva_sin_fe_o23": "Agente de retención de IVA sin el código O-23 en el documento electrónico.",
+        "fe_r99_con_otros": "R-99-PN significa «no aplica ninguna otra»: junto con otros códigos es dudoso. No equivale a «no responsable de IVA».",
+        "fe_codigo_por_validar": "O-48 y O-49 no figuran entre los códigos vigentes del documento electrónico (por confirmar).",
+        "rut_falta_codigo": "Los campos afirman algo que el RUT marcado no trae: revise la casilla 53.",
+        "rut_codigo_no_vigente": "El RUT marcado usa códigos reemplazados (11 o 12).",
+        "periodicidad_cambio_a_mitad_de_anio": "Cambio de periodicidad a mitad de año: revise su procedencia con el Contador.",
+        "periodicidad_cambio_por_simple": "Cambio de periodicidad por entrada o salida del SIMPLE: tiene tratamiento específico.",
+        "periodicidad_cambio_siguiente": "La vigencia siguiente cambia la periodicidad a mitad de año: revísela también."
+      },
+      "periodo": {
+        "rango": "{desde} a {hasta}",
+        "desde": "desde {desde}",
+        "cambioTitulo": "Cambio de vigencia dentro del período: revisar procedencia",
+        "cambioDescripcion": "Este período tiene más de una vigencia del perfil tributario. GO Admin no decide cuál aplica: confirme con el Contador si el cambio procede.",
+        "sinPerfilTitulo": "Parte del período no tiene perfil tributario",
+        "sinPerfilDescripcion": "Algunos días del período no están cubiertos por ninguna vigencia.",
+        "irPerfil": "Ir al perfil"
       }
     },
     "centro": {
@@ -45428,11 +45542,11 @@
         "perfil": "No hay una vigencia que cubra hoy.",
         "nit": "La empresa no tiene NIT.",
         "periodicidad_iva": "Falta la periodicidad del IVA.",
-        "regimen_simple_sin_o47": "Falta la responsabilidad O-47 del régimen SIMPLE."
+        "revisar_perfil": "El perfil vigente está por revisar."
       },
       "vacio": {
-        "titulo": "Sin obligaciones",
-        "descripcion": "El perfil de este periodo no genera obligaciones."
+        "titulo": "No se pudieron derivar obligaciones",
+        "descripcion": "Esto no significa que la empresa no tenga obligaciones. Revise el perfil tributario de este período."
       },
       "columnas": {
         "obligacion": "Obligación",
@@ -45448,28 +45562,46 @@
         "ica": "ICA y reteICA",
         "inc": "Impuesto al consumo",
         "renta": "Renta",
-        "simple": "Régimen SIMPLE",
+        "simple": "SIMPLE, declaración anual",
         "exogena": "Exógena",
-        "conciliacion_fiscal": "Conciliación fiscal"
+        "conciliacion_fiscal": "Conciliación fiscal",
+        "simple_anticipo": "SIMPLE, anticipo bimestral",
+        "ingresos_patrimonio": "Ingresos y patrimonio"
       },
       "notas": {
         "sin_autorretencion": "El estimado no incluye la autorretención.",
         "persona_natural_no_soportada": "Vencimiento de persona jurídica; persona natural aún no.",
-        "requisitos_por_confirmar": "Confirma con el Contador si la empresa está obligada."
+        "requisitos_por_confirmar": "Confirma con el Contador si la empresa está obligada.",
+        "perfil_por_revisar": "Perfil por revisar: hay datos sin definir.",
+        "iva_anual_simple": "IVA anual consolidado del SIMPLE, separado de los anticipos bimestrales.",
+        "anticipo_simple": "Anticipo del SIMPLE; el IVA anual va aparte.",
+        "regimen_especial": "Régimen tributario especial: confirme formularios y anexos con el Contador.",
+        "cambio_vigencia_en_periodo": "Más de una vigencia en este período: revisar procedencia.",
+        "periodo_sin_perfil_completo": "Parte del período no tiene perfil."
       },
       "vence": {
-        "sinCargar": "Calendario {anio} sin cargar",
         "sinNit": "Falta el NIT",
-        "noEncontrado": "No está en el calendario",
         "municipal": "Confirmar con el municipio",
-        "pendienteActivar": "Calendario pendiente"
+        "pendienteActivar": "Calendario pendiente",
+        "incompleto": "Calendario {anio} incompleto: no se pueden determinar vencimientos",
+        "incompletoObligacion": "Calendario {anio} incompleto: falta esta fecha"
       },
       "verBorrador": "Ver borrador",
       "verReporte": "Ver reporte",
       "informes": "Informes en Reportes:",
       "informeImpuestos": "Impuestos",
       "informeRetenciones": "Retenciones practicadas",
-      "certificados": "Certificados de retención"
+      "certificados": "Certificados de retención",
+      "calendarioIncompleto": {
+        "titulo": "Calendario {anio} incompleto: no se pueden determinar vencimientos",
+        "descripcion": "Faltan fechas del calendario oficial. Esto no significa que la empresa no tenga obligaciones: las de abajo siguen vigentes y su vencimiento queda por determinar."
+      },
+      "cambioVigencia": "Cambio de vigencia: revisar procedencia",
+      "cambioVigenciaAviso": {
+        "titulo": "Cambio de vigencia dentro del período: revisar procedencia",
+        "descripcion": "Algún período tiene más de una vigencia del perfil. GO Admin no usa el perfil del último día ni calcula el valor: confirme con el Contador si el cambio procede."
+      },
+      "revisarPerfil": "Revisar perfil"
     },
     "iva": {
       "titulo": "Borrador de IVA",
@@ -45624,7 +45756,7 @@
       },
       "pendiente": {
         "titulo": "Pendiente de activar",
-        "descripcion": "Los anticipos a proveedores necesitan una actualización de la base de datos que todavía no se ha aplicado. Cuando se active, aquí verás los anticipos y su saldo."
+        "descripcion": "Los anticipos a proveedores necesitan una actualización de la base de datos que todavía no se ha aplicado (naturaleza, retenciones y cuenta de detalle). Cuando se active, aquí verás los anticipos y su saldo."
       },
       "buscar": {
         "placeholder": "Buscar proveedor",
@@ -45647,7 +45779,8 @@
         "aplicado": "Aplicado",
         "saldo": "Saldo",
         "estado": "Estado",
-        "comprobante": "Comprobante"
+        "comprobante": "Comprobante",
+        "retencion": "Retención"
       },
       "kpis": {
         "etiqueta": "Resumen de anticipos",
@@ -45662,7 +45795,8 @@
         "aplicar": "Aplicar a factura",
         "aplicarDe": "Aplicar el anticipo de {proveedor} a una factura",
         "devolver": "Registrar devolución",
-        "anular": "Anular"
+        "anular": "Anular",
+        "conciliacion": "Conciliación"
       },
       "anticipo": {
         "titulo": "Nuevo anticipo a proveedor",
@@ -45721,24 +45855,44 @@
         "quePasaBanco": "Entran {monto} a {origen}, el anticipo queda en {saldo} y se registra el asiento contra la cuenta de anticipos.",
         "confirmar": "Registrar devolución",
         "confirmarMonto": "Registrar {monto}",
-        "exito": "Se registró la devolución de {monto} de {cliente}."
+        "exito": "Se registró la devolución de {monto} de {cliente}.",
+        "soporte": "Soporte (consignación, recibo o transferencia)",
+        "retencionProporcional": "Si el anticipo tuvo retención, se revierte la parte que corresponde a lo devuelto: entra a la caja o al banco lo que el proveedor regresa."
       },
       "anular": {
         "titulo": "Anular anticipo",
         "descripcion": "Anticipo a {proveedor} por {monto} (comprobante {recibo}).",
-        "confirmar": "Anular anticipo",
+        "confirmar": "Anular por error",
         "consecuenciasTitulo": "Al anular",
         "consecuencias": {
           "pago": "El pago queda anulado; si fue en efectivo, vuelve al arqueo de la caja.",
           "saldo": "El saldo a favor del proveedor queda en cero.",
-          "asiento": "Se registra el contra-asiento del anticipo."
+          "asiento": "Se registra el contra-asiento completo (también de las retenciones) en la fecha del ajuste."
         },
-        "rapidos": {
-          "error": "Registrado por error",
-          "duplicado": "Duplicado",
-          "proveedor": "El proveedor no lo recibió"
+        "exito": "Se anuló el anticipo a {proveedor}.",
+        "pregunta": "¿Qué pasó con el dinero?",
+        "soloSiNoOcurrio": "Solo se anula si el desembolso no ocurrió.",
+        "opciones": {
+          "noOcurrio": {
+            "titulo": "El desembolso no ocurrió",
+            "ayuda": "Se registró por error: el dinero nunca salió (transferencia rechazada, registro duplicado)."
+          },
+          "siSalio": {
+            "titulo": "El dinero sí salió al proveedor",
+            "ayuda": "Anular no puede devolver el dinero a la caja o al banco."
+          }
         },
-        "exito": "Se anuló el anticipo a {proveedor}."
+        "siSalio": {
+          "titulo": "No se anula",
+          "descripcion": "Si el dinero salió y no ha regresado, sigue siendo un derecho frente al proveedor. Si el proveedor lo devolvió, registra la devolución con su soporte.",
+          "mantener": "Mantener el anticipo"
+        },
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Por qué el desembolso no ocurrió",
+        "soporte": "Soporte de la corrección",
+        "soporteAyuda": "Por ejemplo: extracto con el rechazo, número del registro duplicado.",
+        "fechaAjuste": "Fecha del ajuste",
+        "fechaAjusteAyuda": "La del documento que soporta la corrección. No se cambia la fecha original ni un periodo cerrado."
       },
       "validacion": {
         "vacio": "Escribe un valor mayor que cero.",
@@ -45748,7 +45902,12 @@
         "sucursal": "Elige la sucursal.",
         "metodo": "Elige el método de pago.",
         "referencia": "Este método exige referencia.",
-        "motivo": "Escribe el motivo (mínimo 3 caracteres)."
+        "motivo": "Escribe el motivo (mínimo 3 caracteres).",
+        "naturaleza": "Elige la naturaleza del anticipo.",
+        "tarifaIva": "Elige el IVA de la operación.",
+        "conceptoFuente": "Elige el concepto de retención en la fuente.",
+        "soporte": "Escribe el soporte (mínimo 3 caracteres).",
+        "fechaAjuste": "Elige una fecha que no sea futura."
       },
       "errores": {
         "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
@@ -45793,8 +45952,111 @@
         "proveedor_no_encontrado": "No se encontró el proveedor.",
         "proveedor_distinto": "La factura es de otro proveedor.",
         "cuenta_no_encontrada": "No se encontró la cuenta por pagar.",
-        "sin_cuenta_anticipos": "Falta la cuenta de anticipos a proveedores (1330): configúrala en Configuración contable.",
-        "sin_cuenta_por_pagar": "Falta la regla contable de pago a proveedores."
+        "sin_cuenta_anticipos": "Falta la cuenta de detalle de anticipos a proveedores: configúrala en Configuración contable.",
+        "sin_cuenta_por_pagar": "Falta la regla contable de pago a proveedores.",
+        "naturaleza_obligatoria": "Elige la naturaleza del anticipo.",
+        "tarifa_iva_obligatoria": "Elige el IVA de la operación.",
+        "tarifa_iva_invalida": "La organización no tiene esa tarifa de IVA.",
+        "concepto_retencion_invalido": "El concepto de retención no es válido.",
+        "concepto_retefuente_obligatorio": "Elige el concepto de retención en la fuente.",
+        "retencion_excede_monto": "Las retenciones igualan o superan el valor del anticipo.",
+        "cuenta_anticipos_no_configurada": "Pendiente contable: configura la cuenta de detalle de anticipos a proveedores.",
+        "cuenta_anticipos_no_detalle": "Pendiente contable: la cuenta de anticipos configurada no es un auxiliar de detalle bajo 1330.",
+        "cxp_sin_causacion": "La cuenta por pagar no tiene un asiento de causación vigente: no se puede aplicar.",
+        "soporte_obligatorio": "Escribe el soporte.",
+        "anulacion_requiere_declaracion": "Solo se anula si el desembolso no ocurrió.",
+        "fecha_ajuste_futura": "La fecha del ajuste no puede ser futura.",
+        "fecha_ajuste_anterior_al_anticipo": "La fecha del ajuste no puede ser anterior al anticipo.",
+        "periodo_cerrado": "El periodo contable de esa fecha está cerrado.",
+        "contra_asiento_no_creado": "No se pudo registrar el contra-asiento. Revisa el plan de cuentas.",
+        "asiento_no_encontrado": "No se encontró el asiento del anticipo."
+      },
+      "cuentaPendiente": {
+        "titulo": "Pendiente contable: cuenta de anticipos a proveedores",
+        "sinConfigurar": "Configura en Configuración contable la cuenta «Anticipos a proveedores» con un auxiliar de detalle bajo 1330. 1330 es una cuenta título: no se usa. Mientras tanto no se registran anticipos.",
+        "sinConfigurarSugerida": "Configura en Configuración contable la cuenta «Anticipos a proveedores». Tu plan ya tiene {sugerida}, un auxiliar de detalle bajo 133005. Mientras tanto no se registran anticipos.",
+        "noDetalle": "La cuenta configurada ({cuenta}) no es un auxiliar de detalle bajo 1330. Elige una de detalle en Configuración contable; mientras tanto no se registran anticipos.",
+        "configurar": "Ir a Configuración contable"
+      },
+      "retenciones": {
+        "naturaleza": "Naturaleza del anticipo",
+        "naturalezas": {
+          "financiacion": {
+            "titulo": "Anticipo de financiación",
+            "ayuda": "El proveedor lo amortiza con su factura. La retención se practica al causar la factura."
+          },
+          "pago_anticipado_precio": {
+            "titulo": "Pago anticipado del precio",
+            "ayuda": "Es parte del precio de la compra. Las retenciones se evalúan ahora, al girar."
+          }
+        },
+        "tarifaIva": "IVA de la operación",
+        "tarifaIvaPlaceholder": "Elige la tarifa",
+        "sinIva": "Sin IVA",
+        "tarifa": "IVA {tarifa} %",
+        "conceptoFuente": "Concepto de retención en la fuente",
+        "conceptoPlaceholder": "Elige el concepto",
+        "conceptoIca": "ReteICA del municipio",
+        "conceptoIcaAyuda": "La retención de ICA depende de la norma municipal.",
+        "icaSinConfirmar": "Sin confirmar (queda pendiente)",
+        "titulo": "Retenciones evaluadas",
+        "completa": "Elige el proveedor, el valor y los datos de arriba para evaluar las retenciones.",
+        "clases": {
+          "retefuente": "Retención en la fuente",
+          "reteiva": "ReteIVA",
+          "reteica": "ReteICA"
+        },
+        "estados": {
+          "practicar": "Se practica",
+          "no_aplica": "No aplica",
+          "pendiente": "Pendiente"
+        },
+        "sobreBase": "{tarifa} % sobre {base}",
+        "total": "Retención total",
+        "girado": "Sale de la caja o del banco",
+        "pendienteTitulo": "Pendiente contable",
+        "pendienteDescripcion": "{clases}: no se pudo evaluar con los datos de hoy. No se asume cero: el anticipo queda marcado para que el Contador lo revise.",
+        "pendienteCorto": "Pendiente",
+        "pendienteListadoTitulo": "{count, plural, one {# anticipo con retención pendiente} other {# anticipos con retención pendiente}}",
+        "pendienteListadoDescripcion": "Faltó una regla, el perfil tributario, los datos del proveedor o la norma municipal de ICA. Revísalos con el Contador.",
+        "motivos": {
+          "financiacion_se_retiene_al_causar": "Anticipo de financiación: la retención se practica al causar con la factura.",
+          "sin_perfil_tributario": "La organización no tiene un perfil tributario vigente.",
+          "perfil_requiere_revision": "El perfil tributario vigente está marcado para revisión.",
+          "organizacion_no_agente_retencion": "La organización no es agente de retención en la fuente.",
+          "proveedor_autorretenedor": "El proveedor es autorretenedor.",
+          "proveedor_regimen_simple": "El proveedor está en el régimen simple de tributación.",
+          "proveedor_sin_datos_fiscales": "Faltan los datos fiscales del proveedor (régimen y responsabilidades).",
+          "sin_regla_retefuente": "No hay un concepto de retención en la fuente configurado.",
+          "concepto_sin_elegir": "Elige el concepto de retención en la fuente de la operación.",
+          "sin_uvt": "Falta el valor de la UVT del año.",
+          "bajo_base_minima": "La base no llega a la base mínima del concepto.",
+          "operacion_sin_iva": "La operación no lleva IVA.",
+          "organizacion_no_agente_reteiva": "La organización no es agente de retención de IVA.",
+          "proveedor_no_responsable_iva": "El proveedor no es responsable de IVA.",
+          "ambos_grandes_contribuyentes": "Entre grandes contribuyentes no se practica reteIVA.",
+          "sin_regla_reteiva": "No hay una retención de IVA configurada.",
+          "sin_regla_reteica_municipal": "No hay una retención de ICA configurada para el municipio.",
+          "norma_municipal_sin_confirmar": "Falta confirmar la norma municipal de ICA: elige la retención del municipio.",
+          "valor_cero": "La retención da cero.",
+          "cuenta_retencion_no_valida": "La cuenta de la retención no es de movimiento en el plan."
+        }
+      },
+      "conciliacion": {
+        "archivo": "conciliacion-anticipos-proveedores.csv",
+        "exito": "Conciliación de {anticipos} anticipos descargada.",
+        "cuenta": "Cuenta",
+        "naturaleza": "Naturaleza",
+        "girado": "Girado",
+        "retencionDescontada": "Retención descontada",
+        "devuelto": "Devuelto",
+        "anulado": "Anulado",
+        "saldoLibros": "Saldo en libros",
+        "cuadra": "Cuadra",
+        "anticipos": "Anticipos",
+        "auxiliarNit": "Auxiliar por NIT",
+        "si": "Sí",
+        "no": "No"
       }
     },
     "dinero": {
@@ -47833,6 +48095,246 @@
       "factura_compra_no_creada": "La liquidación quedó registrada, pero no se pudo crear la factura de compra. Créala desde Facturas de compra.",
       "asiento_no_creado": "No se pudo registrar el asiento. Revisa el plan de cuentas y el periodo contable.",
       "error_desconocido": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "finanzasIva300": {
+    "titulo": "Formulario 300 por casillas",
+    "excel": "Excel",
+    "cargando": "Calculando el borrador…",
+    "pendienteActivar": "El borrador por casillas se activa cuando se aplique su actualización de la base de datos. Mientras tanto, abajo sigue la vista por tarifa.",
+    "cerrar": "Cerrar",
+    "verOrigen": "Ver origen ({n})",
+    "masOrigenes": "Y {n} más (descargue el Excel para verlos todos).",
+    "casillaN": "Casilla {n}",
+    "formularioMiles": "En el formulario (a miles): {base} · {iva}",
+    "baseIva": "Base {base} · IVA {iva}",
+    "clasificarLinea": "Clasificar línea",
+    "conciliacion": "Conciliación con libros (2408): libro {libro} = casillas {casillas} + pendientes {pendientes} + otros movimientos {otros} + redondeo líneas/libros {redondeo}. Diferencia {diferencia}.",
+    "columnas": {
+      "casilla": "Casilla",
+      "concepto": "Concepto",
+      "valor": "Valor",
+      "formulario": "Formulario (a miles)",
+      "diferencia": "Diferencia de redondeo",
+      "origenes": "Origen",
+      "casillaBase": "Casilla base",
+      "base": "Base",
+      "casillaIva": "Casilla IVA",
+      "iva": "IVA"
+    },
+    "conceptos": {
+      "ventas_5": "Ventas gravadas al 5 %",
+      "ventas_general": "Ventas a tarifa general",
+      "devoluciones_compras": "Devoluciones en compras",
+      "compras_bienes_5": "Compras nacionales de bienes al 5 %",
+      "compras_bienes_general": "Compras nacionales de bienes a tarifa general",
+      "compras_servicios_5": "Servicios nacionales al 5 %",
+      "compras_servicios_general": "Servicios nacionales a tarifa general",
+      "devoluciones_ventas": "Devoluciones en ventas"
+    },
+    "banda": {
+      "conciliado": "Borrador conciliado con libros — no es una declaración ni está aprobado fiscalmente",
+      "descripcion": "«Conciliado» solo dice que cuadra con la cuenta 2408. La revisión y el visto bueno tributario los da el Contador; nada se presenta ante la DIAN desde aquí.",
+      "noConciliado": "El borrador no concilia con los libros",
+      "diferencia": "Diferencia con la cuenta 2408: {valor}. Revise los pendientes antes de usar estas cifras."
+    },
+    "declarado": {
+      "titulo": "Período registrado como declarado",
+      "descripcion": "Formulario {numero}, presentado el {fecha}. Lo grabado después se señala.",
+      "registrar": "Registrar como declarado",
+      "editar": "Datos de la declaración",
+      "dialogoTitulo": "¿Registrar el período como declarado?",
+      "dialogoDescripcion": "Del {desde} al {hasta}. Solo deja constancia de que la empresa ya presentó el formulario; no presenta nada ni aprueba el borrador.",
+      "guardar": "Registrar",
+      "quitar": "Quitar registro",
+      "numero": "Número del formulario",
+      "fecha": "Fecha de presentación"
+    },
+    "alertas": {
+      "titulo": "Operaciones entre períodos",
+      "entrePeriodos": "{n} nota(s) crédito de facturas de un período anterior: van a devoluciones (42/79) en este período.",
+      "deOtroPeriodo": "{n} compra(s) de un período anterior con IVA marcado para descontarse en este.",
+      "grabadosDespues": "{n} asiento(s) grabados después de declarar su período:"
+    },
+    "resumen": {
+      "generado": "IVA generado (58 + 59 + 66)",
+      "descontable": "IVA descontable (71 + 72 + 74 + 75 + 79)",
+      "diferencia": "Diferencia preliminar",
+      "nota": "No es el saldo a pagar: faltan las casillas por diligenciar (saldo a favor anterior, retenciones de IVA que le practicaron, ajustes y sanciones) y los pendientes.",
+      "formulario": "Formulario: {valor}"
+    },
+    "pendientes": {
+      "titulo": "Pendientes de clasificar",
+      "ninguno": "No hay pendientes en este período."
+    },
+    "motivos": {
+      "sin_clasificar": "Líneas sin clasificar",
+      "tarifa_inconsistente": "La tarifa clasificada no coincide con el IVA de la línea",
+      "sin_tipo_operacion": "Falta el tipo de operación (bienes o servicios)",
+      "operacion_especial": "Operación especial (licores, AIU, importación, retiro, otra)",
+      "tarifa_no_prevista": "Tarifa distinta de 5 % o 19 %",
+      "exenta_sin_soporte": "Exenta sin fundamento ni soporte",
+      "casilla_por_confirmar": "Exentas, excluidas o no sujetas: casilla por confirmar con el Contador",
+      "descontable_por_evaluar": "IVA de compras por evaluar (no se descuenta automáticamente)",
+      "no_descontable_en_2408": "IVA marcado no descontable pero contabilizado en 2408 (requiere ajuste)",
+      "descontable_en_otro_periodo": "IVA que se descuenta en otro período",
+      "sin_lineas": "Documento con asiento pero sin líneas",
+      "no_cuadra": "Las líneas no cuadran con los libros (se muestra el valor de los libros)",
+      "documento_de_otro_periodo": "Documento con asiento de un período anterior",
+      "reversa_contable": "Reversa contable sin nota crédito",
+      "devolucion_compra_sin_descuento": "Devolución de compra cuyo IVA no se descontó",
+      "sin_soporte": "Movimiento de IVA sin soporte",
+      "otro_movimiento": "Otro movimiento de IVA"
+    },
+    "lados": {
+      "generado": "Ventas",
+      "descontable": "Compras",
+      "otros": "Otros"
+    },
+    "otros": {
+      "titulo": "Otros movimientos de IVA (2408)",
+      "registrar": "Indicar naturaleza",
+      "cambiar": "Cambiar",
+      "deducida": "deducida por el sistema"
+    },
+    "naturalezas": {
+      "pago_dian": "Pago a la DIAN",
+      "traslado_auxiliares": "Traslado entre auxiliares",
+      "cierre": "Cierre",
+      "devolucion_compra": "Devolución de compra",
+      "ajuste_procedente": "Ajuste procedente (con soporte)",
+      "importacion": "Importación",
+      "otro": "Otro",
+      "reversa_contable": "Reversa contable",
+      "sin_soporte": "Sin soporte"
+    },
+    "destinos": {
+      "no_afecta": "no crea IVA generado ni descontable",
+      "por_diligenciar": "va a «por diligenciar»",
+      "casilla": "casillas 56 y 66",
+      "pendiente": "pendiente"
+    },
+    "diligenciar": {
+      "titulo": "Casillas por diligenciar",
+      "ayuda": "Lo que falta para una liquidación completa. El sistema no las calcula.",
+      "porDiligenciar": "Por diligenciar",
+      "saldo_favor_anterior": "Saldo a favor del período anterior",
+      "retenciones_iva_sufridas": "Retenciones de IVA que le practicaron",
+      "ajustes": "Ajustes",
+      "sanciones": "Sanciones"
+    },
+    "clases": {
+      "venta_pos": "Venta POS",
+      "factura_venta": "Factura de venta",
+      "nota_credito": "Nota crédito",
+      "nota_debito": "Nota débito",
+      "factura_compra": "Factura de compra",
+      "documento_soporte": "Documento soporte",
+      "asiento": "Asiento"
+    },
+    "banderas": {
+      "entrePeriodos": "Entre períodos · factura {factura}",
+      "deOtroPeriodo": "De otro período",
+      "posterior": "Grabado después de declarar"
+    },
+    "naturaleza": {
+      "titulo": "Naturaleza del movimiento",
+      "descripcion": "Se clasifica por lo que es, no por ser manual o automático. Pago a la DIAN, traslado y cierre no crean IVA generado ni descontable.",
+      "guardar": "Guardar naturaleza",
+      "campo": "Naturaleza",
+      "elegir": "Elija una naturaleza",
+      "factura": "Número de la factura de compra",
+      "facturaAyuda": "La factura devuelta. Las casillas 56 y 66 solo se usan si su IVA se evaluó descontable.",
+      "base": "Base devuelta",
+      "soporte": "Soporte",
+      "soporteAyuda": "Nota crédito del proveedor, recibo de pago u otro documento."
+    },
+    "errores": {
+      "tratamiento_invalido": "Elija si la línea es gravada, exenta, excluida o no sujeta.",
+      "tarifa_invalida": "La tarifa no es válida: gravada lleva una tarifa mayor que 0; exenta, excluida y no sujeta, 0.",
+      "tipo_operacion_invalido": "El tipo de operación no es válido.",
+      "texto_largo": "El texto supera el máximo permitido.",
+      "descontable_solo_compras": "La procedencia del descontable solo aplica a compras y documento soporte.",
+      "descontable_invalido": "Elija la procedencia del IVA descontable.",
+      "porcentaje_invalido": "El porcentaje descontable debe estar entre 0 y 100.",
+      "motivo_requerido": "Escriba el motivo (soporte, destinación, proporcionalidad u oportunidad).",
+      "periodo_invalido": "La fecha o el período no son válidos.",
+      "naturaleza_invalida": "Elija la naturaleza del movimiento.",
+      "devolucion_sin_factura": "Indique la factura de compra devuelta y la base.",
+      "soporte_requerido": "Un ajuste procedente necesita su soporte.",
+      "asiento_invalido": "El asiento no es válido.",
+      "fecha_presentacion_invalida": "La fecha de presentación no puede ser anterior al fin del período.",
+      "periodo_solapado": "Ese período se cruza con otro ya registrado como declarado.",
+      "sin_permiso": "No tiene permiso para esta acción.",
+      "no_encontrado": "No se encontró la línea o el asiento en su organización.",
+      "pendiente_activar": "Esta función se activa cuando se aplique su actualización de la base de datos.",
+      "factura_no_encontrada": "No hay una factura de compra con ese número.",
+      "datos_invalidos": "Los datos no son válidos.",
+      "desconocido": "No se pudo guardar. Intente de nuevo."
+    },
+    "clasificar": {
+      "titulo": "Datos fiscales de la línea",
+      "descripcion": "La clasificación queda guardada en la línea; cambiar después el producto no la altera. No cambia importes ni impuestos.",
+      "guardar": "Guardar clasificación",
+      "linea": "Línea",
+      "baseIva": "Base · IVA",
+      "sugerenciaEtiqueta": "Sugerencia del producto",
+      "sugerencia": "{tratamiento} · {tarifa} % · {tipo}",
+      "sinSugerencia": "Sin sugerencia (el producto no lo indica)",
+      "tratamiento": "Tratamiento",
+      "tarifa": "Tarifa (%)",
+      "tipo": "Tipo de operación",
+      "tipoAyuda": "Bienes o servicios ubican la casilla; las especiales quedan pendientes.",
+      "sinTipo": "Sin indicar",
+      "elegir": "Elija",
+      "fundamento": "Fundamento",
+      "fundamentoAyuda": "Norma o soporte (opcional salvo en exentas).",
+      "fundamentoExenta": "Obligatorio en la práctica: sin fundamento ni soporte, el borrador deja la línea pendiente.",
+      "descontableTitulo": "Procedencia del IVA descontable",
+      "descontableAyuda": "Se evalúa soporte, destinación, proporcionalidad y oportunidad (ET arts. 485, 488, 490 y 496). Nunca se marca descontable automáticamente.",
+      "descontable": "Procedencia",
+      "porcentaje": "Porcentaje descontable (%)",
+      "periodo": "Se descuenta en el período del",
+      "periodoAyuda": "Vacío = el período del documento.",
+      "motivo": "Motivo",
+      "sinClasificar": "Sin clasificar",
+      "tratamientos": {
+        "gravada": "Gravada",
+        "exenta": "Exenta",
+        "excluida": "Excluida",
+        "no_sujeta": "No sujeta"
+      },
+      "tipos": {
+        "bienes": "Bienes",
+        "servicios": "Servicios",
+        "importacion": "Importación",
+        "aiu": "AIU",
+        "licores": "Licores",
+        "retiro_inventario": "Retiro de inventario",
+        "otra_especial": "Otra especial"
+      },
+      "descontables": {
+        "por_evaluar": "Por evaluar",
+        "descontable": "Descontable",
+        "no_descontable": "No descontable (al costo o gasto)",
+        "proporcional": "Proporcional"
+      },
+      "origenes": {
+        "sugerida": "sugerida",
+        "heredada": "de la factura acreditada",
+        "manual": "confirmada"
+      }
+    },
+    "panel": {
+      "titulo": "Datos fiscales de la línea",
+      "resumen": "{sinClasificar} sin clasificar · {porEvaluar} por evaluar",
+      "ayuda": "Cada línea guarda su clasificación de IVA para el formulario 300. Se sugiere del producto al crearla; confírmela o corríjala aquí.",
+      "cargando": "Cargando líneas…",
+      "pendiente": "La clasificación por línea se activa cuando se aplique su actualización de la base de datos.",
+      "vacio": "El documento no tiene líneas.",
+      "baseIva": "Base {base} · IVA {iva}",
+      "editar": "Editar",
+      "clasificar": "Clasificar"
     }
   }
 }

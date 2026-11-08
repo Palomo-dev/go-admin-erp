@@ -72,6 +72,7 @@ import { CertificadoRetencionesDialog, rangoMesDe } from '@/components/finanzas/
 import { RUTA_CXP, RUTA_PROVEEDORES, useBaseCompras } from '../rutasCompras';
 import { DialogoConfirmarCompra, DialogoRecepcionar, type RecepcionConLotes } from './DialogosCompra';
 import { useProductosConLote, useTextoErrorRecepcion } from '@/components/inventario/recepcion/LotesRecepcion';
+import { DatosFiscalesLineas } from '@/components/finanzas/tributario/iva/DatosFiscalesLineas';
 
 type DialogoAbierto = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | 'eliminar' | 'certificado' | null;
 
@@ -476,6 +477,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
           <Tarjeta titulo={td('lineas')} sinRelleno>
             <DocumentoLineas lineas={lineas} modo="lectura" moneda={ctxMoneda} etiqueta={td('lineas')} vacio={{ titulo: td('sinLineas') }} />
           </Tarjeta>
+          <DatosFiscalesLineas tipo="factura_compra" id={id} />
 
           <Tarjeta
             titulo={td('pagos.titulo')}

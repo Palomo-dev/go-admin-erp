@@ -64,6 +64,7 @@ import { EnviarFacturaDialog } from './EnviarFacturaDialog';
 import { NotaDebitoDialog } from '@/components/finanzas/notas/NotaDebitoDialog';
 import { facturaAdmiteNotaDebito } from '@/lib/finanzas/notas/contratoNotas';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { DatosFiscalesLineas } from '@/components/finanzas/tributario/iva/DatosFiscalesLineas';
 
 const RUTA_LISTADO = '/app/finanzas/facturas-venta';
 
@@ -390,6 +391,7 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
           <div className="flex min-w-0 flex-col gap-4 lg:col-span-2 lg:gap-6">
             <DocumentoLineas lineas={lineas} modo="lectura" moneda={ctxMoneda} etiqueta={t('detalle.lineas')} estado={cargando ? 'cargando' : 'listo'} />
+            <DatosFiscalesLineas tipo="factura_venta" id={factura.id} />
 
             <Tarjeta titulo={t('pagos.titulo')} sinRelleno>
               {(datos?.pagos.length ?? 0) === 0 ? (

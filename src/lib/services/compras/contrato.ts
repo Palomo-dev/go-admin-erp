@@ -400,7 +400,12 @@ export interface CuotaEntrada {
 export interface MovimientoEstadoCuenta {
   fecha: string;
   dia: string;
-  tipo: 'factura' | 'cuenta' | 'pago';
+  /**
+   * Los cuatro movimientos del anticipo (20261108170000): `anticipo` (abono por el bruto),
+   * `aplicacion_anticipo` (cargo = retención que la factura había repetido), `devolucion_anticipo`
+   * y `anulacion_anticipo` (cargo). El saldo es la posición neta con el proveedor.
+   */
+  tipo: 'factura' | 'cuenta' | 'pago' | 'anticipo' | 'aplicacion_anticipo' | 'devolucion_anticipo' | 'anulacion_anticipo';
   documento: string | null;
   ref_id: string;
   vence: string | null;

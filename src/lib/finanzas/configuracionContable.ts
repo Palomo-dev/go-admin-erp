@@ -48,6 +48,8 @@ export const CLAVES_CONTABLES = [
   'redondeo_en_contra',
   'compra_servicio',
   'ingresos_diversos',
+  // Anticipos ENTREGADOS a proveedores (P6 del Contador): un auxiliar de detalle bajo 1330, nunca 1330.
+  'anticipos_proveedores',
 ] as const;
 
 export type ClaveContable = (typeof CLAVES_CONTABLES)[number];
@@ -65,6 +67,7 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'caja', nombre: 'Caja', grupo: 'Tesorería', ayuda: 'Reemplaza el 1105 cuando la regla usa caja.' },
   { clave: 'bancos', nombre: 'Bancos', grupo: 'Tesorería', ayuda: 'Reemplaza el 1110. El auxiliar de un banco concreto no se toca.' },
   { clave: 'anticipos', nombre: 'Anticipos', grupo: 'Tesorería', ayuda: 'Reemplaza el 2805, anticipos y avances recibidos.' },
+  { clave: 'anticipos_proveedores', nombre: 'Anticipos a proveedores', grupo: 'Cartera', ayuda: 'Auxiliar de detalle bajo 1330 (p. ej. 13300501 bajo 133005). 1330 es título: sin esta cuenta no se registran anticipos.' },
   { clave: 'clientes', nombre: 'Clientes', grupo: 'Cartera', ayuda: 'Reemplaza el 1305, salvo préstamos a trabajadores.' },
   { clave: 'proveedores', nombre: 'Proveedores', grupo: 'Cartera', ayuda: 'Reemplaza el 2205 y el 2105 que las reglas viejas usaban como proveedores.' },
   { clave: 'ventas_productos', nombre: 'Ventas de productos', grupo: 'Ventas', ayuda: 'Ingreso al crédito en 4135, 414015, 4145 o 4105.' },
@@ -328,6 +331,8 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   redondeo_en_contra: '53959501',
   compra_servicio: '23359501',
   ingresos_diversos: '42959501',
+  // Solo se propone si existe en el plan y es de movimiento (el asistente no crea cuentas).
+  anticipos_proveedores: '13300501',
 };
 
 /** Misma tabla que `fn_propuesta_configuracion_sector` en la migración. */

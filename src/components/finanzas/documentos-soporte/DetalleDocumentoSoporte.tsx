@@ -46,6 +46,7 @@ import { TablaVistaPrevia, vistaPreviaAsientoDocumento, type VistaPreviaAsiento 
 import type { DetalleSoporte } from '@/lib/finanzas/soporte/contratoSoporte';
 import { BADGE_DIAN, BADGE_DOCUMENTO, accionesSoporte, eliminarEnProveedorPrimero, estadoDian, estadoDocumento } from '@/lib/finanzas/soporte/soporteLogica';
 import { impuestosDeLineasSoporte, nombreMedioPago } from '@/lib/finanzas/soporte/detalleSoporteLogica';
+import { DatosFiscalesLineas } from '@/components/finanzas/tributario/iva/DatosFiscalesLineas';
 import {
   ErrorPeticionSoporte,
   descargarXmlSoporte,
@@ -315,6 +316,7 @@ export function DetalleDocumentoSoporte({ id }: { id: string }) {
             </Tarjeta>
 
             <DocumentoLineas lineas={lineas} modo="lectura" moneda={ctxMoneda} etiqueta={t('detalle.lineas')} estado={cargando ? 'cargando' : 'listo'} />
+            <DatosFiscalesLineas tipo="documento_soporte" id={id} />
 
             {d.observacion && (
               <Tarjeta titulo={t('detalle.observaciones')}>

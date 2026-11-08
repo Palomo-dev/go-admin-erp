@@ -1,0 +1,97 @@
+Resultado de 10_iva_clasificacion_y_300.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585), períodos 2026-11-01 a 2026-11-30 y 2026-10-01 a 2026-10-31.
+Migraciones 20261108150000, 20261108150500 y 20261108151000 pegadas DENTRO de la transacción (no están aplicadas).
+Transacción revertida (rollback): no quedó ningún documento, asiento, producto ni registro. Los ids cambian en cada corrida.
+
+CORRIDA FINAL (script corregido, el de este repositorio): 60 verificaciones · 60 «true» · 0 fallas.
+Filas re-verificadas en la corrida final: 33 «52 300300→300000 (dif −300) · 74 15015→15000 (dif −15)»; 36-40 «base 50000 ·
+IVA 0», «base 400000 · IVA 0», «base 30000 · IVA 0», «base 100000 · IVA 19000», «base 50000 · IVA 9500» (1 origen cada una);
+49 «libro −353615 = casillas −267015 + pendientes −55600 + otros −31000 + redondeo 0 · diferencia 0».
+
+Historial honesto de corridas anteriores (mismas migraciones, sin cambios en las funciones):
+- 1.ª: falló antes de las verificaciones porque la prueba forzaba el control de cuadre inmediato mientras se emitía la nota
+  crédito (que arma su asiento en varios pasos); el script ahora lo deja diferido durante la emisión, como en la aplicación.
+- 2.ª: 54 de 60 «true»; las filas 33 y 36 a 40 comparaban el texto «300300» con «300300.00» (numeric con 2 decimales). Los
+  valores eran los esperados; el script pasó a comparar con round().
+
+Documentos (todos por las vías normales; cada uno con su asiento): ver encabezado del .sql. Productos B19, B5, S19, S5,
+EXC (excluido) y EXP (exento) con sus impuestos.
+
+── S · Sugerencia guardada en cada línea al crearla (disparador trg_zz_iva_clasificacion) ──
+ 1 | FV1 «Bien 19»            | gravada / 19 / bienes / sugerida                       | ok
+ 2 | FV1 «Servicio 5»         | gravada / 5 / servicios / sugerida                     | ok
+ 3 | FV1 «Bien excluido»      | excluida / 0 / bienes / sugerida (línea sin impuesto; sale del producto) | ok
+ 4 | FVX «Exportación»        | exenta / 0 / bienes / sugerida (SIN fundamento)        | ok
+ 5 | FCB «Bien 19»            | gravada / 19 / bienes / sugerida / por_evaluar         | ok
+ 6 | FCS «Servicio 5»         | gravada / 5 / servicios / sugerida / por_evaluar       | ok
+ 7 | DS «Servicio de aseo»    | gravada / 19 / (sin tipo: no tiene producto) / por_evaluar | ok
+ 8 | POS1 (IVA 19.000, tarifa 0 en la línea) | gravada / 19 / bienes (tarifa deducida) | ok
+ 9 | POS3 (sin producto ni IVA) | sin clasificar (NULL)                                | ok
+10 | Totales de FV1 sin cambios | subtotal 450.000 · IVA 62.000 · total 512.000        | ok
+
+── V · Validaciones al clasificar ──
+11 | «descontable» en una línea de venta → DESCONTABLE_SOLO_COMPRAS | ok
+12 | «no descontable» sin motivo → MOTIVO_REQUERIDO                  | ok
+13 | exenta con tarifa 19 % → TARIFA_INVALIDA                        | ok
+14 | L · fn_iva_lineas_documento(FCB): 2 líneas · descontable · sugerencia gravada | ok
+15 | Nota crédito de FVOCT: la línea HEREDA gravada / 19 / bienes de la línea acreditada | ok
+16 | Bitácora: 7 cambios de personas (FCB×2, FCS×2, FCND, FCOCT, DS) | ok
+
+── B · Borrador de noviembre por casillas (pedido por un usuario miembro) ──
+Casilla | Valor    | Origen
+27      |  100.000 | FV1 servicio al 5 %
+58      |    5.000 | FV1
+28      |  500.000 | FV1 300.000 + POS1 100.000 + POS2 100.000 (POS2 se conserva aunque su asiento se revirtió)
+59      |   95.000 | 57.000 + 19.000 + 19.000
+42      |  200.000 | NC de la factura de octubre, en el período de la NOTA (señalada «entre períodos»)
+79      |   38.000 | NC
+50      |  200.000 | FCB bien 5 %
+71      |   10.000 | FCB
+51      | 1.100.000| FCB 1.000.000 + FCOCT 100.000 (de octubre, descontable en noviembre; señalada «de otro período»)
+72      |  209.000 | 190.000 + 19.000
+52      |  300.300 | FCS servicio 5 %  → formulario 300.000 (diferencia de redondeo −300)
+74      |   15.015 | FCS               → formulario  15.000 (diferencia de redondeo −15)
+53      |  600.000 | FCS 500.000 + DS 100.000
+75      |  114.000 | 95.000 + 19.000
+56      |  100.000 | NCC1: devolución de FCB, cuyo IVA se evaluó «descontable»
+66      |   19.000 | NCC1
+(filas 17 a 35: ok; fila 33 = redondeo, ver aclaración)
+
+Pendientes (nunca se omiten):
+36 | generado / casilla_por_confirmar   | base  50.000 · IVA      0 | FV1 línea excluida (casilla no fijada por el Contador)
+37 | generado / exenta_sin_soporte      | base 400.000 · IVA      0 | FVX exportación sin fundamento
+38 | generado / sin_clasificar          | base  30.000 · IVA      0 | POS3
+39 | descontable / no_descontable_en_2408 | base 100.000 · IVA 19.000 | FCND (marcado no descontable, pero el asiento lo dejó en 2408)
+40 | descontable / descontable_por_evaluar | base 50.000 · IVA  9.500 | FCND línea sin evaluar
+41 | 5 grupos de pendientes por línea/documento | ok
+
+Otros movimientos de la 2408, por su naturaleza:
+42 | PAGO   bank_transactions D 2408 / C 11xx      | pago_dian / no afecta / −50.000       | ok
+43 | AJ     manual sin soporte                     | sin_soporte / PENDIENTE / −10.000     | ok
+44 | POS2   reversa contable (sin nota crédito)    | reversa_contable / PENDIENTE / −19.000 | ok
+45 | NCC1   devolución de compra de FCB (registrada) | devolucion_compra / casillas 56-66 / 19.000 | ok
+46 | NCC2   devolución de compra de FCND (registrada) | devolucion_compra / PENDIENTE (IVA no descontado) / 1.900 | ok
+
+47 | Resumen preliminar: generado 58+59+66 = 119.000 · descontable 71+72+74+75+79 = 386.015 · diferencia −267.015
+     · formulario (a miles) 119.000 / 386.000 / −267.000 | ok
+48 | Estado: «conciliado» · aprobado_fiscalmente = false · liquidacion_completa = false · 4 casillas por diligenciar
+     (saldo a favor anterior, retenciones de IVA sufridas, ajustes, sanciones) | ok
+49 | R · Conciliación con SELECT directo sobre journal_lines (2408, asientos publicados de noviembre):
+     libro −353.615 = casillas −267.015 + pendientes −55.600 + otros (no afectan / 56-66) −31.000 + redondeo 0 · diferencia 0 | ok
+     (pendientes −55.600 = −19.000 − 9.500 de FCND − 10.000 AJ − 19.000 reversa POS2 + 1.900 NCC2;
+      otros −31.000 = −50.000 pago + 19.000 NCC1; el arrastre de FCOCT no está en la 2408 de noviembre: efecto 0)
+
+── D · Operaciones entre períodos y período declarado ──
+50 | Octubre registrado como declarado (presentado el 5-nov): FVOCT y FCOCT, grabados el 7-nov, salen en «grabados después de declarar» | ok
+51 | Borrador de octubre: «periodo_declarado» = PRUEBA-300-OCT · 28 = 200.000 · 59 = 38.000 · FCOCT pendiente «se descuenta en otro período» 19.000 | ok
+
+── P · Controles ──
+52 | fn_tributario_borrador_iva_300 es STABLE (solo lectura) | ok
+53 | Período con «hasta» antes de «desde» → PERIODO_INVALIDO | ok
+54 | S · El producto B19 pasa a servicio y sin impuestos: la línea de FV1 sigue gravada / 19 / bienes | ok
+55 | Borrador: rol Empleado (sin finance.view) → SIN_PERMISO | ok
+56 | Clasificar: rol Empleado (sin finance.create) → SIN_PERMISO | ok
+57 | Registrar declarado: rol Empleado (sin finance.approve) → SIN_PERMISO | ok
+58 | No miembro de la 374 → «Acceso denegado a la organización» | ok
+59 | anon: borrador → permission denied | ok
+60 | anon: clasificar → permission denied | ok

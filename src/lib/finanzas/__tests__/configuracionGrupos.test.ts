@@ -9,14 +9,16 @@ describe('definicionesPorGrupo', () => {
     expect(new Set(claves).size).toBe(claves.length);
   });
 
-  test('conserva las 31 claves y redondeo_en_contra', () => {
-    expect(claves).toHaveLength(32);
+  test('conserva las 31 claves, redondeo_en_contra y anticipos_proveedores', () => {
+    expect(claves).toHaveLength(33);
     expect(claves).toContain('redondeo_en_contra');
+    // P6 del Contador: la cuenta de anticipos a proveedores se configura (nunca 1330 de respaldo).
+    expect(claves).toContain('anticipos_proveedores');
   });
 
   test('Tesorería y Cartera van juntas, y Ventas lleva los dos redondeos', () => {
     const grupos = Object.fromEntries(definicionesPorGrupo().map((g) => [g.grupo, g.definiciones.map((d) => d.clave)]));
-    expect(grupos.tesoreria_cartera).toEqual(expect.arrayContaining(['caja', 'bancos', 'clientes', 'proveedores', 'anticipos']));
+    expect(grupos.tesoreria_cartera).toEqual(expect.arrayContaining(['caja', 'bancos', 'clientes', 'proveedores', 'anticipos', 'anticipos_proveedores']));
     expect(grupos.ventas).toEqual(expect.arrayContaining(['ventas_productos', 'redondeo', 'redondeo_en_contra']));
   });
 

@@ -6,6 +6,10 @@
  *   sin tocar la base, y la RPC recibe la de la sesión.
  * - El permiso se resuelve en el servidor (crear y aplicar: finance.create;
  *   devolver y anular: finance.void); sin él, 403 sin RPC.
+ * - Correcciones del Contador (20261108170000): crear exige la naturaleza (P1) y
+ *   va a fn_anticipo_proveedor_registrar; la vista previa de retenciones no
+ *   escribe; anular exige declarar que el desembolso no ocurrió, con soporte (P7);
+ *   devolver exige soporte; la conciliación es de solo lectura (P6).
  * - Mientras la migración no esté aplicada (PGRST202/PGRST205/42P01), las
  *   escrituras responden 501 `pendiente_de_activar` y el listado `pendiente: true`,
  *   nunca un listado vacío que parezca cero.
@@ -87,6 +91,8 @@ import { GET as contexto } from '@/app/api/anticipos-proveedor/contexto/route';
 import { POST as aplicar } from '@/app/api/anticipos-proveedor/[id]/aplicar/route';
 import { POST as devolver } from '@/app/api/anticipos-proveedor/[id]/devolver/route';
 import { POST as anular } from '@/app/api/anticipos-proveedor/[id]/anular/route';
+import { POST as retenciones } from '@/app/api/anticipos-proveedor/retenciones/route';
+import { GET as conciliacion } from '@/app/api/anticipos-proveedor/conciliacion/route';
 
 const peticion = (url: string, body: unknown) =>
   new Request(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -98,11 +104,24 @@ beforeEach(() => {
   guion.errorTabla = null;
   guion.filas = [];
   guion.datos = {
-    fn_anticipo_proveedor_crear: { anticipo_id: ANTICIPO, grupo_id: 'g1', recibo: 'CE-000004', repetida: false, caja_id: 3, monto: 500 },
+    fn_anticipo_proveedor_registrar: { anticipo_id: ANTICIPO, grupo_id: 'g1', recibo: 'CE-000004', repetida: false, caja_id: 3, monto: 500, girado: 500, retencion: 0 },
+    fn_anticipo_proveedor_evaluar_retenciones: {
+      naturaleza: 'pago_anticipado_precio', monto: 1190000, base: 1000000, iva: 190000, total: 40000, neto: 1150000, pendiente: true,
+      clases: [
+        { clase: 'retefuente', estado: 'practicar', motivo: null, concepto: 'Retención 4%', tarifa: 4, base: 1000000, valor: 40000, cuenta: '23652501' },
+        { clase: 'reteiva', estado: 'no_aplica', motivo: 'organizacion_no_agente_reteiva', valor: 99 },
+        { clase: 'reteica', estado: 'pendiente', motivo: 'norma_municipal_sin_confirmar' },
+      ],
+      opciones: { retefuente: [{ id: 'r4', nombre: 'Retención 4%', tarifa: 4 }], reteica: [] },
+    },
+    fn_anticipos_proveedor_conciliacion: {
+      anticipos: [{ anticipo_id: ANTICIPO, proveedor: 'Proveedor uno', nit: '900', cuenta: '13300501', valor: 1000, aplicado: 400, devuelto: 0, anulado: 0, saldo: 600, saldo_libros: 600, cuadra: true }],
+      proveedores: [{ proveedor: 'Proveedor uno', nit: '900', anticipos: 1, saldo: 600, saldo_libros: 600, auxiliar_nit: 600 }],
+    },
     fn_anticipo_proveedor_aplicar: { aplicacion_id: 'a1', repetida: false, monto: 100 },
     fn_anticipo_proveedor_devolver: { payment_id: 'p1', repetida: false, monto: 50 },
-    fn_anticipo_proveedor_anular: { anticipo_id: ANTICIPO },
-    fn_cuenta_anticipo_proveedor: '1330',
+    fn_anticipo_proveedor_anular_por_error: { anticipo_id: ANTICIPO },
+    fn_cuenta_anticipo_proveedor_estado: { estado: 'ok', cuenta: '13300501', configurada: '13300501', sugerida: '13300501' },
   };
   rpcs.length = 0;
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -117,6 +136,7 @@ describe('POST /api/anticipos-proveedor', () => {
     metodo: 'transfer',
     referencia: 'TR-1',
     clave_idempotencia: 'anticipo:prueba-0001',
+    naturaleza: 'financiacion',
     ...extra,
   });
 
@@ -125,14 +145,18 @@ describe('POST /api/anticipos-proveedor', () => {
     expect(r.status).toBe(201);
     expect(rpcs).toEqual([
       {
-        nombre: 'fn_anticipo_proveedor_crear',
+        nombre: 'fn_anticipo_proveedor_registrar',
         args: {
           p_supplier: 45,
           p_branch: 7,
           p_monto: 500,
           p_metodo: 'transfer',
+          p_naturaleza: 'financiacion',
           p_clave_idempotencia: 'anticipo:prueba-0001',
           p_organization_id: ORG,
+          p_tarifa_iva: null,
+          p_retefuente: null,
+          p_reteica: null,
           p_cuenta_bancaria: null,
           p_referencia: 'TR-1',
           p_notas: null,
@@ -142,6 +166,33 @@ describe('POST /api/anticipos-proveedor', () => {
     // Una cuenta contable en el cuerpo no pasa la validación (zod estricto).
     const r2 = await crear(peticion('http://x/api/anticipos-proveedor', cuerpo({ cuenta: '1330' })), { params: Promise.resolve({}) });
     expect(r2.status).toBe(400);
+  });
+
+  test('P1: sin naturaleza (no hay valor por defecto) → 422 sin RPC; pago anticipado sin tarifa de IVA → 422', async () => {
+    const sin = cuerpo();
+    delete (sin as Record<string, unknown>).naturaleza;
+    const r = await crear(peticion('http://x/api/anticipos-proveedor', sin), { params: Promise.resolve({}) });
+    expect(r.status).toBe(422);
+    expect((await r.json()).codigo).toBe('naturaleza_obligatoria');
+    const r2 = await crear(peticion('http://x/api/anticipos-proveedor', cuerpo({ naturaleza: 'pago_anticipado_precio' })), { params: Promise.resolve({}) });
+    expect(r2.status).toBe(422);
+    expect((await r2.json()).codigo).toBe('tarifa_iva_obligatoria');
+    const r3 = await crear(peticion('http://x/api/anticipos-proveedor', cuerpo({ naturaleza: 'otra' })), { params: Promise.resolve({}) });
+    expect(r3.status).toBe(422);
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('P1: pago anticipado con tarifa y conceptos llega a la RPC; P6: sin cuenta de detalle → 409 pendiente contable', async () => {
+    const r = await crear(
+      peticion('http://x/api/anticipos-proveedor', cuerpo({ naturaleza: 'pago_anticipado_precio', tarifa_iva: 19, retefuente_id: CUENTA, reteica_id: null })),
+      { params: Promise.resolve({}) },
+    );
+    expect(r.status).toBe(201);
+    expect(rpcs[0].args).toMatchObject({ p_naturaleza: 'pago_anticipado_precio', p_tarifa_iva: 19, p_retefuente: CUENTA, p_reteica: null });
+    guion.errorRpc = { message: 'cuenta_anticipos_no_configurada', details: '{"estado":"sin_configurar","sugerida":null}' };
+    const r2 = await crear(peticion('http://x/api/anticipos-proveedor', cuerpo({ clave_idempotencia: 'anticipo:prueba-0002' })), { params: Promise.resolve({}) });
+    expect(r2.status).toBe(409);
+    expect((await r2.json()).codigo).toBe('cuenta_anticipos_no_configurada');
   });
 
   test('organización ajena en el body → 403 sin RPC', async () => {
@@ -159,7 +210,7 @@ describe('POST /api/anticipos-proveedor', () => {
   });
 
   test('migración sin aplicar → 501 pendiente_de_activar', async () => {
-    guion.errorRpc = { code: 'PGRST202', message: 'Could not find the function public.fn_anticipo_proveedor_crear' };
+    guion.errorRpc = { code: 'PGRST202', message: 'Could not find the function public.fn_anticipo_proveedor_registrar' };
     const r = await crear(peticion('http://x/api/anticipos-proveedor', cuerpo()), { params: Promise.resolve({}) });
     expect(r.status).toBe(501);
     expect((await r.json()).codigo).toBe('pendiente_de_activar');
@@ -178,7 +229,7 @@ describe('GET /api/anticipos-proveedor', () => {
     guion.errorTabla = { code: 'PGRST205', message: "Could not find the table 'public.supplier_advances' in the schema cache" };
     const r = await listar(new Request('http://x/api/anticipos-proveedor'), undefined as never);
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ pendiente: true, filas: [], cuenta: null });
+    expect(await r.json()).toEqual({ pendiente: true, filas: [], cuenta: null, estadoCuenta: null });
   });
 
   test('con datos: saldo, aplicado y devuelto por anticipo, y la cuenta resuelta en la base', async () => {
@@ -189,7 +240,9 @@ describe('GET /api/anticipos-proveedor', () => {
     const r = await listar(new Request('http://x/api/anticipos-proveedor'), undefined as never);
     const cuerpo = await r.json();
     expect(cuerpo.pendiente).toBe(false);
-    expect(cuerpo.cuenta).toBe('1330');
+    // P6: la cuenta de detalle configurada, nunca 1330 de respaldo.
+    expect(cuerpo.cuenta).toBe('13300501');
+    expect(cuerpo.estadoCuenta).toEqual({ estado: 'ok', cuenta: '13300501', configurada: '13300501', sugerida: '13300501' });
     expect(cuerpo.filas[0]).toMatchObject({ id: ANTICIPO, proveedor: 'Proveedor uno', valor: 1000, saldo: 600, estado: 'disponible', recibo: 'CE-1' });
   });
 
@@ -214,16 +267,48 @@ describe('aplicar, devolver y anular', () => {
 
   test('devolver y anular exigen finance.void', async () => {
     guion.permisos = new Set(['finance.view', 'finance.create']);
-    const r1 = await devolver(peticion(url('devolver'), { monto: 50, metodo: 'cash', motivo: 'Devuelve', clave_idempotencia: 'devolver:prueba1' }), params);
+    const r1 = await devolver(
+      peticion(url('devolver'), { monto: 50, metodo: 'cash', motivo: 'Devuelve', referencia: 'Recibo 12', clave_idempotencia: 'devolver:prueba1' }),
+      params,
+    );
     expect(r1.status).toBe(403);
-    const r2 = await anular(peticion(url('anular'), { motivo: 'Error de registro' }), params);
+    const r2 = await anular(peticion(url('anular'), { declaracion: 'desembolso_no_ocurrio', motivo: 'Error de registro', soporte: 'Extracto 11' }), params);
     expect(r2.status).toBe(403);
     expect(rpcs).toHaveLength(0);
   });
 
+  test('P7: devolver sin soporte → 422 sin RPC', async () => {
+    const r = await devolver(peticion(url('devolver'), { monto: 50, metodo: 'cash', motivo: 'Devuelve', clave_idempotencia: 'devolver:prueba1' }), params);
+    expect(r.status).toBe(422);
+    expect((await r.json()).codigo).toBe('soporte_obligatorio');
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('P7: anular sin declarar que el desembolso no ocurrió, o sin soporte → 409/422 sin RPC', async () => {
+    const r = await anular(peticion(url('anular'), { motivo: 'Error de registro' }), params);
+    expect(r.status).toBe(409);
+    expect((await r.json()).codigo).toBe('anulacion_requiere_declaracion');
+    const r2 = await anular(peticion(url('anular'), { declaracion: 'desembolso_no_ocurrio', motivo: 'Error de registro' }), params);
+    expect(r2.status).toBe(422);
+    expect((await r2.json()).codigo).toBe('soporte_obligatorio');
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('P7: anular por error va a fn_anticipo_proveedor_anular_por_error con soporte y fecha del ajuste', async () => {
+    const r = await anular(
+      peticion(url('anular'), { declaracion: 'desembolso_no_ocurrio', motivo: 'Transferencia rechazada', soporte: 'Extracto con el rechazo', fecha_ajuste: '2026-11-05' }),
+      params,
+    );
+    expect(r.status).toBe(200);
+    expect(rpcs[0]).toEqual({
+      nombre: 'fn_anticipo_proveedor_anular_por_error',
+      args: { p_anticipo: ANTICIPO, p_motivo: 'Transferencia rechazada', p_soporte: 'Extracto con el rechazo', p_fecha_ajuste: '2026-11-05', p_organization_id: ORG },
+    });
+  });
+
   test('anular con aplicaciones → 409 anticipo_usado', async () => {
     guion.errorRpc = { message: 'anticipo_usado' };
-    const r = await anular(peticion(url('anular'), { motivo: 'Error de registro' }), params);
+    const r = await anular(peticion(url('anular'), { declaracion: 'desembolso_no_ocurrio', motivo: 'Error de registro', soporte: 'Extracto 11' }), params);
     expect(r.status).toBe(409);
     expect((await r.json()).codigo).toBe('anticipo_usado');
   });
@@ -250,5 +335,49 @@ describe('GET /api/anticipos-proveedor/contexto', () => {
   test('proveedor no numérico → 400', async () => {
     const r = await contexto(new Request('http://x/api/anticipos-proveedor/contexto?proveedor=abc'), undefined as never);
     expect(r.status).toBe(400);
+  });
+});
+
+describe('retenciones (P1) y conciliación (P6)', () => {
+  test('la vista previa usa la organización de la sesión y devuelve las clases tipadas (pendiente visible, no_aplica en cero)', async () => {
+    const r = await retenciones(
+      peticion('http://x/api/anticipos-proveedor/retenciones', { proveedor_id: 45, monto: 1190000, naturaleza: 'pago_anticipado_precio', tarifa_iva: 19, retefuente_id: CUENTA }),
+      { params: Promise.resolve({}) },
+    );
+    expect(r.status).toBe(200);
+    expect(rpcs[0]).toEqual({
+      nombre: 'fn_anticipo_proveedor_evaluar_retenciones',
+      args: { p_org: ORG, p_supplier: 45, p_naturaleza: 'pago_anticipado_precio', p_monto: 1190000, p_tarifa_iva: 19, p_retefuente: CUENTA, p_reteica: null },
+    });
+    const { resultado } = await r.json();
+    expect(resultado.pendiente).toBe(true);
+    expect(resultado.clases.map((c: { estado: string; valor: number }) => [c.estado, c.valor])).toEqual([['practicar', 40000], ['no_aplica', 0], ['pendiente', 0]]);
+  });
+
+  test('la vista previa exige finance.create y la naturaleza; organización ajena → 403', async () => {
+    guion.permisos = new Set(['finance.view']);
+    const r = await retenciones(peticion('http://x/api/anticipos-proveedor/retenciones', { proveedor_id: 45, monto: 10, naturaleza: 'financiacion' }), { params: Promise.resolve({}) });
+    expect(r.status).toBe(403);
+    guion.permisos = new Set(['finance.view', 'finance.create']);
+    const r2 = await retenciones(peticion('http://x/api/anticipos-proveedor/retenciones', { proveedor_id: 45, monto: 10 }), { params: Promise.resolve({}) });
+    expect((await r2.json()).codigo).toBe('naturaleza_obligatoria');
+    const r3 = await retenciones(
+      peticion('http://x/api/anticipos-proveedor/retenciones', { proveedor_id: 45, monto: 10, naturaleza: 'financiacion', organization_id: 999 }),
+      { params: Promise.resolve({}) },
+    );
+    expect(r3.status).toBe(403);
+    expect(rpcs).toHaveLength(0);
+  });
+
+  test('conciliación por anticipo y por proveedor con finance.view', async () => {
+    const r = await conciliacion(new Request('http://x/api/anticipos-proveedor/conciliacion'), undefined as never);
+    expect(r.status).toBe(200);
+    expect(rpcs[0]).toEqual({ nombre: 'fn_anticipos_proveedor_conciliacion', args: { p_org: ORG, p_supplier: null } });
+    const c = await r.json();
+    expect(c.anticipos[0]).toMatchObject({ anticipoId: ANTICIPO, saldo: 600, saldoLibros: 600, cuadra: true });
+    expect(c.proveedores[0]).toMatchObject({ saldo: 600, auxiliarNit: 600 });
+    guion.permisos = new Set();
+    const r2 = await conciliacion(new Request('http://x/api/anticipos-proveedor/conciliacion'), undefined as never);
+    expect(r2.status).toBe(403);
   });
 });

@@ -54,12 +54,31 @@ const PERFIL = {
       vigente_desde: '2026-01-01',
       vigente_hasta: null,
       regimen: 'ordinario',
-      responsabilidades: ['O-48'],
+      regimen_renta: 'ordinario',
+      condicion_iva: 'responsable',
+      gran_contribuyente: false,
+      autorretenedor: false,
+      agente_retencion_iva: false,
+      responsabilidades_rut: [],
+      motivo_cambio_periodicidad: null,
+      advertencias_aceptadas: [],
+      requiere_revision: false,
+      regimen_origen: null,
+      responsabilidades: [],
       agente_retencion: true,
       responsable_inc: false,
       periodicidad_iva: 'bimestral',
       notas: null,
     },
+  ],
+  error: null,
+};
+
+/** Dos vigencias: bimestral hasta junio de 2026 y cuatrimestral desde julio (cambio a mitad de año, con motivo). */
+const PERFIL_DOS = {
+  data: [
+    { ...PERFIL.data[0], id: '7f1c1d2e-3a4b-4c5d-8e9f-0a1b2c3d4e5f', vigente_desde: '2026-07-01', vigente_hasta: null, periodicidad_iva: 'cuatrimestral', motivo_cambio_periodicidad: 'otro' },
+    { ...PERFIL.data[0], vigente_hasta: '2026-06-30' },
   ],
   error: null,
 };
@@ -85,26 +104,75 @@ describe('perfil', () => {
     await expect(leerPerfil(ctx)).rejects.toMatchObject({ code: '42501' });
   });
 
-  test('guardar: la organización es la de la sesión y los errores se traducen', async () => {
-    const { ctx, llamadas } = doble({}, { fn_perfil_tributario_guardar: { data: 'nuevo-id', error: null } });
-    const datos = {
-      id: null,
-      vigenteDesde: '2026-01-01',
-      regimen: 'ordinario' as const,
-      responsabilidades: ['O-48'],
-      agenteRetencion: true,
-      responsableInc: false,
-      periodicidadIva: 'bimestral' as const,
-      notas: null,
-      ica: [],
-    };
-    await expect(guardarPerfil(ctx, datos)).resolves.toEqual({ id: 'nuevo-id' });
-    expect(llamadas[0].params.p_organization_id).toBe(42);
+  const datos = {
+    id: null,
+    vigenteDesde: '2027-01-01',
+    regimenRenta: 'ordinario' as const,
+    condicionIva: 'responsable' as const,
+    periodicidadIva: 'bimestral' as const,
+    granContribuyente: false,
+    autorretenedor: false,
+    agenteRetencionIva: false,
+    agenteRetencion: true,
+    responsableInc: false,
+    responsabilidades: [] as string[],
+    responsabilidadesRut: [] as string[],
+    motivoCambioPeriodicidad: null,
+    advertenciasAceptadas: [] as string[],
+    notas: null,
+    ica: [],
+  };
 
-    const sinFuncion = doble({}, {});
+  test('guardar: la organización es la de la sesión, va por la v2 y los errores se traducen', async () => {
+    const { ctx, llamadas } = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'nuevo-id', error: null } });
+    await expect(guardarPerfil(ctx, datos)).resolves.toEqual({ id: 'nuevo-id', advertencias: [] });
+    expect(llamadas[0]).toMatchObject({ rpc: 'fn_perfil_tributario_guardar_v2', params: { p_organization_id: 42, p_regimen_renta: 'ordinario', p_condicion_iva: 'responsable' } });
+
+    const sinFuncion = doble({ organization_tax_profiles: PERFIL }, {});
     await expect(guardarPerfil(sinFuncion.ctx, datos)).rejects.toMatchObject({ codigo: 'pendiente_activar', status: 501 });
-    const duplicada = doble({}, { fn_perfil_tributario_guardar: { data: null, error: { code: '23505' } } });
+    const duplicada = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: null, error: { code: '23505' } } });
     await expect(guardarPerfil(duplicada.ctx, datos)).rejects.toMatchObject({ codigo: 'vigencia_duplicada', status: 409 });
+    const enLaBase = doble(
+      { organization_tax_profiles: PERFIL },
+      { fn_perfil_tributario_guardar_v2: { data: null, error: { code: '22023', message: 'COMBINACION_CONTRADICTORIA', details: 'rut_iva_contradictorio' } as never } },
+    );
+    await expect(guardarPerfil(enLaBase.ctx, datos)).rejects.toMatchObject({ codigo: 'combinacion_contradictoria', status: 400, detalle: { bloqueos: ['rut_iva_contradictorio'] } });
+  });
+
+  test('guardar: sin la separación renta/IVA aplicada no se guarda (ni por la vía vieja)', async () => {
+    const { ctx, llamadas } = doble({ rut_responsabilidades: INEXISTENTE }, { fn_perfil_tributario_guardar: { data: 'x', error: null } });
+    await expect(guardarPerfil(ctx, datos)).rejects.toMatchObject({ codigo: 'pendiente_activar', status: 501 });
+    expect(llamadas).toEqual([]);
+  });
+
+  test('guardar: lo contradictorio no llega a la base; lo dudoso exige aceptarlo', async () => {
+    const contradictoria = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(contradictoria.ctx, { ...datos, condicionIva: 'no_responsable' })).rejects.toMatchObject({
+      codigo: 'combinacion_contradictoria',
+      status: 400,
+      detalle: { bloqueos: ['no_responsable_con_periodicidad'] },
+    });
+    expect(contradictoria.llamadas).toEqual([]);
+
+    const dudosa = { ...datos, regimenRenta: 'simple' as const, periodicidadIva: 'anual' as const, autorretenedor: true, responsabilidades: ['O-47', 'O-15'] };
+    const sinAceptar = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(sinAceptar.ctx, dudosa)).rejects.toMatchObject({ codigo: 'advertencias_sin_aceptar', status: 409, detalle: { pendientes: ['simple_con_autorretenedor'] } });
+    expect(sinAceptar.llamadas).toEqual([]);
+
+    const aceptada = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(aceptada.ctx, { ...dudosa, advertenciasAceptadas: ['simple_con_autorretenedor'] })).resolves.toEqual({ id: 'id', advertencias: ['simple_con_autorretenedor'] });
+    expect(aceptada.llamadas[0].params.p_advertencias_aceptadas).toEqual(['simple_con_autorretenedor']);
+  });
+
+  test('guardar: cambio de periodicidad a mitad de año sin motivo se bloquea; con motivo es advertencia', async () => {
+    const mitad = { ...datos, vigenteDesde: '2026-07-01', periodicidadIva: 'cuatrimestral' as const };
+    const sinMotivo = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(sinMotivo.ctx, mitad)).rejects.toMatchObject({ detalle: { bloqueos: ['periodicidad_cambio_sin_motivo'] } });
+    const conMotivo = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(conMotivo.ctx, { ...mitad, motivoCambioPeriodicidad: 'otro' })).rejects.toMatchObject({
+      codigo: 'advertencias_sin_aceptar',
+      detalle: { pendientes: ['periodicidad_cambio_a_mitad_de_anio'] },
+    });
   });
 });
 
@@ -160,6 +228,45 @@ describe('Centro tributario', () => {
     expect(pedido.params.p_organization_id).toBe(42);
     expect(new Date(String(pedido.params.p_from)).toISOString()).toBe('2026-10-01T05:00:00.000Z');
     expect(new Date(String(pedido.params.p_to)).toISOString()).toBe('2026-11-01T04:59:59.999Z');
+  });
+
+  test('calendario vacío: «incompleto» en cada obligación nacional, nunca «sin obligaciones»', async () => {
+    const { ctx } = doble(
+      { organizations: ORG, organization_tax_profiles: PERFIL, organization_tax_profile_ica: { data: [], error: null }, tax_calendar_dates: { data: [], error: null } },
+      {
+        fn_tributario_borrador_iva: { data: { totales: { saldo: 0, por_revisar: 0 }, renglones: [] }, error: null },
+        fn_reporte_retenciones_practicadas: { data: { totales: { total: 0 } }, error: null },
+      },
+    );
+    const r = await leerCentro(ctx, '2026-10');
+    expect(r.filas.length).toBeGreaterThan(0);
+    expect(r.calendario).toBe('activo');
+    expect(r.calendarioIncompleto).toEqual([2026]);
+    for (const f of r.filas) expect(f.vencimiento).toEqual({ estado: 'sin_cargar', anio: 2026 });
+  });
+
+  test('periodo con dos vigencias: «revisar procedencia», sin calcular ni usar el perfil del último día', async () => {
+    const { ctx, llamadas } = doble(
+      { organizations: ORG, organization_tax_profiles: PERFIL_DOS, organization_tax_profile_ica: { data: [], error: null }, tax_calendar_dates: { data: [], error: null } },
+      {
+        fn_tributario_borrador_iva: { data: { totales: { saldo: 5, por_revisar: 0 }, renglones: [] }, error: null },
+        fn_reporte_retenciones_practicadas: { data: { totales: { total: 0 } }, error: null },
+      },
+    );
+    const r = await leerCentro(ctx, '2026-10');
+    const iva = r.filas.filter((f) => f.obligacion.clave === 'iva');
+    // El cuatrimestre may–ago toca las dos vigencias; el bimestre sep–oct de la vigencia vieja no existe (ya no rige).
+    expect(iva.map((f) => f.obligacion.periodo.desde)).toEqual(['2026-05-01']);
+    expect(iva[0].obligacion.notas).toContain('cambio_vigencia_en_periodo');
+    expect(iva[0].valor).toEqual({ estado: 'revisar_procedencia' });
+    expect(llamadas.some((l) => l.rpc === 'fn_tributario_borrador_iva')).toBe(false);
+    // La retención de octubre solo toca la vigencia de julio: se calcula.
+    expect(r.filas.find((f) => f.obligacion.clave === 'retencion')!.valor).toMatchObject({ estado: 'calculado' });
+    // Con corte junio, el bimestre may–jun es de una sola vigencia (la bimestral).
+    const junio = await leerCentro(ctx, '2026-06');
+    const ivaJunio = junio.filas.find((f) => f.obligacion.clave === 'iva')!;
+    expect(ivaJunio.obligacion.periodo).toMatchObject({ desde: '2026-05-01', hasta: '2026-06-30' });
+    expect(ivaJunio.obligacion.notas).not.toContain('cambio_vigencia_en_periodo');
   });
 
   test('un corte futuro o inválido cae al mes anterior', async () => {

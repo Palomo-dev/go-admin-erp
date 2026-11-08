@@ -25,6 +25,8 @@ import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/Tesorer
 import { EnlaceAsiento } from '@/components/finanzas/contabilidad/piezas';
 import { tributarioCliente, RUTAS_TRIBUTARIO, type BorradorCliente } from '../tributarioCliente';
 import { AvisoBorradores, AvisoPendienteActivar, CabeceraTributario, ErrorLectura, codigoDe, type Lectura } from '../piezas';
+import { AvisoVigenciasPeriodo } from '../AvisoVigenciasPeriodo';
+import { Formulario300Seccion } from './Formulario300Seccion';
 
 type Fila =
   | { tipo: 'seccion'; id: string; etiqueta: string }
@@ -208,6 +210,7 @@ export function BorradorIvaPage() {
       />
 
       <AvisoBorradores />
+      {periodo && <AvisoVigenciasPeriodo desde={periodo.desde} hasta={periodo.hasta} />}
 
       <div className="grid max-w-xl gap-4 sm:grid-cols-2">
         <FormField etiqueta={t('periodicidad')}>
@@ -239,6 +242,9 @@ export function BorradorIvaPage() {
           )}
         </FormField>
       </div>
+
+      {/* Formulario 300 por casillas (v2, 20261108151000). Debajo sigue la vista por tarifa desde los libros (v1). */}
+      {periodo && <Formulario300Seccion desde={periodo.desde} hasta={periodo.hasta} />}
 
       {lectura.estado === 'error' && <ErrorLectura codigo={lectura.codigo} onReintentar={() => void cargar()} />}
       {pendiente && <AvisoPendienteActivar descripcion={t('pendiente')} />}

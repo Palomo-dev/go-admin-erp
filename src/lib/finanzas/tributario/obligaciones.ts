@@ -1,22 +1,39 @@
 /**
  * Obligaciones del periodo derivadas del perfil tributario (Centro tributario,
  * Figma 2335:136794) y su vencimiento según el calendario oficial cargado en
- * `tax_calendar_dates` (migración propuesta 20261108100500).
+ * `tax_calendar_dates` (migración 20261108100500).
  *
- * Regla del dueño: las fechas de la DIAN NO se adivinan. Si el año no está
- * cargado, el vencimiento es «sin cargar»; si falta el NIT, «sin NIT»; el ICA
- * es municipal y siempre «confirmar con el municipio». Sin React ni Supabase.
+ * Reglas del dueño y del Contador:
+ * - Las fechas de la DIAN NO se adivinan. Con el calendario de un año vacío, o
+ *   sin la fecha de una obligación, el vencimiento es «Calendario {año}
+ *   incompleto»: nunca se interpreta como ausencia de obligaciones.
+ * - Renta e IVA son campos separados (P5). Un dato sin definir no borra la
+ *   obligación: la muestra con «perfil por revisar».
+ * - Un periodo con más de una vigencia se señala y no se decide solo (P8).
+ * - El ICA es municipal y siempre «confirmar con el municipio».
+ * Sin React ni Supabase.
  */
-import { periodoCerradoAl, type Periodicidad, type PeriodoFiscal } from './periodos';
-import { RESPONSABILIDAD, type VigenciaPerfil } from './perfil';
+import { periodoCerradoAl, ultimoDiaDelMes, leerMes, type Periodicidad, type PeriodoFiscal } from './periodos';
+import { RESPONSABILIDAD, vigenciaEn, type VigenciaPerfil } from './perfil';
+import { analizarPeriodo, vigenciasEnRango } from './vigenciasPeriodo';
 
-export type ClaveObligacion = 'iva' | 'retencion' | 'ica' | 'inc' | 'renta' | 'simple' | 'exogena' | 'conciliacion_fiscal';
+export type ClaveObligacion =
+  | 'iva'
+  | 'retencion'
+  | 'ica'
+  | 'inc'
+  | 'renta'
+  | 'ingresos_patrimonio'
+  | 'simple'
+  | 'simple_anticipo'
+  | 'exogena'
+  | 'conciliacion_fiscal';
 
 /** De dónde sale el valor estimado y adónde lleva la fila. */
 export type FuenteValor = 'borrador_iva' | 'reporte_retenciones' | 'ninguna';
 
 export interface Obligacion {
-  /** Único en la lista (el ICA se repite por municipio). */
+  /** Único en la lista (el ICA se repite por municipio; el IVA puede repetirse con otro periodo si cambió la periodicidad). */
   id: string;
   clave: ClaveObligacion;
   formulario: string | null;
@@ -30,54 +47,138 @@ export interface Obligacion {
   notas: NotaObligacion[];
 }
 
-export type NotaObligacion = 'sin_autorretencion' | 'persona_natural_no_soportada' | 'requisitos_por_confirmar';
+export type NotaObligacion =
+  | 'sin_autorretencion'
+  | 'persona_natural_no_soportada'
+  | 'requisitos_por_confirmar'
+  | 'perfil_por_revisar'
+  | 'iva_anual_simple'
+  | 'anticipo_simple'
+  | 'regimen_especial'
+  | 'cambio_vigencia_en_periodo'
+  | 'periodo_sin_perfil_completo';
 
-/** Obligaciones de la vigencia, con el último periodo cerrado al mes `corte` (`YYYY-MM`). */
+/** Obligaciones de UNA vigencia, con el último periodo cerrado al mes `corte` (`YYYY-MM`). */
 export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obligacion[] {
   const out: Obligacion[] = [];
-  const r = new Set(perfil.responsabilidades);
+  const fe = new Set(perfil.responsabilidades);
+  const revisar: NotaObligacion[] = perfil.requiereRevision ? ['perfil_por_revisar'] : [];
   const agregar = (periodicidad: Periodicidad, o: Omit<Obligacion, 'periodo' | 'notas'>, notas: NotaObligacion[] = []) => {
     const periodo = periodoCerradoAl(periodicidad, corte);
-    if (periodo) out.push({ ...o, periodo, notas });
+    if (periodo) out.push({ ...o, periodo, notas: Array.from(new Set(notas)) });
   };
+  const simple = perfil.regimenRenta === 'simple';
 
-  if (perfil.regimen !== 'no_responsable_iva' && perfil.periodicidadIva !== 'no_aplica') {
-    agregar(perfil.periodicidadIva, { id: 'iva', clave: 'iva', formulario: '300', calendario: `iva_${perfil.periodicidadIva}`, fuente: 'borrador_iva' });
+  // IVA: se declara si es responsable (o si aún no se sabe y tiene periodicidad: se muestra, por revisar).
+  if (perfil.condicionIva !== 'no_responsable' && perfil.periodicidadIva !== 'no_aplica') {
+    const notas: NotaObligacion[] = [...revisar];
+    if (perfil.condicionIva === null) notas.push('perfil_por_revisar');
+    // SIMPLE: el IVA anual consolidado (ET art. 915) es una obligación propia, separada de los anticipos bimestrales.
+    if (simple && perfil.periodicidadIva === 'anual') notas.push('iva_anual_simple');
+    agregar(
+      perfil.periodicidadIva,
+      { id: `iva:${perfil.periodicidadIva}`, clave: 'iva', formulario: '300', calendario: `iva_${perfil.periodicidadIva}`, fuente: 'borrador_iva' },
+      notas,
+    );
   }
-  if (perfil.agenteRetencion || r.has(RESPONSABILIDAD.autorretenedor) || r.has(RESPONSABILIDAD.agenteRetencionIva)) {
+
+  const autorretenedor = perfil.autorretenedor === true || fe.has(RESPONSABILIDAD.autorretenedor);
+  if (perfil.agenteRetencion || autorretenedor || perfil.agenteRetencionIva === true || fe.has(RESPONSABILIDAD.agenteRetencionIva)) {
     agregar(
       'mensual',
       { id: 'retencion', clave: 'retencion', formulario: '350', calendario: 'retencion_fuente', fuente: 'reporte_retenciones' },
-      r.has(RESPONSABILIDAD.autorretenedor) ? ['sin_autorretencion'] : [],
+      [...revisar, ...(autorretenedor ? (['sin_autorretencion'] as NotaObligacion[]) : [])],
     );
   }
   for (const ica of perfil.ica) {
-    agregar(ica.periodicidad, {
-      id: `ica:${ica.municipioId}`,
-      clave: 'ica',
-      formulario: null,
-      calendario: null,
-      fuente: 'ninguna',
-      municipioId: ica.municipioId,
-      municipio: ica.municipio,
-    });
+    agregar(
+      ica.periodicidad,
+      { id: `ica:${ica.municipioId}`, clave: 'ica', formulario: null, calendario: null, fuente: 'ninguna', municipioId: ica.municipioId, municipio: ica.municipio },
+      revisar,
+    );
   }
   if (perfil.responsableInc) {
-    agregar('bimestral', { id: 'inc', clave: 'inc', formulario: '310', calendario: 'inc_bimestral', fuente: 'ninguna' });
+    agregar('bimestral', { id: 'inc', clave: 'inc', formulario: '310', calendario: 'inc_bimestral', fuente: 'ninguna' }, [
+      ...revisar,
+      ...(simple ? (['requisitos_por_confirmar'] as NotaObligacion[]) : []),
+    ]);
   }
-  if (perfil.regimen === 'simple') {
-    agregar('anual', { id: 'simple', clave: 'simple', formulario: '260 y 2593', calendario: 'simple_anual', fuente: 'ninguna' });
-  } else {
-    const gran = r.has(RESPONSABILIDAD.granContribuyente);
-    agregar(
-      'anual',
-      { id: 'renta', clave: 'renta', formulario: '110 o 210', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' },
-      gran ? [] : ['persona_natural_no_soportada'],
-    );
-    agregar('anual', { id: 'conciliacion_fiscal', clave: 'conciliacion_fiscal', formulario: '2516 o 2517', calendario: 'conciliacion_fiscal', fuente: 'ninguna' });
+
+  // Renta según su propio régimen.
+  const gran = perfil.granContribuyente === true || fe.has(RESPONSABILIDAD.granContribuyente);
+  switch (perfil.regimenRenta) {
+    case 'simple':
+      agregar('anual', { id: 'simple', clave: 'simple', formulario: '260', calendario: 'simple_anual', fuente: 'ninguna' }, revisar);
+      agregar('bimestral', { id: 'simple_anticipo', clave: 'simple_anticipo', formulario: '2593', calendario: 'simple_anticipo', fuente: 'ninguna' }, [
+        ...revisar,
+        'anticipo_simple',
+      ]);
+      break;
+    case 'ordinario':
+    case 'especial':
+    case null: {
+      const notas: NotaObligacion[] = [...revisar];
+      if (perfil.regimenRenta === null) notas.push('perfil_por_revisar');
+      if (perfil.regimenRenta === 'especial') notas.push('regimen_especial');
+      if (!gran) notas.push('persona_natural_no_soportada');
+      agregar(
+        'anual',
+        { id: 'renta', clave: 'renta', formulario: '110 o 210', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' },
+        notas,
+      );
+      if (perfil.regimenRenta !== 'especial') {
+        agregar(
+          'anual',
+          { id: 'conciliacion_fiscal', clave: 'conciliacion_fiscal', formulario: '2516 o 2517', calendario: 'conciliacion_fiscal', fuente: 'ninguna' },
+          perfil.regimenRenta === null ? [...revisar, 'perfil_por_revisar'] : revisar,
+        );
+      }
+      break;
+    }
+    case 'no_contribuyente_declarante':
+      agregar(
+        'anual',
+        { id: 'ingresos_patrimonio', clave: 'ingresos_patrimonio', formulario: '110', calendario: 'ingresos_patrimonio', fuente: 'ninguna' },
+        [...revisar, 'requisitos_por_confirmar'],
+      );
+      break;
+    case 'no_contribuyente_no_declarante':
+      break;
   }
-  agregar('anual', { id: 'exogena', clave: 'exogena', formulario: null, calendario: 'exogena', fuente: 'ninguna' }, ['requisitos_por_confirmar']);
+  agregar('anual', { id: 'exogena', clave: 'exogena', formulario: null, calendario: 'exogena', fuente: 'ninguna' }, [...revisar, 'requisitos_por_confirmar']);
   return out;
+}
+
+/**
+ * Obligaciones al corte con TODAS las vigencias que tocan sus periodos (P8):
+ * la que rige el último día del corte, más las de las vigencias anteriores
+ * cuyo periodo cae dentro de ellas (p. ej. el bimestre que se declaraba antes
+ * de cambiar a cuatrimestral). Cada periodo que toque más de una vigencia lleva
+ * «cambio_vigencia_en_periodo»; el que tenga días sin vigencia,
+ * «periodo_sin_perfil_completo». Ninguna se descarta por eso.
+ */
+export function obligacionesDelCorte(vigencias: readonly VigenciaPerfil[], corte: string): Obligacion[] {
+  const m = leerMes(corte);
+  if (!m) return [];
+  const finCorte = ultimoDiaDelMes(m[0], m[1]);
+  const actual = vigenciaEn(vigencias, finCorte);
+  const porClave = new Map<string, Obligacion>();
+  const clave = (o: Obligacion) => `${o.id}|${o.periodo.desde}|${o.periodo.hasta}`;
+  if (actual) for (const o of derivarObligaciones(actual, corte)) porClave.set(clave(o), o);
+  for (const v of vigencias) {
+    if (v === actual || v.vigenteDesde > finCorte) continue;
+    for (const o of derivarObligaciones(v, corte)) {
+      if (vigenciasEnRango([v], o.periodo.desde, o.periodo.hasta).length === 0) continue;
+      if (!porClave.has(clave(o))) porClave.set(clave(o), o);
+    }
+  }
+  return Array.from(porClave.values()).map((o) => {
+    const a = analizarPeriodo(vigencias, o.periodo.desde, o.periodo.hasta);
+    const notas = [...o.notas];
+    if (a.cambioDeVigencia) notas.push('cambio_vigencia_en_periodo');
+    if (a.sinPerfilCompleto) notas.push('periodo_sin_perfil_completo');
+    return { ...o, notas: Array.from(new Set(notas)) };
+  });
 }
 
 export interface FilaCalendario {
@@ -94,11 +195,18 @@ export interface FilaCalendario {
 
 export type Vencimiento =
   | { estado: 'fecha'; fecha: string; norma: string; cuotas: number }
+  /** El año no tiene NINGUNA fecha cargada: calendario incompleto. */
   | { estado: 'sin_cargar'; anio: number }
   | { estado: 'sin_nit' }
-  | { estado: 'no_encontrado' }
+  /** El año tiene fechas, pero no la de esta obligación, periodo y dígitos: calendario incompleto. */
+  | { estado: 'no_encontrado'; anio: number }
   | { estado: 'municipal' }
   | { estado: 'pendiente_activar' };
+
+/** ¿El vencimiento no se puede determinar porque al calendario le faltan fechas? */
+export function calendarioIncompleto(v: Vencimiento): v is Extract<Vencimiento, { estado: 'sin_cargar' | 'no_encontrado' }> {
+  return v.estado === 'sin_cargar' || v.estado === 'no_encontrado';
+}
 
 /** Los `cantidad` últimos dígitos del NIT sin dígito de verificación, o null. */
 export function digitosNit(nit: string | null | undefined, cantidad: number): number | null {
@@ -112,7 +220,7 @@ export function digitosNit(nit: string | null | undefined, cantidad: number): nu
  * declaran ese mismo año, salvo el último (diciembre o el último bimestre o
  * cuatrimestre), que vence en enero del siguiente, y los anuales, que se
  * declaran al año siguiente. Si la DIAN lo ubica en otro año, simplemente no
- * hay fila y queda «no encontrado»: nunca se inventa una fecha.
+ * hay fila y queda «calendario incompleto»: nunca se inventa una fecha.
  */
 export function anioCalendario(periodo: PeriodoFiscal): number {
   return periodo.hasta.slice(5, 7) === '12' ? periodo.anio + 1 : periodo.anio;
@@ -140,7 +248,7 @@ export function vencimientoDe(
       return d !== null && d >= f.digitos_desde && d <= f.digitos_hasta;
     })
     .sort((a, b) => a.cuota - b.cuota);
-  if (candidatas.length === 0) return { estado: 'no_encontrado' };
+  if (candidatas.length === 0) return { estado: 'no_encontrado', anio };
   return { estado: 'fecha', fecha: candidatas[0].fecha_vencimiento, norma: candidatas[0].norma, cuotas: candidatas.length };
 }
 

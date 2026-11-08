@@ -5,7 +5,14 @@
  * Nunca escribe tablas: cada acción es una ruta del servidor y una RPC.
  */
 import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
-import type { RespuestaListadoAnticipos, ResultadoCrearAnticipo } from '@/lib/finanzas/anticiposProveedor/contrato';
+import {
+  NATURALEZAS_ANTICIPO,
+  type EvaluacionRetenciones,
+  type NaturalezaAnticipo,
+  type RespuestaConciliacion,
+  type RespuestaListadoAnticipos,
+  type ResultadoCrearAnticipo,
+} from '@/lib/finanzas/anticiposProveedor/contrato';
 import type { ContextoSaldoFavor } from '@/lib/finanzas/saldosAFavor/contrato';
 import type { AdaptadorSaldos } from '@/components/finanzas/saldos-a-favor/adaptadorSaldos';
 import {
@@ -22,8 +29,32 @@ async function leerGet<T>(url: string): Promise<T> {
   return leerRespuestaSaldo<T>(r);
 }
 
+/** Lo que el complemento del diálogo pone en `extra` (P1: naturaleza y retenciones). */
+export interface DatosRetencionAnticipo {
+  naturaleza: NaturalezaAnticipo;
+  tarifaIva: number | null;
+  retefuenteId: string | null;
+  reteicaId: string | null;
+}
+
+/** `extra` del diálogo → datos tipados; null si falta la naturaleza (no hay valor por defecto). */
+export function datosRetencionDe(extra: Record<string, unknown> | null | undefined): DatosRetencionAnticipo | null {
+  const e = extra ?? {};
+  const naturaleza = e.naturaleza;
+  if (typeof naturaleza !== 'string' || !(NATURALEZAS_ANTICIPO as readonly string[]).includes(naturaleza)) return null;
+  const texto = (v: unknown) => (typeof v === 'string' && v ? v : null);
+  return {
+    naturaleza: naturaleza as NaturalezaAnticipo,
+    tarifaIva: typeof e.tarifaIva === 'number' && Number.isFinite(e.tarifaIva) ? e.tarifaIva : null,
+    retefuenteId: texto(e.retefuenteId),
+    reteicaId: texto(e.reteicaId),
+  };
+}
+
 export const anticiposProveedorService = {
   listar: () => leerGet<RespuestaListadoAnticipos>(BASE),
+
+  conciliacion: () => leerGet<RespuestaConciliacion>(`${BASE}/conciliacion`),
 
   contexto: (sucursalId: number | null, proveedorId?: string | null) => {
     const q = new URLSearchParams();
@@ -33,16 +64,29 @@ export const anticiposProveedorService = {
     return leerGet<ContextoSaldoFavor>(s ? `${BASE}/contexto?${s}` : `${BASE}/contexto`);
   },
 
-  crear: (e: {
-    proveedorId: string;
-    sucursalId: number | null;
-    monto: number;
-    metodo: string;
-    cuentaBancaria: number | null;
-    referencia: string;
-    notas: string;
-    claveIdempotencia: string;
-  }) => {
+  /** Vista previa de renta, reteIVA y reteICA (no escribe). */
+  evaluarRetenciones: (e: { proveedorId: string; monto: number } & DatosRetencionAnticipo) =>
+    enviarSaldo<EvaluacionRetenciones>(`${BASE}/retenciones`, {
+      proveedor_id: Number(e.proveedorId),
+      monto: e.monto,
+      naturaleza: e.naturaleza,
+      tarifa_iva: e.tarifaIva,
+      retefuente_id: e.retefuenteId,
+      reteica_id: e.reteicaId,
+    }),
+
+  crear: (
+    e: {
+      proveedorId: string;
+      sucursalId: number | null;
+      monto: number;
+      metodo: string;
+      cuentaBancaria: number | null;
+      referencia: string;
+      notas: string;
+      claveIdempotencia: string;
+    } & DatosRetencionAnticipo,
+  ) => {
     const sucursal = e.sucursalId ?? getCurrentBranchId();
     if (!sucursal) throw new ErrorPeticionSaldoFavor('sucursal_invalida', 422);
     return enviarSaldo<ResultadoCrearAnticipo>(BASE, {
@@ -54,6 +98,10 @@ export const anticiposProveedorService = {
       referencia: e.referencia.trim() || null,
       notas: e.notas.trim() || null,
       clave_idempotencia: e.claveIdempotencia,
+      naturaleza: e.naturaleza,
+      tarifa_iva: e.tarifaIva,
+      retefuente_id: e.retefuenteId,
+      reteica_id: e.reteicaId,
     });
   },
 
@@ -73,12 +121,18 @@ export const anticiposProveedorService = {
       metodo: e.metodo,
       motivo: e.motivo,
       cuenta_bancaria: e.cuentaBancaria,
-      referencia: e.referencia.trim() || null,
+      referencia: e.referencia.trim(),
       clave_idempotencia: e.claveIdempotencia,
     }),
 
-  anular: (anticipoId: string, motivo: string) =>
-    enviarSaldo<unknown>(`${BASE}/${encodeURIComponent(anticipoId)}/anular`, { motivo }),
+  /** P7: solo si el desembolso registrado NO ocurrió; con soporte y fecha del ajuste. */
+  anularPorError: (anticipoId: string, e: { motivo: string; soporte: string; fechaAjuste: string | null }) =>
+    enviarSaldo<unknown>(`${BASE}/${encodeURIComponent(anticipoId)}/anular`, {
+      declaracion: 'desembolso_no_ocurrio',
+      motivo: e.motivo,
+      soporte: e.soporte,
+      fecha_ajuste: e.fechaAjuste,
+    }),
 };
 
 /** El espejo del proveedor para los diálogos compartidos. Constante de módulo: no cambia entre renders. */
@@ -86,9 +140,13 @@ export const ADAPTADOR_PROVEEDOR: AdaptadorSaldos = {
   tercero: 'proveedor',
   namespace: 'finanzasTercerosR4.anticipos',
   conVencimiento: false,
+  soporteObligatorio: true,
   contexto: (sucursalId) => anticiposProveedorService.contexto(sucursalId),
   documentosAbiertos: async (proveedorId) => (await anticiposProveedorService.contexto(null, proveedorId)).facturas,
   registrar: async (e) => {
+    const datos = datosRetencionDe(e.extra);
+    // Sin naturaleza no se manda nada: el servidor también lo rechazaría (P1, sin valor por defecto).
+    if (!datos) throw new ErrorPeticionSaldoFavor('naturaleza_obligatoria', 422);
     const r = await anticiposProveedorService.crear({
       proveedorId: e.terceroId,
       sucursalId: e.sucursalId,
@@ -98,6 +156,7 @@ export const ADAPTADOR_PROVEEDOR: AdaptadorSaldos = {
       referencia: e.referencia,
       notas: e.notas,
       claveIdempotencia: e.claveIdempotencia,
+      ...datos,
     });
     return { id: r.anticipo_id, recibo: r.recibo };
   },

@@ -79,7 +79,8 @@ export async function cargarCotizacion(
   // Nombre real de cada impuesto: `quotation_items.tax_code` no tiene FK, se busca en tax_templates.
   const codigos = [...new Set((cot.items ?? []).map((i) => texto(i.tax_code)).filter((c): c is string => !!c))];
   const [base, moneda, plantillas, nombresMetodos] = await Promise.all([
-    cargarBase(sesion, cot.branch_id),
+    // H2: responsabilidades del emisor vigentes en la fecha de la cotización (perfil por vigencias).
+    cargarBase(sesion, cot.branch_id, { fechaDocumento: cot.issue_date ?? null }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, cot.currency),
     codigos.length > 0
       ? sesion.supabase.from('tax_templates').select('code, name').in('code', codigos)

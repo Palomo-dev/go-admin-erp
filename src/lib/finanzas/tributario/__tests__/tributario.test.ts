@@ -13,6 +13,7 @@ import {
   periodosRecientes,
 } from '../periodos';
 import {
+  bloqueosDeError,
   codigoErrorGuardarPerfil,
   esObjetoInexistente,
   faltantesPerfil,
@@ -35,11 +36,20 @@ function vigencia(extra: Partial<VigenciaPerfil> = {}): VigenciaPerfil {
     id: UUID,
     vigenteDesde: '2026-01-01',
     vigenteHasta: null,
-    regimen: 'ordinario',
-    responsabilidades: ['O-48'],
+    regimenRenta: 'ordinario',
+    condicionIva: 'responsable',
+    granContribuyente: false,
+    autorretenedor: false,
+    agenteRetencionIva: false,
+    responsabilidades: [],
+    responsabilidadesRut: [],
     agenteRetencion: true,
     responsableInc: false,
     periodicidadIva: 'bimestral',
+    motivoCambioPeriodicidad: null,
+    advertenciasAceptadas: [],
+    requiereRevision: false,
+    regimenOrigen: null,
     notas: null,
     ica: [],
     ...extra,
@@ -86,10 +96,14 @@ describe('periodos fiscales', () => {
 describe('perfil tributario', () => {
   const valido = {
     vigenteDesde: '2026-01-01',
-    regimen: 'ordinario',
-    responsabilidades: ['o-48', 'O-13', 'O-13'],
+    regimenRenta: 'ordinario',
+    condicionIva: 'responsable',
+    responsabilidades: ['o-13', 'O-23', 'O-23'],
+    responsabilidadesRut: ['05', '48', '05'],
+    granContribuyente: true,
     agenteRetencion: true,
     periodicidadIva: 'bimestral',
+    advertenciasAceptadas: ['fe_codigo_por_validar', 'DROP TABLE x'],
     ica: [{ municipioId: UUID, periodicidad: 'bimestral', tarifaPorMil: '9,66'.replace(',', '.') }],
     organization_id: 999,
   };
@@ -98,23 +112,30 @@ describe('perfil tributario', () => {
     const r = validarSolicitudPerfil(valido);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.datos.responsabilidades).toEqual(['O-48', 'O-13']);
+    expect(r.datos.responsabilidades).toEqual(['O-13', 'O-23']);
+    expect(r.datos.responsabilidadesRut).toEqual(['05', '48']);
+    expect(r.datos.advertenciasAceptadas).toEqual(['fe_codigo_por_validar']);
     expect(r.datos.ica[0].tarifaPorMil).toBe(9.66);
-    expect(r.datos.responsableInc).toBe(false);
+    expect(r.datos).toMatchObject({ regimenRenta: 'ordinario', condicionIva: 'responsable', granContribuyente: true, autorretenedor: false, responsableInc: false });
     expect(Object.keys(r.datos)).not.toContain('organization_id');
     // La organización de los parámetros es la que se pasa (la de la sesión).
-    expect(parametrosGuardarPerfil(7, r.datos).p_organization_id).toBe(7);
-    expect(parametrosGuardarPerfil(7, r.datos).p_ica[0]).toEqual({ municipality_id: UUID, periodicidad: 'bimestral', tarifa_por_mil: 9.66, actividad: null });
+    const p = parametrosGuardarPerfil(7, r.datos, ['fe_codigo_por_validar']);
+    expect(p.p_organization_id).toBe(7);
+    expect(p).toMatchObject({ p_regimen_renta: 'ordinario', p_condicion_iva: 'responsable', p_responsabilidades_rut: ['05', '48'], p_advertencias_aceptadas: ['fe_codigo_por_validar'] });
+    expect(p.p_ica[0]).toEqual({ municipality_id: UUID, periodicidad: 'bimestral', tarifa_por_mil: 9.66, actividad: null });
+    // Renta e IVA sin definir pasan la forma (la combinación los bloquea después).
+    const sinDefinir = validarSolicitudPerfil({ ...valido, regimenRenta: '', condicionIva: null });
+    expect(sinDefinir.ok && sinDefinir.datos.regimenRenta === null && sinDefinir.datos.condicionIva === null).toBe(true);
   });
 
-  test('rechaza lo incoherente', () => {
+  test('rechaza lo que no tiene la forma del contrato', () => {
     expect(validarSolicitudPerfil(null)).toEqual({ ok: false, error: 'datos_invalidos' });
     expect(validarSolicitudPerfil({ ...valido, vigenteDesde: '2026-02-30' })).toEqual({ ok: false, error: 'vigencia_invalida' });
-    expect(validarSolicitudPerfil({ ...valido, regimen: 'otro' })).toEqual({ ok: false, error: 'regimen_invalido' });
-    expect(validarSolicitudPerfil({ ...valido, responsabilidades: ['O-48', 'O-49'] })).toEqual({ ok: false, error: 'responsabilidades_incompatibles' });
+    expect(validarSolicitudPerfil({ ...valido, regimenRenta: 'no_responsable_iva' })).toEqual({ ok: false, error: 'regimen_invalido' });
+    expect(validarSolicitudPerfil({ ...valido, condicionIva: 'exento' })).toEqual({ ok: false, error: 'condicion_iva_invalida' });
+    expect(validarSolicitudPerfil({ ...valido, motivoCambioPeriodicidad: 'capricho' })).toEqual({ ok: false, error: 'motivo_invalido' });
     expect(validarSolicitudPerfil({ ...valido, responsabilidades: ['DROP TABLE'] })).toEqual({ ok: false, error: 'responsabilidad_invalida' });
-    expect(validarSolicitudPerfil({ ...valido, regimen: 'no_responsable_iva', responsabilidades: [] })).toEqual({ ok: false, error: 'periodicidad_incoherente' });
-    expect(validarSolicitudPerfil({ ...valido, periodicidadIva: 'no_aplica' })).toEqual({ ok: false, error: 'falta_periodicidad' });
+    expect(validarSolicitudPerfil({ ...valido, responsabilidadesRut: ['5'] })).toEqual({ ok: false, error: 'responsabilidad_rut_invalida' });
     expect(validarSolicitudPerfil({ ...valido, ica: [{ municipioId: UUID, periodicidad: 'diaria' }] })).toEqual({ ok: false, error: 'ica_invalido' });
     expect(validarSolicitudPerfil({ ...valido, ica: [{ municipioId: UUID, periodicidad: 'anual' }, { municipioId: UUID, periodicidad: 'anual' }] })).toEqual({
       ok: false,
@@ -151,32 +172,86 @@ describe('perfil tributario', () => {
     expect(vigenciaEn(vigencias, '2024-12-31')).toBeNull();
     expect(inicioPropuesto(vigencias, '2026-11-07')).toBe('2027-01-01');
     expect(inicioPropuesto([], '2026-11-07')).toBe('2026-01-01');
+    // Filas del campo combinado viejo (sin la migración): la misma regla conservadora de la migración.
+    expect(vigencias[1]).toMatchObject({ regimenRenta: null, condicionIva: 'responsable', requiereRevision: true, regimenOrigen: 'ordinario' });
+    expect(vigencias[0]).toMatchObject({ regimenRenta: null, condicionIva: 'responsable', autorretenedor: true, requiereRevision: true });
+  });
+
+  test('vigencias con renta e IVA separados (con la migración)', () => {
+    const [v] = leerVigencias(
+      [
+        {
+          id: UUID,
+          vigente_desde: '2026-01-01',
+          vigente_hasta: null,
+          regimen: 'ordinario',
+          regimen_renta: 'ordinario',
+          condicion_iva: 'no_responsable',
+          gran_contribuyente: false,
+          autorretenedor: null,
+          agente_retencion_iva: false,
+          responsabilidades_rut: ['05', '49'],
+          motivo_cambio_periodicidad: null,
+          advertencias_aceptadas: ['rut_falta_codigo'],
+          requiere_revision: false,
+          regimen_origen: null,
+          responsabilidades: ['R-99-PN'],
+          agente_retencion: false,
+          responsable_inc: false,
+          periodicidad_iva: 'no_aplica',
+          notas: null,
+        },
+      ],
+      [],
+      new Map(),
+    );
+    expect(v).toMatchObject({ regimenRenta: 'ordinario', condicionIva: 'no_responsable', responsabilidadesRut: ['05', '49'], requiereRevision: false, advertenciasAceptadas: ['rut_falta_codigo'] });
   });
 
   test('qué le falta al perfil', () => {
     expect(faltantesPerfil({ nit: null, dv: null, responsabilidadesRut: [] }, null)).toEqual(['perfil', 'nit']);
     expect(faltantesPerfil({ nit: '900111222', dv: 3, responsabilidadesRut: [] }, vigencia())).toEqual([]);
-    expect(faltantesPerfil({ nit: '900111222', dv: 3, responsabilidadesRut: [] }, vigencia({ regimen: 'simple', responsabilidades: [] }))).toEqual(['regimen_simple_sin_o47']);
+    expect(faltantesPerfil({ nit: '900111222', dv: 3, responsabilidadesRut: [] }, vigencia({ requiereRevision: true }))).toEqual(['revisar_perfil']);
+    expect(faltantesPerfil({ nit: '900111222', dv: 3, responsabilidadesRut: [] }, vigencia({ periodicidadIva: 'no_aplica' }))).toEqual(['periodicidad_iva']);
+  });
+
+  test('errores de combinación de la base: código y lista de bloqueos', () => {
+    expect(codigoErrorGuardarPerfil({ code: '22023', message: 'COMBINACION_CONTRADICTORIA' })).toBe('combinacion_contradictoria');
+    expect(codigoErrorGuardarPerfil({ code: '22023', message: 'REGIMEN_INVALIDO' })).toBe('datos_invalidos');
+    expect(bloqueosDeError({ details: 'fe_o47_sin_simple,rut_iva_contradictorio, <script>' })).toEqual(['fe_o47_sin_simple', 'rut_iva_contradictorio']);
+    expect(bloqueosDeError(null)).toEqual([]);
   });
 });
 
 describe('obligaciones y vencimientos', () => {
   test('derivadas del perfil, con el último periodo cerrado', () => {
     const o = derivarObligaciones(
-      vigencia({ responsabilidades: ['O-48', 'O-15'], ica: [{ municipioId: 'm1', municipio: 'Municipio uno', departamento: null, periodicidad: 'anual', tarifaPorMil: null, actividad: null }] }),
+      vigencia({ autorretenedor: true, responsabilidades: ['O-15'], ica: [{ municipioId: 'm1', municipio: 'Municipio uno', departamento: null, periodicidad: 'anual', tarifaPorMil: null, actividad: null }] }),
       '2026-10',
     );
-    expect(o.map((x) => x.id)).toEqual(['iva', 'retencion', 'ica:m1', 'renta', 'conciliacion_fiscal', 'exogena']);
-    expect(o.find((x) => x.id === 'iva')).toMatchObject({ formulario: '300', calendario: 'iva_bimestral', fuente: 'borrador_iva', periodo: { desde: '2026-09-01' } });
+    expect(o.map((x) => x.id)).toEqual(['iva:bimestral', 'retencion', 'ica:m1', 'renta', 'conciliacion_fiscal', 'exogena']);
+    expect(o.find((x) => x.clave === 'iva')).toMatchObject({ formulario: '300', calendario: 'iva_bimestral', fuente: 'borrador_iva', periodo: { desde: '2026-09-01' } });
     expect(o.find((x) => x.id === 'retencion')).toMatchObject({ calendario: 'retencion_fuente', notas: ['sin_autorretencion'], periodo: { desde: '2026-10-01' } });
     expect(o.find((x) => x.id === 'ica:m1')).toMatchObject({ calendario: null, municipio: 'Municipio uno', periodo: { anio: 2025 } });
   });
 
-  test('régimen SIMPLE sin renta; no responsable sin IVA; INC si responde', () => {
-    const simple = derivarObligaciones(vigencia({ regimen: 'simple', responsabilidades: ['O-47'], agenteRetencion: false, responsableInc: true }), '2026-10');
-    expect(simple.map((x) => x.clave)).toEqual(['iva', 'inc', 'simple', 'exogena']);
-    const noResp = derivarObligaciones(vigencia({ regimen: 'no_responsable_iva', responsabilidades: ['O-49'], periodicidadIva: 'no_aplica', agenteRetencion: false }), '2026-10');
+  test('SIMPLE: declaración anual, anticipo bimestral e IVA anual consolidado aparte; no responsable sin IVA; INC si responde', () => {
+    const simple = derivarObligaciones(
+      vigencia({ regimenRenta: 'simple', periodicidadIva: 'anual', responsabilidades: ['O-47'], agenteRetencion: false, responsableInc: true }),
+      '2026-10',
+    );
+    expect(simple.map((x) => x.clave)).toEqual(['iva', 'inc', 'simple', 'simple_anticipo', 'exogena']);
+    expect(simple.find((x) => x.clave === 'iva')).toMatchObject({ calendario: 'iva_anual', notas: ['iva_anual_simple'], periodo: { anio: 2025 } });
+    expect(simple.find((x) => x.clave === 'simple_anticipo')).toMatchObject({ formulario: '2593', calendario: 'simple_anticipo', periodo: { desde: '2026-09-01' } });
+    const noResp = derivarObligaciones(vigencia({ condicionIva: 'no_responsable', periodicidadIva: 'no_aplica', agenteRetencion: false }), '2026-10');
     expect(noResp.map((x) => x.clave)).not.toContain('iva');
+    // Un dato sin definir no borra la obligación: la muestra «por revisar».
+    const sinDefinir = derivarObligaciones(vigencia({ regimenRenta: null, condicionIva: null, requiereRevision: true }), '2026-10');
+    expect(sinDefinir.map((x) => x.clave)).toEqual(['iva', 'retencion', 'renta', 'conciliacion_fiscal', 'exogena']);
+    expect(sinDefinir.every((x) => x.notas.includes('perfil_por_revisar'))).toBe(true);
+    // No contribuyente declarante: ingresos y patrimonio, sin renta ni conciliación.
+    const noContribuyente = derivarObligaciones(vigencia({ regimenRenta: 'no_contribuyente_declarante', agenteRetencion: false }), '2026-10');
+    expect(noContribuyente.map((x) => x.clave)).toEqual(['iva', 'ingresos_patrimonio', 'exogena']);
   });
 
   test('dígitos del NIT sin dígito de verificación', () => {
@@ -193,7 +268,7 @@ describe('obligaciones y vencimientos', () => {
   });
 
   test('vencimiento: solo del calendario cargado, nunca supuesto', () => {
-    const iva = derivarObligaciones(vigencia(), '2026-10').find((x) => x.id === 'iva')!;
+    const iva = derivarObligaciones(vigencia(), '2026-10').find((x) => x.clave === 'iva')!;
     const fila = (extra: Partial<FilaCalendario>): FilaCalendario => ({
       anio: 2026,
       obligacion: 'iva_bimestral',
@@ -209,7 +284,7 @@ describe('obligaciones y vencimientos', () => {
     expect(vencimientoDe(iva, '900111227', null)).toEqual({ estado: 'pendiente_activar' });
     expect(vencimientoDe(iva, '900111227', [])).toEqual({ estado: 'sin_cargar', anio: 2026 });
     expect(vencimientoDe(iva, null, [fila({})])).toEqual({ estado: 'sin_nit' });
-    expect(vencimientoDe(iva, '900111221', [fila({})])).toEqual({ estado: 'no_encontrado' });
+    expect(vencimientoDe(iva, '900111221', [fila({})])).toEqual({ estado: 'no_encontrado', anio: 2026 });
     expect(vencimientoDe(iva, '900111227-3', [fila({}), fila({ digitos_desde: 1, digitos_hasta: 1, fecha_vencimiento: '2026-11-10' })])).toEqual({
       estado: 'fecha',
       fecha: '2026-11-20',

@@ -3,19 +3,27 @@
  * que la pantalla necesita con el cliente de la SESIÓN (RLS por pertenencia);
  * nunca escribe tablas ni saldos.
  *
- * Mientras la migración 20261108120000 no esté aplicada, las lecturas devuelven
- * `pendiente: true` y las escrituras `pendiente_de_activar` (501): la pantalla
- * lo dice, nunca muestra cero.
+ * Mientras las migraciones 20261108120000 y 20261108170000 (correcciones del
+ * Contador: naturaleza, retenciones, cuenta de detalle, anular por error) no
+ * estén aplicadas, las lecturas devuelven `pendiente: true` y las escrituras
+ * `pendiente_de_activar` (501): la pantalla lo dice, nunca muestra cero.
  */
 import { NextResponse } from 'next/server';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import {
+  aConciliacion,
+  aEstadoCuentaAnticipo,
+  aEvaluacionRetenciones,
   codigoErrorAnticipo,
   esPendienteDeActivar,
   estadoAnticipo,
   estadoHttpErrorAnticipo,
   type ErrorAnticipoProveedor,
+  type EvaluacionRetenciones,
   type FilaAnticipoProveedor,
+  type RespuestaConciliacion,
+  type SolicitudAnularAnticipo,
+  type SolicitudEvaluarRetenciones,
   type RespuestaListadoAnticipos,
   type ResultadoCrearAnticipo,
   type SolicitudAplicarAnticipo,
@@ -72,6 +80,9 @@ type FilaBase = {
   branch_id: number | null;
   notes: string | null;
   account_code: string;
+  naturaleza: string | null;
+  retencion_total: number | string | null;
+  retencion_pendiente: boolean | null;
   suppliers: { name: string | null; nit: string | null } | null;
   payment_groups: { receipt_number: string | null } | null;
 };
@@ -84,12 +95,12 @@ type FilaBase = {
 export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticipos> {
   const { data, error } = await ctx.supabase
     .from('supplier_advances')
-    .select('id, supplier_id, amount, balance, status, created_at, branch_id, notes, account_code, suppliers:supplier_id (name, nit), payment_groups:payment_group_id (receipt_number)')
+    .select('id, supplier_id, amount, balance, status, created_at, branch_id, notes, account_code, naturaleza, retencion_total, retencion_pendiente, suppliers:supplier_id (name, nit), payment_groups:payment_group_id (receipt_number)')
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false })
     .limit(1000);
   if (error) {
-    if (esPendienteDeActivar(error)) return { pendiente: true, filas: [], cuenta: null };
+    if (esPendienteDeActivar(error)) return { pendiente: true, filas: [], cuenta: null, estadoCuenta: null };
     throw errorDeRpc('supplier_advances', ctx, error);
   }
   const filasBase = (data ?? []) as unknown as FilaBase[];
@@ -98,12 +109,13 @@ export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticip
   if (filasBase.length > 0) {
     const { data: apps, error: errApps } = await ctx.supabase
       .from('supplier_advance_applications')
-      .select('advance_id, amount')
+      .select('advance_id, amount, consumo_anticipo')
       .eq('organization_id', ctx.organizationId)
       .in('advance_id', filasBase.map((f) => f.id));
     if (errApps) throw errorDeRpc('supplier_advance_applications', ctx, errApps);
-    for (const a of (apps ?? []) as { advance_id: string; amount: number | string }[]) {
-      aplicadoPorAnticipo.set(a.advance_id, (aplicadoPorAnticipo.get(a.advance_id) ?? 0) + num(a.amount));
+    // Lo que bajó el anticipo (consumo); en filas anteriores a 20261108170000, el importe aplicado.
+    for (const a of (apps ?? []) as { advance_id: string; amount: number | string; consumo_anticipo: number | string | null }[]) {
+      aplicadoPorAnticipo.set(a.advance_id, (aplicadoPorAnticipo.get(a.advance_id) ?? 0) + num(a.consumo_anticipo ?? a.amount));
     }
   }
 
@@ -125,11 +137,20 @@ export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticip
       recibo: f.payment_groups?.receipt_number ?? null,
       sucursalId: f.branch_id,
       notas: f.notes,
+      naturaleza: f.naturaleza === 'financiacion' || f.naturaleza === 'pago_anticipado_precio' ? f.naturaleza : null,
+      retencion: num(f.retencion_total),
+      retencionPendiente: f.retencion_pendiente === true,
     };
   });
 
-  const { data: cuenta } = await ctx.supabase.rpc('fn_cuenta_anticipo_proveedor', { p_org: ctx.organizationId, p_branch: null });
-  return { pendiente: false, filas, cuenta: typeof cuenta === 'string' ? cuenta : null };
+  // P6: la cuenta de detalle configurada o el pendiente contable (nunca 1330 de respaldo).
+  const { data: estado, error: errEstado } = await ctx.supabase.rpc('fn_cuenta_anticipo_proveedor_estado', { p_org: ctx.organizationId, p_branch: null });
+  if (errEstado) {
+    if (esPendienteDeActivar(errEstado)) return { pendiente: true, filas: [], cuenta: null, estadoCuenta: null };
+    throw errorDeRpc('fn_cuenta_anticipo_proveedor_estado', ctx, errEstado);
+  }
+  const estadoCuenta = aEstadoCuentaAnticipo(estado);
+  return { pendiente: false, filas, cuenta: estadoCuenta.cuenta, estadoCuenta };
 }
 
 /**
@@ -178,20 +199,51 @@ export async function contextoAnticipo(ctx: Ctx, entrada: { branchId: number | n
   return { ...base, facturas };
 }
 
+/**
+ * Registra con naturaleza y retenciones (P1) y la cuenta de detalle (P6). La
+ * base vuelve a evaluar las retenciones: de la vista previa solo viajan los
+ * conceptos elegidos, nunca valores.
+ */
 export async function crearAnticipo(ctx: Ctx, s: SolicitudCrearAnticipo): Promise<ResultadoCrearAnticipo> {
-  const { data, error } = await ctx.supabase.rpc('fn_anticipo_proveedor_crear', {
+  const { data, error } = await ctx.supabase.rpc('fn_anticipo_proveedor_registrar', {
     p_supplier: s.proveedor_id,
     p_branch: s.sucursal_id,
     p_monto: s.monto,
     p_metodo: s.metodo,
+    p_naturaleza: s.naturaleza,
     p_clave_idempotencia: s.clave_idempotencia,
     p_organization_id: ctx.organizationId,
+    p_tarifa_iva: s.tarifa_iva ?? null,
+    p_retefuente: s.retefuente_id ?? null,
+    p_reteica: s.reteica_id ?? null,
     p_cuenta_bancaria: s.cuenta_bancaria ?? null,
     p_referencia: s.referencia ?? null,
     p_notas: s.notas ?? null,
   });
-  if (error) throw errorDeRpc('fn_anticipo_proveedor_crear', ctx, error);
+  if (error) throw errorDeRpc('fn_anticipo_proveedor_registrar', ctx, error);
   return data as ResultadoCrearAnticipo;
+}
+
+/** Vista previa de renta, reteIVA y reteICA del anticipo (no escribe). */
+export async function evaluarRetenciones(ctx: Ctx, s: SolicitudEvaluarRetenciones): Promise<EvaluacionRetenciones> {
+  const { data, error } = await ctx.supabase.rpc('fn_anticipo_proveedor_evaluar_retenciones', {
+    p_org: ctx.organizationId,
+    p_supplier: s.proveedor_id,
+    p_naturaleza: s.naturaleza,
+    p_monto: s.monto,
+    p_tarifa_iva: s.tarifa_iva ?? null,
+    p_retefuente: s.retefuente_id ?? null,
+    p_reteica: s.reteica_id ?? null,
+  });
+  if (error) throw errorDeRpc('fn_anticipo_proveedor_evaluar_retenciones', ctx, error);
+  return aEvaluacionRetenciones(data);
+}
+
+/** Saldo por anticipo y por proveedor: tabla, libros y auxiliar por NIT (P6). */
+export async function conciliacionAnticipos(ctx: Ctx): Promise<RespuestaConciliacion> {
+  const { data, error } = await ctx.supabase.rpc('fn_anticipos_proveedor_conciliacion', { p_org: ctx.organizationId, p_supplier: null });
+  if (error) throw errorDeRpc('fn_anticipos_proveedor_conciliacion', ctx, error);
+  return aConciliacion(data);
 }
 
 export async function aplicarAnticipo(ctx: Ctx, anticipoId: string, s: SolicitudAplicarAnticipo): Promise<unknown> {
@@ -221,12 +273,18 @@ export async function devolverAnticipo(ctx: Ctx, anticipoId: string, s: Solicitu
   return data;
 }
 
-export async function anularAnticipo(ctx: Ctx, anticipoId: string, motivo: string): Promise<unknown> {
-  const { data, error } = await ctx.supabase.rpc('fn_anticipo_proveedor_anular', {
+/**
+ * P7: anula solo como corrección de un desembolso que no ocurrió, con motivo,
+ * soporte y la fecha del ajuste documentado (contra-asiento en esa fecha).
+ */
+export async function anularAnticipo(ctx: Ctx, anticipoId: string, s: SolicitudAnularAnticipo): Promise<unknown> {
+  const { data, error } = await ctx.supabase.rpc('fn_anticipo_proveedor_anular_por_error', {
     p_anticipo: anticipoId,
-    p_motivo: motivo,
+    p_motivo: s.motivo,
+    p_soporte: s.soporte,
+    p_fecha_ajuste: s.fecha_ajuste ?? null,
     p_organization_id: ctx.organizationId,
   });
-  if (error) throw errorDeRpc('fn_anticipo_proveedor_anular', ctx, error);
+  if (error) throw errorDeRpc('fn_anticipo_proveedor_anular_por_error', ctx, error);
   return data;
 }

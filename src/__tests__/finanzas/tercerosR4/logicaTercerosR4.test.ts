@@ -29,8 +29,14 @@ import {
   type ConceptoTerceros,
 } from '@/lib/finanzas/dineroTerceros/dineroTercerosLogica';
 import {
+  aEvaluacionRetenciones,
   accionesAnticipo,
+  anticiposConRetencionPendiente,
+  anularAnticipoSchema,
   codigoErrorAnticipo,
+  devolverAnticipoSchema,
+  evaluarRetencionesSchema,
+  filasCsvConciliacion,
   crearAnticipoSchema,
   esPendienteDeActivar,
   estadoAnticipo,
@@ -238,10 +244,78 @@ describe('anticipos a proveedores', () => {
   });
 
   test('el cuerpo del anticipo no admite vencimiento ni cuenta PUC', () => {
-    const base = { proveedor_id: 45, sucursal_id: 7, monto: 10, metodo: 'cash', clave_idempotencia: 'anticipo:1' };
+    const base = { proveedor_id: 45, sucursal_id: 7, monto: 10, metodo: 'cash', clave_idempotencia: 'anticipo:1', naturaleza: 'financiacion' };
     expect(crearAnticipoSchema.safeParse(base).success).toBe(true);
     expect(crearAnticipoSchema.safeParse({ ...base, vence: '2026-12-31' }).success).toBe(false);
     expect(crearAnticipoSchema.safeParse({ ...base, cuenta: '1330' }).success).toBe(false);
+  });
+});
+
+// ─── Correcciones del Contador (P1, P6, P7) ─────────────────────────────────
+
+describe('anticipos a proveedores: correcciones del Contador', () => {
+  const base = { proveedor_id: 45, sucursal_id: 7, monto: 10, metodo: 'cash', clave_idempotencia: 'anticipo:1' };
+
+  test('P1: la naturaleza es obligatoria, sin valor por defecto; el pago anticipado exige la tarifa de IVA', () => {
+    expect(crearAnticipoSchema.safeParse(base).success).toBe(false);
+    expect(crearAnticipoSchema.safeParse({ ...base, naturaleza: 'otra' }).success).toBe(false);
+    expect(crearAnticipoSchema.safeParse({ ...base, naturaleza: 'pago_anticipado_precio' }).success).toBe(false);
+    expect(crearAnticipoSchema.safeParse({ ...base, naturaleza: 'pago_anticipado_precio', tarifa_iva: 0 }).success).toBe(true);
+    expect(evaluarRetencionesSchema.safeParse({ proveedor_id: 45, monto: 10, naturaleza: 'financiacion' }).success).toBe(true);
+    // Los valores de la retención no viajan: solo los conceptos (la base vuelve a calcular).
+    expect(crearAnticipoSchema.safeParse({ ...base, naturaleza: 'financiacion', retencion: 100 }).success).toBe(false);
+  });
+
+  test('P1: la evaluación tipada no cuenta valores de clases que no se practican', () => {
+    const e = aEvaluacionRetenciones({
+      naturaleza: 'pago_anticipado_precio', monto: 1190000, base: 1000000, iva: 190000, total: 40000, neto: 1150000, pendiente: true,
+      clases: [
+        { clase: 'retefuente', estado: 'practicar', valor: 40000, tarifa: 4, base: 1000000, concepto: 'Retención 4%', cuenta: '23652501' },
+        { clase: 'reteiva', estado: 'no_aplica', motivo: 'operacion_sin_iva', valor: 5 },
+        { clase: 'reteica', estado: 'raro', motivo: 'norma_municipal_sin_confirmar' },
+      ],
+      opciones: { retefuente: [{ id: 'a', nombre: 'Retención 4%', tarifa: 4 }] },
+    });
+    expect(e.clases.map((c) => [c.clase, c.estado, c.valor])).toEqual([['retefuente', 'practicar', 40000], ['reteiva', 'no_aplica', 0], ['reteica', 'pendiente', 0]]);
+    expect(e.opciones).toEqual({ retefuente: [{ id: 'a', nombre: 'Retención 4%', tarifa: 4 }], reteica: [] });
+    expect(e.pendiente).toBe(true);
+  });
+
+  test('P7: anular exige declarar que el desembolso no ocurrió, con soporte; la fecha del ajuste es un día', () => {
+    const ok = { declaracion: 'desembolso_no_ocurrio', motivo: 'Transferencia rechazada', soporte: 'Extracto' };
+    expect(anularAnticipoSchema.safeParse(ok).success).toBe(true);
+    expect(anularAnticipoSchema.safeParse({ ...ok, fecha_ajuste: '2026-11-05' }).success).toBe(true);
+    expect(anularAnticipoSchema.safeParse({ ...ok, fecha_ajuste: '05/11/2026' }).success).toBe(false);
+    expect(anularAnticipoSchema.safeParse({ motivo: 'x x x', soporte: 'Extracto' }).success).toBe(false);
+    expect(anularAnticipoSchema.safeParse({ ...ok, soporte: '' }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ monto: 1, metodo: 'cash', motivo: 'Devuelve', clave_idempotencia: 'devolver:1' }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ monto: 1, metodo: 'cash', motivo: 'Devuelve', referencia: 'Recibo 9', clave_idempotencia: 'devolver:1' }).success).toBe(true);
+  });
+
+  test('códigos nuevos con su estado HTTP (pendientes contables = 409, datos = 422)', () => {
+    expect(codigoErrorAnticipo('cuenta_anticipos_no_configurada')).toBe('cuenta_anticipos_no_configurada');
+    expect(estadoHttpErrorAnticipo('cuenta_anticipos_no_configurada')).toBe(409);
+    expect(estadoHttpErrorAnticipo('cuenta_anticipos_no_detalle')).toBe(409);
+    expect(estadoHttpErrorAnticipo('cxp_sin_causacion')).toBe(409);
+    expect(estadoHttpErrorAnticipo('anulacion_requiere_declaracion')).toBe(409);
+    expect(estadoHttpErrorAnticipo('naturaleza_obligatoria')).toBe(422);
+    expect(estadoHttpErrorAnticipo('soporte_obligatorio')).toBe(422);
+    expect(estadoHttpErrorAnticipo('periodo_cerrado')).toBe(409);
+  });
+
+  test('retención pendiente visible y CSV de conciliación por anticipo y por proveedor', () => {
+    const filas = [fila({ retencionPendiente: true }), fila({ id: 'a2', retencionPendiente: true, estado: 'anulado', saldo: 0 }), fila({ id: 'a3' })];
+    expect(anticiposConRetencionPendiente(filas)).toBe(1);
+    const csv = filasCsvConciliacion(
+      {
+        anticipos: [{ anticipoId: 'a1', proveedor: 'P', nit: '9', cuenta: '13300501', recibo: 'CE-1', naturaleza: 'financiacion', valor: 1000, retencion: 0, girado: 1000, aplicado: 400, retencionDescontada: 0, devuelto: 0, anulado: 0, saldo: 600, saldoLibros: 600, cuadra: true }],
+        proveedores: [{ proveedor: 'P', nit: '9', anticipos: 1, saldo: 600, saldoLibros: 600, auxiliarNit: 600 }],
+      },
+      { anticipos: ['A'], proveedores: ['B'] },
+      (v) => (v ? 'sí' : 'no'),
+    );
+    expect(csv[1]).toEqual(['P', '9', 'CE-1', '13300501', 'financiacion', '1000', '0', '1000', '400', '0', '0', '0', '600', '600', 'sí']);
+    expect(csv[csv.length - 1]).toEqual(['P', '9', '1', '600', '600', '600']);
   });
 });
 

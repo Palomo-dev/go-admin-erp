@@ -1,21 +1,28 @@
 /**
  * Perfil tributario de la empresa por vigencia (Finanzas R4-A, Figma 2335:136222).
  * Tablas `organization_tax_profiles` y `organization_tax_profile_ica`
- * (migración 20261108100000, aplicada) con renta e IVA separados (P5,
- * migración 20261108160500); escritura solo por `fn_perfil_tributario_guardar_v2`.
- * Aquí: tipos, validación de FORMA de la solicitud (lista blanca), lectura de
- * filas y qué le falta al perfil. Las combinaciones contradictorias se deciden
- * en `combinaciones.ts`. Sin React ni Supabase.
+ * (migración 20261108100000, aplicada) con renta e IVA separados y calidades con
+ * soporte (P5/P8, migración 20261108160500); escritura solo por
+ * `fn_perfil_tributario_guardar_v2`. Aquí: tipos, validación de FORMA de la
+ * solicitud (lista blanca), lectura de filas y qué le falta al perfil. Las
+ * combinaciones contradictorias se deciden en `combinaciones.ts`. Sin React ni Supabase.
  */
 import { esDiaValido } from './periodos';
 import {
+  ACTIVIDADES_INC,
   CONDICIONES_IVA,
+  ESTADOS_CAMBIO_PERIODICIDAD,
   MOTIVOS_CAMBIO_PERIODICIDAD,
   REGIMENES_RENTA,
+  TIPOS_RTE,
   desdeRegimenCombinado,
+  type ActividadInc,
   type CondicionIva,
+  type DatosCombinacion,
+  type EstadoCambioPeriodicidad,
   type MotivoCambioPeriodicidad,
   type RegimenRenta,
+  type TipoRte,
 } from './combinaciones';
 
 export const PERIODICIDADES_IVA = ['bimestral', 'cuatrimestral', 'anual', 'no_aplica'] as const;
@@ -44,31 +51,25 @@ export interface IcaMunicipio {
   actividad: string | null;
 }
 
-export interface VigenciaPerfil {
+/** Campos de la vigencia que se evalúan en `evaluarCombinacion` (y se guardan tal cual). */
+export type CamposPerfil = Omit<DatosCombinacion, 'periodicidadIva' | 'responsabilidades' | 'responsabilidadesRut'> & {
+  periodicidadIva: PeriodicidadIva;
+  responsabilidades: string[];
+  responsabilidadesRut: string[];
+};
+
+export interface VigenciaPerfil extends CamposPerfil {
   id: string;
   vigenteDesde: string;
   vigenteHasta: string | null;
-  /** Régimen del impuesto sobre la renta; null = sin definir (revisar perfil). */
-  regimenRenta: RegimenRenta | null;
-  /** Condición frente al IVA, independiente de la renta; null = sin definir. */
-  condicionIva: CondicionIva | null;
-  granContribuyente: boolean | null;
-  autorretenedor: boolean | null;
-  agenteRetencionIva: boolean | null;
-  /** Agente de retención en la fuente a título de renta (formulario 350). */
-  agenteRetencion: boolean;
-  responsableInc: boolean;
-  periodicidadIva: PeriodicidadIva;
-  /** Códigos del documento electrónico (lo que lee la representación gráfica, H2). */
-  responsabilidades: string[];
-  /** Códigos de la casilla 53 del RUT (opcional). */
-  responsabilidadesRut: string[];
-  motivoCambioPeriodicidad: MotivoCambioPeriodicidad | null;
+  cambioPeriodicidadEstado: EstadoCambioPeriodicidad;
   advertenciasAceptadas: string[];
   /** Vigencia migrada del campo combinado viejo o con datos sin definir: alguien debe confirmarla. */
   requiereRevision: boolean;
   /** El campo combinado viejo tal como estaba al migrar (solo trazabilidad). */
   regimenOrigen: string | null;
+  /** Última modificación (para la huella de las decisiones de período). */
+  actualizadoEn: string | null;
   notas: string | null;
   ica: IcaMunicipio[];
 }
@@ -80,20 +81,9 @@ export interface DatosEmpresa {
   responsabilidadesRut: string[];
 }
 
-export interface SolicitudPerfil {
+export interface SolicitudPerfil extends CamposPerfil {
   id: string | null;
   vigenteDesde: string;
-  regimenRenta: RegimenRenta | null;
-  condicionIva: CondicionIva | null;
-  periodicidadIva: PeriodicidadIva;
-  granContribuyente: boolean;
-  autorretenedor: boolean;
-  agenteRetencionIva: boolean;
-  agenteRetencion: boolean;
-  responsableInc: boolean;
-  responsabilidades: string[];
-  responsabilidadesRut: string[];
-  motivoCambioPeriodicidad: MotivoCambioPeriodicidad | null;
   advertenciasAceptadas: string[];
   notas: string | null;
   ica: { municipioId: string; periodicidad: PeriodicidadIca; tarifaPorMil: number | null; actividad: string | null }[];
@@ -116,6 +106,9 @@ const CODIGO_RUT_RE = /^\d{2}$/;
 
 const en = <T extends string>(lista: readonly T[], v: unknown): v is T => typeof v === 'string' && (lista as readonly string[]).includes(v);
 const vacio = (v: unknown) => v === null || v === undefined || v === '';
+const textoCorto = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null);
+const diaONull = (v: unknown): string | null | false => (vacio(v) ? null : esDiaValido(String(v)) ? String(v) : false);
+const boolONull = (v: unknown): boolean | null => (v === true ? true : v === false ? false : null);
 
 function listaCodigos(v: unknown, re: RegExp, mayusculas: boolean): string[] | null {
   if (v === undefined || v === null) return [];
@@ -139,6 +132,10 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
   if (!vacio(b.condicionIva) && !en(CONDICIONES_IVA, b.condicionIva)) return { ok: false, error: 'condicion_iva_invalida' };
   if (!en(PERIODICIDADES_IVA, b.periodicidadIva)) return { ok: false, error: 'periodicidad_invalida' };
   if (!vacio(b.motivoCambioPeriodicidad) && !en(MOTIVOS_CAMBIO_PERIODICIDAD, b.motivoCambioPeriodicidad)) return { ok: false, error: 'motivo_invalido' };
+  if (!vacio(b.incActividad) && !en(ACTIVIDADES_INC, b.incActividad)) return { ok: false, error: 'datos_invalidos' };
+  if (!vacio(b.rteTipo) && !en(TIPOS_RTE, b.rteTipo)) return { ok: false, error: 'datos_invalidos' };
+  const fechas = [diaONull(b.granContribuyenteDesde), diaONull(b.autorretenedorActoFecha), diaONull(b.cambioPeriodicidadFecha)];
+  if (fechas.some((f) => f === false)) return { ok: false, error: 'datos_invalidos' };
   const responsabilidades = listaCodigos(b.responsabilidades, CODIGO_FE_RE, true);
   if (responsabilidades === null) return { ok: false, error: 'responsabilidad_invalida' };
   const responsabilidadesRut = listaCodigos(b.responsabilidadesRut, CODIGO_RUT_RE, false);
@@ -167,12 +164,10 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
       if (!Number.isFinite(n) || n < 0 || n > 100) return { ok: false, error: 'ica_invalido' };
       tarifaPorMil = Math.round(n * 1000) / 1000;
     }
-    const actividad = typeof f.actividad === 'string' && f.actividad.trim() ? f.actividad.trim().slice(0, 200) : null;
     vistos.add(municipioId);
-    ica.push({ municipioId, periodicidad: f.periodicidad, tarifaPorMil, actividad });
+    ica.push({ municipioId, periodicidad: f.periodicidad, tarifaPorMil, actividad: textoCorto(f.actividad, 200) });
   }
 
-  const notas = typeof b.notas === 'string' && b.notas.trim() ? b.notas.trim().slice(0, 1000) : null;
   return {
     ok: true,
     datos: {
@@ -182,15 +177,27 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
       condicionIva: vacio(b.condicionIva) ? null : (b.condicionIva as CondicionIva),
       periodicidadIva: b.periodicidadIva,
       granContribuyente: b.granContribuyente === true,
+      granContribuyenteActo: textoCorto(b.granContribuyenteActo, 120),
+      granContribuyenteDesde: fechas[0] || null,
       autorretenedor: b.autorretenedor === true,
+      autorretenedorActo: textoCorto(b.autorretenedorActo, 120),
+      autorretenedorActoFecha: fechas[1] || null,
+      autorretencionEspecial: b.autorretencionEspecial === true,
       agenteRetencionIva: b.agenteRetencionIva === true,
       agenteRetencion: b.agenteRetencion === true,
       responsableInc: b.responsableInc === true,
+      incActividad: vacio(b.incActividad) ? null : (b.incActividad as ActividadInc),
+      rteTipo: vacio(b.rteTipo) ? null : (b.rteTipo as TipoRte),
+      rteIngresosSuperan160000Uvt: boolONull(b.rteIngresosSuperan160000Uvt),
+      noContribuyenteNaturaleza: textoCorto(b.noContribuyenteNaturaleza, 300),
+      motivoCambioPeriodicidad: vacio(b.motivoCambioPeriodicidad) ? null : (b.motivoCambioPeriodicidad as MotivoCambioPeriodicidad),
+      cambioPeriodicidadHecho: textoCorto(b.cambioPeriodicidadHecho, 1000),
+      cambioPeriodicidadNorma: textoCorto(b.cambioPeriodicidadNorma, 300),
+      cambioPeriodicidadFecha: fechas[2] || null,
       responsabilidades,
       responsabilidadesRut,
-      motivoCambioPeriodicidad: vacio(b.motivoCambioPeriodicidad) ? null : (b.motivoCambioPeriodicidad as MotivoCambioPeriodicidad),
       advertenciasAceptadas,
-      notas,
+      notas: textoCorto(b.notas, 1000),
       ica,
     },
   };
@@ -202,18 +209,32 @@ export function parametrosGuardarPerfil(organizationId: number, d: SolicitudPerf
     p_organization_id: organizationId,
     p_id: d.id,
     p_vigente_desde: d.vigenteDesde,
-    p_regimen_renta: d.regimenRenta,
-    p_condicion_iva: d.condicionIva,
-    p_periodicidad_iva: d.periodicidadIva,
-    p_gran_contribuyente: d.granContribuyente,
-    p_autorretenedor: d.autorretenedor,
-    p_agente_retencion_iva: d.agenteRetencionIva,
-    p_agente_retencion: d.agenteRetencion,
-    p_responsable_inc: d.responsableInc,
-    p_responsabilidades: d.responsabilidades,
-    p_responsabilidades_rut: d.responsabilidadesRut,
-    p_motivo_cambio_periodicidad: d.motivoCambioPeriodicidad,
-    p_advertencias_aceptadas: [...advertenciasAceptadas],
+    p_datos: {
+      regimen_renta: d.regimenRenta,
+      condicion_iva: d.condicionIva,
+      periodicidad_iva: d.periodicidadIva,
+      gran_contribuyente: d.granContribuyente,
+      gran_contribuyente_acto: d.granContribuyenteActo,
+      gran_contribuyente_desde: d.granContribuyenteDesde,
+      autorretenedor: d.autorretenedor,
+      autorretenedor_acto: d.autorretenedorActo,
+      autorretenedor_acto_fecha: d.autorretenedorActoFecha,
+      autorretencion_especial: d.autorretencionEspecial,
+      agente_retencion_iva: d.agenteRetencionIva,
+      agente_retencion: d.agenteRetencion,
+      responsable_inc: d.responsableInc,
+      inc_actividad: d.incActividad,
+      rte_tipo: d.rteTipo,
+      rte_ingresos_superan_160000_uvt: d.rteIngresosSuperan160000Uvt,
+      no_contribuyente_naturaleza: d.noContribuyenteNaturaleza,
+      motivo_cambio_periodicidad: d.motivoCambioPeriodicidad,
+      cambio_periodicidad_hecho: d.cambioPeriodicidadHecho,
+      cambio_periodicidad_norma: d.cambioPeriodicidadNorma,
+      cambio_periodicidad_fecha: d.cambioPeriodicidadFecha,
+      responsabilidades: d.responsabilidades,
+      responsabilidades_rut: d.responsabilidadesRut,
+      advertencias_aceptadas: [...advertenciasAceptadas],
+    },
     p_ica: d.ica.map((i) => ({ municipality_id: i.municipioId, periodicidad: i.periodicidad, tarifa_por_mil: i.tarifaPorMil, actividad: i.actividad })),
     p_notas: d.notas,
   };
@@ -268,13 +289,27 @@ export interface FilaPerfil {
   regimen_renta?: string | null;
   condicion_iva?: string | null;
   gran_contribuyente?: boolean | null;
+  gran_contribuyente_acto?: string | null;
+  gran_contribuyente_desde?: string | null;
   autorretenedor?: boolean | null;
+  autorretenedor_acto?: string | null;
+  autorretenedor_acto_fecha?: string | null;
+  autorretencion_especial?: boolean | null;
   agente_retencion_iva?: boolean | null;
+  inc_actividad?: string | null;
+  rte_tipo?: string | null;
+  rte_ingresos_superan_160000_uvt?: boolean | null;
+  no_contribuyente_naturaleza?: string | null;
   responsabilidades_rut?: string[] | null;
   motivo_cambio_periodicidad?: string | null;
+  cambio_periodicidad_hecho?: string | null;
+  cambio_periodicidad_norma?: string | null;
+  cambio_periodicidad_fecha?: string | null;
+  cambio_periodicidad_estado?: string | null;
   advertencias_aceptadas?: string[] | null;
   requiere_revision?: boolean | null;
   regimen_origen?: string | null;
+  updated_at?: string | null;
   responsabilidades: string[] | null;
   agente_retencion: boolean | null;
   responsable_inc: boolean | null;
@@ -290,24 +325,41 @@ interface FilaIca {
   actividad: string | null;
 }
 
+type CamposFila = Omit<VigenciaPerfil, 'id' | 'vigenteDesde' | 'vigenteHasta' | 'agenteRetencion' | 'responsableInc' | 'periodicidadIva' | 'responsabilidades' | 'notas' | 'ica'>;
+
 /** Una fila → los campos separados. Sin las columnas nuevas, la misma regla conservadora de la migración. */
-function camposSeparados(p: FilaPerfil): Pick<
-  VigenciaPerfil,
-  'regimenRenta' | 'condicionIva' | 'granContribuyente' | 'autorretenedor' | 'agenteRetencionIva' | 'requiereRevision' | 'regimenOrigen'
-> {
-  if (!('regimen_renta' in p)) {
-    return { ...desdeRegimenCombinado(p.regimen, p.responsabilidades ?? []), requiereRevision: true, regimenOrigen: p.regimen ?? null };
-  }
-  const regimenRenta = en(REGIMENES_RENTA, p.regimen_renta) ? p.regimen_renta : null;
-  const condicionIva = en(CONDICIONES_IVA, p.condicion_iva) ? p.condicion_iva : null;
+function camposSeparados(p: FilaPerfil): CamposFila {
+  const nuevos = 'regimen_renta' in p;
+  const base = nuevos
+    ? {
+        regimenRenta: en(REGIMENES_RENTA, p.regimen_renta) ? p.regimen_renta : null,
+        condicionIva: en(CONDICIONES_IVA, p.condicion_iva) ? p.condicion_iva : null,
+        granContribuyente: p.gran_contribuyente ?? null,
+        autorretenedor: p.autorretenedor ?? null,
+        agenteRetencionIva: p.agente_retencion_iva ?? null,
+      }
+    : desdeRegimenCombinado(p.regimen, p.responsabilidades ?? []);
   return {
-    regimenRenta,
-    condicionIva,
-    granContribuyente: p.gran_contribuyente ?? null,
-    autorretenedor: p.autorretenedor ?? null,
-    agenteRetencionIva: p.agente_retencion_iva ?? null,
-    requiereRevision: p.requiere_revision === true || regimenRenta === null || condicionIva === null,
-    regimenOrigen: p.regimen_origen ?? null,
+    ...base,
+    granContribuyenteActo: p.gran_contribuyente_acto ?? null,
+    granContribuyenteDesde: p.gran_contribuyente_desde ?? null,
+    autorretenedorActo: p.autorretenedor_acto ?? null,
+    autorretenedorActoFecha: p.autorretenedor_acto_fecha ?? null,
+    autorretencionEspecial: p.autorretencion_especial ?? null,
+    incActividad: en(ACTIVIDADES_INC, p.inc_actividad) ? p.inc_actividad : null,
+    rteTipo: en(TIPOS_RTE, p.rte_tipo) ? p.rte_tipo : null,
+    rteIngresosSuperan160000Uvt: p.rte_ingresos_superan_160000_uvt ?? null,
+    noContribuyenteNaturaleza: p.no_contribuyente_naturaleza ?? null,
+    responsabilidadesRut: p.responsabilidades_rut ?? [],
+    motivoCambioPeriodicidad: en(MOTIVOS_CAMBIO_PERIODICIDAD, p.motivo_cambio_periodicidad) ? p.motivo_cambio_periodicidad : null,
+    cambioPeriodicidadHecho: p.cambio_periodicidad_hecho ?? null,
+    cambioPeriodicidadNorma: p.cambio_periodicidad_norma ?? null,
+    cambioPeriodicidadFecha: p.cambio_periodicidad_fecha ?? null,
+    cambioPeriodicidadEstado: en(ESTADOS_CAMBIO_PERIODICIDAD, p.cambio_periodicidad_estado) ? p.cambio_periodicidad_estado : 'no_aplica',
+    advertenciasAceptadas: p.advertencias_aceptadas ?? [],
+    requiereRevision: !nuevos || p.requiere_revision === true || base.regimenRenta === null || base.condicionIva === null,
+    regimenOrigen: nuevos ? (p.regimen_origen ?? null) : (p.regimen ?? null),
+    actualizadoEn: p.updated_at ?? null,
   };
 }
 
@@ -328,9 +380,6 @@ export function leerVigencias(
       responsableInc: p.responsable_inc === true,
       periodicidadIva: p.periodicidad_iva as PeriodicidadIva,
       responsabilidades: p.responsabilidades ?? [],
-      responsabilidadesRut: p.responsabilidades_rut ?? [],
-      motivoCambioPeriodicidad: en(MOTIVOS_CAMBIO_PERIODICIDAD, p.motivo_cambio_periodicidad) ? p.motivo_cambio_periodicidad : null,
-      advertenciasAceptadas: p.advertencias_aceptadas ?? [],
       notas: p.notas,
       ica: ica
         .filter((i) => i.profile_id === p.id && en(PERIODICIDADES_ICA, i.periodicidad))
@@ -364,7 +413,7 @@ export function contiguas(
   return { anterior, siguiente };
 }
 
-export type FaltaPerfil = 'perfil' | 'nit' | 'revisar_perfil' | 'periodicidad_iva';
+export type FaltaPerfil = 'perfil' | 'nit' | 'revisar_perfil' | 'periodicidad_iva' | 'cambio_periodicidad_pendiente';
 
 /** Lo que impide derivar las obligaciones con certeza (banda «Faltan datos para los borradores tributarios»). */
 export function faltantesPerfil(empresa: DatosEmpresa, vigente: VigenciaPerfil | null): FaltaPerfil[] {
@@ -374,6 +423,7 @@ export function faltantesPerfil(empresa: DatosEmpresa, vigente: VigenciaPerfil |
   if (vigente) {
     if (vigente.requiereRevision) faltan.push('revisar_perfil');
     if (vigente.condicionIva === 'responsable' && vigente.periodicidadIva === 'no_aplica') faltan.push('periodicidad_iva');
+    if (vigente.cambioPeriodicidadEstado === 'pendiente_soporte') faltan.push('cambio_periodicidad_pendiente');
   }
   return faltan;
 }

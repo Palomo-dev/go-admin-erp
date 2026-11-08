@@ -11,7 +11,7 @@
  * (`POST /api/saldos-a-favor/[id]/devolver` → `fn_saldo_favor_devolver`):
  * pago negativo (sale del arqueo), asiento 2805 contra caja o banco y saldo.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { Banknote } from 'lucide-react';
 import { AvisoTonal, CampoNumero, Dialogo, FilaDato, FormField, SelectorMetodoPago, simboloMoneda } from '@/components/kit';
@@ -26,9 +26,24 @@ import { ADAPTADOR_CLIENTE, type AdaptadorSaldos } from './adaptadorSaldos';
 import { metodoInicial, opcionesMetodoSaldo, requiereReferencia } from './metodosSaldo';
 import { textoErrorSaldo } from './textosSaldo';
 
-/** Solo del proveedor (P7: la devolución real lleva soporte; la retención proporcional se revierte). Con t.has: el cliente no las tiene. */
+/** Solo del proveedor (P7: la devolución real lleva soporte). Con t.has: el cliente no las tiene. */
 const CLAVE_SOPORTE = 'devolver.soporte';
-const CLAVE_RETENCION = 'devolver.retencionProporcional';
+/** Proveedor (ronda 2): «$X al banco y $Y de retenciones»; nunca «ingresaron $X+Y». */
+const CLAVE_EXITO_PARTES = 'devolver.exitoPartes';
+
+/**
+ * Sección propia de un tercero (proveedor: retenciones de la parte devuelta, por impuesto).
+ * `adicional` es lo que ese complemento también baja del saldo además del dinero (las
+ * retenciones identificadas); su valor viaja en `extra`.
+ */
+export interface ComplementoDevolver {
+  render: (p: {
+    saldoId: string;
+    dinero: number | null;
+    tocado: boolean;
+    onCambio: (valor: Record<string, unknown> | null, valido: boolean, adicional: number) => void;
+  }) => ReactNode;
+}
 
 export interface DevolverSaldoDialogProps {
   abierto: boolean;
@@ -37,9 +52,17 @@ export interface DevolverSaldoDialogProps {
   onDevuelto: () => void;
   /** Cliente (por defecto) o proveedor. */
   adaptador?: AdaptadorSaldos;
+  complemento?: ComplementoDevolver;
 }
 
-export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelto, adaptador = ADAPTADOR_CLIENTE }: DevolverSaldoDialogProps) {
+export function DevolverSaldoDialog({
+  abierto,
+  onAbiertoChange,
+  saldo,
+  onDevuelto,
+  adaptador = ADAPTADOR_CLIENTE,
+  complemento,
+}: DevolverSaldoDialogProps) {
   const t = useTranslations(adaptador.namespace);
   const moneda = useMonedaOrganizacion();
   const [contexto, setContexto] = useState<ContextoSaldoFavor | null>(null);
@@ -51,6 +74,11 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
   const [tocado, setTocado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extra, setExtra] = useState<{ valor: Record<string, unknown> | null; valido: boolean; adicional: number }>({ valor: null, valido: true, adicional: 0 });
+  const cambiarExtra = useCallback(
+    (valor: Record<string, unknown> | null, valido: boolean, adicional: number) => setExtra({ valor, valido, adicional }),
+    [],
+  );
   const clave = useRef('');
 
   useEffect(() => {
@@ -64,6 +92,7 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
     setMotivo('');
     setTocado(false);
     setError(null);
+    setExtra({ valor: null, valido: !complemento, adicional: 0 });
     clave.current = nuevaClaveIdempotencia('devolver');
     adaptador
       .contexto(saldo.sucursalId)
@@ -72,7 +101,7 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
     return () => {
       vigente = false;
     };
-  }, [abierto, saldo, t, adaptador]);
+  }, [abierto, saldo, t, adaptador, complemento]);
 
   const opciones = useMemo(() => opcionesMetodoSaldo(contexto, t('devolver.sinCaja')), [contexto, t]);
   useEffect(() => {
@@ -80,7 +109,9 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
   }, [contexto, metodo, opciones]);
 
   const disponible = saldo?.disponible ?? 0;
-  const errorMonto = validarMonto(monto, disponible);
+  // Lo que el complemento también baja del saldo (retenciones identificadas) reduce el tope del dinero.
+  const adicional = complemento ? extra.adicional : 0;
+  const errorMonto = validarMonto(monto, Math.max(0, disponible - adicional));
   const esEfectivo = metodo === 'cash';
   // Proveedor (P7): la devolución real lleva su soporte aunque el método no pida referencia.
   const conReferencia = requiereReferencia(contexto, metodo) || adaptador.soporteObligatorio === true;
@@ -93,18 +124,30 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
   const devolver = async () => {
     setTocado(true);
     if (!saldo || !metodo || errorMonto || faltaMotivo || faltaReferencia || sinCaja || monto === null) return;
+    if (complemento && !extra.valido) return;
     setEnviando(true);
     setError(null);
     try {
-      await adaptador.devolver(saldo.id, {
+      const r = (await adaptador.devolver(saldo.id, {
         monto,
         metodo,
         motivo: motivo.trim(),
         cuentaBancaria: !esEfectivo && cuenta ? Number(cuenta) : null,
         referencia,
         claveIdempotencia: clave.current,
-      });
-      toastSuccess(t('devolver.exito', { monto: moneda.formatear(monto), cliente: saldo.cliente ?? t('sinCliente') }));
+        extra: complemento ? extra.valor : null,
+      })) as { dinero?: unknown; retencion_revertida?: unknown } | null;
+      const cliente = saldo.cliente ?? t('sinCliente');
+      const retenciones = Number(r?.retencion_revertida ?? 0);
+      toastSuccess(
+        t.has(CLAVE_EXITO_PARTES)
+          ? t(CLAVE_EXITO_PARTES, {
+              dinero: moneda.formatear(Number(r?.dinero ?? monto)),
+              retenciones: moneda.formatear(Number.isFinite(retenciones) ? retenciones : 0),
+              cliente,
+            })
+          : t('devolver.exito', { monto: moneda.formatear(monto), cliente }),
+      );
       onAbiertoChange(false);
       onDevuelto();
     } catch (e) {
@@ -146,8 +189,8 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
         <FormField
           etiqueta={t('devolver.valor')}
           obligatorio
-          ayuda={t('devolver.hasta', { monto: moneda.formatear(disponible) })}
-          error={tocado && errorMonto ? t(`validacion.${errorMonto}`, { monto: moneda.formatear(disponible) }) : null}
+          ayuda={t('devolver.hasta', { monto: moneda.formatear(Math.max(0, disponible - adicional)) })}
+          error={tocado && errorMonto ? t(`validacion.${errorMonto}`, { monto: moneda.formatear(Math.max(0, disponible - adicional)) }) : null}
         >
           {(c) => (
             <CampoNumero
@@ -213,13 +256,11 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
             descripcion={t(esEfectivo ? 'devolver.quePasaEfectivo' : 'devolver.quePasaBanco', {
               monto: moneda.formatear(monto),
               origen: origenDinero,
-              saldo: moneda.formatear(Math.max(0, disponible - monto)),
+              saldo: moneda.formatear(Math.max(0, disponible - monto - adicional)),
             })}
           />
         )}
-        {adaptador.soporteObligatorio && t.has(CLAVE_RETENCION) && (
-          <p className="text-xs text-fg-muted">{t(CLAVE_RETENCION)}</p>
-        )}
+        {complemento && saldo && complemento.render({ saldoId: saldo.id, dinero: monto, tocado, onCambio: cambiarExtra })}
         {error && (
           <p role="alert" className="text-sm text-danger-text">
             {error}

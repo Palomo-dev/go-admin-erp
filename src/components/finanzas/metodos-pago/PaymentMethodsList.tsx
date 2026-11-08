@@ -59,6 +59,7 @@ import { accionQuitarMetodo } from "./metodosPagoLogica";
 import Link from "next/link";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import { nombreVisibleMetodo, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
+import { rutaConectar } from '@/lib/services/integrations/conexiones/rutaAsistente';
 
 // Componente SortableRow para filas arrastrables
 // Métodos que requieren integración con pasarela
@@ -289,7 +290,11 @@ function SortableRow({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link 
-                    href={`/app/integraciones/conexiones/nueva?provider=${method.payment_method_code.toLowerCase()}&return=/app/finanzas/metodos-pago`}
+                    href={
+                      // Asistente NUEVO de Conexiones con el proveedor elegido y regreso aquí (Frente INT).
+                      rutaConectar(method.payment_method_code, { volver: '/app/finanzas/metodos-pago' }) ??
+                      `/app/integraciones/conexiones/nueva?provider=${method.payment_method_code.toLowerCase()}&return=/app/finanzas/metodos-pago`
+                    }
                     className="cursor-pointer"
                   >
                     <Zap className="mr-2 h-4 w-4 text-brand" />

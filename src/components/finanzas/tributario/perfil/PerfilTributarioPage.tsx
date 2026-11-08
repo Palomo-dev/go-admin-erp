@@ -47,7 +47,18 @@ export function PerfilTributarioPage() {
 
   const base = useMemo<BaseVigencia>(() => {
     const ultima = datos?.vigencias[0];
-    if (ultima) return { ...ultima, advertenciasAceptadas: [], motivoCambioPeriodicidad: null };
+    if (ultima) {
+      // El soporte de un cambio de periodicidad pertenece a la vigencia que lo tuvo: la nueva no lo hereda.
+      return {
+        ...ultima,
+        advertenciasAceptadas: [],
+        motivoCambioPeriodicidad: null,
+        cambioPeriodicidadHecho: null,
+        cambioPeriodicidadNorma: null,
+        cambioPeriodicidadFecha: null,
+        cambioPeriodicidadEstado: 'no_aplica',
+      };
+    }
     const fe = datos?.empresa.responsabilidadesRut ?? [];
     // Desde la ficha solo se toma lo que tiene equivalencia explícita (O-47 ↔ SIMPLE, O-13, O-15, O-23).
     // La condición frente al IVA NO se deduce: R-99-PN no equivale a «no responsable».
@@ -55,7 +66,21 @@ export function PerfilTributarioPage() {
       regimenRenta: fe.includes(RESPONSABILIDAD.simple) ? 'simple' : null,
       condicionIva: null,
       granContribuyente: fe.includes(RESPONSABILIDAD.granContribuyente) ? true : null,
+      granContribuyenteActo: null,
+      granContribuyenteDesde: null,
       autorretenedor: fe.includes(RESPONSABILIDAD.autorretenedor) ? true : null,
+      autorretenedorActo: null,
+      autorretenedorActoFecha: null,
+      autorretencionEspecial: null,
+      incActividad: null,
+      rteTipo: null,
+      rteIngresosSuperan160000Uvt: null,
+      noContribuyenteNaturaleza: null,
+      cambioPeriodicidadHecho: null,
+      cambioPeriodicidadNorma: null,
+      cambioPeriodicidadFecha: null,
+      cambioPeriodicidadEstado: 'no_aplica',
+      actualizadoEn: null,
       agenteRetencionIva: fe.includes(RESPONSABILIDAD.agenteRetencionIva) ? true : null,
       agenteRetencion: false,
       responsableInc: false,
@@ -88,6 +113,8 @@ export function PerfilTributarioPage() {
   const estadoVigencia = (v: VigenciaPerfil) =>
     v.requiereRevision ? (
       <StatusBadge estado="revisar" etiqueta={t('estado.revisar')} tono="advertencia" />
+    ) : v.cambioPeriodicidadEstado === 'pendiente_soporte' ? (
+      <StatusBadge estado="pendiente_soporte" etiqueta={t('cambioEstado.pendiente_soporte')} tono="advertencia" />
     ) : v.advertenciasAceptadas.length > 0 ? (
       <StatusBadge estado="advertencias" etiqueta={t('estado.conAdvertencias', { cuantas: v.advertenciasAceptadas.length })} tono="informacion" />
     ) : (

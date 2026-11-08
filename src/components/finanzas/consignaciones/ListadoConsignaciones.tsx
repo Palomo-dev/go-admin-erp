@@ -181,18 +181,23 @@ export function ListadoConsignaciones({ incrustada = false, abrirNueva = 0 }: Li
 
       <ListToolbar
         busqueda={<SearchInput value={texto} onChange={setTexto} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
-        filtros={
-          <SegmentedControl
-            aria-label={t('filtros.estado')}
-            valor={estado}
-            onValorChange={(v) => setEstado(v as EstadoNota | 'todos')}
-            opciones={[
-              { valor: 'todos', etiqueta: t('filtros.todos') },
-              { valor: 'en_consignacion', etiqueta: t('estados.en_consignacion') },
-              { valor: 'por_liquidar', etiqueta: t('estados.por_liquidar') },
-              { valor: 'liquidada', etiqueta: t('estados.liquidada') },
-            ]}
-          />
+        chips={
+          // Fila propia bajo el buscador: en 390 px el control segmentado al lado del buscador hacía que la lupa se
+          // montara sobre la primera pestaña. Desplazamiento horizontal si las pestañas no caben (igual que Anticipos).
+          <div data-testid="consignaciones-filtro-estado" className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+            <SegmentedControl
+              etiqueta={t('filtros.estado')}
+              valor={estado}
+              onValorChange={(v) => setEstado(v as EstadoNota | 'todos')}
+              className="w-max"
+              opciones={[
+                { valor: 'todos', etiqueta: t('filtros.todos') },
+                { valor: 'en_consignacion', etiqueta: t('estados.en_consignacion') },
+                { valor: 'por_liquidar', etiqueta: t('estados.por_liquidar') },
+                { valor: 'liquidada', etiqueta: t('estados.liquidada') },
+              ]}
+            />
+          </div>
         }
       />
 
@@ -243,7 +248,6 @@ export function ListadoConsignaciones({ incrustada = false, abrirNueva = 0 }: Li
       <NuevaNotaConsignacionDialog
         abierto={nueva}
         onAbiertoChange={setNueva}
-        cuentaConsignacion={datos?.cuenta ?? null}
         onEntregada={(r) => router.push(`${RUTA_CONSIGNACIONES}/${r.nota_id}`)}
       />
     </div>

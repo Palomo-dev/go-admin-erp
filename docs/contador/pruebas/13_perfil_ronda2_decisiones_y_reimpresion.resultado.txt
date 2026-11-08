@@ -1,0 +1,59 @@
+Prueba en seco 13 · Ronda 2: catálogo RUT cotejado, perfil con calidades y soporte, cambio de periodicidad pendiente,
+decisiones de período e instantáneas de reimpresión fiel · 2026-11-07 · org 374
+Migraciones 20261108140500 (H2), 20261108160000, 20261108160500, 20261108161000 y 20261108161500 pegadas DENTRO de la
+transacción (no aplicadas); en la corrida el marco normativo de cada código del catálogo se abrevió (códigos, nombres,
+numerales y páginas iguales al archivo). La transacción terminó en error a propósito para devolver la tabla: no quedó
+ningún dato (después: rut_responsabilidades, tax_period_decisions y document_party_snapshots no existen; 0 vigencias).
+Resultado: 44 de 44. En la primera corrida la fila 12 salió «false» porque el valor ESPERADO estaba incompleto: con
+R-99-PN + O-13 y gran contribuyente marcado la base devuelve dos bloqueos (los dos correctos); se corrigió el esperado.
+
+ n | verificación                                                                          | esperado → obtenido
+---+---------------------------------------------------------------------------------------+-----------------------------------------------------------
+ 1 | Catálogo RUT cotejado con IN-CAC-0237 / no vigentes / sin 51                          | 48 cotejados · {11,12} · 51: 0 ✔
+ 2 | Código 47 con su fuente oficial                                                        | «Régimen Simple de Tributación - SIMPLE» · numeral 31.31, página 68 ✔
+ 3 | Códigos FE                                                                             | O-48, O-49 no_validado_como_fe; O-13, O-15, O-23, O-47, R-99-PN pendiente ✔
+ 4 | Mapeo RUT↔FE solo directo                                                              | 13→O-13, 15→O-15, 23→O-23, 47→O-47 ✔
+ 5 | Migración del campo combinado: simple {O-47,O-48}                                      | simple / responsable / revisar ✔
+ 6 | Migración del campo combinado: ordinario {O-48,O-13}                                   | NULL / responsable / gran=true / revisar ✔
+ 7 | Migración del campo combinado: no_responsable_iva {R-99-PN}                            | NULL / no_responsable / revisar ✔
+ 8 | Válida: ordinario, responsable bimestral, gran contribuyente con acto, agente de IVA   | OK ✔
+ 9 | SIMPLE con autorretención ordinaria activa (con acto)                                  | bloqueo simple_con_autorretencion ✔
+10 | SIMPLE con autorretención especial                                                     | bloqueo simple_con_autorretencion ✔
+11 | Gran contribuyente sin acto ni fecha                                                   | bloqueo gran_contribuyente_sin_acto ✔
+12 | R-99-PN junto con O-13 (y gran contribuyente marcado)                                  | bloqueo fe_r99_con_calidades, fe_r99_con_otros ✔
+13 | R-99-PN con régimen SIMPLE                                                             | bloqueo fe_r99_con_calidades ✔
+14 | R-99-PN con responsable de IVA (no significa «no responsable»)                         | OK ✔
+15 | O-48 como código FE                                                                    | bloqueo fe_codigo_no_validado ✔
+16 | IVA anual fuera del SIMPLE                                                             | bloqueo periodicidad_anual_fuera_de_simple ✔
+17 | RUT 47 y 05 a la vez (IN-CAC-0237: excluyentes)                                        | bloqueo rut_47_y_05 ✔
+18 | RUT 04 y 05 con RTE (ESAL antes de calificar)                                          | OK (ya no es bloqueo) ✔
+19 | RUT 53 sin SIMPLE                                                                      | bloqueo rut_53_sin_simple ✔
+20 | No contribuyente (art. 22) sin naturaleza jurídica                                     | bloqueo no_contribuyente_sin_naturaleza ✔
+21 | No contribuyente (art. 22) con 05 en el RUT                                            | bloqueo rut_art22_con_renta ✔
+22 | RTE sin tipo de entidad                                                                | bloqueo rte_sin_tipo ✔
+23 | INC sin actividad                                                                      | bloqueo inc_sin_actividad ✔
+24 | Designación de gran contribuyente con periodicidad cuatrimestral                       | bloqueo cambio_gran_contribuyente_no_bimestral ✔
+25 | Cambio bimestral → cuatrimestral el 2026-07-01 sin soporte                             | OK (se guarda) ✔
+26 | … estado                                                                               | pendiente_soporte ✔
+27 | Soporte con fecha efectiva distinta del inicio                                         | bloqueo cambio_fecha_efectiva_distinta ✔
+28 | Soporte completo (motivo, hecho, norma, fecha 2026-07-01)                              | OK ✔
+29 | … estado                                                                               | documentado ✔
+30 | Cambio el 2027-01-01 (1 de enero)                                                      | OK ✔
+31 | … estado                                                                               | no_aplica ✔
+32 | Dos decisiones sobre el cuatrimestre may–ago                                           | 2 en la historia; la nueva reemplaza a la anterior; quién = el usuario ✔
+33 | Escritura directa de una decisión (sin la RPC)                                         | 42501 ✔
+34 | Borrar decisiones                                                                      | 42501 (nadie borra la historia) ✔
+35 | Factura en borrador                                                                    | sin instantánea ✔
+36 | Al expedir: emisor con las responsabilidades de la vigencia de la fecha y receptor     | factura_venta · ["O-13","O-23"] · Cliente Original ✔
+37 | Tras cambiar cliente, ficha y vigencia                                                 | la instantánea conserva ["O-13","O-23"] · Cliente Original ✔
+38 | Modificar una instantánea (incluso con privilegios)                                    | 55000 INSTANTANEA_INMUTABLE ✔
+39 | Envío electrónico aceptado                                                             | receptor_xml = «Cliente Original XML» (el enviado) ✔
+40 | Miembro de la org 374 lee la instantánea (RLS)                                         | 1 ✔
+41 | Usuario de otra organización: instantáneas                                             | 0 ✔
+42 | Usuario de otra organización: decisiones                                               | 0 ✔
+43 | anon lee instantáneas                                                                  | 42501 ✔
+44 | Errores al crear los documentos de prueba                                              | ninguno ✔
+
+Cubierto aparte por jest (no por esta prueba): advertencias (solo existen en el servidor), Centro con decisión vigente o
+reabierta por cambio de huella, obligaciones del RTE y de no contribuyentes, «Calendario {año} incompleto», y el motor de
+PDF leyendo la instantánea, el envío aceptado o marcando «reconstruido» (src/lib/documents/server/__tests__/instantanea.test.ts).

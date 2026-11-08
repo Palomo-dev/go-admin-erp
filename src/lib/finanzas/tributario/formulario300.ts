@@ -1,13 +1,14 @@
 /**
- * Borrador del formulario 300 por casillas (versión 2) y clasificación de IVA
- * por línea. Lee el jsonb de `fn_tributario_borrador_iva_300` (migración
- * 20261108151000) y valida lo que la pantalla manda a `fn_iva_clasificar_linea`
- * (20261108150000). Sin React ni Supabase.
+ * Borrador del formulario 300 por casillas y clasificación de IVA por línea.
+ * Lee el jsonb de `fn_tributario_borrador_iva_300` (migración 20261108151000)
+ * y valida lo que la pantalla manda a `fn_iva_clasificar_linea` (20261108150000)
+ * y a `fn_iva_naturaleza_asiento_guardar` (20261108150500). Sin React ni Supabase.
  *
- * Reglas del Contador (2026-11-07, P2/P3/P4/P9): cada casilla sale de líneas
- * clasificadas o de asientos con naturaleza; lo que no se puede ubicar va a
- * «pendientes» con su valor, nunca se omite. «Conciliado» ≠ «aprobado
- * fiscalmente» (el sistema nunca lo aprueba). Valores del formulario a miles.
+ * Reglas del Contador (2026-11-07, rondas 1 y 2): cada casilla sale de líneas
+ * clasificadas o de asientos con naturaleza registrada CON SOPORTE; lo que no
+ * se puede ubicar va a «pendientes» con su valor, nunca se omite. Las señales
+ * (contrapartida banco, suma cero en 2408) no clasifican. «Conciliado» ≠
+ * «aprobado fiscalmente» (el sistema nunca lo aprueba). Valores a miles.
  */
 
 // ── Catálogos ───────────────────────────────────────────────────────────────
@@ -15,29 +16,66 @@
 export const TRATAMIENTOS_IVA = ['gravada', 'exenta', 'excluida', 'no_sujeta'] as const;
 export type TratamientoIva = (typeof TRATAMIENTOS_IVA)[number];
 
-export const TIPOS_OPERACION_IVA = ['bienes', 'servicios', 'importacion', 'aiu', 'licores', 'retiro_inventario', 'otra_especial'] as const;
+export const TIPOS_OPERACION_IVA = [
+  'bienes',
+  'servicios',
+  'exportacion_bienes',
+  'exportacion_servicios',
+  'importacion',
+  'aiu',
+  'licores',
+  'retiro_inventario',
+  'otra_especial',
+] as const;
 export type TipoOperacionIva = (typeof TIPOS_OPERACION_IVA)[number];
+export const TIPOS_EXPORTACION: readonly TipoOperacionIva[] = ['exportacion_bienes', 'exportacion_servicios'];
+
+/** Soporte de la condición de una línea (B1: una exportación exige su declaración, número y fecha). */
+export const SOPORTES_LINEA = ['declaracion_exportacion', 'soporte_exportacion_servicios', 'otro'] as const;
+export type SoporteLinea = (typeof SOPORTES_LINEA)[number];
 
 export const ESTADOS_DESCONTABLE = ['por_evaluar', 'descontable', 'no_descontable', 'proporcional'] as const;
 export type EstadoDescontable = (typeof ESTADOS_DESCONTABLE)[number];
 
-export const NATURALEZAS_MOVIMIENTO = ['pago_dian', 'traslado_auxiliares', 'cierre', 'devolucion_compra', 'ajuste_procedente', 'importacion', 'otro'] as const;
+export const NATURALEZAS_MOVIMIENTO = [
+  'pago_dian',
+  'traslado_auxiliares',
+  'cierre',
+  'devolucion_compra',
+  'ajuste_procedente',
+  'correccion_error',
+  'importacion',
+  'otro',
+] as const;
 export type NaturalezaMovimiento = (typeof NATURALEZAS_MOVIMIENTO)[number];
 
-/** Casillas que el Contador fijó (formulario e instructivo 2026, operaciones ordinarias). */
-export const CASILLAS_300 = [27, 28, 42, 50, 51, 52, 53, 56, 58, 59, 66, 71, 72, 74, 75, 79] as const;
+export const SOPORTES_MOVIMIENTO = ['recibo_pago_dian', 'nota_credito_proveedor', 'nota_ajuste_documento_soporte', 'comprobante_interno', 'otro'] as const;
+export type SoporteMovimiento = (typeof SOPORTES_MOVIMIENTO)[number];
+/** Ronda 3: cómo quedó resuelto el documento electrónico de una venta que nunca existió. */
+export const RESOLUCIONES_DOC_ELECTRONICO = ['nota_credito_electronica', 'anulacion_dian', 'constancia'] as const;
+export type ResolucionDocElectronico = (typeof RESOLUCIONES_DOC_ELECTRONICO)[number];
+
+/** Casillas del formulario 2026 fijadas por el Contador (rondas 1 y 2). */
+export const CASILLAS_300 = [27, 28, 30, 31, 35, 39, 40, 42, 47, 50, 51, 52, 53, 54, 56, 58, 59, 66, 71, 72, 74, 75, 79] as const;
 export type Casilla300 = (typeof CASILLAS_300)[number];
 
-/** Pares base → IVA, en el orden del formulario. */
-export const PARES_300: readonly { base: Casilla300; iva: Casilla300; concepto: string }[] = [
-  { base: 27, iva: 58, concepto: 'ventas_5' },
-  { base: 28, iva: 59, concepto: 'ventas_general' },
-  { base: 56, iva: 66, concepto: 'devoluciones_compras' },
-  { base: 50, iva: 71, concepto: 'compras_bienes_5' },
-  { base: 51, iva: 72, concepto: 'compras_bienes_general' },
-  { base: 52, iva: 74, concepto: 'compras_servicios_5' },
-  { base: 53, iva: 75, concepto: 'compras_servicios_general' },
-  { base: 42, iva: 79, concepto: 'devoluciones_ventas' },
+/** Filas del formulario: casilla de base y, si la hay, la de IVA. En el orden en que se muestran. */
+export const FILAS_300: readonly { base: Casilla300; iva: Casilla300 | null; concepto: string; lado: 'generado' | 'descontable' }[] = [
+  { base: 27, iva: 58, concepto: 'ventas_5', lado: 'generado' },
+  { base: 28, iva: 59, concepto: 'ventas_general', lado: 'generado' },
+  { base: 30, iva: null, concepto: 'exportacion_bienes', lado: 'generado' },
+  { base: 31, iva: null, concepto: 'exportacion_servicios', lado: 'generado' },
+  { base: 35, iva: null, concepto: 'exentas_nacionales', lado: 'generado' },
+  { base: 39, iva: null, concepto: 'excluidas', lado: 'generado' },
+  { base: 40, iva: null, concepto: 'no_gravadas', lado: 'generado' },
+  { base: 56, iva: 66, concepto: 'devoluciones_compras', lado: 'generado' },
+  { base: 47, iva: null, concepto: 'importaciones_no_gravadas', lado: 'descontable' },
+  { base: 50, iva: 71, concepto: 'compras_bienes_5', lado: 'descontable' },
+  { base: 51, iva: 72, concepto: 'compras_bienes_general', lado: 'descontable' },
+  { base: 52, iva: 74, concepto: 'compras_servicios_5', lado: 'descontable' },
+  { base: 53, iva: 75, concepto: 'compras_servicios_general', lado: 'descontable' },
+  { base: 54, iva: null, concepto: 'compras_no_gravadas', lado: 'descontable' },
+  { base: 42, iva: 79, concepto: 'devoluciones_ventas', lado: 'descontable' },
 ];
 
 export const CASILLAS_GENERADO: readonly Casilla300[] = [58, 59, 66];
@@ -49,16 +87,22 @@ export const MOTIVOS_PENDIENTE = [
   'sin_tipo_operacion',
   'operacion_especial',
   'tarifa_no_prevista',
-  'exenta_sin_soporte',
+  'exportacion_sin_soporte',
+  'exenta_sin_fundamento',
+  'sin_fundamento',
   'casilla_por_confirmar',
+  'soporte_supuesto_especial',
   'descontable_por_evaluar',
   'no_descontable_en_2408',
-  'descontable_en_otro_periodo',
   'sin_lineas',
   'no_cuadra',
   'documento_de_otro_periodo',
   'reversa_contable',
-  'devolucion_compra_sin_descuento',
+  'correccion_otro_periodo',
+  'correccion_incompleta',
+  'devolucion_iva_no_descontado',
+  'devolucion_compra_no_cuadra',
+  'sugerido_por_confirmar',
   'sin_soporte',
   'otro_movimiento',
 ] as const;
@@ -72,14 +116,18 @@ export interface Origen300 {
   clase: ClaseOrigen;
   documentoId: string;
   numero: string | null;
+  /** Fecha de contabilización (la que ubica el valor en el período). */
   fecha: string | null;
+  /** Fecha del documento (su mes), que puede ser de otro período. */
+  fechaDocumento: string | null;
   tabla: 'invoice_items' | 'sale_items' | null;
   lineaId: string | null;
   base: number | null;
   iva: number;
   asiento: number | null;
   entrePeriodos: boolean;
-  deOtroPeriodo: boolean;
+  corrigeOtroPeriodo: boolean;
+  causadoPeriodoAnterior: boolean;
   posteriorDeclaracion: boolean;
   facturaOrigen: { id: string; numero: string | null } | null;
 }
@@ -87,7 +135,7 @@ export interface Origen300 {
 export interface Casilla300Valor {
   casilla: Casilla300;
   tipo: 'base' | 'iva';
-  par: Casilla300;
+  par: Casilla300 | null;
   concepto: string;
   lado: 'generado' | 'descontable';
   valor: number;
@@ -108,20 +156,38 @@ export interface Pendiente300 {
   origenes: Origen300[];
 }
 
+export type NaturalezaOtro = NaturalezaMovimiento | 'reversa_contable' | 'sin_registro';
+
 export interface OtroMovimiento300 {
   asiento: number;
   origen: string | null;
   fecha: string | null;
   valor: number;
-  naturaleza: NaturalezaMovimiento | 'reversa_contable' | 'sin_soporte';
+  naturaleza: NaturalezaOtro;
   declarada: boolean;
+  /** Señal (no clasificación): contrapartida banco/caja o suma cero en 2408. */
+  sugerida: 'pago_dian' | 'traslado_auxiliares' | null;
   destino: 'no_afecta' | 'por_diligenciar' | 'casilla' | 'pendiente';
   motivo: MotivoPendiente | null;
+  soporteTipo: SoporteMovimiento | null;
   soporte: string | null;
+  soporteFecha: string | null;
   revierteA: number | null;
   facturaCompra: string | null;
   base: number | null;
+  ivaRecuperable: number | null;
   posteriorDeclaracion: boolean;
+  /** Ronda 3: estado de la corrección de error registrada sobre la reversa (null si no es una). */
+  correccion: CorreccionError300 | null;
+}
+
+export interface CorreccionError300 {
+  /** Solo completa saca la venta de las casillas: soporte, documento electrónico resuelto y marca de declaración. */
+  completa: boolean;
+  resolucion: ResolucionDocElectronico | null;
+  referencia: string | null;
+  fecha: string | null;
+  corrigeDeclaracionAnterior: boolean | null;
 }
 
 export interface PorDiligenciar300 {
@@ -152,12 +218,24 @@ export interface Formulario300 {
     diferenciaPreliminarFormulario: number;
     pendientes: number;
     pendientesIva: number;
+    /** B5: IVA no descontable que el asiento de compra ya llevó al costo (no está en la 2408 ni es pendiente). */
+    ivaNoDescontableAlCosto: number;
   };
   conciliacion: { libro2408: number; casillas: number; pendientes: number; otros: number; redondeoLineas: number; diferencia: number };
   alertas: {
     documentosEntrePeriodos: number;
-    descontableDeOtrosPeriodos: number;
+    notasDebitoOtroPeriodo: number;
+    comprasCausadasAntes: number;
     grabadosDespuesDeDeclarar: { asiento: number; origen: string | null; documentoId: string | null; fecha: string | null; periodo: { desde: string; hasta: string } }[];
+    /** Ronda 3: correcciones de error de ventas de un período declarado, o marcadas «corrige una declaración anterior». */
+    correccionesDeclaracionAnterior: {
+      asiento: number;
+      ventaAsiento: number | null;
+      fechaVenta: string | null;
+      completa: boolean;
+      corrigeDeclaracionAnterior: boolean | null;
+      periodoDeclarado: { desde: string; hasta: string; numeroFormulario: string | null } | null;
+    }[];
   };
 }
 
@@ -172,6 +250,7 @@ const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object'
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 const txt = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
 const esCasilla = (v: unknown): v is Casilla300 => CASILLAS_300.includes(Number(v) as Casilla300);
+const enLista = <T extends string>(lista: readonly T[], v: unknown): T | null => (lista.includes(v as T) ? (v as T) : null);
 const CLASES: readonly ClaseOrigen[] = ['venta_pos', 'factura_venta', 'nota_credito', 'nota_debito', 'factura_compra', 'documento_soporte', 'asiento'];
 
 function leerOrigen(v: unknown): Origen300 | null {
@@ -183,20 +262,34 @@ function leerOrigen(v: unknown): Origen300 | null {
     clase,
     documentoId: String(o.documento_id ?? ''),
     numero: txt(o.numero),
-    fecha: txt(o.fecha),
+    fecha: txt(o.fecha_contabilizacion) ?? txt(o.fecha),
+    fechaDocumento: txt(o.fecha_documento),
     tabla: o.tabla === 'invoice_items' || o.tabla === 'sale_items' ? o.tabla : null,
     lineaId: txt(o.linea_id),
     base: num(o.base),
     iva: num(o.iva) ?? 0,
     asiento: num(o.asiento),
     entrePeriodos: o.entre_periodos === true,
-    deOtroPeriodo: o.de_otro_periodo === true,
+    corrigeOtroPeriodo: o.corrige_otro_periodo === true,
+    causadoPeriodoAnterior: o.causado_periodo_anterior === true,
     posteriorDeclaracion: o.posterior_declaracion === true,
     facturaOrigen: txt(fo.id) ? { id: String(fo.id), numero: txt(fo.numero) } : null,
   };
 }
 
 const origenes = (v: unknown) => arr(v).map(leerOrigen).filter((o): o is Origen300 => o !== null);
+
+function leerCorreccion(v: unknown): CorreccionError300 | null {
+  if (!v || typeof v !== 'object') return null;
+  const c = obj(v);
+  return {
+    completa: c.completa === true,
+    resolucion: enLista(RESOLUCIONES_DOC_ELECTRONICO, c.resolucion),
+    referencia: txt(c.referencia),
+    fecha: txt(c.fecha),
+    corrigeDeclaracionAnterior: typeof c.corrige_declaracion_anterior === 'boolean' ? c.corrige_declaracion_anterior : null,
+  };
+}
 
 /** jsonb de la RPC → formulario. Lo que no se entiende se descarta (la prueba lo vigila). */
 export function leerFormulario300(data: unknown): Formulario300 {
@@ -209,11 +302,11 @@ export function leerFormulario300(data: unknown): Formulario300 {
 
   const casillas = arr(d.casillas)
     .map(obj)
-    .filter((c) => esCasilla(c.casilla) && esCasilla(c.par) && (c.tipo === 'base' || c.tipo === 'iva'))
+    .filter((c) => esCasilla(c.casilla) && (c.par === null || c.par === undefined || esCasilla(c.par)) && (c.tipo === 'base' || c.tipo === 'iva'))
     .map<Casilla300Valor>((c) => ({
       casilla: Number(c.casilla) as Casilla300,
       tipo: c.tipo as 'base' | 'iva',
-      par: Number(c.par) as Casilla300,
+      par: esCasilla(c.par) ? (Number(c.par) as Casilla300) : null,
       concepto: String(c.concepto ?? ''),
       lado: c.lado === 'descontable' ? 'descontable' : 'generado',
       valor: num(c.valor) ?? 0,
@@ -237,6 +330,7 @@ export function leerFormulario300(data: unknown): Formulario300 {
       origenes: origenes(p.origenes),
     }));
 
+  const NATURALEZAS_OTRO: readonly NaturalezaOtro[] = [...NATURALEZAS_MOVIMIENTO, 'reversa_contable', 'sin_registro'];
   const otrosMovimientos = arr(d.otros_movimientos)
     .map(obj)
     .filter((o) => num(o.asiento) !== null)
@@ -245,15 +339,20 @@ export function leerFormulario300(data: unknown): Formulario300 {
       origen: txt(o.origen),
       fecha: txt(o.fecha),
       valor: num(o.valor) ?? 0,
-      naturaleza: String(o.naturaleza ?? 'sin_soporte') as OtroMovimiento300['naturaleza'],
+      naturaleza: enLista(NATURALEZAS_OTRO, o.naturaleza) ?? 'sin_registro',
       declarada: o.declarada === true,
+      sugerida: o.sugerida === 'pago_dian' || o.sugerida === 'traslado_auxiliares' ? o.sugerida : null,
       destino: (['no_afecta', 'por_diligenciar', 'casilla', 'pendiente'].includes(String(o.destino)) ? o.destino : 'pendiente') as OtroMovimiento300['destino'],
-      motivo: MOTIVOS_PENDIENTE.includes(o.motivo as MotivoPendiente) ? (o.motivo as MotivoPendiente) : null,
+      motivo: enLista(MOTIVOS_PENDIENTE, o.motivo),
+      soporteTipo: enLista(SOPORTES_MOVIMIENTO, o.soporte_tipo),
       soporte: txt(o.soporte),
+      soporteFecha: txt(o.soporte_fecha),
       revierteA: num(o.revierte_a),
       facturaCompra: txt(o.factura_compra),
       base: num(o.base),
+      ivaRecuperable: num(o.iva_recuperable),
       posteriorDeclaracion: o.posterior_declaracion === true,
+      correccion: leerCorreccion(o.correccion),
     }));
 
   const porDiligenciar = arr(d.por_diligenciar)
@@ -271,9 +370,10 @@ export function leerFormulario300(data: unknown): Formulario300 {
     estado: d.estado === 'conciliado' ? 'conciliado' : 'no_conciliado',
     aprobadoFiscalmente: false,
     liquidacionCompleta: false,
-    periodoDeclarado: pd && txt(pd.desde)
-      ? { desde: String(pd.desde), hasta: String(pd.hasta ?? ''), numeroFormulario: txt(pd.numero_formulario), presentadaEn: String(pd.presentada_en ?? '') }
-      : null,
+    periodoDeclarado:
+      pd && txt(pd.desde)
+        ? { desde: String(pd.desde), hasta: String(pd.hasta ?? ''), numeroFormulario: txt(pd.numero_formulario), presentadaEn: String(pd.presentada_en ?? '') }
+        : null,
     casillas,
     pendientes,
     otrosMovimientos,
@@ -287,6 +387,7 @@ export function leerFormulario300(data: unknown): Formulario300 {
       diferenciaPreliminarFormulario: num(res.diferencia_preliminar_formulario) ?? 0,
       pendientes: num(res.pendientes) ?? pendientes.reduce((s, p) => s + p.totalOrigenes, 0),
       pendientesIva: num(res.pendientes_iva) ?? 0,
+      ivaNoDescontableAlCosto: num(res.iva_no_descontable_al_costo) ?? 0,
     },
     conciliacion: {
       libro2408: num(con.libro_2408) ?? 0,
@@ -298,7 +399,8 @@ export function leerFormulario300(data: unknown): Formulario300 {
     },
     alertas: {
       documentosEntrePeriodos: num(al.documentos_entre_periodos) ?? 0,
-      descontableDeOtrosPeriodos: num(al.descontable_de_otros_periodos) ?? 0,
+      notasDebitoOtroPeriodo: num(al.notas_debito_otro_periodo) ?? 0,
+      comprasCausadasAntes: num(al.compras_causadas_antes) ?? 0,
       grabadosDespuesDeDeclarar: arr(al.grabados_despues_de_declarar)
         .map(obj)
         .filter((a) => num(a.asiento) !== null)
@@ -310,6 +412,20 @@ export function leerFormulario300(data: unknown): Formulario300 {
             documentoId: txt(a.documento_id),
             fecha: txt(a.fecha),
             periodo: { desde: String(p.desde ?? ''), hasta: String(p.hasta ?? '') },
+          };
+        }),
+      correccionesDeclaracionAnterior: arr(al.correcciones_declaracion_anterior)
+        .map(obj)
+        .filter((a) => num(a.asiento) !== null)
+        .map((a) => {
+          const p = a.periodo_declarado ? obj(a.periodo_declarado) : null;
+          return {
+            asiento: num(a.asiento) as number,
+            ventaAsiento: num(a.venta_asiento),
+            fechaVenta: txt(a.fecha_venta),
+            completa: a.completa === true,
+            corrigeDeclaracionAnterior: typeof a.corrige_declaracion_anterior === 'boolean' ? a.corrige_declaracion_anterior : null,
+            periodoDeclarado: p && txt(p.desde) ? { desde: String(p.desde), hasta: String(p.hasta ?? ''), numeroFormulario: txt(p.numero_formulario) } : null,
           };
         }),
     },
@@ -328,7 +444,7 @@ export function casilla(f: Formulario300, n: Casilla300): Casilla300Valor | unde
   return f.casillas.find((c) => c.casilla === n);
 }
 
-/** Pendientes de líneas/documentos y otros movimientos pendientes, en una sola lista para la sección «Pendientes de clasificar». */
+/** Pendientes de líneas/documentos y otros movimientos pendientes, para la sección «Pendientes de clasificar». */
 export function totalPendientes(f: Formulario300): { grupos: number; origenes: number; iva: number } {
   const otros = f.otrosMovimientos.filter((o) => o.destino === 'pendiente');
   return {
@@ -336,6 +452,15 @@ export function totalPendientes(f: Formulario300): { grupos: number; origenes: n
     origenes: f.pendientes.reduce((s, p) => s + p.totalOrigenes, 0) + otros.length,
     iva: f.resumen.pendientesIva,
   };
+}
+
+/**
+ * Puente de «otros movimientos» de la conciliación, componente por componente
+ * (lo que el Contador pidió explicar): cada asiento con su naturaleza, su destino
+ * y su efecto en la 2408. Suma = conciliacion.otros + la parte pendiente.
+ */
+export function puenteOtrosMovimientos(f: Formulario300): { asiento: number; naturaleza: NaturalezaOtro; destino: OtroMovimiento300['destino']; valor: number }[] {
+  return f.otrosMovimientos.map((o) => ({ asiento: o.asiento, naturaleza: o.naturaleza, destino: o.destino, valor: o.valor }));
 }
 
 /** Ruta de la pantalla del documento de origen (para el enlace de cada línea). */
@@ -357,6 +482,9 @@ export function rutaOrigen(o: Pick<Origen300, 'clase' | 'documentoId'>): string 
   }
 }
 
+export const TIPOS_DOCUMENTO_LINEAS = ['factura_venta', 'factura_compra', 'documento_soporte', 'venta_pos'] as const;
+export type TipoDocumentoLineas = (typeof TIPOS_DOCUMENTO_LINEAS)[number];
+
 /** Tipo de documento para `fn_iva_lineas_documento` a partir de la clase del origen. */
 export function tipoDocumentoLineas(clase: ClaseOrigen): TipoDocumentoLineas | null {
   switch (clase) {
@@ -377,15 +505,15 @@ export function tipoDocumentoLineas(clase: ClaseOrigen): TipoDocumentoLineas | n
 
 // ── Clasificación por línea ─────────────────────────────────────────────────
 
-export const TIPOS_DOCUMENTO_LINEAS = ['factura_venta', 'factura_compra', 'documento_soporte', 'venta_pos'] as const;
-export type TipoDocumentoLineas = (typeof TIPOS_DOCUMENTO_LINEAS)[number];
-
 export interface ClasificacionLinea {
   tratamiento: TratamientoIva | null;
   tarifa: number | null;
   tipoOperacion: TipoOperacionIva | null;
   fundamento: string | null;
   origen: 'sugerida' | 'heredada' | 'manual' | null;
+  soporteTipo: SoporteLinea | null;
+  soporteNumero: string | null;
+  soporteFecha: string | null;
 }
 
 export interface LineaFiscal {
@@ -398,12 +526,12 @@ export interface LineaFiscal {
   taxCode: string | null;
   taxRate: number | null;
   compra: boolean;
+  /** Línea de documento soporte (compra a un no responsable): no admite «descontable» por marca manual. */
+  soporteDoc: boolean;
   clasificacion: ClasificacionLinea;
-  descontable: { estado: EstadoDescontable; porcentaje: number | null; motivo: string | null; periodo: string | null } | null;
+  descontable: { estado: EstadoDescontable; porcentaje: number | null; motivo: string | null } | null;
   sugerencia: { tratamiento: TratamientoIva | null; tarifa: number | null; tipoOperacion: TipoOperacionIva | null };
 }
-
-const enLista = <T extends string>(lista: readonly T[], v: unknown): T | null => (lista.includes(v as T) ? (v as T) : null);
 
 export function leerLineasFiscales(data: unknown): LineaFiscal[] {
   return arr(obj(data).lineas)
@@ -423,16 +551,18 @@ export function leerLineasFiscales(data: unknown): LineaFiscal[] {
         taxCode: txt(l.tax_code),
         taxRate: num(l.tax_rate),
         compra: l.compra === true,
+        soporteDoc: l.soporte_doc === true,
         clasificacion: {
           tratamiento: enLista(TRATAMIENTOS_IVA, c.tratamiento),
           tarifa: num(c.tarifa),
           tipoOperacion: enLista(TIPOS_OPERACION_IVA, c.tipo_operacion),
           fundamento: txt(c.fundamento),
           origen: enLista(['sugerida', 'heredada', 'manual'] as const, c.origen),
+          soporteTipo: enLista(SOPORTES_LINEA, c.soporte_tipo),
+          soporteNumero: txt(c.soporte_numero),
+          soporteFecha: txt(c.soporte_fecha),
         },
-        descontable: d
-          ? { estado: enLista(ESTADOS_DESCONTABLE, d.estado) ?? 'por_evaluar', porcentaje: num(d.porcentaje), motivo: txt(d.motivo), periodo: txt(d.periodo) }
-          : null,
+        descontable: d ? { estado: enLista(ESTADOS_DESCONTABLE, d.estado) ?? 'por_evaluar', porcentaje: num(d.porcentaje), motivo: txt(d.motivo) } : null,
         sugerencia: { tratamiento: enLista(TRATAMIENTOS_IVA, s.tratamiento), tarifa: num(s.tarifa), tipoOperacion: enLista(TIPOS_OPERACION_IVA, s.tipo_operacion) },
       };
     });
@@ -443,24 +573,29 @@ export interface SolicitudClasificacion {
   tarifa: number;
   tipo_operacion: TipoOperacionIva | null;
   fundamento: string | null;
+  soporte_tipo: SoporteLinea | null;
+  soporte_numero: string | null;
+  soporte_fecha: string | null;
   descontable?: EstadoDescontable;
   descontable_porcentaje?: number | null;
   descontable_motivo?: string | null;
-  descontable_periodo?: string | null;
 }
 
 export type ErrorClasificacion =
   | 'tratamiento_invalido'
   | 'tarifa_invalida'
   | 'tipo_operacion_invalido'
+  | 'exportacion_debe_ser_exenta'
+  | 'soporte_invalido'
   | 'texto_largo'
   | 'descontable_solo_compras'
   | 'descontable_invalido'
   | 'porcentaje_invalido'
   | 'motivo_requerido'
-  | 'periodo_invalido';
+  | 'soporte_no_descontable';
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
+const texto = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
 /**
  * Valida el cuerpo que manda la pantalla (lista blanca). Las mismas reglas que
@@ -468,7 +603,7 @@ const DIA = /^\d{4}-\d{2}-\d{2}$/;
  */
 export function validarClasificacion(
   cuerpo: unknown,
-  opciones: { compra: boolean },
+  opciones: { compra: boolean; soporteDoc?: boolean },
 ): { ok: true; datos: SolicitudClasificacion } | { ok: false; error: ErrorClasificacion } {
   const c = obj(cuerpo);
   const tratamiento = enLista(TRATAMIENTOS_IVA, c.tratamiento);
@@ -482,9 +617,23 @@ export function validarClasificacion(
   }
   const tipo = c.tipo_operacion === null || c.tipo_operacion === undefined || c.tipo_operacion === '' ? null : enLista(TIPOS_OPERACION_IVA, c.tipo_operacion);
   if (tipo === null && c.tipo_operacion) return { ok: false, error: 'tipo_operacion_invalido' };
-  const fundamento = typeof c.fundamento === 'string' && c.fundamento.trim() ? c.fundamento.trim() : null;
-  if ((fundamento?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
-  const datos: SolicitudClasificacion = { tratamiento, tarifa, tipo_operacion: tipo, fundamento };
+  if (tipo && TIPOS_EXPORTACION.includes(tipo) && tratamiento !== 'exenta') return { ok: false, error: 'exportacion_debe_ser_exenta' };
+  const soporteTipo = c.soporte_tipo === null || c.soporte_tipo === undefined || c.soporte_tipo === '' ? null : enLista(SOPORTES_LINEA, c.soporte_tipo);
+  if (soporteTipo === null && c.soporte_tipo) return { ok: false, error: 'soporte_invalido' };
+  const soporteFecha = texto(c.soporte_fecha);
+  if (soporteFecha !== null && !DIA.test(soporteFecha)) return { ok: false, error: 'soporte_invalido' };
+  const fundamento = texto(c.fundamento);
+  const soporteNumero = texto(c.soporte_numero);
+  if ((fundamento?.length ?? 0) > 500 || (soporteNumero?.length ?? 0) > 80) return { ok: false, error: 'texto_largo' };
+  const datos: SolicitudClasificacion = {
+    tratamiento,
+    tarifa,
+    tipo_operacion: tipo,
+    fundamento,
+    soporte_tipo: soporteTipo,
+    soporte_numero: soporteNumero,
+    soporte_fecha: soporteFecha,
+  };
 
   if (c.descontable !== undefined) {
     if (!opciones.compra) return { ok: false, error: 'descontable_solo_compras' };
@@ -492,15 +641,16 @@ export function validarClasificacion(
     if (!estado) return { ok: false, error: 'descontable_invalido' };
     const pct = num(c.descontable_porcentaje);
     if (estado === 'proporcional' && (pct === null || pct <= 0 || pct >= 100)) return { ok: false, error: 'porcentaje_invalido' };
-    const motivo = typeof c.descontable_motivo === 'string' && c.descontable_motivo.trim() ? c.descontable_motivo.trim() : null;
+    const motivo = texto(c.descontable_motivo);
     if (estado !== 'por_evaluar' && !motivo) return { ok: false, error: 'motivo_requerido' };
     if ((motivo?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
-    const periodo = typeof c.descontable_periodo === 'string' && c.descontable_periodo ? c.descontable_periodo : null;
-    if (periodo !== null && !DIA.test(periodo)) return { ok: false, error: 'periodo_invalido' };
+    // Corrección (c): compra a un no responsable no genera IVA descontable por marca manual.
+    if (opciones.soporteDoc && (estado === 'descontable' || estado === 'proporcional') && (!(tipo === 'otra_especial' || tipo === 'importacion') || !fundamento)) {
+      return { ok: false, error: 'soporte_no_descontable' };
+    }
     datos.descontable = estado;
     datos.descontable_porcentaje = estado === 'proporcional' ? pct : null;
     datos.descontable_motivo = motivo;
-    datos.descontable_periodo = estado === 'por_evaluar' ? null : periodo;
   }
   return { ok: true, datos };
 }
@@ -509,10 +659,10 @@ export function validarClasificacion(
 export function clasificacionInicial(l: LineaFiscal): ClasificacionLinea {
   if (l.clasificacion.tratamiento) return l.clasificacion;
   return {
+    ...l.clasificacion,
     tratamiento: l.sugerencia.tratamiento,
     tarifa: l.sugerencia.tarifa,
     tipoOperacion: l.sugerencia.tipoOperacion ?? l.clasificacion.tipoOperacion,
-    fundamento: l.clasificacion.fundamento,
     origen: null,
   };
 }
@@ -545,30 +695,108 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const esUuid = (v: unknown): v is string => typeof v === 'string' && UUID.test(v);
 
+export interface SolicitudNaturaleza {
+  naturaleza: NaturalezaMovimiento;
+  soporte_tipo: SoporteMovimiento | null;
+  soporte: string | null;
+  soporte_fecha: string | null;
+  invoice_purchase_id: string | null;
+  support_document_id: string | null;
+  base: number | null;
+  iva: number | null;
+  lineas: { invoice_item_id: string; base: number; iva: number }[] | null;
+  nota: string | null;
+  doc_electronico_resolucion: ResolucionDocElectronico | null;
+  doc_electronico_referencia: string | null;
+  doc_electronico_fecha: string | null;
+  corrige_declaracion_anterior: boolean | null;
+}
+
+export type ErrorNaturaleza =
+  | 'asiento_invalido'
+  | 'naturaleza_invalida'
+  | 'soporte_invalido'
+  | 'soporte_requerido'
+  | 'devolucion_incompleta'
+  | 'devolucion_lineas_no_suman'
+  | 'resolucion_invalida'
+  | 'texto_largo';
+
 /** Cuerpo de «naturaleza de un asiento». `naturaleza: null` = quitar el registro. */
 export function validarNaturaleza(
   cuerpo: unknown,
-):
-  | { ok: true; asiento: number; datos: { naturaleza: NaturalezaMovimiento; invoice_purchase_id: string | null; base: number | null; soporte: string | null; nota: string | null } | null }
-  | { ok: false; error: 'asiento_invalido' | 'naturaleza_invalida' | 'devolucion_sin_factura' | 'soporte_requerido' | 'texto_largo' } {
+): { ok: true; asiento: number; datos: SolicitudNaturaleza | null } | { ok: false; error: ErrorNaturaleza } {
   const c = obj(cuerpo);
   const asiento = num(c.asiento);
   if (asiento === null || !Number.isInteger(asiento) || asiento <= 0) return { ok: false, error: 'asiento_invalido' };
   if (c.naturaleza === null) return { ok: true, asiento, datos: null };
   const naturaleza = enLista(NATURALEZAS_MOVIMIENTO, c.naturaleza);
   if (!naturaleza) return { ok: false, error: 'naturaleza_invalida' };
-  const soporte = typeof c.soporte === 'string' && c.soporte.trim() ? c.soporte.trim() : null;
-  const nota = typeof c.nota === 'string' && c.nota.trim() ? c.nota.trim() : null;
+  const soporteTipo = c.soporte_tipo === null || c.soporte_tipo === undefined || c.soporte_tipo === '' ? null : enLista(SOPORTES_MOVIMIENTO, c.soporte_tipo);
+  if (soporteTipo === null && c.soporte_tipo) return { ok: false, error: 'soporte_invalido' };
+  const soporte = texto(c.soporte);
+  const soporteFecha = texto(c.soporte_fecha);
+  if (soporteFecha !== null && !DIA.test(soporteFecha)) return { ok: false, error: 'soporte_invalido' };
+  const nota = texto(c.nota);
   if ((soporte?.length ?? 0) > 500 || (nota?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
-  let factura: string | null = null;
-  let base: number | null = null;
-  if (naturaleza === 'devolucion_compra') {
-    base = num(c.base);
-    if (!esUuid(c.invoice_purchase_id) || base === null || base < 0) return { ok: false, error: 'devolucion_sin_factura' };
-    factura = c.invoice_purchase_id;
+  // Ronda 2: la naturaleza se registra con su soporte (salvo el cierre, que lo genera el propio cierre).
+  if (naturaleza !== 'cierre' && (!soporte || !soporteFecha)) return { ok: false, error: 'soporte_requerido' };
+
+  const datos: SolicitudNaturaleza = {
+    naturaleza,
+    soporte_tipo: soporteTipo,
+    soporte,
+    soporte_fecha: soporteFecha,
+    invoice_purchase_id: null,
+    support_document_id: null,
+    base: null,
+    iva: null,
+    lineas: null,
+    nota,
+    doc_electronico_resolucion: null,
+    doc_electronico_referencia: null,
+    doc_electronico_fecha: null,
+    corrige_declaracion_anterior: null,
+  };
+  if (naturaleza === 'correccion_error') {
+    // Ronda 3: el soporte que acredita el error lleva su tipo. Se puede guardar incompleta (constancia del avance);
+    // la venta solo sale de las casillas cuando también constan la resolución del documento electrónico (con
+    // referencia y fecha) y la marca de si corresponde corregir una declaración anterior.
+    if (!soporteTipo) return { ok: false, error: 'soporte_requerido' };
+    const resolucion = c.doc_electronico_resolucion === null || c.doc_electronico_resolucion === undefined || c.doc_electronico_resolucion === ''
+      ? null
+      : enLista(RESOLUCIONES_DOC_ELECTRONICO, c.doc_electronico_resolucion);
+    if (resolucion === null && c.doc_electronico_resolucion) return { ok: false, error: 'resolucion_invalida' };
+    const referencia = texto(c.doc_electronico_referencia);
+    if ((referencia?.length ?? 0) > 120) return { ok: false, error: 'texto_largo' };
+    const fechaRes = texto(c.doc_electronico_fecha);
+    if (fechaRes !== null && !DIA.test(fechaRes)) return { ok: false, error: 'resolucion_invalida' };
+    Object.assign(datos, {
+      doc_electronico_resolucion: resolucion,
+      doc_electronico_referencia: referencia,
+      doc_electronico_fecha: fechaRes,
+      corrige_declaracion_anterior: typeof c.corrige_declaracion_anterior === 'boolean' ? c.corrige_declaracion_anterior : null,
+    });
   }
-  if (naturaleza === 'ajuste_procedente' && !soporte) return { ok: false, error: 'soporte_requerido' };
-  return { ok: true, asiento, datos: { naturaleza, invoice_purchase_id: factura, base, soporte, nota } };
+  if (naturaleza === 'devolucion_compra') {
+    // B4: vínculo con la compra Y sus líneas, base e IVA; la RPC además exige que el IVA cuadre con el asiento.
+    const fc = esUuid(c.invoice_purchase_id) ? c.invoice_purchase_id : null;
+    const ds = esUuid(c.support_document_id) ? c.support_document_id : null;
+    const base = num(c.base);
+    const iva = num(c.iva);
+    const lineas = arr(c.lineas)
+      .map(obj)
+      .map((l) => ({ invoice_item_id: l.invoice_item_id, base: num(l.base), iva: num(l.iva) }))
+      .filter((l): l is { invoice_item_id: string; base: number; iva: number } => esUuid(l.invoice_item_id) && l.base !== null && l.iva !== null && l.base >= 0 && l.iva >= 0);
+    if ((fc ? 1 : 0) + (ds ? 1 : 0) !== 1 || base === null || base < 0 || iva === null || iva < 0 || lineas.length === 0 || !soporteTipo) {
+      return { ok: false, error: 'devolucion_incompleta' };
+    }
+    const sumaBase = lineas.reduce((s, l) => s + l.base, 0);
+    const sumaIva = lineas.reduce((s, l) => s + l.iva, 0);
+    if (Math.abs(sumaBase - base) > 1 || Math.abs(sumaIva - iva) > 1) return { ok: false, error: 'devolucion_lineas_no_suman' };
+    Object.assign(datos, { invoice_purchase_id: fc, support_document_id: ds, base, iva, lineas });
+  }
+  return { ok: true, asiento, datos };
 }
 
 /** Cuerpo de «registrar período declarado». `presentada_en: null` = quitar el registro. */
@@ -584,8 +812,8 @@ export function validarDeclaracion(
   if (c.presentada_en === null) return { ok: true, desde, hasta, datos: null };
   const presentada = typeof c.presentada_en === 'string' ? c.presentada_en : '';
   if (!DIA.test(presentada) || presentada < hasta) return { ok: false, error: 'fecha_presentacion_invalida' };
-  const numero = typeof c.numero_formulario === 'string' && c.numero_formulario.trim() ? c.numero_formulario.trim() : null;
-  const nota = typeof c.nota === 'string' && c.nota.trim() ? c.nota.trim() : null;
+  const numero = texto(c.numero_formulario);
+  const nota = texto(c.nota);
   if ((numero?.length ?? 0) > 40 || (nota?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
   return { ok: true, desde, hasta, datos: { numero_formulario: numero, presentada_en: presentada, nota } };
 }

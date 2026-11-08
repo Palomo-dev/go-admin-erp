@@ -19,6 +19,8 @@ export interface AsistenteConexionProps {
   onConectado: (conexionId: string | null) => void;
   /** Conexión existente: reemplazar llaves («llaves») o seguir tras el OAuth (Meta, 85-42/43). */
   conexionId?: string;
+  /** Sucursal elegida desde donde se pidió conectar (Métodos de pago): solo asistente «llaves». */
+  sucursalId?: number;
 }
 
 /** Tipos de asistente que se abren en diálogo. */
@@ -28,10 +30,10 @@ export function tieneAsistente(item: Pick<ItemCatalogo, 'asistente'>): boolean {
   return (ASISTENTES_EN_DIALOGO as readonly string[]).includes(item.asistente);
 }
 
-export function AsistenteConexion({ item, abierto, onCerrar, onConectado, conexionId }: AsistenteConexionProps) {
+export function AsistenteConexion({ item, abierto, onCerrar, onConectado, conexionId, sucursalId }: AsistenteConexionProps) {
   switch (item.asistente) {
     case 'llaves':
-      return <AsistenteLlaves item={item} abierto={abierto} onCerrar={onCerrar} onConectado={onConectado} conexionId={conexionId} />;
+      return <AsistenteLlaves item={item} abierto={abierto} onCerrar={onCerrar} onConectado={onConectado} conexionId={conexionId} sucursalId={sucursalId} />;
     case 'ota':
       return <AsistenteOta item={item} abierto={abierto} onCerrar={onCerrar} onConectado={onConectado} />;
     case 'ical':

@@ -5,11 +5,24 @@
 -- Reversión: supabase/rollbacks/20261108150000_iva_clasificacion_por_linea_rollback.sql
 -- No depende de H1 (20261108140000) ni H1 depende de esta.
 --
+-- RONDA 2 DEL CONTADOR (2026-11-07), reescrita sin aplicar:
+--   · B1: tipo de operación «exportación de bienes» / «exportación de servicios» y SOPORTE estructurado de la
+--     línea (tipo, número y fecha: p. ej. la declaración de exportación). «Exenta» + un texto no prueba una
+--     exportación: sin los tres datos del soporte, el borrador la deja pendiente.
+--   · Corrección (b): se QUITA el selector libre «período en que se descuenta» (columna de período del descuento). La
+--     oportunidad (art. 496) se deriva de la fecha de contabilización y del período fiscal; el borrador muestra la
+--     fecha del documento y la de contabilización y señala la compra causada en un período anterior.
+--   · Corrección (c): una línea de documento soporte (compra a un no responsable) no queda «descontable» por una
+--     marca manual: la RPC lo rechaza salvo un supuesto especial (tipo «otra especial» o «importación») con su
+--     fundamento, y aun así el borrador lo deja pendiente para su tratamiento propio.
+--
 -- Qué agrega (aditivo: columnas NULL-ables sin DEFAULT, sin DROP, sin cambios de tipo; no toca totales):
 --   1. Por línea (invoice_items: venta, nota crédito/débito, compra, documento soporte; sale_items: POS):
 --        iva_tratamiento     gravada | exenta | excluida | no_sujeta
 --        iva_tarifa          tarifa en % (0 para exenta/excluida/no sujeta)
---        iva_tipo_operacion  bienes | servicios | importacion | aiu | licores | retiro_inventario | otra_especial
+--        iva_tipo_operacion  bienes | servicios | exportacion_bienes | exportacion_servicios | importacion | aiu |
+--                            licores | retiro_inventario | otra_especial
+--        iva_soporte_tipo / iva_soporte_numero / iva_soporte_fecha  soporte de la condición (exportación u otra)
 --        iva_fundamento      norma o soporte (obligatorio en la práctica para exentas: sin él, el borrador la
 --                            deja «pendiente»)
 --        iva_clasificacion_origen  sugerida (del impuesto/producto al crear la línea) | heredada (nota crédito:
@@ -17,8 +30,9 @@
 --        iva_clasificado_por / iva_clasificado_en
 --      Solo invoice_items (compras y documento soporte):
 --        iva_descontable     por_evaluar | descontable | no_descontable | proporcional  (ET arts. 485, 488, 490, 496)
---        iva_descontable_porcentaje (proporcional), iva_descontable_motivo, iva_descontable_periodo (fecha dentro
---        del período en que se descuenta; NULL = el del documento), iva_descontable_evaluado_por / _en.
+--        iva_descontable_porcentaje (proporcional; art. 490, sustentado en el motivo), iva_descontable_motivo,
+--        iva_descontable_evaluado_por / _en. Sin selector de período: el IVA se descuenta en el período fiscal de la
+--        contabilización (ronda 2, corrección b).
 --   2. fn_iva_sugerencia_linea: la sugerencia sale del IMPUESTO DE LA LÍNEA (tax_code/tax_rate ya normalizados)
 --      y, si la línea no lo dice, del PRODUCTO (sus impuestos y su tipo producto/servicio). Nunca inventa:
 --      si no se sabe, devuelve NULL y la línea queda «sin clasificar».
@@ -50,9 +64,15 @@ alter table public.invoice_items
     constraint invoice_items_iva_tarifa_chk check (iva_tarifa >= 0 and iva_tarifa <= 100),
   add column if not exists iva_tipo_operacion text
     constraint invoice_items_iva_tipo_operacion_chk check (iva_tipo_operacion in
-      ('bienes', 'servicios', 'importacion', 'aiu', 'licores', 'retiro_inventario', 'otra_especial')),
+      ('bienes', 'servicios', 'exportacion_bienes', 'exportacion_servicios', 'importacion', 'aiu', 'licores',
+       'retiro_inventario', 'otra_especial')),
   add column if not exists iva_fundamento text
     constraint invoice_items_iva_fundamento_chk check (char_length(iva_fundamento) <= 500),
+  add column if not exists iva_soporte_tipo text
+    constraint invoice_items_iva_soporte_tipo_chk check (iva_soporte_tipo in ('declaracion_exportacion', 'soporte_exportacion_servicios', 'otro')),
+  add column if not exists iva_soporte_numero text
+    constraint invoice_items_iva_soporte_numero_chk check (char_length(iva_soporte_numero) <= 80),
+  add column if not exists iva_soporte_fecha date,
   add column if not exists iva_clasificacion_origen text
     constraint invoice_items_iva_clasificacion_origen_chk check (iva_clasificacion_origen in ('sugerida', 'heredada', 'manual')),
   add column if not exists iva_clasificado_por uuid,
@@ -63,7 +83,6 @@ alter table public.invoice_items
     constraint invoice_items_iva_descontable_porcentaje_chk check (iva_descontable_porcentaje > 0 and iva_descontable_porcentaje < 100),
   add column if not exists iva_descontable_motivo text
     constraint invoice_items_iva_descontable_motivo_chk check (char_length(iva_descontable_motivo) <= 500),
-  add column if not exists iva_descontable_periodo date,
   add column if not exists iva_descontable_evaluado_por uuid,
   add column if not exists iva_descontable_evaluado_en timestamptz;
 
@@ -74,9 +93,15 @@ alter table public.sale_items
     constraint sale_items_iva_tarifa_chk check (iva_tarifa >= 0 and iva_tarifa <= 100),
   add column if not exists iva_tipo_operacion text
     constraint sale_items_iva_tipo_operacion_chk check (iva_tipo_operacion in
-      ('bienes', 'servicios', 'importacion', 'aiu', 'licores', 'retiro_inventario', 'otra_especial')),
+      ('bienes', 'servicios', 'exportacion_bienes', 'exportacion_servicios', 'importacion', 'aiu', 'licores',
+       'retiro_inventario', 'otra_especial')),
   add column if not exists iva_fundamento text
     constraint sale_items_iva_fundamento_chk check (char_length(iva_fundamento) <= 500),
+  add column if not exists iva_soporte_tipo text
+    constraint sale_items_iva_soporte_tipo_chk check (iva_soporte_tipo in ('declaracion_exportacion', 'soporte_exportacion_servicios', 'otro')),
+  add column if not exists iva_soporte_numero text
+    constraint sale_items_iva_soporte_numero_chk check (char_length(iva_soporte_numero) <= 80),
+  add column if not exists iva_soporte_fecha date,
   add column if not exists iva_clasificacion_origen text
     constraint sale_items_iva_clasificacion_origen_chk check (iva_clasificacion_origen in ('sugerida', 'heredada', 'manual')),
   add column if not exists iva_clasificado_por uuid,
@@ -86,14 +111,10 @@ comment on column public.invoice_items.iva_tratamiento is
   'Tratamiento del IVA de la línea (gravada, exenta, excluida, no_sujeta). Sugerido al crear la línea; NULL = sin clasificar (líneas históricas). No cambia si cambia el producto.';
 comment on column public.invoice_items.iva_descontable is
   'Solo compras y documento soporte: por_evaluar (por defecto), descontable, no_descontable (va al costo/gasto) o proporcional. Nunca se marca descontable automáticamente (ET arts. 485, 488, 490, 496).';
-comment on column public.invoice_items.iva_descontable_periodo is
-  'Fecha dentro del período en que se descuenta el IVA; NULL = el período del documento.';
+comment on column public.invoice_items.iva_soporte_numero is
+  'Soporte de la condición de la línea (p. ej. número de la declaración de exportación). Con iva_soporte_tipo y iva_soporte_fecha; sin los tres, una exportación queda pendiente.';
 comment on column public.sale_items.iva_tratamiento is
   'Tratamiento del IVA de la línea POS (gravada, exenta, excluida, no_sujeta). Sugerido al crear la línea; NULL = sin clasificar.';
-
--- El borrador busca compras de otros períodos que se descuentan en el que se consulta (art. 496).
-create index if not exists invoice_items_iva_descontable_periodo_idx
-  on public.invoice_items (iva_descontable_periodo) where iva_descontable_periodo is not null;
 
 -- Bitácora de cambios hechos por personas (las sugerencias del disparador no se registran: son el valor inicial).
 create table if not exists public.iva_clasificacion_cambios (
@@ -344,7 +365,9 @@ begin
              'base', case when coalesce(si.tax_included, s.tax_included, false) then coalesce(si.total, 0) - coalesce(si.tax_amount, 0) else coalesce(si.total, 0) end,
              'iva', coalesce(si.tax_amount, 0), 'tax_code', null, 'tax_rate', si.tax_rate, 'compra', false,
              'clasificacion', jsonb_build_object('tratamiento', si.iva_tratamiento, 'tarifa', si.iva_tarifa,
-               'tipo_operacion', si.iva_tipo_operacion, 'fundamento', si.iva_fundamento, 'origen', si.iva_clasificacion_origen),
+               'tipo_operacion', si.iva_tipo_operacion, 'fundamento', si.iva_fundamento, 'origen', si.iva_clasificacion_origen,
+               'soporte_tipo', si.iva_soporte_tipo, 'soporte_numero', si.iva_soporte_numero, 'soporte_fecha', si.iva_soporte_fecha),
+             'soporte_doc', false,
              'sugerencia', (select to_jsonb(g) from public.fn_iva_sugerencia_linea(p_organization_id, si.product_id, null, si.tax_rate, si.tax_amount,
                case when coalesce(si.tax_included, s.tax_included, false) then coalesce(si.total, 0) - coalesce(si.tax_amount, 0) else coalesce(si.total, 0) end, null) g)
            ) order by si.created_at, si.id), '[]'::jsonb)
@@ -365,9 +388,11 @@ begin
            'base', abs(b.base), 'iva', abs(round(b.base * coalesce(it.tax_rate, 0) / 100, 2)),
            'tax_code', it.tax_code, 'tax_rate', it.tax_rate, 'compra', p_tipo <> 'factura_venta',
            'clasificacion', jsonb_build_object('tratamiento', it.iva_tratamiento, 'tarifa', it.iva_tarifa,
-             'tipo_operacion', it.iva_tipo_operacion, 'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen),
+             'tipo_operacion', it.iva_tipo_operacion, 'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen,
+             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha),
+           'soporte_doc', p_tipo = 'documento_soporte',
            'descontable', case when p_tipo <> 'factura_venta' then jsonb_build_object('estado', coalesce(it.iva_descontable, 'por_evaluar'),
-             'porcentaje', it.iva_descontable_porcentaje, 'motivo', it.iva_descontable_motivo, 'periodo', it.iva_descontable_periodo) end,
+             'porcentaje', it.iva_descontable_porcentaje, 'motivo', it.iva_descontable_motivo) end,
            'sugerencia', (select to_jsonb(g) from public.fn_iva_sugerencia_linea(p_organization_id, it.product_id, it.tax_code, it.tax_rate, null, null, it.is_excluded) g)
          ) order by it.created_at, it.id), '[]'::jsonb)
     into v_res
@@ -389,9 +414,11 @@ revoke all on function public.fn_iva_lineas_documento(integer, text, uuid) from 
 grant execute on function public.fn_iva_lineas_documento(integer, text, uuid) to authenticated;
 
 -- ── 6. Escritura: clasificar una línea (persona con finance.create o admin) ──
--- p_datos: { tratamiento, tarifa, tipo_operacion, fundamento,
---            descontable?, descontable_porcentaje?, descontable_motivo?, descontable_periodo? }
+-- p_datos: { tratamiento, tarifa, tipo_operacion, fundamento, soporte_tipo?, soporte_numero?, soporte_fecha?,
+--            descontable?, descontable_porcentaje?, descontable_motivo? }
 -- Las claves de «descontable» solo se aceptan en líneas de compra o documento soporte; si no vienen, no se tocan.
+-- Ronda 2: exportación solo con tratamiento «exenta»; en documento soporte, «descontable» o «proporcional» solo en un
+-- supuesto especial (tipo «otra especial» o «importación») con fundamento: SOPORTE_NO_DESCONTABLE si no.
 create or replace function public.fn_iva_clasificar_linea(p_organization_id integer, p_tabla text, p_linea_id uuid, p_datos jsonb)
 returns jsonb
 language plpgsql
@@ -402,6 +429,7 @@ declare
   v_uid uuid := auth.uid();
   v_org integer;
   v_compra boolean := false;
+  v_soporte_doc boolean := false;
   v_antes jsonb;
   v_despues jsonb;
   v_trat text := nullif(btrim(coalesce(p_datos ->> 'tratamiento', '')), '');
@@ -411,7 +439,9 @@ declare
   v_desc text := nullif(btrim(coalesce(p_datos ->> 'descontable', '')), '');
   v_pct numeric := nullif(p_datos ->> 'descontable_porcentaje', '')::numeric;
   v_motivo text := nullif(btrim(coalesce(p_datos ->> 'descontable_motivo', '')), '');
-  v_periodo date := nullif(p_datos ->> 'descontable_periodo', '')::date;
+  v_sop_tipo text := nullif(btrim(coalesce(p_datos ->> 'soporte_tipo', '')), '');
+  v_sop_num text := nullif(btrim(coalesce(p_datos ->> 'soporte_numero', '')), '');
+  v_sop_fecha date := nullif(p_datos ->> 'soporte_fecha', '')::date;
 begin
   perform public.fn_assert_acceso_org(p_organization_id);
   if not (public.fn_tiene_permiso(p_organization_id, 'finance.create')
@@ -423,21 +453,23 @@ begin
   if p_tabla = 'invoice_items' then
     select coalesce(fs.organization_id, fp.organization_id, ds.organization_id),
            (it.invoice_type in ('purchase', 'support_document') or it.invoice_purchase_id is not null),
+           it.invoice_type = 'support_document',
            jsonb_build_object('tratamiento', it.iva_tratamiento, 'tarifa', it.iva_tarifa, 'tipo_operacion', it.iva_tipo_operacion,
              'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen, 'descontable', it.iva_descontable,
              'descontable_porcentaje', it.iva_descontable_porcentaje, 'descontable_motivo', it.iva_descontable_motivo,
-             'descontable_periodo', it.iva_descontable_periodo)
-      into v_org, v_compra, v_antes
+             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha)
+      into v_org, v_compra, v_soporte_doc, v_antes
       from public.invoice_items it
       left join public.invoice_sales fs on it.invoice_type = 'sale' and fs.id = coalesce(it.invoice_sales_id, it.invoice_id)
       left join public.invoice_purchase fp on it.invoice_type = 'purchase' and fp.id = coalesce(it.invoice_purchase_id, it.invoice_id)
       left join public.support_documents ds on it.invoice_type = 'support_document' and ds.id = it.support_document_id
      where it.id = p_linea_id;
   elsif p_tabla = 'sale_items' then
-    select s.organization_id, false,
+    select s.organization_id, false, false,
            jsonb_build_object('tratamiento', si.iva_tratamiento, 'tarifa', si.iva_tarifa, 'tipo_operacion', si.iva_tipo_operacion,
-             'fundamento', si.iva_fundamento, 'origen', si.iva_clasificacion_origen)
-      into v_org, v_compra, v_antes
+             'fundamento', si.iva_fundamento, 'origen', si.iva_clasificacion_origen,
+             'soporte_tipo', si.iva_soporte_tipo, 'soporte_numero', si.iva_soporte_numero, 'soporte_fecha', si.iva_soporte_fecha)
+      into v_org, v_compra, v_soporte_doc, v_antes
       from public.sale_items si join public.sales s on s.id = si.sale_id
      where si.id = p_linea_id;
   else
@@ -460,10 +492,18 @@ begin
     end if;
     v_tarifa := 0;
   end if;
-  if v_tipo is not null and v_tipo not in ('bienes', 'servicios', 'importacion', 'aiu', 'licores', 'retiro_inventario', 'otra_especial') then
+  if v_tipo is not null and v_tipo not in ('bienes', 'servicios', 'exportacion_bienes', 'exportacion_servicios', 'importacion', 'aiu',
+                                           'licores', 'retiro_inventario', 'otra_especial') then
     raise exception 'TIPO_OPERACION_INVALIDO' using errcode = '22023';
   end if;
-  if char_length(coalesce(v_fund, '')) > 500 or char_length(coalesce(v_motivo, '')) > 500 then
+  -- B1: una exportación es exenta (art. 481); gravada o excluida con tipo exportación no se acepta.
+  if v_tipo in ('exportacion_bienes', 'exportacion_servicios') and v_trat <> 'exenta' then
+    raise exception 'EXPORTACION_DEBE_SER_EXENTA' using errcode = '22023';
+  end if;
+  if v_sop_tipo is not null and v_sop_tipo not in ('declaracion_exportacion', 'soporte_exportacion_servicios', 'otro') then
+    raise exception 'SOPORTE_INVALIDO' using errcode = '22023';
+  end if;
+  if char_length(coalesce(v_fund, '')) > 500 or char_length(coalesce(v_motivo, '')) > 500 or char_length(coalesce(v_sop_num, '')) > 80 then
     raise exception 'TEXTO_LARGO' using errcode = '22023';
   end if;
 
@@ -484,34 +524,38 @@ begin
     if v_desc <> 'por_evaluar' and v_motivo is null then
       raise exception 'MOTIVO_REQUERIDO' using errcode = '22023';
     end if;
-    if v_desc = 'por_evaluar' then
-      v_periodo := null;
+    -- Corrección (c): compra a un no responsable (documento soporte) no genera IVA descontable por una marca manual.
+    if v_soporte_doc and v_desc in ('descontable', 'proporcional')
+       and (coalesce(v_tipo, '') not in ('otra_especial', 'importacion') or v_fund is null) then
+      raise exception 'SOPORTE_NO_DESCONTABLE' using errcode = '22023';
     end if;
   end if;
 
   if p_tabla = 'invoice_items' then
     update public.invoice_items it set
       iva_tratamiento = v_trat, iva_tarifa = v_tarifa, iva_tipo_operacion = v_tipo, iva_fundamento = v_fund,
+      iva_soporte_tipo = v_sop_tipo, iva_soporte_numero = v_sop_num, iva_soporte_fecha = v_sop_fecha,
       iva_clasificacion_origen = 'manual', iva_clasificado_por = v_uid, iva_clasificado_en = now(),
       iva_descontable = case when p_datos ? 'descontable' then v_desc else it.iva_descontable end,
       iva_descontable_porcentaje = case when p_datos ? 'descontable' then v_pct else it.iva_descontable_porcentaje end,
       iva_descontable_motivo = case when p_datos ? 'descontable' then v_motivo else it.iva_descontable_motivo end,
-      iva_descontable_periodo = case when p_datos ? 'descontable' then v_periodo else it.iva_descontable_periodo end,
       iva_descontable_evaluado_por = case when p_datos ? 'descontable' then v_uid else it.iva_descontable_evaluado_por end,
       iva_descontable_evaluado_en = case when p_datos ? 'descontable' then now() else it.iva_descontable_evaluado_en end
      where it.id = p_linea_id
     returning jsonb_build_object('tratamiento', it.iva_tratamiento, 'tarifa', it.iva_tarifa, 'tipo_operacion', it.iva_tipo_operacion,
              'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen, 'descontable', it.iva_descontable,
              'descontable_porcentaje', it.iva_descontable_porcentaje, 'descontable_motivo', it.iva_descontable_motivo,
-             'descontable_periodo', it.iva_descontable_periodo)
+             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha)
       into v_despues;
   else
     update public.sale_items si set
       iva_tratamiento = v_trat, iva_tarifa = v_tarifa, iva_tipo_operacion = v_tipo, iva_fundamento = v_fund,
+      iva_soporte_tipo = v_sop_tipo, iva_soporte_numero = v_sop_num, iva_soporte_fecha = v_sop_fecha,
       iva_clasificacion_origen = 'manual', iva_clasificado_por = v_uid, iva_clasificado_en = now()
      where si.id = p_linea_id
     returning jsonb_build_object('tratamiento', si.iva_tratamiento, 'tarifa', si.iva_tarifa, 'tipo_operacion', si.iva_tipo_operacion,
-             'fundamento', si.iva_fundamento, 'origen', si.iva_clasificacion_origen)
+             'fundamento', si.iva_fundamento, 'origen', si.iva_clasificacion_origen,
+             'soporte_tipo', si.iva_soporte_tipo, 'soporte_numero', si.iva_soporte_numero, 'soporte_fecha', si.iva_soporte_fecha)
       into v_despues;
   end if;
 

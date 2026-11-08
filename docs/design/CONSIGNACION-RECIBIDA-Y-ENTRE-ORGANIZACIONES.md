@@ -378,3 +378,132 @@ entre organizaciones, sin construirlas:** cada una necesita (1) su `kind` (ya ad
 que arme el payload filtrado y llame a `fn_documento_compartido_publicar`, y (3) una función del receptor que lo acepte con sus
 propias RPC (p. ej., la orden de compra recibida crea un pedido de venta o una cotización del proveedor) y marque
 `fn_documento_compartido_aceptado`. Rechazar y anular ya son genéricos (`fn_documento_compartido_responder`).
+
+## Ronda 2 del Contador (2026-11-07)
+
+Manda sobre todo lo anterior (fuente: `docs/contador/RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md`, «Consignación: ocho
+decisiones»). El Contador no da visto bueno para operar ni declarar: las migraciones siguen **sin aplicar**. Cómo quedó cada
+punto en `20261108121000_consignaciones.sql` (reescrita, v3) y en la UI:
+
+1. **911520 contra una cuenta DEFINIDA del grupo 94.** La contrapartida ya no se adivina por patrón: se define por organización
+   en `consignment_account_settings` (tabla propia; no claves nuevas en `configuracion_contable`, cuyo CHECK cerrado también
+   redefine `20261108170000`) con `fn_consignacion_configurar_cuentas`, que exige una cuenta de movimiento del grupo 94 de SU
+   plan (9905 queda fuera). Sin ella, recibir se bloquea con `sin_cuenta_contra_orden` y pendiente visible. **Valoración por
+   contrato** (`memo_valuation`): «costo acreditado» por el dueño o «valor convenido», identificado para la custodia
+   (`consignment_note_lines.credited_cost`, `memo_unit_value`); todos los asientos de orden usan ese valor y nunca se vuelve
+   activo propio. UI: «Cuentas de consignación» en la página y aviso si falta la contrapartida.
+2. **Estimatorio sin compra ni costo automáticos.** Se quitó todo: `lineas_compra`, el borrador de factura de compra al
+   liquidar, `fn_consignacion_recibida_cerrar_compra`, su ruta y la cuenta de costo. El contrato separa **modalidad jurídica**
+   (`legal_modality`), **condición contable** (`accounting_role`: agente | principal; mandato ⇒ agente) y **tratamiento
+   tributario** (`tax_treatment`, lo deriva el sistema). Sin defaults. La compra real exige adquisición demostrada: factura de
+   compra manual (`compra_real_usa_factura`).
+3. **Factura al público.** En mandato factura el mandatario con el POS y la factura de siempre; lo ajeno va en productos de
+   consignación aparte (su ingreso es el auxiliar 281510 del dueño). **El estimatorio queda bloqueado para operar**
+   (`estimatorio_bloqueado_438_455` en entregar, recibir y liquidar, con pendiente visible) hasta que una migración aprobada por
+   el Contador cargue `consignment_account_settings.estimatorio_rules` (arts. 438 y 455); no hay RPC para escribirlas. No se
+   genera factura del dueño al intermediario por defecto.
+4. **Remuneración.** Ingreso cuando se devenga, según el contrato (`remuneration_recognition`): «al vender», el disparador del
+   kardex registra D auxiliar 281510 / C auxiliar 413512 por cada venta (y su reverso en la devolución); «al liquidar», en la
+   liquidación. Si es un servicio independiente con obligación de facturar (`fee_invoice_required`), la liquidación deja el
+   pendiente `consignacion_factura_remuneracion` («no sustituye la factura»; su IVA va en esa factura, sin duplicar).
+5. **Retenciones por pago o abono.** Ninguna entrada de retenciones. Desde la primera venta queda un pendiente por nota
+   (`consignacion_retenciones_pago_abono`); cada liquidación guarda en `tax_facts` las calidades del **mandante** (tipo,
+   régimen, responsabilidades, municipio) y del mandatario, separando venta y remuneración.
+6. **Obligación con el dueño en 281510.** Su saldo se paga por Dinero de terceros; nunca una compra ni un documento soporte
+   fabricados. **Anticipo al consignante:** el de anticipos a proveedores (`supplier_advances`), cruzado con la obligación REAL
+   (saldo acreedor del auxiliar 281510 del dueño) por `fn_consignacion_cruzar_anticipo`: D auxiliar 281510 / C cuenta del
+   anticipo, baja el saldo del anticipo y queda en `consignment_advance_crossings`. UI: «Cruzar anticipo» en la nota.
+7. **Faltantes, daños y devoluciones posteriores: nada automático.** `fn_consignacion_registrar_novedad` registra evidencia,
+   responsable y obligación (`consignment_incidents`), saca la mercancía del control físico y de las cuentas de orden y deja el
+   pendiente `consignacion_novedad`; ni gasto ni cuenta por pagar. Una devolución de algo ya liquidado es un **derecho frente al
+   dueño** (`consignment_allocations.owner_right`, pendiente `consignacion_derecho_frente_al_dueno`): solo se descuenta en la
+   siguiente liquidación con `p_descontar_derechos` y el acuerdo escrito (`rights_agreement`); si no habrá otra, se cobra. Si el
+   contrato pone las devoluciones a cargo del consignatario, no toca lo del dueño (`absorbed`). Anular la liquidación que tomó
+   esa venta devuelve el reverso a ordinario.
+8. **Entregada: sin 1465.** Sigue en el inventario propio a costo, sin cambio de cuenta y sin asiento: el kardex la traslada a
+   la ubicación «En poder de {consignatario}» (la nota: `location`, `transfer_out` con `source_id = 'consignacion:<nota>'`), con
+   su costo identificado por línea. Se quitó `fn_cuenta_inventario_consignacion`. La liquidación del lado del dueño en mandato
+   sigue esperando al Contador (`liquidacion_mandante_pendiente`).
+
+**Prueba en seco (ronda 2):** un solo `begin … rollback` con las dos migraciones, organizaciones 137 y 138 y sus dueños
+simulados; nada quedó. Bloqueos verificados: sin contrapartida definida, 9905 y 9115 como contrapartida, sin modalidad, sin
+condición, sin valoración, compra, estimatorio, mandato como principal, sin reconocimiento, sin costo acreditado, novedad sin
+evidencia, descontar sin acuerdo, anticipo de otro consignante, más que el saldo del anticipo, más que la obligación con el
+dueño, entregar estimatorio, entregar producto ajeno, entregar sin clasificación, liquidar el mandato del dueño y operar otra
+organización desde la sesión. Cifras: custodia 400.000 (10 × costo acreditado 40.000) y 250.000 (valor convenido); venta de 3
+→ dueño 153.000, remuneración 27.000 devengada al vender; faltante 40.000 fuera de custodia sin gasto; devolución posterior →
+derecho de 60.000 y reverso de la remuneración 9.000; con acuerdo, dueño 51.000; al liquidar con precio de liquidación,
+remuneración 16.000 en la liquidación y su contra-asiento al anular; cruce de anticipo 50.000 (saldo 50.000); entregada: 0
+asientos, kardex `transfer_out`, 0 líneas en 1465; entre organizaciones: custodia 120.000 con el costo acreditado del dueño,
+liquidación 70.000 → dueño 63.000 y la diferencia `mandante_pendiente` del lado del dueño. **0 asientos descuadrados.** Hallazgo
+corregido tras la corrida: «solo se anula la última» comparaba `created_at`, que empata dentro de una transacción; ahora usa
+`consignment_settlements.seq` (identidad), y anular cierra los pendientes de esa liquidación.
+
+
+## Ronda 3 del Contador (2026-11-08)
+
+Fuente: `docs/contador/RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md`. El Contador **no da visto bueno integral** para operar ni
+declarar; esto es lo que cambia en la propuesta, que sigue SIN aplicar (`20261108121000_consignaciones.sql` v4, md5
+`db50d76130be3c2cd8810acdd29821d1`; `20261108120500_organization_links.sql` sin cambios).
+
+### 1. Comisión: se reconoce cuando se devenga, nunca por la fecha de liquidación
+
+- Se **quitó** la opción `al_liquidar`. `consignment_notes.remuneration_recognition` admite solo `al_vender` (lo normal: la
+  unidad vendida) u `obligacion_posterior`.
+- `obligacion_posterior` exige documentar **cuál** obligación posterior real condiciona el devengo
+  (`post_sale_obligation`, 10 a 1000 caracteres; CHECK en la tabla y `obligacion_posterior_obligatoria` en
+  `fn_consignacion_terminos`). Viaja también en la copia que se comparte entre organizaciones.
+- Al vender, cada porción guarda su remuneración (`consignment_allocations.remuneration_amount`) y si ya se reconoció
+  (`remuneration_recognized`). En `al_vender` se asienta en el momento (D auxiliar 281510 / C auxiliar 413512). En
+  `obligacion_posterior` no se asienta: queda el pendiente `consignacion_remuneracion_por_devengar`.
+- Se reconoce al cumplirse, **con evidencia**: `fn_consignacion_reconocer_remuneracion` (evidencia de 10 a 2000 caracteres,
+  idempotente; tabla `consignment_remuneration_recognitions`). Asienta lo vendido y aún no reconocido, neto de devoluciones,
+  marca las porciones y cierra el pendiente. En la nota: acción «Reconocer remuneración» y un aviso con lo que falta.
+- La liquidación ya **no** registra ningún asiento de remuneración (ni su anulación un contra-asiento): muestra lo que
+  queda por devengar (`remuneracion_por_devengar`). Una devolución solo reversa la remuneración que ya se reconoció.
+
+### 2. Retenciones: operación y remuneración, por separado
+
+Tabla `consignment_settlement_withholdings`: una fila por ámbito, clase (retefuente, reteIVA, reteICA) y grupo de pagadores,
+con base, regla, tarifa, valor, estado (`determinada`, `pendiente`, `no_aplica`), motivo y las calidades usadas. **Un
+pendiente nunca trae valor** (CHECK: `amount` es NULL salvo en `determinada`): nunca se presume 0.
+
+- **(a) Operación** (la venta por cuenta del mandante). La practica el comprador agente de retención (RUT 07 o 13 en renta;
+  09 o 13 en IVA), con la calidad tributaria del **mandante** (autorretenedor 15 o SIMPLE 47: no aplica en renta; no
+  responsable 49: no aplica en IVA; sin datos del mandante: pendiente). Los compradores se agrupan por la venta (POS o
+  factura): consumidor final y no agente, no aplica; sin datos fiscales, pendiente; agente, se aplica la regla.
+- **(b) Remuneración** del intermediario (sobre la comisión). La practica el dueño (el pagador) si es agente, con la calidad
+  del **intermediario** (perfil tributario vigente de la organización). Sin perfil, o sin datos fiscales del dueño:
+  pendiente. El IVA de la comisión se determina aparte (pendiente `iva_de_la_remuneracion_por_determinar`).
+- **Reglas configuradas**: tarifa y base mínima en UVT salen de `organization_taxes` (las mismas reglas de retención que usan
+  compras y ventas) y de `fiscal_uvt`. La organización elige qué regla aplica a cada ámbito y clase en Consignaciones ›
+  Cuentas (`fn_consignacion_configurar_retenciones`, solo reglas propias, activas y de la clase pedida). Sin regla elegida,
+  regla inactiva o sin UVT del año: **pendiente** con su motivo, nunca 0 ni tarifa fija.
+- **ReteICA**: sin regla municipal elegida, `norma_municipal_sin_confirmar`; con regla, sigue pendiente
+  (`calidad_agente_reteica_por_confirmar`) hasta confirmar la calidad de agente municipal.
+- **Conciliar**: lo pendiente y lo determinado quedan en «Pendientes contables» (`consignacion_retencion_pendiente` y
+  `consignacion_retencion_por_conciliar`) y se concilian con el certificado (`fn_consignacion_conciliar_retencion`: valor
+  real del soporte, soporte obligatorio). Lo determinado no se asienta: espera el certificado. Anular la liquidación cierra
+  sus pendientes de retención.
+- **En pantalla**: cada liquidación muestra las dos secciones por separado (operación y remuneración), con estado, base,
+  tarifa, valor o motivo y la acción «Conciliar». La copia que recibe el dueño vinculado trae las retenciones separadas.
+- **Decisión técnica**: se usan solo piezas ya aplicadas (`organization_taxes`, `fn_clase_retencion`, `fiscal_uvt`,
+  `organization_tax_profiles`, responsabilidades del RUT en proveedores y clientes). El evaluador de calidades del equipo de
+  anticipos (`supplier_tax_qualities`, `reteica_reglas`) vive en su migración 20261108170000, aún sin aplicar; cuando se
+  aplique, conviene que consignación lo llame en vez de su propia lectura de calidades (regla 7: una sola lógica).
+
+### 3. Estimatorio
+
+Sigue **bloqueado** (`estimatorio_bloqueado_438_455`) hasta parametrizar los arts. 438 y 455 con el Contador.
+
+### Prueba en seco
+
+`docs/contador/pruebas/15_consignaciones_ronda3_comision_y_retenciones.sql` y su `.resultado.txt`: las dos migraciones
+exactas (md5 comprobado), organizaciones 137 y 138, begin … rollback. **79 de 79 comprobaciones OK**, 22 asientos, 0
+descuadrados, ninguna liquidación con asiento de remuneración, ningún pendiente con valor presumido. Nada quedó en la base.
+
+### Móvil (390 px)
+
+En el listado de Consignaciones el ícono del buscador se montaba sobre la primera pestaña. Igual que en Anticipos: el
+buscador va en su propia fila y las pestañas de estado debajo, con desplazamiento horizontal
+(`src/__tests__/inventario/consignaciones/filtroEstadoMovil.test.tsx`, render a 390 px).

@@ -1,0 +1,41 @@
+Resultado de 16_anticipos_consignacion_integrada.sql (ronda 3 del Contador, prueba integrada anticipo ↔ consignación)
+Corrida: 2026-11-08, proyecto taqjemqjtumhwptchcxk, org 374, sucursal 585. Una sola transacción, sin datos al final.
+
+Qué corrió, en este orden y en la MISMA transacción:
+  1. Extracto byte a byte de 20261108120500_organization_links (organization_links, organization_shared_documents) y de
+     20261108121000_consignaciones (consignment_notes, consignment_advance_crossings, fn_consignacion_cruzar_anticipo y sus
+     permisos). md5 de los archivos completos en el repositorio: 120500 6a5a3ead2fe311fdde4b7d5c0376c12b,
+     121000 db50d76130be3c2cd8810acdd29821d1. El resto de 121000 (recibir, vender por kardex, liquidar) lo cubre la prueba 14.
+  2. 20261108140500 → 20261108160000 → 20261108160500 → 20261108165000 → 20261108170000 completas (sin comentarios ni sangría).
+  3. La prueba 11 entera (53 verificaciones, 53 ok: ver su .resultado.txt).
+  4. Esta prueba (12 verificaciones).
+Cómo: el texto (≈250 KB, demasiado para una sola llamada) se subió en 11 trozos como objetos grandes de Postgres, cada uno
+verificado por md5 contra el archivo local; un DO los concatenó, los ejecutó y terminó con una excepción (= rollback, que
+además devolvió la tabla de resultados). Al final se borraron los 11 objetos grandes; la base quedó sin tablas ni filas de
+la prueba (consignment_notes y supplier_tax_qualities no existen; ningún proveedor 90000000x en la org 374).
+Usuario simulado: miembro activo de la org 374 (rol «authenticated»). Nota y obligación inicial, como administrador.
+
+65 verificaciones en la transacción (53 de la prueba 11 + 12 de esta) · 65 ok · 0 fallas.
+
+n  | caso         | verificación                                                  | obtenido                                                                                   | ok
+---+--------------+---------------------------------------------------------------+--------------------------------------------------------------------------------------------+---
+1  | Anticipo     | Anticipo al consignante (595.000, pago anticipado del precio)  | retención 39.080 (20.000 + 14.250 + 4.830); girado 555.920                                   | ok
+2  | Cruce        | Cruzar más que la obligación / cruzar 300.000 (fn de 121000)   | excede_obligacion_con_el_dueno; cruce 300.000; saldo del anticipo 295.000                    | ok
+3  | Devolución   | Devolución parcial por procedimiento (base 100.000 + IVA 19.000)| dinero 111.184; retenciones 7.816 (4.000 + 2.850 + 966); saldo 176.000                       | ok
+4  | Anulación    | Anular el cruzado / anular por error el que no se giró         | anticipo_usado; el segundo queda cancelled                                                 | ok
+5  | Conciliación | Por anticipo                                                  | G1 595.000 − apl 0 − cruzado 300.000 − devuelto 119.000 − anulado 0 = 176.000 = libros; G2 anulado 119.000, saldo 0 | ok
+6  | Conciliación | Por proveedor: tabla = libros = auxiliar por NIT               | 176.000 / 176.000 / 176.000                                                                | ok
+7  | Estado       | Estado de cuenta del consignante                               | devolucion_anticipo C 119.000 · cruce_consignacion C 300.000 · anticipo A 595.000 · anticipo A 119.000 · anulacion_anticipo C 119.000; saldo final −176.000 | ok
+8  | Certificado  | Certificado del consignante                                    | retefuente 16.000, reteIVA 11.400, reteICA 3.864 = 31.264 (39.080 + 7.816 − 7.816 − 7.816)    | ok
+9  | Obligación   | Obligación con el dueño (28151001, bajo 281510) tras el cruce  | 500.000 − 300.000 = 200.000 acreedora                                                      | ok
+10 | Retenciones  | Certificado = libros 236x del NIT del consignante              | 31.264 = 31.264                                                                            | ok
+11 | Cruce        | Asiento del cruce: líneas y tercero                            | 28151001 D 300.000 tercero 900000007 · 13300501 C 300.000 tercero 900000007                  | ok
+12 | Cuadre       | Asientos de la prueba (control de cuadre de la base)            | 5 asientos (consignment_advance_crossing, reversal, supplier_advance, supplier_advance_refund); cuadran | ok
+
+Hallazgo corregido en esta ronda: el asiento del cruce (origen 'consignment_advance_crossing') salía SIN NIT, porque el
+disparador de tercero de las líneas no conocía ese origen; el auxiliar por NIT del anticipo habría quedado en 476.000
+contra 176.000 en libros. 20261108170000 (sección 15b) amplía fn_tercero_anticipo_proveedor y fn_trg_tercero_linea_asiento
+con 'consignment_advance_crossing' (cruce → anticipo → proveedor, leído solo si la tabla existe) y
+'supplier_advance_withholding_refund'. La verificación 11 lo comprueba. No se tocó 121000.
+Nota de la corrida: la prueba 11 termina con «set constraints all immediate»; esta los vuelve a diferir al empezar.
+Ids de asiento, caja y comprobante cambian en cada corrida.

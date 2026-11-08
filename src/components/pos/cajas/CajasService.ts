@@ -1040,6 +1040,8 @@ export class CajasService {
           entradas: summary.cash_in,
           salidas: summary.cash_out,
           compras_efectivo: summary.purchases_by_method?.cash ?? 0,
+          anticipos_proveedor_egreso: 0,
+          anticipos_proveedor_devolucion: 0,
           devoluciones: summary.returns_total,
         },
         por_cajero: mode === 'user',

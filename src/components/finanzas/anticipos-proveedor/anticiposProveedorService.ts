@@ -7,11 +7,16 @@
 import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import {
   NATURALEZAS_ANTICIPO,
+  TRATAMIENTOS_COMPONENTE,
+  type ComponenteOperacion,
   type EvaluacionRetenciones,
   type NaturalezaAnticipo,
   type RespuestaConciliacion,
   type RespuestaListadoAnticipos,
   type ResultadoCrearAnticipo,
+  type ResultadoAplicarAnticipo,
+  type ResultadoDevolverAnticipo,
+  type ProcedimientoDevolucion,
 } from '@/lib/finanzas/anticiposProveedor/contrato';
 import type { ContextoSaldoFavor } from '@/lib/finanzas/saldosAFavor/contrato';
 import type { AdaptadorSaldos } from '@/components/finanzas/saldos-a-favor/adaptadorSaldos';
@@ -24,18 +29,39 @@ import {
 
 const BASE = '/api/anticipos-proveedor';
 
+export interface FacturaVinculable {
+  id: string;
+  numero: string;
+  fecha: string | null;
+  total: number;
+  /** Lo ya vinculado de este anticipo a esa factura. */
+  vinculado: number | null;
+}
+
 async function leerGet<T>(url: string): Promise<T> {
   const r = await fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: cabecerasSaldo() });
   return leerRespuestaSaldo<T>(r);
 }
 
-/** Lo que el complemento del diálogo pone en `extra` (P1: naturaleza y retenciones). */
+/** Lo que el complemento del diálogo pone en `extra` (P1 y ronda 2: naturaleza, composición y retenciones). */
 export interface DatosRetencionAnticipo {
   naturaleza: NaturalezaAnticipo;
+  /** Suma homogénea con IVA incluido a la tarifa general; null si va por componentes. */
   tarifaIva: number | null;
+  /** Composición por línea y tarifa (excluidos, exentos, AIU…); null si es suma homogénea. */
+  componentes: ComponenteOperacion[] | null;
   retefuenteId: string | null;
+  /** Regla municipal de ReteICA. */
   reteicaId: string | null;
+  /** La actividad se realiza en el municipio de la regla. */
+  icaTerritorial: boolean | null;
 }
+
+/** Forma mínima de un componente; la base vuelve a validarlo todo. */
+const esComponente = (c: unknown): c is ComponenteOperacion => {
+  const x = (c ?? {}) as Record<string, unknown>;
+  return (TRATAMIENTOS_COMPONENTE as readonly string[]).includes(String(x.tratamiento)) && typeof x.base === 'number' && x.base > 0;
+};
 
 /** `extra` del diálogo → datos tipados; null si falta la naturaleza (no hay valor por defecto). */
 export function datosRetencionDe(extra: Record<string, unknown> | null | undefined): DatosRetencionAnticipo | null {
@@ -46,8 +72,10 @@ export function datosRetencionDe(extra: Record<string, unknown> | null | undefin
   return {
     naturaleza: naturaleza as NaturalezaAnticipo,
     tarifaIva: typeof e.tarifaIva === 'number' && Number.isFinite(e.tarifaIva) ? e.tarifaIva : null,
+    componentes: Array.isArray(e.componentes) && e.componentes.length > 0 ? (e.componentes as unknown[]).filter(esComponente) : null,
     retefuenteId: texto(e.retefuenteId),
     reteicaId: texto(e.reteicaId),
+    icaTerritorial: typeof e.icaTerritorial === 'boolean' ? e.icaTerritorial : null,
   };
 }
 
@@ -71,8 +99,10 @@ export const anticiposProveedorService = {
       monto: e.monto,
       naturaleza: e.naturaleza,
       tarifa_iva: e.tarifaIva,
+      componentes: e.componentes,
       retefuente_id: e.retefuenteId,
       reteica_id: e.reteicaId,
+      ica_territorial: e.icaTerritorial,
     }),
 
   crear: (
@@ -100,28 +130,88 @@ export const anticiposProveedorService = {
       clave_idempotencia: e.claveIdempotencia,
       naturaleza: e.naturaleza,
       tarifa_iva: e.tarifaIva,
+      componentes: e.componentes,
       retefuente_id: e.retefuenteId,
       reteica_id: e.reteicaId,
+      ica_territorial: e.icaTerritorial,
     });
   },
 
-  aplicar: (anticipoId: string, e: { cuentaId: string; monto: number; claveIdempotencia: string }) =>
-    enviarSaldo<unknown>(`${BASE}/${encodeURIComponent(anticipoId)}/aplicar`, {
+  /** Con `correccion` (motivo y soporte): corrige una retención que la factura repitió (ronda 2). */
+  aplicar: (anticipoId: string, e: { cuentaId: string; monto: number; claveIdempotencia: string; correccion?: { motivo: string; soporte: string } | null }) =>
+    enviarSaldo<ResultadoAplicarAnticipo>(`${BASE}/${encodeURIComponent(anticipoId)}/aplicar`, {
       cuenta_id: e.cuentaId,
       monto: e.monto,
       clave_idempotencia: e.claveIdempotencia,
+      ...(e.correccion ? { correccion: e.correccion } : {}),
     }),
 
+  /** Facturas en borrador del proveedor del anticipo (las vinculables). */
+  facturasVinculables: (anticipoId: string) =>
+    leerGet<{ facturas: FacturaVinculable[] }>(`${BASE}/${encodeURIComponent(anticipoId)}/vincular`),
+
+  /** Ronda 2, ítem 5: vincula antes de causar; la causación no retendrá otra vez sobre esa base. */
+  vincular: (anticipoId: string, e: { facturaId: string; monto: number }) =>
+    enviarSaldo<unknown>(`${BASE}/${encodeURIComponent(anticipoId)}/vincular`, { factura_id: e.facturaId, monto: e.monto }),
+
+  /** Ronda 2, ítem 9: cierra un pendiente contable con resolución y soporte. */
+  resolverPendiente: (pendienteId: string, e: { resolucion: string; soporte: string }) =>
+    enviarSaldo<unknown>(`${BASE}/pendientes/${encodeURIComponent(pendienteId)}/resolver`, { resolucion: e.resolucion.trim(), soporte: e.soporte.trim() }),
+
+  /** Ronda 2, ítem 10: cuenta fuera de 133005xx aprobada como equivalente, con nota. */
+  aprobarEquivalencia: (e: { cuenta: string; nota: string }) =>
+    enviarSaldo<unknown>(`${BASE}/cuenta/equivalencia`, { cuenta: e.cuenta.trim(), nota: e.nota.trim() }),
+
+  /**
+   * `monto` = dinero que regresa. `procedimiento`: causa, soportes y cálculo (las retenciones salen de él);
+   * null = no se puede determinar (queda pendiente contable).
+   */
   devolver: (
     anticipoId: string,
-    e: { monto: number; metodo: string; motivo: string; cuentaBancaria: number | null; referencia: string; claveIdempotencia: string },
+    e: {
+      monto: number;
+      metodo: string;
+      motivo: string;
+      cuentaBancaria: number | null;
+      referencia: string;
+      claveIdempotencia: string;
+      procedimiento: ProcedimientoDevolucion | null;
+    },
   ) =>
-    enviarSaldo<unknown>(`${BASE}/${encodeURIComponent(anticipoId)}/devolver`, {
+    enviarSaldo<ResultadoDevolverAnticipo>(`${BASE}/${encodeURIComponent(anticipoId)}/devolver`, {
       monto: e.monto,
       metodo: e.metodo,
       motivo: e.motivo,
       cuenta_bancaria: e.cuentaBancaria,
       referencia: e.referencia.trim(),
+      clave_idempotencia: e.claveIdempotencia,
+      procedimiento: e.procedimiento,
+    }),
+
+  /** Ronda 3, causa (b): reintegro del exceso de una retención al proveedor. */
+  reintegrarExceso: (
+    anticipoId: string,
+    e: {
+      clase: 'retefuente' | 'reteiva' | 'reteica';
+      baseCorrecta: number;
+      tarifaCorrecta: number;
+      metodo: string;
+      motivo: string;
+      soportes: { calculo: string; certificado: string; norma_ica?: string | null };
+      periodoDescuento: string;
+      requiereCorreccion: boolean;
+      claveIdempotencia: string;
+    },
+  ) =>
+    enviarSaldo<unknown>(`${BASE}/${encodeURIComponent(anticipoId)}/retencion-exceso`, {
+      clase: e.clase,
+      base_correcta: e.baseCorrecta,
+      tarifa_correcta: e.tarifaCorrecta,
+      metodo: e.metodo,
+      motivo: e.motivo.trim(),
+      soportes: e.soportes,
+      periodo_descuento: e.periodoDescuento,
+      requiere_correccion: e.requiereCorreccion,
       clave_idempotencia: e.claveIdempotencia,
     }),
 
@@ -160,6 +250,15 @@ export const ADAPTADOR_PROVEEDOR: AdaptadorSaldos = {
     });
     return { id: r.anticipo_id, recibo: r.recibo };
   },
-  aplicar: (e) => anticiposProveedorService.aplicar(e.saldoId, { cuentaId: e.documentoId, monto: e.monto, claveIdempotencia: e.claveIdempotencia }),
-  devolver: (saldoId, e) => anticiposProveedorService.devolver(saldoId, e),
+  aplicar: (e) => {
+    const c = (e.extra?.correccion ?? null) as { motivo?: unknown; soporte?: unknown } | null;
+    const correccion = c && typeof c.motivo === 'string' && typeof c.soporte === 'string' ? { motivo: c.motivo, soporte: c.soporte } : null;
+    return anticiposProveedorService.aplicar(e.saldoId, { cuentaId: e.documentoId, monto: e.monto, claveIdempotencia: e.claveIdempotencia, correccion });
+  },
+  devolver: (saldoId, e) => {
+    // Sin procedimiento (null) → pendiente contable en la base; las retenciones salen del procedimiento.
+    const p = e.extra?.procedimiento;
+    const procedimiento = p && typeof p === 'object' ? (p as ProcedimientoDevolucion) : null;
+    return anticiposProveedorService.devolver(saldoId, { ...e, procedimiento });
+  },
 };

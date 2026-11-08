@@ -12,7 +12,9 @@ import type { Campo, Contraparte, DocumentoPayload, FilaTotal, SeccionTabla } fr
 import {
   SELECT_ITEM,
   SELECT_PROVEEDOR,
+  bandaReconstruido,
   cargarBase,
+  receptorOriginal,
   cargarNombresMetodos,
   contraparteProveedor,
   cuentaEnmascarada,
@@ -343,7 +345,11 @@ export async function cargarDocumentoSoporte(
   const cuds = texto(d.cufe);
   const [base, moneda, entorno, proveedorRes, compraRes] = await Promise.all([
     // H2: responsabilidades del RUT del emisor vigentes en la fecha del documento soporte.
-    cargarBase(sesion, d.branch_id, { fechaDocumento: d.issue_date ?? d.created_at ?? null }),
+    cargarBase(sesion, d.branch_id, {
+      fechaDocumento: d.issue_date ?? d.created_at ?? null,
+      // Reimpresión fiel: el documento expedido usa los datos originales de las partes.
+      ...(d.status !== 'draft' ? { instantanea: { tipo: 'documento_soporte' as const, id: d.id } } : {}),
+    }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, d.currency),
     cuds ? entornoFacturacion(sesion) : Promise.resolve('produccion' as const),
     d.supplier_id
@@ -374,10 +380,10 @@ export async function cargarDocumentoSoporte(
     numero,
     estado: { codigo: `soporte.${estado}`, tono: tonoEstado(estado) },
     marcaAgua: d.status === 'draft' ? 'borrador' : anulado ? 'anulada' : null,
-    bandas: anulado ? [{ clave: 'anulada', tono: 'peligro' }] : [],
+    bandas: [...(anulado ? [{ clave: 'anulada', tono: 'peligro' as const }] : []), ...bandaReconstruido(base)],
     emisor: base.emisor,
     sucursal: base.sucursal,
-    contraparte: contraparteSoporte(d.provider, (proveedorRes.data ?? null) as FilaProveedor | null),
+    contraparte: contraparteSoporte(d.provider, receptorOriginal(base, (proveedorRes.data ?? null) as FilaProveedor | null)),
     referencia,
     metadatos,
     resumen: [],

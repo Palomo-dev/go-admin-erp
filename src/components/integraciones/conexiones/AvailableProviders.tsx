@@ -61,7 +61,7 @@ const PROVIDER_CONFIGS: Record<string, Omit<ProviderConfig, 'code' | 'name'>> = 
   mercadopago: {
     description: 'Pagos en Latinoamérica',
     icon: <CreditCard className="h-6 w-6" />,
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg',
+    // Sin logo externo: era el de Mastercard. El logo real está en conexiones-v2/logos.
     color: 'text-[#00B1EA]',
     bgColor: 'bg-[#00B1EA]/10',
     borderColor: 'border-[#00B1EA]/30',

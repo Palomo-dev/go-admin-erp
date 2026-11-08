@@ -15,6 +15,7 @@ import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import { claveErrorMetodoPago, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
 import { SelectorSucursalesMetodoPago } from "./SucursalesMetodoPago";
 import { normalizarSucursales, esColumnaAusente } from "@/lib/finanzas/metodosPagoAlcance";
+import { rutaConectar } from '@/lib/services/integrations/conexiones/rutaAsistente';
 
 interface PaymentMethodFormProps {
   abierto: boolean;
@@ -183,7 +184,12 @@ export default function PaymentMethodForm({
       const integrationCode = code.replace('integration_', '');
       const integration = PAYMENT_INTEGRATIONS.find(i => i.code === integrationCode);
       if (integration) {
-        router.push(`/app/integraciones/conexiones/nueva?provider=${integration.providerId}`);
+        // Asistente NUEVO de Conexiones con el proveedor elegido y regreso a Métodos de pago
+        // (Frente INT). Bold y los QR propios siguen en el formulario avanzado.
+        router.push(
+          rutaConectar(integration.code, { volver: '/app/finanzas/metodos-pago' }) ??
+            `/app/integraciones/conexiones/nueva?provider=${integration.providerId}&return=/app/finanzas/metodos-pago`,
+        );
       }
       return;
     }

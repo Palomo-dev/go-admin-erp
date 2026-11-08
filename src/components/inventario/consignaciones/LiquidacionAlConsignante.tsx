@@ -4,21 +4,29 @@
  * Liquidación al consignante (Figma R5 `2407:147372`, captura
  * `docs/design/figma/89-consignacion-recibida-05-liquidacion-al-consignante.png`).
  * Separa precio de venta, precio pactado, lo del dueño, la remuneración,
- * descuentos e IVA (Contador 2, punto 6), con la MISMA fórmula de la base
- * (`vistaLiquidacion`). Vista previa del asiento según la clasificación:
- * - intermediación: D auxiliar 281510 del dueño / C auxiliar 413512 (solo la
- *   remuneración); el saldo del dueño se paga por Tesorería › Dinero de terceros;
- * - estimatorio: crea el borrador de la factura de compra de siempre (D costo /
- *   C 2205 al confirmarla con el soporte del consignante).
- * IVA y retenciones no se eligen: quedan como pendiente contable visible.
+ * descuentos e IVA, con la MISMA fórmula de la base (`vistaLiquidacion`).
+ * Ronda 2 del Contador:
+ * - la remuneración se reconoce cuando se devenga (Ronda 3): al vender ya quedó con
+ *   cada venta; con obligación posterior, al cumplirse, con evidencia. La
+ *   liquidación nunca la reconoce por su fecha;
+ * - al liquidar se resuelven por separado las retenciones de la OPERACIÓN y las de
+ *   la REMUNERACIÓN, con las reglas configuradas (se ven en el historial);
+ * - el saldo del dueño queda en 281510 y se paga por Dinero de terceros; nunca una
+ *   compra ni un documento soporte fabricados;
+ * - los derechos frente al dueño (devoluciones de lo ya liquidado) solo se
+ *   descuentan con el acuerdo escrito; si no habrá otra liquidación, se cobran;
+ * - si la remuneración se factura aparte, la liquidación no sustituye esa factura;
+ * - IVA y retenciones (por pago o abono, con la calidad del mandante) no se
+ *   eligen: quedan como pendiente contable visible.
  * «Anular» la última liquidación, con motivo (contra-asiento).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Ban, ExternalLink, Receipt } from 'lucide-react';
-import { AvisoTonal, DialogoMotivo, FilaDato, ListaDatos, PageHeader, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
+import { Ban, Receipt } from 'lucide-react';
+import { AvisoTonal, DialogoMotivo, FilaDato, FormField, ListaDatos, PageHeader, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
@@ -44,6 +52,8 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
   const [enviando, setEnviando] = useState(false);
   const [anular, setAnular] = useState(false);
   const [recarga, setRecarga] = useState(0);
+  const [descontar, setDescontar] = useState(false);
+  const [acuerdo, setAcuerdo] = useState('');
   const clave = useRef(nuevaClaveIdempotencia('consignacion-liquidar'));
 
   useEffect(() => {
@@ -69,18 +79,24 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
     [lineas, nota],
   );
   const ultima = nota?.liquidaciones.find((q) => q.estado !== 'anulada') ?? null;
-  const puedeLiquidar = permisos.crear && !!vista && vista.dueno > 0 && !vista.bajoPrecio && !pendiente;
+  const derechos = nota?.derechosFrenteAlDueno ?? 0;
+  const faltaAcuerdo = descontar && acuerdo.trim().length < 5;
+  const intermediacion = nota?.contrato === 'intermediacion';
+  const puedeLiquidar = permisos.crear && intermediacion && !!vista && vista.dueno > 0 && !vista.bajoPrecio && !pendiente && !faltaAcuerdo;
 
   const liquidar = async () => {
     if (!puedeLiquidar) return;
     setEnviando(true);
     setError(null);
     try {
-      const r = await consignacionesRecibidasService.liquidar(notaId, clave.current);
-      toastSuccess(t(r.facturaCompraId ? 'liquidar.exitoEstimatorio' : 'liquidar.exito', { valor: fmt(r.porPagar) }));
+      const r = await consignacionesRecibidasService.liquidar(notaId, {
+        clave_idempotencia: clave.current,
+        descontar_derechos: descontar,
+        acuerdo: descontar ? acuerdo.trim() : null,
+      });
+      toastSuccess(t('liquidar.exito', { valor: fmt(r.porPagar) }));
       clave.current = nuevaClaveIdempotencia('consignacion-liquidar');
-      if (r.facturaCompraId) router.push(`/app/finanzas/facturas-compra/${r.facturaCompraId}`);
-      else router.push(rutaRecibida(notaId));
+      router.push(rutaRecibida(notaId));
     } catch (e) {
       setError(textoErrorSaldo(t, e));
     } finally {
@@ -99,7 +115,6 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
     [ultima, t],
   );
 
-  const intermediacion = nota?.contrato === 'intermediacion';
   const titulo = nota ? t('liquidar.titulo', { numero: nota.numero }) : '…';
 
   return (
@@ -127,7 +142,7 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
             {permisos.crear && (
               <button type="button" onClick={() => void liquidar()} disabled={!puedeLiquidar || enviando} className={clasesBoton({ variante: 'primario' })}>
                 <Receipt aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                {enviando ? t('liquidar.procesando') : t(intermediacion ? 'liquidar.confirmar' : 'liquidar.confirmarEstimatorio')}
+                {enviando ? t('liquidar.procesando') : t('liquidar.confirmar')}
               </button>
             )}
           </>
@@ -136,7 +151,7 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
           titulo: nota?.numero,
           subtitulo: t('liquidar.miga'),
           menu: [
-            { id: 'liquidar', etiqueta: t(intermediacion ? 'liquidar.confirmar' : 'liquidar.confirmarEstimatorio'), icono: Receipt, onSelect: () => void liquidar(), oculta: !permisos.crear, deshabilitada: !puedeLiquidar || enviando },
+            { id: 'liquidar', etiqueta: t('liquidar.confirmar'), icono: Receipt, onSelect: () => void liquidar(), oculta: !permisos.crear, deshabilitada: !puedeLiquidar || enviando },
             { id: 'anular', etiqueta: t('liquidar.anularUltima'), icono: Ban, onSelect: () => setAnular(true), oculta: !(ultima && permisos.anular) },
           ],
         }}
@@ -147,6 +162,10 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
         <p role="alert" className="text-sm text-danger-text">
           {error}
         </p>
+      )}
+
+      {nota && !intermediacion && (
+        <AvisoTonal tono="advertencia" titulo={t('condiciones.estimatorioBloqueado.titulo')} descripcion={t('condiciones.estimatorioBloqueado.descripcion')} />
       )}
 
       {nota && vista && (
@@ -194,34 +213,52 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
                   etiqueta={nota.remuneracionModo === 'porcentaje' ? t('liquidar.remuneracionPct', { pct: nota.comisionPct, base: t(`condiciones.bases.${nota.baseComision}`) }) : t('liquidar.remuneracionPrecio')}
                   valor={`(${fmt(vista.remuneracion)})`}
                 />
+                {descontar && derechos > 0 && (
+                  <FilaDato etiqueta={t('liquidar.derechosDescontados')} valor={`(${fmt(derechos)})`} descripcion={t('liquidar.derechosDescontadosAyuda')} />
+                )}
                 <FilaDato etiqueta={t('liquidar.impuestos')} accesorio={<StatusBadge estado="pendiente" etiqueta={t('liquidar.porDeterminar')} />} descripcion={t('liquidar.impuestosAyuda')} />
                 <FilaDato etiqueta={t('liquidar.saldoDueno', { consignante: nota.consignante })} valor={fmt(vista.dueno)} tamano="lg" separadorAntes />
               </ListaDatos>
             </Tarjeta>
             <Tarjeta titulo={t('liquidar.vistaPrevia')}>
-              <ListaDatos divisores>
-                {intermediacion ? (
-                  <>
-                    <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.recaudo ?? '281510', nombre: t('asiento.recaudoCorto') })} valor={t('asiento.d', { valor: fmt(vista.remuneracion) })} />
-                    <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.remuneracion ?? '413512', nombre: t('asiento.remuneracionCorto') })} valor={t('asiento.c', { valor: fmt(vista.remuneracion) })} />
-                  </>
-                ) : (
-                  <>
-                    <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.costo ?? '—', nombre: t('asiento.costoCorto') })} valor={t('asiento.d', { valor: fmt(vista.dueno) })} />
-                    <FilaDato etiqueta={t('asiento.proveedores')} valor={t('asiento.c', { valor: fmt(vista.dueno) })} />
-                  </>
-                )}
-              </ListaDatos>
-              <p className="mt-2 text-xs text-fg-muted">{t(intermediacion ? 'liquidar.notaIntermediacion' : 'liquidar.notaEstimatorio')}</p>
+              <p className="text-sm text-fg">
+                {t(nota.reconocimiento === 'obligacion_posterior' ? 'liquidar.remuneracionEsperaObligacion' : 'liquidar.remuneracionYaDevengada')}
+              </p>
+              <p className="mt-2 text-xs text-fg-muted">{t('liquidar.retencionesAlLiquidar')}</p>
+              <p className="mt-2 text-xs text-fg-muted">{t('liquidar.notaIntermediacion')}</p>
             </Tarjeta>
           </div>
 
+          {derechos > 0 && (
+            <Tarjeta titulo={t('liquidar.derechosTitulo', { valor: fmt(derechos) })}>
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-fg-secondary">{t('liquidar.derechosDescripcion')}</p>
+                <label className="flex items-start gap-2 text-sm text-fg">
+                  <Checkbox checked={descontar} onCheckedChange={(v) => setDescontar(v === true)} aria-describedby="consignacion-derechos-ayuda" />
+                  <span>{t('liquidar.descontarConAcuerdo')}</span>
+                </label>
+                {descontar && (
+                  <FormField etiqueta={t('liquidar.acuerdo')} obligatorio error={faltaAcuerdo && acuerdo !== '' ? t('errores.acuerdo_obligatorio') : null}>
+                    {(c) => (
+                      <Textarea id={c.id} aria-labelledby={c.idEtiqueta} value={acuerdo} maxLength={1000} rows={3} placeholder={t('liquidar.acuerdoPlaceholder')} onChange={(e) => setAcuerdo(e.target.value)} />
+                    )}
+                  </FormField>
+                )}
+                <p id="consignacion-derechos-ayuda" className="text-xs text-fg-muted">
+                  {t('liquidar.derechosSinOtra')}
+                </p>
+              </div>
+            </Tarjeta>
+          )}
           {vista.bajoPrecio && <AvisoTonal tono="peligro" titulo={t('liquidar.bajoPrecioTitulo')} descripcion={t('errores.venta_bajo_precio_pactado')} />}
+          {nota.facturaRemuneracion && (
+            <AvisoTonal tono="advertencia" titulo={t('liquidar.facturaRemuneracionTitulo')} descripcion={t('liquidar.facturaRemuneracionDescripcion')} />
+          )}
           <AvisoTonal
             tono="informacion"
             titulo={t('liquidar.alLiquidar')}
-            descripcion={t(intermediacion ? 'liquidar.alLiquidarIntermediacion' : 'liquidar.alLiquidarEstimatorio')}
-            accion={intermediacion ? { etiqueta: t('liquidar.irDineroTerceros'), href: '/app/finanzas/tesoreria/dinero-de-terceros' } : undefined}
+            descripcion={t('liquidar.alLiquidarIntermediacion')}
+            accion={{ etiqueta: t('liquidar.irDineroTerceros'), href: '/app/finanzas/tesoreria/dinero-de-terceros' }}
           />
 
           {nota.liquidaciones.length > 0 && (
@@ -231,16 +268,12 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
                   <FilaDato
                     key={q.id}
                     etiqueta={`${formatDate(q.creada)} · ${t(`estadosLiquidacion.${q.estado}`)}`}
-                    descripcion={t('detalle.liquidacionResumen', { venta: fmt(q.venta), remuneracion: fmt(q.remuneracion) })}
-                    valor={fmt(q.porPagar)}
-                    accesorio={
-                      q.facturaCompraId ? (
-                        <Link href={`/app/finanzas/facturas-compra/${q.facturaCompraId}`} className="inline-flex items-center gap-1 text-xs text-brand hover:underline">
-                          {t('liquidar.verFacturaCompra')}
-                          <ExternalLink aria-hidden="true" className="size-3" />
-                        </Link>
-                      ) : undefined
+                    descripcion={
+                      q.derechosDescontados > 0
+                        ? t('detalle.liquidacionResumenDerechos', { venta: fmt(q.venta), remuneracion: fmt(q.remuneracion), derechos: fmt(q.derechosDescontados) })
+                        : t('detalle.liquidacionResumen', { venta: fmt(q.venta), remuneracion: fmt(q.remuneracion) })
                     }
+                    valor={fmt(q.porPagar)}
                   />
                 ))}
               </ListaDatos>

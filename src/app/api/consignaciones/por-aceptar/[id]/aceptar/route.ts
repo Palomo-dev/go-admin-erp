@@ -9,7 +9,7 @@
  * Permiso `finance.create`.
  */
 import { withOrg } from '@/lib/utils/orgContext';
-import { aceptarNotaSchema, liquidarRecibidaSchema } from '@/lib/inventario/consignaciones/recibidas';
+import { aceptarNotaSchema, claveSchema } from '@/lib/inventario/consignaciones/recibidas';
 import { aceptarDocumentoRecibido, aceptarNota, documentoPorAceptar, ErrorRecibidaServidor, respuestaErrorRecibida } from '@/lib/services/consignaciones/recibidas.server';
 import { ejecutar, idDeRuta } from '@/lib/services/consignaciones/rutasRecibidas.server';
 
@@ -31,7 +31,7 @@ export const POST = withOrg(async (ctx, req, routeParams) => {
   return ejecutar(ctx, req, {
     ruta: 'POST /api/consignaciones/por-aceptar/[id]/aceptar?tipo=liquidacion',
     permisos: ['finance.create'],
-    esquema: liquidarRecibidaSchema.pick({ clave_idempotencia: true }),
+    esquema: claveSchema,
     accion: async () => {
       const doc = await documentoPorAceptar(ctx, id);
       if (doc.tipo === 'consignacion_nota') throw new ErrorRecibidaServidor('documento_no_disponible');

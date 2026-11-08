@@ -150,6 +150,8 @@ export async function cargarCierreCaja(
     ['entradas', d.entradas, false],
     ['salidas', d.salidas, true],
     ['comprasEfectivo', d.compras_efectivo, true],
+    ['anticiposEgreso', d.anticipos_proveedor_egreso, true],
+    ['anticiposDevolucion', d.anticipos_proveedor_devolucion, false],
     ['devoluciones', d.devoluciones, true],
   ];
   const totales: FilaTotal[] = conceptos

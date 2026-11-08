@@ -10,7 +10,9 @@ import type { Banda, Campo, DocumentoPayload, FilaTotal, MarcaAgua, ResolucionNu
 import {
   SELECT_CLIENTE,
   SELECT_ITEM,
+  bandaReconstruido,
   cargarBase,
+  receptorOriginal,
   cargarNombresMetodos,
   contraparteCliente,
   entornoFacturacion,
@@ -179,9 +181,23 @@ export async function cargarVenta(
   if (tipoPedido === 'nota-credito' && !esNota) throw noEncontrado();
   const tipo = esNota ? 'nota-credito' : 'factura-venta';
 
+  // Reimpresión fiel: un documento expedido usa los datos originales de las partes (instantánea o XML enviado).
+  const tipoInstantanea =
+    factura.status === 'draft'
+      ? null
+      : esNota
+        ? 'nota_credito'
+        : factura.document_type === 'debit_note'
+          ? 'nota_debito'
+          : !factura.document_type || factura.document_type === 'invoice'
+            ? 'factura_venta'
+            : null;
   const [base, moneda, monedaBase, pagos, credito, resolucion, entorno] = await Promise.all([
-    // H2: responsabilidades del RUT del emisor vigentes en la fecha de emisión del documento.
-    cargarBase(sesion, factura.branch_id, { fechaDocumento: factura.issue_date ?? factura.created_at ?? null }),
+    // H2: responsabilidades del RUT del emisor vigentes en la fecha de emisión del documento (si no hay instantánea).
+    cargarBase(sesion, factura.branch_id, {
+      fechaDocumento: factura.issue_date ?? factura.created_at ?? null,
+      ...(tipoInstantanea ? { instantanea: { tipo: tipoInstantanea, id: factura.id } } : {}),
+    }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, factura.currency),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId),
     esNota ? Promise.resolve([] as FilaPago[]) : pagosDeFactura(sesion, factura),
@@ -253,6 +269,7 @@ export async function cargarVenta(
   if (moneda.code !== monedaBase.code) {
     bandas.push({ clave: 'monedaExtranjera', vars: { moneda: moneda.code }, tono: 'info' });
   }
+  bandas.push(...bandaReconstruido(base));
 
   const cufe = texto(factura.xml_uuid);
   const secciones: SeccionTabla[] = [];
@@ -285,7 +302,7 @@ export async function cargarVenta(
     bandas,
     emisor: base.emisor,
     sucursal: base.sucursal,
-    contraparte: contraparteCliente(uno(factura.customer)),
+    contraparte: contraparteCliente(receptorOriginal(base, uno(factura.customer))),
     referencia,
     metadatos,
     resumen: [],

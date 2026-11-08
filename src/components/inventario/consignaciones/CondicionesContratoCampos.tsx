@@ -2,15 +2,19 @@
 
 /**
  * Condiciones del contrato de consignación — UNA pieza para recibir a mano (R4)
- * y para la nueva nota entregada. Criterio del Contador: la clasificación es
- * OBLIGATORIA y no tiene valor por defecto (intermediación, estimatorio o compra
- * real); si falta, el diálogo no deja operar. La compra real no es consignación:
- * se avisa y se ofrece la factura de compra. IVA y retenciones NO se eligen
- * aquí: se determinan por ley con los hechos de cada liquidación.
+ * y para la nueva nota entregada. Criterio del Contador (Ronda 2): el contrato
+ * separa la modalidad jurídica, la condición contable y el tratamiento
+ * tributario; nada tiene valor por defecto y, si falta algo, el diálogo no deja
+ * operar. La compra real no es consignación (se ofrece la factura). El
+ * estimatorio se puede elegir pero queda bloqueado hasta parametrizar los arts.
+ * 438 y 455. IVA y retenciones NO se eligen aquí: se determinan por ley.
+ * Ronda 3: la comisión se reconoce cuando se devenga (al vender); solo una
+ * obligación posterior REAL, documentada aquí, la difiere hasta cumplirse.
  */
 import { useTranslations } from 'next-intl';
 import { AvisoTonal, FormField } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { validarCondiciones, type CondicionesContrato, type ErrorCondicion, type ParteContrato } from '@/lib/inventario/consignaciones/recibidas';
 
 const NS = 'consignacionesR4.condiciones';
@@ -65,7 +69,7 @@ function Opciones<V extends string>({
 
 export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, rutaCompraReal }: Props) {
   const t = useTranslations(NS);
-  const errores = new Set<ErrorCondicion>(tocado ? validarCondiciones(valor) : []);
+  const errores = new Set<ErrorCondicion>(tocado ? validarCondiciones(valor, direccion) : []);
   const err = (e: ErrorCondicion) => (errores.has(e) ? t(`errores.${e}`) : null);
   const partes: { valor: ParteContrato; etiqueta: string }[] = [
     { valor: 'dueno', etiqueta: t(direccion === 'recibida' ? 'parte.consignante' : 'parte.tu') },
@@ -73,6 +77,10 @@ export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, 
   ];
   const fijar = (p: Partial<CondicionesContrato>) => onCambio({ ...valor, ...p });
   const fijarRiesgo = (k: keyof CondicionesContrato['riesgos'], v: ParteContrato) => onCambio({ ...valor, riesgos: { ...valor.riesgos, [k]: v } });
+  // En mandato la condición contable es la de agente: la impone la modalidad, no es un valor por defecto.
+  const fijarContrato = (v: NonNullable<CondicionesContrato['contrato']>) =>
+    fijar({ contrato: v, condicion: v === 'intermediacion' ? 'agente' : null });
+  const facturaRem = valor.facturaRemuneracion === null ? null : valor.facturaRemuneracion ? 'si' : 'no';
 
   return (
     <fieldset className="flex flex-col gap-4 rounded-lg border border-line p-3 sm:p-4">
@@ -81,7 +89,7 @@ export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, 
         id="consignacion-contrato"
         etiqueta={t('contrato')}
         valor={valor.contrato}
-        onCambio={(v) => fijar({ contrato: v })}
+        onCambio={fijarContrato}
         error={err('contrato')}
         ayuda={valor.contrato ? t(`ayudaContrato.${valor.contrato}`) : t('ayudaSinContrato')}
         opciones={[
@@ -90,96 +98,150 @@ export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, 
           { valor: 'compra', etiqueta: t('contratos.compra') },
         ]}
       />
-      {valor.contrato === 'compra' ? (
+      {valor.contrato === 'compra' && (
         <AvisoTonal
           tono="advertencia"
           titulo={t('compraReal.titulo')}
           descripcion={t('compraReal.descripcion')}
           accion={{ etiqueta: t('compraReal.accion'), href: rutaCompraReal }}
         />
-      ) : (
-        valor.contrato && (
-          <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      )}
+      {valor.contrato === 'estimatorio' && (
+        <AvisoTonal tono="advertencia" titulo={t('estimatorioBloqueado.titulo')} descripcion={t('estimatorioBloqueado.descripcion')} />
+      )}
+      {valor.contrato === 'intermediacion' && (
+        <>
+          <dl className="grid grid-cols-1 gap-2 rounded-md bg-subtle p-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-fg-muted">{t('condicion')}</dt>
+              <dd className="text-fg">{t('condiciones.agente')}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-fg-muted">{t('tributario')}</dt>
+              <dd className="text-fg">{t('tributarios.mandato')}</dd>
+            </div>
+          </dl>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {direccion === 'recibida' && (
               <Opciones
-                id="consignacion-precio"
-                etiqueta={t('precio')}
-                valor={valor.precioModo}
-                onCambio={(v) => fijar({ precioModo: v })}
-                error={err('precio')}
+                id="consignacion-valoracion"
+                etiqueta={t('valoracion')}
+                valor={valor.valoracion}
+                onCambio={(v) => fijar({ valoracion: v })}
+                error={err('valoracion')}
+                ayuda={t('valoracionAyuda')}
                 opciones={[
-                  { valor: 'fijo', etiqueta: t('precios.fijo') },
-                  { valor: 'minimo', etiqueta: t('precios.minimo') },
+                  { valor: 'costo_acreditado', etiqueta: t('valoraciones.costo_acreditado') },
+                  { valor: 'valor_convenido', etiqueta: t('valoraciones.valor_convenido') },
                 ]}
               />
+            )}
+            <Opciones
+              id="consignacion-precio"
+              etiqueta={t('precio')}
+              valor={valor.precioModo}
+              onCambio={(v) => fijar({ precioModo: v })}
+              error={err('precio')}
+              opciones={[
+                { valor: 'fijo', etiqueta: t('precios.fijo') },
+                { valor: 'minimo', etiqueta: t('precios.minimo') },
+              ]}
+            />
+            <Opciones
+              id="consignacion-remuneracion"
+              etiqueta={t('remuneracion')}
+              valor={valor.remuneracionModo}
+              onCambio={(v) => fijar({ remuneracionModo: v })}
+              error={err('remuneracion')}
+              opciones={[
+                { valor: 'porcentaje', etiqueta: t('remuneraciones.porcentaje') },
+                { valor: 'precio_liquidacion', etiqueta: t('remuneraciones.precio_liquidacion') },
+              ]}
+            />
+            {valor.remuneracionModo === 'porcentaje' && (
               <Opciones
-                id="consignacion-remuneracion"
-                etiqueta={t('remuneracion')}
-                valor={valor.remuneracionModo}
-                onCambio={(v) => fijar({ remuneracionModo: v })}
-                error={err('remuneracion')}
+                id="consignacion-base"
+                etiqueta={t('base')}
+                valor={valor.baseComision}
+                onCambio={(v) => fijar({ baseComision: v })}
+                error={err('base')}
                 opciones={[
-                  { valor: 'porcentaje', etiqueta: t('remuneraciones.porcentaje') },
-                  { valor: 'precio_liquidacion', etiqueta: t('remuneraciones.precio_liquidacion') },
+                  { valor: 'precio_pactado', etiqueta: t('bases.precio_pactado') },
+                  { valor: 'precio_venta', etiqueta: t('bases.precio_venta') },
                 ]}
               />
-              {valor.remuneracionModo === 'porcentaje' && (
-                <Opciones
-                  id="consignacion-base"
-                  etiqueta={t('base')}
-                  valor={valor.baseComision}
-                  onCambio={(v) => fijar({ baseComision: v })}
-                  error={err('base')}
-                  opciones={[
-                    { valor: 'precio_pactado', etiqueta: t('bases.precio_pactado') },
-                    { valor: 'precio_venta', etiqueta: t('bases.precio_venta') },
-                  ]}
-                />
-              )}
-              {valor.contrato === 'intermediacion' && (
-                <Opciones
-                  id="consignacion-obligacion"
-                  etiqueta={t('obligacion')}
-                  valor={valor.obligacionDueno}
-                  onCambio={(v) => fijar({ obligacionDueno: v })}
-                  error={err('obligacion')}
-                  ayuda={t('obligacionAyuda')}
-                  opciones={[
-                    { valor: 'venta', etiqueta: t('obligaciones.venta') },
-                    { valor: 'cobro', etiqueta: t('obligaciones.cobro') },
-                  ]}
-                />
-              )}
-              {valor.contrato === 'estimatorio' && (
-                <Opciones
-                  id="consignacion-factura"
-                  etiqueta={t('factura')}
-                  valor={valor.factura}
-                  onCambio={(v) => fijar({ factura: v })}
-                  opciones={[
-                    { valor: 'consignatario', etiqueta: t(direccion === 'recibida' ? 'parte.tu' : 'parte.consignatario') },
-                    { valor: 'consignante', etiqueta: t(direccion === 'recibida' ? 'parte.consignante' : 'parte.tu') },
-                  ]}
-                />
-              )}
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-              {(['devoluciones', 'perdidas', 'gastos'] as const).map((k) => (
-                <Opciones
-                  key={k}
-                  id={`consignacion-riesgo-${k}`}
-                  etiqueta={t(`riesgos.${k}`)}
-                  valor={valor.riesgos[k]}
-                  onCambio={(v) => fijarRiesgo(k, v)}
-                  error={k === 'devoluciones' ? err('riesgos') : null}
-                  opciones={partes}
-                />
-              ))}
-            </div>
-            {valor.contrato === 'intermediacion' && <p className="text-xs text-fg-muted">{t('facturaMandatario')}</p>}
-            <p className="text-xs text-fg-muted">{t('impuestosPorLey')}</p>
-          </>
-        )
+            )}
+            <Opciones
+              id="consignacion-reconocimiento"
+              etiqueta={t('reconocimiento')}
+              valor={valor.reconocimiento}
+              onCambio={(v) => fijar({ reconocimiento: v })}
+              error={err('reconocimiento')}
+              ayuda={t('reconocimientoAyuda')}
+              opciones={[
+                { valor: 'al_vender', etiqueta: t('reconocimientos.al_vender') },
+                { valor: 'obligacion_posterior', etiqueta: t('reconocimientos.obligacion_posterior') },
+              ]}
+            />
+            {valor.reconocimiento === 'obligacion_posterior' && (
+              <div className="sm:col-span-2">
+                <FormField etiqueta={t('obligacionPosterior')} obligatorio ayuda={t('obligacionPosteriorAyuda')} error={err('obligacion_posterior')}>
+                  {(c) => (
+                    <Textarea
+                      id={c.id}
+                      aria-labelledby={c.idEtiqueta}
+                      aria-invalid={c['aria-invalid']}
+                      value={valor.obligacionPosterior ?? ''}
+                      maxLength={1000}
+                      rows={2}
+                      placeholder={t('obligacionPosteriorPlaceholder')}
+                      onChange={(e) => fijar({ obligacionPosterior: e.target.value })}
+                    />
+                  )}
+                </FormField>
+              </div>
+            )}
+            <Opciones
+              id="consignacion-factura-remuneracion"
+              etiqueta={t('facturaRemuneracion')}
+              valor={facturaRem}
+              onCambio={(v) => fijar({ facturaRemuneracion: v === 'si' })}
+              error={err('factura_remuneracion')}
+              ayuda={t('facturaRemuneracionAyuda')}
+              opciones={[
+                { valor: 'si', etiqueta: t('si') },
+                { valor: 'no', etiqueta: t('no') },
+              ]}
+            />
+            <Opciones
+              id="consignacion-obligacion"
+              etiqueta={t('obligacion')}
+              valor={valor.obligacionDueno}
+              onCambio={(v) => fijar({ obligacionDueno: v })}
+              error={err('obligacion')}
+              ayuda={t('obligacionAyuda')}
+              opciones={[
+                { valor: 'venta', etiqueta: t('obligaciones.venta') },
+                { valor: 'cobro', etiqueta: t('obligaciones.cobro') },
+              ]}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {(['devoluciones', 'perdidas', 'gastos'] as const).map((k) => (
+              <Opciones
+                key={k}
+                id={`consignacion-riesgo-${k}`}
+                etiqueta={t(`riesgos.${k}`)}
+                valor={valor.riesgos[k]}
+                onCambio={(v) => fijarRiesgo(k, v)}
+                error={k === 'devoluciones' ? err('riesgos') : null}
+                opciones={partes}
+              />
+            ))}
+          </div>
+          <p className="text-xs text-fg-muted">{t('facturaMandatario')}</p>
+          <p className="text-xs text-fg-muted">{t('impuestosPorLey')}</p>
+        </>
       )}
     </fieldset>
   );

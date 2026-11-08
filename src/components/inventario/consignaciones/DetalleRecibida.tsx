@@ -3,14 +3,17 @@
 /**
  * Detalle de una nota recibida (Figma R3 `2405:147166`, M2 móvil `2409:148766`):
  * existencias del consignante (recibido, vendido, devuelto, en tu poder) con su
- * precio pactado, condiciones del contrato, control en cuentas de orden y
- * liquidaciones. Acciones «Devolver mercancía» y «Liquidar»; en el celular van en
- * `movil.menu` (el kit oculta el PageHeader por debajo de `lg`).
+ * precio pactado, condiciones del contrato (modalidad, condición contable,
+ * tratamiento tributario, valoración y reconocimiento), control en cuentas de
+ * orden por el valor de custodia y liquidaciones. Acciones «Devolver mercancía»,
+ * «Liquidar», «Registrar faltante o daño» y «Cruzar anticipo» (Ronda 2 del
+ * Contador); en el celular van en `movil.menu` (el kit oculta el PageHeader por
+ * debajo de `lg`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ClipboardList, Receipt, Undo2 } from 'lucide-react';
+import { ArrowLeftRight, BadgeCheck, ClipboardList, Receipt, TriangleAlert, Undo2 } from 'lucide-react';
 import { AvisoTonal, CampoNumero, DataTable, Dialogo, FilaDato, KpiStrip, ListaDatos, PageHeader, StatCard, StatusBadge, Tarjeta, clasesBoton, type ColumnaTabla } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -28,6 +31,8 @@ import {
   type NotaRecibida,
 } from '@/lib/inventario/consignaciones/recibidas';
 import { consignacionesRecibidasService } from './consignacionesRecibidasService';
+import { CruceAnticipoDialog, NovedadDialog, ReconocerRemuneracionDialog } from './NovedadesYAnticiposDialogs';
+import { RetencionesLiquidacion } from './RetencionesLiquidacion';
 
 const NS = 'consignacionesR4';
 
@@ -115,6 +120,9 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [recarga, setRecarga] = useState(0);
   const [devolver, setDevolver] = useState(false);
+  const [novedad, setNovedad] = useState(false);
+  const [cruce, setCruce] = useState(false);
+  const [reconocer, setReconocer] = useState(false);
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
   useEffect(() => {
@@ -145,11 +153,16 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
       devueltoValor: suma((x) => x.devuelto * x.precioPactado),
       poder: suma((x) => enTuPoder(x)),
       poderValor: suma((x) => enTuPoder(x) * x.precioPactado),
+      custodia: suma((x) => enTuPoder(x) * x.valorCustodia),
+      novedades: suma((x) => x.novedades),
     };
   }, [nota]);
 
   const puedeDevolver = permisos.crear && !!nota && totales.poder > 0;
-  const puedeLiquidar = permisos.crear && !!nota && nota.vendidoSinLiquidar !== 0;
+  const puedeLiquidar = permisos.crear && !!nota && nota.contrato === 'intermediacion' && nota.vendidoSinLiquidar !== 0;
+  const puedeNovedad = permisos.crear && !!nota && totales.poder > 0;
+  const puedeCruzar = permisos.crear && !!nota && nota.contrato === 'intermediacion';
+  const puedeReconocer = permisos.crear && !!nota && nota.reconocimiento === 'obligacion_posterior' && nota.remuneracionPorReconocer > 0;
   const titulo = nota ? `${nota.numero} · ${nota.consignante}` : '…';
 
   const columnas: ColumnaTabla<LineaRecibida>[] = [
@@ -158,6 +171,7 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
     { id: 'recibido', encabezado: t('columnas.recibido'), variante: 'importe', ocultarDebajo: 'lg', celda: (l) => entero(l.recibido) },
     { id: 'vendido', encabezado: t('columnas.vendido'), variante: 'importe', celda: (l) => entero(l.vendido) },
     { id: 'devuelto', encabezado: t('columnas.devuelto'), variante: 'importe', ocultarDebajo: 'lg', celda: (l) => entero(l.devuelto) },
+    { id: 'novedades', encabezado: t('columnas.novedades'), variante: 'importe', ocultarDebajo: 'lg', celda: (l) => entero(l.novedades) },
     { id: 'poder', encabezado: t('columnas.enTuPoder'), variante: 'importe', celda: (l) => entero(enTuPoder(l)) },
     { id: 'precio', encabezado: t('columnas.precioPactado'), variante: 'importe', ocultarDebajo: 'lg', celda: (l) => fmt(l.precioPactado) },
     { id: 'valor', encabezado: t('columnas.valorEnTuPoder'), variante: 'importe', celda: (l) => fmt(enTuPoder(l) * l.precioPactado) },
@@ -198,6 +212,24 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
                 {t('acciones.devolver')}
               </button>
             )}
+            {puedeNovedad && (
+              <button type="button" onClick={() => setNovedad(true)} className={clasesBoton({ variante: 'secundario' })}>
+                <TriangleAlert aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.novedad')}
+              </button>
+            )}
+            {puedeReconocer && (
+              <button type="button" onClick={() => setReconocer(true)} className={clasesBoton({ variante: 'secundario' })}>
+                <BadgeCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.reconocer')}
+              </button>
+            )}
+            {puedeCruzar && (
+              <button type="button" onClick={() => setCruce(true)} className={clasesBoton({ variante: 'secundario' })}>
+                <ArrowLeftRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.cruzarAnticipo')}
+              </button>
+            )}
             {puedeLiquidar && (
               <button type="button" onClick={() => router.push(rutaLiquidarRecibida(notaId))} className={clasesBoton({ variante: 'primario' })}>
                 <Receipt aria-hidden="true" className="size-4" strokeWidth={1.5} />
@@ -212,6 +244,9 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
           menu: [
             { id: 'liquidar', etiqueta: t('acciones.liquidar'), icono: Receipt, onSelect: () => router.push(rutaLiquidarRecibida(notaId)), oculta: !puedeLiquidar },
             { id: 'devolver', etiqueta: t('acciones.devolver'), icono: Undo2, onSelect: () => setDevolver(true), oculta: !puedeDevolver },
+            { id: 'novedad', etiqueta: t('acciones.novedad'), icono: TriangleAlert, onSelect: () => setNovedad(true), oculta: !puedeNovedad },
+            { id: 'cruce', etiqueta: t('acciones.cruzarAnticipo'), icono: ArrowLeftRight, onSelect: () => setCruce(true), oculta: !puedeCruzar },
+            { id: 'reconocer', etiqueta: t('acciones.reconocer'), icono: BadgeCheck, onSelect: () => setReconocer(true), oculta: !puedeReconocer },
           ],
         }}
       />
@@ -228,12 +263,33 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
             <StatCard etiqueta={t('kpis.enTuPoder')} valor={t('kpis.unidadesValor', { n: entero(totales.poder), valor: fmt(totales.poderValor) })} detalle={t('kpis.noEsInventario')} />
           </KpiStrip>
 
+          {nota.contrato !== 'intermediacion' && (
+            <AvisoTonal tono="advertencia" titulo={t('condiciones.estimatorioBloqueado.titulo')} descripcion={t('condiciones.estimatorioBloqueado.descripcion')} />
+          )}
+          {nota.reconocimiento === 'obligacion_posterior' && nota.remuneracionPorReconocer > 0 && (
+            <AvisoTonal
+              tono="informacion"
+              titulo={t('detalle.porReconocerTitulo', { valor: fmt(nota.remuneracionPorReconocer) })}
+              descripcion={t('detalle.porReconocerDescripcion')}
+            />
+          )}
+          {nota.derechosFrenteAlDueno > 0 && (
+            <AvisoTonal
+              tono="advertencia"
+              titulo={t('detalle.derechosTitulo', { valor: fmt(nota.derechosFrenteAlDueno) })}
+              descripcion={t('liquidar.derechosDescripcion')}
+            />
+          )}
+
           <DataTable etiqueta={t('detalle.existencias')} columnas={columnas} filas={nota.lineas} obtenerId={(l) => l.id} estado="listo" />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Tarjeta titulo={t('detalle.condiciones')}>
               <ListaDatos>
                 <FilaDato etiqueta={t('condiciones.contrato')} valor={t(`condiciones.contratos.${nota.contrato}`)} />
+                <FilaDato etiqueta={t('condiciones.condicion')} valor={t(`condiciones.condiciones.${nota.condicion}`)} />
+                <FilaDato etiqueta={t('condiciones.tributario')} valor={t(`condiciones.tributarios.${nota.tributario}`)} />
+                <FilaDato etiqueta={t('condiciones.valoracion')} valor={t(`condiciones.valoraciones.${nota.valoracion}`)} />
                 <FilaDato etiqueta={t('condiciones.precio')} valor={t(`condiciones.precios.${nota.precioModo}`)} />
                 <FilaDato
                   etiqueta={t('condiciones.remuneracion')}
@@ -243,42 +299,57 @@ export function DetalleRecibida({ notaId }: { notaId: string }) {
                       : t('condiciones.remuneraciones.precio_liquidacion')
                   }
                 />
+                <FilaDato etiqueta={t('condiciones.reconocimiento')} valor={t(`condiciones.reconocimientos.${nota.reconocimiento}`)} />
+                {nota.obligacionPosterior && <FilaDato etiqueta={t('condiciones.obligacionPosterior')} descripcion={nota.obligacionPosterior} />}
+                <FilaDato etiqueta={t('condiciones.facturaRemuneracion')} valor={t(nota.facturaRemuneracion ? 'condiciones.si' : 'condiciones.no')} />
                 {nota.obligacionDueno && <FilaDato etiqueta={t('condiciones.obligacion')} valor={t(`condiciones.obligaciones.${nota.obligacionDueno}`)} />}
                 <FilaDato etiqueta={t('condiciones.riesgos.devoluciones')} valor={t(`detalle.asume.${nota.riesgos.devoluciones}`)} />
                 <FilaDato etiqueta={t('condiciones.riesgos.perdidas')} valor={t(`detalle.asume.${nota.riesgos.perdidas}`)} />
                 <FilaDato etiqueta={t('condiciones.riesgos.gastos')} valor={t(`detalle.asume.${nota.riesgos.gastos}`)} />
-                <FilaDato etiqueta={t('condiciones.factura')} valor={t(nota.contrato === 'intermediacion' ? 'detalle.facturaMandatario' : `detalle.factura.${nota.factura}`)} />
+                <FilaDato etiqueta={t('condiciones.factura')} valor={t('detalle.facturaMandatario')} />
               </ListaDatos>
             </Tarjeta>
             <Tarjeta titulo={t('detalle.cuentasOrden')}>
               <ListaDatos>
-                <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.contra ?? '—', nombre: t('asiento.contraOrdenCorto') })} valor={fmt(totales.poderValor)} />
-                <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.orden ?? '—', nombre: t('asiento.ordenCorto') })} valor={fmt(totales.poderValor)} />
+                <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.contra ?? '—', nombre: t('asiento.contraOrdenCorto') })} valor={fmt(totales.custodia)} />
+                <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.orden ?? '—', nombre: t('asiento.ordenCorto') })} valor={fmt(totales.custodia)} />
                 {nota.cuentas.recaudo && <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.recaudo, nombre: t('asiento.recaudoCorto') })} />}
                 {nota.cuentas.remuneracion && <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.remuneracion, nombre: t('asiento.remuneracionCorto') })} />}
-                {nota.cuentas.costo && <FilaDato etiqueta={t('asiento.cuenta', { cuenta: nota.cuentas.costo, nombre: t('asiento.costoCorto') })} />}
               </ListaDatos>
             </Tarjeta>
           </div>
 
           {nota.liquidaciones.length > 0 && (
             <Tarjeta titulo={t('detalle.liquidaciones', { n: nota.liquidaciones.length })}>
-              <ListaDatos divisores>
+              <div className="flex flex-col divide-y divide-line">
                 {nota.liquidaciones.map((q) => (
-                  <FilaDato
-                    key={q.id}
-                    etiqueta={`${formatDate(q.creada)} · ${t(`estadosLiquidacion.${q.estado}`)}`}
-                    descripcion={t('detalle.liquidacionResumen', { venta: fmt(q.venta), remuneracion: fmt(q.remuneracion) })}
-                    valor={fmt(q.porPagar)}
-                    href={q.facturaCompraId ? `/app/finanzas/facturas-compra/${q.facturaCompraId}` : undefined}
-                  />
+                  <div key={q.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0">
+                    <ListaDatos>
+                      <FilaDato
+                        etiqueta={`${formatDate(q.creada)} · ${t(`estadosLiquidacion.${q.estado}`)}`}
+                        descripcion={
+                          q.derechosDescontados > 0
+                            ? t('detalle.liquidacionResumenDerechos', { venta: fmt(q.venta), remuneracion: fmt(q.remuneracion), derechos: fmt(q.derechosDescontados) })
+                            : t('detalle.liquidacionResumen', { venta: fmt(q.venta), remuneracion: fmt(q.remuneracion) })
+                        }
+                        valor={fmt(q.porPagar)}
+                      />
+                      {q.remuneracionPorDevengar > 0 && (
+                        <FilaDato etiqueta={t('detalle.remuneracionPorDevengar')} valor={fmt(q.remuneracionPorDevengar)} descripcion={t('detalle.remuneracionPorDevengarAyuda')} />
+                      )}
+                    </ListaDatos>
+                    {q.estado !== 'anulada' && <RetencionesLiquidacion retenciones={q.retenciones} puedeConciliar={permisos.crear} onConciliada={recargar} />}
+                  </div>
                 ))}
-              </ListaDatos>
+              </div>
             </Tarjeta>
           )}
 
           {nota.vinculada && <AvisoTonal tono="informacion" titulo={t('detalle.vinculadaTitulo', { consignante: nota.consignante })} descripcion={t('detalle.vinculadaDescripcion')} />}
           {puedeDevolver && <DevolverDialog nota={nota} abierto={devolver} onAbiertoChange={setDevolver} onHecho={recargar} />}
+          {puedeNovedad && <NovedadDialog nota={nota} abierto={novedad} onAbiertoChange={setNovedad} onHecho={recargar} />}
+          {puedeCruzar && <CruceAnticipoDialog nota={nota} abierto={cruce} onAbiertoChange={setCruce} onHecho={recargar} />}
+          {puedeReconocer && <ReconocerRemuneracionDialog nota={nota} abierto={reconocer} onAbiertoChange={setReconocer} onHecho={recargar} />}
         </>
       )}
     </div>

@@ -6,9 +6,8 @@
  * pagar escritos aquí:
  * - la venta del producto en consignación es la del POS (`posService`) o la
  *   factura de venta de siempre; el disparador del kardex la asigna a la nota;
- * - en estimatorio, la adquisición es la factura de compra de siempre
- *   (`guardarFacturaCompra`, en BORRADOR para que se complete con el soporte del
- *   consignante); su confirmación crea la CxP por su disparador;
+ * - nunca se fabrica una compra ni un documento soporte para pagarle al dueño: su
+ *   saldo está en el auxiliar 281510 y un anticipo se cruza con esa obligación;
  * - la liquidación que le llega al consignante pasa por `liquidarConsignacion`
  *   (la misma «Facturar y cerrar» de la entregada).
  *
@@ -23,16 +22,22 @@ import {
   codigoErrorRecibida,
   esPendienteRecibida,
   estadoHttpErrorRecibida,
+  type AmbitoRetencion,
+  type ClaseRetencion,
+  type CondicionContable,
   type Contrato,
   type DocumentoPorAceptar,
   type ErrorRecibida,
   type EstadoRecibida,
   type NotaRecibida,
   type ParteContrato,
+  type Reconocimiento,
+  type ReglasRetencionConsignacion,
   type RespuestaRecibidas,
+  type RetencionLiquidacion,
   type SolicitudRecibir,
+  type Valoracion,
 } from '@/lib/inventario/consignaciones/recibidas';
-import { guardarFacturaCompra, ErrorCompraServidor } from '@/lib/services/compras/facturasCompra.server';
 import { liquidarConsignacion, type ResultadoLiquidar } from '@/lib/services/consignaciones/consignaciones.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
@@ -72,27 +77,33 @@ async function rpc<T>(ctx: Ctx, fn: string, args: Record<string, unknown>, refer
 
 const num = (v: unknown) => Number(v ?? 0) || 0;
 
-const SELECT_RECIBIDA = `id, number, supplier_id, branch_id, contract_type, price_mode, remuneration_mode, commission_base, commission_pct,
-  owner_obligation_at, risk_terms, billing_terms, status, link_id, external_number, delivered_at,
-  memo_account_code, memo_contra_account_code, owner_account_code, remuneration_account_code, cost_account_code,
+const SELECT_RECIBIDA = `id, number, supplier_id, branch_id, legal_modality, accounting_role, tax_treatment, memo_valuation, price_mode, remuneration_mode,
+  commission_base, commission_pct, remuneration_recognition, post_sale_obligation, fee_invoice_required, owner_obligation_at, risk_terms, status, link_id,
+  external_number, delivered_at, memo_account_code, memo_contra_account_code, owner_account_code, remuneration_account_code,
   suppliers:supplier_id (name),
-  consignment_note_lines (id, product_id, qty_delivered, qty_sold, qty_returned, agreed_price, settlement_price, external_display, products:product_id (name)),
-  consignment_settlements (id, status, period_from, period_to, sale_total, agreed_total, discount_total, tax_total, commission_amount, owner_amount, payable_amount, purchase_invoice_id, shared_document_id, created_at),
-  consignment_allocations (line_id, kind, qty, sale_amount, agreed_amount, settlement_id, absorbed)`;
+  consignment_note_lines (id, product_id, qty_delivered, qty_sold, qty_returned, qty_incident, agreed_price, settlement_price, credited_cost, memo_unit_value, external_display, products:product_id (name)),
+  consignment_settlements (id, seq, status, period_from, period_to, sale_total, agreed_total, discount_total, tax_total, commission_amount, owner_amount, payable_amount, rights_discounted, shared_document_id, created_at,
+    consignment_settlement_withholdings (id, scope, class, payer, payer_group, base, rate, amount, status, reason, reconciled_amount, reconciled_support, reconciled_at)),
+  consignment_allocations (line_id, kind, qty, sale_amount, agreed_amount, remuneration_amount, remuneration_recognized, settlement_id, absorbed, owner_right)`;
 
 type FilaRecibida = {
   id: string;
   number: string;
   supplier_id: number;
   branch_id: number;
-  contract_type: Exclude<Contrato, 'compra'>;
+  legal_modality: Exclude<Contrato, 'compra'>;
+  accounting_role: CondicionContable;
+  tax_treatment: 'mandato' | 'estimatorio_438_455';
+  memo_valuation: Valoracion;
   price_mode: 'fijo' | 'minimo';
   remuneration_mode: 'porcentaje' | 'precio_liquidacion';
   commission_base: 'precio_pactado' | 'precio_venta';
   commission_pct: number | string;
+  remuneration_recognition: Reconocimiento;
+  post_sale_obligation: string | null;
+  fee_invoice_required: boolean;
   owner_obligation_at: 'venta' | 'cobro' | null;
   risk_terms: { devoluciones: ParteContrato; perdidas: ParteContrato; gastos: ParteContrato };
-  billing_terms: { factura?: 'consignatario' | 'consignante' };
   status: EstadoRecibida;
   link_id: string | null;
   external_number: string | null;
@@ -101,7 +112,6 @@ type FilaRecibida = {
   memo_contra_account_code: string | null;
   owner_account_code: string | null;
   remuneration_account_code: string | null;
-  cost_account_code: string | null;
   suppliers: { name: string | null } | null;
   consignment_note_lines: {
     id: string;
@@ -109,13 +119,17 @@ type FilaRecibida = {
     qty_delivered: number | string;
     qty_sold: number | string;
     qty_returned: number | string;
+    qty_incident: number | string;
     agreed_price: number | string | null;
     settlement_price: number | string | null;
+    credited_cost: number | string | null;
+    memo_unit_value: number | string;
     external_display: { nombre?: string } | null;
     products: { name: string | null } | null;
   }[];
   consignment_settlements: {
     id: string;
+    seq: number | string;
     status: 'por_facturar' | 'liquidada' | 'anulada';
     period_from: string | null;
     period_to: string | null;
@@ -126,7 +140,8 @@ type FilaRecibida = {
     commission_amount: number | string;
     owner_amount: number | string;
     payable_amount: number | string;
-    purchase_invoice_id: string | null;
+    rights_discounted: number | string;
+    consignment_settlement_withholdings: FilaRetencion[] | null;
     shared_document_id: string | null;
     created_at: string;
   }[];
@@ -138,15 +153,64 @@ type FilaRecibida = {
     agreed_amount: number | string;
     settlement_id: string | null;
     absorbed: boolean;
+    owner_right: boolean;
+    remuneration_amount: number | string;
+    remuneration_recognized: boolean;
   }[];
 };
+
+type FilaRetencion = {
+  id: string;
+  scope: AmbitoRetencion;
+  class: ClaseRetencion;
+  payer: RetencionLiquidacion['pagador'];
+  payer_group: RetencionLiquidacion['grupo'];
+  base: number | string | null;
+  rate: number | string | null;
+  amount: number | string | null;
+  status: RetencionLiquidacion['estado'];
+  reason: string | null;
+  reconciled_amount: number | string | null;
+  reconciled_support: string | null;
+  reconciled_at: string | null;
+};
+
+const numONulo = (v: unknown) => (v == null ? null : num(v));
+
+export const aRetencion = (r: FilaRetencion): RetencionLiquidacion => ({
+  id: r.id,
+  ambito: r.scope,
+  clase: r.class,
+  pagador: r.payer,
+  grupo: r.payer_group,
+  base: numONulo(r.base),
+  tarifa: numONulo(r.rate),
+  valor: numONulo(r.amount),
+  estado: r.status,
+  motivo: r.reason,
+  conciliado: r.reconciled_at ? { valor: num(r.reconciled_amount), soporte: r.reconciled_support ?? '', fecha: r.reconciled_at } : null,
+});
 
 export function aNotaRecibida(f: FilaRecibida): NotaRecibida {
   let vendido = 0;
   let unidades = 0;
+  let derechos = 0;
+  let porReconocer = 0;
+  const porDevengarLiq = new Map<string, number>();
+  for (const a of f.consignment_allocations ?? []) {
+    if (a.absorbed || !a.line_id || a.remuneration_recognized) continue;
+    const r = (a.kind === 'venta' ? 1 : -1) * num(a.remuneration_amount);
+    porReconocer += r;
+    if (a.settlement_id) porDevengarLiq.set(a.settlement_id, (porDevengarLiq.get(a.settlement_id) ?? 0) + r);
+  }
   const porLinea = new Map<string, { cantidad: number; venta: number; pactado: number }>();
   for (const a of f.consignment_allocations ?? []) {
     if (a.settlement_id || a.absorbed || !a.line_id) continue;
+    // Derecho frente al dueño: no entra a la siguiente liquidación sin acuerdo.
+    if (a.owner_right) {
+      derechos += num(a.sale_amount);
+      continue;
+    }
     const signo = a.kind === 'venta' ? 1 : -1;
     vendido += signo * num(a.agreed_amount);
     unidades += signo * num(a.qty);
@@ -162,14 +226,20 @@ export function aNotaRecibida(f: FilaRecibida): NotaRecibida {
     proveedorId: f.supplier_id,
     consignante: f.suppliers?.name ?? '',
     sucursalId: f.branch_id,
-    contrato: f.contract_type,
+    contrato: f.legal_modality,
+    condicion: f.accounting_role,
+    tributario: f.tax_treatment,
+    valoracion: f.memo_valuation,
     precioModo: f.price_mode,
     remuneracionModo: f.remuneration_mode,
     baseComision: f.commission_base,
     comisionPct: num(f.commission_pct),
+    reconocimiento: f.remuneration_recognition,
+    obligacionPosterior: f.post_sale_obligation,
+    remuneracionPorReconocer: Math.round(porReconocer * 100) / 100,
+    facturaRemuneracion: Boolean(f.fee_invoice_required),
     obligacionDueno: f.owner_obligation_at,
     riesgos: f.risk_terms,
-    factura: f.billing_terms?.factura ?? 'consignatario',
     estado: f.status,
     vinculada: Boolean(f.link_id),
     numeroExterno: f.external_number,
@@ -178,8 +248,8 @@ export function aNotaRecibida(f: FilaRecibida): NotaRecibida {
       contra: f.memo_contra_account_code,
       recaudo: f.owner_account_code,
       remuneracion: f.remuneration_account_code,
-      costo: f.cost_account_code,
     },
+    derechosFrenteAlDueno: Math.round(derechos * 100) / 100,
     fecha: f.delivered_at,
     lineas: (f.consignment_note_lines ?? []).map((l) => ({
       id: l.id,
@@ -189,11 +259,16 @@ export function aNotaRecibida(f: FilaRecibida): NotaRecibida {
       recibido: num(l.qty_delivered),
       vendido: num(l.qty_sold),
       devuelto: num(l.qty_returned),
+      novedades: num(l.qty_incident),
       precioPactado: num(l.agreed_price),
       precioLiquidacion: l.settlement_price == null ? null : num(l.settlement_price),
+      costoAcreditado: l.credited_cost == null ? null : num(l.credited_cost),
+      valorCustodia: num(l.memo_unit_value),
       sinLiquidar: porLinea.get(l.id) ?? { cantidad: 0, venta: 0, pactado: 0 },
     })),
-    liquidaciones: (f.consignment_settlements ?? [])
+    // La más reciente primero, por orden de creación (created_at empata dentro de una transacción).
+    liquidaciones: [...(f.consignment_settlements ?? [])]
+      .sort((a, b) => num(b.seq) - num(a.seq))
       .map((q) => ({
         id: q.id,
         estado: q.status,
@@ -206,11 +281,12 @@ export function aNotaRecibida(f: FilaRecibida): NotaRecibida {
         remuneracion: num(q.commission_amount),
         dueno: num(q.owner_amount),
         porPagar: num(q.payable_amount),
-        facturaCompraId: q.purchase_invoice_id,
+        derechosDescontados: num(q.rights_discounted),
+        remuneracionPorDevengar: Math.round((porDevengarLiq.get(q.id) ?? 0) * 100) / 100,
+        retenciones: (q.consignment_settlement_withholdings ?? []).map(aRetencion),
         compartida: Boolean(q.shared_document_id),
         creada: q.created_at,
-      }))
-      .sort((a, b) => b.creada.localeCompare(a.creada)),
+      })),
     vendidoSinLiquidar: Math.round(vendido * 100) / 100,
     unidadesSinLiquidar: Math.round(unidades * 1000) / 1000,
   };
@@ -321,89 +397,200 @@ export function devolver(ctx: Ctx, notaId: string, lineas: { linea_id: string; q
 
 export interface ResultadoLiquidarRecibida {
   liquidacionId: string;
-  estado: 'por_facturar' | 'liquidada';
+  estado: 'liquidada';
   contrato: Exclude<Contrato, 'compra'>;
   venta: number;
   remuneracion: number;
   dueno: number;
   porPagar: number;
-  /** Estimatorio: borrador de la factura de compra por completar con el soporte del consignante. */
-  facturaCompraId: string | null;
+  derechosDescontados: number;
+  remuneracionPorDevengar: number;
+  retenciones: RetencionLiquidacion[];
+  /** La remuneración se factura aparte: la liquidación no sustituye esa factura (queda el pendiente). */
+  facturaRemuneracion: boolean;
 }
 
 type RespuestaLiquidar = {
   liquidacion_id: string;
-  estado: 'por_facturar' | 'liquidada';
   contrato: Exclude<Contrato, 'compra'>;
   venta: number;
   remuneracion: number;
   dueno: number;
   por_pagar: number;
-  proveedor_id: number;
-  sucursal_id: number;
-  numero_nota: string;
-  lineas_compra: { product_id: number; qty: number; unit_price: number; cuenta_contable: string }[];
-  factura_compra_id?: string | null;
+  derechos_descontados: number;
+  factura_remuneracion: boolean;
+  remuneracion_por_devengar: number;
+  retenciones: { id: string; ambito: AmbitoRetencion; clase: ClaseRetencion; pagador: RetencionLiquidacion['pagador']; grupo: RetencionLiquidacion['grupo'];
+                 base: number | null; tarifa: number | null; valor: number | null; estado: RetencionLiquidacion['estado']; motivo: string | null }[];
 };
 
 /**
- * Liquida al consignante (RPC). Intermediación: queda liquidada (el saldo del
- * dueño está en su auxiliar 281510 y se paga por Dinero de terceros).
- * Estimatorio: crea el BORRADOR de la factura de compra de siempre por lo
- * vendido al precio del dueño y lo liga; se confirma desde Facturas de compra
- * con el soporte del consignante (y ahí puede aplicarse un anticipo a proveedor).
+ * Liquida al consignante (RPC). Queda liquidada: el saldo del dueño está en su
+ * auxiliar 281510 y se paga por Dinero de terceros. Nunca se crea una compra ni
+ * un documento soporte para pagarle (Ronda 2 del Contador). Los derechos frente
+ * al dueño solo se descuentan con `descontar_derechos` y el acuerdo escrito.
  */
-export async function liquidarRecibida(ctx: Ctx, notaId: string, hasta: string | null, clave: string): Promise<ResultadoLiquidarRecibida> {
+export async function liquidarRecibida(
+  ctx: Ctx,
+  notaId: string,
+  s: { hasta?: string | null; descontar_derechos?: boolean; acuerdo?: string | null; clave_idempotencia: string },
+): Promise<ResultadoLiquidarRecibida> {
   const r = await rpc<RespuestaLiquidar>(ctx, 'fn_consignacion_recibida_liquidar', {
     p_nota: notaId,
-    p_hasta: hasta,
-    p_clave_idempotencia: clave,
+    p_hasta: s.hasta ?? null,
+    p_descontar_derechos: Boolean(s.descontar_derechos),
+    p_acuerdo: s.descontar_derechos ? (s.acuerdo ?? null) : null,
+    p_clave_idempotencia: s.clave_idempotencia,
     p_organization_id: ctx.organizationId,
   });
-  const base = {
+  return {
     liquidacionId: r.liquidacion_id,
+    estado: 'liquidada',
     contrato: r.contrato,
     venta: num(r.venta),
     remuneracion: num(r.remuneracion),
     dueno: num(r.dueno),
     porPagar: num(r.por_pagar),
+    derechosDescontados: num(r.derechos_descontados),
+    remuneracionPorDevengar: num(r.remuneracion_por_devengar),
+    retenciones: (r.retenciones ?? []).map((x) => ({ ...x, base: numONulo(x.base), tarifa: numONulo(x.tarifa), valor: numONulo(x.valor), conciliado: null })),
+    facturaRemuneracion: Boolean(r.factura_remuneracion),
   };
-  if (r.estado === 'liquidada' || r.contrato !== 'estimatorio') {
-    return { ...base, estado: r.estado, facturaCompraId: r.factura_compra_id ?? null };
-  }
-  let facturaId = r.factura_compra_id ?? null;
-  if (!facturaId && (r.lineas_compra ?? []).length > 0) {
-    try {
-      const guardada = await guardarFacturaCompra(ctx, {
-        branch_id: r.sucursal_id,
-        supplier_id: r.proveedor_id,
-        number_ext: `${r.numero_nota}-${r.liquidacion_id.slice(0, 8)}`,
-        tax_included: false,
-        notes: `Adquisición por estimatorio de la nota ${r.numero_nota}. Completar con la factura o el documento soporte del consignante.`,
-        lines: r.lineas_compra.map((l) => ({ product_id: l.product_id, qty: l.qty, unit_price: l.unit_price, cuenta_contable: l.cuenta_contable })),
-      });
-      facturaId = guardada.id;
-    } catch (err) {
-      if (err instanceof ErrorCompraServidor) throw new ErrorRecibidaServidor('factura_compra_no_creada', err.codigo);
-      throw err;
-    }
-  }
-  if (facturaId) {
-    await rpc(ctx, 'fn_consignacion_recibida_cerrar_compra', {
-      p_liquidacion: r.liquidacion_id,
-      p_factura_compra: facturaId,
-      p_organization_id: ctx.organizationId,
-    });
-  }
-  return { ...base, estado: 'por_facturar', facturaCompraId: facturaId };
 }
 
-/** Reintento del cierre en estimatorio, cuando la factura de compra ya se confirmó. */
-export function cerrarCompraRecibida(ctx: Ctx, liquidacionId: string, facturaId: string) {
-  return rpc<{ estado: 'por_facturar' | 'liquidada' }>(ctx, 'fn_consignacion_recibida_cerrar_compra', {
-    p_liquidacion: liquidacionId,
-    p_factura_compra: facturaId,
+/** Reconocer la remuneración al cumplirse la obligación posterior del contrato, con evidencia. */
+export function reconocerRemuneracion(ctx: Ctx, notaId: string, s: { evidencia: string; clave_idempotencia: string }) {
+  return rpc<{ reconocimiento_id: string; repetida: boolean; monto: number }>(ctx, 'fn_consignacion_reconocer_remuneracion', {
+    p_nota: notaId,
+    p_evidencia: s.evidencia,
+    p_clave_idempotencia: s.clave_idempotencia,
     p_organization_id: ctx.organizationId,
+  });
+}
+
+/** Conciliar una retención con su soporte (valor que consta en el certificado). */
+export function conciliarRetencion(ctx: Ctx, retencionId: string, s: { valor: number; soporte: string }) {
+  return rpc<{ retencion_id: string; repetida: boolean; valor: number }>(ctx, 'fn_consignacion_conciliar_retencion', {
+    p_retencion: retencionId,
+    p_valor: s.valor,
+    p_soporte: s.soporte,
+    p_organization_id: ctx.organizationId,
+  });
+}
+
+/** Reglas de retención de consignación y las reglas configuradas de la organización entre las que se elige. */
+export async function leerRetencionesConsignacion(ctx: Ctx): Promise<{
+  pendiente: boolean;
+  reglas: ReglasRetencionConsignacion;
+  disponibles: { id: string; nombre: string; tarifa: number; clase: ClaseRetencion | null }[];
+}> {
+  const vacio: ReglasRetencionConsignacion = { operacion: {}, remuneracion: {} };
+  const { data, error } = await ctx.supabase
+    .from('consignment_account_settings')
+    .select('withholding_rules')
+    .eq('organization_id', ctx.organizationId)
+    .maybeSingle();
+  if (error) {
+    if (esPendienteRecibida(error)) return { pendiente: true, reglas: vacio, disponibles: [] };
+    throw new ErrorRecibidaServidor(codigoErrorRecibida(error.message));
+  }
+  const { data: conf, error: e2 } = await ctx.supabase.rpc('fn_retenciones_configuracion', { p_organization_id: ctx.organizationId });
+  if (e2) throw new ErrorRecibidaServidor(codigoErrorRecibida(e2.message));
+  const filas = ((conf as { retenciones?: { id: string; nombre: string; tarifa: number | string; activo: boolean; clase: string | null }[] } | null)?.retenciones ?? [])
+    .filter((r) => r.activo)
+    .map((r) => ({
+      id: r.id,
+      nombre: r.nombre,
+      tarifa: num(r.tarifa),
+      clase: (['retefuente', 'reteiva', 'reteica'] as const).find((c) => c === r.clase) ?? null,
+    }));
+  const reglas = ((data as { withholding_rules?: ReglasRetencionConsignacion } | null)?.withholding_rules ?? vacio) as ReglasRetencionConsignacion;
+  return { pendiente: false, reglas: { operacion: reglas.operacion ?? {}, remuneracion: reglas.remuneracion ?? {} }, disponibles: filas };
+}
+
+export function configurarRetencionesConsignacion(ctx: Ctx, reglas: ReglasRetencionConsignacion) {
+  return rpc<ReglasRetencionConsignacion>(ctx, 'fn_consignacion_configurar_retenciones', {
+    p_organization_id: ctx.organizationId,
+    p_reglas: reglas,
+  });
+}
+
+/** Faltante o daño (evidencia, responsable, obligación). Sin gasto ni cuenta por pagar automáticos. */
+export function registrarNovedad(
+  ctx: Ctx,
+  notaId: string,
+  s: { linea_id: string; tipo: 'faltante' | 'dano'; cantidad: number; responsable: string; evidencia: string; obligacion?: string | null; clave_idempotencia: string },
+) {
+  return rpc<{ novedad_id: string; repetida: boolean; custodia: number }>(ctx, 'fn_consignacion_registrar_novedad', {
+    p_nota: notaId,
+    p_linea: s.linea_id,
+    p_tipo: s.tipo,
+    p_cantidad: s.cantidad,
+    p_responsable: s.responsable,
+    p_evidencia: s.evidencia,
+    p_obligacion: s.obligacion ?? null,
+    p_clave_idempotencia: s.clave_idempotencia,
+    p_organization_id: ctx.organizationId,
+  });
+}
+
+/** Anticipos vigentes del consignante (los de anticipos a proveedores) para cruzarlos con la obligación del mandato. */
+export async function anticiposDelConsignante(ctx: Ctx, proveedorId: number): Promise<{ id: string; saldo: number; cuenta: string; creado: string }[]> {
+  const { data, error } = await ctx.supabase
+    .from('supplier_advances')
+    .select('id, balance, account_code, created_at')
+    .eq('organization_id', ctx.organizationId)
+    .eq('supplier_id', proveedorId)
+    .eq('status', 'active')
+    .gt('balance', 0)
+    .order('created_at', { ascending: true })
+    .limit(50);
+  if (error) throw new ErrorRecibidaServidor(codigoErrorRecibida(error.message));
+  return ((data ?? []) as { id: string; balance: number | string; account_code: string; created_at: string }[]).map((a) => ({
+    id: a.id,
+    saldo: num(a.balance),
+    cuenta: a.account_code,
+    creado: a.created_at,
+  }));
+}
+
+export function cruzarAnticipo(ctx: Ctx, notaId: string, s: { anticipo_id: string; monto: number; clave_idempotencia: string }) {
+  return rpc<{ cruce_id: string; repetida: boolean; monto: number; saldo_anticipo: number }>(ctx, 'fn_consignacion_cruzar_anticipo', {
+    p_nota: notaId,
+    p_anticipo: s.anticipo_id,
+    p_monto: s.monto,
+    p_clave_idempotencia: s.clave_idempotencia,
+    p_organization_id: ctx.organizationId,
+  });
+}
+
+/** Cuentas de consignación definidas por la organización. */
+export async function leerCuentasConsignacion(ctx: Ctx): Promise<{ pendiente: boolean; orden: string | null; contra: string | null; remuneracion: string | null; estimatorioHabilitado: boolean }> {
+  const { data, error } = await ctx.supabase
+    .from('consignment_account_settings')
+    .select('memo_account_code, memo_contra_account_code, remuneration_account_code, estimatorio_rules_approved_at')
+    .eq('organization_id', ctx.organizationId)
+    .maybeSingle();
+  if (error) {
+    if (esPendienteRecibida(error)) return { pendiente: true, orden: null, contra: null, remuneracion: null, estimatorioHabilitado: false };
+    throw new ErrorRecibidaServidor(codigoErrorRecibida(error.message));
+  }
+  const f = data as { memo_account_code: string | null; memo_contra_account_code: string | null; remuneration_account_code: string | null; estimatorio_rules_approved_at: string | null } | null;
+  return {
+    pendiente: false,
+    orden: f?.memo_account_code ?? null,
+    contra: f?.memo_contra_account_code ?? null,
+    remuneracion: f?.remuneration_account_code ?? null,
+    estimatorioHabilitado: Boolean(f?.estimatorio_rules_approved_at),
+  };
+}
+
+export function configurarCuentasConsignacion(ctx: Ctx, s: { orden?: string | null; contra: string; remuneracion?: string | null }) {
+  return rpc<{ orden: string | null; contra: string; remuneracion: string | null }>(ctx, 'fn_consignacion_configurar_cuentas', {
+    p_organization_id: ctx.organizationId,
+    p_orden: s.orden ?? null,
+    p_contra: s.contra,
+    p_remuneracion: s.remuneracion ?? null,
   });
 }
 
@@ -418,13 +605,20 @@ export function anularLiquidacionRecibida(ctx: Ctx, liquidacionId: string, motiv
 export function aceptarNota(
   ctx: Ctx,
   documentoId: string,
-  s: { sucursal_id: number; mapeo: { producto_ref: string; product_id: number; precio?: number | null }[]; cuenta_recaudo?: string | null; clave_idempotencia: string },
+  s: {
+    sucursal_id: number;
+    mapeo: { producto_ref: string; product_id: number; precio?: number | null }[];
+    cuenta_recaudo?: string | null;
+    valoracion: 'costo_acreditado' | 'valor_convenido';
+    clave_idempotencia: string;
+  },
 ) {
   return rpc<{ nota_id: string; numero: string; repetida: boolean }>(ctx, 'fn_consignacion_recibida_aceptar', {
     p_documento: documentoId,
     p_branch: s.sucursal_id,
     p_mapeo: s.mapeo,
     p_cuenta_recaudo: s.cuenta_recaudo ?? null,
+    p_valoracion: s.valoracion,
     p_clave_idempotencia: s.clave_idempotencia,
     p_organization_id: ctx.organizationId,
   });
@@ -451,6 +645,9 @@ export async function aceptarDocumentoRecibido(ctx: Ctx, documentoId: string): P
     lineas: { linea_id: string; vendido: number; precio: number; devuelto: number }[];
     diferencias: { tipo: string }[];
   }>(ctx, 'fn_consignacion_documento_recibido_preparar', { p_documento: documentoId, p_organization_id: ctx.organizationId });
+  // En mandato, la liquidación del lado del dueño espera al Contador; el estimatorio, a los arts. 438 y 455.
+  if (p.diferencias.some((d) => d.tipo === 'mandante_pendiente')) throw new ErrorRecibidaServidor('liquidacion_mandante_pendiente');
+  if (p.diferencias.some((d) => d.tipo === 'estimatorio_bloqueado')) throw new ErrorRecibidaServidor('estimatorio_bloqueado_438_455');
   const bloqueante = p.diferencias.find((d) => d.tipo !== 'comision_distinta');
   if (bloqueante) throw new ErrorRecibidaServidor('datos_invalidos', p.diferencias);
   const resultado = await liquidarConsignacion(ctx, p.nota_id, {

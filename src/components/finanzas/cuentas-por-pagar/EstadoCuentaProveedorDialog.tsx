@@ -32,12 +32,14 @@ const TIPO: Record<MovimientoEstadoCuenta['tipo'], TipoDocumento> = {
   pago: 'pago',
   anticipo: 'pago',
   aplicacion_anticipo: 'cuentaPorPagar',
+  correccion_retencion: 'cuentaPorPagar',
   devolucion_anticipo: 'devolucion',
   anulacion_anticipo: 'pago',
+  cruce_consignacion: 'cuentaPorPagar',
 };
 
 /** Los movimientos del anticipo llevan su rótulo delante del documento (el tipo del kit no los distingue de un pago). */
-const DE_ANTICIPO = new Set<MovimientoEstadoCuenta['tipo']>(['anticipo', 'aplicacion_anticipo', 'devolucion_anticipo', 'anulacion_anticipo']);
+const DE_ANTICIPO = new Set<MovimientoEstadoCuenta['tipo']>(['anticipo', 'aplicacion_anticipo', 'correccion_retencion', 'devolucion_anticipo', 'anulacion_anticipo', 'cruce_consignacion']);
 
 /** Contrato de la RPC → forma del kit. */
 export function vistaEstadoCuentaProveedor(d: EstadoCuentaProveedor, rotulo?: (tipo: MovimientoEstadoCuenta['tipo']) => string): EstadoCuentaVista {

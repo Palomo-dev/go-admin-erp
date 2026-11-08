@@ -2,11 +2,12 @@
 
 /**
  * Nueva vigencia o corrección de una vigencia del perfil tributario (Figma
- * 2335:136222, «Nueva vigencia» y «⋮ › Editar»), con renta e IVA separados
- * (P5 del Contador). Mientras se llena, la misma función que usa el servidor
- * (`evaluarCombinacion`) muestra lo contradictorio (no deja guardar) y lo
- * dudoso (se guarda solo si la persona lo acepta). El servidor y la base vuelven
- * a validar y a exigir `finance.approve`.
+ * 2335:136222, «Nueva vigencia» y «⋮ › Editar»), con renta e IVA separados y
+ * calidades con su soporte (P5/P8 del Contador, rondas 1 y 2). Mientras se
+ * llena, la misma función que usa el servidor (`evaluarCombinacion`) muestra lo
+ * contradictorio (no deja guardar), lo dudoso (se guarda solo si se acepta) y si
+ * el cambio de periodicidad queda pendiente de soporte. El servidor y la base
+ * vuelven a validar y a exigir `finance.approve`.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -18,14 +19,18 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
 import { PERIODICIDADES_ICA, PERIODICIDADES_IVA, contiguas, validarSolicitudPerfil, type IcaMunicipio, type PeriodicidadIca, type PeriodicidadIva, type VigenciaPerfil } from '@/lib/finanzas/tributario/perfil';
 import {
+  ACTIVIDADES_INC,
   CONDICIONES_IVA,
   MOTIVOS_CAMBIO_PERIODICIDAD,
   REGIMENES_RENTA,
+  TIPOS_RTE,
   advertenciasSinAceptar,
   evaluarCombinacion,
+  type ActividadInc,
   type CondicionIva,
   type MotivoCambioPeriodicidad,
   type RegimenRenta,
+  type TipoRte,
 } from '@/lib/finanzas/tributario/combinaciones';
 import { tributarioCliente, type CodigoCatalogoCliente, type MunicipioOpcion } from '../tributarioCliente';
 import { codigoDe } from '../piezas';
@@ -54,38 +59,65 @@ interface Estado {
   condicionIva: CondicionIva | '';
   periodicidadIva: PeriodicidadIva;
   granContribuyente: boolean;
+  granContribuyenteActo: string;
+  granContribuyenteDesde: string;
   autorretenedor: boolean;
+  autorretenedorActo: string;
+  autorretenedorActoFecha: string;
+  autorretencionEspecial: boolean;
   agenteRetencionIva: boolean;
   agenteRetencion: boolean;
   responsableInc: boolean;
+  incActividad: ActividadInc | '';
+  rteTipo: TipoRte | '';
+  rteIngresos: '' | 'si' | 'no';
+  noContribuyenteNaturaleza: string;
   responsabilidades: string[];
   responsabilidadesRut: string[];
   motivoCambioPeriodicidad: MotivoCambioPeriodicidad | '';
+  cambioPeriodicidadHecho: string;
+  cambioPeriodicidadNorma: string;
+  cambioPeriodicidadFecha: string;
   notas: string;
   ica: IcaMunicipio[];
 }
 
 function estadoInicial(p: VigenciaDialogoProps): Estado {
   const f = p.vigencia ?? p.base;
+  const propia = p.vigencia;
   return {
-    vigenteDesde: p.vigencia?.vigenteDesde ?? p.inicioPropuesto,
+    vigenteDesde: propia?.vigenteDesde ?? p.inicioPropuesto,
     regimenRenta: f.regimenRenta ?? '',
     condicionIva: f.condicionIva ?? '',
     periodicidadIva: f.periodicidadIva,
     granContribuyente: f.granContribuyente === true,
+    granContribuyenteActo: f.granContribuyenteActo ?? '',
+    granContribuyenteDesde: f.granContribuyenteDesde ?? '',
     autorretenedor: f.autorretenedor === true,
+    autorretenedorActo: f.autorretenedorActo ?? '',
+    autorretenedorActoFecha: f.autorretenedorActoFecha ?? '',
+    autorretencionEspecial: f.autorretencionEspecial === true,
     agenteRetencionIva: f.agenteRetencionIva === true,
     agenteRetencion: f.agenteRetencion,
     responsableInc: f.responsableInc,
+    incActividad: f.incActividad ?? '',
+    rteTipo: f.rteTipo ?? '',
+    rteIngresos: f.rteIngresosSuperan160000Uvt === true ? 'si' : f.rteIngresosSuperan160000Uvt === false ? 'no' : '',
+    noContribuyenteNaturaleza: f.noContribuyenteNaturaleza ?? '',
     responsabilidades: [...f.responsabilidades],
     responsabilidadesRut: [...f.responsabilidadesRut],
-    motivoCambioPeriodicidad: p.vigencia?.motivoCambioPeriodicidad ?? '',
+    // El soporte de un cambio de periodicidad es de la vigencia que se edita, no se hereda en una nueva.
+    motivoCambioPeriodicidad: propia?.motivoCambioPeriodicidad ?? '',
+    cambioPeriodicidadHecho: propia?.cambioPeriodicidadHecho ?? '',
+    cambioPeriodicidadNorma: propia?.cambioPeriodicidadNorma ?? '',
+    cambioPeriodicidadFecha: propia?.cambioPeriodicidadFecha ?? '',
     notas: f.notas ?? '',
     ica: f.ica.map((i) => ({ ...i })),
   };
 }
 
 const alternar = (lista: string[], codigo: string, marcada: boolean) => (marcada ? Array.from(new Set([...lista, codigo])) : lista.filter((c) => c !== codigo));
+const oNull = (s: string) => (s.trim() ? s.trim() : null);
 
 export function VigenciaDialogo(props: VigenciaDialogoProps) {
   const { abierto, onAbiertoChange, vigencia, vigencias, catalogo, catalogoRut, hoy, onGuardado } = props;
@@ -121,13 +153,25 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
     condicionIva: estado.condicionIva || null,
     periodicidadIva: estado.periodicidadIva,
     granContribuyente: estado.granContribuyente,
+    granContribuyenteActo: estado.granContribuyente ? oNull(estado.granContribuyenteActo) : null,
+    granContribuyenteDesde: estado.granContribuyente ? oNull(estado.granContribuyenteDesde) : null,
     autorretenedor: estado.autorretenedor,
+    autorretenedorActo: estado.autorretenedor ? oNull(estado.autorretenedorActo) : null,
+    autorretenedorActoFecha: estado.autorretenedor ? oNull(estado.autorretenedorActoFecha) : null,
+    autorretencionEspecial: estado.autorretencionEspecial,
     agenteRetencionIva: estado.agenteRetencionIva,
     agenteRetencion: estado.agenteRetencion,
     responsableInc: estado.responsableInc,
+    incActividad: estado.responsableInc ? estado.incActividad || null : null,
+    rteTipo: estado.regimenRenta === 'especial' ? estado.rteTipo || null : null,
+    rteIngresosSuperan160000Uvt: estado.regimenRenta === 'especial' ? (estado.rteIngresos === 'si' ? true : estado.rteIngresos === 'no' ? false : null) : null,
+    noContribuyenteNaturaleza: estado.regimenRenta.startsWith('no_contribuyente') ? oNull(estado.noContribuyenteNaturaleza) : null,
     responsabilidades: estado.responsabilidades,
     responsabilidadesRut: estado.responsabilidadesRut,
     motivoCambioPeriodicidad: estado.motivoCambioPeriodicidad || null,
+    cambioPeriodicidadHecho: oNull(estado.cambioPeriodicidadHecho),
+    cambioPeriodicidadNorma: oNull(estado.cambioPeriodicidadNorma),
+    cambioPeriodicidadFecha: oNull(estado.cambioPeriodicidadFecha),
     notas: estado.notas,
     ica: estado.ica.map((i) => ({ municipioId: i.municipioId, periodicidad: i.periodicidad, tarifaPorMil: i.tarifaPorMil, actividad: i.actividad })),
   };
@@ -135,26 +179,12 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
   const evaluacion = useMemo(() => {
     const desde = vigencia?.vigenteDesde ?? estado.vigenteDesde;
     const { anterior, siguiente } = contiguas(vigencias, desde, vigencia?.id ?? null);
-    return evaluarCombinacion(
-      {
-        regimenRenta: cuerpo.regimenRenta,
-        condicionIva: cuerpo.condicionIva,
-        periodicidadIva: cuerpo.periodicidadIva,
-        granContribuyente: cuerpo.granContribuyente,
-        autorretenedor: cuerpo.autorretenedor,
-        agenteRetencionIva: cuerpo.agenteRetencionIva,
-        agenteRetencion: cuerpo.agenteRetencion,
-        responsableInc: cuerpo.responsableInc,
-        responsabilidades: cuerpo.responsabilidades,
-        responsabilidadesRut: cuerpo.responsabilidadesRut,
-      },
-      { vigenteDesde: desde, motivoCambioPeriodicidad: cuerpo.motivoCambioPeriodicidad, anterior, siguiente },
-    );
+    return evaluarCombinacion(cuerpo, { vigenteDesde: desde, anterior, siguiente });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado, vigencia, vigencias]);
 
   const bloqueos = Array.from(new Set([...evaluacion.bloqueos, ...bloqueosServidor]));
-  const pideMotivo = evaluacion.bloqueos.includes('periodicidad_cambio_sin_motivo') || evaluacion.advertencias.includes('periodicidad_cambio_a_mitad_de_anio');
+  const pideSoporteCambio = evaluacion.cambioPeriodicidad !== 'no_aplica' || !!estado.motivoCambioPeriodicidad;
   const faltaAceptar = advertenciasSinAceptar(evaluacion.advertencias, aceptadas ? evaluacion.advertencias : []).length > 0;
 
   const guardar = async () => {
@@ -181,6 +211,12 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
   };
 
   const textoRegla = (grupo: 'bloqueos' | 'advertencias', codigo: string) => (t.has(`${grupo}.${codigo}`) ? t(`${grupo}.${codigo}`) : codigo);
+  const casilla = (campo: 'granContribuyente' | 'autorretenedor' | 'autorretencionEspecial' | 'agenteRetencionIva' | 'agenteRetencion' | 'responsableInc') => (
+    <label key={campo} htmlFor={`calidad-${campo}`} className="flex items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm text-fg">
+      <Checkbox id={`calidad-${campo}`} checked={estado[campo]} onCheckedChange={(v) => cambiar(campo, v === true)} className="mt-0.5" />
+      <span>{t(`campos.${campo}`)}</span>
+    </label>
+  );
 
   return (
     <Dialogo
@@ -238,40 +274,131 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
               />
             )}
           </FormField>
-          {(pideMotivo || estado.motivoCambioPeriodicidad) && (
-            <FormField etiqueta={t('campos.motivoCambio')} ayuda={t('campos.motivoCambioAyuda')}>
-              {(c) => (
-                <SelectNativo
-                  id={c.id}
-                  valor={estado.motivoCambioPeriodicidad}
-                  vacio={t('campos.sinMotivo')}
-                  onCambiar={(v) => cambiar('motivoCambioPeriodicidad', v as MotivoCambioPeriodicidad | '')}
-                  opciones={MOTIVOS_CAMBIO_PERIODICIDAD.map((m) => ({ valor: m, etiqueta: t(`motivo.${m}`) }))}
-                  aria-describedby={c['aria-describedby']}
-                />
-              )}
-            </FormField>
+          {estado.regimenRenta === 'especial' && (
+            <>
+              <FormField etiqueta={t('campos.rteTipo')} obligatorio ayuda={t('campos.rteTipoAyuda')}>
+                {(c) => (
+                  <SelectNativo
+                    id={c.id}
+                    valor={estado.rteTipo}
+                    vacio={t('campos.sinDefinir')}
+                    onCambiar={(v) => cambiar('rteTipo', v as TipoRte | '')}
+                    opciones={TIPOS_RTE.map((r) => ({ valor: r, etiqueta: t(`rteTipo.${r}`) }))}
+                    aria-describedby={c['aria-describedby']}
+                  />
+                )}
+              </FormField>
+              <FormField etiqueta={t('campos.rteIngresos')} ayuda={t('campos.rteIngresosAyuda')}>
+                {(c) => (
+                  <SelectNativo
+                    id={c.id}
+                    valor={estado.rteIngresos}
+                    vacio={t('campos.sinDato')}
+                    onCambiar={(v) => cambiar('rteIngresos', v as Estado['rteIngresos'])}
+                    opciones={[
+                      { valor: 'si', etiqueta: t('campos.si') },
+                      { valor: 'no', etiqueta: t('campos.no') },
+                    ]}
+                    aria-describedby={c['aria-describedby']}
+                  />
+                )}
+              </FormField>
+            </>
+          )}
+          {estado.regimenRenta.startsWith('no_contribuyente') && (
+            <div className="sm:col-span-2">
+              <FormField etiqueta={t('campos.noContribuyenteNaturaleza')} obligatorio ayuda={t('campos.noContribuyenteNaturalezaAyuda')}>
+                {(c) => (
+                  <Input id={c.id} value={estado.noContribuyenteNaturaleza} onChange={(e) => cambiar('noContribuyenteNaturaleza', e.target.value)} maxLength={300} />
+                )}
+              </FormField>
+            </div>
           )}
         </div>
+
+        {pideSoporteCambio && (
+          <fieldset className="space-y-3 rounded-lg border border-line-warning p-3">
+            <legend className="px-1 text-sm font-medium text-fg">{t('campos.cambioTitulo')}</legend>
+            <p className="text-xs text-fg-secondary">{t('campos.cambioAyuda')}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField etiqueta={t('campos.motivoCambio')} obligatorio>
+                {(c) => (
+                  <SelectNativo
+                    id={c.id}
+                    valor={estado.motivoCambioPeriodicidad}
+                    vacio={t('campos.sinMotivo')}
+                    onCambiar={(v) => cambiar('motivoCambioPeriodicidad', v as MotivoCambioPeriodicidad | '')}
+                    opciones={MOTIVOS_CAMBIO_PERIODICIDAD.map((m) => ({ valor: m, etiqueta: t(`motivo.${m}`) }))}
+                  />
+                )}
+              </FormField>
+              <FormField etiqueta={t('campos.cambioFecha')} obligatorio ayuda={t('campos.cambioFechaAyuda')}>
+                {(c) => <CampoFecha id={c.id} valor={estado.cambioPeriodicidadFecha} onValorChange={(d) => cambiar('cambioPeriodicidadFecha', d)} hoy={hoy} />}
+              </FormField>
+              <div className="sm:col-span-2">
+                <FormField etiqueta={t('campos.cambioHecho')} obligatorio>
+                  {(c) => <Textarea id={c.id} value={estado.cambioPeriodicidadHecho} onChange={(e) => cambiar('cambioPeriodicidadHecho', e.target.value)} rows={2} maxLength={1000} />}
+                </FormField>
+              </div>
+              <div className="sm:col-span-2">
+                <FormField etiqueta={t('campos.cambioNorma')} obligatorio>
+                  {(c) => <Input id={c.id} value={estado.cambioPeriodicidadNorma} onChange={(e) => cambiar('cambioPeriodicidadNorma', e.target.value)} maxLength={300} />}
+                </FormField>
+              </div>
+            </div>
+            <StatusBadge
+              estado={evaluacion.cambioPeriodicidad}
+              etiqueta={t(`cambioEstado.${evaluacion.cambioPeriodicidad}`)}
+              tono={evaluacion.cambioPeriodicidad === 'documentado' ? 'informacion' : 'advertencia'}
+            />
+          </fieldset>
+        )}
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-medium text-fg">{t('campos.calidades')}</legend>
           <div className="grid gap-2 sm:grid-cols-2">
-            {(
-              [
-                ['granContribuyente', 'granContribuyente'],
-                ['autorretenedor', 'autorretenedor'],
-                ['agenteRetencionIva', 'agenteRetencionIva'],
-                ['agenteRetencion', 'agenteRetencion'],
-                ['responsableInc', 'responsableInc'],
-              ] as const
-            ).map(([campo, etiqueta]) => (
-              <label key={campo} htmlFor={`calidad-${campo}`} className="flex items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm text-fg">
-                <Checkbox id={`calidad-${campo}`} checked={estado[campo]} onCheckedChange={(v) => cambiar(campo, v === true)} className="mt-0.5" />
-                <span>{t(`campos.${etiqueta}`)}</span>
-              </label>
-            ))}
+            {casilla('granContribuyente')}
+            {casilla('autorretenedor')}
+            {casilla('autorretencionEspecial')}
+            {casilla('agenteRetencionIva')}
+            {casilla('agenteRetencion')}
+            {casilla('responsableInc')}
           </div>
+          {estado.granContribuyente && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField etiqueta={t('campos.granContribuyenteActo')} obligatorio ayuda={t('campos.actoAyuda')}>
+                {(c) => <Input id={c.id} value={estado.granContribuyenteActo} onChange={(e) => cambiar('granContribuyenteActo', e.target.value)} maxLength={120} />}
+              </FormField>
+              <FormField etiqueta={t('campos.granContribuyenteDesde')} obligatorio>
+                {(c) => <CampoFecha id={c.id} valor={estado.granContribuyenteDesde} onValorChange={(d) => cambiar('granContribuyenteDesde', d)} hoy={hoy} />}
+              </FormField>
+            </div>
+          )}
+          {estado.autorretenedor && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField etiqueta={t('campos.autorretenedorActo')} obligatorio ayuda={t('campos.actoAyuda')}>
+                {(c) => <Input id={c.id} value={estado.autorretenedorActo} onChange={(e) => cambiar('autorretenedorActo', e.target.value)} maxLength={120} />}
+              </FormField>
+              <FormField etiqueta={t('campos.autorretenedorActoFecha')} obligatorio>
+                {(c) => <CampoFecha id={c.id} valor={estado.autorretenedorActoFecha} onValorChange={(d) => cambiar('autorretenedorActoFecha', d)} hoy={hoy} />}
+              </FormField>
+            </div>
+          )}
+          {estado.responsableInc && (
+            <div className="max-w-sm">
+              <FormField etiqueta={t('campos.incActividad')} obligatorio ayuda={t('campos.incActividadAyuda')}>
+                {(c) => (
+                  <SelectNativo
+                    id={c.id}
+                    valor={estado.incActividad}
+                    vacio={t('campos.sinDefinir')}
+                    onCambiar={(v) => cambiar('incActividad', v as ActividadInc | '')}
+                    opciones={ACTIVIDADES_INC.map((a) => ({ valor: a, etiqueta: t(`incActividad.${a}`) }))}
+                  />
+                )}
+              </FormField>
+            </div>
+          )}
         </fieldset>
 
         <ListaCodigos
@@ -285,9 +412,7 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
 
         {catalogoRut.length > 0 && (
           <details className="rounded-lg border border-line p-3" open={estado.responsabilidadesRut.length > 0}>
-            <summary className="cursor-pointer text-sm font-medium text-fg">
-              {t('campos.codigosRut', { cuantos: estado.responsabilidadesRut.length })}
-            </summary>
+            <summary className="cursor-pointer text-sm font-medium text-fg">{t('campos.codigosRut', { cuantos: estado.responsabilidadesRut.length })}</summary>
             <div className="mt-3">
               <ListaCodigos
                 leyenda={t('campos.codigosRut', { cuantos: estado.responsabilidadesRut.length })}
@@ -382,11 +507,12 @@ function ListaCodigos({
                 <span className="font-medium">{r.codigo}</span> · {r.descripcion}
                 {r.estado !== 'validado' && r.estado !== 'sin_dato' && (
                   <span className="mt-1 block">
-                    <StatusBadge estado={r.estado} etiqueta={t(`validacion.${r.estado}`)} tono={r.estado === 'no_vigente_por_confirmar' ? 'advertencia' : 'neutro'} />
+                    <StatusBadge estado={r.estado} etiqueta={t(`validacion.${r.estado}`)} tono={r.estado === 'no_validado_como_fe' ? 'advertencia' : r.estado === 'cotejado_fuente_oficial' ? 'informacion' : 'neutro'} />
                   </span>
                 )}
-                {!r.vigente && r.estado !== 'no_vigente_por_confirmar' && <span className="block text-xs text-fg-secondary">{t('validacion.noVigente')}</span>}
+                {!r.vigente && r.estado !== 'no_validado_como_fe' && <span className="block text-xs text-fg-secondary">{t('validacion.noVigente')}</span>}
                 {r.nota && <span className="block text-xs text-fg-secondary">{r.nota}</span>}
+                {r.fuente && buscable && <span className="block text-xs text-fg-muted">{r.fuente}</span>}
               </span>
             </label>
           );

@@ -12,7 +12,8 @@ jest.mock('@/lib/utils/dateDisplay', () => {
   return { ...real, todayInTz: () => '2026-11-07' };
 });
 
-import { guardarPerfil, leerBorrador, leerCentro, leerCertificados, leerPerfil, ErrorTributario } from '../tributario.server';
+import { guardarPerfil, leerBorrador, leerCentro, leerCertificados, leerPerfil, registrarDecisionPeriodo, ErrorTributario } from '../tributario.server';
+import { huellaVigencias } from '@/lib/finanzas/tributario/vigenciasPeriodo';
 
 type Respuesta = { data: unknown; error: { code?: string; message?: string } | null };
 
@@ -111,13 +112,25 @@ describe('perfil', () => {
     condicionIva: 'responsable' as const,
     periodicidadIva: 'bimestral' as const,
     granContribuyente: false,
+    granContribuyenteActo: null,
+    granContribuyenteDesde: null,
     autorretenedor: false,
+    autorretenedorActo: null,
+    autorretenedorActoFecha: null,
+    autorretencionEspecial: false,
     agenteRetencionIva: false,
     agenteRetencion: true,
     responsableInc: false,
+    incActividad: null,
+    rteTipo: null,
+    rteIngresosSuperan160000Uvt: null,
+    noContribuyenteNaturaleza: null,
     responsabilidades: [] as string[],
     responsabilidadesRut: [] as string[],
-    motivoCambioPeriodicidad: null,
+    motivoCambioPeriodicidad: null as 'otro' | null,
+    cambioPeriodicidadHecho: null as string | null,
+    cambioPeriodicidadNorma: null as string | null,
+    cambioPeriodicidadFecha: null as string | null,
     advertenciasAceptadas: [] as string[],
     notas: null,
     ica: [],
@@ -126,7 +139,7 @@ describe('perfil', () => {
   test('guardar: la organización es la de la sesión, va por la v2 y los errores se traducen', async () => {
     const { ctx, llamadas } = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'nuevo-id', error: null } });
     await expect(guardarPerfil(ctx, datos)).resolves.toEqual({ id: 'nuevo-id', advertencias: [] });
-    expect(llamadas[0]).toMatchObject({ rpc: 'fn_perfil_tributario_guardar_v2', params: { p_organization_id: 42, p_regimen_renta: 'ordinario', p_condicion_iva: 'responsable' } });
+    expect(llamadas[0]).toMatchObject({ rpc: 'fn_perfil_tributario_guardar_v2', params: { p_organization_id: 42, p_datos: { regimen_renta: 'ordinario', condicion_iva: 'responsable' } } });
 
     const sinFuncion = doble({ organization_tax_profiles: PERFIL }, {});
     await expect(guardarPerfil(sinFuncion.ctx, datos)).rejects.toMatchObject({ codigo: 'pendiente_activar', status: 501 });
@@ -154,24 +167,38 @@ describe('perfil', () => {
     });
     expect(contradictoria.llamadas).toEqual([]);
 
-    const dudosa = { ...datos, regimenRenta: 'simple' as const, periodicidadIva: 'anual' as const, autorretenedor: true, responsabilidades: ['O-47', 'O-15'] };
+    // Ronda 2: el SIMPLE con autorretención activa se resuelve por el art. 911 (bloqueo, no advertencia).
+    const simpleAuto = { ...datos, regimenRenta: 'simple' as const, periodicidadIva: 'anual' as const, autorretenedor: true, autorretenedorActo: 'Res. 1', autorretenedorActoFecha: '2024-01-01', responsabilidades: ['O-47', 'O-15'] };
+    const bloqueada = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(bloqueada.ctx, simpleAuto)).rejects.toMatchObject({ codigo: 'combinacion_contradictoria', detalle: { bloqueos: ['simple_con_autorretencion'] } });
+    expect(bloqueada.llamadas).toEqual([]);
+
+    const dudosa = { ...datos, regimenRenta: 'especial' as const, rteTipo: 'calificada_art19' as const, condicionIva: 'no_responsable' as const, periodicidadIva: 'no_aplica' as const };
     const sinAceptar = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
-    await expect(guardarPerfil(sinAceptar.ctx, dudosa)).rejects.toMatchObject({ codigo: 'advertencias_sin_aceptar', status: 409, detalle: { pendientes: ['simple_con_autorretenedor'] } });
+    await expect(guardarPerfil(sinAceptar.ctx, dudosa)).rejects.toMatchObject({ codigo: 'advertencias_sin_aceptar', status: 409, detalle: { pendientes: ['rte_memoria_por_confirmar'] } });
     expect(sinAceptar.llamadas).toEqual([]);
 
     const aceptada = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
-    await expect(guardarPerfil(aceptada.ctx, { ...dudosa, advertenciasAceptadas: ['simple_con_autorretenedor'] })).resolves.toEqual({ id: 'id', advertencias: ['simple_con_autorretenedor'] });
-    expect(aceptada.llamadas[0].params.p_advertencias_aceptadas).toEqual(['simple_con_autorretenedor']);
+    await expect(guardarPerfil(aceptada.ctx, { ...dudosa, advertenciasAceptadas: ['rte_memoria_por_confirmar'] })).resolves.toEqual({ id: 'id', advertencias: ['rte_memoria_por_confirmar'] });
+    expect((aceptada.llamadas[0].params.p_datos as { advertencias_aceptadas: string[] }).advertencias_aceptadas).toEqual(['rte_memoria_por_confirmar']);
   });
 
-  test('guardar: cambio de periodicidad a mitad de año sin motivo se bloquea; con motivo es advertencia', async () => {
+  test('guardar: cambio de periodicidad a mitad de año queda pendiente hasta documentar hecho, norma y fecha', async () => {
     const mitad = { ...datos, vigenteDesde: '2026-07-01', periodicidadIva: 'cuatrimestral' as const };
-    const sinMotivo = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
-    await expect(guardarPerfil(sinMotivo.ctx, mitad)).rejects.toMatchObject({ detalle: { bloqueos: ['periodicidad_cambio_sin_motivo'] } });
-    const conMotivo = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
-    await expect(guardarPerfil(conMotivo.ctx, { ...mitad, motivoCambioPeriodicidad: 'otro' })).rejects.toMatchObject({
+    const sinSoporte = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(sinSoporte.ctx, { ...mitad, motivoCambioPeriodicidad: 'otro' })).rejects.toMatchObject({
       codigo: 'advertencias_sin_aceptar',
-      detalle: { pendientes: ['periodicidad_cambio_a_mitad_de_anio'] },
+      detalle: { pendientes: ['periodicidad_cambio_pendiente_soporte'] },
+    });
+    const fechaDistinta = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    await expect(guardarPerfil(fechaDistinta.ctx, { ...mitad, cambioPeriodicidadFecha: '2026-07-02' })).rejects.toMatchObject({
+      detalle: { bloqueos: ['cambio_fecha_efectiva_distinta'] },
+    });
+    const documentado = doble({ organization_tax_profiles: PERFIL }, { fn_perfil_tributario_guardar_v2: { data: 'id', error: null } });
+    const completo = { ...mitad, motivoCambioPeriodicidad: 'otro' as const, cambioPeriodicidadHecho: 'Hecho', cambioPeriodicidadNorma: 'ET art. 600', cambioPeriodicidadFecha: '2026-07-01' };
+    await expect(guardarPerfil(documentado.ctx, { ...completo, advertenciasAceptadas: ['periodicidad_cambio_documentado'] })).resolves.toEqual({
+      id: 'id',
+      advertencias: ['periodicidad_cambio_documentado'],
     });
   });
 });
@@ -267,6 +294,60 @@ describe('Centro tributario', () => {
     const ivaJunio = junio.filas.find((f) => f.obligacion.clave === 'iva')!;
     expect(ivaJunio.obligacion.periodo).toMatchObject({ desde: '2026-05-01', hasta: '2026-06-30' });
     expect(ivaJunio.obligacion.notas).not.toContain('cambio_vigencia_en_periodo');
+  });
+
+  test('decisión sustentada: cierra la alerta mientras la huella coincida; si cambian las vigencias, se reabre', async () => {
+    const filas = PERFIL_DOS.data.map((p) => ({ id: p.id, vigenteDesde: p.vigente_desde, vigenteHasta: p.vigente_hasta, actualizadoEn: null }));
+    const huella = huellaVigencias(filas);
+    const decision = (h: string) => ({
+      data: [
+        {
+          id: 'd1',
+          obligacion: 'iva:cuatrimestral',
+          periodo_desde: '2026-05-01',
+          periodo_hasta: '2026-08-31',
+          decision: 'Rige la vigencia de julio',
+          fundamento: 'Concepto',
+          alcance: 'IVA may–ago',
+          vigencia_aplicada_id: null,
+          huella: h,
+          decidido_por: 'u1',
+          decidido_en: '2026-11-07T10:00:00Z',
+        },
+      ],
+      error: null,
+    });
+    const rpcs = {
+      fn_tributario_borrador_iva: { data: { totales: { saldo: 5, por_revisar: 0 }, renglones: [] }, error: null },
+      fn_reporte_retenciones_practicadas: { data: { totales: { total: 0 } }, error: null },
+    };
+    const tablas = { organizations: ORG, organization_tax_profiles: PERFIL_DOS, organization_tax_profile_ica: { data: [], error: null }, tax_calendar_dates: { data: [], error: null } };
+
+    const cerrada = doble({ ...tablas, tax_period_decisions: decision(huella), profiles: { data: [{ id: 'u1', first_name: 'Ana', last_name: 'Pérez', email: null }], error: null } }, rpcs);
+    const iva = (await leerCentro(cerrada.ctx, '2026-10')).filas.find((f) => f.obligacion.clave === 'iva')!;
+    expect(iva.obligacion.notas).toContain('decision_registrada');
+    expect(iva.valor).toMatchObject({ estado: 'calculado', valor: 5 });
+    expect(iva.decisiones).toMatchObject([{ id: 'd1', aplica: true, decididoPorNombre: 'Ana Pérez' }]);
+
+    const reabierta = doble({ ...tablas, tax_period_decisions: decision('huella-vieja') }, rpcs);
+    const iva2 = (await leerCentro(reabierta.ctx, '2026-10')).filas.find((f) => f.obligacion.clave === 'iva')!;
+    expect(iva2.obligacion.notas).toContain('decision_reabierta');
+    expect(iva2.valor).toEqual({ estado: 'revisar_procedencia' });
+    expect(iva2.decisiones?.[0].aplica).toBe(false);
+  });
+
+  test('registrar decisión: huella calculada en el servidor; sin cambio de vigencia no hay nada que decidir', async () => {
+    const tablas = { organizations: ORG, organization_tax_profiles: PERFIL_DOS, organization_tax_profile_ica: { data: [], error: null } };
+    const s = { obligacion: 'iva:cuatrimestral', desde: '2026-05-01', hasta: '2026-08-31', decision: 'Rige julio', fundamento: 'Concepto', alcance: 'IVA', vigenciaAplicadaId: null };
+    const ok = doble(tablas, { fn_tributario_decision_periodo_registrar: { data: 'nueva', error: null } });
+    await expect(registrarDecisionPeriodo(ok.ctx, s)).resolves.toEqual({ id: 'nueva' });
+    const filas = PERFIL_DOS.data.map((p) => ({ id: p.id, vigenteDesde: p.vigente_desde, vigenteHasta: p.vigente_hasta, actualizadoEn: null }));
+    expect(ok.llamadas[0].params).toMatchObject({ p_organization_id: 42, p_huella: huellaVigencias(filas), p_desde: '2026-05-01' });
+    const sinCambio = doble(tablas, { fn_tributario_decision_periodo_registrar: { data: 'x', error: null } });
+    await expect(registrarDecisionPeriodo(sinCambio.ctx, { ...s, desde: '2026-09-01', hasta: '2026-10-31' })).rejects.toMatchObject({ codigo: 'sin_cambio_de_vigencia', status: 400 });
+    expect(sinCambio.llamadas).toEqual([]);
+    const ajena = doble(tablas, {});
+    await expect(registrarDecisionPeriodo(ajena.ctx, { ...s, vigenciaAplicadaId: '00000000-0000-4000-8000-000000000000' })).rejects.toMatchObject({ codigo: 'datos_invalidos' });
   });
 
   test('un corte futuro o inválido cae al mes anterior', async () => {

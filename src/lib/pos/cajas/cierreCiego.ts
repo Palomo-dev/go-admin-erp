@@ -25,6 +25,10 @@ export interface DetalleEsperado {
   entradas: number;
   salidas: number;
   compras_efectivo: number;
+  /** Anticipos a proveedores girados en efectivo (egreso por anticipo; no es una venta). */
+  anticipos_proveedor_egreso: number;
+  /** Devoluciones de anticipos a proveedores recibidas en efectivo. */
+  anticipos_proveedor_devolucion: number;
   devoluciones: number;
 }
 
@@ -49,6 +53,8 @@ const CAMPOS_DETALLE: (keyof DetalleEsperado)[] = [
   'entradas',
   'salidas',
   'compras_efectivo',
+  'anticipos_proveedor_egreso',
+  'anticipos_proveedor_devolucion',
   'devoluciones',
 ];
 

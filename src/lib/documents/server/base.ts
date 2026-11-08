@@ -17,8 +17,10 @@ import { OrgContextError } from '@/lib/utils/orgContextError';
 import { resolveTimezoneCascade } from '@/lib/utils/branchTimezoneCascade';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 import { esDiaCalendario, responsabilidadesFiscalesEn } from '@/lib/finanzas/tributario/responsabilidadesVigentes';
+import { leerPartesDocumento, type PartesDocumento, type TipoInstantanea } from './instantanea';
 import type { Traductor } from '../textos';
 import type {
+  Banda,
   Contraparte,
   Emisor,
   IdiomaDocumento,
@@ -64,6 +66,11 @@ export interface BaseDocumento {
   zonaHoraria: string;
   /** Textos legales configurados por la organización, por tipo de documento. */
   textosLegales: Partial<Record<TipoDocumento, string>>;
+  /**
+   * Datos originales de las partes de un documento expedido (instantánea o envío
+   * aceptado). null = el cargador no los pidió (documentos internos).
+   */
+  partes: PartesDocumento | null;
 }
 
 /** Clave de `organization_settings` con los textos legales de los documentos. */
@@ -161,6 +168,11 @@ export interface OpcionesBase {
    * organización (perfil tributario por vigencias, H2); sin ella, las de la ficha.
    */
   fechaDocumento?: string | null;
+  /**
+   * Documento expedido: emisor y receptor salen de su instantánea (o del envío
+   * aceptado); solo si no hay ninguna, de la vigencia por fecha, marcado «reconstruido».
+   */
+  instantanea?: { tipo: TipoInstantanea; id: string };
 }
 
 /** Día calendario del documento en la zona del emisor; `null` si la fecha no se entiende. */
@@ -187,7 +199,12 @@ export async function cargarBase(sesion: SesionDocumento, branchId: number | nul
   ]);
   if (errorOrg) fallaLectura('organizations', errorOrg);
   if (!org) throw noEncontrado();
-  const o = org as FilaOrganizacion;
+  const partes = opciones.instantanea ? await leerPartesDocumento(db, sesion.organizationId, opciones.instantanea.tipo, opciones.instantanea.id) : null;
+  // Emisor original guardado: manda sobre la ficha de hoy (logo y color siguen siendo los actuales).
+  const o = { ...(org as FilaOrganizacion), ...((partes?.emisor ?? {}) as Partial<FilaOrganizacion>) } as FilaOrganizacion;
+  const responsabilidadesOriginales = Array.isArray(partes?.emisor?.fiscal_responsibilities)
+    ? (partes!.emisor!.fiscal_responsibilities as unknown[]).map(texto).filter((x): x is string => !!x)
+    : null;
   const s = (sucursalRes.data ?? null) as { name: string | null; address: string | null; city: string | null; phone: string | null; timezone: string | null } | null;
 
   const zona = resolveTimezoneCascade({ branchTimezone: s?.timezone ?? null, organizationTimezone: o.timezone }).timezone;
@@ -210,8 +227,9 @@ export async function cargarBase(sesion: SesionDocumento, branchId: number | nul
     telefono: texto(o.phone),
     email: texto(o.email),
     web: texto(o.website),
-    responsabilidades:
-      opciones.fechaDocumento !== undefined
+    responsabilidades: responsabilidadesOriginales
+      ? responsabilidadesOriginales
+      : opciones.fechaDocumento !== undefined
         ? await responsabilidadesFiscalesEn(db, sesion.organizationId, diaDelDocumento(opciones.fechaDocumento, zona), o.fiscal_responsibilities)
         : (o.fiscal_responsibilities ?? []).map(texto).filter((x): x is string => !!x),
     actividadEconomica: texto(o.economic_activity),
@@ -223,7 +241,7 @@ export async function cargarBase(sesion: SesionDocumento, branchId: number | nul
     ? { nombre: texto(s.name) as string, direccion: texto(s.address), ciudad: texto(s.city), telefono: texto(s.phone) }
     : null;
 
-  return { emisor, sucursal, zonaHoraria: zona, textosLegales: leerTextosLegales(ajustesRes.data) };
+  return { emisor, sucursal, zonaHoraria: zona, textosLegales: leerTextosLegales(ajustesRes.data), partes };
 }
 
 /** `organization_settings.settings` de `documentos_textos_legales` → texto por tipo (saneado). */
@@ -570,4 +588,14 @@ export function notasPresentables(notas: string | null | undefined, t: Traductor
 /** Nombre de archivo base: `<Tipo>_<numero>`. */
 export function nombreArchivoBase(t: Traductor, tituloClave: string, numero: string | null): string {
   return [t(`tipos.${tituloClave}`), numero].filter(Boolean).join('_');
+}
+
+/** Receptor para el documento: el original (instantánea o XML) si existe; si no, el de hoy. */
+export function receptorOriginal<T>(base: BaseDocumento, actual: T | null): T | null {
+  return (base.partes?.receptor as T | null | undefined) ?? actual;
+}
+
+/** Banda «datos reconstruidos» cuando el emisor no es el original guardado de un documento expedido. */
+export function bandaReconstruido(base: BaseDocumento): Banda[] {
+  return base.partes?.emisorReconstruido ? [{ clave: 'datosReconstruidos', tono: 'aviso' }] : [];
 }

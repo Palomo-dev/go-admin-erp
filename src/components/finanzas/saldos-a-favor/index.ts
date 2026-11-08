@@ -1,7 +1,7 @@
 export { ListadoSaldosAFavor } from './ListadoSaldosAFavor';
 export { DetalleSaldoPanel } from './DetalleSaldoPanel';
 export { AplicarSaldoDialog } from './AplicarSaldoDialog';
-export { DevolverSaldoDialog } from './DevolverSaldoDialog';
+export { DevolverSaldoDialog, type ComplementoDevolver } from './DevolverSaldoDialog';
 export { RegistrarAnticipoDialog, type ComplementoRegistro } from './RegistrarAnticipoDialog';
 export { saldosAFavorService } from './saldosAFavorService';
 export { ADAPTADOR_CLIENTE, type AdaptadorSaldos, type TerceroSaldo } from './adaptadorSaldos';

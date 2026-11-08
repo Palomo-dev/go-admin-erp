@@ -1,14 +1,13 @@
 -- Reversión de supabase/migrations/20261108160500_tributario_perfil_renta_iva.sql.
--- Revertir ANTES que 20261108160000_tributario_catalogo_rut_y_codigos_fe.
+-- Revertir DESPUÉS de 20261108161000 (decisiones) y ANTES que 20261108160000 (catálogo).
 --
--- ADVERTENCIA DE DATOS: quita las columnas nuevas del perfil. Lo que se haya guardado en ellas (régimen de renta,
--- condición de IVA, booleanos, códigos del RUT, motivo, advertencias aceptadas) se PIERDE. El campo combinado viejo
--- `regimen` se conserva, pero en vigencias guardadas con la v2 puede estar NULL (no contribuyente): esas filas se
--- llenan aquí con 'ordinario' / 'no_responsable_iva' para poder devolverle el NOT NULL, lo que NO restaura su
--- significado (el campo viejo no puede expresarlo). Revisar esas vigencias después de revertir.
+-- ADVERTENCIA DE DATOS: quita las columnas nuevas del perfil. Lo guardado en ellas (régimen de renta, condición de IVA,
+-- calidades y sus actos, INC, RTE, no contribuyentes, códigos del RUT, cambio de periodicidad, advertencias aceptadas)
+-- se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
+-- 'ordinario' / 'no_responsable_iva' para devolverle el NOT NULL, lo que NO restaura su significado.
 
-drop function if exists public.fn_perfil_tributario_guardar_v2(integer, uuid, date, text, text, text, boolean, boolean, boolean, boolean, boolean, text[], text[], text, text[], jsonb, text);
-drop function if exists public.fn_perfil_tributario_bloqueos(text, text, text, boolean, boolean, boolean, boolean, boolean, text[], text[]);
+drop function if exists public.fn_perfil_tributario_guardar_v2(integer, uuid, date, jsonb, jsonb, text);
+drop function if exists public.fn_perfil_tributario_bloqueos(jsonb);
 
 grant execute on function public.fn_perfil_tributario_guardar(integer, uuid, date, text, text[], boolean, boolean, text, jsonb, text) to authenticated;
 
@@ -23,10 +22,23 @@ alter table public.organization_tax_profiles
   drop column if exists regimen_renta,
   drop column if exists condicion_iva,
   drop column if exists gran_contribuyente,
+  drop column if exists gran_contribuyente_acto,
+  drop column if exists gran_contribuyente_desde,
   drop column if exists autorretenedor,
+  drop column if exists autorretenedor_acto,
+  drop column if exists autorretenedor_acto_fecha,
+  drop column if exists autorretencion_especial,
   drop column if exists agente_retencion_iva,
+  drop column if exists inc_actividad,
+  drop column if exists rte_tipo,
+  drop column if exists rte_ingresos_superan_160000_uvt,
+  drop column if exists no_contribuyente_naturaleza,
   drop column if exists responsabilidades_rut,
   drop column if exists motivo_cambio_periodicidad,
+  drop column if exists cambio_periodicidad_hecho,
+  drop column if exists cambio_periodicidad_norma,
+  drop column if exists cambio_periodicidad_fecha,
+  drop column if exists cambio_periodicidad_estado,
   drop column if exists advertencias_aceptadas,
   drop column if exists requiere_revision,
   drop column if exists regimen_origen;

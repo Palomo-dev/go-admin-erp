@@ -152,11 +152,10 @@ export async function listarConsignaciones(ctx: Ctx): Promise<RespuestaListadoCo
     .order('delivered_at', { ascending: false })
     .limit(500);
   if (error) {
-    if (esPendienteConsignacion(error)) return { pendiente: true, notas: [], cuenta: null };
+    if (esPendienteConsignacion(error)) return { pendiente: true, notas: [] };
     throw errorDeRpc('consignment_notes', ctx, error);
   }
-  const { data: cuenta } = await ctx.supabase.rpc('fn_cuenta_inventario_consignacion', { p_org: ctx.organizationId, p_branch: null });
-  return { pendiente: false, notas: ((data ?? []) as unknown as FilaNota[]).map(aNota), cuenta: typeof cuenta === 'string' ? cuenta : null };
+  return { pendiente: false, notas: ((data ?? []) as unknown as FilaNota[]).map(aNota) };
 }
 
 export async function detalleConsignacion(ctx: Ctx, id: string): Promise<{ pendiente: boolean; nota: NotaConsignacion | null }> {

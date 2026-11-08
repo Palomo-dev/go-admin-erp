@@ -13416,7 +13416,9 @@
         "egresos": "Cash out",
         "compras": "Supplier payments",
         "devoluciones": "Returns",
-        "movimientosTurno": "Shift movements"
+        "movimientosTurno": "Shift movements",
+        "anticiposEgreso": "Advance payout",
+        "anticiposDevolucion": "Advance refund"
       },
       "netoVuelto": "Net of {monto} of change given",
       "montoContado": "Amount counted",
@@ -18968,7 +18970,9 @@
         "anticipo": "Advance",
         "aplicacion_anticipo": "Advance applied",
         "devolucion_anticipo": "Advance refund",
-        "anulacion_anticipo": "Advance voided"
+        "anulacion_anticipo": "Advance voided",
+        "correccion_retencion": "Correction of repeated withholding",
+        "cruce_consignacion": "Offset against consignment"
       }
     },
     "plan": {
@@ -19152,7 +19156,8 @@
       "cierreReemplazado": "This version was superseded by a recalculation. See the current version.",
       "cierreReemplazadoPor": "This version was superseded by v{version}. See the current version.",
       "cierrePeriodoCerrado": "Signed close: the accounting period is closed.",
-      "cierreConErrores": "{cantidad} report(s) could not be calculated and are not included. See the end of the document."
+      "cierreConErrores": "{cantidad} report(s) could not be calculated and are not included. See the end of the document.",
+      "datosReconstruidos": "Issuer data rebuilt from the profile in force on the document date: the issuance snapshot was not found."
     },
     "marcas": {
       "borrador": "DRAFT",
@@ -19346,7 +19351,9 @@
         "devoluciones": "Returns",
         "esperado": "Expected cash",
         "contado": "Counted cash",
-        "diferencia": "Difference"
+        "diferencia": "Difference",
+        "anticiposEgreso": "Supplier advance payout",
+        "anticiposDevolucion": "Supplier advance refund"
       },
       "retencion": "{concepto} ({tasa} %)",
       "totalFactura": "Invoice total",
@@ -19432,7 +19439,9 @@
       "anticipo": "Advance",
       "aplicacion_anticipo": "Advance applied",
       "devolucion_anticipo": "Advance refund",
-      "anulacion_anticipo": "Advance voided"
+      "anulacion_anticipo": "Advance voided",
+      "correccion_retencion": "Correction of repeated withholding",
+      "cruce_consignacion": "Offset against consignment"
     },
     "errores": {
       "noEncontrado": "We couldn’t find this document.",
@@ -40417,7 +40426,7 @@
       },
       "anticipos_proveedores": {
         "nombre": "Supplier advances",
-        "ayuda": "Detail sub-account under 1330 (e.g. 13300501 under 133005). 1330 is a header account: without this account, no advances can be recorded."
+        "ayuda": "Eight-digit detail sub-account under 133005 (e.g. 13300501). 1330 and 133005 are header accounts. Another account only with an equivalence approved in Supplier advances."
       }
     }
   },
@@ -45318,7 +45327,8 @@
         "perfil": "No effective period covers today: without a regime and filing frequency, GO Admin doesn't know which forms apply to this company.",
         "nit": "The company has no NIT: without it, due dates can't be located.",
         "periodicidad_iva": "It is VAT-liable but has no VAT filing frequency.",
-        "revisar_perfil": "Today's period has undefined data or comes from the old combined field: review the income tax regime and the VAT status and save it again."
+        "revisar_perfil": "Today's period has undefined data or comes from the old combined field: review the income tax regime and the VAT status and save it again.",
+        "cambio_periodicidad_pendiente": "Today's period changes the VAT filing frequency without documenting the fact, the rule and the effective date."
       },
       "vigencia": {
         "rango": "{desde} to {hasta}",
@@ -45398,18 +45408,41 @@
         "condicionIva": "VAT status",
         "condicionIvaAyuda": "VAT registered or not, as in the RUT (48, or 49/53).",
         "sinDefinir": "Not defined",
-        "motivoCambio": "Reason for the filing frequency change",
+        "motivoCambio": "Reason",
         "motivoCambioAyuda": "The VAT filing frequency is set per year (Tax Code art. 600). A change not starting on January 1 needs a reason.",
         "sinMotivo": "No reason",
         "calidades": "Qualities",
         "granContribuyente": "Large taxpayer",
-        "autorretenedor": "Self-withholder",
+        "autorretenedor": "Self-withholder (ordinary self-withholding, RUT 15)",
         "agenteRetencionIva": "VAT withholding agent",
         "codigosFe": "Electronic document codes",
         "codigosFeAyuda": "The ones sent in the e-invoice. They are not RUT box 53. The table is pending the accountant's validation.",
         "codigosRut": "RUT responsibilities, box 53 ({cuantos} selected)",
         "codigosRutAyuda": "Optional. If you select them, they must match the fields above.",
-        "buscarCodigo": "Search by code or name"
+        "buscarCodigo": "Search by code or name",
+        "autorretencionEspecial": "Special income tax self-withholding (RUT 59)",
+        "granContribuyenteActo": "Resolution that designates it",
+        "granContribuyenteDesde": "Large taxpayer since",
+        "autorretenedorActo": "Resolution that authorizes it",
+        "autorretenedorActoFecha": "Resolution date",
+        "actoAyuda": "This quality comes from a DIAN act: resolution number.",
+        "incActividad": "Activity subject to consumption tax",
+        "incActividadAyuda": "The consumption tax depends on the activity (Tax Code art. 512-1).",
+        "rteTipo": "RTE entity type",
+        "rteTipoAyuda": "RTE obligations depend on the entity type.",
+        "rteIngresos": "Prior-year income above 160,000 UVT",
+        "rteIngresosAyuda": "Defines whether an economic report is due (Tax Code art. 356-3).",
+        "sinDato": "No data",
+        "si": "Yes",
+        "no": "No",
+        "noContribuyenteNaturaleza": "Legal nature that supports the classification",
+        "noContribuyenteNaturalezaAyuda": "For example \"trade union\" or \"community action board\". It is an initial classification (Tax Code arts. 22 and 23).",
+        "cambioTitulo": "Support for the filing frequency change",
+        "cambioAyuda": "The VAT filing frequency is set per year (Tax Code art. 600). The change stays pending until the fact, the rule and the effective date are documented.",
+        "cambioFecha": "Effective date of the change",
+        "cambioFechaAyuda": "It must match the start of this period.",
+        "cambioHecho": "Fact that causes the change",
+        "cambioNorma": "Rule that supports it"
       },
       "errores": {
         "datos_invalidos": "Check the effective period's data.",
@@ -45434,9 +45467,9 @@
       "regimenRenta": {
         "ordinario": "Ordinary regime",
         "simple": "SIMPLE regime",
-        "especial": "Special tax regime (non-profit)",
-        "no_contribuyente_declarante": "Non-taxpayer, files income and equity return",
-        "no_contribuyente_no_declarante": "Non-taxpayer, does not file"
+        "especial": "Special tax regime (RTE)",
+        "no_contribuyente_declarante": "Non-taxpayer, files income and equity return (art. 23)",
+        "no_contribuyente_no_declarante": "Non-taxpayer, does not file (art. 22)"
       },
       "condicionIva": {
         "responsable": "VAT registered",
@@ -45446,7 +45479,8 @@
         "inicio_actividades": "Start of business",
         "ingreso_simple": "Joining SIMPLE",
         "salida_simple": "Leaving SIMPLE",
-        "otro": "Other (explain in the notes)"
+        "designacion_gran_contribuyente": "Designation as large taxpayer",
+        "otro": "Other (explain it in the fact)"
       },
       "estado": {
         "revisar": "Review profile",
@@ -45455,7 +45489,8 @@
       },
       "validacion": {
         "pendiente_validacion": "Pending validation",
-        "no_vigente_por_confirmar": "Not current, to be confirmed",
+        "cotejado_fuente_oficial": "Checked against the official source",
+        "no_validado_como_fe": "Not validated as an e-invoice code",
         "noVigente": "Replaced code; no longer assigned."
       },
       "bloqueos": {
@@ -45463,39 +45498,48 @@
         "falta_condicion_iva": "The VAT status is missing.",
         "no_responsable_con_periodicidad": "A non-VAT-registered business does not file VAT: the frequency must be \"Not applicable\" (Tax Code art. 437 par. 3).",
         "responsable_sin_periodicidad": "A VAT-registered business needs a filing frequency (Tax Code art. 600).",
-        "periodicidad_anual_fuera_de_simple": "Annual VAT filing is for SIMPLE; everyone else files bimonthly or every four months (Tax Code arts. 600 and 915).",
+        "periodicidad_anual_fuera_de_simple": "Annual VAT filing is for SIMPLE (Tax Code arts. 600 and 915); no other legal basis has been identified.",
         "simple_responsable_no_anual": "Under SIMPLE, a VAT-registered business files one consolidated annual return (Tax Code art. 915): choose \"Annual\".",
-        "fe_o48_y_o49": "It cannot have O-48 and O-49 at the same time.",
-        "fe_o48_no_responsable": "O-48 (VAT registered) contradicts \"Not VAT registered\".",
-        "fe_o49_responsable": "O-49 (not VAT registered) contradicts \"VAT registered\".",
+        "fe_codigo_no_validado": "O-48 and O-49 are not validated as electronic document codes: the VAT status has its own field.",
         "fe_o47_sin_simple": "O-47 (simple regime) requires the SIMPLE income tax regime.",
         "fe_o13_sin_gran_contribuyente": "O-13 requires \"Large taxpayer\".",
         "fe_o15_sin_autorretenedor": "O-15 requires \"Self-withholder\".",
         "fe_o23_sin_agente_iva": "O-23 requires \"VAT withholding agent\".",
-        "rut_varios_regimenes_renta": "The RUT has more than one income tax regime (04, 05, 06 or 47); they are mutually exclusive.",
-        "rut_regimen_renta_contradictorio": "The income tax regime does not match the RUT (05 ordinary, 04 special, 47 SIMPLE, 06 income and equity).",
+        "fe_r99_con_otros": "R-99-PN is residual (none of the others applies): it is not combined with other codes.",
+        "fe_r99_con_calidades": "R-99-PN is residual: it contradicts SIMPLE, large taxpayer, self-withholder or VAT withholding agent.",
+        "simple_con_autorretencion": "SIMPLE does not self-withhold (Tax Code art. 911): remove the self-withholding or review the regime.",
+        "gran_contribuyente_sin_acto": "Large taxpayer requires the designating resolution and the date it applies from.",
+        "autorretenedor_sin_acto": "Self-withholder requires the authorizing resolution and its date.",
+        "inc_sin_actividad": "Indicate the activity subject to the consumption tax.",
+        "no_contribuyente_sin_naturaleza": "Indicate the legal nature that supports the non-taxpayer classification.",
+        "rte_sin_tipo": "Indicate the special tax regime entity type.",
+        "cambio_gran_contribuyente_no_bimestral": "Designation as large taxpayer leads to bimonthly filing (Tax Code art. 600 num. 1); it does not allow another change.",
+        "rut_47_y_05": "The RUT cannot have 47 and 05 at the same time: they are mutually exclusive (DIAN, IN-CAC-0237, item 31.31).",
+        "rut_53_sin_simple": "Code 53 is only for SIMPLE legal entities (IN-CAC-0237, item 31.36).",
         "rut_iva_contradictorio": "The VAT status does not match the RUT (48 registered; 49 or 53 not registered).",
+        "rut_art22_con_renta": "Art. 22 entities do not carry 04, 05 or 06 in the RUT (IN-CAC-0237, items 31.4 to 31.6).",
         "rut_13_sin_gran_contribuyente": "The RUT has 13 (large taxpayer): select \"Large taxpayer\".",
         "rut_15_sin_autorretenedor": "The RUT has 15 (self-withholder): select \"Self-withholder\".",
-        "rut_23_sin_agente_iva": "The RUT has 23 (VAT withholding agent): select \"VAT withholding agent\".",
+        "rut_59_sin_autorretencion_especial": "The RUT has 59 (special self-withholding): select it.",
+        "rut_23_sin_agente_iva": "The RUT has 23 (sales withholding agent): select \"VAT withholding agent\".",
         "rut_07_sin_agente_retencion": "The RUT has 07 (income tax withholding): select \"Income tax withholding agent\".",
         "rut_33_sin_inc": "The RUT has 33 (national consumption tax): select \"Responsible for the consumption tax\".",
-        "periodicidad_cambio_sin_motivo": "The VAT filing frequency changes without starting on January 1: give the reason (Tax Code art. 600)."
+        "cambio_fecha_efectiva_distinta": "The effective date of the filing frequency change must be the start of this period."
       },
       "advertencias": {
-        "simple_con_autorretenedor": "SIMPLE and self-withholder: SIMPLE does not self-withhold except in some cases (Tax Code art. 911). Confirm with the accountant.",
-        "simple_con_gran_contribuyente": "SIMPLE and large taxpayer: check the SIMPLE requirements (Tax Code arts. 905 and 906).",
-        "simple_con_inc": "SIMPLE and consumption tax: the consumption tax of restaurants and bars has its own treatment under SIMPLE (Tax Code arts. 908 and 915).",
         "simple_sin_fe_o47": "SIMPLE regime without code O-47 in the electronic document.",
         "gran_contribuyente_sin_fe_o13": "Large taxpayer without code O-13 in the electronic document.",
         "autorretenedor_sin_fe_o15": "Self-withholder without code O-15 in the electronic document.",
         "agente_iva_sin_fe_o23": "VAT withholding agent without code O-23 in the electronic document.",
-        "fe_r99_con_otros": "R-99-PN means \"none of the others applies\": together with other codes it is doubtful. It does not mean \"not VAT registered\".",
-        "fe_codigo_por_validar": "O-48 and O-49 are not among the current electronic document codes (to be confirmed).",
+        "gran_contribuyente_no_bimestral": "A large taxpayer files VAT bimonthly (Tax Code art. 600 num. 1): check from when it applies.",
         "rut_falta_codigo": "The fields state something the selected RUT does not have: check box 53.",
         "rut_codigo_no_vigente": "The selected RUT uses replaced codes (11 or 12).",
-        "periodicidad_cambio_a_mitad_de_anio": "Mid-year frequency change: check whether it is allowed with the accountant.",
-        "periodicidad_cambio_por_simple": "Frequency change for joining or leaving SIMPLE: it has specific treatment.",
+        "rut_varios_regimenes_renta": "The RUT has more than one income tax code: examine the entity before concluding its regime.",
+        "rut_regimen_renta_distinto": "The chosen income tax regime is not the one the RUT suggests: confirm it (a non-profit, for example, shows 05 until it is qualified).",
+        "rte_memoria_por_confirmar": "It is unknown whether prior-year income exceeds 160,000 UVT (economic report).",
+        "no_contribuyente_clasificacion_inicial": "Initial non-taxpayer classification: confirm it with the accountant based on the legal nature.",
+        "periodicidad_cambio_pendiente_soporte": "Mid-year filing frequency change: pending until the fact, the rule and the effective date are documented.",
+        "periodicidad_cambio_documentado": "Filing frequency change documented: the accountant must confirm whether it applies.",
         "periodicidad_cambio_siguiente": "The next period changes the frequency mid-year: check it too."
       },
       "periodo": {
@@ -45506,6 +45550,24 @@
         "sinPerfilTitulo": "Part of the period has no tax profile",
         "sinPerfilDescripcion": "Some days of the period are not covered by any profile.",
         "irPerfil": "Go to profile"
+      },
+      "rteTipo": {
+        "calificada_art19": "Qualified non-profit (art. 19)",
+        "cooperativa_art19_4": "Cooperative or solidarity sector (art. 19-4)",
+        "otra": "Other RTE entity"
+      },
+      "incActividad": {
+        "restaurantes_bares": "Restaurants, cafés and bars",
+        "telefonia_datos": "Mobile phone, internet and data",
+        "vehiculos_y_bienes": "Vehicles and other goods (arts. 512-3 to 512-5)",
+        "bolsas_plasticas": "Plastic bags",
+        "cannabis": "Cannabis",
+        "otra": "Other (explain it in the notes)"
+      },
+      "cambioEstado": {
+        "no_aplica": "No filing frequency change",
+        "pendiente_soporte": "Filing frequency change pending support",
+        "documentado": "Filing frequency change documented (whether it applies is under review)"
       }
     },
     "centro": {
@@ -45527,7 +45589,8 @@
         "perfil": "No effective period covers today.",
         "nit": "The company has no NIT.",
         "periodicidad_iva": "The VAT filing frequency is missing.",
-        "revisar_perfil": "The current profile needs review."
+        "revisar_perfil": "The current profile needs review.",
+        "cambio_periodicidad_pendiente": "There is a filing frequency change pending support."
       },
       "vacio": {
         "titulo": "No obligations could be derived",
@@ -45551,7 +45614,10 @@
         "exogena": "Exogenous information",
         "conciliacion_fiscal": "Tax reconciliation",
         "simple_anticipo": "SIMPLE, bimonthly advance",
-        "ingresos_patrimonio": "Income and equity"
+        "ingresos_patrimonio": "Income and equity",
+        "no_declarante": "Non-filer (art. 22)",
+        "rte_registro_web": "RTE, annual web registry update",
+        "rte_memoria_economica": "RTE, economic report"
       },
       "notas": {
         "sin_autorretencion": "The estimate doesn't include self-withholding.",
@@ -45560,16 +45626,24 @@
         "perfil_por_revisar": "Profile needs review: some data is undefined.",
         "iva_anual_simple": "SIMPLE consolidated annual VAT, separate from the bimonthly advances.",
         "anticipo_simple": "SIMPLE advance; the annual VAT goes separately.",
-        "regimen_especial": "Special tax regime: confirm forms and attachments with the accountant.",
+        "regimen_especial": "Special tax regime: form 110.",
         "cambio_vigencia_en_periodo": "More than one profile in this period: check whether it applies.",
-        "periodo_sin_perfil_completo": "Part of the period has no profile."
+        "periodo_sin_perfil_completo": "Part of the period has no profile.",
+        "conciliacion_por_evaluar": "Tax reconciliation: assess whether it is required (not excluded for being RTE).",
+        "rte_cooperativa_por_confirmar": "Confirm with the accountant whether it applies to this entity type.",
+        "rte_umbral_por_confirmar": "Only if prior-year income exceeds 160,000 UVT (Tax Code art. 356-3): data pending.",
+        "clasificacion_inicial": "Initial classification by legal nature (Tax Code arts. 22 and 23): it does not mean \"no obligations\".",
+        "cambio_periodicidad_pendiente": "The frequency changed without documenting fact, rule and effective date.",
+        "decision_registrada": "Profile change resolved with a supported decision.",
+        "decision_reabierta": "The periods changed after the decision: it was reopened."
       },
       "vence": {
         "sinNit": "NIT missing",
         "municipal": "Confirm with the municipality",
         "pendienteActivar": "Calendar pending",
         "incompleto": "{anio} calendar incomplete: due dates cannot be determined",
-        "incompletoObligacion": "{anio} calendar incomplete: this date is missing"
+        "incompletoObligacion": "{anio} calendar incomplete: this date is missing",
+        "noAplica": "No national due date"
       },
       "verBorrador": "View draft",
       "verReporte": "View report",
@@ -45586,7 +45660,42 @@
         "titulo": "Profile change within the period: check whether it applies",
         "descripcion": "A period has more than one tax profile. GO Admin does not use the last day's profile or calculate the value: confirm with the accountant whether the change is allowed."
       },
-      "revisarPerfil": "Review profile"
+      "revisarPerfil": "Review profile",
+      "cambioPeriodicidadPendiente": "Filing frequency change pending support",
+      "decisionReabierta": "Decision reopened: the periods changed",
+      "decisionRegistrada": "Decision recorded",
+      "decision": {
+        "accion": "Record decision",
+        "verHistoria": "View decisions",
+        "titulo": "Profile change within the period",
+        "vigencias": "Profile periods that touch this period",
+        "historia": "Decision history",
+        "sinHistoria": "There are no decisions for this period yet.",
+        "aplica": "Current",
+        "reabierta": "Reopened: the profiles changed",
+        "reemplazada": "Replaced",
+        "quienCuando": "{quien} · {cuando}",
+        "usuario": "User",
+        "nueva": "New decision",
+        "vigenciaAplicada": "Profile that applies",
+        "vigenciaAplicadaAyuda": "Optional: the profile that, according to the decision, governs the period.",
+        "sinVigencia": "None in particular",
+        "decision": "Decision",
+        "fundamento": "Basis",
+        "fundamentoAyuda": "Rule, ruling or support for the decision.",
+        "alcance": "Scope",
+        "alcanceAyuda": "Which obligations and periods it applies to.",
+        "reabre": "If the profiles of this period change later, the alert reopens. Nothing is deleted.",
+        "registrar": "Record",
+        "faltanCampos": "Fill in decision, basis and scope.",
+        "errores": {
+          "sin_permiso": "You do not have permission to record tax decisions.",
+          "sin_cambio_de_vigencia": "This period no longer has a profile change.",
+          "datos_invalidos": "Check the decision data.",
+          "pendiente_activar": "Period decisions are not enabled yet.",
+          "desconocido": "It could not be recorded. Try again."
+        }
+      }
     },
     "iva": {
       "titulo": "VAT draft",
@@ -45781,7 +45890,9 @@
         "aplicarDe": "Apply the advance of {proveedor} to an invoice",
         "devolver": "Record refund",
         "anular": "Void",
-        "conciliacion": "Reconciliation"
+        "conciliacion": "Reconciliation",
+        "vincular": "Link to draft invoice",
+        "exceso": "Correct excess withholding"
       },
       "anticipo": {
         "titulo": "New supplier advance",
@@ -45818,12 +45929,19 @@
         "quePasa": "Invoice {factura} goes down by {monto} and still owes {restante}. The supplier keeps {disponible} of advance.",
         "confirmar": "Apply",
         "confirmarMonto": "Apply {monto}",
-        "exito": "{monto} applied to invoice {factura}."
+        "exito": "{monto} applied to invoice {factura}.",
+        "correccion": {
+          "titulo": "The invoice already withheld on the advance’s base",
+          "descripcion": "They were not linked before recording the invoice and the withholding was repeated. To apply, record a documented correction: it leaves a trail and a follow-up to review the affected withholding periods. You can also correct the invoice instead.",
+          "motivo": "Reason for the correction",
+          "soporte": "Support",
+          "confirmar": "Apply with documented correction"
+        }
       },
       "devolver": {
         "titulo": "Refund from the supplier",
         "descripcion": "{cliente} · available {disponible}",
-        "valor": "Amount refunded",
+        "valor": "Money returned",
         "hasta": "Up to {monto}",
         "como": "How the money comes in",
         "cuenta": "Bank account",
@@ -45842,7 +45960,43 @@
         "confirmarMonto": "Record {monto}",
         "exito": "Refund of {monto} from {cliente} recorded.",
         "soporte": "Supporting document (deposit, receipt or transfer)",
-        "retencionProporcional": "If the advance had withholding, the part matching the refund is reversed: what the supplier returns goes into the till or bank."
+        "exitoPartes": "Refund from {cliente}: {dinero} to the bank or till and {retenciones} in withholdings.",
+        "retenciones": {
+          "vigentes": "Outstanding withholdings of the advance: {lista}.",
+          "normaIca": "Municipal ICA rule",
+          "pendienteTitulo": "Left as an accounting follow-up",
+          "pendienteDescripcion": "The unidentified withholdings stay in the advance until the Accountant resolves them."
+        },
+        "procedimiento": {
+          "titulo": "Refund procedure",
+          "causas": {
+            "operacion_anulada": {
+              "titulo": "Transaction voided or rescinded",
+              "ayuda": "All outstanding withholdings are reversed and the whole balance is refunded."
+            },
+            "devolucion_parcial": {
+              "titulo": "Partial refund",
+              "ayuda": "The calculation of the refunded part gives the withholdings: income tax and ICA on the base, VAT withholding on the VAT."
+            },
+            "sin_determinar": {
+              "titulo": "Cannot be determined yet",
+              "ayuda": "Only the money goes down; the withholdings stay in the advance and an accounting follow-up is opened."
+            }
+          },
+          "documento": {
+            "operacion_anulada": "Voiding or rescission document",
+            "devolucion_parcial": "Request or agreement with the supplier"
+          },
+          "baseDevuelta": "Refunded base (before VAT)",
+          "ivaDevuelto": "Refunded VAT",
+          "totalRetenciones": "Withholdings reversed",
+          "dineroEsperado": "Money that must come back",
+          "calculo": "Calculation (support)",
+          "certificado": "Certificate issued, voided or corrected",
+          "periodo": "Period in which it is offset",
+          "requiereCorreccion": "The period return requires correction",
+          "requiereCorreccionAyuda": "An accounting follow-up stays open until it is corrected."
+        }
       },
       "anular": {
         "titulo": "Void advance",
@@ -45892,7 +46046,17 @@
         "tarifaIva": "Choose the VAT on the transaction.",
         "conceptoFuente": "Choose the income tax withholding concept.",
         "soporte": "Enter the supporting document (at least 3 characters).",
-        "fechaAjuste": "Choose a date that is not in the future."
+        "fechaAjuste": "Choose a date that is not in the future.",
+        "componenteBase": "Enter the component base.",
+        "componentesNoSuman": "Components (base + VAT) must add up to the advance amount ({monto}).",
+        "retencionesDevolucion": "Say whether the withholdings of the refunded part were identified.",
+        "normaIca": "Enter the municipal rule for the ICA withholding reversal.",
+        "resolucion": "Enter the resolution (at least 10 characters).",
+        "nota": "Enter the equivalence note (at least 10 characters).",
+        "requerido": "Enter an amount greater than zero.",
+        "excede": "Exceeds the advance balance ({monto}).",
+        "dineroProcedimiento": "Per the procedure, the money returned is {monto}.",
+        "periodo": "Choose the period in which it is offset."
       },
       "errores": {
         "no_autenticado": "Your session ended. Sign in again.",
@@ -45946,7 +46110,7 @@
         "concepto_retefuente_obligatorio": "Choose the income tax withholding concept.",
         "retencion_excede_monto": "Withholdings equal or exceed the advance amount.",
         "cuenta_anticipos_no_configurada": "Accounting to-do: set the supplier advances detail account.",
-        "cuenta_anticipos_no_detalle": "Accounting to-do: the configured advances account is not a detail sub-account under 1330.",
+        "cuenta_anticipos_no_detalle": "Accounting follow-up: the configured advances account is not a 133005xx detail sub-account and has no approved equivalence.",
         "cxp_sin_causacion": "The payable has no current recording entry: it cannot be applied.",
         "soporte_obligatorio": "Enter the supporting document.",
         "anulacion_requiere_declaracion": "It can only be voided if the payment never happened.",
@@ -45954,35 +46118,63 @@
         "fecha_ajuste_anterior_al_anticipo": "The adjustment date cannot be before the advance.",
         "periodo_cerrado": "The accounting period for that date is closed.",
         "contra_asiento_no_creado": "The reversing entry could not be recorded. Check the chart of accounts.",
-        "asiento_no_encontrado": "The advance’s entry was not found."
+        "asiento_no_encontrado": "The advance’s entry was not found.",
+        "componentes_obligatorios": "Dividing by 1 + rate only works at the general rate: detail the components of the transaction.",
+        "componentes_no_suman": "The components do not add up to the advance amount.",
+        "componente_invalido": "A component is incomplete or has a rate that does not apply.",
+        "regla_ica_invalida": "The ICA withholding rule is not valid.",
+        "retencion_duplicada": "The invoice already withheld on the advance’s base: apply with a documented correction or correct the invoice.",
+        "retencion_duplicada_con_anticipo": "The invoice withholds on a base already withheld in the linked advance.",
+        "retenciones_invalidas": "Check the refund withholdings.",
+        "retencion_devolucion_invalida": "The withholding reversed exceeds the advance’s outstanding withholding.",
+        "procedimiento_obligatorio": "Enter the procedure for each withholding reversed.",
+        "reteica_requiere_norma": "Reversing an ICA withholding requires the municipal rule.",
+        "factura_no_borrador": "Only a draft invoice can be linked (before recording it).",
+        "nota_obligatoria": "Enter the approval note.",
+        "cuenta_no_valida": "The account is not an asset detail account.",
+        "pendiente_no_encontrado": "The follow-up was not found.",
+        "pendiente_ya_resuelto": "That follow-up is already resolved.",
+        "resolucion_obligatoria": "Enter the resolution (at least 10 characters).",
+        "procedimiento_invalido": "Choose the refund procedure.",
+        "soporte_procedimiento_obligatorio": "The procedure supports are missing (document, calculation or certificate).",
+        "calculo_obligatorio": "Enter the calculation of the refunded part (base and VAT).",
+        "calculo_no_cuadra": "The money does not match the calculation of the refunded part.",
+        "tratamiento_declaracion_obligatorio": "State the period in which it is offset and whether the return requires correction.",
+        "anulacion_requiere_devolucion_total": "A voided transaction refunds the whole advance balance.",
+        "sin_exceso": "With that calculation there is no excess to reimburse.",
+        "rut_obligatorio": "The updated RUT is missing (date and file).",
+        "resolucion_autorretencion_obligatoria": "The authorization resolution is missing (number, date, scope and concepts).",
+        "fundamento_obligatorio": "Enter the legal basis of the rule."
       },
       "cuentaPendiente": {
         "titulo": "Accounting to-do: supplier advances account",
-        "sinConfigurar": "In Accounting setup, set the “Supplier advances” account to a detail sub-account under 1330. 1330 is a header account and is not used. Until then, no advances can be recorded.",
+        "sinConfigurar": "In Accounting settings, set the «Supplier advances» account to an eight-digit detail sub-account under 133005 (e.g. 13300501). 1330 and 133005 are header accounts: they are not used. Until then, advances cannot be recorded.",
         "sinConfigurarSugerida": "In Accounting setup, set the “Supplier advances” account. Your chart already has {sugerida}, a detail sub-account under 133005. Until then, no advances can be recorded.",
-        "noDetalle": "The configured account ({cuenta}) is not a detail sub-account under 1330. Choose a detail account in Accounting setup; until then, no advances can be recorded.",
-        "configurar": "Go to Accounting setup"
+        "noDetalle": "The configured account ({cuenta}) is not a detail sub-account. Choose an eight-digit sub-account under 133005 in Accounting settings; until then, advances cannot be recorded.",
+        "configurar": "Go to Accounting setup",
+        "fuera133005": "The configured account ({cuenta}) is a detail account but not under 133005. If your chart uses another account for supplier advances, approve it as equivalent with a note; otherwise choose a 133005xx sub-account.",
+        "aprobarEquivalencia": "Approve equivalence"
       },
       "retenciones": {
         "naturaleza": "Nature of the advance",
         "naturalezas": {
           "financiacion": {
             "titulo": "Financing advance",
-            "ayuda": "The supplier offsets it against its invoice. Withholding is applied when the invoice is recorded."
+            "ayuda": "A true advance: withholding is assessed when it becomes a payment or installment of the price, when offset against the invoice."
           },
           "pago_anticipado_precio": {
             "titulo": "Prepayment of the price",
             "ayuda": "It is part of the purchase price. Withholdings are evaluated now, on payment."
           }
         },
-        "tarifaIva": "VAT on the transaction",
+        "tarifaIva": "VAT",
         "tarifaIvaPlaceholder": "Choose the rate",
         "sinIva": "No VAT",
         "tarifa": "VAT {tarifa}%",
         "conceptoFuente": "Income tax withholding concept",
         "conceptoPlaceholder": "Choose the concept",
-        "conceptoIca": "Municipal ICA withholding",
-        "conceptoIcaAyuda": "ICA withholding depends on the municipal rule.",
+        "conceptoIca": "Municipal ICA withholding rule",
+        "conceptoIcaAyuda": "Municipality, activity, per-mille rate and rule in force, recorded by the Accountant.",
         "icaSinConfirmar": "Not confirmed (stays pending)",
         "titulo": "Evaluated withholdings",
         "completa": "Choose the supplier, the amount and the data above to evaluate withholdings.",
@@ -45994,7 +46186,8 @@
         "estados": {
           "practicar": "Applied",
           "no_aplica": "Not applicable",
-          "pendiente": "Pending"
+          "pendiente": "Pending",
+          "diferida": "Deferred"
         },
         "sobreBase": "{tarifa}% on {base}",
         "total": "Total withholding",
@@ -46005,12 +46198,9 @@
         "pendienteListadoTitulo": "{count, plural, one {# advance with pending withholding} other {# advances with pending withholding}}",
         "pendienteListadoDescripcion": "A rule, the tax profile, the supplier’s data or the municipal ICA rule was missing. Review them with the accountant.",
         "motivos": {
-          "financiacion_se_retiene_al_causar": "Financing advance: withholding is applied when the invoice is recorded.",
           "sin_perfil_tributario": "The organization has no tax profile in force.",
           "perfil_requiere_revision": "The tax profile in force is flagged for review.",
           "organizacion_no_agente_retencion": "The organization is not an income tax withholding agent.",
-          "proveedor_autorretenedor": "The supplier is a self-withholder.",
-          "proveedor_regimen_simple": "The supplier is under the simplified tax regime (SIMPLE).",
           "proveedor_sin_datos_fiscales": "The supplier’s tax data is missing (regime and responsibilities).",
           "sin_regla_retefuente": "No income tax withholding concept is configured.",
           "concepto_sin_elegir": "Choose the income tax withholding concept for the transaction.",
@@ -46019,12 +46209,51 @@
           "operacion_sin_iva": "The transaction carries no VAT.",
           "organizacion_no_agente_reteiva": "The organization is not a VAT withholding agent.",
           "proveedor_no_responsable_iva": "The supplier is not VAT-registered.",
-          "ambos_grandes_contribuyentes": "VAT withholding does not apply between large taxpayers.",
           "sin_regla_reteiva": "No VAT withholding is configured.",
-          "sin_regla_reteica_municipal": "No ICA withholding is configured for the municipality.",
-          "norma_municipal_sin_confirmar": "The municipal ICA rule is not confirmed: choose the municipality’s withholding.",
+          "sin_regla_reteica_municipal": "No municipal ICA withholding rules are recorded.",
+          "norma_municipal_sin_confirmar": "Choose the municipal ICA withholding rule (municipality, activity and rule).",
           "valor_cero": "The withholding amounts to zero.",
-          "cuenta_retencion_no_valida": "The withholding account is not a posting account in the chart."
+          "cuenta_retencion_no_valida": "The withholding account is not a posting account in the chart.",
+          "se_evalua_al_pago_o_abono": "Financing advance: assessed when it becomes a payment or installment of the price.",
+          "proveedor_simple_acreditado": "Supplier with certified SIMPLE regime status: no income tax withholding applies.",
+          "simple_sin_acreditar": "The supplier appears as SIMPLE but that status is not certified (record the support on the supplier).",
+          "autorretenedor_autorizado_concepto": "The supplier is an authorized self-withholder for this concept.",
+          "autorretencion_sin_verificar": "The RUT says self-withholder, but the authorization and the concepts it covers are not verified.",
+          "grandes_contribuyentes_por_verificar": "Purchase between large taxpayers: verify the case before applying or excluding the VAT withholding.",
+          "supuesto_compra_a_simple_por_confirmar": "Purchase from a VAT-registered SIMPLE supplier: confirm whether the VAT withholding case applies.",
+          "territorialidad_sin_confirmar": "Confirm that the activity takes place in the rule’s municipality.",
+          "regla_ica_no_vigente": "The chosen ICA withholding rule is not in force today.",
+          "proveedor_no_sujeto_ica": "The supplier has the verified status of not subject to ICA.",
+          "aiu_fundamento_por_validar": "AIU transaction: the VAT withholding stays pending until the applicable rule is recorded with its legal basis."
+        },
+        "sinReglasIca": "No municipal ICA withholding rules are recorded: the ICA withholding stays pending.",
+        "reglaIca": "{nombre} · {tarifa} ‰",
+        "territorial": "The activity takes place in this municipality",
+        "territorialAyuda": "ICA territoriality: unless confirmed, the ICA withholding stays pending.",
+        "diferidaAyuda": "Deferred: it will be assessed when the advance becomes a payment or installment of the price.",
+        "composicion": {
+          "titulo": "Make-up of the transaction",
+          "homogenea": "VAT-inclusive amount",
+          "componentes": "By components",
+          "homogeneaAyuda": "Only for a uniform amount at the general rate ({tarifa} %): the base is the amount divided by 1.{tarifa}. With excluded or exempt items, other rates or AIU, use «By components».",
+          "componentesAyuda": "Detail each part with its treatment. The VAT withholding is computed on the VAT of the taxed parts (in AIU, on the profit).",
+          "linea": "Component {n}",
+          "tratamiento": "Treatment",
+          "base": "Base (before VAT)",
+          "descripcion": "Description",
+          "agregar": "Add component",
+          "quitar": "Remove component {n}",
+          "quitarCorto": "Remove",
+          "suma": "Total of components (base + VAT)",
+          "tratamientos": {
+            "gravado": "Subject to VAT",
+            "exento": "Exempt",
+            "excluido": "Excluded",
+            "no_sujeto": "Not subject",
+            "aiu_administracion": "AIU · administration",
+            "aiu_imprevistos": "AIU · contingencies",
+            "aiu_utilidad": "AIU · profit (carries VAT)"
+          }
         }
       },
       "conciliacion": {
@@ -46041,7 +46270,82 @@
         "anticipos": "Advances",
         "auxiliarNit": "Ledger by tax ID",
         "si": "Yes",
-        "no": "No"
+        "no": "No",
+        "pendientes": "Open follow-ups",
+        "cruzado": "Offset against consignment"
+      },
+      "vincular": {
+        "titulo": "Link to a draft invoice",
+        "descripcion": "{proveedor} · available {saldo}",
+        "porQueTitulo": "Why link",
+        "porQue": "When the invoice is recorded, the system will not let it withhold again on the base already withheld in the advance: only on the remaining base.",
+        "factura": "Draft purchase invoice",
+        "facturaPlaceholder": "Choose the invoice",
+        "opcion": "{numero} · {total} · {fecha}",
+        "yaVinculado": "already linked {monto}",
+        "sinBorradores": "This supplier has no draft purchase invoices.",
+        "eligeFactura": "Choose the invoice.",
+        "monto": "Advance amount linked",
+        "hasta": "Up to {monto}",
+        "confirmar": "Link",
+        "exito": "Advance linked to invoice {factura} for {monto}."
+      },
+      "pendientes": {
+        "titulo": "Advance accounting follow-ups",
+        "descripcion": "They stay open until resolved with a resolution and its support.",
+        "abiertos": "Open",
+        "resueltos": "Resolved",
+        "sinAbiertos": "No open follow-ups.",
+        "sinResueltos": "No resolved follow-ups yet.",
+        "resolver": "Resolve",
+        "resolverTitulo": "Resolve follow-up",
+        "resolverConfirmar": "Mark as resolved",
+        "resolucion": "Resolution",
+        "resolucionPlaceholder": "What was decided and what adjustment was made",
+        "soporte": "Support",
+        "exito": "Follow-up resolved.",
+        "periodos": "Periods to review: {periodos}.",
+        "resuelto": "Resolved: {resolucion} (support: {soporte}).",
+        "estados": {
+          "abierto": "Open",
+          "resuelto": "Resolved"
+        },
+        "tipos": {
+          "retencion_por_evaluar": "Withholding to assess",
+          "retencion_duplicada": "Withholding repeated on the invoice",
+          "devolucion_retenciones_por_definir": "Withholdings of a refund to define",
+          "anulacion_caja_cerrada": "Void with the till already closed",
+          "correccion_declaracion": "Correction of the withholding return"
+        },
+        "ayuda": {
+          "retencion_por_evaluar": "Some data was missing to assess a withholding when paying out.",
+          "retencion_duplicada": "A withholding the invoice repeated on the advance’s base was corrected.",
+          "devolucion_retenciones_por_definir": "The refund lowered only the money; the withholdings of the refunded part are still to be identified.",
+          "anulacion_caja_cerrada": "The original cash count was kept; review that till’s difference against the accounting adjustment.",
+          "correccion_declaracion": "A refund or withholding reimbursement requires correcting the period return."
+        }
+      },
+      "equivalencia": {
+        "titulo": "Approve equivalent account",
+        "descripcion": "The advances account must be a detail sub-account under 133005. Another account is used only with an approved equivalence.",
+        "cuenta": "Account",
+        "nota": "Approval note",
+        "notaAyuda": "Why this account plays the role of 133005 in your chart (minutes, accounting policy).",
+        "confirmar": "Approve",
+        "exito": "Account {cuenta} approved as equivalent."
+      },
+      "exceso": {
+        "titulo": "Excess or undue withholding",
+        "descripcion": "With the correct calculation, the excess is reimbursed to the supplier. The advance does not change.",
+        "clase": "Withholding",
+        "clasePlaceholder": "Choose the withholding",
+        "baseCorrecta": "Correct base",
+        "tarifaCorrecta": "Correct rate",
+        "correcta": "Correct withholding",
+        "exceso": "Excess reimbursed",
+        "como": "How it is reimbursed",
+        "confirmar": "Reimburse the excess",
+        "exito": "{monto} reimbursed to {proveedor}."
       }
     },
     "dinero": {
@@ -47648,7 +47952,11 @@
       "recibir": "Receive goods",
       "vincular": "Link organization",
       "nuevaEntregada": "New delivered note",
-      "devolver": "Return goods"
+      "devolver": "Return goods",
+      "novedad": "Record shortage or damage",
+      "cruzarAnticipo": "Offset advance",
+      "cuentas": "Consignment accounts",
+      "reconocer": "Recognize fee"
     },
     "buscar": {
       "recibidas": "Search note or consignor",
@@ -47710,7 +48018,9 @@
       "valorEnTuPoder": "Value in your possession",
       "vendidoSinLiquidar": "Sold, not settled",
       "venta": "Sale",
-      "precioDueno": "Owner's price"
+      "precioDueno": "Owner's price",
+      "costoAcreditado": "Credited cost",
+      "novedades": "Shortages and damage"
     },
     "vacio": {
       "recibidasTitulo": "You hold no third-party goods",
@@ -47779,7 +48089,7 @@
         "gastos": "Bears expenses"
       },
       "facturaMandatario": "In intermediation the agent (the consignee) invoices on the owner's behalf, separating third-party sales from its own.",
-      "impuestosPorLey": "VAT and withholdings are not chosen: they are determined by law with the facts of each settlement. Anything not configured remains as an accounting pending item.",
+      "impuestosPorLey": "VAT and withholdings are not chosen: the law determines them from the facts. Withholdings apply on payment or credit, separating the sale from the fee and using the principal’s tax status. Anything not set up is left as a pending accounting item.",
       "mandanteEntregadaPendiente": "In intermediation the delivery works; the owner-side settlement awaits the Accountant's criteria.",
       "errores": {
         "contrato": "Choose the contract classification.",
@@ -47788,8 +48098,47 @@
         "remuneracion": "Choose how the fee is set.",
         "base": "Choose the percentage base.",
         "obligacion": "Choose when the obligation to the owner arises.",
-        "riesgos": "Define who bears returns, losses and expenses."
-      }
+        "riesgos": "Define who bears returns, losses and expenses.",
+        "estimatorio_bloqueado": "Estimatory consignment is not available until arts. 438 and 455 are set up.",
+        "condicion": "Choose the accounting role.",
+        "valoracion": "Choose how custody is valued.",
+        "reconocimiento": "Choose when your fee is recognized.",
+        "factura_remuneracion": "State whether the fee is invoiced separately.",
+        "obligacion_posterior": "Describe the later obligation (at least 10 characters)."
+      },
+      "estimatorioBloqueado": {
+        "titulo": "Estimatory consignment is not available yet",
+        "descripcion": "It stays blocked until the rules of articles 438 and 455 of the Tax Statute are set up with the Accountant. It was left as a pending accounting item."
+      },
+      "condicion": "Accounting role",
+      "condiciones": {
+        "agente": "Agent (the intermediary only earns its fee)",
+        "principal": "Principal"
+      },
+      "tributario": "Tax treatment",
+      "tributarios": {
+        "mandato": "Mandate (set by the legal form)",
+        "estimatorio_438_455": "Estimatory, arts. 438 and 455 (set by the legal form)"
+      },
+      "valoracion": "Custody valuation",
+      "valoracionAyuda": "The value used to control the goods in memorandum accounts. It never becomes your asset.",
+      "valoraciones": {
+        "costo_acreditado": "Cost credited by the owner",
+        "valor_convenido": "Agreed value (owner price)"
+      },
+      "reconocimiento": "When your fee is earned",
+      "reconocimientoAyuda": "It is recognized when earned under the obligations fulfilled; the settlement date does not defer it.",
+      "reconocimientos": {
+        "al_vender": "On selling the unit",
+        "obligacion_posterior": "On fulfilling a later contract obligation"
+      },
+      "facturaRemuneracion": "Is the fee invoiced separately?",
+      "facturaRemuneracionAyuda": "If it is an independent service with an invoicing obligation, the settlement does not replace that invoice.",
+      "si": "Yes",
+      "no": "No",
+      "obligacionPosterior": "Later obligation that conditions the fee",
+      "obligacionPosteriorAyuda": "Only if real and in the contract: the fee is recognized when fulfilled, with evidence.",
+      "obligacionPosteriorPlaceholder": "For example: install the equipment and leave it working at the buyer’s site"
     },
     "validacion": {
       "consignante": "Choose the consignor.",
@@ -47799,7 +48148,9 @@
       "precioLiquidacion": "Each product needs a settlement price greater than zero and not above the agreed price.",
       "cuentaRecaudo": "It must be an 8-digit sub-account under 281510.",
       "condiciones": "Complete the contract terms.",
-      "correo": "Enter a valid email."
+      "correo": "Enter a valid email.",
+      "costoAcreditado": "Each product needs the cost credited by the owner, greater than zero.",
+      "sinCostoAcreditadoEnCopia": "The note does not include the credited cost of every product: use the agreed value or ask the consignor to complete it."
     },
     "recibir": {
       "titulo": "Receive goods on consignment",
@@ -47825,12 +48176,12 @@
       "vistaPrevia": "Preview · memorandum accounts",
       "avisoTitulo": "It does not touch your inventory or your cost",
       "aviso": {
-        "intermediacion": "Products enter the warehouse as the consignor's stock: they can be sold in the POS and the usual invoice, but they do not add to your accounting inventory. The owner's proceeds go to their 281510 sub-account.",
-        "estimatorio": "Products enter the warehouse as the consignor's stock. What you sell you acquire when you sell it: settling creates the usual purchase invoice, which you complete with the consignor's supporting document."
+        "intermediacion": "Products enter the warehouse as the consignor's stock: they can be sold in the POS and the usual invoice, but they do not add to your accounting inventory. The owner's proceeds go to their 281510 sub-account."
       },
       "exito": "Note {numero} received from {consignante}.",
       "motivoSerial": "Serialized products cannot be received on consignment yet.",
-      "motivoSinStock": "The product does not track stock."
+      "motivoSinStock": "The product does not track stock.",
+      "costoAcreditadoDe": "Credited cost of {producto}"
     },
     "asiento": {
       "debito": "Debit",
@@ -47842,10 +48193,8 @@
       "ordenCorto": "On consignment",
       "recaudoCorto": "Sales on behalf of third parties",
       "remuneracionCorto": "Fee (sale for a fee)",
-      "costoCorto": "Acquisition cost",
       "d": "D {valor}",
-      "c": "C {valor}",
-      "proveedores": "2205 Suppliers (when confirming the purchase invoice)"
+      "c": "C {valor}"
     },
     "vincular": {
       "titulo": "Link with another organization",
@@ -47893,13 +48242,15 @@
         "consignatario": "The consignee"
       },
       "facturaMandatario": "You, as agent, on the owner's behalf",
-      "factura": {
-        "consignatario": "The consignee",
-        "consignante": "The consignor"
-      },
       "liquidacionResumen": "Sale {venta} · fee {remuneracion}",
       "vinculadaTitulo": "Linked with {consignante}",
-      "vinculadaDescripcion": "The consignor sees for THIS note what was received, sold, returned and held, and receives your settlements. They do not see your customers, other products, prices or accounting."
+      "vinculadaDescripcion": "The consignor sees for THIS note what was received, sold, returned and held, and receives your settlements. They do not see your customers, other products, prices or accounting.",
+      "liquidacionResumenDerechos": "Sale {venta} · fee {remuneracion} · claims deducted {derechos}",
+      "derechosTitulo": "Claims against the owner for {valor}",
+      "porReconocerTitulo": "Fee to recognize: {valor}",
+      "porReconocerDescripcion": "It is earned when the later contract obligation is fulfilled. Use “Recognize fee” with the evidence.",
+      "remuneracionPorDevengar": "Fee awaiting the later obligation",
+      "remuneracionPorDevengarAyuda": "It stays in the owner’s 281510 sub-account until recognized."
     },
     "liquidar": {
       "titulo": "Settlement to consignor · {numero}",
@@ -47908,9 +48259,7 @@
       "anularUltima": "Void the last one",
       "procesando": "Settling…",
       "confirmar": "Settle",
-      "confirmarEstimatorio": "Settle and create the purchase invoice",
       "exito": "Settlement recorded. Owner's balance: {valor}.",
-      "exitoEstimatorio": "Settlement recorded. Complete the purchase invoice with the consignor's supporting document ({valor}).",
       "anulada": "Settlement voided.",
       "sinVentas": "There are no unsettled sales.",
       "resumen": "Settlement",
@@ -47920,20 +48269,30 @@
       "remuneracionPrecio": "Your fee (sale − settlement price)",
       "impuestos": "VAT and withholdings",
       "porDeterminar": "To be determined",
-      "impuestosAyuda": "Determined by law with the facts of the settlement; they remain as an accounting pending item.",
+      "impuestosAyuda": "Resolved on settlement, separately: those of the operation and those of your fee, with the configured rules.",
       "saldoDueno": "Balance for {consignante}",
       "vistaPrevia": "Journal entry preview",
-      "notaIntermediacion": "Only the fee is income. The balance stays in the owner's 281510 sub-account; never 2205.",
-      "notaEstimatorio": "The acquisition arises on settlement: the usual purchase invoice records the cost, the deductible VAT and the payable.",
+      "notaIntermediacion": "Only the fee is income. The owner’s balance stays in their 281510 sub-account; never 2205, never a purchase.",
       "bajoPrecioTitulo": "Sale below the owner's price",
       "alLiquidar": "When settling",
       "alLiquidarIntermediacion": "The owner's balance is paid from Treasury › Third-party money. If the consignor is linked, the settlement reaches their GO Admin.",
-      "alLiquidarEstimatorio": "A draft purchase invoice is created; confirming it creates the payable, paid from Accounts payable (a supplier advance can be applied there).",
       "irDineroTerceros": "Go to Third-party money",
-      "verFacturaCompra": "Purchase invoice",
       "anularTitulo": "Void the last settlement",
       "anularDescripcion": "The fee reversal entry is recorded and what was sold becomes unsettled again.",
-      "anularConfirmar": "Void settlement"
+      "anularConfirmar": "Void settlement",
+      "derechosDescontados": "Claims against the owner deducted (returned sale)",
+      "derechosDescontadosAyuda": "What the owner was due from that sale is deducted; the settlement calculates the final amount.",
+      "remuneracionYaDevengada": "Your fee was already recognized with each sale (D 281510 sub-account / C 413512 sub-account). This settlement records no other entry.",
+      "derechosTitulo": "Claims against the owner: {valor}",
+      "derechosDescripcion": "These are returns of sales you already settled with the owner. They are not deducted automatically: only with an agreement with them.",
+      "descontarConAcuerdo": "Deduct them in this settlement, with the owner’s agreement",
+      "acuerdo": "Agreement with the owner",
+      "acuerdoPlaceholder": "Who approved it, when and how",
+      "derechosSinOtra": "If there will be no other settlement, collect them from the owner through the usual flow: they were left as a pending accounting item.",
+      "facturaRemuneracionTitulo": "The settlement does not replace your fee invoice",
+      "facturaRemuneracionDescripcion": "The contract says the fee is a service with an invoicing obligation: issue it separately (its VAT goes on that invoice, without duplicating it). It was left as a pending accounting item.",
+      "remuneracionEsperaObligacion": "Your fee is recognized when the later contract obligation is fulfilled, with evidence; this settlement does not record it.",
+      "retencionesAlLiquidar": "On settlement, withholdings on the operation and on your fee are resolved; anything missing stays pending and reconcilable."
     },
     "porAceptar": {
       "tipos": {
@@ -47983,7 +48342,9 @@
         "precio_bajo_pactado": "A price is below the agreed one",
         "excede_en_su_poder": "What was reported exceeds what they hold",
         "comision_distinta": "The commission differs from your note",
-        "devolucion_posterior": "It includes returns of already settled sales"
+        "devolucion_posterior": "It includes returns of already settled sales",
+        "mandante_pendiente": "Under a mandate, the owner-side settlement awaits the Accountant’s criteria",
+        "estimatorio_bloqueado": "Estimatory consignment is not available until arts. 438 and 455 are set up"
       },
       "rechazarTitulo": "Reject with a reason",
       "rechazarDescripcion": "The reason reaches {de}. Nothing changes in either organization.",
@@ -48041,22 +48402,19 @@
       "stock_insuficiente": "There is not enough stock in the warehouse.",
       "excede_en_su_poder": "The quantity exceeds what you hold.",
       "sin_cuenta_orden_consignacion": "Account 911520 “On consignment” is missing from the chart of accounts. It was left as an accounting pending item.",
-      "sin_cuenta_contra_orden": "A posting account in group 94 is missing. It was left as an accounting pending item.",
+      "sin_cuenta_contra_orden": "Define the group 94 offset account in Consignment accounts. It was left as a pending accounting item.",
       "sin_cuenta_recaudo_propietario": "The consignor's 281510 sub-account is missing. Create it in the chart of accounts and choose it when receiving. It was left as an accounting pending item.",
       "cuenta_recaudo_invalida": "The proceeds account must be an 8-digit posting sub-account under 281510.",
       "sin_cuenta_remuneracion": "The 8-digit sub-account under 413512 for your fee is missing. It was left as an accounting pending item.",
-      "sin_cuenta_costo": "The cost of sales account is missing in Accounting settings. It was left as an accounting pending item.",
       "nota_no_encontrada": "The note was not found.",
       "liquidacion_no_encontrada": "The settlement was not found.",
       "liquidacion_pendiente": "A settlement is waiting for its purchase invoice.",
       "liquidacion_no_es_la_ultima": "Only the last settlement can be voided.",
       "liquidacion_anulada": "The settlement is voided.",
       "liquidacion_aceptada_por_el_dueno": "The owner already accepted this settlement: correct it with a return or in the next one.",
-      "anular_factura_compra_primero": "Void this settlement's purchase invoice first.",
       "sin_ventas_por_liquidar": "There are no sales to settle.",
       "saldo_a_favor_del_consignatario": "Returns exceed what was sold: the owner owes you that balance. Record it with the Accountant.",
       "venta_bajo_precio_pactado": "It was sold below the owner's price. Review the sale or define with the Accountant who bears the difference.",
-      "devolucion_estimatorio_pendiente": "In sale or return, returning something already acquired is done with a credit note on the purchase invoice.",
       "motivo_obligatorio": "Write the reason.",
       "documento_no_encontrado": "The document was not found.",
       "documento_no_disponible": "This document is no longer awaiting acceptance.",
@@ -48075,11 +48433,181 @@
       "transicion_invalida": "That action does not apply in the current status.",
       "factura_no_encontrada": "The invoice was not found.",
       "factura_distinta": "The settlement already has another invoice.",
-      "proveedor_distinto": "The purchase invoice belongs to another supplier.",
       "documento_anulado": "The invoice is voided.",
-      "factura_compra_no_creada": "The settlement was recorded, but the purchase invoice could not be created. Create it from Purchase invoices.",
       "asiento_no_creado": "The journal entry could not be recorded. Check the chart of accounts and the accounting period.",
-      "error_desconocido": "Something went wrong. Try again."
+      "error_desconocido": "Something went wrong. Try again.",
+      "condicion_contable_obligatoria": "Choose the accounting role (agent or principal).",
+      "valoracion_obligatoria": "Choose how custody is valued.",
+      "estimatorio_bloqueado_438_455": "Estimatory consignment is not available until arts. 438 and 455 are set up. It was left as a pending accounting item.",
+      "liquidacion_mandante_pendiente": "Under a mandate, the owner-side settlement awaits the Accountant’s criteria.",
+      "producto_ajeno": "That product belongs to a consignor: you cannot deliver it as your own.",
+      "costo_acreditado_obligatorio": "A product is missing its credited cost.",
+      "cuenta_orden_invalida": "The memorandum account must be 911520 or its sub-account, a posting account in your chart.",
+      "cuenta_contra_invalida": "The offset must be a group 94 posting account in your chart (never 9905).",
+      "cuenta_remuneracion_invalida": "The fee account must be an 8-digit posting sub-account under 413512.",
+      "acuerdo_obligatorio": "To deduct a claim against the owner, record the agreement.",
+      "evidencia_obligatoria": "Describe the evidence (at least 5 characters).",
+      "anticipo_no_encontrado": "That advance does not belong to this consignor.",
+      "anticipo_sin_saldo": "The advance does not have enough balance.",
+      "excede_obligacion_con_el_dueno": "The amount exceeds what is currently owed to the owner.",
+      "obligacion_posterior_obligatoria": "Describe the later obligation that conditions the fee.",
+      "reconocimiento_no_aplica": "This note recognizes the fee on selling each unit.",
+      "sin_remuneracion_por_devengar": "There is no fee to recognize.",
+      "soporte_obligatorio": "Describe the support (at least 5 characters).",
+      "retencion_no_encontrada": "We could not find that withholding.",
+      "regla_retencion_invalida": "The chosen rule is not an active withholding of that class in your organization."
+    },
+    "novedad": {
+      "titulo": "Record shortage or damage",
+      "descripcion": "It leaves physical control and the memorandum accounts. It creates no expense or payable: it is left as a pending accounting item to support the loss.",
+      "confirmar": "Record",
+      "producto": "Product",
+      "productoEnTuPoder": "{producto} · in your possession {n}",
+      "tipo": "Type",
+      "tipos": {
+        "faltante": "Shortage",
+        "dano": "Damage"
+      },
+      "cantidad": "Quantity",
+      "responsable": "Responsible party",
+      "responsables": {
+        "dueno": "The owner",
+        "consignatario": "You (consignee)",
+        "tercero": "A third party",
+        "por_determinar": "To be determined"
+      },
+      "evidencia": "Evidence",
+      "evidenciaAyuda": "Count, report, photos or record that prove it.",
+      "obligacion": "Obligation",
+      "obligacionAyuda": "What is owed to whom, if already known.",
+      "asiento": "Entry: D 911520 / C the group 94 offset account, at custody value.",
+      "exito": "Incident recorded. It was left as a pending accounting item.",
+      "validacion": {
+        "linea": "Choose the product.",
+        "tipo": "Choose the type.",
+        "cantidad": "Quantity must be greater than zero and not exceed what you hold.",
+        "responsable": "Choose the responsible party."
+      }
+    },
+    "cruce": {
+      "titulo": "Offset an advance against what is owed to the owner",
+      "descripcion": "An advance you gave {consignante} is offset against their actual mandate balance. No purchase or support document.",
+      "confirmar": "Offset",
+      "sinAnticipos": "This consignor has no open advances.",
+      "anticipo": "Advance",
+      "opcion": "{fecha} · balance {saldo}",
+      "monto": "Amount to offset",
+      "asiento": "Entry: D {recaudo} (owed to the owner) / C {cuenta} (the advance).",
+      "exito": "Advance offset for {valor}.",
+      "validacionMonto": "The amount must be greater than zero and not exceed the advance balance.",
+      "validacionAnticipo": "Choose the advance."
+    },
+    "cuentas": {
+      "titulo": "Consignment accounts",
+      "descripcion": "The memorandum and fee accounts your received consignments use. They must exist in your chart of accounts and be posting accounts.",
+      "guardar": "Save",
+      "contra": "Group 94 offset account",
+      "contraAyuda": "A defined group 94 account (never 9905). Without it you cannot receive goods on consignment.",
+      "orden": "“On consignment” memorandum account",
+      "ordenAyuda": "911520 or its sub-account. Leave it empty to use 911520.",
+      "remuneracion": "Fee sub-account",
+      "remuneracionAyuda": "8-digit sub-account under 413512 “Sales for a fee or under contract”.",
+      "exito": "Consignment accounts saved.",
+      "faltanTitulo": "Set up the consignment accounts",
+      "faltanDescripcion": "The group 94 offset account is missing: until it is defined you cannot receive goods on consignment.",
+      "validacion": {
+        "orden": "It must be 911520 or an 8-digit sub-account under 911520.",
+        "contra": "It must be a group 94 account (for example 9405).",
+        "remuneracion": "It must be an 8-digit sub-account under 413512."
+      }
+    },
+    "entregada": {
+      "sinAsientoTitulo": "No entry: it is still your inventory",
+      "sinAsientoDescripcion": "The goods leave the warehouse to “held by” your consignee, at cost ({costo} estimated), without changing accounts or recording income or cost. Shipping is not a sale."
+    },
+    "reconocer": {
+      "titulo": "Recognize fee",
+      "descripcion": "{valor} of what was sold and not yet recognized is recognized, on fulfilling the later obligation.",
+      "confirmar": "Recognize",
+      "evidencia": "Evidence of fulfillment",
+      "evidenciaAyuda": "Record, certificate or document proving the obligation was fulfilled.",
+      "asiento": "Entry: D {recaudo} (owner’s sub-account) / C {remuneracion} (your fee).",
+      "exito": "Fee recognized for {valor}.",
+      "validacionEvidencia": "Describe the evidence (at least 10 characters)."
+    },
+    "retenciones": {
+      "configTitulo": "Consignment withholdings",
+      "configDescripcion": "Choose the configured withholding rule (the same as purchases) for each case. Without a rule, the withholding stays pending: never zero.",
+      "sinRegla": "No rule (stays pending)",
+      "ambitos": {
+        "operacion": {
+          "titulo": "Withholdings on the operation",
+          "descripcion": "On the sale on behalf of the principal; withheld by the buyer who is an agent, with the principal’s tax status."
+        },
+        "remuneracion": {
+          "titulo": "Withholdings on your fee",
+          "descripcion": "On the commission; withheld by the owner if an agent, with your tax status."
+        }
+      },
+      "clases": {
+        "retefuente": "Income tax withholding",
+        "reteiva": "VAT withholding",
+        "reteica": "ICA withholding"
+      },
+      "grupos": {
+        "consumidor_final": "final consumer",
+        "sin_datos": "buyers without tax data",
+        "no_agente": "non-agent buyers",
+        "agente": "agent buyers",
+        "dueno": "the owner"
+      },
+      "base": "base {base}",
+      "sinBase": "base to be determined",
+      "tarifa": "rate {tarifa} %",
+      "motivos": {
+        "sin_regla_configurada": "no withholding rule chosen for this scope",
+        "regla_no_vigente": "the chosen rule is inactive or of another class",
+        "sin_uvt": "the year’s UVT is missing",
+        "bajo_base_minima": "below the rule’s minimum base",
+        "operacion_sin_iva": "the operation has no VAT",
+        "sin_base": "no base",
+        "venta_a_consumidor_final": "sale to a final consumer",
+        "comprador_no_agente_retencion": "the buyer is not a withholding agent",
+        "calidad_comprador_sin_datos": "the buyer’s tax status is missing",
+        "calidad_mandante_sin_datos": "the principal’s tax status is missing",
+        "mandante_autorretenedor": "the principal is a self-withholder",
+        "mandante_simple": "the principal is under the SIMPLE regime",
+        "mandante_no_responsable_iva": "the principal is not VAT-registered",
+        "calidad_iva_mandante_sin_datos": "the principal’s VAT status is missing",
+        "norma_municipal_sin_confirmar": "municipal rule not confirmed",
+        "calidad_agente_reteica_por_confirmar": "ICA withholding agent status to be confirmed",
+        "sin_remuneracion": "no fee",
+        "sin_perfil_tributario": "the organization’s tax profile is missing",
+        "intermediario_no_responsable_iva": "the intermediary is not VAT-registered",
+        "iva_de_la_remuneracion_por_determinar": "the fee’s VAT is determined separately",
+        "calidad_pagador_sin_datos": "the owner’s tax status is missing",
+        "pagador_no_agente_retencion": "the owner is not a withholding agent",
+        "intermediario_autorretenedor": "the intermediary is a self-withholder",
+        "intermediario_simple": "the intermediary is under the SIMPLE regime"
+      },
+      "conciliadoCon": "Reconciled: {valor} · {soporte}",
+      "estados": {
+        "determinada": "To reconcile",
+        "pendiente": "Pending",
+        "no_aplica": "Not applicable",
+        "conciliada": "Reconciled"
+      },
+      "conciliar": "Reconcile",
+      "conciliarTitulo": "Reconcile withholding",
+      "conciliarDescripcion": "{clase}: record the amount stated on the agent’s certificate.",
+      "conciliada": "Withholding reconciled.",
+      "valorCertificado": "Certificate amount",
+      "valorCertificadoAyuda": "The one on the support; zero only if the support says so.",
+      "soporte": "Support",
+      "soporteAyuda": "Certificate number, who issued it and its date.",
+      "validacion": {
+        "valor": "Enter the certificate amount."
+      }
     }
   },
   "finanzasIva300": {
@@ -48115,7 +48643,14 @@
       "compras_bienes_general": "Domestic purchases of goods at the standard rate",
       "compras_servicios_5": "Domestic services at 5%",
       "compras_servicios_general": "Domestic services at the standard rate",
-      "devoluciones_ventas": "Sales returns"
+      "devoluciones_ventas": "Sales returns",
+      "exportacion_bienes": "Export of goods",
+      "exportacion_servicios": "Export of services",
+      "exentas_nacionales": "Domestic exempt operations",
+      "excluidas": "Excluded operations",
+      "no_gravadas": "Non-taxed income",
+      "importaciones_no_gravadas": "Non-taxed imports",
+      "compras_no_gravadas": "Domestic excluded, exempt and non-taxed purchases"
     },
     "banda": {
       "conciliado": "Draft reconciled with the books — not a tax return and not approved for tax purposes",
@@ -48138,15 +48673,18 @@
     "alertas": {
       "titulo": "Cross-period operations",
       "entrePeriodos": "{n} credit note(s) for invoices from an earlier period: they go to returns (42/79) in this period.",
-      "deOtroPeriodo": "{n} purchase(s) from an earlier period with VAT marked to be credited in this one.",
-      "grabadosDespues": "{n} entry(ies) recorded after their period was filed:"
+      "grabadosDespues": "{n} entry(ies) recorded after their period was filed:",
+      "notasDebito": "{n} debit note(s) for invoices from another period: if they correct an omission, review the return of the affected period.",
+      "causadasAntes": "{n} purchase(s) dated before the period: check the timing of the credit (art. 496).",
+      "correccionesDeclaracion": "{n} error correction(s) of sales from a period already filed, or marked \"a previous return must be corrected\": assess correcting that return."
     },
     "resumen": {
       "generado": "Output VAT (58 + 59 + 66)",
       "descontable": "Input VAT (71 + 72 + 74 + 75 + 79)",
       "diferencia": "Preliminary difference",
       "nota": "This is not the amount payable: the boxes still to fill (prior credit balance, VAT withheld from the company, adjustments, penalties) and the pending items are missing.",
-      "formulario": "Form: {valor}"
+      "formulario": "Form: {valor}",
+      "alCosto": "Non-deductible VAT charged to cost from the purchase entry (not in 2408 nor in pending items): {valor}."
     },
     "pendientes": {
       "titulo": "Pending classification",
@@ -48158,18 +48696,24 @@
       "sin_tipo_operacion": "Missing operation type (goods or services)",
       "operacion_especial": "Special operation (liquor, AIU, import, withdrawal, other)",
       "tarifa_no_prevista": "Rate other than 5% or 19%",
-      "exenta_sin_soporte": "Exempt without basis or support",
       "casilla_por_confirmar": "Exempt, excluded or out of scope: box to be confirmed with the accountant",
       "descontable_por_evaluar": "Purchase VAT to be assessed (not credited automatically)",
       "no_descontable_en_2408": "VAT marked non-creditable but booked in 2408 (needs an adjustment)",
-      "descontable_en_otro_periodo": "VAT credited in another period",
       "sin_lineas": "Document with an entry but no lines",
       "no_cuadra": "Lines do not match the books (book value shown)",
       "documento_de_otro_periodo": "Document with an entry from an earlier period",
       "reversa_contable": "Accounting reversal without a credit note",
-      "devolucion_compra_sin_descuento": "Purchase return whose VAT was not credited",
       "sin_soporte": "VAT entry without support",
-      "otro_movimiento": "Other VAT entry"
+      "otro_movimiento": "Other VAT entry",
+      "exportacion_sin_soporte": "Export without support (type, number and date)",
+      "exenta_sin_fundamento": "Exempt without legal basis",
+      "sin_fundamento": "Excluded or out of scope without legal basis",
+      "soporte_supuesto_especial": "Support document with VAT: special case to review",
+      "devolucion_iva_no_descontado": "Purchase return: VAT that had not been credited",
+      "devolucion_compra_no_cuadra": "Purchase return whose VAT does not match the entry",
+      "correccion_otro_periodo": "Error correction of a sale from another period: review that period",
+      "sugerido_por_confirmar": "Entry with a suggested nature to confirm",
+      "correccion_incompleta": "Incomplete error correction: the sale stays in its boxes"
     },
     "lados": {
       "generado": "Sales",
@@ -48180,7 +48724,8 @@
       "titulo": "Other VAT entries (2408)",
       "registrar": "Set nature",
       "cambiar": "Change",
-      "deducida": "inferred by the system"
+      "sugerido": "suggested: {naturaleza} · to confirm",
+      "correccionIncompleta": "Still missing: proof of the error, the resolution of the electronic document, or whether a previous return must be corrected."
     },
     "naturalezas": {
       "pago_dian": "Payment to the DIAN",
@@ -48191,7 +48736,9 @@
       "importacion": "Import",
       "otro": "Other",
       "reversa_contable": "Accounting reversal",
-      "sin_soporte": "Without support"
+      "sin_soporte": "Without support",
+      "correccion_error": "Error correction (the operation never existed)",
+      "sin_registro": "No recorded nature"
     },
     "destinos": {
       "no_afecta": "creates no output or input VAT",
@@ -48219,8 +48766,9 @@
     },
     "banderas": {
       "entrePeriodos": "Cross-period · invoice {factura}",
-      "deOtroPeriodo": "From another period",
-      "posterior": "Recorded after filing"
+      "posterior": "Recorded after filing",
+      "corrigeOtroPeriodo": "Debit note from another period · invoice {factura}",
+      "causadoAntes": "Accrued in an earlier period · check art. 496"
     },
     "naturaleza": {
       "titulo": "Nature of the entry",
@@ -48229,10 +48777,24 @@
       "campo": "Nature",
       "elegir": "Choose a nature",
       "factura": "Purchase invoice number",
-      "facturaAyuda": "The returned invoice. Boxes 56 and 66 are used only if its VAT was assessed as creditable.",
-      "base": "Returned base",
-      "soporte": "Support",
-      "soporteAyuda": "Supplier credit note, payment receipt or other document."
+      "facturaAyuda": "Find the returned invoice and tick the lines with their base and VAT. The base goes to box 56; the VAT to box 66 only if that line’s VAT was assessed as creditable. With a support document, its adjustment note is required.",
+      "soporte": "Support number or description",
+      "soporteAyuda": "Payment receipt, supplier credit note, minutes or other document.",
+      "soporteTipo": "Support type",
+      "soporteFecha": "Support date",
+      "devolucionTitulo": "Purchase return",
+      "buscar": "Find lines",
+      "iva": "VAT",
+      "totales": "Returned: base {base} · VAT {iva}",
+      "base": "Base",
+      "correccionTitulo": "Error correction: the transaction never existed",
+      "correccionAyuda": "Choosing \"error correction\" is not enough. The sale leaves the boxes only with the support proving the error (type, number and date), the electronic document resolved (electronic credit note, cancellation before the DIAN or a certificate, with its reference and date) and the answer on whether a previous return must be corrected. You can save your progress: while anything is missing, the sale stays in its boxes and the reversal stays pending.",
+      "resolucion": "Electronic document resolved with",
+      "resolucionReferencia": "Reference (number or CUFE)",
+      "resolucionFecha": "Resolution date",
+      "corrigeDeclaracion": "Must a previous return be corrected?",
+      "si": "Yes",
+      "no": "No"
     },
     "errores": {
       "tratamiento_invalido": "Choose whether the line is taxed, exempt, excluded or out of scope.",
@@ -48245,7 +48807,6 @@
       "motivo_requerido": "Write the reason (support, use, proportionality or timing).",
       "periodo_invalido": "The date or period is not valid.",
       "naturaleza_invalida": "Choose the nature of the entry.",
-      "devolucion_sin_factura": "Enter the returned purchase invoice and the base.",
       "soporte_requerido": "A valid adjustment needs its support.",
       "asiento_invalido": "The entry is not valid.",
       "fecha_presentacion_invalida": "The filing date cannot be before the end of the period.",
@@ -48255,7 +48816,17 @@
       "pendiente_activar": "This feature turns on once its database update is applied.",
       "factura_no_encontrada": "There is no purchase invoice with that number.",
       "datos_invalidos": "The data is not valid.",
-      "desconocido": "Could not save. Try again."
+      "desconocido": "Could not save. Try again.",
+      "exportacion_debe_ser_exenta": "An export is classified as exempt.",
+      "soporte_invalido": "The support is not valid.",
+      "soporte_no_descontable": "A purchase from a non-registered seller (support document) does not create input VAT by marking it: only a special case with its legal basis.",
+      "devolucion_incompleta": "The return requires the purchase, its lines, base, VAT, support and date.",
+      "devolucion_lineas_no_suman": "The returned lines do not add up to the base and VAT.",
+      "devolucion_lineas_ajenas": "Some line does not belong to that purchase.",
+      "devolucion_iva_no_cuadra": "The returned VAT does not match the entry’s VAT.",
+      "devolucion_ds_sin_nota_ajuste": "A support document return requires its adjustment note.",
+      "correccion_solo_reversas": "An error correction is only recorded on the operation’s reversal.",
+      "resolucion_invalida": "The electronic document resolution or its date is not valid."
     },
     "clasificar": {
       "titulo": "Line tax data",
@@ -48274,13 +48845,10 @@
       "elegir": "Choose",
       "fundamento": "Legal basis",
       "fundamentoAyuda": "Rule or support (optional except for exempt).",
-      "fundamentoExenta": "Required in practice: without basis or support, the draft leaves the line pending.",
       "descontableTitulo": "Input VAT creditability",
       "descontableAyuda": "Support, use, proportionality and timing are assessed (Tax Code arts. 485, 488, 490 and 496). It is never marked creditable automatically.",
       "descontable": "Creditability",
       "porcentaje": "Creditable percentage (%)",
-      "periodo": "Credited in the period of",
-      "periodoAyuda": "Empty = the document period.",
       "motivo": "Reason",
       "sinClasificar": "Unclassified",
       "tratamientos": {
@@ -48296,7 +48864,9 @@
         "aiu": "AIU",
         "licores": "Liquor",
         "retiro_inventario": "Inventory withdrawal",
-        "otra_especial": "Other special"
+        "otra_especial": "Other special",
+        "exportacion_bienes": "Export of goods",
+        "exportacion_servicios": "Export of services"
       },
       "descontables": {
         "por_evaluar": "To be assessed",
@@ -48308,7 +48878,22 @@
         "sugerida": "suggested",
         "heredada": "from the credited invoice",
         "manual": "confirmed"
-      }
+      },
+      "fundamentoSinIva": "Required for exempt, excluded and out-of-scope lines: without it, the draft leaves the line pending.",
+      "soporteTitulo": "Support for the condition",
+      "soporteExportacion": "An export requires its support (type, number and date); “exempt” plus a text does not prove it.",
+      "soporteAyuda": "Optional: the document that proves the exemption.",
+      "soporteTipo": "Support type",
+      "soporteNumero": "Number",
+      "soporteFecha": "Date",
+      "soportes": {
+        "declaracion_exportacion": "Export declaration",
+        "soporte_exportacion_servicios": "Services export support",
+        "otro": "Other"
+      },
+      "descontableSoporte": "Support document (purchase from a non-registered seller): it does not create input VAT by marking it; only a special case (type “other special” or “import”) with its legal basis.",
+      "porcentajeAyuda": "The base stays whole; only the VAT is limited (art. 490). Support the calculation in the reason.",
+      "oportunidad": "The VAT is credited in the tax period in which the purchase is booked; no period is chosen by hand (art. 496)."
     },
     "panel": {
       "titulo": "Line tax data",
@@ -48320,6 +48905,19 @@
       "baseIva": "Base {base} · VAT {iva}",
       "editar": "Edit",
       "clasificar": "Classify"
+    },
+    "fechas": "Booked {contabilizacion} · document {documento}",
+    "soportesMovimiento": {
+      "recibo_pago_dian": "Payment receipt (form 490)",
+      "nota_credito_proveedor": "Supplier credit note",
+      "nota_ajuste_documento_soporte": "Support document adjustment note",
+      "comprobante_interno": "Internal voucher or minutes",
+      "otro": "Other"
+    },
+    "resoluciones": {
+      "nota_credito_electronica": "Electronic credit note",
+      "anulacion_dian": "Cancellation or rejection before the DIAN",
+      "constancia": "Certificate (document never transmitted)"
     }
   }
 }

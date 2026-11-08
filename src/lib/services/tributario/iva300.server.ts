@@ -14,8 +14,8 @@ import {
   leerLineasFiscales,
   type Formulario300,
   type LineaFiscal,
-  type NaturalezaMovimiento,
   type SolicitudClasificacion,
+  type SolicitudNaturaleza,
   type TipoDocumentoLineas,
 } from '@/lib/finanzas/tributario/formulario300';
 import { ErrorTributario } from './tributario.server';
@@ -77,14 +77,6 @@ export async function clasificarLinea(ctx: Ctx, tabla: 'invoice_items' | 'sale_i
   });
   if (error) throw traducir(error as ErrorBase);
   return data;
-}
-
-export interface SolicitudNaturaleza {
-  naturaleza: NaturalezaMovimiento;
-  invoice_purchase_id: string | null;
-  base: number | null;
-  soporte: string | null;
-  nota: string | null;
 }
 
 export async function guardarNaturaleza(ctx: Ctx, asiento: number, datos: SolicitudNaturaleza | null): Promise<unknown> {

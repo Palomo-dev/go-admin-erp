@@ -39,17 +39,31 @@ function vigencia(extra: Partial<VigenciaPerfil> = {}): VigenciaPerfil {
     regimenRenta: 'ordinario',
     condicionIva: 'responsable',
     granContribuyente: false,
+    granContribuyenteActo: null,
+    granContribuyenteDesde: null,
     autorretenedor: false,
+    autorretenedorActo: null,
+    autorretenedorActoFecha: null,
+    autorretencionEspecial: false,
     agenteRetencionIva: false,
+    incActividad: null,
+    rteTipo: null,
+    rteIngresosSuperan160000Uvt: null,
+    noContribuyenteNaturaleza: null,
     responsabilidades: [],
     responsabilidadesRut: [],
     agenteRetencion: true,
     responsableInc: false,
     periodicidadIva: 'bimestral',
     motivoCambioPeriodicidad: null,
+    cambioPeriodicidadHecho: null,
+    cambioPeriodicidadNorma: null,
+    cambioPeriodicidadFecha: null,
+    cambioPeriodicidadEstado: 'no_aplica',
     advertenciasAceptadas: [],
     requiereRevision: false,
     regimenOrigen: null,
+    actualizadoEn: null,
     notas: null,
     ica: [],
     ...extra,
@@ -121,7 +135,10 @@ describe('perfil tributario', () => {
     // La organización de los parámetros es la que se pasa (la de la sesión).
     const p = parametrosGuardarPerfil(7, r.datos, ['fe_codigo_por_validar']);
     expect(p.p_organization_id).toBe(7);
-    expect(p).toMatchObject({ p_regimen_renta: 'ordinario', p_condicion_iva: 'responsable', p_responsabilidades_rut: ['05', '48'], p_advertencias_aceptadas: ['fe_codigo_por_validar'] });
+    expect(p.p_datos).toMatchObject({ regimen_renta: 'ordinario', condicion_iva: 'responsable', responsabilidades_rut: ['05', '48'], advertencias_aceptadas: ['fe_codigo_por_validar'] });
+    expect(p.p_datos.gran_contribuyente).toBe(true);
+    // Fechas mal formadas no pasan la forma.
+    expect(validarSolicitudPerfil({ ...valido, granContribuyenteDesde: '2025-13-01' })).toEqual({ ok: false, error: 'datos_invalidos' });
     expect(p.p_ica[0]).toEqual({ municipality_id: UUID, periodicidad: 'bimestral', tarifa_por_mil: 9.66, actividad: null });
     // Renta e IVA sin definir pasan la forma (la combinación los bloquea después).
     const sinDefinir = validarSolicitudPerfil({ ...valido, regimenRenta: '', condicionIva: null });

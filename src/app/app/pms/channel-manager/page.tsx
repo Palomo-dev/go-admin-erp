@@ -19,6 +19,18 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useBranch } from '@/lib/context/BranchContext';
+import { rutaConectar } from '@/lib/services/integrations/conexiones/rutaAsistente';
+
+/** Mensaje legible de un error desconocido (sin `any`). */
+function mensajeError(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  const m = (e as { message?: unknown } | null)?.message;
+  return typeof m === 'string' ? m : '';
+}
+
+function detalleError(e: unknown): unknown {
+  return mensajeError(e) || (e as { code?: unknown } | null)?.code || e;
+}
 
 export default function ChannelManagerPage() {
   const router = useRouter();
@@ -56,22 +68,22 @@ export default function ChannelManagerPage() {
     try {
       const statsData = await ChannelManagerService.getStats(organization.id);
       setStats(statsData);
-    } catch (err: any) {
-      console.warn('[ChannelManager] Error cargando stats:', err?.message || err?.code || err);
+    } catch (err: unknown) {
+      console.warn('[ChannelManager] Error cargando stats:', detalleError(err));
     }
 
     // Cargar summaries (no crítico)
     try {
       const summariesData = await ChannelManagerService.getSpaceChannelSummaries(organization.id);
       setSummaries(summariesData);
-    } catch (err: any) {
-      console.warn('[ChannelManager] Error cargando summaries:', err?.message || err?.code || err);
+    } catch (err: unknown) {
+      console.warn('[ChannelManager] Error cargando summaries:', detalleError(err));
     }
 
     // Cargar espacios para el selector del dialog (spaces usa branch_id, no organization_id)
     try {
-      let spacesData: any[] | null = null;
-      let spacesErr: any = null;
+      let spacesData: Array<{ id: string; label: string; space_types?: unknown }> | null = null;
+      let spacesErr: unknown = null;
 
       if (branchFilter != null) {
         // Filtro por sucursal concreta
@@ -103,13 +115,13 @@ export default function ChannelManagerPage() {
       }
 
       if (spacesErr) {
-        console.warn('[ChannelManager] Error cargando espacios:', spacesErr.message);
+        console.warn('[ChannelManager] Error cargando espacios:', mensajeError(spacesErr));
       } else if (spacesData) {
         setSpaces(
           spacesData.map(s => {
             const spaceType = Array.isArray(s.space_types)
               ? s.space_types[0]?.name
-              : (s.space_types as any)?.name;
+              : (s.space_types as { name?: string } | null)?.name;
             return {
               id: s.id,
               label: s.label,
@@ -118,8 +130,8 @@ export default function ChannelManagerPage() {
           })
         );
       }
-    } catch (err: any) {
-      console.warn('[ChannelManager] Error inesperado cargando espacios:', err?.message || err);
+    } catch (err: unknown) {
+      console.warn('[ChannelManager] Error inesperado cargando espacios:', detalleError(err));
     }
 
     // Cargar conexiones API de Booking.com
@@ -131,14 +143,14 @@ export default function ChannelManagerPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setBookingConnections((data.connections || []).map((c: any) => ({
+        setBookingConnections((data.connections || []).map((c: Record<string, string>) => ({
           connectionId: c.connectionId,
           hotelId: c.hotelId,
           name: c.name,
         })));
       }
-    } catch (err: any) {
-      console.warn('[ChannelManager] Error cargando Booking API connections:', err?.message || err);
+    } catch (err: unknown) {
+      console.warn('[ChannelManager] Error cargando Booking API connections:', detalleError(err));
     }
 
     // Cargar conexiones API de Expedia Group
@@ -149,14 +161,14 @@ export default function ChannelManagerPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setExpediaConnections((data.connections || []).map((c: any) => ({
+        setExpediaConnections((data.connections || []).map((c: Record<string, string>) => ({
           connectionId: c.connectionId,
           propertyId: c.propertyId,
           name: c.name,
         })));
       }
-    } catch (err: any) {
-      console.warn('[ChannelManager] Error cargando Expedia API connections:', err?.message || err);
+    } catch (err: unknown) {
+      console.warn('[ChannelManager] Error cargando Expedia API connections:', detalleError(err));
     }
 
     setIsLoading(false);
@@ -199,10 +211,10 @@ export default function ChannelManagerPage() {
       });
 
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Error sincronizando canales',
+        description: mensajeError(error) || 'Error sincronizando canales',
         variant: 'destructive',
       });
     } finally {
@@ -240,10 +252,10 @@ export default function ChannelManagerPage() {
       }
 
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'Error sincronizando conexión',
+        description: mensajeError(error) || 'Error sincronizando conexión',
         variant: 'destructive',
       });
     } finally {
@@ -292,13 +304,13 @@ export default function ChannelManagerPage() {
           handleSyncConnection(newConn.id);
         }
       }
-    } catch (error: any) {
-      const isDuplicate = error.message?.includes('duplicate') || error.code === '23505';
+    } catch (error: unknown) {
+      const isDuplicate = mensajeError(error).includes('duplicate') || (error as { code?: string } | null)?.code === '23505';
       toast({
         title: 'Error',
         description: isDuplicate
           ? 'Ya existe una conexión para este espacio y canal'
-          : error.message || 'No se pudo crear la conexión',
+          : mensajeError(error) || 'No se pudo crear la conexión',
         variant: 'destructive',
       });
       throw error;
@@ -313,10 +325,10 @@ export default function ChannelManagerPage() {
         description: 'La conexión de canal ha sido eliminada',
       });
       await loadData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message || 'No se pudo eliminar la conexión',
+        description: mensajeError(error) || 'No se pudo eliminar la conexión',
         variant: 'destructive',
       });
     }
@@ -401,8 +413,9 @@ export default function ChannelManagerPage() {
           onSyncAll={handleSyncAll}
           onRefresh={handleRefresh}
           onAddConnection={() => handleAddConnection()}
-          onConnectBookingApi={() => router.push('/app/integraciones/conexiones/nueva?provider=d379fcab-12ad-41c7-80f9-91c66373d72f')}
-          onConnectExpediaApi={() => router.push('/app/integraciones/conexiones/nueva?provider=11d341a0-bf31-4288-abba-9033050061dc')}
+          // Asistente NUEVO (modo API o iCal, habitaciones) con regreso al Channel Manager (Frente INT).
+          onConnectBookingApi={() => router.push(rutaConectar('booking', { volver: '/app/pms/channel-manager' }) ?? '/app/integraciones/conexiones')}
+          onConnectExpediaApi={() => router.push(rutaConectar('expedia', { volver: '/app/pms/channel-manager' }) ?? '/app/integraciones/conexiones')}
         />
 
         {/* Booking.com API Connections */}

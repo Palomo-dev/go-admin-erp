@@ -1,0 +1,219 @@
+'use client';
+
+/**
+ * Retención excesiva o indebida (ronda 3 del Contador, causa b). Con el cálculo correcto (base y tarifa) la base
+ * calcula el exceso y lo reintegra al proveedor (D retención por pagar / C caja o banco); el anticipo no cambia. Exige
+ * el cálculo, el certificado corregido, la norma de ICA si aplica, el período en que se descuenta y si la declaración
+ * requiere corrección. `POST /api/anticipos-proveedor/[id]/retencion-exceso`.
+ */
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Scale } from 'lucide-react';
+import { CampoNumero, Dialogo, FilaDato, FormField, SelectorMetodoPago, simboloMoneda } from '@/components/kit';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toastSuccess } from '@/components/ui/use-toast';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import type { ContextoSaldoFavor } from '@/lib/finanzas/saldosAFavor/contrato';
+import type { ClaseRetencionAnticipo, FilaAnticipoProveedor } from '@/lib/finanzas/anticiposProveedor/contrato';
+import { nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
+import { metodoInicial, opcionesMetodoSaldo } from '@/components/finanzas/saldos-a-favor/metodosSaldo';
+import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import { anticiposProveedorService } from './anticiposProveedorService';
+
+const NS = 'finanzasTercerosR4.anticipos';
+const PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+export interface ExcesoRetencionDialogProps {
+  anticipo: Pick<FilaAnticipoProveedor, 'id' | 'proveedor' | 'sucursalId' | 'retenciones'> | null;
+  onCerrar: () => void;
+  onReintegrado: () => void;
+}
+
+export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: ExcesoRetencionDialogProps) {
+  const t = useTranslations(NS);
+  const moneda = useMonedaOrganizacion();
+  const idCorreccion = useId();
+  const vigentes = useMemo(() => (anticipo?.retenciones ?? []).filter((r) => r.vigente > 0), [anticipo]);
+  const [contexto, setContexto] = useState<ContextoSaldoFavor | null>(null);
+  const [clase, setClase] = useState<ClaseRetencionAnticipo | ''>('');
+  const [base, setBase] = useState<number | null>(null);
+  const [tarifa, setTarifa] = useState<number | null>(null);
+  const [metodo, setMetodo] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState('');
+  const [calculo, setCalculo] = useState('');
+  const [certificado, setCertificado] = useState('');
+  const [normaIca, setNormaIca] = useState('');
+  const [periodo, setPeriodo] = useState('');
+  const [requiereCorreccion, setRequiereCorreccion] = useState(false);
+  const [tocado, setTocado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const clave = useRef('');
+
+  useEffect(() => {
+    if (!anticipo) return;
+    let vigente = true;
+    setClase('');
+    setBase(null);
+    setTarifa(null);
+    setMetodo(null);
+    setMotivo('');
+    setCalculo('');
+    setCertificado('');
+    setNormaIca('');
+    setPeriodo('');
+    setRequiereCorreccion(false);
+    setTocado(false);
+    setError(null);
+    clave.current = nuevaClaveIdempotencia('exceso');
+    anticiposProveedorService
+      .contexto(anticipo.sucursalId)
+      .then((c) => vigente && setContexto(c))
+      .catch((e) => vigente && setError(textoErrorSaldo(t, e)));
+    return () => {
+      vigente = false;
+    };
+  }, [anticipo, t]);
+
+  const opciones = useMemo(() => opcionesMetodoSaldo(contexto, t('devolver.sinCaja')), [contexto, t]);
+  useEffect(() => {
+    if (contexto && metodo === null) setMetodo(metodoInicial(opciones));
+  }, [contexto, metodo, opciones]);
+
+  const retencion = vigentes.find((r) => r.clase === clase) ?? null;
+  const correcta = base !== null && tarifa !== null ? Math.round((base * tarifa) / 100) : null;
+  const exceso = retencion && correcta !== null ? retencion.vigente - correcta : null;
+  const faltas = {
+    clase: !retencion,
+    calculo: base === null || tarifa === null || exceso === null || exceso <= 0,
+    motivo: motivo.trim().length < 3,
+    soportes: calculo.trim().length < 3 || certificado.trim().length < 3,
+    norma: clase === 'reteica' && normaIca.trim().length < 3,
+    periodo: !PERIODO.test(periodo),
+  };
+
+  const cerrar = () => !enviando && onCerrar();
+  const confirmar = async () => {
+    setTocado(true);
+    if (!anticipo || !metodo || Object.values(faltas).some(Boolean) || base === null || tarifa === null || !clase) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      await anticiposProveedorService.reintegrarExceso(anticipo.id, {
+        clase,
+        baseCorrecta: base,
+        tarifaCorrecta: tarifa,
+        metodo,
+        motivo,
+        soportes: { calculo: calculo.trim(), certificado: certificado.trim(), norma_ica: clase === 'reteica' ? normaIca.trim() : null },
+        periodoDescuento: periodo,
+        requiereCorreccion,
+        claveIdempotencia: clave.current,
+      });
+      toastSuccess(t('exceso.exito', { monto: moneda.formatear(exceso ?? 0), proveedor: anticipo.proveedor || t('sinProveedor') }));
+      onCerrar();
+      onReintegrado();
+    } catch (e) {
+      setError(textoErrorSaldo(t, e));
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <Dialogo
+      abierto={!!anticipo}
+      onAbiertoChange={(v) => !v && cerrar()}
+      titulo={t('exceso.titulo')}
+      descripcion={t('exceso.descripcion')}
+      icono={Scale}
+      ancho={560}
+      primario={{ etiqueta: t('exceso.confirmar'), onClick: () => void confirmar(), cargando: enviando, deshabilitada: !contexto || !metodo, motivo: t('cargando') }}
+    >
+      <div className="flex flex-col gap-4">
+        <FormField etiqueta={t('exceso.clase')} obligatorio error={tocado && faltas.clase ? t('validacion.retencionesDevolucion') : null}>
+          {(c) => (
+            <Select value={clase} onValueChange={(v) => setClase(v as ClaseRetencionAnticipo)}>
+              <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                <SelectValue placeholder={t('exceso.clasePlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {vigentes.map((r) => (
+                  <SelectItem key={r.clase} value={r.clase}>
+                    {t(`retenciones.clases.${r.clase}`)} · {moneda.formatear(r.vigente)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField etiqueta={t('exceso.baseCorrecta')} obligatorio>
+            {(c) => (
+              <CampoNumero id={c.id} aria-describedby={c['aria-describedby']} valor={base} onValorChange={setBase} minimo={0} prefijo={simboloMoneda(moneda.paraDocumento(null))} />
+            )}
+          </FormField>
+          <FormField etiqueta={t('exceso.tarifaCorrecta')} obligatorio>
+            {(c) => <CampoNumero id={c.id} aria-describedby={c['aria-describedby']} valor={tarifa} onValorChange={setTarifa} minimo={0} maximo={100} decimales={4} sufijo="%" />}
+          </FormField>
+        </div>
+        {exceso !== null && (
+          <dl className="flex flex-col">
+            <FilaDato etiqueta={t('exceso.correcta')} valor={moneda.formatear(correcta ?? 0)} />
+            <FilaDato etiqueta={t('exceso.exceso')} valor={moneda.formatear(Math.max(0, exceso))} tono={exceso > 0 ? 'fuerte' : 'peligro'} />
+          </dl>
+        )}
+        {tocado && faltas.calculo && (
+          <p role="alert" className="text-xs text-danger-text">
+            {t('errores.sin_exceso')}
+          </p>
+        )}
+        <FormField etiqueta={t('exceso.como')}>
+          {(c) =>
+            contexto ? (
+              <SelectorMetodoPago metodos={opciones} valor={metodo} onValorChange={setMetodo} etiqueta={t('exceso.como')} />
+            ) : (
+              <p id={c.id} className="text-sm text-fg-muted">
+                {t('cargando')}
+              </p>
+            )
+          }
+        </FormField>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <FormField etiqueta={t('devolver.procedimiento.calculo')} obligatorio error={tocado && faltas.soportes && calculo.trim().length < 3 ? t('validacion.soporte') : null}>
+            <Input value={calculo} onChange={(e) => setCalculo(e.target.value)} maxLength={500} />
+          </FormField>
+          <FormField etiqueta={t('devolver.procedimiento.certificado')} obligatorio error={tocado && faltas.soportes && certificado.trim().length < 3 ? t('validacion.soporte') : null}>
+            <Input value={certificado} onChange={(e) => setCertificado(e.target.value)} maxLength={500} />
+          </FormField>
+          {clase === 'reteica' && (
+            <FormField etiqueta={t('devolver.retenciones.normaIca')} obligatorio error={tocado && faltas.norma ? t('validacion.normaIca') : null}>
+              <Input value={normaIca} onChange={(e) => setNormaIca(e.target.value)} maxLength={300} />
+            </FormField>
+          )}
+          <FormField etiqueta={t('devolver.procedimiento.periodo')} obligatorio error={tocado && faltas.periodo ? t('validacion.periodo') : null}>
+            {(c) => <Input id={c.id} type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />}
+          </FormField>
+        </div>
+        <div className="flex items-start gap-2">
+          <Checkbox id={idCorreccion} checked={requiereCorreccion} onCheckedChange={(v) => setRequiereCorreccion(v === true)} className="mt-0.5" />
+          <Label htmlFor={idCorreccion} className="flex flex-col gap-0.5 font-normal">
+            <span className="text-sm text-fg">{t('devolver.procedimiento.requiereCorreccion')}</span>
+            <span className="text-xs text-fg-muted">{t('devolver.procedimiento.requiereCorreccionAyuda')}</span>
+          </Label>
+        </div>
+        <FormField etiqueta={t('devolver.motivo')} obligatorio error={tocado && faltas.motivo ? t('validacion.motivo') : null}>
+          <Input value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} />
+        </FormField>
+        {error && (
+          <p role="alert" className="text-sm text-danger-text">
+            {error}
+          </p>
+        )}
+      </div>
+    </Dialogo>
+  );
+}

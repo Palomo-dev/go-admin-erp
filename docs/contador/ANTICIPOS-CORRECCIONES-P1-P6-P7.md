@@ -5,11 +5,20 @@ Fecha: 7 de noviembre de 2026 · Base de datos: proyecto `taqjemqjtumhwptchcxk` 
 Responde a sus respuestas P1, P6 y P7 y a las «Condiciones para cerrar su visto bueno · Anticipos»
 (`RESPUESTAS-CONTADOR-P1-P9-2026-11-07.md`). Los nombres técnicos aparecen solo para que cada cifra se pueda rastrear.
 
-**Estado: escrito y probado en seco, NO aplicado.** La corrección es la migración
-`supabase/migrations/20261108170000_anticipos_proveedores_contador.sql` (reversión en `supabase/rollbacks/`). Se aplica
-cuando el dueño lo ordene, **después** de `20261108160500` (perfil tributario con renta e IVA separados). La migración
-de anticipos ya aplicada (`20261108120000`) no se edita: sus funciones se reemplazan. Hoy hay **0 anticipos** en la
+**Estado de las migraciones (único para todo este documento):**
+
+| Migración | Estado |
+|---|---|
+| `20261108120000_anticipos_proveedores` | **APLICADA** (no se edita; sus funciones se reemplazan) |
+| `20261108165000_tarifas_precision_exacta` (ronda 2) | **SIN APLICAR** |
+| `20261108170000_anticipos_proveedores_contador` (rondas 1, 2 y 3) | **SIN APLICAR** |
+
+Orden de aplicación cuando el dueño lo ordene: `20261108120500` → `20261108121000` (consignación) → `20261108140500` →
+`20261108160000` → `20261108160500` → `20261108165000` → `20261108170000` (decisión en «Ronda 3», punto 4). Cada una tiene su reversión en `supabase/rollbacks/`. Hoy hay **0 anticipos** en la
 base, así que ningún saldo existente cambia. Hasta que se aplique, la pantalla de anticipos dice «pendiente de activar».
+Las secciones **«Ronda 2»** y **«Ronda 3»** (al final; la 3 manda sobre la 2) responde `RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md` y reemplaza lo que en las
+secciones 1 a 5 diga lo contrario (en particular: la retención repetida ya no se descuenta en silencio al aplicar, la
+devolución ya no prorratea retenciones y la cuenta es un auxiliar 133005xx).
 
 ---
 
@@ -126,3 +135,109 @@ Guion `pruebas/11_anticipos_correcciones_contador.sql`, resultado `pruebas/11_�
 **Hallazgos no corregidos aquí:** el arqueo resta bien el anticipo en efectivo pero lo muestra en el desglose como
 «ventas en efectivo» negativas; la tarifa «ICA Bogotá» de la org 374 está guardada como 0,97 % (la plantilla dice
 0,966 %) porque la tarifa tiene dos decimales.
+
+(Ronda 1: la prueba de la línea anterior era la de la ronda 1; la vigente es la de la ronda 2 más abajo, **50 de 50 ok**.
+Los dos hallazgos de arriba quedaron corregidos en la ronda 2: ítems 4 y 11.)
+
+---
+
+## Ronda 2 (respuesta a `RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md`, sección «Anticipos»)
+
+Todo va en `20261108170000` (reescrita, **SIN APLICAR**) más `20261108165000` (precisión de tarifas, **SIN APLICAR**).
+Prueba en seco: `pruebas/11_anticipos_correcciones_contador.sql`, **50 de 50 ok**, org 374, en una sola transacción
+con 140500 → 160000 → 160500 → 165000 → 170000 y `rollback` (resultado en el `.resultado.txt` hermano).
+
+| # | Lo que pidió | Cómo quedó |
+|---|---|---|
+| 1 | Sin regla universal giro/factura | **Financiación**: la retención queda **«diferida»** (se evalúa cuando el anticipo se convierte en pago o abono del precio, al amortizarlo con la factura), no «no aplica». **Pago anticipado del precio**: se evalúa al girar con la composición de la operación. ICA solo con regla municipal y territorialidad (ítem 4). |
+| 2 | SIMPLE y autorretenedores | Calidades **verificadas** del proveedor con soporte y vigencia (`supplier_tax_qualities`): SIMPLE **acreditado** → no se practica renta; un código O-47 sin acreditar → **pendiente**. Autorretenedor: la autorización lleva los **conceptos cubiertos**; si cubre el concepto elegido no se practica; si no lo cubre se practica (prueba 19: honorarios 11 % = 110.000 aunque el proveedor esté autorizado para el 4 %). O-15 sin verificar → pendiente. La autorretención especial (59) no se usa para excluir nada; el reteIVA y el ReteICA del tercero se siguen evaluando. |
+| 3 | Base del reteIVA | Base = **IVA de las líneas gravadas** (en el AIU, el de la utilidad). Dividir entre 1 + tarifa **solo** para una suma homogénea al 19 %; con otra tarifa sin componentes se rechaza (`componentes_obligatorios`). Excluidos, exentos y no sujetos no aportan IVA (prueba 12: 500.000 gravado + 200.000 excluido → reteIVA 14.250). AIU (prueba 13): IVA 9.500 solo sobre la utilidad → reteIVA 1.425. Gran contribuyente ↔ gran contribuyente queda **pendiente de verificar** (sin exclusión universal). Responsable de IVA no agente comprando a un SIMPLE responsable: **pendiente** de confirmar el supuesto. |
+| 4 | ReteICA y precisión | Regla municipal (`reteica_reglas`): municipio, actividad, **tarifa por mil con 4 decimales**, base mínima, **norma** y vigencia; además territorialidad declarada y calidad «no sujeto de ICA». Falta cualquiera → pendiente. Precisión: `20261108165000` añade `tarifa_exacta numeric(12,6)` a plantillas y retenciones **sin tocar `rate`** (aditiva, sin pérdida). ICA_0.966 queda en 0,966 %: **1.000.000 × 9,66 ‰ = 9.660** (con el 0,97 guardado daba 9.700). |
+| 5 | Duplicado: evitarlo al reconocer la factura | Acción **«Vincular a factura en borrador»**: al causar esa factura la base **bloquea** la causación si retiene sobre la base ya retenida en el anticipo (prueba 25), por impuesto. Si ya ocurrió (sin vínculo), aplicar se **rechaza** (`retencion_duplicada`) y solo procede como **corrección documentada** (motivo y soporte): deja ajustes trazables por impuesto y un **pendiente con los periodos de retención a revisar** (prueba 30). Nada se compensa en silencio. |
+| 6 | Devolución | Se registra el **dinero** que regresa y, por impuesto, la retención relacionada con la parte devuelta con su **procedimiento** (la de ICA con su norma). **No hay prorrateo automático.** Si no se puede determinar, baja solo el dinero, las retenciones siguen en el anticipo y queda un **pendiente** (prueba 35). |
+| 7 | Certificados | `fn_retenciones_practicadas_filas` (la base de `CertificadosRetencionPage` y del reporte de retenciones) incluye las retenciones de anticipos y sus ajustes con signo, por impuesto, tercero y concepto, en su fecha. Como la factura vinculada no retiene otra vez, nada se repite. Prueba 42/46: certificado del proveedor B = 31.540 = libros 236x de su NIT. |
+| 8 | Caja cerrada | Anular por error con la caja cerrada **no reabre la caja ni anula su pago**: el arqueo original queda igual (prueba 38); el ajuste es contable, en periodo abierto, con soporte, y queda un **pendiente** para revisar la diferencia de esa caja. Si el dinero sí salió, no se anula: se registra la devolución o se mantiene el derecho. |
+| 9 | Pendientes | `anticipo_pendientes` con estado abierto/resuelto, visibles en la pantalla («Pendientes contables de anticipos») y en la conciliación. Solo se cierran con **resolución y soporte** (permiso de aprobación); no se reabren. |
+| 10 | Cuenta | Auxiliar de **detalle de ocho dígitos bajo 133005** (13300501…). Otra cuenta solo con **equivalencia aprobada** y nota (`anticipos_cuenta_equivalencias`, permiso de aprobación). 1330 y 133005 se rechazan. |
+| 11 | Textos | Devolución: «**$55.592 al banco y $3.908 de retenciones**» (con 9,66 ‰ las cifras de su ejemplo pasan de 55.590/3.910 a 55.592/3.908). Arqueo: renglón propio **«Egreso por anticipo»** (y «Devolución de anticipo»); ya no aparece como venta negativa (prueba 23). |
+| 12 | Estado unificado | Tabla al inicio de este documento: 120000 **APLICADA**; 165000 y 170000 **SIN APLICAR**. |
+
+**Consignación (coordinación con ese equipo).** Los cruces de un anticipo con la obligación de un mandato
+(`fn_consignacion_cruzar_anticipo`, migración `20261108121000`, sin aplicar) ya se cuentan como consumo del anticipo en
+la conciliación por anticipo y por proveedor (columna «Cruzado con consignación»), en el listado y en el estado de cuenta
+del proveedor («Cruce con consignación»). Mientras esa migración no esté aplicada, no suman nada (prueba 45).
+
+**Para su confirmación (ronda 2):**
+
+1. ¿La base del reteIVA en el AIU debe ser solo el IVA de la utilidad, o hay contratos AIU en que se discrimine IVA
+   sobre la administración?
+2. Devolución: el procedimiento queda como texto por impuesto. ¿Quiere una lista cerrada (menor valor de la declaración
+   del periodo, corrección de la declaración, solicitud de devolución) para el reporte?
+3. ¿Qué evidencia mínima exige para acreditar «SIMPLE» y «autorretenedor» (certificado RUT, consulta DIAN, resolución)?
+   Hoy se exige un soporte de texto y la vigencia.
+
+---
+
+## Ronda 3 (respuesta a `RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md`, «Respuestas sobre anticipos»)
+
+Todo va en `20261108170000` (reescrita, **SIN APLICAR**); su reversión deja las funciones como estaban.
+
+### 1. AIU: desactivado como regla general
+
+- Una operación con componentes AIU ya **no** calcula el reteIVA «solo sobre la utilidad». Queda **pendiente**
+  `aiu_fundamento_por_validar`: visible en el anticipo y en «Pendientes», sin reteIVA automático.
+- Solo se calcula cuando la organización registra la regla aplicable con su fundamento: tabla `reteiva_aiu_reglas`
+  (fundamento obligatorio, mínimo 10 caracteres; vigencia; base `utilidad`) por `fn_reteiva_aiu_regla_guardar`
+  (`finance.approve`). Sin fundamento: `fundamento_obligatorio`. Con regla vigente a la fecha: IVA 9.500 sobre una
+  utilidad de 50.000 y reteIVA 1.425 (prueba 11, verificación 13).
+
+### 2. Devoluciones por procedimiento y causa
+
+La pantalla elige **causa** y llena el **procedimiento**; ya no se eligen retenciones a mano. Las retenciones afectadas
+salen del procedimiento (`fn_anticipo_proveedor_devolver`, parámetro `p_procedimiento`):
+
+| Causa | Qué exige | Retenciones afectadas | Declaraciones |
+|---|---|---|---|
+| (a) Operación anulada o resuelta | documento de la anulación/resolución (o solicitud del proveedor); certificado anulado o corregido; norma local si hay reteICA | todas las vigentes; el dinero + las retenciones deben cubrir el saldo (si no: `anulacion_requiere_devolucion_total`) | período en que se descuenta (AAAA-MM) y si requiere corrección |
+| (b) Retención excesiva o indebida | cálculo correcto (base y tarifa), certificado corregido | solo el exceso: vigente − base × tarifa correcta (`sin_exceso` si no hay; reteICA, con la norma local); se reintegra al proveedor por `fn_anticipo_retencion_exceso_reintegrar` (`finance.void`) | período y corrección |
+| (c) Devolución parcial | documento, cálculo de la parte devuelta (base e IVA), certificado corregido, norma local si hay reteICA | proporcionales a la parte devuelta: retefuente y reteICA sobre la base, reteIVA sobre el IVA; dinero = base + IVA − retenciones (si no: `calculo_no_cuadra`) | período y corrección |
+
+- Cada movimiento deja su ajuste por impuesto con la causa, el período en que se descuenta, si requiere corrección y los
+  soportes; si requiere corrección se abre el pendiente `correccion_declaracion`.
+- Lo que no se puede determinar (devolución sin procedimiento) sigue como pendiente `devolucion_retenciones_por_definir`
+  y no mueve retenciones.
+- ICA: la causa (a) o (c) con reteICA sin norma municipal citada se rechaza (`reteica_requiere_norma`).
+
+### 3. Verificación del proveedor
+
+- **SIMPLE:** RUT actualizado (fecha y archivo, obligatorios: `rut_obligatorio`) y la inscripción con su vigencia debe
+  cubrir la **fecha de la operación**; si no, queda pendiente `simple_sin_acreditar`.
+- **Autorretenedor general:** RUT + resolución de autorización vigente (número, fecha, alcance y conceptos; sin ella:
+  `resolucion_autorretencion_obligatoria`). En cada operación se comprueba que el concepto esté cubierto: cubierto, no se
+  retiene; no cubierto (p. ej. honorarios 11 %), se retiene. El reteIVA no cambia por ser autorretenedor de renta.
+- **Autorretención especial (RUT 59):** se registra como calidad propia (`autorretencion_especial`) y **no** excluye la
+  retención por terceros (prueba 11, verificación 20: se retienen 40.000).
+
+### 4. Prueba integrada anticipo ↔ consignación y orden de aplicación
+
+- **Orden decidido: `20261108121000` va ANTES de `20261108170000`.** 170000 lee `consignment_advance_crossings` (cruces en
+  conciliación, estado de cuenta y tercero de las líneas) y no redefine ninguna función de 121000; 121000 solo usa de
+  anticipos lo que ya está aplicado (`supplier_advances`, 120000). Aun así, 170000 compila y funciona sin 121000 (la tabla
+  se lee solo si existe).
+- `docs/contador/pruebas/16_anticipos_consignacion_integrada.sql` (el número 15 lo tomó consignación): anticipo de
+  595.000 a un consignante con retenciones, cruce de 300.000 con la obligación del mandato, devolución parcial por
+  procedimiento, intento de anular el cruzado (`anticipo_usado`) y anulación por error de un segundo anticipo.
+  Concilia: saldo por anticipo y por proveedor 176.000 = libros = auxiliar por NIT; obligación con el dueño (28151001,
+  bajo 281510) 200.000; certificado 31.264 = libros 236x del NIT; estado de cuenta con «Cruce con consignación».
+- Corrida: una sola transacción con 120500 y 121000 (extracto exacto de los objetos del cruce), la cadena 140500 → 170000,
+  la prueba 11 y la 16: **65 de 65 ok** (53 + 12). Ver los dos `.resultado.txt`.
+- **Hallazgo corregido:** el asiento del cruce (origen `consignment_advance_crossing`) quedaba sin NIT y el auxiliar por
+  tercero del anticipo no conciliaba (476.000 contra 176.000). La sección 15b de 170000 enseña al disparador de tercero ese
+  origen y el del reintegro de retención. Sin cambios en 121000.
+
+### Preguntas abiertas de la ronda 3
+
+1. AIU: ¿qué fundamento quiere ver citado para registrar la primera regla (contrato, concepto DIAN, norma)? La regla solo
+   admite hoy base «utilidad».
+2. Retención excesiva de reteICA: hoy se admite con la norma municipal citada (sin ella, `reteica_requiere_norma`).
+   ¿Basta, o el municipio exige un procedimiento propio que el sistema solo deba dejar como pendiente?

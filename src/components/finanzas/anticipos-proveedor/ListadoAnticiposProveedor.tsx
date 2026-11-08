@@ -15,10 +15,15 @@
  * registrar. Cada acción es una ruta del servidor y una RPC
  * (`/api/anticipos-proveedor/**`). Mientras la migración no esté aplicada, la
  * pantalla dice «pendiente de activar».
+ *
+ * Ronda 2 del Contador: «Vincular a factura» (antes de causarla, para que la
+ * factura no retenga otra vez sobre la base del anticipo), devolución con las
+ * retenciones identificadas por impuesto, pendientes contables visibles hasta
+ * resolverse y equivalencia aprobada para una cuenta fuera de 133005xx.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Ban, Download, FileSpreadsheet, FileText, HandCoins, Plus, Undo2, Wallet } from 'lucide-react';
+import { Ban, Download, FileSpreadsheet, FileText, HandCoins, Link2, Plus, Scale, Undo2, Wallet } from 'lucide-react';
 import {
   AvisoTonal,
   DataTable,
@@ -53,10 +58,15 @@ import {
 import { AplicarSaldoDialog, DevolverSaldoDialog, RegistrarAnticipoDialog } from '@/components/finanzas/saldos-a-favor';
 import { ErrorPeticionSaldoFavor } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
-import type { ComplementoRegistro } from '@/components/finanzas/saldos-a-favor';
+import type { ComplementoDevolver, ComplementoRegistro } from '@/components/finanzas/saldos-a-favor';
 import { ADAPTADOR_PROVEEDOR, anticiposProveedorService } from './anticiposProveedorService';
 import { AnularAnticipoDialog } from './AnularAnticipoDialog';
 import { SeccionRetencionesAnticipo } from './SeccionRetencionesAnticipo';
+import { SeccionRetencionesDevolucion } from './SeccionRetencionesDevolucion';
+import { VincularFacturaDialog } from './VincularFacturaDialog';
+import { PendientesAnticipos } from './PendientesAnticipos';
+import { EquivalenciaCuentaDialog } from './EquivalenciaCuentaDialog';
+import { ExcesoRetencionDialog } from './ExcesoRetencionDialog';
 
 const NS = 'finanzasTercerosR4.anticipos';
 const BADGE: Readonly<Record<EstadoAnticipo, string>> = { disponible: 'activo', aplicado: 'aplicado', anulado: 'anulado' };
@@ -91,6 +101,9 @@ export function ListadoAnticiposProveedor() {
   const [aplicar, setAplicar] = useState<FilaAnticipoProveedor | null>(null);
   const [devolver, setDevolver] = useState<FilaAnticipoProveedor | null>(null);
   const [anular, setAnular] = useState<FilaAnticipoProveedor | null>(null);
+  const [vincular, setVincular] = useState<FilaAnticipoProveedor | null>(null);
+  const [equivalencia, setEquivalencia] = useState<string | null>(null);
+  const [exceso, setExceso] = useState<FilaAnticipoProveedor | null>(null);
   const [exportandoConciliacion, setExportandoConciliacion] = useState(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
@@ -154,6 +167,7 @@ export function ListadoAnticiposProveedor() {
             t('columnas.proveedor'), t('columnas.nit'), t('columnas.comprobante'), t('conciliacion.cuenta'), t('conciliacion.naturaleza'),
             t('columnas.anticipo'), t('columnas.retencion'), t('conciliacion.girado'), t('columnas.aplicado'), t('conciliacion.retencionDescontada'),
             t('conciliacion.devuelto'), t('conciliacion.anulado'), t('columnas.saldo'), t('conciliacion.saldoLibros'), t('conciliacion.cuadra'),
+            t('conciliacion.pendientes'), t('conciliacion.cruzado'),
           ],
           proveedores: [t('columnas.proveedor'), t('columnas.nit'), t('conciliacion.anticipos'), t('columnas.saldo'), t('conciliacion.saldoLibros'), t('conciliacion.auxiliarNit')],
         },
@@ -172,7 +186,13 @@ export function ListadoAnticiposProveedor() {
     const a = accionesAnticipo(f, permisosFila);
     const lista: AccionFila[] = [];
     if (a.aplicar) lista.push({ id: 'aplicar', etiqueta: t('acciones.aplicar'), icono: FileText, onSelect: () => setAplicar(f) });
+    // Ronda 2, ítem 5: el anticipo con retención se vincula a la factura en borrador antes de causarla.
+    if (a.aplicar && (f.retencion ?? 0) > 0) lista.push({ id: 'vincular', etiqueta: t('acciones.vincular'), icono: Link2, onSelect: () => setVincular(f) });
     if (a.devolver) lista.push({ id: 'devolver', etiqueta: t('acciones.devolver'), icono: Undo2, onSelect: () => setDevolver(f) });
+    // Ronda 3, causa (b): retención excesiva o indebida (reintegro del exceso al proveedor).
+    if (permisosFila.anular && f.estado !== 'anulado' && (f.retenciones ?? []).some((r) => r.vigente > 0)) {
+      lista.push({ id: 'exceso', etiqueta: t('acciones.exceso'), icono: Scale, onSelect: () => setExceso(f) });
+    }
     if (a.anular) lista.push({ id: 'anular', etiqueta: t('acciones.anular'), icono: Ban, destructiva: true, separadorAntes: true, onSelect: () => setAnular(f) });
     return lista;
   };
@@ -214,6 +234,19 @@ export function ListadoAnticiposProveedor() {
     error === 'sin_permiso' ? 'sinPermiso' : cargando && !datos ? 'cargando' : error ? 'error' : filas.length === 0 ? (texto || estado !== 'todos' ? 'sinResultados' : 'vacio') : 'listo';
 
   const puedeCrear = permisos.crear && !pendiente && !cuentaPendiente;
+  const pendientes = datos?.pendientes ?? [];
+
+  // Ronda 3: la devolución va por procedimiento y causa; las retenciones afectadas salen del procedimiento.
+  const retencionesDevolver = devolver?.retenciones;
+  const saldoDevolver = devolver?.saldo ?? 0;
+  const complementoDevolver: ComplementoDevolver = useMemo(
+    () => ({
+      render: ({ tocado, onCambio, dinero }) => (
+        <SeccionRetencionesDevolucion retenciones={retencionesDevolver ?? []} saldo={saldoDevolver} dinero={dinero} tocado={tocado} onCambio={onCambio} />
+      ),
+    }),
+    [retencionesDevolver, saldoDevolver],
+  );
   const subtitulo = datos?.cuenta ? t('subtituloCuenta', { cuenta: datos.cuenta }) : t('subtitulo');
 
   return (
@@ -281,9 +314,16 @@ export function ListadoAnticiposProveedor() {
               ? estadoCuenta.sugerida
                 ? t('cuentaPendiente.sinConfigurarSugerida', { sugerida: estadoCuenta.sugerida })
                 : t('cuentaPendiente.sinConfigurar')
-              : t('cuentaPendiente.noDetalle', { cuenta: estadoCuenta.configurada ?? '—' })
+              : estadoCuenta.estado === 'fuera_de_133005'
+                ? t('cuentaPendiente.fuera133005', { cuenta: estadoCuenta.configurada ?? '—' })
+                : t('cuentaPendiente.noDetalle', { cuenta: estadoCuenta.configurada ?? '—' })
           }
           accion={{ etiqueta: t('cuentaPendiente.configurar'), href: RUTA_CONFIGURACION_CONTABLE }}
+          acciones={
+            estadoCuenta.estado === 'fuera_de_133005' && permisos.aprobar && estadoCuenta.configurada
+              ? [{ etiqueta: t('cuentaPendiente.aprobarEquivalencia'), onClick: () => setEquivalencia(estadoCuenta.configurada) }]
+              : undefined
+          }
         />
       )}
 
@@ -296,6 +336,8 @@ export function ListadoAnticiposProveedor() {
         />
       )}
 
+      {!pendiente && <PendientesAnticipos pendientes={pendientes} puedeResolver={permisos.aprobar} onResuelto={recargar} />}
+
       {!pendiente && (
         <KpiStrip etiqueta={t('kpis.etiqueta')}>
           <StatCard etiqueta={t('kpis.saldo')} icono={Wallet} cargando={!datos} valor={fmt(totales.saldo)} detalle={t('kpis.proveedores', { count: totales.proveedores })} />
@@ -306,18 +348,23 @@ export function ListadoAnticiposProveedor() {
 
       <ListToolbar
         busqueda={<SearchInput value={texto} onChange={setTexto} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
-        filtros={
-          <SegmentedControl
-            aria-label={t('filtros.estado')}
-            valor={estado}
-            onValorChange={(v) => setEstado(v as EstadoAnticipo | 'todos')}
-            opciones={[
-              { valor: 'todos', etiqueta: t('filtros.todos') },
-              { valor: 'disponible', etiqueta: t('estados.disponible') },
-              { valor: 'aplicado', etiqueta: t('estados.aplicado') },
-              { valor: 'anulado', etiqueta: t('estados.anulado') },
-            ]}
-          />
+        chips={
+          // Fila propia bajo el buscador (en 390 px el control segmentado aplastaba el buscador) y
+          // desplazamiento horizontal si las pestañas no caben.
+          <div className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+            <SegmentedControl
+              etiqueta={t('filtros.estado')}
+              valor={estado}
+              onValorChange={(v) => setEstado(v as EstadoAnticipo | 'todos')}
+              className="w-max"
+              opciones={[
+                { valor: 'todos', etiqueta: t('filtros.todos') },
+                { valor: 'disponible', etiqueta: t('estados.disponible') },
+                { valor: 'aplicado', etiqueta: t('estados.aplicado') },
+                { valor: 'anulado', etiqueta: t('estados.anulado') },
+              ]}
+            />
+          </div>
         }
       />
 
@@ -390,8 +437,12 @@ export function ListadoAnticiposProveedor() {
         onAbiertoChange={(v) => !v && setDevolver(null)}
         saldo={devolver ? comoSaldo(devolver) : null}
         adaptador={ADAPTADOR_PROVEEDOR}
+        complemento={complementoDevolver}
         onDevuelto={recargar}
       />
+      <VincularFacturaDialog abierto={!!vincular} onAbiertoChange={(v) => !v && setVincular(null)} anticipo={vincular} onVinculado={recargar} />
+      <EquivalenciaCuentaDialog cuenta={equivalencia} onCerrar={() => setEquivalencia(null)} onAprobada={recargar} />
+      <ExcesoRetencionDialog anticipo={exceso} onCerrar={() => setExceso(null)} onReintegrado={recargar} />
       <AnularAnticipoDialog
         anticipo={anular}
         onAbiertoChange={(v) => !v && setAnular(null)}

@@ -25,7 +25,8 @@ export const GET = withOrg(async (ctx, req) => {
       return NextResponse.json({ error: 'sin_permiso', codigo: 'sin_permiso' }, { status: 403, headers: SIN_CACHE });
     }
     const corte = new URL(req.url).searchParams.get('corte');
-    return NextResponse.json(await leerCentro(ctx, corte), { headers: SIN_CACHE });
+    const [centro, puedeDecidir] = await Promise.all([leerCentro(ctx, corte), hasOrgAdminOrPermission(ctx, PERMISOS_FINANZAS.APROBAR)]);
+    return NextResponse.json({ ...centro, puedeDecidir }, { headers: SIN_CACHE });
   } catch (err) {
     return respuestaErrorTributario(RUTA, err);
   }

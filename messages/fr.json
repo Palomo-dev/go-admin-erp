@@ -48919,5 +48919,114 @@
       "anulacion_dian": "Annulation ou rejet auprès de la DIAN",
       "constancia": "Attestation (document jamais transmis)"
     }
+  },
+  "finanzasMetodosPagoLista": {
+    "subtitulo": "{n, plural, one {# actif} other {# actifs}} · affichés au POS dans cet ordre",
+    "subtituloMovil": "{n, plural, one {# actif} other {# actifs}}",
+    "lista": {
+      "etiqueta": "Moyens de paiement de l'organisation"
+    },
+    "columnas": {
+      "metodo": "Moyen",
+      "tipo": "Type",
+      "entraA": "Va vers",
+      "cajaAbierta": "Caisse ouverte",
+      "referencia": "Référence",
+      "pos": "POS",
+      "web": "Boutique en ligne"
+    },
+    "tipos": {
+      "efectivo": "Espèces",
+      "tarjeta": "Carte",
+      "transferencia": "Virement",
+      "billetera": "Portefeuille",
+      "pasarela": "Passerelle",
+      "credito": "Crédit",
+      "otro": "Autre"
+    },
+    "destino": {
+      "caja": "Caisse du service",
+      "banco": "{banco} ··{ultimos}",
+      "bancoDesconocido": "Compte bancaire",
+      "pasarela": "Selon le règlement",
+      "sinConectar": "Passerelle non connectée",
+      "cxc": "Comptes clients",
+      "sinDestino": "Sans destination"
+    },
+    "caja": {
+      "obligatoria": "Obligatoire",
+      "no": "Non"
+    },
+    "cajaMovil": "caisse obligatoire",
+    "referencia": {
+      "obligatoria": "Obligatoire",
+      "opcional": "Facultative",
+      "automatica": "Automatique"
+    },
+    "referenciaMovil": "référence",
+    "canales": {
+      "pos": "POS",
+      "web": "Web",
+      "ninguno": "Aucun canal"
+    },
+    "estado": {
+      "activa": "Actif",
+      "inactiva": "Inactif",
+      "sinConfigurar": "Non configuré"
+    },
+    "codigo": "Code {codigo}",
+    "usadoSinConfigurar": "Utilisé dans {n, plural, one {# paiement} other {# paiements}} · non configuré",
+    "usadoSinDestino": "{n, plural, one {# paiement} other {# paiements}} sans destination",
+    "aviso": {
+      "titulo": "{n, plural, one {# moyen utilisé et non configuré} other {# moyens utilisés et non configurés}}",
+      "descripcion": "{lista} : {total, plural, one {# paiement est arrivé} other {# paiements sont arrivés}} par la boutique en ligne, les factures ou le POS. Configurez-les et indiquez où va l'argent pour les voir dans les rapports, le rapprochement et les comptes de trésorerie.",
+      "item": "{nombre} ({n})",
+      "revisar": "Vérifier",
+      "verTodos": "Tout afficher"
+    },
+    "soloLectura": {
+      "titulo": "Lecture seule",
+      "descripcion": "Pour créer, modifier, activer ou retirer des moyens, il vous faut l'autorisation de facturation de votre organisation."
+    },
+    "acciones": {
+      "editar": "Modifier",
+      "subir": "Monter",
+      "bajar": "Descendre",
+      "conectar": "Configurer l'intégration",
+      "verConexion": "Voir la connexion",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "mostrarWeb": "Afficher dans la boutique en ligne",
+      "ocultarWeb": "Masquer de la boutique en ligne",
+      "quitar": "Retirer",
+      "agregar": "Ajouter",
+      "nuevo": "Nouveau moyen"
+    },
+    "aria": {
+      "pos": "Actif au POS : {nombre}",
+      "web": "Visible dans la boutique en ligne : {nombre}"
+    },
+    "toast": {
+      "activado": "Moyen activé",
+      "desactivado": "Moyen désactivé",
+      "webVisible": "Visible dans la boutique en ligne",
+      "webOculto": "Masqué de la boutique en ligne",
+      "orden": "Ordre enregistré",
+      "errorTitulo": "Enregistrement impossible",
+      "errorEstado": "Impossible de changer l'état du moyen de paiement.",
+      "errorWeb": "Impossible de changer la visibilité dans la boutique en ligne.",
+      "errorOrden": "Impossible d'enregistrer l'ordre.",
+      "errorEliminar": "Impossible de supprimer le moyen de paiement.",
+      "sinPermisoEliminar": "Impossible de supprimer le moyen de paiement : votre poste ou rôle n'a pas l'autorisation de facturation.",
+      "eliminado": "{nombre} supprimé"
+    },
+    "estados": {
+      "vacioTitulo": "Vous n'avez encore aucun moyen de paiement",
+      "vacioDescripcion": "Ajoutez espèces, carte ou virement pour encaisser au POS et dans la boutique en ligne.",
+      "errorTitulo": "Impossible de charger les moyens de paiement",
+      "errorDescripcion": "Vérifiez votre connexion et réessayez.",
+      "sinPermisoTitulo": "Vous n'avez pas accès aux moyens de paiement",
+      "sinPermisoDescripcion": "Demandez l'autorisation de facturation à un administrateur de votre organisation."
+    }
   }
 }

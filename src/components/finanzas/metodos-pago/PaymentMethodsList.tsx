@@ -1,511 +1,197 @@
 "use client";
 
-import { SucursalesMetodoBadges } from "./SucursalesMetodoPago";
-import React, { useState, useMemo, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { ArrowDown, ArrowUp, Globe, Pencil, Plug, Plus, Power, Trash2, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase/config";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Edit, 
-  MoreHorizontal, 
-  RefreshCcw, 
-  CreditCard, 
-  Wallet, 
-  Banknote, 
-  Building2,
-  GripVertical,
-  Zap,
-  Settings,
-  Trash2
-} from "lucide-react";
-import { ConfirmDialog } from "@/components/kit";
-import { useTranslations } from "next-intl";
+import {
+  AvisoTonal,
+  ConfirmDialog,
+  DataTable,
+  ListCard,
+  StatusBadge,
+  clasesBoton,
+  iconoMetodoPago,
+  useEsEscritorio,
+  type AccionFila,
+  type ColumnaTabla,
+} from "@/components/kit";
 import { accionQuitarMetodo } from "./metodosPagoLogica";
-import Link from "next/link";
-import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
-import { nombreVisibleMetodo, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
-import { rutaConectar } from '@/lib/services/integrations/conexiones/rutaAsistente';
+import { SucursalesMetodoBadges } from "./SucursalesMetodoPago";
+import type { OrganizationPaymentMethod, PaymentMethod } from "./PaymentMethodsPage";
+import { useDatosListaMetodos } from "./useDatosListaMetodos";
+import {
+  construirFilasMetodos,
+  esPasarelaConectable,
+  estadoListaMetodos,
+  filtrarFilasMetodos,
+  moverMetodo,
+  resumirMetodos,
+  type DestinoMetodo,
+  type FilaMetodoPago,
+} from "@/lib/finanzas/metodosPagoLista";
+import { rutaConectar } from "@/lib/services/integrations/conexiones/rutaAsistente";
 
-// Componente SortableRow para filas arrastrables
-// Métodos que requieren integración con pasarela
-const GATEWAY_METHODS = ['payu', 'stripe', 'mp', 'mercadopago', 'wompi', 'conekta', 'paypal'];
+const RUTA_METODOS = "/app/finanzas/metodos-pago";
+const RUTA_CONEXIONES = "/app/integraciones/conexiones";
 
-interface SortableRowProps {
-  method: OrganizationPaymentMethod;
-  getPaymentIcon: (code: string) => React.ReactNode;
-  isRecommended: (code: string) => boolean;
-  countryCode: string | null;
-  updatingStatus: string | null;
-  updatingWebsite: string | null;
-  handleToggleActive: (method: OrganizationPaymentMethod) => void;
-  handleToggleWebsite: (method: OrganizationPaymentMethod) => void;
-  onEdit: (method: OrganizationPaymentMethod) => void;
-  onDelete: (method: OrganizationPaymentMethod) => void;
-  isLoading: boolean;
-}
-
-function SortableRow({
-  method,
-  getPaymentIcon,
-  isRecommended,
-  countryCode,
-  updatingStatus,
-  updatingWebsite,
-  handleToggleActive,
-  handleToggleWebsite,
-  onEdit,
-  onDelete,
-  isLoading,
-}: SortableRowProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: method.payment_method_code });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  // Métodos que requieren integración
-  const INTEGRATION_METHODS = [
-    'wompi', 'payu', 'stripe', 'mp', 'mercadopago', 'paypal', 'conekta',
-    'nequi', 'daviplata', 'pse', 'oxxo', 'spei', 'cashapp', 'venmo', 'zelle'
-  ];
-
-  const getIntegrationBadge = (code: string, gateway?: string, connectionId?: string | null) => {
-    const lowerCode = code.toLowerCase();
-    const isIntegrationMethod = INTEGRATION_METHODS.includes(lowerCode) || GATEWAY_METHODS.includes(lowerCode);
-    
-    // Si tiene gateway configurado o conexión vinculada, mostrar badge conectado
-    if (gateway || connectionId) {
-      return (
-        <Link 
-          href="/app/integraciones/conexiones"
-          className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
-        >
-          <Badge variant="outline" className="text-xs bg-success-subtle text-success-text border-line-success">
-            {gateway || 'Conectado'}
-          </Badge>
-          <Settings className="h-3 w-3 text-fg-muted" />
-        </Link>
-      );
-    }
-    
-    // Si es método de integración pero no está conectado → ir a integraciones
-    if (isIntegrationMethod) {
-      return (
-        <Link 
-          href="/app/integraciones/conexiones"
-          className="inline-flex items-center gap-1 hover:opacity-80 transition-opacity"
-        >
-          <Badge variant="outline" className="text-xs bg-warning-subtle text-warning-text border-line-warning">
-            <Zap className="h-3 w-3 mr-1" />
-            Conectar
-          </Badge>
-        </Link>
-      );
-    }
-    
-    // Métodos manuales/nativos
-    if (['cash', 'card', 'transfer', 'check', 'credit'].includes(lowerCode)) {
-      return <Badge variant="secondary" className="text-xs">Nativo</Badge>;
-    }
-    return <span className="text-xs text-fg-secondary">—</span>;
-  };
-
-  return (
-    <TableRow 
-      ref={setNodeRef} 
-      style={style} 
-      className={isDragging ? 'bg-brand-tint' : undefined}
-    >
-      <TableCell className="w-8 cursor-grab active:cursor-grabbing" {...attributes} {...listeners}>
-        <GripVertical className="h-4 w-4 text-fg-muted hover:text-fg" />
-      </TableCell>
-      <TableCell>
-        {getPaymentIcon(method.payment_method_code)}
-      </TableCell>
-      <TableCell className="font-medium text-xs sm:text-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-1">
-          <span>{nombreVisibleMetodo(method.settings, method.payment_method?.name, method.payment_method_code)}</span>
-          <SucursalesMetodoBadges organizationId={method.organization_id} branchIds={method.branch_ids} />
-          {method.payment_method?.is_system && (
-            <Badge variant="secondary" className="text-xs w-fit">Sistema</Badge>
-          )}
-        </div>
-      </TableCell>
-      <TableCell className="hidden md:table-cell text-xs sm:text-sm">
-        {method.payment_method_code}
-      </TableCell>
-      <TableCell className="hidden lg:table-cell">
-        {method.payment_method?.countries && method.payment_method.countries.length > 0 ? (
-          <div className="flex flex-wrap gap-1 max-w-[200px]">
-            {method.payment_method.countries.length <= 3 ? (
-              method.payment_method.countries.map((c) => (
-                <Badge 
-                  key={c.country_code} 
-                  variant="outline" 
-                  className={`text-[10px] px-1.5 py-0 ${
-                    c.is_recommended 
-                      ? 'bg-success-subtle text-success-text border-line-success' 
-                      : ''
-                  }`}
-                >
-                  {c.country_code}
-                </Badge>
-              ))
-            ) : (
-              <>
-                {method.payment_method.countries.slice(0, 2).map((c) => (
-                  <Badge 
-                    key={c.country_code} 
-                    variant="outline" 
-                    className={`text-[10px] px-1.5 py-0 ${
-                      c.is_recommended 
-                        ? 'bg-success-subtle text-success-text border-line-success' 
-                        : ''
-                    }`}
-                  >
-                    {c.country_code}
-                  </Badge>
-                ))}
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  +{method.payment_method.countries.length - 2}
-                </Badge>
-              </>
-            )}
-          </div>
-        ) : (
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-            Global
-          </Badge>
-        )}
-      </TableCell>
-      <TableCell className="hidden xl:table-cell">
-        {isRecommended(method.payment_method_code) ? (
-          <Badge className="bg-brand-tint text-brand-deep border-line-brand">
-            ★ Recomendado {countryCode && `(${countryCode})`}
-          </Badge>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
-      </TableCell>
-      <TableCell className="hidden 2xl:table-cell text-xs sm:text-sm">
-        {requiereReferenciaMetodo(method.settings, method.payment_method?.requires_reference) ? "Sí" : "No"}
-      </TableCell>
-      <TableCell className="hidden sm:table-cell">
-        {getIntegrationBadge(method.payment_method_code, method.settings?.gateway, method.integration_connection_id)}
-      </TableCell>
-      <TableCell>
-        <Switch 
-          checked={method.show_on_website ?? false}
-          disabled={updatingWebsite === method.payment_method_code || method.id === 0}
-          onCheckedChange={() => handleToggleWebsite(method)}
-         
-        />
-      </TableCell>
-      <TableCell>
-        <Switch 
-          checked={method.is_active}
-          disabled={updatingStatus === method.payment_method_code || method.id === 0}
-          onCheckedChange={() => handleToggleActive(method)}
-         
-        />
-      </TableCell>
-      <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => onEdit(method)}
-              disabled={isLoading}
-             
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Editar
-            </DropdownMenuItem>
-            {!method.payment_method?.is_system && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => onDelete(method)}
-                  disabled={isLoading}
-                  className="text-danger-text"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Quitar
-                </DropdownMenuItem>
-              </>
-            )}
-            {GATEWAY_METHODS.includes(method.payment_method_code.toLowerCase()) && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link 
-                    href={
-                      // Asistente NUEVO de Conexiones con el proveedor elegido y regreso aquí (Frente INT).
-                      rutaConectar(method.payment_method_code, { volver: '/app/finanzas/metodos-pago' }) ??
-                      `/app/integraciones/conexiones/nueva?provider=${method.payment_method_code.toLowerCase()}&return=/app/finanzas/metodos-pago`
-                    }
-                    className="cursor-pointer"
-                  >
-                    <Zap className="mr-2 h-4 w-4 text-brand" />
-                    Configurar Integración
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-interface PaymentMethodsListProps {
+export interface PaymentMethodsListProps {
+  /** Organización de la sesión (para contar sus pagos aunque aún no tenga métodos). */
+  organizationId?: number | null;
+  /** Catálogo visible (nombres de los códigos usados sin configurar). */
   paymentMethods: PaymentMethod[];
   orgPaymentMethods: OrganizationPaymentMethod[];
-  recommendedMethods: Array<{ code?: string; payment_method_code?: string }>; // Métodos recomendados
-  countryCode: string | null;
+  /** Compatibilidad: la lista ya no muestra la columna de recomendación por país. */
+  recommendedMethods?: Array<{ code?: string; payment_method_code?: string }>;
+  countryCode?: string | null;
   onEdit: (method: OrganizationPaymentMethod) => void;
+  /** «Agregar» de un código usado sin configurar, o del estado vacío. */
+  onAgregar?: (codigo?: string) => void;
   isLoading: boolean;
   onRefresh: () => void;
+  /** La carga de los métodos falló: `sinPermiso` si RLS la negó. */
+  errorCarga?: "error" | "sinPermiso" | null;
+  /** Puede crear, editar, activar y quitar (`billing_management`, resuelto en el servidor). */
+  puedeGestionar?: boolean;
+  /** Sube para volver a leer los datos de apoyo (bancos, conexiones, pagos). */
+  recarga?: number;
 }
 
+/**
+ * Lista de Métodos de pago (Figma `1010:85721` escritorio, `1010:86844` móvil).
+ * Escritorio: `DataTable` Método · Tipo · Entra a · Caja abierta · Referencia ·
+ * POS · Tienda web · «⋯». Móvil: `ListCard` con destino y reglas, canales,
+ * estado y «⋯». Aviso «N métodos usados y sin configurar · Revisar».
+ *
+ * Las escrituras son las de siempre, desde el navegador con RLS
+ * (`organization_payment_methods`, permiso `billing_management`):
+ * activar/desactivar (`is_active`, lo que lee el POS), tienda web
+ * (`show_on_website`), orden (`website_display_order`, el que lee el POS) y
+ * quitar (eliminar solo sin pagos; el trigger 20261107220000 lo impide con pagos).
+ */
 export default function PaymentMethodsList({
+  organizationId: organizationIdProp,
   paymentMethods,
   orgPaymentMethods,
-  recommendedMethods,
-  countryCode,
   onEdit,
+  onAgregar,
   isLoading,
-  onRefresh
+  onRefresh,
+  errorCarga = null,
+  puedeGestionar = true,
+  recarga = 0,
 }: PaymentMethodsListProps) {
+  const t = useTranslations("finanzasMetodosPagoLista");
+  const tQuitar = useTranslations("finanzasCobrosR2");
   const { toast } = useToast();
-  const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
-  const [updatingWebsite, setUpdatingWebsite] = useState<string | null>(null);
-  const t = useTranslations("finanzasCobrosR2");
+  const router = useRouter();
+  const escritorio = useEsEscritorio();
+
+  const [localOrgMethods, setLocalOrgMethods] = useState<OrganizationPaymentMethod[]>(orgPaymentMethods);
+  useEffect(() => setLocalOrgMethods(orgPaymentMethods), [orgPaymentMethods]);
+  const [actualizando, setActualizando] = useState<string | null>(null);
+  const [soloRevisar, setSoloRevisar] = useState(false);
+
   const [deleteTarget, setDeleteTarget] = useState<OrganizationPaymentMethod | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  // Pagos registrados con el método (`payments.method` = código): null mientras se cuentan
-  // o si no se pudieron contar (entonces se trata como «con pagos»: se desactiva, no se borra).
+  // Pagos del método a quitar: null mientras se cuentan o si no se pudieron contar
+  // (entonces se trata como «con pagos»: se desactiva, no se borra).
   const [pagosTarget, setPagosTarget] = useState<number | null>(null);
   const [contandoPagos, setContandoPagos] = useState(false);
-  
-  // Estado local para actualizaciones optimistas
-  const [localOrgMethods, setLocalOrgMethods] = useState<OrganizationPaymentMethod[]>(orgPaymentMethods);
-  
-  // Sincronizar estado local cuando cambian los props
-  useEffect(() => {
-    setLocalOrgMethods(orgPaymentMethods);
-  }, [orgPaymentMethods]);
 
-  // Sensores para drag & drop
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+  const organizationId = organizationIdProp ?? orgPaymentMethods[0]?.organization_id ?? null;
+  const idsConexion = useMemo(
+    () => localOrgMethods.map((m) => m.integration_connection_id).filter((x): x is string => !!x),
+    [localOrgMethods],
   );
+  const apoyo = useDatosListaMetodos(organizationId ?? undefined, idsConexion, recarga);
 
-  // Función para cambiar el estado activo de un método de pago (optimista)
+  const filas = useMemo(
+    () =>
+      construirFilasMetodos({
+        metodos: localOrgMethods,
+        bancos: apoyo.bancos,
+        conexiones: apoyo.conexiones,
+        exigeCaja: apoyo.exigeCaja,
+        usoPorMetodo: apoyo.usoPorMetodo,
+        catalogo: paymentMethods,
+      }),
+    [localOrgMethods, apoyo, paymentMethods],
+  );
+  const resumen = useMemo(() => resumirMetodos(filas), [filas]);
+  const visibles = useMemo(() => filtrarFilasMetodos(filas, soloRevisar), [filas, soloRevisar]);
+  useEffect(() => {
+    if (soloRevisar && resumen.incompletos === 0) setSoloRevisar(false);
+  }, [soloRevisar, resumen.incompletos]);
+
+  const estado = estadoListaMetodos({
+    cargando: isLoading,
+    error: errorCarga === "error",
+    sinPermiso: errorCarga === "sinPermiso",
+    total: filas.length,
+    visibles: visibles.length,
+  });
+
+  // ─── Escrituras (las mismas de antes) ──────────────────────────────────────
+
   const handleToggleActive = async (orgMethod: OrganizationPaymentMethod) => {
-    const newIsActive = !orgMethod.is_active;
-    
-    // Actualización optimista: cambiar estado local inmediatamente
-    setLocalOrgMethods(prev => 
-      prev.map(m => m.id === orgMethod.id ? { ...m, is_active: newIsActive } : m)
-    );
-    
+    const nuevo = !orgMethod.is_active;
+    setLocalOrgMethods((prev) => prev.map((m) => (m.id === orgMethod.id ? { ...m, is_active: nuevo } : m)));
+    setActualizando(`activo-${orgMethod.id}`);
     try {
-      setUpdatingStatus(orgMethod.payment_method_code);
-      
-      const { error } = await supabase
-        .from("organization_payment_methods")
-        .update({ is_active: newIsActive })
-        .eq("id", orgMethod.id);
-        
+      const { error } = await supabase.from("organization_payment_methods").update({ is_active: nuevo }).eq("id", orgMethod.id);
       if (error) throw error;
-      
-      toast({
-        title: "Estado actualizado",
-        description: `El método de pago ha sido ${newIsActive ? "activado" : "desactivado"}.`,
-      });
+      toast({ title: nuevo ? t("toast.activado") : t("toast.desactivado") });
     } catch (error: unknown) {
-      // Revertir en caso de error
-      setLocalOrgMethods(prev => 
-        prev.map(m => m.id === orgMethod.id ? { ...m, is_active: !newIsActive } : m)
-      );
+      setLocalOrgMethods((prev) => prev.map((m) => (m.id === orgMethod.id ? { ...m, is_active: !nuevo } : m)));
       console.error("Error al actualizar estado:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el estado del método de pago.",
-        variant: "destructive",
-      });
+      toast({ title: t("toast.errorTitulo"), description: t("toast.errorEstado"), variant: "destructive" });
     } finally {
-      setUpdatingStatus(null);
+      setActualizando(null);
     }
   };
 
-  // Función para cambiar visibilidad en website (optimista)
   const handleToggleWebsite = async (orgMethod: OrganizationPaymentMethod) => {
-    if (orgMethod.id === 0) {
-      toast({
-        title: "Método no configurado",
-        description: "Primero debes configurar este método de pago.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    const newShowOnWebsite = !orgMethod.show_on_website;
-    
-    // Actualización optimista: cambiar estado local inmediatamente
-    setLocalOrgMethods(prev => 
-      prev.map(m => m.id === orgMethod.id ? { ...m, show_on_website: newShowOnWebsite } : m)
-    );
-    
+    const nuevo = !orgMethod.show_on_website;
+    setLocalOrgMethods((prev) => prev.map((m) => (m.id === orgMethod.id ? { ...m, show_on_website: nuevo } : m)));
+    setActualizando(`web-${orgMethod.id}`);
     try {
-      setUpdatingWebsite(orgMethod.payment_method_code);
-      
-      const { error } = await supabase
-        .from("organization_payment_methods")
-        .update({ show_on_website: newShowOnWebsite })
-        .eq("id", orgMethod.id);
-        
+      const { error } = await supabase.from("organization_payment_methods").update({ show_on_website: nuevo }).eq("id", orgMethod.id);
       if (error) throw error;
-      
-      toast({
-        title: "Visibilidad actualizada",
-        description: `El método ${newShowOnWebsite ? "será visible" : "no será visible"} en el website.`,
-      });
+      toast({ title: nuevo ? t("toast.webVisible") : t("toast.webOculto") });
     } catch (error: unknown) {
-      // Revertir en caso de error
-      setLocalOrgMethods(prev => 
-        prev.map(m => m.id === orgMethod.id ? { ...m, show_on_website: !newShowOnWebsite } : m)
-      );
+      setLocalOrgMethods((prev) => prev.map((m) => (m.id === orgMethod.id ? { ...m, show_on_website: !nuevo } : m)));
       console.error("Error al actualizar visibilidad:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar la visibilidad.",
-        variant: "destructive",
-      });
+      toast({ title: t("toast.errorTitulo"), description: t("toast.errorWeb"), variant: "destructive" });
     } finally {
-      setUpdatingWebsite(null);
+      setActualizando(null);
     }
   };
 
-  // Función para manejar el reordenamiento con drag & drop (optimista)
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over || active.id === over.id) return;
-    
-    const oldIndex = sortedMethods.findIndex(m => m.payment_method_code === active.id);
-    const newIndex = sortedMethods.findIndex(m => m.payment_method_code === over.id);
-    
-    if (oldIndex === -1 || newIndex === -1) return;
-    
-    const reorderedMethods = arrayMove(sortedMethods, oldIndex, newIndex);
-    
-    // Guardar estado anterior para poder revertir
-    const previousLocalMethods = [...localOrgMethods];
-    
-    // Actualización optimista: actualizar estado local inmediatamente con nuevos órdenes
-    const updatedLocalMethods = localOrgMethods.map(m => {
-      const newOrderIndex = reorderedMethods.findIndex(rm => rm.payment_method_code === m.payment_method_code);
-      return newOrderIndex !== -1 ? { ...m, website_display_order: newOrderIndex } : m;
-    });
-    setLocalOrgMethods(updatedLocalMethods);
-    
-    // Actualizar el orden en la base de datos en segundo plano
+  /** Subir/Bajar: reescribe `website_display_order` = posición, como hacía el arrastre. */
+  const mover = async (fila: FilaMetodoPago, direccion: -1 | 1) => {
+    const orden = moverMetodo(filas, fila.id, direccion);
+    if (!orden) return;
+    const anteriores = localOrgMethods;
+    setLocalOrgMethods((prev) => prev.map((m) => (orden.includes(m.id) ? { ...m, website_display_order: orden.indexOf(m.id) } : m)));
     try {
-      const updates = reorderedMethods
-        .filter(m => m.id !== 0) // Solo actualizar métodos configurados
-        .map((method, index) => ({
-          id: method.id,
-          website_display_order: index,
-        }));
-      
-      // Actualizar cada método con su nuevo orden
-      for (const update of updates) {
-        const { error } = await supabase
-          .from("organization_payment_methods")
-          .update({ website_display_order: update.website_display_order })
-          .eq("id", update.id);
-        
+      for (const [indice, id] of orden.entries()) {
+        const { error } = await supabase.from("organization_payment_methods").update({ website_display_order: indice }).eq("id", id);
         if (error) throw error;
       }
-      
-      toast({
-        title: "Orden actualizado",
-        description: "El orden de los métodos de pago ha sido guardado.",
-      });
+      toast({ title: t("toast.orden") });
     } catch (error: unknown) {
-      // Revertir en caso de error
-      setLocalOrgMethods(previousLocalMethods);
+      setLocalOrgMethods(anteriores);
       console.error("Error al actualizar orden:", error);
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el orden.",
-        variant: "destructive",
-      });
+      toast({ title: t("toast.errorTitulo"), description: t("toast.errorOrden"), variant: "destructive" });
     }
   };
 
-  // «Quitar» (Finanzas ronda 2, A12): un método con pagos se desactiva; sin pagos se elimina.
+  // «Quitar» (Finanzas ronda 2, A12): con pagos se desactiva; sin pagos se elimina.
   const abrirQuitar = async (method: OrganizationPaymentMethod) => {
     setDeleteTarget(method);
     setPagosTarget(null);
@@ -536,227 +222,317 @@ export default function PaymentMethodsList({
     setDeleteTarget(null);
   };
 
-  // Función para quitar un método de pago de la organización.
-  // GO-sec (2026-09-28): solo se borra el VÍNCULO de esta organización. La fila
-  // de `payment_methods` es del catálogo global (con ON DELETE CASCADE a los
-  // vínculos de otras organizaciones); antes se intentaba borrar aquí también.
+  // Solo se borra el VÍNCULO de la organización, nunca el catálogo global (GO-sec 2026-09-28).
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setIsDeleting(true);
     try {
-      // 1. Eliminar la vinculación de la organización.
-      // `.select()` es obligatorio: un DELETE que RLS bloquea NO devuelve
-      // error, solo afecta 0 filas. Sin esta comprobación la fila desaparecía
-      // de la pantalla y reaparecía al recargar. Borrar métodos de pago exige
-      // el permiso `billing_management` (pantalla de roles y de cargos).
-      const { data: borradas, error: orgError } = await supabase
-        .from('organization_payment_methods')
+      // `.select()` obligatorio: un DELETE que RLS bloquea no da error, solo 0 filas.
+      const { data: borradas, error } = await supabase
+        .from("organization_payment_methods")
         .delete()
-        .eq('id', deleteTarget.id)
-        .select('id');
-      if (orgError) {
-        // Trigger 20261107220000 (aplicado el 2026-11-07): la base rechaza borrar un método con pagos.
-        if (/metodo_con_pagos/.test(String(orgError.message))) throw new Error(t("metodos.quitar.conPagosError"));
-        throw orgError;
+        .eq("id", deleteTarget.id)
+        .select("id");
+      if (error) {
+        // Trigger 20261107220000: la base rechaza borrar un método con pagos.
+        if (/metodo_con_pagos/.test(String(error.message))) throw new Error(tQuitar("metodos.quitar.conPagosError"));
+        throw error;
       }
-      if (!borradas || borradas.length === 0) {
-        throw new Error(
-          'No se pudo eliminar el método de pago: tu cargo o rol no tiene el permiso de facturación.'
-        );
-      }
-
-      // Actualizar estado local
-      setLocalOrgMethods(prev => prev.filter(m => m.id !== deleteTarget.id));
-
-      toast({
-        title: 'Método eliminado',
-        description: `El método "${deleteTarget.payment_method?.name}" ha sido eliminado.`,
-      });
+      if (!borradas || borradas.length === 0) throw new Error(t("toast.sinPermisoEliminar"));
+      setLocalOrgMethods((prev) => prev.filter((m) => m.id !== deleteTarget.id));
+      toast({ title: t("toast.eliminado", { nombre: nombreDe(deleteTarget) }) });
       setDeleteTarget(null);
     } catch (error: unknown) {
-      console.error('Error al eliminar método de pago:', error);
+      console.error("Error al eliminar método de pago:", error);
       toast({
-        title: 'Error',
-        description: 'No se pudo eliminar el método de pago: ' + (error instanceof Error ? error.message : String(error)),
-        variant: 'destructive',
+        title: t("toast.errorTitulo"),
+        description: error instanceof Error ? error.message : t("toast.errorEliminar"),
+        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Función para obtener el icono según el tipo de método de pago
-  const getPaymentIcon = (code: string) => {
-    const lowerCode = code.toLowerCase();
-    
-    // Métodos específicos por código
-    switch (lowerCode) {
-      case 'nequi':
-        return <div className="h-4 w-4 bg-purple-600 text-white rounded text-xs flex items-center justify-center font-bold">N</div>;
-      case 'daviplata':
-        return <div className="h-4 w-4 bg-red-500 text-white rounded text-xs flex items-center justify-center font-bold">D</div>;
-      case 'pse':
-        return <div className="h-4 w-4 bg-blue-600 text-white rounded text-xs flex items-center justify-center font-bold">P</div>;
-      case 'payu':
-        return <div className="h-4 w-4 bg-green-600 text-white rounded text-xs flex items-center justify-center font-bold">U</div>;
-      case 'mp':
-        return <div className="h-4 w-4 bg-sky-400 text-white rounded text-xs flex items-center justify-center font-bold">M</div>;
-      case 'oxxo':
-        return <div className="h-4 w-4 bg-yellow-600 text-white rounded text-xs flex items-center justify-center font-bold">O</div>;
-      case 'spei':
-        return <div className="h-4 w-4 bg-red-600 text-white rounded text-xs flex items-center justify-center font-bold">S</div>;
-      case 'stripe':
-        return <div className="h-4 w-4 bg-purple-600 text-white rounded text-xs flex items-center justify-center font-bold">S</div>;
-      case 'conekta':
-        return <div className="h-4 w-4 bg-indigo-600 text-white rounded text-xs flex items-center justify-center font-bold">C</div>;
+  const nombreDe = (m: OrganizationPaymentMethod) => filas.find((f) => f.original?.id === m.id)?.nombre ?? m.payment_method_code;
+
+  // ─── Textos de la fila ─────────────────────────────────────────────────────
+
+  const textoDestino = (d: DestinoMetodo): string => {
+    switch (d.tipo) {
+      case "caja":
+        return t("destino.caja");
+      case "banco":
+        if (!d.banco) return t("destino.bancoDesconocido");
+        return d.ultimos ? t("destino.banco", { banco: d.banco, ultimos: d.ultimos }) : d.banco;
+      case "pasarela":
+        return d.conectada ? t("destino.pasarela") : t("destino.sinConectar");
+      case "cxc":
+        return t("destino.cxc");
       default:
-        // Iconos genéricos
-        if (lowerCode.includes("card") || lowerCode.includes("tarjeta")) {
-          return <CreditCard className="h-4 w-4" />;
-        } else if (lowerCode.includes("cash") || lowerCode.includes("efectivo")) {
-          return <Banknote className="h-4 w-4" />;
-        } else if (lowerCode.includes("transfer") || lowerCode.includes("transferencia")) {
-          return <Building2 className="h-4 w-4" />;
-        } else {
-          return <Wallet className="h-4 w-4" />;
-        }
+        return t("destino.sinDestino");
     }
   };
 
-  // Función para verificar si un método es recomendado para el país
-  const isRecommended = (methodCode: string) => {
-    return recommendedMethods.some(rec => rec.code === methodCode || rec.payment_method_code === methodCode);
+  const textoCanales = (f: FilaMetodoPago): string => {
+    const lista = [f.canales.pos && t("canales.pos"), f.canales.web && t("canales.web")].filter(Boolean);
+    return lista.length ? lista.join(" · ") : t("canales.ninguno");
   };
 
-  // Solo mostrar los métodos que la organización tiene asignados (no todo el catálogo global)
-  const combinedMethods = useMemo(() => {
-    return localOrgMethods.map(orgMethod => {
-      const globalMethod = paymentMethods.find(pm => pm.code === orgMethod.payment_method_code);
-      return {
-        ...orgMethod,
-        payment_method: globalMethod || orgMethod.payment_method
-      };
-    });
-  }, [paymentMethods, localOrgMethods]);
+  const subtituloMovil = (f: FilaMetodoPago): string => {
+    if (f.sinConfigurar) return t("usadoSinConfigurar", { n: f.pagos ?? 0 });
+    const partes = [textoDestino(f.destino)];
+    if (f.cajaObligatoria) partes.push(t("cajaMovil"));
+    if (f.referencia === "obligatoria") partes.push(t("referenciaMovil"));
+    return partes.join(" · ");
+  };
 
-  // Ordenar por website_display_order (menor número = mayor prioridad)
-  const sortedMethods = useMemo(() => {
-    return [...combinedMethods].sort((a, b) => {
-      const orderA = a.website_display_order ?? 999;
-      const orderB = b.website_display_order ?? 999;
-      return orderA - orderB;
-    });
-  }, [combinedMethods]);
+  const segundaLinea = (f: FilaMetodoPago): string => {
+    if (f.sinConfigurar) return t("usadoSinConfigurar", { n: f.pagos ?? 0 });
+    const partes = [t("codigo", { codigo: f.codigo })];
+    if (f.destino.tipo === "pasarela" && f.destino.conexion) partes.push(f.destino.conexion);
+    if (f.incompleta) partes.push(t("usadoSinDestino", { n: f.pagos ?? 0 }));
+    return partes.join(" · ");
+  };
 
-  // IDs para el SortableContext
-  const sortableIds = useMemo(() => sortedMethods.map(m => m.payment_method_code), [sortedMethods]);
+  const estadoBadge = (f: FilaMetodoPago) =>
+    f.sinConfigurar ? (
+      <StatusBadge estado="pendiente" etiqueta={t("estado.sinConfigurar")} tono="advertencia" tamano="sm" />
+    ) : (
+      <StatusBadge estado={f.activo ? "activa" : "inactiva"} etiqueta={f.activo ? t("estado.activa") : t("estado.inactiva")} tamano="sm" />
+    );
+
+  // ─── Acciones ──────────────────────────────────────────────────────────────
+
+  const configuradas = filas.filter((f) => f.original);
+  const accionesDe = (f: FilaMetodoPago): AccionFila[] => {
+    if (!puedeGestionar) return [];
+    if (!f.original) {
+      return onAgregar ? [{ id: "agregar", etiqueta: t("acciones.agregar"), icono: Plus, onSelect: () => onAgregar(f.codigo) }] : [];
+    }
+    const m = f.original as OrganizationPaymentMethod;
+    const posicion = configuradas.findIndex((x) => x.id === f.id);
+    const conConexion = Boolean(m.integration_connection_id || (typeof m.settings?.gateway === "string" && m.settings.gateway));
+    return [
+      { id: "editar", etiqueta: t("acciones.editar"), icono: Pencil, onSelect: () => onEdit(m) },
+      { id: "subir", etiqueta: t("acciones.subir"), icono: ArrowUp, onSelect: () => void mover(f, -1), oculta: posicion <= 0 },
+      {
+        id: "bajar",
+        etiqueta: t("acciones.bajar"),
+        icono: ArrowDown,
+        onSelect: () => void mover(f, 1),
+        oculta: posicion < 0 || posicion >= configuradas.length - 1,
+      },
+      {
+        id: "conectar",
+        etiqueta: t("acciones.conectar"),
+        icono: Zap,
+        separadorAntes: true,
+        oculta: !esPasarelaConectable(m.payment_method_code),
+        // Asistente NUEVO de Conexiones con el proveedor elegido y regreso aquí (Frente INT).
+        onSelect: () =>
+          router.push(
+            rutaConectar(m.payment_method_code, { volver: RUTA_METODOS }) ??
+              `${RUTA_CONEXIONES}/nueva?provider=${m.payment_method_code.toLowerCase()}&return=${RUTA_METODOS}`,
+          ),
+      },
+      { id: "verConexion", etiqueta: t("acciones.verConexion"), icono: Plug, oculta: !conConexion, onSelect: () => router.push(RUTA_CONEXIONES) },
+      // En escritorio los interruptores están en la fila; en el celular van aquí.
+      {
+        id: "activo",
+        etiqueta: m.is_active ? t("acciones.desactivar") : t("acciones.activar"),
+        icono: Power,
+        separadorAntes: true,
+        oculta: escritorio,
+        onSelect: () => void handleToggleActive(m),
+      },
+      {
+        id: "web",
+        etiqueta: m.show_on_website ? t("acciones.ocultarWeb") : t("acciones.mostrarWeb"),
+        icono: Globe,
+        oculta: escritorio,
+        onSelect: () => void handleToggleWebsite(m),
+      },
+      { id: "quitar", etiqueta: t("acciones.quitar"), icono: Trash2, destructiva: true, oculta: f.esSistema, onSelect: () => void abrirQuitar(m) },
+    ];
+  };
+
+  // ─── Columnas (escritorio) ─────────────────────────────────────────────────
+
+  const columnas: ColumnaTabla<FilaMetodoPago>[] = [
+    {
+      id: "metodo",
+      encabezado: t("columnas.metodo"),
+      celda: (f) => {
+        const Icono = iconoMetodoPago(f.codigo);
+        return (
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
+              <Icono className="size-4" strokeWidth={1.5} />
+            </span>
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate font-medium text-fg">{f.nombre}</span>
+              <span className="truncate text-xs text-fg-secondary">{segundaLinea(f)}</span>
+              {f.original?.branch_ids ? (
+                <span className="pt-0.5">
+                  <SucursalesMetodoBadges organizationId={f.original.organization_id} branchIds={f.original.branch_ids} />
+                </span>
+              ) : null}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      id: "tipo",
+      encabezado: t("columnas.tipo"),
+      celda: (f) => (
+        <Badge tono="neutro" tamano="sm">
+          {t(`tipos.${f.tipo}`)}
+        </Badge>
+      ),
+    },
+    {
+      id: "entraA",
+      encabezado: t("columnas.entraA"),
+      celda: (f) =>
+        f.sinConfigurar ? (
+          <span className="text-fg-muted">—</span>
+        ) : (
+          <span className={f.incompleta ? "text-warning-text" : undefined}>{textoDestino(f.destino)}</span>
+        ),
+    },
+    {
+      id: "caja",
+      encabezado: t("columnas.cajaAbierta"),
+      ocultarDebajo: "xl",
+      celda: (f) => (f.sinConfigurar ? <span className="text-fg-muted">—</span> : f.cajaObligatoria ? t("caja.obligatoria") : t("caja.no")),
+    },
+    {
+      id: "referencia",
+      encabezado: t("columnas.referencia"),
+      ocultarDebajo: "xl",
+      celda: (f) => (f.referencia === "noAplica" ? <span className="text-fg-muted">—</span> : t(`referencia.${f.referencia}`)),
+    },
+    {
+      id: "pos",
+      encabezado: t("columnas.pos"),
+      alinear: "centro",
+      celda: (f) =>
+        f.original ? (
+          <Switch
+            checked={f.activo}
+            disabled={!puedeGestionar || actualizando === `activo-${f.original.id}`}
+            onCheckedChange={() => void handleToggleActive(f.original as OrganizationPaymentMethod)}
+            aria-label={t("aria.pos", { nombre: f.nombre })}
+          />
+        ) : null,
+    },
+    {
+      id: "web",
+      encabezado: t("columnas.web"),
+      alinear: "centro",
+      celda: (f) =>
+        f.original ? (
+          <Switch
+            checked={f.original.show_on_website === true}
+            disabled={!puedeGestionar || actualizando === `web-${f.original.id}`}
+            onCheckedChange={() => void handleToggleWebsite(f.original as OrganizationPaymentMethod)}
+            aria-label={t("aria.web", { nombre: f.nombre })}
+          />
+        ) : null,
+    },
+  ];
+
+  const tarjeta = (f: FilaMetodoPago) => (
+    <ListCard
+      icono={iconoMetodoPago(f.codigo)}
+      titulo={f.nombre}
+      subtitulo={subtituloMovil(f)}
+      valor={f.sinConfigurar ? undefined : <span className="text-sm font-medium text-fg">{textoCanales(f)}</span>}
+      estado={estadoBadge(f)}
+      acciones={accionesDe(f)}
+      className={f.incompleta ? "border-line-warning" : undefined}
+    />
+  );
+
+  const listaPagos = resumen.detalle.map((d) => t("aviso.item", { nombre: d.nombre, n: d.pagos })).join(", ");
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-fg-secondary flex items-center gap-1">
-          <GripVertical className="h-3 w-3" />
-          Arrastra para reordenar la prioridad en el website
-        </p>
-        <Button 
-          variant="outline" 
-          onClick={onRefresh} 
-          disabled={isLoading}
-          className="h-9 text-xs sm:text-sm"
-        >
-          <RefreshCcw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">Actualizar</span>
-        </Button>
-      </div>
-      
-      <div className="border rounded-md overflow-x-auto">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-subtle">
-                <TableHead className="w-8"></TableHead>
-                <TableHead className="w-8 sm:w-10"></TableHead>
-                <TableHead className="text-xs sm:text-sm">Método de Pago</TableHead>
-                <TableHead className="hidden md:table-cell text-xs sm:text-sm">Código</TableHead>
-                <TableHead className="hidden lg:table-cell text-xs sm:text-sm">Países</TableHead>
-                <TableHead className="hidden xl:table-cell text-xs sm:text-sm">Recomendación</TableHead>
-                <TableHead className="hidden 2xl:table-cell text-xs sm:text-sm">Requiere Ref.</TableHead>
-                <TableHead className="hidden sm:table-cell text-xs sm:text-sm">Integración</TableHead>
-                <TableHead className="text-xs sm:text-sm">Website</TableHead>
-                <TableHead className="text-xs sm:text-sm">Estado</TableHead>
-                <TableHead className="text-right text-xs sm:text-sm">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-sm">
-                      <div className="flex items-center justify-center gap-2">
-                        <RefreshCcw className="h-4 w-4 animate-spin" />
-                        Cargando métodos de pago...
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : sortedMethods.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-sm">
-                      No se encontraron métodos de pago.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  sortedMethods.map((method) => (
-                    <SortableRow 
-                      key={method.payment_method_code} 
-                      method={method}
-                      getPaymentIcon={getPaymentIcon}
-                      isRecommended={isRecommended}
-                      countryCode={countryCode}
-                      updatingStatus={updatingStatus}
-                      updatingWebsite={updatingWebsite}
-                      handleToggleActive={handleToggleActive}
-                      handleToggleWebsite={handleToggleWebsite}
-                      onEdit={onEdit}
-                      onDelete={(m) => void abrirQuitar(m)}
-                      isLoading={isLoading}
-                    />
-                  ))
-                )}
-              </TableBody>
-            </SortableContext>
-          </Table>
-        </DndContext>
-      </div>
+    <div className="flex flex-col gap-4" data-prueba="lista-metodos-pago">
+      {!puedeGestionar && estado !== "sinPermiso" && (
+        <AvisoTonal tono="informacion" compacto titulo={t("soloLectura.titulo")} descripcion={t("soloLectura.descripcion")} />
+      )}
+
+      {estado !== "cargando" && estado !== "error" && estado !== "sinPermiso" && resumen.incompletos > 0 && (
+        <AvisoTonal
+          tono="advertencia"
+          compacto={!escritorio}
+          titulo={t("aviso.titulo", { n: resumen.incompletos })}
+          descripcion={escritorio ? t("aviso.descripcion", { lista: listaPagos, total: resumen.pagosIncompletos }) : undefined}
+          accion={{ etiqueta: soloRevisar ? t("aviso.verTodos") : t("aviso.revisar"), onClick: () => setSoloRevisar((v) => !v) }}
+        />
+      )}
+
+      <DataTable<FilaMetodoPago>
+        etiqueta={t("lista.etiqueta")}
+        columnas={columnas}
+        filas={visibles}
+        obtenerId={(f) => f.id}
+        estado={estado}
+        etiquetaFila={(f) => f.nombre}
+        acciones={accionesDe}
+        accionesRapidas={(f) =>
+          f.sinConfigurar && puedeGestionar && onAgregar ? (
+            <button type="button" className={clasesBoton({ variante: "secundario", tamano: "sm" })} onClick={() => onAgregar(f.codigo)}>
+              {t("acciones.agregar")}
+            </button>
+          ) : null
+        }
+        tonoFila={(f) => (f.incompleta ? "advertencia" : undefined)}
+        atributosFila={(f) => ({ "data-metodo": f.codigo, "data-incompleta": f.incompleta ? "true" : undefined })}
+        tarjetaMovil={(f) => tarjeta(f)}
+        filasEsqueleto={5}
+        onReintentar={onRefresh}
+        onLimpiarFiltros={() => setSoloRevisar(false)}
+        vacio={{
+          titulo: t("estados.vacioTitulo"),
+          descripcion: t("estados.vacioDescripcion"),
+          accion: puedeGestionar && onAgregar ? { etiqueta: t("acciones.nuevo"), icono: Plus, onClick: () => onAgregar() } : undefined,
+        }}
+        error={{ titulo: t("estados.errorTitulo"), descripcion: t("estados.errorDescripcion") }}
+        sinPermiso={{ titulo: t("estados.sinPermisoTitulo"), descripcion: t("estados.sinPermisoDescripcion") }}
+      />
 
       <ConfirmDialog
         abierto={!!deleteTarget}
         onAbiertoChange={(open) => !open && !isDeleting && setDeleteTarget(null)}
         titulo={
           contandoPagos
-            ? t("metodos.quitar.titulo")
+            ? tQuitar("metodos.quitar.titulo")
             : accionQuitar === "eliminar"
-              ? t("metodos.quitar.tituloEliminar")
+              ? tQuitar("metodos.quitar.tituloEliminar")
               : accionQuitar === "desactivar"
-                ? t("metodos.quitar.tituloDesactivar")
-                : t("metodos.quitar.titulo")
+                ? tQuitar("metodos.quitar.tituloDesactivar")
+                : tQuitar("metodos.quitar.titulo")
         }
-        descripcion={
-          contandoPagos
-            ? t("metodos.quitar.contando")
-            : accionQuitar === "eliminar"
-              ? t("metodos.quitar.descripcionEliminar", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "" })
-              : accionQuitar === "desactivar"
-                ? pagosTarget === null
-                  ? t("metodos.quitar.descripcionDesactivarSinConteo", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "" })
-                  : t("metodos.quitar.descripcionDesactivar", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "", n: pagosTarget })
-                : t("metodos.quitar.descripcionNinguna", { nombre: deleteTarget ? nombreVisibleMetodo(deleteTarget.settings, deleteTarget.payment_method?.name, deleteTarget.payment_method_code) : "" })
-        }
+        descripcion={(() => {
+          const nombre = deleteTarget ? nombreDe(deleteTarget) : "";
+          if (contandoPagos) return tQuitar("metodos.quitar.contando");
+          if (accionQuitar === "eliminar") return tQuitar("metodos.quitar.descripcionEliminar", { nombre });
+          if (accionQuitar === "desactivar") {
+            return pagosTarget === null
+              ? tQuitar("metodos.quitar.descripcionDesactivarSinConteo", { nombre })
+              : tQuitar("metodos.quitar.descripcionDesactivar", { nombre, n: pagosTarget });
+          }
+          return tQuitar("metodos.quitar.descripcionNinguna", { nombre });
+        })()}
         textoConfirmar={
-          accionQuitar === "eliminar" ? t("metodos.quitar.eliminar") : accionQuitar === "desactivar" ? t("metodos.quitar.desactivar") : t("metodos.quitar.entendido")
+          accionQuitar === "eliminar"
+            ? tQuitar("metodos.quitar.eliminar")
+            : accionQuitar === "desactivar"
+              ? tQuitar("metodos.quitar.desactivar")
+              : tQuitar("metodos.quitar.entendido")
         }
         tono={accionQuitar === "eliminar" ? "peligro" : "advertencia"}
         icono={Trash2}

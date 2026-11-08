@@ -26,6 +26,10 @@ jest.mock('@/lib/hooks/useOrganization', () => ({
   useOrganization: () => ({ organization: { id: 7, country_code: 'CO' }, isLoading: false }),
 }));
 jest.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: jest.fn() }) }));
+// Permiso de gestión (billing_management) resuelto en el servidor: sin él no hay «+».
+jest.mock('@/lib/navigation/useCapacidades', () => ({
+  useCapacidades: () => ({ datos: { capacidades: { gestionarFacturacion: true } }, cargando: false, error: false }),
+}));
 jest.mock('../PaymentMethodsList', () => ({ __esModule: true, default: () => null }));
 jest.mock('../CobrosQrPestana', () => ({ CobrosQrPestana: () => null }));
 jest.mock('../PaymentMethodForm', () => ({

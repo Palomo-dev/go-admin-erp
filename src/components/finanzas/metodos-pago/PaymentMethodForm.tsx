@@ -23,6 +23,8 @@ interface PaymentMethodFormProps {
   organizationId: number;
   globalMethods: PaymentMethod[];
   selectedMethod: OrganizationPaymentMethod | null;
+  /** Nuevo método con el código ya elegido («Agregar» de un método usado sin configurar). */
+  codigoInicial?: string;
   onSaveComplete: () => void;
 }
 
@@ -100,6 +102,7 @@ export default function PaymentMethodForm({
   organizationId,
   globalMethods,
   selectedMethod,
+  codigoInicial,
   onSaveComplete,
 }: PaymentMethodFormProps) {
   const { toast } = useToast();
@@ -127,12 +130,18 @@ export default function PaymentMethodForm({
     if (!abierto) return;
     setIsNewMethod(false);
     setErrores({});
-    setValores(valoresDe(selectedMethod));
+    // «Agregar» desde la lista: el código usado sin configurar, si está en el catálogo que se ofrece.
+    const inicial = !selectedMethod && codigoInicial ? globalMethods.find((m) => m.code === codigoInicial) : undefined;
+    setValores(
+      inicial
+        ? { ...valoresDe(null), payment_method_code: inicial.code, name: inicial.name, code: inicial.code, requires_reference: inicial.requires_reference }
+        : valoresDe(selectedMethod),
+    );
     setGatewayConfig(selectedMethod?.settings?.gateway_config || {});
     setAccountMapping(selectedMethod?.settings?.account_mapping || {});
     setSucursales(normalizarSucursales(selectedMethod?.branch_ids));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [abierto, selectedMethod?.id]);
+  }, [abierto, selectedMethod?.id, codigoInicial]);
 
   // Cuentas para la sección de contabilidad (las mismas lecturas que AccountMappingForm).
   useEffect(() => {

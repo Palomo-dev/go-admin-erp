@@ -3,8 +3,8 @@
 import { seleccionarConColumnaOpcional, metodoCatalogoVisible } from "@/lib/finanzas/metodosPagoAlcance";
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { useToast } from "@/components/ui/use-toast";
 import { useOrganization } from "@/lib/hooks/useOrganization";
+import { useCapacidades } from "@/lib/navigation/useCapacidades";
 import { supabase } from "@/lib/supabase/config";
 import { CreditCard, Plus, RefreshCw } from "lucide-react";
 import { ListToolbar, PageHeader, RowActionsMenu, SearchInput, TabBar, clasesBoton, idPanel, idPestana, type AccionFila } from "@/components/kit";
@@ -68,7 +68,11 @@ const ID_TABS = "metodos-pago";
  */
 export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pestanaInicial?: PestanaMetodosPago }) {
   const t = useTranslations("finanzasCobrosR2");
-  const { toast } = useToast();
+  const tLista = useTranslations("finanzasMetodosPagoLista");
+  // Crear, editar, activar y quitar exigen `billing_management` (RLS de
+  // organization_payment_methods); la UI lo pregunta al servidor, nunca al rol.
+  const { datos: capacidades } = useCapacidades();
+  const puedeGestionar = capacidades.capacidades.gestionarFacturacion;
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const countryCode = organization?.country_code;
@@ -82,6 +86,9 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
   const [actualCountryCode, setActualCountryCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState<OrganizationPaymentMethod | null>(null);
+  const [codigoInicial, setCodigoInicial] = useState<string | undefined>(undefined);
+  const [errorCarga, setErrorCarga] = useState<"error" | "sinPermiso" | null>(null);
+  const [recargaLista, setRecargaLista] = useState(0);
 
   // Cargar los métodos de pago al iniciar
   useEffect(() => {
@@ -97,6 +104,7 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
     
     try {
       setIsLoading(true);
+      setErrorCarga(null);
       
       // Obtener métodos de pago globales con sus países
       const { data: methodsData, error: methodsError } = await supabase
@@ -201,34 +209,43 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
       setActualCountryCode(currentCountryCode || null);
     } catch (error: unknown) {
       console.error("Error al cargar métodos de pago:", error);
-      toast({
-        title: "Error",
-        description: "No se pudieron cargar los métodos de pago",
-        variant: "destructive",
-      });
+      // Un error de carga NO es «no hay métodos»: la lista muestra el estado de error (o sin permiso).
+      const codigo = (error as { code?: unknown } | null)?.code;
+      setErrorCarga(codigo === "42501" || codigo === "PGRST301" ? "sinPermiso" : "error");
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Recargar los métodos y los datos de apoyo de la lista (bancos, conexiones, pagos por método).
+  const recargarTodo = () => {
+    setRecargaLista((n) => n + 1);
+    void loadPaymentMethods();
+  };
+
   // Función para editar un método de pago
   const handleEditMethod = (method: OrganizationPaymentMethod) => {
     setSelectedMethod(method);
+    setCodigoInicial(undefined);
     setDialogoAbierto(true);
   };
 
   // Función para añadir un nuevo método de pago
-  const handleAddMethod = () => {
+  const handleAddMethod = (codigo?: string) => {
     setSelectedMethod(null);
+    setCodigoInicial(codigo);
     setDialogoAbierto(true);
   };
+
+  // Activos = lo que lee el POS (`is_active`); el subtítulo dice que se muestran en este orden.
+  const activos = orgPaymentMethods.filter((m) => m.is_active !== false).length;
 
   const menuCabecera: AccionFila[] = [
     {
       id: "recargar",
       etiqueta: t("acciones.recargar"),
       icono: RefreshCw,
-      onSelect: () => (pestana === "qr" ? setRecargaQr((n) => n + 1) : void loadPaymentMethods()),
+      onSelect: () => (pestana === "qr" ? setRecargaQr((n) => n + 1) : recargarTodo()),
     },
   ];
 
@@ -236,7 +253,7 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
       <PageHeader
         titulo={t("metodos.titulo")}
-        subtitulo={t("metodos.subtitulo")}
+        subtitulo={isLoading || errorCarga ? t("metodos.subtitulo") : tLista("subtitulo", { n: activos })}
         icono={CreditCard}
         migas={[
           { etiqueta: t("migas.finanzas"), href: "/app/finanzas" },
@@ -245,10 +262,12 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
         ]}
         acciones={
           <div className="flex items-center gap-2">
-            <button type="button" className={clasesBoton({ variante: "primario", tamano: "md" })} onClick={handleAddMethod} disabled={!organizationId}>
-              <Plus aria-hidden className="size-4" />
-              {t("metodos.nuevo")}
-            </button>
+            {puedeGestionar && (
+              <button type="button" className={clasesBoton({ variante: "primario", tamano: "md" })} onClick={() => handleAddMethod()} disabled={!organizationId}>
+                <Plus aria-hidden className="size-4" />
+                {t("metodos.nuevo")}
+              </button>
+            )}
             <RowActionsMenu acciones={menuCabecera} orientacion="horizontal" tamano="md" titulo={t("metodos.titulo")} />
           </div>
         }
@@ -256,10 +275,13 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
         // MobileHeader como «+» (Figma 1010:86844), igual que Saldos a favor o
         // Consignaciones. Sin esto no había forma de añadir un método en el celular.
         movil={{
-          accion: (
+          subtitulo: isLoading || errorCarga ? undefined : tLista("subtituloMovil", { n: activos }),
+          // Sin permiso de gestión no hay «+»: el «⋯» (Recargar) ocupa su lugar.
+          menu: menuCabecera,
+          accion: !puedeGestionar ? undefined : (
             <button
               type="button"
-              onClick={handleAddMethod}
+              onClick={() => handleAddMethod()}
               disabled={!organizationId}
               aria-label={t("metodos.nuevo")}
               className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
@@ -284,20 +306,25 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
         valor={pestana}
         onValorChange={setPestana}
         pestanas={[
-          { valor: "metodos", etiqueta: t("metodos.pestanas.metodos") },
+          { valor: "metodos", etiqueta: t("metodos.pestanas.metodos"), contador: isLoading || errorCarga ? undefined : orgPaymentMethods.length },
           { valor: "qr", etiqueta: t("metodos.pestanas.qr") },
         ]}
       />
 
       <div role="tabpanel" id={idPanel(ID_TABS, "metodos")} aria-labelledby={idPestana(ID_TABS, "metodos")} hidden={pestana !== "metodos"}>
         <PaymentMethodsList
+          organizationId={organizationId}
           paymentMethods={paymentMethods}
           orgPaymentMethods={orgPaymentMethods}
           recommendedMethods={recommendedMethods}
           countryCode={actualCountryCode}
           onEdit={handleEditMethod}
+          onAgregar={handleAddMethod}
           isLoading={isLoading}
-          onRefresh={loadPaymentMethods}
+          onRefresh={recargarTodo}
+          errorCarga={errorCarga}
+          puedeGestionar={puedeGestionar}
+          recarga={recargaLista}
         />
       </div>
 
@@ -312,7 +339,8 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
           organizationId={organizationId}
           globalMethods={paymentMethods}
           selectedMethod={selectedMethod}
-          onSaveComplete={loadPaymentMethods}
+          codigoInicial={codigoInicial}
+          onSaveComplete={recargarTodo}
         />
       ) : null}
     </div>

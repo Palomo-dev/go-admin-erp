@@ -10597,6 +10597,10 @@
       "buscar": "Buscar país",
       "paises": "Países",
       "sinResultados": "No se encontraron países"
+    },
+    "campoSecreto": {
+      "mostrar": "Mostrar",
+      "ocultar": "Ocultar"
     }
   },
   "inventarioEtiquetas": {
@@ -47469,7 +47473,8 @@
         "formato": {
           "requerido": "Este dato es obligatorio",
           "prefijo": "Debe empezar por {prefijo}",
-          "largo": "Es demasiado largo"
+          "largo": "Es demasiado largo",
+          "ambiente": "Esta llave es del otro ambiente: elegiste {prefijo}… y la llave no corresponde. Revisa «Pruebas» o «Producción»."
         },
         "notaServidor": "Se envían por conexión segura al servidor, que las prueba con el proveedor antes de guardarlas. Después solo verás los últimos 4 caracteres.",
         "probarLlaves": "Probar llaves",
@@ -47937,6 +47942,16 @@
       "error": "No se pudo mostrar la credencial.",
       "errorCopiar": "No se pudo copiar.",
       "actuales": "Llaves guardadas"
+    },
+    "conectadoComo": {
+      "titulo": "Conectado como {nombre}",
+      "razonSocial": "Razón social",
+      "documento": "Documento",
+      "correo": "Correo",
+      "pais": "País",
+      "ambiente": "Ambiente",
+      "metodos": "Métodos habilitados",
+      "verificadaEn": "Verificado con el proveedor el {fecha}"
     }
   },
   "consignacionesR4": {

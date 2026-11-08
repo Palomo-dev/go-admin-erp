@@ -6396,6 +6396,10 @@
       "buscar": "Buscar país",
       "paises": "Países",
       "sinResultados": "Nenhum país encontrado"
+    },
+    "campoSecreto": {
+      "mostrar": "Mostrar",
+      "ocultar": "Ocultar"
     }
   },
   "inventarioEtiquetas": {
@@ -47464,7 +47468,8 @@
         "formato": {
           "requerido": "Este dado é obrigatório",
           "prefijo": "Deve começar com {prefijo}",
-          "largo": "É longo demais"
+          "largo": "É longo demais",
+          "ambiente": "Esta chave é do outro ambiente: esperado {prefijo}…. Verifique «Testes» ou «Produção»."
         },
         "notaServidor": "São enviadas por conexão segura ao servidor, que as testa com o provedor antes de guardá-las. Depois você só verá os últimos 4 caracteres.",
         "probarLlaves": "Testar chaves",
@@ -47932,6 +47937,16 @@
       "error": "Não foi possível mostrar a credencial.",
       "errorCopiar": "Não foi possível copiar.",
       "actuales": "Chaves salvas"
+    },
+    "conectadoComo": {
+      "titulo": "Conectado como {nombre}",
+      "razonSocial": "Razão social",
+      "documento": "Documento",
+      "correo": "E-mail",
+      "pais": "País",
+      "ambiente": "Ambiente",
+      "metodos": "Métodos habilitados",
+      "verificadaEn": "Verificado com o provedor em {fecha}"
     }
   },
   "consignacionesR4": {

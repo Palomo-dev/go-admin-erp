@@ -15,7 +15,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { entradaRegistro } from '@/lib/integrations/core/registro';
 import { construirCatalogo, conexionConProblemas, type ItemCatalogo } from './catalogoConexiones';
 import { LLAVES, validarFormatoLlaves, type Ambiente, type ErrorFormato, type ProveedorLlaves } from './definicionesLlaves';
-import { probarLlaves, type Prueba } from './probadoresLlaves.server';
+import { probarLlaves, type CuentaVerificada, type Prueba } from './probadoresLlaves.server';
 import { enmascararSecreto, esReferenciaDeBoveda, resolverSecretos } from './secretosConexion';
 import { urlWebhookDeConector } from './urlsWebhook';
 
@@ -83,6 +83,8 @@ export interface ConexionResumen {
   /** Primera credencial enmascarada (p. ej. «Llaves ··a91f»). */
   credencial: string | null;
   usadaPor: { tipo: 'metodo_pago'; codigo: string; tienda: boolean }[];
+  /** Con quién quedó conectada según el proveedor («Conectado como …»). */
+  conectadoComo: string | null;
   eventos24h: number;
   necesitaAtencion: boolean;
 }
@@ -177,6 +179,7 @@ export async function listarConexiones(db: SupabaseClient, organizationId: numbe
         creada: (c.created_at as string | null) ?? null,
         credencial: creds.get(id) ?? null,
         usadaPor: usos.get(id) ?? [],
+        conectadoComo: cuentaDeSettings(c.settings)?.nombre ?? null,
         eventos24h: eventos.get(id) ?? 0,
         necesitaAtencion: false,
       };
@@ -313,6 +316,7 @@ export async function detalleConexion(db: SupabaseClient, organizationId: number
         propertyId: texto(settings.property_id) || null,
         modo: texto(settings.modo) || null,
       },
+      cuentaVerificada: cuentaDeSettings(c.settings),
     },
     credenciales: ((credsRes.data as Fila[] | null) ?? []).map((k) => ({
       proposito: texto(k.purpose),
@@ -352,6 +356,39 @@ export async function listarEventos(
   const desde30 = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
   const { data: errs } = await db.from('integration_events').select('id').in('connection_id', ids).eq('status', 'error').gte('created_at', desde30).limit(1000);
   return { eventos, errores: ((errs as Fila[] | null) ?? []).length };
+}
+
+// ─── Cuenta verificada («Conectado como …») ──────────────────────────────────
+
+/** Lee `settings.cuenta_verificada` (sin secretos; lo escribe el servidor tras una prueba correcta). */
+export function cuentaDeSettings(settings: unknown): (CuentaVerificada & { verificadaEn?: string | null }) | null {
+  const c = fila(fila(settings).cuenta_verificada);
+  const nombre = texto(c.nombre).trim();
+  if (!nombre) return null;
+  const opcional = (v: unknown) => (texto(v).trim() || null);
+  return {
+    nombre,
+    razonSocial: opcional(c.razonSocial),
+    documento: opcional(c.documento),
+    correo: opcional(c.correo),
+    pais: opcional(c.pais),
+    ambiente: c.ambiente === 'production' || c.ambiente === 'sandbox' ? c.ambiente : null,
+    metodos: Array.isArray(c.metodos) ? (c.metodos as unknown[]).map(texto).filter(Boolean) : [],
+    idExterno: opcional(c.idExterno),
+    verificadaEn: opcional(c.verificadaEn),
+  };
+}
+
+/** Guarda con quién quedó conectada la conexión, fusionando `settings` (nunca lo pisa). */
+async function guardarCuentaVerificada(db: SupabaseClient, organizationId: number, connectionId: string, cuenta: CuentaVerificada | undefined): Promise<void> {
+  if (!cuenta) return;
+  const { data } = await db.from('integration_connections').select('settings').eq('id', connectionId).eq('organization_id', organizationId).maybeSingle();
+  const settings = fila((data as Fila | null)?.settings);
+  await db
+    .from('integration_connections')
+    .update({ settings: { ...settings, cuenta_verificada: { ...cuenta, verificadaEn: new Date().toISOString() } } })
+    .eq('id', connectionId)
+    .eq('organization_id', organizationId);
 }
 
 // ─── Probar ──────────────────────────────────────────────────────────────────
@@ -400,6 +437,7 @@ export async function probarConexion(db: SupabaseClient, actor: Actor, id: strin
       cambios.last_error_message = null;
     }
     await db.from('integration_connections').update(cambios).eq('id', id).eq('organization_id', actor.organizationId);
+    if (prueba.resultado === 'correcta') await guardarCuentaVerificada(db, actor.organizationId, id, prueba.cuenta);
     await registrarEvento(db, actor.organizationId, id, 'prueba_de_conexion', prueba);
   }
   return { ...prueba, proveedor: con?.provider_code ?? '' };
@@ -538,6 +576,7 @@ export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: G
     .update({ status: 'connected', connected_at: ahora, last_health_check_at: ahora, last_error_message: null, updated_at: ahora })
     .eq('id', conexionId)
     .eq('organization_id', actor.organizationId);
+  await guardarCuentaVerificada(db, actor.organizationId, conexionId, prueba.cuenta);
   await registrarEvento(db, actor.organizationId, conexionId, entrada.conexionId ? 'llaves_reemplazadas' : 'prueba_de_conexion', prueba);
   return { conexionId, prueba, webhookUrl: urlWebhookDeConector(def.conector) };
 }

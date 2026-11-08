@@ -5,10 +5,11 @@
  */
 import type { ItemCatalogo } from './catalogoConexiones';
 import type { ConexionResumen, EventoResumen } from './conexiones.server';
-import type { Prueba } from './probadoresLlaves.server';
+import type { CuentaVerificada, Prueba } from './probadoresLlaves.server';
 import type { LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen } from './desarrolladores.server';
 import type { Ambiente, ErrorFormato, ProveedorLlaves } from './definicionesLlaves';
 
+export type { CuentaVerificada };
 export type { ItemCatalogo, ConexionResumen, EventoResumen, Prueba, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen };
 
 export interface DetalleConexion {
@@ -29,6 +30,8 @@ export interface DetalleConexion {
     conectadaEn: string | null;
     creada: string | null;
     ajustes: { hotelId: string | null; propertyId: string | null; modo: string | null };
+    /** «Conectado como …» (lo que el proveedor dijo en la última prueba correcta). */
+    cuentaVerificada: (CuentaVerificada & { verificadaEn?: string | null }) | null;
   };
   credenciales: { proposito: string; tipo: string; mascara: string | null; enBoveda: boolean; actualizada: string | null }[];
   usadaPor: ConexionResumen['usadaPor'];

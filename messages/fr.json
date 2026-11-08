@@ -6395,6 +6395,10 @@
       "buscar": "Rechercher un pays",
       "paises": "Pays",
       "sinResultados": "Aucun pays trouvé"
+    },
+    "campoSecreto": {
+      "mostrar": "Afficher",
+      "ocultar": "Masquer"
     }
   },
   "inventarioEtiquetas": {
@@ -47454,7 +47458,8 @@
         "formato": {
           "requerido": "Ce champ est obligatoire",
           "prefijo": "Doit commencer par {prefijo}",
-          "largo": "C'est trop long"
+          "largo": "C'est trop long",
+          "ambiente": "Cette clé appartient à l’autre environnement : {prefijo}… attendu. Vérifiez «Test» ou «Production»."
         },
         "notaServidor": "Elles sont envoyées par connexion sécurisée au serveur, qui les teste auprès du fournisseur avant de les enregistrer. Ensuite vous ne verrez que les 4 derniers caractères.",
         "probarLlaves": "Tester les clés",
@@ -47922,6 +47927,16 @@
       "error": "Impossible d’afficher l’identifiant.",
       "errorCopiar": "Copie impossible.",
       "actuales": "Clés enregistrées"
+    },
+    "conectadoComo": {
+      "titulo": "Connecté en tant que {nombre}",
+      "razonSocial": "Raison sociale",
+      "documento": "Identifiant fiscal",
+      "correo": "E-mail",
+      "pais": "Pays",
+      "ambiente": "Environnement",
+      "metodos": "Moyens activés",
+      "verificadaEn": "Vérifié auprès du fournisseur le {fecha}"
     }
   },
   "consignacionesR4": {

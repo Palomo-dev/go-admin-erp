@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { IntegrationWebhook } from '@/lib/services/integrationsService';
+import { CampoSecreto } from '@/components/kit/CampoSecreto';
 
 export interface WebhookFormData {
   direction: 'inbound' | 'outbound';
@@ -164,11 +165,9 @@ export function WebhookDialog({
 
           <div className="space-y-2">
             <Label className="dark:text-gray-300">Secreto (opcional)</Label>
-            <Input
-              type="password"
-              value={formData.secret_ref}
-              onChange={(e) => setFormData({ ...formData, secret_ref: e.target.value })}
-              className="dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            <CampoSecreto
+              valor={formData.secret_ref ?? ''}
+              onValor={(v) => setFormData({ ...formData, secret_ref: v })}
               placeholder="Secreto para validar firma"
             />
           </div>

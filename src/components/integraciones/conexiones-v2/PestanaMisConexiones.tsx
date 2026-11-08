@@ -91,6 +91,7 @@ export function PestanaMisConexiones({ conexiones, cargando, error, busqueda, on
           <LogoServicio id={c.proveedor} />
           <div className="min-w-0">
             <p className="truncate font-medium text-fg">{nombreProveedor(c)}</p>
+            {c.conectadoComo && <p className="truncate text-xs text-fg-secondary">{t('conectadoComo.titulo', { nombre: c.conectadoComo })}</p>}
             <p className="truncate text-xs text-fg-muted">
               {[c.credencial ? t('misConexiones.credencial', { mascara: c.credencial }) : c.nombre, c.creada ? t('misConexiones.creada', { fecha: formatDate(c.creada) }) : null]
                 .filter(Boolean)

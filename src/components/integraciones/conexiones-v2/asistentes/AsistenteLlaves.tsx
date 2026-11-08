@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { CredencialRevelable } from '../CredencialRevelable';
 import { useTranslations } from 'next-intl';
 import { ExternalLink } from 'lucide-react';
-import { AvisoTonal, FormField, StatusBadge, TarjetaSeleccionable } from '@/components/kit';
+import { AvisoTonal, CampoSecreto, FormField, StatusBadge, TarjetaSeleccionable } from '@/components/kit';
 import { SelectorSucursalesMetodoPago } from '@/components/finanzas/metodos-pago/SucursalesMetodoPago';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { apiConexiones, ErrorApiConexiones, type ItemCatalogo, type Prueba } from '@/lib/services/integrations/conexiones/clienteConexiones';
@@ -20,6 +20,7 @@ import { LLAVES, prefijoEsperado, validarFormatoLlaves, type Ambiente, type Erro
 import { CampoCopiar, ListaNumerada, MarcoAsistente, type BotonMarco } from './MarcoAsistente';
 import { claveFalloPrueba, estadoTrasPrueba, pasoAnterior, pasosLlaves, pasoSiguiente, verificacionesDePrueba, type EstadoPruebaUI, type PasoLlaves } from './pasosLogica';
 import { useNombreServicio } from './useNombreServicio';
+import { ConectadoComo } from '../ConectadoComo';
 
 /** Panel del proveedor donde están las llaves (se abre en otra pestaña). */
 const PANEL_PROVEEDOR: Record<string, string> = {
@@ -203,6 +204,7 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
     contenido = (
       <div className="flex flex-col gap-3">
         <AvisoTonal tono="exito" titulo={reemplazo ? t('asistente.llaves.listo.reemplazadas') : t('asistente.llaves.listo.titulo', { nombre })} descripcion={t('asistente.llaves.listo.descripcion')} />
+        {prueba?.cuenta && <ConectadoComo cuenta={prueba.cuenta} />}
         {!eventoRecibido && webhookUrl && <p className="text-sm text-fg-secondary">{t('asistente.llaves.listo.webhookPendiente')}</p>}
       </div>
     );
@@ -316,15 +318,24 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
               ayuda={ayuda || undefined}
               error={err ? t(`asistente.llaves.formato.${err.motivo}`, { prefijo: prefijo ?? '' }) : null}
             >
-              <input
-                type={c.secreto ? 'password' : 'text'}
-                autoComplete="off"
-                spellCheck={false}
-                disabled={estadoPrueba === 'probando'}
-                value={valores[c.proposito] ?? ''}
-                onChange={(e) => setValores((v) => ({ ...v, [c.proposito]: e.target.value }))}
-                className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-fg-tertiary focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 aria-[invalid=true]:border-danger"
-              />
+              {c.secreto ? (
+                // Ojo «Mostrar»/«Ocultar» para verificar lo pegado (pedido del dueño, 2026-11-07).
+                <CampoSecreto
+                  disabled={estadoPrueba === 'probando'}
+                  valor={valores[c.proposito] ?? ''}
+                  onValor={(x) => setValores((v) => ({ ...v, [c.proposito]: x }))}
+                />
+              ) : (
+                <input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  disabled={estadoPrueba === 'probando'}
+                  value={valores[c.proposito] ?? ''}
+                  onChange={(e) => setValores((v) => ({ ...v, [c.proposito]: e.target.value }))}
+                  className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg placeholder:text-fg-tertiary focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30 aria-[invalid=true]:border-danger"
+                />
+              )}
             </FormField>
           );
         })}
@@ -338,6 +349,7 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
   } else if (paso === 'webhook') {
     contenido = (
       <div className="flex flex-col gap-4">
+        {prueba?.cuenta && <ConectadoComo cuenta={prueba.cuenta} />}
         <ListaNumerada
           items={[t('asistente.llaves.webhook.p1'), t(`asistente.llaves.webhook.donde.${proveedor}`), t('asistente.llaves.webhook.p3', { nombre })]}
         />

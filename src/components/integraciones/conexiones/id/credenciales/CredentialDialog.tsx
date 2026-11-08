@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { IntegrationCredential } from '@/lib/services/integrationsService';
+import { CampoSecreto } from '@/components/kit/CampoSecreto';
 
 export interface CredentialFormData {
   credentialType: string;
@@ -136,11 +137,9 @@ export function CredentialDialog({
             <Label className="dark:text-gray-300">
               {mode === 'edit' ? 'Nuevo valor (secreto)' : 'Valor (secreto)'}
             </Label>
-            <Input
-              type="password"
-              value={formData.secretRef}
-              onChange={(e) => setFormData({ ...formData, secretRef: e.target.value })}
-              className="dark:bg-gray-900 dark:border-gray-700 dark:text-white"
+            <CampoSecreto
+              valor={formData.secretRef}
+              onValor={(v) => setFormData({ ...formData, secretRef: v })}
               placeholder="Ingresa el valor secreto"
             />
           </div>

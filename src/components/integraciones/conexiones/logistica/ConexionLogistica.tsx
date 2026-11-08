@@ -24,6 +24,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { CampoConexion, EsquemaConexion } from '@/lib/integrations/core/esquemaConexion';
 import { rutaWebhookLogistica } from '@/lib/integrations/core/rutasLogistica';
+import { CampoSecreto } from '@/components/kit/CampoSecreto';
 
 const API = '/api/integrations/logistica/conexiones';
 const VOLVER = '/app/integraciones/conexiones?categoria=delivery';
@@ -266,15 +267,25 @@ function Campo({
             <option key={o} value={o}>{o}</option>
           ))}
         </select>
+      ) : campo.secreto ? (
+        // Ojo «Mostrar»/«Ocultar» para verificar lo pegado (pedido del dueño, 2026-11-07).
+        <CampoSecreto
+          id={id}
+          valor={valor}
+          onValor={onChange}
+          placeholder={guardado?.enVault ? `Guardado (${guardado.prefijo ?? '••••'}). Déjalo vacío para conservarlo.` : undefined}
+          aria-required={campo.requerido}
+          aria-invalid={!!error}
+          aria-describedby={describe}
+        />
       ) : (
         <Input
           id={id}
-          type={campo.secreto ? 'password' : 'text'}
+          type="text"
           inputMode={campo.tipo === 'numero' ? 'numeric' : undefined}
-          autoComplete={campo.secreto ? 'new-password' : 'off'}
+          autoComplete="off"
           value={valor}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={campo.secreto && guardado?.enVault ? `Guardado (${guardado.prefijo ?? '••••'}). Déjalo vacío para conservarlo.` : undefined}
           aria-required={campo.requerido}
           aria-invalid={!!error}
           aria-describedby={describe}
@@ -356,7 +367,8 @@ export function ConexionLogistica({ connectionId }: { connectionId: string }) {
   const cambiar = (clave: string, v: string) => {
     setValores((prev) => ({ ...prev, [clave]: v }));
     setErrores((prev) => {
-      const { [clave]: _quitado, ...resto } = prev;
+      const resto = { ...prev };
+      delete resto[clave];
       return resto;
     });
     setSinGuardar(true);

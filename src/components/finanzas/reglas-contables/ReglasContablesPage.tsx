@@ -399,6 +399,7 @@ export function ReglasContablesPage() {
           { etiqueta: t('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
+        movil={{ accionesEnFila: true }}
         acciones={(
           <>
             <Button type="button" variant="outline" onClick={exportar} disabled={invalidas.length === 0}>

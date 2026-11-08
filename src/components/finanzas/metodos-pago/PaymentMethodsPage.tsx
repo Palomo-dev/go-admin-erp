@@ -252,6 +252,22 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
             <RowActionsMenu acciones={menuCabecera} orientacion="horizontal" tamano="md" titulo={t("metodos.titulo")} />
           </div>
         }
+        // En móvil (< lg) el PageHeader no se dibuja: la acción va en el
+        // MobileHeader como «+» (Figma 1010:86844), igual que Saldos a favor o
+        // Consignaciones. Sin esto no había forma de añadir un método en el celular.
+        movil={{
+          accion: (
+            <button
+              type="button"
+              onClick={handleAddMethod}
+              disabled={!organizationId}
+              aria-label={t("metodos.nuevo")}
+              className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+            >
+              <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
+            </button>
+          ),
+        }}
       />
 
       {pestana === "qr" && (

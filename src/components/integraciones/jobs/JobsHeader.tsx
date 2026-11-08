@@ -11,7 +11,8 @@ interface JobsHeaderProps {
   failedCount: number;
   queuedCount: number;
   onRefresh: () => void;
-  onNewJob: () => void;
+  /** Sin ejecutor de integration_jobs no se pasa: no hay botón «Nuevo Job». */
+  onNewJob?: () => void;
   refreshing?: boolean;
 }
 
@@ -78,14 +79,16 @@ export function JobsHeader({
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Actualizar
           </Button>
-          <Button
-            size="sm"
-            onClick={onNewJob}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Job
-          </Button>
+          {onNewJob && (
+            <Button
+              size="sm"
+              onClick={onNewJob}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nuevo Job
+            </Button>
+          )}
         </div>
       </div>
     </div>

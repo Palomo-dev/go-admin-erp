@@ -1,0 +1,24 @@
+Resultado de 02_anticipos_proveedores_controles.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374. Transacción revertida (rollback): no quedó ningún dato
+(incluido el cambio temporal de rol del miembro, que también se revirtió).
+17 verificaciones · 17 ok · 0 fallas.
+
+n  | grupo | verificación                                                         | obtenido                                                      | ok
+---+-------+----------------------------------------------------------------------+---------------------------------------------------------------+---
+1  | 4     | INSERT directo en supplier_advances (dueño, todos los permisos)      | permission denied for table supplier_advances                 | ok
+2  | 4     | UPDATE directo del saldo (dueño)                                     | permission denied for table supplier_advances                 | ok
+3  | 4     | DELETE directo de aplicaciones (dueño)                               | permission denied for table supplier_advance_applications     | ok
+4  | 5     | Anticipo con el proveedor de otra organización                       | proveedor_no_encontrado                                       | ok
+5  | 5     | Anticipo con método «crédito» (no mueve dinero)                      | metodo_invalido                                               | ok
+6  | 5     | Anticipo en efectivo sin caja abierta                                | sin_caja_abierta                                              | ok
+7  | 5     | Anticipo sin clave de idempotencia                                   | clave_idempotencia_invalida                                   | ok
+8  | 5     | Devolución sin motivo (menos de 3 letras)                            | motivo_obligatorio                                            | ok
+9  | 2     | No miembro: crear anticipo en la 374                                 | Acceso denegado a la organización                             | ok
+10 | 2     | No miembro: anular un anticipo de la 374 (sin decir la organización) | Acceso denegado a la organización                             | ok
+11 | 2     | No miembro: ve anticipos de la 374                                   | 0 filas                                                       | ok
+12 | 3     | Miembro con rol «Empleado»: crear (exige finance.create)             | sin_permiso                                                   | ok
+13 | 3     | Miembro con rol «Empleado»: devolver (exige finance.void)            | sin_permiso                                                   | ok
+14 | 3     | Miembro con rol «Empleado»: anular (exige finance.void)              | sin_permiso                                                   | ok
+15 | 3     | Miembro con rol «Empleado»: puede LEER los anticipos                 | 1 fila (lectura por pertenencia, no por permiso)              | ok
+16 | 1     | anon: crear anticipo                                                 | permission denied for function fn_anticipo_proveedor_crear    | ok
+17 | 1     | anon: leer supplier_advances                                         | permission denied for table supplier_advances                 | ok

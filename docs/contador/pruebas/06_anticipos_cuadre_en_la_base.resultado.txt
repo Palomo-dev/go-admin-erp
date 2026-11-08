@@ -1,0 +1,9 @@
+Resultado de 06_anticipos_cuadre_en_la_base.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374. Transacción revertida (rollback): no quedó ningún dato.
+
+SET CONSTRAINTS ALL IMMEDIATE se ejecutó sin error: el control de cuadre propio de la base (trg_zz_asiento_cuadrado)
+aceptó los 5 asientos de anticipo de la transacción (además del de la compra de apoyo).
+
+asientos_de_anticipo_validados_por_la_base | origenes                                                                          | todos_cuadran
+-------------------------------------------+-----------------------------------------------------------------------------------+--------------
+5                                          | reversal, supplier_advance, supplier_advance_application, supplier_advance_refund | true

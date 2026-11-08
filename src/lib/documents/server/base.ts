@@ -15,6 +15,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { resolveTimezoneCascade } from '@/lib/utils/branchTimezoneCascade';
+import { toPlainDate } from '@/lib/utils/dateDisplay';
+import { esDiaCalendario, responsabilidadesFiscalesEn } from '@/lib/finanzas/tributario/responsabilidadesVigentes';
 import type { Traductor } from '../textos';
 import type {
   Contraparte,
@@ -152,8 +154,25 @@ interface FilaOrganizacion {
   municipality_id?: string | null;
 }
 
+export interface OpcionesBase {
+  /**
+   * Fecha del documento (instante `timestamptz` o día `AAAA-MM-DD`). Con ella, las
+   * responsabilidades del RUT del emisor son las VIGENTES ese día en la zona de la
+   * organización (perfil tributario por vigencias, H2); sin ella, las de la ficha.
+   */
+  fechaDocumento?: string | null;
+}
+
+/** Día calendario del documento en la zona del emisor; `null` si la fecha no se entiende. */
+export function diaDelDocumento(fecha: string | null | undefined, zona: string): string | null {
+  if (!fecha) return null;
+  if (esDiaCalendario(fecha)) return fecha;
+  const instante = new Date(fecha);
+  return Number.isNaN(instante.getTime()) ? null : toPlainDate(instante, zona);
+}
+
 /** Emisor, sucursal, zona horaria y textos legales de la organización de la sesión. */
-export async function cargarBase(sesion: SesionDocumento, branchId: number | null): Promise<BaseDocumento> {
+export async function cargarBase(sesion: SesionDocumento, branchId: number | null, opciones: OpcionesBase = {}): Promise<BaseDocumento> {
   const db = sesion.supabase;
   const [{ data: org, error: errorOrg }, sucursalRes, ajustesRes] = await Promise.all([
     db
@@ -191,7 +210,10 @@ export async function cargarBase(sesion: SesionDocumento, branchId: number | nul
     telefono: texto(o.phone),
     email: texto(o.email),
     web: texto(o.website),
-    responsabilidades: (o.fiscal_responsibilities ?? []).map(texto).filter((x): x is string => !!x),
+    responsabilidades:
+      opciones.fechaDocumento !== undefined
+        ? await responsabilidadesFiscalesEn(db, sesion.organizationId, diaDelDocumento(opciones.fechaDocumento, zona), o.fiscal_responsibilities)
+        : (o.fiscal_responsibilities ?? []).map(texto).filter((x): x is string => !!x),
     actividadEconomica: texto(o.economic_activity),
     logoDataUri: await logoComoDataUri(o.logo_url),
     colorPrimario: colorHexSeguro(o.primary_color),

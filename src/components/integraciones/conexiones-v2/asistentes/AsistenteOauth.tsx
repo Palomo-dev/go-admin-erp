@@ -6,7 +6,8 @@
  * (estado firmado + cookie de nonce) y redirige. El regreso llega a
  * `/app/integraciones/conexiones?<p>_success|<p>_error=…`, que muestra la página de Conexiones.
  * Si el servidor no tiene la app del proveedor configurada (500/503), se dice «en construcción».
- * La elección de cuentas/catálogo/píxel (85-42/43) sigue en las rutas `setup` existentes.
+ * Al volver con `conexionId` (Meta), los pasos «Activos» y «Qué se envía» (85-42/43) están en
+ * `PasosMeta`.
  */
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -14,6 +15,7 @@ import { AvisoTonal } from '@/components/kit';
 import type { ItemCatalogo } from '@/lib/services/integrations/conexiones/clienteConexiones';
 import { apiAsistentes } from './apiAsistentes';
 import { ListaNumerada, MarcoAsistente } from './MarcoAsistente';
+import { PasosMeta } from './PasosMeta';
 import type { ProveedorOauth } from './pasosLogica';
 import { useNombreServicio } from './useNombreServicio';
 
@@ -21,9 +23,29 @@ export interface AsistenteOauthProps {
   item: ItemCatalogo;
   abierto: boolean;
   onCerrar: () => void;
+  /** Conexión que ya creó el OAuth: abre los pasos siguientes (solo Meta). */
+  conexionId?: string;
+  onConectado?: (conexionId: string | null) => void;
 }
 
-export function AsistenteOauth({ item, abierto, onCerrar }: AsistenteOauthProps) {
+export function AsistenteOauth(props: AsistenteOauthProps) {
+  const { item, conexionId } = props;
+  const proveedor: ProveedorOauth = item.oauth ?? (item.id === 'tiktok' ? 'tiktok' : item.id === 'google_ads' ? 'google_ads' : 'meta');
+  if (conexionId && proveedor === 'meta') {
+    return (
+      <PasosMeta
+        item={item}
+        conexionId={conexionId}
+        abierto={props.abierto}
+        onCerrar={props.onCerrar}
+        onConectado={props.onConectado ?? (() => props.onCerrar())}
+      />
+    );
+  }
+  return <InicioOauth {...props} />;
+}
+
+function InicioOauth({ item, abierto, onCerrar }: AsistenteOauthProps) {
   const t = useTranslations('integracionesConexiones');
   const nombre = useNombreServicio(item);
   const proveedor: ProveedorOauth = item.oauth ?? (item.id === 'tiktok' ? 'tiktok' : item.id === 'google_ads' ? 'google_ads' : 'meta');

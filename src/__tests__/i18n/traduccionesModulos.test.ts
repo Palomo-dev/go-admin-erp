@@ -92,6 +92,9 @@ const MODULOS: Record<string, string[]> = {
   finanzasTributarioR4: FINANZAS,
   // Finanzas ronda 4, frente R4-B: consignaciones, dinero de terceros y anticipos a proveedores.
   finanzasTercerosR4: FINANZAS,
+  // Consignación en dos sentidos y entre organizaciones (vive en Inventario; la nueva nota entregada
+  // de Finanzas usa sus condiciones del contrato).
+  consignacionesR4: ['src/components/inventario/consignaciones', 'src/components/finanzas/consignaciones', 'src/app/app/inventario/consignaciones', 'src/app/app/vincular'],
   // Finanzas ronda 4, frente INT: Integraciones › Conexiones (catálogo, mis conexiones, actividad,
   // desarrolladores, asistentes y detalle).
   integracionesConexiones: ['src/components/integraciones/conexiones-v2', 'src/app/app/integraciones/conexiones'],

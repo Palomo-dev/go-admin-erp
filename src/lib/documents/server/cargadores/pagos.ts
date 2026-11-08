@@ -157,7 +157,8 @@ export async function cargarComprobantePago(
   if ((tipo === 'comprobante-egreso') !== esEgreso) throw noEncontrado();
 
   const [base, moneda, abonado, nombresMetodos] = await Promise.all([
-    cargarBase(sesion, pago.branch_id),
+    // H2: responsabilidades del emisor vigentes en la fecha del pago.
+    cargarBase(sesion, pago.branch_id, { fechaDocumento: pago.payment_date ?? pago.created_at ?? null }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, pago.currency),
     documentoAbonado(sesion, pago),
     cargarNombresMetodos(sesion, [pago.method]),

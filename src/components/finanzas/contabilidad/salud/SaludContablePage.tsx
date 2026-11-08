@@ -228,6 +228,7 @@ function Cabecera({ subtitulo, acciones }: { subtitulo?: string; acciones?: Reac
         { etiqueta: tc('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
         { etiqueta: t('titulo') },
       ]}
+      movil={{ accionesEnFila: true }}
       acciones={acciones}
     />
   );

@@ -1,3 +1,4 @@
+import { enviosDeConexion } from '@/lib/services/integrations/conexiones/metaActivos.server';
 import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody, OrgContextError } from '@/lib/utils/orgContext';
 import { getServiceClient } from '@/lib/supabase/server-service';
@@ -42,6 +43,12 @@ export const POST = withOrg(async (ctx, request) => {
       return NextResponse.json(CONNECTION_NOT_FOUND, { status: 404 });
     }
     const connectionId = body.connection_id as string;
+
+    // «Qué se envía» (asistente de Meta, 85-43): con el catálogo apagado no se sincroniza.
+    // Con la sesión del usuario (RLS): el service-role solo toca credenciales y eventos.
+    if (!(await enviosDeConexion(ctx.supabase, connectionId)).catalogo) {
+      return NextResponse.json({ success: true, synced: 0, message: 'El envío del catálogo a Meta está desactivado en la conexión' });
+    }
 
     // Service-role SOLO para `integration_credentials`, con la conexión ya
     // validada contra la organización de la sesión: su RLS decide admin por

@@ -13,8 +13,12 @@
  * Cliente con `CustomerPicker` y proveedor con `ElegirProveedor` (búsqueda en
  * el servidor, nunca la lista completa); sucursal de la sesión por defecto;
  * métodos de la organización.
+ *
+ * `complemento`: lo propio de un tercero que el diálogo no interpreta (proveedor:
+ * naturaleza del anticipo y retenciones evaluadas, P1 del Contador). Mientras
+ * el complemento no esté completo, no se registra; su valor viaja en `extra`.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { ElegirProveedor, type ProveedorDocumento } from '@/components/finanzas/documento/terceros';
 import { HandCoins } from 'lucide-react';
@@ -42,6 +46,16 @@ import { ADAPTADOR_CLIENTE, type AdaptadorSaldos } from './adaptadorSaldos';
 import { metodoInicial, opcionesMetodoSaldo, requiereReferencia } from './metodosSaldo';
 import { textoErrorSaldo } from './textosSaldo';
 
+/** Sección propia de un tercero dentro del diálogo (proveedor: naturaleza y retenciones). */
+export interface ComplementoRegistro {
+  render: (p: {
+    terceroId: string | null;
+    monto: number | null;
+    tocado: boolean;
+    onCambio: (valor: Record<string, unknown> | null, valido: boolean) => void;
+  }) => ReactNode;
+}
+
 export interface RegistrarAnticipoDialogProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
@@ -50,9 +64,10 @@ export interface RegistrarAnticipoDialogProps {
   onRegistrado: (r: { id: string; recibo: string }) => void;
   /** Cliente (por defecto) o proveedor: tercero, textos y servicio. */
   adaptador?: AdaptadorSaldos;
+  complemento?: ComplementoRegistro;
 }
 
-export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInicial, onRegistrado, adaptador = ADAPTADOR_CLIENTE }: RegistrarAnticipoDialogProps) {
+export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInicial, onRegistrado, adaptador = ADAPTADOR_CLIENTE, complemento }: RegistrarAnticipoDialogProps) {
   const t = useTranslations(adaptador.namespace);
   const esProveedor = adaptador.tercero === 'proveedor';
   const moneda = useMonedaOrganizacion();
@@ -69,7 +84,9 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
   const [tocado, setTocado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extra, setExtra] = useState<{ valor: Record<string, unknown> | null; valido: boolean }>({ valor: null, valido: false });
   const clave = useRef('');
+  const cambiarExtra = useCallback((valor: Record<string, unknown> | null, valido: boolean) => setExtra({ valor, valido }), []);
 
   useEffect(() => {
     if (!abierto) return;
@@ -83,6 +100,7 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
     setNotas('');
     setTocado(false);
     setError(null);
+    setExtra({ valor: null, valido: false });
     clave.current = nuevaClaveIdempotencia('anticipo');
     // Solo al abrir: la sucursal elegida en el diálogo no se pisa con la del contexto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -138,7 +156,7 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
     metodo: !metodo ? t('validacion.metodo') : null,
     referencia: conReferencia && !referencia.trim() ? t('validacion.referencia') : null,
   };
-  const hayErrores = Object.values(errores).some(Boolean);
+  const hayErrores = Object.values(errores).some(Boolean) || (!!complemento && !extra.valido);
 
   const registrar = async () => {
     setTocado(true);
@@ -156,6 +174,7 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
         vence: adaptador.conVencimiento ? vence || null : null,
         sucursalId: sucursal,
         claveIdempotencia: clave.current,
+        extra: complemento ? extra.valor : null,
       });
       toastSuccess(t('anticipo.exito', { recibo: r.recibo, monto: moneda.formatear(monto) }));
       onAbiertoChange(false);
@@ -240,6 +259,8 @@ export function RegistrarAnticipoDialog({ abierto, onAbiertoChange, clienteInici
             </p>
           )}
         </div>
+
+        {complemento?.render({ terceroId: cliente?.id ?? null, monto, tocado, onCambio: cambiarExtra })}
 
         <FormField etiqueta={t('anticipo.metodo')} obligatorio error={tocado ? errores.metodo : null}>
           {(c) =>

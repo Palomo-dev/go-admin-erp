@@ -4583,7 +4583,8 @@
       "finanzas_tributario_certificados": "Certificats de retenue",
       "finanzas_consignaciones": "Consignations",
       "finanzas_tesoreria_dinero-de-terceros": "Fonds de tiers",
-      "finanzas_anticipos-proveedores": "Avances aux fournisseurs"
+      "finanzas_anticipos-proveedores": "Avances aux fournisseurs",
+      "inventario_consignaciones": "Dépôts-ventes"
     },
     "grupos": {
       "venta": "Vente",
@@ -14175,7 +14176,8 @@
         "imprimir": "Imprimer",
         "anular": "Annuler",
         "eliminar": "Supprimer le brouillon",
-        "certificado": "Certificat de retenues"
+        "certificado": "Certificat de retenues",
+        "pdfCorto": "PDF"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
@@ -14724,6 +14726,12 @@
         "neto": "Net à payer",
         "asiento": "Écriture comptable",
         "orden": "Bon de commande"
+      },
+      "anticipos": {
+        "titulo": "Avances imputées",
+        "linea": "{recibo} · réduit la dette de {monto}",
+        "cuenta": "compte {cuenta}",
+        "retencion": "De l’avance {consumo} ; retenue déjà pratiquée {retencion}"
       }
     },
     "estadoCuenta": {
@@ -14754,6 +14762,12 @@
         "cargo": "Débit",
         "abono": "Crédit",
         "saldo": "Solde"
+      },
+      "movimientos": {
+        "anticipo": "Avance",
+        "aplicacion_anticipo": "Imputation d’avance",
+        "devolucion_anticipo": "Remboursement d’avance",
+        "anulacion_anticipo": "Annulation d’avance"
       }
     },
     "plan": {
@@ -15213,7 +15227,11 @@
     "movimientosProveedor": {
       "factura": "Facture (net à payer)",
       "cuenta": "Dette fournisseur",
-      "pago": "Paiement"
+      "pago": "Paiement",
+      "anticipo": "Avance",
+      "aplicacion_anticipo": "Imputation d’avance",
+      "devolucion_anticipo": "Remboursement d’avance",
+      "anulacion_anticipo": "Annulation d’avance"
     },
     "errores": {
       "noEncontrado": "Nous n’avons pas trouvé ce document.",
@@ -16079,7 +16097,8 @@
       "verPdf": "Voir le PDF",
       "notaCredito": "Avoir",
       "anular": "Annuler la facture",
-      "enviar": "Envoyer"
+      "enviar": "Envoyer",
+      "pdf": "PDF"
     },
     "pagos": {
       "titulo": "Paiements appliqués",
@@ -40395,6 +40414,10 @@
       "ingresos_diversos": {
         "nombre": "Produits divers",
         "ayuda": "Crédit d’un excédent réel de stock. Par défaut 42959501 (sous-compte de 4295). Ce n’est pas le 4250."
+      },
+      "anticipos_proveedores": {
+        "nombre": "Avances fournisseurs",
+        "ayuda": "Sous-compte de détail sous 1330 (p. ex. 13300501 sous 133005). 1330 est un compte titre : sans ce compte, aucune avance n’est enregistrée."
       }
     }
   },
@@ -43791,7 +43814,7 @@
           "sin_permiso": "Vous n'avez pas l'autorisation d'annuler.",
           "anulado": "Cet avoir est déjà annulé."
         },
-        "devolverEnSuLugar": "Rembourser l'argent",
+        "devolverEnSuLugar": "Rembourser le disponible",
         "exito": "L'acompte de {cliente} a été annulé."
       },
       "anticipo": {
@@ -43836,7 +43859,7 @@
         "saldo_no_encontrado": "Avoir client introuvable.",
         "saldo_no_disponible": "L'avoir client n'est plus disponible.",
         "saldo_vencido": "L'avoir client est échu : il ne peut plus être imputé, mais il peut être remboursé.",
-        "saldo_usado": "L'avoir client a déjà été imputé à des factures : il ne peut pas être annulé.",
+        "saldo_usado": "Cet acompte a déjà été partiellement imputé : il ne peut pas être annulé. Remboursez le disponible.",
         "saldo_no_anulable": "Cet avoir ne vient pas d'un acompte : il ne s'annule pas, il se rembourse.",
         "monto_excede_saldo_a_favor": "Le montant dépasse l'avoir disponible.",
         "factura_no_encontrada": "Facture introuvable.",
@@ -43852,7 +43875,7 @@
         "referencia_obligatoria": "Ce moyen exige une référence.",
         "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
         "sin_caja_abierta": "Aucune caisse ouverte : ouvrez-la ou utilisez un autre moyen.",
-        "pago_en_caja_cerrada": "L'argent est entré dans une caisse déjà fermée : enregistrez une sortie de caisse.",
+        "pago_en_caja_cerrada": "L'acompte a été encaissé en espèces dans une caisse déjà fermée : il ne peut pas être annulé. Remboursez le disponible par une sortie de caisse.",
         "sin_cuenta_de_dinero": "Le compte de caisse ou de banque du moyen est introuvable.",
         "sin_cuenta_por_cobrar": "L'organisation n'a pas de compte client configuré.",
         "vencimiento_invalido": "L'échéance ne peut pas être antérieure à aujourd'hui.",
@@ -45295,7 +45318,7 @@
         "perfil": "Aucune période de validité ne couvre aujourd'hui : sans régime ni périodicité, GO Admin ne sait pas quels formulaires concernent cette entreprise.",
         "nit": "L'entreprise n'a pas de NIT : sans lui, les échéances ne peuvent pas être localisées.",
         "periodicidad_iva": "Elle est redevable de la TVA mais n'a pas de périodicité de TVA.",
-        "regimen_simple_sin_o47": "Le régime est SIMPLE mais la responsabilité O-47 manque."
+        "revisar_perfil": "La période en vigueur aujourd'hui a des données non définies ou provient de l'ancien champ combiné : vérifiez le régime d'impôt sur le revenu et la situation face à la TVA puis enregistrez-la à nouveau."
       },
       "vigencia": {
         "rango": "{desde} au {hasta}",
@@ -45303,16 +45326,11 @@
       },
       "columnas": {
         "vigencia": "Validité",
-        "regimen": "Régime",
-        "responsabilidades": "Responsabilités",
+        "responsabilidades": "Codes FE",
         "iva": "TVA",
-        "ica": "ICA"
-      },
-      "regimen": {
-        "ordinario": "Ordinaire",
-        "simple": "Régime SIMPLE",
-        "no_responsable_iva": "Non redevable de la TVA",
-        "especial": "Régime spécial"
+        "ica": "ICA",
+        "renta": "Impôt sur le revenu",
+        "estado": "État"
       },
       "periodicidadIva": {
         "bimestral": "Bimestrielle",
@@ -45329,19 +45347,19 @@
       },
       "vacio": {
         "titulo": "Aucun profil fiscal",
-        "descripcion": "Créez la première période de validité avec le régime, les responsabilités du RUT et la périodicité de la TVA."
+        "descripcion": "Créez la première période avec le régime d'impôt sur le revenu, la situation face à la TVA et la périodicité."
       },
       "empresa": {
         "titulo": "Données de l'entreprise",
         "nit": "NIT",
         "sinNit": "Sans NIT",
-        "rut": "Responsabilités en facturation électronique",
-        "rutAyuda": "Mises à jour lors de l'enregistrement de la période d'aujourd'hui.",
+        "rut": "Codes du document électronique (fiche de l'entreprise)",
+        "rutAyuda": "Ils sont mis à jour en enregistrant la période d'aujourd'hui. Chaque document utilise ceux en vigueur à sa date.",
         "editarNit": "Modifier le NIT et les données de l'entreprise"
       },
       "usos": {
         "titulo": "À quoi il sert",
-        "descripcion": "Le Centre fiscal utilise la période de validité de chaque période pour savoir quels formulaires préparer et quand ils sont dus. Une période de 2025 lit le profil de 2025.",
+        "descripcion": "Le centre fiscal utilise les périodes du profil qui touchent chaque période fiscale. S'il y en a plus d'une, il le signale pour vérification et ne décide pas seul.",
         "irCentro": "Aller au Centre fiscal"
       },
       "dialogo": {
@@ -45349,18 +45367,20 @@
         "tituloEditar": "Modifier la période de validité",
         "descripcionNueva": "La période précédente se termine la veille de celle-ci.",
         "descripcionEditar": "Corrigez les données de cette période. Pour une autre date de début, créez-en une nouvelle.",
-        "guardar": "Enregistrer"
+        "guardar": "Enregistrer",
+        "bloqueosTitulo": "Cette combinaison est contradictoire et ne peut pas être enregistrée :",
+        "advertenciasTitulo": "Vérifiez avec le comptable avant d'enregistrer :",
+        "aceptarAdvertencias": "Je comprends les avertissements et je veux enregistrer. Ils seront consignés dans la période.",
+        "motivoBloqueo": "Corrigez les combinaisons contradictoires.",
+        "motivoAdvertencias": "Acceptez les avertissements pour enregistrer."
       },
       "campos": {
         "vigenteDesde": "Valable à partir du",
         "vigenteDesdeAyuda": "Généralement le 1er janvier de l'année.",
         "vigenteDesdeFija": "La date de début ne change pas lors de la modification.",
-        "regimen": "Régime",
         "periodicidadIva": "Périodicité de la TVA",
         "periodicidadIvaAyuda": "Selon les revenus de l'année précédente. « Sans objet » si elle n'est pas redevable de la TVA.",
-        "responsabilidades": "Responsabilités du RUT",
-        "responsabilidadesAyuda": "Les mêmes que la case 53 du RUT de l'entreprise.",
-        "agenteRetencion": "Agent de retenue à la source",
+        "agenteRetencion": "Agent de retenue à la source (impôt sur le revenu)",
         "agenteRetencionAyuda": "Pratique des retenues sur ses fournisseurs et dépose le formulaire 350.",
         "responsableInc": "Redevable de l'impôt sur la consommation (INC)",
         "notas": "Notes",
@@ -45372,23 +45392,120 @@
         "icaAgregar": "Ajouter une commune",
         "icaBuscar": "Saisissez la commune",
         "icaBuscando": "Recherche…",
-        "icaResultados": "Communes trouvées"
+        "icaResultados": "Communes trouvées",
+        "regimenRenta": "Régime d'impôt sur le revenu",
+        "regimenRentaAyuda": "Impôt sur le revenu. Indépendant de la situation face à la TVA.",
+        "condicionIva": "Situation face à la TVA",
+        "condicionIvaAyuda": "Assujetti ou non à la TVA, selon le RUT (48, ou 49/53).",
+        "sinDefinir": "Non défini",
+        "motivoCambio": "Motif du changement de périodicité",
+        "motivoCambioAyuda": "La périodicité de la TVA est fixée par année (Code des impôts art. 600). Un changement qui ne commence pas le 1er janvier exige un motif.",
+        "sinMotivo": "Sans motif",
+        "calidades": "Qualités",
+        "granContribuyente": "Grand contribuable",
+        "autorretenedor": "Auto-retenant",
+        "agenteRetencionIva": "Agent de retenue de TVA",
+        "codigosFe": "Codes du document électronique",
+        "codigosFeAyuda": "Ceux envoyés dans la facture électronique. Ce n'est pas la case 53 du RUT. La table est en attente de validation par le comptable.",
+        "codigosRut": "Responsabilités du RUT, case 53 ({cuantos} cochées)",
+        "codigosRutAyuda": "Facultatif. Si vous les cochez, elles doivent correspondre aux champs ci-dessus.",
+        "buscarCodigo": "Rechercher par code ou nom"
       },
       "errores": {
         "datos_invalidos": "Vérifiez les données de la période.",
         "vigencia_invalida": "Choisissez une date de début valide.",
-        "regimen_invalido": "Choisissez le régime.",
+        "regimen_invalido": "Choisissez un régime d'impôt sur le revenu valide.",
         "periodicidad_invalida": "Choisissez la périodicité de la TVA.",
-        "responsabilidad_invalida": "Une responsabilité n'existe pas dans le RUT.",
-        "responsabilidades_incompatibles": "Elle ne peut pas être redevable (O-48) et non redevable (O-49) de la TVA à la fois.",
-        "periodicidad_incoherente": "Un non-redevable de la TVA n'a pas de périodicité de TVA : choisissez « Sans objet ».",
-        "falta_periodicidad": "Avec la responsabilité O-48, la périodicité de la TVA est nécessaire.",
+        "responsabilidad_invalida": "Un code du document électronique n'existe pas.",
         "ica_invalido": "Vérifiez les communes de l'ICA et leur taux.",
         "sin_permiso": "Vous n'avez pas l'autorisation de modifier le profil fiscal.",
         "no_encontrado": "Cette période n'existe plus. Rechargez la page.",
         "vigencia_duplicada": "Une période commence déjà ce jour-là.",
         "pendiente_activar": "Le profil fiscal n'est pas encore activé.",
-        "desconocido": "Enregistrement impossible. Réessayez."
+        "desconocido": "Enregistrement impossible. Réessayez.",
+        "condicion_iva_invalida": "Choisissez la situation face à la TVA.",
+        "responsabilidad_rut_invalida": "Un code du RUT n'existe pas.",
+        "motivo_invalido": "Choisissez un motif valide.",
+        "combinacion_contradictoria": "La combinaison est contradictoire : corrigez ce qui est signalé.",
+        "advertencias_sin_aceptar": "Il y a de nouveaux avertissements : vérifiez-les et acceptez-les pour enregistrer."
+      },
+      "pendienteSeparacion": "La séparation entre le régime d'impôt sur le revenu et la situation face à la TVA s'active lorsque sa mise à jour est appliquée à la base de données. En attendant, vous pouvez consulter le profil mais pas l'enregistrer.",
+      "revisar": "Vérifier",
+      "regimenRenta": {
+        "ordinario": "Régime ordinaire",
+        "simple": "Régime SIMPLE",
+        "especial": "Régime fiscal spécial (sans but lucratif)",
+        "no_contribuyente_declarante": "Non contribuable, déclare revenus et patrimoine",
+        "no_contribuyente_no_declarante": "Non contribuable, non déclarant"
+      },
+      "condicionIva": {
+        "responsable": "Assujetti à la TVA",
+        "no_responsable": "Non assujetti à la TVA"
+      },
+      "motivo": {
+        "inicio_actividades": "Début d'activité",
+        "ingreso_simple": "Entrée au SIMPLE",
+        "salida_simple": "Sortie du SIMPLE",
+        "otro": "Autre (expliquez-le dans les notes)"
+      },
+      "estado": {
+        "revisar": "Profil à vérifier",
+        "conAdvertencias": "{cuantas, plural, one {# avertissement accepté} other {# avertissements acceptés}}",
+        "completo": "Complet"
+      },
+      "validacion": {
+        "pendiente_validacion": "En attente de validation",
+        "no_vigente_por_confirmar": "Non en vigueur, à confirmer",
+        "noVigente": "Code remplacé ; il n'est plus attribué."
+      },
+      "bloqueos": {
+        "falta_regimen_renta": "Le régime d'impôt sur le revenu manque.",
+        "falta_condicion_iva": "La situation face à la TVA manque.",
+        "no_responsable_con_periodicidad": "Un non-assujetti ne déclare pas la TVA : la périodicité doit être « Sans objet » (Code des impôts art. 437 par. 3).",
+        "responsable_sin_periodicidad": "Un assujetti à la TVA doit avoir une périodicité (Code des impôts art. 600).",
+        "periodicidad_anual_fuera_de_simple": "La périodicité annuelle de la TVA est celle du SIMPLE ; les autres déclarent tous les deux ou quatre mois (Code des impôts art. 600 et 915).",
+        "simple_responsable_no_anual": "Au SIMPLE, l'assujetti à la TVA dépose une déclaration annuelle consolidée (Code des impôts art. 915) : choisissez « Annuelle ».",
+        "fe_o48_y_o49": "Impossible d'avoir O-48 et O-49 en même temps.",
+        "fe_o48_no_responsable": "O-48 (assujetti à la TVA) contredit « Non assujetti à la TVA ».",
+        "fe_o49_responsable": "O-49 (non assujetti à la TVA) contredit « Assujetti à la TVA ».",
+        "fe_o47_sin_simple": "O-47 (régime simple) exige le régime d'impôt sur le revenu SIMPLE.",
+        "fe_o13_sin_gran_contribuyente": "O-13 exige de cocher « Grand contribuable ».",
+        "fe_o15_sin_autorretenedor": "O-15 exige de cocher « Auto-retenant ».",
+        "fe_o23_sin_agente_iva": "O-23 exige de cocher « Agent de retenue de TVA ».",
+        "rut_varios_regimenes_renta": "Le RUT a plus d'un régime d'impôt sur le revenu (04, 05, 06 ou 47) ; ils s'excluent.",
+        "rut_regimen_renta_contradictorio": "Le régime d'impôt sur le revenu ne correspond pas au RUT (05 ordinaire, 04 spécial, 47 SIMPLE, 06 revenus et patrimoine).",
+        "rut_iva_contradictorio": "La situation face à la TVA ne correspond pas au RUT (48 assujetti ; 49 ou 53 non assujetti).",
+        "rut_13_sin_gran_contribuyente": "Le RUT a 13 (grand contribuable) : cochez « Grand contribuable ».",
+        "rut_15_sin_autorretenedor": "Le RUT a 15 (auto-retenant) : cochez « Auto-retenant ».",
+        "rut_23_sin_agente_iva": "Le RUT a 23 (agent de retenue de TVA) : cochez « Agent de retenue de TVA ».",
+        "rut_07_sin_agente_retencion": "Le RUT a 07 (retenue à la source sur le revenu) : cochez « Agent de retenue à la source ».",
+        "rut_33_sin_inc": "Le RUT a 33 (impôt national sur la consommation) : cochez « Redevable de l'impôt sur la consommation ».",
+        "periodicidad_cambio_sin_motivo": "La périodicité de la TVA change sans commencer le 1er janvier : indiquez le motif (Code des impôts art. 600)."
+      },
+      "advertencias": {
+        "simple_con_autorretenedor": "SIMPLE et auto-retenant : le SIMPLE ne pratique pas d'auto-retenues sauf exceptions (Code des impôts art. 911). Confirmez-le avec le comptable.",
+        "simple_con_gran_contribuyente": "SIMPLE et grand contribuable : vérifiez les conditions du SIMPLE (Code des impôts art. 905 et 906).",
+        "simple_con_inc": "SIMPLE et impôt sur la consommation : celui des restaurants et bars a un traitement propre au SIMPLE (Code des impôts art. 908 et 915).",
+        "simple_sin_fe_o47": "Régime SIMPLE sans le code O-47 dans le document électronique.",
+        "gran_contribuyente_sin_fe_o13": "Grand contribuable sans le code O-13 dans le document électronique.",
+        "autorretenedor_sin_fe_o15": "Auto-retenant sans le code O-15 dans le document électronique.",
+        "agente_iva_sin_fe_o23": "Agent de retenue de TVA sans le code O-23 dans le document électronique.",
+        "fe_r99_con_otros": "R-99-PN signifie « aucun autre ne s'applique » : avec d'autres codes, c'est douteux. Cela ne veut pas dire « non assujetti à la TVA ».",
+        "fe_codigo_por_validar": "O-48 et O-49 ne figurent pas parmi les codes en vigueur du document électronique (à confirmer).",
+        "rut_falta_codigo": "Les champs affirment quelque chose que le RUT coché n'a pas : vérifiez la case 53.",
+        "rut_codigo_no_vigente": "Le RUT coché utilise des codes remplacés (11 ou 12).",
+        "periodicidad_cambio_a_mitad_de_anio": "Changement de périodicité en cours d'année : vérifiez sa validité avec le comptable.",
+        "periodicidad_cambio_por_simple": "Changement de périodicité par entrée ou sortie du SIMPLE : traitement spécifique.",
+        "periodicidad_cambio_siguiente": "La période suivante change la périodicité en cours d'année : vérifiez-la aussi."
+      },
+      "periodo": {
+        "rango": "du {desde} au {hasta}",
+        "desde": "depuis le {desde}",
+        "cambioTitulo": "Changement de profil dans la période : vérifier la validité",
+        "cambioDescripcion": "Cette période a plus d'un profil fiscal. GO Admin ne décide pas lequel s'applique : confirmez avec le comptable si le changement est valable.",
+        "sinPerfilTitulo": "Une partie de la période n'a pas de profil fiscal",
+        "sinPerfilDescripcion": "Certains jours de la période ne sont couverts par aucun profil.",
+        "irPerfil": "Aller au profil"
       }
     },
     "centro": {
@@ -45410,11 +45527,11 @@
         "perfil": "Aucune période de validité ne couvre aujourd'hui.",
         "nit": "L'entreprise n'a pas de NIT.",
         "periodicidad_iva": "La périodicité de la TVA manque.",
-        "regimen_simple_sin_o47": "La responsabilité O-47 du régime SIMPLE manque."
+        "revisar_perfil": "Le profil en vigueur est à vérifier."
       },
       "vacio": {
-        "titulo": "Aucune obligation",
-        "descripcion": "Le profil de cette période ne génère aucune obligation."
+        "titulo": "Aucune obligation n'a pu être déduite",
+        "descripcion": "Cela ne veut pas dire que l'entreprise n'a pas d'obligations. Vérifiez le profil fiscal de cette période."
       },
       "columnas": {
         "obligacion": "Obligation",
@@ -45430,28 +45547,46 @@
         "ica": "ICA et retenue ICA",
         "inc": "Impôt sur la consommation",
         "renta": "Impôt sur le revenu",
-        "simple": "Régime SIMPLE",
+        "simple": "SIMPLE, déclaration annuelle",
         "exogena": "Information exogène",
-        "conciliacion_fiscal": "Rapprochement fiscal"
+        "conciliacion_fiscal": "Rapprochement fiscal",
+        "simple_anticipo": "SIMPLE, acompte bimestriel",
+        "ingresos_patrimonio": "Revenus et patrimoine"
       },
       "notas": {
         "sin_autorretencion": "L'estimation n'inclut pas l'autoretenue.",
         "persona_natural_no_soportada": "Échéance de personne morale ; personne physique pas encore.",
-        "requisitos_por_confirmar": "Confirmez avec le comptable si l'entreprise y est tenue."
+        "requisitos_por_confirmar": "Confirmez avec le comptable si l'entreprise y est tenue.",
+        "perfil_por_revisar": "Profil à vérifier : des données ne sont pas définies.",
+        "iva_anual_simple": "TVA annuelle consolidée du SIMPLE, séparée des acomptes bimestriels.",
+        "anticipo_simple": "Acompte du SIMPLE ; la TVA annuelle est à part.",
+        "regimen_especial": "Régime fiscal spécial : confirmez formulaires et annexes avec le comptable.",
+        "cambio_vigencia_en_periodo": "Plus d'un profil dans cette période : vérifier la validité.",
+        "periodo_sin_perfil_completo": "Une partie de la période n'a pas de profil."
       },
       "vence": {
-        "sinCargar": "Calendrier {anio} non chargé",
         "sinNit": "NIT manquant",
-        "noEncontrado": "Absent du calendrier",
         "municipal": "À confirmer avec la commune",
-        "pendienteActivar": "Calendrier en attente"
+        "pendienteActivar": "Calendrier en attente",
+        "incompleto": "Calendrier {anio} incomplet : impossible de déterminer les échéances",
+        "incompletoObligacion": "Calendrier {anio} incomplet : cette date manque"
       },
       "verBorrador": "Voir le brouillon",
       "verReporte": "Voir le rapport",
       "informes": "Rapports :",
       "informeImpuestos": "Impôts",
       "informeRetenciones": "Retenues pratiquées",
-      "certificados": "Certificats de retenue"
+      "certificados": "Certificats de retenue",
+      "calendarioIncompleto": {
+        "titulo": "Calendrier {anio} incomplet : impossible de déterminer les échéances",
+        "descripcion": "Des dates du calendrier officiel manquent. Cela ne veut pas dire que l'entreprise n'a pas d'obligations : celles ci-dessous restent en vigueur et leur échéance reste à déterminer."
+      },
+      "cambioVigencia": "Changement de profil : vérifier la validité",
+      "cambioVigenciaAviso": {
+        "titulo": "Changement de profil dans la période : vérifier la validité",
+        "descripcion": "Une période a plus d'un profil fiscal. GO Admin n'utilise pas le profil du dernier jour et ne calcule pas la valeur : confirmez avec le comptable si le changement est valable."
+      },
+      "revisarPerfil": "Vérifier le profil"
     },
     "iva": {
       "titulo": "Brouillon de TVA",
@@ -45606,7 +45741,7 @@
       },
       "pendiente": {
         "titulo": "En attente d'activation",
-        "descripcion": "Les avances aux fournisseurs nécessitent une mise à jour de la base de données qui n'a pas encore été appliquée. Une fois activée, vous verrez ici les avances et leur solde."
+        "descripcion": "Les avances fournisseurs nécessitent une mise à jour de la base de données qui n’a pas encore été appliquée (nature, retenues et compte de détail). Une fois activée, vous verrez ici les avances et leur solde."
       },
       "buscar": {
         "placeholder": "Rechercher un fournisseur",
@@ -45629,7 +45764,8 @@
         "aplicado": "Imputé",
         "saldo": "Solde",
         "estado": "Statut",
-        "comprobante": "Pièce"
+        "comprobante": "Pièce",
+        "retencion": "Retenue"
       },
       "kpis": {
         "etiqueta": "Résumé des avances",
@@ -45644,7 +45780,8 @@
         "aplicar": "Imputer à une facture",
         "aplicarDe": "Imputer l'avance de {proveedor} à une facture",
         "devolver": "Enregistrer un remboursement",
-        "anular": "Annuler"
+        "anular": "Annuler",
+        "conciliacion": "Rapprochement"
       },
       "anticipo": {
         "titulo": "Nouvelle avance fournisseur",
@@ -45703,24 +45840,44 @@
         "quePasaBanco": "{monto} entrent sur {origen}, l'avance reste à {saldo} et l'écriture sur le compte d'avances est enregistrée.",
         "confirmar": "Enregistrer le remboursement",
         "confirmarMonto": "Enregistrer {monto}",
-        "exito": "Remboursement de {monto} de {cliente} enregistré."
+        "exito": "Remboursement de {monto} de {cliente} enregistré.",
+        "soporte": "Justificatif (dépôt, reçu ou virement)",
+        "retencionProporcional": "Si l’avance a eu une retenue, la part correspondant au remboursement est annulée : ce que le fournisseur rend entre en caisse ou en banque."
       },
       "anular": {
-        "titulo": "Annuler l'avance",
+        "titulo": "Annuler l’avance",
         "descripcion": "Avance à {proveedor} de {monto} (pièce {recibo}).",
-        "confirmar": "Annuler l'avance",
-        "consecuenciasTitulo": "À l'annulation",
+        "confirmar": "Annuler pour erreur",
+        "consecuenciasTitulo": "En annulant",
         "consecuencias": {
-          "pago": "Le paiement est annulé ; s'il était en espèces, il revient au comptage de la caisse.",
-          "saldo": "Le solde en votre faveur chez le fournisseur passe à zéro.",
-          "asiento": "L'écriture d'extourne de l'avance est enregistrée."
+          "pago": "Le paiement est annulé ; s’il était en espèces, il revient au comptage de caisse.",
+          "saldo": "Le solde créditeur du fournisseur passe à zéro.",
+          "asiento": "L’écriture d’extourne complète (retenues comprises) est passée à la date de l’ajustement."
         },
-        "rapidos": {
-          "error": "Enregistrée par erreur",
-          "duplicado": "Doublon",
-          "proveedor": "Le fournisseur ne l'a pas reçue"
+        "exito": "L’avance à {proveedor} a été annulée.",
+        "pregunta": "Qu’est-il arrivé à l’argent ?",
+        "soloSiNoOcurrio": "On n’annule que si le décaissement n’a pas eu lieu.",
+        "opciones": {
+          "noOcurrio": {
+            "titulo": "Le décaissement n’a pas eu lieu",
+            "ayuda": "Enregistré par erreur : l’argent n’est jamais sorti (virement rejeté, doublon)."
+          },
+          "siSalio": {
+            "titulo": "L’argent est bien parti au fournisseur",
+            "ayuda": "L’annulation ne peut pas remettre l’argent en caisse ou en banque."
+          }
         },
-        "exito": "L'avance à {proveedor} a été annulée."
+        "siSalio": {
+          "titulo": "Pas d’annulation",
+          "descripcion": "Si l’argent est sorti et n’est pas revenu, c’est toujours un droit envers le fournisseur. Si le fournisseur l’a rendu, enregistrez le remboursement avec son justificatif.",
+          "mantener": "Conserver l’avance"
+        },
+        "motivo": "Motif",
+        "motivoPlaceholder": "Pourquoi le décaissement n’a pas eu lieu",
+        "soporte": "Justificatif de la correction",
+        "soporteAyuda": "Par exemple : relevé montrant le rejet, numéro du doublon.",
+        "fechaAjuste": "Date de l’ajustement",
+        "fechaAjusteAyuda": "Celle du document qui justifie la correction. La date d’origine et les périodes clôturées ne changent pas."
       },
       "validacion": {
         "vacio": "Saisissez un montant supérieur à zéro.",
@@ -45730,7 +45887,12 @@
         "sucursal": "Choisissez la succursale.",
         "metodo": "Choisissez le moyen de paiement.",
         "referencia": "Ce moyen exige une référence.",
-        "motivo": "Indiquez le motif (3 caractères minimum)."
+        "motivo": "Indiquez le motif (3 caractères minimum).",
+        "naturaleza": "Choisissez la nature de l’avance.",
+        "tarifaIva": "Choisissez la TVA de l’opération.",
+        "conceptoFuente": "Choisissez le motif de retenue à la source.",
+        "soporte": "Saisissez le justificatif (au moins 3 caractères).",
+        "fechaAjuste": "Choisissez une date qui ne soit pas future."
       },
       "errores": {
         "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
@@ -45775,8 +45937,111 @@
         "proveedor_no_encontrado": "Le fournisseur est introuvable.",
         "proveedor_distinto": "La facture appartient à un autre fournisseur.",
         "cuenta_no_encontrada": "La dette est introuvable.",
-        "sin_cuenta_anticipos": "Le compte d'avances aux fournisseurs (1330) manque : configurez-le dans Configuration comptable.",
-        "sin_cuenta_por_pagar": "La règle comptable de paiement aux fournisseurs manque."
+        "sin_cuenta_anticipos": "Le compte de détail des avances fournisseurs manque : définissez-le dans la Configuration comptable.",
+        "sin_cuenta_por_pagar": "La règle comptable de paiement aux fournisseurs manque.",
+        "naturaleza_obligatoria": "Choisissez la nature de l’avance.",
+        "tarifa_iva_obligatoria": "Choisissez la TVA de l’opération.",
+        "tarifa_iva_invalida": "L’organisation n’a pas ce taux de TVA.",
+        "concepto_retencion_invalido": "Le motif de retenue n’est pas valide.",
+        "concepto_retefuente_obligatorio": "Choisissez le motif de retenue à la source.",
+        "retencion_excede_monto": "Les retenues égalent ou dépassent le montant de l’avance.",
+        "cuenta_anticipos_no_configurada": "Tâche comptable : définissez le compte de détail des avances fournisseurs.",
+        "cuenta_anticipos_no_detalle": "Tâche comptable : le compte d’avances configuré n’est pas un sous-compte de détail sous 1330.",
+        "cxp_sin_causacion": "La dette fournisseur n’a pas d’écriture d’enregistrement en vigueur : impossible d’imputer.",
+        "soporte_obligatorio": "Saisissez le justificatif.",
+        "anulacion_requiere_declaracion": "On n’annule que si le décaissement n’a pas eu lieu.",
+        "fecha_ajuste_futura": "La date de l’ajustement ne peut pas être future.",
+        "fecha_ajuste_anterior_al_anticipo": "La date de l’ajustement ne peut pas précéder l’avance.",
+        "periodo_cerrado": "La période comptable de cette date est clôturée.",
+        "contra_asiento_no_creado": "L’écriture d’extourne n’a pas pu être passée. Vérifiez le plan comptable.",
+        "asiento_no_encontrado": "L’écriture de l’avance est introuvable."
+      },
+      "cuentaPendiente": {
+        "titulo": "Tâche comptable : compte des avances fournisseurs",
+        "sinConfigurar": "Dans la Configuration comptable, définissez le compte « Avances fournisseurs » avec un sous-compte de détail sous 1330. 1330 est un compte titre : il n’est pas utilisé. En attendant, aucune avance n’est enregistrée.",
+        "sinConfigurarSugerida": "Dans la Configuration comptable, définissez le compte « Avances fournisseurs ». Votre plan contient déjà {sugerida}, un sous-compte de détail sous 133005. En attendant, aucune avance n’est enregistrée.",
+        "noDetalle": "Le compte configuré ({cuenta}) n’est pas un sous-compte de détail sous 1330. Choisissez un compte de détail dans la Configuration comptable ; en attendant, aucune avance n’est enregistrée.",
+        "configurar": "Aller à la Configuration comptable"
+      },
+      "retenciones": {
+        "naturaleza": "Nature de l’avance",
+        "naturalezas": {
+          "financiacion": {
+            "titulo": "Avance de financement",
+            "ayuda": "Le fournisseur l’impute sur sa facture. La retenue s’applique à l’enregistrement de la facture."
+          },
+          "pago_anticipado_precio": {
+            "titulo": "Paiement anticipé du prix",
+            "ayuda": "Il fait partie du prix d’achat. Les retenues sont évaluées maintenant, au décaissement."
+          }
+        },
+        "tarifaIva": "TVA de l’opération",
+        "tarifaIvaPlaceholder": "Choisissez le taux",
+        "sinIva": "Sans TVA",
+        "tarifa": "TVA {tarifa} %",
+        "conceptoFuente": "Motif de retenue à la source",
+        "conceptoPlaceholder": "Choisissez le motif",
+        "conceptoIca": "Retenue ICA de la commune",
+        "conceptoIcaAyuda": "La retenue d’ICA dépend de la règle municipale.",
+        "icaSinConfirmar": "Non confirmée (reste en attente)",
+        "titulo": "Retenues évaluées",
+        "completa": "Choisissez le fournisseur, le montant et les données ci-dessus pour évaluer les retenues.",
+        "clases": {
+          "retefuente": "Retenue à la source",
+          "reteiva": "Retenue de TVA",
+          "reteica": "Retenue d’ICA"
+        },
+        "estados": {
+          "practicar": "Appliquée",
+          "no_aplica": "Non applicable",
+          "pendiente": "En attente"
+        },
+        "sobreBase": "{tarifa} % sur {base}",
+        "total": "Retenue totale",
+        "girado": "Sort de la caisse ou de la banque",
+        "pendienteTitulo": "Tâche comptable",
+        "pendienteDescripcion": "{clases} : impossible d’évaluer avec les données actuelles. Zéro n’est pas supposé : l’avance est signalée pour que le comptable la révise.",
+        "pendienteCorto": "En attente",
+        "pendienteListadoTitulo": "{count, plural, one {# avance avec retenue en attente} other {# avances avec retenue en attente}}",
+        "pendienteListadoDescripcion": "Il manquait une règle, le profil fiscal, les données du fournisseur ou la règle municipale d’ICA. Révisez-les avec le comptable.",
+        "motivos": {
+          "financiacion_se_retiene_al_causar": "Avance de financement : la retenue s’applique à l’enregistrement de la facture.",
+          "sin_perfil_tributario": "L’organisation n’a pas de profil fiscal en vigueur.",
+          "perfil_requiere_revision": "Le profil fiscal en vigueur doit être révisé.",
+          "organizacion_no_agente_retencion": "L’organisation n’est pas agent de retenue à la source.",
+          "proveedor_autorretenedor": "Le fournisseur pratique l’autoretenue.",
+          "proveedor_regimen_simple": "Le fournisseur relève du régime simplifié (SIMPLE).",
+          "proveedor_sin_datos_fiscales": "Les données fiscales du fournisseur manquent (régime et obligations).",
+          "sin_regla_retefuente": "Aucun motif de retenue à la source n’est configuré.",
+          "concepto_sin_elegir": "Choisissez le motif de retenue à la source de l’opération.",
+          "sin_uvt": "La valeur de l’UVT de l’année manque.",
+          "bajo_base_minima": "La base n’atteint pas la base minimale du motif.",
+          "operacion_sin_iva": "L’opération n’est pas soumise à la TVA.",
+          "organizacion_no_agente_reteiva": "L’organisation n’est pas agent de retenue de TVA.",
+          "proveedor_no_responsable_iva": "Le fournisseur n’est pas assujetti à la TVA.",
+          "ambos_grandes_contribuyentes": "Pas de retenue de TVA entre grands contribuables.",
+          "sin_regla_reteiva": "Aucune retenue de TVA n’est configurée.",
+          "sin_regla_reteica_municipal": "Aucune retenue d’ICA n’est configurée pour la commune.",
+          "norma_municipal_sin_confirmar": "La règle municipale d’ICA n’est pas confirmée : choisissez la retenue de la commune.",
+          "valor_cero": "La retenue est nulle.",
+          "cuenta_retencion_no_valida": "Le compte de la retenue n’est pas un compte de mouvement du plan."
+        }
+      },
+      "conciliacion": {
+        "archivo": "rapprochement-avances-fournisseurs.csv",
+        "exito": "Rapprochement de {anticipos} avances téléchargé.",
+        "cuenta": "Compte",
+        "naturaleza": "Nature",
+        "girado": "Décaissé",
+        "retencionDescontada": "Retenue imputée",
+        "devuelto": "Remboursé",
+        "anulado": "Annulé",
+        "saldoLibros": "Solde comptable",
+        "cuadra": "Concorde",
+        "anticipos": "Avances",
+        "auxiliarNit": "Auxiliaire par NIF",
+        "si": "Oui",
+        "no": "Non"
       }
     },
     "dinero": {
@@ -47155,6 +47420,51 @@
           "descripcion": "GO Admin n'a pas encore activé son application {nombre}. Quand elle sera prête, vous pourrez vous connecter d'ici."
         },
         "error": "La connexion n'a pas pu démarrer. Réessayez."
+      },
+      "meta": {
+        "pasos": {
+          "cuenta": "Compte",
+          "activos": "Actifs",
+          "envios": "Ce qui est envoyé"
+        },
+        "subtituloActivos": "Étape 2 sur 3 · Choisissez vos comptes",
+        "subtituloEnvios": "Étape 3 sur 3 · Ce qui est envoyé à Meta",
+        "autorizado": "Autorisé",
+        "sinAutorizar": {
+          "titulo": "La connexion n’a pas d’autorisation Meta",
+          "descripcion": "Reconnectez-vous à Meta depuis le catalogue. Si cela persiste, la migration des identifiants est peut-être en attente d’activation."
+        },
+        "negocio": "Portefeuille d’entreprise",
+        "cuenta": "Compte publicitaire",
+        "catalogo": "Catalogue",
+        "catalogoNuevo": "Catalogue GO Admin (nouveau)",
+        "catalogoNuevoAyuda": "Nous en créons un nouveau pour ne pas le mélanger avec vos produits existants.",
+        "pixel": "Pixel",
+        "pixelNuevo": "Pixel GO Admin (nouveau)",
+        "pixelAyuda": "Celui qui mesure votre boutique en ligne et reçoit les achats.",
+        "activar": "Activer la connexion",
+        "envioCatalogo": {
+          "titulo": "Catalogue de produits",
+          "descripcion": "Photo, prix et stock de la boutique en ligne."
+        },
+        "productos": "Produits du catalogue",
+        "productosAyuda": "Pour l’instant, tous les produits publiés sur la boutique sont envoyés ; par catégorie ou étiquette, plus tard.",
+        "productosTodos": "Tous ceux de la boutique en ligne ({n})",
+        "productosTodosSinConteo": "Tous ceux de la boutique en ligne",
+        "envioCompras": {
+          "titulo": "Achats de la boutique en ligne",
+          "descripcion": "Pour savoir combien de ventes chaque campagne a apportées."
+        },
+        "envioProspectos": {
+          "titulo": "Prospects du CRM (en construction)",
+          "descripcion": "L’envoi de prospects à Meta n’existe pas encore ; il sera activé une fois prêt."
+        },
+        "privacidad": {
+          "titulo": "Données clients protégées",
+          "descripcion": "E-mail et téléphone voyagent chiffrés (hachage), uniquement pour les clients ayant accepté le traitement des données."
+        },
+        "errorCarga": "Impossible de lire vos comptes Meta.",
+        "errorGuardar": "Enregistrement impossible. Réessayez."
       }
     },
     "detalle": {
@@ -47242,7 +47552,7 @@
         "enBoveda": "Coffre chiffré",
         "enConexion": "Registre de la connexion",
         "actualizada": "mise à jour le {fecha}",
-        "nota": "Seuls le préfixe et les derniers caractères sont affichés. GO Admin n'affiche plus jamais une clé complète."
+        "nota": "Elles sont masquées. «Voir» et «Copier» les demandent au serveur, réservé aux administrateurs, et l’accès est enregistré (qui et quand)."
       },
       "usadaPor": {
         "titulo": "Utilisée par",
@@ -47263,7 +47573,753 @@
       "confirmarDesconexion": {
         "titulo": "Déconnecter {nombre} ?",
         "descripcion": "Les identifiants sont révoqués (irrécupérables) et les moyens de paiement qui l'utilisent sont déliés. Pour vous reconnecter, il faudra coller de nouvelles clés."
+      },
+      "borrar": {
+        "boton": "Supprimer la connexion",
+        "descripcion": "Supprimer efface la connexion avec ses identifiants et son activité. Si elle a déjà encaissé ou créé des étiquettes, déconnectez-la plutôt.",
+        "bloqueado": "Suppression impossible : un moyen de paiement l’utilise. Dissociez-le d’abord dans Finances › Moyens de paiement.",
+        "enUso": "Un moyen de paiement utilise cette connexion : dissociez-le d’abord dans Finances › Moyens de paiement.",
+        "conHistoria": "La connexion a déjà des encaissements ou des envois : déconnectez-la pour conserver l’historique.",
+        "confirmarTitulo": "Supprimer «{nombre}» ?",
+        "confirmarDescripcion": "La connexion, ses identifiants, ses webhooks et son activité sont supprimés. Action irréversible."
       }
+    },
+    "importar": {
+      "abrir": "Importer un CSV",
+      "titulo": "Importer des connexions",
+      "descripcion": "Crée des connexions en brouillon à partir d’un fichier CSV. Les clés se complètent ensuite avec l’assistant de chacune.",
+      "boton": "Importer ({n})",
+      "faltaConector": "Choisissez le connecteur",
+      "faltaArchivo": "Choisissez un fichier avec des lignes",
+      "conector": "Connecteur",
+      "elegirConector": "Choisissez un connecteur",
+      "archivo": "Fichier CSV",
+      "plantilla": "Télécharger le modèle (nombre, sucursal_id, pais, ambiente)",
+      "vistaPrevia": "{n} connexions prêtes à importer",
+      "sinLlaves": {
+        "titulo": "Le CSV ne contient pas de clés",
+        "descripcion": "Les connexions restent en brouillon et n’encaissent ni ne synchronisent tant que vous n’avez pas collé leurs clés avec l’assistant."
+      },
+      "resultado": "{creadas} créées · {fallidas} en erreur",
+      "error": {
+        "vacio": "Le fichier n’a aucune ligne sous l’en-tête.",
+        "sin_columna_nombre": "La colonne «nombre» (ou «name») manque.",
+        "demasiadas_filas": "200 lignes maximum par fichier.",
+        "servidor": "Import impossible. Réessayez."
+      }
+    },
+    "credencial": {
+      "ver": "Voir",
+      "ocultar": "Masquer",
+      "verDe": "Voir {etiqueta}",
+      "ocultarDe": "Masquer {etiqueta}",
+      "copiarDe": "Copier {etiqueta}",
+      "sinPermiso": "Seul un administrateur peut voir les identifiants.",
+      "error": "Impossible d’afficher l’identifiant.",
+      "errorCopiar": "Copie impossible.",
+      "actuales": "Clés enregistrées"
+    }
+  },
+  "consignacionesR4": {
+    "titulo": "Dépôts-ventes",
+    "subtitulo": "Votre marchandise chez un tiers, ou celle d'un tiers chez vous",
+    "errorCarga": "Impossible de charger les dépôts-ventes.",
+    "reintentar": "Réessayer",
+    "sinResultados": "Aucune note ne correspond à la recherche.",
+    "etiquetaFila": "Note {numero} de {tercero}",
+    "unidadesN": "{n} u.",
+    "migas": {
+      "inventario": "Inventaire",
+      "consignaciones": "Dépôts-ventes"
+    },
+    "pestanas": {
+      "etiqueta": "Type de dépôt-vente",
+      "entregadas": "Remises",
+      "recibidas": "Reçues",
+      "porAceptar": "À accepter"
+    },
+    "pendiente": {
+      "titulo": "En attente d'activation",
+      "descripcion": "Le dépôt-vente reçu et la liaison entre organisations nécessitent une mise à jour de la base de données qui n'a pas encore été appliquée. Une fois active, vos notes reçues et ce que vous envoient d'autres organisations apparaîtront ici."
+    },
+    "acciones": {
+      "ver": "Voir",
+      "liquidar": "Liquider",
+      "recibir": "Recevoir la marchandise",
+      "vincular": "Lier une organisation",
+      "nuevaEntregada": "Nouvelle note remise",
+      "devolver": "Rendre la marchandise"
+    },
+    "buscar": {
+      "recibidas": "Rechercher une note ou un déposant",
+      "etiqueta": "Rechercher les notes reçues"
+    },
+    "kpis": {
+      "etiqueta": "Résumé de la marchandise reçue",
+      "enTuPoder": "En votre possession",
+      "aPrecioPactado": "Au prix convenu · comptes d'ordre",
+      "vendidoSinLiquidar": "Vendu non liquidé",
+      "notas": "{n, plural, =0 {Aucune note} one {# note} other {# notes}}",
+      "remuneracion": "Votre rémunération",
+      "remuneracionDetalle": "Estimée sur le vendu non liquidé",
+      "porPagar": "À payer aux déposants",
+      "porPagarDetalle": "Soldes liquidés",
+      "recibido": "Reçu",
+      "vendido": "Vendu",
+      "sinLiquidar": "Non liquidé : {valor}",
+      "devuelto": "Rendu",
+      "noEsInventario": "Ce n'est pas votre inventaire",
+      "unidadesValor": "{n} u. · {valor}"
+    },
+    "estados": {
+      "en_consignacion": "En votre possession",
+      "por_liquidar": "À liquider",
+      "liquidada": "Liquidée"
+    },
+    "estadosLiquidacion": {
+      "por_facturar": "En attente de la facture d'achat",
+      "liquidada": "Liquidée",
+      "anulada": "Annulée"
+    },
+    "origen": {
+      "goAdmin": "GO Admin",
+      "externo": "Externe"
+    },
+    "columnas": {
+      "nota": "Note",
+      "consignante": "Déposant",
+      "contrato": "Contrat",
+      "origen": "Origine",
+      "fecha": "Date",
+      "unidades": "Unités",
+      "enTuPoder": "En votre possession",
+      "estado": "Statut",
+      "tipo": "Type",
+      "de": "De",
+      "producto": "Produit",
+      "cantidad": "Quantité",
+      "precioPactado": "Prix convenu",
+      "precioLiquidacion": "Prix de liquidation",
+      "valor": "Valeur",
+      "total": "Total",
+      "productoConsignante": "Produit du déposant",
+      "tuProducto": "Votre produit",
+      "recibido": "Reçu",
+      "vendido": "Vendu",
+      "devuelto": "Rendu",
+      "valorEnTuPoder": "Valeur en votre possession",
+      "vendidoSinLiquidar": "Vendu non liquidé",
+      "venta": "Vente",
+      "precioDueno": "Prix du propriétaire"
+    },
+    "vacio": {
+      "recibidasTitulo": "Vous ne détenez pas de marchandise de tiers",
+      "recibidasDescripcion": "Quand un déposant vous laisse de la marchandise à vendre, recevez-la ici. Elle n'entre ni dans votre coût ni dans votre inventaire comptable.",
+      "porAceptarTitulo": "Rien à accepter",
+      "porAceptarDescripcion": "Les notes et liquidations envoyées par les organisations liées arrivent ici."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas l'autorisation de voir les dépôts-ventes",
+      "descripcion": "Demandez à un administrateur l'autorisation « Finances · voir ». Recevoir, liquider ou accepter des notes d'une autre organisation exige aussi « Finances · créer » et « Inventaire · recevoir »."
+    },
+    "avisoAjena": {
+      "titulo": "La marchandise reçue n'est pas votre inventaire",
+      "descripcion": "Elle est contrôlée physiquement comme stock du déposant et en comptes d'ordre jusqu'à sa vente ou son retour. À la liquidation, seule votre rémunération est un produit."
+    },
+    "condiciones": {
+      "titulo": "Conditions du contrat",
+      "elegir": "Choisir…",
+      "contrato": "Classification du contrat",
+      "ayudaSinContrato": "Obligatoire : elle définit le traitement comptable et fiscal. Il n'y a pas d'option par défaut.",
+      "ayudaContrato": {
+        "intermediacion": "Mandat : la marchandise et l'encaissement appartiennent au propriétaire ; l'intermédiaire ne gagne que sa rémunération.",
+        "estimatorio": "Le dépositaire acquiert ce qu'il vend, au moment de la vente, au prix estimé, et rend le reste.",
+        "compra": "Achat réel : ce n'est pas un dépôt-vente."
+      },
+      "contratos": {
+        "intermediacion": "Intermédiation (mandat)",
+        "estimatorio": "Contrat estimatoire",
+        "compra": "Achat réel"
+      },
+      "compraReal": {
+        "titulo": "L'achat réel n'est pas un dépôt-vente",
+        "descripcion": "Il y a achat dès le départ : inventaire propre et dette envers le fournisseur à l'acquisition, et coût des ventes à la vente. Enregistrez-le avec la facture habituelle.",
+        "accion": "Aller à la facture"
+      },
+      "precio": "Prix du propriétaire",
+      "precios": {
+        "fijo": "Fixe",
+        "minimo": "Minimum"
+      },
+      "remuneracion": "Rémunération",
+      "remuneraciones": {
+        "porcentaje": "Pourcentage",
+        "precio_liquidacion": "Prix de liquidation par produit"
+      },
+      "base": "Base du pourcentage",
+      "bases": {
+        "precio_pactado": "Prix convenu",
+        "precio_venta": "Prix de vente"
+      },
+      "obligacion": "Obligation envers le propriétaire sur les ventes à crédit",
+      "obligacionAyuda": "Quand on doit au propriétaire ce qui a été vendu à crédit.",
+      "obligaciones": {
+        "venta": "À la vente",
+        "cobro": "À l'encaissement"
+      },
+      "factura": "Qui facture le public",
+      "parte": {
+        "consignante": "Le déposant",
+        "tu": "Vous",
+        "consignatario": "Le dépositaire"
+      },
+      "riesgos": {
+        "devoluciones": "Assume les retours",
+        "perdidas": "Assume les pertes",
+        "gastos": "Assume les frais"
+      },
+      "facturaMandatario": "En intermédiation, le mandataire (le dépositaire) facture pour le compte du propriétaire, en séparant ce qui est à autrui de ce qui est à lui.",
+      "impuestosPorLey": "La TVA et les retenues ne se choisissent pas : elles sont déterminées par la loi avec les faits de chaque liquidation. Ce qui n'est pas paramétré reste en suspens comptable.",
+      "mandanteEntregadaPendiente": "En intermédiation la remise fonctionne ; la liquidation côté propriétaire attend le critère du Comptable.",
+      "errores": {
+        "contrato": "Choisissez la classification du contrat.",
+        "compra_real": "L'achat réel s'enregistre avec la facture, pas avec une note de dépôt-vente.",
+        "precio": "Choisissez si le prix du propriétaire est fixe ou minimum.",
+        "remuneracion": "Choisissez le mode de rémunération.",
+        "base": "Choisissez la base du pourcentage.",
+        "obligacion": "Choisissez quand naît l'obligation envers le propriétaire.",
+        "riesgos": "Définissez qui assume les retours, pertes et frais."
+      }
+    },
+    "validacion": {
+      "consignante": "Choisissez le déposant.",
+      "bodega": "Choisissez l'entrepôt.",
+      "lineas": "Ajoutez au moins un produit.",
+      "cantidadPrecio": "Chaque produit doit avoir une quantité et un prix convenu supérieurs à zéro.",
+      "precioLiquidacion": "Chaque produit doit avoir un prix de liquidation supérieur à zéro et non supérieur au prix convenu.",
+      "cuentaRecaudo": "Ce doit être un sous-compte à 8 chiffres sous 281510.",
+      "condiciones": "Complétez les conditions du contrat.",
+      "correo": "Saisissez une adresse e-mail valide."
+    },
+    "recibir": {
+      "titulo": "Recevoir de la marchandise en dépôt-vente",
+      "descripcion": "Ce n'est pas un achat. La marchandise reste au déposant.",
+      "confirmar": "Recevoir la marchandise",
+      "consignante": "Déposant",
+      "bodega": "Entrepôt de réception",
+      "bodegaPlaceholder": "Choisissez l'entrepôt",
+      "agregarProducto": "Ajouter un produit en dépôt-vente",
+      "buscarProducto": "Rechercher un produit",
+      "sinProductos": "Aucun produit correspondant",
+      "productosAparte": "Les produits en dépôt-vente sont séparés des vôtres : un produit avec un coût ou des mouvements propres ne peut pas être reçu en dépôt-vente. S'il n'existe pas, créez-le d'abord dans Inventaire › Produits.",
+      "quitar": "Retirer",
+      "sinLineas": "Ajoutez les produits que vous recevez.",
+      "cantidadDe": "Quantité de {producto}",
+      "precioDe": "Prix convenu de {producto}",
+      "precioLiquidacionDe": "Prix de liquidation de {producto}",
+      "quitarDe": "Retirer {producto}",
+      "comision": "Pourcentage convenu",
+      "comisionAyuda": "Votre rémunération à la liquidation, sur la base choisie.",
+      "cuentaRecaudo": "Sous-compte 281510 du déposant",
+      "cuentaRecaudoAyuda": "Où va l'encaissement du propriétaire. Vide : celui de sa dernière note est utilisé.",
+      "vistaPrevia": "Aperçu · comptes d'ordre",
+      "avisoTitulo": "Cela ne touche ni votre inventaire ni votre coût",
+      "aviso": {
+        "intermediacion": "Les produits entrent à l'entrepôt comme stock du déposant : ils se vendent au PDV et avec la facture habituelle, mais ne s'ajoutent pas à votre inventaire comptable. L'encaissement du propriétaire va à son sous-compte 281510.",
+        "estimatorio": "Les produits entrent à l'entrepôt comme stock du déposant. Ce que vous vendez, vous l'acquérez en le vendant : la liquidation crée la facture d'achat habituelle, à compléter avec le justificatif du déposant."
+      },
+      "exito": "Note {numero} reçue de {consignante}.",
+      "motivoSerial": "Les produits avec numéros de série ne se reçoivent pas encore en dépôt-vente.",
+      "motivoSinStock": "Le produit ne suit pas le stock."
+    },
+    "asiento": {
+      "debito": "Débit",
+      "credito": "Crédit",
+      "contraOrden": "Contrepartie du groupe 94",
+      "ordenConsignacion": "911520 En dépôt-vente",
+      "cuenta": "{cuenta} {nombre}",
+      "contraOrdenCorto": "Contrepartie d'ordre",
+      "ordenCorto": "En dépôt-vente",
+      "recaudoCorto": "Ventes pour compte de tiers",
+      "remuneracionCorto": "Rémunération (vente à commission)",
+      "costoCorto": "Coût de l'acquisition",
+      "d": "D {valor}",
+      "c": "C {valor}",
+      "proveedores": "2205 Fournisseurs (à la confirmation de la facture d'achat)"
+    },
+    "vincular": {
+      "titulo": "Lier une autre organisation",
+      "descripcion": "Pour envoyer et recevoir des notes et liquidations de dépôt-vente sans les ressaisir.",
+      "tercero": "Tiers dans votre organisation",
+      "terceroAyuda": "Le lien est rattaché à ce tiers : ses notes et liquidations arrivent avec lui.",
+      "correo": "E-mail de l'administrateur de l'autre organisation",
+      "queSeComparte": "Ce qui est partagé entre les deux organisations",
+      "comparte": {
+        "notas": "Les notes que l'une envoie à l'autre et leurs conditions",
+        "productos": "Leurs produits : nom, référence, quantité et prix convenu",
+        "movimientos": "Vendu, rendu et détenu pour ces notes, et leurs liquidations",
+        "nunca": "Clients, autres produits, inventaire, comptabilité ou utilisateurs"
+      },
+      "si": "Oui",
+      "nunca": "Jamais",
+      "enlace": "Lien d'invitation",
+      "enlaceAyuda": "Usage unique, expire dans 7 jours. Il est accepté par une personne administratrice dans l'autre organisation. Copiez-le maintenant : il ne s'affiche plus.",
+      "copiar": "Copier",
+      "copiado": "Lien copié.",
+      "enviar": "Créer l'invitation",
+      "listo": "Terminé",
+      "sinGoAdminTitulo": "L'autre organisation n'utilise pas GO Admin ?",
+      "sinGoAdmin": "Pas besoin de lien : enregistrez la note manuellement et envoyez-lui le PDF de la note et de chaque liquidation."
+    },
+    "devolver": {
+      "titulo": "Rendre la marchandise au déposant",
+      "descripcion": "La marchandise sort de votre entrepôt et retourne chez {consignante}.",
+      "confirmar": "Rendre",
+      "enTuPoder": "En votre possession : {n}",
+      "cantidadDe": "Quantité de {producto} à rendre",
+      "asiento": "Le contrôle en comptes d'ordre est contrepassé pour ce qui est rendu, au prix convenu.",
+      "exito": "Retour enregistré."
+    },
+    "detalle": {
+      "subtitulo": "Reçue le {fecha} · {contrato} · {origen}",
+      "vinculada": "Liée dans GO Admin (sa note {numero})",
+      "existencias": "Stock du déposant",
+      "condiciones": "Conditions du contrat",
+      "cuentasOrden": "Contrôle en comptes d'ordre",
+      "liquidaciones": "Liquidations ({n})",
+      "porcentajeSobre": "{pct} % sur le {base}",
+      "asume": {
+        "dueno": "Le propriétaire",
+        "consignatario": "Le dépositaire"
+      },
+      "facturaMandatario": "Vous, en tant que mandataire, pour le compte du propriétaire",
+      "factura": {
+        "consignatario": "Le dépositaire",
+        "consignante": "Le déposant"
+      },
+      "liquidacionResumen": "Vente {venta} · rémunération {remuneracion}",
+      "vinculadaTitulo": "Liée avec {consignante}",
+      "vinculadaDescripcion": "Le déposant voit pour CETTE note le reçu, le vendu, le rendu et le détenu, et reçoit vos liquidations. Il ne voit ni vos clients, ni vos autres produits, ni vos prix, ni votre comptabilité."
+    },
+    "liquidar": {
+      "titulo": "Liquidation au déposant · {numero}",
+      "subtitulo": "{consignante} · {contrato}",
+      "miga": "Liquidation",
+      "anularUltima": "Annuler la dernière",
+      "procesando": "Liquidation…",
+      "confirmar": "Liquider",
+      "confirmarEstimatorio": "Liquider et créer la facture d'achat",
+      "exito": "Liquidation enregistrée. Solde du propriétaire : {valor}.",
+      "exitoEstimatorio": "Liquidation enregistrée. Complétez la facture d'achat avec le justificatif du déposant ({valor}).",
+      "anulada": "Liquidation annulée.",
+      "sinVentas": "Aucune vente non liquidée.",
+      "resumen": "Liquidation",
+      "venta": "Vendu, prix de vente (HT)",
+      "pactado": "Vendu, au prix convenu",
+      "remuneracionPct": "Votre rémunération {pct} % {base}",
+      "remuneracionPrecio": "Votre rémunération (vente − prix de liquidation)",
+      "impuestos": "TVA et retenues",
+      "porDeterminar": "À déterminer",
+      "impuestosAyuda": "Déterminées par la loi avec les faits de la liquidation ; elles restent en suspens comptable.",
+      "saldoDueno": "Solde pour {consignante}",
+      "vistaPrevia": "Aperçu de l'écriture",
+      "notaIntermediacion": "Seule la rémunération est un produit. Le solde reste dans le sous-compte 281510 du propriétaire ; jamais 2205.",
+      "notaEstimatorio": "L'acquisition naît à la liquidation : la facture d'achat habituelle enregistre le coût, la TVA déductible et la dette.",
+      "bajoPrecioTitulo": "Vente en dessous du prix du propriétaire",
+      "alLiquidar": "À la liquidation",
+      "alLiquidarIntermediacion": "Le solde du propriétaire se paie depuis Trésorerie › Argent de tiers. Si le déposant est lié, la liquidation arrive dans son GO Admin.",
+      "alLiquidarEstimatorio": "Un brouillon de facture d'achat est créé ; sa confirmation crée la dette, payée depuis Comptes fournisseurs (une avance fournisseur peut y être imputée).",
+      "irDineroTerceros": "Aller à Argent de tiers",
+      "verFacturaCompra": "Facture d'achat",
+      "anularTitulo": "Annuler la dernière liquidation",
+      "anularDescripcion": "L'écriture de contrepassation de la rémunération est enregistrée et le vendu redevient à liquider.",
+      "anularConfirmar": "Annuler la liquidation"
+    },
+    "porAceptar": {
+      "tipos": {
+        "consignacion_nota": "Note à accepter",
+        "consignacion_liquidacion": "Liquidation reçue",
+        "consignacion_devolucion": "Retour reçu"
+      },
+      "aceptada": "Note {numero} reçue.",
+      "liquidacionAceptada": "Liquidation acceptée et facturée.",
+      "tituloNota": "Note de dépôt-vente à accepter",
+      "tituloLiquidacion": "Liquidation reçue · {numero}",
+      "subtitulo": "{de} vous l'a envoyée depuis GO Admin · {fecha} · son numéro : {numero}",
+      "estados": {
+        "enviado": "À accepter",
+        "aceptado": "Acceptée",
+        "rechazado": "Refusée",
+        "anulado": "Annulée"
+      },
+      "rechazar": "Refuser",
+      "aceptarRecibir": "Accepter et recevoir",
+      "aceptarFacturar": "Accepter et facturer",
+      "avisoNotaTitulo": "Elle vient d'une autre organisation GO Admin",
+      "avisoNota": "Vous ne voyez que ce que le déposant a partagé dans cette note. En acceptant, la marchandise reste dans votre entrepôt comme stock de tiers (comptes d'ordre, pas votre inventaire) et peut se vendre dans votre PDV.",
+      "avisoLiquidacionTitulo": "Le dépositaire vous l'a envoyée",
+      "avisoLiquidacion": "Vérifiez le vendu et le rendu. Accepter fait la même chose que « Facturer et clôturer » : votre facture de vente pour le vendu, la commission imputée et le rendu de retour dans votre entrepôt. Si cela ne correspond pas, refusez-la avec un motif.",
+      "periodicidad": "Liquidation",
+      "periodicidades": {
+        "semanal": "Hebdomadaire",
+        "quincenal": "Bimensuelle",
+        "mensual": "Mensuelle",
+        "al_vencimiento": "À l'échéance"
+      },
+      "cantidad": "{n} u.",
+      "sinPrecio": "Sans prix dans la note",
+      "tuProducto": "Votre produit au catalogue",
+      "eligeProducto": "Choisissez votre produit en dépôt-vente",
+      "vinculado": "Lié : {producto}",
+      "sinVincular": "Non lié",
+      "productosAparte": "Liez chaque produit à l'un de vos produits en dépôt-vente (séparés des vôtres). S'il n'existe pas, créez-le dans Inventaire › Produits ; la prochaine note arrivera déjà liée.",
+      "liquidacion": "Liquidation",
+      "netoPorCobrar": "Net à encaisser",
+      "diferencias": "Écarts avec votre note {numero}",
+      "sinDiferencias": "Aucun écart",
+      "sinDiferenciasDetalle": "Les quantités, prix et commission correspondent à votre note",
+      "tiposDiferencia": {
+        "linea_desconocida": "Une ligne ne correspond pas à votre note",
+        "precio_bajo_pactado": "Un prix est inférieur au prix convenu",
+        "excede_en_su_poder": "Le déclaré dépasse ce qu'il détient",
+        "comision_distinta": "La commission diffère de celle de votre note",
+        "devolucion_posterior": "Inclut des retours de ventes déjà liquidées"
+      },
+      "rechazarTitulo": "Refuser avec un motif",
+      "rechazarDescripcion": "Le motif parvient à {de}. Rien ne change dans aucune des deux organisations.",
+      "rechazada": "Document refusé."
+    },
+    "invitacion": {
+      "titulo": "{invita} souhaite se lier à vous",
+      "tituloGenerico": "Invitation de liaison",
+      "invalida": "Cette invitation n'est pas valide",
+      "invalidaDescripcion": "Elle a déjà été utilisée, révoquée, ou le lien est incomplet. Demandez-en une nouvelle à la personne qui vous a invité.",
+      "vencida": "Cette invitation a expiré",
+      "vencidaDescripcion": "Les invitations durent 7 jours. Demandez-en une nouvelle à la personne qui vous a invité.",
+      "subtitulo": "Invitation du {creada} · expire le {vence}",
+      "noAdminTitulo": "Vous devez être administrateur",
+      "noAdmin": "Seul un administrateur de l'organisation active peut accepter. Si vous administrez une autre organisation, basculez vers elle et rouvrez le lien.",
+      "aceptasEnNombre": "Vous acceptez au nom de {organizacion}.",
+      "tercero": "{invita} est, pour vous",
+      "terceroAyuda": "Il est lié à l'un de vos fournisseurs ; s'il n'existe pas, créez-le d'abord avec le nom et le numéro fiscal partagés.",
+      "queVera": "Ce que {invita} verra de vous",
+      "vera": {
+        "datos": "Votre nom, numéro fiscal et l'utilisateur qui accepte",
+        "notas": "Ce que vous acceptez, vendez, rendez et liquidez de SES notes",
+        "nunca": "Vos clients, vos prix, votre inventaire et votre comptabilité"
+      },
+      "rechazar": "Refuser",
+      "aceptar": "Accepter la liaison",
+      "aceptada": "Vous êtes désormais lié à {invita}.",
+      "rechazada": "Invitation refusée."
+    },
+    "errores": {
+      "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+      "sin_acceso_sucursal": "Vous n'avez pas accès à cette succursale.",
+      "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+      "datos_invalidos": "Vérifiez les données et réessayez.",
+      "pendiente_de_activar": "Le dépôt-vente reçu est en attente d'activation.",
+      "clasificacion_obligatoria": "Choisissez la classification du contrat : intermédiation, estimatoire ou achat réel.",
+      "compra_real_usa_factura": "L'achat réel n'est pas un dépôt-vente : enregistrez-le avec la facture d'achat.",
+      "terminos_invalidos": "Vérifiez les conditions du contrat.",
+      "clave_idempotencia_invalida": "L'opération n'a pas pu être identifiée. Réessayez.",
+      "clave_idempotencia_reutilizada": "Cette opération a déjà été enregistrée avec d'autres données.",
+      "comision_invalida": "Le pourcentage doit être compris entre 0 et 100.",
+      "sin_lineas": "Il n'y a rien à enregistrer.",
+      "linea_invalida": "Une ligne contient des données invalides.",
+      "proveedor_no_encontrado": "Le déposant est introuvable.",
+      "sucursal_invalida": "L'entrepôt n'est pas valide.",
+      "producto_invalido": "Un produit n'est pas valide.",
+      "producto_sin_seguimiento": "Un produit ne suit pas le stock.",
+      "producto_con_seriales": "Les produits avec numéros de série ne se reçoivent pas encore en dépôt-vente.",
+      "producto_con_variantes": "Choisissez la variante, pas le produit parent.",
+      "producto_propio_no_consignable": "Ce produit a un coût ou des mouvements propres : créez un produit séparé pour la marchandise du déposant.",
+      "producto_de_otro_consignante": "Ce produit est déjà en dépôt-vente d'un autre déposant.",
+      "producto_otra_clasificacion": "Ce produit est déjà en dépôt-vente avec une autre classification de contrat.",
+      "precio_liquidacion_obligatorio": "Le prix de liquidation manque (il ne peut pas dépasser le prix convenu).",
+      "stock_insuficiente": "Le stock de l'entrepôt est insuffisant.",
+      "excede_en_su_poder": "La quantité dépasse ce que vous détenez.",
+      "sin_cuenta_orden_consignacion": "Le compte 911520 « En dépôt-vente » manque au plan comptable. Laissé en suspens comptable.",
+      "sin_cuenta_contra_orden": "Il manque un compte de mouvement du groupe 94. Laissé en suspens comptable.",
+      "sin_cuenta_recaudo_propietario": "Le sous-compte 281510 du déposant manque. Créez-le au plan comptable et choisissez-le à la réception. Laissé en suspens comptable.",
+      "cuenta_recaudo_invalida": "Le compte d'encaissement doit être un sous-compte de mouvement à 8 chiffres sous 281510.",
+      "sin_cuenta_remuneracion": "Le sous-compte à 8 chiffres sous 413512 pour votre rémunération manque. Laissé en suspens comptable.",
+      "sin_cuenta_costo": "Le compte de coût des ventes manque dans la Configuration comptable. Laissé en suspens comptable.",
+      "nota_no_encontrada": "La note est introuvable.",
+      "liquidacion_no_encontrada": "La liquidation est introuvable.",
+      "liquidacion_pendiente": "Une liquidation attend sa facture d'achat.",
+      "liquidacion_no_es_la_ultima": "Seule la dernière liquidation peut être annulée.",
+      "liquidacion_anulada": "La liquidation est annulée.",
+      "liquidacion_aceptada_por_el_dueno": "Le propriétaire a déjà accepté cette liquidation : corrigez-la par un retour ou dans la suivante.",
+      "anular_factura_compra_primero": "Annulez d'abord la facture d'achat de cette liquidation.",
+      "sin_ventas_por_liquidar": "Aucune vente à liquider.",
+      "saldo_a_favor_del_consignatario": "Les retours dépassent le vendu : le propriétaire vous doit ce solde. Enregistrez-le avec le Comptable.",
+      "venta_bajo_precio_pactado": "La vente s'est faite en dessous du prix du propriétaire. Vérifiez-la ou définissez avec le Comptable qui assume l'écart.",
+      "devolucion_estimatorio_pendiente": "En estimatoire, le retour d'un bien déjà acquis se fait par avoir sur la facture d'achat.",
+      "motivo_obligatorio": "Indiquez le motif.",
+      "documento_no_encontrado": "Le document est introuvable.",
+      "documento_no_disponible": "Ce document n'est plus à accepter.",
+      "producto_sin_vincular": "Liez tous les produits du déposant à l'un des vôtres.",
+      "vinculo_sin_proveedor": "Le lien doit être rattaché à l'un de vos fournisseurs pour recevoir en dépôt-vente.",
+      "vinculo_no_encontrado": "Le lien est introuvable.",
+      "vinculo_inactivo": "Le lien est suspendu.",
+      "vinculo_existente": "Un lien avec cette organisation existe déjà.",
+      "invitacion_invalida": "L'invitation n'est pas valide.",
+      "invitacion_vencida": "L'invitation a expiré.",
+      "misma_organizacion": "Vous ne pouvez pas lier une organisation à elle-même.",
+      "tercero_obligatorio": "Choisissez le tiers.",
+      "tercero_no_encontrado": "Le tiers est introuvable.",
+      "correo_invalido": "L'adresse e-mail n'est pas valide.",
+      "demasiadas_invitaciones": "Vous avez trop d'invitations en attente.",
+      "transicion_invalida": "Cette action ne s'applique pas dans l'état actuel.",
+      "factura_no_encontrada": "La facture est introuvable.",
+      "factura_distinta": "La liquidation a déjà une autre facture.",
+      "proveedor_distinto": "La facture d'achat est d'un autre fournisseur.",
+      "documento_anulado": "La facture est annulée.",
+      "factura_compra_no_creada": "La liquidation est enregistrée, mais la facture d'achat n'a pas pu être créée. Créez-la depuis Factures d'achat.",
+      "asiento_no_creado": "L'écriture n'a pas pu être enregistrée. Vérifiez le plan comptable et la période comptable.",
+      "error_desconocido": "Une erreur est survenue. Réessayez."
+    }
+  },
+  "finanzasIva300": {
+    "titulo": "Formulaire 300 par case",
+    "excel": "Excel",
+    "cargando": "Calcul du brouillon…",
+    "pendienteActivar": "Le brouillon par case s’active une fois la mise à jour de la base appliquée. En attendant, la vue par taux reste ci-dessous.",
+    "cerrar": "Fermer",
+    "verOrigen": "Voir l’origine ({n})",
+    "masOrigenes": "Et {n} de plus (téléchargez l’Excel pour tout voir).",
+    "casillaN": "Case {n}",
+    "formularioMiles": "Sur le formulaire (en milliers) : {base} · {iva}",
+    "baseIva": "Base {base} · TVA {iva}",
+    "clasificarLinea": "Classer la ligne",
+    "conciliacion": "Rapprochement avec les livres (2408) : grand livre {libro} = cases {casillas} + en attente {pendientes} + autres écritures {otros} + arrondi lignes/livres {redondeo}. Écart {diferencia}.",
+    "columnas": {
+      "casilla": "Case",
+      "concepto": "Poste",
+      "valor": "Montant",
+      "formulario": "Formulaire (milliers)",
+      "diferencia": "Écart d’arrondi",
+      "origenes": "Origine",
+      "casillaBase": "Case base",
+      "base": "Base",
+      "casillaIva": "Case TVA",
+      "iva": "TVA"
+    },
+    "conceptos": {
+      "ventas_5": "Ventes taxées à 5 %",
+      "ventas_general": "Ventes au taux normal",
+      "devoluciones_compras": "Retours sur achats",
+      "compras_bienes_5": "Achats nationaux de biens à 5 %",
+      "compras_bienes_general": "Achats nationaux de biens au taux normal",
+      "compras_servicios_5": "Services nationaux à 5 %",
+      "compras_servicios_general": "Services nationaux au taux normal",
+      "devoluciones_ventas": "Retours sur ventes"
+    },
+    "banda": {
+      "conciliado": "Brouillon rapproché avec les livres — ce n’est pas une déclaration ni une approbation fiscale",
+      "descripcion": "« Rapproché » signifie seulement que cela concorde avec le compte 2408. La revue et l’accord fiscal reviennent au comptable ; rien n’est déposé auprès de la DIAN depuis ici.",
+      "noConciliado": "Le brouillon ne concorde pas avec les livres",
+      "diferencia": "Écart avec le compte 2408 : {valor}. Vérifiez les éléments en attente avant d’utiliser ces chiffres."
+    },
+    "declarado": {
+      "titulo": "Période enregistrée comme déclarée",
+      "descripcion": "Formulaire {numero}, déposé le {fecha}. Ce qui est saisi ensuite est signalé.",
+      "registrar": "Enregistrer comme déclarée",
+      "editar": "Données de la déclaration",
+      "dialogoTitulo": "Enregistrer la période comme déclarée ?",
+      "dialogoDescripcion": "Du {desde} au {hasta}. Cela indique seulement que l’entreprise a déjà déposé le formulaire ; rien n’est déposé ni approuvé.",
+      "guardar": "Enregistrer",
+      "quitar": "Supprimer l’enregistrement",
+      "numero": "Numéro du formulaire",
+      "fecha": "Date de dépôt"
+    },
+    "alertas": {
+      "titulo": "Opérations entre périodes",
+      "entrePeriodos": "{n} avoir(s) sur des factures d’une période antérieure : ils vont en retours (42/79) sur cette période.",
+      "deOtroPeriodo": "{n} achat(s) d’une période antérieure avec une TVA marquée à déduire sur celle-ci.",
+      "grabadosDespues": "{n} écriture(s) saisie(s) après la déclaration de leur période :"
+    },
+    "resumen": {
+      "generado": "TVA collectée (58 + 59 + 66)",
+      "descontable": "TVA déductible (71 + 72 + 74 + 75 + 79)",
+      "diferencia": "Écart préliminaire",
+      "nota": "Ce n’est pas le solde à payer : il manque les cases à remplir (crédit antérieur, retenues de TVA subies, ajustements, sanctions) et les éléments en attente.",
+      "formulario": "Formulaire : {valor}"
+    },
+    "pendientes": {
+      "titulo": "En attente de classement",
+      "ninguno": "Aucun élément en attente sur cette période."
+    },
+    "motivos": {
+      "sin_clasificar": "Lignes non classées",
+      "tarifa_inconsistente": "Le taux classé ne correspond pas à la TVA de la ligne",
+      "sin_tipo_operacion": "Type d’opération manquant (biens ou services)",
+      "operacion_especial": "Opération spéciale (alcools, AIU, importation, prélèvement, autre)",
+      "tarifa_no_prevista": "Taux autre que 5 % ou 19 %",
+      "exenta_sin_soporte": "Exonérée sans fondement ni justificatif",
+      "casilla_por_confirmar": "Exonérées, exclues ou hors champ : case à confirmer avec le comptable",
+      "descontable_por_evaluar": "TVA sur achats à évaluer (pas déduite automatiquement)",
+      "no_descontable_en_2408": "TVA marquée non déductible mais comptabilisée en 2408 (ajustement requis)",
+      "descontable_en_otro_periodo": "TVA déduite sur une autre période",
+      "sin_lineas": "Document avec écriture mais sans lignes",
+      "no_cuadra": "Les lignes ne concordent pas avec les livres (valeur des livres affichée)",
+      "documento_de_otro_periodo": "Document avec écriture d’une période antérieure",
+      "reversa_contable": "Contre-passation sans avoir",
+      "devolucion_compra_sin_descuento": "Retour d’achat dont la TVA n’a pas été déduite",
+      "sin_soporte": "Mouvement de TVA sans justificatif",
+      "otro_movimiento": "Autre mouvement de TVA"
+    },
+    "lados": {
+      "generado": "Ventes",
+      "descontable": "Achats",
+      "otros": "Autres"
+    },
+    "otros": {
+      "titulo": "Autres mouvements de TVA (2408)",
+      "registrar": "Indiquer la nature",
+      "cambiar": "Modifier",
+      "deducida": "déduite par le système"
+    },
+    "naturalezas": {
+      "pago_dian": "Paiement à la DIAN",
+      "traslado_auxiliares": "Virement entre sous-comptes",
+      "cierre": "Clôture",
+      "devolucion_compra": "Retour d’achat",
+      "ajuste_procedente": "Ajustement fondé (avec justificatif)",
+      "importacion": "Importation",
+      "otro": "Autre",
+      "reversa_contable": "Contre-passation",
+      "sin_soporte": "Sans justificatif"
+    },
+    "destinos": {
+      "no_afecta": "ne crée ni TVA collectée ni déductible",
+      "por_diligenciar": "va en « à remplir »",
+      "casilla": "cases 56 et 66",
+      "pendiente": "en attente"
+    },
+    "diligenciar": {
+      "titulo": "Cases à remplir",
+      "ayuda": "Ce qui manque pour une liquidation complète. Le système ne les calcule pas.",
+      "porDiligenciar": "À remplir",
+      "saldo_favor_anterior": "Crédit de la période précédente",
+      "retenciones_iva_sufridas": "Retenues de TVA subies",
+      "ajustes": "Ajustements",
+      "sanciones": "Sanctions"
+    },
+    "clases": {
+      "venta_pos": "Vente PDV",
+      "factura_venta": "Facture de vente",
+      "nota_credito": "Avoir",
+      "nota_debito": "Note de débit",
+      "factura_compra": "Facture d’achat",
+      "documento_soporte": "Document justificatif",
+      "asiento": "Écriture"
+    },
+    "banderas": {
+      "entrePeriodos": "Entre périodes · facture {factura}",
+      "deOtroPeriodo": "D’une autre période",
+      "posterior": "Saisi après la déclaration"
+    },
+    "naturaleza": {
+      "titulo": "Nature du mouvement",
+      "descripcion": "Il est classé selon ce qu’il est, pas selon qu’il est manuel ou automatique. Paiement DIAN, virement et clôture ne créent pas de TVA.",
+      "guardar": "Enregistrer la nature",
+      "campo": "Nature",
+      "elegir": "Choisissez une nature",
+      "factura": "Numéro de la facture d’achat",
+      "facturaAyuda": "La facture retournée. Les cases 56 et 66 ne sont utilisées que si sa TVA a été jugée déductible.",
+      "base": "Base retournée",
+      "soporte": "Justificatif",
+      "soporteAyuda": "Avoir du fournisseur, reçu de paiement ou autre document."
+    },
+    "errores": {
+      "tratamiento_invalido": "Indiquez si la ligne est taxée, exonérée, exclue ou hors champ.",
+      "tarifa_invalida": "Le taux n’est pas valide : taxée exige un taux supérieur à 0 ; exonérée, exclue et hors champ, 0.",
+      "tipo_operacion_invalido": "Le type d’opération n’est pas valide.",
+      "texto_largo": "Le texte dépasse la longueur maximale.",
+      "descontable_solo_compras": "La déductibilité ne s’applique qu’aux achats et documents justificatifs.",
+      "descontable_invalido": "Choisissez la déductibilité de la TVA.",
+      "porcentaje_invalido": "Le pourcentage déductible doit être entre 0 et 100.",
+      "motivo_requerido": "Indiquez le motif (justificatif, affectation, proportionnalité ou délai).",
+      "periodo_invalido": "La date ou la période n’est pas valide.",
+      "naturaleza_invalida": "Choisissez la nature du mouvement.",
+      "devolucion_sin_factura": "Indiquez la facture d’achat retournée et la base.",
+      "soporte_requerido": "Un ajustement fondé nécessite son justificatif.",
+      "asiento_invalido": "L’écriture n’est pas valide.",
+      "fecha_presentacion_invalida": "La date de dépôt ne peut pas précéder la fin de la période.",
+      "periodo_solapado": "Cette période chevauche une autre déjà enregistrée comme déclarée.",
+      "sin_permiso": "Vous n’avez pas l’autorisation pour cette action.",
+      "no_encontrado": "La ligne ou l’écriture est introuvable dans votre organisation.",
+      "pendiente_activar": "Cette fonction s’active une fois la mise à jour de la base appliquée.",
+      "factura_no_encontrada": "Aucune facture d’achat avec ce numéro.",
+      "datos_invalidos": "Les données ne sont pas valides.",
+      "desconocido": "Impossible d’enregistrer. Réessayez."
+    },
+    "clasificar": {
+      "titulo": "Données fiscales de la ligne",
+      "descripcion": "Le classement est enregistré sur la ligne ; modifier le produit ensuite ne le change pas. Les montants et taxes ne changent pas.",
+      "guardar": "Enregistrer le classement",
+      "linea": "Ligne",
+      "baseIva": "Base · TVA",
+      "sugerenciaEtiqueta": "Suggestion du produit",
+      "sugerencia": "{tratamiento} · {tarifa} % · {tipo}",
+      "sinSugerencia": "Aucune suggestion (le produit ne l’indique pas)",
+      "tratamiento": "Traitement",
+      "tarifa": "Taux (%)",
+      "tipo": "Type d’opération",
+      "tipoAyuda": "Biens ou services déterminent la case ; les spéciales restent en attente.",
+      "sinTipo": "Non indiqué",
+      "elegir": "Choisir",
+      "fundamento": "Fondement",
+      "fundamentoAyuda": "Norme ou justificatif (facultatif sauf exonérées).",
+      "fundamentoExenta": "Obligatoire en pratique : sans fondement ni justificatif, le brouillon laisse la ligne en attente.",
+      "descontableTitulo": "Déductibilité de la TVA",
+      "descontableAyuda": "On évalue justificatif, affectation, proportionnalité et délai (Code fiscal colombien, art. 485, 488, 490 et 496). Jamais déductible automatiquement.",
+      "descontable": "Déductibilité",
+      "porcentaje": "Pourcentage déductible (%)",
+      "periodo": "Déduite sur la période du",
+      "periodoAyuda": "Vide = la période du document.",
+      "motivo": "Motif",
+      "sinClasificar": "Non classée",
+      "tratamientos": {
+        "gravada": "Taxée",
+        "exenta": "Exonérée",
+        "excluida": "Exclue",
+        "no_sujeta": "Hors champ"
+      },
+      "tipos": {
+        "bienes": "Biens",
+        "servicios": "Services",
+        "importacion": "Importation",
+        "aiu": "AIU",
+        "licores": "Alcools",
+        "retiro_inventario": "Prélèvement de stock",
+        "otra_especial": "Autre spéciale"
+      },
+      "descontables": {
+        "por_evaluar": "À évaluer",
+        "descontable": "Déductible",
+        "no_descontable": "Non déductible (au coût ou charge)",
+        "proporcional": "Proportionnelle"
+      },
+      "origenes": {
+        "sugerida": "suggérée",
+        "heredada": "de la facture créditée",
+        "manual": "confirmée"
+      }
+    },
+    "panel": {
+      "titulo": "Données fiscales de la ligne",
+      "resumen": "{sinClasificar} non classées · {porEvaluar} à évaluer",
+      "ayuda": "Chaque ligne enregistre son classement TVA pour le formulaire 300. Il est suggéré par le produit à la création ; confirmez-le ou corrigez-le ici.",
+      "cargando": "Chargement des lignes…",
+      "pendiente": "Le classement par ligne s’active une fois la mise à jour de la base appliquée.",
+      "vacio": "Le document n’a pas de lignes.",
+      "baseIva": "Base {base} · TVA {iva}",
+      "editar": "Modifier",
+      "clasificar": "Classer"
     }
   }
 }

@@ -19,7 +19,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { BookOpen, Check, Copy, Printer, Trash2, Undo2 } from 'lucide-react';
+import { BookOpen, Check, Copy, Printer, Trash2, Undo2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { AvisoTonal, ConfirmDialog, DocumentoCabecera, EmptyState, Skeleton, StatusBadge, Tarjeta, clasesBoton } from '@/components/kit';
 import { esTipoComprobante, NOMBRE_COMPROBANTE, textoComprobante } from '@/lib/finanzas/contabilidad/comprobante';
@@ -228,6 +228,31 @@ export function AsientoDetailPage({ entryId }: AsientoDetailPageProps) {
             {reversion.reversionDe && <MarcaReversion rol="contraAsiento" numero={reversion.reversionDe} />}
           </span>
         }
+        accionesMovil={{
+          principales: acciones.publicar ? (
+            <button type="button" onClick={() => void handlePublish()} disabled={procesando} className={clasesBoton({ variante: 'primario' })}>
+              <Check aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.publicar')}
+            </button>
+          ) : undefined,
+          menu: [
+            { id: 'original', etiqueta: tr('verOriginal'), icono: BookOpen, onSelect: () => router.push(`/app/finanzas/contabilidad/asientos/${reversion.reversionDe}`), oculta: !reversion.reversionDe },
+            { id: 'documento', etiqueta: documento ? t('acciones.irDocumento', { documento: tk(documento.tipo) }) : '', icono: ExternalLink, onSelect: () => documento?.href && router.push(documento.href), oculta: !documento?.href },
+            { id: 'imprimir', etiqueta: t('acciones.imprimir'), icono: Printer, onSelect: () => router.push(`/app/finanzas/contabilidad/asientos/${asiento.id}/comprobante`) },
+            { id: 'duplicar', etiqueta: t('acciones.duplicar'), icono: Copy, onSelect: () => void handleDuplicate(), oculta: !acciones.duplicar, deshabilitada: procesando },
+            { id: 'descartar', etiqueta: t('acciones.descartar'), icono: Trash2, onSelect: () => setConfirmarDescarte(true), oculta: !acciones.descartar, deshabilitada: procesando, destructiva: true },
+            {
+              id: 'revertir',
+              etiqueta: t('acciones.revertir'),
+              icono: Undo2,
+              onSelect: () => setDialogoRevertir(true),
+              oculta: !acciones.revertir,
+              deshabilitada: procesando || !!motivoSinPermiso,
+              motivo: motivoSinPermiso,
+              destructiva: true,
+            },
+          ],
+        }}
         acciones={
           <div className="flex flex-wrap gap-2">
             {reversion.reversionDe && (

@@ -64,6 +64,7 @@ import { EnviarFacturaDialog } from './EnviarFacturaDialog';
 import { NotaDebitoDialog } from '@/components/finanzas/notas/NotaDebitoDialog';
 import { facturaAdmiteNotaDebito } from '@/lib/finanzas/notas/contratoNotas';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { DatosFiscalesLineas } from '@/components/finanzas/tributario/iva/DatosFiscalesLineas';
 
 const RUTA_LISTADO = '/app/finanzas/facturas-venta';
 
@@ -325,6 +326,40 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
     </div>
   ) : null;
 
+  // Móvil (< lg): la cabecera de escritorio no se dibuja y con ella se iban TODAS
+  // las acciones. Mismos manejadores y mismas reglas (`acciones`, `permisos`):
+  // la primaria y «PDF» en la fila bajo el estado; lo demás en «⋯» del MobileHeader.
+  const primariaMovil = factura
+    ? esBorrador && acciones.has('emitir')
+      ? { etiqueta: emitiendo ? t('emitir.emitiendo') : t('acciones.emitir'), icono: Send, onClick: () => void emitir(), deshabilitada: emitiendo }
+      : acciones.has('registrar_pago')
+        ? { etiqueta: t('acciones.registrarPago'), icono: CircleDollarSign, onClick: () => setPagoAbierto(true), deshabilitada: false }
+        : null
+    : null;
+  const accionesMovil = factura
+    ? {
+        principales: (
+          <>
+            {primariaMovil && (
+              <button type="button" disabled={primariaMovil.deshabilitada} onClick={primariaMovil.onClick} className={clasesBoton({ variante: 'primario' })}>
+                <primariaMovil.icono aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {primariaMovil.etiqueta}
+              </button>
+            )}
+            <button type="button" onClick={() => void descargarPdf()} className={clasesBoton({ variante: 'secundario' })}>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.pdf')}
+            </button>
+          </>
+        ),
+        menu: [
+          { id: 'imprimir', etiqueta: t('acciones.imprimir'), icono: Printer, onSelect: () => imprimirDocumento('factura-venta', factura.id) },
+          { id: 'enviar', etiqueta: t('acciones.enviar'), icono: Mail, onSelect: () => setEnviarAbierto(true), oculta: !acciones.has('enviar') || esBorrador },
+          ...menu.filter((a) => a.id !== 'pdf'),
+        ] satisfies AccionFila[],
+      }
+    : undefined;
+
   return (
     <div className="flex flex-col gap-4 p-4 sm:gap-6 sm:p-6">
       <DocumentoCabecera
@@ -347,6 +382,7 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
           ) : null
         }
         acciones={botones}
+        accionesMovil={accionesMovil}
         cargando={cargando && !datos}
         debajo={eslabones.length > 1 ? <CadenaDocumento eslabones={eslabones} etiqueta={t('detalle.cadena')} /> : undefined}
       />
@@ -355,6 +391,7 @@ export function DetalleFacturaVenta({ id }: { id: string }) {
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-6">
           <div className="flex min-w-0 flex-col gap-4 lg:col-span-2 lg:gap-6">
             <DocumentoLineas lineas={lineas} modo="lectura" moneda={ctxMoneda} etiqueta={t('detalle.lineas')} estado={cargando ? 'cargando' : 'listo'} />
+            <DatosFiscalesLineas tipo="factura_venta" id={factura.id} />
 
             <Tarjeta titulo={t('pagos.titulo')} sinRelleno>
               {(datos?.pagos.length ?? 0) === 0 ? (

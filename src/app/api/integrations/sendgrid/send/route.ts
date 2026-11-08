@@ -56,9 +56,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Conexión no encontrada en la organización' }, { status: 404 });
       }
       connectionId = conn.id;
-      credentials = await sendgridService.getCredentials(connection_id);
+      credentials = await sendgridService.getCredentials(connection_id, admin);
     } else {
-      const result = await sendgridService.getCredentialsByOrganization(organizationId);
+      const result = await sendgridService.getCredentialsByOrganization(organizationId, admin);
       credentials = result.credentials;
       connectionId = result.connectionId;
     }

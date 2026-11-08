@@ -156,8 +156,9 @@ export async function listarConexiones(db: SupabaseClient, organizationId: numbe
   const porId = new Map(cons.map((c) => [c.id, c]));
   const ids = lista.map((c) => texto(c.id));
   const [eventos, creds] = await Promise.all([eventosRecientes(db, ids), primeraCredencial(db, ids)]);
+  // Los borradores también se listan (p. ej. los importados por CSV): se ven «Borrador» y se
+  // completan con su asistente.
   return lista
-    .filter((c) => texto(c.status) !== 'draft' || creds.has(texto(c.id)))
     .map((c) => {
       const con = porId.get(texto(c.connector_id));
       const id = texto(c.id);
@@ -182,6 +183,14 @@ export async function listarConexiones(db: SupabaseClient, organizationId: numbe
       resumen.necesitaAtencion = conexionConProblemas({ status: resumen.estado, error_count_24h: resumen.errores24h });
       return resumen;
     });
+}
+
+/** Conectores activos para la importación por CSV (id y nombre; nada secreto). */
+export async function conectoresImportables(db: SupabaseClient): Promise<{ id: string; nombre: string }[]> {
+  return (await conectores(db))
+    .filter((c) => c.is_active)
+    .map((c) => ({ id: c.id, nombre: c.provider_name ? `${c.provider_name} · ${c.name}` : c.name }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 }
 
 /** Apps OAuth configuradas en el servidor (sin revelar valores). */
@@ -625,4 +634,161 @@ export async function cambiarEstado(db: SupabaseClient, actor: Actor, id: string
     await db.from('organization_payment_methods').update({ integration_connection_id: null, updated_at: new Date().toISOString() }).eq('organization_id', actor.organizationId).eq('integration_connection_id', id);
   }
   return { estado: destino };
+}
+
+// ─── Borrar ──────────────────────────────────────────────────────────────────
+
+/**
+ * Borra una conexión. No se permite si un método de pago la usa (hay que desenlazarlo primero en
+ * Finanzas › Métodos de pago) ni si ya tiene historia de dinero o envíos (cobros QR, guías): en
+ * ese caso se ofrece «Desconectar», que revoca y conserva la historia. El borrado arrastra por
+ * cascada credenciales, eventos, webhooks, trabajos y mapeos de la conexión.
+ */
+export async function eliminarConexion(db: SupabaseClient, actor: Actor, id: string): Promise<{ eliminada: true }> {
+  await conexionPropia(db, actor.organizationId, id);
+
+  const { data: metodos, error: errMetodos } = await db
+    .from('organization_payment_methods')
+    .select('payment_method_code')
+    .eq('organization_id', actor.organizationId)
+    .eq('integration_connection_id', id);
+  if (errMetodos) throw new Error(`organization_payment_methods: ${errMetodos.message}`);
+  const enUso = ((metodos as Fila[] | null) ?? []).map((m) => texto(m.payment_method_code));
+  if (enUso.length > 0) {
+    throw new ConexionError(409, 'EN_USO', 'Un método de pago usa esta conexión: desenlázalo primero en Finanzas › Métodos de pago.', { metodos: enUso });
+  }
+
+  for (const tabla of ['payment_qr_sessions', 'shipments'] as const) {
+    const { data, error } = await db.from(tabla).select('id').eq('integration_connection_id', id).limit(1);
+    if (error) throw new Error(`${tabla}: ${error.message}`);
+    if (((data as Fila[] | null) ?? []).length > 0) {
+      throw new ConexionError(409, 'CON_HISTORIA', 'La conexión ya tiene cobros o envíos registrados: desconéctala en lugar de borrarla para conservar la historia.');
+    }
+  }
+
+  const { error } = await db.from('integration_connections').delete().eq('id', id).eq('organization_id', actor.organizationId);
+  if (error) throw new Error(`integration_connections: ${error.message}`);
+  return { eliminada: true };
+}
+
+// ─── Importar (CSV) ──────────────────────────────────────────────────────────
+
+export interface FilaImportacion {
+  nombre: string;
+  sucursalId?: number | null;
+  pais?: string | null;
+  ambiente?: string | null;
+}
+
+export const MAX_FILAS_IMPORTACION = 200;
+
+/**
+ * Crea conexiones en BORRADOR (sin credenciales: se completan con su asistente) a partir de las
+ * filas de un CSV. Valida conector activo, sucursales de la organización, ambiente y nombres
+ * únicos. Devuelve el resultado por fila; nunca crea nada `connected`.
+ */
+export async function importarConexiones(
+  db: SupabaseClient,
+  actor: Actor,
+  connectorId: string,
+  filas: readonly FilaImportacion[],
+): Promise<{ creadas: number; fallidas: number; errores: string[] }> {
+  if (filas.length === 0 || filas.length > MAX_FILAS_IMPORTACION) {
+    throw new ConexionError(400, 'FILAS', `El archivo debe traer entre 1 y ${MAX_FILAS_IMPORTACION} filas.`);
+  }
+  const { data: conector, error: errCon } = await db.from('integration_connectors').select('id, is_active').eq('id', connectorId).maybeSingle();
+  if (errCon) throw new Error(`integration_connectors: ${errCon.message}`);
+  if (!conector || (conector as Fila).is_active === false) throw new ConexionError(404, 'CONECTOR', 'Conector no encontrado.');
+
+  const { data: sucursales, error: errSuc } = await db.from('branches').select('id').eq('organization_id', actor.organizationId);
+  if (errSuc) throw new Error(`branches: ${errSuc.message}`);
+  const validas = new Set(((sucursales as Fila[] | null) ?? []).map((b) => Number(b.id)));
+
+  const { data: existentes } = await db.from('integration_connections').select('name').eq('organization_id', actor.organizationId);
+  const nombres = new Set(((existentes as Fila[] | null) ?? []).map((c) => texto(c.name).toLocaleLowerCase('es')));
+
+  const resultado = { creadas: 0, fallidas: 0, errores: [] as string[] };
+  for (const [i, f] of filas.entries()) {
+    const n = i + 2; // fila del archivo (la 1 es el encabezado)
+    const nombre = f.nombre.trim().slice(0, 80);
+    const ambiente = (f.ambiente ?? 'production').trim().toLowerCase();
+    const fallo = (motivo: string) => {
+      resultado.fallidas += 1;
+      resultado.errores.push(`Fila ${n}: ${motivo}`);
+    };
+    if (!nombre) { fallo('falta el nombre'); continue; }
+    if (nombres.has(nombre.toLocaleLowerCase('es'))) { fallo(`ya existe una conexión «${nombre}»`); continue; }
+    if (!['production', 'sandbox', 'test'].includes(ambiente)) { fallo('ambiente inválido (production, sandbox o test)'); continue; }
+    if (f.sucursalId != null && !validas.has(Number(f.sucursalId))) { fallo('la sucursal no es de la organización'); continue; }
+    const pais = (f.pais ?? 'CO').trim().toUpperCase().slice(0, 2) || 'CO';
+    const { error } = await db.from('integration_connections').insert({
+      organization_id: actor.organizationId,
+      connector_id: connectorId,
+      branch_id: f.sucursalId ?? null,
+      name: nombre,
+      environment: ambiente,
+      country_code: pais,
+      status: 'draft',
+      settings: {},
+      created_by: actor.userId,
+    });
+    if (error) { fallo('no se pudo crear'); continue; }
+    nombres.add(nombre.toLocaleLowerCase('es'));
+    resultado.creadas += 1;
+  }
+  return resultado;
+}
+
+// ─── Ver una credencial (decisión del dueño, 2026-11-07) ─────────────────────
+
+/**
+ * Devuelve el valor de UNA credencial activa de la conexión para el botón «Ver»/«Copiar» del
+ * detalle. El dueño decidió mantener las credenciales visibles y sin cifrar: el valor en claro
+ * sale tal cual; las que ya estaban en la bóveda (OTA, logística) se leen con
+ * `fn_get_provider_secret`. Cada lectura queda en `ops_audit_log` (quién, cuándo, cuál, desde qué
+ * IP) ANTES de devolver el valor: si la auditoría falla, no se revela nada.
+ * La ruta exige administración resuelta en el servidor (`withOrg({ admin: true })`).
+ */
+export async function revelarCredencial(
+  db: SupabaseClient,
+  actor: Actor,
+  connectionId: string,
+  proposito: string,
+  ip: string | null,
+): Promise<{ proposito: string; valor: string; origen: 'registro' | 'boveda' }> {
+  const c = await conexionPropia(db, actor.organizationId, connectionId);
+  const { data, error } = await db
+    .from('integration_credentials')
+    .select('id, purpose, secret_ref, status, created_at')
+    .eq('connection_id', connectionId)
+    .eq('purpose', proposito)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(`integration_credentials: ${error.message}`);
+  const fila = ((data as Fila[] | null) ?? [])[0];
+  if (!fila) throw new ConexionError(404, 'SIN_CREDENCIAL', 'Credencial no encontrada.');
+
+  const ref = texto(fila.secret_ref);
+  const deBoveda = esReferenciaDeBoveda(ref);
+  const valor = deBoveda ? (await resolverSecretos(db, connectionId, [{ purpose: proposito, secret_ref: ref }]))[proposito] : ref;
+  if (deBoveda && (!valor || valor === ref)) {
+    throw new ConexionError(409, 'BOVEDA_SIN_VALOR', 'La bóveda no devolvió el valor de esta credencial.');
+  }
+
+  const { error: errAuditoria } = await db.from('ops_audit_log').insert({
+    organization_id: actor.organizationId,
+    branch_id: c.branch_id == null ? null : Number(c.branch_id),
+    user_id: actor.userId,
+    entity_type: 'integration_credential',
+    entity_id: texto(fila.id),
+    action: 'credential_revealed',
+    ip_address: ip,
+    metadata: { connection_id: connectionId, purpose: proposito, origen: deBoveda ? 'boveda' : 'registro' },
+  });
+  if (errAuditoria) {
+    console.error('[conexiones] auditoría de «Ver credencial» falló; no se revela', errAuditoria.message);
+    throw new ConexionError(503, 'AUDITORIA', 'No se pudo registrar la consulta; intenta de nuevo.');
+  }
+  return { proposito, valor, origen: deBoveda ? 'boveda' : 'registro' };
 }

@@ -2,113 +2,168 @@
 
 /**
  * Nueva vigencia o corrección de una vigencia del perfil tributario (Figma
- * 2335:136222, «Nueva vigencia» y «⋮ › Editar»). La validación es la misma
- * función que usa el servidor (`validarSolicitudPerfil`); el servidor y la RPC
- * vuelven a validar y a exigir `finance.approve`.
+ * 2335:136222, «Nueva vigencia» y «⋮ › Editar»), con renta e IVA separados
+ * (P5 del Contador). Mientras se llena, la misma función que usa el servidor
+ * (`evaluarCombinacion`) muestra lo contradictorio (no deja guardar) y lo
+ * dudoso (se guarda solo si la persona lo acepta). El servidor y la base vuelven
+ * a validar y a exigir `finance.approve`.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Plus, Trash2 } from 'lucide-react';
-import { CampoFecha, Dialogo, FormField, clasesBoton } from '@/components/kit';
+import { CampoFecha, Dialogo, FormField, StatusBadge, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
+import { PERIODICIDADES_ICA, PERIODICIDADES_IVA, contiguas, validarSolicitudPerfil, type IcaMunicipio, type PeriodicidadIca, type PeriodicidadIva, type VigenciaPerfil } from '@/lib/finanzas/tributario/perfil';
 import {
-  PERIODICIDADES_ICA,
-  PERIODICIDADES_IVA,
-  REGIMENES,
-  RESPONSABILIDAD,
-  validarSolicitudPerfil,
-  type IcaMunicipio,
-  type PeriodicidadIca,
-  type PeriodicidadIva,
-  type Regimen,
-  type VigenciaPerfil,
-} from '@/lib/finanzas/tributario/perfil';
-import { tributarioCliente, type MunicipioOpcion } from '../tributarioCliente';
+  CONDICIONES_IVA,
+  MOTIVOS_CAMBIO_PERIODICIDAD,
+  REGIMENES_RENTA,
+  advertenciasSinAceptar,
+  evaluarCombinacion,
+  type CondicionIva,
+  type MotivoCambioPeriodicidad,
+  type RegimenRenta,
+} from '@/lib/finanzas/tributario/combinaciones';
+import { tributarioCliente, type CodigoCatalogoCliente, type MunicipioOpcion } from '../tributarioCliente';
 import { codigoDe } from '../piezas';
+
+export type BaseVigencia = Omit<VigenciaPerfil, 'id' | 'vigenteDesde' | 'vigenteHasta'>;
 
 export interface VigenciaDialogoProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
   /** null = nueva vigencia. */
   vigencia: VigenciaPerfil | null;
-  /** Datos con los que arranca una vigencia nueva (la más reciente o lo del RUT). */
-  base: Omit<VigenciaPerfil, 'id' | 'vigenteDesde' | 'vigenteHasta'>;
+  /** Datos con los que arranca una vigencia nueva (la más reciente o lo de la ficha). */
+  base: BaseVigencia;
+  /** Todas las vigencias (para el cambio de periodicidad respecto de la anterior y la siguiente). */
+  vigencias: VigenciaPerfil[];
   inicioPropuesto: string;
-  catalogo: { codigo: string; descripcion: string }[];
+  catalogo: CodigoCatalogoCliente[];
+  catalogoRut: CodigoCatalogoCliente[];
   hoy: string;
   onGuardado: () => void;
 }
 
 interface Estado {
   vigenteDesde: string;
-  regimen: Regimen;
-  responsabilidades: string[];
+  regimenRenta: RegimenRenta | '';
+  condicionIva: CondicionIva | '';
+  periodicidadIva: PeriodicidadIva;
+  granContribuyente: boolean;
+  autorretenedor: boolean;
+  agenteRetencionIva: boolean;
   agenteRetencion: boolean;
   responsableInc: boolean;
-  periodicidadIva: PeriodicidadIva;
+  responsabilidades: string[];
+  responsabilidadesRut: string[];
+  motivoCambioPeriodicidad: MotivoCambioPeriodicidad | '';
   notas: string;
   ica: IcaMunicipio[];
 }
 
 function estadoInicial(p: VigenciaDialogoProps): Estado {
-  const fuente = p.vigencia ?? p.base;
+  const f = p.vigencia ?? p.base;
   return {
     vigenteDesde: p.vigencia?.vigenteDesde ?? p.inicioPropuesto,
-    regimen: fuente.regimen,
-    responsabilidades: [...fuente.responsabilidades],
-    agenteRetencion: fuente.agenteRetencion,
-    responsableInc: fuente.responsableInc,
-    periodicidadIva: fuente.periodicidadIva,
-    notas: fuente.notas ?? '',
-    ica: fuente.ica.map((i) => ({ ...i })),
+    regimenRenta: f.regimenRenta ?? '',
+    condicionIva: f.condicionIva ?? '',
+    periodicidadIva: f.periodicidadIva,
+    granContribuyente: f.granContribuyente === true,
+    autorretenedor: f.autorretenedor === true,
+    agenteRetencionIva: f.agenteRetencionIva === true,
+    agenteRetencion: f.agenteRetencion,
+    responsableInc: f.responsableInc,
+    responsabilidades: [...f.responsabilidades],
+    responsabilidadesRut: [...f.responsabilidadesRut],
+    motivoCambioPeriodicidad: p.vigencia?.motivoCambioPeriodicidad ?? '',
+    notas: f.notas ?? '',
+    ica: f.ica.map((i) => ({ ...i })),
   };
 }
 
+const alternar = (lista: string[], codigo: string, marcada: boolean) => (marcada ? Array.from(new Set([...lista, codigo])) : lista.filter((c) => c !== codigo));
+
 export function VigenciaDialogo(props: VigenciaDialogoProps) {
-  const { abierto, onAbiertoChange, vigencia, catalogo, hoy, onGuardado } = props;
+  const { abierto, onAbiertoChange, vigencia, vigencias, catalogo, catalogoRut, hoy, onGuardado } = props;
   const t = useTranslations('finanzasTributarioR4.perfil');
   const tc = useTranslations('finanzasTributarioR4.comun');
   const [estado, setEstado] = useState<Estado>(() => estadoInicial(props));
+  const [aceptadas, setAceptadas] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bloqueosServidor, setBloqueosServidor] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     if (abierto) {
       setEstado(estadoInicial(props));
+      setAceptadas(false);
       setError(null);
+      setBloqueosServidor([]);
     }
     // Solo al abrir: mientras está abierto, el formulario es de la persona.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
 
-  const cambiar = <K extends keyof Estado>(k: K, v: Estado[K]) => setEstado((e) => ({ ...e, [k]: v }));
-  const alternarResp = (codigo: string, marcada: boolean) =>
-    setEstado((e) => ({
-      ...e,
-      responsabilidades: marcada
-        ? [...e.responsabilidades.filter((r) => !(codigo === RESPONSABILIDAD.responsableIva && r === RESPONSABILIDAD.noResponsableIva) && !(codigo === RESPONSABILIDAD.noResponsableIva && r === RESPONSABILIDAD.responsableIva)), codigo]
-        : e.responsabilidades.filter((r) => r !== codigo),
-    }));
+  const cambiar = <K extends keyof Estado>(k: K, v: Estado[K]) => {
+    setEstado((e) => ({ ...e, [k]: v }));
+    setAceptadas(false);
+    setBloqueosServidor([]);
+  };
+
+  const cuerpo = {
+    id: vigencia?.id ?? null,
+    vigenteDesde: estado.vigenteDesde,
+    regimenRenta: estado.regimenRenta || null,
+    condicionIva: estado.condicionIva || null,
+    periodicidadIva: estado.periodicidadIva,
+    granContribuyente: estado.granContribuyente,
+    autorretenedor: estado.autorretenedor,
+    agenteRetencionIva: estado.agenteRetencionIva,
+    agenteRetencion: estado.agenteRetencion,
+    responsableInc: estado.responsableInc,
+    responsabilidades: estado.responsabilidades,
+    responsabilidadesRut: estado.responsabilidadesRut,
+    motivoCambioPeriodicidad: estado.motivoCambioPeriodicidad || null,
+    notas: estado.notas,
+    ica: estado.ica.map((i) => ({ municipioId: i.municipioId, periodicidad: i.periodicidad, tarifaPorMil: i.tarifaPorMil, actividad: i.actividad })),
+  };
+
+  const evaluacion = useMemo(() => {
+    const desde = vigencia?.vigenteDesde ?? estado.vigenteDesde;
+    const { anterior, siguiente } = contiguas(vigencias, desde, vigencia?.id ?? null);
+    return evaluarCombinacion(
+      {
+        regimenRenta: cuerpo.regimenRenta,
+        condicionIva: cuerpo.condicionIva,
+        periodicidadIva: cuerpo.periodicidadIva,
+        granContribuyente: cuerpo.granContribuyente,
+        autorretenedor: cuerpo.autorretenedor,
+        agenteRetencionIva: cuerpo.agenteRetencionIva,
+        agenteRetencion: cuerpo.agenteRetencion,
+        responsableInc: cuerpo.responsableInc,
+        responsabilidades: cuerpo.responsabilidades,
+        responsabilidadesRut: cuerpo.responsabilidadesRut,
+      },
+      { vigenteDesde: desde, motivoCambioPeriodicidad: cuerpo.motivoCambioPeriodicidad, anterior, siguiente },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado, vigencia, vigencias]);
+
+  const bloqueos = Array.from(new Set([...evaluacion.bloqueos, ...bloqueosServidor]));
+  const pideMotivo = evaluacion.bloqueos.includes('periodicidad_cambio_sin_motivo') || evaluacion.advertencias.includes('periodicidad_cambio_a_mitad_de_anio');
+  const faltaAceptar = advertenciasSinAceptar(evaluacion.advertencias, aceptadas ? evaluacion.advertencias : []).length > 0;
 
   const guardar = async () => {
-    const v = validarSolicitudPerfil({
-      id: vigencia?.id ?? null,
-      vigenteDesde: estado.vigenteDesde,
-      regimen: estado.regimen,
-      responsabilidades: estado.responsabilidades,
-      agenteRetencion: estado.agenteRetencion,
-      responsableInc: estado.responsableInc,
-      periodicidadIva: estado.periodicidadIva,
-      notas: estado.notas,
-      ica: estado.ica.map((i) => ({ municipioId: i.municipioId, periodicidad: i.periodicidad, tarifaPorMil: i.tarifaPorMil, actividad: i.actividad })),
-    });
+    const v = validarSolicitudPerfil({ ...cuerpo, advertenciasAceptadas: aceptadas ? evaluacion.advertencias : [] });
     if (!v.ok) {
       setError(t(`errores.${v.error}`));
       return;
     }
+    if (bloqueos.length > 0 || faltaAceptar) return;
     setGuardando(true);
     setError(null);
     try {
@@ -117,11 +172,15 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
       onAbiertoChange(false);
     } catch (err) {
       const codigo = codigoDe(err);
+      const detalle = (err as { detalle?: { bloqueos?: unknown } } | null)?.detalle;
+      if (codigo === 'combinacion_contradictoria' && Array.isArray(detalle?.bloqueos)) setBloqueosServidor(detalle.bloqueos.map(String));
       setError(t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.desconocido'));
     } finally {
       setGuardando(false);
     }
   };
+
+  const textoRegla = (grupo: 'bloqueos' | 'advertencias', codigo: string) => (t.has(`${grupo}.${codigo}`) ? t(`${grupo}.${codigo}`) : codigo);
 
   return (
     <Dialogo
@@ -129,27 +188,20 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
       onAbiertoChange={onAbiertoChange}
       titulo={vigencia ? t('dialogo.tituloEditar') : t('dialogo.tituloNueva')}
       descripcion={vigencia ? t('dialogo.descripcionEditar') : t('dialogo.descripcionNueva')}
-      ancho={672}
-      primario={{ etiqueta: t('dialogo.guardar'), onClick: () => void guardar(), cargando: guardando }}
+      ancho={880}
+      primario={{
+        etiqueta: t('dialogo.guardar'),
+        onClick: () => void guardar(),
+        cargando: guardando,
+        deshabilitada: bloqueos.length > 0 || faltaAceptar,
+        motivo: bloqueos.length > 0 ? t('dialogo.motivoBloqueo') : faltaAceptar ? t('dialogo.motivoAdvertencias') : undefined,
+      }}
       textoCancelar={tc('cancelar')}
     >
       <div className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField etiqueta={t('campos.vigenteDesde')} obligatorio ayuda={vigencia ? t('campos.vigenteDesdeFija') : t('campos.vigenteDesdeAyuda')}>
-            {(c) => (
-              <CampoFecha id={c.id} valor={estado.vigenteDesde} onValorChange={(d) => cambiar('vigenteDesde', d)} hoy={hoy} disabled={!!vigencia} />
-            )}
-          </FormField>
-          <FormField etiqueta={t('campos.regimen')} obligatorio>
-            {(c) => (
-              <SelectNativo
-                id={c.id}
-                valor={estado.regimen}
-                onCambiar={(v) => cambiar('regimen', v as Regimen)}
-                opciones={REGIMENES.map((r) => ({ valor: r, etiqueta: t(`regimen.${r}`) }))}
-                aria-describedby={c['aria-describedby']}
-              />
-            )}
+            {(c) => <CampoFecha id={c.id} valor={estado.vigenteDesde} onValorChange={(d) => cambiar('vigenteDesde', d)} hoy={hoy} disabled={!!vigencia} />}
           </FormField>
           <FormField etiqueta={t('campos.periodicidadIva')} obligatorio ayuda={t('campos.periodicidadIvaAyuda')}>
             {(c) => (
@@ -162,47 +214,124 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
               />
             )}
           </FormField>
+          <FormField etiqueta={t('campos.regimenRenta')} obligatorio ayuda={t('campos.regimenRentaAyuda')}>
+            {(c) => (
+              <SelectNativo
+                id={c.id}
+                valor={estado.regimenRenta}
+                vacio={t('campos.sinDefinir')}
+                onCambiar={(v) => cambiar('regimenRenta', v as RegimenRenta | '')}
+                opciones={REGIMENES_RENTA.map((r) => ({ valor: r, etiqueta: t(`regimenRenta.${r}`) }))}
+                aria-describedby={c['aria-describedby']}
+              />
+            )}
+          </FormField>
+          <FormField etiqueta={t('campos.condicionIva')} obligatorio ayuda={t('campos.condicionIvaAyuda')}>
+            {(c) => (
+              <SelectNativo
+                id={c.id}
+                valor={estado.condicionIva}
+                vacio={t('campos.sinDefinir')}
+                onCambiar={(v) => cambiar('condicionIva', v as CondicionIva | '')}
+                opciones={CONDICIONES_IVA.map((r) => ({ valor: r, etiqueta: t(`condicionIva.${r}`) }))}
+                aria-describedby={c['aria-describedby']}
+              />
+            )}
+          </FormField>
+          {(pideMotivo || estado.motivoCambioPeriodicidad) && (
+            <FormField etiqueta={t('campos.motivoCambio')} ayuda={t('campos.motivoCambioAyuda')}>
+              {(c) => (
+                <SelectNativo
+                  id={c.id}
+                  valor={estado.motivoCambioPeriodicidad}
+                  vacio={t('campos.sinMotivo')}
+                  onCambiar={(v) => cambiar('motivoCambioPeriodicidad', v as MotivoCambioPeriodicidad | '')}
+                  opciones={MOTIVOS_CAMBIO_PERIODICIDAD.map((m) => ({ valor: m, etiqueta: t(`motivo.${m}`) }))}
+                  aria-describedby={c['aria-describedby']}
+                />
+              )}
+            </FormField>
+          )}
         </div>
 
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-fg">{t('campos.responsabilidades')}</legend>
-          <p className="text-xs text-fg-secondary">{t('campos.responsabilidadesAyuda')}</p>
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-medium text-fg">{t('campos.calidades')}</legend>
           <div className="grid gap-2 sm:grid-cols-2">
-            {catalogo.map((r) => {
-              const id = `resp-${r.codigo}`;
-              return (
-                <label key={r.codigo} htmlFor={id} className="flex items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm text-fg">
-                  <Checkbox
-                    id={id}
-                    checked={estado.responsabilidades.includes(r.codigo)}
-                    onCheckedChange={(v) => alternarResp(r.codigo, v === true)}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-medium">{r.codigo}</span> · {r.descripcion}
-                  </span>
-                </label>
-              );
-            })}
+            {(
+              [
+                ['granContribuyente', 'granContribuyente'],
+                ['autorretenedor', 'autorretenedor'],
+                ['agenteRetencionIva', 'agenteRetencionIva'],
+                ['agenteRetencion', 'agenteRetencion'],
+                ['responsableInc', 'responsableInc'],
+              ] as const
+            ).map(([campo, etiqueta]) => (
+              <label key={campo} htmlFor={`calidad-${campo}`} className="flex items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm text-fg">
+                <Checkbox id={`calidad-${campo}`} checked={estado[campo]} onCheckedChange={(v) => cambiar(campo, v === true)} className="mt-0.5" />
+                <span>{t(`campos.${etiqueta}`)}</span>
+              </label>
+            ))}
           </div>
-          <label htmlFor="agente-retencion" className="flex items-start gap-2 text-sm text-fg">
-            <Checkbox id="agente-retencion" checked={estado.agenteRetencion} onCheckedChange={(v) => cambiar('agenteRetencion', v === true)} className="mt-0.5" />
-            <span>
-              {t('campos.agenteRetencion')}
-              <span className="block text-xs text-fg-secondary">{t('campos.agenteRetencionAyuda')}</span>
-            </span>
-          </label>
-          <label htmlFor="responsable-inc" className="flex items-start gap-2 text-sm text-fg">
-            <Checkbox id="responsable-inc" checked={estado.responsableInc} onCheckedChange={(v) => cambiar('responsableInc', v === true)} className="mt-0.5" />
-            <span>{t('campos.responsableInc')}</span>
-          </label>
         </fieldset>
+
+        <ListaCodigos
+          leyenda={t('campos.codigosFe')}
+          ayuda={t('campos.codigosFeAyuda')}
+          prefijo="fe"
+          catalogo={catalogo}
+          marcados={estado.responsabilidades}
+          onCambiar={(codigo, marcada) => cambiar('responsabilidades', alternar(estado.responsabilidades, codigo, marcada))}
+        />
+
+        {catalogoRut.length > 0 && (
+          <details className="rounded-lg border border-line p-3" open={estado.responsabilidadesRut.length > 0}>
+            <summary className="cursor-pointer text-sm font-medium text-fg">
+              {t('campos.codigosRut', { cuantos: estado.responsabilidadesRut.length })}
+            </summary>
+            <div className="mt-3">
+              <ListaCodigos
+                leyenda={t('campos.codigosRut', { cuantos: estado.responsabilidadesRut.length })}
+                ayuda={t('campos.codigosRutAyuda')}
+                prefijo="rut"
+                catalogo={catalogoRut}
+                marcados={estado.responsabilidadesRut}
+                buscable
+                onCambiar={(codigo, marcada) => cambiar('responsabilidadesRut', alternar(estado.responsabilidadesRut, codigo, marcada))}
+              />
+            </div>
+          </details>
+        )}
 
         <EditorIca ica={estado.ica} onCambiar={(ica) => cambiar('ica', ica)} />
 
         <FormField etiqueta={t('campos.notas')}>
           {(c) => <Textarea id={c.id} value={estado.notas} onChange={(e) => cambiar('notas', e.target.value)} rows={2} maxLength={1000} />}
         </FormField>
+
+        {bloqueos.length > 0 && (
+          <div role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-3 text-sm text-danger-text">
+            <p className="font-medium">{t('dialogo.bloqueosTitulo')}</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {bloqueos.map((b) => (
+                <li key={b}>{textoRegla('bloqueos', b)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {evaluacion.advertencias.length > 0 && (
+          <div className="rounded-lg border border-line-warning bg-warning-subtle p-3 text-sm text-warning-text">
+            <p className="font-medium">{t('dialogo.advertenciasTitulo')}</p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4">
+              {evaluacion.advertencias.map((a) => (
+                <li key={a}>{textoRegla('advertencias', a)}</li>
+              ))}
+            </ul>
+            <label htmlFor="aceptar-advertencias" className="mt-2 flex items-start gap-2 text-fg">
+              <Checkbox id="aceptar-advertencias" checked={aceptadas} onCheckedChange={(v) => setAceptadas(v === true)} className="mt-0.5" />
+              <span>{t('dialogo.aceptarAdvertencias')}</span>
+            </label>
+          </div>
+        )}
 
         {error && (
           <p role="alert" className="text-sm text-danger-text">
@@ -211,6 +340,59 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
         )}
       </div>
     </Dialogo>
+  );
+}
+
+/** Casillas de un catálogo de códigos con su estado de validación (FE o RUT). */
+function ListaCodigos({
+  leyenda,
+  ayuda,
+  prefijo,
+  catalogo,
+  marcados,
+  onCambiar,
+  buscable = false,
+}: {
+  leyenda: string;
+  ayuda: string;
+  prefijo: string;
+  catalogo: CodigoCatalogoCliente[];
+  marcados: string[];
+  onCambiar: (codigo: string, marcada: boolean) => void;
+  buscable?: boolean;
+}) {
+  const t = useTranslations('finanzasTributarioR4.perfil');
+  const [q, setQ] = useState('');
+  const visibles = useMemo(() => {
+    const termino = q.trim().toLowerCase();
+    return termino ? catalogo.filter((c) => c.codigo.includes(termino) || c.descripcion.toLowerCase().includes(termino)) : catalogo;
+  }, [catalogo, q]);
+  return (
+    <fieldset className="space-y-2">
+      <legend className={buscable ? 'sr-only' : 'text-sm font-medium text-fg'}>{leyenda}</legend>
+      <p className="text-xs text-fg-secondary">{ayuda}</p>
+      {buscable && <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('campos.buscarCodigo')} aria-label={t('campos.buscarCodigo')} autoComplete="off" />}
+      <div className={buscable ? 'grid max-h-72 gap-2 overflow-y-auto sm:grid-cols-2' : 'grid gap-2 sm:grid-cols-2'}>
+        {visibles.map((r) => {
+          const id = `${prefijo}-${r.codigo}`;
+          return (
+            <label key={r.codigo} htmlFor={id} className="flex items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm text-fg">
+              <Checkbox id={id} checked={marcados.includes(r.codigo)} onCheckedChange={(v) => onCambiar(r.codigo, v === true)} className="mt-0.5" />
+              <span className="min-w-0">
+                <span className="font-medium">{r.codigo}</span> · {r.descripcion}
+                {r.estado !== 'validado' && r.estado !== 'sin_dato' && (
+                  <span className="mt-1 block">
+                    <StatusBadge estado={r.estado} etiqueta={t(`validacion.${r.estado}`)} tono={r.estado === 'no_vigente_por_confirmar' ? 'advertencia' : 'neutro'} />
+                  </span>
+                )}
+                {!r.vigente && r.estado !== 'no_vigente_por_confirmar' && <span className="block text-xs text-fg-secondary">{t('validacion.noVigente')}</span>}
+                {r.nota && <span className="block text-xs text-fg-secondary">{r.nota}</span>}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
   );
 }
 

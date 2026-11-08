@@ -10,6 +10,7 @@
 // ser `meta_marketing` de la organización (404 si no).
 // ============================================================
 
+import { enviosDeConexion } from '@/lib/services/integrations/conexiones/metaActivos.server';
 import { NextResponse } from 'next/server';
 import { withOrg } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
@@ -40,6 +41,10 @@ export const POST = withOrg(async (ctx, request) => {
 
     const db = getServiceClient();
     const conexion = await conexionDelProveedor(ctx, body.connection_id, CONECTORES.meta, RUTA, db);
+    // «Qué se envía» (asistente de Meta, 85-43): con las compras apagadas no se envía nada.
+    if (!(await enviosDeConexion(db, conexion.id)).compras) {
+      return NextResponse.json({ success: true, omitido: 'compras_desactivadas' });
+    }
     const credentials = await metaMarketingService.getCredentials(conexion.id, db);
     if (!credentials?.accessToken || !credentials?.pixelId) {
       return NextResponse.json(

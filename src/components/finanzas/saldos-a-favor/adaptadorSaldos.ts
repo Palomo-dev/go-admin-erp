@@ -24,6 +24,12 @@ export interface RegistrarSaldoEntrada {
   vence: string | null;
   sucursalId: number;
   claveIdempotencia: string;
+  /**
+   * Datos propios del tercero que pone el `complemento` del diálogo (proveedor:
+   * naturaleza del anticipo, tarifa de IVA y conceptos de retención). El
+   * adaptador los valida y los manda; el diálogo no los interpreta.
+   */
+  extra?: Record<string, unknown> | null;
 }
 
 export interface AplicarSaldoEntrada {
@@ -52,6 +58,11 @@ export interface AdaptadorSaldos {
   namespace: string;
   /** El anticipo puede llevar fecha de vencimiento (solo el del cliente). */
   conVencimiento: boolean;
+  /**
+   * La devolución exige soporte (consignación, recibo) aunque el método no pida
+   * referencia. Proveedor: sí (P7 del Contador, la devolución real lleva soporte).
+   */
+  soporteObligatorio?: boolean;
   contexto(sucursalId: number | null): Promise<ContextoSaldoFavor>;
   /** Documentos abiertos del tercero a los que se aplica: facturas de venta o cuentas por pagar. */
   documentosAbiertos(terceroId: string): Promise<FacturaAbiertaSaldo[]>;

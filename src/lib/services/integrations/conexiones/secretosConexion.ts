@@ -69,3 +69,23 @@ export function enmascararSecreto(valor: string): string {
   const prefijo = /^[a-z]+_(?:test|prod)_/i.exec(v)?.[0] ?? /^[a-z]{2,8}_/i.exec(v)?.[0] ?? '';
   return `${prefijo}··${v.slice(-4)}`;
 }
+
+/**
+ * Las mismas filas con `secret_ref` resuelto (bóveda o en claro). Filas en claro: idénticas y sin
+ * RPC, así cada lector conserva su lógica (último gana, `find`…). Igual que el lector de la tienda.
+ */
+export async function resolverFilas<T extends { purpose?: string | null; secret_ref?: string | null }>(
+  db: SupabaseClient,
+  connectionId: string,
+  filas: readonly T[] | null | undefined,
+): Promise<T[]> {
+  const salida: T[] = [];
+  for (const f of filas ?? []) {
+    if (!esReferenciaDeBoveda(f.secret_ref)) {
+      salida.push(f);
+      continue;
+    }
+    salida.push({ ...f, secret_ref: await valorDeSecreto(db, connectionId, { purpose: String(f.purpose ?? ''), secret_ref: f.secret_ref ?? null }) });
+  }
+  return salida;
+}

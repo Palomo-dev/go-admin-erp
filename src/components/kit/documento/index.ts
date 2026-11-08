@@ -13,7 +13,7 @@ export {
 } from './documentos';
 export { ChipDocumento, type ChipDocumentoProps } from './ChipDocumento';
 export { CadenaDocumento, type CadenaDocumentoProps } from './CadenaDocumento';
-export { DocumentoCabecera, type DocumentoCabeceraProps } from './DocumentoCabecera';
+export { DocumentoCabecera, type DocumentoCabeceraProps, type DocumentoAccionesMovil } from './DocumentoCabecera';
 export { DocumentoLineas, type DocumentoLineasProps } from './DocumentoLineas';
 export {
   simboloMoneda,

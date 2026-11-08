@@ -30,6 +30,7 @@ import { liberarRetenido, procesarAhora } from '@/lib/services/einvoicing/colaFa
 import { PERMISOS_FINANZAS, requireOrgPermission } from '@/lib/security/orgGuards';
 import { faltantesEmisor, type OrganizacionEmisor } from '@/lib/finanzas/facturacionElectronica/servicioLogica';
 import { MAX_LOTE } from '@/lib/finanzas/facturacionElectronica/bandejaLogica';
+import { responsabilidadesFiscalesEn } from '@/lib/finanzas/tributario/responsabilidadesVigentes';
 
 const PERMISO_CONFIGURAR = PERMISOS_FINANZAS.APROBAR;
 
@@ -68,7 +69,12 @@ export const GET = withOrg(async (ctx) => {
       .eq('id', org)
       .maybeSingle(),
   ]);
-  const emisor = (organizacion?.data ?? null) as (OrganizacionEmisor & { nit?: string | null; tax_id?: string | null }) | null;
+  const filaEmisor = (organizacion?.data ?? null) as (OrganizacionEmisor & { nit?: string | null; tax_id?: string | null }) | null;
+  // H2: las responsabilidades del RUT que se verifican son las VIGENTES hoy (perfil tributario por
+  // vigencias); sin perfil, las de la ficha de la organización, como antes.
+  const emisor = filaEmisor
+    ? { ...filaEmisor, fiscal_responsibilities: await responsabilidadesFiscalesEn(ctx.supabase, org, null, filaEmisor.fiscal_responsibilities) }
+    : null;
 
   const c = config.data as
     | {

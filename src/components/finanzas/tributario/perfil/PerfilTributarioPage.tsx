@@ -2,23 +2,26 @@
 
 /**
  * Perfil tributario de la empresa (Figma «07 Finanzas» 2335:136222, captura
- * `docs/design/figma/88-tributario-perfil.png`): vigencias con régimen,
- * responsabilidades del RUT, periodicidad del IVA e ICA por municipio.
+ * `docs/design/figma/88-tributario-perfil.png`): vigencias con el régimen de
+ * renta y la condición frente al IVA por separado (P5 del Contador), las
+ * calidades (gran contribuyente, autorretenedor…), los códigos del documento
+ * electrónico, la periodicidad del IVA y el ICA por municipio.
  *
  * Es página de trabajo (se edita), así que vive en Finanzas › Tributario.
- * Mientras la migración del perfil no esté aplicada, la pantalla lo dice
- * («pendiente de activar») y no ofrece guardar.
+ * Mientras la migración no esté aplicada, la pantalla lo dice («pendiente de
+ * activar») y no ofrece guardar. En móvil, cada vigencia es una tarjeta con su
+ * menú de acciones.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Pencil, Plus } from 'lucide-react';
-import { AvisoTonal, DataTable, FilaDato, ListaDatos, Tarjeta, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { CalendarRange, Pencil, Plus } from 'lucide-react';
+import { AvisoTonal, DataTable, FilaDato, ListCard, ListaDatos, StatusBadge, Tarjeta, clasesBoton, type AccionFila, type ColumnaTabla } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { inicioPropuesto, RESPONSABILIDAD, type VigenciaPerfil } from '@/lib/finanzas/tributario/perfil';
 import { tributarioCliente, RUTAS_TRIBUTARIO, type PerfilCliente } from '../tributarioCliente';
 import { AvisoPendienteActivar, CabeceraTributario, ErrorLectura, codigoDe, type Lectura } from '../piezas';
-import { VigenciaDialogo } from './VigenciaDialogo';
+import { VigenciaDialogo, type BaseVigencia } from './VigenciaDialogo';
 
 export function PerfilTributarioPage() {
   const t = useTranslations('finanzasTributarioR4.perfil');
@@ -40,18 +43,29 @@ export function PerfilTributarioPage() {
   }, [cargar]);
 
   const datos = lectura.estado === 'listo' ? lectura.datos : null;
-  const puedeEditar = !!datos?.activo && datos.puedeEditar;
+  const puedeEditar = !!datos?.activo && datos.separacionActiva && datos.puedeEditar;
 
-  const base = useMemo<Omit<VigenciaPerfil, 'id' | 'vigenteDesde' | 'vigenteHasta'>>(() => {
+  const base = useMemo<BaseVigencia>(() => {
     const ultima = datos?.vigencias[0];
-    if (ultima) return { ...ultima };
-    const rut = datos?.empresa.responsabilidadesRut ?? [];
+    if (ultima) return { ...ultima, advertenciasAceptadas: [], motivoCambioPeriodicidad: null };
+    const fe = datos?.empresa.responsabilidadesRut ?? [];
+    // Desde la ficha solo se toma lo que tiene equivalencia explícita (O-47 ↔ SIMPLE, O-13, O-15, O-23).
+    // La condición frente al IVA NO se deduce: R-99-PN no equivale a «no responsable».
     return {
-      regimen: rut.includes(RESPONSABILIDAD.simple) ? 'simple' : rut.includes(RESPONSABILIDAD.noResponsableIva) ? 'no_responsable_iva' : 'ordinario',
-      responsabilidades: rut,
+      regimenRenta: fe.includes(RESPONSABILIDAD.simple) ? 'simple' : null,
+      condicionIva: null,
+      granContribuyente: fe.includes(RESPONSABILIDAD.granContribuyente) ? true : null,
+      autorretenedor: fe.includes(RESPONSABILIDAD.autorretenedor) ? true : null,
+      agenteRetencionIva: fe.includes(RESPONSABILIDAD.agenteRetencionIva) ? true : null,
       agenteRetencion: false,
       responsableInc: false,
-      periodicidadIva: rut.includes(RESPONSABILIDAD.noResponsableIva) ? 'no_aplica' : 'bimestral',
+      periodicidadIva: 'no_aplica',
+      responsabilidades: fe,
+      responsabilidadesRut: [],
+      motivoCambioPeriodicidad: null,
+      advertenciasAceptadas: [],
+      requiereRevision: false,
+      regimenOrigen: null,
       notas: null,
       ica: [],
     };
@@ -64,28 +78,44 @@ export function PerfilTributarioPage() {
         : t('vigencia.rango', { desde: formatPlain(v.vigenteDesde), hasta: formatPlain(v.vigenteHasta) })
       : t('vigencia.desde', { desde: formatPlain(v.vigenteDesde) });
 
+  const renta = (v: VigenciaPerfil) => (v.regimenRenta ? t(`regimenRenta.${v.regimenRenta}`) : t('campos.sinDefinir'));
+  const iva = (v: VigenciaPerfil) =>
+    v.condicionIva === 'responsable'
+      ? `${t('condicionIva.responsable')} · ${t(`periodicidadIva.${v.periodicidadIva}`)}`
+      : v.condicionIva === 'no_responsable'
+        ? t('condicionIva.no_responsable')
+        : t('campos.sinDefinir');
+  const estadoVigencia = (v: VigenciaPerfil) =>
+    v.requiereRevision ? (
+      <StatusBadge estado="revisar" etiqueta={t('estado.revisar')} tono="advertencia" />
+    ) : v.advertenciasAceptadas.length > 0 ? (
+      <StatusBadge estado="advertencias" etiqueta={t('estado.conAdvertencias', { cuantas: v.advertenciasAceptadas.length })} tono="informacion" />
+    ) : (
+      <StatusBadge estado="completo" etiqueta={t('estado.completo')} tono="exito" />
+    );
+
   const columnas: ColumnaTabla<VigenciaPerfil>[] = [
     { id: 'vigencia', encabezado: t('columnas.vigencia'), celda: (v) => <span className="font-medium text-fg">{vigenciaTexto(v)}</span> },
-    { id: 'regimen', encabezado: t('columnas.regimen'), celda: (v) => t(`regimen.${v.regimen}`) },
+    { id: 'renta', encabezado: t('columnas.renta'), celda: renta },
+    { id: 'iva', encabezado: t('columnas.iva'), celda: iva },
     {
       id: 'responsabilidades',
       encabezado: t('columnas.responsabilidades'),
       celda: (v) => (v.responsabilidades.length ? v.responsabilidades.join(', ') : '—'),
       ocultarDebajo: 'md',
     },
-    { id: 'iva', encabezado: t('columnas.iva'), celda: (v) => t(`periodicidadIva.${v.periodicidadIva}`) },
     {
       id: 'ica',
       encabezado: t('columnas.ica'),
-      celda: (v) =>
-        v.ica.length === 0
-          ? '—'
-          : v.ica.map((i) => `${i.municipio ?? '—'} · ${t(`periodicidadIca.${i.periodicidad}`)}`).join('; '),
+      celda: (v) => (v.ica.length === 0 ? '—' : v.ica.map((i) => `${i.municipio ?? '—'} · ${t(`periodicidadIca.${i.periodicidad}`)}`).join('; ')),
       ocultarDebajo: 'lg',
     },
+    { id: 'estado', encabezado: t('columnas.estado'), celda: estadoVigencia },
   ];
 
   const abrirNueva = () => setDialogo({ abierto: true, vigencia: null });
+  const acciones = (v: VigenciaPerfil): AccionFila[] =>
+    puedeEditar ? [{ id: 'editar', etiqueta: v.requiereRevision ? t('revisar') : t('editar'), icono: Pencil, onSelect: () => setDialogo({ abierto: true, vigencia: v }) }] : [];
   const vigente = datos?.vigente ?? null;
 
   return (
@@ -106,6 +136,7 @@ export function PerfilTributarioPage() {
       {lectura.estado === 'error' && <ErrorLectura codigo={lectura.codigo} onReintentar={() => void cargar()} />}
 
       {datos && !datos.activo && <AvisoPendienteActivar descripcion={t('pendiente')} />}
+      {datos && datos.activo && !datos.separacionActiva && <AvisoPendienteActivar descripcion={t('pendienteSeparacion')} />}
 
       {datos && datos.activo && datos.faltan.length > 0 && (
         <AvisoTonal
@@ -118,11 +149,7 @@ export function PerfilTributarioPage() {
               ))}
             </ul>
           }
-          accion={
-            puedeEditar
-              ? { etiqueta: t('faltan.completar'), onClick: () => setDialogo({ abierto: true, vigencia: vigente }) }
-              : undefined
-          }
+          accion={puedeEditar ? { etiqueta: t('faltan.completar'), onClick: () => setDialogo({ abierto: true, vigencia: vigente }) } : undefined}
         />
       )}
 
@@ -138,11 +165,17 @@ export function PerfilTributarioPage() {
             descripcion: t('vacio.descripcion'),
             accion: puedeEditar ? { etiqueta: t('nuevaVigencia'), onClick: abrirNueva, icono: Plus } : undefined,
           }}
-          acciones={
-            puedeEditar
-              ? (v) => [{ id: 'editar', etiqueta: t('editar'), icono: Pencil, onSelect: () => setDialogo({ abierto: true, vigencia: v }) }]
-              : undefined
-          }
+          acciones={puedeEditar ? acciones : undefined}
+          tarjetaMovil={(v) => (
+            <ListCard
+              icono={CalendarRange}
+              titulo={vigenciaTexto(v)}
+              subtitulo={`${t('columnas.renta')}: ${renta(v)} · ${t('columnas.iva')}: ${iva(v)}`}
+              meta={v.responsabilidades.length ? v.responsabilidades.join(', ') : undefined}
+              estado={estadoVigencia(v)}
+              acciones={acciones(v)}
+            />
+          )}
         />
       )}
 
@@ -184,8 +217,10 @@ export function PerfilTributarioPage() {
           onAbiertoChange={(abierto) => setDialogo((d) => ({ ...d, abierto }))}
           vigencia={dialogo.vigencia}
           base={base}
+          vigencias={datos.vigencias}
           inicioPropuesto={inicioPropuesto(datos.vigencias, datos.hoy)}
           catalogo={datos.catalogo}
+          catalogoRut={datos.catalogoRut}
           hoy={datos.hoy}
           onGuardado={() => void cargar()}
         />

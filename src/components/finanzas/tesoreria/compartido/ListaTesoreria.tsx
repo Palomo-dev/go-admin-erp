@@ -320,6 +320,7 @@ export function ListaTesoreria({ vista }: { vista: VistaTesoreria }) {
           { etiqueta: tc('migas.tesoreria'), href: vista === 'movimientos' ? undefined : RUTAS_TESORERIA.movimientos },
           { etiqueta: titulo },
         ]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" onClick={exportar} disabled={visibles.length === 0} className={clasesBoton({ variante: 'secundario' })}>

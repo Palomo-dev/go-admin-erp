@@ -8,7 +8,7 @@ import { withOrg } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { exigirPermiso, PERMISO_INTEGRACIONES_VER } from '@/lib/services/integrations/accesoIntegraciones';
-import { catalogo, listarConexiones } from '@/lib/services/integrations/conexiones/conexiones.server';
+import { catalogo, conectoresImportables, listarConexiones } from '@/lib/services/integrations/conexiones/conexiones.server';
 import { responder } from '@/lib/services/integrations/conexiones/respuestaConexiones';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,11 @@ export const GET = withOrg(async (ctx, request) => {
   await exigirPermiso(ctx, PERMISO_INTEGRACIONES_VER, RUTA);
   return responder(RUTA, async () => {
     const db = getServiceClient();
-    const [items, conexiones] = await Promise.all([catalogo(db, ctx.organizationId), listarConexiones(db, ctx.organizationId)]);
-    return { catalogo: items, conexiones };
+    const [items, conexiones, conectores] = await Promise.all([
+      catalogo(db, ctx.organizationId),
+      listarConexiones(db, ctx.organizationId),
+      conectoresImportables(db),
+    ]);
+    return { catalogo: items, conexiones, conectores };
   });
 });

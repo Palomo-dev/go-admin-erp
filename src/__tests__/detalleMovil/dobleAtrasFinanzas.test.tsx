@@ -70,7 +70,9 @@ describe('Finanzas › detalles en celular (390 px): una sola «←»', () => {
     esperarUnaSolaFlecha();
     expect(cabeceraPublicada()?.titulo).toBe('Cotización COT-0007');
     expect(screen.getAllByText('Enviada').some(visibleEnCelular)).toBe(true);
-    expect(screen.getByRole('button', { name: /Convertir en factura/ })).toBeTruthy();
+    // Con `movil.accionesEnFila` el botón existe en la cabecera de escritorio (oculta por
+    // debajo de lg) y en la fila móvil: basta con que esté al menos una vez.
+    expect(screen.getAllByRole('button', { name: /Convertir en factura/ }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /COT-0007/ }).length).toBeGreaterThan(0);
     expect(cabeceraPublicada()?.volverA).toBe('/app/finanzas/cotizaciones');
   });

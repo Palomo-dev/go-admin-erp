@@ -248,6 +248,7 @@ export default function ConfiguracionServicioFE({ incrustado = false }: Props = 
             { etiqueta: t('migas.facturacion'), href: RUTA_BANDEJA },
             { etiqueta: t('migas.servicio') },
           ]}
+          movil={{ accionesEnFila: true }}
           acciones={acciones}
           cargando={estado === 'cargando'}
         />

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFormatter, useTranslations } from 'next-intl';
-import { ListChecks, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ListChecks, Pencil, Plus, Trash2, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AvisoTonal,
@@ -236,6 +236,12 @@ export function ActivosFijosPage() {
           { etiqueta: r2('migaContabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
+        movil={{
+          menu: [
+            { id: 'nuevo', etiqueta: t('nuevo'), icono: Plus, onSelect: abrirNuevo },
+            { id: 'depreciar', etiqueta: t('depreciar', { mes: nombreMes }), icono: CalendarClock, onSelect: () => void depreciar(), oculta: !hayActivos, deshabilitada: !hoy || procesando },
+          ],
+        }}
         acciones={
           <>
             <button type="button" onClick={abrirNuevo} className={clasesBoton({ variante: 'secundario' })}>

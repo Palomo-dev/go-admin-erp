@@ -122,6 +122,7 @@ export function TransferenciaDetalle({ id }: { id: string }) {
         badge={<StatusBadge estado={x.status} etiqueta={t(`estados.${x.status}`)} tono={TONO_ESTADO[x.status]} />}
         volverA={RUTAS_TESORERIA.transferencias}
         migas={[{ etiqueta: tc('migas.tesoreria'), href: RUTAS_TESORERIA.movimientos }, { etiqueta: t('titulo'), href: RUTAS_TESORERIA.transferencias }, { etiqueta: titulo }]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" onClick={comprobante} className={clasesBoton({ variante: 'secundario' })}>

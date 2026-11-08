@@ -4584,7 +4584,8 @@
       "finanzas_tributario_certificados": "Certificados de retenção",
       "finanzas_consignaciones": "Consignações",
       "finanzas_tesoreria_dinero-de-terceros": "Dinheiro de terceiros",
-      "finanzas_anticipos-proveedores": "Adiantamentos a fornecedores"
+      "finanzas_anticipos-proveedores": "Adiantamentos a fornecedores",
+      "inventario_consignaciones": "Consignações"
     },
     "grupos": {
       "venta": "Venda",
@@ -14176,7 +14177,8 @@
         "imprimir": "Imprimir",
         "anular": "Anular",
         "eliminar": "Excluir rascunho",
-        "certificado": "Certificado de retenções"
+        "certificado": "Certificado de retenções",
+        "pdfCorto": "PDF"
       },
       "motivos": {
         "sinPermiso": "Você não tem permissão para esta ação",
@@ -14725,6 +14727,12 @@
         "neto": "Líquido a pagar",
         "asiento": "Lançamento contábil",
         "orden": "Ordem de compra"
+      },
+      "anticipos": {
+        "titulo": "Adiantamentos aplicados",
+        "linea": "{recibo} · reduz a conta em {monto}",
+        "cuenta": "conta {cuenta}",
+        "retencion": "Do adiantamento {consumo}; retenção já feita {retencion}"
       }
     },
     "estadoCuenta": {
@@ -14755,6 +14763,12 @@
         "cargo": "Débito",
         "abono": "Crédito",
         "saldo": "Saldo"
+      },
+      "movimientos": {
+        "anticipo": "Adiantamento",
+        "aplicacion_anticipo": "Aplicação de adiantamento",
+        "devolucion_anticipo": "Devolução de adiantamento",
+        "anulacion_anticipo": "Anulação de adiantamento"
       }
     },
     "plan": {
@@ -15214,7 +15228,11 @@
     "movimientosProveedor": {
       "factura": "Fatura (líquido a pagar)",
       "cuenta": "Conta a pagar",
-      "pago": "Pagamento"
+      "pago": "Pagamento",
+      "anticipo": "Adiantamento",
+      "aplicacion_anticipo": "Aplicação de adiantamento",
+      "devolucion_anticipo": "Devolução de adiantamento",
+      "anulacion_anticipo": "Anulação de adiantamento"
     },
     "errores": {
       "noEncontrado": "Não encontramos este documento.",
@@ -16080,7 +16098,8 @@
       "verPdf": "Ver PDF",
       "notaCredito": "Nota de crédito",
       "anular": "Anular fatura",
-      "enviar": "Enviar"
+      "enviar": "Enviar",
+      "pdf": "PDF"
     },
     "pagos": {
       "titulo": "Pagamentos aplicados",
@@ -40405,6 +40424,10 @@
       "ingresos_diversos": {
         "nombre": "Receitas diversas",
         "ayuda": "Crédito de uma sobra real de estoque. Padrão 42959501 (subconta de 4295). Não é 4250."
+      },
+      "anticipos_proveedores": {
+        "nombre": "Adiantamentos a fornecedores",
+        "ayuda": "Subconta de detalhe sob 1330 (ex.: 13300501 sob 133005). 1330 é título: sem esta conta não se registram adiantamentos."
       }
     }
   },
@@ -43801,7 +43824,7 @@
           "sin_permiso": "Você não tem permissão para anular.",
           "anulado": "Este saldo já está anulado."
         },
-        "devolverEnSuLugar": "Devolver o dinheiro",
+        "devolverEnSuLugar": "Devolver o disponível",
         "exito": "O adiantamento de {cliente} foi anulado."
       },
       "anticipo": {
@@ -43846,7 +43869,7 @@
         "saldo_no_encontrado": "Saldo a favor não encontrado.",
         "saldo_no_disponible": "O saldo a favor não está mais disponível.",
         "saldo_vencido": "O saldo a favor está vencido: não pode mais ser aplicado, mas pode ser devolvido.",
-        "saldo_usado": "O saldo a favor já foi usado em faturas: não pode ser anulado.",
+        "saldo_usado": "Este adiantamento já foi aplicado em parte: não pode ser anulado. Devolva o disponível em dinheiro.",
         "saldo_no_anulable": "Este saldo não veio de um adiantamento: não se anula, se devolve em dinheiro.",
         "monto_excede_saldo_a_favor": "O valor supera o saldo a favor disponível.",
         "factura_no_encontrada": "Fatura não encontrada.",
@@ -43862,7 +43885,7 @@
         "referencia_obligatoria": "Este método exige referência.",
         "cuenta_bancaria_invalida": "A conta bancária não é válida.",
         "sin_caja_abierta": "Não há caixa aberto: abra-o ou use outro método.",
-        "pago_en_caja_cerrada": "O dinheiro entrou em um caixa já fechado: registre uma saída de caixa.",
+        "pago_en_caja_cerrada": "O adiantamento entrou em dinheiro em um caixa já fechado: não pode ser anulado. Devolva o disponível com uma saída de caixa.",
         "sin_cuenta_de_dinero": "A conta de caixa ou banco do método não foi encontrada.",
         "sin_cuenta_por_cobrar": "A organização não tem conta a receber configurada.",
         "vencimiento_invalido": "O vencimento não pode ser anterior a hoje.",
@@ -45305,7 +45328,7 @@
         "perfil": "Nenhuma vigência cobre hoje: sem regime nem periodicidade, o GO Admin não sabe quais formulários correspondem a esta empresa.",
         "nit": "A empresa não tem NIT: sem ele não é possível localizar os vencimentos.",
         "periodicidad_iva": "É responsável pelo IVA, mas não tem periodicidade de IVA.",
-        "regimen_simple_sin_o47": "O regime é SIMPLE, mas falta a responsabilidade O-47."
+        "revisar_perfil": "A vigência de hoje tem dados não definidos ou vem do antigo campo combinado: revise o regime do imposto de renda e a condição perante o IVA e salve-a novamente."
       },
       "vigencia": {
         "rango": "{desde} a {hasta}",
@@ -45313,16 +45336,11 @@
       },
       "columnas": {
         "vigencia": "Vigência",
-        "regimen": "Regime",
-        "responsabilidades": "Responsabilidades",
+        "responsabilidades": "Códigos FE",
         "iva": "IVA",
-        "ica": "ICA"
-      },
-      "regimen": {
-        "ordinario": "Ordinário",
-        "simple": "Regime SIMPLE",
-        "no_responsable_iva": "Não responsável pelo IVA",
-        "especial": "Regime especial"
+        "ica": "ICA",
+        "renta": "Imposto de renda",
+        "estado": "Status"
       },
       "periodicidadIva": {
         "bimestral": "Bimestral",
@@ -45339,19 +45357,19 @@
       },
       "vacio": {
         "titulo": "Sem perfil tributário",
-        "descripcion": "Crie a primeira vigência com o regime, as responsabilidades do RUT e a periodicidade do IVA."
+        "descripcion": "Crie a primeira vigência com o regime do imposto de renda, a condição perante o IVA e a periodicidade."
       },
       "empresa": {
         "titulo": "Dados da empresa",
         "nit": "NIT",
         "sinNit": "Sem NIT",
-        "rut": "Responsabilidades na faturação eletrônica",
-        "rutAyuda": "São atualizadas ao salvar a vigência de hoje.",
+        "rut": "Códigos do documento eletrônico (ficha da empresa)",
+        "rutAyuda": "São atualizados ao salvar a vigência de hoje. Cada documento usa os da vigência da sua data.",
         "editarNit": "Editar NIT e dados da empresa"
       },
       "usos": {
         "titulo": "Para que serve",
-        "descripcion": "O Centro tributário usa a vigência de cada período para saber quais formulários preparar e quando vencem. Um período de 2025 lê o perfil de 2025.",
+        "descripcion": "A central tributária usa as vigências que tocam cada período. Se um período tiver mais de uma, ela sinaliza para revisar a procedência e não decide sozinha.",
         "irCentro": "Ir ao Centro tributário"
       },
       "dialogo": {
@@ -45359,18 +45377,20 @@
         "tituloEditar": "Editar vigência",
         "descripcionNueva": "A vigência anterior termina no dia anterior a esta.",
         "descripcionEditar": "Corrija os dados desta vigência. Para outra data de início, crie uma nova vigência.",
-        "guardar": "Salvar"
+        "guardar": "Salvar",
+        "bloqueosTitulo": "Esta combinação é contraditória e não pode ser salva:",
+        "advertenciasTitulo": "Revise com o contador antes de salvar:",
+        "aceptarAdvertencias": "Entendo os avisos e quero salvar. Eles ficarão registrados na vigência.",
+        "motivoBloqueo": "Corrija as combinações contraditórias.",
+        "motivoAdvertencias": "Aceite os avisos para salvar."
       },
       "campos": {
         "vigenteDesde": "Vigente desde",
         "vigenteDesdeAyuda": "Normalmente 1º de janeiro do ano.",
         "vigenteDesdeFija": "A data de início não muda ao editar.",
-        "regimen": "Regime",
         "periodicidadIva": "Periodicidade do IVA",
         "periodicidadIvaAyuda": "Conforme a receita do ano anterior. «Não se aplica» se não for responsável pelo IVA.",
-        "responsabilidades": "Responsabilidades do RUT",
-        "responsabilidadesAyuda": "As mesmas do campo 53 do RUT da empresa.",
-        "agenteRetencion": "Agente de retenção na fonte",
+        "agenteRetencion": "Agente de retenção na fonte (imposto de renda)",
         "agenteRetencionAyuda": "Faz retenções de seus fornecedores e declara o formulário 350.",
         "responsableInc": "Responsável pelo imposto sobre o consumo (INC)",
         "notas": "Notas",
@@ -45382,23 +45402,120 @@
         "icaAgregar": "Adicionar município",
         "icaBuscar": "Digite o município",
         "icaBuscando": "Buscando…",
-        "icaResultados": "Municípios encontrados"
+        "icaResultados": "Municípios encontrados",
+        "regimenRenta": "Regime do imposto de renda",
+        "regimenRentaAyuda": "Imposto de renda. Independente da condição perante o IVA.",
+        "condicionIva": "Condição perante o IVA",
+        "condicionIvaAyuda": "Responsável ou não pelo IVA, conforme o RUT (48, ou 49/53).",
+        "sinDefinir": "Não definido",
+        "motivoCambio": "Motivo da mudança de periodicidade",
+        "motivoCambioAyuda": "A periodicidade do IVA é fixada por ano (Estatuto Tributário art. 600). Uma mudança que não começa em 1º de janeiro precisa de motivo.",
+        "sinMotivo": "Sem motivo",
+        "calidades": "Qualidades",
+        "granContribuyente": "Grande contribuinte",
+        "autorretenedor": "Autorretentor",
+        "agenteRetencionIva": "Agente de retenção de IVA",
+        "codigosFe": "Códigos do documento eletrônico",
+        "codigosFeAyuda": "Os que vão na fatura eletrônica. Não são o campo 53 do RUT. A tabela está pendente de validação do contador.",
+        "codigosRut": "Responsabilidades do RUT, campo 53 ({cuantos} marcadas)",
+        "codigosRutAyuda": "Opcional. Se marcá-las, devem coincidir com os campos acima.",
+        "buscarCodigo": "Buscar por código ou nome"
       },
       "errores": {
         "datos_invalidos": "Revise os dados da vigência.",
         "vigencia_invalida": "Escolha uma data de início válida.",
-        "regimen_invalido": "Escolha o regime.",
+        "regimen_invalido": "Escolha um regime de imposto de renda válido.",
         "periodicidad_invalida": "Escolha a periodicidade do IVA.",
-        "responsabilidad_invalida": "Há uma responsabilidade que não existe no RUT.",
-        "responsabilidades_incompatibles": "Não pode ser responsável (O-48) e não responsável (O-49) pelo IVA ao mesmo tempo.",
-        "periodicidad_incoherente": "Um não responsável pelo IVA não tem periodicidade de IVA: escolha «Não se aplica».",
-        "falta_periodicidad": "Com a responsabilidade O-48 é preciso a periodicidade do IVA.",
+        "responsabilidad_invalida": "Há um código do documento eletrônico que não existe.",
         "ica_invalido": "Revise os municípios do ICA e sua alíquota.",
         "sin_permiso": "Você não tem permissão para alterar o perfil tributário.",
         "no_encontrado": "Essa vigência não existe mais. Recarregue a página.",
         "vigencia_duplicada": "Já existe uma vigência que começa nesse dia.",
         "pendiente_activar": "O perfil tributário ainda não está ativado.",
-        "desconocido": "Não foi possível salvar. Tente novamente."
+        "desconocido": "Não foi possível salvar. Tente novamente.",
+        "condicion_iva_invalida": "Escolha a condição perante o IVA.",
+        "responsabilidad_rut_invalida": "Há um código do RUT que não existe.",
+        "motivo_invalido": "Escolha um motivo válido.",
+        "combinacion_contradictoria": "A combinação é contraditória: corrija o que está marcado.",
+        "advertencias_sin_aceptar": "Há avisos novos: revise-os e aceite-os para salvar."
+      },
+      "pendienteSeparacion": "A separação entre o regime do imposto de renda e a condição perante o IVA é ativada quando sua atualização for aplicada no banco de dados. Até lá você pode ver o perfil, mas não salvá-lo.",
+      "revisar": "Revisar",
+      "regimenRenta": {
+        "ordinario": "Regime ordinário",
+        "simple": "Regime SIMPLE",
+        "especial": "Regime tributário especial (sem fins lucrativos)",
+        "no_contribuyente_declarante": "Não contribuinte, declara renda e patrimônio",
+        "no_contribuyente_no_declarante": "Não contribuinte, não declarante"
+      },
+      "condicionIva": {
+        "responsable": "Responsável pelo IVA",
+        "no_responsable": "Não responsável pelo IVA"
+      },
+      "motivo": {
+        "inicio_actividades": "Início de atividades",
+        "ingreso_simple": "Entrada no SIMPLE",
+        "salida_simple": "Saída do SIMPLE",
+        "otro": "Outro (explique nas notas)"
+      },
+      "estado": {
+        "revisar": "Revisar perfil",
+        "conAdvertencias": "{cuantas, plural, one {# aviso aceito} other {# avisos aceitos}}",
+        "completo": "Completo"
+      },
+      "validacion": {
+        "pendiente_validacion": "Pendente de validação",
+        "no_vigente_por_confirmar": "Não vigente, a confirmar",
+        "noVigente": "Código substituído; não é mais atribuído."
+      },
+      "bloqueos": {
+        "falta_regimen_renta": "Falta o regime do imposto de renda.",
+        "falta_condicion_iva": "Falta a condição perante o IVA.",
+        "no_responsable_con_periodicidad": "Quem não é responsável pelo IVA não o declara: a periodicidade deve ser «Não se aplica» (Estatuto Tributário art. 437 par. 3).",
+        "responsable_sin_periodicidad": "Um responsável pelo IVA precisa de periodicidade (Estatuto Tributário art. 600).",
+        "periodicidad_anual_fuera_de_simple": "A periodicidade anual do IVA é a do SIMPLE; os demais declaram bimestral ou quadrimestralmente (Estatuto Tributário arts. 600 e 915).",
+        "simple_responsable_no_anual": "No SIMPLE, o responsável pelo IVA apresenta uma declaração anual consolidada (Estatuto Tributário art. 915): escolha «Anual».",
+        "fe_o48_y_o49": "Não pode ter O-48 e O-49 ao mesmo tempo.",
+        "fe_o48_no_responsable": "O-48 (responsável pelo IVA) contradiz «Não responsável pelo IVA».",
+        "fe_o49_responsable": "O-49 (não responsável pelo IVA) contradiz «Responsável pelo IVA».",
+        "fe_o47_sin_simple": "O-47 (regime simples) exige o regime de imposto de renda SIMPLE.",
+        "fe_o13_sin_gran_contribuyente": "O-13 exige marcar «Grande contribuinte».",
+        "fe_o15_sin_autorretenedor": "O-15 exige marcar «Autorretentor».",
+        "fe_o23_sin_agente_iva": "O-23 exige marcar «Agente de retenção de IVA».",
+        "rut_varios_regimenes_renta": "O RUT tem mais de um regime de imposto de renda (04, 05, 06 ou 47); são excludentes.",
+        "rut_regimen_renta_contradictorio": "O regime de imposto de renda não coincide com o do RUT (05 ordinário, 04 especial, 47 SIMPLE, 06 renda e patrimônio).",
+        "rut_iva_contradictorio": "A condição perante o IVA não coincide com o RUT (48 responsável; 49 ou 53 não responsável).",
+        "rut_13_sin_gran_contribuyente": "O RUT tem 13 (grande contribuinte): marque «Grande contribuinte».",
+        "rut_15_sin_autorretenedor": "O RUT tem 15 (autorretentor): marque «Autorretentor».",
+        "rut_23_sin_agente_iva": "O RUT tem 23 (agente de retenção de IVA): marque «Agente de retenção de IVA».",
+        "rut_07_sin_agente_retencion": "O RUT tem 07 (retenção na fonte do imposto de renda): marque «Agente de retenção na fonte».",
+        "rut_33_sin_inc": "O RUT tem 33 (imposto nacional ao consumo): marque «Responsável pelo imposto ao consumo».",
+        "periodicidad_cambio_sin_motivo": "A periodicidade do IVA muda sem começar em 1º de janeiro: informe o motivo (Estatuto Tributário art. 600)."
+      },
+      "advertencias": {
+        "simple_con_autorretenedor": "SIMPLE e autorretentor: o SIMPLE não pratica autorretenções, salvo exceções (Estatuto Tributário art. 911). Confirme com o contador.",
+        "simple_con_gran_contribuyente": "SIMPLE e grande contribuinte: revise os requisitos do SIMPLE (Estatuto Tributário arts. 905 e 906).",
+        "simple_con_inc": "SIMPLE e imposto ao consumo: o de restaurantes e bares tem tratamento próprio no SIMPLE (Estatuto Tributário arts. 908 e 915).",
+        "simple_sin_fe_o47": "Regime SIMPLE sem o código O-47 no documento eletrônico.",
+        "gran_contribuyente_sin_fe_o13": "Grande contribuinte sem o código O-13 no documento eletrônico.",
+        "autorretenedor_sin_fe_o15": "Autorretentor sem o código O-15 no documento eletrônico.",
+        "agente_iva_sin_fe_o23": "Agente de retenção de IVA sem o código O-23 no documento eletrônico.",
+        "fe_r99_con_otros": "R-99-PN significa «nenhuma outra se aplica»: junto com outros códigos é duvidoso. Não equivale a «não responsável pelo IVA».",
+        "fe_codigo_por_validar": "O-48 e O-49 não estão entre os códigos vigentes do documento eletrônico (a confirmar).",
+        "rut_falta_codigo": "Os campos afirmam algo que o RUT marcado não tem: revise o campo 53.",
+        "rut_codigo_no_vigente": "O RUT marcado usa códigos substituídos (11 ou 12).",
+        "periodicidad_cambio_a_mitad_de_anio": "Mudança de periodicidade no meio do ano: revise a procedência com o contador.",
+        "periodicidad_cambio_por_simple": "Mudança de periodicidade por entrada ou saída do SIMPLE: tem tratamento específico.",
+        "periodicidad_cambio_siguiente": "A vigência seguinte muda a periodicidade no meio do ano: revise-a também."
+      },
+      "periodo": {
+        "rango": "{desde} a {hasta}",
+        "desde": "desde {desde}",
+        "cambioTitulo": "Mudança de vigência dentro do período: revisar procedência",
+        "cambioDescripcion": "Este período tem mais de uma vigência do perfil tributário. O GO Admin não decide qual se aplica: confirme com o contador se a mudança procede.",
+        "sinPerfilTitulo": "Parte do período não tem perfil tributário",
+        "sinPerfilDescripcion": "Alguns dias do período não são cobertos por nenhuma vigência.",
+        "irPerfil": "Ir para o perfil"
       }
     },
     "centro": {
@@ -45420,11 +45537,11 @@
         "perfil": "Nenhuma vigência cobre hoje.",
         "nit": "A empresa não tem NIT.",
         "periodicidad_iva": "Falta a periodicidade do IVA.",
-        "regimen_simple_sin_o47": "Falta a responsabilidade O-47 do regime SIMPLE."
+        "revisar_perfil": "O perfil vigente precisa de revisão."
       },
       "vacio": {
-        "titulo": "Sem obrigações",
-        "descripcion": "O perfil deste período não gera obrigações."
+        "titulo": "Não foi possível derivar obrigações",
+        "descripcion": "Isso não significa que a empresa não tenha obrigações. Revise o perfil tributário deste período."
       },
       "columnas": {
         "obligacion": "Obrigação",
@@ -45440,28 +45557,46 @@
         "ica": "ICA e retenção de ICA",
         "inc": "Imposto sobre o consumo",
         "renta": "Imposto de renda",
-        "simple": "Regime SIMPLE",
+        "simple": "SIMPLE, declaração anual",
         "exogena": "Informação exógena",
-        "conciliacion_fiscal": "Conciliação fiscal"
+        "conciliacion_fiscal": "Conciliação fiscal",
+        "simple_anticipo": "SIMPLE, antecipação bimestral",
+        "ingresos_patrimonio": "Renda e patrimônio"
       },
       "notas": {
         "sin_autorretencion": "A estimativa não inclui a autorretenção.",
         "persona_natural_no_soportada": "Vencimento de pessoa jurídica; pessoa física ainda não.",
-        "requisitos_por_confirmar": "Confirme com o contador se a empresa é obrigada."
+        "requisitos_por_confirmar": "Confirme com o contador se a empresa é obrigada.",
+        "perfil_por_revisar": "Perfil a revisar: há dados não definidos.",
+        "iva_anual_simple": "IVA anual consolidado do SIMPLE, separado das antecipações bimestrais.",
+        "anticipo_simple": "Antecipação do SIMPLE; o IVA anual vai à parte.",
+        "regimen_especial": "Regime tributário especial: confirme formulários e anexos com o contador.",
+        "cambio_vigencia_en_periodo": "Mais de uma vigência neste período: revisar procedência.",
+        "periodo_sin_perfil_completo": "Parte do período não tem perfil."
       },
       "vence": {
-        "sinCargar": "Calendário {anio} não carregado",
         "sinNit": "Falta o NIT",
-        "noEncontrado": "Não está no calendário",
         "municipal": "Confirmar com o município",
-        "pendienteActivar": "Calendário pendente"
+        "pendienteActivar": "Calendário pendente",
+        "incompleto": "Calendário {anio} incompleto: não é possível determinar vencimentos",
+        "incompletoObligacion": "Calendário {anio} incompleto: falta esta data"
       },
       "verBorrador": "Ver rascunho",
       "verReporte": "Ver relatório",
       "informes": "Relatórios:",
       "informeImpuestos": "Impostos",
       "informeRetenciones": "Retenções praticadas",
-      "certificados": "Certificados de retenção"
+      "certificados": "Certificados de retenção",
+      "calendarioIncompleto": {
+        "titulo": "Calendário {anio} incompleto: não é possível determinar vencimentos",
+        "descripcion": "Faltam datas do calendário oficial. Isso não significa que a empresa não tenha obrigações: as abaixo continuam vigentes e seu vencimento fica por determinar."
+      },
+      "cambioVigencia": "Mudança de vigência: revisar procedência",
+      "cambioVigenciaAviso": {
+        "titulo": "Mudança de vigência dentro do período: revisar procedência",
+        "descripcion": "Algum período tem mais de uma vigência do perfil. O GO Admin não usa o perfil do último dia nem calcula o valor: confirme com o contador se a mudança procede."
+      },
+      "revisarPerfil": "Revisar perfil"
     },
     "iva": {
       "titulo": "Rascunho de IVA",
@@ -45616,7 +45751,7 @@
       },
       "pendiente": {
         "titulo": "Pendente de ativação",
-        "descripcion": "Os adiantamentos a fornecedores precisam de uma atualização do banco de dados que ainda não foi aplicada. Quando for ativada, você verá aqui os adiantamentos e o saldo."
+        "descripcion": "Os adiantamentos a fornecedores precisam de uma atualização do banco de dados que ainda não foi aplicada (natureza, retenções e conta de detalhe). Quando for ativada, aqui você verá os adiantamentos e o saldo."
       },
       "buscar": {
         "placeholder": "Buscar fornecedor",
@@ -45639,7 +45774,8 @@
         "aplicado": "Aplicado",
         "saldo": "Saldo",
         "estado": "Status",
-        "comprobante": "Comprovante"
+        "comprobante": "Comprovante",
+        "retencion": "Retenção"
       },
       "kpis": {
         "etiqueta": "Resumo dos adiantamentos",
@@ -45654,7 +45790,8 @@
         "aplicar": "Aplicar à fatura",
         "aplicarDe": "Aplicar o adiantamento de {proveedor} a uma fatura",
         "devolver": "Registrar devolução",
-        "anular": "Anular"
+        "anular": "Anular",
+        "conciliacion": "Conciliação"
       },
       "anticipo": {
         "titulo": "Novo adiantamento a fornecedor",
@@ -45713,24 +45850,44 @@
         "quePasaBanco": "Entram {monto} em {origen}, o adiantamento fica em {saldo} e o lançamento contra a conta de adiantamentos é registrado.",
         "confirmar": "Registrar devolução",
         "confirmarMonto": "Registrar {monto}",
-        "exito": "Devolução de {monto} de {cliente} registrada."
+        "exito": "Devolução de {monto} de {cliente} registrada.",
+        "soporte": "Comprovante (depósito, recibo ou transferência)",
+        "retencionProporcional": "Se o adiantamento teve retenção, a parte que corresponde à devolução é revertida: entra no caixa ou no banco o que o fornecedor devolve."
       },
       "anular": {
         "titulo": "Anular adiantamento",
         "descripcion": "Adiantamento a {proveedor} de {monto} (comprovante {recibo}).",
-        "confirmar": "Anular adiantamento",
+        "confirmar": "Anular por erro",
         "consecuenciasTitulo": "Ao anular",
         "consecuencias": {
-          "pago": "O pagamento é anulado; se foi em dinheiro, volta à conferência do caixa.",
-          "saldo": "O saldo a favor com o fornecedor fica em zero.",
-          "asiento": "O estorno do lançamento do adiantamento é registrado."
+          "pago": "O pagamento fica anulado; se foi em dinheiro, volta à contagem do caixa.",
+          "saldo": "O saldo a favor do fornecedor fica em zero.",
+          "asiento": "Registra-se o estorno completo (também das retenções) na data do ajuste."
         },
-        "rapidos": {
-          "error": "Registrado por engano",
-          "duplicado": "Duplicado",
-          "proveedor": "O fornecedor não o recebeu"
+        "exito": "O adiantamento a {proveedor} foi anulado.",
+        "pregunta": "O que aconteceu com o dinheiro?",
+        "soloSiNoOcurrio": "Só se anula se o desembolso não ocorreu.",
+        "opciones": {
+          "noOcurrio": {
+            "titulo": "O desembolso não ocorreu",
+            "ayuda": "Foi registrado por erro: o dinheiro nunca saiu (transferência rejeitada, registro duplicado)."
+          },
+          "siSalio": {
+            "titulo": "O dinheiro saiu para o fornecedor",
+            "ayuda": "Anular não pode devolver o dinheiro ao caixa ou ao banco."
+          }
         },
-        "exito": "O adiantamento a {proveedor} foi anulado."
+        "siSalio": {
+          "titulo": "Não se anula",
+          "descripcion": "Se o dinheiro saiu e não voltou, continua sendo um direito perante o fornecedor. Se o fornecedor o devolveu, registre a devolução com o comprovante.",
+          "mantener": "Manter o adiantamento"
+        },
+        "motivo": "Motivo",
+        "motivoPlaceholder": "Por que o desembolso não ocorreu",
+        "soporte": "Comprovante da correção",
+        "soporteAyuda": "Por exemplo: extrato com a rejeição, número do registro duplicado.",
+        "fechaAjuste": "Data do ajuste",
+        "fechaAjusteAyuda": "A do documento que comprova a correção. Não se altera a data original nem um período fechado."
       },
       "validacion": {
         "vacio": "Digite um valor maior que zero.",
@@ -45740,7 +45897,12 @@
         "sucursal": "Escolha a filial.",
         "metodo": "Escolha a forma de pagamento.",
         "referencia": "Esta forma exige referência.",
-        "motivo": "Escreva o motivo (mínimo 3 caracteres)."
+        "motivo": "Escreva o motivo (mínimo 3 caracteres).",
+        "naturaleza": "Escolha a natureza do adiantamento.",
+        "tarifaIva": "Escolha o IVA da operação.",
+        "conceptoFuente": "Escolha o conceito de retenção na fonte.",
+        "soporte": "Escreva o comprovante (mínimo 3 caracteres).",
+        "fechaAjuste": "Escolha uma data que não seja futura."
       },
       "errores": {
         "no_autenticado": "Sua sessão terminou. Entre novamente.",
@@ -45785,8 +45947,111 @@
         "proveedor_no_encontrado": "O fornecedor não foi encontrado.",
         "proveedor_distinto": "A fatura é de outro fornecedor.",
         "cuenta_no_encontrada": "A conta a pagar não foi encontrada.",
-        "sin_cuenta_anticipos": "Falta a conta de adiantamentos a fornecedores (1330): configure-a em Configuração contábil.",
-        "sin_cuenta_por_pagar": "Falta a regra contábil de pagamento a fornecedores."
+        "sin_cuenta_anticipos": "Falta a conta de detalhe de adiantamentos a fornecedores: defina-a em Configuração contábil.",
+        "sin_cuenta_por_pagar": "Falta a regra contábil de pagamento a fornecedores.",
+        "naturaleza_obligatoria": "Escolha a natureza do adiantamento.",
+        "tarifa_iva_obligatoria": "Escolha o IVA da operação.",
+        "tarifa_iva_invalida": "A organização não tem essa alíquota de IVA.",
+        "concepto_retencion_invalido": "O conceito de retenção não é válido.",
+        "concepto_retefuente_obligatorio": "Escolha o conceito de retenção na fonte.",
+        "retencion_excede_monto": "As retenções igualam ou superam o valor do adiantamento.",
+        "cuenta_anticipos_no_configurada": "Pendência contábil: defina a conta de detalhe de adiantamentos a fornecedores.",
+        "cuenta_anticipos_no_detalle": "Pendência contábil: a conta de adiantamentos configurada não é uma subconta de detalhe sob 1330.",
+        "cxp_sin_causacion": "A conta a pagar não tem um lançamento de reconhecimento vigente: não se pode aplicar.",
+        "soporte_obligatorio": "Escreva o comprovante.",
+        "anulacion_requiere_declaracion": "Só se anula se o desembolso não ocorreu.",
+        "fecha_ajuste_futura": "A data do ajuste não pode ser futura.",
+        "fecha_ajuste_anterior_al_anticipo": "A data do ajuste não pode ser anterior ao adiantamento.",
+        "periodo_cerrado": "O período contábil dessa data está fechado.",
+        "contra_asiento_no_creado": "Não foi possível registrar o estorno. Revise o plano de contas.",
+        "asiento_no_encontrado": "O lançamento do adiantamento não foi encontrado."
+      },
+      "cuentaPendiente": {
+        "titulo": "Pendência contábil: conta de adiantamentos a fornecedores",
+        "sinConfigurar": "Em Configuração contábil, defina a conta «Adiantamentos a fornecedores» com uma subconta de detalhe sob 1330. 1330 é conta título: não se usa. Enquanto isso, não se registram adiantamentos.",
+        "sinConfigurarSugerida": "Em Configuração contábil, defina a conta «Adiantamentos a fornecedores». Seu plano já tem {sugerida}, uma subconta de detalhe sob 133005. Enquanto isso, não se registram adiantamentos.",
+        "noDetalle": "A conta configurada ({cuenta}) não é uma subconta de detalhe sob 1330. Escolha uma de detalhe em Configuração contábil; enquanto isso, não se registram adiantamentos.",
+        "configurar": "Ir para Configuração contábil"
+      },
+      "retenciones": {
+        "naturaleza": "Natureza do adiantamento",
+        "naturalezas": {
+          "financiacion": {
+            "titulo": "Adiantamento de financiamento",
+            "ayuda": "O fornecedor o amortiza com a fatura. A retenção é feita ao lançar a fatura."
+          },
+          "pago_anticipado_precio": {
+            "titulo": "Pagamento antecipado do preço",
+            "ayuda": "É parte do preço da compra. As retenções são avaliadas agora, no pagamento."
+          }
+        },
+        "tarifaIva": "IVA da operação",
+        "tarifaIvaPlaceholder": "Escolha a alíquota",
+        "sinIva": "Sem IVA",
+        "tarifa": "IVA {tarifa} %",
+        "conceptoFuente": "Conceito de retenção na fonte",
+        "conceptoPlaceholder": "Escolha o conceito",
+        "conceptoIca": "ReteICA do município",
+        "conceptoIcaAyuda": "A retenção de ICA depende da norma municipal.",
+        "icaSinConfirmar": "Não confirmada (fica pendente)",
+        "titulo": "Retenções avaliadas",
+        "completa": "Escolha o fornecedor, o valor e os dados acima para avaliar as retenções.",
+        "clases": {
+          "retefuente": "Retenção na fonte",
+          "reteiva": "ReteIVA",
+          "reteica": "ReteICA"
+        },
+        "estados": {
+          "practicar": "Aplicada",
+          "no_aplica": "Não se aplica",
+          "pendiente": "Pendente"
+        },
+        "sobreBase": "{tarifa} % sobre {base}",
+        "total": "Retenção total",
+        "girado": "Sai do caixa ou do banco",
+        "pendienteTitulo": "Pendência contábil",
+        "pendienteDescripcion": "{clases}: não foi possível avaliar com os dados de hoje. Não se assume zero: o adiantamento fica marcado para o contador revisar.",
+        "pendienteCorto": "Pendente",
+        "pendienteListadoTitulo": "{count, plural, one {# adiantamento com retenção pendente} other {# adiantamentos com retenção pendente}}",
+        "pendienteListadoDescripcion": "Faltou uma regra, o perfil tributário, os dados do fornecedor ou a norma municipal do ICA. Revise-os com o contador.",
+        "motivos": {
+          "financiacion_se_retiene_al_causar": "Adiantamento de financiamento: a retenção é feita ao lançar a fatura.",
+          "sin_perfil_tributario": "A organização não tem um perfil tributário vigente.",
+          "perfil_requiere_revision": "O perfil tributário vigente está marcado para revisão.",
+          "organizacion_no_agente_retencion": "A organização não é agente de retenção na fonte.",
+          "proveedor_autorretenedor": "O fornecedor é autorretentor.",
+          "proveedor_regimen_simple": "O fornecedor está no regime simples de tributação.",
+          "proveedor_sin_datos_fiscales": "Faltam os dados fiscais do fornecedor (regime e responsabilidades).",
+          "sin_regla_retefuente": "Não há um conceito de retenção na fonte configurado.",
+          "concepto_sin_elegir": "Escolha o conceito de retenção na fonte da operação.",
+          "sin_uvt": "Falta o valor da UVT do ano.",
+          "bajo_base_minima": "A base não atinge a base mínima do conceito.",
+          "operacion_sin_iva": "A operação não tem IVA.",
+          "organizacion_no_agente_reteiva": "A organização não é agente de retenção de IVA.",
+          "proveedor_no_responsable_iva": "O fornecedor não é responsável pelo IVA.",
+          "ambos_grandes_contribuyentes": "Entre grandes contribuintes não há retenção de IVA.",
+          "sin_regla_reteiva": "Não há uma retenção de IVA configurada.",
+          "sin_regla_reteica_municipal": "Não há uma retenção de ICA configurada para o município.",
+          "norma_municipal_sin_confirmar": "Falta confirmar a norma municipal do ICA: escolha a retenção do município.",
+          "valor_cero": "A retenção dá zero.",
+          "cuenta_retencion_no_valida": "A conta da retenção não é de movimento no plano."
+        }
+      },
+      "conciliacion": {
+        "archivo": "conciliacao-adiantamentos-fornecedores.csv",
+        "exito": "Conciliação de {anticipos} adiantamentos baixada.",
+        "cuenta": "Conta",
+        "naturaleza": "Natureza",
+        "girado": "Pago",
+        "retencionDescontada": "Retenção descontada",
+        "devuelto": "Devolvido",
+        "anulado": "Anulado",
+        "saldoLibros": "Saldo contábil",
+        "cuadra": "Confere",
+        "anticipos": "Adiantamentos",
+        "auxiliarNit": "Razão por NIT",
+        "si": "Sim",
+        "no": "Não"
       }
     },
     "dinero": {
@@ -47165,6 +47430,51 @@
           "descripcion": "O GO Admin ainda não tem ativo seu app de {nombre}. Quando estiver pronto, você poderá se conectar daqui."
         },
         "error": "Não foi possível iniciar a conexão. Tente de novo."
+      },
+      "meta": {
+        "pasos": {
+          "cuenta": "Conta",
+          "activos": "Ativos",
+          "envios": "O que é enviado"
+        },
+        "subtituloActivos": "Passo 2 de 3 · Escolha suas contas",
+        "subtituloEnvios": "Passo 3 de 3 · O que é enviado à Meta",
+        "autorizado": "Autorizado",
+        "sinAutorizar": {
+          "titulo": "A conexão não tem autorização da Meta",
+          "descripcion": "Entre novamente com a Meta pelo catálogo. Se persistir, a migração de credenciais pode estar pendente de ativação."
+        },
+        "negocio": "Portfólio empresarial",
+        "cuenta": "Conta de anúncios",
+        "catalogo": "Catálogo",
+        "catalogoNuevo": "Catálogo GO Admin (novo)",
+        "catalogoNuevoAyuda": "Criamos um novo para não misturar com produtos que você já tem.",
+        "pixel": "Pixel",
+        "pixelNuevo": "Pixel GO Admin (novo)",
+        "pixelAyuda": "O que mede sua loja virtual e recebe as compras.",
+        "activar": "Ativar conexão",
+        "envioCatalogo": {
+          "titulo": "Catálogo de produtos",
+          "descripcion": "Foto, preço e estoque da loja virtual."
+        },
+        "productos": "Produtos do catálogo",
+        "productosAyuda": "Por enquanto são enviados todos os publicados na loja virtual; por categoria ou etiqueta, depois.",
+        "productosTodos": "Todos da loja virtual ({n})",
+        "productosTodosSinConteo": "Todos da loja virtual",
+        "envioCompras": {
+          "titulo": "Compras da loja virtual",
+          "descripcion": "Para saber quantas vendas cada campanha trouxe."
+        },
+        "envioProspectos": {
+          "titulo": "Leads do CRM (em construção)",
+          "descripcion": "O envio de leads para a Meta ainda não existe; será ativado quando estiver pronto."
+        },
+        "privacidad": {
+          "titulo": "Dados de clientes protegidos",
+          "descripcion": "E-mail e telefone viajam cifrados (hash) e somente de clientes que aceitaram o tratamento de dados."
+        },
+        "errorCarga": "Não foi possível ler suas contas da Meta.",
+        "errorGuardar": "Não foi possível salvar. Tente novamente."
       }
     },
     "detalle": {
@@ -47252,7 +47562,7 @@
         "enBoveda": "Cofre criptografado",
         "enConexion": "Registro da conexão",
         "actualizada": "atualizada em {fecha}",
-        "nota": "Só são mostrados o prefixo e os últimos caracteres. O GO Admin nunca volta a mostrar uma chave completa."
+        "nota": "São exibidas mascaradas. «Ver» e «Copiar» as pedem ao servidor, somente para administradores, e fica registrado quem as consultou e quando."
       },
       "usadaPor": {
         "titulo": "Usada por",
@@ -47273,7 +47583,753 @@
       "confirmarDesconexion": {
         "titulo": "Desconectar {nombre}?",
         "descripcion": "As credenciais são revogadas (não podem ser recuperadas) e os meios de pagamento que a usam são desvinculados. Para reconectar, será preciso colar chaves novas."
+      },
+      "borrar": {
+        "boton": "Excluir conexão",
+        "descripcion": "Excluir remove a conexão com suas credenciais e atividade. Se já cobrou ou gerou guias, desconecte-a em vez disso.",
+        "bloqueado": "Não é possível excluir: um método de pagamento a usa. Desvincule-o primeiro em Finanças › Métodos de pagamento.",
+        "enUso": "Um método de pagamento usa esta conexão: desvincule-o primeiro em Finanças › Métodos de pagamento.",
+        "conHistoria": "A conexão já tem cobranças ou envios registrados: desconecte-a para manter o histórico.",
+        "confirmarTitulo": "Excluir «{nombre}»?",
+        "confirmarDescripcion": "A conexão, suas credenciais, webhooks e atividade são excluídos. Não é possível desfazer."
       }
+    },
+    "importar": {
+      "abrir": "Importar CSV",
+      "titulo": "Importar conexões",
+      "descripcion": "Cria conexões em rascunho a partir de um arquivo CSV. As chaves são preenchidas depois com o assistente de cada uma.",
+      "boton": "Importar ({n})",
+      "faltaConector": "Escolha o conector",
+      "faltaArchivo": "Escolha um arquivo com linhas",
+      "conector": "Conector",
+      "elegirConector": "Escolha um conector",
+      "archivo": "Arquivo CSV",
+      "plantilla": "Baixar modelo (nombre, sucursal_id, pais, ambiente)",
+      "vistaPrevia": "{n} conexões prontas para importar",
+      "sinLlaves": {
+        "titulo": "O CSV não leva chaves",
+        "descripcion": "As conexões ficam em rascunho e não cobram nem sincronizam até você colar as chaves com o assistente."
+      },
+      "resultado": "{creadas} criadas · {fallidas} com erro",
+      "error": {
+        "vacio": "O arquivo não tem linhas abaixo do cabeçalho.",
+        "sin_columna_nombre": "Falta a coluna «nombre» (ou «name»).",
+        "demasiadas_filas": "Máximo de 200 linhas por arquivo.",
+        "servidor": "Não foi possível importar. Tente novamente."
+      }
+    },
+    "credencial": {
+      "ver": "Ver",
+      "ocultar": "Ocultar",
+      "verDe": "Ver {etiqueta}",
+      "ocultarDe": "Ocultar {etiqueta}",
+      "copiarDe": "Copiar {etiqueta}",
+      "sinPermiso": "Somente um administrador pode ver as credenciais.",
+      "error": "Não foi possível mostrar a credencial.",
+      "errorCopiar": "Não foi possível copiar.",
+      "actuales": "Chaves salvas"
+    }
+  },
+  "consignacionesR4": {
+    "titulo": "Consignações",
+    "subtitulo": "Sua mercadoria em poder de um terceiro, ou de um terceiro em seu poder",
+    "errorCarga": "Não foi possível carregar as consignações.",
+    "reintentar": "Tentar novamente",
+    "sinResultados": "Nenhuma nota corresponde à pesquisa.",
+    "etiquetaFila": "Nota {numero} de {tercero}",
+    "unidadesN": "{n} un.",
+    "migas": {
+      "inventario": "Estoque",
+      "consignaciones": "Consignações"
+    },
+    "pestanas": {
+      "etiqueta": "Tipo de consignação",
+      "entregadas": "Entregues",
+      "recibidas": "Recebidas",
+      "porAceptar": "A aceitar"
+    },
+    "pendiente": {
+      "titulo": "Pendente de ativação",
+      "descripcion": "A consignação recebida e o vínculo entre organizações precisam de uma atualização do banco de dados que ainda não foi aplicada. Quando estiver ativa, aqui você verá suas notas recebidas e o que chegar de outras organizações."
+    },
+    "acciones": {
+      "ver": "Ver",
+      "liquidar": "Liquidar",
+      "recibir": "Receber mercadoria",
+      "vincular": "Vincular organização",
+      "nuevaEntregada": "Nova nota entregue",
+      "devolver": "Devolver mercadoria"
+    },
+    "buscar": {
+      "recibidas": "Buscar nota ou consignante",
+      "etiqueta": "Buscar notas recebidas"
+    },
+    "kpis": {
+      "etiqueta": "Resumo da mercadoria recebida",
+      "enTuPoder": "Em seu poder",
+      "aPrecioPactado": "A preço combinado · contas de compensação",
+      "vendidoSinLiquidar": "Vendido sem liquidar",
+      "notas": "{n, plural, =0 {Sem notas} one {# nota} other {# notas}}",
+      "remuneracion": "Sua remuneração",
+      "remuneracionDetalle": "Estimada sobre o vendido sem liquidar",
+      "porPagar": "A pagar aos consignantes",
+      "porPagarDetalle": "Saldos liquidados",
+      "recibido": "Recebido",
+      "vendido": "Vendido",
+      "sinLiquidar": "Sem liquidar: {valor}",
+      "devuelto": "Devolvido",
+      "noEsInventario": "Não é estoque próprio",
+      "unidadesValor": "{n} un. · {valor}"
+    },
+    "estados": {
+      "en_consignacion": "Em seu poder",
+      "por_liquidar": "A liquidar",
+      "liquidada": "Liquidada"
+    },
+    "estadosLiquidacion": {
+      "por_facturar": "Aguardando fatura de compra",
+      "liquidada": "Liquidada",
+      "anulada": "Anulada"
+    },
+    "origen": {
+      "goAdmin": "GO Admin",
+      "externo": "Externo"
+    },
+    "columnas": {
+      "nota": "Nota",
+      "consignante": "Consignante",
+      "contrato": "Contrato",
+      "origen": "Origem",
+      "fecha": "Data",
+      "unidades": "Unidades",
+      "enTuPoder": "Em seu poder",
+      "estado": "Status",
+      "tipo": "Tipo",
+      "de": "De",
+      "producto": "Produto",
+      "cantidad": "Quantidade",
+      "precioPactado": "Preço combinado",
+      "precioLiquidacion": "Preço de liquidação",
+      "valor": "Valor",
+      "total": "Total",
+      "productoConsignante": "Produto do consignante",
+      "tuProducto": "Seu produto",
+      "recibido": "Recebido",
+      "vendido": "Vendido",
+      "devuelto": "Devolvido",
+      "valorEnTuPoder": "Valor em seu poder",
+      "vendidoSinLiquidar": "Vendido sem liquidar",
+      "venta": "Venda",
+      "precioDueno": "Preço do dono"
+    },
+    "vacio": {
+      "recibidasTitulo": "Você não tem mercadoria de terceiros",
+      "recibidasDescripcion": "Quando um consignante deixar mercadoria para você vender, receba-a aqui. Ela não entra no seu custo nem no seu estoque contábil.",
+      "porAceptarTitulo": "Nada a aceitar",
+      "porAceptarDescripcion": "Aqui chegam as notas e liquidações enviadas pelas organizações vinculadas."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem permissão para ver as consignações",
+      "descripcion": "Peça a um administrador a permissão «Finanças · ver». Para receber, liquidar ou aceitar notas de outra organização também são necessárias «Finanças · criar» e «Estoque · receber»."
+    },
+    "avisoAjena": {
+      "titulo": "A mercadoria recebida não é seu estoque",
+      "descripcion": "É controlada fisicamente como estoque do consignante e em contas de compensação até ser vendida ou devolvida. Ao liquidar, só sua remuneração é receita."
+    },
+    "condiciones": {
+      "titulo": "Condições do contrato",
+      "elegir": "Escolha…",
+      "contrato": "Classificação do contrato",
+      "ayudaSinContrato": "Obrigatória: define o tratamento contábil e tributário. Não há opção padrão.",
+      "ayudaContrato": {
+        "intermediacion": "Mandato: a mercadoria e o recebimento são do dono; o intermediário só ganha sua remuneração.",
+        "estimatorio": "O consignatário adquire o que vende, ao vender, pelo preço estimado, e devolve o resto.",
+        "compra": "Compra real: não é consignação."
+      },
+      "contratos": {
+        "intermediacion": "Intermediação (mandato)",
+        "estimatorio": "Estimatório",
+        "compra": "Compra real"
+      },
+      "compraReal": {
+        "titulo": "A compra real não é consignação",
+        "descripcion": "Há compra desde o início: estoque próprio e obrigação com o fornecedor na aquisição, e custo de venda na venda. Registre-a com a fatura de sempre.",
+        "accion": "Ir para a fatura"
+      },
+      "precio": "Preço do dono",
+      "precios": {
+        "fijo": "Fixo",
+        "minimo": "Mínimo"
+      },
+      "remuneracion": "Remuneração",
+      "remuneraciones": {
+        "porcentaje": "Percentual",
+        "precio_liquidacion": "Preço de liquidação por produto"
+      },
+      "base": "Base do percentual",
+      "bases": {
+        "precio_pactado": "Preço combinado",
+        "precio_venta": "Preço de venda"
+      },
+      "obligacion": "Obrigação com o dono em vendas a prazo",
+      "obligacionAyuda": "Quando se deve ao dono o que foi vendido a prazo.",
+      "obligaciones": {
+        "venta": "Na venda",
+        "cobro": "No recebimento"
+      },
+      "factura": "Quem fatura ao público",
+      "parte": {
+        "consignante": "O consignante",
+        "tu": "Você",
+        "consignatario": "O consignatário"
+      },
+      "riesgos": {
+        "devoluciones": "Assume as devoluções",
+        "perdidas": "Assume as perdas",
+        "gastos": "Assume as despesas"
+      },
+      "facturaMandatario": "Na intermediação fatura o mandatário (o consignatário), por conta do dono, separando o alheio do próprio.",
+      "impuestosPorLey": "IVA e retenções não se escolhem: são determinados por lei com os fatos de cada liquidação. O que não estiver parametrizado fica como pendência contábil.",
+      "mandanteEntregadaPendiente": "Na intermediação a entrega funciona; a liquidação do lado do dono aguarda o critério do Contador.",
+      "errores": {
+        "contrato": "Escolha a classificação do contrato.",
+        "compra_real": "A compra real é registrada com a fatura, não com uma nota de consignação.",
+        "precio": "Escolha se o preço do dono é fixo ou mínimo.",
+        "remuneracion": "Escolha como se remunera.",
+        "base": "Escolha a base do percentual.",
+        "obligacion": "Escolha quando nasce a obrigação com o dono.",
+        "riesgos": "Defina quem assume devoluções, perdas e despesas."
+      }
+    },
+    "validacion": {
+      "consignante": "Escolha o consignante.",
+      "bodega": "Escolha o depósito.",
+      "lineas": "Adicione pelo menos um produto.",
+      "cantidadPrecio": "Cada produto precisa de quantidade e preço combinado maiores que zero.",
+      "precioLiquidacion": "Cada produto precisa de um preço de liquidação maior que zero e não maior que o preço combinado.",
+      "cuentaRecaudo": "Deve ser uma subconta de 8 dígitos sob 281510.",
+      "condiciones": "Complete as condições do contrato.",
+      "correo": "Digite um e-mail válido."
+    },
+    "recibir": {
+      "titulo": "Receber mercadoria em consignação",
+      "descripcion": "Não é uma compra. A mercadoria continua sendo do consignante.",
+      "confirmar": "Receber mercadoria",
+      "consignante": "Consignante",
+      "bodega": "Depósito onde você recebe",
+      "bodegaPlaceholder": "Escolha o depósito",
+      "agregarProducto": "Adicionar produto em consignação",
+      "buscarProducto": "Buscar produto",
+      "sinProductos": "Nenhum produto corresponde",
+      "productosAparte": "Os produtos em consignação ficam separados dos próprios: um produto com custo ou movimentos próprios não pode ser recebido em consignação. Se não existir, crie-o primeiro em Estoque › Produtos.",
+      "quitar": "Remover",
+      "sinLineas": "Adicione os produtos que você recebe.",
+      "cantidadDe": "Quantidade de {producto}",
+      "precioDe": "Preço combinado de {producto}",
+      "precioLiquidacionDe": "Preço de liquidação de {producto}",
+      "quitarDe": "Remover {producto}",
+      "comision": "Percentual combinado",
+      "comisionAyuda": "Sua remuneração ao liquidar, sobre a base escolhida.",
+      "cuentaRecaudo": "Subconta 281510 do consignante",
+      "cuentaRecaudoAyuda": "Para onde vai o recebimento do dono. Se ficar vazia, usa-se a da última nota dele.",
+      "vistaPrevia": "Prévia · contas de compensação",
+      "avisoTitulo": "Não afeta seu estoque nem seu custo",
+      "aviso": {
+        "intermediacion": "Os produtos entram no depósito como estoque do consignante: podem ser vendidos no PDV e na fatura de sempre, mas não somam ao seu estoque contábil. O recebimento do dono vai para a subconta 281510 dele.",
+        "estimatorio": "Os produtos entram no depósito como estoque do consignante. O que você vende, adquire ao vender: ao liquidar cria-se a fatura de compra de sempre, que você completa com o comprovante do consignante."
+      },
+      "exito": "Nota {numero} recebida de {consignante}.",
+      "motivoSerial": "Produtos com número de série ainda não são recebidos em consignação.",
+      "motivoSinStock": "O produto não controla estoque."
+    },
+    "asiento": {
+      "debito": "Débito",
+      "credito": "Crédito",
+      "contraOrden": "Contrapartida do grupo 94",
+      "ordenConsignacion": "911520 Em consignação",
+      "cuenta": "{cuenta} {nombre}",
+      "contraOrdenCorto": "Contrapartida de compensação",
+      "ordenCorto": "Em consignação",
+      "recaudoCorto": "Venda por conta de terceiros",
+      "remuneracionCorto": "Remuneração (venda por empreitada)",
+      "costoCorto": "Custo da aquisição",
+      "d": "D {valor}",
+      "c": "C {valor}",
+      "proveedores": "2205 Fornecedores (ao confirmar a fatura de compra)"
+    },
+    "vincular": {
+      "titulo": "Vincular com outra organização",
+      "descripcion": "Para enviar e receber notas e liquidações de consignação sem digitá-las de novo.",
+      "tercero": "Terceiro na sua organização",
+      "terceroAyuda": "O vínculo fica ligado a este terceiro: suas notas e liquidações chegam com ele.",
+      "correo": "E-mail do administrador da outra organização",
+      "queSeComparte": "O que se compartilha entre as duas organizações",
+      "comparte": {
+        "notas": "As notas que uma envia à outra e suas condições",
+        "productos": "Seus produtos: nome, referência, quantidade e preço combinado",
+        "movimientos": "Vendido, devolvido e em poder dessas notas, e suas liquidações",
+        "nunca": "Clientes, outros produtos, estoque, contabilidade ou usuários"
+      },
+      "si": "Sim",
+      "nunca": "Nunca",
+      "enlace": "Link de convite",
+      "enlaceAyuda": "Uso único, vence em 7 dias. Quem aceita é alguém com permissão de administrador na outra organização. Copie agora: não será mostrado de novo.",
+      "copiar": "Copiar",
+      "copiado": "Link copiado.",
+      "enviar": "Criar convite",
+      "listo": "Pronto",
+      "sinGoAdminTitulo": "A outra organização não usa o GO Admin?",
+      "sinGoAdmin": "Não é preciso vincular: registre a nota manualmente e envie o PDF da nota e de cada liquidação."
+    },
+    "devolver": {
+      "titulo": "Devolver mercadoria ao consignante",
+      "descripcion": "A mercadoria sai do seu depósito e volta para {consignante}.",
+      "confirmar": "Devolver",
+      "enTuPoder": "Em seu poder: {n}",
+      "cantidadDe": "Quantidade de {producto} a devolver",
+      "asiento": "O controle em contas de compensação é revertido pelo devolvido, a preço combinado.",
+      "exito": "Devolução registrada."
+    },
+    "detalle": {
+      "subtitulo": "Recebida em {fecha} · {contrato} · {origen}",
+      "vinculada": "Vinculada no GO Admin (nota dele {numero})",
+      "existencias": "Estoque do consignante",
+      "condiciones": "Condições do contrato",
+      "cuentasOrden": "Controle em contas de compensação",
+      "liquidaciones": "Liquidações ({n})",
+      "porcentajeSobre": "{pct} % sobre o {base}",
+      "asume": {
+        "dueno": "O dono",
+        "consignatario": "O consignatário"
+      },
+      "facturaMandatario": "Você, como mandatário, por conta do dono",
+      "factura": {
+        "consignatario": "O consignatário",
+        "consignante": "O consignante"
+      },
+      "liquidacionResumen": "Venda {venta} · remuneração {remuneracion}",
+      "vinculadaTitulo": "Vinculada com {consignante}",
+      "vinculadaDescripcion": "O consignante vê DESTA nota o recebido, vendido, devolvido e em seu poder, e recebe suas liquidações. Não vê seus clientes, seus outros produtos, seus preços nem sua contabilidade."
+    },
+    "liquidar": {
+      "titulo": "Liquidação ao consignante · {numero}",
+      "subtitulo": "{consignante} · {contrato}",
+      "miga": "Liquidação",
+      "anularUltima": "Anular a última",
+      "procesando": "Liquidando…",
+      "confirmar": "Liquidar",
+      "confirmarEstimatorio": "Liquidar e criar a fatura de compra",
+      "exito": "Liquidação registrada. Saldo do dono: {valor}.",
+      "exitoEstimatorio": "Liquidação registrada. Complete a fatura de compra com o comprovante do consignante ({valor}).",
+      "anulada": "Liquidação anulada.",
+      "sinVentas": "Não há vendas sem liquidar.",
+      "resumen": "Liquidação",
+      "venta": "Vendido, preço de venda (sem IVA)",
+      "pactado": "Vendido, a preço combinado",
+      "remuneracionPct": "Sua remuneração {pct} % {base}",
+      "remuneracionPrecio": "Sua remuneração (venda − preço de liquidação)",
+      "impuestos": "IVA e retenções",
+      "porDeterminar": "A determinar",
+      "impuestosAyuda": "Determinados por lei com os fatos da liquidação; ficam como pendência contábil.",
+      "saldoDueno": "Saldo para {consignante}",
+      "vistaPrevia": "Prévia do lançamento",
+      "notaIntermediacion": "Só a remuneração é receita. O saldo fica na subconta 281510 do dono; nunca 2205.",
+      "notaEstimatorio": "A aquisição nasce ao liquidar: a fatura de compra de sempre registra o custo, o IVA a recuperar e a conta a pagar.",
+      "bajoPrecioTitulo": "Venda abaixo do preço do dono",
+      "alLiquidar": "Ao liquidar",
+      "alLiquidarIntermediacion": "O saldo do dono é pago em Tesouraria › Dinheiro de terceiros. Se o consignante estiver vinculado, a liquidação chega ao GO Admin dele.",
+      "alLiquidarEstimatorio": "Cria-se o rascunho da fatura de compra; ao confirmá-la nasce a conta a pagar, paga em Contas a pagar (lá pode-se aplicar um adiantamento a fornecedor).",
+      "irDineroTerceros": "Ir para Dinheiro de terceiros",
+      "verFacturaCompra": "Fatura de compra",
+      "anularTitulo": "Anular a última liquidação",
+      "anularDescripcion": "Registra-se o estorno da remuneração e o vendido volta a ficar a liquidar.",
+      "anularConfirmar": "Anular liquidação"
+    },
+    "porAceptar": {
+      "tipos": {
+        "consignacion_nota": "Nota a aceitar",
+        "consignacion_liquidacion": "Liquidação recebida",
+        "consignacion_devolucion": "Devolução recebida"
+      },
+      "aceptada": "Nota {numero} recebida.",
+      "liquidacionAceptada": "Liquidação aceita e faturada.",
+      "tituloNota": "Nota de consignação a aceitar",
+      "tituloLiquidacion": "Liquidação recebida · {numero}",
+      "subtitulo": "{de} enviou pelo GO Admin · {fecha} · número dele: {numero}",
+      "estados": {
+        "enviado": "A aceitar",
+        "aceptado": "Aceita",
+        "rechazado": "Recusada",
+        "anulado": "Anulada"
+      },
+      "rechazar": "Recusar",
+      "aceptarRecibir": "Aceitar e receber",
+      "aceptarFacturar": "Aceitar e faturar",
+      "avisoNotaTitulo": "Chegou de outra organização do GO Admin",
+      "avisoNota": "Você só vê o que o consignante compartilhou nesta nota. Ao aceitar, a mercadoria fica no seu depósito como estoque de terceiros (contas de compensação, não estoque próprio) e pode ser vendida no seu PDV.",
+      "avisoLiquidacionTitulo": "O consignatário enviou para você",
+      "avisoLiquidacion": "Revise o vendido e o devolvido. Ao aceitar, faz-se o mesmo que «Faturar e fechar»: sua fatura de venda pelo vendido, a comissão aplicada e o devolvido de volta ao seu depósito. Se não conferir, recuse com o motivo.",
+      "periodicidad": "Liquidação",
+      "periodicidades": {
+        "semanal": "Semanal",
+        "quincenal": "Quinzenal",
+        "mensual": "Mensal",
+        "al_vencimiento": "No vencimento"
+      },
+      "cantidad": "{n} un.",
+      "sinPrecio": "Sem preço na nota",
+      "tuProducto": "Seu produto no catálogo",
+      "eligeProducto": "Escolha seu produto em consignação",
+      "vinculado": "Vinculado: {producto}",
+      "sinVincular": "Sem vincular",
+      "productosAparte": "Vincule cada produto a um seu de consignação (separado dos próprios). Se não existir, crie-o em Estoque › Produtos; a próxima nota chegará já vinculada.",
+      "liquidacion": "Liquidação",
+      "netoPorCobrar": "Líquido a receber",
+      "diferencias": "Diferenças com sua nota {numero}",
+      "sinDiferencias": "Sem diferenças",
+      "sinDiferenciasDetalle": "Quantidades, preços e comissão conferem com sua nota",
+      "tiposDiferencia": {
+        "linea_desconocida": "Uma linha não corresponde à sua nota",
+        "precio_bajo_pactado": "Um preço está abaixo do combinado",
+        "excede_en_su_poder": "O informado supera o que ele tem em seu poder",
+        "comision_distinta": "A comissão é diferente da sua nota",
+        "devolucion_posterior": "Inclui devoluções de vendas já liquidadas"
+      },
+      "rechazarTitulo": "Recusar com motivo",
+      "rechazarDescripcion": "O motivo chega a {de}. Nada muda em nenhuma das duas organizações.",
+      "rechazada": "Documento recusado."
+    },
+    "invitacion": {
+      "titulo": "{invita} quer se vincular com você",
+      "tituloGenerico": "Convite de vínculo",
+      "invalida": "Este convite não é válido",
+      "invalidaDescripcion": "Já foi usado, revogado ou o link está incompleto. Peça um novo a quem convidou você.",
+      "vencida": "Este convite venceu",
+      "vencidaDescripcion": "Os convites duram 7 dias. Peça um novo a quem convidou você.",
+      "subtitulo": "Convite de {creada} · vence em {vence}",
+      "noAdminTitulo": "Você precisa ser administrador",
+      "noAdmin": "Só um administrador da organização ativa pode aceitar. Se você administra outra organização, troque para ela e abra o link de novo.",
+      "aceptasEnNombre": "Você aceita em nome de {organizacion}.",
+      "tercero": "{invita} é, para você",
+      "terceroAyuda": "Vincula-se a um fornecedor seu; se não existir, crie-o antes com o nome e o CNPJ/NIT que ela compartilhou.",
+      "queVera": "O que {invita} verá de você",
+      "vera": {
+        "datos": "Seu nome, número fiscal e o usuário que aceita",
+        "notas": "O que você aceitar, vender, devolver e liquidar das notas DELA",
+        "nunca": "Seus clientes, seus preços, seu estoque e sua contabilidade"
+      },
+      "rechazar": "Recusar",
+      "aceptar": "Aceitar vínculo",
+      "aceptada": "Você ficou vinculado com {invita}.",
+      "rechazada": "Convite recusado."
+    },
+    "errores": {
+      "no_autenticado": "Sua sessão terminou. Entre novamente.",
+      "sin_permiso": "Você não tem permissão para esta ação.",
+      "sin_acceso_sucursal": "Você não tem acesso a essa filial.",
+      "organizacion_no_permitida": "A organização não corresponde à da sua sessão.",
+      "datos_invalidos": "Revise os dados e tente novamente.",
+      "pendiente_de_activar": "A consignação recebida está pendente de ativação.",
+      "clasificacion_obligatoria": "Escolha a classificação do contrato: intermediação, estimatório ou compra real.",
+      "compra_real_usa_factura": "A compra real não é consignação: registre-a com a fatura de compra.",
+      "terminos_invalidos": "Revise as condições do contrato.",
+      "clave_idempotencia_invalida": "Não foi possível identificar a operação. Tente novamente.",
+      "clave_idempotencia_reutilizada": "Esta operação já foi registrada com outros dados.",
+      "comision_invalida": "O percentual deve estar entre 0 e 100.",
+      "sin_lineas": "Não há nada a registrar.",
+      "linea_invalida": "Uma linha tem dados inválidos.",
+      "proveedor_no_encontrado": "O consignante não foi encontrado.",
+      "sucursal_invalida": "O depósito não é válido.",
+      "producto_invalido": "Um produto não é válido.",
+      "producto_sin_seguimiento": "Um produto não controla estoque.",
+      "producto_con_seriales": "Produtos com número de série ainda não são recebidos em consignação.",
+      "producto_con_variantes": "Escolha a variante, não o produto pai.",
+      "producto_propio_no_consignable": "Esse produto tem custo ou movimentos próprios: crie um produto separado para a mercadoria do consignante.",
+      "producto_de_otro_consignante": "Esse produto já é de consignação de outro consignante.",
+      "producto_otra_clasificacion": "Esse produto já está em consignação com outra classificação de contrato.",
+      "precio_liquidacion_obligatorio": "Falta o preço de liquidação (não pode superar o preço combinado).",
+      "stock_insuficiente": "Não há estoque suficiente no depósito.",
+      "excede_en_su_poder": "A quantidade supera o que está em seu poder.",
+      "sin_cuenta_orden_consignacion": "Falta a conta 911520 «Em consignação» no plano de contas. Ficou como pendência contábil.",
+      "sin_cuenta_contra_orden": "Falta uma conta de movimento do grupo 94. Ficou como pendência contábil.",
+      "sin_cuenta_recaudo_propietario": "Falta a subconta 281510 do consignante. Crie-a no plano de contas e escolha-a ao receber. Ficou como pendência contábil.",
+      "cuenta_recaudo_invalida": "A conta do recebimento deve ser uma subconta de movimento de 8 dígitos sob 281510.",
+      "sin_cuenta_remuneracion": "Falta a subconta de 8 dígitos sob 413512 para sua remuneração. Ficou como pendência contábil.",
+      "sin_cuenta_costo": "Falta a conta de custo de vendas na Configuração contábil. Ficou como pendência contábil.",
+      "nota_no_encontrada": "A nota não foi encontrada.",
+      "liquidacion_no_encontrada": "A liquidação não foi encontrada.",
+      "liquidacion_pendiente": "Há uma liquidação aguardando a fatura de compra.",
+      "liquidacion_no_es_la_ultima": "Só a última liquidação pode ser anulada.",
+      "liquidacion_anulada": "A liquidação está anulada.",
+      "liquidacion_aceptada_por_el_dueno": "O dono já aceitou esta liquidação: corrija com uma devolução ou na próxima.",
+      "anular_factura_compra_primero": "Anule primeiro a fatura de compra desta liquidação.",
+      "sin_ventas_por_liquidar": "Não há vendas a liquidar.",
+      "saldo_a_favor_del_consignatario": "As devoluções superam o vendido: o dono deve esse saldo a você. Registre-o com o Contador.",
+      "venta_bajo_precio_pactado": "Vendeu-se abaixo do preço do dono. Revise a venda ou defina com o Contador quem assume a diferença.",
+      "devolucion_estimatorio_pendiente": "No estimatório, a devolução de algo já adquirido é feita com nota de crédito da fatura de compra.",
+      "motivo_obligatorio": "Escreva o motivo.",
+      "documento_no_encontrado": "O documento não foi encontrado.",
+      "documento_no_disponible": "Este documento já não está a aceitar.",
+      "producto_sin_vincular": "Vincule todos os produtos do consignante a um seu.",
+      "vinculo_sin_proveedor": "O vínculo deve estar ligado a um fornecedor seu para receber em consignação.",
+      "vinculo_no_encontrado": "O vínculo não foi encontrado.",
+      "vinculo_inactivo": "O vínculo está suspenso.",
+      "vinculo_existente": "Já existe um vínculo com essa organização.",
+      "invitacion_invalida": "O convite não é válido.",
+      "invitacion_vencida": "O convite venceu.",
+      "misma_organizacion": "Não é possível vincular uma organização a ela mesma.",
+      "tercero_obligatorio": "Escolha o terceiro.",
+      "tercero_no_encontrado": "O terceiro não foi encontrado.",
+      "correo_invalido": "O e-mail não é válido.",
+      "demasiadas_invitaciones": "Você tem convites pendentes demais.",
+      "transicion_invalida": "Essa ação não se aplica no status atual.",
+      "factura_no_encontrada": "A fatura não foi encontrada.",
+      "factura_distinta": "A liquidação já tem outra fatura.",
+      "proveedor_distinto": "A fatura de compra é de outro fornecedor.",
+      "documento_anulado": "A fatura está anulada.",
+      "factura_compra_no_creada": "A liquidação foi registrada, mas não foi possível criar a fatura de compra. Crie-a em Faturas de compra.",
+      "asiento_no_creado": "Não foi possível registrar o lançamento. Revise o plano de contas e o período contábil.",
+      "error_desconocido": "Algo deu errado. Tente novamente."
+    }
+  },
+  "finanzasIva300": {
+    "titulo": "Formulário 300 por casa",
+    "excel": "Excel",
+    "cargando": "Calculando o rascunho…",
+    "pendienteActivar": "O rascunho por casa é ativado quando a atualização do banco de dados for aplicada. Enquanto isso, a visão por alíquota continua abaixo.",
+    "cerrar": "Fechar",
+    "verOrigen": "Ver origem ({n})",
+    "masOrigenes": "E mais {n} (baixe o Excel para ver todos).",
+    "casillaN": "Casa {n}",
+    "formularioMiles": "No formulário (em milhares): {base} · {iva}",
+    "baseIva": "Base {base} · IVA {iva}",
+    "clasificarLinea": "Classificar linha",
+    "conciliacion": "Conciliação com os livros (2408): razão {libro} = casas {casillas} + pendentes {pendientes} + outros lançamentos {otros} + arredondamento linhas/livros {redondeo}. Diferença {diferencia}.",
+    "columnas": {
+      "casilla": "Casa",
+      "concepto": "Conceito",
+      "valor": "Valor",
+      "formulario": "Formulário (milhares)",
+      "diferencia": "Diferença de arredondamento",
+      "origenes": "Origem",
+      "casillaBase": "Casa base",
+      "base": "Base",
+      "casillaIva": "Casa IVA",
+      "iva": "IVA"
+    },
+    "conceptos": {
+      "ventas_5": "Vendas tributadas a 5 %",
+      "ventas_general": "Vendas à alíquota geral",
+      "devoluciones_compras": "Devoluções de compras",
+      "compras_bienes_5": "Compras nacionais de bens a 5 %",
+      "compras_bienes_general": "Compras nacionais de bens à alíquota geral",
+      "compras_servicios_5": "Serviços nacionais a 5 %",
+      "compras_servicios_general": "Serviços nacionais à alíquota geral",
+      "devoluciones_ventas": "Devoluções de vendas"
+    },
+    "banda": {
+      "conciliado": "Rascunho conciliado com os livros — não é uma declaração nem está aprovado fiscalmente",
+      "descripcion": "“Conciliado” só diz que bate com a conta 2408. A revisão e o aval tributário são do Contador; nada é apresentado à DIAN daqui.",
+      "noConciliado": "O rascunho não concilia com os livros",
+      "diferencia": "Diferença com a conta 2408: {valor}. Revise os pendentes antes de usar estes valores."
+    },
+    "declarado": {
+      "titulo": "Período registrado como declarado",
+      "descripcion": "Formulário {numero}, apresentado em {fecha}. O que for lançado depois é sinalizado.",
+      "registrar": "Registrar como declarado",
+      "editar": "Dados da declaração",
+      "dialogoTitulo": "Registrar o período como declarado?",
+      "dialogoDescripcion": "De {desde} a {hasta}. Só registra que a empresa já apresentou o formulário; não apresenta nada nem aprova o rascunho.",
+      "guardar": "Registrar",
+      "quitar": "Remover registro",
+      "numero": "Número do formulário",
+      "fecha": "Data de apresentação"
+    },
+    "alertas": {
+      "titulo": "Operações entre períodos",
+      "entrePeriodos": "{n} nota(s) de crédito de faturas de um período anterior: vão para devoluções (42/79) neste período.",
+      "deOtroPeriodo": "{n} compra(s) de um período anterior com IVA marcado para ser descontado neste.",
+      "grabadosDespues": "{n} lançamento(s) registrados depois de declarar seu período:"
+    },
+    "resumen": {
+      "generado": "IVA gerado (58 + 59 + 66)",
+      "descontable": "IVA descontável (71 + 72 + 74 + 75 + 79)",
+      "diferencia": "Diferença preliminar",
+      "nota": "Não é o saldo a pagar: faltam as casas a preencher (saldo a favor anterior, retenções de IVA sofridas, ajustes e sanções) e os pendentes.",
+      "formulario": "Formulário: {valor}"
+    },
+    "pendientes": {
+      "titulo": "Pendentes de classificar",
+      "ninguno": "Não há pendentes neste período."
+    },
+    "motivos": {
+      "sin_clasificar": "Linhas sem classificar",
+      "tarifa_inconsistente": "A alíquota classificada não bate com o IVA da linha",
+      "sin_tipo_operacion": "Falta o tipo de operação (bens ou serviços)",
+      "operacion_especial": "Operação especial (bebidas, AIU, importação, retirada, outra)",
+      "tarifa_no_prevista": "Alíquota diferente de 5 % ou 19 %",
+      "exenta_sin_soporte": "Isenta sem fundamento nem suporte",
+      "casilla_por_confirmar": "Isentas, excluídas ou não sujeitas: casa a confirmar com o Contador",
+      "descontable_por_evaluar": "IVA de compras a avaliar (não se desconta automaticamente)",
+      "no_descontable_en_2408": "IVA marcado como não descontável mas contabilizado em 2408 (requer ajuste)",
+      "descontable_en_otro_periodo": "IVA que se desconta em outro período",
+      "sin_lineas": "Documento com lançamento mas sem linhas",
+      "no_cuadra": "As linhas não batem com os livros (mostra-se o valor dos livros)",
+      "documento_de_otro_periodo": "Documento com lançamento de um período anterior",
+      "reversa_contable": "Estorno contábil sem nota de crédito",
+      "devolucion_compra_sin_descuento": "Devolução de compra cujo IVA não foi descontado",
+      "sin_soporte": "Movimento de IVA sem suporte",
+      "otro_movimiento": "Outro movimento de IVA"
+    },
+    "lados": {
+      "generado": "Vendas",
+      "descontable": "Compras",
+      "otros": "Outros"
+    },
+    "otros": {
+      "titulo": "Outros movimentos de IVA (2408)",
+      "registrar": "Indicar natureza",
+      "cambiar": "Alterar",
+      "deducida": "deduzida pelo sistema"
+    },
+    "naturalezas": {
+      "pago_dian": "Pagamento à DIAN",
+      "traslado_auxiliares": "Transferência entre auxiliares",
+      "cierre": "Encerramento",
+      "devolucion_compra": "Devolução de compra",
+      "ajuste_procedente": "Ajuste procedente (com suporte)",
+      "importacion": "Importação",
+      "otro": "Outro",
+      "reversa_contable": "Estorno contábil",
+      "sin_soporte": "Sem suporte"
+    },
+    "destinos": {
+      "no_afecta": "não cria IVA gerado nem descontável",
+      "por_diligenciar": "vai para «a preencher»",
+      "casilla": "casas 56 e 66",
+      "pendiente": "pendente"
+    },
+    "diligenciar": {
+      "titulo": "Casas a preencher",
+      "ayuda": "O que falta para uma apuração completa. O sistema não as calcula.",
+      "porDiligenciar": "A preencher",
+      "saldo_favor_anterior": "Saldo a favor do período anterior",
+      "retenciones_iva_sufridas": "Retenções de IVA sofridas",
+      "ajustes": "Ajustes",
+      "sanciones": "Sanções"
+    },
+    "clases": {
+      "venta_pos": "Venda PDV",
+      "factura_venta": "Fatura de venda",
+      "nota_credito": "Nota de crédito",
+      "nota_debito": "Nota de débito",
+      "factura_compra": "Fatura de compra",
+      "documento_soporte": "Documento de suporte",
+      "asiento": "Lançamento"
+    },
+    "banderas": {
+      "entrePeriodos": "Entre períodos · fatura {factura}",
+      "deOtroPeriodo": "De outro período",
+      "posterior": "Lançado depois de declarar"
+    },
+    "naturaleza": {
+      "titulo": "Natureza do movimento",
+      "descripcion": "Classifica-se pelo que é, não por ser manual ou automático. Pagamento à DIAN, transferência e encerramento não criam IVA gerado nem descontável.",
+      "guardar": "Salvar natureza",
+      "campo": "Natureza",
+      "elegir": "Escolha uma natureza",
+      "factura": "Número da fatura de compra",
+      "facturaAyuda": "A fatura devolvida. As casas 56 e 66 só são usadas se seu IVA foi avaliado como descontável.",
+      "base": "Base devolvida",
+      "soporte": "Suporte",
+      "soporteAyuda": "Nota de crédito do fornecedor, recibo de pagamento ou outro documento."
+    },
+    "errores": {
+      "tratamiento_invalido": "Escolha se a linha é tributada, isenta, excluída ou não sujeita.",
+      "tarifa_invalida": "A alíquota não é válida: tributada leva alíquota maior que 0; isenta, excluída e não sujeita, 0.",
+      "tipo_operacion_invalido": "O tipo de operação não é válido.",
+      "texto_largo": "O texto excede o máximo permitido.",
+      "descontable_solo_compras": "A procedência do descontável só se aplica a compras e documento de suporte.",
+      "descontable_invalido": "Escolha a procedência do IVA descontável.",
+      "porcentaje_invalido": "O percentual descontável deve estar entre 0 e 100.",
+      "motivo_requerido": "Escreva o motivo (suporte, destinação, proporcionalidade ou oportunidade).",
+      "periodo_invalido": "A data ou o período não são válidos.",
+      "naturaleza_invalida": "Escolha a natureza do movimento.",
+      "devolucion_sin_factura": "Indique a fatura de compra devolvida e a base.",
+      "soporte_requerido": "Um ajuste procedente precisa do seu suporte.",
+      "asiento_invalido": "O lançamento não é válido.",
+      "fecha_presentacion_invalida": "A data de apresentação não pode ser anterior ao fim do período.",
+      "periodo_solapado": "Esse período se sobrepõe a outro já registrado como declarado.",
+      "sin_permiso": "Você não tem permissão para esta ação.",
+      "no_encontrado": "A linha ou o lançamento não foi encontrado na sua organização.",
+      "pendiente_activar": "Esta função é ativada quando a atualização do banco de dados for aplicada.",
+      "factura_no_encontrada": "Não há fatura de compra com esse número.",
+      "datos_invalidos": "Os dados não são válidos.",
+      "desconocido": "Não foi possível salvar. Tente novamente."
+    },
+    "clasificar": {
+      "titulo": "Dados fiscais da linha",
+      "descripcion": "A classificação fica salva na linha; alterar o produto depois não a muda. Não altera valores nem impostos.",
+      "guardar": "Salvar classificação",
+      "linea": "Linha",
+      "baseIva": "Base · IVA",
+      "sugerenciaEtiqueta": "Sugestão do produto",
+      "sugerencia": "{tratamiento} · {tarifa} % · {tipo}",
+      "sinSugerencia": "Sem sugestão (o produto não indica)",
+      "tratamiento": "Tratamento",
+      "tarifa": "Alíquota (%)",
+      "tipo": "Tipo de operação",
+      "tipoAyuda": "Bens ou serviços definem a casa; as especiais ficam pendentes.",
+      "sinTipo": "Não indicado",
+      "elegir": "Escolha",
+      "fundamento": "Fundamento",
+      "fundamentoAyuda": "Norma ou suporte (opcional exceto em isentas).",
+      "fundamentoExenta": "Obrigatório na prática: sem fundamento nem suporte, o rascunho deixa a linha pendente.",
+      "descontableTitulo": "Procedência do IVA descontável",
+      "descontableAyuda": "Avaliam-se suporte, destinação, proporcionalidade e oportunidade (ET arts. 485, 488, 490 e 496). Nunca é marcado descontável automaticamente.",
+      "descontable": "Procedência",
+      "porcentaje": "Percentual descontável (%)",
+      "periodo": "Desconta-se no período de",
+      "periodoAyuda": "Vazio = o período do documento.",
+      "motivo": "Motivo",
+      "sinClasificar": "Sem classificar",
+      "tratamientos": {
+        "gravada": "Tributada",
+        "exenta": "Isenta",
+        "excluida": "Excluída",
+        "no_sujeta": "Não sujeita"
+      },
+      "tipos": {
+        "bienes": "Bens",
+        "servicios": "Serviços",
+        "importacion": "Importação",
+        "aiu": "AIU",
+        "licores": "Bebidas alcoólicas",
+        "retiro_inventario": "Retirada de estoque",
+        "otra_especial": "Outra especial"
+      },
+      "descontables": {
+        "por_evaluar": "A avaliar",
+        "descontable": "Descontável",
+        "no_descontable": "Não descontável (ao custo ou despesa)",
+        "proporcional": "Proporcional"
+      },
+      "origenes": {
+        "sugerida": "sugerida",
+        "heredada": "da fatura creditada",
+        "manual": "confirmada"
+      }
+    },
+    "panel": {
+      "titulo": "Dados fiscais da linha",
+      "resumen": "{sinClasificar} sem classificar · {porEvaluar} a avaliar",
+      "ayuda": "Cada linha guarda sua classificação de IVA para o formulário 300. É sugerida pelo produto ao criá-la; confirme ou corrija aqui.",
+      "cargando": "Carregando linhas…",
+      "pendiente": "A classificação por linha é ativada quando a atualização do banco de dados for aplicada.",
+      "vacio": "O documento não tem linhas.",
+      "baseIva": "Base {base} · IVA {iva}",
+      "editar": "Editar",
+      "clasificar": "Classificar"
     }
   }
 }

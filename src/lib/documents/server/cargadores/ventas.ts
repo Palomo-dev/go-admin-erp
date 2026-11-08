@@ -180,7 +180,8 @@ export async function cargarVenta(
   const tipo = esNota ? 'nota-credito' : 'factura-venta';
 
   const [base, moneda, monedaBase, pagos, credito, resolucion, entorno] = await Promise.all([
-    cargarBase(sesion, factura.branch_id),
+    // H2: responsabilidades del RUT del emisor vigentes en la fecha de emisión del documento.
+    cargarBase(sesion, factura.branch_id, { fechaDocumento: factura.issue_date ?? factura.created_at ?? null }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, factura.currency),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId),
     esNota ? Promise.resolve([] as FilaPago[]) : pagosDeFactura(sesion, factura),

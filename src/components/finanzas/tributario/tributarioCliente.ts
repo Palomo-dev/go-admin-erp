@@ -6,6 +6,7 @@
  */
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { DatosEmpresa, FaltaPerfil, SolicitudPerfil, VigenciaPerfil } from '@/lib/finanzas/tributario/perfil';
+import type { AnalisisPeriodo } from '@/lib/finanzas/tributario/vigenciasPeriodo';
 import type { Obligacion, Vencimiento } from '@/lib/finanzas/tributario/obligaciones';
 import type { BorradorIva } from '@/lib/finanzas/tributario/borradorIva';
 import type { FilaCertificado, ResumenCertificados } from '@/lib/finanzas/tributario/certificados';
@@ -14,6 +15,8 @@ export class ErrorTributarioCliente extends Error {
   constructor(
     public readonly codigo: string,
     public readonly status: number,
+    /** Lo que la ruta devuelve además del código (p. ej. `bloqueos` y `advertencias` al guardar el perfil). */
+    public readonly detalle: Record<string, unknown> = {},
   ) {
     super(codigo);
   }
@@ -36,26 +39,44 @@ async function leer<T>(r: Response): Promise<T> {
   }
   if (!r.ok) {
     const c = (cuerpo ?? {}) as { codigo?: unknown; error?: unknown };
-    throw new ErrorTributarioCliente(typeof c.codigo === 'string' ? c.codigo : r.status === 403 ? 'sin_permiso' : 'desconocido', r.status);
+    throw new ErrorTributarioCliente(
+      typeof c.codigo === 'string' ? c.codigo : r.status === 403 ? 'sin_permiso' : 'desconocido',
+      r.status,
+      cuerpo && typeof cuerpo === 'object' ? (cuerpo as Record<string, unknown>) : {},
+    );
   }
   return cuerpo as T;
 }
 
 const get = <T>(ruta: string) => fetch(ruta, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras() }).then((r) => leer<T>(r));
 
+export interface CodigoCatalogoCliente {
+  codigo: string;
+  descripcion: string;
+  estado: 'pendiente_validacion' | 'validado' | 'no_vigente_por_confirmar' | 'sin_dato';
+  nota: string | null;
+  vigente: boolean;
+}
+
 export interface PerfilCliente {
   activo: boolean;
+  /** false = falta la migración que separa renta e IVA: se ve, pero no se guarda. */
+  separacionActiva: boolean;
   hoy: string;
   empresa: DatosEmpresa;
   vigencias: VigenciaPerfil[];
   vigente: VigenciaPerfil | null;
   faltan: FaltaPerfil[];
-  catalogo: { codigo: string; descripcion: string }[];
+  /** Códigos del documento electrónico. */
+  catalogo: CodigoCatalogoCliente[];
+  /** Casilla 53 del RUT. */
+  catalogoRut: CodigoCatalogoCliente[];
   puedeEditar: boolean;
 }
 
 export type ValorObligacionCliente =
   | { estado: 'calculado'; valor: number; revisar: boolean }
+  | { estado: 'revisar_procedencia' }
   | { estado: 'pendiente_activar' }
   | { estado: 'no_calculable' }
   | { estado: 'error' };
@@ -66,6 +87,7 @@ export interface CentroCliente {
   perfil: 'activo' | 'pendiente_activar' | 'sin_perfil';
   faltan: FaltaPerfil[];
   calendario: 'activo' | 'pendiente_activar';
+  calendarioIncompleto: number[];
   filas: { obligacion: Obligacion; vencimiento: Vencimiento; valor: ValorObligacionCliente }[];
 }
 
@@ -94,7 +116,9 @@ export const tributarioCliente = {
       cache: 'no-store',
       headers: cabeceras(true),
       body: JSON.stringify(datos),
-    }).then((r) => leer<{ id: string }>(r)),
+    }).then((r) => leer<{ id: string; advertencias: string[] }>(r)),
+  vigenciasPeriodo: (desde: string, hasta: string) =>
+    get<{ activo: boolean; analisis: AnalisisPeriodo | null }>(`/api/finanzas/tributario/perfil/periodo?${new URLSearchParams({ desde, hasta })}`),
   municipios: (q: string, signal?: AbortSignal) =>
     fetch(`/api/finanzas/tributario/municipios?${new URLSearchParams({ q })}`, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras(), signal }).then((r) =>
       leer<{ municipios: MunicipioOpcion[] }>(r),

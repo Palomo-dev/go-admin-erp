@@ -4,16 +4,18 @@
  * retención. Siempre con el cliente de la SESIÓN (`ctx.supabase`, RLS y
  * `auth.uid()` en las RPC) y la organización de la sesión, nunca la del cuerpo.
  *
- * Lo que depende de migraciones aún sin aplicar (20261108100000 perfil,
- * 20261108100500 calendario, 20261108101000 borrador del IVA) se detecta por
- * «tabla o función inexistente» y vuelve como `pendiente_activar`: la pantalla
- * lo dice así y nunca lo pinta como cero. Cualquier otro error se lanza.
+ * Lo que depende de migraciones aún sin aplicar (20261108101000 borrador del
+ * IVA, 20261108160000 catálogo RUT/FE, 20261108160500 renta e IVA separados) se
+ * detecta por «tabla o función inexistente» y vuelve como `pendiente_activar`:
+ * la pantalla lo dice así y nunca lo pinta como cero. Cualquier otro error se lanza.
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { nextPlainDay, plainDateToInstant, todayInTz } from '@/lib/utils/dateDisplay';
 import {
+  bloqueosDeError,
   codigoErrorGuardarPerfil,
+  contiguas,
   esObjetoInexistente,
   faltantesPerfil,
   leerVigencias,
@@ -21,18 +23,22 @@ import {
   vigenciaEn,
   type DatosEmpresa,
   type FaltaPerfil,
+  type FilaPerfil,
   type SolicitudPerfil,
   type VigenciaPerfil,
 } from '@/lib/finanzas/tributario/perfil';
+import { advertenciasSinAceptar, evaluarCombinacion } from '@/lib/finanzas/tributario/combinaciones';
+import { analizarPeriodo, type AnalisisPeriodo } from '@/lib/finanzas/tributario/vigenciasPeriodo';
 import {
   aniosCalendario,
-  derivarObligaciones,
+  calendarioIncompleto,
+  obligacionesDelCorte,
   vencimientoDe,
   type FilaCalendario,
   type Obligacion,
   type Vencimiento,
 } from '@/lib/finanzas/tributario/obligaciones';
-import { leerMes, mesAnterior, ultimoDiaDelMes } from '@/lib/finanzas/tributario/periodos';
+import { leerMes, mesAnterior } from '@/lib/finanzas/tributario/periodos';
 import { leerBorradorIva, type BorradorIva } from '@/lib/finanzas/tributario/borradorIva';
 import {
   cruzarCertificados,
@@ -49,12 +55,14 @@ export class ErrorTributario extends Error {
   constructor(
     public readonly codigo: string,
     public readonly status: number,
+    /** Datos para la pantalla (los bloqueos o las advertencias por aceptar). Nunca datos de otra organización. */
+    public readonly detalle?: Record<string, unknown>,
   ) {
     super(codigo);
   }
 }
 
-type ErrorBase = { code?: string; message?: string } | null;
+type ErrorBase = { code?: string; message?: string; details?: string | null } | null;
 
 async function zonaYHoy(ctx: Ctx): Promise<{ tz: string; hoy: string }> {
   const tz = await getOrganizationTimezone(ctx.organizationId, ctx.supabase);
@@ -70,27 +78,45 @@ function instantes(desde: string, hasta: string, tz: string): { inicio: string; 
 
 // ── Perfil ─────────────────────────────────────────────────────────────────
 
+/** Estado de validación de un código del catálogo (lo valida el Contador antes de aprobarse). */
+export type EstadoValidacionCodigo = 'pendiente_validacion' | 'validado' | 'no_vigente_por_confirmar' | 'sin_dato';
+
+export interface CodigoCatalogo {
+  codigo: string;
+  descripcion: string;
+  estado: EstadoValidacionCodigo;
+  nota: string | null;
+  vigente: boolean;
+}
+
 export interface RespuestaPerfil {
   /** false = la migración del perfil aún no está aplicada. */
   activo: boolean;
+  /** false = falta la migración 20261108160500 (renta e IVA separados): no se puede guardar. */
+  separacionActiva: boolean;
   hoy: string;
   empresa: DatosEmpresa;
   vigencias: VigenciaPerfil[];
   vigente: VigenciaPerfil | null;
   faltan: FaltaPerfil[];
-  catalogo: { codigo: string; descripcion: string }[];
+  /** Códigos del DOCUMENTO ELECTRÓNICO (`dian_fiscal_responsibilities`). */
+  catalogo: CodigoCatalogo[];
+  /** Casilla 53 del RUT (`rut_responsabilidades`); vacío si la migración del catálogo no está aplicada. */
+  catalogoRut: CodigoCatalogo[];
 }
 
+const ESTADOS_VALIDACION = new Set(['pendiente_validacion', 'validado', 'no_vigente_por_confirmar']);
+const estadoDe = (v: unknown): EstadoValidacionCodigo => (typeof v === 'string' && ESTADOS_VALIDACION.has(v) ? (v as EstadoValidacionCodigo) : 'sin_dato');
+
 export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
-  const [{ hoy }, org, catalogo, perfiles, ica] = await Promise.all([
+  const [{ hoy }, org, catalogo, catalogoRut, perfiles, ica] = await Promise.all([
     zonaYHoy(ctx),
     ctx.supabase.from('organizations').select('nit, dv, fiscal_responsibilities').eq('id', ctx.organizationId).maybeSingle(),
-    ctx.supabase.from('dian_fiscal_responsibilities').select('code, description').order('sort_order'),
-    ctx.supabase
-      .from('organization_tax_profiles')
-      .select('id, vigente_desde, vigente_hasta, regimen, responsabilidades, agente_retencion, responsable_inc, periodicidad_iva, notas')
-      .eq('organization_id', ctx.organizationId)
-      .order('vigente_desde', { ascending: false }),
+    // `*`: antes de 20261108160000 la tabla no trae estado_validacion ni nota.
+    ctx.supabase.from('dian_fiscal_responsibilities').select('*').order('sort_order'),
+    ctx.supabase.from('rut_responsabilidades').select('codigo, nombre, vigente, estado_validacion, nota').order('orden'),
+    // `*`: antes de 20261108160500 no existen las columnas de renta e IVA separados.
+    ctx.supabase.from('organization_tax_profiles').select('*').eq('organization_id', ctx.organizationId).order('vigente_desde', { ascending: false }),
     ctx.supabase
       .from('organization_tax_profile_ica')
       .select('profile_id, municipality_id, periodicidad, tarifa_por_mil, actividad')
@@ -100,11 +126,39 @@ export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
   if (catalogo.error) throw catalogo.error;
   const o = (org.data ?? {}) as { nit?: string | null; dv?: number | null; fiscal_responsibilities?: string[] | null };
   const empresa: DatosEmpresa = { nit: o.nit ?? null, dv: o.dv ?? null, responsabilidadesRut: o.fiscal_responsibilities ?? [] };
-  const listaCatalogo = ((catalogo.data ?? []) as { code: string; description: string }[]).map((c) => ({ codigo: c.code, descripcion: c.description }));
+  const listaCatalogo: CodigoCatalogo[] = ((catalogo.data ?? []) as { code: string; description: string; estado_validacion?: unknown; nota?: string | null }[]).map(
+    (c) => ({
+      codigo: c.code,
+      descripcion: c.description,
+      estado: estadoDe(c.estado_validacion),
+      nota: c.nota ?? null,
+      vigente: c.estado_validacion !== 'no_vigente_por_confirmar',
+    }),
+  );
+  if (catalogoRut.error && !esObjetoInexistente(catalogoRut.error as ErrorBase)) throw catalogoRut.error;
+  const listaRut: CodigoCatalogo[] = catalogoRut.error
+    ? []
+    : ((catalogoRut.data ?? []) as { codigo: string; nombre: string; vigente: boolean; estado_validacion: unknown; nota: string | null }[]).map((c) => ({
+        codigo: c.codigo,
+        descripcion: c.nombre,
+        estado: estadoDe(c.estado_validacion),
+        nota: c.nota,
+        vigente: c.vigente !== false,
+      }));
 
   const inactivo = esObjetoInexistente(perfiles.error as ErrorBase) || esObjetoInexistente(ica.error as ErrorBase);
   if (inactivo) {
-    return { activo: false, hoy, empresa, vigencias: [], vigente: null, faltan: faltantesPerfil(empresa, null), catalogo: listaCatalogo };
+    return {
+      activo: false,
+      separacionActiva: false,
+      hoy,
+      empresa,
+      vigencias: [],
+      vigente: null,
+      faltan: faltantesPerfil(empresa, null),
+      catalogo: listaCatalogo,
+      catalogoRut: listaRut,
+    };
   }
   if (perfiles.error) throw perfiles.error;
   if (ica.error) throw ica.error;
@@ -117,21 +171,69 @@ export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
     if (error) throw error;
     for (const m of (data ?? []) as { id: string; name: string; state_name: string | null }[]) municipios.set(m.id, { nombre: m.name, departamento: m.state_name });
   }
-  const vigencias = leerVigencias((perfiles.data ?? []) as Parameters<typeof leerVigencias>[0], filasIca, municipios);
+  const filas = (perfiles.data ?? []) as FilaPerfil[];
+  const vigencias = leerVigencias(filas, filasIca, municipios);
   const vigente = vigenciaEn(vigencias, hoy);
-  return { activo: true, hoy, empresa, vigencias, vigente, faltan: faltantesPerfil(empresa, vigente), catalogo: listaCatalogo };
+  // Con filas, la columna dice si la separación renta/IVA está aplicada; sin filas, el catálogo del RUT (misma ronda).
+  const separacionActiva = filas.length > 0 ? 'regimen_renta' in filas[0] : !catalogoRut.error;
+  return {
+    activo: true,
+    separacionActiva,
+    hoy,
+    empresa,
+    vigencias,
+    vigente,
+    faltan: faltantesPerfil(empresa, vigente),
+    catalogo: listaCatalogo,
+    catalogoRut: listaRut,
+  };
 }
 
-export async function guardarPerfil(ctx: Ctx, datos: SolicitudPerfil): Promise<{ id: string }> {
-  const { data, error } = await ctx.supabase.rpc('fn_perfil_tributario_guardar', parametrosGuardarPerfil(ctx.organizationId, datos));
+const STATUS_GUARDAR = {
+  sin_permiso: 403,
+  no_encontrado: 404,
+  vigencia_duplicada: 409,
+  pendiente_activar: 501,
+  combinacion_contradictoria: 400,
+  datos_invalidos: 400,
+  desconocido: 500,
+} as const;
+
+/**
+ * Guardar una vigencia: primero las combinaciones (bloqueos → 400 con la lista;
+ * advertencias sin aceptar → 409 con la lista), luego la RPC, que vuelve a
+ * bloquear lo contradictorio en la base.
+ */
+export async function guardarPerfil(ctx: Ctx, datos: SolicitudPerfil): Promise<{ id: string; advertencias: string[] }> {
+  const perfil = await leerPerfil(ctx);
+  if (!perfil.activo || !perfil.separacionActiva) throw new ErrorTributario('pendiente_activar', 501);
+  const propia = datos.id ? perfil.vigencias.find((v) => v.id === datos.id) : null;
+  if (datos.id && !propia) throw new ErrorTributario('no_encontrado', 404);
+  const desde = propia ? propia.vigenteDesde : datos.vigenteDesde;
+  const { anterior, siguiente } = contiguas(perfil.vigencias, desde, datos.id);
+  const r = evaluarCombinacion(datos, { vigenteDesde: desde, motivoCambioPeriodicidad: datos.motivoCambioPeriodicidad, anterior, siguiente });
+  if (r.bloqueos.length > 0) throw new ErrorTributario('combinacion_contradictoria', 400, { bloqueos: r.bloqueos, advertencias: r.advertencias });
+  const pendientes = advertenciasSinAceptar(r.advertencias, datos.advertenciasAceptadas);
+  if (pendientes.length > 0) throw new ErrorTributario('advertencias_sin_aceptar', 409, { advertencias: r.advertencias, pendientes });
+
+  const { data, error } = await ctx.supabase.rpc('fn_perfil_tributario_guardar_v2', parametrosGuardarPerfil(ctx.organizationId, datos, r.advertencias));
   if (error) {
     const codigo = codigoErrorGuardarPerfil(error as ErrorBase);
-    const status = { sin_permiso: 403, no_encontrado: 404, vigencia_duplicada: 409, pendiente_activar: 501, datos_invalidos: 400, desconocido: 500 }[codigo];
-    if (status >= 500 && codigo !== 'pendiente_activar') console.error('[tributario] fn_perfil_tributario_guardar', { organizationId: ctx.organizationId, code: (error as ErrorBase)?.code });
-    throw new ErrorTributario(codigo, status);
+    const status = STATUS_GUARDAR[codigo];
+    if (status >= 500 && codigo !== 'pendiente_activar') {
+      console.error('[tributario] fn_perfil_tributario_guardar_v2', { organizationId: ctx.organizationId, code: (error as ErrorBase)?.code });
+    }
+    throw new ErrorTributario(codigo, status, codigo === 'combinacion_contradictoria' ? { bloqueos: bloqueosDeError(error as ErrorBase) } : undefined);
   }
   if (typeof data !== 'string') throw new ErrorTributario('desconocido', 500);
-  return { id: data };
+  return { id: data, advertencias: r.advertencias };
+}
+
+/** Vigencias que tocan un periodo (aviso del borrador del IVA, P8). */
+export async function leerVigenciasDelPeriodo(ctx: Ctx, desde: string, hasta: string): Promise<{ activo: boolean; analisis: AnalisisPeriodo | null }> {
+  const perfil = await leerPerfil(ctx);
+  if (!perfil.activo) return { activo: false, analisis: null };
+  return { activo: true, analisis: analizarPeriodo(perfil.vigencias, desde, hasta) };
 }
 
 /** Municipios para el ICA (DIVIPOLA, dato público de referencia): hasta 20 por nombre. */
@@ -194,6 +296,8 @@ async function retencionesPracticadas(ctx: Ctx, desde: string, hasta: string, tz
 
 export type ValorObligacion =
   | { estado: 'calculado'; valor: number; revisar: boolean }
+  /** Más de una vigencia dentro del periodo: no se decide sola cuál aplica (P8). */
+  | { estado: 'revisar_procedencia' }
   | { estado: 'pendiente_activar' }
   | { estado: 'no_calculable' }
   | { estado: 'error' };
@@ -210,6 +314,8 @@ export interface RespuestaCentro {
   perfil: 'activo' | 'pendiente_activar' | 'sin_perfil';
   faltan: FaltaPerfil[];
   calendario: 'activo' | 'pendiente_activar';
+  /** Años con el calendario incompleto (sin fechas o sin la de alguna obligación): nunca «sin obligaciones». */
+  calendarioIncompleto: number[];
   filas: FilaCentro[];
 }
 
@@ -217,14 +323,14 @@ export async function leerCentro(ctx: Ctx, corteSolicitado: string | null): Prom
   const perfil = await leerPerfil(ctx);
   const { tz } = await zonaYHoy(ctx);
   const corte = corteSolicitado && leerMes(corteSolicitado) && corteSolicitado < perfil.hoy.slice(0, 7) ? corteSolicitado : mesAnterior(perfil.hoy);
-  const base = { corte, hoy: perfil.hoy, faltan: perfil.faltan };
+  const base = { corte, hoy: perfil.hoy, faltan: perfil.faltan, calendarioIncompleto: [] as number[] };
   if (!perfil.activo) return { ...base, perfil: 'pendiente_activar', calendario: 'pendiente_activar', filas: [] };
 
-  const [anio, mes] = leerMes(corte)!;
-  const vigente = vigenciaEn(perfil.vigencias, ultimoDiaDelMes(anio, mes));
-  if (!vigente) return { ...base, perfil: 'sin_perfil', calendario: 'pendiente_activar', filas: [] };
-
-  const obligaciones = derivarObligaciones(vigente, corte);
+  // P8: todas las vigencias que tocan los periodos, no solo la del último día del corte.
+  const obligaciones = obligacionesDelCorte(perfil.vigencias, corte);
+  if (obligaciones.length === 0 && perfil.vigencias.every((v) => v.vigenteDesde > `${corte}-31`)) {
+    return { ...base, perfil: 'sin_perfil', calendario: 'pendiente_activar', filas: [] };
+  }
   const anios = aniosCalendario(obligaciones);
   let calendario: FilaCalendario[] | null = [];
   if (anios.length > 0) {
@@ -244,6 +350,7 @@ export async function leerCentro(ctx: Ctx, corteSolicitado: string | null): Prom
   const filas = await Promise.all(
     obligaciones.map(async (o): Promise<FilaCentro> => {
       const vencimiento = vencimientoDe(o, perfil.empresa.nit, calendario);
+      if (o.notas.includes('cambio_vigencia_en_periodo')) return { obligacion: o, vencimiento, valor: { estado: 'revisar_procedencia' } };
       let valor: ValorObligacion = { estado: 'no_calculable' };
       try {
         if (o.fuente === 'borrador_iva') {
@@ -263,7 +370,8 @@ export async function leerCentro(ctx: Ctx, corteSolicitado: string | null): Prom
     }),
   );
 
-  return { ...base, perfil: 'activo', calendario: calendario === null ? 'pendiente_activar' : 'activo', filas };
+  const incompletos = Array.from(new Set(filas.map((f) => f.vencimiento).filter(calendarioIncompleto).map((v) => v.anio))).sort();
+  return { ...base, calendarioIncompleto: incompletos, perfil: 'activo', calendario: calendario === null ? 'pendiente_activar' : 'activo', filas };
 }
 
 // ── Certificados de retención ──────────────────────────────────────────────
@@ -319,7 +427,7 @@ export const SIN_CACHE = { 'Cache-Control': 'private, no-store' } as const;
 /** Error → respuesta JSON `{ error, codigo }`. Lo desconocido es 500 y queda en el log sin datos del cliente. */
 export function respuestaErrorTributario(ruta: string, err: unknown): Response {
   if (err instanceof ErrorTributario) {
-    return Response.json({ error: err.codigo, codigo: err.codigo }, { status: err.status, headers: SIN_CACHE });
+    return Response.json({ error: err.codigo, codigo: err.codigo, ...(err.detalle ?? {}) }, { status: err.status, headers: SIN_CACHE });
   }
   const e = err as { statusCode?: unknown; code?: unknown; message?: unknown } | null;
   if (e && typeof e.statusCode === 'number') {

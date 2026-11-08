@@ -385,6 +385,13 @@ export function CentroCostosPage() {
           { etiqueta: t('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
+        movil={{
+          menu: [
+            { id: 'nuevo', etiqueta: t('nuevo'), icono: Plus, onSelect: () => abrirCentro() },
+            { id: 'plantilla', etiqueta: t('aplicarPlantilla'), icono: GitFork, onSelect: abrirPlantilla },
+            { id: 'distribucion', etiqueta: t('distribucion.nueva'), icono: Shuffle, onSelect: () => abrirDistribucion() },
+          ],
+        }}
         acciones={
           <>
             <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={abrirPlantilla}>

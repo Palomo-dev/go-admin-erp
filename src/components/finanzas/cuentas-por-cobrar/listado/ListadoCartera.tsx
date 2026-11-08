@@ -363,6 +363,7 @@ export function ListadoCartera({ origen }: ListadoCarteraProps) {
             : [{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.cartera') }, { etiqueta: t('titulo') }]
         }
         debajo={<BranchBadgeActiva />}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" onClick={recargar} className={clasesBoton({ variante: 'secundario' })}>

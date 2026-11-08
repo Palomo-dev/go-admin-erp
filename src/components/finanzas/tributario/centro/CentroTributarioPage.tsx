@@ -14,8 +14,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { Download, Settings2 } from 'lucide-react';
-import { AvisoTonal, DataTable, FormField, StatusBadge, clasesBoton, useOpcionUrl, type ColumnaTabla, type TonoBadge } from '@/components/kit';
+import { useRouter } from 'next/navigation';
+import { Download, FileText, ListChecks, Settings2 } from 'lucide-react';
+import { AvisoTonal, DataTable, FormField, ListCard, StatusBadge, clasesBoton, useOpcionUrl, type AccionFila, type ColumnaTabla, type TonoBadge } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
@@ -41,6 +42,7 @@ export function CentroTributarioPage() {
   const t = useTranslations('finanzasTributarioR4.centro');
   const tc = useTranslations('finanzasTributarioR4.comun');
   const locale = useLocale();
+  const router = useRouter();
   const { formatear } = useMonedaOrganizacion();
   const { formatPlain, getToday } = useFormatDate();
   const hoy = getToday();
@@ -71,6 +73,7 @@ export function CentroTributarioPage() {
 
   const estadoFila = (f: Fila): { etiqueta: string; tono: TonoBadge } => {
     const v = f.valor;
+    if (v.estado === 'revisar_procedencia') return { etiqueta: t('cambioVigencia'), tono: 'advertencia' };
     if (v.estado === 'pendiente_activar') return { etiqueta: tc('estados.pendienteActivar'), tono: 'neutro' };
     if (v.estado === 'error') return { etiqueta: tc('estados.error'), tono: 'peligro' };
     if (v.estado === 'no_calculable') return { etiqueta: tc('estados.porConfirmar'), tono: 'advertencia' };
@@ -84,11 +87,11 @@ export function CentroTributarioPage() {
       case 'fecha':
         return formatPlain(v.fecha);
       case 'sin_cargar':
-        return t('vence.sinCargar', { anio: v.anio });
+        return t('vence.incompleto', { anio: v.anio });
       case 'sin_nit':
         return t('vence.sinNit');
       case 'no_encontrado':
-        return t('vence.noEncontrado');
+        return t('vence.incompletoObligacion', { anio: v.anio });
       case 'municipal':
         return t('vence.municipal');
       default:
@@ -102,6 +105,17 @@ export function CentroTributarioPage() {
     if (f.obligacion.fuente === 'borrador_iva') return { href: RUTAS_TRIBUTARIO.iva(f.obligacion.periodo.desde, f.obligacion.periodo.hasta), etiqueta: t('verBorrador') };
     if (f.obligacion.fuente === 'reporte_retenciones') return { href: RUTAS_TRIBUTARIO.reporteRetenciones, etiqueta: t('verReporte') };
     return null;
+  };
+
+  /** Menú de la fila (escritorio) y de la tarjeta (móvil): el detalle y, si el periodo cambió de vigencia, el perfil. */
+  const acciones = (f: Fila): AccionFila[] => {
+    const e = enlace(f);
+    const out: AccionFila[] = [];
+    if (e) out.push({ id: 'detalle', etiqueta: e.etiqueta, icono: FileText, onSelect: () => router.push(e.href) });
+    if (f.obligacion.notas.some((n) => n === 'cambio_vigencia_en_periodo' || n === 'perfil_por_revisar' || n === 'periodo_sin_perfil_completo')) {
+      out.push({ id: 'perfil', etiqueta: t('revisarPerfil'), icono: Settings2, onSelect: () => router.push(RUTAS_TRIBUTARIO.perfil) });
+    }
+    return out;
   };
 
   const columnas: ColumnaTabla<Fila>[] = [
@@ -214,14 +228,43 @@ export function CentroTributarioPage() {
 
       {datos?.perfil === 'activo' && datos.calendario === 'pendiente_activar' && <AvisoPendienteActivar descripcion={t('pendienteCalendario')} />}
 
+      {datos?.perfil === 'activo' &&
+        datos.calendarioIncompleto.map((anio) => (
+          <AvisoTonal key={anio} tono="advertencia" titulo={t('calendarioIncompleto.titulo', { anio })} descripcion={t('calendarioIncompleto.descripcion')} />
+        ))}
+
+      {datos?.perfil === 'activo' && datos.filas.some((f) => f.valor.estado === 'revisar_procedencia') && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('cambioVigenciaAviso.titulo')}
+          descripcion={t('cambioVigenciaAviso.descripcion')}
+          accion={{ etiqueta: t('revisarPerfil'), href: RUTAS_TRIBUTARIO.perfil }}
+        />
+      )}
+
       {lectura.estado !== 'error' && (!datos || datos.perfil === 'activo') && (
         <DataTable<Fila>
           etiqueta={t('titulo')}
           columnas={columnas}
           filas={datos?.filas ?? []}
-          obtenerId={(f) => f.obligacion.id}
+          obtenerId={(f) => `${f.obligacion.id}|${f.obligacion.periodo.desde}`}
           estado={lectura.estado === 'cargando' ? 'cargando' : datos && datos.filas.length === 0 ? 'vacio' : 'listo'}
-          vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion') }}
+          vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), accion: { etiqueta: t('revisarPerfil'), onClick: () => router.push(RUTAS_TRIBUTARIO.perfil) } }}
+          acciones={acciones}
+          tarjetaMovil={(f) => {
+            const e = estadoFila(f);
+            return (
+              <ListCard
+                icono={ListChecks}
+                titulo={nombre(f)}
+                subtitulo={`${etiquetaPeriodo(f.obligacion.periodo, locale)} · ${t('columnas.vence')}: ${vence(f)}`}
+                meta={f.obligacion.notas.length ? f.obligacion.notas.map((n) => t(`notas.${n}`)).join(' ') : undefined}
+                valor={valor(f)}
+                estado={<StatusBadge estado={e.etiqueta} etiqueta={e.etiqueta} tono={e.tono} />}
+                acciones={acciones(f)}
+              />
+            );
+          }}
         />
       )}
 

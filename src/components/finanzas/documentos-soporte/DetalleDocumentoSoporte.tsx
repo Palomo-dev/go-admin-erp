@@ -46,6 +46,7 @@ import { TablaVistaPrevia, vistaPreviaAsientoDocumento, type VistaPreviaAsiento 
 import type { DetalleSoporte } from '@/lib/finanzas/soporte/contratoSoporte';
 import { BADGE_DIAN, BADGE_DOCUMENTO, accionesSoporte, eliminarEnProveedorPrimero, estadoDian, estadoDocumento } from '@/lib/finanzas/soporte/soporteLogica';
 import { impuestosDeLineasSoporte, nombreMedioPago } from '@/lib/finanzas/soporte/detalleSoporteLogica';
+import { DatosFiscalesLineas } from '@/components/finanzas/tributario/iva/DatosFiscalesLineas';
 import {
   ErrorPeticionSoporte,
   descargarXmlSoporte,
@@ -278,6 +279,7 @@ export function DetalleDocumentoSoporte({ id }: { id: string }) {
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.facturacion') }, { etiqueta: t('listado.titulo'), href: RUTA }, { etiqueta: d?.referencia ?? '…' }]}
         estado={d ? BADGE_DOCUMENTO[eDoc] : null}
         insignias={d ? <StatusBadge estado={BADGE_DIAN[eDian]} etiqueta={t(`estadoDian.${eDian}`)} tamano="md" /> : null}
+        movil={{ accionesEnFila: true }}
         acciones={botones}
         cargando={cargando && !datos}
         debajo={eslabones.length > 1 ? <CadenaDocumento eslabones={eslabones} etiqueta={t('detalle.cadena')} /> : undefined}
@@ -314,6 +316,7 @@ export function DetalleDocumentoSoporte({ id }: { id: string }) {
             </Tarjeta>
 
             <DocumentoLineas lineas={lineas} modo="lectura" moneda={ctxMoneda} etiqueta={t('detalle.lineas')} estado={cargando ? 'cargando' : 'listo'} />
+            <DatosFiscalesLineas tipo="documento_soporte" id={id} />
 
             {d.observacion && (
               <Tarjeta titulo={t('detalle.observaciones')}>

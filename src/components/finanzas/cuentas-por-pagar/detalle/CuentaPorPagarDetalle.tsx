@@ -253,6 +253,7 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
         subtitulo={`${c.proveedor?.name ?? '—'} · ${td('vence', { fecha: formatDate(c.due_date) })}`}
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('titulo'), href: RUTA_CXP }, { etiqueta: c.factura?.number_ext ?? td('eslabon') }]}
         estado={estado}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             {abierta && (
@@ -381,6 +382,31 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
               />
             )}
           </Tarjeta>
+
+          {c.anticipos.length > 0 && (
+            <Tarjeta titulo={td('anticipos.titulo')} icono={Wallet}>
+              <ul className="flex flex-col divide-y divide-line pb-2">
+                {c.anticipos.map((a) => (
+                  <li key={a.id} className="flex flex-col gap-1 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-col">
+                      <span className="font-medium tabular-nums text-fg">
+                        {td('anticipos.linea', { recibo: a.recibo ?? '—', monto: formatear(a.aCuenta) })}
+                      </span>
+                      <span className="text-xs text-fg-secondary">
+                        {formatDate(a.fecha)}
+                        {a.cuenta ? ` · ${td('anticipos.cuenta', { cuenta: a.cuenta })}` : ''}
+                      </span>
+                    </div>
+                    {a.retencionDescontada > 0 && (
+                      <span className="text-xs text-fg-secondary">
+                        {td('anticipos.retencion', { consumo: formatear(a.consumo), retencion: formatear(a.retencionDescontada) })}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Tarjeta>
+          )}
 
           {c.programaciones.some((p) => p.status !== 'pending') && (
             <Tarjeta titulo={td('historialProgramaciones')} icono={CalendarClock}>

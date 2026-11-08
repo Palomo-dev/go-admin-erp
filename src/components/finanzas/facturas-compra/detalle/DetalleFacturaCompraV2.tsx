@@ -72,6 +72,7 @@ import { CertificadoRetencionesDialog, rangoMesDe } from '@/components/finanzas/
 import { RUTA_CXP, RUTA_PROVEEDORES, useBaseCompras } from '../rutasCompras';
 import { DialogoConfirmarCompra, DialogoRecepcionar, type RecepcionConLotes } from './DialogosCompra';
 import { useProductosConLote, useTextoErrorRecepcion } from '@/components/inventario/recepcion/LotesRecepcion';
+import { DatosFiscalesLineas } from '@/components/finanzas/tributario/iva/DatosFiscalesLineas';
 
 type DialogoAbierto = 'confirmar' | 'recepcionar' | 'anular' | 'pagar' | 'programar' | 'eliminar' | 'certificado' | null;
 
@@ -342,6 +343,57 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
     },
   ];
 
+  // Móvil (< lg): la cabecera de escritorio no se dibuja y con ella se iban TODAS
+  // las acciones. Mismos manejadores, reglas (`acciones`) y permisos: la primaria
+  // y una secundaria en la fila bajo el estado; lo demás en «⋯» del MobileHeader.
+  const primariaMovil = acciones.confirmar
+    ? { etiqueta: td('acciones.confirmar'), icono: CheckCircle2, dialogo: 'confirmar' as const }
+    : acciones.registrarPago
+      ? { etiqueta: td('acciones.pagar'), icono: Wallet, dialogo: 'pagar' as const }
+      : null;
+  const pdfEnFila = !acciones.recepcionar;
+  const accionesMovil = {
+    principales: (
+      <>
+        {primariaMovil && (
+          <button
+            type="button"
+            disabled={sinPermisoCrear}
+            title={motivoCrear}
+            aria-describedby={describeMotivo}
+            onClick={() => setDialogo(primariaMovil.dialogo)}
+            className={clasesBoton({ variante: 'primario' })}
+          >
+            <primariaMovil.icono aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {primariaMovil.etiqueta}
+          </button>
+        )}
+        {pdfEnFila ? (
+          <button type="button" onClick={() => abrirDocumento('factura-compra', f.id)} className={clasesBoton({ variante: 'secundario' })}>
+            <FileText aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {td('acciones.pdfCorto')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={sinPermisoCrear}
+            title={motivoCrear}
+            aria-describedby={describeMotivo}
+            onClick={() => setDialogo('recepcionar')}
+            className={clasesBoton({ variante: 'secundario' })}
+          >
+            <PackageCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {td('acciones.recepcionar')}
+          </button>
+        )}
+      </>
+    ),
+    menu: [
+      { id: 'imprimir', etiqueta: td('acciones.imprimir'), icono: Printer, onSelect: () => imprimirDocumento('factura-compra', f.id) },
+      ...menu.filter((a) => !(pdfEnFila && a.id === 'pdf')),
+    ],
+  };
+
   return (
     <div className="flex flex-col gap-4 lg:gap-5">
       <DocumentoCabecera
@@ -416,6 +468,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
             <RowActionsMenu orientacion="horizontal" tamano="md" titulo={td('titulo', { numero: f.number_ext })} acciones={menu} />
           </>
         }
+        accionesMovil={accionesMovil}
         debajo={<CadenaDocumento eslabones={eslabones} etiqueta={td('enlaces.titulo')} />}
       />
 
@@ -424,6 +477,7 @@ export default function DetalleFacturaCompraV2({ id }: { id: string }) {
           <Tarjeta titulo={td('lineas')} sinRelleno>
             <DocumentoLineas lineas={lineas} modo="lectura" moneda={ctxMoneda} etiqueta={td('lineas')} vacio={{ titulo: td('sinLineas') }} />
           </Tarjeta>
+          <DatosFiscalesLineas tipo="factura_compra" id={id} />
 
           <Tarjeta
             titulo={td('pagos.titulo')}

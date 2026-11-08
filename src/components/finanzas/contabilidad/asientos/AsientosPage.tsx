@@ -394,6 +394,7 @@ export function AsientosPage() {
           { etiqueta: tc('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button

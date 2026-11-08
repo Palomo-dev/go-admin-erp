@@ -315,6 +315,7 @@ export function DetalleNota({ id, tipo }: { id: string; tipo: TipoNota }) {
             <StatusBadge estado={estadoBadgeDian(extra.dian)} etiqueta={`DIAN: ${t(`dian.${extra.dian}`)}`} tamano="md" />
           ) : null
         }
+        movil={{ accionesEnFila: true }}
         acciones={botones}
         cargando={cargando && !datos}
         debajo={eslabones.length > 1 ? <CadenaDocumento eslabones={eslabones} etiqueta={t('detalle.cadena')} /> : undefined}

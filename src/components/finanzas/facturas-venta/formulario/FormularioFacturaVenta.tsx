@@ -1518,6 +1518,7 @@ function VistaNoEditable({
         estado={factura.status}
         volverA={detalle}
         migas={[{ etiqueta: t('migaListado'), href: RUTA_FACTURAS_VENTA }, { etiqueta: numero }]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <Link href={detalle} className={enlace}>

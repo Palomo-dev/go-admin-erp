@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import {
   integrationsService,
@@ -15,14 +14,11 @@ import { DetailSkeleton } from '@/components/common/PageSkeletons';
 
 export default function EventoDetallePage() {
   const params = useParams();
-  const router = useRouter();
   const eventId = params?.id as string;
-  const { toast } = useToast();
 
   const [event, setEvent] = useState<IntegrationEvent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reprocessing, setReprocessing] = useState(false);
 
   // Cargar evento
   const loadEvent = useCallback(async () => {
@@ -49,37 +45,6 @@ export default function EventoDetallePage() {
   useEffect(() => {
     loadEvent();
   }, [loadEvent]);
-
-  // Handler de reprocesar
-  const handleReprocess = async () => {
-    if (!event) return;
-
-    setReprocessing(true);
-    try {
-      const result = await integrationsService.reprocessEvent(event.id);
-
-      if (result.success) {
-        toast({
-          title: 'Evento encolado',
-          description: result.message,
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: result.message,
-        });
-      }
-    } catch (err) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'No se pudo reprocesar el evento',
-      });
-    } finally {
-      setReprocessing(false);
-    }
-  };
 
   // Estado de carga
   if (loading) {
@@ -122,10 +87,7 @@ export default function EventoDetallePage() {
   }
 
   return (
-    <EventDetail
-      event={event}
-      onReprocess={handleReprocess}
-      reprocessing={reprocessing}
-    />
+    // Sin «Reprocesar»: encolaba un integration_job que ningún proceso ejecuta (Frente INT).
+    <EventDetail event={event} />
   );
 }

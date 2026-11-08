@@ -51,7 +51,17 @@ import { NuevaNotaConsignacionDialog } from './NuevaNotaConsignacionDialog';
 
 const NS = 'finanzasTercerosR4.consignaciones';
 
-export function ListadoConsignaciones() {
+export interface ListadoConsignacionesProps {
+  /**
+   * Dentro de la pestaña «Entregadas» de Inventario › Consignaciones: sin su
+   * PageHeader (lo pone la página) y con sus acciones en la barra de la lista.
+   */
+  incrustada?: boolean;
+  /** Contador que la página incrementa para abrir «Nueva nota» (menú del celular). */
+  abrirNueva?: number;
+}
+
+export function ListadoConsignaciones({ incrustada = false, abrirNueva = 0 }: ListadoConsignacionesProps = {}) {
   const t = useTranslations(NS);
   const router = useRouter();
   const permisos = usePermisosFinanzas();
@@ -69,6 +79,10 @@ export function ListadoConsignaciones() {
   const [nueva, setNueva] = useState(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  useEffect(() => {
+    if (abrirNueva > 0) setNueva(true);
+  }, [abrirNueva]);
 
   useEffect(() => {
     let vigente = true;
@@ -123,28 +137,31 @@ export function ListadoConsignaciones() {
     error === 'sin_permiso' ? 'sinPermiso' : cargando && !datos ? 'cargando' : error ? 'error' : filas.length === 0 ? (texto || estado !== 'todos' ? 'sinResultados' : 'vacio') : 'listo';
   const puedeCrear = permisos.crear && !pendiente;
 
+  const botones = (
+    <>
+      <button type="button" onClick={exportar} disabled={filas.length === 0} className={clasesBoton({ variante: 'secundario' })}>
+        <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {t('acciones.exportar')}
+      </button>
+      {permisos.crear && (
+        <button type="button" onClick={() => setNueva(true)} disabled={pendiente} className={clasesBoton({ variante: 'primario' })}>
+          <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {t('acciones.nueva')}
+        </button>
+      )}
+    </>
+  );
+
   return (
-    <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
-      <PageHeader
+    <div className={incrustada ? 'flex flex-col gap-4' : 'flex flex-col gap-4 p-4 sm:p-6 lg:gap-5'}>
+      {incrustada && <div className="hidden justify-end gap-2 lg:flex">{botones}</div>}
+      {!incrustada && <PageHeader
         titulo={t('titulo')}
         subtitulo={t('subtitulo')}
         icono={ClipboardList}
         cargando={cargando}
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.consignacion') }, { etiqueta: t('migas.notas') }]}
-        acciones={
-          <>
-            <button type="button" onClick={exportar} disabled={filas.length === 0} className={clasesBoton({ variante: 'secundario' })}>
-              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('acciones.exportar')}
-            </button>
-            {permisos.crear && (
-              <button type="button" onClick={() => setNueva(true)} disabled={pendiente} className={clasesBoton({ variante: 'primario' })}>
-                <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                {t('acciones.nueva')}
-              </button>
-            )}
-          </>
-        }
+        acciones={botones}
         movil={{
           subtitulo: t('subtitulo'),
           accion: puedeCrear ? (
@@ -158,7 +175,7 @@ export function ListadoConsignaciones() {
             </button>
           ) : undefined,
         }}
-      />
+      />}
 
       {pendiente && <AvisoTonal tono="advertencia" rol="status" titulo={t('pendiente.titulo')} descripcion={t('pendiente.descripcion')} />}
 

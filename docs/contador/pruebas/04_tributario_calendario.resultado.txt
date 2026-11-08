@@ -1,0 +1,16 @@
+Resultado de 04_tributario_calendario.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk. Transacción revertida (rollback): la fila ficticia no quedó.
+10 verificaciones · 10 ok · 0 fallas.
+
+n  | grupo | verificación                                                     | obtenido                                                                         | ok
+---+-------+------------------------------------------------------------------+----------------------------------------------------------------------------------+---
+1  | 1     | Fechas del calendario cargadas hoy en la base                    | 0 (el Centro tributario dice «Calendario {año} sin cargar»)                      | ok
+2  | 2     | service_role (la plataforma) carga una fecha ficticia            | aceptada                                                                         | ok
+3  | 5     | Rango de dígitos al revés (7 a 3)                                | violates check constraint "tax_calendar_dates_digitos"                           | ok
+4  | 5     | Fecha sin norma (texto vacío)                                    | violates check constraint "tax_calendar_dates_norma_check"                       | ok
+5  | 5     | Segunda fecha para la misma obligación, periodo, cuota y dígitos | duplicate key value violates unique constraint "tax_calendar_dates_unico"        | ok
+6  | 3     | Usuario con sesión: lee la fecha cargada                         | 2026 iva_bimestral p5 dígito 0-0 vence 2026-11-10                                | ok
+7  | 3     | Usuario con sesión: INSERT                                       | permission denied for table tax_calendar_dates                                   | ok
+8  | 3     | Usuario con sesión: UPDATE (correr un vencimiento)               | permission denied for table tax_calendar_dates                                   | ok
+9  | 3     | Usuario con sesión: DELETE                                       | permission denied for table tax_calendar_dates                                   | ok
+10 | 4     | anon: leer el calendario                                         | permission denied for table tax_calendar_dates                                   | ok

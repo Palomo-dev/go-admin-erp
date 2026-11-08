@@ -5,6 +5,7 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import { verifyCronSecret, WebhookError } from '@/lib/security/webhookSignatures';
 import { INTEGRATION_CONNECTION_USABLE_STATUS } from '@/lib/integrations/connectionStatus';
 import { metaMarketingService } from '@/lib/services/integrations/meta';
+import { leerEnviosMeta } from '@/lib/services/integrations/conexiones/metaActivos.server';
 import { CONNECTION_NOT_FOUND } from '@/lib/services/integrations/channelManagerAccess';
 import { isUuid, resolveOrgStoreDomain } from '@/lib/services/integrations/marketingAccess';
 
@@ -75,6 +76,7 @@ const BAD_REQUEST = { error: 'Body inválido: product_ids (enteros positivos) y 
 interface MetaConnection {
   id: string;
   organization_id: number;
+  settings: unknown;
 }
 
 /**
@@ -88,7 +90,7 @@ async function findMetaConnection(
 ): Promise<MetaConnection | null> {
   let query = db
     .from('integration_connections')
-    .select('id, organization_id, integration_connectors!inner ( code )')
+    .select('id, organization_id, settings, integration_connectors!inner ( code )')
     .eq('status', INTEGRATION_CONNECTION_USABLE_STATUS);
   if (filter.organizationId != null) query = query.eq('organization_id', filter.organizationId);
   if (filter.connectionId != null) query = query.eq('id', filter.connectionId);
@@ -101,7 +103,9 @@ async function findMetaConnection(
     // Defensa en profundidad: el filtro ya lo exige.
     return filter.organizationId == null || c.organization_id === filter.organizationId;
   });
-  return found ? { id: found.id as string, organization_id: found.organization_id as number } : null;
+  return found
+    ? { id: found.id as string, organization_id: found.organization_id as number, settings: found.settings }
+    : null;
 }
 
 // ─── Servidor a servidor ─────────────────────────────────────────────────────
@@ -200,6 +204,11 @@ async function syncConnection(
 ): Promise<Response> {
   const organizationId = connection.organization_id;
   const { productIds, action } = input;
+
+  // «Qué se envía» (asistente de Meta, 85-43): con el catálogo apagado no se sincroniza nada.
+  if (!leerEnviosMeta(connection.settings).catalogo) {
+    return NextResponse.json({ success: true, synced: 0, message: 'El envío del catálogo a Meta está desactivado en la conexión' });
+  }
 
   const creds = await metaMarketingService.getCredentials(connection.id, service);
   if (!creds?.accessToken || !creds?.catalogId) {

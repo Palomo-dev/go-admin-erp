@@ -182,6 +182,7 @@ export function AsientoPendientePage({ failureId }: { failureId: number }) {
           migas={migas}
           variante="detail"
           volverA={RUTA_PENDIENTES}
+          movil={{ accionesEnFila: true }}
           acciones={
             <Link href={`${RUTA_ASIENTOS}/${fallo.source_id}`} className={clasesBoton({ variante: 'secundario' })}>
               {t('verOriginal')}
@@ -282,6 +283,7 @@ export function AsientoPendientePage({ failureId }: { failureId: number }) {
         migas={migas}
         variante="detail"
         volverA={RUTA_PENDIENTES}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" onClick={reintentar} disabled={enviando} className={clasesBoton({ variante: 'secundario' })}>

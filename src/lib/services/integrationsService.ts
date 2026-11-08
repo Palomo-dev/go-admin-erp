@@ -2,6 +2,20 @@
 
 import { supabase } from '@/lib/supabase/config';
 
+/**
+ * Columnas de los listados del navegador (Frente INT): sin `secret_ref` ni
+ * `secret`: nada de precargar secretos en listados. Para verlos, «Ver» en el detalle de la conexión
+ * (ruta del servidor, administración y auditoría).
+ */
+const COLUMNAS_CREDENCIAL = 'id, connection_id, credential_type, purpose, key_prefix, status, expires_at, rotated_at, metadata, created_at, updated_at';
+const COLUMNAS_WEBHOOK = 'id, connection_id, direction, url, events, signing_method, is_active, metadata, last_received_at, created_at, updated_at';
+const COLUMNAS_ENDPOINT = 'id, organization_id, name, target_url, events, is_active, created_at, updated_at';
+
+/** Filas leídas sin su secreto, con el campo vacío para conservar los tipos de siempre. */
+function sinSecreto<T>(filas: readonly object[], campo: string): T[] {
+  return filas.map((f) => ({ ...f, [campo]: '' }) as T);
+}
+
 // Tipos para las integraciones
 export interface IntegrationProvider {
   id: string;
@@ -703,7 +717,7 @@ class IntegrationsService {
 
       if (connError || !connection) return;
 
-      const provider = (connection.connector as any)?.provider;
+      const provider = (connection.connector as { provider?: { category?: string; code: string; name?: string } } | null)?.provider;
       if (!provider || provider.category !== 'payments') return;
 
       // Mapeo provider_code → payment_method_code
@@ -731,20 +745,40 @@ class IntegrationsService {
 
       if (!globalMethod) return;
 
-      // Crear o actualizar en organization_payment_methods
-      const { error: upsertError } = await supabase
+      // Crear o enlazar en organization_payment_methods SIN sobrescribir `settings` ni robar un
+      // método que ya cobra con otra conexión (Frente INT; antes un upsert lo pisaba todo).
+      const { data: existente } = await supabase
         .from('organization_payment_methods')
-        .upsert(
-          {
+        .select('id, settings, integration_connection_id')
+        .eq('organization_id', connection.organization_id)
+        .eq('payment_method_code', methodCode)
+        .maybeSingle();
+
+      const { error: upsertError } = existente
+        ? (existente.integration_connection_id && existente.integration_connection_id !== connectionId)
+          ? { error: null }
+          : await supabase
+              .from('organization_payment_methods')
+              .update({
+                is_active: true,
+                integration_connection_id: connectionId,
+                settings: {
+                  ...((existente.settings && typeof existente.settings === 'object' && !Array.isArray(existente.settings))
+                    ? (existente.settings as Record<string, unknown>)
+                    : {}),
+                  gateway: (provider as { name?: string }).name,
+                },
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', existente.id)
+        : await supabase.from('organization_payment_methods').insert({
             organization_id: connection.organization_id,
             payment_method_code: methodCode,
             is_active: true,
             show_on_website: true,
-            settings: { gateway: provider.name },
+            settings: { gateway: (provider as { name?: string }).name },
             integration_connection_id: connectionId,
-          },
-          { onConflict: 'organization_id,payment_method_code' }
-        );
+          });
 
       if (upsertError) {
         console.error('Error syncing payment method from connection:', upsertError);
@@ -1237,7 +1271,7 @@ class IntegrationsService {
   async getCredentials(connectionId: string): Promise<IntegrationCredential[]> {
     const { data, error } = await supabase
       .from('integration_credentials')
-      .select('*')
+      .select(COLUMNAS_CREDENCIAL)
       .eq('connection_id', connectionId)
       .order('created_at', { ascending: false });
 
@@ -1246,7 +1280,7 @@ class IntegrationsService {
       return [];
     }
 
-    return data || [];
+    return sinSecreto<IntegrationCredential>(data ?? [], 'secret_ref');
   }
 
   /**
@@ -1255,7 +1289,7 @@ class IntegrationsService {
   async getWebhooks(connectionId: string): Promise<IntegrationWebhook[]> {
     const { data, error } = await supabase
       .from('integration_webhooks')
-      .select('*')
+      .select(COLUMNAS_WEBHOOK)
       .eq('connection_id', connectionId)
       .order('created_at', { ascending: false });
 
@@ -1264,7 +1298,7 @@ class IntegrationsService {
       return [];
     }
 
-    return data || [];
+    return sinSecreto<IntegrationWebhook>(data ?? [], 'secret_ref');
   }
 
   /**
@@ -1374,7 +1408,7 @@ class IntegrationsService {
         expires_at: data.expiresAt,
         metadata: data.metadata || {},
       })
-      .select()
+      .select(COLUMNAS_CREDENCIAL)
       .single();
 
     if (error) {
@@ -1382,7 +1416,7 @@ class IntegrationsService {
       return null;
     }
 
-    return credential;
+    return credential ? sinSecreto<IntegrationCredential>([credential], 'secret_ref')[0] : null;
   }
 
   /**
@@ -1422,48 +1456,8 @@ class IntegrationsService {
     return true;
   }
 
-  /**
-   * Duplicar credencial (para crear backup/rotation rápido)
-   */
-  async duplicateCredential(
-    credentialId: string,
-    newPurpose: 'primary' | 'backup' | 'rotation' | 'legacy'
-  ): Promise<IntegrationCredential | null> {
-    // Obtener la credencial original
-    const { data: original, error: fetchError } = await supabase
-      .from('integration_credentials')
-      .select('*')
-      .eq('id', credentialId)
-      .single();
-
-    if (fetchError || !original) {
-      console.error('Error fetching credential to duplicate:', fetchError);
-      return null;
-    }
-
-    // Crear copia con nuevo purpose
-    const { data: duplicate, error: insertError } = await supabase
-      .from('integration_credentials')
-      .insert({
-        connection_id: original.connection_id,
-        credential_type: original.credential_type,
-        purpose: newPurpose,
-        secret_ref: original.secret_ref,
-        key_prefix: original.key_prefix ? `${original.key_prefix}_copy` : null,
-        status: 'active',
-        expires_at: original.expires_at,
-        metadata: { ...original.metadata, duplicated_from: credentialId },
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error duplicating credential:', insertError);
-      return null;
-    }
-
-    return duplicate;
-  }
+  // `duplicateCredential` se retiró (Frente INT): copiaba el secreto leyéndolo desde el navegador
+  // y no lo usaba ninguna pantalla. Los secretos se ven en el detalle con «Ver» (servidor y auditoría).
 
   /**
    * Revocar/desactivar credencial
@@ -1528,7 +1522,7 @@ class IntegrationsService {
   async getCredentialById(credentialId: string): Promise<IntegrationCredential | null> {
     const { data, error } = await supabase
       .from('integration_credentials')
-      .select('*')
+      .select(COLUMNAS_CREDENCIAL)
       .eq('id', credentialId)
       .single();
 
@@ -1537,7 +1531,7 @@ class IntegrationsService {
       return null;
     }
 
-    return data;
+    return data ? sinSecreto<IntegrationCredential>([data], 'secret_ref')[0] : null;
   }
 
   // ==================== WEBHOOK METHODS ====================
@@ -1568,7 +1562,7 @@ class IntegrationsService {
         is_active: true,
         metadata: webhookData.metadata || {},
       })
-      .select()
+      .select(COLUMNAS_WEBHOOK)
       .single();
 
     if (error) {
@@ -1576,7 +1570,7 @@ class IntegrationsService {
       return null;
     }
 
-    return data;
+    return data ? sinSecreto<IntegrationWebhook>([data], 'secret_ref')[0] : null;
   }
 
   /**
@@ -1608,43 +1602,8 @@ class IntegrationsService {
     return true;
   }
 
-  /**
-   * Duplicar webhook
-   */
-  async duplicateWebhook(webhookId: string): Promise<IntegrationWebhook | null> {
-    const { data: original, error: fetchError } = await supabase
-      .from('integration_webhooks')
-      .select('*')
-      .eq('id', webhookId)
-      .single();
-
-    if (fetchError || !original) {
-      console.error('Error fetching webhook to duplicate:', fetchError);
-      return null;
-    }
-
-    const { data, error } = await supabase
-      .from('integration_webhooks')
-      .insert({
-        connection_id: original.connection_id,
-        direction: original.direction,
-        url: original.url + '_copy',
-        events: original.events,
-        secret_ref: original.secret_ref,
-        signing_method: original.signing_method,
-        is_active: false,
-        metadata: { ...original.metadata, duplicated_from: webhookId },
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error duplicating webhook:', error);
-      return null;
-    }
-
-    return data;
-  }
+  // `duplicateWebhook` se retiró (Frente INT): copiaba `secret_ref` desde el navegador y no lo usaba
+  // ninguna pantalla.
 
   /**
    * Activar/desactivar webhook
@@ -1689,7 +1648,7 @@ class IntegrationsService {
   async getWebhookById(webhookId: string): Promise<IntegrationWebhook | null> {
     const { data, error } = await supabase
       .from('integration_webhooks')
-      .select('*')
+      .select(COLUMNAS_WEBHOOK)
       .eq('id', webhookId)
       .single();
 
@@ -1698,49 +1657,21 @@ class IntegrationsService {
       return null;
     }
 
-    return data;
+    return data ? sinSecreto<IntegrationWebhook>([data], 'secret_ref')[0] : null;
   }
 
   /**
-   * Probar webhook (simula un evento de prueba)
+   * «Probar» un webhook de conexión (`integration_webhooks`). Ningún receptor ni emisor lee esta
+   * tabla (análisis INTEGRACIONES-CONEXIONES): antes se registraba un evento falso con una columna
+   * inexistente. Ahora se dice la verdad. Los webhooks que sí se envían están en
+   * Integraciones › Conexiones › Desarrolladores (prueba real y firmada).
    */
   async testWebhook(webhookId: string): Promise<{ success: boolean; message: string }> {
-    const webhook = await this.getWebhookById(webhookId);
-    if (!webhook) {
-      return { success: false, message: 'Webhook no encontrado' };
-    }
-
-    // Obtener organization_id de la conexión
-    const { data: connection } = await supabase
-      .from('integration_connections')
-      .select('organization_id')
-      .eq('id', webhook.connection_id)
-      .single();
-
-    // Registrar evento de prueba
-    const { error } = await supabase.from('integration_events').insert({
-      organization_id: connection?.organization_id,
-      connection_id: webhook.connection_id,
-      source: 'webhook',
-      direction: webhook.direction,
-      event_type: 'test_event',
-      status: 'processed',
-      payload: { test: true, timestamp: new Date().toISOString() },
-      metadata: { webhook_id: webhookId, is_test: true },
-    });
-
-    if (error) {
-      console.error('Error creating test event:', error);
-      return { success: false, message: 'Error al crear evento de prueba' };
-    }
-
-    // Actualizar last_received_at
-    await supabase
-      .from('integration_webhooks')
-      .update({ last_received_at: new Date().toISOString() })
-      .eq('id', webhookId);
-
-    return { success: true, message: 'Evento de prueba enviado correctamente' };
+    void webhookId;
+    return {
+      success: false,
+      message: 'Este webhook no tiene envío automático. Los webhooks que sí se envían están en Conexiones › Desarrolladores.',
+    };
   }
 
   // ==================== EVENT METHODS ====================
@@ -1778,7 +1709,7 @@ class IntegrationsService {
     // Filtrar por proveedor si se especifica
     if (filters?.providerId) {
       connectionIds = connections
-        .filter(c => (c.connector as any)?.provider_id === filters.providerId)
+        .filter(c => (c.connector as { provider_id?: string } | null)?.provider_id === filters.providerId)
         .map(c => c.id);
     }
 
@@ -1957,7 +1888,7 @@ class IntegrationsService {
       const headers = ['ID', 'Conexión', 'Source', 'Direction', 'Tipo', 'Status', 'Fecha'];
       const rows = events.map(e => [
         e.id,
-        (e.connection as any)?.name || e.connection_id,
+        (e.connection as { name?: string } | null)?.name || e.connection_id,
         e.source,
         e.direction,
         e.event_type,
@@ -2732,7 +2663,7 @@ class IntegrationsService {
   ): Promise<WebhookEndpoint[]> {
     let query = supabase
       .from('webhook_endpoints')
-      .select('*')
+      .select(COLUMNAS_ENDPOINT)
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false });
 
@@ -2747,7 +2678,7 @@ class IntegrationsService {
       return [];
     }
 
-    return data || [];
+    return sinSecreto<WebhookEndpoint>(data ?? [], 'secret');
   }
 
   /**
@@ -2756,7 +2687,7 @@ class IntegrationsService {
   async getWebhookEndpointById(endpointId: string): Promise<WebhookEndpoint | null> {
     const { data, error } = await supabase
       .from('webhook_endpoints')
-      .select('*')
+      .select(COLUMNAS_ENDPOINT)
       .eq('id', endpointId)
       .single();
 
@@ -2765,7 +2696,7 @@ class IntegrationsService {
       return null;
     }
 
-    return data;
+    return data ? sinSecreto<WebhookEndpoint>([data], 'secret')[0] : null;
   }
 
   /**
@@ -2792,7 +2723,7 @@ class IntegrationsService {
         secret: secret,
         is_active: true,
       })
-      .select()
+      .select(COLUMNAS_ENDPOINT)
       .single();
 
     if (error) {
@@ -2800,7 +2731,8 @@ class IntegrationsService {
       return null;
     }
 
-    return { endpoint: data, secret };
+    // El secreto se generó aquí y se muestra una sola vez; la base ya no lo devuelve.
+    return { endpoint: sinSecreto<WebhookEndpoint>([data], 'secret')[0], secret };
   }
 
   /**

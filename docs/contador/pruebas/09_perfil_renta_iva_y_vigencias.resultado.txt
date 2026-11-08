@@ -1,0 +1,57 @@
+Prueba en seco 09 · P5/P8 perfil: renta e IVA separados, combinaciones, catálogo RUT vs códigos FE, vigencias y calendario · 2026-11-07 · org 374
+Migraciones 20261108140500 (H2), 20261108160000 (catálogo) y 20261108160500 (perfil) pegadas DENTRO de la transacción (no aplicadas).
+En la corrida, los textos largos del catálogo (fuente y notas) se abreviaron; los códigos, columnas, reglas y funciones son los del archivo.
+La transacción terminó en error a propósito para devolver la tabla de resultados: ROLLBACK, no quedó ningún dato
+(comprobado después: rut_responsabilidades no existe, 0 vigencias en la base, ficha de la org 374 sin cambios).
+Resultado: 39 de 39 OK.
+
+ n | verificación                                                                                         | esperado                                                                   | obtenido
+---+------------------------------------------------------------------------------------------------------+----------------------------------------------------------------------------+-----------------------------------------------------------------
+ 1 | Catálogo RUT: códigos cargados / no vigentes                                                         | 51 / {11,12}                                                               | 51 / {11,12} ✔
+ 2 | Catálogo RUT: todo pendiente de validación                                                           | 0 validados                                                                | 0 validados ✔
+ 3 | Códigos FE: estado de validación                                                                     | O-48, O-49 no_vigente_por_confirmar; resto pendiente_validacion            | O-13, O-15, O-23, O-47, R-99-PN pendiente; O-48, O-49 no_vigente_por_confirmar ✔
+ 4 | Códigos FE: descripciones sin cambio                                                                 | las 7 descripciones de hoy                                                 | iguales ✔
+ 5 | Mapeo RUT↔FE: R-99-PN sin equivalencia                                                               | 0 filas para R-99-PN; 6 en total                                           | 0 / 6 ✔
+ 6 | Migración del campo combinado: simple {O-47,O-48}                                                    | simple / responsable / gran=NULL / revisar=true                            | igual ✔
+ 7 | Migración del campo combinado: ordinario {O-48,O-13}                                                 | NULL / responsable / gran=true / revisar=true                              | igual ✔
+ 8 | Migración del campo combinado: no_responsable_iva {R-99-PN}                                          | NULL / no_responsable / gran=NULL / revisar=true                           | igual ✔
+ 9 | Migración del campo combinado: no_responsable_iva {O-48}                                             | NULL / NULL / gran=NULL / revisar=true                                     | igual ✔
+10 | Migración del campo combinado: especial {}                                                           | especial / NULL / gran=NULL / revisar=true                                 | igual ✔
+11 | Migración de datos idempotente (segunda pasada)                                                      | 0 filas                                                                    | 0 filas ✔
+12 | Válida: ordinario + responsable bimestral + gran contribuyente + agente IVA (O-13, O-23; RUT 05,13,23,48) | OK                                                                     | OK ✔
+13 | Contradictoria: no responsable con periodicidad bimestral                                            | 22023 COMBINACION_CONTRADICTORIA [no_responsable_con_periodicidad]         | igual ✔
+14 | Contradictoria: SIMPLE responsable de IVA bimestral (art. 915: anual)                                | 22023 COMBINACION_CONTRADICTORIA [simple_responsable_no_anual]             | igual ✔
+15 | Contradictoria: ordinario con periodicidad anual                                                     | 22023 COMBINACION_CONTRADICTORIA [periodicidad_anual_fuera_de_simple]      | igual ✔
+16 | Contradictoria: O-47 sin régimen SIMPLE                                                              | 22023 COMBINACION_CONTRADICTORIA [fe_o47_sin_simple]                       | igual ✔
+17 | Contradictoria: RUT 05 y 47 a la vez con SIMPLE                                                      | 22023 … [rut_regimen_renta_contradictorio,rut_varios_regimenes_renta]      | igual ✔
+18 | Contradictoria: RUT 49 con responsable de IVA                                                        | 22023 COMBINACION_CONTRADICTORIA [rut_iva_contradictorio]                  | igual ✔
+19 | Contradictoria: renta sin definir                                                                    | 22023 COMBINACION_CONTRADICTORIA [falta_regimen_renta]                     | igual ✔
+20 | Válida: R-99-PN NO equivale a no responsable (responsable de IVA con R-99-PN se acepta)              | OK                                                                         | OK ✔
+21 | Código del RUT inexistente                                                                           | 22023 RESPONSABILIDAD_RUT_INVALIDA                                         | igual ✔
+22 | Cambio bimestral → cuatrimestral el 2026-07-01 sin motivo                                            | 22023 COMBINACION_CONTRADICTORIA [periodicidad_cambio_sin_motivo]          | igual ✔
+23 | El mismo cambio con motivo «otro» (queda como advertencia aceptada)                                  | OK                                                                         | OK ✔
+24 | Cambio cuatrimestral → bimestral el 2027-01-01 (1 de enero: sin motivo)                              | OK                                                                         | OK ✔
+25 | Ingreso al SIMPLE el 2027-05-01 con IVA anual (tratamiento específico: sin motivo)                   | OK                                                                         | OK ✔
+26 | Vigencias encadenadas de la org 374                                                                  | 2024-01-01→2025-12-31 · 2026-01-01→2026-06-30 · 2026-07-01→2026-12-31 · 2027-01-01→2027-04-30 · 2027-05-01→abierta | igual ✔
+27 | Motivo guardado y campo combinado derivado                                                           | - / ordinario; - / ordinario; otro / ordinario; - / ordinario; - / simple  | igual ✔
+28 | Vigencias dentro del cuatrimestre may–ago 2026                                                       | 2                                                                          | 2 ✔
+29 | Vigencias dentro del bimestre jul–ago 2026                                                           | 1                                                                          | 1 ✔
+30 | Vigencias dentro del año 2027 (IVA anual del SIMPLE)                                                 | 2                                                                          | 2 ✔
+31 | Responsabilidades FE de un documento del 2026-12-31                                                  | {O-13,O-23}                                                                | {O-13,O-23} ✔
+32 | Responsabilidades FE de un documento del 2027-05-01 (vigencia futura, sin volver a guardar)          | {O-47}                                                                     | {O-47} ✔
+33 | Responsabilidades FE de un documento del 2027-04-30                                                  | {O-13,O-23}                                                                | {O-13,O-23} ✔
+34 | Ficha de la empresa: la vigencia futura no la cambia                                                 | {O-13,O-23} (la que rige hoy)                                              | {O-13,O-23} ✔
+35 | Los documentos expedidos no guardan responsabilidades del emisor (no hay nada que reescribir)        | 0 columnas                                                                 | 0 columnas ✔
+36 | Calendario 2026 y 2027 cargado                                                                       | 0 fechas (el Centro debe decir «incompleto», no «sin obligaciones»)        | 0 fechas ✔
+37 | La vía vieja (campo combinado) ya no está disponible para usuarios                                   | 42501 permission denied                                                    | 42501 permission denied for function fn_perfil_tributario_guardar ✔
+38 | Usuario que no es miembro                                                                            | rechazo de acceso                                                          | 42501 Acceso denegado a la organización ✔
+39 | anon (clave pública)                                                                                 | 42501 permission denied                                                    | 42501 permission denied for function fn_perfil_tributario_guardar_v2 ✔
+
+Reversión (misma fecha, también en seco): aplicar las dos migraciones y luego los dos rollbacks deja organization_tax_profiles y
+dian_fiscal_responsibilities con las mismas columnas y nulabilidad que antes, rut_responsabilidades borrada y la función vieja
+ejecutable otra vez. Una vigencia «no contribuyente» guardada con la v2 queda con regimen = 'no_responsable_iva' al revertir
+(el campo viejo no puede expresarlo; el rollback lo advierte).
+
+Lo que esta prueba NO cubre y cubre jest (src/lib/finanzas/tributario/__tests__/combinaciones.test.ts y
+src/lib/services/tributario/__tests__/tributario.server.test.ts): las advertencias (solo existen en el servidor), el aviso del
+Centro y del borrador para un período con dos vigencias, y el «Calendario {año} incompleto» en cada obligación.

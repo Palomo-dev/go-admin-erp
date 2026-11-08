@@ -14,7 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Link2, Plus } from 'lucide-react';
+import { Link2, Plus, Upload } from 'lucide-react';
 import { PageHeader, SearchInput, TabBar, idPanel, idPestana, useOpcionUrl, useParametrosUrl, clasesBoton } from '@/components/kit';
 import {
   apiConexiones,
@@ -26,6 +26,7 @@ import { FichaServicio } from './catalogo/FichaServicio';
 import { PestanaMisConexiones } from './PestanaMisConexiones';
 import { PestanaActividad } from './PestanaActividad';
 import { PestanaDesarrolladores } from './PestanaDesarrolladores';
+import { ImportarCsvDialogo } from './ImportarCsvDialogo';
 import { AsistenteConexion } from '@/components/integraciones/conexiones-v2/asistentes';
 
 const PESTANAS = ['catalogo', 'mis', 'actividad', 'desarrolladores'] as const;
@@ -45,6 +46,9 @@ export function ConexionesPagina() {
   const [error, setError] = useState<string | null>(null);
   const [ficha, setFicha] = useState<ItemCatalogo | null>(null);
   const [asistente, setAsistente] = useState<ItemCatalogo | null>(null);
+  const [asistenteConexion, setAsistenteConexion] = useState<string | undefined>(undefined);
+  const [conectores, setConectores] = useState<{ id: string; nombre: string }[]>([]);
+  const [importando, setImportando] = useState(false);
 
   const cambiarTab = (v: Pestana, extra: Record<string, string | null> = {}) =>
     url.fijar({ tab: v === 'catalogo' ? null : v, errores: null, conexion: null, ...extra });
@@ -56,6 +60,7 @@ export function ConexionesPagina() {
       const datos = await apiConexiones.listar();
       setCatalogo(datos.catalogo);
       setConexiones(datos.conexiones);
+      setConectores(datos.conectores ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('comun.errorCarga'));
     } finally {
@@ -86,13 +91,20 @@ export function ConexionesPagina() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [okOauth, errorOauth]);
 
-  // `?conectar=<id>` abre la ficha del servicio una vez cargado el catálogo.
+  // `?conectar=<id>` abre la ficha del servicio una vez cargado el catálogo. Con `&conexion=<uuid>`
+  // (regreso del OAuth de Meta) abre directamente el asistente en el paso siguiente (85-42).
   const conectar = url.leer('conectar');
+  const conexionUrl = url.leer('conexion');
   useEffect(() => {
     if (!conectar || catalogo.length === 0) return;
     const item = catalogo.find((i) => i.id === conectar || i.proveedor === conectar);
-    if (item) setFicha(item);
-    url.fijar({ conectar: null }, 'replace');
+    if (item && conexionUrl && item.asistente === 'oauth') {
+      setAsistenteConexion(conexionUrl);
+      setAsistente(item);
+    } else if (item) {
+      setFicha(item);
+    }
+    url.fijar({ conectar: null, ...(tab === 'actividad' ? {} : { conexion: null }) }, 'replace');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conectar, catalogo]);
 
@@ -108,6 +120,7 @@ export function ConexionesPagina() {
         router.push(item.enlace);
         return;
       }
+      setAsistenteConexion(undefined);
       setAsistente(item);
     },
     [router],
@@ -138,10 +151,16 @@ export function ConexionesPagina() {
         icono={Link2}
         migas={[{ etiqueta: t('comun.migaIntegraciones'), href: '/app/integraciones' }, { etiqueta: t('comun.titulo') }]}
         acciones={
-          <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => cambiarTab('catalogo')}>
-            <Plus aria-hidden="true" className="mr-1.5 size-4" />
-            {t('comun.conectar')}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => setImportando(true)}>
+              <Upload aria-hidden="true" className="mr-1.5 size-4" />
+              {t('importar.abrir')}
+            </button>
+            <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => cambiarTab('catalogo')}>
+              <Plus aria-hidden="true" className="mr-1.5 size-4" />
+              {t('comun.conectar')}
+            </button>
+          </div>
         }
         debajo={
           <div className="flex flex-col gap-3">
@@ -205,13 +224,24 @@ export function ConexionesPagina() {
         onConectar={abrirAsistente}
       />
 
+      <ImportarCsvDialogo
+        abierto={importando}
+        onAbiertoChange={setImportando}
+        conectores={conectores}
+        onImportado={() => void cargar()}
+      />
       {asistente && (
         <AsistenteConexion
           item={asistente}
           abierto={!!asistente}
-          onCerrar={() => setAsistente(null)}
+          conexionId={asistenteConexion}
+          onCerrar={() => {
+            setAsistente(null);
+            setAsistenteConexion(undefined);
+          }}
           onConectado={(conexionId) => {
             setAsistente(null);
+            setAsistenteConexion(undefined);
             void cargar();
             if (conexionId) router.push(`/app/integraciones/conexiones/${conexionId}`);
           }}

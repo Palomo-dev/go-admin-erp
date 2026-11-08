@@ -95,35 +95,8 @@ class WhatsAppClientService {
     return true;
   }
 
-  /**
-   * Obtiene las credenciales de WhatsApp desde integration_credentials
-   */
-  async getCredentials(connectionId: string): Promise<{
-    phoneNumberId: string;
-    businessAccountId: string;
-    accessToken: string;
-    webhookVerifyToken: string;
-  } | null> {
-    const { data, error } = await supabase
-      .from('integration_credentials')
-      .select('credential_type, secret_ref')
-      .eq('connection_id', connectionId)
-      .eq('status', 'active');
-
-    if (error || !data || data.length === 0) return null;
-
-    const credMap: Record<string, string> = {};
-    data.forEach((row: { credential_type: string; secret_ref: string }) => {
-      credMap[row.credential_type] = row.secret_ref;
-    });
-
-    return {
-      phoneNumberId: credMap['phone_number_id'] || '',
-      businessAccountId: credMap['business_account_id'] || '',
-      accessToken: credMap['access_token'] || '',
-      webhookVerifyToken: credMap['webhook_verify_token'] || '',
-    };
-  }
+  // `getCredentials` se retiró (Frente INT, 2026-11-07): leía `secret_ref` con el cliente del
+  // navegador y ninguna pantalla ni ruta lo usaba. Las credenciales se leen en el servidor.
 }
 
 export const whatsappClientService = new WhatsAppClientService();

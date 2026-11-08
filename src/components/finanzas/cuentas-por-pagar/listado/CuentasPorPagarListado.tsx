@@ -396,7 +396,7 @@ export default function CuentasPorPagarListado() {
             />
           </>
         }
-        movil={{ subtitulo: t('listado.subtitulo', { n: entero(total) }) }}
+        movil={{ accionesEnFila: true, subtitulo: t('listado.subtitulo', { n: entero(total) }) }}
       />
 
       <KpiStrip etiqueta={t('listado.kpis.etiqueta')} className="hidden sm:grid">

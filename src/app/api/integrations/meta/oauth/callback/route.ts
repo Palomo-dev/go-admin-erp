@@ -144,7 +144,8 @@ export async function GET(request: NextRequest) {
       `Productos sincronizados: ${setupResult.productsSynced}`
     );
 
-    return redirect(`meta_success=${successMsg}`);
+    // Frente INT: se vuelve al asistente nuevo en el paso «Activos» (85-42) de esta conexión.
+    return redirect(`meta_success=${successMsg}&conectar=meta&conexion=${encodeURIComponent(connectionId)}`);
   } catch (error) {
     console.error('Error in Meta OAuth callback:', error);
     return fail(error instanceof Error ? error.message : 'Error en el proceso de autenticación con Meta');

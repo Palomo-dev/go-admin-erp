@@ -6,10 +6,12 @@
  * pertenencia). Sin la migración 20261108120000: `{ pendiente: true }`.
  * Permiso `finance.view`.
  *
- * POST — registra un anticipo: el dinero sale como un pago real (comprobante
- * CE, payments y caja abierta si es efectivo) y queda a favor en la cuenta de
- * anticipos, en UNA RPC (`fn_anticipo_proveedor_crear`) con el cliente de la
- * sesión. Permiso `finance.create`.
+ * POST — registra un anticipo con su NATURALEZA (obligatoria) y las retenciones
+ * que la base evalúa (P1): lo girado sale como un pago real (comprobante CE,
+ * payments y caja abierta si es efectivo) y el bruto queda a favor en la cuenta
+ * de detalle configurada (P6; sin ella, 409 `cuenta_anticipos_no_configurada`),
+ * en UNA RPC (`fn_anticipo_proveedor_registrar`) con el cliente de la sesión.
+ * Permiso `finance.create`.
  *
  * La organización es la de la sesión (`withOrg`); otra en el body o la query → 403.
  */
@@ -42,7 +44,13 @@ export const GET = withOrg(async (ctx, req) => {
 export const POST = withOrg(async (ctx, req) => {
   const raw: unknown = await readOrgBody(ctx, req, { route: 'POST /api/anticipos-proveedor' });
   const parsed = crearAnticipoSchema.safeParse(sinClavesDeOrganizacion(raw));
-  if (!parsed.success) return respuestaErrorAnticipo('datos_invalidos', parsed.error.issues.map((i) => i.path.join('.')));
+  if (!parsed.success) {
+    const campos = parsed.error.issues.map((i) => i.path.join('.'));
+    // P1: la naturaleza no tiene valor por defecto; el pago anticipado exige la tarifa de IVA de la operación.
+    if (campos.includes('naturaleza')) return respuestaErrorAnticipo('naturaleza_obligatoria');
+    if (campos.includes('tarifa_iva')) return respuestaErrorAnticipo('tarifa_iva_obligatoria');
+    return respuestaErrorAnticipo('datos_invalidos', campos);
+  }
 
   if (!(await hasOrgAdminOrPermission(ctx, 'finance.create'))) {
     console.warn('[anticipos-proveedor] permiso faltante → 403', { organizationId: ctx.organizationId, userId: ctx.userId });

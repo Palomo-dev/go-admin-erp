@@ -350,6 +350,7 @@ export function CuentaBancariaDetalle({ id }: { id: string }) {
         badge={!cuenta.is_active ? <StatusBadge estado="inactive" etiqueta={t('inactiva')} tono="neutro" /> : undefined}
         migas={[{ etiqueta: tc('migas.tesoreria'), href: RUTAS_TESORERIA.movimientos }, { etiqueta: t('migaCuentas'), href: RUTAS_TESORERIA.cuentas }, { etiqueta: titulo }]}
         volverA={RUTAS_TESORERIA.cuentas}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <Link href={`${RUTA_NUEVA_CONCILIACION}?cuenta=${cuenta.id}`} className={clasesBoton({ variante: 'secundario' })}>

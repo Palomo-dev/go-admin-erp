@@ -70,7 +70,7 @@ import {
   type OrigenSaldo,
 } from '@/lib/finanzas/saldosAFavor/listadoLogica';
 import { ErrorPeticionSaldoFavor, saldosAFavorService, type RespuestaListadoSaldos } from './saldosAFavorService';
-import { textoErrorSaldo } from './textosSaldo';
+import { anularOfreceDevolver, textoErrorSaldo } from './textosSaldo';
 import { AplicarSaldoDialog } from './AplicarSaldoDialog';
 import { DevolverSaldoDialog } from './DevolverSaldoDialog';
 import { RegistrarAnticipoDialog } from './RegistrarAnticipoDialog';
@@ -123,6 +123,8 @@ export function ListadoSaldosAFavor() {
   const [anular, setAnular] = useState<FilaListadoSaldo | null>(null);
   const [anulando, setAnulando] = useState(false);
   const [errorAnular, setErrorAnular] = useState<string | null>(null);
+  // El servidor dijo que no se anula pero sí se devuelve (saldo_usado, caja cerrada…).
+  const [anularPideDevolver, setAnularPideDevolver] = useState(false);
 
   const saldoAbierto = searchParams?.get('saldo') ?? null;
   const abrirSaldo = useCallback(
@@ -290,6 +292,7 @@ export function ListadoSaldosAFavor() {
     if (!anular) return;
     setAnulando(true);
     setErrorAnular(null);
+    setAnularPideDevolver(false);
     try {
       await saldosAFavorService.anular(anular.id, motivo);
       toastSuccess(t('anular.exito', { cliente: anular.cliente ?? t('sinCliente') }));
@@ -297,6 +300,7 @@ export function ListadoSaldosAFavor() {
       recargar();
     } catch (e) {
       setErrorAnular(textoErrorSaldo(t, e));
+      setAnularPideDevolver(anularOfreceDevolver(e));
     } finally {
       setAnulando(false);
     }
@@ -643,6 +647,7 @@ export function ListadoSaldosAFavor() {
         onAbiertoChange={(v) => {
           if (anulando) return;
           setErrorAnular(null);
+          setAnularPideDevolver(false);
           if (!v) setAnular(null);
         }}
         titulo={t('anular.titulo')}
@@ -656,11 +661,13 @@ export function ListadoSaldosAFavor() {
         error={errorAnular}
         bloqueo={bloqueoAnular ? t(`anular.bloqueos.${bloqueoAnular}`) : null}
       >
-        {bloqueoAnular && anular && accionesSaldo(anular, permisosSaldo).devolver && (
+        {(bloqueoAnular || anularPideDevolver) && anular && accionesSaldo(anular, permisosSaldo).devolver && (
           <button
             type="button"
             onClick={() => {
               const s = anular;
+              setErrorAnular(null);
+              setAnularPideDevolver(false);
               setAnular(null);
               setDevolver(s);
             }}

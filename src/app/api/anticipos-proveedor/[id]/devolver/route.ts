@@ -28,7 +28,12 @@ export const POST = withOrg(async (ctx, req, routeParams) => {
 
   const raw: unknown = await readOrgBody(ctx, req, { route: 'POST /api/anticipos-proveedor/[id]/devolver' });
   const parsed = devolverAnticipoSchema.safeParse(sinClavesDeOrganizacion(raw));
-  if (!parsed.success) return respuestaErrorAnticipo('datos_invalidos', parsed.error.issues.map((i) => i.path.join('.')));
+  if (!parsed.success) {
+    const campos = parsed.error.issues.map((i) => i.path.join('.'));
+    // P7: la devolución real lleva soporte (consignación, recibo o transferencia) en `referencia`.
+    if (campos.includes('referencia')) return respuestaErrorAnticipo('soporte_obligatorio');
+    return respuestaErrorAnticipo('datos_invalidos', campos);
+  }
 
   if (!(await hasOrgAdminOrPermission(ctx, 'finance.void'))) {
     console.warn('[anticipos-proveedor/devolver] permiso faltante → 403', { organizationId: ctx.organizationId, userId: ctx.userId });

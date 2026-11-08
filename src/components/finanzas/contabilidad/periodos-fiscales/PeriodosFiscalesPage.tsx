@@ -187,6 +187,7 @@ export function PeriodosFiscalesPage() {
           { etiqueta: tc('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
+        movil={{ accionesEnFila: true }}
         acciones={
           !enError && (
             <>

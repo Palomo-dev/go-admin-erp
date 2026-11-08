@@ -1,0 +1,51 @@
+Prueba en seco 07 · H1 subcuenta de IVA por tarifa y lado · 2026-11-07 · org 374 (sede 585)
+Migración 20261108140000_iva_subcuenta_por_tarifa_y_lado.sql pegada DENTRO de la transacción (no aplicada) · terminó en ROLLBACK: no quedó ningún dato.
+Resultado: 32 de 32 verificaciones OK. Los números de asiento cambian en cada corrida.
+
+ n | escenario | verificación                                    | esperado                                   | obtenido                                   | ok
+---+-----------+-------------------------------------------------+--------------------------------------------+--------------------------------------------+----
+ 1 | fv19      | IVA del asiento por subcuenta                   | 24080501 C 57000                           | 24080501 C 57000                           | ✔
+ 2 | fv5       | IVA del asiento por subcuenta                   | 24080502 C 5000                            | 24080502 C 5000                            | ✔
+ 3 | pos19     | IVA del asiento por subcuenta                   | 24080501 C 19000                           | 24080501 C 19000                           | ✔
+ 4 | pos5      | IVA del asiento por subcuenta                   | 24080502 C 5000                            | 24080502 C 5000                            | ✔
+ 5 | fc19      | IVA del asiento por subcuenta                   | 24081001 D 190000                          | 24081001 D 190000                          | ✔
+ 6 | fc5       | IVA del asiento por subcuenta                   | 24081002 D 10000                           | 24081002 D 10000                           | ✔
+ 7 | fcmx      | IVA del asiento por subcuenta                   | 24081001 D 190000 + 24081002 D 10000       | 24081001 D 190000 + 24081002 D 10000       | ✔
+ 8 | fvmx      | IVA del asiento por subcuenta                   | 24080501 C 19000 + 24080502 C 5000         | 24080501 C 19000 + 24080502 C 5000         | ✔
+ 9 | ncmx      | IVA del asiento por subcuenta                   | 24080501 D 19000 + 24080502 D 5000         | 24080501 D 19000 + 24080502 D 5000         | ✔
+10 | nc5       | IVA del asiento por subcuenta                   | 24080502 D 5000                            | 24080502 D 5000                            | ✔
+11 | fvmx2     | IVA del asiento por subcuenta                   | 24080501 C 19000 + 24080502 C 5000         | 24080501 C 19000 + 24080502 C 5000         | ✔
+12 | ncp       | IVA del asiento por subcuenta                   | 24080502 D 5000                            | 24080502 D 5000                            | ✔
+13 | ds        | IVA del asiento por subcuenta                   | 24081001 D 57000 + 24081002 D 5000         | 24081001 D 57000 + 24081002 D 5000         | ✔
+14 | fc16      | IVA del asiento por subcuenta                   | SIN ASIENTO                                | SIN ASIENTO                                | ✔
+15 | fc16      | Pendiente contable de la compra al 16 %         | cuenta_no_configurada · «Falta la subcuenta de IVA descontable al 16 %…»
+   |           |                                                 | obtenido: cuenta_no_configurada · Falta la subcuenta de IVA descontable al 16 %: créela bajo 240810 en el plan de
+   |           |                                                 | cuentas y asígnela al impuesto de esa tarifa en Impuestos; luego reintente este pendiente.             | ✔
+16 | otros     | Pendientes contables nuevos de los demás docs   | ninguno                                    | ninguno                                    | ✔
+17 | ds        | Vista previa del documento soporte              | ok · 24081001 D 57000 · 24081002 D 5000    | true · 24081001 D 57000 · 24081002 D 5000  | ✔
+18 | cuadre    | Asiento FV5 · invoice_sales                     | Σ D = Σ C | D 105000 = C 105000 · 1305 D 105000 | 24080502 C 5000 | 41401501 C 100000                       | ✔
+19 | cuadre    | Asiento FVMX · invoice_sales                    | Σ D = Σ C | D 224000 = C 224000 · 1305 D 224000 | 24080502 C 5000 | 24080501 C 19000 | 41401501 C 200000  | ✔
+20 | cuadre    | Asiento FVMX2 · invoice_sales                   | Σ D = Σ C | D 224000 = C 224000 · 1305 D 224000 | 24080502 C 5000 | 24080501 C 19000 | 41401501 C 200000  | ✔
+21 | cuadre    | Asiento FV19 · invoice_sales                    | Σ D = Σ C | D 357000 = C 357000 · 1305 D 357000 | 24080501 C 57000 | 41401501 C 300000                      | ✔
+22 | cuadre    | Asiento POS19 · sales                           | Σ D = Σ C | D 119000 = C 119000 · 1305 D 119000 | 24080501 C 19000 | 41401501 C 100000                      | ✔
+23 | cuadre    | Asiento POS5 · sales                            | Σ D = Σ C | D 105000 = C 105000 · 1305 D 105000 | 24080502 C 5000 | 41401501 C 100000                       | ✔
+24 | cuadre    | Asiento FC19 · invoice_purchase                 | Σ D = Σ C | D 1190000 = C 1190000 · 14350101 D 1000000 | 24081001 D 190000 | 22050501 C 1190000             | ✔
+25 | cuadre    | Asiento FCMX · invoice_purchase                 | Σ D = Σ C | D 1400000 = C 1400000 · 14350101 D 1200000 | 24081002 D 10000 | 24081001 D 190000 | 22050501 C 1400000 | ✔
+26 | cuadre    | Asiento FC5 · invoice_purchase                  | Σ D = Σ C | D 210000 = C 210000 · 14350101 D 200000 | 24081002 D 10000 | 22050501 C 210000                  | ✔
+27 | cuadre    | Asiento NCMX · invoice_sales                    | Σ D = Σ C | D 224000 = C 224000 · 4175 D 200000 | 24080502 D 5000 | 24080501 D 19000 | 1305 C 224000          | ✔
+28 | cuadre    | Asiento DS · support_documents                  | Σ D = Σ C | D 462000 = C 462000 · 14350101 D 309091 | 14350101 D 90909 | 24081002 D 5000 | 24081001 D 57000 | 22050501 C 462000 | ✔
+29 | cuadre    | Asiento NC5 · invoice_sales                     | Σ D = Σ C | D 105000 = C 105000 · 4175 D 100000 | 24080502 D 5000 | 1305 C 105000                          | ✔
+30 | cuadre    | Asiento NCP · invoice_sales                     | Σ D = Σ C | D 105000 = C 105000 · 4175 D 100000 | 24080502 D 5000 | 1305 C 105000                          | ✔
+31 | funciones | fn_cuenta_iva_tarifa: gen 19/5, desc 19/5, 16 %, fn_cuenta_iva venta/compra
+   |           |                                                 | 24080501 24080502 24081001 24081002 ∅ 24080501 24081001 | igual                                 | ✔
+32 | antes     | fn_cuenta_iva ANTES de la migración (compra / venta) | informativo (H1)                      | 24080502 / 24080502                        | ✔
+
+Además: el control de cuadre de la base (disparador diferido trg_zz_asiento_cuadrado) se adelantó con
+SET CONSTRAINTS ALL IMMEDIATE y no rechazó ningún asiento. Los 13 asientos pasaron por los mismos disparadores
+y funciones que en producción; la nota crédito NC5 y la NCP se emitieron con la sesión simulada de un usuario
+miembro (fn_nota_credito_emitir, permiso finance.void).
+
+Nota fuera de H1 (fila 28 y precondición del DS): en la org 374 la clave «inventario» de Configuración contable
+apunta al título 1435; sin el ajuste dentro de la transacción, el asiento por líneas del documento soporte se
+rechaza con «La cuenta configurada 1435 (Inventario) no es de movimiento» antes de llegar al IVA. El reparto
+309.091 / 90.909 del costo del documento soporte (por total de línea, con IVA) tampoco es de H1.

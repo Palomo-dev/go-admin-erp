@@ -470,6 +470,51 @@ export interface DetalleCxp {
   cuotas: CuotaLeida[];
   pagos: PagoCompraLeido[];
   programaciones: ProgramacionLeida[];
+  /** Historia de la CxP: anticipos aplicados (cada uno referencia anticipo y CxP; 20261108170000). */
+  anticipos: AnticipoAplicadoLeido[];
+}
+
+/** Una aplicación de anticipo a esta cuenta por pagar. */
+export interface AnticipoAplicadoLeido {
+  id: string;
+  anticipoId: string;
+  fecha: string;
+  /** Lo que bajó el anticipo. */
+  consumo: number;
+  /** Lo que bajó la cuenta por pagar (consumo − retención que la factura había repetido). */
+  aCuenta: number;
+  retencionDescontada: number;
+  /** Cuenta debitada: la de la causación de la factura. */
+  cuenta: string | null;
+  recibo: string | null;
+}
+
+/**
+ * Aplicaciones de anticipos a la CxP (RLS de la sesión). Sin la migración de
+ * anticipos (tabla o columnas ausentes) devuelve [] en vez de romper el detalle.
+ */
+async function anticiposDeCxp(org: number, cuentaId: string): Promise<AnticipoAplicadoLeido[]> {
+  const { data, error } = await supabase
+    .from('supplier_advance_applications')
+    .select('id, advance_id, amount, consumo_anticipo, retencion_descontada, cuenta_por_pagar, created_at, anticipo:supplier_advances(grupo:payment_groups(receipt_number))')
+    .eq('organization_id', org)
+    .eq('account_payable_id', cuentaId)
+    .order('created_at', { ascending: false });
+  if (error) return [];
+  return ((data ?? []) as Array<Record<string, unknown>>).map((a) => {
+    const anticipo = uno<Record<string, unknown>>(a.anticipo as Record<string, unknown> | null);
+    const grupo = anticipo ? uno<{ receipt_number: string | null }>(anticipo.grupo as { receipt_number: string | null } | null) : null;
+    return {
+      id: String(a.id),
+      anticipoId: String(a.advance_id),
+      fecha: String(a.created_at ?? ''),
+      consumo: num(a.consumo_anticipo ?? a.amount),
+      aCuenta: num(a.amount),
+      retencionDescontada: num(a.retencion_descontada),
+      cuenta: (a.cuenta_por_pagar as string | null) ?? null,
+      recibo: grupo?.receipt_number ?? null,
+    };
+  });
 }
 
 export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCxp | null> {
@@ -490,7 +535,7 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
 
   const filtros = [`and(source.eq.account_payable,source_id.eq.${id})`];
   if (factura) filtros.push(`and(source.eq.invoice_purchase,source_id.eq.${String(factura.id)})`);
-  const [pagosRes, progRes, asientoRes] = await Promise.all([
+  const [pagosRes, progRes, asientoRes, anticipos] = await Promise.all([
     supabase
       .from('payments')
       .select('id, source, method, amount, discount_amount, reference, payment_date, created_at, status, payment_group_id, installment_id')
@@ -508,6 +553,7 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
           .order('id')
           .limit(1)
       : Promise.resolve({ data: [] }),
+    anticiposDeCxp(org, id),
   ]);
   if (pagosRes.error) throw pagosRes.error;
   const asiento = ((asientoRes as { data: Array<{ id: number; memo: string | null }> | null }).data ?? [])[0] ?? null;
@@ -572,6 +618,7 @@ export async function leerDetalleCxp(org: number, id: string): Promise<DetalleCx
       installment_id: (p.installment_id as string | null) ?? null,
     })),
     programaciones: ((progRes.data ?? []) as ProgramacionLeida[]).map((p) => ({ ...p, amount: num(p.amount) })),
+    anticipos,
   };
 }
 

@@ -26,6 +26,10 @@ import { ADAPTADOR_CLIENTE, type AdaptadorSaldos } from './adaptadorSaldos';
 import { metodoInicial, opcionesMetodoSaldo, requiereReferencia } from './metodosSaldo';
 import { textoErrorSaldo } from './textosSaldo';
 
+/** Solo del proveedor (P7: la devolución real lleva soporte; la retención proporcional se revierte). Con t.has: el cliente no las tiene. */
+const CLAVE_SOPORTE = 'devolver.soporte';
+const CLAVE_RETENCION = 'devolver.retencionProporcional';
+
 export interface DevolverSaldoDialogProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
@@ -78,10 +82,12 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
   const disponible = saldo?.disponible ?? 0;
   const errorMonto = validarMonto(monto, disponible);
   const esEfectivo = metodo === 'cash';
-  const conReferencia = requiereReferencia(contexto, metodo);
+  // Proveedor (P7): la devolución real lleva su soporte aunque el método no pida referencia.
+  const conReferencia = requiereReferencia(contexto, metodo) || adaptador.soporteObligatorio === true;
+  const etiquetaReferencia = adaptador.soporteObligatorio && t.has(CLAVE_SOPORTE) ? t(CLAVE_SOPORTE) : t('devolver.referencia');
   const cuentas = contexto?.cuentasBancarias ?? [];
   const faltaMotivo = motivo.trim().length < 3;
-  const faltaReferencia = conReferencia && !referencia.trim();
+  const faltaReferencia = conReferencia && referencia.trim().length < (adaptador.soporteObligatorio ? 3 : 1);
   const sinCaja = esEfectivo && !!contexto && !contexto.caja.abierta;
 
   const devolver = async () => {
@@ -191,7 +197,7 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
         {metodo && <FilaDato etiqueta={t('devolver.saleDe')} valor={origenDinero} tono={sinCaja ? 'peligro' : undefined} />}
 
         {conReferencia && (
-          <FormField etiqueta={t('devolver.referencia')} obligatorio error={tocado && faltaReferencia ? t('validacion.referencia') : null}>
+          <FormField etiqueta={etiquetaReferencia} obligatorio error={tocado && faltaReferencia ? t('validacion.referencia') : null}>
             <Input value={referencia} onChange={(e) => setReferencia(e.target.value)} maxLength={200} />
           </FormField>
         )}
@@ -210,6 +216,9 @@ export function DevolverSaldoDialog({ abierto, onAbiertoChange, saldo, onDevuelt
               saldo: moneda.formatear(Math.max(0, disponible - monto)),
             })}
           />
+        )}
+        {adaptador.soporteObligatorio && t.has(CLAVE_RETENCION) && (
+          <p className="text-xs text-fg-muted">{t(CLAVE_RETENCION)}</p>
         )}
         {error && (
           <p role="alert" className="text-sm text-danger-text">

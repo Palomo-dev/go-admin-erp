@@ -7,17 +7,21 @@
  *
  * Es el espejo del saldo a favor de clientes: los diálogos de registrar,
  * aplicar y devolver son LOS MISMOS (`components/finanzas/saldos-a-favor`) con
- * el adaptador del proveedor; anular usa `DialogoMotivo` del kit. Cada acción es
- * una ruta del servidor y una RPC (`/api/anticipos-proveedor/**`). Mientras la
- * migración no esté aplicada, la pantalla dice «pendiente de activar».
+ * el adaptador del proveedor; el de registrar lleva el complemento de naturaleza
+ * y retenciones (P1 del Contador). Anular pregunta primero si el desembolso
+ * ocurrió (P7): solo se anula una salida que nunca ocurrió; si el dinero salió,
+ * se registra la devolución o se mantiene el derecho. Sin cuenta de detalle
+ * configurada (P6) la pantalla lo muestra como pendiente contable y no deja
+ * registrar. Cada acción es una ruta del servidor y una RPC
+ * (`/api/anticipos-proveedor/**`). Mientras la migración no esté aplicada, la
+ * pantalla dice «pendiente de activar».
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Ban, Download, FileText, HandCoins, Plus, Undo2, Wallet } from 'lucide-react';
+import { Ban, Download, FileSpreadsheet, FileText, HandCoins, Plus, Undo2, Wallet } from 'lucide-react';
 import {
   AvisoTonal,
   DataTable,
-  DialogoMotivo,
   KpiStrip,
   ListCard,
   ListToolbar,
@@ -30,7 +34,7 @@ import {
   type AccionFila,
   type ColumnaTabla,
 } from '@/components/kit';
-import { toastSuccess } from '@/components/ui/use-toast';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
@@ -38,6 +42,8 @@ import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { formatNumeroMoneda } from '@/lib/utils/moneda';
 import {
   accionesAnticipo,
+  anticiposConRetencionPendiente,
+  filasCsvConciliacion,
   filtrarAnticipos,
   totalesAnticipos,
   type EstadoAnticipo,
@@ -47,10 +53,21 @@ import {
 import { AplicarSaldoDialog, DevolverSaldoDialog, RegistrarAnticipoDialog } from '@/components/finanzas/saldos-a-favor';
 import { ErrorPeticionSaldoFavor } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import type { ComplementoRegistro } from '@/components/finanzas/saldos-a-favor';
 import { ADAPTADOR_PROVEEDOR, anticiposProveedorService } from './anticiposProveedorService';
+import { AnularAnticipoDialog } from './AnularAnticipoDialog';
+import { SeccionRetencionesAnticipo } from './SeccionRetencionesAnticipo';
 
 const NS = 'finanzasTercerosR4.anticipos';
 const BADGE: Readonly<Record<EstadoAnticipo, string>> = { disponible: 'activo', aplicado: 'aplicado', anulado: 'anulado' };
+const RUTA_CONFIGURACION_CONTABLE = '/app/finanzas/configuracion-contable';
+
+/** Naturaleza y retenciones del anticipo (P1): sección propia del proveedor en el diálogo compartido. */
+const COMPLEMENTO_PROVEEDOR: ComplementoRegistro = {
+  render: ({ terceroId, monto, tocado, onCambio }) => (
+    <SeccionRetencionesAnticipo proveedorId={terceroId} monto={monto} tocado={tocado} onCambio={onCambio} />
+  ),
+};
 
 /** Fila con la forma que esperan los diálogos compartidos (el tercero va en `cliente`). */
 function comoSaldo(f: FilaAnticipoProveedor) {
@@ -74,8 +91,7 @@ export function ListadoAnticiposProveedor() {
   const [aplicar, setAplicar] = useState<FilaAnticipoProveedor | null>(null);
   const [devolver, setDevolver] = useState<FilaAnticipoProveedor | null>(null);
   const [anular, setAnular] = useState<FilaAnticipoProveedor | null>(null);
-  const [anulando, setAnulando] = useState(false);
-  const [errorAnular, setErrorAnular] = useState<string | null>(null);
+  const [exportandoConciliacion, setExportandoConciliacion] = useState(false);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
@@ -104,6 +120,10 @@ export function ListadoAnticiposProveedor() {
   const filas = useMemo(() => filtrarAnticipos(todas, { texto, estado: estado === 'todos' ? null : estado }), [todas, texto, estado]);
   const totales = useMemo(() => totalesAnticipos(todas), [todas]);
   const permisosFila = { crear: permisos.crear, anular: permisos.anular };
+  const conRetencionPendiente = useMemo(() => anticiposConRetencionPendiente(todas), [todas]);
+  const estadoCuenta = datos?.estadoCuenta ?? null;
+  // P6: sin cuenta de detalle configurada no se registra (la base también lo bloquea).
+  const cuentaPendiente = !!estadoCuenta && estadoCuenta.estado !== 'ok';
 
   const exportar = () => {
     const csv = aCsv([
@@ -122,19 +142,29 @@ export function ListadoAnticiposProveedor() {
     descargarCsv(t('archivoExportacion'), csv);
   };
 
-  const confirmarAnular = async (motivo: string) => {
-    if (!anular) return;
-    setAnulando(true);
-    setErrorAnular(null);
+  // P6: saldo por anticipo y por proveedor (tabla, libros y auxiliar por NIT).
+  const exportarConciliacion = async () => {
+    setExportandoConciliacion(true);
     try {
-      await anticiposProveedorService.anular(anular.id, motivo);
-      toastSuccess(t('anular.exito', { proveedor: anular.proveedor }));
-      setAnular(null);
-      recargar();
+      const c = await anticiposProveedorService.conciliacion();
+      const filasCsv = filasCsvConciliacion(
+        c,
+        {
+          anticipos: [
+            t('columnas.proveedor'), t('columnas.nit'), t('columnas.comprobante'), t('conciliacion.cuenta'), t('conciliacion.naturaleza'),
+            t('columnas.anticipo'), t('columnas.retencion'), t('conciliacion.girado'), t('columnas.aplicado'), t('conciliacion.retencionDescontada'),
+            t('conciliacion.devuelto'), t('conciliacion.anulado'), t('columnas.saldo'), t('conciliacion.saldoLibros'), t('conciliacion.cuadra'),
+          ],
+          proveedores: [t('columnas.proveedor'), t('columnas.nit'), t('conciliacion.anticipos'), t('columnas.saldo'), t('conciliacion.saldoLibros'), t('conciliacion.auxiliarNit')],
+        },
+        (v) => (v ? t('conciliacion.si') : t('conciliacion.no')),
+      );
+      descargarCsv(t('conciliacion.archivo'), aCsv(filasCsv));
+      toastSuccess(t('conciliacion.exito', { anticipos: c.anticipos.length }));
     } catch (e) {
-      setErrorAnular(textoErrorSaldo(t, e));
+      toastError(textoErrorSaldo(t, e));
     } finally {
-      setAnulando(false);
+      setExportandoConciliacion(false);
     }
   };
 
@@ -169,13 +199,21 @@ export function ListadoAnticiposProveedor() {
       variante: 'importe',
       celda: (f) => <span className={f.estado === 'disponible' ? 'font-semibold text-fg' : 'text-fg-muted'}>{fmt(f.saldo)}</span>,
     },
+    {
+      id: 'retencion',
+      encabezado: t('columnas.retencion'),
+      variante: 'importe',
+      ocultarDebajo: 'xl',
+      celda: (f) =>
+        f.retencionPendiente ? <StatusBadge estado="pendiente" etiqueta={t('retenciones.pendienteCorto')} /> : f.retencion ? fmt(f.retencion) : '—',
+    },
     { id: 'estado', encabezado: t('columnas.estado'), alinear: 'centro', ocultarDebajo: 'xl', celda: badge },
   ];
 
   const estadoTabla =
     error === 'sin_permiso' ? 'sinPermiso' : cargando && !datos ? 'cargando' : error ? 'error' : filas.length === 0 ? (texto || estado !== 'todos' ? 'sinResultados' : 'vacio') : 'listo';
 
-  const puedeCrear = permisos.crear && !pendiente;
+  const puedeCrear = permisos.crear && !pendiente && !cuentaPendiente;
   const subtitulo = datos?.cuenta ? t('subtituloCuenta', { cuenta: datos.cuenta }) : t('subtitulo');
 
   return (
@@ -192,8 +230,23 @@ export function ListadoAnticiposProveedor() {
               <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('acciones.exportar')}
             </button>
+            <button
+              type="button"
+              onClick={() => void exportarConciliacion()}
+              disabled={pendiente || todas.length === 0 || exportandoConciliacion}
+              className={clasesBoton({ variante: 'secundario' })}
+            >
+              <FileSpreadsheet aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('acciones.conciliacion')}
+            </button>
             {permisos.crear && (
-              <button type="button" onClick={() => setNuevo(true)} disabled={pendiente} className={clasesBoton({ variante: 'primario' })}>
+              <button
+                type="button"
+                onClick={() => setNuevo(true)}
+                disabled={pendiente || cuentaPendiente}
+                title={cuentaPendiente ? t('cuentaPendiente.titulo') : undefined}
+                className={clasesBoton({ variante: 'primario' })}
+              >
                 <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {t('acciones.nuevo')}
               </button>
@@ -202,20 +255,46 @@ export function ListadoAnticiposProveedor() {
         }
         movil={{
           subtitulo,
-          accion: puedeCrear ? (
-            <button
-              type="button"
-              onClick={() => setNuevo(true)}
-              aria-label={t('acciones.nuevo')}
-              className="flex size-10 items-center justify-center rounded-lg text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              <Plus aria-hidden="true" className="size-5" strokeWidth={1.5} />
-            </button>
-          ) : undefined,
+          menu: [
+            { id: 'nuevo', etiqueta: t('acciones.nuevo'), icono: Plus, onSelect: () => setNuevo(true), oculta: !puedeCrear },
+            { id: 'exportar', etiqueta: t('acciones.exportar'), icono: Download, onSelect: exportar, oculta: filas.length === 0 },
+            {
+              id: 'conciliacion',
+              etiqueta: t('acciones.conciliacion'),
+              icono: FileSpreadsheet,
+              onSelect: () => void exportarConciliacion(),
+              oculta: pendiente || todas.length === 0,
+            },
+          ],
         }}
       />
 
       {pendiente && <AvisoTonal tono="advertencia" rol="status" titulo={t('pendiente.titulo')} descripcion={t('pendiente.descripcion')} />}
+
+      {!pendiente && cuentaPendiente && estadoCuenta && (
+        <AvisoTonal
+          tono="advertencia"
+          rol="status"
+          titulo={t('cuentaPendiente.titulo')}
+          descripcion={
+            estadoCuenta.estado === 'sin_configurar'
+              ? estadoCuenta.sugerida
+                ? t('cuentaPendiente.sinConfigurarSugerida', { sugerida: estadoCuenta.sugerida })
+                : t('cuentaPendiente.sinConfigurar')
+              : t('cuentaPendiente.noDetalle', { cuenta: estadoCuenta.configurada ?? '—' })
+          }
+          accion={{ etiqueta: t('cuentaPendiente.configurar'), href: RUTA_CONFIGURACION_CONTABLE }}
+        />
+      )}
+
+      {!pendiente && conRetencionPendiente > 0 && (
+        <AvisoTonal
+          tono="advertencia"
+          rol="status"
+          titulo={t('retenciones.pendienteListadoTitulo', { count: conRetencionPendiente })}
+          descripcion={t('retenciones.pendienteListadoDescripcion')}
+        />
+      )}
 
       {!pendiente && (
         <KpiStrip etiqueta={t('kpis.etiqueta')}>
@@ -292,7 +371,13 @@ export function ListadoAnticiposProveedor() {
         />
       )}
 
-      <RegistrarAnticipoDialog abierto={nuevo} onAbiertoChange={setNuevo} adaptador={ADAPTADOR_PROVEEDOR} onRegistrado={recargar} />
+      <RegistrarAnticipoDialog
+        abierto={nuevo}
+        onAbiertoChange={setNuevo}
+        adaptador={ADAPTADOR_PROVEEDOR}
+        complemento={COMPLEMENTO_PROVEEDOR}
+        onRegistrado={recargar}
+      />
       <AplicarSaldoDialog
         abierto={!!aplicar}
         onAbiertoChange={(v) => !v && setAplicar(null)}
@@ -307,22 +392,12 @@ export function ListadoAnticiposProveedor() {
         adaptador={ADAPTADOR_PROVEEDOR}
         onDevuelto={recargar}
       />
-      <DialogoMotivo
-        abierto={!!anular}
-        onAbiertoChange={(v) => {
-          if (anulando) return;
-          setErrorAnular(null);
-          if (!v) setAnular(null);
-        }}
-        titulo={t('anular.titulo')}
-        descripcion={anular ? t('anular.descripcion', { proveedor: anular.proveedor, monto: fmt(anular.valor), recibo: anular.recibo ?? '—' }) : undefined}
-        textoConfirmar={t('anular.confirmar')}
-        onConfirmar={confirmarAnular}
-        tituloConsecuencias={t('anular.consecuenciasTitulo')}
-        consecuencias={[t('anular.consecuencias.pago'), t('anular.consecuencias.saldo'), t('anular.consecuencias.asiento')]}
-        motivosRapidos={[t('anular.rapidos.error'), t('anular.rapidos.duplicado'), t('anular.rapidos.proveedor')]}
-        cargando={anulando}
-        error={errorAnular}
+      <AnularAnticipoDialog
+        anticipo={anular}
+        onAbiertoChange={(v) => !v && setAnular(null)}
+        onAnulado={recargar}
+        onDevolver={setDevolver}
+        puedeDevolver={permisos.anular}
       />
     </div>
   );

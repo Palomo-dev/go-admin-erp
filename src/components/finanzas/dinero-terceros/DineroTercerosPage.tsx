@@ -178,7 +178,7 @@ export function DineroTercerosPage() {
             <RowActionsMenu acciones={menu} orientacion="horizontal" tamano="md" titulo={t('titulo')} />
           </>
         }
-        movil={{ subtitulo: t('subtitulo') }}
+        movil={{ accionesEnFila: true, subtitulo: t('subtitulo') }}
       />
 
       {avisoCuenta && propinas?.cuentaNoEsPasivo && (

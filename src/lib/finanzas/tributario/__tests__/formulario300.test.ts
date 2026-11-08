@@ -1,11 +1,12 @@
 import {
   CASILLAS_300,
-  PARES_300,
+  FILAS_300,
   casilla,
   clasificacionInicial,
   filasCsvFormulario300,
   leerFormulario300,
   leerLineasFiscales,
+  puenteOtrosMovimientos,
   redondearMiles,
   rutaOrigen,
   tipoDocumentoLineas,
@@ -15,32 +16,38 @@ import {
   validarNaturaleza,
 } from '../formulario300';
 
-// Extracto de la respuesta real de la prueba en seco 10 (org 374, noviembre 2026).
+const UUID1 = '11111111-1111-4111-8111-111111111111';
+const UUID2 = '22222222-2222-4222-8222-222222222222';
+
+// Extracto de la respuesta de la prueba en seco 10 (ronda 2; org 374, noviembre 2026).
 const RESPUESTA = {
-  version: 2,
+  version: 3,
   periodo: { desde: '2026-11-01', hasta: '2026-11-30', zona: 'America/Bogota' },
   estado: 'conciliado',
   aprobado_fiscalmente: false,
   liquidacion_completa: false,
   periodo_declarado: null,
   casillas: [
-    { casilla: 52, tipo: 'base', par: 74, concepto: 'compras_servicios_5', lado: 'descontable', valor: '300300.00', valor_formulario: 300000, diferencia_redondeo: -300, total_origenes: 1, senalada: false, origenes: [] },
+    { casilla: 30, tipo: 'base', par: null, concepto: 'exportacion_bienes', lado: 'generado', valor: '300000.00', valor_formulario: 300000, diferencia_redondeo: 0, total_origenes: 1, senalada: false, origenes: [] },
     {
-      casilla: 79, tipo: 'iva', par: 42, concepto: 'devoluciones_ventas', lado: 'descontable', valor: 38000, valor_formulario: 38000, diferencia_redondeo: 0, total_origenes: 1, senalada: true,
+      casilla: 59, tipo: 'iva', par: 28, concepto: 'ventas_general', lado: 'generado', valor: 104500, valor_formulario: 105000, diferencia_redondeo: 500, total_origenes: 4, senalada: true,
       origenes: [
-        { clase: 'nota_credito', documento_id: '11111111-1111-4111-8111-111111111111', numero: 'NC-1', fecha: '2026-11-07', tabla: 'invoice_items', linea_id: '22222222-2222-4222-8222-222222222222', base: 200000, iva: 38000, asiento: 1015, entre_periodos: true, de_otro_periodo: false, posterior_declaracion: false, factura_origen: { id: '33333333-3333-4333-8333-333333333333', numero: 'FV-OCT' } },
+        { clase: 'nota_debito', documento_id: UUID1, numero: 'ND-1', fecha: '2026-11-07', fecha_contabilizacion: '2026-11-07', fecha_documento: '2026-11-07', tabla: 'invoice_items', linea_id: UUID2, base: 50000, iva: 9500, asiento: 1015, entre_periodos: false, corrige_otro_periodo: true, causado_periodo_anterior: false, posterior_declaracion: false, factura_origen: { id: UUID2, numero: 'FV-OCT' } },
         { clase: 'desconocida', documento_id: 'x' },
       ],
     },
     { casilla: 99, tipo: 'iva', par: 98, valor: 1 },
   ],
   pendientes: [
-    { motivo: 'descontable_por_evaluar', lado: 'descontable', base: 50000, iva: 9500, efecto_2408: -9500, total_origenes: 1, origenes: [] },
-    { motivo: 'inventado', lado: 'generado', base: 1, iva: 1 },
+    { motivo: 'descontable_por_evaluar', lado: 'descontable', base: 0, iva: 9500, efecto_2408: -9500, total_origenes: 1, origenes: [] },
+    { motivo: 'descontable_en_otro_periodo', lado: 'descontable', base: 1, iva: 1 },
   ],
   otros_movimientos: [
-    { asiento: 1023, origen: 'bank_transactions', fecha: '2026-11-07', valor: -50000, naturaleza: 'pago_dian', declarada: false, destino: 'no_afecta', motivo: null },
-    { asiento: 1022, origen: 'manual', fecha: '2026-11-07', valor: -10000, naturaleza: 'sin_soporte', declarada: false, destino: 'pendiente', motivo: 'sin_soporte' },
+    { asiento: 1183, origen: 'bank_transactions', fecha: '2026-11-07', valor: -50000, naturaleza: 'sin_registro', declarada: false, sugerida: 'pago_dian', destino: 'pendiente', motivo: 'sugerido_por_confirmar' },
+    { asiento: 1184, origen: 'bank_transactions', fecha: '2026-11-07', valor: -30000, naturaleza: 'pago_dian', declarada: true, sugerida: null, destino: 'no_afecta', motivo: null, soporte: 'Recibo 490', soporte_fecha: '2026-11-07' },
+    { asiento: 1179, origen: 'manual', fecha: '2026-11-07', valor: 19000, naturaleza: 'devolucion_compra', declarada: true, destino: 'casilla', iva_recuperable: 19000, base: 100000 },
+    { asiento: 1190, origen: 'manual', fecha: '2026-11-07', valor: -19000, naturaleza: 'correccion_error', declarada: true, destino: 'pendiente', motivo: 'correccion_incompleta',
+      soporte_tipo: 'comprobante_interno', correccion: { completa: false, resolucion: null, referencia: null, fecha: null, corrige_declaracion_anterior: null } },
   ],
   por_diligenciar: [
     { clave: 'saldo_favor_anterior', valor: null },
@@ -48,46 +55,53 @@ const RESPUESTA = {
     { clave: 'ajustes', valor: null, asientos: [] },
     { clave: 'sanciones', valor: null },
   ],
-  resumen: { iva_generado: 119000, iva_generado_formulario: 119000, iva_descontable: 386015, iva_descontable_formulario: 386000, diferencia_preliminar: -267015, diferencia_preliminar_formulario: -267000, pendientes: 9, pendientes_iva: 59400 },
-  conciliacion: { libro_2408: -353615, casillas: -267015, pendientes: -55600, otros_no_afectan_o_por_diligenciar: -31000, redondeo_lineas_libros: 0, diferencia: 0 },
-  alertas: { documentos_entre_periodos: 1, descontable_de_otros_periodos: 1, grabados_despues_de_declarar: [{ asiento: 1009, origen: 'invoice_sales', documento_id: 'abc', fecha: '2026-10-15', periodo_declarado: { desde: '2026-10-01', hasta: '2026-10-31' } }] },
+  resumen: { iva_no_descontable_al_costo: 19000, iva_generado: 128500, iva_generado_formulario: 129000, iva_descontable: 370815, iva_descontable_formulario: 371000, diferencia_preliminar: -242315, diferencia_preliminar_formulario: -242000, pendientes: 14, pendientes_iva: 141950 },
+  conciliacion: { libro_2408: -411165, casillas: -242315, pendientes: -138850, otros_no_afectan_o_por_diligenciar: -30000, redondeo_lineas_libros: 0, diferencia: 0 },
+  alertas: {
+    documentos_entre_periodos: 1, notas_debito_otro_periodo: 1, compras_causadas_antes: 0,
+    correcciones_declaracion_anterior: [{ asiento: 1190, venta_asiento: 1188, fecha_venta: '2026-10-20', completa: false, corrige_declaracion_anterior: null,
+      periodo_declarado: { desde: '2026-10-01', hasta: '2026-10-31', numero_formulario: 'F-1' } }, { venta_asiento: 3 }],
+    grabados_despues_de_declarar: [{ asiento: 1009, origen: 'invoice_sales', documento_id: 'abc', fecha: '2026-10-15', periodo_declarado: { desde: '2026-10-01', hasta: '2026-10-31' } }],
+  },
 };
 
-describe('leerFormulario300', () => {
+describe('leerFormulario300 (ronda 2)', () => {
   const f = leerFormulario300(RESPUESTA);
 
-  it('lee casillas oficiales y descarta las que no lo son', () => {
-    expect(f.casillas.map((c) => c.casilla)).toEqual([52, 79]);
-    expect(casilla(f, 52)?.valor).toBe(300300);
-    expect(casilla(f, 52)?.valorFormulario).toBe(300000);
-    expect(casilla(f, 52)?.diferenciaRedondeo).toBe(-300);
+  it('lee casillas oficiales, incluidas las de solo base (B1), y descarta las que no lo son', () => {
+    expect(f.casillas.map((c) => c.casilla)).toEqual([30, 59]);
+    expect(casilla(f, 30)?.par).toBeNull();
+    expect(casilla(f, 59)?.valorFormulario).toBe(105000);
   });
 
-  it('conserva el origen de cada casilla con la bandera «entre períodos» y descarta clases desconocidas', () => {
-    const o = casilla(f, 79)!.origenes;
+  it('origen con fechas de contabilización y de documento, y la señal de nota débito de otro período (B2)', () => {
+    const o = casilla(f, 59)!.origenes;
     expect(o).toHaveLength(1);
-    expect(o[0]).toMatchObject({ clase: 'nota_credito', entrePeriodos: true, asiento: 1015, facturaOrigen: { numero: 'FV-OCT' } });
+    expect(o[0]).toMatchObject({ clase: 'nota_debito', corrigeOtroPeriodo: true, fecha: '2026-11-07', fechaDocumento: '2026-11-07', facturaOrigen: { numero: 'FV-OCT' } });
   });
 
-  it('nunca marca el borrador aprobado fiscalmente ni la liquidación completa', () => {
+  it('nunca aprobado fiscalmente ni liquidación completa', () => {
     const otro = leerFormulario300({ ...RESPUESTA, aprobado_fiscalmente: true, liquidacion_completa: true });
     expect(otro.aprobadoFiscalmente).toBe(false);
     expect(otro.liquidacionCompleta).toBe(false);
-    expect(f.estado).toBe('conciliado');
     expect(leerFormulario300({ ...RESPUESTA, estado: 'raro' }).estado).toBe('no_conciliado');
   });
 
-  it('pendientes con motivo conocido; otros movimientos y por diligenciar', () => {
+  it('el motivo «se descuenta en otro período» ya no existe (corrección b)', () => {
     expect(f.pendientes.map((p) => p.motivo)).toEqual(['descontable_por_evaluar']);
-    expect(f.otrosMovimientos.map((o) => o.destino)).toEqual(['no_afecta', 'pendiente']);
-    expect(f.porDiligenciar.map((p) => p.clave)).toEqual(['saldo_favor_anterior', 'retenciones_iva_sufridas', 'ajustes', 'sanciones']);
-    expect(totalPendientes(f)).toEqual({ grupos: 2, origenes: 2, iva: 59400 });
   });
 
-  it('conciliación y alertas', () => {
-    expect(f.conciliacion).toEqual({ libro2408: -353615, casillas: -267015, pendientes: -55600, otros: -31000, redondeoLineas: 0, diferencia: 0 });
+  it('otros movimientos: la señal es «sugerida», no clasificación; puente componente por componente', () => {
+    expect(f.otrosMovimientos[0]).toMatchObject({ naturaleza: 'sin_registro', sugerida: 'pago_dian', destino: 'pendiente', motivo: 'sugerido_por_confirmar' });
+    expect(f.otrosMovimientos[1]).toMatchObject({ naturaleza: 'pago_dian', declarada: true, soporte: 'Recibo 490', soporteFecha: '2026-11-07' });
+    const puente = puenteOtrosMovimientos(f);
+    expect(puente.map((p) => p.valor)).toEqual([-50000, -30000, 19000, -19000]);
+    expect(totalPendientes(f)).toEqual({ grupos: 2, origenes: 3, iva: 141950 });
+  });
+
+  it('alertas de la ronda 2 y conciliación', () => {
+    expect(f.alertas).toMatchObject({ documentosEntrePeriodos: 1, notasDebitoOtroPeriodo: 1, comprasCausadasAntes: 0 });
     expect(f.conciliacion.casillas + f.conciliacion.pendientes + f.conciliacion.otros + f.conciliacion.redondeoLineas).toBe(f.conciliacion.libro2408);
-    expect(f.alertas.grabadosDespuesDeDeclarar[0].periodo).toEqual({ desde: '2026-10-01', hasta: '2026-10-31' });
   });
 
   it('tolera una respuesta vacía', () => {
@@ -97,63 +111,116 @@ describe('leerFormulario300', () => {
   });
 });
 
-describe('catálogo de casillas (tabla del Contador)', () => {
-  it('pares base → IVA', () => {
-    const pares = Object.fromEntries(PARES_300.map((p) => [p.base, p.iva]));
-    expect(pares).toEqual({ 27: 58, 28: 59, 50: 71, 51: 72, 52: 74, 53: 75, 42: 79, 56: 66 });
-    expect([...CASILLAS_300].sort((a, b) => a - b)).toEqual([27, 28, 42, 50, 51, 52, 53, 56, 58, 59, 66, 71, 72, 74, 75, 79]);
+describe('ronda 3', () => {
+  const f = leerFormulario300(RESPUESTA);
+
+  it('corrección de error incompleta: la reversa queda pendiente con su estado', () => {
+    const o = f.otrosMovimientos.find((x) => x.asiento === 1190)!;
+    expect(o).toMatchObject({ destino: 'pendiente', motivo: 'correccion_incompleta', soporteTipo: 'comprobante_interno' });
+    expect(o.correccion).toEqual({ completa: false, resolucion: null, referencia: null, fecha: null, corrigeDeclaracionAnterior: null });
+    expect(f.otrosMovimientos.find((x) => x.asiento === 1184)!.correccion).toBeNull();
+  });
+
+  it('alerta de corrección sobre un período declarado y el IVA no descontable llevado al costo (B5)', () => {
+    expect(f.alertas.correccionesDeclaracionAnterior).toEqual([
+      { asiento: 1190, ventaAsiento: 1188, fechaVenta: '2026-10-20', completa: false, corrigeDeclaracionAnterior: null,
+        periodoDeclarado: { desde: '2026-10-01', hasta: '2026-10-31', numeroFormulario: 'F-1' } },
+    ]);
+    expect(f.resumen.ivaNoDescontableAlCosto).toBe(19000);
+  });
+
+  it('validarNaturaleza: la corrección de error exige el tipo de soporte y valida la resolución; se puede guardar a medias', () => {
+    const base = { asiento: 9, naturaleza: 'correccion_error', soporte: 'Acta 1', soporte_fecha: '2026-11-07' };
+    expect(validarNaturaleza(base)).toEqual({ ok: false, error: 'soporte_requerido' });
+    expect(validarNaturaleza({ ...base, soporte_tipo: 'comprobante_interno', doc_electronico_resolucion: 'borrada' })).toEqual({ ok: false, error: 'resolucion_invalida' });
+    const parcial = validarNaturaleza({ ...base, soporte_tipo: 'comprobante_interno' });
+    expect(parcial.ok && parcial.datos).toMatchObject({ doc_electronico_resolucion: null, corrige_declaracion_anterior: null });
+    const completa = validarNaturaleza({ ...base, soporte_tipo: 'comprobante_interno', doc_electronico_resolucion: 'anulacion_dian',
+      doc_electronico_referencia: ' CUFE-1 ', doc_electronico_fecha: '2026-11-08', corrige_declaracion_anterior: false });
+    expect(completa.ok && completa.datos).toMatchObject({ doc_electronico_resolucion: 'anulacion_dian', doc_electronico_referencia: 'CUFE-1',
+      doc_electronico_fecha: '2026-11-08', corrige_declaracion_anterior: false });
+    // Otras naturalezas no arrastran los campos de la corrección.
+    const pago = validarNaturaleza({ asiento: 9, naturaleza: 'pago_dian', soporte: 'R', soporte_fecha: '2026-11-07', doc_electronico_resolucion: 'anulacion_dian' });
+    expect(pago.ok && pago.datos?.doc_electronico_resolucion).toBeNull();
+  });
+});
+
+describe('catálogo de casillas (tablas del Contador, rondas 1 y 2)', () => {
+  it('filas base → IVA y casillas sin IVA', () => {
+    const filas = Object.fromEntries(FILAS_300.map((p) => [p.base, p.iva]));
+    expect(filas).toEqual({ 27: 58, 28: 59, 30: null, 31: null, 35: null, 39: null, 40: null, 56: 66, 47: null, 50: 71, 51: 72, 52: 74, 53: 75, 54: null, 42: 79 });
+    expect([...CASILLAS_300].sort((a, b) => a - b)).toEqual([27, 28, 30, 31, 35, 39, 40, 42, 47, 50, 51, 52, 53, 54, 56, 58, 59, 66, 71, 72, 74, 75, 79]);
   });
 });
 
 describe('redondearMiles', () => {
   it('como el formulario: a miles, la mitad hacia arriba', () => {
     expect(redondearMiles(15015)).toBe(15000);
-    expect(redondearMiles(15500)).toBe(16000);
+    expect(redondearMiles(104500)).toBe(105000);
     expect(redondearMiles(-267015)).toBe(-267000);
     expect(redondearMiles(499)).toBe(0);
   });
 });
 
-describe('validarClasificacion', () => {
+describe('validarClasificacion (ronda 2)', () => {
   it('gravada exige tarifa > 0; las demás quedan en 0', () => {
     expect(validarClasificacion({ tratamiento: 'gravada', tarifa: 0 }, { compra: false })).toEqual({ ok: false, error: 'tarifa_invalida' });
     expect(validarClasificacion({ tratamiento: 'exenta', tarifa: 19 }, { compra: false })).toEqual({ ok: false, error: 'tarifa_invalida' });
-    const r = validarClasificacion({ tratamiento: 'excluida', tipo_operacion: 'bienes' }, { compra: false });
-    expect(r).toEqual({ ok: true, datos: { tratamiento: 'excluida', tarifa: 0, tipo_operacion: 'bienes', fundamento: null } });
+    const r = validarClasificacion({ tratamiento: 'excluida', tipo_operacion: 'bienes', fundamento: 'Art. 424' }, { compra: false });
+    expect(r).toEqual({ ok: true, datos: { tratamiento: 'excluida', tarifa: 0, tipo_operacion: 'bienes', fundamento: 'Art. 424', soporte_tipo: null, soporte_numero: null, soporte_fecha: null } });
   });
 
-  it('rechaza tratamiento y tipo desconocidos', () => {
-    expect(validarClasificacion({ tratamiento: 'cero' }, { compra: false })).toEqual({ ok: false, error: 'tratamiento_invalido' });
-    expect(validarClasificacion({ tratamiento: 'gravada', tarifa: 19, tipo_operacion: 'magia' }, { compra: false })).toEqual({ ok: false, error: 'tipo_operacion_invalido' });
+  it('B1: una exportación es exenta y lleva soporte estructurado', () => {
+    expect(validarClasificacion({ tratamiento: 'gravada', tarifa: 19, tipo_operacion: 'exportacion_bienes' }, { compra: false })).toEqual({ ok: false, error: 'exportacion_debe_ser_exenta' });
+    expect(validarClasificacion({ tratamiento: 'exenta', tipo_operacion: 'exportacion_bienes', soporte_tipo: 'carta' }, { compra: false })).toEqual({ ok: false, error: 'soporte_invalido' });
+    const ok = validarClasificacion(
+      { tratamiento: 'exenta', tipo_operacion: 'exportacion_bienes', soporte_tipo: 'declaracion_exportacion', soporte_numero: ' DEX-1 ', soporte_fecha: '2026-11-06' },
+      { compra: false },
+    );
+    expect(ok.ok && ok.datos).toMatchObject({ soporte_tipo: 'declaracion_exportacion', soporte_numero: 'DEX-1', soporte_fecha: '2026-11-06' });
   });
 
-  it('procedencia del descontable: solo compras, con motivo, proporcional con porcentaje', () => {
+  it('procedencia del descontable: solo compras, con motivo, proporcional con %; ya no hay período', () => {
     const base = { tratamiento: 'gravada', tarifa: 19, tipo_operacion: 'bienes' };
     expect(validarClasificacion({ ...base, descontable: 'descontable', descontable_motivo: 'x' }, { compra: false })).toEqual({ ok: false, error: 'descontable_solo_compras' });
     expect(validarClasificacion({ ...base, descontable: 'no_descontable' }, { compra: true })).toEqual({ ok: false, error: 'motivo_requerido' });
     expect(validarClasificacion({ ...base, descontable: 'proporcional', descontable_motivo: 'art. 490' }, { compra: true })).toEqual({ ok: false, error: 'porcentaje_invalido' });
-    const ok = validarClasificacion({ ...base, descontable: 'proporcional', descontable_porcentaje: '60', descontable_motivo: 'art. 490', descontable_periodo: '2026-11-15' }, { compra: true });
-    expect(ok.ok && ok.datos).toMatchObject({ descontable: 'proporcional', descontable_porcentaje: 60, descontable_periodo: '2026-11-15' });
-    const pe = validarClasificacion({ ...base, descontable: 'por_evaluar', descontable_periodo: '2026-11-15' }, { compra: true });
-    expect(pe.ok && pe.datos.descontable_periodo).toBeNull();
+    const ok = validarClasificacion({ ...base, descontable: 'proporcional', descontable_porcentaje: '60', descontable_motivo: 'art. 490', descontable_periodo: '2026-12-01' }, { compra: true });
+    expect(ok.ok && ok.datos).toMatchObject({ descontable: 'proporcional', descontable_porcentaje: 60 });
+    expect(ok.ok && 'descontable_periodo' in ok.datos).toBe(false);
+  });
+
+  it('corrección (c): documento soporte no queda «descontable» por una marca manual', () => {
+    const datos = { tratamiento: 'gravada', tarifa: 19, tipo_operacion: 'servicios', descontable: 'descontable', descontable_motivo: 'x' };
+    expect(validarClasificacion(datos, { compra: true, soporteDoc: true })).toEqual({ ok: false, error: 'soporte_no_descontable' });
+    expect(validarClasificacion({ ...datos, tipo_operacion: 'otra_especial', fundamento: 'Servicio del exterior (art. 437-2)' }, { compra: true, soporteDoc: true }).ok).toBe(true);
   });
 });
 
-describe('validarNaturaleza y validarDeclaracion', () => {
-  it('devolución de compra exige factura (uuid) y base; ajuste exige soporte; null quita', () => {
-    expect(validarNaturaleza({ asiento: 5, naturaleza: 'devolucion_compra', base: 100 })).toEqual({ ok: false, error: 'devolucion_sin_factura' });
-    expect(validarNaturaleza({ asiento: 5, naturaleza: 'ajuste_procedente' })).toEqual({ ok: false, error: 'soporte_requerido' });
+describe('validarNaturaleza (ronda 2) y validarDeclaracion', () => {
+  it('toda naturaleza salvo el cierre exige soporte y fecha', () => {
+    expect(validarNaturaleza({ asiento: 5, naturaleza: 'pago_dian' })).toEqual({ ok: false, error: 'soporte_requerido' });
+    expect(validarNaturaleza({ asiento: 5, naturaleza: 'pago_dian', soporte: 'Recibo 490', soporte_fecha: '2026-11-07' }).ok).toBe(true);
     expect(validarNaturaleza({ asiento: 0, naturaleza: 'pago_dian' })).toEqual({ ok: false, error: 'asiento_invalido' });
     expect(validarNaturaleza({ asiento: 5, naturaleza: null })).toEqual({ ok: true, asiento: 5, datos: null });
-    const r = validarNaturaleza({ asiento: 5, naturaleza: 'devolucion_compra', invoice_purchase_id: '11111111-1111-4111-8111-111111111111', base: '100000', soporte: ' NC-1 ' });
-    expect(r).toEqual({ ok: true, asiento: 5, datos: { naturaleza: 'devolucion_compra', invoice_purchase_id: '11111111-1111-4111-8111-111111111111', base: 100000, soporte: 'NC-1', nota: null } });
+  });
+
+  it('B4: la devolución de compra exige compra, líneas, base e IVA que sumen y tipo de soporte', () => {
+    const base = { asiento: 5, naturaleza: 'devolucion_compra', soporte: 'NC-1', soporte_fecha: '2026-11-06', soporte_tipo: 'nota_credito_proveedor', invoice_purchase_id: UUID1 };
+    expect(validarNaturaleza({ ...base, base: 100, iva: 19 })).toEqual({ ok: false, error: 'devolucion_incompleta' });
+    expect(validarNaturaleza({ ...base, base: 100, iva: 19, lineas: [{ invoice_item_id: UUID2, base: 90, iva: 19 }] })).toEqual({ ok: false, error: 'devolucion_lineas_no_suman' });
+    const ok = validarNaturaleza({ ...base, base: '100000', iva: 19000, lineas: [{ invoice_item_id: UUID2, base: 100000, iva: 19000 }] });
+    expect(ok.ok && ok.datos).toMatchObject({ naturaleza: 'devolucion_compra', invoice_purchase_id: UUID1, base: 100000, iva: 19000, lineas: [{ invoice_item_id: UUID2 }] });
   });
 
   it('la fecha de presentación no puede ser anterior al fin del período', () => {
     expect(validarDeclaracion({ desde: '2026-10-01', hasta: '2026-10-31', presentada_en: '2026-10-30' })).toEqual({ ok: false, error: 'fecha_presentacion_invalida' });
     expect(validarDeclaracion({ desde: '2026-10-31', hasta: '2026-10-01', presentada_en: '2026-11-05' })).toEqual({ ok: false, error: 'periodo_invalido' });
     expect(validarDeclaracion({ desde: '2026-10-01', hasta: '2026-10-31', presentada_en: '2026-11-05', numero_formulario: 'F-1' })).toEqual({
-      ok: true, desde: '2026-10-01', hasta: '2026-10-31', datos: { numero_formulario: 'F-1', presentada_en: '2026-11-05', nota: null },
+      ok: true,
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+      datos: { numero_formulario: 'F-1', presentada_en: '2026-11-05', nota: null },
     });
   });
 });
@@ -161,27 +228,29 @@ describe('validarNaturaleza y validarDeclaracion', () => {
 describe('líneas fiscales', () => {
   const lineas = leerLineasFiscales({
     lineas: [
-      { tabla: 'invoice_items', id: 'a', descripcion: 'Bien 19', cantidad: 1, base: 100, iva: 19, compra: true,
-        clasificacion: { tratamiento: null, tarifa: null, tipo_operacion: 'bienes', origen: null },
-        descontable: { estado: 'por_evaluar' }, sugerencia: { tratamiento: 'gravada', tarifa: 19, tipo_operacion: 'bienes' } },
+      {
+        tabla: 'invoice_items', id: 'a', descripcion: 'Servicio de aseo', cantidad: 1, base: 100, iva: 19, compra: true, soporte_doc: true,
+        clasificacion: { tratamiento: null, tarifa: null, tipo_operacion: 'servicios', origen: null, soporte_tipo: null },
+        descontable: { estado: 'por_evaluar' }, sugerencia: { tratamiento: 'gravada', tarifa: 19, tipo_operacion: 'servicios' },
+      },
       { tabla: 'otra', id: 'b' },
     ],
   });
 
-  it('lee y descarta tablas desconocidas', () => {
+  it('lee el indicador de documento soporte y descarta tablas desconocidas', () => {
     expect(lineas).toHaveLength(1);
-    expect(lineas[0].descontable?.estado).toBe('por_evaluar');
+    expect(lineas[0]).toMatchObject({ soporteDoc: true, descontable: { estado: 'por_evaluar' } });
   });
 
   it('sin clasificación guardada, el diálogo parte de la sugerencia (no la guarda)', () => {
-    expect(clasificacionInicial(lineas[0])).toMatchObject({ tratamiento: 'gravada', tarifa: 19, tipoOperacion: 'bienes', origen: null });
+    expect(clasificacionInicial(lineas[0])).toMatchObject({ tratamiento: 'gravada', tarifa: 19, tipoOperacion: 'servicios', origen: null });
     expect(lineas[0].clasificacion.tratamiento).toBeNull();
   });
 });
 
 describe('enlaces y CSV', () => {
   it('ruta del documento de origen y tipo de documento de sus líneas', () => {
-    expect(rutaOrigen({ clase: 'nota_credito', documentoId: 'x' })).toBe('/app/finanzas/facturas-venta/x');
+    expect(rutaOrigen({ clase: 'nota_debito', documentoId: 'x' })).toBe('/app/finanzas/facturas-venta/x');
     expect(rutaOrigen({ clase: 'venta_pos', documentoId: 'y' })).toBe('/app/pos/ventas/y');
     expect(rutaOrigen({ clase: 'asiento', documentoId: '9' })).toBeNull();
     expect(tipoDocumentoLineas('documento_soporte')).toBe('documento_soporte');
@@ -196,8 +265,8 @@ describe('enlaces y CSV', () => {
       pendiente: (p) => p.motivo,
       otro: (o) => o.naturaleza,
     });
-    expect(filas[1]).toEqual([52, 'compras_servicios_5', 300300, 300000, -300, 1]);
-    expect(filas.some((r) => r[1] === 'descontable_por_evaluar')).toBe(true);
-    expect(filas).toHaveLength(1 + 2 + 1 + 2);
+    expect(filas[1]).toEqual([30, 'exportacion_bienes', 300000, 300000, 0, 1]);
+    expect(filas[2]).toEqual([59, 'ventas_general', 104500, 105000, 500, 4]);
+    expect(filas).toHaveLength(1 + 2 + 1 + 4);
   });
 });

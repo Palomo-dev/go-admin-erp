@@ -38,9 +38,11 @@ export interface AsistenteLlavesProps {
   onConectado: (conexionId: string | null) => void;
   /** Reemplazar las llaves de esta conexión (85-12). */
   conexionId?: string;
+  /** Sucursal de la conexión nueva (llega de Métodos de pago con `?sucursal=`). */
+  sucursalId?: number;
 }
 
-export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexionId: conexionReemplazo }: AsistenteLlavesProps) {
+export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexionId: conexionReemplazo, sucursalId }: AsistenteLlavesProps) {
   const t = useTranslations('integracionesConexiones');
   const nombre = useNombreServicio(item);
   const proveedor = item.llaves ?? 'wompi';
@@ -135,7 +137,7 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
     if (errores.length > 0) return;
     setEstadoPrueba('probando');
     try {
-      const r = await apiConexiones.guardarLlaves({ proveedor, ambiente, valores, conexionId: conexionReemplazo ?? null });
+      const r = await apiConexiones.guardarLlaves({ proveedor, ambiente, valores, conexionId: conexionReemplazo ?? null, sucursalId: conexionReemplazo ? null : sucursalId ?? null });
       setPrueba(r.prueba);
       const estado = estadoTrasPrueba(r.prueba.resultado);
       setEstadoPrueba(estado);

@@ -491,7 +491,7 @@ function ProviderCard({ provider, status, health, isLoading }: ProviderCardProps
               {provider.portalLabel}
             </Button>
           </a>
-          <Link href="/app/integraciones/conexiones/nueva">
+          <Link href="/app/integraciones/conexiones">
             <Button variant="default" size="sm">
               Configurar conexion
             </Button>

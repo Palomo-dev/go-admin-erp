@@ -1,7 +1,10 @@
 /**
  * POST /api/anticipos-proveedor/[id]/devolver — el proveedor regresa todo o
  * parte del anticipo; entra a la caja abierta o al banco
- * (`fn_anticipo_proveedor_devolver`, asiento D caja o banco / C anticipo).
+ * (`fn_anticipo_proveedor_devolver`, asiento D caja o banco [+ D retenciones
+ * del procedimiento] / C anticipo). `procedimiento`: causa, soportes, cálculo y
+ * tratamiento en declaraciones (ronda 3); las retenciones salen de él; null →
+ * pendiente contable.
  *
  * UNA RPC con el cliente de la sesión. Permiso `finance.void` (el mismo de
  * devolver un saldo a favor), resuelto aquí y otra vez en la base. Organización
@@ -32,6 +35,11 @@ export const POST = withOrg(async (ctx, req, routeParams) => {
     const campos = parsed.error.issues.map((i) => i.path.join('.'));
     // P7: la devolución real lleva soporte (consignación, recibo o transferencia) en `referencia`.
     if (campos.includes('referencia')) return respuestaErrorAnticipo('soporte_obligatorio');
+    // Ronda 3: el procedimiento lleva causa, soportes y, en la devolución parcial, el cálculo de la parte devuelta.
+    const mensajes = parsed.error.issues.map((i) => i.message);
+    if (mensajes.includes('calculo_obligatorio')) return respuestaErrorAnticipo('calculo_obligatorio');
+    if (campos.some((c) => c.startsWith('procedimiento.soportes'))) return respuestaErrorAnticipo('soporte_procedimiento_obligatorio', campos);
+    if (campos.some((c) => c.startsWith('procedimiento'))) return respuestaErrorAnticipo('procedimiento_invalido', campos);
     return respuestaErrorAnticipo('datos_invalidos', campos);
   }
 

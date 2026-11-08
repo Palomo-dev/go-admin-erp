@@ -1,0 +1,120 @@
+PRUEBA EN SECO 15 · Consignaciones, Ronda 3 del Contador (comisión al devengarse y retenciones por separado)
+Fecha: 2026-11-08 · Proyecto taqjemqjtumhwptchcxk · Organizaciones 137 y 138 · begin … rollback (nada queda aplicado)
+Script: 15_consignaciones_ronda3_comision_y_retenciones.sql, con las DOS migraciones EXACTAS embebidas
+(el md5 del texto ejecutado se comprueba contra el del archivo del repositorio).
+
+Primera corrida: 78 de 79. La única falla fue de la propia prueba (R2): el orden esperado de la cadena no seguía el
+de string_agg (retefuente va antes que reteica). Se corrigió la cadena esperada; la migración no cambió.
+Además, las líneas OK muestran solo lo obtenido (igual a lo esperado) para que el registro completo quepa en la salida.
+
+Segunda corrida (la que vale):
+
+PRUEBA EN SECO (se revierte) · 79 de 79 comprobaciones OK
+[OK]    md5 de 20261108120500 igual al del repositorio · 6a5a3ead2fe311fdde4b7d5c0376c12b
+[OK]    md5 de 20261108121000 igual al del repositorio · db50d76130be3c2cd8810acdd29821d1
+[OK]    T1 recibir sin contrapartida 94 definida · sin_cuenta_contra_orden
+[OK]    T2a contrapartida 9905 · cuenta_contra_invalida
+[OK]    T2b contrapartida 9115 (no es del grupo 94) · cuenta_contra_invalida
+[OK]    T2c contrapartida definida · 9405
+[OK]    T2d regla de otra clase · regla_retencion_invalida
+[OK]    T2e regla de la remuneración: retención por comisiones; la operación sin regla · <id de la regla RETE_11_COMISION de la org 137>/null
+[OK]    T3a sin modalidad · clasificacion_obligatoria
+[OK]    T3b sin condición contable · condicion_contable_obligatoria
+[OK]    T3c sin valoración · valoracion_obligatoria
+[OK]    T3d compra real · compra_real_usa_factura
+[OK]    T3e estimatorio (sigue bloqueado) · estimatorio_bloqueado_438_455
+[OK]    T3f mandato como principal · terminos_invalidos
+[OK]    T3g sin reconocimiento · terminos_invalidos
+[OK]    T3h sin costo acreditado · costo_acreditado_obligatorio
+[OK]    T3i diferir la comisión a la liquidación (ya no existe) · terminos_invalidos
+[OK]    T3j obligación posterior sin documentar · obligacion_posterior_obligatoria
+[OK]    T4a N1 custodia (10 × costo acreditado 40.000) · 400000.00
+[OK]    T4b recibir repetido es idempotente · true
+[OK]    T4c N2 custodia (5 × valor convenido 50.000) · 250000.00
+[OK]    T5 vendido en la línea · 3.000
+[OK]    T5b remuneración reconocida al vender (3 porciones) · 27000.00
+[OK]    T6a novedad sin evidencia · evidencia_obligatoria
+[OK]    T6b faltante sale de custodia · 40000.00
+[OK]    T7 liq1 venta / remuneración / dueño · 180000.00/27000.00/153000.00
+[OK]    R1 liq1: 9 retenciones (3 clases × 2 grupos de compradores + 3 de la remuneración) · 9
+[OK]    R2 liq1: lo que no es «no aplica», por ámbito · operacion.retefuente.agente=pendiente, operacion.reteica.agente=pendiente, remuneracion.retefuente.dueno=determinada:2970.00, remuneracion.reteica.dueno=pendiente, remuneracion.reteiva.dueno=pendiente
+[OK]    R3 operación: el comprador agente sin regla elegida queda pendiente (nunca 0) · pendiente/sin_regla_configurada/60000.00/null
+[OK]    R4 operación: la venta a consumidor final no aplica · no_aplica/venta_a_consumidor_final/120000.00
+[OK]    R5 remuneración: 11 % de la regla configurada sobre 27.000, con la calidad del intermediario · determinada/11.0000/27000.00/2970.00
+[OK]    R6 remuneración: el IVA de la comisión se determina aparte · pendiente/iva_de_la_remuneracion_por_determinar
+[OK]    R7a conciliar sin soporte · soporte_obligatorio
+[OK]    R7b conciliada con el certificado · 2970.00
+[OK]    T9a descontar derechos sin acuerdo · acuerdo_obligatorio
+[OK]    T9b liq2 con acuerdo: venta / dueño / derechos · 60000.00/51000.00/60000.00
+[OK]    T9c anular liq1 (no es la última; orden seq) · liquidacion_no_es_la_ultima
+[OK]    T9d anular liq2 (la última; la liquidación no tiene asiento de remuneración) · anulada/null
+[OK]    T9e liq3 sin descontar: venta / dueño / derechos · 120000.00/102000.00/0.00
+[OK]    T11 vendido con obligación posterior: remuneración sin reconocer · 16000.00/0
+[OK]    T11a liq4: venta / remuneración / dueño / remuneración por devengar · 100000.00/16000.00/84000.00/16000.00
+[OK]    T11b anular liq4: sin asiento de remuneración que reversar · anulada/null
+[OK]    T11c liq5: remuneración / dueño · 16000.00/84000.00
+[OK]    T11d reconocer sin evidencia · evidencia_obligatoria
+[OK]    T11e reconocida al cumplirse la obligación, con evidencia · 16000.00
+[OK]    T11f nada más por reconocer · sin_remuneracion_por_devengar
+[OK]    T11g reconocer en una nota que devenga al vender · reconocimiento_no_aplica
+[OK]    T10a anticipo de otro consignante · anticipo_no_encontrado
+[OK]    T10b más que el saldo del anticipo · anticipo_sin_saldo
+[OK]    T10c más que la obligación con el dueño · excede_obligacion_con_el_dueno
+[OK]    T10d cruce: monto / saldo del anticipo · 50000.00/50000.00
+[OK]    T12a entregada: costo identificado / ubicación · 40000.00/En poder de Cliente Seco
+[OK]    T12b liquidar el mandato del lado del dueño · liquidacion_mandante_pendiente
+[OK]    T12c entregar estimatorio · estimatorio_bloqueado_438_455
+[OK]    T12d entregar producto ajeno · producto_ajeno
+[OK]    T12e entregar sin clasificación · clasificacion_obligatoria
+[OK]    T12f operar la organización 138 con la sesión de la 137 · Acceso denegado
+[OK]    T12g el hash del token no se puede leer · permission denied
+[OK]    I1 vínculo aceptado · activo
+[OK]    I2 entregada de 138: costo / compartida · 120000.00/true
+[OK]    I2b RLS: 138 no ve notas de 137 · 0
+[OK]    I3 aceptada en 137: custodia / pactado / recaudo · 120000.00/280000.00/28151002
+[OK]    I3b RLS: 137 no ve notas de 138 · 0
+[OK]    I4 liquidación 137 → 138: venta / remuneración / dueño / compartida · 70000.00/7000.00/63000.00/true
+[OK]    I4b remuneración: el dueño vinculado no tiene datos fiscales → pendiente · pendiente/calidad_pagador_sin_datos
+[OK]    I4c la copia que recibe el dueño trae las retenciones separadas · 6
+[OK]    I5 137 lee la liquidación como si fuera 138 · Acceso denegado
+[OK]    I6 138 prepara: el mandato del lado del dueño espera al Contador · true
+ASIENTOS DE CONSIGNACIÓN:
+consignment_received: 9405 D 400000 | 911520 C 400000
+consignment_received: 9405 D 250000 | 911520 C 250000
+consignment_sale: 911520 D 80000 | 9405 C 80000
+consignment_sale: 41359501 D 120000 | 28151001 C 120000
+consignment_sale: 28151001 D 18000 | 41351201 C 18000
+consignment_sale: 911520 D 40000 | 9405 C 40000
+consignment_sale: 41359501 D 60000 | 28151001 C 60000
+consignment_sale: 28151001 D 9000 | 41351201 C 9000
+consignment_incident: 911520 D 40000 | 9405 C 40000
+consignment_sale: 9405 D 40000 | 911520 C 40000
+consignment_sale: 41351201 D 9000 | 28151001 C 9000
+consignment_sale: 911520 D 80000 | 9405 C 80000
+consignment_sale: 41359501 D 120000 | 28151001 C 120000
+consignment_sale: 28151001 D 18000 | 41351201 C 18000
+consignment_sale: 911520 D 100000 | 9405 C 100000
+consignment_sale: 41359501 D 100000 | 28151001 C 100000
+consignment_remuneration: 28151001 D 16000 | 41351201 C 16000
+consignment_advance_crossing: 28151001 D 50000 | 1330 C 50000
+consignment_received: 9405 D 120000 | 911520 C 120000
+consignment_sale: 911520 D 30000 | 9405 C 30000
+consignment_sale: 41359501 D 70000 | 28151002 C 70000
+consignment_sale: 28151002 D 7000 | 41351201 C 7000
+[OK]    Z1 asientos de consignación · 22
+[OK]    Z1b ninguna liquidación registra la remuneración · 0
+[OK]    Z2 asientos descuadrados (todos los de la transacción) · 0
+[OK]    Z3 asientos de las entregadas · 0
+[OK]    Z4 líneas en 1465 · 0
+[OK]    Z5 kardex de la entregada propia · transfer_out out 2.000
+[OK]    Z6 obligación con el dueño en 28151001 tras el cruce · 298000.00
+[OK]    Z7 saldo y estado del anticipo cruzado · 50000.00 active
+[OK]    Z8 ninguna retención pendiente o «no aplica» trae valor (nunca 0 presumido) · 0
+[OK]    Z9 retenciones de las liquidaciones anuladas: pendientes cerrados · 0
+PENDIENTES ABIERTOS: consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_retencion_pendiente×11, consignacion_retencion_por_conciliar×2
+[OK]    Z10 pendientes abiertos por tipo · consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_retencion_pendiente×11, consignacion_retencion_por_conciliar×2
+
+Comprobación posterior (fuera de la transacción): to_regclass de consignment_notes, organization_links y
+consignment_settlement_withholdings = null; 0 productos SECO-*; 0 perfiles tributarios de 137/138; 0 cuentas de
+prueba; ninguna función fn_consignacion_* ni fn_vinculo_* de estas migraciones (solo la preexistente
+fn_consignacion_caja_banco, que es de consignaciones bancarias). No quedó nada.

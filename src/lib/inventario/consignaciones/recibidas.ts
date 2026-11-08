@@ -4,12 +4,18 @@
  * `docs/design/figma/89-consignacion-recibida-*.png`).
  *
  * Criterio del Contador (docs/design/CONSIGNACION-RECIBIDA-Y-ENTRE-ORGANIZACIONES.md,
- * «Correcciones del Contador 2»):
- * - La clasificación del contrato es OBLIGATORIA y no tiene valor por defecto:
- *   intermediación (mandato), estimatorio o compra real. La compra real no es
- *   consignación: va por la factura de compra de siempre.
- * - IVA y retenciones no se eligen: se determinan por ley con los hechos de cada
- *   liquidación; lo no parametrizado queda como pendiente contable visible.
+ * «Ronda 2 del Contador»):
+ * - El contrato separa la modalidad jurídica (intermediación/mandato, estimatorio,
+ *   compra), la condición contable (agente o principal) y el tratamiento
+ *   tributario (lo deriva el sistema). Nada tiene valor por defecto.
+ * - La compra real no es consignación: va por la factura de compra de siempre,
+ *   con una adquisición demostrada. El estimatorio no opera hasta parametrizar
+ *   los arts. 438 y 455 (pendiente visible).
+ * - IVA y retenciones no se eligen: se determinan por ley con los hechos.
+ * «Ronda 3 del Contador»: la comisión se reconoce cuando se DEVENGA (al vender, o
+ * al cumplirse una obligación posterior real que el contrato documenta, con
+ * evidencia), nunca por la fecha de liquidación; las retenciones de la OPERACIÓN
+ * y las de la REMUNERACIÓN se resuelven por separado con las reglas configuradas.
  *
  * La escritura es de las RPC de `20261108121000_consignaciones.sql` y
  * `20261108120500_organization_links.sql` (PROPUESTAS sin aplicar).
@@ -32,84 +38,135 @@ export type PestanaConsignacion = (typeof PESTANAS_CONSIGNACION)[number];
 export const CONTRATOS = ['intermediacion', 'estimatorio', 'compra'] as const;
 export type Contrato = (typeof CONTRATOS)[number];
 export type ParteContrato = 'dueno' | 'consignatario';
+export type CondicionContable = 'agente' | 'principal';
+/** Valoración de la custodia en cuentas de orden; nunca se vuelve activo propio. */
+export type Valoracion = 'costo_acreditado' | 'valor_convenido';
+/** Cuándo se DEVENGA la remuneración (ingreso en el auxiliar de 413512). Nunca por la fecha de liquidación. */
+export type Reconocimiento = 'al_vender' | 'obligacion_posterior';
+export type DireccionConsignacion = 'entregada' | 'recibida';
 
 export interface CondicionesContrato {
-  /** null hasta que la persona elige: no hay valor por defecto. */
+  /** Modalidad jurídica. null hasta que la persona elige: no hay valor por defecto. */
   contrato: Contrato | null;
+  /** Condición contable. Intermediación ⇒ agente. */
+  condicion: CondicionContable | null;
+  /** Solo recibida: política de valoración de la custodia. */
+  valoracion: Valoracion | null;
   precioModo: 'fijo' | 'minimo' | null;
   remuneracionModo: 'porcentaje' | 'precio_liquidacion' | null;
   baseComision: 'precio_pactado' | 'precio_venta' | null;
+  reconocimiento: Reconocimiento | null;
+  /** Si el devengo depende de una obligación posterior real: cuál (se documenta en el contrato). */
+  obligacionPosterior: string | null;
+  /** La remuneración es un servicio independiente con obligación de facturar (la liquidación no la sustituye). */
+  facturaRemuneracion: boolean | null;
   /** Intermediación: cuándo nace la obligación con el dueño en ventas a crédito. */
   obligacionDueno: 'venta' | 'cobro' | null;
   riesgos: { devoluciones: ParteContrato | null; perdidas: ParteContrato | null; gastos: ParteContrato | null };
-  /** Estimatorio: quién factura al público. En intermediación factura el mandatario. */
-  factura: 'consignatario' | 'consignante' | null;
 }
 
 export const CONDICIONES_VACIAS: CondicionesContrato = {
   contrato: null,
+  condicion: null,
+  valoracion: null,
   precioModo: null,
   remuneracionModo: null,
   baseComision: null,
+  reconocimiento: null,
+  obligacionPosterior: null,
+  facturaRemuneracion: null,
   obligacionDueno: null,
   riesgos: { devoluciones: null, perdidas: null, gastos: null },
-  factura: null,
 };
 
 export type ErrorCondicion =
   | 'contrato'
   | 'compra_real'
+  | 'estimatorio_bloqueado'
+  | 'condicion'
+  | 'valoracion'
   | 'precio'
   | 'remuneracion'
   | 'base'
+  | 'reconocimiento'
+  | 'obligacion_posterior'
+  | 'factura_remuneracion'
   | 'obligacion'
   | 'riesgos';
 
-/** Lo que falta para poder operar. Vacío = se puede enviar. */
-export function validarCondiciones(c: CondicionesContrato): ErrorCondicion[] {
+/** Tratamiento tributario: lo deriva el sistema de la modalidad, no se elige. */
+export const tratamientoTributario = (contrato: Exclude<Contrato, 'compra'>): 'mandato' | 'estimatorio_438_455' =>
+  contrato === 'intermediacion' ? 'mandato' : 'estimatorio_438_455';
+
+/**
+ * Lo que falta para poder operar. Vacío = se puede enviar. El estimatorio se
+ * puede elegir pero no operar: queda bloqueado hasta parametrizar los arts. 438 y 455.
+ */
+export function validarCondiciones(c: CondicionesContrato, direccion: DireccionConsignacion = 'recibida'): ErrorCondicion[] {
   if (!c.contrato) return ['contrato'];
   if (c.contrato === 'compra') return ['compra_real'];
+  if (c.contrato === 'estimatorio') return ['estimatorio_bloqueado'];
   const errores: ErrorCondicion[] = [];
+  if (c.condicion !== 'agente') errores.push('condicion');
+  if (direccion === 'recibida' && !c.valoracion) errores.push('valoracion');
   if (!c.precioModo) errores.push('precio');
   if (!c.remuneracionModo) errores.push('remuneracion');
   if (c.remuneracionModo === 'porcentaje' && !c.baseComision) errores.push('base');
-  if (c.contrato === 'intermediacion' && !c.obligacionDueno) errores.push('obligacion');
+  if (!c.reconocimiento) errores.push('reconocimiento');
+  if (c.reconocimiento === 'obligacion_posterior' && (c.obligacionPosterior ?? '').trim().length < 10) errores.push('obligacion_posterior');
+  if (c.facturaRemuneracion === null) errores.push('factura_remuneracion');
+  if (!c.obligacionDueno) errores.push('obligacion');
   if (!c.riesgos.devoluciones || !c.riesgos.perdidas || !c.riesgos.gastos) errores.push('riesgos');
   return errores;
 }
 
 /** Cuerpo `terminos` que esperan las RPC (claves en español, como la base). */
-export function terminosDeCondiciones(c: CondicionesContrato, extra: { cuentaRecaudo?: string | null } = {}): Record<string, unknown> {
+export function terminosDeCondiciones(
+  c: CondicionesContrato,
+  extra: { cuentaRecaudo?: string | null; direccion?: DireccionConsignacion } = {},
+): Record<string, unknown> {
+  const direccion = extra.direccion ?? 'recibida';
   return {
     contrato: c.contrato,
+    condicion: c.condicion,
+    ...(direccion === 'recibida' ? { valoracion: c.valoracion } : {}),
     precio_modo: c.precioModo,
     remuneracion_modo: c.remuneracionModo,
     base_comision: c.remuneracionModo === 'porcentaje' ? c.baseComision : null,
+    reconocimiento: c.reconocimiento,
+    ...(c.reconocimiento === 'obligacion_posterior' ? { obligacion_posterior: (c.obligacionPosterior ?? '').trim() } : {}),
+    factura_remuneracion: c.facturaRemuneracion,
     obligacion_dueno: c.contrato === 'intermediacion' ? c.obligacionDueno : null,
     riesgos: c.riesgos,
-    factura: c.contrato === 'intermediacion' ? 'consignatario' : (c.factura ?? 'consignatario'),
     ...(extra.cuentaRecaudo ? { cuenta_recaudo: extra.cuentaRecaudo.trim() } : {}),
   };
 }
 
 const PARTE = z.enum(['dueno', 'consignatario']);
 
-/** Validación del servidor: la clasificación es obligatoria (sin `.default`). */
+/** Validación del servidor: modalidad, condición, reconocimiento y factura de la remuneración son obligatorios (sin `.default`). */
 export const terminosSchema = z
   .object({
     contrato: z.enum(CONTRATOS),
+    condicion: z.enum(['agente', 'principal']),
+    valoracion: z.enum(['costo_acreditado', 'valor_convenido']).optional(),
     precio_modo: z.enum(['fijo', 'minimo']),
     remuneracion_modo: z.enum(['porcentaje', 'precio_liquidacion']),
     base_comision: z.enum(['precio_pactado', 'precio_venta']).nullable().optional(),
+    reconocimiento: z.enum(['al_vender', 'obligacion_posterior']),
+    obligacion_posterior: z.string().trim().min(10).max(1000).optional(),
+    factura_remuneracion: z.boolean(),
     obligacion_dueno: z.enum(['venta', 'cobro']).nullable().optional(),
     riesgos: z.object({ devoluciones: PARTE, perdidas: PARTE, gastos: PARTE }).strict(),
-    factura: z.enum(['consignatario', 'consignante']).optional(),
     cuenta_recaudo: z.string().regex(/^281510\d{2}$/).optional(),
   })
   .strict()
   .superRefine((t, ctx) => {
     if (t.remuneracion_modo === 'porcentaje' && !t.base_comision) ctx.addIssue({ code: 'custom', path: ['base_comision'], message: 'obligatoria' });
     if (t.contrato === 'intermediacion' && !t.obligacion_dueno) ctx.addIssue({ code: 'custom', path: ['obligacion_dueno'], message: 'obligatoria' });
+    if (t.contrato === 'intermediacion' && t.condicion !== 'agente') ctx.addIssue({ code: 'custom', path: ['condicion'], message: 'mandato_es_agente' });
+    if (t.reconocimiento === 'obligacion_posterior' && !t.obligacion_posterior)
+      ctx.addIssue({ code: 'custom', path: ['obligacion_posterior'], message: 'obligatoria' });
   });
 export type Terminos = z.infer<typeof terminosSchema>;
 
@@ -127,12 +184,29 @@ export const recibirSchema = z
     terminos: terminosSchema,
     notas: z.string().max(2000).nullable().optional(),
     lineas: z
-      .array(z.object({ product_id: z.number().int().positive(), qty: CANTIDAD, precio: PRECIO, precio_liquidacion: PRECIO.nullable().optional() }).strict())
+      .array(
+        z
+          .object({
+            product_id: z.number().int().positive(),
+            qty: CANTIDAD,
+            precio: PRECIO,
+            precio_liquidacion: PRECIO.nullable().optional(),
+            costo_acreditado: PRECIO.nullable().optional(),
+          })
+          .strict(),
+      )
       .min(1)
       .max(200),
     clave_idempotencia: CLAVE,
   })
-  .strict();
+  .strict()
+  .superRefine((v, ctx) => {
+    if (v.terminos.valoracion === undefined) ctx.addIssue({ code: 'custom', path: ['terminos', 'valoracion'], message: 'obligatoria' });
+    if (v.terminos.valoracion === 'costo_acreditado')
+      v.lineas.forEach((l, i) => {
+        if (!l.costo_acreditado) ctx.addIssue({ code: 'custom', path: ['lineas', i, 'costo_acreditado'], message: 'obligatorio' });
+      });
+  });
 export type SolicitudRecibir = z.infer<typeof recibirSchema>;
 
 export const devolverSchema = z
@@ -143,10 +217,54 @@ export const devolverSchema = z
   })
   .strict();
 
+/** Solo la clave de idempotencia (aceptar la liquidación que le llegó al consignante). */
+export const claveSchema = z.object({ clave_idempotencia: CLAVE }).strict();
+
+/** Los derechos frente al dueño (devoluciones de lo ya liquidado) solo se descuentan con acuerdo escrito. */
 export const liquidarRecibidaSchema = z
   .object({
     hasta: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    descontar_derechos: z.boolean().optional(),
+    acuerdo: z.string().trim().max(1000).nullable().optional(),
     clave_idempotencia: CLAVE,
+  })
+  .strict()
+  .refine((v) => !v.descontar_derechos || (v.acuerdo ?? '').trim().length >= 5, { message: 'acuerdo_obligatorio', path: ['acuerdo'] });
+
+/** Faltante o daño: evidencia, responsable y obligación. Nada de gasto ni cuenta por pagar automáticos. */
+export const novedadSchema = z
+  .object({
+    linea_id: z.string().uuid(),
+    tipo: z.enum(['faltante', 'dano']),
+    cantidad: CANTIDAD,
+    responsable: z.enum(['dueno', 'consignatario', 'tercero', 'por_determinar']),
+    evidencia: z.string().trim().min(5).max(2000),
+    obligacion: z.string().trim().max(2000).nullable().optional(),
+    clave_idempotencia: CLAVE,
+  })
+  .strict();
+
+/** Reconocer la remuneración al cumplirse la obligación posterior del contrato: evidencia obligatoria. */
+export const reconocerRemuneracionSchema = z.object({ evidencia: z.string().trim().min(10).max(2000), clave_idempotencia: CLAVE }).strict();
+
+/** Conciliar una retención con su soporte (certificado): el valor que consta, nunca presumido. */
+export const conciliarRetencionSchema = z.object({ valor: z.number().finite().min(0).max(1e12), soporte: z.string().trim().min(5).max(1000) }).strict();
+
+const REGLA = z.string().uuid().nullable().optional();
+const REGLAS_AMBITO = z.object({ retefuente: REGLA, reteiva: REGLA, reteica: REGLA }).strict();
+/** Regla de retención configurada (organization_taxes) que aplica a cada ámbito y clase. */
+export const retencionesConsignacionSchema = z.object({ operacion: REGLAS_AMBITO, remuneracion: REGLAS_AMBITO }).strict();
+export type ReglasRetencionConsignacion = z.infer<typeof retencionesConsignacionSchema>;
+
+/** Anticipo al consignante (el de anticipos a proveedores) cruzado con la obligación real del mandato. */
+export const cruceAnticipoSchema = z.object({ anticipo_id: z.string().uuid(), monto: PRECIO, clave_idempotencia: CLAVE }).strict();
+
+/** Cuentas de consignación definidas por la organización (la contrapartida del grupo 94 es obligatoria). */
+export const cuentasConsignacionSchema = z
+  .object({
+    orden: z.string().regex(/^911520(\d{2})?$/).nullable().optional(),
+    contra: z.string().regex(/^94\d{2,6}$/),
+    remuneracion: z.string().regex(/^413512\d{2}$/).nullable().optional(),
   })
   .strict();
 
@@ -159,6 +277,8 @@ export const aceptarNotaSchema = z
       .array(z.object({ producto_ref: z.string().min(1).max(120), product_id: z.number().int().positive(), precio: PRECIO.nullable().optional() }).strict())
       .max(200),
     cuenta_recaudo: z.string().regex(/^281510\d{2}$/).nullable().optional(),
+    /** La valoración de la custodia es política de quien recibe. */
+    valoracion: z.enum(['costo_acreditado', 'valor_convenido']),
     clave_idempotencia: CLAVE,
   })
   .strict();
@@ -201,7 +321,17 @@ export const ERRORES_RECIBIDA = [
   'pendiente_de_activar',
   'clasificacion_obligatoria',
   'compra_real_usa_factura',
+  'condicion_contable_obligatoria',
+  'valoracion_obligatoria',
+  'estimatorio_bloqueado_438_455',
+  'liquidacion_mandante_pendiente',
   'terminos_invalidos',
+  'obligacion_posterior_obligatoria',
+  'reconocimiento_no_aplica',
+  'sin_remuneracion_por_devengar',
+  'soporte_obligatorio',
+  'retencion_no_encontrada',
+  'regla_retencion_invalida',
   'clave_idempotencia_invalida',
   'clave_idempotencia_reutilizada',
   'comision_invalida',
@@ -216,7 +346,9 @@ export const ERRORES_RECIBIDA = [
   'producto_propio_no_consignable',
   'producto_de_otro_consignante',
   'producto_otra_clasificacion',
+  'producto_ajeno',
   'precio_liquidacion_obligatorio',
+  'costo_acreditado_obligatorio',
   'stock_insuficiente',
   'excede_en_su_poder',
   'sin_cuenta_orden_consignacion',
@@ -224,18 +356,23 @@ export const ERRORES_RECIBIDA = [
   'sin_cuenta_recaudo_propietario',
   'cuenta_recaudo_invalida',
   'sin_cuenta_remuneracion',
-  'sin_cuenta_costo',
+  'cuenta_orden_invalida',
+  'cuenta_contra_invalida',
+  'cuenta_remuneracion_invalida',
   'nota_no_encontrada',
   'liquidacion_no_encontrada',
   'liquidacion_pendiente',
   'liquidacion_no_es_la_ultima',
   'liquidacion_anulada',
   'liquidacion_aceptada_por_el_dueno',
-  'anular_factura_compra_primero',
   'sin_ventas_por_liquidar',
   'saldo_a_favor_del_consignatario',
   'venta_bajo_precio_pactado',
-  'devolucion_estimatorio_pendiente',
+  'acuerdo_obligatorio',
+  'evidencia_obligatoria',
+  'anticipo_no_encontrado',
+  'anticipo_sin_saldo',
+  'excede_obligacion_con_el_dueno',
   'motivo_obligatorio',
   'documento_no_encontrado',
   'documento_no_disponible',
@@ -254,9 +391,7 @@ export const ERRORES_RECIBIDA = [
   'transicion_invalida',
   'factura_no_encontrada',
   'factura_distinta',
-  'proveedor_distinto',
   'documento_anulado',
-  'factura_compra_no_creada',
   'asiento_no_creado',
   'error_desconocido',
 ] as const;
@@ -268,7 +403,7 @@ export const ERRORES_DE_CONFIGURACION: readonly ErrorRecibida[] = [
   'sin_cuenta_contra_orden',
   'sin_cuenta_recaudo_propietario',
   'sin_cuenta_remuneracion',
-  'sin_cuenta_costo',
+  'estimatorio_bloqueado_438_455',
 ];
 
 export function codigoErrorRecibida(mensaje: string | null | undefined): ErrorRecibida {
@@ -295,6 +430,8 @@ export function estadoHttpErrorRecibida(codigo: ErrorRecibida): number {
     case 'vinculo_no_encontrado':
     case 'tercero_no_encontrado':
     case 'factura_no_encontrada':
+    case 'anticipo_no_encontrado':
+    case 'retencion_no_encontrada':
       return 404;
     case 'pendiente_de_activar':
       return 501;
@@ -304,13 +441,11 @@ export function estadoHttpErrorRecibida(codigo: ErrorRecibida): number {
     case 'vinculo_existente':
     case 'liquidacion_no_es_la_ultima':
     case 'liquidacion_aceptada_por_el_dueno':
-    case 'anular_factura_compra_primero':
       return 409;
     case 'datos_invalidos':
       return 400;
     case 'error_desconocido':
     case 'asiento_no_creado':
-    case 'factura_compra_no_creada':
       return 500;
     default:
       return 422;
@@ -340,11 +475,48 @@ export interface LineaRecibida {
   recibido: number;
   vendido: number;
   devuelto: number;
+  /** Faltantes y daños registrados con evidencia. */
+  novedades: number;
   precioPactado: number;
   precioLiquidacion: number | null;
+  costoAcreditado: number | null;
+  /** Valor unitario de custodia en cuentas de orden (costo acreditado o valor convenido). */
+  valorCustodia: number;
   /** Vendido y no liquidado (neto de devoluciones): cantidad, venta neta y a precio pactado. */
   sinLiquidar: { cantidad: number; venta: number; pactado: number };
 }
+
+export type AmbitoRetencion = 'operacion' | 'remuneracion';
+export type ClaseRetencion = 'retefuente' | 'reteiva' | 'reteica';
+export type EstadoRetencion = 'determinada' | 'pendiente' | 'no_aplica';
+
+/** Retención de una liquidación: por ámbito, clase y grupo de pagadores. «valor» es null mientras esté pendiente. */
+export interface RetencionLiquidacion {
+  id: string;
+  ambito: AmbitoRetencion;
+  clase: ClaseRetencion;
+  pagador: 'comprador' | 'dueno';
+  grupo: 'consumidor_final' | 'sin_datos' | 'no_agente' | 'agente' | 'dueno';
+  base: number | null;
+  tarifa: number | null;
+  valor: number | null;
+  estado: EstadoRetencion;
+  motivo: string | null;
+  conciliado: { valor: number; soporte: string; fecha: string } | null;
+}
+
+export const ORDEN_CLASES: readonly ClaseRetencion[] = ['retefuente', 'reteiva', 'reteica'];
+
+/** Retenciones de una liquidación separadas por ámbito, en el orden fijo de clases. */
+export function retencionesPorAmbito(rs: readonly RetencionLiquidacion[]): Record<AmbitoRetencion, RetencionLiquidacion[]> {
+  const orden = (r: RetencionLiquidacion) => ORDEN_CLASES.indexOf(r.clase);
+  const de = (a: AmbitoRetencion) => rs.filter((r) => r.ambito === a).sort((x, y) => orden(x) - orden(y) || x.grupo.localeCompare(y.grupo));
+  return { operacion: de('operacion'), remuneracion: de('remuneracion') };
+}
+
+/** Lo que falta conciliar: pendientes y determinadas sin soporte. */
+export const porConciliar = (rs: readonly RetencionLiquidacion[]): RetencionLiquidacion[] =>
+  rs.filter((r) => r.estado !== 'no_aplica' && !r.conciliado);
 
 export interface LiquidacionRecibida {
   id: string;
@@ -358,7 +530,10 @@ export interface LiquidacionRecibida {
   remuneracion: number;
   dueno: number;
   porPagar: number;
-  facturaCompraId: string | null;
+  derechosDescontados: number;
+  /** Remuneración de lo liquidado que aún espera la obligación posterior. */
+  remuneracionPorDevengar: number;
+  retenciones: RetencionLiquidacion[];
   compartida: boolean;
   creada: string;
 }
@@ -370,17 +545,26 @@ export interface NotaRecibida {
   consignante: string;
   sucursalId: number;
   contrato: Exclude<Contrato, 'compra'>;
+  condicion: CondicionContable;
+  tributario: 'mandato' | 'estimatorio_438_455';
+  valoracion: Valoracion;
   precioModo: 'fijo' | 'minimo';
   remuneracionModo: 'porcentaje' | 'precio_liquidacion';
   baseComision: 'precio_pactado' | 'precio_venta';
   comisionPct: number;
+  reconocimiento: Reconocimiento;
+  obligacionPosterior: string | null;
+  /** Remuneración vendida y aún no reconocida (espera la obligación posterior). */
+  remuneracionPorReconocer: number;
+  facturaRemuneracion: boolean;
   obligacionDueno: 'venta' | 'cobro' | null;
   riesgos: { devoluciones: ParteContrato; perdidas: ParteContrato; gastos: ParteContrato };
-  factura: 'consignatario' | 'consignante';
   estado: EstadoRecibida;
   vinculada: boolean;
   numeroExterno: string | null;
-  cuentas: { orden: string | null; contra: string | null; recaudo: string | null; remuneracion: string | null; costo: string | null };
+  cuentas: { orden: string | null; contra: string | null; recaudo: string | null; remuneracion: string | null };
+  /** Devoluciones de lo ya liquidado: derecho frente al dueño (solo se descuenta con acuerdo). */
+  derechosFrenteAlDueno: number;
   fecha: string;
   lineas: LineaRecibida[];
   liquidaciones: LiquidacionRecibida[];
@@ -404,8 +588,8 @@ export interface RespuestaRecibidas {
   porAceptar: DocumentoPorAceptar[];
 }
 
-export const enTuPoder = (l: Pick<LineaRecibida, 'recibido' | 'vendido' | 'devuelto'>): number =>
-  Math.max(0, Math.round((l.recibido - l.vendido - l.devuelto) * 1000) / 1000);
+export const enTuPoder = (l: Pick<LineaRecibida, 'recibido' | 'vendido' | 'devuelto'> & { novedades?: number }): number =>
+  Math.max(0, Math.round((l.recibido - l.vendido - l.devuelto - (l.novedades ?? 0)) * 1000) / 1000);
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -436,9 +620,10 @@ export interface LineaVistaLiquidacion {
 }
 
 /**
- * Vista previa de la liquidación (la MISMA fórmula que fn_consignacion_recibida_liquidar):
- * lo del dueño es el precio de liquidación × cantidad, o la base (pactado o venta)
- * menos el porcentaje; la remuneración es la venta menos lo del dueño.
+ * Vista previa de la liquidación (la MISMA fórmula que fn_consignacion_remuneracion
+ * y fn_consignacion_recibida_liquidar): lo del dueño es el precio de liquidación ×
+ * cantidad, o la base (pactado o venta) menos el porcentaje; la remuneración es la
+ * venta menos lo del dueño.
  */
 export function vistaLiquidacion(
   lineas: readonly LineaVistaLiquidacion[],
@@ -476,11 +661,16 @@ export const BADGE_ESTADO_RECIBIDA: Readonly<Record<EstadoRecibida, string>> = {
 /** Tipos de pendiente contable que dejan las consignaciones (bandeja de «Pendientes contables»). */
 export const PENDIENTES_CONSIGNACION = [
   'consignacion_config',
-  'consignacion_impuestos_por_determinar',
-  'consignacion_base_iva_estimatorio',
+  'consignacion_retencion_pendiente',
+  'consignacion_retencion_por_conciliar',
+  'consignacion_remuneracion_por_devengar',
+  'consignacion_factura_remuneracion',
   'consignacion_obligacion_al_cobro',
-  'consignacion_devolucion_liquidada',
+  'consignacion_derecho_frente_al_dueno',
+  'consignacion_devolucion_asumida',
   'consignacion_devolucion_pos',
+  'consignacion_novedad',
+  'consignacion_venta_bajo_precio',
   'consignacion_sin_nota',
   'consignacion_venta',
 ] as const;

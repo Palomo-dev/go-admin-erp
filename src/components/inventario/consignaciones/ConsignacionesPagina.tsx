@@ -3,8 +3,9 @@
 /**
  * Consignaciones (Inventario) — pestañas Entregadas · Recibidas · Por aceptar
  * (Figma R1 `2404:146165`; la entregada es la de R4-B, `2335:138595`). Acciones:
- * «Vincular organización» (R6), «Recibir mercancía» (R4) y, en Entregadas,
- * «Nueva nota». En el celular el kit oculta el PageHeader por debajo de `lg`:
+ * «Vincular organización» (R6), «Recibir mercancía» (R4), «Cuentas de
+ * consignación» (Ronda 2 del Contador: la contrapartida del grupo 94 se define,
+ * no se adivina) y, en Entregadas, «Nueva nota». En el celular el kit oculta el PageHeader por debajo de `lg`:
  * las acciones van en `movil.menu`.
  *
  * Mientras las migraciones no se apliquen: «pendiente de activar», sin ceros.
@@ -12,7 +13,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ClipboardList, Link2, PackageOpen, Plus } from 'lucide-react';
+import { ClipboardList, Link2, PackageOpen, Plus, Settings2 } from 'lucide-react';
 import { AvisoTonal, PageHeader, TabBar, clasesBoton, idPanel, idPestana, useOpcionUrl, type AccionFila } from '@/components/kit';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { ErrorPeticionSaldoFavor } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
@@ -23,6 +24,7 @@ import { ListadoRecibidas } from './ListadoRecibidas';
 import { ListadoPorAceptar } from './ListadoPorAceptar';
 import { RecibirMercanciaDialog } from './RecibirMercanciaDialog';
 import { VincularOrganizacionDialog } from './VincularOrganizacionDialog';
+import { CuentasConsignacionDialog, type CuentasConsignacion } from './CuentasConsignacionDialog';
 
 const NS = 'consignacionesR4';
 const ID_TABS = 'consignaciones';
@@ -39,6 +41,8 @@ export function ConsignacionesPagina() {
   const [recibir, setRecibir] = useState(false);
   const [vincular, setVincular] = useState(false);
   const [nuevaEntregada, setNuevaEntregada] = useState(0);
+  const [cuentas, setCuentas] = useState<CuentasConsignacion | null>(null);
+  const [editarCuentas, setEditarCuentas] = useState(false);
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
 
   useEffect(() => {
@@ -53,6 +57,10 @@ export function ConsignacionesPagina() {
       })
       .catch((e) => vigente && setError(e instanceof ErrorPeticionSaldoFavor ? String(e.codigo) : 'error_desconocido'))
       .finally(() => vigente && setCargando(false));
+    consignacionesRecibidasService
+      .cuentas()
+      .then((c) => vigente && !c.pendiente && setCuentas({ orden: c.orden, contra: c.contra, remuneracion: c.remuneracion }))
+      .catch(() => undefined);
     return () => {
       vigente = false;
     };
@@ -68,7 +76,9 @@ export function ConsignacionesPagina() {
     { id: 'recibir', etiqueta: t('acciones.recibir'), icono: PackageOpen, onSelect: () => setRecibir(true), oculta: !permisos.crear, deshabilitada: pendiente },
     { id: 'nueva', etiqueta: t('acciones.nuevaEntregada'), icono: Plus, onSelect: () => setNuevaEntregada((n) => n + 1), oculta: !permisos.crear || pestana !== 'entregadas', deshabilitada: pendiente },
     { id: 'vincular', etiqueta: t('acciones.vincular'), icono: Link2, onSelect: () => setVincular(true), oculta: !permisos.crear, deshabilitada: pendiente },
+    { id: 'cuentas', etiqueta: t('acciones.cuentas'), icono: Settings2, onSelect: () => setEditarCuentas(true), oculta: !permisos.crear, deshabilitada: pendiente },
   ];
+  const sinContrapartida = !pendiente && datos !== null && !cuentas?.contra;
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
@@ -81,6 +91,10 @@ export function ConsignacionesPagina() {
         acciones={
           permisos.crear ? (
             <>
+              <button type="button" onClick={() => setEditarCuentas(true)} disabled={pendiente} className={clasesBoton({ variante: 'secundario' })}>
+                <Settings2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('acciones.cuentas')}
+              </button>
               <button type="button" onClick={() => setVincular(true)} disabled={pendiente} className={clasesBoton({ variante: 'secundario' })}>
                 <Link2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {t('acciones.vincular')}
@@ -107,6 +121,14 @@ export function ConsignacionesPagina() {
         ]}
       />
 
+      {sinContrapartida && pestana !== 'entregadas' && (
+        <AvisoTonal
+          tono="advertencia"
+          titulo={t('cuentas.faltanTitulo')}
+          descripcion={t('cuentas.faltanDescripcion')}
+          accion={permisos.crear ? { etiqueta: t('acciones.cuentas'), onClick: () => setEditarCuentas(true) } : undefined}
+        />
+      )}
       {pendiente && pestana !== 'entregadas' && <AvisoTonal tono="advertencia" rol="status" titulo={t('pendiente.titulo')} descripcion={t('pendiente.descripcion')} />}
 
       <div role="tabpanel" id={idPanel(ID_TABS, pestana)} aria-labelledby={idPestana(ID_TABS, pestana)}>
@@ -119,6 +141,7 @@ export function ConsignacionesPagina() {
 
       <RecibirMercanciaDialog abierto={recibir} onAbiertoChange={setRecibir} onRecibida={(r) => router.push(rutaRecibida(r.nota_id))} />
       <VincularOrganizacionDialog abierto={vincular} onAbiertoChange={setVincular} />
+      <CuentasConsignacionDialog abierto={editarCuentas} onAbiertoChange={setEditarCuentas} actuales={cuentas} onGuardadas={recargar} />
     </div>
   );
 }

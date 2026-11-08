@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { Download, FileText, ListChecks, Settings2 } from 'lucide-react';
+import { Download, FileText, Gavel, ListChecks, Settings2 } from 'lucide-react';
 import { AvisoTonal, DataTable, FormField, ListCard, StatusBadge, clasesBoton, useOpcionUrl, type AccionFila, type ColumnaTabla, type TonoBadge } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -23,6 +23,7 @@ import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { etiquetaPeriodo, mesAnterior } from '@/lib/finanzas/tributario/periodos';
 import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
 import { tributarioCliente, RUTAS_TRIBUTARIO, type CentroCliente } from '../tributarioCliente';
+import { DecisionPeriodoDialogo } from './DecisionPeriodoDialogo';
 import { AvisoBorradores, AvisoPendienteActivar, CabeceraTributario, ErrorLectura, codigoDe, type Lectura } from '../piezas';
 
 type Fila = CentroCliente['filas'][number];
@@ -49,6 +50,7 @@ export function CentroTributarioPage() {
   const opcionesCorte = useMemo(() => mesesDeCorte(hoy), [hoy]);
   const [corte, setCorte] = useOpcionUrl<string>('corte', opcionesCorte, opcionesCorte[0]);
   const [lectura, setLectura] = useState<Lectura<CentroCliente>>({ estado: 'cargando' });
+  const [decidir, setDecidir] = useState<Fila | null>(null);
 
   const cargar = useCallback(async () => {
     setLectura({ estado: 'cargando' });
@@ -73,7 +75,12 @@ export function CentroTributarioPage() {
 
   const estadoFila = (f: Fila): { etiqueta: string; tono: TonoBadge } => {
     const v = f.valor;
-    if (v.estado === 'revisar_procedencia') return { etiqueta: t('cambioVigencia'), tono: 'advertencia' };
+    if (v.estado === 'revisar_procedencia') {
+      const n = f.obligacion.notas;
+      const clave = n.includes('cambio_periodicidad_pendiente') ? 'cambioPeriodicidadPendiente' : n.includes('decision_reabierta') ? 'decisionReabierta' : 'cambioVigencia';
+      return { etiqueta: t(clave), tono: 'advertencia' };
+    }
+    if (f.obligacion.notas.includes('decision_registrada') && v.estado === 'calculado') return { etiqueta: t('decisionRegistrada'), tono: 'informacion' };
     if (v.estado === 'pendiente_activar') return { etiqueta: tc('estados.pendienteActivar'), tono: 'neutro' };
     if (v.estado === 'error') return { etiqueta: tc('estados.error'), tono: 'peligro' };
     if (v.estado === 'no_calculable') return { etiqueta: tc('estados.porConfirmar'), tono: 'advertencia' };
@@ -92,6 +99,8 @@ export function CentroTributarioPage() {
         return t('vence.sinNit');
       case 'no_encontrado':
         return t('vence.incompletoObligacion', { anio: v.anio });
+      case 'no_aplica':
+        return t('vence.noAplica');
       case 'municipal':
         return t('vence.municipal');
       default:
@@ -112,6 +121,9 @@ export function CentroTributarioPage() {
     const e = enlace(f);
     const out: AccionFila[] = [];
     if (e) out.push({ id: 'detalle', etiqueta: e.etiqueta, icono: FileText, onSelect: () => router.push(e.href) });
+    if (f.vigenciasPeriodo && f.vigenciasPeriodo.length > 1) {
+      out.push({ id: 'decision', etiqueta: datos?.puedeDecidir ? t('decision.accion') : t('decision.verHistoria'), icono: Gavel, onSelect: () => setDecidir(f) });
+    }
     if (f.obligacion.notas.some((n) => n === 'cambio_vigencia_en_periodo' || n === 'perfil_por_revisar' || n === 'periodo_sin_perfil_completo')) {
       out.push({ id: 'perfil', etiqueta: t('revisarPerfil'), icono: Settings2, onSelect: () => router.push(RUTAS_TRIBUTARIO.perfil) });
     }
@@ -267,6 +279,14 @@ export function CentroTributarioPage() {
           }}
         />
       )}
+
+      <DecisionPeriodoDialogo
+        fila={decidir}
+        nombre={decidir ? nombre(decidir) : ''}
+        puedeDecidir={!!datos?.puedeDecidir}
+        onAbiertoChange={(abierto) => !abierto && setDecidir(null)}
+        onRegistrada={() => void cargar()}
+      />
 
       <p className="text-sm text-fg-secondary">
         {t('informes')}{' '}

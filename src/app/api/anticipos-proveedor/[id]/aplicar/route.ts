@@ -2,7 +2,9 @@
  * POST /api/anticipos-proveedor/[id]/aplicar — aplica el anticipo a una cuenta
  * por pagar del mismo proveedor (`fn_anticipo_proveedor_aplicar`): la cuenta y
  * su factura bajan por la regla única de saldo de compras; asiento D cuenta por
- * pagar / C anticipo.
+ * pagar / C anticipo. Si la factura ya retuvo sobre la base del anticipo, la base
+ * responde 409 `retencion_duplicada`; con `correccion` (motivo y soporte) se
+ * aplica `fn_anticipo_proveedor_aplicar_corrigiendo` con traza y pendiente.
  *
  * UNA RPC con el cliente de la sesión. Permiso `finance.create`, resuelto aquí y
  * otra vez en la base. Organización de la sesión; otra en el body o la query →
@@ -29,7 +31,13 @@ export const POST = withOrg(async (ctx, req, routeParams) => {
 
   const raw: unknown = await readOrgBody(ctx, req, { route: 'POST /api/anticipos-proveedor/[id]/aplicar' });
   const parsed = aplicarAnticipoSchema.safeParse(sinClavesDeOrganizacion(raw));
-  if (!parsed.success) return respuestaErrorAnticipo('datos_invalidos', parsed.error.issues.map((i) => i.path.join('.')));
+  if (!parsed.success) {
+    const campos = parsed.error.issues.map((i) => i.path.join('.'));
+    // Ronda 2, ítem 5: la corrección de una retención repetida exige motivo y soporte.
+    if (campos.includes('correccion.motivo')) return respuestaErrorAnticipo('motivo_obligatorio');
+    if (campos.includes('correccion.soporte')) return respuestaErrorAnticipo('soporte_obligatorio');
+    return respuestaErrorAnticipo('datos_invalidos', campos);
+  }
 
   if (!(await hasOrgAdminOrPermission(ctx, 'finance.create'))) {
     console.warn('[anticipos-proveedor/aplicar] permiso faltante → 403', { organizationId: ctx.organizationId, userId: ctx.userId });

@@ -13,7 +13,9 @@ import type { Traductor } from '../../textos';
 import type { Banda, Campo, DocumentoPayload, FilaTotal } from '../../tipos';
 import {
   SELECT_CLIENTE,
+  bandaReconstruido,
   cargarBase,
+  receptorOriginal,
   cargarNombresMetodos,
   contraparteCliente,
   exigirUuid,
@@ -80,7 +82,11 @@ export async function cargarCotizacion(
   const codigos = [...new Set((cot.items ?? []).map((i) => texto(i.tax_code)).filter((c): c is string => !!c))];
   const [base, moneda, plantillas, nombresMetodos] = await Promise.all([
     // H2: responsabilidades del emisor vigentes en la fecha de la cotización (perfil por vigencias).
-    cargarBase(sesion, cot.branch_id, { fechaDocumento: cot.issue_date ?? null }),
+    cargarBase(sesion, cot.branch_id, {
+      fechaDocumento: cot.issue_date ?? null,
+      // Reimpresión fiel: la cotización enviada usa los datos originales de las partes.
+      ...(cot.status !== 'draft' ? { instantanea: { tipo: 'cotizacion' as const, id: cot.id } } : {}),
+    }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, cot.currency),
     codigos.length > 0
       ? sesion.supabase.from('tax_templates').select('code, name').in('code', codigos)
@@ -117,7 +123,7 @@ export async function cargarCotizacion(
   if (texto(cot.payment_method)) metadatos.push({ clave: 'medioPago', valor: { tipo: 'texto', v: rotuloMetodo(cot.payment_method, t, nombresMetodos) } });
   // La sucursal va una sola vez: en su tarjeta (`payload.sucursal`).
 
-  const bandas: Banda[] = [{ clave: 'noEsFactura', tono: 'aviso' }];
+  const bandas: Banda[] = [{ clave: 'noEsFactura', tono: 'aviso' }, ...bandaReconstruido(base)];
   const enlace = texto(cot.payment_link_url);
   const enlaceSeguro = enlace && /^https:\/\/[^\s]+$/i.test(enlace) && enlace.length <= 500 ? enlace : null;
 
@@ -131,7 +137,7 @@ export async function cargarCotizacion(
     bandas,
     emisor: base.emisor,
     sucursal: base.sucursal,
-    contraparte: contraparteCliente(uno(cot.customer)),
+    contraparte: contraparteCliente(receptorOriginal(base, uno(cot.customer))),
     referencia: [],
     metadatos,
     resumen: [],

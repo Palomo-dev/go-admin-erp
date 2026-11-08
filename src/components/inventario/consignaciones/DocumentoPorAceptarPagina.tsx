@@ -4,8 +4,10 @@
  * Documento que llegó de otra organización vinculada:
  * - Nota por aceptar (Figma R2 `2405:146580`): condiciones del contrato (con su
  *   clasificación), productos del consignante y, para cada uno, el producto TUYO
- *   de consignación con el que se enlaza; bodega donde la recibes. «Aceptar y
- *   recibir» crea tu nota recibida con tus funciones.
+ *   de consignación con el que se enlaza; bodega donde la recibes y la valoración
+ *   de la custodia (política TUYA: costo acreditado o valor convenido). «Aceptar y
+ *   recibir» crea tu nota recibida con tus funciones. El estimatorio no se acepta
+ *   hasta parametrizar los arts. 438 y 455.
  * - Liquidación o devolución del consignatario (Figma R8 `2407:148109`): la
  *   comparación con tu nota y «Aceptar y facturar», que es el MISMO «Facturar y
  *   cerrar» de la entregada.
@@ -41,6 +43,7 @@ interface LineaCopia {
   referencia: string | null;
   cantidad: number;
   precio: number | null;
+  costo_acreditado: number | null;
 }
 
 interface Enlace {
@@ -62,6 +65,7 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
   const [sucursal, setSucursal] = useState<number | null>(selectedBranchId ?? null);
   const [enlaces, setEnlaces] = useState<Record<string, Enlace>>({});
   const [cuentaRecaudo, setCuentaRecaudo] = useState('');
+  const [valoracion, setValoracion] = useState<'costo_acreditado' | 'valor_convenido' | ''>('');
   const [rechazar, setRechazar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const clave = useRef(nuevaClaveIdempotencia('consignacion-aceptar'));
@@ -97,6 +101,8 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
   const faltanEnlaces = esNota && lineas.some((l) => !enlaces[l.producto_ref]?.producto || (l.precio == null && !(enlaces[l.producto_ref]?.precio && (enlaces[l.producto_ref]?.precio ?? 0) > 0)));
   const necesitaRecaudo = contrato === 'intermediacion';
   const recaudoValido = !necesitaRecaudo || cuentaRecaudo.trim() === '' || /^281510\d{2}$/.test(cuentaRecaudo.trim());
+  const sinCostoAcreditado = valoracion === 'costo_acreditado' && lineas.some((l) => !(Number(l.costo_acreditado ?? 0) > 0));
+  const notaLista = !faltanEnlaces && sucursal !== null && recaudoValido && contrato === 'intermediacion' && valoracion !== '' && !sinCostoAcreditado;
   const bloqueantes = (comparacion?.diferencias ?? []).filter((d) => d.tipo !== 'comision_distinta');
   const abierto = doc?.estado === 'enviado';
 
@@ -106,11 +112,12 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
     setError(null);
     try {
       if (esNota) {
-        if (faltanEnlaces || sucursal === null || !recaudoValido) return;
+        if (!notaLista || sucursal === null) return;
         const r = await consignacionesRecibidasService.aceptarNota(documentoId, {
           sucursal_id: sucursal,
           mapeo: lineas.map((l) => ({ producto_ref: l.producto_ref, product_id: enlaces[l.producto_ref]?.producto?.id ?? 0, precio: l.precio == null ? enlaces[l.producto_ref]?.precio ?? null : null })),
           cuenta_recaudo: necesitaRecaudo && cuentaRecaudo.trim() ? cuentaRecaudo.trim() : null,
+          valoracion,
           clave_idempotencia: clave.current,
         });
         toastSuccess(t('porAceptar.aceptada', { numero: r.numero }));
@@ -152,7 +159,7 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
                 <X aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {t('porAceptar.rechazar')}
               </button>
-              <button type="button" onClick={() => void aceptar()} disabled={enviando || (esNota ? faltanEnlaces || sucursal === null || !recaudoValido : bloqueantes.length > 0)} className={clasesBoton({ variante: 'primario' })}>
+              <button type="button" onClick={() => void aceptar()} disabled={enviando || (esNota ? !notaLista : bloqueantes.length > 0)} className={clasesBoton({ variante: 'primario' })}>
                 <Check aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {esNota ? t('porAceptar.aceptarRecibir') : t('porAceptar.aceptarFacturar')}
               </button>
@@ -168,7 +175,7 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
               icono: Check,
               onSelect: () => void aceptar(),
               oculta: !(permisos.crear && abierto),
-              deshabilitada: enviando || (esNota ? faltanEnlaces || sucursal === null || !recaudoValido : bloqueantes.length > 0),
+              deshabilitada: enviando || (esNota ? !notaLista : bloqueantes.length > 0),
             },
             { id: 'rechazar', etiqueta: t('porAceptar.rechazar'), icono: X, onSelect: () => setRechazar(true), oculta: !(permisos.crear && abierto) },
           ],
@@ -189,6 +196,10 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
         />
       )}
 
+      {doc && esNota && contrato !== 'intermediacion' && (
+        <AvisoTonal tono="advertencia" titulo={t('condiciones.estimatorioBloqueado.titulo')} descripcion={t('condiciones.estimatorioBloqueado.descripcion')} />
+      )}
+
       {doc && esNota && (
         <>
           <Tarjeta titulo={t('detalle.condiciones')}>
@@ -204,6 +215,12 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
                     : t('detalle.porcentajeSobre', { pct: Number(terminos.comision ?? 0), base: t(`condiciones.bases.${(terminos.base_comision as string) ?? 'precio_pactado'}`) })
                 }
               />
+              {terminos.reconocimiento ? (
+                <FilaDato etiqueta={t('condiciones.reconocimiento')} valor={t(`condiciones.reconocimientos.${terminos.reconocimiento as string}`)} />
+              ) : null}
+              {typeof terminos.factura_remuneracion === 'boolean' ? (
+                <FilaDato etiqueta={t('condiciones.facturaRemuneracion')} valor={t(terminos.factura_remuneracion ? 'condiciones.si' : 'condiciones.no')} />
+              ) : null}
               {terminos.periodicidad ? <FilaDato etiqueta={t('porAceptar.periodicidad')} valor={t(`porAceptar.periodicidades.${terminos.periodicidad as string}`)} /> : null}
             </ListaDatos>
           </Tarjeta>
@@ -262,6 +279,24 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
                         {b.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <FormField
+              etiqueta={t('condiciones.valoracion')}
+              obligatorio
+              ayuda={t('condiciones.valoracionAyuda')}
+              error={sinCostoAcreditado ? t('validacion.sinCostoAcreditadoEnCopia') : null}
+            >
+              {(c) => (
+                <Select value={valoracion} onValueChange={(v) => setValoracion(v as 'costo_acreditado' | 'valor_convenido')}>
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-invalid={c['aria-invalid']} className="h-10 border-line-strong bg-surface">
+                    <SelectValue placeholder={t('condiciones.elegir')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="costo_acreditado">{t('condiciones.valoraciones.costo_acreditado')}</SelectItem>
+                    <SelectItem value="valor_convenido">{t('condiciones.valoraciones.valor_convenido')}</SelectItem>
                   </SelectContent>
                 </Select>
               )}

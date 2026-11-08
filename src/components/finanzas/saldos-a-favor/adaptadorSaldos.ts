@@ -37,6 +37,8 @@ export interface AplicarSaldoEntrada {
   documentoId: string;
   monto: number;
   claveIdempotencia: string;
+  /** Proveedor: `{ correccion: { motivo, soporte } }` tras un rechazo por retención repetida. */
+  extra?: Record<string, unknown> | null;
 }
 
 export interface DevolverSaldoEntrada {
@@ -46,6 +48,8 @@ export interface DevolverSaldoEntrada {
   cuentaBancaria: number | null;
   referencia: string;
   claveIdempotencia: string;
+  /** Datos del `complemento` del diálogo (proveedor: retenciones de la parte devuelta). */
+  extra?: Record<string, unknown> | null;
 }
 
 export interface AdaptadorSaldos {

@@ -7,10 +7,11 @@
  * Contrato de `/api/consignaciones/**` y lógica de presentación (KPIs, estado,
  * en su poder, venta, comisión y neto), sin React ni Supabase. La escritura es
  * de las RPC de la migración 20261108121000 (PROPUESTA sin aplicar):
- * - entregar → `fn_consignacion_entregar` (nota + salida del kardex como traslado + asiento)
- * - liquidar → `fn_consignacion_liquidar` (lo vendido y lo devuelto vuelven a la bodega)
- *   + factura de venta de siempre (guardar + emitir) + `fn_consignacion_cerrar`
- *   (comisión aplicada como saldo a favor del consignatario).
+ * - entregar → `fn_consignacion_entregar` (nota + traslado del kardex a «en poder de
+ *   {consignatario}», SIN asiento: la mercancía sigue en el inventario propio a costo
+ *   y no cambia de cuenta; Ronda 2 del Contador, punto 8)
+ * - liquidar → `fn_consignacion_liquidar`: en mandato espera al Contador
+ *   (`liquidacion_mandante_pendiente`); en estimatorio, a los arts. 438 y 455.
  */
 import { z } from 'zod';
 import { terminosSchema } from '@/lib/inventario/consignaciones/recibidas';
@@ -34,6 +35,8 @@ export const ERRORES_CONSIGNACION = [
   'comision_invalida',
   'clasificacion_obligatoria',
   'compra_real_usa_factura',
+  'condicion_contable_obligatoria',
+  'estimatorio_bloqueado_438_455',
   'terminos_invalidos',
   'liquidacion_mandante_pendiente',
   'precio_bajo_pactado',
@@ -47,8 +50,6 @@ export const ERRORES_CONSIGNACION = [
   'producto_con_seriales',
   'producto_con_variantes',
   'stock_insuficiente',
-  'sin_cuenta_consignacion',
-  'sin_cuenta_inventario',
   'sin_cuenta_comisiones',
   'nota_no_encontrada',
   'liquidacion_no_encontrada',
@@ -97,8 +98,6 @@ export function estadoHttpErrorConsignacion(codigo: ErrorConsignacion): number {
       return 400;
     case 'error_desconocido':
     case 'asiento_no_creado':
-    case 'sin_cuenta_consignacion':
-    case 'sin_cuenta_inventario':
     case 'sin_cuenta_comisiones':
       return 500;
     default:
@@ -206,8 +205,6 @@ export interface NotaConsignacion {
 export interface RespuestaListadoConsignaciones {
   pendiente: boolean;
   notas: NotaConsignacion[];
-  /** Cuenta de mercancía en consignación (1465 o la configurada). */
-  cuenta: string | null;
 }
 
 export const enSuPoder = (l: Pick<LineaNota, 'entregado' | 'vendido' | 'devuelto'>): number =>

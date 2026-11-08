@@ -136,7 +136,7 @@ describe('el navegador ya no lee secretos', () => {
     }
   });
   it('el formulario viejo no precarga secretos y no borra llaves con campos vacíos', () => {
-    const s = fuente('src/app/app/integraciones/conexiones/nueva/page.tsx');
+    const s = fuente('src/app/app/integraciones/conexiones/nueva/AsistenteViejo.tsx');
     expect(s).not.toMatch(/secretObj\[cred\.purpose\] = cred\.secret_ref/);
     expect(s).toMatch(/hayCredencialesNuevas/);
   });

@@ -16,6 +16,8 @@ const leer = (ruta: string) => readFileSync(join(RAIZ, ruta), 'utf8');
 const H1 = leer('supabase/migrations/20261108140000_iva_subcuenta_por_tarifa_y_lado.sql');
 const H1_REV = leer('supabase/rollbacks/20261108140000_iva_subcuenta_por_tarifa_y_lado_rollback.sql');
 const H2 = leer('supabase/migrations/20261108140500_responsabilidades_fiscales_en.sql');
+const B5 = leer('supabase/migrations/20261108152000_iva_no_descontable_al_costo.sql');
+const B5_REV = leer('supabase/rollbacks/20261108152000_iva_no_descontable_al_costo_rollback.sql');
 const H2_REV = leer('supabase/rollbacks/20261108140500_responsabilidades_fiscales_en_rollback.sql');
 
 /** Pares (viejo, nuevo) de cada reemplazo verificado, en orden. */
@@ -95,6 +97,34 @@ describe('H1 · subcuenta de IVA por tarifa y lado', () => {
     expect(H1).toContain("format('Falta la subcuenta de IVA %s al %s %%");
   });
 
+  it('ronda 2 · A1: la tarifa no identificada nunca se asume al 19 % (cuenta NULL → pendiente visible)', () => {
+    const cuenta = H1.slice(H1.indexOf('create or replace function public.fn_cuenta_iva_tarifa'), H1.indexOf('-- ── 3.'));
+    expect(cuenta).toContain('v_tarifa numeric := round(nullif(p_tarifa, 0), 2);');
+    expect(cuenta).toMatch(/if v_tarifa is null then\s+return null;/);
+    expect(cuenta).not.toMatch(/coalesce\(round\(nullif\(p_tarifa, 0\), 2\), 19\)/);
+    const reparto = H1.slice(H1.indexOf('create or replace function public.fn_iva_reparto'), H1.indexOf('-- ── 5.'));
+    expect(reparto).not.toMatch(/coalesce\(w\.tarifa, 19\)/);
+    expect(reparto).toContain("format('Tarifa de IVA no identificada: el documento no tiene líneas");
+    expect(reparto).toContain("format('Tarifa de IVA no identificada en %s de IVA %s");
+    expect(reparto).toMatch(/if v_f\.tarifa is null then[\s\S]*cuenta := null;/);
+  });
+
+  it('ronda 2 · A2: la nota crédito sin líneas no se reparte por la mezcla de la factura', () => {
+    const pesos = H1.slice(H1.indexOf('create or replace function public.fn_iva_pesos_por_tarifa'), H1.indexOf('-- ── 4.'));
+    // Total → composición exacta; factura de una tarifa → esa; cualquier otro caso → tarifa NULL (pendiente).
+    expect(pesos).toContain("then 'total'");
+    expect(pesos).toContain("then 'unica'");
+    expect(pesos).toContain("select null::numeric, v_iva_doc from modo where modo.m = 'ninguno'");
+    expect(pesos).not.toContain('(select count(*) from m) <> 1');
+  });
+
+  it('ronda 3: «una sola tarifa» no basta si la factura tiene conceptos sin IVA (excluidos, exentos, no gravados) o INC', () => {
+    const pesos = H1.slice(H1.indexOf('create or replace function public.fn_iva_pesos_por_tarifa'), H1.indexOf('-- ── 4.'));
+    expect(pesos).toContain('sin_iva as (');
+    expect(pesos).toContain("or upper(coalesce(it.tax_code, '')) like 'INC%'");
+    expect(pesos).toContain("when (select count(distinct w.tarifa) from w) = 1 and not (select sin_iva.hay from sin_iva) then 'unica'");
+  });
+
   it('no reescribe asientos: ni UPDATE ni DELETE sobre journal_entries / journal_lines', () => {
     expect(H1).not.toMatch(/update\s+public\.journal_(entries|lines)/i);
     expect(H1).not.toMatch(/delete\s+from\s+public\.journal_(entries|lines)/i);
@@ -107,6 +137,50 @@ describe('H1 · subcuenta de IVA por tarifa y lado', () => {
       expect(H1_REV).toMatch(new RegExp(`drop function if exists public\\.${f}\\(`));
     }
     expect(H1_REV).toMatch(/NO revierte datos/);
+  });
+});
+
+describe('B5 · IVA no descontable determinado antes de contabilizar → al costo (ronda 3)', () => {
+  it('solo cuenta la evaluación anterior al primer asiento del documento (no reescribe históricos)', () => {
+    expect(B5).toContain('and je.created_at < it.iva_descontable_evaluado_en) then 1');
+    expect(B5).not.toMatch(/update\s+public\.journal_(entries|lines)/i);
+    expect(B5).not.toMatch(/delete\s+from\s+public\.journal_(entries|lines)/i);
+  });
+
+  it('las funciones nuevas nacen cerradas a anon', () => {
+    for (const firma of ['fn_iva_factor_descontable_linea(uuid)', 'fn_iva_no_descontable_linea(uuid)', 'fn_iva_no_descontable_documento(text, uuid)']) {
+      expect(B5).toContain(`revoke all on function public.${firma} from public, anon;`);
+    }
+    expect(B5).not.toMatch(/security definer/i);
+  });
+
+  it('cada llamador cambia por reemplazo verificado y la reversión es el inverso exacto', () => {
+    const ida = reemplazos(B5);
+    const vuelta = reemplazos(B5_REV);
+    expect(ida.map((p) => p.etiqueta)).toEqual([
+      'fn_iva_pesos_por_tarifa/factor',
+      'fn_iva_pesos_por_tarifa/base',
+      'fn_iva_pesos_por_tarifa/suma',
+      'fn_armar_asiento_documento/declare',
+      'fn_armar_asiento_documento/no_descontable',
+      'fn_armar_asiento_documento/reparto',
+      'fn_armar_asiento_documento/linea',
+      'fn_armar_asiento_documento/bucle',
+      'fn_armar_asiento_documento/parte',
+      'fn_auto_journal_purchase/declare',
+      'fn_auto_journal_purchase/no_descontable',
+    ]);
+    expect(vuelta).toHaveLength(ida.length);
+    for (const p of ida) {
+      const inverso = vuelta.find((v) => v.etiqueta === `${p.etiqueta} (reversión)`);
+      expect(inverso?.viejo).toBe(p.nuevo);
+      expect(inverso?.nuevo).toBe(p.viejo);
+    }
+  });
+
+  it('datos inconsistentes no se adivinan: si el no descontable supera el IVA, queda todo en la 2408', () => {
+    expect(B5).toMatch(/if v_nd > v_tax then\s+v_nd := 0;/);
+    expect(B5).toContain('if v_nd > greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0) then');
   });
 });
 
@@ -125,7 +199,7 @@ describe('H2 · responsabilidades del RUT por vigencia', () => {
 describe('repositorio público', () => {
   it('las migraciones, reversiones y pruebas no traen credenciales', () => {
     const pruebas = leer('docs/contador/pruebas/07_iva_subcuenta_por_tarifa.sql');
-    for (const sql of [H1, H1_REV, H2, H2_REV, pruebas]) {
+    for (const sql of [H1, H1_REV, H2, H2_REV, B5, B5_REV, pruebas]) {
       expect(sql).not.toMatch(/service_role_key|eyJhbGciOi|sk_live|password\s*=\s*'/i);
     }
   });

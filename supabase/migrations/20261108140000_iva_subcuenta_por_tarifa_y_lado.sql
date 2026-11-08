@@ -4,6 +4,20 @@
 -- Reversión: supabase/rollbacks/20261108140000_iva_subcuenta_por_tarifa_y_lado_rollback.sql
 -- Anexo para el Contador: docs/contador/ANEXO-H1-H2-IVA-Y-RUT-2026-11-07.md
 --
+-- RONDA 2 DEL CONTADOR (2026-11-07, docs/contador/RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md), reescrita sin aplicar:
+--   A1 · NO se asume 19 % cuando falta la tarifa. Tarifa no identificada de forma inequívoca (línea POS cuyo IVA no
+--        coincide con UNA sola tarifa, línea con IVA y sin tarifa, documento con IVA sin líneas) → la subcuenta es
+--        NULL y el asiento NO se genera: queda pendiente contable visible con el motivo «Tarifa de IVA no
+--        identificada…». Recuperar la tarifa de datos inequívocos (tarifa de la línea; IVA de la línea POS que
+--        coincide con una sola tarifa configurada) sigue permitido; asignarla por defecto, no.
+--   A2 · Nota crédito cuyo asiento se arma antes de sus líneas: ya no se reparte por la mezcla de la factura.
+--        Devolución TOTAL (subtotal e IVA iguales a los de la factura, ±$1) → reproduce exactamente la composición
+--        por tarifa de la factura. Factura de UNA sola tarifa → esa tarifa. Cualquier otro caso (parcial sobre
+--        una factura de varias tarifas) → tarifa no identificada → pendiente hasta que la nota identifique sus
+--        líneas (el reintento desde la bandeja la arma por líneas).
+--   Medición 2026-11-07 (solo lectura): asientos publicados con 2408 por origen: sales 84, invoice_sales 7; ningún
+--   origen sin líneas mueve la 2408, y las 83 ventas POS tenían la tarifa deducible (anexo H1). Con A1/A2 ninguno de
+--   esos asientos habría quedado pendiente.
 -- Causa (verificado por el MCP el 2026-11-07, proyecto taqjemqjtumhwptchcxk, solo SELECT):
 --   fn_cuenta_iva(org, sede, origen, cuenta_regla) devolvía la ÚLTIMA cuenta de IVA mapeada en
 --   tax_account_mapping (orden updated_at desc) sin mirar la tarifa ni si el documento es de venta o de
@@ -29,18 +43,19 @@
 --        d) Respaldo documentado de fn_cuenta_auxiliar_de_titulo, SOLO 19 % y 5 %:
 --           240805 → 24080501 / 24080502 y 240810 → 24081001 / 24081002 (con el auxiliar de la sede).
 --        e) Nada sirve → NULL. No se inventa una cuenta.
---        Tarifa no identificada → 19 % (la regla de respaldo que ya documentaban fn_cuenta_auxiliar_de_titulo
---        y fn_auto_journal_purchase: «tarifa 19 % si la línea no la trae»).
+--        Tarifa no identificada → NULL → pendiente contable (ronda 2, A1). Antes se asumía 19 %; ya no.
+--        (La «tarifa 19 % si la línea no la trae» de fn_cuenta_auxiliar_de_titulo ya no se usa aquí.)
 --   3. fn_iva_pesos_por_tarifa(org, origen, id)       → IVA de las líneas del documento por tarifa
 --        (sale_items / invoice_items de venta, compra o documento soporte; INC excluido, como
 --        fn_impuesto_inc_parte). En el POS la línea suele guardar el IVA con tarifa 0: la tarifa se
 --        deduce SOLO si el IVA de la línea coincide (±$1) con UNA tarifa de IVA configurada en la
 --        organización; si no, queda sin identificar. Nota crédito cuyo asiento se arma al insertar la
 --        cabecera (antes de sus líneas, fn_auto_journal_credit_note): la tarifa sale de la factura que acredita
---        (la que coincide con IVA/base de la nota, o la mezcla de la factura).
+--        (devolución total → composición de la factura; factura de una sola tarifa y sin conceptos excluidos, exentos,
+--        no gravados ni de INC → esa; si no → sin identificar: ronda 2 A2 y ronda 3).
 --   4. fn_iva_reparto(org, sede, origen, id, cuenta_regla, iva, lado, decimales)
 --        → una fila por tarifa: subcuenta e IVA (proporcional al IVA de las líneas; el residuo de redondeo
---        a la fila de más peso; la suma es exactamente el IVA pedido). Sin subcuenta: cuenta NULL y motivo.
+--        a la fila de más peso; la suma es exactamente el IVA pedido). Sin subcuenta o sin tarifa identificada: cuenta NULL y motivo.
 --   5. fn_cuenta_iva conserva su firma y delega en fn_cuenta_iva_tarifa (tarifa no identificada).
 --   6. Llamadores, con reemplazo verificado (cada texto viejo debe aparecer exactamente UNA vez; el resto
 --      del cuerpo queda idéntico; CREATE OR REPLACE conserva dueño y ACL; el rollback hace el inverso):
@@ -101,8 +116,8 @@ declare
   v_regla text := nullif(btrim(p_cuenta_regla), '');
   v_lado text := public.fn_iva_lado(p_source, p_cuenta_regla, p_lado);
   v_titulo text;
-  -- Tarifa no identificada: 19 % (regla de respaldo documentada en fn_cuenta_auxiliar_de_titulo).
-  v_tarifa numeric := coalesce(round(nullif(p_tarifa, 0), 2), 19);
+  -- A1 (ronda 2): tarifa no identificada → NULL (nunca 19 % por defecto). Solo el INC (paso a) no la necesita.
+  v_tarifa numeric := round(nullif(p_tarifa, 0), 2);
   v_cta text;
 begin
   if p_organization_id is null then
@@ -119,6 +134,9 @@ begin
   end if;
 
   v_titulo := case v_lado when 'descontable' then '240810' else '240805' end;
+  if v_tarifa is null then
+    return null;
+  end if;
 
   -- b) Mapeo del impuesto de esa tarifa, si su cuenta es del lado.
   select tam.account_code into v_cta
@@ -193,7 +211,7 @@ end;
 $function$;
 
 comment on function public.fn_cuenta_iva_tarifa(integer, integer, text, text, numeric, text) is
-  'Subcuenta de IVA por tarifa y lado (H1, 2026-11-08): mapeo del impuesto de esa tarifa → (19 %) configuración contable / regla → auxiliar del título (19 % y 5 %) → NULL. Tarifa NULL = 19 %.';
+  'Subcuenta de IVA por tarifa y lado (H1, 2026-11-08): mapeo del impuesto de esa tarifa → (19 %) configuración contable / regla → auxiliar del título (19 % y 5 %) → NULL. Tarifa NULL → NULL (A1, ronda 2: no se asume 19 %).';
 
 -- ── 3. IVA de las líneas del documento, por tarifa ──────────────────────────────
 create or replace function public.fn_iva_pesos_por_tarifa(p_organization_id integer, p_source text, p_source_id text)
@@ -291,23 +309,48 @@ begin
     end if;
 
     -- Nota crédito sin líneas todavía: el disparador de la nota (fn_auto_journal_credit_note) arma el asiento
-    -- al insertar la cabecera, antes de las líneas. La tarifa sale de la factura que acredita: si el IVA/base
-    -- de la nota coincide (±$1) con UNA de sus tarifas, esa; si no, la mezcla de tarifas de la factura.
+    -- al insertar la cabecera, antes de las líneas. A2 (ronda 2): nunca por la mezcla de la factura.
+    --   · devolución TOTAL (subtotal e IVA de la nota = los de la factura, ±$1) → la composición exacta de la factura;
+    --   · factura de UNA sola tarifa y SIN conceptos excluidos, exentos o no gravados (todas sus líneas con IVA a esa
+    --     tarifa) → esa tarifa. Ronda 3: si la factura también tiene líneas sin IVA (tarifa 0) o de INC, no se sabe
+    --     qué conceptos ni qué bases afecta la nota → pendiente;
+    --   · si no → tarifa no identificada (NULL): pendiente hasta que la nota identifique sus líneas.
     if p_source = 'invoice_sales' then
       select f.related_invoice_id, abs(coalesce(f.tax_total, 0)), abs(coalesce(f.subtotal, 0))
         into v_rel, v_iva_doc, v_base_doc
         from public.invoice_sales f
        where f.id = v_id and f.document_type = 'credit_note';
-      if v_rel is not null and v_rel <> v_id then
+      if v_rel is not null and v_rel <> v_id and v_iva_doc > 0 then
         return query
         with w as (
           select x.tarifa, x.peso from public.fn_iva_pesos_por_tarifa(p_organization_id, 'invoice_sales', v_rel::text) x
-        ), m as (
-          select w.tarifa from w where w.tarifa is not null and abs(v_iva_doc - v_base_doc * w.tarifa / 100) <= 1
+        ), fac as (
+          select abs(coalesce(f.tax_total, 0)) as iva, abs(coalesce(f.subtotal, 0)) as base
+            from public.invoice_sales f where f.id = v_rel
+        ), sin_iva as (
+          -- Ronda 3: conceptos de la factura sin IVA (excluidos, exentos, no gravados: tarifa 0) o de INC.
+          select exists (
+            select 1 from public.invoice_items it
+             where it.invoice_sales_id = v_rel
+               and (coalesce(nullif(round(case when coalesce(it.tax_rate, 0) > 1 then it.tax_rate
+                                               else coalesce(it.tax_rate, 0) * 100 end, 2), 0),
+                             case when upper(coalesce(it.tax_code, '')) ~ '^IVA_[0-9]+(\.[0-9]+)?$'
+                                  then substring(upper(it.tax_code) from '^IVA_([0-9]+(?:\.[0-9]+)?)$')::numeric end,
+                             0) = 0
+                    or upper(coalesce(it.tax_code, '')) like 'INC%'
+                    or abs(coalesce(nullif(round(case when coalesce(it.tax_rate, 0) > 1 then it.tax_rate
+                                                      else coalesce(it.tax_rate, 0) * 100 end, 2), 0), 0) - 8) < 0.05)
+          ) as hay
+        ), modo as (
+          select case
+                   when not exists (select 1 from w) or exists (select 1 from w where w.tarifa is null) then 'ninguno'
+                   when (select abs(fac.iva - v_iva_doc) <= 1 and abs(fac.base - v_base_doc) <= 1 from fac) then 'total'
+                   when (select count(distinct w.tarifa) from w) = 1 and not (select sin_iva.hay from sin_iva) then 'unica'
+                   else 'ninguno' end as m
         )
-        select w.tarifa, w.peso
-          from w
-         where (select count(*) from m) <> 1 or w.tarifa = (select m.tarifa from m);
+        select w.tarifa, w.peso from w, modo where modo.m in ('total', 'unica')
+        union all
+        select null::numeric, v_iva_doc from modo where modo.m = 'ninguno';
       end if;
     end if;
     return;
@@ -352,32 +395,32 @@ begin
     return;
   end if;
 
+  -- A1 (ronda 2): el IVA sin tarifa identificada NO se asigna al 19 %: su fila sale con cuenta NULL y motivo.
   for v_f in
-    select coalesce(w.tarifa, 19) as tarifa, sum(w.peso) as peso   -- sin tarifa identificada: 19 %
+    select w.tarifa as tarifa, sum(w.peso) as peso
       from public.fn_iva_pesos_por_tarifa(p_organization_id, p_source, p_source_id) w
      where w.peso > 0
-     group by coalesce(w.tarifa, 19)
+     group by w.tarifa
   loop
     v_n := v_n + 1;
     v_peso_total := v_peso_total + v_f.peso;
   end loop;
 
   if v_n = 0 or v_peso_total <= 0 then
-    v_cta := public.fn_cuenta_iva_tarifa(p_organization_id, p_branch_id, p_source, p_cuenta_regla, null, v_lado);
-    orden := 1; tarifa := null; lado := v_lado; cuenta := v_cta; iva := v_total;
-    motivo := case when v_cta is null then
-      format('Falta la subcuenta de IVA %s de la tarifa general (19 %%): créela bajo %s en el plan de cuentas y asígnela en Impuestos o en Configuración contable; luego reintente este pendiente.',
-             v_lado, case v_lado when 'descontable' then '240810' else '240805' end) end;
+    -- A1: documento con IVA y sin líneas con tarifa (o de un origen sin líneas): no se identifica la tarifa.
+    orden := 1; tarifa := null; lado := v_lado; cuenta := null; iva := v_total;
+    motivo := format('Tarifa de IVA no identificada: el documento no tiene líneas con tarifa que soporten el IVA %s de %s. No se asume el 19 %%: registre la tarifa en las líneas del documento (o su soporte) y reintente este pendiente.',
+                     v_lado, v_total);
     return next;
     return;
   end if;
 
   for v_f in
-    select coalesce(w.tarifa, 19) as tarifa, sum(w.peso) as peso
+    select w.tarifa as tarifa, sum(w.peso) as peso
       from public.fn_iva_pesos_por_tarifa(p_organization_id, p_source, p_source_id) w
      where w.peso > 0
-     group by coalesce(w.tarifa, 19)
-     order by sum(w.peso), coalesce(w.tarifa, 19)        -- el residuo de redondeo va a la de más peso (la última)
+     group by w.tarifa
+     order by sum(w.peso), w.tarifa nulls first          -- el residuo de redondeo va a la de más peso (la última)
   loop
     v_i := v_i + 1;
     if v_i = v_n then
@@ -387,6 +430,15 @@ begin
       v_asignado := v_asignado + v_parte;
     end if;
     continue when v_parte = 0;
+    if v_f.tarifa is null then
+      -- A1: parte del IVA sin tarifa identificada (línea con IVA y sin tarifa, o línea POS cuyo IVA no coincide
+      -- con UNA sola tarifa configurada).
+      orden := v_i; tarifa := null; lado := v_lado; cuenta := null; iva := v_parte;
+      motivo := format('Tarifa de IVA no identificada en %s de IVA %s (línea con IVA y sin tarifa, o con un IVA que no corresponde a una sola tarifa configurada). No se asume el 19 %%: corrija la tarifa de la línea y reintente este pendiente.',
+                       v_parte, v_lado);
+      return next;
+      continue;
+    end if;
     v_cta := public.fn_cuenta_iva_tarifa(p_organization_id, p_branch_id, p_source, p_cuenta_regla, v_f.tarifa, v_lado);
     orden := v_i; tarifa := v_f.tarifa; lado := v_lado; cuenta := v_cta; iva := v_parte;
     motivo := case when v_cta is null then
@@ -398,7 +450,7 @@ end;
 $function$;
 
 comment on function public.fn_iva_reparto(integer, integer, text, text, text, numeric, text, integer) is
-  'Reparte el IVA de un asiento por las tarifas de las líneas del documento, con la subcuenta de cada tarifa y lado. La suma de iva es exactamente p_iva (redondeado a p_decimales). cuenta NULL + motivo = falta la subcuenta.';
+  'Reparte el IVA de un asiento por las tarifas de las líneas del documento, con la subcuenta de cada tarifa y lado. La suma de iva es exactamente p_iva (redondeado a p_decimales). cuenta NULL + motivo = falta la subcuenta o la tarifa no está identificada (A1: nunca 19 % por defecto).';
 
 -- ── 5. fn_cuenta_iva: misma firma, delega (tarifa no identificada) ──────────────
 create or replace function public.fn_cuenta_iva(p_organization_id integer, p_branch_id integer, p_source text, p_cuenta_regla text)

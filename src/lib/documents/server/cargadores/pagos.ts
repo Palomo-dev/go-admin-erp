@@ -17,6 +17,7 @@ import type { Campo, Contraparte, DocumentoPayload, FilaTotal } from '../../tipo
 import {
   SELECT_CLIENTE,
   SELECT_PROVEEDOR,
+  bandaReconstruido,
   cargarBase,
   contraparteCliente,
   contraparteProveedor,
@@ -158,7 +159,11 @@ export async function cargarComprobantePago(
 
   const [base, moneda, abonado, nombresMetodos] = await Promise.all([
     // H2: responsabilidades del emisor vigentes en la fecha del pago.
-    cargarBase(sesion, pago.branch_id, { fechaDocumento: pago.payment_date ?? pago.created_at ?? null }),
+    cargarBase(sesion, pago.branch_id, {
+      fechaDocumento: pago.payment_date ?? pago.created_at ?? null,
+      // Reimpresión fiel: el recibo o comprobante usa el emisor original.
+      ...(pago.status === 'completed' ? { instantanea: { tipo: 'recibo_pago' as const, id: pago.id } } : {}),
+    }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, pago.currency),
     documentoAbonado(sesion, pago),
     cargarNombresMetodos(sesion, [pago.method]),
@@ -214,7 +219,7 @@ export async function cargarComprobantePago(
     numero,
     estado: { codigo: `pago.${pago.status ?? 'pending'}`, tono: anulado ? 'aviso' : 'exito' },
     marcaAgua: pago.status === 'cancelled' || pago.status === 'voided' || pago.status === 'refunded' ? 'anulada' : null,
-    bandas: [],
+    bandas: bandaReconstruido(base),
     emisor: base.emisor,
     sucursal: base.sucursal,
     contraparte: parte,

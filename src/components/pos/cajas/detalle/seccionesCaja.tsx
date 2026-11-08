@@ -120,6 +120,9 @@ export function TarjetaDesglose({ resumen, formatear }: { resumen: ResumenCaja; 
         { clave: 'ingresos', valor: d.entradas, signo: 1 },
         { clave: 'egresos', valor: d.salidas, signo: -1 },
         { clave: 'compras', valor: d.compras_efectivo, signo: -1 },
+        // Anticipo a proveedor en efectivo: egreso por anticipo, no una venta negativa (Contador, ronda 2).
+        { clave: 'anticiposEgreso', valor: d.anticipos_proveedor_egreso ?? 0, signo: -1 },
+        { clave: 'anticiposDevolucion', valor: d.anticipos_proveedor_devolucion ?? 0, signo: 1 },
         { clave: 'devoluciones', valor: d.devoluciones, signo: -1 },
       ]
     : [];

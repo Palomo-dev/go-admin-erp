@@ -28,7 +28,7 @@ import {
   type VigenciaPerfil,
 } from '@/lib/finanzas/tributario/perfil';
 import { advertenciasSinAceptar, evaluarCombinacion } from '@/lib/finanzas/tributario/combinaciones';
-import { analizarPeriodo, type AnalisisPeriodo } from '@/lib/finanzas/tributario/vigenciasPeriodo';
+import { analizarPeriodo, type AnalisisPeriodo, type SolicitudDecision } from '@/lib/finanzas/tributario/vigenciasPeriodo';
 import {
   aniosCalendario,
   calendarioIncompleto,
@@ -79,13 +79,15 @@ function instantes(desde: string, hasta: string, tz: string): { inicio: string; 
 // ── Perfil ─────────────────────────────────────────────────────────────────
 
 /** Estado de validación de un código del catálogo (lo valida el Contador antes de aprobarse). */
-export type EstadoValidacionCodigo = 'pendiente_validacion' | 'validado' | 'no_vigente_por_confirmar' | 'sin_dato';
+export type EstadoValidacionCodigo = 'pendiente_validacion' | 'cotejado_fuente_oficial' | 'validado' | 'no_validado_como_fe' | 'sin_dato';
 
 export interface CodigoCatalogo {
   codigo: string;
   descripcion: string;
   estado: EstadoValidacionCodigo;
   nota: string | null;
+  /** De dónde sale el código (instructivo oficial de la DIAN, numeral y página). */
+  fuente: string | null;
   vigente: boolean;
 }
 
@@ -105,7 +107,7 @@ export interface RespuestaPerfil {
   catalogoRut: CodigoCatalogo[];
 }
 
-const ESTADOS_VALIDACION = new Set(['pendiente_validacion', 'validado', 'no_vigente_por_confirmar']);
+const ESTADOS_VALIDACION = new Set(['pendiente_validacion', 'cotejado_fuente_oficial', 'validado', 'no_validado_como_fe']);
 const estadoDe = (v: unknown): EstadoValidacionCodigo => (typeof v === 'string' && ESTADOS_VALIDACION.has(v) ? (v as EstadoValidacionCodigo) : 'sin_dato');
 
 export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
@@ -114,7 +116,7 @@ export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
     ctx.supabase.from('organizations').select('nit, dv, fiscal_responsibilities').eq('id', ctx.organizationId).maybeSingle(),
     // `*`: antes de 20261108160000 la tabla no trae estado_validacion ni nota.
     ctx.supabase.from('dian_fiscal_responsibilities').select('*').order('sort_order'),
-    ctx.supabase.from('rut_responsabilidades').select('codigo, nombre, vigente, estado_validacion, nota').order('orden'),
+    ctx.supabase.from('rut_responsabilidades').select('codigo, nombre, vigente, estado_validacion, nota, fuente').order('orden'),
     // `*`: antes de 20261108160500 no existen las columnas de renta e IVA separados.
     ctx.supabase.from('organization_tax_profiles').select('*').eq('organization_id', ctx.organizationId).order('vigente_desde', { ascending: false }),
     ctx.supabase
@@ -126,23 +128,25 @@ export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
   if (catalogo.error) throw catalogo.error;
   const o = (org.data ?? {}) as { nit?: string | null; dv?: number | null; fiscal_responsibilities?: string[] | null };
   const empresa: DatosEmpresa = { nit: o.nit ?? null, dv: o.dv ?? null, responsabilidadesRut: o.fiscal_responsibilities ?? [] };
-  const listaCatalogo: CodigoCatalogo[] = ((catalogo.data ?? []) as { code: string; description: string; estado_validacion?: unknown; nota?: string | null }[]).map(
+  const listaCatalogo: CodigoCatalogo[] = ((catalogo.data ?? []) as { code: string; description: string; estado_validacion?: unknown; nota?: string | null; fuente?: string | null }[]).map(
     (c) => ({
       codigo: c.code,
       descripcion: c.description,
       estado: estadoDe(c.estado_validacion),
       nota: c.nota ?? null,
-      vigente: c.estado_validacion !== 'no_vigente_por_confirmar',
+      fuente: c.fuente ?? null,
+      vigente: c.estado_validacion !== 'no_validado_como_fe',
     }),
   );
   if (catalogoRut.error && !esObjetoInexistente(catalogoRut.error as ErrorBase)) throw catalogoRut.error;
   const listaRut: CodigoCatalogo[] = catalogoRut.error
     ? []
-    : ((catalogoRut.data ?? []) as { codigo: string; nombre: string; vigente: boolean; estado_validacion: unknown; nota: string | null }[]).map((c) => ({
+    : ((catalogoRut.data ?? []) as { codigo: string; nombre: string; vigente: boolean; estado_validacion: unknown; nota: string | null; fuente: string | null }[]).map((c) => ({
         codigo: c.codigo,
         descripcion: c.nombre,
         estado: estadoDe(c.estado_validacion),
         nota: c.nota,
+        fuente: c.fuente,
         vigente: c.vigente !== false,
       }));
 
@@ -211,7 +215,7 @@ export async function guardarPerfil(ctx: Ctx, datos: SolicitudPerfil): Promise<{
   if (datos.id && !propia) throw new ErrorTributario('no_encontrado', 404);
   const desde = propia ? propia.vigenteDesde : datos.vigenteDesde;
   const { anterior, siguiente } = contiguas(perfil.vigencias, desde, datos.id);
-  const r = evaluarCombinacion(datos, { vigenteDesde: desde, motivoCambioPeriodicidad: datos.motivoCambioPeriodicidad, anterior, siguiente });
+  const r = evaluarCombinacion(datos, { vigenteDesde: desde, anterior, siguiente });
   if (r.bloqueos.length > 0) throw new ErrorTributario('combinacion_contradictoria', 400, { bloqueos: r.bloqueos, advertencias: r.advertencias });
   const pendientes = advertenciasSinAceptar(r.advertencias, datos.advertenciasAceptadas);
   if (pendientes.length > 0) throw new ErrorTributario('advertencias_sin_aceptar', 409, { advertencias: r.advertencias, pendientes });
@@ -302,10 +306,92 @@ export type ValorObligacion =
   | { estado: 'no_calculable' }
   | { estado: 'error' };
 
+/** Decisión sustentada sobre un período con varias vigencias (P8, ronda 2). */
+export interface DecisionPeriodo {
+  id: string;
+  decision: string;
+  fundamento: string;
+  alcance: string;
+  vigenciaAplicadaId: string | null;
+  decididoPor: string;
+  /** Nombre visible de quien decidió (perfil), o null si no se encuentra. */
+  decididoPorNombre: string | null;
+  decididoEn: string;
+  /** false = cambiaron las vigencias del período después de decidir: la alerta se reabrió. */
+  aplica: boolean;
+}
+
 export interface FilaCentro {
   obligacion: Obligacion;
   vencimiento: Vencimiento;
   valor: ValorObligacion;
+  /** Historia de decisiones del período (la más nueva primero); vacía si no hay o no aplica. */
+  decisiones?: DecisionPeriodo[];
+  /** Vigencias que tocan el período (para decidir), solo cuando hay cambio de vigencia. */
+  vigenciasPeriodo?: AnalisisPeriodo['vigencias'];
+}
+
+interface FilaDecision {
+  id: string;
+  obligacion: string;
+  periodo_desde: string;
+  periodo_hasta: string;
+  decision: string;
+  fundamento: string;
+  alcance: string;
+  vigencia_aplicada_id: string | null;
+  huella: string;
+  decidido_por: string;
+  decidido_en: string;
+}
+
+/** Decisiones registradas de la organización (vacío si la migración 20261108161000 no está aplicada). */
+async function leerDecisiones(ctx: Ctx): Promise<FilaDecision[]> {
+  const { data, error } = await ctx.supabase
+    .from('tax_period_decisions')
+    .select('id, obligacion, periodo_desde, periodo_hasta, decision, fundamento, alcance, vigencia_aplicada_id, huella, decidido_por, decidido_en')
+    .eq('organization_id', ctx.organizationId)
+    .order('decidido_en', { ascending: false })
+    .limit(500);
+  if (error) {
+    if (esObjetoInexistente(error as ErrorBase)) return [];
+    throw error;
+  }
+  return (data ?? []) as FilaDecision[];
+}
+
+
+/**
+ * Registrar la decisión que cierra la alerta de un período con varias
+ * vigencias. La huella la calcula el servidor con las vigencias de la base
+ * (nunca la del cliente); si el período no tiene cambio de vigencia, no hay
+ * nada que decidir.
+ */
+export async function registrarDecisionPeriodo(ctx: Ctx, s: SolicitudDecision): Promise<{ id: string }> {
+  const perfil = await leerPerfil(ctx);
+  if (!perfil.activo) throw new ErrorTributario('pendiente_activar', 501);
+  const analisis = analizarPeriodo(perfil.vigencias, s.desde, s.hasta);
+  if (!analisis.cambioDeVigencia) throw new ErrorTributario('sin_cambio_de_vigencia', 400);
+  if (s.vigenciaAplicadaId && !analisis.vigencias.some((v) => v.id === s.vigenciaAplicadaId)) throw new ErrorTributario('datos_invalidos', 400);
+  const { data, error } = await ctx.supabase.rpc('fn_tributario_decision_periodo_registrar', {
+    p_organization_id: ctx.organizationId,
+    p_obligacion: s.obligacion,
+    p_desde: s.desde,
+    p_hasta: s.hasta,
+    p_decision: s.decision,
+    p_fundamento: s.fundamento,
+    p_alcance: s.alcance,
+    p_vigencia_aplicada_id: s.vigenciaAplicadaId,
+    p_huella: analisis.huella,
+  });
+  if (error) {
+    if (esObjetoInexistente(error as ErrorBase)) throw new ErrorTributario('pendiente_activar', 501);
+    if ((error as ErrorBase)?.code === '42501') throw new ErrorTributario('sin_permiso', 403);
+    if ((error as ErrorBase)?.code === '22023') throw new ErrorTributario('datos_invalidos', 400);
+    throw error;
+  }
+  if (typeof data !== 'string') throw new ErrorTributario('desconocido', 500);
+  return { id: data };
 }
 
 export interface RespuestaCentro {
@@ -347,10 +433,44 @@ export async function leerCentro(ctx: Ctx, corteSolicitado: string | null): Prom
     }
   }
 
+  const decisiones = obligaciones.some((o) => o.notas.includes('cambio_vigencia_en_periodo')) ? await leerDecisiones(ctx) : [];
+  const nombres = new Map<string, string>();
+  const ids = Array.from(new Set(decisiones.map((d) => d.decidido_por)));
+  if (ids.length > 0) {
+    const { data } = await ctx.supabase.from('profiles').select('id, first_name, last_name, email').in('id', ids);
+    for (const p of (data ?? []) as { id: string; first_name: string | null; last_name: string | null; email: string | null }[]) {
+      nombres.set(p.id, [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '');
+    }
+  }
+
   const filas = await Promise.all(
     obligaciones.map(async (o): Promise<FilaCentro> => {
       const vencimiento = vencimientoDe(o, perfil.empresa.nit, calendario);
-      if (o.notas.includes('cambio_vigencia_en_periodo')) return { obligacion: o, vencimiento, valor: { estado: 'revisar_procedencia' } };
+      let extra: Pick<FilaCentro, 'decisiones' | 'vigenciasPeriodo'> = {};
+      if (o.notas.includes('cambio_vigencia_en_periodo')) {
+        // P8 ronda 2: la alerta se cierra con una decisión sustentada cuya huella coincide con las vigencias de hoy;
+        // si cambió algo relevante, la decisión queda en la historia y la alerta se reabre.
+        const analisis = analizarPeriodo(perfil.vigencias, o.periodo.desde, o.periodo.hasta);
+        const historia: DecisionPeriodo[] = decisiones
+          .filter((d) => d.obligacion === o.id && d.periodo_desde === o.periodo.desde && d.periodo_hasta === o.periodo.hasta)
+          .map((d) => ({
+            id: d.id,
+            decision: d.decision,
+            fundamento: d.fundamento,
+            alcance: d.alcance,
+            vigenciaAplicadaId: d.vigencia_aplicada_id,
+            decididoPor: d.decidido_por,
+            decididoPorNombre: nombres.get(d.decidido_por) || null,
+            decididoEn: d.decidido_en,
+            aplica: d.huella === analisis.huella,
+          }));
+        extra = { decisiones: historia, vigenciasPeriodo: analisis.vigencias };
+        const vigente = historia[0];
+        o.notas.push(vigente ? (vigente.aplica ? 'decision_registrada' : 'decision_reabierta') : 'cambio_vigencia_en_periodo');
+        o.notas = Array.from(new Set(o.notas));
+        if (!vigente?.aplica) return { obligacion: o, vencimiento, valor: { estado: 'revisar_procedencia' }, ...extra };
+      }
+      if (o.notas.includes('cambio_periodicidad_pendiente')) return { obligacion: o, vencimiento, valor: { estado: 'revisar_procedencia' }, ...extra };
       let valor: ValorObligacion = { estado: 'no_calculable' };
       try {
         if (o.fuente === 'borrador_iva') {
@@ -366,7 +486,7 @@ export async function leerCentro(ctx: Ctx, corteSolicitado: string | null): Prom
         console.error('[tributario] valor de la obligación', { organizationId: ctx.organizationId, obligacion: o.clave });
         valor = { estado: 'error' };
       }
-      return { obligacion: o, vencimiento, valor };
+      return { obligacion: o, vencimiento, valor, ...extra };
     }),
   );
 

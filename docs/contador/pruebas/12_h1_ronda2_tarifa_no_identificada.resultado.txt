@@ -1,0 +1,32 @@
+Resultado de 12_h1_ronda2_tarifa_no_identificada.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Transacción revertida (rollback): no quedó ningún
+documento, asiento ni pendiente. Los ids cambian en cada corrida.
+Migración 20261108140000 (H1, reescrita en la ronda 2, SIN aplicar) pegada dentro de la transacción: funciones 1 a 5 y los
+reemplazos verificados de fn_create_journal_entry (declare, cuenta, IVA crédito y débito) y fn_auto_journal_purchase. Los
+reemplazos de fn_armar_asiento_documento, fn_nc_asiento_devolucion y el del pendiente de redondeo no cambian en la ronda 2 y
+se probaron en la prueba 07 (32 de 32).
+
+20 verificaciones · 20 ok.
+
+── IVA del asiento por subcuenta ──
+ 1 | POS19  IVA 19.000 con tarifa 0 en la línea (se recupera: coincide con UNA tarifa)   | 24080501 C 19.000          | ok
+ 2 | POSX   IVA 12.000 con tarifa 0 (no coincide con ninguna tarifa)                    | SIN ASIENTO                | ok
+ 3 | FVMX   factura 19 % + 5 %                                                          | C 19.000 + C 5.000         | ok
+ 4 | NCT    nota crédito TOTAL de FVMX, armada antes de sus líneas (A2)                 | D 19.000 + D 5.000         | ok
+ 5 | FVMX2  factura 19 % + 5 %                                                          | C 19.000 + C 5.000         | ok
+ 6 | NCP    nota crédito PARCIAL de FVMX2 (100.000 + 19.000) antes de sus líneas (A2)  | SIN ASIENTO                | ok
+ 7 | FV19   factura de una sola tarifa                                                  | 24080501 C 57.000          | ok
+ 8 | NCU    nota crédito parcial de FV19 (factura de una tarifa)                        | 24080501 D 19.000          | ok
+ 9 | FOLIO  asiento de un origen sin líneas con IVA 19.000 (A1: no se asume 19 %)       | no se crea (NULL)          | ok
+
+── Pendientes contables visibles ──
+10 | POSX   cuenta_no_configurada · «Tarifa de IVA no identificada en 12000 de IVA generado (línea con IVA y sin tarifa…»  | ok
+11 | FOLIO  cuenta_no_configurada · «Tarifa de IVA no identificada: el documento no tiene líneas con tarifa…»            | ok
+12 | NCP    cuenta_no_configurada · «Tarifa de IVA no identificada en 19000 de IVA generado…»                           | ok
+13 | Ningún otro documento dejó pendiente                                                                               | ok
+
+── Funciones ──
+14 | fn_cuenta_iva_tarifa sin tarifa (generado y descontable) y fn_cuenta_iva → ∅ ∅ ∅ · con 19 % → 24080501             | ok
+
+── Cuadre (Σ débitos = Σ créditos; además SET CONSTRAINTS ALL IMMEDIATE sin error) ──
+15–20 | POS19 119.000 · FVMX 224.000 · FV19 357.000 · FVMX2 224.000 · NCT 224.000 · NCU 119.000                          | ok

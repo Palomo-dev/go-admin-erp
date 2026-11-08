@@ -7,6 +7,7 @@
  * vigencia, también se señala. Sin React ni Supabase.
  */
 import type { VigenciaPerfil } from './perfil';
+import { esDiaValido } from './periodos';
 
 export interface ResumenVigencia {
   id: string;
@@ -15,6 +16,7 @@ export interface ResumenVigencia {
   regimenRenta: VigenciaPerfil['regimenRenta'];
   condicionIva: VigenciaPerfil['condicionIva'];
   periodicidadIva: VigenciaPerfil['periodicidadIva'];
+  cambioPeriodicidadEstado: VigenciaPerfil['cambioPeriodicidadEstado'];
 }
 
 export interface AnalisisPeriodo {
@@ -26,6 +28,14 @@ export interface AnalisisPeriodo {
   cambioDeVigencia: boolean;
   /** Algún día del período no tiene vigencia. */
   sinPerfilCompleto: boolean;
+  /** Alguna vigencia del período cambió la periodicidad sin documentar hecho, norma y fecha (P8, ronda 2). */
+  cambioPendienteSoporte: boolean;
+  /**
+   * Resumen de las vigencias que tocan el período (id, fechas y última
+   * modificación). Una decisión registrada con otra huella ya no aplica: la
+   * alerta se reabre.
+   */
+  huella: string;
 }
 
 /** Día calendario siguiente (`YYYY-MM-DD`), en aritmética de calendario, sin zona horaria. */
@@ -66,8 +76,50 @@ export function analizarPeriodo(vigencias: readonly VigenciaPerfil[], desde: str
       regimenRenta: v.regimenRenta,
       condicionIva: v.condicionIva,
       periodicidadIva: v.periodicidadIva,
+      cambioPeriodicidadEstado: v.cambioPeriodicidadEstado,
     })),
     cambioDeVigencia: dentro.length > 1,
     sinPerfilCompleto: cubiertoHasta !== hasta,
+    cambioPendienteSoporte: dentro.some((v) => v.cambioPeriodicidadEstado === 'pendiente_soporte'),
+    huella: huellaVigencias(dentro),
   };
 }
+
+/** Huella estable de un conjunto de vigencias: cambia si se crea, borra, corrige o mueve alguna. */
+export function huellaVigencias(vigencias: readonly Pick<VigenciaPerfil, 'id' | 'vigenteDesde' | 'vigenteHasta' | 'actualizadoEn'>[]): string {
+  return [...vigencias]
+    .sort((a, b) => a.vigenteDesde.localeCompare(b.vigenteDesde))
+    .map((v) => `${v.id}|${v.vigenteDesde}|${v.vigenteHasta ?? '-'}|${v.actualizadoEn ?? '-'}`)
+    .join(';');
+}
+
+/** Decisión que cierra la alerta de un período con varias vigencias (cuerpo de POST /api/finanzas/tributario/centro/decision). */
+export interface SolicitudDecision {
+  obligacion: string;
+  desde: string;
+  hasta: string;
+  decision: string;
+  fundamento: string;
+  alcance: string;
+  vigenciaAplicadaId: string | null;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Lista blanca del cuerpo. */
+export function validarSolicitudDecision(cuerpo: unknown): SolicitudDecision | null {
+  if (!cuerpo || typeof cuerpo !== 'object' || Array.isArray(cuerpo)) return null;
+  const b = cuerpo as Record<string, unknown>;
+  const textoEntre = (v: unknown, max: number) => (typeof v === 'string' && v.trim().length >= 3 && v.trim().length <= max ? v.trim() : null);
+  const obligacion = typeof b.obligacion === 'string' && /^[a-z][a-z0-9_:.-]{1,80}$/.test(b.obligacion) ? b.obligacion : null;
+  const desde = typeof b.desde === 'string' && esDiaValido(b.desde) ? b.desde : null;
+  const hasta = typeof b.hasta === 'string' && esDiaValido(b.hasta) ? b.hasta : null;
+  const decision = textoEntre(b.decision, 2000);
+  const fundamento = textoEntre(b.fundamento, 2000);
+  const alcance = textoEntre(b.alcance, 1000);
+  const vigencia = b.vigenciaAplicadaId === null || b.vigenciaAplicadaId === undefined || b.vigenciaAplicadaId === '' ? null : String(b.vigenciaAplicadaId);
+  if (!obligacion || !desde || !hasta || hasta < desde || !decision || !fundamento || !alcance) return null;
+  if (vigencia !== null && !UUID_RE.test(vigencia)) return null;
+  return { obligacion, desde, hasta, decision, fundamento, alcance, vigenciaAplicadaId: vigencia };
+}
+

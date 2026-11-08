@@ -401,11 +401,22 @@ export interface MovimientoEstadoCuenta {
   fecha: string;
   dia: string;
   /**
-   * Los cuatro movimientos del anticipo (20261108170000): `anticipo` (abono por el bruto),
-   * `aplicacion_anticipo` (cargo = retención que la factura había repetido), `devolucion_anticipo`
-   * y `anulacion_anticipo` (cargo). El saldo es la posición neta con el proveedor.
+   * Los movimientos del anticipo (20261108170000): `anticipo` (abono por el bruto),
+   * `aplicacion_anticipo` (sin cargo), `correccion_retencion` (cargo = retención que la factura
+   * había repetido, corregida con motivo y soporte; ronda 2), `devolucion_anticipo` y
+   * `anulacion_anticipo` (cargo) y `cruce_consignacion` (cargo: el anticipo se cruzó con la obligación de
+   * un mandato de consignación). El saldo es la posición neta con el proveedor.
    */
-  tipo: 'factura' | 'cuenta' | 'pago' | 'anticipo' | 'aplicacion_anticipo' | 'devolucion_anticipo' | 'anulacion_anticipo';
+  tipo:
+    | 'factura'
+    | 'cuenta'
+    | 'pago'
+    | 'anticipo'
+    | 'aplicacion_anticipo'
+    | 'correccion_retencion'
+    | 'devolucion_anticipo'
+    | 'anulacion_anticipo'
+    | 'cruce_consignacion';
   documento: string | null;
   ref_id: string;
   vence: string | null;

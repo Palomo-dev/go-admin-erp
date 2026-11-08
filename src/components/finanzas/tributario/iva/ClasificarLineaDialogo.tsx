@@ -2,10 +2,14 @@
 
 /**
  * «Datos fiscales de la línea»: clasificación de IVA (gravada, exenta, excluida,
- * no sujeta; tarifa; tipo de operación; fundamento) y, en compras y documento
- * soporte, la procedencia del IVA descontable (ET arts. 485, 488, 490, 496).
- * Parte de lo guardado o, si la línea no está clasificada, de la sugerencia del
- * producto, que la persona confirma. No cambia importes ni impuestos.
+ * no sujeta; tarifa; tipo de operación; fundamento; soporte de la condición) y,
+ * en compras y documento soporte, la procedencia del IVA descontable (ET arts.
+ * 485, 488, 490, 496). Parte de lo guardado o, si la línea no está clasificada,
+ * de la sugerencia del producto, que la persona confirma. No cambia importes.
+ *
+ * Ronda 2 del Contador: una exportación exige su soporte (tipo, número y fecha);
+ * no hay selector de «período del descuento» (la oportunidad sale de la fecha de
+ * contabilización); el documento soporte no queda «descontable» por una marca.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -14,12 +18,15 @@ import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/Tesorer
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import {
   ESTADOS_DESCONTABLE,
+  SOPORTES_LINEA,
+  TIPOS_EXPORTACION,
   TIPOS_OPERACION_IVA,
   TRATAMIENTOS_IVA,
   clasificacionInicial,
   validarClasificacion,
   type EstadoDescontable,
   type LineaFiscal,
+  type TipoOperacionIva,
 } from '@/lib/finanzas/tributario/formulario300';
 import { clienteIva300 } from './clienteIva300';
 import { codigoDe } from '../piezas';
@@ -47,10 +54,12 @@ export function ClasificarLineaDialogo({
   const [tarifa, setTarifa] = useState('');
   const [tipo, setTipo] = useState('');
   const [fundamento, setFundamento] = useState('');
+  const [soporteTipo, setSoporteTipo] = useState('');
+  const [soporteNumero, setSoporteNumero] = useState('');
+  const [soporteFecha, setSoporteFecha] = useState('');
   const [descontable, setDescontable] = useState<EstadoDescontable>('por_evaluar');
   const [porcentaje, setPorcentaje] = useState('');
   const [motivo, setMotivo] = useState('');
-  const [periodo, setPeriodo] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,12 +69,17 @@ export function ClasificarLineaDialogo({
     setTarifa(inicial.tarifa !== null ? String(inicial.tarifa) : '');
     setTipo(inicial.tipoOperacion ?? '');
     setFundamento(inicial.fundamento ?? '');
+    setSoporteTipo(inicial.soporteTipo ?? '');
+    setSoporteNumero(inicial.soporteNumero ?? '');
+    setSoporteFecha(inicial.soporteFecha ?? '');
     setDescontable(linea.descontable?.estado ?? 'por_evaluar');
     setPorcentaje(linea.descontable?.porcentaje !== null && linea.descontable?.porcentaje !== undefined ? String(linea.descontable.porcentaje) : '');
     setMotivo(linea.descontable?.motivo ?? '');
-    setPeriodo(linea.descontable?.periodo ?? '');
     setError(null);
   }, [linea, inicial]);
+
+  const esExportacion = TIPOS_EXPORTACION.includes(tipo as TipoOperacionIva);
+  const pideSoporte = esExportacion || tratamiento === 'exenta';
 
   const guardar = async () => {
     if (!linea) return;
@@ -74,14 +88,16 @@ export function ClasificarLineaDialogo({
       tarifa: tratamiento === 'gravada' ? tarifa : 0,
       tipo_operacion: tipo || null,
       fundamento,
+      soporte_tipo: pideSoporte ? soporteTipo || null : null,
+      soporte_numero: pideSoporte ? soporteNumero : null,
+      soporte_fecha: pideSoporte ? soporteFecha || null : null,
     };
     if (linea.compra) {
       cuerpo.descontable = descontable;
       cuerpo.descontable_porcentaje = descontable === 'proporcional' ? porcentaje : null;
       cuerpo.descontable_motivo = motivo;
-      cuerpo.descontable_periodo = periodo || null;
     }
-    const v = validarClasificacion(cuerpo, { compra: linea.compra });
+    const v = validarClasificacion(cuerpo, { compra: linea.compra, soporteDoc: linea.soporteDoc });
     if (!v.ok) {
       setError(te(v.error));
       return;
@@ -163,17 +179,45 @@ export function ClasificarLineaDialogo({
                 />
               )}
             </FormField>
-            <FormField etiqueta={t('fundamento')} ayuda={tratamiento === 'exenta' ? t('fundamentoExenta') : t('fundamentoAyuda')} className="sm:col-span-2">
-              {(c) => (
-                <textarea id={c.id} rows={2} className={CLASE_AREA} value={fundamento} maxLength={500} onChange={(e) => setFundamento(e.target.value)} />
-              )}
+            <FormField
+              etiqueta={t('fundamento')}
+              ayuda={tratamiento && tratamiento !== 'gravada' ? t('fundamentoSinIva') : t('fundamentoAyuda')}
+              className="sm:col-span-2"
+            >
+              {(c) => <textarea id={c.id} rows={2} className={CLASE_AREA} value={fundamento} maxLength={500} onChange={(e) => setFundamento(e.target.value)} />}
             </FormField>
           </div>
+
+          {pideSoporte && (
+            <fieldset className="space-y-3 rounded-lg border border-line p-3">
+              <legend className="px-1 text-sm font-semibold text-fg">{t('soporteTitulo')}</legend>
+              <p className="text-xs text-fg-secondary">{esExportacion ? t('soporteExportacion') : t('soporteAyuda')}</p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <FormField etiqueta={t('soporteTipo')} obligatorio={esExportacion}>
+                  {(c) => (
+                    <SelectNativo
+                      id={c.id}
+                      valor={soporteTipo}
+                      vacio={t('elegir')}
+                      onCambiar={setSoporteTipo}
+                      opciones={SOPORTES_LINEA.map((x) => ({ valor: x, etiqueta: t(`soportes.${x}`) }))}
+                    />
+                  )}
+                </FormField>
+                <FormField etiqueta={t('soporteNumero')} obligatorio={esExportacion}>
+                  {(c) => <input id={c.id} className={CLASE_CAMPO} value={soporteNumero} maxLength={80} onChange={(e) => setSoporteNumero(e.target.value)} />}
+                </FormField>
+                <FormField etiqueta={t('soporteFecha')} obligatorio={esExportacion}>
+                  {(c) => <input id={c.id} type="date" className={CLASE_CAMPO} value={soporteFecha} onChange={(e) => setSoporteFecha(e.target.value)} />}
+                </FormField>
+              </div>
+            </fieldset>
+          )}
 
           {linea.compra && (
             <fieldset className="space-y-4 rounded-lg border border-line p-3">
               <legend className="px-1 text-sm font-semibold text-fg">{t('descontableTitulo')}</legend>
-              <p className="text-xs text-fg-secondary">{t('descontableAyuda')}</p>
+              <p className="text-xs text-fg-secondary">{linea.soporteDoc ? t('descontableSoporte') : t('descontableAyuda')}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField etiqueta={t('descontable')}>
                   {(c) => (
@@ -186,23 +230,17 @@ export function ClasificarLineaDialogo({
                   )}
                 </FormField>
                 {descontable === 'proporcional' && (
-                  <FormField etiqueta={t('porcentaje')} obligatorio>
-                    {(c) => (
-                      <input id={c.id} inputMode="decimal" className={CLASE_CAMPO} value={porcentaje} onChange={(e) => setPorcentaje(e.target.value.replace(',', '.'))} />
-                    )}
+                  <FormField etiqueta={t('porcentaje')} obligatorio ayuda={t('porcentajeAyuda')}>
+                    {(c) => <input id={c.id} inputMode="decimal" className={CLASE_CAMPO} value={porcentaje} onChange={(e) => setPorcentaje(e.target.value.replace(',', '.'))} />}
                   </FormField>
                 )}
                 {descontable !== 'por_evaluar' && (
-                  <>
-                    <FormField etiqueta={t('periodo')} ayuda={t('periodoAyuda')}>
-                      {(c) => <input id={c.id} type="date" className={CLASE_CAMPO} value={periodo} onChange={(e) => setPeriodo(e.target.value)} />}
-                    </FormField>
-                    <FormField etiqueta={t('motivo')} obligatorio className="sm:col-span-2">
-                      {(c) => <textarea id={c.id} rows={2} className={CLASE_AREA} value={motivo} maxLength={500} onChange={(e) => setMotivo(e.target.value)} />}
-                    </FormField>
-                  </>
+                  <FormField etiqueta={t('motivo')} obligatorio className="sm:col-span-2">
+                    {(c) => <textarea id={c.id} rows={2} className={CLASE_AREA} value={motivo} maxLength={500} onChange={(e) => setMotivo(e.target.value)} />}
+                  </FormField>
                 )}
               </div>
+              <p className="text-xs text-fg-secondary">{t('oportunidad')}</p>
             </fieldset>
           )}
 

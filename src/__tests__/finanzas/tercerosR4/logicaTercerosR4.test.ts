@@ -29,8 +29,15 @@ import {
   type ConceptoTerceros,
 } from '@/lib/finanzas/dineroTerceros/dineroTercerosLogica';
 import {
+  aEstadoCuentaAnticipo,
   aEvaluacionRetenciones,
+  aPendienteAnticipo,
   accionesAnticipo,
+  aplicarAnticipoSchema,
+  excesoRetencionSchema,
+  partesDevolucion,
+  retencionesDelProcedimiento,
+  totalComponentes,
   anticiposConRetencionPendiente,
   anularAnticipoSchema,
   codigoErrorAnticipo,
@@ -133,12 +140,17 @@ describe('consignaciones', () => {
   });
 
   test('cuerpos estrictos: ni organización ni cuentas contables desde el navegador', () => {
-    // Correcciones del Contador 2 (2026-11-07): la clasificación del contrato es obligatoria, sin default.
+    // Ronda 2 del Contador (2026-11-07): modalidad, condición contable, reconocimiento y factura de la
+    // remuneración son obligatorios, sin default.
     const terminos = {
-      contrato: 'estimatorio',
+      contrato: 'intermediacion',
+      condicion: 'agente',
       precio_modo: 'fijo',
       remuneracion_modo: 'porcentaje',
       base_comision: 'precio_pactado',
+      reconocimiento: 'al_vender',
+      factura_remuneracion: false,
+      obligacion_dueno: 'venta',
       riesgos: { devoluciones: 'dueno', perdidas: 'consignatario', gastos: 'consignatario' },
     };
     const base = { cliente_id: '11111111-2222-4333-8444-555555555555', sucursal_id: 7, comision: 15, terminos, lineas: [{ product_id: 1, qty: 2 }], clave_idempotencia: 'consignacion:1' };
@@ -277,7 +289,7 @@ describe('anticipos a proveedores: correcciones del Contador', () => {
       opciones: { retefuente: [{ id: 'a', nombre: 'Retención 4%', tarifa: 4 }] },
     });
     expect(e.clases.map((c) => [c.clase, c.estado, c.valor])).toEqual([['retefuente', 'practicar', 40000], ['reteiva', 'no_aplica', 0], ['reteica', 'pendiente', 0]]);
-    expect(e.opciones).toEqual({ retefuente: [{ id: 'a', nombre: 'Retención 4%', tarifa: 4 }], reteica: [] });
+    expect(e.opciones).toEqual({ retefuente: [{ id: 'a', nombre: 'Retención 4%', tarifa: 4, tarifaPorMil: null, norma: null }], reteica: [] });
     expect(e.pendiente).toBe(true);
   });
 
@@ -308,14 +320,111 @@ describe('anticipos a proveedores: correcciones del Contador', () => {
     expect(anticiposConRetencionPendiente(filas)).toBe(1);
     const csv = filasCsvConciliacion(
       {
-        anticipos: [{ anticipoId: 'a1', proveedor: 'P', nit: '9', cuenta: '13300501', recibo: 'CE-1', naturaleza: 'financiacion', valor: 1000, retencion: 0, girado: 1000, aplicado: 400, retencionDescontada: 0, devuelto: 0, anulado: 0, saldo: 600, saldoLibros: 600, cuadra: true }],
+        anticipos: [{ anticipoId: 'a1', proveedor: 'P', nit: '9', cuenta: '13300501', recibo: 'CE-1', naturaleza: 'financiacion', valor: 1000, retencion: 0, girado: 1000, aplicado: 400, retencionDescontada: 0, devuelto: 0, anulado: 0, saldo: 600, saldoLibros: 600, cuadra: true, pendientesAbiertos: 2, cruzado: 0 }],
         proveedores: [{ proveedor: 'P', nit: '9', anticipos: 1, saldo: 600, saldoLibros: 600, auxiliarNit: 600 }],
       },
       { anticipos: ['A'], proveedores: ['B'] },
       (v) => (v ? 'sí' : 'no'),
     );
-    expect(csv[1]).toEqual(['P', '9', 'CE-1', '13300501', 'financiacion', '1000', '0', '1000', '400', '0', '0', '0', '600', '600', 'sí']);
+    expect(csv[1]).toEqual(['P', '9', 'CE-1', '13300501', 'financiacion', '1000', '0', '1000', '400', '0', '0', '0', '600', '600', 'sí', '2', '0']);
     expect(csv[csv.length - 1]).toEqual(['P', '9', '1', '600', '600', '600']);
+  });
+});
+
+// ─── Ronda 2 del Contador ───────────────────────────────────────────────────
+
+describe('anticipos a proveedores: ronda 2 del Contador', () => {
+  const base = { proveedor_id: 45, sucursal_id: 7, monto: 795000, metodo: 'cash', clave_idempotencia: 'anticipo:1', naturaleza: 'pago_anticipado_precio' };
+
+  test('ítem 3: el pago anticipado va con la tarifa general o con componentes por línea y tarifa', () => {
+    const componentes = [
+      { tratamiento: 'gravado', base: 500000, tarifa_iva: 19 },
+      { tratamiento: 'excluido', base: 200000 },
+    ];
+    expect(crearAnticipoSchema.safeParse({ ...base, componentes }).success).toBe(true);
+    expect(crearAnticipoSchema.safeParse({ ...base, componentes: [{ tratamiento: 'otro', base: 1 }] }).success).toBe(false);
+    expect(crearAnticipoSchema.safeParse({ ...base, componentes: [] }).success).toBe(false);
+    expect(totalComponentes(componentes as never)).toBe(795000);
+    expect(
+      totalComponentes([
+        { tratamiento: 'aiu_administracion', base: 100000 },
+        { tratamiento: 'aiu_imprevistos', base: 50000 },
+        { tratamiento: 'aiu_utilidad', base: 50000, tarifa_iva: 19 },
+      ] as never),
+    ).toBe(209500);
+  });
+
+  test('ítem 4: la regla de ReteICA trae la tarifa por mil exacta (9,66 ‰ = 0,966 %); la financiación queda «diferida»', () => {
+    const e = aEvaluacionRetenciones({
+      naturaleza: 'financiacion',
+      clases: [{ clase: 'retefuente', estado: 'diferida', motivo: 'se_evalua_al_pago_o_abono' }],
+      opciones: { reteica: [{ id: 'r', nombre: 'Bogotá · consultoría', tarifa_por_mil: 9.66, norma: 'Acuerdo' }] },
+    });
+    expect(e.clases[0]).toMatchObject({ estado: 'diferida', valor: 0 });
+    expect(e.opciones.reteica[0]).toEqual({ id: 'r', nombre: 'Bogotá · consultoría', tarifa: 0.966, tarifaPorMil: 9.66, norma: 'Acuerdo' });
+    expect(Math.round((1000000 * e.opciones.reteica[0].tarifa) / 100)).toBe(9660);
+  });
+
+  test('ronda 3: la devolución va por procedimiento y causa; las retenciones salen del procedimiento', () => {
+    const d = { monto: 55592, metodo: 'transfer', motivo: 'Devuelve', referencia: 'Consignación', clave_idempotencia: 'devolver:1' };
+    const soportes = { documento: 'Acuerdo 12', calculo: 'Hoja de cálculo', certificado: 'Certificado corregido', norma_ica: 'Acuerdo municipal' };
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: null }).success).toBe(true);
+    expect(
+      devolverAnticipoSchema.safeParse({
+        ...d,
+        procedimiento: { causa: 'devolucion_parcial', soportes, base_devuelta: 50000, iva_devuelto: 9500, periodo_descuento: '2026-11', requiere_correccion: false },
+      }).success,
+    ).toBe(true);
+    // Parcial sin el cálculo de la parte devuelta; causa inventada; sin documento: no pasan.
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'devolucion_parcial', soportes } }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'otra', soportes } }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'operacion_anulada', soportes: { documento: '' } } }).success).toBe(false);
+    // Ya no se eligen retenciones a mano.
+    expect(devolverAnticipoSchema.safeParse({ ...d, retenciones: [] }).success).toBe(false);
+    const vigentes = [
+      { clase: 'retefuente' as const, vigente: 4000, tarifa: 4 },
+      { clase: 'reteiva' as const, vigente: 2850, tarifa: 15 },
+      { clase: 'reteica' as const, vigente: 966, tarifa: 0.966 },
+    ];
+    expect(retencionesDelProcedimiento(vigentes, { causa: 'devolucion_parcial', base_devuelta: 50000, iva_devuelto: 9500 }).map((r) => r.valor)).toEqual([2000, 1425, 483]);
+    expect(retencionesDelProcedimiento(vigentes, { causa: 'operacion_anulada' }).map((r) => r.valor)).toEqual([4000, 2850, 966]);
+    // Ítem 11: el texto separa el dinero de las retenciones.
+    expect(partesDevolucion({ dinero: 55592, retencion_revertida: 3908 })).toEqual({ dinero: 55592, retenciones: 3908 });
+  });
+
+  test('ronda 3: retención excesiva con cálculo, certificado y tratamiento en declaraciones', () => {
+    const e = {
+      clase: 'retefuente', base_correcta: 100000, tarifa_correcta: 2.5, metodo: 'transfer', motivo: 'Tarifa errada',
+      soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido' }, periodo_descuento: '2026-11', requiere_correccion: true,
+      clave_idempotencia: 'exceso:prueba1',
+    };
+    expect(excesoRetencionSchema.safeParse(e).success).toBe(true);
+    expect(excesoRetencionSchema.safeParse({ ...e, clase: 'reteica' }).success).toBe(false);
+    expect(excesoRetencionSchema.safeParse({ ...e, periodo_descuento: '2026-13' }).success).toBe(false);
+    expect(estadoHttpErrorAnticipo('sin_exceso')).toBe(422);
+    expect(estadoHttpErrorAnticipo('anulacion_requiere_devolucion_total')).toBe(422);
+  });
+
+  test('ítem 5: la corrección de una retención repetida lleva motivo y soporte', () => {
+    const a = { cuenta_id: '11111111-2222-4333-8444-555555555555', monto: 1, clave_idempotencia: 'aplicar:1' };
+    expect(aplicarAnticipoSchema.safeParse(a).success).toBe(true);
+    expect(aplicarAnticipoSchema.safeParse({ ...a, correccion: { motivo: 'Repetida', soporte: 'Nota 77' } }).success).toBe(true);
+    expect(aplicarAnticipoSchema.safeParse({ ...a, correccion: { motivo: 'Repetida' } }).success).toBe(false);
+  });
+
+  test('ítems 9 y 10: pendientes tipados y la cuenta fuera de 133005xx', () => {
+    const p = aPendienteAnticipo({
+      id: 'p1', advance_id: 'a1', tipo: 'retencion_duplicada', estado: 'abierto', creado_en: '2026-11-07T10:00:00Z',
+      detalle: { periodos_a_revisar: ['2026-11', '2026-11'] },
+      supplier_advances: { suppliers: { name: 'Proveedor uno' }, payment_groups: { receipt_number: 'CE-1' } },
+    });
+    expect(p).toMatchObject({ tipo: 'retencion_duplicada', estado: 'abierto', proveedor: 'Proveedor uno', recibo: 'CE-1', periodos: ['2026-11'] });
+    expect(aEstadoCuentaAnticipo({ estado: 'fuera_de_133005', configurada: '13309501' }).estado).toBe('fuera_de_133005');
+    expect(aEstadoCuentaAnticipo({ estado: 'fuera_de_1330' }).estado).toBe('sin_configurar');
+    expect(estadoHttpErrorAnticipo('retencion_duplicada')).toBe(409);
+    expect(estadoHttpErrorAnticipo('reteica_requiere_norma')).toBe(422);
+    expect(estadoHttpErrorAnticipo('pendiente_ya_resuelto')).toBe(409);
+    expect(codigoErrorAnticipo('componentes_obligatorios: detalle')).toBe('componentes_obligatorios');
   });
 });
 

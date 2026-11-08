@@ -27,7 +27,7 @@ export function DocumentationSection() {
     {
       title: 'Crear una Conexión',
       description: 'Aprende a conectar proveedores externos',
-      href: '/app/integraciones/conexiones/nueva',
+      href: '/app/integraciones/conexiones',
       icon: <Link2 className="h-5 w-5" />,
       color: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30',
     },

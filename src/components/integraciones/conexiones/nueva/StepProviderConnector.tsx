@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, CreditCard, MessageSquare, Globe, Truck, Share2, Megaphone, Check, ChevronRight, Hotel } from 'lucide-react';
 import { IntegrationProvider, IntegrationConnector } from '@/lib/services/integrationsService';
 import { cn } from '@/lib/utils';
+import { LogoServicio } from '@/components/integraciones/conexiones-v2/logos';
 
 interface StepProviderConnectorProps {
   providers: IntegrationProvider[];
@@ -18,14 +19,14 @@ interface StepProviderConnectorProps {
 }
 
 // Configuración de logos reales por código de proveedor (usando CDNs confiables)
-const PROVIDER_LOGOS: Record<string, { logoUrl: string; bgColor: string; borderColor: string }> = {
+const PROVIDER_LOGOS: Record<string, { logoUrl?: string; bgColor: string; borderColor: string }> = {
   stripe: {
     logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg',
     bgColor: 'bg-[#635BFF]/10',
     borderColor: 'border-[#635BFF]/30',
   },
   mercadopago: {
-    logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg',
+    // Sin logo externo: era el de Mastercard. El logo real está en conexiones-v2/logos.
     bgColor: 'bg-[#00B1EA]/10',
     borderColor: 'border-[#00B1EA]/30',
   },
@@ -248,12 +249,10 @@ export function StepProviderConnector({
 
                 {/* Logo */}
                 <div className="w-12 h-12 rounded-lg bg-white dark:bg-gray-900 shadow-sm flex items-center justify-center mb-3 overflow-hidden">
-                  {logoConfig?.logoUrl ? (
-                    <img
-                      src={logoConfig.logoUrl}
-                      alt={provider.name}
-                      className="w-8 h-8 object-contain"
-                    />
+                  {/* Logos del catálogo (conexiones-v2/logos), nunca URLs externas: Mercado Pago
+                      mostraba el de Mastercard. */}
+                  {provider.code ? (
+                    <LogoServicio id={provider.code} tamano="md" titulo={provider.name} />
                   ) : provider.logo_url ? (
                     <img
                       src={provider.logo_url}

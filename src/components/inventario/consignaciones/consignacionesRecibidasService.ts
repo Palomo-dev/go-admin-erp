@@ -5,7 +5,14 @@
  * y sus RPC. Los errores llegan como `ErrorPeticionSaldoFavor` con su `codigo`
  * (mismo lector que los saldos a favor), y se muestran con `consignacionesR4.errores.<codigo>`.
  */
-import type { DocumentoPorAceptar, NotaRecibida, RespuestaRecibidas } from '@/lib/inventario/consignaciones/recibidas';
+import type {
+  ClaseRetencion,
+  DocumentoPorAceptar,
+  NotaRecibida,
+  ReglasRetencionConsignacion,
+  RespuestaRecibidas,
+  RetencionLiquidacion,
+} from '@/lib/inventario/consignaciones/recibidas';
 import { cabecerasSaldo, enviarSaldo, leerRespuestaSaldo } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 
 const BASE = '/api/consignaciones';
@@ -32,15 +39,40 @@ export const consignacionesRecibidasService = {
   recibir: (cuerpo: Record<string, unknown>) => enviar<{ nota_id: string; numero: string; repetida: boolean }>(`${BASE}/recibidas`, cuerpo),
   devolver: (id: string, lineas: { linea_id: string; qty: number }[], clave: string) =>
     enviar<{ devolucion_id: string; total: number }>(`${BASE}/recibidas/${encodeURIComponent(id)}/devolver`, { lineas, clave_idempotencia: clave }),
-  liquidar: (id: string, clave: string) =>
-    enviar<{ liquidacionId: string; estado: 'por_facturar' | 'liquidada'; porPagar: number; facturaCompraId: string | null }>(
+  liquidar: (id: string, cuerpo: { clave_idempotencia: string; descontar_derechos?: boolean; acuerdo?: string | null }) =>
+    enviar<{
+      liquidacionId: string;
+      estado: 'liquidada';
+      porPagar: number;
+      remuneracion: number;
+      derechosDescontados: number;
+      remuneracionPorDevengar: number;
+      retenciones: RetencionLiquidacion[];
+      facturaRemuneracion: boolean;
+    }>(
       `${BASE}/recibidas/${encodeURIComponent(id)}/liquidar`,
-      { clave_idempotencia: clave },
+      cuerpo,
     ),
   anularLiquidacion: (liquidacionId: string, motivo: string) =>
     enviar<{ estado: 'anulada' }>(`${BASE}/recibidas/liquidaciones/${encodeURIComponent(liquidacionId)}/anular`, { motivo }),
-  cerrarCompra: (liquidacionId: string, facturaId: string) =>
-    enviar<{ estado: string }>(`${BASE}/recibidas/liquidaciones/${encodeURIComponent(liquidacionId)}/cerrar-compra`, { factura_id: facturaId }),
+  reconocer: (id: string, cuerpo: { evidencia: string; clave_idempotencia: string }) =>
+    enviar<{ reconocimiento_id: string; monto: number }>(`${BASE}/recibidas/${encodeURIComponent(id)}/reconocer`, cuerpo),
+  conciliarRetencion: (retencionId: string, cuerpo: { valor: number; soporte: string }) =>
+    enviar<{ retencion_id: string; valor: number }>(`${BASE}/recibidas/retenciones/${encodeURIComponent(retencionId)}/conciliar`, cuerpo),
+  retenciones: () =>
+    leerGet<{ pendiente: boolean; reglas: ReglasRetencionConsignacion; disponibles: { id: string; nombre: string; tarifa: number; clase: ClaseRetencion | null }[] }>(
+      `${BASE}/retenciones`,
+    ),
+  configurarRetenciones: (reglas: ReglasRetencionConsignacion) => enviar<ReglasRetencionConsignacion>(`${BASE}/retenciones`, reglas),
+  novedad: (id: string, cuerpo: Record<string, unknown>) =>
+    enviar<{ novedad_id: string; custodia: number }>(`${BASE}/recibidas/${encodeURIComponent(id)}/novedad`, cuerpo),
+  anticipos: (id: string) => leerGet<{ id: string; saldo: number; cuenta: string; creado: string }[]>(`${BASE}/recibidas/${encodeURIComponent(id)}/anticipos`),
+  cruzarAnticipo: (id: string, cuerpo: { anticipo_id: string; monto: number; clave_idempotencia: string }) =>
+    enviar<{ cruce_id: string; monto: number; saldo_anticipo: number }>(`${BASE}/recibidas/${encodeURIComponent(id)}/anticipos`, cuerpo),
+  cuentas: () =>
+    leerGet<{ pendiente: boolean; orden: string | null; contra: string | null; remuneracion: string | null; estimatorioHabilitado: boolean }>(`${BASE}/cuentas`),
+  configurarCuentas: (cuerpo: { orden?: string | null; contra: string; remuneracion?: string | null }) =>
+    enviar<{ orden: string | null; contra: string; remuneracion: string | null }>(`${BASE}/cuentas`, cuerpo),
   documento: (id: string) =>
     leerGet<{ documento: DocumentoPorAceptar & { estado: string }; comparacion: ComparacionDocumento | null }>(`${BASE}/por-aceptar/${encodeURIComponent(id)}`),
   aceptarNota: (id: string, cuerpo: Record<string, unknown>) =>

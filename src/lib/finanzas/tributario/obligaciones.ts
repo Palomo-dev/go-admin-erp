@@ -24,6 +24,9 @@ export type ClaveObligacion =
   | 'inc'
   | 'renta'
   | 'ingresos_patrimonio'
+  | 'no_declarante'
+  | 'rte_registro_web'
+  | 'rte_memoria_economica'
   | 'simple'
   | 'simple_anticipo'
   | 'exogena'
@@ -55,7 +58,14 @@ export type NotaObligacion =
   | 'iva_anual_simple'
   | 'anticipo_simple'
   | 'regimen_especial'
+  | 'conciliacion_por_evaluar'
+  | 'rte_cooperativa_por_confirmar'
+  | 'rte_umbral_por_confirmar'
+  | 'clasificacion_inicial'
   | 'cambio_vigencia_en_periodo'
+  | 'cambio_periodicidad_pendiente'
+  | 'decision_registrada'
+  | 'decision_reabierta'
   | 'periodo_sin_perfil_completo';
 
 /** Obligaciones de UNA vigencia, con el último periodo cerrado al mes `corte` (`YYYY-MM`). */
@@ -82,7 +92,7 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
     );
   }
 
-  const autorretenedor = perfil.autorretenedor === true || fe.has(RESPONSABILIDAD.autorretenedor);
+  const autorretenedor = perfil.autorretenedor === true || perfil.autorretencionEspecial === true || fe.has(RESPONSABILIDAD.autorretenedor);
   if (perfil.agenteRetencion || autorretenedor || perfil.agenteRetencionIva === true || fe.has(RESPONSABILIDAD.agenteRetencionIva)) {
     agregar(
       'mensual',
@@ -100,7 +110,8 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
   if (perfil.responsableInc) {
     agregar('bimestral', { id: 'inc', clave: 'inc', formulario: '310', calendario: 'inc_bimestral', fuente: 'ninguna' }, [
       ...revisar,
-      ...(simple ? (['requisitos_por_confirmar'] as NotaObligacion[]) : []),
+      // El INC depende de la actividad (ET art. 512-1); en el SIMPLE parte se integra al impuesto unificado.
+      ...(simple || perfil.incActividad === null ? (['requisitos_por_confirmar'] as NotaObligacion[]) : []),
     ]);
   }
 
@@ -115,34 +126,61 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
       ]);
       break;
     case 'ordinario':
-    case 'especial':
     case null: {
       const notas: NotaObligacion[] = [...revisar];
       if (perfil.regimenRenta === null) notas.push('perfil_por_revisar');
-      if (perfil.regimenRenta === 'especial') notas.push('regimen_especial');
       if (!gran) notas.push('persona_natural_no_soportada');
       agregar(
         'anual',
         { id: 'renta', clave: 'renta', formulario: '110 o 210', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' },
         notas,
       );
-      if (perfil.regimenRenta !== 'especial') {
-        agregar(
-          'anual',
-          { id: 'conciliacion_fiscal', clave: 'conciliacion_fiscal', formulario: '2516 o 2517', calendario: 'conciliacion_fiscal', fuente: 'ninguna' },
-          perfil.regimenRenta === null ? [...revisar, 'perfil_por_revisar'] : revisar,
-        );
+      agregar(
+        'anual',
+        { id: 'conciliacion_fiscal', clave: 'conciliacion_fiscal', formulario: '2516 o 2517', calendario: 'conciliacion_fiscal', fuente: 'ninguna' },
+        perfil.regimenRenta === null ? [...revisar, 'perfil_por_revisar'] : revisar,
+      );
+      break;
+    }
+    case 'especial': {
+      // Régimen tributario especial (ET arts. 19, 356 a 364-6): renta en el formulario 110, conciliación fiscal
+      // evaluada (no excluida), actualización anual del registro web (art. 364-5) y memoria económica cuando los
+      // ingresos del año anterior superan 160.000 UVT (art. 356-3 par. 2). Parametrizado por tipo de entidad.
+      const cooperativa = perfil.rteTipo === 'cooperativa_art19_4';
+      agregar('anual', { id: 'renta', clave: 'renta', formulario: '110', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' }, [
+        ...revisar,
+        'regimen_especial',
+      ]);
+      agregar('anual', { id: 'conciliacion_fiscal', clave: 'conciliacion_fiscal', formulario: '2516 o 2517', calendario: 'conciliacion_fiscal', fuente: 'ninguna' }, [
+        ...revisar,
+        'conciliacion_por_evaluar',
+      ]);
+      agregar('anual', { id: 'rte_registro_web', clave: 'rte_registro_web', formulario: null, calendario: 'rte_registro_web', fuente: 'ninguna' }, [
+        ...revisar,
+        ...(cooperativa || perfil.rteTipo === null ? (['rte_cooperativa_por_confirmar'] as NotaObligacion[]) : []),
+      ]);
+      if (perfil.rteIngresosSuperan160000Uvt !== false) {
+        agregar('anual', { id: 'rte_memoria_economica', clave: 'rte_memoria_economica', formulario: null, calendario: 'rte_memoria_economica', fuente: 'ninguna' }, [
+          ...revisar,
+          ...(perfil.rteIngresosSuperan160000Uvt === null ? (['rte_umbral_por_confirmar'] as NotaObligacion[]) : []),
+        ]);
       }
       break;
     }
     case 'no_contribuyente_declarante':
+      // ET art. 23: no contribuyente, declarante de ingresos y patrimonio. Clasificación inicial: nunca «sin obligaciones».
       agregar(
         'anual',
         { id: 'ingresos_patrimonio', clave: 'ingresos_patrimonio', formulario: '110', calendario: 'ingresos_patrimonio', fuente: 'ninguna' },
-        [...revisar, 'requisitos_por_confirmar'],
+        [...revisar, 'clasificacion_inicial'],
       );
       break;
     case 'no_contribuyente_no_declarante':
+      // ET art. 22: no declara renta ni ingresos y patrimonio; la fila deja la clasificación a la vista.
+      agregar('anual', { id: 'no_declarante', clave: 'no_declarante', formulario: null, calendario: null, fuente: 'ninguna' }, [
+        ...revisar,
+        'clasificacion_inicial',
+      ]);
       break;
   }
   agregar('anual', { id: 'exogena', clave: 'exogena', formulario: null, calendario: 'exogena', fuente: 'ninguna' }, [...revisar, 'requisitos_por_confirmar']);
@@ -176,6 +214,7 @@ export function obligacionesDelCorte(vigencias: readonly VigenciaPerfil[], corte
     const a = analizarPeriodo(vigencias, o.periodo.desde, o.periodo.hasta);
     const notas = [...o.notas];
     if (a.cambioDeVigencia) notas.push('cambio_vigencia_en_periodo');
+    if (a.cambioPendienteSoporte && o.clave === 'iva') notas.push('cambio_periodicidad_pendiente');
     if (a.sinPerfilCompleto) notas.push('periodo_sin_perfil_completo');
     return { ...o, notas: Array.from(new Set(notas)) };
   });
@@ -201,6 +240,8 @@ export type Vencimiento =
   /** El año tiene fechas, pero no la de esta obligación, periodo y dígitos: calendario incompleto. */
   | { estado: 'no_encontrado'; anio: number }
   | { estado: 'municipal' }
+  /** Sin vencimiento nacional (p. ej. el no contribuyente no declarante del art. 22). */
+  | { estado: 'no_aplica' }
   | { estado: 'pendiente_activar' };
 
 /** ¿El vencimiento no se puede determinar porque al calendario le faltan fechas? */
@@ -231,11 +272,11 @@ export function anioCalendario(periodo: PeriodoFiscal): number {
  * del NIT. `calendario` null = la tabla no existe todavía (pendiente de activar).
  */
 export function vencimientoDe(
-  o: Pick<Obligacion, 'calendario' | 'periodo'>,
+  o: Pick<Obligacion, 'calendario' | 'periodo' | 'clave'>,
   nit: string | null,
   calendario: readonly FilaCalendario[] | null,
 ): Vencimiento {
-  if (o.calendario === null) return { estado: 'municipal' };
+  if (o.calendario === null) return o.clave === 'ica' ? { estado: 'municipal' } : { estado: 'no_aplica' };
   if (calendario === null) return { estado: 'pendiente_activar' };
   const anio = anioCalendario(o.periodo);
   const delAnio = calendario.filter((f) => f.anio === anio);

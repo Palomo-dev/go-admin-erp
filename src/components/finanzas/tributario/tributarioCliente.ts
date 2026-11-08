@@ -6,7 +6,8 @@
  */
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { DatosEmpresa, FaltaPerfil, SolicitudPerfil, VigenciaPerfil } from '@/lib/finanzas/tributario/perfil';
-import type { AnalisisPeriodo } from '@/lib/finanzas/tributario/vigenciasPeriodo';
+import type { AnalisisPeriodo, SolicitudDecision } from '@/lib/finanzas/tributario/vigenciasPeriodo';
+import type { DecisionPeriodo } from '@/lib/services/tributario/tributario.server';
 import type { Obligacion, Vencimiento } from '@/lib/finanzas/tributario/obligaciones';
 import type { BorradorIva } from '@/lib/finanzas/tributario/borradorIva';
 import type { FilaCertificado, ResumenCertificados } from '@/lib/finanzas/tributario/certificados';
@@ -53,8 +54,9 @@ const get = <T>(ruta: string) => fetch(ruta, { credentials: 'same-origin', cache
 export interface CodigoCatalogoCliente {
   codigo: string;
   descripcion: string;
-  estado: 'pendiente_validacion' | 'validado' | 'no_vigente_por_confirmar' | 'sin_dato';
+  estado: 'pendiente_validacion' | 'cotejado_fuente_oficial' | 'validado' | 'no_validado_como_fe' | 'sin_dato';
   nota: string | null;
+  fuente: string | null;
   vigente: boolean;
 }
 
@@ -88,7 +90,15 @@ export interface CentroCliente {
   faltan: FaltaPerfil[];
   calendario: 'activo' | 'pendiente_activar';
   calendarioIncompleto: number[];
-  filas: { obligacion: Obligacion; vencimiento: Vencimiento; valor: ValorObligacionCliente }[];
+  /** Puede registrar decisiones de período (finance.approve). */
+  puedeDecidir: boolean;
+  filas: {
+    obligacion: Obligacion;
+    vencimiento: Vencimiento;
+    valor: ValorObligacionCliente;
+    decisiones?: DecisionPeriodo[];
+    vigenciasPeriodo?: AnalisisPeriodo['vigencias'];
+  }[];
 }
 
 export type BorradorCliente = { estado: 'listo'; borrador: BorradorIva } | { estado: 'pendiente_activar' };
@@ -123,6 +133,14 @@ export const tributarioCliente = {
     fetch(`/api/finanzas/tributario/municipios?${new URLSearchParams({ q })}`, { credentials: 'same-origin', cache: 'no-store', headers: cabeceras(), signal }).then((r) =>
       leer<{ municipios: MunicipioOpcion[] }>(r),
     ),
+  registrarDecision: (s: SolicitudDecision) =>
+    fetch('/api/finanzas/tributario/centro/decision', {
+      method: 'POST',
+      credentials: 'same-origin',
+      cache: 'no-store',
+      headers: cabeceras(true),
+      body: JSON.stringify(s),
+    }).then((r) => leer<{ id: string }>(r)),
   centro: (corte: string | null) => get<CentroCliente>(`/api/finanzas/tributario/centro${corte ? `?${new URLSearchParams({ corte })}` : ''}`),
   borradorIva: (desde: string, hasta: string) => get<BorradorCliente>(`/api/finanzas/tributario/iva?${new URLSearchParams({ desde, hasta })}`),
   certificados: (desde: string, hasta: string) => get<CertificadosCliente>(`/api/finanzas/tributario/certificados?${new URLSearchParams({ desde, hasta })}`),

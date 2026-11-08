@@ -389,3 +389,63 @@ Dinero de terceros y a Facturas de compra), nota por aceptar, liquidación recib
 intermediación (queda como pendiente contable); reglas de IVA y retenciones para estos conceptos; productos con seriales o
 variantes; crear el producto de consignación desde el diálogo; notificaciones (campana y correo) de documentos por aceptar;
 PDF de la nota y de la liquidación.
+
+#### Frente INT · Métodos de pago abría el asistente viejo (fallo del dueño, 2026-11-07)
+
+Síntoma: «Configurar integración» de Mercado Pago, desde Métodos de pago y en el celular, abría
+`/conexiones/nueva` (País → ambiente → sucursal), con el logo de Mastercard.
+
+**Entradas que ahora llevan al asistente nuevo** (`conexiones/rutaAsistente.ts`), con el proveedor
+elegido y `?return=`:
+- Métodos de pago: lista (`PaymentMethodsList`) y formulario (`PaymentMethodForm`);
+- PMS › Channel Manager (Booking, Expedia);
+- Onboarding y la documentación de Integraciones (al catálogo).
+
+En Conexiones, `?conectar=<id>&return=<ruta interna>` abre directo el asistente. Al terminar o
+cerrar vuelve a la ruta de origen. `&sucursal=` llega al guardado de las llaves.
+
+**`/app/integraciones/conexiones/nueva`** es ahora un componente de servidor que redirige al
+asistente nuevo. Resuelve el uuid del proveedor con la sesión y conserva proveedor, sucursal y
+regreso.
+- Editar una conexión cubierta lleva a su detalle («Reemplazar llave»).
+- Sin proveedor, lleva al catálogo.
+- El formulario viejo (`nueva/AsistenteViejo.tsx`) queda SOLO para lo que el nuevo no cubre: Bold
+  (datáfonos por sucursal), Bancolombia QR, Bre-B, Redeban, WhatsApp, Twilio y los proveedores de la
+  base que el catálogo no conozca.
+
+**Logo:** Mercado Pago mostraba el de Mastercard, que estaba como URL externa en
+`StepProviderConnector` y en `AvailableProviders`. Se retiró esa URL. El formulario viejo pinta los
+logos del catálogo (`conexiones-v2/logos`).
+
+**Pruebas:**
+- `rutaAsistente.test.ts` (13): rutas y redirección en el servidor.
+- `metodos-pago/__tests__/conectarPasarelaNueva.test.tsx`: render a 390 y 1440 px; el enlace de
+  Mercado Pago va al asistente nuevo.
+
+### Consignación: Ronda 2 del Contador (2026-11-07)
+
+Sin commit. `20261108121000_consignaciones.sql` reescrita (v3) y su reversión, **sin aplicar**; `20261108120500` sin cambios.
+Detalle punto por punto en `docs/design/CONSIGNACION-RECIBIDA-Y-ENTRE-ORGANIZACIONES.md`, «Ronda 2 del Contador».
+Contrato con modalidad, condición contable y tratamiento tributario separados; contrapartida del grupo 94 definida
+(`consignment_account_settings`); valoración de custodia por contrato; estimatorio bloqueado hasta los arts. 438 y 455; sin
+compra ni costo automáticos; remuneración al devengarse; retenciones por pago o abono como pendiente; anticipo cruzado con
+281510; faltantes y daños con evidencia y sin gasto; derechos frente al dueño solo con acuerdo; entregada sin 1465 ni asiento.
+UI: Cuentas de consignación, Registrar faltante o daño, Cruzar anticipo, derechos con acuerdo, valoración al recibir y al
+aceptar. Prueba en seco en las organizaciones 137 y 138: todos los bloqueos y cifras esperados, 0 asientos descuadrados.
+
+**Pendiente (nuevo):** el listado de anticipos a proveedores calcula lo aplicado desde `supplier_advance_applications`; los
+cruces de consignación bajan el saldo y quedan en `consignment_advance_crossings`: ese listado debe sumarlos. Cargar las reglas
+del estimatorio cuando el Contador las apruebe. Lo demás, como arriba.
+
+
+### Consignación: Ronda 3 del Contador (2026-11-08)
+
+Migración sigue SIN aplicar (v4, md5 `db50d761…`). Detalle en `docs/design/CONSIGNACION-RECIBIDA-Y-ENTRE-ORGANIZACIONES.md`,
+«Ronda 3 del Contador». Comisión: fuera `al_liquidar`; se reconoce al vender o, si el contrato documenta una obligación
+posterior real, al cumplirse con evidencia («Reconocer remuneración»). Retenciones: operación (calidad del mandante, por
+grupo de compradores) y remuneración (calidad del intermediario), por separado, con las reglas configuradas de
+`organization_taxes`; sin regla, calidad, UVT o norma municipal quedan pendientes y conciliables, nunca 0. Estimatorio
+bloqueado. Prueba en seco 15: 79/79. Listado de Consignaciones arreglado a 390 px (buscador en su fila, pestañas debajo).
+
+**Pendiente (nuevo):** cuando se aplique 20261108170000 (anticipos), reemplazar la lectura de calidades de consignación por su
+evaluador. Sigue pendiente que el listado de anticipos sume `consignment_advance_crossings`.

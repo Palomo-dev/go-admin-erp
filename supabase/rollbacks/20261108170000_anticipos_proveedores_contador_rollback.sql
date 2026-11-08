@@ -5,15 +5,30 @@
 -- 2026-11-07). Borra las funciones, tablas y columnas nuevas.
 --
 -- ADVERTENCIA: NO restaura datos. Si ya se registraron anticipos con la versión nueva, se pierden su
--- naturaleza, sus retenciones (supplier_advance_withholdings), sus devoluciones (supplier_advance_refunds) y
--- el detalle de cada aplicación; los asientos y pagos ya publicados quedan como están. Antes de revertir con
+-- naturaleza, sus retenciones (supplier_advance_withholdings) y sus ajustes, sus devoluciones
+-- (supplier_advance_refunds), los vínculos con facturas, los pendientes contables, las calidades verificadas de
+-- proveedores, las reglas de ReteICA, las equivalencias de cuenta y el detalle de cada aplicación; los asientos y pagos ya publicados quedan como están. Antes de revertir con
 -- datos, exporte esas tablas y la conciliación (fn_anticipos_proveedor_conciliacion).
 
--- 1. Funciones nuevas
+-- 1. Funciones y disparador nuevos (ronda 1 y ronda 2)
+drop trigger if exists trg_factura_compra_retencion_anticipo on public.invoice_purchase;
+drop function if exists public.fn_trg_factura_compra_retencion_anticipo();
 drop function if exists public.fn_anticipos_proveedor_conciliacion(integer, integer);
 drop function if exists public.fn_anticipo_proveedor_anular_por_error(uuid, text, text, date, integer);
-drop function if exists public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text);
-drop function if exists public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid);
+drop function if exists public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean);
+drop function if exists public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean);
+drop function if exists public.fn_anticipo_proveedor_aplicar_corrigiendo(uuid, uuid, numeric, text, text, text, integer);
+drop function if exists public.fn_anticipo_proveedor_aplicar_int(uuid, uuid, numeric, text, integer, jsonb);
+drop function if exists public.fn_anticipo_proveedor_vincular_factura(uuid, uuid, numeric, integer);
+drop function if exists public.fn_anticipo_proveedor_desvincular_factura(uuid, uuid, integer);
+drop function if exists public.fn_anticipo_proveedor_devolver(uuid, numeric, text, text, text, integer, integer, text, jsonb);
+drop function if exists public.fn_anticipo_pendiente_resolver(uuid, text, text, integer);
+drop function if exists public.fn_anticipo_pendiente_abrir(integer, uuid, text, jsonb, uuid);
+drop function if exists public.fn_proveedor_calidad_tributaria_guardar(integer, integer, text, text, text[], date, date, date, text, text, date, text);
+drop function if exists public.fn_reteiva_aiu_regla_guardar(integer, text, date, date, text);
+drop function if exists public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text);
+drop function if exists public.fn_reteica_regla_guardar(integer, uuid, text, numeric, text, date, date, numeric);
+drop function if exists public.fn_anticipo_cuenta_equivalencia_aprobar(integer, text, text);
 drop function if exists public.fn_anticipo_retencion_practicar(integer, text, uuid, numeric);
 drop function if exists public.fn_anticipo_proveedor_asiento(integer, integer, timestamptz, text, text, text, text, jsonb, uuid);
 drop function if exists public.fn_cxp_cuenta_reconocida(integer, uuid);
@@ -623,6 +638,161 @@ as $function$
      and (auth.uid() is null or public.app_branch_access(p.branch_id));
 $function$;
 
+-- 3b. Certificado y reporte de retenciones: solo facturas de compra (versión leída por el MCP el 2026-11-07).
+create or replace function public.fn_retenciones_practicadas_filas(p_organization_id integer, p_desde timestamp with time zone,
+  p_hasta timestamp with time zone, p_branch_id integer, p_supplier_id integer)
+ returns table(invoice_id uuid, numero text, emision timestamp with time zone, supplier_id integer, branch_id integer, concepto text, codigo text,
+               clase text, cuenta text, base numeric, tarifa numeric, valor numeric)
+ language sql
+ stable security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+  select i.id,
+         coalesce(nullif(btrim(i.number_ext), ''), i.id::text)::text,
+         i.issue_date::timestamptz,
+         i.supplier_id::integer,
+         i.branch_id::integer,
+         w.concept::text,
+         w.tax_code::text,
+         public.fn_clase_retencion(w.tax_code, w.concept),
+         coalesce(
+           (select jl.account_code
+              from journal_entries e
+              join journal_lines jl on jl.journal_entry_id = e.id
+             where e.organization_id = i.organization_id
+               and e.source = 'invoice_purchase'
+               and e.source_id = i.id::text
+               and e.memo like 'Compra %'
+               and jl.description = w.concept || ' - ' || e.memo
+               and jl.credit = w.amount
+             order by jl.id
+             limit 1),
+           public.fn_cuenta_retencion_compra(i.organization_id, w.tax_code, w.concept)
+         )::text,
+         w.base::numeric,
+         w.rate::numeric,
+         w.amount::numeric
+    from invoice_purchase_withholdings w
+    join invoice_purchase i on i.id = w.invoice_id and i.organization_id = w.organization_id
+   where w.organization_id = p_organization_id
+     and w.amount > 0
+     and i.status not in ('draft', 'void', 'cancelled')
+     and i.issue_date >= p_desde
+     and i.issue_date <= p_hasta
+     and (p_branch_id is null or i.branch_id = p_branch_id)
+     and (p_supplier_id is null or i.supplier_id = p_supplier_id);
+$function$;
+
+-- 3c. Arqueo: versión anterior (leída por el MCP el 2026-11-07), sin los renglones de anticipos.
+create or replace function public.pos_caja__esperado_calculo(p_session_id integer)
+ returns jsonb
+ language plpgsql
+ stable security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  s public.cash_sessions%rowtype;
+  v_hasta timestamptz;
+  v_por_cajero boolean;
+  v_ventas_ef numeric := 0;
+  v_vuelto numeric := 0;
+  v_abonos_ef numeric := 0;
+  v_compras_ef numeric := 0;
+  v_devoluciones numeric := 0;
+  v_entradas numeric := 0;
+  v_salidas numeric := 0;
+  v_efectivo numeric := 0;
+  v_por_metodo jsonb := '{}'::jsonb;
+begin
+  select * into s from public.cash_sessions where id = p_session_id;
+  if not found then
+    raise exception 'La caja no existe' using errcode = 'P0002';
+  end if;
+  perform public.fn_assert_acceso_org(s.organization_id);
+  if auth.uid() is not null and not public.app_branch_access(s.branch_id) then
+    raise exception 'Acceso denegado a la sucursal' using errcode = '42501';
+  end if;
+
+  v_hasta := coalesce(s.closed_at, now());
+  v_por_cajero := coalesce(
+    (select os.settings->>'mode' from public.organization_settings os
+      where os.organization_id = s.organization_id and os.key = 'pos_cash_session_mode'),
+    'branch') = 'user';
+
+  with p as (
+    select coalesce(pay.method, 'other') as metodo,
+           coalesce(pay.amount, 0) as monto,
+           coalesce(pay.change_amount, 0) as vuelto,
+           coalesce(pay.source, '') as origen
+      from public.payments pay
+     where pay.organization_id = s.organization_id
+       and pay.status = 'completed'
+       and pay.created_at >= s.opened_at
+       and pay.created_at <= v_hasta
+       and (s.branch_id is null or pay.branch_id = s.branch_id)
+       and (not v_por_cajero or pay.created_by = s.opened_by)
+  )
+  select
+    coalesce(sum(monto)  filter (where metodo = 'cash' and origen not in ('invoice_purchase', 'account_payable', 'account_receivable')), 0),
+    coalesce(sum(vuelto) filter (where metodo = 'cash' and origen not in ('invoice_purchase', 'account_payable', 'account_receivable')), 0),
+    coalesce(sum(monto)  filter (where metodo = 'cash' and origen = 'account_receivable'), 0),
+    coalesce(sum(monto)  filter (where metodo = 'cash' and origen in ('invoice_purchase', 'account_payable')), 0),
+    coalesce(
+      (select jsonb_object_agg(x.metodo, x.total)
+         from (select metodo, sum(monto) as total from p
+                where metodo <> 'cash' and origen not in ('invoice_purchase', 'account_payable')
+                group by metodo) x),
+      '{}'::jsonb)
+    into v_ventas_ef, v_vuelto, v_abonos_ef, v_compras_ef, v_por_metodo
+    from p;
+
+  select coalesce(sum(r.total_refund), 0) into v_devoluciones
+    from public.returns r
+   where r.organization_id = s.organization_id
+     and r.status = 'processed'
+     and r.refund_method is null
+     and r.created_at >= s.opened_at
+     and r.created_at <= v_hasta
+     and (s.branch_id is null or r.branch_id = s.branch_id)
+     and (not v_por_cajero or r.user_id = s.opened_by);
+
+  select coalesce(sum(m.amount) filter (where m.type = 'in'), 0),
+         coalesce(sum(m.amount) filter (where m.type = 'out'), 0)
+    into v_entradas, v_salidas
+    from public.cash_movements m
+   where m.cash_session_id = s.id;
+
+  v_efectivo := coalesce(s.initial_amount, 0)
+              + (v_ventas_ef - v_vuelto)
+              + v_abonos_ef
+              + v_entradas - v_salidas
+              - v_compras_ef
+              - v_devoluciones;
+
+  return jsonb_build_object(
+    'session_id', s.id,
+    'organization_id', s.organization_id,
+    'status', s.status,
+    'efectivo_esperado', round(v_efectivo, 2),
+    'por_metodo', v_por_metodo || jsonb_build_object('cash', round(v_efectivo, 2)),
+    'detalle', jsonb_build_object(
+      'inicial', coalesce(s.initial_amount, 0),
+      'ventas_efectivo', v_ventas_ef - v_vuelto,
+      'vuelto', v_vuelto,
+      'abonos_efectivo', v_abonos_ef,
+      'entradas', v_entradas,
+      'salidas', v_salidas,
+      'compras_efectivo', v_compras_ef,
+      'devoluciones', v_devoluciones
+    ),
+    'por_cajero', v_por_cajero,
+    'hasta', v_hasta
+  );
+end;
+$function$;
+
+drop function if exists public.fn_anticipo_cruces_consignacion(integer, integer);
+
 -- 4. Clave de configuración: se borra la fila «anticipos_proveedores» (NO se restaura) y vuelve la lista de 32.
 delete from public.configuracion_contable where clave = 'anticipos_proveedores';
 alter table public.configuracion_contable drop constraint if exists configuracion_contable_clave_chk;
@@ -634,13 +804,22 @@ alter table public.configuracion_contable add constraint configuracion_contable_
   'impuesto_consumo', 'redondeo', 'compra_servicio', 'ingresos_diversos', 'redondeo_en_contra']::text[]));
 
 -- 5. Tablas y columnas nuevas
+drop table if exists public.anticipo_pendientes;
+drop table if exists public.supplier_advance_invoice_links;
+drop table if exists public.supplier_advance_withholding_ajustes;
 drop table if exists public.supplier_advance_refunds;
 drop table if exists public.supplier_advance_withholdings;
+drop table if exists public.supplier_tax_qualities;
+drop table if exists public.reteica_reglas;
+drop table if exists public.reteiva_aiu_reglas;
+drop table if exists public.anticipos_cuenta_equivalencias;
 
 alter table public.supplier_advance_applications
   drop column if exists asiento_id,
   drop column if exists asiento_causacion,
   drop column if exists cuenta_por_pagar,
+  drop column if exists correccion_soporte,
+  drop column if exists correccion_motivo,
   drop column if exists retencion_detalle,
   drop column if exists retencion_descontada,
   drop column if exists consumo_anticipo;
@@ -649,6 +828,8 @@ alter table public.supplier_advances drop constraint if exists supplier_advances
 alter table public.supplier_advances drop constraint if exists supplier_advances_anulacion_tipo_check;
 alter table public.supplier_advances drop constraint if exists supplier_advances_naturaleza_check;
 alter table public.supplier_advances
+  drop column if exists anulacion_caja_cerrada,
+  drop column if exists componentes,
   drop column if exists anulacion_fecha,
   drop column if exists anulacion_soporte,
   drop column if exists anulacion_tipo,
@@ -662,6 +843,98 @@ alter table public.supplier_advances
 
 comment on column public.supplier_advances.amount is null;
 comment on column public.supplier_advance_applications.amount is null;
+
+-- 5b. Tercero de las líneas: versión de 20261108120000 (sin reintegro de retención ni cruce con consignación).
+create or replace function public.fn_tercero_anticipo_proveedor(p_source text, p_source_id text, out nit text, out nombre text)
+ returns record
+ language plpgsql
+ stable
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_anticipo uuid;
+begin
+  nit := null;
+  nombre := null;
+  if p_source_id is null or p_source_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    return;
+  end if;
+  if p_source = 'supplier_advance' then
+    v_anticipo := p_source_id::uuid;
+  elsif p_source = 'supplier_advance_application' then
+    select a.advance_id into v_anticipo from public.supplier_advance_applications a where a.id = p_source_id::uuid;
+  elsif p_source = 'supplier_advance_refund' then
+    select nullif(p.source_id, '')::uuid into v_anticipo from public.payments p
+     where p.id = p_source_id::uuid and p.source = 'supplier_advance_refund';
+  end if;
+  if v_anticipo is null then
+    return;
+  end if;
+  select coalesce(nullif(btrim(s.nit), ''), nullif(btrim(s.tax_id), '')), nullif(btrim(s.name), '')
+    into nit, nombre
+    from public.supplier_advances a
+    join public.suppliers s on s.id = a.supplier_id
+   where a.id = v_anticipo;
+end;
+$function$;
+
+revoke all on function public.fn_tercero_anticipo_proveedor(text, text) from public, anon;
+
+-- Igual que antes + la rama de anticipos a proveedores.
+create or replace function public.fn_trg_tercero_linea_asiento()
+ returns trigger
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_source text;
+  v_source_id text;
+  v_org integer;
+  v_nit text;
+  v_nombre text;
+begin
+  if new.tercero_nit is not null then
+    return new;
+  end if;
+  select e.source, e.source_id, e.organization_id
+    into v_source, v_source_id, v_org
+    from public.journal_entries e
+   where e.id = new.journal_entry_id;
+  -- sales: el devengo del POS. La factura, si llega después, reutiliza la misma clave.
+  if v_source is null or v_source not in ('invoice_sales', 'invoice_purchase', 'credit_note', 'cash_movements', 'support_documents', 'sales',
+                                          'supplier_advance', 'supplier_advance_application', 'supplier_advance_refund') then
+    return new;
+  end if;
+
+  if v_source = 'cash_movements' then
+    select nullif(btrim(cm.tercero_nit), ''), nullif(btrim(cm.tercero_nombre), '')
+      into v_nit, v_nombre
+      from public.cash_movements cm
+     where cm.id::text = v_source_id and cm.organization_id = v_org;
+  elsif v_source = 'invoice_purchase' then
+    select t.nit, t.nombre into v_nit, v_nombre
+      from public.fn_tercero_de_documento('compra', v_source_id::uuid) t;
+  elsif v_source = 'support_documents' then
+    select t.nit, t.nombre into v_nit, v_nombre
+      from public.fn_tercero_de_documento('documento_soporte', v_source_id::uuid) t;
+  elsif v_source in ('supplier_advance', 'supplier_advance_application', 'supplier_advance_refund') then
+    select t.nit, t.nombre into v_nit, v_nombre
+      from public.fn_tercero_anticipo_proveedor(v_source, v_source_id) t;
+  else
+    select t.nit, t.nombre into v_nit, v_nombre
+      from public.fn_tercero_de_documento('venta', v_source_id::uuid) t;
+  end if;
+
+  if v_nit is not null then
+    new.tercero_nit := v_nit;
+    new.tercero_nombre := coalesce(new.tercero_nombre, v_nombre);
+  end if;
+  return new;
+exception when others then
+  return new;
+end;
+$function$;
 
 -- 6. Permisos como los dejó 20261108120000.
 revoke all on function public.fn_cuenta_anticipo_proveedor(integer, integer) from public, anon;

@@ -27,7 +27,8 @@ import { PestanaMisConexiones } from './PestanaMisConexiones';
 import { PestanaActividad } from './PestanaActividad';
 import { PestanaDesarrolladores } from './PestanaDesarrolladores';
 import { ImportarCsvDialogo } from './ImportarCsvDialogo';
-import { AsistenteConexion } from '@/components/integraciones/conexiones-v2/asistentes';
+import { AsistenteConexion, tieneAsistente } from '@/components/integraciones/conexiones-v2/asistentes';
+import { rutaInterna } from '@/lib/services/integrations/conexiones/rutaAsistente';
 
 const PESTANAS = ['catalogo', 'mis', 'actividad', 'desarrolladores'] as const;
 type Pestana = (typeof PESTANAS)[number];
@@ -47,6 +48,8 @@ export function ConexionesPagina() {
   const [ficha, setFicha] = useState<ItemCatalogo | null>(null);
   const [asistente, setAsistente] = useState<ItemCatalogo | null>(null);
   const [asistenteConexion, setAsistenteConexion] = useState<string | undefined>(undefined);
+  const [retorno, setRetorno] = useState<string | null>(null);
+  const [sucursalAsistente, setSucursalAsistente] = useState<number | undefined>(undefined);
   const [conectores, setConectores] = useState<{ id: string; nombre: string }[]>([]);
   const [importando, setImportando] = useState(false);
 
@@ -93,18 +96,29 @@ export function ConexionesPagina() {
 
   // `?conectar=<id>` abre la ficha del servicio una vez cargado el catálogo. Con `&conexion=<uuid>`
   // (regreso del OAuth de Meta) abre directamente el asistente en el paso siguiente (85-42).
+  // Con `&return=<ruta interna>` (desde Métodos de pago, el PMS…) el proveedor ya está elegido: se
+  // abre directo el asistente y al terminar o cerrar se vuelve allí; `&sucursal=` pasa al guardado.
   const conectar = url.leer('conectar');
   const conexionUrl = url.leer('conexion');
+  const retornoUrl = url.leer('return');
+  const sucursalUrl = url.leer('sucursal');
   useEffect(() => {
     if (!conectar || catalogo.length === 0) return;
     const item = catalogo.find((i) => i.id === conectar || i.proveedor === conectar);
+    const volver = rutaInterna(retornoUrl);
+    const sucursal = Number.parseInt(sucursalUrl ?? '', 10);
+    setRetorno(volver);
+    setSucursalAsistente(Number.isInteger(sucursal) && sucursal > 0 ? sucursal : undefined);
     if (item && conexionUrl && item.asistente === 'oauth') {
       setAsistenteConexion(conexionUrl);
+      setAsistente(item);
+    } else if (item && volver && tieneAsistente(item)) {
+      setAsistenteConexion(undefined);
       setAsistente(item);
     } else if (item) {
       setFicha(item);
     }
-    url.fijar({ conectar: null, ...(tab === 'actividad' ? {} : { conexion: null }) }, 'replace');
+    url.fijar({ conectar: null, return: null, sucursal: null, ...(tab === 'actividad' ? {} : { conexion: null }) }, 'replace');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conectar, catalogo]);
 
@@ -121,6 +135,8 @@ export function ConexionesPagina() {
         return;
       }
       setAsistenteConexion(undefined);
+      setRetorno(null);
+      setSucursalAsistente(undefined);
       setAsistente(item);
     },
     [router],
@@ -235,15 +251,18 @@ export function ConexionesPagina() {
           item={asistente}
           abierto={!!asistente}
           conexionId={asistenteConexion}
+          sucursalId={sucursalAsistente}
           onCerrar={() => {
             setAsistente(null);
             setAsistenteConexion(undefined);
+            if (retorno) router.push(retorno);
           }}
           onConectado={(conexionId) => {
             setAsistente(null);
             setAsistenteConexion(undefined);
             void cargar();
-            if (conexionId) router.push(`/app/integraciones/conexiones/${conexionId}`);
+            if (retorno) router.push(retorno);
+            else if (conexionId) router.push(`/app/integraciones/conexiones/${conexionId}`);
           }}
         />
       )}

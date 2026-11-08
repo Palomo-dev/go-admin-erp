@@ -6,9 +6,10 @@
  * compra. La mercancía sigue siendo del consignante.»
  *
  * Consignante (proveedor), bodega, productos de consignación (siempre aparte de
- * los propios), cantidad y precio del dueño, condiciones del contrato con la
- * clasificación OBLIGATORIA, y vista previa de las cuentas de orden. UNA ruta y
- * UNA RPC (`fn_consignacion_recibir`).
+ * los propios), cantidad y precio del dueño, condiciones del contrato (modalidad,
+ * condición contable y valoración de la custodia OBLIGATORIAS) y vista previa de
+ * las cuentas de orden: D la cuenta definida del grupo 94 / C 911520, por el
+ * costo acreditado o el valor convenido. UNA ruta y UNA RPC (`fn_consignacion_recibir`).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -36,6 +37,7 @@ interface Linea {
   cantidad: number | null;
   precio: number | null;
   precioLiquidacion: number | null;
+  costoAcreditado: number | null;
 }
 
 export interface RecibirMercanciaDialogProps {
@@ -87,20 +89,25 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
     [t],
   );
   const agregar = (p: ProductoParaDocumento) =>
-    setLineas((ls) => (ls.some((l) => l.productoId === p.id) ? ls : [...ls, { productoId: p.id, nombre: p.nombre, cantidad: 1, precio: null, precioLiquidacion: null }]));
+    setLineas((ls) => (ls.some((l) => l.productoId === p.id) ? ls : [...ls, { productoId: p.id, nombre: p.nombre, cantidad: 1, precio: null, precioLiquidacion: null, costoAcreditado: null }]));
   const cambiar = (id: number, p: Partial<Linea>) => setLineas((ls) => ls.map((l) => (l.productoId === id ? { ...l, ...p } : l)));
 
   const porLiquidacion = condiciones.remuneracionModo === 'precio_liquidacion';
+  const porCosto = condiciones.valoracion === 'costo_acreditado';
   const total = lineas.reduce((s, l) => s + (l.cantidad ?? 0) * (l.precio ?? 0), 0);
+  // Valor de custodia en cuentas de orden, según la política del contrato.
+  const custodia = lineas.reduce((s, l) => s + (l.cantidad ?? 0) * ((porCosto ? l.costoAcreditado : l.precio) ?? 0), 0);
+  const columnas = 5 + (porLiquidacion ? 1 : 0) + (porCosto ? 1 : 0);
   const unidades = lineas.reduce((s, l) => s + (l.cantidad ?? 0), 0);
-  const erroresCondiciones = validarCondiciones(condiciones);
+  const erroresCondiciones = validarCondiciones(condiciones, 'recibida');
   const errores = {
     proveedor: !proveedor ? t('validacion.consignante') : null,
     sucursal: sucursal === null ? t('validacion.bodega') : null,
     lineas: lineas.length === 0 ? t('validacion.lineas') : null,
     valores: lineas.some((l) => !(l.cantidad && l.cantidad > 0) || !(l.precio && l.precio > 0)) ? t('validacion.cantidadPrecio') : null,
     liquidacion: porLiquidacion && lineas.some((l) => !(l.precioLiquidacion && l.precioLiquidacion > 0) || (l.precioLiquidacion ?? 0) > (l.precio ?? 0)) ? t('validacion.precioLiquidacion') : null,
-    recaudo: condiciones.contrato === 'intermediacion' && cuentaRecaudo.trim() !== '' && !/^281510\d{2}$/.test(cuentaRecaudo.trim()) ? t('validacion.cuentaRecaudo') : null,
+    costo: porCosto && lineas.some((l) => !(l.costoAcreditado && l.costoAcreditado > 0)) ? t('validacion.costoAcreditado') : null,
+    recaudo: cuentaRecaudo.trim() !== '' && !/^281510\d{2}$/.test(cuentaRecaudo.trim()) ? t('validacion.cuentaRecaudo') : null,
     condiciones: erroresCondiciones.length > 0 ? t('validacion.condiciones') : null,
   };
   const hayErrores = Object.values(errores).some(Boolean);
@@ -115,8 +122,14 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
         proveedor_id: Number(proveedor.id),
         sucursal_id: sucursal,
         comision: porLiquidacion ? 0 : (comision ?? 0),
-        terminos: terminosDeCondiciones(condiciones, { cuentaRecaudo: condiciones.contrato === 'intermediacion' ? cuentaRecaudo || null : null }),
-        lineas: lineas.map((l) => ({ product_id: l.productoId, qty: l.cantidad ?? 0, precio: l.precio ?? 0, precio_liquidacion: porLiquidacion ? l.precioLiquidacion : null })),
+        terminos: terminosDeCondiciones(condiciones, { cuentaRecaudo: cuentaRecaudo || null, direccion: 'recibida' }),
+        lineas: lineas.map((l) => ({
+          product_id: l.productoId,
+          qty: l.cantidad ?? 0,
+          precio: l.precio ?? 0,
+          precio_liquidacion: porLiquidacion ? l.precioLiquidacion : null,
+          costo_acreditado: porCosto ? l.costoAcreditado : null,
+        })),
         clave_idempotencia: clave.current,
       });
       toastSuccess(t('recibir.exito', { numero: r.numero, consignante: proveedor.nombre }));
@@ -141,7 +154,7 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
         etiqueta: t('recibir.confirmar'),
         onClick: () => void confirmar(),
         cargando: enviando,
-        deshabilitada: condiciones.contrato === 'compra',
+        deshabilitada: condiciones.contrato !== 'intermediacion',
       }}
     >
       <div className="flex flex-col gap-4">
@@ -173,7 +186,7 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
           rutaCompraReal="/app/finanzas/facturas-compra/nuevo"
         />
 
-        {condiciones.contrato && condiciones.contrato !== 'compra' && (
+        {condiciones.contrato === 'intermediacion' && (
           <>
             <SelectorEntidad<ProductoParaDocumento>
               layout="campo"
@@ -195,6 +208,7 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                     <th className="w-28 px-3 py-2 text-right">{t('columnas.cantidad')}</th>
                     <th className="w-36 px-3 py-2 text-right">{t('columnas.precioPactado')}</th>
                     {porLiquidacion && <th className="w-36 px-3 py-2 text-right">{t('columnas.precioLiquidacion')}</th>}
+                    {porCosto && <th className="w-36 px-3 py-2 text-right">{t('columnas.costoAcreditado')}</th>}
                     <th className="w-32 px-3 py-2 text-right">{t('columnas.valor')}</th>
                     <th className="w-10 px-2 py-2">
                       <span className="sr-only">{t('recibir.quitar')}</span>
@@ -204,7 +218,7 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                 <tbody>
                   {lineas.length === 0 && (
                     <tr>
-                      <td colSpan={porLiquidacion ? 6 : 5} className="px-3 py-4 text-center text-fg-muted">
+                      <td colSpan={columnas} className="px-3 py-4 text-center text-fg-muted">
                         {t('recibir.sinLineas')}
                       </td>
                     </tr>
@@ -221,6 +235,11 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                       {porLiquidacion && (
                         <td className="px-3 py-2">
                           <CampoNumero aria-label={t('recibir.precioLiquidacionDe', { producto: l.nombre })} valor={l.precioLiquidacion} onValorChange={(v) => cambiar(l.productoId, { precioLiquidacion: v })} minimo={0} decimales={2} alinear="derecha" tamano="sm" />
+                        </td>
+                      )}
+                      {porCosto && (
+                        <td className="px-3 py-2">
+                          <CampoNumero aria-label={t('recibir.costoAcreditadoDe', { producto: l.nombre })} valor={l.costoAcreditado} onValorChange={(v) => cambiar(l.productoId, { costoAcreditado: v })} minimo={0} decimales={2} alinear="derecha" tamano="sm" />
                         </td>
                       )}
                       <td className="px-3 py-2 text-right tabular-nums">{moneda.formatear((l.cantidad ?? 0) * (l.precio ?? 0))}</td>
@@ -242,7 +261,7 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                     <tr>
                       <td className="px-3 py-2">{t('columnas.total')}</td>
                       <td className="px-3 py-2 text-right">{unidades}</td>
-                      <td colSpan={porLiquidacion ? 2 : 1} />
+                      <td colSpan={columnas - 4} />
                       <td className="px-3 py-2 text-right">{moneda.formatear(total)}</td>
                       <td />
                     </tr>
@@ -250,9 +269,9 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                 )}
               </table>
             </div>
-            {tocado && (errores.lineas || errores.valores || errores.liquidacion) && (
+            {tocado && (errores.lineas || errores.valores || errores.liquidacion || errores.costo) && (
               <p role="alert" className="text-xs text-danger-text">
-                {errores.lineas ?? errores.valores ?? errores.liquidacion}
+                {errores.lineas ?? errores.valores ?? errores.liquidacion ?? errores.costo}
               </p>
             )}
 
@@ -262,11 +281,9 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                   {(c) => <CampoNumero id={c.id} valor={comision} onValorChange={setComision} minimo={0} maximo={100} decimales={2} sufijo="%" />}
                 </FormField>
               )}
-              {condiciones.contrato === 'intermediacion' && (
-                <FormField etiqueta={t('recibir.cuentaRecaudo')} ayuda={t('recibir.cuentaRecaudoAyuda')} error={tocado ? errores.recaudo : null}>
-                  <Input value={cuentaRecaudo} inputMode="numeric" maxLength={8} placeholder="281510__" onChange={(e) => setCuentaRecaudo(e.target.value)} />
-                </FormField>
-              )}
+              <FormField etiqueta={t('recibir.cuentaRecaudo')} ayuda={t('recibir.cuentaRecaudoAyuda')} error={tocado ? errores.recaudo : null}>
+                <Input value={cuentaRecaudo} inputMode="numeric" maxLength={8} placeholder="281510__" onChange={(e) => setCuentaRecaudo(e.target.value)} />
+              </FormField>
             </div>
 
             <div className="overflow-hidden rounded-lg border border-line">
@@ -281,18 +298,18 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
                 <tbody className="tabular-nums">
                   <tr className="border-t border-line">
                     <td className="px-3 py-2 text-fg">{t('asiento.contraOrden')}</td>
-                    <td className="px-3 py-2 text-right">{moneda.formatear(total)}</td>
+                    <td className="px-3 py-2 text-right">{moneda.formatear(custodia)}</td>
                     <td />
                   </tr>
                   <tr className="border-t border-line">
                     <td className="px-3 py-2 text-fg">{t('asiento.ordenConsignacion')}</td>
                     <td />
-                    <td className="px-3 py-2 text-right">{moneda.formatear(total)}</td>
+                    <td className="px-3 py-2 text-right">{moneda.formatear(custodia)}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <AvisoTonal tono="informacion" titulo={t('recibir.avisoTitulo')} descripcion={t(`recibir.aviso.${condiciones.contrato}`)} />
+            <AvisoTonal tono="informacion" titulo={t('recibir.avisoTitulo')} descripcion={t('recibir.aviso.intermediacion')} />
           </>
         )}
         {tocado && errores.condiciones && (

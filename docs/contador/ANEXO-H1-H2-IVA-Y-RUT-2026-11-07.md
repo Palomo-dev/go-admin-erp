@@ -4,7 +4,8 @@ Fecha: 7 de noviembre de 2026 · Base de datos: proyecto `taqjemqjtumhwptchcxk` 
 Complementa `NOTA-TECNICA-TRIBUTARIO-Y-ANTICIPOS-2026-11-07.md` (sección 6, hallazgos H1 y H2, y pregunta P9).
 
 **Estado:** las dos correcciones están **escritas y probadas en seco, pero NO aplicadas** en la base. Se aplican cuando el
-dueño lo ordene. Ningún asiento existente se modificó ni se modificará.
+dueño lo ordene. Ningún asiento existente se modificó ni se modificará. H1 se reescribió en la ronda 2 del Contador
+(A1 y A2, abajo) y sigue sin aplicar.
 
 ---
 
@@ -74,11 +75,27 @@ cuando la cuenta exista. Para las tarifas 19 % y 5 % esto no ocurre en ninguna d
   técnica). La tarifa se **deduce solo si el IVA de la línea coincide, con diferencia de máximo $1, con una única tarifa
   de IVA configurada** en la organización (19 % o 5 %). Si no coincide con ninguna, o con más de una, se trata como «sin
   tarifa identificada».
-- **Sin tarifa identificada** (o documentos sin líneas, como folios, membresías o parqueadero): se usa la tarifa general,
-  **19 %**, que es la regla de respaldo que ya estaba documentada en el sistema. *(Ver pregunta A1.)*
-- **Nota crédito cuyo asiento se arma antes de grabar sus líneas** (la nota crédito por disparador): la tarifa sale de la
-  factura que acredita. Si el IVA ÷ base de la nota coincide con una sola de las tarifas de la factura, esa; si no, el IVA
-  se reparte con la mezcla de tarifas de la factura. *(Ver pregunta A2.)*
+- **Sin tarifa identificada** (o documentos sin líneas, como folios, membresías o parqueadero): **ronda 2, A1 — ya no
+  se asume el 19 %.** No se crea el asiento y el documento queda en la **bandeja de Pendientes contables** con el
+  detalle «Tarifa de IVA no identificada…» (cuánto IVA y de qué lado). Se reintenta cuando el documento tenga su tarifa.
+- **Nota crédito cuyo asiento se arma antes de grabar sus líneas** (la nota crédito por disparador, cuando se inserta
+  la cabecera sin el emisor de notas): **ronda 2, A2 — nunca por la mezcla de la factura.**
+  - Devolución **total** (subtotal e IVA de la nota iguales a los de la factura, ±$1): se reproduce la composición
+    exacta de la factura, tarifa por tarifa.
+  - Factura de **una sola tarifa**: esa tarifa, porque cualquier parte de la factura es de esa tarifa. **Ronda 3:**
+    solo si la factura no tiene además conceptos excluidos, exentos, no gravados (tarifa 0) o de INC. Si los tiene, no
+    se sabe qué conceptos ni qué bases afecta la nota: queda pendiente hasta identificarlos.
+  - Cualquier otro caso: **tarifa no identificada → sin asiento y pendiente visible**, hasta que la nota identifique
+    las líneas o conceptos afectados.
+  - Ya no se usa la coincidencia «IVA ÷ base = una tarifa de la factura»: una nota de 100.000 + 5.000 sobre una factura
+    19 % + 5 % podría ser parte de varias líneas.
+  - La nota emitida desde la aplicación (`fn_nota_credito_emitir`) no pasa por aquí: el emisor marca
+    `app.asiento_por_lineas` y el asiento se arma **por sus líneas**, después de grabarlas. Por eso el caso «nota
+    parcial, solo la línea al 5 %» de la prueba 07 sigue dando D 24080502 5.000.
+
+**Limitación conocida:** en la bandeja, el pendiente de tarifa no identificada usa el motivo existente
+`cuenta_no_configurada` («La cuenta configurada no sirve para contabilizar»). El detalle sí dice «Tarifa de IVA no
+identificada…». Un motivo propio requiere ampliar el catálogo de la bandeja; queda para cuando se aplique.
 - **INC (impuesto al consumo):** sin cambios. Sigue a su cuenta 2495 y nunca se mezcla con el IVA.
 
 ### Asientos ya publicados (no se reescriben)
@@ -146,13 +163,27 @@ por eso el asiento por líneas del documento soporte se rechaza («La cuenta con
 movimiento») antes de llegar al IVA. Para la prueba se apuntó, solo dentro de la transacción, a 14350101 (el auxiliar que
 ya usan las compras). Conviene revisarlo en las organizaciones que tengan esa clave en el título.
 
+### Ronda 2 · A1 y A2 resueltas como usted indicó
+
+Prueba en seco `pruebas/12_h1_ronda2_tarifa_no_identificada.sql` y su `.resultado.txt`: **20 de 20** (org 374, todo
+revertido, la migración H1 reescrita pegada en la transacción).
+
+| Caso | Resultado |
+|---|---|
+| Venta de caja: IVA 19.000 con tarifa 0, coincide con una sola tarifa | C 24080501 19.000 |
+| Venta de caja: IVA 12.000 con tarifa 0, no coincide con ninguna tarifa (A1) | Sin asiento. Pendiente «Tarifa de IVA no identificada en 12000 de IVA generado…» |
+| Asiento de un origen sin líneas (folio) con IVA 19.000 (A1) | No se crea (no se asume 19 %). Pendiente visible |
+| Nota crédito total de una factura 19 % + 5 %, armada antes de sus líneas (A2) | D 19.000 + D 5.000: la composición de la factura |
+| Nota crédito parcial (100.000 + 19.000) de una factura 19 % + 5 %, antes de sus líneas (A2) | Sin asiento. Pendiente «Tarifa de IVA no identificada…» |
+| Nota crédito parcial de una factura de una sola tarifa | D 24080501 19.000 |
+| `fn_cuenta_iva_tarifa` y `fn_cuenta_iva` sin tarifa | NULL (antes: 24080501) |
+
+- Los 6 asientos creados cuadran.
+- Ningún otro documento dejó pendientes.
+- Los demás reemplazos de H1 no cambian en la ronda 2: siguen probados por la prueba 07 (32 de 32).
+
 ### Preguntas para su criterio
 
-- **A1 · IVA sin tarifa identificada.** Hoy se lleva a la subcuenta del 19 % (regla general ya documentada). ¿Le sirve, o
-  prefiere que esos documentos queden en Pendientes contables hasta que alguien indique la tarifa?
-- **A2 · Nota crédito parcial de una factura con varias tarifas, armada antes de sus líneas.** Si el IVA ÷ base de la nota
-  no coincide con una sola tarifa de la factura, el IVA se reparte con la mezcla de la factura (aproximación). ¿Es
-  aceptable, o prefiere que ese caso quede en Pendientes contables?
 - **P9 (de la nota técnica)** queda resuelta así: generado en 2408 05 xx y descontable en 2408 10 xx, por tarifa. Le
   pedimos confirmarla antes de aplicar.
 
@@ -203,4 +234,5 @@ organización no ve nada y la clave pública no puede consultarla.
 | `supabase/migrations/20261108140500_responsabilidades_fiscales_en.sql` | H2 (escrita, sin aplicar) |
 | `supabase/rollbacks/20261108140500_responsabilidades_fiscales_en_rollback.sql` | Su reversión |
 | `pruebas/07_iva_subcuenta_por_tarifa.sql` · `.resultado.txt` | Prueba en seco de H1 (32 de 32) |
+| `pruebas/12_h1_ronda2_tarifa_no_identificada.sql` · `.resultado.txt` | Prueba en seco de H1, ronda 2: A1 y A2 (20 de 20) |
 | `pruebas/08_responsabilidades_fiscales_en.sql` · `.resultado.txt` | Prueba en seco de H2 (12 de 12) |

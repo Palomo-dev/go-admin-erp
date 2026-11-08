@@ -5,17 +5,17 @@
  * `docs/design/figma/88-terceros-consignaciones-nueva-nota.png`). «No es una
  * factura. La mercancía sigue siendo tuya.»
  *
- * Consignatario (el cliente que vende por ti), bodega de consignación (dónde
- * queda la mercancía), productos y cantidades, comisión pactada y vista previa
- * del asiento (mercancía en consignación contra inventario, al costo promedio).
- * Al «Entregar mercancía», UNA ruta y UNA RPC (`fn_consignacion_entregar`): la
- * mercancía sale del kardex como un traslado y el asiento lo pone la nota. El
- * costo definitivo lo pone la base al entregar; aquí es una estimación.
+ * Consignatario (el cliente que vende por ti), ubicación «en poder de», productos
+ * y cantidades, comisión pactada y condiciones del contrato. Ronda 2 del Contador:
+ * la mercancía sigue en TU inventario, a costo, y NO cambia de cuenta (nada de
+ * 1465 ni de ingreso o costo al entregar): se identifica en poder del
+ * consignatario con un traslado del kardex. Al «Entregar mercancía», UNA ruta y
+ * UNA RPC (`fn_consignacion_entregar`), sin asiento.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Package, PackagePlus, Trash2 } from 'lucide-react';
-import { CampoNumero, Dialogo, FormField, SelectorEntidad, type OpcionEntidad } from '@/components/kit';
+import { AvisoTonal, CampoNumero, Dialogo, FormField, SelectorEntidad, type OpcionEntidad } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toastSuccess } from '@/components/ui/use-toast';
@@ -25,7 +25,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { buscarProductosDocumento, type ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
-import { nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
+import { ErrorPeticionSaldoFavor, nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
 import { CondicionesContratoCampos } from '@/components/inventario/consignaciones/CondicionesContratoCampos';
 import { CONDICIONES_VACIAS, terminosDeCondiciones, validarCondiciones, type CondicionesContrato } from '@/lib/inventario/consignaciones/recibidas';
@@ -46,12 +46,10 @@ interface LineaNueva {
 export interface NuevaNotaConsignacionDialogProps {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
-  /** Cuenta de mercancía en consignación (para la vista previa); null si no se resolvió. */
-  cuentaConsignacion: string | null;
   onEntregada: (r: { nota_id: string; numero: string }) => void;
 }
 
-export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaConsignacion, onEntregada }: NuevaNotaConsignacionDialogProps) {
+export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, onEntregada }: NuevaNotaConsignacionDialogProps) {
   const t = useTranslations(NS);
   const tr = useTranslations(NS_R4);
   const moneda = useMonedaOrganizacion();
@@ -150,7 +148,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
     cantidades: lineas.some((l) => !(l.cantidad && l.cantidad > 0)) ? t('validacion.cantidad') : null,
     excede: lineas.some((l) => l.stock != null && (l.cantidad ?? 0) > l.stock) ? t('validacion.excedeStock') : null,
     comision: comision !== null && (comision < 0 || comision > 100) ? t('validacion.comision') : null,
-    condiciones: validarCondiciones(condiciones).length > 0 ? tr('validacion.condiciones') : null,
+    condiciones: validarCondiciones(condiciones, 'entregada').length > 0 ? tr('validacion.condiciones') : null,
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
@@ -164,7 +162,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
         clienteId: cliente.id,
         sucursalId: sucursal,
         comision: condiciones.remuneracionModo === 'precio_liquidacion' ? 0 : (comision ?? 0),
-        terminos: terminosDeCondiciones(condiciones),
+        terminos: terminosDeCondiciones(condiciones, { direccion: 'entregada' }),
         ubicacion,
         notas: '',
         lineas: lineas.map((l) => ({ product_id: l.productoId, qty: l.cantidad ?? 0, precio: l.precio })),
@@ -174,7 +172,9 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
       onAbiertoChange(false);
       onEntregada(r);
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      // Los códigos de la consignación (Ronda 2) se leen en consignacionesR4; el resto, en su namespace de siempre.
+      const codigo = e instanceof ErrorPeticionSaldoFavor ? String(e.codigo) : '';
+      setError(textoErrorSaldo(tr.has(`errores.${codigo}`) ? tr : t, e));
     } finally {
       setEnviando(false);
     }
@@ -188,7 +188,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
       descripcion={t('nueva.descripcion')}
       icono={PackagePlus}
       ancho={672}
-      primario={{ etiqueta: t('nueva.confirmar'), onClick: () => void entregar(), cargando: enviando, deshabilitada: condiciones.contrato === 'compra' }}
+      primario={{ etiqueta: t('nueva.confirmar'), onClick: () => void entregar(), cargando: enviando, deshabilitada: condiciones.contrato !== 'intermediacion' }}
     >
       <div className="flex flex-col gap-4">
         <CondicionesContratoCampos
@@ -344,30 +344,11 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
           )}
         </FormField>
 
-        <div className="overflow-hidden rounded-lg border border-line">
-          <table className="w-full text-sm">
-            <thead className="bg-subtle text-left text-xs font-medium text-fg-secondary">
-              <tr>
-                <th className="px-3 py-2">{t('nueva.vistaPrevia')}</th>
-                <th className="w-36 px-3 py-2 text-right">{t('nueva.debito')}</th>
-                <th className="w-36 px-3 py-2 text-right">{t('nueva.credito')}</th>
-              </tr>
-            </thead>
-            <tbody className="tabular-nums">
-              <tr className="border-t border-line">
-                <td className="px-3 py-2 text-fg">{t('nueva.cuentaConsignacion', { cuenta: cuentaConsignacion ?? '1465' })}</td>
-                <td className="px-3 py-2 text-right">{moneda.formatear(costoEstimado)}</td>
-                <td className="px-3 py-2 text-right" />
-              </tr>
-              <tr className="border-t border-line">
-                <td className="px-3 py-2 text-fg">{t('nueva.cuentaInventario')}</td>
-                <td className="px-3 py-2 text-right" />
-                <td className="px-3 py-2 text-right">{moneda.formatear(costoEstimado)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="text-xs text-fg-muted">{t('nueva.costoEstimado')}</p>
+        <AvisoTonal
+          tono="informacion"
+          titulo={tr('entregada.sinAsientoTitulo')}
+          descripcion={tr('entregada.sinAsientoDescripcion', { costo: moneda.formatear(costoEstimado) })}
+        />
 
         {error && (
           <p role="alert" className="text-sm text-danger-text">

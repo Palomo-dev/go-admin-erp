@@ -1,0 +1,39 @@
+Resultado de 17_iva_no_descontable_al_costo.sql (RONDA 3 del Contador: B5 y nota crédito sobre factura con conceptos sin IVA)
+Corrida: 2026-11-08, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Una sola transacción, sin datos al final.
+Archivos EXACTOS (md5 al correr): prueba 4d779fb20f2c642b6c40ca076ec0b668 · 20261108140000 (H1) 47486ffab373921553fdcd99d2f56ad0 ·
+20261108150000 be4d376fd058a366e833d985e83e8623 · 20261108152000 d527367ba488d4893b7570e1b0018367, pegadas sin tocar en el
+marcador «MIGRACIONES». Método: el texto (≈107 KB) se subió en 4 trozos como objetos grandes de Postgres, verificados por md5,
+y se ejecutó en un DO que termina con excepción (= rollback); los objetos se borraron y no quedó nada en la base.
+(Una primera corrida minificada —sin sangría— falló en un reemplazo verificado de fn_create_journal_entry
+(fn_reemplazo_verificado, que usan 140000 y 152000), porque busca el texto con su sangría; por eso se corrió con los
+archivos tal cual.)
+
+RESULTADO CON LOS ARCHIVOS EXACTOS: FALLA en los datos de apoyo de la prueba (no en las migraciones).
+  Archivo: docs/contador/pruebas/17_iva_no_descontable_al_costo.sql, línea 37:
+    update public.configuracion_contable set account_code = '14350101' … clave = 'inventario';
+  Error: «La cuenta 14350101 no es de movimiento (o está inactiva) en el plan de la organización»
+  (fn_configuracion_contable_validar). La org 374 no tiene 14350101: su plan llega hasta 1435 (de movimiento) y la clave
+  «inventario» apunta a 1435. Arreglo sugerido (no aplicado): crear 143501/14350101 dentro de la transacción antes de la
+  línea 37 (como la prueba 11 crea 13300501), o usar 1435.
+
+DIAGNÓSTICO: misma corrida creando antes, dentro de la transacción, 143501 (título) y 14350101 (movimiento) bajo 1435 (ningún
+archivo cambió): 23 verificaciones · 23 ok · 0 fallas.
+
+n  | escenario  | verificación                                              | obtenido                                              | ok
+---+------------+-----------------------------------------------------------+-------------------------------------------------------+---
+1  | fch        | IVA del asiento (2408)                                    | 24081001 D 22.800 + 24081002 D 5.000                  | ok
+2  | fcl        | IVA del asiento (2408)                                    | 24081001 D 9.500                                      | ok
+3  | ds         | IVA del asiento (2408)                                    | sin 2408                                              | ok
+4  | fcg        | IVA del asiento (2408)                                    | 24081001 D 19.000                                     | ok
+5  | fv19       | IVA del asiento (2408)                                    | 24080501 C 57.000                                     | ok
+6  | ncx        | IVA del asiento (2408)                                    | sin asiento                                           | ok
+7  | ncu2       | IVA del asiento (2408)                                    | 24080501 D 19.000                                     | ok
+8  | fch        | Cuenta débito: costo + IVA no descontable (19.000 + 15.200)| D 434.200 · C 462.000                                 | ok
+9  | fcl        | El IVA no descontable va a la cuenta de su línea           | 513595 D 50.000 · 519525 D 119.000                    | ok
+10 | ds         | Documento soporte: el IVA va con la línea                  | Σ D 119.000 · 2408 0                                  | ok
+11 | fcg        | Evaluación posterior al asiento: no cambia su contabilidad | factor 1 · no descontable 0 · 19.000                  | ok
+12 | funciones  | Factor y no descontable por línea de FCH                   | Descontable 5 1/0 · No descontable 19 0/19.000 · Proporcional 19 0,6/15.200 | ok
+13 | ncx        | Pendiente contable visible (conceptos sin IVA)             | pendiente: tarifa de IVA no identificada en 19.000    | ok
+14 | otros      | Pendientes nuevos de los demás documentos                  | ninguno                                               | ok
+15–22 | cuadre  | Asientos FCG, FCH, FCL, DS, FVU, FV19, FVEX, NCU2          | todos D = C                                           | ok
+23 | historicos | Asientos anteriores a la prueba intactos                   | 0 líneas nuevas en asientos viejos                    | ok

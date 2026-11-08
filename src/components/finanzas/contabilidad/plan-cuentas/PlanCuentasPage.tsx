@@ -402,6 +402,7 @@ export function PlanCuentasPage() {
         subtitulo={estado === 'listo' ? t('subtitulo', { cuentas: cuentas.length, movimiento: movimientos }) : t('decreto')}
         icono={BookOpen}
         migas={migas}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" onClick={exportar} disabled={estado !== 'listo'} className={clasesBoton({ variante: 'secundario' })}>

@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabase } from '@/lib/supabase/config';
+import { resolverFilas } from '../conexiones/secretosConexion';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 import {
@@ -28,6 +29,17 @@ import type {
   GOAdminProduct,
 } from './metaMarketingTypes';
 
+
+/**
+ * `credential_type` válido para cada propósito de Meta. Antes se guardaba 'oauth2', que el CHECK
+ * de la columna no admite: ninguna credencial de Meta llegaba a guardarse (Frente INT).
+ */
+function tipoCredencialMeta(purpose: string): string {
+  if (purpose === META_CREDENTIAL_PURPOSES.ACCESS_TOKEN) return 'oauth_access';
+  if (purpose === META_CREDENTIAL_PURPOSES.APP_SECRET) return 'secret';
+  return 'custom';
+}
+
 class MetaMarketingService {
   // ──────────────────────────────────────────────
   // Credenciales
@@ -39,12 +51,14 @@ class MetaMarketingService {
    * la organización de la sesión (`marketingConnectionInOrg`).
    */
   async getCredentials(connectionId: string, db: SupabaseClient = supabase): Promise<MetaMarketingCredentials | null> {
-    const { data, error } = await db
+    const { data: crudas, error } = await db
       .from('integration_credentials')
       .select('purpose, secret_ref')
       .eq('connection_id', connectionId);
 
-    if (error || !data || data.length === 0) return null;
+    if (error || !crudas || crudas.length === 0) return null;
+    // Lector dual (Frente INT): en claro igual que siempre; un uuid de la bóveda se resuelve.
+    const data = await resolverFilas(db, connectionId, crudas);
 
     const creds: MetaMarketingCredentials = {
       accessToken: '',
@@ -116,7 +130,7 @@ class MetaMarketingService {
           .from('integration_credentials')
           .update({
             secret_ref: entry.value,
-            credential_type: 'oauth2',
+            credential_type: tipoCredencialMeta(entry.purpose),
             updated_at: new Date().toISOString(),
           })
           .eq('id', existing.id);
@@ -130,7 +144,7 @@ class MetaMarketingService {
           .from('integration_credentials')
           .insert({
             connection_id: connectionId,
-            credential_type: 'oauth2',
+            credential_type: tipoCredencialMeta(entry.purpose),
             purpose: entry.purpose,
             secret_ref: entry.value,
           });

@@ -12,8 +12,6 @@ import {
   JobsHeader,
   JobsFilters,
   JobsList,
-  JobDialog,
-  JobFormData,
 } from '@/components/integraciones/jobs';
 import {
   AlertDialog,
@@ -52,7 +50,6 @@ export default function JobsPage() {
   });
 
   // Dialogs
-  const [newJobDialogOpen, setNewJobDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [resetCursorDialogOpen, setResetCursorDialogOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<IntegrationJob | null>(null);
@@ -65,7 +62,7 @@ export default function JobsPage() {
       const offset = (currentPage - 1) * pageSize;
 
       // Preparar filtros para la API
-      const apiFilters: any = {};
+      const apiFilters: Record<string, string> = {};
       if (filters.connectionId !== 'all') apiFilters.connectionId = filters.connectionId;
       if (filters.status !== 'all') apiFilters.status = filters.status;
       if (filters.jobType !== 'all') apiFilters.jobType = filters.jobType;
@@ -118,69 +115,6 @@ export default function JobsPage() {
       resourceType: 'all',
     });
     setCurrentPage(1);
-  };
-
-  const handleNewJob = () => {
-    setNewJobDialogOpen(true);
-  };
-
-  const handleCreateJob = async (data: JobFormData): Promise<boolean> => {
-    const result = await integrationsService.createJob(data.connectionId, {
-      job_type: data.jobType,
-      resource_type: data.resourceType,
-    });
-
-    if (result) {
-      toast({
-        title: 'Job creado',
-        description: 'El job ha sido creado y puesto en cola',
-      });
-      loadData();
-      return true;
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'No se pudo crear el job',
-      });
-      return false;
-    }
-  };
-
-  const handleRetry = async (job: IntegrationJob) => {
-    const success = await integrationsService.retryJob(job.id);
-
-    if (success) {
-      toast({
-        title: 'Job reencolado',
-        description: 'El job ha sido puesto en cola para reintentar',
-      });
-      loadData();
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'No se pudo reencolar el job',
-      });
-    }
-  };
-
-  const handleDuplicate = async (job: IntegrationJob) => {
-    const result = await integrationsService.duplicateJob(job.id);
-
-    if (result) {
-      toast({
-        title: 'Job duplicado',
-        description: 'Se ha creado un nuevo job en cola',
-      });
-      loadData();
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'No se pudo duplicar el job',
-      });
-    }
   };
 
   const handleCancel = async (job: IntegrationJob) => {
@@ -308,7 +242,6 @@ export default function JobsPage() {
         failedCount={failedCount}
         queuedCount={queuedCount}
         onRefresh={handleRefresh}
-        onNewJob={handleNewJob}
         refreshing={refreshing}
       />
 
@@ -325,11 +258,17 @@ export default function JobsPage() {
       {/* Lista de jobs */}
       <div className="flex-1 overflow-y-auto">
         <div className="px-4 sm:px-6 lg:px-8 py-6">
+          {/* Frente INT (2026-11-07): ningún proceso ejecuta integration_jobs. Antes «Reintentar»,
+              «Duplicar» y «Nuevo job» decían «puesto en cola» y nada corría. Se retiran hasta que
+              exista el ejecutor; la lista queda como registro. */}
+          <div role="note" className="mb-4 rounded-lg border border-line-warning bg-warning-subtle px-4 py-3 text-sm text-warning-text">
+            Estos trabajos son un registro: todavía no hay un proceso que los ejecute, así que no se
+            pueden crear ni reintentar desde aquí. Las sincronizaciones reales de cada conexión se
+            lanzan desde su asistente o su detalle en Integraciones › Conexiones.
+          </div>
           <JobsList
             jobs={jobs}
             loading={refreshing}
-            onRetry={handleRetry}
-            onDuplicate={handleDuplicate}
             onCancel={handleCancel}
             onResetCursor={handleResetCursor}
             onDelete={handleDelete}
@@ -338,12 +277,6 @@ export default function JobsPage() {
       </div>
 
       {/* Dialog de nuevo job */}
-      <JobDialog
-        open={newJobDialogOpen}
-        onOpenChange={setNewJobDialogOpen}
-        connections={connections}
-        onSave={handleCreateJob}
-      />
 
       {/* Dialog de confirmación de eliminación */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -88,4 +88,38 @@ export const apiAsistentes = {
     const r = await pedir(RUTA_OAUTH[proveedor], { method: 'POST', body: JSON.stringify({}) });
     return interpretarOauth(r.status, r.cuerpo);
   },
+
+  /** Meta, pasos «Activos» y «Qué se envía» (85-42/43). El token nunca llega aquí. */
+  activosMeta: async (conexionId: string, filtro: { negocio?: string; cuenta?: string } = {}) => {
+    const q = new URLSearchParams({ conexion: conexionId });
+    if (filtro.negocio) q.set('negocio', filtro.negocio);
+    if (filtro.cuenta) q.set('cuenta', filtro.cuenta);
+    return exigirOk<ActivosMetaUi>(await pedir(`/api/integrations/conexiones/meta?${q.toString()}`));
+  },
+
+  guardarActivosMeta: async (b: {
+    conexion: string;
+    negocio: string;
+    cuenta: string;
+    catalogo: string;
+    pixel: string;
+    envios: { catalogo: boolean; compras: boolean };
+  }) => exigirOk<{ catalogo: OpcionMetaUi; pixel: OpcionMetaUi }>(await pedir('/api/integrations/conexiones/meta', { method: 'POST', body: JSON.stringify(b) })),
 };
+
+export interface OpcionMetaUi {
+  id: string;
+  nombre: string;
+  moneda?: string;
+}
+
+export interface ActivosMetaUi {
+  autorizada: boolean;
+  negocios: OpcionMetaUi[];
+  cuentas: OpcionMetaUi[];
+  catalogos: OpcionMetaUi[];
+  pixeles: OpcionMetaUi[];
+  seleccion: { negocio: string; cuenta: string; catalogo: string; pixel: string };
+  envios: { catalogo: boolean; compras: boolean };
+  productosTienda: number | null;
+}

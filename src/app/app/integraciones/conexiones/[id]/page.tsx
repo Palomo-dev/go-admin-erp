@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Pause, Play, RefreshCw, Unplug } from 'lucide-react';
+import { Pause, Play, RefreshCw, Trash2, Unplug } from 'lucide-react';
 import {
   AvisoTonal,
   ConfirmDialog,
@@ -33,6 +33,7 @@ import {
   idPestana,
 } from '@/components/kit';
 import { LogoServicio } from '@/components/integraciones/conexiones-v2/logos';
+import { CredencialRevelable } from '@/components/integraciones/conexiones-v2/CredencialRevelable';
 import { AsistenteConexion } from '@/components/integraciones/conexiones-v2/asistentes';
 import { CampoCopiar } from '@/components/integraciones/conexiones-v2/asistentes/MarcoAsistente';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
@@ -70,7 +71,7 @@ export default function DetalleConexionPage() {
   const [pestana, setPestana] = useState<Pestana>('resumen');
   const [probando, setProbando] = useState(false);
   const [prueba, setPrueba] = useState<Prueba | null>(null);
-  const [confirmar, setConfirmar] = useState<'pausar' | 'desconectar' | null>(null);
+  const [confirmar, setConfirmar] = useState<'pausar' | 'desconectar' | 'borrar' | null>(null);
   const [cambiando, setCambiando] = useState(false);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [reemplazando, setReemplazando] = useState(false);
@@ -137,6 +138,29 @@ export default function DetalleConexionPage() {
       await cargar();
     } catch (err) {
       setErrorAccion(err instanceof Error ? err.message : t('detalle.errorAccion'));
+    } finally {
+      setCambiando(false);
+    }
+  };
+
+  /** Borrar: el servidor se niega si un método de pago la usa (desenlazar primero) o si ya hay historia. */
+  const borrar = async () => {
+    setCambiando(true);
+    setErrorAccion(null);
+    try {
+      await apiConexiones.eliminar(id);
+      setConfirmar(null);
+      router.push('/app/integraciones/conexiones?tab=mis-conexiones');
+    } catch (err) {
+      setConfirmar(null);
+      const codigo = err instanceof ErrorApiConexiones ? err.codigo : '';
+      setErrorAccion(
+        codigo === 'EN_USO'
+          ? t('detalle.borrar.enUso')
+          : codigo === 'CON_HISTORIA'
+            ? t('detalle.borrar.conHistoria')
+            : err instanceof Error ? err.message : t('detalle.errorAccion'),
+      );
     } finally {
       setCambiando(false);
     }
@@ -229,7 +253,14 @@ export default function DetalleConexionPage() {
             <FilaDato
               key={k.proposito}
               etiqueta={t.has(`asistente.llaves.campos.${k.proposito}`) ? t(`asistente.llaves.campos.${k.proposito}`) : k.proposito}
-              valor={<code className="text-sm">{k.mascara ?? '••••'}</code>}
+              valor={
+                <CredencialRevelable
+                  conexionId={c.id}
+                  proposito={k.proposito}
+                  mascara={k.mascara}
+                  etiqueta={t.has(`asistente.llaves.campos.${k.proposito}`) ? t(`asistente.llaves.campos.${k.proposito}`) : k.proposito}
+                />
+              }
               descripcion={[
                 k.enBoveda ? t('detalle.credenciales.enBoveda') : t('detalle.credenciales.enConexion'),
                 k.actualizada ? t('detalle.credenciales.actualizada', { fecha: formatDate(k.actualizada) }) : null,
@@ -360,6 +391,18 @@ export default function DetalleConexionPage() {
                     <Unplug aria-hidden="true" className="size-4" />
                     {t('detalle.peligro.boton', { nombre: nombreProveedor })}
                   </button>
+                  <p className="mt-4 text-sm text-fg-secondary">
+                    {detalle.usadaPor.length > 0 ? t('detalle.borrar.bloqueado') : t('detalle.borrar.descripcion')}
+                  </p>
+                  <button
+                    type="button"
+                    className={clasesBoton({ variante: 'destructivo', tamano: 'sm', className: 'mt-3' })}
+                    onClick={() => setConfirmar('borrar')}
+                    disabled={detalle.usadaPor.length > 0}
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" />
+                    {t('detalle.borrar.boton')}
+                  </button>
                 </Tarjeta>
               </div>
             </div>
@@ -399,6 +442,16 @@ export default function DetalleConexionPage() {
         tono="peligro"
         cargando={cambiando}
         onConfirmar={() => cambiarEstado('desconectar')}
+      />
+      <ConfirmDialog
+        abierto={confirmar === 'borrar'}
+        onAbiertoChange={(v) => !v && setConfirmar(null)}
+        titulo={t('detalle.borrar.confirmarTitulo', { nombre: c.nombre })}
+        descripcion={t('detalle.borrar.confirmarDescripcion')}
+        textoConfirmar={t('detalle.borrar.boton')}
+        tono="peligro"
+        cargando={cambiando}
+        onConfirmar={() => void borrar()}
       />
       {itemReemplazo && (
         <AsistenteConexion

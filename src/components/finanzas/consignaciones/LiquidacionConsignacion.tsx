@@ -171,6 +171,19 @@ export function LiquidacionConsignacion({ notaId }: { notaId: string }) {
         volverA={RUTA_CONSIGNACIONES}
         badge={nota ? <StatusBadge estado={BADGE_ESTADO_NOTA[nota.estado]} etiqueta={t(`estados.${nota.estado}`)} tamano="md" /> : undefined}
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.consignacion'), href: RUTA_CONSIGNACIONES }, { etiqueta: nota?.numero ?? '…' }]}
+        movil={{
+          menu: [
+            { id: 'facturar', etiqueta: t('acciones.facturar'), icono: Receipt, onSelect: () => void facturarDeNuevo(), oculta: !(porFacturar && permisos.crear), deshabilitada: enviando },
+            {
+              id: 'liquidar',
+              etiqueta: enviando ? t('liquidar.procesando') : t('acciones.facturarYCerrar'),
+              icono: Receipt,
+              onSelect: () => void liquidar(),
+              oculta: (porFacturar && permisos.crear) || !puedeLiquidar,
+              deshabilitada: !valida || enviando,
+            },
+          ],
+        }}
         acciones={
           porFacturar && permisos.crear ? (
             <button type="button" onClick={() => void facturarDeNuevo()} disabled={enviando} className={clasesBoton({ variante: 'primario' })}>

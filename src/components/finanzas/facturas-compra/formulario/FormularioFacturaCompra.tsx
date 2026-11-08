@@ -1319,6 +1319,7 @@ function VistaCompraNoEditable({ factura, base }: { factura: DetalleFacturaCompr
         estado={factura.status}
         volverA={detalle}
         migas={[{ etiqueta: t('titulo'), href: base }, { etiqueta: factura.number_ext }]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <Link
             href={detalle}

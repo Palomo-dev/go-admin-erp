@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ListChecks, RefreshCw, Undo2 } from 'lucide-react';
+import { CheckCircle2, ListChecks, RefreshCw, Undo2 } from 'lucide-react';
 import {
   AvisoTonal,
   ConfirmDialog,
@@ -162,7 +162,21 @@ export function ActualizarPucPage() {
           { etiqueta: tc('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
-        movil={{ subtitulo: t('subtituloMovil') }}
+        movil={{
+          subtitulo: t('subtituloMovil'),
+          menu: [
+            {
+              id: 'aplicar',
+              etiqueta: t('aplicar'),
+              icono: CheckCircle2,
+              onSelect: () => void aplicar(),
+              oculta: !puedeAplicar,
+              deshabilitada: !confirmado || aplicando,
+              motivo: !confirmado ? t('aplicarMotivo') : undefined,
+            },
+            ...acciones,
+          ],
+        }}
         acciones={
           <>
             {puedeAplicar && (

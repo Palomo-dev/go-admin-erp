@@ -373,6 +373,7 @@ function MayorContable() {
             { etiqueta: tc('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
             { etiqueta: t('titulo') },
           ]}
+          movil={{ accionesEnFila: true }}
           acciones={
             <button type="button" className={clasesBoton({ variante: 'secundario' })} disabled={!mayor || mayor.entries.length === 0} onClick={exportar}>
               <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />

@@ -4586,7 +4586,8 @@
       "finanzas_tributario_certificados": "Withholding certificates",
       "finanzas_consignaciones": "Consignments",
       "finanzas_tesoreria_dinero-de-terceros": "Third-party money",
-      "finanzas_anticipos-proveedores": "Supplier advances"
+      "finanzas_anticipos-proveedores": "Supplier advances",
+      "inventario_consignaciones": "Consignments"
     },
     "grupos": {
       "venta": "Sales",
@@ -18376,7 +18377,8 @@
         "imprimir": "Print",
         "anular": "Void",
         "eliminar": "Delete draft",
-        "certificado": "Withholding certificate"
+        "certificado": "Withholding certificate",
+        "pdfCorto": "PDF"
       },
       "motivos": {
         "sinPermiso": "You don't have permission for this action",
@@ -20280,7 +20282,8 @@
       "verPdf": "View PDF",
       "notaCredito": "Credit note",
       "anular": "Void invoice",
-      "enviar": "Send"
+      "enviar": "Send",
+      "pdf": "PDF"
     },
     "pagos": {
       "titulo": "Applied payments",
@@ -43791,7 +43794,7 @@
           "sin_permiso": "You don't have permission to void.",
           "anulado": "This credit is already voided."
         },
-        "devolverEnSuLugar": "Refund the money",
+        "devolverEnSuLugar": "Refund the available balance",
         "exito": "The advance for {cliente} was voided."
       },
       "anticipo": {
@@ -43836,7 +43839,7 @@
         "saldo_no_encontrado": "Customer credit not found.",
         "saldo_no_disponible": "The customer credit is no longer available.",
         "saldo_vencido": "The customer credit has expired: it can't be applied, but it can be refunded.",
-        "saldo_usado": "The customer credit was already used on invoices: it can't be voided.",
+        "saldo_usado": "This advance was already partly applied: it can't be voided. Refund the available balance instead.",
         "saldo_no_anulable": "This credit didn't come from an advance: it isn't voided, it is refunded.",
         "monto_excede_saldo_a_favor": "The amount exceeds the available customer credit.",
         "factura_no_encontrada": "Invoice not found.",
@@ -43852,7 +43855,7 @@
         "referencia_obligatoria": "This method requires a reference.",
         "cuenta_bancaria_invalida": "The bank account is not valid.",
         "sin_caja_abierta": "There is no open register: open it or use another method.",
-        "pago_en_caja_cerrada": "The money went into a register that is already closed: record a cash withdrawal.",
+        "pago_en_caja_cerrada": "The advance was paid in cash into a register that is already closed: it can't be voided. Refund the available balance with a cash withdrawal.",
         "sin_cuenta_de_dinero": "The method's cash or bank account was not found.",
         "sin_cuenta_por_cobrar": "The organization has no receivables account set up.",
         "vencimiento_invalido": "The expiry can't be earlier than today.",
@@ -47155,6 +47158,51 @@
           "descripcion": "GO Admin does not have its {nombre} app active yet. When it is ready you will be able to connect from here."
         },
         "error": "The connection could not start. Try again."
+      },
+      "meta": {
+        "pasos": {
+          "cuenta": "Account",
+          "activos": "Assets",
+          "envios": "What is sent"
+        },
+        "subtituloActivos": "Step 2 of 3 · Choose your accounts",
+        "subtituloEnvios": "Step 3 of 3 · What is sent to Meta",
+        "autorizado": "Authorized",
+        "sinAutorizar": {
+          "titulo": "The connection has no Meta authorization",
+          "descripcion": "Sign in with Meta again from the catalog. If it persists, the credentials migration may be pending activation."
+        },
+        "negocio": "Business portfolio",
+        "cuenta": "Ad account",
+        "catalogo": "Catalog",
+        "catalogoNuevo": "GO Admin catalog (new)",
+        "catalogoNuevoAyuda": "We create a new one so it does not mix with products you already have.",
+        "pixel": "Pixel",
+        "pixelNuevo": "GO Admin pixel (new)",
+        "pixelAyuda": "The one that measures your web store and receives purchases.",
+        "activar": "Activate connection",
+        "envioCatalogo": {
+          "titulo": "Product catalog",
+          "descripcion": "Photo, price and stock from the web store."
+        },
+        "productos": "Catalog products",
+        "productosAyuda": "For now all products published in the web store are sent; by category or tag, later on.",
+        "productosTodos": "All from the web store ({n})",
+        "productosTodosSinConteo": "All from the web store",
+        "envioCompras": {
+          "titulo": "Web store purchases",
+          "descripcion": "To know how many sales each campaign brought."
+        },
+        "envioProspectos": {
+          "titulo": "CRM leads (under construction)",
+          "descripcion": "Sending leads to Meta does not exist yet; it will be enabled when ready."
+        },
+        "privacidad": {
+          "titulo": "Customer data protected",
+          "descripcion": "Email and phone travel hashed and only for customers who accepted data processing."
+        },
+        "errorCarga": "Could not read your Meta accounts.",
+        "errorGuardar": "Could not save. Try again."
       }
     },
     "detalle": {
@@ -47242,7 +47290,7 @@
         "enBoveda": "Encrypted vault",
         "enConexion": "Connection record",
         "actualizada": "updated on {fecha}",
-        "nota": "Only the prefix and the last characters are shown. GO Admin never shows a full key again."
+        "nota": "They are shown masked. «Show» and «Copy» request them from the server, for administrators only, and who viewed them and when is recorded."
       },
       "usadaPor": {
         "titulo": "Used by",
@@ -47263,7 +47311,513 @@
       "confirmarDesconexion": {
         "titulo": "Disconnect {nombre}?",
         "descripcion": "The credentials are revoked (they cannot be recovered) and the payment methods that use it are unlinked. To reconnect you will need to paste new keys."
+      },
+      "borrar": {
+        "boton": "Delete connection",
+        "descripcion": "Deleting removes the connection with its credentials and activity. If it already charged or created labels, disconnect it instead.",
+        "bloqueado": "It cannot be deleted: a payment method uses it. Unlink it first in Finance › Payment methods.",
+        "enUso": "A payment method uses this connection: unlink it first in Finance › Payment methods.",
+        "conHistoria": "The connection already has payments or shipments recorded: disconnect it to keep the history.",
+        "confirmarTitulo": "Delete «{nombre}»?",
+        "confirmarDescripcion": "The connection, its credentials, webhooks and activity are deleted. This cannot be undone."
       }
+    },
+    "importar": {
+      "abrir": "Import CSV",
+      "titulo": "Import connections",
+      "descripcion": "Create draft connections from a CSV file. Keys are added later with each connection’s wizard.",
+      "boton": "Import ({n})",
+      "faltaConector": "Choose the connector",
+      "faltaArchivo": "Choose a file with rows",
+      "conector": "Connector",
+      "elegirConector": "Choose a connector",
+      "archivo": "CSV file",
+      "plantilla": "Download template (nombre, sucursal_id, pais, ambiente)",
+      "vistaPrevia": "{n} connections ready to import",
+      "sinLlaves": {
+        "titulo": "The CSV carries no keys",
+        "descripcion": "Connections stay as drafts and do not charge or sync until you paste their keys with the wizard."
+      },
+      "resultado": "{creadas} created · {fallidas} with errors",
+      "error": {
+        "vacio": "The file has no rows below the header.",
+        "sin_columna_nombre": "The «nombre» (or «name») column is missing.",
+        "demasiadas_filas": "At most 200 rows per file.",
+        "servidor": "Could not import. Try again."
+      }
+    },
+    "credencial": {
+      "ver": "Show",
+      "ocultar": "Hide",
+      "verDe": "Show {etiqueta}",
+      "ocultarDe": "Hide {etiqueta}",
+      "copiarDe": "Copy {etiqueta}",
+      "sinPermiso": "Only an administrator can view credentials.",
+      "error": "Could not show the credential.",
+      "errorCopiar": "Could not copy.",
+      "actuales": "Saved keys"
+    }
+  },
+  "consignacionesR4": {
+    "titulo": "Consignments",
+    "subtitulo": "Your goods held by a third party, or a third party's goods held by you",
+    "errorCarga": "Consignments could not be loaded.",
+    "reintentar": "Retry",
+    "sinResultados": "No note matches the search.",
+    "etiquetaFila": "Note {numero} from {tercero}",
+    "unidadesN": "{n} units",
+    "migas": {
+      "inventario": "Inventory",
+      "consignaciones": "Consignments"
+    },
+    "pestanas": {
+      "etiqueta": "Consignment type",
+      "entregadas": "Delivered",
+      "recibidas": "Received",
+      "porAceptar": "To accept"
+    },
+    "pendiente": {
+      "titulo": "Pending activation",
+      "descripcion": "Received consignment and organization links need a database update that has not been applied yet. Once active, your received notes and what other organizations send you will appear here."
+    },
+    "acciones": {
+      "ver": "View",
+      "liquidar": "Settle",
+      "recibir": "Receive goods",
+      "vincular": "Link organization",
+      "nuevaEntregada": "New delivered note",
+      "devolver": "Return goods"
+    },
+    "buscar": {
+      "recibidas": "Search note or consignor",
+      "etiqueta": "Search received notes"
+    },
+    "kpis": {
+      "etiqueta": "Received goods summary",
+      "enTuPoder": "In your possession",
+      "aPrecioPactado": "At agreed price · memorandum accounts",
+      "vendidoSinLiquidar": "Sold, not settled",
+      "notas": "{n, plural, =0 {No notes} one {# note} other {# notes}}",
+      "remuneracion": "Your fee",
+      "remuneracionDetalle": "Estimated on what is sold and not settled",
+      "porPagar": "Payable to consignors",
+      "porPagarDetalle": "Settled balances",
+      "recibido": "Received",
+      "vendido": "Sold",
+      "sinLiquidar": "Not settled: {valor}",
+      "devuelto": "Returned",
+      "noEsInventario": "Not your own inventory",
+      "unidadesValor": "{n} units · {valor}"
+    },
+    "estados": {
+      "en_consignacion": "In your possession",
+      "por_liquidar": "To settle",
+      "liquidada": "Settled"
+    },
+    "estadosLiquidacion": {
+      "por_facturar": "Waiting for purchase invoice",
+      "liquidada": "Settled",
+      "anulada": "Voided"
+    },
+    "origen": {
+      "goAdmin": "GO Admin",
+      "externo": "External"
+    },
+    "columnas": {
+      "nota": "Note",
+      "consignante": "Consignor",
+      "contrato": "Contract",
+      "origen": "Source",
+      "fecha": "Date",
+      "unidades": "Units",
+      "enTuPoder": "In your possession",
+      "estado": "Status",
+      "tipo": "Type",
+      "de": "From",
+      "producto": "Product",
+      "cantidad": "Quantity",
+      "precioPactado": "Agreed price",
+      "precioLiquidacion": "Settlement price",
+      "valor": "Value",
+      "total": "Total",
+      "productoConsignante": "Consignor's product",
+      "tuProducto": "Your product",
+      "recibido": "Received",
+      "vendido": "Sold",
+      "devuelto": "Returned",
+      "valorEnTuPoder": "Value in your possession",
+      "vendidoSinLiquidar": "Sold, not settled",
+      "venta": "Sale",
+      "precioDueno": "Owner's price"
+    },
+    "vacio": {
+      "recibidasTitulo": "You hold no third-party goods",
+      "recibidasDescripcion": "When a consignor leaves goods for you to sell, receive them here. They do not enter your cost or your accounting inventory.",
+      "porAceptarTitulo": "Nothing to accept",
+      "porAceptarDescripcion": "Notes and settlements sent by linked organizations arrive here."
+    },
+    "sinPermiso": {
+      "titulo": "You do not have permission to view consignments",
+      "descripcion": "Ask an administrator for the “Finance · view” permission. Receiving, settling or accepting notes from another organization also requires “Finance · create” and “Inventory · receive”."
+    },
+    "avisoAjena": {
+      "titulo": "Received goods are not your inventory",
+      "descripcion": "They are physically controlled as the consignor's stock and in memorandum accounts until sold or returned. When settling, only your fee is income."
+    },
+    "condiciones": {
+      "titulo": "Contract terms",
+      "elegir": "Choose…",
+      "contrato": "Contract classification",
+      "ayudaSinContrato": "Required: it defines the accounting and tax treatment. There is no default option.",
+      "ayudaContrato": {
+        "intermediacion": "Agency: the goods and the proceeds belong to the owner; the intermediary only earns its fee.",
+        "estimatorio": "The consignee acquires what it sells, when it sells it, at the estimated price, and returns the rest.",
+        "compra": "Actual purchase: it is not a consignment."
+      },
+      "contratos": {
+        "intermediacion": "Intermediation (agency)",
+        "estimatorio": "Sale or return",
+        "compra": "Actual purchase"
+      },
+      "compraReal": {
+        "titulo": "An actual purchase is not a consignment",
+        "descripcion": "There is a purchase from the start: own inventory and an obligation to the supplier on acquisition, and cost of sales on sale. Record it with the usual invoice.",
+        "accion": "Go to the invoice"
+      },
+      "precio": "Owner's price",
+      "precios": {
+        "fijo": "Fixed",
+        "minimo": "Minimum"
+      },
+      "remuneracion": "Fee",
+      "remuneraciones": {
+        "porcentaje": "Percentage",
+        "precio_liquidacion": "Settlement price per product"
+      },
+      "base": "Percentage base",
+      "bases": {
+        "precio_pactado": "Agreed price",
+        "precio_venta": "Sale price"
+      },
+      "obligacion": "Obligation to the owner on credit sales",
+      "obligacionAyuda": "When the owner is owed what was sold on credit.",
+      "obligaciones": {
+        "venta": "On sale",
+        "cobro": "On collection"
+      },
+      "factura": "Who invoices the public",
+      "parte": {
+        "consignante": "The consignor",
+        "tu": "You",
+        "consignatario": "The consignee"
+      },
+      "riesgos": {
+        "devoluciones": "Bears returns",
+        "perdidas": "Bears losses",
+        "gastos": "Bears expenses"
+      },
+      "facturaMandatario": "In intermediation the agent (the consignee) invoices on the owner's behalf, separating third-party sales from its own.",
+      "impuestosPorLey": "VAT and withholdings are not chosen: they are determined by law with the facts of each settlement. Anything not configured remains as an accounting pending item.",
+      "mandanteEntregadaPendiente": "In intermediation the delivery works; the owner-side settlement awaits the Accountant's criteria.",
+      "errores": {
+        "contrato": "Choose the contract classification.",
+        "compra_real": "An actual purchase is recorded with the invoice, not with a consignment note.",
+        "precio": "Choose whether the owner's price is fixed or a minimum.",
+        "remuneracion": "Choose how the fee is set.",
+        "base": "Choose the percentage base.",
+        "obligacion": "Choose when the obligation to the owner arises.",
+        "riesgos": "Define who bears returns, losses and expenses."
+      }
+    },
+    "validacion": {
+      "consignante": "Choose the consignor.",
+      "bodega": "Choose the warehouse.",
+      "lineas": "Add at least one product.",
+      "cantidadPrecio": "Each product needs a quantity and an agreed price greater than zero.",
+      "precioLiquidacion": "Each product needs a settlement price greater than zero and not above the agreed price.",
+      "cuentaRecaudo": "It must be an 8-digit sub-account under 281510.",
+      "condiciones": "Complete the contract terms.",
+      "correo": "Enter a valid email."
+    },
+    "recibir": {
+      "titulo": "Receive goods on consignment",
+      "descripcion": "This is not a purchase. The goods still belong to the consignor.",
+      "confirmar": "Receive goods",
+      "consignante": "Consignor",
+      "bodega": "Warehouse receiving them",
+      "bodegaPlaceholder": "Choose the warehouse",
+      "agregarProducto": "Add consignment product",
+      "buscarProducto": "Search product",
+      "sinProductos": "No matching products",
+      "productosAparte": "Consignment products are kept separate from your own: a product with its own cost or movements cannot be received on consignment. If it does not exist, create it first in Inventory › Products.",
+      "quitar": "Remove",
+      "sinLineas": "Add the products you are receiving.",
+      "cantidadDe": "Quantity of {producto}",
+      "precioDe": "Agreed price of {producto}",
+      "precioLiquidacionDe": "Settlement price of {producto}",
+      "quitarDe": "Remove {producto}",
+      "comision": "Agreed percentage",
+      "comisionAyuda": "Your fee when settling, on the base you chose.",
+      "cuentaRecaudo": "Consignor's 281510 sub-account",
+      "cuentaRecaudoAyuda": "Where the owner's proceeds go. If empty, the one from their last note is used.",
+      "vistaPrevia": "Preview · memorandum accounts",
+      "avisoTitulo": "It does not touch your inventory or your cost",
+      "aviso": {
+        "intermediacion": "Products enter the warehouse as the consignor's stock: they can be sold in the POS and the usual invoice, but they do not add to your accounting inventory. The owner's proceeds go to their 281510 sub-account.",
+        "estimatorio": "Products enter the warehouse as the consignor's stock. What you sell you acquire when you sell it: settling creates the usual purchase invoice, which you complete with the consignor's supporting document."
+      },
+      "exito": "Note {numero} received from {consignante}.",
+      "motivoSerial": "Serialized products cannot be received on consignment yet.",
+      "motivoSinStock": "The product does not track stock."
+    },
+    "asiento": {
+      "debito": "Debit",
+      "credito": "Credit",
+      "contraOrden": "Group 94 counterpart",
+      "ordenConsignacion": "911520 On consignment",
+      "cuenta": "{cuenta} {nombre}",
+      "contraOrdenCorto": "Memorandum counterpart",
+      "ordenCorto": "On consignment",
+      "recaudoCorto": "Sales on behalf of third parties",
+      "remuneracionCorto": "Fee (sale for a fee)",
+      "costoCorto": "Acquisition cost",
+      "d": "D {valor}",
+      "c": "C {valor}",
+      "proveedores": "2205 Suppliers (when confirming the purchase invoice)"
+    },
+    "vincular": {
+      "titulo": "Link with another organization",
+      "descripcion": "To send and receive consignment notes and settlements without retyping them.",
+      "tercero": "Third party in your organization",
+      "terceroAyuda": "The link is tied to this third party: their notes and settlements arrive with it.",
+      "correo": "Email of the other organization's administrator",
+      "queSeComparte": "What is shared between the two organizations",
+      "comparte": {
+        "notas": "The notes one sends to the other and their terms",
+        "productos": "Their products: name, reference, quantity and agreed price",
+        "movimientos": "Sold, returned and held for those notes, and their settlements",
+        "nunca": "Customers, other products, inventory, accounting or users"
+      },
+      "si": "Yes",
+      "nunca": "Never",
+      "enlace": "Invitation link",
+      "enlaceAyuda": "Single use, expires in 7 days. Someone with administrator permission in the other organization accepts it. Copy it now: it is not shown again.",
+      "copiar": "Copy",
+      "copiado": "Link copied.",
+      "enviar": "Create invitation",
+      "listo": "Done",
+      "sinGoAdminTitulo": "The other organization does not use GO Admin?",
+      "sinGoAdmin": "No link is needed: record the note manually and send them the PDF of the note and of each settlement."
+    },
+    "devolver": {
+      "titulo": "Return goods to the consignor",
+      "descripcion": "The goods leave your warehouse and go back to {consignante}.",
+      "confirmar": "Return",
+      "enTuPoder": "In your possession: {n}",
+      "cantidadDe": "Quantity of {producto} to return",
+      "asiento": "The memorandum-account control is reversed for what is returned, at the agreed price.",
+      "exito": "Return recorded."
+    },
+    "detalle": {
+      "subtitulo": "Received on {fecha} · {contrato} · {origen}",
+      "vinculada": "Linked in GO Admin (their note {numero})",
+      "existencias": "Consignor's stock",
+      "condiciones": "Contract terms",
+      "cuentasOrden": "Memorandum-account control",
+      "liquidaciones": "Settlements ({n})",
+      "porcentajeSobre": "{pct} % on the {base}",
+      "asume": {
+        "dueno": "The owner",
+        "consignatario": "The consignee"
+      },
+      "facturaMandatario": "You, as agent, on the owner's behalf",
+      "factura": {
+        "consignatario": "The consignee",
+        "consignante": "The consignor"
+      },
+      "liquidacionResumen": "Sale {venta} · fee {remuneracion}",
+      "vinculadaTitulo": "Linked with {consignante}",
+      "vinculadaDescripcion": "The consignor sees for THIS note what was received, sold, returned and held, and receives your settlements. They do not see your customers, other products, prices or accounting."
+    },
+    "liquidar": {
+      "titulo": "Settlement to consignor · {numero}",
+      "subtitulo": "{consignante} · {contrato}",
+      "miga": "Settlement",
+      "anularUltima": "Void the last one",
+      "procesando": "Settling…",
+      "confirmar": "Settle",
+      "confirmarEstimatorio": "Settle and create the purchase invoice",
+      "exito": "Settlement recorded. Owner's balance: {valor}.",
+      "exitoEstimatorio": "Settlement recorded. Complete the purchase invoice with the consignor's supporting document ({valor}).",
+      "anulada": "Settlement voided.",
+      "sinVentas": "There are no unsettled sales.",
+      "resumen": "Settlement",
+      "venta": "Sold, sale price (excl. VAT)",
+      "pactado": "Sold, at agreed price",
+      "remuneracionPct": "Your fee {pct} % {base}",
+      "remuneracionPrecio": "Your fee (sale − settlement price)",
+      "impuestos": "VAT and withholdings",
+      "porDeterminar": "To be determined",
+      "impuestosAyuda": "Determined by law with the facts of the settlement; they remain as an accounting pending item.",
+      "saldoDueno": "Balance for {consignante}",
+      "vistaPrevia": "Journal entry preview",
+      "notaIntermediacion": "Only the fee is income. The balance stays in the owner's 281510 sub-account; never 2205.",
+      "notaEstimatorio": "The acquisition arises on settlement: the usual purchase invoice records the cost, the deductible VAT and the payable.",
+      "bajoPrecioTitulo": "Sale below the owner's price",
+      "alLiquidar": "When settling",
+      "alLiquidarIntermediacion": "The owner's balance is paid from Treasury › Third-party money. If the consignor is linked, the settlement reaches their GO Admin.",
+      "alLiquidarEstimatorio": "A draft purchase invoice is created; confirming it creates the payable, paid from Accounts payable (a supplier advance can be applied there).",
+      "irDineroTerceros": "Go to Third-party money",
+      "verFacturaCompra": "Purchase invoice",
+      "anularTitulo": "Void the last settlement",
+      "anularDescripcion": "The fee reversal entry is recorded and what was sold becomes unsettled again.",
+      "anularConfirmar": "Void settlement"
+    },
+    "porAceptar": {
+      "tipos": {
+        "consignacion_nota": "Note to accept",
+        "consignacion_liquidacion": "Settlement received",
+        "consignacion_devolucion": "Return received"
+      },
+      "aceptada": "Note {numero} received.",
+      "liquidacionAceptada": "Settlement accepted and invoiced.",
+      "tituloNota": "Consignment note to accept",
+      "tituloLiquidacion": "Settlement received · {numero}",
+      "subtitulo": "{de} sent it from GO Admin · {fecha} · their number: {numero}",
+      "estados": {
+        "enviado": "To accept",
+        "aceptado": "Accepted",
+        "rechazado": "Rejected",
+        "anulado": "Voided"
+      },
+      "rechazar": "Reject",
+      "aceptarRecibir": "Accept and receive",
+      "aceptarFacturar": "Accept and invoice",
+      "avisoNotaTitulo": "It came from another GO Admin organization",
+      "avisoNota": "You only see what the consignor shared in this note. When you accept, the goods stay in your warehouse as third-party stock (memorandum accounts, not your inventory) and can be sold in your POS.",
+      "avisoLiquidacionTitulo": "The consignee sent it to you",
+      "avisoLiquidacion": "Check what was sold and returned. Accepting does the same as “Invoice and close”: your sales invoice for what was sold, the commission applied and returns back in your warehouse. If it does not match, reject it with a reason.",
+      "periodicidad": "Settlement",
+      "periodicidades": {
+        "semanal": "Weekly",
+        "quincenal": "Biweekly",
+        "mensual": "Monthly",
+        "al_vencimiento": "At maturity"
+      },
+      "cantidad": "{n} units",
+      "sinPrecio": "No price in the note",
+      "tuProducto": "Your product in the catalog",
+      "eligeProducto": "Choose your consignment product",
+      "vinculado": "Linked: {producto}",
+      "sinVincular": "Not linked",
+      "productosAparte": "Link each product to one of your consignment products (separate from your own). If it does not exist, create it in Inventory › Products; the next note will arrive already linked.",
+      "liquidacion": "Settlement",
+      "netoPorCobrar": "Net receivable",
+      "diferencias": "Differences with your note {numero}",
+      "sinDiferencias": "No differences",
+      "sinDiferenciasDetalle": "Quantities, prices and commission match your note",
+      "tiposDiferencia": {
+        "linea_desconocida": "A line does not belong to your note",
+        "precio_bajo_pactado": "A price is below the agreed one",
+        "excede_en_su_poder": "What was reported exceeds what they hold",
+        "comision_distinta": "The commission differs from your note",
+        "devolucion_posterior": "It includes returns of already settled sales"
+      },
+      "rechazarTitulo": "Reject with a reason",
+      "rechazarDescripcion": "The reason reaches {de}. Nothing changes in either organization.",
+      "rechazada": "Document rejected."
+    },
+    "invitacion": {
+      "titulo": "{invita} wants to link with you",
+      "tituloGenerico": "Link invitation",
+      "invalida": "This invitation is not valid",
+      "invalidaDescripcion": "It was already used, revoked, or the link is incomplete. Ask whoever invited you for a new one.",
+      "vencida": "This invitation expired",
+      "vencidaDescripcion": "Invitations last 7 days. Ask whoever invited you for a new one.",
+      "subtitulo": "Invitation of {creada} · expires on {vence}",
+      "noAdminTitulo": "You need to be an administrator",
+      "noAdmin": "Only an administrator of the active organization can accept. If you manage another organization, switch to it and open the link again.",
+      "aceptasEnNombre": "You accept on behalf of {organizacion}.",
+      "tercero": "{invita} is, to you",
+      "terceroAyuda": "It is linked to one of your suppliers; if it does not exist, create it first with the name and tax ID they shared.",
+      "queVera": "What {invita} will see about you",
+      "vera": {
+        "datos": "Your name, tax ID and the user who accepts",
+        "notas": "What you accept, sell, return and settle of THEIR notes",
+        "nunca": "Your customers, prices, inventory and accounting"
+      },
+      "rechazar": "Reject",
+      "aceptar": "Accept link",
+      "aceptada": "You are now linked with {invita}.",
+      "rechazada": "Invitation rejected."
+    },
+    "errores": {
+      "no_autenticado": "Your session ended. Sign in again.",
+      "sin_permiso": "You do not have permission for this action.",
+      "sin_acceso_sucursal": "You do not have access to that branch.",
+      "organizacion_no_permitida": "The organization does not match your session.",
+      "datos_invalidos": "Check the data and try again.",
+      "pendiente_de_activar": "Received consignment is pending activation.",
+      "clasificacion_obligatoria": "Choose the contract classification: intermediation, sale or return, or actual purchase.",
+      "compra_real_usa_factura": "An actual purchase is not a consignment: record it with the purchase invoice.",
+      "terminos_invalidos": "Check the contract terms.",
+      "clave_idempotencia_invalida": "The operation could not be identified. Try again.",
+      "clave_idempotencia_reutilizada": "This operation was already recorded with other data.",
+      "comision_invalida": "The percentage must be between 0 and 100.",
+      "sin_lineas": "There is nothing to record.",
+      "linea_invalida": "A line has invalid data.",
+      "proveedor_no_encontrado": "The consignor was not found.",
+      "sucursal_invalida": "The warehouse is not valid.",
+      "producto_invalido": "A product is not valid.",
+      "producto_sin_seguimiento": "A product does not track stock.",
+      "producto_con_seriales": "Serialized products cannot be received on consignment yet.",
+      "producto_con_variantes": "Choose the variant, not the parent product.",
+      "producto_propio_no_consignable": "That product has its own cost or movements: create a separate product for the consignor's goods.",
+      "producto_de_otro_consignante": "That product is already a consignment product of another consignor.",
+      "producto_otra_clasificacion": "That product is already on consignment with another contract classification.",
+      "precio_liquidacion_obligatorio": "The settlement price is missing (it cannot exceed the agreed price).",
+      "stock_insuficiente": "There is not enough stock in the warehouse.",
+      "excede_en_su_poder": "The quantity exceeds what you hold.",
+      "sin_cuenta_orden_consignacion": "Account 911520 “On consignment” is missing from the chart of accounts. It was left as an accounting pending item.",
+      "sin_cuenta_contra_orden": "A posting account in group 94 is missing. It was left as an accounting pending item.",
+      "sin_cuenta_recaudo_propietario": "The consignor's 281510 sub-account is missing. Create it in the chart of accounts and choose it when receiving. It was left as an accounting pending item.",
+      "cuenta_recaudo_invalida": "The proceeds account must be an 8-digit posting sub-account under 281510.",
+      "sin_cuenta_remuneracion": "The 8-digit sub-account under 413512 for your fee is missing. It was left as an accounting pending item.",
+      "sin_cuenta_costo": "The cost of sales account is missing in Accounting settings. It was left as an accounting pending item.",
+      "nota_no_encontrada": "The note was not found.",
+      "liquidacion_no_encontrada": "The settlement was not found.",
+      "liquidacion_pendiente": "A settlement is waiting for its purchase invoice.",
+      "liquidacion_no_es_la_ultima": "Only the last settlement can be voided.",
+      "liquidacion_anulada": "The settlement is voided.",
+      "liquidacion_aceptada_por_el_dueno": "The owner already accepted this settlement: correct it with a return or in the next one.",
+      "anular_factura_compra_primero": "Void this settlement's purchase invoice first.",
+      "sin_ventas_por_liquidar": "There are no sales to settle.",
+      "saldo_a_favor_del_consignatario": "Returns exceed what was sold: the owner owes you that balance. Record it with the Accountant.",
+      "venta_bajo_precio_pactado": "It was sold below the owner's price. Review the sale or define with the Accountant who bears the difference.",
+      "devolucion_estimatorio_pendiente": "In sale or return, returning something already acquired is done with a credit note on the purchase invoice.",
+      "motivo_obligatorio": "Write the reason.",
+      "documento_no_encontrado": "The document was not found.",
+      "documento_no_disponible": "This document is no longer awaiting acceptance.",
+      "producto_sin_vincular": "Link all the consignor's products to one of yours.",
+      "vinculo_sin_proveedor": "The link must be tied to one of your suppliers to receive on consignment.",
+      "vinculo_no_encontrado": "The link was not found.",
+      "vinculo_inactivo": "The link is suspended.",
+      "vinculo_existente": "A link with that organization already exists.",
+      "invitacion_invalida": "The invitation is not valid.",
+      "invitacion_vencida": "The invitation expired.",
+      "misma_organizacion": "You cannot link an organization with itself.",
+      "tercero_obligatorio": "Choose the third party.",
+      "tercero_no_encontrado": "The third party was not found.",
+      "correo_invalido": "The email is not valid.",
+      "demasiadas_invitaciones": "You have too many pending invitations.",
+      "transicion_invalida": "That action does not apply in the current status.",
+      "factura_no_encontrada": "The invoice was not found.",
+      "factura_distinta": "The settlement already has another invoice.",
+      "proveedor_distinto": "The purchase invoice belongs to another supplier.",
+      "documento_anulado": "The invoice is voided.",
+      "factura_compra_no_creada": "The settlement was recorded, but the purchase invoice could not be created. Create it from Purchase invoices.",
+      "asiento_no_creado": "The journal entry could not be recorded. Check the chart of accounts and the accounting period.",
+      "error_desconocido": "Something went wrong. Try again."
     }
   }
 }

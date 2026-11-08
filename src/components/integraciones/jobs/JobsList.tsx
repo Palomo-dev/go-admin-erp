@@ -31,8 +31,9 @@ import { cn, formatDate } from '@/utils/Utils';
 interface JobsListProps {
   jobs: IntegrationJob[];
   loading?: boolean;
-  onRetry: (job: IntegrationJob) => void;
-  onDuplicate: (job: IntegrationJob) => void;
+  /** Sin ejecutor de integration_jobs no se pasa: el menú no ofrece reintentar. */
+  onRetry?: (job: IntegrationJob) => void;
+  onDuplicate?: (job: IntegrationJob) => void;
   onCancel: (job: IntegrationJob) => void;
   onResetCursor: (job: IntegrationJob) => void;
   onDelete: (job: IntegrationJob) => void;
@@ -164,7 +165,7 @@ export function JobsList({
             {jobs.map((job) => {
               const statusConfig = getStatusConfig(job.status);
               const StatusIcon = statusConfig.icon;
-              const connection = job.connection as any;
+              const connection = job.connection as { name?: string; connector?: { name?: string; provider?: { name?: string } } } | undefined;
 
               return (
                 <tr
@@ -210,7 +211,7 @@ export function JobsList({
                         className={cn(
                           'h-4 w-4',
                           statusConfig.className,
-                          (statusConfig as any).animate && 'animate-spin'
+                          (statusConfig as { animate?: boolean }).animate && 'animate-spin'
                         )}
                       />
                       <span className={cn('text-sm', statusConfig.className)}>
@@ -250,16 +251,18 @@ export function JobsList({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {job.status === 'failed' && (
+                        {job.status === 'failed' && onRetry && (
                           <DropdownMenuItem onClick={() => onRetry(job)}>
                             <RotateCcw className="h-4 w-4 mr-2" />
                             Reintentar
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem onClick={() => onDuplicate(job)}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicar
-                        </DropdownMenuItem>
+                        {onDuplicate && (
+                          <DropdownMenuItem onClick={() => onDuplicate(job)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicar
+                          </DropdownMenuItem>
+                        )}
                         {(job.status === 'queued' || job.status === 'running') && (
                           <DropdownMenuItem onClick={() => onCancel(job)}>
                             <Ban className="h-4 w-4 mr-2" />

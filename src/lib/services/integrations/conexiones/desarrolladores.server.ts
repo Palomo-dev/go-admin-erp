@@ -14,7 +14,8 @@
  */
 import crypto from 'crypto';
 import { lookup } from 'dns/promises';
-import { isIP } from 'net';
+import { isIP, type LookupFunction } from 'net';
+import https from 'https';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ConexionError, type Actor } from './conexiones.server';
 import { ALCANCES_LLAVE } from './alcancesLlave';
@@ -219,6 +220,60 @@ export async function validarDestino(url: string, resolver: Resolver = resolverD
   return u;
 }
 
+/**
+ * `lookup` para la conexión del envío: resuelve el nombre UNA vez y solo entrega IP públicas.
+ * Como la petición se conecta exactamente a la IP que devuelve esta función, un DNS que cambie
+ * entre la validación y el envío (DNS rebinding) no puede llevarla a una IP interna.
+ */
+export function crearLookupSeguro(resolver: Resolver = resolverDns): LookupFunction {
+  return ((hostname: string, opciones: { all?: boolean } | number | undefined, cb: (...a: unknown[]) => void) => {
+    const todas = typeof opciones === 'object' && opciones !== null && opciones.all === true;
+    resolver(hostname)
+      .then((ips) => {
+        if (ips.length === 0 || !ips.every(ipPublica)) {
+          const err = Object.assign(new Error('Destino no público'), { code: 'EDESTINO_PRIVADO' });
+          return cb(err);
+        }
+        const ip = ips[0];
+        const familia = isIP(ip);
+        return todas ? cb(null, [{ address: ip, family: familia }]) : cb(null, ip, familia);
+      })
+      .catch((err: unknown) => cb(err));
+  }) as unknown as LookupFunction;
+}
+
+/**
+ * POST HTTPS con la IP fijada por `crearLookupSeguro` (sin redirecciones: `https.request` no las
+ * sigue). Devuelve solo el código HTTP; el cuerpo de la respuesta se descarta.
+ */
+export function enviarConIpFijada(
+  destino: URL,
+  init: { headers: Record<string, string>; body: string; signal: AbortSignal },
+  resolver: Resolver = resolverDns,
+): Promise<{ status: number }> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        protocol: 'https:',
+        hostname: destino.hostname.replace(/^\[|\]$/g, ''),
+        port: destino.port || 443,
+        path: `${destino.pathname}${destino.search}`,
+        method: 'POST',
+        headers: { ...init.headers, 'Content-Length': Buffer.byteLength(init.body) },
+        servername: isIP(destino.hostname) ? undefined : destino.hostname,
+        lookup: crearLookupSeguro(resolver),
+        signal: init.signal,
+      },
+      (res) => {
+        res.resume();
+        resolve({ status: res.statusCode ?? 0 });
+      },
+    );
+    req.on('error', reject);
+    req.end(init.body);
+  });
+}
+
 export function firmarCuerpo(secreto: string, cuerpo: string, unix: number): string {
   const v1 = crypto.createHmac('sha256', secreto).update(`${unix}.${cuerpo}`).digest('hex');
   return `t=${unix},v1=${v1}`;
@@ -258,7 +313,10 @@ export async function probarWebhookSaliente(
   const inicio = Date.now();
   let resultado: ResultadoEnvio;
   try {
-    const r = await (deps.fetchImpl ?? fetch)(destino.toString(), { method: 'POST', headers, body: cuerpo, redirect: 'manual', signal: control.signal, cache: 'no-store' });
+    // Sin `fetchImpl` (producción) se envía con la IP fijada: protección contra DNS rebinding.
+    const r = deps.fetchImpl
+      ? await deps.fetchImpl(destino.toString(), { method: 'POST', headers, body: cuerpo, redirect: 'manual', signal: control.signal, cache: 'no-store' })
+      : await enviarConIpFijada(destino, { headers, body: cuerpo, signal: control.signal }, deps.resolver);
     resultado = { ok: r.status >= 200 && r.status < 300, http: r.status, ms: Date.now() - inicio, motivo: r.status >= 200 && r.status < 300 ? undefined : 'respuesta' };
   } catch (err) {
     const tiempo = err instanceof Error && err.name === 'AbortError';

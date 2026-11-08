@@ -178,6 +178,7 @@ export function CarteraCliente({ customerId, origen }: { customerId: string; ori
             ? [{ etiqueta: t('migas.pos'), href: '/app/pos' }, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: t('cliente.titulo') }]
             : [{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('titulo'), href: rutas.base }, { etiqueta: t('cliente.titulo') }]
         }
+        movil={{ accionesEnFila: true }}
         acciones={
           cabecera ? (
             <>

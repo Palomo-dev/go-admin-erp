@@ -1,0 +1,33 @@
+Resultado de 03_tributario_perfil.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374. Transacción revertida (rollback): no quedó ningún dato.
+27 verificaciones · 27 ok · 0 fallas.
+
+n  | grupo | verificación                                                       | obtenido                                                                                                  | ok
+---+-------+--------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------+---
+1  | 1     | Dos vigencias guardadas                                            | 2026-01-01→2026-06-30 ordinario {O-48} bimestral ret=f ICA=1 | 2026-07-01→abierta ordinario {O-48,O-23} cuatrimestral ret=t ICA=2 | ok
+2  | 1     | Vigencia que rige el 2025-12-31                                    | ninguna                                                                                                   | ok
+3  | 1     | Vigencia que rige el 2026-01-01                                    | 2026-01-01 (bimestral)                                                                                    | ok
+4  | 1     | Vigencia que rige el 2026-03-15                                    | 2026-01-01 (bimestral)                                                                                    | ok
+5  | 1     | Vigencia que rige el 2026-06-30                                    | 2026-01-01 (bimestral)                                                                                    | ok
+6  | 1     | Vigencia que rige el 2026-07-01                                    | 2026-07-01 (cuatrimestral)                                                                                | ok
+7  | 1     | Vigencia que rige el 2026-11-07                                    | 2026-07-01 (cuatrimestral)                                                                                | ok
+8  | 1     | Vigencia que rige el 2027-05-01                                    | 2026-07-01 (cuatrimestral)                                                                                | ok
+9  | 4     | fiscal_responsibilities de la empresa tras guardar la de hoy       | {O-48,O-23}                                                                                               | ok
+10 | 2     | Fechas tras añadir 2025-01-01 y 2026-04-01                         | 2025-01-01→2025-12-31 | 2026-01-01→2026-03-31 | 2026-04-01→2026-06-30 | 2026-07-01→abierta                | ok
+11 | 2     | Vigencias que se solapan                                           | 0                                                                                                         | ok
+12 | 4     | fiscal_responsibilities tras guardar vigencias que no rigen hoy    | {O-48,O-23} (sin cambio)                                                                                  | ok
+13 | 3     | Corregir la vigencia 2026-01-01 (con otra fecha y sin ICA)         | 2026-01-01→2026-03-31 cuatrimestral ICA=0 (la fecha no cambió; el ICA se reemplazó)                       | ok
+14 | 5     | Otra vigencia con la misma fecha de inicio                         | VIGENCIA_DUPLICADA                                                                                        | ok
+15 | 5     | O-48 junto con O-49                                                | RESPONSABILIDADES_INCOMPATIBLES                                                                           | ok
+16 | 5     | Código de responsabilidad inexistente (O-99)                       | RESPONSABILIDAD_INVALIDA                                                                                  | ok
+17 | 5     | Régimen inexistente («comun»)                                      | REGIMEN_INVALIDO                                                                                          | ok
+18 | 5     | ICA con un municipio que no existe                                 | MUNICIPIO_INVALIDO                                                                                        | ok
+19 | 5     | «No responsable de IVA» con O-48 y periodicidad bimestral          | ACEPTADO (la función no valida esta combinación: pregunta P5 al Contador)                                 | ok
+20 | 6     | INSERT directo en organization_tax_profiles (dueño)                | permission denied for table organization_tax_profiles                                                     | ok
+21 | 6     | UPDATE directo de una vigencia (dueño)                             | permission denied for table organization_tax_profiles                                                     | ok
+22 | 6     | Miembro con rol «Empleado»: guardar perfil                         | SIN_PERMISO                                                                                               | ok
+23 | 6     | Miembro con rol «Empleado»: leer el perfil                         | 5 vigencias (lectura por pertenencia)                                                                     | ok
+24 | 6     | No miembro: guardar perfil de la 374                               | Acceso denegado a la organización                                                                         | ok
+25 | 6     | No miembro: ver el perfil de la 374                                | 0 filas                                                                                                   | ok
+26 | 6     | anon: guardar perfil                                               | permission denied for function fn_perfil_tributario_guardar                                               | ok
+27 | 6     | anon: leer organization_tax_profiles                               | permission denied for table organization_tax_profiles                                                     | ok

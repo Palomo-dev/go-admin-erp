@@ -148,6 +148,7 @@ export async function listarConsignaciones(ctx: Ctx): Promise<RespuestaListadoCo
     .from('consignment_notes')
     .select(SELECT_NOTA)
     .eq('organization_id', ctx.organizationId)
+    .eq('direction', 'entregada')
     .order('delivered_at', { ascending: false })
     .limit(500);
   if (error) {
@@ -163,6 +164,7 @@ export async function detalleConsignacion(ctx: Ctx, id: string): Promise<{ pendi
     .from('consignment_notes')
     .select(SELECT_NOTA)
     .eq('organization_id', ctx.organizationId)
+    .eq('direction', 'entregada')
     .eq('id', id)
     .maybeSingle();
   if (error) {
@@ -179,6 +181,7 @@ export async function entregarConsignacion(ctx: Ctx, s: SolicitudEntregar): Prom
     p_branch: s.sucursal_id,
     p_lineas: s.lineas,
     p_comision: s.comision,
+    p_terminos: s.terminos,
     p_clave_idempotencia: s.clave_idempotencia,
     p_organization_id: ctx.organizationId,
     p_ubicacion: s.ubicacion ?? null,

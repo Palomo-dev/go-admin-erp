@@ -307,6 +307,7 @@ export function DetalleCotizacion({ id: idProp, cotizacion: inicial }: DetalleCo
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('titulo'), href: RUTA_COTIZACIONES }, { etiqueta: numero }]}
         volverA={RUTA_COTIZACIONES}
         insignias={cot ? <StatusBadge estado={estadoBadgeCotizacion(estado)} etiqueta={t(`estados.${estado}`)} tamano="md" /> : null}
+        movil={{ accionesEnFila: true }}
         acciones={acciones}
         cargando={cargando && !cot}
       />

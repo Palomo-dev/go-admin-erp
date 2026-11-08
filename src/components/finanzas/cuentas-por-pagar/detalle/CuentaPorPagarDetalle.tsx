@@ -253,6 +253,7 @@ export default function CuentaPorPagarDetalle({ id }: { id: string }) {
         subtitulo={`${c.proveedor?.name ?? '—'} · ${td('vence', { fecha: formatDate(c.due_date) })}`}
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('titulo'), href: RUTA_CXP }, { etiqueta: c.factura?.number_ext ?? td('eslabon') }]}
         estado={estado}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             {abierta && (

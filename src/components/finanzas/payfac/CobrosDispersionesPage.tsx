@@ -124,6 +124,7 @@ export default function CobrosDispersionesPage({ pestanaInicial = 'dispersiones'
           { etiqueta: t('migas.tesoreria') },
           { etiqueta: t('titulo') },
         ]}
+        movil={{ accionesEnFila: true }}
         acciones={acciones}
       />
 

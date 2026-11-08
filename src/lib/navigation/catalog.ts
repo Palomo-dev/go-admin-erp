@@ -452,6 +452,9 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/inventario/movimientos', nombre: 'Movimientos', icono: ArrowLeftRight, grupo: 'Existencias' },
       { href: '/app/inventario/ajustes', nombre: 'Ajustes', icono: ClipboardCheck, grupo: 'Existencias' },
       { href: '/app/inventario/transferencias', nombre: 'Transferencias', icono: ArrowLeftRight, grupo: 'Existencias' },
+      // Consignación en los dos sentidos (decisión del dueño 2026-11-07: vive en Inventario; la liquidación
+      // enlaza a Finanzas). /app/finanzas/consignaciones redirige aquí.
+      { href: '/app/inventario/consignaciones', nombre: 'Consignaciones', icono: ClipboardList, grupo: 'Existencias' },
       { href: '/app/inventario/lotes', nombre: 'Lotes', icono: Layers, grupo: 'Existencias' },
       { href: '/app/inventario/seriales', nombre: 'Seriales', icono: QrCode, grupo: 'Existencias' },
       { href: '/app/inventario/garantias', nombre: 'Garantías', icono: ShieldCheck, grupo: 'Existencias' },
@@ -481,8 +484,6 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/facturas-compra', nombre: 'Facturas de compra', icono: ReceiptText, grupo: 'Documentos' },
       { href: '/app/finanzas/notas-credito', nombre: 'Notas crédito y débito', icono: FileMinus, grupo: 'Documentos' },
       { href: '/app/finanzas/documentos-soporte', nombre: 'Documentos soporte', icono: FileCheck2, grupo: 'Documentos' },
-      // Finanzas ronda 4 (frente R4-B): mercancía propia en poder de un consignatario (nota y liquidación).
-      { href: '/app/finanzas/consignaciones', nombre: 'Consignaciones', icono: ClipboardList, grupo: 'Documentos' },
       { href: '/app/finanzas/facturacion-electronica', nombre: 'Facturación electrónica', icono: Zap, grupo: 'Documentos' },
       // Tesorería (ronda 3, mapa 1009:86249): «Tesorería» es el grupo, no una página.
       // Movimientos es la vista unificada; Ingresos y Egresos, la misma lista con el

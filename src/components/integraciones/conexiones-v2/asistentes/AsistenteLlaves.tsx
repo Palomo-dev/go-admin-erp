@@ -9,6 +9,7 @@
  * (`POST /api/integrations/conexiones/llaves`); si el proveedor no las acepta, no se guarda nada.
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { CredencialRevelable } from '../CredencialRevelable';
 import { useTranslations } from 'next-intl';
 import { ExternalLink } from 'lucide-react';
 import { AvisoTonal, FormField, StatusBadge, TarjetaSeleccionable } from '@/components/kit';
@@ -61,6 +62,8 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
   const [guardandoUso, setGuardandoUso] = useState(false);
   const [errorUso, setErrorUso] = useState<{ codigo: string; mensaje: string } | null>(null);
   const [listo, setListo] = useState(false);
+  // Reemplazo: credenciales actuales (solo máscara; el valor se pide con «Ver», auditado).
+  const [actuales, setActuales] = useState<{ proposito: string; mascara: string | null }[]>([]);
 
   // Al cerrar se olvida todo, empezando por las llaves.
   const reiniciar = useCallback(() => {
@@ -75,6 +78,7 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
     setEventoRecibido(false);
     setErrorUso(null);
     setListo(false);
+    setActuales([]);
   }, [pasos, conexionReemplazo]);
 
   useEffect(() => {
@@ -88,7 +92,9 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
     apiConexiones
       .detalle(conexionReemplazo)
       .then((d) => {
-        if (vivo) setAmbiente(d.conexion.ambiente === 'production' ? 'production' : 'sandbox');
+        if (!vivo) return;
+        setAmbiente(d.conexion.ambiente === 'production' ? 'production' : 'sandbox');
+        setActuales(d.credenciales.map((k) => ({ proposito: k.proposito, mascara: k.mascara })));
       })
       .catch(() => undefined);
     return () => {
@@ -280,6 +286,22 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
       <div className="flex flex-col gap-4">
         {aviso && <AvisoTonal tono={aviso.tono} titulo={aviso.titulo} descripcion={aviso.descripcion} rol="alert" />}
         {estadoPrueba === 'probando' && <AvisoTonal tono="informacion" rol="status" titulo={t('asistente.llaves.probando', { nombre })} />}
+        {conexionReemplazo && actuales.length > 0 && (
+          <div className="rounded-lg border border-line bg-subtle px-3 py-2">
+            <p className="text-sm font-medium text-fg">{t('credencial.actuales')}</p>
+            <ul className="mt-1 flex flex-col gap-1">
+              {actuales.map((k) => {
+                const etiquetaCampo = t.has(`asistente.llaves.campos.${k.proposito}`) ? t(`asistente.llaves.campos.${k.proposito}`) : k.proposito;
+                return (
+                  <li key={k.proposito} className="flex flex-wrap items-center justify-between gap-2 text-sm text-fg-secondary">
+                    <span>{etiquetaCampo}</span>
+                    <CredencialRevelable conexionId={conexionReemplazo} proposito={k.proposito} mascara={k.mascara} etiqueta={etiquetaCampo} />
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {def.campos.map((c) => {
           const prefijo = prefijoEsperado(c, ambiente);
           const err = errorDe(c.proposito);

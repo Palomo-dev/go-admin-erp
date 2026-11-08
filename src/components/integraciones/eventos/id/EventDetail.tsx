@@ -28,7 +28,8 @@ import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 
 interface EventDetailProps {
   event: IntegrationEvent;
-  onReprocess: () => void;
+  /** Sin ejecutor de integration_jobs no se pasa: «Reprocesar» encolaba un trabajo que nadie corría. */
+  onReprocess?: () => void;
   reprocessing?: boolean;
 }
 
@@ -180,15 +181,17 @@ export function EventDetail({ event, onReprocess, reprocessing = false }: EventD
                 <Download className="h-4 w-4 mr-2" />
                 Descargar JSON
               </Button>
-              <Button
-                size="sm"
-                onClick={onReprocess}
-                disabled={reprocessing}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <RotateCcw className={`h-4 w-4 mr-2 ${reprocessing ? 'animate-spin' : ''}`} />
-                {reprocessing ? 'Procesando...' : 'Reprocesar'}
-              </Button>
+              {onReprocess && (
+                <Button
+                  size="sm"
+                  onClick={onReprocess}
+                  disabled={reprocessing}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  <RotateCcw className={`h-4 w-4 mr-2 ${reprocessing ? 'animate-spin' : ''}`} />
+                  {reprocessing ? 'Procesando...' : 'Reprocesar'}
+                </Button>
+              )}
             </div>
           </div>
         </div>

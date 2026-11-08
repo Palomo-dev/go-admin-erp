@@ -38,6 +38,7 @@ export function CabeceraTributario({
         enCentro ? { etiqueta: t('migas.tributario') } : { etiqueta: t('migas.tributario'), href: RUTAS_TRIBUTARIO.centro },
         ...(enCentro ? [] : [{ etiqueta: titulo }]),
       ]}
+      movil={{ accionesEnFila: true }}
       acciones={acciones}
     />
   );

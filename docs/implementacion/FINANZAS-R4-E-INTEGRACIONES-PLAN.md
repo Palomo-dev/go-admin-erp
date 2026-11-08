@@ -239,3 +239,153 @@ los componentes viejos de `integraciones/conexiones/` siguen exportados por el b
 `src/components/integraciones` + `src/lib/navigation` en verde; guardrails: 2 fallos preexistentes (regla 36 del CRM y
 Paquete E), ninguno de este frente. `tsc` completo con 14 GB: ningún error en archivos del frente (resto: 33 de
 `.next-desktop`, `useConfiguracionState.ts` y 6 de la prueba de R4-B).
+
+#### Frente INT · cierre de pendientes (2026-11-07, segunda vuelta)
+
+Sin commit en ninguno de los dos repositorios. La caracterización de Wompi sigue pasando (jest de
+`src/lib/services/integrations/conexiones`: 10 suites en verde con las de la UI de Conexiones).
+
+1. **Lector dual en la tienda (goadmin-websites).** La copia local estaba 502 commits detrás de
+   `origin/main` y sin cambios: se avanzó con `git merge --ff-only` antes de tocarla. Nuevo
+   `lib/payments/secretosConexion.ts` (`resolverCredenciales`, `valorDeCredencial`): un valor en claro
+   se devuelve igual y sin RPC; un uuid se lee con `fn_get_provider_secret`; un uuid sin valor queda
+   vacío (nunca se cobra ni se firma con el uuid). Lo usan `app/api/checkout/init`, los webhooks
+   de Bold, Mercado Pago, Meta, PayPal, PayU y Stripe, `app/api/meta/send-event`,
+   `lib/meta/send-capi-event` y `lib/google-ads/upload-conversion` (Wompi ya era dual en
+   `wompi-firma.ts`). Se retiró la llamada a `get_decrypted_secret`, que no existe en la base
+   (siempre caía al valor crudo: el resultado de hoy no cambia). Prueba: `npm run verify:secretos`
+   (6 casos). `tsc` de la tienda: solo los 2 errores de módulos sin instalar que ya estaban.
+   No se mudó ningún secreto.
+2. **Secretos solo en el servidor.** Migración SIN aplicar `20261108093000_integraciones_secretos_solo_servidor.sql`
+   (+ rollback; aplicar DESPUÉS de `20261108090000`): `authenticated` pierde el SELECT de
+   `integration_credentials.secret_ref`, `webhook_endpoints.secret` e `integration_webhooks.secret_ref`
+   (SELECT por columnas sin ellas; INSERT/UPDATE/DELETE se conservan), `anon` pierde todo en esas
+   tablas, y la RLS de `integration_webhooks` deja de decidir por nombre de rol (rol 1/2, super admin
+   o `admin.full_access`). Probada en `begin … rollback`. Antes de escribirla se revisaron con grep
+   los dos repositorios: la tienda lee con service role; en el ERP se ajustaron los lectores del
+   navegador (`integrationsService` sin `select('*')` en esas tablas; `getCredentials`, webhooks y
+   endpoints devuelven el secreto vacío; se retiraron `duplicateCredential` y `duplicateWebhook`, sin
+   uso y que copiaban secretos), `integracionesDashboardService`, el panel de Tripadvisor (leía un
+   `credential_type` que el CHECK no admite: código muerto) y el formulario avanzado (`nueva`): ya no
+   precarga secretos; en edición, campos vacíos = conservar las llaves, y si se escribe alguna hay que
+   escribirlas todas (antes, con el lector cerrado, habría guardado llaves vacías). «Rotar» una
+   credencial sin valor nuevo ya no la vacía. `syncPaymentMethodFromConnection` deja de sobrescribir
+   `settings` y de robar un método enlazado a otra conexión.
+3. **«Reintentar trabajo».** No existe ejecutor de `integration_jobs` (grep en `src`, Edge Functions y
+   `vercel.json`). Se quitaron «Reintentar», «Duplicar» y «Nuevo job» de Trabajos, con un aviso que lo
+   dice, y «Reprocesar» del detalle de evento (encolaba un trabajo que nadie corría, con una columna
+   `metadata` que `integration_jobs` no tiene). «Probar» de los webhooks de conexión dice que no hay
+   envío automático en vez de registrar un evento falso.
+4. **Meta 85-42/43** en el asistente nuevo (`asistentes/PasosMeta.tsx`): al volver del OAuth
+   existente (el callback ahora redirige con `?conectar=meta&conexion=<id>`) se abren «Activos»
+   (portafolio, cuenta publicitaria, catálogo y píxel, existentes o nuevos) y «Qué se envía» (catálogo,
+   compras; prospectos del CRM deshabilitado «en construcción»: no existe ese envío). Servidor:
+   `conexiones/metaActivos.server.ts` + `GET/POST /api/integrations/conexiones/meta`, sobre los métodos
+   existentes de `metaMarketingService` (Graph API real; el token nunca sale del servidor; cada id se
+   valida contra lo que Meta devuelve). «Qué se envía» queda en `settings.meta_envios` y lo respetan
+   `product-sync`, `catalog-sync` y `send-event` del ERP y `send-capi-event`/`meta/send-event` de la
+   tienda (que además filtraban `status = 'active'`, valor que el CHECK no admite: nunca enviaban).
+   Corregido `credential_type: 'oauth2'` (inválido) en el guardado de Meta: ninguna credencial de Meta
+   llegaba a guardarse. Sus propósitos (`business_id`, `pixel_id`…) necesitan `20261108090000`.
+5. **Importar CSV y borrar** en la página nueva: `ImportarCsvDialogo` + `importarCsvLogica.ts` y
+   `POST /api/integrations/conexiones/importar` (máx. 200 filas; solo BORRADORES, sin llaves; valida
+   conector, sucursal, ambiente y nombres). Los borradores ya se listan en «Mis conexiones».
+   `DELETE /api/integrations/conexiones/[id]` con confirmación en el detalle: 409 `EN_USO` si un
+   método de pago la usa (el botón queda deshabilitado y explica que hay que desenlazar primero) y
+   409 `CON_HISTORIA` si ya tiene cobros QR o guías (se ofrece «Desconectar»).
+6. **DNS rebinding.** El envío real de webhooks salientes usa `https.request` con un `lookup` propio
+   (`crearLookupSeguro`) que resuelve una vez y solo entrega IP públicas: la conexión va a la IP
+   validada, así que un DNS que cambie entre la validación y el envío no la lleva a una IP interna.
+
+**Pendiente:** aplicar `20261108090000` y luego `20261108093000`; secretos huérfanos en Vault al
+borrar una conexión de la bóveda (no hay RPC de borrado: hoy solo OTA y logística viven ahí); filtro
+de productos por categoría o etiqueta para Meta; envío de prospectos del CRM a Meta; ejecutor de
+`integration_jobs`; mudar las pasarelas a la bóveda (la tienda ya lee las dos formas).
+
+#### Frente INT · credenciales visibles (decisión del dueño, 2026-11-07)
+
+El dueño decidió no cifrar por ahora las llaves de las pasarelas y poder VER las credenciales.
+- Nada se mueve a la bóveda: las pasarelas siguen guardando en claro (como ya hacía el frente).
+- La propuesta que cerraba la lectura al navegador NO se aplicará: quedó como
+  `supabase/migrations/PROPUESTA_NO_APLICAR_20261108093000_integraciones_secretos_solo_servidor.sql.txt`
+  (y su reversión en `supabase/rollbacks/` con el mismo nombre), con la línea «No aplicar».
+- Lo independiente se separó en `20261108094000_integraciones_anon_y_rls_webhooks.sql` (+ rollback),
+  SIN aplicar y probada en `begin … rollback`. No quita ninguna lectura a usuarios autenticados:
+  - `anon` (clave pública, sin sesión) pierde los privilegios de tabla que hoy tiene sobre
+    `webhook_endpoints` e `integration_webhooks` (incluido TRUNCATE, que no pasa por RLS). Ningún
+    lector usa `anon`;
+  - la RLS de `integration_webhooks` deja de decidir por nombre de rol (regla 6) y usa la misma
+    regla que `integration_credentials`: rol 1/2, super admin o `admin.full_access`.
+- «Ver» / «Ocultar» / «Copiar» en el detalle de conexión y en el asistente de «Reemplazar llave»
+  (`conexiones-v2/CredencialRevelable.tsx`). El valor se pide a
+  `POST /api/integrations/conexiones/[id]/credenciales/revelar`:
+  - exige administración resuelta en el servidor (`withOrg({ admin: true })`);
+  - devuelve el valor en claro, o el de la bóveda vía `fn_get_provider_secret` (OTA, logística);
+  - antes de responder deja auditoría en `ops_audit_log` (`entity_type = 'integration_credential'`,
+    `action = 'credential_revealed'`, usuario, credencial, propósito, IP). Si la auditoría falla,
+    no revela nada (503).
+  Los listados y el HTML no precargan secretos.
+- La lectura actual no cambia: la caracterización de Wompi sigue pasando y los lectores del
+  servidor leen igual.
+
+#### Frente INT · corrección (2026-11-07, misma tarde): la lectura se cierra, con «Ver»
+
+Esta nota corrige la anterior («credenciales visibles»). El dueño, ya con la diferencia clara, APRUEBA cerrar la lectura directa
+de secretos desde el navegador, junto con el botón «Ver».
+- `20261108093000_integraciones_secretos_solo_servidor.sql` vuelve a su nombre original, sin la
+  línea «No aplicar», y sigue SIN aplicar. La aplica el coordinador después de probar un cobro con
+  Wompi en el navegador.
+- Se le añadió una nota de compatibilidad con «Ver»: la ruta de «Ver» lee con service role tras
+  exigir administración y registrar la auditoría, así que estos privilegios no la afectan.
+- La migración mínima `20261108094000_integraciones_anon_y_rls_webhooks.sql` se retiró: su
+  contenido (anon y RLS de `integration_webhooks`) ya está dentro de `20261108093000`.
+- Las llaves siguen guardadas en claro: no se cifra nada. El navegador puede crear, editar y rotar
+  credenciales, pero no leer `secret_ref` ni `secret`.
+
+Barrido final de lecturas con la sesión del usuario o con el cliente del navegador
+(`secret_ref`, `webhook_endpoints.secret`, `integration_webhooks.secret_ref`): **cero**.
+- go-admin-erp: todas las lecturas que quedan van con service role, tras validar la organización.
+  Se corrigieron tres que usaban el cliente del navegador por defecto:
+  - `sendgrid/send` ahora pasa el cliente del servidor;
+  - `NotificationService.processEmailNotifications` / `sendEmailViaSendGrid` reciben el cliente del
+    servidor;
+  - `whatsappClientService.getCredentials` se retiró (sin uso).
+- goadmin-websites: todas las lecturas están en route handlers con `createAdminClient()` (service
+  role).
+
+### Consignación en dos sentidos (2026-11-07)
+
+Sin commit. Diseño, decisiones del dueño y del Contador (con «Correcciones del Contador 2»):
+`docs/design/CONSIGNACION-RECIBIDA-Y-ENTRE-ORGANIZACIONES.md`. Capturas `docs/design/figma/89-consignacion-recibida-*.png`.
+
+**Migraciones, SIN aplicar (con reversión):**
+- `20261108120500_organization_links.sql` (va antes): vínculo genérico entre organizaciones (`organization_links`,
+  `organization_link_parties`, `organization_shared_documents`, `organization_link_product_map`), token de un solo uso con
+  sha-256, RLS para las dos partes, documentos por copia. Listo para órdenes de compra y facturas (sin construirlas).
+- `20261108121000_consignaciones.sql` (reescrita; nunca se aplicó): entregada y recibida; clasificación del contrato
+  obligatoria (`intermediacion` | `estimatorio`; `compra` va por la factura); precio fijo o mínimo; remuneración por porcentaje
+  (base pactado o venta) o precio de liquidación; productos de consignación siempre aparte (`consignment_products`); riesgos,
+  facturación y obligación «al vender | al cobrar» por nota; disparador del kardex que asigna lo vendido en el POS y la factura
+  de siempre (sin segunda implementación de la venta); liquidación por dueño, anulación de la última; documentos entre
+  organizaciones. IVA y retenciones: hechos + pendiente contable, no elección.
+
+**Prueba en seco** (dos corridas en `begin … rollback`, bloque DO con usuarios simulados de dos organizaciones; nada quedó):
+recibir, vender por el kardex, devolver, liquidar parcial dos veces, devolución después de pagar (saldo a favor bloqueado),
+anular la no última (bloqueado) y la última (contra-asiento), estimatorio, entregada (1465 dentro del grupo 14), invitación →
+aceptación → nota compartida → aceptada como recibida → liquidación compartida → aceptada por el dueño con su flujo de siempre.
+0 asientos descuadrados; RLS: ninguna organización ve las notas de la otra; `token_hash` no se puede leer.
+
+**Pantallas** (Inventario › Consignaciones, `/app/inventario/consignaciones`; `/app/finanzas/consignaciones` redirige):
+pestañas Entregadas · Recibidas · Por aceptar, recibir a mano, detalle de la recibida, liquidación al consignante (enlaza a
+Dinero de terceros y a Facturas de compra), nota por aceptar, liquidación recibida por el consignante, vincular, invitación
+(`/app/vincular/[token]`), vacío, sin permiso y menú del celular. Namespace `consignacionesR4` (374 claves × 4) y
+`nav.paginas.inventario_consignaciones`.
+
+**Verificación:** jest de consignaciones, R4-B, navegación e i18n: 1101 de 1101; guardrails 206 de 208 (los 2 preexistentes);
+`tsc` con 14 GB: 34 errores, la línea base; `eslint` limpio en lo tocado. Ninguna pantalla recorrida con sesión real.
+
+**Pendiente:** aplicar `20261108120500` y luego `20261108121000`; crear en el PUC de cada organización 911520, el auxiliar de
+281510 por consignante y el de 413512; liquidación del dueño en intermediación (entregada); devolución en el POS de mercancía en
+intermediación (queda como pendiente contable); reglas de IVA y retenciones para estos conceptos; productos con seriales o
+variantes; crear el producto de consignación desde el diálogo; notificaciones (campana y correo) de documentos por aceptar;
+PDF de la nota y de la liquidación.

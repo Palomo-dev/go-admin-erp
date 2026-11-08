@@ -4587,7 +4587,8 @@
       "finanzas_tributario_certificados": "Certificados de retención",
       "finanzas_consignaciones": "Consignaciones",
       "finanzas_tesoreria_dinero-de-terceros": "Dinero de terceros",
-      "finanzas_anticipos-proveedores": "Anticipos a proveedores"
+      "finanzas_anticipos-proveedores": "Anticipos a proveedores",
+      "inventario_consignaciones": "Consignaciones"
     },
     "grupos": {
       "venta": "Venta",
@@ -18377,7 +18378,8 @@
         "imprimir": "Imprimir",
         "anular": "Anular",
         "eliminar": "Eliminar borrador",
-        "certificado": "Certificado de retenciones"
+        "certificado": "Certificado de retenciones",
+        "pdfCorto": "PDF"
       },
       "motivos": {
         "sinPermiso": "No tienes permiso para esta acción",
@@ -20281,7 +20283,8 @@
       "verPdf": "Ver PDF",
       "notaCredito": "Nota crédito",
       "anular": "Anular factura",
-      "enviar": "Enviar"
+      "enviar": "Enviar",
+      "pdf": "PDF"
     },
     "pagos": {
       "titulo": "Pagos aplicados",
@@ -43806,7 +43809,7 @@
           "sin_permiso": "No tienes permiso para anular.",
           "anulado": "Este saldo ya está anulado."
         },
-        "devolverEnSuLugar": "Devolver el dinero",
+        "devolverEnSuLugar": "Devolver el disponible",
         "exito": "Se anuló el anticipo de {cliente}."
       },
       "anticipo": {
@@ -43851,7 +43854,7 @@
         "saldo_no_encontrado": "No se encontró el saldo a favor.",
         "saldo_no_disponible": "El saldo a favor ya no está disponible.",
         "saldo_vencido": "El saldo a favor está vencido: ya no se puede aplicar, pero sí devolver.",
-        "saldo_usado": "El saldo a favor ya se usó en facturas: no se puede anular.",
+        "saldo_usado": "Este anticipo ya se aplicó en parte: no se puede anular. Devuelve el disponible en dinero.",
         "saldo_no_anulable": "Este saldo a favor no viene de un anticipo: no se anula, se devuelve en dinero.",
         "monto_excede_saldo_a_favor": "El valor supera el saldo a favor disponible.",
         "factura_no_encontrada": "No se encontró la factura.",
@@ -43867,7 +43870,7 @@
         "referencia_obligatoria": "Este método exige referencia.",
         "cuenta_bancaria_invalida": "La cuenta bancaria no es válida.",
         "sin_caja_abierta": "No hay una caja abierta: ábrela o usa otro método.",
-        "pago_en_caja_cerrada": "El dinero entró en una caja ya cerrada: registra una salida de caja.",
+        "pago_en_caja_cerrada": "El anticipo entró en efectivo a una caja ya cerrada: no se puede anular. Devuelve el disponible con una salida de caja.",
         "sin_cuenta_de_dinero": "No se encontró la cuenta de caja o banco del método.",
         "sin_cuenta_por_cobrar": "La organización no tiene cuenta por cobrar configurada.",
         "vencimiento_invalido": "El vencimiento no puede ser anterior a hoy.",
@@ -47170,6 +47173,51 @@
           "descripcion": "GO Admin todavía no tiene activa su aplicación de {nombre}. Cuando esté lista podrás conectarte desde aquí."
         },
         "error": "No se pudo iniciar la conexión. Intenta de nuevo."
+      },
+      "meta": {
+        "pasos": {
+          "cuenta": "Cuenta",
+          "activos": "Activos",
+          "envios": "Qué se envía"
+        },
+        "subtituloActivos": "Paso 2 de 3 · Elige tus cuentas",
+        "subtituloEnvios": "Paso 3 de 3 · Qué se envía a Meta",
+        "autorizado": "Autorizado",
+        "sinAutorizar": {
+          "titulo": "La conexión no tiene autorización de Meta",
+          "descripcion": "Vuelve a iniciar sesión con Meta desde el catálogo. Si el problema sigue, la migración de credenciales puede estar pendiente de activar."
+        },
+        "negocio": "Portafolio comercial",
+        "cuenta": "Cuenta publicitaria",
+        "catalogo": "Catálogo",
+        "catalogoNuevo": "Catálogo GO Admin (nuevo)",
+        "catalogoNuevoAyuda": "Creamos uno nuevo para no mezclarlo con productos que ya tengas.",
+        "pixel": "Píxel",
+        "pixelNuevo": "Píxel GO Admin (nuevo)",
+        "pixelAyuda": "El que mide tu tienda web y recibe las compras.",
+        "activar": "Activar conexión",
+        "envioCatalogo": {
+          "titulo": "Catálogo de productos",
+          "descripcion": "Foto, precio y existencias de la tienda web."
+        },
+        "productos": "Productos del catálogo",
+        "productosAyuda": "Por ahora se envían todos los publicados en la tienda web; por categoría o etiqueta, más adelante.",
+        "productosTodos": "Todos los de la tienda web ({n})",
+        "productosTodosSinConteo": "Todos los de la tienda web",
+        "envioCompras": {
+          "titulo": "Compras de la tienda web",
+          "descripcion": "Para saber cuántas ventas trajo cada campaña."
+        },
+        "envioProspectos": {
+          "titulo": "Prospectos del CRM (en construcción)",
+          "descripcion": "Aún no existe el envío de prospectos a Meta; se activará cuando esté listo."
+        },
+        "privacidad": {
+          "titulo": "Datos de clientes protegidos",
+          "descripcion": "Correo y teléfono viajan cifrados (hash) y solo de clientes que aceptaron el tratamiento de datos."
+        },
+        "errorCarga": "No se pudieron leer tus cuentas de Meta.",
+        "errorGuardar": "No se pudo guardar. Intenta de nuevo."
       }
     },
     "detalle": {
@@ -47257,7 +47305,7 @@
         "enBoveda": "Bóveda cifrada",
         "enConexion": "Registro de la conexión",
         "actualizada": "actualizada el {fecha}",
-        "nota": "Solo se muestran el prefijo y los últimos caracteres. GO Admin nunca vuelve a mostrar una llave completa."
+        "nota": "Se muestran enmascaradas. «Ver» y «Copiar» las piden al servidor, solo para administradores, y queda registrado quién las consultó y cuándo."
       },
       "usadaPor": {
         "titulo": "Usada por",
@@ -47278,7 +47326,513 @@
       "confirmarDesconexion": {
         "titulo": "¿Desconectar {nombre}?",
         "descripcion": "Se revocan las credenciales (no se pueden recuperar) y se desenlazan los métodos de pago que la usan. Para volver a conectar tendrás que pegar llaves nuevas."
+      },
+      "borrar": {
+        "boton": "Borrar conexión",
+        "descripcion": "Borrar elimina la conexión con sus credenciales y su actividad. Si ya cobró o generó guías, desconéctala en su lugar.",
+        "bloqueado": "No se puede borrar: un método de pago la usa. Desenlázalo primero en Finanzas › Métodos de pago.",
+        "enUso": "Un método de pago usa esta conexión: desenlázalo primero en Finanzas › Métodos de pago.",
+        "conHistoria": "La conexión ya tiene cobros o envíos registrados: desconéctala para conservar la historia.",
+        "confirmarTitulo": "¿Borrar «{nombre}»?",
+        "confirmarDescripcion": "Se borran la conexión, sus credenciales, sus webhooks y su actividad. No se puede deshacer."
       }
+    },
+    "importar": {
+      "abrir": "Importar CSV",
+      "titulo": "Importar conexiones",
+      "descripcion": "Crea conexiones en borrador desde un archivo CSV. Las llaves se completan después con el asistente de cada una.",
+      "boton": "Importar ({n})",
+      "faltaConector": "Elige el conector",
+      "faltaArchivo": "Elige un archivo con filas",
+      "conector": "Conector",
+      "elegirConector": "Elige un conector",
+      "archivo": "Archivo CSV",
+      "plantilla": "Descargar plantilla (nombre, sucursal_id, pais, ambiente)",
+      "vistaPrevia": "{n} conexiones listas para importar",
+      "sinLlaves": {
+        "titulo": "El CSV no lleva llaves",
+        "descripcion": "Las conexiones quedan en borrador y no cobran ni sincronizan hasta que pegues sus llaves con el asistente."
+      },
+      "resultado": "{creadas} creadas · {fallidas} con error",
+      "error": {
+        "vacio": "El archivo no trae filas debajo del encabezado.",
+        "sin_columna_nombre": "Falta la columna «nombre» (o «name»).",
+        "demasiadas_filas": "Máximo 200 filas por archivo.",
+        "servidor": "No se pudo importar. Intenta de nuevo."
+      }
+    },
+    "credencial": {
+      "ver": "Ver",
+      "ocultar": "Ocultar",
+      "verDe": "Ver {etiqueta}",
+      "ocultarDe": "Ocultar {etiqueta}",
+      "copiarDe": "Copiar {etiqueta}",
+      "sinPermiso": "Solo un administrador puede ver las credenciales.",
+      "error": "No se pudo mostrar la credencial.",
+      "errorCopiar": "No se pudo copiar.",
+      "actuales": "Llaves guardadas"
+    }
+  },
+  "consignacionesR4": {
+    "titulo": "Consignaciones",
+    "subtitulo": "Mercancía tuya en poder de un tercero, o de un tercero en tu poder",
+    "errorCarga": "No se pudieron cargar las consignaciones.",
+    "reintentar": "Reintentar",
+    "sinResultados": "Ninguna nota coincide con la búsqueda.",
+    "etiquetaFila": "Nota {numero} de {tercero}",
+    "unidadesN": "{n} und",
+    "migas": {
+      "inventario": "Inventario",
+      "consignaciones": "Consignaciones"
+    },
+    "pestanas": {
+      "etiqueta": "Tipo de consignación",
+      "entregadas": "Entregadas",
+      "recibidas": "Recibidas",
+      "porAceptar": "Por aceptar"
+    },
+    "pendiente": {
+      "titulo": "Pendiente de activar",
+      "descripcion": "La consignación recibida y el vínculo entre organizaciones necesitan una actualización de la base de datos que todavía no se ha aplicado. Cuando se active, aquí verás tus notas recibidas y lo que te llegue de otras organizaciones."
+    },
+    "acciones": {
+      "ver": "Ver",
+      "liquidar": "Liquidar",
+      "recibir": "Recibir mercancía",
+      "vincular": "Vincular organización",
+      "nuevaEntregada": "Nueva nota entregada",
+      "devolver": "Devolver mercancía"
+    },
+    "buscar": {
+      "recibidas": "Buscar nota o consignante",
+      "etiqueta": "Buscar notas recibidas"
+    },
+    "kpis": {
+      "etiqueta": "Resumen de la mercancía recibida",
+      "enTuPoder": "En tu poder",
+      "aPrecioPactado": "A precio pactado · cuentas de orden",
+      "vendidoSinLiquidar": "Vendido sin liquidar",
+      "notas": "{n, plural, =0 {Sin notas} one {# nota} other {# notas}}",
+      "remuneracion": "Tu remuneración",
+      "remuneracionDetalle": "Estimada sobre lo vendido sin liquidar",
+      "porPagar": "Por pagar a consignantes",
+      "porPagarDetalle": "Saldos liquidados",
+      "recibido": "Recibido",
+      "vendido": "Vendido",
+      "sinLiquidar": "Sin liquidar: {valor}",
+      "devuelto": "Devuelto",
+      "noEsInventario": "No es inventario propio",
+      "unidadesValor": "{n} und · {valor}"
+    },
+    "estados": {
+      "en_consignacion": "En tu poder",
+      "por_liquidar": "Por liquidar",
+      "liquidada": "Liquidada"
+    },
+    "estadosLiquidacion": {
+      "por_facturar": "Esperando factura de compra",
+      "liquidada": "Liquidada",
+      "anulada": "Anulada"
+    },
+    "origen": {
+      "goAdmin": "GO Admin",
+      "externo": "Externo"
+    },
+    "columnas": {
+      "nota": "Nota",
+      "consignante": "Consignante",
+      "contrato": "Contrato",
+      "origen": "Origen",
+      "fecha": "Fecha",
+      "unidades": "Unidades",
+      "enTuPoder": "En tu poder",
+      "estado": "Estado",
+      "tipo": "Tipo",
+      "de": "De",
+      "producto": "Producto",
+      "cantidad": "Cantidad",
+      "precioPactado": "Precio pactado",
+      "precioLiquidacion": "Precio de liquidación",
+      "valor": "Valor",
+      "total": "Total",
+      "productoConsignante": "Producto del consignante",
+      "tuProducto": "Tu producto",
+      "recibido": "Recibido",
+      "vendido": "Vendido",
+      "devuelto": "Devuelto",
+      "valorEnTuPoder": "Valor en tu poder",
+      "vendidoSinLiquidar": "Vendido sin liquidar",
+      "venta": "Venta",
+      "precioDueno": "Precio del dueño"
+    },
+    "vacio": {
+      "recibidasTitulo": "No tienes mercancía de terceros",
+      "recibidasDescripcion": "Cuando un consignante te deje mercancía para vender, recíbela aquí. No entra a tu costo ni a tu inventario contable.",
+      "porAceptarTitulo": "Nada por aceptar",
+      "porAceptarDescripcion": "Aquí llegan las notas y liquidaciones que te envíen las organizaciones vinculadas."
+    },
+    "sinPermiso": {
+      "titulo": "No tienes permiso para ver las consignaciones",
+      "descripcion": "Pide a un administrador el permiso «Finanzas · ver». Para recibir, liquidar o aceptar notas de otra organización hacen falta además «Finanzas · crear» e «Inventario · recibir»."
+    },
+    "avisoAjena": {
+      "titulo": "La mercancía recibida no es inventario tuyo",
+      "descripcion": "Se controla físicamente como existencia del consignante y en cuentas de orden hasta que se venda o se devuelva. Al liquidar, solo tu remuneración es ingreso."
+    },
+    "condiciones": {
+      "titulo": "Condiciones del contrato",
+      "elegir": "Elige…",
+      "contrato": "Clasificación del contrato",
+      "ayudaSinContrato": "Obligatoria: define el tratamiento contable y tributario. No hay una opción por defecto.",
+      "ayudaContrato": {
+        "intermediacion": "Mandato: la mercancía y el recaudo son del dueño; el intermediario solo gana su remuneración.",
+        "estimatorio": "El consignatario adquiere lo que vende, al venderlo, por el precio estimado, y devuelve lo demás.",
+        "compra": "Compra real: no es consignación."
+      },
+      "contratos": {
+        "intermediacion": "Intermediación (mandato)",
+        "estimatorio": "Estimatorio",
+        "compra": "Compra real"
+      },
+      "compraReal": {
+        "titulo": "La compra real no es consignación",
+        "descripcion": "Hay compra desde el principio: inventario propio y obligación con el proveedor al adquirir, y costo de venta al vender. Regístrala con la factura del flujo de siempre.",
+        "accion": "Ir a la factura"
+      },
+      "precio": "Precio del dueño",
+      "precios": {
+        "fijo": "Fijo",
+        "minimo": "Mínimo"
+      },
+      "remuneracion": "Remuneración",
+      "remuneraciones": {
+        "porcentaje": "Porcentaje",
+        "precio_liquidacion": "Precio de liquidación por producto"
+      },
+      "base": "Base del porcentaje",
+      "bases": {
+        "precio_pactado": "Precio pactado",
+        "precio_venta": "Precio de venta"
+      },
+      "obligacion": "Obligación con el dueño en ventas a crédito",
+      "obligacionAyuda": "Cuándo se le debe al dueño lo vendido a crédito.",
+      "obligaciones": {
+        "venta": "Al vender",
+        "cobro": "Al cobrar"
+      },
+      "factura": "Quién factura al público",
+      "parte": {
+        "consignante": "El consignante",
+        "tu": "Tú",
+        "consignatario": "El consignatario"
+      },
+      "riesgos": {
+        "devoluciones": "Asume las devoluciones",
+        "perdidas": "Asume las pérdidas",
+        "gastos": "Asume los gastos"
+      },
+      "facturaMandatario": "En intermediación factura el mandatario (el consignatario), por cuenta del dueño, separando lo ajeno de lo propio.",
+      "impuestosPorLey": "El IVA y las retenciones no se eligen: se determinan por ley con los hechos de cada liquidación. Lo que no esté parametrizado queda como pendiente contable.",
+      "mandanteEntregadaPendiente": "En intermediación la entrega funciona; la liquidación del lado del dueño espera el criterio del Contador.",
+      "errores": {
+        "contrato": "Elige la clasificación del contrato.",
+        "compra_real": "La compra real se registra con la factura, no con una nota de consignación.",
+        "precio": "Elige si el precio del dueño es fijo o mínimo.",
+        "remuneracion": "Elige cómo se remunera.",
+        "base": "Elige la base del porcentaje.",
+        "obligacion": "Elige cuándo nace la obligación con el dueño.",
+        "riesgos": "Define quién asume devoluciones, pérdidas y gastos."
+      }
+    },
+    "validacion": {
+      "consignante": "Elige el consignante.",
+      "bodega": "Elige la bodega.",
+      "lineas": "Agrega al menos un producto.",
+      "cantidadPrecio": "Cada producto necesita cantidad y precio pactado mayores que cero.",
+      "precioLiquidacion": "Cada producto necesita un precio de liquidación mayor que cero y no mayor que el precio pactado.",
+      "cuentaRecaudo": "Debe ser un auxiliar de 8 dígitos bajo 281510.",
+      "condiciones": "Completa las condiciones del contrato.",
+      "correo": "Escribe un correo válido."
+    },
+    "recibir": {
+      "titulo": "Recibir mercancía en consignación",
+      "descripcion": "No es una compra. La mercancía sigue siendo del consignante.",
+      "confirmar": "Recibir mercancía",
+      "consignante": "Consignante",
+      "bodega": "Bodega donde la recibes",
+      "bodegaPlaceholder": "Elige la bodega",
+      "agregarProducto": "Agregar producto de consignación",
+      "buscarProducto": "Buscar producto",
+      "sinProductos": "No hay productos que coincidan",
+      "productosAparte": "Los productos en consignación van aparte de los propios: un producto con costo o movimientos propios no se puede recibir en consignación. Si no existe, créalo primero en Inventario › Productos.",
+      "quitar": "Quitar",
+      "sinLineas": "Agrega los productos que recibes.",
+      "cantidadDe": "Cantidad de {producto}",
+      "precioDe": "Precio pactado de {producto}",
+      "precioLiquidacionDe": "Precio de liquidación de {producto}",
+      "quitarDe": "Quitar {producto}",
+      "comision": "Porcentaje pactado",
+      "comisionAyuda": "Tu remuneración al liquidar, sobre la base que elegiste.",
+      "cuentaRecaudo": "Auxiliar 281510 del consignante",
+      "cuentaRecaudoAyuda": "Donde va el recaudo del dueño. Si lo dejas vacío se usa el de su última nota.",
+      "vistaPrevia": "Vista previa · cuentas de orden",
+      "avisoTitulo": "No toca tu inventario ni tu costo",
+      "aviso": {
+        "intermediacion": "Los productos entran a la bodega como existencia del consignante: se pueden vender en el POS y en la factura de siempre, pero no suman a tu inventario contable. El recaudo del dueño va a su auxiliar 281510.",
+        "estimatorio": "Los productos entran a la bodega como existencia del consignante. Lo que vendas lo adquieres al venderlo: al liquidar se crea la factura de compra de siempre, que completas con el soporte del consignante."
+      },
+      "exito": "Nota {numero} recibida de {consignante}.",
+      "motivoSerial": "Los productos con seriales no se reciben en consignación todavía.",
+      "motivoSinStock": "El producto no controla existencias."
+    },
+    "asiento": {
+      "debito": "Débito",
+      "credito": "Crédito",
+      "contraOrden": "Contrapartida del grupo 94",
+      "ordenConsignacion": "911520 En consignación",
+      "cuenta": "{cuenta} {nombre}",
+      "contraOrdenCorto": "Contrapartida de orden",
+      "ordenCorto": "En consignación",
+      "recaudoCorto": "Venta por cuenta de terceros",
+      "remuneracionCorto": "Remuneración (venta por contrata)",
+      "costoCorto": "Costo de la adquisición",
+      "d": "D {valor}",
+      "c": "C {valor}",
+      "proveedores": "2205 Proveedores (al confirmar la factura de compra)"
+    },
+    "vincular": {
+      "titulo": "Vincular con otra organización",
+      "descripcion": "Para enviar y recibir notas y liquidaciones de consignación sin volver a digitarlas.",
+      "tercero": "Tercero en tu organización",
+      "terceroAyuda": "El vínculo queda pegado a este tercero: sus notas y liquidaciones llegan con él.",
+      "correo": "Correo del administrador de la otra organización",
+      "queSeComparte": "Qué se comparte entre las dos organizaciones",
+      "comparte": {
+        "notas": "Las notas que una envíe a la otra y sus condiciones",
+        "productos": "Sus productos: nombre, referencia, cantidad y precio pactado",
+        "movimientos": "Vendido, devuelto y en poder de esas notas, y sus liquidaciones",
+        "nunca": "Clientes, otros productos, inventario, contabilidad o usuarios"
+      },
+      "si": "Sí",
+      "nunca": "Nunca",
+      "enlace": "Enlace de invitación",
+      "enlaceAyuda": "Un solo uso, vence en 7 días. Lo acepta alguien con permiso de administrador en la otra organización. Cópialo ahora: no se vuelve a mostrar.",
+      "copiar": "Copiar",
+      "copiado": "Enlace copiado.",
+      "enviar": "Crear invitación",
+      "listo": "Listo",
+      "sinGoAdminTitulo": "¿La otra organización no usa GO Admin?",
+      "sinGoAdmin": "No hace falta vincular: registra la nota a mano y envíale el PDF de la nota y de cada liquidación."
+    },
+    "devolver": {
+      "titulo": "Devolver mercancía al consignante",
+      "descripcion": "La mercancía sale de tu bodega y vuelve a {consignante}.",
+      "confirmar": "Devolver",
+      "enTuPoder": "En tu poder: {n}",
+      "cantidadDe": "Cantidad a devolver de {producto}",
+      "asiento": "Se revierte el control en cuentas de orden por lo devuelto, a precio pactado.",
+      "exito": "Devolución registrada."
+    },
+    "detalle": {
+      "subtitulo": "Recibida el {fecha} · {contrato} · {origen}",
+      "vinculada": "Vinculada en GO Admin (su nota {numero})",
+      "existencias": "Existencias del consignante",
+      "condiciones": "Condiciones del contrato",
+      "cuentasOrden": "Control en cuentas de orden",
+      "liquidaciones": "Liquidaciones ({n})",
+      "porcentajeSobre": "{pct} % sobre el {base}",
+      "asume": {
+        "dueno": "El dueño",
+        "consignatario": "El consignatario"
+      },
+      "facturaMandatario": "Tú, como mandatario, por cuenta del dueño",
+      "factura": {
+        "consignatario": "El consignatario",
+        "consignante": "El consignante"
+      },
+      "liquidacionResumen": "Venta {venta} · remuneración {remuneracion}",
+      "vinculadaTitulo": "Vinculada con {consignante}",
+      "vinculadaDescripcion": "El consignante ve de ESTA nota lo recibido, vendido, devuelto y en tu poder, y recibe tus liquidaciones. No ve tus clientes, tus otros productos, tus precios ni tu contabilidad."
+    },
+    "liquidar": {
+      "titulo": "Liquidación al consignante · {numero}",
+      "subtitulo": "{consignante} · {contrato}",
+      "miga": "Liquidación",
+      "anularUltima": "Anular la última",
+      "procesando": "Liquidando…",
+      "confirmar": "Liquidar",
+      "confirmarEstimatorio": "Liquidar y crear la factura de compra",
+      "exito": "Liquidación registrada. Saldo del dueño: {valor}.",
+      "exitoEstimatorio": "Liquidación registrada. Completa la factura de compra con el soporte del consignante ({valor}).",
+      "anulada": "Liquidación anulada.",
+      "sinVentas": "No hay ventas sin liquidar.",
+      "resumen": "Liquidación",
+      "venta": "Vendido, precio de venta (sin IVA)",
+      "pactado": "Vendido, a precio pactado",
+      "remuneracionPct": "Tu remuneración {pct} % {base}",
+      "remuneracionPrecio": "Tu remuneración (venta − precio de liquidación)",
+      "impuestos": "IVA y retenciones",
+      "porDeterminar": "Por determinar",
+      "impuestosAyuda": "Se determinan por ley con los hechos de la liquidación; quedan como pendiente contable.",
+      "saldoDueno": "Saldo para {consignante}",
+      "vistaPrevia": "Vista previa del asiento",
+      "notaIntermediacion": "Solo la remuneración es ingreso. El saldo queda en el auxiliar 281510 del dueño; nunca 2205.",
+      "notaEstimatorio": "La adquisición nace al liquidar: la factura de compra de siempre pone el costo, el IVA descontable y la cuenta por pagar.",
+      "bajoPrecioTitulo": "Venta por debajo del precio del dueño",
+      "alLiquidar": "Al liquidar",
+      "alLiquidarIntermediacion": "El saldo del dueño se le paga desde Tesorería › Dinero de terceros. Si el consignante está vinculado, la liquidación le llega a su GO Admin.",
+      "alLiquidarEstimatorio": "Se crea el borrador de la factura de compra; al confirmarla nace la cuenta por pagar, que se paga desde Cuentas por pagar (ahí se puede aplicar un anticipo a proveedor).",
+      "irDineroTerceros": "Ir a Dinero de terceros",
+      "verFacturaCompra": "Factura de compra",
+      "anularTitulo": "Anular la última liquidación",
+      "anularDescripcion": "Se registra el contra-asiento de la remuneración y lo vendido vuelve a quedar por liquidar.",
+      "anularConfirmar": "Anular liquidación"
+    },
+    "porAceptar": {
+      "tipos": {
+        "consignacion_nota": "Nota por aceptar",
+        "consignacion_liquidacion": "Liquidación recibida",
+        "consignacion_devolucion": "Devolución recibida"
+      },
+      "aceptada": "Nota {numero} recibida.",
+      "liquidacionAceptada": "Liquidación aceptada y facturada.",
+      "tituloNota": "Nota de consignación por aceptar",
+      "tituloLiquidacion": "Liquidación recibida · {numero}",
+      "subtitulo": "{de} te la envió desde GO Admin · {fecha} · su número: {numero}",
+      "estados": {
+        "enviado": "Por aceptar",
+        "aceptado": "Aceptada",
+        "rechazado": "Rechazada",
+        "anulado": "Anulada"
+      },
+      "rechazar": "Rechazar",
+      "aceptarRecibir": "Aceptar y recibir",
+      "aceptarFacturar": "Aceptar y facturar",
+      "avisoNotaTitulo": "Llegó de otra organización de GO Admin",
+      "avisoNota": "Solo ves lo que el consignante compartió en esta nota. Al aceptar, la mercancía queda en tu bodega como existencia de terceros (cuentas de orden, no inventario propio) y se puede vender en tu POS.",
+      "avisoLiquidacionTitulo": "Te la envió el consignatario",
+      "avisoLiquidacion": "Revisa lo vendido y lo devuelto. Al aceptar se hace lo mismo que «Facturar y cerrar»: tu factura de venta por lo vendido, la comisión aplicada y lo devuelto de vuelta en tu bodega. Si no coincide, recházala con el motivo.",
+      "periodicidad": "Liquidación",
+      "periodicidades": {
+        "semanal": "Semanal",
+        "quincenal": "Quincenal",
+        "mensual": "Mensual",
+        "al_vencimiento": "Al vencimiento"
+      },
+      "cantidad": "{n} und",
+      "sinPrecio": "Sin precio en la nota",
+      "tuProducto": "Tu producto en el catálogo",
+      "eligeProducto": "Elige tu producto de consignación",
+      "vinculado": "Vinculado: {producto}",
+      "sinVincular": "Sin vincular",
+      "productosAparte": "Enlaza cada producto con uno tuyo de consignación (aparte de los propios). Si no existe, créalo en Inventario › Productos; la próxima nota llegará ya vinculada.",
+      "liquidacion": "Liquidación",
+      "netoPorCobrar": "Neto por cobrar",
+      "diferencias": "Diferencias con tu nota {numero}",
+      "sinDiferencias": "Sin diferencias",
+      "sinDiferenciasDetalle": "Cantidades, precios y comisión coinciden con tu nota",
+      "tiposDiferencia": {
+        "linea_desconocida": "Una línea no corresponde a tu nota",
+        "precio_bajo_pactado": "Un precio está por debajo del pactado",
+        "excede_en_su_poder": "Lo reportado supera lo que tiene en su poder",
+        "comision_distinta": "La comisión es distinta a la de tu nota",
+        "devolucion_posterior": "Incluye devoluciones de ventas ya liquidadas"
+      },
+      "rechazarTitulo": "Rechazar con motivo",
+      "rechazarDescripcion": "El motivo le llega a {de}. No se toca nada en ninguna de las dos organizaciones.",
+      "rechazada": "Documento rechazado."
+    },
+    "invitacion": {
+      "titulo": "{invita} quiere vincularse contigo",
+      "tituloGenerico": "Invitación de vínculo",
+      "invalida": "Esta invitación no es válida",
+      "invalidaDescripcion": "Ya se usó, se revocó o el enlace está incompleto. Pide una nueva a quien te invitó.",
+      "vencida": "Esta invitación venció",
+      "vencidaDescripcion": "Las invitaciones duran 7 días. Pide una nueva a quien te invitó.",
+      "subtitulo": "Invitación del {creada} · vence el {vence}",
+      "noAdminTitulo": "Necesitas ser administrador",
+      "noAdmin": "Solo un administrador de la organización activa puede aceptar. Si administras otra organización, cámbiate a ella y vuelve a abrir el enlace.",
+      "aceptasEnNombre": "Aceptas en nombre de {organizacion}.",
+      "tercero": "{invita} es, para ti",
+      "terceroAyuda": "Se vincula a un proveedor tuyo; si no existe, créalo primero con el nombre y NIT que compartió.",
+      "queVera": "Qué verá {invita} de ti",
+      "vera": {
+        "datos": "Tu nombre, NIT y el usuario que acepta",
+        "notas": "Lo que aceptes, vendas, devuelvas y liquides de SUS notas",
+        "nunca": "Tus clientes, tus precios, tu inventario y tu contabilidad"
+      },
+      "rechazar": "Rechazar",
+      "aceptar": "Aceptar vínculo",
+      "aceptada": "Quedaste vinculado con {invita}.",
+      "rechazada": "Invitación rechazada."
+    },
+    "errores": {
+      "no_autenticado": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "sin_acceso_sucursal": "No tienes acceso a esa sucursal.",
+      "organizacion_no_permitida": "La organización no coincide con la de tu sesión.",
+      "datos_invalidos": "Revisa los datos e inténtalo de nuevo.",
+      "pendiente_de_activar": "La consignación recibida está pendiente de activar.",
+      "clasificacion_obligatoria": "Elige la clasificación del contrato: intermediación, estimatorio o compra real.",
+      "compra_real_usa_factura": "La compra real no es consignación: regístrala con la factura de compra.",
+      "terminos_invalidos": "Revisa las condiciones del contrato.",
+      "clave_idempotencia_invalida": "No se pudo identificar la operación. Vuelve a intentarlo.",
+      "clave_idempotencia_reutilizada": "Esta operación ya se registró con otros datos.",
+      "comision_invalida": "El porcentaje debe estar entre 0 y 100.",
+      "sin_lineas": "No hay nada que registrar.",
+      "linea_invalida": "Una línea tiene datos inválidos.",
+      "proveedor_no_encontrado": "No se encontró el consignante.",
+      "sucursal_invalida": "La bodega no es válida.",
+      "producto_invalido": "Un producto no es válido.",
+      "producto_sin_seguimiento": "Un producto no controla existencias.",
+      "producto_con_seriales": "Los productos con seriales no se reciben en consignación todavía.",
+      "producto_con_variantes": "Elige la variante, no el producto padre.",
+      "producto_propio_no_consignable": "Ese producto tiene costo o movimientos propios: crea un producto aparte para la mercancía del consignante.",
+      "producto_de_otro_consignante": "Ese producto ya es de consignación de otro consignante.",
+      "producto_otra_clasificacion": "Ese producto ya está en consignación con otra clasificación de contrato.",
+      "precio_liquidacion_obligatorio": "Falta el precio de liquidación (no puede superar el precio pactado).",
+      "stock_insuficiente": "No hay existencias suficientes en la bodega.",
+      "excede_en_su_poder": "La cantidad supera lo que hay en tu poder.",
+      "sin_cuenta_orden_consignacion": "Falta la cuenta 911520 «En consignación» en el plan de cuentas. Quedó como pendiente contable.",
+      "sin_cuenta_contra_orden": "Falta una cuenta de movimiento del grupo 94. Quedó como pendiente contable.",
+      "sin_cuenta_recaudo_propietario": "Falta el auxiliar de 281510 del consignante. Créalo en el plan de cuentas y elígelo al recibir. Quedó como pendiente contable.",
+      "cuenta_recaudo_invalida": "La cuenta del recaudo debe ser un auxiliar de movimiento de 8 dígitos bajo 281510.",
+      "sin_cuenta_remuneracion": "Falta el auxiliar de 8 dígitos bajo 413512 para tu remuneración. Quedó como pendiente contable.",
+      "sin_cuenta_costo": "Falta la cuenta de costo de ventas en Configuración contable. Quedó como pendiente contable.",
+      "nota_no_encontrada": "No se encontró la nota.",
+      "liquidacion_no_encontrada": "No se encontró la liquidación.",
+      "liquidacion_pendiente": "Hay una liquidación esperando su factura de compra.",
+      "liquidacion_no_es_la_ultima": "Solo se puede anular la última liquidación.",
+      "liquidacion_anulada": "La liquidación está anulada.",
+      "liquidacion_aceptada_por_el_dueno": "El dueño ya aceptó esta liquidación: se corrige con una devolución o en la próxima.",
+      "anular_factura_compra_primero": "Anula primero la factura de compra de esta liquidación.",
+      "sin_ventas_por_liquidar": "No hay ventas por liquidar.",
+      "saldo_a_favor_del_consignatario": "Las devoluciones superan lo vendido: el dueño te debe ese saldo. Regístralo con el Contador.",
+      "venta_bajo_precio_pactado": "Se vendió por debajo del precio del dueño. Revisa la venta o define con el Contador quién asume la diferencia.",
+      "devolucion_estimatorio_pendiente": "En estimatorio, la devolución de algo ya adquirido se hace con nota crédito de la factura de compra.",
+      "motivo_obligatorio": "Escribe el motivo.",
+      "documento_no_encontrado": "No se encontró el documento.",
+      "documento_no_disponible": "Este documento ya no está por aceptar.",
+      "producto_sin_vincular": "Enlaza todos los productos del consignante con uno tuyo.",
+      "vinculo_sin_proveedor": "El vínculo debe estar amarrado a un proveedor tuyo para recibir en consignación.",
+      "vinculo_no_encontrado": "No se encontró el vínculo.",
+      "vinculo_inactivo": "El vínculo está suspendido.",
+      "vinculo_existente": "Ya existe un vínculo con esa organización.",
+      "invitacion_invalida": "La invitación no es válida.",
+      "invitacion_vencida": "La invitación venció.",
+      "misma_organizacion": "No puedes vincular una organización consigo misma.",
+      "tercero_obligatorio": "Elige el tercero.",
+      "tercero_no_encontrado": "No se encontró el tercero.",
+      "correo_invalido": "El correo no es válido.",
+      "demasiadas_invitaciones": "Tienes demasiadas invitaciones pendientes.",
+      "transicion_invalida": "Esa acción no aplica en el estado actual.",
+      "factura_no_encontrada": "No se encontró la factura.",
+      "factura_distinta": "La liquidación ya tiene otra factura.",
+      "proveedor_distinto": "La factura de compra es de otro proveedor.",
+      "documento_anulado": "La factura está anulada.",
+      "factura_compra_no_creada": "La liquidación quedó registrada, pero no se pudo crear la factura de compra. Créala desde Facturas de compra.",
+      "asiento_no_creado": "No se pudo registrar el asiento. Revisa el plan de cuentas y el periodo contable.",
+      "error_desconocido": "Algo salió mal. Inténtalo de nuevo."
     }
   }
 }

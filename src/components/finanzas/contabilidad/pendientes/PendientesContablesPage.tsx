@@ -213,7 +213,7 @@ export function PendientesContablesPage({ incrustada = false }: { incrustada?: b
           { etiqueta: t('migas.contabilidad'), href: '/app/finanzas/contabilidad' },
           { etiqueta: t('titulo') },
         ]}
-        movil={{
+        movil={{ accionesEnFila: true,
           subtitulo: kpis.pendientes === null ? t('subtituloCorto') : t('movilSinContabilizar', { n: kpis.pendientes }),
         }}
         acciones={botonExportar}

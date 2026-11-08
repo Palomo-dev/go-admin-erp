@@ -253,6 +253,7 @@ export function DetalleCuentaCartera({ id, origen }: { id: string; origen: 'fina
         estado={c?.estado}
         insignias={c && c.dias > 0 && c.saldo > 0 ? <StatusBadge estado="overdue" etiqueta={t('estados.vencidaDias', { dias: c.dias })} tamano="md" /> : null}
         cargando={cargando && !datos}
+        movil={{ accionesEnFila: true }}
         acciones={
           datos ? (
             <div className="flex flex-wrap items-center gap-2">

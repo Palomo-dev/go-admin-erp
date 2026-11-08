@@ -333,6 +333,15 @@ describe('POST /api/saldos-a-favor/[id]/anular', () => {
     const r2 = await anular(peticion(url, { motivo: 'cliente desistió' }), params);
     expect(r2.status).toBe(409);
   });
+
+  test('anticipo en efectivo de una caja cerrada → 409 pago_en_caja_cerrada (el hint en español no sale al cliente)', async () => {
+    guion.errorRpc = { message: 'pago_en_caja_cerrada', details: 'El anticipo está en una caja ya cerrada' };
+    const r = await anular(peticion(url, { motivo: 'cliente desistió' }), params);
+    expect(r.status).toBe(409);
+    const cuerpo = await r.json();
+    expect(cuerpo.codigo).toBe('pago_en_caja_cerrada');
+    expect(JSON.stringify(cuerpo)).not.toContain('caja ya cerrada');
+  });
 });
 
 describe('POST /api/saldos-a-favor/[id]/devolver', () => {

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -140,8 +139,11 @@ export default function CredentialsPage() {
         }
       } else if (dialogMode === 'edit' && selectedCredential) {
         const success = await integrationsService.updateCredential(selectedCredential.id, {
-          secretRef: data.secretRef,
-          keyPrefix: data.keyPrefix,
+          // Sin valor nuevo se conserva el secreto guardado (antes se guardaba vacío). El navegador
+          // no precarga secretos (Frente INT: se ven con «Ver», auditado), así que el diálogo nunca
+          // trae el valor actual.
+          secretRef: data.secretRef ? data.secretRef : undefined,
+          keyPrefix: data.keyPrefix ? data.keyPrefix : undefined,
           expiresAt: data.expiresAt,
         });
 

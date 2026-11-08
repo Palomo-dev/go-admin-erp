@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ArrowLeftRight, ListChecks, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeftRight, ListChecks, Loader2, Sparkles, Save } from 'lucide-react';
 import { AvisoTonal } from '@/components/kit/AvisoTonal';
 import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
 import { Dialogo } from '@/components/kit/Dialogo';
@@ -260,6 +260,16 @@ export function ConfiguracionContablePage() {
         subtitulo={pestana === 'categoria' ? t('config.subtituloCategoria') : t('config.subtitulo')}
         icono={ListChecks}
         migas={[{ etiqueta: t('config.migaFinanzas'), href: '/app/finanzas' }, { etiqueta: t('config.migaContabilidad'), href: '/app/finanzas/contabilidad' }, { etiqueta: t('config.titulo') }]}
+        movil={{
+          menu:
+            pestana === 'defecto'
+              ? [
+                  { id: 'guardar', etiqueta: t('config.guardar'), icono: Save, onSelect: () => void guardar(elecciones), deshabilitada: guardando || cargando },
+                  { id: 'proponer', etiqueta: t('config.proponer'), icono: Sparkles, onSelect: () => setAsistenteAbierto(true), deshabilitada: cargando },
+                  { id: 'reclasificar', etiqueta: t('config.reclasificar.accion'), icono: ArrowLeftRight, onSelect: () => setReclasificarAbierto(true) },
+                ]
+              : [],
+        }}
         acciones={
           pestana === 'defecto' ? (
             <>

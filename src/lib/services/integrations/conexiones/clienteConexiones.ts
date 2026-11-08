@@ -63,7 +63,8 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
 const post = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) });
 
 export const apiConexiones = {
-  listar: () => pedir<{ catalogo: ItemCatalogo[]; conexiones: ConexionResumen[] }>('/api/integrations/conexiones'),
+  listar: () =>
+    pedir<{ catalogo: ItemCatalogo[]; conexiones: ConexionResumen[]; conectores: { id: string; nombre: string }[] }>('/api/integrations/conexiones'),
   detalle: (id: string) => pedir<DetalleConexion>(`/api/integrations/conexiones/${encodeURIComponent(id)}`),
   probar: (id: string) => pedir<Prueba & { proveedor: string }>(`/api/integrations/conexiones/${encodeURIComponent(id)}/probar`, { method: 'POST' }),
   guardarLlaves: (b: { proveedor: ProveedorLlaves; ambiente: Ambiente; valores: Record<string, string>; conexionId?: string | null; nombre?: string | null; sucursalId?: number | null }) =>
@@ -80,6 +81,15 @@ export const apiConexiones = {
     if (f.limite) q.set('limite', String(f.limite));
     return pedir<{ eventos: EventoResumen[]; errores: number }>(`/api/integrations/conexiones/eventos?${q.toString()}`);
   },
+  /** Valor de una credencial (administración, auditado en el servidor). Nunca se guarda en el navegador. */
+  revelarCredencial: (id: string, proposito: string) =>
+    pedir<{ proposito: string; valor: string; origen: 'registro' | 'boveda' }>(
+      `/api/integrations/conexiones/${encodeURIComponent(id)}/credenciales/revelar`,
+      post({ proposito }),
+    ),
+  eliminar: (id: string) => pedir<{ eliminada: true }>(`/api/integrations/conexiones/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  importar: (b: { conector: string; filas: { nombre: string; sucursalId?: number | null; pais?: string | null; ambiente?: string | null }[] }) =>
+    pedir<{ creadas: number; fallidas: number; errores: string[] }>('/api/integrations/conexiones/importar', post(b)),
   llavesApi: () => pedir<{ llaves: LlaveApiResumen[] }>('/api/integrations/desarrolladores/llaves'),
   crearLlaveApi: (b: { nombre: string; alcances: string[]; expira?: string | null }) =>
     pedir<{ llave: LlaveApiResumen; completa: string }>('/api/integrations/desarrolladores/llaves', post(b)),

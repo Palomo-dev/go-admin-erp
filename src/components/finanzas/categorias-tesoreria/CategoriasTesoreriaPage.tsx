@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Power, PowerOff, Tags, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Power, PowerOff, Tags, Trash2, ListPlus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -353,6 +353,9 @@ export function CategoriasTesoreriaPage() {
           { etiqueta: t('categorias.migaTesoreria'), href: '/app/finanzas/tesoreria/movimientos' },
           { etiqueta: t('categorias.migaCategorias') },
         ]}
+        movil={{
+          menu: [{ id: 'completar', etiqueta: t('categorias.completar'), icono: ListPlus, onSelect: () => void sembrar(), deshabilitada: sembrando }],
+        }}
         acciones={(
           <Button type="button" variant="outline" onClick={() => void sembrar()} disabled={sembrando}>
             {sembrando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

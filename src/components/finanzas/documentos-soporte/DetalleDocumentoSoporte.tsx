@@ -278,6 +278,7 @@ export function DetalleDocumentoSoporte({ id }: { id: string }) {
         migas={[{ etiqueta: t('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: t('migas.facturacion') }, { etiqueta: t('listado.titulo'), href: RUTA }, { etiqueta: d?.referencia ?? '…' }]}
         estado={d ? BADGE_DOCUMENTO[eDoc] : null}
         insignias={d ? <StatusBadge estado={BADGE_DIAN[eDian]} etiqueta={t(`estadoDian.${eDian}`)} tamano="md" /> : null}
+        movil={{ accionesEnFila: true }}
         acciones={botones}
         cargando={cargando && !datos}
         debajo={eslabones.length > 1 ? <CadenaDocumento eslabones={eslabones} etiqueta={t('detalle.cadena')} /> : undefined}

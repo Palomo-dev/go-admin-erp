@@ -1,0 +1,64 @@
+Resultado de 05_tributario_borrador_iva.sql
+Corrida: 2026-11-07 (19:21 hora de Bogotá), proyecto taqjemqjtumhwptchcxk, org 374, periodo 2026-11-01 a 2026-11-30.
+Transacción revertida (rollback): no quedó ningún documento ni asiento. Los ids de asiento cambian en cada corrida.
+28 verificaciones · 28 ok.
+Aclaración honesta: en la corrida, la fila 18 salió «false» porque la expectativa escrita decía «6 documentos». El error era
+de la prueba, no de la función: V4 se revirtió dentro del mes y por diseño queda fuera, así que son 5 (FC, FV, V1, V2, V3).
+El script ya dice 5; el valor obtenido de la función fue el mismo.
+
+Documentos de prueba: FC compra (19 % y 5 %) · FV factura de venta 19 % · V1 POS 19 % + línea tarifa 0 · V2 POS con IVA en la
+línea y tarifa 0 · V3 POS cuyas líneas (38.000) no cuadran con el IVA de la venta (30.000) · V4 POS revertida en el mes ·
+AJ asiento manual D 24080501 10.000 / C 1110.
+
+── Asientos generados por los propios disparadores de la aplicación (todos cuadran; además se forzó la verificación
+   de cuadre de la base con SET CONSTRAINTS ALL IMMEDIATE y no hubo error) ──
+3  | 956 FC  invoice_purchase | 14350101 D 1.200.000 | 24080502 D 200.000 | 22050501 C 1.400.000
+4  | 957 FV  invoice_sales    | 1305 D 357.000 | 24080502 C 57.000 | 41401501 C 300.000
+5  | 958 V1  sales            | 1305 D 645.000 | 24080502 C 95.000 | 41401501 C 550.000
+6  | 959 V2  sales            | 1305 D 119.000 | 24080502 C 19.000 | 41401501 C 100.000
+7  | 960 V3  sales            | 1305 D 230.000 | 24080502 C 30.000 | 41401501 C 200.000
+8  | 961 V4  sales            | 1305 D 119.000 | 24080502 C 19.000 | 41401501 C 100.000
+9  | 962 V4-contra reversal   | 1305 C 119.000 | 24080502 D 19.000 | 41401501 D 100.000
+10 | 963 AJ  manual           | 24080501 D 10.000 | 1110 C 10.000
+2  | Subcuentas 2408 usadas: 24080501 «IVA generado 19%» y 24080502 «IVA generado 5%» → Hallazgo H1 (el IVA descontable de
+   | la compra y el IVA al 19 % de las ventas cayeron en «IVA generado 5%»).
+
+── Renglones del borrador (respuesta de fn_tributario_borrador_iva) ──
+11 | generado    · gravadas 19 %            | base 800.000 · valor 152.000 · ok      · asientos FV, V1   | ok
+12 | generado    · sin IVA (tarifa 0)       | base 50.000  · valor 0       · revisar · asiento V1        | ok
+13 | generado    · tarifa sin identificar   | base 100.000 · valor 19.000  · revisar · asiento V2        | ok
+14 | generado    · no cuadra                | base 200.000 · valor 30.000  · revisar · asiento V3        | ok
+15 | descontable · gravadas 19 %            | base 1.000.000 · valor 190.000 · ok    · asiento FC        | ok
+16 | descontable · gravadas 5 %             | base 200.000 · valor 10.000  · ok      · asiento FC        | ok
+17 | otros       · otros movimientos 2408   | valor −10.000 · revisar · asiento AJ                         | ok
+18 | Totales: IVA generado 201.000 · descontable 200.000 · saldo 1.000 · otros −10.000 · 5 documentos · 4 por revisar | ok
+19 | V4 y su contra-asiento: no aparecen en ningún renglón                                                 | ok
+20 | Cuentas que reporta: ["24080501", "24080502"]                                                         | ok
+
+── Reconciliación con SELECT directo sobre journal_lines ──
+1  | Libro 2408 por origen (crédito − débito): invoice_purchase −200.000 · invoice_sales 57.000 · manual −10.000 ·
+   | reversal −19.000 · sales 163.000                                                                      | ok
+21 | Neto del libro 2408 = −9.000 = generado 201.000 − descontable 200.000 + otros (−10.000)               | ok
+22 | Suma de renglones por lado = su total: generado 201.000 · descontable 200.000                         | ok
+
+── Controles ──
+23 | «hasta» antes de «desde»                    | PERIODO_INVALIDO                                         | ok
+24 | Periodo de más de 366 días                  | PERIODO_INVALIDO                                         | ok
+25 | Función de solo lectura                     | STABLE                                                   | ok
+26 | Miembro con rol «Empleado» (sin finance.view) | SIN_PERMISO                                            | ok
+27 | No miembro de la 374                        | Acceso denegado a la organización                        | ok
+28 | anon                                        | permission denied for function fn_tributario_borrador_iva | ok
+
+── Respuesta completa (JSON) ──
+{"cuentas": ["24080501", "24080502"], "periodo": {"zona": "America/Bogota", "desde": "2026-11-01", "hasta": "2026-11-30"},
+ "totales": {"saldo": 1000.00, "documentos": 5, "por_revisar": 4, "iva_generado": 201000.00, "iva_descontable": 200000.00,
+             "otros_movimientos": -10000.00},
+ "renglones": [
+  {"base": 800000.00, "lado": "generado", "clave": "gravadas", "valor": 152000.00, "estado": "ok", "tarifa": 19.0000, "asientos": [957, 958], "total_asientos": 2, "total_documentos": 2},
+  {"base": 50000.00, "lado": "generado", "clave": "sin_iva", "valor": 0.00, "estado": "revisar", "tarifa": null, "asientos": [958], "total_asientos": 1, "total_documentos": 1},
+  {"base": 100000.00, "lado": "generado", "clave": "tarifa_sin_identificar", "valor": 19000.00, "estado": "revisar", "tarifa": null, "asientos": [959], "total_asientos": 1, "total_documentos": 1},
+  {"base": 200000.00, "lado": "generado", "clave": "no_cuadra", "valor": 30000.00, "estado": "revisar", "tarifa": null, "asientos": [960], "total_asientos": 1, "total_documentos": 1},
+  {"base": 1000000.00, "lado": "descontable", "clave": "gravadas", "valor": 190000.00, "estado": "ok", "tarifa": 19.0000, "asientos": [956], "total_asientos": 1, "total_documentos": 1},
+  {"base": 200000.00, "lado": "descontable", "clave": "gravadas", "valor": 10000.00, "estado": "ok", "tarifa": 5.0000, "asientos": [956], "total_asientos": 1, "total_documentos": 1},
+  {"base": null, "lado": "otros", "clave": "otros_movimientos", "valor": -10000.00, "estado": "revisar", "tarifa": null, "asientos": [963], "total_asientos": 1, "total_documentos": 0}],
+ "calculado_en": "2026-11-08T00:21:33.287006+00:00"}

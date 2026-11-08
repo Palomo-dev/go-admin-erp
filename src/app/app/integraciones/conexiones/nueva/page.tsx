@@ -87,6 +87,18 @@ const initialWizardData: WizardData = {
   },
 };
 
+/** Valores no vacíos del JSON de credenciales del formulario (tolerante a JSON inválido). */
+function valoresNoVacios(json: string | undefined): Record<string, string> {
+  try {
+    const obj = JSON.parse(json || '{}') as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(obj).filter(([, v]) => typeof v === 'string' ? v.trim() !== '' : v != null && typeof v !== 'object'),
+    ) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
 export default function NuevaConexionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -112,6 +124,9 @@ export default function NuevaConexionPage() {
   const [wizardData, setWizardData] = useState<WizardData>(initialWizardData);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [existingConnection, setExistingConnection] = useState<IntegrationConnection | null>(null);
+  // Propósitos de las credenciales activas de la conexión que se edita. El navegador ya no lee los
+  // secretos (Frente INT): en edición, dejar los campos vacíos conserva los guardados.
+  const [credencialesGuardadas, setCredencialesGuardadas] = useState<string[]>([]);
 
   // Datos auxiliares
   const [providers, setProviders] = useState<IntegrationProvider[]>([]);
@@ -193,7 +208,7 @@ export default function NuevaConexionPage() {
           const provider = connector ? providersData.find((p) => p.id === connector.provider_id) : null;
 
           // Cargar credenciales existentes de la conexión
-          let loadedSecretRef = '{}';
+          const loadedSecretRef = '{}';
           let loadedPurpose: 'primary' | 'backup' | 'rotation' | 'legacy' = 'primary';
           let loadedExpiresAt: string | undefined;
 
@@ -203,19 +218,12 @@ export default function NuevaConexionPage() {
             const multiKeyProviders = ['wompi', 'mercadopago', 'payu', 'stripe', 'paypal', 'sendgrid', 'whatsapp', 'booking', 'expedia', 'bancolombia', 'breb', 'redeban', 'bold'];
             const providerCode = provider?.code || '';
 
-            if (multiKeyProviders.includes(providerCode)) {
-              // Reconstruir el JSON a partir de registros individuales
-              // Para estos proveedores, 'purpose' actúa como el nombre del campo
-              const secretObj: Record<string, string> = {};
-              for (const cred of existingCreds) {
-                // El purpose contiene el nombre del campo (public_key, private_key, etc.)
-                secretObj[cred.purpose] = cred.secret_ref;
-              }
-              loadedSecretRef = JSON.stringify(secretObj);
-            } else {
-              // Proveedor genérico: un solo registro con JSON en secret_ref
+            // Los secretos NO se precargan en el formulario (se ven con «Ver» en el detalle, por el
+            // servidor y con auditoría): el formulario queda
+            // vacío y, si no se escribe nada, las credenciales guardadas se conservan.
+            setCredencialesGuardadas(existingCreds.filter((c) => c.status === 'active').map((c) => c.purpose));
+            if (!multiKeyProviders.includes(providerCode)) {
               const primaryCred = existingCreds.find(c => c.purpose === 'primary') || existingCreds[0];
-              loadedSecretRef = primaryCred.secret_ref || '{}';
               loadedPurpose = primaryCred.purpose;
               loadedExpiresAt = primaryCred.expires_at;
             }
@@ -313,7 +321,8 @@ export default function NuevaConexionPage() {
         case 2:
           return !!wizardData.connectionName.trim();
         case 3:
-          return !!wizardData.credentials.secret_ref && wizardData.credentials.secret_ref !== '{}';
+          // En edición, sin valores nuevos se conservan las credenciales guardadas.
+          return mode === 'edit' || (!!wizardData.credentials.secret_ref && wizardData.credentials.secret_ref !== '{}');
         default:
           return false;
       }
@@ -699,6 +708,23 @@ export default function NuevaConexionPage() {
   const handleSave = async () => {
     if (!organizationId || !wizardData.connector) return;
 
+    // Credenciales escritas en el formulario (sin vacías). En edición, vacío = conservar; y si se
+    // escribe alguna, deben venir todas las que ya existían: los servicios reemplazan el juego
+    // completo y un campo vacío borraría una llave que hoy cobra (Frente INT).
+    const credencialesNuevas = valoresNoVacios(wizardData.credentials.secret_ref);
+    const hayCredencialesNuevas = Object.keys(credencialesNuevas).length > 0;
+    if (mode === 'edit' && hayCredencialesNuevas) {
+      const faltan = credencialesGuardadas.filter((p) => p !== 'primary' && !credencialesNuevas[p]);
+      if (faltan.length > 0) {
+        toast({
+          title: 'Faltan credenciales',
+          description: `Para reemplazar las credenciales escribe todas: ${faltan.join(', ')}. Si no quieres cambiarlas, deja los campos vacíos.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       let connectionId: string;
@@ -749,7 +775,7 @@ export default function NuevaConexionPage() {
       }
 
       // Guardar las credenciales (solo si se proporcionaron nuevas)
-      if (wizardData.credentials.secret_ref && wizardData.credentials.secret_ref !== '{}') {
+      if (hayCredencialesNuevas) {
         const parsedCreds = JSON.parse(wizardData.credentials.secret_ref);
 
         if (wizardData.provider?.code === 'wompi') {

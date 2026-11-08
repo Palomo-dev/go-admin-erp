@@ -6,6 +6,8 @@ import { ArrowLeft, Loader, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { Breadcrumbs, type Miga } from './Breadcrumbs';
+import { RowActionsMenu } from './RowActionsMenu';
+import type { AccionFila } from './acciones';
 import { useKitT } from './useIdiomaKit';
 
 /**
@@ -25,6 +27,18 @@ import { useKitT } from './useIdiomaKit';
 export interface PageHeaderMovil {
   /** Acción a la derecha del MobileHeader: «+», «⋯», «Guardar». */
   accion?: ReactNode;
+  /**
+   * Atajo para el caso común: las acciones de `acciones` (que en móvil NO se
+   * ven) como lista; se pintan como «⋯» en el MobileHeader. Si hay `accion`,
+   * gana `accion`. Guardarraíl: `src/__tests__/finanzas/accionesMovil.test.ts`.
+   */
+  menu?: readonly AccionFila[];
+  /**
+   * Repite `acciones` tal cual en una fila bajo el MobileHeader (solo < lg).
+   * Para cabeceras compartidas que reciben `acciones` como nodo (informes,
+   * tributario): los mismos botones, sin reescribirlos como lista.
+   */
+  accionesEnFila?: boolean;
   /** Por defecto, el título y el subtítulo (si es texto) de la cabecera. */
   titulo?: string;
   subtitulo?: string;
@@ -105,7 +119,12 @@ export function PageHeader({
         <PublicarCabeceraMovil
           titulo={movil.titulo ?? titulo}
           subtitulo={movil.subtitulo ?? (typeof subtitulo === 'string' ? subtitulo : undefined)}
-          accion={movil.accion}
+          accion={
+            movil.accion ??
+            (movil.menu && movil.menu.some((a) => !a.oculta) ? (
+              <RowActionsMenu acciones={movil.menu} orientacion="horizontal" titulo={movil.titulo ?? titulo} />
+            ) : undefined)
+          }
           ocultarBarra={movil.ocultarBarra}
           onTitulo={movil.onTitulo}
           tituloAria={movil.tituloAria}
@@ -174,6 +193,10 @@ export function PageHeader({
           {acciones && <div className="flex shrink-0 flex-wrap items-center gap-2">{acciones}</div>}
         </div>
       </header>
+
+      {integrarMovil && movil.accionesEnFila && acciones && (
+        <div className="flex flex-wrap items-center gap-2 lg:hidden">{acciones}</div>
+      )}
 
       {debajo && <div className="flex flex-wrap items-center gap-2">{debajo}</div>}
     </div>

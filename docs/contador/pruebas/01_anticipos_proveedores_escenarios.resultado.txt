@@ -1,0 +1,50 @@
+Resultado de 01_anticipos_proveedores_escenarios.sql
+Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374, sucursal 585. Transacción revertida (rollback): no quedó ningún dato.
+Usuario simulado: miembro activo de la org 374 (rol «authenticated»). Ids de asiento y de anticipo cambian en cada corrida.
+39 verificaciones · 39 ok · 0 fallas.
+
+n  | esc | verificación                                              | obtenido                                                                                             | ok
+---+-----+-----------------------------------------------------------+------------------------------------------------------------------------------------------------------+---
+1  | a   | Respuesta de fn_anticipo_proveedor_crear                  | monto 1000000.00, recibo CE-0001, repetida false, asiento_id 912, payment_id y anticipo_id devueltos  | ok
+2  | a   | Asiento del anticipo                                      | 1330 D 1000000 C 0 tercero 900000001 | 1110 D 0 C 1000000 tercero 900000001                           | ok
+3  | a   | Saldo por proveedor A (supplier_advances)                 | 1000000.00 / 1000000.00 / active / cuenta 1330; saldo A = 1000000.00                                 | ok
+4  | a   | Movimiento de dinero                                      | pagos supplier_advance=1 (por -1.000.000); pagos a factura/CxP=0                                     | ok
+5  | a   | No se convierte en compra ni gasto                        | facturas 1→1; CxP 1→1; aplicaciones 0; líneas 5/6/7/14/22 = 0; saldo CxP 1190000.00                  | ok
+6  | b   | Repetir crear con la misma clave                          | repetida=true; mismo id=t; anticipos A=1; asientos=1; pagos=1                                        | ok
+7  | b   | Misma clave con otro monto                                | clave_idempotencia_reutilizada                                                                       | ok
+8  | c   | Respuesta de fn_anticipo_proveedor_aplicar (400.000)      | saldo_disponible 600000.00, saldo_cuenta 790000.00, estado_cuenta partial, asiento_id 913            | ok
+9  | c   | Saldos tras aplicar                                       | anticipo 600000.00 / active; CxP 790000.00 / partial; factura 790000.00                              | ok
+10 | c   | El usuario no puede llamar fn_invoice_purchase_paid       | permission denied for function fn_invoice_purchase_paid                                              | ok
+11 | c   | El usuario no puede llamar fn_cxp_recalcular              | permission denied for function fn_cxp_recalcular                                                     | ok
+12 | c   | Asiento de la aplicación                                  | 22050501 D 400000 C 0 tercero 900000001 | 1330 D 0 C 400000 tercero 900000001                        | ok
+13 | c   | Repetir la aplicación con la misma clave                  | repetida=true; aplicaciones=1; asientos=1; CxP=790000.00                                             | ok
+14 | d   | Aplicar 700.000 con saldo de anticipo 600.000             | monto_excede_anticipo; anticipo 600000.00; CxP 790000.00                                             | ok
+15 | d   | Aplicar 800.000 a una CxP con saldo 790.000 (A2 de 900k)  | monto_excede_saldo; A2 900000.00                                                                     | ok
+16 | d   | Aplicar 0                                                 | monto_invalido                                                                                       | ok
+17 | g   | Saldo por proveedor (tabla) y auxiliar 1330 por tercero   | tabla: A=1500000.00, B=250000.00; auxiliar 1330: 900000001 = 1500000; 900000002 = 250000             | ok
+18 | g   | Aplicar el anticipo de B a la CxP de A                    | proveedor_distinto                                                                                   | ok
+19 | e   | Asiento de la devolución (600.000)                        | 1110 D 600000 C 0 tercero 900000001 | 1330 D 0 C 600000 tercero 900000001                            | ok
+20 | e   | Saldo del anticipo y pago de entrada                      | A1 0.00 / used; pagos de devolución=1 (por +600.000)                                                 | ok
+21 | e   | Repetir la devolución con la misma clave                  | repetida=true; asientos=1                                                                            | ok
+22 | e   | Devolver otra vez sobre un anticipo en 0                  | anticipo_no_disponible                                                                               | ok
+23 | f   | Anular A2 (sin usar)                                      | asiento_revertido 914, contra_asiento 917; A2 0.00 / cancelled; pago void                            | ok
+24 | f   | Contra-asiento de la anulación                            | 1110 D 900000 C 0 tercero 900000001 | 1330 D 0 C 900000 tercero 900000001                            | ok
+25 | f   | Anular A1 (aplicado y devuelto)                           | anticipo_usado                                                                                       | ok
+26 | f   | Anular A2 por segunda vez                                 | anticipo_no_disponible                                                                               | ok
+27 | f   | Aplicar un anticipo anulado                               | anticipo_no_disponible                                                                               | ok
+28 | g   | Saldos finales por proveedor                              | tabla: A=0.00, B=250000.00; auxiliar 1330: 900000001 = 0; 900000002 = 250000                         | ok
+29 | g   | CxP de la factura al final                                | 790000.00 / partial                                                                                  | ok
+30 | h   | Asiento 912 · supplier_advance (CE-0001)                  | D 1000000.00 = C 1000000.00; 1330 D 1000000 | 1110 C 1000000                                         | ok
+31 | h   | Asiento 913 · supplier_advance_application                | D 400000.00 = C 400000.00; 22050501 D 400000 | 1330 C 400000                                         | ok
+32 | h   | Asiento 914 · supplier_advance (CE-0002)                  | D 900000.00 = C 900000.00; 1330 D 900000 | 1110 C 900000                                             | ok
+33 | h   | Asiento 915 · supplier_advance (CE-0003)                  | D 250000.00 = C 250000.00; 1330 D 250000 | 1110 C 250000                                             | ok
+34 | h   | Asiento 916 · supplier_advance_refund                     | D 600000.00 = C 600000.00; 1110 D 600000 | 1330 C 600000                                             | ok
+35 | h   | Asiento 917 · reversal (anulación de A2, revierte el 914) | D 900000.00 = C 900000.00; 1330 C 900000 | 1110 D 900000                                             | ok
+36 | h   | Número de asientos generados por las operaciones          | 6                                                                                                    | ok
+37 | c   | fn_invoice_purchase_paid(factura) al final (como admin)   | 400000.00 (neto a pagar 1190000.00, saldo 790000.00)                                                 | ok
+38 | c   | fn_cxp_recalcular(CxP) vuelto a correr (como admin)       | 790000.00 / partial                                                                                  | ok
+39 | c   | Permiso de ejecución de las funciones internas            | authenticated: f / f; anon: f / f                                                                    | ok
+
+Nota sobre el dato de apoyo: la factura de compra PRUEBA-FC-001 (creada dentro de la transacción) generó su propio asiento de
+compra: 14350101 D 1.000.000 · 24080502 D 190.000 · 22050501 C 1.190.000. El IVA descontable cayó en 24080502 («IVA generado
+5 %»): ver «Hallazgo H1» en la nota técnica. No es una operación del anticipo.

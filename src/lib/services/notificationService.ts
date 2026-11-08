@@ -345,10 +345,12 @@ export class NotificationService {
     html?: string,
     text?: string,
     templateId?: string,
-    templateData?: Record<string, unknown>
+    templateData?: Record<string, unknown>,
+    /** Cliente del SERVIDOR (service role): las credenciales no se leen con la sesión del usuario. */
+    client: SupabaseClient = supabase
   ): Promise<boolean> {
     try {
-      const { credentials } = await sendgridService.getCredentialsByOrganization(organizationId);
+      const { credentials } = await sendgridService.getCredentialsByOrganization(organizationId, client);
 
       if (!credentials) {
         console.warn('[Notifications] No hay conexión SendGrid activa para org:', organizationId);
@@ -397,8 +399,9 @@ export class NotificationService {
       const orgId = organizationId || getOrganizationId();
       if (!orgId) return { processed: 0, sent: 0, failed: 0 };
 
-      // Verificar que haya conexión SendGrid antes de procesar
-      const { credentials } = await sendgridService.getCredentialsByOrganization(orgId);
+      // Verificar que haya conexión SendGrid antes de procesar. Las credenciales se leen con el
+      // cliente del llamador (la ruta pasa service role): el navegador no lee secretos (Frente INT).
+      const { credentials } = await sendgridService.getCredentialsByOrganization(orgId, client);
       if (!credentials) {
         console.warn('[Notifications] No hay conexión SendGrid para org:', orgId);
         return { processed: 0, sent: 0, failed: 0 };

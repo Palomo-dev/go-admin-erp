@@ -1,0 +1,18 @@
+Prueba en seco 08 · H2 responsabilidades del RUT por vigencia · 2026-11-07 · org 374
+Migración 20261108140500_responsabilidades_fiscales_en.sql pegada DENTRO de la transacción (no aplicada) · ROLLBACK: no quedó ningún dato.
+Resultado: 12 de 12 OK.
+
+ n | verificación                                                        | esperado                                         | obtenido                                                    | ok
+---+---------------------------------------------------------------------+--------------------------------------------------+-------------------------------------------------------------+----
+ 1 | Sin perfil: hoy y 2027-01-01                                        | {O-13} (organizations.fiscal_responsibilities)   | {O-13} · {O-13}                                             | ✔
+ 2 | Con perfil, fecha 2025-12-31 (antes de la primera vigencia)         | {O-13}                                           | {O-13}                                                      | ✔
+ 3 | Con perfil, fecha 2026-01-01                                        | {O-48,O-23}                                      | {O-48,O-23}                                                 | ✔
+ 4 | Con perfil, fecha 2026-11-07                                        | {O-48,O-23}                                      | {O-48,O-23}                                                 | ✔
+ 5 | Con perfil, fecha 2026-12-31                                        | {O-48,O-23}                                      | {O-48,O-23}                                                 | ✔
+ 6 | Con perfil, fecha 2027-01-01 (la vigencia nueva rige sola)          | {O-47}                                           | {O-47}                                                      | ✔
+ 7 | Con perfil, fecha 2027-06-30                                        | {O-47}                                           | {O-47}                                                      | ✔
+ 8 | Fecha NULL = hoy en la zona de la organización                      | {O-48,O-23} (2026)                               | {O-48,O-23}                                                 | ✔
+ 9 | organizations.fiscal_responsibilities no cambia (la función solo lee) | {O-13}                                         | {O-13}                                                      | ✔
+10 | Miembro de la org 374 (sesión, RLS): 2027-01-01                     | {O-47}                                           | {O-47}                                                      | ✔
+11 | Usuario que no es miembro (RLS)                                     | NULL (no ve nada)                                | NULL                                                        | ✔
+12 | anon (clave pública)                                                | 42501 permission denied                          | 42501 permission denied for function fn_responsabilidades_fiscales_en | ✔

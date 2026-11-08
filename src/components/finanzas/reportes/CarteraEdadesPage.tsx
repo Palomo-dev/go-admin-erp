@@ -183,7 +183,7 @@ export function CarteraEdadesPage() {
           { etiqueta: t('migas.informes'), href: '/app/finanzas/reportes' },
           { etiqueta: t('titulo') },
         ]}
-        movil={{ subtitulo: corte ? t('corteMovil', { fecha: formatPlain(corte) }) : undefined }}
+        movil={{ accionesEnFila: true, subtitulo: corte ? t('corteMovil', { fecha: formatPlain(corte) }) : undefined }}
         acciones={
           <>
             <button type="button" onClick={() => void exportarExcel()} disabled={sinDatos} className={clasesBoton({ variante: 'secundario' })}>

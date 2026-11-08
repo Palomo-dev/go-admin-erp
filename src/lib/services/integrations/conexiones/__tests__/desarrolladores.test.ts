@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import { crearBaseFalsa } from './baseFalsa';
 import {
   crearLlave,
+  crearLookupSeguro,
+  enviarConIpFijada,
   firmarCuerpo,
   generarLlaveApi,
   generarSecretoWebhook,
@@ -97,5 +99,34 @@ describe('probarWebhookSaliente', () => {
     const fetchImpl = jest.fn();
     await expect(probarWebhookSaliente(b.db, 8, ID, { fetchImpl: fetchImpl as unknown as typeof fetch })).rejects.toMatchObject({ status: 404 });
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});
+
+describe('DNS rebinding', () => {
+  const lookupComo = (resolver: (h: string) => Promise<string[]>, all = false) =>
+    new Promise<{ err: unknown; dir: unknown; fam?: unknown }>((ok) =>
+      (crearLookupSeguro(resolver) as unknown as (h: string, o: object, cb: (e: unknown, d?: unknown, f?: unknown) => void) => void)(
+        'erp.ejemplo.co',
+        { all },
+        (err, dir, fam) => ok({ err, dir, fam }),
+      ),
+    );
+
+  it('la conexión usa la IP validada (pública) y nada más', async () => {
+    expect(await lookupComo(async () => ['8.8.8.8'])).toMatchObject({ err: null, dir: '8.8.8.8', fam: 4 });
+    expect(await lookupComo(async () => ['8.8.8.8'], true)).toMatchObject({ err: null, dir: [{ address: '8.8.8.8', family: 4 }] });
+  });
+
+  it('si el DNS cambia a una IP interna al conectar, la conexión se rechaza', async () => {
+    const r = await lookupComo(async () => ['169.254.169.254']);
+    expect(r.err).toMatchObject({ code: 'EDESTINO_PRIVADO' });
+    const mezcla = await lookupComo(async () => ['8.8.8.8', '10.0.0.1']);
+    expect(mezcla.err).toMatchObject({ code: 'EDESTINO_PRIVADO' });
+  });
+
+  it('el envío real falla antes de conectar si el nombre resuelve a una IP privada', async () => {
+    await expect(
+      enviarConIpFijada(new URL('https://interno.ejemplo.co/x'), { headers: {}, body: '{}', signal: new AbortController().signal }, async () => ['127.0.0.1']),
+    ).rejects.toMatchObject({ code: 'EDESTINO_PRIVADO' });
   });
 });

@@ -27,15 +27,20 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { buscarProductosDocumento, type ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
 import { nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import { CondicionesContratoCampos } from '@/components/inventario/consignaciones/CondicionesContratoCampos';
+import { CONDICIONES_VACIAS, terminosDeCondiciones, validarCondiciones, type CondicionesContrato } from '@/lib/inventario/consignaciones/recibidas';
 import { consignacionesService } from './consignacionesService';
 
 const NS = 'finanzasTercerosR4.consignaciones';
+const NS_R4 = 'consignacionesR4';
 
 interface LineaNueva {
   productoId: number;
   nombre: string;
   stock: number | null;
   cantidad: number | null;
+  /** Precio del dueño (sin IVA), opcional: lo ve el consignatario vinculado. */
+  precio: number | null;
 }
 
 export interface NuevaNotaConsignacionDialogProps {
@@ -48,7 +53,9 @@ export interface NuevaNotaConsignacionDialogProps {
 
 export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaConsignacion, onEntregada }: NuevaNotaConsignacionDialogProps) {
   const t = useTranslations(NS);
+  const tr = useTranslations(NS_R4);
   const moneda = useMonedaOrganizacion();
+  const [condiciones, setCondiciones] = useState<CondicionesContrato>(CONDICIONES_VACIAS);
   const { branches, selectedBranchId, branchFilter } = useBranch();
   const [sucursal, setSucursal] = useState<number | null>(null);
   const [cliente, setCliente] = useState<ClienteDocumento | null>(null);
@@ -70,6 +77,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
     setUbicacionTocada(false);
     setComision(null);
     setLineas([]);
+    setCondiciones(CONDICIONES_VACIAS);
     setTocado(false);
     setError(null);
     clave.current = nuevaClaveIdempotencia('consignacion');
@@ -131,7 +139,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
   );
 
   const agregar = (p: ProductoParaDocumento) => {
-    setLineas((ls) => (ls.some((l) => l.productoId === p.id) ? ls : [...ls, { productoId: p.id, nombre: p.nombre, stock: p.stock, cantidad: 1 }]));
+    setLineas((ls) => (ls.some((l) => l.productoId === p.id) ? ls : [...ls, { productoId: p.id, nombre: p.nombre, stock: p.stock, cantidad: 1, precio: null }]));
   };
 
   const costoEstimado = lineas.reduce((s, l) => s + (l.cantidad ?? 0) * (costos.get(l.productoId) ?? 0), 0);
@@ -142,6 +150,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
     cantidades: lineas.some((l) => !(l.cantidad && l.cantidad > 0)) ? t('validacion.cantidad') : null,
     excede: lineas.some((l) => l.stock != null && (l.cantidad ?? 0) > l.stock) ? t('validacion.excedeStock') : null,
     comision: comision !== null && (comision < 0 || comision > 100) ? t('validacion.comision') : null,
+    condiciones: validarCondiciones(condiciones).length > 0 ? tr('validacion.condiciones') : null,
   };
   const hayErrores = Object.values(errores).some(Boolean);
 
@@ -154,10 +163,11 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
       const r = await consignacionesService.entregar({
         clienteId: cliente.id,
         sucursalId: sucursal,
-        comision: comision ?? 0,
+        comision: condiciones.remuneracionModo === 'precio_liquidacion' ? 0 : (comision ?? 0),
+        terminos: terminosDeCondiciones(condiciones),
         ubicacion,
         notas: '',
-        lineas: lineas.map((l) => ({ product_id: l.productoId, qty: l.cantidad ?? 0 })),
+        lineas: lineas.map((l) => ({ product_id: l.productoId, qty: l.cantidad ?? 0, precio: l.precio })),
         claveIdempotencia: clave.current,
       });
       toastSuccess(t('nueva.exito', { numero: r.numero, consignatario: cliente.nombre }));
@@ -178,9 +188,26 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
       descripcion={t('nueva.descripcion')}
       icono={PackagePlus}
       ancho={672}
-      primario={{ etiqueta: t('nueva.confirmar'), onClick: () => void entregar(), cargando: enviando }}
+      primario={{ etiqueta: t('nueva.confirmar'), onClick: () => void entregar(), cargando: enviando, deshabilitada: condiciones.contrato === 'compra' }}
     >
       <div className="flex flex-col gap-4">
+        <CondicionesContratoCampos
+          valor={condiciones}
+          onCambio={setCondiciones}
+          tocado={tocado}
+          direccion="entregada"
+          rutaCompraReal="/app/finanzas/facturas-venta/nuevo"
+        />
+        {condiciones.contrato === 'intermediacion' && (
+          <p role="note" className="text-xs text-warning-text">
+            {tr('condiciones.mandanteEntregadaPendiente')}
+          </p>
+        )}
+        {tocado && errores.condiciones && (
+          <p role="alert" className="text-xs text-danger-text">
+            {errores.condiciones}
+          </p>
+        )}
         <div className="flex flex-col gap-1">
           <ElegirCliente layout="campo" cliente={cliente} sucursal={sucursal} onCambiar={setCliente} onQuitar={() => setCliente(null)} />
           {tocado && errores.cliente && (
@@ -236,6 +263,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
               <tr>
                 <th className="px-3 py-2">{t('columnas.producto')}</th>
                 <th className="w-32 px-3 py-2 text-right">{t('columnas.cantidad')}</th>
+                <th className="w-36 px-3 py-2 text-right">{tr('columnas.precioDueno')}</th>
                 <th className="w-36 px-3 py-2 text-right">{t('columnas.costo')}</th>
                 <th className="w-10 px-2 py-2">
                   <span className="sr-only">{t('nueva.quitar')}</span>
@@ -245,7 +273,7 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
             <tbody>
               {lineas.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-4 text-center text-fg-muted">
+                  <td colSpan={5} className="px-3 py-4 text-center text-fg-muted">
                     {t('nueva.sinLineas')}
                   </td>
                 </tr>
@@ -263,6 +291,17 @@ export function NuevaNotaConsignacionDialog({ abierto, onAbiertoChange, cuentaCo
                       onValorChange={(v) => setLineas((ls) => ls.map((x) => (x.productoId === l.productoId ? { ...x, cantidad: v } : x)))}
                       minimo={0}
                       decimales={3}
+                      alinear="derecha"
+                      tamano="sm"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <CampoNumero
+                      aria-label={tr('recibir.precioDe', { producto: l.nombre })}
+                      valor={l.precio}
+                      onValorChange={(v) => setLineas((ls) => ls.map((x) => (x.productoId === l.productoId ? { ...x, precio: v } : x)))}
+                      minimo={0}
+                      decimales={2}
                       alinear="derecha"
                       tamano="sm"
                     />

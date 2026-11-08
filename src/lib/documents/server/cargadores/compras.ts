@@ -342,7 +342,8 @@ export async function cargarDocumentoSoporte(
 
   const cuds = texto(d.cufe);
   const [base, moneda, entorno, proveedorRes, compraRes] = await Promise.all([
-    cargarBase(sesion, d.branch_id),
+    // H2: responsabilidades del RUT del emisor vigentes en la fecha del documento soporte.
+    cargarBase(sesion, d.branch_id, { fechaDocumento: d.issue_date ?? d.created_at ?? null }),
     resolverContextoMoneda(sesion.supabase, sesion.organizationId, d.currency),
     cuds ? entornoFacturacion(sesion) : Promise.resolve('produccion' as const),
     d.supplier_id

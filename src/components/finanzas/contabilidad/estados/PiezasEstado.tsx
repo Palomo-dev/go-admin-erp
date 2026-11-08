@@ -49,6 +49,7 @@ export function PaginaInforme({
         titulo={titulo}
         subtitulo={subtitulo}
         icono={icono}
+        movil={{ accionesEnFila: true }}
         acciones={acciones}
         migas={[
           { etiqueta: t('finanzas'), href: '/app/finanzas' },

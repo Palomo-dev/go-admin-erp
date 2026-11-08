@@ -125,6 +125,7 @@ export function ConciliacionesLista() {
         subtitulo={t('subtitulo')}
         icono={ListChecks}
         migas={[{ etiqueta: tc('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: tc('migas.tesoreria'), href: RUTAS_TESORERIA.movimientos }, { etiqueta: t('titulo') }]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <Link href={RUTA_NUEVA_CONCILIACION} className={clasesBoton({ variante: 'primario' })}>

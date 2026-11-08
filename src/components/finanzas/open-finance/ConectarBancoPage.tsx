@@ -444,6 +444,7 @@ export function ConectarBancoPage() {
           { etiqueta: t('migas.tesoreria'), href: '/app/finanzas/tesoreria/cuentas' },
           { etiqueta: t('conectar.titulo') },
         ]}
+        movil={{ accionesEnFila: true }}
         acciones={acciones}
         debajo={
           conectado || datos.autorizaciones.length > 0 ? (

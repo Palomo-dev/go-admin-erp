@@ -33,15 +33,18 @@ export const consignacionesService = {
     clienteId: string;
     sucursalId: number;
     comision: number;
+    /** Condiciones del contrato (`terminosDeCondiciones`); la clasificación es obligatoria. */
+    terminos: Record<string, unknown>;
     ubicacion: string;
     notas: string;
-    lineas: { product_id: number; qty: number }[];
+    lineas: { product_id: number; qty: number; precio?: number | null }[];
     claveIdempotencia: string;
   }) =>
     enviarSaldo<{ nota_id: string; numero: string; repetida: boolean; costo: number }>(BASE, {
       cliente_id: e.clienteId,
       sucursal_id: e.sucursalId,
       comision: e.comision,
+      terminos: e.terminos,
       ubicacion: e.ubicacion.trim() || null,
       notas: e.notas.trim() || null,
       lineas: e.lineas,

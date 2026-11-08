@@ -60,28 +60,9 @@ export function TripAdvisorContentPanel({
         if (connError) throw new Error(connError.message);
 
         if (!connections || connections.length === 0) {
-          // Intentar obtener de integration_credentials con credential_type = 'property_link'
-          const { data: creds, error: credError } = await supabase
-            .from('integration_credentials')
-            .select('secret_ref, connection_id')
-            .eq('credential_type', 'property_link')
-            .limit(10);
-
-          if (!credError && creds && creds.length > 0) {
-            for (const cred of creds) {
-              try {
-                const parsed = JSON.parse(cred.secret_ref || '{}');
-                if (parsed.location_id) {
-                  if (!cancelled) {
-                    setLocationId(parsed.location_id);
-                    setLocationName(parsed.location_name || '');
-                  }
-                  return;
-                }
-              } catch { /* skip */ }
-            }
-          }
-
+          // Antes se buscaba `location_id` en `integration_credentials.secret_ref` con
+          // credential_type 'property_link', valor que el CHECK de la columna no admite: nunca hubo
+          // filas. El dato vive en `settings`.
           if (!cancelled) {
             setError('no_connection');
             setIsLoading(false);
@@ -97,25 +78,6 @@ export function TripAdvisorContentPanel({
           if (!cancelled) {
             setLocationId(settings.location_id as string);
             setLocationName((settings.location_name as string) || '');
-          }
-        } else {
-          // Buscar en credentials de esa conexión
-          const { data: creds } = await supabase
-            .from('integration_credentials')
-            .select('secret_ref')
-            .eq('connection_id', conn.id)
-            .eq('credential_type', 'property_link')
-            .limit(1)
-            .single();
-
-          if (creds?.secret_ref) {
-            try {
-              const parsed = JSON.parse(creds.secret_ref);
-              if (parsed.location_id && !cancelled) {
-                setLocationId(parsed.location_id);
-                setLocationName(parsed.location_name || '');
-              }
-            } catch { /* skip */ }
           }
         }
       } catch (err) {

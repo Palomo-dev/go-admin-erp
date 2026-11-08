@@ -101,7 +101,8 @@ class IntegracionesDashboardService {
 
     const { data: webhooks, error } = await supabase
       .from('integration_webhooks')
-      .select('*')
+      // Sin `secret_ref`: los listados no traen secretos (Frente INT); se ven con «Ver» en el detalle.
+      .select('id, connection_id, direction, url, events, signing_method, is_active, metadata, last_received_at, created_at, updated_at')
       .in('connection_id', connectionIds)
       .order('created_at', { ascending: false });
 
@@ -110,7 +111,7 @@ class IntegracionesDashboardService {
       return [];
     }
 
-    return (webhooks || []).map((w: IntegrationWebhook) => ({
+    return ((webhooks || []) as unknown as Omit<IntegrationWebhook, 'secret_ref'>[]).map((w) => ({
       id: w.id,
       connectionName: connectionNameById.get(w.connection_id) || '—',
       direction: w.direction,

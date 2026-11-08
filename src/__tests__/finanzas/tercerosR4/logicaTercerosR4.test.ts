@@ -127,8 +127,17 @@ describe('consignaciones', () => {
   });
 
   test('cuerpos estrictos: ni organización ni cuentas contables desde el navegador', () => {
-    const base = { cliente_id: '11111111-2222-4333-8444-555555555555', sucursal_id: 7, comision: 15, lineas: [{ product_id: 1, qty: 2 }], clave_idempotencia: 'consignacion:1' };
+    // Correcciones del Contador 2 (2026-11-07): la clasificación del contrato es obligatoria, sin default.
+    const terminos = {
+      contrato: 'estimatorio',
+      precio_modo: 'fijo',
+      remuneracion_modo: 'porcentaje',
+      base_comision: 'precio_pactado',
+      riesgos: { devoluciones: 'dueno', perdidas: 'consignatario', gastos: 'consignatario' },
+    };
+    const base = { cliente_id: '11111111-2222-4333-8444-555555555555', sucursal_id: 7, comision: 15, terminos, lineas: [{ product_id: 1, qty: 2 }], clave_idempotencia: 'consignacion:1' };
     expect(entregarSchema.safeParse(base).success).toBe(true);
+    expect(entregarSchema.safeParse({ ...base, terminos: undefined }).success).toBe(false);
     expect(entregarSchema.safeParse({ ...base, cuenta: '1465' }).success).toBe(false);
     expect(entregarSchema.safeParse({ ...base, comision: 120 }).success).toBe(false);
     expect(liquidarSchema.safeParse({ lineas: [], clave_idempotencia: 'liquidar:1' }).success).toBe(false);

@@ -17,7 +17,7 @@ export interface AsistenteConexionProps {
   abierto: boolean;
   onCerrar: () => void;
   onConectado: (conexionId: string | null) => void;
-  /** Reemplazar las llaves de una conexión existente (solo asistente «llaves»). */
+  /** Conexión existente: reemplazar llaves («llaves») o seguir tras el OAuth (Meta, 85-42/43). */
   conexionId?: string;
 }
 
@@ -39,7 +39,7 @@ export function AsistenteConexion({ item, abierto, onCerrar, onConectado, conexi
     case 'domicilios':
       return <AsistenteDomicilios item={item} abierto={abierto} onCerrar={onCerrar} />;
     case 'oauth':
-      return <AsistenteOauth item={item} abierto={abierto} onCerrar={onCerrar} />;
+      return <AsistenteOauth item={item} abierto={abierto} onCerrar={onCerrar} conexionId={conexionId} onConectado={onConectado} />;
     default:
       return null;
   }

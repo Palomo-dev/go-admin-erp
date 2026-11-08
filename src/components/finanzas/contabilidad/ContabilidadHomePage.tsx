@@ -160,6 +160,7 @@ export function ContabilidadHomePage() {
         subtitulo={subtitulo}
         icono={Calculator}
         migas={[{ etiqueta: tc('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: tc('migas.contabilidad') }]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => void cargar()} aria-label={t('actualizar')}>

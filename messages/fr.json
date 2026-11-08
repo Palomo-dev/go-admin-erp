@@ -4583,7 +4583,8 @@
       "finanzas_tributario_certificados": "Certificats de retenue",
       "finanzas_consignaciones": "Consignations",
       "finanzas_tesoreria_dinero-de-terceros": "Fonds de tiers",
-      "finanzas_anticipos-proveedores": "Avances aux fournisseurs"
+      "finanzas_anticipos-proveedores": "Avances aux fournisseurs",
+      "inventario_consignaciones": "Dépôts-ventes"
     },
     "grupos": {
       "venta": "Vente",
@@ -14175,7 +14176,8 @@
         "imprimir": "Imprimer",
         "anular": "Annuler",
         "eliminar": "Supprimer le brouillon",
-        "certificado": "Certificat de retenues"
+        "certificado": "Certificat de retenues",
+        "pdfCorto": "PDF"
       },
       "motivos": {
         "sinPermiso": "Vous n'avez pas l'autorisation pour cette action",
@@ -16079,7 +16081,8 @@
       "verPdf": "Voir le PDF",
       "notaCredito": "Avoir",
       "anular": "Annuler la facture",
-      "enviar": "Envoyer"
+      "enviar": "Envoyer",
+      "pdf": "PDF"
     },
     "pagos": {
       "titulo": "Paiements appliqués",
@@ -43791,7 +43794,7 @@
           "sin_permiso": "Vous n'avez pas l'autorisation d'annuler.",
           "anulado": "Cet avoir est déjà annulé."
         },
-        "devolverEnSuLugar": "Rembourser l'argent",
+        "devolverEnSuLugar": "Rembourser le disponible",
         "exito": "L'acompte de {cliente} a été annulé."
       },
       "anticipo": {
@@ -43836,7 +43839,7 @@
         "saldo_no_encontrado": "Avoir client introuvable.",
         "saldo_no_disponible": "L'avoir client n'est plus disponible.",
         "saldo_vencido": "L'avoir client est échu : il ne peut plus être imputé, mais il peut être remboursé.",
-        "saldo_usado": "L'avoir client a déjà été imputé à des factures : il ne peut pas être annulé.",
+        "saldo_usado": "Cet acompte a déjà été partiellement imputé : il ne peut pas être annulé. Remboursez le disponible.",
         "saldo_no_anulable": "Cet avoir ne vient pas d'un acompte : il ne s'annule pas, il se rembourse.",
         "monto_excede_saldo_a_favor": "Le montant dépasse l'avoir disponible.",
         "factura_no_encontrada": "Facture introuvable.",
@@ -43852,7 +43855,7 @@
         "referencia_obligatoria": "Ce moyen exige une référence.",
         "cuenta_bancaria_invalida": "Le compte bancaire n'est pas valide.",
         "sin_caja_abierta": "Aucune caisse ouverte : ouvrez-la ou utilisez un autre moyen.",
-        "pago_en_caja_cerrada": "L'argent est entré dans une caisse déjà fermée : enregistrez une sortie de caisse.",
+        "pago_en_caja_cerrada": "L'acompte a été encaissé en espèces dans une caisse déjà fermée : il ne peut pas être annulé. Remboursez le disponible par une sortie de caisse.",
         "sin_cuenta_de_dinero": "Le compte de caisse ou de banque du moyen est introuvable.",
         "sin_cuenta_por_cobrar": "L'organisation n'a pas de compte client configuré.",
         "vencimiento_invalido": "L'échéance ne peut pas être antérieure à aujourd'hui.",
@@ -47155,6 +47158,51 @@
           "descripcion": "GO Admin n'a pas encore activé son application {nombre}. Quand elle sera prête, vous pourrez vous connecter d'ici."
         },
         "error": "La connexion n'a pas pu démarrer. Réessayez."
+      },
+      "meta": {
+        "pasos": {
+          "cuenta": "Compte",
+          "activos": "Actifs",
+          "envios": "Ce qui est envoyé"
+        },
+        "subtituloActivos": "Étape 2 sur 3 · Choisissez vos comptes",
+        "subtituloEnvios": "Étape 3 sur 3 · Ce qui est envoyé à Meta",
+        "autorizado": "Autorisé",
+        "sinAutorizar": {
+          "titulo": "La connexion n’a pas d’autorisation Meta",
+          "descripcion": "Reconnectez-vous à Meta depuis le catalogue. Si cela persiste, la migration des identifiants est peut-être en attente d’activation."
+        },
+        "negocio": "Portefeuille d’entreprise",
+        "cuenta": "Compte publicitaire",
+        "catalogo": "Catalogue",
+        "catalogoNuevo": "Catalogue GO Admin (nouveau)",
+        "catalogoNuevoAyuda": "Nous en créons un nouveau pour ne pas le mélanger avec vos produits existants.",
+        "pixel": "Pixel",
+        "pixelNuevo": "Pixel GO Admin (nouveau)",
+        "pixelAyuda": "Celui qui mesure votre boutique en ligne et reçoit les achats.",
+        "activar": "Activer la connexion",
+        "envioCatalogo": {
+          "titulo": "Catalogue de produits",
+          "descripcion": "Photo, prix et stock de la boutique en ligne."
+        },
+        "productos": "Produits du catalogue",
+        "productosAyuda": "Pour l’instant, tous les produits publiés sur la boutique sont envoyés ; par catégorie ou étiquette, plus tard.",
+        "productosTodos": "Tous ceux de la boutique en ligne ({n})",
+        "productosTodosSinConteo": "Tous ceux de la boutique en ligne",
+        "envioCompras": {
+          "titulo": "Achats de la boutique en ligne",
+          "descripcion": "Pour savoir combien de ventes chaque campagne a apportées."
+        },
+        "envioProspectos": {
+          "titulo": "Prospects du CRM (en construction)",
+          "descripcion": "L’envoi de prospects à Meta n’existe pas encore ; il sera activé une fois prêt."
+        },
+        "privacidad": {
+          "titulo": "Données clients protégées",
+          "descripcion": "E-mail et téléphone voyagent chiffrés (hachage), uniquement pour les clients ayant accepté le traitement des données."
+        },
+        "errorCarga": "Impossible de lire vos comptes Meta.",
+        "errorGuardar": "Enregistrement impossible. Réessayez."
       }
     },
     "detalle": {
@@ -47242,7 +47290,7 @@
         "enBoveda": "Coffre chiffré",
         "enConexion": "Registre de la connexion",
         "actualizada": "mise à jour le {fecha}",
-        "nota": "Seuls le préfixe et les derniers caractères sont affichés. GO Admin n'affiche plus jamais une clé complète."
+        "nota": "Elles sont masquées. «Voir» et «Copier» les demandent au serveur, réservé aux administrateurs, et l’accès est enregistré (qui et quand)."
       },
       "usadaPor": {
         "titulo": "Utilisée par",
@@ -47263,7 +47311,513 @@
       "confirmarDesconexion": {
         "titulo": "Déconnecter {nombre} ?",
         "descripcion": "Les identifiants sont révoqués (irrécupérables) et les moyens de paiement qui l'utilisent sont déliés. Pour vous reconnecter, il faudra coller de nouvelles clés."
+      },
+      "borrar": {
+        "boton": "Supprimer la connexion",
+        "descripcion": "Supprimer efface la connexion avec ses identifiants et son activité. Si elle a déjà encaissé ou créé des étiquettes, déconnectez-la plutôt.",
+        "bloqueado": "Suppression impossible : un moyen de paiement l’utilise. Dissociez-le d’abord dans Finances › Moyens de paiement.",
+        "enUso": "Un moyen de paiement utilise cette connexion : dissociez-le d’abord dans Finances › Moyens de paiement.",
+        "conHistoria": "La connexion a déjà des encaissements ou des envois : déconnectez-la pour conserver l’historique.",
+        "confirmarTitulo": "Supprimer «{nombre}» ?",
+        "confirmarDescripcion": "La connexion, ses identifiants, ses webhooks et son activité sont supprimés. Action irréversible."
       }
+    },
+    "importar": {
+      "abrir": "Importer un CSV",
+      "titulo": "Importer des connexions",
+      "descripcion": "Crée des connexions en brouillon à partir d’un fichier CSV. Les clés se complètent ensuite avec l’assistant de chacune.",
+      "boton": "Importer ({n})",
+      "faltaConector": "Choisissez le connecteur",
+      "faltaArchivo": "Choisissez un fichier avec des lignes",
+      "conector": "Connecteur",
+      "elegirConector": "Choisissez un connecteur",
+      "archivo": "Fichier CSV",
+      "plantilla": "Télécharger le modèle (nombre, sucursal_id, pais, ambiente)",
+      "vistaPrevia": "{n} connexions prêtes à importer",
+      "sinLlaves": {
+        "titulo": "Le CSV ne contient pas de clés",
+        "descripcion": "Les connexions restent en brouillon et n’encaissent ni ne synchronisent tant que vous n’avez pas collé leurs clés avec l’assistant."
+      },
+      "resultado": "{creadas} créées · {fallidas} en erreur",
+      "error": {
+        "vacio": "Le fichier n’a aucune ligne sous l’en-tête.",
+        "sin_columna_nombre": "La colonne «nombre» (ou «name») manque.",
+        "demasiadas_filas": "200 lignes maximum par fichier.",
+        "servidor": "Import impossible. Réessayez."
+      }
+    },
+    "credencial": {
+      "ver": "Voir",
+      "ocultar": "Masquer",
+      "verDe": "Voir {etiqueta}",
+      "ocultarDe": "Masquer {etiqueta}",
+      "copiarDe": "Copier {etiqueta}",
+      "sinPermiso": "Seul un administrateur peut voir les identifiants.",
+      "error": "Impossible d’afficher l’identifiant.",
+      "errorCopiar": "Copie impossible.",
+      "actuales": "Clés enregistrées"
+    }
+  },
+  "consignacionesR4": {
+    "titulo": "Dépôts-ventes",
+    "subtitulo": "Votre marchandise chez un tiers, ou celle d'un tiers chez vous",
+    "errorCarga": "Impossible de charger les dépôts-ventes.",
+    "reintentar": "Réessayer",
+    "sinResultados": "Aucune note ne correspond à la recherche.",
+    "etiquetaFila": "Note {numero} de {tercero}",
+    "unidadesN": "{n} u.",
+    "migas": {
+      "inventario": "Inventaire",
+      "consignaciones": "Dépôts-ventes"
+    },
+    "pestanas": {
+      "etiqueta": "Type de dépôt-vente",
+      "entregadas": "Remises",
+      "recibidas": "Reçues",
+      "porAceptar": "À accepter"
+    },
+    "pendiente": {
+      "titulo": "En attente d'activation",
+      "descripcion": "Le dépôt-vente reçu et la liaison entre organisations nécessitent une mise à jour de la base de données qui n'a pas encore été appliquée. Une fois active, vos notes reçues et ce que vous envoient d'autres organisations apparaîtront ici."
+    },
+    "acciones": {
+      "ver": "Voir",
+      "liquidar": "Liquider",
+      "recibir": "Recevoir la marchandise",
+      "vincular": "Lier une organisation",
+      "nuevaEntregada": "Nouvelle note remise",
+      "devolver": "Rendre la marchandise"
+    },
+    "buscar": {
+      "recibidas": "Rechercher une note ou un déposant",
+      "etiqueta": "Rechercher les notes reçues"
+    },
+    "kpis": {
+      "etiqueta": "Résumé de la marchandise reçue",
+      "enTuPoder": "En votre possession",
+      "aPrecioPactado": "Au prix convenu · comptes d'ordre",
+      "vendidoSinLiquidar": "Vendu non liquidé",
+      "notas": "{n, plural, =0 {Aucune note} one {# note} other {# notes}}",
+      "remuneracion": "Votre rémunération",
+      "remuneracionDetalle": "Estimée sur le vendu non liquidé",
+      "porPagar": "À payer aux déposants",
+      "porPagarDetalle": "Soldes liquidés",
+      "recibido": "Reçu",
+      "vendido": "Vendu",
+      "sinLiquidar": "Non liquidé : {valor}",
+      "devuelto": "Rendu",
+      "noEsInventario": "Ce n'est pas votre inventaire",
+      "unidadesValor": "{n} u. · {valor}"
+    },
+    "estados": {
+      "en_consignacion": "En votre possession",
+      "por_liquidar": "À liquider",
+      "liquidada": "Liquidée"
+    },
+    "estadosLiquidacion": {
+      "por_facturar": "En attente de la facture d'achat",
+      "liquidada": "Liquidée",
+      "anulada": "Annulée"
+    },
+    "origen": {
+      "goAdmin": "GO Admin",
+      "externo": "Externe"
+    },
+    "columnas": {
+      "nota": "Note",
+      "consignante": "Déposant",
+      "contrato": "Contrat",
+      "origen": "Origine",
+      "fecha": "Date",
+      "unidades": "Unités",
+      "enTuPoder": "En votre possession",
+      "estado": "Statut",
+      "tipo": "Type",
+      "de": "De",
+      "producto": "Produit",
+      "cantidad": "Quantité",
+      "precioPactado": "Prix convenu",
+      "precioLiquidacion": "Prix de liquidation",
+      "valor": "Valeur",
+      "total": "Total",
+      "productoConsignante": "Produit du déposant",
+      "tuProducto": "Votre produit",
+      "recibido": "Reçu",
+      "vendido": "Vendu",
+      "devuelto": "Rendu",
+      "valorEnTuPoder": "Valeur en votre possession",
+      "vendidoSinLiquidar": "Vendu non liquidé",
+      "venta": "Vente",
+      "precioDueno": "Prix du propriétaire"
+    },
+    "vacio": {
+      "recibidasTitulo": "Vous ne détenez pas de marchandise de tiers",
+      "recibidasDescripcion": "Quand un déposant vous laisse de la marchandise à vendre, recevez-la ici. Elle n'entre ni dans votre coût ni dans votre inventaire comptable.",
+      "porAceptarTitulo": "Rien à accepter",
+      "porAceptarDescripcion": "Les notes et liquidations envoyées par les organisations liées arrivent ici."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas l'autorisation de voir les dépôts-ventes",
+      "descripcion": "Demandez à un administrateur l'autorisation « Finances · voir ». Recevoir, liquider ou accepter des notes d'une autre organisation exige aussi « Finances · créer » et « Inventaire · recevoir »."
+    },
+    "avisoAjena": {
+      "titulo": "La marchandise reçue n'est pas votre inventaire",
+      "descripcion": "Elle est contrôlée physiquement comme stock du déposant et en comptes d'ordre jusqu'à sa vente ou son retour. À la liquidation, seule votre rémunération est un produit."
+    },
+    "condiciones": {
+      "titulo": "Conditions du contrat",
+      "elegir": "Choisir…",
+      "contrato": "Classification du contrat",
+      "ayudaSinContrato": "Obligatoire : elle définit le traitement comptable et fiscal. Il n'y a pas d'option par défaut.",
+      "ayudaContrato": {
+        "intermediacion": "Mandat : la marchandise et l'encaissement appartiennent au propriétaire ; l'intermédiaire ne gagne que sa rémunération.",
+        "estimatorio": "Le dépositaire acquiert ce qu'il vend, au moment de la vente, au prix estimé, et rend le reste.",
+        "compra": "Achat réel : ce n'est pas un dépôt-vente."
+      },
+      "contratos": {
+        "intermediacion": "Intermédiation (mandat)",
+        "estimatorio": "Contrat estimatoire",
+        "compra": "Achat réel"
+      },
+      "compraReal": {
+        "titulo": "L'achat réel n'est pas un dépôt-vente",
+        "descripcion": "Il y a achat dès le départ : inventaire propre et dette envers le fournisseur à l'acquisition, et coût des ventes à la vente. Enregistrez-le avec la facture habituelle.",
+        "accion": "Aller à la facture"
+      },
+      "precio": "Prix du propriétaire",
+      "precios": {
+        "fijo": "Fixe",
+        "minimo": "Minimum"
+      },
+      "remuneracion": "Rémunération",
+      "remuneraciones": {
+        "porcentaje": "Pourcentage",
+        "precio_liquidacion": "Prix de liquidation par produit"
+      },
+      "base": "Base du pourcentage",
+      "bases": {
+        "precio_pactado": "Prix convenu",
+        "precio_venta": "Prix de vente"
+      },
+      "obligacion": "Obligation envers le propriétaire sur les ventes à crédit",
+      "obligacionAyuda": "Quand on doit au propriétaire ce qui a été vendu à crédit.",
+      "obligaciones": {
+        "venta": "À la vente",
+        "cobro": "À l'encaissement"
+      },
+      "factura": "Qui facture le public",
+      "parte": {
+        "consignante": "Le déposant",
+        "tu": "Vous",
+        "consignatario": "Le dépositaire"
+      },
+      "riesgos": {
+        "devoluciones": "Assume les retours",
+        "perdidas": "Assume les pertes",
+        "gastos": "Assume les frais"
+      },
+      "facturaMandatario": "En intermédiation, le mandataire (le dépositaire) facture pour le compte du propriétaire, en séparant ce qui est à autrui de ce qui est à lui.",
+      "impuestosPorLey": "La TVA et les retenues ne se choisissent pas : elles sont déterminées par la loi avec les faits de chaque liquidation. Ce qui n'est pas paramétré reste en suspens comptable.",
+      "mandanteEntregadaPendiente": "En intermédiation la remise fonctionne ; la liquidation côté propriétaire attend le critère du Comptable.",
+      "errores": {
+        "contrato": "Choisissez la classification du contrat.",
+        "compra_real": "L'achat réel s'enregistre avec la facture, pas avec une note de dépôt-vente.",
+        "precio": "Choisissez si le prix du propriétaire est fixe ou minimum.",
+        "remuneracion": "Choisissez le mode de rémunération.",
+        "base": "Choisissez la base du pourcentage.",
+        "obligacion": "Choisissez quand naît l'obligation envers le propriétaire.",
+        "riesgos": "Définissez qui assume les retours, pertes et frais."
+      }
+    },
+    "validacion": {
+      "consignante": "Choisissez le déposant.",
+      "bodega": "Choisissez l'entrepôt.",
+      "lineas": "Ajoutez au moins un produit.",
+      "cantidadPrecio": "Chaque produit doit avoir une quantité et un prix convenu supérieurs à zéro.",
+      "precioLiquidacion": "Chaque produit doit avoir un prix de liquidation supérieur à zéro et non supérieur au prix convenu.",
+      "cuentaRecaudo": "Ce doit être un sous-compte à 8 chiffres sous 281510.",
+      "condiciones": "Complétez les conditions du contrat.",
+      "correo": "Saisissez une adresse e-mail valide."
+    },
+    "recibir": {
+      "titulo": "Recevoir de la marchandise en dépôt-vente",
+      "descripcion": "Ce n'est pas un achat. La marchandise reste au déposant.",
+      "confirmar": "Recevoir la marchandise",
+      "consignante": "Déposant",
+      "bodega": "Entrepôt de réception",
+      "bodegaPlaceholder": "Choisissez l'entrepôt",
+      "agregarProducto": "Ajouter un produit en dépôt-vente",
+      "buscarProducto": "Rechercher un produit",
+      "sinProductos": "Aucun produit correspondant",
+      "productosAparte": "Les produits en dépôt-vente sont séparés des vôtres : un produit avec un coût ou des mouvements propres ne peut pas être reçu en dépôt-vente. S'il n'existe pas, créez-le d'abord dans Inventaire › Produits.",
+      "quitar": "Retirer",
+      "sinLineas": "Ajoutez les produits que vous recevez.",
+      "cantidadDe": "Quantité de {producto}",
+      "precioDe": "Prix convenu de {producto}",
+      "precioLiquidacionDe": "Prix de liquidation de {producto}",
+      "quitarDe": "Retirer {producto}",
+      "comision": "Pourcentage convenu",
+      "comisionAyuda": "Votre rémunération à la liquidation, sur la base choisie.",
+      "cuentaRecaudo": "Sous-compte 281510 du déposant",
+      "cuentaRecaudoAyuda": "Où va l'encaissement du propriétaire. Vide : celui de sa dernière note est utilisé.",
+      "vistaPrevia": "Aperçu · comptes d'ordre",
+      "avisoTitulo": "Cela ne touche ni votre inventaire ni votre coût",
+      "aviso": {
+        "intermediacion": "Les produits entrent à l'entrepôt comme stock du déposant : ils se vendent au PDV et avec la facture habituelle, mais ne s'ajoutent pas à votre inventaire comptable. L'encaissement du propriétaire va à son sous-compte 281510.",
+        "estimatorio": "Les produits entrent à l'entrepôt comme stock du déposant. Ce que vous vendez, vous l'acquérez en le vendant : la liquidation crée la facture d'achat habituelle, à compléter avec le justificatif du déposant."
+      },
+      "exito": "Note {numero} reçue de {consignante}.",
+      "motivoSerial": "Les produits avec numéros de série ne se reçoivent pas encore en dépôt-vente.",
+      "motivoSinStock": "Le produit ne suit pas le stock."
+    },
+    "asiento": {
+      "debito": "Débit",
+      "credito": "Crédit",
+      "contraOrden": "Contrepartie du groupe 94",
+      "ordenConsignacion": "911520 En dépôt-vente",
+      "cuenta": "{cuenta} {nombre}",
+      "contraOrdenCorto": "Contrepartie d'ordre",
+      "ordenCorto": "En dépôt-vente",
+      "recaudoCorto": "Ventes pour compte de tiers",
+      "remuneracionCorto": "Rémunération (vente à commission)",
+      "costoCorto": "Coût de l'acquisition",
+      "d": "D {valor}",
+      "c": "C {valor}",
+      "proveedores": "2205 Fournisseurs (à la confirmation de la facture d'achat)"
+    },
+    "vincular": {
+      "titulo": "Lier une autre organisation",
+      "descripcion": "Pour envoyer et recevoir des notes et liquidations de dépôt-vente sans les ressaisir.",
+      "tercero": "Tiers dans votre organisation",
+      "terceroAyuda": "Le lien est rattaché à ce tiers : ses notes et liquidations arrivent avec lui.",
+      "correo": "E-mail de l'administrateur de l'autre organisation",
+      "queSeComparte": "Ce qui est partagé entre les deux organisations",
+      "comparte": {
+        "notas": "Les notes que l'une envoie à l'autre et leurs conditions",
+        "productos": "Leurs produits : nom, référence, quantité et prix convenu",
+        "movimientos": "Vendu, rendu et détenu pour ces notes, et leurs liquidations",
+        "nunca": "Clients, autres produits, inventaire, comptabilité ou utilisateurs"
+      },
+      "si": "Oui",
+      "nunca": "Jamais",
+      "enlace": "Lien d'invitation",
+      "enlaceAyuda": "Usage unique, expire dans 7 jours. Il est accepté par une personne administratrice dans l'autre organisation. Copiez-le maintenant : il ne s'affiche plus.",
+      "copiar": "Copier",
+      "copiado": "Lien copié.",
+      "enviar": "Créer l'invitation",
+      "listo": "Terminé",
+      "sinGoAdminTitulo": "L'autre organisation n'utilise pas GO Admin ?",
+      "sinGoAdmin": "Pas besoin de lien : enregistrez la note manuellement et envoyez-lui le PDF de la note et de chaque liquidation."
+    },
+    "devolver": {
+      "titulo": "Rendre la marchandise au déposant",
+      "descripcion": "La marchandise sort de votre entrepôt et retourne chez {consignante}.",
+      "confirmar": "Rendre",
+      "enTuPoder": "En votre possession : {n}",
+      "cantidadDe": "Quantité de {producto} à rendre",
+      "asiento": "Le contrôle en comptes d'ordre est contrepassé pour ce qui est rendu, au prix convenu.",
+      "exito": "Retour enregistré."
+    },
+    "detalle": {
+      "subtitulo": "Reçue le {fecha} · {contrato} · {origen}",
+      "vinculada": "Liée dans GO Admin (sa note {numero})",
+      "existencias": "Stock du déposant",
+      "condiciones": "Conditions du contrat",
+      "cuentasOrden": "Contrôle en comptes d'ordre",
+      "liquidaciones": "Liquidations ({n})",
+      "porcentajeSobre": "{pct} % sur le {base}",
+      "asume": {
+        "dueno": "Le propriétaire",
+        "consignatario": "Le dépositaire"
+      },
+      "facturaMandatario": "Vous, en tant que mandataire, pour le compte du propriétaire",
+      "factura": {
+        "consignatario": "Le dépositaire",
+        "consignante": "Le déposant"
+      },
+      "liquidacionResumen": "Vente {venta} · rémunération {remuneracion}",
+      "vinculadaTitulo": "Liée avec {consignante}",
+      "vinculadaDescripcion": "Le déposant voit pour CETTE note le reçu, le vendu, le rendu et le détenu, et reçoit vos liquidations. Il ne voit ni vos clients, ni vos autres produits, ni vos prix, ni votre comptabilité."
+    },
+    "liquidar": {
+      "titulo": "Liquidation au déposant · {numero}",
+      "subtitulo": "{consignante} · {contrato}",
+      "miga": "Liquidation",
+      "anularUltima": "Annuler la dernière",
+      "procesando": "Liquidation…",
+      "confirmar": "Liquider",
+      "confirmarEstimatorio": "Liquider et créer la facture d'achat",
+      "exito": "Liquidation enregistrée. Solde du propriétaire : {valor}.",
+      "exitoEstimatorio": "Liquidation enregistrée. Complétez la facture d'achat avec le justificatif du déposant ({valor}).",
+      "anulada": "Liquidation annulée.",
+      "sinVentas": "Aucune vente non liquidée.",
+      "resumen": "Liquidation",
+      "venta": "Vendu, prix de vente (HT)",
+      "pactado": "Vendu, au prix convenu",
+      "remuneracionPct": "Votre rémunération {pct} % {base}",
+      "remuneracionPrecio": "Votre rémunération (vente − prix de liquidation)",
+      "impuestos": "TVA et retenues",
+      "porDeterminar": "À déterminer",
+      "impuestosAyuda": "Déterminées par la loi avec les faits de la liquidation ; elles restent en suspens comptable.",
+      "saldoDueno": "Solde pour {consignante}",
+      "vistaPrevia": "Aperçu de l'écriture",
+      "notaIntermediacion": "Seule la rémunération est un produit. Le solde reste dans le sous-compte 281510 du propriétaire ; jamais 2205.",
+      "notaEstimatorio": "L'acquisition naît à la liquidation : la facture d'achat habituelle enregistre le coût, la TVA déductible et la dette.",
+      "bajoPrecioTitulo": "Vente en dessous du prix du propriétaire",
+      "alLiquidar": "À la liquidation",
+      "alLiquidarIntermediacion": "Le solde du propriétaire se paie depuis Trésorerie › Argent de tiers. Si le déposant est lié, la liquidation arrive dans son GO Admin.",
+      "alLiquidarEstimatorio": "Un brouillon de facture d'achat est créé ; sa confirmation crée la dette, payée depuis Comptes fournisseurs (une avance fournisseur peut y être imputée).",
+      "irDineroTerceros": "Aller à Argent de tiers",
+      "verFacturaCompra": "Facture d'achat",
+      "anularTitulo": "Annuler la dernière liquidation",
+      "anularDescripcion": "L'écriture de contrepassation de la rémunération est enregistrée et le vendu redevient à liquider.",
+      "anularConfirmar": "Annuler la liquidation"
+    },
+    "porAceptar": {
+      "tipos": {
+        "consignacion_nota": "Note à accepter",
+        "consignacion_liquidacion": "Liquidation reçue",
+        "consignacion_devolucion": "Retour reçu"
+      },
+      "aceptada": "Note {numero} reçue.",
+      "liquidacionAceptada": "Liquidation acceptée et facturée.",
+      "tituloNota": "Note de dépôt-vente à accepter",
+      "tituloLiquidacion": "Liquidation reçue · {numero}",
+      "subtitulo": "{de} vous l'a envoyée depuis GO Admin · {fecha} · son numéro : {numero}",
+      "estados": {
+        "enviado": "À accepter",
+        "aceptado": "Acceptée",
+        "rechazado": "Refusée",
+        "anulado": "Annulée"
+      },
+      "rechazar": "Refuser",
+      "aceptarRecibir": "Accepter et recevoir",
+      "aceptarFacturar": "Accepter et facturer",
+      "avisoNotaTitulo": "Elle vient d'une autre organisation GO Admin",
+      "avisoNota": "Vous ne voyez que ce que le déposant a partagé dans cette note. En acceptant, la marchandise reste dans votre entrepôt comme stock de tiers (comptes d'ordre, pas votre inventaire) et peut se vendre dans votre PDV.",
+      "avisoLiquidacionTitulo": "Le dépositaire vous l'a envoyée",
+      "avisoLiquidacion": "Vérifiez le vendu et le rendu. Accepter fait la même chose que « Facturer et clôturer » : votre facture de vente pour le vendu, la commission imputée et le rendu de retour dans votre entrepôt. Si cela ne correspond pas, refusez-la avec un motif.",
+      "periodicidad": "Liquidation",
+      "periodicidades": {
+        "semanal": "Hebdomadaire",
+        "quincenal": "Bimensuelle",
+        "mensual": "Mensuelle",
+        "al_vencimiento": "À l'échéance"
+      },
+      "cantidad": "{n} u.",
+      "sinPrecio": "Sans prix dans la note",
+      "tuProducto": "Votre produit au catalogue",
+      "eligeProducto": "Choisissez votre produit en dépôt-vente",
+      "vinculado": "Lié : {producto}",
+      "sinVincular": "Non lié",
+      "productosAparte": "Liez chaque produit à l'un de vos produits en dépôt-vente (séparés des vôtres). S'il n'existe pas, créez-le dans Inventaire › Produits ; la prochaine note arrivera déjà liée.",
+      "liquidacion": "Liquidation",
+      "netoPorCobrar": "Net à encaisser",
+      "diferencias": "Écarts avec votre note {numero}",
+      "sinDiferencias": "Aucun écart",
+      "sinDiferenciasDetalle": "Les quantités, prix et commission correspondent à votre note",
+      "tiposDiferencia": {
+        "linea_desconocida": "Une ligne ne correspond pas à votre note",
+        "precio_bajo_pactado": "Un prix est inférieur au prix convenu",
+        "excede_en_su_poder": "Le déclaré dépasse ce qu'il détient",
+        "comision_distinta": "La commission diffère de celle de votre note",
+        "devolucion_posterior": "Inclut des retours de ventes déjà liquidées"
+      },
+      "rechazarTitulo": "Refuser avec un motif",
+      "rechazarDescripcion": "Le motif parvient à {de}. Rien ne change dans aucune des deux organisations.",
+      "rechazada": "Document refusé."
+    },
+    "invitacion": {
+      "titulo": "{invita} souhaite se lier à vous",
+      "tituloGenerico": "Invitation de liaison",
+      "invalida": "Cette invitation n'est pas valide",
+      "invalidaDescripcion": "Elle a déjà été utilisée, révoquée, ou le lien est incomplet. Demandez-en une nouvelle à la personne qui vous a invité.",
+      "vencida": "Cette invitation a expiré",
+      "vencidaDescripcion": "Les invitations durent 7 jours. Demandez-en une nouvelle à la personne qui vous a invité.",
+      "subtitulo": "Invitation du {creada} · expire le {vence}",
+      "noAdminTitulo": "Vous devez être administrateur",
+      "noAdmin": "Seul un administrateur de l'organisation active peut accepter. Si vous administrez une autre organisation, basculez vers elle et rouvrez le lien.",
+      "aceptasEnNombre": "Vous acceptez au nom de {organizacion}.",
+      "tercero": "{invita} est, pour vous",
+      "terceroAyuda": "Il est lié à l'un de vos fournisseurs ; s'il n'existe pas, créez-le d'abord avec le nom et le numéro fiscal partagés.",
+      "queVera": "Ce que {invita} verra de vous",
+      "vera": {
+        "datos": "Votre nom, numéro fiscal et l'utilisateur qui accepte",
+        "notas": "Ce que vous acceptez, vendez, rendez et liquidez de SES notes",
+        "nunca": "Vos clients, vos prix, votre inventaire et votre comptabilité"
+      },
+      "rechazar": "Refuser",
+      "aceptar": "Accepter la liaison",
+      "aceptada": "Vous êtes désormais lié à {invita}.",
+      "rechazada": "Invitation refusée."
+    },
+    "errores": {
+      "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
+      "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
+      "sin_acceso_sucursal": "Vous n'avez pas accès à cette succursale.",
+      "organizacion_no_permitida": "L'organisation ne correspond pas à votre session.",
+      "datos_invalidos": "Vérifiez les données et réessayez.",
+      "pendiente_de_activar": "Le dépôt-vente reçu est en attente d'activation.",
+      "clasificacion_obligatoria": "Choisissez la classification du contrat : intermédiation, estimatoire ou achat réel.",
+      "compra_real_usa_factura": "L'achat réel n'est pas un dépôt-vente : enregistrez-le avec la facture d'achat.",
+      "terminos_invalidos": "Vérifiez les conditions du contrat.",
+      "clave_idempotencia_invalida": "L'opération n'a pas pu être identifiée. Réessayez.",
+      "clave_idempotencia_reutilizada": "Cette opération a déjà été enregistrée avec d'autres données.",
+      "comision_invalida": "Le pourcentage doit être compris entre 0 et 100.",
+      "sin_lineas": "Il n'y a rien à enregistrer.",
+      "linea_invalida": "Une ligne contient des données invalides.",
+      "proveedor_no_encontrado": "Le déposant est introuvable.",
+      "sucursal_invalida": "L'entrepôt n'est pas valide.",
+      "producto_invalido": "Un produit n'est pas valide.",
+      "producto_sin_seguimiento": "Un produit ne suit pas le stock.",
+      "producto_con_seriales": "Les produits avec numéros de série ne se reçoivent pas encore en dépôt-vente.",
+      "producto_con_variantes": "Choisissez la variante, pas le produit parent.",
+      "producto_propio_no_consignable": "Ce produit a un coût ou des mouvements propres : créez un produit séparé pour la marchandise du déposant.",
+      "producto_de_otro_consignante": "Ce produit est déjà en dépôt-vente d'un autre déposant.",
+      "producto_otra_clasificacion": "Ce produit est déjà en dépôt-vente avec une autre classification de contrat.",
+      "precio_liquidacion_obligatorio": "Le prix de liquidation manque (il ne peut pas dépasser le prix convenu).",
+      "stock_insuficiente": "Le stock de l'entrepôt est insuffisant.",
+      "excede_en_su_poder": "La quantité dépasse ce que vous détenez.",
+      "sin_cuenta_orden_consignacion": "Le compte 911520 « En dépôt-vente » manque au plan comptable. Laissé en suspens comptable.",
+      "sin_cuenta_contra_orden": "Il manque un compte de mouvement du groupe 94. Laissé en suspens comptable.",
+      "sin_cuenta_recaudo_propietario": "Le sous-compte 281510 du déposant manque. Créez-le au plan comptable et choisissez-le à la réception. Laissé en suspens comptable.",
+      "cuenta_recaudo_invalida": "Le compte d'encaissement doit être un sous-compte de mouvement à 8 chiffres sous 281510.",
+      "sin_cuenta_remuneracion": "Le sous-compte à 8 chiffres sous 413512 pour votre rémunération manque. Laissé en suspens comptable.",
+      "sin_cuenta_costo": "Le compte de coût des ventes manque dans la Configuration comptable. Laissé en suspens comptable.",
+      "nota_no_encontrada": "La note est introuvable.",
+      "liquidacion_no_encontrada": "La liquidation est introuvable.",
+      "liquidacion_pendiente": "Une liquidation attend sa facture d'achat.",
+      "liquidacion_no_es_la_ultima": "Seule la dernière liquidation peut être annulée.",
+      "liquidacion_anulada": "La liquidation est annulée.",
+      "liquidacion_aceptada_por_el_dueno": "Le propriétaire a déjà accepté cette liquidation : corrigez-la par un retour ou dans la suivante.",
+      "anular_factura_compra_primero": "Annulez d'abord la facture d'achat de cette liquidation.",
+      "sin_ventas_por_liquidar": "Aucune vente à liquider.",
+      "saldo_a_favor_del_consignatario": "Les retours dépassent le vendu : le propriétaire vous doit ce solde. Enregistrez-le avec le Comptable.",
+      "venta_bajo_precio_pactado": "La vente s'est faite en dessous du prix du propriétaire. Vérifiez-la ou définissez avec le Comptable qui assume l'écart.",
+      "devolucion_estimatorio_pendiente": "En estimatoire, le retour d'un bien déjà acquis se fait par avoir sur la facture d'achat.",
+      "motivo_obligatorio": "Indiquez le motif.",
+      "documento_no_encontrado": "Le document est introuvable.",
+      "documento_no_disponible": "Ce document n'est plus à accepter.",
+      "producto_sin_vincular": "Liez tous les produits du déposant à l'un des vôtres.",
+      "vinculo_sin_proveedor": "Le lien doit être rattaché à l'un de vos fournisseurs pour recevoir en dépôt-vente.",
+      "vinculo_no_encontrado": "Le lien est introuvable.",
+      "vinculo_inactivo": "Le lien est suspendu.",
+      "vinculo_existente": "Un lien avec cette organisation existe déjà.",
+      "invitacion_invalida": "L'invitation n'est pas valide.",
+      "invitacion_vencida": "L'invitation a expiré.",
+      "misma_organizacion": "Vous ne pouvez pas lier une organisation à elle-même.",
+      "tercero_obligatorio": "Choisissez le tiers.",
+      "tercero_no_encontrado": "Le tiers est introuvable.",
+      "correo_invalido": "L'adresse e-mail n'est pas valide.",
+      "demasiadas_invitaciones": "Vous avez trop d'invitations en attente.",
+      "transicion_invalida": "Cette action ne s'applique pas dans l'état actuel.",
+      "factura_no_encontrada": "La facture est introuvable.",
+      "factura_distinta": "La liquidation a déjà une autre facture.",
+      "proveedor_distinto": "La facture d'achat est d'un autre fournisseur.",
+      "documento_anulado": "La facture est annulée.",
+      "factura_compra_no_creada": "La liquidation est enregistrée, mais la facture d'achat n'a pas pu être créée. Créez-la depuis Factures d'achat.",
+      "asiento_no_creado": "L'écriture n'a pas pu être enregistrée. Vérifiez le plan comptable et la période comptable.",
+      "error_desconocido": "Une erreur est survenue. Réessayez."
     }
   }
 }

@@ -241,6 +241,12 @@ export function ConciliacionDetailPage({ reconciliationId }: ConciliacionDetailP
           { etiqueta: tr('titulo'), href: RUTAS_TESORERIA.conciliacion },
           { etiqueta: `${reconciliation.bank_account?.name ?? ''} · ${periodo}` },
         ]}
+        movil={{
+          menu: [
+            { id: 'actualizar', etiqueta: tr('actualizar'), icono: RefreshCw, onSelect: handleRefresh, deshabilitada: isRefreshing },
+            { id: 'cerrar', etiqueta: t('cerrar.titulo'), icono: Lock, onSelect: abrirCierre, oculta: cerrada || !permisos.crear, deshabilitada: partidas === null },
+          ],
+        }}
         acciones={
           <>
             <button type="button" onClick={handleRefresh} disabled={isRefreshing} className={clasesBoton({ variante: 'secundario' })}>

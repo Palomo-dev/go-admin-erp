@@ -128,6 +128,7 @@ export function TransferenciasLista() {
         subtitulo={t('subtitulo')}
         icono={ArrowLeftRight}
         migas={[{ etiqueta: tc('migas.finanzas'), href: '/app/finanzas' }, { etiqueta: tc('migas.tesoreria'), href: RUTAS_TESORERIA.movimientos }, { etiqueta: t('titulo') }]}
+        movil={{ accionesEnFila: true }}
         acciones={
           <>
             <button type="button" onClick={exportar} disabled={visibles.length === 0} className={clasesBoton({ variante: 'secundario' })}>

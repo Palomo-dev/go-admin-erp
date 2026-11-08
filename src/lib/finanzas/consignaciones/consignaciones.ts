@@ -13,9 +13,14 @@
  *   (comisión aplicada como saldo a favor del consignatario).
  */
 import { z } from 'zod';
+import { terminosSchema } from '@/lib/inventario/consignaciones/recibidas';
 
-/** Ruta de la lista; la liquidación es `${RUTA_CONSIGNACIONES}/<nota>`. */
-export const RUTA_CONSIGNACIONES = '/app/finanzas/consignaciones';
+/**
+ * Ruta de la lista; la liquidación es `${RUTA_CONSIGNACIONES}/<nota>`. Consignaciones
+ * vive en Inventario (decisión del dueño 2026-11-07); `/app/finanzas/consignaciones`
+ * redirige aquí.
+ */
+export const RUTA_CONSIGNACIONES = '/app/inventario/consignaciones';
 
 export const ERRORES_CONSIGNACION = [
   'no_autenticado',
@@ -27,6 +32,12 @@ export const ERRORES_CONSIGNACION = [
   'clave_idempotencia_invalida',
   'clave_idempotencia_reutilizada',
   'comision_invalida',
+  'clasificacion_obligatoria',
+  'compra_real_usa_factura',
+  'terminos_invalidos',
+  'liquidacion_mandante_pendiente',
+  'precio_bajo_pactado',
+  'producto_ajeno',
   'sin_lineas',
   'linea_invalida',
   'cliente_no_encontrado',
@@ -110,9 +121,14 @@ export const entregarSchema = z
     cliente_id: z.string().uuid(),
     sucursal_id: z.number().int().positive(),
     comision: z.number().finite().min(0).max(100),
+    // Clasificación del contrato obligatoria y sin valor por defecto (Contador 2, punto 1).
+    terminos: terminosSchema,
     ubicacion: z.string().max(120).nullable().optional(),
     notas: z.string().max(2000).nullable().optional(),
-    lineas: z.array(z.object({ product_id: z.number().int().positive(), qty: CANTIDAD }).strict()).min(1).max(200),
+    lineas: z
+      .array(z.object({ product_id: z.number().int().positive(), qty: CANTIDAD, precio: z.number().finite().positive().max(1e12).nullable().optional() }).strict())
+      .min(1)
+      .max(200),
     clave_idempotencia: CLAVE,
   })
   .strict();

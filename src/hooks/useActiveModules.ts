@@ -144,50 +144,6 @@ export function useModuleAccess(moduleCode: string, organizationId?: number) {
   };
 }
 
-// Hook para obtener información detallada de acceso a módulos
-export function useModuleAccessInfo(moduleCode: string, organizationId?: number) {
-  const [accessInfo, setAccessInfo] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  
-  const { session } = useSession();
-  const user = session?.user;
-  const currentOrgId = organizationId;
-
-  useEffect(() => {
-    const loadAccessInfo = async () => {
-      if (!user?.id || !currentOrgId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const info = await permissionService.checkModuleAccessWithPlanInfo(
-          user.id,
-          currentOrgId,
-          moduleCode
-        );
-        setAccessInfo(info);
-      } catch (error) {
-        logError('[useActiveModules] cargar información de acceso al módulo', error);
-        setAccessInfo({
-          canAccess: false,
-          reason: 'Error al cargar información de acceso'
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadAccessInfo();
-  }, [user?.id, currentOrgId, moduleCode]);
-
-  return {
-    accessInfo,
-    loading,
-    canAccess: accessInfo?.canAccess || false,
-    reason: accessInfo?.reason,
-    planInfo: accessInfo?.planInfo,
-    moduleInfo: accessInfo?.moduleInfo
-  };
-}
+// `useModuleAccessInfo` se borró con `ModuleAccessDenied` (2026-11-08): se
+// montaba sin organización y nunca cargaba nada. La pantalla de módulo no
+// habilitado pide el veredicto al servidor (`GET /api/modules/acceso`).

@@ -12,7 +12,9 @@ import {
   getProjectRef,
   MW_DB_BUDGET_MS,
 } from '@/lib/supabase/edge-rest';
-import { cargoPuedeEntrarAModulo, resolverCargoMiembro } from '@/lib/navigation/accesoCargo';
+import { resolverCargoMiembro } from '@/lib/navigation/accesoCargo';
+import { moduloDeRuta, paginaDeRuta } from '@/lib/navigation/rutasModulos';
+import { bloqueoGate, urlReescritura, type BloqueoGate } from '@/lib/organizacion/accesoModulo';
 import { reportarSentryServidor } from '@/lib/monitoring/sentryServidor';
 import { motivoCookieCorrupta } from '@/lib/auth/motivoCookieCorrupta';
 
@@ -482,57 +484,13 @@ function updateUserActivityOptimized(userId: string): Promise<unknown> {
 }
 
 /**
- * Mapeo de rutas a módulos
- */
-const routeToModuleMap: Record<string, string> = {
-  // Sucursales y branding viven bajo «Organizaciones» (módulo base). Antes
-  // tenían entradas propias con los códigos 'branches' y 'branding', que no
-  // existen en `modules`: la ruta exacta /app/organizacion/sucursales siempre
-  // respondía «Módulo no activado», incluso en organizaciones con todo activo.
-  '/app/organizacion': 'organizations',
-  '/app/clientes': 'clientes',
-  '/app/roles': 'roles',
-  '/app/pos': 'pos',
-  '/app/inventario': 'inventory',
-  '/app/pms': 'pms_hotel',
-  '/app/parking': 'parking',
-  '/app/crm': 'crm',
-  '/app/hrm': 'hrm',
-  '/app/finanzas': 'finance',
-  '/app/reportes': 'reports',
-  '/app/notificaciones': 'notifications',
-  '/app/integraciones': 'integrations',
-  '/app/transporte': 'transport',
-  '/app/calendario': 'calendar',
-  '/app/timeline': 'operations',
-  '/app/chat': 'chat',
-  // Membresías (antes gym): /app/gym/* redirige a /app/membresias/* en next.config.js.
-  '/app/membresias': 'memberships',
-  // Sitio web: módulo base (is_core) desde el 2026-10-05. Antes colgaba de
-  // '/app/organizacion' (branding, dominios). Incluye el editor
-  // (/app/sitio-web/editor/:pageId, servido con un rewrite fuera del AppLayout).
-  // No va en `coreRoutes`: al ser núcleo siempre está activo, pero el acceso por
-  // cargo (job_position_module_access) se sigue respetando.
-  '/app/sitio-web': 'website',
-};
-
-/**
- * Obtiene el código del módulo basado en la ruta
+ * Módulo de una ruta. Sale de `rutasModulos.ts`, que es el catálogo de
+ * navegación sin iconos (`__tests__/rutasModulos.test.ts` exige que coincidan):
+ * aquí ya no hay un mapa de rutas propio. Antes este archivo tenía su propio
+ * mapa cableado, que ya no coincidía con el catálogo.
  */
 function getModuleFromPath(pathname: string): string | null {
-  // Buscar coincidencia exacta primero
-  if (routeToModuleMap[pathname]) {
-    return routeToModuleMap[pathname];
-  }
-  
-  // Buscar por prefijo (para subrutas)
-  for (const [route, module] of Object.entries(routeToModuleMap)) {
-    if (pathname.startsWith(route + '/')) {
-      return module;
-    }
-  }
-  
-  return null;
+  return moduloDeRuta(pathname);
 }
 
 /**
@@ -559,12 +517,17 @@ type GateContext = {
  *  o: organizacion activa, e: expiracion (epoch s),
  *  s: 1 si el estado org/suscripcion quedo verificado,
  *  m: modulos cuyo acceso quedo verificado,
+ *  p: paginas OCULTAS de esos modulos (para cerrar por URL una pagina oculta
+ *     sin volver a consultar; si la ruta cae en una de ellas, se consulta),
  *  u: usuario (sub del JWT) al que pertenece el veredicto.
  *
  * `u` va dentro de la carga firmada y se compara con el usuario de la sesion
  * actual, para que una cookie valida no pueda reutilizarse en otra sesion.
  */
-type GateCache = { o: string; e: number; s?: 1; m: string[]; u: string };
+type GateCache = { o: string; e: number; s?: 1; m: string[]; p?: string[]; u: string };
+
+/** Tope de paginas ocultas en la cookie: con mas, el modulo no se cachea (se consulta siempre). */
+const GATE_MAX_OCULTAS = 30;
 
 /** Clave que identifica la organizacion activa segun las cookies. */
 function orgKeyFromCookies(request: NextRequest): string {
@@ -610,6 +573,7 @@ async function readGateCache(request: NextRequest, userId: string | null): Promi
       e: parsed.e,
       s: parsed.s === 1 ? 1 : undefined,
       m: Array.isArray(parsed.m) ? parsed.m : [],
+      p: Array.isArray(parsed.p) ? parsed.p : [],
       u: parsed.u,
     };
   } catch {
@@ -626,6 +590,7 @@ async function buildGateCookie(gate: {
   orgKey: string;
   statusOk: boolean;
   modules: string[];
+  ocultas: string[];
   userId: string | null;
 }): Promise<string | null> {
   if (!GATE_SECRET) return null;
@@ -635,6 +600,7 @@ async function buildGateCookie(gate: {
     e: Math.floor(Date.now() / 1000) + GATE_TTL_SECONDS,
     ...(gate.statusOk ? { s: 1 as const } : {}),
     m: gate.modules.slice(-12),
+    ...(gate.ocultas.length > 0 ? { p: gate.ocultas.slice(-GATE_MAX_OCULTAS) } : {}),
     u: gate.userId || '',
   };
 
@@ -696,35 +662,48 @@ async function resolveOrgFromCookies(
   return await getOrgBySubdomain(ctx);
 }
 
+/** Resultado de la verificacion de un modulo. */
+type ResultadoModulo = {
+  /** Por que se bloquea, o null si se deja pasar. */
+  bloqueo: BloqueoGate | null;
+  /** Paginas ocultas del modulo, para la cookie de veredicto (null = no se pudieron leer). */
+  ocultas: string[] | null;
+};
+
+const SIN_BLOQUEO: ResultadoModulo = { bloqueo: null, ocultas: null };
+
 /**
- * Verifica el acceso a modulos para una ruta especifica.
+ * Verifica el acceso a modulos para una ruta especifica. La regla vive en
+ * `bloqueoGate` (src/lib/organizacion/accesoModulo.ts), la misma que usa el
+ * resolutor del servidor que pinta la pantalla.
  *
  * Fail open: si una consulta falla o se agota el presupuesto de tiempo,
  * se permite el acceso. La UI y las APIs vuelven a validar permisos.
  */
-async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<NextResponse | null> {
+async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<ResultadoModulo> {
   const moduleCode = getModuleFromPath(pathname);
-  if (!moduleCode) return null; // Ruta sin modulo asociado
+  if (!moduleCode) return SIN_BLOQUEO; // Ruta sin modulo asociado
 
   const userId = ctx.userId;
-  if (!userId) return null;
+  if (!userId) return SIN_BLOQUEO;
 
   // Sin JWT no se puede consultar: `organization_modules` filtra por
   // `auth.uid()`, asi que como anon devolveria cero filas y bloquearia al
   // usuario en TODAS sus organizaciones. Cero filas solo significa "no lo
   // tiene contratado" cuando la consulta va autenticada.
-  if (!ctx.accessToken) return null;
+  if (!ctx.accessToken) return SIN_BLOQUEO;
 
   const org = await resolveOrgFromCookies(ctx);
-  if (!org) return null; // Sin organizacion identificable: permitir
+  if (!org) return SIN_BLOQUEO; // Sin organizacion identificable: permitir
   const organizationId = org.id;
+  const codigo = encodeURIComponent(moduleCode);
 
   // Consultas independientes en paralelo: modulo activo en la org + si es
-  // núcleo + cargo del usuario.
-  const [moduleRows, coreRows, memberRows] = await Promise.all([
+  // núcleo + cargo del usuario + paginas ocultas del modulo.
+  const [moduleRows, coreRows, memberRows, hiddenRows] = await Promise.all([
     edgeSelect<{ is_active: boolean }>(
       `organization_modules?select=is_active&organization_id=eq.${organizationId}` +
-        `&module_code=eq.${encodeURIComponent(moduleCode)}&is_active=eq.true&limit=1`,
+        `&module_code=eq.${codigo}&is_active=eq.true&limit=1`,
       { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
     // Un módulo base (modules.is_core) está activo para toda organización,
@@ -732,7 +711,7 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
     // fila en organization_modules, no por eso desaparece. Se lee de `modules`,
     // sin lista cableada.
     edgeSelect<{ is_core: boolean | null }>(
-      `modules?select=is_core&code=eq.${encodeURIComponent(moduleCode)}&limit=1`,
+      `modules?select=is_core&code=eq.${codigo}&limit=1`,
       { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
     edgeSelect<{ id: number; is_super_admin: boolean | null; job_position_id: string | null }>(
@@ -740,47 +719,53 @@ async function checkModuleAccess(ctx: GateContext, pathname: string): Promise<Ne
         `&organization_id=eq.${organizationId}&is_active=eq.true&limit=1`,
       { deadline: ctx.deadline, accessToken: ctx.accessToken }
     ),
+    // Paginas ocultas a proposito (is_active = false): una pagina oculta
+    // tambien se cierra por URL (decision del dueño, 2026-11-08).
+    edgeSelect<{ page_href: string }>(
+      `organization_module_pages?select=page_href&organization_id=eq.${organizationId}` +
+        `&module_code=eq.${codigo}&is_active=eq.false`,
+      { deadline: ctx.deadline, accessToken: ctx.accessToken }
+    ),
   ]);
 
-  // 1. La organizacion tiene el modulo activo
-  if (moduleRows === null) return null; // consulta fallida -> permitir
-  if (moduleRows.length === 0 && !coreRows?.[0]?.is_core) {
-    const redirectUrl = new URL('/app/inicio', ctx.request.url);
-    redirectUrl.searchParams.set('error', 'module_not_activated');
-    redirectUrl.searchParams.set('module', moduleCode);
-    return NextResponse.redirect(redirectUrl);
-  }
+  const ocultas = hiddenRows ? hiddenRows.map((r) => r.page_href) : null;
+  const base = {
+    codigo: moduleCode,
+    filasActivas: moduleRows === null ? null : moduleRows.length,
+    esNucleo: coreRows && coreRows.length > 0 ? coreRows[0].is_core === true : null,
+    pagina: paginaDeRuta(pathname, moduleCode),
+    paginasOcultas: ocultas,
+  };
+
+  // 1. La organizacion tiene el modulo activo (sin mirar aun el cargo).
+  const sinCargo = bloqueoGate({ ...base, filasCargo: null });
+  if (sinCargo === 'modulo' || base.filasActivas === null) return { bloqueo: sinCargo, ocultas };
 
   // 2. El cargo del usuario tiene acceso al modulo. El cargo y la regla son los
   // mismos que usa el menú (accesoCargo.ts): super admin sin restricción,
   // respaldo en employments y «cargo sin filas = sin restricción».
-  if (!memberRows || memberRows.length === 0) return null; // fallback: permitir
-  const jobPositionId = await resolverCargoMiembro(memberRows[0], async (memberId) => {
-    const rows = await edgeSelect<{ position_id: string | null }>(
-      `employments?select=position_id&organization_member_id=eq.${encodeURIComponent(String(memberId))}` +
-        `&status=eq.active&order=created_at.desc&limit=1`,
-      { deadline: ctx.deadline, accessToken: ctx.accessToken }
-    );
-    return rows?.[0]?.position_id ?? null; // consulta fallida -> sin cargo (fail open, como el resto del gate)
-  });
-  if (!jobPositionId) return null;
-
-  // Todas las filas del cargo en UNA consulta: hace falta saber si el cargo
-  // tiene alguna configuración, no solo la fila de este módulo.
-  const accessRows = await edgeSelect<{ module_code: string; can_access: boolean }>(
-    `job_position_module_access?select=module_code,can_access&job_position_id=eq.${encodeURIComponent(jobPositionId)}`,
-    { deadline: ctx.deadline, accessToken: ctx.accessToken }
-  );
-
-  if (accessRows === null) return null; // consulta fallida -> permitir
-  if (!cargoPuedeEntrarAModulo(accessRows, moduleCode)) {
-    const redirectUrl = new URL('/app/inicio', ctx.request.url);
-    redirectUrl.searchParams.set('error', 'job_position_no_access');
-    redirectUrl.searchParams.set('module', moduleCode);
-    return NextResponse.redirect(redirectUrl);
+  let filasCargo: { module_code: string; can_access: boolean }[] | null = null;
+  if (memberRows && memberRows.length > 0) {
+    const jobPositionId = await resolverCargoMiembro(memberRows[0], async (memberId) => {
+      const rows = await edgeSelect<{ position_id: string | null }>(
+        `employments?select=position_id&organization_member_id=eq.${encodeURIComponent(String(memberId))}` +
+          `&status=eq.active&order=created_at.desc&limit=1`,
+        { deadline: ctx.deadline, accessToken: ctx.accessToken }
+      );
+      return rows?.[0]?.position_id ?? null; // consulta fallida -> sin cargo (fail open, como el resto del gate)
+    });
+    if (jobPositionId) {
+      // Todas las filas del cargo en UNA consulta: hace falta saber si el cargo
+      // tiene alguna configuración, no solo la fila de este módulo.
+      filasCargo = await edgeSelect<{ module_code: string; can_access: boolean }>(
+        `job_position_module_access?select=module_code,can_access&job_position_id=eq.${encodeURIComponent(jobPositionId)}`,
+        { deadline: ctx.deadline, accessToken: ctx.accessToken }
+      ); // null (consulta fallida) -> sin restricción
+    }
   }
 
-  return null; // Permitir acceso
+  // 3. Cargo y pagina oculta, en el orden de `bloqueoGate`.
+  return { bloqueo: bloqueoGate({ ...base, filasCargo }), ocultas };
 }
 
 /**
@@ -904,6 +889,11 @@ async function runAppGate(
   accessToken: string | null
 ): Promise<{
   redirect: NextResponse | null;
+  /**
+   * Modulo o pagina que la persona no puede usar: se REESCRIBE a la pantalla
+   * interna y la URL del navegador no cambia (docs/design/MODULO-NO-HABILITADO.md).
+   */
+  rewrite: NextResponse | null;
   /** Valor ya firmado de la cookie de veredicto, o null si no hay que escribirla. */
   gateCookie: string | null;
 }> {
@@ -921,10 +911,14 @@ async function runAppGate(
   const orgKey = orgKeyFromCookies(request);
 
   const needStatusCheck = !isFrozenExempt && cache?.s !== 1;
-  const needModuleCheck = !!moduleCode && !cache?.m.includes(moduleCode);
+  // Un modulo ya verificado se vuelve a consultar si la ruta cae en una de sus
+  // paginas ocultas (la cookie las lleva para no consultar en las demas).
+  const paginaCacheada = moduleCode ? paginaDeRuta(pathname, moduleCode) : null;
+  const needModuleCheck =
+    !!moduleCode && (!cache?.m.includes(moduleCode) || (!!paginaCacheada && !!cache?.p?.includes(paginaCacheada)));
 
   if (!needStatusCheck && !needModuleCheck) {
-    return { redirect: null, gateCookie: null }; // Todo resuelto por el cache
+    return { redirect: null, rewrite: null, gateCookie: null }; // Todo resuelto por el cache
   }
 
   const ctx: GateContext = {
@@ -934,29 +928,50 @@ async function runAppGate(
     accessToken,
   };
 
+  let ocultasModulo: string[] | null = null;
   try {
     if (needStatusCheck) {
       const frozenResult = await checkOrgAndSubscriptionStatus(ctx, pathname);
-      if (frozenResult) return { redirect: frozenResult, gateCookie: null };
+      if (frozenResult) return { redirect: frozenResult, rewrite: null, gateCookie: null };
     }
 
-    if (needModuleCheck) {
-      const moduleResult = await checkModuleAccess(ctx, pathname);
-      if (moduleResult) return { redirect: moduleResult, gateCookie: null };
+    if (needModuleCheck && moduleCode) {
+      const { bloqueo, ocultas } = await checkModuleAccess(ctx, pathname);
+      if (bloqueo) {
+        // Antes: redirect a /app/inicio con ?error=… y la URL cambiaba.
+        // Un bloqueo nunca se cachea.
+        return {
+          redirect: null,
+          rewrite: NextResponse.rewrite(urlReescritura(request.url, pathname, bloqueo, moduleCode)),
+          gateCookie: null,
+        };
+      }
+      ocultasModulo = ocultas;
     }
   } catch (error) {
     // Nunca bloquear la navegacion por un fallo del gate.
     console.error('[MIDDLEWARE] Error en verificacion de acceso:', error);
-    return { redirect: null, gateCookie: null };
+    return { redirect: null, rewrite: null, gateCookie: null };
   }
 
   const modules = cache ? [...cache.m] : [];
-  if (needModuleCheck && moduleCode && !modules.includes(moduleCode)) modules.push(moduleCode);
+  let ocultasCache = cache?.p ? [...cache.p] : [];
+  if (needModuleCheck && moduleCode) {
+    // Sin la lista de ocultas (consulta fallida) o con demasiadas, el modulo no
+    // se cachea: la proxima peticion vuelve a consultar.
+    // Las ocultas de ESTE modulo se reemplazan por las recien leidas (una que
+    // se volvio a mostrar sale de la cookie); las de otros modulos se quedan.
+    const resto = ocultasCache.filter((h) => moduloDeRuta(h) !== moduleCode);
+    if (ocultasModulo !== null && resto.length + ocultasModulo.length <= GATE_MAX_OCULTAS) {
+      if (!modules.includes(moduleCode)) modules.push(moduleCode);
+      ocultasCache = [...resto, ...ocultasModulo];
+    }
+  }
 
   const statusOk = cache?.s === 1 || needStatusCheck;
 
-  const gateCookie = await buildGateCookie({ orgKey, statusOk, modules, userId });
-  return { redirect: null, gateCookie };
+  const gateCookie = await buildGateCookie({ orgKey, statusOk, modules, ocultas: ocultasCache, userId });
+  return { redirect: null, rewrite: null, gateCookie };
 }
 
 /**
@@ -1131,8 +1146,9 @@ async function handleRouteProtection(
     if (pathname.startsWith('/app/')) {
       const sinOrganizacion = await redirigirSiNoTieneOrganizacion(request, userId, accessToken, regreso);
       if (sinOrganizacion) return sinOrganizacion;
-      const { redirect, gateCookie } = await runAppGate(request, pathname, userId, accessToken);
+      const { redirect, rewrite, gateCookie } = await runAppGate(request, pathname, userId, accessToken);
       if (redirect) return redirect;
+      if (rewrite) return rewrite;
       pendingGateCookie = gateCookie;
     }
   }

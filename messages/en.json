@@ -47937,6 +47937,11 @@
       "ambiente": "Environment",
       "metodos": "Enabled methods",
       "verificadaEn": "Verified with the provider on {fecha}"
+    },
+    "webhookWompi": {
+      "dominioTienda": "This is your online store address: it confirms store payments and passes point-of-sale, folio and payment-link payments on to GO Admin.",
+      "sinDominioTitulo": "Your organization does not have a verified primary domain yet",
+      "sinDominioDescripcion": "That is why you see the GO Admin address: it confirms point-of-sale charges and payment links, but not payments made in the online store. Once you verify your domain, come back here and change the events URL in Wompi."
     }
   },
   "consignacionesR4": {
@@ -49043,5 +49048,174 @@
       "sinPermisoTitulo": "You don't have access to payment methods",
       "sinPermisoDescripcion": "Ask an administrator of your organization for the billing permission."
     }
+  },
+  "moduloNoHabilitado": {
+    "inicio": "Home",
+    "cargando": "Checking access…",
+    "volverInicio": "Back to home",
+    "error": {
+      "titulo": "We couldn’t check your access",
+      "descripcion": "Check your connection and try again."
+    },
+    "sinBloqueo": {
+      "titulo": "You can go in now",
+      "descripcion": "This page is now available to you.",
+      "abrir": "Open the page"
+    },
+    "ayuda": {
+      "pregunta": "Something not right?",
+      "enlace": "Visit the help center"
+    },
+    "papel": {
+      "dueno": "Organization owner",
+      "administrador": "Administrator",
+      "gestionaCargos": "Manages job positions"
+    },
+    "sinPersonas": "We couldn’t find anyone else who can do this.",
+    "avisar": {
+      "boton": "Notify the administrators",
+      "pedirAcceso": "Request access",
+      "yaAvisado": "You already notified the administrators",
+      "yaPedido": "You already requested access today",
+      "enviando": "Sending…",
+      "enviado": "Done: we notified {n, plural, one {# person} other {# people}}.",
+      "repetido": "You already sent a notice today. You can send another one tomorrow.",
+      "error": "The notice couldn’t be sent. Try again.",
+      "sinDestinatarios": "There’s nobody to notify in your organization."
+    },
+    "paginasMas": {
+      "titulo": "And {n, plural, one {# more page} other {# more pages}}",
+      "descripcion": "{lista} and more."
+    },
+    "apagado": {
+      "admin": {
+        "subtitulo": "Turned off in {organizacion}",
+        "subtituloMovil": "Turned off",
+        "titulo": "{modulo} is turned off",
+        "descripcion": "Your {plan} plan includes it and you still have room: you use {usados} of {cupo} optional modules. When you turn it on, its pages come back to the menu and your data stays as you left it.",
+        "descripcionSinTope": "Your {plan} plan has no module limit. When you turn it on, its pages come back to the menu and your data stays as you left it.",
+        "encender": "Turn on {modulo}",
+        "paginasTitulo": "Pages it includes",
+        "queParaTitulo": "What happens when you turn it on",
+        "menuTitulo": "It shows up in the menu",
+        "menuDesc": "People whose job position includes {modulo} will see it.",
+        "cupoTitulo": "Uses 1 slot of your plan",
+        "cupoDesc": "You’d be at {usados} of {cupo} optional modules. Your price doesn’t change.",
+        "cupoDescSinTope": "Your plan has no module limit. Your price doesn’t change.",
+        "despuesTitulo": "You can turn it off later",
+        "despuesDesc": "From Organization › Modules. Your data isn’t deleted."
+      },
+      "miembro": {
+        "subtitulo": "Not turned on in {organizacion}",
+        "subtituloMovil": "Not turned on",
+        "titulo": "{modulo} isn’t turned on",
+        "descripcion": "Your organization has this module turned off and only an administrator can turn it on. If you need it for your work, let them know from here.",
+        "quienTitulo": "Who can turn it on",
+        "recibeTitulo": "What the administrator gets",
+        "notifTitulo": "A notification with your request",
+        "notifDesc": "“{persona} asks to turn on {modulo}”, with a button to Modules.",
+        "diaTitulo": "Only one notice per day",
+        "diaDesc": "If you already sent one today, the button says “You already notified the administrators”."
+      }
+    },
+    "limite": {
+      "admin": {
+        "subtitulo": "Doesn’t fit in your {plan} plan",
+        "subtituloMovil": "Doesn’t fit in your plan",
+        "titulo": "Your {plan} plan is using all its modules",
+        "descripcion": "The {plan} plan allows {cupo} optional modules and you already have {usados} turned on. To use {modulo}, move to a plan with more room or turn off one you aren’t using.",
+        "verPlanes": "See plans",
+        "aMedida": "Custom setup",
+        "apagarOtro": "Turn off another module",
+        "encendidosTitulo": "Optional modules turned on ({usados} of {cupo})",
+        "disponibleTitulo": "Available in",
+        "planTitulo": "{plan} plan",
+        "planCupo": "Up to {cupo} optional modules: you’d have {libres} left.",
+        "planSinTope": "No module limit.",
+        "aMedidaDesc": "You choose modules and locations; the GO Admin team quotes it."
+      },
+      "miembro": {
+        "subtitulo": "Not in use in {organizacion}",
+        "subtituloMovil": "Not in use",
+        "titulo": "{modulo} isn’t in use in your organization",
+        "descripcion": "Your organization’s plan has no room for another module. If you need it, tell an administrator: they decide whether to upgrade the plan.",
+        "quienTitulo": "Who can decide",
+        "notifDesc": "“{persona} asks to use {modulo}”, with a button to See plans."
+      }
+    },
+    "otroPlan": {
+      "admin": {
+        "subtitulo": "No plan in {organizacion}",
+        "subtituloMovil": "No plan",
+        "titulo": "{modulo} needs a plan",
+        "descripcion": "Your organization doesn’t have an active plan yet. Choose one to turn on {modulo}."
+      }
+    },
+    "pagina": {
+      "admin": {
+        "subtitulo": "Hidden page of {modulo}",
+        "subtituloMovil": "Hidden page",
+        "titulo": "{pagina} is hidden",
+        "descripcion": "{modulo} is turned on, but this page was hidden in Organization › Modules. While it’s hidden it doesn’t appear in anyone’s menu or search.",
+        "mostrar": "Show page",
+        "mostrando": "Showing…",
+        "errorMostrar": "The page couldn’t be shown. Try again.",
+        "irA": "Go to {pagina}",
+        "alMostrarTitulo": "When you show it",
+        "vuelveTitulo": "It comes back to the menu",
+        "vuelveDesc": "It appears inside {modulo} for job positions with access.",
+        "cupoTitulo": "It doesn’t use a plan slot",
+        "cupoDesc": "The plan limit counts modules, not pages.",
+        "ocultarTitulo": "You can hide it again",
+        "ocultarDesc": "From Organization › Modules › {modulo}.",
+        "visiblesTitulo": "Visible pages of {modulo}"
+      },
+      "miembro": {
+        "subtitulo": "Page not available",
+        "titulo": "This page isn’t available",
+        "descripcion": "An administrator hid {pagina} in your organization. The rest of {modulo} works as usual.",
+        "irA": "Go to {modulo}",
+        "quienTitulo": "Who can show it",
+        "puedesTitulo": "Pages you can use"
+      }
+    },
+    "cargo": {
+      "subtitulo": "Your job position doesn’t include this module",
+      "subtituloMovil": "Not in your job position",
+      "titulo": "Your job position doesn’t include {modulo}",
+      "descripcion": "{modulo} is turned on in your organization, but the {cargo} job position doesn’t have access. If you need it for your work, ask whoever manages job positions.",
+      "descripcionSinNombre": "{modulo} is turned on in your organization, but your job position doesn’t have access. If you need it for your work, ask whoever manages job positions.",
+      "editarCargo": "Edit the job position",
+      "quienTitulo": "Who can give you access",
+      "incluyeTitulo": "What your job position does include",
+      "incluyeVacio": "Your job position doesn’t include any module yet."
+    },
+    "notificacion": {
+      "encender": {
+        "titulo": "{persona} asks to turn on {modulo}",
+        "contenido": "{persona} needs {modulo} for their work. You can turn it on in Organization › Modules."
+      },
+      "plan": {
+        "titulo": "{persona} asks to use {modulo}",
+        "contenido": "{modulo} doesn’t fit in the current plan. Check the plans if you want to turn it on."
+      },
+      "pagina": {
+        "titulo": "{persona} asks to show {pagina}",
+        "contenido": "{pagina} is hidden in {modulo}. You can show it in Organization › Modules."
+      },
+      "cargo": {
+        "titulo": "{persona} asks for access to {modulo}",
+        "contenido": "{persona}’s job position doesn’t include {modulo}. You can give access in Team › Job positions."
+      }
+    },
+    "buscador": {
+      "grupo": "Modules your organization doesn’t use",
+      "apagado": "Turned off · open it to turn it on",
+      "limite": "Doesn’t fit in your {plan} plan · See plans",
+      "limiteSinNombre": "Doesn’t fit in your plan · See plans",
+      "otroPlan": "Needs a plan · See plans",
+      "pistaMiembro": "Your organization may not use that feature. If you need it, ask an administrator."
+    },
+    "resaltado": "You can turn on {modulo} here."
   }
 }

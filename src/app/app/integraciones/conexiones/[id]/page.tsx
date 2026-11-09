@@ -350,7 +350,13 @@ export default function DetalleConexionPage() {
               <div className="flex min-w-0 flex-col gap-4">
                 {detalle.webhookUrl && (
                   <Tarjeta titulo={t('detalle.webhook.titulo')} descripcion={t('detalle.webhook.descripcion', { nombre: nombreProveedor })}>
-                    <CampoCopiar valor={detalle.webhookUrl} etiquetaCopiar={t('comun.copiar')} etiquetaCopiado={t('comun.copiado')} />
+                    <div className="flex flex-col gap-3">
+                      <CampoCopiar valor={detalle.webhookUrl} etiquetaCopiar={t('comun.copiar')} etiquetaCopiado={t('comun.copiado')} />
+                      {detalle.webhookOrigen === 'tienda' && <p className="text-[13px] leading-[18px] text-fg-secondary">{t('webhookWompi.dominioTienda')}</p>}
+                      {detalle.webhookSinDominio && (
+                        <AvisoTonal tono="advertencia" titulo={t('webhookWompi.sinDominioTitulo')} descripcion={t('webhookWompi.sinDominioDescripcion')} />
+                      )}
+                    </div>
                   </Tarjeta>
                 )}
                 <Tarjeta

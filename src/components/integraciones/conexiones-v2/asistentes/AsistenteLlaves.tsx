@@ -60,6 +60,9 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
   const [aviso, setAviso] = useState<{ tono: 'peligro' | 'advertencia'; titulo: string; descripcion?: string } | null>(null);
   const [conexionId, setConexionId] = useState<string | null>(conexionReemplazo ?? null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
+  // Wompi: `tienda` = dominio principal verificado (la tienda reenvía al ERP); sin dominio, la del ERP.
+  const [webhookOrigen, setWebhookOrigen] = useState<'tienda' | 'erp' | null>(null);
+  const [webhookSinDominio, setWebhookSinDominio] = useState(false);
   const [eventoRecibido, setEventoRecibido] = useState(false);
   const [uso, setUso] = useState<{ tienda: boolean; pos: boolean; sucursales: number[] | null }>({ tienda: def.usos.includes('tienda'), pos: def.usos.includes('pos'), sucursales: null });
   const [guardandoUso, setGuardandoUso] = useState(false);
@@ -78,6 +81,8 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
     setAviso(null);
     setConexionId(conexionReemplazo ?? null);
     setWebhookUrl(null);
+    setWebhookOrigen(null);
+    setWebhookSinDominio(false);
     setEventoRecibido(false);
     setErrorUso(null);
     setListo(false);
@@ -146,6 +151,8 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
         setValores({}); // ya están guardadas en el servidor: el navegador las olvida
         setConexionId(r.conexionId || conexionReemplazo || null);
         setWebhookUrl(r.webhookUrl);
+        setWebhookOrigen(r.webhookOrigen ?? null);
+        setWebhookSinDominio(r.webhookSinDominio === true);
         const sig = pasoSiguiente(pasos, 'prueba');
         if (sig) setPaso(sig);
         else terminar();
@@ -357,6 +364,10 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
           <CampoCopiar valor={webhookUrl} etiquetaCopiar={t('comun.copiar')} etiquetaCopiado={t('comun.copiado')} />
         ) : (
           <AvisoTonal tono="advertencia" titulo={t('asistente.llaves.webhook.sinUrl')} />
+        )}
+        {webhookUrl && webhookOrigen === 'tienda' && <p className="text-[13px] leading-[18px] text-fg-secondary">{t('webhookWompi.dominioTienda')}</p>}
+        {webhookUrl && webhookSinDominio && (
+          <AvisoTonal tono="advertencia" titulo={t('webhookWompi.sinDominioTitulo')} descripcion={t('webhookWompi.sinDominioDescripcion')} />
         )}
         <div className="flex items-center justify-between gap-3 rounded-lg border border-line px-4 py-3 text-sm text-fg-secondary" role="status">
           <span>{eventoRecibido ? t('asistente.llaves.webhook.recibido', { nombre }) : t('asistente.llaves.webhook.esperando', { nombre })}</span>

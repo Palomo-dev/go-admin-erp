@@ -20,6 +20,10 @@
  *    filtradas aquí mismo sin tildes.
  *  - Datos (clientes, productos, facturas…): `GET /api/busqueda-global`, solo
  *    de los módulos activos y las páginas que el cargo ve.
+ *  - Módulos que la organización no usa (solo quien puede encenderlos, lo
+ *    decide `GET /api/modules/no-usados`): elegir uno abre su ruta, que muestra
+ *    la pantalla «Módulo no habilitado». Al miembro no se le ofrecen; solo ve
+ *    una pista en «Sin resultados» (docs/design/MODULO-NO-HABILITADO.md §4).
  *
  * Accesibilidad: cmdk da el combobox (`role="combobox"`, `aria-controls`,
  * `aria-activedescendant`) y la lista (`role="listbox"` / `option`); Radix
@@ -82,6 +86,11 @@ import {
   type Reciente,
 } from '@/lib/busquedaGlobal/recientes';
 import { useBusquedaServidor } from './GlobalSearch/useBusquedaServidor';
+import { useModulosNoUsados } from './GlobalSearch/useModulosNoUsados';
+import { moduloPorCodigo } from '@/lib/navigation/catalog';
+import { useNombresNav } from '@/lib/navigation/useNombresNav';
+import { coincideModulo } from '@/lib/organizacion/modulos';
+import type { ModuloNoUsado } from '@/lib/organizacion/accesoModulo';
 import { useDescribirResultado } from './GlobalSearch/useDescribirResultado';
 
 /** Evento con el que el shell abre el buscador desde cualquier disparador. */
@@ -165,6 +174,8 @@ interface AccionFila {
 
 const GlobalSearch = ({ paginas, organizacionId = null }: GlobalSearchProps) => {
   const t = useTranslations('header.globalSearch');
+  const tAcceso = useTranslations('moduloNoHabilitado.buscador');
+  const nombresNav = useNombresNav();
   const router = useRouter();
   const describir = useDescribirResultado();
   const [abierto, setAbierto] = useState(false);
@@ -179,6 +190,7 @@ const GlobalSearch = ({ paginas, organizacionId = null }: GlobalSearchProps) => 
   const idAnuncio = useId();
 
   const servidor = useBusquedaServidor(consulta, abierto, organizacionId);
+  const noUsados = useModulosNoUsados(abierto, organizacionId);
   const clave = claveRecientes(usuarioId, organizacionId);
   const listaPaginas = useMemo(() => paginas ?? [], [paginas]);
   const hrefsVisibles = useMemo(() => listaPaginas.map((p) => p.url), [listaPaginas]);
@@ -251,9 +263,32 @@ const GlobalSearch = ({ paginas, organizacionId = null }: GlobalSearchProps) => 
     [listaPaginas, texto],
   );
 
+  // Solo con texto: «punto de venta» encuentra el módulo por su nombre o el de sus páginas.
+  const modulosMostrados = useMemo(() => {
+    if (!texto || noUsados.modulos.length === 0) return [];
+    return noUsados.modulos
+      .map((m) => {
+        const nav = moduloPorCodigo(m.codigo);
+        const nombre = nombresNav.modulo(m.codigo) ?? m.codigo;
+        const paginasNombres = (nav?.paginas ?? []).filter((p) => m.paginas.includes(p.href)).map((p) => ({ name: nombresNav.pagina(p) }));
+        return { m, nombre, icono: nav?.icono ?? FileQuestion, paginasNombres };
+      })
+      .filter((x) => coincideModulo({ code: x.m.codigo, name: x.nombre }, texto, x.paginasNombres))
+      .slice(0, 5);
+  }, [texto, noUsados.modulos, nombresNav]);
+
+  const estadoNoUsado = (m: ModuloNoUsado) =>
+    m.estado === 'apagado'
+      ? tAcceso('apagado')
+      : m.estado === 'otroPlan'
+        ? tAcceso('otroPlan')
+        : noUsados.plan
+          ? tAcceso('limite', { plan: noUsados.plan })
+          : tAcceso('limiteSinNombre');
+
   const recientesMostrados = useMemo(() => (texto ? [] : filtrarRecientes(recientes, hrefsVisibles)), [texto, recientes, hrefsVisibles]);
 
-  const totalLocal = paginasMostradas.length + (texto ? acciones.length : 0);
+  const totalLocal = paginasMostradas.length + (texto ? acciones.length : 0) + modulosMostrados.length;
   const totalServidor = servidor.grupos.reduce((n, g) => n + g.items.length, 0);
   const estado = estadoBusqueda({
     consulta: texto,
@@ -417,6 +452,21 @@ const GlobalSearch = ({ paginas, organizacionId = null }: GlobalSearchProps) => 
                 </Command.Group>
               )}
 
+              {modulosMostrados.length > 0 && (
+                <Command.Group heading={tAcceso('grupo')}>
+                  {modulosMostrados.map(({ m, nombre, icono }) => (
+                    <Fila
+                      key={`m:${m.codigo}`}
+                      valor={`modulo:${m.codigo}`}
+                      icono={icono}
+                      titulo={nombre}
+                      subtitulo={estadoNoUsado(m)}
+                      onSelect={() => ir(m.href)}
+                    />
+                  ))}
+                </Command.Group>
+              )}
+
               {servidor.grupos.map((g) => (
                 <Command.Group key={g.tipo} heading={t(`groups.${GRUPO_I18N[g.tipo]}`)}>
                   {g.items.map((r) => {
@@ -440,7 +490,13 @@ const GlobalSearch = ({ paginas, organizacionId = null }: GlobalSearchProps) => 
               {estado === 'sin-resultados' && (
                 <SinResultados
                   titulo={t('noResults', { query: texto })}
-                  ayuda={texto.length < MIN_CARACTERES_ENTIDADES ? t('typeMore', { n: MIN_CARACTERES_ENTIDADES }) : t('noResultsHint')}
+                  ayuda={
+                    texto.length < MIN_CARACTERES_ENTIDADES
+                      ? t('typeMore', { n: MIN_CARACTERES_ENTIDADES })
+                      : noUsados.puedeEncender === false
+                        ? tAcceso('pistaMiembro')
+                        : t('noResultsHint')
+                  }
                   accion={
                     crear && texto.length >= MIN_CARACTERES_ENTIDADES
                       ? { etiqueta: t(`create.${crear.id as 'nuevoProducto' | 'nuevoCliente'}`), onClick: () => ir(crear.href) }

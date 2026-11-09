@@ -152,6 +152,10 @@ function getRedirect(notif: NotificationForSheet): { url: string; accion: string
       return { url: '/app/hrm', accion: 'viewShifts' };
     case 'calendar_event_assigned': case 'calendar_event_cancelled':
       return { url: '/app/calendario', accion: 'viewCalendar' };
+    // Avisos de «Módulo no habilitado» (TIPO_AVISO en src/lib/organizacion/accesoModulo.ts):
+    // `href` lo pone el servidor (Módulos con la tarjeta resaltada, Plan o el cargo).
+    case 'modulo_pide_encender': case 'modulo_pide_mostrar_pagina': case 'modulo_pide_acceso_cargo':
+      return { url: p.href || '/app/organizacion/modulos', accion: 'viewOrganization' };
     case 'subscription_cancelled': case 'trial_ended': case 'trial_expiring': case 'payment_failed':
     case 'ai_credits_low': case 'new_member': case 'role_changed':
       return { url: '/app/organizacion', accion: 'viewOrganization' };

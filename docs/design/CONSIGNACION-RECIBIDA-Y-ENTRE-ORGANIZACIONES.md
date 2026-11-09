@@ -507,3 +507,34 @@ descuadrados, ninguna liquidación con asiento de remuneración, ningún pendien
 En el listado de Consignaciones el ícono del buscador se montaba sobre la primera pestaña. Igual que en Anticipos: el
 buscador va en su propia fila y las pestañas de estado debajo, con desplazamiento horizontal
 (`src/__tests__/inventario/consignaciones/filtroEstadoMovil.test.tsx`, render a 390 px).
+
+## Ronda 4 del Contador (2026-11-09)
+
+Detalle, evidencia y preguntas en `docs/contador/ANTICIPOS-Y-CONSIGNACION-RONDA-4-2026-11-09.md`. Migración
+`20261108121000_consignaciones.sql` corregida en el mismo archivo y **sin aplicar** (md5 `d2a58b49b6016488ba3287a48511d4d5`).
+
+- **Retención practicada ≠ estimada.** `consignment_settlement_withholdings.status` pasa a `estimada` (lo que se espera
+  que retengan; nunca se asienta), `practicada` (ya ocurrió, con su asiento), `pendiente` o `no_aplica`. La practicada se
+  reconoce en su fecha con `fn_consignacion_retencion_practicada`, sin esperar el certificado.
+- **Asientos.** Operación (la practica el comprador): D 281510 del dueño / C cartera del cliente + pendiente
+  `consignacion_cartera_retencion_por_aplicar`. Remuneración (la practica el dueño): D 1355 retención sufrida / C cuenta
+  por cobrar al dueño hasta su saldo, el resto C 281510. Conciliar **solo compara** el certificado con lo practicado.
+- **Cuentas nuevas en `consignment_account_settings`:** `owner_receivable_account_code` (cuenta por cobrar de la
+  remuneración al dueño, obligatoria en la recibida) y `withheld_accounts` (retención sufrida por clase, 1355).
+- **Compensación de la comisión.** Término obligatorio en la recibida de intermediación: `compensacion_remuneracion`.
+  Con pacto y saldo **exigible** (`fn_consignacion_saldo_dueno`: libros menos lo facturado «al cobro» sin cobrar) se
+  descuenta de la 281510; si no, cuenta por cobrar al dueño (`consignment_allocations.remuneration_receivable`). La
+  compensación posterior queda en `consignment_commission_offsets` (`fn_consignacion_compensar_remuneracion`).
+- **Anular una liquidación** no cierra los pendientes de hechos vigentes; la practicada pasa a la siguiente
+  (`carried_from`) y los pendientes se cierran al quedar cubiertas sus ventas (`reliquidada:<id>`) o al anularse el
+  hecho (`venta_revertida`).
+- **Criterios tributarios compartidos con anticipos** (`fn_tributario_*` de 20261108170000), por comprador y por dueño;
+  sin ellos, todo queda `pendiente/criterios_tributarios_no_instalados`. ReteICA usa la regla municipal
+  (`reteica_reglas`). Se retiraron `fn_consignacion_tiene_resp` y `fn_consignacion_aplicar_regla`.
+- **Corrección encontrada por la prueba 22:** con obligación «al cobro», la devolución de una factura no cobrada ya no
+  entra sola a la liquidación.
+- **Pantallas:** el contrato recibido pregunta por la compensación; las retenciones muestran *Estimada* / *Practicada* y
+  ofrecen «Registrar practicada» (`POST /api/consignaciones/recibidas/retenciones/[id]/practicada`). Sin pantalla aún
+  (Figma primero): compensación posterior y configuración de las cuentas nuevas.
+- **Pendiente:** el lado del mandante (circuito bilateral) y la aplicación de la retención del comprador a la factura en
+  cuentas por cobrar.

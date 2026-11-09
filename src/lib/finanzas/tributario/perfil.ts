@@ -10,17 +10,21 @@
 import { esDiaValido } from './periodos';
 import {
   ACTIVIDADES_INC,
+  CALIFICACIONES_GRAN_CONTRIBUYENTE,
   CONDICIONES_IVA,
   ESTADOS_CAMBIO_PERIODICIDAD,
   MOTIVOS_CAMBIO_PERIODICIDAD,
+  PROCEDENCIAS_CAMBIO_PERIODICIDAD,
   REGIMENES_RENTA,
   TIPOS_RTE,
   desdeRegimenCombinado,
   type ActividadInc,
+  type CalificacionGranContribuyente,
   type CondicionIva,
   type DatosCombinacion,
   type EstadoCambioPeriodicidad,
   type MotivoCambioPeriodicidad,
+  type ProcedenciaCambioPeriodicidad,
   type RegimenRenta,
   type TipoRte,
 } from './combinaciones';
@@ -63,6 +67,10 @@ export interface VigenciaPerfil extends CamposPerfil {
   vigenteDesde: string;
   vigenteHasta: string | null;
   cambioPeriodicidadEstado: EstadoCambioPeriodicidad;
+  /** Ronda 4: «documentado» no es «procedente». Opcional: filas anteriores a la columna = por evaluar. */
+  cambioPeriodicidadProcedencia?: ProcedenciaCambioPeriodicidad;
+  /** Ronda 4: datos para aclaración que la base dejó registrados (no bloquean ni se borran). */
+  aclaraciones?: string[];
   advertenciasAceptadas: string[];
   /** Vigencia migrada del campo combinado viejo o con datos sin definir: alguien debe confirmarla. */
   requiereRevision: boolean;
@@ -134,7 +142,13 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
   if (!vacio(b.motivoCambioPeriodicidad) && !en(MOTIVOS_CAMBIO_PERIODICIDAD, b.motivoCambioPeriodicidad)) return { ok: false, error: 'motivo_invalido' };
   if (!vacio(b.incActividad) && !en(ACTIVIDADES_INC, b.incActividad)) return { ok: false, error: 'datos_invalidos' };
   if (!vacio(b.rteTipo) && !en(TIPOS_RTE, b.rteTipo)) return { ok: false, error: 'datos_invalidos' };
-  const fechas = [diaONull(b.granContribuyenteDesde), diaONull(b.autorretenedorActoFecha), diaONull(b.cambioPeriodicidadFecha)];
+  if (!vacio(b.granContribuyenteCalificacion) && !en(CALIFICACIONES_GRAN_CONTRIBUYENTE, b.granContribuyenteCalificacion)) return { ok: false, error: 'datos_invalidos' };
+  const fechas = [
+    diaONull(b.granContribuyenteDesde),
+    diaONull(b.autorretenedorActoFecha),
+    diaONull(b.cambioPeriodicidadFecha),
+    diaONull(b.granContribuyenteActoFecha),
+  ];
   if (fechas.some((f) => f === false)) return { ok: false, error: 'datos_invalidos' };
   const responsabilidades = listaCodigos(b.responsabilidades, CODIGO_FE_RE, true);
   if (responsabilidades === null) return { ok: false, error: 'responsabilidad_invalida' };
@@ -179,6 +193,8 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
       granContribuyente: b.granContribuyente === true,
       granContribuyenteActo: textoCorto(b.granContribuyenteActo, 120),
       granContribuyenteDesde: fechas[0] || null,
+      granContribuyenteCalificacion: vacio(b.granContribuyenteCalificacion) ? null : (b.granContribuyenteCalificacion as CalificacionGranContribuyente),
+      granContribuyenteActoFecha: fechas[3] || null,
       autorretenedor: b.autorretenedor === true,
       autorretenedorActo: textoCorto(b.autorretenedorActo, 120),
       autorretenedorActoFecha: fechas[1] || null,
@@ -216,6 +232,8 @@ export function parametrosGuardarPerfil(organizationId: number, d: SolicitudPerf
       gran_contribuyente: d.granContribuyente,
       gran_contribuyente_acto: d.granContribuyenteActo,
       gran_contribuyente_desde: d.granContribuyenteDesde,
+      gran_contribuyente_calificacion: d.granContribuyenteCalificacion ?? null,
+      gran_contribuyente_acto_fecha: d.granContribuyenteActoFecha ?? null,
       autorretenedor: d.autorretenedor,
       autorretenedor_acto: d.autorretenedorActo,
       autorretenedor_acto_fecha: d.autorretenedorActoFecha,
@@ -291,6 +309,8 @@ export interface FilaPerfil {
   gran_contribuyente?: boolean | null;
   gran_contribuyente_acto?: string | null;
   gran_contribuyente_desde?: string | null;
+  gran_contribuyente_calificacion?: string | null;
+  gran_contribuyente_acto_fecha?: string | null;
   autorretenedor?: boolean | null;
   autorretenedor_acto?: string | null;
   autorretenedor_acto_fecha?: string | null;
@@ -306,6 +326,8 @@ export interface FilaPerfil {
   cambio_periodicidad_norma?: string | null;
   cambio_periodicidad_fecha?: string | null;
   cambio_periodicidad_estado?: string | null;
+  cambio_periodicidad_procedencia?: string | null;
+  aclaraciones?: string[] | null;
   advertencias_aceptadas?: string[] | null;
   requiere_revision?: boolean | null;
   regimen_origen?: string | null;
@@ -343,6 +365,8 @@ function camposSeparados(p: FilaPerfil): CamposFila {
     ...base,
     granContribuyenteActo: p.gran_contribuyente_acto ?? null,
     granContribuyenteDesde: p.gran_contribuyente_desde ?? null,
+    granContribuyenteCalificacion: en(CALIFICACIONES_GRAN_CONTRIBUYENTE, p.gran_contribuyente_calificacion) ? p.gran_contribuyente_calificacion : null,
+    granContribuyenteActoFecha: p.gran_contribuyente_acto_fecha ?? null,
     autorretenedorActo: p.autorretenedor_acto ?? null,
     autorretenedorActoFecha: p.autorretenedor_acto_fecha ?? null,
     autorretencionEspecial: p.autorretencion_especial ?? null,
@@ -356,6 +380,8 @@ function camposSeparados(p: FilaPerfil): CamposFila {
     cambioPeriodicidadNorma: p.cambio_periodicidad_norma ?? null,
     cambioPeriodicidadFecha: p.cambio_periodicidad_fecha ?? null,
     cambioPeriodicidadEstado: en(ESTADOS_CAMBIO_PERIODICIDAD, p.cambio_periodicidad_estado) ? p.cambio_periodicidad_estado : 'no_aplica',
+    cambioPeriodicidadProcedencia: en(PROCEDENCIAS_CAMBIO_PERIODICIDAD, p.cambio_periodicidad_procedencia) ? p.cambio_periodicidad_procedencia : 'por_evaluar',
+    aclaraciones: p.aclaraciones ?? [],
     advertenciasAceptadas: p.advertencias_aceptadas ?? [],
     requiereRevision: !nuevos || p.requiere_revision === true || base.regimenRenta === null || base.condicionIva === null,
     regimenOrigen: nuevos ? (p.regimen_origen ?? null) : (p.regimen ?? null),
@@ -416,6 +442,15 @@ export function contiguas(
 export type FaltaPerfil = 'perfil' | 'nit' | 'revisar_perfil' | 'periodicidad_iva' | 'cambio_periodicidad_pendiente';
 
 /** Lo que impide derivar las obligaciones con certeza (banda «Faltan datos para los borradores tributarios»). */
+/**
+ * Ronda 4: un cambio de periodicidad a mitad de año sigue pendiente mientras falte documentarlo o, documentado,
+ * mientras nadie haya registrado que procede. Ningún motivo lo autoriza por sí solo.
+ */
+export function cambioPeriodicidadSinConfirmar(v: Pick<VigenciaPerfil, 'cambioPeriodicidadEstado' | 'cambioPeriodicidadProcedencia'>): boolean {
+  if (v.cambioPeriodicidadEstado === 'pendiente_soporte') return true;
+  return v.cambioPeriodicidadEstado === 'documentado' && (v.cambioPeriodicidadProcedencia ?? 'por_evaluar') !== 'procedente';
+}
+
 export function faltantesPerfil(empresa: DatosEmpresa, vigente: VigenciaPerfil | null): FaltaPerfil[] {
   const faltan: FaltaPerfil[] = [];
   if (!vigente) faltan.push('perfil');
@@ -423,7 +458,7 @@ export function faltantesPerfil(empresa: DatosEmpresa, vigente: VigenciaPerfil |
   if (vigente) {
     if (vigente.requiereRevision) faltan.push('revisar_perfil');
     if (vigente.condicionIva === 'responsable' && vigente.periodicidadIva === 'no_aplica') faltan.push('periodicidad_iva');
-    if (vigente.cambioPeriodicidadEstado === 'pendiente_soporte') faltan.push('cambio_periodicidad_pendiente');
+    if (cambioPeriodicidadSinConfirmar(vigente)) faltan.push('cambio_periodicidad_pendiente');
   }
   return faltan;
 }

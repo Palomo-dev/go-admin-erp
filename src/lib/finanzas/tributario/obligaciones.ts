@@ -59,7 +59,8 @@ export type NotaObligacion =
   | 'anticipo_simple'
   | 'regimen_especial'
   | 'conciliacion_por_evaluar'
-  | 'rte_cooperativa_por_confirmar'
+  | 'rte_cooperativa_formatos'
+  | 'rte_memoria_pdf_firmado'
   | 'rte_umbral_por_confirmar'
   | 'clasificacion_inicial'
   | 'cambio_vigencia_en_periodo'
@@ -146,6 +147,10 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
       // Régimen tributario especial (ET arts. 19, 356 a 364-6): renta en el formulario 110, conciliación fiscal
       // evaluada (no excluida), actualización anual del registro web (art. 364-5) y memoria económica cuando los
       // ingresos del año anterior superan 160.000 UVT (art. 356-3 par. 2). Parametrizado por tipo de entidad.
+      // Ronda 4 del Contador: a las cooperativas SÍ les aplica la actualización del registro web (no es opcional), con
+      // los formatos 5245, 2530 y 2531 (2532 cuando corresponda, con las adaptaciones de cooperativas) y sin la
+      // información de asignaciones permanentes propia de las ESAL. La memoria económica se presenta en PDF firmado
+      // según corresponda, no como un formato numerado.
       const cooperativa = perfil.rteTipo === 'cooperativa_art19_4';
       agregar('anual', { id: 'renta', clave: 'renta', formulario: '110', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' }, [
         ...revisar,
@@ -155,13 +160,15 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
         ...revisar,
         'conciliacion_por_evaluar',
       ]);
-      agregar('anual', { id: 'rte_registro_web', clave: 'rte_registro_web', formulario: null, calendario: 'rte_registro_web', fuente: 'ninguna' }, [
-        ...revisar,
-        ...(cooperativa || perfil.rteTipo === null ? (['rte_cooperativa_por_confirmar'] as NotaObligacion[]) : []),
-      ]);
+      agregar(
+        'anual',
+        { id: 'rte_registro_web', clave: 'rte_registro_web', formulario: cooperativa ? '5245, 2530, 2531' : null, calendario: 'rte_registro_web', fuente: 'ninguna' },
+        [...revisar, ...(cooperativa ? (['rte_cooperativa_formatos'] as NotaObligacion[]) : [])],
+      );
       if (perfil.rteIngresosSuperan160000Uvt !== false) {
         agregar('anual', { id: 'rte_memoria_economica', clave: 'rte_memoria_economica', formulario: null, calendario: 'rte_memoria_economica', fuente: 'ninguna' }, [
           ...revisar,
+          'rte_memoria_pdf_firmado',
           ...(perfil.rteIngresosSuperan160000Uvt === null ? (['rte_umbral_por_confirmar'] as NotaObligacion[]) : []),
         ]);
       }

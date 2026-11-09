@@ -1,0 +1,81 @@
+Resultado de 21_anticipos_ronda4_aiu_ica_devoluciones.sql · 2026-11-09
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción
+(= rollback): nada quedó escrito. Opera el usuario miembro de la 374; VALIDA un segundo usuario añadido como miembro de la
+374 dentro de la transacción (nunca quien registró la regla).
+
+Archivo: 21_anticipos_ronda4_aiu_ica_devoluciones.sql (md5 e03fb5424b8bcd949d15c50b3f721faa; ejecutado dentro de un DO sin
+la línea «begin;», md5 de lo ejecutado cde1aa9818d9b4ff241077b0e1f08488).
+Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 d2a58b49b6016488ba3287a48511d4d5 ·
+  20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 ·
+  20261108160500 c83b8a50b6342e65ee5bf3f993847b79 · 20261108165000 28e47f6353ee4102463b7b63dca057be ·
+  20261108170000 ca6171f8dfbc5cb11ec40a831ea589df
+
+Corridas: la primera dio 52 de 54; las 2 fallas eran de la prueba (C2b contaba también el excedente de reteICA de
+diciembre, que es correcto; D2d esperaba «23448.00» y el valor es «23448»). Se corrigió la prueba. Después, para correr
+dentro de la integrada 20, la regla y el procedimiento de ReteICA de esta prueba pasaron a otro municipio (la 11 ya
+registra el de Bogotá con la misma vigencia) y se volvieron a diferir los controles de cuadre al empezar.
+RESULTADO (corrida que vale): 54 de 54 verificaciones OK + 7 de 7 md5 de carga. Todos los asientos cuadran.
+
+Los hechos de meses o años anteriores se simulan fechando, como administrador, un anticipo y sus retenciones en
+octubre de 2026 (X3) y en diciembre de 2025 (X4).
+
+A · AIU (dos regímenes; nada opera sin la validación)
+  A1a 462-1 sin servicio comprendido ................................. aiu_condiciones_462_1
+  A1b mantenimiento con «AIU» no pasa a construcción .................. aiu_mantenimiento_no_es_construccion
+  A1c construcción sin licencia de construcción ....................... aiu_condiciones_construccion
+  A1d contrato sin archivo ............................................ aiu_contrato_incompleto
+  A2a los tres contratos nacen ........................................ pendiente_validacion ×3
+  A2b valida quien registró ........................................... validador_debe_ser_distinto
+  A2c concepto corto .................................................. concepto_obligatorio
+  A2d el otro usuario valida .......................................... validado
+  A2e decidir otra vez ................................................ regla_ya_decidida
+  A3  462-1 (costo 800.000; A 100.000; I 50.000; U 50.000) ............ iva 38.000 sobre 200.000; rete 4 % sobre la base especial 8.000; reteIVA 5.700; reteICA 9.660 sobre el total; mínimo no aplica
+  A4  462-1 con AIU de 50.000 (5 %) ................................... base 100.000 (10 % del valor); iva 19.000; rete 4.000; mínimo aplicado
+  A5  construcción sin honorarios pactados ............................ base = utilidad 50.000; iva 9.500; reteIVA 1.425; sin mínimo del 10 %
+  A6  construcción con honorarios pactados ............................ base = honorarios 100.000; iva 19.000
+  A7  honorarios en un contrato 462-1 ................................. aiu_componentes_regimen
+  A8  AIU mezclado con una línea gravada .............................. aiu_componentes_mezclados
+  A9  contrato de otro proveedor ...................................... aiu_contrato_invalido
+  A10 AIU sin tarifa de IVA ........................................... tarifa_iva_invalida
+B · ReteICA: procedimiento del MISMO municipio, validado
+  B1  procedimiento sin pruebas ....................................... procedimiento_ica_incompleto
+  B2a anticipo con reteICA municipal al girar ......................... 40.000 · 9.660 · 28.500
+  B2b reversión sin procedimiento del municipio ....................... reteica_sin_procedimiento_municipal
+  B3  procedimiento validado de OTRO municipio ........................ reteica_sin_procedimiento_municipal (no se traslada)
+  B4a procedimiento registrado sin validar ............................ reteica_sin_procedimiento_municipal
+  B4b validado pero sin las pruebas que exige ......................... reteica_pruebas_incompletas
+  B4c con procedimiento y pruebas: 4.000 + 2.850 + 966 ................ 7.816; renta en 2026-11 (hecho); ICA en 2026-12 (regla del procedimiento)
+  B4d la regla del período queda escrita por impuesto ................. retefuente: DUR 1.2.4.17 · reteica: periodo_siguiente_al_reintegro
+  B5a exceso sin solicitud del afectado y pruebas ..................... soporte_procedimiento_obligatorio
+  B5b reteICA en exceso sin las pruebas del procedimiento ............. reteica_pruebas_incompletas
+  B5c período elegido por el usuario .................................. periodo_descuento_no_es_de_libre_eleccion
+  B5d reintegro del exceso de reteICA ................................. 4.968 en 2026-12 (regla del procedimiento)
+C · Devoluciones: soporte del hecho, líneas, período por impuesto, entre períodos y años
+  C0  anticipo mixto (500.000 gravado 19 % + 200.000 excluido) ......... 28.000 · 6.762 · 14.250
+  C1a la solicitud del proveedor sola ................................. solicitud_no_prueba_el_hecho
+  C1b sin soporte del hecho ........................................... soporte_del_hecho_obligatorio
+  C1c resolución parcial sin líneas ................................... lineas_afectadas_obligatorias
+  C1d línea mayor que lo que queda de ella ............................ linea_excede_lo_pendiente
+  C1e IVA de la línea que no es el de la operación .................... linea_iva_no_cuadra
+  C1f período elegido ................................................. periodo_descuento_no_es_de_libre_eleccion
+  C1g resolución PARCIAL de la línea excluida (sin agotar el anticipo) . retefuente 8.000 · reteICA 1.932 · reteIVA 0 (prorrata ciega daría 3.585); saldo 595.000
+  C2  hecho del 20 de octubre registrado en noviembre .................. renta e IVA en 2026-10 (ajustes fechados en octubre); ICA en 2026-12
+  C2b octubre sin excedente; el reteICA de diciembre (sin practicadas) pasa a los siguientes . 0/1
+  C3a retención de diciembre de 2025 revertida por un hecho de enero de 2026 . renta e IVA en 2026-01
+  C3b pendientes ...................................................... correccion_declaracion · descuento_retencion_siguientes_periodos · retencion_revertida_otro_anio
+  C3c enero de 2026 queda en −4.000 de retefuente ..................... −4.000 por descontar en los siguientes
+D · Financiación que se convierte en pago o abono (sin factura)
+  D1  financiación: no se retiene al girar ............................ 0 · 500.000
+  D2a convertir un pago anticipado .................................... anticipo_no_es_financiacion
+  D2b sin soporte del hecho ........................................... soporte_obligatorio
+  D2c más que lo financiado ........................................... conversion_excede_financiacion
+  D2d abono de 357.000 (base 300.000 + IVA 57.000) .................... retención 23.448 (12.000 + 8.550 + 2.898); girado convertido 333.552; saldo 523.448
+  D2e asiento de la conversión ........................................ 13300501 D 23.448 · 23652501 C 12.000 · 23670501 C 8.550 · 23680501 C 2.898 · NIT del proveedor
+  D3  misma clave ..................................................... repetida
+  D4  resolución parcial de una línea del ABONO ....................... 7.816 · dinero 111.184
+E · Certificado, conciliación, estado de cuenta, cuadre
+  E1  certificado: retenciones de la conversión como «Abono del anticipo» . 3 filas · 23.448
+  E2  conciliación del anticipo convertido ............................ cuadra; 404.448 = libros 404.448
+  E3  estado de cuenta: la conversión con su retención ................ 23.448
+  E4  asientos de la prueba ........................................... todos cuadran; ninguno en 1330

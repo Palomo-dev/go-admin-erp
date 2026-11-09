@@ -62,6 +62,11 @@ export interface CondicionesContrato {
   facturaRemuneracion: boolean | null;
   /** Intermediación: cuándo nace la obligación con el dueño en ventas a crédito. */
   obligacionDueno: 'venta' | 'cobro' | null;
+  /**
+   * Ronda 4 del Contador, solo recibida en intermediación: si el contrato PACTA descontar la remuneración de lo que se
+   * debe al dueño. Sin pacto (o sin saldo exigible) la remuneración queda como cuenta por cobrar al dueño.
+   */
+  compensacionRemuneracion: boolean | null;
   riesgos: { devoluciones: ParteContrato | null; perdidas: ParteContrato | null; gastos: ParteContrato | null };
 }
 
@@ -76,6 +81,7 @@ export const CONDICIONES_VACIAS: CondicionesContrato = {
   obligacionPosterior: null,
   facturaRemuneracion: null,
   obligacionDueno: null,
+  compensacionRemuneracion: null,
   riesgos: { devoluciones: null, perdidas: null, gastos: null },
 };
 
@@ -92,6 +98,7 @@ export type ErrorCondicion =
   | 'obligacion_posterior'
   | 'factura_remuneracion'
   | 'obligacion'
+  | 'compensacion_remuneracion'
   | 'riesgos';
 
 /** Tratamiento tributario: lo deriva el sistema de la modalidad, no se elige. */
@@ -116,6 +123,7 @@ export function validarCondiciones(c: CondicionesContrato, direccion: DireccionC
   if (c.reconocimiento === 'obligacion_posterior' && (c.obligacionPosterior ?? '').trim().length < 10) errores.push('obligacion_posterior');
   if (c.facturaRemuneracion === null) errores.push('factura_remuneracion');
   if (!c.obligacionDueno) errores.push('obligacion');
+  if (direccion === 'recibida' && c.compensacionRemuneracion === null) errores.push('compensacion_remuneracion');
   if (!c.riesgos.devoluciones || !c.riesgos.perdidas || !c.riesgos.gastos) errores.push('riesgos');
   return errores;
 }
@@ -137,6 +145,7 @@ export function terminosDeCondiciones(
     ...(c.reconocimiento === 'obligacion_posterior' ? { obligacion_posterior: (c.obligacionPosterior ?? '').trim() } : {}),
     factura_remuneracion: c.facturaRemuneracion,
     obligacion_dueno: c.contrato === 'intermediacion' ? c.obligacionDueno : null,
+    ...(direccion === 'recibida' && c.contrato === 'intermediacion' ? { compensacion_remuneracion: c.compensacionRemuneracion } : {}),
     riesgos: c.riesgos,
     ...(extra.cuentaRecaudo ? { cuenta_recaudo: extra.cuentaRecaudo.trim() } : {}),
   };
@@ -157,6 +166,8 @@ export const terminosSchema = z
     obligacion_posterior: z.string().trim().min(10).max(1000).optional(),
     factura_remuneracion: z.boolean(),
     obligacion_dueno: z.enum(['venta', 'cobro']).nullable().optional(),
+    /** Ronda 4: obligatoria en la recibida de intermediación (la base la exige; la ruta no conoce la dirección). */
+    compensacion_remuneracion: z.boolean().optional(),
     riesgos: z.object({ devoluciones: PARTE, perdidas: PARTE, gastos: PARTE }).strict(),
     cuenta_recaudo: z.string().regex(/^281510\d{2}$/).optional(),
   })
@@ -249,6 +260,22 @@ export const reconocerRemuneracionSchema = z.object({ evidencia: z.string().trim
 
 /** Conciliar una retención con su soporte (certificado): el valor que consta, nunca presumido. */
 export const conciliarRetencionSchema = z.object({ valor: z.number().finite().min(0).max(1e12), soporte: z.string().trim().min(5).max(1000) }).strict();
+
+/**
+ * Ronda 4, punto 4: la retención PRACTICADA se reconoce cuando ocurre (el pagador ya la descontó), con su valor, base,
+ * fecha y soporte; no espera el certificado. En la de la operación, `factura_id` es la factura del cliente que la
+ * practicó (de esa liquidación) cuando hay más de una.
+ */
+export const retencionPracticadaSchema = z
+  .object({
+    valor: z.number().finite().positive().max(1e12),
+    base: z.number().finite().positive().max(1e12),
+    fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    soporte: z.string().trim().min(5).max(1000),
+    factura_id: z.string().uuid().nullable().optional(),
+  })
+  .strict();
+export type SolicitudRetencionPracticada = z.infer<typeof retencionPracticadaSchema>;
 
 const REGLA = z.string().uuid().nullable().optional();
 const REGLAS_AMBITO = z.object({ retefuente: REGLA, reteiva: REGLA, reteica: REGLA }).strict();
@@ -393,6 +420,18 @@ export const ERRORES_RECIBIDA = [
   'factura_distinta',
   'documento_anulado',
   'asiento_no_creado',
+  // Ronda 4 del Contador.
+  'sin_cuenta_cobro_remuneracion',
+  'retencion_no_reconocida',
+  'retencion_ya_practicada',
+  'fecha_anterior_a_la_venta',
+  'fecha_futura',
+  'periodo_cerrado',
+  'factura_de_la_liquidacion_obligatoria',
+  'sin_cuenta_cartera_cliente',
+  'sin_cuenta_retencion_sufrida',
+  'compensacion_no_pactada',
+  'excede_remuneracion_por_cobrar',
   'error_desconocido',
 ] as const;
 export type ErrorRecibida = (typeof ERRORES_RECIBIDA)[number];
@@ -403,6 +442,7 @@ export const ERRORES_DE_CONFIGURACION: readonly ErrorRecibida[] = [
   'sin_cuenta_contra_orden',
   'sin_cuenta_recaudo_propietario',
   'sin_cuenta_remuneracion',
+  'sin_cuenta_cobro_remuneracion',
   'estimatorio_bloqueado_438_455',
 ];
 
@@ -488,7 +528,11 @@ export interface LineaRecibida {
 
 export type AmbitoRetencion = 'operacion' | 'remuneracion';
 export type ClaseRetencion = 'retefuente' | 'reteiva' | 'reteica';
-export type EstadoRetencion = 'determinada' | 'pendiente' | 'no_aplica';
+/**
+ * Ronda 4: 'estimada' es lo que se espera que el pagador retenga (nunca se asienta); 'practicada' ya ocurrió y está
+ * reconocida con su asiento, sin esperar el certificado.
+ */
+export type EstadoRetencion = 'estimada' | 'practicada' | 'pendiente' | 'no_aplica';
 
 /** Retención de una liquidación: por ámbito, clase y grupo de pagadores. «valor» es null mientras esté pendiente. */
 export interface RetencionLiquidacion {
@@ -496,12 +540,14 @@ export interface RetencionLiquidacion {
   ambito: AmbitoRetencion;
   clase: ClaseRetencion;
   pagador: 'comprador' | 'dueno';
-  grupo: 'consumidor_final' | 'sin_datos' | 'no_agente' | 'agente' | 'dueno';
+  grupo: 'consumidor_final' | 'sin_datos' | 'no_agente' | 'agente' | 'por_acreditar' | 'dueno';
   base: number | null;
   tarifa: number | null;
   valor: number | null;
   estado: EstadoRetencion;
   motivo: string | null;
+  /** Ronda 4: la retención practicada reconocida (valor, base, fecha y soporte). */
+  practicada?: { valor: number; base: number | null; fecha: string; soporte: string } | null;
   conciliado: { valor: number; soporte: string; fecha: string } | null;
 }
 
@@ -514,7 +560,7 @@ export function retencionesPorAmbito(rs: readonly RetencionLiquidacion[]): Recor
   return { operacion: de('operacion'), remuneracion: de('remuneracion') };
 }
 
-/** Lo que falta conciliar: pendientes y determinadas sin soporte. */
+/** Lo que falta conciliar: pendientes, estimadas y practicadas sin certificado. */
 export const porConciliar = (rs: readonly RetencionLiquidacion[]): RetencionLiquidacion[] =>
   rs.filter((r) => r.estado !== 'no_aplica' && !r.conciliado);
 

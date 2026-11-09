@@ -349,7 +349,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
                         {o.soporte ? ` · ${o.soporte}` : ''}
                       </p>
                     </div>
-                    {datos?.puedeAprobar && o.naturaleza !== 'cierre' && (
+                    {datos?.puedeAprobar && (
                       <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => setMovimiento(o)}>
                         {t('otros.cambiar')}
                       </button>
@@ -512,6 +512,8 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
   const [resolucionRef, setResolucionRef] = useState('');
   const [resolucionFecha, setResolucionFecha] = useState('');
   const [corrige, setCorrige] = useState<'' | 'si' | 'no'>('');
+  // Ronda 4: el cierre también se registra con soporte y con la explicación de por qué no es un ajuste fiscal.
+  const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -530,6 +532,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
     setResolucionFecha(movimiento.correccion?.fecha ?? '');
     const c = movimiento.correccion?.corrigeDeclaracionAnterior;
     setCorrige(c === true ? 'si' : c === false ? 'no' : '');
+    setNota('');
     setError(null);
   }, [movimiento]);
 
@@ -569,6 +572,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
       soporte_tipo: soporteTipo || null,
       soporte,
       soporte_fecha: soporteFecha || null,
+      nota: naturaleza === 'cierre' ? nota : null,
     };
     if (naturaleza === 'correccion_error') {
       Object.assign(cuerpo, {
@@ -626,7 +630,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
                 valor={naturaleza}
                 vacio={t('naturaleza.elegir')}
                 onCambiar={(v) => setNaturaleza(v as NaturalezaMovimiento)}
-                opciones={NATURALEZAS_MOVIMIENTO.filter((n) => n !== 'cierre').map((n) => ({ valor: n, etiqueta: t(`naturalezas.${n}`) }))}
+                opciones={NATURALEZAS_MOVIMIENTO.map((n) => ({ valor: n, etiqueta: t(`naturalezas.${n}`) }))}
               />
             )}
           </FormField>
@@ -649,6 +653,21 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
               {(c) => <input id={c.id} type="date" className={CLASE_CAMPO} value={soporteFecha} onChange={(e) => setSoporteFecha(e.target.value)} />}
             </FormField>
           </div>
+          {naturaleza === 'cierre' && (
+            <FormField etiqueta={t('naturaleza.notaCierre')} obligatorio ayuda={t('naturaleza.notaCierreAyuda')}>
+              {(c) => (
+                <textarea
+                  id={c.id}
+                  className={CLASE_CAMPO}
+                  rows={3}
+                  value={nota}
+                  maxLength={500}
+                  onChange={(e) => setNota(e.target.value)}
+                  aria-describedby={c['aria-describedby']}
+                />
+              )}
+            </FormField>
+          )}
           {naturaleza === 'correccion_error' && (
             <fieldset className="space-y-3 rounded-lg border border-line p-3">
               <legend className="px-1 text-sm font-semibold text-fg">{t('naturaleza.correccionTitulo')}</legend>

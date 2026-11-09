@@ -6,17 +6,36 @@
 --
 -- ADVERTENCIA: NO restaura datos. Si ya se registraron anticipos con la versión nueva, se pierden su
 -- naturaleza, sus retenciones (supplier_advance_withholdings) y sus ajustes, sus devoluciones
--- (supplier_advance_refunds), los vínculos con facturas, los pendientes contables, las calidades verificadas de
--- proveedores, las reglas de ReteICA, las equivalencias de cuenta y el detalle de cada aplicación; los asientos y pagos ya publicados quedan como están. Antes de revertir con
+-- (supplier_advance_refunds), las conversiones de financiación en pago o abono (supplier_advance_conversions), los
+-- vínculos con facturas, los pendientes contables, las calidades verificadas de proveedores y clientes, las reglas y
+-- los procedimientos de ReteICA, los contratos AIU, las equivalencias de cuenta y el detalle de cada aplicación; los asientos y pagos ya publicados quedan como están. Antes de revertir con
 -- datos, exporte esas tablas y la conciliación (fn_anticipos_proveedor_conciliacion).
 
--- 1. Funciones y disparador nuevos (ronda 1 y ronda 2)
+-- 1. Funciones y disparador nuevos (rondas 1 a 4)
 drop trigger if exists trg_factura_compra_retencion_anticipo on public.invoice_purchase;
 drop function if exists public.fn_trg_factura_compra_retencion_anticipo();
 drop function if exists public.fn_anticipos_proveedor_conciliacion(integer, integer);
 drop function if exists public.fn_anticipo_proveedor_anular_por_error(uuid, text, text, date, integer);
-drop function if exists public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean);
-drop function if exists public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean);
+drop function if exists public.fn_anticipo_proveedor_convertir_en_pago(uuid, text, text, date, numeric, text, integer, numeric, uuid, uuid, jsonb, boolean, uuid);
+drop function if exists public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean, uuid);
+drop function if exists public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean, uuid, date);
+-- Criterios tributarios compartidos (ronda 4). ADVERTENCIA: 20261108121000 (consignación) los llama; si se revierte esta
+-- sin revertir aquella, las retenciones de consignación quedan todas pendientes («criterios_tributarios_no_instalados»).
+drop function if exists public.fn_tributario_evaluar_retencion(integer, text, jsonb, jsonb, uuid, numeric, date, boolean);
+drop function if exists public.fn_tributario_calidades_organizacion(integer, date);
+drop function if exists public.fn_tributario_calidades_tercero(integer, integer, uuid, date);
+drop function if exists public.fn_tributario_calidad_vigente(integer, integer, uuid, text, date);
+drop function if exists public.fn_tributario_cobertura(jsonb, numeric);
+drop function if exists public.fn_rut_tiene(text[], text);
+drop function if exists public.fn_tributario_regla_validar(text, uuid, text, text, text, integer);
+drop function if exists public.fn_aiu_contrato_registrar(integer, integer, text, text, text, jsonb, text, jsonb, text, text, date, date);
+drop function if exists public.fn_reteica_procedimiento_registrar(integer, uuid, text, text, text[], text, text, text, text, date, date);
+drop function if exists public.fn_reteica_procedimiento_exigir(integer, uuid, date, jsonb);
+drop function if exists public.fn_retencion_periodo_descuento(text, text, date, date, text);
+drop function if exists public.fn_retencion_neto_periodo(integer, text, text);
+drop function if exists public.fn_anticipo_componentes(uuid);
+drop function if exists public.fn_cliente_calidad_tributaria_guardar(integer, uuid, text, text, text[], date, date, date, text, text, date, text);
+drop function if exists public.fn_tercero_calidad_tributaria_guardar_int(integer, integer, uuid, text, text, text[], date, date, date, text, text, date, text);
 drop function if exists public.fn_anticipo_proveedor_aplicar_corrigiendo(uuid, uuid, numeric, text, text, text, integer);
 drop function if exists public.fn_anticipo_proveedor_aplicar_int(uuid, uuid, numeric, text, integer, jsonb);
 drop function if exists public.fn_anticipo_proveedor_vincular_factura(uuid, uuid, numeric, integer);
@@ -25,11 +44,10 @@ drop function if exists public.fn_anticipo_proveedor_devolver(uuid, numeric, tex
 drop function if exists public.fn_anticipo_pendiente_resolver(uuid, text, text, integer);
 drop function if exists public.fn_anticipo_pendiente_abrir(integer, uuid, text, jsonb, uuid);
 drop function if exists public.fn_proveedor_calidad_tributaria_guardar(integer, integer, text, text, text[], date, date, date, text, text, date, text);
-drop function if exists public.fn_reteiva_aiu_regla_guardar(integer, text, date, date, text);
-drop function if exists public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text);
+drop function if exists public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text, uuid);
 drop function if exists public.fn_reteica_regla_guardar(integer, uuid, text, numeric, text, date, date, numeric);
 drop function if exists public.fn_anticipo_cuenta_equivalencia_aprobar(integer, text, text);
-drop function if exists public.fn_anticipo_retencion_practicar(integer, text, uuid, numeric);
+drop function if exists public.fn_tributario_retencion_practicar(integer, text, uuid, numeric);
 drop function if exists public.fn_anticipo_proveedor_asiento(integer, integer, timestamptz, text, text, text, text, jsonb, uuid);
 drop function if exists public.fn_cxp_cuenta_reconocida(integer, uuid);
 
@@ -809,9 +827,12 @@ drop table if exists public.supplier_advance_invoice_links;
 drop table if exists public.supplier_advance_withholding_ajustes;
 drop table if exists public.supplier_advance_refunds;
 drop table if exists public.supplier_advance_withholdings;
+drop table if exists public.supplier_advance_conversions;
 drop table if exists public.supplier_tax_qualities;
+alter table public.supplier_advances drop constraint if exists supplier_advances_aiu_contrato_fk;
+drop table if exists public.aiu_contratos;
+drop table if exists public.reteica_procedimientos;
 drop table if exists public.reteica_reglas;
-drop table if exists public.reteiva_aiu_reglas;
 drop table if exists public.anticipos_cuenta_equivalencias;
 
 alter table public.supplier_advance_applications
@@ -828,6 +849,8 @@ alter table public.supplier_advances drop constraint if exists supplier_advances
 alter table public.supplier_advances drop constraint if exists supplier_advances_anulacion_tipo_check;
 alter table public.supplier_advances drop constraint if exists supplier_advances_naturaleza_check;
 alter table public.supplier_advances
+  drop column if exists aiu_contrato_id,
+  drop column if exists convertido,
   drop column if exists anulacion_caja_cerrada,
   drop column if exists componentes,
   drop column if exists anulacion_fecha,

@@ -3,7 +3,8 @@
  * la instantánea de expedición; sin ella, el envío aceptado guardado; sin nada,
  * la vigencia por fecha marcada «reconstruido».
  */
-import { emisorDesdeRespuesta, leerPartesDocumento, receptorDesdeXml } from '../instantanea';
+import { emisorDesdeRespuesta, leerPartesDocumento, receptorDesdeXml, type PartesDocumento } from '../instantanea';
+import { bandaReconstruido, type BaseDocumento } from '../base';
 
 type Respuesta = { data: unknown; error: { code?: string; message?: string } | null };
 
@@ -59,7 +60,13 @@ describe('instantánea de las partes', () => {
 
   test('sin nada guardado: reconstruido (el PDF lo dice)', async () => {
     const { db } = doble({ document_party_snapshots: { data: null, error: { code: 'PGRST205', message: "Could not find the table 'public.document_party_snapshots'" } } });
-    await expect(leerPartesDocumento(db, 42, 'cotizacion', 'c1')).resolves.toEqual({ origen: 'reconstruido', emisor: null, receptor: null, emisorReconstruido: true });
+    await expect(leerPartesDocumento(db, 42, 'cotizacion', 'c1')).resolves.toEqual({
+      origen: 'reconstruido',
+      emisor: null,
+      receptor: null,
+      emisorReconstruido: true,
+      receptorReconstruido: true,
+    });
   });
 
   test('mapeos defensivos del payload de Factus', () => {
@@ -68,5 +75,35 @@ describe('instantánea de las partes', () => {
     expect(receptorDesdeXml({ identification: '800', names: 'Proveedor', dv: '3' }, 'proveedor')).toMatchObject({ name: 'Proveedor', nit: '800', dv: '3' });
     expect(emisorDesdeRespuesta({ data: { company: { nit: '900' } } })).toBeNull();
     expect(emisorDesdeRespuesta({ company: { nit: '900', name: 'X', responsibilities: [{ code: 'O-13' }, 'O-23'] } })).toMatchObject({ fiscal_responsibilities: ['O-13', 'O-23'] });
+  });
+});
+
+describe('reimpresión reconstruida: advertencia visible y precisa (ronda 4 del Contador)', () => {
+  const conPartes = (partes: PartesDocumento | null) => ({ partes }) as unknown as BaseDocumento;
+
+  test('sin nada guardado: se dice que no es copia idéntica, qué se reconstruyó y que el contenido no se recalcula', async () => {
+    const { db } = doble({ document_party_snapshots: { data: null, error: null } });
+    const factura = await leerPartesDocumento(db, 42, 'factura_venta', 'f9');
+    expect(bandaReconstruido(conPartes(factura)).map((b) => b.clave)).toEqual([
+      'reimpresionReconstruida',
+      'reconstruidoEmisor',
+      'reconstruidoReceptor',
+      'reconstruidoContenido',
+    ]);
+    // Un recibo de pago no lleva receptor: solo se reconstruye el emisor.
+    const recibo = await leerPartesDocumento(db, 42, 'recibo_pago', 'r9');
+    expect(recibo.receptorReconstruido).toBe(false);
+    expect(bandaReconstruido(conPartes(recibo)).map((b) => b.clave)).toEqual(['reimpresionReconstruida', 'reconstruidoEmisor', 'reconstruidoContenido']);
+  });
+
+  test('envío aceptado sin la empresa en la respuesta: solo el emisor es reconstruido', () => {
+    const p: PartesDocumento = { origen: 'factus', emisor: null, receptor: { full_name: 'Cliente del XML' }, emisorReconstruido: true, receptorReconstruido: false };
+    expect(bandaReconstruido(conPartes(p)).map((b) => b.clave)).toEqual(['reimpresionReconstruida', 'reconstruidoEmisor', 'reconstruidoContenido']);
+  });
+
+  test('con instantánea no hay banda', () => {
+    const p: PartesDocumento = { origen: 'instantanea', emisor: { nit: '900' }, receptor: null, emisorReconstruido: false, receptorReconstruido: false };
+    expect(bandaReconstruido(conPartes(p))).toEqual([]);
+    expect(bandaReconstruido(conPartes(null))).toEqual([]);
   });
 });

@@ -595,7 +595,18 @@ export function receptorOriginal<T>(base: BaseDocumento, actual: T | null): T | 
   return (base.partes?.receptor as T | null | undefined) ?? actual;
 }
 
-/** Banda «datos reconstruidos» cuando el emisor no es el original guardado de un documento expedido. */
+/**
+ * Bandas de una reimpresión reconstruida (ronda 4 del Contador): visibles y PRECISAS sobre qué datos se
+ * reconstruyeron, sin presentarla como copia idéntica del original. Las líneas, impuestos y totales salen del
+ * documento guardado (no se recalculan con tarifas ni datos de hoy); el original válido es el expedido.
+ */
 export function bandaReconstruido(base: BaseDocumento): Banda[] {
-  return base.partes?.emisorReconstruido ? [{ clave: 'datosReconstruidos', tono: 'aviso' }] : [];
+  const p = base.partes;
+  if (!p || (!p.emisorReconstruido && !p.receptorReconstruido)) return [];
+  return [
+    { clave: 'reimpresionReconstruida', tono: 'aviso' },
+    ...(p.emisorReconstruido ? [{ clave: 'reconstruidoEmisor', tono: 'aviso' as const }] : []),
+    ...(p.receptorReconstruido ? [{ clave: 'reconstruidoReceptor', tono: 'aviso' as const }] : []),
+    { clave: 'reconstruidoContenido', tono: 'aviso' },
+  ];
 }

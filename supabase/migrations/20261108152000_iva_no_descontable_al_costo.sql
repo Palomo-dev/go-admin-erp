@@ -20,13 +20,26 @@
 --      descontable sale de la línea de IVA y se suma a la línea del documento a la que pertenece (su cuenta de
 --      inventario, activo, costo o gasto). El asiento sigue cuadrando: débitos = total.
 --   5. fn_auto_journal_purchase (asiento de cabecera, sin cuenta propia por línea): el IVA no descontable sale del
---      impuesto y queda en la cuenta débito de la compra, igual que ya se hace con el INC. Sin cuenta propia por línea,
---      esa es la cuenta de todas las líneas del documento.
---   Datos inconsistentes (IVA no descontable de las líneas mayor que el IVA del documento): no se adivina; el IVA
---   entero sigue en la 2408 y el borrador del 300 deja el pendiente de siempre.
+--      impuesto y queda en la cuenta débito de la compra, igual que ya se hace con el INC, SOLO si esa cuenta es la de
+--      cada una de las líneas (ronda 4, abajo).
+--
+-- RONDA 4 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «IVA · 1»), reescrita
+-- sin aplicar. No acepta que una inconsistencia mande todo el IVA a la 2408, ni una cuenta única de cabecera cuando las
+-- líneas pertenecen a activos o gastos distintos:
+--   · IVA no descontable de las líneas MAYOR que el IVA del documento (o que su total): el documento queda PENDIENTE
+--     DE CORREGIR y NO se publica el asiento definitivo. Asiento por líneas: fn_armar_asiento_documento devuelve
+--     ok=false con el motivo (fn_asiento_documento_por_lineas lo deja en la bandeja de pendientes contables). Asiento
+--     de cabecera: fn_auto_journal_purchase registra el pendiente 'iva_no_descontable_por_corregir' y no crea asiento.
+--     En la ronda 3 el IVA entero quedaba en la 2408: ya no.
+--   · Asiento de cabecera con IVA no descontable: fn_iva_no_descontable_cuenta_unica_fallo(compra, cuenta) dice si la
+--     cuenta de cabecera NO es la de cada línea: líneas de distinta naturaleza (bienes y servicios, o sin tipo de
+--     operación) o líneas de servicios que irían a una cuenta de inventarios (14…). Entonces el documento queda
+--     pendiente 'iva_no_descontable_por_corregir' («asigne la cuenta contable de cada línea») y, ya con cuenta por
+--     línea, se contabiliza por líneas: el IVA no descontable va a la cuenta de cada línea (paso 4).
 -- Asientos ya publicados: NO se reescriben (ni UPDATE ni DELETE sobre journal_entries / journal_lines).
 -- Llamadores con reemplazo verificado (cada texto viejo debe aparecer exactamente UNA vez; el rollback hace el inverso).
--- Prueba en seco (org 374, begin … rollback, H1 + 150000 + esta pegadas): docs/contador/pruebas/14_iva_no_descontable_al_costo.sql
+-- Prueba en seco (org 374, begin … rollback, H1 + 150000 + esta pegadas): docs/contador/pruebas/17_iva_no_descontable_al_costo.sql
+-- Ronda 4: docs/contador/pruebas/18_iva_ronda4_contador.sql (inconsistencia y cuenta única de cabecera).
 
 -- ── 1. Factor descontable de una línea ─────────────────────────────────────────
 create or replace function public.fn_iva_factor_descontable_linea(p_item_id uuid)
@@ -101,12 +114,41 @@ $function$;
 comment on function public.fn_iva_no_descontable_documento(text, uuid) is
   'Suma del IVA no descontable determinado antes de contabilizar en las líneas de una compra o documento soporte (B5, ronda 3).';
 
+-- Ronda 4: ¿la cuenta de cabecera de una compra es la cuenta de cada línea? NULL = sí (el IVA no descontable puede ir
+-- ahí); texto = el motivo por el que el documento queda pendiente de corregir (hace falta la cuenta de cada línea).
+create or replace function public.fn_iva_no_descontable_cuenta_unica_fallo(p_invoice_purchase_id uuid, p_cuenta_cabecera text)
+returns text
+language sql
+stable
+set search_path to 'public', 'pg_temp'
+as $function$
+  with l as (
+    select coalesce(it.iva_tipo_operacion,
+                    case p.product_type when 'product' then 'bienes' when 'service' then 'servicios' end) as tipo
+      from public.invoice_items it
+      left join public.products p on p.id = it.product_id
+     where it.invoice_purchase_id = p_invoice_purchase_id
+  )
+  select case
+           when not exists (select 1 from l) then null
+           when exists (select 1 from l where l.tipo is null) or (select count(distinct l.tipo) from l) > 1
+             then 'IVA no descontable en una compra cuyas líneas son de activos, costos o gastos distintos (o sin tipo de operación): no se lleva a una cuenta única de cabecera. Asigne la cuenta contable de cada línea y reintente; el IVA no descontable irá a la cuenta de cada línea.'
+           when coalesce(p_cuenta_cabecera, '') like '14%' and exists (select 1 from l where l.tipo = 'servicios')
+             then 'IVA no descontable de servicios: la cuenta de cabecera de la compra es de inventarios (' || p_cuenta_cabecera || '). Asigne la cuenta de costo o gasto de cada línea y reintente.'
+         end;
+$function$;
+
+comment on function public.fn_iva_no_descontable_cuenta_unica_fallo(uuid, text) is
+  'Ronda 4 del Contador: NULL si la cuenta de cabecera de la compra es la de todas sus líneas; si no, el motivo por el que el IVA no descontable no puede ir a una cuenta única (el documento queda pendiente de corregir).';
+
 revoke all on function public.fn_iva_factor_descontable_linea(uuid) from public, anon;
 revoke all on function public.fn_iva_no_descontable_linea(uuid) from public, anon;
 revoke all on function public.fn_iva_no_descontable_documento(text, uuid) from public, anon;
+revoke all on function public.fn_iva_no_descontable_cuenta_unica_fallo(uuid, text) from public, anon;
 grant execute on function public.fn_iva_factor_descontable_linea(uuid) to authenticated, service_role;
 grant execute on function public.fn_iva_no_descontable_linea(uuid) to authenticated, service_role;
 grant execute on function public.fn_iva_no_descontable_documento(text, uuid) to authenticated, service_role;
+grant execute on function public.fn_iva_no_descontable_cuenta_unica_fallo(uuid, text) to authenticated, service_role;
 
 -- ── 3 a 5. Llamadores: reemplazos verificados ──────────────────────────────────
 create or replace function pg_temp.fn_reemplazo_verificado(p_def text, p_viejo text, p_nuevo text, p_etiqueta text)
@@ -187,15 +229,16 @@ $v$    v_tax := round(v_tax - v_inc, 2);
 $v$    v_tax := round(v_tax - v_inc, 2);
     v_inc := 0;
     -- iva_no_descontable_al_costo_20261108 (B5, ronda 3): el IVA cuya improcedencia como descuento ya está
-    -- determinada sale de la 2408 y se suma a la línea del documento a la que pertenece. Si no cuadra con el IVA
-    -- del documento, no se adivina: queda todo en la 2408 (el borrador del 300 lo deja pendiente).
-    if v_tax > 0 then
-      v_nd := public.fn_iva_no_descontable_documento(v_source, p_id);
-      if v_nd > v_tax then
-        v_nd := 0;
-      end if;
-      v_tax := round(v_tax - v_nd, 2);
+    -- determinada sale de la 2408 y se suma a la línea del documento a la que pertenece (su cuenta).
+    -- Ronda 4: si no cuadra con el IVA (o el total) del documento, no se adivina ni se deja todo en la 2408: el
+    -- documento queda pendiente de corregir y no se publica el asiento.
+    v_nd := public.fn_iva_no_descontable_documento(v_source, p_id);
+    if v_nd > v_tax or v_nd > v_total then
+      return jsonb_build_object('ok', false, 'fallo',
+        format('IVA no descontable de las líneas (%s) mayor que el IVA del documento (%s): el documento queda pendiente de corregir y no se publica su asiento. Revise la tarifa, el IVA y la evaluación de cada línea y reintente.', v_nd, v_tax),
+        'lineas', '[]'::jsonb, 'organization_id', v_org);
     end if;
+    v_tax := round(v_tax - v_nd, 2);
   else$v$, 'fn_armar_asiento_documento/no_descontable');
 
   v_def := pg_temp.fn_reemplazo_verificado(v_def,
@@ -253,6 +296,7 @@ $v$  v_inc numeric := 0;
 begin$v$,
 $v$  v_inc numeric := 0;
   v_nd numeric := 0;
+  v_nd_fallo text;
 begin$v$, 'fn_auto_journal_purchase/declare');
 
   v_def := pg_temp.fn_reemplazo_verificado(v_def,
@@ -260,13 +304,31 @@ $v$    v_inc := public.fn_impuesto_inc_parte('invoice_purchase', new.id::text, n
   end if;$v$,
 $v$    v_inc := public.fn_impuesto_inc_parte('invoice_purchase', new.id::text, new.tax_total);
     -- iva_no_descontable_al_costo_20261108 (B5, ronda 3): el IVA no descontable ya determinado sale del impuesto y
-    -- queda en la cuenta débito de la compra, como el INC. Si no cuadra con el IVA del documento, no se adivina.
+    -- queda en la cuenta débito de la compra, como el INC, solo si esa cuenta es la de cada línea.
+    -- Ronda 4: si no cuadra con el IVA (o el total) del documento, o la cuenta de cabecera no es la de cada línea, el
+    -- documento queda pendiente de corregir (sin asiento); nunca todo a la 2408.
     v_nd := public.fn_iva_no_descontable_documento('invoice_purchase', new.id);
-    if v_nd > greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0) then
-      v_nd := 0;
+    if v_nd > greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0) or v_nd > abs(coalesce(new.total, 0)) then
+      v_nd_fallo := format('IVA no descontable de las líneas (%s) mayor que el IVA del documento (%s): el documento queda pendiente de corregir y no se publica su asiento. Revise la tarifa, el IVA y la evaluación de cada línea y reintente.',
+                           v_nd, greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0));
+    elsif v_nd > 0 and not public.fn_documento_tiene_cuenta_propia(new.organization_id, new.id, 'compra') then
+      v_nd_fallo := public.fn_iva_no_descontable_cuenta_unica_fallo(new.id, v_debito);
     end if;
     v_inc := v_inc + v_nd;
   end if;$v$, 'fn_auto_journal_purchase/no_descontable');
+
+  v_def := pg_temp.fn_reemplazo_verificado(v_def,
+$v$  else
+    v_entry_id := fn_create_journal_entry($v$,
+$v$  elsif v_nd_fallo is not null then
+    -- iva_no_descontable_al_costo_20261108 (ronda 4): pendiente de corregir, sin asiento definitivo.
+    perform fn_log_journal_failure(
+      new.organization_id, new.branch_id, coalesce(new.issue_date, now()),
+      'invoice_purchase', new.id::text, v_fact_key,
+      v_debito, v_credito, new.total,
+      'iva_no_descontable_por_corregir', v_nd_fallo);
+  else
+    v_entry_id := fn_create_journal_entry($v$, 'fn_auto_journal_purchase/pendiente');
 
   execute v_def;
 end;

@@ -1,10 +1,11 @@
 'use client';
 
 /**
- * Retención excesiva o indebida (ronda 3 del Contador, causa b). Con el cálculo correcto (base y tarifa) la base
- * calcula el exceso y lo reintegra al proveedor (D retención por pagar / C caja o banco); el anticipo no cambia. Exige
- * el cálculo, el certificado corregido, la norma de ICA si aplica, el período en que se descuenta y si la declaración
- * requiere corrección. `POST /api/anticipos-proveedor/[id]/retencion-exceso`.
+ * Retención excesiva o indebida (rondas 3 y 4 del Contador). Con el cálculo correcto (base y tarifa) la base calcula
+ * el exceso y lo reintegra al proveedor (D retención por pagar / C caja o banco); el anticipo no cambia. Exige la
+ * solicitud escrita del afectado y sus pruebas, el cálculo, el certificado corregido y si la declaración requiere
+ * corrección; con reteICA, las pruebas del procedimiento VALIDADO del municipio (sin él, la base lo bloquea). El período
+ * de descuento no se elige: lo fija la regla del impuesto. `POST /api/anticipos-proveedor/[id]/retencion-exceso`.
  */
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -22,12 +23,12 @@ import { nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/sal
 import { metodoInicial, opcionesMetodoSaldo } from '@/components/finanzas/saldos-a-favor/metodosSaldo';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
 import { anticiposProveedorService } from './anticiposProveedorService';
+import { CamposPruebasIca } from './CamposPruebasIca';
 
 const NS = 'finanzasTercerosR4.anticipos';
-const PERIODO = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 export interface ExcesoRetencionDialogProps {
-  anticipo: Pick<FilaAnticipoProveedor, 'id' | 'proveedor' | 'sucursalId' | 'retenciones'> | null;
+  anticipo: Pick<FilaAnticipoProveedor, 'id' | 'proveedor' | 'sucursalId' | 'retenciones' | 'pruebasIca'> | null;
   onCerrar: () => void;
   onReintegrado: () => void;
 }
@@ -45,8 +46,9 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
   const [motivo, setMotivo] = useState('');
   const [calculo, setCalculo] = useState('');
   const [certificado, setCertificado] = useState('');
-  const [normaIca, setNormaIca] = useState('');
-  const [periodo, setPeriodo] = useState('');
+  const [solicitud, setSolicitud] = useState('');
+  const [pruebas, setPruebas] = useState('');
+  const [ica, setIca] = useState<Record<string, string>>({});
   const [requiereCorreccion, setRequiereCorreccion] = useState(false);
   const [tocado, setTocado] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -63,8 +65,9 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
     setMotivo('');
     setCalculo('');
     setCertificado('');
-    setNormaIca('');
-    setPeriodo('');
+    setSolicitud('');
+    setPruebas('');
+    setIca({});
     setRequiereCorreccion(false);
     setTocado(false);
     setError(null);
@@ -84,15 +87,16 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
   }, [contexto, metodo, opciones]);
 
   const retencion = vigentes.find((r) => r.clase === clase) ?? null;
+  const camposIca = useMemo(() => ['solicitud', 'certificado', ...(anticipo?.pruebasIca ?? [])], [anticipo]);
   const correcta = base !== null && tarifa !== null ? Math.round((base * tarifa) / 100) : null;
   const exceso = retencion && correcta !== null ? retencion.vigente - correcta : null;
   const faltas = {
     clase: !retencion,
     calculo: base === null || tarifa === null || exceso === null || exceso <= 0,
     motivo: motivo.trim().length < 3,
-    soportes: calculo.trim().length < 3 || certificado.trim().length < 3,
-    norma: clase === 'reteica' && normaIca.trim().length < 3,
-    periodo: !PERIODO.test(periodo),
+    soportes: calculo.trim().length < 3 || certificado.trim().length < 3 || solicitud.trim().length < 3 || pruebas.trim().length < 3,
+    // reteICA: sin procedimiento validado del municipio no se puede (la base lo bloquea); con él, todas sus pruebas.
+    ica: clase === 'reteica' && (!anticipo?.pruebasIca || camposIca.some((k) => (ica[k] ?? '').trim().length < 3)),
   };
 
   const cerrar = () => !enviando && onCerrar();
@@ -108,8 +112,13 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
         tarifaCorrecta: tarifa,
         metodo,
         motivo,
-        soportes: { calculo: calculo.trim(), certificado: certificado.trim(), norma_ica: clase === 'reteica' ? normaIca.trim() : null },
-        periodoDescuento: periodo,
+        soportes: {
+          calculo: calculo.trim(),
+          certificado: certificado.trim(),
+          solicitud: solicitud.trim(),
+          pruebas: pruebas.trim(),
+          ica: clase === 'reteica' ? Object.fromEntries(camposIca.map((k) => [k, (ica[k] ?? '').trim()])) : null,
+        },
         requiereCorreccion,
         claveIdempotencia: clave.current,
       });
@@ -189,15 +198,17 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
           <FormField etiqueta={t('devolver.procedimiento.certificado')} obligatorio error={tocado && faltas.soportes && certificado.trim().length < 3 ? t('validacion.soporte') : null}>
             <Input value={certificado} onChange={(e) => setCertificado(e.target.value)} maxLength={500} />
           </FormField>
-          {clase === 'reteica' && (
-            <FormField etiqueta={t('devolver.retenciones.normaIca')} obligatorio error={tocado && faltas.norma ? t('validacion.normaIca') : null}>
-              <Input value={normaIca} onChange={(e) => setNormaIca(e.target.value)} maxLength={300} />
-            </FormField>
-          )}
-          <FormField etiqueta={t('devolver.procedimiento.periodo')} obligatorio error={tocado && faltas.periodo ? t('validacion.periodo') : null}>
-            {(c) => <Input id={c.id} type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />}
+          <FormField etiqueta={t('exceso.solicitud')} obligatorio error={tocado && faltas.soportes && solicitud.trim().length < 3 ? t('validacion.soporte') : null}>
+            <Input value={solicitud} onChange={(e) => setSolicitud(e.target.value)} maxLength={500} />
+          </FormField>
+          <FormField etiqueta={t('exceso.pruebas')} obligatorio error={tocado && faltas.soportes && pruebas.trim().length < 3 ? t('validacion.soporte') : null}>
+            <Input value={pruebas} onChange={(e) => setPruebas(e.target.value)} maxLength={500} />
           </FormField>
         </div>
+        {clase === 'reteica' && (
+          <CamposPruebasIca pruebas={anticipo?.pruebasIca ?? null} valores={ica} onCambio={setIca} tocado={tocado} />
+        )}
+        <p className="text-xs text-fg-muted">{t('devolver.procedimiento.periodoRegla')}</p>
         <div className="flex items-start gap-2">
           <Checkbox id={idCorreccion} checked={requiereCorreccion} onCheckedChange={(v) => setRequiereCorreccion(v === true)} className="mt-0.5" />
           <Label htmlFor={idCorreccion} className="flex flex-col gap-0.5 font-normal">

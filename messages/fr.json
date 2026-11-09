@@ -14957,7 +14957,10 @@
       "cierreReemplazadoPor": "Cette version a été remplacée par la v{version}. Consultez la version en vigueur.",
       "cierrePeriodoCerrado": "Clôture signée : la période comptable est clôturée.",
       "cierreConErrores": "{cantidad} rapport(s) n'ont pas pu être calculés et ne sont pas inclus. Voir la fin du document.",
-      "datosReconstruidos": "Données de l'émetteur reconstituées selon le profil en vigueur à la date du document : l'instantané d'émission est introuvable."
+      "reimpresionReconstruida": "Réimpression reconstituée : ce n'est PAS une copie identique du document émis. L'instantané d'émission est introuvable ; le document valable est l'original émis (XML et représentation acceptés).",
+      "reconstruidoEmisor": "Émetteur reconstitué : nom, NIT, adresse et contact tirés de la fiche actuelle de l'entreprise ; responsabilités fiscales selon le profil en vigueur à la date du document.",
+      "reconstruidoReceptor": "Destinataire reconstitué : données tirées de la fiche actuelle du client ou du fournisseur, qui a pu changer après l'émission.",
+      "reconstruidoContenido": "Lignes, taxes et totaux : ceux enregistrés dans le document ; ils ne sont pas recalculés avec les taux ou données actuels."
     },
     "marcas": {
       "borrador": "BROUILLON",
@@ -45417,7 +45420,7 @@
         "autorretenedor": "Auto-retenant (auto-retenue ordinaire, RUT 15)",
         "agenteRetencionIva": "Agent de retenue de TVA",
         "codigosFe": "Codes du document électronique",
-        "codigosFeAyuda": "Ceux envoyés dans la facture électronique. Ce n'est pas la case 53 du RUT. La table est en attente de validation par le comptable.",
+        "codigosFeAyuda": "Ceux envoyés dans la facture électronique (annexe technique 1.9, table 13.2.6.1). Ce n'est pas la case 53 du RUT. O-48 et O-49 ne font pas partie de cette table.",
         "codigosRut": "Responsabilités du RUT, case 53 ({cuantos} cochées)",
         "codigosRutAyuda": "Facultatif. Si vous les cochez, elles doivent correspondre aux champs ci-dessus.",
         "buscarCodigo": "Rechercher par code ou nom",
@@ -45443,7 +45446,10 @@
         "cambioFecha": "Date d'effet du changement",
         "cambioFechaAyuda": "Elle doit coïncider avec le début de cette période.",
         "cambioHecho": "Fait à l'origine du changement",
-        "cambioNorma": "Norme qui le justifie"
+        "cambioNorma": "Norme qui le justifie",
+        "granContribuyenteActoFecha": "Date de la résolution",
+        "granContribuyenteCalificacion": "Type de qualification",
+        "granContribuyenteCalificacionAyuda": "Ordinaire : s'applique à partir du 1er janvier suivant la résolution (premier bimestre janvier–février). Exceptionnelle : à la date expresse de l'acte."
       },
       "errores": {
         "datos_invalidos": "Vérifiez les données de la période.",
@@ -45481,7 +45487,9 @@
         "ingreso_simple": "Entrée au SIMPLE",
         "salida_simple": "Sortie du SIMPLE",
         "designacion_gran_contribuyente": "Désignation comme grand contribuable",
-        "otro": "Autre (expliquez-le dans le fait)"
+        "otro": "Autre (expliquez-le dans le fait)",
+        "correccion_clasificacion": "Correction de classification",
+        "acto_especial": "Acte spécial de la DIAN"
       },
       "estado": {
         "revisar": "Profil à vérifier",
@@ -45491,8 +45499,9 @@
       "validacion": {
         "pendiente_validacion": "En attente de validation",
         "cotejado_fuente_oficial": "Vérifié avec la source officielle",
-        "no_validado_como_fe": "Non validé comme code de facture électronique",
-        "noVigente": "Code remplacé ; il n'est plus attribué."
+        "noVigente": "Code remplacé ; il n'est plus attribué.",
+        "no_pertenece_tabla_fe": "Absent de la table de facture électronique (annexe 1.9)",
+        "historico": "Code historique : preuve uniquement"
       },
       "bloqueos": {
         "falta_regimen_renta": "Le régime d'impôt sur le revenu manque.",
@@ -45501,7 +45510,7 @@
         "responsable_sin_periodicidad": "Un assujetti à la TVA doit avoir une périodicité (Code des impôts art. 600).",
         "periodicidad_anual_fuera_de_simple": "La périodicité annuelle de la TVA est celle du SIMPLE (Code des impôts art. 600 et 915) ; aucune autre base légale n'a été identifiée.",
         "simple_responsable_no_anual": "Au SIMPLE, l'assujetti à la TVA dépose une déclaration annuelle consolidée (Code des impôts art. 915) : choisissez « Annuelle ».",
-        "fe_codigo_no_validado": "O-48 et O-49 ne sont pas validés comme codes du document électronique : la situation face à la TVA a son propre champ.",
+        "fe_codigo_no_validado": "O-48 et O-49 ne font pas partie de la table des responsabilités du document électronique (annexe 1.9, table 13.2.6.1) : la situation face à la TVA a son propre champ.",
         "fe_o47_sin_simple": "O-47 (régime simple) exige le régime d'impôt sur le revenu SIMPLE.",
         "fe_o13_sin_gran_contribuyente": "O-13 exige de cocher « Grand contribuable ».",
         "fe_o15_sin_autorretenedor": "O-15 exige de cocher « Auto-retenant ».",
@@ -45509,7 +45518,7 @@
         "fe_r99_con_otros": "R-99-PN est résiduel (aucun autre ne s'applique) : il ne se combine pas avec d'autres codes.",
         "fe_r99_con_calidades": "R-99-PN est résiduel : il contredit SIMPLE, grand contribuable, auto-retenant ou agent de retenue de TVA.",
         "simple_con_autorretencion": "Le SIMPLE ne pratique pas d'auto-retenues (Code des impôts art. 911) : retirez l'auto-retenue ou revoyez le régime.",
-        "gran_contribuyente_sin_acto": "Grand contribuable exige la résolution qui le désigne et la date d'application.",
+        "gran_contribuyente_sin_acto": "Grand contribuable exige la résolution qui le désigne, sa date et la date de prise d'effet.",
         "autorretenedor_sin_acto": "Auto-retenant exige la résolution qui l'autorise et sa date.",
         "inc_sin_actividad": "Indiquez l'activité soumise à l'impôt sur la consommation.",
         "no_contribuyente_sin_naturaleza": "Indiquez la nature juridique qui justifie la classification comme non contribuable.",
@@ -45525,14 +45534,17 @@
         "rut_23_sin_agente_iva": "Le RUT a 23 (agent de retenue sur les ventes) : cochez « Agent de retenue de TVA ».",
         "rut_07_sin_agente_retencion": "Le RUT a 07 (retenue à la source sur le revenu) : cochez « Agent de retenue à la source ».",
         "rut_33_sin_inc": "Le RUT a 33 (impôt national sur la consommation) : cochez « Redevable de l'impôt sur la consommation ».",
-        "cambio_fecha_efectiva_distinta": "La date d'effet du changement de périodicité doit être le début de cette période."
+        "cambio_fecha_efectiva_distinta": "La date d'effet du changement de périodicité doit être le début de cette période.",
+        "gran_contribuyente_sin_calificacion": "Indiquez si la qualification de grand contribuable est ordinaire ou exceptionnelle.",
+        "gran_contribuyente_fecha_efectos": "La date d'effet ne correspond pas à la qualification : l'ordinaire s'applique à partir du 1er janvier suivant la résolution ; l'exceptionnelle, à la date de l'acte (Rés. 227 de 2025, art. 1.1.4.3).",
+        "gran_contribuyente_antes_de_efectos": "Cette période commence avant la prise d'effet de la qualification : créez-la à partir de la date d'effet.",
+        "gran_contribuyente_no_bimestral": "Une fois la qualification applicable, le grand contribuable déclare la TVA tous les deux mois (art. 600 n° 1 du code fiscal ; Rés. 227 de 2025, art. 1.1.4.3) : la déclaration quadrimestrielle n'est pas acceptée."
       },
       "advertencias": {
         "simple_sin_fe_o47": "Régime SIMPLE sans le code O-47 dans le document électronique.",
         "gran_contribuyente_sin_fe_o13": "Grand contribuable sans le code O-13 dans le document électronique.",
         "autorretenedor_sin_fe_o15": "Auto-retenant sans le code O-15 dans le document électronique.",
         "agente_iva_sin_fe_o23": "Agent de retenue de TVA sans le code O-23 dans le document électronique.",
-        "gran_contribuyente_no_bimestral": "Le grand contribuable déclare la TVA tous les deux mois (Code des impôts art. 600 num. 1) : vérifiez depuis quand.",
         "rut_falta_codigo": "Les champs affirment quelque chose que le RUT coché n'a pas : vérifiez la case 53.",
         "rut_codigo_no_vigente": "Le RUT coché utilise des codes remplacés (11 ou 12).",
         "rut_varios_regimenes_renta": "Le RUT a plus d'un code d'impôt sur le revenu : examinez l'entité avant de conclure.",
@@ -45540,8 +45552,10 @@
         "rte_memoria_por_confirmar": "On ne sait pas si les revenus de l'année précédente dépassent 160 000 UVT (rapport économique).",
         "no_contribuyente_clasificacion_inicial": "Classification initiale comme non contribuable : confirmez-la avec le comptable selon la nature juridique.",
         "periodicidad_cambio_pendiente_soporte": "Changement de périodicité en cours d'année : en attente jusqu'à documenter le fait, la norme et la date d'effet.",
-        "periodicidad_cambio_documentado": "Changement de périodicité documenté : le comptable doit confirmer sa validité.",
-        "periodicidad_cambio_siguiente": "La période suivante change la périodicité en cours d'année : vérifiez-la aussi."
+        "periodicidad_cambio_documentado": "Changement de périodicité documenté : « documenté » ne veut pas dire « fondé ». Il reste en attente jusqu'à ce que sa validité soit enregistrée.",
+        "periodicidad_cambio_siguiente": "La période suivante change la périodicité en cours d'année : vérifiez-la aussi.",
+        "gran_contribuyente_transicion_por_resolver": "Qualification exceptionnelle prenant effet en milieu de bimestre : la transition reste à clarifier et se règle par une décision motivée, sans coupures inventées.",
+        "rut_simple_con_autorretencion_para_aclaracion": "Le RUT indique 15 ou 59 avec le SIMPLE : c'est contradictoire. À clarifier ; le code n'est pas supprimé et l'autoretenue n'est pas cochée."
       },
       "periodo": {
         "rango": "du {desde} au {hasta}",
@@ -45569,6 +45583,10 @@
         "no_aplica": "Pas de changement de périodicité",
         "pendiente_soporte": "Changement de périodicité en attente de justificatif",
         "documentado": "Changement de périodicité documenté (validité à vérifier)"
+      },
+      "calificacionGranContribuyente": {
+        "ordinaria": "Ordinaire",
+        "excepcional": "Exceptionnelle"
       }
     },
     "centro": {
@@ -45591,7 +45609,7 @@
         "nit": "L'entreprise n'a pas de NIT.",
         "periodicidad_iva": "La périodicité de la TVA manque.",
         "revisar_perfil": "Le profil en vigueur est à vérifier.",
-        "cambio_periodicidad_pendiente": "Un changement de périodicité attend son justificatif."
+        "cambio_periodicidad_pendiente": "Un changement de périodicité n’est pas confirmé (justificatif manquant ou validité non enregistrée)."
       },
       "vacio": {
         "titulo": "Aucune obligation n'a pu être déduite",
@@ -45631,12 +45649,13 @@
         "cambio_vigencia_en_periodo": "Plus d'un profil dans cette période : vérifier la validité.",
         "periodo_sin_perfil_completo": "Une partie de la période n'a pas de profil.",
         "conciliacion_por_evaluar": "Conciliation fiscale : évaluez si elle est obligatoire (elle n'est pas exclue pour le RTE).",
-        "rte_cooperativa_por_confirmar": "Confirmez avec le comptable si cela s'applique à ce type d'entité.",
         "rte_umbral_por_confirmar": "Seulement si les revenus de l'année précédente dépassent 160 000 UVT (Code des impôts art. 356-3) : donnée en attente.",
         "clasificacion_inicial": "Classification initiale selon la nature juridique (Code des impôts art. 22 et 23) : cela ne veut pas dire « sans obligations ».",
-        "cambio_periodicidad_pendiente": "La périodicité a changé sans documenter fait, norme et date d'effet.",
+        "cambio_periodicidad_pendiente": "Changement de périodicité non confirmé : fait, norme et date manquent, ou sa validité n'est pas enregistrée.",
         "decision_registrada": "Changement de profil résolu par une décision justifiée.",
-        "decision_reabierta": "Les périodes ont changé après la décision : elle a été rouverte."
+        "decision_reabierta": "Les périodes ont changé après la décision : elle a été rouverte.",
+        "rte_cooperativa_formatos": "Coopérative : mise à jour obligatoire avec les formulaires 5245, 2530 et 2531 ; le 2532 le cas échéant, avec les adaptations propres aux coopératives. Sans les informations d'affectations permanentes propres aux ESAL.",
+        "rte_memoria_pdf_firmado": "Rapport économique en PDF signé, selon le cas : ce n’est pas un formulaire numéroté."
       },
       "vence": {
         "sinNit": "NIT manquant",
@@ -45972,16 +45991,20 @@
           "titulo": "Procédure du remboursement",
           "causas": {
             "operacion_anulada": {
-              "titulo": "Opération annulée ou résolue",
-              "ayuda": "Toutes les retenues en vigueur sont annulées et tout le solde est remboursé."
+              "titulo": "Opération annulée (totalement)",
+              "ayuda": "Avec l’acte qui l’annule : toutes les retenues en vigueur sont contrepassées et tout le solde est restitué."
             },
             "devolucion_parcial": {
               "titulo": "Remboursement partiel",
-              "ayuda": "Le calcul de la partie remboursée donne les retenues : revenu et ICA sur la base, TVA sur la TVA."
+              "ayuda": "Le fournisseur rembourse une partie : les retenues sont contrepassées pour les lignes concernées, avec la base et le taux de chacune."
             },
             "sin_determinar": {
               "titulo": "Impossible à déterminer pour l’instant",
               "ayuda": "Seul l’argent diminue ; les retenues restent dans l’avance et un suivi comptable est ouvert."
+            },
+            "resolucion_parcial": {
+              "titulo": "Résolution partielle",
+              "ayuda": "Une partie de l’opération est résolue : les retenues sont contrepassées pour les lignes concernées."
             }
           },
           "documento": {
@@ -45996,7 +46019,29 @@
           "certificado": "Certificat émis, annulé ou corrigé",
           "periodo": "Période d’imputation",
           "requiereCorreccion": "La déclaration de la période doit être corrigée",
-          "requiereCorreccionAyuda": "Un suivi comptable reste ouvert jusqu’à la correction."
+          "requiereCorreccionAyuda": "Un suivi comptable reste ouvert jusqu’à la correction.",
+          "hecho": {
+            "tipo": "Justificatif du fait",
+            "tipoPlaceholder": "Choisissez le document",
+            "documento": "Numéro ou référence du document",
+            "fecha": "Date du fait",
+            "ayuda": "La demande du fournisseur seule ne prouve ni l’annulation ni la résolution : joignez l’acte qui la produit.",
+            "tipos": {
+              "resolucion_mutuo_acuerdo": "Résolution d’un commun accord",
+              "resciliacion": "Résiliation",
+              "sentencia_o_laudo": "Jugement ou sentence arbitrale",
+              "nota_credito_proveedor": "Avoir du fournisseur",
+              "anulacion_aceptada": "Annulation acceptée par écrit",
+              "acta_devolucion": "Procès-verbal de restitution"
+            }
+          },
+          "lineas": {
+            "titulo": "Lignes concernées de l’opération",
+            "linea": "{descripcion} · restant {pendiente}",
+            "sinLineas": "L’avance n’a pas de lignes enregistrées",
+            "sinLineasAyuda": "Sans lignes, la part concernée ne peut pas être calculée : enregistrez le remboursement comme « Impossible à déterminer pour l’instant »."
+          },
+          "periodoRegla": "La période d’imputation est fixée par la règle de chaque impôt (impôt sur le revenu et TVA : celle du fait ; ICA : celle de la procédure de la commune)."
         }
       },
       "anular": {
@@ -46057,7 +46102,8 @@
         "requerido": "Saisissez un montant supérieur à zéro.",
         "excede": "Dépasse le solde de l’avance ({monto}).",
         "dineroProcedimiento": "Selon la procédure, l’argent restitué est de {monto}.",
-        "periodo": "Choisissez la période d’imputation."
+        "periodo": "Choisissez la période d’imputation.",
+        "hecho": "Indiquez le document, son numéro et la date du fait."
       },
       "errores": {
         "no_autenticado": "Votre session a expiré. Reconnectez-vous.",
@@ -46145,7 +46191,22 @@
         "sin_exceso": "Avec ce calcul, il n’y a pas d’excédent à rembourser.",
         "rut_obligatorio": "Il manque le RUT à jour (date et fichier).",
         "resolucion_autorretencion_obligatoria": "Il manque la résolution d’autorisation (numéro, date, portée et concepts).",
-        "fundamento_obligatorio": "Saisissez le fondement juridique de la règle."
+        "fundamento_obligatorio": "Saisissez le fondement juridique de la règle.",
+        "aiu_contrato_obligatorio": "L’AIU exige un contrat enregistré et validé par le comptable.",
+        "aiu_contrato_invalido": "Le contrat AIU n’est pas valable pour ce fournisseur.",
+        "aiu_componentes_regimen": "Les lignes AIU ne correspondent pas au régime du contrat.",
+        "aiu_componentes_mezclados": "Les lignes AIU ne peuvent pas être mélangées avec d’autres lignes.",
+        "soporte_del_hecho_obligatorio": "Indiquez le document, le numéro et la date du fait à l’origine du remboursement.",
+        "solicitud_no_prueba_el_hecho": "La demande du fournisseur ne prouve ni l’annulation ni la résolution : joignez l’acte.",
+        "lineas_afectadas_obligatorias": "Indiquez les lignes concernées de l’opération.",
+        "linea_no_encontrada": "Une des lignes n’appartient pas à l’opération.",
+        "linea_excede_lo_pendiente": "La base dépasse le restant de la ligne.",
+        "linea_iva_no_cuadra": "La TVA de la ligne ne correspond pas à sa base.",
+        "fecha_del_hecho_invalida": "La date du fait n’est pas valide.",
+        "periodo_descuento_no_es_de_libre_eleccion": "La période d’imputation est fixée par la règle de l’impôt.",
+        "reteica_sin_procedimiento_municipal": "La commune n’a pas de procédure de retenue ICA validée.",
+        "reteica_pruebas_incompletas": "Il manque des preuves exigées par la procédure ICA de la commune.",
+        "retencion_ambigua": "Il y a plus d’une retenue de ce type : choisissez laquelle."
       },
       "cuentaPendiente": {
         "titulo": "Tâche comptable : compte des avances fournisseurs",
@@ -46225,7 +46286,22 @@
           "territorialidad_sin_confirmar": "Confirmez que l’activité est réalisée dans la commune de la règle.",
           "regla_ica_no_vigente": "La règle de retenue d’ICA choisie n’est pas en vigueur aujourd’hui.",
           "proveedor_no_sujeto_ica": "Le fournisseur a le statut vérifié de non assujetti à l’ICA.",
-          "aiu_fundamento_por_validar": "Opération avec AIU : la retenue de TVA reste en attente jusqu’à l’enregistrement de la règle applicable et de son fondement juridique."
+          "aiu_fundamento_por_validar": "Opération avec AIU : la retenue de TVA reste en attente jusqu’à l’enregistrement de la règle applicable et de son fondement juridique.",
+          "beneficiario_no_responsable_iva": "Le bénéficiaire n’est pas assujetti à la TVA.",
+          "beneficiario_no_sujeto_ica": "Le bénéficiaire n’est pas assujetti à l’ICA dans la commune.",
+          "beneficiario_simple_acreditado": "Le bénéficiaire relève du régime simple (justifié).",
+          "calidad_agente_reteiva_por_acreditar": "La qualité d’agent de retenue de TVA n’est pas justifiée.",
+          "calidad_agente_retencion_por_acreditar": "La qualité d’agent de retenue n’est pas justifiée.",
+          "calidad_iva_beneficiario_sin_datos": "Aucune donnée de TVA du bénéficiaire.",
+          "pagador_no_agente_reteiva": "Le payeur n’est pas agent de retenue de TVA.",
+          "pagador_no_agente_retencion": "Le payeur n’est pas agent de retenue.",
+          "regla_no_vigente": "La règle n’est pas en vigueur à cette date.",
+          "sin_regla_configurada": "Aucune règle n’est configurée.",
+          "sin_tercero": "Le tiers manque.",
+          "tercero_no_encontrado": "Le tiers est introuvable.",
+          "aiu_contrato_pendiente_validacion": "Le contrat AIU attend la validation du comptable.",
+          "aiu_contrato_no_vigente": "Le contrat AIU n’est pas en vigueur.",
+          "aiu_contrato_rechazado": "Le contrat AIU a été rejeté."
         },
         "sinReglasIca": "Aucune règle municipale de retenue d’ICA n’est enregistrée : la retenue d’ICA reste en attente.",
         "reglaIca": "{nombre} · {tarifa} ‰",
@@ -46346,7 +46422,17 @@
         "exceso": "Excédent remboursé",
         "como": "Mode de remboursement",
         "confirmar": "Rembourser l’excédent",
-        "exito": "{monto} remboursés à {proveedor}."
+        "exito": "{monto} remboursés à {proveedor}.",
+        "solicitud": "Demande écrite du fournisseur",
+        "pruebas": "Preuves de la retenue excessive"
+      },
+      "ica": {
+        "titulo": "Procédure de retenue ICA de la commune",
+        "solicitud": "Demande déposée",
+        "certificado": "Certificat de retenue corrigé",
+        "prueba": "Preuve : {nombre}",
+        "sinProcedimientoTitulo": "La commune n’a pas de procédure de retenue ICA validée",
+        "sinProcedimientoDescripcion": "La contrepassation ou le remboursement de la retenue ICA reste bloqué jusqu’à ce que le comptable enregistre et valide la procédure de cette commune."
       }
     },
     "dinero": {
@@ -48257,7 +48343,8 @@
         "valoracion": "Choisissez la valorisation de la garde.",
         "reconocimiento": "Choisissez quand votre rémunération est constatée.",
         "factura_remuneracion": "Indiquez si la rémunération est facturée à part.",
-        "obligacion_posterior": "Décrivez l’obligation ultérieure (au moins 10 caractères)."
+        "obligacion_posterior": "Décrivez l’obligation ultérieure (au moins 10 caractères).",
+        "compensacion_remuneracion": "Indiquez si le contrat prévoit de compenser la rémunération."
       },
       "estimatorioBloqueado": {
         "titulo": "Le contrat estimatoire n’est pas encore disponible",
@@ -48291,7 +48378,9 @@
       "no": "Non",
       "obligacionPosterior": "Obligation ultérieure qui conditionne la commission",
       "obligacionPosteriorAyuda": "Seulement si elle est réelle et dans le contrat : la commission est constatée à son exécution, avec preuve.",
-      "obligacionPosteriorPlaceholder": "Par exemple : installer l’équipement et le laisser en marche chez l’acheteur"
+      "obligacionPosteriorPlaceholder": "Par exemple : installer l’équipement et le laisser en marche chez l’acheteur",
+      "compensacionRemuneracion": "Le contrat prévoit-il de déduire votre rémunération de ce que vous devez au consignant ?",
+      "compensacionRemuneracionAyuda": "Seulement avec cet accord (et un solde exigible) elle est déduite de ce qui est dû ; sinon elle reste une créance sur le consignant."
     },
     "validacion": {
       "consignante": "Choisissez le déposant.",
@@ -48608,7 +48697,18 @@
       "sin_remuneracion_por_devengar": "Il n’y a pas de rémunération à constater.",
       "soporte_obligatorio": "Décrivez le justificatif (au moins 5 caractères).",
       "retencion_no_encontrada": "Nous n’avons pas trouvé cette retenue.",
-      "regla_retencion_invalida": "La règle choisie n’est pas une retenue active de cette classe dans votre organisation."
+      "regla_retencion_invalida": "La règle choisie n’est pas une retenue active de cette classe dans votre organisation.",
+      "sin_cuenta_cobro_remuneracion": "Il manque le compte de créance de la rémunération sur le consignant.",
+      "retencion_no_reconocida": "Enregistrez d’abord la retenue pratiquée ; le certificat est seulement comparé.",
+      "retencion_ya_practicada": "Cette retenue est déjà enregistrée comme pratiquée.",
+      "fecha_anterior_a_la_venta": "La date est antérieure à la vente.",
+      "fecha_futura": "La date ne peut pas être future.",
+      "periodo_cerrado": "La période comptable est clôturée.",
+      "factura_de_la_liquidacion_obligatoria": "Choisissez la facture client sur laquelle la retenue a été pratiquée.",
+      "sin_cuenta_cartera_cliente": "Il manque le compte client.",
+      "sin_cuenta_retencion_sufrida": "Il manque le compte de retenue subie.",
+      "compensacion_no_pactada": "Le contrat ne prévoit pas de compenser la rémunération.",
+      "excede_remuneracion_por_cobrar": "Cela dépasse la rémunération à recevoir du consignant."
     },
     "novedad": {
       "titulo": "Enregistrer un manquant ou un dommage",
@@ -48712,7 +48812,8 @@
         "sin_datos": "acheteurs sans données fiscales",
         "no_agente": "acheteurs non agents",
         "agente": "acheteurs agents",
-        "dueno": "le propriétaire"
+        "dueno": "le propriétaire",
+        "por_acreditar": "acheteurs dont la qualité reste à justifier"
       },
       "base": "base {base}",
       "sinBase": "base à déterminer",
@@ -48741,14 +48842,30 @@
         "calidad_pagador_sin_datos": "la qualité fiscale du propriétaire manque",
         "pagador_no_agente_retencion": "le propriétaire n’est pas agent de retenue",
         "intermediario_autorretenedor": "l’intermédiaire pratique l’autoretenue",
-        "intermediario_simple": "l’intermédiaire relève du régime SIMPLE"
+        "intermediario_simple": "l’intermédiaire relève du régime SIMPLE",
+        "beneficiario_no_responsable_iva": "le bénéficiaire n’est pas assujetti à la TVA",
+        "beneficiario_no_sujeto_ica": "le bénéficiaire n’est pas assujetti à l’ICA dans la commune",
+        "beneficiario_simple_acreditado": "le bénéficiaire relève du régime simple (justifié)",
+        "calidad_agente_reteiva_por_acreditar": "la qualité d’agent de retenue de TVA du payeur n’est pas justifiée",
+        "calidad_agente_retencion_por_acreditar": "la qualité d’agent de retenue du payeur n’est pas justifiée",
+        "calidad_iva_beneficiario_sin_datos": "aucune donnée de TVA du bénéficiaire",
+        "pagador_no_agente_reteiva": "le payeur n’est pas agent de retenue de TVA",
+        "sin_tercero": "le tiers manque",
+        "tercero_no_encontrado": "le tiers est introuvable",
+        "autorretenedor_autorizado_concepto": "le bénéficiaire est auto-retenant autorisé pour ce concept",
+        "autorretencion_sin_verificar": "auto-retenue non vérifiée (résolution et portée manquantes)",
+        "regla_ica_no_vigente": "la règle ICA n’est pas en vigueur",
+        "territorialidad_sin_confirmar": "territorialité de l’ICA non confirmée",
+        "criterios_tributarios_no_instalados": "les critères fiscaux partagés ne sont pas encore actifs"
       },
       "conciliadoCon": "Rapprochée : {valor} · {soporte}",
       "estados": {
         "determinada": "À rapprocher",
         "pendiente": "En attente",
         "no_aplica": "Sans objet",
-        "conciliada": "Rapprochée"
+        "conciliada": "Rapprochée",
+        "estimada": "Estimée",
+        "practicada": "Pratiquée"
       },
       "conciliar": "Rapprocher",
       "conciliarTitulo": "Rapprocher la retenue",
@@ -48759,8 +48876,23 @@
       "soporte": "Justificatif",
       "soporteAyuda": "Numéro du certificat, qui l’a émis et sa date.",
       "validacion": {
-        "valor": "Saisissez le montant du certificat."
-      }
+        "valor": "Saisissez le montant du certificat.",
+        "base": "Saisissez la base de la retenue.",
+        "fecha": "Choisissez la date de la retenue."
+      },
+      "registrarPracticada": "Enregistrer comme pratiquée",
+      "practicadaTitulo": "Enregistrer la retenue pratiquée",
+      "practicadaDescripcion": {
+        "operacion": "L’acheteur a déjà pratiqué la {clase} sur la vente : le consignant l’assume et un règlement de la créance client reste en attente.",
+        "remuneracion": "Le consignant a déjà pratiqué la {clase} sur votre rémunération : elle est reconnue comme retenue subie, sans attendre le certificat."
+      },
+      "valorPracticado": "Montant retenu",
+      "basePracticada": "Base de la retenue",
+      "fechaPracticada": "Date de la retenue",
+      "fechaPracticadaAyuda": "Elle ne peut être ni antérieure à la vente ni future.",
+      "soportePracticadaAyuda": "Reçu de paiement, note ou certificat où figure la retenue.",
+      "practicadaRegistrada": "La retenue pratiquée a été enregistrée.",
+      "practicadaCon": "Pratiquée : {valor} le {fecha} · {soporte}"
     }
   },
   "finanzasIva300": {
@@ -48866,7 +48998,12 @@
       "devolucion_compra_no_cuadra": "Retour d’achat dont la TVA ne concorde pas avec l’écriture",
       "correccion_otro_periodo": "Correction d’erreur d’une vente d’une autre période : évaluer cette période",
       "sugerido_por_confirmar": "Mouvement avec une nature suggérée à confirmer",
-      "correccion_incompleta": "Correction d'erreur incomplète : la vente reste dans ses cases"
+      "correccion_incompleta": "Correction d'erreur incomplète : la vente reste dans ses cases",
+      "correccion_sin_decision": "Correction d'erreur au dossier complet, sans décision de traitement fiscal et de période : la vente reste dans ses cases",
+      "correccion_por_nota_credito": "Traitement par note de crédit électronique : la vente reste et l'extourne comptable ne la remplace pas",
+      "correccion_mantiene_venta": "Décision : l'opération a existé et la vente est maintenue ; l'extourne reste en attente",
+      "importacion_sin_soporte_aduanero": "Importation non taxée sans justificatif douanier complet (document, numéro, date, copie, valeur, fondement et modalité)",
+      "importacion_servicio_no_va_47": "Service acquis à l'étranger ou document justificatif : il ne va pas à la case 47"
     },
     "lados": {
       "generado": "Ventes",
@@ -48947,7 +49084,9 @@
       "resolucionFecha": "Date de la résolution",
       "corrigeDeclaracion": "Une déclaration antérieure doit-elle être corrigée ?",
       "si": "Oui",
-      "no": "Non"
+      "no": "Non",
+      "notaCierre": "Explication",
+      "notaCierreAyuda": "Appeler une écriture « clôture » ne suffit pas : expliquez pourquoi ce mouvement du 2408 n'est pas un ajustement fiscal."
     },
     "errores": {
       "tratamiento_invalido": "Indiquez si la ligne est taxée, exonérée, exclue ou hors champ.",
@@ -48979,7 +49118,18 @@
       "devolucion_iva_no_cuadra": "La TVA retournée ne concorde pas avec celle de l’écriture.",
       "devolucion_ds_sin_nota_ajuste": "Un retour de document justificatif exige sa note d’ajustement.",
       "correccion_solo_reversas": "La correction d’erreur ne s’enregistre que sur la contre-passation.",
-      "resolucion_invalida": "La résolution du document électronique ou sa date n'est pas valide."
+      "resolucion_invalida": "La résolution du document électronique ou sa date n'est pas valide.",
+      "cierre_requiere_explicacion": "Expliquez pourquoi ce mouvement de clôture sur le compte 2408 n'est pas un ajustement fiscal.",
+      "expediente_invalido": "Une donnée du dossier de correction n'est pas valide.",
+      "estado_electronico_invalido": "L'état du document électronique n'est pas valide.",
+      "entrega_invalida": "Indiquez s'il y a eu livraison ou prestation.",
+      "cobro_invalido": "Indiquez s'il y a eu encaissement.",
+      "documento_valido_no_se_anula": "Un document validé, émis en contingence ou rejeté seulement commercialement ne s'annule pas devant la DIAN : il se règle par une note de crédit électronique.",
+      "devolucion_soporte_invalido": "Le retour d’un achat se justifie par la note de crédit du fournisseur.",
+      "devolucion_duplicada": "Cette note du fournisseur est déjà enregistrée sur une autre écriture.",
+      "devolucion_excede_linea": "Le montant retourné dépasse la base ou la TVA de la ligne, en comptant tous les retours enregistrés.",
+      "soporte_aduanero_invalido": "Une donnée du justificatif douanier n'est pas valide.",
+      "soporte_aduanero_solo_importacion": "Le justificatif douanier ne s'applique qu'aux lignes d'achat d'importation."
     },
     "clasificar": {
       "titulo": "Données fiscales de la ligne",
@@ -49030,7 +49180,8 @@
       "origenes": {
         "sugerida": "suggérée",
         "heredada": "de la facture créditée",
-        "manual": "confirmée"
+        "manual": "confirmée",
+        "inferida": "déduite par coïncidence arithmétique (non prouvée)"
       },
       "fundamentoSinIva": "Obligatoire pour les lignes exonérées, exclues et hors champ : sans lui, la ligne reste en attente.",
       "soporteTitulo": "Justificatif de la condition",

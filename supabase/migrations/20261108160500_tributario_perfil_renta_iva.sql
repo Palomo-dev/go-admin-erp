@@ -25,6 +25,29 @@
 --     tiene equivalente. No se borra.
 -- Migración de datos CONSERVADORA (hoy hay 0 vigencias): solo lo inequívoco; lo demás NULL y «requiere_revision».
 -- fn_perfil_tributario_guardar_v2 reemplaza a fn_perfil_tributario_guardar, que deja de ser ejecutable por usuarios.
+--
+-- RONDA 4 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «Perfil»), reescrita sin
+-- aplicar:
+--   · Catálogo del RUT no exhaustivo: un código de dos dígitos que no esté en rut_responsabilidades ya no se rechaza;
+--     se guarda y la vigencia queda «para aclaración» (aclaraciones 'rut_codigo_fuera_de_catalogo'). 11 y 12 se
+--     conservan como evidencia histórica ('rut_codigo_no_vigente'), sin tratarlos como responsabilidades actuales.
+--   · SIMPLE: sigue bloqueada la autorretención de renta sobre sus ingresos propios, ordinaria (15) y especial (59), que
+--     no son equivalentes (cada calidad tiene su campo). Si el RUT trae 47 con 15 o 59, el RUT es contradictorio: queda
+--     «para aclaración» ('rut_simple_con_autorretencion_para_aclaracion') y NO se exige borrar el código. Las
+--     operaciones por mandato no entran en esta regla: se examinan aparte (consignación).
+--   · Gran contribuyente: calificación ordinaria o excepcional y fecha del acto. Ordinaria → efectos desde el 1 de enero
+--     siguiente a la resolución (primer bimestre enero–febrero); excepcional → la fecha expresa del acto
+--     ('gran_contribuyente_fecha_efectos'). Una vigencia que se dice gran contribuyente no puede empezar antes de esos
+--     efectos ('gran_contribuyente_antes_de_efectos'), y en ella la periodicidad bimestral ya es exigible: declarar
+--     cuatrimestral se BLOQUEA, no se advierte ('gran_contribuyente_no_bimestral', Res. 227 art. 1.1.4.3).
+--     Un acto excepcional con efectos que no caen al inicio de un bimestre deja la vigencia «para aclaración»
+--     ('gran_contribuyente_transicion_por_resolver'): la transición del período se resuelve con una decisión sustentada
+--     (20261108161000), sin que el sistema invente cortes ni solapes.
+--   · Motivos de cambio de periodicidad: ninguno autoriza por sí solo. Se agregan «corrección de clasificación» y
+--     «acto especial» solo como descripción; todos exigen hecho, norma y fecha. «Documentado» ≠ «procedente»: la
+--     procedencia es un dato aparte (cambio_periodicidad_procedencia: por_evaluar · procedente · no_procedente) que
+--     registra una persona con fundamento (fn_perfil_tributario_evaluar_cambio); guardar otra vez el cambio con datos
+--     distintos la devuelve a «por_evaluar».
 
 alter table public.organization_tax_profiles
   add column if not exists regimen_renta text
@@ -45,7 +68,8 @@ alter table public.organization_tax_profiles
   add column if not exists no_contribuyente_naturaleza text,
   add column if not exists responsabilidades_rut text[] not null default '{}'::text[],
   add column if not exists motivo_cambio_periodicidad text
-    check (motivo_cambio_periodicidad in ('inicio_actividades', 'ingreso_simple', 'salida_simple', 'designacion_gran_contribuyente', 'otro')),
+    check (motivo_cambio_periodicidad in ('inicio_actividades', 'ingreso_simple', 'salida_simple', 'designacion_gran_contribuyente',
+                                          'correccion_clasificacion', 'acto_especial', 'otro')),
   add column if not exists cambio_periodicidad_hecho text,
   add column if not exists cambio_periodicidad_norma text,
   add column if not exists cambio_periodicidad_fecha date,
@@ -53,7 +77,17 @@ alter table public.organization_tax_profiles
     check (cambio_periodicidad_estado in ('no_aplica', 'pendiente_soporte', 'documentado')),
   add column if not exists advertencias_aceptadas text[] not null default '{}'::text[],
   add column if not exists requiere_revision boolean not null default false,
-  add column if not exists regimen_origen text;
+  add column if not exists regimen_origen text,
+  -- Ronda 4: gran contribuyente (calificación y fecha del acto), procedencia del cambio de periodicidad y aclaraciones.
+  add column if not exists gran_contribuyente_calificacion text
+    check (gran_contribuyente_calificacion in ('ordinaria', 'excepcional')),
+  add column if not exists gran_contribuyente_acto_fecha date,
+  add column if not exists cambio_periodicidad_procedencia text not null default 'por_evaluar'
+    check (cambio_periodicidad_procedencia in ('por_evaluar', 'procedente', 'no_procedente')),
+  add column if not exists cambio_periodicidad_evaluacion text,
+  add column if not exists cambio_periodicidad_evaluado_por uuid,
+  add column if not exists cambio_periodicidad_evaluado_en timestamptz,
+  add column if not exists aclaraciones text[] not null default '{}'::text[];
 
 alter table public.organization_tax_profiles alter column regimen drop not null;
 
@@ -66,7 +100,13 @@ comment on column public.organization_tax_profiles.condicion_iva is
 comment on column public.organization_tax_profiles.responsabilidades is
   'Códigos de responsabilidad fiscal del DOCUMENTO ELECTRÓNICO (dian_fiscal_responsibilities). No es la casilla 53 del RUT.';
 comment on column public.organization_tax_profiles.cambio_periodicidad_estado is
-  'Cambio de periodicidad del IVA a mitad de año respecto de la vigencia anterior: pendiente_soporte hasta documentar hecho, norma y fecha efectiva (P8, ronda 2).';
+  'Cambio de periodicidad del IVA a mitad de año respecto de la vigencia anterior: pendiente_soporte hasta documentar hecho, norma y fecha efectiva (P8, ronda 2). «documentado» no es «procedente»: ver cambio_periodicidad_procedencia.';
+comment on column public.organization_tax_profiles.cambio_periodicidad_procedencia is
+  'Ronda 4: si el cambio de periodicidad documentado procede (lo registra una persona con fundamento). Ningún motivo lo autoriza por sí solo.';
+comment on column public.organization_tax_profiles.gran_contribuyente_calificacion is
+  'Ronda 4: ordinaria (efectos desde el 1 de enero siguiente a la resolución) o excepcional (fecha expresa del acto).';
+comment on column public.organization_tax_profiles.aclaraciones is
+  'Ronda 4: datos para aclaración (RUT contradictorio, código fuera del catálogo o histórico, transición por resolver). No se borran; la vigencia queda «revisar perfil».';
 
 -- Migración de datos (idempotente: solo filas aún no migradas). Reglas:
 --   'simple' → regimen_renta 'simple'; 'especial' → 'especial'; 'ordinario' y 'no_responsable_iva' → NULL (no inequívoco).
@@ -107,7 +147,10 @@ as $function$
            p_d ->> 'periodicidad_iva' as per,
            (p_d ->> 'gran_contribuyente')::boolean as gran,
            nullif(btrim(coalesce(p_d ->> 'gran_contribuyente_acto', '')), '') as gran_acto,
-           p_d ->> 'gran_contribuyente_desde' as gran_desde,
+           (p_d ->> 'gran_contribuyente_desde')::date as gran_desde,
+           p_d ->> 'gran_contribuyente_calificacion' as gran_calif,
+           (p_d ->> 'gran_contribuyente_acto_fecha')::date as gran_acto_fecha,
+           (p_d ->> 'vigente_desde')::date as vig_desde,
            (p_d ->> 'autorretenedor')::boolean as auto,
            nullif(btrim(coalesce(p_d ->> 'autorretenedor_acto', '')), '') as auto_acto,
            p_d ->> 'autorretenedor_acto_fecha' as auto_fecha,
@@ -142,10 +185,25 @@ as $function$
       union all select 'fe_r99_con_otros' where 'R-99-PN' = any (d.fe) and cardinality(d.fe) > 1
       union all select 'fe_r99_con_calidades'
         where 'R-99-PN' = any (d.fe) and (d.renta = 'simple' or d.gran is true or d.auto is true or d.ag_iva is true)
-      -- ET art. 911: el SIMPLE no practica retenciones ni autorretenciones (salvo pagos laborales).
+      -- ET art. 911: el SIMPLE no practica retenciones ni autorretenciones (salvo pagos laborales). Ronda 4: ni la
+      -- ordinaria (15) ni la especial (59) sobre sus ingresos propios; las dos se bloquean, cada una en su campo.
       union all select 'simple_con_autorretencion' where d.renta = 'simple' and (d.auto is true or d.auto_esp is true)
       -- Calidades que nacen de un acto administrativo (IN-CAC-0237 31.11 y 31.13): sin acto y fecha no se afirman.
-      union all select 'gran_contribuyente_sin_acto' where d.gran is true and (d.gran_acto is null or d.gran_desde is null)
+      union all select 'gran_contribuyente_sin_acto'
+        where d.gran is true and (d.gran_acto is null or d.gran_desde is null or d.gran_acto_fecha is null)
+      -- Ronda 4: calificación ordinaria → efectos desde el 1 de enero siguiente a la resolución; excepcional → la fecha
+      -- expresa del acto (nunca antes del acto). Res. 227 de 2025, art. 1.1.4.3.
+      union all select 'gran_contribuyente_sin_calificacion' where d.gran is true and d.gran_calif is null
+      union all select 'gran_contribuyente_fecha_efectos'
+        where d.gran is true and d.gran_desde is not null and d.gran_acto_fecha is not null
+          and ((d.gran_calif = 'ordinaria' and d.gran_desde <> make_date(extract(year from d.gran_acto_fecha)::int + 1, 1, 1))
+            or (d.gran_calif = 'excepcional' and d.gran_desde < d.gran_acto_fecha))
+      union all select 'gran_contribuyente_antes_de_efectos'
+        where d.gran is true and d.gran_desde is not null and d.vig_desde is not null and d.vig_desde < d.gran_desde
+      -- Ronda 4: ya exigible la bimestral, declarar cuatrimestral no se corrige con una advertencia. (La anual del
+      -- SIMPLE no se toca aquí: sin deducir incompatibilidades automáticas, ronda 2.)
+      union all select 'gran_contribuyente_no_bimestral'
+        where d.gran is true and d.iva = 'responsable' and d.per = 'cuatrimestral'
       union all select 'autorretenedor_sin_acto' where d.auto is true and (d.auto_acto is null or d.auto_fecha is null)
       -- INC: depende de la actividad (ET art. 512-1).
       union all select 'inc_sin_actividad' where d.inc is true and d.inc_act is null
@@ -164,8 +222,10 @@ as $function$
       union all select 'rut_art22_con_renta'
         where d.renta = 'no_contribuyente_no_declarante' and ('04' = any (d.rut) or '05' = any (d.rut) or '06' = any (d.rut))
       union all select 'rut_13_sin_gran_contribuyente' where '13' = any (d.rut) and d.gran is not true
-      union all select 'rut_15_sin_autorretenedor' where '15' = any (d.rut) and d.auto is not true
-      union all select 'rut_59_sin_autorretencion_especial' where '59' = any (d.rut) and d.auto_esp is not true
+      -- Ronda 4: en el SIMPLE, un RUT con 15 o 59 es contradictorio: queda para aclaración (fn_perfil_tributario_aclaraciones),
+      -- no se obliga a borrar el código ni a marcar una autorretención que el SIMPLE no admite.
+      union all select 'rut_15_sin_autorretenedor' where '15' = any (d.rut) and d.auto is not true and d.renta is distinct from 'simple'
+      union all select 'rut_59_sin_autorretencion_especial' where '59' = any (d.rut) and d.auto_esp is not true and d.renta is distinct from 'simple'
       union all select 'rut_23_sin_agente_iva' where '23' = any (d.rut) and d.ag_iva is not true
       union all select 'rut_07_sin_agente_retencion' where '07' = any (d.rut) and d.ag_renta is not true
       union all select 'rut_33_sin_inc' where '33' = any (d.rut) and d.inc is not true
@@ -178,6 +238,44 @@ comment on function public.fn_perfil_tributario_bloqueos(jsonb) is
 revoke all on function public.fn_perfil_tributario_bloqueos(jsonb) from public, anon;
 grant execute on function public.fn_perfil_tributario_bloqueos(jsonb) to authenticated, service_role;
 
+-- Ronda 4: datos «para aclaración» de una vigencia. No bloquean ni se borran: la vigencia se guarda y queda «revisar
+-- perfil» hasta que el Contador los aclare.
+create or replace function public.fn_perfil_tributario_aclaraciones(p_d jsonb)
+returns text[]
+language sql
+stable
+set search_path to 'public', 'pg_temp'
+as $function$
+  with d as (
+    select p_d ->> 'regimen_renta' as renta,
+           (p_d ->> 'gran_contribuyente')::boolean as gran,
+           p_d ->> 'gran_contribuyente_calificacion' as gran_calif,
+           (p_d ->> 'gran_contribuyente_desde')::date as gran_desde,
+           coalesce(array(select jsonb_array_elements_text(coalesce(p_d -> 'responsabilidades_rut', '[]'::jsonb))), '{}'::text[]) as rut
+  )
+  select coalesce(array_agg(c order by c), '{}'::text[])
+    from d, lateral (
+      -- RUT contradictorio con el SIMPLE (47 con 15 o 59): para aclaración, sin borrar.
+      select 'rut_simple_con_autorretencion_para_aclaracion' as c
+       where d.renta = 'simple' and ('15' = any (d.rut) or '59' = any (d.rut))
+      -- 11 y 12: evidencia histórica, no responsabilidades actuales.
+      union all select 'rut_codigo_no_vigente' where '11' = any (d.rut) or '12' = any (d.rut)
+      -- El catálogo no es exhaustivo: un código que no conoce se conserva y se aclara.
+      union all select 'rut_codigo_fuera_de_catalogo'
+       where exists (select 1 from unnest(d.rut) r(codigo)
+                      where not exists (select 1 from public.rut_responsabilidades x where x.codigo = r.codigo))
+      -- Calificación excepcional con efectos a mitad de un bimestre: la transición se resuelve con una decisión del período.
+      union all select 'gran_contribuyente_transicion_por_resolver'
+       where d.gran is true and d.gran_calif = 'excepcional' and d.gran_desde is not null
+         and not (extract(day from d.gran_desde) = 1 and extract(month from d.gran_desde)::int in (1, 3, 5, 7, 9, 11))
+    ) x;
+$function$;
+
+comment on function public.fn_perfil_tributario_aclaraciones(jsonb) is
+  'Ronda 4 del Contador: datos de una vigencia del perfil que quedan para aclaración (no bloquean ni se borran).';
+revoke all on function public.fn_perfil_tributario_aclaraciones(jsonb) from public, anon;
+grant execute on function public.fn_perfil_tributario_aclaraciones(jsonb) to authenticated, service_role;
+
 -- Guardar una vigencia. Mismas reglas de fechas que fn_perfil_tributario_guardar (cierra la anterior, termina antes de la
 -- siguiente, la fecha de inicio no cambia al editar), más:
 --   · bloqueos → 22023 COMBINACION_CONTRADICTORIA (detail = códigos separados por coma);
@@ -185,7 +283,8 @@ grant execute on function public.fn_perfil_tributario_bloqueos(jsonb) to authent
 --   · cambio de periodicidad del IVA respecto de la vigencia anterior que no empieza el 1 de enero, entre dos
 --     periodicidades declarables → cambio_periodicidad_estado 'pendiente_soporte' hasta que motivo, hecho, norma y
 --     fecha efectiva estén completos ('documentado'). Se guarda, pero el Centro no lo da por bueno (P8, ronda 2).
---   · códigos del RUT y del documento electrónico deben existir en sus catálogos.
+--   · códigos del documento electrónico deben existir en su catálogo. Ronda 4: los del RUT solo deben tener la forma de
+--     un código (dos dígitos); el catálogo no es exhaustivo y un código desconocido queda para aclaración.
 create or replace function public.fn_perfil_tributario_guardar_v2(
   p_organization_id integer,
   p_id uuid,
@@ -216,6 +315,7 @@ declare
   v_regimen_legacy text;
   v_tz text;
   v_hoy date;
+  v_aclaraciones text[];
 begin
   perform public.fn_assert_acceso_org(p_organization_id);
   if not (
@@ -236,15 +336,13 @@ begin
   if exists (select 1 from unnest(v_fe) r(codigo) where not exists (select 1 from public.dian_fiscal_responsibilities x where x.code = r.codigo)) then
     raise exception 'RESPONSABILIDAD_INVALIDA' using errcode = '22023';
   end if;
-  if exists (select 1 from unnest(v_rut) r(codigo) where not exists (select 1 from public.rut_responsabilidades c where c.codigo = r.codigo)) then
+  -- Ronda 4: el catálogo del RUT no es exhaustivo; solo se exige la forma del código.
+  if exists (select 1 from unnest(v_rut) r(codigo) where r.codigo !~ '^[0-9]{2}$') then
     raise exception 'RESPONSABILIDAD_RUT_INVALIDA' using errcode = '22023';
   end if;
   if jsonb_typeof(v_ica) <> 'array' or jsonb_array_length(v_ica) > 50 then
     raise exception 'ICA_INVALIDO' using errcode = '22023';
   end if;
-
-  -- Los CHECK de las columnas validan los valores de cada lista; aquí, las combinaciones.
-  v_bloqueos := public.fn_perfil_tributario_bloqueos(d);
 
   perform pg_advisory_xact_lock(hashtext('organization_tax_profiles'), p_organization_id);
 
@@ -259,6 +357,11 @@ begin
       raise exception 'NO_ENCONTRADO' using errcode = 'P0002';
     end if;
   end if;
+
+  -- Los CHECK de las columnas validan los valores de cada lista; aquí, las combinaciones (ronda 4: con el inicio de la
+  -- vigencia, para saber si el gran contribuyente ya era exigible).
+  v_bloqueos := public.fn_perfil_tributario_bloqueos(d || jsonb_build_object('vigente_desde', v_desde));
+  v_aclaraciones := public.fn_perfil_tributario_aclaraciones(d);
 
   if (d ->> 'cambio_periodicidad_fecha') is not null and (d ->> 'cambio_periodicidad_fecha')::date <> v_desde then
     v_bloqueos := array_append(v_bloqueos, 'cambio_fecha_efectiva_distinta');
@@ -327,6 +430,8 @@ begin
          gran_contribuyente = (d ->> 'gran_contribuyente')::boolean,
          gran_contribuyente_acto = nullif(left(btrim(coalesce(d ->> 'gran_contribuyente_acto', '')), 120), ''),
          gran_contribuyente_desde = (d ->> 'gran_contribuyente_desde')::date,
+         gran_contribuyente_calificacion = case when (d ->> 'gran_contribuyente')::boolean then d ->> 'gran_contribuyente_calificacion' end,
+         gran_contribuyente_acto_fecha = case when (d ->> 'gran_contribuyente')::boolean then (d ->> 'gran_contribuyente_acto_fecha')::date end,
          autorretenedor = (d ->> 'autorretenedor')::boolean,
          autorretenedor_acto = nullif(left(btrim(coalesce(d ->> 'autorretenedor_acto', '')), 120), ''),
          autorretenedor_acto_fecha = (d ->> 'autorretenedor_acto_fecha')::date,
@@ -343,8 +448,27 @@ begin
          cambio_periodicidad_norma = nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_norma', '')), 300), ''),
          cambio_periodicidad_fecha = (d ->> 'cambio_periodicidad_fecha')::date,
          cambio_periodicidad_estado = v_estado_cambio,
+         -- Ronda 4: «documentado» no es «procedente». La procedencia registrada se conserva solo si el cambio no se tocó.
+         cambio_periodicidad_procedencia = case
+           when v_estado_cambio = 'no_aplica' then 'por_evaluar'
+           when motivo_cambio_periodicidad is not distinct from (d ->> 'motivo_cambio_periodicidad')
+            and cambio_periodicidad_hecho is not distinct from nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_hecho', '')), 1000), '')
+            and cambio_periodicidad_norma is not distinct from nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_norma', '')), 300), '')
+            and cambio_periodicidad_fecha is not distinct from (d ->> 'cambio_periodicidad_fecha')::date
+            and periodicidad_iva is not distinct from (d ->> 'periodicidad_iva')
+           then cambio_periodicidad_procedencia
+           else 'por_evaluar' end,
+         cambio_periodicidad_evaluacion = case
+           when v_estado_cambio <> 'no_aplica'
+            and motivo_cambio_periodicidad is not distinct from (d ->> 'motivo_cambio_periodicidad')
+            and cambio_periodicidad_hecho is not distinct from nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_hecho', '')), 1000), '')
+            and cambio_periodicidad_norma is not distinct from nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_norma', '')), 300), '')
+            and cambio_periodicidad_fecha is not distinct from (d ->> 'cambio_periodicidad_fecha')::date
+            and periodicidad_iva is not distinct from (d ->> 'periodicidad_iva')
+           then cambio_periodicidad_evaluacion end,
          advertencias_aceptadas = v_aceptadas,
-         requiere_revision = false,
+         aclaraciones = v_aclaraciones,
+         requiere_revision = cardinality(v_aclaraciones) > 0,
          notas = nullif(left(btrim(coalesce(p_notas, '')), 1000), ''),
          updated_at = now(),
          updated_by = auth.uid()
@@ -380,6 +504,62 @@ comment on function public.fn_perfil_tributario_guardar_v2(integer, uuid, date, 
 
 revoke all on function public.fn_perfil_tributario_guardar_v2(integer, uuid, date, jsonb, jsonb, text) from public, anon;
 grant execute on function public.fn_perfil_tributario_guardar_v2(integer, uuid, date, jsonb, jsonb, text) to authenticated;
+
+-- Ronda 4: la procedencia de un cambio de periodicidad DOCUMENTADO la registra una persona, con fundamento. Ningún
+-- motivo lo autoriza por sí solo. p_procedencia: procedente | no_procedente | por_evaluar (deshace la evaluación).
+create or replace function public.fn_perfil_tributario_evaluar_cambio(
+  p_organization_id integer,
+  p_id uuid,
+  p_procedencia text,
+  p_fundamento text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_fila public.organization_tax_profiles;
+  v_fund text := nullif(btrim(coalesce(p_fundamento, '')), '');
+begin
+  perform public.fn_assert_acceso_org(p_organization_id);
+  if not (
+    public.fn_tiene_permiso(p_organization_id, 'finance.approve')
+    or public.fn_tiene_permiso(p_organization_id, 'admin.full_access')
+  ) then
+    raise exception 'SIN_PERMISO' using errcode = '42501';
+  end if;
+  if p_procedencia is null or p_procedencia not in ('procedente', 'no_procedente', 'por_evaluar') then
+    raise exception 'PROCEDENCIA_INVALIDA' using errcode = '22023';
+  end if;
+  select * into v_fila from public.organization_tax_profiles where id = p_id and organization_id = p_organization_id for update;
+  if v_fila.id is null then
+    raise exception 'NO_ENCONTRADO' using errcode = 'P0002';
+  end if;
+  -- «Documentado» es condición, no prueba: sin hecho, norma y fecha no se evalúa.
+  if v_fila.cambio_periodicidad_estado <> 'documentado' then
+    raise exception 'CAMBIO_NO_DOCUMENTADO' using errcode = '22023';
+  end if;
+  if p_procedencia <> 'por_evaluar' and (v_fund is null or char_length(v_fund) < 10 or char_length(v_fund) > 2000) then
+    raise exception 'FUNDAMENTO_REQUERIDO' using errcode = '22023';
+  end if;
+  update public.organization_tax_profiles
+     set cambio_periodicidad_procedencia = p_procedencia,
+         cambio_periodicidad_evaluacion = case when p_procedencia = 'por_evaluar' then null else v_fund end,
+         cambio_periodicidad_evaluado_por = case when p_procedencia = 'por_evaluar' then null else auth.uid() end,
+         cambio_periodicidad_evaluado_en = case when p_procedencia = 'por_evaluar' then null else now() end,
+         updated_at = now(), updated_by = auth.uid()
+   where id = v_fila.id
+  returning * into v_fila;
+  return jsonb_build_object('id', v_fila.id, 'procedencia', v_fila.cambio_periodicidad_procedencia,
+                            'evaluado_en', v_fila.cambio_periodicidad_evaluado_en);
+end;
+$function$;
+
+comment on function public.fn_perfil_tributario_evaluar_cambio(integer, uuid, text, text) is
+  'Ronda 4 del Contador: registra si un cambio de periodicidad documentado procede (con fundamento). «Documentado» no es «procedente». finance.approve o admin.full_access.';
+revoke all on function public.fn_perfil_tributario_evaluar_cambio(integer, uuid, text, text) from public, anon;
+grant execute on function public.fn_perfil_tributario_evaluar_cambio(integer, uuid, text, text) to authenticated;
 
 -- La vía vieja (campo combinado, sin validar combinaciones) deja de estar disponible para los usuarios.
 revoke execute on function public.fn_perfil_tributario_guardar(integer, uuid, date, text, text[], boolean, boolean, text, jsonb, text) from authenticated;

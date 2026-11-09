@@ -36,6 +36,7 @@ import {
   type RespuestaRecibidas,
   type RetencionLiquidacion,
   type SolicitudRecibir,
+  type SolicitudRetencionPracticada,
   type Valoracion,
 } from '@/lib/inventario/consignaciones/recibidas';
 import { liquidarConsignacion, type ResultadoLiquidar } from '@/lib/services/consignaciones/consignaciones.server';
@@ -83,7 +84,7 @@ const SELECT_RECIBIDA = `id, number, supplier_id, branch_id, legal_modality, acc
   suppliers:supplier_id (name),
   consignment_note_lines (id, product_id, qty_delivered, qty_sold, qty_returned, qty_incident, agreed_price, settlement_price, credited_cost, memo_unit_value, external_display, products:product_id (name)),
   consignment_settlements (id, seq, status, period_from, period_to, sale_total, agreed_total, discount_total, tax_total, commission_amount, owner_amount, payable_amount, rights_discounted, shared_document_id, created_at,
-    consignment_settlement_withholdings (id, scope, class, payer, payer_group, base, rate, amount, status, reason, reconciled_amount, reconciled_support, reconciled_at)),
+    consignment_settlement_withholdings (id, scope, class, payer, payer_group, base, rate, amount, status, reason, practiced_amount, practiced_base, practiced_at, practiced_support, reconciled_amount, reconciled_support, reconciled_at)),
   consignment_allocations (line_id, kind, qty, sale_amount, agreed_amount, remuneration_amount, remuneration_recognized, settlement_id, absorbed, owner_right)`;
 
 type FilaRecibida = {
@@ -170,6 +171,10 @@ type FilaRetencion = {
   amount: number | string | null;
   status: RetencionLiquidacion['estado'];
   reason: string | null;
+  practiced_amount?: number | string | null;
+  practiced_base?: number | string | null;
+  practiced_at?: string | null;
+  practiced_support?: string | null;
   reconciled_amount: number | string | null;
   reconciled_support: string | null;
   reconciled_at: string | null;
@@ -188,6 +193,9 @@ export const aRetencion = (r: FilaRetencion): RetencionLiquidacion => ({
   valor: numONulo(r.amount),
   estado: r.status,
   motivo: r.reason,
+  practicada: r.practiced_at
+    ? { valor: num(r.practiced_amount), base: numONulo(r.practiced_base), fecha: r.practiced_at, soporte: r.practiced_support ?? '' }
+    : null,
   conciliado: r.reconciled_at ? { valor: num(r.reconciled_amount), soporte: r.reconciled_support ?? '', fecha: r.reconciled_at } : null,
 });
 
@@ -478,6 +486,23 @@ export function conciliarRetencion(ctx: Ctx, retencionId: string, s: { valor: nu
   });
 }
 
+/**
+ * Ronda 4, punto 4: reconoce la retención PRACTICADA cuando ocurre (no espera el certificado). De la operación: el
+ * dueño la asume contra 281510 y la cartera del cliente queda con un pendiente de abono; de la remuneración: retención
+ * sufrida contra la cuenta por cobrar al dueño (`fn_consignacion_retencion_practicada`).
+ */
+export function registrarRetencionPracticada(ctx: Ctx, retencionId: string, s: SolicitudRetencionPracticada) {
+  return rpc<{ retencion_id: string; repetida?: boolean; valor: number }>(ctx, 'fn_consignacion_retencion_practicada', {
+    p_retencion: retencionId,
+    p_valor: s.valor,
+    p_base: s.base,
+    p_fecha: s.fecha,
+    p_soporte: s.soporte,
+    p_organization_id: ctx.organizationId,
+    p_factura: s.factura_id ?? null,
+  });
+}
+
 /** Reglas de retención de consignación y las reglas configuradas de la organización entre las que se elige. */
 export async function leerRetencionesConsignacion(ctx: Ctx): Promise<{
   pendiente: boolean;
@@ -496,14 +521,28 @@ export async function leerRetencionesConsignacion(ctx: Ctx): Promise<{
   }
   const { data: conf, error: e2 } = await ctx.supabase.rpc('fn_retenciones_configuracion', { p_organization_id: ctx.organizationId });
   if (e2) throw new ErrorRecibidaServidor(codigoErrorRecibida(e2.message));
-  const filas = ((conf as { retenciones?: { id: string; nombre: string; tarifa: number | string; activo: boolean; clase: string | null }[] } | null)?.retenciones ?? [])
-    .filter((r) => r.activo)
+  // Ronda 4: la de reteICA es la regla MUNICIPAL registrada (reteica_reglas, la de anticipos), no un impuesto de la
+  // organización; renta e IVA siguen saliendo de las retenciones configuradas.
+  const filas: { id: string; nombre: string; tarifa: number; clase: ClaseRetencion | null }[] = (
+    (conf as { retenciones?: { id: string; nombre: string; tarifa: number | string; activo: boolean; clase: string | null }[] } | null)?.retenciones ?? []
+  )
+    .filter((r) => r.activo && r.clase !== 'reteica')
     .map((r) => ({
       id: r.id,
       nombre: r.nombre,
       tarifa: num(r.tarifa),
-      clase: (['retefuente', 'reteiva', 'reteica'] as const).find((c) => c === r.clase) ?? null,
+      clase: (['retefuente', 'reteiva'] as const).find((c) => c === r.clase) ?? null,
     }));
+  const { data: ica, error: e3 } = await ctx.supabase
+    .from('reteica_reglas')
+    .select('id, actividad, tarifa_por_mil, municipalities:municipality_id (name)')
+    .eq('organization_id', ctx.organizationId)
+    .order('vigente_desde', { ascending: false });
+  if (e3 && !esPendienteRecibida(e3)) throw new ErrorRecibidaServidor(codigoErrorRecibida(e3.message));
+  for (const r of (e3 ? [] : (ica ?? [])) as unknown as { id: string; actividad: string; tarifa_por_mil: number | string; municipalities: { name: string } | null }[]) {
+    // tarifa en porcentaje, como las demás (9,66 ‰ = 0,966 %).
+    filas.push({ id: r.id, nombre: `${r.municipalities?.name ?? ''} · ${r.actividad}`, tarifa: num(r.tarifa_por_mil) / 10, clase: 'reteica' });
+  }
   const reglas = ((data as { withholding_rules?: ReglasRetencionConsignacion } | null)?.withholding_rules ?? vacio) as ReglasRetencionConsignacion;
   return { pendiente: false, reglas: { operacion: reglas.operacion ?? {}, remuneracion: reglas.remuneracion ?? {} }, disponibles: filas };
 }

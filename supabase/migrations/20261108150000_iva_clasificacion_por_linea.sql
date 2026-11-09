@@ -16,6 +16,16 @@
 --     marca manual: la RPC lo rechaza salvo un supuesto especial (tipo «otra especial» o «importación») con su
 --     fundamento, y aun así el borrador lo deja pendiente para su tratamiento propio.
 --
+-- RONDA 4 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md), reescrita sin aplicar:
+--   · IVA · 3 (casilla 47): la importación no gravada exige SOPORTE ADUANERO VERIFICABLE, estructurado, no un texto
+--     libre: columna invoice_items.iva_soporte_aduanero (jsonb) con tipo de documento aduanero, número, fecha, copia
+--     (referencia al archivo adjunto), valor, fundamento de la exclusión y modalidad de importación. La RPC valida la
+--     forma de cada dato; el borrador del 300 (20261108151000) solo lleva a la 47 la línea con los siete datos, de una
+--     compra (no de documento soporte) y que no sea de un servicio: un servicio adquirido en el exterior no va a la 47.
+--   · IVA · 4 (límite que el Contador mantiene): la tarifa que el disparador deduce en el POS porque el IVA de la línea
+--     coincide aritméticamente con UNA tarifa configurada queda con origen «inferida» (no «sugerida»): no prueba por sí
+--     sola su procedencia legal, y el borrador la señala.
+--
 -- Qué agrega (aditivo: columnas NULL-ables sin DEFAULT, sin DROP, sin cambios de tipo; no toca totales):
 --   1. Por línea (invoice_items: venta, nota crédito/débito, compra, documento soporte; sale_items: POS):
 --        iva_tratamiento     gravada | exenta | excluida | no_sujeta
@@ -25,8 +35,10 @@
 --        iva_soporte_tipo / iva_soporte_numero / iva_soporte_fecha  soporte de la condición (exportación u otra)
 --        iva_fundamento      norma o soporte (obligatorio en la práctica para exentas: sin él, el borrador la
 --                            deja «pendiente»)
---        iva_clasificacion_origen  sugerida (del impuesto/producto al crear la línea) | heredada (nota crédito:
---                            de la línea que acredita) | manual (la fijó una persona)
+--        iva_clasificacion_origen  sugerida (del impuesto/producto al crear la línea) | inferida (POS: la tarifa se
+--                            dedujo porque el IVA coincide con UNA tarifa; ronda 4) | heredada (nota crédito: de la
+--                            línea que acredita) | manual (la fijó una persona)
+--        iva_soporte_aduanero (solo invoice_items) soporte aduanero estructurado de una importación (ronda 4)
 --        iva_clasificado_por / iva_clasificado_en
 --      Solo invoice_items (compras y documento soporte):
 --        iva_descontable     por_evaluar | descontable | no_descontable | proporcional  (ET arts. 485, 488, 490, 496)
@@ -74,9 +86,11 @@ alter table public.invoice_items
     constraint invoice_items_iva_soporte_numero_chk check (char_length(iva_soporte_numero) <= 80),
   add column if not exists iva_soporte_fecha date,
   add column if not exists iva_clasificacion_origen text
-    constraint invoice_items_iva_clasificacion_origen_chk check (iva_clasificacion_origen in ('sugerida', 'heredada', 'manual')),
+    constraint invoice_items_iva_clasificacion_origen_chk check (iva_clasificacion_origen in ('sugerida', 'inferida', 'heredada', 'manual')),
   add column if not exists iva_clasificado_por uuid,
   add column if not exists iva_clasificado_en timestamptz,
+  add column if not exists iva_soporte_aduanero jsonb
+    constraint invoice_items_iva_soporte_aduanero_chk check (jsonb_typeof(iva_soporte_aduanero) = 'object'),
   add column if not exists iva_descontable text
     constraint invoice_items_iva_descontable_chk check (iva_descontable in ('por_evaluar', 'descontable', 'no_descontable', 'proporcional')),
   add column if not exists iva_descontable_porcentaje numeric(5, 2)
@@ -103,7 +117,7 @@ alter table public.sale_items
     constraint sale_items_iva_soporte_numero_chk check (char_length(iva_soporte_numero) <= 80),
   add column if not exists iva_soporte_fecha date,
   add column if not exists iva_clasificacion_origen text
-    constraint sale_items_iva_clasificacion_origen_chk check (iva_clasificacion_origen in ('sugerida', 'heredada', 'manual')),
+    constraint sale_items_iva_clasificacion_origen_chk check (iva_clasificacion_origen in ('sugerida', 'inferida', 'heredada', 'manual')),
   add column if not exists iva_clasificado_por uuid,
   add column if not exists iva_clasificado_en timestamptz;
 
@@ -115,6 +129,10 @@ comment on column public.invoice_items.iva_soporte_numero is
   'Soporte de la condición de la línea (p. ej. número de la declaración de exportación). Con iva_soporte_tipo y iva_soporte_fecha; sin los tres, una exportación queda pendiente.';
 comment on column public.sale_items.iva_tratamiento is
   'Tratamiento del IVA de la línea POS (gravada, exenta, excluida, no_sujeta). Sugerido al crear la línea; NULL = sin clasificar.';
+comment on column public.sale_items.iva_clasificacion_origen is
+  'sugerida | inferida (la tarifa se dedujo porque el IVA coincide aritméticamente con UNA tarifa configurada: no prueba su procedencia legal) | heredada | manual.';
+comment on column public.invoice_items.iva_soporte_aduanero is
+  'Importación (casilla 47): { tipo_documento, numero, fecha, adjunto, valor, fundamento_exclusion, modalidad }. Sin los siete datos la línea no va a la 47 (ronda 4 del Contador).';
 
 -- Bitácora de cambios hechos por personas (las sugerencias del disparador no se registran: son el valor inicial).
 create table if not exists public.iva_clasificacion_cambios (
@@ -160,7 +178,7 @@ create or replace function public.fn_iva_sugerencia_linea(
   p_base numeric default null,
   p_is_excluded integer default null
 )
-returns table (tratamiento text, tarifa numeric, tipo_operacion text)
+returns table (tratamiento text, tarifa numeric, tipo_operacion text, inferida boolean)
 language plpgsql
 stable
 set search_path to 'public', 'pg_temp'
@@ -178,6 +196,7 @@ begin
       from public.products p where p.id = p_product_id and p.organization_id = p_organization_id;
   end if;
   tipo_operacion := v_tipo;
+  inferida := false;
 
   -- a) El impuesto de la línea.
   if v_code = 'IVA_EXCLUIDO' or coalesce(p_is_excluded, 0) = 1 then
@@ -191,7 +210,8 @@ begin
     tratamiento := 'gravada'; tarifa := round(v_rate, 2); return next; return;
   end if;
 
-  -- b) POS: IVA guardado con tarifa 0. Solo si coincide (±$1) con UNA tarifa de IVA de la organización.
+  -- b) POS: IVA guardado con tarifa 0. Solo si coincide (±$1) con UNA tarifa de IVA de la organización. Ronda 4: la
+  --    coincidencia aritmética no prueba la procedencia legal de la tarifa: queda marcada «inferida».
   if coalesce(p_tax_amount, 0) > 0 and coalesce(p_base, 0) > 0 then
     select array_agg(distinct ot.rate) into v_cand
       from public.organization_taxes ot
@@ -200,7 +220,7 @@ begin
        and ot.rate > 0 and coalesce(t.code, 'IVA') like 'IVA%'
        and abs(round(p_base * ot.rate / 100, 2) - p_tax_amount) <= 1;
     if coalesce(array_length(v_cand, 1), 0) = 1 then
-      tratamiento := 'gravada'; tarifa := round(v_cand[1], 2);
+      tratamiento := 'gravada'; tarifa := round(v_cand[1], 2); inferida := true;
     end if;
     return next; return;
   end if;
@@ -229,7 +249,7 @@ end;
 $function$;
 
 comment on function public.fn_iva_sugerencia_linea(integer, integer, text, numeric, numeric, numeric, integer) is
-  'Sugerencia de clasificación de IVA de una línea: del impuesto de la línea y, si no lo dice, del producto. NULL = no se sabe (la línea queda sin clasificar).';
+  'Sugerencia de clasificación de IVA de una línea: del impuesto de la línea y, si no lo dice, del producto. NULL = no se sabe (la línea queda sin clasificar). inferida = la tarifa salió de una coincidencia aritmética del POS (no probada).';
 
 -- ── 4. Disparador ───────────────────────────────────────────────────────────────
 create or replace function public.fn_iva_clasificacion_linea_trg()
@@ -249,7 +269,7 @@ declare
 begin
   if tg_op = 'UPDATE' then
     -- Solo se recalcula una clasificación sugerida (o vacía) cuando cambió el impuesto o el producto de la línea.
-    if coalesce(new.iva_clasificacion_origen, 'sugerida') <> 'sugerida'
+    if coalesce(new.iva_clasificacion_origen, 'sugerida') not in ('sugerida', 'inferida')
        or new.iva_tratamiento is distinct from old.iva_tratamiento then
       return new;
     end if;
@@ -318,7 +338,7 @@ begin
   if v_s.tratamiento is not null then
     new.iva_tratamiento := v_s.tratamiento;
     new.iva_tarifa := v_s.tarifa;
-    new.iva_clasificacion_origen := 'sugerida';
+    new.iva_clasificacion_origen := case when coalesce(v_s.inferida, false) then 'inferida' else 'sugerida' end;
     new.iva_clasificado_en := now();
   end if;
   return new;
@@ -389,7 +409,8 @@ begin
            'tax_code', it.tax_code, 'tax_rate', it.tax_rate, 'compra', p_tipo <> 'factura_venta',
            'clasificacion', jsonb_build_object('tratamiento', it.iva_tratamiento, 'tarifa', it.iva_tarifa,
              'tipo_operacion', it.iva_tipo_operacion, 'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen,
-             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha),
+             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha,
+             'soporte_aduanero', it.iva_soporte_aduanero),
            'soporte_doc', p_tipo = 'documento_soporte',
            'descontable', case when p_tipo <> 'factura_venta' then jsonb_build_object('estado', coalesce(it.iva_descontable, 'por_evaluar'),
              'porcentaje', it.iva_descontable_porcentaje, 'motivo', it.iva_descontable_motivo) end,
@@ -415,7 +436,11 @@ grant execute on function public.fn_iva_lineas_documento(integer, text, uuid) to
 
 -- ── 6. Escritura: clasificar una línea (persona con finance.create o admin) ──
 -- p_datos: { tratamiento, tarifa, tipo_operacion, fundamento, soporte_tipo?, soporte_numero?, soporte_fecha?,
+--            soporte_aduanero?: { tipo_documento, numero, fecha, adjunto, valor, fundamento_exclusion, modalidad },
 --            descontable?, descontable_porcentaje?, descontable_motivo? }
+-- Ronda 4: soporte_aduanero solo en líneas de compra con tipo «importación»; cada dato se valida por su forma (se puede
+-- guardar a medias, pero el borrador solo lleva a la 47 la línea con los siete). Si la clave no viene, se conserva el que
+-- tenía la línea mientras siga siendo una importación; si deja de serlo, se borra.
 -- Las claves de «descontable» solo se aceptan en líneas de compra o documento soporte; si no vienen, no se tocan.
 -- Ronda 2: exportación solo con tratamiento «exenta»; en documento soporte, «descontable» o «proporcional» solo en un
 -- supuesto especial (tipo «otra especial» o «importación») con fundamento: SOPORTE_NO_DESCONTABLE si no.
@@ -442,6 +467,7 @@ declare
   v_sop_tipo text := nullif(btrim(coalesce(p_datos ->> 'soporte_tipo', '')), '');
   v_sop_num text := nullif(btrim(coalesce(p_datos ->> 'soporte_numero', '')), '');
   v_sop_fecha date := nullif(p_datos ->> 'soporte_fecha', '')::date;
+  v_adu jsonb := case when jsonb_typeof(p_datos -> 'soporte_aduanero') = 'object' then p_datos -> 'soporte_aduanero' end;
 begin
   perform public.fn_assert_acceso_org(p_organization_id);
   if not (public.fn_tiene_permiso(p_organization_id, 'finance.create')
@@ -457,7 +483,8 @@ begin
            jsonb_build_object('tratamiento', it.iva_tratamiento, 'tarifa', it.iva_tarifa, 'tipo_operacion', it.iva_tipo_operacion,
              'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen, 'descontable', it.iva_descontable,
              'descontable_porcentaje', it.iva_descontable_porcentaje, 'descontable_motivo', it.iva_descontable_motivo,
-             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha)
+             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha,
+             'soporte_aduanero', it.iva_soporte_aduanero)
       into v_org, v_compra, v_soporte_doc, v_antes
       from public.invoice_items it
       left join public.invoice_sales fs on it.invoice_type = 'sale' and fs.id = coalesce(it.invoice_sales_id, it.invoice_id)
@@ -506,6 +533,33 @@ begin
   if char_length(coalesce(v_fund, '')) > 500 or char_length(coalesce(v_motivo, '')) > 500 or char_length(coalesce(v_sop_num, '')) > 80 then
     raise exception 'TEXTO_LARGO' using errcode = '22023';
   end if;
+  -- Ronda 4 · casilla 47: soporte aduanero estructurado, solo en compras de importación; cada dato con su forma.
+  if p_datos ? 'soporte_aduanero' and jsonb_typeof(p_datos -> 'soporte_aduanero') not in ('object', 'null') then
+    raise exception 'SOPORTE_ADUANERO_INVALIDO' using errcode = '22023';
+  end if;
+  if v_adu is not null then
+    if not v_compra or coalesce(v_tipo, '') <> 'importacion' then
+      raise exception 'SOPORTE_ADUANERO_SOLO_IMPORTACION' using errcode = '22023';
+    end if;
+    if exists (select 1 from jsonb_object_keys(v_adu) k
+                where k not in ('tipo_documento', 'numero', 'fecha', 'adjunto', 'valor', 'fundamento_exclusion', 'modalidad'))
+       or (v_adu ? 'tipo_documento' and coalesce(v_adu ->> 'tipo_documento', '') not in
+             ('declaracion_importacion', 'declaracion_simplificada', 'guia_trafico_postal_envio_urgente', 'otro_documento_aduanero'))
+       or (v_adu ? 'modalidad' and coalesce(v_adu ->> 'modalidad', '') not in
+             ('importacion_ordinaria', 'importacion_temporal', 'trafico_postal_envio_urgente', 'franquicia', 'otra_modalidad'))
+       or (v_adu ? 'numero' and char_length(btrim(coalesce(v_adu ->> 'numero', ''))) not between 1 and 80)
+       or (v_adu ? 'adjunto' and char_length(btrim(coalesce(v_adu ->> 'adjunto', ''))) not between 1 and 300)
+       or (v_adu ? 'fundamento_exclusion' and char_length(btrim(coalesce(v_adu ->> 'fundamento_exclusion', ''))) not between 5 and 500)
+       or (v_adu ? 'valor' and (jsonb_typeof(v_adu -> 'valor') <> 'number' or (v_adu ->> 'valor')::numeric <= 0))
+       or (v_adu ? 'fecha' and coalesce(v_adu ->> 'fecha', '') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') then
+      raise exception 'SOPORTE_ADUANERO_INVALIDO' using errcode = '22023';
+    end if;
+    begin
+      perform (v_adu ->> 'fecha')::date;
+    exception when others then
+      raise exception 'SOPORTE_ADUANERO_INVALIDO' using errcode = '22023';
+    end;
+  end if;
 
   -- Validaciones de la procedencia del descontable (solo compras / soporte).
   if p_datos ? 'descontable' then
@@ -535,6 +589,9 @@ begin
     update public.invoice_items it set
       iva_tratamiento = v_trat, iva_tarifa = v_tarifa, iva_tipo_operacion = v_tipo, iva_fundamento = v_fund,
       iva_soporte_tipo = v_sop_tipo, iva_soporte_numero = v_sop_num, iva_soporte_fecha = v_sop_fecha,
+      iva_soporte_aduanero = case when coalesce(v_tipo, '') <> 'importacion' then null
+                                  when p_datos ? 'soporte_aduanero' then v_adu
+                                  else it.iva_soporte_aduanero end,
       iva_clasificacion_origen = 'manual', iva_clasificado_por = v_uid, iva_clasificado_en = now(),
       iva_descontable = case when p_datos ? 'descontable' then v_desc else it.iva_descontable end,
       iva_descontable_porcentaje = case when p_datos ? 'descontable' then v_pct else it.iva_descontable_porcentaje end,
@@ -545,7 +602,8 @@ begin
     returning jsonb_build_object('tratamiento', it.iva_tratamiento, 'tarifa', it.iva_tarifa, 'tipo_operacion', it.iva_tipo_operacion,
              'fundamento', it.iva_fundamento, 'origen', it.iva_clasificacion_origen, 'descontable', it.iva_descontable,
              'descontable_porcentaje', it.iva_descontable_porcentaje, 'descontable_motivo', it.iva_descontable_motivo,
-             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha)
+             'soporte_tipo', it.iva_soporte_tipo, 'soporte_numero', it.iva_soporte_numero, 'soporte_fecha', it.iva_soporte_fecha,
+             'soporte_aduanero', it.iva_soporte_aduanero)
       into v_despues;
   else
     update public.sale_items si set

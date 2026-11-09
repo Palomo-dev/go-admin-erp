@@ -6,6 +6,10 @@
 -- 20261108161000 (decisiones) y 20261108161500 (instantáneas). Su cuerpo se pega donde dice «MIGRACIÓN …». En la corrida,
 -- el marco normativo de cada código del catálogo se abrevió (los códigos, nombres, numerales y páginas son los del archivo).
 -- Usuario simulado: el miembro activo de la org 374 (sesión con RLS y auth.uid()).
+-- RONDA 4 (2026-11-09): se corre con los archivos EXACTOS (sin abreviar), pegados en sus marcadores, y con los esperados
+-- de la ronda 4: 11 y 12 «historico», códigos FE cotejados (O-48/O-49 fuera de la tabla 13.2.6.1), gran contribuyente
+-- con calificación y fecha del acto en la base de las vigencias, la cuatrimestral del gran contribuyente BLOQUEADA, y el
+-- cambio de periodicidad de la sección D sobre una vigencia sin gran contribuyente.
 
 begin;
 create temp table r (n serial primary key, verificacion text, esperado text, obtenido text, ok boolean);
@@ -18,11 +22,13 @@ grant all on f to authenticated;
 
 -- A · Catálogo
 insert into r (verificacion, esperado, obtenido, ok)
-select 'Catálogo RUT: cotejados con IN-CAC-0237 / no vigentes', '48 cotejados · {11,12} no vigentes y pendientes · sin 51',
+select 'Catálogo RUT: cotejados con IN-CAC-0237 / no vigentes', '48 cotejados · {11,12} {historico,historico} · 51: 0',
        count(*) filter (where estado_validacion = 'cotejado_fuente_oficial')::text || ' cotejados · '
-         || (array_agg(codigo order by codigo) filter (where not vigente))::text || ' · 51: ' || count(*) filter (where codigo = '51')::text,
+         || (array_agg(codigo order by codigo) filter (where not vigente))::text || ' '
+         || (array_agg(estado_validacion order by codigo) filter (where not vigente))::text || ' · 51: ' || count(*) filter (where codigo = '51')::text,
        count(*) filter (where estado_validacion = 'cotejado_fuente_oficial') = 48
          and (array_agg(codigo order by codigo) filter (where not vigente)) = array['11','12']
+         and (array_agg(estado_validacion order by codigo) filter (where not vigente)) = array['historico','historico']
          and count(*) filter (where codigo = '51') = 0
   from public.rut_responsabilidades;
 insert into r (verificacion, esperado, obtenido, ok)
@@ -30,9 +36,9 @@ select 'Código 47 con su fuente oficial', 'Régimen Simple de Tributación - SI
        nombre || ' · ' || fuente, nombre = 'Régimen Simple de Tributación - SIMPLE' and fuente like '%numeral 31.31, página 68'
   from public.rut_responsabilidades where codigo = '47';
 insert into r (verificacion, esperado, obtenido, ok)
-select 'Códigos FE: O-48 y O-49 no validados como FE; resto pendiente', 'O-48, O-49 no_validado_como_fe',
+select 'Códigos FE (ronda 4): O-48 y O-49 fuera de la tabla 13.2.6.1; los otros cinco cotejados', 'O-48, O-49 no_pertenece_tabla_fe; resto cotejado_fuente_oficial',
        string_agg(code || '=' || estado_validacion, '; ' order by sort_order),
-       bool_and(case when code in ('O-48','O-49') then estado_validacion = 'no_validado_como_fe' else estado_validacion = 'pendiente_validacion' end)
+       bool_and(case when code in ('O-48','O-49') then estado_validacion = 'no_pertenece_tabla_fe' else estado_validacion = 'cotejado_fuente_oficial' end)
   from public.dian_fiscal_responsibilities;
 insert into r (verificacion, esperado, obtenido, ok)
 select 'Mapeo RUT↔FE solo directo', '13, 15, 23, 47 (sin 48, 49 ni R-99-PN)', string_agg(rut_codigo || '→' || fe_codigo, ', ' order by rut_codigo),
@@ -77,9 +83,18 @@ grant execute on function pg_temp.g(date, jsonb, uuid) to authenticated;
 create temp table base_ok as select jsonb_build_object(
   'regimen_renta', 'ordinario', 'condicion_iva', 'responsable', 'periodicidad_iva', 'bimestral',
   'gran_contribuyente', true, 'gran_contribuyente_acto', 'Resolución 000123', 'gran_contribuyente_desde', '2025-01-01',
+  'gran_contribuyente_acto_fecha', '2024-12-15', 'gran_contribuyente_calificacion', 'ordinaria',
   'agente_retencion_iva', true, 'agente_retencion', true,
   'responsabilidades', jsonb_build_array('O-13', 'O-23'), 'responsabilidades_rut', jsonb_build_array('05', '07', '13', '23', '48')) as d;
 grant select on base_ok to authenticated;
+-- Ronda 4: la cuatrimestral del gran contribuyente se bloquea; el cambio de periodicidad de la sección D se prueba sobre
+-- una vigencia sin gran contribuyente (agente de IVA y O-23 se conservan).
+create temp table base_d as select (b.d - 'gran_contribuyente' - 'gran_contribuyente_acto' - 'gran_contribuyente_desde'
+                                        - 'gran_contribuyente_acto_fecha' - 'gran_contribuyente_calificacion')
+                                   || jsonb_build_object('responsabilidades', jsonb_build_array('O-23'),
+                                                         'responsabilidades_rut', jsonb_build_array('05', '07', '23', '48')) as d
+  from base_ok b;
+grant select on base_d to authenticated;
 
 select set_config('request.jwt.claims', '{"sub":"bb11d6d2-f647-49f7-9b29-aa4c4438abf1","role":"authenticated"}', true);
 set local role authenticated;
@@ -117,24 +132,24 @@ select x.v, x.e, x.o, x.o = x.e from base_ok b, lateral (values
    pg_temp.g('2025-01-01', '{"regimen_renta":"especial","condicion_iva":"no_responsable","periodicidad_iva":"no_aplica"}')),
   ('INC sin actividad', '22023 COMBINACION_CONTRADICTORIA [inc_sin_actividad]',
    pg_temp.g('2025-01-01', '{"regimen_renta":"ordinario","condicion_iva":"responsable","periodicidad_iva":"bimestral","responsable_inc":true}')),
-  ('Designación de gran contribuyente con periodicidad cuatrimestral', '22023 COMBINACION_CONTRADICTORIA [cambio_gran_contribuyente_no_bimestral]',
+  ('Designación de gran contribuyente con periodicidad cuatrimestral', '22023 COMBINACION_CONTRADICTORIA [cambio_gran_contribuyente_no_bimestral,gran_contribuyente_no_bimestral]',
    pg_temp.g('2025-01-01', jsonb_set(jsonb_set(b.d, '{periodicidad_iva}', '"cuatrimestral"'), '{motivo_cambio_periodicidad}', '"designacion_gran_contribuyente"')))
 ) x(v, e, o);
 
 -- D · Cambio de periodicidad a mitad de año: pendiente hasta documentar hecho, norma y fecha
 insert into r (verificacion, esperado, obtenido, ok)
 select 'Cambio bimestral → cuatrimestral el 2026-07-01 sin soporte: se guarda', 'OK', x.o, x.o = 'OK'
-  from base_ok b, lateral (select pg_temp.g('2026-07-01', jsonb_set(b.d, '{periodicidad_iva}', '"cuatrimestral"')) o) x;
+  from base_d b, lateral (select pg_temp.g('2026-07-01', jsonb_set(b.d, '{periodicidad_iva}', '"cuatrimestral"')) o) x;
 insert into r (verificacion, esperado, obtenido, ok)
 select '… y queda «pendiente_soporte»', 'pendiente_soporte', cambio_periodicidad_estado, cambio_periodicidad_estado = 'pendiente_soporte'
   from public.organization_tax_profiles where organization_id = 374 and vigente_desde = '2026-07-01';
 insert into r (verificacion, esperado, obtenido, ok)
 select 'Soporte con fecha efectiva distinta del inicio', '22023 COMBINACION_CONTRADICTORIA [cambio_fecha_efectiva_distinta]', x.o, x.o = '22023 COMBINACION_CONTRADICTORIA [cambio_fecha_efectiva_distinta]'
-  from base_ok b, lateral (select pg_temp.g('2026-07-01', b.d || '{"periodicidad_iva":"cuatrimestral","motivo_cambio_periodicidad":"otro","cambio_periodicidad_hecho":"Hecho","cambio_periodicidad_norma":"ET art. 600","cambio_periodicidad_fecha":"2026-07-02"}',
+  from base_d b, lateral (select pg_temp.g('2026-07-01', b.d || '{"periodicidad_iva":"cuatrimestral","motivo_cambio_periodicidad":"otro","cambio_periodicidad_hecho":"Hecho","cambio_periodicidad_norma":"ET art. 600","cambio_periodicidad_fecha":"2026-07-02"}',
        (select id from public.organization_tax_profiles where organization_id = 374 and vigente_desde = '2026-07-01')) o) x;
 insert into r (verificacion, esperado, obtenido, ok)
 select 'Soporte completo (motivo, hecho, norma, fecha 2026-07-01)', 'OK', x.o, x.o = 'OK'
-  from base_ok b,
+  from base_d b,
        lateral (select pg_temp.g('2026-07-01', b.d || '{"periodicidad_iva":"cuatrimestral","motivo_cambio_periodicidad":"otro","cambio_periodicidad_hecho":"Hecho documentado","cambio_periodicidad_norma":"ET art. 600","cambio_periodicidad_fecha":"2026-07-01"}',
                 (select id from public.organization_tax_profiles where organization_id = 374 and vigente_desde = '2026-07-01')) o) x;
 insert into r (verificacion, esperado, obtenido, ok)
@@ -197,18 +212,18 @@ begin
 exception when others then insert into f values ('error_expedir', sqlstate || ' ' || sqlerrm);
 end $$;
 insert into r (verificacion, esperado, obtenido, ok)
-select 'Al expedir: instantánea con emisor (responsabilidades de la vigencia de la fecha) y receptor', 'factura_venta · {O-13,O-23} · Cliente Original',
+select 'Al expedir: instantánea con emisor (responsabilidades de la vigencia de la fecha) y receptor', 'factura_venta · ["O-23"] · Cliente Original',
        s.documento_tipo || ' · ' || (s.emisor -> 'fiscal_responsibilities')::text || ' · ' || coalesce(s.receptor ->> 'full_name', '—'),
-       s.documento_tipo = 'factura_venta' and s.emisor -> 'fiscal_responsibilities' = '["O-13","O-23"]'::jsonb and s.receptor ->> 'full_name' = 'Cliente Original'
+       s.documento_tipo = 'factura_venta' and s.emisor -> 'fiscal_responsibilities' = '["O-23"]'::jsonb and s.receptor ->> 'full_name' = 'Cliente Original'
   from public.document_party_snapshots s where s.documento_id = (select valor::uuid from f where clave = 'factura');
 -- Después de expedir cambian el cliente, la ficha de la empresa y la vigencia: la instantánea no.
 update public.customers set first_name = 'Cliente', last_name = 'Cambiado' where id = (select valor::uuid from f where clave = 'cliente');
 update public.organizations set fiscal_responsibilities = array['R-99-PN'] where id = 374;
 update public.organization_tax_profiles set responsabilidades = array['R-99-PN'], updated_at = now() where organization_id = 374 and vigente_desde = '2026-07-01';
 insert into r (verificacion, esperado, obtenido, ok)
-select 'Tras cambiar cliente, ficha y vigencia, la instantánea conserva lo original', '{O-13,O-23} · Cliente Original',
+select 'Tras cambiar cliente, ficha y vigencia, la instantánea conserva lo original', '["O-23"] · Cliente Original',
        (s.emisor -> 'fiscal_responsibilities')::text || ' · ' || coalesce(s.receptor ->> 'full_name', '—'),
-       s.emisor -> 'fiscal_responsibilities' = '["O-13","O-23"]'::jsonb and s.receptor ->> 'full_name' = 'Cliente Original'
+       s.emisor -> 'fiscal_responsibilities' = '["O-23"]'::jsonb and s.receptor ->> 'full_name' = 'Cliente Original'
   from public.document_party_snapshots s where s.documento_id = (select valor::uuid from f where clave = 'factura');
 do $$
 declare v_err text;

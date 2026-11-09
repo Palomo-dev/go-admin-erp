@@ -1,68 +1,77 @@
-Resultado de 11_anticipos_correcciones_contador.sql (rondas 2 y 3 del Contador)
-Corrida: 2026-11-08, proyecto taqjemqjtumhwptchcxk, org 374, sucursal 585. Una sola transacción, sin datos al final.
-Estado de las migraciones: 20261108120000_anticipos_proveedores APLICADA. Las demás, SIN APLICAR, creadas dentro de la misma
-transacción en el orden de aplicación decidido (ANTICIPOS-CORRECCIONES-P1-P6-P7.md, «Ronda 3»):
-  20261108120500 y 20261108121000 (extracto exacto de los objetos del cruce) → 20261108140500 → 20261108160000 →
-  20261108160500 → 20261108165000 → 20261108170000 (versión de la ronda 3).
-La misma transacción corrió después la prueba 16 (integrada con consignación): ver 16_anticipos_consignacion_integrada.resultado.txt,
-que explica cómo se subió y ejecutó el texto completo. Como consignment_advance_crossings existe en esta corrida, la
-verificación 48 comprueba que la tabla se lee y que estos proveedores no tienen cruces (0 filas), en vez de su ausencia.
-Usuario simulado: miembro activo de la org 374 (rol «authenticated», sesión por request.jwt.claims). Las funciones internas
-(regla de la cuenta, arqueo, filas del certificado, cruces) se leen como administrador con la misma sesión.
-53 verificaciones · 53 ok · 0 fallas. Ids de asiento, caja y comprobante cambian en cada corrida.
+Resultado de 11_anticipos_correcciones_contador.sql (rondas 1 a 4 del Contador) · REEJECUTADA 2026-11-09
+Proyecto taqjemqjtumhwptchcxk, org 374, sucursal 585. Una sola transacción que termina con una excepción (= rollback):
+nada quedó escrito. Usuario simulado: miembro activo de la org 374 (rol «authenticated»).
 
-n  | caso         | verificación                                                    | obtenido                                                                                  | ok
----+--------------+-----------------------------------------------------------------+-------------------------------------------------------------------------------------------+---
-1  | R2-4         | Tarifa exacta de ICA_0.966 tras 165000                          | rate 0.97 (sin tocar); exacta 0.966; 1.000.000 → 9.660                                    | ok
-2  | P6           | Sin cuenta configurada                                          | sin_configurar; cuenta_anticipos_no_configurada; sin 1330 de respaldo                     | ok
-3  | P6           | Configurada 1330 (título)                                       | no_es_detalle; cuenta_anticipos_no_detalle                                                | ok
-4  | R2-10        | Regla 133005xx y equivalencia aprobada                          | 133005 no_es_detalle; 13309501 sirve tras aprobar; nota corta y título rechazados         | ok
-5  | P6           | Configurada 13300501                                            | estado ok, cuenta 13300501                                                                | ok
-6  | P1           | Naturaleza obligatoria                                          | naturaleza_obligatoria / naturaleza_obligatoria (firma vieja)                             | ok
-7  | P1           | Sin perfil tributario vigente                                   | las tres pendiente/sin_perfil_tributario                                                  | ok
-8  | R2-4         | Guardar regla de ReteICA                                        | sin norma: rechazo; con norma: 9,6600 ‰                                                   | ok
-9  | R2-3         | 1.190.000 homogéneo al 19 %                                     | base 1.000.000; rete 40.000; reteIVA 28.500; reteICA 9.660; total 78.160; neto 1.111.840  | ok
-10 | R2-4         | ICA sin territorialidad / sin regla                             | territorialidad_sin_confirmar / norma_municipal_sin_confirmar                             | ok
-11 | R2-3         | Tarifa 5 % sin componentes                                      | componentes_obligatorios                                                                  | ok
-12 | R2-3         | 500.000 gravado 19 % + 200.000 excluido                         | rete 28.000 (base 700.000); reteIVA 14.250 (IVA 95.000); reteICA 6.762                    | ok
-13 | R3-1         | AIU sin regla con fundamento / guardar sin fundamento / con regla| pendiente/aiu_fundamento_por_validar; fundamento_obligatorio; con regla: IVA 9.500, reteIVA 1.425 | ok
-14 | R2-3         | Componentes que no suman                                        | componentes_no_suman                                                                      | ok
-15 | R2-1         | Financiación                                                    | las tres diferida/se_evalua_al_pago_o_abono                                               | ok
-16 | P1           | Proveedor sin datos fiscales                                    | retefuente y reteIVA pendiente/proveedor_sin_datos_fiscales                               | ok
-17 | R2-3         | Gran contribuyente ↔ gran contribuyente                         | reteIVA pendiente/grandes_contribuyentes_por_verificar                                    | ok
-18 | R3-3         | SIMPLE: sin RUT / inscripción que no cubre la fecha / acreditado| rut_obligatorio; simple_sin_acreditar; simple_sin_acreditar → proveedor_simple_acreditado | ok
-19 | R3-3         | Autorretenedor: O-15 sin verificar / sin resolución / completo  | autorretencion_sin_verificar; resolucion_autorretencion_obligatoria; concepto cubierto → no retiene; concepto no cubierto (11 %) → 110.000; reteIVA 28.500 sigue | ok
-20 | R3-3         | Autorretención especial (59) registrada                         | no excluye la retención por terceros: 40.000                                              | ok
-21 | Efectivo     | Anticipo en efectivo con caja abierta                           | monto 1.190.000; retención 78.160; girado 1.111.840; cuenta 13300501                      | ok
-22 | Efectivo     | Asiento del anticipo en efectivo                                | 13300501 D 1.190.000 · 1105 C 1.111.840 · 23652501 C 40.000 · 23670501 C 28.500 · 23680501 C 9.660, todas con NIT | ok
-23 | Efectivo     | Repetir con la misma clave                                      | repetida; un solo asiento                                                                 | ok
-24 | R2-11        | Arqueo: egreso por anticipo, no venta negativa                  | egreso por anticipo 1.230.840; ventas antes 0, después 0                                  | ok
-25 | R2-5         | Vincular A1 a la factura A en borrador                          | retenciones del anticipo con base y cuenta                                                | ok
-26 | R2-5         | Causar A reteniendo otra vez sobre la base del anticipo         | retencion_duplicada_con_anticipo (reteIVA base máxima 0)                                  | ok
-27 | R2-5         | Aplicar A1 a A causada                                          | vinculada; descontada 0; cuenta 23359501; saldo CxP 0                                     | ok
-28 | R2-5         | Retención neta por cuenta y NIT A                               | 23652501 40.000; 23670501 28.500; 23680501 9.660                                          | ok
-29 | R2-1         | Financiación aplicada a B (retuvo 20.000 al causar)             | descontada 0; CxP 275.000; cuenta 22050501                                                | ok
-30 | R2-5         | Aplicar sin vínculo a factura que ya retuvo                     | retencion_duplicada                                                                       | ok
-31 | R2-5         | Corrección documentada                                          | descontada 8.000; CxP 45.000; ajuste −8.000; pendiente retencion_duplicada abierto        | ok
-32 | P7           | Anulación sin declaración / con fecha futura                    | anulacion_requiere_declaracion / fecha_ajuste_futura                                      | ok
-33 | P7           | Anular por error (el desembolso no ocurrió)                     | 1110 D 222.368 · 236x D 15.632 · 13300501 C 238.000; pago void; ajustes por impuesto       | ok
-34 | R3-2         | Devolución parcial: ICA sin norma / dinero que no cuadra        | reteica_requiere_norma / calculo_no_cuadra                                                | ok
-35 | R3-2         | Devolución parcial por procedimiento (base 50.000 + IVA 9.500)  | dinero 55.592; retenciones 3.908 (2.000 + 1.425 + 483); saldo 59.500                      | ok
-36 | R2-6         | Devolución sin poder determinar retenciones                     | retenciones 0; saldo 49.500; pendiente devolucion_retenciones_por_definir                 | ok
-37 | R3-2         | Retención excesiva (causa b)                                    | reintegro 750; 23652501 D 750 · 1110 C 750; pendiente correccion_declaracion              | ok
-38 | R3-2         | Operación anulada (causa a): dinero corto / devolución total    | anulacion_requiere_devolucion_total; dinero 111.184; retenciones 7.816; saldo 0           | ok
-39 | P7           | Anular uno cuyo dinero salió y regresó en parte                 | anticipo_usado                                                                            | ok
-40 | R2-8         | Anular anticipo en efectivo de caja cerrada                     | ajuste en periodo abierto; contra-asiento; pendiente anulacion_caja_cerrada               | ok
-41 | R2-8         | Arqueo de la caja cerrada tras la anulación                     | antes 769.160, después 769.160                                                            | ok
-42 | R2-9         | Pendiente de retención por evaluar                              | resolucion_obligatoria; resuelto; pendiente_ya_resuelto                                   | ok
-43 | Estado       | Estado de cuenta del proveedor A                                | factura 1.190.000 · aplicación · anticipo 1.190.000; saldo final 0                        | ok
-44 | Estado       | Estado de cuenta del proveedor B                                | devoluciones, corrección 8.000, anulaciones; saldo final −4.500                           | ok
-45 | R2-7         | Certificado de B (pantalla)                                     | retenido 30.790 (retefuente 21.250, reteIVA 7.125, reteICA 2.415)                         | ok
-46 | P6           | Conciliación por anticipo                                       | todos cuadran; B4 valor 119.000 − devuelto 69.500 = 49.500 = libros, 2 pendientes         | ok
-47 | P6           | Conciliación por proveedor                                      | A 0/0/0; B 49.500/49.500/49.500 con 4 pendientes; C 100.000/100.000/100.000               | ok
-48 | Consignación | Cruces con consignación                                         | 0 filas para estos proveedores (la tabla existe en esta corrida)                          | ok
-49 | R2-7         | Filas del certificado de B contra libros por NIT                | 30.790 = 30.790                                                                           | ok
-50 | R2-7         | Certificado de A                                                | 40.000 + 28.500 + 9.660, una vez cada una                                                 | ok
-51 | P1           | Perfil 160500: agente de reteIVA y gran contribuyente propios   | organizacion_no_agente_reteiva / 28.500 / perfil_requiere_revision                        | ok
-52 | R2-3         | Org no agente comprando a SIMPLE responsable                    | reteIVA pendiente/supuesto_compra_a_simple_por_confirmar                                  | ok
-53 | Cuadre       | Asientos de la prueba                                           | 17 asientos (incluye supplier_advance_withholding_refund); cuadran; 0 líneas en 1330      | ok
+Archivo: 11_anticipos_correcciones_contador.sql (md5 36401b7e40230aa0d203995b6fbdca0b; ejecutado dentro de un DO sin la
+línea «begin;», md5 de lo ejecutado 86eaf67d4e71b0c663b7af226f015679).
+Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión (antes se cargaba un
+extracto de 121000; ya no):
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 d2a58b49b6016488ba3287a48511d4d5 ·
+  20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 ·
+  20261108160500 c83b8a50b6342e65ee5bf3f993847b79 · 20261108165000 28e47f6353ee4102463b7b63dca057be ·
+  20261108170000 ca6171f8dfbc5cb11ec40a831ea589df
+
+RESULTADO: 53 de 53 verificaciones OK + 7 de 7 md5 de carga. 17 asientos de la prueba, todos cuadran, ninguno en 1330.
+(La misma prueba corrió también, con el mismo resultado, dentro de la integrada 20.)
+
+Cambios frente a la corrida del 2026-11-08, todos por la ronda 4:
+- R4-AIU (antes R3-1): sin contrato AIU registrado se rechaza (aiu_contrato_obligatorio); con contrato del art. 462-1
+  aún sin validar, las tres clases quedan pendientes (aiu_contrato_pendiente_validacion) y el IVA se calcula sobre
+  A+I+U (38.000), no solo sobre la utilidad. La regla «solo utilidad» con 10 caracteres de fundamento ya no existe.
+- Motivos de la evaluación COMPARTIDA con consignación: beneficiario_sin_datos_fiscales, beneficiario_simple_acreditado,
+  pagador_no_agente_reteiva (antes proveedor_… / organizacion_…).
+- Devoluciones: soporte del HECHO (acta, resolución), LÍNEA afectada de la operación y pruebas del procedimiento municipal
+  de ReteICA (dato de apoyo validado); el período de descuento lo fija la regla del impuesto. Primera validación:
+  reteica_pruebas_incompletas (antes reteica_requiere_norma).
+- Exceso de retención: además del cálculo y el certificado, la solicitud del afectado y sus pruebas.
+
+n  | caso    | verificación (resumen)                                              | obtenido
+---+---------+---------------------------------------------------------------------+-------------------------------------------
+1  | R2-4    | Tarifa exacta de ICA_0.966                                          | rate 0.97; exacta 0.966000; valor 9660
+2  | P6      | Sin cuenta configurada                                              | sin_configurar; cuenta_anticipos_no_configurada
+3  | P6      | Configurada 1330 (título)                                           | no_es_detalle; cuenta_anticipos_no_detalle
+4  | R2-10   | Regla 133005xx y equivalencia aprobada                              | 133005 no_es_detalle; 13309501 sirve tras aprobar
+5  | P6      | Configurada 13300501                                                | estado ok, cuenta 13300501
+6  | P1      | Naturaleza obligatoria                                              | naturaleza_obligatoria / naturaleza_obligatoria
+7  | P1      | Sin perfil tributario vigente                                       | las tres pendiente/sin_perfil_tributario
+8  | R2-4    | Guardar regla de ReteICA                                            | sin norma rechazada; 9,6600 ‰
+9  | R2-3    | 1.190.000 homogéneo al 19 %                                         | rete 40.000; reteIVA 28.500; reteICA 9.660; neto 1.111.840
+10 | R2-4    | ICA sin territorialidad / sin regla                                 | territorialidad_sin_confirmar / norma_municipal_sin_confirmar
+11 | R2-3    | Tarifa 5 % sin componentes                                          | componentes_obligatorios
+12 | R2-3    | 500.000 gravado 19 % + 200.000 excluido                             | rete 28.000; reteIVA 14.250; reteICA 6.762
+13 | R4-AIU  | AIU sin contrato / con contrato 462-1 sin validar                   | aiu_contrato_obligatorio; iva 38000.00; las tres pendiente/aiu_contrato_pendiente_validacion
+14 | R2-3    | Componentes que no suman                                            | componentes_no_suman
+15 | R2-1    | Financiación                                                        | las tres diferida/se_evalua_al_pago_o_abono
+16 | P1      | Proveedor sin datos fiscales                                        | retefuente y reteIVA pendiente/beneficiario_sin_datos_fiscales
+17 | R2-3    | Gran contribuyente ↔ gran contribuyente                             | reteIVA pendiente/grandes_contribuyentes_por_verificar
+18 | R3-3    | SIMPLE sin RUT / no cubre la fecha / acreditado                     | rut_obligatorio; simple_sin_acreditar → beneficiario_simple_acreditado
+19 | R3-3    | Autorretenedor O-15 / sin resolución / completo                     | autorretencion_sin_verificar; resolucion_autorretencion_obligatoria; concepto cubierto no retiene; 11 % 110.000; reteIVA 28.500
+20 | R3-3    | Autorretención especial (59)                                        | no excluye: 40.000
+21 | Efectivo| Anticipo en efectivo con caja abierta                               | monto 1.190.000; retención 78.160; girado 1.111.840
+22 | Efectivo| Asiento del anticipo                                                | 13300501 D 1.190.000 · 1105 C 1.111.840 · 2365/2367/2368 C, con NIT
+23 | Efectivo| Repetir con la misma clave                                          | repetida; un solo asiento
+24 | R2-11   | Arqueo: egreso por anticipo                                         | egreso 1.230.840; ventas 0 → 0
+25-31 | R2-5/R2-1 | Vínculo, causación bloqueada, aplicación, financiación aplicada, corrección documentada | ok (igual que la corrida anterior)
+32 | P7      | Anulación sin declaración / fecha futura                            | anulacion_requiere_declaracion / fecha_ajuste_futura
+33 | P7      | Anular por error                                                    | contra-asiento; pago void; ajustes por impuesto
+34 | R3-2/R4 | Devolución parcial: reteICA sin pruebas del procedimiento / dinero que no cuadra | reteica_pruebas_incompletas / calculo_no_cuadra
+35 | R3-2/R4 | Devolución parcial por la LÍNEA (base 50.000 + IVA 9.500)            | dinero 55.592; retenciones 3.908; saldo 59.500; 3 ajustes con período y regla
+36 | R2-6    | Devolución sin determinar retenciones                               | retenciones 0; saldo 49.500; pendiente devolucion_retenciones_por_definir
+37 | R3-2    | Retención excesiva                                                  | reintegro 750; 23652501 D 750 · 1110 C 750; pendiente correccion_declaracion
+38 | R3-2/R4 | Operación anulada (soporte del hecho): dinero corto / total          | anulacion_requiere_devolucion_total; dinero 111.184; retenciones 7.816; saldo 0
+39 | P7      | Anular uno ya usado                                                 | anticipo_usado
+40 | R2-8    | Anular en caja cerrada                                              | caja_cerrada true; contra-asiento; pendiente anulacion_caja_cerrada
+41 | R2-8    | Arqueo de la caja cerrada                                           | antes 769.160, después 769.160
+42 | R2-9    | Pendiente de retención por evaluar                                  | resolucion_obligatoria; resuelto; pendiente_ya_resuelto
+43 | Estado  | Estado de cuenta A                                                  | saldo final 0
+44 | Estado  | Estado de cuenta B                                                  | saldo final −4.500
+45 | R2-7    | Certificado de B (pantalla)                                         | retenido 30.790 (21.250 + 7.125 + 2.415)
+46 | P6      | Conciliación por anticipo                                           | todos cuadran (tabla = libros)
+47 | P6      | Conciliación por proveedor                                          | A 0/0/0; B 49.500/49.500/49.500; C 100.000/100.000/100.000
+48 | Consig. | Cruces con consignación (121000 completa cargada)                   | 0 filas para estos proveedores
+49 | R2-7    | Filas del certificado de B contra libros por NIT                    | 30.790 = 30.790
+50 | R2-7    | Certificado de A                                                    | 40.000 + 28.500 + 9.660, una vez cada una
+51 | P1      | Perfil 160500: agente de reteIVA y GC propios                       | pagador_no_agente_reteiva / 28.500 / perfil_requiere_revision
+52 | R2-3    | Org no agente comprando a SIMPLE                                    | supuesto_compra_a_simple_por_confirmar
+53 | Cuadre  | Asientos de la prueba                                               | 17 asientos; cuadran; 0 líneas en 1330
+Ids de asiento, caja y comprobante cambian en cada corrida.

@@ -1,0 +1,62 @@
+Resultado de 20_anticipos_consignacion_integrada_completa.sql · 2026-11-09
+Prueba INTEGRADA con los archivos COMPLETOS y EXACTOS de consignación y anticipos (lo que pidió el Contador en la ronda 4:
+la 16 usaba un extracto del cruce; esta no). Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585).
+
+Archivo: 20_anticipos_consignacion_integrada_completa.sql (188.686 bytes, md5 f2d1317144f81d385a740a0b4483793b; ejecutado
+dentro de un DO sin la línea «begin;», md5 de lo ejecutado 628002461a66b5998f68b664a7091066).
+
+Cómo corrió: UNA sola transacción, que termina con una excepción (= rollback; nada quedó escrito). Cada migración se subió
+antes, por trozos, a objetos grandes de Postgres (cada trozo verificado por md5 contra el archivo local); la CARGA los
+ubica por md5, los concatena, comprueba el md5 del archivo COMPLETO contra el del repositorio y lo ejecuta tal cual, en
+orden de versión. Los objetos grandes de la carga se borran al terminar el trabajo.
+
+Migraciones cargadas (todas SIN APLICAR en la base; las de IVA/perfil son del otro equipo, tal como estaban en disco):
+  1 20261108120500_organization_links                    6a5a3ead2fe311fdde4b7d5c0376c12b
+  2 20261108121000_consignaciones                         d2a58b49b6016488ba3287a48511d4d5
+  3 20261108140500_responsabilidades_fiscales_en          4b00bf10bf99ff2a97e2e89ff0480811
+  4 20261108160000_tributario_catalogo_rut_y_codigos_fe   85fd17321a7e85d85a58916cb2f84c95
+  5 20261108160500_tributario_perfil_renta_iva            c83b8a50b6342e65ee5bf3f993847b79
+  6 20261108165000_tarifas_precision_exacta               28e47f6353ee4102463b7b63dca057be
+  7 20261108170000_anticipos_proveedores_contador         ca6171f8dfbc5cb11ec40a831ea589df
+No se cargaron 140000, 150000, 150500, 151000, 152000, 161000 y 161500 (IVA): ninguna función de estos dos archivos
+las llama. Las compras de las pruebas se causan con el flujo aplicado hoy.
+
+Después de la carga corren, en la MISMA transacción y sobre el mismo estado, los cuerpos completos de:
+  11 (anticipos, rondas 1-4) → 21 (anticipos, ronda 4) → 15 (consignación, ronda 3) → 22 (consignación, ronda 4) → 20.
+
+RESULTADO: 247 verificaciones · 247 OK · 0 fallas
+  carga 7/7 · 11: 53/53 · 21: 54/54 · 15: 73/73 · 22: 39/39 · 20: 21/21
+Corridas previas de la integrada (corregidas en las PRUEBAS, no en las migraciones): la 11 deja los controles de cuadre
+inmediatos y la 21 ahora los vuelve a diferir al empezar (como en cualquier RPC); la 21 usa otro municipio para su
+procedimiento de ReteICA porque la 11 ya registra el de Bogotá con la misma vigencia; la 15 dejaba agente_retencion en
+NULL al actualizar un perfil ya existente.
+
+Cuerpo propio de la 20 (los hechos anteriores se simulan fechando, como administrador, anticipos, retenciones y porciones
+vendidas):
+n   | verificación                                                                            | obtenido
+----+-----------------------------------------------------------------------------------------+-----------------------------------
+227 | I1 anticipo de 595.000 al consignante (criterios compartidos): 20.000 + 14.250 + 4.830    | 39080 · girado 555920.00
+228 | I2 cruce de 150.000 con la obligación EXIGIBLE del mandato (D 28151001 / C 13300501)      | 150000.00 · saldo 445000.00
+229 | I3 devolución parcial por la línea: 4.000 + 2.850 + 966                                   | 7816.00 · saldo 326000.00
+230 | I4 conciliación del anticipo: 595.000 − cruzado 150.000 − devuelto 119.000 = libros        | true · 150000 · 119000 · 326000 · 326000
+231 | I5 por proveedor: tabla = libros = auxiliar por NIT                                        | 326000 · 326000 · 326000
+232 | I6 certificado del consignante (lo que le retuvo la organización); lo que él sufre no entra| 31264.00 · 6 filas
+233 | I7 certificado = libros 236x del NIT del consignante                                       | 31264.00
+234 | A1 octubre: retención del 2 y anulación por error del 25 en el mismo período              | 6 filas · neto 0.00
+235 | A2 entre años: diciembre de 2025 conserva la retención; enero de 2026 lleva la reversión   | 7816.00 / -7816.00
+236 | A3 contra-asientos en la fecha del ajuste                                                 | 2026-10-25 / 2026-01-05
+237 | A4 pendiente «retención revertida en otro año» solo para la de 2025                       | 0/1
+238 | C1 retención del comprador de diciembre de 2025, reconocida en su fecha                   | 2025-12-20 · 28151001 D 2400 · 13050501 C 2400
+239 | C2 el hecho no puede ser anterior a la venta liquidada                                    | fecha_anterior_a_la_venta
+240 | C3 retención de octubre reconocida en su fecha (registrada en noviembre)                  | 2026-10-20
+241 | C4 anular en noviembre las liquidaciones de octubre y de diciembre de 2025                | 8 pendientes siguen abiertos · 2 practicadas · 2 asientos
+242 | C5 la nueva liquidación cubre las dos ventas y trae las dos practicadas con sus fechas    | 120000.00 · 2 · 2025-12-20, 2026-10-20
+243 | C6 los pendientes de las anuladas se cierran como reliquidadas                            | 0 abiertos
+244 | C7 el certificado de 2025 concilia en 2026 la retención de 2025                           | diferencia 0.00
+245 | Z1 certificado 2025 del consignante: solo el anticipo de diciembre                        | 3 filas · 7816.00
+246 | Z2 asientos de la prueba 20 descuadrados                                                  | 0
+247 | Z3 toda la transacción: asientos descuadrados                                             | 0
+
+Las verificaciones de 11, 15, 21 y 22 dentro de esta corrida dieron los mismos valores que sus corridas propias (ver sus
+.resultado.txt). La salida de la corrida filtró sus líneas «ok» para caber en la respuesta; los conteos por prueba son los
+que imprimió la base.

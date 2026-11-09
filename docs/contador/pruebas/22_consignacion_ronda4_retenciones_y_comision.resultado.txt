@@ -1,0 +1,70 @@
+Resultado de 22_consignacion_ronda4_retenciones_y_comision.sql · 2026-11-09
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585), operada por su usuario miembro. Una sola transacción que
+termina con una excepción (= rollback): nada quedó escrito.
+
+Archivo: 22_consignacion_ronda4_retenciones_y_comision.sql (md5 41d4044f81b93c982ca73975d27f789c; ejecutado dentro de un
+DO sin la línea «begin;», md5 de lo ejecutado c4921168dce8b3548ba5aa6037266682).
+Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 d2a58b49b6016488ba3287a48511d4d5 ·
+  20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 ·
+  20261108160500 c83b8a50b6342e65ee5bf3f993847b79 · 20261108165000 28e47f6353ee4102463b7b63dca057be ·
+  20261108170000 ca6171f8dfbc5cb11ec40a831ea589df
+
+Corridas: la primera falló al leer una función interna con el rol del usuario (la prueba la lee ahora como
+administrador). La segunda dio 36 de 39 y encontró UN ERROR DE LA MIGRACIÓN, corregido en 20261108121000: en una nota
+con obligación «al cobro», la devolución de una factura no cobrada entraba sola a la liquidación (se tomaba como
+«cobrada» por no ser factura) y dejaba la liquidación en negativo. Ahora la devolución entra solo si su venta ya se
+liquidó o ya se cobró. Las otras 2 fallas eran de la prueba (formato «0.00» y un total que no contaba las causaciones
+emuladas). RESULTADO (corrida que vale, con las migraciones finales): 39 de 39 OK + 7 de 7 md5 de carga.
+
+Datos de apoyo: mandante M1 (gran contribuyente, responsable de IVA), mandante M2 (O-15 en el RUT, sin verificar);
+compradores B1 (O-13: agente según su RUT), B2 (con datos, sin calidad de agente) y B3 (agente de reteIVA ACREDITADO por
+el art. 437-2, num. 1, sin código 09 ni 13); notas N1 (compensación pactada, obligación al vender), N2 (compensación NO
+pactada) y N3 (compensación pactada, obligación al cobro). Las facturas son borradores y su causación por cuenta del
+dueño se emula (D cartera 13050501 / C 281510 del dueño).
+
+K · Cuentas y reglas
+  K1 recibir sin cuenta por cobrar al dueño ....................... sin_cuenta_cobro_remuneracion
+  K2 cuenta por cobrar de título (1380) ........................... cuenta_cobro_remuneracion_invalida
+  K3 retención sufrida fuera de 1355 .............................. cuenta_retencion_sufrida_invalida
+  K4 cuentas de la ronda 4 ........................................ 13809501 / 13551501 / 13551701 / 13551801
+  K5 reteICA con un impuesto de compras en vez de la regla municipal regla_retencion_invalida
+  K6 reteICA de la operación: la regla municipal (la de anticipos) . ok
+  K7 recibida en mandato sin pactar la compensación ............... terminos_invalidos
+  K8 notas con compensación pactada (o no) y cuenta por cobrar .... true · false · true / 13809501
+C · Punto 5: comisión contra la 281510 solo compensable; si no, derecho por cobrar
+  C1 N1: 4 ventas, remuneración 9.000 c/u contra la 281510 ......... 36.000 reconocida, 0 por cobrar
+  C2 N2 sin compensación pactada .................................. 13809501 D 7.500 · 41351201 C 7.500 (no se debita la 281510)
+  C3 compensar en N2 .............................................. compensacion_no_pactada
+  C4 devolución en N2 ............................................. la remuneración por cobrar se reversa contra 13809501 (saldo 0)
+  C5 N3 factura sin cobrar, obligación al cobro ................... 8.000 por cobrar; pendiente de la venta abierto
+  C6 se anula la factura (el HECHO) ............................... por cobrar 0; su pendiente se cierra «venta_revertida»
+  C7 compensar más de lo que se debe por comisión ................. excede_remuneracion_por_cobrar
+  C8 compensación posterior contra la obligación EXIGIBLE del dueño  8.000 · por cobrar 0 · D 28151001 / C 13809501
+  C9 lo facturado «al cobro» y no cobrado no se liquida ........... sin_ventas_por_liquidar
+Q/R/A · Puntos 1, 2, 3 y 7
+  Q1 agente de reteIVA sin fundamento ............................. fundamento_agente_reteiva_obligatorio
+  Q2 L1 por comprador: operacion.retefuente.agente=estimada:2.400 (B1) · operacion.retefuente.por_acreditar=pendiente (B2, B3)
+     · operacion.reteica.por_acreditar=pendiente · operacion.reteiva.agente=estimada:1.710 (B3, agente ACREDITADO) ·
+     remuneracion.retefuente.dueno=estimada:3.960 · remuneracion.reteica=pendiente · remuneracion.reteiva=pendiente
+  Q3 lo estimado no se asienta .................................... 0 asientos
+  R1 conciliar una estimada con valor (el certificado no crea el hecho) retencion_no_reconocida
+  R2 retención de la operación sin factura de la liquidación ...... factura_de_la_liquidacion_obligatoria
+  R3 practicada sobre la comisión, sin esperar el certificado ..... 13551501 D 3.960 · 28151001 C 3.960 (la comisión ya estaba compensada)
+  R4 queda por conciliar con el certificado ....................... 1 pendiente
+  A1 anular L1 .................................................... siguen abiertos sus 6 pendientes; la practicada y su asiento quedan
+  A2 la nueva liquidación lleva la practicada ...................... 1 fila, practicada, carried_from = L1
+  A3 los pendientes de L1 se cierran al quedar cubiertas sus ventas  0 abiertos / 6 «reliquidada»
+  R5 conciliar la practicada ...................................... diferencia 0.00; pendiente cerrado
+  Q4 mandante con O-15 SIN verificar .............................. pendiente/autorretencion_sin_verificar (no se excluye)
+  Q5 dueño sin 07 ni 13 ni calidad acreditada ..................... pendiente/calidad_agente_retencion_por_acreditar
+  Q6 verificada la resolución y su alcance (RETE_4) ............... no_aplica/autorretenedor_autorizado_concepto
+  R6 el comprador B3 retiene el IVA al pagar la factura ........... 28151001 D 1.710 · 13050501 C 1.710; pendiente de cartera 1
+  R7 la misma retención con otro valor ............................ retencion_ya_practicada
+  R8 certificado que difiere (1.500) .............................. diferencia −210.00 queda como pendiente visible
+Z · Cuadre
+  Z0 obligación exigible = libros − lo facturado al cobro sin cobrar  80.000
+  Z1 28151001 por los movimientos de la prueba .................... 138.250 (180.000 − 36.000 + 3.960 − 8.000 − 1.710)
+  Z2 13551501 = la retención sufrida sobre la comisión ............ 3.960
+  Z3 pendiente/no aplica sin valor; ninguna estimada con asiento .. 0/0
+  Z4 asientos de la prueba descuadrados ........................... 0

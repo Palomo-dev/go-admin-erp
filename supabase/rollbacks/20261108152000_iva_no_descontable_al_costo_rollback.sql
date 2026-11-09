@@ -1,4 +1,5 @@
--- Reversión de 20261108152000_iva_no_descontable_al_costo.sql (B5, ronda 3).
+-- Reversión de 20261108152000_iva_no_descontable_al_costo.sql (B5, ronda 3; reescrita con la ronda 4 del 2026-11-09:
+-- deshace también el pendiente «iva_no_descontable_por_corregir» y borra fn_iva_no_descontable_cuenta_unica_fallo).
 -- Se corre ANTES de las reversiones de 20261108150000 y de 20261108140000 (H1): las funciones de este archivo leen
 -- las columnas de procedencia de 150000 y modifican funciones de H1.
 -- Deshace los reemplazos (el inverso exacto de cada uno) y borra las tres funciones nuevas.
@@ -31,12 +32,30 @@ begin
   end if;
 
   v_def := pg_temp.fn_reemplazo_verificado(v_def,
+$v$  elsif v_nd_fallo is not null then
+    -- iva_no_descontable_al_costo_20261108 (ronda 4): pendiente de corregir, sin asiento definitivo.
+    perform fn_log_journal_failure(
+      new.organization_id, new.branch_id, coalesce(new.issue_date, now()),
+      'invoice_purchase', new.id::text, v_fact_key,
+      v_debito, v_credito, new.total,
+      'iva_no_descontable_por_corregir', v_nd_fallo);
+  else
+    v_entry_id := fn_create_journal_entry($v$,
+$v$  else
+    v_entry_id := fn_create_journal_entry($v$, 'fn_auto_journal_purchase/pendiente (reversión)');
+
+  v_def := pg_temp.fn_reemplazo_verificado(v_def,
 $v$    v_inc := public.fn_impuesto_inc_parte('invoice_purchase', new.id::text, new.tax_total);
     -- iva_no_descontable_al_costo_20261108 (B5, ronda 3): el IVA no descontable ya determinado sale del impuesto y
-    -- queda en la cuenta débito de la compra, como el INC. Si no cuadra con el IVA del documento, no se adivina.
+    -- queda en la cuenta débito de la compra, como el INC, solo si esa cuenta es la de cada línea.
+    -- Ronda 4: si no cuadra con el IVA (o el total) del documento, o la cuenta de cabecera no es la de cada línea, el
+    -- documento queda pendiente de corregir (sin asiento); nunca todo a la 2408.
     v_nd := public.fn_iva_no_descontable_documento('invoice_purchase', new.id);
-    if v_nd > greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0) then
-      v_nd := 0;
+    if v_nd > greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0) or v_nd > abs(coalesce(new.total, 0)) then
+      v_nd_fallo := format('IVA no descontable de las líneas (%s) mayor que el IVA del documento (%s): el documento queda pendiente de corregir y no se publica su asiento. Revise la tarifa, el IVA y la evaluación de cada línea y reintente.',
+                           v_nd, greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0));
+    elsif v_nd > 0 and not public.fn_documento_tiene_cuenta_propia(new.organization_id, new.id, 'compra') then
+      v_nd_fallo := public.fn_iva_no_descontable_cuenta_unica_fallo(new.id, v_debito);
     end if;
     v_inc := v_inc + v_nd;
   end if;$v$,
@@ -46,6 +65,7 @@ $v$    v_inc := public.fn_impuesto_inc_parte('invoice_purchase', new.id::text, n
   v_def := pg_temp.fn_reemplazo_verificado(v_def,
 $v$  v_inc numeric := 0;
   v_nd numeric := 0;
+  v_nd_fallo text;
 begin$v$,
 $v$  v_inc numeric := 0;
 begin$v$, 'fn_auto_journal_purchase/declare (reversión)');
@@ -104,15 +124,16 @@ $v$'orden', s.orden, 'cuenta', s.cuenta, 'monto', s.monto, 'descripcion', s.desc
 $v$    v_tax := round(v_tax - v_inc, 2);
     v_inc := 0;
     -- iva_no_descontable_al_costo_20261108 (B5, ronda 3): el IVA cuya improcedencia como descuento ya está
-    -- determinada sale de la 2408 y se suma a la línea del documento a la que pertenece. Si no cuadra con el IVA
-    -- del documento, no se adivina: queda todo en la 2408 (el borrador del 300 lo deja pendiente).
-    if v_tax > 0 then
-      v_nd := public.fn_iva_no_descontable_documento(v_source, p_id);
-      if v_nd > v_tax then
-        v_nd := 0;
-      end if;
-      v_tax := round(v_tax - v_nd, 2);
+    -- determinada sale de la 2408 y se suma a la línea del documento a la que pertenece (su cuenta).
+    -- Ronda 4: si no cuadra con el IVA (o el total) del documento, no se adivina ni se deja todo en la 2408: el
+    -- documento queda pendiente de corregir y no se publica el asiento.
+    v_nd := public.fn_iva_no_descontable_documento(v_source, p_id);
+    if v_nd > v_tax or v_nd > v_total then
+      return jsonb_build_object('ok', false, 'fallo',
+        format('IVA no descontable de las líneas (%s) mayor que el IVA del documento (%s): el documento queda pendiente de corregir y no se publica su asiento. Revise la tarifa, el IVA y la evaluación de cada línea y reintente.', v_nd, v_tax),
+        'lineas', '[]'::jsonb, 'organization_id', v_org);
     end if;
+    v_tax := round(v_tax - v_nd, 2);
   else$v$,
 $v$    v_tax := round(v_tax - v_inc, 2);
     v_inc := 0;
@@ -170,6 +191,7 @@ $do$;
 
 drop function if exists pg_temp.fn_reemplazo_verificado(text, text, text, text);
 
+drop function if exists public.fn_iva_no_descontable_cuenta_unica_fallo(uuid, text);
 drop function if exists public.fn_iva_no_descontable_documento(text, uuid);
 drop function if exists public.fn_iva_no_descontable_linea(uuid);
 drop function if exists public.fn_iva_factor_descontable_linea(uuid);

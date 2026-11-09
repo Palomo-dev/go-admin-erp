@@ -1,3 +1,18 @@
+RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS (ya sin abreviar el marco normativo) · org 374 · todo revertido
+md5: 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 ·
+     20261108160500 c83b8a50b6342e65ee5bf3f993847b79 · 20261108161000 a289e35a3ae6dcd085f42c9b4b546e3c ·
+     20261108161500 5ea9208264ed61f452be374617f55e60 · prueba 13 a6d16eeb6c25f73bee7c3bec231f1e77
+Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados
+contra el disco); un DO pega las migraciones completas en orden de prefijo (en el marcador «MIGRACIONES», en sus
+marcadores, o donde estaba «begin;»), quita solo «begin;», «rollback;» y el SELECT final, ejecuta y termina en
+excepción (= rollback). Objetos grandes borrados al final; la base quedó sin datos ni objetos de la prueba.
+Esperados actualizados a la ronda 4: 11 y 12 «historico»; FE O-48/O-49 «no_pertenece_tabla_fe» y los otros cinco
+«cotejado_fuente_oficial»; la base de las vigencias de gran contribuyente lleva calificación y fecha del acto; la
+cuatrimestral con designación da [cambio_gran_contribuyente_no_bimestral, gran_contribuyente_no_bimestral]; la sección D
+(cambio de periodicidad) usa una vigencia sin gran contribuyente, y la instantánea lleva ["O-23"].
+Resultado: 44 verificaciones · 44 ok · 0 fallas.
+
+── Corridas anteriores ──
 Prueba en seco 13 · Ronda 2: catálogo RUT cotejado, perfil con calidades y soporte, cambio de periodicidad pendiente,
 decisiones de período e instantáneas de reimpresión fiel · 2026-11-07 · org 374
 Migraciones 20261108140500 (H2), 20261108160000, 20261108160500, 20261108161000 y 20261108161500 pegadas DENTRO de la

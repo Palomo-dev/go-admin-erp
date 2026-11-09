@@ -54,7 +54,7 @@ const get = <T>(ruta: string) => fetch(ruta, { credentials: 'same-origin', cache
 export interface CodigoCatalogoCliente {
   codigo: string;
   descripcion: string;
-  estado: 'pendiente_validacion' | 'cotejado_fuente_oficial' | 'validado' | 'no_validado_como_fe' | 'sin_dato';
+  estado: 'pendiente_validacion' | 'cotejado_fuente_oficial' | 'validado' | 'no_pertenece_tabla_fe' | 'historico' | 'sin_dato';
   nota: string | null;
   fuente: string | null;
   vigente: boolean;

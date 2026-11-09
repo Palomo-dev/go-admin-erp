@@ -1,4 +1,8 @@
 -- Pruebas de escenario · H1: subcuenta de IVA por tarifa y lado
+-- Ronda 4 (2026-11-09): reejecutada con el archivo EXACTO de H1 (sin cambios desde la ronda 3). Tres esperados de la
+-- ronda 1 se actualizaron a las reglas A1/A2 de la ronda 2 (no se asume el 19 %; una nota crédito parcial sobre una
+-- factura de varias tarifas no se reparte por la mezcla): NCP queda SIN asiento y con su pendiente visible, y
+-- fn_cuenta_iva sin tarifa devuelve NULL.
 -- Fecha: 2026-11-07 · Proyecto taqjemqjtumhwptchcxk · Organización de pruebas 374 (sede 585). NO DEJA DATOS (begin … rollback).
 --
 -- Requiere la migración supabase/migrations/20261108140000_iva_subcuenta_por_tarifa_y_lado.sql. Mientras no esté
@@ -153,7 +157,7 @@ select x.doc, 'IVA del asiento por subcuenta', x.esperado, y.s, y.s = x.esperado
     ('fv19',  '24080501 C 57000'), ('fv5',   '24080502 C 5000'), ('pos19', '24080501 C 19000'), ('pos5',  '24080502 C 5000'),
     ('fc19',  '24081001 D 190000'), ('fc5',   '24081002 D 10000'), ('fcmx',  '24081001 D 190000 + 24081002 D 10000'),
     ('fvmx',  '24080501 C 19000 + 24080502 C 5000'), ('ncmx',  '24080501 D 19000 + 24080502 D 5000'), ('nc5',   '24080502 D 5000'),
-    ('fvmx2', '24080501 C 19000 + 24080502 C 5000'), ('ncp',   '24080502 D 5000'),
+    ('fvmx2', '24080501 C 19000 + 24080502 C 5000'), ('ncp',   'SIN ASIENTO'),
     ('ds',    '24081001 D 57000 + 24081002 D 5000'), ('fc16',  'SIN ASIENTO')
   ) x(doc, esperado)
   cross join lateral (select coalesce((select string_agg(i.cuenta || case when i.d > 0 then ' D ' || i.d else ' C ' || i.c end, ' + ' order by i.cuenta)
@@ -172,7 +176,18 @@ select 'otros', 'Pendientes contables nuevos de los demás documentos', 'ninguno
        coalesce(string_agg(f.source || ' ' || f.reason || ' ' || left(coalesce(f.detail, ''), 100), ' | '), 'ninguno'), count(*) = 0
   from public.journal_entry_failures f
  where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo')
-   and f.source_id is distinct from (select v from ctx where k = 'fc16');
+   and f.source_id is distinct from (select v from ctx where k = 'fc16')
+   and f.source_id is distinct from (select v from ctx where k = 'ncp');
+
+-- Ronda 2 (A2): la nota crédito parcial sobre FVMX2 (19 % + 5 %) se arma al insertar su cabecera, antes de sus líneas:
+-- no se reparte por la mezcla de la factura; queda pendiente visible hasta reintentarla por sus líneas.
+insert into r (escenario, verificacion, esperado, obtenido, ok)
+select 'ncp', 'Pendiente contable de la nota crédito parcial (A2)', 'cuenta_no_configurada · «Tarifa de IVA no identificada…»',
+       coalesce(string_agg(f.reason || ' · ' || left(f.detail, 120), ' | '), 'SIN PENDIENTE'),
+       count(*) >= 1 and bool_and(f.reason = 'cuenta_no_configurada' and f.detail like 'Tarifa de IVA no identificada%')
+  from public.journal_entry_failures f
+ where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo')
+   and f.source_id = (select v from ctx where k = 'ncp');
 
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'ds', 'Vista previa del documento soporte (fn_armar_asiento_documento)', 'ok · 24081001 D 57000 · 24081002 D 5000',
@@ -193,15 +208,15 @@ select 'cuadre', format('Asiento %s (%s · %s)', je.id, coalesce((select upper(c
 
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'funciones', 'fn_cuenta_iva_tarifa (org 374): generado 19/5, descontable 19/5, 16 %, fn_cuenta_iva venta / compra',
-       '24080501 24080502 24081001 24081002 ∅ 24080501 24081001', x.s, x.s = '24080501 24080502 24081001 24081002 ∅ 24080501 24081001'
+       '24080501 24080502 24081001 24081002 ∅ ∅ ∅', x.s, x.s = '24080501 24080502 24081001 24081002 ∅ ∅ ∅'
   from (select concat_ws(' ',
          public.fn_cuenta_iva_tarifa(374, 585, 'invoice_sales', null, 19, null),
          public.fn_cuenta_iva_tarifa(374, 585, 'invoice_sales', null, 5, null),
          public.fn_cuenta_iva_tarifa(374, 585, 'invoice_purchase', null, 19, null),
          public.fn_cuenta_iva_tarifa(374, 585, 'invoice_purchase', null, 5, null),
          coalesce(public.fn_cuenta_iva_tarifa(374, 585, 'invoice_purchase', null, 16, null), '∅'),
-         public.fn_cuenta_iva(374, 585, 'sales', '24080501'),
-         public.fn_cuenta_iva(374, 585, 'invoice_purchase', '24081001')) as s) x;
+         coalesce(public.fn_cuenta_iva(374, 585, 'sales', '24080501'), '∅'),
+         coalesce(public.fn_cuenta_iva(374, 585, 'invoice_purchase', '24081001'), '∅')) as s) x;
 
 select n, escenario, verificacion, esperado, obtenido, ok from r order by n;
 

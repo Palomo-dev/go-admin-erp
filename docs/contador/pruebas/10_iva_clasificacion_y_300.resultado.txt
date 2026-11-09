@@ -1,3 +1,22 @@
+RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
+md5: 20261108150000 096608e63f83245718ff95c459b3bf99 · 20261108150500 e9be46c5b7156980e40b98e9f3863990 ·
+     20261108151000 d455eb50b356e972a414f641047dd33e · prueba 10 2b8bae9361a48d0a4dd5bc69fb9d27c8
+Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados
+contra el disco); un DO pega las migraciones completas en orden de prefijo (en el marcador «MIGRACIONES», en sus
+marcadores, o donde estaba «begin;»), quita solo «begin;», «rollback;» y el SELECT final, ejecuta y termina en
+excepción (= rollback). Objetos grandes borrados al final; la base quedó sin datos ni objetos de la prueba.
+Cambio de la prueba en la ronda 4: POS5 lleva el expediente completo Y la decisión «retirar_venta» (completar el
+expediente ya no basta). Cifras esperadas sin cambio.
+Resultado: 76 verificaciones · 76 ok · 0 fallas. Casillas 27 100000 · 58 5000 · 28 650000 · 59 123500 · 30 300000 ·
+31 0 · 35 70000 · 39 50000 · 40 20000 · 42 200000 · 79 38000 · 47 0 · 50 200000 · 71 10000 · 51 1500000 · 72 222300 ·
+52 300300 · 74 15015 · 53 500000 · 75 95000 · 54 40000 · 56 110000 · 66 19000. Resumen: generado 147500 · descontable
+380315 (formulario 148000 / 380000). Conciliación: libro −420665 · casillas −232815 · pendientes −157850 · otros −30000 ·
+redondeo 0 · diferencia 0. POS4 «correccion_incompleta»; POS5 y su reversa «no_afecta»; alerta de corrección = POS5_REV;
+FCAC sin pendiente y 19000 al costo; octubre declarado con FVOCT y FCOCT grabados después; permisos y anon rechazados.
+La falla de la ronda 3 (alias «iva» en items_lineas) ya estaba corregida en el archivo; esta es la primera corrida verde
+con los archivos exactos.
+
+── Corridas anteriores ──
 Resultado de 10_iva_clasificacion_y_300.sql (RONDA 3 del Contador)
 Corrida: 2026-11-08, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Una sola transacción, sin datos al final.
 Archivos EXACTOS (md5 al correr): prueba 585d97e0b8c3694c4f1991f5e77a3d5c · 20261108150000 be4d376fd058a366e833d985e83e8623 ·

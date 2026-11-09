@@ -12,6 +12,7 @@ import {
   aceptarNotaSchema,
   aceptarVinculoSchema,
   conciliarRetencionSchema,
+  retencionPracticadaSchema,
   porConciliar,
   reconocerRemuneracionSchema,
   retencionesConsignacionSchema,
@@ -56,6 +57,7 @@ const INTERMEDIACION: CondicionesContrato = {
   obligacionPosterior: null,
   facturaRemuneracion: true,
   obligacionDueno: 'venta',
+  compensacionRemuneracion: true,
   riesgos: { devoluciones: 'dueno', perdidas: 'consignatario', gastos: 'consignatario' },
 };
 
@@ -110,6 +112,17 @@ describe('contrato (Ronda 2, punto 2: modalidad, condición contable y tratamien
   test('la entregada no manda valoración de custodia (es inventario propio)', () => {
     expect(terminosDeCondiciones(INTERMEDIACION, { direccion: 'entregada' })).not.toHaveProperty('valoracion');
   });
+
+  test('ronda 4, punto 8: la recibida declara si el contrato pacta compensar la remuneración con lo debido al dueño', () => {
+    expect(CONDICIONES_VACIAS.compensacionRemuneracion).toBeNull();
+    expect(validarCondiciones({ ...INTERMEDIACION, compensacionRemuneracion: null })).toEqual(['compensacion_remuneracion']);
+    expect(validarCondiciones({ ...INTERMEDIACION, compensacionRemuneracion: null }, 'entregada')).toEqual([]);
+    expect(terminosDeCondiciones(INTERMEDIACION).compensacion_remuneracion).toBe(true);
+    expect(terminosDeCondiciones({ ...INTERMEDIACION, compensacionRemuneracion: false }).compensacion_remuneracion).toBe(false);
+    expect(terminosDeCondiciones(INTERMEDIACION, { direccion: 'entregada' })).not.toHaveProperty('compensacion_remuneracion');
+    expect(terminosSchema.safeParse(terminosDeCondiciones(INTERMEDIACION)).success).toBe(true);
+    expect(terminosSchema.safeParse({ ...terminosDeCondiciones(INTERMEDIACION), compensacion_remuneracion: 'si' }).success).toBe(false);
+  });
 });
 
 describe('Ronda 3, punto 1: la comisión se reconoce cuando se devenga, nunca por la fecha de liquidación', () => {
@@ -146,14 +159,26 @@ describe('Ronda 3, punto 2: retenciones de la operación y de la remuneración, 
     expect(g.remuneracion.map((x) => x.id)).toEqual(['a', 'b']);
   });
 
-  test('por conciliar: lo pendiente y lo determinado sin soporte; nunca lo que no aplica', () => {
+  test('por conciliar: lo pendiente, lo estimado y lo practicado sin certificado; nunca lo que no aplica', () => {
     const lista = [
       r({ id: 'p' }),
-      r({ id: 'd', estado: 'determinada', valor: 2970, tarifa: 11, motivo: null }),
+      r({ id: 'd', estado: 'estimada', valor: 2970, tarifa: 11, motivo: null }),
       r({ id: 'n', estado: 'no_aplica', motivo: 'venta_a_consumidor_final' }),
-      r({ id: 'c', estado: 'determinada', valor: 10, tarifa: 11, conciliado: { valor: 10, soporte: 'Cert 1', fecha: '2026-11-08' } }),
+      r({ id: 'c', estado: 'estimada', valor: 10, tarifa: 11, conciliado: { valor: 10, soporte: 'Cert 1', fecha: '2026-11-08' } }),
+      r({ id: 'x', estado: 'practicada', valor: 10, tarifa: 11, practicada: { valor: 10, base: 100, fecha: '2026-11-08', soporte: 'Comprobante 7' } }),
     ];
-    expect(porConciliar(lista).map((x) => x.id)).toEqual(['p', 'd']);
+    expect(porConciliar(lista).map((x) => x.id)).toEqual(['p', 'd', 'x']);
+  });
+
+  test('ronda 4, punto 1: la practicada se registra con valor, base, fecha y soporte (no espera el certificado)', () => {
+    const ok = { valor: 2400, base: 100000, fecha: '2026-11-09', soporte: 'Comprobante de egreso 15' };
+    expect(retencionPracticadaSchema.safeParse(ok).success).toBe(true);
+    expect(retencionPracticadaSchema.safeParse({ ...ok, factura_id: UUID }).success).toBe(true);
+    expect(retencionPracticadaSchema.safeParse({ ...ok, valor: 0 }).success).toBe(false);
+    expect(retencionPracticadaSchema.safeParse({ ...ok, fecha: '09/11/2026' }).success).toBe(false);
+    expect(retencionPracticadaSchema.safeParse({ ...ok, soporte: 'x' }).success).toBe(false);
+    expect(estadoHttpErrorRecibida(codigoErrorRecibida('retencion_no_reconocida'))).toBe(422);
+    expect(codigoErrorRecibida('sin_cuenta_cobro_remuneracion')).toBe('sin_cuenta_cobro_remuneracion');
   });
 
   test('conciliar exige soporte y valor; la regla se elige por ámbito y clase', () => {
@@ -445,19 +470,55 @@ describe('migraciones sin aplicar: lo que no se puede perder (Ronda 2 del Contad
     expect(cuerpo('fn_consignacion_terminos')).toMatch(/obligacion_posterior_obligatoria/);
   });
 
-  test('Ronda 3, punto 2: retenciones de la operación y de la remuneración, con reglas configuradas, nunca 0 ni tarifa fija', () => {
+  test('Ronda 3, punto 2 y Ronda 4, punto 4: retenciones por ámbito con LOS MISMOS criterios que anticipos (sin copia), nunca 0 ni tarifa fija', () => {
     const ret = cuerpo('fn_consignacion_retenciones_liquidacion');
     expect(ret).toMatch(/'operacion'/);
     expect(ret).toMatch(/'remuneracion'/);
-    // La tarifa sale de organization_taxes (la regla configurada), nunca de un número escrito en la función.
-    const regla = cuerpo('fn_consignacion_aplicar_regla');
-    expect(regla).toMatch(/organization_taxes/);
-    expect(regla).toMatch(/sin_regla_configurada/);
-    expect(regla).not.toMatch(/\* (11|10|4|2\.5|15) \//);
-    // Pendiente = valor NULL (nunca 0) y conciliable.
+    // Regla 7: la evaluación es la de anticipos (20261108170000); consignación no tiene su propia lectura de calidades.
+    expect(ret).toMatch(/fn_tributario_evaluar_retencion/);
+    expect(ret).toMatch(/fn_tributario_calidades_tercero/);
+    expect(ret).toMatch(/criterios_tributarios_no_instalados/);
+    expect(consignaciones).not.toMatch(/fn_consignacion_aplicar_regla|fn_consignacion_tiene_resp/);
+    expect(ret).not.toMatch(/\* (11|10|4|2\.5|15) \//);
+    const evaluador = sinComentarios(leer('supabase/migrations/20261108170000_anticipos_proveedores_contador.sql'));
+    const inicio = evaluador.indexOf('create or replace function public.fn_tributario_evaluar_retencion(');
+    expect(inicio).toBeGreaterThan(-1);
+    const ev = evaluador.slice(inicio, evaluador.indexOf('$function$;', inicio));
+    expect(ev).toMatch(/organization_taxes/);
+    expect(ev).toMatch(/sin_regla_configurada/);
+    expect(ev).toMatch(/autorretencion_sin_verificar/);
+    expect(ev).toMatch(/calidad_agente_reteiva_por_acreditar/);
+    // Pendiente = valor NULL (nunca 0); estimada y practicada separadas.
     expect(consignaciones).toMatch(/\(status = 'pendiente' and amount is null\)/);
+    expect(consignaciones).toMatch(/status in \('estimada', 'pendiente', 'no_aplica', 'practicada'\)/);
     expect(consignaciones).toMatch(/create or replace function public\.fn_consignacion_conciliar_retencion\(/);
-    expect(consignaciones).not.toMatch(/p_retenciones|consignacion_retenciones_pago_abono/);
+    expect(consignaciones).not.toMatch(/\bp_retenciones\b|consignacion_retenciones_pago_abono/);
+  });
+
+  test('Ronda 4, puntos 1 y 2: la retención practicada se reconoce sin esperar el certificado; el certificado solo concilia', () => {
+    const practicada = cuerpo('fn_consignacion_retencion_practicada');
+    expect(practicada).toMatch(/fn_finanzas_exigir_permiso/);
+    expect(practicada).toMatch(/p_debit_account := v_nota\.owner_account_code, p_credit_account := v_cuenta/);
+    expect(practicada).toMatch(/p_debit_account := v_sufrida, p_credit_account := v_nota\.owner_receivable_account_code/);
+    expect(practicada).toMatch(/consignacion_cartera_retencion_por_aplicar/);
+    expect(cuerpo('fn_consignacion_conciliar_retencion')).toMatch(/retencion_no_reconocida/);
+    expect(cuerpo('fn_consignacion_conciliar_retencion')).not.toMatch(/fn_create_journal_entry/);
+  });
+
+  test('Ronda 4, punto 3: anular la liquidación no cierra pendientes; se cierran al reliquidar o al revertir la venta', () => {
+    expect(cuerpo('fn_consignacion_recibida_anular_liquidacion')).not.toMatch(/resolution = 'liquidacion_anulada'/);
+    expect(cuerpo('fn_consignacion_recibida_liquidar')).toMatch(/'reliquidada:'/);
+    expect(cuerpo('fn_consignacion_revertir_venta')).toMatch(/'venta_revertida'/);
+  });
+
+  test('Ronda 4, punto 5: comisión contra la 281510 solo compensable; si no, derecho por cobrar', () => {
+    const rec = cuerpo('fn_consignacion_reconocer_int');
+    expect(rec).toMatch(/commission_offset_agreed/);
+    expect(rec).toMatch(/fn_consignacion_saldo_dueno/);
+    expect(rec).toMatch(/owner_receivable_account_code/);
+    expect(cuerpo('fn_consignacion_terminos')).toMatch(/compensacion_remuneracion/);
+    expect(cuerpo('fn_consignacion_compensar_remuneracion')).toMatch(/compensacion_no_pactada/);
+    expect(cuerpo('fn_consignacion_asignar_venta')).not.toMatch(/p_debit_account := v_l\.owner_account_code, p_credit_account := v_l\.remuneration_account_code/);
   });
 
   test('punto 6: el anticipo se cruza con el saldo real de 281510 del dueño, sin compra', () => {
@@ -498,6 +559,8 @@ describe('migraciones sin aplicar: lo que no se puede perder (Ronda 2 del Contad
       'fn_consignacion_reconocer_remuneracion',
       'fn_consignacion_conciliar_retencion',
       'fn_consignacion_configurar_retenciones',
+      'fn_consignacion_retencion_practicada',
+      'fn_consignacion_compensar_remuneracion',
     ];
     for (const fn of publicas) expect(cuerpo(fn)).toMatch(/fn_finanzas_exigir_permiso/);
   });

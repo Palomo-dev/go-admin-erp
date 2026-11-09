@@ -1,23 +1,84 @@
--- Pruebas en seco · Anticipos a proveedores: correcciones del Contador (P1, P6, P7), ronda 2
--- (RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md, «Anticipos») y ronda 3 (RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md). Fecha: 2026-11-07 · Proyecto taqjemqjtumhwptchcxk · org 374
--- (sucursal 585).
+-- Pruebas en seco · Anticipos a proveedores: correcciones del Contador (P1, P6, P7), rondas 2, 3 y 4
+-- (RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «Anticipos»). Reejecución del 2026-11-09 con los archivos EXACTOS actuales.
+-- Proyecto taqjemqjtumhwptchcxk · org 374 (sucursal 585).
 --
--- NO DEJA DATOS: todo corre dentro de begin … rollback. Las migraciones 20261108165000 y 20261108170000 están SIN
--- APLICAR (la 20261108120000 sí está aplicada): la corrida pega su contenido en el lugar marcado «MIGRACIONES», dentro
--- de la misma transacción, y se revierten con todo lo demás. Lo que la org 374 no tiene (proveedores, facturas de
--- compra, perfil tributario, caja abierta, auxiliar 13300501) se crea como administrador dentro de la transacción.
--- Las operaciones del anticipo corren como un usuario miembro de la org 374 (rol «authenticated» con su sesión simulada
--- por request.jwt.claims), igual que desde la aplicación.
--- Resultado: tabla temporal r. Ver el .resultado.txt hermano.
+-- NO DEJA DATOS: todo corre en una sola transacción que termina con una excepción (= rollback); el resultado sale en el
+-- mensaje de esa excepción. CARGA ejecuta, completas y exactas (md5 comprobado), las migraciones SIN APLICAR en orden de
+-- versión: 20261108120500 → 121000 → 140500 → 160000 → 160500 → 165000 → 170000. Lo que la org 374 no tiene (proveedores,
+-- facturas de compra, perfil tributario, caja abierta, auxiliar 13300501, procedimiento de ReteICA) se crea como
+-- administrador dentro de la transacción. Las operaciones corren como el usuario miembro de la org 374 (rol
+-- «authenticated», sesión simulada por request.jwt.claims). Cambios frente a la corrida del 2026-11-08 (ronda 4):
+-- AIU por contrato y régimen; motivos de la evaluación compartida (pagador/beneficiario); devoluciones con soporte del
+-- hecho, líneas afectadas y pruebas del procedimiento municipal de ReteICA; período de descuento fijado por la regla.
+-- Resultado: 11_anticipos_correcciones_contador.resultado.txt
 
 begin;
 
--- ════ MIGRACIONES: aquí va, en este orden, el contenido de 20261108140500, 20261108160000, 20261108160500, 20261108165000 y 20261108170000 ════
+-- ════ AYUDAS (solo esta sesión) ════════════════════════════════════════════════════════════════════════════
+create temp table r (n serial primary key, prueba text default current_setting('dry.prueba', true), caso text, verificacion text, esperado text,
+                     obtenido text, ok boolean);
+create temp table bitacora (n serial primary key, prueba text default current_setting('dry.prueba', true), linea text);
+grant all on r, bitacora to authenticated;
+grant usage on sequence r_n_seq, bitacora_n_seq to authenticated;
+create function pg_temp.log(m text) returns void language sql as $$ insert into bitacora (linea) values (m) $$;
+create function pg_temp.chk(caso text, esperado text, obtenido text) returns void language sql as $$
+  insert into r (caso, verificacion, esperado, obtenido, ok) values (split_part(caso, ' ', 1), caso, esperado, obtenido, coalesce(obtenido = esperado, false))
+$$;
+-- Ejecuta q y espera un error cuyo mensaje empiece por «esperado».
+create function pg_temp.err(caso text, esperado text, q text) returns void language plpgsql as $$
+begin
+  execute q;
+  perform pg_temp.chk(caso, esperado, 'sin error');
+exception when others then
+  perform pg_temp.chk(caso, esperado, case when sqlerrm like esperado || '%' then esperado else sqlerrm end);
+end $$;
+create function pg_temp.mover(o integer, b integer, p integer, d text, q numeric, s text, sid text default null) returns jsonb language plpgsql
+  security definer set search_path = public, pg_temp as $$
+begin
+  return public.fn_inv_int_mover(o, b, p, null, d, q, case when d = 'in' then 0 end, s, coalesce(sid, gen_random_uuid()::text), 'prueba en seco', auth.uid(), '{}'::jsonb);
+end $$;
+-- Retenciones de una liquidación que NO son «no aplica»: ámbito.clase.grupo=estado[:valor].
+create function pg_temp.ret(liq uuid) returns text language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  return (select string_agg(w.scope || '.' || w.class || '.' || w.payer_group || '=' || w.status || coalesce(':' || coalesce(w.practiced_amount, w.amount)::text, ''),
+                            ', ' order by w.scope, w.class, w.payer_group)
+            from public.consignment_settlement_withholdings w where w.settlement_id = liq and w.status <> 'no_aplica');
+end $$;
+grant execute on function pg_temp.log(text), pg_temp.chk(text, text, text), pg_temp.err(text, text, text) to authenticated;
+grant execute on function pg_temp.mover(integer, integer, integer, text, numeric, text, text), pg_temp.ret(uuid) to authenticated;
 
-create temp table r (n serial primary key, caso text, verificacion text, esperado text, obtenido text, ok boolean);
+-- ════ CARGA: las migraciones SIN APLICAR, COMPLETAS y EXACTAS, en orden de versión ════════════════════════════
+-- Cada archivo se subió antes, por trozos, a objetos grandes de Postgres (cada trozo verificado por md5 contra el archivo
+-- local). Aquí se ubican por el md5 de cada trozo, se concatenan, se comprueba el md5 del archivo COMPLETO contra el del
+-- repositorio y se ejecuta tal cual. Nada queda escrito: la corrida termina con una excepción (= rollback).
+select set_config('dry.prueba', 'carga', true);
+create temp table carga (n int, archivo text, md5 text, partes text[]);
+insert into carga values
+  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['5a3ad4f516169849e63ea85a06d6409d', '9663bf553ed7663c7dddd1bb69f7b066']),
+  (2, '20261108121000_consignaciones', 'd2a58b49b6016488ba3287a48511d4d5', array['01d40736f59b0326331a5c87b5c9aaaf', '43d4449c092a8d952dbfc7baa691382c', '0b6ff32c6c2ac6700ffc185b653bf99b', '19c810fa6720bed9fbcd0946720e7db3', '01c2f9b75c3a609226b6bdee5c0bb7a7', '7e71e8c4e1bff5daf3784ae3c833ff37', '6be2815156fc03f855f47989b13aa5e8', '659a3939293d6235d15a78f8ca995413']),
+  (3, '20261108140500_responsabilidades_fiscales_en', '4b00bf10bf99ff2a97e2e89ff0480811', array['4b00bf10bf99ff2a97e2e89ff0480811']),
+  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['85fd17321a7e85d85a58916cb2f84c95']),
+  (5, '20261108160500_tributario_perfil_renta_iva', 'c83b8a50b6342e65ee5bf3f993847b79', array['16de3178aa8a2cc01d9b2ed4be288c78', '282e5b104a758b88936d2a684742eed0']),
+  (6, '20261108165000_tarifas_precision_exacta', '28e47f6353ee4102463b7b63dca057be', array['28e47f6353ee4102463b7b63dca057be']),
+  (7, '20261108170000_anticipos_proveedores_contador', 'ca6171f8dfbc5cb11ec40a831ea589df', array['a2fce547e464f7bfe71175e40038af04', 'aa4c3b57a749d53c66506a7b4d7d6338', '05b9412ef8fb162a9566189e4313073b', 'cb2d8d5c9a890e919cdebac05283c89f', 'b58622a7c223bd115e1d404290cee1c7', '863d10ed9ec437aca7b4d06f785d0392', '073ea2e870c4320f8c7fb7b5a09317fd', '2d4e4c263c074261594198c9946abc2f', 'ebfd91b7b31edcf53d2b67585c26723b']);
+do $carga$
+declare m record; s text;
+begin
+  create temp table lo_md5 as select l.oid, md5(lo_get(l.oid)) as md5 from pg_largeobject_metadata l;
+  for m in select * from carga order by n loop
+    select convert_from(string_agg(lo_get((select x.oid from lo_md5 x where x.md5 = u.p order by x.oid limit 1)), ''::bytea order by u.i), 'UTF8') into s
+      from unnest(m.partes) with ordinality u(p, i);
+    perform pg_temp.chk('md5 ' || m.archivo, m.md5, md5(s));
+    if s is null or md5(s) <> m.md5 then raise exception 'carga: md5 de % distinto', m.archivo; end if;
+    execute s;
+  end loop;
+end $carga$;
+
+
+-- ════ CUERPO: 11.sql ════
+select set_config('dry.prueba', '11', true);
 create temp table ctx (k text primary key, v text);
-grant all on r, ctx to authenticated;
-grant usage on sequence r_n_seq to authenticated;
+grant all on ctx to authenticated;
 
 -- ── Datos de apoyo (administrador; se revierten) ─────────────────────────────
 -- A, B: responsables de IVA (régimen común). C: sin datos fiscales. D: SIMPLE (O-47) responsable de IVA.
@@ -215,6 +276,14 @@ end $$;
 reset role;
 insert into public.organization_tax_profiles (organization_id, vigente_desde, regimen, responsabilidades, agente_retencion, responsable_inc, periodicidad_iva)
 values (374, date '2026-01-01', 'ordinario', array['O-13', 'O-48'], true, false, 'bimestral');
+-- Ronda 4: la reversión de reteICA exige el procedimiento VALIDADO del municipio de la regla. Aquí es un dato de apoyo
+-- (validado directamente); el registro y la validación por el Contador se prueban en la 21.
+insert into public.reteica_procedimientos (organization_id, municipality_id, norma, solicitud, pruebas, reintegro, certificado, periodo_descuento,
+                                           excedentes, estado, vigente_desde, validado_por, validado_en, validacion_concepto, validacion_soporte)
+values (374, '47ae0b2d-e894-453e-9680-f519c1e3f118', 'Norma municipal de ReteICA (dato de prueba)', 'Solicitud escrita del afectado ante el agente retenedor',
+        array['prueba_pago', 'acta'], 'Reintegro al proveedor por transferencia', 'Certificado de ReteICA corregido del período',
+        'periodo_del_reintegro', 'Lo que no alcance se descuenta en los períodos siguientes', 'validado', date '2026-01-01',
+        'bb11d6d2-f647-49f7-9b29-aa4c4438abf1', now(), 'Validado para la prueba en seco 11 (dato de apoyo)', 'Acta de prueba');
 select set_config('request.jwt.claims', '{"sub":"bb11d6d2-f647-49f7-9b29-aa4c4438abf1","role":"authenticated"}', true);
 set local role authenticated;
 
@@ -288,23 +357,28 @@ begin
      (v_e ->> 'base')::numeric = 700000 and (v_e ->> 'iva')::numeric = 95000 and (v_e -> 'clases' -> 1 ->> 'valor')::numeric = 14250
        and (v_e -> 'clases' -> 0 ->> 'valor')::numeric = 28000 and (v_e -> 'clases' -> 2 ->> 'valor')::numeric = 6762);
 
-  v_e := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_a, 'pago_anticipado_precio', 209500, null, v_r4, v_ica,
-           '[{"tratamiento":"aiu_administracion","base":100000},{"tratamiento":"aiu_imprevistos","base":50000},{"tratamiento":"aiu_utilidad","base":50000,"tarifa_iva":19}]'::jsonb, true);
-  v_txt := (v_e -> 'clases' -> 1 ->> 'estado') || '/' || (v_e -> 'clases' -> 1 ->> 'motivo');
+  -- Ronda 4: AIU sin contrato registrado se rechaza; con un contrato del art. 462-1 aún «pendiente_validacion», las tres
+  -- clases quedan pendientes (no se calcula nada). El cálculo con el contrato validado está en la prueba 21.
   v_err := null;
   begin
-    perform public.fn_reteiva_aiu_regla_guardar(374, 'corta', date '2026-01-01');
+    perform public.fn_anticipo_proveedor_evaluar_retenciones(374, v_a, 'pago_anticipado_precio', 238000, 19, v_r4, v_ica,
+           '[{"tratamiento":"aiu_administracion","base":100000},{"tratamiento":"aiu_imprevistos","base":50000},{"tratamiento":"aiu_utilidad","base":50000}]'::jsonb, true);
   exception when others then v_err := sqlerrm;
   end;
-  perform public.fn_reteiva_aiu_regla_guardar(374, 'Contrato de obra con AIU: IVA sobre la utilidad según el concepto que soporta la operación', date '2026-01-01');
-  v_e := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_a, 'pago_anticipado_precio', 209500, null, v_r4, v_ica,
-           '[{"tratamiento":"aiu_administracion","base":100000},{"tratamiento":"aiu_imprevistos","base":50000},{"tratamiento":"aiu_utilidad","base":50000,"tarifa_iva":19}]'::jsonb, true);
+  insert into ctx select 'aiu_c11', public.fn_aiu_contrato_registrar(374, v_a, 'servicios_462_1', 'Servicio de aseo de la sede principal', 'aseo',
+             '{"numero":"C-11","fecha":"2026-01-10","archivo":"contratos/c-11.pdf","valor":2380000}'::jsonb, 'Estatuto Tributario, art. 462-1',
+             '{"aiu_discriminado":true,"requisitos_prestador":"Empresa de aseo con el AIU discriminado en el contrato"}'::jsonb, 'base_especial', 'valor_total',
+             date '2026-01-01')::text;
+  v_e := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_a, 'pago_anticipado_precio', 238000, 19, v_r4, v_ica,
+           '[{"tratamiento":"aiu_administracion","base":100000},{"tratamiento":"aiu_imprevistos","base":50000},{"tratamiento":"aiu_utilidad","base":50000}]'::jsonb, true,
+           (select v::uuid from ctx where k = 'aiu_c11'));
   insert into r (caso, verificacion, esperado, obtenido, ok) values
-    ('R3-1', 'AIU (adm 100.000, impr 50.000, util 50.000 al 19 %): sin regla con fundamento / con la regla registrada',
-     'sin regla: reteIVA pendiente/aiu_fundamento_por_validar (no se calcula); regla sin fundamento rechazada; con la regla: reteIVA 1.425 sobre el IVA de la utilidad',
-     format('%s; %s; con regla: iva %s, reteIVA %s', v_txt, coalesce(v_err, 'NO RECHAZÓ'), v_e ->> 'iva', v_e -> 'clases' -> 1 ->> 'valor'),
-     v_txt = 'pendiente/aiu_fundamento_por_validar' and v_err = 'fundamento_obligatorio'
-       and (v_e ->> 'iva')::numeric = 9500 and (v_e -> 'clases' -> 1 ->> 'valor')::numeric = 1425 and (v_e ->> 'base')::numeric = 200000);
+    ('R4-AIU', 'AIU (adm 100.000, impr 50.000, util 50.000): sin contrato / con contrato del art. 462-1 pendiente de validación',
+     'aiu_contrato_obligatorio; con contrato sin validar: IVA 38.000 sobre A+I+U (200.000) y las tres clases pendiente/aiu_contrato_pendiente_validacion',
+     format('%s; iva %s; %s', coalesce(v_err, 'NO RECHAZÓ'), v_e ->> 'iva',
+            (select string_agg((c ->> 'clase') || ' ' || (c ->> 'estado') || '/' || (c ->> 'motivo'), '; ') from jsonb_array_elements(v_e -> 'clases') c)),
+     v_err = 'aiu_contrato_obligatorio' and (v_e ->> 'iva')::numeric = 38000
+       and (select bool_and(c ->> 'estado' = 'pendiente' and c ->> 'motivo' = 'aiu_contrato_pendiente_validacion') from jsonb_array_elements(v_e -> 'clases') c));
 
   v_err := null;
   begin
@@ -324,9 +398,9 @@ begin
 
   v_e := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_c, 'pago_anticipado_precio', 1190000, 19, v_r4, v_ica, null, true);
   insert into r (caso, verificacion, esperado, obtenido, ok) values
-    ('P1', 'Proveedor sin datos fiscales', 'retefuente y reteIVA pendiente/proveedor_sin_datos_fiscales',
+    ('P1', 'Proveedor sin datos fiscales', 'retefuente y reteIVA pendiente/beneficiario_sin_datos_fiscales',
      (select string_agg((c ->> 'clase') || ' ' || (c ->> 'estado') || '/' || (c ->> 'motivo'), '; ') from jsonb_array_elements(v_e -> 'clases') c),
-     v_e -> 'clases' -> 0 ->> 'motivo' = 'proveedor_sin_datos_fiscales' and v_e -> 'clases' -> 1 ->> 'motivo' = 'proveedor_sin_datos_fiscales');
+     v_e -> 'clases' -> 0 ->> 'motivo' = 'beneficiario_sin_datos_fiscales' and v_e -> 'clases' -> 1 ->> 'motivo' = 'beneficiario_sin_datos_fiscales');
 
   v_e := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_f, 'pago_anticipado_precio', 1190000, 19, v_r4, v_ica, null, true);
   insert into r (caso, verificacion, esperado, obtenido, ok) values
@@ -363,9 +437,9 @@ begin
   v_2 := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_d, 'pago_anticipado_precio', 1190000, 19, v_r4, v_ica, null, true) -> 'clases' -> 0 ->> 'motivo';
   insert into r (caso, verificacion, esperado, obtenido, ok) values
     ('R3-3', 'SIMPLE: sin RUT / inscripción que no cubre la fecha de la operación / RUT actualizado e inscripción vigente',
-     'rut_obligatorio; sigue pendiente simple_sin_acreditar; acreditado → no_aplica proveedor_simple_acreditado',
+     'rut_obligatorio; sigue pendiente simple_sin_acreditar; acreditado → no_aplica beneficiario_simple_acreditado',
      format('%s; %s; %s → %s', coalesce(v_err, 'NO RECHAZÓ'), v_1, v_3, v_2),
-     v_err = 'rut_obligatorio' and v_1 = 'simple_sin_acreditar' and v_3 = 'simple_sin_acreditar' and v_2 = 'proveedor_simple_acreditado');
+     v_err = 'rut_obligatorio' and v_1 = 'simple_sin_acreditar' and v_3 = 'simple_sin_acreditar' and v_2 = 'beneficiario_simple_acreditado');
 
   v_1 := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_e5, 'pago_anticipado_precio', 1190000, 19, v_r4, v_ica, null, true) -> 'clases' -> 0 ->> 'motivo';
   v_err := null;
@@ -624,42 +698,50 @@ begin
   v_res := public.fn_anticipo_proveedor_registrar(v_b, 585, 119000, 'transfer', 'pago_anticipado_precio', 'p11-B4', 374, 19, v_r4, v_ica, null, 'TRF-B4', null, null, true);
   v_b4 := (v_res ->> 'anticipo_id')::uuid;
   insert into ctx values ('ant_b4', v_b4::text);
+  -- Ronda 4: el hecho con su soporte (acta de devolución), la línea afectada de la operación y las pruebas del procedimiento
+  -- municipal de ReteICA. El período de descuento no se elige.
   v_err := null;
   begin
-    perform public.fn_anticipo_proveedor_devolver(v_b4, 55592, 'transfer', 'El proveedor devolvió la mitad', 'p11-dev-sin-norma', 374, null, 'Consignación 0042',
-      jsonb_build_object('causa', 'devolucion_parcial', 'base_devuelta', 50000, 'iva_devuelto', 9500, 'periodo_descuento', to_char(now(), 'YYYY-MM'),
-                         'requiere_correccion', false,
-                         'soportes', jsonb_build_object('documento', 'Solicitud del proveedor 12', 'calculo', 'Cálculo de la parte devuelta', 'certificado', 'Certificado corregido 7')));
+    perform public.fn_anticipo_proveedor_devolver(v_b4, 55592, 'transfer', 'El proveedor devolvió la mitad', 'p11-dev-sin-pruebas', 374, null, 'Consignación 0042',
+      jsonb_build_object('causa', 'devolucion_parcial', 'requiere_correccion', false,
+                         'hecho', jsonb_build_object('tipo', 'acta_devolucion', 'documento', 'Acta de devolución 12', 'fecha', current_date),
+                         'lineas', jsonb_build_array(jsonb_build_object('componente', '0', 'base', 50000, 'iva', 9500)),
+                         'soportes', jsonb_build_object('calculo', 'Cálculo de la parte devuelta', 'certificado', 'Certificado corregido 7')));
   exception when others then v_err := sqlerrm;
   end;
   v_err2 := null;
   begin
     perform public.fn_anticipo_proveedor_devolver(v_b4, 55000, 'transfer', 'El proveedor devolvió la mitad', 'p11-dev-no-cuadra', 374, null, 'Consignación 0042',
-      jsonb_build_object('causa', 'devolucion_parcial', 'base_devuelta', 50000, 'iva_devuelto', 9500, 'periodo_descuento', to_char(now(), 'YYYY-MM'),
-                         'requiere_correccion', false,
-                         'soportes', jsonb_build_object('documento', 'Solicitud del proveedor 12', 'calculo', 'Cálculo', 'certificado', 'Certificado 7', 'norma_ica', 'Acuerdo municipal')));
+      jsonb_build_object('causa', 'devolucion_parcial', 'requiere_correccion', false,
+                         'hecho', jsonb_build_object('tipo', 'acta_devolucion', 'documento', 'Acta de devolución 12', 'fecha', current_date),
+                         'lineas', jsonb_build_array(jsonb_build_object('componente', '0', 'base', 50000, 'iva', 9500)),
+                         'soportes', jsonb_build_object('calculo', 'Cálculo', 'certificado', 'Certificado 7',
+                                                        'ica', jsonb_build_object('solicitud', 'Solicitud 33', 'certificado', 'Certificado ICA 4',
+                                                                                  'prueba_pago', 'Comprobante 9', 'acta', 'Acta 12'))));
   exception when others then v_err2 := sqlerrm;
   end;
   insert into r (caso, verificacion, esperado, obtenido, ok) values
-    ('R3-2', 'Devolución parcial: reteICA afectada sin la norma local / dinero que no cuadra con el cálculo',
-     'reteica_requiere_norma / calculo_no_cuadra', coalesce(v_err, 'NO RECHAZÓ') || ' / ' || coalesce(v_err2, 'NO RECHAZÓ'),
-     v_err = 'reteica_requiere_norma' and v_err2 = 'calculo_no_cuadra');
+    ('R3-2', 'Devolución parcial: reteICA afectada sin las pruebas del procedimiento municipal / dinero que no cuadra con las líneas',
+     'reteica_pruebas_incompletas / calculo_no_cuadra', coalesce(v_err, 'NO RECHAZÓ') || ' / ' || coalesce(v_err2, 'NO RECHAZÓ'),
+     v_err = 'reteica_pruebas_incompletas' and v_err2 = 'calculo_no_cuadra');
 
   v_res := public.fn_anticipo_proveedor_devolver(v_b4, 55592, 'transfer', 'El proveedor devolvió la mitad', 'p11-dev-B4', 374, null, 'Consignación 0042',
-    jsonb_build_object('causa', 'devolucion_parcial', 'base_devuelta', 50000, 'iva_devuelto', 9500, 'periodo_descuento', to_char(now(), 'YYYY-MM'),
-                       'requiere_correccion', false,
-                       'soportes', jsonb_build_object('documento', 'Solicitud del proveedor 12', 'calculo', 'Cálculo de la parte devuelta: 50.000 + IVA 9.500',
-                                                      'certificado', 'Certificado corregido 7', 'norma_ica', 'Acuerdo municipal de ReteICA vigente')));
+    jsonb_build_object('causa', 'devolucion_parcial', 'requiere_correccion', false,
+                       'hecho', jsonb_build_object('tipo', 'acta_devolucion', 'documento', 'Acta de devolución 12', 'fecha', current_date),
+                       'lineas', jsonb_build_array(jsonb_build_object('componente', '0', 'base', 50000, 'iva', 9500)),
+                       'soportes', jsonb_build_object('calculo', 'Cálculo de la parte devuelta: 50.000 + IVA 9.500', 'certificado', 'Certificado corregido 7',
+                                                      'ica', jsonb_build_object('solicitud', 'Solicitud radicada 33', 'certificado', 'Certificado ICA corregido 4',
+                                                                                'prueba_pago', 'Comprobante de pago 9', 'acta', 'Acta de devolución 12'))));
   select string_agg(format('%s D %s C %s', l.account_code, round(l.debit), round(l.credit)), ' | ' order by l.debit desc, l.credit desc) into v_txt
     from public.journal_lines l where l.journal_entry_id = (v_res ->> 'asiento_id')::int;
   insert into r (caso, verificacion, esperado, obtenido, ok) values
-    ('R3-2', 'Devolución parcial por procedimiento (base 50.000 + IVA 9.500): las retenciones salen del cálculo; $55.592 al banco y $3.908 de retenciones',
-     'D banco 55.592 · D retefuente 2.000 · D reteIVA 1.425 · D reteICA 483 · C 13300501 59.500; saldo 59.500; 3 ajustes «devolucion» con causa y período',
+    ('R3-2', 'Devolución parcial por la línea afectada (base 50.000 + IVA 9.500): cada retención sobre lo que cubrió; $55.592 al banco y $3.908 de retenciones',
+     'D banco 55.592 · D retefuente 2.000 · D reteIVA 1.425 · D reteICA 483 · C 13300501 59.500; saldo 59.500; 3 ajustes «devolucion» con período y regla del período',
      format('dinero %s; retenciones %s; saldo %s; ', v_res ->> 'dinero', v_res ->> 'retencion_revertida', v_res ->> 'saldo_disponible') || v_txt,
      (v_res ->> 'dinero')::numeric = 55592 and (v_res ->> 'retencion_revertida')::numeric = 3908 and (v_res ->> 'saldo_disponible')::numeric = 59500
        and v_txt like '%D 55592 C 0%' and v_txt like '%D 1425 C 0%' and v_txt like '%13300501 D 0 C 59500%'
        and (select count(*) from public.supplier_advance_withholding_ajustes j where j.advance_id = v_b4 and j.tipo = 'devolucion'
-              and j.causa = 'devolucion_parcial' and j.periodo_descuento is not null and j.requiere_correccion is false) = 3);
+              and j.causa = 'devolucion_parcial' and j.periodo_descuento is not null and j.regla_periodo is not null and j.requiere_correccion is false) = 3);
 
   v_res := public.fn_anticipo_proveedor_devolver(v_b4, 10000, 'transfer', 'Segundo reintegro sin detalle de retenciones', 'p11-dev-B4-2', 374, null, 'Consignación 0043');
   insert into r (caso, verificacion, esperado, obtenido, ok) values
@@ -671,7 +753,8 @@ begin
 
   -- Causa (b): retención excesiva. Retefuente vigente 2.000; la correcta era 2,5 % sobre 50.000 = 1.250: se reintegran 750.
   v_res := public.fn_anticipo_retencion_exceso_reintegrar(v_b4, 'retefuente', 50000, 2.5, 'transfer', 'p11-exceso-B4',
-             '{"calculo":"Tarifa de servicios 2,5 % sobre la base vigente","certificado":"Certificado corregido 8"}'::jsonb, to_char(now(), 'YYYY-MM'), true,
+             '{"calculo":"Tarifa de servicios 2,5 % sobre la base vigente","certificado":"Certificado corregido 8","solicitud":"Solicitud escrita del proveedor 5","pruebas":"Factura y cálculo"}'::jsonb,
+             to_char(now(), 'YYYY-MM'), true,
              'Se aplicó 4 % en vez de 2,5 %', 374);
   select string_agg(format('%s D %s C %s', l.account_code, round(l.debit), round(l.credit)), ' | ' order by l.debit desc) into v_txt
     from public.journal_lines l where l.journal_entry_id = (v_res ->> 'asiento_id')::int;
@@ -690,14 +773,17 @@ begin
   v_err := null;
   begin
     perform public.fn_anticipo_proveedor_devolver((select v::uuid from ctx where k = 'ant_b6'), 100000, 'transfer', 'Se resolvió el contrato', 'p11-dev-B6-x', 374, null,
-      'Consignación 0050', jsonb_build_object('causa', 'operacion_anulada', 'periodo_descuento', to_char(now(), 'YYYY-MM'), 'requiere_correccion', false,
-        'soportes', jsonb_build_object('documento', 'Resolución del contrato 3', 'calculo', 'Cálculo', 'certificado', 'Certificado anulado 9', 'norma_ica', 'Acuerdo municipal')));
+      'Consignación 0050', jsonb_build_object('causa', 'operacion_anulada', 'requiere_correccion', false,
+        'hecho', jsonb_build_object('tipo', 'resolucion_mutuo_acuerdo', 'documento', 'Resolución del contrato 3', 'fecha', current_date),
+        'soportes', jsonb_build_object('calculo', 'Cálculo', 'certificado', 'Certificado anulado 9',
+                                       'ica', jsonb_build_object('solicitud', 'Solicitud 34', 'certificado', 'Certificado ICA 5', 'prueba_pago', 'Comprobante 10', 'acta', 'Resolución 3'))));
   exception when others then v_err := sqlerrm;
   end;
   v_res := public.fn_anticipo_proveedor_devolver((select v::uuid from ctx where k = 'ant_b6'), 111184, 'transfer', 'Se resolvió el contrato', 'p11-dev-B6', 374, null,
-    'Consignación 0050', jsonb_build_object('causa', 'operacion_anulada', 'periodo_descuento', to_char(now(), 'YYYY-MM'), 'requiere_correccion', false,
-      'soportes', jsonb_build_object('documento', 'Resolución del contrato 3', 'calculo', 'Retenciones practicadas al girar', 'certificado', 'Certificado anulado 9',
-                                     'norma_ica', 'Acuerdo municipal de ReteICA vigente')));
+    'Consignación 0050', jsonb_build_object('causa', 'operacion_anulada', 'requiere_correccion', false,
+      'hecho', jsonb_build_object('tipo', 'resolucion_mutuo_acuerdo', 'documento', 'Resolución del contrato 3', 'fecha', current_date),
+      'soportes', jsonb_build_object('calculo', 'Retenciones practicadas al girar', 'certificado', 'Certificado anulado 9',
+                                     'ica', jsonb_build_object('solicitud', 'Solicitud 34', 'certificado', 'Certificado ICA 5', 'prueba_pago', 'Comprobante 10', 'acta', 'Resolución 3'))));
   insert into r (caso, verificacion, esperado, obtenido, ok) values
     ('R3-2', 'Operación anulada: dinero que no cubre el saldo / devolución total',
      'anulacion_requiere_devolucion_total; con 111.184: se revierten las tres (7.816) y el anticipo queda en 0',
@@ -876,9 +962,9 @@ begin
   v_e3 := public.fn_anticipo_proveedor_evaluar_retenciones(374, v_a, 'pago_anticipado_precio', 1190000, 19, v_r4, v_ica, null, true);
   insert into r (caso, verificacion, esperado, obtenido, ok) values
     ('P1', 'Perfil 160500: agente de reteIVA y gran contribuyente propios mandan sobre O-13',
-     'ambos false: reteIVA no_aplica; agente_retencion_iva true: 28.500; requiere_revision: pendiente',
+     'ambos false: reteIVA no_aplica/pagador_no_agente_reteiva; agente_retencion_iva true: 28.500; requiere_revision: pendiente',
      format('%s / %s / %s', v_e -> 'clases' -> 1 ->> 'motivo', v_e2 -> 'clases' -> 1 ->> 'valor', v_e3 -> 'clases' -> 0 ->> 'motivo'),
-     v_e -> 'clases' -> 1 ->> 'motivo' = 'organizacion_no_agente_reteiva' and (v_e2 -> 'clases' -> 1 ->> 'valor')::numeric = 28500
+     v_e -> 'clases' -> 1 ->> 'motivo' = 'pagador_no_agente_reteiva' and (v_e2 -> 'clases' -> 1 ->> 'valor')::numeric = 28500
        and v_e3 -> 'clases' -> 0 ->> 'motivo' = 'perfil_requiere_revision');
   insert into r (caso, verificacion, esperado, obtenido, ok) values
     ('R2-3', 'Otros supuestos de reteIVA: org responsable de IVA (no agente) comprando a un SIMPLE responsable', 'reteIVA pendiente/supuesto_compra_a_simple_por_confirmar',
@@ -898,6 +984,17 @@ select 'Cuadre', 'Asientos de la prueba (cuadre de la base + suma)', 'todos cuad
  where je.organization_id = 374 and je.id > (select v::int from ctx where k = 'max_je')
    and je.source in ('supplier_advance', 'supplier_advance_application', 'supplier_advance_refund', 'supplier_advance_withholding_refund', 'reversal');
 
-select n, caso, verificacion, esperado, obtenido, ok from r order by n;
+reset role;
 
-rollback;
+-- ════ FINAL: el resultado sale en el mensaje de esta excepción, que además revierte todo ═══════════════════════════
+reset role;
+do $fin$
+declare t text; v text; b text;
+begin
+  select string_agg(x.s, ' · ' order by x.p) into t
+    from (select prueba p, format('%s: %s de %s ok', prueba, count(*) filter (where ok), count(*)) s from r group by prueba) x;
+  select string_agg(format('%s | %s | %s | %s | %s', n, prueba, verificacion, coalesce(obtenido, 'null'),
+                           case when ok then 'ok' else 'FALLA · esperado: ' || coalesce(esperado, 'null') end), chr(10) order by n) into v from r;
+  select string_agg(prueba || ' › ' || linea, chr(10) order by n) into b from bitacora;
+  raise exception '%', 'PRUEBA EN SECO (se revierte) · ' || coalesce(t, '-') || chr(10) || coalesce(v, '') || chr(10) || coalesce(b, '');
+end $fin$;

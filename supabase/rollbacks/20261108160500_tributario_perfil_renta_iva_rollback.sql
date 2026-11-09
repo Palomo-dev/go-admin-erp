@@ -2,11 +2,13 @@
 -- Revertir DESPUÉS de 20261108161000 (decisiones) y ANTES que 20261108160000 (catálogo).
 --
 -- ADVERTENCIA DE DATOS: quita las columnas nuevas del perfil. Lo guardado en ellas (régimen de renta, condición de IVA,
--- calidades y sus actos, INC, RTE, no contribuyentes, códigos del RUT, cambio de periodicidad, advertencias aceptadas)
--- se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
+-- calidades y sus actos, INC, RTE, no contribuyentes, códigos del RUT, cambio de periodicidad, advertencias aceptadas;
+-- ronda 4: calificación del gran contribuyente, procedencia del cambio y aclaraciones) se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
 -- 'ordinario' / 'no_responsable_iva' para devolverle el NOT NULL, lo que NO restaura su significado.
 
+drop function if exists public.fn_perfil_tributario_evaluar_cambio(integer, uuid, text, text);
 drop function if exists public.fn_perfil_tributario_guardar_v2(integer, uuid, date, jsonb, jsonb, text);
+drop function if exists public.fn_perfil_tributario_aclaraciones(jsonb);
 drop function if exists public.fn_perfil_tributario_bloqueos(jsonb);
 
 grant execute on function public.fn_perfil_tributario_guardar(integer, uuid, date, text, text[], boolean, boolean, text, jsonb, text) to authenticated;
@@ -41,4 +43,11 @@ alter table public.organization_tax_profiles
   drop column if exists cambio_periodicidad_estado,
   drop column if exists advertencias_aceptadas,
   drop column if exists requiere_revision,
-  drop column if exists regimen_origen;
+  drop column if exists regimen_origen,
+  drop column if exists gran_contribuyente_calificacion,
+  drop column if exists gran_contribuyente_acto_fecha,
+  drop column if exists cambio_periodicidad_procedencia,
+  drop column if exists cambio_periodicidad_evaluacion,
+  drop column if exists cambio_periodicidad_evaluado_por,
+  drop column if exists cambio_periodicidad_evaluado_en,
+  drop column if exists aclaraciones;

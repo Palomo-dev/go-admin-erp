@@ -20,6 +20,7 @@ import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/Tesorer
 import { PERIODICIDADES_ICA, PERIODICIDADES_IVA, contiguas, validarSolicitudPerfil, type IcaMunicipio, type PeriodicidadIca, type PeriodicidadIva, type VigenciaPerfil } from '@/lib/finanzas/tributario/perfil';
 import {
   ACTIVIDADES_INC,
+  CALIFICACIONES_GRAN_CONTRIBUYENTE,
   CONDICIONES_IVA,
   MOTIVOS_CAMBIO_PERIODICIDAD,
   REGIMENES_RENTA,
@@ -27,6 +28,7 @@ import {
   advertenciasSinAceptar,
   evaluarCombinacion,
   type ActividadInc,
+  type CalificacionGranContribuyente,
   type CondicionIva,
   type MotivoCambioPeriodicidad,
   type RegimenRenta,
@@ -61,6 +63,8 @@ interface Estado {
   granContribuyente: boolean;
   granContribuyenteActo: string;
   granContribuyenteDesde: string;
+  granContribuyenteCalificacion: CalificacionGranContribuyente | '';
+  granContribuyenteActoFecha: string;
   autorretenedor: boolean;
   autorretenedorActo: string;
   autorretenedorActoFecha: string;
@@ -93,6 +97,8 @@ function estadoInicial(p: VigenciaDialogoProps): Estado {
     granContribuyente: f.granContribuyente === true,
     granContribuyenteActo: f.granContribuyenteActo ?? '',
     granContribuyenteDesde: f.granContribuyenteDesde ?? '',
+    granContribuyenteCalificacion: f.granContribuyenteCalificacion ?? '',
+    granContribuyenteActoFecha: f.granContribuyenteActoFecha ?? '',
     autorretenedor: f.autorretenedor === true,
     autorretenedorActo: f.autorretenedorActo ?? '',
     autorretenedorActoFecha: f.autorretenedorActoFecha ?? '',
@@ -155,6 +161,8 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
     granContribuyente: estado.granContribuyente,
     granContribuyenteActo: estado.granContribuyente ? oNull(estado.granContribuyenteActo) : null,
     granContribuyenteDesde: estado.granContribuyente ? oNull(estado.granContribuyenteDesde) : null,
+    granContribuyenteCalificacion: estado.granContribuyente ? estado.granContribuyenteCalificacion || null : null,
+    granContribuyenteActoFecha: estado.granContribuyente ? oNull(estado.granContribuyenteActoFecha) : null,
     autorretenedor: estado.autorretenedor,
     autorretenedorActo: estado.autorretenedor ? oNull(estado.autorretenedorActo) : null,
     autorretenedorActoFecha: estado.autorretenedor ? oNull(estado.autorretenedorActoFecha) : null,
@@ -369,6 +377,21 @@ export function VigenciaDialogo(props: VigenciaDialogoProps) {
               <FormField etiqueta={t('campos.granContribuyenteActo')} obligatorio ayuda={t('campos.actoAyuda')}>
                 {(c) => <Input id={c.id} value={estado.granContribuyenteActo} onChange={(e) => cambiar('granContribuyenteActo', e.target.value)} maxLength={120} />}
               </FormField>
+              <FormField etiqueta={t('campos.granContribuyenteActoFecha')} obligatorio>
+                {(c) => <CampoFecha id={c.id} valor={estado.granContribuyenteActoFecha} onValorChange={(d) => cambiar('granContribuyenteActoFecha', d)} hoy={hoy} />}
+              </FormField>
+              <FormField etiqueta={t('campos.granContribuyenteCalificacion')} obligatorio ayuda={t('campos.granContribuyenteCalificacionAyuda')}>
+                {(c) => (
+                  <SelectNativo
+                    id={c.id}
+                    valor={estado.granContribuyenteCalificacion}
+                    vacio={t('campos.sinDefinir')}
+                    onCambiar={(v) => cambiar('granContribuyenteCalificacion', v as CalificacionGranContribuyente | '')}
+                    opciones={CALIFICACIONES_GRAN_CONTRIBUYENTE.map((r) => ({ valor: r, etiqueta: t(`calificacionGranContribuyente.${r}`) }))}
+                    aria-describedby={c['aria-describedby']}
+                  />
+                )}
+              </FormField>
               <FormField etiqueta={t('campos.granContribuyenteDesde')} obligatorio>
                 {(c) => <CampoFecha id={c.id} valor={estado.granContribuyenteDesde} onValorChange={(d) => cambiar('granContribuyenteDesde', d)} hoy={hoy} />}
               </FormField>
@@ -507,10 +530,10 @@ function ListaCodigos({
                 <span className="font-medium">{r.codigo}</span> · {r.descripcion}
                 {r.estado !== 'validado' && r.estado !== 'sin_dato' && (
                   <span className="mt-1 block">
-                    <StatusBadge estado={r.estado} etiqueta={t(`validacion.${r.estado}`)} tono={r.estado === 'no_validado_como_fe' ? 'advertencia' : r.estado === 'cotejado_fuente_oficial' ? 'informacion' : 'neutro'} />
+                    <StatusBadge estado={r.estado} etiqueta={t(`validacion.${r.estado}`)} tono={r.estado === 'no_pertenece_tabla_fe' ? 'advertencia' : r.estado === 'cotejado_fuente_oficial' ? 'informacion' : 'neutro'} />
                   </span>
                 )}
-                {!r.vigente && r.estado !== 'no_validado_como_fe' && <span className="block text-xs text-fg-secondary">{t('validacion.noVigente')}</span>}
+                {!r.vigente && r.estado !== 'no_pertenece_tabla_fe' && <span className="block text-xs text-fg-secondary">{t('validacion.noVigente')}</span>}
                 {r.nota && <span className="block text-xs text-fg-secondary">{r.nota}</span>}
                 {r.fuente && buscable && <span className="block text-xs text-fg-muted">{r.fuente}</span>}
               </span>

@@ -1,3 +1,19 @@
+RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 (H1) 47486ffab373921553fdcd99d2f56ad0 · prueba 07 cecaaf3cd1499db13c31c060d2410c42
+Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados
+contra el disco); un DO pega las migraciones completas en orden de prefijo (en el marcador «MIGRACIONES», en sus
+marcadores, o donde estaba «begin;»), quita solo «begin;», «rollback;» y el SELECT final, ejecuta y termina en
+excepción (= rollback). Objetos grandes borrados al final; la base quedó sin datos ni objetos de la prueba.
+Primera corrida (prueba sin tocar): 27 de 30. Las 3 fallas eran esperados de la RONDA 1 que las reglas A1/A2 de la ronda 2
+(ya aprobadas) cambiaron: la nota crédito PARCIAL NCP sobre FVMX2 (19 % + 5 %) ahora queda sin asiento y con pendiente
+visible («Tarifa de IVA no identificada…»: el asiento se arma al insertar la cabecera, antes de las líneas), y
+fn_cuenta_iva sin tarifa devuelve NULL (no asume 19 %). Se actualizaron esos esperados (H1 no cambió) y se agregó la
+fila que verifica el pendiente de NCP.
+Corrida que vale: 31 verificaciones · 31 ok · 0 fallas (fv19, fv5, pos19, pos5, fc19, fc5, fcmx, fvmx, ncmx, nc5, fvmx2,
+ncp SIN ASIENTO, ds, fc16 SIN ASIENTO + pendiente, otros ninguno, pendiente de NCP, vista previa del DS, 12 cuadres,
+funciones «24080501 24080502 24081001 24081002 ∅ ∅ ∅»).
+
+── Corridas anteriores ──
 Prueba en seco 07 · H1 subcuenta de IVA por tarifa y lado · 2026-11-07 · org 374 (sede 585)
 Migración 20261108140000_iva_subcuenta_por_tarifa_y_lado.sql pegada DENTRO de la transacción (no aplicada) · terminó en ROLLBACK: no quedó ningún dato.
 Resultado: 32 de 32 verificaciones OK. Los números de asiento cambian en cada corrida.

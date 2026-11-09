@@ -13,6 +13,10 @@
  *      si la respuesta de Factus trae la empresa, el emisor.
  *   3. Si no hay nada: el emisor se arma con la vigencia de la fecha del
  *      documento (H2) y el documento se marca «reconstruido».
+ * Ronda 4 del Contador: una reimpresión reconstruida se puede consultar, pero
+ * con una advertencia visible y PRECISA de qué datos se reconstruyeron (emisor,
+ * receptor) y sin presentarla como copia idéntica del original; por eso se
+ * informa por separado si el emisor y si el receptor son reconstruidos.
  * Solo servidor, con el cliente de la sesión (RLS) y la organización de la sesión.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -27,6 +31,8 @@ export interface PartesDocumento {
   /** Receptor original (fila de cliente o de proveedor con las columnas de la tabla). */
   receptor: Record<string, unknown> | null;
   emisorReconstruido: boolean;
+  /** Ronda 4: el receptor NO es el original guardado (el PDF usa la ficha actual del cliente o proveedor). */
+  receptorReconstruido: boolean;
 }
 
 const objeto = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
@@ -109,11 +115,14 @@ export async function leerPartesDocumento(db: SupabaseClient, organizationId: nu
   if (error && !esInexistente(error)) console.warn('[documentos] instantánea no disponible', { tipo, codigo: error.code ?? null });
   const fila = !error ? (data as { emisor: unknown; receptor: unknown; receptor_xml: unknown } | null) : null;
   if (fila && objeto(fila.emisor)) {
+    const receptor = receptorDesdeXml(fila.receptor_xml, rol) ?? objeto(fila.receptor);
     return {
       origen: 'instantanea',
       emisor: objeto(fila.emisor),
-      receptor: receptorDesdeXml(fila.receptor_xml, rol) ?? objeto(fila.receptor),
+      receptor,
       emisorReconstruido: false,
+      // Documento sin receptor (recibo de pago): nada que reconstruir.
+      receptorReconstruido: false,
     };
   }
 
@@ -133,8 +142,8 @@ export async function leerPartesDocumento(db: SupabaseClient, organizationId: nu
       const pedido = objeto(j.request_payload);
       const receptor = receptorDesdeXml(pedido?.customer ?? pedido?.provider, rol);
       const emisor = emisorDesdeRespuesta(j.response_payload);
-      if (receptor || emisor) return { origen: 'factus', emisor, receptor, emisorReconstruido: !emisor };
+      if (receptor || emisor) return { origen: 'factus', emisor, receptor, emisorReconstruido: !emisor, receptorReconstruido: !receptor };
     }
   }
-  return { origen: 'reconstruido', emisor: null, receptor: null, emisorReconstruido: true };
+  return { origen: 'reconstruido', emisor: null, receptor: null, emisorReconstruido: true, receptorReconstruido: tipo !== 'recibo_pago' };
 }

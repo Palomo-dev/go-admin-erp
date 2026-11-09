@@ -1,50 +1,63 @@
 -- Anticipos a proveedores · correcciones del Contador: P1, P6 y P7 (RESPUESTAS-CONTADOR-P1-P9-2026-11-07.md), la
--- ronda 2 (RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md, «Anticipos») y la ronda 3 (RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md,
--- «Respuestas sobre anticipos»: AIU desactivado sin regla con fundamento, devoluciones por procedimiento y causa,
--- verificación del SIMPLE y del autorretenedor).
+-- ronda 2 (RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md, «Anticipos»), la ronda 3 (RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md)
+-- y la ronda 4 (RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «Anticipos»: AIU en dos regímenes, procedimiento de ReteICA
+-- por municipio, devoluciones con soporte del hecho y por líneas, período de descuento por impuesto, conversión de la
+-- financiación en pago o abono). Manda la ronda 4 sobre lo anterior.
 --
--- ESTADO: 20261108120000_anticipos_proveedores está APLICADA; esta (20261108170000) está SIN APLICAR. Se aplica por
--- el MCP (apply_migration) cuando el dueño lo ordene, en este orden: 20261108120500 → 20261108121000 (consignación:
--- crea consignment_advance_crossings, que esta lee) → 20261108140500 → 20261108160000 → 20261108160500 (perfil con renta
--- e IVA separados) → 20261108165000 (tarifa exacta) → esta. Si 121000 no está aplicada, esta funciona igual (los cruces
--- con consignación no suman nada); el orden por número de versión ya deja 121000 antes.
+-- ESTADO: SIN APLICAR (20261108170000). 20261108120000_anticipos_proveedores y 20261108130000 están APLICADAS y no se
+-- editan: aquí se reemplazan sus funciones y se añaden columnas y tablas. Se aplica por el MCP (apply_migration)
+-- cuando el dueño lo ordene, en este orden: 20261108120500 → 20261108121000 (consignación: crea
+-- consignment_advance_crossings, que esta lee, y LLAMA a los criterios tributarios de esta) → 20261108140500 →
+-- 20261108160000 → 20261108160500 (perfil con renta e IVA separados) → 20261108165000 (tarifa exacta) → esta.
+-- 121000 y esta se aplican JUNTAS: mientras esta falte, las retenciones de consignación quedan todas pendientes
+-- («criterios_tributarios_no_instalados»); si 121000 falta, esta funciona igual (los cruces no suman nada).
 -- Reversión: supabase/rollbacks/20261108170000_anticipos_proveedores_contador_rollback.sql
--- Explicación para el Contador: docs/contador/ANTICIPOS-CORRECCIONES-P1-P6-P7.md
--- Pruebas en seco (begin … rollback, org 374): docs/contador/pruebas/11_anticipos_correcciones_contador.sql
+-- Explicación para el Contador: docs/contador/ANTICIPOS-CORRECCIONES-P1-P6-P7.md y
+--   docs/contador/ANTICIPOS-Y-CONSIGNACION-RONDA-4-2026-11-09.md
+-- Pruebas en seco (begin … rollback, org 374): docs/contador/pruebas/11, 20 (integrada completa) y 21 (ronda 4).
 --
--- La 120000 no se edita: aquí se reemplazan sus funciones y se añaden columnas y tablas. Hoy hay 0 anticipos y 0
--- aplicaciones en la base: ningún saldo existente cambia.
+-- Hoy hay 0 anticipos y 0 aplicaciones en la base: ningún saldo existente cambia.
 --
--- Qué hace (ronda 1 + ronda 2):
+-- Qué hace:
 --   Cuenta      Solo la cuenta configurada con la clave «anticipos_proveedores»: auxiliar de detalle de OCHO dígitos
 --               bajo 133005 (13300501…), o una cuenta de detalle con equivalencia APROBADA y nota. 1330 nunca. Sin ella
 --               no se registra (pendiente contable visible). No se crean cuentas.
---   Naturaleza  Obligatoria. Financiación: la retención se evalúa cuando el anticipo se convierte en pago o abono del
---               precio (al amortizarlo con la factura: queda «diferida», no «no aplica»). Pago anticipado: se evalúa al
---               girar, con la composición de la operación (componentes por tarifa; dividir entre 1+tarifa solo para
---               una suma homogénea a la tarifa general).
---   Partes      Calidades del proveedor VERIFICADAS (supplier_tax_qualities): SIMPLE acreditado, autorretenedor con su
---               autorización y los conceptos cubiertos, responsable o no de IVA, gran contribuyente, no sujeto de ICA.
---               Un código del RUT sin verificación deja la clase «pendiente», no la excluye.
---   ReteICA     Regla municipal registrada (municipio, actividad, tarifa por mil con precisión, norma, vigencia) +
---               territorialidad declarada + calidades + base. Si falta algo: «pendiente».
---   Duplicado   Se evita AL RECONOCER la factura: el anticipo se vincula a la factura en borrador y la causación se
---               bloquea si la factura retiene sobre la base ya retenida en el anticipo. Si ya ocurrió (sin vínculo), la
---               aplicación se rechaza salvo corrección documentada (motivo y soporte), que deja ajustes trazables y un
---               pendiente para revisar los periodos de retención afectados.
---   Devolución  Se identifica la parte devuelta y, por impuesto, la retención relacionada y su procedimiento; nada se
---               prorratea automáticamente. Lo no determinado queda en el anticipo y como pendiente.
+--   Naturaleza  Obligatoria. Financiación: no se retiene al girar; la retención se evalúa cuando el anticipo REALMENTE
+--               se convierte en pago o abono del precio (fn_anticipo_proveedor_convertir_en_pago, con su soporte y
+--               fecha), con o sin factura. Pago anticipado: se evalúa al girar, con la composición de la operación.
+--   Criterios   UNA sola lógica tributaria para anticipos y consignación (ronda 4): fn_tributario_calidades_tercero,
+--               fn_tributario_calidades_organizacion y fn_tributario_evaluar_retencion. Las calidades que EXCLUYEN
+--               una retención deben estar acreditadas (supplier_tax_qualities, proveedores y clientes, con soporte y
+--               vigencia): un O-15 sin resolución verificada y su alcance, o un O-47 sin acreditar, dejan la
+--               retención PENDIENTE, no la excluyen. La calidad de agente de reteIVA no se limita a los códigos 09 y
+--               13 del RUT (art. 437-2 E.T.): se acredita con su fundamento; sin él, pendiente.
+--   AIU         Dos regímenes distintos (aiu_contratos), ambos detrás de «pendiente_validacion» hasta que el Contador
+--               los valide: (a) servicios del art. 462-1 E.T. (aseo, vigilancia, temporales, cooperativas y
+--               precooperativas de trabajo asociado, contrato sindical): base = A + I + U, nunca inferior al 10 % del
+--               valor de la operación; (b) construcción de inmuebles (art. 1.3.1.7.9 del DUR 1625 de 2016): honorarios
+--               del constructor o, si no se pactan, su utilidad, sin mínimo del 10 %. Fundamento estructurado:
+--               operación, contrato (número, fecha, archivo, valor), norma, base y condiciones. Mantenimiento o
+--               reparación no pasan a construcción (exige licencia de construcción y objeto «construccion_inmueble»).
+--   ReteICA     Regla municipal (reteica_reglas) + procedimiento del MISMO municipio (reteica_procedimientos:
+--               solicitud, pruebas, reintegro, certificado, regla del período de descuento y excedentes), validado.
+--               Sin procedimiento validado del municipio, la reversión o el reintegro de reteICA quedan BLOQUEADOS
+--               (reteica_sin_procedimiento_municipal). No se copia el de un municipio a otro.
+--   Duplicado   Se evita AL RECONOCER la factura (vínculo en borrador + control en la causación). Si ya ocurrió, solo
+--               con corrección documentada y pendiente para revisar los periodos afectados.
+--   Devolución  Exige el SOPORTE DEL HECHO (la solicitud del proveedor sola no prueba anulación ni resolución). Causas:
+--               anulación total (dinero + retenciones = saldo), resolución parcial y devolución parcial: estas dos por
+--               las LÍNEAS afectadas de la operación; cada retención se revierte sobre lo que esa retención cubrió (su
+--               base y su tarifa), no por prorrata del total. El período de descuento lo fija la regla de cada
+--               impuesto (renta e IVA: el del hecho; reintegro por exceso: el del reintegro; ICA: el de su
+--               procedimiento); lo que no alcance en ese período queda pendiente para los siguientes.
 --   Anulación   Solo si el desembolso NO ocurrió (motivo, soporte, fecha del ajuste en periodo abierto). Con la caja ya
 --               cerrada no se reabre ni se toca su arqueo: ajuste contable en periodo abierto y pendiente de revisión.
 --   Pendientes  anticipo_pendientes: estado abierto/resuelto; solo se cierra con resolución y soporte (finance.approve).
---   Certificado fn_retenciones_practicadas_filas (base del certificado y del reporte) incluye las retenciones de
---               anticipos y sus ajustes (devolución, anulación, corrección), por impuesto, tercero y concepto.
+--   Certificado fn_retenciones_practicadas_filas incluye las retenciones de anticipos (al girar o al convertirse) y sus
+--               ajustes en su fecha, por impuesto, tercero y concepto.
 --   Arqueo      pos_caja__esperado_calculo separa «egreso por anticipo» y «devolución de anticipo» de las ventas.
 --   Consignación Los cruces de un anticipo con la obligación de un mandato (consignment_advance_crossings de
---               20261108121000, si está aplicada) cuentan como consumo del anticipo en la conciliación y salen en
---               el estado del proveedor como «Cruce con consignación». Sin esa tabla, no se suma nada.
---               Las líneas del asiento del cruce y del reintegro de retención llevan el NIT del proveedor (disparador
---               de tercero), así el auxiliar por NIT concilia con los libros.
+--               20261108121000, si está aplicada) cuentan como consumo del anticipo y llevan el NIT del proveedor.
 --
 -- Escritura SOLO por las RPC (SECURITY DEFINER, guarda de organización, sucursal y permiso); lectura por RLS de
 -- pertenencia; nada para anon. Aditiva: columnas NULL-ables o con DEFAULT, tablas nuevas, funciones nuevas o
@@ -66,7 +79,9 @@ alter table public.supplier_advances
   add column if not exists anulacion_tipo text,
   add column if not exists anulacion_soporte text,
   add column if not exists anulacion_fecha date,
-  add column if not exists anulacion_caja_cerrada boolean not null default false;
+  add column if not exists anulacion_caja_cerrada boolean not null default false,
+  add column if not exists convertido numeric(16,2) not null default 0,
+  add column if not exists aiu_contrato_id uuid;
 
 do $$
 begin
@@ -85,7 +100,9 @@ begin
 end $$;
 
 comment on column public.supplier_advances.naturaleza is
-  'financiacion (anticipo genuino: la retención se evalúa al convertirse en pago o abono del precio) o pago_anticipado_precio (se evalúa al girar). Obligatoria desde 20261108170000.';
+  'financiacion (anticipo genuino: la retención se evalúa cuando realmente se convierte en pago o abono del precio, fn_anticipo_proveedor_convertir_en_pago) o pago_anticipado_precio (se evalúa al girar). Obligatoria desde 20261108170000.';
+comment on column public.supplier_advances.convertido is
+  'Ronda 4: parte girada de un anticipo de financiación que ya se convirtió en pago o abono del precio (suma de supplier_advance_conversions.girado_convertido).';
 comment on column public.supplier_advances.amount is
   'Valor bruto del anticipo: lo que queda a favor frente al proveedor (girado + retenciones practicadas).';
 comment on column public.supplier_advances.componentes is
@@ -106,10 +123,38 @@ comment on column public.supplier_advance_applications.amount is
 comment on column public.supplier_advance_applications.retencion_descontada is
   'Solo con corrección documentada (correccion_motivo/soporte): retención que la factura repitió sobre la base del anticipo.';
 
+create table if not exists public.supplier_advance_conversions (
+  id uuid primary key default gen_random_uuid(),
+  organization_id integer not null references public.organizations(id) on delete cascade,
+  advance_id uuid not null references public.supplier_advances(id),
+  hecho text not null check (hecho in ('pago', 'abono')),
+  soporte text not null check (length(btrim(soporte)) >= 3),
+  fecha date not null,
+  componentes jsonb not null,
+  bruto numeric(16,2) not null check (bruto > 0),
+  retencion numeric(16,2) not null default 0 check (retencion >= 0),
+  girado_convertido numeric(16,2) not null check (girado_convertido > 0),
+  evaluacion jsonb not null,
+  asiento_id integer,
+  idempotency_key text not null,
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  constraint supplier_advance_conversions_cuadre check (bruto = girado_convertido + retencion),
+  constraint supplier_advance_conversions_clave unique (organization_id, idempotency_key)
+);
+comment on table public.supplier_advance_conversions is
+  'Ronda 4: un anticipo de financiación que REALMENTE se convierte en pago o abono del precio (con su soporte y fecha). Ahí se evalúan las retenciones sobre la composición del abono (bruto = girado convertido + retenciones).';
+create index if not exists idx_supplier_advance_conversions_advance on public.supplier_advance_conversions (advance_id);
+
 create table if not exists public.supplier_advance_withholdings (
   id uuid primary key default gen_random_uuid(),
   organization_id integer not null references public.organizations(id) on delete cascade,
   advance_id uuid not null references public.supplier_advances(id),
+  conversion_id uuid references public.supplier_advance_conversions(id),
+  fecha timestamptz not null default now(),
+  -- Qué líneas de la operación cubrió esta retención y con qué base cada una: [{componente, base}] (reteIVA: el IVA de
+  -- cada línea). De aquí sale la reversión de una resolución o devolución parcial, línea por línea (ronda 4).
+  cobertura jsonb not null default '[]'::jsonb,
   clase text not null check (clase in ('retefuente', 'reteiva', 'reteica')),
   organization_tax_id uuid references public.organization_taxes(id),
   regla_ica_id uuid,
@@ -123,10 +168,10 @@ create table if not exists public.supplier_advance_withholdings (
   revertido numeric(16,2) not null default 0,
   created_at timestamptz not null default now(),
   constraint supplier_advance_withholdings_revertido check (revertido >= 0 and revertido <= valor),
-  constraint supplier_advance_withholdings_clase_unica unique (advance_id, clase)
+  constraint supplier_advance_withholdings_clase_unica unique nulls not distinct (advance_id, clase, conversion_id)
 );
 comment on table public.supplier_advance_withholdings is
-  'Retención practicada al girar un anticipo (base y valor por impuesto). Escritura solo por fn_anticipo_proveedor_*.';
+  'Retención practicada al girar un pago anticipado o al convertirse una financiación en pago o abono (conversion_id), con su cobertura por línea. Escritura solo por fn_anticipo_proveedor_*.';
 create index if not exists idx_supplier_advance_withholdings_advance on public.supplier_advance_withholdings (advance_id);
 
 create table if not exists public.supplier_advance_withholding_ajustes (
@@ -145,8 +190,11 @@ create table if not exists public.supplier_advance_withholding_ajustes (
   valor numeric(16,2) not null check (valor <> 0),
   procedimiento text,
   soporte text,
-  causa text check (causa is null or causa in ('operacion_anulada', 'retencion_excesiva', 'devolucion_parcial')),
+  causa text check (causa is null or causa in ('operacion_anulada', 'resolucion_parcial', 'retencion_excesiva', 'devolucion_parcial')),
   periodo_descuento text check (periodo_descuento is null or periodo_descuento ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'),
+  -- Ronda 4: el período no es de libre elección; regla aplicada (renta/IVA: hecho; exceso: reintegro; ICA: procedimiento).
+  regla_periodo text,
+  hecho jsonb,
   requiere_correccion boolean,
   soportes jsonb,
   fecha timestamptz not null default now(),
@@ -169,6 +217,9 @@ create table if not exists public.supplier_advance_refunds (
   retencion_detalle jsonb,
   retenciones_determinadas boolean not null default true,
   procedimiento jsonb,
+  -- Ronda 4: líneas de la operación afectadas [{componente, base, iva}] y el soporte del hecho {tipo, documento, fecha}.
+  lineas jsonb,
+  hecho jsonb,
   soporte text not null,
   motivo text not null,
   asiento_id integer,
@@ -199,9 +250,12 @@ create index if not exists idx_supplier_advance_invoice_links_invoice on public.
 create table if not exists public.supplier_tax_qualities (
   id uuid primary key default gen_random_uuid(),
   organization_id integer not null references public.organizations(id) on delete cascade,
-  supplier_id integer not null references public.suppliers(id),
+  -- Ronda 4: el tercero puede ser un proveedor o un cliente (el comprador que retiene en una consignación).
+  supplier_id integer references public.suppliers(id),
+  customer_id uuid references public.customers(id),
   calidad text not null check (calidad in ('simple_acreditado', 'autorretenedor_renta', 'autorretencion_especial', 'responsable_iva', 'no_responsable_iva',
-                                            'gran_contribuyente', 'no_sujeto_ica')),
+                                            'gran_contribuyente', 'no_sujeto_ica', 'agente_retencion_renta', 'no_agente_retencion_renta',
+                                            'agente_retencion_iva', 'no_agente_retencion_iva', 'agente_retencion_ica')),
   soporte text not null check (length(btrim(soporte)) >= 3),
   conceptos text[] not null default '{}'::text[],
   vigente_desde date not null,
@@ -213,6 +267,7 @@ create table if not exists public.supplier_tax_qualities (
   alcance text,
   verificado_por uuid,
   verificado_en timestamptz not null default now(),
+  constraint supplier_tax_qualities_tercero check (num_nonnulls(supplier_id, customer_id) = 1),
   constraint supplier_tax_qualities_unica unique (organization_id, supplier_id, calidad, vigente_desde),
   constraint supplier_tax_qualities_vigencia check (vigente_hasta is null or vigente_hasta >= vigente_desde),
   constraint supplier_tax_qualities_autorretenedor check (calidad <> 'autorretenedor_renta' or cardinality(conceptos) > 0),
@@ -221,10 +276,14 @@ create table if not exists public.supplier_tax_qualities (
                                                or (rut_fecha is not null and length(btrim(coalesce(rut_archivo, ''))) >= 3)),
   constraint supplier_tax_qualities_resolucion check (calidad <> 'autorretenedor_renta'
                                                or (length(btrim(coalesce(resolucion_numero, ''))) >= 1 and resolucion_fecha is not null
-                                                   and length(btrim(coalesce(alcance, ''))) >= 3))
+                                                   and length(btrim(coalesce(alcance, ''))) >= 3)),
+  -- Ronda 4: la calidad de agente de reteIVA cita su fundamento (art. 437-2 E.T., numeral o acto que la designa).
+  constraint supplier_tax_qualities_agente_iva check (calidad <> 'agente_retencion_iva' or length(btrim(coalesce(alcance, ''))) >= 3)
 );
+create unique index if not exists supplier_tax_qualities_unica_cliente
+  on public.supplier_tax_qualities (organization_id, customer_id, calidad, vigente_desde) where customer_id is not null;
 comment on table public.supplier_tax_qualities is
-  'Calidades tributarias del proveedor VERIFICADAS con soporte y vigencia (no una marca genérica). simple_acreditado: RUT actualizado (fecha, archivo) e inscripción vigente (vigente_desde/hasta) en la fecha de la operación. autorretenedor_renta: RUT + resolución de autorización (número, fecha, alcance) y conceptos cubiertos. autorretencion_especial se registra pero NO excluye la retención por terceros.';
+  'Calidades tributarias VERIFICADAS de un tercero (proveedor o cliente) con soporte y vigencia. simple_acreditado: RUT actualizado e inscripción vigente. autorretenedor_renta: RUT + resolución (número, fecha, alcance) y conceptos cubiertos. agente_retencion_iva: con su fundamento (art. 437-2). autorretencion_especial se registra pero NO excluye la retención por terceros. Los códigos del RUT sin verificar nunca excluyen una retención.';
 
 create table if not exists public.reteica_reglas (
   id uuid primary key default gen_random_uuid(),
@@ -243,26 +302,94 @@ create table if not exists public.reteica_reglas (
 comment on table public.reteica_reglas is
   'Regla municipal de ReteICA: municipio, actividad, tarifa por mil con precisión (9,66 = 0,966 %), base mínima, norma y vigencia.';
 
-create table if not exists public.reteiva_aiu_reglas (
+-- Ronda 4: procedimiento de ReteICA por MUNICIPIO (no se traslada el de un municipio a otro). Sin uno validado, la
+-- reversión o el reintegro de reteICA de ese municipio quedan bloqueados.
+create table if not exists public.reteica_procedimientos (
   id uuid primary key default gen_random_uuid(),
   organization_id integer not null references public.organizations(id) on delete cascade,
-  base_iva text not null check (base_iva = 'utilidad'),
-  fundamento text not null check (length(btrim(fundamento)) >= 10),
+  municipality_id uuid not null references public.municipalities(id),
+  norma text not null check (length(btrim(norma)) >= 3),
+  solicitud text not null check (length(btrim(solicitud)) >= 10),
+  pruebas text[] not null check (cardinality(pruebas) >= 1),
+  reintegro text not null check (length(btrim(reintegro)) >= 10),
+  certificado text not null check (length(btrim(certificado)) >= 10),
+  periodo_descuento text not null check (periodo_descuento in ('periodo_del_reintegro', 'periodo_siguiente_al_reintegro', 'periodo_del_hecho')),
+  excedentes text not null check (length(btrim(excedentes)) >= 10),
+  estado text not null default 'pendiente_validacion' check (estado in ('pendiente_validacion', 'validado', 'rechazado')),
   vigente_desde date not null,
   vigente_hasta date,
-  aprobado_por uuid,
+  created_by uuid,
   created_at timestamptz not null default now(),
-  constraint reteiva_aiu_reglas_vigencia check (vigente_hasta is null or vigente_hasta >= vigente_desde)
+  validado_por uuid,
+  validado_en timestamptz,
+  validacion_concepto text,
+  validacion_soporte text,
+  constraint reteica_procedimientos_vigencia check (vigente_hasta is null or vigente_hasta >= vigente_desde),
+  constraint reteica_procedimientos_validado check (estado = 'pendiente_validacion' or (validado_por is not null and validado_en is not null
+                                                     and length(btrim(coalesce(validacion_concepto, ''))) >= 20 and length(btrim(coalesce(validacion_soporte, ''))) >= 3)),
+  constraint reteica_procedimientos_unico unique (organization_id, municipality_id, vigente_desde)
 );
-comment on table public.reteiva_aiu_reglas is
-  'Ronda 3 del Contador: el reteIVA de una operación con AIU no se calcula hasta que la organización registra la regla aplicable con su fundamento legal (hoy solo «IVA sobre la utilidad»; otra base sigue pendiente).';
+comment on table public.reteica_procedimientos is
+  'Procedimiento municipal de ReteICA para revertir o reintegrar retenciones: solicitud, pruebas, reintegro, certificado, regla del período de descuento y tratamiento de excedentes. Solo opera «validado».';
+
+-- Ronda 4: AIU en dos regímenes distintos, con fundamento estructurado y detrás de la validación del Contador.
+create table if not exists public.aiu_contratos (
+  id uuid primary key default gen_random_uuid(),
+  organization_id integer not null references public.organizations(id) on delete cascade,
+  supplier_id integer not null references public.suppliers(id),
+  regimen text not null check (regimen in ('servicios_462_1', 'construccion_inmuebles')),
+  operacion text not null check (length(btrim(operacion)) between 10 and 1000),
+  -- 462-1: solo los servicios que la norma comprende. Construcción: null.
+  servicio text check (servicio in ('aseo', 'vigilancia', 'temporales_empleo', 'cooperativas_trabajo_asociado',
+                                    'precooperativas_trabajo_asociado', 'contrato_sindical')),
+  contrato_numero text not null check (length(btrim(contrato_numero)) >= 1),
+  contrato_fecha date not null,
+  contrato_archivo text not null check (length(btrim(contrato_archivo)) >= 3),
+  contrato_valor numeric(16,2) not null check (contrato_valor > 0),
+  norma text not null check (length(btrim(norma)) >= 5),
+  -- 462-1: {aiu_discriminado: true, requisitos_prestador: texto}. Construcción: {objeto: 'construccion_inmueble',
+  -- licencia_construccion: número, honorarios_pactados: boolean}.
+  condiciones jsonb not null check (jsonb_typeof(condiciones) = 'object'),
+  -- Base de retefuente y de reteICA que el Contador valida para el contrato (la del IVA la fija la ley del régimen).
+  base_retefuente text not null check (base_retefuente in ('base_especial', 'valor_total')),
+  base_reteica text not null check (base_reteica in ('base_especial', 'valor_total')),
+  estado text not null default 'pendiente_validacion' check (estado in ('pendiente_validacion', 'validado', 'rechazado')),
+  vigente_desde date not null,
+  vigente_hasta date,
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  validado_por uuid,
+  validado_en timestamptz,
+  validacion_concepto text,
+  validacion_soporte text,
+  constraint aiu_contratos_vigencia check (vigente_hasta is null or vigente_hasta >= vigente_desde),
+  constraint aiu_contratos_servicio check ((regimen = 'servicios_462_1') = (servicio is not null)),
+  constraint aiu_contratos_construccion check (regimen <> 'construccion_inmuebles'
+    or (condiciones ->> 'objeto' = 'construccion_inmueble' and length(btrim(coalesce(condiciones ->> 'licencia_construccion', ''))) >= 3
+        and jsonb_typeof(condiciones -> 'honorarios_pactados') = 'boolean')),
+  constraint aiu_contratos_462_1 check (regimen <> 'servicios_462_1'
+    or ((condiciones -> 'aiu_discriminado') = 'true'::jsonb and length(btrim(coalesce(condiciones ->> 'requisitos_prestador', ''))) >= 10)),
+  constraint aiu_contratos_validado check (estado = 'pendiente_validacion' or (validado_por is not null and validado_en is not null
+                                            and length(btrim(coalesce(validacion_concepto, ''))) >= 20 and length(btrim(coalesce(validacion_soporte, ''))) >= 3))
+);
+comment on table public.aiu_contratos is
+  'Ronda 4 del Contador: contrato con AIU por régimen. servicios_462_1: base del IVA = A + I + U, nunca inferior al 10 % del valor de la operación, solo para los servicios comprendidos. construccion_inmuebles (DUR 1.3.1.7.9): honorarios del constructor o, si no se pactan, su utilidad, sin mínimo del 10 %. Ninguno opera sin «validado».';
+create index if not exists idx_aiu_contratos_supplier on public.aiu_contratos (organization_id, supplier_id);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'supplier_advances_aiu_contrato_fk') then
+    alter table public.supplier_advances add constraint supplier_advances_aiu_contrato_fk
+      foreign key (aiu_contrato_id) references public.aiu_contratos(id);
+  end if;
+end $$;
 
 create table if not exists public.anticipo_pendientes (
   id uuid primary key default gen_random_uuid(),
   organization_id integer not null references public.organizations(id) on delete cascade,
   advance_id uuid not null references public.supplier_advances(id),
   tipo text not null check (tipo in ('retencion_por_evaluar', 'retencion_duplicada', 'devolucion_retenciones_por_definir', 'anulacion_caja_cerrada',
-                                     'correccion_declaracion')),
+                                     'correccion_declaracion', 'descuento_retencion_siguientes_periodos', 'retencion_revertida_otro_anio')),
   detalle jsonb not null default '{}'::jsonb,
   estado text not null default 'abierto' check (estado in ('abierto', 'resuelto')),
   creado_en timestamptz not null default now(),
@@ -295,7 +422,7 @@ declare
 begin
   foreach v_t in array array['supplier_advance_withholdings', 'supplier_advance_withholding_ajustes', 'supplier_advance_refunds',
                              'supplier_advance_invoice_links', 'supplier_tax_qualities', 'reteica_reglas', 'anticipo_pendientes',
-                             'anticipos_cuenta_equivalencias', 'reteiva_aiu_reglas'] loop
+                             'anticipos_cuenta_equivalencias', 'aiu_contratos', 'reteica_procedimientos', 'supplier_advance_conversions'] loop
     execute format('alter table public.%I enable row level security', v_t);
     execute format('drop policy if exists %I on public.%I', v_t || '_select_miembros', v_t);
     execute format('create policy %I on public.%I for select to authenticated using (organization_id in (select om.organization_id from public.organization_members om where om.user_id = (select auth.uid()) and om.is_active))', v_t || '_select_miembros', v_t);
@@ -393,10 +520,10 @@ $function$;
 -- 3. Calidades del proveedor y reglas de ReteICA (datos verificados, finance.approve)
 -- ═════════════════════════════════════════════════════════════════════════════
 
-create or replace function public.fn_proveedor_calidad_tributaria_guardar(
-  p_organization_id integer, p_supplier integer, p_calidad text, p_soporte text, p_conceptos text[], p_vigente_desde date, p_vigente_hasta date default null,
-  p_rut_fecha date default null, p_rut_archivo text default null, p_resolucion_numero text default null, p_resolucion_fecha date default null,
-  p_alcance text default null)
+-- INTERNA. Una sola validación para proveedores y clientes (ronda 4: el comprador de una consignación también acredita).
+create or replace function public.fn_tercero_calidad_tributaria_guardar_int(
+  p_organization_id integer, p_supplier integer, p_customer uuid, p_calidad text, p_soporte text, p_conceptos text[], p_vigente_desde date,
+  p_vigente_hasta date, p_rut_fecha date, p_rut_archivo text, p_resolucion_numero text, p_resolucion_fecha date, p_alcance text)
  returns uuid language plpgsql security definer set search_path to 'public', 'pg_temp'
 as $function$
 declare
@@ -404,9 +531,13 @@ declare
 begin
   if auth.uid() is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
   perform public.fn_finanzas_exigir_permiso(p_organization_id, array['finance.approve']);
-  if not exists (select 1 from public.suppliers s where s.id = p_supplier and s.organization_id = p_organization_id) then
+  if p_supplier is not null and not exists (select 1 from public.suppliers s where s.id = p_supplier and s.organization_id = p_organization_id) then
     raise exception 'proveedor_no_encontrado' using errcode = 'P0002';
   end if;
+  if p_customer is not null and not exists (select 1 from public.customers c where c.id = p_customer and c.organization_id = p_organization_id) then
+    raise exception 'cliente_no_encontrado' using errcode = 'P0002';
+  end if;
+  if num_nonnulls(p_supplier, p_customer) <> 1 then raise exception 'tercero_invalido' using errcode = '22023'; end if;
   if p_vigente_desde is null then raise exception 'vigencia_invalida' using errcode = '22023'; end if;
   if p_calidad in ('simple_acreditado', 'autorretenedor_renta') and (p_rut_fecha is null or length(btrim(coalesce(p_rut_archivo, ''))) < 3) then
     raise exception 'rut_obligatorio' using errcode = '22023', hint = 'RUT actualizado: fecha y archivo.';
@@ -415,22 +546,127 @@ begin
                                              or length(btrim(coalesce(p_alcance, ''))) < 3 or cardinality(coalesce(p_conceptos, '{}'::text[])) = 0) then
     raise exception 'resolucion_autorretencion_obligatoria' using errcode = '22023', hint = 'Número, fecha, alcance y conceptos de la resolución.';
   end if;
-  insert into public.supplier_tax_qualities (organization_id, supplier_id, calidad, soporte, conceptos, vigente_desde, vigente_hasta, rut_fecha, rut_archivo,
-                                             resolucion_numero, resolucion_fecha, alcance, verificado_por)
-  values (p_organization_id, p_supplier, p_calidad, btrim(coalesce(p_soporte, '')), coalesce(p_conceptos, '{}'::text[]), p_vigente_desde, p_vigente_hasta,
-          p_rut_fecha, nullif(btrim(coalesce(p_rut_archivo, '')), ''), nullif(btrim(coalesce(p_resolucion_numero, '')), ''), p_resolucion_fecha,
-          nullif(btrim(coalesce(p_alcance, '')), ''), auth.uid())
-  on conflict (organization_id, supplier_id, calidad, vigente_desde) do update
-     set soporte = excluded.soporte, conceptos = excluded.conceptos, vigente_hasta = excluded.vigente_hasta, rut_fecha = excluded.rut_fecha,
-         rut_archivo = excluded.rut_archivo, resolucion_numero = excluded.resolucion_numero, resolucion_fecha = excluded.resolucion_fecha,
-         alcance = excluded.alcance, verificado_por = excluded.verificado_por, verificado_en = now()
+  if p_calidad = 'agente_retencion_iva' and length(btrim(coalesce(p_alcance, ''))) < 3 then
+    raise exception 'fundamento_agente_reteiva_obligatorio' using errcode = '22023', hint = 'Cite el numeral del art. 437-2 E.T. o el acto que lo designa.';
+  end if;
+  if p_supplier is not null then
+    insert into public.supplier_tax_qualities (organization_id, supplier_id, calidad, soporte, conceptos, vigente_desde, vigente_hasta, rut_fecha, rut_archivo,
+                                               resolucion_numero, resolucion_fecha, alcance, verificado_por)
+    values (p_organization_id, p_supplier, p_calidad, btrim(coalesce(p_soporte, '')), coalesce(p_conceptos, '{}'::text[]), p_vigente_desde, p_vigente_hasta,
+            p_rut_fecha, nullif(btrim(coalesce(p_rut_archivo, '')), ''), nullif(btrim(coalesce(p_resolucion_numero, '')), ''), p_resolucion_fecha,
+            nullif(btrim(coalesce(p_alcance, '')), ''), auth.uid())
+    on conflict (organization_id, supplier_id, calidad, vigente_desde) do update
+       set soporte = excluded.soporte, conceptos = excluded.conceptos, vigente_hasta = excluded.vigente_hasta, rut_fecha = excluded.rut_fecha,
+           rut_archivo = excluded.rut_archivo, resolucion_numero = excluded.resolucion_numero, resolucion_fecha = excluded.resolucion_fecha,
+           alcance = excluded.alcance, verificado_por = excluded.verificado_por, verificado_en = now()
+    returning id into v_id;
+  else
+    insert into public.supplier_tax_qualities (organization_id, customer_id, calidad, soporte, conceptos, vigente_desde, vigente_hasta, rut_fecha, rut_archivo,
+                                               resolucion_numero, resolucion_fecha, alcance, verificado_por)
+    values (p_organization_id, p_customer, p_calidad, btrim(coalesce(p_soporte, '')), coalesce(p_conceptos, '{}'::text[]), p_vigente_desde, p_vigente_hasta,
+            p_rut_fecha, nullif(btrim(coalesce(p_rut_archivo, '')), ''), nullif(btrim(coalesce(p_resolucion_numero, '')), ''), p_resolucion_fecha,
+            nullif(btrim(coalesce(p_alcance, '')), ''), auth.uid())
+    on conflict (organization_id, customer_id, calidad, vigente_desde) where customer_id is not null do update
+       set soporte = excluded.soporte, conceptos = excluded.conceptos, vigente_hasta = excluded.vigente_hasta, rut_fecha = excluded.rut_fecha,
+           rut_archivo = excluded.rut_archivo, resolucion_numero = excluded.resolucion_numero, resolucion_fecha = excluded.resolucion_fecha,
+           alcance = excluded.alcance, verificado_por = excluded.verificado_por, verificado_en = now()
+    returning id into v_id;
+  end if;
+  return v_id;
+end;
+$function$;
+
+create or replace function public.fn_proveedor_calidad_tributaria_guardar(
+  p_organization_id integer, p_supplier integer, p_calidad text, p_soporte text, p_conceptos text[], p_vigente_desde date, p_vigente_hasta date default null,
+  p_rut_fecha date default null, p_rut_archivo text default null, p_resolucion_numero text default null, p_resolucion_fecha date default null,
+  p_alcance text default null)
+ returns uuid language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+begin
+  if p_supplier is null then raise exception 'proveedor_no_encontrado' using errcode = 'P0002'; end if;
+  return public.fn_tercero_calidad_tributaria_guardar_int(p_organization_id, p_supplier, null, p_calidad, p_soporte, p_conceptos, p_vigente_desde,
+           p_vigente_hasta, p_rut_fecha, p_rut_archivo, p_resolucion_numero, p_resolucion_fecha, p_alcance);
+end;
+$function$;
+
+-- Ronda 4: el cliente (comprador) acredita sus calidades con la misma regla (p. ej., agente de reteIVA con su fundamento).
+create or replace function public.fn_cliente_calidad_tributaria_guardar(
+  p_organization_id integer, p_customer uuid, p_calidad text, p_soporte text, p_conceptos text[], p_vigente_desde date, p_vigente_hasta date default null,
+  p_rut_fecha date default null, p_rut_archivo text default null, p_resolucion_numero text default null, p_resolucion_fecha date default null,
+  p_alcance text default null)
+ returns uuid language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+begin
+  if p_customer is null then raise exception 'cliente_no_encontrado' using errcode = 'P0002'; end if;
+  return public.fn_tercero_calidad_tributaria_guardar_int(p_organization_id, null, p_customer, p_calidad, p_soporte, p_conceptos, p_vigente_desde,
+           p_vigente_hasta, p_rut_fecha, p_rut_archivo, p_resolucion_numero, p_resolucion_fecha, p_alcance);
+end;
+$function$;
+
+-- Ronda 4: contrato con AIU por régimen, con fundamento estructurado. Nace «pendiente_validacion»: no se calcula nada
+-- con él hasta que el Contador lo valide (fn_tributario_regla_validar).
+-- p_contrato: {numero, fecha, archivo, valor}. p_condiciones: ver aiu_contratos.condiciones.
+create or replace function public.fn_aiu_contrato_registrar(
+  p_organization_id integer, p_supplier integer, p_regimen text, p_operacion text, p_servicio text, p_contrato jsonb, p_norma text,
+  p_condiciones jsonb, p_base_retefuente text, p_base_reteica text, p_vigente_desde date, p_vigente_hasta date default null)
+ returns uuid language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_id uuid;
+  v_c jsonb := coalesce(p_condiciones, '{}'::jsonb);
+  v_valor numeric;
+  v_fecha date;
+begin
+  if auth.uid() is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
+  perform public.fn_finanzas_exigir_permiso(p_organization_id, array['finance.approve']);
+  if not exists (select 1 from public.suppliers s where s.id = p_supplier and s.organization_id = p_organization_id) then
+    raise exception 'proveedor_no_encontrado' using errcode = 'P0002';
+  end if;
+  if p_regimen is null or p_regimen not in ('servicios_462_1', 'construccion_inmuebles') then
+    raise exception 'aiu_regimen_invalido' using errcode = '22023', hint = 'Servicios del art. 462-1 E.T. o construcción de inmuebles (DUR 1.3.1.7.9).';
+  end if;
+  -- Mantenimiento o reparación no se vuelven construcción por escribir «AIU» en el contrato.
+  if v_c ->> 'objeto' in ('mantenimiento', 'reparacion', 'adecuacion', 'remodelacion_menor') then
+    raise exception 'aiu_mantenimiento_no_es_construccion' using errcode = '22023';
+  end if;
+  if p_regimen = 'construccion_inmuebles' and (v_c ->> 'objeto' is distinct from 'construccion_inmueble'
+       or length(btrim(coalesce(v_c ->> 'licencia_construccion', ''))) < 3 or jsonb_typeof(v_c -> 'honorarios_pactados') is distinct from 'boolean') then
+    raise exception 'aiu_condiciones_construccion' using errcode = '22023',
+      hint = 'Objeto «construccion_inmueble», licencia de construcción y si se pactaron honorarios del constructor.';
+  end if;
+  if p_regimen = 'servicios_462_1' and (p_servicio is null or (v_c -> 'aiu_discriminado') is distinct from 'true'::jsonb
+       or length(btrim(coalesce(v_c ->> 'requisitos_prestador', ''))) < 10) then
+    raise exception 'aiu_condiciones_462_1' using errcode = '22023',
+      hint = 'Servicio comprendido en el art. 462-1, AIU discriminado en el contrato y los requisitos legales del prestador.';
+  end if;
+  if p_regimen = 'construccion_inmuebles' and p_servicio is not null then raise exception 'aiu_regimen_invalido' using errcode = '22023'; end if;
+  begin
+    v_valor := (p_contrato ->> 'valor')::numeric;
+    v_fecha := (p_contrato ->> 'fecha')::date;
+  exception when others then
+    raise exception 'aiu_contrato_incompleto' using errcode = '22023';
+  end;
+  if v_valor is null or v_valor <= 0 or v_fecha is null or length(btrim(coalesce(p_contrato ->> 'numero', ''))) < 1
+     or length(btrim(coalesce(p_contrato ->> 'archivo', ''))) < 3 then
+    raise exception 'aiu_contrato_incompleto' using errcode = '22023', hint = 'Número, fecha, archivo y valor del contrato.';
+  end if;
+  if p_operacion is null or length(btrim(p_operacion)) < 10 or p_norma is null or length(btrim(p_norma)) < 5 then
+    raise exception 'aiu_fundamento_incompleto' using errcode = '22023', hint = 'Operación y norma aplicable.';
+  end if;
+  if p_vigente_desde is null then raise exception 'vigencia_invalida' using errcode = '22023'; end if;
+  insert into public.aiu_contratos (organization_id, supplier_id, regimen, operacion, servicio, contrato_numero, contrato_fecha, contrato_archivo,
+                                    contrato_valor, norma, condiciones, base_retefuente, base_reteica, vigente_desde, vigente_hasta, created_by)
+  values (p_organization_id, p_supplier, p_regimen, btrim(p_operacion), p_servicio, btrim(p_contrato ->> 'numero'), v_fecha, btrim(p_contrato ->> 'archivo'),
+          v_valor, btrim(p_norma), v_c, p_base_retefuente, p_base_reteica, p_vigente_desde, p_vigente_hasta, auth.uid())
   returning id into v_id;
   return v_id;
 end;
 $function$;
 
-create or replace function public.fn_reteiva_aiu_regla_guardar(
-  p_organization_id integer, p_fundamento text, p_vigente_desde date, p_vigente_hasta date default null, p_base_iva text default 'utilidad')
+-- Ronda 4: procedimiento de ReteICA de UN municipio. Nace «pendiente_validacion».
+create or replace function public.fn_reteica_procedimiento_registrar(
+  p_organization_id integer, p_municipio uuid, p_norma text, p_solicitud text, p_pruebas text[], p_reintegro text, p_certificado text,
+  p_periodo_descuento text, p_excedentes text, p_vigente_desde date, p_vigente_hasta date default null)
  returns uuid language plpgsql security definer set search_path to 'public', 'pg_temp'
 as $function$
 declare
@@ -438,12 +674,64 @@ declare
 begin
   if auth.uid() is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
   perform public.fn_finanzas_exigir_permiso(p_organization_id, array['finance.approve']);
-  if p_fundamento is null or length(btrim(p_fundamento)) < 10 then raise exception 'fundamento_obligatorio' using errcode = '22023'; end if;
+  if not exists (select 1 from public.municipalities m where m.id = p_municipio) then raise exception 'municipio_invalido' using errcode = '22023'; end if;
   if p_vigente_desde is null then raise exception 'vigencia_invalida' using errcode = '22023'; end if;
-  insert into public.reteiva_aiu_reglas (organization_id, base_iva, fundamento, vigente_desde, vigente_hasta, aprobado_por)
-  values (p_organization_id, p_base_iva, btrim(p_fundamento), p_vigente_desde, p_vigente_hasta, auth.uid())
-  returning id into v_id;
+  if cardinality(coalesce(p_pruebas, '{}'::text[])) = 0 or exists (select 1 from unnest(p_pruebas) x where length(btrim(coalesce(x, ''))) < 3) then
+    raise exception 'procedimiento_ica_incompleto' using errcode = '22023', detail = 'pruebas';
+  end if;
+  begin
+    insert into public.reteica_procedimientos (organization_id, municipality_id, norma, solicitud, pruebas, reintegro, certificado, periodo_descuento,
+                                               excedentes, vigente_desde, vigente_hasta, created_by)
+    values (p_organization_id, p_municipio, btrim(coalesce(p_norma, '')), btrim(coalesce(p_solicitud, '')), p_pruebas, btrim(coalesce(p_reintegro, '')),
+            btrim(coalesce(p_certificado, '')), p_periodo_descuento, btrim(coalesce(p_excedentes, '')), p_vigente_desde, p_vigente_hasta, auth.uid())
+    returning id into v_id;
+  exception when check_violation or not_null_violation then
+    raise exception 'procedimiento_ica_incompleto' using errcode = '22023',
+      hint = 'Norma, solicitud, pruebas, reintegro, certificado, período de descuento y excedentes.';
+  end;
   return v_id;
+end;
+$function$;
+
+-- Ronda 4: la validación del Contador de un contrato AIU o de un procedimiento de ReteICA. Exige finance.approve, un
+-- concepto (mínimo 20 caracteres) y su soporte, y que quien valida NO sea quien registró. Solo «validado» opera.
+create or replace function public.fn_tributario_regla_validar(
+  p_tipo text, p_id uuid, p_decision text, p_concepto text, p_soporte text, p_organization_id integer)
+ returns jsonb language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_org integer;
+  v_autor uuid;
+  v_estado text;
+begin
+  if auth.uid() is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
+  if p_tipo = 'aiu_contrato' then
+    select organization_id, created_by, estado into v_org, v_autor, v_estado from public.aiu_contratos where id = p_id for update;
+  elsif p_tipo = 'reteica_procedimiento' then
+    select organization_id, created_by, estado into v_org, v_autor, v_estado from public.reteica_procedimientos where id = p_id for update;
+  else
+    raise exception 'tipo_invalido' using errcode = '22023';
+  end if;
+  if v_org is null or v_org <> p_organization_id then raise exception 'regla_no_encontrada' using errcode = 'P0002'; end if;
+  perform public.fn_finanzas_exigir_permiso(v_org, array['finance.approve']);
+  if p_decision is null or p_decision not in ('validado', 'rechazado') then raise exception 'decision_invalida' using errcode = '22023'; end if;
+  if v_estado <> 'pendiente_validacion' then raise exception 'regla_ya_decidida' using errcode = '22023'; end if;
+  if v_autor = auth.uid() then
+    raise exception 'validador_debe_ser_distinto' using errcode = '42501', hint = 'La validación la hace el Contador, no quien registró la regla.';
+  end if;
+  if p_concepto is null or length(btrim(p_concepto)) < 20 then raise exception 'concepto_obligatorio' using errcode = '22023'; end if;
+  if p_soporte is null or length(btrim(p_soporte)) < 3 then raise exception 'soporte_obligatorio' using errcode = '22023'; end if;
+  if p_tipo = 'aiu_contrato' then
+    update public.aiu_contratos set estado = p_decision, validado_por = auth.uid(), validado_en = now(), validacion_concepto = btrim(p_concepto),
+           validacion_soporte = btrim(p_soporte) where id = p_id;
+  else
+    update public.reteica_procedimientos set estado = p_decision, validado_por = auth.uid(), validado_en = now(), validacion_concepto = btrim(p_concepto),
+           validacion_soporte = btrim(p_soporte) where id = p_id;
+  end if;
+  insert into public.finance_audit_log (organization_id, entity, entity_id, action, user_id, diff, reason)
+  values (v_org, case when p_tipo = 'aiu_contrato' then 'aiu_contratos' else 'reteica_procedimientos' end, p_id::text, 'update', auth.uid(),
+          jsonb_build_object('decision', p_decision, 'soporte', btrim(p_soporte)), btrim(p_concepto));
+  return jsonb_build_object('id', p_id, 'estado', p_decision);
 end;
 $function$;
 
@@ -513,11 +801,12 @@ end;
 $function$;
 
 -- ═════════════════════════════════════════════════════════════════════════════
--- 5. Evaluación de retenciones (P1 + ronda 2)
+-- 5. Criterios tributarios COMPARTIDOS (ronda 4: anticipos y consignación usan esta misma lógica) y evaluación
+--    de retenciones de un anticipo
 -- ═════════════════════════════════════════════════════════════════════════════
 
 -- Un concepto de retención configurado sobre una base (tarifa exacta de 20261108165000; cuenta de las compras).
-create or replace function public.fn_anticipo_retencion_practicar(p_org integer, p_clase text, p_tax uuid, p_base numeric)
+create or replace function public.fn_tributario_retencion_practicar(p_org integer, p_clase text, p_tax uuid, p_base numeric)
  returns jsonb language plpgsql stable security definer set search_path to 'public', 'pg_temp'
 as $function$
 declare
@@ -555,34 +844,335 @@ $function$;
 -- aiu_administracion · aiu_imprevistos · aiu_utilidad (el IVA del AIU va sobre la utilidad). Sin componentes solo se admite
 -- una suma homogénea con IVA incluido a la tarifa general (19 %, ET art. 468): base = monto / 1,19.
 -- p_reteica: regla municipal (reteica_reglas); p_ica_territorial: la actividad se realiza en ese municipio.
+-- ¿Tiene el tercero la responsabilidad del RUT? Acepta «O-13», «13», «O-07», «7».
+create or replace function public.fn_rut_tiene(p_resp text[], p_codigo text)
+ returns boolean language sql immutable set search_path to 'public', 'pg_temp'
+as $function$
+  select exists (select 1 from unnest(coalesce(p_resp, '{}'::text[])) r where regexp_replace(upper(btrim(r)), '^O-?0*', '') = p_codigo);
+$function$;
+
+-- La calidad VERIFICADA vigente de un tercero en una fecha (SIMPLE y autorretenedor: con el RUT y la resolución
+-- anteriores a la fecha). Fila nula si no hay.
+create or replace function public.fn_tributario_calidad_vigente(p_org integer, p_supplier integer, p_customer uuid, p_calidad text, p_fecha date)
+ returns public.supplier_tax_qualities language sql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+  select q.* from public.supplier_tax_qualities q
+   where q.organization_id = p_org and q.calidad = p_calidad
+     and ((p_supplier is not null and q.supplier_id = p_supplier) or (p_customer is not null and q.customer_id = p_customer))
+     and q.vigente_desde <= p_fecha and (q.vigente_hasta is null or q.vigente_hasta >= p_fecha)
+     and (q.calidad not in ('simple_acreditado', 'autorretenedor_renta') or (q.rut_fecha is not null and q.rut_fecha <= p_fecha))
+     and (q.calidad <> 'autorretenedor_renta' or (q.resolucion_fecha is not null and q.resolucion_fecha <= p_fecha))
+   order by q.vigente_desde desc limit 1;
+$function$;
+
+-- Calidades tributarias de un tercero (proveedor o cliente) en una fecha. Regla de la ronda 4: lo VERIFICADO manda; un
+-- código del RUT sirve para INCLUIR una obligación (agente según el RUT: 07 o 13 en renta; 09, 13 o 23 en IVA), nunca
+-- para EXCLUIRLA (O-15 sin resolución verificada, O-47 sin acreditar: la retención queda pendiente). Sin calidad de
+-- agente acreditada ni código que la indique, el agente queda «por acreditar» (null), no «no agente».
+create or replace function public.fn_tributario_calidades_tercero(p_org integer, p_supplier integer, p_customer uuid, p_fecha date)
+ returns jsonb language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_resp text[];
+  v_reg text := '';
+  v_q public.supplier_tax_qualities;
+  v_verificadas boolean;
+  v_autorret text[];
+  v_resp_iva boolean;
+  v_ag_renta boolean;
+  v_ag_iva boolean;
+  v_ag_iva_fund text;
+begin
+  if p_supplier is not null then
+    select coalesce(s.fiscal_responsibilities, '{}'::text[]), lower(coalesce(nullif(btrim(s.tax_regime), ''), '')) into v_resp, v_reg
+      from public.suppliers s where s.id = p_supplier and s.organization_id = p_org;
+    if not found then return jsonb_build_object('existe', false, 'con_datos', false, 'motivo', 'tercero_no_encontrado'); end if;
+  elsif p_customer is not null then
+    select coalesce(c.fiscal_responsibilities, '{}'::text[]) into v_resp from public.customers c where c.id = p_customer and c.organization_id = p_org;
+    if not found then return jsonb_build_object('existe', false, 'con_datos', false, 'motivo', 'tercero_no_encontrado'); end if;
+  else
+    return jsonb_build_object('existe', false, 'con_datos', false, 'motivo', 'sin_tercero');
+  end if;
+  v_verificadas := exists (select 1 from public.supplier_tax_qualities q
+                            where q.organization_id = p_org
+                              and ((p_supplier is not null and q.supplier_id = p_supplier) or (p_customer is not null and q.customer_id = p_customer))
+                              and q.vigente_desde <= p_fecha and (q.vigente_hasta is null or q.vigente_hasta >= p_fecha));
+  v_q := public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'autorretenedor_renta', p_fecha);
+  v_autorret := case when v_q.id is not null then v_q.conceptos end;
+  v_resp_iva := case
+    when (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'responsable_iva', p_fecha)).id is not null then true
+    when (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'no_responsable_iva', p_fecha)).id is not null then false
+    when public.fn_rut_tiene(v_resp, '49') or v_reg = 'no_responsable' then false
+    when public.fn_rut_tiene(v_resp, '48') or v_reg in ('comun', 'gran_contribuyente') then true
+    else null end;
+  v_ag_renta := case
+    when (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'agente_retencion_renta', p_fecha)).id is not null then true
+    when (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'no_agente_retencion_renta', p_fecha)).id is not null then false
+    when public.fn_rut_tiene(v_resp, '7') or public.fn_rut_tiene(v_resp, '13') then true
+    else null end;
+  v_q := public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'agente_retencion_iva', p_fecha);
+  if v_q.id is not null then
+    v_ag_iva := true;
+    v_ag_iva_fund := v_q.alcance;
+  elsif (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'no_agente_retencion_iva', p_fecha)).id is not null then
+    v_ag_iva := false;
+  elsif public.fn_rut_tiene(v_resp, '9') or public.fn_rut_tiene(v_resp, '13') or public.fn_rut_tiene(v_resp, '23') then
+    v_ag_iva := true;
+    v_ag_iva_fund := 'RUT';
+  end if;
+  return jsonb_build_object(
+    'existe', true, 'tipo', case when p_supplier is not null then 'proveedor' else 'cliente' end, 'fecha', p_fecha,
+    'responsabilidades', to_jsonb(v_resp), 'regimen', nullif(v_reg, ''),
+    'con_datos', cardinality(v_resp) > 0 or v_reg <> '' or v_verificadas,
+    'motivo', case when not (cardinality(v_resp) > 0 or v_reg <> '' or v_verificadas) then 'sin_datos_fiscales' end,
+    'simple_acreditado', (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'simple_acreditado', p_fecha)).id is not null,
+    'simple_declarado', public.fn_rut_tiene(v_resp, '47') or v_reg = 'simple',
+    'autorretencion_conceptos', to_jsonb(v_autorret), 'autorretenedor_declarado', public.fn_rut_tiene(v_resp, '15'),
+    'responsable_iva', v_resp_iva,
+    'gran_contribuyente', public.fn_rut_tiene(v_resp, '13') or v_reg = 'gran_contribuyente'
+                          or (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'gran_contribuyente', p_fecha)).id is not null,
+    'no_sujeto_ica', (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'no_sujeto_ica', p_fecha)).id is not null,
+    'agente_renta', v_ag_renta, 'agente_iva', v_ag_iva, 'agente_iva_fundamento', v_ag_iva_fund,
+    'agente_ica', case when (public.fn_tributario_calidad_vigente(p_org, p_supplier, p_customer, 'agente_retencion_ica', p_fecha)).id is not null then true end);
+end;
+$function$;
+
+-- Calidades de la propia organización en una fecha: su perfil tributario vigente (20261108160500). Sin perfil o con
+-- «requiere_revision»: sin datos. La autorretención del perfil no trae alcance ni conceptos: no excluye nada (pendiente).
+create or replace function public.fn_tributario_calidades_organizacion(p_org integer, p_fecha date)
+ returns jsonb language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_p jsonb;
+  v_resp text[];
+  v_reg text;
+  v_ag_iva boolean;
+begin
+  select to_jsonb(p) into v_p from public.organization_tax_profiles p
+   where p.organization_id = p_org and p.vigente_desde <= p_fecha and (p.vigente_hasta is null or p.vigente_hasta >= p_fecha)
+   order by p.vigente_desde desc limit 1;
+  if v_p is null then
+    return jsonb_build_object('existe', true, 'tipo', 'organizacion', 'con_datos', false, 'motivo', 'sin_perfil_tributario', 'fecha', p_fecha);
+  end if;
+  if coalesce((v_p ->> 'requiere_revision')::boolean, false) then
+    return jsonb_build_object('existe', true, 'tipo', 'organizacion', 'con_datos', false, 'motivo', 'perfil_requiere_revision', 'fecha', p_fecha);
+  end if;
+  v_resp := coalesce(array(select jsonb_array_elements_text(coalesce(v_p -> 'responsabilidades', '[]'::jsonb))), '{}'::text[]);
+  v_reg := coalesce(v_p ->> 'regimen_renta', v_p ->> 'regimen');
+  if v_p ->> 'agente_retencion_iva' is null and v_p ->> 'gran_contribuyente' is null then
+    v_ag_iva := public.fn_rut_tiene(v_resp, '13') or public.fn_rut_tiene(v_resp, '23');
+  else
+    v_ag_iva := coalesce((v_p ->> 'agente_retencion_iva')::boolean, false) or coalesce((v_p ->> 'gran_contribuyente')::boolean, false);
+  end if;
+  return jsonb_build_object(
+    'existe', true, 'tipo', 'organizacion', 'con_datos', true, 'fecha', p_fecha, 'perfil_desde', v_p ->> 'vigente_desde',
+    'responsabilidades', to_jsonb(v_resp), 'regimen', v_reg,
+    'simple_acreditado', v_reg = 'simple', 'simple_declarado', v_reg = 'simple' or public.fn_rut_tiene(v_resp, '47'),
+    'autorretencion_conceptos', null,
+    'autorretenedor_declarado', coalesce((v_p ->> 'autorretenedor')::boolean, false) or public.fn_rut_tiene(v_resp, '15'),
+    'responsable_iva', case v_p ->> 'condicion_iva' when 'responsable' then true when 'no_responsable' then false
+                         else case when public.fn_rut_tiene(v_resp, '48') then true when public.fn_rut_tiene(v_resp, '49') then false end end,
+    'gran_contribuyente', coalesce((v_p ->> 'gran_contribuyente')::boolean, public.fn_rut_tiene(v_resp, '13')),
+    'no_sujeto_ica', false,
+    'agente_renta', coalesce((v_p ->> 'agente_retencion')::boolean, false),
+    'agente_iva', v_ag_iva, 'agente_iva_fundamento', 'perfil_tributario',
+    -- Agente de ReteICA: la organización registró la regla municipal vigente (reteica_reglas).
+    'agente_ica', exists (select 1 from public.reteica_reglas r where r.organization_id = p_org and r.vigente_desde <= p_fecha
+                            and (r.vigente_hasta is null or r.vigente_hasta >= p_fecha)));
+end;
+$function$;
+
+-- LA evaluación de una clase de retención entre un pagador y un beneficiario (ronda 4: la usan anticipos y
+-- consignación). p_regla: organization_taxes (retefuente/reteIVA) o reteica_reglas (reteICA). Devuelve el estado
+-- 'practicar' (con concepto, tarifa, base, valor y cuenta) | 'no_aplica' | 'pendiente', con su motivo. Nunca 0 ni
+-- tarifa fija; nada se excluye por una calidad sin acreditar.
+create or replace function public.fn_tributario_evaluar_retencion(
+  p_org integer, p_clase text, p_pagador jsonb, p_beneficiario jsonb, p_regla uuid, p_base numeric, p_fecha date, p_territorial boolean default null)
+ returns jsonb language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_base numeric := round(coalesce(p_base, 0), 2);
+  v_pag_org boolean := coalesce(p_pagador ->> 'tipo', '') = 'organizacion';
+  v_c record;
+  v_r record;
+  v_uvt numeric;
+  v_conceptos text[];
+  v_fila jsonb;
+  v_cuenta text;
+  v_valor numeric;
+begin
+  if p_clase is null or p_clase not in ('retefuente', 'reteiva', 'reteica') then raise exception 'clase_invalida' using errcode = '22023'; end if;
+  if v_base <= 0 then
+    return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', case when p_clase = 'reteiva' then 'operacion_sin_iva' else 'sin_base' end);
+  end if;
+  if not coalesce((p_pagador ->> 'con_datos')::boolean, false) then
+    return jsonb_build_object('clase', p_clase, 'estado', 'pendiente',
+      'motivo', case when v_pag_org then coalesce(p_pagador ->> 'motivo', 'sin_perfil_tributario') else 'calidad_pagador_sin_datos' end);
+  end if;
+  if p_clase <> 'reteica' and not coalesce((p_beneficiario ->> 'con_datos')::boolean, false) then
+    return jsonb_build_object('clase', p_clase, 'estado', 'pendiente',
+      'motivo', case when p_beneficiario ->> 'tipo' = 'organizacion' then coalesce(p_beneficiario ->> 'motivo', 'sin_perfil_tributario')
+                     else 'beneficiario_sin_datos_fiscales' end);
+  end if;
+
+  if p_clase = 'retefuente' then
+    if (p_pagador ->> 'agente_renta') is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'calidad_agente_retencion_por_acreditar');
+    elsif not (p_pagador ->> 'agente_renta')::boolean then
+      return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'pagador_no_agente_retencion');
+    end if;
+    if coalesce((p_beneficiario ->> 'simple_acreditado')::boolean, false) then
+      return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'beneficiario_simple_acreditado');
+    elsif coalesce((p_beneficiario ->> 'simple_declarado')::boolean, false) then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'simple_sin_acreditar');
+    end if;
+    if p_regla is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'sin_regla_configurada');
+    end if;
+    select ot.id, ot.name, tt.code, ot.min_base_uvt, coalesce(ot.is_active, false) as activa, public.fn_clase_retencion(tt.code, ot.name) as clase
+      into v_c from public.organization_taxes ot left join public.tax_templates tt on tt.id = ot.template_id
+     where ot.id = p_regla and ot.organization_id = p_org and ot.kind = 'withholding';
+    if v_c.id is null or not v_c.activa or v_c.clase is distinct from 'retefuente' then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'regla_no_vigente');
+    end if;
+    if jsonb_typeof(p_beneficiario -> 'autorretencion_conceptos') = 'array' then
+      v_conceptos := array(select jsonb_array_elements_text(p_beneficiario -> 'autorretencion_conceptos'));
+      if v_c.code = any (v_conceptos) or p_regla::text = any (v_conceptos) then
+        return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'autorretenedor_autorizado_concepto', 'concepto', v_c.name);
+      end if;
+      -- Resolución verificada que NO cubre este concepto: se retiene.
+    elsif coalesce((p_beneficiario ->> 'autorretenedor_declarado')::boolean, false) then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'autorretencion_sin_verificar');
+    end if;
+    v_fila := public.fn_tributario_retencion_practicar(p_org, 'retefuente', p_regla, v_base);
+    if v_c.min_base_uvt is not null then
+      select u.value into v_uvt from public.fiscal_uvt u
+       where u.country_code = (select coalesce(nullif(btrim(o.country_code), ''), 'COL') from public.organizations o where o.id = p_org)
+         and u.year = extract(year from p_fecha)::integer;
+      if v_uvt is null then
+        return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'sin_uvt');
+      elsif v_base < round(v_c.min_base_uvt * v_uvt, 0) then
+        return v_fila || jsonb_build_object('estado', 'no_aplica', 'motivo', 'bajo_base_minima', 'valor', 0, 'base_minima', round(v_c.min_base_uvt * v_uvt, 0));
+      end if;
+    end if;
+  elsif p_clase = 'reteiva' then
+    if (p_beneficiario ->> 'responsable_iva') is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'calidad_iva_beneficiario_sin_datos');
+    elsif not (p_beneficiario ->> 'responsable_iva')::boolean then
+      return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'beneficiario_no_responsable_iva');
+    end if;
+    if (p_pagador ->> 'agente_iva') is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'calidad_agente_reteiva_por_acreditar');
+    elsif not (p_pagador ->> 'agente_iva')::boolean then
+      if (coalesce((p_beneficiario ->> 'simple_acreditado')::boolean, false) or coalesce((p_beneficiario ->> 'simple_declarado')::boolean, false))
+         and coalesce((p_pagador ->> 'responsable_iva')::boolean, false) then
+        return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'supuesto_compra_a_simple_por_confirmar');
+      end if;
+      return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'pagador_no_agente_reteiva');
+    end if;
+    if coalesce((p_pagador ->> 'gran_contribuyente')::boolean, false) and coalesce((p_beneficiario ->> 'gran_contribuyente')::boolean, false) then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'grandes_contribuyentes_por_verificar');
+    end if;
+    if p_regla is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'sin_regla_configurada');
+    end if;
+    if not exists (select 1 from public.organization_taxes ot left join public.tax_templates tt on tt.id = ot.template_id
+                    where ot.id = p_regla and ot.organization_id = p_org and ot.kind = 'withholding' and coalesce(ot.is_active, false)
+                      and public.fn_clase_retencion(tt.code, ot.name) = 'reteiva') then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'regla_no_vigente');
+    end if;
+    v_fila := public.fn_tributario_retencion_practicar(p_org, 'reteiva', p_regla, v_base);
+  else
+    if (p_pagador ->> 'agente_ica') is null or not (p_pagador ->> 'agente_ica')::boolean then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente',
+        'motivo', case when v_pag_org then 'sin_regla_reteica_municipal' else 'calidad_agente_reteica_por_acreditar' end);
+    end if;
+    if p_regla is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'norma_municipal_sin_confirmar');
+    end if;
+    select r.*, m.name as municipio into v_r
+      from public.reteica_reglas r join public.municipalities m on m.id = r.municipality_id
+     where r.id = p_regla and r.organization_id = p_org and r.vigente_desde <= p_fecha and (r.vigente_hasta is null or r.vigente_hasta >= p_fecha);
+    if v_r.id is null then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'regla_ica_no_vigente');
+    elsif p_territorial is not true then
+      return jsonb_build_object('clase', p_clase, 'estado', 'pendiente', 'motivo', 'territorialidad_sin_confirmar');
+    elsif coalesce((p_beneficiario ->> 'no_sujeto_ica')::boolean, false) then
+      return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'beneficiario_no_sujeto_ica');
+    elsif v_r.base_minima is not null and v_base < v_r.base_minima then
+      return jsonb_build_object('clase', p_clase, 'estado', 'no_aplica', 'motivo', 'bajo_base_minima');
+    end if;
+    v_cuenta := public.fn_cuenta_retencion_compra(p_org, 'RETEICA', 'ReteICA');
+    v_valor := round(v_base * v_r.tarifa_por_mil / 1000, 0);
+    v_fila := jsonb_build_object('clase', 'reteica', 'regla_ica_id', v_r.id, 'municipio_id', v_r.municipality_id,
+                                 'concepto', 'ReteICA ' || v_r.municipio || ' · ' || v_r.actividad, 'tax_code', 'RETEICA', 'norma', v_r.norma,
+                                 'tarifa', v_r.tarifa_por_mil / 10, 'tarifa_por_mil', v_r.tarifa_por_mil, 'base', v_base, 'valor', v_valor, 'cuenta', v_cuenta);
+    if v_valor <= 0 then
+      v_fila := v_fila || jsonb_build_object('estado', 'no_aplica', 'motivo', 'valor_cero');
+    elsif not exists (select 1 from public.chart_of_accounts c where c.organization_id = p_org and c.account_code = v_cuenta
+                        and coalesce(c.is_active, true) and c.es_movimiento is not false)
+          or public.fn_es_cuenta_de_titulo(p_org, v_cuenta) then
+      v_fila := v_fila || jsonb_build_object('estado', 'pendiente', 'motivo', 'cuenta_retencion_no_valida');
+    else
+      v_fila := v_fila || jsonb_build_object('estado', 'practicar', 'motivo', null);
+    end if;
+  end if;
+  -- La cuenta por pagar de la retención solo importa si la practica la organización; si la practica un tercero
+  -- (consignación), lo que se estima es su valor.
+  if not v_pag_org and v_fila ->> 'motivo' = 'cuenta_retencion_no_valida' then
+    v_fila := v_fila || jsonb_build_object('estado', 'practicar', 'motivo', null, 'cuenta', null);
+  end if;
+  return v_fila;
+end;
+$function$;
+
+-- Reparte la base de una clase entre las líneas de la operación que la forman (proporcional a su base; la última
+-- absorbe el redondeo). p_lineas: [{componente, base}] solo con las líneas que forman esa base.
+create or replace function public.fn_tributario_cobertura(p_lineas jsonb, p_total numeric)
+ returns jsonb language plpgsql immutable set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_suma numeric;
+  v_n integer;
+  v_i integer := 0;
+  v_acum numeric := 0;
+  v_l jsonb;
+  v_x numeric;
+  v_out jsonb := '[]'::jsonb;
+begin
+  select coalesce(sum((l ->> 'base')::numeric), 0), count(*) into v_suma, v_n from jsonb_array_elements(coalesce(p_lineas, '[]'::jsonb)) l;
+  if v_suma <= 0 or coalesce(p_total, 0) <= 0 then return '[]'::jsonb; end if;
+  for v_l in select * from jsonb_array_elements(p_lineas) loop
+    v_i := v_i + 1;
+    v_x := case when v_i = v_n then round(p_total, 2) - v_acum else round(p_total * (v_l ->> 'base')::numeric / v_suma, 2) end;
+    v_acum := v_acum + v_x;
+    v_out := v_out || jsonb_build_object('componente', v_l ->> 'componente', 'base', v_x, 'base_linea', (v_l ->> 'base')::numeric);
+  end loop;
+  return v_out;
+end;
+$function$;
+
+-- Evaluación de un anticipo (o de su conversión en pago o abono). p_componentes: [{descripcion, tratamiento, base,
+-- tarifa_iva}] con tratamiento gravado · exento · excluido · no_sujeto o, en un contrato con AIU (p_aiu_contrato
+-- registrado en aiu_contratos), aiu_costo_directo · aiu_administracion · aiu_imprevistos · aiu_utilidad ·
+-- aiu_honorarios (el IVA del AIU lo fija el régimen del contrato con p_tarifa_iva). Sin componentes solo se admite una
+-- suma homogénea con IVA incluido a la tarifa general (19 %, ET art. 468): base = monto / 1,19.
+-- Las tres clases salen de fn_tributario_evaluar_retencion (pagador = la organización; beneficiario = el proveedor).
 create or replace function public.fn_anticipo_proveedor_evaluar_retenciones(
   p_org integer, p_supplier integer, p_naturaleza text, p_monto numeric,
   p_tarifa_iva numeric default null, p_retefuente uuid default null, p_reteica uuid default null,
-  p_componentes jsonb default null, p_ica_territorial boolean default null)
+  p_componentes jsonb default null, p_ica_territorial boolean default null, p_aiu_contrato uuid default null, p_fecha date default null)
  returns jsonb language plpgsql stable security definer set search_path to 'public', 'pg_temp'
 as $function$
 declare
   c_tarifa_general constant numeric := 19;
   v_monto numeric := round(coalesce(p_monto, 0), 2);
-  v_prov public.suppliers%rowtype;
-  v_perfil jsonb;
   v_hoy date;
-  v_pais text;
-  v_uvt numeric;
-  v_resp_prov text[];
-  v_reg_prov text;
-  v_resp_org text[];
-  v_agente_renta boolean;
-  v_agente_iva boolean;
-  v_gc_org boolean;
-  v_org_resp_iva boolean;
-  v_simple_acr boolean;
-  v_autorret text[];
-  v_prov_resp_iva boolean;
-  v_prov_gc boolean;
-  v_no_sujeto_ica boolean;
+  v_org_q jsonb;
+  v_prov_q jsonb;
   v_comp jsonb := '[]'::jsonb;
   v_c jsonb;
+  v_i integer := -1;
   v_trat text;
   v_cb numeric;
   v_ct numeric;
@@ -592,67 +1182,35 @@ declare
   v_fuente jsonb;
   v_reteiva jsonb;
   v_ica jsonb;
-  v_concepto record;
-  v_regla record;
   v_op_fuente jsonb;
   v_op_ica jsonb;
   v_reteiva_id uuid;
-  v_min numeric;
   v_aiu boolean := false;
+  v_contrato public.aiu_contratos%rowtype;
+  v_base_especial numeric;
+  v_set_especial text[];
+  v_iva_aiu numeric;
+  v_min_aplicado boolean := false;
+  v_base_fuente numeric;
+  v_base_ica numeric;
+  v_cob_fuente jsonb;
+  v_cob_ica jsonb;
+  v_cob_iva jsonb;
+  v_aiu_estado text;
   v_clases jsonb;
   v_total numeric;
-  v_cuenta_ica text;
 begin
   perform public.fn_assert_acceso_org(p_org);
   if p_naturaleza is null or p_naturaleza not in ('financiacion', 'pago_anticipado_precio') then
     raise exception 'naturaleza_obligatoria' using errcode = '22023';
   end if;
   if v_monto <= 0 then raise exception 'monto_invalido' using errcode = '22023'; end if;
-  select * into v_prov from public.suppliers s where s.id = p_supplier and s.organization_id = p_org;
-  if not found then raise exception 'proveedor_no_encontrado' using errcode = 'P0002'; end if;
-
-  v_hoy := (now() at time zone coalesce(public.fn_timezone_for(p_org, null), 'America/Bogota'))::date;
-
-  -- Perfil de la organización (columnas de 20261108160500; respaldo a los códigos si están en NULL).
-  select to_jsonb(p) into v_perfil from public.organization_tax_profiles p
-   where p.organization_id = p_org and p.vigente_desde <= v_hoy and (p.vigente_hasta is null or p.vigente_hasta >= v_hoy)
-   order by p.vigente_desde desc limit 1;
-  v_resp_org := coalesce(array(select jsonb_array_elements_text(coalesce(v_perfil -> 'responsabilidades', '[]'::jsonb))), '{}'::text[]);
-  v_agente_renta := coalesce((v_perfil ->> 'agente_retencion')::boolean, false);
-  v_gc_org := coalesce((v_perfil ->> 'gran_contribuyente')::boolean, 'O-13' = any (v_resp_org));
-  if v_perfil ->> 'agente_retencion_iva' is null and v_perfil ->> 'gran_contribuyente' is null then
-    v_agente_iva := v_resp_org && array['O-13', 'O-23'];
-  else
-    v_agente_iva := coalesce((v_perfil ->> 'agente_retencion_iva')::boolean, false) or coalesce((v_perfil ->> 'gran_contribuyente')::boolean, false);
+  if not exists (select 1 from public.suppliers s where s.id = p_supplier and s.organization_id = p_org) then
+    raise exception 'proveedor_no_encontrado' using errcode = 'P0002';
   end if;
-  v_org_resp_iva := coalesce(v_perfil ->> 'condicion_iva' = 'responsable', 'O-48' = any (v_resp_org));
-
-  -- Proveedor: calidades verificadas con soporte y vigencia; los códigos sin verificar no excluyen.
-  v_resp_prov := coalesce(v_prov.fiscal_responsibilities, '{}'::text[]);
-  v_reg_prov := lower(coalesce(nullif(btrim(v_prov.tax_regime), ''), ''));
-  -- Ronda 3: la inscripción en el SIMPLE y la resolución de autorretención deben cubrir la fecha de la operación (hoy) y el
-  -- RUT que las soporta ser anterior a ella. La autorretención especial no cuenta: no excluye la retención por terceros.
-  v_simple_acr := exists (select 1 from public.supplier_tax_qualities q where q.organization_id = p_org and q.supplier_id = p_supplier
-                            and q.calidad = 'simple_acreditado' and q.vigente_desde <= v_hoy and (q.vigente_hasta is null or q.vigente_hasta >= v_hoy)
-                            and q.rut_fecha is not null and q.rut_fecha <= v_hoy);
-  select q.conceptos into v_autorret from public.supplier_tax_qualities q
-   where q.organization_id = p_org and q.supplier_id = p_supplier and q.calidad = 'autorretenedor_renta'
-     and q.vigente_desde <= v_hoy and (q.vigente_hasta is null or q.vigente_hasta >= v_hoy)
-     and q.rut_fecha is not null and q.rut_fecha <= v_hoy and q.resolucion_fecha is not null and q.resolucion_fecha <= v_hoy
-   order by q.vigente_desde desc limit 1;
-  v_prov_resp_iva := case
-    when exists (select 1 from public.supplier_tax_qualities q where q.organization_id = p_org and q.supplier_id = p_supplier and q.calidad = 'responsable_iva'
-                   and q.vigente_desde <= v_hoy and (q.vigente_hasta is null or q.vigente_hasta >= v_hoy)) then true
-    when exists (select 1 from public.supplier_tax_qualities q where q.organization_id = p_org and q.supplier_id = p_supplier and q.calidad = 'no_responsable_iva'
-                   and q.vigente_desde <= v_hoy and (q.vigente_hasta is null or q.vigente_hasta >= v_hoy)) then false
-    when 'O-49' = any (v_resp_prov) or v_reg_prov = 'no_responsable' then false
-    when 'O-48' = any (v_resp_prov) or v_reg_prov in ('comun', 'gran_contribuyente') then true
-    else null end;
-  v_prov_gc := 'O-13' = any (v_resp_prov) or v_reg_prov = 'gran_contribuyente'
-    or exists (select 1 from public.supplier_tax_qualities q where q.organization_id = p_org and q.supplier_id = p_supplier and q.calidad = 'gran_contribuyente'
-                 and q.vigente_desde <= v_hoy and (q.vigente_hasta is null or q.vigente_hasta >= v_hoy));
-  v_no_sujeto_ica := exists (select 1 from public.supplier_tax_qualities q where q.organization_id = p_org and q.supplier_id = p_supplier
-                               and q.calidad = 'no_sujeto_ica' and q.vigente_desde <= v_hoy and (q.vigente_hasta is null or q.vigente_hasta >= v_hoy));
+  v_hoy := coalesce(p_fecha, (now() at time zone coalesce(public.fn_timezone_for(p_org, null), 'America/Bogota'))::date);
+  v_org_q := public.fn_tributario_calidades_organizacion(p_org, v_hoy);
+  v_prov_q := public.fn_tributario_calidades_tercero(p_org, p_supplier, null, v_hoy);
 
   select coalesce(jsonb_agg(jsonb_build_object('id', ot.id, 'nombre', ot.name, 'tarifa', public.fn_tarifa_exacta_impuesto(ot.id), 'codigo', tt.code,
                                                'base_minima_uvt', ot.min_base_uvt) order by ot.name), '[]'::jsonb)
@@ -674,7 +1232,8 @@ begin
   end if;
 
   if p_naturaleza = 'financiacion' then
-    -- Anticipo genuino: la retención se evalúa cuando se convierte en pago o abono del precio (al amortizarlo).
+    -- Anticipo genuino: no se retiene al girar. La retención se evalúa cuando REALMENTE se convierte en pago o abono del
+    -- precio (fn_anticipo_proveedor_convertir_en_pago), con o sin factura.
     v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'diferida', 'motivo', 'se_evalua_al_pago_o_abono');
     v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'diferida', 'motivo', 'se_evalua_al_pago_o_abono');
     v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'diferida', 'motivo', 'se_evalua_al_pago_o_abono');
@@ -692,17 +1251,19 @@ begin
         raise exception 'tarifa_iva_invalida' using errcode = '22023';
       end if;
       v_cb := round(v_monto / (1 + c_tarifa_general / 100), 2);
-      v_comp := jsonb_build_array(jsonb_build_object('descripcion', 'Suma homogénea con IVA incluido a la tarifa general', 'tratamiento', 'gravado',
-                                                     'base', v_cb, 'tarifa_iva', c_tarifa_general, 'iva', v_monto - v_cb));
+      v_comp := jsonb_build_array(jsonb_build_object('componente', '0', 'descripcion', 'Suma homogénea con IVA incluido a la tarifa general',
+                                                     'tratamiento', 'gravado', 'base', v_cb, 'tarifa_iva', c_tarifa_general, 'iva', v_monto - v_cb));
     else
       for v_c in select * from jsonb_array_elements(p_componentes) loop
+        v_i := v_i + 1;
         v_trat := v_c ->> 'tratamiento';
         v_cb := round(coalesce((v_c ->> 'base')::numeric, 0), 2);
         v_ct := coalesce((v_c ->> 'tarifa_iva')::numeric, 0);
-        if v_trat is null or v_trat not in ('gravado', 'exento', 'excluido', 'no_sujeto', 'aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad') or v_cb <= 0 then
+        if v_trat is null or v_trat not in ('gravado', 'exento', 'excluido', 'no_sujeto', 'aiu_costo_directo', 'aiu_administracion', 'aiu_imprevistos',
+                                            'aiu_utilidad', 'aiu_honorarios') or v_cb <= 0 then
           raise exception 'componente_invalido' using errcode = '22023', detail = v_c::text;
         end if;
-        if v_trat in ('gravado', 'aiu_utilidad') then
+        if v_trat = 'gravado' then
           if v_ct <= 0 or not exists (select 1 from public.organization_taxes ot left join public.tax_templates tt on tt.id = ot.template_id
                                        where ot.organization_id = p_org and ot.kind = 'tax' and coalesce(ot.is_active, false) and ot.rate = v_ct
                                          and (upper(coalesce(tt.code, '')) like 'IVA%' or upper(ot.name) like '%IVA%')) then
@@ -710,123 +1271,112 @@ begin
           end if;
           v_ci := round(v_cb * v_ct / 100, 2);
         else
+          -- El IVA de un AIU no va en la línea: lo fija el régimen del contrato.
           if v_ct <> 0 then raise exception 'componente_invalido' using errcode = '22023', detail = v_c::text; end if;
           v_ci := 0;
         end if;
-        v_comp := v_comp || jsonb_build_object('descripcion', coalesce(nullif(btrim(v_c ->> 'descripcion'), ''), v_trat), 'tratamiento', v_trat,
-                                               'base', v_cb, 'tarifa_iva', v_ct, 'iva', v_ci);
+        v_comp := v_comp || jsonb_build_object('componente', v_i::text, 'descripcion', coalesce(nullif(btrim(v_c ->> 'descripcion'), ''), v_trat),
+                                               'tratamiento', v_trat, 'base', v_cb, 'tarifa_iva', v_ct, 'iva', v_ci);
       end loop;
+      v_aiu := exists (select 1 from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' like 'aiu\_%');
+      if v_aiu then
+        -- Ronda 4: AIU solo con un contrato registrado del MISMO proveedor; su régimen define la base del IVA.
+        if exists (select 1 from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' not like 'aiu\_%') then
+          raise exception 'aiu_componentes_mezclados' using errcode = '22023';
+        end if;
+        if p_aiu_contrato is null then
+          raise exception 'aiu_contrato_obligatorio' using errcode = '22023',
+            hint = 'Registre el contrato con AIU (operación, contrato, norma, base y condiciones) y elíjalo.';
+        end if;
+        select * into v_contrato from public.aiu_contratos a where a.id = p_aiu_contrato and a.organization_id = p_org and a.supplier_id = p_supplier;
+        if v_contrato.id is null then raise exception 'aiu_contrato_invalido' using errcode = '22023'; end if;
+        if p_tarifa_iva is null or p_tarifa_iva <= 0 or not exists (
+             select 1 from public.organization_taxes ot left join public.tax_templates tt on tt.id = ot.template_id
+              where ot.organization_id = p_org and ot.kind = 'tax' and coalesce(ot.is_active, false) and ot.rate = p_tarifa_iva
+                and (upper(coalesce(tt.code, '')) like 'IVA%' or upper(ot.name) like '%IVA%')) then
+          raise exception 'tarifa_iva_invalida' using errcode = '22023';
+        end if;
+        if v_contrato.regimen = 'servicios_462_1' then
+          if exists (select 1 from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' = 'aiu_honorarios') then
+            raise exception 'aiu_componentes_regimen' using errcode = '22023', detail = 'servicios_462_1 no lleva honorarios';
+          end if;
+          v_set_especial := array['aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad'];
+          select coalesce(sum((x ->> 'base')::numeric), 0) into v_base_especial from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' = any (v_set_especial);
+          if v_base_especial <= 0 then raise exception 'aiu_componentes_regimen' using errcode = '22023', detail = 'falta A + I + U'; end if;
+          -- Nunca inferior al 10 % del valor de la operación (art. 462-1 E.T.).
+          select sum((x ->> 'base')::numeric) into v_cb from jsonb_array_elements(v_comp) x;
+          if v_base_especial < round(v_cb * 0.10, 2) then
+            v_base_especial := round(v_cb * 0.10, 2);
+            v_min_aplicado := true;
+            v_set_especial := array['aiu_costo_directo', 'aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad'];
+          end if;
+        else
+          -- Construcción (DUR 1.3.1.7.9): honorarios del constructor; si no se pactan, su utilidad. Sin mínimo del 10 %.
+          v_set_especial := case when (v_contrato.condiciones ->> 'honorarios_pactados')::boolean then array['aiu_honorarios'] else array['aiu_utilidad'] end;
+          select coalesce(sum((x ->> 'base')::numeric), 0) into v_base_especial from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' = any (v_set_especial);
+          if v_base_especial <= 0 then
+            raise exception 'aiu_componentes_regimen' using errcode = '22023',
+              detail = case when (v_contrato.condiciones ->> 'honorarios_pactados')::boolean then 'faltan honorarios' else 'falta utilidad' end;
+          end if;
+        end if;
+        v_iva_aiu := round(v_base_especial * p_tarifa_iva / 100, 2);
+        -- El IVA se reparte entre las líneas que forman la base especial (para la reversión línea por línea).
+        select coalesce(jsonb_agg(case when x ->> 'tratamiento' = any (v_set_especial)
+                                       then x || jsonb_build_object('iva', coalesce((select (cv ->> 'base')::numeric from jsonb_array_elements(
+                                              public.fn_tributario_cobertura((select jsonb_agg(jsonb_build_object('componente', y ->> 'componente', 'base', y ->> 'base'))
+                                                                                from jsonb_array_elements(v_comp) y where y ->> 'tratamiento' = any (v_set_especial)), v_iva_aiu)) cv
+                                              where cv ->> 'componente' = x ->> 'componente'), 0), 'tarifa_iva', p_tarifa_iva)
+                                       else x end), '[]'::jsonb)
+          into v_comp from jsonb_array_elements(v_comp) x;
+      end if;
       if abs((select sum((x ->> 'base')::numeric + (x ->> 'iva')::numeric) from jsonb_array_elements(v_comp) x) - v_monto) > 1 then
         raise exception 'componentes_no_suman' using errcode = '22023',
           detail = jsonb_build_object('monto', v_monto, 'componentes', (select sum((x ->> 'base')::numeric + (x ->> 'iva')::numeric) from jsonb_array_elements(v_comp) x))::text;
       end if;
     end if;
     select sum((x ->> 'base')::numeric), sum((x ->> 'iva')::numeric) into v_base, v_iva from jsonb_array_elements(v_comp) x;
-    v_aiu := exists (select 1 from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' like 'aiu\_%');
 
-    if v_perfil is null or coalesce((v_perfil ->> 'requiere_revision')::boolean, false) then
-      v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', case when v_perfil is null then 'sin_perfil_tributario' else 'perfil_requiere_revision' end);
-      v_reteiva := v_fuente || jsonb_build_object('clase', 'reteiva');
-      v_ica := v_fuente || jsonb_build_object('clase', 'reteica');
+    -- Bases por clase y qué líneas cubre cada una.
+    v_base_fuente := v_base;
+    v_base_ica := v_base;
+    if v_aiu and v_contrato.base_retefuente = 'base_especial' then v_base_fuente := v_base_especial; end if;
+    if v_aiu and v_contrato.base_reteica = 'base_especial' then v_base_ica := v_base_especial; end if;
+    v_cob_fuente := public.fn_tributario_cobertura((select jsonb_agg(jsonb_build_object('componente', x ->> 'componente', 'base', x ->> 'base'))
+                                                      from jsonb_array_elements(v_comp) x
+                                                     where v_base_fuente = v_base or x ->> 'tratamiento' = any (v_set_especial)), v_base_fuente);
+    v_cob_ica := public.fn_tributario_cobertura((select jsonb_agg(jsonb_build_object('componente', x ->> 'componente', 'base', x ->> 'base'))
+                                                   from jsonb_array_elements(v_comp) x
+                                                  where v_base_ica = v_base or x ->> 'tratamiento' = any (v_set_especial)), v_base_ica);
+    v_cob_iva := coalesce((select jsonb_agg(jsonb_build_object('componente', x ->> 'componente', 'base', (x ->> 'iva')::numeric, 'base_linea', (x ->> 'base')::numeric))
+                             from jsonb_array_elements(v_comp) x where (x ->> 'iva')::numeric > 0), '[]'::jsonb);
+
+    if v_aiu then
+      v_aiu_estado := case when v_contrato.estado = 'rechazado' then 'aiu_contrato_rechazado'
+                           when v_contrato.estado <> 'validado' then 'aiu_contrato_pendiente_validacion'
+                           when v_contrato.vigente_desde > v_hoy or (v_contrato.vigente_hasta is not null and v_contrato.vigente_hasta < v_hoy) then 'aiu_contrato_no_vigente'
+                      end;
+    end if;
+    if v_aiu_estado is not null then
+      -- Ronda 4: ningún régimen AIU opera sin la validación del Contador.
+      v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', v_aiu_estado);
+      v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'pendiente', 'motivo', v_aiu_estado);
+      v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'pendiente', 'motivo', v_aiu_estado);
     else
-      -- Renta.
-      if not v_agente_renta then
-        v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'no_aplica', 'motivo', 'organizacion_no_agente_retencion');
-      elsif v_simple_acr then
-        v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'no_aplica', 'motivo', 'proveedor_simple_acreditado');
-      elsif 'O-47' = any (v_resp_prov) or v_reg_prov = 'simple' then
-        v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', 'simple_sin_acreditar');
-      elsif cardinality(v_resp_prov) = 0 and v_reg_prov = '' and v_prov_resp_iva is null and v_autorret is null then
-        v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', 'proveedor_sin_datos_fiscales');
-      elsif jsonb_array_length(v_op_fuente) = 0 then
-        v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', 'sin_regla_retefuente');
-      elsif p_retefuente is null then
-        v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', 'concepto_sin_elegir');
-      else
-        select ot.id, ot.name, tt.code, ot.min_base_uvt into v_concepto
-          from public.organization_taxes ot left join public.tax_templates tt on tt.id = ot.template_id
-         where ot.id = p_retefuente and ot.organization_id = p_org;
-        if v_autorret is not null and (v_concepto.code = any (v_autorret) or p_retefuente::text = any (v_autorret)) then
-          v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'no_aplica', 'motivo', 'autorretenedor_autorizado_concepto', 'concepto', v_concepto.name);
-        elsif v_autorret is null and 'O-15' = any (v_resp_prov) then
-          v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', 'autorretencion_sin_verificar');
-        else
-          select coalesce(nullif(btrim(o.country_code), ''), 'COL') into v_pais from public.organizations o where o.id = p_org;
-          select u.value into v_uvt from public.fiscal_uvt u where u.country_code = v_pais and u.year = extract(year from v_hoy)::integer;
-          v_min := v_concepto.min_base_uvt;
-          if v_uvt is null then
-            v_fuente := jsonb_build_object('clase', 'retefuente', 'estado', 'pendiente', 'motivo', 'sin_uvt');
-          elsif v_min is not null and v_base < round(v_min * v_uvt, 0) then
-            v_fuente := public.fn_anticipo_retencion_practicar(p_org, 'retefuente', p_retefuente, v_base)
-                        || jsonb_build_object('estado', 'no_aplica', 'motivo', 'bajo_base_minima', 'valor', 0, 'base_minima', round(v_min * v_uvt, 0));
-          else
-            v_fuente := public.fn_anticipo_retencion_practicar(p_org, 'retefuente', p_retefuente, v_base);
-          end if;
-        end if;
+      v_fuente := public.fn_tributario_evaluar_retencion(p_org, 'retefuente', v_org_q, v_prov_q, p_retefuente, v_base_fuente, v_hoy);
+      if v_fuente ->> 'motivo' = 'sin_regla_configurada' then
+        v_fuente := v_fuente || jsonb_build_object('motivo', case when jsonb_array_length(v_op_fuente) = 0 then 'sin_regla_retefuente' else 'concepto_sin_elegir' end);
       end if;
-
-      -- IVA: base = IVA de los componentes gravados. AIU (ronda 3): sin regla registrada con su fundamento, pendiente.
-      if v_aiu and not exists (select 1 from public.reteiva_aiu_reglas g where g.organization_id = p_org and g.base_iva = 'utilidad'
-                                  and g.vigente_desde <= v_hoy and (g.vigente_hasta is null or g.vigente_hasta >= v_hoy)) then
-        v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'pendiente', 'motivo', 'aiu_fundamento_por_validar');
-      elsif v_iva = 0 then
-        v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'no_aplica', 'motivo', 'operacion_sin_iva');
-      elsif v_prov_resp_iva is false then
-        v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'no_aplica', 'motivo', 'proveedor_no_responsable_iva');
-      elsif v_prov_resp_iva is null then
-        v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'pendiente', 'motivo', 'proveedor_sin_datos_fiscales');
-      elsif not v_agente_iva then
-        if (v_simple_acr or 'O-47' = any (v_resp_prov)) and v_org_resp_iva then
-          v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'pendiente', 'motivo', 'supuesto_compra_a_simple_por_confirmar');
-        else
-          v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'no_aplica', 'motivo', 'organizacion_no_agente_reteiva');
-        end if;
-      elsif v_gc_org and v_prov_gc then
-        v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'pendiente', 'motivo', 'grandes_contribuyentes_por_verificar');
-      elsif v_reteiva_id is null then
-        v_reteiva := jsonb_build_object('clase', 'reteiva', 'estado', 'pendiente', 'motivo', 'sin_regla_reteiva');
-      else
-        v_reteiva := public.fn_anticipo_retencion_practicar(p_org, 'reteiva', v_reteiva_id, v_iva);
-      end if;
-
-      -- ICA: regla municipal + territorialidad + calidades + base.
-      if jsonb_array_length(v_op_ica) = 0 then
-        v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'pendiente', 'motivo', 'sin_regla_reteica_municipal');
-      elsif p_reteica is null then
-        v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'pendiente', 'motivo', 'norma_municipal_sin_confirmar');
-      else
-        select r.*, m.name as municipio into v_regla
-          from public.reteica_reglas r join public.municipalities m on m.id = r.municipality_id
-         where r.id = p_reteica and r.organization_id = p_org and r.vigente_desde <= v_hoy and (r.vigente_hasta is null or r.vigente_hasta >= v_hoy);
-        if not found then
-          v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'pendiente', 'motivo', 'regla_ica_no_vigente');
-        elsif p_ica_territorial is not true then
-          v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'pendiente', 'motivo', 'territorialidad_sin_confirmar');
-        elsif v_no_sujeto_ica then
-          v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'no_aplica', 'motivo', 'proveedor_no_sujeto_ica');
-        elsif v_regla.base_minima is not null and v_base < v_regla.base_minima then
-          v_ica := jsonb_build_object('clase', 'reteica', 'estado', 'no_aplica', 'motivo', 'bajo_base_minima');
-        else
-          v_cuenta_ica := public.fn_cuenta_retencion_compra(p_org, 'RETEICA', 'ReteICA');
-          v_ica := jsonb_build_object('clase', 'reteica', 'regla_ica_id', v_regla.id, 'concepto', 'ReteICA ' || v_regla.municipio || ' · ' || v_regla.actividad,
-                                      'tax_code', 'RETEICA', 'norma', v_regla.norma, 'tarifa', v_regla.tarifa_por_mil / 10, 'tarifa_por_mil', v_regla.tarifa_por_mil,
-                                      'base', round(v_base, 2), 'valor', round(v_base * v_regla.tarifa_por_mil / 1000, 0), 'cuenta', v_cuenta_ica);
-          if not exists (select 1 from public.chart_of_accounts c where c.organization_id = p_org and c.account_code = v_cuenta_ica
-                            and coalesce(c.is_active, true) and c.es_movimiento is not false)
-             or public.fn_es_cuenta_de_titulo(p_org, v_cuenta_ica) then
-            v_ica := v_ica || jsonb_build_object('estado', 'pendiente', 'motivo', 'cuenta_retencion_no_valida');
-          elsif (v_ica ->> 'valor')::numeric <= 0 then
-            v_ica := v_ica || jsonb_build_object('estado', 'no_aplica', 'motivo', 'valor_cero');
-          else
-            v_ica := v_ica || jsonb_build_object('estado', 'practicar', 'motivo', null);
-          end if;
-        end if;
-      end if;
+      v_reteiva := public.fn_tributario_evaluar_retencion(p_org, 'reteiva', v_org_q, v_prov_q, v_reteiva_id, v_iva, v_hoy);
+      if v_reteiva ->> 'motivo' = 'sin_regla_configurada' then v_reteiva := v_reteiva || jsonb_build_object('motivo', 'sin_regla_reteiva'); end if;
+      v_ica := public.fn_tributario_evaluar_retencion(p_org, 'reteica', v_org_q, v_prov_q, p_reteica, v_base_ica, v_hoy, p_ica_territorial);
+      if v_fuente ->> 'estado' = 'practicar' then v_fuente := v_fuente || jsonb_build_object('cobertura', v_cob_fuente); end if;
+      if v_reteiva ->> 'estado' = 'practicar' then v_reteiva := v_reteiva || jsonb_build_object('cobertura', v_cob_iva); end if;
+      if v_ica ->> 'estado' = 'practicar' then v_ica := v_ica || jsonb_build_object('cobertura', v_cob_ica); end if;
     end if;
   end if;
 
   if p_retefuente is not null and v_fuente ->> 'organization_tax_id' is null then
-    perform public.fn_anticipo_retencion_practicar(p_org, 'retefuente', p_retefuente, 0);
+    perform public.fn_tributario_retencion_practicar(p_org, 'retefuente', p_retefuente, 0);
   end if;
 
   v_clases := jsonb_build_array(v_fuente, v_reteiva, v_ica);
@@ -835,13 +1385,10 @@ begin
 
   return jsonb_build_object(
     'naturaleza', p_naturaleza, 'monto', v_monto, 'tarifa_iva', p_tarifa_iva, 'componentes', v_comp,
-    'base', v_base, 'iva', v_iva, 'fecha', v_hoy,
-    'perfil', case when v_perfil is null then null else jsonb_build_object(
-                'vigente_desde', v_perfil ->> 'vigente_desde', 'regimen_renta', coalesce(v_perfil ->> 'regimen_renta', v_perfil ->> 'regimen'),
-                'condicion_iva', v_perfil ->> 'condicion_iva', 'agente_retencion', v_agente_renta, 'agente_retencion_iva', v_agente_iva,
-                'gran_contribuyente', v_gc_org) end,
-    'proveedor', jsonb_build_object('regimen', nullif(v_reg_prov, ''), 'responsabilidades', to_jsonb(v_resp_prov), 'simple_acreditado', v_simple_acr,
-                                    'autorretencion_conceptos', to_jsonb(v_autorret), 'responsable_iva', v_prov_resp_iva, 'no_sujeto_ica', v_no_sujeto_ica),
+    'base', v_base, 'iva', v_iva, 'fecha', v_hoy, 'base_retefuente', v_base_fuente, 'base_reteica', v_base_ica,
+    'aiu', case when v_aiu then jsonb_build_object('contrato_id', v_contrato.id, 'regimen', v_contrato.regimen, 'estado', v_contrato.estado,
+                                                   'base_iva', v_base_especial, 'minimo_10_aplicado', v_min_aplicado, 'iva', v_iva_aiu) end,
+    'perfil', v_org_q, 'proveedor', v_prov_q,
     'clases', v_clases, 'total', v_total, 'neto', v_monto - v_total,
     'pendiente', exists (select 1 from jsonb_array_elements(v_clases) c where c ->> 'estado' = 'pendiente'),
     'opciones', jsonb_build_object('retefuente', v_op_fuente, 'reteica', v_op_ica));
@@ -929,7 +1476,8 @@ $function$;
 create or replace function public.fn_anticipo_proveedor_registrar(
   p_supplier integer, p_branch integer, p_monto numeric, p_metodo text, p_naturaleza text, p_clave_idempotencia text, p_organization_id integer,
   p_tarifa_iva numeric default null, p_retefuente uuid default null, p_reteica uuid default null, p_cuenta_bancaria integer default null,
-  p_referencia text default null, p_notas text default null, p_componentes jsonb default null, p_ica_territorial boolean default null)
+  p_referencia text default null, p_notas text default null, p_componentes jsonb default null, p_ica_territorial boolean default null,
+  p_aiu_contrato uuid default null)
  returns jsonb language plpgsql security definer set search_path to 'public', 'pg_temp'
 as $function$
 declare
@@ -1020,7 +1568,7 @@ begin
   v_cuenta_dinero := public.fn_puc_cuenta_de_sede(v_org, p_branch, v_cuenta_dinero);
 
   v_eval := public.fn_anticipo_proveedor_evaluar_retenciones(v_org, p_supplier, p_naturaleza, v_monto, p_tarifa_iva, p_retefuente, p_reteica,
-                                                             p_componentes, p_ica_territorial);
+                                                             p_componentes, p_ica_territorial, p_aiu_contrato);
   if exists (select 1 from jsonb_array_elements(v_eval -> 'clases') c where c ->> 'motivo' = 'concepto_sin_elegir') then
     raise exception 'concepto_retefuente_obligatorio' using errcode = '22023', hint = 'Elija el concepto de retención en la fuente de la operación.';
   end if;
@@ -1036,10 +1584,10 @@ begin
   returning * into v_grupo;
 
   insert into public.supplier_advances (organization_id, branch_id, supplier_id, amount, balance, status, currency, account_code, payment_group_id, notes,
-    created_by, naturaleza, tarifa_iva, componentes, base_retencion, retencion_total, monto_girado, retencion_pendiente, retenciones_evaluacion)
+    created_by, naturaleza, tarifa_iva, componentes, base_retencion, retencion_total, monto_girado, retencion_pendiente, retenciones_evaluacion, aiu_contrato_id)
   values (v_org, p_branch, p_supplier, v_monto, v_monto, 'active', v_moneda, v_cuenta_anticipo, v_grupo.id, coalesce(v_notas, 'Anticipo del comprobante ' || v_recibo),
     v_uid, p_naturaleza, p_tarifa_iva, v_eval -> 'componentes', (v_eval ->> 'base')::numeric, v_ret, v_girado,
-    coalesce((v_eval ->> 'pendiente')::boolean, false), v_eval)
+    coalesce((v_eval ->> 'pendiente')::boolean, false), v_eval, p_aiu_contrato)
   returning id into v_anticipo;
 
   v_lineas := jsonb_build_array(
@@ -1048,9 +1596,10 @@ begin
   for v_c in select * from jsonb_array_elements(v_eval -> 'clases') loop
     continue when v_c ->> 'estado' <> 'practicar';
     insert into public.supplier_advance_withholdings (organization_id, advance_id, clase, organization_tax_id, regla_ica_id, concepto, tax_code, norma,
-                                                      base, tarifa, valor, cuenta)
+                                                      base, tarifa, valor, cuenta, cobertura, fecha)
     values (v_org, v_anticipo, v_c ->> 'clase', (v_c ->> 'organization_tax_id')::uuid, (v_c ->> 'regla_ica_id')::uuid, v_c ->> 'concepto', v_c ->> 'tax_code',
-            v_c ->> 'norma', (v_c ->> 'base')::numeric, (v_c ->> 'tarifa')::numeric, (v_c ->> 'valor')::numeric, v_c ->> 'cuenta');
+            v_c ->> 'norma', (v_c ->> 'base')::numeric, (v_c ->> 'tarifa')::numeric, (v_c ->> 'valor')::numeric, v_c ->> 'cuenta',
+            coalesce(v_c -> 'cobertura', '[]'::jsonb), now());
     v_lineas := v_lineas || jsonb_build_object('cuenta', v_c ->> 'cuenta', 'debito', 0, 'credito', (v_c ->> 'valor')::numeric,
                                                'descripcion', coalesce(v_c ->> 'concepto', v_c ->> 'clase') || ' - anticipo ' || v_recibo);
   end loop;
@@ -1082,6 +1631,140 @@ create or replace function public.fn_anticipo_proveedor_crear(
 as $function$
 begin
   raise exception 'naturaleza_obligatoria' using errcode = '22023', hint = 'Use fn_anticipo_proveedor_registrar: la naturaleza del anticipo es obligatoria.';
+end;
+$function$;
+
+-- ═════════════════════════════════════════════════════════════════════════════
+-- 7b. Financiación que se convierte en pago o abono del precio (ronda 4: sin depender de «amortizar con factura»)
+-- ═════════════════════════════════════════════════════════════════════════════
+
+-- El hecho real (pago o abono, con su soporte y su fecha; con factura o sin ella) dispara la evaluación de retenciones
+-- sobre la composición del abono, con los mismos criterios de siempre (fn_anticipo_proveedor_evaluar_retenciones).
+-- bruto = girado que se convierte + retenciones practicadas. Asiento: D cuenta del anticipo / C retenciones por pagar
+-- (lo que el proveedor tiene a favor sube por la retención que la organización consigna por él, igual que al girar
+-- un pago anticipado). Lo que no se puede determinar queda pendiente («retencion_por_evaluar»), visible.
+create or replace function public.fn_anticipo_proveedor_convertir_en_pago(
+  p_anticipo uuid, p_hecho text, p_soporte text, p_fecha date, p_bruto numeric, p_clave_idempotencia text, p_organization_id integer default null,
+  p_tarifa_iva numeric default null, p_retefuente uuid default null, p_reteica uuid default null, p_componentes jsonb default null,
+  p_ica_territorial boolean default null, p_aiu_contrato uuid default null)
+ returns jsonb language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_org integer;
+  v_ant public.supplier_advances%rowtype;
+  v_conv public.supplier_advance_conversions%rowtype;
+  v_id uuid := gen_random_uuid();
+  v_bruto numeric := round(coalesce(p_bruto, 0), 2);
+  v_eval jsonb;
+  v_ret numeric;
+  v_girado numeric;
+  v_disponible numeric;
+  v_tz text;
+  v_hoy date;
+  v_instante timestamptz;
+  v_lineas jsonb;
+  v_c jsonb;
+  v_entry integer;
+  v_soporte text := nullif(btrim(coalesce(p_soporte, '')), '');
+begin
+  if v_uid is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
+  if p_clave_idempotencia is null or btrim(p_clave_idempotencia) = '' or length(p_clave_idempotencia) > 200 then
+    raise exception 'clave_idempotencia_invalida' using errcode = '22023';
+  end if;
+  if p_hecho is null or p_hecho not in ('pago', 'abono') then raise exception 'hecho_invalido' using errcode = '22023'; end if;
+  if v_soporte is null or length(v_soporte) < 3 then raise exception 'soporte_obligatorio' using errcode = '22023'; end if;
+  if p_fecha is null then raise exception 'fecha_obligatoria' using errcode = '22023'; end if;
+  if v_bruto <= 0 then raise exception 'monto_invalido' using errcode = '22023'; end if;
+  select organization_id into v_org from public.supplier_advances where id = p_anticipo;
+  if v_org is null or (p_organization_id is not null and p_organization_id <> v_org) then raise exception 'anticipo_no_encontrado' using errcode = 'P0002'; end if;
+  perform public.fn_finanzas_exigir_permiso(v_org, array['finance.create']);
+
+  perform pg_advisory_xact_lock(hashtextextended('anticipo_proveedor_convertir:' || v_org || ':' || p_clave_idempotencia, 0));
+  select * into v_conv from public.supplier_advance_conversions where organization_id = v_org and idempotency_key = p_clave_idempotencia;
+  if found then
+    if v_conv.advance_id <> p_anticipo or v_conv.bruto <> v_bruto then raise exception 'clave_idempotencia_reutilizada' using errcode = '22023'; end if;
+    return jsonb_build_object('conversion_id', v_conv.id, 'repetida', true, 'bruto', v_conv.bruto, 'retencion', v_conv.retencion,
+                              'girado_convertido', v_conv.girado_convertido, 'evaluacion', v_conv.evaluacion);
+  end if;
+
+  select * into v_ant from public.supplier_advances where id = p_anticipo and organization_id = v_org for update;
+  if v_ant.branch_id is not null and not public.app_branch_access(v_ant.branch_id) then raise exception 'sin_acceso_sucursal' using errcode = '42501'; end if;
+  if v_ant.naturaleza is distinct from 'financiacion' then
+    raise exception 'anticipo_no_es_financiacion' using errcode = '22023', hint = 'Un pago anticipado del precio ya se evaluó al girarlo.';
+  end if;
+  if v_ant.status <> 'active' or v_ant.balance <= 0 then raise exception 'anticipo_no_disponible' using errcode = '22023'; end if;
+  if public.fn_cuenta_anticipo_motivo_invalida(v_org, v_ant.account_code) is not null then
+    raise exception 'cuenta_anticipos_no_detalle' using errcode = 'P0002', detail = jsonb_build_object('cuenta', v_ant.account_code)::text;
+  end if;
+  v_tz := coalesce(public.fn_timezone_for(v_org, v_ant.branch_id), 'America/Bogota');
+  v_hoy := (now() at time zone v_tz)::date;
+  if p_fecha > v_hoy then raise exception 'fecha_futura' using errcode = '22023'; end if;
+  if p_fecha < (v_ant.created_at at time zone v_tz)::date then raise exception 'fecha_anterior_al_anticipo' using errcode = '22023'; end if;
+  if not public.fn_is_period_open(v_org, p_fecha) then raise exception 'periodo_cerrado' using errcode = '22023'; end if;
+  v_instante := case when p_fecha = v_hoy then now() else (p_fecha::timestamp + time '12:00') at time zone v_tz end;
+
+  -- Evaluada como pago del precio en la fecha del hecho, con la composición del abono.
+  v_eval := public.fn_anticipo_proveedor_evaluar_retenciones(v_org, v_ant.supplier_id, 'pago_anticipado_precio', v_bruto, p_tarifa_iva, p_retefuente,
+                                                             p_reteica, p_componentes, p_ica_territorial, p_aiu_contrato, p_fecha);
+  if exists (select 1 from jsonb_array_elements(v_eval -> 'clases') c where c ->> 'motivo' = 'concepto_sin_elegir') then
+    raise exception 'concepto_retefuente_obligatorio' using errcode = '22023';
+  end if;
+  -- Las líneas del abono se identifican con la conversión (para revertirlas después línea por línea).
+  v_eval := jsonb_set(v_eval, '{componentes}', (select coalesce(jsonb_agg(x || jsonb_build_object('componente', v_id::text || ':' || (x ->> 'componente'))), '[]'::jsonb)
+                                                   from jsonb_array_elements(v_eval -> 'componentes') x));
+  v_eval := jsonb_set(v_eval, '{clases}', (select jsonb_agg(case when c ? 'cobertura'
+                                                  then c || jsonb_build_object('cobertura', (select jsonb_agg(k || jsonb_build_object('componente', v_id::text || ':' || (k ->> 'componente')))
+                                                                                              from jsonb_array_elements(c -> 'cobertura') k))
+                                                  else c end) from jsonb_array_elements(v_eval -> 'clases') c));
+  v_ret := coalesce((v_eval ->> 'total')::numeric, 0);
+  v_girado := v_bruto - v_ret;
+  v_disponible := least(coalesce(v_ant.monto_girado, v_ant.amount) - v_ant.convertido, v_ant.balance);
+  if v_girado > v_disponible + 0.005 then
+    raise exception 'conversion_excede_financiacion' using errcode = '22023',
+      detail = jsonb_build_object('disponible', v_disponible, 'girado_convertido', v_girado, 'retencion', v_ret)::text;
+  end if;
+
+  insert into public.supplier_advance_conversions (id, organization_id, advance_id, hecho, soporte, fecha, componentes, bruto, retencion, girado_convertido,
+                                                   evaluacion, idempotency_key, created_by)
+  values (v_id, v_org, v_ant.id, p_hecho, v_soporte, p_fecha, v_eval -> 'componentes', v_bruto, v_ret, v_girado, v_eval, p_clave_idempotencia, v_uid)
+  returning * into v_conv;
+
+  v_lineas := '[]'::jsonb;
+  for v_c in select * from jsonb_array_elements(v_eval -> 'clases') loop
+    continue when v_c ->> 'estado' <> 'practicar';
+    insert into public.supplier_advance_withholdings (organization_id, advance_id, conversion_id, clase, organization_tax_id, regla_ica_id, concepto, tax_code,
+                                                      norma, base, tarifa, valor, cuenta, cobertura, fecha)
+    values (v_org, v_ant.id, v_id, v_c ->> 'clase', (v_c ->> 'organization_tax_id')::uuid, (v_c ->> 'regla_ica_id')::uuid, v_c ->> 'concepto', v_c ->> 'tax_code',
+            v_c ->> 'norma', (v_c ->> 'base')::numeric, (v_c ->> 'tarifa')::numeric, (v_c ->> 'valor')::numeric, v_c ->> 'cuenta',
+            coalesce(v_c -> 'cobertura', '[]'::jsonb), v_instante);
+    v_lineas := v_lineas || jsonb_build_object('cuenta', v_c ->> 'cuenta', 'debito', 0, 'credito', (v_c ->> 'valor')::numeric,
+                                               'descripcion', coalesce(v_c ->> 'concepto', v_c ->> 'clase') || ' - abono del anticipo');
+  end loop;
+  if v_ret > 0 then
+    v_entry := public.fn_anticipo_proveedor_asiento(v_org, v_ant.branch_id, v_instante, 'Retención al convertirse el anticipo en ' || p_hecho || ' del precio',
+                 'supplier_advance_conversion', v_id::text, 'supplier_advance_conversion:' || v_id::text,
+                 jsonb_build_array(jsonb_build_object('cuenta', v_ant.account_code, 'debito', v_ret, 'credito', 0,
+                                                      'descripcion', 'Retención practicada al convertirse en ' || p_hecho)) || v_lineas, v_uid);
+    update public.supplier_advance_conversions set asiento_id = v_entry where id = v_id;
+  end if;
+
+  update public.supplier_advances
+     set amount = amount + v_ret, balance = balance + v_ret, retencion_total = retencion_total + v_ret, convertido = convertido + v_girado,
+         retencion_pendiente = retencion_pendiente or coalesce((v_eval ->> 'pendiente')::boolean, false), updated_at = now()
+   where id = v_ant.id;
+  if coalesce((v_eval ->> 'pendiente')::boolean, false) then
+    perform public.fn_anticipo_pendiente_abrir(v_org, v_ant.id, 'retencion_por_evaluar',
+      jsonb_build_object('conversion_id', v_id, 'hecho', p_hecho, 'fecha', p_fecha,
+                         'clases', (select jsonb_agg(c) from jsonb_array_elements(v_eval -> 'clases') c where c ->> 'estado' = 'pendiente')), v_uid);
+  end if;
+  insert into public.finance_audit_log (organization_id, entity, entity_id, action, user_id, diff, reason)
+  values (v_org, 'supplier_advances', v_ant.id::text, 'update', v_uid,
+          jsonb_build_object('accion', 'conversion_en_' || p_hecho, 'conversion_id', v_id, 'bruto', v_bruto, 'retencion', v_ret, 'girado_convertido', v_girado,
+                             'fecha', p_fecha, 'asiento', v_entry), v_soporte);
+  return jsonb_build_object('conversion_id', v_id, 'repetida', false, 'bruto', v_bruto, 'retencion', v_ret, 'girado_convertido', v_girado,
+                            'asiento_id', v_entry, 'evaluacion', v_eval,
+                            'saldo_disponible', (select balance from public.supplier_advances where id = v_ant.id));
 end;
 $function$;
 
@@ -1387,22 +2070,116 @@ end;
 $function$;
 
 -- ═════════════════════════════════════════════════════════════════════════════
--- 10. Devolver por procedimiento y causa (ronda 3): las retenciones afectadas salen del procedimiento
+-- 10. Devolver por procedimiento y causa (rondas 3 y 4): soporte del hecho, líneas afectadas y período por impuesto
 -- ═════════════════════════════════════════════════════════════════════════════
 
--- p_monto = dinero que entra a caja o banco. p_procedimiento (ronda 3 del Contador):
---   {causa, soportes: {documento, calculo, certificado, norma_ica}, periodo_descuento 'AAAA-MM', requiere_correccion,
---    base_devuelta, iva_devuelto}
---   causa «operacion_anulada» (anulada o resuelta): se revierten TODAS las retenciones vigentes y la devolución es por todo
---     el saldo (dinero + retenciones = saldo); documento = la anulación o resolución.
---   causa «devolucion_parcial»: el cálculo da la parte devuelta de la operación (base sin IVA y su IVA); cada retención sale
---     de su base y tarifa (renta e ICA sobre la base, reteIVA sobre el IVA); el dinero debe ser esa parte menos esas
---     retenciones. Documento = la solicitud o el acuerdo con el proveedor.
---   Con retenciones afectadas: cálculo, certificado (expedido, anulado o corregido), período en que se descuentan y si la
---   declaración requiere corrección (abre un pendiente «correccion_declaracion»); la reversión de ICA, la norma municipal.
+-- Ronda 4. Líneas de la operación de un anticipo (las del giro y las de cada conversión en pago o abono) y lo que ya
+-- se devolvió de cada una.
+create or replace function public.fn_anticipo_componentes(p_anticipo uuid)
+ returns table(componente text, tratamiento text, base numeric, iva numeric, devuelto_base numeric, devuelto_iva numeric)
+ language sql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+  with c as (
+    select coalesce(x ->> 'componente', (o.n - 1)::text) as componente, x ->> 'tratamiento' as tratamiento,
+           (x ->> 'base')::numeric as base, coalesce((x ->> 'iva')::numeric, 0) as iva
+      from public.supplier_advances a cross join lateral jsonb_array_elements(coalesce(a.componentes, '[]'::jsonb)) with ordinality o(x, n)
+     where a.id = p_anticipo
+    union all
+    select x ->> 'componente', x ->> 'tratamiento', (x ->> 'base')::numeric, coalesce((x ->> 'iva')::numeric, 0)
+      from public.supplier_advance_conversions v cross join lateral jsonb_array_elements(v.componentes) x
+     where v.advance_id = p_anticipo
+  ), d as (
+    select l ->> 'componente' as componente, sum((l ->> 'base')::numeric) as base, sum(coalesce((l ->> 'iva')::numeric, 0)) as iva
+      from public.supplier_advance_refunds r cross join lateral jsonb_array_elements(coalesce(r.lineas, '[]'::jsonb)) l
+     where r.advance_id = p_anticipo group by 1
+  )
+  select c.componente, c.tratamiento, c.base, c.iva, coalesce(d.base, 0), coalesce(d.iva, 0) from c left join d on d.componente = c.componente;
+$function$;
+
+-- Ronda 4. Procedimiento de ReteICA del municipio de la regla con que se practicó, VALIDADO y vigente; y sus pruebas.
+-- Sin él: bloqueado (no se traslada el de otro municipio).
+create or replace function public.fn_reteica_procedimiento_exigir(p_org integer, p_regla_ica uuid, p_fecha date, p_soportes jsonb)
+ returns public.reteica_procedimientos language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_p public.reteica_procedimientos;
+  v_falta text[];
+  v_ica jsonb := coalesce(p_soportes -> 'ica', '{}'::jsonb);
+begin
+  select p.* into v_p from public.reteica_procedimientos p join public.reteica_reglas r on r.id = p_regla_ica and r.municipality_id = p.municipality_id
+   where p.organization_id = p_org and p.estado = 'validado' and p.vigente_desde <= p_fecha and (p.vigente_hasta is null or p.vigente_hasta >= p_fecha)
+   order by p.vigente_desde desc limit 1;
+  if v_p.id is null then
+    raise exception 'reteica_sin_procedimiento_municipal' using errcode = '22023',
+      hint = 'Registre y valide el procedimiento de ReteICA del municipio (solicitud, pruebas, reintegro, certificado, período y excedentes).';
+  end if;
+  select array_agg(k) into v_falta
+    from unnest(array['solicitud', 'certificado'] || v_p.pruebas) k
+   where length(btrim(coalesce(v_ica ->> k, ''))) < 3;
+  if v_falta is not null then
+    raise exception 'reteica_pruebas_incompletas' using errcode = '22023', detail = array_to_string(v_falta, ', ');
+  end if;
+  return v_p;
+end;
+$function$;
+
+-- Ronda 4. El período en que se descuenta una reversión NO es de libre elección:
+--   renta: anulación, rescisión o resolución → el período del hecho (DUR 1625 de 2016, art. 1.2.4.17); retención en
+--          exceso → el período del reintegro (art. 1.2.4.16);
+--   IVA:   el mismo criterio (por confirmar con el Contador el artículo del DUR para reteIVA);
+--   ICA:   la regla del procedimiento municipal validado.
+create or replace function public.fn_retencion_periodo_descuento(p_clase text, p_origen text, p_fecha_hecho date, p_hoy date, p_regla_ica text default null)
+ returns jsonb language plpgsql immutable set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_fecha date;
+  v_regla text;
+begin
+  if p_clase = 'reteica' then
+    v_regla := p_regla_ica;
+    v_fecha := case p_regla_ica when 'periodo_del_hecho' then p_fecha_hecho when 'periodo_del_reintegro' then p_hoy
+                                when 'periodo_siguiente_al_reintegro' then (date_trunc('month', p_hoy) + interval '1 month')::date end;
+  elsif p_origen = 'exceso' then
+    v_regla := case when p_clase = 'retefuente' then 'DUR 1.2.4.16: período del reintegro' else 'reteIVA: período del reintegro (por confirmar)' end;
+    v_fecha := p_hoy;
+  else
+    v_regla := case when p_clase = 'retefuente' then 'DUR 1.2.4.17: período de la anulación, rescisión o resolución'
+                    else 'reteIVA: período del hecho (por confirmar)' end;
+    v_fecha := p_fecha_hecho;
+  end if;
+  if v_fecha is null then raise exception 'periodo_descuento_indeterminado' using errcode = '22023'; end if;
+  return jsonb_build_object('periodo', to_char(v_fecha, 'YYYY-MM'), 'regla', v_regla, 'fecha', v_fecha);
+end;
+$function$;
+
+-- Ronda 4. Neto de una clase de retención en un período (practicado − descuentos) en el certificado/reporte; si queda
+-- negativo, lo que falta se descuenta en los períodos siguientes (pendiente visible).
+create or replace function public.fn_retencion_neto_periodo(p_org integer, p_clase text, p_periodo text)
+ returns numeric language sql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+  select coalesce(sum(f.valor), 0)
+    from public.fn_retenciones_practicadas_filas(p_org,
+           (to_date(p_periodo || '-01', 'YYYY-MM-DD')::timestamp) at time zone coalesce(public.fn_timezone_for(p_org, null), 'America/Bogota'),
+           ((to_date(p_periodo || '-01', 'YYYY-MM-DD') + interval '1 month')::timestamp - interval '1 microsecond')
+             at time zone coalesce(public.fn_timezone_for(p_org, null), 'America/Bogota'), null, null) f
+   where f.clase = p_clase;
+$function$;
+
+drop function if exists public.fn_anticipo_proveedor_devolver(uuid, numeric, text, text, text, integer, integer, text);
+-- p_monto = dinero que entra a caja o banco. p_procedimiento (ronda 4 del Contador):
+--   {causa: 'operacion_anulada' | 'resolucion_parcial' | 'devolucion_parcial',
+--    hecho: {tipo, documento, fecha}: el SOPORTE DEL HECHO. La solicitud del proveedor sola no prueba la anulación ni la
+--           resolución (tipo 'solicitud_proveedor' se rechaza).
+--    soportes: {calculo, certificado, ica: {solicitud, certificado, <pruebas del procedimiento municipal>}},
+--    lineas: [{componente, base, iva}]: las líneas de la operación afectadas (resolución o devolución parcial),
+--    requiere_correccion: boolean}
+--   operacion_anulada: todas las retenciones vigentes; dinero + retenciones = saldo (la total es condición de la
+--     cancelación total, pero no impide una resolución parcial: para eso está 'resolucion_parcial').
+--   resolucion_parcial / devolucion_parcial: cada retención se revierte sobre lo que ELLA cubrió de las líneas afectadas
+--     (su cobertura, su base y su tarifa); dinero = base + IVA de esas líneas − esas retenciones.
+--   Período de descuento: lo fija fn_retencion_periodo_descuento por impuesto; si viene otro, se rechaza.
 --   NULL = no se puede determinar: baja solo el dinero, las retenciones siguen en el anticipo y queda un pendiente.
 --   La retención excesiva o indebida no es una devolución del proveedor: fn_anticipo_retencion_exceso_reintegrar.
-drop function if exists public.fn_anticipo_proveedor_devolver(uuid, numeric, text, text, text, integer, integer, text);
 create or replace function public.fn_anticipo_proveedor_devolver(
   p_anticipo uuid, p_monto numeric, p_metodo text, p_motivo text, p_clave_idempotencia text, p_organization_id integer default null,
   p_cuenta_bancaria integer default null, p_referencia text default null, p_procedimiento jsonb default null)
@@ -1421,6 +2198,7 @@ declare
   v_entry integer;
   v_w public.supplier_advance_withholdings%rowtype;
   v_r numeric;
+  v_afectada numeric;
   v_ret numeric := 0;
   v_bruto numeric;
   v_detalle jsonb := '[]'::jsonb;
@@ -1429,11 +2207,19 @@ declare
   v_det boolean := p_procedimiento is not null;
   v_causa text := p_procedimiento ->> 'causa';
   v_sop jsonb := coalesce(p_procedimiento -> 'soportes', '{}'::jsonb);
-  v_periodo text := nullif(btrim(coalesce(p_procedimiento ->> 'periodo_descuento', '')), '');
+  v_hecho jsonb := p_procedimiento -> 'hecho';
+  v_lineas jsonb := coalesce(p_procedimiento -> 'lineas', '[]'::jsonb);
   v_corr boolean := (p_procedimiento ->> 'requiere_correccion')::boolean;
-  v_base_dev numeric := round(coalesce((p_procedimiento ->> 'base_devuelta')::numeric, 0), 2);
-  v_iva_dev numeric := round(coalesce((p_procedimiento ->> 'iva_devuelto')::numeric, 0), 2);
+  v_fecha_hecho date;
+  v_tz text;
+  v_hoy date;
+  v_l jsonb;
+  v_comp record;
+  v_parte numeric := 0;
+  v_proc public.reteica_procedimientos;
+  v_per jsonb;
   v_d jsonb;
+  v_neto numeric;
 begin
   if v_uid is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
   if p_clave_idempotencia is null or btrim(p_clave_idempotencia) = '' or length(p_clave_idempotencia) > 200 then
@@ -1443,11 +2229,32 @@ begin
   if p_motivo is null or length(btrim(p_motivo)) < 3 then raise exception 'motivo_obligatorio' using errcode = '22023'; end if;
   if v_ref is null or length(v_ref) < 3 then raise exception 'soporte_obligatorio' using errcode = '22023'; end if;
   if v_det then
-    if jsonb_typeof(p_procedimiento) <> 'object' or v_causa is null or v_causa not in ('operacion_anulada', 'devolucion_parcial') then
+    if jsonb_typeof(p_procedimiento) <> 'object' or v_causa is null or v_causa not in ('operacion_anulada', 'resolucion_parcial', 'devolucion_parcial') then
       raise exception 'procedimiento_invalido' using errcode = '22023';
     end if;
-    if length(btrim(coalesce(v_sop ->> 'documento', ''))) < 3 then
-      raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'documento';
+    -- Ronda 4: el soporte del HECHO. La solicitud del proveedor sola no prueba la anulación ni la resolución.
+    if v_hecho is null or jsonb_typeof(v_hecho) <> 'object' then
+      raise exception 'soporte_del_hecho_obligatorio' using errcode = '22023';
+    end if;
+    if v_hecho ->> 'tipo' = 'solicitud_proveedor' then
+      raise exception 'solicitud_no_prueba_el_hecho' using errcode = '22023',
+        hint = 'La solicitud del proveedor no demuestra que la operación se anuló o resolvió: aporte el acto (resolución, resciliación, nota crédito, sentencia o acta).';
+    end if;
+    if coalesce(v_hecho ->> 'tipo', '') not in ('resolucion_mutuo_acuerdo', 'resciliacion', 'sentencia_o_laudo', 'nota_credito_proveedor',
+                                               'anulacion_aceptada', 'acta_devolucion') then
+      raise exception 'procedimiento_invalido' using errcode = '22023', detail = 'hecho.tipo';
+    end if;
+    if length(btrim(coalesce(v_hecho ->> 'documento', ''))) < 3 then
+      raise exception 'soporte_del_hecho_obligatorio' using errcode = '22023', detail = 'hecho.documento';
+    end if;
+    begin
+      v_fecha_hecho := (v_hecho ->> 'fecha')::date;
+    exception when others then
+      raise exception 'procedimiento_invalido' using errcode = '22023', detail = 'hecho.fecha';
+    end;
+    if v_fecha_hecho is null then raise exception 'soporte_del_hecho_obligatorio' using errcode = '22023', detail = 'hecho.fecha'; end if;
+    if v_causa <> 'operacion_anulada' and (jsonb_typeof(v_lineas) <> 'array' or jsonb_array_length(v_lineas) = 0) then
+      raise exception 'lineas_afectadas_obligatorias' using errcode = '22023';
     end if;
   end if;
 
@@ -1472,6 +2279,11 @@ begin
   if public.fn_cuenta_anticipo_motivo_invalida(v_org, v_ant.account_code) is not null then
     raise exception 'cuenta_anticipos_no_detalle' using errcode = 'P0002', detail = jsonb_build_object('cuenta', v_ant.account_code)::text;
   end if;
+  v_tz := coalesce(public.fn_timezone_for(v_org, v_ant.branch_id), 'America/Bogota');
+  v_hoy := (now() at time zone v_tz)::date;
+  if v_det and (v_fecha_hecho > v_hoy or v_fecha_hecho < (v_ant.created_at at time zone v_tz)::date) then
+    raise exception 'fecha_del_hecho_invalida' using errcode = '22023';
+  end if;
 
   select pm.requires_reference into v_requiere_ref
     from public.payment_methods pm
@@ -1490,22 +2302,52 @@ begin
   if v_cuenta_dinero is null then raise exception 'sin_cuenta_de_dinero' using errcode = 'P0002'; end if;
   v_cuenta_dinero := public.fn_puc_cuenta_de_sede(v_org, v_ant.branch_id, v_cuenta_dinero);
 
-  -- Las retenciones afectadas salen del procedimiento (no se eligen a mano).
   if v_det then
-    if v_causa = 'devolucion_parcial' and (v_base_dev <= 0 or v_iva_dev < 0) then
-      raise exception 'calculo_obligatorio' using errcode = '22023', hint = 'Base devuelta (sin IVA) e IVA devuelto de la parte de la operación.';
+    -- Líneas afectadas: existen, no superan lo que queda de cada una, y su IVA es el de la línea.
+    if v_causa <> 'operacion_anulada' then
+      for v_l in select * from jsonb_array_elements(v_lineas) loop
+        select * into v_comp from public.fn_anticipo_componentes(v_ant.id) c where c.componente = v_l ->> 'componente';
+        if v_comp.componente is null then raise exception 'linea_no_encontrada' using errcode = '22023', detail = v_l::text; end if;
+        if coalesce((v_l ->> 'base')::numeric, 0) <= 0 or (v_l ->> 'base')::numeric > v_comp.base - v_comp.devuelto_base + 0.005 then
+          raise exception 'linea_excede_lo_pendiente' using errcode = '22023',
+            detail = jsonb_build_object('componente', v_comp.componente, 'base', v_comp.base, 'devuelto', v_comp.devuelto_base)::text;
+        end if;
+        if abs(coalesce((v_l ->> 'iva')::numeric, 0) - case when v_comp.base > 0 then round(v_comp.iva * (v_l ->> 'base')::numeric / v_comp.base, 2) else 0 end) > 1 then
+          raise exception 'linea_iva_no_cuadra' using errcode = '22023', detail = v_l::text;
+        end if;
+        v_parte := v_parte + (v_l ->> 'base')::numeric + coalesce((v_l ->> 'iva')::numeric, 0);
+      end loop;
     end if;
-    for v_w in select * from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.valor > w.revertido order by w.clase for update loop
-      v_r := case when v_causa = 'operacion_anulada' then v_w.valor - v_w.revertido
-                  when v_w.clase = 'reteiva' then round(v_iva_dev * v_w.tarifa / 100, 0)
-                  else round(v_base_dev * v_w.tarifa / 100, 0) end;
+    -- Cada retención se revierte sobre lo que ella cubrió (su cobertura), con su base y su tarifa.
+    for v_w in select * from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.valor > w.revertido order by w.fecha, w.clase for update loop
+      if v_causa = 'operacion_anulada' then
+        v_r := v_w.valor - v_w.revertido;
+        v_afectada := round(v_w.base * v_r / v_w.valor, 2);
+      else
+        select coalesce(sum((k ->> 'base')::numeric * (l ->> 'base')::numeric / nullif((k ->> 'base_linea')::numeric, 0)), 0) into v_afectada
+          from jsonb_array_elements(v_w.cobertura) k join jsonb_array_elements(v_lineas) l on l ->> 'componente' = k ->> 'componente';
+        v_afectada := round(v_afectada, 2);
+        v_r := round(v_afectada * v_w.tarifa / 100, 0);
+      end if;
       continue when v_r <= 0;
       if v_r > v_w.valor - v_w.revertido then
         raise exception 'retencion_devolucion_invalida' using errcode = '22023',
           detail = jsonb_build_object('clase', v_w.clase, 'calculada', v_r, 'vigente', v_w.valor - v_w.revertido)::text;
       end if;
+      v_proc := null;
+      if v_w.clase = 'reteica' then
+        v_proc := public.fn_reteica_procedimiento_exigir(v_org, v_w.regla_ica_id, v_hoy, v_sop);
+      end if;
+      v_per := public.fn_retencion_periodo_descuento(v_w.clase, 'hecho', v_fecha_hecho, v_hoy, v_proc.periodo_descuento);
+      if nullif(p_procedimiento ->> 'periodo_descuento', '') is not null and p_procedimiento ->> 'periodo_descuento' <> v_per ->> 'periodo' then
+        raise exception 'periodo_descuento_no_es_de_libre_eleccion' using errcode = '22023', detail = v_per::text;
+      end if;
       v_ret := v_ret + v_r;
-      v_detalle := v_detalle || jsonb_build_object('clase', v_w.clase, 'cuenta', v_w.cuenta, 'revertido', v_r, 'causa', v_causa);
+      v_detalle := v_detalle || jsonb_build_object('withholding_id', v_w.id, 'clase', v_w.clase, 'cuenta', v_w.cuenta, 'revertido', v_r,
+                                                   'base_afectada', v_afectada, 'tarifa', v_w.tarifa, 'causa', v_causa, 'periodo', v_per ->> 'periodo',
+                                                   'regla_periodo', v_per ->> 'regla', 'fecha_periodo', v_per ->> 'fecha',
+                                                   'anio_retencion', extract(year from v_w.fecha at time zone v_tz)::integer,
+                                                   'procedimiento_ica', v_proc.id);
       v_lineas_ret := v_lineas_ret || jsonb_build_object('cuenta', v_w.cuenta, 'debito', v_r, 'credito', 0,
         'descripcion', 'Reversión de retención ' || v_w.clase || ' (' || replace(v_causa, '_', ' ') || ')');
       update public.supplier_advance_withholdings set revertido = revertido + v_r where id = v_w.id;
@@ -1514,22 +2356,18 @@ begin
       if length(btrim(coalesce(v_sop ->> 'calculo', ''))) < 3 or length(btrim(coalesce(v_sop ->> 'certificado', ''))) < 3 then
         raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'calculo_y_certificado';
       end if;
-      if exists (select 1 from jsonb_array_elements(v_detalle) d where d ->> 'clase' = 'reteica')
-         and length(btrim(coalesce(v_sop ->> 'norma_ica', ''))) < 3 then
-        raise exception 'reteica_requiere_norma' using errcode = '22023';
-      end if;
-      if v_periodo is null or v_periodo !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' or v_corr is null then
-        raise exception 'tratamiento_declaracion_obligatorio' using errcode = '22023',
-          hint = 'Período en que se descuenta la retención y si la declaración requiere corrección.';
+      if v_corr is null then
+        raise exception 'tratamiento_declaracion_obligatorio' using errcode = '22023', hint = 'Indique si la declaración requiere corrección.';
       end if;
     end if;
     if v_causa = 'operacion_anulada' and abs(v_dinero + v_ret - v_ant.balance) > 1 then
       raise exception 'anulacion_requiere_devolucion_total' using errcode = '22023',
-        detail = jsonb_build_object('saldo', v_ant.balance, 'dinero', v_dinero, 'retenciones', v_ret)::text;
+        detail = jsonb_build_object('saldo', v_ant.balance, 'dinero', v_dinero, 'retenciones', v_ret)::text,
+        hint = 'Si la resolución es parcial, regístrela como «resolución parcial» con las líneas afectadas.';
     end if;
-    if v_causa = 'devolucion_parcial' and abs(v_dinero - (v_base_dev + v_iva_dev - v_ret)) > 1 then
+    if v_causa <> 'operacion_anulada' and abs(v_dinero - (v_parte - v_ret)) > 1 then
       raise exception 'calculo_no_cuadra' using errcode = '22023',
-        detail = jsonb_build_object('dinero', v_dinero, 'esperado', v_base_dev + v_iva_dev - v_ret, 'retenciones', v_ret)::text;
+        detail = jsonb_build_object('dinero', v_dinero, 'esperado', v_parte - v_ret, 'retenciones', v_ret)::text;
     end if;
   end if;
   v_bruto := v_dinero + v_ret;
@@ -1552,18 +2390,21 @@ begin
     v_uid);
 
   insert into public.supplier_advance_refunds (organization_id, advance_id, payment_id, monto, dinero, retencion_revertida, retencion_detalle,
-                                               retenciones_determinadas, procedimiento, soporte, motivo, asiento_id, created_by)
-  values (v_org, v_ant.id, v_pago.id, v_bruto, v_dinero, v_bruto - v_dinero, v_detalle, v_det, p_procedimiento, v_ref, btrim(p_motivo), v_entry, v_uid);
+                                               retenciones_determinadas, procedimiento, soporte, motivo, asiento_id, created_by, lineas, hecho)
+  values (v_org, v_ant.id, v_pago.id, v_bruto, v_dinero, v_bruto - v_dinero, v_detalle, v_det, p_procedimiento, v_ref, btrim(p_motivo), v_entry, v_uid,
+          case when v_det and v_causa <> 'operacion_anulada' then v_lineas end, v_hecho);
 
   for v_d in select * from jsonb_array_elements(v_detalle) loop
-    select * into v_w from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.clase = v_d ->> 'clase';
+    select * into v_w from public.supplier_advance_withholdings w where w.id = (v_d ->> 'withholding_id')::uuid;
+    -- El ajuste se fecha en el período de descuento que fija la regla del impuesto (no en el que elija el usuario).
     insert into public.supplier_advance_withholding_ajustes (organization_id, advance_id, withholding_id, tipo, clase, concepto, tax_code, cuenta, tarifa,
-                                                              base, valor, procedimiento, soporte, causa, periodo_descuento, requiere_correccion, soportes,
-                                                              asiento_id, created_by)
+                                                              base, valor, procedimiento, soporte, causa, periodo_descuento, regla_periodo, hecho,
+                                                              requiere_correccion, soportes, fecha, asiento_id, created_by)
     values (v_org, v_ant.id, v_w.id, 'devolucion', v_w.clase, v_w.concepto, v_w.tax_code, v_w.cuenta, v_w.tarifa,
-            case when v_causa = 'operacion_anulada' then -round(v_w.base * (v_d ->> 'revertido')::numeric / v_w.valor, 2)
-                 when v_w.clase = 'reteiva' then -v_iva_dev else -v_base_dev end,
-            -(v_d ->> 'revertido')::numeric, v_causa, coalesce(v_sop ->> 'certificado', v_ref), v_causa, v_periodo, v_corr, v_sop, v_entry, v_uid);
+            -(v_d ->> 'base_afectada')::numeric, -(v_d ->> 'revertido')::numeric, v_causa, coalesce(v_sop ->> 'certificado', v_ref), v_causa,
+            v_d ->> 'periodo', v_d ->> 'regla_periodo', v_hecho, v_corr, v_sop,
+            case when (v_d ->> 'fecha_periodo')::date = v_hoy then now() else ((v_d ->> 'fecha_periodo')::date::timestamp + time '12:00') at time zone v_tz end,
+            v_entry, v_uid);
   end loop;
 
   update public.supplier_advances set balance = balance - v_bruto, status = case when balance - v_bruto <= 0 then 'used' else 'active' end, updated_at = now()
@@ -1577,8 +2418,24 @@ begin
   end if;
   if v_ret > 0 and v_corr then
     perform public.fn_anticipo_pendiente_abrir(v_org, v_ant.id, 'correccion_declaracion',
-      jsonb_build_object('payment_id', v_pago.id, 'causa', v_causa, 'periodos_a_revisar', jsonb_build_array(v_periodo), 'detalle', v_detalle), v_uid);
+      jsonb_build_object('payment_id', v_pago.id, 'causa', v_causa,
+                         'periodos_a_revisar', (select jsonb_agg(distinct d ->> 'periodo') from jsonb_array_elements(v_detalle) d), 'detalle', v_detalle), v_uid);
   end if;
+  -- Lo que no alcance a descontarse en el período (neto negativo de la clase) se descuenta en los siguientes.
+  for v_d in select distinct on (d ->> 'clase', d ->> 'periodo') d from jsonb_array_elements(v_detalle) d loop
+    v_neto := public.fn_retencion_neto_periodo(v_org, v_d ->> 'clase', v_d ->> 'periodo');
+    if v_neto < 0 then
+      perform public.fn_anticipo_pendiente_abrir(v_org, v_ant.id, 'descuento_retencion_siguientes_periodos',
+        jsonb_build_object('payment_id', v_pago.id, 'clase', v_d ->> 'clase', 'periodo', v_d ->> 'periodo', 'por_descontar', -v_neto,
+                           'regla', v_d ->> 'regla_periodo'), v_uid);
+    end if;
+  end loop;
+  -- Retención de un año revertida en otro: el certificado del año de la retención ya salió; revisión del Contador.
+  for v_d in select * from jsonb_array_elements(v_detalle) d where (d ->> 'anio_retencion')::integer <> left(d ->> 'periodo', 4)::integer loop
+    perform public.fn_anticipo_pendiente_abrir(v_org, v_ant.id, 'retencion_revertida_otro_anio',
+      jsonb_build_object('payment_id', v_pago.id, 'clase', v_d ->> 'clase', 'anio_retencion', v_d ->> 'anio_retencion', 'periodo', v_d ->> 'periodo',
+                         'revertido', v_d ->> 'revertido'), v_uid);
+  end loop;
 
   insert into public.finance_audit_log (organization_id, entity, entity_id, action, user_id, diff, reason)
   values (v_org, 'supplier_advances', v_ant.id::text, 'update', v_uid,
@@ -1591,13 +2448,16 @@ begin
 end;
 $function$;
 
--- Retención excesiva o indebida (ronda 3, causa b): el cálculo correcto (base y tarifa) da el exceso; se reintegra al
--- proveedor (D retención por pagar / C caja o banco). El anticipo no cambia: lo que el proveedor tiene a favor sigue igual.
--- Exige el cálculo y el certificado corregido, el período en que se descuenta y si la declaración requiere corrección.
+-- Retención excesiva o indebida (ronda 3, causa b; ronda 4): el cálculo correcto (base y tarifa) da el exceso; se
+-- reintegra al proveedor (D retención por pagar / C caja o banco). El anticipo no cambia. Exige la solicitud escrita del
+-- afectado con sus pruebas, el cálculo y el certificado corregido (DUR 1.2.4.16); reteICA: el procedimiento VALIDADO del
+-- municipio y sus pruebas (sin él: bloqueado). El período de descuento no se elige: renta, el del reintegro; ICA, el de
+-- su procedimiento (p_periodo_descuento, si llega, debe coincidir). p_retencion elige la retención cuando hay varias de
+-- la misma clase (giro y conversiones).
 create or replace function public.fn_anticipo_retencion_exceso_reintegrar(
   p_anticipo uuid, p_clase text, p_base_correcta numeric, p_tarifa_correcta numeric, p_metodo text, p_clave_idempotencia text,
   p_soportes jsonb, p_periodo_descuento text, p_requiere_correccion boolean, p_motivo text, p_organization_id integer default null,
-  p_cuenta_bancaria integer default null, p_referencia text default null)
+  p_cuenta_bancaria integer default null, p_referencia text default null, p_retencion uuid default null)
  returns jsonb language plpgsql security definer set search_path to 'public', 'pg_temp'
 as $function$
 declare
@@ -1614,6 +2474,12 @@ declare
   v_ref text := nullif(btrim(coalesce(p_referencia, '')), '');
   v_nit text;
   v_nombre text;
+  v_tz text;
+  v_hoy date;
+  v_proc public.reteica_procedimientos;
+  v_per jsonb;
+  v_n integer;
+  v_neto numeric;
 begin
   if v_uid is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
   if p_clave_idempotencia is null or btrim(p_clave_idempotencia) = '' or length(p_clave_idempotencia) > 200 then
@@ -1623,9 +2489,11 @@ begin
   if length(btrim(coalesce(v_sop ->> 'calculo', ''))) < 3 or length(btrim(coalesce(v_sop ->> 'certificado', ''))) < 3 then
     raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'calculo_y_certificado';
   end if;
-  if p_periodo_descuento is null or p_periodo_descuento !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' or p_requiere_correccion is null then
-    raise exception 'tratamiento_declaracion_obligatorio' using errcode = '22023';
+  -- Ronda 4: requisitos del impuesto (DUR 1.2.4.16): solicitud escrita del afectado y pruebas.
+  if length(btrim(coalesce(v_sop ->> 'solicitud', ''))) < 3 or length(btrim(coalesce(v_sop ->> 'pruebas', ''))) < 3 then
+    raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'solicitud_y_pruebas';
   end if;
+  if p_requiere_correccion is null then raise exception 'tratamiento_declaracion_obligatorio' using errcode = '22023'; end if;
   if p_base_correcta is null or p_base_correcta < 0 or p_tarifa_correcta is null or p_tarifa_correcta < 0 then
     raise exception 'calculo_obligatorio' using errcode = '22023';
   end if;
@@ -1635,7 +2503,6 @@ begin
   end if;
   perform public.fn_finanzas_exigir_permiso(v_ant.organization_id, array['finance.void']);
   if v_ant.branch_id is not null and not public.app_branch_access(v_ant.branch_id) then raise exception 'sin_acceso_sucursal' using errcode = '42501'; end if;
-  if p_clase = 'reteica' and length(btrim(coalesce(v_sop ->> 'norma_ica', ''))) < 3 then raise exception 'reteica_requiere_norma' using errcode = '22023'; end if;
 
   perform pg_advisory_xact_lock(hashtextextended('anticipo_retencion_exceso:' || v_ant.organization_id || ':' || p_clave_idempotencia, 0));
   select * into v_pago from public.payments where organization_id = v_ant.organization_id and idempotency_key = p_clave_idempotencia;
@@ -1646,8 +2513,20 @@ begin
     return jsonb_build_object('payment_id', v_pago.id, 'repetida', true, 'reintegro', -v_pago.amount);
   end if;
 
-  select * into v_w from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.clase = p_clase for update;
-  if not found then raise exception 'retencion_devolucion_invalida' using errcode = '22023'; end if;
+  select count(*) into v_n from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.clase = p_clase and w.valor > w.revertido;
+  select * into v_w from public.supplier_advance_withholdings w
+   where w.advance_id = v_ant.id and w.clase = p_clase and (p_retencion is null or w.id = p_retencion) for update;
+  if v_w.id is null then raise exception 'retencion_devolucion_invalida' using errcode = '22023'; end if;
+  if p_retencion is null and v_n > 1 then raise exception 'retencion_ambigua' using errcode = '22023', hint = 'Indique cuál retención (giro o conversión).'; end if;
+  v_tz := coalesce(public.fn_timezone_for(v_ant.organization_id, v_ant.branch_id), 'America/Bogota');
+  v_hoy := (now() at time zone v_tz)::date;
+  if p_clase = 'reteica' then
+    v_proc := public.fn_reteica_procedimiento_exigir(v_ant.organization_id, v_w.regla_ica_id, v_hoy, v_sop);
+  end if;
+  v_per := public.fn_retencion_periodo_descuento(p_clase, 'exceso', v_hoy, v_hoy, v_proc.periodo_descuento);
+  if nullif(btrim(coalesce(p_periodo_descuento, '')), '') is not null and p_periodo_descuento <> v_per ->> 'periodo' then
+    raise exception 'periodo_descuento_no_es_de_libre_eleccion' using errcode = '22023', detail = v_per::text;
+  end if;
   select coalesce(nullif(btrim(sp.nit), ''), nullif(btrim(sp.tax_id), '')), sp.name into v_nit, v_nombre from public.suppliers sp where sp.id = v_ant.supplier_id;
   v_correcta := round(p_base_correcta * p_tarifa_correcta / 100, 0);
   v_exceso := v_w.valor - v_w.revertido - v_correcta;
@@ -1681,22 +2560,35 @@ begin
   update public.supplier_advances set retencion_total = retencion_total - v_exceso, monto_girado = coalesce(monto_girado, amount) + v_exceso, updated_at = now()
    where id = v_ant.id;
   insert into public.supplier_advance_withholding_ajustes (organization_id, advance_id, withholding_id, tipo, clase, concepto, tax_code, cuenta, tarifa,
-                                                            base, valor, procedimiento, soporte, causa, periodo_descuento, requiere_correccion, soportes,
-                                                            asiento_id, created_by)
+                                                            base, valor, procedimiento, soporte, causa, periodo_descuento, regla_periodo, requiere_correccion,
+                                                            soportes, fecha, asiento_id, created_by)
   values (v_ant.organization_id, v_ant.id, v_w.id, 'retencion_excesiva', v_w.clase, v_w.concepto, v_w.tax_code, v_w.cuenta, p_tarifa_correcta,
-          round(p_base_correcta - v_w.base, 2), -v_exceso, 'retencion_excesiva', v_sop ->> 'certificado', 'retencion_excesiva', p_periodo_descuento,
-          p_requiere_correccion, v_sop, v_entry, v_uid);
+          round(p_base_correcta - v_w.base, 2), -v_exceso, 'retencion_excesiva', v_sop ->> 'certificado', 'retencion_excesiva', v_per ->> 'periodo',
+          v_per ->> 'regla', p_requiere_correccion, v_sop,
+          case when (v_per ->> 'fecha')::date = v_hoy then now() else ((v_per ->> 'fecha')::date::timestamp + time '12:00') at time zone v_tz end,
+          v_entry, v_uid);
   if p_requiere_correccion then
     perform public.fn_anticipo_pendiente_abrir(v_ant.organization_id, v_ant.id, 'correccion_declaracion',
       jsonb_build_object('payment_id', v_pago.id, 'causa', 'retencion_excesiva', 'clase', p_clase, 'exceso', v_exceso,
-                         'periodos_a_revisar', jsonb_build_array(p_periodo_descuento)), v_uid);
+                         'periodos_a_revisar', jsonb_build_array(v_per ->> 'periodo')), v_uid);
+  end if;
+  v_neto := public.fn_retencion_neto_periodo(v_ant.organization_id, p_clase, v_per ->> 'periodo');
+  if v_neto < 0 then
+    perform public.fn_anticipo_pendiente_abrir(v_ant.organization_id, v_ant.id, 'descuento_retencion_siguientes_periodos',
+      jsonb_build_object('payment_id', v_pago.id, 'clase', p_clase, 'periodo', v_per ->> 'periodo', 'por_descontar', -v_neto, 'regla', v_per ->> 'regla'), v_uid);
+  end if;
+  if extract(year from v_w.fecha at time zone v_tz)::integer <> left(v_per ->> 'periodo', 4)::integer then
+    perform public.fn_anticipo_pendiente_abrir(v_ant.organization_id, v_ant.id, 'retencion_revertida_otro_anio',
+      jsonb_build_object('payment_id', v_pago.id, 'clase', p_clase, 'anio_retencion', extract(year from v_w.fecha at time zone v_tz)::integer,
+                         'periodo', v_per ->> 'periodo', 'revertido', v_exceso), v_uid);
   end if;
   insert into public.finance_audit_log (organization_id, entity, entity_id, action, user_id, diff, reason)
   values (v_ant.organization_id, 'supplier_advances', v_ant.id::text, 'update', v_uid,
           jsonb_build_object('accion', 'reintegro_retencion_excesiva', 'clase', p_clase, 'exceso', v_exceso, 'correcta', v_correcta, 'soportes', v_sop,
-                             'periodo', p_periodo_descuento, 'requiere_correccion', p_requiere_correccion, 'asiento', v_entry), btrim(p_motivo));
+                             'periodo', v_per ->> 'periodo', 'regla_periodo', v_per ->> 'regla', 'requiere_correccion', p_requiere_correccion,
+                             'asiento', v_entry), btrim(p_motivo));
   return jsonb_build_object('payment_id', v_pago.id, 'repetida', false, 'reintegro', v_exceso, 'retencion_correcta', v_correcta, 'asiento_id', v_entry,
-                            'caja_id', v_caja);
+                            'caja_id', v_caja, 'periodo_descuento', v_per ->> 'periodo', 'regla_periodo', v_per ->> 'regla');
 end;
 $function$;
 
@@ -1743,7 +2635,8 @@ begin
   if v_ant.status = 'cancelled' then raise exception 'anticipo_no_disponible' using errcode = '22023'; end if;
   if v_ant.balance <> v_ant.amount
      or exists (select 1 from public.supplier_advance_applications a where a.advance_id = v_ant.id)
-     or exists (select 1 from public.supplier_advance_refunds r where r.advance_id = v_ant.id) then
+     or exists (select 1 from public.supplier_advance_refunds r where r.advance_id = v_ant.id)
+     or exists (select 1 from public.supplier_advance_conversions c where c.advance_id = v_ant.id) then
     raise exception 'anticipo_usado' using errcode = '22023';
   end if;
 
@@ -1788,6 +2681,14 @@ begin
   select w.organization_id, w.advance_id, w.id, 'anulacion_error', w.clase, w.concepto, w.tax_code, w.cuenta, w.tarifa,
          -round(w.base * (w.valor - w.revertido) / w.valor, 2), -(w.valor - w.revertido), btrim(p_motivo), v_soporte, v_instante, v_reverso, v_uid
     from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.valor > w.revertido;
+  -- Ronda 4: retención de un año que se revierte con un ajuste de otro año (el certificado de aquel año ya salió).
+  if exists (select 1 from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.valor > w.revertido
+               and extract(year from w.fecha at time zone v_tz) <> extract(year from v_fecha)) then
+    perform public.fn_anticipo_pendiente_abrir(v_ant.organization_id, v_ant.id, 'retencion_revertida_otro_anio',
+      jsonb_build_object('fecha_ajuste', v_fecha, 'causa', 'anulacion_error',
+                         'anios_retencion', (select jsonb_agg(distinct extract(year from w.fecha at time zone v_tz)::integer)
+                                               from public.supplier_advance_withholdings w where w.advance_id = v_ant.id and w.valor > w.revertido)), v_uid);
+  end if;
   update public.supplier_advance_withholdings set revertido = valor where advance_id = v_ant.id;
 
   update public.supplier_advances
@@ -1859,9 +2760,15 @@ as $function$
               where ap.organization_id = p_org and ap.supplier_id = p_supplier and (ip.id is null or ip.status not in ('draft', 'void', 'voided')))))
      and (auth.uid() is null or public.app_branch_access(p.branch_id))
   union all
-  select a.created_at, 'anticipo'::text, g.receipt_number, a.id::text, null::timestamptz, 0::numeric, a.amount
+  select a.created_at, 'anticipo'::text, g.receipt_number, a.id::text, null::timestamptz, 0::numeric,
+         a.amount - coalesce((select sum(c.retencion) from public.supplier_advance_conversions c where c.advance_id = a.id), 0)
     from public.supplier_advances a left join public.payment_groups g on g.id = a.payment_group_id
    where a.organization_id = p_org and a.supplier_id = p_supplier and (auth.uid() is null or a.branch_id is null or public.app_branch_access(a.branch_id))
+  union all
+  select c.created_at, 'conversion_anticipo'::text, c.soporte, c.id::text, null::timestamptz, 0::numeric, c.retencion
+    from public.supplier_advance_conversions c join public.supplier_advances a on a.id = c.advance_id
+   where c.organization_id = p_org and a.supplier_id = p_supplier and c.retencion > 0
+     and (auth.uid() is null or a.branch_id is null or public.app_branch_access(a.branch_id))
   union all
   select coalesce((a.anulacion_fecha::timestamp + time '12:00') at time zone coalesce(public.fn_timezone_for(p_org, a.branch_id), 'America/Bogota'), a.cancelled_at),
          'anulacion_anticipo'::text, g.receipt_number, a.id::text || ':anulacion', null::timestamptz, a.amount, 0::numeric
@@ -1920,6 +2827,7 @@ begin
            and (e.fact_key = 'supplier_advance:' || a.id::text
              or e.fact_key in (select 'supplier_advance_application:' || x.id::text from public.supplier_advance_applications x where x.advance_id = a.id)
              or e.fact_key in (select 'supplier_advance_refund:' || p.id::text from public.payments p where p.source = 'supplier_advance_refund' and p.source_id = a.id::text)
+             or e.fact_key in (select 'supplier_advance_conversion:' || c.id::text from public.supplier_advance_conversions c where c.advance_id = a.id)
              or e.id in (select c.asiento from cruces c where c.advance_id = a.id and c.asiento is not null)
              or (e.source = 'reversal' and e.source_id in (select e2.id::text from public.journal_entries e2
                                                              where e2.organization_id = p_org and e2.fact_key = 'supplier_advance:' || a.id::text)))) lib on true
@@ -1958,9 +2866,9 @@ $function$;
 -- 14. Certificados y reporte de retenciones: incluyen anticipos y sus ajustes
 -- ═════════════════════════════════════════════════════════════════════════════
 
--- Igual que antes (retenciones de facturas de compra) + retenciones practicadas en anticipos (en la fecha del anticipo) +
--- ajustes con signo (devolución identificada, anulación por error, corrección de retención repetida en la factura) en su
--- fecha. La factura vinculada retiene solo la base restante, así que nada se cuenta dos veces.
+-- Igual que antes (retenciones de facturas de compra) + retenciones practicadas en anticipos (en la fecha del giro o de
+-- la conversión en pago o abono) + ajustes con signo (devolución, anulación por error, reintegro de exceso, corrección de
+-- retención repetida en la factura) en la fecha de su período de descuento. La factura vinculada retiene solo la base restante, así que nada se cuenta dos veces.
 create or replace function public.fn_retenciones_practicadas_filas(p_organization_id integer, p_desde timestamp with time zone,
   p_hasta timestamp with time zone, p_branch_id integer, p_supplier_id integer)
  returns table(invoice_id uuid, numero text, emision timestamp with time zone, supplier_id integer, branch_id integer, concepto text, codigo text,
@@ -2002,19 +2910,20 @@ as $function$
      and (p_branch_id is null or i.branch_id = p_branch_id)
      and (p_supplier_id is null or i.supplier_id = p_supplier_id)
   union all
-  select a.id, ('Anticipo ' || coalesce(g.receipt_number, ''))::text, a.created_at, a.supplier_id::integer, a.branch_id::integer,
-         w.concepto, w.tax_code, w.clase, w.cuenta, w.base::numeric, w.tarifa::numeric, w.valor::numeric
+  select a.id, ((case when w.conversion_id is null then 'Anticipo ' else 'Abono del anticipo ' end) || coalesce(g.receipt_number, ''))::text, w.fecha,
+         a.supplier_id::integer, a.branch_id::integer, w.concepto, w.tax_code, w.clase, w.cuenta, w.base::numeric, w.tarifa::numeric, w.valor::numeric
     from public.supplier_advance_withholdings w
     join public.supplier_advances a on a.id = w.advance_id
     left join public.payment_groups g on g.id = a.payment_group_id
    where w.organization_id = p_organization_id
-     and a.created_at >= p_desde and a.created_at <= p_hasta
+     and w.fecha >= p_desde and w.fecha <= p_hasta
      and (p_branch_id is null or a.branch_id = p_branch_id)
      and (p_supplier_id is null or a.supplier_id = p_supplier_id)
   union all
   select coalesce(j.invoice_id, j.advance_id),
          ((case j.tipo when 'devolucion' then 'Ajuste por devolución del anticipo ' when 'anulacion_error' then 'Ajuste por anulación del anticipo '
-                       else 'Corrección de retención repetida · ' end) || coalesce(nullif(ip.number_ext, ''), g.receipt_number, ''))::text,
+                       when 'retencion_excesiva' then 'Reintegro de retención en exceso · ' else 'Corrección de retención repetida · ' end)
+           || coalesce(nullif(ip.number_ext, ''), g.receipt_number, ''))::text,
          j.fecha, a.supplier_id::integer, a.branch_id::integer, j.concepto, j.tax_code, j.clase, j.cuenta, j.base::numeric, j.tarifa::numeric, j.valor::numeric
     from public.supplier_advance_withholding_ajustes j
     join public.supplier_advances a on a.id = j.advance_id
@@ -2151,8 +3060,8 @@ $function$;
 -- 15b. Tercero de las líneas: reintegro de retención en exceso y cruce con consignación
 -- ═════════════════════════════════════════════════════════════════════════════
 
--- Igual que 20261108120000 + dos orígenes: 'supplier_advance_withholding_refund' (el pago del reintegro apunta al
--- anticipo) y 'consignment_advance_crossing' (el cruce de 20261108121000 apunta al anticipo). Sin ellos, el asiento del
+-- Igual que 20261108120000 + tres orígenes: 'supplier_advance_withholding_refund' (el pago del reintegro apunta al
+-- anticipo), 'supplier_advance_conversion' (ronda 4) y 'consignment_advance_crossing' (el cruce de 20261108121000). Sin ellos, el asiento del
 -- cruce queda sin NIT y el auxiliar por tercero del anticipo no concilia con los libros. La tabla del cruce se lee solo
 -- si existe (to_regclass), así que esta migración no depende de que 121000 esté aplicada.
 create or replace function public.fn_tercero_anticipo_proveedor(p_source text, p_source_id text, out nit text, out nombre text)
@@ -2173,6 +3082,8 @@ begin
     v_anticipo := p_source_id::uuid;
   elsif p_source = 'supplier_advance_application' then
     select a.advance_id into v_anticipo from public.supplier_advance_applications a where a.id = p_source_id::uuid;
+  elsif p_source = 'supplier_advance_conversion' then
+    select c.advance_id into v_anticipo from public.supplier_advance_conversions c where c.id = p_source_id::uuid;
   elsif p_source in ('supplier_advance_refund', 'supplier_advance_withholding_refund') then
     select nullif(p.source_id, '')::uuid into v_anticipo from public.payments p
      where p.id = p_source_id::uuid and p.source = p_source;
@@ -2216,7 +3127,7 @@ begin
   -- sales: el devengo del POS. La factura, si llega después, reutiliza la misma clave.
   if v_source is null or v_source not in ('invoice_sales', 'invoice_purchase', 'credit_note', 'cash_movements', 'support_documents', 'sales',
                                           'supplier_advance', 'supplier_advance_application', 'supplier_advance_refund',
-                                          'supplier_advance_withholding_refund', 'consignment_advance_crossing') then
+                                          'supplier_advance_withholding_refund', 'consignment_advance_crossing', 'supplier_advance_conversion') then
     return new;
   end if;
 
@@ -2232,7 +3143,7 @@ begin
     select t.nit, t.nombre into v_nit, v_nombre
       from public.fn_tercero_de_documento('documento_soporte', v_source_id::uuid) t;
   elsif v_source in ('supplier_advance', 'supplier_advance_application', 'supplier_advance_refund',
-                     'supplier_advance_withholding_refund', 'consignment_advance_crossing') then
+                     'supplier_advance_withholding_refund', 'consignment_advance_crossing', 'supplier_advance_conversion') then
     select t.nit, t.nombre into v_nit, v_nombre
       from public.fn_tercero_anticipo_proveedor(v_source, v_source_id) t;
   else
@@ -2255,7 +3166,18 @@ $function$;
 -- ═════════════════════════════════════════════════════════════════════════════
 
 revoke all on function public.fn_cuenta_anticipo_motivo_invalida(integer, text) from public, anon, authenticated;
-revoke all on function public.fn_anticipo_retencion_practicar(integer, text, uuid, numeric) from public, anon, authenticated;
+revoke all on function public.fn_tributario_retencion_practicar(integer, text, uuid, numeric) from public, anon, authenticated;
+revoke all on function public.fn_rut_tiene(text[], text) from public, anon, authenticated;
+revoke all on function public.fn_tributario_calidad_vigente(integer, integer, uuid, text, date) from public, anon, authenticated;
+revoke all on function public.fn_tributario_calidades_tercero(integer, integer, uuid, date) from public, anon, authenticated;
+revoke all on function public.fn_tributario_calidades_organizacion(integer, date) from public, anon, authenticated;
+revoke all on function public.fn_tributario_evaluar_retencion(integer, text, jsonb, jsonb, uuid, numeric, date, boolean) from public, anon, authenticated;
+revoke all on function public.fn_tributario_cobertura(jsonb, numeric) from public, anon, authenticated;
+revoke all on function public.fn_tercero_calidad_tributaria_guardar_int(integer, integer, uuid, text, text, text[], date, date, date, text, text, date, text) from public, anon, authenticated;
+revoke all on function public.fn_anticipo_componentes(uuid) from public, anon, authenticated;
+revoke all on function public.fn_reteica_procedimiento_exigir(integer, uuid, date, jsonb) from public, anon, authenticated;
+revoke all on function public.fn_retencion_periodo_descuento(text, text, date, date, text) from public, anon, authenticated;
+revoke all on function public.fn_retencion_neto_periodo(integer, text, text) from public, anon, authenticated;
 revoke all on function public.fn_anticipo_proveedor_asiento(integer, integer, timestamptz, text, text, text, text, jsonb, uuid) from public, anon, authenticated;
 revoke all on function public.fn_cxp_cuenta_reconocida(integer, uuid) from public, anon, authenticated;
 revoke all on function public.fn_anticipo_pendiente_abrir(integer, uuid, text, jsonb, uuid) from public, anon, authenticated;
@@ -2267,12 +3189,16 @@ revoke all on function public.fn_cuenta_anticipo_proveedor_estado(integer, integ
 revoke all on function public.fn_cuenta_anticipo_proveedor(integer, integer) from public, anon;
 revoke all on function public.fn_anticipo_cuenta_equivalencia_aprobar(integer, text, text) from public, anon;
 revoke all on function public.fn_proveedor_calidad_tributaria_guardar(integer, integer, text, text, text[], date, date, date, text, text, date, text) from public, anon;
-revoke all on function public.fn_reteiva_aiu_regla_guardar(integer, text, date, date, text) from public, anon;
-revoke all on function public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text) from public, anon;
+revoke all on function public.fn_cliente_calidad_tributaria_guardar(integer, uuid, text, text, text[], date, date, date, text, text, date, text) from public, anon;
+revoke all on function public.fn_aiu_contrato_registrar(integer, integer, text, text, text, jsonb, text, jsonb, text, text, date, date) from public, anon;
+revoke all on function public.fn_reteica_procedimiento_registrar(integer, uuid, text, text, text[], text, text, text, text, date, date) from public, anon;
+revoke all on function public.fn_tributario_regla_validar(text, uuid, text, text, text, integer) from public, anon;
+revoke all on function public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text, uuid) from public, anon;
 revoke all on function public.fn_reteica_regla_guardar(integer, uuid, text, numeric, text, date, date, numeric) from public, anon;
 revoke all on function public.fn_anticipo_pendiente_resolver(uuid, text, text, integer) from public, anon;
-revoke all on function public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean) from public, anon;
-revoke all on function public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean) from public, anon;
+revoke all on function public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean, uuid, date) from public, anon;
+revoke all on function public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean, uuid) from public, anon;
+revoke all on function public.fn_anticipo_proveedor_convertir_en_pago(uuid, text, text, date, numeric, text, integer, numeric, uuid, uuid, jsonb, boolean, uuid) from public, anon;
 revoke all on function public.fn_anticipo_proveedor_vincular_factura(uuid, uuid, numeric, integer) from public, anon;
 revoke all on function public.fn_anticipo_proveedor_desvincular_factura(uuid, uuid, integer) from public, anon;
 revoke all on function public.fn_anticipo_proveedor_aplicar_corrigiendo(uuid, uuid, numeric, text, text, text, integer) from public, anon;
@@ -2284,12 +3210,16 @@ grant execute on function public.fn_cuenta_anticipo_proveedor_estado(integer, in
 grant execute on function public.fn_cuenta_anticipo_proveedor(integer, integer) to authenticated;
 grant execute on function public.fn_anticipo_cuenta_equivalencia_aprobar(integer, text, text) to authenticated;
 grant execute on function public.fn_proveedor_calidad_tributaria_guardar(integer, integer, text, text, text[], date, date, date, text, text, date, text) to authenticated;
-grant execute on function public.fn_reteiva_aiu_regla_guardar(integer, text, date, date, text) to authenticated;
-grant execute on function public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text) to authenticated;
+grant execute on function public.fn_cliente_calidad_tributaria_guardar(integer, uuid, text, text, text[], date, date, date, text, text, date, text) to authenticated;
+grant execute on function public.fn_aiu_contrato_registrar(integer, integer, text, text, text, jsonb, text, jsonb, text, text, date, date) to authenticated;
+grant execute on function public.fn_reteica_procedimiento_registrar(integer, uuid, text, text, text[], text, text, text, text, date, date) to authenticated;
+grant execute on function public.fn_tributario_regla_validar(text, uuid, text, text, text, integer) to authenticated;
+grant execute on function public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text, uuid) to authenticated;
 grant execute on function public.fn_reteica_regla_guardar(integer, uuid, text, numeric, text, date, date, numeric) to authenticated;
 grant execute on function public.fn_anticipo_pendiente_resolver(uuid, text, text, integer) to authenticated;
-grant execute on function public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean) to authenticated;
-grant execute on function public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean) to authenticated;
+grant execute on function public.fn_anticipo_proveedor_evaluar_retenciones(integer, integer, text, numeric, numeric, uuid, uuid, jsonb, boolean, uuid, date) to authenticated;
+grant execute on function public.fn_anticipo_proveedor_registrar(integer, integer, numeric, text, text, text, integer, numeric, uuid, uuid, integer, text, text, jsonb, boolean, uuid) to authenticated;
+grant execute on function public.fn_anticipo_proveedor_convertir_en_pago(uuid, text, text, date, numeric, text, integer, numeric, uuid, uuid, jsonb, boolean, uuid) to authenticated;
 grant execute on function public.fn_anticipo_proveedor_vincular_factura(uuid, uuid, numeric, integer) to authenticated;
 grant execute on function public.fn_anticipo_proveedor_desvincular_factura(uuid, uuid, integer) to authenticated;
 grant execute on function public.fn_anticipo_proveedor_aplicar_corrigiendo(uuid, uuid, numeric, text, text, text, integer) to authenticated;

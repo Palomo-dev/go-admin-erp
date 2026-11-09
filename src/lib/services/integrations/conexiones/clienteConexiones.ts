@@ -4,13 +4,13 @@
  * Los tipos de respuesta son los de los módulos de servidor (solo `import type`).
  */
 import type { ItemCatalogo } from './catalogoConexiones';
-import type { ConexionResumen, EventoResumen, ResultadoGuardarLlaves } from './conexiones.server';
+import type { ConexionResumen, EventoCompleto, EventoResumen, ResultadoGuardarLlaves } from './conexiones.server';
 import type { CuentaVerificada, Prueba } from './probadoresLlaves.server';
-import type { LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen } from './desarrolladores.server';
+import type { CambiosLlave, CambiosWebhook, EntradaWebhook, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen } from './desarrolladores.server';
 import type { Ambiente, ErrorFormato, ProveedorLlaves } from './definicionesLlaves';
 
 export type { CuentaVerificada };
-export type { ItemCatalogo, ConexionResumen, EventoResumen, Prueba, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen };
+export type { ItemCatalogo, ConexionResumen, EventoResumen, EventoCompleto, Prueba, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen, CambiosLlave, CambiosWebhook, EntradaWebhook };
 
 export interface DetalleConexion {
   conexion: {
@@ -69,6 +69,32 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<T> {
 
 const post = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.stringify(body) });
 
+export interface FiltrosEventosCliente {
+  conexion?: string | null;
+  errores?: boolean;
+  /** Solo los que llegaron por webhook del proveedor (`source = webhook`). */
+  soloWebhooks?: boolean;
+  /** Solo las pruebas de conexión. */
+  soloPruebas?: boolean;
+  estado?: string | null;
+  sentido?: 'inbound' | 'outbound' | null;
+  desde?: string | null;
+  hasta?: string | null;
+  q?: string | null;
+  pagina?: number;
+  tamano?: number;
+  limite?: number;
+}
+
+export interface RespuestaEventos {
+  eventos: EventoResumen[];
+  /** Eventos con error en los últimos 30 días (para el chip «Con error · n»). */
+  errores: number;
+  total: number;
+  pagina: number;
+  tamano: number;
+}
+
 export const apiConexiones = {
   listar: () =>
     pedir<{ catalogo: ItemCatalogo[]; conexiones: ConexionResumen[]; conectores: { id: string; nombre: string }[] }>('/api/integrations/conexiones'),
@@ -80,14 +106,24 @@ export const apiConexiones = {
     pedir<{ metodo: string; creado: boolean }>(`/api/integrations/conexiones/${encodeURIComponent(id)}/uso`, post(b)),
   cambiarEstado: (id: string, accion: 'pausar' | 'reanudar' | 'desconectar') =>
     pedir<{ estado: string }>(`/api/integrations/conexiones/${encodeURIComponent(id)}/estado`, post({ accion })),
-  eventos: (f: { conexion?: string | null; errores?: boolean; desde?: string | null; limite?: number } = {}) => {
+  eventos: (f: FiltrosEventosCliente = {}) => {
     const q = new URLSearchParams();
     if (f.conexion) q.set('conexion', f.conexion);
     if (f.errores) q.set('errores', '1');
+    if (f.soloWebhooks) q.set('webhooks', '1');
+    if (f.soloPruebas) q.set('pruebas', '1');
+    if (f.estado) q.set('estado', f.estado);
+    if (f.sentido) q.set('sentido', f.sentido);
     if (f.desde) q.set('desde', f.desde);
+    if (f.hasta) q.set('hasta', f.hasta);
+    if (f.q) q.set('q', f.q);
+    if (f.pagina) q.set('pagina', String(f.pagina));
+    if (f.tamano) q.set('tamano', String(f.tamano));
     if (f.limite) q.set('limite', String(f.limite));
-    return pedir<{ eventos: EventoResumen[]; errores: number }>(`/api/integrations/conexiones/eventos?${q.toString()}`);
+    return pedir<RespuestaEventos>(`/api/integrations/conexiones/eventos?${q.toString()}`);
   },
+  /** Un evento con su cuerpo completo (lo que mostraba la página vieja de detalle). */
+  evento: (id: string) => pedir<EventoCompleto>(`/api/integrations/conexiones/eventos/${encodeURIComponent(id)}`),
   /** Valor de una credencial (administración, auditado en el servidor). Nunca se guarda en el navegador. */
   revelarCredencial: (id: string, proposito: string) =>
     pedir<{ proposito: string; valor: string; origen: 'registro' | 'boveda' }>(
@@ -100,8 +136,19 @@ export const apiConexiones = {
   llavesApi: () => pedir<{ llaves: LlaveApiResumen[] }>('/api/integrations/desarrolladores/llaves'),
   crearLlaveApi: (b: { nombre: string; alcances: string[]; expira?: string | null }) =>
     pedir<{ llave: LlaveApiResumen; completa: string }>('/api/integrations/desarrolladores/llaves', post(b)),
+  editarLlaveApi: (id: string, b: CambiosLlave) =>
+    pedir<{ llave: LlaveApiResumen }>(`/api/integrations/desarrolladores/llaves/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(b) }),
   revocarLlaveApi: (id: string) => pedir<{ revocada: true }>(`/api/integrations/desarrolladores/llaves/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  borrarLlaveApi: (id: string) => pedir<{ borrada: true }>(`/api/integrations/desarrolladores/llaves/${encodeURIComponent(id)}/borrar`, { method: 'DELETE' }),
   webhooks: () => pedir<{ webhooks: WebhookSalienteResumen[] }>('/api/integrations/desarrolladores/webhooks'),
+  /** Devuelve el secreto de firma completo UNA vez. */
+  crearWebhook: (b: EntradaWebhook) => pedir<{ webhook: WebhookSalienteResumen; secreto: string }>('/api/integrations/desarrolladores/webhooks', post(b)),
+  editarWebhook: (id: string, b: CambiosWebhook) =>
+    pedir<{ webhook: WebhookSalienteResumen }>(`/api/integrations/desarrolladores/webhooks/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(b) }),
+  borrarWebhook: (id: string) => pedir<{ borrado: true }>(`/api/integrations/desarrolladores/webhooks/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  /** Secreto nuevo (el anterior deja de valer); se devuelve completo UNA vez. */
+  regenerarSecretoWebhook: (id: string) =>
+    pedir<{ webhook: WebhookSalienteResumen; secreto: string }>(`/api/integrations/desarrolladores/webhooks/${encodeURIComponent(id)}/secreto`, { method: 'POST' }),
   probarWebhook: (id: string) => pedir<ResultadoEnvio>(`/api/integrations/desarrolladores/webhooks/${encodeURIComponent(id)}/probar`, { method: 'POST' }),
 };
 

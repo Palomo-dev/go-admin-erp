@@ -3980,7 +3980,6 @@ describe('44. Detalles en celular: una sola «←», la del MobileHeader del she
     'app/app/hrm/departamentos/[id]/page.tsx': 1, // «Departamento no encontrado»
     'app/app/hrm/empleados/[id]/page.tsx': 1, // «Empleado no encontrado»
     'app/app/hrm/turnos/[id]/page.tsx': 1, // «Turno no encontrado»
-    'app/app/integraciones/eventos/[id]/page.tsx': 1, // «Evento no encontrado»
     'app/app/pos/pedidos-online/[id]/components/OrderNotFoundState.tsx': 1, // pedido no encontrado
     'components/pms/checkout/CheckoutDialog.tsx': 1, // «Atrás» entre pasos del diálogo
     'components/pos/promociones/nuevo/PromotionWizard.tsx': 1, // «Anterior» entre pasos del asistente

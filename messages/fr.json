@@ -4516,11 +4516,8 @@
       "notificaciones_plantillas": "Modèles",
       "notificaciones_logs": "Journal des envois",
       "integraciones_conexiones": "Connexions",
-      "integraciones_eventos": "Événements",
       "integraciones_jobs": "Traitements",
       "integraciones_mapeos": "Correspondances",
-      "integraciones_api-keys": "Clés API",
-      "integraciones_webhooks-salientes": "Webhooks",
       "timeline": "Vue d'ensemble",
       "timeline_exportaciones": "Exportations",
       "crm_clientes": "Clients",
@@ -46611,7 +46608,11 @@
       "errorCarga": "Impossible de charger les informations",
       "produccion": "Production",
       "pruebas": "Test",
-      "verTodo": "Tout voir"
+      "verTodo": "Tout voir",
+      "exportarCsv": "Exporter en CSV",
+      "conectarServicio": "Connecter un service",
+      "conectarDescripcion": "Choisissez-en un dans le catalogue et suivez l’assistant",
+      "verDocumentacion": "Voir la documentation pour développeurs"
     },
     "grupos": {
       "todos": {
@@ -47206,7 +47207,9 @@
       "verErrores": "Voir les erreurs",
       "vacioTitulo": "Vous n’avez pas encore de connexions",
       "vacioTexto": "Connectez vos passerelles, canaux de vente et services depuis le catalogue.",
-      "irCatalogo": "Aller au catalogue"
+      "irCatalogo": "Aller au catalogue",
+      "pruebaEl": "testée {fecha}",
+      "nEventos": "{n, plural, one {# événement} other {# événements}}"
     },
     "actividad": {
       "subtitulo": "Événements de toutes les connexions",
@@ -47256,8 +47259,17 @@
         "evento": "Événement",
         "sentido": "Sens",
         "referencia": "Référence",
-        "verCompleto": "Voir l’événement complet",
-        "irCredenciales": "Aller aux identifiants"
+        "irCredenciales": "Aller aux identifiants",
+        "origen": "Origine",
+        "procesado": "Traité",
+        "id": "Id de l’événement",
+        "copiarId": "Copier l’id",
+        "noCopiado": "Impossible de copier",
+        "verDatos": "Voir les données complètes",
+        "ocultarDatos": "Masquer les données",
+        "datos": "Corps de l’événement",
+        "descargarJson": "Télécharger le JSON",
+        "noEncontrado": "Cet événement n’existe pas ou n’appartient pas à votre organisation"
       },
       "explicacion": {
         "rechazada": {
@@ -47280,7 +47292,14 @@
           "titulo": "L’événement n’a pas pu être traité",
           "texto": "Consultez le détail de l’erreur ; si elle se répète, testez la connexion."
         }
-      }
+      },
+      "buscar": "Rechercher un événement ou une connexion",
+      "archivoExportacion": "activite-connexions.csv",
+      "sustantivo": {
+        "singular": "événement",
+        "plural": "événements"
+      },
+      "subtituloErrores": "{n, plural, =0 {Événements des connexions · aucune erreur sur 30 jours} one {Événements des connexions · # erreur sur 30 jours} other {Événements des connexions · # erreurs sur 30 jours}}"
     },
     "desarrolladores": {
       "subtitulo": "Clés API et notifications vers vos systèmes",
@@ -47315,9 +47334,7 @@
         },
         "creada": "Créée le {fecha}",
         "sinUso": "Jamais utilisée",
-        "activa": "Active",
-        "revocadaEstado": "Révoquée",
-        "revocar": "Révoquer",
+        "revocar": "Révoquer la clé",
         "revocada": "La clé « {nombre} » a été révoquée",
         "revocarTitulo": "Révoquer cette clé ?",
         "revocarTexto": "Les systèmes utilisant « {nombre} » cesseront de fonctionner immédiatement. Action irréversible.",
@@ -47325,7 +47342,35 @@
         "nota": "La clé complète n’est affichée qu’une fois, à sa création. Ici, vous ne voyez que ses 4 derniers caractères.",
         "unaVezTitulo": "Copiez votre clé maintenant",
         "unaVezTexto": "C’est la seule fois où vous la verrez en entier. Conservez-la en lieu sûr.",
-        "noCopiada": "Copie impossible ; sélectionnez-la et copiez-la manuellement"
+        "noCopiada": "Copie impossible ; sélectionnez-la et copiez-la manuellement",
+        "editar": "Modifier le nom et les autorisations",
+        "editarTitulo": "Modifier « {nombre} »",
+        "duplicar": "Dupliquer",
+        "copiaDe": "Copie de {nombre}",
+        "desactivar": "Désactiver",
+        "activar": "Activer",
+        "desactivada": "« {nombre} » est désactivée",
+        "activada": "« {nombre} » est de nouveau active",
+        "editada": "« {nombre} » enregistrée",
+        "borrar": "Supprimer la clé",
+        "borrarTitulo": "Supprimer « {nombre} » ?",
+        "borrarTexto": "L’enregistrement de la clé est supprimé. Si elle est encore active, les systèmes qui l’utilisent cesseront de fonctionner. Irréversible.",
+        "borrada": "La clé « {nombre} » a été supprimée",
+        "vencimiento": "Expiration",
+        "vencimientoAyuda": "Facultatif. La clé cesse de fonctionner à la fin de ce jour.",
+        "vence": "Expire le {fecha}",
+        "estado": {
+          "activa": "Active",
+          "inactiva": "Inactive",
+          "vencida": "Expirée",
+          "revocada": "Révoquée"
+        },
+        "ultimoUsoEl": "dernière utilisation {fecha}",
+        "creadaTitulo": "Clé créée",
+        "listo": "Terminé",
+        "copiarLlave": "Copier la clé",
+        "creadaPor": "Créée par {nombre} · {fecha}",
+        "creadaPorEtiqueta": "Créée par"
       },
       "webhooks": {
         "titulo": "Webhooks sortants",
@@ -47353,8 +47398,49 @@
         "pruebaTiempo": "La destination n’a pas répondu en 8 secondes",
         "pruebaRed": "Impossible de joindre la destination",
         "pruebaFallo": "La destination a répondu {http}",
-        "vacio": "Aucun webhook sortant pour l’instant"
-      }
+        "vacio": "Aucun webhook sortant pour l’instant",
+        "crear": "Créer le webhook",
+        "editar": "Modifier",
+        "editarTitulo": "Modifier le webhook",
+        "duplicar": "Dupliquer",
+        "nombre": "Nom",
+        "nombreEjemplo": "Ex. : notifications vers l’ERP",
+        "url": "Adresse (URL)",
+        "urlEjemplo": "https://…",
+        "urlAyuda": "Doit être une adresse HTTPS publique, sans utilisateur ni mot de passe.",
+        "eventosTitulo": "Événements notifiés",
+        "faltan": "Saisissez un nom, une adresse et choisissez au moins un événement",
+        "editado": "Webhook enregistré",
+        "pausar": "Mettre en pause",
+        "reactivar": "Réactiver",
+        "pausado": "Le webhook est en pause",
+        "reactivado": "Le webhook est de nouveau actif",
+        "borrar": "Supprimer",
+        "borrarTitulo": "Supprimer ce webhook ?",
+        "borrarTexto": "Vos systèmes ne recevront plus ces notifications. Irréversible.",
+        "borrado": "Webhook supprimé",
+        "secretoTitulo": "Copiez votre secret de signature maintenant",
+        "secretoTexto": "C’est la seule fois où vous le verrez en entier. Votre système l’utilise pour vérifier que chaque notification vient de GO Admin (en-tête X-GoAdmin-Signature).",
+        "regenerarSecreto": "Nouveau secret",
+        "regenerarTitulo": "Générer un nouveau secret ?",
+        "regenerarTexto": "Le secret actuel cesse de fonctionner immédiatement : mettez à jour votre système avec le nouveau.",
+        "eventosLista": {
+          "order_created": "Commande créée",
+          "order_updated": "Commande mise à jour",
+          "order_completed": "Commande terminée",
+          "order_cancelled": "Commande annulée",
+          "product_created": "Produit créé",
+          "product_updated": "Produit mis à jour",
+          "product_deleted": "Produit supprimé",
+          "inventory_low_stock": "Stock bas",
+          "inventory_updated": "Stock mis à jour",
+          "customer_created": "Client créé",
+          "payment_received": "Paiement reçu",
+          "payment_refunded": "Remboursement"
+        },
+        "copiarSecreto": "Copier le secret"
+      },
+      "buscar": "Rechercher une clé ou un webhook"
     },
     "asistente": {
       "comun": {
@@ -47915,7 +48001,8 @@
         "sin_columna_nombre": "La colonne «nombre» (ou «name») manque.",
         "demasiadas_filas": "200 lignes maximum par fichier.",
         "servidor": "Import impossible. Réessayez."
-      }
+      },
+      "descripcionMenu": "Depuis un fichier que vous avez déjà"
     },
     "credencial": {
       "ver": "Voir",
@@ -47942,6 +48029,52 @@
       "dominioTienda": "C’est l’adresse de votre boutique en ligne : elle confirme les paiements de la boutique et transmet à GO Admin ceux du point de vente, des folios et des liens de paiement.",
       "sinDominioTitulo": "Votre organisation n’a pas encore de domaine principal vérifié",
       "sinDominioDescripcion": "C’est pourquoi vous voyez l’adresse de GO Admin : elle confirme les encaissements du point de vente et les liens de paiement, mais pas les paiements effectués dans la boutique en ligne. Une fois votre domaine vérifié, revenez ici et modifiez l’URL des événements dans Wompi."
+    },
+    "filtros": {
+      "todos": "Tous",
+      "todas": "Toutes",
+      "estado": "État",
+      "grupo": "Type de service",
+      "atencion": "Attention",
+      "atencionSolo": "Seulement celles à vérifier",
+      "conexion": "Connexion",
+      "todasConexiones": "Toutes les connexions",
+      "resultado": "Résultat",
+      "sentido": "Sens",
+      "estadoLlaves": "Clés",
+      "verResultados": "Voir les résultats",
+      "chips": {
+        "estado": "État : {valor}",
+        "grupo": "Type : {valor}",
+        "atencion": "À vérifier",
+        "conexion": "Connexion : {valor}",
+        "resultado": "Résultat : {valor}",
+        "sentido": "Sens : {valor}",
+        "errores": "Avec erreur",
+        "periodo": "Période : {valor}",
+        "webhooks": "Webhooks uniquement",
+        "pruebas": "Tests de connexion uniquement"
+      },
+      "valores": {
+        "estadoEvento": {
+          "processed": "Réussi",
+          "error": "Avec erreur",
+          "received": "Reçu"
+        },
+        "estadoLlave": {
+          "activas": "Actives",
+          "revocadas": "Révoquées"
+        },
+        "periodo": {
+          "hoy": "Aujourd’hui",
+          "7d": "7 jours",
+          "30d": "30 jours"
+        }
+      },
+      "periodo": "Période",
+      "origen": "Origine",
+      "soloWebhooks": "Webhooks uniquement",
+      "soloPruebas": "Tests de connexion uniquement"
     }
   },
   "consignacionesR4": {

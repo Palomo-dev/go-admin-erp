@@ -2,34 +2,41 @@
 
 /**
  * Mis conexiones (diseño 85-01): aviso si alguna necesita atención y tabla con logo, credencial
- * enmascarada, ambiente, «usada por», última prueba, eventos de 24 h y estado.
+ * enmascarada, ambiente, «usada por», última prueba, eventos de 24 h y estado. En celular, una
+ * `ListCard` por conexión (patrón del kit). Búsqueda y filtros (estado, grupo, «necesita
+ * atención») vienen de la URL, como en las demás listas.
  * «Probar» llama al proveedor desde el servidor y muestra el resultado tal cual (correcta,
  * rechazada, sin respuesta o sin prueba automática); nunca cambia el estado de la conexión.
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Eye, Pause, Play, PlugZap } from 'lucide-react';
-import { AvisoTonal, DataTable, StatusBadge, type AccionFila, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
+import { AvisoTonal, DataTable, ListCard, StatusBadge, type AccionFila, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { apiConexiones, type ConexionResumen } from '@/lib/services/integrations/conexiones/clienteConexiones';
+import { apiConexiones, type ConexionResumen, type ItemCatalogo } from '@/lib/services/integrations/conexiones/clienteConexiones';
+import type { GrupoCatalogo } from '@/lib/services/integrations/conexiones/catalogoConexiones';
 import { LogoServicio } from './logos';
 import { estadoConexion } from './presentacion';
+import { filtrarConexiones, type Filtros } from './filtrosConexiones';
 
 export interface PestanaMisConexionesProps {
   conexiones: ConexionResumen[];
+  /** Para saber el grupo de cada conexión (filtro «Tipo») por su proveedor. */
+  catalogo: ItemCatalogo[];
   cargando: boolean;
   error: string | null;
   busqueda: string;
-  onLimpiarBusqueda: () => void;
+  filtros: Filtros;
+  onLimpiarFiltros: () => void;
   onReintentar: () => void;
   onVerErrores: () => void;
   onIrCatalogo: () => void;
   onCambio: () => void;
 }
 
-export function PestanaMisConexiones({ conexiones, cargando, error, busqueda, onLimpiarBusqueda, onReintentar, onVerErrores, onIrCatalogo, onCambio }: PestanaMisConexionesProps) {
+export function PestanaMisConexiones({ conexiones, catalogo, cargando, error, busqueda, filtros, onLimpiarFiltros, onReintentar, onVerErrores, onIrCatalogo, onCambio }: PestanaMisConexionesProps) {
   const t = useTranslations('integracionesConexiones');
   const router = useRouter();
   const { formatDate, formatDateTime } = useFormatDate();
@@ -38,11 +45,15 @@ export function PestanaMisConexiones({ conexiones, cargando, error, busqueda, on
   const nombreProveedor = (c: ConexionResumen) =>
     t.has(`servicios.${c.proveedor}.nombre`) ? t(`servicios.${c.proveedor}.nombre`) : c.proveedorNombre || c.nombre;
 
-  const filas = useMemo(() => {
-    const q = busqueda.trim().toLocaleLowerCase('es');
-    if (!q) return conexiones;
-    return conexiones.filter((c) => `${c.nombre} ${c.proveedorNombre} ${c.proveedor}`.toLocaleLowerCase('es').includes(q));
-  }, [conexiones, busqueda]);
+  const grupoPorProveedor = useMemo(() => {
+    const mapa = new Map<string, GrupoCatalogo>();
+    for (const i of catalogo) if (i.proveedor) mapa.set(i.proveedor, i.grupo);
+    return mapa;
+  }, [catalogo]);
+  const grupoDe = useCallback((proveedor: string) => grupoPorProveedor.get(proveedor) ?? null, [grupoPorProveedor]);
+
+  const filas = useMemo(() => filtrarConexiones(conexiones, filtros, busqueda, grupoDe), [conexiones, filtros, busqueda, grupoDe]);
+  const hayCriterios = busqueda.trim() !== '' || Object.values(filtros).some(Boolean);
 
   const conAtencion = conexiones.filter((c) => c.necesitaAtencion);
 
@@ -75,11 +86,17 @@ export function PestanaMisConexiones({ conexiones, cargando, error, busqueda, on
     }
   };
 
+  const usadaPorTexto = (c: ConexionResumen) =>
+    c.usadaPor.map((u) => `${t('misConexiones.metodo', { codigo: u.codigo })}${u.tienda ? ` · ${t('misConexiones.tiendaWeb')}` : ''}`).join(' · ');
+
   const usadaPor = (c: ConexionResumen) => {
     if (c.usadaPor.length === 0) return <span className="text-fg-muted">{t('misConexiones.sinUso')}</span>;
-    return c.usadaPor
-      .map((u) => `${t('misConexiones.metodo', { codigo: u.codigo })}${u.tienda ? ` · ${t('misConexiones.tiendaWeb')}` : ''}`)
-      .join(' · ');
+    return usadaPorTexto(c);
+  };
+
+  const badge = (c: ConexionResumen) => {
+    const e = estadoConexion(c.estado, c.necesitaAtencion);
+    return <StatusBadge estado={e.clave} etiqueta={t(`estados.conexion.${e.clave}`)} tono={e.tono} />;
   };
 
   const columnas: ColumnaTabla<ConexionResumen>[] = [
@@ -115,14 +132,7 @@ export function PestanaMisConexiones({ conexiones, cargando, error, busqueda, on
       ocultarDebajo: 'lg',
     },
     { id: 'eventos', encabezado: t('misConexiones.col.eventos24h'), celda: (c) => c.eventos24h, alinear: 'derecha', ocultarDebajo: 'md' },
-    {
-      id: 'estado',
-      encabezado: t('misConexiones.col.estado'),
-      celda: (c) => {
-        const e = estadoConexion(c.estado, c.necesitaAtencion);
-        return <StatusBadge estado={e.clave} etiqueta={t(`estados.conexion.${e.clave}`)} tono={e.tono} />;
-      },
-    },
+    { id: 'estado', encabezado: t('misConexiones.col.estado'), celda: badge },
   ];
 
   const acciones = (c: ConexionResumen): AccionFila[] => {
@@ -163,8 +173,28 @@ export function PestanaMisConexiones({ conexiones, cargando, error, busqueda, on
         etiquetaFila={(c) => nombreProveedor(c)}
         acciones={acciones}
         tonoFila={(c) => (c.estado === 'error' ? 'peligro' : c.necesitaAtencion ? 'advertencia' : undefined)}
+        // Celular (85-51): logo, nombre + estado, «Conectado como …» y una línea con ambiente,
+        // dónde se usa, última prueba y eventos de 24 h; el «⋯» con las mismas acciones de la fila.
+        tarjetaMovil={(c) => (
+          <ListCard
+            miniatura={<LogoServicio id={c.proveedor} titulo={nombreProveedor(c)} />}
+            titulo={nombreProveedor(c)}
+            insignia={badge(c)}
+            subtitulo={c.conectadoComo ? t('conectadoComo.titulo', { nombre: c.conectadoComo }) : c.credencial ? t('misConexiones.credencial', { mascara: c.credencial }) : c.nombre}
+            meta={[
+              c.ambiente === 'production' ? t('comun.produccion') : t('comun.pruebas'),
+              c.usadaPor.length > 0 ? usadaPorTexto(c) : null,
+              c.ultimaPrueba ? t('misConexiones.pruebaEl', { fecha: formatDateTime(c.ultimaPrueba) }) : null,
+              t('misConexiones.nEventos', { n: c.eventos24h }),
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+            onClick={() => router.push(`/app/integraciones/conexiones/${c.id}`)}
+            acciones={acciones(c)}
+          />
+        )}
         termino={busqueda}
-        onLimpiarFiltros={onLimpiarBusqueda}
+        onLimpiarFiltros={hayCriterios ? onLimpiarFiltros : undefined}
         onReintentar={onReintentar}
         error={{ titulo: t('comun.errorCarga'), descripcion: error ?? undefined }}
         vacio={{ titulo: t('misConexiones.vacioTitulo'), descripcion: t('misConexiones.vacioTexto'), accion: { etiqueta: t('misConexiones.irCatalogo'), onClick: onIrCatalogo } }}

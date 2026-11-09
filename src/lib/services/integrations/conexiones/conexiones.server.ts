@@ -366,28 +366,97 @@ export async function detalleConexion(db: SupabaseClient, organizationId: number
 
 // ─── Actividad ───────────────────────────────────────────────────────────────
 
+export interface FiltrosEventos {
+  conexionId?: string | null;
+  soloErrores?: boolean;
+  /** `received` | `processed` | `error` (la página vieja de Eventos filtraba por estado). */
+  estado?: string | null;
+  sentido?: 'inbound' | 'outbound' | null;
+  /** Solo los que llegaron por webhook del proveedor (`source = 'webhook'`). */
+  soloWebhooks?: boolean;
+  /** Solo las pruebas de conexión (`event_type = 'prueba_de_conexion'`). */
+  soloPruebas?: boolean;
+  desde?: string | null;
+  /** Inclusivo (fin del día ya calculado por quien llama). */
+  hasta?: string | null;
+  /** Texto: tipo de evento, referencia externa o mensaje de error. */
+  texto?: string | null;
+  /** Paginación en el servidor (página 1 = primera). Sin `pagina`, se usa `limite` como antes. */
+  pagina?: number;
+  tamano?: number;
+  limite?: number;
+}
+
+const ESTADOS_EVENTO = new Set(['received', 'processed', 'error']);
+const TAMANO_MAXIMO_EVENTOS = 100;
+
+/** Texto seguro para `.or(... ilike ...)` de PostgREST: sin los separadores de su sintaxis. */
+function patronBusqueda(texto: string): string {
+  const limpio = texto.replace(/[,()%\\]/g, ' ').trim().slice(0, 80);
+  return limpio ? `%${limpio}%` : '';
+}
+
 export async function listarEventos(
   db: SupabaseClient,
   organizationId: number,
-  filtros: { conexionId?: string | null; soloErrores?: boolean; desde?: string | null; limite?: number },
-): Promise<{ eventos: EventoResumen[]; errores: number }> {
+  filtros: FiltrosEventos,
+): Promise<{ eventos: EventoResumen[]; errores: number; total: number; pagina: number; tamano: number }> {
   const propias = (await conexionesDeLaOrganizacion(db, organizationId)).map((c) => texto(c.id));
   const ids = filtros.conexionId ? propias.filter((i) => i === filtros.conexionId) : propias;
-  if (ids.length === 0) return { eventos: [], errores: 0 };
+  const tamano = Math.min(Math.max(filtros.tamano ?? filtros.limite ?? 100, 1), filtros.pagina ? TAMANO_MAXIMO_EVENTOS : 300);
+  const pagina = Math.max(1, Math.floor(filtros.pagina ?? 1));
+  if (ids.length === 0) return { eventos: [], errores: 0, total: 0, pagina, tamano };
   let q = db
     .from('integration_events')
-    .select('id, connection_id, created_at, event_type, direction, status, source, error_message, external_event_id, payload')
+    .select('id, connection_id, created_at, event_type, direction, status, source, error_message, external_event_id, payload', { count: 'exact' })
     .in('connection_id', ids)
-    .order('created_at', { ascending: false })
-    .limit(Math.min(Math.max(filtros.limite ?? 100, 1), 300));
+    .order('created_at', { ascending: false });
   if (filtros.soloErrores) q = q.eq('status', 'error');
+  else if (filtros.estado && ESTADOS_EVENTO.has(filtros.estado)) q = q.eq('status', filtros.estado);
+  if (filtros.sentido === 'inbound' || filtros.sentido === 'outbound') q = q.eq('direction', filtros.sentido);
+  if (filtros.soloWebhooks) q = q.eq('source', 'webhook');
+  if (filtros.soloPruebas) q = q.eq('event_type', 'prueba_de_conexion');
   if (filtros.desde) q = q.gte('created_at', filtros.desde);
-  const { data, error } = await q;
+  if (filtros.hasta) q = q.lte('created_at', filtros.hasta);
+  const patron = filtros.texto ? patronBusqueda(filtros.texto) : '';
+  if (patron) q = q.or(`event_type.ilike.${patron},external_event_id.ilike.${patron},error_message.ilike.${patron}`);
+  const desdeFila = (pagina - 1) * tamano;
+  q = q.range(desdeFila, desdeFila + tamano - 1);
+  const { data, error, count } = await q;
   if (error) throw new Error(`integration_events: ${error.message}`);
   const eventos = ((data as Fila[] | null) ?? []).map(resumirEvento);
   const desde30 = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
   const { data: errs } = await db.from('integration_events').select('id').in('connection_id', ids).eq('status', 'error').gte('created_at', desde30).limit(1000);
-  return { eventos, errores: ((errs as Fila[] | null) ?? []).length };
+  return { eventos, errores: ((errs as Fila[] | null) ?? []).length, total: count ?? eventos.length, pagina, tamano };
+}
+
+export interface EventoCompleto extends EventoResumen {
+  /** Cuerpo completo del evento (lo que mandó el proveedor). Solo con `integrations.view`. */
+  datos: Record<string, unknown>;
+  procesado: string | null;
+  /** Momento del evento según el proveedor, si lo informó. */
+  momento: string | null;
+}
+
+/** Un evento de una conexión de la organización, con su cuerpo completo (la página vieja de detalle). */
+export async function detalleEvento(db: SupabaseClient, organizationId: number, id: string): Promise<EventoCompleto> {
+  const { data, error } = await db
+    .from('integration_events')
+    .select('id, connection_id, created_at, event_type, direction, status, source, error_message, external_event_id, payload, processed_at, event_time')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(`integration_events: ${error.message}`);
+  const e = data as Fila | null;
+  if (!e) throw new ConexionError(404, 'NO_ENCONTRADO', 'Evento no encontrado.');
+  // La pertenencia se decide por la conexión: un evento de otra organización es «no encontrado».
+  const propias = (await conexionesDeLaOrganizacion(db, organizationId)).map((c) => texto(c.id));
+  if (!propias.includes(texto(e.connection_id))) throw new ConexionError(404, 'NO_ENCONTRADO', 'Evento no encontrado.');
+  return {
+    ...resumirEvento(e),
+    datos: fila(e.payload),
+    procesado: (e.processed_at as string | null) ?? null,
+    momento: (e.event_time as string | null) ?? null,
+  };
 }
 
 // ─── Cuenta verificada («Conectado como …») ──────────────────────────────────

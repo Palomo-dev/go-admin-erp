@@ -1,93 +1,11 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import {
-  integrationsService,
-  IntegrationEvent,
-} from '@/lib/services/integrationsService';
-import { EventDetail } from '@/components/integraciones/eventos/id';
-import { DetailSkeleton } from '@/components/common/PageSkeletons';
-
-export default function EventoDetallePage() {
-  const params = useParams();
-  const eventId = params?.id as string;
-
-  const [event, setEvent] = useState<IntegrationEvent | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Cargar evento
-  const loadEvent = useCallback(async () => {
-    if (!eventId) return;
-
-    try {
-      setLoading(true);
-      const data = await integrationsService.getEventById(eventId);
-
-      if (!data) {
-        setError('Evento no encontrado');
-        return;
-      }
-
-      setEvent(data);
-    } catch (err) {
-      console.error('Error loading event:', err);
-      setError('Error al cargar el evento');
-    } finally {
-      setLoading(false);
-    }
-  }, [eventId]);
-
-  useEffect(() => {
-    loadEvent();
-  }, [loadEvent]);
-
-  // Estado de carga
-  if (loading) {
-    return (
-  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <DetailSkeleton />
-  </div>
-);
-  }
-
-  // Estado de error
-  if (error || !event) {
-    return (
-      <div className="h-full bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center">
-        <div className="p-4 bg-red-100 dark:bg-red-900/30 rounded-full mb-4">
-          <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
-        </div>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-          {error || 'Evento no encontrado'}
-        </h3>
-        <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md text-center">
-          No se pudo cargar la información del evento solicitado.
-        </p>
-        <div className="flex gap-3">
-          <Link href="/app/integraciones/eventos">
-            <Button variant="outline">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Volver a eventos
-            </Button>
-          </Link>
-          <Button
-            onClick={() => loadEvent()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            Reintentar
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    // Sin «Reprocesar»: encolaba un integration_job que ningún proceso ejecuta (Frente INT).
-    <EventDetail event={event} />
-  );
+/**
+ * El detalle de un evento se abre desde 2026-11-09 en Integraciones › Conexiones › Actividad
+ * (`?evento=<id>`: panel con la explicación del error, el cuerpo completo, copiar id y descargar
+ * JSON). Esta ruta queda solo para no romper los enlaces viejos.
+ */
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  redirect(`/app/integraciones/conexiones?tab=actividad&evento=${encodeURIComponent(id)}`);
 }

@@ -669,13 +669,11 @@ export const CATALOGO_NAV: ModuloNav[] = [
     paginas: [
       { href: '/app/integraciones/conexiones', nombre: 'Conexiones', icono: Link2 },
       // Frente INT (2026-11-07): Conexiones reúne Catálogo · Mis conexiones · Actividad ·
-      // Desarrolladores. Eventos, llaves de API y webhooks salen de esas pestañas; Trabajos y
-      // Mapeos no tienen proceso que los consuma. Las páginas siguen vivas (enlaces y permisos).
-      { href: '/app/integraciones/eventos', nombre: 'Eventos', icono: Activity, enMenu: false },
+      // Desarrolladores. Desde 2026-11-09 las páginas viejas de Eventos, Llaves de API y Webhooks
+      // redirigen a esas pestañas (ya no son páginas del catálogo). Trabajos y Mapeos no tienen
+      // proceso que los consuma: siguen vivas por URL, fuera del menú, hasta que el dueño decida.
       { href: '/app/integraciones/jobs', nombre: 'Trabajos', icono: Briefcase, enMenu: false },
       { href: '/app/integraciones/mapeos', nombre: 'Mapeos', icono: GitMerge, enMenu: false },
-      { href: '/app/integraciones/api-keys', nombre: 'Llaves de API', icono: Key, enMenu: false },
-      { href: '/app/integraciones/webhooks-salientes', nombre: 'Webhooks', icono: Send, enMenu: false },
     ],
   },
   {

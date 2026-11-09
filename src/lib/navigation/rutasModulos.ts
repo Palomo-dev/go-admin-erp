@@ -350,11 +350,8 @@ export const RUTAS_MODULOS: readonly RutasModulo[] = [
     rutas: ['/app/integraciones'],
     paginas: [
       '/app/integraciones/conexiones',
-      '/app/integraciones/eventos',
       '/app/integraciones/jobs',
       '/app/integraciones/mapeos',
-      '/app/integraciones/api-keys',
-      '/app/integraciones/webhooks-salientes',
     ],
   },
   {

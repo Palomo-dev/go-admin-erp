@@ -34,14 +34,14 @@ export function DocumentationSection() {
     {
       title: 'Configurar API Keys',
       description: 'Genera claves para acceso programático',
-      href: '/app/integraciones/api-keys',
+      href: '/app/integraciones/conexiones?tab=desarrolladores',
       icon: <Key className="h-5 w-5" />,
       color: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30',
     },
     {
       title: 'Webhooks Salientes',
       description: 'Notifica eventos a sistemas externos',
-      href: '/app/integraciones/webhooks-salientes',
+      href: '/app/integraciones/conexiones?tab=desarrolladores',
       icon: <Send className="h-5 w-5" />,
       color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-900/30',
     },
@@ -55,7 +55,7 @@ export function DocumentationSection() {
     {
       title: 'Monitor de Eventos',
       description: 'Revisa logs y auditoría',
-      href: '/app/integraciones/eventos',
+      href: '/app/integraciones/conexiones?tab=actividad',
       icon: <Activity className="h-5 w-5" />,
       color: 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30',
     },

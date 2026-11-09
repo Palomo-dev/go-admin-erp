@@ -10,6 +10,11 @@
  * repos no calculan el mismo token, el enlace abre el seguimiento sin datos
  * personales: no rompe nada, pero hay que mantenerlos iguales.
  *
+ * Marca (2026-11-09): el correo lleva el logo público de la organización y el color principal
+ * del sitio web (o, si falta, el de la organización) en la cabecera y el botón. Cancelado y
+ * rechazado conservan el rojo. El remitente todavía no cambia: pasará a `email_domains` cuando
+ * los dominios estén verificados en Resend.
+ *
  * Nunca lanza: un correo que no sale no puede tumbar un cambio de estado. La
  * organización la pone quien llama desde la sesión (`withOrg`) o desde el
  * propio pedido (server-to-server con secreto); el pedido se lee SIEMPRE
@@ -77,6 +82,49 @@ export interface CorreoEstadoPedido {
   text: string;
 }
 
+/** Marca del negocio para el correo: logo público y color principal. */
+export interface MarcaCorreo {
+  logoUrl?: string | null;
+  color?: string | null;
+}
+
+/** Estados que conservan su rojo aunque el negocio tenga color propio. */
+const ESTADOS_EN_ROJO: ReadonlySet<EstadoConAviso> = new Set(['cancelled', 'rejected']);
+
+/** `#RGB` o `#RRGGBB` → `#RRGGBB` en mayúsculas. Cualquier otra cosa → null (nunca llega al CSS). */
+export function normalizarColor(valor: string | null | undefined): string | null {
+  const v = (valor ?? '').trim();
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(v);
+  if (!m) return null;
+  const hex = m[1].length === 3 ? m[1].split('').map((d) => d + d).join('') : m[1];
+  return `#${hex.toUpperCase()}`;
+}
+
+/** Solo una URL absoluta `https:`: una ruta interna de storage o un `data:` no se muestran. */
+export function logoPublico(valor: string | null | undefined): string | null {
+  const v = (valor ?? '').trim();
+  if (!v) return null;
+  try {
+    const u = new URL(v);
+    return u.protocol === 'https:' ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function luminancia(hex: string): number {
+  const canal = (i: number) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * canal(1) + 0.7152 * canal(3) + 0.0722 * canal(5);
+}
+
+/** Contraste WCAG contra el blanco. */
+function contrasteConBlanco(hex: string): number {
+  return 1.05 / (luminancia(hex) + 0.05);
+}
+
 /** Arma el correo (puro: se testea sin red). */
 export function armarCorreoEstado(datos: {
   estado: EstadoConAviso;
@@ -86,8 +134,16 @@ export function armarCorreoEstado(datos: {
   urlSeguimiento: string | null;
   horaEstimada?: string | null;
   motivo?: string | null;
+  marca?: MarcaCorreo | null;
 }): CorreoEstadoPedido {
-  const c = ESTADOS[datos.estado];
+  const estadoBase = ESTADOS[datos.estado];
+  const colorMarca = ESTADOS_EN_ROJO.has(datos.estado) ? null : normalizarColor(datos.marca?.color);
+  const c = { ...estadoBase, color: colorMarca ?? estadoBase.color };
+  // Un color de marca muy claro (amarillo, crema) no se lee como texto sobre blanco ni con letra blanca encima.
+  const legible = contrasteConBlanco(c.color) >= 3;
+  const colorTitulo = legible ? c.color : '#333333';
+  const textoBoton = legible ? '#FFFFFF' : '#111111';
+  const logo = logoPublico(datos.marca?.logoUrl);
   const negocio = datos.nombreNegocio.trim();
   const filas = [
     ['Pedido', escapar(datos.numeroPedido)],
@@ -98,11 +154,12 @@ export function armarCorreoEstado(datos: {
     .map(([k, v]) => `<tr><td style="padding:6px 0;color:#666;font-size:13px;">${k}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${v}</td></tr>`)
     .join('');
   const boton = datos.urlSeguimiento
-    ? `<div style="text-align:center;margin-top:24px;"><a href="${escapar(datos.urlSeguimiento)}" style="display:inline-block;background:${c.color};color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Ver estado de mi pedido</a></div>`
+    ? `<div style="text-align:center;margin-top:24px;"><a href="${escapar(datos.urlSeguimiento)}" style="display:inline-block;background:${c.color};color:${textoBoton};padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Ver estado de mi pedido</a></div>`
     : '';
   const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">
-<div style="background:${c.color}10;padding:32px;text-align:center;border-radius:8px 8px 0 0;">
-<h1 style="margin:0;color:${c.color};font-size:22px;">${escapar(c.titulo)}</h1>
+<div style="background:${c.color}1A;border-top:4px solid ${c.color};padding:32px;text-align:center;border-radius:8px 8px 0 0;">
+${logo ? `<img src="${escapar(logo)}" alt="${escapar(negocio || 'Logo')}" style="display:block;margin:0 auto 16px;max-height:56px;max-width:200px;height:auto;border:0;">` : ''}
+<h1 style="margin:0;color:${colorTitulo};font-size:22px;">${escapar(c.titulo)}</h1>
 ${negocio ? `<p style="margin:8px 0 0;color:#666;font-size:13px;">${escapar(negocio)}</p>` : ''}
 </div>
 <div style="padding:24px;">
@@ -121,6 +178,33 @@ ${boton}
   ].filter(Boolean).join('\n');
   const asunto = `${c.titulo} — Pedido ${datos.numeroPedido}${negocio ? ` · ${negocio}` : ''}`;
   return { asunto, html, text };
+}
+
+/**
+ * Logo y color del negocio. El color sale primero del sitio web (`website_settings.primary_color`,
+ * lo que el cliente ve en la tienda) y, si no hay, de la organización. Si la lectura falla, el
+ * correo sale con los colores de siempre: la marca nunca impide el aviso.
+ */
+export async function marcaDelNegocio(
+  db: SupabaseClient,
+  organizationId: number,
+  org: { logo_url?: string | null; primary_color?: string | null },
+): Promise<MarcaCorreo> {
+  let colorSitio: string | null = null;
+  try {
+    const { data } = await db
+      .from('website_settings')
+      .select('primary_color')
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+    colorSitio = normalizarColor(data?.primary_color);
+  } catch {
+    colorSitio = null;
+  }
+  return {
+    logoUrl: logoPublico(org.logo_url),
+    color: colorSitio ?? normalizarColor(org.primary_color),
+  };
 }
 
 /**
@@ -147,10 +231,11 @@ export async function enviarCorreoEstadoPedido(
 
     const { data: org } = await db
       .from('organizations')
-      .select('id, name')
+      .select('id, name, logo_url, primary_color')
       .eq('id', organizationId)
       .maybeSingle();
     if (!org) return false;
+    const marca = await marcaDelNegocio(db, organizationId, org);
     const url = urlSeguimiento({ id: organizationId, host: await hostPublicoOrg(db, organizationId) }, pedido);
 
     const r = await avisarClientePedido(db, organizationId, pedido as PedidoParaAviso, {
@@ -176,6 +261,7 @@ export async function enviarCorreoEstadoPedido(
             ? formatTimeInTz(estimada, zona)
             : null,
           motivo: ['cancelled', 'rejected'].includes(pedido.status) ? pedido.cancellation_reason : null,
+          marca,
         });
         const remitente = `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
         const { data: enviado, error: envioError } = await getMasterResend().emails.send({

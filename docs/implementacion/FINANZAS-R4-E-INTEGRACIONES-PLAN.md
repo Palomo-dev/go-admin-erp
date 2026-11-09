@@ -506,3 +506,57 @@ Propuesta, sin implementar:
   cuya referencia no sea de la tienda.
 - Entonces el asistente mostraría `https://{dominio principal verificado}/api/webhooks/wompi_co`.
 - Mientras tanto, la URL configurada hoy en Wompi no se toca.
+
+#### Frente INT · Conexiones en celular (Figma, 2026-11-09)
+
+Solo diseño, sin código. El dueño vio la página mal en celular (el buscador distinto al de las demás
+listas y sin encontrar Webhooks ni Llaves de API) porque no existía diseño de celular. Se añadió la
+fila «Celular» dentro de la sección `2364:15823` (página «10 Configuración», intro `2431:20519`),
+frames de 390 px con anotación cada uno. Capturas en `docs/design/figma/85-integraciones-5*-movil-*.png`.
+
+| Frame | id | Captura |
+|---|---|---|
+| 50 · Catálogo | `2426:18841` | `50-movil-catalogo` |
+| 50b · Catálogo — menú «⋯» del encabezado | `2430:20362` | `50b-movil-catalogo-menu` |
+| 51 · Mis conexiones | `2426:19313` | `51-movil-mis-conexiones` |
+| 51b · Mis conexiones — vacío | `2426:19678` | `51b-movil-mis-conexiones-vacio` |
+| 52 · Actividad | `2427:19266` | `52-movil-actividad` |
+| 53 · Desarrolladores (pantalla larga) | `2427:20345` | `53-movil-desarrolladores` |
+| 53b · Desarrolladores — menú «⋯» de una llave | `2427:20697` | `53b-movil-desarrolladores-menu-fila` |
+| 53c · Desarrolladores — hoja «Llave creada» | `2427:21125` | `53c-movil-llave-creada` |
+| 54 · Detalle de conexión (Wompi, pantalla larga) | `2429:20124` | `54-movil-detalle` |
+| 55 · Asistente — pegar credenciales | `2429:20587` | `55-movil-asistente-credenciales` |
+| 56 · Asistente — prueba correcta, «conectado como» | `2429:20743` | `56-movil-conectado-como` |
+| 57 · Actividad — hoja de filtros | `2427:19702` | `57-movil-filtros` |
+
+Decisiones de celular:
+- Misma estructura que las demás listas en celular (Facturas de venta `421:171523`, Cuentas por
+  cobrar `449:214437`): barra de estado, `MobileHeader` (`48:2550`, Mode=page, «⋯» en la acción de
+  icono), fila `SearchBar` (`104:3468`, md) + `FilterButton` (`104:3514`), contenido con relleno 16 y
+  separación 12, `MobileTabBar` (`57:3101`) abajo.
+- Las cuatro pestañas (Catálogo · Mis conexiones · 5 · Actividad · Desarrolladores) van en una fila
+  con desplazamiento horizontal: en 390 px «Desarrolladores» queda cortada a propósito para que se
+  note que hay más a la derecha; en la pestaña activa (53) la fila aparece desplazada al final. Los
+  chips por grupo (`Chip` `103:3013`, Variant=toggle) también se desplazan.
+- Una tarjeta por fila en todas las listas (servicio, conexión, evento, llave, webhook): logo
+  (`2367:16785`), título, `Badge` (`7:70`, suave sm) de estado, «Conectado como …», ambiente y uso.
+  El menú «⋯» por fila (`IconButton` `9:384` con MoreVertical) abre una hoja inferior
+  (`BottomSheet` `113:4774` + `MenuItem` `10:239`), igual que la hoja de acciones de Impuestos.
+- Filtros en hoja inferior con el mismo `FilterPanel` Layout=sheet (`105:3450`) de las demás listas:
+  Conexión, Resultado, Sentido, Periodo y casillas.
+- Desarrolladores: aviso (`Aviso` `978:605724`), «Llaves de API» y «Webhooks salientes» como listas
+  de filas con «Nueva llave» / «Nuevo webhook» (`Button` `9:343`) y menú por fila (editar, probar,
+  revocar o pausar, eliminar). La hoja «Llave creada» muestra la llave completa una sola vez con
+  botón de copiar; en la lista solo quedan los últimos 4 caracteres.
+- Detalle de conexión en celular en una sola columna y pantalla larga: estado y acciones, aviso del
+  error vigente, «Conectado como» (`FilaDato` `680:406357`), credenciales con ojo, webhook con copiar,
+  dónde se usa, actividad reciente y zona de peligro. Se adaptó sobre Wompi (no sobre Booking como
+  `2382:17`) porque es la conexión que tiene credenciales y webhook.
+- Asistente de conexión como hoja a pantalla completa (sin barra de pestañas), con pasos como
+  círculos y la etiqueta del paso actual, `FormField` (`50:2685`) y `PasswordField` (`351:137843`)
+  con ojo, y botones fijos abajo. El bloque «Conectado como» y los tres chequeos son clones del
+  diálogo de escritorio `2413:17`.
+- Dudas para el dueño: si en celular el buscador debe ser md (como facturas) o sm (como impuestos);
+  si el detalle debe conservar las pestañas de escritorio (Resumen · Habitaciones · Credenciales ·
+  Actividad) en vez de una sola columna; y si la hoja «⋯» del encabezado del catálogo debe traer
+  «Importar CSV» o solo «Conectar».

@@ -1,6 +1,6 @@
 /**
  * Base Supabase falsa para las pruebas del Frente INT: tablas en memoria, filtros
- * eq/neq/in/is/gte/order/limit, insert/update/upsert/delete y rpc del Vault. Sin red.
+ * eq/neq/in/is/gte/lte/or(ilike)/order/limit/range (+ count), insert/update/upsert/delete y rpc del Vault. Sin red.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -62,7 +62,9 @@ export function crearBaseFalsa(tablas: Record<string, Fila[]> = {}): BaseFalsa {
       | { tipo: 'upsert'; filas: Fila[]; conflicto: string[] };
     let accion: Accion = { tipo: 'select' };
     let limite: number | null = null;
+    let rango: { desde: number; hasta: number } | null = null;
     let orden: { col: string; asc: boolean } | null = null;
+    let total = 0;
     const filas = () => (tablas[tabla] ??= []);
     const ejecutar = (): Fila[] => {
       if (accion.tipo === 'insert') {
@@ -89,9 +91,14 @@ export function crearBaseFalsa(tablas: Record<string, Fila[]> = {}): BaseFalsa {
         const { col, asc } = orden;
         coinciden = [...coinciden].sort((a, b) => (String(a[col]) < String(b[col]) ? -1 : 1) * (asc ? 1 : -1));
       }
+      total = coinciden.length;
+      if (rango) coinciden = coinciden.slice(rango.desde, rango.hasta + 1);
       return limite == null ? coinciden : coinciden.slice(0, limite);
     };
-    const resultado = () => ({ data: ejecutar(), error: null });
+    const resultado = () => {
+      const data = ejecutar();
+      return { data, error: null, count: total };
+    };
     const q: Record<string, unknown> = {
       select: () => q,
       eq: (c: string, v: unknown) => (filtros.push((f) => valorCol(f, c) === v), q),
@@ -99,6 +106,14 @@ export function crearBaseFalsa(tablas: Record<string, Fila[]> = {}): BaseFalsa {
       in: (c: string, vs: unknown[]) => (filtros.push((f) => vs.includes(f[c])), q),
       is: (c: string, v: unknown) => (filtros.push((f) => (f[c] ?? null) === v), q),
       gte: (c: string, v: unknown) => (filtros.push((f) => String(f[c]) >= String(v)), q),
+      lte: (c: string, v: unknown) => (filtros.push((f) => String(f[c]) <= String(v)), q),
+      // `or('col.ilike.%x%,otra.ilike.%x%')`: lo mínimo que usa la búsqueda de eventos.
+      or: (expr: string) => {
+        const partes = expr.split(',').map((p) => /^(\w+)\.ilike\.%(.*)%$/.exec(p)).filter((m): m is RegExpExecArray => !!m);
+        filtros.push((f) => partes.some((m) => String(f[m[1]] ?? '').toLowerCase().includes(m[2].toLowerCase())));
+        return q;
+      },
+      range: (desde: number, hasta: number) => ((rango = { desde, hasta }), q),
       order: (col: string, o?: { ascending?: boolean }) => ((orden = { col, asc: o?.ascending !== false }), q),
       limit: (n: number) => ((limite = n), q),
       insert: (f: Fila | Fila[]) => ((accion = { tipo: 'insert', filas: Array.isArray(f) ? f : [f] }), q),

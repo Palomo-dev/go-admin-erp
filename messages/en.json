@@ -4519,11 +4519,8 @@
       "notificaciones_plantillas": "Templates",
       "notificaciones_logs": "Delivery log",
       "integraciones_conexiones": "Connections",
-      "integraciones_eventos": "Events",
       "integraciones_jobs": "Jobs",
       "integraciones_mapeos": "Mappings",
-      "integraciones_api-keys": "API keys",
-      "integraciones_webhooks-salientes": "Webhooks",
       "timeline": "Overview",
       "timeline_exportaciones": "Exports",
       "crm_clientes": "Customers",
@@ -46611,7 +46608,11 @@
       "errorCarga": "The information could not be loaded",
       "produccion": "Production",
       "pruebas": "Test",
-      "verTodo": "View all"
+      "verTodo": "View all",
+      "exportarCsv": "Export CSV",
+      "conectarServicio": "Connect a service",
+      "conectarDescripcion": "Pick one from the catalog and follow the wizard",
+      "verDocumentacion": "View developer documentation"
     },
     "grupos": {
       "todos": {
@@ -47206,7 +47207,9 @@
       "verErrores": "View errors",
       "vacioTitulo": "You don’t have connections yet",
       "vacioTexto": "Connect your gateways, sales channels and services from the catalog.",
-      "irCatalogo": "Go to catalog"
+      "irCatalogo": "Go to catalog",
+      "pruebaEl": "tested {fecha}",
+      "nEventos": "{n, plural, one {# event} other {# events}}"
     },
     "actividad": {
       "subtitulo": "Events from all connections",
@@ -47256,8 +47259,17 @@
         "evento": "Event",
         "sentido": "Direction",
         "referencia": "Reference",
-        "verCompleto": "View full event",
-        "irCredenciales": "Go to credentials"
+        "irCredenciales": "Go to credentials",
+        "origen": "Source",
+        "procesado": "Processed",
+        "id": "Event id",
+        "copiarId": "Copy id",
+        "noCopiado": "Couldn’t copy",
+        "verDatos": "Show full data",
+        "ocultarDatos": "Hide data",
+        "datos": "Event body",
+        "descargarJson": "Download JSON",
+        "noEncontrado": "That event doesn’t exist or doesn’t belong to your organization"
       },
       "explicacion": {
         "rechazada": {
@@ -47280,7 +47292,14 @@
           "titulo": "The event could not be processed",
           "texto": "Check the error details; if it repeats, test the connection."
         }
-      }
+      },
+      "buscar": "Search events or connections",
+      "archivoExportacion": "connections-activity.csv",
+      "sustantivo": {
+        "singular": "event",
+        "plural": "events"
+      },
+      "subtituloErrores": "{n, plural, =0 {Connection events · no errors in 30 days} one {Connection events · # error in 30 days} other {Connection events · # errors in 30 days}}"
     },
     "desarrolladores": {
       "subtitulo": "API keys and notifications to your systems",
@@ -47315,9 +47334,7 @@
         },
         "creada": "Created {fecha}",
         "sinUso": "Never used",
-        "activa": "Active",
-        "revocadaEstado": "Revoked",
-        "revocar": "Revoke",
+        "revocar": "Revoke key",
         "revocada": "Key “{nombre}” was revoked",
         "revocarTitulo": "Revoke this key?",
         "revocarTexto": "Systems using “{nombre}” will stop working immediately. This can’t be undone.",
@@ -47325,7 +47342,35 @@
         "nota": "The full key is shown only once when created. Here you only see its last 4 characters.",
         "unaVezTitulo": "Copy your key now",
         "unaVezTexto": "This is the only time you’ll see it in full. Store it somewhere safe.",
-        "noCopiada": "Couldn’t copy; select it and copy manually"
+        "noCopiada": "Couldn’t copy; select it and copy manually",
+        "editar": "Edit name and permissions",
+        "editarTitulo": "Edit “{nombre}”",
+        "duplicar": "Duplicate",
+        "copiaDe": "Copy of {nombre}",
+        "desactivar": "Deactivate",
+        "activar": "Activate",
+        "desactivada": "“{nombre}” is now inactive",
+        "activada": "“{nombre}” is active again",
+        "editada": "“{nombre}” saved",
+        "borrar": "Delete key",
+        "borrarTitulo": "Delete “{nombre}”?",
+        "borrarTexto": "The key record is deleted. If it is still active, the systems using it will stop working. This cannot be undone.",
+        "borrada": "Key “{nombre}” was deleted",
+        "vencimiento": "Expiration",
+        "vencimientoAyuda": "Optional. The key stops working at the end of that day.",
+        "vence": "Expires on {fecha}",
+        "estado": {
+          "activa": "Active",
+          "inactiva": "Inactive",
+          "vencida": "Expired",
+          "revocada": "Revoked"
+        },
+        "ultimoUsoEl": "last used {fecha}",
+        "creadaTitulo": "Key created",
+        "listo": "Done",
+        "copiarLlave": "Copy key",
+        "creadaPor": "Created by {nombre} · {fecha}",
+        "creadaPorEtiqueta": "Created by"
       },
       "webhooks": {
         "titulo": "Outgoing webhooks",
@@ -47353,8 +47398,49 @@
         "pruebaTiempo": "The endpoint didn’t respond within 8 seconds",
         "pruebaRed": "Couldn’t reach the endpoint",
         "pruebaFallo": "The endpoint responded {http}",
-        "vacio": "No outgoing webhooks yet"
-      }
+        "vacio": "No outgoing webhooks yet",
+        "crear": "Create webhook",
+        "editar": "Edit",
+        "editarTitulo": "Edit webhook",
+        "duplicar": "Duplicate",
+        "nombre": "Name",
+        "nombreEjemplo": "E.g. ERP notifications",
+        "url": "URL",
+        "urlEjemplo": "https://…",
+        "urlAyuda": "Must be a public HTTPS address, with no username or password in it.",
+        "eventosTitulo": "Events to notify",
+        "faltan": "Enter a name, a URL and pick at least one event",
+        "editado": "Webhook saved",
+        "pausar": "Pause",
+        "reactivar": "Resume",
+        "pausado": "The webhook is paused",
+        "reactivado": "The webhook is active again",
+        "borrar": "Delete",
+        "borrarTitulo": "Delete this webhook?",
+        "borrarTexto": "Your systems will stop receiving these notifications. This cannot be undone.",
+        "borrado": "Webhook deleted",
+        "secretoTitulo": "Copy your signing secret now",
+        "secretoTexto": "This is the only time you will see it in full. Your system uses it to verify that each notification comes from GO Admin (X-GoAdmin-Signature header).",
+        "regenerarSecreto": "New secret",
+        "regenerarTitulo": "Generate a new secret?",
+        "regenerarTexto": "The current secret stops working immediately: update your system with the new one.",
+        "eventosLista": {
+          "order_created": "Order created",
+          "order_updated": "Order updated",
+          "order_completed": "Order completed",
+          "order_cancelled": "Order cancelled",
+          "product_created": "Product created",
+          "product_updated": "Product updated",
+          "product_deleted": "Product deleted",
+          "inventory_low_stock": "Low stock",
+          "inventory_updated": "Stock updated",
+          "customer_created": "Customer created",
+          "payment_received": "Payment received",
+          "payment_refunded": "Refund"
+        },
+        "copiarSecreto": "Copy secret"
+      },
+      "buscar": "Search keys or webhooks"
     },
     "asistente": {
       "comun": {
@@ -47915,7 +48001,8 @@
         "sin_columna_nombre": "The «nombre» (or «name») column is missing.",
         "demasiadas_filas": "At most 200 rows per file.",
         "servidor": "Could not import. Try again."
-      }
+      },
+      "descripcionMenu": "From a file you already have"
     },
     "credencial": {
       "ver": "Show",
@@ -47942,6 +48029,52 @@
       "dominioTienda": "This is your online store address: it confirms store payments and passes point-of-sale, folio and payment-link payments on to GO Admin.",
       "sinDominioTitulo": "Your organization does not have a verified primary domain yet",
       "sinDominioDescripcion": "That is why you see the GO Admin address: it confirms point-of-sale charges and payment links, but not payments made in the online store. Once you verify your domain, come back here and change the events URL in Wompi."
+    },
+    "filtros": {
+      "todos": "All",
+      "todas": "All",
+      "estado": "Status",
+      "grupo": "Service type",
+      "atencion": "Attention",
+      "atencionSolo": "Only those needing attention",
+      "conexion": "Connection",
+      "todasConexiones": "All connections",
+      "resultado": "Result",
+      "sentido": "Direction",
+      "estadoLlaves": "Keys",
+      "verResultados": "Show results",
+      "chips": {
+        "estado": "Status: {valor}",
+        "grupo": "Type: {valor}",
+        "atencion": "Need attention",
+        "conexion": "Connection: {valor}",
+        "resultado": "Result: {valor}",
+        "sentido": "Direction: {valor}",
+        "errores": "With error",
+        "periodo": "Period: {valor}",
+        "webhooks": "Webhooks only",
+        "pruebas": "Connection tests only"
+      },
+      "valores": {
+        "estadoEvento": {
+          "processed": "Successful",
+          "error": "With error",
+          "received": "Received"
+        },
+        "estadoLlave": {
+          "activas": "Active",
+          "revocadas": "Revoked"
+        },
+        "periodo": {
+          "hoy": "Today",
+          "7d": "7 days",
+          "30d": "30 days"
+        }
+      },
+      "periodo": "Period",
+      "origen": "Source",
+      "soloWebhooks": "Webhooks only",
+      "soloPruebas": "Connection tests only"
     }
   },
   "consignacionesR4": {

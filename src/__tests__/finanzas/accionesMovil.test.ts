@@ -22,7 +22,9 @@ import * as path from 'path';
 import * as ts from 'typescript';
 
 const RAIZ = path.resolve(__dirname, '..', '..', '..');
-const CARPETAS = ['src/components/finanzas', 'src/app/app/finanzas'];
+// 2026-11-09: también Integraciones › Conexiones (el dueño encontró la cabecera sin «Conectar» ni
+// «Importar» en el celular): la página, sus pestañas y el detalle de la conexión.
+const CARPETAS = ['src/components/finanzas', 'src/app/app/finanzas', 'src/components/integraciones/conexiones-v2', 'src/app/app/integraciones/conexiones'];
 
 /**
  * Casos justificados. Clave `ruta:Componente#n` (n = orden de aparición de esa
@@ -106,7 +108,7 @@ function usosDeCabecera(rel: string): Uso[] {
 
 const USOS = CARPETAS.flatMap(archivos).flatMap(usosDeCabecera);
 
-describe('Finanzas: las acciones de la cabecera también existen en móvil', () => {
+describe('Finanzas e Integraciones: las acciones de la cabecera también existen en móvil', () => {
   test('el barrido encuentra las cabeceras del kit (si no, el test no está mirando nada)', () => {
     expect(USOS.length).toBeGreaterThan(50);
     expect(USOS.filter((u) => u.tieneAcciones).length).toBeGreaterThan(40);
@@ -138,6 +140,8 @@ describe('Finanzas: las acciones de la cabecera también existen en móvil', () 
   test('los casos que reportó el dueño siguen cubiertos', () => {
     const debe = [
       'src/components/finanzas/metodos-pago/PaymentMethodsPage.tsx:PageHeader#1',
+      'src/components/integraciones/conexiones-v2/ConexionesPagina.tsx:PageHeader#1',
+      'src/app/app/integraciones/conexiones/[id]/page.tsx:PageHeader#1',
       'src/components/finanzas/facturas-venta/detalle/DetalleFacturaVenta.tsx:DocumentoCabecera#1',
       'src/components/finanzas/facturas-compra/detalle/DetalleFacturaCompraV2.tsx:DocumentoCabecera#2',
     ];

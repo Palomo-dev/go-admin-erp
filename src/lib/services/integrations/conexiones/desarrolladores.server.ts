@@ -19,6 +19,7 @@ import https from 'https';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ConexionError, type Actor } from './conexiones.server';
 import { ALCANCES_LLAVE } from './alcancesLlave';
+import { EVENTOS_WEBHOOK } from './eventosWebhook';
 
 type Fila = Record<string, unknown>;
 const texto = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v));
@@ -54,9 +55,11 @@ export interface LlaveApiResumen {
   expira: string | null;
   revocada: string | null;
   activa: boolean;
+  /** Nombre de quien la creó (85-53: «Creada por …»); null si no se sabe o el miembro ya no existe. */
+  creadaPor: string | null;
 }
 
-function resumirLlave(k: Fila): LlaveApiResumen {
+function resumirLlave(k: Fila, creadaPor: string | null = null): LlaveApiResumen {
   return {
     id: texto(k.id),
     nombre: texto(k.name),
@@ -67,18 +70,43 @@ function resumirLlave(k: Fila): LlaveApiResumen {
     expira: (k.expires_at as string | null) ?? null,
     revocada: (k.revoked_at as string | null) ?? null,
     activa: k.is_active !== false && !k.revoked_at,
+    creadaPor,
   };
+}
+
+/**
+ * Nombres de los miembros (`organization_members.id`) de la organización: «Nombre Apellido» del
+ * perfil, o su correo si no tiene nombre. Solo miembros de `organizationId` (nunca de otra).
+ */
+async function nombresDeMiembros(db: SupabaseClient, organizationId: number, ids: readonly number[]): Promise<Map<number, string>> {
+  const nombres = new Map<number, string>();
+  const unicos = [...new Set(ids.filter((i) => Number.isInteger(i) && i > 0))];
+  if (unicos.length === 0) return nombres;
+  const { data: miembros } = await db.from('organization_members').select('id, user_id').eq('organization_id', organizationId).in('id', unicos);
+  const filas = (miembros as Fila[] | null) ?? [];
+  const usuarios = [...new Set(filas.map((m) => texto(m.user_id)).filter(Boolean))];
+  if (usuarios.length === 0) return nombres;
+  const { data: perfiles } = await db.from('profiles').select('id, first_name, last_name, email').in('id', usuarios);
+  const porUsuario = new Map(((perfiles as Fila[] | null) ?? []).map((p) => [texto(p.id), `${texto(p.first_name)} ${texto(p.last_name)}`.trim() || texto(p.email)]));
+  for (const m of filas) {
+    const nombre = porUsuario.get(texto(m.user_id));
+    if (nombre) nombres.set(Number(m.id), nombre);
+  }
+  return nombres;
 }
 
 export async function listarLlaves(db: SupabaseClient, organizationId: number): Promise<LlaveApiResumen[]> {
   const { data, error } = await db
     .from('channel_api_keys')
-    .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at')
+    .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at, created_by')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) throw new Error(`channel_api_keys: ${error.message}`);
-  return ((data as Fila[] | null) ?? []).map(resumirLlave);
+  const filas = (data as Fila[] | null) ?? [];
+  // El nombre de quien la creó es un adorno: si su lectura falla, la lista sale igual.
+  const nombres = await nombresDeMiembros(db, organizationId, filas.map((k) => Number(k.created_by))).catch(() => new Map<number, string>());
+  return filas.map((k) => resumirLlave(k, nombres.get(Number(k.created_by)) ?? null));
 }
 
 export async function crearLlave(
@@ -112,7 +140,8 @@ export async function crearLlave(
     .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at')
     .single();
   if (error || !data) throw new Error(`channel_api_keys: ${error?.message ?? 'sin fila'}`);
-  return { llave: resumirLlave(data as Fila), completa: llave };
+  const nombres = actor.memberId ? await nombresDeMiembros(db, actor.organizationId, [actor.memberId]).catch(() => new Map<number, string>()) : new Map<number, string>();
+  return { llave: resumirLlave(data as Fila, actor.memberId ? nombres.get(actor.memberId) ?? null : null), completa: llave };
 }
 
 export async function revocarLlave(db: SupabaseClient, actor: Actor & { memberId: number | null }, id: string): Promise<void> {
@@ -126,7 +155,164 @@ export async function revocarLlave(db: SupabaseClient, actor: Actor & { memberId
   if (((data as Fila[] | null) ?? []).length === 0) throw new ConexionError(404, 'NO_ENCONTRADA', 'Llave no encontrada.');
 }
 
+const COLUMNAS_LLAVE = 'id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at';
+
+/** Fecha de vencimiento validada (`null` = sin vencimiento). Debe ser futura. */
+function vencimiento(valor: string | null | undefined): string | null {
+  if (!valor) return null;
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) throw new ConexionError(400, 'EXPIRA', 'La fecha de vencimiento debe ser futura.');
+  return d.toISOString();
+}
+
+export interface CambiosLlave {
+  nombre?: string;
+  alcances?: string[];
+  /** `null` quita el vencimiento; ausente lo deja como está. */
+  expira?: string | null;
+  /** Desactivar/activar sin revocar (la página vieja lo llamaba «Desactivar»). */
+  activa?: boolean;
+}
+
+/**
+ * Edita nombre, permisos, vencimiento o estado de una llave de la organización. Una llave
+ * revocada no se edita (404 si no es de la organización; 409 si está revocada).
+ */
+export async function editarLlave(db: SupabaseClient, actor: Actor, id: string, cambios: CambiosLlave): Promise<LlaveApiResumen> {
+  const { data: actual, error: errorLectura } = await db.from('channel_api_keys').select(COLUMNAS_LLAVE).eq('id', id).eq('organization_id', actor.organizationId).maybeSingle();
+  if (errorLectura) throw new Error(`channel_api_keys: ${errorLectura.message}`);
+  if (!actual) throw new ConexionError(404, 'NO_ENCONTRADA', 'Llave no encontrada.');
+  if ((actual as Fila).revoked_at) throw new ConexionError(409, 'REVOCADA', 'Una llave revocada no se puede editar.');
+
+  const parche: Fila = {};
+  if (cambios.nombre !== undefined) {
+    const nombre = cambios.nombre.trim().slice(0, 80);
+    if (!nombre) throw new ConexionError(400, 'NOMBRE', 'Ponle un nombre a la llave.');
+    parche.name = nombre;
+  }
+  if (cambios.alcances !== undefined) {
+    const alcances = [...new Set(cambios.alcances)].filter((a) => (ALCANCES_LLAVE as readonly string[]).includes(a));
+    if (alcances.length === 0) throw new ConexionError(400, 'ALCANCES', 'Elige al menos un permiso.');
+    parche.scopes = alcances;
+  }
+  if (cambios.expira !== undefined) parche.expires_at = vencimiento(cambios.expira);
+  if (cambios.activa !== undefined) parche.is_active = cambios.activa;
+  if (Object.keys(parche).length === 0) return resumirLlave(actual as Fila);
+
+  const { data, error } = await db.from('channel_api_keys').update(parche).eq('id', id).eq('organization_id', actor.organizationId).select(COLUMNAS_LLAVE).single();
+  if (error || !data) throw new Error(`channel_api_keys: ${error?.message ?? 'sin fila'}`);
+  return resumirLlave(data as Fila);
+}
+
+/** Borra la fila (la página vieja lo ofrecía además de revocar). Solo de la organización de la sesión. */
+export async function borrarLlave(db: SupabaseClient, actor: Actor, id: string): Promise<void> {
+  const { data, error } = await db.from('channel_api_keys').delete().eq('id', id).eq('organization_id', actor.organizationId).select('id');
+  if (error) throw new Error(`channel_api_keys: ${error.message}`);
+  if (((data as Fila[] | null) ?? []).length === 0) throw new ConexionError(404, 'NO_ENCONTRADA', 'Llave no encontrada.');
+}
+
 // ─── Webhooks salientes ──────────────────────────────────────────────────────
+
+const COLUMNAS_WEBHOOK = 'id, organization_id, name, target_url, events, is_active, secret, last_delivery_at, last_response_status, consecutive_failures';
+
+function resumirWebhook(w: Fila, registro = true): WebhookSalienteResumen {
+  return {
+    id: texto(w.id),
+    nombre: texto(w.name),
+    url: texto(w.target_url),
+    eventos: Array.isArray(w.events) ? (w.events as unknown[]).map(texto) : [],
+    activo: w.is_active !== false,
+    secreto: w.secret ? `··${texto(w.secret).slice(-4)}` : null,
+    ultimoEnvio: (w.last_delivery_at as string | null) ?? null,
+    ultimaRespuesta: w.last_response_status == null ? null : Number(w.last_response_status),
+    fallosSeguidos: Number(w.consecutive_failures ?? 0),
+    registroDeEnvios: registro,
+  };
+}
+
+/** Eventos válidos y sin repetir; vacío → 400. */
+function eventosValidos(eventos: readonly string[]): string[] {
+  const lista = [...new Set(eventos)].filter((e) => (EVENTOS_WEBHOOK as readonly string[]).includes(e));
+  if (lista.length === 0) throw new ConexionError(400, 'EVENTOS', 'Elige al menos un evento.');
+  return lista;
+}
+
+export interface EntradaWebhook {
+  nombre: string;
+  url: string;
+  eventos: string[];
+}
+
+/**
+ * Crea un webhook saliente con secreto de firma criptográfico. La dirección se valida igual que
+ * al probar (HTTPS, pública, sin credenciales). El secreto completo se devuelve UNA vez.
+ */
+export async function crearWebhook(db: SupabaseClient, actor: Actor, entrada: EntradaWebhook, resolver?: Resolver): Promise<{ webhook: WebhookSalienteResumen; secreto: string }> {
+  const nombre = entrada.nombre.trim().slice(0, 80);
+  if (!nombre) throw new ConexionError(400, 'NOMBRE', 'Ponle un nombre al webhook.');
+  const destino = await validarDestino(entrada.url.trim(), resolver);
+  const eventos = eventosValidos(entrada.eventos);
+  const secreto = generarSecretoWebhook();
+  const { data, error } = await db
+    .from('webhook_endpoints')
+    .insert({ organization_id: actor.organizationId, name: nombre, target_url: destino.toString(), events: eventos, secret: secreto, is_active: true })
+    .select(COLUMNAS_WEBHOOK)
+    .single();
+  if (error || !data) throw new Error(`webhook_endpoints: ${error?.message ?? 'sin fila'}`);
+  return { webhook: resumirWebhook(data as Fila), secreto };
+}
+
+export interface CambiosWebhook {
+  nombre?: string;
+  url?: string;
+  eventos?: string[];
+  /** Pausar (`false`) o reactivar (`true`) sin borrar. */
+  activo?: boolean;
+}
+
+/** Edita nombre, dirección, eventos o estado de un webhook de la organización. */
+export async function editarWebhook(db: SupabaseClient, actor: Actor, id: string, cambios: CambiosWebhook, resolver?: Resolver): Promise<WebhookSalienteResumen> {
+  const parche: Fila = {};
+  if (cambios.nombre !== undefined) {
+    const nombre = cambios.nombre.trim().slice(0, 80);
+    if (!nombre) throw new ConexionError(400, 'NOMBRE', 'Ponle un nombre al webhook.');
+    parche.name = nombre;
+  }
+  if (cambios.url !== undefined) parche.target_url = (await validarDestino(cambios.url.trim(), resolver)).toString();
+  if (cambios.eventos !== undefined) parche.events = eventosValidos(cambios.eventos);
+  if (cambios.activo !== undefined) {
+    parche.is_active = cambios.activo;
+    // Reactivar limpia la racha de fallos: el siguiente envío decide de nuevo.
+    if (cambios.activo) parche.consecutive_failures = 0;
+  }
+  if (Object.keys(parche).length === 0) {
+    const { data, error } = await db.from('webhook_endpoints').select(COLUMNAS_WEBHOOK).eq('id', id).eq('organization_id', actor.organizationId).maybeSingle();
+    if (error) throw new Error(`webhook_endpoints: ${error.message}`);
+    if (!data) throw new ConexionError(404, 'NO_ENCONTRADO', 'Webhook no encontrado.');
+    return resumirWebhook(data as Fila);
+  }
+  const { data, error } = await db.from('webhook_endpoints').update(parche).eq('id', id).eq('organization_id', actor.organizationId).select(COLUMNAS_WEBHOOK);
+  if (error) throw new Error(`webhook_endpoints: ${error.message}`);
+  const fila = ((data as Fila[] | null) ?? [])[0];
+  if (!fila) throw new ConexionError(404, 'NO_ENCONTRADO', 'Webhook no encontrado.');
+  return resumirWebhook(fila);
+}
+
+export async function borrarWebhook(db: SupabaseClient, actor: Actor, id: string): Promise<void> {
+  const { data, error } = await db.from('webhook_endpoints').delete().eq('id', id).eq('organization_id', actor.organizationId).select('id');
+  if (error) throw new Error(`webhook_endpoints: ${error.message}`);
+  if (((data as Fila[] | null) ?? []).length === 0) throw new ConexionError(404, 'NO_ENCONTRADO', 'Webhook no encontrado.');
+}
+
+/** Nuevo secreto de firma (el anterior deja de valer al instante). Se devuelve UNA vez. */
+export async function regenerarSecretoWebhook(db: SupabaseClient, actor: Actor, id: string): Promise<{ webhook: WebhookSalienteResumen; secreto: string }> {
+  const secreto = generarSecretoWebhook();
+  const { data, error } = await db.from('webhook_endpoints').update({ secret: secreto }).eq('id', id).eq('organization_id', actor.organizationId).select(COLUMNAS_WEBHOOK);
+  if (error) throw new Error(`webhook_endpoints: ${error.message}`);
+  const fila = ((data as Fila[] | null) ?? [])[0];
+  if (!fila) throw new ConexionError(404, 'NO_ENCONTRADO', 'Webhook no encontrado.');
+  return { webhook: resumirWebhook(fila), secreto };
+}
 
 export interface WebhookSalienteResumen {
   id: string;
@@ -158,18 +344,7 @@ export async function listarWebhooks(db: SupabaseClient, organizationId: number)
     res = await leer(columnasBase);
   }
   if (res.error) throw new Error(`webhook_endpoints: ${res.error.message}`);
-  return ((res.data as Fila[] | null) ?? []).map((w) => ({
-    id: texto(w.id),
-    nombre: texto(w.name),
-    url: texto(w.target_url),
-    eventos: Array.isArray(w.events) ? (w.events as unknown[]).map(texto) : [],
-    activo: w.is_active !== false,
-    secreto: w.secret ? `··${texto(w.secret).slice(-4)}` : null,
-    ultimoEnvio: (w.last_delivery_at as string | null) ?? null,
-    ultimaRespuesta: w.last_response_status == null ? null : Number(w.last_response_status),
-    fallosSeguidos: Number(w.consecutive_failures ?? 0),
-    registroDeEnvios: registro,
-  }));
+  return ((res.data as Fila[] | null) ?? []).map((w) => resumirWebhook(w, registro));
 }
 
 /** ¿La IP es pública? Rechaza loopback, privadas, enlace local, CGNAT, multicast y reservadas. */

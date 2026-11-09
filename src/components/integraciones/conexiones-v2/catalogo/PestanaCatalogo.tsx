@@ -3,8 +3,9 @@
 /**
  * Catálogo (diseño 85-00): chips por grupo con conteo y secciones con tarjetas. El estado de cada
  * tarjeta lo decide el servidor (`construirCatalogo`): nada se muestra «Disponible» sin conector.
+ * El grupo elegido y el filtro de estado («Filtros» de la barra) viven en la URL (`grupo`, `estado`).
  */
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChipsOpcion, EmptyState, Skeleton } from '@/components/kit';
 import {
@@ -14,6 +15,7 @@ import {
   type ItemCatalogo,
 } from '@/lib/services/integrations/conexiones/catalogoConexiones';
 import { ORDEN_GRUPOS } from '../presentacion';
+import { filtrarCatalogoPorEstado, grupoDeUrl, type Filtros } from '../filtrosConexiones';
 import { TarjetaServicio } from './TarjetaServicio';
 
 type Filtro = GrupoCatalogo | 'todos';
@@ -23,17 +25,22 @@ export interface PestanaCatalogoProps {
   cargando: boolean;
   error: string | null;
   busqueda: string;
-  onLimpiarBusqueda: () => void;
+  filtros: Filtros;
+  onGrupoChange: (grupo: Filtro) => void;
+  onLimpiarFiltros: () => void;
   onReintentar: () => void;
   nombreServicio: (i: ItemCatalogo) => string;
   onAbrirFicha: (i: ItemCatalogo) => void;
 }
 
-export function PestanaCatalogo({ items, cargando, error, busqueda, onLimpiarBusqueda, onReintentar, nombreServicio, onAbrirFicha }: PestanaCatalogoProps) {
+export function PestanaCatalogo({ items, cargando, error, busqueda, filtros, onGrupoChange, onLimpiarFiltros, onReintentar, nombreServicio, onAbrirFicha }: PestanaCatalogoProps) {
   const t = useTranslations('integracionesConexiones');
-  const [grupo, setGrupo] = useState<Filtro>('todos');
+  const grupo = grupoDeUrl(filtros);
   const conteo = useMemo(() => conteoPorGrupo(items), [items]);
-  const visibles = useMemo(() => filtrarCatalogo(items, grupo, busqueda, nombreServicio), [items, grupo, busqueda, nombreServicio]);
+  const visibles = useMemo(
+    () => filtrarCatalogoPorEstado(filtrarCatalogo(items, grupo, busqueda, nombreServicio), filtros),
+    [items, grupo, busqueda, nombreServicio, filtros],
+  );
 
   if (cargando) {
     return (
@@ -62,11 +69,14 @@ export function PestanaCatalogo({ items, cargando, error, busqueda, onLimpiarBus
 
   return (
     <div className="flex flex-col gap-6">
-      <ChipsOpcion<Filtro> opciones={opciones} valor={grupo} onValorChange={setGrupo} etiqueta={t('catalogo.filtroGrupo')} />
+      {/* En celular los chips de grupo se desplazan en horizontal en lugar de ocupar cuatro líneas. */}
+      <div className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 sm:pb-0 sm:overflow-visible">
+        <ChipsOpcion<Filtro> opciones={opciones} valor={grupo} onValorChange={onGrupoChange} etiqueta={t('catalogo.filtroGrupo')} className="w-max flex-nowrap sm:w-auto sm:flex-wrap" />
+      </div>
 
       {visibles.length === 0 ? (
         <div className="rounded-xl border border-line bg-surface">
-          <EmptyState variante="search" termino={busqueda} onLimpiarFiltros={() => { setGrupo('todos'); onLimpiarBusqueda(); }} />
+          <EmptyState variante="search" termino={busqueda} onLimpiarFiltros={onLimpiarFiltros} />
         </div>
       ) : (
         ORDEN_GRUPOS.map((g) => {

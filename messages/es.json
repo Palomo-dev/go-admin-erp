@@ -4520,11 +4520,8 @@
       "notificaciones_plantillas": "Plantillas",
       "notificaciones_logs": "Registro de envíos",
       "integraciones_conexiones": "Conexiones",
-      "integraciones_eventos": "Eventos",
       "integraciones_jobs": "Trabajos",
       "integraciones_mapeos": "Mapeos",
-      "integraciones_api-keys": "Llaves de API",
-      "integraciones_webhooks-salientes": "Webhooks",
       "timeline": "Vista general",
       "timeline_exportaciones": "Exportaciones",
       "crm_clientes": "Clientes",
@@ -46626,7 +46623,11 @@
       "errorCarga": "No se pudo cargar la información",
       "produccion": "Producción",
       "pruebas": "Pruebas",
-      "verTodo": "Ver todo"
+      "verTodo": "Ver todo",
+      "exportarCsv": "Exportar CSV",
+      "conectarServicio": "Conectar un servicio",
+      "conectarDescripcion": "Elige uno del catálogo y sigue el asistente",
+      "verDocumentacion": "Ver documentación para desarrolladores"
     },
     "grupos": {
       "todos": {
@@ -47221,7 +47222,9 @@
       "verErrores": "Ver errores",
       "vacioTitulo": "Aún no tienes conexiones",
       "vacioTexto": "Conecta tus pasarelas, canales de venta y servicios desde el catálogo.",
-      "irCatalogo": "Ir al catálogo"
+      "irCatalogo": "Ir al catálogo",
+      "pruebaEl": "prueba {fecha}",
+      "nEventos": "{n, plural, one {# evento} other {# eventos}}"
     },
     "actividad": {
       "subtitulo": "Eventos de todas las conexiones",
@@ -47271,8 +47274,17 @@
         "evento": "Evento",
         "sentido": "Sentido",
         "referencia": "Referencia",
-        "verCompleto": "Ver evento completo",
-        "irCredenciales": "Ir a credenciales"
+        "irCredenciales": "Ir a credenciales",
+        "origen": "Origen",
+        "procesado": "Procesado",
+        "id": "Id del evento",
+        "copiarId": "Copiar id",
+        "noCopiado": "No se pudo copiar",
+        "verDatos": "Ver datos completos",
+        "ocultarDatos": "Ocultar datos",
+        "datos": "Cuerpo del evento",
+        "descargarJson": "Descargar JSON",
+        "noEncontrado": "Ese evento no existe o no es de tu organización"
       },
       "explicacion": {
         "rechazada": {
@@ -47295,7 +47307,14 @@
           "titulo": "El evento no se pudo procesar",
           "texto": "Revisa el detalle del error; si se repite, prueba la conexión."
         }
-      }
+      },
+      "buscar": "Buscar evento o conexión",
+      "archivoExportacion": "actividad-conexiones.csv",
+      "sustantivo": {
+        "singular": "evento",
+        "plural": "eventos"
+      },
+      "subtituloErrores": "{n, plural, =0 {Eventos de las conexiones · sin errores en 30 días} one {Eventos de las conexiones · # con error en 30 días} other {Eventos de las conexiones · # con error en 30 días}}"
     },
     "desarrolladores": {
       "subtitulo": "Llaves de API y avisos a tus sistemas",
@@ -47330,9 +47349,7 @@
         },
         "creada": "Creada el {fecha}",
         "sinUso": "Sin uso",
-        "activa": "Activa",
-        "revocadaEstado": "Revocada",
-        "revocar": "Revocar",
+        "revocar": "Revocar llave",
         "revocada": "Se revocó la llave «{nombre}»",
         "revocarTitulo": "¿Revocar esta llave?",
         "revocarTexto": "Los sistemas que usan «{nombre}» dejarán de funcionar al instante. No se puede deshacer.",
@@ -47340,7 +47357,35 @@
         "nota": "La llave completa se muestra una sola vez al crearla. Aquí solo ves sus últimos 4 caracteres.",
         "unaVezTitulo": "Copia tu llave ahora",
         "unaVezTexto": "Es la única vez que la verás completa. Guárdala en un lugar seguro.",
-        "noCopiada": "No se pudo copiar; selecciónala y cópiala a mano"
+        "noCopiada": "No se pudo copiar; selecciónala y cópiala a mano",
+        "editar": "Editar nombre y permisos",
+        "editarTitulo": "Editar «{nombre}»",
+        "duplicar": "Duplicar",
+        "copiaDe": "Copia de {nombre}",
+        "desactivar": "Desactivar",
+        "activar": "Activar",
+        "desactivada": "«{nombre}» quedó desactivada",
+        "activada": "«{nombre}» quedó activa",
+        "editada": "Se guardó «{nombre}»",
+        "borrar": "Eliminar llave",
+        "borrarTitulo": "¿Eliminar «{nombre}»?",
+        "borrarTexto": "Se borra el registro de la llave. Si aún está activa, los sistemas que la usan dejarán de funcionar. No se puede deshacer.",
+        "borrada": "Se eliminó la llave «{nombre}»",
+        "vencimiento": "Vencimiento",
+        "vencimientoAyuda": "Opcional. La llave deja de funcionar al final de ese día.",
+        "vence": "Vence el {fecha}",
+        "estado": {
+          "activa": "Activa",
+          "inactiva": "Inactiva",
+          "vencida": "Vencida",
+          "revocada": "Revocada"
+        },
+        "ultimoUsoEl": "último uso {fecha}",
+        "creadaTitulo": "Llave creada",
+        "listo": "Listo",
+        "copiarLlave": "Copiar llave",
+        "creadaPor": "Creada por {nombre} · {fecha}",
+        "creadaPorEtiqueta": "Creada por"
       },
       "webhooks": {
         "titulo": "Webhooks salientes",
@@ -47368,8 +47413,49 @@
         "pruebaTiempo": "El destino no respondió en 8 segundos",
         "pruebaRed": "No se pudo conectar con el destino",
         "pruebaFallo": "El destino respondió {http}",
-        "vacio": "Aún no hay webhooks salientes"
-      }
+        "vacio": "Aún no hay webhooks salientes",
+        "crear": "Crear webhook",
+        "editar": "Editar",
+        "editarTitulo": "Editar webhook",
+        "duplicar": "Duplicar",
+        "nombre": "Nombre",
+        "nombreEjemplo": "Ej.: Avisos al ERP",
+        "url": "Dirección (URL)",
+        "urlEjemplo": "https://…",
+        "urlAyuda": "Debe ser HTTPS pública, sin usuario ni clave en la dirección.",
+        "eventosTitulo": "Eventos que avisa",
+        "faltan": "Escribe un nombre, una dirección y elige al menos un evento",
+        "editado": "Se guardó el webhook",
+        "pausar": "Pausar",
+        "reactivar": "Reactivar",
+        "pausado": "El webhook quedó en pausa",
+        "reactivado": "El webhook quedó activo",
+        "borrar": "Borrar",
+        "borrarTitulo": "¿Borrar este webhook?",
+        "borrarTexto": "Tus sistemas dejarán de recibir estos avisos. No se puede deshacer.",
+        "borrado": "Se borró el webhook",
+        "secretoTitulo": "Copia tu secreto de firma ahora",
+        "secretoTexto": "Es la única vez que lo verás completo. Con él tu sistema comprueba que cada aviso viene de GO Admin (cabecera X-GoAdmin-Signature).",
+        "regenerarSecreto": "Nuevo secreto",
+        "regenerarTitulo": "¿Generar un secreto nuevo?",
+        "regenerarTexto": "El secreto actual deja de valer al instante: actualízalo en tu sistema con el nuevo.",
+        "eventosLista": {
+          "order_created": "Pedido creado",
+          "order_updated": "Pedido actualizado",
+          "order_completed": "Pedido completado",
+          "order_cancelled": "Pedido cancelado",
+          "product_created": "Producto creado",
+          "product_updated": "Producto actualizado",
+          "product_deleted": "Producto eliminado",
+          "inventory_low_stock": "Existencias bajas",
+          "inventory_updated": "Existencias actualizadas",
+          "customer_created": "Cliente creado",
+          "payment_received": "Pago recibido",
+          "payment_refunded": "Reembolso"
+        },
+        "copiarSecreto": "Copiar secreto"
+      },
+      "buscar": "Buscar llave o webhook"
     },
     "asistente": {
       "comun": {
@@ -47930,7 +48016,8 @@
         "sin_columna_nombre": "Falta la columna «nombre» (o «name»).",
         "demasiadas_filas": "Máximo 200 filas por archivo.",
         "servidor": "No se pudo importar. Intenta de nuevo."
-      }
+      },
+      "descripcionMenu": "Desde un archivo que ya tengas"
     },
     "credencial": {
       "ver": "Ver",
@@ -47957,6 +48044,52 @@
       "dominioTienda": "Es la dirección de tu tienda en línea: confirma los pagos de la tienda y pasa a GO Admin los del punto de venta, los folios y los links de pago.",
       "sinDominioTitulo": "Tu organización aún no tiene un dominio principal verificado",
       "sinDominioDescripcion": "Por eso ves la dirección de GO Admin: confirma los cobros del punto de venta y los links de pago, pero no los pagos hechos en la tienda en línea. Cuando verifiques tu dominio, vuelve aquí y cambia la URL de eventos en Wompi."
+    },
+    "filtros": {
+      "todos": "Todos",
+      "todas": "Todas",
+      "estado": "Estado",
+      "grupo": "Tipo de servicio",
+      "atencion": "Atención",
+      "atencionSolo": "Solo las que necesitan atención",
+      "conexion": "Conexión",
+      "todasConexiones": "Todas las conexiones",
+      "resultado": "Resultado",
+      "sentido": "Sentido",
+      "estadoLlaves": "Llaves",
+      "verResultados": "Ver resultados",
+      "chips": {
+        "estado": "Estado: {valor}",
+        "grupo": "Tipo: {valor}",
+        "atencion": "Necesitan atención",
+        "conexion": "Conexión: {valor}",
+        "resultado": "Resultado: {valor}",
+        "sentido": "Sentido: {valor}",
+        "errores": "Con error",
+        "periodo": "Periodo: {valor}",
+        "webhooks": "Solo webhooks",
+        "pruebas": "Solo pruebas de conexión"
+      },
+      "valores": {
+        "estadoEvento": {
+          "processed": "Correcto",
+          "error": "Con error",
+          "received": "Recibido"
+        },
+        "estadoLlave": {
+          "activas": "Activas",
+          "revocadas": "Revocadas"
+        },
+        "periodo": {
+          "hoy": "Hoy",
+          "7d": "7 días",
+          "30d": "30 días"
+        }
+      },
+      "periodo": "Periodo",
+      "origen": "Origen",
+      "soloWebhooks": "Solo webhooks",
+      "soloPruebas": "Solo pruebas de conexión"
     }
   },
   "consignacionesR4": {

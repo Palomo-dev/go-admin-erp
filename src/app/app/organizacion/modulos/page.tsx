@@ -12,6 +12,10 @@
  *   interruptor si el módulo está apagado.
  * - «Restablecer» va en el «⋯» de la cabecera con ConfirmDialog.
  *
+ * `?resaltar={código}` (desde la pantalla «Módulo no habilitado», «Encender
+ * {módulo}»): la tarjeta del módulo se resalta, recibe el foco y se anuncia.
+ * Es solo lectura: encender se confirma aquí con el interruptor de siempre.
+ *
  * La organización sale de la sesión (`/api/me/capacidades`), no de
  * `localStorage`. Las escrituras pasan por `/api/modules` y
  * `/api/modules/pages`, que exigen administrador. Qué página se ve lo decide
@@ -60,6 +64,7 @@ interface Datos {
 
 function Modulos({ organizationId, pedidoRestablecer }: { organizationId: number; pedidoRestablecer: number }) {
   const t = useTranslations('org.acceso.modulos');
+  const tAcceso = useTranslations('moduloNoHabilitado');
   const tNav = useTranslations('nav');
   const nombres = useNombresNav();
   const pathname = usePathname();
@@ -74,6 +79,8 @@ function Modulos({ organizationId, pedidoRestablecer }: { organizationId: number
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [restablecer, setRestablecer] = useState(false);
   const [restableciendo, setRestableciendo] = useState(false);
+  // `?resaltar=` se lee de la URL al montar (sin useSearchParams: no obliga a un Suspense).
+  const [resaltar, setResaltar] = useState<string | null>(null);
 
   const cargar = useCallback(async () => {
     setError(false);
@@ -99,6 +106,21 @@ function Modulos({ organizationId, pedidoRestablecer }: { organizationId: number
   useEffect(() => {
     void cargar();
   }, [cargar]);
+
+  useEffect(() => {
+    const codigo = new URLSearchParams(window.location.search).get('resaltar');
+    if (codigo && /^[a-z_]{1,40}$/.test(codigo)) setResaltar(codigo);
+  }, []);
+
+  // Con los datos ya pintados: llevar la tarjeta a la vista y darle el foco.
+  useEffect(() => {
+    if (!datos || !resaltar) return;
+    const tarjeta = document.getElementById(`modulo-${resaltar}`);
+    if (!tarjeta) return;
+    const sinMovimiento = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    tarjeta.scrollIntoView({ block: 'center', behavior: sinMovimiento ? 'auto' : 'smooth' });
+    tarjeta.focus({ preventScroll: true });
+  }, [datos, resaltar]);
 
   // «⋯ › Restablecer» de la cabecera abre la confirmación.
   useEffect(() => {
@@ -267,8 +289,24 @@ function Modulos({ organizationId, pedidoRestablecer }: { organizationId: number
                 const abierto = abiertos.has(m.code);
                 const nVisibles = paginas.filter((p) => visible(m.code, p.href)).length;
                 const Icono = iconoModulo(m.code);
+                const resaltada = resaltar === m.code;
                 return (
-                  <li key={m.code} className={cn('rounded-xl border border-line bg-surface', abierto && 'border-line-brand')}>
+                  <li
+                    key={m.code}
+                    id={`modulo-${m.code}`}
+                    tabIndex={resaltada ? -1 : undefined}
+                    aria-describedby={resaltada ? 'modulo-resaltado-aviso' : undefined}
+                    className={cn(
+                      'rounded-xl border border-line bg-surface outline-none',
+                      abierto && 'border-line-brand',
+                      resaltada && 'border-line-brand ring-2 ring-brand ring-offset-2',
+                    )}
+                  >
+                    {resaltada && (
+                      <p id="modulo-resaltado-aviso" className="sr-only">
+                        {tAcceso('resaltado', { modulo: nombreModulo(m) })}
+                      </p>
+                    )}
                     <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex min-w-0 gap-3">
                         <span aria-hidden="true" className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', encendido ? 'bg-brand-tint text-brand' : 'bg-subtle text-fg-muted')}>

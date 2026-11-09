@@ -23,12 +23,9 @@ export const dynamic = 'force-dynamic';
  * consultas desde el navegador ni un intervalo de 30 s.
  */
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { BarChart3, Home, ListChecks, RefreshCw, SlidersHorizontal } from 'lucide-react';
-import ModuleAccessDenied from '@/components/modules/ModuleAccessDenied';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ToastAction } from '@/components/ui/toast';
 import { useToast } from '@/components/ui/use-toast';
@@ -112,9 +109,6 @@ function EsqueletoInicio() {
 }
 
 function InicioContent() {
-  const searchParams = useSearchParams() ?? new URLSearchParams();
-  const error = searchParams.get('error');
-  const moduleCode = searchParams.get('module');
   const router = useRouter();
   const { organization } = useOrganization();
   const { branchFilter, isLoading: branchLoading } = useBranch();
@@ -298,10 +292,6 @@ function InicioContent() {
     });
   }, [toast, t]);
 
-  if (error === 'module_not_activated' && moduleCode) {
-    return <ModuleAccessDenied moduleCode={moduleCode} />;
-  }
-
   if (!mounted || !organization) {
     return <EsqueletoInicio />;
   }
@@ -355,18 +345,9 @@ function InicioContent() {
 
   return (
     <div className="min-h-screen space-y-6 bg-canvas p-4 sm:p-6">
-      {error && (
-        <Alert className="mx-auto max-w-2xl">
-          <AlertDescription>
-            {error === 'module_not_activated' && t('errors.moduleNotActivated')}
-            {error === 'insufficient_permissions' && t('errors.insufficientPermissions')}
-            {error === 'plan_limit_reached' && t('errors.planLimitReached')}
-            {error === 'job_position_no_access' && t('errors.jobPositionNoAccess')}
-            {!['module_not_activated', 'insufficient_permissions', 'plan_limit_reached', 'job_position_no_access'].includes(error) &&
-              t('errors.unexpected')}
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Módulo o página bloqueados: ya no se llega aquí con ?error=…. El
+          middleware reescribe a la pantalla «Módulo no habilitado» y la URL no
+          cambia (docs/design/MODULO-NO-HABILITADO.md). */}
 
       {/* Cabecera del kit. `movil={false}`: el inicio es pantalla raíz y en
           móvil conserva el MobileHeader de organización/sucursal; la cabecera

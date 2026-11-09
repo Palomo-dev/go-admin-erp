@@ -47,7 +47,6 @@ jest.mock('@/components/inicio/LiveVisitorsBadge', () => ({ LiveVisitorsBadge: (
 jest.mock('@/components/inicio/TarjetaDatosEmpresa', () => ({ TarjetaDatosEmpresa: () => null }));
 jest.mock('@/components/inicio/EmployeeDashboard', () => ({ EmployeeDashboard: () => <div data-panel="empleado" /> }));
 jest.mock('@/components/kit/BranchBadge', () => ({ BranchBadge: () => null, BranchBadgeActiva: () => <span data-sucursal="activa" /> }));
-jest.mock('@/components/modules/ModuleAccessDenied', () => () => null);
 
 import { fireEvent, waitFor } from '@testing-library/react';
 import { renderConIdioma, simularAncho, type IdiomaPrueba } from '@/test-utils/renderConIdioma';

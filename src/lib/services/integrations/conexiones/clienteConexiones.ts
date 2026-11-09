@@ -4,7 +4,7 @@
  * Los tipos de respuesta son los de los módulos de servidor (solo `import type`).
  */
 import type { ItemCatalogo } from './catalogoConexiones';
-import type { ConexionResumen, EventoResumen } from './conexiones.server';
+import type { ConexionResumen, EventoResumen, ResultadoGuardarLlaves } from './conexiones.server';
 import type { CuentaVerificada, Prueba } from './probadoresLlaves.server';
 import type { LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen } from './desarrolladores.server';
 import type { Ambiente, ErrorFormato, ProveedorLlaves } from './definicionesLlaves';
@@ -37,6 +37,10 @@ export interface DetalleConexion {
   usadaPor: ConexionResumen['usadaPor'];
   eventos: EventoResumen[];
   webhookUrl: string | null;
+  /** `tienda`: la del dominio principal verificado (Wompi); `erp`: la del ERP. */
+  webhookOrigen: 'tienda' | 'erp' | null;
+  /** Wompi sin dominio principal verificado: se muestra la del ERP y la UI explica por qué. */
+  webhookSinDominio: boolean;
   asistenteLlaves: ProveedorLlaves | null;
 }
 
@@ -71,7 +75,7 @@ export const apiConexiones = {
   detalle: (id: string) => pedir<DetalleConexion>(`/api/integrations/conexiones/${encodeURIComponent(id)}`),
   probar: (id: string) => pedir<Prueba & { proveedor: string }>(`/api/integrations/conexiones/${encodeURIComponent(id)}/probar`, { method: 'POST' }),
   guardarLlaves: (b: { proveedor: ProveedorLlaves; ambiente: Ambiente; valores: Record<string, string>; conexionId?: string | null; nombre?: string | null; sucursalId?: number | null }) =>
-    pedir<{ conexionId: string; prueba: Prueba; webhookUrl: string | null }>('/api/integrations/conexiones/llaves', post(b)),
+    pedir<ResultadoGuardarLlaves>('/api/integrations/conexiones/llaves', post(b)),
   enlazarUso: (id: string, b: { tienda: boolean; pos: boolean; sucursales: number[] }) =>
     pedir<{ metodo: string; creado: boolean }>(`/api/integrations/conexiones/${encodeURIComponent(id)}/uso`, post(b)),
   cambiarEstado: (id: string, accion: 'pausar' | 'reanudar' | 'desconectar') =>

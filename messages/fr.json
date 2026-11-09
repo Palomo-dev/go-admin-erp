@@ -47937,6 +47937,11 @@
       "ambiente": "Environnement",
       "metodos": "Moyens activés",
       "verificadaEn": "Vérifié auprès du fournisseur le {fecha}"
+    },
+    "webhookWompi": {
+      "dominioTienda": "C’est l’adresse de votre boutique en ligne : elle confirme les paiements de la boutique et transmet à GO Admin ceux du point de vente, des folios et des liens de paiement.",
+      "sinDominioTitulo": "Votre organisation n’a pas encore de domaine principal vérifié",
+      "sinDominioDescripcion": "C’est pourquoi vous voyez l’adresse de GO Admin : elle confirme les encaissements du point de vente et les liens de paiement, mais pas les paiements effectués dans la boutique en ligne. Une fois votre domaine vérifié, revenez ici et modifiez l’URL des événements dans Wompi."
     }
   },
   "consignacionesR4": {
@@ -49043,5 +49048,174 @@
       "sinPermisoTitulo": "Vous n'avez pas accès aux moyens de paiement",
       "sinPermisoDescripcion": "Demandez l'autorisation de facturation à un administrateur de votre organisation."
     }
+  },
+  "moduloNoHabilitado": {
+    "inicio": "Accueil",
+    "cargando": "Vérification de l’accès…",
+    "volverInicio": "Retour à l’accueil",
+    "error": {
+      "titulo": "Impossible de vérifier l’accès",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "sinBloqueo": {
+      "titulo": "Vous pouvez entrer",
+      "descripcion": "Cette page est maintenant disponible pour vous.",
+      "abrir": "Ouvrir la page"
+    },
+    "ayuda": {
+      "pregunta": "Quelque chose ne va pas ?",
+      "enlace": "Voir le centre d’aide"
+    },
+    "papel": {
+      "dueno": "Propriétaire de l’organisation",
+      "administrador": "Administrateur",
+      "gestionaCargos": "Gère les postes"
+    },
+    "sinPersonas": "Nous n’avons trouvé personne d’autre qui puisse le faire.",
+    "avisar": {
+      "boton": "Prévenir les administrateurs",
+      "pedirAcceso": "Demander l’accès",
+      "yaAvisado": "Vous avez déjà prévenu les administrateurs",
+      "yaPedido": "Vous avez déjà demandé l’accès aujourd’hui",
+      "enviando": "Envoi…",
+      "enviado": "C’est fait : nous avons prévenu {n, plural, one {# personne} other {# personnes}}.",
+      "repetido": "Vous avez déjà prévenu aujourd’hui. Vous pourrez recommencer demain.",
+      "error": "L’avis n’a pas pu être envoyé. Réessayez.",
+      "sinDestinatarios": "Personne à prévenir dans votre organisation."
+    },
+    "paginasMas": {
+      "titulo": "Et {n, plural, one {# page de plus} other {# pages de plus}}",
+      "descripcion": "{lista} et plus."
+    },
+    "apagado": {
+      "admin": {
+        "subtitulo": "Désactivé dans {organizacion}",
+        "subtituloMovil": "Désactivé",
+        "titulo": "{modulo} est désactivé",
+        "descripcion": "Votre forfait {plan} l’inclut et il vous reste de la place : vous utilisez {usados} modules optionnels sur {cupo}. En l’activant, ses pages reviennent dans le menu et vos données restent telles quelles.",
+        "descripcionSinTope": "Votre forfait {plan} n’a pas de limite de modules. En l’activant, ses pages reviennent dans le menu et vos données restent telles quelles.",
+        "encender": "Activer {modulo}",
+        "paginasTitulo": "Pages incluses",
+        "queParaTitulo": "Ce qui se passe à l’activation",
+        "menuTitulo": "Il apparaît dans le menu",
+        "menuDesc": "Les personnes dont le poste inclut {modulo} le voient.",
+        "cupoTitulo": "Utilise 1 place de votre forfait",
+        "cupoDesc": "Vous seriez à {usados} modules optionnels sur {cupo}. Votre prix ne change pas.",
+        "cupoDescSinTope": "Votre forfait n’a pas de limite de modules. Votre prix ne change pas.",
+        "despuesTitulo": "Vous pourrez le désactiver plus tard",
+        "despuesDesc": "Depuis Organisation › Modules. Les données ne sont pas supprimées."
+      },
+      "miembro": {
+        "subtitulo": "Non activé dans {organizacion}",
+        "subtituloMovil": "Non activé",
+        "titulo": "{modulo} n’est pas activé",
+        "descripcion": "Votre organisation a désactivé ce module et seul un administrateur peut l’activer. Si vous en avez besoin pour votre travail, prévenez-le d’ici.",
+        "quienTitulo": "Qui peut l’activer",
+        "recibeTitulo": "Ce que reçoit l’administrateur",
+        "notifTitulo": "Une notification avec votre demande",
+        "notifDesc": "« {persona} demande d’activer {modulo} », avec un bouton vers Modules.",
+        "diaTitulo": "Un seul avis par jour",
+        "diaDesc": "Si vous avez déjà prévenu aujourd’hui, le bouton indique « Vous avez déjà prévenu les administrateurs »."
+      }
+    },
+    "limite": {
+      "admin": {
+        "subtitulo": "Ne tient pas dans votre forfait {plan}",
+        "subtituloMovil": "Ne tient pas dans votre forfait",
+        "titulo": "Votre forfait {plan} utilise déjà tous ses modules",
+        "descripcion": "Le forfait {plan} permet {cupo} modules optionnels et vous en avez déjà {usados} activés. Pour utiliser {modulo}, passez à un forfait avec plus de place ou désactivez-en un que vous n’utilisez pas.",
+        "verPlanes": "Voir les forfaits",
+        "aMedida": "Configuration sur mesure",
+        "apagarOtro": "Désactiver un autre module",
+        "encendidosTitulo": "Modules optionnels activés ({usados} sur {cupo})",
+        "disponibleTitulo": "Disponible avec",
+        "planTitulo": "Forfait {plan}",
+        "planCupo": "Jusqu’à {cupo} modules optionnels : il vous en resterait {libres}.",
+        "planSinTope": "Sans limite de modules.",
+        "aMedidaDesc": "Vous choisissez les modules et les sites ; l’équipe GO Admin établit le devis."
+      },
+      "miembro": {
+        "subtitulo": "Non utilisé dans {organizacion}",
+        "subtituloMovil": "Non utilisé",
+        "titulo": "{modulo} n’est pas utilisé dans votre organisation",
+        "descripcion": "Le forfait de votre organisation n’a pas de place pour un autre module. Si vous en avez besoin, parlez-en à un administrateur : c’est lui qui décide d’agrandir le forfait.",
+        "quienTitulo": "Qui peut décider",
+        "notifDesc": "« {persona} demande à utiliser {modulo} », avec un bouton vers Voir les forfaits."
+      }
+    },
+    "otroPlan": {
+      "admin": {
+        "subtitulo": "Sans forfait dans {organizacion}",
+        "subtituloMovil": "Sans forfait",
+        "titulo": "{modulo} nécessite un forfait",
+        "descripcion": "Votre organisation n’a pas encore de forfait actif. Choisissez-en un pour activer {modulo}."
+      }
+    },
+    "pagina": {
+      "admin": {
+        "subtitulo": "Page masquée de {modulo}",
+        "subtituloMovil": "Page masquée",
+        "titulo": "{pagina} est masquée",
+        "descripcion": "{modulo} est activé, mais cette page a été masquée dans Organisation › Modules. Tant qu’elle est masquée, elle n’apparaît ni dans le menu ni dans la recherche de personne.",
+        "mostrar": "Afficher la page",
+        "mostrando": "Affichage…",
+        "errorMostrar": "La page n’a pas pu être affichée. Réessayez.",
+        "irA": "Aller à {pagina}",
+        "alMostrarTitulo": "En l’affichant",
+        "vuelveTitulo": "Elle revient dans le menu",
+        "vuelveDesc": "Elle apparaît dans {modulo} pour les postes qui y ont accès.",
+        "cupoTitulo": "N’utilise pas de place du forfait",
+        "cupoDesc": "La limite du forfait compte les modules, pas les pages.",
+        "ocultarTitulo": "Vous pourrez la masquer à nouveau",
+        "ocultarDesc": "Depuis Organisation › Modules › {modulo}.",
+        "visiblesTitulo": "Pages visibles de {modulo}"
+      },
+      "miembro": {
+        "subtitulo": "Page indisponible",
+        "titulo": "Cette page n’est pas disponible",
+        "descripcion": "Un administrateur a masqué {pagina} dans votre organisation. Le reste de {modulo} fonctionne comme d’habitude.",
+        "irA": "Aller à {modulo}",
+        "quienTitulo": "Qui peut l’afficher",
+        "puedesTitulo": "Pages que vous pouvez utiliser"
+      }
+    },
+    "cargo": {
+      "subtitulo": "Votre poste n’inclut pas ce module",
+      "subtituloMovil": "Pas dans votre poste",
+      "titulo": "Votre poste n’inclut pas {modulo}",
+      "descripcion": "{modulo} est activé dans votre organisation, mais le poste {cargo} n’y a pas accès. Si vous en avez besoin pour votre travail, demandez-le à la personne qui gère les postes.",
+      "descripcionSinNombre": "{modulo} est activé dans votre organisation, mais votre poste n’y a pas accès. Si vous en avez besoin pour votre travail, demandez-le à la personne qui gère les postes.",
+      "editarCargo": "Modifier le poste",
+      "quienTitulo": "Qui peut vous donner accès",
+      "incluyeTitulo": "Ce que votre poste inclut",
+      "incluyeVacio": "Votre poste n’inclut encore aucun module."
+    },
+    "notificacion": {
+      "encender": {
+        "titulo": "{persona} demande d’activer {modulo}",
+        "contenido": "{persona} a besoin de {modulo} pour son travail. Vous pouvez l’activer dans Organisation › Modules."
+      },
+      "plan": {
+        "titulo": "{persona} demande à utiliser {modulo}",
+        "contenido": "{modulo} ne tient pas dans le forfait actuel. Consultez les forfaits si vous voulez l’activer."
+      },
+      "pagina": {
+        "titulo": "{persona} demande d’afficher {pagina}",
+        "contenido": "{pagina} est masquée dans {modulo}. Vous pouvez l’afficher dans Organisation › Modules."
+      },
+      "cargo": {
+        "titulo": "{persona} demande l’accès à {modulo}",
+        "contenido": "Le poste de {persona} n’inclut pas {modulo}. Vous pouvez donner l’accès dans Équipe › Postes."
+      }
+    },
+    "buscador": {
+      "grupo": "Modules que votre organisation n’utilise pas",
+      "apagado": "Désactivé · ouvrez-le pour l’activer",
+      "limite": "Ne tient pas dans votre forfait {plan} · Voir les forfaits",
+      "limiteSinNombre": "Ne tient pas dans votre forfait · Voir les forfaits",
+      "otroPlan": "Nécessite un forfait · Voir les forfaits",
+      "pistaMiembro": "Il se peut que votre organisation n’utilise pas cette fonction. Si vous en avez besoin, demandez à un administrateur."
+    },
+    "resaltado": "Vous pouvez activer {modulo} ici."
   }
 }

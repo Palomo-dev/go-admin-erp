@@ -23,6 +23,16 @@ export interface ModuloBase {
   rank?: number | null;
 }
 
+/**
+ * `plans.module_config`. Decisión del dueño (2026-11-08, docs/design/
+ * MODULO-NO-HABILITADO.md, pregunta 5): `available_modules` NO bloquea nada,
+ * no se usa como candado y tampoco se borra (migraciones aditivas, sin DROP).
+ * Ningún plan elige qué módulos trae: el único límite real es la CANTIDAD de
+ * opcionales, `plans.max_modules` (`cupoOpcionales`). Por eso no existe una
+ * causa «no incluido en tu plan» en la pantalla de módulo no habilitado: lo
+ * que hay es «no cabe» (`limite`). Si algún día vuelve a usarse, esa pantalla
+ * necesitará una causa nueva distinta de `limite`.
+ */
 export interface ConfigModulosPlan {
   available_modules?: string[] | null;
 }

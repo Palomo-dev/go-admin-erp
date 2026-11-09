@@ -17,7 +17,7 @@ import { construirCatalogo, conexionConProblemas, type ItemCatalogo } from './ca
 import { LLAVES, validarFormatoLlaves, type Ambiente, type ErrorFormato, type ProveedorLlaves } from './definicionesLlaves';
 import { probarLlaves, type CuentaVerificada, type Prueba } from './probadoresLlaves.server';
 import { enmascararSecreto, esReferenciaDeBoveda, resolverSecretos } from './secretosConexion';
-import { urlWebhookDeConector } from './urlsWebhook';
+import { hostPrincipalVerificado, usaDominioDeTienda, webhookDeConexion, type OrigenWebhook, type WebhookDeConexion } from './urlsWebhook';
 
 type Fila = Record<string, unknown>;
 
@@ -37,6 +37,35 @@ const texto = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '
 const fila = (v: unknown): Fila => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Fila) : {});
 
 // ─── Lecturas de la base ─────────────────────────────────────────────────────
+
+/**
+ * URL de eventos que se muestra para pegar en el proveedor. Para Wompi es la del dominio
+ * principal verificado de ESTA organización (la tienda reenvía al ERP lo que no es suyo); sin
+ * dominio, o si la consulta falla, la del ERP de siempre. La organización llega de la sesión.
+ */
+async function webhookParaOrganizacion(db: SupabaseClient, organizationId: number, connectorCode: string | null): Promise<WebhookDeConexion> {
+  if (!usaDominioDeTienda(connectorCode)) return webhookDeConexion(connectorCode, null);
+  const { data, error } = await db
+    .from('organization_domains')
+    .select('host, domain_type, status, is_primary, is_active, updated_at')
+    .eq('organization_id', organizationId)
+    .eq('is_primary', true)
+    .eq('is_active', true)
+    .eq('status', 'verified');
+  if (error) {
+    console.warn('[conexiones] organization_domains: sin dominio para la URL de eventos; se muestra la del ERP', error.message);
+    return webhookDeConexion(connectorCode, null);
+  }
+  const filas = ((data as Fila[] | null) ?? []).map((d) => ({
+    host: texto(d.host),
+    domain_type: texto(d.domain_type),
+    status: texto(d.status),
+    is_primary: d.is_primary === true,
+    is_active: d.is_active === true,
+    updated_at: (d.updated_at as string | null) ?? null,
+  }));
+  return webhookDeConexion(connectorCode, hostPrincipalVerificado(filas));
+}
 
 interface ConectorFila {
   id: string;
@@ -293,6 +322,7 @@ export async function detalleConexion(db: SupabaseClient, organizationId: number
   if (eventosRes.error) throw new Error(`integration_events: ${eventosRes.error.message}`);
   const con = cons.find((x) => x.id === texto(c.connector_id));
   const settings = fila(c.settings);
+  const webhook = await webhookParaOrganizacion(db, organizationId, con?.code ?? null);
   return {
     conexion: {
       id,
@@ -327,7 +357,9 @@ export async function detalleConexion(db: SupabaseClient, organizationId: number
     })),
     usadaPor: usos.get(id) ?? [],
     eventos: ((eventosRes.data as Fila[] | null) ?? []).map(resumirEvento),
-    webhookUrl: urlWebhookDeConector(con?.code ?? null),
+    webhookUrl: webhook.url,
+    webhookOrigen: webhook.origen,
+    webhookSinDominio: webhook.sinDominioVerificado,
     asistenteLlaves: (Object.values(LLAVES).find((d) => d.conector === con?.code)?.proveedor ?? null) as ProveedorLlaves | null,
   };
 }
@@ -512,7 +544,16 @@ async function escribirEnBoveda(db: SupabaseClient, connectionId: string, def: (
  * Prueba las llaves contra el proveedor y, SOLO si responde que son correctas, las guarda.
  * Llaves rechazadas o sin respuesta → no se guarda nada (la UI muestra 85-08).
  */
-export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: GuardarLlaves): Promise<{ conexionId: string; prueba: Prueba; webhookUrl: string | null }> {
+export interface ResultadoGuardarLlaves {
+  conexionId: string;
+  prueba: Prueba;
+  webhookUrl: string | null;
+  webhookOrigen: OrigenWebhook | null;
+  /** Wompi sin dominio principal verificado: se muestra la URL del ERP y la UI explica por qué. */
+  webhookSinDominio: boolean;
+}
+
+export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: GuardarLlaves): Promise<ResultadoGuardarLlaves> {
   const def = LLAVES[entrada.proveedor];
   if (!def.ambientes.includes(entrada.ambiente)) throw new ConexionError(400, 'AMBIENTE', 'Ambiente no disponible para este proveedor.');
   const errores: ErrorFormato[] = validarFormatoLlaves(entrada.proveedor, entrada.ambiente, entrada.valores);
@@ -529,7 +570,7 @@ export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: G
   const prueba = await probarLlaves(entrada.proveedor, entrada.ambiente, entrada.valores);
   if (prueba.resultado !== 'correcta') {
     if (conexionId) await registrarEvento(db, actor.organizationId, conexionId, 'prueba_de_llaves_nuevas', prueba);
-    return { conexionId: conexionId ?? '', prueba, webhookUrl: null };
+    return { conexionId: conexionId ?? '', prueba, webhookUrl: null, webhookOrigen: null, webhookSinDominio: false };
   }
 
   const ahora = new Date().toISOString();
@@ -578,7 +619,8 @@ export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: G
     .eq('organization_id', actor.organizationId);
   await guardarCuentaVerificada(db, actor.organizationId, conexionId, prueba.cuenta);
   await registrarEvento(db, actor.organizationId, conexionId, entrada.conexionId ? 'llaves_reemplazadas' : 'prueba_de_conexion', prueba);
-  return { conexionId, prueba, webhookUrl: urlWebhookDeConector(def.conector) };
+  const webhook = await webhookParaOrganizacion(db, actor.organizationId, def.conector);
+  return { conexionId, prueba, webhookUrl: webhook.url, webhookOrigen: webhook.origen, webhookSinDominio: webhook.sinDominioVerificado };
 }
 
 // ─── Dónde se usa (paso 5) ───────────────────────────────────────────────────

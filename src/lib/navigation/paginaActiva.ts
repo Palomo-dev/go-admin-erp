@@ -32,7 +32,10 @@
  *  - las restricciones por cargo (`paginasCargo` / `modulosCargo`);
  *  - las capacidades calculadas en el servidor (`PaginaNav.requiere`).
  */
-import { moduloPorCodigo } from './catalog';
+// `rutasModulos` y no `catalog`: así esta regla se puede llamar desde el
+// middleware (Edge) sin arrastrar iconos ni React. Los dos dicen lo mismo:
+// `__tests__/rutasModulos.test.ts` lo exige.
+import { cantidadPaginas } from './rutasModulos';
 
 /** Lo que hace falta saber de la organización para decidir. */
 export interface AccesoPaginas {
@@ -49,7 +52,9 @@ export interface AccesoPaginas {
 /**
  * Única respuesta a «¿se ve esta página?». Todo lector pasa por aquí: el menú,
  * la redirección a la raíz de un módulo, la navegación del GO Assistant, la
- * pantalla de permisos por cargo y la de módulos de la organización.
+ * pantalla de permisos por cargo, la de módulos de la organización y el
+ * middleware, que con ella cierra por URL una página oculta (pantalla
+ * «Página oculta», docs/design/MODULO-NO-HABILITADO.md).
  *
  * @param codigoModulo Código del módulo, o `null` para un módulo sin código.
  * @param href Ruta de la página, tal como está en el catálogo.
@@ -70,7 +75,7 @@ export function paginaActiva(
   // exención vivía solo en `filtrar.ts` (`filtrable`), así que el menú y el
   // asistente podían discrepar sobre la única página de un módulo. Vive aquí
   // para que la respuesta sea una sola.
-  if ((moduloPorCodigo(codigoModulo)?.paginas.length ?? 0) <= 1) return true;
+  if (cantidadPaginas(codigoModulo) <= 1) return true;
 
   // 3. Fila con is_active = false → alguien la apagó a propósito.
   const ocultas = acceso.paginasOcultas[codigoModulo];

@@ -47947,6 +47947,11 @@
       "ambiente": "Ambiente",
       "metodos": "Métodos habilitados",
       "verificadaEn": "Verificado com o provedor em {fecha}"
+    },
+    "webhookWompi": {
+      "dominioTienda": "É o endereço da sua loja on-line: confirma os pagamentos da loja e repassa ao GO Admin os do ponto de venda, dos fólios e dos links de pagamento.",
+      "sinDominioTitulo": "Sua organização ainda não tem um domínio principal verificado",
+      "sinDominioDescripcion": "Por isso você vê o endereço do GO Admin: ele confirma as cobranças do ponto de venda e os links de pagamento, mas não os pagamentos feitos na loja on-line. Quando verificar seu domínio, volte aqui e altere a URL de eventos no Wompi."
     }
   },
   "consignacionesR4": {
@@ -49053,5 +49058,174 @@
       "sinPermisoTitulo": "Você não tem acesso aos métodos de pagamento",
       "sinPermisoDescripcion": "Peça a permissão de faturamento a um administrador da sua organização."
     }
+  },
+  "moduloNoHabilitado": {
+    "inicio": "Início",
+    "cargando": "Verificando o acesso…",
+    "volverInicio": "Voltar ao início",
+    "error": {
+      "titulo": "Não foi possível verificar o acesso",
+      "descripcion": "Verifique sua conexão e tente de novo."
+    },
+    "sinBloqueo": {
+      "titulo": "Você já pode entrar",
+      "descripcion": "Esta página já está disponível para você.",
+      "abrir": "Abrir a página"
+    },
+    "ayuda": {
+      "pregunta": "Algo não bate?",
+      "enlace": "Ver central de ajuda"
+    },
+    "papel": {
+      "dueno": "Dono da organização",
+      "administrador": "Administrador",
+      "gestionaCargos": "Gerencia os cargos"
+    },
+    "sinPersonas": "Não encontramos mais ninguém que possa fazer isso.",
+    "avisar": {
+      "boton": "Avisar os administradores",
+      "pedirAcceso": "Pedir acesso",
+      "yaAvisado": "Você já avisou os administradores",
+      "yaPedido": "Você já pediu acesso hoje",
+      "enviando": "Enviando…",
+      "enviado": "Pronto: avisamos {n, plural, one {# pessoa} other {# pessoas}}.",
+      "repetido": "Você já tinha avisado hoje. Amanhã pode avisar de novo.",
+      "error": "Não foi possível enviar o aviso. Tente de novo.",
+      "sinDestinatarios": "Não há a quem avisar na sua organização."
+    },
+    "paginasMas": {
+      "titulo": "E {n, plural, one {mais # página} other {mais # páginas}}",
+      "descripcion": "{lista} e mais."
+    },
+    "apagado": {
+      "admin": {
+        "subtitulo": "Desligado em {organizacion}",
+        "subtituloMovil": "Desligado",
+        "titulo": "{modulo} está desligado",
+        "descripcion": "Seu plano {plan} o inclui e ainda há espaço: você usa {usados} de {cupo} módulos opcionais. Ao ligá-lo, as páginas voltam ao menu e seus dados continuam como você deixou.",
+        "descripcionSinTope": "Seu plano {plan} não tem limite de módulos. Ao ligá-lo, as páginas voltam ao menu e seus dados continuam como você deixou.",
+        "encender": "Ligar {modulo}",
+        "paginasTitulo": "Páginas que inclui",
+        "queParaTitulo": "O que acontece ao ligar",
+        "menuTitulo": "Aparece no menu",
+        "menuDesc": "As pessoas cujo cargo inclui {modulo} passam a vê-lo.",
+        "cupoTitulo": "Usa 1 vaga do seu plano",
+        "cupoDesc": "Você ficaria com {usados} de {cupo} módulos opcionais. Seu preço não muda.",
+        "cupoDescSinTope": "Seu plano não tem limite de módulos. Seu preço não muda.",
+        "despuesTitulo": "Você pode desligá-lo depois",
+        "despuesDesc": "Em Organização › Módulos. Os dados não são apagados."
+      },
+      "miembro": {
+        "subtitulo": "Não está ligado em {organizacion}",
+        "subtituloMovil": "Não está ligado",
+        "titulo": "{modulo} não está ligado",
+        "descripcion": "Sua organização está com este módulo desligado e só um administrador pode ligá-lo. Se você precisa dele no seu trabalho, avise por aqui.",
+        "quienTitulo": "Quem pode ligá-lo",
+        "recibeTitulo": "O que o administrador recebe",
+        "notifTitulo": "Uma notificação com seu pedido",
+        "notifDesc": "“{persona} pede para ligar {modulo}”, com botão para Módulos.",
+        "diaTitulo": "Um só aviso por dia",
+        "diaDesc": "Se você já avisou hoje, o botão diz “Você já avisou os administradores”."
+      }
+    },
+    "limite": {
+      "admin": {
+        "subtitulo": "Não cabe no seu plano {plan}",
+        "subtituloMovil": "Não cabe no seu plano",
+        "titulo": "Seu plano {plan} já usa todos os módulos",
+        "descripcion": "O plano {plan} permite {cupo} módulos opcionais e você já tem {usados} ligados. Para usar {modulo}, mude para um plano com mais espaço ou desligue um que não esteja usando.",
+        "verPlanes": "Ver planos",
+        "aMedida": "Configuração sob medida",
+        "apagarOtro": "Desligar outro módulo",
+        "encendidosTitulo": "Módulos opcionais ligados ({usados} de {cupo})",
+        "disponibleTitulo": "Disponível em",
+        "planTitulo": "Plano {plan}",
+        "planCupo": "Até {cupo} módulos opcionais: sobrariam {libres}.",
+        "planSinTope": "Sem limite de módulos.",
+        "aMedidaDesc": "Você escolhe módulos e sedes; a equipe GO Admin faz o orçamento."
+      },
+      "miembro": {
+        "subtitulo": "Não está em uso em {organizacion}",
+        "subtituloMovil": "Não está em uso",
+        "titulo": "{modulo} não está em uso na sua organização",
+        "descripcion": "O plano da sua organização não tem espaço para outro módulo. Se você precisa dele, conte a um administrador: ele decide se amplia o plano.",
+        "quienTitulo": "Quem pode decidir",
+        "notifDesc": "“{persona} pede para usar {modulo}”, com botão para Ver planos."
+      }
+    },
+    "otroPlan": {
+      "admin": {
+        "subtitulo": "Sem plano em {organizacion}",
+        "subtituloMovil": "Sem plano",
+        "titulo": "{modulo} precisa de um plano",
+        "descripcion": "Sua organização ainda não tem um plano ativo. Escolha um para ligar {modulo}."
+      }
+    },
+    "pagina": {
+      "admin": {
+        "subtitulo": "Página oculta de {modulo}",
+        "subtituloMovil": "Página oculta",
+        "titulo": "{pagina} está oculta",
+        "descripcion": "{modulo} está ligado, mas esta página foi ocultada em Organização › Módulos. Enquanto estiver oculta, não aparece no menu nem na busca de ninguém.",
+        "mostrar": "Mostrar página",
+        "mostrando": "Mostrando…",
+        "errorMostrar": "Não foi possível mostrar a página. Tente de novo.",
+        "irA": "Ir para {pagina}",
+        "alMostrarTitulo": "Ao mostrá-la",
+        "vuelveTitulo": "Volta ao menu",
+        "vuelveDesc": "Aparece dentro de {modulo} para os cargos com acesso.",
+        "cupoTitulo": "Não gasta vaga do plano",
+        "cupoDesc": "O limite do plano conta módulos, não páginas.",
+        "ocultarTitulo": "Pode ser ocultada de novo",
+        "ocultarDesc": "Em Organização › Módulos › {modulo}.",
+        "visiblesTitulo": "Páginas visíveis de {modulo}"
+      },
+      "miembro": {
+        "subtitulo": "Página indisponível",
+        "titulo": "Esta página não está disponível",
+        "descripcion": "Um administrador ocultou {pagina} na sua organização. O resto de {modulo} continua funcionando como sempre.",
+        "irA": "Ir para {modulo}",
+        "quienTitulo": "Quem pode mostrá-la",
+        "puedesTitulo": "Páginas que você pode usar"
+      }
+    },
+    "cargo": {
+      "subtitulo": "Seu cargo não inclui este módulo",
+      "subtituloMovil": "Seu cargo não o inclui",
+      "titulo": "Seu cargo não inclui {modulo}",
+      "descripcion": "{modulo} está ligado na sua organização, mas o cargo {cargo} não tem acesso. Se você precisa dele no seu trabalho, peça a quem administra os cargos.",
+      "descripcionSinNombre": "{modulo} está ligado na sua organização, mas seu cargo não tem acesso. Se você precisa dele no seu trabalho, peça a quem administra os cargos.",
+      "editarCargo": "Editar o cargo",
+      "quienTitulo": "Quem pode lhe dar acesso",
+      "incluyeTitulo": "O que seu cargo inclui",
+      "incluyeVacio": "Seu cargo ainda não inclui nenhum módulo."
+    },
+    "notificacion": {
+      "encender": {
+        "titulo": "{persona} pede para ligar {modulo}",
+        "contenido": "{persona} precisa de {modulo} no trabalho. Você pode ligá-lo em Organização › Módulos."
+      },
+      "plan": {
+        "titulo": "{persona} pede para usar {modulo}",
+        "contenido": "{modulo} não cabe no plano atual. Veja os planos se quiser ligá-lo."
+      },
+      "pagina": {
+        "titulo": "{persona} pede para mostrar {pagina}",
+        "contenido": "{pagina} está oculta em {modulo}. Você pode mostrá-la em Organização › Módulos."
+      },
+      "cargo": {
+        "titulo": "{persona} pede acesso a {modulo}",
+        "contenido": "O cargo de {persona} não inclui {modulo}. Você pode dar acesso em Equipe › Cargos."
+      }
+    },
+    "buscador": {
+      "grupo": "Módulos que sua organização não usa",
+      "apagado": "Desligado · abra para ligar",
+      "limite": "Não cabe no seu plano {plan} · Ver planos",
+      "limiteSinNombre": "Não cabe no seu plano · Ver planos",
+      "otroPlan": "Precisa de um plano · Ver planos",
+      "pistaMiembro": "Talvez sua organização não use essa função. Se precisar dela, pergunte a um administrador."
+    },
+    "resaltado": "Aqui você pode ligar {modulo}."
   }
 }

@@ -6,16 +6,20 @@
  * Ampliado el 2026-10-06 (módulo base «Sitio web»): TODO código del mapa debe
  * existir en `modules` y en el catálogo de navegación, y el de /app/sitio-web
  * ('website') debe crearlo una migración versionada como núcleo.
+ *
+ * 2026-11-08 (módulo no habilitado): el middleware ya no tiene mapa propio; lee
+ * `RUTAS_MODULOS` (src/lib/navigation/rutasModulos.ts), que
+ * `rutasModulos.test.ts` obliga a coincidir con el catálogo. Estas reglas se
+ * aplican ahora a ese mapa.
  */
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { CATALOGO_NAV } from '@/lib/navigation/catalog';
+import { RUTAS_MODULOS } from '@/lib/navigation/rutasModulos';
 
-const fuente = readFileSync(join(process.cwd(), 'src/middleware.ts'), 'utf8');
-const mapa = fuente.slice(fuente.indexOf('const routeToModuleMap'), fuente.indexOf('};', fuente.indexOf('const routeToModuleMap')));
-
-/** Pares ruta → código del mapa, leídos del propio fuente del middleware. */
-const pares = Array.from(mapa.matchAll(/'(\/app\/[^']*)':\s*'([^']+)'/g), (m) => ({ ruta: m[1], codigo: m[2] }));
+/** Pares ruta → código del mapa que usa el middleware. */
+const pares = RUTAS_MODULOS.flatMap((m) => m.rutas.map((ruta) => ({ ruta, codigo: m.codigo })));
+const mapa = pares.map((p) => `'${p.ruta}': '${p.codigo}'`).join('\n');
 
 /**
  * `modules.code` en producción, consultado por MCP el 2026-10-06 (proyecto

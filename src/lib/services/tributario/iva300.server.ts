@@ -12,6 +12,7 @@ import { esObjetoInexistente } from '@/lib/finanzas/tributario/perfil';
 import {
   leerFormulario300,
   leerLineasFiscales,
+  type CorreccionDian,
   type Formulario300,
   type LineaFiscal,
   type SolicitudClasificacion,
@@ -97,6 +98,8 @@ export interface SolicitudDeclaracion {
   vencimiento_plazo?: string | null;
   en_firme?: boolean | null;
   firmeza_nota?: string | null;
+  /** Ronda 6 (art. 589 ET): solicitud de corrección presentada ante la DIAN (solo si viene; null la quita). */
+  correccion_dian?: CorreccionDian | null;
 }
 
 export async function guardarDeclaracion(ctx: Ctx, desde: string, hasta: string, datos: SolicitudDeclaracion | null): Promise<unknown> {

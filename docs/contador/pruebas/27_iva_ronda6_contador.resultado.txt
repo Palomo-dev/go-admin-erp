@@ -1,0 +1,158 @@
+Resultado de 27_iva_ronda6_contador.sql (RONDA 6 del Contador, IVA: hallazgo del reparto y respuestas 1 a 5, 7 y 8)
+Corrida: 2026-11-10, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585), zona America/Bogota. Una sola transacción, sin datos
+al final.
+Archivos EXACTOS (md5 del disco, comprobados dentro de la base antes de ejecutar):
+  20261108140000 (H1)   47486ffab373921553fdcd99d2f56ad0
+  20261108150000        83e79e4ecaf01b8cbfa945cb207c1290
+  20261108150500        f05449117c12cf04af6812ff404a49f3
+  20261108151000        a91fa17e57a06af04c914dc45286d7d8
+  20261108152000        2922316e3deca529ebbc1d232e883e9d
+  20261110150000        f19d51b97cea4c56a57ae96279a49a7d  (nueva: reparto de la base)
+  20261110150000 rollb. a9634f1def22e3be099f0f054f20a075
+  prueba 27             e0472646e1692f2aceafbb42e27add29
+Método: cada archivo se subió por trozos (≤ 24 KB, cortados en fin de línea) como objeto grande de Postgres; el md5 de cada
+trozo y del archivo completo se comprobó contra el disco. Un DO pegó, en sus marcadores: (1) 20261110150000 SOLA y (2) su
+reversión, antes de todo, para medir que la definición vuelve byte a byte; (3) las seis migraciones completas, en orden de
+prefijo, en «MIGRACIONES». Quitó solo «begin;», «rollback;» y el SELECT final; ejecutó y terminó con una excepción que
+devuelve la tabla de resultados (= rollback). Al final se borraron los objetos grandes y se comprobó que la base no quedó
+con ninguna tabla, función, columna, proveedor, producto, compra, venta, miembro, asiento ni cuenta de la prueba, y que
+fn_armar_asiento_documento sigue con su md5 aplicado (a4e14cbc23142d9f46c25145faa49642).
+Usuarios: A = el miembro activo de la org 374; B = el dueño de la org 137, miembro de la 374 SOLO dentro de la transacción.
+
+Primera corrida: 138 de 139. Falla de la MIGRACIÓN 20261108150500, no de la prueba:
+  · fila 83: B aprobó W6, una corrección de error SIN decisión. En fn_iva_naturaleza_asiento_aprobar la condición
+    «naturaleza = 'correccion_error' and decision_tratamiento = 'retirar_venta'» daba NULL con la decisión vacía, y
+    «if not (… or NULL)» no rechazaba. Se corrigió con coalesce(decision_tratamiento, '') en el disco; la versión nueva
+    se armó en la base aplicando el mismo cambio al objeto ya subido y su md5 completo (f0544911…) se comprobó contra el
+    disco antes de volver a correr.
+Segunda corrida (la que vale): 139 verificaciones · 139 ok · 0 fallas.
+
+  n | bloque | verificación → obtenido
+----+--------+------------------------------------------------------------------------------------------------------------
+  1 | H | Antes: la definición aplicada de fn_armar_asiento_documento → a4e14cbc23142d9f46c25145faa49642
+  2 | H | La migración sola cambia la función y deja su marca → cambió · true
+  3 | H | La reversión devuelve la definición byte a byte → a4e14cbc23142d9f46c25145faa49642
+  4 | H | La reversión borra la función del peso → true
+  5 | Z | Exenta con el artículo de la exención sin citar un artículo → SOPORTE_ADUANERO_NORMA_INVALIDA
+  6 | Z | Zona franca que no es sí ni no → SOPORTE_ADUANERO_INVALIDO
+  7 | Z | Lo que le falta a una importación EXENTA con solo los datos aduaneros (ni la norma ni el fundamento de la exclusión) → {norma_exencion,zona_franca}
+  8 | Z | La misma, como EXCLUIDA, pide la norma y el fundamento de la exclusión (ronda 5) → {norma_exclusion,fundamento_exclusion}
+  9–13 | Z | Clasificación de FZ1 a FZ5 (exentas y excluidas, con y sin zona franca) → OK (cada una)
+ 14–22 | H/G | Clasificación de las líneas de FRB, FG1, FG2 y FG3, ANTES de contabilizar → OK (cada una)
+ 23 | W | W1: aviso de la DIAN de una falla que CUBRE la venta (8:00 a 12:00; venta a las 10:00), consulta sin resultado de hoy → OK
+ 24 | W | W6: falla con el inicio DESPUÉS del fin → CONTINGENCIA_INVALIDA
+ 25 | W | W7: falla del mismo día de la venta pero sin su inicio → OK
+ 26 | W | W7: sin el inicio de la falla el expediente no sabe si la cubre → {contingencia}
+ 27 | W | W1: la falla cubre la venta: expedida en contingencia; le falta la nota crédito electrónica → {nota_credito_electronica}
+ 28 | W | W7: falla de 15:00 a 17:00 del día de la venta (9:00): cubre la FECHA de la venta → OK
+ 29 | W | W2: constancia de que no hubo contingencia (con lo revisado) y consulta 1 hora después de la venta → OK
+ 30 | W | W3: constancia de que no hubo contingencia, pero la consulta es ANTERIOR a la venta → OK
+ 31 | W | W4: falla del día ANTERIOR a la venta (no la cubre), con la nota de lo revisado; consulta 24 horas después de la venta → OK
+ 32 | W | W5: falla que empieza el día de la venta a las 20:00 (después de la venta) y termina el día siguiente → OK
+ 33 | W | W6: falla del día anterior (no la cubre) SIN la nota de lo revisado; consulta pasadas 48 horas desde la venta → OK
+ 34 | W | W7: con el inicio, la falla cubre la fecha de la venta (día de las dos): le falta la nota crédito → {nota_credito_electronica}
+ 35 | W | W5: la falla empezó el 7 a las 20:00: cubre la FECHA de la venta aunque empezó después de ella → {nota_credito_electronica}
+ 36 | W | W2: expediente completo → {}
+ 37 | W | W4: expediente completo → {}
+ 38 | W | W1: la respuesta dice «tenida por expedida en contingencia» y no «tratada como no expedida» → true · false
+ 39 | W | W2: la respuesta dice «tratada como no expedida» (constancia y consulta sin resultado) → false · true
+ 40 | W | W1: retirar la venta (expedida en contingencia, sin la nota crédito) → EXPEDIENTE_INCOMPLETO [nota_credito_electronica]
+ 41 | W | W1: se agrega la nota crédito electrónica → OK
+ 42 | W | W1: retirar como no expedida con la nota crédito: no (la falla cubre la venta) → DOCUMENTO_VALIDO_REQUIERE_NOTA_CREDITO [expedida_en_contingencia]
+ 43 | W | W1: tratarla con la nota crédito en el bimestre de la nota → OK nota_credito
+ 44 | W | W2: retirar (sin falla registrada la regla de 48 horas no aplica: la consulta vale desde la venta) → OK retirar_venta
+ 45 | W | W3: retirar con la consulta anterior a la venta → CONTINGENCIA_SIN_DESCARTAR [consulta_antes_de_la_venta]
+ 46 | W | W4: venta posterior al fin de la falla: las 48 horas corren desde la VENTA (la consulta es de 24 horas después) → CONTINGENCIA_SIN_DESCARTAR [plazo_48_horas]
+ 47 | W | W6: falla que no cubre la venta, sin la nota de lo revisado (no hay constancia de que no hubo contingencia) → CONTINGENCIA_SIN_DESCARTAR [constancia_sin_contingencia]
+ 48 | W | W4: la consulta se repite pasadas 48 horas desde la venta → OK
+ 49 | W | W4: ahora sí se retira → OK retirar_venta
+ 50 | W | W3: se reemplaza por una falla del 8 de noviembre (8:00 a 9:00), con la nota, y la consulta del 9 a las 11:00 → OK
+ 51 | W | W3: venta anterior al fin de la falla: las 48 horas corren desde el FIN de la falla → CONTINGENCIA_SIN_DESCARTAR [plazo_48_horas]
+ 52 | E | A registra el pago a la DIAN → OK
+ 53 | E | A registra el traslado entre auxiliares → OK
+ 54 | E | A registra el cierre → OK
+ 55 | E | A registra un ajuste procedente → OK
+ 56 | E | A aprueba su propio traslado → APROBACION_MISMO_USUARIO
+ 57 | E | A aprueba el retiro de W2, que él registró y decidió → APROBACION_MISMO_USUARIO
+ 58 | E | La respuesta de guardar el traslado pide la aprobación → true
+ 59 | V | V1 (octubre): expediente completo con constancia, marcando la corrección de la declaración → OK
+ 60 | V | V2 (marzo): expediente completo con constancia, marcando la corrección de la declaración → OK
+ 61 | V | Septiembre–octubre declarado, con vencimiento (12-11-2026) y no en firme (datos de prueba) → OK
+ 62 | V | V1: retirar sin la solicitud de corrección ante la DIAN registrada → CORRECCION_DIAN_SIN_REGISTRO
+ 63 | V | Solicitud sin el soporte → CORRECCION_DIAN_INVALIDA
+ 64 | V | Solicitud con un resultado que no existe → CORRECCION_DIAN_INVALIDA
+ 65 | V | Solicitud anterior a la presentación de la declaración → CORRECCION_DIAN_FECHA_INVALIDA
+ 66 | V | Solicitud presentada, EN TRÁMITE → OK
+ 67 | V | V1: retirar con la solicitud en trámite → CORRECCION_DIAN_SIN_RESULTADO
+ 68 | V | La DIAN la RECHAZA → OK
+ 69 | V | V1: retirar con la solicitud rechazada → CORRECCION_DIAN_RECHAZADA
+ 70 | V | La DIAN la ACEPTA (liquidación oficial de corrección) → OK
+ 71 | V | V1: retirar con la solicitud aceptada → OK retirar_venta
+ 72 | V | Marzo–abril declarado (vence 12-05-2026), solicitud del 9 de mayo con «vencido el término» registrado el 1 de agosto (no van seis meses) → CORRECCION_DIAN_TERMINO_NO_VENCIDO
+ 73 | V | Marzo–abril con «vencido el término» registrado el 9 de noviembre (seis meses después de la solicitud) → OK
+ 74 | V | V2: retirar con «vencido el término» (el proyecto de corrección sustituyó la declaración) → OK retirar_venta
+ 75 | V | Referencia del art. 714 ET: tres años desde el vencimiento (12-11-2026) → 2029-11-12 · Referencia: término general del art. 714 ET (tres años). No decide la firmeza: hay términos especiales.
+ 76 | V | Declaración extemporánea (vence 14-07, presentada 20-07): la referencia cuenta desde la presentación → 2029-07-20
+ 77 | V | La referencia no cambia la firmeza registrada (sigue «no en firme») → false
+ 78 | E | B aprueba el pago a la DIAN → aprobado
+ 79 | E | B aprueba el traslado entre auxiliares → aprobado
+ 80 | E | B aprueba el cierre → aprobado
+ 81 | E | B intenta aprobar el ajuste procedente (no se propone «no afecta») → APROBACION_NO_REQUERIDA
+ 82 | E | B intenta aprobar W1, tratada por nota crédito (no se propone «no afecta») → APROBACION_NO_REQUERIDA
+ 83 | E | B intenta aprobar W6, sin decisión → APROBACION_NO_REQUERIDA
+ 84 | E | B decide otra vez el retiro de W2 (ahora B es quien decidió) → OK retirar_venta
+ 85 | E | B aprueba el retiro que él mismo decidió → APROBACION_MISMO_USUARIO
+ 86 | E | B aprueba el retiro de W4 → aprobado
+ 87 | E | B aprueba el retiro de V1 (septiembre–octubre) → aprobado
+ 88 | E | B aprueba el retiro de V2 (marzo–abril) → aprobado
+ 89 | E | A decide otra vez el retiro de W2 → OK retirar_venta
+ 90 | E | B aprueba el retiro de W2 (lo registró y lo decidió A) → aprobado
+ 91 | E | Decidir otra vez borra la aprobación → OK retirar_venta · sin aprobar
+ 92 | E | B aprueba otra vez el retiro de W2 → aprobado
+ 93 | V | Después del retiro se registra que la DIAN rechazó la corrección de septiembre–octubre → OK
+ 94 | W | W1 tratada por nota crédito: la venta se queda; la reversa pendiente → en 59 · correccion_por_nota_credito
+ 95 | W | W1: el detalle dice «tenida por expedida en contingencia» → true
+ 96 | W | W2 retirada y aprobada: sale de la 59 → no en 59 · no_afecta
+ 97 | W | W2: el detalle dice «tratada como no expedida» y aprobada → true · true
+ 98 | W | W2 retirada ANTES de la aprobación: la venta se queda; la reversa pendiente → en 59 · correccion_sin_aprobacion
+ 99 | W | W2 decidida otra vez (aprobación borrada): pendiente de nuevo → en 59 · correccion_sin_aprobacion
+100 | W | W3 (48 horas desde el fin de la falla, sin decisión): sigue en la 59 → en 59 · correccion_sin_decision
+101 | W | W4 retirada y aprobada: sale de la 59 → no en 59 · no_afecta
+102 | W | W7 (la falla cubre la fecha): expediente incompleto (nota crédito), sigue en la 59 → en 59 · correccion_incompleta
+103 | E | Pago a la DIAN registrado, sin aprobar: pendiente → pendiente · no_afecta_sin_aprobacion · aprobado false
+104 | E | Traslado registrado, sin aprobar: pendiente → pendiente · no_afecta_sin_aprobacion · aprobado false
+105 | E | Cierre registrado, sin aprobar: pendiente → pendiente · cierre_sin_aprobacion · aprobado false
+106 | E | Pago a la DIAN aprobado por B: no afecta → no_afecta · — · aprobado true
+107 | E | Traslado aprobado por B: no afecta → no_afecta · — · aprobado true
+108 | E | Cierre aprobado por B: no afecta → no_afecta · — · aprobado true
+109 | E | Ajuste procedente: por diligenciar, sin aprobación → por_diligenciar · — · aprobado NULL
+110 | V | Septiembre–octubre, retiro de V1 sin aprobar: V1 sigue en la 59 → en 59
+111 | V | Septiembre–octubre, corrección aceptada y retiro aprobado: V1 sale de la 59 → no en 59
+112 | V | Marzo–abril, «vencido el término» y retiro aprobado: V2 sale de la 59 → no en 59
+113 | V | Septiembre–octubre, la DIAN rechazó la corrección después: V1 vuelve a la 59 → en 59
+114 | V | Noviembre: la reversa de V1, con la corrección rechazada, queda pendiente → pendiente · correccion_dian_sin_efecto
+115 | V | Noviembre: la alerta trae la referencia del art. 714 y la solicitud ante la DIAN (aceptada) → 2029-11-12 · aceptada · SOL-R6-1
+116 | V | Noviembre, después del rechazo: la alerta lo muestra → rechazada · correccion_dian_pendiente true
+117 | Z | Casilla 48 = FZ1, exenta de zona franca → 100000
+118 | Z | Casilla 48 en el catálogo del borrador → base · importaciones_zona_franca_no_gravadas · descontable
+119 | Z | Casilla 47 = FZ2 exenta sin zona franca 60.000 + FZ5 excluida 10.000 → 70000
+120 | Z | FZ3, exenta sin el dato de zona franca: pendiente → importacion_sin_soporte_aduanero · base 30000
+121 | Z | FZ4, excluida de zona franca: pendiente (por confirmar con el Contador) → importacion_zona_franca_excluida_por_confirmar · base 20000
+122 | Z | Ninguna importación va a la 54 (compras nacionales) → 0
+123 | Z | Versión del borrador → 7
+124 | G | FG1: UNA línea no descontable con cuenta de cabecera: se contabiliza, el IVA va al costo → CON ASIENTO · 2408 0 · D 119000
+125 | G | FG2: DOS líneas no descontables con cuenta de cabecera: pendiente de corregir → SIN ASIENTO · iva_no_descontable_por_corregir · más de una línea
+126 | G | FG3: tres líneas, una sin cuenta propia: el asiento por líneas no se publica → SIN ASIENTO · cuenta_linea · cada línea debe tener su propia cuenta
+127 | G | FG2 con una cabecera de activo fijo (152405): tampoco basta (más de una línea) → IVA no descontable en una compra de más de una línea
+128 | G | FG1 (una línea) con la cabecera de inventarios (14350101): cuenta única → NULL
+129 | H | FRB publicado (el ejemplo del Contador): la base se reparte por la base antes de IVA → 14350101 D 100000 · 513595 D 215200 · 519525 D 119000 · C 462000
+130 | H | FRB: la 2408 descontable y el IVA no descontable no cambian → 24081001 D 22800 + 24081002 D 5000
+131 | H | FRB armado (centavos): Σ de las cuentas de las líneas − IVA no descontable (34.200) = base del documento → 400000.00
+132 | H | FRC: peso de cada línea con el IVA incluido = su base (84.033,61 · 95.238,10 · 100.000) → R6 FRC exenta 100000.00 · R6 FRC incluido 19 84033.61 · R6 FRC incluido 5 95238.10
+133 | H | FRC armado: la suma de las cuentas de las líneas es EXACTAMENTE la base del documento (300.000 − 20.728,30) → true · 279271.70
+134 | H | FRC: el ajuste de centavos va a la ÚLTIMA línea del asiento; las demás llevan su parte redondeada → demás exactas · última −0.01
+135 | H | Peso con el impuesto dentro del neto (documento sin impuesto separado): base × (1 + tarifa) → 100000.00
+136 | H | Peso de una línea con INC del 8 %: en compras lleva su INC (va al costo); en ventas no → compra 108000.00 · venta 100000.00
+137 | E | anon: aprobar un traslado → permission denied for function fn_iva_na…
+138 | cuadre | Asientos nuevos cuadrados (Σ D = Σ C) → todos
+139 | historicos | Asientos anteriores a la prueba intactos (ninguna línea nueva en asientos viejos) → 0

@@ -150,10 +150,7 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
     diaONull(b.granContribuyenteActoFecha),
   ];
   if (fechas.some((f) => f === false)) return { ok: false, error: 'datos_invalidos' };
-  // Ronda 5 · formato 2532: solo viaja si viene (una clave ausente conserva lo guardado); «no aplica» lleva constancia.
-  const donaciones = 'rteDonacionesCooperacion' in b ? boolONull(b.rteDonacionesCooperacion) : undefined;
-  const constancia = 'rteDonacionesConstancia' in b ? textoCorto(b.rteDonacionesConstancia, 1000) : undefined;
-  if (donaciones === false && !constancia) return { ok: false, error: 'datos_invalidos' };
+  // Ronda 6 · el formato 2532 ya no es un dato de la vigencia: va por año gravable (tributario_rte_2532_anio).
   const responsabilidades = listaCodigos(b.responsabilidades, CODIGO_FE_RE, true);
   if (responsabilidades === null) return { ok: false, error: 'responsabilidad_invalida' };
   const responsabilidadesRut = listaCodigos(b.responsabilidadesRut, CODIGO_RUT_RE, false);
@@ -209,8 +206,6 @@ export function validarSolicitudPerfil(cuerpo: unknown): { ok: true; datos: Soli
       incActividad: vacio(b.incActividad) ? null : (b.incActividad as ActividadInc),
       rteTipo: vacio(b.rteTipo) ? null : (b.rteTipo as TipoRte),
       rteIngresosSuperan160000Uvt: boolONull(b.rteIngresosSuperan160000Uvt),
-      ...(donaciones !== undefined ? { rteDonacionesCooperacion: donaciones } : {}),
-      ...(constancia !== undefined ? { rteDonacionesConstancia: constancia } : {}),
       noContribuyenteNaturaleza: textoCorto(b.noContribuyenteNaturaleza, 300),
       motivoCambioPeriodicidad: vacio(b.motivoCambioPeriodicidad) ? null : (b.motivoCambioPeriodicidad as MotivoCambioPeriodicidad),
       cambioPeriodicidadHecho: textoCorto(b.cambioPeriodicidadHecho, 1000),
@@ -250,9 +245,6 @@ export function parametrosGuardarPerfil(organizationId: number, d: SolicitudPerf
       inc_actividad: d.incActividad,
       rte_tipo: d.rteTipo,
       rte_ingresos_superan_160000_uvt: d.rteIngresosSuperan160000Uvt,
-      // Ronda 5: solo si vinieron (la base conserva lo guardado cuando la clave no llega).
-      ...(d.rteDonacionesCooperacion !== undefined ? { rte_donaciones_cooperacion: d.rteDonacionesCooperacion } : {}),
-      ...(d.rteDonacionesConstancia !== undefined ? { rte_donaciones_constancia: d.rteDonacionesConstancia } : {}),
       no_contribuyente_naturaleza: d.noContribuyenteNaturaleza,
       motivo_cambio_periodicidad: d.motivoCambioPeriodicidad,
       cambio_periodicidad_hecho: d.cambioPeriodicidadHecho,
@@ -328,8 +320,6 @@ export interface FilaPerfil {
   inc_actividad?: string | null;
   rte_tipo?: string | null;
   rte_ingresos_superan_160000_uvt?: boolean | null;
-  rte_donaciones_cooperacion?: boolean | null;
-  rte_donaciones_constancia?: string | null;
   no_contribuyente_naturaleza?: string | null;
   responsabilidades_rut?: string[] | null;
   motivo_cambio_periodicidad?: string | null;
@@ -384,8 +374,6 @@ function camposSeparados(p: FilaPerfil): CamposFila {
     incActividad: en(ACTIVIDADES_INC, p.inc_actividad) ? p.inc_actividad : null,
     rteTipo: en(TIPOS_RTE, p.rte_tipo) ? p.rte_tipo : null,
     rteIngresosSuperan160000Uvt: p.rte_ingresos_superan_160000_uvt ?? null,
-    rteDonacionesCooperacion: p.rte_donaciones_cooperacion ?? null,
-    rteDonacionesConstancia: p.rte_donaciones_constancia ?? null,
     noContribuyenteNaturaleza: p.no_contribuyente_naturaleza ?? null,
     responsabilidadesRut: p.responsabilidades_rut ?? [],
     motivoCambioPeriodicidad: en(MOTIVOS_CAMBIO_PERIODICIDAD, p.motivo_cambio_periodicidad) ? p.motivo_cambio_periodicidad : null,

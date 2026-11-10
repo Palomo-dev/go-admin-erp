@@ -33,6 +33,7 @@ import {
   aniosCalendario,
   calendarioIncompleto,
   obligacionesDelCorte,
+  leerFormato2532,
   vencimientoDe,
   type FilaCalendario,
   type Obligacion,
@@ -412,8 +413,17 @@ export async function leerCentro(ctx: Ctx, corteSolicitado: string | null): Prom
   const base = { corte, hoy: perfil.hoy, faltan: perfil.faltan, calendarioIncompleto: [] as number[] };
   if (!perfil.activo) return { ...base, perfil: 'pendiente_activar', calendario: 'pendiente_activar', filas: [] };
 
+  // Ronda 6 del Contador: el dato del formato 2532 va por año gravable. Sin la tabla (migración sin aplicar) → sin datos:
+  // el 2532 queda «por confirmar», nunca se da por aplicable ni por no aplicable.
+  const { data: filas2532, error: error2532 } = await ctx.supabase
+    .from('tributario_rte_2532_anio')
+    .select('anio_gravable, recibio, constancia')
+    .eq('organization_id', ctx.organizationId);
+  if (error2532 && !esObjetoInexistente(error2532 as ErrorBase)) throw error2532;
+  const formato2532 = leerFormato2532(error2532 ? [] : (filas2532 as unknown[] | null));
+
   // P8: todas las vigencias que tocan los periodos, no solo la del último día del corte.
-  const obligaciones = obligacionesDelCorte(perfil.vigencias, corte);
+  const obligaciones = obligacionesDelCorte(perfil.vigencias, corte, formato2532);
   if (obligaciones.length === 0 && perfil.vigencias.every((v) => v.vigenteDesde > `${corte}-31`)) {
     return { ...base, perfil: 'sin_perfil', calendario: 'pendiente_activar', filas: [] };
   }

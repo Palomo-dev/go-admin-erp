@@ -49531,6 +49531,39 @@
       "constancia_2532_requerida": "If form 2532 does not apply, record what was verified."
     }
   },
+  "finanzasTributarioR6": {
+    "motivos": {
+      "no_afecta_sin_aprobacion": "Payment to the DIAN or transfer between subaccounts recorded without a second user’s approval",
+      "correccion_sin_aprobacion": "Error correction: removing the sale has no approval from a second user (other than whoever recorded it and whoever decided it); the sale stays",
+      "correccion_dian_sin_efecto": "Error correction: the sale’s period was already filed and the correction request before the DIAN (Tax Code art. 589) is not recorded, is still pending or was rejected; the sale stays",
+      "importacion_zona_franca_excluida_por_confirmar": "Excluded import coming from a free trade zone: the box (47 or 48) is pending confirmation with the accountant",
+      "importacion_no_excluida_no_va_47": "Non-taxable import: it does not go to box 47 (box 47 is for excluded imports and exempt imports not coming from a free trade zone)",
+      "correccion_declaracion_no_corregible": "Error correction: the return for the sale’s period is final, out of the correction term or without a recorded deadline or finality; the sale stays. Reference: the general finality term is three years (Tax Code art. 714); it does not decide, there are special terms",
+      "cierre_sin_aprobacion": "Closing recorded without a second user’s approval"
+    },
+    "errores": {
+      "correccion_dian_invalida": "The correction request before the DIAN needs a number, date, result (pending, accepted, rejected or term expired), the result date and the supporting document.",
+      "correccion_dian_fecha_invalida": "The request date cannot be before the return was filed or in the future, and the result date cannot be before the request.",
+      "correccion_dian_termino_no_vencido": "“Term expired” can only be recorded once six months have passed since the request without a ruling from the DIAN (Tax Code art. 589).",
+      "correccion_dian_sin_registro": "To remove a sale from a filed period, first record the correction request filed with the DIAN, with its number, date and result (Tax Code art. 589).",
+      "correccion_dian_sin_resultado": "The correction request before the DIAN is still pending: the sale is removed once it is accepted or the term expires without a ruling.",
+      "correccion_dian_rechazada": "The DIAN rejected the correction request: the sale cannot be removed from that return.",
+      "aprobacion_no_requerida": "This record does not need a second user’s approval: only those proposed as “no effect” do (payment to the DIAN, transfer between subaccounts, closing and removing the sale).",
+      "anio_invalido": "The tax year is not valid.",
+      "contingencia_invalida": "The contingency support is not valid, or the outage starts after it ends."
+    },
+    "conceptos": {
+      "importaciones_zona_franca_no_gravadas": "Non-taxed imports from a free trade zone"
+    },
+    "notas": {
+      "rte_2532_aplica": "Form 2532: applies for this tax year, because the cooperative received donations or non-reimbursable international cooperation that year.",
+      "rte_2532_no_aplica": "Form 2532: does not apply for this tax year; there is a record that the cooperative did not receive donations or non-reimbursable international cooperation that year.",
+      "rte_2532_por_confirmar": "Form 2532: pending confirmation for this tax year. It only applies if the cooperative received donations or non-reimbursable international cooperation that year."
+    },
+    "firmeza": {
+      "referencia": "Reference, not a decision: with the general term of Tax Code art. 714 (three years from the filing deadline, or from filing if it was late), the return would become final on {fecha}. There are special terms; a person records finality."
+    }
+  },
   "finanzasTercerosR5": {
     "anticipos": {
       "exceso": {
@@ -49579,6 +49612,34 @@
       "cobro_de_otra_factura": "The selected collection is not a completed payment of that invoice.",
       "fecha_distinta_del_cobro": "The withholding date must be the collection date.",
       "retencion_excede_saldo_factura": "The withholding exceeds what the invoice still owes: receivables would be overpaid.",
+      "error_desconocido": "The operation could not be completed."
+    }
+  },
+  "finanzasTercerosR6": {
+    "anticipos": {
+      "exceso": {
+        "periodoRegla": "Each tax sets the period: income tax, the refund period (DUR 1.2.4.16); VAT withholding, the refund period, and any balance not absorbed goes to the next two periods, with the written request and the written statement of non-imputation (DUR 1.3.2.3.1); ICA withholding, the period set by the municipal procedure."
+      },
+      "retenciones": {
+        "motivos": {
+          "aiu_anticipo_sin_costo_directo": "AIU advance without direct cost: it stays pending until the contract and the nature of the payment are validated. Its base is not accepted until the contract is closed.",
+          "aiu_contrato_cerrado": "The AIU contract is already closed: it does not accept new operations."
+        }
+      },
+      "errores": {
+        "aiu_contrato_sin_validar": "Validate the AIU contract first; then, the nature of the advance payment.",
+        "error_desconocido": "The operation could not be completed."
+      }
+    }
+  },
+  "consignacionesR6": {
+    "errores": {
+      "derechos_fuera_del_orden_de_aplicacion": "The contract’s order of application does not include rights against the owner: they are collected from the owner, not deducted.",
+      "anticipos_fuera_del_orden_de_aplicacion": "The contract’s order of application does not include advances: the advance is not offset against what was collected for the owner.",
+      "liquidacion_sin_entrega_escrita": "This note’s contract does not require a written settlement.",
+      "entrega_ya_registrada": "The written delivery of this settlement was already recorded with different data.",
+      "medio_distinto_del_pactado": "That is not the medium the contract sets for the written settlement.",
+      "fecha_anterior_a_la_liquidacion": "The delivery cannot be earlier than the settlement.",
       "error_desconocido": "The operation could not be completed."
     }
   }

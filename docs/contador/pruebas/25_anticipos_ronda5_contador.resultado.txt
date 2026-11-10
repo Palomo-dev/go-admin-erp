@@ -1,50 +1,54 @@
-Resultado de 25_anticipos_ronda5_contador.sql · 2026-11-09 (corrida entre las 23:00 y las 23:59 de Bogotá; 2026-11-10 UTC)
-Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback): nada quedó
-escrito. Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md).
+Resultado de 25_anticipos_ronda5_contador.sql · 2026-11-10 (Bogotá) · REEJECUTADA en la ronda 6 (RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md, respuesta 9)
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback):
+nada quedó escrito.
 
-Archivo: 25_anticipos_ronda5_contador.sql (md5 cc9171429ec7b29a1dca4ed663fe9899; 31891 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 1a04fa36b1372642c2d84b9e1126e39f).
+Archivo: 25_anticipos_ronda5_contador.sql (md5 f618a8e7790a8fc34390a261e21012fb; 35125 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 36ccb98f3011ba005214e63d2dbf598f).
 Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
 corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
-  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 f52c0de6f53856fc9dd38bb5b3403809 · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 0c5079355e6c5ab55dd6b14e1e484cea
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 9179856af861a2a886152c1ebbb4f2fd · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 a3e330a9cf7b01c6da242b7d3f3a2b8c · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 3fe4535a0afe9dc1fa58ece1dea5363d · 20261110100000 9f4ade93850013b4cacd3c795ef8d823
+  y la reversión de 20261110100000 (a333e61071756df3e48e31cf5bc66355), cargada y comprobada, no ejecutada en la carga.
+  160500 en la versión que el otro equipo tenía en disco a la hora de la corrida.
 
-Corridas: la primera se detuvo por permiso: el bloque P llamaba como usuario a fn_retencion_periodo_descuento, que
-es interna (sin EXECUTE para authenticated). P corre ahora como administrador y el acumulado AIU se lee con una función
-temporal SECURITY DEFINER. Después: 25 de 25 (también después de fijar la zona de la sesión).
+Corridas: una sola, 25 de 25 (el preludio común ya estaba corregido; ver la 26).
 
-Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar (current_date = día de la
-organización, sin depender de la hora UTC de la corrida).
+Esperado que cambió: P5 «DUR 1.3.2.3.1 · 2026-11 · por_confirmar» → «DUR 1.3.2.3.1 · 2026-11 · dos_siguientes» (el Contador
+confirmó en la ronda 6 que el saldo del exceso de reteIVA va a los dos períodos siguientes).
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar.
 
 RESULTADO (corrida que vale):
-PRUEBA EN SECO (se revierte) · 25: 25 de 25 ok · carga: 7 de 7 ok
+PRUEBA EN SECO (se revierte) · 25: 25 de 25 ok · carga: 9 de 9 ok
 1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
-2 | carga | md5 20261108121000_consignaciones | f52c0de6f53856fc9dd38bb5b3403809 | ok
+2 | carga | md5 20261108121000_consignaciones | 9179856af861a2a886152c1ebbb4f2fd | ok
 3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
 4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
-5 | carga | md5 20261108160500_tributario_perfil_renta_iva | 1d80345bde9c6d9fd378bc10e8c43a5e | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | a3e330a9cf7b01c6da242b7d3f3a2b8c | ok
 6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
-7 | carga | md5 20261108170000_anticipos_proveedores_contador | 0c5079355e6c5ab55dd6b14e1e484cea | ok
-8 | 25 | P1 renta, anulación: DUR 1.2.4.8, período del hecho y el saldo en los siguientes, sin límite | DUR 1.2.4.8 · 2026-10 · siguientes_sin_limite | ok
-9 | 25 | P2 renta, exceso: DUR 1.2.4.16, período del reintegro | DUR 1.2.4.16 · 2026-11 | ok
-10 | 25 | P3 reteIVA, anulación: DUR 1.3.2.3.1, el período de la anulación y el saldo en los DOS siguientes | DUR 1.3.2.3.1 · 2026-10 · dos_siguientes · ["2026-11", "2026-12"] | ok
-11 | 25 | P4 reteIVA anulada en diciembre: los dos períodos siguientes cruzan de año | 2026-12 · ["2027-01", "2027-02"] | ok
-12 | 25 | P5 reteIVA en exceso: período del reintegro; el saldo queda por confirmar con el Contador | DUR 1.3.2.3.1 · 2026-11 · por_confirmar | ok
-13 | 25 | P6 ReteICA: la regla del procedimiento municipal; el saldo en los siguientes, sin límite de períodos | periodo_siguiente_al_reintegro · 2026-12 · siguientes_sin_limite | ok
-14 | 25 | P7 una clase desconocida no recibe período | clase_retencion_invalida | ok
-15 | 25 | P8 ninguna función cargada cita el artículo que la ronda 4 usaba para las devoluciones | 0 | ok
-16 | 25 | E0 anticipo con reteIVA practicada al girar (15 % del IVA de 190.000) | 28500 | ok
-17 | 25 | E1 reteIVA en exceso sin la manifestación escrita de no imputación: bloqueado | soporte_procedimiento_obligatorio · manifestacion_no_imputacion | ok
-18 | 25 | E2 con los dos soportes: reintegro 28.500 − 19.000 = 9.500 en el período del reintegro (DUR 1.3.2.3.1) | 9500.00 · 2026-11 · DUR 1.3.2.3.1 | ok
-19 | 25 | E3 el ajuste guarda la solicitud y la manifestación como soportes | true | ok
-20 | 25 | E4 renta en exceso sin solicitud ni pruebas: bloqueado (DUR 1.2.4.16) | soporte_procedimiento_obligatorio | ok
-21 | 25 | D1 períodos: renta e IVA en el de la resciliación; ReteICA según su procedimiento | reteiva 2025-11 · reteica 2026-12 · retefuente 2025-11 | ok
-22 | 25 | D2 la regla del período queda escrita con su artículo | retefuente:DUR 1.2.4.8 · reteiva:DUR 1.3.2.3.1 | ok
-23 | 25 | D3 reteIVA: el saldo solo en los DOS períodos siguientes | dos_siguientes · ["2025-12", "2026-01"] · 2 · 2850 | ok
-24 | 25 | D4 renta: el saldo en los períodos siguientes, sin límite | siguientes_sin_limite · sin límite · 4000 | ok
-25 | 25 | D5 ReteICA: el excedente pendiente en los siguientes, sin límite, con la solicitud escrita guardada | siguientes_sin_limite · sin límite · Radicado 25-2 | ok
-26 | 25 | D6 ningún pendiente de ReteICA sin la solicitud escrita | 0 | ok
-27 | 25 | A1 operación 1: base del IVA = A + I + U (20 %), sin piso; acumulado previo del contrato en cero | 200000.00 · false · false · 0 | ok
-28 | 25 | A2 operación 2: piso del 10 % de la operación (90.000 → 100.000); el acumulado (1.000.000 · 200.000) ya cumple | 100000.00 · true · false · 90000 · 1000000 · 200000 | ok
-29 | 25 | A3 una devolución que rompe el piso del 10 % de la operación se rechaza | aiu_minimo_10_operacion | ok
-30 | 25 | A4 devolución del costo directo que mantiene el piso (por operación y acumulado): procede; acumulado 600.000 · 200.000 | 3864.00 · 600000 · 200000 | ok
-31 | 25 | A5 operación que supera el valor del contrato: las retenciones quedan pendientes (no se presume) | true · aiu_excede_valor_contrato | ok
-32 | 25 | Z1 asientos de la prueba 25: todos cuadran; ninguno en 1330 | true · 0 | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 3fe4535a0afe9dc1fa58ece1dea5363d | ok
+8 | carga | md5 20261110100000_cartera_abono_retencion_consignacion | 9f4ade93850013b4cacd3c795ef8d823 | ok
+9 | carga | md5 20261110100000_cartera_abono_retencion_consignacion_rollback | a333e61071756df3e48e31cf5bc66355 | ok
+10 | 25 | P1 renta, anulación: DUR 1.2.4.8, período del hecho y el saldo en los siguientes, sin límite | DUR 1.2.4.8 · 2026-10 · siguientes_sin_limite | ok
+11 | 25 | P2 renta, exceso: DUR 1.2.4.16, período del reintegro | DUR 1.2.4.16 · 2026-11 | ok
+12 | 25 | P3 reteIVA, anulación: DUR 1.3.2.3.1, el período de la anulación y el saldo en los DOS siguientes | DUR 1.3.2.3.1 · 2026-10 · dos_siguientes · ["2026-11", "2026-12"] | ok
+13 | 25 | P4 reteIVA anulada en diciembre: los dos períodos siguientes cruzan de año | 2026-12 · ["2027-01", "2027-02"] | ok
+14 | 25 | P5 reteIVA en exceso: período del reintegro; el saldo en los dos siguientes (ronda 6) | DUR 1.3.2.3.1 · 2026-11 · dos_siguientes | ok
+15 | 25 | P6 ReteICA: la regla del procedimiento municipal; el saldo en los siguientes, sin límite de períodos | periodo_siguiente_al_reintegro · 2026-12 · siguientes_sin_limite | ok
+16 | 25 | P7 una clase desconocida no recibe período | clase_retencion_invalida | ok
+17 | 25 | P8 ninguna función cargada cita el artículo que la ronda 4 usaba para las devoluciones | 0 | ok
+18 | 25 | E0 anticipo con reteIVA practicada al girar (15 % del IVA de 190.000) | 28500 | ok
+19 | 25 | E1 reteIVA en exceso sin la manifestación escrita de no imputación: bloqueado | soporte_procedimiento_obligatorio · manifestacion_no_imputacion | ok
+20 | 25 | E2 con los dos soportes: reintegro 28.500 − 19.000 = 9.500 en el período del reintegro (DUR 1.3.2.3.1) | 9500.00 · 2026-11 · DUR 1.3.2.3.1 | ok
+21 | 25 | E3 el ajuste guarda la solicitud y la manifestación como soportes | true | ok
+22 | 25 | E4 renta en exceso sin solicitud ni pruebas: bloqueado (DUR 1.2.4.16) | soporte_procedimiento_obligatorio | ok
+23 | 25 | D1 períodos: renta e IVA en el de la resciliación; ReteICA según su procedimiento | reteiva 2025-11 · reteica 2026-12 · retefuente 2025-11 | ok
+24 | 25 | D2 la regla del período queda escrita con su artículo | retefuente:DUR 1.2.4.8 · reteiva:DUR 1.3.2.3.1 | ok
+25 | 25 | D3 reteIVA: el saldo solo en los DOS períodos siguientes | dos_siguientes · ["2025-12", "2026-01"] · 2 · 2850 | ok
+26 | 25 | D4 renta: el saldo en los períodos siguientes, sin límite | siguientes_sin_limite · sin límite · 4000 | ok
+27 | 25 | D5 ReteICA: el excedente pendiente en los siguientes, sin límite, con la solicitud escrita guardada | siguientes_sin_limite · sin límite · Radicado 25-2 | ok
+28 | 25 | D6 ningún pendiente de ReteICA sin la solicitud escrita | 0 | ok
+29 | 25 | A1 operación 1: base del IVA = A + I + U (20 %), sin piso; acumulado previo del contrato en cero | 200000.00 · false · false · 0 | ok
+30 | 25 | A2 operación 2: piso del 10 % de la operación (90.000 → 100.000); el acumulado (1.000.000 · 200.000) ya cumple | 100000.00 · true · false · 90000 · 1000000 · 200000 | ok
+31 | 25 | A3 una devolución que rompe el piso del 10 % de la operación se rechaza | aiu_minimo_10_operacion | ok
+32 | 25 | A4 devolución del costo directo que mantiene el piso (por operación y acumulado): procede; acumulado 600.000 · 200.000 | 3864.00 · 600000 · 200000 | ok
+33 | 25 | A5 operación que supera el valor del contrato: las retenciones quedan pendientes (no se presume) | true · aiu_excede_valor_contrato | ok
+34 | 25 | Z1 asientos de la prueba 25: todos cuadran; ninguno en 1330 | true · 0 | ok

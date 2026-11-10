@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import { EnlaceAsiento } from '@/components/finanzas/contabilidad/piezas';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { SelectNativo } from '@/components/finanzas/tesoreria/compartido/TesoreriaComun';
 import {
   FILAS_300,
@@ -60,9 +61,13 @@ type FilaCasilla = {
 
 export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: string }) {
   const t = useTranslations('finanzasIva300');
-  // Ronda 5 del Contador: los motivos y errores nuevos viven en su propio namespace; los demás, en finanzasIva300.
+  // Rondas 5 y 6 del Contador: los motivos, errores y conceptos nuevos viven en su propio namespace (el de la ronda 6
+  // manda); los demás, en finanzasIva300.
   const t5 = useTranslations('finanzasTributarioR5');
-  const motivo = (m: string) => (t5.has(`motivos.${m}`) ? t5(`motivos.${m}`) : t(`motivos.${m}`));
+  const t6 = useTranslations('finanzasTributarioR6');
+  const motivo = (m: string) =>
+    t6.has(`motivos.${m}`) ? t6(`motivos.${m}`) : t5.has(`motivos.${m}`) ? t5(`motivos.${m}`) : t(`motivos.${m}`);
+  const concepto = (c: string) => (t6.has(`conceptos.${c}`) ? t6(`conceptos.${c}`) : t(`conceptos.${c}`));
   const { formatear } = useMonedaOrganizacion();
   const [lectura, setLectura] = useState<Lectura<Formulario300Cliente>>({ estado: 'cargando' });
   const [origenes, setOrigenes] = useState<{ titulo: string; lista: Origen300[]; total: number } | null>(null);
@@ -119,7 +124,9 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
       if (l) setLinea(l);
     } catch (err) {
       const c = codigoDe(err);
-      setAviso(t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'));
+      setAviso(
+        t6.has(`errores.${c}`) ? t6(`errores.${c}`) : t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'),
+      );
     }
   };
 
@@ -127,17 +134,17 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
     if (!f) return;
     const filasCsv = filasCsvFormulario300(f, {
       encabezado: [t('columnas.casilla'), t('columnas.concepto'), t('columnas.valor'), t('columnas.formulario'), t('columnas.diferencia'), t('columnas.origenes')],
-      concepto: (c) => `${t(`conceptos.${c.concepto}`)} · ${t(c.tipo === 'base' ? 'columnas.base' : 'columnas.iva')}`,
+      concepto: (c) => `${concepto(c.concepto)} · ${t(c.tipo === 'base' ? 'columnas.base' : 'columnas.iva')}`,
       pendiente: (p) => `${t('pendientes.titulo')} · ${motivo(p.motivo)}`,
       otro: (o) => `${t('otros.titulo')} · ${t(`naturalezas.${o.naturaleza}`)} · ${o.asiento}`,
     });
     descargarCsv(`formulario-300-${desde}-${hasta}.csv`, aCsv(filasCsv));
   };
 
-  const verOrigen = (r: FilaCasilla) => setOrigenes({ titulo: t(`conceptos.${r.concepto}`), lista: r.origenes, total: r.total });
+  const verOrigen = (r: FilaCasilla) => setOrigenes({ titulo: concepto(r.concepto), lista: r.origenes, total: r.total });
 
   const columnas: ColumnaTabla<FilaCasilla>[] = [
-    { id: 'concepto', encabezado: t('columnas.concepto'), celda: (r) => <span className="text-fg">{t(`conceptos.${r.concepto}`)}</span> },
+    { id: 'concepto', encabezado: t('columnas.concepto'), celda: (r) => <span className="text-fg">{concepto(r.concepto)}</span> },
     { id: 'cbase', encabezado: t('columnas.casillaBase'), alinear: 'derecha', ocultarDebajo: 'sm', celda: (r) => <span className="tabular-nums text-fg-secondary">{r.casillaBase}</span> },
     { id: 'base', encabezado: t('columnas.base'), variante: 'importe', alinear: 'derecha', celda: (r) => importe(r.base) },
     { id: 'civa', encabezado: t('columnas.casillaIva'), alinear: 'derecha', ocultarDebajo: 'sm', celda: (r) => <span className="tabular-nums text-fg-secondary">{r.casillaIva ?? '—'}</span> },
@@ -241,6 +248,11 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
                       {f.alertas.correccionesDeclaracionAnterior.slice(0, 10).map((a) => (
                         <EnlaceAsiento key={a.asiento} id={a.asiento} className="mr-2" />
                       ))}
+                      {/* Ronda 6 (art. 714 ET): referencia del término general de firmeza; no decide. */}
+                      {(() => {
+                        const ref = f.alertas.correccionesDeclaracionAnterior.find((a) => a.periodoDeclarado?.firmezaReferencia714)?.periodoDeclarado?.firmezaReferencia714;
+                        return ref ? <span className="block text-fg-muted">{t6('firmeza.referencia', { fecha: formatPlainDate(ref) })}</span> : null;
+                      })()}
                     </li>
                   )}
                 </ul>
@@ -256,7 +268,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
             estado="listo"
             tarjetaMovil={(r) => (
               <div className="space-y-1 rounded-lg border border-line bg-surface p-3">
-                <p className="font-medium text-fg">{t(`conceptos.${r.concepto}`)}</p>
+                <p className="font-medium text-fg">{concepto(r.concepto)}</p>
                 <p className="flex justify-between text-sm tabular-nums">
                   <span className="text-fg-secondary">{t('casillaN', { n: r.casillaBase })}</span>
                   <span>{importe(r.base)}</span>
@@ -505,6 +517,7 @@ type LineaDevuelta = { id: string; descripcion: string; elegida: boolean; base: 
 function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: OtroMovimiento300 | null; onCerrar: () => void; onGuardado: () => void }) {
   const t = useTranslations('finanzasIva300');
   const t5 = useTranslations('finanzasTributarioR5');
+  const t6 = useTranslations('finanzasTributarioR6');
   const { formatear } = useMonedaOrganizacion();
   const [naturaleza, setNaturaleza] = useState<NaturalezaMovimiento | ''>('');
   const [soporteTipo, setSoporteTipo] = useState('');
@@ -607,7 +620,9 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
       onGuardado();
     } catch (err) {
       const c = codigoDe(err);
-      setError(t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'));
+      setError(
+        t6.has(`errores.${c}`) ? t6(`errores.${c}`) : t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'),
+      );
     } finally {
       setGuardando(false);
     }
@@ -781,6 +796,7 @@ function DeclaracionDialogo({
 }) {
   const t = useTranslations('finanzasIva300');
   const t5 = useTranslations('finanzasTributarioR5');
+  const t6 = useTranslations('finanzasTributarioR6');
   const [numero, setNumero] = useState('');
   const [fecha, setFecha] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -801,7 +817,9 @@ function DeclaracionDialogo({
       onGuardado();
     } catch (err) {
       const c = codigoDe(err);
-      setError(t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'));
+      setError(
+        t6.has(`errores.${c}`) ? t6(`errores.${c}`) : t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'),
+      );
     } finally {
       setGuardando(false);
     }

@@ -3,10 +3,13 @@
 --
 -- ADVERTENCIA DE DATOS: quita las columnas nuevas del perfil. Lo guardado en ellas (régimen de renta, condición de IVA,
 -- calidades y sus actos, INC, RTE, no contribuyentes, códigos del RUT, cambio de periodicidad, advertencias aceptadas;
--- ronda 4: calificación del gran contribuyente, procedencia del cambio y aclaraciones; ronda 5: donaciones y
--- cooperación internacional del 2532 con su constancia) se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
+-- ronda 4: calificación del gran contribuyente, procedencia del cambio y aclaraciones; ronda 6: el dato del 2532 por año
+-- gravable, con su constancia, en tributario_rte_2532_anio) se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
 -- 'ordinario' / 'no_responsable_iva' para devolverle el NOT NULL, lo que NO restaura su significado.
 
+-- Ronda 6: formato 2532 por año gravable (se pierden los datos registrados).
+drop function if exists public.fn_tributario_2532_registrar(integer, integer, jsonb);
+drop table if exists public.tributario_rte_2532_anio;
 drop function if exists public.fn_perfil_tributario_evaluar_cambio(integer, uuid, text, text);
 drop function if exists public.fn_perfil_tributario_guardar_v2(integer, uuid, date, jsonb, jsonb, text);
 drop function if exists public.fn_perfil_tributario_aclaraciones(jsonb);
@@ -52,6 +55,6 @@ alter table public.organization_tax_profiles
   drop column if exists cambio_periodicidad_evaluado_por,
   drop column if exists cambio_periodicidad_evaluado_en,
   drop column if exists aclaraciones,
-  -- Ronda 5: formato 2532 de las cooperativas.
+  -- Ronda 5 (las columnas del 2532 por vigencia se quitaron en la ronda 6; si llegaron a existir, se borran).
   drop column if exists rte_donaciones_cooperacion,
   drop column if exists rte_donaciones_constancia;

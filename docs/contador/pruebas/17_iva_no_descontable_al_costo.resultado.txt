@@ -1,3 +1,33 @@
+RONDA 6 (2026-11-10) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · zona America/Bogota · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 83e79e4ecaf01b8cbfa945cb207c1290 ·
+     20261108152000 2922316e3deca529ebbc1d232e883e9d · 20261110150000 f19d51b97cea4c56a57ae96279a49a7d (nueva) ·
+     prueba 17 1fb97ec47aaf132a40f8d7796998b792
+Método: el de la ronda 5 (trozos ≤ 24 KB como objetos grandes, md5 por trozo y por archivo; migraciones completas en
+orden de prefijo; una sola transacción que termina en excepción = rollback). Objetos grandes borrados al final.
+Resultado: 22 verificaciones · 22 ok · 0 fallas, en la primera corrida. Los datos no cambian.
+Esperado que cambia: fila 8 (FCH, tres líneas con IVA no descontable y cuenta de cabecera): el motivo es ahora «compra de
+más de una línea» (ronda 6, respuesta 5). FCL, con cuenta en cada línea, no cambia (sus dos líneas son del 19 %).
+
+ n | bloque | verificación → obtenido
+---+--------+------------------------------------------------------------------------------------------------------------
+ 1 | fch | IVA del asiento (2408) → SIN ASIENTO
+ 2 | fcl | IVA del asiento (2408) → 24081001 D 9500
+ 3 | ds | IVA del asiento (2408) → SIN 2408
+ 4 | fcg | IVA del asiento (2408) → 24081001 D 19000
+ 5 | fv19 | IVA del asiento (2408) → 24080501 C 57000
+ 6 | ncx | IVA del asiento (2408) → SIN ASIENTO
+ 7 | ncu2 | IVA del asiento (2408) → 24080501 D 19000
+ 8 | fch | Rondas 5 y 6: más de una línea con IVA no descontable y cuenta de cabecera → pendiente de corregir → iva_no_descontable_por_corregir · más de una línea
+ 9 | fcl | El IVA no descontable va a la cuenta de SU línea → 513595 D 50000 · 519525 D 119000
+10 | ds | Documento soporte: el IVA va con la línea → Σ D 119000 · 2408 0
+11 | fcg | Evaluación posterior al asiento: no cambia su contabilidad → 1 · 0 · 19000
+12 | funciones | Factor y no descontable por línea de FCH → Descontable 5 1/0 · No descontable 19 0/19000 · Proporcional 19 0.6/15200
+13 | ncx | Pendiente contable visible (conceptos sin IVA en la factura) → cuenta_no_configurada · Tarifa de IVA no identificada en 19000 de IVA generado…
+14 | otros | Pendientes contables nuevos de los demás documentos → ninguno
+15–21 | cuadre | Asientos FCG, FCL, DS, FVU, FV19, FVEX y NCU2 → Σ D = Σ C (cada uno)
+22 | historicos | Asientos anteriores a la prueba intactos → 0
+
+── Corridas anteriores ──
 RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
 md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 746ccbabbb6f05b8b22a043b4314b777 · 20261108152000 b038410fb5539296fd40877f07888c79 · prueba 17 9df272fd55d2d8d67a354dd7fb93acc2
 Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de

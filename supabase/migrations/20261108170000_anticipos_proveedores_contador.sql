@@ -3,7 +3,17 @@
 -- y la ronda 4 (RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «Anticipos»: AIU en dos regímenes, procedimiento de ReteICA
 -- por municipio, devoluciones con soporte del hecho y por líneas, período de descuento por impuesto, conversión de la
 -- financiación en pago o abono) y la ronda 5 (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuestas 9, 12 y 13 y las
--- citas que corrige). Manda la ronda 5 sobre lo anterior.
+-- citas que corrige) y la ronda 6 (RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md, respuestas 9 y 11). Manda la ronda 6 sobre
+-- lo anterior.
+--
+-- Ronda 6 (qué cambia aquí):
+--   reteIVA   En exceso, el saldo que no alcance va a los DOS períodos siguientes, igual que en la anulación (DUR 1625 de
+--             2016, art. 1.3.2.3.1: «aplicará el mismo procedimiento»); siguen la solicitud y la manifestación escritas.
+--   AIU       Un anticipo de AIU SIN costo directo queda pendiente hasta validar el contrato y la naturaleza del pago (su
+--             pendiente no se resuelve con el contrato sin validar); su base es la A + I + U que trae, no el 10 % de todo
+--             el contrato. CERRAR el contrato (fn_aiu_contrato_cerrar) es registrar su acta de liquidación final: exige
+--             que no quede ningún anticipo así pendiente y el piso del 10 % sobre el valor final; cerrado, no admite
+--             operaciones nuevas.
 --
 -- Ronda 5 (qué cambia aquí):
 --   Período   renta: anulación, rescisión o resolución → DUR 1625 de 2016, art. 1.2.4.8 (el período del hecho; el saldo
@@ -377,6 +387,18 @@ create table if not exists public.aiu_contratos (
   validado_en timestamptz,
   validacion_concepto text,
   validacion_soporte text,
+  -- Ronda 6 (respuesta 11): CERRAR el contrato es registrar su liquidación final (acta) con fecha, valor final ejecutado
+  -- y base gravada final; al cerrarlo se exige el piso del 10 % sobre el valor final y que ningún anticipo de AIU sin costo
+  -- directo siga pendiente. Cerrado, no admite operaciones nuevas.
+  cierre_fecha date,
+  cierre_valor_final numeric(16,2) check (cierre_valor_final is null or cierre_valor_final > 0),
+  cierre_base_iva_final numeric(16,2) check (cierre_base_iva_final is null or cierre_base_iva_final >= 0),
+  cierre_acta text check (cierre_acta is null or length(btrim(cierre_acta)) between 3 and 1000),
+  cierre_resumen jsonb,
+  cerrado_por uuid,
+  cerrado_en timestamptz,
+  constraint aiu_contratos_cierre check (cerrado_en is null or (cierre_fecha is not null and cierre_valor_final is not null
+                                          and cierre_base_iva_final is not null and cierre_acta is not null and cerrado_por is not null)),
   constraint aiu_contratos_vigencia check (vigente_hasta is null or vigente_hasta >= vigente_desde),
   constraint aiu_contratos_servicio check ((regimen = 'servicios_462_1') = (servicio is not null)),
   constraint aiu_contratos_construccion check (regimen <> 'construccion_inmuebles'
@@ -791,6 +813,7 @@ create or replace function public.fn_anticipo_pendiente_resolver(p_id uuid, p_re
 as $function$
 declare
   v_p public.anticipo_pendientes%rowtype;
+  v_c public.aiu_contratos%rowtype;
 begin
   if auth.uid() is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
   select * into v_p from public.anticipo_pendientes where id = p_id for update;
@@ -801,6 +824,16 @@ begin
   if v_p.estado <> 'abierto' then raise exception 'pendiente_ya_resuelto' using errcode = '22023'; end if;
   if p_resolucion is null or length(btrim(p_resolucion)) < 10 then raise exception 'resolucion_obligatoria' using errcode = '22023'; end if;
   if p_soporte is null or length(btrim(p_soporte)) < 3 then raise exception 'soporte_obligatorio' using errcode = '22023'; end if;
+  -- Ronda 6 (respuesta 11): el anticipo de AIU sin costo directo queda pendiente hasta que se valide el CONTRATO y la
+  -- naturaleza del pago. Resolver su pendiente es validar la naturaleza; antes, el contrato debe estar validado.
+  if v_p.tipo = 'retencion_por_evaluar' then
+    select c.* into v_c from public.supplier_advances a join public.aiu_contratos c on c.id = a.aiu_contrato_id
+     where a.id = v_p.advance_id and (a.retenciones_evaluacion -> 'aiu' ->> 'sin_costo_directo') = 'true';
+    if v_c.id is not null and v_c.estado <> 'validado' then
+      raise exception 'aiu_contrato_sin_validar' using errcode = '22023',
+        hint = 'Valide primero el contrato con AIU; después, la naturaleza del pago anticipado de A + I + U.';
+    end if;
+  end if;
   update public.anticipo_pendientes
      set estado = 'resuelto', resuelto_en = now(), resuelto_por = auth.uid(), resolucion = btrim(p_resolucion), soporte = btrim(p_soporte)
    where id = p_id;
@@ -1239,6 +1272,86 @@ begin
 end;
 $function$;
 
+-- Ronda 6 (respuesta 11). CERRAR un contrato con AIU = registrar su liquidación final (el acta), con la fecha, el valor
+-- final ejecutado y la base gravada final (A + I + U liquidada en todo el contrato). Al cerrarlo:
+--   · ningún anticipo de AIU sin costo directo puede seguir pendiente (su naturaleza debe estar validada);
+--   · lo cerrado no puede ser menor que lo que ya registran sus operaciones (anticipos y conversiones, netas de devoluciones);
+--   · servicios del art. 462-1: la base gravada final no puede quedar por debajo del 10 % del valor final.
+-- Cerrado, el contrato no admite operaciones nuevas (sus retenciones quedan pendientes: «aiu_contrato_cerrado»).
+-- p_cierre: {fecha, valor_final, base_iva_final, acta}.
+create or replace function public.fn_aiu_contrato_cerrar(p_contrato uuid, p_cierre jsonb, p_organization_id integer)
+ returns jsonb language plpgsql security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_c public.aiu_contratos%rowtype;
+  v_x jsonb := coalesce(p_cierre, '{}'::jsonb);
+  v_fecha date;
+  v_valor numeric;
+  v_base numeric;
+  v_acta text := nullif(left(btrim(coalesce(p_cierre ->> 'acta', '')), 1000), '');
+  v_acum jsonb;
+  v_piso numeric;
+  v_pend integer;
+  v_resumen jsonb;
+begin
+  if auth.uid() is null then raise exception 'no_autenticado' using errcode = '42501'; end if;
+  perform public.fn_finanzas_exigir_permiso(p_organization_id, array['finance.approve']);
+  select * into v_c from public.aiu_contratos where id = p_contrato and organization_id = p_organization_id for update;
+  if v_c.id is null then raise exception 'aiu_contrato_invalido' using errcode = 'P0002'; end if;
+  begin
+    v_fecha := (v_x ->> 'fecha')::date;
+    v_valor := round((v_x ->> 'valor_final')::numeric, 2);
+    v_base := round((v_x ->> 'base_iva_final')::numeric, 2);
+  exception when others then
+    raise exception 'aiu_cierre_incompleto' using errcode = '22023';
+  end;
+  if v_fecha is null or v_valor is null or v_valor <= 0 or v_base is null or v_base < 0 or v_acta is null or length(v_acta) < 3 then
+    raise exception 'aiu_cierre_incompleto' using errcode = '22023', hint = 'Fecha, valor final, base gravada final y el acta de liquidación del contrato.';
+  end if;
+  if v_c.cerrado_en is not null then
+    if v_c.cierre_fecha = v_fecha and v_c.cierre_valor_final = v_valor and v_c.cierre_base_iva_final = v_base then
+      return jsonb_build_object('contrato_id', v_c.id, 'repetida', true, 'cerrado_en', v_c.cerrado_en, 'resumen', v_c.cierre_resumen);
+    end if;
+    raise exception 'aiu_contrato_ya_cerrado' using errcode = '22023';
+  end if;
+  if v_c.estado <> 'validado' then
+    raise exception 'aiu_contrato_sin_validar' using errcode = '22023', hint = 'Solo se cierra un contrato con AIU validado.';
+  end if;
+  if v_fecha < v_c.contrato_fecha or v_fecha > (now() at time zone coalesce(public.fn_timezone_for(p_organization_id, null), 'America/Bogota'))::date then
+    raise exception 'aiu_cierre_fecha_invalida' using errcode = '22023';
+  end if;
+  -- Ningún anticipo de AIU sin costo directo sigue pendiente de validar su naturaleza.
+  select count(*) into v_pend
+    from public.anticipo_pendientes p join public.supplier_advances a on a.id = p.advance_id
+   where a.aiu_contrato_id = v_c.id and p.tipo = 'retencion_por_evaluar' and p.estado = 'abierto'
+     and (a.retenciones_evaluacion -> 'aiu' ->> 'sin_costo_directo') = 'true';
+  if v_pend > 0 then
+    raise exception 'aiu_cierre_con_anticipos_pendientes' using errcode = '22023', detail = v_pend::text,
+      hint = 'Hay anticipos de AIU sin costo directo con la naturaleza del pago por validar.';
+  end if;
+  v_acum := public.fn_aiu_contrato_acumulado(v_c.id);
+  if v_valor < (v_acum ->> 'valor')::numeric - 1 or v_base < (v_acum ->> 'base_iva')::numeric - 1 then
+    raise exception 'aiu_cierre_inconsistente_con_operaciones' using errcode = '22023', detail = (v_acum - 'por_operacion')::text,
+      hint = 'El valor y la base finales no pueden ser menores que lo que ya registran las operaciones del contrato.';
+  end if;
+  v_piso := round(v_valor * 0.10, 2);
+  if v_c.regimen = 'servicios_462_1' and v_base < v_piso - 1 then
+    raise exception 'aiu_minimo_10_contrato_al_cierre' using errcode = '22023',
+      detail = jsonb_build_object('valor_final', v_valor, 'base_iva_final', v_base, 'piso', v_piso, 'faltante', v_piso - v_base)::text,
+      hint = 'Art. 462-1: al cerrar, la base gravada del contrato no puede quedar por debajo del 10 % de su valor final.';
+  end if;
+  v_resumen := jsonb_build_object('acumulado_operaciones', v_acum - 'por_operacion', 'valor_final', v_valor, 'base_iva_final', v_base,
+                                  'piso_10', case when v_c.regimen = 'servicios_462_1' then v_piso end, 'contrato_valor', v_c.contrato_valor);
+  update public.aiu_contratos
+     set cierre_fecha = v_fecha, cierre_valor_final = v_valor, cierre_base_iva_final = v_base, cierre_acta = v_acta,
+         cierre_resumen = v_resumen, cerrado_por = auth.uid(), cerrado_en = now()
+   where id = v_c.id;
+  insert into public.finance_audit_log (organization_id, entity, entity_id, action, user_id, diff, reason)
+  values (p_organization_id, 'aiu_contratos', v_c.id::text, 'update', auth.uid(), jsonb_build_object('accion', 'cierre', 'resumen', v_resumen), v_acta);
+  return jsonb_build_object('contrato_id', v_c.id, 'repetida', false, 'cerrado_en', now(), 'resumen', v_resumen);
+end;
+$function$;
+
 -- Evaluación de un anticipo (o de su conversión en pago o abono). p_componentes: [{descripcion, tratamiento, base,
 -- tarifa_iva}] con tratamiento gravado · exento · excluido · no_sujeto o, en un contrato con AIU (p_aiu_contrato
 -- registrado en aiu_contratos), aiu_costo_directo · aiu_administracion · aiu_imprevistos · aiu_utilidad ·
@@ -1292,6 +1405,7 @@ declare
   v_deficit numeric;
   v_min_contrato boolean := false;
   v_aiu_alerta text;
+  v_sin_costo boolean := false;
 begin
   perform public.fn_assert_acceso_org(p_org);
   if p_naturaleza is null or p_naturaleza not in ('financiacion', 'pago_anticipado_precio') then
@@ -1408,8 +1522,15 @@ begin
           -- Ronda 5 (respuesta 13): el piso también se controla ACUMULADO del contrato (operaciones anteriores netas de
           -- devoluciones + esta). Si el acumulado queda por debajo del 10 %, esta operación completa la diferencia.
           v_acum := public.fn_aiu_contrato_acumulado(v_contrato.id);
+          -- Ronda 6 (respuesta 11): un anticipo de AIU SIN costo directo queda PENDIENTE hasta que se validen el contrato y
+          -- la naturaleza del pago. Su base es la A + I + U que trae (no se le aplica de entrada el 10 % de todo el
+          -- contrato) y no se da por buena: el piso del contrato se exige al cerrarlo (fn_aiu_contrato_cerrar).
+          v_sin_costo := not exists (select 1 from jsonb_array_elements(v_comp) x where x ->> 'tratamiento' = 'aiu_costo_directo');
+          if v_sin_costo then
+            v_aiu_alerta := 'aiu_anticipo_sin_costo_directo';
+          end if;
           v_deficit := round(((v_acum ->> 'valor')::numeric + v_cb) * 0.10, 2) - ((v_acum ->> 'base_iva')::numeric + v_base_especial);
-          if v_deficit > 0.005 then
+          if not v_sin_costo and v_deficit > 0.005 then
             v_base_especial := v_base_especial + v_deficit;
             v_min_contrato := true;
             v_set_especial := array['aiu_costo_directo', 'aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad'];
@@ -1464,7 +1585,8 @@ begin
                              from jsonb_array_elements(v_comp) x where (x ->> 'iva')::numeric > 0), '[]'::jsonb);
 
     if v_aiu then
-      v_aiu_estado := case when v_contrato.estado = 'rechazado' then 'aiu_contrato_rechazado'
+      v_aiu_estado := case when v_contrato.cerrado_en is not null then 'aiu_contrato_cerrado'
+                           when v_contrato.estado = 'rechazado' then 'aiu_contrato_rechazado'
                            when v_contrato.estado <> 'validado' then 'aiu_contrato_pendiente_validacion'
                            when v_contrato.vigente_desde > v_hoy or (v_contrato.vigente_hasta is not null and v_contrato.vigente_hasta < v_hoy) then 'aiu_contrato_no_vigente'
                            else v_aiu_alerta
@@ -1503,7 +1625,7 @@ begin
     'aiu', case when v_aiu then jsonb_build_object('contrato_id', v_contrato.id, 'regimen', v_contrato.regimen, 'estado', v_contrato.estado,
                                                    'base_iva', v_base_especial, 'minimo_10_aplicado', v_min_aplicado, 'iva', v_iva_aiu,
                                                    'aiu_declarado', v_aiu_declarado, 'valor_operacion', v_valor_op,
-                                                   'minimo_10_contrato_aplicado', v_min_contrato,
+                                                   'minimo_10_contrato_aplicado', v_min_contrato, 'sin_costo_directo', v_sin_costo,
                                                    'acumulado_previo', v_acum - 'por_operacion', 'contrato_valor', v_contrato.contrato_valor) end,
     'perfil', v_org_q, 'proveedor', v_prov_q,
     'clases', v_clases, 'total', v_total, 'neto', v_monto - v_total,
@@ -2275,9 +2397,11 @@ begin
     v_saldo := 'siguientes_sin_limite';
   elsif p_clase = 'reteiva' then
     if p_origen = 'exceso' then
-      v_regla := 'DUR 1.3.2.3.1: período del reintegro, con solicitud escrita y manifestación escrita de no imputación del retenido';
+      -- Ronda 6 (respuesta 9): en el exceso «aplicará el mismo procedimiento» que en la anulación: el saldo que no
+      -- alcance va a los DOS períodos siguientes. Siguen exigiéndose la solicitud y la manifestación escritas.
+      v_regla := 'DUR 1.3.2.3.1: período del reintegro; el saldo, en los dos períodos siguientes (el mismo procedimiento de la anulación), con solicitud escrita y manifestación escrita de no imputación del retenido';
       v_fecha := p_hoy;
-      v_saldo := 'por_confirmar';
+      v_saldo := 'dos_siguientes';
     else
       v_regla := 'DUR 1.3.2.3.1: período de la anulación, rescisión o resolución; el saldo, en los dos períodos siguientes';
       v_fecha := p_fecha_hecho;
@@ -2772,7 +2896,9 @@ begin
                              'periodo', v_per ->> 'periodo', 'regla_periodo', v_per ->> 'regla', 'requiere_correccion', p_requiere_correccion,
                              'asiento', v_entry), btrim(p_motivo));
   return jsonb_build_object('payment_id', v_pago.id, 'repetida', false, 'reintegro', v_exceso, 'retencion_correcta', v_correcta, 'asiento_id', v_entry,
-                            'caja_id', v_caja, 'periodo_descuento', v_per ->> 'periodo', 'regla_periodo', v_per ->> 'regla');
+                            'caja_id', v_caja, 'periodo_descuento', v_per ->> 'periodo', 'regla_periodo', v_per ->> 'regla',
+                            -- Ronda 6 (respuesta 9): dónde va el saldo que no alcance a descontarse en el período.
+                            'saldo', v_per ->> 'saldo', 'periodos_saldo', v_per -> 'periodos_saldo');
 end;
 $function$;
 
@@ -3378,6 +3504,7 @@ revoke all on function public.fn_anticipo_cuenta_equivalencia_aprobar(integer, t
 revoke all on function public.fn_proveedor_calidad_tributaria_guardar(integer, integer, text, text, text[], date, date, date, text, text, date, text) from public, anon;
 revoke all on function public.fn_cliente_calidad_tributaria_guardar(integer, uuid, text, text, text[], date, date, date, text, text, date, text) from public, anon;
 revoke all on function public.fn_aiu_contrato_registrar(integer, integer, text, text, text, jsonb, text, jsonb, text, text, date, date) from public, anon;
+revoke all on function public.fn_aiu_contrato_cerrar(uuid, jsonb, integer) from public, anon;
 revoke all on function public.fn_reteica_procedimiento_registrar(integer, uuid, text, text, text[], text, text, text, text, date, date) from public, anon;
 revoke all on function public.fn_tributario_regla_validar(text, uuid, text, text, text, integer) from public, anon;
 revoke all on function public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text, uuid) from public, anon;
@@ -3399,6 +3526,7 @@ grant execute on function public.fn_anticipo_cuenta_equivalencia_aprobar(integer
 grant execute on function public.fn_proveedor_calidad_tributaria_guardar(integer, integer, text, text, text[], date, date, date, text, text, date, text) to authenticated;
 grant execute on function public.fn_cliente_calidad_tributaria_guardar(integer, uuid, text, text, text[], date, date, date, text, text, date, text) to authenticated;
 grant execute on function public.fn_aiu_contrato_registrar(integer, integer, text, text, text, jsonb, text, jsonb, text, text, date, date) to authenticated;
+grant execute on function public.fn_aiu_contrato_cerrar(uuid, jsonb, integer) to authenticated;
 grant execute on function public.fn_reteica_procedimiento_registrar(integer, uuid, text, text, text[], text, text, text, text, date, date) to authenticated;
 grant execute on function public.fn_tributario_regla_validar(text, uuid, text, text, text, integer) to authenticated;
 grant execute on function public.fn_anticipo_retencion_exceso_reintegrar(uuid, text, numeric, numeric, text, text, jsonb, text, boolean, text, integer, integer, text, uuid) to authenticated;

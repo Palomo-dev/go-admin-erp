@@ -1,67 +1,68 @@
-Resultado de 22_consignacion_ronda4_retenciones_y_comision.sql · 2026-11-09 (corrida entre las 23:00 y las 23:59 de Bogotá; 2026-11-10 UTC)
-Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback): nada quedó
-escrito. Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md).
+Resultado de 22_consignacion_ronda4_retenciones_y_comision.sql · 2026-11-10 (Bogotá) · REEJECUTADA en la ronda 6
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback):
+nada quedó escrito.
 
-Archivo: 22_consignacion_ronda4_retenciones_y_comision.sql (md5 5c45db099e1b3f36d92a60ca2a51b59d; 38877 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 5288b6ca40033612e93ffe126f5c4cb9).
+Archivo: 22_consignacion_ronda4_retenciones_y_comision.sql (md5 ff1be07e7b944796838d438e7a58305f; 42087 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 652cc64eba4fc1288c7b5c8e2791809e).
 Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
 corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
-  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 f52c0de6f53856fc9dd38bb5b3403809 · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 0c5079355e6c5ab55dd6b14e1e484cea
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 9179856af861a2a886152c1ebbb4f2fd · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 a3e330a9cf7b01c6da242b7d3f3a2b8c · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 3fe4535a0afe9dc1fa58ece1dea5363d · 20261110100000 9f4ade93850013b4cacd3c795ef8d823
+  y la reversión de 20261110100000 (a333e61071756df3e48e31cf5bc66355), cargada y comprobada, no ejecutada en la carga.
+  160500 en la versión que el otro equipo tenía en disco a la hora de la corrida.
 
-Corridas: la primera se detuvo en «fecha_futura»: se corrió a las 23:20 de Bogotá (04:20 UTC) y current_date de
-la sesión (UTC) ya era 2026-11-10. Desde esta ronda todas las pruebas fijan al empezar la zona de la sesión en
-America/Bogota (el día de la prueba es el de la organización). Antes, el cobro de la factura 22-3 se insertaba dentro de
-un WITH en set_config, que plpgsql no admite: se cambió por insert … returning. Después: 39 de 39. Cambios de la ronda 5:
-el contrato lleva orden de aplicación y liquidación por escrito; la retención del comprador (R6) se registra con el cobro
-de la factura 22-3 (69.690 = 71.400 − 1.710).
+Corridas: una sola, 39 de 39.
 
-Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar (current_date = día de la
-organización, sin depender de la hora UTC de la corrida).
+Esperado que cambió: R6 «pendiente de cartera 1» → «pendiente de cartera 0»: con 20261110100000 cargada el abono por la
+retención del comprador nace aplicado y no deja el pendiente de cartera (ronda 6, respuesta 10). El asiento no cambió.
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar.
 
 RESULTADO (corrida que vale):
-PRUEBA EN SECO (se revierte) · 22: 39 de 39 ok · carga: 7 de 7 ok
+PRUEBA EN SECO (se revierte) · 22: 39 de 39 ok · carga: 9 de 9 ok
 1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
-2 | carga | md5 20261108121000_consignaciones | f52c0de6f53856fc9dd38bb5b3403809 | ok
+2 | carga | md5 20261108121000_consignaciones | 9179856af861a2a886152c1ebbb4f2fd | ok
 3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
 4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
-5 | carga | md5 20261108160500_tributario_perfil_renta_iva | 1d80345bde9c6d9fd378bc10e8c43a5e | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | a3e330a9cf7b01c6da242b7d3f3a2b8c | ok
 6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
-7 | carga | md5 20261108170000_anticipos_proveedores_contador | 0c5079355e6c5ab55dd6b14e1e484cea | ok
-8 | 22 | K1 recibir sin cuenta por cobrar al dueño | sin_cuenta_cobro_remuneracion | ok
-9 | 22 | K2 cuenta por cobrar de título | cuenta_cobro_remuneracion_invalida | ok
-10 | 22 | K3 retención sufrida fuera de 1355 | cuenta_retencion_sufrida_invalida | ok
-11 | 22 | K4 cuentas de la ronda 4 | 13809501/13551501/13551701/13551801 | ok
-12 | 22 | K5 reteICA con un impuesto de compras en vez de la regla municipal | regla_retencion_invalida | ok
-13 | 22 | K6 reteICA de la operación: la regla municipal (la misma de anticipos) | 2f73bf63-49e4-4c57-98af-246b385dacfe | ok
-14 | 22 | K7 recibida en mandato sin pactar la compensación | terminos_invalidos | ok
-15 | 22 | K8 notas con la compensación pactada (o no) y la cuenta por cobrar | true/13809501 · false/13809501 · true/13809501 | ok
-16 | 22 | C1 N1: remuneración de 9.000 por venta contra la 281510 (compensación pactada y obligación nacida); nada por cobrar | 36000.00/0.00 | ok
-17 | 22 | C2 N2 sin compensación pactada: D 13809501 / C 41351201 por 7.500 (no se debita la 281510) | 13809501 D 7500 · 41351201 C 7500 | ok
-18 | 22 | C3 compensar en una nota sin compensación pactada | compensacion_no_pactada | ok
-19 | 22 | C4 devolución: la remuneración por cobrar se reversa contra la cuenta por cobrar (no contra la 281510) | 0.00 | ok
-20 | 22 | C5 factura sin cobrar con obligación al cobro: la comisión no es compensable todavía (por cobrar 8.000) y queda el pendiente de la venta | 8000.00/1 | ok
-21 | 22 | C6 se anula la factura (el HECHO): su pendiente de venta se cierra y la remuneración por cobrar se reversa | 0.00/0/venta_revertida | ok
-22 | 22 | C7 compensar más que lo que el dueño debe por la comisión | excede_remuneracion_por_cobrar | ok
-23 | 22 | C8 compensación posterior, pactada, contra la obligación EXIGIBLE del mismo dueño (ventas ya nacidas): D 28151001 / C 13809501 | 8000.00/0.00/13809501 | ok
-24 | 22 | C9 lo facturado «al cobro» y no cobrado no se liquida al dueño | sin_ventas_por_liquidar | ok
-25 | 22 | Q1 agente de reteIVA sin su fundamento (art. 437-2) | fundamento_agente_reteiva_obligatorio | ok
-26 | 22 | Q2 L1 (operación, por comprador): B1 agente según su RUT; B2 y B3 sin calidad de agente de renta acreditada; B3 agente de reteIVA ACREDITADO (no es 09 ni 13) | operacion.retefuente.agente=estimada:2400.00, operacion.retefuente.por_acreditar=pendiente, operacion.reteica.por_acreditar=pendiente, operacion.reteiva.agente=estimada:1710.00, remuneracion.retefuente.dueno=estimada:3960.00, remuneracion.reteica.dueno=pendiente, remuneracion.reteiva.dueno=pendiente | ok
-27 | 22 | Q3 lo estimado no se asienta | 0 | ok
-28 | 22 | R1 el certificado no crea el hecho: conciliar una estimada con valor | retencion_no_reconocida | ok
-29 | 22 | R2 la retención de la operación se practica al pagar una factura de la liquidación | factura_de_la_liquidacion_obligatoria | ok
-30 | 22 | R3 practicada sobre la comisión (ya compensada): D 13551501 / C 28151001; sin esperar el certificado | 13551501 D 3960 · 28151001 C 3960 · por cobrar true | ok
-31 | 22 | R4 queda por conciliar con el certificado | 1 | ok
-32 | 22 | A1 anular L1: siguen abiertos todos sus pendientes; la retención practicada y su asiento se conservan | 6/practicada/1 | ok
-33 | 22 | A2 la nueva liquidación lleva la retención practicada (no la vuelve a estimar) | 1/practicada/4f4987dd-1514-4fac-816b-5cb1287eab57 | ok
-34 | 22 | A3 los pendientes de L1 se cierran al quedar sus ventas cubiertas por L1b | 0/6 | ok
-35 | 22 | R5 conciliar la practicada con el certificado: sin diferencia y cierra el pendiente | 0.00/0 | ok
-36 | 22 | Q4 mandante con O-15 sin verificar: la retención de la operación queda pendiente (no se excluye) | pendiente/autorretencion_sin_verificar | ok
-37 | 22 | Q5 el dueño sin calidad de agente de renta acreditada (sin 07 ni 13): la de la remuneración queda por acreditar | pendiente/calidad_agente_retencion_por_acreditar | ok
-38 | 22 | Q6 verificada la resolución y su alcance (concepto RETE_4): no aplica | no_aplica/autorretenedor_autorizado_concepto | ok
-39 | 22 | R6 retención del comprador sobre la venta por cuenta del dueño: D 28151001 / C cartera de la factura; la 1355 del intermediario no se toca | 28151001 D 1710 · 13050501 C 1710 · pendiente de cartera 1 | ok
-40 | 22 | R7 la misma retención con otro valor | retencion_ya_practicada | ok
-41 | 22 | R8 el certificado difiere de lo practicado: queda la diferencia como pendiente (no se ajusta solo) | -210.00/1 | ok
-42 | 22 | Z0 obligación exigible = libros − lo facturado «al cobro» sin cobrar (80.000) | 80000.00 | ok
-43 | 22 | Z1 obligación con el dueño 1 (28151001) por los movimientos de la prueba (sin las causaciones emuladas de las facturas): 3 recaudos POS 180.000 − comisión compensada 36.000 + retención sobre la comisión 3.960 − compensación 8.000 − reteIVA del comprador 1.710 | 138250.00 | ok
-44 | 22 | Z2 retención sufrida del intermediario (13551501) = la practicada sobre su comisión | 3960.00 | ok
-45 | 22 | Z3 ninguna retención pendiente o «no aplica» trae valor; ninguna estimada tiene asiento | 0/0 | ok
-46 | 22 | Z4 asientos de la prueba 22 descuadrados | 0 | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 3fe4535a0afe9dc1fa58ece1dea5363d | ok
+8 | carga | md5 20261110100000_cartera_abono_retencion_consignacion | 9f4ade93850013b4cacd3c795ef8d823 | ok
+9 | carga | md5 20261110100000_cartera_abono_retencion_consignacion_rollback | a333e61071756df3e48e31cf5bc66355 | ok
+10 | 22 | K1 recibir sin cuenta por cobrar al dueño | sin_cuenta_cobro_remuneracion | ok
+11 | 22 | K2 cuenta por cobrar de título | cuenta_cobro_remuneracion_invalida | ok
+12 | 22 | K3 retención sufrida fuera de 1355 | cuenta_retencion_sufrida_invalida | ok
+13 | 22 | K4 cuentas de la ronda 4 | 13809501/13551501/13551701/13551801 | ok
+14 | 22 | K5 reteICA con un impuesto de compras en vez de la regla municipal | regla_retencion_invalida | ok
+15 | 22 | K6 reteICA de la operación: la regla municipal (la misma de anticipos) | 4154a400-6f43-479c-9ad8-430044024dd2 | ok
+16 | 22 | K7 recibida en mandato sin pactar la compensación | terminos_invalidos | ok
+17 | 22 | K8 notas con la compensación pactada (o no) y la cuenta por cobrar | true/13809501 · false/13809501 · true/13809501 | ok
+18 | 22 | C1 N1: remuneración de 9.000 por venta contra la 281510 (compensación pactada y obligación nacida); nada por cobrar | 36000.00/0.00 | ok
+19 | 22 | C2 N2 sin compensación pactada: D 13809501 / C 41351201 por 7.500 (no se debita la 281510) | 13809501 D 7500 · 41351201 C 7500 | ok
+20 | 22 | C3 compensar en una nota sin compensación pactada | compensacion_no_pactada | ok
+21 | 22 | C4 devolución: la remuneración por cobrar se reversa contra la cuenta por cobrar (no contra la 281510) | 0.00 | ok
+22 | 22 | C5 factura sin cobrar con obligación al cobro: la comisión no es compensable todavía (por cobrar 8.000) y queda el pendiente de la venta | 8000.00/1 | ok
+23 | 22 | C6 se anula la factura (el HECHO): su pendiente de venta se cierra y la remuneración por cobrar se reversa | 0.00/0/venta_revertida | ok
+24 | 22 | C7 compensar más que lo que el dueño debe por la comisión | excede_remuneracion_por_cobrar | ok
+25 | 22 | C8 compensación posterior, pactada, contra la obligación EXIGIBLE del mismo dueño (ventas ya nacidas): D 28151001 / C 13809501 | 8000.00/0.00/13809501 | ok
+26 | 22 | C9 lo facturado «al cobro» y no cobrado no se liquida al dueño | sin_ventas_por_liquidar | ok
+27 | 22 | Q1 agente de reteIVA sin su fundamento (art. 437-2) | fundamento_agente_reteiva_obligatorio | ok
+28 | 22 | Q2 L1 (operación, por comprador): B1 agente según su RUT; B2 y B3 sin calidad de agente de renta acreditada; B3 agente de reteIVA ACREDITADO (no es 09 ni 13) | operacion.retefuente.agente=estimada:2400.00, operacion.retefuente.por_acreditar=pendiente, operacion.reteica.por_acreditar=pendiente, operacion.reteiva.agente=estimada:1710.00, remuneracion.retefuente.dueno=estimada:3960.00, remuneracion.reteica.dueno=pendiente, remuneracion.reteiva.dueno=pendiente | ok
+29 | 22 | Q3 lo estimado no se asienta | 0 | ok
+30 | 22 | R1 el certificado no crea el hecho: conciliar una estimada con valor | retencion_no_reconocida | ok
+31 | 22 | R2 la retención de la operación se practica al pagar una factura de la liquidación | factura_de_la_liquidacion_obligatoria | ok
+32 | 22 | R3 practicada sobre la comisión (ya compensada): D 13551501 / C 28151001; sin esperar el certificado | 13551501 D 3960 · 28151001 C 3960 · por cobrar true | ok
+33 | 22 | R4 queda por conciliar con el certificado | 1 | ok
+34 | 22 | A1 anular L1: siguen abiertos todos sus pendientes; la retención practicada y su asiento se conservan | 6/practicada/1 | ok
+35 | 22 | A2 la nueva liquidación lleva la retención practicada (no la vuelve a estimar) | 1/practicada/1e3747c3-5c27-4ed2-82bb-6843b36660c1 | ok
+36 | 22 | A3 los pendientes de L1 se cierran al quedar sus ventas cubiertas por L1b | 0/6 | ok
+37 | 22 | R5 conciliar la practicada con el certificado: sin diferencia y cierra el pendiente | 0.00/0 | ok
+38 | 22 | Q4 mandante con O-15 sin verificar: la retención de la operación queda pendiente (no se excluye) | pendiente/autorretencion_sin_verificar | ok
+39 | 22 | Q5 el dueño sin calidad de agente de renta acreditada (sin 07 ni 13): la de la remuneración queda por acreditar | pendiente/calidad_agente_retencion_por_acreditar | ok
+40 | 22 | Q6 verificada la resolución y su alcance (concepto RETE_4): no aplica | no_aplica/autorretenedor_autorizado_concepto | ok
+41 | 22 | R6 retención del comprador sobre la venta por cuenta del dueño: D 28151001 / C cartera de la factura; la 1355 del intermediario no se toca | 28151001 D 1710 · 13050501 C 1710 · pendiente de cartera 0 | ok
+42 | 22 | R7 la misma retención con otro valor | retencion_ya_practicada | ok
+43 | 22 | R8 el certificado difiere de lo practicado: queda la diferencia como pendiente (no se ajusta solo) | -210.00/1 | ok
+44 | 22 | Z0 obligación exigible = libros − lo facturado «al cobro» sin cobrar (80.000) | 80000.00 | ok
+45 | 22 | Z1 obligación con el dueño 1 (28151001) por los movimientos de la prueba (sin las causaciones emuladas de las facturas): 3 recaudos POS 180.000 − comisión compensada 36.000 + retención sobre la comisión 3.960 − compensación 8.000 − reteIVA del comprador 1.710 | 138250.00 | ok
+46 | 22 | Z2 retención sufrida del intermediario (13551501) = la practicada sobre su comisión | 3960.00 | ok
+47 | 22 | Z3 ninguna retención pendiente o «no aplica» trae valor; ninguna estimada tiene asiento | 0/0 | ok
+48 | 22 | Z4 asientos de la prueba 22 descuadrados | 0 | ok

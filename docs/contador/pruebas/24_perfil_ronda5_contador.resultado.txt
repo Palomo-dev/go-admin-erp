@@ -1,3 +1,28 @@
+RONDA 6 (2026-11-10) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · zona America/Bogota · todo revertido
+md5: 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 ·
+     20261108160500 a3e330a9cf7b01c6da242b7d3f3a2b8c · 20261108161000 2153ce37f896697ed3c6b2e506d84db0 ·
+     20261108161500 5ea9208264ed61f452be374617f55e60 · 20261108165000 1ec6641bdf74dfc15163d0753982309f ·
+     prueba 24 0eff7da4e5616c61dfd093d350dfd299
+Método: el de la ronda 5. Objetos grandes borrados al final.
+Resultado: 40 verificaciones · 40 ok · 0 fallas, en la primera corrida.
+Cambian las filas 22 a 29 (sección C, formato 2532), por la respuesta 6 del Contador: el dato va por AÑO GRAVABLE
+(tributario_rte_2532_anio, fn_tributario_2532_registrar) y ya no por vigencia del perfil. Prueban lo mismo que antes sobre
+la función nueva: constancia obligatoria, valor inválido, «no aplica» con constancia, lo que no se envía se conserva y
+«sí recibió»; y que la vigencia ya no lee la clave vieja. El número de filas no cambia.
+
+ n | bloque | verificación → obtenido (solo las filas que cambian; las demás, como en la ronda 5)
+---+--------+------------------------------------------------------------------------------------------------------------
+22 | C | Año gravable 2025: «no recibió donaciones» sin la constancia → 22023 CONSTANCIA_2532_REQUERIDA
+23 | C | Año gravable 2025: un valor que no es sí ni no → 22023 DATOS_INVALIDOS
+24 | C | Año gravable 2025: «no aplica» con su constancia → OK
+25 | C | Queda 2025 «no aplica» con su constancia → false · Revisados los ingresos del año: sin donaciones ni cooperación internacional
+26 | C | Guardar la vigencia de la cooperativa con la clave vieja del 2532: el perfil ya no la lee (sin constancia, se guarda) → OK
+27 | C | El dato del año 2025 no depende de la vigencia: se conserva → false · con constancia
+28 | C | Año gravable 2026: la cooperativa sí recibió donaciones → OK
+29 | C | Cada año con su dato (2025 no aplica; 2026 el 2532 aplica) → 2025 false · 2026 true
+1–21 y 30–40: idénticas a la ronda 5 (T: transición del gran contribuyente; S: tarifa exacta y permisos).
+
+── Corridas anteriores ──
 Resultado de 24_perfil_ronda5_contador.sql (RONDA 5 del Contador, perfil: respuestas 6 y 7; seguridad de 20261108165000)
 Corrida: 2026-11-09, proyecto taqjemqjtumhwptchcxk, org 374. Una sola transacción, sin datos al final.
 Archivos EXACTOS (md5 del disco, comprobados dentro de la base antes de ejecutar):

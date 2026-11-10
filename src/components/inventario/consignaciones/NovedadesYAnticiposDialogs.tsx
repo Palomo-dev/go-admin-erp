@@ -25,10 +25,14 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import { textoErrorConsignacion } from './textoErrorConsignacion';
 import { enTuPoder, type NotaRecibida } from '@/lib/inventario/consignaciones/recibidas';
 import { consignacionesRecibidasService } from './consignacionesRecibidasService';
 
 const NS = 'consignacionesR4';
+/** Rondas 5 y 6 del Contador: errores nuevos del cruce (el orden de aplicación debe incluir anticipos). */
+const NS_R5 = 'consignacionesR5';
+const NS_R6 = 'consignacionesR6';
 const RESPONSABLES = ['dueno', 'consignatario', 'tercero', 'por_determinar'] as const;
 
 interface PropsDialogo {
@@ -243,6 +247,8 @@ export function ReconocerRemuneracionDialog({ nota, abierto, onAbiertoChange, on
 
 export function CruceAnticipoDialog({ nota, abierto, onAbiertoChange, onHecho }: PropsDialogo) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations(NS_R5);
+  const tR6 = useTranslations(NS_R6);
   const fmt = useMonedaOrganizacion().formatear;
   const { formatDate } = useFormatDate();
   const [anticipos, setAnticipos] = useState<{ id: string; saldo: number; cuenta: string; creado: string }[] | null>(null);
@@ -285,7 +291,7 @@ export function CruceAnticipoDialog({ nota, abierto, onAbiertoChange, onHecho }:
       onAbiertoChange(false);
       onHecho();
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      setError(textoErrorConsignacion(t, tR5, e, tR6));
     } finally {
       setEnviando(false);
     }

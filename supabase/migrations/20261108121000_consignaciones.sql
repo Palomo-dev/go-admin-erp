@@ -5,7 +5,7 @@
 -- «Ronda 2 del Contador» (docs/contador/RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md, «Consignación: ocho decisiones») y
 -- «Ronda 3 del Contador» (docs/contador/RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md: comisión y retenciones).
 --
--- PROPUESTA, SIN APLICAR. Nunca se aplicó: reescrita (v5, 2026-11-09, ronda 4 del Contador). Va DESPUÉS de
+-- PROPUESTA, SIN APLICAR. Nunca se aplicó: reescrita (v5, 2026-11-09, ronda 4 del Contador; v6, 2026-11-10, ronda 6). Va DESPUÉS de
 -- 20261108120500_organization_links.sql. Mientras no exista, la pantalla dice «pendiente de activar».
 -- Se aplica JUNTO con 20261108170000 (anticipos): las retenciones usan LOS MISMOS criterios tributarios que anticipos
 -- (fn_tributario_calidades_tercero, fn_tributario_calidades_organizacion, fn_tributario_evaluar_retencion, definidos
@@ -50,6 +50,21 @@
 --       ORDEN DE APLICACIÓN de lo recaudado y la LIQUIDACIÓN POR ESCRITO (medio y plazo), que viajan en cada liquidación.
 --       Al aceptar una nota de otra organización, el receptor declara esos términos y la compensación
 --       (p_terminos_contrato); si el documento ya los trae, deben coincidir.
+--
+-- ═══ Ronda 6 del Contador (RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md, respuestas 10, 12 y 13) ═══════════════════════
+--   10. El abono por retención cuenta en el saldo de la factura igual que un pago: lo cierra la migración
+--       20261110100000_cartera_abono_retencion_consignacion (fn_invoice_sales_paid suma los abonos «aplicada»). Esta
+--       migración, sola, sigue dejando el abono «por_aplicar» con su pendiente.
+--   12. La liquidación APLICA lo recaudado en el orden del contrato (consignment_settlements.application): cada concepto
+--       toma lo que alcance; sin compensación pactada la remuneración no se descuenta aunque esté en el orden (queda por
+--       cobrar al dueño); los anticipos que no alcanzan esperan a la siguiente; el saldo para el dueño es payable_amount.
+--       Los libros quedan como dice la aplicación (compensación o reversión de la remuneración contra la 281510). Un
+--       anticipo no se cruza si el orden no incluye «anticipos»; un derecho no se descuenta si no incluye «derechos».
+--   13. Liquidación por escrito: el plazo se cuenta desde el CORTE del período liquidado (period_to), salvo que el
+--       contrato diga otra cosa (plazo_desde «fecha_de_liquidacion», con la cláusula citada). La entrega se registra con
+--       fecha, medio y soporte (fn_consignacion_liquidacion_entrega_registrar); mientras no, queda el pendiente
+--       «consignacion_liquidacion_escrita_por_entregar», y vencido el plazo, «consignacion_liquidacion_escrita_vencida»
+--       (fn_consignacion_vigilar_liquidaciones_escritas).
 --
 -- ═══ El contrato (por nota; nada se deduce del nombre) ═══════════════════════════════════════════════
 --   modalidad jurídica   'intermediacion' (mandato) | 'estimatorio' | 'compra'. Obligatoria, sin default.
@@ -289,7 +304,22 @@ create table if not exists public.consignment_settlements (
   created_at timestamptz not null default now(),
   closed_at timestamptz,
   closed_by uuid,
-  constraint consignment_settlements_clave unique (organization_id, idempotency_key)
+  -- Ronda 6 (respuesta 12): cómo se aplicó lo recaudado, en el orden del contrato (conceptos, montos, lo aplicado, lo
+  -- que queda por cobrar al dueño) y el saldo para el dueño (= payable_amount).
+  application jsonb,
+  -- Ronda 6 (respuesta 13): liquidación por escrito. Vence a los «plazo_dias» del contrato contados desde el corte del
+  -- período liquidado (period_to), salvo que el contrato diga otra cosa; la entrega se registra con fecha, medio y soporte.
+  written_due_on date,
+  written_delivered_on date,
+  written_delivery_medium text check (written_delivery_medium is null
+                                      or written_delivery_medium in ('documento_compartido', 'correo_electronico', 'documento_fisico')),
+  written_delivery_support text check (written_delivery_support is null or length(btrim(written_delivery_support)) between 5 and 1000),
+  written_delivery_by uuid,
+  written_delivery_at timestamptz,
+  constraint consignment_settlements_clave unique (organization_id, idempotency_key),
+  constraint consignment_settlements_entrega_escrita check (
+    written_delivered_on is null
+    or (written_delivery_medium is not null and written_delivery_support is not null and written_delivery_by is not null and written_delivery_at is not null))
 );
 
 create index if not exists idx_consignment_settlements_note on public.consignment_settlements (note_id);
@@ -460,6 +490,13 @@ create table if not exists public.consignment_commission_offsets (
   organization_id integer not null references public.organizations(id) on delete cascade,
   note_id uuid not null references public.consignment_notes(id),
   amount numeric(16,2) not null check (amount > 0),
+  -- Ronda 6 (respuesta 12): la liquidación aplica lo recaudado en el orden del contrato y deja los libros como dice la
+  -- aplicación: 'compensacion' (D 281510 / C cuenta por cobrar al dueño) o 'reversion' (D cuenta por cobrar / C 281510,
+  -- cuando un concepto anterior en el orden tomó lo recaudado). settlement_id: la liquidación a la que se imputa (las
+  -- compensaciones manuales hechas antes de liquidar se imputan a la siguiente). voided_at: anulada con su liquidación.
+  kind text not null default 'compensacion' check (kind in ('compensacion', 'reversion')),
+  settlement_id uuid references public.consignment_settlements(id),
+  voided_at timestamptz,
   journal_entry_id integer,
   idempotency_key text not null,
   created_by uuid,
@@ -473,6 +510,8 @@ create table if not exists public.consignment_advance_crossings (
   note_id uuid not null references public.consignment_notes(id),
   advance_id uuid not null references public.supplier_advances(id),
   amount numeric(16,2) not null check (amount > 0),
+  -- Ronda 6 (respuesta 12): la liquidación que lo aplicó en el orden del contrato (null: espera a la siguiente).
+  settlement_id uuid references public.consignment_settlements(id),
   journal_entry_id integer,
   idempotency_key text not null,
   created_by uuid,
@@ -866,6 +905,16 @@ begin
        or (v_liq->>'plazo_dias')::numeric <> trunc((v_liq->>'plazo_dias')::numeric) then
       raise exception 'terminos_invalidos' using errcode = '22023', detail = 'liquidacion_escrita.plazo_dias';
     end if;
+    -- Ronda 6 (respuesta 13): el plazo se cuenta desde el CORTE del período liquidado, salvo que el contrato diga otra
+    -- cosa; la otra regla admitida (desde la fecha de la liquidación) exige citar la cláusula. Contarlo desde la última
+    -- venta no se admite: lo deja inestable.
+    if coalesce(v_liq->>'plazo_desde', 'corte_del_periodo') not in ('corte_del_periodo', 'fecha_de_liquidacion') then
+      raise exception 'terminos_invalidos' using errcode = '22023', detail = 'liquidacion_escrita.plazo_desde';
+    end if;
+    if v_liq->>'plazo_desde' = 'fecha_de_liquidacion' and length(btrim(coalesce(v_liq->>'clausula', ''))) not between 10 and 500 then
+      raise exception 'terminos_invalidos' using errcode = '22023', detail = 'liquidacion_escrita.clausula',
+        hint = 'Contar el plazo desde otra fecha que el corte exige citar la cláusula del contrato que lo dice.';
+    end if;
   end if;
   if v_riesgos is null or jsonb_typeof(v_riesgos) <> 'object' then
     raise exception 'terminos_invalidos' using errcode = '22023', detail = 'riesgos';
@@ -896,7 +945,9 @@ begin
     'compensacion_remuneracion', case when p_direccion = 'recibida' and v_contrato = 'intermediacion' then (t->>'compensacion_remuneracion')::boolean end,
     'liquidacion_terminos', case when v_mandato_recibido then jsonb_build_object(
         'orden_aplicacion', v_orden,
-        'liquidacion_escrita', jsonb_build_object('medio', v_liq->>'medio', 'plazo_dias', (v_liq->>'plazo_dias')::integer)) end,
+        'liquidacion_escrita', jsonb_strip_nulls(jsonb_build_object('medio', v_liq->>'medio', 'plazo_dias', (v_liq->>'plazo_dias')::integer,
+                                                  'plazo_desde', coalesce(v_liq->>'plazo_desde', 'corte_del_periodo'),
+                                                  'clausula', case when v_liq->>'plazo_desde' = 'fecha_de_liquidacion' then btrim(v_liq->>'clausula') end))) end,
     'riesgos', jsonb_build_object('devoluciones', v_riesgos->>'devoluciones', 'perdidas', v_riesgos->>'perdidas', 'gastos', v_riesgos->>'gastos'),
     -- En mandato factura el mandatario, por cuenta del mandante, diferenciando lo ajeno de lo propio.
     'facturacion', jsonb_build_object('factura', 'consignatario', 'por_cuenta_de', case when v_contrato = 'intermediacion' then 'consignante' else 'consignatario' end),
@@ -1913,7 +1964,9 @@ as $function$
   select coalesce((select sum(case when a.kind = 'venta' then a.remuneration_receivable else -a.remuneration_receivable end)
                      from public.consignment_allocations a where a.note_id = p_nota), 0)
        + coalesce((select sum(r.receivable_amount) from public.consignment_remuneration_recognitions r where r.note_id = p_nota), 0)
-       - coalesce((select sum(o.amount) from public.consignment_commission_offsets o where o.note_id = p_nota), 0)
+       -- Ronda 6: las compensaciones la bajan; las reversiones de la aplicación en orden la suben; las anuladas no cuentan.
+       - coalesce((select sum(case when o.kind = 'reversion' then -o.amount else o.amount end)
+                     from public.consignment_commission_offsets o where o.note_id = p_nota and o.voided_at is null), 0)
        - coalesce((select sum(w.practiced_receivable) from public.consignment_settlement_withholdings w
                      join public.consignment_settlements s on s.id = w.settlement_id where s.note_id = p_nota), 0);
 $function$;
@@ -2219,6 +2272,44 @@ create trigger trg_consignacion_venta
 -- Toma lo vendido y no liquidado hasta la fecha (neto de reversos no liquidados). Los derechos frente al dueño
 -- (devoluciones de lo ya liquidado) solo se descuentan con p_descontar_derechos y el acuerdo escrito.
 
+-- INTERNA. Ronda 6 (respuesta 12): deja los libros como dice la aplicación de lo recaudado en el orden del contrato.
+-- Solo mueve la remuneración YA devengada entre la 281510 del dueño y la cuenta por cobrar al dueño; nunca toca el
+-- ingreso (413512): la liquidación no reconoce remuneración.
+--   'compensacion'  D auxiliar 281510 del dueño / C cuenta por cobrar al dueño (lo aplicado que estaba por cobrar)
+--   'reversion'     D cuenta por cobrar al dueño / C auxiliar 281510 (lo compensado que el orden no alcanza a cubrir)
+create or replace function public.fn_consignacion_ajustar_compensacion(
+  p_nota public.consignment_notes, p_liq uuid, p_monto numeric, p_kind text, p_user uuid)
+ returns integer
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_off uuid;
+  v_e integer;
+begin
+  if p_kind not in ('compensacion', 'reversion') or coalesce(p_monto, 0) <= 0 then
+    raise exception 'datos_invalidos' using errcode = '22023';
+  end if;
+  insert into public.consignment_commission_offsets (organization_id, note_id, amount, kind, settlement_id, idempotency_key, created_by)
+  values (p_nota.organization_id, p_nota.id, round(p_monto, 2), p_kind, p_liq, 'liquidacion:' || p_liq::text || ':' || p_kind, p_user)
+  returning id into v_off;
+  v_e := public.fn_create_journal_entry(
+    p_organization_id := p_nota.organization_id, p_branch_id := p_nota.branch_id, p_entry_date := now(),
+    p_memo := case when p_kind = 'compensacion' then 'Remuneración compensada con lo recaudado según el orden de aplicación del contrato - '
+                   else 'Remuneración que el orden de aplicación no alcanza a cubrir: por cobrar al dueño - ' end || p_nota.number,
+    p_source := 'consignment_commission_offset', p_source_id := v_off::text,
+    p_debit_account := case when p_kind = 'compensacion' then p_nota.owner_account_code else p_nota.owner_receivable_account_code end,
+    p_credit_account := case when p_kind = 'compensacion' then p_nota.owner_receivable_account_code else p_nota.owner_account_code end,
+    p_amount := round(p_monto, 2), p_created_by := p_user, p_fact_key := 'consignment_commission_offset:' || v_off::text);
+  if v_e is null then
+    raise exception 'asiento_no_creado' using errcode = 'P0001';
+  end if;
+  update public.consignment_commission_offsets set journal_entry_id = v_e where id = v_off;
+  return v_e;
+end;
+$function$;
+
 create or replace function public.fn_consignacion_recibida_liquidar(
   p_nota uuid,
   p_hasta date,
@@ -2256,6 +2347,35 @@ declare
   v_por_devengar numeric;
   v_an record;
   v_acuerdo text := nullif(left(btrim(coalesce(p_acuerdo, '')), 1000), '');
+  -- Ronda 6 (respuestas 12 y 13): aplicación en orden y liquidación por escrito.
+  v_der_venta numeric := 0;
+  v_der_dueno numeric := 0;
+  v_recaudado numeric;
+  v_rem_periodo numeric;
+  v_disp numeric;
+  v_orden jsonb;
+  v_concepto text;
+  v_monto numeric;
+  v_aplicado numeric;
+  v_aplic jsonb := '[]'::jsonb;
+  v_rem_aplicada numeric := 0;
+  v_rem_por_cobrar numeric := 0;
+  v_por_pagar numeric;
+  v_aplicacion jsonb;
+  v_cr record;
+  v_cruces uuid[];
+  v_comp_libros numeric;
+  v_rem_reconocida numeric;
+  v_manual numeric;
+  v_delta numeric;
+  v_ajuste numeric;
+  v_e_aj integer;
+  v_reclas jsonb;
+  v_lt jsonb;
+  v_hoy date;
+  v_cuenta_desde date;
+  v_vence date;
+  v_escrita jsonb;
 begin
   if v_uid is null then
     raise exception 'no_autenticado' using errcode = '42501';
@@ -2305,6 +2425,9 @@ begin
            sum(case when a.kind = 'venta' then a.tax_amount else -a.tax_amount end) as iva,
            sum(case when a.kind = 'venta' then a.agreed_amount else -a.agreed_amount end) as pactado,
            sum(case when a.owner_right then a.sale_amount else 0 end) as derechos,
+           -- Ronda 6: los derechos frente al dueño por separado (cantidad, venta y precio pactado de lo devuelto).
+           sum(case when a.owner_right then a.qty else 0 end) as qty_der,
+           sum(case when a.owner_right then a.agreed_amount else 0 end) as pactado_der,
            min(timezone(v_tz, a.created_at)::date) as desde,
            array_agg(a.id) as ids
       from public.consignment_allocations a
@@ -2336,6 +2459,13 @@ begin
     v_desc := v_desc + v_r.descuento;
     v_iva := v_iva + v_r.iva;
     v_derechos := v_derechos + v_r.derechos;
+    -- Ronda 6: lo que se le pagó al dueño por lo que ahora se devuelve (venta − remuneración de esa porción) es el
+    -- derecho frente a él; la venta devuelta vuelve a sumarse al recaudo para aplicar cada concepto por separado.
+    if v_r.qty_der > 0 then
+      v_der_venta := v_der_venta + v_r.derechos;
+      v_der_dueno := v_der_dueno + round(v_r.derechos - public.fn_consignacion_remuneracion(v_nota.remuneration_mode, v_nota.commission_base,
+                                           v_nota.commission_pct, v_r.qty_der, v_r.derechos, v_r.pactado_der, v_r.settlement_price), 2);
+    end if;
   end loop;
 
   v_venta := round(v_venta, 2);
@@ -2370,14 +2500,142 @@ begin
     from public.consignment_allocations a
    where a.settlement_id = v_liq.id and not a.absorbed and not a.remuneration_recognized;
 
+  -- ═══ Ronda 6 (respuesta 12 del Contador): la liquidación APLICA lo recaudado en el orden del contrato ═══
+  -- Recaudado del período = lo vendido para el dueño (neto de las devoluciones anteriores a liquidar). Cada concepto, en
+  -- el orden pactado, toma lo que alcance de lo que queda:
+  --   remuneracion            la remuneración del período; SOLO si el contrato pacta la compensación. Sin pacto no se
+  --                           descuenta aunque esté en el orden: queda como cuenta por cobrar al dueño.
+  --   derechos_frente_al_dueno lo que se le pagó al dueño por lo que después se devolvió (solo con acuerdo registrado);
+  --                           si no alcanza, el saldo es a favor del consignatario y se cobra, no se descuenta.
+  --   anticipos               los cruces de anticipos de la nota aún sin liquidar (hasta el corte), enteros y por fecha;
+  --                           el que no alcanza espera a la siguiente liquidación.
+  --   gastos_reembolsables    no hay registro de gastos reembolsables en el sistema: 0, a la vista.
+  -- Lo que queda es el saldo para el dueño (payable_amount). Los libros quedan como dice la aplicación: si lo aplicado a
+  -- la remuneración difiere de lo ya compensado contra la 281510, la diferencia se compensa (D 281510 / C cuenta por
+  -- cobrar al dueño) o se revierte (D cuenta por cobrar / C 281510) en esta liquidación.
+  v_por_pagar := v_dueno;
+  if v_nota.legal_modality = 'intermediacion' and jsonb_typeof(v_nota.settlement_terms -> 'orden_aplicacion') = 'array' then
+    v_orden := v_nota.settlement_terms -> 'orden_aplicacion';
+    v_der_dueno := round(v_der_dueno, 2);
+    v_recaudado := round(v_venta + v_der_venta, 2);
+    v_rem_periodo := greatest(round(v_recaudado - v_dueno - v_der_dueno, 2), 0);
+    if v_der_dueno > 0 and not (v_orden ? 'derechos_frente_al_dueno') then
+      raise exception 'derechos_fuera_del_orden_de_aplicacion' using errcode = '22023',
+        hint = 'El contrato no ordena descontar los derechos frente al dueño de lo recaudado: cóbrelos al dueño.';
+    end if;
+    v_disp := v_recaudado;
+    for v_concepto in select e.value from jsonb_array_elements_text(v_orden) with ordinality e(value, i) order by e.i loop
+      v_monto := 0;
+      v_aplicado := 0;
+      if v_concepto = 'remuneracion' then
+        v_monto := v_rem_periodo;
+        if coalesce(v_nota.commission_offset_agreed, false) then
+          v_aplicado := least(v_disp, v_monto);
+        end if;
+        v_rem_aplicada := v_aplicado;
+        v_aplic := v_aplic || jsonb_build_object('concepto', v_concepto, 'monto', v_monto, 'aplicado', v_aplicado,
+          'por_cobrar_al_dueno', round(v_monto - v_aplicado, 2),
+          'motivo', case when not coalesce(v_nota.commission_offset_agreed, false) then 'compensacion_no_pactada'
+                         when v_aplicado < v_monto then 'recaudo_insuficiente' end);
+      elsif v_concepto = 'derechos_frente_al_dueno' then
+        v_monto := v_der_dueno;
+        v_aplicado := least(v_disp, v_monto);
+        if v_aplicado < v_monto then
+          raise exception 'saldo_a_favor_del_consignatario' using errcode = '22023',
+            detail = jsonb_build_object('derechos', v_monto, 'disponible_en_su_turno', v_disp)::text,
+            hint = 'En el orden del contrato, lo recaudado no alcanza para los derechos frente al dueño: se cobran al dueño, no se descuentan.';
+        end if;
+        v_aplic := v_aplic || jsonb_build_object('concepto', v_concepto, 'monto', v_monto, 'aplicado', v_aplicado, 'acuerdo', v_acuerdo);
+      elsif v_concepto = 'anticipos' then
+        v_cruces := '{}';
+        for v_cr in select c.id, c.amount from public.consignment_advance_crossings c
+                     where c.note_id = p_nota and c.settlement_id is null and timezone(v_tz, c.created_at)::date <= v_hasta
+                     order by c.created_at, c.id loop
+          v_monto := v_monto + v_cr.amount;
+          if v_aplicado + v_cr.amount <= v_disp then
+            v_aplicado := v_aplicado + v_cr.amount;
+            v_cruces := v_cruces || v_cr.id;
+          end if;
+        end loop;
+        update public.consignment_advance_crossings set settlement_id = v_liq.id where id = any (v_cruces);
+        v_aplic := v_aplic || jsonb_build_object('concepto', v_concepto, 'monto', v_monto, 'aplicado', v_aplicado,
+          'en_espera', round(v_monto - v_aplicado, 2), 'cruces', to_jsonb(v_cruces),
+          'motivo', case when v_aplicado < v_monto then 'espera_la_siguiente_liquidacion' end);
+      elsif v_concepto = 'gastos_reembolsables' then
+        v_aplic := v_aplic || jsonb_build_object('concepto', v_concepto, 'monto', 0, 'aplicado', 0, 'motivo', 'sin_registro_de_gastos');
+      end if;
+      v_disp := round(v_disp - v_aplicado, 2);
+    end loop;
+    if not (v_orden ? 'remuneracion') then
+      v_aplic := v_aplic || jsonb_build_object('concepto', 'remuneracion', 'monto', v_rem_periodo, 'aplicado', 0,
+        'por_cobrar_al_dueno', v_rem_periodo, 'motivo', 'fuera_del_orden');
+    end if;
+    v_rem_por_cobrar := round(v_rem_periodo - v_rem_aplicada, 2);
+    v_por_pagar := v_disp;
+
+    -- Los libros como dice la aplicación (remuneración devengada al vender, con compensación pactada).
+    if coalesce(v_nota.commission_offset_agreed, false) and v_nota.remuneration_recognition = 'al_vender' then
+      select coalesce(sum(case when a.kind = 'venta' then 1 else -1 end * (a.remuneration_amount - a.remuneration_receivable)), 0),
+             coalesce(sum(case when a.kind = 'venta' then 1 else -1 end * a.remuneration_amount), 0)
+        into v_comp_libros, v_rem_reconocida
+        from public.consignment_allocations a
+       where a.settlement_id = v_liq.id and not a.owner_right and not a.absorbed and a.remuneration_recognized;
+      -- Las compensaciones manuales hechas antes de liquidar se imputan a esta liquidación.
+      update public.consignment_commission_offsets set settlement_id = v_liq.id
+       where note_id = p_nota and settlement_id is null and voided_at is null and kind = 'compensacion';
+      select coalesce(sum(o.amount), 0) into v_manual from public.consignment_commission_offsets o
+       where o.settlement_id = v_liq.id and o.voided_at is null and o.kind = 'compensacion';
+      v_delta := round(least(v_rem_aplicada, v_rem_reconocida) - v_comp_libros - v_manual, 2);
+      v_ajuste := 0;
+      if v_delta > 0.005 then
+        v_ajuste := least(v_delta, greatest(public.fn_consignacion_cxc_dueno_saldo(p_nota), 0));
+        if v_ajuste > 0 then
+          v_e_aj := public.fn_consignacion_ajustar_compensacion(v_nota, v_liq.id, v_ajuste, 'compensacion', v_uid);
+        end if;
+      elsif v_delta < -0.005 then
+        v_e_aj := public.fn_consignacion_ajustar_compensacion(v_nota, v_liq.id, -v_delta, 'reversion', v_uid);
+        v_ajuste := v_delta;
+      end if;
+      v_reclas := jsonb_build_object('compensado_antes', round(v_comp_libros + v_manual, 2), 'objetivo', round(least(v_rem_aplicada, v_rem_reconocida), 2),
+                                     'ajuste', v_ajuste, 'asiento_id', v_e_aj);
+    end if;
+    v_aplicacion := jsonb_build_object('orden', v_orden, 'recaudado', v_recaudado, 'conceptos', v_aplic,
+                                       'remuneracion_por_cobrar_al_dueno', v_rem_por_cobrar, 'saldo_para_el_dueno', v_por_pagar,
+                                       'compensacion_pactada', coalesce(v_nota.commission_offset_agreed, false), 'libros', v_reclas);
+
+    -- ═══ Ronda 6 (respuesta 13): liquidación por escrito con plazo desde el corte del período, y su constancia ═══
+    v_lt := v_nota.settlement_terms -> 'liquidacion_escrita';
+    if jsonb_typeof(v_lt) = 'object' then
+      v_hoy := public.fn_today_for(v_org, v_nota.branch_id);
+      v_cuenta_desde := case when v_lt->>'plazo_desde' = 'fecha_de_liquidacion' then v_hoy else v_hasta end;
+      v_vence := v_cuenta_desde + coalesce((v_lt->>'plazo_dias')::integer, 0);
+      v_escrita := jsonb_build_object('medio', v_lt->>'medio', 'plazo_dias', (v_lt->>'plazo_dias')::integer,
+                                      'plazo_desde', coalesce(v_lt->>'plazo_desde', 'corte_del_periodo'), 'cuenta_desde', v_cuenta_desde,
+                                      'vence', v_vence, 'estado', case when v_hoy > v_vence then 'vencida' else 'por_entregar' end);
+    end if;
+  end if;
+
   update public.consignment_settlements
      set period_from = v_desde, sale_total = v_venta, agreed_total = v_pactado, owner_amount = v_dueno,
          discount_total = round(v_desc, 2), tax_total = round(v_iva, 2), commission_amount = v_remuneracion,
          net_amount = v_dueno, rights_discounted = round(v_derechos, 2),
          rights_agreement = case when v_derechos <> 0 then v_acuerdo end,
-         payable_amount = v_dueno, tax_facts = v_hechos, closed_at = now(), closed_by = v_uid
+         payable_amount = v_por_pagar, tax_facts = v_hechos, closed_at = now(), closed_by = v_uid,
+         application = v_aplicacion, written_due_on = v_vence
    where id = v_liq.id
    returning * into v_liq;
+  -- La liquidación por escrito queda como pendiente visible hasta registrar su entrega; vencida, un segundo pendiente.
+  if v_vence is not null then
+    perform public.fn_consignacion_pendiente(v_org, v_nota.branch_id, 'consignacion_liquidacion_escrita_por_entregar',
+      'consignment_settlement_writing', v_liq.id::text, v_por_pagar,
+      'Liquidación de la nota ' || v_nota.number || ' (corte ' || to_char(v_hasta, 'YYYY-MM-DD') || '): entregarla por escrito ('
+        || (v_lt->>'medio') || ') a más tardar el ' || to_char(v_vence, 'YYYY-MM-DD') || ' y registrar la entrega con su soporte');
+    if v_hoy > v_vence then
+      perform public.fn_consignacion_pendiente(v_org, v_nota.branch_id, 'consignacion_liquidacion_escrita_vencida',
+        'consignment_settlement_writing', v_liq.id::text, v_por_pagar,
+        'Liquidación de la nota ' || v_nota.number || ': venció el plazo (' || to_char(v_vence, 'YYYY-MM-DD') || ') sin constancia de entrega por escrito');
+    end if;
+  end if;
 
   -- Retenciones: (a) de la operación y (b) de la remuneración, por separado, con las reglas configuradas.
   v_retenciones := public.fn_consignacion_retenciones_liquidacion(v_liq.id);
@@ -2417,6 +2675,8 @@ begin
         'retenciones', v_retenciones,
         -- Ronda 5 (C.Co. art. 1277): la liquidación por escrito lleva el orden de aplicación pactado.
         'terminos_liquidacion', v_nota.settlement_terms,
+        -- Ronda 6: cómo se aplicó lo recaudado en ese orden, el saldo para el dueño y el plazo de la entrega por escrito.
+        'aplicacion', v_aplicacion, 'por_pagar', v_por_pagar, 'entrega_escrita', v_escrita,
         'lineas', (select coalesce(jsonb_agg(jsonb_build_object('ref', l.external_ref, 'vendido', sl.qty_sold,
                                                                  'precio', sl.unit_price, 'venta', sl.sale_amount, 'dueno', sl.owner_amount)), '[]'::jsonb)
                      from public.consignment_settlement_lines sl join public.consignment_note_lines l on l.id = sl.line_id
@@ -2429,11 +2689,13 @@ begin
   return jsonb_build_object('liquidacion_id', v_liq.id, 'repetida', false, 'estado', 'liquidada', 'contrato', v_nota.legal_modality,
     'venta', v_venta, 'pactado', v_pactado, 'descuentos', round(v_desc, 2), 'iva', round(v_iva, 2),
     'remuneracion', v_remuneracion, 'reconocimiento', v_nota.remuneration_recognition, 'dueno', v_dueno,
-    'derechos_descontados', round(v_derechos, 2), 'por_pagar', v_dueno, 'factura_remuneracion', v_nota.fee_invoice_required,
+    'derechos_descontados', round(v_derechos, 2), 'por_pagar', v_por_pagar, 'factura_remuneracion', v_nota.fee_invoice_required,
     'remuneracion_por_devengar', round(v_por_devengar, 2), 'retenciones', v_retenciones,
     'cuenta_recaudo', v_nota.owner_account_code, 'documento_compartido_id', v_doc,
     -- Ronda 5 (C.Co. art. 1277): orden de aplicación y forma de la liquidación por escrito que fija el contrato.
-    'terminos_liquidacion', v_nota.settlement_terms);
+    'terminos_liquidacion', v_nota.settlement_terms,
+    -- Ronda 6: lo recaudado aplicado en ese orden y el plazo de la entrega por escrito (desde el corte del período).
+    'aplicacion', v_aplicacion, 'entrega_escrita', v_escrita);
 end;
 $function$;
 
@@ -3038,6 +3300,8 @@ declare
   v_entry integer;
   v_ids uuid[];
   v_motivo text := nullif(left(btrim(coalesce(p_motivo, '')), 500), '');
+  v_o public.consignment_commission_offsets%rowtype;
+  v_e2 integer;
 begin
   if v_uid is null then
     raise exception 'no_autenticado' using errcode = '42501';
@@ -3071,6 +3335,27 @@ begin
      and r.reverses_id in (select a.id from public.consignment_allocations a where a.settlement_id = v_liq.id and a.kind = 'venta');
   select array_agg(a.id) into v_ids from public.consignment_allocations a where a.settlement_id = v_liq.id and not a.absorbed;
   update public.consignment_allocations set settlement_id = null where settlement_id = v_liq.id and not absorbed;
+  -- Ronda 6: la aplicación en orden se deshace con la liquidación. Los ajustes que ella hizo a la remuneración se reversan
+  -- con el asiento contrario y quedan anulados; las compensaciones manuales y los cruces de anticipos que tomó vuelven a
+  -- esperar a la siguiente liquidación; el pendiente de su entrega por escrito se cierra (el documento ya no existe).
+  for v_o in select * from public.consignment_commission_offsets o
+              where o.settlement_id = v_liq.id and o.voided_at is null and o.idempotency_key like 'liquidacion:%' loop
+    v_e2 := public.fn_create_journal_entry(
+      p_organization_id := v_org, p_branch_id := v_nota.branch_id, p_entry_date := now(),
+      p_memo := 'Anulación de la liquidación: se reversa el ajuste de la remuneración según el orden de aplicación - ' || v_nota.number,
+      p_source := 'consignment_commission_offset', p_source_id := v_o.id::text,
+      p_debit_account := case when v_o.kind = 'compensacion' then v_nota.owner_receivable_account_code else v_nota.owner_account_code end,
+      p_credit_account := case when v_o.kind = 'compensacion' then v_nota.owner_account_code else v_nota.owner_receivable_account_code end,
+      p_amount := v_o.amount, p_created_by := v_uid, p_fact_key := 'consignment_commission_offset_void:' || v_o.id::text);
+    if v_e2 is null then raise exception 'asiento_no_creado' using errcode = 'P0001'; end if;
+    update public.consignment_commission_offsets set voided_at = now() where id = v_o.id;
+  end loop;
+  update public.consignment_commission_offsets set settlement_id = null where settlement_id = v_liq.id and voided_at is null;
+  update public.consignment_advance_crossings set settlement_id = null where settlement_id = v_liq.id;
+  -- Solo el de la ENTREGA POR ESCRITO (fuente propia): los pendientes tributarios siguen abiertos (ronda 4, punto 3).
+  update public.journal_entry_failures
+     set resolved_at = now(), resolution = 'documento_anulado_sin_entrega'
+   where organization_id = v_org and source = 'consignment_settlement_writing' and source_id = v_liq.id::text and resolved_at is null;
   update public.consignment_settlements set status = 'anulada', void_reason = v_motivo, void_allocations = v_ids, closed_at = now(), closed_by = v_uid
    where id = v_liq.id;
   -- Ronda 4: sus pendientes tributarios y el de la factura de la remuneración NO se cierran aquí (el hecho sigue vigente).
@@ -3208,6 +3493,12 @@ begin
     raise exception 'nota_no_encontrada' using errcode = 'P0002';
   end if;
   perform public.fn_finanzas_exigir_permiso(v_org, array['finance.create']);
+  -- Ronda 6 (respuesta 12): lo recaudado se aplica en el orden del contrato; si el contrato no ordena aplicar anticipos,
+  -- el anticipo no se cruza contra lo recaudado para el dueño.
+  if jsonb_typeof(v_nota.settlement_terms -> 'orden_aplicacion') = 'array' and not ((v_nota.settlement_terms -> 'orden_aplicacion') ? 'anticipos') then
+    raise exception 'anticipos_fuera_del_orden_de_aplicacion' using errcode = '22023',
+      hint = 'El contrato no ordena aplicar anticipos a lo recaudado para el dueño.';
+  end if;
   perform pg_advisory_xact_lock(hashtextextended('consignacion_cruce:' || v_org || ':' || p_clave_idempotencia, 0));
   select * into v_cruce from public.consignment_advance_crossings where organization_id = v_org and idempotency_key = p_clave_idempotencia;
   if found then
@@ -3245,6 +3536,148 @@ begin
    where id = v_ant.id;
   return jsonb_build_object('cruce_id', v_cruce.id, 'repetida', false, 'monto', v_monto, 'asiento_id', v_entry,
                             'saldo_anticipo', v_ant.balance - v_monto);
+end;
+$function$;
+
+-- Ronda 6 (respuesta 13 y pendiente «la liquidación no deja constancia de la entrega escrita»). Constancia de la entrega
+-- de la liquidación por escrito al dueño: fecha, medio (el que fija el contrato) y soporte (p. ej. el correo enviado, el
+-- acuse del documento compartido o el recibido del documento físico). Cierra el pendiente «por entregar» y, si ya había
+-- vencido el plazo, el de «vencida», dejando escrito que se entregó fuera de plazo.
+create or replace function public.fn_consignacion_liquidacion_entrega_registrar(
+  p_liquidacion uuid,
+  p_fecha date,
+  p_medio text,
+  p_soporte text,
+  p_organization_id integer
+)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_uid uuid := auth.uid();
+  v_org integer := p_organization_id;
+  v_liq public.consignment_settlements%rowtype;
+  v_nota public.consignment_notes%rowtype;
+  v_soporte text := nullif(left(btrim(coalesce(p_soporte, '')), 1000), '');
+  v_tz text;
+  v_hoy date;
+  v_tarde boolean;
+begin
+  if v_uid is null then
+    raise exception 'no_autenticado' using errcode = '42501';
+  end if;
+  if p_fecha is null or coalesce(p_medio, '') not in ('documento_compartido', 'correo_electronico', 'documento_fisico') then
+    raise exception 'datos_invalidos' using errcode = '22023';
+  end if;
+  if v_soporte is null or length(v_soporte) < 5 then
+    raise exception 'soporte_obligatorio' using errcode = '22023',
+      hint = 'Indique el soporte de la entrega: el correo enviado, el acuse del documento compartido o el recibido del documento físico.';
+  end if;
+  select * into v_liq from public.consignment_settlements
+   where id = p_liquidacion and organization_id = v_org and direction = 'recibida' for update;
+  if not found then
+    raise exception 'liquidacion_no_encontrada' using errcode = 'P0002';
+  end if;
+  perform public.fn_finanzas_exigir_permiso(v_org, array['finance.create']);
+  select * into v_nota from public.consignment_notes where id = v_liq.note_id;
+  if not public.app_branch_access(v_nota.branch_id) then
+    raise exception 'sin_acceso_sucursal' using errcode = '42501';
+  end if;
+  if v_liq.status = 'anulada' then
+    raise exception 'liquidacion_anulada' using errcode = '22023';
+  end if;
+  if v_liq.written_due_on is null then
+    raise exception 'liquidacion_sin_entrega_escrita' using errcode = '22023',
+      hint = 'El contrato de esta nota no fija la liquidación por escrito.';
+  end if;
+  if v_liq.written_delivered_on is not null then
+    if v_liq.written_delivered_on = p_fecha and v_liq.written_delivery_medium = p_medio and v_liq.written_delivery_support = v_soporte then
+      return jsonb_build_object('liquidacion_id', v_liq.id, 'repetida', true, 'entregada_el', v_liq.written_delivered_on,
+                                'medio', v_liq.written_delivery_medium, 'vence', v_liq.written_due_on,
+                                'fuera_de_plazo', v_liq.written_delivered_on > v_liq.written_due_on);
+    end if;
+    raise exception 'entrega_ya_registrada' using errcode = '22023';
+  end if;
+  -- El contrato fija el medio: una entrega por otro medio no es la pactada.
+  if p_medio <> coalesce(v_nota.settlement_terms -> 'liquidacion_escrita' ->> 'medio', p_medio) then
+    raise exception 'medio_distinto_del_pactado' using errcode = '22023',
+      detail = v_nota.settlement_terms -> 'liquidacion_escrita' ->> 'medio';
+  end if;
+  v_tz := coalesce(public.fn_timezone_for(v_org, v_nota.branch_id), 'America/Bogota');
+  v_hoy := (now() at time zone v_tz)::date;
+  if p_fecha > v_hoy then
+    raise exception 'fecha_futura' using errcode = '22023';
+  end if;
+  if p_fecha < (v_liq.created_at at time zone v_tz)::date then
+    raise exception 'fecha_anterior_a_la_liquidacion' using errcode = '22023';
+  end if;
+  v_tarde := p_fecha > v_liq.written_due_on;
+  update public.consignment_settlements
+     set written_delivered_on = p_fecha, written_delivery_medium = p_medio, written_delivery_support = v_soporte,
+         written_delivery_by = v_uid, written_delivery_at = now()
+   where id = v_liq.id;
+  update public.journal_entry_failures
+     set resolved_at = now(),
+         resolution = case when v_tarde then 'entregada_fuera_de_plazo:' else 'entregada_por_escrito:' end || to_char(p_fecha, 'YYYY-MM-DD')
+   where organization_id = v_org and source = 'consignment_settlement_writing' and source_id = v_liq.id::text and resolved_at is null
+     and reason in ('consignacion_liquidacion_escrita_por_entregar', 'consignacion_liquidacion_escrita_vencida');
+  insert into public.finance_audit_log (organization_id, entity, entity_id, action, user_id, diff, reason)
+  values (v_org, 'consignment_settlements', v_liq.id::text, 'update', v_uid,
+          jsonb_build_object('accion', 'liquidacion_entregada_por_escrito', 'fecha', p_fecha, 'medio', p_medio, 'soporte', v_soporte,
+                             'vence', v_liq.written_due_on, 'fuera_de_plazo', v_tarde),
+          'Constancia de entrega de la liquidación por escrito');
+  return jsonb_build_object('liquidacion_id', v_liq.id, 'repetida', false, 'entregada_el', p_fecha, 'medio', p_medio,
+                            'vence', v_liq.written_due_on, 'fuera_de_plazo', v_tarde);
+end;
+$function$;
+
+-- Ronda 6 (respuesta 13). Liquidaciones por escrito de la organización: por entregar, entregadas y vencidas. A las que
+-- vencieron sin constancia de entrega les deja el pendiente visible «consignacion_liquidacion_escrita_vencida» (una sola
+-- vez: el pendiente es idempotente por liquidación). La pantalla la llama al abrir; también sirve para una tarea diaria.
+create or replace function public.fn_consignacion_vigilar_liquidaciones_escritas(p_organization_id integer)
+ returns jsonb
+ language plpgsql
+ security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_org integer := p_organization_id;
+  v_r record;
+  v_filas jsonb := '[]'::jsonb;
+  v_vencidas integer := 0;
+  v_por_entregar integer := 0;
+  v_estado text;
+begin
+  if auth.uid() is null then
+    raise exception 'no_autenticado' using errcode = '42501';
+  end if;
+  perform public.fn_finanzas_exigir_permiso(v_org, array['finance.view', 'finance.create']);
+  for v_r in
+    select s.id, s.period_to, s.written_due_on, s.written_delivered_on, s.payable_amount, n.number, n.branch_id,
+           public.fn_today_for(v_org, n.branch_id) as hoy
+      from public.consignment_settlements s join public.consignment_notes n on n.id = s.note_id
+     where s.organization_id = v_org and s.direction = 'recibida' and s.status = 'liquidada' and s.written_due_on is not null
+       and public.app_branch_access(n.branch_id)
+     order by s.written_due_on, s.seq
+  loop
+    v_estado := case when v_r.written_delivered_on is not null then
+                       case when v_r.written_delivered_on > v_r.written_due_on then 'entregada_fuera_de_plazo' else 'entregada' end
+                     when v_r.hoy > v_r.written_due_on then 'vencida'
+                     else 'por_entregar' end;
+    if v_estado = 'vencida' then
+      v_vencidas := v_vencidas + 1;
+      perform public.fn_consignacion_pendiente(v_org, v_r.branch_id, 'consignacion_liquidacion_escrita_vencida',
+        'consignment_settlement_writing', v_r.id::text, v_r.payable_amount,
+        'Liquidación de la nota ' || v_r.number || ': venció el plazo (' || to_char(v_r.written_due_on, 'YYYY-MM-DD') || ') sin constancia de entrega por escrito');
+    elsif v_estado = 'por_entregar' then
+      v_por_entregar := v_por_entregar + 1;
+    end if;
+    v_filas := v_filas || jsonb_build_object('liquidacion_id', v_r.id, 'nota', v_r.number, 'corte', v_r.period_to, 'vence', v_r.written_due_on,
+                                             'entregada_el', v_r.written_delivered_on, 'estado', v_estado);
+  end loop;
+  return jsonb_build_object('vencidas', v_vencidas, 'por_entregar', v_por_entregar, 'filas', v_filas);
 end;
 $function$;
 
@@ -3566,9 +3999,12 @@ revoke all on function public.fn_consignacion_remuneracion(text, text, numeric, 
 revoke all on function public.fn_consignacion_asignar_venta(public.stock_movements) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_revertir_venta(public.stock_movements) from public, anon, authenticated;
 revoke all on function public.fn_trg_consignacion_venta() from public, anon, authenticated;
+revoke all on function public.fn_consignacion_ajustar_compensacion(public.consignment_notes, uuid, numeric, text, uuid) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_recibida_liquidar(uuid, date, boolean, text, text, integer) from public, anon;
 revoke all on function public.fn_consignacion_recibida_anular_liquidacion(uuid, text, integer) from public, anon;
 revoke all on function public.fn_consignacion_cruzar_anticipo(uuid, uuid, numeric, text, integer) from public, anon;
+revoke all on function public.fn_consignacion_liquidacion_entrega_registrar(uuid, date, text, text, integer) from public, anon;
+revoke all on function public.fn_consignacion_vigilar_liquidaciones_escritas(integer) from public, anon;
 revoke all on function public.fn_consignacion_saldo_dueno(integer, text) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_cxc_dueno_saldo(uuid) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_reconocer_int(public.consignment_notes, numeric, numeric, timestamptz, text, text, text, text, uuid) from public, anon, authenticated;
@@ -3601,6 +4037,8 @@ grant execute on function public.fn_consignacion_registrar_novedad(uuid, uuid, t
 grant execute on function public.fn_consignacion_recibida_liquidar(uuid, date, boolean, text, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_recibida_anular_liquidacion(uuid, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_cruzar_anticipo(uuid, uuid, numeric, text, integer) to authenticated;
+grant execute on function public.fn_consignacion_liquidacion_entrega_registrar(uuid, date, text, text, integer) to authenticated;
+grant execute on function public.fn_consignacion_vigilar_liquidaciones_escritas(integer) to authenticated;
 grant execute on function public.fn_consignacion_conciliar_retencion(uuid, numeric, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_cartera_retenciones(integer) to authenticated;
 grant execute on function public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid, uuid) to authenticated;

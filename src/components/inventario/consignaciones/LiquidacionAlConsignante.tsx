@@ -34,13 +34,19 @@ import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { toastSuccess } from '@/components/ui/use-toast';
 import { ErrorPeticionSaldoFavor, nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import { textoErrorConsignacion } from './textoErrorConsignacion';
 import { RUTA_CONSIGNACIONES_INVENTARIO, rutaRecibida, vistaLiquidacion, type NotaRecibida } from '@/lib/inventario/consignaciones/recibidas';
 import { consignacionesRecibidasService } from './consignacionesRecibidasService';
 
 const NS = 'consignacionesR4';
+/** Rondas 5 y 6 del Contador: errores nuevos de la liquidación (orden de aplicación). */
+const NS_R5 = 'consignacionesR5';
+const NS_R6 = 'consignacionesR6';
 
 export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations(NS_R5);
+  const tR6 = useTranslations(NS_R6);
   const router = useRouter();
   const permisos = usePermisosFinanzas();
   const fmt = useMonedaOrganizacion().formatear;
@@ -98,7 +104,7 @@ export function LiquidacionAlConsignante({ notaId }: { notaId: string }) {
       clave.current = nuevaClaveIdempotencia('consignacion-liquidar');
       router.push(rutaRecibida(notaId));
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      setError(textoErrorConsignacion(t, tR5, e, tR6));
     } finally {
       setEnviando(false);
     }

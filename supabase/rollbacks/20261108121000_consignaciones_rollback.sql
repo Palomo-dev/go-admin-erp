@@ -1,4 +1,5 @@
--- Reversión de 20261108121000_consignaciones.sql (revertirla ANTES que 20261108120500_organization_links).
+-- Reversión de 20261108121000_consignaciones.sql (revertirla ANTES que 20261108120500_organization_links y DESPUÉS de
+-- 20261110100000_cartera_abono_retencion_consignacion, que la necesita).
 --
 -- Borra el disparador del kardex, las funciones y las catorce tablas. ADVERTENCIA: si ya hay notas,
 --   - la mercancía ENTREGADA sigue fuera de la bodega en el kardex (salidas 'transfer_out' con source_id
@@ -28,9 +29,13 @@ drop function if exists public.fn_consignacion_configurar_retenciones(integer, j
 drop function if exists public.fn_consignacion_conciliar_retencion(uuid, numeric, text, integer);
 drop function if exists public.fn_consignacion_retenciones_liquidacion(uuid);
 drop function if exists public.fn_consignacion_retencion_registrar(public.consignment_settlements, integer, text, text, text, text, text, numeric, jsonb, jsonb);
+-- Ronda 6: constancia de la liquidación por escrito y vigilancia de su plazo.
+drop function if exists public.fn_consignacion_vigilar_liquidaciones_escritas(integer);
+drop function if exists public.fn_consignacion_liquidacion_entrega_registrar(uuid, date, text, text, integer);
 drop function if exists public.fn_consignacion_cruzar_anticipo(uuid, uuid, numeric, text, integer);
 drop function if exists public.fn_consignacion_recibida_anular_liquidacion(uuid, text, integer);
 drop function if exists public.fn_consignacion_recibida_liquidar(uuid, date, boolean, text, text, integer);
+drop function if exists public.fn_consignacion_ajustar_compensacion(public.consignment_notes, uuid, numeric, text, uuid);
 drop function if exists public.fn_trg_consignacion_venta();
 drop function if exists public.fn_consignacion_revertir_venta(public.stock_movements);
 drop function if exists public.fn_consignacion_asignar_venta(public.stock_movements);

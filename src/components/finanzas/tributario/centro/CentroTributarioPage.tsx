@@ -44,7 +44,9 @@ export function CentroTributarioPage() {
   const tc = useTranslations('finanzasTributarioR4.comun');
   // Ronda 5 del Contador: las notas nuevas (formato 2532) viven en su propio namespace.
   const t5 = useTranslations('finanzasTributarioR5.notas');
-  const nota = (n: string) => (t5.has(n) ? t5(n) : t(`notas.${n}`));
+  // Ronda 6 del Contador: el 2532 va por año gravable; sus notas nuevas mandan sobre las de la ronda 5.
+  const t6 = useTranslations('finanzasTributarioR6.notas');
+  const nota = (n: string) => (t6.has(n) ? t6(n) : t5.has(n) ? t5(n) : t(`notas.${n}`));
   const locale = useLocale();
   const router = useRouter();
   const { formatear } = useMonedaOrganizacion();

@@ -9,6 +9,11 @@
 -- RONDA 4 (2026-11-09): completar el expediente ya no basta; POS5 lleva el expediente completo (explicación, factura,
 -- estado electrónico «nunca transmitida» con la contingencia descartada, entrega y cobro con soporte) Y la decisión
 -- «retirar_venta» del período 2026-11-01 a 2026-12-31 (fn_iva_correccion_error_decidir). Las cifras no cambian.
+-- RONDA 6 (2026-11-10): se vuelve a correr con las migraciones reescritas. Solo cambian DATOS: el pago a la DIAN
+-- registrado (PAGO2) y el retiro de POS5 los aprueba un segundo usuario (respuesta 8 del Contador: todo lo que mueve la
+-- 2408 y se propone «no afecta»); B = el dueño de la org 137, miembro de la 374 SOLO dentro de la transacción. POS5 ya
+-- cumple lo nuevo de «nunca transmitida»: constancia de que no hubo contingencia y consulta del CUFE/CUDE posterior a la
+-- venta. Ningún esperado cambia.
 -- Proyecto taqjemqjtumhwptchcxk · Organización de pruebas 374 (sede 585). NO DEJA DATOS (begin … rollback).
 --
 -- Requiere 20261108150000, 20261108150500 y 20261108151000 (escritas, SIN aplicar). En la prueba en seco se pegan sus
@@ -336,6 +341,16 @@ begin
 end
 $$;
 set constraints all immediate;
+reset role;
+
+-- Ronda 6 (respuesta 8): un segundo usuario aprueba el pago a la DIAN registrado y el retiro de POS5.
+insert into public.organization_members (organization_id, user_id, role_id, is_active)
+select 374, o.owner_user_id, 2, true from public.organizations o
+ where o.id = 137 and not exists (select 1 from public.organization_members m where m.organization_id = 374 and m.user_id = o.owner_user_id);
+select set_config('request.jwt.claims', (select json_build_object('sub', o.owner_user_id, 'role', 'authenticated')::text from public.organizations o where o.id = 137), true);
+set local role authenticated;
+select public.fn_iva_naturaleza_asiento_aprobar(374, (select v::int from ctx where k = x.k), true, 'Segundo usuario (ronda 6)') is not null
+  from (values ('je_pago2'), ('je_pos5_rev')) x(k);
 reset role;
 
 -- FCAC: asiento de compra tal como lo arma 20261108152000 (B5) con la evaluación previa: el IVA no descontable al costo.

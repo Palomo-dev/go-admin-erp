@@ -28,6 +28,8 @@ import { CamposPruebasIca } from './CamposPruebasIca';
 const NS = 'finanzasTercerosR4.anticipos';
 /** Ronda 5 del Contador: manifestación de no imputación (reteIVA) y período por impuesto. */
 const NS_R5 = 'finanzasTercerosR5.anticipos';
+/** Ronda 6 del Contador: en exceso, el saldo de reteIVA va a los dos períodos siguientes (DUR 1.3.2.3.1). */
+const NS_R6 = 'finanzasTercerosR6.anticipos';
 
 export interface ExcesoRetencionDialogProps {
   anticipo: Pick<FilaAnticipoProveedor, 'id' | 'proveedor' | 'sucursalId' | 'retenciones' | 'pruebasIca'> | null;
@@ -38,6 +40,7 @@ export interface ExcesoRetencionDialogProps {
 export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: ExcesoRetencionDialogProps) {
   const t = useTranslations(NS);
   const tR5 = useTranslations(NS_R5);
+  const tR6 = useTranslations(NS_R6);
   const moneda = useMonedaOrganizacion();
   const idCorreccion = useId();
   const vigentes = useMemo(() => (anticipo?.retenciones ?? []).filter((r) => r.vigente > 0), [anticipo]);
@@ -226,7 +229,7 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
         {clase === 'reteica' && (
           <CamposPruebasIca pruebas={anticipo?.pruebasIca ?? null} valores={ica} onCambio={setIca} tocado={tocado} />
         )}
-        <p className="text-xs text-fg-muted">{tR5('exceso.periodoRegla')}</p>
+        <p className="text-xs text-fg-muted">{tR6('exceso.periodoRegla')}</p>
         <div className="flex items-start gap-2">
           <Checkbox id={idCorreccion} checked={requiereCorreccion} onCheckedChange={(v) => setRequiereCorreccion(v === true)} className="mt-0.5" />
           <Label htmlFor={idCorreccion} className="flex flex-col gap-0.5 font-normal">

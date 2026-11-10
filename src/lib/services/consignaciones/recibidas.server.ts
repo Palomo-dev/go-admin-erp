@@ -416,6 +416,78 @@ export interface ResultadoLiquidarRecibida {
   retenciones: RetencionLiquidacion[];
   /** La remuneración se factura aparte: la liquidación no sustituye esa factura (queda el pendiente). */
   facturaRemuneracion: boolean;
+  /** Ronda 6 (respuesta 12): lo recaudado aplicado en el orden del contrato; null fuera del mandato recibido. */
+  aplicacion: AplicacionRecaudo | null;
+  /** Ronda 6 (respuesta 13): plazo de la entrega por escrito (desde el corte del período, salvo pacto distinto). */
+  entregaEscrita: EntregaEscritaLiquidacion | null;
+}
+
+/** Ronda 6: un concepto del orden de aplicación con lo que tomó de lo recaudado. */
+export interface ConceptoAplicado {
+  concepto: 'remuneracion' | 'gastos_reembolsables' | 'anticipos' | 'derechos_frente_al_dueno';
+  monto: number;
+  aplicado: number;
+  porCobrarAlDueno: number | null;
+  enEspera: number | null;
+  motivo: string | null;
+}
+
+export interface AplicacionRecaudo {
+  recaudado: number;
+  conceptos: ConceptoAplicado[];
+  remuneracionPorCobrarAlDueno: number;
+  saldoParaElDueno: number;
+  compensacionPactada: boolean;
+}
+
+export interface EntregaEscritaLiquidacion {
+  medio: string;
+  plazoDias: number;
+  plazoDesde: 'corte_del_periodo' | 'fecha_de_liquidacion';
+  cuentaDesde: string;
+  vence: string;
+  estado: 'por_entregar' | 'vencida';
+}
+
+type RespuestaAplicacion = {
+  recaudado: number;
+  conceptos: { concepto: ConceptoAplicado['concepto']; monto: number; aplicado: number; por_cobrar_al_dueno?: number | null; en_espera?: number | null;
+               motivo?: string | null }[];
+  remuneracion_por_cobrar_al_dueno: number;
+  saldo_para_el_dueno: number;
+  compensacion_pactada: boolean;
+};
+
+type RespuestaEntregaEscrita = {
+  medio: string;
+  plazo_dias: number;
+  plazo_desde: EntregaEscritaLiquidacion['plazoDesde'];
+  cuenta_desde: string;
+  vence: string;
+  estado: EntregaEscritaLiquidacion['estado'];
+};
+
+function aplicacionDeRespuesta(a: RespuestaAplicacion | null | undefined): AplicacionRecaudo | null {
+  if (!a) return null;
+  return {
+    recaudado: num(a.recaudado),
+    conceptos: (a.conceptos ?? []).map((c) => ({
+      concepto: c.concepto,
+      monto: num(c.monto),
+      aplicado: num(c.aplicado),
+      porCobrarAlDueno: numONulo(c.por_cobrar_al_dueno ?? null),
+      enEspera: numONulo(c.en_espera ?? null),
+      motivo: c.motivo ?? null,
+    })),
+    remuneracionPorCobrarAlDueno: num(a.remuneracion_por_cobrar_al_dueno),
+    saldoParaElDueno: num(a.saldo_para_el_dueno),
+    compensacionPactada: Boolean(a.compensacion_pactada),
+  };
+}
+
+function entregaDeRespuesta(e: RespuestaEntregaEscrita | null | undefined): EntregaEscritaLiquidacion | null {
+  if (!e) return null;
+  return { medio: e.medio, plazoDias: num(e.plazo_dias), plazoDesde: e.plazo_desde, cuentaDesde: e.cuenta_desde, vence: e.vence, estado: e.estado };
 }
 
 type RespuestaLiquidar = {
@@ -430,6 +502,8 @@ type RespuestaLiquidar = {
   remuneracion_por_devengar: number;
   retenciones: { id: string; ambito: AmbitoRetencion; clase: ClaseRetencion; pagador: RetencionLiquidacion['pagador']; grupo: RetencionLiquidacion['grupo'];
                  base: number | null; tarifa: number | null; valor: number | null; estado: RetencionLiquidacion['estado']; motivo: string | null }[];
+  aplicacion?: RespuestaAplicacion | null;
+  entrega_escrita?: RespuestaEntregaEscrita | null;
 };
 
 /**
@@ -463,7 +537,22 @@ export async function liquidarRecibida(
     remuneracionPorDevengar: num(r.remuneracion_por_devengar),
     retenciones: (r.retenciones ?? []).map((x) => ({ ...x, base: numONulo(x.base), tarifa: numONulo(x.tarifa), valor: numONulo(x.valor), conciliado: null })),
     facturaRemuneracion: Boolean(r.factura_remuneracion),
+    aplicacion: aplicacionDeRespuesta(r.aplicacion),
+    entregaEscrita: entregaDeRespuesta(r.entrega_escrita),
   };
+}
+
+/**
+ * Ronda 6 (respuesta 13): constancia de la entrega de la liquidación por escrito al dueño (fecha, medio pactado y
+ * soporte). Cierra el pendiente «por entregar» y, si había vencido, deja escrito que se entregó fuera de plazo
+ * (`fn_consignacion_liquidacion_entrega_registrar`).
+ */
+export function registrarEntregaEscrita(ctx: Ctx, liquidacionId: string, s: { fecha: string; medio: string; soporte: string }) {
+  return rpc<{ liquidacion_id: string; repetida: boolean; entregada_el: string; medio: string; vence: string; fuera_de_plazo: boolean }>(
+    ctx,
+    'fn_consignacion_liquidacion_entrega_registrar',
+    { p_liquidacion: liquidacionId, p_fecha: s.fecha, p_medio: s.medio, p_soporte: s.soporte, p_organization_id: ctx.organizationId },
+  );
 }
 
 /** Reconocer la remuneración al cumplirse la obligación posterior del contrato, con evidencia. */
@@ -498,7 +587,15 @@ export function registrarRetencionPracticada(ctx: Ctx, retencionId: string, s: S
     repetida?: boolean;
     valor: number;
     cobro_id?: string | null;
-    abono_factura?: { factura_id: string; valor: number; estado: 'por_aplicar'; saldo_factura: number; saldo_real_exigible: number } | null;
+    /** Ronda 6: con 20261110100000 el abono nace «aplicada» y el saldo de la factura ya lo cuenta (como un pago). */
+    abono_factura?: {
+      factura_id: string;
+      valor: number;
+      estado: 'por_aplicar' | 'aplicada';
+      saldo_factura_antes?: number;
+      saldo_factura: number;
+      saldo_real_exigible: number;
+    } | null;
     certificado?: 'pendiente_de_soporte';
   }>(ctx, 'fn_consignacion_retencion_practicada', {
     p_retencion: retencionId,

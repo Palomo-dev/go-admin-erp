@@ -40,6 +40,13 @@
 --     debe ser su suma (SOPORTE_ADUANERO_BASE_NO_SUMA). El borrador compara además la base de la línea con esa suma.
 --   · fn_iva_soporte_aduanero_faltantes(soporte, base) dice qué le falta a la línea para ir a la 47.
 --
+-- RONDA 6 DEL CONTADOR (2026-11-10, docs/contador/RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md, respuesta 7), reescrita sin
+-- aplicar. Importación EXENTA: si viene de zona franca va a la casilla 48; si no, a la 47 (el instructivo de esa casilla
+-- cita el art. 477 ET); nunca a la 54, que es de compras nacionales. Lleva el mismo soporte aduanero y el ARTÍCULO DE LA
+-- EXENCIÓN. El soporte suma dos datos: norma_exencion (debe citar un artículo, como la norma de exclusión:
+-- SOPORTE_ADUANERO_NORMA_INVALIDA) y zona_franca (sí o no). fn_iva_soporte_aduanero_faltantes(soporte, base, tratamiento)
+-- pide a la exenta el artículo de la exención y la zona franca en lugar de la norma y el fundamento de la exclusión.
+--
 -- Qué agrega (aditivo: columnas NULL-ables sin DEFAULT, sin DROP, sin cambios de tipo; no toca totales):
 --   1. Por línea (invoice_items: venta, nota crédito/débito, compra, documento soporte; sale_items: POS):
 --        iva_tratamiento     gravada | exenta | excluida | no_sujeta
@@ -146,13 +153,16 @@ comment on column public.sale_items.iva_tratamiento is
 comment on column public.sale_items.iva_clasificacion_origen is
   'sugerida | inferida (la tarifa se dedujo porque el IVA coincide aritméticamente con UNA tarifa configurada: no prueba su procedencia legal) | heredada | manual.';
 comment on column public.invoice_items.iva_soporte_aduanero is
-  'Importación excluida (casilla 47): { tipo_documento, numero, fecha, adjunto, valor_aduana, aranceles, valor?, norma_exclusion, fundamento_exclusion, modalidad, explicacion? }. El documento depende de la modalidad y la base es valor en aduana + aranceles; sin los datos completos la línea no va a la 47 (rondas 4 y 5 del Contador).';
+  'Importación no gravada (casillas 47 y 48): { tipo_documento, numero, fecha, adjunto, valor_aduana, aranceles, valor?, norma_exclusion, fundamento_exclusion, modalidad, explicacion?, norma_exencion?, zona_franca? }. El documento depende de la modalidad y la base es valor en aduana + aranceles. Excluida: norma y fundamento de la exclusión (47). Exenta: artículo de la exención y zona franca (sí → 48, no → 47). Sin los datos completos la línea no va a su casilla (rondas 4 a 6 del Contador).';
 
 -- Ronda 5: qué le falta a un soporte aduanero para que su línea vaya a la casilla 47 (vacío = completo). p_base = base de
 -- la línea (NULL = no se compara). Códigos: el nombre del dato que falta, 'explicacion' (otro documento aduanero),
 -- 'documento_no_corresponde' (el documento no es el de la modalidad) y 'base_no_coincide' (base ≠ valor en aduana +
 -- aranceles, ± $1).
-create or replace function public.fn_iva_soporte_aduanero_faltantes(p jsonb, p_base numeric default null)
+-- Ronda 6 (respuesta 7): p_tratamiento. La importación EXENTA lleva el mismo soporte aduanero, el ARTÍCULO DE LA EXENCIÓN
+-- (norma_exencion, p. ej. «ET art. 477») en lugar de la norma y el fundamento de la exclusión, y si viene o no de ZONA
+-- FRANCA (zona_franca: sí → casilla 48; no → casilla 47). Sin tratamiento (o excluida): lo de la ronda 5.
+create or replace function public.fn_iva_soporte_aduanero_faltantes(p jsonb, p_base numeric default null, p_tratamiento text default null)
 returns text[]
 language sql
 immutable
@@ -166,8 +176,14 @@ as $function$
       case when nullif(btrim(coalesce(p ->> 'adjunto', '')), '') is null then 'adjunto' end,
       case when jsonb_typeof(p -> 'valor_aduana') is distinct from 'number' then 'valor_aduana' end,
       case when jsonb_typeof(p -> 'aranceles') is distinct from 'number' then 'aranceles' end,
-      case when coalesce(p ->> 'norma_exclusion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]' then 'norma_exclusion' end,
-      case when nullif(btrim(coalesce(p ->> 'fundamento_exclusion', '')), '') is null then 'fundamento_exclusion' end,
+      case when p_tratamiento is distinct from 'exenta'
+                and coalesce(p ->> 'norma_exclusion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]' then 'norma_exclusion' end,
+      case when p_tratamiento is distinct from 'exenta'
+                and nullif(btrim(coalesce(p ->> 'fundamento_exclusion', '')), '') is null then 'fundamento_exclusion' end,
+      -- Ronda 6: la exenta cita el artículo de la exención y dice si viene de zona franca.
+      case when p_tratamiento = 'exenta'
+                and coalesce(p ->> 'norma_exencion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]' then 'norma_exencion' end,
+      case when p_tratamiento = 'exenta' and jsonb_typeof(p -> 'zona_franca') is distinct from 'boolean' then 'zona_franca' end,
       case when nullif(btrim(coalesce(p ->> 'modalidad', '')), '') is null then 'modalidad' end,
       case when p ->> 'tipo_documento' = 'otro_documento_aduanero'
                 and char_length(btrim(coalesce(p ->> 'explicacion', ''))) < 20 then 'explicacion' end,
@@ -181,10 +197,10 @@ as $function$
     ]::text[], null) end;
 $function$;
 
-comment on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric) is
-  'Ronda 5 del Contador: lo que le falta al soporte aduanero de una importación excluida para ir a la casilla 47 (vacío = completo): datos, explicación del otro documento, documento que no corresponde a la modalidad y base distinta de valor en aduana + aranceles.';
-revoke all on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric) from public, anon;
-grant execute on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric) to authenticated, service_role;
+comment on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric, text) is
+  'Rondas 5 y 6 del Contador: lo que le falta al soporte aduanero de una importación no gravada para ir a su casilla (vacío = completo): datos, explicación del otro documento, documento que no corresponde a la modalidad y base distinta de valor en aduana + aranceles. Excluida: norma y fundamento de la exclusión (casilla 47). Exenta: artículo de la exención y procedencia de zona franca (casilla 48 si viene de zona franca; si no, 47).';
+revoke all on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric, text) from public, anon;
+grant execute on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric, text) to authenticated, service_role;
 
 -- Bitácora de cambios hechos por personas (las sugerencias del disparador no se registran: son el valor inicial).
 create table if not exists public.iva_clasificacion_cambios (
@@ -596,7 +612,10 @@ begin
     end if;
     if exists (select 1 from jsonb_object_keys(v_adu) k
                 where k not in ('tipo_documento', 'numero', 'fecha', 'adjunto', 'valor_aduana', 'aranceles', 'valor',
-                                'norma_exclusion', 'fundamento_exclusion', 'modalidad', 'explicacion'))
+                                'norma_exclusion', 'fundamento_exclusion', 'modalidad', 'explicacion',
+                                -- Ronda 6: importación exenta (artículo de la exención y procedencia de zona franca).
+                                'norma_exencion', 'zona_franca'))
+       or (v_adu ? 'zona_franca' and jsonb_typeof(v_adu -> 'zona_franca') not in ('boolean', 'null'))
        -- Ronda 5: la guía firmada de tráfico postal o envío urgente ES la declaración simplificada (un solo tipo).
        or (v_adu ? 'tipo_documento' and coalesce(v_adu ->> 'tipo_documento', '') not in
              ('declaracion_importacion', 'declaracion_simplificada', 'otro_documento_aduanero'))
@@ -620,6 +639,11 @@ begin
     -- Ronda 5: la norma de exclusión se cita (un artículo: art. 424 ET y concordantes), no se describe.
     if v_adu ? 'norma_exclusion' and (char_length(btrim(coalesce(v_adu ->> 'norma_exclusion', ''))) not between 5 and 300
                                       or coalesce(v_adu ->> 'norma_exclusion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]') then
+      raise exception 'SOPORTE_ADUANERO_NORMA_INVALIDA' using errcode = '22023';
+    end if;
+    -- Ronda 6: el artículo de la exención también se cita (p. ej. «ET art. 477»).
+    if v_adu ? 'norma_exencion' and (char_length(btrim(coalesce(v_adu ->> 'norma_exencion', ''))) not between 5 and 300
+                                     or coalesce(v_adu ->> 'norma_exencion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]') then
       raise exception 'SOPORTE_ADUANERO_NORMA_INVALIDA' using errcode = '22023';
     end if;
     -- Ronda 5: el documento es el que exige la modalidad (Decreto 1165 de 2019, arts. 253 y 262).

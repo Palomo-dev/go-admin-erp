@@ -1,0 +1,39 @@
+Resultado de 28_perfil_ronda6_contador.sql (RONDA 6 del Contador, perfil: respuesta 6, formato 2532 por año gravable)
+Corrida: 2026-11-10, proyecto taqjemqjtumhwptchcxk, org 374, zona America/Bogota. Una sola transacción, sin datos al final.
+Archivos EXACTOS (md5 del disco, comprobados dentro de la base antes de ejecutar):
+  20261108140500  4b00bf10bf99ff2a97e2e89ff0480811
+  20261108160000  85fd17321a7e85d85a58916cb2f84c95
+  20261108160500  a3e330a9cf7b01c6da242b7d3f3a2b8c
+  20261108161000  2153ce37f896697ed3c6b2e506d84db0
+  20261108161500  5ea9208264ed61f452be374617f55e60
+  20261108165000  1ec6641bdf74dfc15163d0753982309f
+  prueba 28       9b125a67637136a2201585accfdd1905
+Método: el de la prueba 27 (trozos ≤ 24 KB como objetos grandes, md5 por trozo y por archivo; migraciones completas en
+orden de prefijo en «MIGRACIONES»; sin «begin;», «rollback;» ni el SELECT final; la transacción termina en excepción =
+rollback). Objetos grandes borrados al final; la base quedó sin la tabla tributario_rte_2532_anio, sin la función
+fn_tributario_2532_registrar y sin ninguna columna ni dato de la prueba.
+Usuarios: A = el miembro activo de la org 374; X = un usuario sin pertenencia.
+Primera corrida (la que vale): 20 verificaciones · 20 ok · 0 fallas.
+
+ n | bloque | verificación → obtenido
+---+--------+------------------------------------------------------------------------------------------------------------
+ 1 | P | anon: registrar el dato del 2532 → 42501 permission denied…
+ 2 | P | Usuario sin pertenencia a la organización → 42501
+ 3 | P | Escritura directa en la tabla (sin la función) → 42501 permission denied for table tributario_rte_2532_anio
+ 4 | P | Año gravable fuera de rango → 22023 ANIO_INVALIDO
+ 5 | P | Sin decir si recibió → 22023 DATOS_INVALIDOS
+ 6 | P | Un valor que no es sí ni no → 22023 DATOS_INVALIDOS
+ 7 | P | 2025: «no recibió» sin la constancia → 22023 CONSTANCIA_2532_REQUERIDA
+ 8 | P | 2025: constancia de más de 1.000 caracteres → 22023 TEXTO_LARGO
+ 9 | P | 2025: «no recibió», con la constancia de lo verificado → el 2532 no aplica → OK no_aplica
+10 | P | 2026: recibió cooperación internacional no reembolsable → el 2532 aplica → OK aplica
+11 | P | El miembro lee los dos años (RLS), cada uno con su dato y quién lo registró → 2025 false con constancia A · 2026 true sin constancia A
+12 | P | 2026 se registra otra vez («no recibió», con constancia): reemplaza el dato del año → OK no_aplica
+13 | P | Sigue habiendo una sola fila por año → 2025 1 · 2026 1
+14 | P | 2026 se quita (null): vuelve a «por confirmar» → OK
+15 | P | Queda solo el dato de 2025 → 2025
+16 | P | Guardar una vigencia de cooperativa con la clave vieja «no recibió» y sin constancia: se ignora (no exige la constancia) → OK
+17 | P | organization_tax_profiles ya no tiene las columnas del 2532 de la ronda 5 → 0
+18 | P | La tabla exige la constancia cuando no recibió (restricción, aun sin la función) → 23514
+19 | P | anon no tiene permisos sobre la tabla; authenticated solo lectura → anon - · authenticated SELECT
+20 | P | La función: SECURITY DEFINER, sin ejecución para anon ni public → definer · anon false · public false

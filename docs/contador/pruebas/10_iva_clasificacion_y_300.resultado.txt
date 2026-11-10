@@ -1,3 +1,16 @@
+RONDA 6 (2026-11-10) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108150000 83e79e4ecaf01b8cbfa945cb207c1290 · 20261108150500 f05449117c12cf04af6812ff404a49f3 ·
+     20261108151000 a91fa17e57a06af04c914dc45286d7d8 · prueba 10 4dd29abdf002e75bac98822759924ceb
+Método: el de la ronda 5, con los archivos de la ronda 6: cada archivo subido por trozos (≤ 24 KB) como objeto grande
+de Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback),
+zona America/Bogota. Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 76 verificaciones · 76 ok · 0 fallas. Solo cambian DATOS: el segundo usuario (el dueño de la org 137,
+miembro de la 374 solo dentro de la transacción) aprueba el pago a la DIAN registrado (PAGO2) y el retiro de POS5
+(respuesta 8). Ningún esperado cambia: PAGO2, POS5 y POS5_REV siguen «no afecta» y el resumen sigue en generado
+147.500 · descontable 380.315, conciliado.
+
+── Corridas anteriores ──
 RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
 md5: 20261108150000 746ccbabbb6f05b8b22a043b4314b777 · 20261108150500 53bfcba981ac8811b57ac97e86120cad · 20261108151000 69666ff755350aaa4bf0a678cbf42a65 · prueba 10 83919376c6959aee618f8164718b110f
 Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de

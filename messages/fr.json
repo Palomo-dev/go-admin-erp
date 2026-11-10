@@ -49531,6 +49531,39 @@
       "constancia_2532_requerida": "Si le formulaire 2532 ne s’applique pas, consignez ce qui a été vérifié."
     }
   },
+  "finanzasTributarioR6": {
+    "motivos": {
+      "no_afecta_sin_aprobacion": "Paiement à la DIAN ou virement entre sous-comptes enregistré sans l’approbation d’un second utilisateur",
+      "correccion_sin_aprobacion": "Correction d’erreur : le retrait de la vente n’a pas l’approbation d’un second utilisateur (autre que celui qui l’a enregistrée et celui qui l’a décidée) ; la vente reste",
+      "correccion_dian_sin_efecto": "Correction d’erreur : la période de la vente a déjà été déclarée et la demande de correction auprès de la DIAN (art. 589 du Code fiscal) n’est pas enregistrée, est en cours ou a été rejetée ; la vente reste",
+      "importacion_zona_franca_excluida_por_confirmar": "Importation exclue provenant d’une zone franche : la case (47 ou 48) est à confirmer avec le comptable",
+      "importacion_no_excluida_no_va_47": "Importation non assujettie : elle ne va pas à la case 47 (la case 47 reçoit l’exclue et l’exonérée qui ne vient pas d’une zone franche)",
+      "correccion_declaracion_no_corregible": "Correction d’erreur : la déclaration de la période de la vente est définitive, hors du délai de correction ou sans échéance ni caractère définitif enregistrés ; la vente reste. Référence : le délai général est de trois ans (art. 714 du Code fiscal) ; il ne décide pas, il existe des délais spéciaux",
+      "cierre_sin_aprobacion": "Clôture enregistrée sans l’approbation d’un second utilisateur"
+    },
+    "errores": {
+      "correccion_dian_invalida": "La demande de correction auprès de la DIAN exige un numéro, une date, un résultat (en cours, acceptée, rejetée ou délai expiré), la date du résultat et le justificatif.",
+      "correccion_dian_fecha_invalida": "La date de la demande ne peut pas être antérieure au dépôt de la déclaration ni future, et celle du résultat ne peut pas être antérieure à la demande.",
+      "correccion_dian_termino_no_vencido": "« Délai expiré » ne s’enregistre que six mois après la demande sans réponse de la DIAN (art. 589 du Code fiscal).",
+      "correccion_dian_sin_registro": "Pour retirer une vente d’une période déclarée, enregistrez d’abord la demande de correction déposée auprès de la DIAN, avec son numéro, sa date et son résultat (art. 589 du Code fiscal).",
+      "correccion_dian_sin_resultado": "La demande de correction auprès de la DIAN est en cours : la vente est retirée quand elle est acceptée ou que le délai expire sans réponse.",
+      "correccion_dian_rechazada": "La DIAN a rejeté la demande de correction : la vente ne peut pas être retirée de cette déclaration.",
+      "aprobacion_no_requerida": "Cet enregistrement n’a pas besoin de l’approbation d’un second utilisateur : seuls ceux proposés « sans effet » la requièrent (paiement à la DIAN, virement entre sous-comptes, clôture et retrait de la vente).",
+      "anio_invalido": "L’année fiscale n’est pas valide.",
+      "contingencia_invalida": "Le justificatif de la contingence n’est pas valide, ou la panne commence après sa fin."
+    },
+    "conceptos": {
+      "importaciones_zona_franca_no_gravadas": "Importations non imposées provenant d’une zone franche"
+    },
+    "notas": {
+      "rte_2532_aplica": "Formulaire 2532 : s’applique pour cette année fiscale, car la coopérative a reçu cette année-là des dons ou une coopération internationale non remboursable.",
+      "rte_2532_no_aplica": "Formulaire 2532 : ne s’applique pas pour cette année fiscale ; il existe une attestation que la coopérative n’a reçu cette année-là ni dons ni coopération internationale non remboursable.",
+      "rte_2532_por_confirmar": "Formulaire 2532 : à confirmer pour cette année fiscale. Il ne s’applique que si la coopérative a reçu cette année-là des dons ou une coopération internationale non remboursable."
+    },
+    "firmeza": {
+      "referencia": "Référence, pas une décision : avec le délai général de l’art. 714 du Code fiscal (trois ans à compter de l’échéance, ou du dépôt s’il était tardif), la déclaration deviendrait définitive le {fecha}. Il existe des délais spéciaux ; une personne enregistre le caractère définitif."
+    }
+  },
   "finanzasTercerosR5": {
     "anticipos": {
       "exceso": {
@@ -49580,6 +49613,34 @@
       "fecha_distinta_del_cobro": "La date de la retenue doit être celle de l'encaissement.",
       "retencion_excede_saldo_factura": "La retenue dépasse ce que la facture doit encore : le compte client serait trop crédité.",
       "error_desconocido": "L'opération n'a pas pu être effectuée."
+    }
+  },
+  "finanzasTercerosR6": {
+    "anticipos": {
+      "exceso": {
+        "periodoRegla": "Chaque impôt fixe la période : impôt sur le revenu, celle du remboursement (DUR 1.2.4.16) ; retenue de TVA, celle du remboursement, et le solde non absorbé sur les deux périodes suivantes, avec la demande écrite et la déclaration écrite de non-imputation (DUR 1.3.2.3.1) ; retenue ICA, celle de la procédure municipale."
+      },
+      "retenciones": {
+        "motivos": {
+          "aiu_anticipo_sin_costo_directo": "Acompte AIU sans coût direct : il reste en attente jusqu’à la validation du contrat et de la nature du paiement. Sa base n’est pas tenue pour acquise avant la clôture du contrat.",
+          "aiu_contrato_cerrado": "Le contrat AIU est déjà clôturé : il n’accepte plus de nouvelles opérations."
+        }
+      },
+      "errores": {
+        "aiu_contrato_sin_validar": "Validez d’abord le contrat AIU, puis la nature du paiement anticipé.",
+        "error_desconocido": "L’opération n’a pas pu être effectuée."
+      }
+    }
+  },
+  "consignacionesR6": {
+    "errores": {
+      "derechos_fuera_del_orden_de_aplicacion": "L’ordre d’imputation du contrat n’inclut pas les droits envers le propriétaire : ils se recouvrent auprès du propriétaire, ils ne se déduisent pas.",
+      "anticipos_fuera_del_orden_de_aplicacion": "L’ordre d’imputation du contrat n’inclut pas les acomptes : l’acompte ne se compense pas avec ce qui a été encaissé pour le propriétaire.",
+      "liquidacion_sin_entrega_escrita": "Le contrat de cette note ne prévoit pas de liquidation écrite.",
+      "entrega_ya_registrada": "La remise écrite de cette liquidation a déjà été enregistrée avec d’autres données.",
+      "medio_distinto_del_pactado": "Ce n’est pas le moyen que le contrat fixe pour la liquidation écrite.",
+      "fecha_anterior_a_la_liquidacion": "La remise ne peut pas être antérieure à la liquidation.",
+      "error_desconocido": "L’opération n’a pas pu être effectuée."
     }
   }
 }

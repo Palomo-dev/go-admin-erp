@@ -49,6 +49,8 @@ import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSald
 import { anticiposProveedorService } from './anticiposProveedorService';
 
 const NS = 'finanzasTercerosR4.anticipos';
+/** Ronda 6 del Contador: motivos nuevos del AIU (anticipo sin costo directo, contrato cerrado). */
+const NS_R6 = 'finanzasTercerosR6.anticipos';
 /** Tarifas del IVA para un componente gravado; la base las valida contra los impuestos de la organización. */
 const TARIFAS_COMPONENTE = [19, 5] as const;
 const SIN_ELEGIR = '__sin__';
@@ -75,6 +77,7 @@ const llevaIva = (t: TratamientoComponente) => TRATAMIENTOS_CON_IVA.includes(t);
 
 export function SeccionRetencionesAnticipo({ proveedorId, monto, tocado, onCambio }: SeccionRetencionesAnticipoProps) {
   const t = useTranslations(NS);
+  const tR6 = useTranslations(NS_R6);
   const moneda = useMonedaOrganizacion();
   const idNaturaleza = useId();
   const idTerritorial = useId();
@@ -180,7 +183,8 @@ export function SeccionRetencionesAnticipo({ proveedorId, monto, tocado, onCambi
   const motivoTexto = (motivo: string | null) => {
     if (!motivo) return null;
     const clave = `retenciones.motivos.${motivo}`;
-    return t.has(clave) ? t(clave) : motivo;
+    if (t.has(clave)) return t(clave);
+    return tR6.has(clave) ? tR6(clave) : motivo;
   };
 
   const agregarFila = () => {

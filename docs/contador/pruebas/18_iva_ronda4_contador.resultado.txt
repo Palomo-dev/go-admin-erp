@@ -1,3 +1,98 @@
+RONDA 6 (2026-11-10) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · zona America/Bogota · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 83e79e4ecaf01b8cbfa945cb207c1290 ·
+     20261108150500 f05449117c12cf04af6812ff404a49f3 · 20261108151000 a91fa17e57a06af04c914dc45286d7d8 ·
+     20261108152000 2922316e3deca529ebbc1d232e883e9d · 20261110150000 f19d51b97cea4c56a57ae96279a49a7d (nueva) ·
+     prueba 18 ef281530bee21519a44cd80220f020a6
+Método: el de la ronda 5 (trozos ≤ 24 KB como objetos grandes, md5 por trozo y por archivo; migraciones completas en
+orden de prefijo; una sola transacción que termina en excepción = rollback). Objetos grandes borrados al final.
+Resultado: 78 verificaciones · 78 ok · 0 fallas, en la primera corrida. Antes 76: +2 filas (43 y 44, el segundo usuario
+aprueba los retiros de PA y PO).
+Datos que cambian: la declaración septiembre–octubre registra la solicitud de corrección ante la DIAN, aceptada; PE lleva
+una falla del día siguiente a la venta (no la cubre) para seguir probando «contingencia sin descartar» por las 48 horas.
+Esperados que cambian: 46 y 49 (FCM y FCB, motivo «más de una línea»), 70 a 72 (versión 7 del borrador).
+
+ n | bloque | verificación → obtenido
+---+--------+------------------------------------------------------------------------------------------------------------
+ 1 | 3 | Soporte aduanero en una línea que no es importación → SOPORTE_ADUANERO_SOLO_IMPORTACION
+ 2 | 3 | Modalidad de importación que no existe → SOPORTE_ADUANERO_INVALIDO
+ 3 | 3 | Fecha del documento aduanero imposible → SOPORTE_ADUANERO_INVALIDO
+ 4 | 3 | Soporte aduanero como texto libre → SOPORTE_ADUANERO_INVALIDO
+ 5 | 2 | Devolución de una compra con un comprobante interno → DEVOLUCION_SOPORTE_INVALIDO
+ 6 | 2 | Devolución documentada sobre el asiento existente (NC-R4-1) → OK
+ 7 | 2 | La misma nota del proveedor sobre otro asiento → DEVOLUCION_DUPLICADA
+ 8 | 2 | Otra nota que, sumada a la primera, devuelve más que la base de la línea → DEVOLUCION_EXCEDE_LINEA
+ 9 | 2 | Documento soporte con nota crédito (no con su nota de ajuste) → DEVOLUCION_DS_SIN_NOTA_AJUSTE
+10 | 4 | PA: expediente completo («nunca transmitida», contingencia descartada, sin entrega ni cobro) → OK
+11 | 4 | PB: expediente incompleto (solo el soporte) → OK
+12 | 4 | PC: factura validada por la DIAN, con su nota crédito electrónica → OK
+13 | 4 | PD: rechazada en la validación de la DIAN, pero con una nota crédito registrada → OK
+14 | 4 | PE: «nunca transmitida» sin descartar la contingencia → OK
+15 | 4 | PF: hubo entrega de la mercancía → OK
+16 | 4 | PG: rechazo COMERCIAL del comprador registrado como anulación ante la DIAN → DOCUMENTO_VALIDO_NO_SE_ANULA
+17 | 4 | PO (venta de octubre, reversa de noviembre): expediente completo, sin marcar la corrección → OK
+18 | 4 | Corrección con un estado electrónico que no existe → ESTADO_ELECTRONICO_INVALIDO
+19 | 4 | PB: lo que le falta al expediente → {explicacion_del_error,factura,estado_electronico,entrega_o_prestacion,cobro,documento_electronico_resuelto,corrige_declaracion_anterior}
+20 | 5 | Cierre sin soporte → SOPORTE_REQUERIDO
+21 | 5 | Cierre con soporte y sin explicación → CIERRE_REQUIERE_EXPLICACION
+22 | 4 | PB: decidir con el expediente incompleto → EXPEDIENTE_INCOMPLETO [explicacion_del_error,factura,estado_electronico,entrega_o_prestacion,cobro,documento_electronico_resuelto,corrige_declaracion_anterior]
+23 | 4 | PA: tratamiento que no existe → TRATAMIENTO_INVALIDO
+24 | 4 | PA: sin fundamento → FUNDAMENTO_REQUERIDO
+25 | 4 | PA: un mes (no es un período fiscal del IVA) → PERIODO_NO_FISCAL
+26 | 4 | PA: rango que cruza el año (noviembre a febrero) → PERIODO_NO_FISCAL
+27 | 4 | PA: período que no contiene la venta → PERIODO_NO_CORRESPONDE_A_LA_VENTA
+28 | 4 | PA: «nota crédito» sin nota crédito electrónica en el expediente → NOTA_CREDITO_REQUERIDA
+29 | 4 | PA: retirar la venta (noviembre–diciembre) → OK retirar_venta
+30 | 4 | PC: retirar una venta con factura validada → DOCUMENTO_VALIDO_REQUIERE_NOTA_CREDITO
+31 | 4 | PC: tratar por nota crédito (período de la nota) → OK nota_credito
+32 | 4 | PD: retirar la venta y además descontar una nota crédito → NOTA_CREDITO_Y_RETIRO
+33 | 4 | PE: «nunca transmitida» sin descartar la contingencia (consulta dentro de las 48 horas) → CONTINGENCIA_SIN_DESCARTAR [plazo_48_horas]
+34 | 4 | PF: hubo entrega: la operación existió → OPERACION_EXISTIO
+35 | 4 | PF: mantener la venta → OK mantener_venta
+36 | 4 | PO: retirar en noviembre–diciembre (la venta es de octubre) → PERIODO_NO_CORRESPONDE_A_LA_VENTA
+37 | 4 | PO: septiembre–diciembre mezcla el bimestre declarado con otro período → PERIODO_NO_COINCIDE_CON_DECLARADO
+38 | 4 | PO: bimestre declarado sin marcar la corrección de esa declaración → DEBE_CORREGIR_DECLARACION
+39 | 4 | PO: expediente con «sí corresponde corregir la declaración de septiembre–octubre» → OK
+40 | 4 | PO: retirar la venta en SU bimestre (septiembre–octubre) → OK retirar_venta
+41 | 5 | Cierre con soporte y explicación → OK
+42 | 5 | Ronda 5: el cierre lo aprueba un segundo usuario → aprobado
+43 | 4 | Ronda 6: el segundo usuario aprueba el retiro de PA → aprobado
+44 | 4 | Ronda 6: el segundo usuario aprueba el retiro de PO → aprobado
+45 | 1 | FCI: IVA no descontable (19.000) mayor que el IVA de cabecera (10.000) → SIN ASIENTO · iva_no_descontable_por_corregir · IVA no descontable de las líneas (19000…
+46 | 1 | FCM: cabecera con un bien y un servicio → SIN ASIENTO · iva_no_descontable_por_corregir · IVA no descontable en una compra de más de una línea…
+47 | 1 | FCSV: servicio no descontable hacia la cuenta de inventarios → SIN ASIENTO · iva_no_descontable_por_corregir · IVA no descontable de servicios: la cuenta de cabecera de la compra es de inventarios…
+48 | 1 | DSI: documento soporte por líneas con IVA no descontable mayor que su IVA → SIN ASIENTO · pendiente · IVA no descontable de las líneas (19000…
+49 | 1 | FCB (rondas 5 y 6): dos líneas con IVA no descontable y cuenta de cabecera → SIN ASIENTO · iva_no_descontable_por_corregir · más de una línea
+50 | 3 | Casilla 47: solo la importación con soporte aduanero completo → 300000
+51 | 3 | FIM1 (solo texto en el fundamento): pendiente → importacion_sin_soporte_aduanero · base 200000
+52 | 3 | FIM3 (servicio del exterior, aun con soporte): no va a la 47 → importacion_servicio_no_va_47 · base 80000
+53 | 2 | NCR1 en el borrador: base 100.000 en la 56 y 19.000 en la 66 → casilla · 56 100000 · 66 19000
+54 | 4 | Borrador 1 · PA con expediente completo y sin decisión: la venta SIGUE en la 59 → en 59 · correccion_sin_decision
+55 | 4 | Borrador 1 · PO (venta de octubre): la reversa de noviembre sin decisión → no en 59 · correccion_sin_decision
+56 | 4 | Borrador 2 · PA con decisión «retirar_venta» (aprobada): sale de la 59; venta y reversa no afectan → no en 59 · no_afecta
+57 | 4 | Borrador 2 · PC tratada por nota crédito → en 59 · correccion_por_nota_credito
+58 | 4 | Borrador 2 · PF «mantener la venta» → en 59 · correccion_mantiene_venta
+59 | 4 | Borrador 2 · PB incompleta → en 59 · correccion_incompleta
+60 | 4 | Borrador 2 · PD (nota crédito + retiro rechazado) → en 59 · correccion_sin_decision
+61 | 4 | Borrador 2 · PO: la reversa de noviembre no afecta y NO resta en noviembre → no en 59 · no_afecta
+62 | 4 | Borrador 2 · PA: la venta aparece en «otros» como corrección que no afecta → correccion_error / no_afecta
+63 | 4 | Borrador 2 · PO: la reversa señala que su venta es de otro período y lleva la decisión → true · retirar_venta 2026-09-01→2026-10-31
+64 | 4 | Septiembre–octubre · la venta PO sale de la 59 de SU bimestre → no en 59 · correccion_error / no_afecta
+65 | 4 | Borrador 2 · alerta de corrección de una declaración anterior: PO → PO_REV · retirar_venta · PRUEBA-300-SEPOCT
+66 | 5 | Línea POS: origen de la clasificación «inferida» → gravada / 19 / inferida
+67 | 5 | Borrador 2 · PI en la 59 con la señal «tarifa_inferida» y la alerta → en 59 inferida · alerta 7 línea(s)
+68 | 5 | Borrador 1 · asiento de cierre sin registrar: señal, no exclusión → sin_registro / sugerida cierre / pendiente
+69 | 5 | Borrador 2 · cierre registrado con soporte y explicación (aprobado) → cierre / sugerida — / no_afecta
+70 | R | Borrador b1: conciliado, nunca aprobado fiscalmente → conciliado · diferencia 0 · aprobado false · versión 7
+71 | R | Borrador b2: conciliado, nunca aprobado fiscalmente → conciliado · diferencia 0 · aprobado false · versión 7
+72 | R | Borrador bso: conciliado, nunca aprobado fiscalmente → conciliado · diferencia 0 · aprobado false · versión 7
+73 | 4 | PA: al guardar otra vez el expediente, la decisión se borra → OK · sin decisión
+74 | P | Decidir con rol Empleado (sin finance.approve) → SIN_PERMISO
+75 | P | Decidir desde otra organización (no miembro) → Acceso denegado a la organización
+76 | P | anon: decidir → permission denied for function fn_iva_co…
+77 | cuadre | Asientos nuevos cuadrados (Σ D = Σ C) → todos
+78 | historicos | Asientos anteriores a la prueba intactos → 0
+
+── Corridas anteriores ──
 RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
 md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 746ccbabbb6f05b8b22a043b4314b777 · 20261108150500 53bfcba981ac8811b57ac97e86120cad · 20261108151000 69666ff755350aaa4bf0a678cbf42a65 · 20261108152000 b038410fb5539296fd40877f07888c79 · prueba 18 8fa1e33bee74831393369896c4767e53
 Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de

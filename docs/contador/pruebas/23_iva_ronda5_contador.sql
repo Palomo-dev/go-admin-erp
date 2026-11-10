@@ -12,10 +12,31 @@
 --      control positivo con cuenta de cabecera; y el ejemplo de la ronda 3 (34.200 al costo, 27.800 descontables) con
 --      cuenta por línea.
 -- Proyecto taqjemqjtumhwptchcxk · Organización de pruebas 374 (sede 585). NO DEJA DATOS (begin … rollback).
--- Requiere, en este orden y SIN aplicar: 20261108140000 (H1), 20261108150000, 20261108150500, 20261108151000 y
--- 20261108152000. Se pegan donde dice «MIGRACIONES», dentro de la misma transacción.
+-- Requiere, en este orden y SIN aplicar: 20261108140000 (H1), 20261108150000, 20261108150500, 20261108151000,
+-- 20261108152000 y (ronda 6) 20261110150000. Se pegan donde dice «MIGRACIONES», dentro de la misma transacción.
 -- Usuarios simulados: A = el miembro activo de la org 374; B = el dueño de la org 137, agregado como miembro de la 374
 -- SOLO dentro de la transacción (el segundo usuario que aprueba el cierre).
+--
+-- RONDA 6 (2026-11-10, docs/contador/RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md): se vuelve a correr con las migraciones
+-- reescritas y, además, 20261110150000 (reparto de la base del asiento por líneas), después de 20261108152000.
+-- DATOS que cambian (sin cambiar lo que prueban):
+--   · Q2 y Q3 registran el INICIO de la falla (la ronda 6 lo pide para saber si la falla cubre la fecha de la venta): la
+--     de Q2 es de ayer (no cubre la venta, de hace 3 días); la de Q3 empezó 1 hora antes de la venta (la cubre);
+--   · la declaración septiembre–octubre registra la solicitud de corrección ante la DIAN, aceptada (art. 589 ET, datos de
+--     prueba), en la misma fila que corrige la firmeza a «no está en firme»;
+--   · B aprueba los retiros de Q4, Q5 y R1 antes de calcular los borradores (tres filas nuevas, después de la 63).
+-- Esperados que cambian, y por qué (respuestas del Contador):
+--   · Q3 (respuesta 1, CAMBIO OBLIGATORIO): con una falla que cubre la venta, la factura se tiene por expedida en
+--     contingencia: le falta la nota crédito electrónica, no se retira y la venta sigue en la 59 (tres filas);
+--   · B ya puede aprobar el pago a la DIAN (respuesta 8): «aprobado» en lugar de APROBACION_SOLO_CIERRE;
+--   · I7, importación EXENTA (respuesta 7): ya no es «no excluida, no va a la 47»; le faltan el artículo de la exención y
+--     si viene de zona franca → «importacion_sin_soporte_aduanero» (la 47/48 de la exenta completa está en la prueba 27);
+--   · FTR, FDX y FDD (respuesta 5): toda compra con IVA no descontable y más de una línea exige cuenta por línea; FDD deja
+--     de ser el control positivo de la cuenta de cabecera (queda sin asiento) y la función de la cuenta única da el motivo
+--     «más de una línea» para FDD también con la cabecera 152405 (cuatro filas);
+--   · FCHL (hallazgo de la ronda 6): con 20261110150000 la base se reparte por la base antes de IVA: 100.000 / 215.200 /
+--     119.000 (fila 103, antes el hallazgo 90.909 / 221.261 / 122.030); la fila 102 calcula la parte de la base de cada
+--     cuenta con la base de su línea (antes, con su total con IVA).
 
 begin;
 
@@ -273,11 +294,15 @@ select 'B', x.v, x.e, x.o, x.o = x.e from (values
   ('Q2: aviso del proveedor tecnológico; la falla terminó AYER y la consulta es de hoy', 'OK',
    pg_temp.nat('je_q2_rev', (select v::jsonb from ctx where k = 'exp') || (select v::jsonb from ctx where k = 'cufe')
      || jsonb_build_object('contingencia_soporte_tipo', 'aviso_proveedor_tecnologico', 'contingencia_soporte_referencia', 'AVISO-PT-R5',
-                           'contingencia_soporte_fecha', (now() - interval '1 day')::date, 'contingencia_fin_en', now() - interval '1 day'))),
+                           'contingencia_soporte_fecha', (now() - interval '1 day')::date, 'contingencia_fin_en', now() - interval '1 day',
+                           -- Ronda 6: la falla empezó ayer (no cubre la venta, de hace 3 días).
+                           'contingencia_inicio_en', now() - interval '1 day' - interval '2 hours'))),
   ('Q3: soporte de la falla del facturador; la falla terminó 1 hora después de la venta', 'OK',
    pg_temp.nat('je_q3_rev', (select v::jsonb from ctx where k = 'exp') || (select v::jsonb from ctx where k = 'cufe')
      || jsonb_build_object('contingencia_soporte_tipo', 'soporte_falla_facturador', 'contingencia_soporte_referencia', 'INCIDENTE-R5-3',
-                           'contingencia_soporte_fecha', (now() - interval '3 days')::date, 'contingencia_fin_en', now() - interval '3 days' + interval '1 hour'))),
+                           'contingencia_soporte_fecha', (now() - interval '3 days')::date, 'contingencia_fin_en', now() - interval '3 days' + interval '1 hour',
+                           -- Ronda 6: la falla empezó 1 hora antes de la venta: la cubre.
+                           'contingencia_inicio_en', now() - interval '3 days' - interval '1 hour'))),
   ('Q5: hubo cobro devuelto, sin el soporte de la devolución', 'OK',
    pg_temp.nat('je_q5_rev', (select v::jsonb from ctx where k = 'exp') || (select v::jsonb from ctx where k = 'sinsop') || (select v::jsonb from ctx where k = 'cufe')
      || '{"cobro":"hubo_devuelto","cobro_soporte":"Recibo de caja R5-5"}'))
@@ -291,7 +316,7 @@ insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'B', x.v, x.e, x.o, x.o = x.e from (values
   ('Q1: lo que le falta (contingencia y consulta del CUFE/CUDE)', '{contingencia,consulta_cufe}', pg_temp.faltan('je_q1_rev')),
   ('Q5: lo que le falta (soporte de la devolución del dinero)', '{devolucion_del_cobro}', pg_temp.faltan('je_q5_rev')),
-  ('Q3: expediente completo', '{}', pg_temp.faltan('je_q3_rev'))
+  ('Q3 (ronda 6): la falla cubre la venta; le falta la nota crédito electrónica', '{nota_credito_electronica}', pg_temp.faltan('je_q3_rev'))
 ) x(v, e, o);
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'B', x.v, x.e, x.o, x.o = x.e from (values
@@ -299,9 +324,9 @@ select 'B', x.v, x.e, x.o, x.o = x.e from (values
    pg_temp.dec('je_q1_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
   ('Q2: retirar con la consulta hecha dentro de las 48 horas siguientes al fin de la falla', 'CONTINGENCIA_SIN_DESCARTAR [plazo_48_horas]',
    pg_temp.dec('je_q2_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
-  ('Q3: falla con soporte y consulta pasadas las 48 horas: contingencia descartada', 'OK retirar_venta',
+  ('Q3 (ronda 6): la falla cubre la fecha de la venta: expedida en contingencia, no se retira (nota crédito)', 'EXPEDIENTE_INCOMPLETO [nota_credito_electronica]',
    pg_temp.dec('je_q3_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió; la contingencia se descartó"}')),
-  ('Q4: sin soporte de contingencia (no expedida) y consulta pasadas las 48 horas desde la venta', 'OK retirar_venta',
+  ('Q4: constancia de que no hubo contingencia y consulta del CUFE/CUDE sin resultado (no expedida)', 'OK retirar_venta',
    pg_temp.dec('je_q4_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió; factura no expedida"}')),
   ('Q5: cobro devuelto sin su soporte', 'EXPEDIENTE_INCOMPLETO [devolucion_del_cobro]',
    pg_temp.dec('je_q5_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}'))
@@ -363,7 +388,7 @@ select 'C', 'R25: retirar pasado el año siguiente al vencimiento (art. 589 ET)'
   from (select pg_temp.dec('je_r25_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2025-03-01","periodo_hasta":"2025-04-30","fundamento":"La operación no existió"}') o) x;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'C', 'Se corrige la firmeza: NO está en firme', 'OK', x.o, x.o = 'OK'
-  from (select pg_temp.decl('2026-09-01', '2026-10-31', '{"numero_formulario":"PRUEBA-300-R5","presentada_en":"2026-11-05","en_firme":false,"firmeza_nota":"Dato de prueba: dentro del término"}') o) x;
+  from (select pg_temp.decl('2026-09-01', '2026-10-31', '{"numero_formulario":"PRUEBA-300-R5","presentada_en":"2026-11-05","en_firme":false,"firmeza_nota":"Dato de prueba: dentro del término","correccion_dian":{"numero":"SOL-589-PRUEBA-R5","fecha":"2026-11-06","resultado":"aceptada","resultado_fecha":"2026-11-09","soporte":"Dato de prueba: liquidación oficial de corrección"}}') o) x;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'C', 'R1: retirar la venta en su bimestre declarado, todavía corregible', 'OK retirar_venta', x.o, x.o = 'OK retirar_venta'
   from (select pg_temp.dec('je_r1_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-09-01","periodo_hasta":"2026-10-31","fundamento":"La operación no existió; se corrige la declaración de septiembre–octubre"}') o) x;
@@ -374,6 +399,17 @@ select 'C', x.v, x.e, x.o, x.o = x.e from (values
   ('R2: nota crédito en el bimestre de la nota (noviembre–diciembre)', 'OK nota_credito',
    pg_temp.dec('je_r2_rev', '{"tratamiento":"nota_credito","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"Factura validada: la nota crédito baja el IVA en su bimestre (Oficio 902997 de 2021)"}'))
 ) x(v, e, o);
+
+-- Ronda 6 (respuesta 8): los retiros (corrección de error «retirar_venta») los aprueba un segundo usuario.
+reset role;
+select set_config('request.jwt.claims', (select v from ctx where k = 'ub'), true);
+set local role authenticated;
+insert into r (escenario, verificacion, esperado, obtenido, ok)
+select 'B', 'Ronda 6: B (segundo usuario) aprueba el retiro de ' || upper(x.k), 'aprobado', x.o, x.o = 'aprobado'
+  from (select k, pg_temp.apr('je_' || k || '_rev', true) o from (values ('q4'), ('q5'), ('r1')) v(k)) x;
+reset role;
+select set_config('request.jwt.claims', (select v from ctx where k = 'ua'), true);
+set local role authenticated;
 
 -- Borrador septiembre–octubre con R1 retirada y la declaración corregible.
 insert into ctx values ('bso1', public.fn_tributario_borrador_iva_300(374, '2026-09-01', '2026-10-31')::text);
@@ -393,7 +429,7 @@ select set_config('request.jwt.claims', (select v from ctx where k = 'ub'), true
 set local role authenticated;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'D', x.v, x.e, x.o, x.o = x.e from (values
-  ('B aprueba un pago a la DIAN (solo el cierre se aprueba)', 'APROBACION_SOLO_CIERRE', pg_temp.apr('je_pg', true)),
+  ('B aprueba el pago a la DIAN (ronda 6: también se aprueba, como todo lo que se propone «no afecta»)', 'aprobado', pg_temp.apr('je_pg', true)),
   ('B (segundo usuario) aprueba el cierre', 'aprobado', pg_temp.apr('je_ce', true))
 ) x(v, e, o);
 insert into ctx values ('bc2', public.fn_tributario_borrador_iva_300(374, '2026-11-01', '2026-11-30')::text);
@@ -452,7 +488,7 @@ select 'A', x.v, x.e, coalesce((select p.motivo || ' · base ' || round(p.base) 
     ('I3: base 100.000 ≠ 90.000 + 5.000', 'importacion_base_no_coincide · base 100000', 'fi3'),
     ('I4: sin la norma de exclusión citada', 'importacion_sin_soporte_aduanero · base 60000', 'fi4'),
     ('I5: otro documento aduanero sin explicación', 'importacion_sin_soporte_aduanero · base 20000', 'fi5'),
-    ('I7: importación exenta (no excluida)', 'importacion_no_excluida_no_va_47 · base 40000', 'fi7'),
+    ('I7: importación exenta sin el artículo de la exención ni la zona franca (ronda 6)', 'importacion_sin_soporte_aduanero · base 40000', 'fi7'),
     ('I8: tráfico postal con declaración de importación', 'importacion_documento_no_corresponde · base 30000', 'fi8')
   ) x(v, e, k);
 
@@ -461,7 +497,7 @@ insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'B', x.v, x.e, coalesce(y.o, 'NO ESTÁ'), y.o = x.e from (values
   ('Q1 (expediente incompleto): la venta sigue en la 59', 'en 59 · correccion_incompleta', 'q1'),
   ('Q2 (consulta dentro de las 48 horas, sin decisión): la venta sigue en la 59', 'en 59 · correccion_sin_decision', 'q2'),
-  ('Q3 (contingencia descartada con soporte de la falla): sale de la 59', 'no en 59 · no_afecta', 'q3'),
+  ('Q3 (ronda 6: falla que cubre la venta, expedida en contingencia): sigue en la 59', 'en 59 · correccion_incompleta', 'q3'),
   ('Q4 (no expedida): sale de la 59', 'no en 59 · no_afecta', 'q4'),
   ('Q5 (cobro devuelto con su soporte): sale de la 59', 'no en 59 · no_afecta', 'q5')
 ) x(v, e, k)
@@ -510,8 +546,10 @@ cross join lateral (select (o ->> 'destino') || ' · ' || coalesce(o ->> 'motivo
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'E', x.v, 'SIN ASIENTO · iva_no_descontable_por_corregir · ' || x.texto, y.o, y.o = 'SIN ASIENTO · iva_no_descontable_por_corregir · ' || x.texto
   from (values
-    ('FTR: un bien gravado no descontable y uno excluido con cuenta de cabecera', 'tratamientos de IVA distintos', 'ftr'),
-    ('FDX: un bien no descontable y uno proporcional con cuenta de cabecera', 'deducibilidad distinta', 'fdx')
+    ('FTR: un bien gravado no descontable y uno excluido con cuenta de cabecera', 'más de una línea', 'ftr'),
+    ('FDX: un bien no descontable y uno proporcional con cuenta de cabecera', 'más de una línea', 'fdx'),
+    -- Ronda 6: FDD deja de ser el control positivo de la cabecera (dos líneas con IVA no descontable).
+    ('FDD: dos bienes no descontables con cuenta de cabecera (ronda 6: más de una línea)', 'más de una línea', 'fdd')
   ) x(v, texto, k)
   cross join lateral (select case when exists (select 1 from public.journal_entries je where je.organization_id = 374 and je.source_id = (select v from ctx where k = x.k))
                                   then 'CON ASIENTO' else 'SIN ASIENTO' end
@@ -523,20 +561,12 @@ select 'E', x.v, 'SIN ASIENTO · iva_no_descontable_por_corregir · ' || x.texto
                                                               and f.source_id = (select v from ctx where k = x.k) and f.detail like '%' || x.texto || '%')
                                               then x.texto else 'otro motivo' end as o) y;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'E', 'FDD (control): dos bienes no descontables con cuenta de cabecera: el IVA va a la cuenta de la compra', 'D compra 238000 · 2408 0 · C 238000',
-       format('D compra %s · 2408 %s · C %s', round(sum(l.debit) filter (where l.account_code not like '2408%')),
-              coalesce(round(sum(l.debit) filter (where l.account_code like '2408%')), 0), round(sum(l.credit))),
-       sum(l.debit) filter (where l.account_code not like '2408%') = 238000 and coalesce(sum(l.debit) filter (where l.account_code like '2408%'), 0) = 0
-         and sum(l.credit) = 238000
-  from public.journal_entries je join public.journal_lines l on l.journal_entry_id = je.id
- where je.organization_id = 374 and je.source_id = (select v from ctx where k = 'fdd');
-insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'E', x.v, x.e, coalesce(left(x.o, length(x.e)), 'NULL'), coalesce(left(x.o, length(x.e)), 'NULL') = x.e from (values
   ('Activo fijo (cabecera 152405) con un servicio', 'IVA no descontable en una compra que mezcla activos fijos',
    public.fn_iva_no_descontable_cuenta_unica_fallo((select v::uuid from ctx where k = 'fas'), '152405')),
   ('Activo fijo (cabecera 152405) con un bien inventariable', 'IVA no descontable en una compra que mezcla activos fijos',
    public.fn_iva_no_descontable_cuenta_unica_fallo((select v::uuid from ctx where k = 'fai'), '152405')),
-  ('Activo fijo (cabecera 152405) con bienes no inventariables de igual tratamiento: cuenta única', 'NULL',
+  ('Activo fijo (cabecera 152405) con dos bienes no inventariables de igual tratamiento (ronda 6: exige cuenta por línea)', 'IVA no descontable en una compra de más de una línea',
    public.fn_iva_no_descontable_cuenta_unica_fallo((select v::uuid from ctx where k = 'fdd'), '152405')),
   ('El servicio hacia una cuenta de gasto (519525): cuenta única', 'NULL',
    public.fn_iva_no_descontable_cuenta_unica_fallo((select v::uuid from ctx where k = 'fas'), '519525'))
@@ -553,19 +583,18 @@ select 'E', 'FCHL (ejemplo de la ronda 3 con cuenta por línea): IVA descontable
        coalesce(string_agg(cuenta || ' D ' || d, ' + ' order by cuenta) filter (where cuenta like '2408%'), '') = '24081001 D 22800 + 24081002 D 5000'
   from lineas_fchl;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'E', 'FCHL: cada cuenta recibe el IVA no descontable de SU línea (débito − parte de la base de esa línea)', '14350101 +0 · 513595 +15200 · 519525 +19000',
-       string_agg(l.cuenta || ' +' || (l.d - round(400000.0 * b.tl / 462000)), ' · ' order by l.cuenta),
-       string_agg(l.cuenta || ' +' || (l.d - round(400000.0 * b.tl / 462000)), ' · ' order by l.cuenta) = '14350101 +0 · 513595 +15200 · 519525 +19000'
-  from lineas_fchl l join (values ('519525', 119000), ('513595', 238000), ('14350101', 105000)) b(cta, tl) on b.cta = l.cuenta;
--- Hallazgo previo (fuera de la ronda 5): el asiento por líneas reparte la base del documento (400.000) por el total CON IVA
--- de cada línea (total_line). Con tarifas distintas, la base de cada cuenta se desvía (14350101 recibe 90.909, no 100.000);
--- el total, la 2408 y el IVA no descontable de cada línea sí son correctos.
+select 'E', 'FCHL: cada cuenta recibe el IVA no descontable de SU línea (débito − base de esa línea)', '14350101 +0 · 513595 +15200 · 519525 +19000',
+       string_agg(l.cuenta || ' +' || (l.d - b.base), ' · ' order by l.cuenta),
+       string_agg(l.cuenta || ' +' || (l.d - b.base), ' · ' order by l.cuenta) = '14350101 +0 · 513595 +15200 · 519525 +19000'
+  from lineas_fchl l join (values ('519525', 100000), ('513595', 200000), ('14350101', 100000)) b(cta, base) on b.cta = l.cuenta;
+-- Ronda 6 (hallazgo corregido por 20261110150000): la base del documento (400.000) se reparte por la BASE ANTES DE IVA de
+-- cada línea, no por su total con IVA. Antes: 90.909 / 221.261 / 122.030.
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'E', 'Hallazgo previo: con tarifas distintas la base se reparte por el total con IVA de cada línea (se documenta, no se corrige aquí)',
-       '14350101 D 90909 · 513595 D 221261 · 519525 D 122030 · C 462000',
+select 'E', 'Ronda 6: con tarifas distintas la base se reparte por la base antes de IVA de cada línea',
+       '14350101 D 100000 · 513595 D 215200 · 519525 D 119000 · C 462000',
        string_agg(cuenta || ' D ' || d, ' · ' order by cuenta) filter (where cuenta in ('14350101', '513595', '519525')) || ' · C ' || sum(c),
        string_agg(cuenta || ' D ' || d, ' · ' order by cuenta) filter (where cuenta in ('14350101', '513595', '519525')) || ' · C ' || sum(c)
-         = '14350101 D 90909 · 513595 D 221261 · 519525 D 122030 · C 462000'
+         = '14350101 D 100000 · 513595 D 215200 · 519525 D 119000 · C 462000'
   from lineas_fchl;
 
 -- ── Cuadre de todos los asientos nuevos e históricos intactos ──

@@ -212,7 +212,21 @@ const ORDEN_APLICACION = z
   .min(1)
   .max(CONCEPTOS_APLICACION.length)
   .refine((o) => new Set(o).size === o.length, { message: 'sin_repetidos' });
-const LIQUIDACION_ESCRITA = z.object({ medio: z.enum(MEDIOS_LIQUIDACION), plazo_dias: z.number().int().min(1).max(90) }).strict();
+/**
+ * Ronda 6 (respuesta 13): el plazo se cuenta desde el corte del período liquidado salvo que el contrato diga otra cosa;
+ * la otra regla admitida (desde la fecha de la liquidación) exige citar la cláusula. Sin `plazo_desde`, el corte.
+ */
+export const PLAZO_DESDE_LIQUIDACION = ['corte_del_periodo', 'fecha_de_liquidacion'] as const;
+export type PlazoDesdeLiquidacion = (typeof PLAZO_DESDE_LIQUIDACION)[number];
+const LIQUIDACION_ESCRITA = z
+  .object({
+    medio: z.enum(MEDIOS_LIQUIDACION),
+    plazo_dias: z.number().int().min(1).max(90),
+    plazo_desde: z.enum(PLAZO_DESDE_LIQUIDACION).optional(),
+    clausula: z.string().trim().min(10).max(500).optional(),
+  })
+  .strict()
+  .refine((l) => l.plazo_desde !== 'fecha_de_liquidacion' || !!l.clausula, { message: 'clausula_obligatoria', path: ['clausula'] });
 
 /** Validación del servidor: modalidad, condición, reconocimiento y factura de la remuneración son obligatorios (sin `.default`). */
 export const terminosSchema = z
@@ -364,6 +378,15 @@ export const cuentasConsignacionSchema = z
   .strict();
 
 export const anularLiquidacionSchema = z.object({ motivo: z.string().trim().min(5).max(500) }).strict();
+
+/** Ronda 6 (respuesta 13): constancia de la entrega de la liquidación por escrito (fecha, medio pactado y soporte). */
+export const entregaEscritaSchema = z
+  .object({
+    fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    medio: z.enum(MEDIOS_LIQUIDACION),
+    soporte: z.string().trim().min(5).max(1000),
+  })
+  .strict();
 
 export const aceptarNotaSchema = z
   .object({
@@ -517,6 +540,13 @@ export const ERRORES_RECIBIDA = [
   'cobro_de_otra_factura',
   'fecha_distinta_del_cobro',
   'retencion_excede_saldo_factura',
+  // Ronda 6 del Contador.
+  'derechos_fuera_del_orden_de_aplicacion',
+  'anticipos_fuera_del_orden_de_aplicacion',
+  'liquidacion_sin_entrega_escrita',
+  'entrega_ya_registrada',
+  'medio_distinto_del_pactado',
+  'fecha_anterior_a_la_liquidacion',
   'error_desconocido',
 ] as const;
 export type ErrorRecibida = (typeof ERRORES_RECIBIDA)[number];
@@ -566,6 +596,7 @@ export function estadoHttpErrorRecibida(codigo: ErrorRecibida): number {
     case 'vinculo_existente':
     case 'liquidacion_no_es_la_ultima':
     case 'liquidacion_aceptada_por_el_dueno':
+    case 'entrega_ya_registrada':
       return 409;
     case 'datos_invalidos':
       return 400;

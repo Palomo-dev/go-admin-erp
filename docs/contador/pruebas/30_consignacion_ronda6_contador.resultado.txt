@@ -1,0 +1,86 @@
+Resultado de 30_consignacion_ronda6_contador.sql · 2026-11-10 (Bogotá) · NUEVA (ronda 6, respuestas 10, 12 y 13)
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback):
+nada quedó escrito.
+
+Archivo: 30_consignacion_ronda6_contador.sql (md5 f191a21c530287baddd2c6f09fd16384; 59255 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 13f485ff234db7dd8632cf85708fec69).
+Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
+corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 9179856af861a2a886152c1ebbb4f2fd · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 a3e330a9cf7b01c6da242b7d3f3a2b8c · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 3fe4535a0afe9dc1fa58ece1dea5363d · 20261110100000 9f4ade93850013b4cacd3c795ef8d823
+  y la reversión de 20261110100000 (a333e61071756df3e48e31cf5bc66355), cargada y comprobada, no ejecutada en la carga.
+  160500 en la versión que el otro equipo tenía en disco a la hora de la corrida.
+
+Corridas: la primera dio 47 de 48: D4 comparaba «69690.00 → 71400.00» y lo pagado ANTES sale sin decimales («69690»: es la
+suma de los pagos, sin escala fija). Solo cambió el formato del esperado de D4; el valor es el mismo. La segunda: 48 de 48.
+En la corrida que vale la salida se filtró a los casos D y a la bitácora; el detalle de los demás (todos «ok» en las dos
+corridas, con los mismos valores) es el de la primera corrida, abajo.
+
+Facturas de control (D1, D2): F1 sin pagos, F2 pago parcial, F3 pago total, F4 pago con nota crédito por la mitad, F5
+anulada después de un pago. Idénticas antes y después en saldo, estado, pagado, cartera y excedente de la nota.
+Toda la base (D3): 262 facturas (todas las organizaciones, solo LECTURA de lo pagado): 0 diferencias en las que no tienen
+abono por retención; la única con abono es la factura 1 de la prueba, que sube exactamente en su abono (D4).
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar.
+
+RESULTADO (corrida que vale):
+PRUEBA EN SECO (se revierte) · 30: 48 de 48 ok · carga: 9 de 9 ok
+1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
+2 | carga | md5 20261108121000_consignaciones | 9179856af861a2a886152c1ebbb4f2fd | ok
+3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
+4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | a3e330a9cf7b01c6da242b7d3f3a2b8c | ok
+6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 3fe4535a0afe9dc1fa58ece1dea5363d | ok
+8 | carga | md5 20261110100000_cartera_abono_retencion_consignacion | 9f4ade93850013b4cacd3c795ef8d823 | ok
+9 | carga | md5 20261110100000_cartera_abono_retencion_consignacion_rollback | a333e61071756df3e48e31cf5bc66355 | ok
+17 | 30 | D1 facturas de control (sin pagos, parcial, total, con nota crédito y anulada): saldo, estado, pagado, cartera y excedente IDÉNTICOS | 5 · 0 | ok
+18 | 30 | D2 las facturas de control, una por una, antes (esperado) y después (obtenido): saldo/estado/pagado/cartera · excedente de la nota | F1 119000.00/issued/0/119000.00/current · F2 69000.00/partial/50000/69000.00/partial · F3 0.00/paid/119000/0.00/paid · F4 29500.00/partial/30000/29500.00/partial exc 0.00 · F5 99000.00/void/20000/0/cancelled | ok
+19 | 30 | D3 TODAS las facturas de la base sin abono por retención: lo pagado no cambia (0 diferencias) | 0 | ok
+20 | 30 | D4 la factura del abono: lo pagado sube exactamente en el abono (69.690 → 71.400); toda factura que cambia lo hace en sus abonos aplicados | 69690 → 71400.00 · 0 | ok
+30 › D3: 262 facturas de la base (todas las organizaciones); 1 con abono por retención
+
+Detalle de la primera corrida (mismo archivo salvo el esperado de D4; md5 3ba3a1a75231ea3241b7150b9c57c2ab):
+10 | 30 | R0 la reversión deja fn_invoice_sales_paid y fn_excedente_nota_credito EXACTAMENTE como están aplicadas hoy (md5 de pg_get_functiondef) | 4c772ca4a7d6926ce091a7910ea4e1d7 · e9cb33e070ea4c18e1912ee21455b8e6 | ok
+11 | 30 | R0b sin la migración no existen el disparador ni la función de los abonos | 0 · 0 | ok
+12 | 30 | W1 contar el plazo desde la última venta no se admite | terminos_invalidos | ok
+13 | 30 | W2 desde la fecha de la liquidación sin citar la cláusula del contrato | terminos_invalidos | ok
+14 | 30 | W3 sin decir nada, el plazo corre desde el corte del período liquidado | corte_del_periodo · null | ok
+15 | 30 | W4 el contrato que dice otra cosa queda guardado con su cláusula | fecha_de_liquidacion · Cláusula 9: tres días desde la fecha de la liquidación | ok
+16 | 30 | B1 ANTES de la migración: el abono queda por aplicar y la factura con 1.710 de saldo (lo de la ronda 5) | por_aplicar · 1710.00 · partial · 1 | ok
+17 a 19: D1 a D3, iguales a los de arriba · 20 | D4 | 69690 → 71400.00 · 0 | FALLA de formato (esperaba 69690.00), corregida en la corrida que vale
+21 | 30 | K1 69.690 + 1.710 dejan la factura SALDADA; la cartera la sigue; el abono pasó a aplicado y su pendiente se cerró | 0.00 · paid · 0.00/paid · aplicada · 0 · abono_aplicado_en_cartera | ok
+22 | 30 | K2 lo pagado de la factura = cobro 69.690 + abono 1.710 | 71400.00 | ok
+23 | 30 | K3 nace aplicada: saldo antes 579, después 0; sin pendiente de cartera; el certificado sigue pendiente de soporte | aplicada · 579.00 · 0.00 · 0.00 · 0 · pendiente_de_soporte | ok
+24 | 30 | K4 asiento de la retención: D 281510 del dueño / C cartera de la factura (Concepto DIAN 13277 de 2025) | 28151031 D 579 · cartera C 579 | ok
+25 | 30 | K5 una retención más sobre la factura saldada abonaría de más la cartera | retencion_excede_saldo_factura | ok
+26 | 30 | K6 nada queda «por aplicar» en la lectura de la ronda 5 | 0 | ok
+27 | 30 | K7 un pago nuevo que luego falla recalcula la factura por payments: sigue saldada (el abono cuenta en todos los caminos) | 0.00 · paid · 71400.00 | ok
+28 | 30 | K8 nota crédito total: el saldo a favor del cliente es lo que pagó en dinero (70.821), sin el abono por retención | 70821.00 | ok
+29 | 30 | L1 sin compensación pactada: recaudado 60.000 · remuneración 9.000 aplicada 0, por cobrar 9.000 · saldo para el dueño 60.000 (no 51.000) | 60000.00 · remuneracion 9000.00/0/9000.00 compensacion_no_pactada · 60000.00 · 51000.00 | ok
+30 | 30 | L2 los libros dicen lo mismo: 281510 del dueño 60.000 = saldo para el dueño; cuenta por cobrar 9.000 | 60000.00 · 9000.00 · 60000.00 | ok
+31 | 30 | L3 el orden de n2 no incluye anticipos: un anticipo no se cruza con lo recaudado | anticipos_fuera_del_orden_de_aplicacion | ok
+32 | 30 | L4 orden anticipos → remuneración: recaudado 120.000; anticipo 50.000 y remuneración 18.000 aplicados; saldo para el dueño 52.000 | 120000.00 · anticipos 50000.00/50000.00 · remuneracion 18000.00/18000.00 · 52000.00 · 0 | ok
+33 | 30 | L5 libros = aplicación: 281510 del dueño 52.000; el cruce queda imputado a esta liquidación | 52000.00 · true | ok
+34 | 30 | L6 el orden manda: recaudado 60.000; anticipos 40.000 + 15.000 (el de 10.000 no cabe: espera); a la remuneración le quedan 5.000 de 9.000; saldo 0 | 60000.00 · anticipos 65000.00/55000.00 espera 10000.00 · remuneracion 5000.00/4000.00 recaudo_insuficiente · 0.00 · ajuste -4000.00 | ok
+35 | 30 | L7 libros = aplicación: se revierte la compensación que el orden no cubre (D 13809501 / C 28151033 por 4.000) | 13809501 D 4000 · 28151033 C 4000 · 4000.00 · 42000.00 | ok
+36 | 30 | L8 cuadre con el dueño: 281510 = saldos de sus liquidaciones (52.000 + 0) − anticipo en espera (10.000) | 42000.00 | ok
+37 | 30 | L9 anular la liquidación deshace su aplicación: reversión anulada con su contra-asiento, cruces sin imputar, pendiente escrito cerrado | 0.00 · 38000.00 · 2 · documento_anulado_sin_entrega | ok
+38 | 30 | L10 reliquidar da la misma aplicación y los mismos libros | 0.00 · ajuste -4000.00 · 4000.00 · 42000.00 | ok
+39 | 30 | L11 descontar un derecho frente al dueño que el orden del contrato no incluye | derechos_fuera_del_orden_de_aplicacion | ok
+40 | 30 | L12 sin descontar el derecho: recaudado 120.000, remuneración por cobrar 18.000, saldo para el dueño 120.000 | 120000.00 · 18000.00 · 120000.00 | ok
+41 | 30 | E1 corte hace 10 días, plazo de 5 días desde el CORTE: venció hace 5 días; quedan los dos pendientes visibles | 2026-10-31 · 2026-11-05 · 1 · 1 | ok
+42 | 30 | E2 la venta fue hace 3 días y el corte es hoy: vence en 5 días desde el corte (no en 2 desde la última venta) | 2026-11-15 · 2026-11-07 | ok
+43 | 30 | E3 el contrato dice «desde la fecha de la liquidación» (cláusula citada): corte hace 10 días, vence en 3 días desde hoy | fecha_de_liquidacion · 2026-11-10 · 2026-11-13 · por_entregar | ok
+44 | 30 | E4 entregada por un medio distinto del que fija el contrato | medio_distinto_del_pactado | ok
+45 | 30 | E5 con fecha futura | fecha_futura | ok
+46 | 30 | E6 antes de existir la liquidación | fecha_anterior_a_la_liquidacion | ok
+47 | 30 | E7 sin soporte | soporte_obligatorio | ok
+48 | 30 | E8 constancia de entrega (fecha, medio y soporte): fuera de plazo; sus dos pendientes se cierran diciendo que fue tarde | true · 0 · 2 · correo_electronico · Correo enviado al dueño 30-3 con la liquidación adjunta (id 30-3-a) | ok
+49 | 30 | E9 repetirla es idempotente | true | ok
+50 | 30 | E10 registrarla otra vez con otros datos | entrega_ya_registrada | ok
+51 | 30 | E11 entregada dentro del plazo | false | ok
+52 | 30 | E12 la vigilancia ve cada liquidación por escrito y deja el pendiente de la que venció sin entrega | vencida · entregada_fuera_de_plazo · entregada · 1 | ok
+53 | 30 | E13 volver a vigilar no duplica el pendiente | 1 | ok
+54 | 30 | R2 revertida: las dos funciones aplicadas quedan byte a byte como hoy; la factura 1 vuelve a 1.710; los dos abonos, por aplicar con su pendiente | 4c772ca4a7d6926ce091a7910ea4e1d7 · e9cb33e070ea4c18e1912ee21455b8e6 · 1710.00 · partial · 2 · 2 | ok
+55 | 30 | Z1 asientos de la prueba 30 descuadrados | 0 | ok
+56 | 30 | Z2 ningún abono por retención sin su cobro | 0 | ok
+57 | 30 | Z3 ningún ajuste de la aplicación toca el ingreso de la remuneración (413512) | 0 | ok

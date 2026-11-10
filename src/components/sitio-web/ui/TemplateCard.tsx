@@ -37,6 +37,11 @@ export interface TemplateCardProps {
   enUso?: boolean;
   /** Texto de la insignia «En uso» (p. ej. «En uso en <sede>» con una sede elegida). */
   etiquetaEnUso?: string;
+  /**
+   * Insignia suave de marca tras las secciones («Nueva», las 7 plantillas de tienda de 2026-11,
+   * Figma A1). Sin valor: no se pinta.
+   */
+  novedad?: string;
   seleccionada?: boolean;
   onSeleccionar?: () => void;
   rol?: 'radio' | 'button';
@@ -57,6 +62,7 @@ export function TemplateCard({
   paginas,
   enUso,
   etiquetaEnUso,
+  novedad,
   seleccionada,
   onSeleccionar,
   rol = 'button',
@@ -118,6 +124,11 @@ export function TemplateCard({
             {secciones === 1 ? tx('plantilla.seccionesUna') : tx('plantilla.secciones', { n: secciones })}
             {typeof paginas === 'number' && paginas > 1 ? ` · ${tx('plantilla.paginas', { n: paginas })}` : null}
           </span>
+        ) : null}
+        {novedad ? (
+          <Badge tono="marca" apariencia="suave" tamano="sm" data-insignia-nueva>
+            {novedad}
+          </Badge>
         ) : null}
         {insigniaEnFila ? nodoInsignia : null}
       </span>

@@ -13,10 +13,15 @@
  * Solo `span` con estilos en línea: va dentro de botones (TemplateCard, TarjetaSeleccionable) y
  * son 32 tarjetas; nada de imágenes. Los colores y fuentes son DATOS de la plantilla y solo
  * existen aquí dentro.
+ *
+ * Plantillas de tienda (A1, 2026-11): con `extras` aprende el buscador en píldora, el pie como
+ * tarjeta, la marca gigante y los enlaces grandes. Sin `extras` (o todos en `false`) el dibujo es
+ * el de siempre.
  */
 import type { CSSProperties, ReactNode } from 'react';
 import type { AccionEncabezado, BotonDibujo, DibujoShell, PiezaBarraSuperior } from '@/lib/website/v2/dibujoShell';
 import { familiaCss } from './catalogo';
+import { SIN_EXTRAS_TIENDA, type ExtrasShellTienda } from './plantillasTienda';
 import { useTextosDiseno, type TraductorDiseno } from './textos';
 
 /** Por debajo de esta escala se dibuja la versión «mini» (líneas en vez de textos). */
@@ -35,6 +40,8 @@ interface Ctx {
   t: TraductorDiseno;
   /** Nombre del negocio en el logo; sin él, «Tu marca». */
   marca?: string;
+  /** Rasgos de tienda (todos `false`: el dibujo de siempre). */
+  x: ExtrasShellTienda;
 }
 
 const bloque = (estilo: CSSProperties): CSSProperties => ({ display: 'flex', ...estilo });
@@ -125,8 +132,17 @@ function Boton({ b, c, escala, lleno, encabezado }: { b: BotonDibujo; c: Ctx; es
   );
 }
 
-function Accion({ a, c }: { a: AccionEncabezado; c: Ctx }) {
+function Accion({ a, c, pildora }: { a: AccionEncabezado; c: Ctx; pildora?: boolean }) {
   const { d, u, mini, t } = c;
+  if (a === 'buscar' && pildora) {
+    // Buscador en píldora flotante (`search_style: 'pill_floating'`, Hogar).
+    return (
+      <span data-accion={a} data-forma="pildora" style={bloque({ flexShrink: 0, alignItems: 'center', gap: 5 * u, padding: `${5 * u}px ${12 * u}px`, borderRadius: 999, backgroundColor: d.colores.contenido, border: `1px solid ${d.colores.linea}`, fontSize: 9 * u, color: d.colores.suave, whiteSpace: 'nowrap' })}>
+        <span style={{ display: 'block', width: Math.max(3, 5 * u), height: Math.max(3, 5 * u), borderRadius: 999, backgroundColor: d.colores.texto }} />
+        {mini ? <Linea ancho={46} color={d.colores.linea} c={c} /> : t('shell.muestra.buscar')}
+      </span>
+    );
+  }
   if (a === 'barraBusqueda') {
     return (
       <span data-accion={a} style={bloque({ flex: 1, minWidth: 0, alignItems: 'center', padding: `${5 * u}px ${8 * u}px`, border: `1px solid ${d.colores.linea}`, borderRadius: 6 * u, fontSize: 9 * u, color: d.colores.suave })}>
@@ -191,7 +207,7 @@ function Encabezado({ c, enlaces, celular }: { c: Ctx; enlaces: readonly string[
   const E = d.encabezado;
   const lista = enlaces.slice(0, E.enlaces);
   const acciones = E.acciones.filter((a) => !celular || (a !== 'barraBusqueda' && a !== 'sede'));
-  const nodosAcciones = acciones.map((a) => <Accion key={a} a={a} c={c} />);
+  const nodosAcciones = acciones.map((a) => <Accion key={a} a={a} c={c} pildora={!celular && a === 'buscar' && c.x.buscadorPildora} />);
   const nodosBotones = celular ? [] : E.botones.map((b) => <Boton key={b.texto} b={b} c={c} encabezado />);
   const fila = (hijos: ReactNode) => (
     <span data-zona="fila-principal" style={bloque({ alignItems: 'center', gap: 12 * u, padding: `${12 * u}px ${16 * u}px` })}>
@@ -339,23 +355,52 @@ function TituloPie({ texto, c }: { texto: string; c: Ctx }) {
   return <span style={{ fontSize: 8 * u, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: d.colores.textoPie, whiteSpace: 'nowrap' }}>{texto}</span>;
 }
 
-function Lineas({ n, c, ancho = 60 }: { n: number; c: Ctx; ancho?: number }) {
+/** `grandes`: los enlaces del pie en la letra de los títulos y más grandes (`footer_links_style: 'display'`). */
+function Lineas({ n, c, ancho = 60, grandes }: { n: number; c: Ctx; ancho?: number; grandes?: boolean }) {
   return (
-    <span style={bloque({ flexDirection: 'column', gap: 5 * c.u })}>
+    <span style={bloque({ flexDirection: 'column', gap: (grandes ? 8 : 5) * c.u })}>
       {Array.from({ length: n }, (_, i) => (
-        <span key={i} style={{ display: 'block', width: ancho * c.u * (1 - (i % 3) * 0.18), height: Math.max(1, 3 * c.u), borderRadius: 2, backgroundColor: c.d.colores.suavePie }} />
+        <span
+          key={i}
+          style={{
+            display: 'block',
+            width: (grandes ? ancho * 1.3 : ancho) * c.u * (1 - (i % 3) * 0.18),
+            height: Math.max(grandes ? 2 : 1, (grandes ? 7 : 3) * c.u),
+            borderRadius: 2,
+            backgroundColor: grandes ? c.d.colores.textoPie : c.d.colores.suavePie,
+          }}
+        />
       ))}
     </span>
   );
 }
 
-function BloqueTitulado({ titulo, n, c, zona }: { titulo: string; n: number; c: Ctx; zona: string }) {
+function BloqueTitulado({ titulo, n, c, zona, grandes }: { titulo: string; n: number; c: Ctx; zona: string; grandes?: boolean }) {
   return (
-    <span data-bloque={zona} style={bloque({ flexDirection: 'column', gap: 7 * c.u, minWidth: 0 })}>
+    <span data-bloque={zona} data-enlaces={grandes ? 'grandes' : undefined} style={bloque({ flexDirection: 'column', gap: 7 * c.u, minWidth: 0 })}>
       <TituloPie texto={titulo} c={c} />
-      <Lineas n={n} c={c} />
+      <Lineas n={n} c={c} grandes={grandes} />
     </span>
   );
+}
+
+/** El nombre de la tienda en grande a todo el ancho del pie (`footer_brand_display: 'giant'`). */
+function MarcaGigante({ c, tamano }: { c: Ctx; tamano: number }) {
+  const { d, u, t } = c;
+  return (
+    <span
+      data-bloque="marca-gigante"
+      style={{ display: 'block', overflow: 'clip', whiteSpace: 'nowrap', fontFamily: familiaCss(d.fuenteTitulos), fontSize: tamano * u, fontWeight: 700, lineHeight: 0.9, letterSpacing: '-0.02em', textTransform: 'uppercase', color: d.colores.textoPie }}
+    >
+      {c.marca || t('shell.muestra.marca')}
+    </span>
+  );
+}
+
+/** El pie como tarjeta con margen y el radio del tema (`footer_inset`); sin ella, a todo el ancho. */
+function estiloTarjetaPie(c: Ctx, margen: number): CSSProperties {
+  if (!c.x.pieTarjeta) return {};
+  return { margin: `0 ${margen}px ${margen}px`, borderRadius: Math.min(c.d.radioBoton, 16) * Math.max(c.u, 0.5) };
 }
 
 function Redes({ c }: { c: Ctx }) {
@@ -428,7 +473,7 @@ function Pie({ c, menus }: { c: Ctx; menus: readonly string[] }) {
   const { d, u, mini, t } = c;
   const P = d.pie;
   const tiene = (b: (typeof P.bloques)[number]) => P.bloques.includes(b);
-  const nodosMenus = menus.map((m, i) => <BloqueTitulado key={`${m}-${i}`} titulo={m} n={3} c={c} zona="menu" />);
+  const nodosMenus = menus.map((m, i) => <BloqueTitulado key={`${m}-${i}`} titulo={m} n={3} c={c} zona="menu" grandes={c.x.enlacesGrandes} />);
   const extras = (conMapa: boolean) => (
     <>
       {tiene('horario') && <BloqueTitulado titulo={t('shell.muestra.horario')} n={2} c={c} zona="horario" />}
@@ -495,8 +540,14 @@ function Pie({ c, menus }: { c: Ctx; menus: readonly string[] }) {
       );
   }
   return (
-    <span data-zona="pie" data-composicion={P.composicion} style={bloque({ flexDirection: 'column', gap: 14 * u, padding: `${18 * u}px ${20 * u}px ${12 * u}px`, backgroundColor: d.colores.fondoPie, flexShrink: 0 })}>
+    <span
+      data-zona="pie"
+      data-composicion={P.composicion}
+      data-pie-tarjeta={c.x.pieTarjeta || undefined}
+      style={bloque({ flexDirection: 'column', gap: 14 * u, padding: `${18 * u}px ${20 * u}px ${12 * u}px`, backgroundColor: d.colores.fondoPie, flexShrink: 0, ...estiloTarjetaPie(c, 12 * u) })}
+    >
       {cuerpo}
+      {c.x.marcaGigante && <MarcaGigante c={c} tamano={64} />}
       <span data-zona="franja-final" style={bloque({ alignItems: 'center', gap: 10 * u, paddingTop: 8 * u, borderTop: `1px solid ${d.colores.lineaPie}`, fontSize: 7 * u, color: d.colores.suavePie })}>
         {mini ? <Linea ancho={50} color={d.colores.suavePie} c={c} /> : t('shell.muestra.derechos')}
         <Espacio />
@@ -513,7 +564,13 @@ function PieCelular({ c, menus }: { c: Ctx; menus: readonly string[] }) {
   const tiene = (b: (typeof P.bloques)[number]) => P.bloques.includes(b);
   const filas = [...(tiene('horario') ? [t('shell.muestra.horario')] : []), ...(tiene('contacto') ? [t('shell.muestra.contacto')] : []), ...menus];
   return (
-    <span data-zona="pie" data-composicion={P.composicion} data-celular={P.celular} style={bloque({ flexDirection: 'column', gap: 10, padding: '16px 16px 12px', backgroundColor: d.colores.fondoPie, flexShrink: 0 })}>
+    <span
+      data-zona="pie"
+      data-composicion={P.composicion}
+      data-celular={P.celular}
+      data-pie-tarjeta={c.x.pieTarjeta || undefined}
+      style={bloque({ flexDirection: 'column', gap: 10, padding: '16px 16px 12px', backgroundColor: d.colores.fondoPie, flexShrink: 0, ...estiloTarjetaPie(c, 8) })}
+    >
       <MarcaPie c={c} />
       {filas.map((s, i) =>
         P.celular === 'acordeon' ? (
@@ -529,6 +586,7 @@ function PieCelular({ c, menus }: { c: Ctx; menus: readonly string[] }) {
       {tiene('mapa') && <Mapa c={c} ancho="100%" alto={70} />}
       {tiene('boletin') && <Boletin c={c} />}
       {tiene('pagos') && <Pagos c={c} />}
+      {c.x.marcaGigante && <MarcaGigante c={c} tamano={40} />}
     </span>
   );
 }
@@ -560,6 +618,8 @@ export interface EsquemaShellProps {
   altoContenido?: number;
   /** Nombre del negocio para el logo (vista previa con tu contenido); sin él, «Tu marca». */
   marca?: string;
+  /** Rasgos de tienda del shell (`ShellParaVer.extras`); sin ellos, el dibujo de siempre. */
+  extras?: ExtrasShellTienda;
   /**
    * Texto alternativo: con él es una imagen (`role="img"`) y su interior no se lee. Sin él, quien
    * lo usa decide (la vista previa grande deja leer las secciones; la comparación se oculta).
@@ -570,9 +630,9 @@ export interface EsquemaShellProps {
 }
 
 /** Encabezado, contenido y pie de una plantilla, dibujados desde su modelo. */
-export function EsquemaShell({ dibujo, enlaces, menusPie, escala = 1, celular, contenido, altoContenido, marca, alt, className, style }: EsquemaShellProps) {
+export function EsquemaShell({ dibujo, enlaces, menusPie, escala = 1, celular, contenido, altoContenido, marca, extras, alt, className, style }: EsquemaShellProps) {
   const t = useTextosDiseno();
-  const c: Ctx = { d: dibujo, u: escala, mini: escala < ESCALA_MINI, t, marca };
+  const c: Ctx = { d: dibujo, u: escala, mini: escala < ESCALA_MINI, t, marca, x: extras ?? SIN_EXTRAS_TIENDA };
   const banda =
     contenido ?? (
       <span

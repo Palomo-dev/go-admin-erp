@@ -187,6 +187,16 @@ export const TEXTOS_DISENO = {
     vacio: 'Aún no hay plantillas para este giro. Mira las de Todas.',
     verTodas: 'Ver todas',
     abrir: 'Ver la plantilla «{nombre}»',
+    /** Las 7 plantillas de tienda nuevas (A1): insignia y filtro por tipo de negocio de la pestaña Tienda. */
+    nueva: 'Nueva',
+    negocio: {
+      etiqueta: 'Tipo de negocio',
+      todos: 'Todos los negocios',
+      moda: 'Moda',
+      belleza: 'Belleza y cosmética',
+      hogar: 'Hogar y muebles',
+      deportes: 'Deportes y tecnología',
+    },
     /** Selector de sede (Figma «Plantillas por sede», lámina A). Marcadores: `{sede}`. */
     sede: {
       etiqueta: 'Plantillas para',
@@ -252,6 +262,19 @@ export const TEXTOS_DISENO = {
     quedan: 'Así quedan tu encabezado y tu pie',
     quedanCompleta: 'Los de «{nombre}»',
     quedanEstilo: 'Los tuyos de hoy, con los colores nuevos',
+    /**
+     * Las 7 plantillas de tienda nuevas (A2, decisión D4): «Plantilla completa» también rearma la
+     * ficha de producto y la página de categoría. Lo anterior queda en la copia «antes de restaurar».
+     */
+    tienda: {
+      descripcion: '{descripcion} Usa tu catálogo, tus fotos y tus textos: así se vería tu sitio.',
+      paginas: 'Páginas que diseña: Inicio, ficha de producto y página de categoría',
+      d4: 'Con esta plantilla, «Plantilla completa» también rearma la ficha de producto y la página de categoría (antes se conservaban).',
+      avisoCompletaDescripcion:
+        'Se reemplazan el encabezado, el pie, Inicio, la ficha de producto, la página de categoría, las secciones y los menús. Lo anterior queda en la copia de seguridad «antes de restaurar» del historial: puedes deshacerlo. Tus páginas legales, el carrito, el checkout y la cuenta se conservan. Se crea un borrador: nada cambia en línea hasta que publiques.',
+      avisoCompletaSede:
+        'En {sede} también se reemplazan la ficha de producto y la página de categoría. Lo anterior queda en la copia de seguridad «antes de restaurar» del historial.',
+    },
     /** «Usar esta plantilla en <sede>» (Figma «Plantillas por sede», lámina B). Marcadores: `{sede}`, `{nombre}`, `{giro}`. */
     sede: {
       titulo: 'Usar {nombre} en {sede}',
@@ -410,6 +433,21 @@ export const TEXTOS_DISENO = {
       contacto: 'Contacto',
       derechos: '© Tu marca',
       firma: 'Hecho con GO Admin',
+    },
+    /** Rasgos de las plantillas de tienda (A1: pie como tarjeta, marca gigante, enlaces grandes, buscador en píldora). */
+    tienda: {
+      encabezadoBuscador: 'Encabezado clásico con buscador en píldora',
+      pie: {
+        conMarca: '{pie} con la marca gigante',
+        comoTarjeta: '{pie}, como tarjeta',
+        conEnlaces: '{pie} con enlaces grandes',
+      },
+      rasgo: {
+        buscador: 'buscador en píldora flotante',
+        marca: 'nombre de la tienda en grande',
+        enlaces: 'enlaces grandes con la letra de los títulos',
+        tarjeta: 'pie como tarjeta con margen',
+      },
     },
     titulos: {
       encabezado: 'Encabezado',

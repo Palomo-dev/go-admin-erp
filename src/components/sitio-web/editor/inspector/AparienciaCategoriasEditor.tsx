@@ -5,7 +5,8 @@
  * (paquete 5-nov, D1). Reutiliza los mismos controles de Inventario ›
  * Categorías › Apariencia (`IconSelector` + `ImageUploader`, bucket
  * `categories/images`) y el mismo guardado (`categoryService.update`, RLS de
- * `categories`). Los permisos son los del catálogo (`fn_productos_permisos`,
+ * `categories`). También el color (`categories.color`), que pinta «Color propio por tarjeta» de
+ * las plantillas de tienda (B2). Los permisos son los del catálogo (`fn_productos_permisos`,
  * `usePermisosCatalogo`): sin `editar` el botón queda deshabilitado.
  */
 import { useState } from 'react';
@@ -20,6 +21,11 @@ import type { CategoriaInventarioMenu } from '@/components/sitio-web/paginas/tip
 import { useTextosEditor } from '../textos';
 
 const MAX_SIN_ELEGIR = 12;
+
+/** Hex de 6 dígitos que acepta el selector de color; otro valor = `null`. */
+export function colorHexCategoria(valor: unknown): string | null {
+  return typeof valor === 'string' && /^#[0-9a-fA-F]{6}$/.test(valor.trim()) ? valor.trim().toUpperCase() : null;
+}
 
 export interface AparienciaCategoriasEditorProps {
   lista: readonly CategoriaInventarioMenu[];
@@ -59,6 +65,14 @@ export function AparienciaCategoriasEditor({ lista, elegidas, onGuardado, deshab
                 )}
               </span>
               <span className="min-w-0 flex-1 truncate text-[13px] text-fg">{c.nombre}</span>
+              {colorHexCategoria(c.color) && (
+                <span
+                  aria-label={t('contenido.aparienciaColorEtiqueta', { nombre: c.nombre })}
+                  title={colorHexCategoria(c.color) ?? undefined}
+                  className="size-4 shrink-0 rounded-full border border-line"
+                  style={{ backgroundColor: colorHexCategoria(c.color) ?? undefined }}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => setEditando(c)}
@@ -92,6 +106,8 @@ function DialogoApariencia({
   const { toast } = useToast();
   const [icono, setIcono] = useState(categoria.icono || 'Package');
   const [imagen, setImagen] = useState(categoria.imagenUrl || '');
+  const colorInicial = colorHexCategoria(categoria.color);
+  const [color, setColor] = useState(colorInicial ?? '');
   const [guardando, setGuardando] = useState(false);
 
   const guardar = async () => {
@@ -100,7 +116,9 @@ function DialogoApariencia({
       // Import diferido: categoryService arrastra xlsx/jspdf (exportaciones) y
       // no debe entrar en el chunk del editor.
       const { default: categoryService } = await import('@/lib/services/categoryService');
-      await categoryService.update(categoria.id, { icon: icono, image_url: imagen });
+      // El color solo se escribe si cambió (y es un hex válido): no se toca el de las demás.
+      const cambioColor = colorHexCategoria(color) && colorHexCategoria(color) !== colorInicial ? { color: colorHexCategoria(color)! } : {};
+      await categoryService.update(categoria.id, { icon: icono, image_url: imagen, ...cambioColor });
       toast({ title: t('contenido.aparienciaGuardada') });
       await onGuardado?.();
       onCerrar();
@@ -122,6 +140,20 @@ function DialogoApariencia({
     >
       <div className="flex flex-col gap-4">
         <IconSelector value={icono} onChange={setIcono} label={t('contenido.aparienciaIcono')} />
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor={`color-categoria-${categoria.id}`} className="text-sm font-medium text-fg">{t('contenido.aparienciaColor')}</label>
+          <div className="flex items-center gap-2">
+            <input
+              id={`color-categoria-${categoria.id}`}
+              type="color"
+              value={colorHexCategoria(color) ?? '#FFFFFF'}
+              onChange={(e) => setColor(e.target.value.toUpperCase())}
+              className="h-10 w-12 cursor-pointer rounded-lg border border-line bg-surface p-1"
+            />
+            <span className="font-mono text-[13px] text-fg-secondary">{colorHexCategoria(color) ?? '—'}</span>
+          </div>
+          <p className="text-xs leading-4 text-fg-secondary">{t('contenido.aparienciaColorAyuda')}</p>
+        </div>
         <div className="flex flex-col gap-1.5">
           <span className="text-sm font-medium text-fg">{t('contenido.aparienciaImagen')}</span>
           <ImageUploader currentImageUrl={imagen} onImageUploaded={setImagen} onImageRemoved={() => setImagen('')} bucket="categories" folder="images" label="" />

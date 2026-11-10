@@ -228,7 +228,22 @@ export function capaAlSubirPrimeraImagen(
  */
 const CLAVE_ENCABEZADO_DE: Record<string, 'title' | 'description'> = { title: 'title', subtitle: 'description', description: 'description' };
 
+/**
+ * Campo de un objeto del contenido (`page_layout.columns` → `contenido.page_layout.columns`): el
+ * catálogo lo declara con punto y se guarda anidado (la ficha V2 lee `page_layout` entero).
+ */
+function partirClave(clave: string): [string, string] | null {
+  const i = clave.indexOf('.');
+  return i > 0 && i < clave.length - 1 ? [clave.slice(0, i), clave.slice(i + 1)] : null;
+}
+
+function objetoDe(v: unknown): Record<string, unknown> {
+  return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+}
+
 export function valorTextoEncabezado(contenido: Record<string, unknown>, clave: string, tipoSeccion?: string): unknown {
+  const anidada = partirClave(clave);
+  if (anidada) return objetoDe(contenido[anidada[0]])[anidada[1]];
   const k = tipoSeccion === 'hero' ? undefined : CLAVE_ENCABEZADO_DE[clave];
   const h = contenido.section_header;
   if (k && h && typeof h === 'object') {
@@ -239,6 +254,17 @@ export function valorTextoEncabezado(contenido: Record<string, unknown>, clave: 
 }
 
 export function cambioTextoEncabezado(contenido: Record<string, unknown>, clave: string, valor: unknown, tipoSeccion?: string): Record<string, unknown> {
+  const anidada = partirClave(clave);
+  if (anidada) {
+    const [padre, hija] = anidada;
+    const objeto = { ...objetoDe(contenido[padre]) };
+    if (valor === undefined || valor === null || valor === '') delete objeto[hija];
+    else objeto[hija] = valor;
+    const siguiente: Record<string, unknown> = { ...contenido };
+    if (Object.keys(objeto).length > 0) siguiente[padre] = objeto;
+    else delete siguiente[padre];
+    return siguiente;
+  }
   const siguiente: Record<string, unknown> = { ...contenido, [clave]: valor };
   const k = tipoSeccion === 'hero' ? undefined : CLAVE_ENCABEZADO_DE[clave];
   const h = contenido.section_header;

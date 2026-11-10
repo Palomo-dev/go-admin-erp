@@ -1,34 +1,25 @@
 /**
  * Fixture del manifiesto del sitio (F0.6).
  *
- * Refleja el `SECTION_MAP` de `goadmin-websites/components/sections/SectionRenderer.tsx`
- * y los `CONTENT_KEYS` declarados en los componentes. Se mantiene como fixture
- * estático para que el test de contrato pueda correr en CI sin necesidad de
- * levantar el sitio.
+ * Copia LITERAL de `buildSectionManifest()` (`goadmin-websites/lib/sectionManifest.ts`) sobre el
+ * `main` desplegado del sitio (commit 8668232): el `SECTION_MAP` de
+ * `components/sections/SectionRenderer.tsx` y los `CONTENT_KEYS` de cada componente, unidos por
+ * tipo y ordenados. No se escribe a mano: así el test de contrato ve lo mismo que pinta producción.
  *
- * **Actualizar cuando se agreguen/eliminen secciones en el sitio.**
- * El endpoint vivo está en `goadmin-websites/app/api/_sections/manifest/route.ts`.
+ * Cómo regenerarlo: `app/api/_sections/manifest` está en una carpeta privada de Next (prefijo «_»)
+ * y no se sirve, así que el manifiesto se obtiene ejecutando `buildSectionManifest()` desde el
+ * código del sitio (empaquetar `lib/sectionManifest.ts` con esbuild, alias `@` → raíz del sitio,
+ * dependencias externas, y correrlo con node) y volcando el JSON aquí con el mismo formato.
+ *
+ * `variantsWithoutKeys` (derivado del mismo `SECTION_MAP`): las variantes cuyo componente no declara
+ * `CONTENT_KEYS`. En un tipo así, `contentKeys` es la unión de las OTRAS variantes y no lista lo que
+ * esas leen: el test de contrato no compara claves en ese tipo (`sectionContract.ts`).
+ *
+ * **Actualizar SOLO con el manifiesto de lo que ya está desplegado**: el ERP nunca ofrece una
+ * variante o una clave que el sitio en producción no pinte (PLANO §6, R3).
  */
 
 import type { SectionManifest } from '../sectionContract'
-import {
-  CLAVES_CARTA_QR,
-  CLAVES_PORTADA_MESA,
-  CLAVES_SECCION_MESA,
-  TIPOS_SECCION_MESA,
-  VARIANTES_SECCION_MESA,
-} from '@/lib/website/contrato/seccionesMesa'
-import {
-  CLAVES_CARTA_PUNTOS,
-  CLAVES_RESERVA_PLANO,
-  VARIANTE_CARTA_PUNTOS,
-  VARIANTE_HISTORIA_CAPITULOS,
-  VARIANTE_PORTADA_EDITORIAL,
-  VARIANTE_RESERVA_PLANO,
-} from '@/lib/website/contrato/seccionesCafe'
-
-/** Claves sin repetir y ordenadas (el manifiesto vivo las publica así). */
-const unir = (...listas: ReadonlyArray<readonly string[]>): string[] => [...new Set(listas.flat())].sort()
 
 export const siteManifestFixture: SectionManifest = {
   version: '1',
@@ -38,16 +29,24 @@ export const siteManifestFixture: SectionManifest = {
     { type: 'booking_transport', variants: ['banner', 'form'], contentKeys: [] },
     { type: 'brands', variants: ['logos'], contentKeys: [] },
     { type: 'categories_grid', variants: ['default', 'grid', 'horizontal', 'icons'], contentKeys: [] },
-    { type: 'category_products', variants: ['default'], contentKeys: [] },
-    { type: 'category_subcategories', variants: ['default'], contentKeys: [] },
-    { type: 'category_seo_text', variants: ['default'], contentKeys: [] },
+    {
+      type: 'category_filters',
+      variants: ['default', 'sidebar_facets'],
+      variantsWithoutKeys: ['default'],
+      contentKeys: [
+        'clear_text',
+        'show_sort',
+        'show_subcategories',
+      ],
+    },
     { type: 'category_header', variants: ['default'], contentKeys: [] },
-    { type: 'category_filters', variants: ['default'], contentKeys: [] },
+    { type: 'category_products', variants: ['default'], contentKeys: [] },
+    { type: 'category_seo_text', variants: ['default'], contentKeys: [] },
+    { type: 'category_subcategories', variants: ['default'], contentKeys: [] },
     { type: 'chef_section', variants: ['profile'], contentKeys: [] },
     {
       type: 'chef_team',
       variants: ['chef', 'team'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
       contentKeys: [
         'bio',
         'eyebrow',
@@ -62,15 +61,27 @@ export const siteManifestFixture: SectionManifest = {
       ],
     },
     { type: 'class_schedule', variants: ['grid'], contentKeys: [] },
+    {
+      type: 'complete_the_look',
+      variants: ['default'],
+      contentKeys: [
+        'image_url',
+        'limit',
+        'product_ids',
+        'show_add_all',
+        'source',
+        'title',
+      ],
+    },
     { type: 'contact_form', variants: ['default', 'simple', 'split', 'with_map'], contentKeys: [] },
-    { type: 'coverage_map', variants: ['static'], contentKeys: [] },
     { type: 'countdown', variants: ['banner', 'compact', 'inline'], contentKeys: [] },
+    { type: 'coverage_map', variants: ['static'], contentKeys: [] },
     { type: 'cta', variants: ['banner', 'centered', 'split', 'with_image'], contentKeys: [] },
     { type: 'delivery_cta', variants: ['banner'], contentKeys: [] },
+    { type: 'demo_cta', variants: ['form'], contentKeys: [] },
     {
       type: 'events',
       variants: ['detail', 'list'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
       contentKeys: [
         'detail_url',
         'empty_text',
@@ -83,20 +94,35 @@ export const siteManifestFixture: SectionManifest = {
         'title',
       ],
     },
-    { type: 'demo_cta', variants: ['form'], contentKeys: [] },
     { type: 'faq', variants: ['accordion', 'simple', 'two_columns'], contentKeys: [] },
     { type: 'featured_products', variants: ['carousel', 'grid', 'hero_product'], contentKeys: [] },
-    { type: 'features_grid', variants: ['alternating', 'icons'], contentKeys: [] },
+    {
+      type: 'features_grid',
+      variants: ['alternating', 'icons', 'photo_columns'],
+      variantsWithoutKeys: ['alternating', 'icons'],
+      contentKeys: [
+        'items',
+        'subtitle',
+        'title',
+      ],
+    },
     { type: 'fleet_showcase', variants: ['grid'], contentKeys: [] },
     {
       type: 'gallery',
-      variants: ['carousel', 'fullscreen', 'grid', 'masonry'],
-      contentKeys: ['images', 'subtitle', 'title'],
+      variants: ['carousel', 'collage', 'fullscreen', 'grid', 'instagram_cta', 'masonry'],
+      variantsWithoutKeys: ['carousel', 'fullscreen', 'grid', 'masonry'],
+      contentKeys: [
+        'cta_text',
+        'cta_title',
+        'cta_url',
+        'handle',
+        'images',
+        'phrase',
+      ],
     },
     {
       type: 'gallery_bento',
       variants: ['default'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
       contentKeys: [
         'eyebrow',
         'images',
@@ -107,12 +133,58 @@ export const siteManifestFixture: SectionManifest = {
       ],
     },
     { type: 'gym_features', variants: ['icons'], contentKeys: [] },
-    // «Café de especialidad» (contrato seccionesCafe.ts): una variante nueva por tipo existente.
-    { type: 'hero', variants: ['fullscreen', 'minimal', 'slider', 'split', 'video', VARIANTE_PORTADA_EDITORIAL], contentKeys: [] },
+    {
+      type: 'hero',
+      variants: ['brand_giant', 'carousel_editorial', 'floating', 'fullscreen', 'minimal', 'search', 'slider', 'split', 'split_products', 'video'],
+      variantsWithoutKeys: ['fullscreen', 'minimal', 'slider', 'split', 'video'],
+      contentKeys: [
+        'autoplay',
+        'brand_layer',
+        'brand_text',
+        'buttons',
+        'chip',
+        'content_position',
+        'cta_secondary_text',
+        'cta_secondary_url',
+        'cta_text',
+        'cta_url',
+        'dot_style',
+        'enable_swipe',
+        'eyebrow',
+        'figure_url',
+        'floating_cards',
+        'height',
+        'hotspots',
+        'image_url',
+        'image_url_mobile',
+        'inset',
+        'interval_ms',
+        'loop',
+        'overlap_header',
+        'overlay_opacity',
+        'pause_on_hover',
+        'product_ids',
+        'rating_chip',
+        'search_placeholder',
+        'show_arrows',
+        'show_category_select',
+        'show_cta',
+        'show_dots',
+        'show_overlay',
+        'show_title',
+        'slides',
+        'subtitle',
+        'subtitle_style',
+        'text_align',
+        'title',
+        'title_highlight',
+        'title_highlight_style',
+        'transition',
+      ],
+    },
     {
       type: 'hours_location',
       variants: ['cards', 'hours_map', 'list'],
-      // HoursLocation expone CONTENT_KEYS (Figma Locations 144:6644).
       contentKeys: [
         'branch_ids',
         'eyebrow',
@@ -128,14 +200,64 @@ export const siteManifestFixture: SectionManifest = {
         'title',
       ],
     },
-    { type: 'how_it_works', variants: ['steps', VARIANTE_HISTORIA_CAPITULOS], contentKeys: [] },
-    { type: 'image_text', variants: ['image_left', 'image_right', 'image_top'], contentKeys: [] },
+    {
+      type: 'how_it_works',
+      variants: ['chapters', 'steps'],
+      variantsWithoutKeys: ['steps'],
+      contentKeys: [
+        'aspect_ratio',
+        'card_bg',
+        'card_border_color',
+        'card_border_width',
+        'card_radius',
+        'card_shadow',
+        'columns',
+        'eyebrow',
+        'gap',
+        'hover_motion',
+        'items',
+        'reveal_on_scroll',
+        'show_numbers',
+        'subtitle',
+        'text_align',
+        'title',
+      ],
+    },
+    {
+      type: 'image_text',
+      variants: ['color_block', 'editorial', 'image_left', 'image_right', 'image_top'],
+      variantsWithoutKeys: ['image_left', 'image_right', 'image_top'],
+      contentKeys: [
+        'bg_color',
+        'body',
+        'cta_url',
+        'image_small_caption',
+        'image_small_url',
+        'image_tag',
+        'image_url',
+        'link_text',
+        'link_url',
+        'number',
+        'phrase',
+        'text_color',
+        'title',
+      ],
+    },
     { type: 'integrations', variants: ['logos'], contentKeys: [] },
+    {
+      type: 'link_cloud',
+      variants: ['pills'],
+      contentKeys: [
+        'links',
+        'max',
+        'source',
+        'title',
+      ],
+    },
     { type: 'map', variants: ['default', 'embedded', 'full_width', 'with_directions'], contentKeys: [] },
     {
       type: 'marquee',
       variants: ['photos', 'text'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
       contentKeys: [
         'images',
         'label',
@@ -148,30 +270,43 @@ export const siteManifestFixture: SectionManifest = {
       ],
     },
     { type: 'membership_plans', variants: ['pricing_table'], contentKeys: [] },
-    { type: 'menu_preview', variants: ['tabs'], contentKeys: [] },
     {
       type: 'menu_full',
-      variants: ['anchors', VARIANTE_CARTA_PUNTOS, 'editorial', 'per_category', 'qr', 'tabs'],
-      // MenuFull expone CONTENT_KEYS como estática: el manifiesto vivo las publica.
-      // La variante «qr» suma las claves de la Carta QR (contrato seccionesMesa.ts).
-      contentKeys: unir(
-        [
-          'carta_platos',
-          'columns',
-          'eyebrow',
-          'menus',
-          'pdf_url',
-          'selected_category_ids',
-          'show_description',
-          'show_photos',
-          'size',
-          'subtitle',
-          'title',
-        ],
-        CLAVES_CARTA_QR,
-        CLAVES_CARTA_PUNTOS,
-      ),
+      variants: ['anchors', 'dotted', 'editorial', 'per_category', 'qr', 'tabs'],
+      contentKeys: [
+        'ask_diner',
+        'branch_ids',
+        'branch_selector_style',
+        'carta_id',
+        'carta_platos',
+        'columns',
+        'counter_label',
+        'diet_filters',
+        'eyebrow',
+        'featured_limit',
+        'leader_style',
+        'menus',
+        'only_featured',
+        'pdf_url',
+        'selected_category_ids',
+        'show_allergens',
+        'show_branch_selector',
+        'show_compare_price',
+        'show_counter',
+        'show_description',
+        'show_options',
+        'show_photos',
+        'show_search',
+        'size',
+        'sticky_tabs',
+        'subtitle',
+        'tabs_style',
+        'title',
+        'view_all_text',
+        'view_all_url',
+      ],
     },
+    { type: 'menu_preview', variants: ['tabs'], contentKeys: [] },
     { type: 'newsletter', variants: ['banner', 'simple', 'with_image'], contentKeys: [] },
     { type: 'offers', variants: ['grid'], contentKeys: [] },
     { type: 'parking_availability', variants: ['summary'], contentKeys: [] },
@@ -184,7 +319,6 @@ export const siteManifestFixture: SectionManifest = {
     {
       type: 'private_events',
       variants: ['default'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
       contentKeys: [
         'budget_options',
         'event_types',
@@ -199,26 +333,99 @@ export const siteManifestFixture: SectionManifest = {
       ],
     },
     { type: 'product_actions', variants: ['default'], contentKeys: [] },
+    {
+      type: 'product_anatomy',
+      variants: ['default'],
+      contentKeys: [
+        'details',
+        'product_id',
+        'title',
+      ],
+    },
+    {
+      type: 'product_anchor_nav',
+      variants: ['tabs'],
+      contentKeys: [
+        'items',
+        'sticky',
+      ],
+    },
     { type: 'product_benefits', variants: ['default'], contentKeys: [] },
     { type: 'product_description', variants: ['default'], contentKeys: [] },
     { type: 'product_faq', variants: ['default'], contentKeys: [] },
     { type: 'product_gallery', variants: ['default'], contentKeys: [] },
+    {
+      type: 'product_index',
+      variants: ['list'],
+      contentKeys: [
+        'cta_text',
+        'cta_url',
+        'product_ids',
+        'show_price',
+        'title',
+      ],
+    },
     { type: 'product_info', variants: ['default'], contentKeys: [] },
-    { type: 'product_shipping', variants: ['default'], contentKeys: [] },
-    { type: 'product_specs', variants: ['default'], contentKeys: [] },
+    {
+      type: 'product_pager',
+      variants: ['default'],
+      contentKeys: [
+        'next_text',
+        'prev_text',
+      ],
+    },
     { type: 'product_reviews', variants: ['default'], contentKeys: [] },
-    { type: 'products_grid', variants: ['carousel', 'default', 'grid', 'list'], contentKeys: [] },
+    { type: 'product_shipping', variants: ['default'], contentKeys: [] },
+    {
+      type: 'product_specs',
+      variants: ['default', 'icon_grid', 'panel'],
+      variantsWithoutKeys: ['default'],
+      contentKeys: [
+        'rows',
+        'title',
+      ],
+    },
+    {
+      type: 'products_grid',
+      variants: ['carousel', 'default', 'editorial', 'grid', 'list'],
+      variantsWithoutKeys: ['carousel', 'default', 'grid', 'list'],
+      contentKeys: [
+        'badges',
+        'buttons_full_width',
+        'buttons_layout',
+        'buttons_position',
+        'card_buttons',
+        'columns',
+        'count_header',
+        'editorial_cards',
+        'exclude_out_of_stock',
+        'filters_style',
+        'icon_only',
+        'include_subcategories',
+        'max_items',
+        'product_card_style',
+        'rows',
+        'selected_category_ids',
+        'show_filters',
+        'sort_order',
+        'subtitle',
+        'title',
+      ],
+    },
     { type: 'promo_banners', variants: ['carousel', 'grid', 'stack'], contentKeys: [] },
+    { type: 'related_products', variants: ['default'], contentKeys: [] },
     {
       type: 'reservation',
-      variants: ['band', 'external', VARIANTE_RESERVA_PLANO, 'form_image', 'hero_widget', 'stepper'],
-      // Reservation expone CONTENT_KEYS (Figma TableReservation 141:5796); la variante del plano
-      // suma las suyas (contrato seccionesCafe.ts).
-      contentKeys: unir(CLAVES_RESERVA_PLANO, [
+      variants: ['band', 'external', 'floor_plan', 'form_image', 'hero_widget', 'stepper'],
+      contentKeys: [
+        'also_register',
         'anchor_id',
+        'ask_time_first',
+        'booking_mode',
         'branch_ids',
         'cta_text',
         'cta_url',
+        'dim_small_tables',
         'external_button_text',
         'external_url',
         'eyebrow',
@@ -226,51 +433,70 @@ export const siteManifestFixture: SectionManifest = {
         'max_days',
         'max_guests',
         'min_guests',
+        'mobile_plan',
         'pending_message',
+        'plan_position',
+        'plan_style',
         'policy_text',
         'require_email',
+        'show_capacity',
+        'show_legend',
         'show_notes',
         'subtitle',
         'success_message',
+        'table_optional',
         'title',
-      ]),
+        'zones',
+      ],
     },
     { type: 'reservation_cta', variants: ['simple', 'with_form'], contentKeys: [] },
     {
       type: 'restaurant_hero',
       variants: ['mesa', 'split_bento', 'typographic'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358); la variante «mesa» (Carta QR)
-      // suma las suyas del contrato seccionesMesa.ts.
-      contentKeys: unir(
-        [
-          'cards',
-          'eyebrow',
-          'image_alt',
-          'image_url',
-          'primary_cta_text',
-          'primary_cta_url',
-          'secondary_cta_text',
-          'secondary_cta_url',
-          'subtitle',
-          'title',
-        ],
-        CLAVES_PORTADA_MESA,
-      ),
+      contentKeys: [
+        'allergy_note',
+        'cards',
+        'eyebrow',
+        'image_alt',
+        'image_caption',
+        'image_url',
+        'no_table_text',
+        'primary_cta_text',
+        'primary_cta_url',
+        'secondary_cta_text',
+        'secondary_cta_url',
+        'show_bill_button',
+        'show_kitchen_status',
+        'show_language',
+        'show_waiter_button',
+        'subtitle',
+        'title',
+      ],
     },
-    // Carta QR en la mesa: los cuatro tipos nuevos (contrato seccionesMesa.ts).
-    ...TIPOS_SECCION_MESA.map((type) => ({
-      type,
-      variants: [...VARIANTES_SECCION_MESA[type]].sort(),
-      contentKeys: unir(CLAVES_SECCION_MESA[type]),
-    })),
-    { type: 'related_products', variants: ['default'], contentKeys: [] },
     { type: 'room_types', variants: ['cards', 'detailed'], contentKeys: [] },
     { type: 'routes', variants: ['cards'], contentKeys: [] },
+    {
+      type: 'service_cards',
+      variants: ['over_image'],
+      contentKeys: [
+        'cards',
+        'image_url',
+      ],
+    },
     { type: 'services_list', variants: ['cards', 'grid', 'icons_row', 'list'], contentKeys: [] },
+    {
+      type: 'shop_the_look',
+      variants: ['hotspots'],
+      contentKeys: [
+        'hotspots',
+        'image_url',
+        'show_cards',
+        'title',
+      ],
+    },
     {
       type: 'signature_dishes',
       variants: ['carousel', 'scrollytelling'],
-      // Expone CONTENT_KEYS (Figma «Secciones nuevas» 167:5358).
       contentKeys: [
         'dishes',
         'eyebrow',
@@ -282,12 +508,108 @@ export const siteManifestFixture: SectionManifest = {
     },
     { type: 'specialties', variants: ['featured'], contentKeys: [] },
     { type: 'stats', variants: ['cards', 'counters', 'inline'], contentKeys: [] },
+    {
+      type: 'table_bill',
+      variants: ['hoja'],
+      contentKeys: [
+        'allow_custom_tip',
+        'allow_split',
+        'pay_at_table',
+        'pay_at_table_text',
+        'pay_online',
+        'split_modes',
+        'tip_options',
+        'tip_text',
+        'title',
+      ],
+    },
+    {
+      type: 'table_order',
+      variants: ['rondas'],
+      contentKeys: [
+        'confirm_before_send',
+        'confirm_text',
+        'confirm_title',
+        'default_view',
+        'error_text',
+        'error_title',
+        'eta_text',
+        'kitchen_closed_text',
+        'no_charge_text',
+        'offline_text',
+        'pending_text',
+        'show_live_status',
+        'sold_out_text',
+        'title',
+      ],
+    },
+    {
+      type: 'table_service',
+      variants: ['barra', 'botones'],
+      contentKeys: [
+        'button_text',
+        'cooldown_seconds',
+        'other_placeholder',
+        'reasons',
+        'sent_text',
+        'sent_title',
+        'show_bill_button',
+        'title',
+      ],
+    },
     { type: 'team', variants: ['carousel', 'grid', 'simple'], contentKeys: [] },
-    { type: 'text_block', variants: ['centered', 'left', 'two_columns'], contentKeys: [] },
     { type: 'testimonials', variants: ['carousel', 'grid', 'minimal', 'quotes'], contentKeys: [] },
-    { type: 'transformation', variants: ['before_after'], contentKeys: [] },
+    {
+      type: 'text_block',
+      variants: ['centered', 'inline_icons', 'left', 'two_columns'],
+      variantsWithoutKeys: ['centered', 'left', 'two_columns'],
+      contentKeys: [
+        'segments',
+        'title',
+      ],
+    },
     { type: 'trainers', variants: ['grid'], contentKeys: [] },
+    {
+      type: 'transformation',
+      variants: ['before_after', 'slider'],
+      variantsWithoutKeys: ['before_after'],
+      contentKeys: [
+        'handle_color',
+        'items',
+        'start_position',
+        'subtitle',
+        'title',
+      ],
+    },
     { type: 'trip_search', variants: ['form'], contentKeys: [] },
+    {
+      type: 'visit_feedback',
+      variants: ['tarjeta'],
+      contentKeys: [
+        'aspects',
+        'aspects_title',
+        'comment_placeholder',
+        'only_after_payment',
+        'question',
+        'reviews_url',
+        'thanks_text',
+      ],
+    },
+    {
+      type: 'welcome_popup',
+      variants: ['coupon'],
+      contentKeys: [
+        'coupon_code',
+        'cta_text',
+        'cta_url',
+        'delay_s',
+        'enabled',
+        'frequency',
+        'image_url',
+        'text',
+        'title',
+      ],
+    },
     { type: 'why_choose_us', variants: ['icons'], contentKeys: [] },
   ],
 }

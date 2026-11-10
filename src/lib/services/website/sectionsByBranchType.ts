@@ -9,6 +9,7 @@ import {
   VARIANTE_PORTADA_EDITORIAL,
   VARIANTE_RESERVA_PLANO,
 } from '@/lib/website/contrato/seccionesCafe';
+import { TIPOS_NUEVOS_TIENDA } from '@/lib/website/contrato/seccionesTienda';
 
 /**
  * Catálogo del diálogo «Añadir sección» (Figma «16 Sitio web › 05 Editor»,
@@ -27,6 +28,7 @@ export type IdGrupoSecciones =
   | 'carta'
   | 'reservar'
   | 'vender'
+  | 'tienda'
   | 'hospedaje'
   | 'membresias'
   | 'transporte'
@@ -43,7 +45,13 @@ export interface DefinicionGrupo {
   etiqueta: string;
   /** Para qué sirve, en el título del grupo («habitaciones y servicios del hotel»). */
   proposito: string;
+  /**
+   * Tipos del grupo, en orden. `tipo:variante` pone aquí la tarjeta de esa variante
+   * (`VARIANTES_EN_CATALOGO`) en vez de dejarla junto a su tipo.
+   */
   tipos: string[];
+  /** Grupo recién llegado: la lista lateral lo marca «Nuevo». */
+  nuevo?: boolean;
 }
 
 /** Grupos por propósito, en el orden de la lista lateral del diálogo. */
@@ -80,6 +88,17 @@ export const GRUPOS_SECCIONES: readonly DefinicionGrupo[] = [
     tipos: [
       'products_grid', 'featured_products', 'categories_grid', 'offers',
       'promo_banners', 'brands', 'pricing_table', 'delivery_cta',
+    ],
+  },
+  {
+    // Plantillas de tienda (decisión del dueño 2026-11-10, diseño B3): las secciones nuevas juntas.
+    id: 'tienda',
+    etiqueta: 'Tienda',
+    proposito: 'looks, piezas, antes y después y bienvenida',
+    nuevo: true,
+    tipos: [
+      'transformation:slider', 'shop_the_look', 'complete_the_look', 'product_index', 'product_anatomy',
+      'image_text:color_block', 'link_cloud', 'service_cards', 'welcome_popup', 'gallery:instagram_cta',
     ],
   },
   {
@@ -126,6 +145,8 @@ export const GRUPOS_SECCIONES: readonly DefinicionGrupo[] = [
       'product_gallery', 'product_info', 'product_actions', 'product_benefits',
       'product_description', 'related_products', 'product_specs', 'product_faq',
       'product_shipping', 'product_reviews',
+      // Plantillas de tienda (B5). «Completa el look» se muestra en «Tienda» y se recomienda aquí.
+      'product_anchor_nav', 'product_pager', 'complete_the_look',
     ],
   },
   {
@@ -151,6 +172,8 @@ export interface VarianteEnCatalogo {
   etiqueta: string;
   descripcion: string;
   palabras: string;
+  /** Tarjeta de una plantilla de tienda (la tarjeta lleva «Nuevo»). */
+  nueva?: boolean;
 }
 
 export const VARIANTES_EN_CATALOGO: readonly VarianteEnCatalogo[] = [
@@ -182,10 +205,87 @@ export const VARIANTES_EN_CATALOGO: readonly VarianteEnCatalogo[] = [
     descripcion: 'El visitante toca una mesa en el plano de la sede y reserva directo o por WhatsApp.',
     palabras: 'plano mesas reservar reserva whatsapp',
   },
+  // Plantillas de tienda (B3): portadas nuevas en «Presentar» (junto a la portada) y tres
+  // variantes en el grupo «Tienda» (ver GRUPOS_SECCIONES). Diseño de la ficha y la categoría: B5.
+  {
+    tipo: 'hero',
+    variante: 'search',
+    etiqueta: 'Portada · Buscador en la portada',
+    descripcion: 'Foto con buscador y selector de categoría; chip con las reseñas reales.',
+    palabras: 'buscador busqueda portada categorias resenas',
+    nueva: true,
+  },
+  {
+    tipo: 'hero',
+    variante: 'brand_giant',
+    etiqueta: 'Portada · Marca gigante',
+    descripcion: 'El nombre de la organización enorme, detrás de una figura recortada o sobre la foto, con hasta 4 puntos enlazados a productos.',
+    palabras: 'marca gigante logo figura puntos productos portada',
+    nueva: true,
+  },
+  {
+    tipo: 'hero',
+    variante: 'floating',
+    etiqueta: 'Portada · Palabra resaltada y tarjetas flotantes',
+    descripcion: 'Título con una palabra resaltada y tarjetas de categorías, reseñas o video.',
+    palabras: 'resaltada flotantes tarjetas video resenas portada',
+    nueva: true,
+  },
+  {
+    tipo: 'hero',
+    variante: 'split_products',
+    etiqueta: 'Portada · Dividida con productos',
+    descripcion: 'Texto a un lado y foto al otro, con hasta 3 productos reales bajo los botones.',
+    palabras: 'dividida productos portada mini tarjetas',
+    nueva: true,
+  },
+  {
+    tipo: 'transformation',
+    variante: 'slider',
+    etiqueta: 'Antes / después',
+    descripcion: 'Dos fotos con un control que se arrastra, y el color del control.',
+    palabras: 'antes despues comparar fotos transformacion',
+    nueva: true,
+  },
+  {
+    tipo: 'image_text',
+    variante: 'color_block',
+    etiqueta: 'Bloques de colección a color',
+    descripcion: 'Bloque de color con número, nombre, frase, foto y enlace a una categoría.',
+    palabras: 'bloques color coleccion categoria',
+    nueva: true,
+  },
+  {
+    tipo: 'gallery',
+    variante: 'instagram_cta',
+    etiqueta: 'Franja de Instagram con botón',
+    descripcion: '5 fotos, el usuario de tus redes y un botón para seguir.',
+    palabras: 'instagram redes fotos seguir',
+    nueva: true,
+  },
+  {
+    tipo: 'category_filters',
+    variante: 'sidebar_facets',
+    etiqueta: 'Filtros en barra lateral',
+    descripcion: 'Subcategorías con casillas y orden, en una columna al lado de los productos.',
+    palabras: 'filtros lateral subcategorias casillas ordenar',
+    nueva: true,
+  },
 ];
 
 /** Entrada de «Añadir sección»: un tipo, o un tipo con una variante destacada (`variants[0]`). */
 export type EntradaCatalogo = SectionTypeDefinition & { varianteDestacada?: string };
+
+/** Tipos nuevos de las plantillas de tienda (la tarjeta lleva «Nuevo»). */
+const TIPOS_NUEVOS: ReadonlySet<string> = new Set(TIPOS_NUEVOS_TIENDA);
+
+/** ¿La tarjeta es de las plantillas de tienda (tipo nuevo o variante marcada `nueva`)? */
+export function esEntradaNueva(entrada: EntradaCatalogo): boolean {
+  if (entrada.varianteDestacada) {
+    return VARIANTES_EN_CATALOGO.some((v) => v.tipo === entrada.type && v.variante === entrada.varianteDestacada && v.nueva === true);
+  }
+  return TIPOS_NUEVOS.has(entrada.type);
+}
 
 /** Clave única de una entrada: `tipo` o `tipo:variante` (la de las recomendadas). */
 export function claveEntrada(entrada: EntradaCatalogo): string {
@@ -317,6 +417,8 @@ export interface GrupoCatalogo {
   etiqueta: string;
   proposito: string;
   secciones: EntradaCatalogo[];
+  /** Grupo recién llegado («Tienda»). */
+  nuevo?: boolean;
 }
 
 export interface CatalogoSede {
@@ -341,27 +443,36 @@ export function getSectionCatalogForBranch(
   const catalogo = opciones.catalogo ?? SECTION_CATALOG;
   const porTipo = new Map(catalogo.map((s) => [s.type, s]));
   const porClave = new Map<string, EntradaCatalogo>(catalogo.map((s) => [s.type, s]));
+  // Tarjetas de variante que un grupo pone en su sitio («tipo:variante» en `tipos`).
+  const ubicadas = new Set(GRUPOS_SECCIONES.flatMap((g) => g.tipos.filter((t) => t.includes(':'))));
   const variantesDe = new Map<string, EntradaCatalogo[]>();
   for (const v of VARIANTES_EN_CATALOGO) {
     const def = porTipo.get(v.tipo);
     const entrada = def ? entradaDeVariante(def, v) : null;
     if (!entrada) continue;
     porClave.set(claveEntrada(entrada), entrada);
+    if (ubicadas.has(claveEntrada(entrada))) continue;
     variantesDe.set(v.tipo, [...(variantesDe.get(v.tipo) ?? []), entrada]);
   }
   // Cada tipo seguido de las tarjetas de sus variantes destacadas.
-  const conVariantes = (secciones: SectionTypeDefinition[]): EntradaCatalogo[] =>
-    secciones.flatMap((s) => [s, ...(variantesDe.get(s.type) ?? [])]);
+  const conVariantes = (secciones: EntradaCatalogo[]): EntradaCatalogo[] =>
+    secciones.flatMap((s) => (s.varianteDestacada ? [s] : [s, ...(variantesDe.get(s.type) ?? [])]));
   const usados = new Set<string>();
 
   const grupos: GrupoCatalogo[] = [];
   for (const g of GRUPOS_SECCIONES) {
     const secciones = g.tipos
-      .map((t) => porTipo.get(t))
-      .filter((s): s is SectionTypeDefinition => Boolean(s) && !usados.has((s as SectionTypeDefinition).type));
-    secciones.forEach((s) => usados.add(s.type));
+      .map((t) => porClave.get(t))
+      .filter((s): s is EntradaCatalogo => Boolean(s) && !usados.has(claveEntrada(s as EntradaCatalogo)));
+    secciones.forEach((s) => usados.add(claveEntrada(s)));
     if (secciones.length > 0) {
-      grupos.push({ id: g.id, etiqueta: g.etiqueta, proposito: g.proposito, secciones: conVariantes(secciones) });
+      grupos.push({
+        id: g.id,
+        etiqueta: g.etiqueta,
+        proposito: g.proposito,
+        secciones: conVariantes(secciones),
+        ...(g.nuevo ? { nuevo: true } : {}),
+      });
     }
   }
   const sueltas = catalogo.filter((s) => !usados.has(s.type));

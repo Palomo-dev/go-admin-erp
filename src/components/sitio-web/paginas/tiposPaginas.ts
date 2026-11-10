@@ -87,6 +87,8 @@ export interface CategoriaInventarioMenu {
   imagenUrl: string | null;
   /** Nombre del ícono lucide de la categoría (Inventario › Categorías › Apariencia). */
   icono?: string | null;
+  /** `categories.color` (hex): el pie de la tarjeta con «Color propio por tarjeta» (plantillas de tienda). */
+  color?: string | null;
   activa: boolean;
   /** `null` = de toda la organización; un id = solo de esa sede. */
   branchId: number | null;

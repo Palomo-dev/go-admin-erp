@@ -123,12 +123,25 @@ export function iconoDeSeccion(tipo: string): LucideIcon {
 /** Variantes cuyo propósito pide otra miniatura que la del tipo (Historia por capítulos: tarjetas con imagen). */
 const MINIATURA_VARIANTE: Readonly<Record<string, TipoMiniaturaSeccion>> = {
   'how_it_works:chapters': 'galeria',
+  // Plantillas de tienda (B3).
+  'transformation:slider': 'galeria',
+  'image_text:color_block': 'galeria',
+  'gallery:instagram_cta': 'galeria',
+};
+
+/** Tipos nuevos de las plantillas de tienda cuyo nombre no lleva a su miniatura. */
+const MINIATURA_TIPO: Readonly<Record<string, TipoMiniaturaSeccion>> = {
+  shop_the_look: 'galeria',
+  welcome_popup: 'llamado_accion',
+  service_cards: 'llamado_accion',
+  link_cloud: 'texto',
 };
 
 /** Miniatura del kit del módulo más cercana al propósito de la sección (y de su variante, si cambia). */
 export function miniaturaDeSeccion(tipo: string, variante?: string | null): TipoMiniaturaSeccion {
   const propia = variante ? MINIATURA_VARIANTE[`${tipo}:${variante}`] : undefined;
   if (propia) return propia;
+  if (MINIATURA_TIPO[tipo]) return MINIATURA_TIPO[tipo];
   const t = tipo.toLowerCase();
   if (t.includes('hero') || t === 'category_header') return 'portada';
   if (t.startsWith('menu') || t.includes('dish') || t === 'specialties') return 'carta_destacada';

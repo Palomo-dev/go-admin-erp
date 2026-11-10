@@ -210,7 +210,7 @@ export type TipoCuentaContable = 'asset' | 'liability' | 'equity' | 'income' | '
 export type NaturalezaCuenta = 'debito' | 'credito' | 'orden';
 export type NivelCuenta = 'clase' | 'grupo' | 'cuenta' | 'subcuenta' | 'auxiliar' | 'subauxiliar' | 'legacy';
 
-export interface AuxiliarCreado {
+export interface CuentaHijaCreada {
   account_code: string;
   parent_code: string;
   padre_paso_a_titulo: boolean;
@@ -442,30 +442,37 @@ export class ContabilidadService {
   }
 
   /**
-   * Crea un auxiliar de 8 dígitos debajo de una subcuenta (`fn_plan_crear_auxiliar`).
-   * Si la subcuenta tiene saldo, responde PADRE_CON_SALDO salvo que se confirme el
+   * Crea una cuenta debajo de otra en la misma fila del plan
+   * (`fn_plan_crear_cuenta_hija`): cuenta bajo grupo, subcuenta bajo cuenta,
+   * auxiliar bajo subcuenta, subauxiliar bajo auxiliar. Si el padre era de
+   * movimiento con saldo, responde PADRE_CON_SALDO salvo que se confirme el
    * traslado. Todo ocurre en una sola transacción en el servidor.
    */
-  static async crearAuxiliar(entrada: {
+  static async crearCuentaHija(entrada: {
     padre: string;
     nombre: string;
     codigo?: string | null;
     trasladarSaldo?: boolean;
     nota?: string | null;
-  }): Promise<AuxiliarCreado> {
-    const { data, error } = await supabase.rpc('fn_plan_crear_auxiliar', {
+  }): Promise<CuentaHijaCreada> {
+    const parametros = {
       p_organization_id: this.getOrganizationId(),
       p_parent_code: entrada.padre,
       p_name: entrada.nombre,
       p_account_code: entrada.codigo ?? null,
       p_trasladar_saldo: entrada.trasladarSaldo ?? false,
       p_nota: entrada.nota ?? null,
-    });
+    };
+    let { data, error } = await supabase.rpc('fn_plan_crear_cuenta_hija', parametros);
+    // Mientras la migración 20261110190000 no esté aplicada, el auxiliar sigue por la función de antes.
+    if (error?.code === 'PGRST202' && /^[0-9]{6}$/.test(entrada.padre)) {
+      ({ data, error } = await supabase.rpc('fn_plan_crear_auxiliar', parametros));
+    }
     if (error) {
-      console.error('Error creando auxiliar:', error);
+      console.error('Error creando la cuenta:', error);
       throw error;
     }
-    return data as AuxiliarCreado;
+    return data as CuentaHijaCreada;
   }
 
   /** Quién creó la cuenta y cuándo (`fn_plan_cuenta_autor`). */

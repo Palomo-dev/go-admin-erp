@@ -138,6 +138,15 @@ Regla: cada RPC con su `.sql` y su reversión, según `docs/POLITICA-MIGRACIONES
 Efecto de la decisión 1: subcuentas y cuentas se crean con «Nueva cuenta». Hoy hay 5.088 cuentas y
 1.547 subcuentas en la base, y ningún subauxiliar.
 
+**Ampliación del dueño (2026-11-10).** En un plan sin subcuentas (1105 Caja y 1110 Bancos de
+movimiento) no aparecía ningún «+», y crear una subcuenta solo se podía con «Nueva cuenta». Ahora cada
+fila desde grupo lleva su «+» siempre visible: grupo → cuenta, cuenta → subcuenta, subcuenta →
+auxiliar, auxiliar → subauxiliar. Las garantías de la decisión 1 se mantienen en todos los niveles:
+el servidor valida código y naturaleza, guarda quién la creó, y si el padre tenía saldo lo traslada
+con el asiento de reclasificación de la decisión 2. RPC `fn_plan_crear_cuenta_hija` (migración
+`20261110190000`); `fn_plan_crear_auxiliar` queda como envoltura. Figma: anotaciones P1, P2 y M1 de
+`2321:118203` y el «+» en las variantes normales de `FilaPlanCuenta`.
+
 La comparación con la lista completa del Contador está en `CONTADOR-LISTA-COMPARACION-2026-11-06.md`.
 
 ## 5. Lo que no se dibujó

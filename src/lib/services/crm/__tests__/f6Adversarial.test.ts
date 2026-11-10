@@ -2045,9 +2045,28 @@ describe('K bis. Presupuesto UNICO del agente (R3-5)', () => {
 //     No se finge que se comprobó: no se comprobó.
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Análisis de guarda de una función, tal como lo calcula `fn_f6_privilege_snapshot`.
+ * Los tres primeros campos existen desde F6; los opcionales llegan con
+ * 20261110170000_crm_f6_foto_guardas_delegadas (escrita, pendiente de aplicar):
+ *   · delegated_guards → guardas de la casa a las que llama con el MISMO `p_org`.
+ *   · guard_pos / write_pos → posición en el cuerpo de la primera guarda y de la
+ *     primera escritura (0 = no hay). La guarda tiene que llegar antes de escribir.
+ */
+interface GuardaFoto {
+  security_definer: boolean;
+  checks_membership: boolean;
+  raises_42501: boolean;
+  delegated_guards?: string[];
+  guard_pos?: number;
+  write_pos?: number;
+}
+
 interface PrivilegeSnapshot {
   functions: Record<string, string>;
-  function_guards: Record<string, { security_definer: boolean; checks_membership: boolean; raises_42501: boolean }>;
+  function_guards: Record<string, GuardaFoto>;
+  /** Las guardas de la casa (fn_assert_acceso_org, fn_crm_exigir_permiso, crm_lock_comm_wallet). */
+  guards?: Record<string, GuardaFoto>;
   tables: Record<string, { rls: boolean; acl: string }>;
   policies: Array<{ table: string; cmd: string; name: string }>;
   indexes: Record<string, string>;
@@ -2084,6 +2103,8 @@ const SUPA_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ENV_LOCAL.NEXT_PU
  * Privilegios de un rol dentro de un ACL de Postgres.
  * `{postgres=arwdDxt/postgres,anon=rxt/postgres,...}` → 'rxt' para `anon`.
  * a=INSERT r=SELECT w=UPDATE d=DELETE D=TRUNCATE x=REFERENCES t=TRIGGER X=EXECUTE
+ * m=MAINTAIN (Postgres 17+: VACUUM, ANALYZE, REINDEX, CLUSTER, REFRESH MATERIALIZED
+ * VIEW, LOCK TABLE; no lee ni escribe filas).
  */
 function privilegiosDe(acl: string, rol: string): string {
   const m = new RegExp(`(?:^|[{,])${rol}=([a-zA-Z*]*)/`).exec(acl);
@@ -2212,6 +2233,38 @@ describe('L. Privilegios reales de la base (R3-4)', () => {
     'voice_agents', 'voice_agent_calls', 'voice_agent_campaigns', 'stage_agents', 'voices',
   ];
 
+  /** Migración que enseña a la foto las guardas delegadas (escrita el 2026-11-10, SIN APLICAR). */
+  const MIGRACION_GUARDAS_DELEGADAS = '20261110170000_crm_f6_foto_guardas_delegadas';
+
+  /**
+   * ¿Esta guarda de la casa comprueba DE VERDAD la pertenencia y lanza 42501?
+   * Se resuelve contra la foto (no por el nombre): directa, o delegando a su vez
+   * en otra guarda que sí lo haga. `visitadas` corta ciclos.
+   */
+  function guardaDeLaCasaEsReal(s: PrivilegeSnapshot, nombre: string, visitadas = new Set<string>()): boolean {
+    const g = s.guards?.[nombre];
+    if (!g || visitadas.has(nombre)) return false;
+    visitadas.add(nombre);
+    if (g.checks_membership && g.raises_42501) return true;
+    return (g.delegated_guards ?? []).some((d) => guardaDeLaCasaEsReal(s, d, visitadas));
+  }
+
+  /**
+   * ¿La función que escribe está protegida por pertenencia?
+   * · Directa: su cuerpo consulta `organization_members` y lanza 42501 (fn_log_consent_opt_out).
+   * · Delegada: llama con el MISMO `p_org` a una guarda de la casa que la foto
+   *   demuestra real. Es el caso de `fn_stop_voice_campaign` desde 20261001002200:
+   *   `crm_lock_comm_wallet(p_org)` y `fn_crm_exigir_permiso(p_org, …)`, las dos
+   *   sobre `fn_assert_acceso_org`. La versión anterior de esta suite solo buscaba
+   *   el texto `organization_members` y la daba por desprotegida (falso positivo
+   *   verificado en seco el 2026-11-10: un autenticado no miembro recibe 42501).
+   */
+  function proteccionDe(s: PrivilegeSnapshot, g: GuardaFoto): 'directa' | 'delegada' | null {
+    if (g.checks_membership && g.raises_42501) return 'directa';
+    if ((g.delegated_guards ?? []).some((d) => guardaDeLaCasaEsReal(s, d))) return 'delegada';
+    return null;
+  }
+
   function violacionesDePrivilegios(s: PrivilegeSnapshot): string[] {
     const v: string[] = [];
 
@@ -2236,12 +2289,25 @@ describe('L. Privilegios reales de la base (R3-4)', () => {
     // (3) Las DOS funciones que ESCRIBEN comprueban la pertenencia del llamante.
     // R3-1: `fn_log_consent_opt_out` escribía entre inquilinos porque validaba el
     // cliente pero no al llamante. Es el "gemelo del archivo de al lado" clásico.
+    // La guarda puede ser directa o delegada en una guarda de la casa (ver
+    // `proteccionDe`); en los dos casos tiene que llegar ANTES de la primera escritura.
     for (const fn of ['fn_stop_voice_campaign', 'fn_log_consent_opt_out']) {
       const g = s.function_guards[fn];
       if (!g) { v.push(`${fn}: sin guarda declarada`); continue; }
       if (!g.security_definer) v.push(`${fn}: dejó de ser SECURITY DEFINER`);
-      if (!g.checks_membership) v.push(`${fn}: NO comprueba organization_members (escritura entre inquilinos)`);
-      if (!g.raises_42501) v.push(`${fn}: no lanza 42501`);
+      if (!proteccionDe(s, g)) {
+        if (!g.checks_membership) v.push(`${fn}: NO comprueba organization_members (escritura entre inquilinos)`);
+        if (!g.raises_42501) v.push(`${fn}: no lanza 42501`);
+        // Foto vieja: no sabe ver guardas delegadas. No se presume nada: queda
+        // ROJO, y el mensaje dice qué falta aplicar para poder comprobarlo.
+        if (g.delegated_guards === undefined) {
+          v.push(`${fn}: la foto no informa guardas delegadas (falta aplicar ${MIGRACION_GUARDAS_DELEGADAS})`);
+        }
+      }
+      if (typeof g.guard_pos === 'number' && typeof g.write_pos === 'number' &&
+          g.write_pos > 0 && (g.guard_pos === 0 || g.guard_pos > g.write_pos)) {
+        v.push(`${fn}: la guarda llega DESPUÉS de la primera escritura`);
+      }
     }
 
     // (4) Los LIBROS INMUTABLES: si el inquilino los puede escribir, la garantía
@@ -2360,13 +2426,79 @@ describe('L. Privilegios reales de la base (R3-4)', () => {
     expect(violacionesDePrivilegios(PRIV.snapshot!)).toEqual([]);
   });
 
+  // Pura (no consulta la base): corre siempre, con o sin credenciales.
+  test('L2 bis una guarda DELEGADA cuenta solo si la guarda existe, es real y va antes de escribir', () => {
+    const real: GuardaFoto = { security_definer: true, checks_membership: true, raises_42501: true, delegated_guards: [], guard_pos: 40, write_pos: 0 };
+    const base = (stop: GuardaFoto, guards: Record<string, GuardaFoto>): PrivilegeSnapshot => ({
+      functions: {
+        fn_claim_voice_agent_calls: '{postgres=X/postgres,service_role=X/postgres}',
+        fn_claim_voice_agent_call_one: '{postgres=X/postgres,service_role=X/postgres}',
+        fn_stop_voice_campaign: '{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}',
+        fn_log_consent_opt_out: '{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}',
+        fn_can_contact: '{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}',
+      },
+      function_guards: {
+        fn_stop_voice_campaign: stop,
+        fn_log_consent_opt_out: { ...real, guard_pos: 400, write_pos: 800 },
+      },
+      guards,
+      tables: {}, policies: [], indexes: {},
+    });
+    const soloDeStop = (s: PrivilegeSnapshot) =>
+      violacionesDePrivilegios(s).filter((x) => x.startsWith('fn_stop_voice_campaign:'));
+    const stopDelegada = (extra: Partial<GuardaFoto> = {}): GuardaFoto => ({
+      security_definer: true, checks_membership: false, raises_42501: false,
+      delegated_guards: ['crm_lock_comm_wallet', 'fn_crm_exigir_permiso'], guard_pos: 17, write_pos: 273, ...extra,
+    });
+    // Forma de producción: dos guardas encadenadas sobre fn_assert_acceso_org.
+    const cadenaReal = {
+      fn_assert_acceso_org: real,
+      fn_crm_exigir_permiso: { ...real, checks_membership: false, delegated_guards: ['fn_assert_acceso_org'] },
+      crm_lock_comm_wallet: { ...real, checks_membership: false, raises_42501: false, delegated_guards: ['fn_assert_acceso_org'] },
+    };
+
+    // (a) Delegación real y antes de escribir → protegida.
+    expect(soloDeStop(base(stopDelegada(), cadenaReal))).toEqual([]);
+
+    // (b) La guarda delegada perdió su comprobación (alguien la vació) → ROJO.
+    const vaciada = {
+      fn_assert_acceso_org: { ...real, checks_membership: false, raises_42501: false },
+      fn_crm_exigir_permiso: cadenaReal.fn_crm_exigir_permiso,
+      crm_lock_comm_wallet: cadenaReal.crm_lock_comm_wallet,
+    };
+    expect(soloDeStop(base(stopDelegada(), vaciada))).toEqual(expect.arrayContaining([
+      'fn_stop_voice_campaign: NO comprueba organization_members (escritura entre inquilinos)',
+    ]));
+
+    // (c) Un nombre de guarda que la foto no conoce no protege por sí solo.
+    expect(soloDeStop(base(stopDelegada({ delegated_guards: ['fn_guarda_inventada'] }), cadenaReal)))
+      .toContain('fn_stop_voice_campaign: NO comprueba organization_members (escritura entre inquilinos)');
+
+    // (d) Guarda real pero DESPUÉS del UPDATE → ROJO.
+    expect(soloDeStop(base(stopDelegada({ guard_pos: 500, write_pos: 273 }), cadenaReal)))
+      .toEqual(['fn_stop_voice_campaign: la guarda llega DESPUÉS de la primera escritura']);
+
+    // (e) Foto vieja (sin la migración de guardas delegadas): no se presume nada.
+    const vieja = base({ security_definer: true, checks_membership: false, raises_42501: false }, {});
+    delete vieja.guards;
+    expect(soloDeStop(vieja)).toEqual([
+      'fn_stop_voice_campaign: NO comprueba organization_members (escritura entre inquilinos)',
+      'fn_stop_voice_campaign: no lanza 42501',
+      `fn_stop_voice_campaign: la foto no informa guardas delegadas (falta aplicar ${MIGRACION_GUARDAS_DELEGADAS})`,
+    ]);
+  });
+
   casoPriv('L3 la guarda de pertenencia está en las DOS funciones que escriben', () => {
-    const { function_guards } = PRIV.snapshot!;
+    const s = PRIV.snapshot!;
     for (const fn of ['fn_stop_voice_campaign', 'fn_log_consent_opt_out']) {
-      const g = function_guards[fn];
+      const g = s.function_guards[fn];
       expect([fn, Boolean(g)]).toEqual([fn, true]);
-      expect([fn, g.security_definer, g.checks_membership, g.raises_42501])
-        .toEqual([fn, true, true, true]);
+      // Directa (fn_log_consent_opt_out) o delegada en una guarda de la casa que
+      // la propia foto demuestra real (fn_stop_voice_campaign). Ver `proteccionDe`.
+      // Hasta aplicar 20261110170000 la foto no ve la delegación y esto sigue ROJO
+      // para fn_stop_voice_campaign: a propósito, no se da por buena sin evidencia.
+      expect([fn, g.security_definer, proteccionDe(s, g) !== null])
+        .toEqual([fn, true, true]);
     }
   });
 
@@ -2375,8 +2507,17 @@ describe('L. Privilegios reales de la base (R3-4)', () => {
       const libro = PRIV.snapshot!.tables[nombre];
       expect([nombre, Boolean(libro)]).toEqual([nombre, true]);
       // r=SELECT, x=REFERENCES, t=TRIGGER. Ni a(INSERT) ni w(UPDATE) ni d(DELETE).
-      expect([nombre, privilegiosDe(libro.acl, 'authenticated')]).toEqual([nombre, 'rxt']);
-      expect([nombre, privilegiosDe(libro.acl, 'anon')]).toEqual([nombre, 'rxt']);
+      //
+      // Postgres 17 (el proyecto se recreó en esa versión el 2026-11-03) añade el
+      // privilegio m=MAINTAIN, y el ACL por defecto de Supabase en `public` lo
+      // concede a anon/authenticated/service_role en TODAS las tablas (505 de 636
+      // el 2026-11-10): por eso el ACL real es `rxtm`. MAINTAIN no lee ni escribe
+      // filas (VACUUM/ANALYZE/REINDEX/CLUSTER/LOCK TABLE) y PostgREST no expone
+      // ninguna de esas órdenes, así que la garantía del libro inmutable no cambia.
+      // Se descuenta SOLO la `m`: cualquier otra letra nueva sigue siendo ROJO.
+      const sinMaintain = (p: string) => p.replace('m', '');
+      expect([nombre, sinMaintain(privilegiosDe(libro.acl, 'authenticated'))]).toEqual([nombre, 'rxt']);
+      expect([nombre, sinMaintain(privilegiosDe(libro.acl, 'anon'))]).toEqual([nombre, 'rxt']);
       expect(privilegiosDe(libro.acl, 'service_role')).toContain('a');
     }
   });

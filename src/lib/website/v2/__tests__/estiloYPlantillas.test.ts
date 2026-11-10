@@ -19,6 +19,7 @@ import path from 'path';
 import ts from 'typescript';
 import { validarDocumentoSitio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import {
+  IDS_PLANTILLAS_TIENDA,
   SECCIONES_INICIO_BASE,
   construirCatalogo,
   contarPorGiro,
@@ -30,6 +31,7 @@ import {
   plantillaPorId,
   plantillasDelGiro,
 } from '@/lib/website/contrato/catalogoPlantillas';
+import { esVarianteTienda } from '@/lib/website/contrato/seccionesTienda';
 import {
   ajustesVivosDeEstilo,
   contrasteAcento,
@@ -106,7 +108,8 @@ describe('catálogo de plantillas (A/06b)', () => {
   test('los demás giros salen de las plantillas reales del sitio; los contadores, del catálogo', () => {
     const c = contarPorGiro(CATALOGO);
     expect(c.restaurante).toBe(9);
-    expect(c.tienda).toBe(TEMPLATE_PRESETS.filter((p) => p.business_type === 'retail').length);
+    // Las del sitio (`retail_*`) más las 7 de tienda nuevas, que se apoyan en ellas.
+    expect(c.tienda).toBe(TEMPLATE_PRESETS.filter((p) => p.business_type === 'retail').length + IDS_PLANTILLAS_TIENDA.length);
     expect(c.todas).toBe(CATALOGO.plantillas.length);
     expect(CATALOGO.plantillas.some((p) => p.id === 'restaurant_modern')).toBe(false);
     expect(plantillasDelGiro(CATALOGO, 'tienda')[0].porDefecto).toBe(true);
@@ -117,6 +120,10 @@ describe('catálogo de plantillas (A/06b)', () => {
     for (const p of CATALOGO.plantillas) {
       expect(bases.has(p.base)).toBe(true);
       for (const [tipo, variante] of p.inicio) {
+        // Variantes y tipos nuevos de las plantillas de tienda (`seccionesTienda.ts`): el catálogo
+        // del editor los registra en E4/E6; mientras, `plantillasTienda.test.ts` los compara con el
+        // SECTION_MAP del sitio, que ya los pinta.
+        if (esVarianteTienda(tipo, variante)) continue;
         const def = getSectionDefinition(tipo);
         expect({ plantilla: p.id, tipo, existe: !!def }).toEqual({ plantilla: p.id, tipo, existe: true });
         expect({ plantilla: p.id, tipo, variante, ok: def!.variants.some((v) => v.id === variante) }).toEqual({ plantilla: p.id, tipo, variante, ok: true });

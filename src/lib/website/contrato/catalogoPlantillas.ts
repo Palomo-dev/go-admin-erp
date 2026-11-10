@@ -21,6 +21,9 @@
  *   el sitio público ya sabe pintar (`base`: `restaurant_elegant`, …): esa es la
  *   que se guarda en `tema.plantillaBase`, porque el sitio resuelve la plantilla
  *   con ese id (`getTemplate(template_id)` en goadmin-websites).
+ * - Tienda: las 7 plantillas aprobadas en Figma («04 Tiendas», 2026-11-10: Panorama, Atelier,
+ *   Radiante, Roble, Marea, Contraste y Hogar), con su tarjeta de producto, sus perillas del tema y
+ *   sus páginas de ficha y categoría (`TIENDA`), más las 4 del sitio (`retail_*`).
  * - Los demás giros (tienda, hotel, servicios, gimnasio, transporte y
  *   parqueadero) aún no tienen diseño propio en Figma: se construyen desde las
  *   plantillas reales del sitio (`TEMPLATE_PRESETS`, que se pasan a
@@ -29,6 +32,8 @@
  *   prueba de contrato la compara con el sitio cuando el repositorio está al lado).
  */
 import type { EstiloBoton, MovimientoSitio, RadioSitio, TokensEstilo } from '@/lib/website/v2/tokensEstilo';
+import type { EstiloTarjetaProducto } from '@/lib/website/tarjetaProducto';
+import type { EstiloPaginacion, IndicadorCarrusel } from '@/lib/website/v2/paginacionCarrusel';
 import { CONTRASTE_AA, contraste } from '@/lib/utils/contrasteColor';
 
 export const VERSION_CATALOGO_PLANTILLAS = 1 as const;
@@ -63,8 +68,30 @@ export function giroCatalogoDeTipo(typeId: number | null | undefined): GiroCatal
   return typeId ? GIRO_DE_TIPO[typeId] ?? null : null;
 }
 
-/** Sección de la estructura de una plantilla: `[tipo, variante]` del catálogo de secciones. */
-export type SeccionPlantilla = readonly [tipo: string, variante: string];
+/**
+ * Sección de la estructura de una plantilla: `[tipo, variante]` del catálogo de secciones y, si la
+ * plantilla lo pide, el contenido propio que se mezcla SOBRE el contenido inicial de la sección
+ * (`plantillaCompleta.ts`). Un texto `'@pagina:<slug>'` se resuelve contra las páginas reales del
+ * documento (sin la página, la clave o el botón no se escriben: nunca un enlace roto).
+ */
+export type SeccionPlantilla = readonly [tipo: string, variante: string, contenido?: Readonly<Record<string, unknown>>];
+
+/**
+ * Perillas del tema que trae una plantilla (`tema.tokens`, ya en el contrato): mayúsculas
+ * espaciadas en los botones y efecto al pasar el mouse. Las escribe solo «Plantilla completa».
+ */
+export interface TokensPlantilla {
+  boton?: { mayusculas?: boolean };
+  hover?: 'sutil' | 'expresivo';
+}
+
+/** Páginas de detalle que arma la plantilla («Plantilla completa» las REEMPLAZA: decisión D4). */
+export interface DetallePlantilla {
+  /** Bloques de la ficha (`tipo = product_detail`), en orden. */
+  producto: readonly SeccionPlantilla[];
+  /** Bloques de la página de categoría (`tipo = category_detail`), en orden. */
+  categoria: readonly SeccionPlantilla[];
+}
 
 /** Clase del par tipográfico, para la descripción de FontPairOption («Elegante · títulos con serifa»). */
 export type ClaseFuentes = 'editorial' | 'elegante' | 'clasica' | 'calida' | 'artesanal' | 'divertida' | 'neutra' | 'moderna';
@@ -75,6 +102,16 @@ export interface EstiloCatalogo extends TokensEstilo {
   nombre: string;
   giro: GiroCatalogo;
   claseFuentes: ClaseFuentes;
+  /**
+   * Secundario propio (`colores.secundario`). Ausente = el derivado del modo, como siempre
+   * (`secundarioDe`). Solo lo traen las plantillas de tienda nuevas (Marea).
+   */
+  secundario?: string;
+  /**
+   * Segundo acento (`colores.acento`: resaltados, etiquetas, la manija del antes y después).
+   * Ausente = no se escribe: «Solo estilo» de las plantillas de antes queda igual byte a byte.
+   */
+  acentoSecundario?: string;
 }
 
 export interface PlantillaCatalogo {
@@ -91,6 +128,17 @@ export interface PlantillaCatalogo {
   estilo: EstiloCatalogo;
   /** La primera que se sugiere en su giro. */
   porDefecto: boolean;
+  // ─── Solo las plantillas de tienda nuevas (2026-11). Ausentes = «Plantilla completa» de antes. ──
+  /** Tarjeta de producto del sitio (`tema.tarjetaProducto`, contrato `tarjetaProducto.ts`). */
+  tarjetaProducto?: Readonly<EstiloTarjetaProducto>;
+  /** Perillas del tema (`tema.tokens`). */
+  tokens?: Readonly<TokensPlantilla>;
+  /** Carrusel del sitio (`tema.carrusel`; solo con NEXT_PUBLIC_WEBSITE_PAGINACION=1). */
+  carrusel?: Readonly<{ indicador?: IndicadorCarrusel }>;
+  /** Paginación del sitio (`tema.paginacion`; solo con NEXT_PUBLIC_WEBSITE_PAGINACION=1). */
+  paginacion?: Readonly<{ estilo?: EstiloPaginacion }>;
+  /** Ficha de producto y página de categoría propias (D4: reemplazan las del borrador). */
+  detalle?: Readonly<DetallePlantilla>;
 }
 
 export interface CatalogoPlantillas {
@@ -352,6 +400,595 @@ const RESTAURANTE: readonly DefinicionRestaurante[] = [
   },
 ];
 
+// ─── Tienda: las 7 plantillas nuevas (Figma «GO Admin — Sitios» › 04 Tiendas, 2026-11) ─────────
+//
+// Aprobadas por el dueño el 2026-11-10 (PLANO §4 y las láminas L0 de cada una). Cada una se apoya
+// en una plantilla base del sitio (`base`, un `retail_*` que ya existe: el sitio no necesita un
+// preset nuevo) y trae, además del estilo e Inicio, su tarjeta de producto, sus perillas del tema
+// y sus páginas de ficha y categoría. Sin bandera propia: el sitio publicado ya pinta todo lo que
+// usan (W1–W7), así que aparecen directamente en «Usar plantilla».
+//
+// Contenido de ejemplo: solo rótulos neutros que el dueño edita («Lo más pedido este mes», «Se lleva
+// con»). Nada de cifras, reseñas, cupones ni anuncios de las láminas: serían hechos falsos.
+
+interface DefinicionTienda extends Omit<DefinicionRestaurante, 'subgiro'> {
+  subgiro: string;
+  secundario?: string;
+  acentoSecundario?: string;
+  tarjetaProducto: EstiloTarjetaProducto;
+  tokens?: TokensPlantilla;
+  carrusel?: { indicador?: IndicadorCarrusel };
+  paginacion?: { estilo?: EstiloPaginacion };
+  detalle: DetallePlantilla;
+}
+
+/** Ids de las 7 plantillas de tienda nuevas, en el orden de la galería (A1). */
+export const IDS_PLANTILLAS_TIENDA = [
+  'retail_panorama',
+  'retail_atelier',
+  'retail_radiante',
+  'retail_roble',
+  'retail_marea',
+  'retail_contraste',
+  'retail_hogar',
+] as const;
+
+/** ¿Es una de las 7 plantillas de tienda nuevas? */
+export function esPlantillaTiendaNueva(id: string | null | undefined): boolean {
+  return !!id && (IDS_PLANTILLAS_TIENDA as readonly string[]).includes(id);
+}
+
+/** Página de categoría de siempre (encabezado con migas y conteo, filtros y rejilla). */
+const ENCABEZADO_CATEGORIA = { show_image: false, show_breadcrumb: true, show_count: true } as const;
+const RELACIONADOS_REJILLA: SeccionPlantilla = ['related_products', 'default', { related_products_layout: 'grid' }];
+
+const TIENDA: readonly DefinicionTienda[] = [
+  {
+    id: 'retail_panorama',
+    nombre: 'Panorama',
+    descripcion: 'Deportes, aire libre, tecnología y repuestos: catálogos amplios con el buscador al frente.',
+    subgiro: 'Catálogo amplio',
+    base: 'retail_modern',
+    inicio: [
+      ['hero', 'search', { inset: true }],
+      ['products_grid', 'grid', { title: 'Lo más pedido este mes', columns: 4 }],
+      ['categories_grid', 'horizontal', { title: 'Encuentra lo que necesitas', category_style: 'card_bottom', shape: 'card', desktop_layout: 'grid', desktop_columns: 6, mobile_layout: 'carousel', show_count: true }],
+      ['how_it_works', 'steps'],
+      ['categories_grid', 'grid', { title: 'Colecciones', category_style: 'overlay', shape: 'rounded', desktop_columns: 4 }],
+      ['link_cloud', 'pills', { source: 'categories' }],
+      ['promo_banners', 'carousel', { layout: 'carousel' }],
+      ['brands', 'logos'],
+      ['features_grid', 'icons'],
+      ['stats', 'cards'],
+      ['cta', 'with_image'],
+      ['testimonials', 'grid', { show_summary: true, summary_source: 'product_reviews' }],
+      ['faq', 'two_columns'],
+    ],
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#111111',
+    acento: '#111111',
+    fuenteTitulos: 'Inter',
+    fuenteCuerpo: 'Inter',
+    radio: 12,
+    estiloBoton: 'solido',
+    movimiento: 'medio',
+    claseFuentes: 'neutra',
+    tokens: { hover: 'expresivo' },
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      add: { button_style: 'icon_only', button_shape: 'circle', button_size: 'md', button_width: 'auto', button_position: 'inline_price', button_visibility: 'always', icon: 'ArrowRight' },
+      label_shape: 'pill',
+      label_style: 'soft',
+      label_position: 'top_left',
+      text_align: 'left',
+      price_position: 'beside_button',
+      price_size: 'lg',
+      price_prefix: 'desde',
+      show_compare_price: false,
+      show_reviews: false,
+      title_lines: 2,
+      title_weight: 'semibold',
+      title_size: 'md',
+      show_brand: false,
+      show_category: true,
+      card_subtitle: 'description',
+      card_layout: 'vertical',
+      card_radius: 12,
+      card_border_width: 0,
+      card_shadow: 'none',
+      card_padding: 20,
+      image_ratio: '4:3',
+      image_fit: 'contain',
+      image_bg: 'transparent',
+      image_padding: 0,
+      image_radius: 0,
+      hover_image: 'zoom',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'bottom', page_layout: { columns: '2', sticky_column: true, show_breadcrumb: true } }],
+        ['product_info', 'default'],
+        ['product_anchor_nav', 'tabs'],
+        ['product_specs', 'icon_grid'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', sticky_mobile: true }],
+        ['product_benefits', 'default'],
+        ['product_description', 'default'],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', ENCABEZADO_CATEGORIA],
+        ['category_filters', 'default', { show_sort: true, show_view_toggle: true, subcategory_style: 'chips' }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  {
+    id: 'retail_atelier',
+    nombre: 'Atelier',
+    descripcion: 'Moda de autor, boutiques, sastrería, calzado y bolsos: editorial y silenciosa.',
+    subgiro: 'Moda de autor',
+    base: 'retail_elegant',
+    inicio: [
+      ['hero', 'fullscreen', { cta_text: 'Ver la colección', cta_url: '@pagina:productos' }],
+      ['products_grid', 'editorial', { count_header: true, filters_style: 'text' }],
+      ['image_text', 'image_left'],
+    ],
+    modo: 'light',
+    fondo: '#EDE9E3',
+    texto: '#1A1715',
+    acento: '#1A1715',
+    fuenteTitulos: 'Cormorant Garamond',
+    fuenteCuerpo: 'Inter',
+    radio: 0,
+    estiloBoton: 'solido',
+    movimiento: 'bajo',
+    claseFuentes: 'elegante',
+    paginacion: { estilo: 'cargar_mas' },
+    tarjetaProducto: {
+      card_preset: 'minimal',
+      add: { button_style: 'ghost', button_shape: 'square', button_size: 'sm', button_width: 'full', button_position: 'over_image_bottom', button_visibility: 'hover', icon: 'Plus', icon_side: 'right' },
+      choose: { button_style: 'ghost', button_shape: 'square', button_size: 'sm', button_width: 'full', button_position: 'over_image_bottom', button_visibility: 'hover', icon: 'Plus', icon_side: 'right' },
+      label_shape: 'square',
+      label_style: 'outline',
+      label_position: 'top_left',
+      label_shipping: { show: false },
+      label_discount: { show: false },
+      text_align: 'left',
+      price_position: 'beside_title',
+      price_size: 'sm',
+      show_compare_price: false,
+      show_reviews: false,
+      title_lines: 1,
+      title_weight: 'normal',
+      title_size: 'lg',
+      title_font: 'heading',
+      show_brand: false,
+      show_category: false,
+      card_radius: 0,
+      card_border_width: 0,
+      card_shadow: 'none',
+      card_padding: 0,
+      image_ratio: '3:4',
+      image_fit: 'contain',
+      image_bg: '#E6E1D9',
+      image_padding: 32,
+      image_radius: 0,
+      hover_image: 'second',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'mosaic', thumbnails_position: 'none' }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
+        ['product_benefits', 'default'],
+        ['product_description', 'default'],
+        ['complete_the_look', 'default', { source: 'tag' }],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', ENCABEZADO_CATEGORIA],
+        ['category_filters', 'default', { subcategory_style: 'text', show_view_toggle: false }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  {
+    id: 'retail_radiante',
+    nombre: 'Radiante',
+    descripcion: 'Belleza, cosmética y cuidado personal: luminosa, con tarjetas flotantes y palabra resaltada.',
+    subgiro: 'Belleza y cuidado personal',
+    base: 'retail_classic',
+    inicio: [
+      ['hero', 'floating', { buttons: [{ label: 'Comprar', url: '@pagina:productos', variant: 'solid' }], floating_cards: [{ kind: 'categories' }, { kind: 'rating' }] }],
+      ['featured_products', 'carousel'],
+      ['image_text', 'image_left'],
+      ['products_grid', 'grid', { columns: 4 }],
+      ['service_cards', 'over_image'],
+      // «Blog»: no hay tabla de blog (D1, diferido); banners manuales, oculta hasta que el dueño los ponga.
+      ['promo_banners', 'grid', { title: 'Blog', banners: [] }],
+      ['transformation', 'slider'],
+      ['faq', 'two_columns'],
+      ['gallery', 'collage'],
+      ['cta', 'banner'],
+    ],
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#141414',
+    acento: '#141414',
+    acentoSecundario: '#F2F06B',
+    fuenteTitulos: 'Instrument Serif',
+    fuenteCuerpo: 'Inter',
+    radio: 24,
+    estiloBoton: 'pastilla',
+    movimiento: 'medio',
+    claseFuentes: 'editorial',
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      add: { button_style: 'soft', button_shape: 'pill', button_size: 'md', button_width: 'full', button_position: 'bottom', button_visibility: 'always', icon: '' },
+      label_shape: 'pill',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_new: { bg: '#F2F06B', text: '#141414' },
+      text_align: 'left',
+      price_position: 'beside_title',
+      price_size: 'md',
+      show_compare_price: true,
+      show_reviews: true,
+      reviews_position: 'below_title',
+      reviews_style: 'stars',
+      title_lines: 2,
+      title_weight: 'normal',
+      title_size: 'md',
+      title_font: 'heading',
+      show_category: true,
+      card_radius: 24,
+      card_border_width: 0,
+      card_shadow: 'none',
+      card_padding: 12,
+      card_bg: '#F6F4F1',
+      image_ratio: '1:1',
+      image_fit: 'contain',
+      image_bg: '#FFFFFF',
+      image_padding: 24,
+      image_radius: 12,
+      hover_image: 'second',
+      wishlist_style: 'circle',
+      wishlist_position: 'top_right',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'scroll', thumbnails_position: 'none' }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked' }],
+        ['product_benefits', 'default'],
+        ['product_description', 'default'],
+        ['product_reviews', 'default'],
+        ['product_faq', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', ENCABEZADO_CATEGORIA],
+        ['category_filters', 'default', { show_sort: true, show_view_toggle: true, subcategory_style: 'chips' }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  {
+    id: 'retail_roble',
+    nombre: 'Roble',
+    descripcion: 'Muebles de autor, carpintería y objetos hechos a pedido: mucho aire y fotos sobre fondo hueso.',
+    subgiro: 'Muebles de autor',
+    base: 'retail_modern',
+    inicio: [
+      ['hero', 'fullscreen', { buttons: [{ label: 'Ver la colección', url: '@pagina:productos', variant: 'link' }] }],
+      ['product_index', 'list', { title: 'Nuestras piezas' }],
+      ['text_block', 'centered'],
+      ['categories_grid', 'grid', { category_style: 'title_top', shape: 'square', desktop_columns: 3, mobile_layout: 'carousel', show_count: true }],
+      ['products_grid', 'grid', { tabs_style: 'underline' }],
+      ['product_anatomy', 'default'],
+      ['features_grid', 'photo_columns'],
+      ['stats', 'inline'],
+      ['testimonials', 'quotes', { pager: 'fraction', show_summary: true }],
+      // «Notas del taller»: sin tabla de blog (D1); banners manuales, oculta hasta que el dueño los ponga.
+      ['promo_banners', 'grid', { title: 'Notas del taller', banners: [] }],
+    ],
+    modo: 'light',
+    fondo: '#F6F6F2',
+    texto: '#2E2E2A',
+    acento: '#2E2E2A',
+    fuenteTitulos: 'Inter',
+    fuenteCuerpo: 'Inter',
+    radio: 0,
+    estiloBoton: 'solido',
+    movimiento: 'bajo',
+    claseFuentes: 'neutra',
+    tarjetaProducto: {
+      card_preset: 'minimal',
+      add: { button_style: 'icon_only', button_shape: 'square', button_size: 'md', button_width: 'auto', button_position: 'over_image_corner', button_visibility: 'hover', icon: 'Plus' },
+      label_style: 'soft',
+      label_shape: 'square',
+      label_position: 'top_left',
+      text_align: 'left',
+      price_position: 'beside_title',
+      price_size: 'sm',
+      show_compare_price: true,
+      show_reviews: false,
+      title_lines: 1,
+      title_weight: 'normal',
+      title_size: 'sm',
+      show_category: false,
+      card_subtitle: 'dimensions',
+      card_radius: 0,
+      card_padding: 0,
+      image_ratio: '4:5',
+      image_fit: 'cover',
+      image_bg: '#E3E3DC',
+      image_padding: 0,
+      image_radius: 0,
+      hover_image: 'second',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'scroll', thumbnails_position: 'none', page_layout: { columns: '2', show_breadcrumb: false } }],
+        ['product_info', 'default'],
+        ['product_description', 'default'],
+        ['product_specs', 'panel'],
+        ['product_actions', 'default', { buttons_layout: 'split', sticky_mobile: true }],
+        ['product_benefits', 'default'],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', ENCABEZADO_CATEGORIA],
+        ['category_filters', 'default', { subcategory_style: 'tabs', show_view_toggle: false }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  {
+    id: 'retail_marea',
+    nombre: 'Marea',
+    descripcion: 'Moda de playa, ropa urbana y colecciones por temporada, con bloques de color por colección.',
+    subgiro: 'Moda por temporada',
+    base: 'retail_bold',
+    inicio: [
+      ['hero', 'brand_giant', { brand_layer: 'behind_figure', cta_text: 'Ver la colección', cta_url: '@pagina:productos' }],
+      ['categories_grid', 'grid', { category_style: 'card_bottom', shape: 'square', desktop_columns: 5, show_count: false, desktop_layout: 'grid', mobile_layout: 'carousel', category_card_color: 'per_item' }],
+      // Un bloque por categoría real (hasta 5): `plantillaCompleta.ts` repite esta sección.
+      ['image_text', 'color_block'],
+      ['products_grid', 'grid', { columns: 4 }],
+      ['gallery', 'carousel', { stagger: true }],
+      ['image_text', 'image_left', { bg_type: 'color', bg_color: '#0E2433', text_color: '#EDE8E1' }],
+      ['image_text', 'image_right'],
+      ['hours_location', 'list'],
+      ['newsletter', 'banner', { layout: 'inline_bar' }],
+      ['faq', 'two_columns'],
+    ],
+    modo: 'light',
+    fondo: '#EDE8E1',
+    texto: '#0E0E0E',
+    acento: '#1F3FD8',
+    secundario: '#0E2433',
+    acentoSecundario: '#DBC6A4',
+    fuenteTitulos: 'Archivo',
+    fuenteCuerpo: 'Archivo',
+    radio: 0,
+    estiloBoton: 'pastilla',
+    movimiento: 'alto',
+    claseFuentes: 'moderna',
+    paginacion: { estilo: 'cargar_mas' },
+    tarjetaProducto: {
+      card_preset: 'minimal',
+      card_layout: 'vertical',
+      text_align: 'left',
+      title_lines: 1,
+      title_weight: 'medium',
+      title_size: 'sm',
+      price_position: 'beside_title',
+      price_size: 'sm',
+      show_compare_price: true,
+      show_reviews: false,
+      show_brand: false,
+      show_category: false,
+      image_ratio: '4:5',
+      image_fit: 'contain',
+      image_bg: '#E2DACD',
+      image_padding: 0,
+      image_radius: 0,
+      hover_image: 'second',
+      card_radius: 0,
+      card_border_width: 0,
+      card_shadow: 'none',
+      card_padding: 0,
+      add: { button_style: 'icon_only', button_shape: 'circle', button_size: 'sm', button_width: 'auto', button_position: 'over_image_corner', button_visibility: 'hover', icon: 'Plus' },
+      label_shape: 'square',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_shipping: { show: false },
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'show_all', thumbnails_position: 'none' }],
+        ['product_info', 'default'],
+        ['product_description', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', sticky_mobile: true, show_price_in_button: true }],
+        ['product_benefits', 'default'],
+        ['product_reviews', 'default'],
+        ['complete_the_look', 'default', { source: 'tag', limit: 4 }],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', ENCABEZADO_CATEGORIA],
+        ['category_filters', 'default', { show_sort: true, show_view_toggle: true, subcategory_style: 'chips' }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  {
+    id: 'retail_contraste',
+    nombre: 'Contraste',
+    descripcion: 'Muebles modernos, iluminación y diseño: blanco y negro con fotos cálidas y filtros laterales.',
+    subgiro: 'Diseño y decoración',
+    base: 'retail_bold',
+    inicio: [
+      ['hero', 'brand_giant', { brand_layer: 'over_photo', cta_text: 'Ver la colección', cta_url: '@pagina:productos' }],
+      ['marquee', 'text'],
+      ['categories_grid', 'horizontal', { category_style: 'card_bottom', shape: 'square', desktop_layout: 'carousel', mobile_layout: 'carousel', show_count: false }],
+      ['image_text', 'editorial', { link_text: 'Ver la colección', link_url: '@pagina:productos' }],
+      ['promo_banners', 'grid', { banner_layout: 'triple_center' }],
+      ['products_grid', 'grid', { columns: 3 }],
+      ['text_block', 'inline_icons'],
+      ['stats', 'inline'],
+      ['testimonials', 'carousel'],
+      // «Nuestro blog»: sin tabla de blog (D1); banners manuales, oculta hasta que el dueño los ponga.
+      ['promo_banners', 'grid', { title: 'Nuestro blog', banners: [] }],
+      ['gallery', 'instagram_cta'],
+    ],
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#161616',
+    acento: '#161616',
+    acentoSecundario: '#8C6A4F',
+    fuenteTitulos: 'Syne',
+    fuenteCuerpo: 'Inter',
+    radio: 0,
+    estiloBoton: 'solido',
+    movimiento: 'medio',
+    claseFuentes: 'moderna',
+    tokens: { boton: { mayusculas: true } },
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      add: { button_style: 'icon_only', button_shape: 'circle', button_size: 'md', button_width: 'auto', button_position: 'over_image_corner', button_visibility: 'hover', icon: 'ShoppingBag' },
+      label_shape: 'square',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_shipping: { show: false },
+      text_align: 'left',
+      price_position: 'below_title',
+      price_size: 'md',
+      show_compare_price: true,
+      show_reviews: false,
+      title_lines: 1,
+      title_weight: 'semibold',
+      title_size: 'lg',
+      title_font: 'heading',
+      card_radius: 0,
+      card_border_width: 1,
+      card_shadow: 'none',
+      card_padding: 20,
+      image_ratio: '4:5',
+      image_fit: 'contain',
+      image_bg: '#F0F0F0',
+      image_padding: 0,
+      image_radius: 0,
+      hover_image: 'zoom',
+      card_grid_lines: true,
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'show_all', thumbnails_position: 'none' }],
+        ['product_info', 'default'],
+        ['product_description', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked' }],
+        ['product_benefits', 'default'],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      // Filtros laterales seguidos de la rejilla: así el sitio arma las 2 columnas (W3).
+      categoria: [
+        ['category_header', 'default', { ...ENCABEZADO_CATEGORIA, show_image: true }],
+        ['category_filters', 'sidebar_facets', { show_subcategories: true, show_sort: true }],
+        ['category_products', 'default', { columns: 3 }],
+        ['image_text', 'image_right'],
+        ['features_grid', 'icons'],
+      ],
+    },
+  },
+  {
+    id: 'retail_hogar',
+    nombre: 'Hogar',
+    descripcion: 'Muebles, decoración, colchones y menaje: muchas categorías, ofertas y compra el look.',
+    subgiro: 'Hogar y decoración',
+    base: 'retail_modern',
+    inicio: [
+      ['hero', 'split_products'],
+      ['products_grid', 'grid'],
+      ['image_text', 'image_left'],
+      ['features_grid', 'icons'],
+      ['promo_banners', 'carousel', { layout: 'carousel' }],
+      ['promo_banners', 'grid', { banner_layout: 'triple_center' }],
+      ['featured_products', 'carousel'],
+      ['shop_the_look', 'hotspots'],
+      ['categories_grid', 'grid', { category_style: 'card_bottom', shape: 'rounded', desktop_columns: 3, show_count: true, category_cta_icon: 'arrow_circle' }],
+      ['testimonials', 'grid', { show_summary: true }],
+      // Apagada y oculta hasta que el dueño escriba un cupón real (nunca uno de ejemplo).
+      ['welcome_popup', 'coupon', { enabled: false }],
+    ],
+    // D5 (2026-11-10): primario #1C1A18 y acento #B4583A.
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#1C1A18',
+    acento: '#1C1A18',
+    acentoSecundario: '#B4583A',
+    fuenteTitulos: 'Outfit',
+    fuenteCuerpo: 'Outfit',
+    radio: 12,
+    estiloBoton: 'pastilla',
+    movimiento: 'medio',
+    claseFuentes: 'moderna',
+    tokens: { hover: 'sutil' },
+    carrusel: { indicador: 'barra' },
+    paginacion: { estilo: 'cargar_mas' },
+    tarjetaProducto: {
+      card_preset: 'minimal',
+      add: { button_style: 'solid', button_shape: 'pill', button_size: 'sm', button_width: 'full', button_position: 'over_image_bottom', button_visibility: 'hover', icon: 'ShoppingBag', icon_side: 'left' },
+      label_shape: 'pill',
+      label_style: 'soft',
+      label_position: 'top_left',
+      text_align: 'left',
+      price_position: 'below_title',
+      price_size: 'md',
+      show_compare_price: true,
+      show_reviews: false,
+      title_lines: 1,
+      title_weight: 'medium',
+      title_size: 'md',
+      show_category: true,
+      card_radius: 0,
+      card_padding: 0,
+      image_ratio: '1:1',
+      image_fit: 'contain',
+      image_bg: '#F3F0EB',
+      image_padding: 24,
+      image_radius: 12,
+      hover_image: 'second',
+      wishlist_style: 'circle',
+      wishlist_position: 'top_right',
+      choose_label: 'Elige una opción',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'bottom' }],
+        ['product_info', 'default'],
+        ['product_description', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto' }],
+        ['product_benefits', 'default'],
+        ['product_specs', 'panel'],
+        RELACIONADOS_REJILLA,
+        ['product_pager', 'default'],
+      ],
+      categoria: [
+        ['category_header', 'default', { layout: 'split_text', show_image: false, show_breadcrumb: false, show_count: true }],
+        ['category_filters', 'default', { subcategory_style: 'chips', search: true, show_view_toggle: false }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+];
+
 // ─── Estructura de Inicio de las plantillas del sitio (copia de goadmin-websites) ──────────
 
 /** `lib/templates/presets.ts` de goadmin-websites, página `home` (verificado 2026-10-06). */
@@ -399,7 +1036,7 @@ export interface PlantillaBaseSitio {
 /** Familias con serifa del catálogo (para la descripción del par tipográfico). */
 const CON_SERIFA = new Set([
   'Playfair Display', 'Merriweather', 'Cormorant', 'Cormorant Garamond', 'Lora', 'Libre Caslon Text',
-  'DM Serif Display', 'Fraunces',
+  'DM Serif Display', 'Fraunces', 'Instrument Serif',
 ]);
 
 /** ¿La familia es con serifa? (respaldo CSS `serif` o `sans-serif` en las muestras). */
@@ -489,10 +1126,52 @@ function plantillaRestaurante(d: DefinicionRestaurante, indice: number): Plantil
   };
 }
 
-/** Catálogo completo: las 9 de restaurante y las plantillas del sitio de los demás giros. */
+function plantillaTienda(d: DefinicionTienda): PlantillaCatalogo {
+  return {
+    id: d.id,
+    nombre: d.nombre,
+    descripcion: d.descripcion,
+    giro: 'tienda',
+    subgiro: d.subgiro,
+    base: d.base,
+    inicio: d.inicio,
+    // La de por defecto del giro sigue siendo la del sitio (`retail_modern`).
+    porDefecto: false,
+    estilo: {
+      id: d.id,
+      nombre: d.nombre,
+      giro: 'tienda',
+      modo: d.modo,
+      fondo: d.fondo,
+      texto: d.texto,
+      acento: d.acento,
+      fuenteTitulos: d.fuenteTitulos,
+      fuenteCuerpo: d.fuenteCuerpo,
+      radio: d.radio,
+      estiloBoton: d.estiloBoton,
+      movimiento: d.movimiento,
+      claseFuentes: d.claseFuentes,
+      ...(d.secundario ? { secundario: d.secundario } : {}),
+      ...(d.acentoSecundario ? { acentoSecundario: d.acentoSecundario } : {}),
+    },
+    tarjetaProducto: d.tarjetaProducto,
+    ...(d.tokens ? { tokens: d.tokens } : {}),
+    ...(d.carrusel ? { carrusel: d.carrusel } : {}),
+    ...(d.paginacion ? { paginacion: d.paginacion } : {}),
+    detalle: d.detalle,
+  };
+}
+
+/**
+ * Catálogo completo: las 9 de restaurante, las 7 de tienda nuevas y las plantillas del sitio de
+ * los demás giros (en la pestaña «Tienda», `retail_modern` sigue primero por ser la de por defecto).
+ */
 export function construirCatalogo(bases: readonly PlantillaBaseSitio[]): CatalogoPlantillas {
   const otras = bases.map(plantillaDesdeBase).filter((p): p is PlantillaCatalogo => p !== null);
-  return { version: VERSION_CATALOGO_PLANTILLAS, plantillas: [...RESTAURANTE.map(plantillaRestaurante), ...otras] };
+  return {
+    version: VERSION_CATALOGO_PLANTILLAS,
+    plantillas: [...RESTAURANTE.map(plantillaRestaurante), ...TIENDA.map(plantillaTienda), ...otras],
+  };
 }
 
 // ─── Consultas ─────────────────────────────────────────────────────────────────────────────

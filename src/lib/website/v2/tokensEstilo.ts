@@ -57,6 +57,11 @@ export interface EstiloEditable extends TokensEstilo {
    * `null`/ausente = el derivado del estilo (`secundarioDe`), como siempre.
    */
   secundario?: string | null;
+  /**
+   * Segundo acento (`colores.acento`), solo el de una plantilla que lo trae (las de tienda nuevas).
+   * Ausente = `colores.acento` no se toca: «Solo estilo» de las plantillas de antes queda igual.
+   */
+  acentoSecundario?: string | null;
 }
 
 /**
@@ -130,10 +135,12 @@ export function leerEstilo(documento: DocumentoSitio | null | undefined, base: T
 /**
  * Escribe el estilo en el tema del borrador (inmutable). Con
  * `extendidos=false` no toca `preset`, `radio`, `estiloBoton` ni `movimiento`
- * (ver cabecera). No cambia `plantillaBase`, páginas ni contenido.
+ * (ver cabecera). No cambia `plantillaBase`, páginas ni contenido. `colores.acento` solo se
+ * escribe si el estilo trae `acentoSecundario` (plantillas de tienda nuevas).
  */
 export function escribirEstilo(documento: DocumentoSitio, estilo: EstiloEditable, extendidos: boolean): DocumentoSitio {
   const tema = documento.tema;
+  const acentoSecundario = normalizarHex(estilo.acentoSecundario ?? null);
   const siguiente: DocumentoSitio['tema'] = {
     ...tema,
     modo: valorPropio(estilo.modo),
@@ -143,6 +150,7 @@ export function escribirEstilo(documento: DocumentoSitio, estilo: EstiloEditable
       secundario: valorPropio(secundarioEfectivo(estilo)),
       fondo: valorPropio(estilo.fondo),
       texto: valorPropio(estilo.texto),
+      ...(acentoSecundario ? { acento: valorPropio(acentoSecundario) } : {}),
     },
     tipografia: { ...tema.tipografia, titulos: valorPropio(estilo.fuenteTitulos), cuerpo: valorPropio(estilo.fuenteCuerpo) },
   };

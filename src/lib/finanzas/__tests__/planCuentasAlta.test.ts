@@ -3,13 +3,14 @@ import {
   filasVisibles,
   indiceAltaEn,
   interpretarErrorAlta,
-  planConAuxiliar,
-  puedeCrearAuxiliar,
+  nivelHija,
+  planConHija,
+  puedeCrearDebajo,
   saldosAcumulados,
-  saldosConAuxiliar,
-  siguienteAuxiliar,
+  saldosConHija,
+  siguienteHija,
   situacionPadre,
-  validarCodigoAuxiliar,
+  validarCodigoHija,
 } from '../planCuentasAlta';
 
 const cuenta = (account_code: string, parent_code: string | null, es_movimiento = false) => ({
@@ -19,25 +20,39 @@ const cuenta = (account_code: string, parent_code: string | null, es_movimiento 
   is_active: true,
 });
 
-describe('alta de auxiliares (decisión del Contador)', () => {
-  it('solo una subcuenta activa de 6 dígitos admite «+ Auxiliar»', () => {
-    expect(puedeCrearAuxiliar({ account_code: '111005', is_active: true })).toBe(true);
-    expect(puedeCrearAuxiliar({ account_code: '111005', is_active: false })).toBe(false);
-    for (const codigo of ['1', '11', '1110', '11100501', '1110050101']) {
-      expect(puedeCrearAuxiliar({ account_code: codigo })).toBe(false);
-    }
+describe('alta en la fila, todos los niveles (dueño, 2026-11-10)', () => {
+  it('desde grupo, toda cuenta activa admite «+» con el nivel de abajo', () => {
+    expect(nivelHija('11')).toBe('cuenta');
+    expect(nivelHija('1110')).toBe('subcuenta');
+    expect(nivelHija('111005')).toBe('auxiliar');
+    expect(nivelHija('11100501')).toBe('subauxiliar');
+    expect(nivelHija('1110050101')).toBe('subauxiliar');
+    expect(nivelHija('1')).toBeNull();
+    expect(nivelHija('110')).toBeNull();
+    expect(puedeCrearDebajo({ account_code: '1110', is_active: true })).toBe(true);
+    expect(puedeCrearDebajo({ account_code: '111005', is_active: false })).toBe(false);
+    expect(puedeCrearDebajo({ account_code: '1' })).toBe(false);
   });
 
-  it('propone el primer código libre de 8 dígitos', () => {
-    expect(siguienteAuxiliar('110510', [])).toBe('11051001');
-    expect(siguienteAuxiliar('110510', ['11051001', '11051003'])).toBe('11051002');
+  it('cuentas y subcuentas van de 5 en 5; auxiliares de 1 en 1', () => {
+    expect(siguienteHija('11', ['1105', '1110', '1115', '1120', '1125'])).toBe('1130');
+    expect(siguienteHija('1110', [])).toBe('111005');
+    expect(siguienteHija('1110', ['111005'])).toBe('111010');
+    expect(siguienteHija('110510', [])).toBe('11051001');
+    expect(siguienteHija('110510', ['11051001', '11051003'])).toBe('11051002');
+    expect(siguienteHija('11100501', [])).toBe('1110050101');
+    const llenos = Array.from({ length: 19 }, (_, i) => `11${String((i + 1) * 5).padStart(2, '0')}`);
+    expect(siguienteHija('11', llenos)).toBe('1101');
+    expect(siguienteHija('1', [])).toBeNull();
   });
 
-  it('valida la forma del código', () => {
-    expect(validarCodigoAuxiliar('110510', '11051001')).toBeNull();
-    expect(validarCodigoAuxiliar('110510', '1105100')).toBe('forma');
-    expect(validarCodigoAuxiliar('110510', '11051100')).toBe('prefijo');
-    expect(validarCodigoAuxiliar('110510', '11051000')).toBe('cero');
+  it('valida la forma del código según el nivel', () => {
+    expect(validarCodigoHija('110510', '11051001')).toBeNull();
+    expect(validarCodigoHija('1110', '111005')).toBeNull();
+    expect(validarCodigoHija('110510', '1105100')).toBe('forma');
+    expect(validarCodigoHija('1110', '11100501')).toBe('forma');
+    expect(validarCodigoHija('110510', '11051100')).toBe('prefijo');
+    expect(validarCodigoHija('110510', '11051000')).toBe('cero');
   });
 
   it('distingue qué le pasa a la subcuenta', () => {
@@ -65,7 +80,7 @@ describe('saldos del árbol', () => {
 
   it('el traslado deja la subcuenta en cero y conserva sus movimientos', () => {
     const saldos = new Map([['110505', { saldo: 2300000, movimientos: 148 }]]);
-    const salida = saldosConAuxiliar(saldos, '110505', '11050501', 2300000);
+    const salida = saldosConHija(saldos, '110505', '11050501', 2300000);
     expect(salida.get('110505')).toEqual({ saldo: 0, movimientos: 148 });
     expect(salida.get('11050501')).toEqual({ saldo: 2300000, movimientos: 1 });
     expect(saldos.get('110505')?.saldo).toBe(2300000);
@@ -96,7 +111,7 @@ describe('fila nueva en el árbol', () => {
   });
 
   it('agrega el auxiliar en orden y marca el padre como título sin mutar el plan', () => {
-    const salida = planConAuxiliar(plan, '110505', cuenta('11050501', '110505', true));
+    const salida = planConHija(plan, '110505', cuenta('11050501', '110505', true));
     expect(salida.map((c) => c.account_code).indexOf('11050501')).toBe(4);
     expect(salida.find((c) => c.account_code === '110505')?.es_movimiento).toBe(false);
     expect(plan.find((c) => c.account_code === '110505')?.es_movimiento).toBe(true);

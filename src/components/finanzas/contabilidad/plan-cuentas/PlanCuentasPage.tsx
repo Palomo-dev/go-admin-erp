@@ -27,20 +27,21 @@ import {
   filasVisibles,
   indiceAltaEn,
   interpretarErrorAlta,
-  planConAuxiliar,
-  puedeCrearAuxiliar,
+  nivelHija,
+  planConHija,
+  puedeCrearDebajo,
   saldosAcumulados,
-  saldosConAuxiliar,
-  siguienteAuxiliar,
+  saldosConHija,
+  siguienteHija,
   situacionPadre,
-  validarCodigoAuxiliar,
+  validarCodigoHija,
   type SaldoCuenta,
 } from '@/lib/finanzas/planCuentasAlta';
-import { naturalezaDe, nivelDe, nombreNivel, type NaturalezaPuc } from '@/lib/finanzas/pucJerarquia';
+import { naturalezaDe, nivelDe, type NaturalezaPuc } from '@/lib/finanzas/pucJerarquia';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { ContabilidadService, type ChartAccount } from '../ContabilidadService';
-import { AtajosCreacionCuenta, AvisoPadreAlta, FilaAltaAuxiliar, FilaPlanCuenta } from './FilaPlanCuenta';
+import { AtajosCreacionCuenta, AvisoPadreAlta, FilaAltaCuenta, FilaPlanCuenta } from './FilaPlanCuenta';
 import { PanelCuenta } from './PanelCuenta';
 
 const SELECT = 'h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-fg';
@@ -131,6 +132,8 @@ export function PlanCuentasPage() {
   const padreAlta = alta ? cuentas.find((c) => c.account_code === alta.padre) ?? null : null;
   const saldoPadre = alta ? saldos.get(alta.padre)?.saldo ?? 0 : 0;
   const situacion = padreAlta ? situacionPadre(padreAlta, saldoPadre) : 'normal';
+  // Nivel de lo que se está creando: cuenta, subcuenta, auxiliar o subauxiliar.
+  const nivelAlta = alta ? nivelHija(alta.padre) ?? 'auxiliar' : 'auxiliar';
 
   const formatoSaldo = useCallback(
     (valor: number) => {
@@ -150,7 +153,7 @@ export function PlanCuentasPage() {
   };
 
   const abrirAlta = (padre: ChartAccount, lista: readonly string[] = codigos) => {
-    const codigo = siguienteAuxiliar(padre.account_code, lista);
+    const codigo = siguienteHija(padre.account_code, lista);
     if (!codigo) {
       toastError(t('alta.sinCodigo'));
       return;
@@ -172,8 +175,10 @@ export function PlanCuentasPage() {
         return { texto: '', saldo: leido.saldo };
       case 'otro':
         return { texto: leido.texto || t('alta.errores.otro') };
+      case 'codigo':
+        return { texto: t('alta.errores.codigo', { digitos: (alta?.padre.length ?? 6) + 2, padre: alta?.padre ?? '' }) };
       default:
-        return { texto: t(`alta.errores.${leido.tipo}`) };
+        return { texto: t(`alta.errores.${leido.tipo}`, { nivel: nivelAlta }) };
     }
   };
 
@@ -181,16 +186,16 @@ export function PlanCuentasPage() {
     if (!alta || !padreAlta) return;
     const nombre = alta.nombre.trim();
     if (!nombre) {
-      setAlta({ ...alta, error: t('alta.errores.nombre') });
+      setAlta({ ...alta, error: t('alta.errores.nombre', { nivel: nivelAlta }) });
       return;
     }
-    if (validarCodigoAuxiliar(alta.padre, alta.codigo)) {
-      setAlta({ ...alta, error: t('alta.errores.codigo') });
+    if (validarCodigoHija(alta.padre, alta.codigo)) {
+      setAlta({ ...alta, error: t('alta.errores.codigo', { digitos: alta.padre.length + 2, padre: alta.padre }) });
       return;
     }
     setAlta({ ...alta, guardando: true, error: null });
     try {
-      const creado = await ContabilidadService.crearAuxiliar({
+      const creado = await ContabilidadService.crearCuentaHija({
         padre: alta.padre,
         nombre,
         codigo: alta.codigo,
@@ -204,12 +209,12 @@ export function PlanCuentasPage() {
         parent_code: alta.padre,
         es_movimiento: true,
         is_active: true,
-        nivel: 'auxiliar',
+        nivel: nivelDe(creado.account_code),
         description: null,
       };
-      const plan = planConAuxiliar(cuentas, alta.padre, nueva);
+      const plan = planConHija(cuentas, alta.padre, nueva);
       setCuentas(plan);
-      setSaldos((previo) => saldosConAuxiliar(previo, alta.padre, creado.account_code, creado.saldo_trasladado));
+      setSaldos((previo) => saldosConHija(previo, alta.padre, creado.account_code, creado.saldo_trasladado));
       setRecientes((previo) => new Set(previo).add(creado.account_code));
       window.setTimeout(() => {
         setRecientes((previo) => {
@@ -513,7 +518,7 @@ export function PlanCuentasPage() {
                   inactiva={cuenta.is_active === false}
                   resaltada={filtrando && coincide(cuenta)}
                   reciente={recientes.has(codigo)}
-                  crearDebajo={permisos.crear && puedeCrearAuxiliar(cuenta) ? nombreNivel('auxiliar') : undefined}
+                  crearDebajo={permisos.crear && puedeCrearDebajo(cuenta) ? t(`nivel.${nivelHija(codigo)}`) : undefined}
                   acciones={accionesFila(cuenta)}
                   onAlternar={() => alternar(codigo)}
                   onAbrir={() => setPanel({ modo: 'editar', codigo })}
@@ -521,8 +526,10 @@ export function PlanCuentasPage() {
                 />
                 {altaEnFila && padreAlta && indice === posicionAlta ? (
                   <>
-                    <FilaAltaAuxiliar
+                    <FilaAltaCuenta
                       nivel={nivel + (codigo === alta.padre ? 1 : 0)}
+                      nivelPuc={nivelAlta}
+                      largoCodigo={alta.padre.length + 2}
                       codigo={alta.codigo}
                       nombre={alta.nombre}
                       error={alta.error}
@@ -557,13 +564,13 @@ export function PlanCuentasPage() {
       {filtrando && estado === 'listo' && filas.length > 0 ? (
         <p className="text-[13px] text-fg-secondary">{t('resultado', { cuentas: coincidencias })}</p>
       ) : null}
-      {altaEnFila ? <AtajosCreacionCuenta /> : null}
+      {altaEnFila ? <AtajosCreacionCuenta nivelPuc={nivelAlta} /> : null}
 
       {!escritorio && alta && padreAlta ? (
         <PanelAdaptable
           abierto
           onAbiertoChange={(abierto) => !abierto && setAlta(null)}
-          titulo={t('alta.tituloHoja')}
+          titulo={t('alta.tituloHoja', { nivel: nivelAlta })}
           descripcion={t('alta.debajoDe', { cuenta: `${padreAlta.account_code} ${padreAlta.name}` })}
           ocupado={alta.guardando}
           pie={
@@ -574,7 +581,7 @@ export function PlanCuentasPage() {
                 </button>
               ) : (
                 <button type="button" onClick={() => void guardarAlta(false)} disabled={alta.guardando} className={clasesBoton({ variante: 'primario', tamano: 'lg', anchoCompleto: true })}>
-                  {t('alta.guardarYOtro')}
+                  {t('alta.guardarYOtro', { nivel: nivelAlta })}
                 </button>
               )}
               <button type="button" onClick={() => setAlta(null)} className={clasesBoton({ variante: 'secundario', tamano: 'lg', anchoCompleto: true })}>
@@ -585,10 +592,10 @@ export function PlanCuentasPage() {
         >
           <div className="flex flex-col gap-3 pb-2">
             <FormField etiqueta={t('alta.codigo')} error={alta.error ?? undefined}>
-              <Input inputMode="numeric" maxLength={8} value={alta.codigo} onChange={(e) => setAlta({ ...alta, codigo: e.target.value.replace(/[^0-9]/g, ''), error: null })} />
+              <Input inputMode="numeric" maxLength={alta.padre.length + 2} value={alta.codigo} onChange={(e) => setAlta({ ...alta, codigo: e.target.value.replace(/[^0-9]/g, ''), error: null })} />
             </FormField>
             <FormField etiqueta={t('alta.nombre')} obligatorio>
-              <Input maxLength={200} placeholder={t('alta.nombrePlaceholder')} value={alta.nombre} onChange={(e) => setAlta({ ...alta, nombre: e.target.value, error: null })} />
+              <Input maxLength={200} placeholder={t('alta.nombrePlaceholder', { nivel: nivelAlta })} value={alta.nombre} onChange={(e) => setAlta({ ...alta, nombre: e.target.value, error: null })} />
             </FormField>
             {situacion !== 'normal' ? (
               <AvisoPadreAlta

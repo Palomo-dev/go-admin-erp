@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Loader2, Minus, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { AvisoTonal, FormField, Kbd, RowActionsMenu, clasesBoton, type AccionFila } from '@/components/kit';
 import { Input } from '@/components/ui/input';
+import type { NivelPuc } from '@/lib/finanzas/pucJerarquia';
 import { cn } from '@/utils/Utils';
 
 const SANGRIA = '[--sangria:14px] lg:[--sangria:22px]';
@@ -32,7 +33,12 @@ export interface FilaPlanCuentaProps {
   onCrearDebajo?: () => void;
 }
 
-/** Fila del árbol (Figma `FilaPlanCuenta`). «+» solo en subcuentas. */
+/**
+ * Fila del árbol (Figma `FilaPlanCuenta`). Desde grupo, cada fila lleva su «+»
+ * para crear el nivel de abajo: siempre visible, con el nombre del nivel al pasar
+ * el mouse. El 2026-11-06 solo lo tenían las subcuentas y en un plan sin
+ * subcuentas no aparecía ninguno.
+ */
 export function FilaPlanCuenta({
   codigo,
   nombre,
@@ -111,13 +117,14 @@ export function FilaPlanCuenta({
             type="button"
             onClick={onCrearDebajo}
             aria-label={t('fila.crearDebajo', { nivel: crearDebajo, cuenta: `${codigo} ${nombre}` })}
+            title={t('fila.crearDebajo', { nivel: crearDebajo, cuenta: `${codigo} ${nombre}` })}
             className={cn(
               clasesBoton({ variante: 'fantasma', tamano: 'sm' }),
-              'lg:opacity-0 lg:focus-visible:opacity-100 lg:group-hover:opacity-100',
+              'text-fg-muted hover:text-fg focus-visible:text-fg lg:group-hover:text-fg',
             )}
           >
             <Plus className="size-4" aria-hidden />
-            <span className="hidden lg:inline">{crearDebajo}</span>
+            <span className="hidden lg:group-focus-within:inline lg:group-hover:inline">{crearDebajo}</span>
           </button>
         ) : null}
         <RowActionsMenu acciones={acciones} titulo={`${codigo} ${nombre}`} orientacion="vertical" tamano="sm" />
@@ -126,8 +133,12 @@ export function FilaPlanCuenta({
   );
 }
 
-export interface FilaAltaAuxiliarProps {
+export interface FilaAltaCuentaProps {
   nivel: number;
+  /** Lo que se crea: cuenta, subcuenta, auxiliar o subauxiliar. */
+  nivelPuc: NivelPuc;
+  /** Dígitos del código nuevo: los del padre más dos. */
+  largoCodigo: number;
   codigo: string;
   nombre: string;
   error?: string | null;
@@ -141,8 +152,10 @@ export interface FilaAltaAuxiliarProps {
 }
 
 /** Fila de alta en línea (Figma `FilaPlanCuenta` Estado=nueva). */
-export function FilaAltaAuxiliar({
+export function FilaAltaCuenta({
   nivel,
+  nivelPuc,
+  largoCodigo,
   codigo,
   nombre,
   error,
@@ -152,7 +165,7 @@ export function FilaAltaAuxiliar({
   onNombre,
   onGuardar,
   onCancelar,
-}: FilaAltaAuxiliarProps) {
+}: FilaAltaCuentaProps) {
   const t = useTranslations('planCuentas');
   const refNombre = useRef<HTMLInputElement>(null);
 
@@ -181,7 +194,7 @@ export function FilaAltaAuxiliar({
             aria-label={t('alta.codigo')}
             value={codigo}
             inputMode="numeric"
-            maxLength={8}
+            maxLength={largoCodigo}
             onChange={(e) => onCodigo(e.target.value.replace(/[^0-9]/g, ''))}
             onKeyDown={teclas}
             aria-invalid={!!error}
@@ -190,7 +203,7 @@ export function FilaAltaAuxiliar({
           <Input
             ref={refNombre}
             aria-label={t('alta.nombre')}
-            placeholder={t('alta.nombrePlaceholder')}
+            placeholder={t('alta.nombrePlaceholder', { nivel: nivelPuc })}
             value={nombre}
             maxLength={200}
             onChange={(e) => onNombre(e.target.value)}
@@ -227,7 +240,7 @@ export interface AvisoPadreAltaProps {
   onTrasladar: () => void;
 }
 
-/** Aviso bajo la fila: qué le pasa a la subcuenta al crear el auxiliar. */
+/** Aviso bajo la fila: qué le pasa al padre al crear una cuenta debajo. */
 export function AvisoPadreAlta({
   situacion,
   nivel,
@@ -261,13 +274,13 @@ export function AvisoPadreAlta({
   );
 }
 
-/** Pista bajo el árbol mientras se crean auxiliares (Figma `AtajosCreacionCuenta`). */
-export function AtajosCreacionCuenta() {
+/** Pista bajo el árbol mientras se crean cuentas (Figma `AtajosCreacionCuenta`). */
+export function AtajosCreacionCuenta({ nivelPuc }: { nivelPuc: NivelPuc }) {
   const t = useTranslations('planCuentas');
   return (
     <div className="hidden w-fit items-center gap-2 rounded-lg border border-line bg-subtle px-3 py-2 lg:flex">
       <Kbd tecla="Enter" />
-      <span className="text-xs font-medium text-fg-secondary">{t('alta.atajoEnter')}</span>
+      <span className="text-xs font-medium text-fg-secondary">{t('alta.atajoEnter', { nivel: nivelPuc })}</span>
       <Kbd tecla="Esc" />
       <span className="text-xs font-medium text-fg-secondary">{t('alta.atajoEsc')}</span>
     </div>

@@ -26,7 +26,7 @@ import { Fila, FiltrosPeriodo, PaginaInforme, Tabla, useCifra } from '../estados
 type Presentacion = 'naturaleza' | 'funcion';
 type Datos = { actual: EstadoResultado; anterior: EstadoResultado | null };
 
-const NIVELES: readonly LargoDetalle[] = ['2', '4', '6', '8'];
+const NIVELES: readonly LargoDetalle[] = ['2', '4', '6', '8', '10'];
 
 /**
  * Estado del resultado integral. La vista principal es por naturaleza

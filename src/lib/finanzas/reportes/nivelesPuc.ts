@@ -1,13 +1,17 @@
 /**
  * Reportes por nivel del PUC colombiano.
  *
- * Clase (1), grupo (2), cuenta (4), subcuenta (6) y auxiliar (el código
- * completo). Agrupar suma las hojas: el total de un nivel es el mismo que
- * el de las cuentas de movimiento, así el balance y el estado de resultados
- * cuadran en cualquier corte.
+ * Clase (1), grupo (2), cuenta (4), subcuenta (6), auxiliar (8) y
+ * subauxiliar (el código completo: 10 dígitos o más). Agrupar suma las hojas:
+ * el total de un nivel es el mismo que el de las cuentas de movimiento, así el
+ * balance y el estado de resultados cuadran en cualquier corte.
+ *
+ * El auxiliar corta en 8: un subauxiliar 1110050101 suma en su auxiliar
+ * 11100501. Antes «auxiliar» era el código completo y el subauxiliar salía
+ * suelto, sin sumar en el auxiliar que lo contiene.
  */
 
-export const NIVELES_PUC = ['clase', 'grupo', 'cuenta', 'subcuenta', 'auxiliar'] as const;
+export const NIVELES_PUC = ['clase', 'grupo', 'cuenta', 'subcuenta', 'auxiliar', 'subauxiliar'] as const;
 export type NivelPuc = (typeof NIVELES_PUC)[number];
 
 export const ETIQUETA_NIVEL: Record<NivelPuc, string> = {
@@ -16,13 +20,18 @@ export const ETIQUETA_NIVEL: Record<NivelPuc, string> = {
   cuenta: 'Cuenta',
   subcuenta: 'Subcuenta',
   auxiliar: 'Auxiliar',
+  subauxiliar: 'Subauxiliar',
 };
 
-const LONGITUD: Record<Exclude<NivelPuc, 'auxiliar'>, number> = {
+/** Nivel con el detalle completo: cada cuenta de movimiento en su propia fila. */
+export const NIVEL_DETALLE: NivelPuc = 'subauxiliar';
+
+const LONGITUD: Record<Exclude<NivelPuc, 'subauxiliar'>, number> = {
   clase: 1,
   grupo: 2,
   cuenta: 4,
   subcuenta: 6,
+  auxiliar: 8,
 };
 
 export function codigoEnNivel(codigo: string, nivel: NivelPuc): string {
@@ -33,8 +42,11 @@ export function codigoEnNivel(codigo: string, nivel: NivelPuc): string {
     return original;
   }
   const limpio = original.replace(/-/g, '');
-  if (nivel === 'auxiliar' || !/^\d+$/.test(limpio)) return original;
+  if (nivel === 'subauxiliar' || !/^\d+$/.test(limpio)) return original;
   const n = LONGITUD[nivel];
+  // Una cuenta que ya cabe en el auxiliar conserva su código tal cual (con guion
+  // si lo tenía), como antes; solo el subauxiliar se recorta a sus 8 dígitos.
+  if (nivel === 'auxiliar' && limpio.length <= n) return original;
   return limpio.length <= n ? limpio : limpio.slice(0, n);
 }
 

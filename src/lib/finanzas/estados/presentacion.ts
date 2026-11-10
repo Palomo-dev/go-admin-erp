@@ -200,7 +200,8 @@ export function resultadoPorFuncion(actual: EstadoResultado, anterior: EstadoRes
   ].filter((f) => Math.abs(f.actual) >= 0.01 || Math.abs(f.anterior ?? 0) >= 0.01);
 }
 
-export type LargoDetalle = '2' | '4' | '6' | '8';
+/** Largo del detalle: grupo (2) a subauxiliar (10, tope del plan). */
+export type LargoDetalle = '2' | '4' | '6' | '8' | '10';
 
 export interface FilaDetalleResultado extends FilaResultado {
   nombre: string | null;

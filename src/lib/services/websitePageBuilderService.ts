@@ -34,6 +34,13 @@ import {
   VARIANTE_RESERVA_PLANO_CATALOGO,
 } from '@/lib/services/website/seccionesCafeCatalogo';
 import { VARIANTE_PORTADA_EDITORIAL } from '@/lib/website/contrato/seccionesCafe';
+import {
+  CAMPO_PESTANAS_PRODUCTOS,
+  OPCION_ESTILO_LISTA_TEXTO,
+  OPCION_ESTILO_TITULO_ARRIBA,
+  SECCIONES_TIENDA_CATALOGO,
+  conVariantesTienda,
+} from '@/lib/services/website/seccionesTiendaCatalogo';
 import { aplicarInterruptoresSitio } from '@/lib/services/website/interruptoresSitio';
 import { hostSitio, type DominioDelSitio } from '@/lib/website/hostSitio';
 import { CLAVES_TARJETA_EN_SECCION } from '@/lib/website/tarjetaProducto';
@@ -1168,6 +1175,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         { value: 'scroll', label: 'Scroll horizontal' },
         { value: 'select', label: 'Lista desplegable' },
       ]},
+      // Pestañas subrayadas de la barra de siempre (W2, `tabs_style`); no es `chip_style: 'underline'`.
+      CAMPO_PESTANAS_PRODUCTOS,
       { key: 'show_all_chip', label: 'Incluir «Todos»', type: 'boolean', group: 'behavior' },
       { key: 'filter_position', label: 'Posición de los filtros', type: 'select', group: 'layout', options: [
         { value: 'top', label: 'Barra superior' },
@@ -1307,6 +1316,10 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { value: 'pill', label: 'Pastilla' },
           { value: 'bento', label: 'Mosaico' },
           { value: 'minimal_icon', label: 'Ícono suave' },
+          // Plantillas de tienda (B2): título y conteo encima de la foto.
+          OPCION_ESTILO_TITULO_ARRIBA,
+          // «Lista de texto» (decisión 2026-11-10): una fila de nombres enlazados.
+          OPCION_ESTILO_LISTA_TEXTO,
         ],
       },
       {
@@ -1358,7 +1371,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'align', label: 'Alineación de las pastillas', type: 'select', group: 'layout', defaultValue: 'center', options: [
         { value: 'center', label: 'Centradas' },
         { value: 'left', label: 'A la izquierda' },
-      ], helpText: 'En escritorio. Si no caben en una fila, empiezan a la izquierda y se desplazan.', showIf: { field: 'category_style', equals: 'pill' } },
+      ], helpText: 'En escritorio. Si no caben en una fila, empiezan a la izquierda y se desplazan.', showIf: { field: 'category_style', in: ['pill', 'text_list'] } },
       { key: 'list_scroll', label: 'Lista con scroll horizontal', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Convierte la lista en un carrusel con scroll horizontal y flechas', showIf: { field: 'desktop_layout', in: ['list'] } },
       // Reemplaza CategorySelectorEditor ad-hoc
       {
@@ -3969,7 +3982,12 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
 //
 // `aplicarInterruptoresSitio` oculta los interruptores que el componente de esa variante no lee y
 // ajusta su estado por defecto al del sitio (fuente única: `website/interruptoresSitio.ts`).
-export const SECTION_CATALOG: SectionTypeDefinition[] = RAW_CATALOG.map((s) =>
+//
+// Plantillas de tienda (PLANO §3): `conVariantesTienda` suma a los tipos de siempre sus variantes
+// y opciones nuevas, y `SECCIONES_TIENDA_CATALOGO` trae los tipos nuevos (`seccionesTiendaCatalogo.ts`).
+const CATALOGO_CON_TIENDA: SectionTypeDefinition[] = [...RAW_CATALOG.map(conVariantesTienda), ...SECCIONES_TIENDA_CATALOGO];
+
+export const SECTION_CATALOG: SectionTypeDefinition[] = CATALOGO_CON_TIENDA.map((s) =>
   aplicarInterruptoresSitio({
     ...s,
     contentFields: [...s.contentFields, ...SHELL_FIELDS, ...STYLE_FIELDS, ...SPACING_FIELDS],

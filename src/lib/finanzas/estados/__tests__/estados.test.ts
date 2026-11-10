@@ -157,6 +157,19 @@ describe('resultado integral', () => {
     expect(detalleResultado(e, null, '2').reduce((s, f) => s + f.actual, 0)).toBeCloseTo(e.utilidad, 2);
     expect(detalleResultado(e, null, '6').length).toBeGreaterThan(detalleResultado(e, null, '2').length);
   });
+
+  it('el subauxiliar de 10 dígitos se ve en 10 y suma en su auxiliar de 8', () => {
+    const e = resultado([cuenta('4135050101', 700), cuenta('4135050102', 300), cuenta('41350502', 50), cuenta('513505', -200)]);
+    const en10 = detalleResultado(e, null, '10');
+    expect(en10.map((f) => f.clave)).toEqual(['4135050101', '4135050102', '41350502', '513505']);
+    const en8 = detalleResultado(e, null, '8');
+    expect(en8.find((f) => f.clave === '41350501')?.actual).toBe(1000);
+    expect(en8.find((f) => f.clave === '41350502')?.actual).toBe(50);
+    expect(detalleResultado(e, null, '4').find((f) => f.clave === '4135')?.actual).toBe(1050);
+    for (const largo of ['2', '4', '6', '8', '10'] as const) {
+      expect(detalleResultado(e, null, largo).reduce((s, f) => s + f.actual, 0)).toBeCloseTo(e.utilidad, 2);
+    }
+  });
 });
 
 describe('indicadores', () => {

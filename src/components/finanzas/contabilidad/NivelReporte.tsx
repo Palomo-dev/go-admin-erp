@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
   ETIQUETA_NIVEL,
   NIVELES_PUC,
+  NIVEL_DETALLE,
   colapsarImportes,
   type FilaImporte,
   type NivelPuc,
@@ -35,9 +36,9 @@ export function SelectorNivel({
   );
 }
 
-/** Árbol en auxiliar; en los demás niveles, suma que conserva el total. */
+/** Árbol con el detalle completo; en los demás niveles, suma que conserva el total. */
 export function filasEnNivel(nodos: NodoImporte[], nivel: NivelPuc): FilaImporte[] | null {
-  if (nivel === 'auxiliar') return null;
+  if (nivel === NIVEL_DETALLE) return null;
   return colapsarImportes(nodos, nivel);
 }
 

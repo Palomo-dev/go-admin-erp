@@ -12,8 +12,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/utils/Utils';
 import { Dialogo, EmptyState, SearchInput } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
 import type { BranchType } from '@/types/branch';
-import { claveEntrada, filtrarCatalogo, getSectionCatalogForBranch, type EntradaCatalogo } from '@/lib/services/website/sectionsByBranchType';
+import { claveEntrada, esEntradaNueva, filtrarCatalogo, getSectionCatalogForBranch, type EntradaCatalogo } from '@/lib/services/website/sectionsByBranchType';
 import { avisoFaltanDatos, type ConteoFuentes } from '@/lib/services/website/fuentesDatosSecciones';
 import { AvisoConAccion } from '@/components/organization/branding/editor/AvisoConAccion';
 import { SectionThumbnail } from '@/components/sitio-web/ui/SectionThumbnail';
@@ -48,9 +49,9 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
   const grupos = useMemo(() => {
     const lista = filtrado.grupos
       .filter((g) => g.secciones.length > 0)
-      .map((g) => ({ id: g.id as string, etiqueta: g.etiqueta, proposito: g.proposito, secciones: g.secciones }));
+      .map((g) => ({ id: g.id as string, etiqueta: g.etiqueta, proposito: g.proposito, secciones: g.secciones, nuevo: g.nuevo === true }));
     if (filtrado.recomendadas.length > 0) {
-      lista.unshift({ id: RECOMENDADAS, etiqueta: t('anadir.recomendadas'), proposito: t('anadir.recomendadasProposito'), secciones: filtrado.recomendadas });
+      lista.unshift({ id: RECOMENDADAS, etiqueta: t('anadir.recomendadas'), proposito: t('anadir.recomendadasProposito'), secciones: filtrado.recomendadas, nuevo: false });
     }
     return lista;
   }, [filtrado, t]);
@@ -112,7 +113,10 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
                   activo?.id === g.id ? 'bg-brand-tint font-medium text-brand-deep' : 'text-fg hover:bg-hover',
                 )}
               >
-                <span className="truncate">{g.etiqueta}</span>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate">{g.etiqueta}</span>
+                  {g.nuevo && <Badge tono="marca" tamano="sm">{t('anadir.nuevo')}</Badge>}
+                </span>
                 <span className="text-xs tabular-nums text-fg-secondary">{g.secciones.length}</span>
               </button>
             ))}
@@ -127,13 +131,20 @@ export function DialogoAnadirSeccion(p: DialogoAnadirSeccionProps) {
                 </h3>
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                   {activo.secciones.map((def) => (
-                    <SectionThumbnail
-                      key={claveEntrada(def)}
-                      tipo={miniaturaDeSeccion(def.type, def.varianteDestacada)}
-                      etiqueta={def.label}
-                      seleccionada={elegida !== null && claveEntrada(elegida) === claveEntrada(def)}
-                      onSeleccionar={() => setElegida(def)}
-                    />
+                    <div key={claveEntrada(def)} className="relative">
+                      <SectionThumbnail
+                        tipo={miniaturaDeSeccion(def.type, def.varianteDestacada)}
+                        etiqueta={def.label}
+                        seleccionada={elegida !== null && claveEntrada(elegida) === claveEntrada(def)}
+                        onSeleccionar={() => setElegida(def)}
+                      />
+                      {/* Plantillas de tienda (B3): las secciones y portadas nuevas llevan «Nuevo». */}
+                      {esEntradaNueva(def) && (
+                        <Badge tono="marca" tamano="sm" className="pointer-events-none absolute right-2 top-2">
+                          {t('anadir.nuevo')}
+                        </Badge>
+                      )}
+                    </div>
                   ))}
                 </div>
                 {elegida && <p className="text-[13px] leading-[18px] text-fg-secondary">{elegida.description}</p>}

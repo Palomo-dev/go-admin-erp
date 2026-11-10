@@ -188,9 +188,10 @@ export const DEFAULT_POR_VARIANTE: Readonly<Record<string, Readonly<Record<strin
     show_dots: { logos: false },
   },
   // ProductsGrid (default, grid) siempre pintó los filtros; carrusel y lista solo con `true`.
+  // «Rejilla editorial» (plantillas de tienda) los pinta salvo `false` (RejillaEditorialVista).
   products_grid: {
     loop: { carousel: false },
-    show_filters: { default: true, grid: true },
+    show_filters: { default: true, grid: true, editorial: true },
   },
   // OffersGrid siempre pintó sus filtros.
   offers: { show_filters: { grid: true } },

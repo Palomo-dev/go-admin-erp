@@ -42,9 +42,10 @@ import {
 import { PRESETS_DISENO } from '@/lib/website/v2/presetsDiseno';
 import { cambiarBotonesSecciones, leerBotonesSecciones } from '@/lib/website/v2/botonesSecciones';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
-import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
+import { tarjetaSitioDisponible } from '@/lib/website/v2/banderasTienda';
 import { urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
+import { HoverBotonesTema } from './inspector/HoverBotonesTema';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
 import { PanelUrgencia } from './inspector/PanelUrgencia';
@@ -190,6 +191,10 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
             className="border-0 p-1"
           />
         ) : null}
+        {/* Efecto al pasar el mouse (tokens.hover, Figma A3): el sitio lo pinta sin bandera. */}
+        {estilo && p.enV2 && p.documento && (
+          <HoverBotonesTema documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
+        )}
         {p.enV2 && p.documento && (
           <section className="mt-4 flex flex-col gap-2 px-1">
             <h3 className="text-[13px] font-medium text-fg">{t('zonaGlobal.acciones.estilosCombinables')}</h3>
@@ -243,7 +248,7 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
         {!estilo ? (
           <p className="px-1 text-[13px] leading-[18px] text-fg-secondary">{t('estiloSitio.sinDatos')}</p>
         ) : null}
-        {tarjetaProductoTemaDisponible() && p.enV2 && p.documento && (
+        {tarjetaSitioDisponible() && p.enV2 && p.documento && (
           <div className="mt-4">
             <InspectorTarjetaProducto
               guardado={valorCampo(p.documento.tema.tarjetaProducto)}

@@ -5,12 +5,18 @@
  * 2026-10-06): Contenido (menús del pie, qué mostrar, texto), Diseño (composición, columnas,
  * celular y barra fija abajo) y Estilo (fondo). Cada cambio va a `onCambiar` (el `cambiarAjustes`
  * del editor) y se ve en vivo en el lienzo.
+ *
+ * Diseño suma las tres opciones de las plantillas de tienda (Figma A5, PLANO §2 ítems 23-25):
+ * marca gigante con figura opcional, pie como tarjeta con margen y enlaces grandes. Viven en
+ * `shell.footer.opciones`; su default (none / false / normal) no se guarda, así el pie es el de hoy.
  */
 import { useId, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { ChipsOpcion, TabBar, clasesBoton, idPanel, idPestana } from '@/components/kit';
 import { ColorField } from '@/components/sitio-web/ui/ColorField';
+import ImageField from '@/components/organization/branding/editor/fields/ImageField';
+import { ESTILOS_ENLACES_PIE, MARCAS_PIE } from '@/lib/website/v2/mapeoAjustes';
 import type { ShellPorDefecto } from '@/lib/website/v2/plantillaCompleta';
 import { useTextosEditor } from '../textos';
 import { BandaGlobal, CabeceraZona, CampoTexto, ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, MiniaturaPie, TarjetaComposicion, TarjetaPlantilla, TituloBloque } from './PartesZonaGlobal';
@@ -40,6 +46,8 @@ export interface InspectorPieProps {
 }
 
 const COMPOSICIONES = ['default', 'three_columns', 'centered', 'minimal', 'split'] as const;
+const NOMBRE_MARCA: Record<(typeof MARCAS_PIE)[number], string> = { none: 'marcaNinguna', giant: 'marcaGigante' };
+const NOMBRE_ENLACES: Record<(typeof ESTILOS_ENLACES_PIE)[number], string> = { normal: 'enlacesNormal', display: 'enlacesGrandes' };
 
 export function InspectorPie(p: InspectorPieProps) {
   const t = useTextosEditor();
@@ -181,6 +189,8 @@ function Diseno(p: InspectorPieProps) {
         </div>
       </div>
 
+      <PieTienda {...p} />
+
       <div className="flex flex-col gap-2">
         <EtiquetaGrupo id={idCol}>{t('zonaGlobal.pie.columnas')}</EtiquetaGrupo>
         <ChipsOpcion
@@ -206,6 +216,75 @@ function Diseno(p: InspectorPieProps) {
       </div>
 
       {/* La barra fija abajo del celular vive en Encabezado › Celular › Menú inferior. */}
+    </>
+  );
+}
+
+/**
+ * Marca gigante (+ figura), pie como tarjeta y enlaces grandes (Figma A5). La figura solo se ofrece
+ * con la marca gigante: el sitio solo la pinta ahí. Quitar la imagen guarda `null` (sin figura).
+ */
+function PieTienda(p: InspectorPieProps) {
+  const t = useTextosEditor();
+  const a = p.ajustes;
+  const cambiar = p.onCambiar;
+  const idMarca = useId();
+  const idEnlaces = useId();
+  const marca = valorOpcion<(typeof MARCAS_PIE)[number]>(a, 'footer_brand_display');
+  const figura = valorOpcion<string | null>(a, 'footer_brand_figure_url');
+  const enlaces = valorOpcion<(typeof ESTILOS_ENLACES_PIE)[number]>(a, 'footer_links_style');
+  return (
+    <>
+      <div className="flex flex-col gap-2" data-opcion="footer_brand_display">
+        <EtiquetaGrupo id={idMarca}>
+          <span className="flex flex-wrap items-center gap-1.5">
+            {t('zonaGlobal.pie.marca')}
+            <InsigniaNuevo />
+          </span>
+        </EtiquetaGrupo>
+        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.pie.marcaAyuda')}</p>
+        <ChipsOpcion
+          aria-labelledby={idMarca}
+          opciones={MARCAS_PIE.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.pie.${NOMBRE_MARCA[v]}`) }))}
+          valor={marca}
+          onValorChange={(v) => cambiar({ footer_brand_display: v })}
+        />
+        {marca === 'giant' && (
+          <div role="group" aria-label={t('zonaGlobal.pie.figura')} className="flex flex-col gap-1.5" data-opcion="footer_brand_figure_url">
+            <span className="text-xs font-semibold leading-4 text-fg-secondary">{t('zonaGlobal.pie.figura')}</span>
+            <ImageField
+              field={{ key: 'footer_brand_figure_url', label: t('zonaGlobal.pie.figura'), type: 'image' }}
+              value={figura ?? ''}
+              onChange={(v) => cambiar({ footer_brand_figure_url: typeof v === 'string' && v.trim() ? v.trim() : null })}
+            />
+            <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.pie.figuraAyuda')}</p>
+          </div>
+        )}
+      </div>
+
+      <FilaInterruptor
+        titulo={t('zonaGlobal.pie.tarjeta')}
+        ayuda={t('zonaGlobal.pie.tarjetaAyuda')}
+        nuevo
+        valor={opcionBooleana(a, 'footer_inset')}
+        onCambiar={(v) => cambiar({ footer_inset: v })}
+      />
+
+      <div className="flex flex-col gap-2" data-opcion="footer_links_style">
+        <EtiquetaGrupo id={idEnlaces}>
+          <span className="flex flex-wrap items-center gap-1.5">
+            {t('zonaGlobal.pie.enlaces')}
+            <InsigniaNuevo />
+          </span>
+        </EtiquetaGrupo>
+        <p className="text-[11px] leading-[14px] text-fg-muted">{t('zonaGlobal.pie.enlacesAyuda')}</p>
+        <ChipsOpcion
+          aria-labelledby={idEnlaces}
+          opciones={ESTILOS_ENLACES_PIE.map((v) => ({ valor: v, etiqueta: t(`zonaGlobal.pie.${NOMBRE_ENLACES[v]}`) }))}
+          valor={enlaces}
+          onValorChange={(v) => cambiar({ footer_links_style: v })}
+        />
+      </div>
     </>
   );
 }

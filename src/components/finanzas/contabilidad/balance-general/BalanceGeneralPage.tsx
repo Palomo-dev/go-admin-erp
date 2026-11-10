@@ -13,7 +13,7 @@ import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useVisorInforme } from '@/components/reportes/especiales/contextoVisor';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
-import { importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { NIVEL_DETALLE, importesPropios, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
 import { COMPARATIVO_POR_DEFECTO, TITULO_SITUACION_FINANCIERA, corteComparativo, importesPorCodigo } from '@/lib/finanzas/reportes/estadosNiif';
 import { BotonesExportar, FilasNivel, SelectorNivel, filasEnNivel } from '../NivelReporte';
 
@@ -60,7 +60,7 @@ export function BalanceGeneralPage() {
   // Dentro del visor de Reportes la fecha de corte es el fin de su periodo.
   const visor = useVisorInforme();
   const [asOfDate, setAsOfDate] = useState('');
-  const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
+  const [nivel, setNivel] = useState<NivelPuc>(NIVEL_DETALLE);
   const [modo, setModo] = useState<ModoBalance>('puc');
   const [data, setData] = useState<{ assets: BalanceSheetRow[]; liabilities: BalanceSheetRow[]; equity: BalanceSheetRow[]; totalAssets: number; totalLiabilities: number; totalEquity: number; balanced: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(true);

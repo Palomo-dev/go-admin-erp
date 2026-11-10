@@ -283,7 +283,7 @@ const MUESTRA_POR_CATEGORIA = 4;
 export async function leerCategoriasMenu(ctx: ContextoPaginas, branchId: number | null): Promise<CategoriaInventarioMenu[]> {
   let consulta = ctx.supabase
     .from('categories')
-    .select('id, parent_id, name, slug, image_url, icon, is_active, display_order, branch_id')
+    .select('id, parent_id, name, slug, image_url, icon, color, is_active, display_order, branch_id')
     .eq('organization_id', ctx.organizationId)
     .order('display_order', { ascending: true, nullsFirst: false })
     .order('name');
@@ -297,6 +297,7 @@ export async function leerCategoriasMenu(ctx: ContextoPaginas, branchId: number 
     slug: string;
     image_url: string | null;
     icon: string | null;
+    color: string | null;
     is_active: boolean | null;
     branch_id: number | null;
   }[];
@@ -325,6 +326,7 @@ export async function leerCategoriasMenu(ctx: ContextoPaginas, branchId: number 
     slug: c.slug,
     imagenUrl: c.image_url,
     icono: c.icon ?? null,
+    color: c.color ?? null,
     activa: c.is_active !== false,
     branchId: c.branch_id,
     productos: porCategoria.get(c.id)?.total ?? 0,

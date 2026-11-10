@@ -39059,6 +39059,10 @@
         "permiso": "No tienes permiso para crear cuentas.",
         "sinCodigo": "Esta cuenta ya no tiene códigos libres debajo.",
         "otro": "No se pudo crear la cuenta."
+      },
+      "puc": {
+        "fuera": "{codigo} no está en el catálogo del PUC (Decreto 2650 de 1993). Puedes crearla igual.",
+        "otroNombre": "En el PUC, {codigo} es «{nombre}»."
       }
     },
     "panel": {
@@ -40005,7 +40009,8 @@
         "n2": "Grupo",
         "n4": "Cuenta",
         "n6": "Subcuenta",
-        "n8": "Auxiliar"
+        "n8": "Auxiliar",
+        "n10": "Subauxiliar"
       },
       "fila": {
         "ingresos": "Ingresos de actividades ordinarias",
@@ -40109,7 +40114,8 @@
         "n2": "Grupo",
         "n4": "Cuenta",
         "n6": "Subcuenta",
-        "n8": "Auxiliar"
+        "n8": "Auxiliar",
+        "n10": "Subauxiliar"
       },
       "truncado": "El libro superó las 100 000 líneas y salió incompleto. Pide un periodo más corto.",
       "libro": "Libro",

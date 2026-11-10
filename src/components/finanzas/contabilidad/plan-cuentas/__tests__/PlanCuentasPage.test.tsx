@@ -27,11 +27,13 @@ jest.mock('@/components/ui/use-toast', () => ({ toastError: jest.fn(), toastSucc
 const obtenerPlanCuentas = jest.fn();
 const obtenerSaldosPlan = jest.fn();
 const crearCuentaHija = jest.fn();
+const obtenerCatalogoPuc = jest.fn();
 jest.mock('../../ContabilidadService', () => ({
   ContabilidadService: {
     obtenerPlanCuentas: (...a: unknown[]) => obtenerPlanCuentas(...a),
     obtenerSaldosPlan: (...a: unknown[]) => obtenerSaldosPlan(...a),
     crearCuentaHija: (...a: unknown[]) => crearCuentaHija(...a),
+    obtenerCatalogoPuc: (...a: unknown[]) => obtenerCatalogoPuc(...a),
     autorCuenta: jest.fn(async () => ({ creadaPor: null, creadaEn: null })),
   },
 }));
@@ -72,6 +74,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   obtenerPlanCuentas.mockResolvedValue(PLAN);
   obtenerSaldosPlan.mockResolvedValue(new Map([['110505', { saldo: 2300000, movimientos: 4 }]]));
+  obtenerCatalogoPuc.mockResolvedValue([]);
 });
 
 describe('PlanCuentasPage · alta en la fila', () => {
@@ -86,8 +89,12 @@ describe('PlanCuentasPage · alta en la fila', () => {
     expect(screen.queryByRole('button', { name: /debajo de 1 Activo/ })).toBeNull();
   });
 
-  it('una cuenta de movimiento sin hijas (1110 Bancos) crea su subcuenta en la fila', async () => {
+  it('una cuenta de movimiento sin hijas (1110 Bancos) crea su subcuenta con el código del PUC', async () => {
     obtenerPlanCuentas.mockResolvedValue([...PLAN, cuenta('1110', 'Bancos', '11', true)]);
+    obtenerCatalogoPuc.mockResolvedValue([
+      { codigo: '111005', nombre: 'Moneda nacional' },
+      { codigo: '111010', nombre: 'Moneda extranjera' },
+    ]);
     crearCuentaHija.mockResolvedValue({
       account_code: '111005',
       parent_code: '1110',
@@ -102,13 +109,27 @@ describe('PlanCuentasPage · alta en la fila', () => {
     fireEvent.click(screen.getByRole('button', { name: /Abrir 11 Disponible/ }));
     fireEvent.click(screen.getByRole('button', { name: /Crear Subcuenta debajo de 1110 Bancos/ }));
 
+    // Con sugerencias del PUC el nombre es un combobox (input con lista).
+    const nombre = (await screen.findByRole('combobox', { name: 'Nombre' })) as HTMLInputElement;
+    expect(obtenerCatalogoPuc).toHaveBeenCalledWith('1110');
     expect((screen.getByRole('textbox', { name: 'Código' }) as HTMLInputElement).value).toBe('111005');
-    const nombre = screen.getByRole('textbox', { name: 'Nombre' });
-    expect(nombre.getAttribute('placeholder')).toBe('Nombre de la subcuenta');
+    expect(nombre.value).toBe('Moneda nacional');
     expect(within(screen.getByRole('note')).getByText(/1110 pasará a ser cuenta de título/)).toBeTruthy();
-    fireEvent.change(nombre, { target: { value: 'Banco principal' } });
-    fireEvent.keyDown(nombre, { key: 'Enter' });
 
+    // Escribir el nombre de otro concepto del PUC cambia el código al suyo.
+    fireEvent.change(nombre, { target: { value: 'moneda extranjera' } });
+    expect((screen.getByRole('textbox', { name: 'Código' }) as HTMLInputElement).value).toBe('111010');
+
+    // Un código que el PUC no tiene se avisa, sin bloquear.
+    fireEvent.change(screen.getByRole('textbox', { name: 'Código' }), { target: { value: '111011' } });
+    expect(screen.getByRole('status').textContent).toBe('111011 no está en el catálogo del PUC (Decreto 2650 de 1993). Puedes crearla igual.');
+
+    // Un código del PUC con otro nombre también se avisa.
+    fireEvent.change(screen.getByRole('textbox', { name: 'Código' }), { target: { value: '111005' } });
+    fireEvent.change(nombre, { target: { value: 'Banco principal' } });
+    expect(screen.getByRole('status').textContent).toBe('En el PUC, 111005 es «Moneda nacional».');
+
+    fireEvent.keyDown(nombre, { key: 'Enter' });
     await waitFor(() => expect(crearCuentaHija).toHaveBeenCalledWith(expect.objectContaining({
       padre: '1110',
       codigo: '111005',
@@ -116,6 +137,16 @@ describe('PlanCuentasPage · alta en la fila', () => {
     })));
     expect(await screen.findByText('Banco principal')).toBeTruthy();
     await waitFor(() => expect((screen.getByRole('textbox', { name: 'Código' }) as HTMLInputElement).value).toBe('111010'));
+    expect((screen.getByRole('combobox', { name: 'Nombre' }) as HTMLInputElement).value).toBe('Moneda extranjera');
+  });
+
+  it('el subauxiliar de 10 dígitos ya no ofrece «+»', async () => {
+    obtenerPlanCuentas.mockResolvedValue([...PLAN.slice(0, 5), cuenta('11051001', 'Caja menor norte', '110510', false), cuenta('1105100101', 'Cajón 1', '11051001', true)]);
+    await abrirCaja();
+    fireEvent.click(screen.getByRole('button', { name: /Abrir 110510 Cajas menores/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Abrir 11051001 Caja menor norte/ }));
+    expect(screen.getByText('Cajón 1')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /debajo de 1105100101/ })).toBeNull();
   });
 
   it('Enter guarda con el código siguiente, no recarga y abre otro', async () => {
@@ -130,7 +161,7 @@ describe('PlanCuentasPage · alta en la fila', () => {
     await abrirCaja();
     fireEvent.click(screen.getByRole('button', { name: /Crear Auxiliar debajo de 110510/ }));
 
-    const nombre = screen.getByRole('textbox', { name: 'Nombre' });
+    const nombre = await screen.findByRole('textbox', { name: 'Nombre' });
     expect((screen.getByRole('textbox', { name: 'Código' }) as HTMLInputElement).value).toBe('11051002');
     fireEvent.change(nombre, { target: { value: 'Caja menor sur' } });
     fireEvent.keyDown(nombre, { key: 'Enter' });
@@ -158,7 +189,7 @@ describe('PlanCuentasPage · alta en la fila', () => {
     await abrirCaja();
     fireEvent.click(screen.getByRole('button', { name: /Crear Auxiliar debajo de 110505/ }));
 
-    const nombre = screen.getByRole('textbox', { name: 'Nombre' });
+    const nombre = await screen.findByRole('textbox', { name: 'Nombre' });
     fireEvent.change(nombre, { target: { value: 'Caja principal' } });
     fireEvent.keyDown(nombre, { key: 'Enter' });
     expect(crearCuentaHija).not.toHaveBeenCalled();
@@ -173,7 +204,7 @@ describe('PlanCuentasPage · alta en la fila', () => {
     crearCuentaHija.mockRejectedValue({ message: 'CODIGO_OCUPADO: 11051003' });
     await abrirCaja();
     fireEvent.click(screen.getByRole('button', { name: /Crear Auxiliar debajo de 110510/ }));
-    const nombre = screen.getByRole('textbox', { name: 'Nombre' }) as HTMLInputElement;
+    const nombre = (await screen.findByRole('textbox', { name: 'Nombre' })) as HTMLInputElement;
     fireEvent.change(nombre, { target: { value: 'Caja menor sur' } });
     fireEvent.keyDown(nombre, { key: 'Enter' });
 

@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase/config';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { todayInTz, toPlainDate, plainDateToInstant, getDateRange } from '@/lib/utils/timezone';
 import { obtenerOrganizacionActiva, getCurrentBranchId } from '@/lib/hooks/useOrganization';
-import type { SaldoCuenta } from '@/lib/finanzas/planCuentasAlta';
+import type { ConceptoPuc, SaldoCuenta } from '@/lib/finanzas/planCuentasAlta';
 import type { TrazaRedondeo } from '@/lib/finanzas/contabilidad/redondeoReversa';
 import { validarPlantilla, type ErrorPlantilla } from '@/lib/finanzas/contabilidad/plantillaAsiento';
 
@@ -448,6 +448,24 @@ export class ContabilidadService {
    * movimiento con saldo, responde PADRE_CON_SALDO salvo que se confirme el
    * traslado. Todo ocurre en una sola transacción en el servidor.
    */
+  /**
+   * Conceptos del PUC comercial (Decreto 2650 de 1993) que cuelgan del padre, de
+   * `puc_catalogo`. Es una tabla de referencia común, sin organización. Si no se
+   * puede leer, la pantalla sigue sin sugerencias.
+   */
+  static async obtenerCatalogoPuc(padre: string): Promise<ConceptoPuc[]> {
+    const { data, error } = await supabase
+      .from('puc_catalogo')
+      .select('codigo, nombre')
+      .eq('padre', padre)
+      .order('codigo');
+    if (error) {
+      console.error('Error leyendo el catálogo del PUC:', error);
+      return [];
+    }
+    return (data ?? []) as ConceptoPuc[];
+  }
+
   static async crearCuentaHija(entrada: {
     padre: string;
     nombre: string;

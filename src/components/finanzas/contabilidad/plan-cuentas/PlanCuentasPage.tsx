@@ -24,6 +24,8 @@ import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { COLUMNAS_PLAN, interpretarFilas } from '@/lib/finanzas/pucExcel';
 import { armarArbolPlan, esMovimientoVisible } from '@/lib/finanzas/planCuentasVista';
 import {
+  avisoCatalogo,
+  conceptoPorNombre,
   filasVisibles,
   indiceAltaEn,
   interpretarErrorAlta,
@@ -32,9 +34,11 @@ import {
   puedeCrearDebajo,
   saldosAcumulados,
   saldosConHija,
-  siguienteHija,
   situacionPadre,
+  sugerenciaInicial,
+  usaCatalogo,
   validarCodigoHija,
+  type ConceptoPuc,
   type SaldoCuenta,
 } from '@/lib/finanzas/planCuentasAlta';
 import { naturalezaDe, nivelDe, type NaturalezaPuc } from '@/lib/finanzas/pucJerarquia';
@@ -77,6 +81,8 @@ export function PlanCuentasPage() {
   const [alta, setAlta] = useState<EstadoAlta | null>(null);
   const [recientes, setRecientes] = useState<Set<string>>(new Set());
   const [panel, setPanel] = useState<Panel>(null);
+  // Catálogo del PUC por padre: solo se pide para cuentas y subcuentas, una vez por padre.
+  const [catalogos, setCatalogos] = useState<Map<string, ConceptoPuc[]>>(new Map());
   const [aBorrar, setABorrar] = useState<ChartAccount | null>(null);
   const refArchivo = useRef<HTMLInputElement>(null);
 
@@ -152,15 +158,55 @@ export function PlanCuentasPage() {
     });
   };
 
-  const abrirAlta = (padre: ChartAccount, lista: readonly string[] = codigos) => {
-    const codigo = siguienteHija(padre.account_code, lista);
-    if (!codigo) {
+  const catalogoDe = async (padre: string): Promise<ConceptoPuc[]> => {
+    if (!usaCatalogo(padre)) return [];
+    const guardado = catalogos.get(padre);
+    if (guardado) return guardado;
+    const leido = await ContabilidadService.obtenerCatalogoPuc(padre);
+    setCatalogos((previo) => new Map(previo).set(padre, leido));
+    return leido;
+  };
+
+  // Concepto del Contador (2026-11-10): primero el código que el PUC tiene para el concepto.
+  const abrirAlta = async (padre: ChartAccount, lista: readonly string[] = codigos) => {
+    const catalogo = await catalogoDe(padre.account_code);
+    const sugerencia = sugerenciaInicial(padre.account_code, catalogo, lista);
+    if (!sugerencia) {
       toastError(t('alta.sinCodigo'));
       return;
     }
     setAbiertos((previo) => new Set(previo).add(padre.account_code));
-    setAlta({ padre: padre.account_code, codigo, nombre: '', nota: '', error: null, guardando: false });
+    setAlta({ padre: padre.account_code, codigo: sugerencia.codigo, nombre: sugerencia.nombre, nota: '', error: null, guardando: false });
   };
+
+  const catalogoAlta = alta ? catalogos.get(alta.padre) ?? [] : [];
+
+  /** Al escribir un nombre que el PUC tiene, el código pasa a ser el del PUC. */
+  const cambiarNombreAlta = (valor: string) => {
+    if (!alta) return;
+    const concepto = conceptoPorNombre(valor, catalogoAlta, codigos);
+    setAlta({ ...alta, nombre: valor, codigo: concepto ? concepto.codigo : alta.codigo, error: null });
+  };
+
+  /** Al elegir un código del PUC con el nombre vacío o sugerido, se trae su nombre. */
+  const cambiarCodigoAlta = (valor: string) => {
+    if (!alta) return;
+    const anterior = catalogoAlta.find((c) => c.codigo === alta.codigo);
+    const concepto = catalogoAlta.find((c) => c.codigo === valor);
+    const nombreSugerido = !alta.nombre.trim() || (anterior && alta.nombre === anterior.nombre);
+    setAlta({ ...alta, codigo: valor, nombre: concepto && nombreSugerido ? concepto.nombre : alta.nombre, error: null });
+  };
+
+  const avisoPuc = (() => {
+    if (!alta) return null;
+    const aviso = avisoCatalogo(alta.padre, alta.codigo, alta.nombre, catalogoAlta);
+    if (!aviso) return null;
+    return aviso.tipo === 'fuera'
+      ? t('alta.puc.fuera', { codigo: alta.codigo })
+      : t('alta.puc.otroNombre', { codigo: alta.codigo, nombre: aviso.nombrePuc });
+  })();
+  const usados = new Set(codigos);
+  const nombresPuc = catalogoAlta.filter((c) => !usados.has(c.codigo)).map((c) => c.nombre);
 
   const mensajeError = (error: unknown): { texto: string; saldo?: number } => {
     const leido = interpretarErrorAlta(error);
@@ -225,7 +271,7 @@ export function PlanCuentasPage() {
       }, MS_RECIENTE);
       if (creado.asientos.length > 0) toastSuccess(t('alta.trasladoHecho', { asientos: creado.asientos.length }));
       const actualizado = plan.find((c) => c.account_code === alta.padre);
-      if (actualizado) abrirAlta(actualizado, plan.map((c) => c.account_code));
+      if (actualizado) void abrirAlta(actualizado, plan.map((c) => c.account_code));
     } catch (error) {
       const { texto, saldo } = mensajeError(error);
       if (saldo != null) {
@@ -522,7 +568,7 @@ export function PlanCuentasPage() {
                   acciones={accionesFila(cuenta)}
                   onAlternar={() => alternar(codigo)}
                   onAbrir={() => setPanel({ modo: 'editar', codigo })}
-                  onCrearDebajo={() => abrirAlta(cuenta)}
+                  onCrearDebajo={() => void abrirAlta(cuenta)}
                 />
                 {altaEnFila && padreAlta && indice === posicionAlta ? (
                   <>
@@ -535,8 +581,10 @@ export function PlanCuentasPage() {
                       error={alta.error}
                       guardando={alta.guardando}
                       bloqueada={situacion === 'con_saldo'}
-                      onCodigo={(valor) => setAlta({ ...alta, codigo: valor, error: null })}
-                      onNombre={(valor) => setAlta({ ...alta, nombre: valor, error: null })}
+                      avisoPuc={avisoPuc}
+                      nombresPuc={nombresPuc}
+                      onCodigo={cambiarCodigoAlta}
+                      onNombre={cambiarNombreAlta}
                       onGuardar={() => void guardarAlta(false)}
                       onCancelar={() => setAlta(null)}
                     />
@@ -592,11 +640,23 @@ export function PlanCuentasPage() {
         >
           <div className="flex flex-col gap-3 pb-2">
             <FormField etiqueta={t('alta.codigo')} error={alta.error ?? undefined}>
-              <Input inputMode="numeric" maxLength={alta.padre.length + 2} value={alta.codigo} onChange={(e) => setAlta({ ...alta, codigo: e.target.value.replace(/[^0-9]/g, ''), error: null })} />
+              <Input inputMode="numeric" maxLength={alta.padre.length + 2} value={alta.codigo} onChange={(e) => cambiarCodigoAlta(e.target.value.replace(/[^0-9]/g, ''))} />
             </FormField>
             <FormField etiqueta={t('alta.nombre')} obligatorio>
-              <Input maxLength={200} placeholder={t('alta.nombrePlaceholder', { nivel: nivelAlta })} value={alta.nombre} onChange={(e) => setAlta({ ...alta, nombre: e.target.value, error: null })} />
+              <Input
+                maxLength={200}
+                list={nombresPuc.length > 0 ? 'plan-alta-nombres-puc-movil' : undefined}
+                placeholder={t('alta.nombrePlaceholder', { nivel: nivelAlta })}
+                value={alta.nombre}
+                onChange={(e) => cambiarNombreAlta(e.target.value)}
+              />
             </FormField>
+            {nombresPuc.length > 0 ? (
+              <datalist id="plan-alta-nombres-puc-movil">
+                {nombresPuc.map((n) => <option key={n} value={n} />)}
+              </datalist>
+            ) : null}
+            {avisoPuc ? <p role="status" className="text-xs font-medium text-warning-text">{avisoPuc}</p> : null}
             {situacion !== 'normal' ? (
               <AvisoPadreAlta
                 situacion={situacion}

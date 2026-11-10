@@ -154,7 +154,8 @@ describe('«Café de especialidad»: cada variante nueva con los defaults de su 
     const enEditorial = (k: string) => def.contentFields.filter((f) => f.key === k && campoVisible(f, {}, 'carousel_editorial'));
     expect(enEditorial('buttons').map((f) => f.maxItems)).toEqual([3]);
     expect(enEditorial('slides')[0].itemFields?.map((f) => f.key)).toEqual(['image_url', 'image_url_mobile', 'alt']);
-    expect(variantesVisibles('hero', 'buttons').sort()).toEqual(['carousel_editorial', 'fullscreen', 'minimal', 'slider', 'split', 'video']);
+    // Plantillas de tienda: «Tarjetas flotantes» trae su copia y «Dividida con productos» hereda la de «Dividido».
+    expect(variantesVisibles('hero', 'buttons').sort()).toEqual(['carousel_editorial', 'floating', 'fullscreen', 'minimal', 'slider', 'split', 'split_products', 'video']);
     expect(variantesVisibles('hero', 'image_url')).not.toContain('carousel_editorial');
     expect(variantesVisibles('hero', 'eyebrow')).toEqual(['carousel_editorial']);
     expect(variantesVisibles('hero', 'slides_per_view')).toEqual(['slider']);

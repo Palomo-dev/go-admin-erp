@@ -26,7 +26,9 @@ import {
   type ProductoPlantilla,
   type ResumenPlantillaCompleta,
 } from '@/lib/website/v2/plantillaCompleta';
-import { tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { tokensDisenoDisponibles, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
+import { tarjetaSitioDisponible } from '@/lib/website/v2/banderasTienda';
+import { paginacionTemaDisponible } from '@/lib/website/v2/paginacionCarrusel';
 import { bucketDeRutaImagen } from '@/lib/utils/bucketImagen';
 import { ErrorSitio, crearSitio, errorDesdePostgrest, listarSitios, obtenerBorrador } from './siteDocumentService';
 import { crearInstantanea } from './editorSitioService';
@@ -58,7 +60,8 @@ function fotoPrincipal(fila: FilaProducto): string | null {
 
 /**
  * Datos reales para la plantilla. La sede es `branchId` o, para el sitio principal, la sede
- * principal (o la primera activa). Columnas verificadas por MCP el 2026-10-06.
+ * principal (o la primera activa). Columnas verificadas por MCP el 2026-10-06
+ * (`categories.slug/color/image_url`, el 2026-11-10: las usan las plantillas de tienda nuevas).
  */
 export async function leerDatosNegocio(cliente: SupabaseClient, org: number, branchId: number | null): Promise<DatosNegocio> {
   const sedes = cliente
@@ -81,7 +84,7 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
       .limit(LIMITE_PRODUCTOS * 2),
     cliente
       .from('categories')
-      .select('id, name')
+      .select('id, name, slug, color, image_url')
       .eq('organization_id', org)
       .eq('is_active', true)
       .order('display_order', { ascending: true, nullsFirst: false })
@@ -119,7 +122,13 @@ export async function leerDatosNegocio(cliente: SupabaseClient, org: number, bra
     telefono: s.phone || o.phone || null,
     portadaUrl: urlPublica(cliente, s.website_cover_url),
     productos: lista.slice(0, LIMITE_PRODUCTOS),
-    categorias: ((categorias.data ?? []) as { id: number; name: string }[]).map((c) => ({ id: c.id, nombre: c.name })),
+    categorias: ((categorias.data ?? []) as { id: number; name: string; slug?: string | null; color?: string | null; image_url?: string | null }[]).map((c) => ({
+      id: c.id,
+      nombre: c.name,
+      slug: c.slug ?? null,
+      color: c.color ?? null,
+      imagenUrl: urlPublica(cliente, c.image_url),
+    })),
     testimonios: testimonios.count ?? 0,
     envios: ((envios.data ?? []) as { enable_shipping?: boolean | null; branch_id?: number | null }[]).some(
       (f) => f.enable_shipping === true && (branchId == null ? f.branch_id == null : f.branch_id === branchId || f.branch_id == null),
@@ -136,8 +145,21 @@ export type ArmarPlantilla = (
   base: DocumentoSitio,
   plantilla: PlantillaCatalogo,
   datos: DatosNegocio,
-  opciones: { generarId: () => string; extendidos: boolean },
+  opciones: OpcionesArmado,
 ) => { documento: DocumentoSitio; resumen: ResumenPlantillaCompleta };
+
+/**
+ * Opciones del armado. `tarjeta`, `tokensDiseno` y `paginacion` siguen las banderas que ya existen
+ * (el sitio rechaza esas claves del tema hasta aceptarlas); solo las usan las plantillas que las
+ * traen (las de tienda nuevas). Ninguna bandera nueva.
+ */
+export interface OpcionesArmado {
+  generarId: () => string;
+  extendidos: boolean;
+  tarjeta?: boolean;
+  tokensDiseno?: boolean;
+  paginacion?: boolean;
+}
 
 const ARMAR_POR_DEFECTO: ArmarPlantilla = (base, plantilla, datos, opciones) => armarPlantillaCompleta(base, plantilla, datos, opciones);
 
@@ -152,7 +174,13 @@ export async function documentoPlantillaCompleta(
   armar: ArmarPlantilla = ARMAR_POR_DEFECTO,
 ): Promise<{ documento: DocumentoSitio; resumen: ResumenPlantillaCompleta }> {
   const datos = await leerDatosNegocio(cliente, org, branchId);
-  const r = armar(base, plantilla, datos, { generarId, extendidos: tokensExtendidosDisponibles() });
+  const r = armar(base, plantilla, datos, {
+    generarId,
+    extendidos: tokensExtendidosDisponibles(),
+    tarjeta: tarjetaSitioDisponible(),
+    tokensDiseno: tokensDisenoDisponibles(),
+    paginacion: paginacionTemaDisponible(),
+  });
   const validacion = validarDocumentoSitio(r.documento);
   if (!validacion.ok) throw new ErrorSitio('documento_invalido', 'La plantilla completa no cumple el contrato.', validacion.errores);
   return { documento: validacion.documento, resumen: r.resumen };

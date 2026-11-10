@@ -3,18 +3,32 @@
 /**
  * Inspector «Tarjeta de producto»: preset, botones, etiquetas, texto y contenedor.
  * Lo guardado es `product_card_style`. Elegir «Actual» no cambia el render de hoy.
+ *
+ * Opciones de las plantillas de tienda (Figma B1, PLANO §2 ítems 1-9), con la insignia «Nuevo»:
+ * precio junto al nombre, línea bajo el nombre, prefijo «Desde», fuente del nombre, estilo «Suave»
+ * de los botones, texto del botón «Elegir», corazón (estilo y esquina), tarjetas con borde
+ * compartido y cómo entra la segunda foto. Su opción «como hoy» no escribe la clave
+ * (`tarjetaTiendaLogica.ts`).
  */
 import { useTextosEditor } from '../textos';
-import { ColorTema } from './PartesZonaGlobal';
+import { ColorTema, InsigniaNuevo } from './PartesZonaGlobal';
 import { EtiquetasPropiasTarjeta } from './EtiquetasPropiasTarjeta';
 import { SelectKit, CasillaKit, NumeroKit } from './controlesKit';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Input } from '@/components/ui/input';
+import {
+  OPCION_HOY,
+  opcionVisibleTarjeta,
+  textoElegirAlGuardar,
+  valorAlElegirTarjeta,
+  type ClaveListaTienda,
+} from './tarjetaTiendaLogica';
 import { TabBar, clasesBoton } from '@/components/kit';
 import {
   ALINEACIONES,
   ANCHOS_BOTON,
   AJUSTES_IMAGEN,
-  ESTILOS_BOTON,
+  ESTILOS_BOTON_TARJETA,
   ESTILOS_ETIQUETA,
   ESTILOS_RESENA,
   FORMAS_BOTON,
@@ -25,7 +39,8 @@ import {
   PESOS_TITULO,
   POSICIONES_BOTON,
   POSICIONES_ETIQUETA,
-  POSICIONES_PRECIO,
+  MAX_TEXTO_ELEGIR,
+  POSICIONES_PRECIO_TARJETA,
   POSICIONES_RESENA,
   PRESETS_TARJETA,
   RATIOS_IMAGEN,
@@ -87,13 +102,53 @@ const NOMBRE_CLAVE: Record<string, string> = {
   price_color: 'Color del precio', price_position: 'Precio', price_size: 'Tamaño del precio', show_compare_price: 'Precio anterior tachado',
   show_reviews: 'Reseñas', reviews_position: 'Posición de reseñas', reviews_style: 'Estilo de reseñas', show_brand: 'Marca',
   show_category: 'Categoría', label_shape: 'Forma de etiquetas', label_style: 'Estilo de etiquetas', label_position: 'Posición de etiquetas',
+  card_subtitle: 'Línea bajo el nombre', price_prefix: 'Prefijo del precio', title_font: 'Fuente del nombre',
+  card_grid_lines: 'Tarjetas con borde compartido', wishlist_style: 'Estilo del corazón', wishlist_position: 'Posición del corazón',
+  hover_image_transition: 'Cómo entra la segunda foto', choose_label: 'Texto de «Elegir»',
 };
 
-function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
+/** Opciones nuevas (Figma B1). La primera, `OPCION_HOY`, no escribe la clave. */
+const OPCIONES_TIENDA: Record<ClaveListaTienda, readonly (readonly [string, string])[]> = {
+  card_subtitle: [
+    [OPCION_HOY, 'Ninguna (hoy)'],
+    ['brand', 'Marca'],
+    ['dimensions', 'Medidas (largo × ancho × alto)'],
+    ['reference', 'Referencia'],
+    ['description', '1.ª línea de la descripción'],
+  ],
+  price_prefix: [
+    [OPCION_HOY, 'Ninguno (hoy)'],
+    ['desde', '«Desde»'],
+  ],
+  title_font: [
+    [OPCION_HOY, 'La del cuerpo (hoy)'],
+    ['heading', 'La de títulos del tema'],
+  ],
+  wishlist_style: [
+    [OPCION_HOY, 'Como lo decida la sección (hoy)'],
+    ['none', 'Ninguno'],
+    ['circle', 'En círculo'],
+    ['ghost', 'Fantasma'],
+  ],
+  wishlist_position: [
+    [OPCION_HOY, 'Arriba a la derecha (hoy)'],
+    ['top_left', 'Arriba a la izquierda'],
+  ],
+  hover_image_transition: [
+    [OPCION_HOY, 'Fundido (hoy)'],
+    ['slide', 'Se desliza'],
+  ],
+};
+
+function Campo({ etiqueta, children, nuevo, ayuda }: { etiqueta: string; children: ReactNode; nuevo?: boolean; ayuda?: string }) {
   return (
     <div role="group" aria-label={etiqueta} className="flex flex-col gap-1 text-[12px] leading-4 text-fg-secondary">
-      <span>{etiqueta}</span>
+      <span className="flex flex-wrap items-center gap-1.5">
+        {etiqueta}
+        {nuevo && <InsigniaNuevo />}
+      </span>
       {children}
+      {ayuda && <span className="text-[11px] leading-[14px] text-fg-muted">{ayuda}</span>}
     </div>
   );
 }
@@ -106,15 +161,19 @@ function Lista<T extends string>({
   opciones,
   nombres,
   onCambiar,
+  nuevo,
+  ayuda,
 }: {
   etiqueta: string;
   valor: T | undefined;
   opciones: readonly T[];
   nombres?: Record<string, string>;
   onCambiar: (valor: T) => void;
+  nuevo?: boolean;
+  ayuda?: string;
 }) {
   return (
-    <Campo etiqueta={etiqueta}>
+    <Campo etiqueta={etiqueta} nuevo={nuevo} ayuda={ayuda}>
       <SelectKit className={claseControl} value={valor ?? ''} onChange={(e) => onCambiar(e.target.value as T)}>
         {opciones.map((o) => (
           <option key={o} value={o}>
@@ -140,9 +199,54 @@ function Color({
   );
 }
 
-function Interruptor({ etiqueta, valor, onCambiar }: { etiqueta: string; valor: boolean | undefined; onCambiar: (v: boolean) => void }) {
+function Interruptor({ etiqueta, valor, onCambiar, nuevo, ayuda }: { etiqueta: string; valor: boolean | undefined; onCambiar: (v: boolean) => void; nuevo?: boolean; ayuda?: string }) {
+  const casilla = (
+    <CasillaKit
+      titulo={nuevo ? <span className="flex flex-wrap items-center gap-1.5">{etiqueta}<InsigniaNuevo /></span> : etiqueta}
+      checked={valor === true}
+      onChange={(e) => onCambiar(e.target.checked)}
+    />
+  );
+  if (!ayuda) return casilla;
   return (
-    <CasillaKit titulo={etiqueta} checked={valor === true} onChange={(e) => onCambiar(e.target.checked)} />
+    <div className="flex flex-col gap-0.5">
+      {casilla}
+      <span className="text-[11px] leading-[14px] text-fg-muted">{ayuda}</span>
+    </div>
+  );
+}
+
+/**
+ * Texto del botón «Elegir» (`choose_label`, máx. 24). Se edita en un borrador local y se guarda al
+ * salir del campo o con Enter: el normalizador recorta espacios y, guardando a cada tecla, no se
+ * podría escribir «Elige un acabado». Vacío = el texto de hoy (borra la clave).
+ */
+function TextoElegir({ valor, onGuardar }: { valor: string | undefined; onGuardar: (texto: string | null) => void }) {
+  const [borrador, setBorrador] = useState(valor ?? '');
+  useEffect(() => setBorrador(valor ?? ''), [valor]);
+  const guardar = () => {
+    const texto = textoElegirAlGuardar(borrador, MAX_TEXTO_ELEGIR);
+    if (texto !== (valor ?? null)) onGuardar(texto);
+  };
+  return (
+    <Campo
+      etiqueta="Elige una variante antes de agregar"
+      nuevo
+      ayuda={`Máx. ${MAX_TEXTO_ELEGIR}. Vacío: el texto de hoy. Agregar no cambia: un producto con variantes lleva a elegir.`}
+    >
+      <Input
+        aria-label="Texto del botón «Elegir»"
+        value={borrador}
+        maxLength={MAX_TEXTO_ELEGIR}
+        placeholder="Elige un acabado"
+        onChange={(e) => setBorrador(e.target.value)}
+        onBlur={guardar}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') guardar();
+        }}
+        className="h-8 text-sm"
+      />
+    </Campo>
   );
 }
 
@@ -184,6 +288,18 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
   const e: EstiloEtiquetaTarjeta = vista[etiqueta] ?? {};
   const setBotonCampo = (clave: string, valor: unknown) => cambiar(`${boton}.${clave}`, valor);
   const setEtiquetaCampo = (clave: string, valor: unknown) => cambiar(`${etiqueta}.${clave}`, valor);
+  /** Lista de una opción nueva: «como hoy» primero; elegirla borra la clave (ver tarjetaTiendaLogica). */
+  const listaTienda = (clave: ClaveListaTienda, etiquetaLista: string, ayuda?: string) => (
+    <Lista
+      etiqueta={etiquetaLista}
+      nuevo
+      ayuda={ayuda}
+      valor={opcionVisibleTarjeta(clave, vista)}
+      opciones={OPCIONES_TIENDA[clave].map(([v]) => v)}
+      nombres={Object.fromEntries(OPCIONES_TIENDA[clave])}
+      onCambiar={(v) => cambiar(clave, valorAlElegirTarjeta(clave, v, heredado))}
+    />
+  );
 
   return (
     <section aria-label="Tarjeta de producto" className="flex flex-col gap-3 rounded-lg border border-line p-3">
@@ -246,7 +362,8 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
             ))}
           </div>
           <Interruptor etiqueta="Mostrar" valor={b.show !== false} onCambiar={(v) => setBotonCampo('show', v)} />
-          <Lista etiqueta="Estilo" valor={b.button_style} opciones={ESTILOS_BOTON} nombres={{ solid: 'Sólido', outline: 'Contorno', ghost: 'Fantasma', gradient: 'Degradado', icon_only: 'Solo ícono' }} onCambiar={(v) => setBotonCampo('button_style', v)} />
+          <Lista etiqueta="Estilo" valor={b.button_style} opciones={ESTILOS_BOTON_TARJETA} nombres={{ solid: 'Sólido', outline: 'Contorno', ghost: 'Fantasma', gradient: 'Degradado', icon_only: 'Solo ícono', soft: 'Suave (nuevo)' }} ayuda="Suave: fondo tenue del color del texto y texto del color principal." onCambiar={(v) => setBotonCampo('button_style', v)} />
+          {boton === 'choose' && <TextoElegir valor={vista.choose_label} onGuardar={(texto) => cambiar('choose_label', texto)} />}
           <Lista etiqueta="Forma" valor={b.button_shape} opciones={FORMAS_BOTON} nombres={{ square: 'Cuadrada', rounded: 'Redonda (8)', semi: 'Semi (14)', pill: 'Píldora', circle: 'Círculo' }} onCambiar={(v) => setBotonCampo('button_shape', v)} />
           <Lista etiqueta="Tamaño" valor={b.button_size} opciones={TAMANOS_BOTON} nombres={{ sm: 'Chico', md: 'Mediano', lg: 'Grande' }} onCambiar={(v) => setBotonCampo('button_size', v)} />
           <Lista etiqueta="Ancho" valor={b.button_width} opciones={ANCHOS_BOTON} nombres={{ full: 'Completo', auto: 'Automático' }} onCambiar={(v) => setBotonCampo('button_width', v)} />
@@ -266,6 +383,14 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
             <Color etiqueta={tk('controles.degradado2')} valor={b.gradient_2} onCambiar={(v) => setBotonCampo('gradient_2', v)} />
           </div>
           <Rango etiqueta="Ángulo del degradado" valor={b.gradient_angle} min={0} max={360} onCambiar={(n) => setBotonCampo('gradient_angle', n)} />
+          <div role="group" aria-label="Corazón · favoritos" className="flex flex-col gap-3 border-t border-line pt-3">
+            <span className="text-[12px] font-semibold leading-4 text-fg-secondary">Corazón · favoritos</span>
+            {listaTienda('wishlist_style', 'Estilo del corazón', 'Sin elegir, el corazón sale o no según los botones de la sección, como hoy.')}
+            {listaTienda('wishlist_position', 'Posición del corazón')}
+          </div>
+          <p className="rounded-md bg-subtle p-2 text-[11px] leading-[14px] text-fg-muted">
+            «Agregar · $ precio» se activa en la ficha, no en la tarjeta: Plantillas de página › Producto › bloque Acciones.
+          </p>
         </div>
       )}
 
@@ -296,7 +421,8 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
       {pestana === 'texto' && (
         <div className="flex flex-col gap-3">
           <Lista etiqueta="Alineación" valor={vista.text_align} opciones={ALINEACIONES} nombres={{ left: 'Izquierda', center: 'Centro', right: 'Derecha' }} onCambiar={(v) => cambiar('text_align', v)} />
-          <Lista etiqueta="Precio" valor={vista.price_position} opciones={POSICIONES_PRECIO} nombres={{ below_title: 'Debajo del título', above_title: 'Arriba del título', beside_button: 'Junto al botón', over_image: 'Sobre la imagen' }} onCambiar={(v) => cambiar('price_position', v)} />
+          <Lista etiqueta="Precio" valor={vista.price_position} opciones={POSICIONES_PRECIO_TARJETA} nombres={{ below_title: 'Debajo del título', above_title: 'Arriba del título', beside_button: 'Junto al botón', over_image: 'Sobre la imagen', beside_title: 'Junto al nombre (nuevo)' }} onCambiar={(v) => cambiar('price_position', v)} />
+          {listaTienda('price_prefix', 'Prefijo del precio', 'Solo en productos con variantes, sobre el precio que ya se muestra.')}
           <Lista etiqueta="Tamaño del precio" valor={vista.price_size} opciones={TAMANOS_TEXTO} nombres={{ sm: 'Chico', md: 'Mediano', lg: 'Grande' }} onCambiar={(v) => cambiar('price_size', v)} />
           <Color etiqueta="Color del precio" valor={vista.price_color} onCambiar={(v) => cambiar('price_color', v)} />
           <Interruptor etiqueta="Precio anterior tachado" valor={vista.show_compare_price !== false} onCambiar={(v) => cambiar('show_compare_price', v)} />
@@ -306,6 +432,8 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <Lista etiqueta="Líneas del título" valor={vista.title_lines ? String(vista.title_lines) as '1' | '2' | '3' : undefined} opciones={['1', '2', '3']} nombres={{ '1': '1 línea', '2': '2 líneas', '3': '3 líneas' }} onCambiar={(v) => cambiar('title_lines', Number(v))} />
           <Lista etiqueta="Peso del título" valor={vista.title_weight} opciones={PESOS_TITULO} nombres={{ normal: 'Normal', medium: 'Medio', semibold: 'Seminegrita', bold: 'Negrita' }} onCambiar={(v) => cambiar('title_weight', v)} />
           <Lista etiqueta="Tamaño del título" valor={vista.title_size} opciones={TAMANOS_TEXTO} nombres={{ sm: 'Chico', md: 'Mediano', lg: 'Grande' }} onCambiar={(v) => cambiar('title_size', v)} />
+          {listaTienda('title_font', 'Fuente del nombre')}
+          {listaTienda('card_subtitle', 'Línea bajo el nombre', 'Si el producto no tiene el dato, no se muestra la línea.')}
           <Interruptor etiqueta="Mostrar marca" valor={vista.show_brand === true} onCambiar={(v) => cambiar('show_brand', v)} />
           <Interruptor etiqueta="Mostrar categoría" valor={vista.show_category === true} onCambiar={(v) => cambiar('show_category', v)} />
         </div>
@@ -323,6 +451,13 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           </div>
           <Rango etiqueta="Ángulo del fondo" valor={vista.card_bg_angle} min={0} max={360} onCambiar={(n) => cambiar('card_bg_angle', n)} />
           <Rango etiqueta="Relleno" valor={vista.card_padding} min={0} max={48} onCambiar={(n) => cambiar('card_padding', n)} />
+          <Interruptor
+            etiqueta="Tarjetas con borde compartido"
+            nuevo
+            ayuda="Sin separación: una línea de 1 px entre tarjetas. Con esto encendido, la separación no aplica."
+            valor={vista.card_grid_lines === true}
+            onCambiar={(v) => cambiar('card_grid_lines', v ? true : null)}
+          />
           <Rango etiqueta="Separación entre tarjetas" valor={vista.card_gap} min={0} max={64} onCambiar={(n) => cambiar('card_gap', n)} />
           <Lista etiqueta="Proporción de la imagen" valor={vista.image_ratio} opciones={RATIOS_IMAGEN} onCambiar={(v) => cambiar('image_ratio', v)} />
           <Lista etiqueta="Ajuste de la imagen" valor={vista.image_fit} opciones={AJUSTES_IMAGEN} nombres={{ cover: 'Cubrir', contain: 'Contener', fill: 'Rellenar' }} onCambiar={(v) => cambiar('image_fit', v)} />
@@ -330,6 +465,7 @@ export function InspectorTarjetaProducto({ guardado, heredado, onCambiar, onQuit
           <Rango etiqueta="Relleno de la imagen" valor={vista.image_padding} min={0} max={32} onCambiar={(n) => cambiar('image_padding', n)} />
           <Rango etiqueta="Radio de la imagen" valor={vista.image_radius} min={0} max={32} onCambiar={(n) => cambiar('image_radius', n)} />
           <Lista etiqueta="Imagen al pasar el mouse" valor={vista.hover_image} opciones={HOVER_IMAGEN} nombres={{ none: 'Ninguna', zoom: 'Zoom', second: 'Segunda imagen' }} onCambiar={(v) => cambiar('hover_image', v)} />
+          {vista.hover_image === 'second' && listaTienda('hover_image_transition', 'Cómo entra la segunda foto')}
         </div>
       )}
 

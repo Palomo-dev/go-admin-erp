@@ -19,6 +19,7 @@ import path from 'path';
 import ts from 'typescript';
 import { validarDocumentoSitio, type DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
 import {
+  IDS_PLANTILLAS_TIENDA,
   SECCIONES_INICIO_BASE,
   construirCatalogo,
   contarPorGiro,
@@ -106,7 +107,8 @@ describe('catálogo de plantillas (A/06b)', () => {
   test('los demás giros salen de las plantillas reales del sitio; los contadores, del catálogo', () => {
     const c = contarPorGiro(CATALOGO);
     expect(c.restaurante).toBe(9);
-    expect(c.tienda).toBe(TEMPLATE_PRESETS.filter((p) => p.business_type === 'retail').length);
+    // Las del sitio (`retail_*`) más las 7 de tienda nuevas, que se apoyan en ellas.
+    expect(c.tienda).toBe(TEMPLATE_PRESETS.filter((p) => p.business_type === 'retail').length + IDS_PLANTILLAS_TIENDA.length);
     expect(c.todas).toBe(CATALOGO.plantillas.length);
     expect(CATALOGO.plantillas.some((p) => p.id === 'restaurant_modern')).toBe(false);
     expect(plantillasDelGiro(CATALOGO, 'tienda')[0].porDefecto).toBe(true);

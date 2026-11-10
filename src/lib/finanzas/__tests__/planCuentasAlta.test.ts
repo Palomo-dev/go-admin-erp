@@ -3,7 +3,11 @@ import {
   filasVisibles,
   indiceAltaEn,
   interpretarErrorAlta,
+  avisoCatalogo,
+  conceptoPorNombre,
   nivelHija,
+  normalizarNombre,
+  sugerenciaInicial,
   planConHija,
   puedeCrearDebajo,
   saldosAcumulados,
@@ -26,7 +30,7 @@ describe('alta en la fila, todos los niveles (dueño, 2026-11-10)', () => {
     expect(nivelHija('1110')).toBe('subcuenta');
     expect(nivelHija('111005')).toBe('auxiliar');
     expect(nivelHija('11100501')).toBe('subauxiliar');
-    expect(nivelHija('1110050101')).toBe('subauxiliar');
+    expect(nivelHija('1110050101')).toBeNull();
     expect(nivelHija('1')).toBeNull();
     expect(nivelHija('110')).toBeNull();
     expect(puedeCrearDebajo({ account_code: '1110', is_active: true })).toBe(true);
@@ -41,9 +45,34 @@ describe('alta en la fila, todos los niveles (dueño, 2026-11-10)', () => {
     expect(siguienteHija('110510', [])).toBe('11051001');
     expect(siguienteHija('110510', ['11051001', '11051003'])).toBe('11051002');
     expect(siguienteHija('11100501', [])).toBe('1110050101');
+    expect(siguienteHija('1110050101', [])).toBeNull();
     const llenos = Array.from({ length: 19 }, (_, i) => `11${String((i + 1) * 5).padStart(2, '0')}`);
     expect(siguienteHija('11', llenos)).toBe('1101');
     expect(siguienteHija('1', [])).toBeNull();
+  });
+
+  it('sugiere primero el concepto del PUC que la empresa no tiene', () => {
+    const catalogo = [
+      { codigo: '1105', nombre: 'Caja' },
+      { codigo: '1110', nombre: 'Bancos' },
+      { codigo: '1115', nombre: 'Remesas en tránsito' },
+    ];
+    expect(sugerenciaInicial('11', catalogo, ['1105', '1110'])).toEqual({ codigo: '1115', nombre: 'Remesas en tránsito' });
+    expect(sugerenciaInicial('11', catalogo, ['1105', '1110', '1115'])).toEqual({ codigo: '1120', nombre: '' });
+    // Auxiliares: el PUC no los fija, de 1 en 1 y sin nombre.
+    expect(sugerenciaInicial('111005', [{ codigo: '11100501', nombre: 'x' }], [])).toEqual({ codigo: '11100501', nombre: '' });
+  });
+
+  it('busca el concepto por nombre sin tildes ni mayúsculas, y avisa fuera del catálogo', () => {
+    const catalogo = [{ codigo: '1115', nombre: 'Remesas en tránsito' }];
+    expect(normalizarNombre('  REMESAS   en Tránsito ')).toBe('remesas en transito');
+    expect(conceptoPorNombre('remesas en transito', catalogo, [])).toEqual(catalogo[0]);
+    expect(conceptoPorNombre('remesas en transito', catalogo, ['1115'])).toBeNull();
+    expect(avisoCatalogo('11', '1131', '', catalogo)).toEqual({ tipo: 'fuera' });
+    expect(avisoCatalogo('11', '1115', 'Remesas', catalogo)).toEqual({ tipo: 'otroNombre', nombrePuc: 'Remesas en tránsito' });
+    expect(avisoCatalogo('11', '1115', 'Remesas en transito', catalogo)).toBeNull();
+    expect(avisoCatalogo('110505', '11050501', 'x', catalogo)).toBeNull();
+    expect(avisoCatalogo('11', '1131', '', [])).toBeNull();
   });
 
   it('valida la forma del código según el nivel', () => {

@@ -15,7 +15,7 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 }));
 
 import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio } from '@/lib/website/contrato/documentoSitio';
-import { construirCatalogo, contarPorGiro, plantillaPorId, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { construirCatalogo, contarPorGiro, esPlantillaTiendaNueva, plantillaPorId, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import type { Giro } from '@/components/sitio-web/paginas/plantillasPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
@@ -127,9 +127,9 @@ const inicioDe = (d: DocumentoSitio): PaginaSitio => d.paginas.find((p) => esIni
 const visibles = (p: PaginaSitio) => p.secciones.filter((s) => s.visibilidad.movil || s.visibilidad.escritorio);
 
 describe('catálogo: plantillas por giro', () => {
-  it('Restaurante 9, Tienda 4, Hotel 4, Servicios 4, Gimnasio 4', () => {
+  it('Restaurante 9, Tienda 11 (4 del sitio + 7 nuevas), Hotel 4, Servicios 4, Gimnasio 4', () => {
     const c = contarPorGiro(CATALOGO);
-    expect([c.restaurante, c.tienda, c.hotel, c.servicios, c.gimnasio]).toEqual([9, 4, 4, 4, 4]);
+    expect([c.restaurante, c.tienda, c.hotel, c.servicios, c.gimnasio]).toEqual([9, 11, 4, 4, 4]);
   });
 
   it('cada giro tiene una plantilla por defecto', () => {
@@ -138,6 +138,14 @@ describe('catálogo: plantillas por giro', () => {
     }
   });
 });
+
+/**
+ * Claves que no son campos de contenido pero que el editor sí edita en un panel propio:
+ * Estilo › Espaciado y Ancho (`espaciadoSeccion.ts`) y «Banners» (`InspectorBanners.tsx`).
+ * Los bloques de color de Marea van de borde a borde con ellas, como lo pide el sitio (W5).
+ */
+const CLAVES_DE_ESTILO = ['section_background', 'padding_top', 'padding_bottom', 'padding_x', 'full_bleed'];
+const CLAVES_DE_PANEL: Record<string, readonly string[]> = { promo_banners: ['banner_layout', 'banner_style'] };
 
 describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla completa «%s»', (_id, plantilla) => {
   const { documento, resumen } = armar(plantilla);
@@ -206,7 +214,8 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
     sinEleccion.shell.footer.opciones = {};
     const limpio = armar(plantilla, DATOS, sinEleccion).documento.shell.footer.opciones;
     expect(limpio.show_powered_by ?? true).toBe(shell.pie.opciones.show_powered_by === true);
-    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(false);
+    // Las tiendas de antes, sin columna Contacto; las 7 nuevas, lo que diga su lámina.
+    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(esPlantillaTiendaNueva(plantilla.id) ? shell.pie.opciones.footer_show_contact : false);
     const legales = documento.menus.find((m) => m.nombre === 'Legales' && documento.shell.footer.menuIds.includes(m.id));
     if (legales) {
       const tratamiento = legales.items.find((i) => i.etiqueta === 'Tratamiento de datos');
@@ -221,7 +230,11 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
 
   it('Inicio sigue la estructura de la plantilla, en su orden (portada con foto si la hay)', () => {
     const inicio = inicioDe(documento);
-    const esperada = plantilla.inicio.map(([t, v]) => [t, t === 'restaurant_hero' && v === 'typographic' ? 'split_bento' : v]);
+    // Marea: un bloque de color por categoría real (hasta 5), uno solo si no hay categorías.
+    const bloques = Math.max(1, Math.min(DATOS.categorias.length, 5));
+    const esperada = plantilla.inicio.flatMap(([t, v]) =>
+      t === 'image_text' && v === 'color_block' ? Array.from({ length: bloques }, () => [t, v]) : [[t, t === 'restaurant_hero' && v === 'typographic' ? 'split_bento' : v]],
+    );
     expect(inicio.secciones.map((s) => [s.tipo, s.variante])).toEqual(esperada);
     // Portada visible siempre; sin datos reales, transporte clásico queda en portada y mapa.
     expect(visibles(inicio)[0].tipo).toMatch(/hero$/);
@@ -235,8 +248,8 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
         const def = getSectionDefinition(s.tipo);
         expect({ tipo: s.tipo, existe: Boolean(def) }).toEqual({ tipo: s.tipo, existe: true });
         expect(def!.variants.map((v) => v.id)).toContain(s.variante);
-        const claves = new Set(def!.contentFields.map((f) => f.key));
-        for (const k of Object.keys(s.contenido)) expect({ tipo: s.tipo, clave: k, declarada: claves.has(k) || k === 'section_background' }).toEqual({ tipo: s.tipo, clave: k, declarada: true });
+        const claves = new Set([...def!.contentFields.map((f) => f.key), ...(CLAVES_DE_PANEL[s.tipo] ?? []), ...CLAVES_DE_ESTILO]);
+        for (const k of Object.keys(s.contenido)) expect({ tipo: s.tipo, clave: k, declarada: claves.has(k) }).toEqual({ tipo: s.tipo, clave: k, declarada: true });
       }
     }
   });

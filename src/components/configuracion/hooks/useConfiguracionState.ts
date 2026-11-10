@@ -65,7 +65,9 @@ export function useConfiguracionState(): UseConfiguracionStateReturn {
         else params.set(k, v);
       }
       const q = params.toString();
-      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+      // usePathname() es nullable por src/pages; en el navegador la ruta siempre existe.
+      const ruta = pathname ?? window.location.pathname;
+      router.replace(q ? `${ruta}?${q}` : ruta, { scroll: false });
     },
     [searchParams, router, pathname],
   );

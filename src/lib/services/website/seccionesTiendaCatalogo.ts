@@ -60,6 +60,7 @@ import {
   GALERIA_MOSAICO,
   ICONOS_CTA_CATEGORIA,
   MAX_ANTES_DESPUES,
+  MAX_BLOQUES_COLOR,
   MAX_BOTONES_TIENDA,
   MAX_CODIGO_CUPON,
   MAX_COLUMNAS_FOTO,
@@ -326,6 +327,9 @@ const CAMPOS_TRANSFORMACION: ContentFieldDef[] = [
     ],
     showIf: solo('slider'),
   },
+  // Decisión 2 del dueño (2026-11-10): las etiquetas se editan. Vacías = «Antes» y «Después».
+  { key: 'before_label', label: 'Etiqueta de antes', type: 'text', placeholder: 'Antes', half: true, section: 'Etiquetas de las fotos', showIf: solo('slider') },
+  { key: 'after_label', label: 'Etiqueta de después', type: 'text', placeholder: 'Después', half: true, section: 'Etiquetas de las fotos', showIf: solo('slider') },
   {
     key: 'start_position',
     label: 'Posición inicial del control',
@@ -352,13 +356,35 @@ const CAMPOS_TRANSFORMACION: ContentFieldDef[] = [
 // ─── image_text: Bloque de color (Marea), Editorial (Contraste) y miniaturas ───────────────
 
 const CAMPOS_IMAGEN_TEXTO: ContentFieldDef[] = [
-  { key: 'number', label: 'Número', type: 'text', placeholder: '01', section: 'Bloque', showIf: solo('color_block') },
-  { key: 'title', label: 'Nombre', type: 'text', placeholder: 'Sillas', section: 'Bloque', showIf: solo('color_block') },
-  { key: 'phrase', label: 'Frase', type: 'textarea', placeholder: 'Roble macizo y tejidos naturales.', section: 'Bloque', showIf: solo('color_block') },
-  { key: 'image_url', label: 'Foto', type: 'image', section: 'Bloque', showIf: solo('color_block') },
-  { key: 'bg_color', label: 'Color de fondo', type: 'color', section: 'Bloque', helpText: 'Vacío: el primario del tema.', showIf: solo('color_block') },
-  { key: 'text_color', label: 'Color del texto', type: 'color', section: 'Bloque', helpText: 'Vacío: negro o blanco, el de más contraste.', showIf: solo('color_block') },
-  { key: 'cta_url', label: 'Enlace a la categoría', type: 'url', placeholder: '/categorias/sillas', section: 'Bloque', helpText: '«Ver la colección». Vacío: sin enlace.', showIf: solo('color_block') },
+  // Decisión 3 del dueño (2026-11-10): UNA sección con bloques que se repiten. Con bloques se pintan
+  // lado a lado; sin ninguno (o vacíos) la sección pinta el bloque único de abajo, como hoy.
+  {
+    key: 'blocks',
+    label: 'Bloques',
+    type: 'repeater',
+    itemLabelKey: 'title',
+    maxItems: MAX_BLOQUES_COLOR,
+    section: 'Bloques',
+    helpText: `Hasta ${MAX_BLOQUES_COLOR}, lado a lado. Con bloques, el «Bloque único» de abajo no se usa.`,
+    emptyStoreText: 'Se pinta el bloque único.',
+    itemFields: [
+      { key: 'bg_color', label: 'Color de fondo', type: 'color', helpText: 'Vacío: el primario del tema.' },
+      { key: 'text_color', label: 'Color del texto', type: 'color', helpText: 'Vacío: negro o blanco, el de más contraste.' },
+      { key: 'number', label: 'Número', type: 'text', placeholder: '01' },
+      { key: 'title', label: 'Nombre', type: 'text', placeholder: 'Sillas' },
+      { key: 'phrase', label: 'Frase', type: 'textarea' },
+      { key: 'cta_url', label: 'Enlace a la categoría', type: 'url', placeholder: '/categorias/sillas' },
+      { key: 'image_url', label: 'Foto', type: 'image' },
+    ],
+    showIf: solo('color_block'),
+  },
+  { key: 'number', label: 'Número', type: 'text', placeholder: '01', section: 'Bloque único', showIf: solo('color_block') },
+  { key: 'title', label: 'Nombre', type: 'text', placeholder: 'Sillas', section: 'Bloque único', showIf: solo('color_block') },
+  { key: 'phrase', label: 'Frase', type: 'textarea', placeholder: 'Roble macizo y tejidos naturales.', section: 'Bloque único', showIf: solo('color_block') },
+  { key: 'image_url', label: 'Foto', type: 'image', section: 'Bloque único', showIf: solo('color_block') },
+  { key: 'bg_color', label: 'Color de fondo', type: 'color', section: 'Bloque único', helpText: 'Vacío: el primario del tema.', showIf: solo('color_block') },
+  { key: 'text_color', label: 'Color del texto', type: 'color', section: 'Bloque único', helpText: 'Vacío: negro o blanco, el de más contraste.', showIf: solo('color_block') },
+  { key: 'cta_url', label: 'Enlace a la categoría', type: 'url', placeholder: '/categorias/sillas', section: 'Bloque único', helpText: '«Ver la colección». Vacío: sin enlace.', showIf: solo('color_block') },
 
   { key: 'title', label: 'Título', type: 'text', section: 'Textos', showIf: solo('editorial') },
   { key: 'body', label: 'Texto', type: 'textarea', section: 'Textos', showIf: solo('editorial') },
@@ -553,6 +579,14 @@ const ESTILOS_CON_POSICION = ['card_bottom', 'overlay', undefined, ''];
 const ESTILOS_CON_COLOR_Y_FLECHA = ['card_bottom', ESTILO_CATEGORIA_TITULO_ARRIBA, 'overlay', undefined, ''];
 
 export const OPCION_ESTILO_TITULO_ARRIBA = { value: ESTILO_CATEGORIA_TITULO_ARRIBA, label: 'Título arriba' };
+
+/**
+ * «Lista de texto» (decisión 1 del dueño, 2026-11-10): una fila de nombres enlazados. El sitio la
+ * pinta desde goadmin-websites 956fd16 (`lib/website/opcionesEditorTienda.ts`); no está en el
+ * contrato compartido.
+ */
+export const ESTILO_CATEGORIA_LISTA_TEXTO = 'text_list' as const;
+export const OPCION_ESTILO_LISTA_TEXTO = { value: ESTILO_CATEGORIA_LISTA_TEXTO, label: 'Lista de texto' };
 
 const CAMPOS_CATEGORIAS: ContentFieldDef[] = [
   {

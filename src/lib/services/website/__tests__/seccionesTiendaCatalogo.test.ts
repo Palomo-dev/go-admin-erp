@@ -42,7 +42,12 @@ const esDelComponente = (f: ContentFieldDef) =>
  * Claves que el componente del sitio declara además de las del contrato (CONTENT_KEYS de
  * RasgosConFoto: título y subtítulo comunes). Están en el manifiesto desplegado.
  */
-const EXTRA_SITIO: Readonly<Record<string, readonly string[]>> = { 'features_grid.photo_columns': ['title', 'subtitle'] };
+const EXTRA_SITIO: Readonly<Record<string, readonly string[]>> = {
+  'features_grid.photo_columns': ['title', 'subtitle'],
+  // Decisiones del dueño 2026-11-10 (goadmin-websites 956fd16, lib/website/opcionesEditorTienda.ts).
+  'transformation.slider': ['before_label', 'after_label'],
+  'image_text.color_block': ['blocks'],
+};
 const PARES = Object.entries(VARIANTES_TIENDA).flatMap(([tipo, vs]) => vs.map((v) => [tipo, v] as const));
 
 describe('cada variante de tienda que ofrece el editor la pinta el sitio desplegado', () => {
@@ -136,7 +141,16 @@ describe('categorías (B2)', () => {
   const opcionesEstilo = () => def('categories_grid').contentFields.find((f) => f.key === 'category_style')?.options?.map((o) => o.value);
 
   it('«Título arriba» está entre los estilos', () => {
-    expect(opcionesEstilo()).toEqual(['overlay', 'circle', 'card_bottom', 'pill', 'bento', 'minimal_icon', 'title_top']);
+    expect(opcionesEstilo()).toEqual(['overlay', 'circle', 'card_bottom', 'pill', 'bento', 'minimal_icon', 'title_top', 'text_list']);
+  });
+
+  it('«Lista de texto» (decisión 1): sin layout de escritorio ni opciones de tarjeta; con alineación', () => {
+    const campo = def('categories_grid').contentFields.find((f) => f.key === 'desktop_layout')!;
+    expect(campoLayoutCategorias(campo, { category_style: 'text_list' }, 'categories_grid')).toBeNull();
+    const claves = visibles('categories_grid', 'default', { category_style: 'text_list' }).map((f) => f.key);
+    expect(claves).toContain('align');
+    expect(claves).toContain('show_count');
+    for (const k of ['category_text_position', 'category_card_color', 'category_cta_icon']) expect(claves).not.toContain(k);
   });
 
   it('las tres opciones nuevas van tras el estilo, con «como hoy» por defecto', () => {
@@ -168,6 +182,22 @@ describe('categorías (B2)', () => {
     const campo = def('categories_grid').contentFields.find((f) => f.key === 'desktop_layout')!;
     expect(campoLayoutCategorias(campo, { category_style: 'title_top' }, 'categories_grid')).toBeNull();
     expect(campoLayoutCategorias(campo, {}, 'categories_grid')).toBe(campo);
+  });
+});
+
+describe('decisiones 2 y 3 del dueño (B4)', () => {
+  it('Antes/Después: etiquetas editables, vacías = «Antes» y «Después»', () => {
+    const campos = visibles('transformation', 'slider');
+    expect(campos.find((f) => f.key === 'before_label')).toMatchObject({ type: 'text', placeholder: 'Antes' });
+    expect(campos.find((f) => f.key === 'after_label')).toMatchObject({ type: 'text', placeholder: 'Después' });
+    expect(visibles('transformation', 'before_after').map((f) => f.key)).not.toContain('before_label');
+  });
+
+  it('Bloques a color: UNA sección con repetidor de hasta 5 bloques con las claves del bloque', () => {
+    const bloques = visibles('image_text', 'color_block').find((f) => f.key === 'blocks')!;
+    expect(bloques).toMatchObject({ type: 'repeater', maxItems: 5 });
+    expect(bloques.itemFields?.map((f) => f.key).sort()).toEqual([...CLAVES_SECCION_TIENDA['image_text.color_block']].sort());
+    expect(visibles('image_text', 'image_left').map((f) => f.key)).not.toContain('blocks');
   });
 });
 

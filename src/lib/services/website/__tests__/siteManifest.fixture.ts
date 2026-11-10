@@ -2,7 +2,9 @@
  * Fixture del manifiesto del sitio (F0.6).
  *
  * Copia LITERAL de `buildSectionManifest()` (`goadmin-websites/lib/sectionManifest.ts`) sobre el
- * `main` desplegado del sitio (commit 8668232): el `SECTION_MAP` de
+ * commit 956fd16 del sitio (rama `claude/pe-e4-web` = main 8668232 + las tres decisiones del dueño
+ * del 2026-11-10: `text_list`, `before_label`/`after_label` y `blocks`). ESTE COMMIT DEL ERP SOLO
+ * SE FUSIONA CUANDO 956fd16 ESTÉ DESPLEGADO; antes, vale el fixture de main (8668232). El `SECTION_MAP` de
  * `components/sections/SectionRenderer.tsx` y los `CONTENT_KEYS` de cada componente, unidos por
  * tipo y ordenados. No se escribe a mano: así el test de contrato ve lo mismo que pinta producción.
  *
@@ -229,6 +231,7 @@ export const siteManifestFixture: SectionManifest = {
       variantsWithoutKeys: ['image_left', 'image_right', 'image_top'],
       contentKeys: [
         'bg_color',
+        'blocks',
         'body',
         'cta_url',
         'image_small_caption',
@@ -574,6 +577,8 @@ export const siteManifestFixture: SectionManifest = {
       variants: ['before_after', 'slider'],
       variantsWithoutKeys: ['before_after'],
       contentKeys: [
+        'after_label',
+        'before_label',
         'handle_color',
         'items',
         'start_position',

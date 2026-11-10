@@ -251,7 +251,7 @@ export const VARIANTES_EN_CATALOGO: readonly VarianteEnCatalogo[] = [
     tipo: 'image_text',
     variante: 'color_block',
     etiqueta: 'Bloques de colección a color',
-    descripcion: 'Bloque de color con número, nombre, frase, foto y enlace a una categoría.',
+    descripcion: 'Hasta 5 bloques lado a lado: color, número, nombre, frase, foto y enlace a una categoría.',
     palabras: 'bloques color coleccion categoria',
     nueva: true,
   },

@@ -1,6 +1,7 @@
 -- Plan de cuentas: crear en la misma fila cuentas, subcuentas, auxiliares y subauxiliares.
 --
--- ESTADO: ESCRITA, NO APLICADA (20261110190000). Se aplica por el MCP cuando el dueño lo ordene.
+-- ESTADO: APLICADA el 2026-11-10 por el MCP (registro 20261110204424), por orden del dueño. md5 de prosrc
+-- de fn_plan_crear_cuenta_hija tras aplicar: f1a70423…, igual a este archivo.
 -- Reversión: supabase/rollbacks/20261110190000_plan_cuentas_crear_en_cualquier_nivel_rollback.sql.
 --
 -- Por qué. El 2026-11-06 el alta en línea quedó solo para auxiliares de 8 dígitos debajo de una

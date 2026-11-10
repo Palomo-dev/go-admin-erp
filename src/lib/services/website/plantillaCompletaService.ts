@@ -27,7 +27,7 @@ import {
   type ResumenPlantillaCompleta,
 } from '@/lib/website/v2/plantillaCompleta';
 import { tokensDisenoDisponibles, tokensExtendidosDisponibles } from '@/lib/website/v2/tokensEstilo';
-import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
+import { tarjetaSitioDisponible } from '@/lib/website/v2/banderasTienda';
 import { paginacionTemaDisponible } from '@/lib/website/v2/paginacionCarrusel';
 import { bucketDeRutaImagen } from '@/lib/utils/bucketImagen';
 import { ErrorSitio, crearSitio, errorDesdePostgrest, listarSitios, obtenerBorrador } from './siteDocumentService';
@@ -177,7 +177,7 @@ export async function documentoPlantillaCompleta(
   const r = armar(base, plantilla, datos, {
     generarId,
     extendidos: tokensExtendidosDisponibles(),
-    tarjeta: tarjetaProductoTemaDisponible(),
+    tarjeta: tarjetaSitioDisponible(),
     tokensDiseno: tokensDisenoDisponibles(),
     paginacion: paginacionTemaDisponible(),
   });

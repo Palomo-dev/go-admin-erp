@@ -375,11 +375,12 @@ describe('tarjeta, perillas y paginación: solo con su bandera (ya existentes)',
   const contraste = plantillaPorId(CATALOGO, 'retail_contraste')!;
   const hogar = plantillaPorId(CATALOGO, 'retail_hogar')!;
 
-  test('sin banderas no se escribe tarjeta, perillas, paginación ni carrusel', () => {
+  test('sin banderas no se escribe tarjeta, paginación ni carrusel; las perillas propias de la plantilla sí', () => {
     const base = borradorTienda();
     const { tema } = armar(hogar, {}, base).documento;
     expect(tema.tarjetaProducto).toBeUndefined();
-    expect(tema.tokens).toEqual(base.tema.tokens);
+    // Hover y mayúsculas de las 7 nuevas no dependen de la bandera de estilos combinables (el sitio los pinta).
+    expect(tema.tokens).toEqual({ ...(base.tema.tokens ?? {}), hover: { mode: 'value', value: hogar.tokens!.hover } });
     expect(tema.paginacion).toBeUndefined();
     expect(tema.carrusel).toBeUndefined();
   });

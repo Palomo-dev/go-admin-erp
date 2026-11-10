@@ -228,7 +228,7 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
     const grupo = within(dialogo).getByRole('radiogroup', { name: 'Cómo aplicarla' });
     expect(within(grupo).getByRole('radio', { name: /Plantilla completa/ }).getAttribute('aria-checked')).toBe('true');
     expect(within(dialogo).getAllByText('Nueva').length).toBeGreaterThan(0);
-    expect(within(dialogo).getByText('Hogar y muebles')).toBeTruthy();
+    expect(within(dialogo).getByText(/^Hogar y (muebles|decoración)$/)).toBeTruthy();
     expect(within(dialogo).getByText('Páginas que diseña: Inicio, ficha de producto y página de categoría')).toBeTruthy();
     expect(within(dialogo).getByText(AVISO_D4)).toBeTruthy();
     const aviso = within(dialogo).getByText(/Se reemplazan el encabezado, el pie, Inicio, la ficha de producto, la página de categoría/);

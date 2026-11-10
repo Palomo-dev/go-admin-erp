@@ -47,7 +47,7 @@
  * Las plantillas de antes no traen nada de esto: su resultado es el mismo de siempre.
  */
 import { valorPropio, type DocumentoSitio, type ItemMenu, type MenuSitio, type PaginaSitio, type SeccionSitio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
-import { construirCatalogo, plantillasDelGiro, type CatalogoPlantillas, type GiroCatalogo, type PlantillaCatalogo, type SeccionPlantilla } from '@/lib/website/contrato/catalogoPlantillas';
+import { construirCatalogo, esPlantillaTiendaNueva, plantillasDelGiro, type CatalogoPlantillas, type GiroCatalogo, type PlantillaCatalogo, type SeccionPlantilla } from '@/lib/website/contrato/catalogoPlantillas';
 import { construirPaginaBase, paginasBasePorGiro, plantillaPorId, type GenerarId, type Giro, type PaginaBase } from '@/components/sitio-web/paginas/plantillasPagina';
 import { VARIANTE_CARTA_QR, VARIANTE_PORTADA_MESA } from '@/lib/website/contrato/seccionesMesa';
 import {
@@ -1394,7 +1394,10 @@ function temaDePlantilla(documento: DocumentoSitio, plantilla: PlantillaCatalogo
     tema.tarjetaProducto = valorPropio(JSON.parse(JSON.stringify(plantilla.tarjetaProducto)) as TarjetaProductoDocumento);
     cambio = true;
   }
-  if (opciones.tokensDiseno && plantilla.tokens) {
+  // Las perillas propias de las plantillas de tienda nuevas (hover y mayúsculas, que el sitio pinta;
+  // las mayúsculas además van detrás de buttons_uppercase_active del shell) se escriben sin la bandera
+  // de los estilos combinables: esa bandera protege a los presets que reescriben tokens y header_layout.
+  if ((opciones.tokensDiseno || esPlantillaTiendaNueva(plantilla.id)) && plantilla.tokens) {
     const previos = tema.tokens ?? {};
     const tokens: NonNullable<DocumentoSitio['tema']['tokens']> = { ...previos };
     if (plantilla.tokens.hover) tokens.hover = valorPropio(plantilla.tokens.hover);

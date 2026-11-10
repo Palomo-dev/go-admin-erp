@@ -13,7 +13,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { BranchBadge } from '@/components/inventario/BranchBadge';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatNumeroMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
-import { agruparPorNivel, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
+import { NIVEL_DETALLE, agruparPorNivel, type NivelPuc } from '@/lib/finanzas/reportes/nivelesPuc';
 import { BotonesExportar, SelectorNivel } from '../NivelReporte';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -44,7 +44,7 @@ export function BalanceComprobacionPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
-  const [nivel, setNivel] = useState<NivelPuc>('auxiliar');
+  const [nivel, setNivel] = useState<NivelPuc>(NIVEL_DETALLE);
   const [isLoading, setIsLoading] = useState(true);
 
   const visibles = useMemo(() => agruparPorNivel(

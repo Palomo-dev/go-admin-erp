@@ -6,8 +6,10 @@
  * una subcuenta. 2026-11-10: el dueño la abrió a todos los niveles, porque en un
  * plan sin subcuentas (1105 Caja de movimiento) no aparecía ningún «+». Debajo de
  * un grupo nace una cuenta (4), de una cuenta una subcuenta (6), de una
- * subcuenta un auxiliar (8) y de un auxiliar un subauxiliar (10, 12…). Debajo de
- * una clase no: los grupos del PUC son fijos. El servidor
+ * subcuenta un auxiliar (8) y de un auxiliar un subauxiliar (10). Ahí termina:
+ * el Contador recomendó no pasar de 10 dígitos. Debajo de una clase no: los
+ * grupos del PUC son fijos. Las cuentas y subcuentas se sugieren primero del
+ * catálogo del PUC (`puc_catalogo`, Decreto 2650 de 1993). El servidor
  * (`fn_plan_crear_cuenta_hija`) repite estas reglas: aquí solo deciden qué se
  * muestra.
  */
@@ -26,9 +28,12 @@ export interface SaldoCuenta {
   movimientos: number;
 }
 
-/** Nivel de la cuenta que nace debajo. Null si no admite cuentas debajo (clase o código raro). */
+/** Largo máximo de un código: el subauxiliar de 10 dígitos (concepto del Contador, 2026-11-10). */
+export const LARGO_MAXIMO = 10;
+
+/** Nivel de la cuenta que nace debajo. Null si no admite cuentas debajo (clase, subauxiliar o código raro). */
 export function nivelHija(codigo: string): NivelPuc | null {
-  if (!esCodigoPuc(codigo) || codigo.length < 2) return null;
+  if (!esCodigoPuc(codigo) || codigo.length < 2 || codigo.length + 2 > LARGO_MAXIMO) return null;
   return nivelDe(`${codigo}00`);
 }
 
@@ -53,6 +58,81 @@ export function siguienteHija(padre: string, existentes: readonly string[]): str
   for (const i of candidatos) {
     const codigo = padre + String(i).padStart(2, '0');
     if (!usados.has(codigo)) return codigo;
+  }
+  return null;
+}
+
+/** Concepto del catálogo del PUC (`puc_catalogo`). */
+export interface ConceptoPuc {
+  codigo: string;
+  nombre: string;
+}
+
+/** Solo cuentas y subcuentas tienen código fijo en el PUC; auxiliares y subauxiliares los define cada empresa. */
+export function usaCatalogo(padre: string): boolean {
+  const nivel = nivelHija(padre);
+  return nivel === 'cuenta' || nivel === 'subcuenta';
+}
+
+/** Mayúsculas, tildes y espacios no cuentan al comparar nombres. */
+export function normalizarNombre(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Código y nombre que se proponen al abrir el alta: primero el primer concepto del
+ * PUC debajo del padre que la empresa aún no tiene; si no queda ninguno, el
+ * siguiente código libre, sin nombre.
+ */
+export function sugerenciaInicial(
+  padre: string,
+  catalogo: readonly ConceptoPuc[],
+  existentes: readonly string[],
+): { codigo: string; nombre: string } | null {
+  if (usaCatalogo(padre)) {
+    const usados = new Set(existentes);
+    const libre = [...catalogo]
+      .filter((c) => c.codigo.length === padre.length + 2 && c.codigo.startsWith(padre) && !usados.has(c.codigo))
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))[0];
+    if (libre) return { codigo: libre.codigo, nombre: libre.nombre };
+  }
+  const codigo = siguienteHija(padre, existentes);
+  return codigo ? { codigo, nombre: '' } : null;
+}
+
+/** El concepto del PUC que tiene ese nombre, si la empresa no lo tiene ya. */
+export function conceptoPorNombre(
+  nombre: string,
+  catalogo: readonly ConceptoPuc[],
+  existentes: readonly string[],
+): ConceptoPuc | null {
+  const buscado = normalizarNombre(nombre);
+  if (!buscado) return null;
+  const usados = new Set(existentes);
+  return catalogo.find((c) => !usados.has(c.codigo) && normalizarNombre(c.nombre) === buscado) ?? null;
+}
+
+/**
+ * Qué decir del código frente al catálogo: `fuera` si el PUC no lo tiene,
+ * `otroNombre` si lo tiene con otro nombre. Null si no hay nada que avisar o si el
+ * nivel no usa catálogo.
+ */
+export function avisoCatalogo(
+  padre: string,
+  codigo: string,
+  nombre: string,
+  catalogo: readonly ConceptoPuc[],
+): { tipo: 'fuera' } | { tipo: 'otroNombre'; nombrePuc: string } | null {
+  if (!usaCatalogo(padre) || catalogo.length === 0 || validarCodigoHija(padre, codigo)) return null;
+  const concepto = catalogo.find((c) => c.codigo === codigo);
+  if (!concepto) return { tipo: 'fuera' };
+  if (nombre.trim() && normalizarNombre(nombre) !== normalizarNombre(concepto.nombre)) {
+    return { tipo: 'otroNombre', nombrePuc: concepto.nombre };
   }
   return null;
 }

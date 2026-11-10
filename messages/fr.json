@@ -39044,6 +39044,10 @@
         "permiso": "Vous n'avez pas l'autorisation de créer des comptes.",
         "sinCodigo": "Ce compte n'a plus de codes libres en dessous.",
         "otro": "Impossible de créer le compte."
+      },
+      "puc": {
+        "fuera": "{codigo} n'est pas dans le catalogue du PUC (décret 2650 de 1993). Vous pouvez quand même le créer.",
+        "otroNombre": "Dans le PUC, {codigo} est « {nombre} »."
       }
     },
     "panel": {
@@ -39990,7 +39994,8 @@
         "n2": "Groupe",
         "n4": "Compte",
         "n6": "Sous-compte",
-        "n8": "Auxiliaire"
+        "n8": "Auxiliaire",
+        "n10": "Sous-auxiliaire"
       },
       "fila": {
         "ingresos": "Produits des activités ordinaires",
@@ -40094,7 +40099,8 @@
         "n2": "Groupe",
         "n4": "Compte",
         "n6": "Sous-compte",
-        "n8": "Auxiliaire"
+        "n8": "Auxiliaire",
+        "n10": "Sous-auxiliaire"
       },
       "truncado": "Le livre a dépassé 100 000 lignes et il est incomplet. Choisissez une période plus courte.",
       "libro": "Livre",

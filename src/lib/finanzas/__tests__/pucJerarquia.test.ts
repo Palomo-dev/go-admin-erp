@@ -229,7 +229,7 @@ describe('archivos de la fase', () => {
     expect(pagina).toContain('xlsx');
     expect(pagina).toContain("t('exportar')");
     expect(pagina).toContain("t('importar')");
-    expect(pagina).toContain('siguienteHija');
+    expect(pagina).toContain('sugerenciaInicial');
     expect(textos.exportar).toBe('Exportar');
     expect(textos.importar).toBe('Importar');
     expect(textos.filtros.movimiento).toBe('Solo movimiento');

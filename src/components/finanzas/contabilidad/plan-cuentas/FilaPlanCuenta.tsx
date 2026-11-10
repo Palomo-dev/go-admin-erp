@@ -145,6 +145,10 @@ export interface FilaAltaCuentaProps {
   guardando: boolean;
   /** Con saldo no se guarda con Enter: hay que confirmar el traslado. */
   bloqueada: boolean;
+  /** Aviso frente al catálogo del PUC: código fuera del catálogo o con otro nombre. */
+  avisoPuc?: string | null;
+  /** Nombres del PUC que la empresa aún no tiene debajo de este padre. */
+  nombresPuc?: readonly string[];
   onCodigo: (valor: string) => void;
   onNombre: (valor: string) => void;
   onGuardar: () => void;
@@ -161,6 +165,8 @@ export function FilaAltaCuenta({
   error,
   guardando,
   bloqueada,
+  avisoPuc,
+  nombresPuc = [],
   onCodigo,
   onNombre,
   onGuardar,
@@ -204,6 +210,7 @@ export function FilaAltaCuenta({
             ref={refNombre}
             aria-label={t('alta.nombre')}
             placeholder={t('alta.nombrePlaceholder', { nivel: nivelPuc })}
+            list={nombresPuc.length > 0 ? 'plan-alta-nombres-puc' : undefined}
             value={nombre}
             maxLength={200}
             onChange={(e) => onNombre(e.target.value)}
@@ -211,7 +218,13 @@ export function FilaAltaCuenta({
             className="h-8 min-w-0 flex-1 bg-surface text-[13px]"
           />
         </div>
+        {nombresPuc.length > 0 ? (
+          <datalist id="plan-alta-nombres-puc">
+            {nombresPuc.map((n) => <option key={n} value={n} />)}
+          </datalist>
+        ) : null}
         {error ? <p role="alert" className="text-xs font-medium text-danger">{error}</p> : null}
+        {!error && avisoPuc ? <p role="status" className="text-xs font-medium text-warning-text">{avisoPuc}</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2 pl-2">
         <Kbd tecla="Enter" />

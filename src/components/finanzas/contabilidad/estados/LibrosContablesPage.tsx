@@ -12,7 +12,7 @@ import { leerLibro, usePeriodo } from './clienteEstados';
 import { Fila, FiltrosPeriodo, PaginaInforme, Tabla } from './PiezasEstado';
 
 type Formato = 'excel' | 'pdf';
-const NIVELES = ['2', '4', '6', '8'] as const;
+const NIVELES = ['2', '4', '6', '8', '10'] as const;
 type Nivel = (typeof NIVELES)[number];
 
 /** Figma «Escritorio / Libros contables»: cada libro se exporta del periodo elegido. */

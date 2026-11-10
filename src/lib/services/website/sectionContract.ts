@@ -16,7 +16,11 @@
  *     está en `contentKeys` del componente → el editor guarda un campo que el
  *     componente no lee (bug `items` vs `images` de P4). Solo se verifica
  *     cuando el componente declara `contentKeys` no vacío; si
- *     `contentKeys === []`, se omite (pendiente de completar en F2).
+ *     `contentKeys === []`, se omite (pendiente de completar en F2). Si solo ALGUNAS variantes
+ *     declaran (`variantsWithoutKeys`), `contentKeys` es la unión de esas: se verifican solo los
+ *     campos limitados (`showIf.variantIn`) a variantes que declaran, porque lo demás puede leerlo
+ *     un componente que no publica sus claves (p. ej. «Portada · Buscador» declara las suyas y
+ *     «Pantalla completa» no).
  *
  * El módulo es **puro**: no importa Supabase ni React, solo tipos, de modo que
  * puede ejecutarse en CI con Jest sin dependencias de runtime.
@@ -30,7 +34,7 @@
 export interface CatalogEntry {
   type: string
   variants: { id: string; label: string }[]
-  contentFields: { key: string; group?: string; type?: string; section?: string }[]
+  contentFields: { key: string; group?: string; type?: string; section?: string; showIf?: { variantIn?: string[] } }[]
 }
 
 /** Entrada del manifiesto del sitio. */
@@ -38,6 +42,12 @@ export interface ManifestEntry {
   type: string
   variants: string[]
   contentKeys: string[]
+  /**
+   * Variantes cuyo componente no declara `CONTENT_KEYS` cuando otras del mismo tipo sí (opcional:
+   * el endpoint vivo no lo publica; el fixture lo deriva del mismo `SECTION_MAP`). Ausente = todas
+   * declaran, o ninguna (`contentKeys: []`).
+   */
+  variantsWithoutKeys?: string[]
 }
 
 /**
@@ -57,6 +67,14 @@ function esCampoDelComponente(f: CatalogEntry['contentFields'][number]): boolean
     f.type === 'newsletter'
   ) return false
   return !f.group || f.group === 'content' || f.group === 'data' || !!f.section
+}
+
+/**
+ * Claves que un control escribe además de la suya. El constructor de la carta (`type: 'carta'`,
+ * `HojaCartaEditor`) guarda la carta fija elegida en `carta_id`.
+ */
+const CLAVES_EXTRA_POR_CONTROL: Readonly<Record<string, readonly string[]>> = {
+  carta: ['carta_id'],
 }
 
 /** Manifiesto completo del sitio. */
@@ -161,7 +179,15 @@ export function verifySectionContract(
     // Se filtran los campos de estilo/layout/spacing (group !== 'content'|'data')
     // porque los lee SectionWrapper, no el componente directamente.
     if (mani.contentKeys.length > 0) {
-      const contentOnlyFields = cat.contentFields.filter(esCampoDelComponente)
+      const sinClaves = mani.variantsWithoutKeys ?? []
+      const parcial = sinClaves.length > 0
+      // En un tipo parcial solo cuenta el campo que únicamente ven variantes que declaran sus claves.
+      const verificable = (f: CatalogEntry['contentFields'][number]): boolean => {
+        if (!parcial) return true
+        const variantes = f.showIf?.variantIn
+        return Array.isArray(variantes) && variantes.length > 0 && variantes.every((v) => !sinClaves.includes(v))
+      }
+      const contentOnlyFields = cat.contentFields.filter(esCampoDelComponente).filter(verificable)
       for (const field of contentOnlyFields) {
         if (!mani.contentKeys.includes(field.key)) {
           errors.push({
@@ -174,9 +200,12 @@ export function verifySectionContract(
         }
       }
 
-      // contentKey del componente no declarada en el catálogo (warning)
-      const contentFieldKeys = cat.contentFields.filter(esCampoDelComponente).map((f) => f.key)
-      for (const ck of mani.contentKeys) {
+      // contentKey del componente no declarada en el catálogo (warning). Cuenta cualquier campo,
+      // también los de Diseño o Avanzado: un componente puede publicar en CONTENT_KEYS una opción
+      // de diseño que lee él mismo («Línea de puntos»: leader_style) y el catálogo SÍ la declara.
+      // En un tipo parcial la unión no dice de qué variante es cada clave: no se avisa.
+      const contentFieldKeys = cat.contentFields.flatMap((f) => [f.key, ...(CLAVES_EXTRA_POR_CONTROL[f.type ?? ''] ?? [])])
+      for (const ck of parcial ? [] : mani.contentKeys) {
         if (!contentFieldKeys.includes(ck)) {
           warnings.push({
             severity: 'warning',

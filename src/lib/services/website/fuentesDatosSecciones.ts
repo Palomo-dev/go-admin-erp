@@ -150,6 +150,13 @@ export const FUENTE_DE_SECCION: Readonly<Record<string, FuenteDatos>> = {
   routes: 'rutas',
   fleet_showcase: 'flota',
   membership_plans: 'planes_membresia',
+  // Plantillas de tienda: productos reales del Inventario (W6: sin ellos no se pintan) y la nube
+  // de enlaces armada con las categorías.
+  shop_the_look: 'productos',
+  complete_the_look: 'productos',
+  product_index: 'productos',
+  product_anatomy: 'productos',
+  link_cloud: 'categorias',
 };
 
 /** Registros por fuente. Una fuente ausente = no se pudo contar (no se avisa). */

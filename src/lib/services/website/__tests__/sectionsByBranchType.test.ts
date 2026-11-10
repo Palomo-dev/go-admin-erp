@@ -141,13 +141,26 @@ describe('recomendadas sin tipo de sede (sitio principal)', () => {
 });
 
 describe('tarjetas de variante («Café de especialidad», Figma 2223:46106)', () => {
-  test('cada variante sale junto a su tipo, en su grupo, y añade ESA variante', () => {
+  test('cada variante sale junto a su tipo (o en el grupo que la ubica), y añade ESA variante', () => {
     const c = getSectionCatalogForBranch(null);
     for (const v of VARIANTES_EN_CATALOGO) {
-      const grupo = c.grupos.find((g) => g.secciones.some((s) => s.type === v.tipo && !s.varianteDestacada))!;
+      const clave = `${v.tipo}:${v.variante}`;
+      // Plantillas de tienda: un grupo puede ubicar la tarjeta («tipo:variante» en sus tipos).
+      const ubicada = GRUPOS_SECCIONES.find((g) => g.tipos.includes(clave));
+      const grupo = ubicada
+        ? c.grupos.find((g) => g.id === ubicada.id)!
+        : c.grupos.find((g) => g.secciones.some((s) => s.type === v.tipo && !s.varianteDestacada))!;
       const lista = grupo.secciones.map(claveEntrada);
-      expect(lista.indexOf(`${v.tipo}:${v.variante}`)).toBe(lista.indexOf(v.tipo) + 1);
-      const tarjeta = grupo.secciones.find((s) => claveEntrada(s) === `${v.tipo}:${v.variante}`)!;
+      if (!ubicada) {
+        // Tras su tipo vienen solo tarjetas de ese tipo (en el orden de VARIANTES_EN_CATALOGO).
+        const desde = lista.indexOf(v.tipo);
+        const posicion = lista.indexOf(clave);
+        expect(posicion).toBeGreaterThan(desde);
+        expect(lista.slice(desde + 1, posicion + 1).every((k) => k.startsWith(`${v.tipo}:`))).toBe(true);
+      } else {
+        expect(lista).toContain(clave);
+      }
+      const tarjeta = grupo.secciones.find((s) => claveEntrada(s) === clave)!;
       expect(tarjeta.variants[0].id).toBe(v.variante);
       expect(tarjeta.label).toBe(v.etiqueta);
     }

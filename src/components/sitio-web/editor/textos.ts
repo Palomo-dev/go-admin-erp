@@ -141,6 +141,9 @@ export const TEXTOS_EDITOR = {
     aparienciaDialogo: 'Apariencia de «{nombre}»',
     aparienciaIcono: 'Ícono',
     aparienciaImagen: 'Imagen',
+    aparienciaColor: 'Color de la tarjeta',
+    aparienciaColorAyuda: 'Lo usa «Color propio por tarjeta» en el pie de la tarjeta (estilos Tarjeta, Título arriba y Superpuesto).',
+    aparienciaColorEtiqueta: 'Color de «{nombre}»',
     aparienciaGuardar: 'Guardar',
     aparienciaGuardada: 'Apariencia de la categoría guardada',
     aparienciaError: 'No se pudo guardar la categoría',
@@ -257,6 +260,7 @@ export const TEXTOS_EDITOR = {
     elige: 'Elige una sección',
     coinciden: '{n} de {total} secciones coinciden',
     pie: '{total} secciones · todas sirven para cualquier negocio · «Faltan datos» no bloquea',
+    nuevo: 'Nuevo',
   },
   publicar: {
     titulo: 'Publicar cambios',

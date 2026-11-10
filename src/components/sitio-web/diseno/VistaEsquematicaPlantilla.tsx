@@ -78,6 +78,7 @@ export function VistaEsquematicaPlantilla({ plantilla, documento, celular }: Vis
       dibujo={shell.dibujo}
       enlaces={shell.enlaces}
       menusPie={shell.menusPie}
+      extras={shell.extras}
       celular={celular}
       marca={nombre}
       contenido={secciones}

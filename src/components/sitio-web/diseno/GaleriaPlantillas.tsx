@@ -15,12 +15,17 @@
  * `branch_type`), el aviso dice si hereda el estilo del principal o tiene uno propio (con «Volver a
  * heredar»), la tarjeta en uso dice «En uso en <sede>» y el diálogo usa la plantilla EN LA SEDE
  * (`usePlantillasSede`). Sin sedes con sitio no hay selector: todo sigue como antes.
+ *
+ * Las 7 plantillas de tienda nuevas (Figma A1, 2026-11) salen del catálogo en la pestaña «Tienda»,
+ * sin bandera: llevan «Nueva» y «N secciones · 3 páginas», y la pestaña ofrece un filtro por tipo
+ * de negocio (`?negocio=`; «Todos los negocios» no filtra). Las de antes sirven a cualquier tienda
+ * y solo salen con «Todos los negocios».
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Link2, Palette } from 'lucide-react';
-import { AvisoTonal, EmptyState, Skeleton, TabBar, idPanel, idPestana, useOpcionUrl, useParametrosUrl } from '@/components/kit';
+import { AvisoTonal, ChipsOpcion, EmptyState, Skeleton, TabBar, idPanel, idPestana, useOpcionUrl, useParametrosUrl } from '@/components/kit';
 import { MarcoSitioWeb } from '../MarcoSitioWeb';
 import { RAIZ_SITIO_WEB } from '../rutasSitioWeb';
 import { TemplateCard } from '../ui/TemplateCard';
@@ -39,6 +44,14 @@ import { useFuentesSitio } from './useFuentesSitio';
 import { ICONO_GIRO_PLANTILLA, ICONO_SUBTITULO_SITIO } from '../ui/iconosSitio';
 import { SubtituloConIcono } from '../ui/SubtituloConIcono';
 import { useTextosDiseno, type TraductorDiseno } from './textos';
+import {
+  FILTROS_NEGOCIO,
+  PAGINAS_PLANTILLA_TIENDA_NUEVA,
+  esPlantillaTiendaNueva,
+  filtrarPorNegocio,
+  negociosPresentes,
+  type FiltroNegocio,
+} from './plantillasTienda';
 
 export const RUTA_PLANTILLAS = `${RAIZ_SITIO_WEB}/plantillas`;
 const ID_PESTANAS = 'plantillas-giro';
@@ -79,6 +92,7 @@ function TarjetaPlantilla({
 }) {
   const t = useTextosDiseno();
   const shell = useShellDePlantilla(p);
+  const nueva = esPlantillaTiendaNueva(p.id);
   return (
     <TemplateCard
       nombre={p.nombre}
@@ -88,7 +102,9 @@ function TarjetaPlantilla({
       giro={t(`plantillas.giro.${p.giro}`)}
       iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
       secciones={p.inicio.length}
-      paginas={paginasPropiasDePlantilla(p.id)}
+      // A1: las 7 nuevas diseñan Inicio, la ficha de producto y la página de categoría.
+      paginas={nueva ? PAGINAS_PLANTILLA_TIENDA_NUEVA : paginasPropiasDePlantilla(p.id)}
+      novedad={nueva ? t('plantillas.nueva') : undefined}
       enUso={enUso}
       etiquetaEnUso={etiquetaEnUso}
       onSeleccionar={onAbrir}
@@ -133,7 +149,12 @@ export function GaleriaPlantillas() {
   };
   // Al cambiar de sitio, la galería vuelve a la pestaña de su giro (sin `giro` en la URL).
   const elegirSitio = (valor: string) => fijar({ sede: valor === SITIO_PRINCIPAL ? null : valor, giro: null }, 'replace');
-  const lista = plantillas.delGiro(giro);
+  const delGiro = plantillas.delGiro(giro);
+  // Filtro por tipo de negocio: solo en «Tienda» y si alguna plantilla del giro tiene negocio.
+  const negocios = giro === 'tienda' ? negociosPresentes(delGiro) : [];
+  const [negocioUrl, setNegocio] = useOpcionUrl<FiltroNegocio>('negocio', FILTROS_NEGOCIO, 'todos', 'replace');
+  const negocio: FiltroNegocio = negocioUrl !== 'todos' && negocios.includes(negocioUrl) ? negocioUrl : 'todos';
+  const lista = filtrarPorNegocio(delGiro, negocio);
   useFuentesSitio(lista.map((p) => p.estilo.fuenteTitulos));
 
   const errorSitio = ctx.sitio.error && !ctx.sitio.error.esConflicto ? ctx.sitio.error.message : null;
@@ -273,7 +294,15 @@ export function GaleriaPlantillas() {
             valor={giro}
             onValorChange={setGiro}
           />
-          <div role="tabpanel" id={idPanel(ID_PESTANAS, giro)} aria-labelledby={idPestana(ID_PESTANAS, giro)}>
+          <div role="tabpanel" id={idPanel(ID_PESTANAS, giro)} aria-labelledby={idPestana(ID_PESTANAS, giro)} className="flex flex-col gap-4">
+            {negocios.length > 0 && (
+              <ChipsOpcion<FiltroNegocio>
+                etiqueta={t('plantillas.negocio.etiqueta')}
+                opciones={(['todos', ...negocios] as FiltroNegocio[]).map((n) => ({ valor: n, etiqueta: t(`plantillas.negocio.${n}`) }))}
+                valor={negocio}
+                onValorChange={setNegocio}
+              />
+            )}
             {lista.length === 0 ? (
               <EmptyState
                 variante="empty"

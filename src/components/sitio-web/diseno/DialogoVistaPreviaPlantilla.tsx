@@ -29,6 +29,11 @@
  * letras propios sin tocar el contenido; y el pie ofrece «Volver a heredar el estilo del sitio
  * principal». Si la plantilla no es del giro de la sede, «Plantilla completa» queda deshabilitada
  * con su motivo (`sede.motivoSinCompleta`).
+ *
+ * Las 7 plantillas de tienda nuevas (A2, decisión D4): llevan «Nueva» y su tipo de negocio en la
+ * cabecera, y con «Plantilla completa» el diálogo avisa que también se reemplazan la ficha de
+ * producto y la página de categoría (lo anterior queda en la copia «antes de restaurar»). Las
+ * demás plantillas no cambian.
  */
 import { useMemo, useState } from 'react';
 import { CircleCheck, LayoutTemplate, Link2, Loader2, Palette } from 'lucide-react';
@@ -51,6 +56,7 @@ import { muestraDeEstilo, nombreFuentes, nombreSeccion, nombreVariante } from '.
 import { VistaEsquematicaPlantilla, enlacesDelDocumento } from './VistaEsquematicaPlantilla';
 import { useFuentesSitio } from './useFuentesSitio';
 import { useTextosDiseno } from './textos';
+import { esPlantillaTiendaNueva, negociosDePlantilla } from './plantillasTienda';
 
 export interface DialogoVistaPreviaPlantillaProps {
   plantilla: PlantillaCatalogo | null;
@@ -106,7 +112,15 @@ function DescripcionConResultado({ texto, rotulo, shell, marca }: { texto: strin
           <span className="text-xs font-medium leading-4 text-fg-secondary">{rotulo}</span>
           {/* El rótulo dice qué es; el dibujo no se lee dentro del radio (nombre accesible corto). */}
           <span aria-hidden="true" className="block overflow-hidden rounded-md border border-line">
-            <EsquemaShell dibujo={shell.dibujo} enlaces={shell.enlaces} menusPie={shell.menusPie} escala={ESCALA_COMPARACION} altoContenido={22} marca={marca} />
+            <EsquemaShell
+              dibujo={shell.dibujo}
+              enlaces={shell.enlaces}
+              menusPie={shell.menusPie}
+              extras={shell.extras}
+              escala={ESCALA_COMPARACION}
+              altoContenido={22}
+              marca={marca}
+            />
           </span>
         </span>
       )}
@@ -166,7 +180,7 @@ function DialogoAbierto({
   const t = useTextosDiseno();
   const esEscritorio = useEsEscritorio();
   const shell = useShellDePlantilla(plantilla);
-  const rasgos = useMemo(() => textosRasgos(t, shell.dibujo), [t, shell]);
+  const rasgos = useMemo(() => textosRasgos(t, shell.dibujo, shell.extras), [t, shell]);
   const tuyo = useMemo(
     () => (documento ? shellDelDocumentoParaVer(t, documento, plantilla.estilo, plantilla.giro, enlacesDelDocumento(documento).map((e) => e.etiqueta)) : null),
     [t, documento, plantilla],
@@ -181,6 +195,14 @@ function DialogoAbierto({
   const ts = (claveSede: string, clave: string) => (sede ? t(`dialogo.sede.${claveSede}`, v) : t(clave));
   const sinCompleta = sede?.motivoSinCompleta ?? null;
   const ocupado = usando || Boolean(sede?.heredando);
+  // D4: solo las 7 de tienda nuevas rearman la ficha y la categoría con «Plantilla completa».
+  const nueva = esPlantillaTiendaNueva(plantilla.id);
+  const avisoD4 = nueva && completa && sinCompleta === null;
+  const avisoCompletaDescripcion = !avisoD4
+    ? ts('avisoCompletaDescripcion', 'dialogo.avisoCompletaDescripcion')
+    : sede
+      ? `${t('dialogo.sede.avisoCompletaDescripcion', v)} ${t('dialogo.tienda.avisoCompletaSede', v)}`
+      : t('dialogo.tienda.avisoCompletaDescripcion');
 
   return (
     <PanelAdaptable
@@ -204,9 +226,20 @@ function DialogoAbierto({
           <Badge tono="neutro" apariencia="suave" tamano="sm" icono={IconoGiro}>
             {t(`plantillas.giro.${plantilla.giro}`)}
           </Badge>
-          {plantilla.subgiro && (
+          {plantilla.subgiro ? (
             <Badge tono="neutro" apariencia="suave" tamano="sm">
               {plantilla.subgiro}
+            </Badge>
+          ) : (
+            negociosDePlantilla(plantilla.id).map((n) => (
+              <Badge key={n} tono="neutro" apariencia="suave" tamano="sm">
+                {t(`plantillas.negocio.${n}`)}
+              </Badge>
+            ))
+          )}
+          {nueva && (
+            <Badge tono="marca" apariencia="suave" tamano="sm" data-insignia-nueva>
+              {t('plantillas.nueva')}
             </Badge>
           )}
         </span>
@@ -256,7 +289,7 @@ function DialogoAbierto({
             <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.esquema')}</p>
           </div>
           <div className="flex flex-col gap-4">
-            <p className="text-[13px] leading-[18px] text-fg-secondary">{t('dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>
+            <p className="text-[13px] leading-[18px] text-fg-secondary">{t(nueva ? 'dialogo.tienda.descripcion' : 'dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>
             <div className="flex flex-col gap-2">
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.incluye')}</h3>
               <ul className="flex flex-col gap-1.5">
@@ -268,6 +301,7 @@ function DialogoAbierto({
                 ))}
               </ul>
               {completa && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.paginas', { lista: paginas })}</p>}
+              {nueva && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.tienda.paginas')}</p>}
             </div>
             <div className="flex flex-col gap-2" data-rasgos-shell>
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.encabezadoPie')}</h3>
@@ -337,13 +371,20 @@ function DialogoAbierto({
               deshabilitada={ocupado}
             />
           </div>
+          {avisoD4 && (
+            // A2: bajo las dos opciones, solo con «Plantilla completa» elegida y solo en las 7 nuevas.
+            <div data-aviso-d4 className="flex flex-wrap items-center gap-2 text-xs leading-4 text-fg-secondary">
+              <Badge tono="marca" apariencia="suave" tamano="sm">
+                {t('plantillas.nueva')}
+              </Badge>
+              <span>{t('dialogo.tienda.d4')}</span>
+            </div>
+          )}
         </div>
         <AvisoTonal
           tono={completa ? 'advertencia' : 'informacion'}
           titulo={completa ? ts('avisoCompletaTitulo', 'dialogo.avisoCompletaTitulo') : ts('avisoEstiloTitulo', 'dialogo.avisoEstiloTitulo')}
-          descripcion={
-            completa ? ts('avisoCompletaDescripcion', 'dialogo.avisoCompletaDescripcion') : ts('avisoEstiloDescripcion', 'dialogo.avisoEstiloDescripcion')
-          }
+          descripcion={completa ? avisoCompletaDescripcion : ts('avisoEstiloDescripcion', 'dialogo.avisoEstiloDescripcion')}
         />
       </div>
     </PanelAdaptable>

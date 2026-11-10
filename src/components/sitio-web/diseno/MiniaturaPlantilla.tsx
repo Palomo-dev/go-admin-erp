@@ -28,6 +28,7 @@ export function MiniaturaPlantilla({ shell }: { shell: ShellParaVer }) {
       dibujo={shell.dibujo}
       enlaces={shell.enlaces}
       menusPie={shell.menusPie}
+      extras={shell.extras}
       escala={ESCALA_MINIATURA}
       alt={shell.alt}
       className="size-full"

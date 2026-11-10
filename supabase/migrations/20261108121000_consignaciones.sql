@@ -36,6 +36,21 @@
 --      cobrar al dueño (cuenta configurada bajo 13) y se compensa después (fn_consignacion_compensar_remuneracion).
 --   El lado del MANDANTE (entregada en mandato) sigue pendiente: 'liquidacion_mandante_pendiente'.
 --
+-- ═══ Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuestas 10 y 11) ═══════════════════════════
+--   10. Retención de la OPERACIÓN: se mantiene D 281510 del dueño / C cartera del cliente (la retención es del mandante,
+--       Concepto DIAN 13277 de 2025), pero la cartera no puede quedar inflada: la retención se registra ligada al COBRO
+--       de la factura (p_pago, el pago o abono del comprador donde la practicó; misma fecha) y su abono a la factura
+--       queda registrado en ese mismo momento (consignment_withholding_receivable_applications), sin superar el saldo de
+--       la factura. El certificado queda como pendiente de soporte. LÍMITE: el saldo de invoice_sales/accounts_receivable
+--       lo recalculan los disparadores de payments (fn_invoice_sales_paid); que cuenten este abono exige cambiar esa
+--       función, que no es de este módulo: hasta entonces el abono queda «por_aplicar», con el pendiente
+--       «consignacion_cartera_retencion_por_aplicar», y fn_consignacion_cartera_retenciones da el saldo real exigible.
+--   11. Saldo exigible del dueño: se mantiene la exclusión de lo facturado y no cobrado (el mandatario se paga con lo que
+--       tiene en su poder: C.Co. art. 1277). El contrato RECIBIDO en mandato fija además, como términos obligatorios, el
+--       ORDEN DE APLICACIÓN de lo recaudado y la LIQUIDACIÓN POR ESCRITO (medio y plazo), que viajan en cada liquidación.
+--       Al aceptar una nota de otra organización, el receptor declara esos términos y la compensación
+--       (p_terminos_contrato); si el documento ya los trae, deben coincidir.
+--
 -- ═══ El contrato (por nota; nada se deduce del nombre) ═══════════════════════════════════════════════
 --   modalidad jurídica   'intermediacion' (mandato) | 'estimatorio' | 'compra'. Obligatoria, sin default.
 --                        'compra' no es consignación: la adquisición real va por la factura de compra (manual).
@@ -153,6 +168,9 @@ create table if not exists public.consignment_notes (
   owner_obligation_at text check (owner_obligation_at in ('venta', 'cobro')),
   -- Ronda 4: ¿el contrato autoriza descontar la remuneración de lo recaudado para el dueño? Sin default.
   commission_offset_agreed boolean,
+  -- Ronda 5 (C.Co. art. 1277): orden de aplicación de lo recaudado y liquidación por escrito, pactados en el contrato.
+  -- {orden_aplicacion: [...], liquidacion_escrita: {medio, plazo_dias}}. Obligatorio en la recibida en mandato.
+  settlement_terms jsonb,
   owner_receivable_account_code text,
   risk_terms jsonb not null,
   billing_terms jsonb not null,
@@ -190,7 +208,8 @@ create table if not exists public.consignment_notes (
   constraint consignment_notes_intermediacion check (
     direction = 'entregada' or legal_modality <> 'intermediacion'
     or (owner_account_code is not null and remuneration_account_code is not null and owner_obligation_at is not null
-        and commission_offset_agreed is not null and owner_receivable_account_code is not null)
+        and commission_offset_agreed is not null and owner_receivable_account_code is not null
+        and jsonb_typeof(settlement_terms -> 'orden_aplicacion') = 'array' and jsonb_typeof(settlement_terms -> 'liquidacion_escrita') = 'object')
   ),
   constraint consignment_notes_terminos check (jsonb_typeof(risk_terms) = 'object' and jsonb_typeof(billing_terms) = 'object'),
   constraint consignment_notes_obligacion_posterior check (
@@ -461,6 +480,29 @@ create table if not exists public.consignment_advance_crossings (
   constraint consignment_advance_crossings_clave unique (organization_id, idempotency_key)
 );
 
+-- Ronda 5 (respuesta 10 del Contador): abono a la factura del cliente por la retención que el comprador practicó sobre la
+-- venta por cuenta del dueño, registrado EN EL MISMO MOMENTO DEL COBRO (payment_id = el pago o abono del comprador
+-- donde consta la retención). 'por_aplicar': el saldo de la factura (invoice_sales.balance, que recalculan los
+-- disparadores de payments) todavía no lo cuenta; pasa a 'aplicada' cuando fn_invoice_sales_paid lo sume (cambio del
+-- módulo de cartera, pendiente). Mientras tanto fn_consignacion_cartera_retenciones da el saldo real exigible.
+create table if not exists public.consignment_withholding_receivable_applications (
+  id uuid primary key default gen_random_uuid(),
+  organization_id integer not null references public.organizations(id) on delete cascade,
+  withholding_id uuid not null references public.consignment_settlement_withholdings(id),
+  invoice_id uuid not null references public.invoice_sales(id),
+  payment_id uuid not null references public.payments(id),
+  amount numeric(16,2) not null check (amount > 0),
+  applied_on date not null,
+  status text not null default 'por_aplicar' check (status in ('por_aplicar', 'aplicada')),
+  journal_entry_id integer,
+  created_by uuid,
+  created_at timestamptz not null default now(),
+  constraint consignment_withholding_receivable_applications_unica unique (withholding_id)
+);
+comment on table public.consignment_withholding_receivable_applications is
+  'Ronda 5: abono a la factura por la retención de la operación practicada por el comprador, ligado al cobro (mismo momento). por_aplicar hasta que el saldo de cartera lo cuente.';
+create index if not exists idx_consignment_wh_receivable_invoice on public.consignment_withholding_receivable_applications (invoice_id) where status = 'por_aplicar';
+
 do $$
 declare
   v_tabla text;
@@ -469,7 +511,8 @@ begin
                                  'consignment_settlements', 'consignment_settlement_lines', 'consignment_products',
                                  'consignment_allocations', 'consignment_returns', 'consignment_incidents',
                                  'consignment_advance_crossings', 'consignment_remuneration_recognitions',
-                                 'consignment_settlement_withholdings', 'consignment_commission_offsets'] loop
+                                 'consignment_settlement_withholdings', 'consignment_commission_offsets',
+                                 'consignment_withholding_receivable_applications'] loop
     execute format('alter table public.%I enable row level security', v_tabla);
     execute format('drop policy if exists %I on public.%I', v_tabla || '_select_miembros', v_tabla);
     execute format(
@@ -722,8 +765,12 @@ $function$;
 -- ─────────────────────────────────────────────────────────────────────────────
 -- p_terminos: { contrato, condicion, valoracion (recibida), precio_modo, remuneracion_modo, base_comision,
 --               reconocimiento, factura_remuneracion, obligacion_dueno, riesgos: {devoluciones, perdidas, gastos},
---               vence, periodicidad }
+--               vence, periodicidad, compensacion_remuneracion (recibida en mandato),
+--               orden_aplicacion, liquidacion_escrita: {medio, plazo_dias} (recibida en mandato; ronda 5) }
 -- IVA y retenciones NO van aquí: se determinan por ley con los hechos.
+-- Ronda 5 (C.Co. art. 1277): el mandatario se paga con lo que tiene en su poder; aunque la ley no exige pacto expreso, el
+-- contrato recibido en mandato debe fijar el ORDEN en que se aplica lo recaudado (remuneración, gastos reembolsables,
+-- anticipos cruzados, derechos frente al dueño) y la LIQUIDACIÓN POR ESCRITO (por qué medio y en qué plazo).
 
 create or replace function public.fn_consignacion_terminos(p_terminos jsonb, p_direccion text)
  returns jsonb
@@ -738,6 +785,9 @@ declare
   v_riesgos jsonb := t->'riesgos';
   v_vence date;
   v_clave text;
+  v_orden jsonb := t->'orden_aplicacion';
+  v_liq jsonb := t->'liquidacion_escrita';
+  v_mandato_recibido boolean;
 begin
   if jsonb_typeof(t) <> 'object' then
     raise exception 'terminos_invalidos' using errcode = '22023';
@@ -789,6 +839,34 @@ begin
   if p_direccion = 'recibida' and v_contrato = 'intermediacion' and jsonb_typeof(t->'compensacion_remuneracion') is distinct from 'boolean' then
     raise exception 'terminos_invalidos' using errcode = '22023', detail = 'compensacion_remuneracion';
   end if;
+  -- Ronda 5 (respuesta 11; C.Co. art. 1277): orden de aplicación y liquidación por escrito, sin defaults.
+  v_mandato_recibido := p_direccion = 'recibida' and v_contrato = 'intermediacion';
+  if v_mandato_recibido then
+    if v_orden is null or jsonb_typeof(v_orden) <> 'array' or jsonb_array_length(v_orden) = 0 then
+      raise exception 'orden_aplicacion_obligatorio' using errcode = '22023',
+        hint = 'El contrato debe fijar en qué orden se aplica lo recaudado (remuneración, gastos, anticipos, derechos frente al dueño).';
+    end if;
+    if exists (select 1 from jsonb_array_elements(v_orden) e
+                where jsonb_typeof(e) <> 'string' or e #>> '{}' not in ('remuneracion', 'gastos_reembolsables', 'anticipos', 'derechos_frente_al_dueno'))
+       or (select count(*) from jsonb_array_elements_text(v_orden)) <> (select count(distinct x) from jsonb_array_elements_text(v_orden) x) then
+      raise exception 'terminos_invalidos' using errcode = '22023', detail = 'orden_aplicacion';
+    end if;
+    if (t->>'compensacion_remuneracion')::boolean and not (v_orden ? 'remuneracion') then
+      raise exception 'terminos_invalidos' using errcode = '22023', detail = 'orden_aplicacion.remuneracion',
+        hint = 'Si el contrato pacta compensar la remuneración, el orden de aplicación debe decir cuándo se aplica.';
+    end if;
+    if v_liq is null or jsonb_typeof(v_liq) <> 'object' then
+      raise exception 'liquidacion_escrita_obligatoria' using errcode = '22023',
+        hint = 'El contrato debe fijar que la liquidación se entrega por escrito: medio y plazo.';
+    end if;
+    if coalesce(v_liq->>'medio', '') not in ('documento_compartido', 'correo_electronico', 'documento_fisico') then
+      raise exception 'terminos_invalidos' using errcode = '22023', detail = 'liquidacion_escrita.medio';
+    end if;
+    if jsonb_typeof(v_liq->'plazo_dias') is distinct from 'number' or (v_liq->>'plazo_dias')::numeric not between 1 and 90
+       or (v_liq->>'plazo_dias')::numeric <> trunc((v_liq->>'plazo_dias')::numeric) then
+      raise exception 'terminos_invalidos' using errcode = '22023', detail = 'liquidacion_escrita.plazo_dias';
+    end if;
+  end if;
   if v_riesgos is null or jsonb_typeof(v_riesgos) <> 'object' then
     raise exception 'terminos_invalidos' using errcode = '22023', detail = 'riesgos';
   end if;
@@ -816,6 +894,9 @@ begin
     'factura_remuneracion', (t->>'factura_remuneracion')::boolean,
     'obligacion_dueno', case when v_contrato = 'intermediacion' then t->>'obligacion_dueno' end,
     'compensacion_remuneracion', case when p_direccion = 'recibida' and v_contrato = 'intermediacion' then (t->>'compensacion_remuneracion')::boolean end,
+    'liquidacion_terminos', case when v_mandato_recibido then jsonb_build_object(
+        'orden_aplicacion', v_orden,
+        'liquidacion_escrita', jsonb_build_object('medio', v_liq->>'medio', 'plazo_dias', (v_liq->>'plazo_dias')::integer)) end,
     'riesgos', jsonb_build_object('devoluciones', v_riesgos->>'devoluciones', 'perdidas', v_riesgos->>'perdidas', 'gastos', v_riesgos->>'gastos'),
     -- En mandato factura el mandatario, por cuenta del mandante, diferenciando lo ajeno de lo propio.
     'facturacion', jsonb_build_object('factura', 'consignatario', 'por_cuenta_de', case when v_contrato = 'intermediacion' then 'consignante' else 'consignatario' end),
@@ -1402,14 +1483,14 @@ begin
   insert into public.consignment_notes (
     organization_id, branch_id, direction, supplier_id, number, legal_modality, accounting_role, tax_treatment, memo_valuation,
     price_mode, remuneration_mode, commission_base, commission_pct, remuneration_recognition, post_sale_obligation, fee_invoice_required,
-    owner_obligation_at, commission_offset_agreed, owner_receivable_account_code, risk_terms, billing_terms, status, memo_account_code,
+    owner_obligation_at, commission_offset_agreed, settlement_terms, owner_receivable_account_code, risk_terms, billing_terms, status, memo_account_code,
     memo_contra_account_code, owner_account_code, remuneration_account_code, due_date, settlement_frequency, link_id, shared_document_id,
     external_number, notes, idempotency_key, created_by
   ) values (
     p_org, p_branch, 'recibida', p_proveedor, v_numero, v_t->>'contrato', v_t->>'condicion', v_t->>'tributario', v_t->>'valoracion',
     v_t->>'precio_modo', v_t->>'remuneracion_modo', v_t->>'base_comision', v_comision, v_t->>'reconocimiento',
     v_t->>'obligacion_posterior', (v_t->>'factura_remuneracion')::boolean, v_t->>'obligacion_dueno', (v_t->>'compensacion_remuneracion')::boolean,
-    v_cuentas->>'cobro_remuneracion', v_t->'riesgos', v_t->'facturacion', 'en_consignacion',
+    v_t->'liquidacion_terminos', v_cuentas->>'cobro_remuneracion', v_t->'riesgos', v_t->'facturacion', 'en_consignacion',
     v_cuentas->>'orden', v_cuentas->>'contra', v_cuentas->>'recaudo', v_cuentas->>'remuneracion', (v_t->>'vence')::date,
     v_t->>'periodicidad', p_link, p_documento, nullif(btrim(coalesce(p_numero_externo, '')), ''),
     nullif(btrim(coalesce(p_notas, '')), ''), p_clave_idempotencia, v_uid
@@ -1804,7 +1885,8 @@ as $function$
 $function$;
 
 -- INTERNA. La obligación REAL y EXIGIBLE con el dueño: el saldo acreedor de su auxiliar 281510, menos lo facturado en
--- notas con obligación «al cobro» que todavía no se ha cobrado (esa obligación aún no nació; ronda 4, punto 5).
+-- notas con obligación «al cobro» que todavía no se ha cobrado (esa obligación aún no nació; ronda 4, punto 5). Ronda 5
+-- (respuesta 11): el Contador lo confirma: el mandatario se paga con lo que tiene en su poder (C.Co. art. 1277).
 create or replace function public.fn_consignacion_saldo_dueno(p_org integer, p_cuenta text)
  returns numeric
  language sql
@@ -2333,6 +2415,8 @@ begin
         'venta', v_venta, 'descuentos', round(v_desc, 2), 'iva', round(v_iva, 2), 'remuneracion', v_remuneracion,
         'dueno', v_dueno, 'derechos_descontados', round(v_derechos, 2), 'acuerdo', case when v_derechos <> 0 then v_acuerdo end,
         'retenciones', v_retenciones,
+        -- Ronda 5 (C.Co. art. 1277): la liquidación por escrito lleva el orden de aplicación pactado.
+        'terminos_liquidacion', v_nota.settlement_terms,
         'lineas', (select coalesce(jsonb_agg(jsonb_build_object('ref', l.external_ref, 'vendido', sl.qty_sold,
                                                                  'precio', sl.unit_price, 'venta', sl.sale_amount, 'dueno', sl.owner_amount)), '[]'::jsonb)
                      from public.consignment_settlement_lines sl join public.consignment_note_lines l on l.id = sl.line_id
@@ -2347,7 +2431,9 @@ begin
     'remuneracion', v_remuneracion, 'reconocimiento', v_nota.remuneration_recognition, 'dueno', v_dueno,
     'derechos_descontados', round(v_derechos, 2), 'por_pagar', v_dueno, 'factura_remuneracion', v_nota.fee_invoice_required,
     'remuneracion_por_devengar', round(v_por_devengar, 2), 'retenciones', v_retenciones,
-    'cuenta_recaudo', v_nota.owner_account_code, 'documento_compartido_id', v_doc);
+    'cuenta_recaudo', v_nota.owner_account_code, 'documento_compartido_id', v_doc,
+    -- Ronda 5 (C.Co. art. 1277): orden de aplicación y forma de la liquidación por escrito que fija el contrato.
+    'terminos_liquidacion', v_nota.settlement_terms);
 end;
 $function$;
 
@@ -2531,10 +2617,13 @@ $function$;
 
 -- Ronda 4, punto 1 y 2. Reconocer una retención que YA OCURRIÓ, sin esperar el certificado (el certificado acredita y
 -- concilia; no crea el hecho). Con su soporte (el comprobante del pago o abono donde consta) y su fecha.
---   operación (la practicó el comprador al pagar la factura de la venta por cuenta del dueño): es del dueño. D auxiliar
---     281510 del dueño / C cartera del cliente (la cuenta deudora de la causación de esa factura). La 1355 del
---     intermediario no se toca. Pendiente «consignacion_cartera_retencion_por_aplicar»: la cartera operativa no tiene
---     abono por retención todavía.
+--   operación (la practicó el comprador al pagar la factura de la venta por cuenta del dueño): es del dueño (Concepto
+--     DIAN 13277 de 2025). D auxiliar 281510 del dueño / C cartera del cliente (la cuenta deudora de la causación de esa
+--     factura). La 1355 del intermediario no se toca. Ronda 5: se registra con el COBRO (p_pago: el pago o abono
+--     completado de ESA factura, en la MISMA fecha) y en ese mismo momento queda el abono a la factura
+--     (consignment_withholding_receivable_applications), sin superar el saldo de la factura neto de otros abonos por
+--     retención. Mientras el saldo operativo no cuente ese abono (cambio pendiente en fn_invoice_sales_paid, fuera de
+--     este módulo), queda el pendiente «consignacion_cartera_retencion_por_aplicar» con la factura y el cobro.
 --   remuneración (la practicó el dueño sobre la comisión): es del intermediario. D retención sufrida (1355 configurada
 --     por clase) / C cuenta por cobrar al dueño por la comisión (hasta su saldo) y C auxiliar 281510 del dueño por el resto.
 --   Queda pendiente la conciliación con el certificado («consignacion_retencion_certificado_pendiente»).
@@ -2545,7 +2634,8 @@ create or replace function public.fn_consignacion_retencion_practicada(
   p_fecha date,
   p_soporte text,
   p_organization_id integer,
-  p_factura uuid default null
+  p_factura uuid default null,
+  p_pago uuid default null
 )
  returns jsonb
  language plpgsql
@@ -2555,6 +2645,9 @@ as $function$
 declare
   v_uid uuid := auth.uid();
   v_r public.consignment_settlement_withholdings%rowtype;
+  v_pago public.payments%rowtype;
+  v_saldo_factura numeric;
+  v_por_aplicar numeric := 0;
   v_liq public.consignment_settlements%rowtype;
   v_nota public.consignment_notes%rowtype;
   v_cfg public.consignment_account_settings%rowtype;
@@ -2608,14 +2701,44 @@ begin
     if v_cuenta is null then
       raise exception 'sin_cuenta_cartera_cliente' using errcode = 'P0002', hint = 'La factura no tiene causación con la cartera del cliente.';
     end if;
+    -- Ronda 5 (respuesta 10): la retención se registra con el cobro donde el comprador la practicó, en su misma fecha.
+    if p_pago is null then
+      raise exception 'cobro_obligatorio' using errcode = '22023',
+        hint = 'Indique el pago o abono del comprador en el que practicó la retención: el abono a la factura se registra en ese mismo momento.';
+    end if;
+    select * into v_pago from public.payments p
+     where p.id = p_pago and p.organization_id = p_organization_id and p.status = 'completed'
+       and ((p.source = 'invoice_sales' and p.source_id = p_factura::text)
+         or (p.source = 'sale' and p.source_id = (select i.sale_id::text from public.invoice_sales i where i.id = p_factura))
+         or (p.source = 'account_receivable' and p.source_id in (select ar.id::text from public.accounts_receivable ar where ar.invoice_id = p_factura)));
+    if v_pago.id is null then
+      raise exception 'cobro_de_otra_factura' using errcode = '22023', hint = 'El cobro debe ser un pago completado de esa factura.';
+    end if;
+    if (coalesce(v_pago.payment_date, v_pago.created_at) at time zone v_tz)::date <> p_fecha then
+      raise exception 'fecha_distinta_del_cobro' using errcode = '22023',
+        detail = to_char(coalesce(v_pago.payment_date, v_pago.created_at) at time zone v_tz, 'YYYY-MM-DD');
+    end if;
+    -- La cartera no queda inflada ni se abona de más: el abono por retención, sumado a los demás de la factura que siguen
+    -- por aplicar, no puede superar lo que la factura todavía debe después del cobro.
+    select coalesce(i.balance, i.total, 0) into v_saldo_factura from public.invoice_sales i where i.id = p_factura;
+    select coalesce(sum(x.amount), 0) into v_por_aplicar from public.consignment_withholding_receivable_applications x
+     where x.invoice_id = p_factura and x.status = 'por_aplicar';
+    if v_valor + v_por_aplicar > v_saldo_factura + 0.5 then
+      raise exception 'retencion_excede_saldo_factura' using errcode = '22023',
+        detail = jsonb_build_object('saldo_factura', v_saldo_factura, 'por_aplicar', v_por_aplicar, 'retencion', v_valor)::text;
+    end if;
     v_e1 := public.fn_create_journal_entry(
       p_organization_id := p_organization_id, p_branch_id := v_nota.branch_id, p_entry_date := v_instante,
       p_memo := 'Retención practicada por el comprador sobre la venta por cuenta del dueño - ' || v_nota.number, p_source := 'consignment_withholding',
       p_source_id := v_r.id::text, p_debit_account := v_nota.owner_account_code, p_credit_account := v_cuenta,
       p_amount := v_valor, p_created_by := v_uid, p_fact_key := 'consignment_withholding:' || v_r.id::text);
+    insert into public.consignment_withholding_receivable_applications (organization_id, withholding_id, invoice_id, payment_id, amount, applied_on,
+                                                                          journal_entry_id, created_by)
+    values (p_organization_id, v_r.id, p_factura, v_pago.id, v_valor, p_fecha, v_e1, v_uid);
     perform public.fn_consignacion_pendiente(p_organization_id, v_nota.branch_id, 'consignacion_cartera_retencion_por_aplicar',
       'consignment_withholding', v_r.id::text, v_valor,
-      'Nota ' || v_nota.number || ': retención de ' || v_r.class || ' del comprador asentada contra la cartera; aplicarla en la cartera de la factura');
+      'Nota ' || v_nota.number || ': retención de ' || v_r.class || ' del comprador abonada a la factura con el cobro del '
+        || to_char(p_fecha, 'YYYY-MM-DD') || '; el saldo de cartera aún no cuenta el abono (ver saldo real exigible)');
   else
     select * into v_cfg from public.consignment_account_settings where organization_id = p_organization_id;
     v_sufrida := public.fn_consignacion_cuenta_valida(p_organization_id, v_cfg.withheld_accounts ->> v_r.class, '^1355[0-9]{2,6}$');
@@ -2650,12 +2773,38 @@ begin
      set resolved_at = now(), resolution = 'retencion_practicada'
    where organization_id = p_organization_id and source = 'consignment_owner_settlement'
      and source_id = v_r.settlement_id::text || ':' || v_r.id::text and resolved_at is null;
+  -- El certificado no crea el hecho: queda como pendiente de SOPORTE hasta conciliarlo (ronda 5, respuesta 10).
   perform public.fn_consignacion_pendiente(p_organization_id, v_nota.branch_id, 'consignacion_retencion_certificado_pendiente',
     'consignment_withholding', 'cert:' || v_r.id::text, v_valor,
-    'Nota ' || v_nota.number || ': retención practicada; conciliar con el certificado del agente');
+    'Nota ' || v_nota.number || ': retención practicada; certificado del agente pendiente de soporte (conciliar al recibirlo)');
   return jsonb_build_object('retencion_id', v_r.id, 'repetida', false, 'valor', v_valor, 'ambito', v_r.scope, 'asiento_id', coalesce(v_e1, v_e2),
                             'asiento_resto', case when v_e1 is not null then v_e2 end, 'por_cobrar_dueno', v_cxc, 'contra_281510', v_valor - v_cxc,
-                            'cuenta_cliente', v_cuenta);
+                            'cuenta_cliente', v_cuenta, 'cobro_id', v_pago.id,
+                            'abono_factura', case when v_r.scope = 'operacion' then jsonb_build_object(
+                               'factura_id', p_factura, 'valor', v_valor, 'estado', 'por_aplicar', 'saldo_factura', v_saldo_factura,
+                               'saldo_real_exigible', round(v_saldo_factura - v_por_aplicar - v_valor, 2)) end,
+                            'certificado', 'pendiente_de_soporte');
+end;
+$function$;
+
+-- Ronda 5. Saldo REAL exigible de las facturas con abonos por retención de la operación todavía por aplicar en la
+-- cartera operativa: saldo de la factura − abonos por aplicar. Lectura para la organización de la sesión.
+create or replace function public.fn_consignacion_cartera_retenciones(p_organization_id integer)
+ returns table(invoice_id uuid, saldo_factura numeric, retenciones_por_aplicar numeric, saldo_real_exigible numeric, cobros jsonb)
+ language plpgsql
+ stable security definer
+ set search_path to 'public', 'pg_temp'
+as $function$
+begin
+  perform public.fn_assert_acceso_org(p_organization_id);
+  return query
+  select x.invoice_id, coalesce(i.balance, i.total, 0)::numeric, sum(x.amount)::numeric,
+         round(coalesce(i.balance, i.total, 0) - sum(x.amount), 2)::numeric,
+         jsonb_agg(jsonb_build_object('retencion_id', x.withholding_id, 'cobro_id', x.payment_id, 'valor', x.amount, 'fecha', x.applied_on)
+                   order by x.applied_on, x.id)
+    from public.consignment_withholding_receivable_applications x join public.invoice_sales i on i.id = x.invoice_id
+   where x.organization_id = p_organization_id and x.status = 'por_aplicar'
+   group by x.invoice_id, i.balance, i.total;
 end;
 $function$;
 
@@ -3184,7 +3333,8 @@ create or replace function public.fn_consignacion_recibida_aceptar(
   p_cuenta_recaudo text,
   p_valoracion text,
   p_clave_idempotencia text,
-  p_organization_id integer
+  p_organization_id integer,
+  p_terminos_contrato jsonb default null
 )
  returns jsonb
  language plpgsql
@@ -3195,6 +3345,8 @@ declare
   v_uid uuid := auth.uid();
   v_org integer := p_organization_id;
   v_doc public.organization_shared_documents%rowtype;
+  v_clave text;
+  v_propios jsonb;
   v_parte public.organization_link_parties%rowtype;
   v_l jsonb;
   v_producto integer;
@@ -3250,7 +3402,21 @@ begin
       'precio_liquidacion', v_l->'precio_liquidacion', 'costo_acreditado', v_l->'costo_acreditado', 'ref', v_l->>'ref',
       'ref_display', jsonb_build_object('nombre', v_l->>'nombre', 'referencia', v_l->>'referencia'));
   end loop;
-  v_terminos := (v_doc.payload->'terminos') - 'comision'
+  -- Rondas 4 y 5: la compensación de la remuneración, el orden de aplicación y la liquidación por escrito son términos
+  -- obligatorios de la recibida en mandato. Si el documento no los trae, el receptor declara lo que dice el contrato
+  -- (p_terminos_contrato); si los trae, lo declarado debe coincidir.
+  if p_terminos_contrato is not null and jsonb_typeof(p_terminos_contrato) <> 'object' then
+    raise exception 'datos_invalidos' using errcode = '22023', detail = 'terminos_contrato';
+  end if;
+  select coalesce(jsonb_object_agg(e.key, e.value), '{}'::jsonb) into v_propios
+    from jsonb_each(coalesce(p_terminos_contrato, '{}'::jsonb)) e
+   where e.key in ('compensacion_remuneracion', 'orden_aplicacion', 'liquidacion_escrita');
+  foreach v_clave in array array['compensacion_remuneracion', 'orden_aplicacion', 'liquidacion_escrita'] loop
+    if (v_doc.payload->'terminos') ? v_clave and v_propios ? v_clave and (v_doc.payload->'terminos'->v_clave) <> (v_propios->v_clave) then
+      raise exception 'terminos_distintos_del_documento' using errcode = '22023', detail = v_clave;
+    end if;
+  end loop;
+  v_terminos := (v_doc.payload->'terminos') - 'comision' || v_propios
                 || jsonb_build_object('cuenta_recaudo', p_cuenta_recaudo, 'valoracion', p_valoracion);
   v_res := public.fn_consignacion_recibir_interna(
     v_org, v_parte.supplier_id, p_branch, v_lineas, (v_doc.payload->'terminos'->>'comision')::numeric, v_terminos,
@@ -3406,16 +3572,17 @@ revoke all on function public.fn_consignacion_cruzar_anticipo(uuid, uuid, numeri
 revoke all on function public.fn_consignacion_saldo_dueno(integer, text) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_cxc_dueno_saldo(uuid) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_reconocer_int(public.consignment_notes, numeric, numeric, timestamptz, text, text, text, text, uuid) from public, anon, authenticated;
-revoke all on function public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid) from public, anon;
+revoke all on function public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid, uuid) from public, anon;
 revoke all on function public.fn_consignacion_compensar_remuneracion(uuid, numeric, text, integer) from public, anon;
 revoke all on function public.fn_consignacion_retencion_registrar(public.consignment_settlements, integer, text, text, text, text, text, numeric, jsonb, jsonb) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_retenciones_liquidacion(uuid) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_conciliar_retencion(uuid, numeric, text, integer) from public, anon;
+revoke all on function public.fn_consignacion_cartera_retenciones(integer) from public, anon;
 revoke all on function public.fn_consignacion_configurar_retenciones(integer, jsonb) from public, anon;
 revoke all on function public.fn_consignacion_reconocer_remuneracion(uuid, text, text, integer) from public, anon;
 revoke all on function public.fn_consignacion_compartir_interna(uuid) from public, anon, authenticated;
 revoke all on function public.fn_consignacion_compartir(uuid, integer) from public, anon;
-revoke all on function public.fn_consignacion_recibida_aceptar(uuid, integer, jsonb, text, text, text, integer) from public, anon;
+revoke all on function public.fn_consignacion_recibida_aceptar(uuid, integer, jsonb, text, text, text, integer, jsonb) from public, anon;
 revoke all on function public.fn_consignacion_documento_recibido_preparar(uuid, integer) from public, anon;
 revoke all on function public.fn_consignacion_documento_recibido_cerrar(uuid, uuid, integer) from public, anon;
 
@@ -3435,11 +3602,12 @@ grant execute on function public.fn_consignacion_recibida_liquidar(uuid, date, b
 grant execute on function public.fn_consignacion_recibida_anular_liquidacion(uuid, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_cruzar_anticipo(uuid, uuid, numeric, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_conciliar_retencion(uuid, numeric, text, integer) to authenticated;
-grant execute on function public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid) to authenticated;
+grant execute on function public.fn_consignacion_cartera_retenciones(integer) to authenticated;
+grant execute on function public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid, uuid) to authenticated;
 grant execute on function public.fn_consignacion_compensar_remuneracion(uuid, numeric, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_configurar_retenciones(integer, jsonb) to authenticated;
 grant execute on function public.fn_consignacion_reconocer_remuneracion(uuid, text, text, integer) to authenticated;
 grant execute on function public.fn_consignacion_compartir(uuid, integer) to authenticated;
-grant execute on function public.fn_consignacion_recibida_aceptar(uuid, integer, jsonb, text, text, text, integer) to authenticated;
+grant execute on function public.fn_consignacion_recibida_aceptar(uuid, integer, jsonb, text, text, text, integer, jsonb) to authenticated;
 grant execute on function public.fn_consignacion_documento_recibido_preparar(uuid, integer) to authenticated;
 grant execute on function public.fn_consignacion_documento_recibido_cerrar(uuid, uuid, integer) to authenticated;

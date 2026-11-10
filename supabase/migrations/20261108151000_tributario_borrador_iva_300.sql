@@ -84,6 +84,23 @@
 --     «inferida») va a su casilla pero lleva la señal «tarifa_inferida» y la alerta «tarifas_inferidas»: no prueba
 --     sola su procedencia legal; (b) un asiento de cierre de ejercicio ya NO se reconoce solo: es una señal («sugerido:
 --     cierre · por confirmar») y queda pendiente hasta que una persona registre su naturaleza con soporte y explicación.
+-- RONDA 5 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuestas 1 a 4), reescrita
+-- sin aplicar (versión 6 del resultado):
+--   · Casilla 47 solo para la importación EXCLUIDA (exenta o no sujeta → pendiente «importacion_no_excluida_no_va_47»),
+--     con el soporte completo de fn_iva_soporte_aduanero_faltantes (20261108150000): documento según la modalidad
+--     (si no, «importacion_documento_no_corresponde»), norma de exclusión citada, valor en aduana y aranceles, explicación
+--     del «otro documento aduanero»; y base de la línea = valor en aduana + aranceles (± $1; si no,
+--     «importacion_base_no_coincide»). Falta de datos: «importacion_sin_soporte_aduanero», como en la ronda 4.
+--   · Retirar la venta: si el período declarado de la venta queda en firme, sin vencimiento o sin firmeza registrados, o
+--     vencido el término del art. 589 ET, la venta NO sale aunque haya decisión (se revisa al calcular, no solo al
+--     decidir) y la reversa queda pendiente «correccion_declaracion_no_corregible». La alerta
+--     «correcciones_declaracion_anterior» muestra el vencimiento y la firmeza registrados.
+--   · Factura nunca transmitida: el detalle de la corrección dice si se trata como no expedida (sin soporte de
+--     contingencia).
+--   · Cierre: registrado con soporte y explicación ya no basta; sin la aprobación de un segundo usuario
+--     (20261108150500) queda pendiente «cierre_sin_aprobacion».
+--   · Nota crédito de una venta válida: sin cambios, va a 42 (base) y 79 (IVA) en el período de la nota (Oficio DIAN
+--     902997 de 2021; art. 484 ET).
 -- SECURITY DEFINER con guarda de pertenencia y finance.view (o admin.full_access); sin anon.
 -- Prueba en seco (org 374, begin … rollback): docs/contador/pruebas/10_iva_clasificacion_y_300.sql y, de la ronda 4,
 -- docs/contador/pruebas/18_iva_ronda4_contador.sql
@@ -116,8 +133,11 @@ begin
 
   with
   decl as (
-    select d.desde, d.hasta, d.numero_formulario, d.presentada_en,
-           ((d.presentada_en + 1)::timestamp at time zone v_tz) as despues_de
+    select d.desde, d.hasta, d.numero_formulario, d.presentada_en, d.vencimiento_plazo, d.en_firme,
+           ((d.presentada_en + 1)::timestamp at time zone v_tz) as despues_de,
+           -- Ronda 5 (arts. 589 y 714 ET): ¿ya no se puede corregir? Sin vencimiento o firmeza registrados no se presume.
+           (d.vencimiento_plazo is null or d.en_firme is distinct from false
+            or (now() at time zone v_tz)::date > (d.vencimiento_plazo + interval '1 year')::date) as no_corregible
       from public.tributario_iva_declaraciones d where d.organization_id = p_organization_id
   ),
   en_periodo as (
@@ -154,15 +174,22 @@ begin
     select n.journal_entry_id, n.decision_tratamiento, n.decision_periodo_desde, n.decision_periodo_hasta,
            substring(je.fact_key from 10)::integer as venta_id,
            public.fn_iva_correccion_expediente_faltantes(n) as faltantes,
-           cardinality(public.fn_iva_correccion_expediente_faltantes(n)) = 0 as expediente_completo
+           cardinality(public.fn_iva_correccion_expediente_faltantes(n)) = 0 as expediente_completo,
+           -- Ronda 5: el período declarado de la venta ya no admite la corrección (firmeza, término o datos sin registrar).
+           exists (select 1 from public.journal_entries ve join decl x
+                            on (ve.entry_date at time zone v_tz)::date between x.desde and x.hasta
+                    where ve.id = substring(je.fact_key from 10)::integer and ve.organization_id = p_organization_id
+                      and x.no_corregible) as declaracion_no_corregible
       from public.tributario_iva_naturaleza_asiento n
       join public.journal_entries je on je.id = n.journal_entry_id and je.organization_id = p_organization_id
      where n.organization_id = p_organization_id and n.naturaleza = 'correccion_error' and je.fact_key ~ '^reversal:[0-9]+$'
   ),
   -- Ronda 4: la venta sale de las casillas de SU período solo con el expediente completo y la decisión «retirar_venta».
+  -- Ronda 5: y solo si la declaración de ese período, si existe, todavía se puede corregir.
   corregidos as (
     select c.venta_id as id from corr c
-     where c.expediente_completo and c.decision_tratamiento = 'retirar_venta' and c.venta_id in (select id from en_periodo)
+     where c.expediente_completo and c.decision_tratamiento = 'retirar_venta' and not c.declaracion_no_corregible
+       and c.venta_id in (select id from en_periodo)
   ),
   doc_mov as (
     select m.* from mov m
@@ -211,7 +238,7 @@ begin
            si.iva_tratamiento as trat, si.iva_tarifa as tarifa, si.iva_tipo_operacion as tipo, si.iva_fundamento as fund,
            (si.iva_soporte_tipo is not null and si.iva_soporte_numero is not null and si.iva_soporte_fecha is not null) as soporte_ok,
            null::text as desc_estado, null::numeric as pct,
-           si.iva_clasificacion_origen as origen_clasif, false as aduanero_ok, false as es_servicio
+           si.iva_clasificacion_origen as origen_clasif, null::text[] as aduanero_faltan, false as es_servicio
       from docs_info di
       join public.sales s on s.id = di.doc_uuid and s.organization_id = p_organization_id
       join public.sale_items si on si.sale_id = s.id
@@ -222,7 +249,7 @@ begin
            abs(b.base), abs(round(b.base * coalesce(it.tax_rate, 0) / 100, 2)),
            it.iva_tratamiento, it.iva_tarifa, it.iva_tipo_operacion, it.iva_fundamento,
            (it.iva_soporte_tipo is not null and it.iva_soporte_numero is not null and it.iva_soporte_fecha is not null),
-           null, null, it.iva_clasificacion_origen, false, false
+           null, null, it.iva_clasificacion_origen, null::text[], false
       from docs_info di
       join public.invoice_items it on (it.invoice_sales_id = di.doc_uuid or (it.invoice_id = di.doc_uuid and it.invoice_type = 'sale'))
       cross join lateral (select public.fn_iva_base_linea(it.qty, it.unit_price, it.discount_amount, it.tax_included, it.tax_rate) as base) b
@@ -234,8 +261,8 @@ begin
            it.iva_tratamiento, it.iva_tarifa, it.iva_tipo_operacion, it.iva_fundamento,
            (it.iva_soporte_tipo is not null and it.iva_soporte_numero is not null and it.iva_soporte_fecha is not null),
            coalesce(it.iva_descontable, 'por_evaluar'), it.iva_descontable_porcentaje, it.iva_clasificacion_origen,
-           -- Ronda 4 · casilla 47: los siete datos del soporte aduanero.
-           coalesce(it.iva_soporte_aduanero ?& array['tipo_documento', 'numero', 'fecha', 'adjunto', 'valor', 'fundamento_exclusion', 'modalidad'], false),
+           -- Rondas 4 y 5 · casilla 47: lo que le falta al soporte aduanero (con la base de la línea).
+           public.fn_iva_soporte_aduanero_faltantes(it.iva_soporte_aduanero, abs(b.base)),
            exists (select 1 from public.products pr where pr.id = it.product_id and pr.product_type = 'service')
       from docs_info di
       join public.invoice_items it on
@@ -296,8 +323,17 @@ begin
             -- Ronda 4 · casilla 47: importación no gravada solo de bienes, en una compra y con el soporte aduanero completo.
             when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo = 'importacion'
                  and (l.clase = 'documento_soporte' or l.es_servicio) then 'importacion_servicio_no_va_47'
-            when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo = 'importacion' and not l.aduanero_ok
+            -- Ronda 5: la 47 es solo para la importación EXCLUIDA; el soporte, completo; el documento, el de la
+            -- modalidad; y la base, valor en aduana + aranceles.
+            when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo = 'importacion' and l.trat <> 'excluida'
+              then 'importacion_no_excluida_no_va_47'
+            when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo = 'importacion'
+                 and exists (select 1 from unnest(l.aduanero_faltan) as u(f) where u.f not in ('documento_no_corresponde', 'base_no_coincide'))
               then 'importacion_sin_soporte_aduanero'
+            when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo = 'importacion' and 'documento_no_corresponde' = any (l.aduanero_faltan)
+              then 'importacion_documento_no_corresponde'
+            when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo = 'importacion' and 'base_no_coincide' = any (l.aduanero_faltan)
+              then 'importacion_base_no_coincide'
             when l.trat <> 'gravada' and coalesce(l.tipo, '') not in ('exportacion_bienes', 'exportacion_servicios', 'importacion') and l.fund is null
               then case when l.trat = 'exenta' then 'exenta_sin_fundamento' else 'sin_fundamento' end
             when l.lado = 'descontable' and l.trat <> 'gravada' and l.tipo in ('exportacion_bienes', 'exportacion_servicios') then 'operacion_especial'
@@ -381,6 +417,10 @@ begin
            n.doc_electronico_resolucion, n.doc_electronico_referencia, n.doc_electronico_fecha, n.corrige_declaracion_anterior,
            coalesce(c.expediente_completo, false) as correccion_completa, c.faltantes as correccion_faltantes,
            c.decision_tratamiento, c.decision_periodo_desde, c.decision_periodo_hasta,
+           -- Ronda 5: declaración no corregible, factura tratada como no expedida y aprobación del cierre.
+           coalesce(c.declaracion_no_corregible, false) as declaracion_no_corregible,
+           (n.estado_electronico = 'nunca_transmitida' and n.contingencia_soporte_tipo = 'sin_soporte_contingencia') as no_expedida,
+           (n.aprobado_por is not null and n.aprobado_por is distinct from n.creado_por) as aprobado_segundo_usuario,
            case when n.naturaleza is not null then n.naturaleza
                 when m.id in (select id from corregidos) then 'correccion_error'
                 when m.revierte_a is not null then 'reversa_contable'
@@ -415,17 +455,24 @@ begin
   otros_dest as (
     select o.*, coalesce(dv.recuperable, 0) as recuperable,
            case
-             when o.declarada in ('pago_dian', 'traslado_auxiliares', 'cierre') then 'no_afecta'
+             when o.declarada in ('pago_dian', 'traslado_auxiliares') then 'no_afecta'
+             -- Ronda 5: el cierre registrado no afecta solo con la aprobación de un segundo usuario.
+             when o.declarada = 'cierre' and o.aprobado_segundo_usuario then 'no_afecta'
              -- Ronda 4: la venta retirada (de este período) y la reversa con expediente completo y decisión «retirar_venta»
-             -- no afectan, cada una en su período; sin decisión, nada sale.
+             -- no afectan, cada una en su período; sin decisión, nada sale. Ronda 5: tampoco si la declaración de la venta
+             -- ya no se puede corregir.
              when o.id in (select id from corregidos) then 'no_afecta'
-             when o.declarada = 'correccion_error' and o.correccion_completa and o.decision_tratamiento = 'retirar_venta' then 'no_afecta'
+             when o.declarada = 'correccion_error' and o.correccion_completa and o.decision_tratamiento = 'retirar_venta'
+                  and not o.declaracion_no_corregible then 'no_afecta'
              when o.declarada = 'ajuste_procedente' then 'por_diligenciar'
              when o.declarada = 'devolucion_compra' and abs(o.neto - coalesce(o.iva_declarado, -1)) <= 1 then 'casilla'
              else 'pendiente' end as destino,
            case
+             when o.declarada = 'cierre' then 'cierre_sin_aprobacion'
              when o.declarada = 'correccion_error' and not o.correccion_completa then 'correccion_incompleta'
              when o.declarada = 'correccion_error' and o.decision_tratamiento is null then 'correccion_sin_decision'
+             when o.declarada = 'correccion_error' and o.decision_tratamiento = 'retirar_venta' and o.declaracion_no_corregible
+               then 'correccion_declaracion_no_corregible'
              when o.declarada = 'correccion_error' and o.decision_tratamiento = 'nota_credito' then 'correccion_por_nota_credito'
              when o.declarada = 'correccion_error' then 'correccion_mantiene_venta'
              when o.naturaleza = 'reversa_contable' then 'reversa_contable'
@@ -546,7 +593,11 @@ begin
                'decision', case when od.decision_tratamiento is not null then jsonb_build_object(
                  'tratamiento', od.decision_tratamiento, 'periodo_desde', od.decision_periodo_desde,
                  'periodo_hasta', od.decision_periodo_hasta) end,
-               'venta_en_otro_periodo', od.revierte_a is not null and od.revierte_a not in (select id from en_periodo)) end) as j
+               'venta_en_otro_periodo', od.revierte_a is not null and od.revierte_a not in (select id from en_periodo),
+               -- Ronda 5.
+               'tratada_como_no_expedida', coalesce(od.no_expedida, false),
+               'declaracion_no_corregible', od.declaracion_no_corregible) end,
+             'cierre_aprobado', case when od.declarada = 'cierre' then od.aprobado_segundo_usuario end) as j
       from otros_dest od
   ),
   totales as (
@@ -566,7 +617,7 @@ begin
       (select coalesce(sum(c.valor_formulario), 0) from casillas c where c.casilla in (71, 72, 74, 75, 79)) as descontable_form
   )
   select jsonb_build_object(
-    'version', 5,
+    'version', 6,
     'periodo', jsonb_build_object('desde', p_desde, 'hasta', p_hasta, 'zona', v_tz),
     'estado', case when abs(t.libro_2408 - (t.efecto_casillas + t.efecto_pendientes + t.efecto_otros + t.efecto_otros_pendientes + t.redondeo_lineas)) <= 1
                    then 'conciliado' else 'no_conciliado' end,
@@ -620,7 +671,9 @@ begin
                   'asiento', od.id, 'venta_asiento', od.revierte_a, 'fecha_venta', (vo.entry_date at time zone v_tz)::date,
                   'completa', od.correccion_completa, 'corrige_declaracion_anterior', od.corrige_declaracion_anterior,
                   'decision', od.decision_tratamiento,
-                  'periodo_declarado', (select jsonb_build_object('desde', x.desde, 'hasta', x.hasta, 'numero_formulario', x.numero_formulario)
+                  'declaracion_no_corregible', od.declaracion_no_corregible,
+                  'periodo_declarado', (select jsonb_build_object('desde', x.desde, 'hasta', x.hasta, 'numero_formulario', x.numero_formulario,
+                                                                  'vencimiento_plazo', x.vencimiento_plazo, 'en_firme', x.en_firme)
                                           from decl x where (vo.entry_date at time zone v_tz)::date between x.desde and x.hasta limit 1))
                   order by od.id), '[]'::jsonb)
            from otros_dest od
@@ -648,6 +701,6 @@ end;
 $function$;
 
 comment on function public.fn_tributario_borrador_iva_300(integer, date, date) is
-  'Borrador del formulario 300 por casillas oficiales (Contador 2026-11-07 a 2026-11-09, rondas 1 a 4) desde las líneas clasificadas y los asientos 2408, con pendientes, otros movimientos por naturaleza registrada, casillas por diligenciar y conciliación. Solo lectura; nunca aprobado fiscalmente.';
+  'Borrador del formulario 300 por casillas oficiales (Contador 2026-11-07 a 2026-11-09, rondas 1 a 5) desde las líneas clasificadas y los asientos 2408, con pendientes, otros movimientos por naturaleza registrada, casillas por diligenciar y conciliación. Solo lectura; nunca aprobado fiscalmente.';
 revoke all on function public.fn_tributario_borrador_iva_300(integer, date, date) from public, anon;
 grant execute on function public.fn_tributario_borrador_iva_300(integer, date, date) to authenticated;

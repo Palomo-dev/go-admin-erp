@@ -62,6 +62,10 @@ export type NotaObligacion =
   | 'rte_cooperativa_formatos'
   | 'rte_memoria_pdf_firmado'
   | 'rte_umbral_por_confirmar'
+  /** Ronda 5: formato 2532 (donaciones y cooperación internacional no reembolsable recibidas). */
+  | 'rte_2532_aplica'
+  | 'rte_2532_no_aplica'
+  | 'rte_2532_por_confirmar'
   | 'clasificacion_inicial'
   | 'cambio_vigencia_en_periodo'
   | 'cambio_periodicidad_pendiente'
@@ -151,7 +155,13 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
       // los formatos 5245, 2530 y 2531 (2532 cuando corresponda, con las adaptaciones de cooperativas) y sin la
       // información de asignaciones permanentes propia de las ESAL. La memoria económica se presenta en PDF firmado
       // según corresponda, no como un formato numerado.
+      // Ronda 5 del Contador: el 2532 es para donaciones y cooperación internacional no reembolsable RECIBIDAS (Res. 227
+      // de 2025, art. 1.1.6.3). Se pide solo si la cooperativa las recibió; si no, queda la constancia de que no aplica;
+      // sin el dato, «por confirmar». Nunca se da por aplicable ni por no aplicable sin que alguien lo diga.
       const cooperativa = perfil.rteTipo === 'cooperativa_art19_4';
+      const donaciones = perfil.rteDonacionesCooperacion ?? null;
+      const nota2532: NotaObligacion =
+        donaciones === true ? 'rte_2532_aplica' : donaciones === false && perfil.rteDonacionesConstancia ? 'rte_2532_no_aplica' : 'rte_2532_por_confirmar';
       agregar('anual', { id: 'renta', clave: 'renta', formulario: '110', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' }, [
         ...revisar,
         'regimen_especial',
@@ -162,8 +172,14 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
       ]);
       agregar(
         'anual',
-        { id: 'rte_registro_web', clave: 'rte_registro_web', formulario: cooperativa ? '5245, 2530, 2531' : null, calendario: 'rte_registro_web', fuente: 'ninguna' },
-        [...revisar, ...(cooperativa ? (['rte_cooperativa_formatos'] as NotaObligacion[]) : [])],
+        {
+          id: 'rte_registro_web',
+          clave: 'rte_registro_web',
+          formulario: cooperativa ? (donaciones === true ? '5245, 2530, 2531, 2532' : '5245, 2530, 2531') : null,
+          calendario: 'rte_registro_web',
+          fuente: 'ninguna',
+        },
+        [...revisar, ...(cooperativa ? (['rte_cooperativa_formatos', nota2532] as NotaObligacion[]) : [])],
       );
       if (perfil.rteIngresosSuperan160000Uvt !== false) {
         agregar('anual', { id: 'rte_memoria_economica', clave: 'rte_memoria_economica', formulario: null, calendario: 'rte_memoria_economica', fuente: 'ninguna' }, [

@@ -13,6 +13,8 @@
 -- crea como administrador dentro de la transacción. Resultado: 22_consignacion_ronda4_retenciones_y_comision.resultado.txt
 
 begin;
+-- El día de la prueba es el de la organización (America/Bogota): current_date no depende de la hora UTC de la corrida.
+set local timezone to 'America/Bogota';
 
 -- ════ AYUDAS (solo esta sesión) ════════════════════════════════════════════════════════════════════════════
 create temp table r (n serial primary key, prueba text default current_setting('dry.prueba', true), caso text, verificacion text, esperado text,
@@ -54,13 +56,13 @@ grant execute on function pg_temp.mover(integer, integer, integer, text, numeric
 select set_config('dry.prueba', 'carga', true);
 create temp table carga (n int, archivo text, md5 text, partes text[]);
 insert into carga values
-  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['5a3ad4f516169849e63ea85a06d6409d', '9663bf553ed7663c7dddd1bb69f7b066']),
-  (2, '20261108121000_consignaciones', 'd2a58b49b6016488ba3287a48511d4d5', array['01d40736f59b0326331a5c87b5c9aaaf', '43d4449c092a8d952dbfc7baa691382c', '0b6ff32c6c2ac6700ffc185b653bf99b', '19c810fa6720bed9fbcd0946720e7db3', '01c2f9b75c3a609226b6bdee5c0bb7a7', '7e71e8c4e1bff5daf3784ae3c833ff37', '6be2815156fc03f855f47989b13aa5e8', '659a3939293d6235d15a78f8ca995413']),
+  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['74b48fc99c0a3a3b010413db8031e675', '948d61028cb34db074d08c12eca2edaf', '6332a1eaafa850e04255cbe1d4c790db']),
+  (2, '20261108121000_consignaciones', 'f52c0de6f53856fc9dd38bb5b3403809', array['d2aa4c6725204badc5f14793d54b0da0', 'a8b60ed8327e8bdf4a09a5749389bd0e', 'cb2daffb5506b6d1048c13cb0ef67cde', '2e060edf17d826a0260b29ebe268bb9c', '06c7eacadb8c897ab3d6c5e06763122a', '5f884aa2747373581edd9337f2f14b93', 'bbe2fedfe558459e35157acd8b4c26e9', 'ee0b275499b8c7e42d518f63a10cc084', 'ad04a330664bc68fa5729cf07f710a3d', '88fd3775f77f5c1fa74aa39768fee054', '0691b64cb50fdcf7c490b376aadfbb04', 'cecd90018184f26d34a949cb1cdcf644', '48cdef4e260198970fc32c7289e2e1c3', 'e12361f82a962fc091621ec670802cec', '7ef44ccb92192d743db7bec3bc3849e3']),
   (3, '20261108140500_responsabilidades_fiscales_en', '4b00bf10bf99ff2a97e2e89ff0480811', array['4b00bf10bf99ff2a97e2e89ff0480811']),
-  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['85fd17321a7e85d85a58916cb2f84c95']),
-  (5, '20261108160500_tributario_perfil_renta_iva', 'c83b8a50b6342e65ee5bf3f993847b79', array['16de3178aa8a2cc01d9b2ed4be288c78', '282e5b104a758b88936d2a684742eed0']),
-  (6, '20261108165000_tarifas_precision_exacta', '28e47f6353ee4102463b7b63dca057be', array['28e47f6353ee4102463b7b63dca057be']),
-  (7, '20261108170000_anticipos_proveedores_contador', 'ca6171f8dfbc5cb11ec40a831ea589df', array['a2fce547e464f7bfe71175e40038af04', 'aa4c3b57a749d53c66506a7b4d7d6338', '05b9412ef8fb162a9566189e4313073b', 'cb2d8d5c9a890e919cdebac05283c89f', 'b58622a7c223bd115e1d404290cee1c7', '863d10ed9ec437aca7b4d06f785d0392', '073ea2e870c4320f8c7fb7b5a09317fd', '2d4e4c263c074261594198c9946abc2f', 'ebfd91b7b31edcf53d2b67585c26723b']);
+  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['a293fbc0aadf7b33b72d1c5d4d824fad', '3a0fbf1e5d8f8cace37a3ef193763cd9']),
+  (5, '20261108160500_tributario_perfil_renta_iva', '1d80345bde9c6d9fd378bc10e8c43a5e', array['6b459b8cf3f78457b04c2786625a08ac', '6b925b7a8d549f72fa09598adee2d903', '80df677e5aa15aa7e4c27c91b322beb7']),
+  (6, '20261108165000_tarifas_precision_exacta', '1ec6641bdf74dfc15163d0753982309f', array['1ec6641bdf74dfc15163d0753982309f']),
+  (7, '20261108170000_anticipos_proveedores_contador', '0c5079355e6c5ab55dd6b14e1e484cea', array['63f6b0c4aca0275295b79fd9c41924f8', 'eb4a4e52a897e7c01209d3725650d0fb', 'd345b3fd61afb1cbdfbb05fc69fe9bac', 'ac7cfef25367cf788f2de7b5698e617f', '45ca6efa4c336768edce64fd6816428d', '651917641ef050acf2afdc2826885dea', '896232d306be97fa362590dbd56de655', '6e27c30d840c1dcdc6c84165526c334d', '8f13afc4f5934c7fd9f778f91a792d99', '521574537319cfb8c790a4af21099265', 'fecada69cc621c6c66475858378a7697', '03f599837ceb3cbaf18680c4781b0421', '8df4262b2efb2ba15458f77e87758b3d', '1f285ec7b28e57d8bbd1f39846705459', '4ca38155375d59428529d5dc111ed302', '0240018dc5742894c78d3cc94f65ccb4']);
 do $carga$
 declare m record; s text;
 begin
@@ -85,6 +87,7 @@ select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 do $s22$
 declare
   m1 int; m2 int; b1 uuid; b2 uuid; b3 uuid; p1 int; p2 int; p3 int; ica uuid; sa uuid; sc uuid; sn2 uuid; inv1 uuid; inv2 uuid; inv3 uuid;
+  v_pg3 uuid;
   u uuid := (select owner_user_id from organizations where id = 374);
 begin
   insert into chart_of_accounts (organization_id, account_code, name, type, centro_costo_modo, parent_code, es_movimiento)
@@ -144,6 +147,10 @@ begin
   perform set_config('d22.p1', p1::text, true); perform set_config('d22.p2', p2::text, true); perform set_config('d22.p3', p3::text, true);
   perform set_config('d22.sa', sa::text, true); perform set_config('d22.sc', sc::text, true); perform set_config('d22.sn2', sn2::text, true);
   perform set_config('d22.inv1', inv1::text, true); perform set_config('d22.inv2', inv2::text, true); perform set_config('d22.inv3', inv3::text, true);
+  -- Ronda 5: el cobro de la factura 22-3 (el comprador paga 71.400 − reteIVA 1.710 = 69.690); la retención se registra con él.
+  insert into payments (organization_id, branch_id, source, source_id, method, amount, currency, status, created_by, payment_date)
+    values (374, 585, 'invoice_sales', inv3::text, 'transfer', 69690, 'COP', 'completed', u, now()) returning id into v_pg3;
+  perform set_config('d22.pg3', v_pg3::text, true);
   perform set_config('d22.ica', ica::text, true);
   perform set_config('d22.rete4', (select ot.id::text from organization_taxes ot join tax_templates tt on tt.id = ot.template_id where ot.organization_id = 374 and tt.code = 'RETE_4'), true);
   perform set_config('d22.rcom', (select ot.id::text from organization_taxes ot join tax_templates tt on tt.id = ot.template_id where ot.organization_id = 374 and tt.code = 'RETE_11_COMISION'), true);
@@ -167,7 +174,10 @@ begin
   t := jsonb_build_object('contrato','intermediacion','condicion','agente','valoracion','costo_acreditado','precio_modo','minimo',
     'remuneracion_modo','porcentaje','base_comision','precio_pactado','reconocimiento','al_vender','factura_remuneracion',false,
     'obligacion_dueno','venta','compensacion_remuneracion',true,
-    'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001');
+    'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001',
+    -- Ronda 5 (C.Co. art. 1277): orden de aplicación y liquidación por escrito, términos obligatorios del contrato recibido.
+    'orden_aplicacion',jsonb_build_array('remuneracion','gastos_reembolsables','anticipos','derechos_frente_al_dueno'),
+    'liquidacion_escrita',jsonb_build_object('medio','correo_electronico','plazo_dias',5));
   -- K · Cuentas y reglas (ronda 4)
   perform fn_consignacion_configurar_cuentas(o, '911520', '9405', '41351201');
   perform pg_temp.err('K1 recibir sin cuenta por cobrar al dueño', 'sin_cuenta_cobro_remuneracion',
@@ -307,7 +317,8 @@ begin
   -- Puntos 1 y 2 en la operación: el comprador B3 (agente de reteIVA acreditado) retiene el IVA al pagar la factura 22-3.
   select id into wop from consignment_settlement_withholdings where settlement_id = l1b and scope = 'operacion' and class = 'reteiva' and payer_group = 'agente'
      and status = 'estimada';
-  r := fn_consignacion_retencion_practicada(wop, 1710, 11400, current_date, 'Comprobante del pago de la factura 22-3 con reteIVA', o, current_setting('d22.inv3')::uuid);
+  r := fn_consignacion_retencion_practicada(wop, 1710, 11400, current_date, 'Comprobante del pago de la factura 22-3 con reteIVA', o, current_setting('d22.inv3')::uuid,
+                                            current_setting('d22.pg3')::uuid);
   perform pg_temp.chk('R6 retención del comprador sobre la venta por cuenta del dueño: D 28151001 / C cartera de la factura; la 1355 del intermediario no se toca',
     '28151001 D 1710 · 13050501 C 1710 · pendiente de cartera 1',
     (select string_agg(l.account_code || case when l.debit > 0 then ' D ' || round(l.debit) else ' C ' || round(l.credit) end, ' · ' order by l.debit desc)

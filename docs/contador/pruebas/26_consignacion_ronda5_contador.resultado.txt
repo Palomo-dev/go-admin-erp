@@ -1,0 +1,49 @@
+Resultado de 26_consignacion_ronda5_contador.sql · 2026-11-09 (corrida entre las 23:00 y las 23:59 de Bogotá; 2026-11-10 UTC)
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback): nada quedó
+escrito. Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md).
+
+Archivo: 26_consignacion_ronda5_contador.sql (md5 3b162b02651222fb161868e30946aecd; 23406 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 057c04ab27bab03620e08527de09ba23).
+Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
+corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 f52c0de6f53856fc9dd38bb5b3403809 · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 0c5079355e6c5ab55dd6b14e1e484cea
+
+Corridas: la primera se detuvo porque los cobros se insertaban dentro de un WITH en set_config (plpgsql no lo
+admite); se cambió por insert … returning. Después: 23 de 23. En la integrada 20, C5 falló porque allí la cartera es el
+auxiliar 13050501 (lo crea la 22) y la prueba esperaba «1305»: C5 compara ahora con la cuenta deudora con que se causó
+ESA factura. Volvió a correr sola: 23 de 23.
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar (current_date = día de la
+organización, sin depender de la hora UTC de la corrida).
+
+RESULTADO (corrida que vale):
+PRUEBA EN SECO (se revierte) · 26: 23 de 23 ok · carga: 7 de 7 ok
+1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
+2 | carga | md5 20261108121000_consignaciones | f52c0de6f53856fc9dd38bb5b3403809 | ok
+3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
+4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | 1d80345bde9c6d9fd378bc10e8c43a5e | ok
+6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 0c5079355e6c5ab55dd6b14e1e484cea | ok
+8 | 26 | N1 sin orden de aplicación | orden_aplicacion_obligatorio | ok
+9 | 26 | N2 orden con un concepto que no existe | terminos_invalidos | ok
+10 | 26 | N3 orden con un concepto repetido | terminos_invalidos | ok
+11 | 26 | N4 compensación pactada sin decir cuándo se aplica la remuneración | terminos_invalidos | ok
+12 | 26 | N5 sin liquidación por escrito | liquidacion_escrita_obligatoria | ok
+13 | 26 | N6 medio de la liquidación que no es escrito | terminos_invalidos | ok
+14 | 26 | N7 plazo de la liquidación por fuera de 1 a 90 días | terminos_invalidos | ok
+15 | 26 | N8 la nota guarda el orden de aplicación y la liquidación por escrito | 4 · remuneracion · correo_electronico/5 | ok
+16 | 26 | N9 la entregada (lado del mandante) no exige estos términos de la recibida | null | ok
+17 | 26 | N10 la liquidación por escrito lleva el orden de aplicación y su forma | remuneracion · correo_electronico/5 | ok
+18 | 26 | C0 saldo de la factura después del cobro (lo que queda es la retención) | 1710.00 · partial | ok
+19 | 26 | C1 la retención de la operación sin el cobro en que se practicó | cobro_obligatorio | ok
+20 | 26 | C2 con el cobro de OTRA factura | cobro_de_otra_factura | ok
+21 | 26 | C3 en una fecha distinta de la del cobro | fecha_distinta_del_cobro | ok
+22 | 26 | C4 por más de lo que la factura todavía debe (abonaría de más la cartera) | retencion_excede_saldo_factura | ok
+23 | 26 | C5 con su cobro: D 28151001 / C cartera de la factura (Concepto DIAN 13277 de 2025); abono por aplicar; saldo real exigible 0 | 28151001 D 1710 · cartera de la factura C 1710 · por_aplicar · 1710.00 · 0.00 · pendiente_de_soporte | ok
+24 | 26 | C6 el abono queda ligado al cobro y a su fecha | 1 · 1710.00 · true · true | ok
+25 | 26 | C7 saldo real exigible de la factura: saldo 1.710 − abono por aplicar 1.710 = 0 | 1710.00 · 1710.00 · 0.00 | ok
+26 | 26 | C8 la cartera operativa no se escribe a mano: sigue al saldo de la factura | 1710.00 · 1710.00 | ok
+27 | 26 | C9 pendientes: la cartera por aplicar y el certificado pendiente de soporte | 1 · 1 | ok
+28 | 26 | C10 otra retención sobre la misma factura que ya no tiene saldo (1.710 por aplicar + 100) | retencion_excede_saldo_factura | ok
+29 | 26 | Z1 asientos de la prueba 26 descuadrados | 0 | ok
+30 | 26 | Z2 ningún abono por retención sin su cobro | 0 | ok

@@ -408,14 +408,29 @@ export const excesoRetencionSchema = z
     referencia: z.string().trim().max(200).nullable().optional(),
     motivo: z.string().trim().min(3).max(500),
     soportes: z
-      .object({ calculo: TEXTO_SOPORTE, certificado: TEXTO_SOPORTE, solicitud: TEXTO_SOPORTE, pruebas: TEXTO_SOPORTE, ica: SOPORTES_ICA.nullable().optional() })
+      .object({
+        calculo: TEXTO_SOPORTE,
+        certificado: TEXTO_SOPORTE,
+        solicitud: TEXTO_SOPORTE,
+        pruebas: TEXTO_SOPORTE,
+        /**
+         * Ronda 5 del Contador (DUR 1625 de 2016, art. 1.3.2.3.1): en la reteIVA en exceso, además de la solicitud escrita,
+         * la manifestación ESCRITA del retenido de que no imputó la retención. Los dos soportes son obligatorios.
+         */
+        manifestacion_no_imputacion: TEXTO_SOPORTE.nullable().optional(),
+        ica: SOPORTES_ICA.nullable().optional(),
+      })
       .strict(),
     periodo_descuento: PERIODO.nullable().optional(),
     requiere_correccion: z.boolean(),
     clave_idempotencia: CLAVE,
   })
   .strict()
-  .refine((e) => e.clase !== 'reteica' || Object.keys(e.soportes.ica ?? {}).length > 0, { path: ['soportes', 'ica'], message: 'reteica_pruebas_incompletas' });
+  .refine((e) => e.clase !== 'reteica' || Object.keys(e.soportes.ica ?? {}).length > 0, { path: ['soportes', 'ica'], message: 'reteica_pruebas_incompletas' })
+  .refine((e) => e.clase !== 'reteiva' || (e.soportes.manifestacion_no_imputacion ?? '').trim().length >= 3, {
+    path: ['soportes', 'manifestacion_no_imputacion'],
+    message: 'soporte_procedimiento_obligatorio',
+  });
 export type SolicitudExcesoRetencion = z.infer<typeof excesoRetencionSchema>;
 
 /**

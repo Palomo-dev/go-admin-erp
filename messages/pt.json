@@ -49511,5 +49511,85 @@
       "pistaMiembro": "Talvez sua organização não use essa função. Se precisar dela, pergunte a um administrador."
     },
     "resaltado": "Aqui você pode ligar {modulo}."
+  },
+  "finanzasTributarioR5": {
+    "bandas": {
+      "reconstruidoFecha": "Data da reconstrução: {fecha} ({zona}). Os dados das partes reconstruídos são os dessa data, não os do dia da emissão."
+    },
+    "motivos": {
+      "importacion_no_excluida_no_va_47": "Importação não tributada que não é excluída: a casa 47 é só para importações excluídas",
+      "importacion_documento_no_corresponde": "Importação excluída com um documento aduaneiro que não corresponde à modalidade (ordinária, temporária e franquia: declaração de importação; tráfego postal e envio expresso: guia assinada)",
+      "importacion_base_no_coincide": "Importação excluída cuja base não coincide com o valor aduaneiro mais as tarifas",
+      "correccion_declaracion_no_corregible": "Correção de erro: a declaração do período da venda é definitiva, está fora do prazo de correção ou não tem vencimento ou definitividade registrados; a venda permanece",
+      "cierre_sin_aprobacion": "Encerramento registrado sem a aprovação de um segundo usuário"
+    },
+    "notas": {
+      "rte_2532_aplica": "Formato 2532: aplica, porque a cooperativa recebeu doações ou cooperação internacional não reembolsável.",
+      "rte_2532_no_aplica": "Formato 2532: não aplica; há constância de que a cooperativa não recebeu doações nem cooperação internacional não reembolsável.",
+      "rte_2532_por_confirmar": "Formato 2532: a confirmar. Só aplica se a cooperativa recebeu doações ou cooperação internacional não reembolsável."
+    },
+    "errores": {
+      "soporte_aduanero_norma_invalida": "A norma de exclusão deve citar um artigo (por exemplo, o art. 424 do Estatuto Tributário).",
+      "soporte_aduanero_documento_no_corresponde": "O documento aduaneiro não corresponde à modalidade: ordinária, temporária e franquia exigem declaração de importação; tráfego postal e envio expresso, a guia assinada.",
+      "soporte_aduanero_base_no_suma": "A base deve ser o valor aduaneiro mais as tarifas.",
+      "contingencia_invalida": "O suporte da contingência não é válido.",
+      "consulta_cufe_invalida": "O resultado da consulta do CUFE/CUDE não é válido.",
+      "documento_encontrado_en_dian": "A consulta encontrou o CUFE/CUDE: a fatura chegou à DIAN e não é «nunca transmitida».",
+      "vencimiento_invalido": "A data de vencimento do prazo deve ser posterior ao fim do período.",
+      "firmeza_invalida": "Indique se a declaração é definitiva (sim ou não).",
+      "firmeza_requiere_nota": "Indique como se sabe se a declaração é definitiva.",
+      "constancia_2532_requerida": "Se o formato 2532 não aplica, registre o que foi verificado."
+    }
+  },
+  "finanzasTercerosR5": {
+    "anticipos": {
+      "exceso": {
+        "manifestacion": "Declaração escrita de não imputação",
+        "manifestacionAyuda": "Na retenção de IVA, o retido declara por escrito que não imputou a retenção na sua declaração (DUR 1625 de 2016, art. 1.3.2.3.1). É obrigatória junto com a solicitação escrita.",
+        "periodoRegla": "Cada imposto fixa o período: renda, o do reembolso (DUR 1.2.4.16); retenção de IVA, o do reembolso, com a solicitação e a declaração escritas (DUR 1.3.2.3.1); retenção de ICA, o do procedimento do município."
+      },
+      "devolver": {
+        "periodoRegla": "Cada imposto fixa o período: renda, o da anulação, rescisão ou resolução e o saldo nos seguintes (DUR 1.2.4.8); retenção de IVA, o da anulação e o saldo só nos dois períodos seguintes (DUR 1.3.2.3.1); retenção de ICA, o do procedimento do município e o saldo nos seguintes, sem limite, com a solicitação escrita como comprovante."
+      }
+    }
+  },
+  "consignacionesR5": {
+    "terminos": {
+      "compensacion": "O contrato permite descontar a remuneração do valor arrecadado?",
+      "compensacionAyuda": "A cópia do dono não traz essa informação: quem recebe a declara. Sem acordo, a remuneração fica como conta a receber do dono.",
+      "elegir": "Escolher",
+      "si": "Sim",
+      "no": "Não",
+      "orden": "Ordem de aplicação do valor arrecadado",
+      "ordenAyuda": "Cláusula obrigatória do contrato (Código de Comércio, art. 1277). Se a compensação for acordada, a remuneração deve estar na ordem.",
+      "ordenes": {
+        "remuneracion_primero": "Remuneração → despesas reembolsáveis → adiantamentos → direitos perante o dono",
+        "gastos_primero": "Despesas reembolsáveis → remuneração → adiantamentos → direitos perante o dono",
+        "anticipos_primero": "Adiantamentos → remuneração → despesas reembolsáveis → direitos perante o dono"
+      },
+      "medio": "Meio da liquidação por escrito",
+      "medios": {
+        "documento_compartido": "Documento compartilhado no GO Admin",
+        "correo_electronico": "E-mail",
+        "documento_fisico": "Documento físico assinado"
+      },
+      "plazo": "Prazo para entregar a liquidação (dias)",
+      "plazoAyuda": "Entre 1 e 90 dias.",
+      "errores": {
+        "orden_aplicacion": "Escolha a ordem de aplicação fixada pelo contrato.",
+        "liquidacion_escrita": "Informe o meio escrito e um prazo de 1 a 90 dias.",
+        "compensacion": "Informe se o contrato permite a compensação."
+      }
+    },
+    "errores": {
+      "orden_aplicacion_obligatorio": "O contrato deve fixar a ordem de aplicação do valor arrecadado.",
+      "liquidacion_escrita_obligatoria": "O contrato deve fixar a liquidação por escrito (meio e prazo).",
+      "terminos_distintos_del_documento": "As cláusulas declaradas não coincidem com as da cópia do dono.",
+      "cobro_obligatorio": "Informe o recebimento da fatura em que o comprador fez a retenção.",
+      "cobro_de_otra_factura": "O recebimento escolhido não é um pagamento concluído dessa fatura.",
+      "fecha_distinta_del_cobro": "A data da retenção deve ser a do recebimento.",
+      "retencion_excede_saldo_factura": "A retenção supera o que a fatura ainda deve: a carteira ficaria com abono a mais.",
+      "error_desconocido": "Não foi possível concluir a operação."
+    }
   }
 }

@@ -49516,5 +49516,85 @@
       "pistaMiembro": "Puede que tu organización no use esa función. Si la necesitas, pregúntale a un administrador."
     },
     "resaltado": "Aquí puedes encender {modulo}."
+  },
+  "finanzasTributarioR5": {
+    "bandas": {
+      "reconstruidoFecha": "Fecha de la reconstrucción: {fecha} ({zona}). Los datos de las partes que se reconstruyeron son los de esa fecha, no los del día de la expedición."
+    },
+    "motivos": {
+      "importacion_no_excluida_no_va_47": "Importación no gravada que no es excluida: la casilla 47 es solo para importaciones excluidas",
+      "importacion_documento_no_corresponde": "Importación excluida con un documento aduanero que no corresponde a la modalidad (ordinaria, temporal y franquicia: declaración de importación; tráfico postal y envío urgente: guía firmada)",
+      "importacion_base_no_coincide": "Importación excluida cuya base no coincide con el valor en aduana más los aranceles",
+      "correccion_declaracion_no_corregible": "Corrección de error: la declaración del período de la venta está en firme, fuera del término de corrección o sin vencimiento o firmeza registrados; la venta no sale",
+      "cierre_sin_aprobacion": "Cierre registrado sin la aprobación de un segundo usuario"
+    },
+    "notas": {
+      "rte_2532_aplica": "Formato 2532: aplica, porque la cooperativa recibió donaciones o cooperación internacional no reembolsable.",
+      "rte_2532_no_aplica": "Formato 2532: no aplica; hay constancia de que la cooperativa no recibió donaciones ni cooperación internacional no reembolsable.",
+      "rte_2532_por_confirmar": "Formato 2532: por confirmar. Solo aplica si la cooperativa recibió donaciones o cooperación internacional no reembolsable."
+    },
+    "errores": {
+      "soporte_aduanero_norma_invalida": "La norma de exclusión debe citar un artículo (por ejemplo, el art. 424 del Estatuto Tributario).",
+      "soporte_aduanero_documento_no_corresponde": "El documento aduanero no corresponde a la modalidad: ordinaria, temporal y franquicia llevan declaración de importación; tráfico postal y envío urgente, la guía firmada.",
+      "soporte_aduanero_base_no_suma": "La base debe ser el valor en aduana más los aranceles.",
+      "contingencia_invalida": "El soporte de la contingencia no es válido.",
+      "consulta_cufe_invalida": "El resultado de la consulta del CUFE/CUDE no es válido.",
+      "documento_encontrado_en_dian": "La consulta encontró el CUFE/CUDE: la factura sí llegó a la DIAN y no es «nunca transmitida».",
+      "vencimiento_invalido": "La fecha de vencimiento del plazo debe ser posterior al final del período.",
+      "firmeza_invalida": "Indique si la declaración está en firme (sí o no).",
+      "firmeza_requiere_nota": "Indique de dónde se sabe si la declaración está en firme.",
+      "constancia_2532_requerida": "Si el formato 2532 no aplica, deje la constancia de lo verificado."
+    }
+  },
+  "finanzasTercerosR5": {
+    "anticipos": {
+      "exceso": {
+        "manifestacion": "Manifestación escrita de no imputación",
+        "manifestacionAyuda": "Con reteIVA, el retenido manifiesta por escrito que no imputó la retención en su declaración (DUR 1625 de 2016, art. 1.3.2.3.1). Es obligatoria junto con la solicitud escrita.",
+        "periodoRegla": "El período lo fija cada impuesto: renta, el del reintegro (DUR 1.2.4.16); reteIVA, el del reintegro, con la solicitud y la manifestación escritas (DUR 1.3.2.3.1); ReteICA, el del procedimiento del municipio."
+      },
+      "devolver": {
+        "periodoRegla": "El período lo fija cada impuesto: renta, el de la anulación, rescisión o resolución y el saldo en los siguientes (DUR 1.2.4.8); reteIVA, el de la anulación y el saldo solo en los dos períodos siguientes (DUR 1.3.2.3.1); ReteICA, el del procedimiento del municipio y el saldo en los siguientes, sin límite, con la solicitud escrita como soporte."
+      }
+    }
+  },
+  "consignacionesR5": {
+    "terminos": {
+      "compensacion": "¿El contrato pacta descontar la remuneración de lo recaudado?",
+      "compensacionAyuda": "La copia del dueño no lo trae: lo declara quien recibe. Sin pacto, la remuneración queda como cuenta por cobrar al dueño.",
+      "elegir": "Elegir",
+      "si": "Sí",
+      "no": "No",
+      "orden": "Orden de aplicación de lo recaudado",
+      "ordenAyuda": "Término obligatorio del contrato (C. Co., art. 1277). Si se pacta la compensación, la remuneración debe estar en el orden.",
+      "ordenes": {
+        "remuneracion_primero": "Remuneración → gastos reembolsables → anticipos → derechos frente al dueño",
+        "gastos_primero": "Gastos reembolsables → remuneración → anticipos → derechos frente al dueño",
+        "anticipos_primero": "Anticipos → remuneración → gastos reembolsables → derechos frente al dueño"
+      },
+      "medio": "Medio de la liquidación por escrito",
+      "medios": {
+        "documento_compartido": "Documento compartido en GO Admin",
+        "correo_electronico": "Correo electrónico",
+        "documento_fisico": "Documento físico firmado"
+      },
+      "plazo": "Plazo para entregar la liquidación (días)",
+      "plazoAyuda": "Entre 1 y 90 días.",
+      "errores": {
+        "orden_aplicacion": "Elija el orden de aplicación que fija el contrato.",
+        "liquidacion_escrita": "Indique el medio escrito y un plazo de 1 a 90 días.",
+        "compensacion": "Indique si el contrato pacta la compensación."
+      }
+    },
+    "errores": {
+      "orden_aplicacion_obligatorio": "El contrato debe fijar el orden de aplicación de lo recaudado.",
+      "liquidacion_escrita_obligatoria": "El contrato debe fijar la liquidación por escrito (medio y plazo).",
+      "terminos_distintos_del_documento": "Los términos que declaró no coinciden con los de la copia del dueño.",
+      "cobro_obligatorio": "Indique el cobro de la factura en que el comprador practicó la retención.",
+      "cobro_de_otra_factura": "El cobro elegido no es un pago completado de esa factura.",
+      "fecha_distinta_del_cobro": "La fecha de la retención debe ser la del cobro.",
+      "retencion_excede_saldo_factura": "La retención supera lo que la factura todavía debe: la cartera quedaría abonada de más.",
+      "error_desconocido": "No se pudo completar la operación."
+    }
   }
 }

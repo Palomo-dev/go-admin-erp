@@ -341,3 +341,38 @@ describe('obligaciones del RTE y de no contribuyentes (ronda 2)', () => {
     expect(vencimientoDe(art22[0], '900111227', [])).toEqual({ estado: 'no_aplica' });
   });
 });
+
+describe('formato 2532 de las cooperativas (ronda 5 del Contador)', () => {
+  const registro = (extra: Partial<VigenciaPerfil>) =>
+    derivarObligaciones(
+      v('c', '2025-01-01', null, { regimenRenta: 'especial', condicionIva: 'no_responsable', periodicidadIva: 'no_aplica', rteTipo: 'cooperativa_art19_4', rteIngresosSuperan160000Uvt: false, ...extra }),
+      '2026-10',
+    ).find((x) => x.clave === 'rte_registro_web')!;
+
+  test('solo se pide si recibió donaciones o cooperación internacional no reembolsable', () => {
+    expect(registro({ rteDonacionesCooperacion: true })).toMatchObject({ formulario: '5245, 2530, 2531, 2532' });
+    expect(registro({ rteDonacionesCooperacion: true }).notas).toContain('rte_2532_aplica');
+  });
+
+  test('si no las recibió, queda la constancia de que no aplica; sin constancia o sin dato, por confirmar', () => {
+    const no = registro({ rteDonacionesCooperacion: false, rteDonacionesConstancia: 'Revisados los ingresos de 2025: sin donaciones' });
+    expect(no).toMatchObject({ formulario: '5245, 2530, 2531' });
+    expect(no.notas).toContain('rte_2532_no_aplica');
+    expect(registro({ rteDonacionesCooperacion: false }).notas).toContain('rte_2532_por_confirmar');
+    expect(registro({}).notas).toContain('rte_2532_por_confirmar');
+  });
+
+  test('una entidad del RTE que no es cooperativa no lleva la nota del 2532', () => {
+    const otra = registro({ rteTipo: 'calificada_art19', rteDonacionesCooperacion: true });
+    expect(otra.formulario).toBeNull();
+    expect(otra.notas.some((n) => n.startsWith('rte_2532'))).toBe(false);
+  });
+
+  test('los cuatro idiomas tienen las notas nuevas', () => {
+    for (const idioma of ['es', 'en', 'fr', 'pt']) {
+      const ruta = path.join(__dirname, '../../../../../messages', `${idioma}.json`);
+      const m = JSON.parse(fs.readFileSync(ruta, 'utf8')) as { finanzasTributarioR5?: { notas?: Record<string, string> } };
+      for (const n of ['rte_2532_aplica', 'rte_2532_no_aplica', 'rte_2532_por_confirmar']) expect(m.finanzasTributarioR5?.notas?.[n]).toBeTruthy();
+    }
+  });
+});

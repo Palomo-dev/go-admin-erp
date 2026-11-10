@@ -58,6 +58,9 @@ const INTERMEDIACION: CondicionesContrato = {
   facturaRemuneracion: true,
   obligacionDueno: 'venta',
   compensacionRemuneracion: true,
+  // Ronda 5 (C.Co. art. 1277): términos obligatorios de la recibida en mandato.
+  ordenAplicacion: ['remuneracion', 'gastos_reembolsables', 'anticipos', 'derechos_frente_al_dueno'],
+  liquidacionEscrita: { medio: 'correo_electronico', plazoDias: 5 },
   riesgos: { devoluciones: 'dueno', perdidas: 'consignatario', gastos: 'consignatario' },
 };
 

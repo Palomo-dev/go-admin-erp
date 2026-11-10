@@ -49501,5 +49501,85 @@
       "pistaMiembro": "Il se peut que votre organisation n’utilise pas cette fonction. Si vous en avez besoin, demandez à un administrateur."
     },
     "resaltado": "Vous pouvez activer {modulo} ici."
+  },
+  "finanzasTributarioR5": {
+    "bandas": {
+      "reconstruidoFecha": "Date de la reconstitution : {fecha} ({zona}). Les données des parties reconstituées sont celles de cette date, pas celles du jour d’émission."
+    },
+    "motivos": {
+      "importacion_no_excluida_no_va_47": "Importation non taxée qui n’est pas exclue : la case 47 est réservée aux importations exclues",
+      "importacion_documento_no_corresponde": "Importation exclue avec un document douanier qui ne correspond pas à la modalité (ordinaire, temporaire et franchise : déclaration d’importation ; trafic postal et envoi express : bordereau signé)",
+      "importacion_base_no_coincide": "Importation exclue dont la base ne correspond pas à la valeur en douane plus les droits",
+      "correccion_declaracion_no_corregible": "Correction d’erreur : la déclaration de la période de la vente est définitive, hors du délai de correction, ou sans échéance ni caractère définitif enregistrés ; la vente reste",
+      "cierre_sin_aprobacion": "Clôture enregistrée sans l’approbation d’un second utilisateur"
+    },
+    "notas": {
+      "rte_2532_aplica": "Formulaire 2532 : applicable, car la coopérative a reçu des dons ou une coopération internationale non remboursable.",
+      "rte_2532_no_aplica": "Formulaire 2532 : non applicable ; il est attesté que la coopérative n’a reçu ni dons ni coopération internationale non remboursable.",
+      "rte_2532_por_confirmar": "Formulaire 2532 : à confirmer. Il ne s’applique que si la coopérative a reçu des dons ou une coopération internationale non remboursable."
+    },
+    "errores": {
+      "soporte_aduanero_norma_invalida": "La règle d’exclusion doit citer un article (par exemple, l’art. 424 du Code fiscal).",
+      "soporte_aduanero_documento_no_corresponde": "Le document douanier ne correspond pas à la modalité : ordinaire, temporaire et franchise exigent une déclaration d’importation ; trafic postal et envoi express, le bordereau signé.",
+      "soporte_aduanero_base_no_suma": "La base doit être la valeur en douane plus les droits.",
+      "contingencia_invalida": "Le justificatif de la contingence n’est pas valide.",
+      "consulta_cufe_invalida": "Le résultat de la consultation du CUFE/CUDE n’est pas valide.",
+      "documento_encontrado_en_dian": "La consultation a trouvé le CUFE/CUDE : la facture est bien parvenue à la DIAN et n’est pas « jamais transmise ».",
+      "vencimiento_invalido": "La date d’échéance du délai doit être postérieure à la fin de la période.",
+      "firmeza_invalida": "Indiquez si la déclaration est définitive (oui ou non).",
+      "firmeza_requiere_nota": "Indiquez comment on sait si la déclaration est définitive.",
+      "constancia_2532_requerida": "Si le formulaire 2532 ne s’applique pas, consignez ce qui a été vérifié."
+    }
+  },
+  "finanzasTercerosR5": {
+    "anticipos": {
+      "exceso": {
+        "manifestacion": "Déclaration écrite de non-imputation",
+        "manifestacionAyuda": "Pour la retenue de TVA, la personne retenue déclare par écrit qu'elle n'a pas imputé la retenue dans sa déclaration (DUR 1625 de 2016, art. 1.3.2.3.1). Elle est obligatoire avec la demande écrite.",
+        "periodoRegla": "Chaque impôt fixe la période : impôt sur le revenu, celle du remboursement (DUR 1.2.4.16) ; retenue de TVA, celle du remboursement, avec la demande et la déclaration écrites (DUR 1.3.2.3.1) ; retenue ICA, celle de la procédure de la commune."
+      },
+      "devolver": {
+        "periodoRegla": "Chaque impôt fixe la période : impôt sur le revenu, celle de l'annulation, de la rescision ou de la résolution, le solde dans les suivantes (DUR 1.2.4.8) ; retenue de TVA, celle de l'annulation, le solde seulement dans les deux périodes suivantes (DUR 1.3.2.3.1) ; retenue ICA, celle de la procédure de la commune, le solde dans les suivantes, sans limite, avec la demande écrite comme justificatif."
+      }
+    }
+  },
+  "consignacionesR5": {
+    "terminos": {
+      "compensacion": "Le contrat prévoit-il de déduire la rémunération des sommes encaissées ?",
+      "compensacionAyuda": "La copie du propriétaire ne l'indique pas : c'est le destinataire qui le déclare. Sans accord, la rémunération reste une créance sur le propriétaire.",
+      "elegir": "Choisir",
+      "si": "Oui",
+      "no": "Non",
+      "orden": "Ordre d'imputation des sommes encaissées",
+      "ordenAyuda": "Clause obligatoire du contrat (Code de commerce, art. 1277). Si la compensation est prévue, la rémunération doit figurer dans l'ordre.",
+      "ordenes": {
+        "remuneracion_primero": "Rémunération → frais remboursables → avances → droits envers le propriétaire",
+        "gastos_primero": "Frais remboursables → rémunération → avances → droits envers le propriétaire",
+        "anticipos_primero": "Avances → rémunération → frais remboursables → droits envers le propriétaire"
+      },
+      "medio": "Support de la liquidation écrite",
+      "medios": {
+        "documento_compartido": "Document partagé dans GO Admin",
+        "correo_electronico": "Courriel",
+        "documento_fisico": "Document papier signé"
+      },
+      "plazo": "Délai de remise de la liquidation (jours)",
+      "plazoAyuda": "Entre 1 et 90 jours.",
+      "errores": {
+        "orden_aplicacion": "Choisissez l'ordre d'imputation fixé par le contrat.",
+        "liquidacion_escrita": "Indiquez le support écrit et un délai de 1 à 90 jours.",
+        "compensacion": "Indiquez si le contrat prévoit la compensation."
+      }
+    },
+    "errores": {
+      "orden_aplicacion_obligatorio": "Le contrat doit fixer l'ordre d'imputation des sommes encaissées.",
+      "liquidacion_escrita_obligatoria": "Le contrat doit prévoir une liquidation écrite (support et délai).",
+      "terminos_distintos_del_documento": "Les clauses déclarées ne correspondent pas à celles de la copie du propriétaire.",
+      "cobro_obligatorio": "Indiquez l'encaissement de la facture lors duquel l'acheteur a pratiqué la retenue.",
+      "cobro_de_otra_factura": "L'encaissement choisi n'est pas un paiement réalisé de cette facture.",
+      "fecha_distinta_del_cobro": "La date de la retenue doit être celle de l'encaissement.",
+      "retencion_excede_saldo_factura": "La retenue dépasse ce que la facture doit encore : le compte client serait trop crédité.",
+      "error_desconocido": "L'opération n'a pas pu être effectuée."
+    }
   }
 }

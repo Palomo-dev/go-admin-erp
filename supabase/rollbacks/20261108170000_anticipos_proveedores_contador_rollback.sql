@@ -11,7 +11,7 @@
 -- los procedimientos de ReteICA, los contratos AIU, las equivalencias de cuenta y el detalle de cada aplicación; los asientos y pagos ya publicados quedan como están. Antes de revertir con
 -- datos, exporte esas tablas y la conciliación (fn_anticipos_proveedor_conciliacion).
 
--- 1. Funciones y disparador nuevos (rondas 1 a 4)
+-- 1. Funciones y disparador nuevos (rondas 1 a 5)
 drop trigger if exists trg_factura_compra_retencion_anticipo on public.invoice_purchase;
 drop function if exists public.fn_trg_factura_compra_retencion_anticipo();
 drop function if exists public.fn_anticipos_proveedor_conciliacion(integer, integer);
@@ -33,6 +33,10 @@ drop function if exists public.fn_reteica_procedimiento_registrar(integer, uuid,
 drop function if exists public.fn_reteica_procedimiento_exigir(integer, uuid, date, jsonb);
 drop function if exists public.fn_retencion_periodo_descuento(text, text, date, date, text);
 drop function if exists public.fn_retencion_neto_periodo(integer, text, text);
+-- Ronda 5: detalle del saldo por descontar y piso del 10 % del AIU acumulado del contrato.
+drop function if exists public.fn_retencion_saldo_pendiente_detalle(jsonb, text, numeric, jsonb);
+drop function if exists public.fn_aiu_contrato_exigir_minimo(uuid);
+drop function if exists public.fn_aiu_contrato_acumulado(uuid);
 drop function if exists public.fn_anticipo_componentes(uuid);
 drop function if exists public.fn_cliente_calidad_tributaria_guardar(integer, uuid, text, text, text[], date, date, date, text, text, date, text);
 drop function if exists public.fn_tercero_calidad_tributaria_guardar_int(integer, integer, uuid, text, text, text[], date, date, date, text, text, date, text);

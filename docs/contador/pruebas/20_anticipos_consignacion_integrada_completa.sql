@@ -1,20 +1,23 @@
 -- Pruebas en seco 20 · INTEGRADA anticipos ↔ consignación con los archivos COMPLETOS y EXACTOS (ronda 4 del Contador:
 -- «una prueba integrada con los archivos completos y exactos de consignación y anticipos, que incluya retenciones,
--- certificados, devoluciones y anulaciones entre períodos y años»). Fecha: 2026-11-09 · Proyecto taqjemqjtumhwptchcxk ·
--- SOLO org 374 (sucursal 585).
+-- certificados, devoluciones y anulaciones entre períodos y años»), REEJECUTADA para la ronda 5 (2026-11-09) con las
+-- pruebas nuevas 25 (anticipos) y 26 (consignación). Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585).
 --
 -- Una sola transacción (termina con una excepción = rollback; nada queda escrito): CARGA ejecuta, completas y exactas
 -- (md5 comprobado), TODAS las migraciones sin aplicar que necesitan estos archivos, en orden de versión: 20261108120500
 -- → 121000 → 140500 → 160000 → 160500 → 165000 → 170000. Después corren, en la MISMA transacción y sobre el mismo estado,
--- los cuerpos completos de las pruebas 11 (anticipos, rondas 1-4), 21 (anticipos, ronda 4), 15 (consignación, ronda 3),
--- 22 (consignación, ronda 4) y el cuerpo propio de esta: anticipo al consignante cruzado con el mandato y devuelto por
--- línea; certificado contra libros por NIT; anulaciones por error dentro de un período (octubre) y entre años
--- (diciembre de 2025 → enero de 2026); retenciones de consignación practicadas en octubre y en diciembre de 2025,
--- liquidaciones anuladas en noviembre y reliquidadas. Los hechos anteriores se simulan fechando, como administrador,
--- los anticipos, sus retenciones y las porciones vendidas.
+-- los cuerpos completos de las pruebas 11 (anticipos, rondas 1-4), 21 (anticipos, ronda 4), 25 (anticipos, ronda 5),
+-- 15 (consignación, ronda 3), 22 (consignación, ronda 4), 26 (consignación, ronda 5) y el cuerpo propio de esta: anticipo
+-- al consignante cruzado con el mandato y devuelto por línea; certificado contra libros por NIT; anulaciones por error
+-- dentro de un período (octubre) y entre años (diciembre de 2025 → enero de 2026); retenciones de consignación
+-- practicadas en octubre y en diciembre de 2025 con el cobro de su factura (ronda 5), liquidaciones anuladas en
+-- noviembre y reliquidadas. Los hechos anteriores se simulan fechando, como administrador, los anticipos, sus
+-- retenciones, las porciones vendidas y los cobros.
 -- Resultado: 20_anticipos_consignacion_integrada_completa.resultado.txt
 
 begin;
+-- El día de la prueba es el de la organización (America/Bogota): current_date no depende de la hora UTC de la corrida.
+set local timezone to 'America/Bogota';
 
 -- ════ AYUDAS (solo esta sesión) ════════════════════════════════════════════════════════════════════════════
 create temp table r (n serial primary key, prueba text default current_setting('dry.prueba', true), caso text, verificacion text, esperado text,
@@ -56,13 +59,13 @@ grant execute on function pg_temp.mover(integer, integer, integer, text, numeric
 select set_config('dry.prueba', 'carga', true);
 create temp table carga (n int, archivo text, md5 text, partes text[]);
 insert into carga values
-  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['5a3ad4f516169849e63ea85a06d6409d', '9663bf553ed7663c7dddd1bb69f7b066']),
-  (2, '20261108121000_consignaciones', 'd2a58b49b6016488ba3287a48511d4d5', array['01d40736f59b0326331a5c87b5c9aaaf', '43d4449c092a8d952dbfc7baa691382c', '0b6ff32c6c2ac6700ffc185b653bf99b', '19c810fa6720bed9fbcd0946720e7db3', '01c2f9b75c3a609226b6bdee5c0bb7a7', '7e71e8c4e1bff5daf3784ae3c833ff37', '6be2815156fc03f855f47989b13aa5e8', '659a3939293d6235d15a78f8ca995413']),
+  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['74b48fc99c0a3a3b010413db8031e675', '948d61028cb34db074d08c12eca2edaf', '6332a1eaafa850e04255cbe1d4c790db']),
+  (2, '20261108121000_consignaciones', 'f52c0de6f53856fc9dd38bb5b3403809', array['d2aa4c6725204badc5f14793d54b0da0', 'a8b60ed8327e8bdf4a09a5749389bd0e', 'cb2daffb5506b6d1048c13cb0ef67cde', '2e060edf17d826a0260b29ebe268bb9c', '06c7eacadb8c897ab3d6c5e06763122a', '5f884aa2747373581edd9337f2f14b93', 'bbe2fedfe558459e35157acd8b4c26e9', 'ee0b275499b8c7e42d518f63a10cc084', 'ad04a330664bc68fa5729cf07f710a3d', '88fd3775f77f5c1fa74aa39768fee054', '0691b64cb50fdcf7c490b376aadfbb04', 'cecd90018184f26d34a949cb1cdcf644', '48cdef4e260198970fc32c7289e2e1c3', 'e12361f82a962fc091621ec670802cec', '7ef44ccb92192d743db7bec3bc3849e3']),
   (3, '20261108140500_responsabilidades_fiscales_en', '4b00bf10bf99ff2a97e2e89ff0480811', array['4b00bf10bf99ff2a97e2e89ff0480811']),
-  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['85fd17321a7e85d85a58916cb2f84c95']),
-  (5, '20261108160500_tributario_perfil_renta_iva', 'c83b8a50b6342e65ee5bf3f993847b79', array['16de3178aa8a2cc01d9b2ed4be288c78', '282e5b104a758b88936d2a684742eed0']),
-  (6, '20261108165000_tarifas_precision_exacta', '28e47f6353ee4102463b7b63dca057be', array['28e47f6353ee4102463b7b63dca057be']),
-  (7, '20261108170000_anticipos_proveedores_contador', 'ca6171f8dfbc5cb11ec40a831ea589df', array['a2fce547e464f7bfe71175e40038af04', 'aa4c3b57a749d53c66506a7b4d7d6338', '05b9412ef8fb162a9566189e4313073b', 'cb2d8d5c9a890e919cdebac05283c89f', 'b58622a7c223bd115e1d404290cee1c7', '863d10ed9ec437aca7b4d06f785d0392', '073ea2e870c4320f8c7fb7b5a09317fd', '2d4e4c263c074261594198c9946abc2f', 'ebfd91b7b31edcf53d2b67585c26723b']);
+  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['a293fbc0aadf7b33b72d1c5d4d824fad', '3a0fbf1e5d8f8cace37a3ef193763cd9']),
+  (5, '20261108160500_tributario_perfil_renta_iva', '1d80345bde9c6d9fd378bc10e8c43a5e', array['6b459b8cf3f78457b04c2786625a08ac', '6b925b7a8d549f72fa09598adee2d903', '80df677e5aa15aa7e4c27c91b322beb7']),
+  (6, '20261108165000_tarifas_precision_exacta', '1ec6641bdf74dfc15163d0753982309f', array['1ec6641bdf74dfc15163d0753982309f']),
+  (7, '20261108170000_anticipos_proveedores_contador', '0c5079355e6c5ab55dd6b14e1e484cea', array['63f6b0c4aca0275295b79fd9c41924f8', 'eb4a4e52a897e7c01209d3725650d0fb', 'd345b3fd61afb1cbdfbb05fc69fe9bac', 'ac7cfef25367cf788f2de7b5698e617f', '45ca6efa4c336768edce64fd6816428d', '651917641ef050acf2afdc2826885dea', '896232d306be97fa362590dbd56de655', '6e27c30d840c1dcdc6c84165526c334d', '8f13afc4f5934c7fd9f778f91a792d99', '521574537319cfb8c790a4af21099265', 'fecada69cc621c6c66475858378a7697', '03f599837ceb3cbaf18680c4781b0421', '8df4262b2efb2ba15458f77e87758b3d', '1f285ec7b28e57d8bbd1f39846705459', '4ca38155375d59428529d5dc111ed302', '0240018dc5742894c78d3cc94f65ccb4']);
 do $carga$
 declare m record; s text;
 begin
@@ -1157,7 +1160,8 @@ begin
     (res ->> 'retencion_revertida') || ' · '
     || (select periodo_descuento from public.supplier_advance_withholding_ajustes where advance_id = x1 and clase = 'retefuente' and tipo = 'devolucion') || ' · '
     || (select periodo_descuento from public.supplier_advance_withholding_ajustes where advance_id = x1 and clase = 'reteica' and tipo = 'devolucion'));
-  perform pg_temp.chk('B4d la regla del período queda escrita por impuesto', 'retefuente:DUR 1.2.4.17 · reteica:periodo_siguiente_al_reintegro',
+  -- Ronda 5: la anulación en renta es el art. 1.2.4.8 del DUR (la ronda 4 citaba un artículo que no trata devoluciones).
+  perform pg_temp.chk('B4d la regla del período queda escrita por impuesto', 'retefuente:DUR 1.2.4.8 · reteica:periodo_siguiente_al_reintegro',
     (select string_agg(clase || ':' || split_part(regla_periodo, ':', 1), ' · ' order by clase) from public.supplier_advance_withholding_ajustes
       where advance_id = x1 and tipo = 'devolucion' and clase in ('retefuente', 'reteica')));
   -- Reintegro de reteICA en exceso: 9.660 − 966 = 8.694 vigente; la correcta era 4,14 ‰ sobre 900.000 = 3.726 → exceso 4.968.
@@ -1320,6 +1324,242 @@ begin
       where je.organization_id = 374 and je.id > current_setting('d21.je0')::int));
 end $e21$;
 
+-- ════ CUERPO: 25.sql ════
+-- ════ 25 · Anticipos, ronda 5: período de la reteIVA en reversiones (DUR 1.3.2.3.1: el de la anulación y el saldo en los
+--      dos siguientes), citas corregidas (renta: 1.2.4.8 y 1.2.4.16), reteIVA en exceso con solicitud escrita y
+--      manifestación de no imputación, excedente de reteICA sin límite de períodos con la solicitud guardada, y piso del
+--      10 % del AIU por operación y acumulado del contrato ════
+select set_config('dry.prueba', '25', true);
+-- Si corre después de otras pruebas (integrada), los controles de cuadre se vuelven a diferir como en una RPC.
+set constraints all deferred;
+reset role;
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+do $s25$
+declare
+  v_g int; v_ica uuid;
+begin
+  insert into public.chart_of_accounts (account_code, organization_id, name, type, parent_code, is_active, naturaleza, es_movimiento, requiere_tercero, requiere_centro_costo)
+  select x.code, 374, x.name, c.type, x.parent, true, c.naturaleza, x.mov, x.mov, c.requiere_centro_costo
+    from public.chart_of_accounts c, (values ('133005', 'A proveedores', '1330', false), ('13300501', 'Anticipos a proveedores nacionales', '133005', true)) x(code, name, parent, mov)
+   where c.organization_id = 374 and c.account_code = '1330'
+     and not exists (select 1 from public.chart_of_accounts y where y.organization_id = 374 and y.account_code = x.code);
+  insert into public.configuracion_contable (organization_id, branch_id, clave, account_code)
+  select 374, null, 'anticipos_proveedores', '13300501'
+   where not exists (select 1 from public.configuracion_contable where organization_id = 374 and clave = 'anticipos_proveedores');
+  update public.configuracion_contable set account_code = '13300501' where organization_id = 374 and clave = 'anticipos_proveedores';
+  if exists (select 1 from public.organization_tax_profiles where organization_id = 374) then
+    update public.organization_tax_profiles set requiere_revision = false, agente_retencion = true, agente_retencion_iva = null, gran_contribuyente = null,
+           responsabilidades = array['O-13', 'O-48'] where organization_id = 374;
+  else
+    insert into public.organization_tax_profiles (organization_id, vigente_desde, regimen, responsabilidades, agente_retencion, responsable_inc, periodicidad_iva)
+    values (374, date '2026-01-01', 'ordinario', array['O-13', 'O-48'], true, false, 'bimestral');
+  end if;
+  -- Segundo miembro de la org 374 (el que valida como Contador: nunca quien registró la regla).
+  insert into public.organization_members (organization_id, user_id, role_id, is_active)
+  select 374, o.owner_user_id, 2, true from public.organizations o
+   where o.id = 137 and not exists (select 1 from public.organization_members m where m.organization_id = 374 and m.user_id = o.owner_user_id);
+  insert into public.suppliers (organization_id, name, nit, supplier_type, tax_regime, fiscal_responsibilities)
+  values (374, 'Proveedor de prueba 25-G', '900000251', 'company', 'comun', array['O-48']) returning id into v_g;
+  insert into public.reteica_reglas (organization_id, municipality_id, actividad, tarifa_por_mil, norma, vigente_desde)
+  values (374, '6c5bba87-87af-4e41-9b2d-5381d7a3b04f', 'Servicios (prueba 25)', 9.66, 'Acuerdo municipal de ReteICA (prueba 25)', date '2025-01-01')
+  returning id into v_ica;
+  perform set_config('d25.g', v_g::text, true);
+  perform set_config('d25.ica', v_ica::text, true);
+  perform set_config('d25.r4', (select ot.id::text from public.organization_taxes ot join public.tax_templates tt on tt.id = ot.template_id
+                                 where ot.organization_id = 374 and tt.code = 'RETE_4'), true);
+  perform set_config('d25.u', json_build_object('sub', (select owner_user_id from public.organizations where id = 374), 'role', 'authenticated')::text, true);
+  perform set_config('d25.u2', json_build_object('sub', (select owner_user_id from public.organizations where id = 137), 'role', 'authenticated')::text, true);
+  perform set_config('d25.je0', (select coalesce(max(id), 0)::text from public.journal_entries where organization_id = 374), true);
+end $s25$;
+-- El acumulado AIU del contrato es interno (sin EXECUTE para authenticated): la prueba lo lee como administrador.
+create function pg_temp.aiu_acum(c uuid) returns jsonb language sql security definer set search_path = public, pg_temp as $$ select public.fn_aiu_contrato_acumulado(c) $$;
+grant execute on function pg_temp.aiu_acum(uuid) to authenticated;
+
+-- ── P · Período de descuento por impuesto (ronda 5, respuesta 9 y primera cita que corrige) ─────────────────────────
+do $p25$
+declare r jsonb;
+begin
+  r := public.fn_retencion_periodo_descuento('retefuente', 'hecho', date '2026-10-20', date '2026-11-09');
+  perform pg_temp.chk('P1 renta, anulación: DUR 1.2.4.8, período del hecho y el saldo en los siguientes, sin límite', 'DUR 1.2.4.8 · 2026-10 · siguientes_sin_limite',
+    split_part(r ->> 'regla', ':', 1) || ' · ' || (r ->> 'periodo') || ' · ' || (r ->> 'saldo'));
+  r := public.fn_retencion_periodo_descuento('retefuente', 'exceso', date '2026-10-20', date '2026-11-09');
+  perform pg_temp.chk('P2 renta, exceso: DUR 1.2.4.16, período del reintegro', 'DUR 1.2.4.16 · 2026-11', split_part(r ->> 'regla', ':', 1) || ' · ' || (r ->> 'periodo'));
+  r := public.fn_retencion_periodo_descuento('reteiva', 'hecho', date '2026-10-20', date '2026-11-09');
+  perform pg_temp.chk('P3 reteIVA, anulación: DUR 1.3.2.3.1, el período de la anulación y el saldo en los DOS siguientes',
+    'DUR 1.3.2.3.1 · 2026-10 · dos_siguientes · ["2026-11", "2026-12"]',
+    split_part(r ->> 'regla', ':', 1) || ' · ' || (r ->> 'periodo') || ' · ' || (r ->> 'saldo') || ' · ' || (r -> 'periodos_saldo')::text);
+  r := public.fn_retencion_periodo_descuento('reteiva', 'hecho', date '2026-12-05', date '2026-12-10');
+  perform pg_temp.chk('P4 reteIVA anulada en diciembre: los dos períodos siguientes cruzan de año', '2026-12 · ["2027-01", "2027-02"]',
+    (r ->> 'periodo') || ' · ' || (r -> 'periodos_saldo')::text);
+  r := public.fn_retencion_periodo_descuento('reteiva', 'exceso', date '2026-10-20', date '2026-11-09');
+  perform pg_temp.chk('P5 reteIVA en exceso: período del reintegro; el saldo queda por confirmar con el Contador', 'DUR 1.3.2.3.1 · 2026-11 · por_confirmar',
+    split_part(r ->> 'regla', ':', 1) || ' · ' || (r ->> 'periodo') || ' · ' || (r ->> 'saldo'));
+  r := public.fn_retencion_periodo_descuento('reteica', 'hecho', date '2026-10-20', date '2026-11-09', 'periodo_siguiente_al_reintegro');
+  perform pg_temp.chk('P6 ReteICA: la regla del procedimiento municipal; el saldo en los siguientes, sin límite de períodos',
+    'periodo_siguiente_al_reintegro · 2026-12 · siguientes_sin_limite', (r ->> 'regla') || ' · ' || (r ->> 'periodo') || ' · ' || (r ->> 'saldo'));
+  perform pg_temp.err('P7 una clase desconocida no recibe período', 'clase_retencion_invalida',
+    'select public.fn_retencion_periodo_descuento(''reteinc'', ''hecho'', current_date, current_date)');
+  -- La cita retirada se arma por partes para que esta prueba no la contenga.
+  perform pg_temp.chk('P8 ninguna función cargada cita el artículo que la ronda 4 usaba para las devoluciones', '0',
+    (select count(*)::text from pg_proc where prosrc like '%1.2.4.' || '17%'));
+end $p25$;
+-- Las reglas del período son internas (sin EXECUTE para authenticated): P corre como administrador; lo demás, como el usuario.
+select set_config('request.jwt.claims', current_setting('d25.u'), true);
+set local role authenticated;
+
+-- ── E · reteIVA en exceso: solicitud escrita y manifestación escrita de no imputación (dos soportes obligatorios) ──
+do $e25$
+declare
+  g int := current_setting('d25.g')::int; r4 uuid := current_setting('d25.r4')::uuid; ica uuid := current_setting('d25.ica')::uuid;
+  x uuid; res jsonb; det text;
+  sop jsonb := jsonb_build_object('calculo', 'La tarifa de reteIVA aplicable era 10 % del IVA', 'certificado', 'Certificado corregido 25-1',
+                                  'solicitud', 'Solicitud escrita del proveedor 25-1', 'pruebas', 'Factura y RUT del proveedor');
+begin
+  res := public.fn_anticipo_proveedor_registrar(g, 585, 1190000, 'transfer', 'pago_anticipado_precio', 'p25-X1', 374, 19, r4, ica, null, 'TRF-25-X1', null, null, true);
+  x := (res ->> 'anticipo_id')::uuid;
+  perform set_config('d25.x1', x::text, true);
+  perform pg_temp.chk('E0 anticipo con reteIVA practicada al girar (15 % del IVA de 190.000)', '28500',
+    (select round(w.valor)::text from public.supplier_advance_withholdings w where w.advance_id = x and w.clase = 'reteiva'));
+  begin
+    perform public.fn_anticipo_retencion_exceso_reintegrar(x, 'reteiva', 190000, 10, 'transfer', 'p25-E1', sop, null, false, 'Tarifa de reteIVA equivocada', 374);
+    perform pg_temp.chk('E1 reteIVA en exceso sin la manifestación escrita de no imputación: bloqueado', 'soporte_procedimiento_obligatorio · manifestacion_no_imputacion', 'sin error');
+  exception when others then
+    get stacked diagnostics det = pg_exception_detail;
+    perform pg_temp.chk('E1 reteIVA en exceso sin la manifestación escrita de no imputación: bloqueado', 'soporte_procedimiento_obligatorio · manifestacion_no_imputacion',
+      sqlerrm || ' · ' || coalesce(det, ''));
+  end;
+  res := public.fn_anticipo_retencion_exceso_reintegrar(x, 'reteiva', 190000, 10, 'transfer', 'p25-E2',
+           sop || jsonb_build_object('manifestacion_no_imputacion', 'Manifestación escrita del proveedor: no imputó la retención en su declaración de IVA'),
+           null, false, 'Tarifa de reteIVA equivocada', 374);
+  perform pg_temp.chk('E2 con los dos soportes: reintegro 28.500 − 19.000 = 9.500 en el período del reintegro (DUR 1.3.2.3.1)',
+    '9500.00 · ' || to_char(now() at time zone 'America/Bogota', 'YYYY-MM') || ' · DUR 1.3.2.3.1',
+    (res ->> 'reintegro') || ' · ' || (res ->> 'periodo_descuento') || ' · ' || split_part(res ->> 'regla_periodo', ':', 1));
+  perform pg_temp.chk('E3 el ajuste guarda la solicitud y la manifestación como soportes', 'true',
+    (select (a.soportes ? 'solicitud' and a.soportes ? 'manifestacion_no_imputacion')::text from public.supplier_advance_withholding_ajustes a
+      where a.advance_id = x and a.tipo = 'retencion_excesiva'));
+  perform pg_temp.err('E4 renta en exceso sin solicitud ni pruebas: bloqueado (DUR 1.2.4.16)', 'soporte_procedimiento_obligatorio',
+    format('select public.fn_anticipo_retencion_exceso_reintegrar(%L, %L, 1000000, 2.5, %L, %L, %L::jsonb, null, false, %L, 374)', x, 'retefuente', 'transfer', 'p25-E4',
+           '{"calculo":"Cálculo","certificado":"Certificado"}', 'Tarifa equivocada'));
+end $e25$;
+
+-- ── D · Anulación de un hecho de un período sin retenciones: el saldo de cada impuesto, con su regla ───────────────
+do $d25a$
+declare res jsonb;
+begin
+  res := public.fn_anticipo_proveedor_registrar(current_setting('d25.g')::int, 585, 119000, 'transfer', 'pago_anticipado_precio', 'p25-X2', 374, 19,
+           current_setting('d25.r4')::uuid, current_setting('d25.ica')::uuid, null, 'TRF-25-X2', null, null, true);
+  perform set_config('d25.x2', res ->> 'anticipo_id', true);
+end $d25a$;
+reset role;
+-- El anticipo era de octubre de 2025 (se simula fechándolo como administrador); la resciliación es de noviembre de 2025.
+update public.supplier_advances set created_at = timestamptz '2025-10-15 10:00-05' where id = current_setting('d25.x2')::uuid;
+update public.supplier_advance_withholdings set fecha = timestamptz '2025-10-15 10:00-05' where advance_id = current_setting('d25.x2')::uuid;
+select set_config('request.jwt.claims', current_setting('d25.u'), true);
+set local role authenticated;
+do $d25b$
+declare
+  x2 uuid := current_setting('d25.x2')::uuid; pb uuid; res jsonb;
+  sop jsonb := jsonb_build_object('calculo', 'Retenciones practicadas al girar', 'certificado', 'Certificado anulado 25-2',
+                                  'ica', jsonb_build_object('solicitud', 'Radicado 25-2', 'certificado', 'Certificado ICA 25-2', 'prueba_pago', 'Comprobante 25-2',
+                                                            'liquidacion_corregida', 'Liquidación 25-2'));
+begin
+  -- Procedimiento de ReteICA del municipio, validado por otro usuario (si la prueba 21 ya lo dejó en esta transacción, se usa ese).
+  if not exists (select 1 from public.reteica_procedimientos p where p.organization_id = 374 and p.municipality_id = '6c5bba87-87af-4e41-9b2d-5381d7a3b04f'
+                    and p.estado = 'validado') then
+    pb := public.fn_reteica_procedimiento_registrar(374, '6c5bba87-87af-4e41-9b2d-5381d7a3b04f', 'Acuerdo municipal de ReteICA (prueba 25)',
+            'Solicitud escrita del afectado ante el agente retenedor', array['prueba_pago', 'liquidacion_corregida'], 'Reintegro por transferencia al proveedor',
+            'Certificado de ReteICA corregido del bimestre', 'periodo_siguiente_al_reintegro', 'Lo que no alcance se descuenta en los períodos siguientes', date '2026-01-01');
+    perform set_config('request.jwt.claims', current_setting('d25.u2'), true);
+    perform public.fn_tributario_regla_validar('reteica_procedimiento', pb, 'validado', 'Procedimiento del municipio revisado contra el acuerdo municipal', 'Concepto ICA-25', 374);
+    perform set_config('request.jwt.claims', current_setting('d25.u'), true);
+  end if;
+  res := public.fn_anticipo_proveedor_devolver(x2, 111184, 'transfer', 'Se rescindió por mutuo acuerdo el contrato de octubre de 2025', 'p25-D1', 374, null, 'Consignación 25-2',
+           jsonb_build_object('causa', 'operacion_anulada', 'requiere_correccion', true, 'soportes', sop,
+                              'hecho', jsonb_build_object('tipo', 'resciliacion', 'documento', 'Acta de resciliación 25-2', 'fecha', date '2025-11-20')));
+  perform pg_temp.chk('D1 períodos: renta e IVA en el de la resciliación; ReteICA según su procedimiento',
+    'reteiva 2025-11 · reteica ' || to_char(date_trunc('month', now() at time zone 'America/Bogota') + interval '1 month', 'YYYY-MM') || ' · retefuente 2025-11',
+    (select string_agg(a.clase || ' ' || a.periodo_descuento, ' · ' order by a.clase desc) from public.supplier_advance_withholding_ajustes a where a.advance_id = x2));
+  perform pg_temp.chk('D2 la regla del período queda escrita con su artículo', 'retefuente:DUR 1.2.4.8 · reteiva:DUR 1.3.2.3.1',
+    (select string_agg(a.clase || ':' || split_part(a.regla_periodo, ':', 1), ' · ' order by a.clase) from public.supplier_advance_withholding_ajustes a
+      where a.advance_id = x2 and a.clase in ('retefuente', 'reteiva')));
+  perform pg_temp.chk('D3 reteIVA: el saldo solo en los DOS períodos siguientes', 'dos_siguientes · ["2025-12", "2026-01"] · 2 · 2850',
+    (select (p.detalle ->> 'saldo') || ' · ' || (p.detalle -> 'periodos_saldo')::text || ' · ' || (p.detalle ->> 'limite_periodos') || ' · ' || round((p.detalle ->> 'por_descontar')::numeric)
+       from public.anticipo_pendientes p where p.advance_id = x2 and p.tipo = 'descuento_retencion_siguientes_periodos' and p.detalle ->> 'clase' = 'reteiva'));
+  perform pg_temp.chk('D4 renta: el saldo en los períodos siguientes, sin límite', 'siguientes_sin_limite · sin límite · 4000',
+    (select (p.detalle ->> 'saldo') || ' · ' || coalesce(p.detalle ->> 'limite_periodos', 'sin límite') || ' · ' || round((p.detalle ->> 'por_descontar')::numeric)
+       from public.anticipo_pendientes p where p.advance_id = x2 and p.tipo = 'descuento_retencion_siguientes_periodos' and p.detalle ->> 'clase' = 'retefuente'));
+  perform pg_temp.chk('D5 ReteICA: el excedente pendiente en los siguientes, sin límite, con la solicitud escrita guardada', 'siguientes_sin_limite · sin límite · Radicado 25-2',
+    (select (p.detalle ->> 'saldo') || ' · ' || coalesce(p.detalle ->> 'limite_periodos', 'sin límite') || ' · ' || coalesce(p.detalle ->> 'soporte_solicitud', '-')
+       from public.anticipo_pendientes p where p.advance_id = x2 and p.tipo = 'descuento_retencion_siguientes_periodos' and p.detalle ->> 'clase' = 'reteica'));
+  perform pg_temp.chk('D6 ningún pendiente de ReteICA sin la solicitud escrita', '0',
+    (select count(*)::text from public.anticipo_pendientes p where p.organization_id = 374 and p.tipo = 'descuento_retencion_siguientes_periodos'
+       and p.detalle ->> 'clase' = 'reteica' and coalesce(p.detalle ->> 'soporte_solicitud', '') = '' and p.creado_en = now()));
+end $d25b$;
+
+-- ── A · Piso del 10 % del AIU (art. 462-1) por operación y acumulado del contrato (respuesta 13) ────────────────────
+do $a25$
+declare
+  g int := current_setting('d25.g')::int; r4 uuid := current_setting('d25.r4')::uuid; ica uuid := current_setting('d25.ica')::uuid;
+  ct jsonb := '{"numero":"A-25","fecha":"2026-01-05","archivo":"contratos/a-25.pdf","valor":2000000}';
+  c462 jsonb := '{"aiu_discriminado":true,"requisitos_prestador":"Empresa de aseo con el AIU discriminado en el contrato"}';
+  c1 uuid; e jsonb; res jsonb; a1 uuid; q text;
+  ica_sop jsonb := jsonb_build_object('solicitud', 'Radicado 25-3', 'certificado', 'Certificado ICA 25-3', 'prueba_pago', 'Comprobante 25-3', 'liquidacion_corregida', 'Liquidación 25-3');
+begin
+  c1 := public.fn_aiu_contrato_registrar(374, g, 'servicios_462_1', 'Servicio de aseo de la sede (prueba 25)', 'aseo', ct, 'Estatuto Tributario, art. 462-1', c462,
+                                         'base_especial', 'valor_total', date '2026-01-01');
+  perform set_config('request.jwt.claims', current_setting('d25.u2'), true);
+  perform public.fn_tributario_regla_validar('aiu_contrato', c1, 'validado', 'Servicio de aseo comprendido en el art. 462-1; AIU discriminado; prestador habilitado', 'Concepto C-25-1', 374);
+  perform set_config('request.jwt.claims', current_setting('d25.u'), true);
+  -- Operación 1: A + I + U = 200.000 (20 % de 1.000.000).
+  res := public.fn_anticipo_proveedor_registrar(g, 585, 1038000, 'transfer', 'pago_anticipado_precio', 'p25-A1', 374, 19, r4, ica, null, 'TRF-25-A1', null,
+           '[{"tratamiento":"aiu_costo_directo","base":800000},{"tratamiento":"aiu_administracion","base":100000},{"tratamiento":"aiu_imprevistos","base":50000},{"tratamiento":"aiu_utilidad","base":50000}]',
+           true, c1);
+  a1 := (res ->> 'anticipo_id')::uuid;
+  e := (select retenciones_evaluacion from public.supplier_advances where id = a1);
+  perform pg_temp.chk('A1 operación 1: base del IVA = A + I + U (20 %), sin piso; acumulado previo del contrato en cero',
+    '200000.00 · false · false · 0', (e -> 'aiu' ->> 'base_iva') || ' · ' || (e -> 'aiu' ->> 'minimo_10_aplicado') || ' · ' || (e -> 'aiu' ->> 'minimo_10_contrato_aplicado')
+      || ' · ' || (e -> 'aiu' -> 'acumulado_previo' ->> 'valor'));
+  -- Operación 2 (evaluada): A + I + U = 90.000 (9 %): el piso de la operación sube la base a 100.000; el acumulado ya cumple.
+  e := public.fn_anticipo_proveedor_evaluar_retenciones(374, g, 'pago_anticipado_precio', 1019000, 19, r4, ica,
+         '[{"tratamiento":"aiu_costo_directo","base":910000},{"tratamiento":"aiu_administracion","base":30000},{"tratamiento":"aiu_imprevistos","base":30000},{"tratamiento":"aiu_utilidad","base":30000}]', true, c1);
+  perform pg_temp.chk('A2 operación 2: piso del 10 % de la operación (90.000 → 100.000); el acumulado (1.000.000 · 200.000) ya cumple',
+    '100000.00 · true · false · 90000 · 1000000 · 200000',
+    (e -> 'aiu' ->> 'base_iva') || ' · ' || (e -> 'aiu' ->> 'minimo_10_aplicado') || ' · ' || (e -> 'aiu' ->> 'minimo_10_contrato_aplicado') || ' · '
+      || round((e -> 'aiu' ->> 'aiu_declarado')::numeric) || ' · ' || round((e -> 'aiu' -> 'acumulado_previo' ->> 'valor')::numeric) || ' · '
+      || round((e -> 'aiu' -> 'acumulado_previo' ->> 'base_iva')::numeric));
+  -- Devolver SOLO las líneas de A, I y U de la operación 1 la dejaría con base del IVA 0 sobre 800.000: se rechaza.
+  q := 'select public.fn_anticipo_proveedor_devolver(%L, %s, %L, %L, %L, 374, null, %L, %L::jsonb)';
+  perform pg_temp.err('A3 una devolución que rompe el piso del 10 % de la operación se rechaza', 'aiu_minimo_10_operacion',
+    format(q, a1, 222368, 'transfer', 'Resolución parcial del AIU', 'p25-A3', 'Consignación 25-3',
+           jsonb_build_object('causa', 'resolucion_parcial', 'requiere_correccion', false,
+             'hecho', jsonb_build_object('tipo', 'resolucion_mutuo_acuerdo', 'documento', 'Resolución parcial 25-3', 'fecha', (now() at time zone 'America/Bogota')::date),
+             'lineas', '[{"componente":"1","base":100000,"iva":19000},{"componente":"2","base":50000,"iva":9500},{"componente":"3","base":50000,"iva":9500}]'::jsonb,
+             'soportes', jsonb_build_object('calculo', 'Líneas de AIU resueltas', 'certificado', 'Certificado corregido 25-3', 'ica', ica_sop))));
+  -- Devolver la mitad del costo directo mantiene la proporción (600.000 con base 200.000): procede.
+  res := public.fn_anticipo_proveedor_devolver(a1, 396136, 'transfer', 'Resolución parcial del costo directo', 'p25-A4', 374, null, 'Consignación 25-4',
+           jsonb_build_object('causa', 'resolucion_parcial', 'requiere_correccion', false,
+             'hecho', jsonb_build_object('tipo', 'resolucion_mutuo_acuerdo', 'documento', 'Resolución parcial 25-4', 'fecha', (now() at time zone 'America/Bogota')::date),
+             'lineas', '[{"componente":"0","base":400000,"iva":0}]'::jsonb,
+             'soportes', jsonb_build_object('calculo', 'Mitad del costo directo resuelta', 'certificado', 'Certificado corregido 25-4', 'ica', ica_sop)));
+  perform pg_temp.chk('A4 devolución del costo directo que mantiene el piso (por operación y acumulado): procede; acumulado 600.000 · 200.000',
+    '3864.00 · 600000 · 200000', (res ->> 'retencion_revertida') || ' · ' || round((pg_temp.aiu_acum(c1) ->> 'valor')::numeric) || ' · '
+      || round((pg_temp.aiu_acum(c1) ->> 'base_iva')::numeric));
+  -- Una operación que lleva el acumulado por encima del valor del contrato (600.000 + 1.500.000 > 2.000.000) queda pendiente.
+  e := public.fn_anticipo_proveedor_evaluar_retenciones(374, g, 'pago_anticipado_precio', 1538000, 19, r4, ica,
+         '[{"tratamiento":"aiu_costo_directo","base":1300000},{"tratamiento":"aiu_administracion","base":100000},{"tratamiento":"aiu_imprevistos","base":50000},{"tratamiento":"aiu_utilidad","base":50000}]', true, c1);
+  perform pg_temp.chk('A5 operación que supera el valor del contrato: las retenciones quedan pendientes (no se presume)', 'true · aiu_excede_valor_contrato',
+    (e ->> 'pendiente') || ' · ' || (e -> 'clases' -> 0 ->> 'motivo'));
+end $a25$;
+reset role;
+do $z25$
+begin
+  perform pg_temp.chk('Z1 asientos de la prueba 25: todos cuadran; ninguno en 1330', 'true · 0',
+    (select bool_and(t.d = t.c)::text || ' · ' || sum(t.en_1330)::text from public.journal_entries je
+       join (select journal_entry_id, sum(debit) d, sum(credit) c, count(*) filter (where account_code = '1330') en_1330 from public.journal_lines group by 1) t
+         on t.journal_entry_id = je.id
+      where je.organization_id = 374 and je.id > current_setting('d25.je0')::int));
+end $z25$;
+
 -- ════ CUERPO: 15.sql ════
 select set_config('dry.prueba', '15', true);
 reset role;
@@ -1392,7 +1632,10 @@ declare
 begin
   t := jsonb_build_object('contrato','intermediacion','condicion','agente','valoracion','costo_acreditado','precio_modo','minimo',
     'remuneracion_modo','porcentaje','base_comision','precio_pactado','reconocimiento','al_vender','factura_remuneracion',true,
-    'obligacion_dueno','venta','compensacion_remuneracion',true,'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001');
+    'obligacion_dueno','venta','compensacion_remuneracion',true,'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001',
+    -- Ronda 5 (C.Co. art. 1277): orden de aplicación y liquidación por escrito, términos obligatorios del contrato recibido.
+    'orden_aplicacion',jsonb_build_array('remuneracion','gastos_reembolsables','anticipos','derechos_frente_al_dueno'),
+    'liquidacion_escrita',jsonb_build_object('medio','correo_electronico','plazo_dias',5));
   lin := jsonb_build_array(jsonb_build_object('product_id',p1,'qty',10,'precio',60000,'costo_acreditado',40000));
 
   -- Ronda 2, punto 1: contrapartida del grupo 94 DEFINIDA
@@ -1519,7 +1762,7 @@ begin
   perform pg_temp.chk('T10d cruce: monto / saldo del anticipo', '50000.00/50000.00', (r->>'monto') || '/' || (r->>'saldo_anticipo'));
 
   -- Ronda 2, punto 8: entregada sin 1465 ni asiento
-  te := t - 'valoracion' - 'cuenta_recaudo';
+  te := t - 'valoracion' - 'cuenta_recaudo' - 'orden_aplicacion' - 'liquidacion_escrita';
   r := fn_consignacion_entregar(c137, b, jsonb_build_array(jsonb_build_object('product_id',p3,'qty',2,'precio',35000)), 10, te, 'k-e1', o, null, null);
   ne := r->>'nota_id';
   perform set_config('dry.ne', ne::text, true);
@@ -1576,6 +1819,7 @@ select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 do $s22$
 declare
   m1 int; m2 int; b1 uuid; b2 uuid; b3 uuid; p1 int; p2 int; p3 int; ica uuid; sa uuid; sc uuid; sn2 uuid; inv1 uuid; inv2 uuid; inv3 uuid;
+  v_pg3 uuid;
   u uuid := (select owner_user_id from organizations where id = 374);
 begin
   insert into chart_of_accounts (organization_id, account_code, name, type, centro_costo_modo, parent_code, es_movimiento)
@@ -1635,6 +1879,10 @@ begin
   perform set_config('d22.p1', p1::text, true); perform set_config('d22.p2', p2::text, true); perform set_config('d22.p3', p3::text, true);
   perform set_config('d22.sa', sa::text, true); perform set_config('d22.sc', sc::text, true); perform set_config('d22.sn2', sn2::text, true);
   perform set_config('d22.inv1', inv1::text, true); perform set_config('d22.inv2', inv2::text, true); perform set_config('d22.inv3', inv3::text, true);
+  -- Ronda 5: el cobro de la factura 22-3 (el comprador paga 71.400 − reteIVA 1.710 = 69.690); la retención se registra con él.
+  insert into payments (organization_id, branch_id, source, source_id, method, amount, currency, status, created_by, payment_date)
+    values (374, 585, 'invoice_sales', inv3::text, 'transfer', 69690, 'COP', 'completed', u, now()) returning id into v_pg3;
+  perform set_config('d22.pg3', v_pg3::text, true);
   perform set_config('d22.ica', ica::text, true);
   perform set_config('d22.rete4', (select ot.id::text from organization_taxes ot join tax_templates tt on tt.id = ot.template_id where ot.organization_id = 374 and tt.code = 'RETE_4'), true);
   perform set_config('d22.rcom', (select ot.id::text from organization_taxes ot join tax_templates tt on tt.id = ot.template_id where ot.organization_id = 374 and tt.code = 'RETE_11_COMISION'), true);
@@ -1658,7 +1906,10 @@ begin
   t := jsonb_build_object('contrato','intermediacion','condicion','agente','valoracion','costo_acreditado','precio_modo','minimo',
     'remuneracion_modo','porcentaje','base_comision','precio_pactado','reconocimiento','al_vender','factura_remuneracion',false,
     'obligacion_dueno','venta','compensacion_remuneracion',true,
-    'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001');
+    'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001',
+    -- Ronda 5 (C.Co. art. 1277): orden de aplicación y liquidación por escrito, términos obligatorios del contrato recibido.
+    'orden_aplicacion',jsonb_build_array('remuneracion','gastos_reembolsables','anticipos','derechos_frente_al_dueno'),
+    'liquidacion_escrita',jsonb_build_object('medio','correo_electronico','plazo_dias',5));
   -- K · Cuentas y reglas (ronda 4)
   perform fn_consignacion_configurar_cuentas(o, '911520', '9405', '41351201');
   perform pg_temp.err('K1 recibir sin cuenta por cobrar al dueño', 'sin_cuenta_cobro_remuneracion',
@@ -1798,7 +2049,8 @@ begin
   -- Puntos 1 y 2 en la operación: el comprador B3 (agente de reteIVA acreditado) retiene el IVA al pagar la factura 22-3.
   select id into wop from consignment_settlement_withholdings where settlement_id = l1b and scope = 'operacion' and class = 'reteiva' and payer_group = 'agente'
      and status = 'estimada';
-  r := fn_consignacion_retencion_practicada(wop, 1710, 11400, current_date, 'Comprobante del pago de la factura 22-3 con reteIVA', o, current_setting('d22.inv3')::uuid);
+  r := fn_consignacion_retencion_practicada(wop, 1710, 11400, current_date, 'Comprobante del pago de la factura 22-3 con reteIVA', o, current_setting('d22.inv3')::uuid,
+                                            current_setting('d22.pg3')::uuid);
   perform pg_temp.chk('R6 retención del comprador sobre la venta por cuenta del dueño: D 28151001 / C cartera de la factura; la 1355 del intermediario no se toca',
     '28151001 D 1710 · 13050501 C 1710 · pendiente de cartera 1',
     (select string_agg(l.account_code || case when l.debit > 0 then ' D ' || round(l.debit) else ' C ' || round(l.credit) end, ' · ' order by l.debit desc)
@@ -1831,6 +2083,160 @@ begin
        and (select coalesce(sum(debit), 0) - coalesce(sum(credit), 0) from journal_lines l where l.journal_entry_id = e.id) <> 0));
 end $z22$;
 
+-- ════ CUERPO: 26.sql ════
+-- ════ 26 · Consignación, ronda 5: la retención de la operación se registra con el COBRO de la factura y su abono queda
+--      en ese mismo momento (la cartera no queda inflada ni se abona de más; el certificado, pendiente de soporte); el
+--      contrato recibido en mandato fija el orden de aplicación y la liquidación por escrito (C.Co. art. 1277) ════
+select set_config('dry.prueba', '26', true);
+reset role;
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+do $s26$
+declare
+  m1 int; b1 uuid; p1 int; inv1 uuid; inv2 uuid; v_pg1 uuid; v_pg2 uuid;
+  u uuid := (select owner_user_id from organizations where id = 374);
+begin
+  insert into chart_of_accounts (organization_id, account_code, name, type, centro_costo_modo, parent_code, es_movimiento)
+  select 374, x.* from (values
+   ('911520', 'En consignación', 'order', 'no_aplica', '9115', true),
+   ('281510', 'Venta por cuenta de terceros', 'liability', 'no_aplica', '2815', false),
+   ('28151001', 'Dueño consignante 1', 'liability', 'no_aplica', '281510', true),
+   ('413512', 'Venta a cambio de retribución', 'income', 'no_aplica', '4135', false),
+   ('41351201', 'Remuneración por consignación', 'income', 'no_aplica', '413512', true),
+   ('138095', 'Otras cuentas por cobrar', 'asset', 'no_aplica', '1380', false),
+   ('13809501', 'Remuneración por cobrar a dueños consignantes', 'asset', 'no_aplica', '138095', true)) x(c, n, t, m, p, e)
+   where not exists (select 1 from chart_of_accounts y where y.organization_id = 374 and y.account_code = x.c);
+  if exists (select 1 from organization_tax_profiles where organization_id = 374) then
+    update organization_tax_profiles set regimen = 'ordinario', responsabilidades = array['O-48'], requiere_revision = false, agente_retencion = false,
+           agente_retencion_iva = null, gran_contribuyente = null where organization_id = 374;
+  else
+    insert into organization_tax_profiles (organization_id, vigente_desde, regimen, responsabilidades, agente_retencion) values (374, '2026-01-01', 'ordinario', array['O-48'], false);
+  end if;
+  insert into suppliers (organization_id, name, nit, supplier_type, fiscal_responsibilities) values (374, 'Mandante 26-1', '900000261', 'company', array['O-13', 'O-48']) returning id into m1;
+  insert into customers (organization_id, first_name, last_name) values (374, 'Comprador', '26 Uno') returning id into b1;
+  insert into products (organization_id, sku, name) values (374, 'P26-1', 'Consignado 26-1') returning id into p1;
+  -- Dos facturas EMITIDAS (sus disparadores causan la venta y crean la cartera) y el cobro de cada una: el comprador paga
+  -- 71.400 − reteIVA 1.710 = 69.690. El saldo de cada factura queda en 1.710, que es la retención por abonar.
+  insert into invoice_sales (organization_id, branch_id, status, customer_id) values (374, 585, 'draft', b1) returning id into inv1;
+  insert into invoice_sales (organization_id, branch_id, status, customer_id) values (374, 585, 'draft', b1) returning id into inv2;
+  insert into invoice_items (invoice_id, invoice_type, invoice_sales_id, description, qty, unit_price, tax_rate, total_line, product_id) values
+    (inv1, 'sale', inv1, 'Consignado 26-1', 1, 60000, 19, 71400, p1),
+    (inv2, 'sale', inv2, 'Consignado 26-1', 1, 60000, 19, 71400, p1);
+  update invoice_sales set status = 'issued' where id in (inv1, inv2);
+  insert into payments (organization_id, branch_id, source, source_id, method, amount, currency, status, created_by, payment_date)
+    values (374, 585, 'invoice_sales', inv1::text, 'transfer', 69690, 'COP', 'completed', u, now()) returning id into v_pg1;
+  perform set_config('d26.pg1', v_pg1::text, true);
+  insert into payments (organization_id, branch_id, source, source_id, method, amount, currency, status, created_by, payment_date)
+    values (374, 585, 'invoice_sales', inv2::text, 'transfer', 69690, 'COP', 'completed', u, now()) returning id into v_pg2;
+  perform set_config('d26.pg2', v_pg2::text, true);
+  perform set_config('d26.m1', m1::text, true); perform set_config('d26.p1', p1::text, true);
+  perform set_config('d26.inv1', inv1::text, true); perform set_config('d26.inv2', inv2::text, true);
+  perform set_config('d26.u', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+  perform set_config('d26.je0', (select coalesce(max(id), 0)::text from journal_entries where organization_id = 374), true);
+end $s26$;
+select set_config('request.jwt.claims', current_setting('d26.u'), true);
+set local role authenticated;
+
+-- ── N · Contrato recibido en mandato: orden de aplicación y liquidación por escrito (respuesta 11) ─────────────────
+do $n26$
+declare
+  o int := 374; b int := 585; m1 int := current_setting('d26.m1')::int; p1 int := current_setting('d26.p1')::int;
+  t jsonb; r jsonb; n1 uuid; lin jsonb; q text := 'select fn_consignacion_recibir(%s,%s,%L::jsonb,15,%L::jsonb,%L,%s)';
+begin
+  perform fn_consignacion_configurar_cuentas(o, '911520', '9405', '41351201', '13809501',
+    '{"retefuente":"13551501","reteiva":"13551701","reteica":"13551801"}'::jsonb);
+  t := jsonb_build_object('contrato','intermediacion','condicion','agente','valoracion','costo_acreditado','precio_modo','minimo',
+    'remuneracion_modo','porcentaje','base_comision','precio_pactado','reconocimiento','al_vender','factura_remuneracion',false,
+    'obligacion_dueno','venta','compensacion_remuneracion',true,
+    'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001',
+    'orden_aplicacion',jsonb_build_array('remuneracion','gastos_reembolsables','anticipos','derechos_frente_al_dueno'),
+    'liquidacion_escrita',jsonb_build_object('medio','correo_electronico','plazo_dias',5));
+  lin := jsonb_build_array(jsonb_build_object('product_id',p1,'qty',5,'precio',60000,'costo_acreditado',40000));
+  perform pg_temp.err('N1 sin orden de aplicación', 'orden_aplicacion_obligatorio', format(q, m1, b, lin, t - 'orden_aplicacion', 'k26-n1', o));
+  perform pg_temp.err('N2 orden con un concepto que no existe', 'terminos_invalidos', format(q, m1, b, lin, t || '{"orden_aplicacion":["remuneracion","intereses"]}', 'k26-n2', o));
+  perform pg_temp.err('N3 orden con un concepto repetido', 'terminos_invalidos', format(q, m1, b, lin, t || '{"orden_aplicacion":["remuneracion","remuneracion"]}', 'k26-n3', o));
+  perform pg_temp.err('N4 compensación pactada sin decir cuándo se aplica la remuneración', 'terminos_invalidos',
+    format(q, m1, b, lin, t || '{"orden_aplicacion":["anticipos","gastos_reembolsables"]}', 'k26-n4', o));
+  perform pg_temp.err('N5 sin liquidación por escrito', 'liquidacion_escrita_obligatoria', format(q, m1, b, lin, t - 'liquidacion_escrita', 'k26-n5', o));
+  perform pg_temp.err('N6 medio de la liquidación que no es escrito', 'terminos_invalidos',
+    format(q, m1, b, lin, t || '{"liquidacion_escrita":{"medio":"verbal","plazo_dias":5}}', 'k26-n6', o));
+  perform pg_temp.err('N7 plazo de la liquidación por fuera de 1 a 90 días', 'terminos_invalidos',
+    format(q, m1, b, lin, t || '{"liquidacion_escrita":{"medio":"correo_electronico","plazo_dias":0}}', 'k26-n7', o));
+  r := fn_consignacion_recibir(m1, b, lin, 15, t, 'k26-n8', o, null); n1 := r ->> 'nota_id';
+  perform set_config('d26.n1', n1::text, true);
+  perform pg_temp.chk('N8 la nota guarda el orden de aplicación y la liquidación por escrito', '4 · remuneracion · correo_electronico/5',
+    (select jsonb_array_length(settlement_terms -> 'orden_aplicacion')::text || ' · ' || (settlement_terms -> 'orden_aplicacion' ->> 0) || ' · '
+            || (settlement_terms -> 'liquidacion_escrita' ->> 'medio') || '/' || (settlement_terms -> 'liquidacion_escrita' ->> 'plazo_dias')
+       from consignment_notes where id = n1));
+  perform pg_temp.chk('N9 la entregada (lado del mandante) no exige estos términos de la recibida', 'null',
+    coalesce((fn_consignacion_terminos(t - 'valoracion' - 'cuenta_recaudo' - 'orden_aplicacion' - 'liquidacion_escrita', 'entregada') -> 'liquidacion_terminos')::text, 'null'));
+  perform pg_temp.mover(o, b, p1, 'out', 1, 'invoice_sale', current_setting('d26.inv1'));
+end $n26$;
+reset role;
+-- La venta (porción vendida) ocurrió hace dos días; se simula fechándola como administrador.
+update consignment_allocations set created_at = now() - interval '2 days' where source_id = current_setting('d26.inv1');
+select set_config('request.jwt.claims', current_setting('d26.u'), true);
+set local role authenticated;
+
+-- ── C · Retención de la operación: con el cobro, abono a la factura en ese momento (respuesta 10) ────────────────────
+do $c26$
+declare
+  o int := 374; n1 uuid := current_setting('d26.n1')::uuid; inv1 uuid := current_setting('d26.inv1')::uuid; inv2 uuid := current_setting('d26.inv2')::uuid;
+  pg1 uuid := current_setting('d26.pg1')::uuid; pg2 uuid := current_setting('d26.pg2')::uuid;
+  hoy date := (now() at time zone 'America/Bogota')::date; r jsonb; l1 uuid; w uuid; w2 uuid;
+  q text := 'select fn_consignacion_retencion_practicada(%L, %s, 11400, %L::date, %L, 374, %L, %L)';
+begin
+  r := fn_consignacion_recibida_liquidar(n1, null, false, null, 'k26-l1', o); l1 := r ->> 'liquidacion_id';
+  perform pg_temp.chk('N10 la liquidación por escrito lleva el orden de aplicación y su forma', 'remuneracion · correo_electronico/5',
+    (r -> 'terminos_liquidacion' -> 'orden_aplicacion' ->> 0) || ' · ' || (r -> 'terminos_liquidacion' -> 'liquidacion_escrita' ->> 'medio') || '/'
+      || (r -> 'terminos_liquidacion' -> 'liquidacion_escrita' ->> 'plazo_dias'));
+  select id into w from consignment_settlement_withholdings where settlement_id = l1 and scope = 'operacion' and class = 'reteiva' order by payer_group limit 1;
+  select id into w2 from consignment_settlement_withholdings where settlement_id = l1 and scope = 'operacion' and class = 'reteica' order by payer_group limit 1;
+  perform pg_temp.chk('C0 saldo de la factura después del cobro (lo que queda es la retención)', '1710.00 · partial',
+    (select balance::text || ' · ' || status from invoice_sales where id = inv1));
+  perform pg_temp.err('C1 la retención de la operación sin el cobro en que se practicó', 'cobro_obligatorio',
+    format('select fn_consignacion_retencion_practicada(%L, 1710, 11400, %L::date, %L, 374, %L)', w, hoy, 'Comprobante del pago de la factura 26-1', inv1));
+  perform pg_temp.err('C2 con el cobro de OTRA factura', 'cobro_de_otra_factura', format(q, w, 1710, hoy, 'Comprobante del pago de la factura 26-1', inv1, pg2));
+  perform pg_temp.err('C3 en una fecha distinta de la del cobro', 'fecha_distinta_del_cobro', format(q, w, 1710, hoy - 1, 'Comprobante del pago de la factura 26-1', inv1, pg1));
+  perform pg_temp.err('C4 por más de lo que la factura todavía debe (abonaría de más la cartera)', 'retencion_excede_saldo_factura',
+    format(q, w, 2000, hoy, 'Comprobante del pago de la factura 26-1', inv1, pg1));
+  r := fn_consignacion_retencion_practicada(w, 1710, 11400, hoy, 'Comprobante del pago de la factura 26-1 con reteIVA', o, inv1, pg1);
+  perform pg_temp.chk('C5 con su cobro: D 28151001 / C cartera de la factura (Concepto DIAN 13277 de 2025); abono por aplicar; saldo real exigible 0',
+    '28151001 D 1710 · cartera de la factura C 1710 · por_aplicar · 1710.00 · 0.00 · pendiente_de_soporte',
+    -- La cartera es la cuenta deudora con que se causó ESA factura (1305 o su auxiliar, según el plan de la organización).
+    (select string_agg(case when l.debit > 0 then l.account_code || ' D ' || round(l.debit)
+                            when l.account_code = (select jl.account_code from journal_entries e join journal_lines jl on jl.journal_entry_id = e.id
+                                                    where e.source = 'invoice_sales' and e.source_id = inv1::text and jl.debit > 0 and jl.account_code like '13%'
+                                                    order by jl.debit desc, jl.id limit 1)
+                            then 'cartera de la factura C ' || round(l.credit) else l.account_code || ' C ' || round(l.credit) end, ' · ' order by l.debit desc)
+       from journal_lines l where l.journal_entry_id = (r ->> 'asiento_id')::int)
+    || ' · ' || (r -> 'abono_factura' ->> 'estado') || ' · ' || (r -> 'abono_factura' ->> 'saldo_factura') || ' · ' || (r -> 'abono_factura' ->> 'saldo_real_exigible')
+    || ' · ' || (r ->> 'certificado'));
+  perform pg_temp.chk('C6 el abono queda ligado al cobro y a su fecha', '1 · 1710.00 · true · true',
+    (select count(*)::text || ' · ' || max(x.amount)::text || ' · ' || bool_and(x.payment_id = pg1)::text || ' · ' || bool_and(x.applied_on = hoy)::text
+       from consignment_withholding_receivable_applications x where x.withholding_id = w));
+  perform pg_temp.chk('C7 saldo real exigible de la factura: saldo 1.710 − abono por aplicar 1.710 = 0', '1710.00 · 1710.00 · 0.00',
+    (select c.saldo_factura::text || ' · ' || c.retenciones_por_aplicar::text || ' · ' || c.saldo_real_exigible::text
+       from fn_consignacion_cartera_retenciones(374) c where c.invoice_id = inv1));
+  perform pg_temp.chk('C8 la cartera operativa no se escribe a mano: sigue al saldo de la factura', '1710.00 · 1710.00',
+    (select i.balance::text || ' · ' || (select ar.balance::text from accounts_receivable ar where ar.invoice_id = inv1 limit 1) from invoice_sales i where i.id = inv1));
+  perform pg_temp.chk('C9 pendientes: la cartera por aplicar y el certificado pendiente de soporte', '1 · 1',
+    (select count(*)::text from journal_entry_failures f where f.reason = 'consignacion_cartera_retencion_por_aplicar' and f.source_id = w::text and f.resolved_at is null)
+    || ' · ' || (select count(*)::text from journal_entry_failures f where f.reason = 'consignacion_retencion_certificado_pendiente' and f.source_id = 'cert:' || w::text
+                   and f.resolved_at is null and f.detail like '%pendiente de soporte%'));
+  perform pg_temp.err('C10 otra retención sobre la misma factura que ya no tiene saldo (1.710 por aplicar + 100)', 'retencion_excede_saldo_factura',
+    format(q, w2, 100, hoy, 'Comprobante del pago de la factura 26-1 con reteICA', inv1, pg1));
+end $c26$;
+reset role;
+do $z26$
+begin
+  perform pg_temp.chk('Z1 asientos de la prueba 26 descuadrados', '0',
+    (select count(*)::text from journal_entries e where e.organization_id = 374 and e.id > current_setting('d26.je0')::int
+       and (select coalesce(sum(debit), 0) - coalesce(sum(credit), 0) from journal_lines l where l.journal_entry_id = e.id) <> 0));
+  perform pg_temp.chk('Z2 ningún abono por retención sin su cobro', '0',
+    (select count(*)::text from consignment_withholding_receivable_applications x
+      where not exists (select 1 from payments p where p.id = x.payment_id and p.status = 'completed')));
+end $z26$;
+
 -- ════ CUERPO: 20.sql ════
 -- ════ 20 · Integración anticipos ↔ consignación con los archivos completos: retenciones, certificados, devoluciones y
 --      anulaciones entre períodos y entre años. Corre DESPUÉS de 11, 15, 21 y 22 en la MISMA transacción (usa el mandante,
@@ -1840,7 +2246,7 @@ reset role;
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 do $s20$
 declare
-  v_m1 int; v_n1 uuid; v_p1 int; v_inv4 uuid; v_inv5 uuid;
+  v_m1 int; v_n1 uuid; v_p1 int; v_inv4 uuid; v_inv5 uuid; v_pg4 uuid; v_pg5 uuid;
   u uuid := (select owner_user_id from organizations where id = 374);
 begin
   -- Para el anticipo, la organización vuelve a ser agente de retención (renta e IVA), no gran contribuyente.
@@ -1862,6 +2268,13 @@ begin
     p_created_by := u, p_fact_key := 'prueba20:inv5');
   perform set_config('d20.m1', v_m1::text, true); perform set_config('d20.n1', v_n1::text, true); perform set_config('d20.p1', v_p1::text, true);
   perform set_config('d20.inv4', v_inv4::text, true); perform set_config('d20.inv5', v_inv5::text, true);
+  -- Ronda 5: los cobros de las facturas (60.000 − retefuente 2.400 = 57.600) en la fecha en que el comprador retuvo.
+  insert into payments (organization_id, branch_id, source, source_id, method, amount, currency, status, created_by, payment_date)
+    values (374, 585, 'invoice_sales', v_inv4::text, 'transfer', 57600, 'COP', 'completed', u, timestamptz '2026-10-20 10:00-05') returning id into v_pg4;
+  perform set_config('d20.pg4', v_pg4::text, true);
+  insert into payments (organization_id, branch_id, source, source_id, method, amount, currency, status, created_by, payment_date)
+    values (374, 585, 'invoice_sales', v_inv5::text, 'transfer', 57600, 'COP', 'completed', u, timestamptz '2025-12-20 10:00-05') returning id into v_pg5;
+  perform set_config('d20.pg5', v_pg5::text, true);
   perform set_config('d20.je0', (select coalesce(max(id), 0)::text from journal_entries where organization_id = 374), true);
 end $s20$;
 select set_config('request.jwt.claims', current_setting('d22.u'), true);
@@ -1969,7 +2382,8 @@ declare
 begin
   r := fn_consignacion_recibida_liquidar(n1, date '2025-12-31', false, null, 'k20-ldic', 374); ldic := r ->> 'liquidacion_id';
   select id into w5 from consignment_settlement_withholdings where settlement_id = ldic and scope = 'operacion' and class = 'retefuente' and payer_group = 'agente';
-  r := fn_consignacion_retencion_practicada(w5, 2400, 60000, date '2025-12-20', 'Comprobante de pago de la factura 20-5 (diciembre de 2025)', 374, current_setting('d20.inv5')::uuid);
+  r := fn_consignacion_retencion_practicada(w5, 2400, 60000, date '2025-12-20', 'Comprobante de pago de la factura 20-5 (diciembre de 2025)', 374, current_setting('d20.inv5')::uuid,
+                                            current_setting('d20.pg5')::uuid);
   perform pg_temp.chk('C1 retención del comprador ocurrida en diciembre de 2025, reconocida en su fecha', '2025-12-20 · 28151001 D 2400 · 13050501 C 2400',
     (select to_char(entry_date at time zone 'America/Bogota', 'YYYY-MM-DD') from journal_entries where id = (r ->> 'asiento_id')::int) || ' · '
     || (select string_agg(l.account_code || case when l.debit > 0 then ' D ' || round(l.debit) else ' C ' || round(l.credit) end, ' · ' order by l.debit desc)
@@ -1979,7 +2393,8 @@ begin
   select id into wrem from consignment_settlement_withholdings where settlement_id = loct and scope = 'remuneracion' and class = 'retefuente';
   perform pg_temp.err('C2 el hecho no puede ser anterior a la venta que se liquida', 'fecha_anterior_a_la_venta',
     format('select fn_consignacion_retencion_practicada(%L,660,6000,%L::date,%L,374)', wrem, '2026-10-01', 'Comprobante anterior a la venta'));
-  r := fn_consignacion_retencion_practicada(w4, 2400, 60000, date '2026-10-20', 'Comprobante de pago de la factura 20-4 (octubre)', 374, current_setting('d20.inv4')::uuid);
+  r := fn_consignacion_retencion_practicada(w4, 2400, 60000, date '2026-10-20', 'Comprobante de pago de la factura 20-4 (octubre)', 374, current_setting('d20.inv4')::uuid,
+                                            current_setting('d20.pg4')::uuid);
   perform pg_temp.chk('C3 retención de octubre reconocida en su fecha (registrada en noviembre)', '2026-10-20',
     (select to_char(entry_date at time zone 'America/Bogota', 'YYYY-MM-DD') from journal_entries where id = (r ->> 'asiento_id')::int));
   select count(*) into abiertos from journal_entry_failures f where f.source = 'consignment_owner_settlement' and f.resolved_at is null

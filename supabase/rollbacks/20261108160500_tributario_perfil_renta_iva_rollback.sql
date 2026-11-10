@@ -3,7 +3,8 @@
 --
 -- ADVERTENCIA DE DATOS: quita las columnas nuevas del perfil. Lo guardado en ellas (régimen de renta, condición de IVA,
 -- calidades y sus actos, INC, RTE, no contribuyentes, códigos del RUT, cambio de periodicidad, advertencias aceptadas;
--- ronda 4: calificación del gran contribuyente, procedencia del cambio y aclaraciones) se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
+-- ronda 4: calificación del gran contribuyente, procedencia del cambio y aclaraciones; ronda 5: donaciones y
+-- cooperación internacional del 2532 con su constancia) se PIERDE. El campo combinado viejo `regimen` se conserva; donde quedó NULL (no contribuyentes) se llena con
 -- 'ordinario' / 'no_responsable_iva' para devolverle el NOT NULL, lo que NO restaura su significado.
 
 drop function if exists public.fn_perfil_tributario_evaluar_cambio(integer, uuid, text, text);
@@ -50,4 +51,7 @@ alter table public.organization_tax_profiles
   drop column if exists cambio_periodicidad_evaluacion,
   drop column if exists cambio_periodicidad_evaluado_por,
   drop column if exists cambio_periodicidad_evaluado_en,
-  drop column if exists aclaraciones;
+  drop column if exists aclaraciones,
+  -- Ronda 5: formato 2532 de las cooperativas.
+  drop column if exists rte_donaciones_cooperacion,
+  drop column if exists rte_donaciones_constancia;

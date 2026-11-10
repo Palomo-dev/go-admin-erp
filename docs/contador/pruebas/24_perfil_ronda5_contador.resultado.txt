@@ -1,0 +1,60 @@
+Resultado de 24_perfil_ronda5_contador.sql (RONDA 5 del Contador, perfil: respuestas 6 y 7; seguridad de 20261108165000)
+Corrida: 2026-11-09, proyecto taqjemqjtumhwptchcxk, org 374. Una sola transacción, sin datos al final.
+Archivos EXACTOS (md5 del disco, comprobados dentro de la base antes de ejecutar):
+  20261108140500       4b00bf10bf99ff2a97e2e89ff0480811
+  20261108160000       85fd17321a7e85d85a58916cb2f84c95
+  20261108160500       1d80345bde9c6d9fd378bc10e8c43a5e
+  20261108161000       2153ce37f896697ed3c6b2e506d84db0
+  20261108161500       5ea9208264ed61f452be374617f55e60
+  20261108165000       1ec6641bdf74dfc15163d0753982309f
+  prueba 24            8983a4daf5ad92f8d35c86ee18c87133
+Método: el de la prueba 23 (trozos con md5 por trozo y por archivo, migraciones completas en orden de prefijo en el
+marcador «MIGRACIONES», excepción final = rollback, objetos grandes borrados y base comprobada sin restos).
+
+Primera corrida: 39 de 40. La fila 31 falló por la PRUEBA: buscaba el impuesto de otra organización estando ya dentro de
+la sesión del miembro, y la RLS de organization_taxes no se lo mostraba (la función recibió NULL y devolvió NULL). Se pasó
+la búsqueda al comienzo, sin RLS, guardada en ctx. La migración no cambió.
+Segunda corrida (la que vale): 40 verificaciones · 40 ok · 0 fallas.
+
+ n | bloque | verificación → obtenido
+---+--------+------------------------------------------------------------------------------------------------------------
+  1 | T | Vigencia de enero, ordinaria → OK
+  2 | T | Vigencia del 15 de abril: gran contribuyente excepcional a mitad de bimestre → OK
+  3 | T | Queda para aclaración → aclaraciones {gran_contribuyente_transicion_por_resolver} · revisar true
+  4 | T | Transición sobre una vigencia que no es gran contribuyente excepcional → 22023 TRANSICION_NO_APLICA
+  5 | T | Sin la resolución → 22023 RESOLUCION_REQUERIDA
+  6 | T | Con otra fecha de la resolución que la del perfil → 22023 TRANSICION_NO_COINCIDE_CON_PERFIL
+  7 | T | Con otra fecha de efectos que la del perfil → 22023 TRANSICION_NO_COINCIDE_CON_PERFIL
+  8 | T | Período de IVA de un mes → 22023 PERIODOS_IVA_INVALIDOS
+  9 | T | Períodos de IVA que no contienen la fecha de efectos → 22023 PERIODOS_IVA_INVALIDOS [ninguno_contiene_la_fecha_de_efectos]
+ 10 | T | Período de retención que no es un mes → 22023 PERIODOS_RETENCION_INVALIDOS
+ 11 | T | Sin períodos de retención → 22023 PERIODOS_RETENCION_INVALIDOS
+ 12 | T | Sin decir qué se hace con el tramo anterior → 22023 TRAMO_REQUERIDO
+ 13 | T | Sin responsable → 22023 RESPONSABLE_REQUERIDO
+ 14 | T | Soporte sin fecha → 22023 SOPORTE_REQUERIDO
+ 15 | T | Decisión completa → OK
+ 16 | T | Con la decisión, la aclaración se cierra → aclaraciones {} · revisar false
+ 17 | T | La decisión guarda todo → transicion_gran_contribuyente · 2026-03-01→2026-04-30 · completa · vigencia ok · huella gc · autor ok
+ 18 | T | Guardar otra vez la vigencia con las mismas fechas → OK
+ 19 | T | Leída después: sigue sin la aclaración → aclaraciones {} · revisar false
+ 20 | T | Guardar con otra fecha de la resolución (12 de abril) → OK
+ 21 | T | Leída después: la transición vuelve a estar por resolver → aclaraciones {gran_contribuyente_transicion_por_resolver} · revisar true
+ 22 | C | Cooperativa: «no recibió donaciones» sin la constancia → 22023 CONSTANCIA_2532_REQUERIDA
+ 23 | C | Cooperativa: un valor que no es sí ni no → 22023 DATOS_INVALIDOS
+ 24 | C | Cooperativa: «no aplica» con su constancia → OK
+ 25 | C | Queda «no aplica» con su constancia → false · Revisados los ingresos del año: sin donaciones ni cooperación internacional
+ 26 | C | Guardar otra vez sin esos datos (como la pantalla actual) → OK
+ 27 | C | Lo que no se envió se conserva → false · con constancia
+ 28 | C | Cooperativa que sí recibió donaciones → OK
+ 29 | C | Queda «sí recibió» → true
+ 30 | S | Miembro de la 374: tarifa de un impuesto de la 374 → un número
+ 31 | S | Miembro de la 374: impuesto de una organización a la que no pertenece → Acceso denegado a la organización
+ 32 | S | Un id que no existe → NULL
+ 33 | S | Usuario con sesión que no es miembro de la 374 → Acceso denegado a la organización
+ 34 | T | Usuario que no es miembro: registrar una transición → 42501 Acceso denegado a la organización
+ 35 | S | anon: leer una tarifa → permission denied for function fn_tarifa_exacta_impuesto
+ 36 | T | anon: registrar una transición → 42501 permission denied (anon no llega a la función)
+ 37 | S | Sin sesión (funciones del servidor, service_role): lee la tarifa → un número
+ 38 | S | Permisos de fn_tarifa_exacta_impuesto → anon false · public false · authenticated true · service_role true · definer true · plpgsql
+ 39 | T | Permisos de fn_tributario_transicion_gc_registrar → anon false · public false · authenticated true
+ 40 | T | Registrar la transición con rol Empleado (sin finance.approve) → 42501 SIN_PERMISO

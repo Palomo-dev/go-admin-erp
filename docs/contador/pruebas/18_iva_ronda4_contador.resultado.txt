@@ -1,3 +1,20 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 746ccbabbb6f05b8b22a043b4314b777 · 20261108150500 53bfcba981ac8811b57ac97e86120cad · 20261108151000 69666ff755350aaa4bf0a678cbf42a65 · 20261108152000 b038410fb5539296fd40877f07888c79 · prueba 18 8fa1e33bee74831393369896c4767e53
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Primera corrida: 73 de 76. Las 3 fallas (filas 68 a 70) esperaban la versión 5 del borrador; ahora es la 6. Se
+actualizó ese esperado.
+Corrida que vale: 76 verificaciones · 76 ok · 0 fallas (antes 75: se agregó la fila 42, aprobación del cierre por un
+segundo usuario). Para que siga probando la ronda 4, sus DATOS cumplen los requisitos nuevos: FIM2 con valor en aduana +
+aranceles y norma de exclusión; expediente con la constancia de contingencia y la consulta del CUFE/CUDE (ventas PA…PI
+de hace 3 días); bimestre declarado con vencimiento y «no está en firme»; cierre aprobado por el segundo usuario.
+Otros esperados que cambiaron, con su razón: PE devuelve también el detalle «[plazo_48_horas]» (fila 33); y FCB, que era
+el control de cuenta de cabecera, queda sin asiento y pendiente por «deducibilidad distinta» (fila 47, respuesta 5); el
+control positivo pasó a la prueba 23 (fila 96).
+
+── Corridas anteriores ──
 Resultado de 18_iva_ronda4_contador.sql (RONDA 4 del Contador, IVA)
 Corrida: 2026-11-09, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Una sola transacción, sin datos al final.
 Archivos EXACTOS (md5 verificados dentro de la base antes de ejecutar):

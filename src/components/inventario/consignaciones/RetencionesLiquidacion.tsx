@@ -23,6 +23,7 @@ import { toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import { textoErrorConsignacion } from './textoErrorConsignacion';
 import { retencionesPorAmbito, type AmbitoRetencion, type RetencionLiquidacion } from '@/lib/inventario/consignaciones/recibidas';
 import { consignacionesRecibidasService } from './consignacionesRecibidasService';
 
@@ -32,6 +33,7 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 function PracticadaDialog({ retencion, onCerrar, onHecho }: { retencion: RetencionLiquidacion | null; onCerrar: () => void; onHecho: () => void }) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations('consignacionesR5');
   const [valor, setValor] = useState<number | null>(null);
   const [base, setBase] = useState<number | null>(null);
   const [fecha, setFecha] = useState('');
@@ -61,7 +63,7 @@ function PracticadaDialog({ retencion, onCerrar, onHecho }: { retencion: Retenci
       toastSuccess(t('retenciones.practicadaRegistrada'));
       onHecho();
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      setError(textoErrorConsignacion(t, tR5, e));
     } finally {
       setEnviando(false);
     }

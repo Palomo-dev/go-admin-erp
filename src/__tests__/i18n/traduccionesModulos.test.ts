@@ -95,6 +95,10 @@ const MODULOS: Record<string, string[]> = {
   // Consignación en dos sentidos y entre organizaciones (vive en Inventario; la nueva nota entregada
   // de Finanzas usa sus condiciones del contrato).
   consignacionesR4: ['src/components/inventario/consignaciones', 'src/components/finanzas/consignaciones', 'src/app/app/inventario/consignaciones', 'src/app/app/vincular'],
+  // Ronda 5 del Contador, frente anticipos y consignación: período por impuesto, manifestación de no imputación (reteIVA),
+  // orden de aplicación y liquidación por escrito (C.Co. art. 1277) y los errores nuevos de la retención con su cobro.
+  finanzasTercerosR5: FINANZAS,
+  consignacionesR5: ['src/components/inventario/consignaciones', 'src/components/finanzas/consignaciones', 'src/app/app/inventario/consignaciones'],
   // Finanzas ronda 4, frente INT: Integraciones › Conexiones (catálogo, mis conexiones, actividad,
   // desarrolladores, asistentes y detalle).
   integracionesConexiones: ['src/components/integraciones/conexiones-v2', 'src/app/app/integraciones/conexiones'],

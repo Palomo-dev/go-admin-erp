@@ -2,7 +2,21 @@
 -- ronda 2 (RESPUESTAS-CONTADOR-RONDA-2-2026-11-07.md, «Anticipos»), la ronda 3 (RESPUESTAS-CONTADOR-RONDA-3-2026-11-08.md)
 -- y la ronda 4 (RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «Anticipos»: AIU en dos regímenes, procedimiento de ReteICA
 -- por municipio, devoluciones con soporte del hecho y por líneas, período de descuento por impuesto, conversión de la
--- financiación en pago o abono). Manda la ronda 4 sobre lo anterior.
+-- financiación en pago o abono) y la ronda 5 (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuestas 9, 12 y 13 y las
+-- citas que corrige). Manda la ronda 5 sobre lo anterior.
+--
+-- Ronda 5 (qué cambia aquí):
+--   Período   renta: anulación, rescisión o resolución → DUR 1625 de 2016, art. 1.2.4.8 (el período del hecho; el saldo
+--             en los siguientes); exceso → art. 1.2.4.16 (el período del reintegro). La cita de la ronda 4 para la
+--             anulación era errada (ese artículo no trata devoluciones de retención) y se reemplazó. reteIVA: art.
+--             1.3.2.3.1 (el período de la anulación y el saldo en los DOS siguientes; en exceso, reintegro con la
+--             solicitud escrita del retenido y su manifestación escrita de que no imputó la retención: los dos soportes
+--             son obligatorios).
+--   ReteICA   El excedente queda pendiente de descuento en los períodos siguientes, SIN límite de períodos, con la
+--             solicitud escrita guardada como soporte obligatorio del pendiente.
+--   AIU       El piso del 10 % del art. 462-1 se controla en los DOS niveles: por operación (cada pago o abono) y
+--             acumulado del contrato (todas sus operaciones, netas de devoluciones); una devolución que rompa el piso de la
+--             operación o del contrato se rechaza; una operación que haga superar el valor del contrato queda pendiente.
 --
 -- ESTADO: SIN APLICAR (20261108170000). 20261108120000_anticipos_proveedores y 20261108130000 están APLICADAS y no se
 -- editan: aquí se reemplazan sus funciones y se añaden columnas y tablas. Se aplica por el MCP (apply_migration)
@@ -49,7 +63,8 @@
 --               las LÍNEAS afectadas de la operación; cada retención se revierte sobre lo que esa retención cubrió (su
 --               base y su tarifa), no por prorrata del total. El período de descuento lo fija la regla de cada
 --               impuesto (renta e IVA: el del hecho; reintegro por exceso: el del reintegro; ICA: el de su
---               procedimiento); lo que no alcance en ese período queda pendiente para los siguientes.
+--               procedimiento); lo que no alcance en ese período queda pendiente para los siguientes (ronda 5: reteIVA,
+--               solo los dos siguientes; renta y ReteICA, sin límite de períodos).
 --   Anulación   Solo si el desembolso NO ocurrió (motivo, soporte, fecha del ajuste en periodo abierto). Con la caja ya
 --               cerrada no se reabre ni se toca su arqueo: ajuste contable en periodo abierto y pendiente de revisión.
 --   Pendientes  anticipo_pendientes: estado abierto/resuelto; solo se cierra con resolución y soporte (finance.approve).
@@ -1152,6 +1167,78 @@ begin
 end;
 $function$;
 
+-- Ronda 5 (respuesta 13 del Contador). Acumulado de un contrato con AIU: todas sus operaciones (pagos anticipados del
+-- precio y conversiones de financiación en pago o abono), netas de devoluciones por línea; una operación anulada en su
+-- totalidad no cuenta. valor = suma de las bases de las líneas; aiu = A + I + U; base_iva = base sobre la que se liquidó
+-- el IVA (después del piso). Sirve para controlar el piso del 10 % del art. 462-1 acumulado del contrato, además del de
+-- cada operación.
+create or replace function public.fn_aiu_contrato_acumulado(p_contrato uuid)
+ returns jsonb language sql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+  with anuladas as (
+    select r.advance_id from public.supplier_advance_refunds r where r.procedimiento ->> 'causa' = 'operacion_anulada'
+  ), ops as (
+    select a.id as advance_id, a.id::text as operacion, a.tarifa_iva as tarifa, coalesce(a.componentes, '[]'::jsonb) as comps
+      from public.supplier_advances a
+     where a.aiu_contrato_id = p_contrato and a.naturaleza = 'pago_anticipado_precio' and a.status <> 'cancelled'
+       and a.id not in (select advance_id from anuladas)
+    union all
+    select v.advance_id, v.id::text, (v.evaluacion ->> 'tarifa_iva')::numeric, v.componentes
+      from public.supplier_advance_conversions v join public.supplier_advances a on a.id = v.advance_id
+     where v.evaluacion -> 'aiu' ->> 'contrato_id' = p_contrato::text and a.status <> 'cancelled'
+       and a.id not in (select advance_id from anuladas)
+  ), lineas as (
+    select o.advance_id, o.operacion, o.tarifa, x ->> 'componente' as componente, x ->> 'tratamiento' as tratamiento,
+           (x ->> 'base')::numeric as base, coalesce((x ->> 'iva')::numeric, 0) as iva
+      from ops o cross join lateral jsonb_array_elements(o.comps) x
+  ), dev as (
+    select r.advance_id, l ->> 'componente' as componente, sum((l ->> 'base')::numeric) as base, sum(coalesce((l ->> 'iva')::numeric, 0)) as iva
+      from public.supplier_advance_refunds r cross join lateral jsonb_array_elements(coalesce(r.lineas, '[]'::jsonb)) l group by 1, 2
+  ), netas as (
+    select li.operacion, li.tratamiento, li.base - coalesce(d.base, 0) as base, li.iva - coalesce(d.iva, 0) as iva, li.tarifa
+      from lineas li left join dev d on d.advance_id = li.advance_id and d.componente = li.componente
+  ), por_op as (
+    select operacion, round(sum(base), 2) as valor,
+           round(sum(base) filter (where tratamiento in ('aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad')), 2) as aiu,
+           round(coalesce(sum(case when coalesce(tarifa, 0) > 0 then iva * 100 / tarifa else 0 end), 0), 2) as base_iva
+      from netas group by operacion
+  )
+  select jsonb_build_object(
+    'operaciones', (select count(*) from por_op),
+    'valor', coalesce((select sum(valor) from por_op), 0),
+    'aiu', coalesce((select sum(coalesce(aiu, 0)) from por_op), 0),
+    'base_iva', coalesce((select sum(base_iva) from por_op), 0),
+    'por_operacion', coalesce((select jsonb_agg(jsonb_build_object('operacion', operacion, 'valor', valor, 'aiu', coalesce(aiu, 0), 'base_iva', base_iva)
+                                                order by operacion) from por_op), '[]'::jsonb));
+$function$;
+
+-- Ronda 5. Controla el piso del 10 % (art. 462-1) en los dos niveles después de una devolución por líneas: cada operación
+-- del contrato y el acumulado del contrato. Si la devolución deja la base del IVA por debajo del 10 % del valor que
+-- queda, se rechaza (la devolución debe incluir las líneas que mantienen la proporción).
+create or replace function public.fn_aiu_contrato_exigir_minimo(p_contrato uuid)
+ returns void language plpgsql stable security definer set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_c public.aiu_contratos%rowtype;
+  v_a jsonb;
+  v_o jsonb;
+begin
+  select * into v_c from public.aiu_contratos where id = p_contrato;
+  if v_c.id is null or v_c.regimen <> 'servicios_462_1' then return; end if;
+  v_a := public.fn_aiu_contrato_acumulado(p_contrato);
+  for v_o in select * from jsonb_array_elements(v_a -> 'por_operacion') loop
+    if (v_o ->> 'valor')::numeric > 0 and (v_o ->> 'base_iva')::numeric < round((v_o ->> 'valor')::numeric * 0.10, 2) - 1 then
+      raise exception 'aiu_minimo_10_operacion' using errcode = '22023', detail = v_o::text,
+        hint = 'Art. 462-1: la base del IVA de la operación no puede quedar por debajo del 10 % de su valor.';
+    end if;
+  end loop;
+  if (v_a ->> 'valor')::numeric > 0 and (v_a ->> 'base_iva')::numeric < round((v_a ->> 'valor')::numeric * 0.10, 2) - 1 then
+    raise exception 'aiu_minimo_10_contrato' using errcode = '22023', detail = (v_a - 'por_operacion')::text,
+      hint = 'Art. 462-1: la base del IVA acumulada del contrato no puede quedar por debajo del 10 % de su valor acumulado.';
+  end if;
+end;
+$function$;
+
 -- Evaluación de un anticipo (o de su conversión en pago o abono). p_componentes: [{descripcion, tratamiento, base,
 -- tarifa_iva}] con tratamiento gravado · exento · excluido · no_sujeto o, en un contrato con AIU (p_aiu_contrato
 -- registrado en aiu_contratos), aiu_costo_directo · aiu_administracion · aiu_imprevistos · aiu_utilidad ·
@@ -1199,6 +1286,12 @@ declare
   v_aiu_estado text;
   v_clases jsonb;
   v_total numeric;
+  v_aiu_declarado numeric;
+  v_valor_op numeric;
+  v_acum jsonb;
+  v_deficit numeric;
+  v_min_contrato boolean := false;
+  v_aiu_alerta text;
 begin
   perform public.fn_assert_acceso_org(p_org);
   if p_naturaleza is null or p_naturaleza not in ('financiacion', 'pago_anticipado_precio') then
@@ -1305,10 +1398,30 @@ begin
           if v_base_especial <= 0 then raise exception 'aiu_componentes_regimen' using errcode = '22023', detail = 'falta A + I + U'; end if;
           -- Nunca inferior al 10 % del valor de la operación (art. 462-1 E.T.).
           select sum((x ->> 'base')::numeric) into v_cb from jsonb_array_elements(v_comp) x;
+          v_aiu_declarado := v_base_especial;
+          v_valor_op := v_cb;
           if v_base_especial < round(v_cb * 0.10, 2) then
             v_base_especial := round(v_cb * 0.10, 2);
             v_min_aplicado := true;
             v_set_especial := array['aiu_costo_directo', 'aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad'];
+          end if;
+          -- Ronda 5 (respuesta 13): el piso también se controla ACUMULADO del contrato (operaciones anteriores netas de
+          -- devoluciones + esta). Si el acumulado queda por debajo del 10 %, esta operación completa la diferencia.
+          v_acum := public.fn_aiu_contrato_acumulado(v_contrato.id);
+          v_deficit := round(((v_acum ->> 'valor')::numeric + v_cb) * 0.10, 2) - ((v_acum ->> 'base_iva')::numeric + v_base_especial);
+          if v_deficit > 0.005 then
+            v_base_especial := v_base_especial + v_deficit;
+            v_min_contrato := true;
+            v_set_especial := array['aiu_costo_directo', 'aiu_administracion', 'aiu_imprevistos', 'aiu_utilidad'];
+            if v_base_especial > v_cb then
+              -- Ni toda la operación alcanza a cubrir el piso acumulado: no se presume; queda pendiente.
+              v_base_especial := v_cb;
+              v_aiu_alerta := 'aiu_minimo_contrato_no_alcanza';
+            end if;
+          end if;
+          -- La operación no puede llevar el acumulado por encima del valor del contrato (el piso es «del contrato»).
+          if (v_acum ->> 'valor')::numeric + v_cb > v_contrato.contrato_valor + 1 then
+            v_aiu_alerta := coalesce(v_aiu_alerta, 'aiu_excede_valor_contrato');
           end if;
         else
           -- Construcción (DUR 1.3.1.7.9): honorarios del constructor; si no se pactan, su utilidad. Sin mínimo del 10 %.
@@ -1354,6 +1467,7 @@ begin
       v_aiu_estado := case when v_contrato.estado = 'rechazado' then 'aiu_contrato_rechazado'
                            when v_contrato.estado <> 'validado' then 'aiu_contrato_pendiente_validacion'
                            when v_contrato.vigente_desde > v_hoy or (v_contrato.vigente_hasta is not null and v_contrato.vigente_hasta < v_hoy) then 'aiu_contrato_no_vigente'
+                           else v_aiu_alerta
                       end;
     end if;
     if v_aiu_estado is not null then
@@ -1387,7 +1501,10 @@ begin
     'naturaleza', p_naturaleza, 'monto', v_monto, 'tarifa_iva', p_tarifa_iva, 'componentes', v_comp,
     'base', v_base, 'iva', v_iva, 'fecha', v_hoy, 'base_retefuente', v_base_fuente, 'base_reteica', v_base_ica,
     'aiu', case when v_aiu then jsonb_build_object('contrato_id', v_contrato.id, 'regimen', v_contrato.regimen, 'estado', v_contrato.estado,
-                                                   'base_iva', v_base_especial, 'minimo_10_aplicado', v_min_aplicado, 'iva', v_iva_aiu) end,
+                                                   'base_iva', v_base_especial, 'minimo_10_aplicado', v_min_aplicado, 'iva', v_iva_aiu,
+                                                   'aiu_declarado', v_aiu_declarado, 'valor_operacion', v_valor_op,
+                                                   'minimo_10_contrato_aplicado', v_min_contrato,
+                                                   'acumulado_previo', v_acum - 'por_operacion', 'contrato_valor', v_contrato.contrato_valor) end,
     'perfil', v_org_q, 'proveedor', v_prov_q,
     'clases', v_clases, 'total', v_total, 'neto', v_monto - v_total,
     'pendiente', exists (select 1 from jsonb_array_elements(v_clases) c where c ->> 'estado' = 'pendiente'),
@@ -2123,32 +2240,79 @@ begin
 end;
 $function$;
 
--- Ronda 4. El período en que se descuenta una reversión NO es de libre elección:
---   renta: anulación, rescisión o resolución → el período del hecho (DUR 1625 de 2016, art. 1.2.4.17); retención en
---          exceso → el período del reintegro (art. 1.2.4.16);
---   IVA:   el mismo criterio (por confirmar con el Contador el artículo del DUR para reteIVA);
---   ICA:   la regla del procedimiento municipal validado.
+-- Rondas 4 y 5. El período en que se descuenta una reversión NO es de libre elección (ronda 5 del Contador, respuesta 9
+-- y primera cita que corrige: la anulación en renta es el art. 1.2.4.8 y el exceso el 1.2.4.16):
+--   renta (DUR 1625 de 2016): anulación, rescisión o resolución → el período del hecho y el saldo en los siguientes
+--          (art. 1.2.4.8); retención en exceso o indebida → el período del reintegro (art. 1.2.4.16);
+--   reteIVA (art. 1.3.2.3.1): anulación, rescisión o resolución → el período de la anulación y el saldo en los DOS
+--          períodos siguientes; en exceso → el período del reintegro (con la solicitud escrita del retenido y su
+--          manifestación escrita de que no imputó la retención, que exige fn_anticipo_retencion_exceso_reintegrar);
+--   ICA:   la regla del procedimiento municipal validado; el saldo, en los períodos siguientes, sin límite de períodos.
+-- «saldo» dice dónde va lo que no alcance a descontarse: 'siguientes_sin_limite', 'dos_siguientes' (con
+-- «periodos_saldo», los dos únicos períodos admitidos) o 'por_confirmar' (reteIVA en exceso: pregunta abierta al Contador).
 create or replace function public.fn_retencion_periodo_descuento(p_clase text, p_origen text, p_fecha_hecho date, p_hoy date, p_regla_ica text default null)
  returns jsonb language plpgsql immutable set search_path to 'public', 'pg_temp'
 as $function$
 declare
   v_fecha date;
   v_regla text;
+  v_saldo text;
+  v_periodos jsonb;
 begin
   if p_clase = 'reteica' then
     v_regla := p_regla_ica;
     v_fecha := case p_regla_ica when 'periodo_del_hecho' then p_fecha_hecho when 'periodo_del_reintegro' then p_hoy
                                 when 'periodo_siguiente_al_reintegro' then (date_trunc('month', p_hoy) + interval '1 month')::date end;
-  elsif p_origen = 'exceso' then
-    v_regla := case when p_clase = 'retefuente' then 'DUR 1.2.4.16: período del reintegro' else 'reteIVA: período del reintegro (por confirmar)' end;
-    v_fecha := p_hoy;
+    v_saldo := 'siguientes_sin_limite';
+  elsif p_clase = 'retefuente' then
+    if p_origen = 'exceso' then
+      v_regla := 'DUR 1.2.4.16: período del reintegro; el saldo, en los períodos siguientes';
+      v_fecha := p_hoy;
+    else
+      v_regla := 'DUR 1.2.4.8: período de la anulación, rescisión o resolución; el saldo, en los períodos siguientes';
+      v_fecha := p_fecha_hecho;
+    end if;
+    v_saldo := 'siguientes_sin_limite';
+  elsif p_clase = 'reteiva' then
+    if p_origen = 'exceso' then
+      v_regla := 'DUR 1.3.2.3.1: período del reintegro, con solicitud escrita y manifestación escrita de no imputación del retenido';
+      v_fecha := p_hoy;
+      v_saldo := 'por_confirmar';
+    else
+      v_regla := 'DUR 1.3.2.3.1: período de la anulación, rescisión o resolución; el saldo, en los dos períodos siguientes';
+      v_fecha := p_fecha_hecho;
+      v_saldo := 'dos_siguientes';
+    end if;
   else
-    v_regla := case when p_clase = 'retefuente' then 'DUR 1.2.4.17: período de la anulación, rescisión o resolución'
-                    else 'reteIVA: período del hecho (por confirmar)' end;
-    v_fecha := p_fecha_hecho;
+    raise exception 'clase_retencion_invalida' using errcode = '22023', detail = coalesce(p_clase, '');
   end if;
   if v_fecha is null then raise exception 'periodo_descuento_indeterminado' using errcode = '22023'; end if;
-  return jsonb_build_object('periodo', to_char(v_fecha, 'YYYY-MM'), 'regla', v_regla, 'fecha', v_fecha);
+  if v_saldo = 'dos_siguientes' then
+    v_periodos := jsonb_build_array(to_char(date_trunc('month', v_fecha) + interval '1 month', 'YYYY-MM'),
+                                    to_char(date_trunc('month', v_fecha) + interval '2 months', 'YYYY-MM'));
+  end if;
+  return jsonb_build_object('periodo', to_char(v_fecha, 'YYYY-MM'), 'regla', v_regla, 'fecha', v_fecha, 'saldo', v_saldo,
+                            'periodos_saldo', v_periodos);
+end;
+$function$;
+
+-- Ronda 5. Detalle del pendiente «descuento_retencion_siguientes_periodos»: dónde puede descontarse el saldo y con qué
+-- soporte. reteIVA (anulación): solo en los dos períodos siguientes. Renta: en los siguientes. ReteICA: en los siguientes,
+-- sin límite de períodos, con la solicitud escrita guardada como soporte OBLIGATORIO (respuesta 12 del Contador).
+create or replace function public.fn_retencion_saldo_pendiente_detalle(p_per jsonb, p_clase text, p_por_descontar numeric, p_soportes jsonb)
+ returns jsonb language plpgsql immutable set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_solicitud text := nullif(btrim(coalesce(p_soportes -> 'ica' ->> 'solicitud', '')), '');
+begin
+  if p_clase = 'reteica' and (v_solicitud is null or length(v_solicitud) < 3) then
+    raise exception 'reteica_solicitud_escrita_obligatoria' using errcode = '22023',
+      hint = 'El excedente de ReteICA queda pendiente para los períodos siguientes solo con la solicitud escrita guardada como soporte.';
+  end if;
+  return jsonb_build_object('clase', p_clase, 'periodo', p_per ->> 'periodo', 'por_descontar', p_por_descontar, 'regla', p_per ->> 'regla',
+                            'saldo', p_per ->> 'saldo', 'periodos_saldo', p_per -> 'periodos_saldo',
+                            'limite_periodos', case p_per ->> 'saldo' when 'dos_siguientes' then 2 end,
+                            'soporte_solicitud', case when p_clase = 'reteica' then v_solicitud end);
 end;
 $function$;
 
@@ -2346,6 +2510,7 @@ begin
       v_detalle := v_detalle || jsonb_build_object('withholding_id', v_w.id, 'clase', v_w.clase, 'cuenta', v_w.cuenta, 'revertido', v_r,
                                                    'base_afectada', v_afectada, 'tarifa', v_w.tarifa, 'causa', v_causa, 'periodo', v_per ->> 'periodo',
                                                    'regla_periodo', v_per ->> 'regla', 'fecha_periodo', v_per ->> 'fecha',
+                                                   'saldo_periodos', v_per ->> 'saldo', 'periodos_saldo', v_per -> 'periodos_saldo',
                                                    'anio_retencion', extract(year from v_w.fecha at time zone v_tz)::integer,
                                                    'procedimiento_ica', v_proc.id);
       v_lineas_ret := v_lineas_ret || jsonb_build_object('cuenta', v_w.cuenta, 'debito', v_r, 'credito', 0,
@@ -2393,6 +2558,15 @@ begin
                                                retenciones_determinadas, procedimiento, soporte, motivo, asiento_id, created_by, lineas, hecho)
   values (v_org, v_ant.id, v_pago.id, v_bruto, v_dinero, v_bruto - v_dinero, v_detalle, v_det, p_procedimiento, v_ref, btrim(p_motivo), v_entry, v_uid,
           case when v_det and v_causa <> 'operacion_anulada' then v_lineas end, v_hecho);
+  -- Ronda 5: una devolución por líneas de una operación con AIU (art. 462-1) no puede dejar la operación ni el acumulado
+  -- del contrato por debajo del piso del 10 % (respuesta 13: se controla en ambos niveles).
+  if v_det and v_causa <> 'operacion_anulada' then
+    perform public.fn_aiu_contrato_exigir_minimo(k.contrato)
+       from (select v_ant.aiu_contrato_id as contrato where v_ant.naturaleza = 'pago_anticipado_precio' and v_ant.aiu_contrato_id is not null
+             union
+             select (v.evaluacion -> 'aiu' ->> 'contrato_id')::uuid from public.supplier_advance_conversions v
+              where v.advance_id = v_ant.id and v.evaluacion -> 'aiu' ->> 'contrato_id' is not null) k;
+  end if;
 
   for v_d in select * from jsonb_array_elements(v_detalle) loop
     select * into v_w from public.supplier_advance_withholdings w where w.id = (v_d ->> 'withholding_id')::uuid;
@@ -2421,13 +2595,17 @@ begin
       jsonb_build_object('payment_id', v_pago.id, 'causa', v_causa,
                          'periodos_a_revisar', (select jsonb_agg(distinct d ->> 'periodo') from jsonb_array_elements(v_detalle) d), 'detalle', v_detalle), v_uid);
   end if;
-  -- Lo que no alcance a descontarse en el período (neto negativo de la clase) se descuenta en los siguientes.
+  -- Lo que no alcance a descontarse en el período (neto negativo de la clase) se descuenta en los siguientes que admite
+  -- la regla del impuesto (ronda 5: reteIVA, solo los dos siguientes; renta y ReteICA, sin límite; ReteICA con la
+  -- solicitud escrita como soporte obligatorio).
   for v_d in select distinct on (d ->> 'clase', d ->> 'periodo') d from jsonb_array_elements(v_detalle) d loop
     v_neto := public.fn_retencion_neto_periodo(v_org, v_d ->> 'clase', v_d ->> 'periodo');
     if v_neto < 0 then
       perform public.fn_anticipo_pendiente_abrir(v_org, v_ant.id, 'descuento_retencion_siguientes_periodos',
-        jsonb_build_object('payment_id', v_pago.id, 'clase', v_d ->> 'clase', 'periodo', v_d ->> 'periodo', 'por_descontar', -v_neto,
-                           'regla', v_d ->> 'regla_periodo'), v_uid);
+        jsonb_build_object('payment_id', v_pago.id)
+          || public.fn_retencion_saldo_pendiente_detalle(
+               jsonb_build_object('periodo', v_d ->> 'periodo', 'regla', v_d ->> 'regla_periodo', 'saldo', v_d ->> 'saldo_periodos',
+                                  'periodos_saldo', v_d -> 'periodos_saldo'), v_d ->> 'clase', -v_neto, v_sop), v_uid);
     end if;
   end loop;
   -- Retención de un año revertida en otro: el certificado del año de la retención ya salió; revisión del Contador.
@@ -2450,9 +2628,10 @@ $function$;
 
 -- Retención excesiva o indebida (ronda 3, causa b; ronda 4): el cálculo correcto (base y tarifa) da el exceso; se
 -- reintegra al proveedor (D retención por pagar / C caja o banco). El anticipo no cambia. Exige la solicitud escrita del
--- afectado con sus pruebas, el cálculo y el certificado corregido (DUR 1.2.4.16); reteICA: el procedimiento VALIDADO del
--- municipio y sus pruebas (sin él: bloqueado). El período de descuento no se elige: renta, el del reintegro; ICA, el de
--- su procedimiento (p_periodo_descuento, si llega, debe coincidir). p_retencion elige la retención cuando hay varias de
+-- afectado con sus pruebas, el cálculo y el certificado corregido (renta: DUR 1.2.4.16); reteIVA (DUR 1.3.2.3.1, ronda 5):
+-- además la manifestación escrita del retenido de que no imputó la retención; reteICA: el procedimiento VALIDADO del
+-- municipio y sus pruebas (sin él: bloqueado). El período de descuento no se elige: renta e IVA, el del reintegro; ICA,
+-- el de su procedimiento (p_periodo_descuento, si llega, debe coincidir). p_retencion elige la retención cuando hay varias de
 -- la misma clase (giro y conversiones).
 create or replace function public.fn_anticipo_retencion_exceso_reintegrar(
   p_anticipo uuid, p_clase text, p_base_correcta numeric, p_tarifa_correcta numeric, p_metodo text, p_clave_idempotencia text,
@@ -2489,9 +2668,14 @@ begin
   if length(btrim(coalesce(v_sop ->> 'calculo', ''))) < 3 or length(btrim(coalesce(v_sop ->> 'certificado', ''))) < 3 then
     raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'calculo_y_certificado';
   end if;
-  -- Ronda 4: requisitos del impuesto (DUR 1.2.4.16): solicitud escrita del afectado y pruebas.
+  -- Rondas 4 y 5: requisitos del impuesto. Renta (DUR 1.2.4.16): solicitud escrita del afectado y pruebas. reteIVA
+  -- (DUR 1.3.2.3.1): además, la manifestación ESCRITA del retenido de que no imputó la retención (dos soportes obligatorios).
   if length(btrim(coalesce(v_sop ->> 'solicitud', ''))) < 3 or length(btrim(coalesce(v_sop ->> 'pruebas', ''))) < 3 then
     raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'solicitud_y_pruebas';
+  end if;
+  if p_clase = 'reteiva' and length(btrim(coalesce(v_sop ->> 'manifestacion_no_imputacion', ''))) < 3 then
+    raise exception 'soporte_procedimiento_obligatorio' using errcode = '22023', detail = 'manifestacion_no_imputacion',
+      hint = 'reteIVA en exceso: adjunte la manifestación escrita del retenido de que no imputó la retención (DUR 1.3.2.3.1).';
   end if;
   if p_requiere_correccion is null then raise exception 'tratamiento_declaracion_obligatorio' using errcode = '22023'; end if;
   if p_base_correcta is null or p_base_correcta < 0 or p_tarifa_correcta is null or p_tarifa_correcta < 0 then
@@ -2575,7 +2759,7 @@ begin
   v_neto := public.fn_retencion_neto_periodo(v_ant.organization_id, p_clase, v_per ->> 'periodo');
   if v_neto < 0 then
     perform public.fn_anticipo_pendiente_abrir(v_ant.organization_id, v_ant.id, 'descuento_retencion_siguientes_periodos',
-      jsonb_build_object('payment_id', v_pago.id, 'clase', p_clase, 'periodo', v_per ->> 'periodo', 'por_descontar', -v_neto, 'regla', v_per ->> 'regla'), v_uid);
+      jsonb_build_object('payment_id', v_pago.id) || public.fn_retencion_saldo_pendiente_detalle(v_per, p_clase, -v_neto, v_sop), v_uid);
   end if;
   if extract(year from v_w.fecha at time zone v_tz)::integer <> left(v_per ->> 'periodo', 4)::integer then
     perform public.fn_anticipo_pendiente_abrir(v_ant.organization_id, v_ant.id, 'retencion_revertida_otro_anio',
@@ -3178,6 +3362,9 @@ revoke all on function public.fn_anticipo_componentes(uuid) from public, anon, a
 revoke all on function public.fn_reteica_procedimiento_exigir(integer, uuid, date, jsonb) from public, anon, authenticated;
 revoke all on function public.fn_retencion_periodo_descuento(text, text, date, date, text) from public, anon, authenticated;
 revoke all on function public.fn_retencion_neto_periodo(integer, text, text) from public, anon, authenticated;
+revoke all on function public.fn_retencion_saldo_pendiente_detalle(jsonb, text, numeric, jsonb) from public, anon, authenticated;
+revoke all on function public.fn_aiu_contrato_acumulado(uuid) from public, anon, authenticated;
+revoke all on function public.fn_aiu_contrato_exigir_minimo(uuid) from public, anon, authenticated;
 revoke all on function public.fn_anticipo_proveedor_asiento(integer, integer, timestamptz, text, text, text, text, jsonb, uuid) from public, anon, authenticated;
 revoke all on function public.fn_cxp_cuenta_reconocida(integer, uuid) from public, anon, authenticated;
 revoke all on function public.fn_anticipo_pendiente_abrir(integer, uuid, text, jsonb, uuid) from public, anon, authenticated;

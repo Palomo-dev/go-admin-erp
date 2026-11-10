@@ -12,8 +12,10 @@
  * obligación posterior REAL, documentada aquí, la difiere hasta cumplirse.
  * Ronda 4 (solo recibida): si el contrato pacta descontar la remuneración de lo
  * que se debe al dueño; sin pacto, la remuneración es una cuenta por cobrar.
+ * Ronda 5 (solo recibida, C.Co. art. 1277): el orden de aplicación de lo recaudado y la liquidación por escrito.
  */
 import { useTranslations } from 'next-intl';
+import { TerminosLiquidacionCampos } from './TerminosLiquidacionCampos';
 import { AvisoTonal, FormField } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -243,6 +245,17 @@ export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, 
               />
             )}
           </div>
+          {direccion === 'recibida' && (
+            <TerminosLiquidacionCampos
+              idBase="consignacion"
+              orden={valor.ordenAplicacion}
+              liquidacion={valor.liquidacionEscrita}
+              compensacion={valor.compensacionRemuneracion}
+              onOrden={(o) => fijar({ ordenAplicacion: o })}
+              onLiquidacion={(l) => fijar({ liquidacionEscrita: l })}
+              tocado={tocado}
+            />
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {(['devoluciones', 'perdidas', 'gastos'] as const).map((k) => (
               <Opciones

@@ -1,3 +1,15 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108150000 746ccbabbb6f05b8b22a043b4314b777 · 20261108150500 53bfcba981ac8811b57ac97e86120cad · 20261108151000 69666ff755350aaa4bf0a678cbf42a65 · prueba 10 83919376c6959aee618f8164718b110f
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 76 verificaciones · 76 ok · 0 fallas. Cambiaron solo DATOS de POS5 para cumplir lo nuevo de «nunca
+transmitida» (constancia de que no hay soporte de contingencia, consulta del CUFE/CUDE sin resultado y venta de hace 3
+días para que la consulta quede pasadas las 48 horas). Ningún esperado cambió: POS5 sigue saliendo de 28/59 y su reversa
+no afecta (filas 59 y 60); la conciliación sigue con diferencia 0.
+
+── Corridas anteriores ──
 RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
 md5: 20261108150000 096608e63f83245718ff95c459b3bf99 · 20261108150500 e9be46c5b7156980e40b98e9f3863990 ·
      20261108151000 d455eb50b356e972a414f641047dd33e · prueba 10 2b8bae9361a48d0a4dd5bc69fb9d27c8

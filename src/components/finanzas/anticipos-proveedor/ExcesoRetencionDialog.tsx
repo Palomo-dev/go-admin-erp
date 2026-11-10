@@ -26,6 +26,8 @@ import { anticiposProveedorService } from './anticiposProveedorService';
 import { CamposPruebasIca } from './CamposPruebasIca';
 
 const NS = 'finanzasTercerosR4.anticipos';
+/** Ronda 5 del Contador: manifestación de no imputación (reteIVA) y período por impuesto. */
+const NS_R5 = 'finanzasTercerosR5.anticipos';
 
 export interface ExcesoRetencionDialogProps {
   anticipo: Pick<FilaAnticipoProveedor, 'id' | 'proveedor' | 'sucursalId' | 'retenciones' | 'pruebasIca'> | null;
@@ -35,6 +37,7 @@ export interface ExcesoRetencionDialogProps {
 
 export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: ExcesoRetencionDialogProps) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations(NS_R5);
   const moneda = useMonedaOrganizacion();
   const idCorreccion = useId();
   const vigentes = useMemo(() => (anticipo?.retenciones ?? []).filter((r) => r.vigente > 0), [anticipo]);
@@ -48,6 +51,7 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
   const [certificado, setCertificado] = useState('');
   const [solicitud, setSolicitud] = useState('');
   const [pruebas, setPruebas] = useState('');
+  const [manifestacion, setManifestacion] = useState('');
   const [ica, setIca] = useState<Record<string, string>>({});
   const [requiereCorreccion, setRequiereCorreccion] = useState(false);
   const [tocado, setTocado] = useState(false);
@@ -67,6 +71,7 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
     setCertificado('');
     setSolicitud('');
     setPruebas('');
+    setManifestacion('');
     setIca({});
     setRequiereCorreccion(false);
     setTocado(false);
@@ -95,6 +100,8 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
     calculo: base === null || tarifa === null || exceso === null || exceso <= 0,
     motivo: motivo.trim().length < 3,
     soportes: calculo.trim().length < 3 || certificado.trim().length < 3 || solicitud.trim().length < 3 || pruebas.trim().length < 3,
+    // Ronda 5 (DUR 1.3.2.3.1): la reteIVA en exceso exige además la manifestación escrita de no imputación del retenido.
+    manifestacion: clase === 'reteiva' && manifestacion.trim().length < 3,
     // reteICA: sin procedimiento validado del municipio no se puede (la base lo bloquea); con él, todas sus pruebas.
     ica: clase === 'reteica' && (!anticipo?.pruebasIca || camposIca.some((k) => (ica[k] ?? '').trim().length < 3)),
   };
@@ -117,6 +124,7 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
           certificado: certificado.trim(),
           solicitud: solicitud.trim(),
           pruebas: pruebas.trim(),
+          manifestacion_no_imputacion: clase === 'reteiva' ? manifestacion.trim() : null,
           ica: clase === 'reteica' ? Object.fromEntries(camposIca.map((k) => [k, (ica[k] ?? '').trim()])) : null,
         },
         requiereCorreccion,
@@ -205,10 +213,20 @@ export function ExcesoRetencionDialog({ anticipo, onCerrar, onReintegrado }: Exc
             <Input value={pruebas} onChange={(e) => setPruebas(e.target.value)} maxLength={500} />
           </FormField>
         </div>
+        {clase === 'reteiva' && (
+          <FormField
+            etiqueta={tR5('exceso.manifestacion')}
+            obligatorio
+            ayuda={tR5('exceso.manifestacionAyuda')}
+            error={tocado && faltas.manifestacion ? t('validacion.soporte') : null}
+          >
+            <Input value={manifestacion} onChange={(e) => setManifestacion(e.target.value)} maxLength={500} />
+          </FormField>
+        )}
         {clase === 'reteica' && (
           <CamposPruebasIca pruebas={anticipo?.pruebasIca ?? null} valores={ica} onCambio={setIca} tocado={tocado} />
         )}
-        <p className="text-xs text-fg-muted">{t('devolver.procedimiento.periodoRegla')}</p>
+        <p className="text-xs text-fg-muted">{tR5('exceso.periodoRegla')}</p>
         <div className="flex items-start gap-2">
           <Checkbox id={idCorreccion} checked={requiereCorreccion} onCheckedChange={(v) => setRequiereCorreccion(v === true)} className="mt-0.5" />
           <Label htmlFor={idCorreccion} className="flex flex-col gap-0.5 font-normal">

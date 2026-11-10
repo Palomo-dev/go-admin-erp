@@ -1,15 +1,19 @@
 -- Pruebas en seco 14 · Consignación en dos sentidos, «Ronda 2 del Contador», de punta a punta, REEJECUTADA el 2026-11-09
--- con los archivos EXACTOS actuales (ronda 4). Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585): antes corría
--- en las organizaciones 137 y 138; la parte «entre organizaciones» (I1–I6) exige una segunda organización y NO se
--- ejecuta; 20261108120500 (vínculos) no cambió. Lo que cambió por criterio ya aceptado en las rondas 3 y 4 (se anota en el
--- resultado): «al liquidar» ya no existe (la nota 2 devenga al cumplirse una obligación posterior documentada); la
--- liquidación no registra remuneración (no hay contra-asiento al anularla); compensación pactada y cuenta por cobrar
--- al dueño obligatorias; los pendientes de impuestos «por determinar» de la ronda 2 son ahora retenciones por ámbito.
+-- con los archivos EXACTOS de la ronda 5. Proyecto taqjemqjtumhwptchcxk · org 374 (sucursal 585) y, SOLO para la parte
+-- «entre organizaciones» (I1–I6, que la ronda 4 no volvió a correr y el Contador lo marcó), la org 138 (sucursal 113)
+-- como consignante que entrega; 374 recibe, acepta y liquida. 20261108120500 (vínculos) no cambió. Lo que cambió por
+-- criterio ya aceptado en las rondas 3, 4 y 5 (se anota en el resultado): «al liquidar» ya no existe (la nota 2 devenga
+-- al cumplirse una obligación posterior documentada); la liquidación no registra remuneración (no hay contra-asiento al
+-- anularla); compensación pactada y cuenta por cobrar al dueño obligatorias; los pendientes de impuestos «por
+-- determinar» de la ronda 2 son ahora retenciones por ámbito; ronda 5: el contrato recibido en mandato fija el orden de
+-- aplicación y la liquidación por escrito, y al aceptar una nota de otra organización el receptor declara esos términos.
 --
 -- NO DEJA DATOS: una sola transacción que termina con una excepción (= rollback); el resultado sale en su mensaje.
 -- Resultado: 14_consignaciones_ronda2_punta_a_punta.resultado.txt
 
 begin;
+-- El día de la prueba es el de la organización (America/Bogota): current_date no depende de la hora UTC de la corrida.
+set local timezone to 'America/Bogota';
 
 -- ════ AYUDAS (solo esta sesión) ════════════════════════════════════════════════════════════════════════════
 create temp table r (n serial primary key, prueba text default current_setting('dry.prueba', true), caso text, verificacion text, esperado text,
@@ -51,13 +55,13 @@ grant execute on function pg_temp.mover(integer, integer, integer, text, numeric
 select set_config('dry.prueba', 'carga', true);
 create temp table carga (n int, archivo text, md5 text, partes text[]);
 insert into carga values
-  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['5a3ad4f516169849e63ea85a06d6409d', '9663bf553ed7663c7dddd1bb69f7b066']),
-  (2, '20261108121000_consignaciones', 'd2a58b49b6016488ba3287a48511d4d5', array['01d40736f59b0326331a5c87b5c9aaaf', '43d4449c092a8d952dbfc7baa691382c', '0b6ff32c6c2ac6700ffc185b653bf99b', '19c810fa6720bed9fbcd0946720e7db3', '01c2f9b75c3a609226b6bdee5c0bb7a7', '7e71e8c4e1bff5daf3784ae3c833ff37', '6be2815156fc03f855f47989b13aa5e8', '659a3939293d6235d15a78f8ca995413']),
+  (1, '20261108120500_organization_links', '6a5a3ead2fe311fdde4b7d5c0376c12b', array['74b48fc99c0a3a3b010413db8031e675', '948d61028cb34db074d08c12eca2edaf', '6332a1eaafa850e04255cbe1d4c790db']),
+  (2, '20261108121000_consignaciones', 'f52c0de6f53856fc9dd38bb5b3403809', array['d2aa4c6725204badc5f14793d54b0da0', 'a8b60ed8327e8bdf4a09a5749389bd0e', 'cb2daffb5506b6d1048c13cb0ef67cde', '2e060edf17d826a0260b29ebe268bb9c', '06c7eacadb8c897ab3d6c5e06763122a', '5f884aa2747373581edd9337f2f14b93', 'bbe2fedfe558459e35157acd8b4c26e9', 'ee0b275499b8c7e42d518f63a10cc084', 'ad04a330664bc68fa5729cf07f710a3d', '88fd3775f77f5c1fa74aa39768fee054', '0691b64cb50fdcf7c490b376aadfbb04', 'cecd90018184f26d34a949cb1cdcf644', '48cdef4e260198970fc32c7289e2e1c3', 'e12361f82a962fc091621ec670802cec', '7ef44ccb92192d743db7bec3bc3849e3']),
   (3, '20261108140500_responsabilidades_fiscales_en', '4b00bf10bf99ff2a97e2e89ff0480811', array['4b00bf10bf99ff2a97e2e89ff0480811']),
-  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['85fd17321a7e85d85a58916cb2f84c95']),
-  (5, '20261108160500_tributario_perfil_renta_iva', 'c83b8a50b6342e65ee5bf3f993847b79', array['16de3178aa8a2cc01d9b2ed4be288c78', '282e5b104a758b88936d2a684742eed0']),
-  (6, '20261108165000_tarifas_precision_exacta', '28e47f6353ee4102463b7b63dca057be', array['28e47f6353ee4102463b7b63dca057be']),
-  (7, '20261108170000_anticipos_proveedores_contador', 'ca6171f8dfbc5cb11ec40a831ea589df', array['a2fce547e464f7bfe71175e40038af04', 'aa4c3b57a749d53c66506a7b4d7d6338', '05b9412ef8fb162a9566189e4313073b', 'cb2d8d5c9a890e919cdebac05283c89f', 'b58622a7c223bd115e1d404290cee1c7', '863d10ed9ec437aca7b4d06f785d0392', '073ea2e870c4320f8c7fb7b5a09317fd', '2d4e4c263c074261594198c9946abc2f', 'ebfd91b7b31edcf53d2b67585c26723b']);
+  (4, '20261108160000_tributario_catalogo_rut_y_codigos_fe', '85fd17321a7e85d85a58916cb2f84c95', array['a293fbc0aadf7b33b72d1c5d4d824fad', '3a0fbf1e5d8f8cace37a3ef193763cd9']),
+  (5, '20261108160500_tributario_perfil_renta_iva', '1d80345bde9c6d9fd378bc10e8c43a5e', array['6b459b8cf3f78457b04c2786625a08ac', '6b925b7a8d549f72fa09598adee2d903', '80df677e5aa15aa7e4c27c91b322beb7']),
+  (6, '20261108165000_tarifas_precision_exacta', '1ec6641bdf74dfc15163d0753982309f', array['1ec6641bdf74dfc15163d0753982309f']),
+  (7, '20261108170000_anticipos_proveedores_contador', '0c5079355e6c5ab55dd6b14e1e484cea', array['63f6b0c4aca0275295b79fd9c41924f8', 'eb4a4e52a897e7c01209d3725650d0fb', 'd345b3fd61afb1cbdfbb05fc69fe9bac', 'ac7cfef25367cf788f2de7b5698e617f', '45ca6efa4c336768edce64fd6816428d', '651917641ef050acf2afdc2826885dea', '896232d306be97fa362590dbd56de655', '6e27c30d840c1dcdc6c84165526c334d', '8f13afc4f5934c7fd9f778f91a792d99', '521574537319cfb8c790a4af21099265', 'fecada69cc621c6c66475858378a7697', '03f599837ceb3cbaf18680c4781b0421', '8df4262b2efb2ba15458f77e87758b3d', '1f285ec7b28e57d8bbd1f39846705459', '4ca38155375d59428529d5dc111ed302', '0240018dc5742894c78d3cc94f65ccb4']);
 do $carga$
 declare m record; s text;
 begin
@@ -110,6 +114,13 @@ begin
   insert into supplier_advances (organization_id, branch_id, supplier_id, amount, balance, currency, account_code) values (374, 585, s138, 50000, 50000, 'COP', '13300501') returning id into a2;
   insert into supplier_advances (organization_id, branch_id, supplier_id, amount, balance, currency, account_code) values (374, 585, s1, 1000000, 1000000, 'COP', '13300501') returning id into a3;
   perform fn_inv_int_mover(374, 585, p3, null, 'in', 5, 20000, 'initial', 'seco', 'seco', null, '{}'::jsonb);
+  -- Ronda 5: la parte entre organizaciones vuelve a correr; la 138 es la consignante que entrega (sus datos también se revierten).
+  insert into products (organization_id, sku, name) values (138, 'SECO-P4', 'Prueba seco del consignante') returning id into p4;
+  insert into customers (organization_id, first_name, last_name) values (138, 'Consignatario', 'Vinculado') returning id into c138;
+  perform fn_inv_int_mover(138, 113, p4, null, 'in', 10, 30000, 'initial', 'seco', 'seco', null, '{}'::jsonb);
+  perform set_config('dry.u138', json_build_object('sub', (select owner_user_id from organizations where id = 138), 'role', 'authenticated')::text, true);
+  perform set_config('dry.p4', p4::text, true); perform set_config('dry.p4uuid', (select uuid::text from products where id = p4), true);
+  perform set_config('dry.c138', c138::text, true);
   perform set_config('dry.u374', json_build_object('sub', (select owner_user_id from organizations where id = 374), 'role', 'authenticated')::text, true);
   perform set_config('dry.s1', s1::text, true); perform set_config('dry.s138', s138::text, true);
   perform set_config('dry.p1', p1::text, true); perform set_config('dry.p2', p2::text, true); perform set_config('dry.p3', p3::text, true);
@@ -132,7 +143,10 @@ declare
 begin
   t := jsonb_build_object('contrato','intermediacion','condicion','agente','valoracion','costo_acreditado','precio_modo','minimo',
     'remuneracion_modo','porcentaje','base_comision','precio_pactado','reconocimiento','al_vender','factura_remuneracion',true,
-    'obligacion_dueno','venta','compensacion_remuneracion',true,'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001');
+    'obligacion_dueno','venta','compensacion_remuneracion',true,'riesgos',jsonb_build_object('devoluciones','dueno','perdidas','dueno','gastos','consignatario'),'cuenta_recaudo','28151001',
+    -- Ronda 5 (C.Co. art. 1277): orden de aplicación y liquidación por escrito, términos obligatorios del contrato recibido.
+    'orden_aplicacion',jsonb_build_array('remuneracion','gastos_reembolsables','anticipos','derechos_frente_al_dueno'),
+    'liquidacion_escrita',jsonb_build_object('medio','correo_electronico','plazo_dias',5));
   lin := jsonb_build_array(jsonb_build_object('product_id',p1,'qty',10,'precio',60000,'costo_acreditado',40000));
 
   -- Punto 1: contrapartida del grupo 94 DEFINIDA
@@ -212,7 +226,7 @@ begin
   perform pg_temp.chk('T10d cruce: monto / saldo del anticipo', '50000.00/50000.00', (r->>'monto') || '/' || (r->>'saldo_anticipo'));
 
   -- Punto 8: entregada sin 1465 ni asiento
-  te := t - 'valoracion' - 'cuenta_recaudo';
+  te := t - 'valoracion' - 'cuenta_recaudo' - 'orden_aplicacion' - 'liquidacion_escrita';
   r := fn_consignacion_entregar(c137, b, jsonb_build_array(jsonb_build_object('product_id',p3,'qty',2,'precio',35000)), 10, te, 'k-e1', o, null, null);
   ne := r->>'nota_id';
   perform set_config('dry.ne', ne::text, true);
@@ -229,6 +243,58 @@ begin
   perform pg_temp.err('T12g el hash del token no se puede leer', 'permission denied', 'select token_hash from public.organization_links');
 end $t$;
 
+-- ── Entre organizaciones (ronda 5: se vuelve a correr): 138 entrega, 374 recibe, acepta y liquida ─────────────
+do $i$
+declare
+  u374 text := current_setting('dry.u374'); u138 text := current_setting('dry.u138');
+  c138 uuid := current_setting('dry.c138')::uuid; s138 int := current_setting('dry.s138')::int;
+  p4 int := current_setting('dry.p4')::int; p5 int := current_setting('dry.p5')::int; p4uuid text := current_setting('dry.p4uuid');
+  r jsonb; tok text; doc uuid; doc2 uuid; n3 uuid; te2 jsonb; mapeo jsonb; tc jsonb;
+begin
+  perform set_config('request.jwt.claims', u138, true);
+  r := fn_vinculo_invitar(138, array['consignacion'], null, c138, null, 7); tok := r->>'token';
+  perform set_config('request.jwt.claims', u374, true);
+  r := fn_vinculo_aceptar(tok, 374, s138, null);
+  perform pg_temp.chk('I1 vínculo aceptado', 'activo', r->>'estado');
+  perform set_config('request.jwt.claims', u138, true);
+  te2 := jsonb_build_object('contrato','intermediacion','condicion','agente','precio_modo','fijo','remuneracion_modo','porcentaje',
+    'base_comision','precio_venta','reconocimiento','al_vender','factura_remuneracion',false,'obligacion_dueno','venta',
+    'riesgos',jsonb_build_object('devoluciones','consignatario','perdidas','consignatario','gastos','consignatario'));
+  r := fn_consignacion_entregar(c138, 113, jsonb_build_array(jsonb_build_object('product_id',p4,'qty',4,'precio',70000)), 10, te2, 'k-ie1', 138, null, null);
+  doc := r->>'documento_compartido_id';
+  perform pg_temp.chk('I2 entregada de 138: costo / compartida', '120000.00/true', (r->>'costo') || '/' || (doc is not null)::text);
+  perform pg_temp.chk('I2b RLS: 138 no ve notas de 374', '0', (select count(*)::text from consignment_notes where organization_id = 374));
+  perform set_config('request.jwt.claims', u374, true);
+  mapeo := jsonb_build_array(jsonb_build_object('producto_ref', p4uuid, 'product_id', p5));
+  -- La copia del consignante no trae los términos del lado del receptor: sin declararlos, no se acepta (ronda 4: la
+  -- compensación; ronda 5: el orden de aplicación y la liquidación por escrito).
+  perform pg_temp.err('I3a aceptar sin declarar la compensación, el orden de aplicación ni la liquidación por escrito', 'terminos_invalidos',
+    format('select fn_consignacion_recibida_aceptar(%L,585,%L::jsonb,%L,%L,%L,374)', doc, mapeo, '28151002', 'costo_acreditado', 'k-ia0'));
+  tc := jsonb_build_object('compensacion_remuneracion', true, 'orden_aplicacion', jsonb_build_array('remuneracion','anticipos'),
+                           'liquidacion_escrita', jsonb_build_object('medio','documento_compartido','plazo_dias',3));
+  perform pg_temp.err('I3b el orden de aplicación es obligatorio también al aceptar', 'orden_aplicacion_obligatorio',
+    format('select fn_consignacion_recibida_aceptar(%L,585,%L::jsonb,%L,%L,%L,374,%L::jsonb)', doc, mapeo, '28151002', 'costo_acreditado', 'k-ia0b', tc - 'orden_aplicacion'));
+  r := fn_consignacion_recibida_aceptar(doc, 585, mapeo, '28151002', 'costo_acreditado', 'k-ia1', 374, tc);
+  n3 := r->>'nota_id';
+  perform pg_temp.chk('I3 aceptada en 374: custodia / pactado / recaudo', '120000.00/280000.00/28151002', (r->>'custodia') || '/' || (r->>'pactado') || '/' || (r->'cuentas'->>'recaudo'));
+  perform pg_temp.chk('I3c la nota aceptada guarda la compensación y los términos de la liquidación', 'true · ["remuneracion", "anticipos"] · documento_compartido/3',
+    (select commission_offset_agreed::text || ' · ' || (settlement_terms->'orden_aplicacion')::text || ' · ' || (settlement_terms->'liquidacion_escrita'->>'medio')
+            || '/' || (settlement_terms->'liquidacion_escrita'->>'plazo_dias') from consignment_notes where id = n3));
+  perform pg_temp.chk('I3d RLS: 374 no ve notas de 138', '0', (select count(*)::text from consignment_notes where organization_id = 138));
+  perform pg_temp.mover(374, 585, p5, 'out', 1, 'sale');
+  r := fn_consignacion_recibida_liquidar(n3, null, false, null, 'k-il1', 374);
+  doc2 := r->>'documento_compartido_id';
+  perform pg_temp.chk('I4 liquidación 374 → 138: venta / remuneración / dueño / compartida', '70000.00/7000.00/63000.00/true',
+    (r->>'venta') || '/' || (r->>'remuneracion') || '/' || (r->>'dueno') || '/' || (doc2 is not null)::text);
+  perform pg_temp.chk('I4b la liquidación por escrito lleva el orden de aplicación pactado (C.Co. art. 1277)', '["remuneracion", "anticipos"]',
+    (r->'terminos_liquidacion'->'orden_aplicacion')::text);
+  perform pg_temp.err('I5 374 lee la liquidación como si fuera 138', 'Acceso denegado', format('select fn_consignacion_documento_recibido_preparar(%L,%s)', doc2, 138));
+  perform set_config('request.jwt.claims', u138, true);
+  r := fn_consignacion_documento_recibido_preparar(doc2, 138);
+  perform pg_temp.chk('I6 138 prepara: el mandato del lado del dueño espera al Contador', 'true', ((r->'diferencias') @> '[{"tipo":"mandante_pendiente"}]')::text);
+  perform set_config('request.jwt.claims', u374, true);
+end $i$;
+
 -- ── Cuadre final (administrador) y resultado ─────────────────────────────────
 reset role;
 do $z$
@@ -239,7 +305,9 @@ begin
                                   from journal_lines l where l.journal_entry_id = e.id) x
       from journal_entries e where e.created_at = now() and e.source like 'consign%' order by e.id) s;
   perform pg_temp.log('ASIENTOS DE CONSIGNACIÓN:' || chr(10) || coalesce(v, '(ninguno)'));
-  perform pg_temp.chk('Z1 asientos de consignación (21 de la corrida anterior − 4 de la parte entre organizaciones − 3 de la remuneración «al liquidar», que ya no existe)', '14', (select count(*)::text from journal_entries e where e.created_at = now() and e.source like 'consign%'));
+  -- Ronda 5: los casos entre dos organizaciones (I1–I6) vuelven a correr; suman sus 4 asientos (custodia recibida, salida de
+  -- custodia, venta por cuenta del dueño 2 y su remuneración). El esperado sube de 14 a 18 por eso, no por un cambio de cálculo.
+  perform pg_temp.chk('Z1 asientos de consignación (14 de la parte propia + 4 de la parte entre organizaciones, que vuelve a correr en la ronda 5)', '18', (select count(*)::text from journal_entries e where e.created_at = now() and e.source like 'consign%'));
   perform pg_temp.chk('Z2 asientos descuadrados (todos los de la transacción)', '0', (select count(*)::text from journal_entries e where e.created_at = now()
      and (select coalesce(sum(debit), 0) - coalesce(sum(credit), 0) from journal_lines l where l.journal_entry_id = e.id) <> 0));
   perform pg_temp.chk('Z3 asientos de las entregadas', '0', (select count(*)::text from journal_entries e where e.created_at = now()
@@ -248,11 +316,13 @@ begin
   perform pg_temp.chk('Z5 kardex de la entregada propia', 'transfer_out out 2.000', (select string_agg(source || ' ' || direction || ' ' || qty::text, ', ') from stock_movements where source_id = 'consignacion:' || current_setting('dry.ne')));
   perform pg_temp.chk('Z6 obligación con el dueño en 28151001 tras el cruce (la nota 2 aún no reconoce su remuneración: espera la obligación posterior)', '314000.00', (select sum(l.credit - l.debit)::text from journal_lines l join journal_entries e on e.id = l.journal_entry_id where e.organization_id = 374 and l.account_code = '28151001'));
   perform pg_temp.chk('Z7 saldo y estado del anticipo cruzado', '50000.00 active', (select balance::text || ' ' || status from supplier_advances where id = current_setting('dry.a1')::uuid));
-  perform pg_temp.chk('Z8 retenciones pendientes abiertas (reemplazan los «impuestos por determinar» de la ronda 2; el consignante no tiene datos fiscales)', '9', (select count(*)::text from journal_entry_failures where created_at = now() and organization_id = 374 and reason = 'consignacion_retencion_pendiente' and resolved_at is null));
+  -- Ronda 5: la liquidación entre organizaciones (I4) deja sus 3 retenciones pendientes (el dueño de la 138 no tiene datos fiscales
+  -- acreditados en la 374): el esperado sube de 9 a 12 por esos casos.
+  perform pg_temp.chk('Z8 retenciones pendientes abiertas (reemplazan los «impuestos por determinar» de la ronda 2; el consignante no tiene datos fiscales; 3 de la liquidación entre organizaciones)', '12', (select count(*)::text from journal_entry_failures where created_at = now() and organization_id = 374 and reason = 'consignacion_retencion_pendiente' and resolved_at is null));
   perform pg_temp.chk('Z9 ningún pendiente se cierra por anular el documento (ronda 4)', '0', (select count(*)::text from journal_entry_failures where created_at = now() and organization_id = 374 and resolution = 'liquidacion_anulada'));
   select string_agg(reason || '×' || n, ', ') into v from (select reason, count(*) n from journal_entry_failures where created_at = now() and organization_id = 374 and reason like 'consignacion%' and resolved_at is null group by reason order by reason) s;
   perform pg_temp.log('PENDIENTES ABIERTOS: ' || coalesce(v, '-'));
-  perform pg_temp.chk('Z10 pendientes abiertos por tipo', 'consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_remuneracion_por_devengar×1, consignacion_retencion_pendiente×9', v);
+  perform pg_temp.chk('Z10 pendientes abiertos por tipo', 'consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_remuneracion_por_devengar×1, consignacion_retencion_pendiente×12', v);
 end $z$;
 
 -- ════ FINAL: el resultado sale en el mensaje de esta excepción, que además revierte todo ═══════════════════════════

@@ -36,6 +36,13 @@
 --     operación) o líneas de servicios que irían a una cuenta de inventarios (14…). Entonces el documento queda
 --     pendiente 'iva_no_descontable_por_corregir' («asigne la cuenta contable de cada línea») y, ya con cuenta por
 --     línea, se contabiliza por líneas: el IVA no descontable va a la cuenta de cada línea (paso 4).
+-- RONDA 5 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuesta 5), reescrita sin
+-- aplicar: la cuenta por línea es obligatoria también cuando las líneas mezclan tratamientos de IVA distintos (gravado,
+-- excluido, exento o sin clasificar), activos fijos con gastos (cuenta de cabecera 15… con servicios o productos
+-- inventariables) o IVA con deducibilidad distinta (descontable, no descontable o proporcional con otro porcentaje).
+-- Consecuencia que se informa: el ejemplo de la ronda 3 (prueba 17, compra FCH: una línea no descontable, una
+-- proporcional y una descontable con cuenta de cabecera) ya no se contabiliza con la cuenta de cabecera: queda pendiente
+-- y se contabiliza cuando cada línea tenga su cuenta (prueba 23).
 -- Asientos ya publicados: NO se reescriben (ni UPDATE ni DELETE sobre journal_entries / journal_lines).
 -- Llamadores con reemplazo verificado (cada texto viejo debe aparecer exactamente UNA vez; el rollback hace el inverso).
 -- Prueba en seco (org 374, begin … rollback, H1 + 150000 + esta pegadas): docs/contador/pruebas/17_iva_no_descontable_al_costo.sql
@@ -124,7 +131,14 @@ set search_path to 'public', 'pg_temp'
 as $function$
   with l as (
     select coalesce(it.iva_tipo_operacion,
-                    case p.product_type when 'product' then 'bienes' when 'service' then 'servicios' end) as tipo
+                    case p.product_type when 'product' then 'bienes' when 'service' then 'servicios' end) as tipo,
+           coalesce(it.iva_tratamiento, 'sin_clasificar') as tratamiento,
+           -- Deducibilidad del IVA de la línea (solo las que llevan IVA; el INC no es IVA).
+           case when coalesce(it.tax_rate, 0) > 0 and upper(coalesce(it.tax_code, '')) not like 'INC%'
+                then coalesce(it.iva_descontable, 'por_evaluar')
+                     || case when it.iva_descontable = 'proporcional' then ':' || coalesce(it.iva_descontable_porcentaje::text, '') else '' end
+           end as deducibilidad,
+           coalesce(p.track_stock, false) as inventariable
       from public.invoice_items it
       left join public.products p on p.id = it.product_id
      where it.invoice_purchase_id = p_invoice_purchase_id
@@ -133,6 +147,16 @@ as $function$
            when not exists (select 1 from l) then null
            when exists (select 1 from l where l.tipo is null) or (select count(distinct l.tipo) from l) > 1
              then 'IVA no descontable en una compra cuyas líneas son de activos, costos o gastos distintos (o sin tipo de operación): no se lleva a una cuenta única de cabecera. Asigne la cuenta contable de cada línea y reintente; el IVA no descontable irá a la cuenta de cada línea.'
+           -- Ronda 5: líneas con tratamientos de IVA distintos (gravado, excluido, exento…, o sin clasificar).
+           when (select count(distinct l.tratamiento) from l) > 1
+             then 'IVA no descontable en una compra cuyas líneas tienen tratamientos de IVA distintos (gravado, excluido, exento o sin clasificar): no se lleva a una cuenta única de cabecera. Asigne la cuenta contable de cada línea y reintente.'
+           -- Ronda 5: IVA con deducibilidad distinta entre líneas (descontable, no descontable, proporcional con otro %).
+           when (select count(distinct l.deducibilidad) from l where l.deducibilidad is not null) > 1
+             then 'IVA no descontable en una compra cuyas líneas tienen IVA con deducibilidad distinta (descontable, no descontable o proporcional): no se lleva a una cuenta única de cabecera. Asigne la cuenta contable de cada línea y reintente; el IVA no descontable irá a la cuenta de cada línea.'
+           -- Ronda 5: activos fijos (cuenta de cabecera 15…) mezclados con gastos o inventarios (servicios o productos
+           -- inventariables). Límite: sin cuenta por línea, una línea de activo fijo solo se reconoce por la cuenta de cabecera.
+           when coalesce(p_cuenta_cabecera, '') like '15%' and exists (select 1 from l where l.tipo = 'servicios' or l.inventariable)
+             then 'IVA no descontable en una compra que mezcla activos fijos (cuenta de cabecera ' || p_cuenta_cabecera || ') con gastos o inventarios: asigne la cuenta contable de cada línea y reintente.'
            when coalesce(p_cuenta_cabecera, '') like '14%' and exists (select 1 from l where l.tipo = 'servicios')
              then 'IVA no descontable de servicios: la cuenta de cabecera de la compra es de inventarios (' || p_cuenta_cabecera || '). Asigne la cuenta de costo o gasto de cada línea y reintente.'
          end;

@@ -48,6 +48,18 @@
 --     procedencia es un dato aparte (cambio_periodicidad_procedencia: por_evaluar · procedente · no_procedente) que
 --     registra una persona con fundamento (fn_perfil_tributario_evaluar_cambio); guardar otra vez el cambio con datos
 --     distintos la devuelve a «por_evaluar».
+--
+-- RONDA 5 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuestas 6 y 7), reescrita
+-- sin aplicar:
+--   · Gran contribuyente a mitad de bimestre: la norma no regula el caso (Res. 227 de 2025, art. 1.1.4.3). La aclaración
+--     'gran_contribuyente_transicion_por_resolver' se cierra solo con la decisión estructurada de 20261108161000
+--     (fn_tributario_transicion_gc_registrar: resolución y fecha, fecha de efectos, períodos de IVA y de retención
+--     afectados, tramo anterior y posterior, responsable y soporte). Al guardar la vigencia, la aclaración se omite si hay
+--     una decisión de esa vigencia con la misma fecha de la resolución y la misma fecha de efectos; si cambian, vuelve.
+--   · Formato 2532 (Res. 227 de 2025, art. 1.1.6.3): solo si la cooperativa RECIBIÓ donaciones o cooperación
+--     internacional no reembolsable. Dos columnas nuevas: rte_donaciones_cooperacion (sí / no / NULL = por confirmar) y
+--     rte_donaciones_constancia (la constancia; obligatoria cuando es «no»: CONSTANCIA_2532_REQUERIDA). Una clave que no
+--     venga en los datos conserva lo guardado (la pantalla actual no las envía y no debe borrarlas).
 
 alter table public.organization_tax_profiles
   add column if not exists regimen_renta text
@@ -87,7 +99,10 @@ alter table public.organization_tax_profiles
   add column if not exists cambio_periodicidad_evaluacion text,
   add column if not exists cambio_periodicidad_evaluado_por uuid,
   add column if not exists cambio_periodicidad_evaluado_en timestamptz,
-  add column if not exists aclaraciones text[] not null default '{}'::text[];
+  add column if not exists aclaraciones text[] not null default '{}'::text[],
+  -- Ronda 5: formato 2532 de las cooperativas del RTE.
+  add column if not exists rte_donaciones_cooperacion boolean,
+  add column if not exists rte_donaciones_constancia text check (char_length(rte_donaciones_constancia) <= 1000);
 
 alter table public.organization_tax_profiles alter column regimen drop not null;
 
@@ -107,6 +122,10 @@ comment on column public.organization_tax_profiles.gran_contribuyente_calificaci
   'Ronda 4: ordinaria (efectos desde el 1 de enero siguiente a la resolución) o excepcional (fecha expresa del acto).';
 comment on column public.organization_tax_profiles.aclaraciones is
   'Ronda 4: datos para aclaración (RUT contradictorio, código fuera del catálogo o histórico, transición por resolver). No se borran; la vigencia queda «revisar perfil».';
+comment on column public.organization_tax_profiles.rte_donaciones_cooperacion is
+  'Ronda 5: la cooperativa del RTE recibió donaciones o cooperación internacional no reembolsable (formato 2532, Res. 227 de 2025, art. 1.1.6.3). NULL = por confirmar.';
+comment on column public.organization_tax_profiles.rte_donaciones_constancia is
+  'Ronda 5: constancia de lo verificado sobre donaciones y cooperación internacional; obligatoria cuando no aplica el 2532.';
 
 -- Migración de datos (idempotente: solo filas aún no migradas). Reglas:
 --   'simple' → regimen_renta 'simple'; 'especial' → 'especial'; 'ordinario' y 'no_responsable_iva' → NULL (no inequívoco).
@@ -363,6 +382,28 @@ begin
   v_bloqueos := public.fn_perfil_tributario_bloqueos(d || jsonb_build_object('vigente_desde', v_desde));
   v_aclaraciones := public.fn_perfil_tributario_aclaraciones(d);
 
+  -- Ronda 5: la transición del gran contribuyente a mitad de bimestre se cierra con su decisión estructurada
+  -- (20261108161000), si es de esta vigencia y con la misma resolución (fecha) y la misma fecha de efectos.
+  if p_id is not null and 'gran_contribuyente_transicion_por_resolver' = any (v_aclaraciones)
+     and to_regclass('public.tax_period_decisions') is not null then
+    if exists (select 1 from public.tax_period_decisions x
+                where x.organization_id = p_organization_id and x.vigencia_aplicada_id = p_id
+                  and x.obligacion = 'transicion_gran_contribuyente'
+                  and x.detalle ->> 'resolucion_fecha' = (d ->> 'gran_contribuyente_acto_fecha')
+                  and x.detalle ->> 'fecha_efectos' = (d ->> 'gran_contribuyente_desde')) then
+      v_aclaraciones := array_remove(v_aclaraciones, 'gran_contribuyente_transicion_por_resolver');
+    end if;
+  end if;
+
+  -- Ronda 5: formato 2532. «No aplica» se deja con su constancia.
+  if d ? 'rte_donaciones_cooperacion' and jsonb_typeof(d -> 'rte_donaciones_cooperacion') not in ('boolean', 'null') then
+    raise exception 'DATOS_INVALIDOS' using errcode = '22023';
+  end if;
+  if d ? 'rte_donaciones_cooperacion' and (d ->> 'rte_donaciones_cooperacion') = 'false'
+     and nullif(btrim(coalesce(d ->> 'rte_donaciones_constancia', '')), '') is null then
+    raise exception 'CONSTANCIA_2532_REQUERIDA' using errcode = '22023';
+  end if;
+
   if (d ->> 'cambio_periodicidad_fecha') is not null and (d ->> 'cambio_periodicidad_fecha')::date <> v_desde then
     v_bloqueos := array_append(v_bloqueos, 'cambio_fecha_efectiva_distinta');
   end if;
@@ -442,6 +483,12 @@ begin
          inc_actividad = d ->> 'inc_actividad',
          rte_tipo = d ->> 'rte_tipo',
          rte_ingresos_superan_160000_uvt = (d ->> 'rte_ingresos_superan_160000_uvt')::boolean,
+         -- Ronda 5: lo que no viene se conserva (la pantalla actual no envía estos dos datos).
+         rte_donaciones_cooperacion = case when d ? 'rte_donaciones_cooperacion' then (d ->> 'rte_donaciones_cooperacion')::boolean
+                                           else rte_donaciones_cooperacion end,
+         rte_donaciones_constancia = case when d ? 'rte_donaciones_constancia'
+                                          then nullif(left(btrim(coalesce(d ->> 'rte_donaciones_constancia', '')), 1000), '')
+                                          else rte_donaciones_constancia end,
          no_contribuyente_naturaleza = nullif(left(btrim(coalesce(d ->> 'no_contribuyente_naturaleza', '')), 300), ''),
          motivo_cambio_periodicidad = d ->> 'motivo_cambio_periodicidad',
          cambio_periodicidad_hecho = nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_hecho', '')), 1000), ''),

@@ -84,6 +84,13 @@ export interface DatosCombinacion {
   rteTipo: TipoRte | null;
   /** Ingresos del año anterior > 160.000 UVT (memoria económica, ET art. 356-3). null = sin dato. */
   rteIngresosSuperan160000Uvt: boolean | null;
+  /**
+   * Ronda 5: la cooperativa del RTE recibió donaciones o cooperación internacional no reembolsable (formato 2532,
+   * Res. 227 de 2025, art. 1.1.6.3). null = por confirmar. Opcional: la pantalla actual no lo envía.
+   */
+  rteDonacionesCooperacion?: boolean | null;
+  /** Ronda 5: constancia de lo verificado; obligatoria cuando el 2532 no aplica. */
+  rteDonacionesConstancia?: string | null;
   noContribuyenteNaturaleza: string | null;
   motivoCambioPeriodicidad: MotivoCambioPeriodicidad | null;
   cambioPeriodicidadHecho: string | null;

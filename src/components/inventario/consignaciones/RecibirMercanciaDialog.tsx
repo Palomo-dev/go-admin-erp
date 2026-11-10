@@ -24,7 +24,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { buscarProductosDocumento, type ProductoParaDocumento } from '@/lib/services/documentos/edicionDocumento';
 import { nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
-import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
+import { textoErrorConsignacion } from './textoErrorConsignacion';
 import { CONDICIONES_VACIAS, terminosDeCondiciones, validarCondiciones, type CondicionesContrato } from '@/lib/inventario/consignaciones/recibidas';
 import { CondicionesContratoCampos } from './CondicionesContratoCampos';
 import { consignacionesRecibidasService } from './consignacionesRecibidasService';
@@ -48,6 +48,7 @@ export interface RecibirMercanciaDialogProps {
 
 export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }: RecibirMercanciaDialogProps) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations('consignacionesR5');
   const moneda = useMonedaOrganizacion();
   const { branches, selectedBranchId, branchFilter } = useBranch();
   const [sucursal, setSucursal] = useState<number | null>(null);
@@ -136,7 +137,7 @@ export function RecibirMercanciaDialog({ abierto, onAbiertoChange, onRecibida }:
       onAbiertoChange(false);
       onRecibida(r);
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      setError(textoErrorConsignacion(t, tR5, e));
     } finally {
       setEnviando(false);
     }

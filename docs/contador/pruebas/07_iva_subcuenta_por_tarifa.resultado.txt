@@ -1,3 +1,13 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · prueba 07 cecaaf3cd1499db13c31c060d2410c42
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 31 verificaciones · 31 ok · 0 fallas. Ni la prueba ni H1 cambiaron en la ronda 5 (se sube con LF y la base
+reconstruye el CRLF del disco para comparar el md5).
+
+── Corridas anteriores ──
 RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
 md5: 20261108140000 (H1) 47486ffab373921553fdcd99d2f56ad0 · prueba 07 cecaaf3cd1499db13c31c060d2410c42
 Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados

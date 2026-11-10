@@ -67,7 +67,43 @@ export interface CondicionesContrato {
    * debe al dueño. Sin pacto (o sin saldo exigible) la remuneración queda como cuenta por cobrar al dueño.
    */
   compensacionRemuneracion: boolean | null;
+  /**
+   * Ronda 5 del Contador (C.Co. art. 1277), solo recibida en intermediación: el orden en que se aplica lo recaudado
+   * (términos obligatorios del contrato). Si se pacta la compensación, la remuneración tiene que estar en el orden.
+   */
+  ordenAplicacion: ConceptoAplicacion[] | null;
+  /** Ronda 5: la liquidación al dueño es por escrito: por qué medio y en cuántos días (1 a 90). */
+  liquidacionEscrita: { medio: MedioLiquidacion | null; plazoDias: number | null };
   riesgos: { devoluciones: ParteContrato | null; perdidas: ParteContrato | null; gastos: ParteContrato | null };
+}
+
+/** Conceptos que el contrato ordena al aplicar lo recaudado para el dueño (los mismos de la base). */
+export const CONCEPTOS_APLICACION = ['remuneracion', 'gastos_reembolsables', 'anticipos', 'derechos_frente_al_dueno'] as const;
+export type ConceptoAplicacion = (typeof CONCEPTOS_APLICACION)[number];
+/** Medios escritos de la liquidación al dueño. */
+export const MEDIOS_LIQUIDACION = ['documento_compartido', 'correo_electronico', 'documento_fisico'] as const;
+export type MedioLiquidacion = (typeof MEDIOS_LIQUIDACION)[number];
+
+/** Órdenes de aplicación que ofrece el formulario (la base acepta cualquier orden válido y sin repetidos). */
+export const ORDENES_APLICACION: Record<'remuneracion_primero' | 'gastos_primero' | 'anticipos_primero', ConceptoAplicacion[]> = {
+  remuneracion_primero: ['remuneracion', 'gastos_reembolsables', 'anticipos', 'derechos_frente_al_dueno'],
+  gastos_primero: ['gastos_reembolsables', 'remuneracion', 'anticipos', 'derechos_frente_al_dueno'],
+  anticipos_primero: ['anticipos', 'remuneracion', 'gastos_reembolsables', 'derechos_frente_al_dueno'],
+};
+export type OrdenAplicacionPreset = keyof typeof ORDENES_APLICACION;
+
+export function presetDeOrden(orden: readonly ConceptoAplicacion[] | null): OrdenAplicacionPreset | null {
+  if (!orden) return null;
+  const clave = (Object.keys(ORDENES_APLICACION) as OrdenAplicacionPreset[]).find((k) => ORDENES_APLICACION[k].join() === orden.join());
+  return clave ?? null;
+}
+
+/** El mismo control que fn_consignacion_terminos: conceptos válidos, sin repetir y, con compensación, la remuneración. */
+export function ordenAplicacionValido(orden: readonly string[] | null | undefined, compensacion: boolean | null): boolean {
+  if (!orden || orden.length === 0) return false;
+  if (new Set(orden).size !== orden.length) return false;
+  if (!orden.every((c) => (CONCEPTOS_APLICACION as readonly string[]).includes(c))) return false;
+  return compensacion !== true || orden.includes('remuneracion');
 }
 
 export const CONDICIONES_VACIAS: CondicionesContrato = {
@@ -82,6 +118,8 @@ export const CONDICIONES_VACIAS: CondicionesContrato = {
   facturaRemuneracion: null,
   obligacionDueno: null,
   compensacionRemuneracion: null,
+  ordenAplicacion: null,
+  liquidacionEscrita: { medio: null, plazoDias: null },
   riesgos: { devoluciones: null, perdidas: null, gastos: null },
 };
 
@@ -99,6 +137,8 @@ export type ErrorCondicion =
   | 'factura_remuneracion'
   | 'obligacion'
   | 'compensacion_remuneracion'
+  | 'orden_aplicacion'
+  | 'liquidacion_escrita'
   | 'riesgos';
 
 /** Tratamiento tributario: lo deriva el sistema de la modalidad, no se elige. */
@@ -124,8 +164,22 @@ export function validarCondiciones(c: CondicionesContrato, direccion: DireccionC
   if (c.facturaRemuneracion === null) errores.push('factura_remuneracion');
   if (!c.obligacionDueno) errores.push('obligacion');
   if (direccion === 'recibida' && c.compensacionRemuneracion === null) errores.push('compensacion_remuneracion');
+  if (direccion === 'recibida' && !ordenAplicacionValido(c.ordenAplicacion, c.compensacionRemuneracion)) errores.push('orden_aplicacion');
+  if (direccion === 'recibida' && !liquidacionEscritaValida(c.liquidacionEscrita)) errores.push('liquidacion_escrita');
   if (!c.riesgos.devoluciones || !c.riesgos.perdidas || !c.riesgos.gastos) errores.push('riesgos');
   return errores;
+}
+
+/** Ronda 5: medio escrito elegido y plazo entero de 1 a 90 días. */
+export function liquidacionEscritaValida(l: CondicionesContrato['liquidacionEscrita'] | null | undefined): boolean {
+  if (!l || !l.medio || !(MEDIOS_LIQUIDACION as readonly string[]).includes(l.medio)) return false;
+  return Number.isInteger(l.plazoDias) && (l.plazoDias as number) >= 1 && (l.plazoDias as number) <= 90;
+}
+
+/** Ronda 5: los términos del contrato que la nota recibida guarda (orden de aplicación y liquidación por escrito). */
+export function terminosLiquidacion(c: CondicionesContrato): { orden_aplicacion: ConceptoAplicacion[]; liquidacion_escrita: { medio: MedioLiquidacion; plazo_dias: number } } | null {
+  if (!c.ordenAplicacion || !c.liquidacionEscrita.medio || c.liquidacionEscrita.plazoDias === null) return null;
+  return { orden_aplicacion: [...c.ordenAplicacion], liquidacion_escrita: { medio: c.liquidacionEscrita.medio, plazo_dias: c.liquidacionEscrita.plazoDias } };
 }
 
 /** Cuerpo `terminos` que esperan las RPC (claves en español, como la base). */
@@ -146,12 +200,19 @@ export function terminosDeCondiciones(
     factura_remuneracion: c.facturaRemuneracion,
     obligacion_dueno: c.contrato === 'intermediacion' ? c.obligacionDueno : null,
     ...(direccion === 'recibida' && c.contrato === 'intermediacion' ? { compensacion_remuneracion: c.compensacionRemuneracion } : {}),
+    ...(direccion === 'recibida' && c.contrato === 'intermediacion' ? (terminosLiquidacion(c) ?? {}) : {}),
     riesgos: c.riesgos,
     ...(extra.cuentaRecaudo ? { cuenta_recaudo: extra.cuentaRecaudo.trim() } : {}),
   };
 }
 
 const PARTE = z.enum(['dueno', 'consignatario']);
+const ORDEN_APLICACION = z
+  .array(z.enum(CONCEPTOS_APLICACION))
+  .min(1)
+  .max(CONCEPTOS_APLICACION.length)
+  .refine((o) => new Set(o).size === o.length, { message: 'sin_repetidos' });
+const LIQUIDACION_ESCRITA = z.object({ medio: z.enum(MEDIOS_LIQUIDACION), plazo_dias: z.number().int().min(1).max(90) }).strict();
 
 /** Validación del servidor: modalidad, condición, reconocimiento y factura de la remuneración son obligatorios (sin `.default`). */
 export const terminosSchema = z
@@ -168,11 +229,16 @@ export const terminosSchema = z
     obligacion_dueno: z.enum(['venta', 'cobro']).nullable().optional(),
     /** Ronda 4: obligatoria en la recibida de intermediación (la base la exige; la ruta no conoce la dirección). */
     compensacion_remuneracion: z.boolean().optional(),
+    /** Ronda 5 (C.Co. art. 1277): obligatorios en la recibida de intermediación; la base los exige y los valida. */
+    orden_aplicacion: ORDEN_APLICACION.optional(),
+    liquidacion_escrita: LIQUIDACION_ESCRITA.optional(),
     riesgos: z.object({ devoluciones: PARTE, perdidas: PARTE, gastos: PARTE }).strict(),
     cuenta_recaudo: z.string().regex(/^281510\d{2}$/).optional(),
   })
   .strict()
   .superRefine((t, ctx) => {
+    if (t.orden_aplicacion && t.compensacion_remuneracion === true && !t.orden_aplicacion.includes('remuneracion'))
+      ctx.addIssue({ code: 'custom', path: ['orden_aplicacion'], message: 'remuneracion_en_el_orden' });
     if (t.remuneracion_modo === 'porcentaje' && !t.base_comision) ctx.addIssue({ code: 'custom', path: ['base_comision'], message: 'obligatoria' });
     if (t.contrato === 'intermediacion' && !t.obligacion_dueno) ctx.addIssue({ code: 'custom', path: ['obligacion_dueno'], message: 'obligatoria' });
     if (t.contrato === 'intermediacion' && t.condicion !== 'agente') ctx.addIssue({ code: 'custom', path: ['condicion'], message: 'mandato_es_agente' });
@@ -264,7 +330,8 @@ export const conciliarRetencionSchema = z.object({ valor: z.number().finite().mi
 /**
  * Ronda 4, punto 4: la retención PRACTICADA se reconoce cuando ocurre (el pagador ya la descontó), con su valor, base,
  * fecha y soporte; no espera el certificado. En la de la operación, `factura_id` es la factura del cliente que la
- * practicó (de esa liquidación) cuando hay más de una.
+ * practicó (de esa liquidación) cuando hay más de una. Ronda 5 (respuesta 10): en la de la operación, `cobro_id` es el
+ * pago o abono de ESA factura en que el comprador la practicó (misma fecha); el abono a la factura queda en ese momento.
  */
 export const retencionPracticadaSchema = z
   .object({
@@ -273,6 +340,7 @@ export const retencionPracticadaSchema = z
     fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     soporte: z.string().trim().min(5).max(1000),
     factura_id: z.string().uuid().nullable().optional(),
+    cobro_id: z.string().uuid().nullable().optional(),
   })
   .strict();
 export type SolicitudRetencionPracticada = z.infer<typeof retencionPracticadaSchema>;
@@ -306,6 +374,15 @@ export const aceptarNotaSchema = z
     cuenta_recaudo: z.string().regex(/^281510\d{2}$/).nullable().optional(),
     /** La valoración de la custodia es política de quien recibe. */
     valoracion: z.enum(['costo_acreditado', 'valor_convenido']),
+    /**
+     * Ronda 5: en mandato, quien recibe declara los términos del contrato que la copia del dueño no trae
+     * (compensación, orden de aplicación y liquidación por escrito). Si la copia los trae, deben coincidir.
+     */
+    terminos_contrato: z
+      .object({ compensacion_remuneracion: z.boolean(), orden_aplicacion: ORDEN_APLICACION, liquidacion_escrita: LIQUIDACION_ESCRITA })
+      .strict()
+      .refine((t) => !t.compensacion_remuneracion || t.orden_aplicacion.includes('remuneracion'), { message: 'remuneracion_en_el_orden', path: ['orden_aplicacion'] })
+      .optional(),
     clave_idempotencia: CLAVE,
   })
   .strict();
@@ -432,6 +509,14 @@ export const ERRORES_RECIBIDA = [
   'sin_cuenta_retencion_sufrida',
   'compensacion_no_pactada',
   'excede_remuneracion_por_cobrar',
+  // Ronda 5 del Contador.
+  'orden_aplicacion_obligatorio',
+  'liquidacion_escrita_obligatoria',
+  'terminos_distintos_del_documento',
+  'cobro_obligatorio',
+  'cobro_de_otra_factura',
+  'fecha_distinta_del_cobro',
+  'retencion_excede_saldo_factura',
   'error_desconocido',
 ] as const;
 export type ErrorRecibida = (typeof ERRORES_RECIBIDA)[number];

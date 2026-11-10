@@ -49501,5 +49501,85 @@
       "pistaMiembro": "Your organization may not use that feature. If you need it, ask an administrator."
     },
     "resaltado": "You can turn on {modulo} here."
+  },
+  "finanzasTributarioR5": {
+    "bandas": {
+      "reconstruidoFecha": "Reconstruction date: {fecha} ({zona}). The reconstructed party details are those of that date, not of the issue date."
+    },
+    "motivos": {
+      "importacion_no_excluida_no_va_47": "Non-taxed import that is not excluded: box 47 is only for excluded imports",
+      "importacion_documento_no_corresponde": "Excluded import with a customs document that does not match the import type (ordinary, temporary and franchise: import declaration; postal and express shipments: signed waybill)",
+      "importacion_base_no_coincide": "Excluded import whose base does not match the customs value plus duties",
+      "correccion_declaracion_no_corregible": "Error correction: the return for the sale period is final, past the correction term, or has no due date or finality recorded; the sale stays",
+      "cierre_sin_aprobacion": "Closing recorded without approval from a second user"
+    },
+    "notas": {
+      "rte_2532_aplica": "Form 2532: applies, because the cooperative received donations or non-reimbursable international cooperation.",
+      "rte_2532_no_aplica": "Form 2532: does not apply; it is recorded that the cooperative received no donations or non-reimbursable international cooperation.",
+      "rte_2532_por_confirmar": "Form 2532: to be confirmed. It only applies if the cooperative received donations or non-reimbursable international cooperation."
+    },
+    "errores": {
+      "soporte_aduanero_norma_invalida": "The exclusion rule must cite an article (for example, art. 424 of the Tax Code).",
+      "soporte_aduanero_documento_no_corresponde": "The customs document does not match the import type: ordinary, temporary and franchise imports need an import declaration; postal and express shipments, the signed waybill.",
+      "soporte_aduanero_base_no_suma": "The base must be the customs value plus duties.",
+      "contingencia_invalida": "The contingency support is not valid.",
+      "consulta_cufe_invalida": "The CUFE/CUDE lookup result is not valid.",
+      "documento_encontrado_en_dian": "The lookup found the CUFE/CUDE: the invoice did reach the DIAN and is not \"never transmitted\".",
+      "vencimiento_invalido": "The filing due date must be after the end of the period.",
+      "firmeza_invalida": "State whether the return is final (yes or no).",
+      "firmeza_requiere_nota": "State how it is known whether the return is final.",
+      "constancia_2532_requerida": "If form 2532 does not apply, record what was verified."
+    }
+  },
+  "finanzasTercerosR5": {
+    "anticipos": {
+      "exceso": {
+        "manifestacion": "Written statement of non-imputation",
+        "manifestacionAyuda": "For VAT withholding, the withheld party states in writing that it did not credit the withholding in its return (DUR 1625 of 2016, art. 1.3.2.3.1). It is required together with the written request.",
+        "periodoRegla": "Each tax sets the period: income tax, the refund period (DUR 1.2.4.16); VAT withholding, the refund period, with the written request and statement (DUR 1.3.2.3.1); ICA withholding, the one in the municipal procedure."
+      },
+      "devolver": {
+        "periodoRegla": "Each tax sets the period: income tax, the period of the cancellation, rescission or termination, with any balance in the following periods (DUR 1.2.4.8); VAT withholding, the cancellation period, with any balance only in the next two periods (DUR 1.3.2.3.1); ICA withholding, the one in the municipal procedure, with any balance in the following periods, without limit, supported by the written request."
+      }
+    }
+  },
+  "consignacionesR5": {
+    "terminos": {
+      "compensacion": "Does the contract allow deducting the fee from the amounts collected?",
+      "compensacionAyuda": "The owner's copy does not include it: the receiver declares it. Without that agreement, the fee is recorded as a receivable from the owner.",
+      "elegir": "Choose",
+      "si": "Yes",
+      "no": "No",
+      "orden": "Order for applying the amounts collected",
+      "ordenAyuda": "Mandatory contract term (Commercial Code, art. 1277). If the offset is agreed, the fee must be in the order.",
+      "ordenes": {
+        "remuneracion_primero": "Fee → reimbursable expenses → advances → rights against the owner",
+        "gastos_primero": "Reimbursable expenses → fee → advances → rights against the owner",
+        "anticipos_primero": "Advances → fee → reimbursable expenses → rights against the owner"
+      },
+      "medio": "Written settlement channel",
+      "medios": {
+        "documento_compartido": "Document shared in GO Admin",
+        "correo_electronico": "Email",
+        "documento_fisico": "Signed paper document"
+      },
+      "plazo": "Deadline to deliver the settlement (days)",
+      "plazoAyuda": "Between 1 and 90 days.",
+      "errores": {
+        "orden_aplicacion": "Choose the order of application set by the contract.",
+        "liquidacion_escrita": "Enter the written channel and a deadline of 1 to 90 days.",
+        "compensacion": "State whether the contract allows the offset."
+      }
+    },
+    "errores": {
+      "orden_aplicacion_obligatorio": "The contract must set the order for applying the amounts collected.",
+      "liquidacion_escrita_obligatoria": "The contract must set a written settlement (channel and deadline).",
+      "terminos_distintos_del_documento": "The terms you declared do not match those in the owner's copy.",
+      "cobro_obligatorio": "Select the invoice collection in which the buyer withheld.",
+      "cobro_de_otra_factura": "The selected collection is not a completed payment of that invoice.",
+      "fecha_distinta_del_cobro": "The withholding date must be the collection date.",
+      "retencion_excede_saldo_factura": "The withholding exceeds what the invoice still owes: receivables would be overpaid.",
+      "error_desconocido": "The operation could not be completed."
+    }
   }
 }

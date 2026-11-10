@@ -200,7 +200,15 @@ export const anticiposProveedorService = {
       tarifaCorrecta: number;
       metodo: string;
       motivo: string;
-      soportes: { calculo: string; certificado: string; solicitud: string; pruebas: string; ica?: Record<string, string> | null };
+      /** Ronda 5: con reteIVA, también la manifestación escrita de no imputación del retenido. */
+      soportes: {
+        calculo: string;
+        certificado: string;
+        solicitud: string;
+        pruebas: string;
+        manifestacion_no_imputacion?: string | null;
+        ica?: Record<string, string> | null;
+      };
       requiereCorreccion: boolean;
       claveIdempotencia: string;
     },

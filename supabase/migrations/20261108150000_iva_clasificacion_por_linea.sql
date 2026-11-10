@@ -26,6 +26,20 @@
 --     coincide aritméticamente con UNA tarifa configurada queda con origen «inferida» (no «sugerida»): no prueba por sí
 --     sola su procedencia legal, y el borrador la señala.
 --
+-- RONDA 5 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md, respuesta 1), reescrita sin
+-- aplicar. Casilla 47 (importación EXCLUIDA):
+--   · El documento depende de la modalidad (Decreto 1165 de 2019, arts. 253 y 262; el instructivo del formulario 300
+--     todavía cita el Decreto 390 de 2016, que fue reemplazado): importación ordinaria, temporal y franquicia →
+--     DECLARACIÓN DE IMPORTACIÓN; tráfico postal y envío urgente → la GUÍA FIRMADA, que es la declaración simplificada
+--     (un solo tipo: 'declaracion_simplificada'; la opción separada «guía de tráfico postal» de la ronda 4 se quita
+--     porque nombraba el mismo documento). Otra combinación: SOPORTE_ADUANERO_DOCUMENTO_NO_CORRESPONDE.
+--   · «Otro documento aduanero» solo cabe en «otra modalidad» y exige una EXPLICACIÓN (20 a 1000 caracteres).
+--   · La NORMA DE EXCLUSIÓN es un dato propio y obligatorio (norma_exclusion: debe citar un artículo, p. ej. «ET art.
+--     424 num. …»), además del fundamento.
+--   · BASE = VALOR EN ADUANA + ARANCELES: se guardan los dos componentes (valor_aduana, aranceles). Si viene «valor»,
+--     debe ser su suma (SOPORTE_ADUANERO_BASE_NO_SUMA). El borrador compara además la base de la línea con esa suma.
+--   · fn_iva_soporte_aduanero_faltantes(soporte, base) dice qué le falta a la línea para ir a la 47.
+--
 -- Qué agrega (aditivo: columnas NULL-ables sin DEFAULT, sin DROP, sin cambios de tipo; no toca totales):
 --   1. Por línea (invoice_items: venta, nota crédito/débito, compra, documento soporte; sale_items: POS):
 --        iva_tratamiento     gravada | exenta | excluida | no_sujeta
@@ -132,7 +146,45 @@ comment on column public.sale_items.iva_tratamiento is
 comment on column public.sale_items.iva_clasificacion_origen is
   'sugerida | inferida (la tarifa se dedujo porque el IVA coincide aritméticamente con UNA tarifa configurada: no prueba su procedencia legal) | heredada | manual.';
 comment on column public.invoice_items.iva_soporte_aduanero is
-  'Importación (casilla 47): { tipo_documento, numero, fecha, adjunto, valor, fundamento_exclusion, modalidad }. Sin los siete datos la línea no va a la 47 (ronda 4 del Contador).';
+  'Importación excluida (casilla 47): { tipo_documento, numero, fecha, adjunto, valor_aduana, aranceles, valor?, norma_exclusion, fundamento_exclusion, modalidad, explicacion? }. El documento depende de la modalidad y la base es valor en aduana + aranceles; sin los datos completos la línea no va a la 47 (rondas 4 y 5 del Contador).';
+
+-- Ronda 5: qué le falta a un soporte aduanero para que su línea vaya a la casilla 47 (vacío = completo). p_base = base de
+-- la línea (NULL = no se compara). Códigos: el nombre del dato que falta, 'explicacion' (otro documento aduanero),
+-- 'documento_no_corresponde' (el documento no es el de la modalidad) y 'base_no_coincide' (base ≠ valor en aduana +
+-- aranceles, ± $1).
+create or replace function public.fn_iva_soporte_aduanero_faltantes(p jsonb, p_base numeric default null)
+returns text[]
+language sql
+immutable
+set search_path to 'public', 'pg_temp'
+as $function$
+  select case when p is null or jsonb_typeof(p) <> 'object' then array['soporte_aduanero']::text[] else
+    array_remove(array[
+      case when nullif(btrim(coalesce(p ->> 'tipo_documento', '')), '') is null then 'tipo_documento' end,
+      case when nullif(btrim(coalesce(p ->> 'numero', '')), '') is null then 'numero' end,
+      case when nullif(btrim(coalesce(p ->> 'fecha', '')), '') is null then 'fecha' end,
+      case when nullif(btrim(coalesce(p ->> 'adjunto', '')), '') is null then 'adjunto' end,
+      case when jsonb_typeof(p -> 'valor_aduana') is distinct from 'number' then 'valor_aduana' end,
+      case when jsonb_typeof(p -> 'aranceles') is distinct from 'number' then 'aranceles' end,
+      case when coalesce(p ->> 'norma_exclusion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]' then 'norma_exclusion' end,
+      case when nullif(btrim(coalesce(p ->> 'fundamento_exclusion', '')), '') is null then 'fundamento_exclusion' end,
+      case when nullif(btrim(coalesce(p ->> 'modalidad', '')), '') is null then 'modalidad' end,
+      case when p ->> 'tipo_documento' = 'otro_documento_aduanero'
+                and char_length(btrim(coalesce(p ->> 'explicacion', ''))) < 20 then 'explicacion' end,
+      case when p ? 'tipo_documento' and p ? 'modalidad' and not (
+                  (p ->> 'modalidad' in ('importacion_ordinaria', 'importacion_temporal', 'franquicia')
+                   and p ->> 'tipo_documento' = 'declaracion_importacion')
+               or (p ->> 'modalidad' = 'trafico_postal_envio_urgente' and p ->> 'tipo_documento' = 'declaracion_simplificada')
+               or p ->> 'modalidad' = 'otra_modalidad') then 'documento_no_corresponde' end,
+      case when p_base is not null and jsonb_typeof(p -> 'valor_aduana') = 'number' and jsonb_typeof(p -> 'aranceles') = 'number'
+                and abs(p_base - ((p ->> 'valor_aduana')::numeric + (p ->> 'aranceles')::numeric)) > 1 then 'base_no_coincide' end
+    ]::text[], null) end;
+$function$;
+
+comment on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric) is
+  'Ronda 5 del Contador: lo que le falta al soporte aduanero de una importación excluida para ir a la casilla 47 (vacío = completo): datos, explicación del otro documento, documento que no corresponde a la modalidad y base distinta de valor en aduana + aranceles.';
+revoke all on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric) from public, anon;
+grant execute on function public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric) to authenticated, service_role;
 
 -- Bitácora de cambios hechos por personas (las sugerencias del disparador no se registran: son el valor inicial).
 create table if not exists public.iva_clasificacion_cambios (
@@ -436,7 +488,8 @@ grant execute on function public.fn_iva_lineas_documento(integer, text, uuid) to
 
 -- ── 6. Escritura: clasificar una línea (persona con finance.create o admin) ──
 -- p_datos: { tratamiento, tarifa, tipo_operacion, fundamento, soporte_tipo?, soporte_numero?, soporte_fecha?,
---            soporte_aduanero?: { tipo_documento, numero, fecha, adjunto, valor, fundamento_exclusion, modalidad },
+--            soporte_aduanero?: { tipo_documento, numero, fecha, adjunto, valor_aduana, aranceles, valor?, norma_exclusion,
+--                                 fundamento_exclusion, modalidad, explicacion? },
 --            descontable?, descontable_porcentaje?, descontable_motivo? }
 -- Ronda 4: soporte_aduanero solo en líneas de compra con tipo «importación»; cada dato se valida por su forma (se puede
 -- guardar a medias, pero el borrador solo lleva a la 47 la línea con los siete). Si la clave no viene, se conserva el que
@@ -542,15 +595,20 @@ begin
       raise exception 'SOPORTE_ADUANERO_SOLO_IMPORTACION' using errcode = '22023';
     end if;
     if exists (select 1 from jsonb_object_keys(v_adu) k
-                where k not in ('tipo_documento', 'numero', 'fecha', 'adjunto', 'valor', 'fundamento_exclusion', 'modalidad'))
+                where k not in ('tipo_documento', 'numero', 'fecha', 'adjunto', 'valor_aduana', 'aranceles', 'valor',
+                                'norma_exclusion', 'fundamento_exclusion', 'modalidad', 'explicacion'))
+       -- Ronda 5: la guía firmada de tráfico postal o envío urgente ES la declaración simplificada (un solo tipo).
        or (v_adu ? 'tipo_documento' and coalesce(v_adu ->> 'tipo_documento', '') not in
-             ('declaracion_importacion', 'declaracion_simplificada', 'guia_trafico_postal_envio_urgente', 'otro_documento_aduanero'))
+             ('declaracion_importacion', 'declaracion_simplificada', 'otro_documento_aduanero'))
        or (v_adu ? 'modalidad' and coalesce(v_adu ->> 'modalidad', '') not in
              ('importacion_ordinaria', 'importacion_temporal', 'trafico_postal_envio_urgente', 'franquicia', 'otra_modalidad'))
        or (v_adu ? 'numero' and char_length(btrim(coalesce(v_adu ->> 'numero', ''))) not between 1 and 80)
        or (v_adu ? 'adjunto' and char_length(btrim(coalesce(v_adu ->> 'adjunto', ''))) not between 1 and 300)
        or (v_adu ? 'fundamento_exclusion' and char_length(btrim(coalesce(v_adu ->> 'fundamento_exclusion', ''))) not between 5 and 500)
+       or (v_adu ? 'valor_aduana' and (jsonb_typeof(v_adu -> 'valor_aduana') <> 'number' or (v_adu ->> 'valor_aduana')::numeric <= 0))
+       or (v_adu ? 'aranceles' and (jsonb_typeof(v_adu -> 'aranceles') <> 'number' or (v_adu ->> 'aranceles')::numeric < 0))
        or (v_adu ? 'valor' and (jsonb_typeof(v_adu -> 'valor') <> 'number' or (v_adu ->> 'valor')::numeric <= 0))
+       or (v_adu ? 'explicacion' and char_length(btrim(coalesce(v_adu ->> 'explicacion', ''))) not between 1 and 1000)
        or (v_adu ? 'fecha' and coalesce(v_adu ->> 'fecha', '') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$') then
       raise exception 'SOPORTE_ADUANERO_INVALIDO' using errcode = '22023';
     end if;
@@ -559,6 +617,20 @@ begin
     exception when others then
       raise exception 'SOPORTE_ADUANERO_INVALIDO' using errcode = '22023';
     end;
+    -- Ronda 5: la norma de exclusión se cita (un artículo: art. 424 ET y concordantes), no se describe.
+    if v_adu ? 'norma_exclusion' and (char_length(btrim(coalesce(v_adu ->> 'norma_exclusion', ''))) not between 5 and 300
+                                      or coalesce(v_adu ->> 'norma_exclusion', '') !~* '(art[íi]culo|art\.?)\s*[0-9]') then
+      raise exception 'SOPORTE_ADUANERO_NORMA_INVALIDA' using errcode = '22023';
+    end if;
+    -- Ronda 5: el documento es el que exige la modalidad (Decreto 1165 de 2019, arts. 253 y 262).
+    if 'documento_no_corresponde' = any (public.fn_iva_soporte_aduanero_faltantes(v_adu, null)) then
+      raise exception 'SOPORTE_ADUANERO_DOCUMENTO_NO_CORRESPONDE' using errcode = '22023';
+    end if;
+    -- Ronda 5: base = valor en aduana + aranceles.
+    if v_adu ? 'valor' and v_adu ? 'valor_aduana' and v_adu ? 'aranceles'
+       and abs((v_adu ->> 'valor')::numeric - ((v_adu ->> 'valor_aduana')::numeric + (v_adu ->> 'aranceles')::numeric)) > 0.5 then
+      raise exception 'SOPORTE_ADUANERO_BASE_NO_SUMA' using errcode = '22023';
+    end if;
   end if;
 
   -- Validaciones de la procedencia del descontable (solo compras / soporte).

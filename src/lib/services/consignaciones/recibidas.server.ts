@@ -489,10 +489,18 @@ export function conciliarRetencion(ctx: Ctx, retencionId: string, s: { valor: nu
 /**
  * Ronda 4, punto 4: reconoce la retención PRACTICADA cuando ocurre (no espera el certificado). De la operación: el
  * dueño la asume contra 281510 y la cartera del cliente queda con un pendiente de abono; de la remuneración: retención
- * sufrida contra la cuenta por cobrar al dueño (`fn_consignacion_retencion_practicada`).
+ * sufrida contra la cuenta por cobrar al dueño (`fn_consignacion_retencion_practicada`). Ronda 5: la de la operación va
+ * con el cobro de la factura (`p_pago`) y su abono a la factura queda en ese momento, sin superar el saldo de la factura.
  */
 export function registrarRetencionPracticada(ctx: Ctx, retencionId: string, s: SolicitudRetencionPracticada) {
-  return rpc<{ retencion_id: string; repetida?: boolean; valor: number }>(ctx, 'fn_consignacion_retencion_practicada', {
+  return rpc<{
+    retencion_id: string;
+    repetida?: boolean;
+    valor: number;
+    cobro_id?: string | null;
+    abono_factura?: { factura_id: string; valor: number; estado: 'por_aplicar'; saldo_factura: number; saldo_real_exigible: number } | null;
+    certificado?: 'pendiente_de_soporte';
+  }>(ctx, 'fn_consignacion_retencion_practicada', {
     p_retencion: retencionId,
     p_valor: s.valor,
     p_base: s.base,
@@ -500,6 +508,7 @@ export function registrarRetencionPracticada(ctx: Ctx, retencionId: string, s: S
     p_soporte: s.soporte,
     p_organization_id: ctx.organizationId,
     p_factura: s.factura_id ?? null,
+    p_pago: s.cobro_id ?? null,
   });
 }
 
@@ -649,6 +658,12 @@ export function aceptarNota(
     mapeo: { producto_ref: string; product_id: number; precio?: number | null }[];
     cuenta_recaudo?: string | null;
     valoracion: 'costo_acreditado' | 'valor_convenido';
+    /** Ronda 5: compensación, orden de aplicación y liquidación por escrito que declara quien recibe en mandato. */
+    terminos_contrato?: {
+      compensacion_remuneracion: boolean;
+      orden_aplicacion: string[];
+      liquidacion_escrita: { medio: string; plazo_dias: number };
+    } | null;
     clave_idempotencia: string;
   },
 ) {
@@ -660,6 +675,7 @@ export function aceptarNota(
     p_valoracion: s.valoracion,
     p_clave_idempotencia: s.clave_idempotencia,
     p_organization_id: ctx.organizationId,
+    p_terminos_contrato: s.terminos_contrato ?? null,
   });
 }
 

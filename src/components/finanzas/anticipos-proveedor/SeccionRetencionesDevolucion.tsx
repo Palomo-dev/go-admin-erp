@@ -35,6 +35,8 @@ import {
 import { CamposPruebasIca } from './CamposPruebasIca';
 
 const NS = 'finanzasTercerosR4.anticipos';
+/** Ronda 5 del Contador: período de descuento y saldo por impuesto (renta 1.2.4.8; reteIVA 1.3.2.3.1; ReteICA sin límite). */
+const NS_R5 = 'finanzasTercerosR5.anticipos';
 type Modo = CausaDevolucion | 'sin_determinar';
 const MODOS: readonly Modo[] = ['operacion_anulada', 'resolucion_parcial', 'devolucion_parcial', 'sin_determinar'];
 
@@ -55,6 +57,7 @@ export interface SeccionRetencionesDevolucionProps {
 
 export function SeccionRetencionesDevolucion({ retenciones, componentes = [], pruebasIca = null, saldo, dinero, tocado, onCambio }: SeccionRetencionesDevolucionProps) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations(NS_R5);
   const moneda = useMonedaOrganizacion();
   const idModo = useId();
   const idCorreccion = useId();
@@ -244,7 +247,7 @@ export function SeccionRetencionesDevolucion({ retenciones, componentes = [], pr
               <CamposPruebasIca pruebas={pruebasIca} valores={ica} onCambio={setIca} tocado={tocado} />
             </div>
           )}
-          <p className="text-xs text-fg-muted sm:col-span-2">{t('devolver.procedimiento.periodoRegla')}</p>
+          <p className="text-xs text-fg-muted sm:col-span-2">{tR5('devolver.periodoRegla')}</p>
           <div className="flex items-start gap-2 sm:col-span-2">
             <Checkbox id={idCorreccion} checked={requiereCorreccion} onCheckedChange={(v) => setRequiereCorreccion(v === true)} className="mt-0.5" />
             <Label htmlFor={idCorreccion} className="flex flex-col gap-0.5 font-normal">

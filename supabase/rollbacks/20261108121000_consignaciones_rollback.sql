@@ -1,6 +1,6 @@
 -- Reversión de 20261108121000_consignaciones.sql (revertirla ANTES que 20261108120500_organization_links).
 --
--- Borra el disparador del kardex, las funciones y las trece tablas. ADVERTENCIA: si ya hay notas,
+-- Borra el disparador del kardex, las funciones y las catorce tablas. ADVERTENCIA: si ya hay notas,
 --   - la mercancía ENTREGADA sigue fuera de la bodega en el kardex (salidas 'transfer_out' con source_id
 --     'consignacion:<nota>'); su costo nunca salió de la cuenta de inventario (no hubo asiento);
 --   - la mercancía RECIBIDA sigue en el kardex (entradas 'transfer_in' sin costo) y en las cuentas de orden;
@@ -17,12 +17,13 @@ drop trigger if exists trg_consignacion_venta on public.stock_movements;
 
 drop function if exists public.fn_consignacion_documento_recibido_cerrar(uuid, uuid, integer);
 drop function if exists public.fn_consignacion_documento_recibido_preparar(uuid, integer);
-drop function if exists public.fn_consignacion_recibida_aceptar(uuid, integer, jsonb, text, text, text, integer);
+drop function if exists public.fn_consignacion_recibida_aceptar(uuid, integer, jsonb, text, text, text, integer, jsonb);
 drop function if exists public.fn_consignacion_compartir(uuid, integer);
 drop function if exists public.fn_consignacion_compartir_interna(uuid);
 drop function if exists public.fn_consignacion_reconocer_remuneracion(uuid, text, text, integer);
 drop function if exists public.fn_consignacion_compensar_remuneracion(uuid, numeric, text, integer);
-drop function if exists public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid);
+drop function if exists public.fn_consignacion_retencion_practicada(uuid, numeric, numeric, date, text, integer, uuid, uuid);
+drop function if exists public.fn_consignacion_cartera_retenciones(integer);
 drop function if exists public.fn_consignacion_configurar_retenciones(integer, jsonb);
 drop function if exists public.fn_consignacion_conciliar_retencion(uuid, numeric, text, integer);
 drop function if exists public.fn_consignacion_retenciones_liquidacion(uuid);
@@ -58,6 +59,8 @@ drop function if exists public.fn_consignacion_configurar_cuentas(integer, text,
 drop function if exists public.fn_consignacion_cuenta_valida(integer, text, text);
 drop function if exists public.fn_consignacion_cuenta_patron(integer, text);
 
+-- Ronda 5: los abonos por retención ligados al cobro (con su asiento ya publicado, que queda en los libros).
+drop table if exists public.consignment_withholding_receivable_applications;
 drop table if exists public.consignment_settlement_withholdings;
 drop table if exists public.consignment_remuneration_recognitions;
 drop table if exists public.consignment_advance_crossings;

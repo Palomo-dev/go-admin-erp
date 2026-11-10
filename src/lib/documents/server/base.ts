@@ -15,7 +15,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { OrgContextError } from '@/lib/utils/orgContextError';
 import { resolveTimezoneCascade } from '@/lib/utils/branchTimezoneCascade';
-import { toPlainDate } from '@/lib/utils/dateDisplay';
+import { formatDateTimeInTz, toPlainDate } from '@/lib/utils/dateDisplay';
 import { esDiaCalendario, responsabilidadesFiscalesEn } from '@/lib/finanzas/tributario/responsabilidadesVigentes';
 import { leerPartesDocumento, type PartesDocumento, type TipoInstantanea } from './instantanea';
 import type { Traductor } from '../textos';
@@ -599,12 +599,16 @@ export function receptorOriginal<T>(base: BaseDocumento, actual: T | null): T | 
  * Bandas de una reimpresión reconstruida (ronda 4 del Contador): visibles y PRECISAS sobre qué datos se
  * reconstruyeron, sin presentarla como copia idéntica del original. Las líneas, impuestos y totales salen del
  * documento guardado (no se recalculan con tarifas ni datos de hoy); el original válido es el expedido.
+ * Ronda 5 del Contador: la banda dice además la FECHA DE LA RECONSTRUCCIÓN (cuándo se armó esta reimpresión, en la
+ * zona horaria del documento), porque los datos de las partes son los de ese día. Su texto vive en el namespace
+ * `finanzasTributarioR5.bandas` (lo mezcla `textos.ts`).
  */
-export function bandaReconstruido(base: BaseDocumento): Banda[] {
+export function bandaReconstruido(base: BaseDocumento, ahora: Date = new Date()): Banda[] {
   const p = base.partes;
   if (!p || (!p.emisorReconstruido && !p.receptorReconstruido)) return [];
   return [
     { clave: 'reimpresionReconstruida', tono: 'aviso' },
+    { clave: 'reconstruidoFecha', tono: 'aviso', vars: { fecha: formatDateTimeInTz(ahora, base.zonaHoraria), zona: base.zonaHoraria } },
     ...(p.emisorReconstruido ? [{ clave: 'reconstruidoEmisor', tono: 'aviso' as const }] : []),
     ...(p.receptorReconstruido ? [{ clave: 'reconstruidoReceptor', tono: 'aviso' as const }] : []),
     { clave: 'reconstruidoContenido', tono: 'aviso' },

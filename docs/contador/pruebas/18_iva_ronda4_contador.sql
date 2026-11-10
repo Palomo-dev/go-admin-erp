@@ -11,6 +11,20 @@
 -- Requiere, en este orden y SIN aplicar: 20261108140000 (H1), 20261108150000, 20261108150500, 20261108151000 y
 -- 20261108152000. Se pegan donde dice «MIGRACIONES», dentro de la misma transacción.
 -- Usuario simulado: el miembro activo de la org 374 (sesión con RLS y auth.uid()).
+--
+-- RONDA 5 (2026-11-09): se vuelve a correr con las migraciones reescritas. Para que siga probando lo de la ronda 4, sus
+-- DATOS cumplen ahora los requisitos nuevos (los esperados no cambian, salvo los dos que se dicen abajo):
+--   · la importación FIM2 lleva valor en aduana (280.000) + aranceles (20.000) = base 300.000 y la norma de exclusión;
+--   · el expediente «nunca transmitida» lleva la constancia de que no hay soporte de contingencia y la consulta del
+--     CUFE/CUDE sin resultado; las ventas PA…PI son de hace 3 días (la consulta, de hoy, queda pasadas las 48 horas) y la
+--     de PE se hizo 1 hora después de la venta (dentro de las 48 horas: por eso no descarta la contingencia);
+--   · el bimestre declarado septiembre–octubre registra su vencimiento (12-11-2026, dato de prueba) y que NO está en firme;
+--   · el cierre registrado lo aprueba un segundo usuario (el dueño de la org 137, agregado como miembro DENTRO de la
+--     transacción).
+-- Esperados que cambian, y por qué: el borrador es ahora la versión 6 (tres filas); «PE» devuelve ahora también el detalle del rechazo ([plazo_48_horas]); y la compra de
+-- control FCB (una línea no descontable y otra descontable, con cuenta de cabecera) queda pendiente de corregir, porque la
+-- ronda 5 exige la cuenta por línea cuando el IVA tiene deducibilidad distinta (respuesta 5). El control positivo de la
+-- cuenta de cabecera pasa a la prueba 23.
 
 begin;
 
@@ -85,7 +99,7 @@ begin
        ('Bien descontable devuelto', '{"tratamiento":"gravada","tarifa":19,"tipo_operacion":"bienes","descontable":"descontable","descontable_motivo":"Destinado a operaciones gravadas"}'),
        ('Servicio no descontable (cabecera inconsistente)', '{"tratamiento":"gravada","tarifa":19,"tipo_operacion":"servicios","descontable":"no_descontable","descontable_motivo":"Compra a un no responsable"}'),
        ('Importación sin soporte aduanero', '{"tratamiento":"excluida","tarifa":0,"tipo_operacion":"importacion","fundamento":"Bien excluido en la importación (art. 428 ET), según texto"}'),
-       ('Importación con soporte aduanero', '{"tratamiento":"excluida","tarifa":0,"tipo_operacion":"importacion","fundamento":"Bien excluido en la importación (art. 428 ET)","soporte_aduanero":{"tipo_documento":"declaracion_importacion","numero":"DI-PRUEBA-0001","fecha":"2026-11-03","adjunto":"documentos/prueba/DI-PRUEBA-0001.pdf","valor":300000,"fundamento_exclusion":"Art. 428 lit. e) ET","modalidad":"importacion_ordinaria"}}'),
+       ('Importación con soporte aduanero', '{"tratamiento":"excluida","tarifa":0,"tipo_operacion":"importacion","fundamento":"Bien excluido en la importación (art. 428 ET)","soporte_aduanero":{"tipo_documento":"declaracion_importacion","numero":"DI-PRUEBA-0001","fecha":"2026-11-03","adjunto":"documentos/prueba/DI-PRUEBA-0001.pdf","valor_aduana":280000,"aranceles":20000,"valor":300000,"norma_exclusion":"ET art. 428 lit. e)","fundamento_exclusion":"Art. 428 lit. e) ET","modalidad":"importacion_ordinaria"}}'),
        ('Servicio del exterior', '{"tratamiento":"excluida","tarifa":0,"tipo_operacion":"importacion","fundamento":"Servicio prestado desde el exterior","soporte_aduanero":{"tipo_documento":"otro_documento_aduanero","numero":"X-1","fecha":"2026-11-03","adjunto":"documentos/prueba/X-1.pdf","valor":80000,"fundamento_exclusion":"Texto de prueba","modalidad":"otra_modalidad"}}')
      ) x(descr, datos) on it.description = x.descr
     where it.invoice_purchase_id in (select v::uuid from ctx where k in ('fci', 'fcm', 'fcsv', 'fcb', 'fcr', 'fim1', 'fim2', 'fim3'))
@@ -128,7 +142,9 @@ insert into ctx select 'je_dsi', coalesce(public.fn_asiento_documento_por_lineas
 -- ═══ 4 y 5 · Ventas POS, reversas, cierre ═══
 with s as (insert into public.sales (organization_id, branch_id, user_id, status, subtotal, tax_total, total, tax_included, sale_date, notes)
            select 374, 585, 'bb11d6d2-f647-49f7-9b29-aa4c4438abf1', 'paid', 100000, 19000, 119000, false, x.f, x.n
-             from (values ('PA', now()), ('PB', now()), ('PC', now()), ('PD', now()), ('PE', now()), ('PF', now()), ('PG', now()), ('PI', now()),
+             from (values ('PA', now() - interval '3 days'), ('PB', now() - interval '3 days'), ('PC', now() - interval '3 days'),
+                          ('PD', now() - interval '3 days'), ('PE', now() - interval '3 days'), ('PF', now() - interval '3 days'),
+                          ('PG', now() - interval '3 days'), ('PI', now() - interval '3 days'),
                           ('PO', '2026-10-15 12:00-05'::timestamptz)) x(n, f)
            returning id, notes)
 insert into ctx select lower(notes), id::text from s;
@@ -160,7 +176,7 @@ set constraints all immediate;
 -- Octubre (bimestre septiembre–octubre) se registra como DECLARADO; la venta PO es de octubre y su reversa de noviembre.
 select set_config('request.jwt.claims', '{"sub":"bb11d6d2-f647-49f7-9b29-aa4c4438abf1","role":"authenticated"}', true);
 set local role authenticated;
-select public.fn_tributario_iva_declaracion_guardar(374, '2026-09-01', '2026-10-31', '{"numero_formulario":"PRUEBA-300-SEPOCT","presentada_en":"2026-11-05"}');
+select public.fn_tributario_iva_declaracion_guardar(374, '2026-09-01', '2026-10-31', '{"numero_formulario":"PRUEBA-300-SEPOCT","presentada_en":"2026-11-05","vencimiento_plazo":"2026-11-12","en_firme":false,"firmeza_nota":"Dato de prueba: dentro del término de revisión"}');
 
 -- Ayudantes.
 create function pg_temp.nat(p_k text, p_d jsonb) returns text language plpgsql as $$
@@ -179,7 +195,8 @@ exception when others then
 end $$;
 grant execute on function pg_temp.nat(text, jsonb) to authenticated, anon;
 grant execute on function pg_temp.dec(text, jsonb) to authenticated, anon;
-insert into ctx values ('exp', '{"naturaleza":"correccion_error","soporte_tipo":"comprobante_interno","soporte":"Acta de revisión de caja R4","soporte_fecha":"2026-11-08","expediente_explicacion":"Venta registrada dos veces por error de la caja; no hubo cliente ni mercancía.","factura_referencia":"Venta POS de prueba","estado_electronico":"nunca_transmitida","contingencia_verificada":true,"contingencia_nota":"Sin documentos de contingencia ese día","entrega_prestacion":"no_hubo","entrega_soporte":"Kárdex sin salida","cobro":"no_hubo","cobro_soporte":"Arqueo de caja sin el recaudo","doc_electronico_resolucion":"constancia","doc_electronico_referencia":"CONST-R4-1","doc_electronico_fecha":"2026-11-08","corrige_declaracion_anterior":false}');
+insert into ctx values ('exp', ('{"naturaleza":"correccion_error","soporte_tipo":"comprobante_interno","soporte":"Acta de revisión de caja R4","soporte_fecha":"2026-11-08","expediente_explicacion":"Venta registrada dos veces por error de la caja; no hubo cliente ni mercancía.","factura_referencia":"Venta POS de prueba","estado_electronico":"nunca_transmitida","contingencia_verificada":true,"contingencia_nota":"Sin documentos de contingencia ese día","entrega_prestacion":"no_hubo","entrega_soporte":"Kárdex sin salida","cobro":"no_hubo","cobro_soporte":"Arqueo de caja sin el recaudo","doc_electronico_resolucion":"constancia","doc_electronico_referencia":"CONST-R4-1","doc_electronico_fecha":"2026-11-08","corrige_declaracion_anterior":false,"contingencia_soporte_tipo":"sin_soporte_contingencia","consulta_cufe_resultado":"sin_resultado","consulta_cufe_soporte":"Consulta del CUFE en el catálogo de la DIAN, sin resultado"}'::jsonb
+  || jsonb_build_object('consulta_cufe_en', now()))::text);
 
 -- ── 2 · Devoluciones de compra ──
 insert into r (escenario, verificacion, esperado, obtenido, ok)
@@ -216,7 +233,8 @@ select '4', x.v, x.e, x.o, x.o = x.e from (values
   ('PD: rechazada en la validación de la DIAN, pero con una nota crédito registrada', 'OK',
    pg_temp.nat('je_pd_rev', (select v::jsonb from ctx where k = 'exp') || '{"estado_electronico":"rechazada_validacion_dian","doc_electronico_resolucion":"nota_credito_electronica","doc_electronico_referencia":"NC-E-2","doc_electronico_fecha":"2026-11-08"}')),
   ('PE: «nunca transmitida» sin descartar la contingencia', 'OK',
-   pg_temp.nat('je_pe_rev', (select v::jsonb from ctx where k = 'exp') || '{"contingencia_verificada":false,"contingencia_nota":"No se revisó la contingencia"}')),
+   pg_temp.nat('je_pe_rev', (select v::jsonb from ctx where k = 'exp') || '{"contingencia_verificada":false,"contingencia_nota":"No se revisó la contingencia"}'
+     || jsonb_build_object('consulta_cufe_en', now() - interval '3 days' + interval '1 hour'))),
   ('PF: hubo entrega de la mercancía', 'OK', pg_temp.nat('je_pf_rev', (select v::jsonb from ctx where k = 'exp') || '{"entrega_prestacion":"hubo"}')),
   ('PG: rechazo COMERCIAL del comprador registrado como anulación ante la DIAN', 'DOCUMENTO_VALIDO_NO_SE_ANULA',
    pg_temp.nat('je_pg_rev', (select v::jsonb from ctx where k = 'exp') || '{"estado_electronico":"rechazo_comercial_comprador","doc_electronico_resolucion":"anulacion_dian"}')),
@@ -256,7 +274,7 @@ select '4', x.v, x.e, x.o, x.o = x.e from (values
   ('PC: retirar una venta con factura validada', 'DOCUMENTO_VALIDO_REQUIERE_NOTA_CREDITO', pg_temp.dec('je_pc_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
   ('PC: tratar por nota crédito (período de la nota)', 'OK nota_credito', pg_temp.dec('je_pc_rev', '{"tratamiento":"nota_credito","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"Factura validada: se trata con su nota crédito electrónica"}')),
   ('PD: retirar la venta y además descontar una nota crédito', 'NOTA_CREDITO_Y_RETIRO', pg_temp.dec('je_pd_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
-  ('PE: «nunca transmitida» sin descartar la contingencia', 'CONTINGENCIA_SIN_DESCARTAR', pg_temp.dec('je_pe_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
+  ('PE: «nunca transmitida» sin descartar la contingencia (consulta dentro de las 48 horas)', 'CONTINGENCIA_SIN_DESCARTAR [plazo_48_horas]', pg_temp.dec('je_pe_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
   ('PF: hubo entrega: la operación existió', 'OPERACION_EXISTIO', pg_temp.dec('je_pf_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
   ('PF: mantener la venta', 'OK mantener_venta', pg_temp.dec('je_pf_rev', '{"tratamiento":"mantener_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"Hubo entrega: la operación existió"}')),
   ('PO: retirar en noviembre–diciembre (la venta es de octubre)', 'PERIODO_NO_CORRESPONDE_A_LA_VENTA', pg_temp.dec('je_po_rev', '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió"}')),
@@ -275,6 +293,20 @@ insert into r (escenario, verificacion, esperado, obtenido, ok)
 select '5', 'Cierre con soporte y explicación', 'OK',
        pg_temp.nat('je_ce', '{"naturaleza":"cierre","soporte_tipo":"comprobante_interno","soporte":"Comprobante de cierre R4","soporte_fecha":"2026-11-08","nota":"Traslado de saldos entre auxiliares por el cierre; no crea IVA generado ni descontable"}'),
        pg_temp.nat('je_ce', '{"naturaleza":"cierre","soporte_tipo":"comprobante_interno","soporte":"Comprobante de cierre R4","soporte_fecha":"2026-11-08","nota":"Traslado de saldos entre auxiliares por el cierre; no crea IVA generado ni descontable"}') = 'OK';
+-- Ronda 5: el cierre lo aprueba un SEGUNDO usuario (el dueño de la org 137, miembro solo dentro de esta transacción).
+reset role;
+insert into public.organization_members (organization_id, user_id, role_id, is_active)
+select 374, o.owner_user_id, 2, true from public.organizations o
+ where o.id = 137 and not exists (select 1 from public.organization_members m where m.organization_id = 374 and m.user_id = o.owner_user_id);
+select set_config('request.jwt.claims', (select json_build_object('sub', o.owner_user_id, 'role', 'authenticated')::text from public.organizations o where o.id = 137), true);
+set local role authenticated;
+insert into r (escenario, verificacion, esperado, obtenido, ok)
+select '5', 'Ronda 5: el cierre lo aprueba un segundo usuario', 'aprobado', x.o, x.o = 'aprobado'
+  from (select case when (public.fn_iva_naturaleza_asiento_aprobar(374, (select v::int from ctx where k = 'je_ce'), true, 'Revisado por el segundo usuario')
+                          ->> 'aprobado_por') is not null then 'aprobado' else 'sin aprobar' end o) x;
+reset role;
+select set_config('request.jwt.claims', '{"sub":"bb11d6d2-f647-49f7-9b29-aa4c4438abf1","role":"authenticated"}', true);
+set local role authenticated;
 
 -- ═══ Borrador 2 (noviembre) y borrador de septiembre–octubre, con las decisiones ═══
 insert into ctx values ('b2', public.fn_tributario_borrador_iva_300(374, '2026-11-01', '2026-11-30')::text);
@@ -317,12 +349,16 @@ select '1', upper(x.doc) || ': ' || x.v, 'SIN ASIENTO · ' || x.motivo || ' · '
                                                     where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo')
                                                       and f.source_id = (select v from ctx where k = x.doc)), 'SIN PENDIENTE') as o) y;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select '1', 'FCB (control): cabecera de solo bienes: el IVA no descontable va a la cuenta de la compra', 'D compra 219000 · D 24081001 19000 · C 238000',
-       format('D compra %s · D 24081001 %s · C %s', round(sum(l.debit) filter (where l.account_code not like '2408%')),
-              round(sum(l.debit) filter (where l.account_code = '24081001')), round(sum(l.credit))),
-       sum(l.debit) filter (where l.account_code not like '2408%') = 219000 and sum(l.debit) filter (where l.account_code = '24081001') = 19000 and sum(l.credit) = 238000
-  from public.journal_entries je join public.journal_lines l on l.journal_entry_id = je.id
- where je.organization_id = 374 and je.source_id = (select v from ctx where k = 'fcb');
+select '1', 'FCB (ronda 5): bienes con IVA de deducibilidad distinta y cuenta de cabecera: sin asiento, pendiente de corregir',
+       'SIN ASIENTO · iva_no_descontable_por_corregir · deducibilidad distinta',
+       format('%s · %s · %s', case when exists (select 1 from public.journal_entries je where je.organization_id = 374 and je.source_id = (select v from ctx where k = 'fcb'))
+                                   then 'CON ASIENTO' else 'SIN ASIENTO' end,
+              coalesce(max(f.reason), 'SIN PENDIENTE'),
+              case when bool_or(f.detail like '%deducibilidad distinta%') then 'deducibilidad distinta' else 'otro motivo' end),
+       not exists (select 1 from public.journal_entries je where je.organization_id = 374 and je.source_id = (select v from ctx where k = 'fcb'))
+       and max(f.reason) = 'iva_no_descontable_por_corregir' and bool_or(f.detail like '%deducibilidad distinta%')
+  from public.journal_entry_failures f
+ where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo') and f.source_id = (select v from ctx where k = 'fcb');
 
 -- ── 3 · Casilla 47 ──
 insert into r (escenario, verificacion, esperado, obtenido, ok)
@@ -411,11 +447,11 @@ cross join lateral (select (o ->> 'naturaleza') || ' / sugerida ' || coalesce(o 
 
 -- ── Conciliación y estado ──
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'R', 'Borrador ' || b.k || ': conciliado con la 2408 (diferencia ≤ 1), nunca aprobado fiscalmente', 'conciliado · diferencia 0 · aprobado false · versión 5',
+select 'R', 'Borrador ' || b.k || ': conciliado con la 2408 (diferencia ≤ 1), nunca aprobado fiscalmente', 'conciliado · diferencia 0 · aprobado false · versión 6',
        format('%s · diferencia %s · aprobado %s · versión %s', b.v::jsonb ->> 'estado', round((b.v::jsonb -> 'conciliacion' ->> 'diferencia')::numeric),
               b.v::jsonb ->> 'aprobado_fiscalmente', b.v::jsonb ->> 'version'),
        b.v::jsonb ->> 'estado' = 'conciliado' and abs((b.v::jsonb -> 'conciliacion' ->> 'diferencia')::numeric) <= 1
-         and (b.v::jsonb ->> 'aprobado_fiscalmente') = 'false' and (b.v::jsonb ->> 'version') = '5'
+         and (b.v::jsonb ->> 'aprobado_fiscalmente') = 'false' and (b.v::jsonb ->> 'version') = '6'
   from ctx b where b.k in ('b1', 'b2', 'bso') order by b.k;
 
 -- ── Guardar otra vez el expediente borra la decisión (se decide de nuevo) ──

@@ -139,6 +139,14 @@ describe('catálogo: plantillas por giro', () => {
   });
 });
 
+/**
+ * Claves que no son campos de contenido pero que el editor sí edita en un panel propio:
+ * Estilo › Espaciado y Ancho (`espaciadoSeccion.ts`) y «Banners» (`InspectorBanners.tsx`).
+ * Los bloques de color de Marea van de borde a borde con ellas, como lo pide el sitio (W5).
+ */
+const CLAVES_DE_ESTILO = ['section_background', 'padding_top', 'padding_bottom', 'padding_x', 'full_bleed'];
+const CLAVES_DE_PANEL: Record<string, readonly string[]> = { promo_banners: ['banner_layout', 'banner_style'] };
+
 describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla completa «%s»', (_id, plantilla) => {
   const { documento, resumen } = armar(plantilla);
 
@@ -234,17 +242,14 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
   });
 
   it('cada sección es un tipo, variante y claves que el lector V2 sabe pintar', () => {
-    // Las 7 de tienda nuevas usan variantes y claves que el catálogo del editor registra en E4/E6:
-    // `plantillasTienda.test.ts` las compara con el SECTION_MAP y el contrato del sitio.
-    if (esPlantillaTiendaNueva(plantilla.id)) return;
     for (const pagina of documento.paginas) {
       for (const s of pagina.secciones) {
         if (esPaginaLegal(pagina) || esPlantillaTienda(pagina)) continue;
         const def = getSectionDefinition(s.tipo);
         expect({ tipo: s.tipo, existe: Boolean(def) }).toEqual({ tipo: s.tipo, existe: true });
         expect(def!.variants.map((v) => v.id)).toContain(s.variante);
-        const claves = new Set(def!.contentFields.map((f) => f.key));
-        for (const k of Object.keys(s.contenido)) expect({ tipo: s.tipo, clave: k, declarada: claves.has(k) || k === 'section_background' }).toEqual({ tipo: s.tipo, clave: k, declarada: true });
+        const claves = new Set([...def!.contentFields.map((f) => f.key), ...(CLAVES_DE_PANEL[s.tipo] ?? []), ...CLAVES_DE_ESTILO]);
+        for (const k of Object.keys(s.contenido)) expect({ tipo: s.tipo, clave: k, declarada: claves.has(k) }).toEqual({ tipo: s.tipo, clave: k, declarada: true });
       }
     }
   });

@@ -1,0 +1,112 @@
+Resultado de 31_cartera_pago_tras_nota_credito.sql · 2026-11-10 (Bogotá) · NUEVA
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback):
+nada quedó escrito. De las demás organizaciones solo se LEYERON las facturas (B0).
+
+Archivo: 31_cartera_pago_tras_nota_credito.sql (md5 b8a4c5ad1733a04ea537022b946e88ac; 37201 bytes). Se envió COMPLETO, con
+su «begin;», en una sola llamada al MCP (execute_sql). Dentro de la corrida se calculó el md5 de lo ejecutado (desde su
+primera línea hasta el último «end $fin$;» más su salto de línea): b8a4c5ad1733a04ea537022b946e88ac, 37201 bytes = el
+archivo en disco. El cliente del MCP añadió 0 caracteres antes y 109 después (su envoltura), que no son parte de la prueba.
+
+Migraciones cargadas COMPLETAS y EXACTAS, en orden de versión (md5 comprobado dentro de la corrida contra el del disco):
+  las versionadas, leídas del repositorio público en el commit 75e301ff7c8578ecbc3a45258e0cfdd2e0ebd1f0 (extensión http,
+  sin estado; mismo md5 que el disco):
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 9179856af861a2a886152c1ebbb4f2fd ·
+  20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 ·
+  20261108160500 a3e330a9cf7b01c6da242b7d3f3a2b8c · 20261108165000 1ec6641bdf74dfc15163d0753982309f ·
+  20261108170000 3fe4535a0afe9dc1fa58ece1dea5363d · 20261110100000 9f4ade93850013b4cacd3c795ef8d823 ·
+  20261110150000 f19d51b97cea4c56a57ae96279a49a7d
+  y, completas dentro del archivo de la prueba (aún no están en el repositorio remoto):
+  20261110160000_saldo_factura_pago_resta_notas_credito           8570b3034c07e8c260cb5fd5494eb108 (ejecutada en M1 y en R0)
+  20261110160000_saldo_factura_pago_resta_notas_credito_rollback  2a699e7650166d924390d3883499a6e3 (ejecutada en R1)
+md5 de pg_get_functiondef:
+  fn_recalc_invoice_balance_from_payments  hoy 766dcc160a61fd0469a4c7633c6b70c6 · con la migración 5d6c8fb0d9cd9892c71612c3845a8ff9 ·
+                                           después de la reversión 766dcc160a61fd0469a4c7633c6b70c6 (= hoy)
+  fn_factura_venta_recalcular_saldo        aaed3eee3cc38b60e6ae717544f83eac en todo momento (no se toca)
+  fn_invoice_sales_paid                    76694f70b091de9c24bb947e2ab0e281 (la de 20261110100000) antes, con y después de la
+                                           migración 31 y de su reversión: esta migración no la toca y funciona con ella.
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar.
+
+Conteos:
+  · Base (todas las organizaciones, solo lectura): 258 facturas de venta, 0 notas crédito; 0 facturas con saldo distinto de
+    total − pagado − notas; 0 con nota crédito → no hay datos que reparar (B0). El SELECT previo, fuera de la prueba, dio
+    lo mismo (258 facturas, 0 con nota, 0 con saldo distinto, 0 notas con sale_id, 0 ventas con más de una factura).
+  · Facturas de control: 30 (10 casos × 3 mundos: A con la función de hoy, B con la migración, A2 tras la reversión).
+  · Casos que cambian de A a B: 4 de 10 (C4, C4b, C4c, C8), todos «nota crédito y luego pago». Los otros 6 idénticos.
+
+Corridas: la primera dio 20 de 21 en el cuerpo: R2 esperaba A2 idéntico a A en los 10 casos y salió 9. Esa corrida no
+registraba CUÁL caso difería. Se añadió a la bitácora la línea de cada caso que difiera entre A y A2 y se separó C8, el único
+cuya salida con la función de hoy depende de un «LIMIT 1» sin ORDER BY (R3 acepta sus dos salidas posibles). En la corrida
+que vale A2 salió idéntico a A en los 10 casos (la bitácora no tiene ninguna línea «A2 …»). Una sonda aparte (también
+revertida) construyó los 10 casos 12 veces con la función de hoy: 1 sola salida por caso, C8 incluido; otra, 20 ventas con
+factura y nota de devolución: «WHERE sale_id = … LIMIT 1» (Index Scan idx_invoice_sales_sale_id) devolvió la nota 0 de 20
+veces. La diferencia de la primera corrida queda sin identificar; la hipótesis (C8 por el orden físico) no se pudo reproducir.
+
+RESULTADO (corrida que vale):
+PRUEBA EN SECO (se revierte) · 31: 22 de 22 ok · carga: 11 de 11 ok
+1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
+2 | carga | md5 20261108121000_consignaciones | 9179856af861a2a886152c1ebbb4f2fd | ok
+3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
+4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | a3e330a9cf7b01c6da242b7d3f3a2b8c | ok
+6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 3fe4535a0afe9dc1fa58ece1dea5363d | ok
+8 | carga | md5 20261110100000_cartera_abono_retencion_consignacion | 9f4ade93850013b4cacd3c795ef8d823 | ok
+9 | carga | md5 20261110150000_asiento_por_lineas_reparto_por_base | f19d51b97cea4c56a57ae96279a49a7d | ok
+10 | carga | md5 20261110160000_saldo_factura_pago_resta_notas_credito | 8570b3034c07e8c260cb5fd5494eb108 | ok
+11 | carga | md5 20261110160000_saldo_factura_pago_resta_notas_credito_rollback | 2a699e7650166d924390d3883499a6e3 | ok
+12 | 31 | B0 facturas de venta de la base con saldo distinto de total − pagado − notas crédito (no borrador, no anulada) · con nota crédito | 0 · 0 | ok
+13 | 31 | M0 hoy: el disparador de payments y la función de las notas están como se aplicaron (md5 de pg_get_functiondef) | 766dcc160a61fd0469a4c7633c6b70c6 · aaed3eee3cc38b60e6ae717544f83eac | ok
+14 | 31 | M0b fn_invoice_sales_paid es la de 20261110100000 (no la aplicada hoy) | true | ok
+15 | 31 | M1 con la migración: la función del disparador cambia; la de las notas y fn_invoice_sales_paid (la de 20261110100000) no | true · aaed3eee3cc38b60e6ae717544f83eac · true | ok
+16 | 31 | M2 la rama de compras queda idéntica, byte a byte | true · true | ok
+17 | 31 | M3 el disparador de payments sigue siendo el mismo y apunta a la función; el ACL no cambia | 1 · {postgres=X/postgres,service_role=X/postgres} | ok
+18 | 31 | D1 casos que cambian de A (hoy) a B (migración): solo «nota crédito y luego pago» | C4,C4b,C4c,C8 | ok
+19 | 31 | D2 los demás (sin pagos, parcial, total, pago y luego nota, anulada, borrador) quedan IDÉNTICOS | 6 | ok
+20 | 31 | D3 hoy (A): facturas con saldo distinto de total − pagado − notas (el error), sin borrador ni anulada | C4,C4b,C4c,C8 | ok
+21 | 31 | D4 con la migración (B): ninguna; y la cartera sigue a la factura en todas | 0 · 0 | ok
+22 | 31 | D5 C4 nota y luego pago: A → B | 89000.00 · partial · 89000.00/partial · nota issued → 29500.00 · partial · 29500.00/partial · nota issued | ok
+23 | 31 | D6 C4b nota, pago y el pago falla: A → B (hoy vuelve a «issued» por el total) | 119000.00 · issued · 119000.00/current · nota issued → 59500.00 · partial · 59500.00/partial · nota issued | ok
+24 | 31 | D7 C4c nota y luego abono por cartera: A → B | 89000.00 · partial · 89000.00/partial · nota issued → 29500.00 · partial · 29500.00/partial · nota issued | ok
+25 | 31 | D8 C8 venta POS con nota de devolución (mismo sale_id) y luego pago de la venta: A → B | 89000.00 · partial · 89000.00/partial · nota issued → 29500.00 · partial · 29500.00/partial · nota issued | ok
+26 | 31 | D9 C5 pago y luego nota: igual en los dos mundos (ya lo resolvía la nota) | 29500.00 · partial · 29500.00/partial · nota issued | ok
+27 | 31 | D10 C6 anulada y C7 borrador: un pago no las toca en ninguno de los dos mundos | void · draft · true · true | ok
+28 | 31 | D11 ninguna nota crédito cambia de estado por un pago (B) | issued | ok
+29 | 31 | R0 aplicarla dos veces no cambia nada (mismo md5) | true | ok
+30 | 31 | R1 la reversión deja la función EXACTAMENTE como está aplicada hoy (md5 de pg_get_functiondef); no toca las otras dos | 766dcc160a61fd0469a4c7633c6b70c6 · aaed3eee3cc38b60e6ae717544f83eac · true | ok
+31 | 31 | R2 revertida, las facturas de control se comportan como hoy: A2 idéntico a A en los 9 casos deterministas | 9 | ok
+32 | 31 | R3 C8 en A2 (función de hoy): una de sus dos salidas posibles | factura inflada o nota «paid» | ok
+33 | 31 | Z1 facturas de control de la prueba: 3 mundos × 10 | 30 | ok
+31 › B0: 258 facturas de venta en la base (todas las organizaciones) · 0 notas crédito
+31 › M0: md5 de fn_invoice_sales_paid con 20261110100000 cargada: 76694f70b091de9c24bb947e2ab0e281
+31 › M1: md5 de la función nueva: 5d6c8fb0d9cd9892c71612c3845a8ff9
+31 › C1   A 119000.00 · issued · 119000.00/current · nota -  |  B 119000.00 · issued · 119000.00/current · nota -  (pagado 0.00, notas 0.00)
+31 › C2   A 69000.00 · partial · 69000.00/partial · nota -  |  B 69000.00 · partial · 69000.00/partial · nota -  (pagado 50000.00, notas 0.00)
+31 › C3   A 0.00 · paid · 0.00/paid · nota -  |  B 0.00 · paid · 0.00/paid · nota -  (pagado 119000.00, notas 0.00)
+31 › C4   A 89000.00 · partial · 89000.00/partial · nota issued  |  B 29500.00 · partial · 29500.00/partial · nota issued  (pagado 30000.00, notas 59500.00)
+31 › C4b  A 119000.00 · issued · 119000.00/current · nota issued  |  B 59500.00 · partial · 59500.00/partial · nota issued  (pagado 0.00, notas 59500.00)
+31 › C4c  A 89000.00 · partial · 89000.00/partial · nota issued  |  B 29500.00 · partial · 29500.00/partial · nota issued  (pagado 30000.00, notas 59500.00)
+31 › C5   A 29500.00 · partial · 29500.00/partial · nota issued  |  B 29500.00 · partial · 29500.00/partial · nota issued  (pagado 30000.00, notas 59500.00)
+31 › C6   A 99000.00 · void · 0.00/cancelled · nota -  |  B 99000.00 · void · 0.00/cancelled · nota -  (pagado 0.00, notas 0.00)
+31 › C7   A 119000.00 · draft · 119000.00/current · nota -  |  B 119000.00 · draft · 119000.00/current · nota -  (pagado 50000.00, notas 0.00)
+31 › C8   A 89000.00 · partial · 89000.00/partial · nota issued  |  B 29500.00 · partial · 29500.00/partial · nota issued  (pagado 30000.00, notas 59500.00)
+31 › lo ejecutado: md5 b8a4c5ad1733a04ea537022b946e88ac (37201 bytes) · el cliente añadió 0 caracteres antes y 109 después
+
+Lectura de los casos (factura de 119.000; nota crédito de 59.500):
+  C4  nota y luego pago de 30.000: hoy 89.000 (= 119.000 − 30.000, la nota no cuenta); con la migración 29.500.
+  C4b nota, pago de 30.000 que luego falla: hoy vuelve a «issued» con 119.000 (borra el efecto de la nota); con la
+      migración 59.500 «partial», lo mismo que dejó la nota.
+  C4c igual que C4 con el abono por cartera (source account_receivable).
+  C8  igual que C4 con el pago de la venta POS (source sale) y la nota de devolución con el mismo sale_id.
+  C5  pago y luego nota: 29.500 en los dos (la nota ya recalculaba bien).
+  C6  anulada: el pago que falla después no la toca en ninguno (99.000 «void», cartera 0 «cancelled»).
+  C7  borrador: el pago no lo toca en ninguno (sigue «draft»; la cartera la crea update_accounts_receivable_on_payment
+      igual en los dos mundos).
+
+Después de la corrida (consulta aparte por el MCP): fn_recalc_invoice_balance_from_payments 766dcc160a61fd0469a4c7633c6b70c6,
+fn_factura_venta_recalcular_saldo aaed3eee3cc38b60e6ae717544f83eac, fn_invoice_sales_paid 4c772ca4a7d6926ce091a7910ea4e1d7,
+fn_excedente_nota_credito e9cb33e070ea4c18e1912ee21455b8e6 (las cuatro como estaban); no existen
+consignment_withholding_receivable_applications, organization_links ni fn_invoice_sales_retenciones_abonadas; 0 clientes,
+0 líneas, 0 facturas, 0 pagos y 0 ventas de la prueba o de las sondas en org 374; 258 facturas y 0 notas crédito en la base;
+0 objetos grandes; última versión en supabase_migrations.schema_migrations 20261107234626 y ninguna «saldo_factura_pago»:
+la migración NO se aplicó.

@@ -23,6 +23,11 @@
 -- contabiliza con la cuenta de cabecera: queda SIN asiento y pendiente «iva_no_descontable_por_corregir». Cambian, por
 -- eso, tres esperados de FCH (su IVA del asiento, su cuenta débito y su cuadre) y la fila «otros» deja aparte a FCH. Los
 -- datos no cambian. El mismo ejemplo con cuenta por línea (34.200 al costo, 27.800 descontables) está en la prueba 23.
+--
+-- RONDA 6 (2026-11-10, respuesta 5): TODA compra con IVA no descontable y más de una línea exige cuenta por línea. FCH
+-- sigue SIN asiento y pendiente, pero el motivo es ahora «compra de más de una línea» (se evalúa antes que la
+-- deducibilidad distinta): cambia ese esperado. FCL ya tiene cuenta en cada línea y no cambia. El reparto de la base
+-- (migración 20261110150000) no cambia FCL: sus dos líneas son del 19 %. Los datos no cambian.
 
 begin;
 
@@ -148,10 +153,10 @@ select x.doc, 'IVA del asiento (2408)', x.esperado, y.s, y.s = x.esperado
                             from lineas_doc i where i.doc = x.doc and i.cuenta like '2408%'), 'SIN 2408') end as s) y;
 
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'fch', 'Ronda 5: deducibilidad distinta con cuenta de cabecera → pendiente de corregir (asigne la cuenta de cada línea)',
-       'iva_no_descontable_por_corregir · deducibilidad distinta',
-       coalesce(max(f.reason), 'SIN PENDIENTE') || ' · ' || case when bool_or(f.detail like '%deducibilidad distinta%') then 'deducibilidad distinta' else 'otro motivo' end,
-       max(f.reason) = 'iva_no_descontable_por_corregir' and bool_or(f.detail like '%deducibilidad distinta%')
+select 'fch', 'Rondas 5 y 6: más de una línea con IVA no descontable y cuenta de cabecera → pendiente de corregir (asigne la cuenta de cada línea)',
+       'iva_no_descontable_por_corregir · más de una línea',
+       coalesce(max(f.reason), 'SIN PENDIENTE') || ' · ' || case when bool_or(f.detail like '%más de una línea%') then 'más de una línea' else 'otro motivo' end,
+       max(f.reason) = 'iva_no_descontable_por_corregir' and bool_or(f.detail like '%más de una línea%')
   from public.journal_entry_failures f
  where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo') and f.source_id = (select v from ctx where k = 'fch');
 

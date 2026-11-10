@@ -28,6 +28,7 @@ drop function if exists public.fn_tributario_calidad_vigente(integer, integer, u
 drop function if exists public.fn_tributario_cobertura(jsonb, numeric);
 drop function if exists public.fn_rut_tiene(text[], text);
 drop function if exists public.fn_tributario_regla_validar(text, uuid, text, text, text, integer);
+drop function if exists public.fn_aiu_contrato_cerrar(uuid, jsonb, integer);
 drop function if exists public.fn_aiu_contrato_registrar(integer, integer, text, text, text, jsonb, text, jsonb, text, text, date, date);
 drop function if exists public.fn_reteica_procedimiento_registrar(integer, uuid, text, text, text[], text, text, text, text, date, date);
 drop function if exists public.fn_reteica_procedimiento_exigir(integer, uuid, date, jsonb);

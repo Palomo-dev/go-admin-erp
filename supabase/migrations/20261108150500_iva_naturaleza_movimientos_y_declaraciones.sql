@@ -98,6 +98,40 @@
 --     (fn_iva_naturaleza_asiento_aprobar: otra persona, distinta de quien lo registró, con finance.approve). Sin ella, el
 --     cierre que mueve la 2408 queda pendiente («cierre_sin_aprobacion»). Volver a guardar el registro borra la
 --     aprobación.
+--
+-- RONDA 6 DEL CONTADOR (2026-11-10, docs/contador/RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md, respuestas 1 a 4 y 8),
+-- reescrita sin aplicar:
+--   · «Nunca transmitida» (respuesta 1, CAMBIO OBLIGATORIO). Si hay aviso de la DIAN, aviso del proveedor tecnológico o
+--     soporte de la falla del facturador que CUBRE LA FECHA DE LA VENTA, la factura se tiene por EXPEDIDA EN CONTINGENCIA y
+--     se trata con nota crédito: no se puede retirar como no expedida (DOCUMENTO_VALIDO_REQUIERE_NOTA_CREDITO, detalle
+--     «expedida_en_contingencia») y el expediente pide la nota crédito electrónica. Que el CUFE no aparezca pasadas las 48
+--     horas no prueba que no se expidió: fue un incumplimiento de transmitir. La falla registra ahora su INICIO
+--     (contingencia_inicio_en), además del fin; «cubre la fecha de la venta» = el día de la venta, en la zona horaria de la
+--     organización, está entre el día del inicio y el del fin. fn_iva_contingencia_cubre_venta(fila, venta) lo calcula.
+--     Solo se retira como no expedida con CONSTANCIA DE QUE NO HUBO CONTINGENCIA, con lo que se revisó
+--     (contingencia_nota), Y la consulta del CUFE/CUDE sin resultado: con 'sin_soporte_contingencia', o con una falla
+--     registrada que NO cubre la venta y la nota de lo revisado.
+--   · 48 horas (respuesta 2, Res. 227 de 2025, art. 1.5.1.5.7.1): con falla registrada, desde que termina la falla; si la
+--     venta es posterior al fin de la falla, desde la venta (greatest(fin, venta) + 48 h). SIN FALLA REGISTRADA LA REGLA NO
+--     APLICA: la consulta vale desde la fecha y hora de la venta (antes: CONTINGENCIA_SIN_DESCARTAR, detalle
+--     «consulta_antes_de_la_venta»). En la ronda 5 también se exigían 48 horas desde la venta sin falla: ya no.
+--   · Firmeza (respuesta 3): se mantiene el registro manual con su nota. La declaración devuelve, como REFERENCIA que no
+--     decide, el término general del art. 714 ET: tres años desde el vencimiento del plazo para declarar (o desde la
+--     presentación, si fue extemporánea): firmeza_referencia_714. Hay términos especiales; el sistema no los calcula.
+--   · Art. 589 (respuesta 4): retirar la venta de un período declarado exige registrar la SOLICITUD DE CORRECCIÓN
+--     presentada ante la DIAN (número, fecha, resultado y su fecha, soporte) en la declaración (correccion_dian_*). Solo
+--     la permiten «aceptada» (la DIAN practicó la liquidación oficial de corrección) y «vencido el término» (la DIAN no se
+--     pronunció en los seis meses siguientes a la solicitud y el proyecto de corrección sustituyó la declaración inicial,
+--     art. 589 inc. 2): en los dos casos la disminución ya produjo efecto. «En trámite» → CORRECCION_DIAN_SIN_RESULTADO;
+--     «rechazada» → CORRECCION_DIAN_RECHAZADA; sin registro → CORRECCION_DIAN_SIN_REGISTRO. El término del art. 589 (un
+--     año desde el vencimiento) se mide con la fecha de la SOLICITUD cuando está registrada (antes, con la de hoy).
+--     «Vencido el término» exige que el resultado se registre al menos seis meses después de la solicitud
+--     (CORRECCION_DIAN_TERMINO_NO_VENCIDO).
+--   · Segundo usuario (respuesta 8): la aprobación de otra persona ya no es solo del cierre. La exige toda naturaleza que
+--     mueve la 2408 y se propone «no afecta»: pago a la DIAN, traslado entre auxiliares, cierre y la corrección de error con
+--     la decisión «retirar_venta» (su reversa y la venta salen de las casillas). Quien aprueba no es quien registró ni quien
+--     decidió. Las demás naturalezas: APROBACION_NO_REQUERIDA (antes APROBACION_SOLO_CIERRE). Volver a guardar el registro,
+--     decidir otra vez o quitar la decisión borra la aprobación.
 
 -- ── 1. Naturaleza de un asiento con IVA ──────────────────────────────────────────
 create table if not exists public.tributario_iva_naturaleza_asiento (
@@ -140,6 +174,8 @@ create table if not exists public.tributario_iva_naturaleza_asiento (
   contingencia_soporte_referencia text check (char_length(contingencia_soporte_referencia) <= 120),
   contingencia_soporte_fecha date,
   contingencia_fin_en timestamptz,
+  -- Ronda 6: inicio de la falla, para saber si cubre la fecha de la venta.
+  contingencia_inicio_en timestamptz,
   consulta_cufe_resultado text check (consulta_cufe_resultado in ('sin_resultado', 'encontrado')),
   consulta_cufe_en timestamptz,
   consulta_cufe_soporte text check (char_length(consulta_cufe_soporte) <= 500),
@@ -170,8 +206,54 @@ create table if not exists public.tributario_iva_naturaleza_asiento (
     num_nonnulls(invoice_purchase_id, support_document_id) = 1 and base is not null and iva is not null
     and lineas is not null and jsonb_array_length(lineas) > 0 and soporte_tipo is not null))
 );
+alter table public.tributario_iva_naturaleza_asiento add column if not exists contingencia_inicio_en timestamptz;
+comment on column public.tributario_iva_naturaleza_asiento.contingencia_inicio_en is
+  'Ronda 6 del Contador: inicio de la falla (aviso de la DIAN o del proveedor tecnológico, o falla del facturador). Si la falla cubre la fecha de la venta, la factura se tiene por expedida en contingencia y va por nota crédito.';
 comment on table public.tributario_iva_naturaleza_asiento is
   'Naturaleza fiscal de un asiento que mueve la 2408 sin ser de un documento con líneas (P4 del Contador). La fija una persona; el borrador del IVA la usa para ubicarlo. Corrección de error: expediente + decisión de tratamiento fiscal y período (ronda 4).';
+
+-- Ronda 6: fecha y hora del asiento de la VENTA que revierte la reversa registrada (NULL si no es una reversa).
+create or replace function public.fn_iva_correccion_venta_en(n public.tributario_iva_naturaleza_asiento)
+returns timestamptz
+language sql
+stable
+set search_path to 'public', 'pg_temp'
+as $function$
+  select ve.entry_date
+    from public.journal_entries je
+    join public.journal_entries ve on ve.id = substring(je.fact_key from 10)::integer and ve.organization_id = n.organization_id
+   where je.id = n.journal_entry_id and je.organization_id = n.organization_id and je.fact_key ~ '^reversal:[0-9]+$';
+$function$;
+
+comment on function public.fn_iva_correccion_venta_en(public.tributario_iva_naturaleza_asiento) is
+  'Ronda 6 del Contador: fecha y hora del asiento de la venta que revierte la reversa registrada como corrección de error.';
+revoke all on function public.fn_iva_correccion_venta_en(public.tributario_iva_naturaleza_asiento) from public, anon;
+grant execute on function public.fn_iva_correccion_venta_en(public.tributario_iva_naturaleza_asiento) to authenticated, service_role;
+
+-- Ronda 6 (respuesta 1): ¿una falla registrada (aviso de la DIAN, del proveedor tecnológico o soporte de la falla del
+-- facturador) cubre la FECHA de la venta? Día de la venta entre el día del inicio y el del fin, en la zona horaria de la
+-- organización. Sin falla registrada, o con la falla incompleta: false. Si la cubre, la factura se tiene por expedida en
+-- contingencia (nota crédito), aunque el CUFE no aparezca.
+create or replace function public.fn_iva_contingencia_cubre_venta(n public.tributario_iva_naturaleza_asiento, p_venta_en timestamptz)
+returns boolean
+language sql
+stable
+set search_path to 'public', 'pg_temp'
+as $function$
+  select coalesce(
+    n.estado_electronico = 'nunca_transmitida'
+    and n.contingencia_soporte_tipo in ('aviso_dian', 'aviso_proveedor_tecnologico', 'soporte_falla_facturador')
+    and n.contingencia_inicio_en is not null and n.contingencia_fin_en is not null and p_venta_en is not null
+    and (p_venta_en at time zone z.tz)::date between (n.contingencia_inicio_en at time zone z.tz)::date
+                                                 and (n.contingencia_fin_en at time zone z.tz)::date, false)
+    from (select coalesce((select nullif(o.timezone, '') from public.organizations o where o.id = n.organization_id),
+                          'America/Bogota') as tz) z;
+$function$;
+
+comment on function public.fn_iva_contingencia_cubre_venta(public.tributario_iva_naturaleza_asiento, timestamptz) is
+  'Ronda 6 del Contador: la falla registrada cubre la fecha de la venta (día de la venta entre el del inicio y el del fin de la falla, en la zona de la organización): la factura se tiene por expedida en contingencia y se trata con nota crédito.';
+revoke all on function public.fn_iva_contingencia_cubre_venta(public.tributario_iva_naturaleza_asiento, timestamptz) from public, anon;
+grant execute on function public.fn_iva_contingencia_cubre_venta(public.tributario_iva_naturaleza_asiento, timestamptz) to authenticated, service_role;
 
 -- Ronda 4: qué le falta al expediente de una corrección de error (vacío = completo). Lo usan la RPC de la decisión y
 -- el borrador del 300; completar el expediente NO retira la venta: hace falta además la decisión.
@@ -192,7 +274,9 @@ as $function$
     case when n.estado_electronico = 'nunca_transmitida' and (
               n.contingencia_soporte_tipo is null
            or (n.contingencia_soporte_tipo <> 'sin_soporte_contingencia' and (n.contingencia_soporte_referencia is null
-                 or n.contingencia_soporte_fecha is null or n.contingencia_fin_en is null))
+                 or n.contingencia_soporte_fecha is null or n.contingencia_fin_en is null
+                 -- Ronda 6: la falla registra su inicio (para saber si cubre la venta), anterior o igual a su fin.
+                 or n.contingencia_inicio_en is null or n.contingencia_inicio_en > n.contingencia_fin_en))
            or (n.contingencia_soporte_tipo = 'sin_soporte_contingencia' and n.contingencia_nota is null))
          then 'contingencia' end,
     case when n.estado_electronico = 'nunca_transmitida'
@@ -203,7 +287,9 @@ as $function$
     -- Ronda 5: un cobro devuelto exige el soporte de la devolución del dinero.
     case when n.cobro = 'hubo_devuelto' and (n.cobro_devolucion_soporte is null or n.cobro_devolucion_fecha is null)
          then 'devolucion_del_cobro' end,
-    case when n.estado_electronico in ('validada_dian', 'rechazo_comercial_comprador', 'expedida_contingencia')
+    case when (n.estado_electronico in ('validada_dian', 'rechazo_comercial_comprador', 'expedida_contingencia')
+               -- Ronda 6: una falla que cubre la fecha de la venta la deja expedida en contingencia: nota crédito.
+               or public.fn_iva_contingencia_cubre_venta(n, public.fn_iva_correccion_venta_en(n)))
               and n.doc_electronico_resolucion is distinct from 'nota_credito_electronica' then 'nota_credito_electronica' end,
     case when n.doc_electronico_resolucion is null or n.doc_electronico_referencia is null or n.doc_electronico_fecha is null
          then 'documento_electronico_resuelto' end,
@@ -216,9 +302,14 @@ comment on function public.fn_iva_correccion_expediente_faltantes(public.tributa
 revoke all on function public.fn_iva_correccion_expediente_faltantes(public.tributario_iva_naturaleza_asiento) from public, anon;
 grant execute on function public.fn_iva_correccion_expediente_faltantes(public.tributario_iva_naturaleza_asiento) to authenticated, service_role;
 
--- Ronda 5: ¿la contingencia de una factura «nunca transmitida» quedó descartada? Expediente con la verificación y la
--- consulta del CUFE/CUDE sin resultado, hecha DESPUÉS de las 48 horas (Res. 227 de 2025, art. 1.5.1.5.7.1) contadas desde
--- el fin de la falla o desde la venta (p_venta_en), lo que sea posterior. Fuera de «nunca transmitida»: NULL.
+-- Ronda 5: ¿la contingencia de una factura «nunca transmitida» quedó descartada? Fuera de «nunca transmitida»: NULL.
+-- Ronda 6 (respuestas 1 y 2): solo con CONSTANCIA DE QUE NO HUBO CONTINGENCIA y la consulta del CUFE/CUDE sin resultado:
+--   · falla registrada que cubre la fecha de la venta → false (expedida en contingencia: nota crédito);
+--   · 'sin_soporte_contingencia' (constancia con lo revisado): sin falla la regla de 48 horas no aplica; la consulta vale
+--     desde la fecha y hora de la venta;
+--   · falla registrada que NO cubre la venta: hace falta además la nota de lo revisado (contingencia_nota) y la consulta
+--     hecha pasadas 48 horas desde el fin de la falla, o desde la venta si es posterior (Res. 227 de 2025, art.
+--     1.5.1.5.7.1).
 create or replace function public.fn_iva_contingencia_descartada(n public.tributario_iva_naturaleza_asiento, p_venta_en timestamptz)
 returns boolean
 language sql
@@ -226,15 +317,20 @@ stable
 set search_path to 'public', 'pg_temp'
 as $function$
   select case when n.estado_electronico is distinct from 'nunca_transmitida' then null else
-    not ('contingencia' = any (public.fn_iva_correccion_expediente_faltantes(n)))
-    and not ('consulta_cufe' = any (public.fn_iva_correccion_expediente_faltantes(n)))
-    and n.consulta_cufe_resultado = 'sin_resultado'
-    and n.consulta_cufe_en >= greatest(n.contingencia_fin_en, p_venta_en) + interval '48 hours'
+    coalesce(
+      not ('contingencia' = any (public.fn_iva_correccion_expediente_faltantes(n)))
+      and not ('consulta_cufe' = any (public.fn_iva_correccion_expediente_faltantes(n)))
+      and n.consulta_cufe_resultado = 'sin_resultado'
+      and not public.fn_iva_contingencia_cubre_venta(n, p_venta_en)
+      and case when n.contingencia_soporte_tipo = 'sin_soporte_contingencia'
+               then n.consulta_cufe_en >= p_venta_en
+               else n.contingencia_nota is not null
+                    and n.consulta_cufe_en >= greatest(n.contingencia_fin_en, p_venta_en) + interval '48 hours' end, false)
   end;
 $function$;
 
 comment on function public.fn_iva_contingencia_descartada(public.tributario_iva_naturaleza_asiento, timestamptz) is
-  'Ronda 5 del Contador: contingencia descartada en una factura nunca transmitida (verificación con soporte o constancia, y consulta del CUFE/CUDE sin resultado hecha después de las 48 horas). NULL si el estado no es «nunca transmitida».';
+  'Rondas 5 y 6 del Contador: contingencia descartada en una factura nunca transmitida: constancia de que no hubo contingencia (con lo revisado) y consulta del CUFE/CUDE sin resultado; con falla registrada que no cubre la venta, consulta pasadas 48 horas desde el fin de la falla o desde la venta; sin falla, desde la venta. Una falla que cubre la venta nunca la descarta. NULL si el estado no es «nunca transmitida».';
 revoke all on function public.fn_iva_contingencia_descartada(public.tributario_iva_naturaleza_asiento, timestamptz) from public, anon;
 grant execute on function public.fn_iva_contingencia_descartada(public.tributario_iva_naturaleza_asiento, timestamptz) to authenticated, service_role;
 
@@ -260,6 +356,24 @@ create table if not exists public.tributario_iva_declaraciones (
   constraint tributario_iva_declaraciones_vencimiento check (vencimiento_plazo is null or vencimiento_plazo > hasta),
   constraint tributario_iva_declaraciones_unica unique (organization_id, desde, hasta)
 );
+-- Ronda 6 (art. 589 ET): solicitud de corrección presentada ante la DIAN, con su número, fecha y resultado. Se agrega con
+-- ALTER para que la migración siga siendo idempotente si la tabla ya existe.
+alter table public.tributario_iva_declaraciones
+  add column if not exists correccion_dian_numero text check (char_length(correccion_dian_numero) <= 60),
+  add column if not exists correccion_dian_fecha date,
+  add column if not exists correccion_dian_resultado text
+    check (correccion_dian_resultado in ('en_tramite', 'aceptada', 'rechazada', 'vencido_termino')),
+  add column if not exists correccion_dian_resultado_fecha date,
+  add column if not exists correccion_dian_soporte text check (char_length(correccion_dian_soporte) <= 500),
+  add column if not exists correccion_dian_registrada_por uuid,
+  add column if not exists correccion_dian_registrada_en timestamptz;
+alter table public.tributario_iva_declaraciones drop constraint if exists tributario_iva_declaraciones_correccion_dian;
+alter table public.tributario_iva_declaraciones add constraint tributario_iva_declaraciones_correccion_dian check (
+  correccion_dian_resultado is null or (
+    correccion_dian_numero is not null and correccion_dian_fecha is not null and correccion_dian_soporte is not null
+    and (correccion_dian_resultado = 'en_tramite' or correccion_dian_resultado_fecha >= correccion_dian_fecha)));
+comment on column public.tributario_iva_declaraciones.correccion_dian_resultado is
+  'Ronda 6 del Contador (art. 589 ET): resultado de la solicitud de corrección presentada ante la DIAN. Retirar una venta del período solo procede con «aceptada» o «vencido_termino» (la DIAN no se pronunció en seis meses y el proyecto sustituyó la declaración).';
 comment on table public.tributario_iva_declaraciones is
   'Períodos de IVA ya presentados ante la DIAN (los registra una persona). El borrador señala documentos grabados después en esos períodos.';
 
@@ -329,6 +443,8 @@ declare
   v_cont_ref text := nullif(btrim(coalesce(p_datos ->> 'contingencia_soporte_referencia', '')), '');
   v_cont_fecha date := nullif(p_datos ->> 'contingencia_soporte_fecha', '')::date;
   v_cont_fin timestamptz := nullif(p_datos ->> 'contingencia_fin_en', '')::timestamptz;
+  -- Ronda 6: inicio de la falla.
+  v_cont_ini timestamptz := nullif(p_datos ->> 'contingencia_inicio_en', '')::timestamptz;
   v_cufe_res text := nullif(btrim(coalesce(p_datos ->> 'consulta_cufe_resultado', '')), '');
   v_cufe_en timestamptz := nullif(p_datos ->> 'consulta_cufe_en', '')::timestamptz;
   v_cufe_sop text := nullif(btrim(coalesce(p_datos ->> 'consulta_cufe_soporte', '')), '');
@@ -423,6 +539,10 @@ begin
        or char_length(coalesce(v_dev_sop, '')) > 500 then
       raise exception 'TEXTO_LARGO' using errcode = '22023';
     end if;
+    -- Ronda 6: la falla empieza antes de terminar.
+    if v_cont_ini is not null and v_cont_fin is not null and v_cont_ini > v_cont_fin then
+      raise exception 'CONTINGENCIA_INVALIDA' using errcode = '22023';
+    end if;
     -- La consulta del CUFE/CUDE ya ocurrió: no puede tener fecha futura.
     if v_cufe_en is not null and v_cufe_en > now() + interval '5 minutes' then
       raise exception 'CONSULTA_CUFE_INVALIDA' using errcode = '22023';
@@ -433,10 +553,10 @@ begin
     end if;
     if v_estado is distinct from 'nunca_transmitida' then
       v_cont_ver := null; v_cont_nota := null;
-      v_cont_tipo := null; v_cont_ref := null; v_cont_fecha := null; v_cont_fin := null;
+      v_cont_tipo := null; v_cont_ref := null; v_cont_fecha := null; v_cont_fin := null; v_cont_ini := null;
       v_cufe_res := null; v_cufe_en := null; v_cufe_sop := null;
     elsif v_cont_tipo = 'sin_soporte_contingencia' then
-      v_cont_ref := null; v_cont_fecha := null; v_cont_fin := null;
+      v_cont_ref := null; v_cont_fecha := null; v_cont_fin := null; v_cont_ini := null;
     end if;
     if v_cobro is distinct from 'hubo_devuelto' then
       v_dev_sop := null; v_dev_fecha := null;
@@ -445,7 +565,7 @@ begin
     v_res := null; v_res_ref := null; v_res_fecha := null; v_corrige := null;
     v_expl := null; v_fac_ref := null; v_estado := null; v_cont_ver := null; v_cont_nota := null;
     v_entrega := null; v_entrega_sop := null; v_cobro := null; v_cobro_sop := null;
-    v_cont_tipo := null; v_cont_ref := null; v_cont_fecha := null; v_cont_fin := null;
+    v_cont_tipo := null; v_cont_ref := null; v_cont_fecha := null; v_cont_fin := null; v_cont_ini := null;
     v_cufe_res := null; v_cufe_en := null; v_cufe_sop := null; v_dev_sop := null; v_dev_fecha := null;
   end if;
 
@@ -521,11 +641,12 @@ begin
                                                         contingencia_soporte_tipo, contingencia_soporte_referencia,
                                                         contingencia_soporte_fecha, contingencia_fin_en, consulta_cufe_resultado,
                                                         consulta_cufe_en, consulta_cufe_soporte, cobro_devolucion_soporte,
-                                                        cobro_devolucion_fecha, creado_por)
+                                                        cobro_devolucion_fecha, contingencia_inicio_en, creado_por)
   values (p_organization_id, p_journal_entry_id, v_nat, v_sop_tipo, v_soporte, v_sop_fecha, v_fc, v_ds, v_base, v_iva, v_lineas, v_nota,
           v_res, v_res_ref, v_res_fecha, v_corrige, v_expl, v_fac_ref, v_estado, v_cont_ver, v_cont_nota,
           v_entrega, v_entrega_sop, v_cobro, v_cobro_sop,
-          v_cont_tipo, v_cont_ref, v_cont_fecha, v_cont_fin, v_cufe_res, v_cufe_en, v_cufe_sop, v_dev_sop, v_dev_fecha, auth.uid())
+          v_cont_tipo, v_cont_ref, v_cont_fecha, v_cont_fin, v_cufe_res, v_cufe_en, v_cufe_sop, v_dev_sop, v_dev_fecha,
+          v_cont_ini, auth.uid())
   on conflict (organization_id, journal_entry_id) do update
     set naturaleza = excluded.naturaleza, soporte_tipo = excluded.soporte_tipo, soporte = excluded.soporte,
         soporte_fecha = excluded.soporte_fecha, invoice_purchase_id = excluded.invoice_purchase_id,
@@ -543,6 +664,7 @@ begin
         consulta_cufe_resultado = excluded.consulta_cufe_resultado, consulta_cufe_en = excluded.consulta_cufe_en,
         consulta_cufe_soporte = excluded.consulta_cufe_soporte, cobro_devolucion_soporte = excluded.cobro_devolucion_soporte,
         cobro_devolucion_fecha = excluded.cobro_devolucion_fecha,
+        contingencia_inicio_en = excluded.contingencia_inicio_en,
         -- Ronda 5: volver a guardar el registro borra la aprobación del segundo usuario (se aprueba otra vez).
         aprobado_por = null, aprobado_en = null, aprobacion_nota = null,
         -- Ronda 4: si el expediente cambia, la decisión anterior deja de valer (se decide otra vez).
@@ -552,10 +674,15 @@ begin
   returning * into v_fila;
   return to_jsonb(v_fila) || jsonb_build_object('expediente_faltantes',
     case when v_fila.naturaleza = 'correccion_error' then to_jsonb(public.fn_iva_correccion_expediente_faltantes(v_fila)) end,
-    -- Ronda 5: sin soporte de contingencia, la factura nunca transmitida se trata como no expedida.
-    'tratada_como_no_expedida', v_fila.estado_electronico = 'nunca_transmitida'
-                                 and v_fila.contingencia_soporte_tipo = 'sin_soporte_contingencia',
-    'aprobacion_requerida', v_fila.naturaleza = 'cierre');
+    -- Ronda 6: con una falla que cubre la venta, la factura se tiene por expedida en contingencia (nota crédito); se trata
+    -- como no expedida solo con la constancia de que no hubo contingencia y la consulta del CUFE/CUDE sin resultado.
+    'tenida_por_expedida_en_contingencia',
+      public.fn_iva_contingencia_cubre_venta(v_fila, public.fn_iva_correccion_venta_en(v_fila)),
+    'tratada_como_no_expedida',
+      coalesce(public.fn_iva_contingencia_descartada(v_fila, public.fn_iva_correccion_venta_en(v_fila)), false),
+    -- Ronda 6: segundo usuario para toda naturaleza que mueve la 2408 y se propone «no afecta» (la corrección de error, al
+    -- decidir retirar la venta).
+    'aprobacion_requerida', v_fila.naturaleza in ('pago_dian', 'traslado_auxiliares', 'cierre'));
 end;
 $function$;
 
@@ -564,9 +691,11 @@ comment on function public.fn_iva_naturaleza_asiento_guardar(integer, integer, j
 revoke all on function public.fn_iva_naturaleza_asiento_guardar(integer, integer, jsonb) from public, anon;
 grant execute on function public.fn_iva_naturaleza_asiento_guardar(integer, integer, jsonb) to authenticated;
 
--- ── 3a. RPC (ronda 5): aprobación del cierre por un segundo usuario ─────────────
--- p_aprobar = true aprueba (con nota opcional); false quita la aprobación. Solo el cierre la exige. Quien aprueba debe
--- ser OTRA persona, distinta de quien guardó el registro, con finance.approve o admin.full_access.
+-- ── 3a. RPC (ronda 5): aprobación por un segundo usuario ─────────────────────────
+-- p_aprobar = true aprueba (con nota opcional); false quita la aprobación. Quien aprueba debe ser OTRA persona, distinta
+-- de quien guardó el registro (y, en la corrección de error, de quien decidió), con finance.approve o admin.full_access.
+-- Ronda 6 (respuesta 8): la exigen el pago a la DIAN, el traslado entre auxiliares, el cierre y la corrección de error con
+-- la decisión «retirar_venta»: todo lo que mueve la 2408 y se propone «no afecta». Las demás: APROBACION_NO_REQUERIDA.
 create or replace function public.fn_iva_naturaleza_asiento_aprobar(p_organization_id integer, p_journal_entry_id integer,
                                                                     p_aprobar boolean, p_nota text default null)
 returns jsonb
@@ -590,15 +719,16 @@ begin
   if v_fila.id is null then
     raise exception 'NO_ENCONTRADO' using errcode = 'P0002';
   end if;
-  if v_fila.naturaleza <> 'cierre' then
-    raise exception 'APROBACION_SOLO_CIERRE' using errcode = '22023';
+  if not (v_fila.naturaleza in ('pago_dian', 'traslado_auxiliares', 'cierre')
+          or (v_fila.naturaleza = 'correccion_error' and coalesce(v_fila.decision_tratamiento, '') = 'retirar_venta')) then
+    raise exception 'APROBACION_NO_REQUERIDA' using errcode = '22023';
   end if;
   if char_length(coalesce(v_nota, '')) > 500 then
     raise exception 'TEXTO_LARGO' using errcode = '22023';
   end if;
   if coalesce(p_aprobar, false) then
-    -- El segundo usuario no es quien registró el cierre (ni una sesión sin usuario).
-    if v_uid is null or v_uid is not distinct from v_fila.creado_por then
+    -- El segundo usuario no es quien registró (ni una sesión sin usuario) ni, en la corrección, quien decidió.
+    if v_uid is null or v_uid is not distinct from v_fila.creado_por or v_uid is not distinct from v_fila.decidido_por then
       raise exception 'APROBACION_MISMO_USUARIO' using errcode = '42501';
     end if;
     update public.tributario_iva_naturaleza_asiento
@@ -616,7 +746,7 @@ end;
 $function$;
 
 comment on function public.fn_iva_naturaleza_asiento_aprobar(integer, integer, boolean, text) is
-  'Ronda 5 del Contador: aprobación (o retiro de la aprobación) del registro de un cierre que mueve la 2408, por un segundo usuario distinto de quien lo registró. Sin ella el cierre queda pendiente en el borrador. Requiere finance.approve o admin.full_access.';
+  'Rondas 5 y 6 del Contador: aprobación (o retiro de la aprobación), por un segundo usuario distinto de quien lo registró o decidió, de un registro que mueve la 2408 y se propone «no afecta»: pago a la DIAN, traslado entre auxiliares, cierre y corrección de error con la decisión de retirar la venta. Sin ella queda pendiente en el borrador. Requiere finance.approve o admin.full_access.';
 revoke all on function public.fn_iva_naturaleza_asiento_aprobar(integer, integer, boolean, text) from public, anon;
 grant execute on function public.fn_iva_naturaleza_asiento_aprobar(integer, integer, boolean, text) to authenticated;
 
@@ -643,6 +773,7 @@ declare
   v_dia_venta date;
   v_meses integer;
   v_decl record;
+  v_hoy date;
 begin
   perform public.fn_assert_acceso_org(p_organization_id);
   if not (public.fn_tiene_permiso(p_organization_id, 'finance.approve')
@@ -658,7 +789,9 @@ begin
   if p_datos is null then
     update public.tributario_iva_naturaleza_asiento
        set decision_tratamiento = null, decision_periodo_desde = null, decision_periodo_hasta = null,
-           decision_fundamento = null, decidido_por = null, decidido_en = null, actualizado_en = now()
+           decision_fundamento = null, decidido_por = null, decidido_en = null,
+           -- Ronda 6: sin decisión no hay nada que aprobar.
+           aprobado_por = null, aprobado_en = null, aprobacion_nota = null, actualizado_en = now()
      where id = v_fila.id
     returning * into v_fila;
     return to_jsonb(v_fila);
@@ -704,13 +837,24 @@ begin
     if v_fila.estado_electronico in ('validada_dian', 'rechazo_comercial_comprador', 'expedida_contingencia') then
       raise exception 'DOCUMENTO_VALIDO_REQUIERE_NOTA_CREDITO' using errcode = '22023';
     end if;
-    -- Ronda 5: «nunca transmitida» exige la contingencia descartada (verificación + consulta del CUFE/CUDE sin resultado
-    -- hecha después de las 48 horas). La marca contingencia_verificada, sola, ya no cuenta.
+    -- Ronda 6: con una falla que cubre la fecha de la venta, la factura se tiene por expedida en contingencia: nota crédito.
+    if public.fn_iva_contingencia_cubre_venta(v_fila, v_venta.entry_date) then
+      raise exception 'DOCUMENTO_VALIDO_REQUIERE_NOTA_CREDITO' using errcode = '22023', detail = 'expedida_en_contingencia';
+    end if;
+    -- Ronda 5: «nunca transmitida» exige la contingencia descartada. Ronda 6: constancia de que no hubo contingencia y
+    -- consulta sin resultado; las 48 horas solo con falla registrada (desde su fin, o desde la venta si es posterior).
     if v_fila.estado_electronico = 'nunca_transmitida'
        and public.fn_iva_contingencia_descartada(v_fila, v_venta.entry_date) is not true then
       raise exception 'CONTINGENCIA_SIN_DESCARTAR' using errcode = '22023',
-        detail = case when v_fila.consulta_cufe_en < greatest(v_fila.contingencia_fin_en, v_venta.entry_date) + interval '48 hours'
-                      then 'plazo_48_horas' else 'verificacion' end;
+        detail = case
+          when v_fila.contingencia_soporte_tipo = 'sin_soporte_contingencia' and v_fila.consulta_cufe_en < v_venta.entry_date
+            then 'consulta_antes_de_la_venta'
+          when v_fila.contingencia_soporte_tipo <> 'sin_soporte_contingencia'
+               and v_fila.consulta_cufe_en < greatest(v_fila.contingencia_fin_en, v_venta.entry_date) + interval '48 hours'
+            then 'plazo_48_horas'
+          when v_fila.contingencia_soporte_tipo <> 'sin_soporte_contingencia' and v_fila.contingencia_nota is null
+            then 'constancia_sin_contingencia'
+          else 'verificacion' end;
     end if;
     if v_fila.entrega_prestacion in ('hubo', 'parcial') then
       raise exception 'OPERACION_EXISTIO' using errcode = '22023';
@@ -759,7 +903,8 @@ begin
   -- Ronda 5: si el período de la venta ya se declaró, la corrección tiene que seguir siendo posible. El sistema no
   -- inventa calendarios ni calcula la firmeza: usa la fecha de vencimiento y la firmeza que registró una persona.
   if v_trat = 'retirar_venta' then
-    select d.vencimiento_plazo, d.en_firme into v_decl from public.tributario_iva_declaraciones d
+    select d.vencimiento_plazo, d.en_firme, d.correccion_dian_fecha, d.correccion_dian_resultado into v_decl
+      from public.tributario_iva_declaraciones d
      where d.organization_id = p_organization_id and v_dia_venta between d.desde and d.hasta
      limit 1;
     if found then
@@ -774,18 +919,33 @@ begin
         raise exception 'DECLARACION_EN_FIRME' using errcode = '22023';
       end if;
       -- Art. 589 ET: la corrección que disminuye el impuesto se pide dentro del año siguiente al vencimiento del plazo.
-      if (now() at time zone v_tz)::date > (v_decl.vencimiento_plazo + interval '1 year')::date then
+      -- Ronda 6: si la solicitud ya se registró, cuenta su fecha; si no, la de hoy.
+      v_hoy := (now() at time zone v_tz)::date;
+      if coalesce(v_decl.correccion_dian_fecha, v_hoy) > (v_decl.vencimiento_plazo + interval '1 year')::date then
         raise exception 'CORRECCION_FUERA_DE_TERMINO' using errcode = '22023';
+      end if;
+      -- Ronda 6 (art. 589 ET): la solicitud de corrección presentada ante la DIAN, registrada con su resultado. Solo
+      -- «aceptada» o «vencido el término» (el proyecto sustituyó la declaración) permiten retirar la venta.
+      if v_decl.correccion_dian_resultado is null then
+        raise exception 'CORRECCION_DIAN_SIN_REGISTRO' using errcode = '22023';
+      end if;
+      if v_decl.correccion_dian_resultado = 'en_tramite' then
+        raise exception 'CORRECCION_DIAN_SIN_RESULTADO' using errcode = '22023';
+      end if;
+      if v_decl.correccion_dian_resultado = 'rechazada' then
+        raise exception 'CORRECCION_DIAN_RECHAZADA' using errcode = '22023';
       end if;
     end if;
   end if;
 
   update public.tributario_iva_naturaleza_asiento
      set decision_tratamiento = v_trat, decision_periodo_desde = v_desde, decision_periodo_hasta = v_hasta,
-         decision_fundamento = v_fund, decidido_por = auth.uid(), decidido_en = now(), actualizado_en = now()
+         decision_fundamento = v_fund, decidido_por = auth.uid(), decidido_en = now(),
+         -- Ronda 6: una decisión nueva se aprueba otra vez (segundo usuario).
+         aprobado_por = null, aprobado_en = null, aprobacion_nota = null, actualizado_en = now()
    where id = v_fila.id
   returning * into v_fila;
-  return to_jsonb(v_fila);
+  return to_jsonb(v_fila) || jsonb_build_object('aprobacion_requerida', v_trat = 'retirar_venta');
 end;
 $function$;
 
@@ -799,6 +959,9 @@ grant execute on function public.fn_iva_correccion_error_decidir(integer, intege
 --          p_datos = null → quita el registro.
 -- Ronda 5: el vencimiento y la firmeza los registra una persona (el sistema no tiene calendario ni calcula la firmeza).
 -- Una clave que no venga conserva lo registrado; «en_firme» exige su nota (de dónde se sabe).
+-- Ronda 6: correccion_dian?: { numero, fecha, resultado: en_tramite | aceptada | rechazada | vencido_termino,
+--          resultado_fecha?, soporte } (null = quitarla; ausente = se conserva). La respuesta trae, como referencia que
+--          no decide, firmeza_referencia_714: tres años desde el vencimiento (o desde la presentación, si fue posterior).
 create or replace function public.fn_tributario_iva_declaracion_guardar(p_organization_id integer, p_desde date, p_hasta date, p_datos jsonb)
 returns jsonb
 language plpgsql
@@ -812,6 +975,14 @@ declare
   v_venc date := nullif(p_datos ->> 'vencimiento_plazo', '')::date;
   v_firme boolean := case jsonb_typeof(p_datos -> 'en_firme') when 'boolean' then (p_datos ->> 'en_firme')::boolean end;
   v_firme_nota text := nullif(btrim(coalesce(p_datos ->> 'firmeza_nota', '')), '');
+  -- Ronda 6 (art. 589 ET): solicitud de corrección ante la DIAN.
+  v_cd jsonb := case when jsonb_typeof(p_datos -> 'correccion_dian') = 'object' then p_datos -> 'correccion_dian' end;
+  v_cd_num text;
+  v_cd_fecha date;
+  v_cd_res text;
+  v_cd_res_fecha date;
+  v_cd_sop text;
+  v_hoy date;
   v_fila public.tributario_iva_declaraciones;
 begin
   perform public.fn_assert_acceso_org(p_organization_id);
@@ -847,6 +1018,41 @@ begin
                 and not (d.desde = p_desde and d.hasta = p_hasta)) then
     raise exception 'PERIODO_SOLAPADO' using errcode = '23P01';
   end if;
+  -- Ronda 6 (art. 589 ET): la solicitud de corrección se registra completa: número, fecha (no anterior a la presentación
+  -- ni futura), resultado y, si ya lo hay, su fecha (no anterior a la solicitud), con el soporte.
+  if p_datos ? 'correccion_dian' and jsonb_typeof(p_datos -> 'correccion_dian') not in ('object', 'null') then
+    raise exception 'CORRECCION_DIAN_INVALIDA' using errcode = '22023';
+  end if;
+  if v_cd is not null then
+    v_cd_num := nullif(btrim(coalesce(v_cd ->> 'numero', '')), '');
+    v_cd_res := nullif(btrim(coalesce(v_cd ->> 'resultado', '')), '');
+    v_cd_sop := nullif(btrim(coalesce(v_cd ->> 'soporte', '')), '');
+    begin
+      v_cd_fecha := nullif(v_cd ->> 'fecha', '')::date;
+      v_cd_res_fecha := nullif(v_cd ->> 'resultado_fecha', '')::date;
+    exception when others then
+      raise exception 'CORRECCION_DIAN_INVALIDA' using errcode = '22023';
+    end;
+    if v_cd_num is null or v_cd_fecha is null or v_cd_sop is null
+       or v_cd_res is null or v_cd_res not in ('en_tramite', 'aceptada', 'rechazada', 'vencido_termino')
+       or (v_cd_res <> 'en_tramite' and v_cd_res_fecha is null)
+       or char_length(v_cd_num) > 60 or char_length(v_cd_sop) > 500 then
+      raise exception 'CORRECCION_DIAN_INVALIDA' using errcode = '22023';
+    end if;
+    v_hoy := (now() at time zone coalesce((select nullif(o.timezone, '') from public.organizations o where o.id = p_organization_id),
+                                         'America/Bogota'))::date;
+    if v_cd_fecha < v_fecha or v_cd_fecha > v_hoy
+       or (v_cd_res_fecha is not null and (v_cd_res_fecha < v_cd_fecha or v_cd_res_fecha > v_hoy)) then
+      raise exception 'CORRECCION_DIAN_FECHA_INVALIDA' using errcode = '22023';
+    end if;
+    -- «Vencido el término»: la DIAN no se pronunció dentro de los seis meses siguientes a la solicitud (art. 589 ET).
+    if v_cd_res = 'vencido_termino' and v_cd_res_fecha < (v_cd_fecha + interval '6 months')::date then
+      raise exception 'CORRECCION_DIAN_TERMINO_NO_VENCIDO' using errcode = '22023';
+    end if;
+    if v_cd_res = 'en_tramite' then
+      v_cd_res_fecha := null;
+    end if;
+  end if;
 
   insert into public.tributario_iva_declaraciones (organization_id, desde, hasta, numero_formulario, presentada_en, nota,
                                                    vencimiento_plazo, en_firme, firmeza_nota, firmeza_registrada_por,
@@ -866,11 +1072,26 @@ begin
         firmeza_registrada_en = case when p_datos ? 'en_firme' then excluded.firmeza_registrada_en
                                      else tributario_iva_declaraciones.firmeza_registrada_en end
   returning * into v_fila;
-  return to_jsonb(v_fila);
+  -- Ronda 6: la solicitud de corrección ante la DIAN (una clave ausente conserva lo registrado; null la quita).
+  if p_datos ? 'correccion_dian' then
+    update public.tributario_iva_declaraciones
+       set correccion_dian_numero = v_cd_num, correccion_dian_fecha = v_cd_fecha, correccion_dian_resultado = v_cd_res,
+           correccion_dian_resultado_fecha = v_cd_res_fecha, correccion_dian_soporte = v_cd_sop,
+           correccion_dian_registrada_por = case when v_cd is not null then auth.uid() end,
+           correccion_dian_registrada_en = case when v_cd is not null then now() end
+     where id = v_fila.id
+    returning * into v_fila;
+  end if;
+  -- Ronda 6: referencia del término general de firmeza (art. 714 ET: tres años desde el vencimiento del plazo, o desde la
+  -- presentación si fue extemporánea). NO decide: hay términos especiales; la firmeza la registra una persona.
+  return to_jsonb(v_fila) || jsonb_build_object(
+    'firmeza_referencia_714', case when v_fila.vencimiento_plazo is not null
+                                   then (greatest(v_fila.vencimiento_plazo, v_fila.presentada_en) + interval '3 years')::date end,
+    'firmeza_referencia_nota', 'Referencia: término general del art. 714 ET (tres años). No decide la firmeza: hay términos especiales.');
 end;
 $function$;
 
 comment on function public.fn_tributario_iva_declaracion_guardar(integer, date, date, jsonb) is
-  'Registra (o quita, con p_datos null) un período de IVA ya presentado. Lo hace una persona; el sistema nunca lo marca. Requiere finance.approve o admin.full_access.';
+  'Registra (o quita, con p_datos null) un período de IVA ya presentado, con su vencimiento, firmeza y (ronda 6, art. 589 ET) la solicitud de corrección presentada ante la DIAN y su resultado. Lo hace una persona; el sistema nunca lo marca. Requiere finance.approve o admin.full_access.';
 revoke all on function public.fn_tributario_iva_declaracion_guardar(integer, date, date, jsonb) from public, anon;
 grant execute on function public.fn_tributario_iva_declaracion_guardar(integer, date, date, jsonb) to authenticated;

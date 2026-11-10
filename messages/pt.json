@@ -49541,6 +49541,39 @@
       "constancia_2532_requerida": "Se o formato 2532 não aplica, registre o que foi verificado."
     }
   },
+  "finanzasTributarioR6": {
+    "motivos": {
+      "no_afecta_sin_aprobacion": "Pagamento à DIAN ou transferência entre subcontas registrado sem a aprovação de um segundo usuário",
+      "correccion_sin_aprobacion": "Correção de erro: a retirada da venda não tem a aprovação de um segundo usuário (diferente de quem a registrou e de quem a decidiu); a venda permanece",
+      "correccion_dian_sin_efecto": "Correção de erro: o período da venda já foi declarado e a solicitação de correção perante a DIAN (art. 589 do Estatuto Tributário) não está registrada, está em trâmite ou foi rejeitada; a venda permanece",
+      "importacion_zona_franca_excluida_por_confirmar": "Importação excluída proveniente de zona franca: o campo (47 ou 48) está por confirmar com o contador",
+      "importacion_no_excluida_no_va_47": "Importação não sujeita: não vai ao campo 47 (lá vão a excluída e a isenta que não vem de zona franca)",
+      "correccion_declaracion_no_corregible": "Correção de erro: a declaração do período da venda é definitiva, está fora do prazo de correção ou sem vencimento ou definitividade registrados; a venda permanece. Referência: o prazo geral de definitividade é de três anos (art. 714 do Estatuto Tributário); não decide, há prazos especiais",
+      "cierre_sin_aprobacion": "Fechamento registrado sem a aprovação de um segundo usuário"
+    },
+    "errores": {
+      "correccion_dian_invalida": "A solicitação de correção perante a DIAN precisa de número, data, resultado (em trâmite, aceita, rejeitada ou prazo vencido), a data do resultado e o comprovante.",
+      "correccion_dian_fecha_invalida": "A data da solicitação não pode ser anterior à apresentação da declaração nem futura, e a do resultado não pode ser anterior à solicitação.",
+      "correccion_dian_termino_no_vencido": "«Prazo vencido» só se registra quando passaram seis meses desde a solicitação sem pronunciamento da DIAN (art. 589 do Estatuto Tributário).",
+      "correccion_dian_sin_registro": "Para retirar uma venda de um período declarado, registre primeiro a solicitação de correção apresentada à DIAN, com número, data e resultado (art. 589 do Estatuto Tributário).",
+      "correccion_dian_sin_resultado": "A solicitação de correção perante a DIAN segue em trâmite: a venda é retirada quando for aceita ou o prazo vencer sem pronunciamento.",
+      "correccion_dian_rechazada": "A DIAN rejeitou a solicitação de correção: a venda não pode ser retirada dessa declaração.",
+      "aprobacion_no_requerida": "Este registro não precisa da aprovação de um segundo usuário: só a exigem os que se propõem «sem efeito» (pagamento à DIAN, transferência entre subcontas, fechamento e retirada da venda).",
+      "anio_invalido": "O ano fiscal não é válido.",
+      "contingencia_invalida": "O comprovante da contingência não é válido, ou a falha começa depois de terminar."
+    },
+    "conceptos": {
+      "importaciones_zona_franca_no_gravadas": "Importações não tributadas provenientes de zona franca"
+    },
+    "notas": {
+      "rte_2532_aplica": "Formulário 2532: aplica para este ano fiscal, porque a cooperativa recebeu nesse ano doações ou cooperação internacional não reembolsável.",
+      "rte_2532_no_aplica": "Formulário 2532: não aplica para este ano fiscal; há constância de que a cooperativa não recebeu nesse ano doações nem cooperação internacional não reembolsável.",
+      "rte_2532_por_confirmar": "Formulário 2532: por confirmar para este ano fiscal. Só aplica se nesse ano a cooperativa recebeu doações ou cooperação internacional não reembolsável."
+    },
+    "firmeza": {
+      "referencia": "Referência, não decisão: com o prazo geral do art. 714 do Estatuto Tributário (três anos a partir do vencimento do prazo, ou da apresentação se foi extemporânea), a declaração ficaria definitiva em {fecha}. Há prazos especiais; a definitividade é registrada por uma pessoa."
+    }
+  },
   "finanzasTercerosR5": {
     "anticipos": {
       "exceso": {
@@ -49589,6 +49622,34 @@
       "cobro_de_otra_factura": "O recebimento escolhido não é um pagamento concluído dessa fatura.",
       "fecha_distinta_del_cobro": "A data da retenção deve ser a do recebimento.",
       "retencion_excede_saldo_factura": "A retenção supera o que a fatura ainda deve: a carteira ficaria com abono a mais.",
+      "error_desconocido": "Não foi possível concluir a operação."
+    }
+  },
+  "finanzasTercerosR6": {
+    "anticipos": {
+      "exceso": {
+        "periodoRegla": "Cada imposto fixa o período: imposto de renda, o do reembolso (DUR 1.2.4.16); retenção de IVA, o do reembolso, e o saldo que não for absorvido vai para os dois períodos seguintes, com a solicitação escrita e a declaração escrita de não imputação (DUR 1.3.2.3.1); retenção de ICA, o do procedimento do município."
+      },
+      "retenciones": {
+        "motivos": {
+          "aiu_anticipo_sin_costo_directo": "Adiantamento de AIU sem custo direto: fica pendente até validar o contrato e a natureza do pagamento. Sua base não é dada como certa até fechar o contrato.",
+          "aiu_contrato_cerrado": "O contrato AIU já foi fechado: não aceita novas operações."
+        }
+      },
+      "errores": {
+        "aiu_contrato_sin_validar": "Valide primeiro o contrato com AIU; depois, a natureza do pagamento antecipado.",
+        "error_desconocido": "Não foi possível concluir a operação."
+      }
+    }
+  },
+  "consignacionesR6": {
+    "errores": {
+      "derechos_fuera_del_orden_de_aplicacion": "A ordem de aplicação do contrato não inclui os direitos perante o dono: são cobrados do dono, não descontados.",
+      "anticipos_fuera_del_orden_de_aplicacion": "A ordem de aplicação do contrato não inclui adiantamentos: o adiantamento não é compensado com o que foi arrecadado para o dono.",
+      "liquidacion_sin_entrega_escrita": "O contrato desta nota não prevê a liquidação por escrito.",
+      "entrega_ya_registrada": "A entrega por escrito desta liquidação já foi registrada com outros dados.",
+      "medio_distinto_del_pactado": "Esse não é o meio que o contrato fixa para a liquidação por escrito.",
+      "fecha_anterior_a_la_liquidacion": "A entrega não pode ser anterior à liquidação.",
       "error_desconocido": "Não foi possível concluir a operação."
     }
   }

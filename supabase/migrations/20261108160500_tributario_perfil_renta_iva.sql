@@ -60,6 +60,14 @@
 --     internacional no reembolsable. Dos columnas nuevas: rte_donaciones_cooperacion (sí / no / NULL = por confirmar) y
 --     rte_donaciones_constancia (la constancia; obligatoria cuando es «no»: CONSTANCIA_2532_REQUERIDA). Una clave que no
 --     venga en los datos conserva lo guardado (la pantalla actual no las envía y no debe borrarlas).
+--
+-- RONDA 6 DEL CONTADOR (2026-11-10, docs/contador/RESPUESTAS-CONTADOR-RONDA-6-2026-11-10.md, respuesta 6), reescrita sin
+-- aplicar. El dato del 2532 va POR AÑO GRAVABLE, no por vigencia del perfil: si en ese año la cooperativa recibió
+-- donaciones o cooperación internacional no reembolsable, se pide el 2532; si no, la constancia de que no aplica. Las dos
+-- columnas de la ronda 5 en organization_tax_profiles SE QUITAN de esta migración (nunca se aplicaron) y el dato pasa a
+-- la tabla tributario_rte_2532_anio (una fila por organización y año gravable), que escribe solo
+-- fn_tributario_2532_registrar (finance.approve o admin.full_access; «no recibió» exige la constancia:
+-- CONSTANCIA_2532_REQUERIDA). fn_perfil_tributario_guardar_v2 ya no lee esas claves (si llegan, se ignoran).
 
 alter table public.organization_tax_profiles
   add column if not exists regimen_renta text
@@ -99,10 +107,8 @@ alter table public.organization_tax_profiles
   add column if not exists cambio_periodicidad_evaluacion text,
   add column if not exists cambio_periodicidad_evaluado_por uuid,
   add column if not exists cambio_periodicidad_evaluado_en timestamptz,
-  add column if not exists aclaraciones text[] not null default '{}'::text[],
-  -- Ronda 5: formato 2532 de las cooperativas del RTE.
-  add column if not exists rte_donaciones_cooperacion boolean,
-  add column if not exists rte_donaciones_constancia text check (char_length(rte_donaciones_constancia) <= 1000);
+  add column if not exists aclaraciones text[] not null default '{}'::text[];
+  -- Ronda 6: el formato 2532 ya no es un dato de la vigencia (ver tributario_rte_2532_anio, al final).
 
 alter table public.organization_tax_profiles alter column regimen drop not null;
 
@@ -122,10 +128,6 @@ comment on column public.organization_tax_profiles.gran_contribuyente_calificaci
   'Ronda 4: ordinaria (efectos desde el 1 de enero siguiente a la resolución) o excepcional (fecha expresa del acto).';
 comment on column public.organization_tax_profiles.aclaraciones is
   'Ronda 4: datos para aclaración (RUT contradictorio, código fuera del catálogo o histórico, transición por resolver). No se borran; la vigencia queda «revisar perfil».';
-comment on column public.organization_tax_profiles.rte_donaciones_cooperacion is
-  'Ronda 5: la cooperativa del RTE recibió donaciones o cooperación internacional no reembolsable (formato 2532, Res. 227 de 2025, art. 1.1.6.3). NULL = por confirmar.';
-comment on column public.organization_tax_profiles.rte_donaciones_constancia is
-  'Ronda 5: constancia de lo verificado sobre donaciones y cooperación internacional; obligatoria cuando no aplica el 2532.';
 
 -- Migración de datos (idempotente: solo filas aún no migradas). Reglas:
 --   'simple' → regimen_renta 'simple'; 'especial' → 'especial'; 'ordinario' y 'no_responsable_iva' → NULL (no inequívoco).
@@ -395,15 +397,6 @@ begin
     end if;
   end if;
 
-  -- Ronda 5: formato 2532. «No aplica» se deja con su constancia.
-  if d ? 'rte_donaciones_cooperacion' and jsonb_typeof(d -> 'rte_donaciones_cooperacion') not in ('boolean', 'null') then
-    raise exception 'DATOS_INVALIDOS' using errcode = '22023';
-  end if;
-  if d ? 'rte_donaciones_cooperacion' and (d ->> 'rte_donaciones_cooperacion') = 'false'
-     and nullif(btrim(coalesce(d ->> 'rte_donaciones_constancia', '')), '') is null then
-    raise exception 'CONSTANCIA_2532_REQUERIDA' using errcode = '22023';
-  end if;
-
   if (d ->> 'cambio_periodicidad_fecha') is not null and (d ->> 'cambio_periodicidad_fecha')::date <> v_desde then
     v_bloqueos := array_append(v_bloqueos, 'cambio_fecha_efectiva_distinta');
   end if;
@@ -483,12 +476,6 @@ begin
          inc_actividad = d ->> 'inc_actividad',
          rte_tipo = d ->> 'rte_tipo',
          rte_ingresos_superan_160000_uvt = (d ->> 'rte_ingresos_superan_160000_uvt')::boolean,
-         -- Ronda 5: lo que no viene se conserva (la pantalla actual no envía estos dos datos).
-         rte_donaciones_cooperacion = case when d ? 'rte_donaciones_cooperacion' then (d ->> 'rte_donaciones_cooperacion')::boolean
-                                           else rte_donaciones_cooperacion end,
-         rte_donaciones_constancia = case when d ? 'rte_donaciones_constancia'
-                                          then nullif(left(btrim(coalesce(d ->> 'rte_donaciones_constancia', '')), 1000), '')
-                                          else rte_donaciones_constancia end,
          no_contribuyente_naturaleza = nullif(left(btrim(coalesce(d ->> 'no_contribuyente_naturaleza', '')), 300), ''),
          motivo_cambio_periodicidad = d ->> 'motivo_cambio_periodicidad',
          cambio_periodicidad_hecho = nullif(left(btrim(coalesce(d ->> 'cambio_periodicidad_hecho', '')), 1000), ''),
@@ -610,3 +597,78 @@ grant execute on function public.fn_perfil_tributario_evaluar_cambio(integer, uu
 
 -- La vía vieja (campo combinado, sin validar combinaciones) deja de estar disponible para los usuarios.
 revoke execute on function public.fn_perfil_tributario_guardar(integer, uuid, date, text, text[], boolean, boolean, text, jsonb, text) from authenticated;
+
+-- ── Ronda 6: formato 2532 por año gravable ─────────────────────────────────────
+-- Una fila por organización y año gravable: si la cooperativa del RTE recibió ese año donaciones o cooperación
+-- internacional no reembolsable (Res. 227 de 2025, art. 1.1.6.3). recibio = true → el 2532 aplica; false → no aplica y
+-- se exige la constancia de lo verificado. Sin fila → «por confirmar». No depende de la vigencia del perfil.
+create table if not exists public.tributario_rte_2532_anio (
+  id bigint generated always as identity primary key,
+  organization_id integer not null references public.organizations(id) on delete cascade,
+  anio_gravable integer not null check (anio_gravable between 2000 and 2100),
+  recibio boolean not null,
+  constancia text check (char_length(constancia) <= 1000),
+  registrado_por uuid,
+  registrado_en timestamptz not null default now(),
+  constraint tributario_rte_2532_anio_unico unique (organization_id, anio_gravable),
+  constraint tributario_rte_2532_anio_constancia check (recibio or constancia is not null)
+);
+comment on table public.tributario_rte_2532_anio is
+  'Ronda 6 del Contador: formato 2532 por AÑO GRAVABLE (no por vigencia del perfil). recibio: la cooperativa recibió ese año donaciones o cooperación internacional no reembolsable; si no, constancia de lo verificado. Sin fila = por confirmar.';
+alter table public.tributario_rte_2532_anio enable row level security;
+drop policy if exists tributario_rte_2532_anio_select_miembros on public.tributario_rte_2532_anio;
+create policy tributario_rte_2532_anio_select_miembros
+  on public.tributario_rte_2532_anio for select to authenticated
+  using (organization_id in (select om.organization_id from public.organization_members om
+                              where om.user_id = (select auth.uid()) and om.is_active));
+revoke all on public.tributario_rte_2532_anio from anon, authenticated;
+grant select on public.tributario_rte_2532_anio to authenticated;
+
+-- p_datos: { recibio: true | false, constancia? } (la constancia es obligatoria con false). p_datos = null → quita el dato
+-- del año (vuelve a «por confirmar»).
+create or replace function public.fn_tributario_2532_registrar(p_organization_id integer, p_anio_gravable integer, p_datos jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'pg_temp'
+as $function$
+declare
+  v_recibio boolean := case jsonb_typeof(p_datos -> 'recibio') when 'boolean' then (p_datos ->> 'recibio')::boolean end;
+  v_constancia text := nullif(btrim(coalesce(p_datos ->> 'constancia', '')), '');
+  v_fila public.tributario_rte_2532_anio;
+begin
+  perform public.fn_assert_acceso_org(p_organization_id);
+  if not (public.fn_tiene_permiso(p_organization_id, 'finance.approve')
+          or public.fn_tiene_permiso(p_organization_id, 'admin.full_access')) then
+    raise exception 'SIN_PERMISO' using errcode = '42501';
+  end if;
+  if p_anio_gravable is null or p_anio_gravable not between 2000 and 2100 then
+    raise exception 'ANIO_INVALIDO' using errcode = '22023';
+  end if;
+  if p_datos is null then
+    delete from public.tributario_rte_2532_anio where organization_id = p_organization_id and anio_gravable = p_anio_gravable;
+    return null;
+  end if;
+  if v_recibio is null then
+    raise exception 'DATOS_INVALIDOS' using errcode = '22023';
+  end if;
+  if not v_recibio and v_constancia is null then
+    raise exception 'CONSTANCIA_2532_REQUERIDA' using errcode = '22023';
+  end if;
+  if char_length(coalesce(v_constancia, '')) > 1000 then
+    raise exception 'TEXTO_LARGO' using errcode = '22023';
+  end if;
+  insert into public.tributario_rte_2532_anio (organization_id, anio_gravable, recibio, constancia, registrado_por)
+  values (p_organization_id, p_anio_gravable, v_recibio, v_constancia, auth.uid())
+  on conflict (organization_id, anio_gravable) do update
+    set recibio = excluded.recibio, constancia = excluded.constancia,
+        registrado_por = excluded.registrado_por, registrado_en = now()
+  returning * into v_fila;
+  return to_jsonb(v_fila) || jsonb_build_object('formato_2532', case when v_fila.recibio then 'aplica' else 'no_aplica' end);
+end;
+$function$;
+
+comment on function public.fn_tributario_2532_registrar(integer, integer, jsonb) is
+  'Ronda 6 del Contador: registra (o quita) por año gravable si la cooperativa recibió donaciones o cooperación internacional no reembolsable (formato 2532); «no» exige la constancia. Requiere finance.approve o admin.full_access.';
+revoke all on function public.fn_tributario_2532_registrar(integer, integer, jsonb) from public, anon;
+grant execute on function public.fn_tributario_2532_registrar(integer, integer, jsonb) to authenticated;

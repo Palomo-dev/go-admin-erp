@@ -73,8 +73,38 @@ export type NotaObligacion =
   | 'decision_reabierta'
   | 'periodo_sin_perfil_completo';
 
+/**
+ * Ronda 6 del Contador: el formato 2532 va POR AÑO GRAVABLE (tabla `tributario_rte_2532_anio`), no por vigencia del
+ * perfil. `recibio` = la cooperativa recibió ese año donaciones o cooperación internacional no reembolsable; si no, la
+ * constancia de lo verificado. Sin dato del año → «por confirmar».
+ */
+export interface Dato2532 {
+  recibio: boolean;
+  constancia: string | null;
+}
+export type Formato2532PorAnio = ReadonlyMap<number, Dato2532>;
+
+/** Filas de `tributario_rte_2532_anio` → mapa por año gravable (descarta lo que no tenga la forma esperada). */
+export function leerFormato2532(filas: readonly unknown[] | null | undefined): Map<number, Dato2532> {
+  const m = new Map<number, Dato2532>();
+  for (const f of filas ?? []) {
+    const r = (f ?? {}) as { anio_gravable?: unknown; recibio?: unknown; constancia?: unknown };
+    const anio = Number(r.anio_gravable);
+    if (!Number.isInteger(anio) || typeof r.recibio !== 'boolean') continue;
+    m.set(anio, { recibio: r.recibio, constancia: typeof r.constancia === 'string' && r.constancia.trim() ? r.constancia : null });
+  }
+  return m;
+}
+
+/** Nota del 2532 para el año gravable: aplica, no aplica (con constancia) o por confirmar. */
+export function nota2532(dato: Dato2532 | undefined): NotaObligacion {
+  if (dato?.recibio === true) return 'rte_2532_aplica';
+  if (dato?.recibio === false && dato.constancia) return 'rte_2532_no_aplica';
+  return 'rte_2532_por_confirmar';
+}
+
 /** Obligaciones de UNA vigencia, con el último periodo cerrado al mes `corte` (`YYYY-MM`). */
-export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obligacion[] {
+export function derivarObligaciones(perfil: VigenciaPerfil, corte: string, formato2532?: Formato2532PorAnio): Obligacion[] {
   const out: Obligacion[] = [];
   const fe = new Set(perfil.responsabilidades);
   const revisar: NotaObligacion[] = perfil.requiereRevision ? ['perfil_por_revisar'] : [];
@@ -158,10 +188,12 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
       // Ronda 5 del Contador: el 2532 es para donaciones y cooperación internacional no reembolsable RECIBIDAS (Res. 227
       // de 2025, art. 1.1.6.3). Se pide solo si la cooperativa las recibió; si no, queda la constancia de que no aplica;
       // sin el dato, «por confirmar». Nunca se da por aplicable ni por no aplicable sin que alguien lo diga.
+      // Ronda 6: el dato es del AÑO GRAVABLE del registro (el año del periodo anual), no de la vigencia del perfil.
       const cooperativa = perfil.rteTipo === 'cooperativa_art19_4';
-      const donaciones = perfil.rteDonacionesCooperacion ?? null;
-      const nota2532: NotaObligacion =
-        donaciones === true ? 'rte_2532_aplica' : donaciones === false && perfil.rteDonacionesConstancia ? 'rte_2532_no_aplica' : 'rte_2532_por_confirmar';
+      const anioGravable = periodoCerradoAl('anual', corte)?.anio;
+      const dato2532 = anioGravable !== undefined ? formato2532?.get(anioGravable) : undefined;
+      const donaciones = dato2532?.recibio ?? null;
+      const notaDel2532 = nota2532(dato2532);
       agregar('anual', { id: 'renta', clave: 'renta', formulario: '110', calendario: gran ? 'renta_gran_contribuyente' : 'renta_persona_juridica', fuente: 'ninguna' }, [
         ...revisar,
         'regimen_especial',
@@ -179,7 +211,7 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
           calendario: 'rte_registro_web',
           fuente: 'ninguna',
         },
-        [...revisar, ...(cooperativa ? (['rte_cooperativa_formatos', nota2532] as NotaObligacion[]) : [])],
+        [...revisar, ...(cooperativa ? (['rte_cooperativa_formatos', notaDel2532] as NotaObligacion[]) : [])],
       );
       if (perfil.rteIngresosSuperan160000Uvt !== false) {
         agregar('anual', { id: 'rte_memoria_economica', clave: 'rte_memoria_economica', formulario: null, calendario: 'rte_memoria_economica', fuente: 'ninguna' }, [
@@ -218,17 +250,17 @@ export function derivarObligaciones(perfil: VigenciaPerfil, corte: string): Obli
  * «cambio_vigencia_en_periodo»; el que tenga días sin vigencia,
  * «periodo_sin_perfil_completo». Ninguna se descarta por eso.
  */
-export function obligacionesDelCorte(vigencias: readonly VigenciaPerfil[], corte: string): Obligacion[] {
+export function obligacionesDelCorte(vigencias: readonly VigenciaPerfil[], corte: string, formato2532?: Formato2532PorAnio): Obligacion[] {
   const m = leerMes(corte);
   if (!m) return [];
   const finCorte = ultimoDiaDelMes(m[0], m[1]);
   const actual = vigenciaEn(vigencias, finCorte);
   const porClave = new Map<string, Obligacion>();
   const clave = (o: Obligacion) => `${o.id}|${o.periodo.desde}|${o.periodo.hasta}`;
-  if (actual) for (const o of derivarObligaciones(actual, corte)) porClave.set(clave(o), o);
+  if (actual) for (const o of derivarObligaciones(actual, corte, formato2532)) porClave.set(clave(o), o);
   for (const v of vigencias) {
     if (v === actual || v.vigenteDesde > finCorte) continue;
-    for (const o of derivarObligaciones(v, corte)) {
+    for (const o of derivarObligaciones(v, corte, formato2532)) {
       if (vigenciasEnRango([v], o.periodo.desde, o.periodo.hasta).length === 0) continue;
       if (!porClave.has(clave(o))) porClave.set(clave(o), o);
     }

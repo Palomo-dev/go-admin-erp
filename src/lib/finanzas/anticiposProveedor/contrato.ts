@@ -106,6 +106,8 @@ export const ERRORES_ANTICIPO_PROVEEDOR = [
   'reteica_sin_procedimiento_municipal',
   'reteica_pruebas_incompletas',
   'retencion_ambigua',
+  // Ronda 6 del Contador: el pendiente de un anticipo de AIU sin costo directo no se resuelve con el contrato sin validar.
+  'aiu_contrato_sin_validar',
 ] as const;
 export type ErrorAnticipoProveedor = (typeof ERRORES_ANTICIPO_PROVEEDOR)[number];
 
@@ -194,6 +196,9 @@ export function estadoHttpErrorAnticipo(codigo: ErrorAnticipoProveedor): number 
     case 'reteica_pruebas_incompletas':
     case 'retencion_ambigua':
       return 422;
+    // Ronda 6: primero se valida el contrato con AIU; después, la naturaleza del pago.
+    case 'aiu_contrato_sin_validar':
+      return 409;
     // Sin el procedimiento municipal validado, la reversión de reteICA queda bloqueada hasta registrarlo.
     case 'reteica_sin_procedimiento_municipal':
       return 409;

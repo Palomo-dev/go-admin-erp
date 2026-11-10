@@ -55,8 +55,8 @@ export type SoporteMovimiento = (typeof SOPORTES_MOVIMIENTO)[number];
 export const RESOLUCIONES_DOC_ELECTRONICO = ['nota_credito_electronica', 'anulacion_dian', 'constancia'] as const;
 export type ResolucionDocElectronico = (typeof RESOLUCIONES_DOC_ELECTRONICO)[number];
 
-/** Casillas del formulario 2026 fijadas por el Contador (rondas 1 y 2). */
-export const CASILLAS_300 = [27, 28, 30, 31, 35, 39, 40, 42, 47, 50, 51, 52, 53, 54, 56, 58, 59, 66, 71, 72, 74, 75, 79] as const;
+/** Casillas del formulario 2026 fijadas por el Contador (rondas 1 y 2; la 48, ronda 6: importación exenta de zona franca). */
+export const CASILLAS_300 = [27, 28, 30, 31, 35, 39, 40, 42, 47, 48, 50, 51, 52, 53, 54, 56, 58, 59, 66, 71, 72, 74, 75, 79] as const;
 export type Casilla300 = (typeof CASILLAS_300)[number];
 
 /** Filas del formulario: casilla de base y, si la hay, la de IVA. En el orden en que se muestran. */
@@ -70,6 +70,8 @@ export const FILAS_300: readonly { base: Casilla300; iva: Casilla300 | null; con
   { base: 40, iva: null, concepto: 'no_gravadas', lado: 'generado' },
   { base: 56, iva: 66, concepto: 'devoluciones_compras', lado: 'generado' },
   { base: 47, iva: null, concepto: 'importaciones_no_gravadas', lado: 'descontable' },
+  // Ronda 6 (respuesta 7): la importación exenta que viene de zona franca va a la 48; nunca a la 54.
+  { base: 48, iva: null, concepto: 'importaciones_zona_franca_no_gravadas', lado: 'descontable' },
   { base: 50, iva: 71, concepto: 'compras_bienes_5', lado: 'descontable' },
   { base: 51, iva: 72, concepto: 'compras_bienes_general', lado: 'descontable' },
   { base: 52, iva: 74, concepto: 'compras_servicios_5', lado: 'descontable' },
@@ -115,6 +117,12 @@ export const MOTIVOS_PENDIENTE = [
   'correccion_declaracion_no_corregible',
   // Ronda 5: el cierre registrado necesita la aprobación de un segundo usuario.
   'cierre_sin_aprobacion',
+  // Ronda 6: segundo usuario también para el pago a la DIAN, el traslado y el retiro de la venta; la corrección ante la
+  // DIAN (art. 589 ET) sin efecto; la importación excluida de zona franca, por confirmar.
+  'no_afecta_sin_aprobacion',
+  'correccion_sin_aprobacion',
+  'correccion_dian_sin_efecto',
+  'importacion_zona_franca_excluida_por_confirmar',
   'devolucion_iva_no_descontado',
   'devolucion_compra_no_cuadra',
   'sugerido_por_confirmar',
@@ -198,6 +206,11 @@ export interface OtroMovimiento300 {
   correccion: CorreccionError300 | null;
   /** Ronda 5: cierre registrado aprobado por un segundo usuario (null si no es un cierre registrado). */
   cierreAprobado: boolean | null;
+  /**
+   * Ronda 6: aprobación del segundo usuario de lo que se propone «no afecta» (pago a la DIAN, traslado, cierre y retiro
+   * de la venta). null si el movimiento no la necesita.
+   */
+  aprobado: boolean | null;
 }
 
 export interface CorreccionError300 {
@@ -216,6 +229,12 @@ export interface CorreccionError300 {
   tratadaComoNoExpedida: boolean;
   /** Ronda 5: la declaración del período de la venta ya no admite corrección (la venta no sale). */
   declaracionNoCorregible: boolean;
+  /** Ronda 6: una falla registrada cubre la fecha de la venta: expedida en contingencia (nota crédito). */
+  tenidaPorExpedidaEnContingencia: boolean;
+  /** Ronda 6: el período de la venta se declaró y la solicitud de corrección ante la DIAN no produjo efecto. */
+  correccionDianPendiente: boolean;
+  /** Ronda 6: el retiro de la venta lo aprobó un segundo usuario. */
+  aprobado: boolean;
 }
 
 export interface PorDiligenciar300 {
@@ -264,7 +283,17 @@ export interface Formulario300 {
       fechaVenta: string | null;
       completa: boolean;
       corrigeDeclaracionAnterior: boolean | null;
-      periodoDeclarado: { desde: string; hasta: string; numeroFormulario: string | null } | null;
+      /** Ronda 6: la solicitud de corrección ante la DIAN no produjo efecto (la venta no sale). */
+      correccionDianPendiente: boolean;
+      periodoDeclarado: {
+        desde: string;
+        hasta: string;
+        numeroFormulario: string | null;
+        /** Ronda 6: referencia del término general del art. 714 ET (tres años). No decide la firmeza. */
+        firmezaReferencia714: string | null;
+        /** Ronda 6 (art. 589 ET): solicitud de corrección presentada ante la DIAN. */
+        correccionDian: { numero: string | null; fecha: string | null; resultado: ResultadoCorreccionDian | null; resultadoFecha: string | null } | null;
+      } | null;
     }[];
   };
 }
@@ -328,6 +357,9 @@ function leerCorreccion(v: unknown): CorreccionError300 | null {
     ventaEnOtroPeriodo: c.venta_en_otro_periodo === true,
     tratadaComoNoExpedida: c.tratada_como_no_expedida === true,
     declaracionNoCorregible: c.declaracion_no_corregible === true,
+    tenidaPorExpedidaEnContingencia: c.tenida_por_expedida_en_contingencia === true,
+    correccionDianPendiente: c.correccion_dian_pendiente === true,
+    aprobado: c.aprobado === true,
   };
 }
 
@@ -394,6 +426,7 @@ export function leerFormulario300(data: unknown): Formulario300 {
       posteriorDeclaracion: o.posterior_declaracion === true,
       correccion: leerCorreccion(o.correccion),
       cierreAprobado: typeof o.cierre_aprobado === 'boolean' ? o.cierre_aprobado : null,
+      aprobado: typeof o.aprobado === 'boolean' ? o.aprobado : null,
     }));
 
   const porDiligenciar = arr(d.por_diligenciar)
@@ -471,7 +504,26 @@ export function leerFormulario300(data: unknown): Formulario300 {
             fechaVenta: txt(a.fecha_venta),
             completa: a.completa === true,
             corrigeDeclaracionAnterior: typeof a.corrige_declaracion_anterior === 'boolean' ? a.corrige_declaracion_anterior : null,
-            periodoDeclarado: p && txt(p.desde) ? { desde: String(p.desde), hasta: String(p.hasta ?? ''), numeroFormulario: txt(p.numero_formulario) } : null,
+            correccionDianPendiente: a.correccion_dian_pendiente === true,
+            periodoDeclarado: p && txt(p.desde)
+              ? {
+                  desde: String(p.desde),
+                  hasta: String(p.hasta ?? ''),
+                  numeroFormulario: txt(p.numero_formulario),
+                  firmezaReferencia714: txt(p.firmeza_referencia_714),
+                  correccionDian: p.correccion_dian
+                    ? (() => {
+                        const cd = obj(p.correccion_dian);
+                        return {
+                          numero: txt(cd.numero),
+                          fecha: txt(cd.fecha),
+                          resultado: enLista(RESULTADOS_CORRECCION_DIAN, cd.resultado),
+                          resultadoFecha: txt(cd.resultado_fecha),
+                        };
+                      })()
+                    : null,
+                }
+              : null,
           };
         }),
     },
@@ -770,12 +822,17 @@ export interface SolicitudNaturaleza {
   /**
    * Ronda 5: «nunca transmitida» se verifica con el aviso de la DIAN o del proveedor tecnológico, o el soporte de la
    * falla del facturador (referencia, fecha y fin de la falla), o con la constancia de que no hay ninguno; y con la
-   * consulta del CUFE/CUDE sin resultado, hecha pasadas las 48 horas. Un cobro devuelto lleva el soporte de la devolución.
+   * consulta del CUFE/CUDE sin resultado. Un cobro devuelto lleva el soporte de la devolución.
+   * Ronda 6: con una falla que cubre la fecha de la venta, la factura se tiene por expedida en contingencia (nota
+   * crédito). Las 48 horas corren desde el fin de la falla (o desde la venta, si es posterior); sin falla registrada no
+   * aplican: la consulta vale desde la venta.
    */
   contingencia_soporte_tipo?: SoporteContingencia | null;
   contingencia_soporte_referencia?: string | null;
   contingencia_soporte_fecha?: string | null;
   contingencia_fin_en?: string | null;
+  /** Ronda 6: inicio de la falla. Si la falla cubre la fecha de la venta, la factura se tiene por expedida en contingencia. */
+  contingencia_inicio_en?: string | null;
   consulta_cufe_resultado?: 'sin_resultado' | 'encontrado' | null;
   consulta_cufe_en?: string | null;
   consulta_cufe_soporte?: string | null;
@@ -869,9 +926,18 @@ export function validarNaturaleza(
     if (estadoElectronico === false || entrega === false || cobro === false || contingencia === false || consulta === false) {
       return { ok: false, error: 'expediente_invalido' };
     }
-    const instantes = { contingencia_fin_en: texto(c.contingencia_fin_en), consulta_cufe_en: texto(c.consulta_cufe_en) };
+    const instantes = {
+      contingencia_fin_en: texto(c.contingencia_fin_en),
+      contingencia_inicio_en: texto(c.contingencia_inicio_en),
+      consulta_cufe_en: texto(c.consulta_cufe_en),
+    };
     const dias = { contingencia_soporte_fecha: texto(c.contingencia_soporte_fecha), cobro_devolucion_fecha: texto(c.cobro_devolucion_fecha) };
     if (Object.values(instantes).some((x) => x !== null && !INSTANTE.test(x)) || Object.values(dias).some((x) => x !== null && !DIA.test(x))) {
+      return { ok: false, error: 'expediente_invalido' };
+    }
+    // Ronda 6: la falla empieza antes de terminar.
+    if (instantes.contingencia_inicio_en && instantes.contingencia_fin_en
+        && Date.parse(instantes.contingencia_inicio_en) > Date.parse(instantes.contingencia_fin_en)) {
       return { ok: false, error: 'expediente_invalido' };
     }
     const textos = {
@@ -924,9 +990,27 @@ export function validarNaturaleza(
   return { ok: true, asiento, datos };
 }
 
+/** Ronda 6 (art. 589 ET): resultado de la solicitud de corrección presentada ante la DIAN. */
+export const RESULTADOS_CORRECCION_DIAN = ['en_tramite', 'aceptada', 'rechazada', 'vencido_termino'] as const;
+export type ResultadoCorreccionDian = (typeof RESULTADOS_CORRECCION_DIAN)[number];
+
+/**
+ * Ronda 6 (art. 589 ET): solicitud de corrección presentada ante la DIAN. Retirar una venta de un período declarado solo
+ * procede con «aceptada» o «vencido_termino» (la DIAN no se pronunció en los seis meses siguientes y el proyecto de
+ * corrección sustituyó la declaración). La base vuelve a validar las fechas y el término.
+ */
+export interface CorreccionDian {
+  numero: string;
+  fecha: string;
+  resultado: ResultadoCorreccionDian;
+  resultado_fecha: string | null;
+  soporte: string;
+}
+
 /**
  * Ronda 5 (arts. 589 y 714 ET): vencimiento del plazo para declarar y firmeza, registrados por una persona. Solo viajan
  * si vienen en el cuerpo: una clave ausente conserva lo registrado. La firmeza (sí o no) lleva su nota.
+ * Ronda 6: la solicitud de corrección ante la DIAN (correccion_dian; null la quita).
  */
 export interface DatosDeclaracion {
   numero_formulario: string | null;
@@ -935,6 +1019,21 @@ export interface DatosDeclaracion {
   vencimiento_plazo?: string | null;
   en_firme?: boolean | null;
   firmeza_nota?: string | null;
+  correccion_dian?: CorreccionDian | null;
+}
+
+/**
+ * Ronda 6 (art. 714 ET): referencia del término general de firmeza, tres años desde el vencimiento del plazo para
+ * declarar (o desde la presentación, si fue extemporánea). Es solo una referencia: hay términos especiales y la firmeza
+ * la registra una persona. null sin vencimiento registrado.
+ */
+export function firmezaReferencia714(vencimientoPlazo: string | null, presentadaEn: string | null): string | null {
+  if (!vencimientoPlazo || !DIA.test(vencimientoPlazo)) return null;
+  const desde = presentadaEn && DIA.test(presentadaEn) && presentadaEn > vencimientoPlazo ? presentadaEn : vencimientoPlazo;
+  const [a, m, d] = desde.split('-').map(Number);
+  // 29 de febrero → 28 de febrero del año de la referencia (como «+ 3 years» en la base).
+  const ultimo = new Date(Date.UTC(a + 3, m, 0)).getUTCDate();
+  return `${a + 3}-${String(m).padStart(2, '0')}-${String(Math.min(d, ultimo)).padStart(2, '0')}`;
 }
 
 /** Cuerpo de «registrar período declarado». `presentada_en: null` = quitar el registro. */
@@ -942,7 +1041,10 @@ export function validarDeclaracion(
   cuerpo: unknown,
 ):
   | { ok: true; desde: string; hasta: string; datos: DatosDeclaracion | null }
-  | { ok: false; error: 'periodo_invalido' | 'fecha_presentacion_invalida' | 'texto_largo' | 'vencimiento_invalido' | 'firmeza_requiere_nota' } {
+  | {
+      ok: false;
+      error: 'periodo_invalido' | 'fecha_presentacion_invalida' | 'texto_largo' | 'vencimiento_invalido' | 'firmeza_requiere_nota' | 'correccion_dian_invalida';
+    } {
   const c = obj(cuerpo);
   const desde = typeof c.desde === 'string' ? c.desde : '';
   const hasta = typeof c.hasta === 'string' ? c.hasta : '';
@@ -966,6 +1068,29 @@ export function validarDeclaracion(
     if (firme !== null && !notaFirmeza) return { ok: false, error: 'firmeza_requiere_nota' };
     datos.en_firme = firme;
     datos.firmeza_nota = notaFirmeza;
+  }
+  if ('correccion_dian' in c) {
+    if (c.correccion_dian === null) {
+      datos.correccion_dian = null;
+    } else {
+      const cd = obj(c.correccion_dian);
+      const numeroCd = texto(cd.numero);
+      const fechaCd = texto(cd.fecha);
+      const resultado = enLista(RESULTADOS_CORRECCION_DIAN, cd.resultado);
+      const resultadoFecha = texto(cd.resultado_fecha);
+      const soporte = texto(cd.soporte);
+      if (!numeroCd || numeroCd.length > 60 || !fechaCd || !DIA.test(fechaCd) || !resultado || !soporte || soporte.length > 500
+          || (resultado !== 'en_tramite' && (!resultadoFecha || !DIA.test(resultadoFecha) || resultadoFecha < fechaCd))) {
+        return { ok: false, error: 'correccion_dian_invalida' };
+      }
+      datos.correccion_dian = {
+        numero: numeroCd,
+        fecha: fechaCd,
+        resultado,
+        resultado_fecha: resultado === 'en_tramite' ? null : resultadoFecha,
+        soporte,
+      };
+    }
   }
   return { ok: true, desde, hasta, datos };
 }

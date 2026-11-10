@@ -1,3 +1,18 @@
+RONDA 6 (2026-11-10) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261110150000 f19d51b97cea4c56a57ae96279a49a7d (nueva) ·
+     prueba 07 cecaaf3cd1499db13c31c060d2410c42 (se sube con LF y la base reconstruye el CRLF del disco para el md5)
+Método: el de la ronda 5, con los archivos de la ronda 6: cada archivo subido por trozos (≤ 24 KB) como objeto grande
+de Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback),
+zona America/Bogota. Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 31 verificaciones · 31 ok · 0 fallas. La prueba no cambió. Se corre ahora también con 20261110150000 (el
+reparto de la base del asiento por líneas), porque arma el documento soporte por líneas.
+Efecto visible del hallazgo de la ronda 6 en la fila 29 (cuadre del documento soporte DS, 100.000 al 5 % y 300.000 al
+19 %, cuyo esperado es solo Σ D = Σ C): las líneas del 14350101 eran 309.091 y 90.909 (reparto por el total con IVA) y
+ahora son 300.000 y 100.000 (por la base antes de IVA): «D 462000 = C 462000 · 14350101 D 100000 | 14350101 D 300000 |
+24081002 D 5000 | 24081001 D 57000 | 22050501 C 462000».
+
+── Corridas anteriores ──
 RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
 md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · prueba 07 cecaaf3cd1499db13c31c060d2410c42
 Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de

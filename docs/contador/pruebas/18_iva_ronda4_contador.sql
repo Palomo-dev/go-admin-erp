@@ -25,6 +25,20 @@
 -- control FCB (una línea no descontable y otra descontable, con cuenta de cabecera) queda pendiente de corregir, porque la
 -- ronda 5 exige la cuenta por línea cuando el IVA tiene deducibilidad distinta (respuesta 5). El control positivo de la
 -- cuenta de cabecera pasa a la prueba 23.
+--
+-- RONDA 6 (2026-11-10): se vuelve a correr con las migraciones reescritas. DATOS que cambian para que siga probando lo
+-- de la ronda 4 (los esperados no cambian por ellos):
+--   · el bimestre declarado septiembre–octubre registra la solicitud de corrección presentada ante la DIAN, aceptada
+--     (número, fecha y resultado: datos de prueba), que la ronda 6 exige para retirar la venta PO de un período declarado
+--     (art. 589 ET, respuesta 4);
+--   · PE lleva el soporte de una falla del facturador que NO cubre la fecha de la venta (el día siguiente) y la consulta
+--     del CUFE/CUDE hecha 1 hora después de la venta: sin la regla de 48 horas desde el fin de la falla, PE ya no probaría
+--     «contingencia sin descartar», porque sin falla registrada la consulta vale desde la venta (respuesta 2);
+--   · el segundo usuario aprueba también los retiros de PA y PO (respuesta 8): dos filas nuevas.
+-- Esperados que cambian, y por qué: el borrador es la versión 7 (tres filas); FCM y FCB, compras de dos líneas con IVA no
+-- descontable y cuenta de cabecera, siguen sin asiento y pendientes de corregir, pero el motivo es ahora el de la ronda 6
+-- («compra de más de una línea»: toda compra con IVA no descontable y más de una línea exige cuenta por línea,
+-- respuesta 5).
 
 begin;
 
@@ -176,7 +190,7 @@ set constraints all immediate;
 -- Octubre (bimestre septiembre–octubre) se registra como DECLARADO; la venta PO es de octubre y su reversa de noviembre.
 select set_config('request.jwt.claims', '{"sub":"bb11d6d2-f647-49f7-9b29-aa4c4438abf1","role":"authenticated"}', true);
 set local role authenticated;
-select public.fn_tributario_iva_declaracion_guardar(374, '2026-09-01', '2026-10-31', '{"numero_formulario":"PRUEBA-300-SEPOCT","presentada_en":"2026-11-05","vencimiento_plazo":"2026-11-12","en_firme":false,"firmeza_nota":"Dato de prueba: dentro del término de revisión"}');
+select public.fn_tributario_iva_declaracion_guardar(374, '2026-09-01', '2026-10-31', '{"numero_formulario":"PRUEBA-300-SEPOCT","presentada_en":"2026-11-05","vencimiento_plazo":"2026-11-12","en_firme":false,"firmeza_nota":"Dato de prueba: dentro del término de revisión","correccion_dian":{"numero":"SOL-589-PRUEBA-R4","fecha":"2026-11-06","resultado":"aceptada","resultado_fecha":"2026-11-09","soporte":"Dato de prueba: liquidación oficial de corrección"}}');
 
 -- Ayudantes.
 create function pg_temp.nat(p_k text, p_d jsonb) returns text language plpgsql as $$
@@ -233,8 +247,9 @@ select '4', x.v, x.e, x.o, x.o = x.e from (values
   ('PD: rechazada en la validación de la DIAN, pero con una nota crédito registrada', 'OK',
    pg_temp.nat('je_pd_rev', (select v::jsonb from ctx where k = 'exp') || '{"estado_electronico":"rechazada_validacion_dian","doc_electronico_resolucion":"nota_credito_electronica","doc_electronico_referencia":"NC-E-2","doc_electronico_fecha":"2026-11-08"}')),
   ('PE: «nunca transmitida» sin descartar la contingencia', 'OK',
-   pg_temp.nat('je_pe_rev', (select v::jsonb from ctx where k = 'exp') || '{"contingencia_verificada":false,"contingencia_nota":"No se revisó la contingencia"}'
-     || jsonb_build_object('consulta_cufe_en', now() - interval '3 days' + interval '1 hour'))),
+   pg_temp.nat('je_pe_rev', (select v::jsonb from ctx where k = 'exp') || '{"contingencia_verificada":false,"contingencia_nota":"La falla registrada es del día siguiente a la venta","contingencia_soporte_tipo":"soporte_falla_facturador","contingencia_soporte_referencia":"FALLA-R4-PE","contingencia_soporte_fecha":"2026-11-08"}'
+     || jsonb_build_object('consulta_cufe_en', now() - interval '3 days' + interval '1 hour',
+                           'contingencia_inicio_en', now() - interval '2 days', 'contingencia_fin_en', now() - interval '2 days' + interval '1 hour'))),
   ('PF: hubo entrega de la mercancía', 'OK', pg_temp.nat('je_pf_rev', (select v::jsonb from ctx where k = 'exp') || '{"entrega_prestacion":"hubo"}')),
   ('PG: rechazo COMERCIAL del comprador registrado como anulación ante la DIAN', 'DOCUMENTO_VALIDO_NO_SE_ANULA',
    pg_temp.nat('je_pg_rev', (select v::jsonb from ctx where k = 'exp') || '{"estado_electronico":"rechazo_comercial_comprador","doc_electronico_resolucion":"anulacion_dian"}')),
@@ -304,6 +319,13 @@ insert into r (escenario, verificacion, esperado, obtenido, ok)
 select '5', 'Ronda 5: el cierre lo aprueba un segundo usuario', 'aprobado', x.o, x.o = 'aprobado'
   from (select case when (public.fn_iva_naturaleza_asiento_aprobar(374, (select v::int from ctx where k = 'je_ce'), true, 'Revisado por el segundo usuario')
                           ->> 'aprobado_por') is not null then 'aprobado' else 'sin aprobar' end o) x;
+-- Ronda 6 (respuesta 8): el retiro de la venta (corrección de error «retirar_venta») también lo aprueba el segundo usuario.
+insert into r (escenario, verificacion, esperado, obtenido, ok)
+select '4', 'Ronda 6: el segundo usuario aprueba el retiro de ' || upper(x.k), 'aprobado', y.o, y.o = 'aprobado'
+  from (values ('pa'), ('po')) x(k)
+  cross join lateral (select case when (public.fn_iva_naturaleza_asiento_aprobar(374, (select v::int from ctx where k = 'je_' || x.k || '_rev'), true,
+                                          'Revisado por el segundo usuario') ->> 'aprobado_por') is not null
+                                  then 'aprobado' else 'sin aprobar' end o) y;
 reset role;
 select set_config('request.jwt.claims', '{"sub":"bb11d6d2-f647-49f7-9b29-aa4c4438abf1","role":"authenticated"}', true);
 set local role authenticated;
@@ -335,7 +357,7 @@ select '1', upper(x.doc) || ': ' || x.v, 'SIN ASIENTO · ' || x.motivo || ' · '
     ('fci', 'IVA no descontable (19.000) mayor que el IVA de cabecera (10.000): sin asiento, pendiente de corregir', 'iva_no_descontable_por_corregir',
      'IVA no descontable de las líneas (19000'),
     ('fcm', 'Cabecera con un bien y un servicio: sin cuenta única, pendiente de corregir', 'iva_no_descontable_por_corregir',
-     'IVA no descontable en una compra cuyas líneas son de activos, costos o gastos distintos'),
+     'IVA no descontable en una compra de más de una línea'),
     ('fcsv', 'Servicio no descontable hacia la cuenta de inventarios: pendiente de corregir', 'iva_no_descontable_por_corregir',
      'IVA no descontable de servicios: la cuenta de cabecera de la compra es de inventarios'),
     ('dsi', 'Documento soporte por líneas con IVA no descontable mayor que su IVA: sin asiento', 'pendiente',
@@ -349,14 +371,14 @@ select '1', upper(x.doc) || ': ' || x.v, 'SIN ASIENTO · ' || x.motivo || ' · '
                                                     where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo')
                                                       and f.source_id = (select v from ctx where k = x.doc)), 'SIN PENDIENTE') as o) y;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select '1', 'FCB (ronda 5): bienes con IVA de deducibilidad distinta y cuenta de cabecera: sin asiento, pendiente de corregir',
-       'SIN ASIENTO · iva_no_descontable_por_corregir · deducibilidad distinta',
+select '1', 'FCB (rondas 5 y 6): dos líneas con IVA no descontable y cuenta de cabecera: sin asiento, pendiente de corregir',
+       'SIN ASIENTO · iva_no_descontable_por_corregir · más de una línea',
        format('%s · %s · %s', case when exists (select 1 from public.journal_entries je where je.organization_id = 374 and je.source_id = (select v from ctx where k = 'fcb'))
                                    then 'CON ASIENTO' else 'SIN ASIENTO' end,
               coalesce(max(f.reason), 'SIN PENDIENTE'),
-              case when bool_or(f.detail like '%deducibilidad distinta%') then 'deducibilidad distinta' else 'otro motivo' end),
+              case when bool_or(f.detail like '%más de una línea%') then 'más de una línea' else 'otro motivo' end),
        not exists (select 1 from public.journal_entries je where je.organization_id = 374 and je.source_id = (select v from ctx where k = 'fcb'))
-       and max(f.reason) = 'iva_no_descontable_por_corregir' and bool_or(f.detail like '%deducibilidad distinta%')
+       and max(f.reason) = 'iva_no_descontable_por_corregir' and bool_or(f.detail like '%más de una línea%')
   from public.journal_entry_failures f
  where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo') and f.source_id = (select v from ctx where k = 'fcb');
 
@@ -447,11 +469,11 @@ cross join lateral (select (o ->> 'naturaleza') || ' / sugerida ' || coalesce(o 
 
 -- ── Conciliación y estado ──
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'R', 'Borrador ' || b.k || ': conciliado con la 2408 (diferencia ≤ 1), nunca aprobado fiscalmente', 'conciliado · diferencia 0 · aprobado false · versión 6',
+select 'R', 'Borrador ' || b.k || ': conciliado con la 2408 (diferencia ≤ 1), nunca aprobado fiscalmente', 'conciliado · diferencia 0 · aprobado false · versión 7',
        format('%s · diferencia %s · aprobado %s · versión %s', b.v::jsonb ->> 'estado', round((b.v::jsonb -> 'conciliacion' ->> 'diferencia')::numeric),
               b.v::jsonb ->> 'aprobado_fiscalmente', b.v::jsonb ->> 'version'),
        b.v::jsonb ->> 'estado' = 'conciliado' and abs((b.v::jsonb -> 'conciliacion' ->> 'diferencia')::numeric) <= 1
-         and (b.v::jsonb ->> 'aprobado_fiscalmente') = 'false' and (b.v::jsonb ->> 'version') = '6'
+         and (b.v::jsonb ->> 'aprobado_fiscalmente') = 'false' and (b.v::jsonb ->> 'version') = '7'
   from ctx b where b.k in ('b1', 'b2', 'bso') order by b.k;
 
 -- ── Guardar otra vez el expediente borra la decisión (se decide de nuevo) ──

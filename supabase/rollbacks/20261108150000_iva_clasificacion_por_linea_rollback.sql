@@ -24,7 +24,7 @@ drop function if exists public.fn_iva_lineas_documento(integer, text, uuid);
 drop function if exists public.fn_iva_sugerencia_linea(integer, integer, text, numeric, numeric, numeric, integer);
 drop function if exists public.fn_iva_base_linea(numeric, numeric, numeric, boolean, numeric);
 -- Ronda 5: qué le falta al soporte aduanero de la casilla 47.
-drop function if exists public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric);
+drop function if exists public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric, text);
 drop table if exists public.iva_clasificacion_cambios;
 
 alter table public.invoice_items

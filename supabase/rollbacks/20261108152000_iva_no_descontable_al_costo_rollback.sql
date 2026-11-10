@@ -133,6 +133,21 @@ $v$    v_tax := round(v_tax - v_inc, 2);
         format('IVA no descontable de las líneas (%s) mayor que el IVA del documento (%s): el documento queda pendiente de corregir y no se publica su asiento. Revise la tarifa, el IVA y la evaluación de cada línea y reintente.', v_nd, v_tax),
         'lineas', '[]'::jsonb, 'organization_id', v_org);
     end if;
+    -- Ronda 6: con IVA no descontable y más de una línea, CADA línea lleva su propia cuenta; ninguna cae en la cuenta
+    -- de la regla (cabecera).
+    if v_nd > 0
+       and (select count(*) from public.invoice_items ii
+             where case when v_source = 'support_documents' then ii.support_document_id = p_id else ii.invoice_purchase_id = p_id end) > 1
+       and exists (
+         select 1 from public.invoice_items ii
+           left join public.products pr on pr.id = ii.product_id and pr.organization_id = v_org
+          where case when v_source = 'support_documents' then ii.support_document_id = p_id else ii.invoice_purchase_id = p_id end
+            and public.fn_cuenta_catalogo_linea(v_org, ii.product_id,
+                  case when coalesce(pr.track_stock, false) then 'inventario' else 'costo' end, ii.cuenta_contable) is null) then
+      return jsonb_build_object('ok', false, 'fallo',
+        'IVA no descontable en una compra de más de una línea: cada línea debe tener su propia cuenta contable (activo, costo, gasto o inventario); ninguna se lleva a la cuenta de cabecera. Asigne la cuenta de cada línea y reintente.',
+        'lineas', '[]'::jsonb, 'organization_id', v_org);
+    end if;
     v_tax := round(v_tax - v_nd, 2);
   else$v$,
 $v$    v_tax := round(v_tax - v_inc, 2);

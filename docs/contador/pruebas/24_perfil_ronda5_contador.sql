@@ -3,13 +3,20 @@
 --   T. Gran contribuyente con efectos a mitad de bimestre: la decisión de la transición registra resolución y fecha,
 --      fecha de efectos, períodos de IVA y de retención afectados, tramo anterior y posterior, responsable y soporte;
 --      cierra la aclaración de la vigencia y la reabre si cambian las fechas (aquí, la de la resolución).
---   C. Formato 2532 de la cooperativa del RTE: «no aplica» con constancia; lo que la pantalla no envía no se borra.
+--   C. Formato 2532 de la cooperativa del RTE: «no aplica» con constancia; lo que no se envía no se borra (ronda 6: por año).
 --   S. fn_tarifa_exacta_impuesto (20261108165000): comprueba la pertenencia a la organización del impuesto; sin anon ni
 --      public.
 -- Proyecto taqjemqjtumhwptchcxk · Organización de pruebas 374. NO DEJA DATOS (begin … rollback).
 -- Requiere, en este orden y SIN aplicar: 20261108140500, 20261108160000, 20261108160500, 20261108161000, 20261108161500 y
 -- 20261108165000. Se pegan donde dice «MIGRACIONES», dentro de la misma transacción.
 -- Usuario simulado: el miembro activo de la org 374 (sesión con RLS y auth.uid()).
+--
+-- RONDA 6 (2026-11-10, respuesta 6 del Contador): el dato del 2532 va POR AÑO GRAVABLE, no por vigencia del perfil. Las
+-- columnas de la vigencia se quitaron de 20261108160500 y el dato pasa a tributario_rte_2532_anio
+-- (fn_tributario_2532_registrar). La sección C prueba lo mismo que antes (constancia obligatoria, valor inválido, «no
+-- aplica» con constancia, lo que no se envía no se borra, «sí recibió») sobre esa función, por año: 2025 sin donaciones
+-- y 2026 con ellas; y que guardar la vigencia ya no lee el dato (la clave vieja se ignora). Cambian, por eso, los
+-- esperados y las consultas de las filas 22 a 29; el número de filas no cambia.
 
 begin;
 
@@ -56,6 +63,18 @@ begin
   return coalesce(public.fn_tarifa_exacta_impuesto(p_id)::text, 'NULL');
 exception when others then return sqlerrm;
 end $$;
+-- Ronda 6: formato 2532 por año gravable.
+create function pg_temp.f2532(p_anio integer, p_d jsonb)
+returns text language plpgsql as $$
+declare v jsonb; v_det text;
+begin
+  v := public.fn_tributario_2532_registrar(374, p_anio, p_d);
+  return 'OK';
+exception when others then
+  get stacked diagnostics v_det = pg_exception_detail;
+  return sqlstate || ' ' || sqlerrm || coalesce(' [' || nullif(v_det, '') || ']', '');
+end $$;
+grant execute on function pg_temp.f2532(integer, jsonb) to authenticated, anon;
 grant execute on function pg_temp.g(date, jsonb, uuid) to authenticated, anon;
 grant execute on function pg_temp.tr(date, jsonb) to authenticated, anon;
 grant execute on function pg_temp.fila(date) to authenticated;
@@ -152,38 +171,38 @@ insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'T', 'Leída después: la transición vuelve a estar por resolver', 'aclaraciones {gran_contribuyente_transicion_por_resolver} · revisar true',
        coalesce(pg_temp.fila('2026-04-15'), 'NO ESTÁ'), pg_temp.fila('2026-04-15') = 'aclaraciones {gran_contribuyente_transicion_por_resolver} · revisar true';
 
--- ── C · Formato 2532 de la cooperativa ──
+-- ── C · Formato 2532 de la cooperativa, por año gravable (ronda 6) ──
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'C', x.v, x.e, x.o, x.o = x.e from coop c, lateral (values
-  ('Cooperativa: «no recibió donaciones» sin la constancia', '22023 CONSTANCIA_2532_REQUERIDA',
-   pg_temp.g('2026-09-01', c.d || '{"rte_donaciones_cooperacion":false}')),
-  ('Cooperativa: un valor que no es sí ni no', '22023 DATOS_INVALIDOS', pg_temp.g('2026-09-01', c.d || '{"rte_donaciones_cooperacion":"si"}')),
-  ('Cooperativa: «no aplica» con su constancia', 'OK',
-   pg_temp.g('2026-09-01', c.d || '{"rte_donaciones_cooperacion":false,"rte_donaciones_constancia":"Revisados los ingresos del año: sin donaciones ni cooperación internacional"}'))
+select 'C', x.v, x.e, x.o, x.o = x.e from (values
+  ('Año gravable 2025: «no recibió donaciones» sin la constancia', '22023 CONSTANCIA_2532_REQUERIDA',
+   pg_temp.f2532(2025, '{"recibio":false}')),
+  ('Año gravable 2025: un valor que no es sí ni no', '22023 DATOS_INVALIDOS', pg_temp.f2532(2025, '{"recibio":"si"}')),
+  ('Año gravable 2025: «no aplica» con su constancia', 'OK',
+   pg_temp.f2532(2025, '{"recibio":false,"constancia":"Revisados los ingresos del año: sin donaciones ni cooperación internacional"}'))
 ) x(v, e, o);
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'C', 'Queda «no aplica» con su constancia', 'false · Revisados los ingresos del año: sin donaciones ni cooperación internacional',
-       coalesce(p.rte_donaciones_cooperacion::text, 'NULL') || ' · ' || coalesce(p.rte_donaciones_constancia, 'NULL'),
-       p.rte_donaciones_cooperacion = false and p.rte_donaciones_constancia like 'Revisados%'
-  from public.organization_tax_profiles p where p.organization_id = 374 and p.vigente_desde = '2026-09-01';
+select 'C', 'Queda 2025 «no aplica» con su constancia', 'false · Revisados los ingresos del año: sin donaciones ni cooperación internacional',
+       coalesce(a.recibio::text, 'NULL') || ' · ' || coalesce(a.constancia, 'NULL'),
+       a.recibio = false and a.constancia like 'Revisados%'
+  from public.tributario_rte_2532_anio a where a.organization_id = 374 and a.anio_gravable = 2025;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'C', 'Guardar otra vez sin esos datos (como la pantalla actual)', 'OK',
-       pg_temp.g(null, c.d, (select id from public.organization_tax_profiles where organization_id = 374 and vigente_desde = '2026-09-01')), true
+select 'C', 'Guardar la vigencia de la cooperativa con la clave vieja del 2532: el perfil ya no la lee (sin constancia, se guarda)', 'OK',
+       pg_temp.g('2026-09-01', c.d || '{"rte_donaciones_cooperacion":false}'), true
   from coop c;
 update r set ok = (obtenido = 'OK') where n = (select max(n) from r);
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'C', 'Lo que no se envió se conserva', 'false · con constancia',
-       coalesce(p.rte_donaciones_cooperacion::text, 'NULL') || ' · ' || case when p.rte_donaciones_constancia is not null then 'con constancia' else 'sin constancia' end,
-       p.rte_donaciones_cooperacion = false and p.rte_donaciones_constancia is not null
-  from public.organization_tax_profiles p where p.organization_id = 374 and p.vigente_desde = '2026-09-01';
+select 'C', 'El dato del año 2025 no depende de la vigencia: se conserva', 'false · con constancia',
+       coalesce(a.recibio::text, 'NULL') || ' · ' || case when a.constancia is not null then 'con constancia' else 'sin constancia' end,
+       a.recibio = false and a.constancia is not null
+  from public.tributario_rte_2532_anio a where a.organization_id = 374 and a.anio_gravable = 2025;
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'C', 'Cooperativa que sí recibió donaciones', 'OK',
-       pg_temp.g(null, c.d || '{"rte_donaciones_cooperacion":true}', (select id from public.organization_tax_profiles where organization_id = 374 and vigente_desde = '2026-09-01')), true
-  from coop c;
+select 'C', 'Año gravable 2026: la cooperativa sí recibió donaciones', 'OK', pg_temp.f2532(2026, '{"recibio":true}'), true;
 update r set ok = (obtenido = 'OK') where n = (select max(n) from r);
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'C', 'Queda «sí recibió» (el 2532 aplica)', 'true', coalesce(p.rte_donaciones_cooperacion::text, 'NULL'), p.rte_donaciones_cooperacion
-  from public.organization_tax_profiles p where p.organization_id = 374 and p.vigente_desde = '2026-09-01';
+select 'C', 'Cada año con su dato (2025 no aplica; 2026 el 2532 aplica)', '2025 false · 2026 true',
+       string_agg(a.anio_gravable || ' ' || a.recibio, ' · ' order by a.anio_gravable),
+       string_agg(a.anio_gravable || ' ' || a.recibio, ' · ' order by a.anio_gravable) = '2025 false · 2026 true'
+  from public.tributario_rte_2532_anio a where a.organization_id = 374;
 
 -- ── S · fn_tarifa_exacta_impuesto ──
 insert into ctx select 'imp374', (select ot.id::text from public.organization_taxes ot where ot.organization_id = 374 order by ot.id limit 1);

@@ -99,6 +99,10 @@ const MODULOS: Record<string, string[]> = {
   // orden de aplicación y liquidación por escrito (C.Co. art. 1277) y los errores nuevos de la retención con su cobro.
   finanzasTercerosR5: FINANZAS,
   consignacionesR5: ['src/components/inventario/consignaciones', 'src/components/finanzas/consignaciones', 'src/app/app/inventario/consignaciones'],
+  // Ronda 6 del Contador, frente anticipos y consignación: reteIVA en exceso a los dos períodos siguientes, anticipo de AIU
+  // sin costo directo, orden de aplicación aplicado en la liquidación y constancia de la liquidación por escrito.
+  finanzasTercerosR6: FINANZAS,
+  consignacionesR6: ['src/components/inventario/consignaciones', 'src/components/finanzas/consignaciones', 'src/app/app/inventario/consignaciones'],
   // Finanzas ronda 4, frente INT: Integraciones › Conexiones (catálogo, mis conexiones, actividad,
   // desarrolladores, asistentes y detalle).
   integracionesConexiones: ['src/components/integraciones/conexiones-v2', 'src/app/app/integraciones/conexiones'],

@@ -1,8 +1,11 @@
+import fs from 'fs';
+import path from 'path';
 import {
   CASILLAS_300,
   FILAS_300,
   casilla,
   clasificacionInicial,
+  firmezaReferencia714,
   filasCsvFormulario300,
   leerFormulario300,
   leerLineasFiscales,
@@ -129,6 +132,10 @@ describe('ronda 3', () => {
       // Ronda 5: dos datos nuevos del detalle; ausentes en una respuesta vieja, quedan en false.
       tratadaComoNoExpedida: false,
       declaracionNoCorregible: false,
+      // Ronda 6: tres datos nuevos del detalle; ausentes en una respuesta vieja, quedan en false.
+      tenidaPorExpedidaEnContingencia: false,
+      correccionDianPendiente: false,
+      aprobado: false,
     });
     expect(f.otrosMovimientos.find((x) => x.asiento === 1184)!.correccion).toBeNull();
   });
@@ -136,7 +143,9 @@ describe('ronda 3', () => {
   it('alerta de corrección sobre un período declarado y el IVA no descontable llevado al costo (B5)', () => {
     expect(f.alertas.correccionesDeclaracionAnterior).toEqual([
       { asiento: 1190, ventaAsiento: 1188, fechaVenta: '2026-10-20', completa: false, corrigeDeclaracionAnterior: null,
-        periodoDeclarado: { desde: '2026-10-01', hasta: '2026-10-31', numeroFormulario: 'F-1' } },
+        // Ronda 6: la solicitud ante la DIAN y la referencia del art. 714; ausentes en una respuesta vieja.
+        correccionDianPendiente: false,
+        periodoDeclarado: { desde: '2026-10-01', hasta: '2026-10-31', numeroFormulario: 'F-1', firmezaReferencia714: null, correccionDian: null } },
     ]);
     expect(f.resumen.ivaNoDescontableAlCosto).toBe(19000);
   });
@@ -204,11 +213,11 @@ describe('ronda 4', () => {
   });
 });
 
-describe('catálogo de casillas (tablas del Contador, rondas 1 y 2)', () => {
+describe('catálogo de casillas (tablas del Contador, rondas 1 y 2; la 48, ronda 6)', () => {
   it('filas base → IVA y casillas sin IVA', () => {
     const filas = Object.fromEntries(FILAS_300.map((p) => [p.base, p.iva]));
-    expect(filas).toEqual({ 27: 58, 28: 59, 30: null, 31: null, 35: null, 39: null, 40: null, 56: 66, 47: null, 50: 71, 51: 72, 52: 74, 53: 75, 54: null, 42: 79 });
-    expect([...CASILLAS_300].sort((a, b) => a - b)).toEqual([27, 28, 30, 31, 35, 39, 40, 42, 47, 50, 51, 52, 53, 54, 56, 58, 59, 66, 71, 72, 74, 75, 79]);
+    expect(filas).toEqual({ 27: 58, 28: 59, 30: null, 31: null, 35: null, 39: null, 40: null, 56: 66, 47: null, 48: null, 50: 71, 51: 72, 52: 74, 53: 75, 54: null, 42: 79 });
+    expect([...CASILLAS_300].sort((a, b) => a - b)).toEqual([27, 28, 30, 31, 35, 39, 40, 42, 47, 48, 50, 51, 52, 53, 54, 56, 58, 59, 66, 71, 72, 74, 75, 79]);
   });
 });
 
@@ -404,5 +413,94 @@ describe('ronda 5 del Contador', () => {
     expect(validarDeclaracion({ ...p, en_firme: false })).toEqual({ ok: false, error: 'firmeza_requiere_nota' });
     const con = validarDeclaracion({ ...p, vencimiento_plazo: '2026-11-12', en_firme: false, firmeza_nota: 'Dentro del término de revisión' });
     expect(con.ok && con.datos).toMatchObject({ vencimiento_plazo: '2026-11-12', en_firme: false, firmeza_nota: 'Dentro del término de revisión' });
+  });
+});
+
+describe('ronda 6 del Contador', () => {
+  it('lee la casilla 48, los motivos nuevos, la aprobación y el detalle de la corrección', () => {
+    const f = leerFormulario300({
+      version: 7,
+      periodo: { desde: '2026-11-01', hasta: '2026-11-30' },
+      casillas: [{ casilla: 48, tipo: 'base', par: null, concepto: 'importaciones_zona_franca_no_gravadas', lado: 'descontable', valor: 100000, origenes: [] }],
+      pendientes: [
+        { motivo: 'importacion_zona_franca_excluida_por_confirmar', lado: 'descontable', base: 20000, iva: 0, total_origenes: 1, origenes: [] },
+        { motivo: 'correccion_dian_sin_efecto', lado: 'otros', base: 0, iva: 19000, total_origenes: 1, origenes: [] },
+      ],
+      otros_movimientos: [
+        { asiento: 10, naturaleza: 'traslado_auxiliares', declarada: true, destino: 'pendiente', motivo: 'no_afecta_sin_aprobacion', valor: 0, aprobado: false },
+        {
+          asiento: 11, naturaleza: 'correccion_error', declarada: true, destino: 'pendiente', motivo: 'correccion_sin_aprobacion', valor: -19000, aprobado: false,
+          correccion: { completa: true, tenida_por_expedida_en_contingencia: false, correccion_dian_pendiente: true, aprobado: false },
+        },
+        { asiento: 12, naturaleza: 'ajuste_procedente', declarada: true, destino: 'por_diligenciar', valor: 1000 },
+      ],
+      alertas: {
+        correcciones_declaracion_anterior: [{
+          asiento: 11, completa: true, correccion_dian_pendiente: true,
+          periodo_declarado: { desde: '2026-09-01', hasta: '2026-10-31', numero_formulario: 'F-1', firmeza_referencia_714: '2029-11-12',
+            correccion_dian: { numero: 'SOL-1', fecha: '2026-11-06', resultado: 'rechazada', resultado_fecha: '2026-11-09' } },
+        }],
+      },
+    });
+    expect(casilla(f, 48)).toMatchObject({ valor: 100000, concepto: 'importaciones_zona_franca_no_gravadas' });
+    expect(f.pendientes.map((p) => p.motivo)).toEqual(['importacion_zona_franca_excluida_por_confirmar', 'correccion_dian_sin_efecto']);
+    expect(f.otrosMovimientos.map((o) => [o.motivo, o.aprobado])).toEqual([['no_afecta_sin_aprobacion', false], ['correccion_sin_aprobacion', false], [null, null]]);
+    expect(f.otrosMovimientos[1].correccion).toMatchObject({ correccionDianPendiente: true, tenidaPorExpedidaEnContingencia: false, aprobado: false });
+    expect(f.alertas.correccionesDeclaracionAnterior[0]).toMatchObject({
+      correccionDianPendiente: true,
+      periodoDeclarado: { firmezaReferencia714: '2029-11-12', correccionDian: { numero: 'SOL-1', resultado: 'rechazada', resultadoFecha: '2026-11-09' } },
+    });
+  });
+
+  it('firmeza: referencia del art. 714 (tres años desde el vencimiento, o desde la presentación extemporánea)', () => {
+    expect(firmezaReferencia714('2026-11-12', '2026-11-05')).toBe('2029-11-12');
+    expect(firmezaReferencia714('2026-07-14', '2026-07-20')).toBe('2029-07-20');
+    expect(firmezaReferencia714('2028-02-29', null)).toBe('2031-02-28');
+    expect(firmezaReferencia714(null, '2026-11-05')).toBeNull();
+  });
+
+  it('validarDeclaracion: la solicitud de corrección ante la DIAN (art. 589) viaja completa', () => {
+    const p = { desde: '2026-09-01', hasta: '2026-10-31', presentada_en: '2026-11-05' };
+    const cd = { numero: 'SOL-1', fecha: '2026-11-06', resultado: 'aceptada', resultado_fecha: '2026-11-09', soporte: 'Liquidación oficial' };
+    const ok = validarDeclaracion({ ...p, correccion_dian: cd });
+    expect(ok.ok && ok.datos).toMatchObject({ correccion_dian: cd });
+    const tramite = validarDeclaracion({ ...p, correccion_dian: { ...cd, resultado: 'en_tramite', resultado_fecha: '2026-11-09' } });
+    expect(tramite.ok && tramite.datos?.correccion_dian).toMatchObject({ resultado: 'en_tramite', resultado_fecha: null });
+    expect(validarDeclaracion({ ...p, correccion_dian: { ...cd, soporte: '' } })).toEqual({ ok: false, error: 'correccion_dian_invalida' });
+    expect(validarDeclaracion({ ...p, correccion_dian: { ...cd, resultado: 'archivada' } })).toEqual({ ok: false, error: 'correccion_dian_invalida' });
+    expect(validarDeclaracion({ ...p, correccion_dian: { ...cd, resultado_fecha: '2026-11-01' } })).toEqual({ ok: false, error: 'correccion_dian_invalida' });
+    const quitar = validarDeclaracion({ ...p, correccion_dian: null });
+    expect(quitar.ok && quitar.datos?.correccion_dian).toBeNull();
+    const sin = validarDeclaracion(p);
+    expect(sin.ok && 'correccion_dian' in (sin.datos ?? {})).toBe(false);
+  });
+
+  it('validarNaturaleza: el inicio de la falla viaja y no puede ser posterior al fin', () => {
+    const base = { asiento: 7, naturaleza: 'correccion_error', soporte_tipo: 'comprobante_interno', soporte: 'Acta', soporte_fecha: '2026-11-09',
+      estado_electronico: 'nunca_transmitida', contingencia_soporte_tipo: 'aviso_dian' };
+    const ok = validarNaturaleza({ ...base, contingencia_inicio_en: '2026-11-07T08:00:00-05:00', contingencia_fin_en: '2026-11-07T12:00:00-05:00' });
+    expect(ok.ok && ok.datos).toMatchObject({ contingencia_inicio_en: '2026-11-07T08:00:00-05:00', contingencia_fin_en: '2026-11-07T12:00:00-05:00' });
+    expect(validarNaturaleza({ ...base, contingencia_inicio_en: '2026-11-07T13:00:00-05:00', contingencia_fin_en: '2026-11-07T12:00:00-05:00' }))
+      .toEqual({ ok: false, error: 'expediente_invalido' });
+    expect(validarNaturaleza({ ...base, contingencia_inicio_en: 'ayer' })).toEqual({ ok: false, error: 'expediente_invalido' });
+  });
+
+  it('los cuatro idiomas tienen los textos de la ronda 6', () => {
+    const claves = {
+      motivos: ['no_afecta_sin_aprobacion', 'correccion_sin_aprobacion', 'correccion_dian_sin_efecto', 'importacion_zona_franca_excluida_por_confirmar',
+        'importacion_no_excluida_no_va_47', 'correccion_declaracion_no_corregible', 'cierre_sin_aprobacion'],
+      errores: ['correccion_dian_invalida', 'correccion_dian_fecha_invalida', 'correccion_dian_termino_no_vencido', 'correccion_dian_sin_registro',
+        'correccion_dian_sin_resultado', 'correccion_dian_rechazada', 'aprobacion_no_requerida', 'anio_invalido'],
+      conceptos: ['importaciones_zona_franca_no_gravadas'],
+      notas: ['rte_2532_aplica', 'rte_2532_no_aplica', 'rte_2532_por_confirmar'],
+    } as const;
+    for (const idioma of ['es', 'en', 'fr', 'pt']) {
+      const m = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../../../messages', `${idioma}.json`), 'utf8')) as {
+        finanzasTributarioR6?: Record<string, Record<string, string>>;
+      };
+      for (const [grupo, lista] of Object.entries(claves)) {
+        for (const k of lista) expect([idioma, grupo, k, Boolean(m.finanzasTributarioR6?.[grupo]?.[k])]).toEqual([idioma, grupo, k, true]);
+      }
+    }
   });
 });

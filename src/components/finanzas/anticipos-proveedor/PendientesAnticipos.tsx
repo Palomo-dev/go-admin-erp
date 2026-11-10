@@ -17,10 +17,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { PendienteAnticipo } from '@/lib/finanzas/anticiposProveedor/contrato';
+import { ErrorPeticionSaldoFavor } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
 import { anticiposProveedorService } from './anticiposProveedorService';
 
 const NS = 'finanzasTercerosR4.anticipos';
+/** Ronda 6 del Contador: errores nuevos (p. ej. resolver un anticipo de AIU con el contrato sin validar). */
+const NS_R6 = 'finanzasTercerosR6.anticipos';
 type Vista = 'abiertos' | 'resueltos';
 
 export interface PendientesAnticiposProps {
@@ -90,6 +93,7 @@ export function PendientesAnticipos({ pendientes, puedeResolver, onResuelto }: P
 
 function ResolverPendienteDialog({ pendiente, onCerrar, onResuelto }: { pendiente: PendienteAnticipo | null; onCerrar: () => void; onResuelto: () => void }) {
   const t = useTranslations(NS);
+  const tR6 = useTranslations(NS_R6);
   const [resolucion, setResolucion] = useState('');
   const [soporte, setSoporte] = useState('');
   const [tocado, setTocado] = useState(false);
@@ -117,7 +121,8 @@ function ResolverPendienteDialog({ pendiente, onCerrar, onResuelto }: { pendient
       cerrar();
       onResuelto();
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      const codigo = e instanceof ErrorPeticionSaldoFavor ? String(e.codigo) : '';
+      setError(textoErrorSaldo(codigo && tR6.has(`errores.${codigo}`) ? tR6 : t, e));
     } finally {
       setEnviando(false);
     }

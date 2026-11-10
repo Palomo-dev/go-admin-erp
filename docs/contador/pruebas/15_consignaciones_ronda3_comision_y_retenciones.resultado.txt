@@ -1,118 +1,102 @@
-Resultado de 15_consignaciones_ronda3_comision_y_retenciones.sql · 2026-11-09 (corrida entre las 23:00 y las 23:59 de Bogotá; 2026-11-10 UTC)
-Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback): nada quedó
-escrito. Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md).
+Resultado de 15_consignaciones_ronda3_comision_y_retenciones.sql · 2026-11-10 (Bogotá) · REEJECUTADA en la ronda 6
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback):
+nada quedó escrito.
 
-Archivo: 15_consignaciones_ronda3_comision_y_retenciones.sql (md5 718c23c813091681b110690b129f5f77; 36095 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 6d8cf4ae711cb55b873fd11be370318d).
+Archivo: 15_consignaciones_ronda3_comision_y_retenciones.sql (md5 d6c94d0c90b27f3747b141ac6e401cbe; 39358 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado 9c7a36d4c30eafeaa80bff507d293ee9).
 Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
 corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
-  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 f52c0de6f53856fc9dd38bb5b3403809 · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 0c5079355e6c5ab55dd6b14e1e484cea
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 9179856af861a2a886152c1ebbb4f2fd · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 a3e330a9cf7b01c6da242b7d3f3a2b8c · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 3fe4535a0afe9dc1fa58ece1dea5363d · 20261110100000 9f4ade93850013b4cacd3c795ef8d823
+  y la reversión de 20261110100000 (a333e61071756df3e48e31cf5bc66355), cargada y comprobada, no ejecutada en la carga.
+  160500 en la versión que el otro equipo tenía en disco a la hora de la corrida.
 
-Corridas: una sola, 73 de 73. Cambios de la ronda 5 en la prueba: el contrato recibido lleva el orden de
-aplicación y la liquidación por escrito (ahora obligatorios).
+Corridas: la primera dio 72 de 73: Z10 (pendientes abiertos por tipo) trajo el tipo nuevo de la ronda 6
+«consignacion_liquidacion_escrita_por_entregar×3» (cada liquidación vigente —liq1, liq3 y liq5— deja visible su entrega
+por escrito). Se actualizó el esperado de Z10 con ese tipo; ningún otro valor cambió. La segunda: 73 de 73.
 
-Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar (current_date = día de la
-organización, sin depender de la hora UTC de la corrida).
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar.
 
 RESULTADO (corrida que vale):
-PRUEBA EN SECO (se revierte) · 15: 73 de 73 ok · carga: 7 de 7 ok
+PRUEBA EN SECO (se revierte) · 15: 73 de 73 ok · carga: 9 de 9 ok
 1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
-2 | carga | md5 20261108121000_consignaciones | f52c0de6f53856fc9dd38bb5b3403809 | ok
+2 | carga | md5 20261108121000_consignaciones | 9179856af861a2a886152c1ebbb4f2fd | ok
 3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
 4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
-5 | carga | md5 20261108160500_tributario_perfil_renta_iva | 1d80345bde9c6d9fd378bc10e8c43a5e | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | a3e330a9cf7b01c6da242b7d3f3a2b8c | ok
 6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
-7 | carga | md5 20261108170000_anticipos_proveedores_contador | 0c5079355e6c5ab55dd6b14e1e484cea | ok
-8 | 15 | T1 recibir sin contrapartida 94 definida | sin_cuenta_contra_orden | ok
-9 | 15 | T2a contrapartida 9905 | cuenta_contra_invalida | ok
-10 | 15 | T2b contrapartida 9115 (no es del grupo 94) | cuenta_contra_invalida | ok
-11 | 15 | T2c contrapartida definida | 9405 | ok
-12 | 15 | T2c2 recibir sin cuenta por cobrar al dueño | sin_cuenta_cobro_remuneracion | ok
-13 | 15 | T2c3 cuenta por cobrar al dueño y retención sufrida | 13809501/13551501 | ok
-14 | 15 | T3k recibida en mandato sin pactar la compensación de la remuneración | terminos_invalidos | ok
-15 | 15 | T2d regla de otra clase | regla_retencion_invalida | ok
-16 | 15 | T2e regla de la remuneración: retención por comisiones; la operación sin regla | 27d5eaae-c0f5-49e1-98f6-c00ad761b0e8/null | ok
-17 | 15 | T3a sin modalidad | clasificacion_obligatoria | ok
-18 | 15 | T3b sin condición contable | condicion_contable_obligatoria | ok
-19 | 15 | T3c sin valoración | valoracion_obligatoria | ok
-20 | 15 | T3d compra real | compra_real_usa_factura | ok
-21 | 15 | T3e estimatorio (sigue bloqueado) | estimatorio_bloqueado_438_455 | ok
-22 | 15 | T3f mandato como principal | terminos_invalidos | ok
-23 | 15 | T3g sin reconocimiento | terminos_invalidos | ok
-24 | 15 | T3h sin costo acreditado | costo_acreditado_obligatorio | ok
-25 | 15 | T3i diferir la comisión a la liquidación (ya no existe) | terminos_invalidos | ok
-26 | 15 | T3j obligación posterior sin documentar | obligacion_posterior_obligatoria | ok
-27 | 15 | T4a N1 custodia (10 × costo acreditado 40.000) | 400000.00 | ok
-28 | 15 | T4b recibir repetido es idempotente | true | ok
-29 | 15 | T4c N2 custodia (5 × valor convenido 50.000) | 250000.00 | ok
-30 | 15 | T5 vendido en la línea | 3.000 | ok
-31 | 15 | T5b remuneración reconocida al vender (3 porciones) | 27000.00 | ok
-32 | 15 | T6a novedad sin evidencia | evidencia_obligatoria | ok
-33 | 15 | T6b faltante sale de custodia | 40000.00 | ok
-34 | 15 | T7 liq1 venta / remuneración / dueño | 180000.00/27000.00/153000.00 | ok
-35 | 15 | R1 liq1: 9 retenciones (3 clases × 2 grupos de compradores + 3 de la remuneración) | 9 | ok
-36 | 15 | R2 liq1: lo que no es «no aplica», por ámbito | operacion.retefuente.agente=pendiente, operacion.reteica.por_acreditar=pendiente, remuneracion.retefuente.dueno=estimada:2970.00, remuneracion.reteica.dueno=pendiente, remuneracion.reteiva.dueno=pendiente | ok
-37 | 15 | R3 operación: el comprador agente sin regla elegida queda pendiente (nunca 0) | pendiente/sin_regla_configurada/60000.00/null | ok
-38 | 15 | R4 operación: la venta a consumidor final no aplica | no_aplica/venta_a_consumidor_final/120000.00 | ok
-39 | 15 | R5 remuneración: 11 % de la regla configurada sobre 27.000, con la calidad del intermediario | estimada/11.0000/27000.00/2970.00 | ok
-40 | 15 | R6 remuneración: el IVA de la comisión se determina aparte | pendiente/iva_de_la_remuneracion_por_determinar | ok
-41 | 15 | R7a conciliar sin soporte | soporte_obligatorio | ok
-42 | 15 | R7b conciliar una estimada con valor (sin reconocer el hecho) | retencion_no_reconocida | ok
-43 | 15 | R7c practicada: D retención sufrida / C 281510 del dueño (la comisión ya se compensó) | 2970.00/0.00/2970.00 | ok
-44 | 15 | R7d conciliada con el certificado, sin diferencia | 2970.00/0.00 | ok
-45 | 15 | T9a descontar derechos sin acuerdo | acuerdo_obligatorio | ok
-46 | 15 | T9b liq2 con acuerdo: venta / dueño / derechos | 60000.00/51000.00/60000.00 | ok
-47 | 15 | T9c anular liq1 (no es la última; orden seq) | liquidacion_no_es_la_ultima | ok
-48 | 15 | T9d anular liq2 (la última; la liquidación no tiene asiento de remuneración) | anulada/null | ok
-49 | 15 | T9d2 anular no cierra los pendientes tributarios de esas ventas (ronda 4) | true | ok
-50 | 15 | T9e liq3 sin descontar: venta / dueño / derechos | 120000.00/102000.00/0.00 | ok
-51 | 15 | T11 vendido con obligación posterior: remuneración sin reconocer | 16000.00/0 | ok
-52 | 15 | T11a liq4: venta / remuneración / dueño / remuneración por devengar | 100000.00/16000.00/84000.00/16000.00 | ok
-53 | 15 | T11b anular liq4: sin asiento de remuneración que reversar | anulada/null | ok
-54 | 15 | T11c liq5: remuneración / dueño | 16000.00/84000.00 | ok
-55 | 15 | T11d reconocer sin evidencia | evidencia_obligatoria | ok
-56 | 15 | T11e reconocida al cumplirse la obligación, con evidencia | 16000.00 | ok
-57 | 15 | T11f nada más por reconocer | sin_remuneracion_por_devengar | ok
-58 | 15 | T11g reconocer en una nota que devenga al vender | reconocimiento_no_aplica | ok
-59 | 15 | T10a anticipo de otro consignante | anticipo_no_encontrado | ok
-60 | 15 | T10b más que el saldo del anticipo | anticipo_sin_saldo | ok
-61 | 15 | T10c más que la obligación con el dueño | excede_obligacion_con_el_dueno | ok
-62 | 15 | T10d cruce: monto / saldo del anticipo | 50000.00/50000.00 | ok
-63 | 15 | T12a entregada: costo identificado / ubicación | 40000.00/En poder de Cliente Seco | ok
-64 | 15 | T12b liquidar el mandato del lado del dueño | liquidacion_mandante_pendiente | ok
-65 | 15 | T12c entregar estimatorio | estimatorio_bloqueado_438_455 | ok
-66 | 15 | T12d entregar producto ajeno | producto_ajeno | ok
-67 | 15 | T12e entregar sin clasificación | clasificacion_obligatoria | ok
-68 | 15 | T12f operar la organización 138 con la sesión de la 374 | Acceso denegado | ok
-69 | 15 | T12g el hash del token no se puede leer | permission denied | ok
-70 | 15 | Z1 asientos de consignación (18 de la corrida anterior sin los 4 de la parte entre organizaciones + 1 retención practicada) | 19 | ok
-71 | 15 | Z1b ninguna liquidación registra la remuneración | 0 | ok
-72 | 15 | Z2 asientos descuadrados (todos los de la transacción) | 0 | ok
-73 | 15 | Z3 asientos de las entregadas | 0 | ok
-74 | 15 | Z4 líneas en 1465 | 0 | ok
-75 | 15 | Z5 kardex de la entregada propia | transfer_out out 2.000 | ok
-76 | 15 | Z6 obligación con el dueño en 28151001 tras el cruce (298.000 + 2.970 de la retención sufrida sobre la comisión ya compensada) | 300970.00 | ok
-77 | 15 | Z7 saldo y estado del anticipo cruzado | 50000.00 active | ok
-78 | 15 | Z8 ninguna retención pendiente o «no aplica» trae valor (nunca 0 presumido) | 0 | ok
-79 | 15 | Z9 pendientes de las liquidaciones anuladas: cerrados SOLO porque otra liquidación cubrió sus ventas (reliquidada) | 0 | ok
-80 | 15 | Z10 pendientes abiertos por tipo | consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_retencion_pendiente×8, consignacion_retencion_por_conciliar×2 | ok
-15 › ASIENTOS DE CONSIGNACIÓN:
-consignment_received: 9405 D 400000 | 911520 C 400000
-consignment_received: 9405 D 250000 | 911520 C 250000
-consignment_sale: 911520 D 80000 | 9405 C 80000
-consignment_sale: 41401501 D 120000 | 28151001 C 120000
-consignment_sale: 28151001 D 18000 | 41351201 C 18000
-consignment_sale: 911520 D 40000 | 9405 C 40000
-consignment_sale: 41401501 D 60000 | 28151001 C 60000
-consignment_sale: 28151001 D 9000 | 41351201 C 9000
-consignment_incident: 911520 D 40000 | 9405 C 40000
-consignment_withholding: 13551501 D 2970 | 28151001 C 2970
-consignment_sale: 9405 D 40000 | 911520 C 40000
-consignment_sale: 41351201 D 9000 | 28151001 C 9000
-consignment_sale: 911520 D 80000 | 9405 C 80000
-consignment_sale: 41401501 D 120000 | 28151001 C 120000
-consignment_sale: 28151001 D 18000 | 41351201 C 18000
-consignment_sale: 911520 D 100000 | 9405 C 100000
-consignment_sale: 41401501 D 100000 | 28151001 C 100000
-consignment_remuneration: 28151001 D 16000 | 41351201 C 16000
-consignment_advance_crossing: 28151001 D 50000 | 13300501 C 50000
-15 › PENDIENTES ABIERTOS: consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_retencion_pendiente×8, consignacion_retencion_por_conciliar×2
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 3fe4535a0afe9dc1fa58ece1dea5363d | ok
+8 | carga | md5 20261110100000_cartera_abono_retencion_consignacion | 9f4ade93850013b4cacd3c795ef8d823 | ok
+9 | carga | md5 20261110100000_cartera_abono_retencion_consignacion_rollback | a333e61071756df3e48e31cf5bc66355 | ok
+10 | 15 | T1 recibir sin contrapartida 94 definida | sin_cuenta_contra_orden | ok
+11 | 15 | T2a contrapartida 9905 | cuenta_contra_invalida | ok
+12 | 15 | T2b contrapartida 9115 (no es del grupo 94) | cuenta_contra_invalida | ok
+13 | 15 | T2c contrapartida definida | 9405 | ok
+14 | 15 | T2c2 recibir sin cuenta por cobrar al dueño | sin_cuenta_cobro_remuneracion | ok
+15 | 15 | T2c3 cuenta por cobrar al dueño y retención sufrida | 13809501/13551501 | ok
+16 | 15 | T3k recibida en mandato sin pactar la compensación de la remuneración | terminos_invalidos | ok
+17 | 15 | T2d regla de otra clase | regla_retencion_invalida | ok
+18 | 15 | T2e regla de la remuneración: retención por comisiones; la operación sin regla | 27d5eaae-c0f5-49e1-98f6-c00ad761b0e8/null | ok
+19 | 15 | T3a sin modalidad | clasificacion_obligatoria | ok
+20 | 15 | T3b sin condición contable | condicion_contable_obligatoria | ok
+21 | 15 | T3c sin valoración | valoracion_obligatoria | ok
+22 | 15 | T3d compra real | compra_real_usa_factura | ok
+23 | 15 | T3e estimatorio (sigue bloqueado) | estimatorio_bloqueado_438_455 | ok
+24 | 15 | T3f mandato como principal | terminos_invalidos | ok
+25 | 15 | T3g sin reconocimiento | terminos_invalidos | ok
+26 | 15 | T3h sin costo acreditado | costo_acreditado_obligatorio | ok
+27 | 15 | T3i diferir la comisión a la liquidación (ya no existe) | terminos_invalidos | ok
+28 | 15 | T3j obligación posterior sin documentar | obligacion_posterior_obligatoria | ok
+29 | 15 | T4a N1 custodia (10 × costo acreditado 40.000) | 400000.00 | ok
+30 | 15 | T4b recibir repetido es idempotente | true | ok
+31 | 15 | T4c N2 custodia (5 × valor convenido 50.000) | 250000.00 | ok
+32 | 15 | T5 vendido en la línea | 3.000 | ok
+33 | 15 | T5b remuneración reconocida al vender (3 porciones) | 27000.00 | ok
+34 | 15 | T6a novedad sin evidencia | evidencia_obligatoria | ok
+35 | 15 | T6b faltante sale de custodia | 40000.00 | ok
+36 | 15 | T7 liq1 venta / remuneración / dueño | 180000.00/27000.00/153000.00 | ok
+37 | 15 | R1 liq1: 9 retenciones (3 clases × 2 grupos de compradores + 3 de la remuneración) | 9 | ok
+38 | 15 | R2 liq1: lo que no es «no aplica», por ámbito | operacion.retefuente.agente=pendiente, operacion.reteica.por_acreditar=pendiente, remuneracion.retefuente.dueno=estimada:2970.00, remuneracion.reteica.dueno=pendiente, remuneracion.reteiva.dueno=pendiente | ok
+39 | 15 | R3 operación: el comprador agente sin regla elegida queda pendiente (nunca 0) | pendiente/sin_regla_configurada/60000.00/null | ok
+40 | 15 | R4 operación: la venta a consumidor final no aplica | no_aplica/venta_a_consumidor_final/120000.00 | ok
+41 | 15 | R5 remuneración: 11 % de la regla configurada sobre 27.000, con la calidad del intermediario | estimada/11.0000/27000.00/2970.00 | ok
+42 | 15 | R6 remuneración: el IVA de la comisión se determina aparte | pendiente/iva_de_la_remuneracion_por_determinar | ok
+43 | 15 | R7a conciliar sin soporte | soporte_obligatorio | ok
+44 | 15 | R7b conciliar una estimada con valor (sin reconocer el hecho) | retencion_no_reconocida | ok
+45 | 15 | R7c practicada: D retención sufrida / C 281510 del dueño (la comisión ya se compensó) | 2970.00/0.00/2970.00 | ok
+46 | 15 | R7d conciliada con el certificado, sin diferencia | 2970.00/0.00 | ok
+47 | 15 | T9a descontar derechos sin acuerdo | acuerdo_obligatorio | ok
+48 | 15 | T9b liq2 con acuerdo: venta / dueño / derechos | 60000.00/51000.00/60000.00 | ok
+49 | 15 | T9c anular liq1 (no es la última; orden seq) | liquidacion_no_es_la_ultima | ok
+50 | 15 | T9d anular liq2 (la última; la liquidación no tiene asiento de remuneración) | anulada/null | ok
+51 | 15 | T9d2 anular no cierra los pendientes tributarios de esas ventas (ronda 4) | true | ok
+52 | 15 | T9e liq3 sin descontar: venta / dueño / derechos | 120000.00/102000.00/0.00 | ok
+53 | 15 | T11 vendido con obligación posterior: remuneración sin reconocer | 16000.00/0 | ok
+54 | 15 | T11a liq4: venta / remuneración / dueño / remuneración por devengar | 100000.00/16000.00/84000.00/16000.00 | ok
+55 | 15 | T11b anular liq4: sin asiento de remuneración que reversar | anulada/null | ok
+56 | 15 | T11c liq5: remuneración / dueño | 16000.00/84000.00 | ok
+57 | 15 | T11d reconocer sin evidencia | evidencia_obligatoria | ok
+58 | 15 | T11e reconocida al cumplirse la obligación, con evidencia | 16000.00 | ok
+59 | 15 | T11f nada más por reconocer | sin_remuneracion_por_devengar | ok
+60 | 15 | T11g reconocer en una nota que devenga al vender | reconocimiento_no_aplica | ok
+61 | 15 | T10a anticipo de otro consignante | anticipo_no_encontrado | ok
+62 | 15 | T10b más que el saldo del anticipo | anticipo_sin_saldo | ok
+63 | 15 | T10c más que la obligación con el dueño | excede_obligacion_con_el_dueno | ok
+64 | 15 | T10d cruce: monto / saldo del anticipo | 50000.00/50000.00 | ok
+65 | 15 | T12a entregada: costo identificado / ubicación | 40000.00/En poder de Cliente Seco | ok
+66 | 15 | T12b liquidar el mandato del lado del dueño | liquidacion_mandante_pendiente | ok
+67 | 15 | T12c entregar estimatorio | estimatorio_bloqueado_438_455 | ok
+68 | 15 | T12d entregar producto ajeno | producto_ajeno | ok
+69 | 15 | T12e entregar sin clasificación | clasificacion_obligatoria | ok
+70 | 15 | T12f operar la organización 138 con la sesión de la 374 | Acceso denegado | ok
+71 | 15 | T12g el hash del token no se puede leer | permission denied | ok
+72 | 15 | Z1 asientos de consignación (18 de la corrida anterior sin los 4 de la parte entre organizaciones + 1 retención practicada) | 19 | ok
+73 | 15 | Z1b ninguna liquidación registra la remuneración | 0 | ok
+74 | 15 | Z2 asientos descuadrados (todos los de la transacción) | 0 | ok
+75 | 15 | Z3 asientos de las entregadas | 0 | ok
+76 | 15 | Z4 líneas en 1465 | 0 | ok
+77 | 15 | Z5 kardex de la entregada propia | transfer_out out 2.000 | ok
+78 | 15 | Z6 obligación con el dueño en 28151001 tras el cruce (298.000 + 2.970 de la retención sufrida sobre la comisión ya compensada) | 300970.00 | ok
+79 | 15 | Z7 saldo y estado del anticipo cruzado | 50000.00 active | ok
+80 | 15 | Z8 ninguna retención pendiente o «no aplica» trae valor (nunca 0 presumido) | 0 | ok
+81 | 15 | Z9 pendientes de las liquidaciones anuladas: cerrados SOLO porque otra liquidación cubrió sus ventas (reliquidada) | 0 | ok
+82 | 15 | Z10 pendientes abiertos por tipo | consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_liquidacion_escrita_por_entregar×3, consignacion_novedad×1, consignacion_retencion_pendiente×8, consignacion_retencion_por_conciliar×2 | ok
+15 › ASIENTOS DE CONSIGNACIÓN (19, sin cambios frente a la ronda 5) y PENDIENTES ABIERTOS (los de Z10) en la salida de la corrida.

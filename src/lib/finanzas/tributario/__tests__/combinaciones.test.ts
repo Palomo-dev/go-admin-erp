@@ -18,7 +18,7 @@ import {
   type DatosCombinacion,
 } from '../combinaciones';
 import { analizarPeriodo, huellaVigencias, validarSolicitudDecision, vigenciasEnRango } from '../vigenciasPeriodo';
-import { derivarObligaciones, obligacionesDelCorte, vencimientoDe } from '../obligaciones';
+import { derivarObligaciones, leerFormato2532, nota2532, obligacionesDelCorte, vencimientoDe } from '../obligaciones';
 import type { VigenciaPerfil } from '../perfil';
 
 const base: DatosCombinacion = {
@@ -342,28 +342,45 @@ describe('obligaciones del RTE y de no contribuyentes (ronda 2)', () => {
   });
 });
 
-describe('formato 2532 de las cooperativas (ronda 5 del Contador)', () => {
-  const registro = (extra: Partial<VigenciaPerfil>) =>
+describe('formato 2532 de las cooperativas (ronda 5; ronda 6: por año gravable)', () => {
+  // Ronda 6 del Contador: el dato va por AÑO GRAVABLE (tabla tributario_rte_2532_anio), no por vigencia del perfil. Con
+  // corte 2026-10 el registro web anual es del año gravable 2025.
+  const anios = (filas: unknown[]) => leerFormato2532(filas);
+  const registro = (formato: ReturnType<typeof leerFormato2532>, extra: Partial<VigenciaPerfil> = {}) =>
     derivarObligaciones(
       v('c', '2025-01-01', null, { regimenRenta: 'especial', condicionIva: 'no_responsable', periodicidadIva: 'no_aplica', rteTipo: 'cooperativa_art19_4', rteIngresosSuperan160000Uvt: false, ...extra }),
       '2026-10',
+      formato,
     ).find((x) => x.clave === 'rte_registro_web')!;
 
-  test('solo se pide si recibió donaciones o cooperación internacional no reembolsable', () => {
-    expect(registro({ rteDonacionesCooperacion: true })).toMatchObject({ formulario: '5245, 2530, 2531, 2532' });
-    expect(registro({ rteDonacionesCooperacion: true }).notas).toContain('rte_2532_aplica');
+  test('solo se pide si ese AÑO GRAVABLE recibió donaciones o cooperación internacional no reembolsable', () => {
+    const si = registro(anios([{ anio_gravable: 2025, recibio: true, constancia: null }]));
+    expect(si).toMatchObject({ formulario: '5245, 2530, 2531, 2532' });
+    expect(si.notas).toContain('rte_2532_aplica');
   });
 
-  test('si no las recibió, queda la constancia de que no aplica; sin constancia o sin dato, por confirmar', () => {
-    const no = registro({ rteDonacionesCooperacion: false, rteDonacionesConstancia: 'Revisados los ingresos de 2025: sin donaciones' });
+  test('si ese año no las recibió, queda la constancia de que no aplica; sin constancia o sin dato del año, por confirmar', () => {
+    const no = registro(anios([{ anio_gravable: 2025, recibio: false, constancia: 'Revisados los ingresos de 2025: sin donaciones' }]));
     expect(no).toMatchObject({ formulario: '5245, 2530, 2531' });
     expect(no.notas).toContain('rte_2532_no_aplica');
-    expect(registro({ rteDonacionesCooperacion: false }).notas).toContain('rte_2532_por_confirmar');
-    expect(registro({}).notas).toContain('rte_2532_por_confirmar');
+    expect(registro(anios([{ anio_gravable: 2025, recibio: false, constancia: '  ' }])).notas).toContain('rte_2532_por_confirmar');
+    expect(registro(anios([])).notas).toContain('rte_2532_por_confirmar');
+  });
+
+  test('el dato de OTRO año no sirve para este (no es de la vigencia)', () => {
+    const otroAnio = registro(anios([{ anio_gravable: 2026, recibio: true, constancia: null }]));
+    expect(otroAnio.notas).toContain('rte_2532_por_confirmar');
+    expect(otroAnio.formulario).toBe('5245, 2530, 2531');
+  });
+
+  test('leerFormato2532 descarta filas sin año o sin sí/no; nota2532 sin dato es «por confirmar»', () => {
+    const m = anios([{ anio_gravable: '2024', recibio: true }, { anio_gravable: 2025, recibio: 'no' }, { recibio: false }, null]);
+    expect([...m.keys()]).toEqual([2024]);
+    expect(nota2532(undefined)).toBe('rte_2532_por_confirmar');
   });
 
   test('una entidad del RTE que no es cooperativa no lleva la nota del 2532', () => {
-    const otra = registro({ rteTipo: 'calificada_art19', rteDonacionesCooperacion: true });
+    const otra = registro(anios([{ anio_gravable: 2025, recibio: true, constancia: null }]), { rteTipo: 'calificada_art19' });
     expect(otra.formulario).toBeNull();
     expect(otra.notas.some((n) => n.startsWith('rte_2532'))).toBe(false);
   });

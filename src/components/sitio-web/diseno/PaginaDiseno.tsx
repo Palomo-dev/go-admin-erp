@@ -46,6 +46,7 @@ import { cambiarBotonesSecciones, leerBotonesSecciones } from '@/lib/website/v2/
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { CATALOGO_SITIO } from './catalogo';
 import { EstiloDelSitioPanel } from './EstiloDelSitioPanel';
+import { HoverBotonesTema } from '../editor/inspector/HoverBotonesTema';
 import { PanelCarrusel, PanelPaginacion } from '../editor/inspector/PanelesListaCarrusel';
 import { paginacionTemaDisponible, sanitizarCarrusel, sanitizarPaginacion } from '@/lib/website/v2/paginacionCarrusel';
 import { valorPropio } from '@/lib/website/contrato/documentoSitio';
@@ -320,6 +321,10 @@ export function PaginaDiseno() {
                   cabeceraSoloEscritorio
                   className="max-lg:gap-4 max-lg:rounded-none max-lg:border-0 max-lg:bg-transparent max-lg:p-0"
                 />
+                {/* Efecto al pasar el mouse de los botones (tokens.hover, Figma A3): el sitio lo pinta sin bandera. */}
+                {documento && (
+                  <HoverBotonesTema documento={documento} onCambiarDocumento={(cambiar) => void sitio.guardar(cambiar)} deshabilitado={!permisos.editar} />
+                )}
                 {paginacionTemaDisponible() && documento && (
                   <>
                     <PanelPaginacion

@@ -46,7 +46,13 @@ const base: DatosCombinacion = {
   responsabilidades: [],
   responsabilidadesRut: [],
 };
-const gran = { granContribuyente: true, granContribuyenteActo: 'Resolución 000123', granContribuyenteDesde: '2025-01-01' };
+const gran = {
+  granContribuyente: true,
+  granContribuyenteActo: 'Resolución 000123',
+  granContribuyenteActoFecha: '2024-12-15',
+  granContribuyenteCalificacion: 'ordinaria' as const,
+  granContribuyenteDesde: '2025-01-01',
+};
 const ev = (extra: Partial<DatosCombinacion>) => evaluarCombinacion({ ...base, ...extra });
 
 describe('combinaciones del perfil (P5)', () => {
@@ -97,12 +103,46 @@ describe('combinaciones del perfil (P5)', () => {
   });
 
   test('calidades con acto: gran contribuyente y autorretenedor exigen resolución y fecha', () => {
-    expect(ev({ granContribuyente: true }).bloqueos).toEqual(['gran_contribuyente_sin_acto']);
+    expect(ev({ granContribuyente: true }).bloqueos).toEqual(['gran_contribuyente_sin_acto', 'gran_contribuyente_sin_calificacion']);
     expect(ev({ autorretenedor: true, autorretenedorActo: 'Res. 1' }).bloqueos).toEqual(['autorretenedor_sin_acto']);
-    expect(ev({ ...gran, responsabilidades: ['O-13'], periodicidadIva: 'cuatrimestral' }).advertencias).toEqual(['gran_contribuyente_no_bimestral']);
+    // Ronda 4: ya exigible la bimestral, la cuatrimestral se BLOQUEA (no se advierte).
+    expect(ev({ ...gran, responsabilidades: ['O-13'], periodicidadIva: 'cuatrimestral' })).toMatchObject({ bloqueos: ['gran_contribuyente_no_bimestral'], advertencias: [] });
     expect(ev({ ...gran, responsabilidades: ['O-13'], periodicidadIva: 'cuatrimestral', motivoCambioPeriodicidad: 'designacion_gran_contribuyente' }).bloqueos).toEqual([
+      'gran_contribuyente_no_bimestral',
       'cambio_gran_contribuyente_no_bimestral',
     ]);
+  });
+
+  test('ronda 4 · gran contribuyente: ordinaria desde el 1 de enero siguiente; excepcional desde la fecha del acto', () => {
+    const fe = { responsabilidades: ['O-13'] };
+    // Ordinaria: resolución de diciembre de 2024 → efectos el 1 de enero de 2025 (primer bimestre enero–febrero).
+    expect(ev({ ...gran, ...fe }).bloqueos).toEqual([]);
+    expect(ev({ ...gran, ...fe, granContribuyenteDesde: '2024-12-15' }).bloqueos).toEqual(['gran_contribuyente_fecha_efectos']);
+    expect(ev({ ...gran, ...fe, granContribuyenteDesde: '2025-03-01' }).bloqueos).toEqual(['gran_contribuyente_fecha_efectos']);
+    // Excepcional: la fecha expresa del acto, nunca antes; a mitad de bimestre, la transición queda para aclaración.
+    const exc = { ...gran, ...fe, granContribuyenteCalificacion: 'excepcional' as const, granContribuyenteActoFecha: '2026-06-10' };
+    expect(ev({ ...exc, granContribuyenteDesde: '2026-06-01' }).bloqueos).toEqual(['gran_contribuyente_fecha_efectos']);
+    const mitad = ev({ ...exc, granContribuyenteDesde: '2026-06-10' });
+    expect(mitad.bloqueos).toEqual([]);
+    expect(mitad.advertencias).toEqual(['gran_contribuyente_transicion_por_resolver']);
+    expect(ev({ ...exc, granContribuyenteDesde: '2026-07-01' }).advertencias).toEqual([]);
+    // Una vigencia que se dice gran contribuyente no empieza antes de los efectos.
+    const antes = evaluarCombinacion({ ...base, ...gran, ...fe }, { vigenteDesde: '2024-07-01', anterior: null, siguiente: null });
+    expect(antes.bloqueos).toEqual(['gran_contribuyente_antes_de_efectos']);
+    expect(evaluarCombinacion({ ...base, ...gran, ...fe }, { vigenteDesde: '2025-01-01', anterior: null, siguiente: null }).bloqueos).toEqual([]);
+  });
+
+  test('ronda 4 · SIMPLE con 15 o 59 en el RUT: para aclaración, sin exigir borrar el código; 15 y 59 no son equivalentes', () => {
+    const simple = { regimenRenta: 'simple' as const, periodicidadIva: 'anual', responsabilidades: ['O-47'] };
+    const r = ev({ ...simple, responsabilidadesRut: ['47', '48', '15'] });
+    expect(r.bloqueos).toEqual([]);
+    expect(r.advertencias).toEqual(['rut_simple_con_autorretencion_para_aclaracion']);
+    expect(ev({ ...simple, responsabilidadesRut: ['47', '48', '59'] }).advertencias).toEqual(['rut_simple_con_autorretencion_para_aclaracion']);
+    // La autorretención misma sigue bloqueada en el SIMPLE, la ordinaria y la especial, cada una por su campo.
+    expect(ev({ ...simple, autorretencionEspecial: true, responsabilidadesRut: ['47', '48', '59'] }).bloqueos).toEqual(['simple_con_autorretencion']);
+    // Fuera del SIMPLE, 59 no hace autorretenedor ordinario (15) ni al revés.
+    expect(ev({ autorretencionEspecial: true, responsabilidadesRut: ['05', '48', '59'] }).bloqueos).toEqual([]);
+    expect(ev({ autorretencionEspecial: true, responsabilidadesRut: ['05', '48', '15', '59'] }).bloqueos).toEqual(['rut_15_sin_autorretenedor']);
   });
 
   test('RTE y no contribuyentes: clasificación sustentada y parametrizada', () => {
@@ -180,12 +220,29 @@ describe('migración del campo combinado (misma regla que la migración SQL)', (
 describe('los bloqueos de la base son los mismos', () => {
   test('fn_perfil_tributario_bloqueos + cambio_fecha_efectiva_distinta = BLOQUEOS', () => {
     const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261108160500_tributario_perfil_renta_iva.sql'), 'utf8');
-    const funcion = sql.slice(sql.indexOf('create or replace function public.fn_perfil_tributario_bloqueos'), sql.indexOf('create or replace function public.fn_perfil_tributario_guardar_v2'));
+    const funcion = sql.slice(sql.indexOf('create or replace function public.fn_perfil_tributario_bloqueos'), sql.indexOf('create or replace function public.fn_perfil_tributario_aclaraciones'));
     const enSql = new Set(Array.from(funcion.matchAll(/select '([a-z0-9_]+)'/g)).map((m) => m[1]));
     expect(sql).toContain("'cambio_fecha_efectiva_distinta'");
     enSql.add('cambio_fecha_efectiva_distinta');
     expect([...enSql].sort()).toEqual([...BLOQUEOS].sort());
     expect(BLOQUEOS.filter((b) => (ADVERTENCIAS as readonly string[]).includes(b))).toEqual([]);
+  });
+
+  test('ronda 4: las aclaraciones de la base no bloquean y las dos que también ve la pantalla son advertencias', () => {
+    const sql = fs.readFileSync(path.join(process.cwd(), 'supabase/migrations/20261108160500_tributario_perfil_renta_iva.sql'), 'utf8');
+    const funcion = sql.slice(sql.indexOf('create or replace function public.fn_perfil_tributario_aclaraciones'), sql.indexOf('create or replace function public.fn_perfil_tributario_guardar_v2'));
+    const aclaraciones = Array.from(funcion.matchAll(/select '([a-z0-9_]+)'/g)).map((m) => m[1]).sort();
+    expect(aclaraciones).toEqual(['gran_contribuyente_transicion_por_resolver', 'rut_codigo_fuera_de_catalogo', 'rut_codigo_no_vigente', 'rut_simple_con_autorretencion_para_aclaracion']);
+    expect(aclaraciones.filter((a) => (BLOQUEOS as readonly string[]).includes(a))).toEqual([]);
+    for (const a of ['gran_contribuyente_transicion_por_resolver', 'rut_codigo_no_vigente', 'rut_simple_con_autorretencion_para_aclaracion']) {
+      expect(ADVERTENCIAS as readonly string[]).toContain(a);
+    }
+    // El catálogo del RUT no es exhaustivo: la base solo exige la forma del código.
+    expect(sql).toContain("r.codigo !~ '^[0-9]{2}$'");
+    expect(sql).not.toMatch(/not exists \(select 1 from public\.rut_responsabilidades c where c\.codigo = r\.codigo\)\) then\s+raise exception 'RESPONSABILIDAD_RUT_INVALIDA'/);
+    // «Documentado» no es «procedente».
+    expect(sql).toContain('fn_perfil_tributario_evaluar_cambio');
+    expect(sql).toContain("raise exception 'CAMBIO_NO_DOCUMENTADO'");
   });
 });
 
@@ -210,7 +267,10 @@ function v(id: string, desde: string, hasta: string | null, extra: Partial<Vigen
 }
 
 describe('vigencias dentro de un período (P8)', () => {
-  const vigencias = [v('a', '2026-01-01', '2026-06-30'), v('b', '2026-07-01', null, { periodicidadIva: 'cuatrimestral', cambioPeriodicidadEstado: 'documentado' })];
+  const vigencias = [
+    v('a', '2026-01-01', '2026-06-30'),
+    v('b', '2026-07-01', null, { periodicidadIva: 'cuatrimestral', cambioPeriodicidadEstado: 'documentado', cambioPeriodicidadProcedencia: 'procedente' }),
+  ];
 
   test('cambio de vigencia, período sin perfil y huella', () => {
     const a = analizarPeriodo(vigencias, '2026-05-01', '2026-08-31');
@@ -228,6 +288,15 @@ describe('vigencias dentro de un período (P8)', () => {
     const pendiente = [vigencias[0], { ...vigencias[1], cambioPeriodicidadEstado: 'pendiente_soporte' as const }];
     const iva = obligacionesDelCorte(pendiente, '2026-10').filter((x) => x.clave === 'iva');
     expect(iva[0].notas).toEqual(expect.arrayContaining(['cambio_vigencia_en_periodo', 'cambio_periodicidad_pendiente']));
+  });
+
+  test('ronda 4: «documentado» no es «procedente»: sin procedencia registrada sigue pendiente', () => {
+    for (const procedencia of ['por_evaluar', 'no_procedente', undefined] as const) {
+      const documentado = [vigencias[0], { ...vigencias[1], cambioPeriodicidadProcedencia: procedencia }];
+      expect(analizarPeriodo(documentado, '2026-05-01', '2026-08-31').cambioPendienteSoporte).toBe(true);
+      expect(obligacionesDelCorte(documentado, '2026-10').filter((x) => x.clave === 'iva')[0].notas).toContain('cambio_periodicidad_pendiente');
+    }
+    expect(analizarPeriodo(vigencias, '2026-05-01', '2026-08-31').cambioPendienteSoporte).toBe(false);
   });
 
   test('decisión: lista blanca del cuerpo', () => {
@@ -250,7 +319,16 @@ describe('obligaciones del RTE y de no contribuyentes (ronda 2)', () => {
     expect(sinDato.find((x) => x.clave === 'rte_memoria_economica')!.notas).toContain('rte_umbral_por_confirmar');
     expect(sinDato.find((x) => x.clave === 'conciliacion_fiscal')!.notas).toContain('conciliacion_por_evaluar');
     expect(sinDato.find((x) => x.clave === 'renta')).toMatchObject({ formulario: '110' });
-    expect(rte({ rteTipo: 'cooperativa_art19_4', rteIngresosSuperan160000Uvt: false }).find((x) => x.clave === 'rte_registro_web')!.notas).toContain('rte_cooperativa_por_confirmar');
+    // Ronda 4: a la cooperativa SÍ le aplica el registro web (no es opcional), con sus formatos; la memoria va en PDF firmado.
+    const coop = rte({ rteTipo: 'cooperativa_art19_4', rteIngresosSuperan160000Uvt: true });
+    const registro = coop.find((x) => x.clave === 'rte_registro_web')!;
+    expect(registro).toMatchObject({ formulario: '5245, 2530, 2531' });
+    expect(registro.notas).toContain('rte_cooperativa_formatos');
+    expect(registro.notas).not.toContain('requisitos_por_confirmar');
+    const memoria = coop.find((x) => x.clave === 'rte_memoria_economica')!;
+    expect(memoria).toMatchObject({ formulario: null });
+    expect(memoria.notas).toContain('rte_memoria_pdf_firmado');
+    expect(rte({ rteIngresosSuperan160000Uvt: true }).find((x) => x.clave === 'rte_registro_web')!.notas).not.toContain('rte_cooperativa_formatos');
   });
 
   test('no contribuyente: nunca «sin obligaciones»', () => {
@@ -261,5 +339,40 @@ describe('obligaciones del RTE y de no contribuyentes (ronda 2)', () => {
     expect(art22.map((x) => x.clave)).toEqual(['no_declarante', 'exogena']);
     expect(art22[0].notas).toContain('clasificacion_inicial');
     expect(vencimientoDe(art22[0], '900111227', [])).toEqual({ estado: 'no_aplica' });
+  });
+});
+
+describe('formato 2532 de las cooperativas (ronda 5 del Contador)', () => {
+  const registro = (extra: Partial<VigenciaPerfil>) =>
+    derivarObligaciones(
+      v('c', '2025-01-01', null, { regimenRenta: 'especial', condicionIva: 'no_responsable', periodicidadIva: 'no_aplica', rteTipo: 'cooperativa_art19_4', rteIngresosSuperan160000Uvt: false, ...extra }),
+      '2026-10',
+    ).find((x) => x.clave === 'rte_registro_web')!;
+
+  test('solo se pide si recibió donaciones o cooperación internacional no reembolsable', () => {
+    expect(registro({ rteDonacionesCooperacion: true })).toMatchObject({ formulario: '5245, 2530, 2531, 2532' });
+    expect(registro({ rteDonacionesCooperacion: true }).notas).toContain('rte_2532_aplica');
+  });
+
+  test('si no las recibió, queda la constancia de que no aplica; sin constancia o sin dato, por confirmar', () => {
+    const no = registro({ rteDonacionesCooperacion: false, rteDonacionesConstancia: 'Revisados los ingresos de 2025: sin donaciones' });
+    expect(no).toMatchObject({ formulario: '5245, 2530, 2531' });
+    expect(no.notas).toContain('rte_2532_no_aplica');
+    expect(registro({ rteDonacionesCooperacion: false }).notas).toContain('rte_2532_por_confirmar');
+    expect(registro({}).notas).toContain('rte_2532_por_confirmar');
+  });
+
+  test('una entidad del RTE que no es cooperativa no lleva la nota del 2532', () => {
+    const otra = registro({ rteTipo: 'calificada_art19', rteDonacionesCooperacion: true });
+    expect(otra.formulario).toBeNull();
+    expect(otra.notas.some((n) => n.startsWith('rte_2532'))).toBe(false);
+  });
+
+  test('los cuatro idiomas tienen las notas nuevas', () => {
+    for (const idioma of ['es', 'en', 'fr', 'pt']) {
+      const ruta = path.join(__dirname, '../../../../../messages', `${idioma}.json`);
+      const m = JSON.parse(fs.readFileSync(ruta, 'utf8')) as { finanzasTributarioR5?: { notas?: Record<string, string> } };
+      for (const n of ['rte_2532_aplica', 'rte_2532_no_aplica', 'rte_2532_por_confirmar']) expect(m.finanzasTributarioR5?.notas?.[n]).toBeTruthy();
+    }
   });
 });

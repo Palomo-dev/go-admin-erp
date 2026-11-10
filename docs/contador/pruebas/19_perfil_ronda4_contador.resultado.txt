@@ -1,0 +1,78 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108161000 2153ce37f896697ed3c6b2e506d84db0 · 20261108161500 5ea9208264ed61f452be374617f55e60 · 20261108165000 1ec6641bdf74dfc15163d0753982309f · prueba 19 e5e1a306d25b68040725fa9e5369883f
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 46 verificaciones · 46 ok · 0 fallas. La prueba no cambió (165000 ahora comprueba la pertenencia; la prueba
+solo verificaba que la función existe).
+
+── Corridas anteriores ──
+Resultado de 19_perfil_ronda4_contador.sql (RONDA 4 del Contador, perfil y documentos históricos)
+Corrida: 2026-11-09, proyecto taqjemqjtumhwptchcxk, org 374. Una sola transacción, sin datos al final.
+Archivos EXACTOS (md5 verificados dentro de la base antes de ejecutar), en orden de prefijo:
+  20261108140500 (H2)  4b00bf10bf99ff2a97e2e89ff0480811
+  20261108160000       85fd17321a7e85d85a58916cb2f84c95
+  20261108160500       c83b8a50b6342e65ee5bf3f993847b79
+  20261108161000       a289e35a3ae6dcd085f42c9b4b546e3c
+  20261108161500       5ea9208264ed61f452be374617f55e60
+  20261108165000       28e47f6353ee4102463b7b63dca057be (sin cambios en la ronda 4; se carga para mostrar la cadena)
+  prueba 19            e5e1a306d25b68040725fa9e5369883f
+Método: igual que la prueba 18 (objetos grandes con md5 por trozo y por archivo; un DO ejecuta el texto con las migraciones
+pegadas en «MIGRACIONES» y termina en excepción = rollback; los objetos se borraron; la base quedó sin rut_responsabilidades
+y con la descripción de R-99-PN sin cambiar). No depende de 20261108120500 ni 121000.
+
+Primera corrida: 45 de 46. La fila 40 falló por la propia prueba (guardar y leer en la misma sentencia: la lectura no ve
+lo que escribe la función). Se separó en dos sentencias (también la 39); la migración no cambió.
+Segunda corrida (la que vale): 46 verificaciones · 46 ok · 0 fallas.
+
+ n | bloque | verificación → obtenido
+---+--------+------------------------------------------------------------------------------------------------------------
+ 1 | A | Código 67 (CARF) por norma → norma · pendiente_validacion · vigente · Resolución DIAN 000227 de 2025, artículo 1.6.11.5
+ 2 | A | Catálogo por tipo de fuente (no exhaustivo) → historico 2 · instructivo 48 · norma 1
+ 3 | A | 11 y 12: evidencia histórica → 11 historico/no vigente · 12 historico/no vigente
+ 4 | A | Comentario de la tabla → contiene «NO es exhaustivo»
+ 5 | A | Códigos de FE (tabla 13.2.6.1 del anexo 1.9) → O-13, O-15, O-23, O-47, R-99-PN cotejado_fuente_oficial; O-48,
+   |   |   O-49 no_pertenece_tabla_fe
+ 6 | A | R-99-PN → No aplica – Otros (nombre del anexo y descripción)
+ 7 | A | Las demás descripciones de FE no cambian → O-13 Gran contribuyente · O-48 Responsable de IVA
+ 8 | B | RUT con un código que el catálogo no tiene (68) → OK (se guarda)
+ 9 | B | RUT con un código mal formado (AB) → 22023 RESPONSABILIDAD_RUT_INVALIDA
+10 | B | RUT con 11 (histórico) → OK
+11 | B | SIMPLE con 15 en el RUT → OK (para aclaración)
+12 | B | SIMPLE con 59 en el RUT → OK (para aclaración)
+13 | B | SIMPLE con autorretención especial marcada → COMBINACION_CONTRADICTORIA [simple_con_autorretencion]
+14 | B | SIMPLE con autorretención ordinaria marcada → COMBINACION_CONTRADICTORIA [simple_con_autorretencion]
+15 | B | Ordinario: autorretención especial (59) sin ser autorretenedor ordinario (15) → OK
+16 | B | Ordinario: 15 en el RUT con solo la especial (no son equivalentes) → COMBINACION_CONTRADICTORIA [rut_15_sin_autorretenedor]
+17 | B | Vigencia con 68 → aclaraciones {rut_codigo_fuera_de_catalogo} · revisar true · rut {05,07,48,68}
+18 | B | Vigencia con 11 → aclaraciones {rut_codigo_no_vigente} · revisar true · rut {05,07,11,48}
+19 | B | SIMPLE con 15 → aclaraciones {rut_simple_con_autorretencion_para_aclaracion} · revisar true · rut {47,48,15}
+20 | B | SIMPLE con 59 → aclaraciones {rut_simple_con_autorretencion_para_aclaracion} · revisar true · rut {47,48,59}
+21 | B | Ordinario con 59 → aclaraciones {} · revisar false · rut {05,07,48,59}
+22 | C | Ordinaria (resolución del 2025-11-20): efectos 2026-01-01, vigencia 2026-01-01 bimestral → OK
+23 | C | Ordinaria con efectos el 2025-12-01 → COMBINACION_CONTRADICTORIA [gran_contribuyente_fecha_efectos]
+24 | C | Vigencia que empieza antes de los efectos → COMBINACION_CONTRADICTORIA [gran_contribuyente_antes_de_efectos]
+25 | C | Ya exigible: cuatrimestral → COMBINACION_CONTRADICTORIA [gran_contribuyente_no_bimestral] (bloqueo, no advertencia)
+26 | C | Sin calificación → COMBINACION_CONTRADICTORIA [gran_contribuyente_sin_calificacion]
+27 | C | Sin la fecha del acto → COMBINACION_CONTRADICTORIA [gran_contribuyente_sin_acto]
+28 | C | Excepcional con efectos antes del acto → COMBINACION_CONTRADICTORIA [gran_contribuyente_fecha_efectos]
+29 | C | Vigencia 2026-01-01 sin gran contribuyente (cuatrimestral) → OK
+30 | C | Calificación excepcional desde el 2026-06-10 (a mitad de bimestre), bimestral → OK
+31 | C | Transición → 2026-01-01→2026-06-09 · 2026-06-10→abierta · {gran_contribuyente_transicion_por_resolver} ·
+   |   |   documentado/por_evaluar (sin solape ni cortes inventados)
+32 | D | Cambio a mitad de año con motivo «corrección de clasificación» → OK
+33 | D | Estado del cambio documentado → documentado/por_evaluar
+34 | D | Evaluar «procedente» sin fundamento → 22023 FUNDAMENTO_REQUERIDO
+35 | D | Evaluar un cambio que no está documentado → 22023 CAMBIO_NO_DOCUMENTADO
+36 | D | Evaluar con una procedencia que no existe → 22023 PROCEDENCIA_INVALIDA
+37 | D | Evaluar «procedente» con fundamento → procedente
+38 | D | Quién y cuándo evaluó → el usuario · con fecha · con fundamento
+39 | D | Guardar otra vez con los mismos datos conserva la evaluación → OK · procedente
+40 | D | Cambiar el hecho devuelve la procedencia a «por evaluar» → OK · por_evaluar · sin evaluación
+41 | D | Motivo que no existe en la lista → 23514 (CHECK de la columna)
+42 | E | Evaluar la procedencia con rol Empleado (sin finance.approve) → 42501 SIN_PERMISO
+43 | E | Evaluar desde otra organización (no miembro) → rechaza
+44 | E | anon: evaluar la procedencia → 42501
+45 | E | anon: aclaraciones → 42501
+46 | F | Funciones de la cadena presentes → aclaraciones · evaluar_cambio · decisión de período · instantánea · tarifa exacta

@@ -3,6 +3,12 @@
 -- RONDA 3 (2026-11-08): la corrección de error solo saca la venta de las casillas si está COMPLETA (POS4 incompleta,
 -- POS5 completa y marcada «corrige una declaración anterior» → alerta), y el borrador reconoce la compra contabilizada
 -- con el IVA no descontable en el costo (B5, FCAC; el asiento se graba aquí como lo arma 20261108152000).
+-- RONDA 5 (2026-11-09): se vuelve a correr con las migraciones reescritas. Solo cambian DATOS de POS5 para cumplir lo
+-- nuevo de «nunca transmitida» (constancia de que no hay soporte de contingencia, consulta del CUFE/CUDE sin resultado y
+-- venta de hace 3 días, para que la consulta quede pasadas las 48 horas). Ningún esperado cambia.
+-- RONDA 4 (2026-11-09): completar el expediente ya no basta; POS5 lleva el expediente completo (explicación, factura,
+-- estado electrónico «nunca transmitida» con la contingencia descartada, entrega y cobro con soporte) Y la decisión
+-- «retirar_venta» del período 2026-11-01 a 2026-12-31 (fn_iva_correccion_error_decidir). Las cifras no cambian.
 -- Proyecto taqjemqjtumhwptchcxk · Organización de pruebas 374 (sede 585). NO DEJA DATOS (begin … rollback).
 --
 -- Requiere 20261108150000, 20261108150500 y 20261108151000 (escritas, SIN aplicar). En la prueba en seco se pegan sus
@@ -20,8 +26,9 @@
 --   POS3  30.000 sin producto ni IVA → sin clasificar
 --   POS4  100.000 + IVA 19.000, revertida; la reversa se registra «corrección de error» SOLO con su soporte (ronda 3:
 --         incompleta) → la venta SIGUE en 28/59 y la reversa queda pendiente «corrección de error incompleta»
---   POS5  igual, con la corrección COMPLETA (soporte, anulación ante la DIAN con referencia y fecha, y «sí corresponde
---         corregir una declaración anterior») → sale de las casillas y alerta de declaración
+--   POS5  igual, con el expediente COMPLETO (ronda 4: soporte, explicación, factura, estado electrónico, contingencia,
+--         entrega, cobro, constancia con referencia y fecha, «sí corresponde corregir una declaración anterior») y la
+--         DECISIÓN «retirar_venta» → sale de las casillas y alerta de declaración
 --   FVOCT factura del 15-oct: 200.000 B19 · NC total emitida hoy → 42/79 «entre períodos»
 --         · ND (nota débito) de hoy sobre FVOCT: 50.000 al 19 % → 28/59 señalada «corrige otro período» (B2)
 --   COMPRAS
@@ -96,7 +103,9 @@ select v::uuid, 'sale', v::uuid, null, 'Mayor valor facturado', 1, 50000, 19, 'I
 update public.invoice_sales set status = 'issued' where id = (select v::uuid from ctx where k = 'nd');
 
 with s as (insert into public.sales (organization_id, branch_id, user_id, status, subtotal, tax_total, total, tax_included, sale_date, notes)
-           select 374, 585, 'bb11d6d2-f647-49f7-9b29-aa4c4438abf1', 'paid', x.b, x.i, x.b + x.i, false, now(), x.n
+           -- Ronda 5: POS5 es de hace 3 días, para que la consulta del CUFE/CUDE de hoy quede pasadas las 48 horas.
+           select 374, 585, 'bb11d6d2-f647-49f7-9b29-aa4c4438abf1', 'paid', x.b, x.i, x.b + x.i, false,
+                  case when x.n = 'POS5' then now() - interval '3 days' else now() end, x.n
              from (values ('POS1', 100000, 19000), ('POS2', 100000, 19000), ('POS3', 30000, 0), ('POS4', 100000, 19000), ('POS5', 100000, 19000)) x(n, b, i)
            returning id, notes)
 insert into ctx select lower(notes), id::text from s;
@@ -302,7 +311,11 @@ begin
   perform public.fn_iva_naturaleza_asiento_guardar(374, (select v::int from ctx where k = 'je_pos4_rev'),
     '{"naturaleza":"correccion_error","soporte_tipo":"comprobante_interno","soporte":"Acta: venta digitada dos veces, la operación no existió","soporte_fecha":"2026-11-07"}');
   perform public.fn_iva_naturaleza_asiento_guardar(374, (select v::int from ctx where k = 'je_pos5_rev'),
-    '{"naturaleza":"correccion_error","soporte_tipo":"comprobante_interno","soporte":"Acta: venta de prueba registrada por error","soporte_fecha":"2026-11-07","doc_electronico_resolucion":"anulacion_dian","doc_electronico_referencia":"CUFE-PRUEBA-0005","doc_electronico_fecha":"2026-11-07","corrige_declaracion_anterior":true}');
+    '{"naturaleza":"correccion_error","soporte_tipo":"comprobante_interno","soporte":"Acta: venta de prueba registrada por error","soporte_fecha":"2026-11-07","doc_electronico_resolucion":"constancia","doc_electronico_referencia":"CONSTANCIA-PRUEBA-0005","doc_electronico_fecha":"2026-11-07","corrige_declaracion_anterior":true,"expediente_explicacion":"Venta de prueba registrada por error en la caja: no hubo cliente, mercancía ni dinero.","factura_referencia":"POS5","estado_electronico":"nunca_transmitida","contingencia_verificada":true,"contingencia_nota":"Sin documentos de contingencia ese día","entrega_prestacion":"no_hubo","entrega_soporte":"Kárdex sin salida de mercancía","cobro":"no_hubo","cobro_soporte":"Arqueo de caja sin el recaudo","contingencia_soporte_tipo":"sin_soporte_contingencia","consulta_cufe_resultado":"sin_resultado","consulta_cufe_soporte":"Consulta del CUFE en el catálogo de la DIAN, sin resultado"}'::jsonb
+    || jsonb_build_object('consulta_cufe_en', now()));
+  -- Ronda 4: el expediente completo no retira la venta; la decisión explícita de tratamiento y período sí.
+  perform public.fn_iva_correccion_error_decidir(374, (select v::int from ctx where k = 'je_pos5_rev'),
+    '{"tratamiento":"retirar_venta","periodo_desde":"2026-11-01","periodo_hasta":"2026-12-31","fundamento":"La operación no existió: expediente completo y sin documento válido"}');
   v_err := null;
   begin perform public.fn_iva_naturaleza_asiento_guardar(374, (select v::int from ctx where k = 'je_pos2_rev'),
           '{"naturaleza":"correccion_error","soporte":"Acta 2","soporte_fecha":"2026-11-07"}');
@@ -435,7 +448,7 @@ begin
       ('je_aj', 'sin_registro / sugerida — / pendiente / -10000', 'Manual sin soporte'),
       ('je_pos2_rev', 'reversa_contable / sugerida — / pendiente / -19000', 'B6: control provisional'),
       ('je_pos4_rev', 'correccion_error / sugerida — / pendiente / -19000', 'Ronda 3: corrección incompleta → la reversa pendiente y la venta en 28/59'),
-      ('je_pos5', 'correccion_error / sugerida — / no_afecta / 19000', 'Corrección completa: la venta que nunca existió sale de 28/59'),
+      ('je_pos5', 'correccion_error / sugerida — / no_afecta / 19000', 'Expediente completo + decisión «retirar_venta»: la venta que nunca existió sale de 28/59'),
       ('je_pos5_rev', 'correccion_error / sugerida — / no_afecta / -19000', 'y su reversa también'),
       ('je_ncc1', 'devolucion_compra / sugerida — / casilla / 19000', 'B4 completa'),
       ('je_ncc2', 'devolucion_compra / sugerida — / casilla / 1900', 'B4 completa; IVA no recuperable a pendientes'),

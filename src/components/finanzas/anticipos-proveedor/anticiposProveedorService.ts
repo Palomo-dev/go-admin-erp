@@ -188,7 +188,10 @@ export const anticiposProveedorService = {
       procedimiento: e.procedimiento,
     }),
 
-  /** Ronda 3, causa (b): reintegro del exceso de una retención al proveedor. */
+  /**
+   * Rondas 3 y 4: reintegro del exceso de una retención al proveedor. El período de descuento no se elige (lo fija la
+   * regla del impuesto en la base); con reteICA viajan las pruebas del procedimiento municipal.
+   */
   reintegrarExceso: (
     anticipoId: string,
     e: {
@@ -197,8 +200,15 @@ export const anticiposProveedorService = {
       tarifaCorrecta: number;
       metodo: string;
       motivo: string;
-      soportes: { calculo: string; certificado: string; norma_ica?: string | null };
-      periodoDescuento: string;
+      /** Ronda 5: con reteIVA, también la manifestación escrita de no imputación del retenido. */
+      soportes: {
+        calculo: string;
+        certificado: string;
+        solicitud: string;
+        pruebas: string;
+        manifestacion_no_imputacion?: string | null;
+        ica?: Record<string, string> | null;
+      };
       requiereCorreccion: boolean;
       claveIdempotencia: string;
     },
@@ -210,7 +220,7 @@ export const anticiposProveedorService = {
       metodo: e.metodo,
       motivo: e.motivo.trim(),
       soportes: e.soportes,
-      periodo_descuento: e.periodoDescuento,
+      periodo_descuento: null,
       requiere_correccion: e.requiereCorreccion,
       clave_idempotencia: e.claveIdempotencia,
     }),

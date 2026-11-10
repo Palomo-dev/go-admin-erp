@@ -90,6 +90,22 @@ export const ERRORES_ANTICIPO_PROVEEDOR = [
   'rut_obligatorio',
   'resolucion_autorretencion_obligatoria',
   'fundamento_obligatorio',
+  // Ronda 4 del Contador.
+  'aiu_contrato_obligatorio',
+  'aiu_contrato_invalido',
+  'aiu_componentes_regimen',
+  'aiu_componentes_mezclados',
+  'soporte_del_hecho_obligatorio',
+  'solicitud_no_prueba_el_hecho',
+  'lineas_afectadas_obligatorias',
+  'linea_no_encontrada',
+  'linea_excede_lo_pendiente',
+  'linea_iva_no_cuadra',
+  'fecha_del_hecho_invalida',
+  'periodo_descuento_no_es_de_libre_eleccion',
+  'reteica_sin_procedimiento_municipal',
+  'reteica_pruebas_incompletas',
+  'retencion_ambigua',
 ] as const;
 export type ErrorAnticipoProveedor = (typeof ERRORES_ANTICIPO_PROVEEDOR)[number];
 
@@ -163,7 +179,24 @@ export function estadoHttpErrorAnticipo(codigo: ErrorAnticipoProveedor): number 
     case 'rut_obligatorio':
     case 'resolucion_autorretencion_obligatoria':
     case 'fundamento_obligatorio':
+    case 'aiu_contrato_obligatorio':
+    case 'aiu_contrato_invalido':
+    case 'aiu_componentes_regimen':
+    case 'aiu_componentes_mezclados':
+    case 'soporte_del_hecho_obligatorio':
+    case 'solicitud_no_prueba_el_hecho':
+    case 'lineas_afectadas_obligatorias':
+    case 'linea_no_encontrada':
+    case 'linea_excede_lo_pendiente':
+    case 'linea_iva_no_cuadra':
+    case 'fecha_del_hecho_invalida':
+    case 'periodo_descuento_no_es_de_libre_eleccion':
+    case 'reteica_pruebas_incompletas':
+    case 'retencion_ambigua':
       return 422;
+    // Sin el procedimiento municipal validado, la reversión de reteICA queda bloqueada hasta registrarlo.
+    case 'reteica_sin_procedimiento_municipal':
+      return 409;
     default:
       return estadoHttpErrorSaldoFavor(codigo as ErrorSaldoFavor);
   }
@@ -204,13 +237,15 @@ export const TRATAMIENTOS_COMPONENTE = [
   'exento',
   'excluido',
   'no_sujeto',
-  'aiu_administracion',
-  'aiu_imprevistos',
-  'aiu_utilidad',
 ] as const;
 export type TratamientoComponente = (typeof TRATAMIENTOS_COMPONENTE)[number];
+/*
+ * Ronda 4: el AIU ya no se elige como una línea más. Exige un contrato registrado por régimen (servicios del art. 462-1
+ * E.T. o construcción de inmuebles) y validado por el Contador; mientras ese registro no tenga pantalla, el formulario
+ * no ofrece líneas AIU y la base rechaza la operación sin contrato (`aiu_contrato_obligatorio`).
+ */
 /** Los que llevan tarifa de IVA. */
-export const TRATAMIENTOS_CON_IVA: readonly TratamientoComponente[] = ['gravado', 'aiu_utilidad'];
+export const TRATAMIENTOS_CON_IVA: readonly TratamientoComponente[] = ['gravado'];
 /** Solo una suma homogénea a esta tarifa se puede partir entre 1 + tarifa (ET art. 468). */
 export const TARIFA_IVA_GENERAL = 19;
 
@@ -284,41 +319,62 @@ export const evaluarRetencionesSchema = z
 export type SolicitudEvaluarRetenciones = z.infer<typeof evaluarRetencionesSchema>;
 
 /**
- * Ronda 3 del Contador: la devolución se registra con un PROCEDIMIENTO por causa; las retenciones afectadas salen del
- * procedimiento (no se eligen a mano).
- * - `operacion_anulada` (anulada o resuelta): se revierten todas las retenciones vigentes; la devolución es por todo el saldo.
- * - `devolucion_parcial`: el cálculo da la parte devuelta (base sin IVA e IVA); renta e ICA salen de la base y el reteIVA
- *   del IVA, cada uno con su tarifa; el dinero es esa parte menos esas retenciones.
- * Con retenciones afectadas: cálculo, certificado expedido/anulado/corregido, período en que se descuentan y si la
- * declaración requiere corrección; con ICA, la norma municipal. La retención excesiva o indebida va por `excesoRetencionSchema`.
+ * Rondas 3 y 4 del Contador: la devolución se registra con un PROCEDIMIENTO por causa y con el SOPORTE DEL HECHO (la
+ * solicitud del proveedor sola no prueba la anulación ni la resolución). Las retenciones afectadas salen del
+ * procedimiento, nunca se eligen a mano:
+ * - `operacion_anulada`: se revierten todas las retenciones vigentes; dinero + retenciones = saldo.
+ * - `resolucion_parcial` / `devolucion_parcial`: por las LÍNEAS afectadas de la operación; cada retención se revierte
+ *   sobre lo que ella cubrió, con su base y su tarifa (no por prorrata del total).
+ * El período en que se descuenta NO se elige: lo fija la regla de cada impuesto (renta e IVA, el del hecho; ICA, el del
+ * procedimiento municipal validado, cuyas pruebas se exigen). La retención excesiva va por `excesoRetencionSchema`.
  */
-export const CAUSAS_DEVOLUCION = ['operacion_anulada', 'devolucion_parcial'] as const;
+export const CAUSAS_DEVOLUCION = ['operacion_anulada', 'resolucion_parcial', 'devolucion_parcial'] as const;
 export type CausaDevolucion = (typeof CAUSAS_DEVOLUCION)[number];
+/** Soporte del hecho aceptado (la «solicitud del proveedor» no está: no prueba la anulación ni la resolución). */
+export const TIPOS_HECHO_DEVOLUCION = [
+  'resolucion_mutuo_acuerdo',
+  'resciliacion',
+  'sentencia_o_laudo',
+  'nota_credito_proveedor',
+  'anulacion_aceptada',
+  'acta_devolucion',
+] as const;
+export type TipoHechoDevolucion = (typeof TIPOS_HECHO_DEVOLUCION)[number];
 const PERIODO = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
+const FECHA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const TEXTO_SOPORTE = z.string().trim().min(3).max(500);
+/** Pruebas del procedimiento municipal de ReteICA: {solicitud, certificado, <cada prueba que exige el municipio>}. */
+const SOPORTES_ICA = z.record(z.string().min(1).max(80), TEXTO_SOPORTE);
 
 export const soportesProcedimientoSchema = z
   .object({
-    /** Anulación o resolución de la operación, o la solicitud / acuerdo con el proveedor. */
-    documento: TEXTO_SOPORTE,
     calculo: TEXTO_SOPORTE.nullable().optional(),
     /** Certificado de retención expedido, anulado o corregido. */
     certificado: TEXTO_SOPORTE.nullable().optional(),
-    norma_ica: TEXTO_SOPORTE.nullable().optional(),
+    ica: SOPORTES_ICA.nullable().optional(),
   })
   .strict();
+
+export const lineaAfectadaSchema = z
+  .object({
+    /** Clave de la línea de la operación ('0', '1'… o '<conversión>:0' para un abono convertido). */
+    componente: z.string().min(1).max(80),
+    base: z.number().finite().positive().max(1e12),
+    iva: z.number().finite().min(0).max(1e12),
+  })
+  .strict();
+export type LineaAfectada = z.infer<typeof lineaAfectadaSchema>;
 
 export const procedimientoDevolucionSchema = z
   .object({
     causa: z.enum(CAUSAS_DEVOLUCION),
+    hecho: z.object({ tipo: z.enum(TIPOS_HECHO_DEVOLUCION), documento: TEXTO_SOPORTE, fecha: FECHA }).strict(),
+    lineas: z.array(lineaAfectadaSchema).max(200).nullable().optional(),
     soportes: soportesProcedimientoSchema,
-    periodo_descuento: PERIODO.nullable().optional(),
     requiere_correccion: z.boolean().nullable().optional(),
-    base_devuelta: z.number().finite().min(0).max(1e12).nullable().optional(),
-    iva_devuelto: z.number().finite().min(0).max(1e12).nullable().optional(),
   })
   .strict()
-  .refine((p) => p.causa !== 'devolucion_parcial' || (p.base_devuelta ?? 0) > 0, { path: ['base_devuelta'], message: 'calculo_obligatorio' });
+  .refine((p) => p.causa === 'operacion_anulada' || (p.lineas?.length ?? 0) > 0, { path: ['lineas'], message: 'lineas_afectadas_obligatorias' });
 export type ProcedimientoDevolucion = z.infer<typeof procedimientoDevolucionSchema>;
 
 /**
@@ -337,7 +393,11 @@ export const devolverAnticipoSchema = z
   })
   .strict();
 
-/** Ronda 3, causa (b): retención excesiva o indebida; el exceso sale del cálculo correcto y se reintegra al proveedor. */
+/**
+ * Retención excesiva o indebida (rondas 3 y 4): el exceso sale del cálculo correcto y se reintegra al proveedor. Exige la
+ * solicitud escrita del afectado y sus pruebas, el cálculo y el certificado corregido; con reteICA, las pruebas del
+ * procedimiento municipal. El período lo fija la regla del impuesto (si llega, debe coincidir).
+ */
 export const excesoRetencionSchema = z
   .object({
     clase: z.enum(['retefuente', 'reteiva', 'reteica']),
@@ -347,33 +407,54 @@ export const excesoRetencionSchema = z
     cuenta_bancaria: z.number().int().positive().nullable().optional(),
     referencia: z.string().trim().max(200).nullable().optional(),
     motivo: z.string().trim().min(3).max(500),
-    soportes: z.object({ calculo: TEXTO_SOPORTE, certificado: TEXTO_SOPORTE, norma_ica: TEXTO_SOPORTE.nullable().optional() }).strict(),
-    periodo_descuento: PERIODO,
+    soportes: z
+      .object({
+        calculo: TEXTO_SOPORTE,
+        certificado: TEXTO_SOPORTE,
+        solicitud: TEXTO_SOPORTE,
+        pruebas: TEXTO_SOPORTE,
+        /**
+         * Ronda 5 del Contador (DUR 1625 de 2016, art. 1.3.2.3.1): en la reteIVA en exceso, además de la solicitud escrita,
+         * la manifestación ESCRITA del retenido de que no imputó la retención. Los dos soportes son obligatorios.
+         */
+        manifestacion_no_imputacion: TEXTO_SOPORTE.nullable().optional(),
+        ica: SOPORTES_ICA.nullable().optional(),
+      })
+      .strict(),
+    periodo_descuento: PERIODO.nullable().optional(),
     requiere_correccion: z.boolean(),
     clave_idempotencia: CLAVE,
   })
   .strict()
-  .refine((e) => e.clase !== 'reteica' || (e.soportes.norma_ica ?? '').trim().length >= 3, { path: ['soportes', 'norma_ica'], message: 'reteica_requiere_norma' });
+  .refine((e) => e.clase !== 'reteica' || Object.keys(e.soportes.ica ?? {}).length > 0, { path: ['soportes', 'ica'], message: 'reteica_pruebas_incompletas' })
+  .refine((e) => e.clase !== 'reteiva' || (e.soportes.manifestacion_no_imputacion ?? '').trim().length >= 3, {
+    path: ['soportes', 'manifestacion_no_imputacion'],
+    message: 'soporte_procedimiento_obligatorio',
+  });
 export type SolicitudExcesoRetencion = z.infer<typeof excesoRetencionSchema>;
 
 /**
- * Retenciones de la parte devuelta que salen del procedimiento (la base vuelve a calcularlas): misma regla que
- * `fn_anticipo_proveedor_devolver`, para la vista previa.
+ * Vista previa de las retenciones que se revierten (la base vuelve a calcularlas, línea por línea y con la cobertura
+ * de cada retención). Anulación: todo lo vigente. Parcial: renta e ICA sobre la base de las líneas, reteIVA sobre su IVA.
  */
 export function retencionesDelProcedimiento(
   vigentes: readonly Pick<RetencionDelAnticipo, 'clase' | 'vigente' | 'tarifa'>[],
-  p: { causa: CausaDevolucion; base_devuelta?: number | null; iva_devuelto?: number | null },
+  p: { causa: CausaDevolucion; lineas?: readonly Pick<LineaAfectada, 'base' | 'iva'>[] | null },
 ): { clase: ClaseRetencionAnticipo; valor: number; excede: boolean }[] {
+  const base = (p.lineas ?? []).reduce((s, l) => s + (l.base || 0), 0);
+  const iva = (p.lineas ?? []).reduce((s, l) => s + (l.iva || 0), 0);
   return vigentes
     .filter((r) => r.vigente > 0)
     .map((r) => {
-      const valor =
-        p.causa === 'operacion_anulada'
-          ? r.vigente
-          : Math.round((((r.clase === 'reteiva' ? p.iva_devuelto : p.base_devuelta) ?? 0) * (r.tarifa ?? 0)) / 100);
+      const valor = p.causa === 'operacion_anulada' ? r.vigente : Math.round(((r.clase === 'reteiva' ? iva : base) * (r.tarifa ?? 0)) / 100);
       return { clase: r.clase, valor, excede: valor > r.vigente };
     })
     .filter((x) => x.valor > 0);
+}
+
+/** IVA de la parte devuelta de una línea: el de la línea, en proporción a su base. */
+export function ivaDeLaParte(linea: Pick<ComponenteAnticipo, 'base' | 'iva'>, base: number): number {
+  return linea.base > 0 ? Math.round(((linea.iva * base) / linea.base) * 100) / 100 : 0;
 }
 
 export type SolicitudDevolverAnticipo = z.infer<typeof devolverAnticipoSchema>;
@@ -713,6 +794,22 @@ export interface FilaAnticipoProveedor {
   pendientesAbiertos?: number;
   /** Cruzado con la obligación de un mandato de consignación (no es aplicación ni devolución). */
   cruzado?: number;
+  /** Ronda 4: líneas de la operación (para resolver o devolver por líneas). */
+  componentes?: ComponenteAnticipo[];
+  /**
+   * Ronda 4: pruebas que exige el procedimiento de ReteICA VALIDADO del municipio de la retención. `null`: hay reteICA
+   * vigente pero el municipio no tiene procedimiento validado (la reversión queda bloqueada).
+   */
+  pruebasIca?: string[] | null;
+}
+
+/** Línea de la operación del anticipo (del giro o de una conversión en abono) y lo que ya se devolvió de ella. */
+export interface ComponenteAnticipo {
+  clave: string;
+  descripcion: string;
+  base: number;
+  iva: number;
+  devueltoBase: number;
 }
 
 export interface RetencionDelAnticipo {

@@ -1,0 +1,78 @@
+Resultado de 21_anticipos_ronda4_aiu_ica_devoluciones.sql · 2026-11-09 (corrida entre las 23:00 y las 23:59 de Bogotá; 2026-11-10 UTC)
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback): nada quedó
+escrito. Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md).
+
+Archivo: 21_anticipos_ronda4_aiu_ica_devoluciones.sql (md5 2950749a3850cf963e8a10857b6f7661; 45295 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado e64821bea37e5e3e0de59e8474ae9fdf).
+Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
+corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 f52c0de6f53856fc9dd38bb5b3403809 · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 0c5079355e6c5ab55dd6b14e1e484cea
+
+Corridas: una sola, 54 de 54. Cambio de esperado justificado: B4d decía «retefuente:DUR 1.2.4.17»; el Contador
+corrigió la cita en la ronda 5 (la anulación en renta es el art. 1.2.4.8). Cambia el artículo, no el valor ni el período.
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar (current_date = día de la
+organización, sin depender de la hora UTC de la corrida).
+
+RESULTADO (corrida que vale):
+PRUEBA EN SECO (se revierte) · 21: 54 de 54 ok · carga: 7 de 7 ok
+1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
+2 | carga | md5 20261108121000_consignaciones | f52c0de6f53856fc9dd38bb5b3403809 | ok
+3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
+4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | 1d80345bde9c6d9fd378bc10e8c43a5e | ok
+6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 0c5079355e6c5ab55dd6b14e1e484cea | ok
+8 | 21 | A1a 462-1 sin servicio comprendido | aiu_condiciones_462_1 | ok
+9 | 21 | A1b mantenimiento con «AIU» no pasa a construcción | aiu_mantenimiento_no_es_construccion | ok
+10 | 21 | A1c construcción sin licencia de construcción | aiu_condiciones_construccion | ok
+11 | 21 | A1d contrato sin archivo | aiu_contrato_incompleto | ok
+12 | 21 | A2a contratos registrados nacen pendientes de validación | pendiente_validacion,pendiente_validacion,pendiente_validacion | ok
+13 | 21 | A2b valida quien registró | validador_debe_ser_distinto | ok
+14 | 21 | A2c concepto corto | concepto_obligatorio | ok
+15 | 21 | A2d el Contador (otro usuario) valida el 462-1 | validado | ok
+16 | 21 | A2e una regla ya decidida no se vuelve a decidir | regla_ya_decidida | ok
+17 | 21 | A3 462-1 validado: base A+I+U 200.000 (20 %), IVA 38.000; retefuente 4 % sobre la base especial; reteIVA 15 %; reteICA sobre el total | iva 38000.00 · base IVA 200000.00 · rete 8000 · reteIVA 5700 · reteICA 9660 · mínimo false | ok
+18 | 21 | A4 462-1 con AIU de 50.000 (5 %): la base no baja del 10 % del valor (100.000) | base IVA 100000.00 · iva 19000.00 · mínimo true · rete 4000 | ok
+19 | 21 | A5 construcción sin honorarios: IVA sobre la utilidad (50.000), SIN el mínimo del 10 % | base IVA 50000.00 · iva 9500.00 · mínimo false · reteIVA 1425 | ok
+20 | 21 | A6 construcción con honorarios pactados: IVA sobre los honorarios del constructor | base IVA 100000.00 · iva 19000.00 | ok
+21 | 21 | A7 honorarios en un contrato del 462-1 | aiu_componentes_regimen | ok
+22 | 21 | A8 AIU mezclado con una línea gravada | aiu_componentes_mezclados | ok
+23 | 21 | A9 contrato AIU de otro proveedor | aiu_contrato_invalido | ok
+24 | 21 | A10 AIU sin tarifa de IVA | tarifa_iva_invalida | ok
+25 | 21 | B1 procedimiento sin pruebas | procedimiento_ica_incompleto | ok
+26 | 21 | B2a anticipo con reteICA municipal practicada al girar | 40000 · 9660 · 28500 | ok
+27 | 21 | B2b reversión de reteICA sin procedimiento del municipio: bloqueada | reteica_sin_procedimiento_municipal | ok
+28 | 21 | B3 el procedimiento validado de OTRO municipio no se traslada | reteica_sin_procedimiento_municipal | ok
+29 | 21 | B4a procedimiento del municipio registrado pero sin validar: sigue bloqueado | reteica_sin_procedimiento_municipal | ok
+30 | 21 | B4b validado, pero sin las pruebas que el procedimiento exige | reteica_pruebas_incompletas | ok
+31 | 21 | B4c con el procedimiento del municipio y sus pruebas: retefuente 4.000 · reteIVA 2.850 · reteICA 966 | 7816.00 · 2026-11 · 2026-12 | ok
+32 | 21 | B4d la regla del período queda escrita por impuesto | retefuente:DUR 1.2.4.8 · reteica:periodo_siguiente_al_reintegro | ok
+33 | 21 | B5a exceso de retefuente sin la solicitud del afectado y sus pruebas | soporte_procedimiento_obligatorio | ok
+34 | 21 | B5b reteICA en exceso sin las pruebas del procedimiento | reteica_pruebas_incompletas | ok
+35 | 21 | B5c el período de descuento no se elige | periodo_descuento_no_es_de_libre_eleccion | ok
+36 | 21 | B5d reintegro del exceso de reteICA en el período que fija el procedimiento | 4968.00 · 2026-12 | ok
+37 | 21 | C0 anticipo mixto: retefuente 28.000 · reteIVA 14.250 · reteICA 6.762 | 28000 · 6762 · 14250 | ok
+38 | 21 | C1a la solicitud del proveedor sola no prueba la resolución | solicitud_no_prueba_el_hecho | ok
+39 | 21 | C1b sin soporte del hecho | soporte_del_hecho_obligatorio | ok
+40 | 21 | C1c resolución parcial sin líneas afectadas | lineas_afectadas_obligatorias | ok
+41 | 21 | C1d línea que excede lo que queda de ella | linea_excede_lo_pendiente | ok
+42 | 21 | C1e IVA de la línea que no es el de la operación | linea_iva_no_cuadra | ok
+43 | 21 | C1f el período de descuento no es de libre elección | periodo_descuento_no_es_de_libre_eleccion | ok
+44 | 21 | C1g resolución parcial de la línea excluida (sin agotar el anticipo): cada retención sobre lo que cubrió; reteIVA 0 (prorrata ciega daría 3.585) | retefuente 8000 · reteica 1932 · total 9932.00 · saldo 595000.00 | ok
+45 | 21 | C2 hecho de octubre registrado en noviembre: renta e IVA en el período del hecho; ICA según su procedimiento | reteiva 2026-10 · reteica 2026-12 · retefuente 2026-10 · fechas renta/IVA en 2026-10 | ok
+46 | 21 | C2b octubre conserva neto no negativo (sin excedente); el reteICA de diciembre, sin retenciones practicadas, pasa a los siguientes | 0/1 | ok
+47 | 21 | C3a retención de 2025 revertida por un hecho de enero de 2026: período 2026-01 (renta e IVA) | reteiva 2026-01 · retefuente 2026-01 | ok
+48 | 21 | C3b pendientes: excedente para los períodos siguientes, otro año y corrección de la declaración | correccion_declaracion · descuento_retencion_siguientes_periodos · retencion_revertida_otro_anio | ok
+49 | 21 | C3c enero de 2026 queda con neto negativo en retefuente (−4.000): se descuenta en los siguientes | -4000.00 | ok
+50 | 21 | D1 financiación: no se retiene al girar | 0 · 500000.00 | ok
+51 | 21 | D2a convertir un pago anticipado (ya se evaluó al girar) | anticipo_no_es_financiacion | ok
+52 | 21 | D2b sin soporte del hecho | soporte_obligatorio | ok
+53 | 21 | D2c más que lo financiado | conversion_excede_financiacion | ok
+54 | 21 | D2d abono de 357.000 (base 300.000 + IVA 57.000): retefuente 12.000 · reteIVA 8.550 · reteICA 2.898; girado convertido 333.552 | 23448 · 333552.00 · 523448.00 | ok
+55 | 21 | D2e asiento de la conversión: D anticipo / C retenciones, con el NIT del proveedor | 13300501 D 23448 · 23652501 C 12000 · 23670501 C 8550 · 23680501 C 2898 · NIT 900000211 | ok
+56 | 21 | D3 conversión repetida con la misma clave | true | ok
+57 | 21 | D4 resolución parcial de una línea del abono convertido: 4.000 + 2.850 + 966 | 7816.00 · 111184.00 | ok
+58 | 21 | E1 certificado: las retenciones de la conversión en su fecha, como «Abono del anticipo» | 3 · 23448.00 | ok
+59 | 21 | E2 conciliación del anticipo convertido: tabla = libros | true · 404448.00 · 404448.00 | ok
+60 | 21 | E3 estado de cuenta: la conversión aparece con su retención | 23448.00 | ok
+61 | 21 | E4 asientos de la prueba 21: todos cuadran; ninguno en 1330 | true · 0 | ok

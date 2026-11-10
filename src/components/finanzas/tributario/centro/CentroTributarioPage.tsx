@@ -42,6 +42,9 @@ function mesesDeCorte(hoy: string): string[] {
 export function CentroTributarioPage() {
   const t = useTranslations('finanzasTributarioR4.centro');
   const tc = useTranslations('finanzasTributarioR4.comun');
+  // Ronda 5 del Contador: las notas nuevas (formato 2532) viven en su propio namespace.
+  const t5 = useTranslations('finanzasTributarioR5.notas');
+  const nota = (n: string) => (t5.has(n) ? t5(n) : t(`notas.${n}`));
   const locale = useLocale();
   const router = useRouter();
   const { formatear } = useMonedaOrganizacion();
@@ -139,7 +142,7 @@ export function CentroTributarioPage() {
           <span className="font-medium text-fg">{nombre(f)}</span>
           {f.obligacion.notas.map((n) => (
             <span key={n} className="block text-xs text-fg-secondary">
-              {t(`notas.${n}`)}
+              {nota(n)}
             </span>
           ))}
         </div>
@@ -270,7 +273,7 @@ export function CentroTributarioPage() {
                 icono={ListChecks}
                 titulo={nombre(f)}
                 subtitulo={`${etiquetaPeriodo(f.obligacion.periodo, locale)} · ${t('columnas.vence')}: ${vence(f)}`}
-                meta={f.obligacion.notas.length ? f.obligacion.notas.map((n) => t(`notas.${n}`)).join(' ') : undefined}
+                meta={f.obligacion.notas.length ? f.obligacion.notas.map((n) => nota(n)).join(' ') : undefined}
                 valor={valor(f)}
                 estado={<StatusBadge estado={e.etiqueta} etiqueta={e.etiqueta} tono={e.tono} />}
                 acciones={acciones(f)}

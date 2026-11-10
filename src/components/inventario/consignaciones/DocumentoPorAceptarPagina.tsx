@@ -31,10 +31,22 @@ import { buscarProductosDocumento, type ProductoParaDocumento } from '@/lib/serv
 import { ErrorPeticionSaldoFavor, nuevaClaveIdempotencia } from '@/components/finanzas/saldos-a-favor/saldosAFavorService';
 import { textoErrorSaldo } from '@/components/finanzas/saldos-a-favor/textosSaldo';
 import { RUTA_CONSIGNACIONES } from '@/lib/finanzas/consignaciones/consignaciones';
-import { RUTA_CONSIGNACIONES_INVENTARIO, rutaRecibida, type DocumentoPorAceptar } from '@/lib/inventario/consignaciones/recibidas';
+import {
+  RUTA_CONSIGNACIONES_INVENTARIO,
+  liquidacionEscritaValida,
+  ordenAplicacionValido,
+  rutaRecibida,
+  type CondicionesContrato,
+  type ConceptoAplicacion,
+  type DocumentoPorAceptar,
+} from '@/lib/inventario/consignaciones/recibidas';
 import { consignacionesRecibidasService, type ComparacionDocumento } from './consignacionesRecibidasService';
+import { TerminosLiquidacionCampos } from './TerminosLiquidacionCampos';
+import { textoErrorConsignacion } from './textoErrorConsignacion';
 
 const NS = 'consignacionesR4';
+/** Ronda 5: términos del contrato y errores nuevos. */
+const NS_R5 = 'consignacionesR5';
 
 interface LineaCopia {
   ref: string;
@@ -53,6 +65,7 @@ interface Enlace {
 
 export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string }) {
   const t = useTranslations(NS);
+  const tR5 = useTranslations(NS_R5);
   const router = useRouter();
   const permisos = usePermisosFinanzas();
   const fmt = useMonedaOrganizacion().formatear;
@@ -66,6 +79,11 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
   const [enlaces, setEnlaces] = useState<Record<string, Enlace>>({});
   const [cuentaRecaudo, setCuentaRecaudo] = useState('');
   const [valoracion, setValoracion] = useState<'costo_acreditado' | 'valor_convenido' | ''>('');
+  // Ronda 5 (C.Co. art. 1277): quien recibe en mandato declara la compensación, el orden de aplicación y la liquidación por escrito.
+  const [compensacion, setCompensacion] = useState<boolean | null>(null);
+  const [ordenAplicacion, setOrdenAplicacion] = useState<ConceptoAplicacion[] | null>(null);
+  const [liquidacionEscrita, setLiquidacionEscrita] = useState<CondicionesContrato['liquidacionEscrita']>({ medio: null, plazoDias: null });
+  const [tocado, setTocado] = useState(false);
   const [rechazar, setRechazar] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const clave = useRef(nuevaClaveIdempotencia('consignacion-aceptar'));
@@ -102,7 +120,8 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
   const necesitaRecaudo = contrato === 'intermediacion';
   const recaudoValido = !necesitaRecaudo || cuentaRecaudo.trim() === '' || /^281510\d{2}$/.test(cuentaRecaudo.trim());
   const sinCostoAcreditado = valoracion === 'costo_acreditado' && lineas.some((l) => !(Number(l.costo_acreditado ?? 0) > 0));
-  const notaLista = !faltanEnlaces && sucursal !== null && recaudoValido && contrato === 'intermediacion' && valoracion !== '' && !sinCostoAcreditado;
+  const terminosListos = compensacion !== null && ordenAplicacionValido(ordenAplicacion, compensacion) && liquidacionEscritaValida(liquidacionEscrita);
+  const notaLista = !faltanEnlaces && sucursal !== null && recaudoValido && contrato === 'intermediacion' && valoracion !== '' && !sinCostoAcreditado && terminosListos;
   const bloqueantes = (comparacion?.diferencias ?? []).filter((d) => d.tipo !== 'comision_distinta');
   const abierto = doc?.estado === 'enviado';
 
@@ -112,12 +131,18 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
     setError(null);
     try {
       if (esNota) {
-        if (!notaLista || sucursal === null) return;
+        setTocado(true);
+        if (!notaLista || sucursal === null || compensacion === null || !ordenAplicacion) return;
         const r = await consignacionesRecibidasService.aceptarNota(documentoId, {
           sucursal_id: sucursal,
           mapeo: lineas.map((l) => ({ producto_ref: l.producto_ref, product_id: enlaces[l.producto_ref]?.producto?.id ?? 0, precio: l.precio == null ? enlaces[l.producto_ref]?.precio ?? null : null })),
           cuenta_recaudo: necesitaRecaudo && cuentaRecaudo.trim() ? cuentaRecaudo.trim() : null,
           valoracion,
+          terminos_contrato: {
+            compensacion_remuneracion: compensacion,
+            orden_aplicacion: ordenAplicacion,
+            liquidacion_escrita: { medio: liquidacionEscrita.medio, plazo_dias: liquidacionEscrita.plazoDias },
+          },
           clave_idempotencia: clave.current,
         });
         toastSuccess(t('porAceptar.aceptada', { numero: r.numero }));
@@ -128,7 +153,7 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
         router.push(comparacion ? `${RUTA_CONSIGNACIONES}/${comparacion.nota_id}` : RUTA_CONSIGNACIONES_INVENTARIO);
       }
     } catch (e) {
-      setError(textoErrorSaldo(t, e));
+      setError(textoErrorConsignacion(t, tR5, e));
     } finally {
       setEnviando(false);
     }
@@ -307,6 +332,19 @@ export function DocumentoPorAceptarPagina({ documentoId }: { documentoId: string
               </FormField>
             )}
           </div>
+          {contrato === 'intermediacion' && (
+            <TerminosLiquidacionCampos
+              idBase="aceptar"
+              orden={ordenAplicacion}
+              liquidacion={liquidacionEscrita}
+              compensacion={compensacion}
+              onCompensacion={setCompensacion}
+              onOrden={setOrdenAplicacion}
+              onLiquidacion={setLiquidacionEscrita}
+              // «Aceptar» se deshabilita mientras falten: los avisos aparecen en cuanto se empieza a llenar el bloque.
+              tocado={tocado || compensacion !== null || ordenAplicacion !== null || liquidacionEscrita.medio !== null || liquidacionEscrita.plazoDias !== null}
+            />
+          )}
         </>
       )}
 

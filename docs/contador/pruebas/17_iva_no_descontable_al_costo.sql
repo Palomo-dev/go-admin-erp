@@ -17,6 +17,12 @@
 --           SIN asiento y pendiente (ronda 3: una sola tarifa no basta si hay conceptos sin IVA)
 --   FVU   factura 200.000 al 19 % (sin conceptos sin IVA) · NCU2 parcial (100.000 + 19.000) → D 24080501 19.000
 -- Y el cuadre de todos los asientos (control de la base, adelantado con SET CONSTRAINTS ALL IMMEDIATE).
+--
+-- RONDA 5 (2026-11-09, respuesta 5 del Contador): la cuenta por línea es obligatoria cuando el IVA de las líneas tiene
+-- deducibilidad distinta. FCH (no descontable + proporcional 60 % + descontable, SIN cuenta por línea) ya no se
+-- contabiliza con la cuenta de cabecera: queda SIN asiento y pendiente «iva_no_descontable_por_corregir». Cambian, por
+-- eso, tres esperados de FCH (su IVA del asiento, su cuenta débito y su cuadre) y la fila «otros» deja aparte a FCH. Los
+-- datos no cambian. El mismo ejemplo con cuenta por línea (34.200 al costo, 27.800 descontables) está en la prueba 23.
 
 begin;
 
@@ -128,7 +134,7 @@ select c.k as doc, je.id as asiento, l.account_code as cuenta, round(sum(l.debit
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select x.doc, 'IVA del asiento (2408)', x.esperado, y.s, y.s = x.esperado
   from (values
-    ('fch', '24081001 D 22800 + 24081002 D 5000'),
+    ('fch', 'SIN ASIENTO'),
     ('fcl', '24081001 D 9500'),
     ('ds', 'SIN 2408'),
     ('fcg', '24081001 D 19000'),
@@ -142,10 +148,12 @@ select x.doc, 'IVA del asiento (2408)', x.esperado, y.s, y.s = x.esperado
                             from lineas_doc i where i.doc = x.doc and i.cuenta like '2408%'), 'SIN 2408') end as s) y;
 
 insert into r (escenario, verificacion, esperado, obtenido, ok)
-select 'fch', 'Cuenta débito de la compra: costo + IVA no descontable (19.000 + 15.200)', 'D 434200 (400.000 + 34.200) · C proveedor 462000',
-       format('D %s · C %s', sum(i.d) filter (where i.cuenta not like '2408%'), sum(i.c)),
-       sum(i.d) filter (where i.cuenta not like '2408%') = 434200 and sum(i.c) = 462000
-  from lineas_doc i where i.doc = 'fch';
+select 'fch', 'Ronda 5: deducibilidad distinta con cuenta de cabecera → pendiente de corregir (asigne la cuenta de cada línea)',
+       'iva_no_descontable_por_corregir · deducibilidad distinta',
+       coalesce(max(f.reason), 'SIN PENDIENTE') || ' · ' || case when bool_or(f.detail like '%deducibilidad distinta%') then 'deducibilidad distinta' else 'otro motivo' end,
+       max(f.reason) = 'iva_no_descontable_por_corregir' and bool_or(f.detail like '%deducibilidad distinta%')
+  from public.journal_entry_failures f
+ where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo') and f.source_id = (select v from ctx where k = 'fch');
 
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'fcl', 'El IVA no descontable va a la cuenta de SU línea', '513595 D 50000 · 519525 D 119000',
@@ -192,7 +200,8 @@ select 'otros', 'Pendientes contables nuevos de los demás documentos', 'ninguno
        coalesce(string_agg(f.source || ' ' || f.reason || ' ' || left(coalesce(f.detail, ''), 100), ' | '), 'ninguno'), count(*) = 0
   from public.journal_entry_failures f
  where f.organization_id = 374 and f.id > (select v::int from ctx where k = 'max_fallo')
-   and f.source_id is distinct from (select v from ctx where k = 'ncx');
+   and f.source_id is distinct from (select v from ctx where k = 'ncx')
+   and f.source_id is distinct from (select v from ctx where k = 'fch');
 
 insert into r (escenario, verificacion, esperado, obtenido, ok)
 select 'cuadre', format('Asiento %s (%s)', je.id, coalesce((select upper(c.k) from ctx c where c.v = je.source_id limit 1), je.source)),

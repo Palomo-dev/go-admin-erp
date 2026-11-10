@@ -79,7 +79,7 @@ function instantes(desde: string, hasta: string, tz: string): { inicio: string; 
 // ── Perfil ─────────────────────────────────────────────────────────────────
 
 /** Estado de validación de un código del catálogo (lo valida el Contador antes de aprobarse). */
-export type EstadoValidacionCodigo = 'pendiente_validacion' | 'cotejado_fuente_oficial' | 'validado' | 'no_validado_como_fe' | 'sin_dato';
+export type EstadoValidacionCodigo = 'pendiente_validacion' | 'cotejado_fuente_oficial' | 'validado' | 'no_pertenece_tabla_fe' | 'historico' | 'sin_dato';
 
 export interface CodigoCatalogo {
   codigo: string;
@@ -107,7 +107,7 @@ export interface RespuestaPerfil {
   catalogoRut: CodigoCatalogo[];
 }
 
-const ESTADOS_VALIDACION = new Set(['pendiente_validacion', 'cotejado_fuente_oficial', 'validado', 'no_validado_como_fe']);
+const ESTADOS_VALIDACION = new Set(['pendiente_validacion', 'cotejado_fuente_oficial', 'validado', 'no_pertenece_tabla_fe', 'historico']);
 const estadoDe = (v: unknown): EstadoValidacionCodigo => (typeof v === 'string' && ESTADOS_VALIDACION.has(v) ? (v as EstadoValidacionCodigo) : 'sin_dato');
 
 export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
@@ -135,7 +135,7 @@ export async function leerPerfil(ctx: Ctx): Promise<RespuestaPerfil> {
       estado: estadoDe(c.estado_validacion),
       nota: c.nota ?? null,
       fuente: c.fuente ?? null,
-      vigente: c.estado_validacion !== 'no_validado_como_fe',
+      vigente: c.estado_validacion !== 'no_pertenece_tabla_fe',
     }),
   );
   if (catalogoRut.error && !esObjetoInexistente(catalogoRut.error as ErrorBase)) throw catalogoRut.error;

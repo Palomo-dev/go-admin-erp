@@ -1,0 +1,106 @@
+Resultado de 20_anticipos_consignacion_integrada_completa.sql · 2026-11-09 (corrida entre las 23:00 y las 23:59 de Bogotá; 2026-11-10 UTC)
+Proyecto taqjemqjtumhwptchcxk · SOLO org 374 (sucursal 585). Una sola transacción que termina con una excepción (= rollback): nada quedó
+escrito. Ronda 5 del Contador (RESPUESTAS-CONTADOR-RONDA-5-2026-11-09.md).
+
+Archivo: 20_anticipos_consignacion_integrada_completa.sql (md5 9f59f8e190e09203b1f564c9e248c0e5; 230315 bytes; ejecutado dentro de un DO sin la línea «begin;», md5 de lo ejecutado a62a1e934f9d59f372860aa2d5487f09).
+Subido a objetos grandes por trozos (md5 de cada trozo comprobado contra el archivo local) y armado por md5 dentro de la
+corrida. Migraciones cargadas COMPLETAS y EXACTAS (md5 comprobado dentro de la corrida), en orden de versión:
+  20261108120500 6a5a3ead2fe311fdde4b7d5c0376c12b · 20261108121000 f52c0de6f53856fc9dd38bb5b3403809 · 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · 20261108160000 85fd17321a7e85d85a58916cb2f84c95 · 20261108160500 1d80345bde9c6d9fd378bc10e8c43a5e · 20261108165000 1ec6641bdf74dfc15163d0753982309f · 20261108170000 0c5079355e6c5ab55dd6b14e1e484cea
+
+Corridas: la primera integrada dio todo OK salvo 26·C5 (la cartera del plan de la integrada es 13050501; ver la
+26). Corregida la prueba, la corrida que vale: 11 53/53 · 15 73/73 · 20 21/21 · 21 54/54 · 22 39/39 · 25 25/25 ·
+26 23/23 = 288 de 288 + 7 de 7 md5 de carga. El detalle intermedio de esta corrida se recortó en la salida de la
+herramienta (más de 30.000 caracteres); el detalle completo de cada cuerpo está en el .resultado.txt de su prueba, que
+corre el mismo cuerpo, y abajo quedan el resumen, la carga, los casos 20 y 26 del final y la bitácora.
+
+Zona de la sesión: la prueba fija «set local timezone to 'America/Bogota'» al empezar (current_date = día de la
+organización, sin depender de la hora UTC de la corrida).
+
+RESULTADO (corrida que vale):
+PRUEBA EN SECO (se revierte) · 11: 53 de 53 ok · 15: 73 de 73 ok · 20: 21 de 21 ok · 21: 54 de 54 ok · 22: 39 de 39 ok · 25: 25 de 25 ok · 26: 23 de 23 ok · carga: 7 de 7 ok
+1 | carga | md5 20261108120500_organization_links | 6a5a3ead2fe311fdde4b7d5c0376c12b | ok
+2 | carga | md5 20261108121000_consignaciones | f52c0de6f53856fc9dd38bb5b3403809 | ok
+3 | carga | md5 20261108140500_responsabilidades_fiscales_en | 4b00bf10bf99ff2a97e2e89ff0480811 | ok
+4 | carga | md5 20261108160000_tributario_catalogo_rut_y_codigos_fe | 85fd17321a7e85d85a58916cb2f84c95 | ok
+5 | carga | md5 20261108160500_tributario_perfil_renta_iva | 1d80345bde9c6d9fd378bc10e8c43a5e | ok
+6 | carga | md5 20261108165000_tarifas_precision_exacta | 1ec6641bdf74dfc15163d0753982309f | ok
+7 | carga | md5 20261108170000_anticipos_proveedores_contador | 0c5079355e6c5ab55dd6b14e1e484cea | ok
+8 | 11 | Tarifa exacta de «ICA Bogotá» (plantilla ICA_0.966) tras 20261108165000 | rate 0.97; exacta 0.966000; valor 9660 | ok
+9 | 11 | Sin cuenta configurada (antes caía a 1330) | sin_configurar; cuenta_anticipos_no_configurada; cuenta null | ok
+10 | 11 | Configurada 1330 (título) | no_es_detalle; cuenta_anticipos_no_detalle | ok
+11 | 11 | Regla de la cuenta: auxiliar de 8 dígitos bajo 133005; otra cuenta solo con equivalencia aprobada | 133005 no_es_detalle; 13309501 fuera_de_133005 → sirve tras aprobar; nota corta nota_obligatoria; título cuenta_no_valida; 13300501 sirve | ok
+12 | 11 | Configurada 13300501 | {"cuenta": "13300501", "estado": "ok", "sugerida": "13300501", "configurada": "13300501", "equivalencia": null} | ok
+13 | 11 | Naturaleza obligatoria, sin valor por defecto | naturaleza_obligatoria / naturaleza_obligatoria | ok
+14 | 11 | Sin perfil tributario vigente | retefuente pendiente/sin_perfil_tributario; reteiva pendiente/sin_perfil_tributario; reteica pendiente/sin_perfil_tributario | ok
+15 | 11 | Guardar la regla de ReteICA (municipio, actividad, tarifa por mil, norma, vigencia) | new row for relation "reteica_reglas" violates check constraint "reteica_reglas_norma_check"; tarifa 9.6600 | ok
+16 | 11 | Pago anticipado 1.190.000, suma homogénea a la tarifa general (19 %) | retefuente practicar base 1000000.00 valor 40000; reteiva practicar base 190000.00 valor 28500; reteica practicar base 1000000.00 valor 9660; total 78160; neto 1111840.00 | ok
+17 | 11 | ReteICA sin territorialidad confirmada / sin regla elegida | territorialidad_sin_confirmar / norma_municipal_sin_confirmar | ok
+18 | 11 | Dividir entre 1+tarifa solo para la tarifa general | componentes_obligatorios | ok
+19 | 11 | Componentes por línea: 500.000 gravado 19 % + 200.000 excluido (795.000) | retefuente base 700000.00 valor 28000; reteiva base 95000.00 valor 14250; reteica base 700000.00 valor 6762 | ok
+20 | 11 | AIU (adm 100.000, impr 50.000, util 50.000): sin contrato / con contrato del art. 462-1 pendiente de validación | aiu_contrato_obligatorio; iva 38000.00; retefuente pendiente/aiu_contrato_pendiente_validacion; reteiva pendiente/aiu_contrato_pendiente_validacion; reteica pendiente/aiu_contrato_pendiente_validacion | ok
+21 | 11 | Componentes que no suman el monto (795.000 contra 800.000) | componentes_no_suman | ok
+22 | 11 | Anticipo de financiación | retefuente diferida/se_evalua_al_pago_o_abono; reteiva diferida/se_evalua_al_pago_o_abono; reteica diferida/se_evalua_al_pago_o_abono | ok
+23 | 11 | Proveedor sin datos fiscales | retefuente pendiente/beneficiario_sin_datos_fiscales; reteiva pendiente/beneficiario_sin_datos_fiscales | ok
+24 | 11 | Org gran contribuyente comprando a gran contribuyente | {"clase": "reteiva", "estado": "pendiente", "motivo": "grandes_contribuyentes_por_verificar"} | ok
+25 | 11 | SIMPLE: sin RUT / inscripción que no cubre la fecha de la operación / RUT actualizado e inscripción vigente | rut_obligatorio; simple_sin_acreditar; simple_sin_acreditar → beneficiario_simple_acreditado | ok
+26 | 11 | Autorretenedor: O-15 sin verificar / sin resolución / RUT + resolución con concepto 4 % / concepto no cubierto (11 %) / reteIVA | autorretencion_sin_verificar; resolucion_autorretencion_obligatoria; autorretenedor_autorizado_concepto; 11 % 110000; reteIVA 28500 | ok
+27 | 11 | Autorretención especial (59) registrada para el proveedor B | 40000 | ok
+28 | 11 | Registrar anticipo en efectivo con caja abierta | caja 22; monto 1190000.00; retención 78160; girado 1111840.00; cuenta 13300501 | ok
+29 | 11 | Asiento del anticipo en efectivo | 13300501 D 1190000 C 0 tercero 900000001 | 1105 D 0 C 1111840 tercero 900000001 | 23652501 D 0 C 40000 tercero 900000001 | 23670501 D 0 C 28500 tercero 900000001 | 23680501 D 0 C 9660 tercero 900000001 | ok
+30 | 11 | Repetir con la misma clave | repetida true; mismo t; asientos 1 | ok
+31 | 11 | Arqueo: el anticipo es «Egreso por anticipo», no una venta negativa | diferencia -1230840.00; egreso
+
+[… 29778 caracteres recortados en la salida de la herramienta …]
+
+_del_cobro | ok
+266 | 26 | C4 por más de lo que la factura todavía debe (abonaría de más la cartera) | retencion_excede_saldo_factura | ok
+267 | 26 | C5 con su cobro: D 28151001 / C cartera de la factura (Concepto DIAN 13277 de 2025); abono por aplicar; saldo real exigible 0 | 28151001 D 1710 · cartera de la factura C 1710 · por_aplicar · 1710.00 · 0.00 · pendiente_de_soporte | ok
+268 | 26 | C6 el abono queda ligado al cobro y a su fecha | 1 · 1710.00 · true · true | ok
+269 | 26 | C7 saldo real exigible de la factura: saldo 1.710 − abono por aplicar 1.710 = 0 | 1710.00 · 1710.00 · 0.00 | ok
+270 | 26 | C8 la cartera operativa no se escribe a mano: sigue al saldo de la factura | 1710.00 · 1710.00 | ok
+271 | 26 | C9 pendientes: la cartera por aplicar y el certificado pendiente de soporte | 1 · 1 | ok
+272 | 26 | C10 otra retención sobre la misma factura que ya no tiene saldo (1.710 por aplicar + 100) | retencion_excede_saldo_factura | ok
+273 | 26 | Z1 asientos de la prueba 26 descuadrados | 0 | ok
+274 | 26 | Z2 ningún abono por retención sin su cobro | 0 | ok
+275 | 20 | I1 anticipo de 595.000 al consignante: retefuente 20.000 + reteIVA 14.250 + reteICA 4.830 (criterios compartidos) | 39080 · 555920.00 | ok
+276 | 20 | I2 cruce de 150.000 con la obligación EXIGIBLE del mandato (D 28151001 / C 13300501) | 150000.00 · 445000.00 | ok
+277 | 20 | I3 devolución parcial por la línea: 4.000 + 2.850 + 966 | 7816.00 · 326000.00 | ok
+278 | 20 | I4 conciliación del anticipo: 595.000 − cruzado 150.000 − devuelto 119.000 = 326.000 = libros | true · 150000.00 · 119000.00 · 326000.00 · 326000.00 | ok
+279 | 20 | I5 por proveedor: tabla = libros = auxiliar por NIT | 326000.00 · 326000.00 · 326000.00 | ok
+280 | 20 | I6 certificado del consignante (practicadas por la organización): 39.080 − 7.816; las retenciones que SUFRE en la consignación no entran | 31264.00 · 6 | ok
+281 | 20 | I7 certificado = libros 236x del NIT del consignante | 31264.00 | ok
+282 | 20 | A1 octubre: retención del 2 y su anulación del 25 en el mismo período (neto 0) | 6 · 0.00 | ok
+283 | 20 | A2 entre años: diciembre de 2025 conserva la retención (7.816); enero de 2026 lleva su reversión (−7.816) | 7816.00 / -7816.00 | ok
+284 | 20 | A3 contra-asientos en la fecha del ajuste (2026-10-25 y 2026-01-05) | 2026-10-25 / 2026-01-05 | ok
+285 | 20 | A4 pendiente «retención revertida en otro año» solo para la de 2025 | 0/1 | ok
+286 | 20 | C1 retención del comprador ocurrida en diciembre de 2025, reconocida en su fecha | 2025-12-20 · 28151001 D 2400 · 13050501 C 2400 | ok
+287 | 20 | C2 el hecho no puede ser anterior a la venta que se liquida | fecha_anterior_a_la_venta | ok
+288 | 20 | C3 retención de octubre reconocida en su fecha (registrada en noviembre) | 2026-10-20 | ok
+289 | 20 | C4 anular las dos liquidaciones no cierra sus pendientes; las retenciones practicadas y sus asientos quedan | 8 · 2 · 2 | ok
+290 | 20 | C5 la nueva liquidación (noviembre) cubre las dos ventas y trae las dos retenciones practicadas con sus fechas | 120000.00 · 2 · 2025-12-20,2026-10-20 | ok
+291 | 20 | C6 los pendientes de las anuladas se cierran como reliquidadas | 0 | ok
+292 | 20 | C7 el certificado de 2025 concilia en 2026 la retención practicada en 2025 | 0.00 | ok
+293 | 20 | Z1 certificado de 2025 del consignante: solo el anticipo de diciembre (la retención que él sufrió en la consignación no entra) | 3 · 7816.00 | ok
+294 | 20 | Z2 asientos de la prueba 20 descuadrados | 0 | ok
+295 | 20 | Z3 toda la transacción: ningún asiento descuadrado | 0 | ok
+15 › ASIENTOS DE CONSIGNACIÓN:
+consignment_received: 9405 D 400000 | 911520 C 400000
+consignment_received: 9405 D 250000 | 911520 C 250000
+consignment_sale: 911520 D 80000 | 9405 C 80000
+consignment_sale: 41401501 D 120000 | 28151001 C 120000
+consignment_sale: 28151001 D 18000 | 41351201 C 18000
+consignment_sale: 911520 D 40000 | 9405 C 40000
+consignment_sale: 41401501 D 60000 | 28151001 C 60000
+consignment_sale: 28151001 D 9000 | 41351201 C 9000
+consignment_incident: 911520 D 40000 | 9405 C 40000
+consignment_withholding: 13551501 D 2970 | 28151001 C 2970
+consignment_sale: 9405 D 40000 | 911520 C 40000
+consignment_sale: 41351201 D 9000 | 28151001 C 9000
+consignment_sale: 911520 D 80000 | 9405 C 80000
+consignment_sale: 41401501 D 120000 | 28151001 C 120000
+consignment_sale: 28151001 D 18000 | 41351201 C 18000
+consignment_sale: 911520 D 100000 | 9405 C 100000
+consignment_sale: 41401501 D 100000 | 28151001 C 100000
+consignment_remuneration: 28151001 D 16000 | 41351201 C 16000
+consignment_advance_crossing: 28151001 D 50000 | 13300501 C 50000
+15 › PENDIENTES ABIERTOS: consignacion_derecho_frente_al_dueno×1, consignacion_devolucion_pos×1, consignacion_factura_remuneracion×2, consignacion_novedad×1, consignacion_retencion_pendiente×8, consignacion_retencion_por_conciliar×2

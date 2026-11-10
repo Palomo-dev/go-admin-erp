@@ -6,7 +6,7 @@
  * procedencia») y no deciden solos cuál aplica. Si parte del período no tiene
  * vigencia, también se señala. Sin React ni Supabase.
  */
-import type { VigenciaPerfil } from './perfil';
+import { cambioPeriodicidadSinConfirmar, type VigenciaPerfil } from './perfil';
 import { esDiaValido } from './periodos';
 
 export interface ResumenVigencia {
@@ -28,7 +28,10 @@ export interface AnalisisPeriodo {
   cambioDeVigencia: boolean;
   /** Algún día del período no tiene vigencia. */
   sinPerfilCompleto: boolean;
-  /** Alguna vigencia del período cambió la periodicidad sin documentar hecho, norma y fecha (P8, ronda 2). */
+  /**
+   * Alguna vigencia del período cambió la periodicidad sin documentar hecho, norma y fecha (P8, ronda 2) o,
+   * documentado, sin que se haya registrado que procede (ronda 4: «documentado» no es «procedente»).
+   */
   cambioPendienteSoporte: boolean;
   /**
    * Resumen de las vigencias que tocan el período (id, fechas y última
@@ -80,7 +83,7 @@ export function analizarPeriodo(vigencias: readonly VigenciaPerfil[], desde: str
     })),
     cambioDeVigencia: dentro.length > 1,
     sinPerfilCompleto: cubiertoHasta !== hasta,
-    cambioPendienteSoporte: dentro.some((v) => v.cambioPeriodicidadEstado === 'pendiente_soporte'),
+    cambioPendienteSoporte: dentro.some((v) => cambioPeriodicidadSinConfirmar(v)),
     huella: huellaVigencias(dentro),
   };
 }

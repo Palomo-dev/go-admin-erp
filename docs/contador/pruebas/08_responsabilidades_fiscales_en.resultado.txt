@@ -1,3 +1,21 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140500 4b00bf10bf99ff2a97e2e89ff0480811 · prueba 08 36ca2b8e6635a03998d3d4d196a1c31c
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 12 verificaciones · 12 ok · 0 fallas. Ni la prueba ni la migración cambiaron.
+
+── Corridas anteriores ──
+RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140500 (H2) 4b00bf10bf99ff2a97e2e89ff0480811 · prueba 08 36ca2b8e6635a03998d3d4d196a1c31c
+Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados
+contra el disco); un DO pega las migraciones completas en orden de prefijo (en el marcador «MIGRACIONES», en sus
+marcadores, o donde estaba «begin;»), quita solo «begin;», «rollback;» y el SELECT final, ejecuta y termina en
+excepción (= rollback). Objetos grandes borrados al final; la base quedó sin datos ni objetos de la prueba.
+Resultado: 12 verificaciones · 12 ok · 0 fallas (mismos valores de la tabla de abajo).
+
+── Corridas anteriores ──
 Prueba en seco 08 · H2 responsabilidades del RUT por vigencia · 2026-11-07 · org 374
 Migración 20261108140500_responsabilidades_fiscales_en.sql pegada DENTRO de la transacción (no aplicada) · ROLLBACK: no quedó ningún dato.
 Resultado: 12 de 12 OK.

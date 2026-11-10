@@ -236,16 +236,26 @@ export function ListadoAnticiposProveedor() {
   const puedeCrear = permisos.crear && !pendiente && !cuentaPendiente;
   const pendientes = datos?.pendientes ?? [];
 
-  // Ronda 3: la devolución va por procedimiento y causa; las retenciones afectadas salen del procedimiento.
+  // Rondas 3 y 4: la devolución va por procedimiento, causa, hecho y líneas; las retenciones afectadas salen del procedimiento.
   const retencionesDevolver = devolver?.retenciones;
+  const componentesDevolver = devolver?.componentes;
+  const pruebasIcaDevolver = devolver?.pruebasIca ?? null;
   const saldoDevolver = devolver?.saldo ?? 0;
   const complementoDevolver: ComplementoDevolver = useMemo(
     () => ({
       render: ({ tocado, onCambio, dinero }) => (
-        <SeccionRetencionesDevolucion retenciones={retencionesDevolver ?? []} saldo={saldoDevolver} dinero={dinero} tocado={tocado} onCambio={onCambio} />
+        <SeccionRetencionesDevolucion
+          retenciones={retencionesDevolver ?? []}
+          componentes={componentesDevolver ?? []}
+          pruebasIca={pruebasIcaDevolver}
+          saldo={saldoDevolver}
+          dinero={dinero}
+          tocado={tocado}
+          onCambio={onCambio}
+        />
       ),
     }),
-    [retencionesDevolver, saldoDevolver],
+    [retencionesDevolver, componentesDevolver, pruebasIcaDevolver, saldoDevolver],
   );
   const subtitulo = datos?.cuenta ? t('subtituloCuenta', { cuenta: datos.cuenta }) : t('subtitulo');
 

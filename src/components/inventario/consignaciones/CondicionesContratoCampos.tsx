@@ -10,8 +10,12 @@
  * 438 y 455. IVA y retenciones NO se eligen aquí: se determinan por ley.
  * Ronda 3: la comisión se reconoce cuando se devenga (al vender); solo una
  * obligación posterior REAL, documentada aquí, la difiere hasta cumplirse.
+ * Ronda 4 (solo recibida): si el contrato pacta descontar la remuneración de lo
+ * que se debe al dueño; sin pacto, la remuneración es una cuenta por cobrar.
+ * Ronda 5 (solo recibida, C.Co. art. 1277): el orden de aplicación de lo recaudado y la liquidación por escrito.
  */
 import { useTranslations } from 'next-intl';
+import { TerminosLiquidacionCampos } from './TerminosLiquidacionCampos';
 import { AvisoTonal, FormField } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -81,6 +85,7 @@ export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, 
   const fijarContrato = (v: NonNullable<CondicionesContrato['contrato']>) =>
     fijar({ contrato: v, condicion: v === 'intermediacion' ? 'agente' : null });
   const facturaRem = valor.facturaRemuneracion === null ? null : valor.facturaRemuneracion ? 'si' : 'no';
+  const compensacion = valor.compensacionRemuneracion === null ? null : valor.compensacionRemuneracion ? 'si' : 'no';
 
   return (
     <fieldset className="flex flex-col gap-4 rounded-lg border border-line p-3 sm:p-4">
@@ -225,7 +230,32 @@ export function CondicionesContratoCampos({ valor, onCambio, tocado, direccion, 
                 { valor: 'cobro', etiqueta: t('obligaciones.cobro') },
               ]}
             />
+            {direccion === 'recibida' && (
+              <Opciones
+                id="consignacion-compensacion-remuneracion"
+                etiqueta={t('compensacionRemuneracion')}
+                valor={compensacion}
+                onCambio={(v) => fijar({ compensacionRemuneracion: v === 'si' })}
+                error={err('compensacion_remuneracion')}
+                ayuda={t('compensacionRemuneracionAyuda')}
+                opciones={[
+                  { valor: 'si', etiqueta: t('si') },
+                  { valor: 'no', etiqueta: t('no') },
+                ]}
+              />
+            )}
           </div>
+          {direccion === 'recibida' && (
+            <TerminosLiquidacionCampos
+              idBase="consignacion"
+              orden={valor.ordenAplicacion}
+              liquidacion={valor.liquidacionEscrita}
+              compensacion={valor.compensacionRemuneracion}
+              onOrden={(o) => fijar({ ordenAplicacion: o })}
+              onLiquidacion={(l) => fijar({ liquidacionEscrita: l })}
+              tocado={tocado}
+            />
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {(['devoluciones', 'perdidas', 'gastos'] as const).map((k) => (
               <Opciones

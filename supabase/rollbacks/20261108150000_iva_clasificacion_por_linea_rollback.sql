@@ -6,6 +6,7 @@
 -- Revertir antes 20261108151000 (el borrador v2 las lee) y 20261108150500.
 -- Ronda 3: revertir antes también 20261108152000 (B5): el asiento de compra lee iva_descontable* para llevar el
 -- IVA no descontable al costo. Si sigue aplicada, esta reversión se detiene.
+-- Ronda 4: también quita iva_soporte_aduanero (soporte de importaciones de la casilla 47); se pierde lo registrado.
 
 do $do$
 begin
@@ -22,6 +23,8 @@ drop function if exists public.fn_iva_clasificar_linea(integer, text, uuid, json
 drop function if exists public.fn_iva_lineas_documento(integer, text, uuid);
 drop function if exists public.fn_iva_sugerencia_linea(integer, integer, text, numeric, numeric, numeric, integer);
 drop function if exists public.fn_iva_base_linea(numeric, numeric, numeric, boolean, numeric);
+-- Ronda 5: qué le falta al soporte aduanero de la casilla 47.
+drop function if exists public.fn_iva_soporte_aduanero_faltantes(jsonb, numeric);
 drop table if exists public.iva_clasificacion_cambios;
 
 alter table public.invoice_items
@@ -35,6 +38,7 @@ alter table public.invoice_items
   drop column if exists iva_clasificacion_origen,
   drop column if exists iva_clasificado_por,
   drop column if exists iva_clasificado_en,
+  drop column if exists iva_soporte_aduanero,
   drop column if exists iva_descontable,
   drop column if exists iva_descontable_porcentaje,
   drop column if exists iva_descontable_motivo,

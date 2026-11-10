@@ -11,6 +11,12 @@
  * 20261108160500) como defensa; una prueba de jest compara los códigos de ambos.
  * Las ADVERTENCIAS y el estado del cambio de periodicidad también se calculan
  * aquí para mostrarlos antes de guardar. Sin React ni Supabase.
+ *
+ * Ronda 4 (docs/contador/RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md): gran
+ * contribuyente con calificación ordinaria (efectos el 1 de enero siguiente) o
+ * excepcional (fecha del acto) y, ya exigible, la bimestral se BLOQUEA; RUT del
+ * SIMPLE con 15 o 59 queda para aclaración (no se exige borrar); ningún motivo de
+ * cambio de periodicidad autoriza por sí solo («documentado» ≠ «procedente»).
  */
 
 export const REGIMENES_RENTA = ['ordinario', 'simple', 'especial', 'no_contribuyente_declarante', 'no_contribuyente_no_declarante'] as const;
@@ -19,7 +25,16 @@ export type RegimenRenta = (typeof REGIMENES_RENTA)[number];
 export const CONDICIONES_IVA = ['responsable', 'no_responsable'] as const;
 export type CondicionIva = (typeof CONDICIONES_IVA)[number];
 
-export const MOTIVOS_CAMBIO_PERIODICIDAD = ['inicio_actividades', 'ingreso_simple', 'salida_simple', 'designacion_gran_contribuyente', 'otro'] as const;
+/** Motivos DESCRIPTIVOS: ninguno autoriza el cambio por sí solo; todos exigen hecho, norma y fecha (ronda 4). */
+export const MOTIVOS_CAMBIO_PERIODICIDAD = [
+  'inicio_actividades',
+  'ingreso_simple',
+  'salida_simple',
+  'designacion_gran_contribuyente',
+  'correccion_clasificacion',
+  'acto_especial',
+  'otro',
+] as const;
 export type MotivoCambioPeriodicidad = (typeof MOTIVOS_CAMBIO_PERIODICIDAD)[number];
 
 /** Hecho generador del INC que aplica (ET art. 512-1). */
@@ -33,6 +48,14 @@ export type TipoRte = (typeof TIPOS_RTE)[number];
 export const ESTADOS_CAMBIO_PERIODICIDAD = ['no_aplica', 'pendiente_soporte', 'documentado'] as const;
 export type EstadoCambioPeriodicidad = (typeof ESTADOS_CAMBIO_PERIODICIDAD)[number];
 
+/** Ronda 4: «documentado» no es «procedente». La procedencia la registra una persona con fundamento. */
+export const PROCEDENCIAS_CAMBIO_PERIODICIDAD = ['por_evaluar', 'procedente', 'no_procedente'] as const;
+export type ProcedenciaCambioPeriodicidad = (typeof PROCEDENCIAS_CAMBIO_PERIODICIDAD)[number];
+
+/** Ronda 4: calificación del gran contribuyente. Ordinaria: efectos el 1 de enero siguiente; excepcional: fecha del acto. */
+export const CALIFICACIONES_GRAN_CONTRIBUYENTE = ['ordinaria', 'excepcional'] as const;
+export type CalificacionGranContribuyente = (typeof CALIFICACIONES_GRAN_CONTRIBUYENTE)[number];
+
 /** Periodicidades del IVA en las que se declara (las que pueden «cambiar a mitad de año»). */
 const DECLARABLES = new Set(['bimestral', 'cuatrimestral', 'anual']);
 
@@ -42,7 +65,12 @@ export interface DatosCombinacion {
   periodicidadIva: string;
   granContribuyente: boolean | null;
   granContribuyenteActo: string | null;
+  /** Desde cuándo producen efectos la calificación (AAAA-MM-DD). */
   granContribuyenteDesde: string | null;
+  /** Ronda 4: ordinaria o excepcional. Opcional para leer filas anteriores. */
+  granContribuyenteCalificacion?: CalificacionGranContribuyente | null;
+  /** Ronda 4: fecha de la resolución que califica (AAAA-MM-DD). */
+  granContribuyenteActoFecha?: string | null;
   /** Autorretención ORDINARIA sobre ingresos propios (RUT 15, acto administrativo). */
   autorretenedor: boolean | null;
   autorretenedorActo: string | null;
@@ -56,6 +84,13 @@ export interface DatosCombinacion {
   rteTipo: TipoRte | null;
   /** Ingresos del año anterior > 160.000 UVT (memoria económica, ET art. 356-3). null = sin dato. */
   rteIngresosSuperan160000Uvt: boolean | null;
+  /**
+   * Ronda 5: la cooperativa del RTE recibió donaciones o cooperación internacional no reembolsable (formato 2532,
+   * Res. 227 de 2025, art. 1.1.6.3). null = por confirmar. Opcional: la pantalla actual no lo envía.
+   */
+  rteDonacionesCooperacion?: boolean | null;
+  /** Ronda 5: constancia de lo verificado; obligatoria cuando el 2532 no aplica. */
+  rteDonacionesConstancia?: string | null;
   noContribuyenteNaturaleza: string | null;
   motivoCambioPeriodicidad: MotivoCambioPeriodicidad | null;
   cambioPeriodicidadHecho: string | null;
@@ -97,6 +132,10 @@ export const BLOQUEOS = [
   'fe_r99_con_calidades',
   'simple_con_autorretencion',
   'gran_contribuyente_sin_acto',
+  'gran_contribuyente_sin_calificacion',
+  'gran_contribuyente_fecha_efectos',
+  'gran_contribuyente_antes_de_efectos',
+  'gran_contribuyente_no_bimestral',
   'autorretenedor_sin_acto',
   'inc_sin_actividad',
   'no_contribuyente_sin_naturaleza',
@@ -122,7 +161,8 @@ export const ADVERTENCIAS = [
   'gran_contribuyente_sin_fe_o13',
   'autorretenedor_sin_fe_o15',
   'agente_iva_sin_fe_o23',
-  'gran_contribuyente_no_bimestral',
+  'gran_contribuyente_transicion_por_resolver',
+  'rut_simple_con_autorretencion_para_aclaracion',
   'rut_falta_codigo',
   'rut_codigo_no_vigente',
   'rut_varios_regimenes_renta',
@@ -199,10 +239,26 @@ export function evaluarCombinacion(d: DatosCombinacion, contexto: ContextoCombin
   // ET art. 911: el SIMPLE no practica autorretenciones (ordinaria ni especial).
   if (simple && (d.autorretenedor === true || d.autorretencionEspecial === true)) b.add('simple_con_autorretencion');
   // Calidades que nacen de un acto administrativo: sin acto y fecha no se afirman.
-  if (d.granContribuyente === true && (vacio(d.granContribuyenteActo) || !d.granContribuyenteDesde)) b.add('gran_contribuyente_sin_acto');
+  const gran = d.granContribuyente === true;
+  const calificacion = d.granContribuyenteCalificacion ?? null;
+  const actoFecha = d.granContribuyenteActoFecha ?? null;
+  if (gran && (vacio(d.granContribuyenteActo) || !d.granContribuyenteDesde || !actoFecha)) b.add('gran_contribuyente_sin_acto');
   if (d.autorretenedor === true && (vacio(d.autorretenedorActo) || !d.autorretenedorActoFecha)) b.add('autorretenedor_sin_acto');
-  // ET art. 600 num. 1: el gran contribuyente declara IVA bimestral (el efecto en el año lo revisa el Contador).
-  if (d.granContribuyente === true && d.condicionIva === 'responsable' && d.periodicidadIva === 'cuatrimestral') a.add('gran_contribuyente_no_bimestral');
+  // Ronda 4 (Res. 227 de 2025, art. 1.1.4.3): ordinaria → efectos desde el 1 de enero siguiente a la resolución (primer
+  // bimestre enero–febrero); excepcional → la fecha expresa del acto. Ya exigible la bimestral, no se advierte: se bloquea.
+  if (gran && calificacion === null) b.add('gran_contribuyente_sin_calificacion');
+  if (gran && d.granContribuyenteDesde && actoFecha) {
+    const efectosOrdinaria = `${Number(actoFecha.slice(0, 4)) + 1}-01-01`;
+    if ((calificacion === 'ordinaria' && d.granContribuyenteDesde !== efectosOrdinaria) || (calificacion === 'excepcional' && d.granContribuyenteDesde < actoFecha)) {
+      b.add('gran_contribuyente_fecha_efectos');
+    }
+  }
+  if (gran && d.granContribuyenteDesde && contexto && contexto.vigenteDesde < d.granContribuyenteDesde) b.add('gran_contribuyente_antes_de_efectos');
+  if (gran && d.condicionIva === 'responsable' && d.periodicidadIva === 'cuatrimestral') b.add('gran_contribuyente_no_bimestral');
+  if (gran && calificacion === 'excepcional' && d.granContribuyenteDesde) {
+    const [, mes, dia] = d.granContribuyenteDesde.split('-').map(Number);
+    if (!(dia === 1 && mes % 2 === 1)) a.add('gran_contribuyente_transicion_por_resolver');
+  }
   if (d.motivoCambioPeriodicidad === 'designacion_gran_contribuyente' && d.periodicidadIva !== 'bimestral') b.add('cambio_gran_contribuyente_no_bimestral');
 
   // INC según actividad (ET art. 512-1).
@@ -228,8 +284,10 @@ export function evaluarCombinacion(d: DatosCombinacion, contexto: ContextoCombin
     }
     if (d.regimenRenta === 'no_contribuyente_no_declarante' && (rut.has('04') || rut.has('05') || rut.has('06'))) b.add('rut_art22_con_renta');
     if (rut.has('13') && d.granContribuyente !== true) b.add('rut_13_sin_gran_contribuyente');
-    if (rut.has('15') && d.autorretenedor !== true) b.add('rut_15_sin_autorretenedor');
-    if (rut.has('59') && d.autorretencionEspecial !== true) b.add('rut_59_sin_autorretencion_especial');
+    // Ronda 4: en el SIMPLE, un RUT con 15 o 59 es contradictorio: para aclaración, sin exigir borrar el código.
+    if (simple && (rut.has('15') || rut.has('59'))) a.add('rut_simple_con_autorretencion_para_aclaracion');
+    if (rut.has('15') && d.autorretenedor !== true && !simple) b.add('rut_15_sin_autorretenedor');
+    if (rut.has('59') && d.autorretencionEspecial !== true && !simple) b.add('rut_59_sin_autorretencion_especial');
     if (rut.has('23') && d.agenteRetencionIva !== true) b.add('rut_23_sin_agente_iva');
     if (rut.has('07') && d.agenteRetencion !== true) b.add('rut_07_sin_agente_retencion');
     if (rut.has('33') && d.responsableInc !== true) b.add('rut_33_sin_inc');
@@ -244,8 +302,8 @@ export function evaluarCombinacion(d: DatosCombinacion, contexto: ContextoCombin
     if (codigoRegimen) esperados.push(codigoRegimen);
     if (d.condicionIva === 'responsable') esperados.push('48');
     if (d.granContribuyente === true) esperados.push('13');
-    if (d.autorretenedor === true) esperados.push('15');
-    if (d.autorretencionEspecial === true) esperados.push('59');
+    if (d.autorretenedor === true && !simple) esperados.push('15');
+    if (d.autorretencionEspecial === true && !simple) esperados.push('59');
     if (d.agenteRetencionIva === true) esperados.push('23');
     if (d.agenteRetencion) esperados.push('07');
     if (d.responsableInc) esperados.push('33');

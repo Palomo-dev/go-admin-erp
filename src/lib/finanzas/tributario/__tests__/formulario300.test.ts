@@ -117,7 +117,19 @@ describe('ronda 3', () => {
   it('corrección de error incompleta: la reversa queda pendiente con su estado', () => {
     const o = f.otrosMovimientos.find((x) => x.asiento === 1190)!;
     expect(o).toMatchObject({ destino: 'pendiente', motivo: 'correccion_incompleta', soporteTipo: 'comprobante_interno' });
-    expect(o.correccion).toEqual({ completa: false, resolucion: null, referencia: null, fecha: null, corrigeDeclaracionAnterior: null });
+    expect(o.correccion).toEqual({
+      completa: false,
+      resolucion: null,
+      referencia: null,
+      fecha: null,
+      corrigeDeclaracionAnterior: null,
+      faltantes: [],
+      decision: null,
+      ventaEnOtroPeriodo: false,
+      // Ronda 5: dos datos nuevos del detalle; ausentes en una respuesta vieja, quedan en false.
+      tratadaComoNoExpedida: false,
+      declaracionNoCorregible: false,
+    });
     expect(f.otrosMovimientos.find((x) => x.asiento === 1184)!.correccion).toBeNull();
   });
 
@@ -142,6 +154,53 @@ describe('ronda 3', () => {
     // Otras naturalezas no arrastran los campos de la corrección.
     const pago = validarNaturaleza({ asiento: 9, naturaleza: 'pago_dian', soporte: 'R', soporte_fecha: '2026-11-07', doc_electronico_resolucion: 'anulacion_dian' });
     expect(pago.ok && pago.datos?.doc_electronico_resolucion).toBeNull();
+  });
+});
+
+describe('ronda 4', () => {
+  it('expediente de la corrección de error: valores conocidos y textos acotados; rechazo comercial ≠ rechazo de la DIAN', () => {
+    const base = { asiento: 9, naturaleza: 'correccion_error', soporte: 'Acta 1', soporte_fecha: '2026-11-07', soporte_tipo: 'comprobante_interno' };
+    expect(validarNaturaleza({ ...base, estado_electronico: 'borrada' })).toEqual({ ok: false, error: 'expediente_invalido' });
+    expect(validarNaturaleza({ ...base, cobro: 'quizas' })).toEqual({ ok: false, error: 'expediente_invalido' });
+    const ok = validarNaturaleza({
+      ...base,
+      expediente_explicacion: ' Venta digitada dos veces por la misma caja ',
+      factura_referencia: 'POS-1',
+      estado_electronico: 'nunca_transmitida',
+      contingencia_verificada: true,
+      contingencia_nota: 'Sin facturas de contingencia ese día',
+      entrega_prestacion: 'no_hubo',
+      entrega_soporte: 'Kárdex sin salida',
+      cobro: 'no_hubo',
+      cobro_soporte: 'Arqueo de caja',
+    });
+    expect(ok.ok && ok.datos).toMatchObject({
+      expediente_explicacion: 'Venta digitada dos veces por la misma caja',
+      estado_electronico: 'nunca_transmitida',
+      contingencia_verificada: true,
+      entrega_prestacion: 'no_hubo',
+      cobro: 'no_hubo',
+    });
+  });
+
+  it('lee la decisión, lo que falta del expediente, la tarifa inferida del POS y el cierre como señal', () => {
+    const f = leerFormulario300({
+      ...RESPUESTA,
+      otros_movimientos: [
+        { asiento: 77, origen: 'cierre_ejercicio', valor: -5000, naturaleza: 'sin_registro', sugerida: 'cierre', destino: 'pendiente', motivo: 'sugerido_por_confirmar' },
+        { asiento: 78, valor: -19000, naturaleza: 'correccion_error', declarada: true, destino: 'pendiente', motivo: 'correccion_sin_decision',
+          correccion: { completa: true, faltantes: [], decision: null, venta_en_otro_periodo: true } },
+        { asiento: 79, valor: -19000, naturaleza: 'correccion_error', declarada: true, destino: 'no_afecta',
+          correccion: { completa: true, faltantes: [], decision: { tratamiento: 'retirar_venta', periodo_desde: '2026-11-01', periodo_hasta: '2026-12-31' } } },
+      ],
+      alertas: { ...((RESPUESTA as Record<string, unknown>).alertas as object), tarifas_inferidas: { lineas: 2, base: 200000, iva: 38000 } },
+      pendientes: [{ motivo: 'importacion_sin_soporte_aduanero', lado: 'descontable', base: 50000, iva: 0, total_origenes: 1, origenes: [] }],
+    });
+    expect(f.otrosMovimientos.find((o) => o.asiento === 77)).toMatchObject({ sugerida: 'cierre', destino: 'pendiente' });
+    expect(f.otrosMovimientos.find((o) => o.asiento === 78)).toMatchObject({ motivo: 'correccion_sin_decision', correccion: { completa: true, decision: null, ventaEnOtroPeriodo: true } });
+    expect(f.otrosMovimientos.find((o) => o.asiento === 79)!.correccion!.decision).toEqual({ tratamiento: 'retirar_venta', periodoDesde: '2026-11-01', periodoHasta: '2026-12-31' });
+    expect(f.alertas.tarifasInferidas).toEqual({ lineas: 2, base: 200000, iva: 38000 });
+    expect(f.pendientes.map((p) => p.motivo)).toEqual(['importacion_sin_soporte_aduanero']);
   });
 });
 
@@ -198,9 +257,15 @@ describe('validarClasificacion (ronda 2)', () => {
 });
 
 describe('validarNaturaleza (ronda 2) y validarDeclaracion', () => {
-  it('toda naturaleza salvo el cierre exige soporte y fecha', () => {
+  it('toda naturaleza exige soporte y fecha; ronda 4: también el cierre, con su explicación', () => {
     expect(validarNaturaleza({ asiento: 5, naturaleza: 'pago_dian' })).toEqual({ ok: false, error: 'soporte_requerido' });
     expect(validarNaturaleza({ asiento: 5, naturaleza: 'pago_dian', soporte: 'Recibo 490', soporte_fecha: '2026-11-07' }).ok).toBe(true);
+    expect(validarNaturaleza({ asiento: 5, naturaleza: 'cierre' })).toEqual({ ok: false, error: 'soporte_requerido' });
+    expect(validarNaturaleza({ asiento: 5, naturaleza: 'cierre', soporte: 'Comprobante de cierre 12', soporte_fecha: '2026-12-31' })).toEqual({
+      ok: false,
+      error: 'cierre_requiere_explicacion',
+    });
+    expect(validarNaturaleza({ asiento: 5, naturaleza: 'cierre', soporte: 'Comprobante de cierre 12', soporte_fecha: '2026-12-31', nota: 'Traslado de saldos, no es ajuste fiscal' }).ok).toBe(true);
     expect(validarNaturaleza({ asiento: 0, naturaleza: 'pago_dian' })).toEqual({ ok: false, error: 'asiento_invalido' });
     expect(validarNaturaleza({ asiento: 5, naturaleza: null })).toEqual({ ok: true, asiento: 5, datos: null });
   });
@@ -268,5 +333,76 @@ describe('enlaces y CSV', () => {
     expect(filas[1]).toEqual([30, 'exportacion_bienes', 300000, 300000, 0, 1]);
     expect(filas[2]).toEqual([59, 'ventas_general', 104500, 105000, 500, 4]);
     expect(filas).toHaveLength(1 + 2 + 1 + 4);
+  });
+});
+
+describe('ronda 5 del Contador', () => {
+  const v6 = leerFormulario300({
+    ...RESPUESTA,
+    version: 6,
+    pendientes: [
+      { motivo: 'importacion_no_excluida_no_va_47', lado: 'descontable', base: 1000, iva: 0, efecto_2408: 0, total_origenes: 1, origenes: [] },
+      { motivo: 'importacion_documento_no_corresponde', lado: 'descontable', base: 2000, iva: 0, efecto_2408: 0, total_origenes: 1, origenes: [] },
+      { motivo: 'importacion_base_no_coincide', lado: 'descontable', base: 3000, iva: 0, efecto_2408: 0, total_origenes: 1, origenes: [] },
+    ],
+    otros_movimientos: [
+      { asiento: 2001, origen: 'cierre_ejercicio', fecha: '2026-12-31', valor: 0, naturaleza: 'cierre', declarada: true, destino: 'pendiente',
+        motivo: 'cierre_sin_aprobacion', cierre_aprobado: false },
+      { asiento: 2002, origen: 'manual', fecha: '2026-11-07', valor: -19000, naturaleza: 'correccion_error', declarada: true, destino: 'pendiente',
+        motivo: 'correccion_declaracion_no_corregible',
+        correccion: { completa: true, faltantes: [], tratada_como_no_expedida: true, declaracion_no_corregible: true,
+          decision: { tratamiento: 'retirar_venta', periodo_desde: '2026-09-01', periodo_hasta: '2026-10-31' } } },
+    ],
+  });
+
+  it('los motivos nuevos de la casilla 47, del cierre y de la corrección no se descartan', () => {
+    expect(v6.pendientes.map((p) => p.motivo)).toEqual([
+      'importacion_no_excluida_no_va_47',
+      'importacion_documento_no_corresponde',
+      'importacion_base_no_coincide',
+    ]);
+    expect(v6.otrosMovimientos.find((o) => o.asiento === 2001)).toMatchObject({ motivo: 'cierre_sin_aprobacion', cierreAprobado: false, correccion: null });
+    expect(v6.otrosMovimientos.find((o) => o.asiento === 2002)).toMatchObject({
+      motivo: 'correccion_declaracion_no_corregible',
+      cierreAprobado: null,
+      correccion: { tratadaComoNoExpedida: true, declaracionNoCorregible: true, decision: { tratamiento: 'retirar_venta' } },
+    });
+  });
+
+  it('«nunca transmitida»: viajan la verificación de la contingencia, la consulta del CUFE/CUDE y la devolución del cobro', () => {
+    const base = { asiento: 7, naturaleza: 'correccion_error', soporte_tipo: 'comprobante_interno', soporte: 'Acta 1', soporte_fecha: '2026-11-08', estado_electronico: 'nunca_transmitida' };
+    const ok = validarNaturaleza({
+      ...base,
+      contingencia_soporte_tipo: 'aviso_proveedor_tecnologico',
+      contingencia_soporte_referencia: 'Aviso PT 77',
+      contingencia_soporte_fecha: '2026-11-02',
+      contingencia_fin_en: '2026-11-02T18:00:00-05:00',
+      consulta_cufe_resultado: 'sin_resultado',
+      consulta_cufe_en: '2026-11-05T09:00:00-05:00',
+      consulta_cufe_soporte: 'Captura de la consulta en el catálogo de la DIAN',
+      cobro: 'hubo_devuelto',
+      cobro_soporte: 'Recibo 9',
+      cobro_devolucion_soporte: 'Transferencia de devolución 123',
+      cobro_devolucion_fecha: '2026-11-06',
+    });
+    expect(ok.ok && ok.datos).toMatchObject({
+      contingencia_soporte_tipo: 'aviso_proveedor_tecnologico',
+      contingencia_fin_en: '2026-11-02T18:00:00-05:00',
+      consulta_cufe_resultado: 'sin_resultado',
+      cobro_devolucion_fecha: '2026-11-06',
+    });
+    expect(validarNaturaleza({ ...base, contingencia_soporte_tipo: 'llamada' })).toEqual({ ok: false, error: 'expediente_invalido' });
+    expect(validarNaturaleza({ ...base, consulta_cufe_en: '2026-11-05' })).toEqual({ ok: false, error: 'expediente_invalido' });
+    expect(validarNaturaleza({ ...base, consulta_cufe_resultado: 'tal_vez' })).toEqual({ ok: false, error: 'expediente_invalido' });
+  });
+
+  it('declaración: vencimiento y firmeza solo viajan si vienen, y la firmeza lleva su nota', () => {
+    const p = { desde: '2026-09-01', hasta: '2026-10-31', presentada_en: '2026-11-05' };
+    const sin = validarDeclaracion(p);
+    expect(sin.ok && sin.datos).toEqual({ numero_formulario: null, presentada_en: '2026-11-05', nota: null });
+    expect(validarDeclaracion({ ...p, vencimiento_plazo: '2026-10-31' })).toEqual({ ok: false, error: 'vencimiento_invalido' });
+    expect(validarDeclaracion({ ...p, en_firme: false })).toEqual({ ok: false, error: 'firmeza_requiere_nota' });
+    const con = validarDeclaracion({ ...p, vencimiento_plazo: '2026-11-12', en_firme: false, firmeza_nota: 'Dentro del término de revisión' });
+    expect(con.ok && con.datos).toMatchObject({ vencimiento_plazo: '2026-11-12', en_firme: false, firmeza_nota: 'Dentro del término de revisión' });
   });
 });

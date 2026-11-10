@@ -37,6 +37,7 @@ import {
   excesoRetencionSchema,
   partesDevolucion,
   retencionesDelProcedimiento,
+  ivaDeLaParte,
   totalComponentes,
   anticiposConRetencionPendiente,
   anularAnticipoSchema,
@@ -345,13 +346,9 @@ describe('anticipos a proveedores: ronda 2 del Contador', () => {
     expect(crearAnticipoSchema.safeParse({ ...base, componentes: [{ tratamiento: 'otro', base: 1 }] }).success).toBe(false);
     expect(crearAnticipoSchema.safeParse({ ...base, componentes: [] }).success).toBe(false);
     expect(totalComponentes(componentes as never)).toBe(795000);
-    expect(
-      totalComponentes([
-        { tratamiento: 'aiu_administracion', base: 100000 },
-        { tratamiento: 'aiu_imprevistos', base: 50000 },
-        { tratamiento: 'aiu_utilidad', base: 50000, tarifa_iva: 19 },
-      ] as never),
-    ).toBe(209500);
+    // Ronda 4: el AIU ya no es una línea más; exige un contrato registrado por régimen y validado (sin pantalla aún).
+    expect(crearAnticipoSchema.safeParse({ ...base, componentes: [{ tratamiento: 'aiu_utilidad', base: 50000, tarifa_iva: 19 }] }).success).toBe(false);
+    expect(estadoHttpErrorAnticipo('aiu_contrato_obligatorio')).toBe(422);
   });
 
   test('ítem 4: la regla de ReteICA trae la tarifa por mil exacta (9,66 ‰ = 0,966 %); la financiación queda «diferida»', () => {
@@ -365,20 +362,22 @@ describe('anticipos a proveedores: ronda 2 del Contador', () => {
     expect(Math.round((1000000 * e.opciones.reteica[0].tarifa) / 100)).toBe(9660);
   });
 
-  test('ronda 3: la devolución va por procedimiento y causa; las retenciones salen del procedimiento', () => {
+  test('ronda 4: la devolución va por causa, hecho documentado y líneas afectadas; el período no se elige', () => {
     const d = { monto: 55592, metodo: 'transfer', motivo: 'Devuelve', referencia: 'Consignación', clave_idempotencia: 'devolver:1' };
-    const soportes = { documento: 'Acuerdo 12', calculo: 'Hoja de cálculo', certificado: 'Certificado corregido', norma_ica: 'Acuerdo municipal' };
+    const soportes = { calculo: 'Hoja de cálculo', certificado: 'Certificado corregido' };
+    const hecho = { tipo: 'nota_credito_proveedor', documento: 'NC-77 del proveedor', fecha: '2026-11-09' };
+    const lineas = [{ componente: '0', base: 50000, iva: 9500 }];
     expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: null }).success).toBe(true);
-    expect(
-      devolverAnticipoSchema.safeParse({
-        ...d,
-        procedimiento: { causa: 'devolucion_parcial', soportes, base_devuelta: 50000, iva_devuelto: 9500, periodo_descuento: '2026-11', requiere_correccion: false },
-      }).success,
-    ).toBe(true);
-    // Parcial sin el cálculo de la parte devuelta; causa inventada; sin documento: no pasan.
-    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'devolucion_parcial', soportes } }).success).toBe(false);
-    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'otra', soportes } }).success).toBe(false);
-    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'operacion_anulada', soportes: { documento: '' } } }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'devolucion_parcial', hecho, lineas, soportes, requiere_correccion: false } }).success).toBe(true);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'resolucion_parcial', hecho, lineas, soportes } }).success).toBe(true);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'operacion_anulada', hecho, soportes } }).success).toBe(true);
+    // Parcial sin líneas; sin el hecho; con la solicitud del proveedor como hecho; causa inventada: no pasan.
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'devolucion_parcial', hecho, soportes } }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'operacion_anulada', soportes } }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'operacion_anulada', hecho: { ...hecho, tipo: 'solicitud_proveedor' }, soportes } }).success).toBe(false);
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'otra', hecho, soportes } }).success).toBe(false);
+    // El período ya no viaja en el procedimiento: lo fija la regla de cada impuesto.
+    expect(devolverAnticipoSchema.safeParse({ ...d, procedimiento: { causa: 'operacion_anulada', hecho, soportes, periodo_descuento: '2026-11' } }).success).toBe(false);
     // Ya no se eligen retenciones a mano.
     expect(devolverAnticipoSchema.safeParse({ ...d, retenciones: [] }).success).toBe(false);
     const vigentes = [
@@ -386,8 +385,13 @@ describe('anticipos a proveedores: ronda 2 del Contador', () => {
       { clase: 'reteiva' as const, vigente: 2850, tarifa: 15 },
       { clase: 'reteica' as const, vigente: 966, tarifa: 0.966 },
     ];
-    expect(retencionesDelProcedimiento(vigentes, { causa: 'devolucion_parcial', base_devuelta: 50000, iva_devuelto: 9500 }).map((r) => r.valor)).toEqual([2000, 1425, 483]);
+    expect(retencionesDelProcedimiento(vigentes, { causa: 'devolucion_parcial', lineas }).map((r) => r.valor)).toEqual([2000, 1425, 483]);
+    expect(retencionesDelProcedimiento(vigentes, { causa: 'resolucion_parcial', lineas }).map((r) => r.valor)).toEqual([2000, 1425, 483]);
     expect(retencionesDelProcedimiento(vigentes, { causa: 'operacion_anulada' }).map((r) => r.valor)).toEqual([4000, 2850, 966]);
+    // El IVA de la parte devuelta de una línea va en proporción a su base.
+    expect(ivaDeLaParte({ base: 100000, iva: 19000 }, 50000)).toBe(9500);
+    expect(estadoHttpErrorAnticipo('reteica_sin_procedimiento_municipal')).toBe(409);
+    expect(estadoHttpErrorAnticipo('periodo_descuento_no_es_de_libre_eleccion')).toBe(422);
     // Ítem 11: el texto separa el dinero de las retenciones.
     expect(partesDevolucion({ dinero: 55592, retencion_revertida: 3908 })).toEqual({ dinero: 55592, retenciones: 3908 });
   });
@@ -395,11 +399,17 @@ describe('anticipos a proveedores: ronda 2 del Contador', () => {
   test('ronda 3: retención excesiva con cálculo, certificado y tratamiento en declaraciones', () => {
     const e = {
       clase: 'retefuente', base_correcta: 100000, tarifa_correcta: 2.5, metodo: 'transfer', motivo: 'Tarifa errada',
-      soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido' }, periodo_descuento: '2026-11', requiere_correccion: true,
+      soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido', solicitud: 'Solicitud del proveedor', pruebas: 'Factura y extracto' },
+      periodo_descuento: '2026-11', requiere_correccion: true,
       clave_idempotencia: 'exceso:prueba1',
     };
     expect(excesoRetencionSchema.safeParse(e).success).toBe(true);
+    // Ronda 4: el reintegro exige la solicitud escrita y sus pruebas; con reteICA, las del procedimiento municipal.
+    expect(excesoRetencionSchema.safeParse({ ...e, soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido' } }).success).toBe(false);
     expect(excesoRetencionSchema.safeParse({ ...e, clase: 'reteica' }).success).toBe(false);
+    expect(
+      excesoRetencionSchema.safeParse({ ...e, clase: 'reteica', soportes: { ...e.soportes, ica: { solicitud: 'Radicado 1', certificado: 'Cert. 2' } } }).success,
+    ).toBe(true);
     expect(excesoRetencionSchema.safeParse({ ...e, periodo_descuento: '2026-13' }).success).toBe(false);
     expect(estadoHttpErrorAnticipo('sin_exceso')).toBe(422);
     expect(estadoHttpErrorAnticipo('anulacion_requiere_devolucion_total')).toBe(422);

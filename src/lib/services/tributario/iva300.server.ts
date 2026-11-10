@@ -93,6 +93,10 @@ export interface SolicitudDeclaracion {
   numero_formulario: string | null;
   presentada_en: string;
   nota: string | null;
+  /** Ronda 5: vencimiento del plazo y firmeza (solo si vienen; si no, la base conserva lo registrado). */
+  vencimiento_plazo?: string | null;
+  en_firme?: boolean | null;
+  firmeza_nota?: string | null;
 }
 
 export async function guardarDeclaracion(ctx: Ctx, desde: string, hasta: string, datos: SolicitudDeclaracion | null): Promise<unknown> {

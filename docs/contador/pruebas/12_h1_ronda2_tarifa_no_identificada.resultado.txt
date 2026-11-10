@@ -1,3 +1,21 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · prueba 12 ebe121506b800181826e68e60faa0e82
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 20 verificaciones · 20 ok · 0 fallas. Ni la prueba ni H1 cambiaron.
+
+── Corridas anteriores ──
+RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 (H1) 47486ffab373921553fdcd99d2f56ad0 · prueba 12 ebe121506b800181826e68e60faa0e82
+Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados
+contra el disco); un DO pega las migraciones completas en orden de prefijo (en el marcador «MIGRACIONES», en sus
+marcadores, o donde estaba «begin;»), quita solo «begin;», «rollback;» y el SELECT final, ejecuta y termina en
+excepción (= rollback). Objetos grandes borrados al final; la base quedó sin datos ni objetos de la prueba.
+Resultado: 20 verificaciones · 20 ok · 0 fallas (mismos valores de la tabla de abajo).
+
+── Corridas anteriores ──
 Resultado de 12_h1_ronda2_tarifa_no_identificada.sql
 Corrida: 2026-11-07, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Transacción revertida (rollback): no quedó ningún
 documento, asiento ni pendiente. Los ids cambian en cada corrida.

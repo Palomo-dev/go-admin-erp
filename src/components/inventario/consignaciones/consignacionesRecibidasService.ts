@@ -59,6 +59,15 @@ export const consignacionesRecibidasService = {
     enviar<{ reconocimiento_id: string; monto: number }>(`${BASE}/recibidas/${encodeURIComponent(id)}/reconocer`, cuerpo),
   conciliarRetencion: (retencionId: string, cuerpo: { valor: number; soporte: string }) =>
     enviar<{ retencion_id: string; valor: number }>(`${BASE}/recibidas/retenciones/${encodeURIComponent(retencionId)}/conciliar`, cuerpo),
+  /**
+   * Ronda 4: la retención practicada se reconoce cuando ocurre, sin esperar el certificado. Ronda 5: la de la operación
+   * va con la factura y el cobro en que el comprador la practicó (`factura_id`, `cobro_id`).
+   */
+  registrarRetencionPracticada: (
+    retencionId: string,
+    cuerpo: { valor: number; base: number; fecha: string; soporte: string; factura_id?: string | null; cobro_id?: string | null },
+  ) =>
+    enviar<{ retencion_id: string; valor: number }>(`${BASE}/recibidas/retenciones/${encodeURIComponent(retencionId)}/practicada`, cuerpo),
   retenciones: () =>
     leerGet<{ pendiente: boolean; reglas: ReglasRetencionConsignacion; disponibles: { id: string; nombre: string; tarifa: number; clase: ClaseRetencion | null }[] }>(
       `${BASE}/retenciones`,

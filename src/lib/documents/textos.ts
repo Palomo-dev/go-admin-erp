@@ -59,7 +59,18 @@ async function namespaceDocumentos(idioma: IdiomaDocumento): Promise<Mensajes | 
       modulo = await import('../../../messages/es.json');
   }
   const raiz = (modulo.default ?? modulo) as Mensajes;
-  return raiz.documentos as Mensajes | undefined;
+  return conBandasRonda5(raiz.documentos as Mensajes | undefined, raiz.finanzasTributarioR5 as Mensajes | undefined);
+}
+
+/**
+ * Ronda 5 del Contador: las bandas nuevas de las reimpresiones (p. ej. la fecha de la reconstrucción) viven en el
+ * namespace `finanzasTributarioR5.bandas` y se suman a `documentos.bandas` sin pisar ninguna clave existente.
+ */
+export function conBandasRonda5(documentos: Mensajes | undefined, ronda5: Mensajes | undefined): Mensajes | undefined {
+  const extra = ronda5?.bandas;
+  if (!documentos || !extra || typeof extra !== 'object') return documentos;
+  const bandas = (documentos.bandas && typeof documentos.bandas === 'object' ? documentos.bandas : {}) as Mensajes;
+  return { ...documentos, bandas: { ...(extra as Mensajes), ...bandas } };
 }
 
 const cache = new Map<IdiomaDocumento, Promise<Traductor>>();

@@ -60,6 +60,9 @@ type FilaCasilla = {
 
 export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: string }) {
   const t = useTranslations('finanzasIva300');
+  // Ronda 5 del Contador: los motivos y errores nuevos viven en su propio namespace; los demás, en finanzasIva300.
+  const t5 = useTranslations('finanzasTributarioR5');
+  const motivo = (m: string) => (t5.has(`motivos.${m}`) ? t5(`motivos.${m}`) : t(`motivos.${m}`));
   const { formatear } = useMonedaOrganizacion();
   const [lectura, setLectura] = useState<Lectura<Formulario300Cliente>>({ estado: 'cargando' });
   const [origenes, setOrigenes] = useState<{ titulo: string; lista: Origen300[]; total: number } | null>(null);
@@ -115,7 +118,8 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
       const l = r.estado === 'listo' ? r.lineas.find((x) => x.id === o.lineaId) : undefined;
       if (l) setLinea(l);
     } catch (err) {
-      setAviso(t.has(`errores.${codigoDe(err)}`) ? t(`errores.${codigoDe(err)}`) : t('errores.desconocido'));
+      const c = codigoDe(err);
+      setAviso(t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'));
     }
   };
 
@@ -124,7 +128,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
     const filasCsv = filasCsvFormulario300(f, {
       encabezado: [t('columnas.casilla'), t('columnas.concepto'), t('columnas.valor'), t('columnas.formulario'), t('columnas.diferencia'), t('columnas.origenes')],
       concepto: (c) => `${t(`conceptos.${c.concepto}`)} · ${t(c.tipo === 'base' ? 'columnas.base' : 'columnas.iva')}`,
-      pendiente: (p) => `${t('pendientes.titulo')} · ${t(`motivos.${p.motivo}`)}`,
+      pendiente: (p) => `${t('pendientes.titulo')} · ${motivo(p.motivo)}`,
       otro: (o) => `${t('otros.titulo')} · ${t(`naturalezas.${o.naturaleza}`)} · ${o.asiento}`,
     });
     descargarCsv(`formulario-300-${desde}-${hasta}.csv`, aCsv(filasCsv));
@@ -298,7 +302,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
                 {f.pendientes.map((p) => (
                   <li key={`${p.lado}-${p.motivo}`} className="flex flex-col gap-1 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-fg">{t(`motivos.${p.motivo}`)}</p>
+                      <p className="text-sm font-medium text-fg">{motivo(p.motivo)}</p>
                       <p className="text-xs text-fg-secondary">
                         {t(`lados.${p.lado}`)} · {t('baseIva', { base: importe(p.base), iva: importe(p.iva) })}
                       </p>
@@ -306,7 +310,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
                     <button
                       type="button"
                       className="self-start text-sm font-medium text-brand hover:underline sm:self-auto"
-                      onClick={() => setOrigenes({ titulo: t(`motivos.${p.motivo}`), lista: p.origenes, total: p.totalOrigenes })}
+                      onClick={() => setOrigenes({ titulo: motivo(p.motivo), lista: p.origenes, total: p.totalOrigenes })}
                     >
                       {t('verOrigen', { n: p.totalOrigenes })}
                     </button>
@@ -315,7 +319,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
                 {pendientesOtros.map((o) => (
                   <li key={`m-${o.asiento}`} className="flex flex-col gap-1 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-fg">{t(`motivos.${o.motivo ?? 'sin_soporte'}`)}</p>
+                      <p className="text-sm font-medium text-fg">{motivo(o.motivo ?? 'sin_soporte')}</p>
                       <p className="text-xs text-fg-secondary">
                         <EnlaceAsiento id={o.asiento} /> · {o.fecha ?? '—'} · {importe(o.valor)} · {etiquetaOtro(o)}
                       </p>
@@ -349,7 +353,7 @@ export function Formulario300Seccion({ desde, hasta }: { desde: string; hasta: s
                         {o.soporte ? ` · ${o.soporte}` : ''}
                       </p>
                     </div>
-                    {datos?.puedeAprobar && o.naturaleza !== 'cierre' && (
+                    {datos?.puedeAprobar && (
                       <button type="button" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })} onClick={() => setMovimiento(o)}>
                         {t('otros.cambiar')}
                       </button>
@@ -500,6 +504,7 @@ type LineaDevuelta = { id: string; descripcion: string; elegida: boolean; base: 
  */
 function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: OtroMovimiento300 | null; onCerrar: () => void; onGuardado: () => void }) {
   const t = useTranslations('finanzasIva300');
+  const t5 = useTranslations('finanzasTributarioR5');
   const { formatear } = useMonedaOrganizacion();
   const [naturaleza, setNaturaleza] = useState<NaturalezaMovimiento | ''>('');
   const [soporteTipo, setSoporteTipo] = useState('');
@@ -512,6 +517,8 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
   const [resolucionRef, setResolucionRef] = useState('');
   const [resolucionFecha, setResolucionFecha] = useState('');
   const [corrige, setCorrige] = useState<'' | 'si' | 'no'>('');
+  // Ronda 4: el cierre también se registra con soporte y con la explicación de por qué no es un ajuste fiscal.
+  const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -530,6 +537,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
     setResolucionFecha(movimiento.correccion?.fecha ?? '');
     const c = movimiento.correccion?.corrigeDeclaracionAnterior;
     setCorrige(c === true ? 'si' : c === false ? 'no' : '');
+    setNota('');
     setError(null);
   }, [movimiento]);
 
@@ -569,6 +577,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
       soporte_tipo: soporteTipo || null,
       soporte,
       soporte_fecha: soporteFecha || null,
+      nota: naturaleza === 'cierre' ? nota : null,
     };
     if (naturaleza === 'correccion_error') {
       Object.assign(cuerpo, {
@@ -598,7 +607,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
       onGuardado();
     } catch (err) {
       const c = codigoDe(err);
-      setError(t.has(`errores.${c}`) ? t(`errores.${c}`) : t('errores.desconocido'));
+      setError(t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'));
     } finally {
       setGuardando(false);
     }
@@ -626,7 +635,7 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
                 valor={naturaleza}
                 vacio={t('naturaleza.elegir')}
                 onCambiar={(v) => setNaturaleza(v as NaturalezaMovimiento)}
-                opciones={NATURALEZAS_MOVIMIENTO.filter((n) => n !== 'cierre').map((n) => ({ valor: n, etiqueta: t(`naturalezas.${n}`) }))}
+                opciones={NATURALEZAS_MOVIMIENTO.map((n) => ({ valor: n, etiqueta: t(`naturalezas.${n}`) }))}
               />
             )}
           </FormField>
@@ -649,6 +658,21 @@ function NaturalezaDialogo({ movimiento, onCerrar, onGuardado }: { movimiento: O
               {(c) => <input id={c.id} type="date" className={CLASE_CAMPO} value={soporteFecha} onChange={(e) => setSoporteFecha(e.target.value)} />}
             </FormField>
           </div>
+          {naturaleza === 'cierre' && (
+            <FormField etiqueta={t('naturaleza.notaCierre')} obligatorio ayuda={t('naturaleza.notaCierreAyuda')}>
+              {(c) => (
+                <textarea
+                  id={c.id}
+                  className={CLASE_CAMPO}
+                  rows={3}
+                  value={nota}
+                  maxLength={500}
+                  onChange={(e) => setNota(e.target.value)}
+                  aria-describedby={c['aria-describedby']}
+                />
+              )}
+            </FormField>
+          )}
           {naturaleza === 'correccion_error' && (
             <fieldset className="space-y-3 rounded-lg border border-line p-3">
               <legend className="px-1 text-sm font-semibold text-fg">{t('naturaleza.correccionTitulo')}</legend>
@@ -756,6 +780,7 @@ function DeclaracionDialogo({
   onGuardado: () => void;
 }) {
   const t = useTranslations('finanzasIva300');
+  const t5 = useTranslations('finanzasTributarioR5');
   const [numero, setNumero] = useState('');
   const [fecha, setFecha] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -776,7 +801,7 @@ function DeclaracionDialogo({
       onGuardado();
     } catch (err) {
       const c = codigoDe(err);
-      setError(t.has(`errores.${c}`) ? t(`errores.${c}`) : t('errores.desconocido'));
+      setError(t.has(`errores.${c}`) ? t(`errores.${c}`) : t5.has(`errores.${c}`) ? t5(`errores.${c}`) : t('errores.desconocido'));
     } finally {
       setGuardando(false);
     }

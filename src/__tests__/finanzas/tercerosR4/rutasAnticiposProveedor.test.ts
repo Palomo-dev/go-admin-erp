@@ -447,13 +447,12 @@ describe('ronda 2 del Contador', () => {
     expect(rpcs).toHaveLength(0);
   });
 
-  test('ronda 3: devolver con procedimiento y causa; sin procedimiento, null (pendiente en la base)', async () => {
+  test('ronda 4: devolver con causa, hecho y líneas; sin procedimiento, null (pendiente en la base)', async () => {
     const procedimiento = {
       causa: 'devolucion_parcial',
-      soportes: { documento: 'Acuerdo con el proveedor', calculo: 'Cálculo', certificado: 'Certificado corregido', norma_ica: 'Acuerdo municipal' },
-      base_devuelta: 50000,
-      iva_devuelto: 9500,
-      periodo_descuento: '2026-11',
+      hecho: { tipo: 'acta_devolucion', documento: 'Acta 12 con el proveedor', fecha: '2026-11-09' },
+      lineas: [{ componente: '0', base: 50000, iva: 9500 }],
+      soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido' },
       requiere_correccion: false,
     };
     const r = await devolver(peticion(url('devolver'), devolucion({ procedimiento })), params);
@@ -464,29 +463,44 @@ describe('ronda 2 del Contador', () => {
     expect(rpcs[0].args.p_procedimiento).toBeNull();
   });
 
-  test('ronda 3: procedimiento sin documento o sin cálculo → 422 sin RPC', async () => {
-    const r = await devolver(peticion(url('devolver'), devolucion({ procedimiento: { causa: 'operacion_anulada', soportes: { documento: '' } } })), params);
+  test('ronda 4: sin hecho, con la solicitud del proveedor como hecho o parcial sin líneas → 422 sin RPC', async () => {
+    const hecho = { tipo: 'acta_devolucion', documento: 'Acta 12', fecha: '2026-11-09' };
+    const soportes = { calculo: 'Cálculo', certificado: 'Certificado' };
+    const r = await devolver(peticion(url('devolver'), devolucion({ procedimiento: { causa: 'operacion_anulada', soportes } })), params);
     expect(r.status).toBe(422);
-    expect((await r.json()).codigo).toBe('soporte_procedimiento_obligatorio');
-    const r2 = await devolver(peticion(url('devolver'), devolucion({ procedimiento: { causa: 'devolucion_parcial', soportes: { documento: 'Acuerdo 1' } } })), params);
+    expect((await r.json()).codigo).toBe('soporte_del_hecho_obligatorio');
+    const r2 = await devolver(
+      peticion(url('devolver'), devolucion({ procedimiento: { causa: 'operacion_anulada', hecho: { ...hecho, tipo: 'solicitud_proveedor' }, soportes } })),
+      params,
+    );
     expect(r2.status).toBe(422);
-    expect((await r2.json()).codigo).toBe('calculo_obligatorio');
+    expect((await r2.json()).codigo).toBe('solicitud_no_prueba_el_hecho');
+    const r3 = await devolver(peticion(url('devolver'), devolucion({ procedimiento: { causa: 'resolucion_parcial', hecho, soportes } })), params);
+    expect(r3.status).toBe(422);
+    expect((await r3.json()).codigo).toBe('lineas_afectadas_obligatorias');
     expect(rpcs).toHaveLength(0);
   });
 
   test('ronda 3: retención excesiva va a fn_anticipo_retencion_exceso_reintegrar con finance.void', async () => {
     const cuerpo = {
       clase: 'retefuente', base_correcta: 100000, tarifa_correcta: 2.5, metodo: 'transfer', motivo: 'Tarifa errada',
-      soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido' }, periodo_descuento: '2026-11', requiere_correccion: true,
+      soportes: { calculo: 'Cálculo', certificado: 'Certificado corregido', solicitud: 'Solicitud escrita', pruebas: 'Factura y extracto' },
+      requiere_correccion: true,
       clave_idempotencia: 'exceso:prueba1',
     };
     guion.datos.fn_anticipo_retencion_exceso_reintegrar = { payment_id: 'p9', reintegro: 1500 };
     const r = await exceso(peticion(url('retencion-exceso'), cuerpo), params);
     expect(r.status).toBe(200);
-    expect(rpcs[0]).toMatchObject({ nombre: 'fn_anticipo_retencion_exceso_reintegrar', args: { p_anticipo: ANTICIPO, p_clase: 'retefuente', p_organization_id: ORG } });
+    // Ronda 4: el período no se elige; viaja null y la base lo fija por la regla del impuesto.
+    expect(rpcs[0]).toMatchObject({
+      nombre: 'fn_anticipo_retencion_exceso_reintegrar',
+      args: { p_anticipo: ANTICIPO, p_clase: 'retefuente', p_organization_id: ORG, p_periodo_descuento: null },
+    });
     rpcs.length = 0;
-    const r2 = await exceso(peticion(url('retencion-exceso'), { ...cuerpo, soportes: { calculo: 'Cálculo', certificado: '' } }), params);
+    const r2 = await exceso(peticion(url('retencion-exceso'), { ...cuerpo, soportes: { calculo: 'Cálculo', certificado: 'Cert.' } }), params);
     expect((await r2.json()).codigo).toBe('soporte_procedimiento_obligatorio');
+    const r2b = await exceso(peticion(url('retencion-exceso'), { ...cuerpo, clase: 'reteica' }), params);
+    expect((await r2b.json()).codigo).toBe('reteica_pruebas_incompletas');
     guion.permisos = new Set(['finance.view', 'finance.create']);
     const r3 = await exceso(peticion(url('retencion-exceso'), cuerpo), params);
     expect(r3.status).toBe(403);

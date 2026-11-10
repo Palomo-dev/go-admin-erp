@@ -1,3 +1,31 @@
+RONDA 5 (2026-11-09) · reejecución con las migraciones reescritas, archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 746ccbabbb6f05b8b22a043b4314b777 · 20261108152000 b038410fb5539296fd40877f07888c79 · prueba 17 9df272fd55d2d8d67a354dd7fb93acc2
+Método: el de la ronda 4, con los archivos de la ronda 5: cada archivo subido por trozos como objeto grande de
+Postgres (md5 de cada trozo y del archivo completo comprobados contra el disco), migraciones completas en orden de
+prefijo pegadas en su marcador, sin «begin;» ni «rollback;», una sola transacción que termina en excepción (= rollback).
+Objetos grandes borrados al final; la base quedó sin tablas, funciones, columnas ni datos de la prueba.
+Resultado: 22 verificaciones · 22 ok · 0 fallas (antes 23: FCH ya no tiene asiento y su fila de cuadre desaparece).
+Esperados que cambiaron, con su razón (respuesta 5 del Contador: cuenta por línea obligatoria cuando el IVA tiene
+deducibilidad distinta): FCH (no descontable + proporcional 60 % + descontable, sin cuenta por línea) queda SIN asiento
+(fila 1) y con el pendiente «iva_no_descontable_por_corregir · deducibilidad distinta» (fila 8, que antes comprobaba la
+cuenta débito de cabecera D 434.200); la fila «otros» deja aparte a FCH. Los datos no cambiaron. El mismo ejemplo con
+cuenta por línea (2408: 22.800 + 5.000; IVA no descontable a la cuenta de cada línea) está en la prueba 23, filas 101 y 102.
+
+── Corridas anteriores ──
+RONDA 4 (2026-11-09) · reejecución con archivos EXACTOS · org 374 · todo revertido
+md5: 20261108140000 (H1) 47486ffab373921553fdcd99d2f56ad0 · 20261108150000 096608e63f83245718ff95c459b3bf99 ·
+     20261108152000 6493828a8cc924706426db5888bac474 · prueba 17 91e236e6317f946d9b48ccd8a47309c3
+Método: archivos EXACTOS subidos por trozos como objetos grandes de Postgres (md5 por trozo y por archivo comprobados
+contra el disco); un DO pega las migraciones completas en orden de prefijo (en el marcador «MIGRACIONES», en sus
+marcadores, o donde estaba «begin;»), quita solo «begin;», «rollback;» y el SELECT final, ejecuta y termina en
+excepción (= rollback). Objetos grandes borrados al final; la base quedó sin datos ni objetos de la prueba.
+Resultado: 23 verificaciones · 23 ok · 0 fallas. FCH 24081001 D 22800 + 24081002 D 5000 y D 434200 · C 462000; FCL
+513595 D 50000 · 519525 D 119000 + 24081001 D 9500; DS sin 2408 (Σ D 119000); FCG 24081001 D 19000 (evaluación
+posterior: factor 1, no descontable 0); FV19 C 57000; NCX sin asiento con pendiente «Tarifa de IVA no identificada…»;
+NCU2 D 19000; ningún otro pendiente; 8 asientos cuadrados; históricos intactos. Primera corrida verde con los archivos
+exactos (la falla de datos de apoyo de la ronda 3 —14350101— ya estaba corregida en la prueba).
+
+── Corridas anteriores ──
 Resultado de 17_iva_no_descontable_al_costo.sql (RONDA 3 del Contador: B5 y nota crédito sobre factura con conceptos sin IVA)
 Corrida: 2026-11-08, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Una sola transacción, sin datos al final.
 Archivos EXACTOS (md5 al correr): prueba 4d779fb20f2c642b6c40ca076ec0b668 · 20261108140000 (H1) 47486ffab373921553fdcd99d2f56ad0 ·

@@ -1,0 +1,121 @@
+Resultado de 23_iva_ronda5_contador.sql (RONDA 5 del Contador, IVA: respuestas 1 a 5)
+Corrida: 2026-11-09, proyecto taqjemqjtumhwptchcxk, org 374 (sede 585). Una sola transacción, sin datos al final.
+Archivos EXACTOS (md5 del disco, comprobados dentro de la base antes de ejecutar):
+  20261108140000 (H1)  47486ffab373921553fdcd99d2f56ad0
+  20261108150000       746ccbabbb6f05b8b22a043b4314b777
+  20261108150500       53bfcba981ac8811b57ac97e86120cad
+  20261108151000       69666ff755350aaa4bf0a678cbf42a65
+  20261108152000       b038410fb5539296fd40877f07888c79
+  prueba 23            d030cb4783dd4c855a511ef330b65bfc
+Método: cada archivo se subió por trozos (≤ 38 KB, cortados en fin de línea) como objeto grande de Postgres; el md5 de
+cada trozo y del archivo completo se comprobó contra el disco. Un DO pegó las cinco migraciones completas, en orden de
+prefijo, en el marcador «MIGRACIONES»; quitó solo las líneas «begin;» y «rollback;»; ejecutó y terminó con una
+excepción que devuelve la tabla de resultados (= rollback). Las correcciones de la prueba entre corridas se hicieron en
+el disco y la versión nueva se armó en la base aplicando el mismo cambio al objeto ya subido; su md5 completo se comprobó
+contra el disco antes de correr. Al final se borraron los objetos grandes y se comprobó que la base no quedó con ninguna
+tabla, función, columna, proveedor, producto, venta, compra, miembro ni cuenta de la prueba.
+Usuarios: A = el miembro activo de la org 374; B = el dueño de la org 137, miembro de la 374 SOLO dentro de la transacción.
+
+Primera corrida: 98 de 104. Fallas de la PRUEBA, no de las migraciones:
+  · filas 66 a 68, 71 y 92: el ayudante pg_temp.apr tenía una variable «v» con el mismo nombre que la columna de ctx
+    («column reference "v" is ambiguous»). Se renombró la variable.
+  · fila 102 (FCHL): el asiento por líneas no dio 100.000 / 215.200 / 119.000 por cuenta sino 90.909 / 221.261 / 122.030
+    (total y 2408 correctos). Causa: fn_armar_asiento_documento (función ya aplicada, anterior a esta ronda) reparte la
+    base del documento por el total CON IVA de cada línea (total_line). Con tarifas distintas (19 % y 5 %) la base de cada
+    cuenta se desvía. Se intentó con total_line = base y la compra quedó sin IVA (el recálculo de totales de la compra lo
+    toma de total_line), así que se volvió a total_line con IVA. La fila se reescribió para comprobar lo que pidió el
+    Contador (cada cuenta recibe el IVA no descontable de SU línea: +19.000, +15.200, +0) y se agregó la fila 103 que deja
+    documentado el reparto actual como HALLAZGO PREVIO, fuera de esta ronda.
+  · fila 31 de la prueba 24 tuvo un error análogo (ver su resultado).
+Segunda corrida (la que vale): 105 verificaciones · 105 ok · 0 fallas.
+
+ n | bloque | verificación → obtenido
+---+--------+------------------------------------------------------------------------------------------------------------
+  1 | A | Ordinaria con la guía de tráfico postal (declaración simplificada) → SOPORTE_ADUANERO_DOCUMENTO_NO_CORRESPONDE
+  2 | A | Tráfico postal con declaración de importación → SOPORTE_ADUANERO_DOCUMENTO_NO_CORRESPONDE
+  3 | A | Franquicia con «otro documento aduanero» → SOPORTE_ADUANERO_DOCUMENTO_NO_CORRESPONDE
+  4 | A | El tipo separado «guía de tráfico postal» de la ronda 4 ya no existe → SOPORTE_ADUANERO_INVALIDO
+  5 | A | Norma de exclusión sin artículo → SOPORTE_ADUANERO_NORMA_INVALIDA
+  6 | A | Valor distinto de valor en aduana + aranceles (90.000 + 5.000 ≠ 100.000) → SOPORTE_ADUANERO_BASE_NO_SUMA
+  7 | A | Aranceles negativos → SOPORTE_ADUANERO_INVALIDO
+  8 | A | Faltantes de un «otro documento aduanero» con solo tipo y modalidad → {numero,fecha,adjunto,valor_aduana,aranceles,norma_exclusion,fundamento_exclusion,explicacion}
+  9–16 | A | Clasificación de I1 a I8 → OK (cada una)
+ 17–27 | E | Clasificación de las líneas de FTR, FDX, FDD, FAS, FAI y FCHL → OK (cada una)
+ 28 | B | Q1: solo la marca «contingencia verificada» (ronda 4): se guarda → OK
+ 29 | B | Consulta que SÍ encuentra el CUFE/CUDE con «nunca transmitida» → DOCUMENTO_ENCONTRADO_EN_DIAN
+ 30 | B | Consulta del CUFE/CUDE con fecha futura → CONSULTA_CUFE_INVALIDA
+ 31 | B | Soporte de contingencia que no existe → CONTINGENCIA_INVALIDA
+ 32 | B | Q2: aviso del proveedor tecnológico; la falla terminó ayer y la consulta es de hoy → OK
+ 33 | B | Q3: soporte de la falla del facturador; la falla terminó 1 hora después de la venta → OK
+ 34 | B | Q5: hubo cobro devuelto, sin el soporte de la devolución → OK (se guarda el avance)
+ 35 | B | Q4: constancia de que no hay soporte de contingencia → tratada_como_no_expedida = true
+ 36 | B | Q1: lo que le falta → {contingencia,consulta_cufe}
+ 37 | B | Q5: lo que le falta → {devolucion_del_cobro}
+ 38 | B | Q3: expediente completo → {}
+ 39 | B | Q1: retirar la venta (la marca sola ya no basta) → EXPEDIENTE_INCOMPLETO [contingencia,consulta_cufe]
+ 40 | B | Q2: consulta dentro de las 48 horas siguientes al fin de la falla → CONTINGENCIA_SIN_DESCARTAR [plazo_48_horas]
+ 41 | B | Q3: falla con soporte y consulta pasadas las 48 horas → OK retirar_venta
+ 42 | B | Q4: sin soporte de contingencia (no expedida), consulta pasadas las 48 horas desde la venta → OK retirar_venta
+ 43 | B | Q5: cobro devuelto sin su soporte → EXPEDIENTE_INCOMPLETO [devolucion_del_cobro]
+ 44 | B | Q5: se agrega el soporte de la devolución del dinero → OK
+ 45 | B | Q5: con el soporte de la devolución se puede retirar → OK retirar_venta
+ 46 | C | Declaración septiembre–octubre registrada solo con su presentación → OK
+ 47 | C | Vencimiento igual al fin del período → VENCIMIENTO_INVALIDO
+ 48 | C | Firmeza sin la nota de dónde se sabe → FIRMEZA_REQUIERE_NOTA
+ 49 | C | R1: expediente completo, sin soporte de contingencia, marcando la corrección → OK
+ 50 | C | R2: factura validada por la DIAN con su nota crédito electrónica del 8 de noviembre → OK
+ 51 | C | R25: expediente completo de una venta de marzo de 2025, marcando la corrección → OK
+ 52 | C | Declaración marzo–abril de 2025, vencida el 14-05-2025 y no en firme (datos de prueba) → OK
+ 53 | C | R1: retirar sin el vencimiento registrado → DECLARACION_SIN_VENCIMIENTO
+ 54 | C | Se registra el vencimiento (12-11-2026, dato de prueba), sin la firmeza → OK
+ 55 | C | R1: retirar con el vencimiento pero sin la firmeza → FIRMEZA_SIN_DETERMINAR
+ 56 | C | Se registra que la declaración está EN FIRME (sin enviar el vencimiento) → OK
+ 57 | C | El vencimiento que no se envió se conservó y la firmeza quedó con su nota → 2026-11-12 · true · Dato de prueba: en firme
+ 58 | C | R1: retirar con la declaración en firme (art. 714 ET) → DECLARACION_EN_FIRME
+ 59 | C | R25: retirar pasado el año siguiente al vencimiento (art. 589 ET) → CORRECCION_FUERA_DE_TERMINO
+ 60 | C | Se corrige la firmeza: NO está en firme → OK
+ 61 | C | R1: retirar en su bimestre declarado, todavía corregible → OK retirar_venta
+ 62 | C | R2: nota crédito decidida en septiembre–octubre (la nota es de noviembre) → PERIODO_NO_CORRESPONDE_A_LA_NOTA
+ 63 | C | R2: nota crédito en el bimestre de la nota (noviembre–diciembre) → OK nota_credito
+ 64 | D | A registra el cierre con soporte y explicación → OK
+ 65 | D | A registra el pago a la DIAN → OK
+ 66 | D | A aprueba su propio cierre → APROBACION_MISMO_USUARIO
+ 67 | D | B aprueba un pago a la DIAN (solo el cierre se aprueba) → APROBACION_SOLO_CIERRE
+ 68 | D | B (segundo usuario) aprueba el cierre → aprobado
+ 69 | D | A vuelve a guardar el cierre → OK
+ 70 | D | Al volver a guardarlo, la aprobación del segundo usuario se borró → sin aprobar
+ 71 | D | anon: aprobar un cierre → permission denied for function fn_iva_naturaleza_asiento_aprobar
+ 72 | C | Después de decidir, se registra que la declaración quedó en firme → OK
+ 73 | A | Casilla 47 = I1 300.000 + I2 50.000 + I6 20.000 → 370000
+ 74 | A | I3: base 100.000 ≠ 90.000 + 5.000 → importacion_base_no_coincide · base 100000
+ 75 | A | I4: sin la norma de exclusión citada → importacion_sin_soporte_aduanero · base 60000
+ 76 | A | I5: otro documento aduanero sin explicación → importacion_sin_soporte_aduanero · base 20000
+ 77 | A | I7: importación exenta (no excluida) → importacion_no_excluida_no_va_47 · base 40000
+ 78 | A | I8: tráfico postal con declaración de importación → importacion_documento_no_corresponde · base 30000
+ 79 | B | Q1 (expediente incompleto): la venta sigue en la 59 → en 59 · correccion_incompleta
+ 80 | B | Q2 (consulta dentro de las 48 horas, sin decisión): sigue en la 59 → en 59 · correccion_sin_decision
+ 81 | B | Q3 (contingencia descartada con soporte de la falla): sale de la 59 → no en 59 · no_afecta
+ 82 | B | Q4 (no expedida): sale de la 59 → no en 59 · no_afecta
+ 83 | B | Q5 (cobro devuelto con su soporte): sale de la 59 → no en 59 · no_afecta
+ 84 | B | El detalle de la corrección dice «tratada como no expedida» en Q4 y no en Q3 → Q4 true · Q3 false
+ 85 | C | Septiembre–octubre, declaración corregible: R1 sale de la 59 de su bimestre → no en 59
+ 86 | C | Septiembre–octubre, ya EN FIRME: R1 vuelve a la 59 aunque haya decisión → en 59
+ 87 | C | Noviembre, ya en firme: la reversa de R1 → pendiente · correccion_declaracion_no_corregible
+ 88 | C | Noviembre: la alerta muestra vencimiento y firmeza → 2026-11-12 · en firme true · no corregible true
+ 89 | C | Noviembre: R2 por nota crédito → pendiente · correccion_por_nota_credito
+ 90 | C | Catálogo: devolución de ventas → 42 base 79 · 79 iva 42
+ 91 | D | Borrador: cierre registrado sin la aprobación → pendiente · cierre_sin_aprobacion · aprobado false
+ 92 | D | Borrador: cierre aprobado por el segundo usuario → no_afecta · — · aprobado true
+ 93 | D | Borrador: cierre guardado otra vez (aprobación borrada) → pendiente · cierre_sin_aprobacion · aprobado false
+ 94 | E | FTR: gravado no descontable + excluido con cuenta de cabecera → SIN ASIENTO · iva_no_descontable_por_corregir · tratamientos de IVA distintos
+ 95 | E | FDX: no descontable + proporcional con cuenta de cabecera → SIN ASIENTO · iva_no_descontable_por_corregir · deducibilidad distinta
+ 96 | E | FDD (control): dos bienes no descontables con cuenta de cabecera → D compra 238000 · 2408 0 · C 238000
+ 97 | E | Activo fijo (cabecera 152405) con un servicio → «IVA no descontable en una compra que mezcla activos fijos…»
+ 98 | E | Activo fijo (cabecera 152405) con un bien inventariable → «IVA no descontable en una compra que mezcla activos fijos…»
+ 99 | E | Activo fijo (cabecera 152405) con bienes no inventariables de igual tratamiento → NULL (cuenta única)
+100 | E | Servicio hacia una cuenta de gasto (519525) → NULL (cuenta única)
+101 | E | FCHL (ejemplo de la ronda 3 con cuenta por línea): 2408 → 24081001 D 22800 + 24081002 D 5000
+102 | E | FCHL: cada cuenta recibe el IVA no descontable de SU línea → 14350101 +0 · 513595 +15200 · 519525 +19000
+103 | E | Hallazgo previo: reparto de la base por el total con IVA → 14350101 D 90909 · 513595 D 221261 · 519525 D 122030 · C 462000
+104 | cuadre | Asientos nuevos cuadrados (Σ D = Σ C) → todos
+105 | historicos | Asientos anteriores a la prueba intactos → 0

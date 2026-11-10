@@ -100,6 +100,21 @@ export const MOTIVOS_PENDIENTE = [
   'reversa_contable',
   'correccion_otro_periodo',
   'correccion_incompleta',
+  // Ronda 4: completar el expediente no retira la venta; hace falta la decisión de tratamiento y período.
+  'correccion_sin_decision',
+  'correccion_por_nota_credito',
+  'correccion_mantiene_venta',
+  // Ronda 4 · casilla 47: soporte aduanero estructurado; un servicio del exterior no va a la 47.
+  'importacion_sin_soporte_aduanero',
+  'importacion_servicio_no_va_47',
+  // Ronda 5 · casilla 47: solo importación excluida; documento según la modalidad; base = valor en aduana + aranceles.
+  'importacion_no_excluida_no_va_47',
+  'importacion_documento_no_corresponde',
+  'importacion_base_no_coincide',
+  // Ronda 5: la declaración de la venta ya no admite corrección (firmeza, término o datos sin registrar).
+  'correccion_declaracion_no_corregible',
+  // Ronda 5: el cierre registrado necesita la aprobación de un segundo usuario.
+  'cierre_sin_aprobacion',
   'devolucion_iva_no_descontado',
   'devolucion_compra_no_cuadra',
   'sugerido_por_confirmar',
@@ -130,6 +145,8 @@ export interface Origen300 {
   causadoPeriodoAnterior: boolean;
   posteriorDeclaracion: boolean;
   facturaOrigen: { id: string; numero: string | null } | null;
+  /** Ronda 4: tarifa del POS deducida por coincidencia aritmética: no prueba sola su procedencia legal. */
+  tarifaInferida: boolean;
 }
 
 export interface Casilla300Valor {
@@ -165,8 +182,8 @@ export interface OtroMovimiento300 {
   valor: number;
   naturaleza: NaturalezaOtro;
   declarada: boolean;
-  /** Señal (no clasificación): contrapartida banco/caja o suma cero en 2408. */
-  sugerida: 'pago_dian' | 'traslado_auxiliares' | null;
+  /** Señal (no clasificación): contrapartida banco/caja, suma cero en 2408 o (ronda 4) asiento de cierre. */
+  sugerida: 'pago_dian' | 'traslado_auxiliares' | 'cierre' | null;
   destino: 'no_afecta' | 'por_diligenciar' | 'casilla' | 'pendiente';
   motivo: MotivoPendiente | null;
   soporteTipo: SoporteMovimiento | null;
@@ -179,6 +196,8 @@ export interface OtroMovimiento300 {
   posteriorDeclaracion: boolean;
   /** Ronda 3: estado de la corrección de error registrada sobre la reversa (null si no es una). */
   correccion: CorreccionError300 | null;
+  /** Ronda 5: cierre registrado aprobado por un segundo usuario (null si no es un cierre registrado). */
+  cierreAprobado: boolean | null;
 }
 
 export interface CorreccionError300 {
@@ -188,6 +207,15 @@ export interface CorreccionError300 {
   referencia: string | null;
   fecha: string | null;
   corrigeDeclaracionAnterior: boolean | null;
+  /** Ronda 4: lo que le falta al expediente (vacío = completo). */
+  faltantes: string[];
+  /** Ronda 4: decisión de tratamiento fiscal y período; sin ella la venta no sale de las casillas. */
+  decision: { tratamiento: 'retirar_venta' | 'nota_credito' | 'mantener_venta'; periodoDesde: string | null; periodoHasta: string | null } | null;
+  ventaEnOtroPeriodo: boolean;
+  /** Ronda 5: factura nunca transmitida sin soporte de contingencia: se trata como no expedida. */
+  tratadaComoNoExpedida: boolean;
+  /** Ronda 5: la declaración del período de la venta ya no admite corrección (la venta no sale). */
+  declaracionNoCorregible: boolean;
 }
 
 export interface PorDiligenciar300 {
@@ -226,6 +254,8 @@ export interface Formulario300 {
     documentosEntrePeriodos: number;
     notasDebitoOtroPeriodo: number;
     comprasCausadasAntes: number;
+    /** Ronda 4: líneas del POS en casillas con la tarifa inferida (no probada). */
+    tarifasInferidas: { lineas: number; base: number; iva: number };
     grabadosDespuesDeDeclarar: { asiento: number; origen: string | null; documentoId: string | null; fecha: string | null; periodo: { desde: string; hasta: string } }[];
     /** Ronda 3: correcciones de error de ventas de un período declarado, o marcadas «corrige una declaración anterior». */
     correccionesDeclaracionAnterior: {
@@ -274,6 +304,7 @@ function leerOrigen(v: unknown): Origen300 | null {
     causadoPeriodoAnterior: o.causado_periodo_anterior === true,
     posteriorDeclaracion: o.posterior_declaracion === true,
     facturaOrigen: txt(fo.id) ? { id: String(fo.id), numero: txt(fo.numero) } : null,
+    tarifaInferida: o.tarifa_inferida === true,
   };
 }
 
@@ -288,6 +319,15 @@ function leerCorreccion(v: unknown): CorreccionError300 | null {
     referencia: txt(c.referencia),
     fecha: txt(c.fecha),
     corrigeDeclaracionAnterior: typeof c.corrige_declaracion_anterior === 'boolean' ? c.corrige_declaracion_anterior : null,
+    faltantes: arr(c.faltantes).map(String),
+    decision: (() => {
+      const d = c.decision ? obj(c.decision) : null;
+      const tratamiento = d ? enLista(['retirar_venta', 'nota_credito', 'mantener_venta'] as const, d.tratamiento) : null;
+      return tratamiento ? { tratamiento, periodoDesde: txt(d!.periodo_desde), periodoHasta: txt(d!.periodo_hasta) } : null;
+    })(),
+    ventaEnOtroPeriodo: c.venta_en_otro_periodo === true,
+    tratadaComoNoExpedida: c.tratada_como_no_expedida === true,
+    declaracionNoCorregible: c.declaracion_no_corregible === true,
   };
 }
 
@@ -341,7 +381,7 @@ export function leerFormulario300(data: unknown): Formulario300 {
       valor: num(o.valor) ?? 0,
       naturaleza: enLista(NATURALEZAS_OTRO, o.naturaleza) ?? 'sin_registro',
       declarada: o.declarada === true,
-      sugerida: o.sugerida === 'pago_dian' || o.sugerida === 'traslado_auxiliares' ? o.sugerida : null,
+      sugerida: o.sugerida === 'pago_dian' || o.sugerida === 'traslado_auxiliares' || o.sugerida === 'cierre' ? o.sugerida : null,
       destino: (['no_afecta', 'por_diligenciar', 'casilla', 'pendiente'].includes(String(o.destino)) ? o.destino : 'pendiente') as OtroMovimiento300['destino'],
       motivo: enLista(MOTIVOS_PENDIENTE, o.motivo),
       soporteTipo: enLista(SOPORTES_MOVIMIENTO, o.soporte_tipo),
@@ -353,6 +393,7 @@ export function leerFormulario300(data: unknown): Formulario300 {
       ivaRecuperable: num(o.iva_recuperable),
       posteriorDeclaracion: o.posterior_declaracion === true,
       correccion: leerCorreccion(o.correccion),
+      cierreAprobado: typeof o.cierre_aprobado === 'boolean' ? o.cierre_aprobado : null,
     }));
 
   const porDiligenciar = arr(d.por_diligenciar)
@@ -401,6 +442,11 @@ export function leerFormulario300(data: unknown): Formulario300 {
       documentosEntrePeriodos: num(al.documentos_entre_periodos) ?? 0,
       notasDebitoOtroPeriodo: num(al.notas_debito_otro_periodo) ?? 0,
       comprasCausadasAntes: num(al.compras_causadas_antes) ?? 0,
+      tarifasInferidas: {
+        lineas: num(obj(al.tarifas_inferidas).lineas) ?? 0,
+        base: num(obj(al.tarifas_inferidas).base) ?? 0,
+        iva: num(obj(al.tarifas_inferidas).iva) ?? 0,
+      },
       grabadosDespuesDeDeclarar: arr(al.grabados_despues_de_declarar)
         .map(obj)
         .filter((a) => num(a.asiento) !== null)
@@ -510,7 +556,8 @@ export interface ClasificacionLinea {
   tarifa: number | null;
   tipoOperacion: TipoOperacionIva | null;
   fundamento: string | null;
-  origen: 'sugerida' | 'heredada' | 'manual' | null;
+  /** Ronda 4: «inferida» = tarifa del POS deducida por coincidencia aritmética (no probada). */
+  origen: 'sugerida' | 'inferida' | 'heredada' | 'manual' | null;
   soporteTipo: SoporteLinea | null;
   soporteNumero: string | null;
   soporteFecha: string | null;
@@ -557,7 +604,7 @@ export function leerLineasFiscales(data: unknown): LineaFiscal[] {
           tarifa: num(c.tarifa),
           tipoOperacion: enLista(TIPOS_OPERACION_IVA, c.tipo_operacion),
           fundamento: txt(c.fundamento),
-          origen: enLista(['sugerida', 'heredada', 'manual'] as const, c.origen),
+          origen: enLista(['sugerida', 'inferida', 'heredada', 'manual'] as const, c.origen),
           soporteTipo: enLista(SOPORTES_LINEA, c.soporte_tipo),
           soporteNumero: txt(c.soporte_numero),
           soporteFecha: txt(c.soporte_fecha),
@@ -710,7 +757,42 @@ export interface SolicitudNaturaleza {
   doc_electronico_referencia: string | null;
   doc_electronico_fecha: string | null;
   corrige_declaracion_anterior: boolean | null;
+  /** Ronda 4: expediente de la corrección de error (los campos que no vengan quedan vacíos). */
+  expediente_explicacion?: string | null;
+  factura_referencia?: string | null;
+  estado_electronico?: EstadoElectronico | null;
+  contingencia_verificada?: boolean | null;
+  contingencia_nota?: string | null;
+  entrega_prestacion?: 'no_hubo' | 'hubo' | 'parcial' | null;
+  entrega_soporte?: string | null;
+  cobro?: 'no_hubo' | 'hubo_devuelto' | 'hubo_sin_devolver' | null;
+  cobro_soporte?: string | null;
+  /**
+   * Ronda 5: «nunca transmitida» se verifica con el aviso de la DIAN o del proveedor tecnológico, o el soporte de la
+   * falla del facturador (referencia, fecha y fin de la falla), o con la constancia de que no hay ninguno; y con la
+   * consulta del CUFE/CUDE sin resultado, hecha pasadas las 48 horas. Un cobro devuelto lleva el soporte de la devolución.
+   */
+  contingencia_soporte_tipo?: SoporteContingencia | null;
+  contingencia_soporte_referencia?: string | null;
+  contingencia_soporte_fecha?: string | null;
+  contingencia_fin_en?: string | null;
+  consulta_cufe_resultado?: 'sin_resultado' | 'encontrado' | null;
+  consulta_cufe_en?: string | null;
+  consulta_cufe_soporte?: string | null;
+  cobro_devolucion_soporte?: string | null;
+  cobro_devolucion_fecha?: string | null;
 }
+
+/** Ronda 5: cómo se verificó la contingencia de una factura nunca transmitida. */
+export const SOPORTES_CONTINGENCIA = ['aviso_dian', 'aviso_proveedor_tecnologico', 'soporte_falla_facturador', 'sin_soporte_contingencia'] as const;
+export type SoporteContingencia = (typeof SOPORTES_CONTINGENCIA)[number];
+
+/** Instante ISO con hora (consulta del CUFE/CUDE, fin de la falla). */
+const INSTANTE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/;
+
+/** Ronda 4: estado del documento electrónico en el expediente. Rechazo comercial ≠ rechazo de validación de la DIAN. */
+export const ESTADOS_ELECTRONICOS = ['validada_dian', 'rechazada_validacion_dian', 'rechazo_comercial_comprador', 'nunca_transmitida', 'expedida_contingencia'] as const;
+export type EstadoElectronico = (typeof ESTADOS_ELECTRONICOS)[number];
 
 export type ErrorNaturaleza =
   | 'asiento_invalido'
@@ -720,6 +802,8 @@ export type ErrorNaturaleza =
   | 'devolucion_incompleta'
   | 'devolucion_lineas_no_suman'
   | 'resolucion_invalida'
+  | 'cierre_requiere_explicacion'
+  | 'expediente_invalido'
   | 'texto_largo';
 
 /** Cuerpo de «naturaleza de un asiento». `naturaleza: null` = quitar el registro. */
@@ -739,8 +823,10 @@ export function validarNaturaleza(
   if (soporteFecha !== null && !DIA.test(soporteFecha)) return { ok: false, error: 'soporte_invalido' };
   const nota = texto(c.nota);
   if ((soporte?.length ?? 0) > 500 || (nota?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
-  // Ronda 2: la naturaleza se registra con su soporte (salvo el cierre, que lo genera el propio cierre).
-  if (naturaleza !== 'cierre' && (!soporte || !soporteFecha)) return { ok: false, error: 'soporte_requerido' };
+  // Ronda 2: la naturaleza se registra con su soporte. Ronda 4: también el cierre (llamarlo «cierre» no basta), que
+  // además explica en la nota por qué ese movimiento de la 2408 no es un ajuste fiscal.
+  if (!soporte || !soporteFecha) return { ok: false, error: 'soporte_requerido' };
+  if (naturaleza === 'cierre' && !nota) return { ok: false, error: 'cierre_requiere_explicacion' };
 
   const datos: SolicitudNaturaleza = {
     naturaleza,
@@ -771,11 +857,50 @@ export function validarNaturaleza(
     if ((referencia?.length ?? 0) > 120) return { ok: false, error: 'texto_largo' };
     const fechaRes = texto(c.doc_electronico_fecha);
     if (fechaRes !== null && !DIA.test(fechaRes)) return { ok: false, error: 'resolucion_invalida' };
+    // Ronda 4: expediente (la base valida además sus contradicciones y qué falta; la decisión va aparte).
+    const lista = <T extends string>(l: readonly T[], v: unknown): T | null | false =>
+      v === null || v === undefined || v === '' ? null : (enLista(l, v) ?? false);
+    const estadoElectronico = lista(ESTADOS_ELECTRONICOS, c.estado_electronico);
+    const entrega = lista(['no_hubo', 'hubo', 'parcial'] as const, c.entrega_prestacion);
+    const cobro = lista(['no_hubo', 'hubo_devuelto', 'hubo_sin_devolver'] as const, c.cobro);
+    // Ronda 5: verificación de la contingencia, consulta del CUFE/CUDE y devolución del cobro.
+    const contingencia = lista(SOPORTES_CONTINGENCIA, c.contingencia_soporte_tipo);
+    const consulta = lista(['sin_resultado', 'encontrado'] as const, c.consulta_cufe_resultado);
+    if (estadoElectronico === false || entrega === false || cobro === false || contingencia === false || consulta === false) {
+      return { ok: false, error: 'expediente_invalido' };
+    }
+    const instantes = { contingencia_fin_en: texto(c.contingencia_fin_en), consulta_cufe_en: texto(c.consulta_cufe_en) };
+    const dias = { contingencia_soporte_fecha: texto(c.contingencia_soporte_fecha), cobro_devolucion_fecha: texto(c.cobro_devolucion_fecha) };
+    if (Object.values(instantes).some((x) => x !== null && !INSTANTE.test(x)) || Object.values(dias).some((x) => x !== null && !DIA.test(x))) {
+      return { ok: false, error: 'expediente_invalido' };
+    }
+    const textos = {
+      expediente_explicacion: texto(c.expediente_explicacion),
+      factura_referencia: texto(c.factura_referencia),
+      contingencia_nota: texto(c.contingencia_nota),
+      entrega_soporte: texto(c.entrega_soporte),
+      cobro_soporte: texto(c.cobro_soporte),
+      contingencia_soporte_referencia: texto(c.contingencia_soporte_referencia),
+      consulta_cufe_soporte: texto(c.consulta_cufe_soporte),
+      cobro_devolucion_soporte: texto(c.cobro_devolucion_soporte),
+    };
+    if ((textos.expediente_explicacion?.length ?? 0) > 2000 || (textos.factura_referencia?.length ?? 0) > 120
+        || (textos.contingencia_soporte_referencia?.length ?? 0) > 120
+        || [textos.contingencia_nota, textos.entrega_soporte, textos.cobro_soporte, textos.consulta_cufe_soporte, textos.cobro_devolucion_soporte]
+          .some((x) => (x?.length ?? 0) > 500)) {
+      return { ok: false, error: 'texto_largo' };
+    }
+    Object.assign(datos, { ...instantes, ...dias, contingencia_soporte_tipo: contingencia, consulta_cufe_resultado: consulta });
     Object.assign(datos, {
       doc_electronico_resolucion: resolucion,
       doc_electronico_referencia: referencia,
       doc_electronico_fecha: fechaRes,
       corrige_declaracion_anterior: typeof c.corrige_declaracion_anterior === 'boolean' ? c.corrige_declaracion_anterior : null,
+      ...textos,
+      estado_electronico: estadoElectronico,
+      contingencia_verificada: typeof c.contingencia_verificada === 'boolean' ? c.contingencia_verificada : null,
+      entrega_prestacion: entrega,
+      cobro,
     });
   }
   if (naturaleza === 'devolucion_compra') {
@@ -799,12 +924,25 @@ export function validarNaturaleza(
   return { ok: true, asiento, datos };
 }
 
+/**
+ * Ronda 5 (arts. 589 y 714 ET): vencimiento del plazo para declarar y firmeza, registrados por una persona. Solo viajan
+ * si vienen en el cuerpo: una clave ausente conserva lo registrado. La firmeza (sí o no) lleva su nota.
+ */
+export interface DatosDeclaracion {
+  numero_formulario: string | null;
+  presentada_en: string;
+  nota: string | null;
+  vencimiento_plazo?: string | null;
+  en_firme?: boolean | null;
+  firmeza_nota?: string | null;
+}
+
 /** Cuerpo de «registrar período declarado». `presentada_en: null` = quitar el registro. */
 export function validarDeclaracion(
   cuerpo: unknown,
 ):
-  | { ok: true; desde: string; hasta: string; datos: { numero_formulario: string | null; presentada_en: string; nota: string | null } | null }
-  | { ok: false; error: 'periodo_invalido' | 'fecha_presentacion_invalida' | 'texto_largo' } {
+  | { ok: true; desde: string; hasta: string; datos: DatosDeclaracion | null }
+  | { ok: false; error: 'periodo_invalido' | 'fecha_presentacion_invalida' | 'texto_largo' | 'vencimiento_invalido' | 'firmeza_requiere_nota' } {
   const c = obj(cuerpo);
   const desde = typeof c.desde === 'string' ? c.desde : '';
   const hasta = typeof c.hasta === 'string' ? c.hasta : '';
@@ -815,5 +953,19 @@ export function validarDeclaracion(
   const numero = texto(c.numero_formulario);
   const nota = texto(c.nota);
   if ((numero?.length ?? 0) > 40 || (nota?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
-  return { ok: true, desde, hasta, datos: { numero_formulario: numero, presentada_en: presentada, nota } };
+  const datos: DatosDeclaracion = { numero_formulario: numero, presentada_en: presentada, nota };
+  if ('vencimiento_plazo' in c) {
+    const venc = texto(c.vencimiento_plazo);
+    if (venc !== null && (!DIA.test(venc) || venc <= hasta)) return { ok: false, error: 'vencimiento_invalido' };
+    datos.vencimiento_plazo = venc;
+  }
+  if ('en_firme' in c) {
+    const firme = typeof c.en_firme === 'boolean' ? c.en_firme : null;
+    const notaFirmeza = texto(c.firmeza_nota);
+    if ((notaFirmeza?.length ?? 0) > 500) return { ok: false, error: 'texto_largo' };
+    if (firme !== null && !notaFirmeza) return { ok: false, error: 'firmeza_requiere_nota' };
+    datos.en_firme = firme;
+    datos.firmeza_nota = notaFirmeza;
+  }
+  return { ok: true, desde, hasta, datos };
 }

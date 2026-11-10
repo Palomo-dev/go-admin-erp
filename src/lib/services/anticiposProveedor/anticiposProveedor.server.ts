@@ -20,6 +20,7 @@ import {
   esPendienteDeActivar,
   estadoAnticipo,
   estadoHttpErrorAnticipo,
+  type ComponenteAnticipo,
   type ErrorAnticipoProveedor,
   type EvaluacionRetenciones,
   type FilaAnticipoProveedor,
@@ -41,6 +42,8 @@ import {
   type SolicitudDevolverAnticipo,
 } from '@/lib/finanzas/anticiposProveedor/contrato';
 import type { ContextoSaldoFavor, FacturaAbiertaSaldo } from '@/lib/finanzas/saldosAFavor/contrato';
+import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 import { contextoSaldo, ErrorSaldoFavorServidor } from '@/lib/services/saldosAFavor/saldosAFavor.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
@@ -80,6 +83,28 @@ function errorDeRpc(rpc: string, ctx: Ctx, error: { message: string; code?: stri
 
 const num = (v: unknown) => Number(v ?? 0) || 0;
 
+/** Línea de la operación tal como la guarda la base (`supplier_advances.componentes`, conversiones, devoluciones). */
+type LineaJson = { componente?: string | null; descripcion?: string | null; tratamiento?: string | null; base?: number | string; iva?: number | string | null };
+
+/**
+ * Ronda 4: líneas de la operación de cada anticipo (las del giro y las de cada conversión en abono) con lo ya devuelto
+ * de cada una; es lo que muestra `fn_anticipo_componentes` en la base, leído aquí con la sesión (RLS por pertenencia).
+ */
+function componentesDeAnticipo(
+  propias: readonly LineaJson[] | null,
+  conversiones: readonly (readonly LineaJson[])[],
+  devueltas: readonly (readonly LineaJson[])[],
+): ComponenteAnticipo[] {
+  const devuelto = new Map<string, number>();
+  for (const lineas of devueltas) for (const l of lineas) if (l.componente) devuelto.set(l.componente, (devuelto.get(l.componente) ?? 0) + num(l.base));
+  const salida: ComponenteAnticipo[] = [];
+  const agregar = (l: LineaJson, clave: string) =>
+    salida.push({ clave, descripcion: l.descripcion || l.tratamiento || clave, base: num(l.base), iva: num(l.iva), devueltoBase: devuelto.get(clave) ?? 0 });
+  (propias ?? []).forEach((l, i) => agregar(l, l.componente ?? String(i)));
+  for (const lineas of conversiones) for (const l of lineas) if (l.componente) agregar(l, l.componente);
+  return salida;
+}
+
 type FilaBase = {
   id: string;
   supplier_id: number;
@@ -93,6 +118,7 @@ type FilaBase = {
   naturaleza: string | null;
   retencion_total: number | string | null;
   retencion_pendiente: boolean | null;
+  componentes: LineaJson[] | null;
   suppliers: { name: string | null; nit: string | null } | null;
   payment_groups: { receipt_number: string | null } | null;
 };
@@ -105,7 +131,7 @@ type FilaBase = {
 export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticipos> {
   const { data, error } = await ctx.supabase
     .from('supplier_advances')
-    .select('id, supplier_id, amount, balance, status, created_at, branch_id, notes, account_code, naturaleza, retencion_total, retencion_pendiente, suppliers:supplier_id (name, nit), payment_groups:payment_group_id (receipt_number)')
+    .select('id, supplier_id, amount, balance, status, created_at, branch_id, notes, account_code, naturaleza, retencion_total, retencion_pendiente, componentes, suppliers:supplier_id (name, nit), payment_groups:payment_group_id (receipt_number)')
     .eq('organization_id', ctx.organizationId)
     .order('created_at', { ascending: false })
     .limit(1000);
@@ -117,10 +143,11 @@ export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticip
 
   const aplicadoPorAnticipo = new Map<string, number>();
   const retencionesPorAnticipo = new Map<string, RetencionDelAnticipo[]>();
+  const reglaIcaPorAnticipo = new Map<string, string>();
   if (filasBase.length > 0) {
     const { data: rets, error: errRets } = await ctx.supabase
       .from('supplier_advance_withholdings')
-      .select('advance_id, clase, concepto, base, tarifa, valor, revertido')
+      .select('advance_id, clase, concepto, base, tarifa, valor, revertido, regla_ica_id')
       .eq('organization_id', ctx.organizationId)
       .in('advance_id', filasBase.map((f) => f.id));
     if (errRets) {
@@ -135,8 +162,13 @@ export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticip
       tarifa: number | string;
       valor: number | string;
       revertido: number | string;
+      regla_ica_id: string | null;
     };
-    for (const r of (rets ?? []) as FilaRet[]) {
+    const filasRet = (rets ?? []) as FilaRet[];
+    for (const r of filasRet) {
+      if (r.clase === 'reteica' && r.regla_ica_id && num(r.valor) - num(r.revertido) > 0) reglaIcaPorAnticipo.set(r.advance_id, r.regla_ica_id);
+    }
+    for (const r of filasRet) {
       const lista = retencionesPorAnticipo.get(r.advance_id) ?? [];
       lista.push({
         clase: r.clase,
@@ -176,6 +208,56 @@ export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticip
     }
   }
 
+  // Ronda 4: líneas convertidas en abono y líneas ya devueltas (para devolver o resolver por líneas).
+  const conversionesPorAnticipo = new Map<string, LineaJson[][]>();
+  const devueltasPorAnticipo = new Map<string, LineaJson[][]>();
+  const pruebasIcaPorAnticipo = new Map<string, string[] | null>();
+  if (filasBase.length > 0) {
+    const ids = filasBase.map((f) => f.id);
+    const [conv, devs] = await Promise.all([
+      ctx.supabase.from('supplier_advance_conversions').select('advance_id, componentes').eq('organization_id', ctx.organizationId).in('advance_id', ids),
+      ctx.supabase.from('supplier_advance_refunds').select('advance_id, lineas').eq('organization_id', ctx.organizationId).in('advance_id', ids),
+    ]);
+    if (conv.error) throw errorDeRpc('supplier_advance_conversions', ctx, conv.error);
+    if (devs.error) throw errorDeRpc('supplier_advance_refunds', ctx, devs.error);
+    for (const c of (conv.data ?? []) as { advance_id: string; componentes: LineaJson[] | null }[]) {
+      conversionesPorAnticipo.set(c.advance_id, [...(conversionesPorAnticipo.get(c.advance_id) ?? []), c.componentes ?? []]);
+    }
+    for (const d of (devs.data ?? []) as { advance_id: string; lineas: LineaJson[] | null }[]) {
+      if (d.lineas?.length) devueltasPorAnticipo.set(d.advance_id, [...(devueltasPorAnticipo.get(d.advance_id) ?? []), d.lineas]);
+    }
+
+    // Con reteICA vigente: las pruebas del procedimiento VALIDADO del municipio de esa retención (nunca el de otro).
+    const reglas = [...new Set(reglaIcaPorAnticipo.values())];
+    if (reglas.length > 0) {
+      const { data: rr, error: errRr } = await ctx.supabase.from('reteica_reglas').select('id, municipality_id').eq('organization_id', ctx.organizationId).in('id', reglas);
+      if (errRr) throw errorDeRpc('reteica_reglas', ctx, errRr);
+      const municipioDeRegla = new Map(((rr ?? []) as { id: string; municipality_id: string }[]).map((r) => [r.id, r.municipality_id]));
+      const municipios = [...new Set(municipioDeRegla.values())];
+      const hoy = todayInTz(await getOrganizationTimezone(ctx.organizationId, ctx.supabase));
+      const { data: procs, error: errProcs } = municipios.length
+        ? await ctx.supabase
+            .from('reteica_procedimientos')
+            .select('municipality_id, pruebas, vigente_desde, vigente_hasta')
+            .eq('organization_id', ctx.organizationId)
+            .eq('estado', 'validado')
+            .in('municipality_id', municipios)
+            .lte('vigente_desde', hoy)
+            .order('vigente_desde', { ascending: false })
+        : { data: [], error: null };
+      if (errProcs) throw errorDeRpc('reteica_procedimientos', ctx, errProcs);
+      const pruebasDeMunicipio = new Map<string, string[]>();
+      for (const p of (procs ?? []) as { municipality_id: string; pruebas: string[] | null; vigente_hasta: string | null }[]) {
+        if (pruebasDeMunicipio.has(p.municipality_id) || (p.vigente_hasta && p.vigente_hasta < hoy)) continue;
+        pruebasDeMunicipio.set(p.municipality_id, p.pruebas ?? []);
+      }
+      for (const [anticipo, regla] of reglaIcaPorAnticipo) {
+        const municipio = municipioDeRegla.get(regla);
+        pruebasIcaPorAnticipo.set(anticipo, (municipio && pruebasDeMunicipio.get(municipio)) || null);
+      }
+    }
+  }
+
   const filas: FilaAnticipoProveedor[] = filasBase.map((f) => {
     const valor = num(f.amount);
     const saldo = f.status === 'cancelled' ? 0 : num(f.balance);
@@ -200,6 +282,8 @@ export async function listarAnticipos(ctx: Ctx): Promise<RespuestaListadoAnticip
       retencion: num(f.retencion_total),
       retencionPendiente: f.retencion_pendiente === true,
       retenciones: retencionesPorAnticipo.get(f.id) ?? [],
+      componentes: componentesDeAnticipo(f.componentes, conversionesPorAnticipo.get(f.id) ?? [], devueltasPorAnticipo.get(f.id) ?? []),
+      pruebasIca: pruebasIcaPorAnticipo.has(f.id) ? (pruebasIcaPorAnticipo.get(f.id) ?? null) : undefined,
     };
   });
 
@@ -457,7 +541,8 @@ export async function reintegrarExcesoRetencion(ctx: Ctx, anticipoId: string, s:
     p_metodo: s.metodo,
     p_clave_idempotencia: s.clave_idempotencia,
     p_soportes: s.soportes,
-    p_periodo_descuento: s.periodo_descuento,
+    // Ronda 4: el período lo fija la regla del impuesto; si llega, la base exige que coincida.
+    p_periodo_descuento: s.periodo_descuento ?? null,
     p_requiere_correccion: s.requiere_correccion,
     p_motivo: s.motivo,
     p_organization_id: ctx.organizationId,

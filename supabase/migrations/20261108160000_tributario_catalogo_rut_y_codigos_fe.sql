@@ -17,6 +17,20 @@
 -- cambia). O-13, O-15, O-23, O-47 y R-99-PN: identificados en la documentación oficial, cotejo íntegro del anexo vigente
 -- pendiente. O-48 y O-49: «no_validado_como_fe» (no se validan como códigos de FE solo porque existan 48 y 49 en el RUT).
 -- Mapeo RUT ↔ FE solo donde la equivalencia es directa: 13, 15, 23 y 47. Sin fila para 48/49 ni para R-99-PN.
+--
+-- RONDA 4 DEL CONTADOR (2026-11-09, docs/contador/RESPUESTAS-CONTADOR-RONDA-4-2026-11-09.md, «Perfil · 1 y 2»),
+-- reescrita sin aplicar:
+--   · El catálogo NO es exhaustivo. El Contador confirmó que IN-CAC-0237 v3 trae los 48 apartados, pero la Resolución
+--     DIAN 227 de 2025, art. 1.6.11.5, contempla el código 67 (CARF) aunque el instructivo no lo traiga. Cada código
+--     lleva su TIPO DE FUENTE: «instructivo» (cotejado con IN-CAC-0237), «norma» (previsto en una norma, pendiente de
+--     cotejo del texto) o «historico». Se agrega el 67 con fuente «norma». Un código del RUT que no esté en el catálogo
+--     ya no se rechaza al guardar el perfil (20261108160500): queda «para aclaración».
+--   · 11 y 12 quedan como evidencia HISTÓRICA (estado «historico»): no son responsabilidades actuales y no cambian
+--     ningún documento ya expedido (esta migración no toca documentos).
+--   · Códigos del documento electrónico: el cotejo de la tabla 13.2.6.1 del anexo técnico 1.9 (caja de herramientas
+--     oficial de FE 1.9, 2026) confirma O-13, O-15, O-23, O-47 y R-99-PN («cotejado_fuente_oficial»). R-99-PN se
+--     denomina «No aplica – Otros» (también su descripción, que decía «No responsable (persona natural)»). O-48 y
+--     O-49 NO pertenecen a esa tabla: estado «no_pertenece_tabla_fe».
 
 -- 1 ─ Catálogo del RUT ─────────────────────────────────────────────────────────────────────────────────────────────
 create table if not exists public.rut_responsabilidades (
@@ -24,7 +38,9 @@ create table if not exists public.rut_responsabilidades (
   nombre text not null check (length(btrim(nombre)) > 0),
   vigente boolean not null default true,
   estado_validacion text not null default 'pendiente_validacion'
-    check (estado_validacion in ('pendiente_validacion', 'cotejado_fuente_oficial', 'validado')),
+    check (estado_validacion in ('pendiente_validacion', 'cotejado_fuente_oficial', 'validado', 'historico')),
+  -- Ronda 4: de dónde sale el código. El catálogo no es exhaustivo: una norma puede prever códigos que el instructivo no trae.
+  tipo_fuente text not null default 'instructivo' check (tipo_fuente in ('instructivo', 'norma', 'historico')),
   fuente text not null check (length(btrim(fuente)) > 0),
   fuente_numeral text,
   fuente_pagina smallint,
@@ -35,7 +51,7 @@ create table if not exists public.rut_responsabilidades (
 );
 
 comment on table public.rut_responsabilidades is
-  'Responsabilidades, calidades y atributos del RUT (casilla 53), cotejadas con el instructivo oficial IN-CAC-0237 v3 de la DIAN. Distinto de los códigos del documento electrónico (dian_fiscal_responsibilities). «validado» solo lo asigna el Contador.';
+  'Responsabilidades, calidades y atributos del RUT (casilla 53): los del instructivo oficial IN-CAC-0237 v3 de la DIAN y los previstos en normas posteriores (tipo_fuente). NO es exhaustivo: un código que no esté aquí no se descarta. Distinto de los códigos del documento electrónico (dian_fiscal_responsibilities). «validado» solo lo asigna el Contador.';
 
 alter table public.rut_responsabilidades enable row level security;
 drop policy if exists rut_responsabilidades_select on public.rut_responsabilidades;
@@ -100,39 +116,56 @@ select v.codigo, v.nombre, v.vigente, v.numeral, v.pagina, v.marco, v.orden,
   ) as v(codigo, nombre, vigente, numeral, pagina, marco, orden)
 on conflict (codigo) do nothing;
 
-insert into public.rut_responsabilidades (codigo, nombre, vigente, estado_validacion, fuente, nota, orden)
+insert into public.rut_responsabilidades (codigo, nombre, vigente, estado_validacion, tipo_fuente, fuente, nota, orden)
 values
-  ('11', 'Ventas régimen común', false, 'pendiente_validacion', 'No figura en IN-CAC-0237 v3; código histórico',
-   'Reemplazado por 48 (Ley 1943 de 2018, actualización masiva del RUT de 2019). Aún aparece en RUT no actualizados.', 11),
-  ('12', 'Ventas régimen simplificado', false, 'pendiente_validacion', 'No figura en IN-CAC-0237 v3; código histórico',
-   'Reemplazado por 49. Aún aparece en RUT no actualizados.', 12)
+  ('11', 'Ventas régimen común', false, 'historico', 'historico', 'No figura en IN-CAC-0237 v3; código histórico',
+   'Reemplazado por 48 (Ley 1943 de 2018, actualización masiva del RUT de 2019). Se conserva solo como evidencia histórica: no es una responsabilidad actual y no cambia documentos ya expedidos.', 11),
+  ('12', 'Ventas régimen simplificado', false, 'historico', 'historico', 'No figura en IN-CAC-0237 v3; código histórico',
+   'Reemplazado por 49. Se conserva solo como evidencia histórica: no es una responsabilidad actual y no cambia documentos ya expedidos.', 12)
+on conflict (codigo) do nothing;
+
+-- Ronda 4: código previsto en una norma aunque el instructivo v3 no lo traiga (el catálogo no es exhaustivo).
+insert into public.rut_responsabilidades (codigo, nombre, vigente, estado_validacion, tipo_fuente, fuente, nota, orden)
+values
+  ('67', 'Intercambio Automático de Información CARF', true, 'pendiente_validacion', 'norma',
+   'Resolución DIAN 000227 de 2025, artículo 1.6.11.5 (señalada por el Contador en la ronda 4); no figura en IN-CAC-0237 v3',
+   'CARF: marco de reporte de criptoactivos. El nombre exacto se coteja con el texto de la norma; mientras tanto, pendiente de validación.', 67)
 on conflict (codigo) do nothing;
 
 -- 2 ─ Códigos del documento electrónico (tabla existente) ──────────────────────────────────────────────────────────
 alter table public.dian_fiscal_responsibilities
   add column if not exists estado_validacion text not null default 'pendiente_validacion'
-    check (estado_validacion in ('pendiente_validacion', 'validado', 'no_validado_como_fe')),
+    check (estado_validacion in ('pendiente_validacion', 'cotejado_fuente_oficial', 'validado', 'no_pertenece_tabla_fe')),
   add column if not exists nombre_anexo text,
   add column if not exists fuente text,
   add column if not exists nota text;
 
 comment on table public.dian_fiscal_responsibilities is
-  'Códigos de responsabilidad fiscal del DOCUMENTO ELECTRÓNICO (anexo técnico de FE). No es el catálogo del RUT (rut_responsabilidades). Pendiente de validación del Contador.';
+  'Códigos de responsabilidad fiscal del DOCUMENTO ELECTRÓNICO (anexo técnico de FE 1.9, tabla 13.2.6.1). No es el catálogo del RUT (rut_responsabilidades). O-48 y O-49 no pertenecen a esa tabla (ronda 4 del Contador).';
 
 update public.dian_fiscal_responsibilities d
-   set estado_validacion = case when d.code in ('O-48', 'O-49') then 'no_validado_como_fe' else 'pendiente_validacion' end,
-       nombre_anexo = case d.code when 'R-99-PN' then 'No aplica – Otros (por confirmar en el anexo vigente)' else d.nombre_anexo end,
+   set estado_validacion = case when d.code in ('O-48', 'O-49') then 'no_pertenece_tabla_fe'
+                                when d.code in ('O-13', 'O-15', 'O-23', 'O-47', 'R-99-PN') then 'cotejado_fuente_oficial'
+                                else 'pendiente_validacion' end,
+       nombre_anexo = case d.code when 'R-99-PN' then 'No aplica – Otros' else d.nombre_anexo end,
        fuente = case when d.code in ('O-48', 'O-49')
-                  then 'No figura entre las responsabilidades de FE identificadas por la DIAN; no se valida como código de FE por existir 48/49 en el RUT'
-                  else 'DIAN, preguntas frecuentes de reglas de validación de FE (Resolución 000042 de 2020); cotejo íntegro del anexo vigente (1.9, Resolución 000165 de 2023) pendiente'
+                  then 'No pertenece a la tabla 13.2.6.1 del anexo técnico de FE 1.9 (caja de herramientas oficial FE 1.9, 2026; cotejo del Contador, ronda 4)'
+                  when d.code in ('O-13', 'O-15', 'O-23', 'O-47', 'R-99-PN')
+                  then 'DIAN, caja de herramientas oficial de FE 1.9 (2026), anexo técnico 1.9, tabla 13.2.6.1 (cotejo del Contador, ronda 4)'
+                  else 'Sin cotejo con la tabla 13.2.6.1 del anexo técnico de FE 1.9'
                 end,
        nota = case d.code
-                when 'R-99-PN' then 'Residual: aplica cuando no corresponde ninguna otra responsabilidad. No se combina con las demás y NO significa «no responsable de IVA».'
-                when 'O-48' then 'No validado como código de FE. La condición de responsable de IVA se lleva en el perfil (RUT 48).'
-                when 'O-49' then 'No validado como código de FE. La condición de no responsable de IVA se lleva en el perfil (RUT 49 o 53).'
+                when 'R-99-PN' then 'Se denomina «No aplica – Otros». Residual: aplica cuando no corresponde ninguna otra responsabilidad. No se combina con las demás y NO significa «no responsable de IVA».'
+                when 'O-48' then 'No pertenece a la tabla 13.2.6.1 del anexo de FE. La condición de responsable de IVA se lleva en el perfil (RUT 48).'
+                when 'O-49' then 'No pertenece a la tabla 13.2.6.1 del anexo de FE. La condición de no responsable de IVA se lleva en el perfil (RUT 49 o 53).'
                 else null
               end
  where d.fuente is null;
+
+-- Ronda 4: la descripción visible de R-99-PN deja de decir «No responsable (persona natural)» (el código se envía igual).
+update public.dian_fiscal_responsibilities
+   set description = 'No aplica – Otros'
+ where code = 'R-99-PN' and description is distinct from 'No aplica – Otros';
 
 -- 3 ─ Mapeo RUT ↔ código FE (solo equivalencias directas) ─────────────────────────────────────────────────────────
 create table if not exists public.rut_fe_responsabilidad_mapeo (
@@ -145,7 +178,7 @@ create table if not exists public.rut_fe_responsabilidad_mapeo (
 );
 
 comment on table public.rut_fe_responsabilidad_mapeo is
-  'Correspondencia explícita RUT ↔ código del documento electrónico. Sin fila = sin equivalencia (48/49 ↔ O-48/O-49 no se validan; R-99-PN es residual).';
+  'Correspondencia explícita RUT ↔ código del documento electrónico. Sin fila = sin equivalencia (O-48/O-49 no pertenecen a la tabla de FE; R-99-PN es residual).';
 
 alter table public.rut_fe_responsabilidad_mapeo enable row level security;
 drop policy if exists rut_fe_responsabilidad_mapeo_select on public.rut_fe_responsabilidad_mapeo;

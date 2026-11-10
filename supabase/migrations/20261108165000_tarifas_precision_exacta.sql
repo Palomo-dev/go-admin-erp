@@ -1,6 +1,7 @@
 -- Precisión de las tarifas de impuestos y retenciones (Contador, ronda 2 · ReteICA).
 --
--- ESCRITA, NO APLICADA. Se aplica por el MCP (apply_migration) cuando el dueño lo ordene, después de
+-- ESCRITA, NO APLICADA (reescrita en la ronda 5: comprobación de pertenencia). Se aplica por el MCP (apply_migration)
+-- cuando el dueño lo ordene, después de
 -- 20261108160500 y antes de 20261108170000 (que la usa). Reversión:
 -- supabase/rollbacks/20261108165000_tarifas_precision_exacta_rollback.sql
 --
@@ -38,14 +39,29 @@ update public.organization_taxes ot
    and ot.rate = tt.rate;
 
 -- Tarifa en porcentaje de un impuesto o retención de la organización: la exacta si existe; si no, rate.
+-- Ronda 5 (seguridad, pendiente de la ronda 4): era SECURITY DEFINER sin comprobar que quien la llama pertenece a la
+-- organización del impuesto. Sigue siendo DEFINER (la llaman funciones del servidor y la service_role, que no pasan por
+-- RLS), pero ahora comprueba la pertenencia con fn_assert_acceso_org: un usuario con sesión que no es miembro de la
+-- organización del impuesto recibe 42501; anon también (y además no tiene EXECUTE). Un id que no existe devuelve NULL.
 create or replace function public.fn_tarifa_exacta_impuesto(p_organization_tax uuid)
  returns numeric
- language sql
+ language plpgsql
  stable security definer
  set search_path to 'public', 'pg_temp'
 as $function$
-  select coalesce(ot.tarifa_exacta, ot.rate) from public.organization_taxes ot where ot.id = p_organization_tax;
+declare
+  v_org integer;
+  v_tarifa numeric;
+begin
+  select ot.organization_id, coalesce(ot.tarifa_exacta, ot.rate) into v_org, v_tarifa
+    from public.organization_taxes ot where ot.id = p_organization_tax;
+  if v_org is null then
+    return null;
+  end if;
+  perform public.fn_assert_acceso_org(v_org);
+  return v_tarifa;
+end;
 $function$;
 
 revoke all on function public.fn_tarifa_exacta_impuesto(uuid) from public, anon;
-grant execute on function public.fn_tarifa_exacta_impuesto(uuid) to authenticated;
+grant execute on function public.fn_tarifa_exacta_impuesto(uuid) to authenticated, service_role;

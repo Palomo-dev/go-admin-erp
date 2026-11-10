@@ -148,8 +148,14 @@ describe('B5 · IVA no descontable determinado antes de contabilizar → al cost
   });
 
   it('las funciones nuevas nacen cerradas a anon', () => {
-    for (const firma of ['fn_iva_factor_descontable_linea(uuid)', 'fn_iva_no_descontable_linea(uuid)', 'fn_iva_no_descontable_documento(text, uuid)']) {
+    for (const firma of [
+      'fn_iva_factor_descontable_linea(uuid)',
+      'fn_iva_no_descontable_linea(uuid)',
+      'fn_iva_no_descontable_documento(text, uuid)',
+      'fn_iva_no_descontable_cuenta_unica_fallo(uuid, text)',
+    ]) {
       expect(B5).toContain(`revoke all on function public.${firma} from public, anon;`);
+      expect(B5_REV).toContain(`drop function if exists public.${firma};`);
     }
     expect(B5).not.toMatch(/security definer/i);
   });
@@ -169,6 +175,7 @@ describe('B5 · IVA no descontable determinado antes de contabilizar → al cost
       'fn_armar_asiento_documento/parte',
       'fn_auto_journal_purchase/declare',
       'fn_auto_journal_purchase/no_descontable',
+      'fn_auto_journal_purchase/pendiente',
     ]);
     expect(vuelta).toHaveLength(ida.length);
     for (const p of ida) {
@@ -178,9 +185,21 @@ describe('B5 · IVA no descontable determinado antes de contabilizar → al cost
     }
   });
 
-  it('datos inconsistentes no se adivinan: si el no descontable supera el IVA, queda todo en la 2408', () => {
-    expect(B5).toMatch(/if v_nd > v_tax then\s+v_nd := 0;/);
-    expect(B5).toContain('if v_nd > greatest(abs(coalesce(new.tax_total, 0)) - v_inc, 0) then');
+  it('ronda 4: datos inconsistentes dejan el documento pendiente de corregir, sin asiento (nunca todo a la 2408)', () => {
+    // Asiento por líneas: ok=false con el motivo (la bandeja de pendientes contables lo muestra).
+    expect(B5).toMatch(/if v_nd > v_tax or v_nd > v_total then\s+return jsonb_build_object\('ok', false, 'fallo',/);
+    // Asiento de cabecera: pendiente 'iva_no_descontable_por_corregir' y ningún fn_create_journal_entry.
+    expect(B5).toContain("'iva_no_descontable_por_corregir', v_nd_fallo);");
+    expect(B5).toMatch(/elsif v_nd_fallo is not null then[\s\S]*?fn_log_journal_failure[\s\S]*?else\s+v_entry_id := fn_create_journal_entry\(/);
+    // Ya no existe el «si no cuadra, todo a la 2408» de la ronda 3.
+    expect(B5).not.toMatch(/if v_nd > v_tax then\s+v_nd := 0;/);
+    expect(B5).not.toMatch(/then\s+v_nd := 0;\s+end if;\s+v_inc := v_inc \+ v_nd;/);
+  });
+
+  it('ronda 4: sin cuenta única de cabecera cuando las líneas son de activos o gastos distintos', () => {
+    expect(B5).toContain('v_nd_fallo := public.fn_iva_no_descontable_cuenta_unica_fallo(new.id, v_debito);');
+    expect(B5).toMatch(/count\(distinct l\.tipo\) from l\) > 1/);
+    expect(B5).toContain("coalesce(p_cuenta_cabecera, '') like '14%' and exists (select 1 from l where l.tipo = 'servicios')");
   });
 });
 

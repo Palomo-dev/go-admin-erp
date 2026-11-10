@@ -45,6 +45,7 @@ import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { tarjetaProductoTemaDisponible } from '@/lib/website/tarjetaProducto';
 import { urgenciaDocumentoDisponible } from '@/lib/website/conversion';
 import { InspectorTarjetaProducto } from './inspector/InspectorTarjetaProducto';
+import { HoverBotonesTema } from './inspector/HoverBotonesTema';
 import { normalizarHex } from '@/lib/utils/contrasteColor';
 import { useTextosEditor } from './textos';
 import { PanelUrgencia } from './inspector/PanelUrgencia';
@@ -190,6 +191,10 @@ export function PanelEstiloSitio(p: PanelEstiloSitioProps) {
             className="border-0 p-1"
           />
         ) : null}
+        {/* Efecto al pasar el mouse (tokens.hover, Figma A3): el sitio lo pinta sin bandera. */}
+        {estilo && p.enV2 && p.documento && (
+          <HoverBotonesTema documento={p.documento} onCambiarDocumento={p.onCambiarDocumento} deshabilitado={p.deshabilitado} />
+        )}
         {p.enV2 && p.documento && (
           <section className="mt-4 flex flex-col gap-2 px-1">
             <h3 className="text-[13px] font-medium text-fg">{t('zonaGlobal.acciones.estilosCombinables')}</h3>

@@ -238,6 +238,16 @@ export const TEXTOS_EDITOR = {
     titulo: 'Estilo del sitio',
     cerrar: 'Cerrar estilo del sitio',
     sinDatos: 'Aún no hay estilo para este sitio. Elige una plantilla en Plantillas.',
+    hover: {
+      titulo: 'Efecto al pasar el mouse',
+      ayuda: 'Un solo valor para los botones de las secciones de todo el sitio. Respeta «reducir movimiento» del sistema.',
+      opcion: { ninguno: 'Ninguno', sutil: 'Sutil', expresivo: 'Expresivo' },
+      detalle: {
+        ninguno: 'Como hoy: no se guarda nada.',
+        sutil: 'Sutil: el botón se oscurece un poco.',
+        expresivo: 'Expresivo: sube 1 px y la flecha avanza.',
+      },
+    },
   },
   anadir: {
     titulo: 'Añadir sección',

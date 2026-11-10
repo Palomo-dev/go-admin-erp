@@ -85,6 +85,27 @@ const BARRA_MOVIL: Partial<Record<Giro, readonly string[]>> = {
 const conBarra = (giro: Giro, opciones: Record<string, unknown>) =>
   BARRA_MOVIL[giro] ? { ...opciones, mobile_bottom_bar: [...BARRA_MOVIL[giro]!] } : opciones;
 
+/**
+ * Barra inferior «tipo app» del celular de las plantillas de tienda nuevas (Radiante, Marea y
+ * Hogar): `mobile_header.bottom_nav` en la versión 2 del contrato `menuInferior.ts` (con `v: 2` la
+ * tienda pinta estas pestañas; sin ella, lo de siempre). Inicio, Categorías, Buscar, Cuenta, Carrito.
+ */
+export const BARRA_APP_TIENDA: Readonly<Record<string, unknown>> = {
+  bottom_nav: {
+    v: 2,
+    enabled: true,
+    variant: 'tabs',
+    items: [
+      { id: 'home', action: 'home', label: 'Inicio', icon: 'home', visible: true },
+      { id: 'categories', action: 'categories_page', label: 'Categorías', icon: 'grid', visible: true },
+      { id: 'search', action: 'search', label: 'Buscar', icon: 'search', visible: true },
+      { id: 'account', action: 'account', label: 'Cuenta', icon: 'user', visible: true },
+      { id: 'cart', action: 'cart', label: 'Carrito', icon: 'bag', visible: true },
+    ],
+    style: { labels: 'always' },
+  },
+};
+
 export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
   // ─── Restaurante ───────────────────────────────────────────────────────────────────────────
   noir_omakase: {
@@ -252,6 +273,279 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       opciones: conBarra('tienda', { logo_position: 'center', search_style: 'icon', show_header_cart: true, show_header_auth: true, mobile_menu_style: 'fullscreen' }),
     },
     pie: { composicion: 'centered', menus: ['atencion', 'envios', 'legal'], opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_payment_methods: true, mobile_footer_style: 'accordion' } },
+  },
+  // ─── Tienda: las 7 nuevas (Figma «04 Tiendas», aprobadas el 2026-11-10; PLANO §4) ────────────
+  // Pie oscuro: `custom` con el hex de la lámina, no `dark`: con el tema de V2 el sitio repinta
+  // `dark` con los colores del tema (regla de globals.css), y en un tema claro saldría claro (W1).
+  retail_panorama: {
+    encabezado: {
+      composicion: 'pill',
+      boton: null,
+      boton2: null,
+      opciones: {
+        header_transparent_over_hero: true,
+        search_style: 'icon',
+        mobile_search_style: 'icon',
+        show_categories_in_header: false,
+        header_actions_style: 'icono',
+        header_icons_circle: true,
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'encoger',
+        show_topbar: false,
+        header_extra_buttons_style: 'outline',
+        mobile_menu_style: 'drawer',
+        mobile_bottom_bar: 'ninguna',
+        show_header_cart: true,
+        show_header_auth: true,
+      },
+    },
+    pie: {
+      composicion: 'three_columns',
+      menus: ['ayuda', 'envios-devoluciones', 'legal'],
+      opciones: {
+        footer_background: 'custom',
+        footer_custom_bg_color: '#111111',
+        footer_show_newsletter: true,
+        footer_show_whatsapp: true,
+        footer_show_map: false,
+        footer_show_payment_methods: true,
+        footer_show_categories: true,
+        footer_show_contact: false,
+        footer_show_hours: false,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        mobile_footer_style: 'accordion',
+        footer_inset: true,
+      },
+    },
+  },
+  retail_atelier: {
+    encabezado: {
+      composicion: 'centered',
+      boton: null,
+      boton2: null,
+      opciones: {
+        search_style: 'icon',
+        mobile_search_style: 'icon',
+        header_actions_style: 'texto',
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'ocultar_al_bajar',
+        show_topbar: false,
+        header_extra_buttons_style: 'text',
+        mobile_menu_style: 'fullscreen',
+        mobile_bottom_bar: 'ninguna',
+      },
+    },
+    pie: {
+      composicion: 'minimal',
+      menus: ['atencion', 'legal'],
+      opciones: {
+        footer_background: 'custom',
+        footer_custom_bg_color: '#121110',
+        footer_show_newsletter: true,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        footer_show_whatsapp: false,
+        footer_show_map: false,
+        footer_show_payment_methods: false,
+        footer_show_categories: false,
+        footer_show_contact: false,
+        footer_show_hours: false,
+        mobile_footer_style: 'stacked',
+        footer_links_style: 'display',
+      },
+    },
+  },
+  retail_radiante: {
+    encabezado: {
+      composicion: 'default',
+      boton: { texto: 'Comprar', destino: { paginas: ['productos'] } },
+      boton2: null,
+      opciones: {
+        search_style: 'icon',
+        mobile_search_style: 'icon',
+        header_actions_style: 'icono',
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'encoger',
+        header_cta_shape: 'pill',
+        header_extra_buttons_style: 'solid',
+        mobile_menu_style: 'drawer',
+        mobile_bottom_bar: 'ninguna',
+        mobile_header: BARRA_APP_TIENDA,
+      },
+    },
+    pie: {
+      composicion: 'three_columns',
+      menus: ['ayuda', 'legal'],
+      opciones: {
+        footer_background: 'light',
+        footer_show_newsletter: true,
+        footer_show_payment_methods: true,
+        footer_show_categories: true,
+        footer_show_contact: true,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        footer_show_whatsapp: false,
+        footer_show_map: false,
+        footer_show_hours: false,
+        mobile_footer_style: 'accordion',
+        footer_brand_display: 'giant',
+      },
+    },
+  },
+  retail_roble: {
+    encabezado: {
+      composicion: 'default',
+      boton: null,
+      // No hay página «Showroom»: no se inventa; el segundo botón lleva a Contacto.
+      boton2: { texto: 'Contacto', destino: { paginas: ['contacto'] } },
+      opciones: {
+        search_style: 'hidden',
+        mobile_search_style: 'icon',
+        header_actions_style: 'texto',
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'ocultar_al_bajar',
+        header_extra_buttons_style: 'text',
+        mobile_menu_style: 'fullscreen',
+        mobile_bottom_bar: 'ninguna',
+      },
+    },
+    pie: {
+      composicion: 'split',
+      menus: ['ayuda', 'envios', 'legal'],
+      opciones: {
+        footer_background: 'tema',
+        footer_show_newsletter: true,
+        footer_show_categories: true,
+        footer_show_contact: true,
+        footer_show_hours: true,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        footer_show_whatsapp: false,
+        footer_show_map: false,
+        footer_show_payment_methods: false,
+        mobile_footer_style: 'stacked',
+        footer_brand_display: 'giant',
+      },
+    },
+  },
+  retail_marea: {
+    encabezado: {
+      composicion: 'centered',
+      boton: null,
+      boton2: null,
+      opciones: {
+        header_transparent_over_hero: false,
+        search_style: 'hidden',
+        mobile_search_style: 'icon_overlay',
+        show_categories_in_header: false,
+        header_actions_style: 'texto',
+        header_icons_circle: false,
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'ocultar_al_bajar',
+        show_topbar: false,
+        header_extra_buttons_style: 'text',
+        mobile_menu_style: 'fullscreen',
+        mobile_bottom_bar: 'ninguna',
+        mobile_header: BARRA_APP_TIENDA,
+      },
+    },
+    pie: {
+      composicion: 'three_columns',
+      menus: ['ayuda', 'legal'],
+      opciones: {
+        footer_background: 'tema',
+        footer_show_newsletter: false,
+        footer_show_whatsapp: false,
+        footer_show_map: false,
+        footer_show_payment_methods: false,
+        footer_show_hours: false,
+        footer_show_categories: true,
+        footer_show_contact: true,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        mobile_footer_style: 'stacked',
+        // La figura recortada la sube el dueño (`footer_brand_figure_url`): sin ella, solo la marca.
+        footer_brand_display: 'giant',
+      },
+    },
+  },
+  retail_contraste: {
+    encabezado: {
+      composicion: 'default',
+      boton: null,
+      boton2: null,
+      opciones: {
+        search_style: 'icon',
+        mobile_search_style: 'icon',
+        header_actions_style: 'icono',
+        header_icons_circle: true,
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'fijo',
+        show_topbar: false,
+        header_extra_buttons_style: 'text',
+        mobile_menu_style: 'drawer',
+        mobile_bottom_bar: 'ninguna',
+        header_bg_color: '#161616',
+        header_text_color: '#FFFFFF',
+        // Mayúsculas espaciadas en los botones (`tema.tokens.boton.mayusculas`; W1).
+        buttons_uppercase_active: true,
+      },
+    },
+    pie: {
+      composicion: 'default',
+      menus: ['ayuda', 'envios', 'legal'],
+      opciones: {
+        footer_background: 'custom',
+        footer_custom_bg_color: '#161616',
+        footer_show_whatsapp: true,
+        footer_show_map: false,
+        footer_show_payment_methods: true,
+        footer_show_categories: true,
+        footer_show_contact: true,
+        footer_show_hours: false,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        mobile_footer_style: 'accordion',
+      },
+    },
+  },
+  retail_hogar: {
+    encabezado: {
+      composicion: 'default',
+      boton: null,
+      boton2: null,
+      opciones: {
+        search_style: 'pill_floating',
+        mobile_search_style: 'icon',
+        header_actions_style: 'icono',
+        header_cart_glyph: 'bolsa',
+        header_scroll: 'encoger',
+        show_topbar: false,
+        mobile_menu_style: 'drawer',
+        mobile_bottom_bar: 'ninguna',
+        mobile_header: BARRA_APP_TIENDA,
+      },
+    },
+    pie: {
+      composicion: 'three_columns',
+      menus: ['ayuda', 'envios-devoluciones', 'legal'],
+      opciones: {
+        footer_background: 'custom',
+        footer_custom_bg_color: '#2E2925',
+        footer_show_newsletter: true,
+        footer_show_social: true,
+        footer_show_payment_methods: true,
+        footer_show_categories: true,
+        footer_show_dividers: true,
+        footer_show_whatsapp: false,
+        footer_show_map: false,
+        footer_show_contact: false,
+        footer_show_hours: false,
+        mobile_footer_style: 'accordion',
+        footer_inset: true,
+      },
+    },
   },
   // ─── Hotel ─────────────────────────────────────────────────────────────────────────────────
   hotel_luxury: {

@@ -35,6 +35,7 @@ import path from 'path';
 import ts from 'typescript';
 import { SECTION_CATALOG } from '@/lib/services/websitePageBuilderService';
 import { TEMPLATE_PRESETS } from '@/lib/services/websiteSettingsService';
+import { IDS_PLANTILLAS_TIENDA, construirCatalogo, plantillaPorId } from '@/lib/website/contrato/catalogoPlantillas';
 
 interface SeccionSitio { section_type: string; section_variant: string }
 interface PaginaSitio {
@@ -100,6 +101,16 @@ describe('Plantillas: catálogo del editor (solo ERP)', () => {
 (HAY_SITIO ? describe : describe.skip)('Plantillas: ERP ↔ goadmin-websites (manda el sitio)', () => {
   const sitio = HAY_SITIO ? cargarPresetsSitio() : [];
   const porId = new Map(sitio.map((p) => [p.id, p]));
+
+  test('las 7 plantillas de tienda nuevas se apoyan en una plantilla de tienda del sitio (sin preset nuevo)', () => {
+    const catalogo = construirCatalogo(TEMPLATE_PRESETS);
+    for (const id of IDS_PLANTILLAS_TIENDA) {
+      const base = plantillaPorId(catalogo, id)!.base;
+      expect({ id, base, tienda: porId.get(base)?.business_type }).toEqual({ id, base, tienda: 'retail' });
+      // Su id no es una plantilla del sitio: `tema.plantillaBase` guarda la base, no el id.
+      expect(porId.has(id)).toBe(false);
+    }
+  });
 
   test('las plantillas de restaurante con carta existen en los dos lados', () => {
     for (const id of RESTAURANTE_CARTA) {

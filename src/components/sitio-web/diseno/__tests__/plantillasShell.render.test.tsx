@@ -84,8 +84,8 @@ describe('tarjeta de la galería: SU encabezado y SU pie', () => {
     expect(img.querySelector('[data-bloque="pagos"]')).toBeTruthy();
   });
 
-  test('las 33 plantillas tienen miniatura con texto alternativo, y cada composición se dibuja distinta', () => {
-    expect(CATALOGO_SITIO.plantillas).toHaveLength(33);
+  test('las 40 plantillas tienen miniatura con texto alternativo, y cada composición se dibuja distinta', () => {
+    expect(CATALOGO_SITIO.plantillas).toHaveLength(40);
     const { container } = renderConIdioma(
       <>
         {CATALOGO_SITIO.plantillas.map((p) => (
@@ -94,7 +94,7 @@ describe('tarjeta de la galería: SU encabezado y SU pie', () => {
       </>,
     );
     const imgs = screen.getAllByRole('img');
-    expect(imgs).toHaveLength(33);
+    expect(imgs).toHaveLength(40);
     imgs.forEach((img) => expect(img.getAttribute('aria-label')).toMatch(/^Encabezado: .+\. Pie .+/));
     // Todas las posiciones del menú y todas las composiciones de pie que usan las láminas aparecen.
     const menus = new Set(imgs.map((img) => zona(img, 'encabezado')!.getAttribute('data-menu')));

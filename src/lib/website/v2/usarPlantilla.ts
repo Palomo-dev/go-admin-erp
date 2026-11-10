@@ -17,6 +17,11 @@ import { escribirEstilo } from './tokensEstilo';
 /**
  * Solo el estilo de la plantilla. Lo comparten «Solo estilo» y «Plantilla completa». `extendidos`
  * decide si se escriben los tokens nuevos del contrato (ver `tokensEstilo.ts`).
+ *
+ * El estilo del catálogo viaja entero: `secundario` y `acentoSecundario` solo los traen las
+ * plantillas de tienda nuevas, así que en las demás el resultado es el de siempre. La tarjeta,
+ * las perillas (`tema.tokens`) y las páginas de detalle NO son estilo: solo las escribe
+ * «Plantilla completa».
  */
 export function aplicarEstiloPlantilla(documento: DocumentoSitio, plantilla: PlantillaCatalogo, extendidos: boolean): DocumentoSitio {
   const conEstilo = escribirEstilo(documento, { ...plantilla.estilo, preset: plantilla.id }, extendidos);

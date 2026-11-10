@@ -1,7 +1,7 @@
 /**
  * Modelo de dibujo del encabezado y el pie (`dibujoShell.ts`, Figma «16 Sitio web» › «Plantillas ·
  * encabezado y pie en la galería, la vista previa y «Usar»»): cada composición se dibuja
- * distinto, las 33 plantillas del catálogo tienen su dibujo (las que no tienen lámina, el de su
+ * distinto, las 40 plantillas del catálogo tienen su dibujo (las que no tienen lámina, el de su
  * giro, igual que `shellDePlantilla`), las opciones ausentes valen lo que el sitio de hoy, y la
  * línea corta y el texto alternativo nombran lo que distingue a cada una.
  */
@@ -65,9 +65,9 @@ describe('cada composición produce un dibujo distinto', () => {
   });
 });
 
-describe('las 33 plantillas tienen miniatura', () => {
-  test('el catálogo trae 33 plantillas y todas tienen dibujo válido', () => {
-    expect(CATALOGO.plantillas).toHaveLength(33);
+describe('las 40 plantillas tienen miniatura', () => {
+  test('el catálogo trae 40 plantillas (33 + las 7 de tienda nuevas) y todas tienen dibujo válido', () => {
+    expect(CATALOGO.plantillas).toHaveLength(40);
     for (const p of CATALOGO.plantillas) {
       const d = dibujo(p);
       expect(COMPOSICIONES_HEADER).toContain(d.encabezado.composicion);

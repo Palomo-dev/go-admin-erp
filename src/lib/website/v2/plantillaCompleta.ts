@@ -34,8 +34,19 @@
  * páginas de sistema (carrito, checkout, cuenta, detalles: `plantillas/*`) y las legales (pueden
  * tener el texto real de la organización). Todo lo demás queda en el historial antes de guardar
  * (instantánea `antes_de_restaurar`), y se puede deshacer.
+ *
+ * Plantillas de tienda nuevas (2026-11, PLANO §1 y §4; solo las que traen estos campos):
+ * - Cada sección puede traer su propio contenido (`SeccionPlantilla[2]`), que va SOBRE el inicial.
+ * - `plantilla.detalle` REEMPLAZA la ficha (`product_detail`) y la página de categoría
+ *   (`category_detail`) del borrador (decisión D4): conserva su id, su dirección y si estaba
+ *   publicada; si no existían, las crea en `plantillas/product-detail` y `plantillas/category-detail`.
+ *   Carrito, checkout y cuenta se siguen conservando.
+ * - Con el estilo (no en una sede): tarjeta de producto (`tema.tarjetaProducto`), perillas
+ *   (`tema.tokens`) y paginación y carrusel (`tema.paginacion`/`tema.carrusel`), cada una solo con
+ *   su bandera ya existente encendida (`OpcionesPlantillaCompleta`).
+ * Las plantillas de antes no traen nada de esto: su resultado es el mismo de siempre.
  */
-import type { DocumentoSitio, ItemMenu, MenuSitio, PaginaSitio, SeccionSitio } from '@/lib/website/contrato/documentoSitio';
+import { valorPropio, type DocumentoSitio, type ItemMenu, type MenuSitio, type PaginaSitio, type SeccionSitio, type TarjetaProductoDocumento } from '@/lib/website/contrato/documentoSitio';
 import { construirCatalogo, plantillasDelGiro, type CatalogoPlantillas, type GiroCatalogo, type PlantillaCatalogo, type SeccionPlantilla } from '@/lib/website/contrato/catalogoPlantillas';
 import { construirPaginaBase, paginasBasePorGiro, plantillaPorId, type GenerarId, type Giro, type PaginaBase } from '@/components/sitio-web/paginas/plantillasPagina';
 import { VARIANTE_CARTA_QR, VARIANTE_PORTADA_MESA } from '@/lib/website/contrato/seccionesMesa';
@@ -52,6 +63,8 @@ import { paginaPorClave } from '@/lib/website/legales/documentoLegal';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { aplicarEstiloPlantilla } from './usarPlantilla';
 import { COMPOSICIONES_FOOTER, COMPOSICIONES_HEADER } from './mapeoAjustes';
+import { normalizarSlug } from './importadorLegacy';
+import { MAX_BLOQUES_COLOR } from '@/lib/website/contrato/seccionesTienda';
 import { shellDePlantilla, type BotonPlantilla, type ClaveMenuPie, type DestinoBoton, type ShellPlantilla } from './shellPorPlantilla';
 
 /** Catálogo completo (las 8 de restaurante y las del sitio), el mismo de Diseño y Plantillas. */
@@ -73,6 +86,15 @@ export { SHELL_POR_PLANTILLA, SHELL_RESPALDO_GIRO, shellDePlantilla } from './sh
 
 // ─── Datos reales de la organización ───────────────────────────────────────────────────────────
 
+export interface CategoriaPlantilla {
+  id: number;
+  nombre: string;
+  slug?: string | null;
+  /** Color propio de la categoría (hex); otro valor = sin color. */
+  color?: string | null;
+  imagenUrl?: string | null;
+}
+
 export interface ProductoPlantilla {
   id: number;
   nombre: string;
@@ -92,7 +114,11 @@ export interface DatosNegocio {
   portadaUrl: string | null;
   /** Productos activos, primero los que tienen foto. */
   productos: readonly ProductoPlantilla[];
-  categorias: readonly { id: number; nombre: string }[];
+  /**
+   * Categorías activas. `slug`, `color` e `imagenUrl` (`categories.slug/color/image_url`) los usan
+   * solo las secciones de las plantillas de tienda nuevas (bloques de color, enlaces).
+   */
+  categorias: readonly CategoriaPlantilla[];
   /** Testimonios activos de verdad (`testimonials`). */
   testimonios: number;
   /** true si el sitio tiene envíos activos y el giro no es tienda ni restaurante. */
@@ -333,6 +359,10 @@ export const TIPOS_QUE_NECESITAN_DATOS: ReadonlySet<string> = new Set([
   'class_schedule',
   'coverage_map',
   'amenities',
+  // Plantillas de tienda nuevas: piden fotos con puntos, detalles de una pieza o un cupón real.
+  'shop_the_look',
+  'product_anatomy',
+  'welcome_popup',
 ]);
 
 interface ContextoSeccion {
@@ -369,6 +399,34 @@ function eslogan(datos: DatosNegocio): string | null {
 
 const conValor = (obj: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== ''));
+
+/**
+ * Portadas de las plantillas de tienda nuevas (`hero · search | brand_giant | floating |
+ * split_products`, contrato `seccionesTienda.ts`). `null` = no es una de ellas (lo de siempre).
+ * La marca gigante no lleva `brand_text`: vacío = el nombre de la organización (lo pone el sitio).
+ */
+function portadaDeTienda(variante: string, c: ContextoSeccion, nombre: string | null, lema: string | null): SeccionArmada | null {
+  const titulo = nombre ?? c.textos.bienvenida;
+  const subtitulo = lema ?? c.textos.subtituloInicio;
+  const fondo = { section_background: { padding_top: 0 } };
+  switch (variante) {
+    case 'search':
+      return { contenido: { ...conValor({ title: titulo, subtitle: subtitulo, image_url: c.portada, search_placeholder: '¿Qué buscas?' }), ...fondo }, visible: true };
+    case 'brand_giant':
+      return { contenido: { ...conValor({ title: subtitulo, image_url: c.portada }), ...fondo }, visible: true };
+    case 'floating':
+      return { contenido: { ...conValor({ title: titulo, subtitle: subtitulo, image_url: c.portada }), ...fondo }, visible: true };
+    case 'split_products': {
+      const ids = c.datos.productos.filter((p) => p.imagenUrl).slice(0, 3).map((p) => p.id);
+      return {
+        contenido: { ...conValor({ title: titulo, subtitle: subtitulo, image_url: c.portada, product_ids: ids.length > 0 ? ids : null }), ...fondo },
+        visible: true,
+      };
+    }
+    default:
+      return null;
+  }
+}
 
 /**
  * Contenido inicial de una sección. Solo usa claves que el editor declara para ese tipo
@@ -448,6 +506,8 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
           visible: true,
         };
       }
+      const tienda = portadaDeTienda(variante, c, nombre, lema);
+      if (tienda) return tienda;
       if (!c.esInicio) {
         const imagen = variante === 'minimal' ? null : (fotos[0]?.url ?? c.portada);
         return { contenido: { ...conValor({ title: c.pagina.titulo, subtitle: SUBTITULO_PAGINA[c.pagina.slug] ?? null, image_url: imagen }), section_background: { padding_top: 0 } }, visible: true };
@@ -536,6 +596,15 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
       return { contenido: conValor({ title: 'Encuéntranos', subtitle: limpio(datos.direccion) ? null : 'Visítanos en nuestra sede', address: limpio(datos.direccion) }), visible: true };
     case 'gallery':
     case 'gallery_bento': {
+      // Collage (Radiante) e Instagram (Contraste): fotos como texto (contrato `seccionesTienda.ts`).
+      if (tipo === 'gallery' && variante === 'collage') {
+        const imagenes = fotos.slice(0, 3).map((f) => f.url);
+        return { contenido: conValor({ images: imagenes.length > 0 ? imagenes : null }), visible: imagenes.length >= 3 };
+      }
+      if (tipo === 'gallery' && variante === 'instagram_cta') {
+        const imagenes = fotos.slice(0, 5).map((f) => f.url);
+        return { contenido: conValor({ images: imagenes.length > 0 ? imagenes : null, cta_title: 'Síguenos' }), visible: imagenes.length > 0 };
+      }
       const imagenes = fotos.slice(0, 8);
       return { contenido: conValor({ title: 'Galería', images: imagenes.length > 0 ? imagenes : null }), visible: imagenes.length >= (tipo === 'gallery_bento' ? 4 : 1) };
     }
@@ -558,6 +627,19 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
       return { contenido: { title: 'Lo que tenemos para ti', banners }, visible: banners.length > 0 };
     }
     case 'image_text':
+      // Bloque de color (Marea): uno por categoría real, lo arma `bloquesDeColor`. Sin categoría, vacío y oculto.
+      if (variante === 'color_block') return { contenido: {}, visible: false };
+      if (variante === 'editorial') {
+        return {
+          contenido: conValor({
+            title: 'Nuestra historia',
+            body: limpio(datos.descripcion) ?? `${nombre ?? 'Nuestro equipo'} te recibe con gusto. Conoce quiénes somos y lo que hacemos cada día.`,
+            image_url: fotos[0]?.url ?? c.portada,
+            image_small_url: fotos[1]?.url,
+          }),
+          visible: true,
+        };
+      }
       return {
         contenido: conValor({
           // En «Historia» la cuentan los capítulos: aquí va lo que mueve al negocio.
@@ -570,6 +652,12 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
         visible: true,
       };
     case 'text_block':
+      // Texto con íconos (Contraste): los nombres de las categorías reales con un ícono entre ellos.
+      if (variante === 'inline_icons') {
+        const nombres = datos.categorias.slice(0, 6).map((x) => x.nombre);
+        const segments = nombres.flatMap((n, i) => (i === 0 ? [{ text: n }] : [{ icon: 'Sparkles' }, { text: n }]));
+        return { contenido: { segments }, visible: nombres.length >= 2 };
+      }
       return {
         contenido: c.esInicio
           ? { title: nombre ?? textos.bienvenida, body: limpio(datos.descripcion) ?? textos.subtituloInicio }
@@ -588,6 +676,13 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
     case 'why_choose_us':
     case 'gym_features':
     case 'parking_features':
+      // Columnas con foto (Roble): las ventajas del giro con una foto de producto cada una.
+      if (tipo === 'features_grid' && variante === 'photo_columns') {
+        return {
+          contenido: { items: textos.ventajas.map((v, i) => conValor({ image_url: fotos[i]?.url, title: v.title, text: v.description })) },
+          visible: true,
+        };
+      }
       return {
         contenido: {
           title: '¿Por qué elegirnos?',
@@ -636,6 +731,32 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
       return { contenido: { title: 'Planes mensuales' }, visible: true };
     case 'parking_availability':
       return { contenido: { title: 'Disponibilidad' }, visible: true };
+    // ─── Plantillas de tienda nuevas (contrato `seccionesTienda.ts`) ───────────────────────────
+    case 'link_cloud':
+      // Enlaces a las categorías reales: con menos de 3 no es una nube y el sitio no la pinta.
+      return { contenido: { title: 'Explora por categoría', source: 'categories', max: 12 }, visible: datos.categorias.length >= 3 };
+    case 'service_cards': {
+      const ayuda = [
+        contacto && { label: 'Contacto', url: contacto },
+        c.ruta('preguntas-frecuentes') && { label: 'Preguntas frecuentes', url: c.ruta('preguntas-frecuentes') },
+        { label: 'Consultar mi pedido', url: '/consultar-pedido' },
+      ].filter(Boolean) as { label: string; url: string }[];
+      return {
+        contenido: conValor({
+          image_url: fotos[0]?.url ?? c.portada,
+          cards: [
+            { title: 'Te ayudamos', links: ayuda, benefits: [] },
+            { title: 'Compra en línea', links: [], benefits: textos.ventajas.map((v) => v.title) },
+          ],
+        }),
+        visible: true,
+      };
+    }
+    case 'product_index':
+      // Sin `product_ids` el sitio pinta los primeros productos con foto.
+      return { contenido: {}, visible: fotos.length > 0 };
+    case 'product_faq':
+      return { contenido: { title: 'Preguntas frecuentes', items: textos.preguntas.map((p) => ({ ...p })) }, visible: true };
     default:
       return { contenido: {}, visible: true };
   }
@@ -671,6 +792,15 @@ export interface OpcionesPlantillaCompleta {
    * sigue heredando del principal campo a campo (ADR-002 D6); solo toma estructura, encabezado y pie.
    */
   conEstilo?: boolean;
+  /**
+   * Escribe la tarjeta de producto de la plantilla (`tema.tarjetaProducto`) si la trae. Solo con
+   * `tarjetaProductoTemaDisponible()`: el sitio rechaza la clave hasta aceptarla. Por defecto no.
+   */
+  tarjeta?: boolean;
+  /** Escribe las perillas de la plantilla (`tema.tokens`). Solo con `tokensDisenoDisponibles()`. */
+  tokensDiseno?: boolean;
+  /** Escribe `tema.paginacion` y `tema.carrusel` de la plantilla. Solo con `paginacionTemaDisponible()`. */
+  paginacion?: boolean;
 }
 
 /** La plantilla que se sugiere primero en el giro (la de «por defecto»). */
@@ -690,13 +820,80 @@ function fotosDe(datos: DatosNegocio): { url: string; alt: string }[] {
   return fotos;
 }
 
+/** Destino `'@pagina:<slug>'` del contenido propio de una plantilla (`SeccionPlantilla[2]`). */
+const RUTA_DE_PAGINA = /^@pagina:([a-z0-9/-]+)$/;
+
+/**
+ * Resuelve los `'@pagina:<slug>'` contra las páginas reales. Sin la página: la clave se quita
+ * (con su `*_text` si es un `*_url`) y un ítem de una lista (un botón) se quita entero. Nunca un
+ * enlace roto. Devuelve una copia: el catálogo no se comparte con el documento.
+ */
+function resolverPaginas(valor: unknown, ruta: (slug: string) => string | null): { valor: unknown; roto: boolean } {
+  if (typeof valor === 'string') {
+    const m = RUTA_DE_PAGINA.exec(valor);
+    if (!m) return { valor, roto: false };
+    const r = ruta(m[1]);
+    return r ? { valor: r, roto: false } : { valor: undefined, roto: true };
+  }
+  if (Array.isArray(valor)) {
+    const lista = valor.map((v) => resolverPaginas(v, ruta)).filter((r) => !r.roto).map((r) => r.valor);
+    return { valor: lista, roto: false };
+  }
+  if (valor && typeof valor === 'object') {
+    const salida: Record<string, unknown> = {};
+    let roto = false;
+    for (const [clave, v] of Object.entries(valor)) {
+      const r = resolverPaginas(v, ruta);
+      if (r.roto) {
+        roto = true;
+        continue;
+      }
+      salida[clave] = r.valor;
+    }
+    return { valor: salida, roto };
+  }
+  return { valor, roto: false };
+}
+
+/**
+ * Contenido propio de la plantilla SOBRE el inicial (plantillas de tienda nuevas). Las reglas de
+ * «oculta sin datos» se vuelven a mirar con el contenido final: banners sin banners, bloque de
+ * color sin título ni foto. Una portada con destino propio muestra su botón.
+ */
+function conContenidoPropio(
+  tipo: string,
+  variante: string,
+  inicial: SeccionArmada,
+  propio: Readonly<Record<string, unknown>>,
+  ruta: (slug: string) => string | null,
+): SeccionArmada {
+  const resueltas: Record<string, unknown> = {};
+  for (const [clave, v] of Object.entries(propio)) {
+    const r = resolverPaginas(v, ruta);
+    if (!r.roto) resueltas[clave] = r.valor;
+  }
+  // Sin la página: ni el destino ni su texto (no queda un botón que no lleva a ningún lado).
+  for (const clave of Object.keys(propio)) {
+    if (clave.endsWith('_url') && !(clave in resueltas)) delete resueltas[clave.replace(/_url$/, '_text')];
+  }
+  const contenido: Record<string, unknown> = { ...inicial.contenido, ...resueltas };
+  let visible = inicial.visible;
+  if (tipo === 'promo_banners') visible = Array.isArray(contenido.banners) && contenido.banners.length > 0;
+  if (tipo === 'image_text' && variante === 'color_block') visible = Boolean(contenido.title || contenido.image_url);
+  if (tipo === 'hero' && (typeof contenido.cta_url === 'string' || (Array.isArray(contenido.buttons) && contenido.buttons.length > 0))) {
+    contenido.show_cta = true;
+  }
+  return { contenido, visible };
+}
+
 function armarSeccion(
-  [tipo, variante]: SeccionPlantilla,
+  [tipo, variante, propio]: SeccionPlantilla,
   contexto: ContextoSeccion,
   generarId: GenerarId,
   ocultas: SeccionOculta[],
 ): SeccionSitio {
-  const { contenido, visible } = contenidoInicial(tipo, variante, contexto);
+  const inicial = contenidoInicial(tipo, variante, contexto);
+  const { contenido, visible } = propio ? conContenidoPropio(tipo, variante, inicial, propio, contexto.ruta) : inicial;
   if (!visible) ocultas.push({ pagina: contexto.pagina.titulo, tipo });
   return {
     id: generarId(),
@@ -715,8 +912,65 @@ function armarSeccion(
  * imagen: con foto disponible se usa la variante con imagen de la misma sección; sin foto, la
  * tipográfica de la plantilla.
  */
-function conFotoDePortada(tipo: string, variante: string, portada: string | null): SeccionPlantilla {
-  return tipo === 'restaurant_hero' && variante === 'typographic' && portada ? [tipo, 'split_bento'] : [tipo, variante];
+function conFotoDePortada(seccion: SeccionPlantilla, portada: string | null): SeccionPlantilla {
+  const [tipo, variante, propio] = seccion;
+  if (!(tipo === 'restaurant_hero' && variante === 'typographic' && portada)) return seccion;
+  return propio ? [tipo, 'split_bento', propio] : [tipo, 'split_bento'];
+}
+
+const esHex = (v: string | null | undefined): v is string => typeof v === 'string' && /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v.trim());
+
+/**
+ * `image_text · color_block` (Marea, decisión 3): el sitio pinta UN bloque por sección
+ * (`ImageTextColor` lee un solo bloque de su `contenido`), así que «Plantilla completa» arma una
+ * sección por categoría real, hasta `MAX_BLOQUES_COLOR`, con su número, su nombre, su color
+ * (`categories.color`, si es un hex), su foto (la de la categoría o la de un producto suyo) y el
+ * enlace a su página. A todo el ancho y sin relleno, como lo pide el sitio (W5). Sin categorías,
+ * la sección de la plantilla tal cual (vacía y oculta) para que el dueño la complete.
+ */
+export function bloquesDeColor(seccion: SeccionPlantilla, datos: DatosNegocio): SeccionPlantilla[] {
+  const [tipo, variante, propio] = seccion;
+  const categorias = datos.categorias.slice(0, MAX_BLOQUES_COLOR);
+  if (categorias.length === 0) return [seccion];
+  return categorias.map((cat, i) => {
+    const foto = limpio(cat.imagenUrl) ?? datos.productos.find((p) => p.categoriaId === cat.id && p.imagenUrl)?.imagenUrl ?? null;
+    const slug = limpio(cat.slug);
+    const contenido = conValor({
+      number: String(i + 1).padStart(2, '0'),
+      title: cat.nombre,
+      image_url: foto,
+      bg_color: esHex(cat.color) ? cat.color.trim().toUpperCase() : null,
+      cta_url: slug ? `/categorias/${encodeURIComponent(slug)}` : null,
+      full_bleed: true,
+      padding_top: 'none',
+      padding_bottom: 'none',
+      padding_x: 'none',
+    });
+    return [tipo, variante, { ...contenido, ...(propio ?? {}) }] as const;
+  });
+}
+
+/** Inicio de la plantilla: portada con foto si la hay y los bloques de color repetidos. */
+function estructuraInicio(plantilla: PlantillaCatalogo, portada: string | null, datos: DatosNegocio): SeccionPlantilla[] {
+  return plantilla.inicio.flatMap((s) =>
+    s[0] === 'image_text' && s[1] === 'color_block' ? bloquesDeColor(s, datos) : [conFotoDePortada(s, portada)],
+  );
+}
+
+// ─── Páginas de detalle de la plantilla (D4) ──────────────────────────────────────────────────
+
+const TIPOS_DETALLE = ['product_detail', 'category_detail'] as const;
+type TipoDetalle = (typeof TIPOS_DETALLE)[number];
+const TITULO_DETALLE: Record<TipoDetalle, string> = { product_detail: 'Ficha de producto', category_detail: 'Página de categoría' };
+
+/**
+ * La página de detalle del borrador que la plantilla reemplaza: la de la dirección canónica
+ * (`plantillas/product-detail`, como la elige el sitio) o, si no, la primera de ese tipo.
+ */
+function detalleDelBorrador(base: DocumentoSitio, tipo: TipoDetalle): PaginaSitio | null {
+  const candidatas = base.paginas.filter((p) => p.tipo === tipo);
+  const canonica = normalizarSlug(`__${tipo}`);
+  return candidatas.find((p) => p.slug === canonica) ?? candidatas[0] ?? null;
 }
 
 function itemPagina(pagina: PaginaSitio, generarId: GenerarId): ItemMenu {
@@ -1017,11 +1271,18 @@ export function armarPlantillaCompleta(
 ): ResultadoPlantillaCompleta {
   const { generarId } = opciones;
   const giro = plantilla.giro as Giro;
-  const conEstilo = opciones.conEstilo === false ? base : aplicarEstiloPlantilla(base, plantilla, opciones.extendidos);
+  const conEstilo = opciones.conEstilo === false ? base : temaDePlantilla(aplicarEstiloPlantilla(base, plantilla, opciones.extendidos), plantilla, opciones);
   const shell = shellDePlantilla(plantilla.id, giro);
 
-  // 1. Lo que se conserva: páginas de sistema (carrito, checkout…) y legales.
-  const conservadas = base.paginas.filter((p) => esPlantillaTienda(p) || esPaginaLegal(p));
+  // 1. Lo que se conserva: páginas de sistema (carrito, checkout…) y legales. Con `detalle` (D4),
+  //    la ficha y la página de categoría del borrador se REEMPLAZAN (conservan id, dirección y si
+  //    estaban publicadas).
+  const detalle = plantilla.detalle ?? null;
+  const reemplazadas = new Map<TipoDetalle, PaginaSitio | null>(
+    detalle ? TIPOS_DETALLE.map((tipo) => [tipo, detalleDelBorrador(base, tipo)] as const) : [],
+  );
+  const idsReemplazados = new Set([...reemplazadas.values()].flatMap((p) => (p ? [p.id] : [])));
+  const conservadas = base.paginas.filter((p) => (esPlantillaTienda(p) || esPaginaLegal(p)) && !idsReemplazados.has(p.id));
   const slugsConservados = new Set(conservadas.map((p) => p.slug));
   const delGiro = paginasDePlantilla(plantilla.id, paginasBasePorGiro(giro, { envios: giro === 'tienda' || giro === 'restaurante' || datos.envios === true }));
   const extras = paginasQuePideElShell(shell)
@@ -1046,7 +1307,7 @@ export function armarPlantillaCompleta(
     const pagina = { titulo: b.titulo, slug: b.slug };
     const inicio = esInicio({ tipo: b.tipo, slug: b.slug });
     const estructura: readonly SeccionPlantilla[] = inicio
-      ? plantilla.inicio.map(([tipo, variante]) => conFotoDePortada(tipo, variante, portada))
+      ? estructuraInicio(plantilla, portada, datos)
       : b.secciones.map((s) => [s.tipo, s.variante] as const);
     const contexto: ContextoSeccion = { giro, datos, textos, ruta, portada, fotos, esInicio: inicio, pagina, cta };
     const armadas = estructura.map((s, i) => {
@@ -1059,8 +1320,29 @@ export function armarPlantillaCompleta(
     const construida: PaginaSitio = { id: generarId(), slug: b.slug, tipo: b.tipo, titulo: b.titulo, publicada: true, secciones: armadas };
     return { pagina: construida, enMenu: b.enMenu };
   });
+  // Ficha y categoría de la plantilla (D4), en el lugar de las que reemplazan.
+  const detalles = new Map<TipoDetalle, PaginaSitio>();
+  if (detalle) {
+    for (const tipo of TIPOS_DETALLE) {
+      const anterior = reemplazadas.get(tipo) ?? null;
+      const titulo = anterior?.titulo || TITULO_DETALLE[tipo];
+      const slug = anterior?.slug ?? normalizarSlug(`__${tipo}`);
+      const contexto: ContextoSeccion = { giro, datos, textos, ruta, portada, fotos, esInicio: false, pagina: { titulo, slug }, cta };
+      const bloques = (tipo === 'product_detail' ? detalle.producto : detalle.categoria).map((s) => armarSeccion(s, contexto, generarId, ocultas));
+      secciones += bloques.length;
+      detalles.set(tipo, { id: anterior?.id ?? generarId(), slug, tipo, titulo, publicada: anterior?.publicada ?? true, secciones: bloques });
+    }
+  }
+  const sistema: PaginaSitio[] = [
+    ...base.paginas.flatMap((p) => {
+      if (!idsReemplazados.has(p.id)) return conservadas.includes(p) ? [p] : [];
+      const tipo = TIPOS_DETALLE.find((t) => reemplazadas.get(t)?.id === p.id);
+      return tipo ? [detalles.get(tipo)!] : [];
+    }),
+    ...TIPOS_DETALLE.filter((t) => detalles.has(t) && !reemplazadas.get(t)).map((t) => detalles.get(t)!),
+  ];
   // Inicio primero, como lo lista el editor; luego el juego y lo conservado.
-  const paginas: PaginaSitio[] = [...nuevas.map((n) => n.pagina), ...conservadas];
+  const paginas: PaginaSitio[] = [...nuevas.map((n) => n.pagina), ...sistema];
 
   // 3. Menús: encabezado (páginas «en el menú»), megamenú y los menús del pie de la plantilla.
   const menuEncabezado: MenuSitio = {
@@ -1096,8 +1378,39 @@ export function armarPlantillaCompleta(
   };
   return {
     documento,
-    resumen: { paginas: nuevas.length, secciones, ocultas, conservadas: conservadas.length },
+    resumen: { paginas: nuevas.length + detalles.size, secciones, ocultas, conservadas: conservadas.length },
   };
+}
+
+/**
+ * Lo que «Plantilla completa» escribe en el tema además del estilo (plantillas de tienda nuevas),
+ * cada cosa solo con su bandera ya existente: tarjeta de producto, perillas (fusionadas con las
+ * que ya haya) y paginación y carrusel. Sin esos campos en la plantilla, el tema queda igual.
+ */
+function temaDePlantilla(documento: DocumentoSitio, plantilla: PlantillaCatalogo, opciones: OpcionesPlantillaCompleta): DocumentoSitio {
+  const tema: DocumentoSitio['tema'] = { ...documento.tema };
+  let cambio = false;
+  if (opciones.tarjeta && plantilla.tarjetaProducto) {
+    tema.tarjetaProducto = valorPropio(JSON.parse(JSON.stringify(plantilla.tarjetaProducto)) as TarjetaProductoDocumento);
+    cambio = true;
+  }
+  if (opciones.tokensDiseno && plantilla.tokens) {
+    const previos = tema.tokens ?? {};
+    const tokens: NonNullable<DocumentoSitio['tema']['tokens']> = { ...previos };
+    if (plantilla.tokens.hover) tokens.hover = valorPropio(plantilla.tokens.hover);
+    if (typeof plantilla.tokens.boton?.mayusculas === 'boolean') tokens.boton = { ...previos.boton, mayusculas: valorPropio(plantilla.tokens.boton.mayusculas) };
+    tema.tokens = tokens;
+    cambio = true;
+  }
+  if (opciones.paginacion && plantilla.paginacion) {
+    tema.paginacion = valorPropio({ ...plantilla.paginacion });
+    cambio = true;
+  }
+  if (opciones.paginacion && plantilla.carrusel) {
+    tema.carrusel = valorPropio({ ...plantilla.carrusel });
+    cambio = true;
+  }
+  return cambio ? { ...documento, tema } : documento;
 }
 
 export interface ShellPorDefecto {

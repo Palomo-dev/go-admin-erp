@@ -36,6 +36,7 @@ import {
 import { VARIANTE_PORTADA_EDITORIAL } from '@/lib/website/contrato/seccionesCafe';
 import {
   CAMPO_PESTANAS_PRODUCTOS,
+  OPCION_ESTILO_LISTA_TEXTO,
   OPCION_ESTILO_TITULO_ARRIBA,
   SECCIONES_TIENDA_CATALOGO,
   conVariantesTienda,
@@ -1317,6 +1318,8 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
           { value: 'minimal_icon', label: 'Ícono suave' },
           // Plantillas de tienda (B2): título y conteo encima de la foto.
           OPCION_ESTILO_TITULO_ARRIBA,
+          // «Lista de texto» (decisión 2026-11-10): una fila de nombres enlazados.
+          OPCION_ESTILO_LISTA_TEXTO,
         ],
       },
       {
@@ -1368,7 +1371,7 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
       { key: 'align', label: 'Alineación de las pastillas', type: 'select', group: 'layout', defaultValue: 'center', options: [
         { value: 'center', label: 'Centradas' },
         { value: 'left', label: 'A la izquierda' },
-      ], helpText: 'En escritorio. Si no caben en una fila, empiezan a la izquierda y se desplazan.', showIf: { field: 'category_style', equals: 'pill' } },
+      ], helpText: 'En escritorio. Si no caben en una fila, empiezan a la izquierda y se desplazan.', showIf: { field: 'category_style', in: ['pill', 'text_list'] } },
       { key: 'list_scroll', label: 'Lista con scroll horizontal', type: 'boolean', group: 'layout', defaultValue: false, helpText: 'Convierte la lista en un carrusel con scroll horizontal y flechas', showIf: { field: 'desktop_layout', in: ['list'] } },
       // Reemplaza CategorySelectorEditor ad-hoc
       {

@@ -4,9 +4,10 @@ import type { ContentFieldDef } from '@/lib/services/websitePageBuilderService';
 const CON_CARRUSEL = ['pill', 'circle'];
 /**
  * Estilos nuevos que la tienda pinta sin leer `desktop_layout`: la opción no se muestra.
- * «Título arriba» (plantillas de tienda, B2) usa las columnas y el layout del celular, no este.
+ * «Título arriba» (plantillas de tienda, B2) usa las columnas y el layout del celular, no este;
+ * «Lista de texto» es una fila de nombres (carril en el celular).
  */
-const SIN_LAYOUT = ['card_bottom', 'bento', 'minimal_icon', 'title_top'];
+const SIN_LAYOUT = ['card_bottom', 'bento', 'minimal_icon', 'title_top', 'text_list'];
 
 /**
  * «Layout en escritorio» de la rejilla de categorías según «Estilo de las categorías».

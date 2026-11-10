@@ -126,11 +126,12 @@ describe('franja (marquee): tamaño y color del separador; pastillas: alineació
     expect(chipColorIcono(undefined)).toBe('category');
   });
 
-  it('«Alineación de las pastillas»: centradas por defecto, solo con «Pastilla»', () => {
+  it('«Alineación de las pastillas»: centradas por defecto, solo con «Pastilla» y «Lista de texto»', () => {
     const c = getSectionDefinition('categories_grid')?.contentFields.find((x) => x.key === 'align');
     expect(c?.options?.map((o) => o.value)).toEqual(['center', 'left']);
     expect(c?.defaultValue).toBe('center');
-    expect(c?.showIf).toEqual({ field: 'category_style', equals: 'pill' });
+    // «Lista de texto» (decisión del dueño 2026-11-10) usa la misma regla de alineación en el sitio.
+    expect(c?.showIf).toEqual({ field: 'category_style', in: ['pill', 'text_list'] });
   });
 
   it('el chip «Del texto» del separador borra la clave', () => {

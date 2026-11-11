@@ -1,7 +1,9 @@
 -- Organizaciones EXISTENTES: grupos de contrapartida de cuentas de orden corridos, corregidos al Decreto 2650
 -- SOLO donde no tienen ningún movimiento (respuesta del Contador, 2026-11-10).
 --
--- ESTADO: ESCRITA, NO APLICADA — espera el OK del dueño.
+-- ESTADO: APLICADA el 2026-11-10 por el MCP (registro 20261111044850) con el OK del dueño. Encabezado abreviado
+-- al aplicar; sentencias idénticas. Después: orgs con 88=0, 98=0, 85=38, 95=38, 86 control=38, 96 control=38;
+-- respaldo 304 filas; 0 cuentas huérfanas; 0 configuraciones sin cuenta.
 -- Reversión: supabase/rollbacks/20261111100200_cuentas_orden_corridas_sin_movimiento_rollback.sql.
 -- Fecha: 2026-11-10. Va después de 20261111100000 (plantilla de organizaciones nuevas ya alineada).
 --

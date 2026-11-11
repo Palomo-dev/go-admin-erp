@@ -37990,7 +37990,8 @@
       "listos": "Mark ready",
       "entregados": "Mark delivered",
       "exportar": "Export CSV",
-      "hecho": "{n, plural, one {# order marked} other {# orders marked}} as {estado}"
+      "hecho": "{n, plural, one {# order marked} other {# orders marked}} as {estado}",
+      "parcial": "{ok, plural, one {# order moved} other {# orders moved}} to {estado}; {fallidos, plural, one {# could not be changed and is still selected} other {# could not be changed and are still selected}}."
     },
     "sustantivo": {
       "singular": "order",

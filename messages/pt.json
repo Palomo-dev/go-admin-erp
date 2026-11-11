@@ -38000,7 +38000,8 @@
       "listos": "Marcar prontos",
       "entregados": "Marcar entregues",
       "exportar": "Exportar CSV",
-      "hecho": "{n, plural, one {# pedido marcado} other {# pedidos marcados}} como {estado}"
+      "hecho": "{n, plural, one {# pedido marcado} other {# pedidos marcados}} como {estado}",
+      "parcial": "{ok, plural, one {# pedido passou} other {# pedidos passaram}} para {estado}; {fallidos, plural, one {# não pôde ser alterado e continua selecionado} other {# não puderam ser alterados e continuam selecionados}}."
     },
     "sustantivo": {
       "singular": "pedido",

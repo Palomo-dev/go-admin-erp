@@ -83,18 +83,22 @@ export function PlanCuentasPage() {
   const [panel, setPanel] = useState<Panel>(null);
   // Catálogo del PUC por padre: solo se pide para cuentas y subcuentas, una vez por padre.
   const [catalogos, setCatalogos] = useState<Map<string, ConceptoPuc[]>>(new Map());
+  // Cuenta de título → la primera que se creó debajo; ahí caen los asientos que lleguen a la de arriba.
+  const [sucesoras, setSucesoras] = useState<Map<string, string>>(new Map());
   const [aBorrar, setABorrar] = useState<ChartAccount | null>(null);
   const refArchivo = useRef<HTMLInputElement>(null);
 
   const cargar = useCallback(async () => {
     setEstado('cargando');
     try {
-      const [plan, porCuenta] = await Promise.all([
+      const [plan, porCuenta, sucesorasPlan] = await Promise.all([
         ContabilidadService.obtenerPlanCuentas(),
         ContabilidadService.obtenerSaldosPlan(),
+        ContabilidadService.obtenerSucesoras(),
       ]);
       setCuentas(plan);
       setSaldos(porCuenta);
+      setSucesoras(sucesorasPlan);
       setEstado('listo');
     } catch (error) {
       console.error('Error cargando el plan de cuentas:', error);
@@ -201,9 +205,19 @@ export function PlanCuentasPage() {
     if (!alta) return null;
     const aviso = avisoCatalogo(alta.padre, alta.codigo, alta.nombre, catalogoAlta);
     if (!aviso) return null;
-    return aviso.tipo === 'fuera'
-      ? t('alta.puc.fuera', { codigo: alta.codigo })
-      : t('alta.puc.otroNombre', { codigo: alta.codigo, nombre: aviso.nombrePuc });
+    if (aviso.tipo === 'fuera') return t('alta.puc.fuera', { codigo: alta.codigo });
+    if (aviso.tipo === 'plantilla') return t('alta.puc.plantilla', { codigo: alta.codigo });
+    return t('alta.puc.otroNombre', { codigo: alta.codigo, nombre: aviso.nombrePuc });
+  })();
+
+  // Pedido del Contador (2026-11-10): decir a qué cuenta van los asientos que lleguen a la de
+  // arriba, y que es la primera que se creó aunque después se abran otras.
+  const avisoSucesora = (() => {
+    if (!alta) return null;
+    const registrada = sucesoras.get(alta.padre);
+    if (registrada) return t('alta.sucesora.existente', { padre: alta.padre, sucesora: registrada });
+    if (situacion !== 'normal') return t('alta.sucesora.nueva', { padre: alta.padre, codigo: alta.codigo });
+    return null;
   })();
   const usados = new Set(codigos);
   const nombresPuc = catalogoAlta.filter((c) => !usados.has(c.codigo)).map((c) => c.nombre);
@@ -269,6 +283,9 @@ export function PlanCuentasPage() {
           return nuevo;
         });
       }, MS_RECIENTE);
+      if (creado.padre_paso_a_titulo) {
+        setSucesoras((previo) => (previo.has(alta.padre) ? previo : new Map(previo).set(alta.padre, creado.account_code)));
+      }
       if (creado.asientos.length > 0) toastSuccess(t('alta.trasladoHecho', { asientos: creado.asientos.length }));
       const actualizado = plan.find((c) => c.account_code === alta.padre);
       if (actualizado) void abrirAlta(actualizado, plan.map((c) => c.account_code));
@@ -583,6 +600,7 @@ export function PlanCuentasPage() {
                       bloqueada={situacion === 'con_saldo'}
                       avisoPuc={avisoPuc}
                       nombresPuc={nombresPuc}
+                      avisoSucesora={avisoSucesora}
                       onCodigo={cambiarCodigoAlta}
                       onNombre={cambiarNombreAlta}
                       onGuardar={() => void guardarAlta(false)}
@@ -657,6 +675,7 @@ export function PlanCuentasPage() {
               </datalist>
             ) : null}
             {avisoPuc ? <p role="status" className="text-xs font-medium text-warning-text">{avisoPuc}</p> : null}
+            {avisoSucesora ? <p className="text-xs text-fg-secondary">{avisoSucesora}</p> : null}
             {situacion !== 'normal' ? (
               <AvisoPadreAlta
                 situacion={situacion}
@@ -681,6 +700,7 @@ export function PlanCuentasPage() {
           cuentas={cuentas}
           saldo={cuentaPanel ? saldos.get(cuentaPanel.account_code) ?? null : null}
           textoSaldo={cuentaPanel ? formatoSaldo(saldos.get(cuentaPanel.account_code)?.saldo ?? 0) : ''}
+          sucesora={cuentaPanel ? sucesoras.get(cuentaPanel.account_code) ?? null : null}
           puedeEditar={permisos.crear}
           onCerrar={() => setPanel(null)}
           onGuardada={(guardada, esNueva) => {

@@ -39062,7 +39062,12 @@
       },
       "puc": {
         "fuera": "{codigo} no está en el catálogo del PUC (Decreto 2650 de 1993). Puedes crearla igual.",
-        "otroNombre": "En el PUC, {codigo} es «{nombre}»."
+        "otroNombre": "En el PUC, {codigo} es «{nombre}».",
+        "plantilla": "{codigo} es un código propio de la plantilla de GO Admin, dentro de un rango libre del PUC."
+      },
+      "sucesora": {
+        "nueva": "Desde ahora, los asientos que lleguen a {padre} se registran en {codigo}, con una nota de la cuenta original. Si después creas otra cuenta debajo, seguirán yendo a {codigo}.",
+        "existente": "Los asientos que lleguen a {padre} se siguen registrando en {sucesora}, la primera cuenta que se creó debajo, no en esta."
       }
     },
     "panel": {
@@ -39099,7 +39104,9 @@
         "ocupado": "Ese código ya existe.",
         "padre": "Primero debe existir la cuenta {padre}.",
         "guardar": "No se pudo guardar la cuenta."
-      }
+      },
+      "sucesora": "Los asientos que lleguen a {cuenta} se registran en {sucesora}, la primera cuenta que se creó debajo, con una nota de la cuenta original.",
+      "exogenaAyuda": "Se hereda de la cuenta de arriba al crearla y se puede cambiar aquí. La exógena usa el de la cuenta de último nivel."
     }
   },
   "reglasContables": {

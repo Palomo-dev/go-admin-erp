@@ -28,12 +28,14 @@ const obtenerPlanCuentas = jest.fn();
 const obtenerSaldosPlan = jest.fn();
 const crearCuentaHija = jest.fn();
 const obtenerCatalogoPuc = jest.fn();
+const obtenerSucesoras = jest.fn();
 jest.mock('../../ContabilidadService', () => ({
   ContabilidadService: {
     obtenerPlanCuentas: (...a: unknown[]) => obtenerPlanCuentas(...a),
     obtenerSaldosPlan: (...a: unknown[]) => obtenerSaldosPlan(...a),
     crearCuentaHija: (...a: unknown[]) => crearCuentaHija(...a),
     obtenerCatalogoPuc: (...a: unknown[]) => obtenerCatalogoPuc(...a),
+    obtenerSucesoras: (...a: unknown[]) => obtenerSucesoras(...a),
     autorCuenta: jest.fn(async () => ({ creadaPor: null, creadaEn: null })),
   },
 }));
@@ -75,6 +77,7 @@ beforeEach(() => {
   obtenerPlanCuentas.mockResolvedValue(PLAN);
   obtenerSaldosPlan.mockResolvedValue(new Map([['110505', { saldo: 2300000, movimientos: 4 }]]));
   obtenerCatalogoPuc.mockResolvedValue([]);
+  obtenerSucesoras.mockResolvedValue(new Map());
 });
 
 describe('PlanCuentasPage · alta en la fila', () => {
@@ -115,6 +118,7 @@ describe('PlanCuentasPage · alta en la fila', () => {
     expect((screen.getByRole('textbox', { name: 'Código' }) as HTMLInputElement).value).toBe('111005');
     expect(nombre.value).toBe('Moneda nacional');
     expect(within(screen.getByRole('note')).getByText(/1110 pasará a ser cuenta de título/)).toBeTruthy();
+    expect(screen.getByText(/los asientos que lleguen a 1110 se registran en 111005, con una nota de la cuenta original/)).toBeTruthy();
 
     // Escribir el nombre de otro concepto del PUC cambia el código al suyo.
     fireEvent.change(nombre, { target: { value: 'moneda extranjera' } });
@@ -138,6 +142,8 @@ describe('PlanCuentasPage · alta en la fila', () => {
     expect(await screen.findByText('Banco principal')).toBeTruthy();
     await waitFor(() => expect((screen.getByRole('textbox', { name: 'Código' }) as HTMLInputElement).value).toBe('111010'));
     expect((screen.getByRole('combobox', { name: 'Nombre' }) as HTMLInputElement).value).toBe('Moneda extranjera');
+    // La segunda cuenta debajo no cambia a dónde van los asientos de 1110: siguen a la primera.
+    expect(screen.getByText('Los asientos que lleguen a 1110 se siguen registrando en 111005, la primera cuenta que se creó debajo, no en esta.')).toBeTruthy();
   });
 
   it('el subauxiliar de 10 dígitos ya no ofrece «+»', async () => {

@@ -39047,7 +39047,12 @@
       },
       "puc": {
         "fuera": "{codigo} n'est pas dans le catalogue du PUC (décret 2650 de 1993). Vous pouvez quand même le créer.",
-        "otroNombre": "Dans le PUC, {codigo} est « {nombre} »."
+        "otroNombre": "Dans le PUC, {codigo} est « {nombre} ».",
+        "plantilla": "{codigo} est un code propre au modèle de GO Admin, dans une plage libre du PUC."
+      },
+      "sucesora": {
+        "nueva": "Désormais, les écritures qui arrivent sur {padre} sont enregistrées sur {codigo}, avec une note du compte d'origine. Si vous créez ensuite un autre compte en dessous, elles continueront d'aller sur {codigo}.",
+        "existente": "Les écritures qui arrivent sur {padre} continuent d’être enregistrées sur {sucesora}, le premier compte créé en dessous, et non sur celui-ci."
       }
     },
     "panel": {
@@ -39084,7 +39089,9 @@
         "ocupado": "Ce code existe déjà.",
         "padre": "Le compte {padre} doit d'abord exister.",
         "guardar": "Impossible d'enregistrer le compte."
-      }
+      },
+      "sucesora": "Les écritures qui arrivent sur {cuenta} sont enregistrées sur {sucesora}, le premier compte créé en dessous, avec une note du compte d'origine.",
+      "exogenaAyuda": "Hérité du compte supérieur à la création ; modifiable ici. Le rapport exogène utilise celui du compte de dernier niveau."
     }
   },
   "reglasContables": {

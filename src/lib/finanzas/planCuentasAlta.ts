@@ -66,6 +66,8 @@ export function siguienteHija(padre: string, existentes: readonly string[]): str
 export interface ConceptoPuc {
   codigo: string;
   nombre: string;
+  /** `plantilla_go_admin`: código de un rango libre del PUC que usa la plantilla de GO Admin. */
+  origen?: string | null;
 }
 
 /** Solo cuentas y subcuentas tienen código fijo en el PUC; auxiliares y subauxiliares los define cada empresa. */
@@ -96,13 +98,18 @@ export function sugerenciaInicial(
 ): { codigo: string; nombre: string } | null {
   if (usaCatalogo(padre)) {
     const usados = new Set(existentes);
+    // Primero los del decreto; los códigos propios de la plantilla de GO Admin, después.
     const libre = [...catalogo]
       .filter((c) => c.codigo.length === padre.length + 2 && c.codigo.startsWith(padre) && !usados.has(c.codigo))
-      .sort((a, b) => a.codigo.localeCompare(b.codigo))[0];
+      .sort((a, b) => Number(esDePlantilla(a)) - Number(esDePlantilla(b)) || a.codigo.localeCompare(b.codigo))[0];
     if (libre) return { codigo: libre.codigo, nombre: libre.nombre };
   }
   const codigo = siguienteHija(padre, existentes);
   return codigo ? { codigo, nombre: '' } : null;
+}
+
+function esDePlantilla(concepto: ConceptoPuc): boolean {
+  return concepto.origen === 'plantilla_go_admin';
 }
 
 /** El concepto del PUC que tiene ese nombre, si la empresa no lo tiene ya. */
@@ -119,18 +126,20 @@ export function conceptoPorNombre(
 
 /**
  * Qué decir del código frente al catálogo: `fuera` si el PUC no lo tiene,
- * `otroNombre` si lo tiene con otro nombre. Null si no hay nada que avisar o si el
- * nivel no usa catálogo.
+ * `plantilla` si es un código propio de la plantilla de GO Admin (rango libre del
+ * PUC, Contador 2026-11-10), `otroNombre` si lo tiene con otro nombre. Null si no
+ * hay nada que avisar o si el nivel no usa catálogo.
  */
 export function avisoCatalogo(
   padre: string,
   codigo: string,
   nombre: string,
   catalogo: readonly ConceptoPuc[],
-): { tipo: 'fuera' } | { tipo: 'otroNombre'; nombrePuc: string } | null {
+): { tipo: 'fuera' } | { tipo: 'plantilla' } | { tipo: 'otroNombre'; nombrePuc: string } | null {
   if (!usaCatalogo(padre) || catalogo.length === 0 || validarCodigoHija(padre, codigo)) return null;
   const concepto = catalogo.find((c) => c.codigo === codigo);
   if (!concepto) return { tipo: 'fuera' };
+  if (esDePlantilla(concepto)) return { tipo: 'plantilla' };
   if (nombre.trim() && normalizarNombre(nombre) !== normalizarNombre(concepto.nombre)) {
     return { tipo: 'otroNombre', nombrePuc: concepto.nombre };
   }

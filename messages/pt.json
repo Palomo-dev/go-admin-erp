@@ -39057,7 +39057,12 @@
       },
       "puc": {
         "fuera": "{codigo} não está no catálogo do PUC (Decreto 2650 de 1993). Você pode criá-la mesmo assim.",
-        "otroNombre": "No PUC, {codigo} é «{nombre}»."
+        "otroNombre": "No PUC, {codigo} é «{nombre}».",
+        "plantilla": "{codigo} é um código próprio do modelo do GO Admin, dentro de uma faixa livre do PUC."
+      },
+      "sucesora": {
+        "nueva": "A partir de agora, os lançamentos que chegarem a {padre} são registrados em {codigo}, com uma nota da conta original. Se depois você criar outra conta abaixo, continuarão indo para {codigo}.",
+        "existente": "Os lançamentos que chegarem a {padre} continuam sendo registrados em {sucesora}, a primeira conta criada abaixo, não nesta."
       }
     },
     "panel": {
@@ -39094,7 +39099,9 @@
         "ocupado": "Esse código já existe.",
         "padre": "A conta {padre} precisa existir antes.",
         "guardar": "Não foi possível salvar a conta."
-      }
+      },
+      "sucesora": "Os lançamentos que chegarem a {cuenta} são registrados em {sucesora}, a primeira conta criada abaixo, com uma nota da conta original.",
+      "exogenaAyuda": "Herdado da conta de cima ao ser criada; pode ser alterado aqui. A exógena usa o da conta de último nível."
     }
   },
   "reglasContables": {

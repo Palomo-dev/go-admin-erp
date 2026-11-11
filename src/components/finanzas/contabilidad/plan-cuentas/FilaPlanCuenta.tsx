@@ -149,6 +149,8 @@ export interface FilaAltaCuentaProps {
   avisoPuc?: string | null;
   /** Nombres del PUC que la empresa aún no tiene debajo de este padre. */
   nombresPuc?: readonly string[];
+  /** A qué cuenta van los asientos que lleguen al padre (la primera que se creó debajo). */
+  avisoSucesora?: string | null;
   onCodigo: (valor: string) => void;
   onNombre: (valor: string) => void;
   onGuardar: () => void;
@@ -167,6 +169,7 @@ export function FilaAltaCuenta({
   bloqueada,
   avisoPuc,
   nombresPuc = [],
+  avisoSucesora,
   onCodigo,
   onNombre,
   onGuardar,
@@ -225,6 +228,7 @@ export function FilaAltaCuenta({
         ) : null}
         {error ? <p role="alert" className="text-xs font-medium text-danger">{error}</p> : null}
         {!error && avisoPuc ? <p role="status" className="text-xs font-medium text-warning-text">{avisoPuc}</p> : null}
+        {avisoSucesora ? <p className="text-xs text-fg-secondary">{avisoSucesora}</p> : null}
       </div>
       <div className="flex shrink-0 items-center gap-2 pl-2">
         <Kbd tecla="Enter" />

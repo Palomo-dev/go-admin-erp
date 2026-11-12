@@ -73,6 +73,10 @@ describe('alta en la fila, todos los niveles (dueño, 2026-11-10)', () => {
     expect(avisoCatalogo('11', '1115', 'Remesas en transito', catalogo)).toBeNull();
     expect(avisoCatalogo('110505', '11050501', 'x', catalogo)).toBeNull();
     expect(avisoCatalogo('11', '1131', '', [])).toBeNull();
+    // Códigos propios de la plantilla de GO Admin (rangos libres): no son «fuera del PUC».
+    const conPlantilla = [{ codigo: '240805', nombre: 'IVA generado', origen: 'plantilla_go_admin' }];
+    expect(avisoCatalogo('2408', '240805', 'IVA generado', conPlantilla)).toEqual({ tipo: 'plantilla' });
+    expect(sugerenciaInicial('2408', [...conPlantilla, { codigo: '240899', nombre: 'Decreto' }], [])).toEqual({ codigo: '240899', nombre: 'Decreto' });
   });
 
   it('valida la forma del código según el nivel', () => {

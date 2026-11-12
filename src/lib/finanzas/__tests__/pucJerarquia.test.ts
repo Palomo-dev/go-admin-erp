@@ -88,7 +88,7 @@ describe('plantilla PUC', () => {
     expect(cuentaPlantilla('5235')?.nombre).toBe('Servicios');
     expect(cuentaPlantilla('5235')?.esMovimiento).toBe(false);
     expect(cuentaPlantilla('529505')?.nombre).toBe('Comisiones');
-    expect(cuentaPlantilla('1599')?.nombre).toBe('Provisiones');
+    expect(cuentaPlantilla('1599')?.nombre).toBe('Deterioro');
     expect(cuentaPlantilla('1599')?.naturaleza).toBe('credito');
     expect(cuentaPlantilla('3205')?.nombre).toMatch(/cuotas o partes de interés social/);
     expect(cuentaPlantilla('8')?.tipo).toBe('order');
@@ -98,6 +98,11 @@ describe('plantilla PUC', () => {
     expect(cuentaPlantilla('8405')?.naturaleza).toBe('credito');
     expect(cuentaPlantilla('94')?.naturaleza).toBe('debito');
     expect(cuentaPlantilla('9405')?.naturaleza).toBe('debito');
+    expect(cuentaPlantilla('85')?.naturaleza).toBe('credito');
+    expect(cuentaPlantilla('8605')?.nombre).toBe('Deudoras de control por contra');
+    expect(cuentaPlantilla('9505')?.naturaleza).toBe('debito');
+    expect(cuentaPlantilla('88')).toBeUndefined();
+    expect(cuentaPlantilla('98')).toBeUndefined();
   });
 });
 

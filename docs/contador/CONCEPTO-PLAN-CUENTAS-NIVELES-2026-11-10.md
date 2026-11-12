@@ -27,3 +27,38 @@ auxiliares y subauxiliares, no solo auxiliares (decisión del 2026-11-06). El Co
   539595 («Ajuste al peso» cuando el oficial es 429581). No se tocó: requiere su concepto.
 - El catálogo no incluye 171072, 3110, 311005 y 311010, eliminados por el Decreto 2894 de 1994, e
   incluye 939520 «Pedidos colocados», que puc.com.co omite.
+
+## Segunda respuesta del Contador (2026-11-10) y cómo quedó
+
+El Contador revisó el documento: lo hecho cumple sus tres condiciones. Aclaró que no ejecutó nada y
+que la aplicación en la base corre por cuenta del dueño, no por un visto bueno suyo.
+
+| Pedido | Cómo quedó | Dónde |
+|---|---|---|
+| Nota en el asiento redirigido («registrado en 111005; venía para 1110») | La línea guarda la cuenta original en `journal_lines.cuenta_original` y la descripción termina en «Registrado en 111005; venía para 1110». Aplicada | `20261111090000` |
+| Decir en pantalla que la cuenta registrada es la primera | Bajo la fila de alta: «Desde ahora, los asientos que lleguen a 1110 se registran en 111005…»; al crear la segunda: «…se siguen registrando en 111005, la primera cuenta que se creó debajo, no en esta». El panel de la cuenta de título lo repite | `PlanCuentasPage`, `PanelCuenta` |
+| Grupos de orden corridos, organizaciones nuevas | Plantilla al decreto: 84/85/86 y 94/95/96 con los nombres del catálogo; 88 y 98 fuera; hijas re-colgadas (8605→8505, 8805→8605, 9605→9505, 9805→9605). Aplicada | `20261111100000` |
+| Grupos de orden corridos, organizaciones existentes sin movimientos | 38 organizaciones con el juego corrido, 0 movimientos y 0 referencias. Aplicada con el OK del dueño: 86→85, 88→86, 96→95, 98→96 en las 38, 0 saltadas, respaldo de 304 filas para la reversión exacta | `20261111100200` |
+| Grupos con movimientos | No hay ninguno. Si apareciera, la reclasificación sigue congelada | — |
+| 1598 / 1599 / 8305 / 9305 / 539595 / 53959501 | 1598 «Agotamiento acumulado», 1599 «Deterioro», 8305 y 9305 con el nombre del decreto, 539595 «Otros», 53959501 «Ajuste al peso» (código intacto: el redondeo en contra sigue funcionando). Ningún proceso automático asienta en 1598. Solo la plantilla de nuevas | `20261111100000` |
+| Demás nombres | Los de forma se alinearon. Quedan 11 para el Contador (tabla abajo) | — |
+| Códigos de rangos libres de la plantilla | Se quedan. En el catálogo, `origen = 'plantilla_go_admin'`; la pantalla dice «código propio de la plantilla de GO Admin, dentro de un rango libre del PUC». Incluye 8405, 8505, 8605, 9405, 9505 y 9605 | `20261111100100` |
+| Exógena | El concepto ya se podía cambiar en cualquier nivel; se agregó la ayuda «se hereda… y se puede cambiar aquí; la exógena usa el de la cuenta de último nivel». Requisitos para cuando se construya el reporte: avisar de toda cuenta de movimiento con saldo y sin concepto (no excluirla en silencio), y en formatos como el 1001 el concepto de la cuenta es solo sugerido: debe poder cambiarse en el documento | `PanelCuenta` |
+
+### Nombres que quedan para cotejar con el Contador (plantilla / decreto)
+
+| Código | Plantilla | Decreto |
+|---|---|---|
+| 1698 | Amortización acumulada | Depreciación y/o amortización acumulada |
+| 2205 | Proveedores nacionales | Nacionales |
+| 2210 | Proveedores del exterior | Del exterior |
+| 2355 | Deudas con socios | Deudas con accionistas o socios |
+| 3705 | Utilidades o excedentes acumulados | Utilidades acumuladas |
+| 414095 | Otros | Actividades conexas |
+| 4155 y 6155 | Actividades inmobiliarias y de alquiler | Actividades inmobiliarias, empresariales y de alquiler |
+| 429595 | Otros ingresos diversos | Otros |
+| 513595 | Otros servicios | Otros |
+| 519595 | Faltantes (la usan los ajustes de inventario) | Otros |
+| 523560 | Publicidad | Publicidad, propaganda y promoción |
+
+Pendiente aparte: la regla de la plantilla `folio_item/created` apunta a 4155, que es de título.

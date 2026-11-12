@@ -37990,7 +37990,8 @@
       "listos": "Mark ready",
       "entregados": "Mark delivered",
       "exportar": "Export CSV",
-      "hecho": "{n, plural, one {# order marked} other {# orders marked}} as {estado}"
+      "hecho": "{n, plural, one {# order marked} other {# orders marked}} as {estado}",
+      "parcial": "{ok, plural, one {# order moved} other {# orders moved}} to {estado}; {fallidos, plural, one {# could not be changed and is still selected} other {# could not be changed and are still selected}}."
     },
     "sustantivo": {
       "singular": "order",
@@ -39047,7 +39048,12 @@
       },
       "puc": {
         "fuera": "{codigo} is not in the PUC catalog (Decree 2650 of 1993). You can still create it.",
-        "otroNombre": "In the PUC, {codigo} is “{nombre}”."
+        "otroNombre": "In the PUC, {codigo} is “{nombre}”.",
+        "plantilla": "{codigo} is a GO Admin template code, within a free range of the PUC."
+      },
+      "sucesora": {
+        "nueva": "From now on, entries that reach {padre} are posted to {codigo}, with a note of the original account. If you later create another account below it, they will keep going to {codigo}.",
+        "existente": "Entries that reach {padre} keep being posted to {sucesora}, the first account created below it, not to this one."
       }
     },
     "panel": {
@@ -39084,7 +39090,9 @@
         "ocupado": "That code already exists.",
         "padre": "Account {padre} must exist first.",
         "guardar": "The account could not be saved."
-      }
+      },
+      "sucesora": "Entries that reach {cuenta} are posted to {sucesora}, the first account created below it, with a note of the original account.",
+      "exogenaAyuda": "Inherited from the account above when created; you can change it here. The exogenous report uses the one on the lowest-level account."
     }
   },
   "reglasContables": {

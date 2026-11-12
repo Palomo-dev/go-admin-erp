@@ -45,6 +45,8 @@ export interface PanelCuentaProps {
   cuentas: readonly ChartAccount[];
   saldo: SaldoCuenta | null;
   textoSaldo: string;
+  /** Si la cuenta pasó a título al crearle una debajo: la cuenta que recibe sus asientos. */
+  sucesora?: string | null;
   puedeEditar: boolean;
   onCerrar: () => void;
   onGuardada: (cuenta: ChartAccount, esNueva: boolean) => void;
@@ -61,6 +63,7 @@ export function PanelCuenta({
   cuentas,
   saldo,
   textoSaldo,
+  sucesora,
   puedeEditar,
   onCerrar,
   onGuardada,
@@ -230,7 +233,7 @@ export function PanelCuenta({
               <option value="no_aplica">{t('panel.centroNoAplica')}</option>
             </select>
           </FormField>
-          <FormField etiqueta={t('panel.exogena')}>
+          <FormField etiqueta={t('panel.exogena')} ayuda={t('panel.exogenaAyuda')}>
             <Input value={exogena} maxLength={40} disabled={!puedeEditar} onChange={(e) => setExogena(e.target.value)} />
           </FormField>
           <div className="flex items-center justify-between gap-3">
@@ -244,6 +247,7 @@ export function PanelCuenta({
           {cuenta ? (
             <div className="flex flex-col gap-1 rounded-lg bg-subtle px-3 py-2.5 text-[13px] text-fg-secondary">
               <span>{t('panel.uso', { saldo: textoSaldo, movimientos: saldo?.movimientos ?? 0 })}</span>
+              {sucesora ? <span>{t('panel.sucesora', { cuenta: cuenta.account_code, sucesora })}</span> : null}
               {autor?.creadaPor ? (
                 <span>{t('panel.creadaPor', { nombre: autor.creadaPor, fecha: formatDate(autor.creadaEn) })}</span>
               ) : autor?.creadaEn ? (

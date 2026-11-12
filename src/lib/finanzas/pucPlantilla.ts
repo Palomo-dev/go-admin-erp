@@ -4,8 +4,8 @@
  *
  * 4110 es Pesca y 4115 es Explotación de minas y canteras. Hotelería es
  * 414005 y restaurantes 414015. La comisión de canales es 529505; 5235
- * queda como Servicios. La clase 8 es débito y la 9 crédito; 84/86/88 y
- * 94/96/98 son la contrapartida.
+ * queda como Servicios. La clase 8 es débito y la 9 crédito; 84/85/86 y
+ * 94/95/96 son la contrapartida (Decreto 2650; migración 20261111100000).
  */
 import {
   claseDe,
@@ -43,14 +43,14 @@ const NATURALEZA_EXPLICITA: Record<string, NaturalezaPuc> = {
   '6225': 'credito',
 };
 
-/** 84/86/88 acreditan la clase 8. 94/96/98 debitan la clase 9. El grupo arrastra a sus hijas. */
+/** 84/85/86 acreditan la clase 8. 94/95/96 debitan la clase 9. El grupo arrastra a sus hijas. */
 const CONTRA_ORDEN: Record<string, NaturalezaPuc> = {
   '84': 'credito',
+  '85': 'credito',
   '86': 'credito',
-  '88': 'credito',
   '94': 'debito',
+  '95': 'debito',
   '96': 'debito',
-  '98': 'debito',
 };
 
 const TERCERO = new Set([
@@ -148,15 +148,15 @@ const GRUPOS: readonly Fila[] = [
   ['81', 'Derechos contingentes'],
   ['82', 'Deudoras fiscales'],
   ['83', 'Deudoras de control'],
-  ['84', 'Derechos contingentes por contra (cr)'],
-  ['86', 'Deudoras fiscales por contra (cr)'],
-  ['88', 'Deudoras de control por contra (cr)'],
+  ['84', 'Derechos contingentes por contra (CR)'],
+  ['85', 'Deudoras fiscales por contra (CR)'],
+  ['86', 'Deudoras de control por contra (CR)'],
   ['91', 'Responsabilidades contingentes'],
   ['92', 'Acreedoras fiscales'],
   ['93', 'Acreedoras de control'],
-  ['94', 'Responsabilidades contingentes por contra (db)'],
-  ['96', 'Acreedoras fiscales por contra (db)'],
-  ['98', 'Acreedoras de control por contra (db)'],
+  ['94', 'Responsabilidades contingentes por contra (DB)'],
+  ['95', 'Acreedoras fiscales por contra (DB)'],
+  ['96', 'Acreedoras de control por contra (DB)'],
 ];
 
 const CUENTAS: readonly Fila[] = [
@@ -195,7 +195,7 @@ const CUENTAS: readonly Fila[] = [
   ['1528', 'Equipo de computación y comunicación'],
   ['1540', 'Flota y equipo de transporte'],
   ['1592', 'Depreciación acumulada'],
-  ['1599', 'Provisiones'],
+  ['1599', 'Deterioro'],
   ['1605', 'Crédito mercantil'],
   ['1610', 'Marcas'],
   ['1625', 'Derechos'],
@@ -263,7 +263,7 @@ const CUENTAS: readonly Fila[] = [
   ['4145', 'Transporte, almacenamiento y comunicaciones'],
   ['4155', 'Actividades inmobiliarias y de alquiler'],
   ['4165', 'Servicios sociales y de salud'],
-  ['4175', 'Devoluciones en ventas'],
+  ['4175', 'Devoluciones en ventas (DB)'],
   ['4205', 'Otras ventas'],
   ['4210', 'Financieros'],
   ['4215', 'Dividendos y participaciones'],
@@ -284,8 +284,8 @@ const CUENTAS: readonly Fila[] = [
   ['5145', 'Mantenimiento y reparaciones'],
   ['5150', 'Adecuación e instalación'],
   ['5155', 'Gastos de viaje'],
-  ['5160', 'Depreciación'],
-  ['5165', 'Amortización'],
+  ['5160', 'Depreciaciones'],
+  ['5165', 'Amortizaciones'],
   ['5195', 'Diversos'],
   ['519525', 'Elementos de aseo y cafetería'],
   ['519530', 'Útiles, papelería y fotocopias'],
@@ -294,7 +294,7 @@ const CUENTAS: readonly Fila[] = [
   ['519595', 'Faltantes'],
   ['5205', 'Gastos de personal'],
   ['5235', 'Servicios'],
-  ['523550', 'Transportes, fletes y acarreos'],
+  ['523550', 'Transporte, fletes y acarreos'],
   ['5295', 'Diversos'],
   ['529505', 'Comisiones'],
   ['5305', 'Financieros'],
@@ -309,7 +309,7 @@ const CUENTAS: readonly Fila[] = [
   ['6155', 'Actividades inmobiliarias y de alquiler'],
   ['6205', 'De mercancías'],
   ['6210', 'De materias primas'],
-  ['6225', 'Devoluciones en compras'],
+  ['6225', 'Devoluciones en compras (CR)'],
   ['7105', 'Materias primas'],
   ['7205', 'Mano de obra directa'],
   ['7305', 'Costos indirectos'],
@@ -318,18 +318,18 @@ const CUENTAS: readonly Fila[] = [
   ['8110', 'Bienes y valores entregados en garantía'],
   ['8115', 'Bienes y valores en poder de terceros'],
   ['8205', 'Cuentas deudoras fiscales'],
-  ['8305', 'Cuentas deudoras de control'],
+  ['8305', 'Bienes recibidos en arrendamiento financiero'],
   ['8405', 'Derechos contingentes por contra'],
-  ['8605', 'Deudoras fiscales por contra'],
-  ['8805', 'Deudoras de control por contra'],
+  ['8505', 'Deudoras fiscales por contra'],
+  ['8605', 'Deudoras de control por contra'],
   ['9105', 'Bienes y valores recibidos en custodia'],
   ['9110', 'Bienes y valores recibidos en garantía'],
   ['9115', 'Bienes y valores recibidos de terceros'],
   ['9205', 'Cuentas acreedoras fiscales'],
-  ['9305', 'Cuentas acreedoras de control'],
+  ['9305', 'Contratos de arrendamiento financiero'],
   ['9405', 'Responsabilidades contingentes por contra'],
-  ['9605', 'Acreedoras fiscales por contra'],
-  ['9805', 'Acreedoras de control por contra'],
+  ['9505', 'Acreedoras fiscales por contra'],
+  ['9605', 'Acreedoras de control por contra'],
 ];
 
 function armar(filas: readonly Fila[]): CuentaPlantilla[] {

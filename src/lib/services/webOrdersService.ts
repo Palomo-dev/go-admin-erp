@@ -1,15 +1,22 @@
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import { stockMovementService } from '@/lib/services/stockMovementService';
+import { stockMovementService, type SaleItemForStock } from '@/lib/services/stockMovementService';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
-import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { porcentajeATiempo } from '@/lib/pos/pedidosWeb/listadoPedidos';
+import { leerEnLotes } from '@/lib/supabase/leerEnLotes';
 
 export type WebOrderStatus = 'pending' | 'confirmed' | 'preparing' | 'ready' | 'in_delivery' | 'delivered' | 'cancelled' | 'rejected' | 'expired';
 // 'dine_in' = «Comer aquí» (QR de mesa), migración E1 (20261006124644_web_orders_dine_in).
 export type DeliveryType = 'pickup' | 'delivery_own' | 'delivery_third_party' | 'dine_in';
 export type PaymentStatus = 'pending' | 'paid' | 'partial' | 'refunded' | 'failed';
 export type OrderSource = 'website' | 'mobile_app' | 'whatsapp' | 'phone';
+
+/** Modificador de un ítem («Extra queso»): la tienda guarda al menos el nombre. */
+export interface ModificadorPedidoWeb {
+  name?: string;
+  [clave: string]: unknown;
+}
 
 export interface WebOrderItem {
   id: string;
@@ -22,7 +29,7 @@ export interface WebOrderItem {
   tax_amount: number;
   discount_amount: number;
   total: number;
-  modifiers?: any[];
+  modifiers?: ModificadorPedidoWeb[];
   notes?: string;
   /** Carta QR: quién pidió el plato (web_order_items.diner_label, ≤40). */
   diner_label?: string | null;
@@ -132,7 +139,7 @@ export interface CreateWebOrderInput {
     unit_price: number;
     tax_amount?: number;
     discount_amount?: number;
-    modifiers?: any[];
+    modifiers?: ModificadorPedidoWeb[];
     notes?: string;
   }[];
 }
@@ -149,6 +156,26 @@ export interface WebOrderFilters {
   is_scheduled?: boolean;
 }
 
+/** Filtro extra de la búsqueda del listado: por datos del pedido o por ids (producto). */
+type FiltroBusquedaPedidos = { tipo: 'texto'; termino: string } | { tipo: 'ids'; ids: string[] };
+
+/** Ids por consulta `in`: así la URL queda muy por debajo del límite. */
+const IDS_POR_CONSULTA = 100;
+
+/**
+ * Valor para un filtro dentro de `or(...)` de PostgREST: entre comillas dobles,
+ * con `\` y `"` escapados, para que comas, puntos y paréntesis sean texto.
+ */
+export function valorFiltroPostgrest(valor: string): string {
+  return `"${valor.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/** Más reciente primero; `id` desempata, igual que la consulta. */
+function ordenPedidosRecientes(a: WebOrder, b: WebOrder): number {
+  if (a.created_at !== b.created_at) return a.created_at < b.created_at ? 1 : -1;
+  return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+}
+
 class WebOrdersService {
   private ordersChannel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -161,92 +188,128 @@ class WebOrdersService {
    */
   async getOrders(filters?: WebOrderFilters): Promise<WebOrder[]> {
     try {
-      let query = supabase
-        .from('web_orders')
-        .select(`
-          *,
-          items:web_order_items(*),
-          customer:customers(id, full_name, email, phone),
-          branch:branches(id, name),
-          restaurant_table:restaurant_tables(name, zone)
-        `)
-        .eq('organization_id', this.organizationId)
-        .order('created_at', { ascending: false });
+      // En lotes: PostgREST corta en 1.000 filas y el listado, el tablero y el CSV necesitan
+      // todos los pedidos del periodo. `id` desempata el orden para que ningún lote repita ni salte.
+      const construir = (desde: number, hasta: number, extra?: FiltroBusquedaPedidos) => {
+        let query = supabase
+          .from('web_orders')
+          .select(`
+            *,
+            items:web_order_items(*),
+            customer:customers(id, full_name, email, phone),
+            branch:branches(id, name),
+            restaurant_table:restaurant_tables(name, zone)
+          `)
+          .eq('organization_id', this.organizationId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false });
 
-      if (filters?.status) {
-        if (Array.isArray(filters.status)) {
-          query = query.in('status', filters.status);
-        } else {
-          query = query.eq('status', filters.status);
+        if (filters?.status) {
+          if (Array.isArray(filters.status)) {
+            query = query.in('status', filters.status);
+          } else {
+            query = query.eq('status', filters.status);
+          }
         }
-      }
 
-      if (filters?.delivery_type === 'dine_in') {
-        // «Comer aquí»: dine_in real (E1) o el mapeo temporal del sitio (pickup
-        // con la marca «[Comer aquí]» en internal_notes; ver tipoEntrega.ts).
-        query = query.or('delivery_type.eq.dine_in,and(delivery_type.eq.pickup,internal_notes.ilike.*Comer aquí*)');
-      } else if (filters?.delivery_type) {
-        query = query.eq('delivery_type', filters.delivery_type);
-      }
-
-      if (filters?.source) {
-        query = query.eq('source', filters.source);
-      }
-
-      if (filters?.payment_status && filters.payment_status.length > 0) {
-        query = query.in('payment_status', filters.payment_status);
-      }
-
-      if (filters?.branch_id != null) {
-        query = query.eq('branch_id', filters.branch_id);
-      }
-
-      if (filters?.date_from) {
-        query = query.gte('created_at', filters.date_from);
-      }
-
-      if (filters?.date_to) {
-        query = query.lte('created_at', filters.date_to);
-      }
-
-      if (filters?.search) {
-        const searchTerm = filters.search;
-
-        // Buscar IDs de pedidos que coinciden por nombre de producto (tabla relacionada)
-        const { data: matchingItems } = await supabase
-          .from('web_order_items')
-          .select('web_order_id')
-          .ilike('product_name', `%${searchTerm}%`);
-        const orderIdsFromProducts = (matchingItems || []).map((item: any) => item.web_order_id);
-
-        // Condiciones OR: número, nombre (incluye apellido), teléfono, correo y dirección (JSONB)
-        const orConditions = [
-          `order_number.ilike.%${searchTerm}%`,
-          `customer_name.ilike.%${searchTerm}%`,
-          `customer_phone.ilike.%${searchTerm}%`,
-          `customer_email.ilike.%${searchTerm}%`,
-          `delivery_address->>address.ilike.%${searchTerm}%`,
-          `delivery_address->>city.ilike.%${searchTerm}%`,
-          `delivery_address->>neighborhood.ilike.%${searchTerm}%`,
-        ];
-        if (orderIdsFromProducts.length > 0) {
-          orConditions.push(`id.in.(${orderIdsFromProducts.join(',')})`);
+        if (filters?.delivery_type === 'dine_in') {
+          // «Comer aquí»: dine_in real (E1) o el mapeo temporal del sitio (pickup
+          // con la marca «[Comer aquí]» en internal_notes; ver tipoEntrega.ts).
+          query = query.or('delivery_type.eq.dine_in,and(delivery_type.eq.pickup,internal_notes.ilike.*Comer aquí*)');
+        } else if (filters?.delivery_type) {
+          query = query.eq('delivery_type', filters.delivery_type);
         }
-        query = query.or(orConditions.join(','));
+
+        if (filters?.source) {
+          query = query.eq('source', filters.source);
+        }
+
+        if (filters?.payment_status && filters.payment_status.length > 0) {
+          query = query.in('payment_status', filters.payment_status);
+        }
+
+        if (filters?.branch_id != null) {
+          query = query.eq('branch_id', filters.branch_id);
+        }
+
+        if (filters?.date_from) {
+          query = query.gte('created_at', filters.date_from);
+        }
+
+        if (filters?.date_to) {
+          query = query.lte('created_at', filters.date_to);
+        }
+
+        if (filters?.is_scheduled !== undefined) {
+          query = query.eq('is_scheduled', filters.is_scheduled);
+        }
+
+        if (extra?.tipo === 'texto') {
+          // Número, nombre (incluye apellido), teléfono, correo y dirección (JSONB). El valor va
+          // entre comillas: una coma o un paréntesis en lo que se escribe ya no rompe el filtro.
+          const valor = valorFiltroPostgrest(`%${extra.termino}%`);
+          query = query.or(
+            [
+              'order_number',
+              'customer_name',
+              'customer_phone',
+              'customer_email',
+              'delivery_address->>address',
+              'delivery_address->>city',
+              'delivery_address->>neighborhood',
+            ]
+              .map((campo) => `${campo}.ilike.${valor}`)
+              .join(','),
+          );
+        } else if (extra?.tipo === 'ids') {
+          query = query.in('id', extra.ids);
+        }
+
+        return query.range(desde, hasta);
+      };
+
+      const termino = filters?.search?.trim();
+      if (!termino) return await leerEnLotes<WebOrder>((desde, hasta) => construir(desde, hasta));
+
+      // Con búsqueda, dos consultas que se unen aquí: por los datos del pedido y por el
+      // nombre de un producto. Antes los ids por producto iban todos en la misma URL
+      // (`id.in.(…)`) y con una palabra común la URL pasaba del límite: 400 (2026-11-11).
+      const porTexto = await leerEnLotes<WebOrder>((desde, hasta) =>
+        construir(desde, hasta, { tipo: 'texto', termino }),
+      );
+      const yaTraidos = new Set(porTexto.map((o) => o.id));
+      const faltan = (await this.idsPedidosPorProducto(termino, filters)).filter((id) => !yaTraidos.has(id));
+      const porProducto: WebOrder[] = [];
+      for (let i = 0; i < faltan.length; i += IDS_POR_CONSULTA) {
+        const ids = faltan.slice(i, i + IDS_POR_CONSULTA);
+        porProducto.push(...(await leerEnLotes<WebOrder>((desde, hasta) => construir(desde, hasta, { tipo: 'ids', ids }))));
       }
-
-      if (filters?.is_scheduled !== undefined) {
-        query = query.eq('is_scheduled', filters.is_scheduled);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      return data || [];
+      return [...porTexto, ...porProducto].sort(ordenPedidosRecientes);
     } catch (error) {
       console.error('Error fetching web orders:', error);
       throw error;
     }
+  }
+
+  /**
+   * Ids de los pedidos de la organización con un ítem cuyo producto contiene el
+   * término, dentro del mismo periodo y sede del listado. Antes se buscaba en los
+   * ítems de todas las organizaciones visibles y sin fecha.
+   */
+  private async idsPedidosPorProducto(termino: string, filters?: WebOrderFilters): Promise<string[]> {
+    const filas = await leerEnLotes<{ web_order_id: string }>((desde, hasta) => {
+      let query = supabase
+        .from('web_order_items')
+        .select('web_order_id, pedido:web_orders!inner(organization_id, branch_id, created_at)')
+        .eq('pedido.organization_id', this.organizationId)
+        .ilike('product_name', `%${termino}%`)
+        .order('id', { ascending: true });
+      if (filters?.branch_id != null) query = query.eq('pedido.branch_id', filters.branch_id);
+      if (filters?.date_from) query = query.gte('pedido.created_at', filters.date_from);
+      if (filters?.date_to) query = query.lte('pedido.created_at', filters.date_to);
+      return query.range(desde, hasta);
+    });
+    return [...new Set(filas.map((f) => f.web_order_id))];
   }
 
   /**
@@ -406,52 +469,104 @@ class WebOrdersService {
     }
   ): Promise<WebOrder> {
     try {
-      const updateData: any = { status };
-      const now = new Date().toISOString();
-
-      // Campos específicos según el estado
-      switch (status) {
-        case 'confirmed':
-          updateData.confirmed_at = now;
-          if (options?.estimated_ready_at) {
-            updateData.estimated_ready_at = options.estimated_ready_at;
-          }
-          break;
-        case 'ready':
-          updateData.ready_at = now;
-          break;
-        case 'delivered':
-          updateData.delivered_at = now;
-          break;
-        case 'cancelled':
-        case 'rejected':
-          updateData.cancelled_at = now;
-          updateData.cancellation_reason = options?.cancellation_reason;
-          break;
-      }
-
-      if (options?.internal_notes) {
-        updateData.internal_notes = options.internal_notes;
-      }
-
-      if (options?.estimated_delivery_at) {
-        updateData.estimated_delivery_at = options.estimated_delivery_at;
-      }
-
-      const { error } = await supabase
-        .from('web_orders')
-        .update(updateData)
-        .eq('id', orderId)
-        .eq('organization_id', this.organizationId);
-
-      if (error) throw error;
-
-      void this.avisarCambioEstado(orderId, status);
+      await this.aplicarCambioEstado(orderId, status, options);
       return this.getOrderById(orderId) as Promise<WebOrder>;
     } catch (error) {
       console.error('Error updating order status:', error);
       throw error;
     }
+  }
+
+  /**
+   * Cambia el estado de varios pedidos a la vez («En preparación», «Listos»,
+   * «Entregados» del listado). De `concurrencia` en `concurrencia`, sin volver a
+   * leer cada pedido, y con el aviso al cliente dentro del mismo turno.
+   *
+   * Antes eran cientos de `updateOrderStatus` en paralelo, cada uno releyendo el
+   * pedido con sus ítems y disparando su aviso: la conexión se saturaba, las
+   * lecturas pasaban de 15 s y se cancelaban (AbortError, 2026-11-11).
+   * Un pedido que falla no detiene a los demás: vuelve en `fallidos`.
+   */
+  async cambiarEstadoVarios(
+    orderIds: readonly string[],
+    status: WebOrderStatus,
+    opciones: { concurrencia?: number; onProgreso?: (hechos: number, total: number) => void } = {},
+  ): Promise<{ cambiados: string[]; fallidos: { id: string; error: unknown }[] }> {
+    const cambiados: string[] = [];
+    const fallidos: { id: string; error: unknown }[] = [];
+    const pendientes = [...orderIds];
+    const total = pendientes.length;
+    const trabajador = async () => {
+      for (let id = pendientes.shift(); id !== undefined; id = pendientes.shift()) {
+        try {
+          await this.aplicarCambioEstado(id, status, undefined, { esperarAviso: true });
+          cambiados.push(id);
+        } catch (error) {
+          console.error('Error cambiando el estado del pedido:', id, error);
+          fallidos.push({ id, error });
+        }
+        opciones.onProgreso?.(cambiados.length + fallidos.length, total);
+      }
+    };
+    const hilos = Math.max(1, Math.min(opciones.concurrencia ?? 4, total));
+    await Promise.all(Array.from({ length: hilos }, trabajador));
+    return { cambiados, fallidos };
+  }
+
+  /** El UPDATE del cambio de estado y el aviso al cliente. Lo comparten el uno a uno y el lote. */
+  private async aplicarCambioEstado(
+    orderId: string,
+    status: WebOrderStatus,
+    options?: {
+      cancellation_reason?: string;
+      internal_notes?: string;
+      estimated_ready_at?: string;
+      estimated_delivery_at?: string;
+    },
+    control: { esperarAviso?: boolean } = {},
+  ): Promise<void> {
+    const updateData: Record<string, unknown> = { status };
+    const now = new Date().toISOString();
+
+    // Campos específicos según el estado
+    switch (status) {
+      case 'confirmed':
+        updateData.confirmed_at = now;
+        if (options?.estimated_ready_at) {
+          updateData.estimated_ready_at = options.estimated_ready_at;
+        }
+        break;
+      case 'ready':
+        updateData.ready_at = now;
+        break;
+      case 'delivered':
+        updateData.delivered_at = now;
+        break;
+      case 'cancelled':
+      case 'rejected':
+        updateData.cancelled_at = now;
+        updateData.cancellation_reason = options?.cancellation_reason;
+        break;
+    }
+
+    if (options?.internal_notes) {
+      updateData.internal_notes = options.internal_notes;
+    }
+
+    if (options?.estimated_delivery_at) {
+      updateData.estimated_delivery_at = options.estimated_delivery_at;
+    }
+
+    const { error } = await supabase
+      .from('web_orders')
+      .update(updateData)
+      .eq('id', orderId)
+      .eq('organization_id', this.organizationId);
+
+    if (error) throw error;
+
+    if (control.esperarAviso) await this.avisarCambioEstado(orderId, status);
+    else void this.avisarCambioEstado(orderId, status);
   }
 
   /**
@@ -578,7 +693,7 @@ class WebOrdersService {
       const stockResult = await stockMovementService.releaseStockReservation(
         order.branch_id,
         orderId,
-        items.map((item: any) => ({ product_id: item.product_id, quantity: Number(item.quantity) }))
+        items.map((item: { product_id: SaleItemForStock['product_id']; quantity: number | string }) => ({ product_id: item.product_id, quantity: Number(item.quantity) }))
       );
 
       if (stockResult.errors.length > 0) {
@@ -651,18 +766,22 @@ class WebOrdersService {
     on_time_pct: number | null;
   }> {
     try {
-      let query = supabase
-        .from('web_orders')
-        .select('id, status, total, delivery_type, source, payment_status, internal_notes, created_at, estimated_ready_at, estimated_delivery_at, ready_at, delivered_at')
-        .eq('organization_id', this.organizationId);
+      // En lotes: con más de 1.000 pedidos en el periodo, PostgREST cortaba y la tarjeta
+      // «Pedidos» se quedaba en 1.000 (org 333, 2026-11-11).
+      const orders = await leerEnLotes((desde, hasta) => {
+        let query = supabase
+          .from('web_orders')
+          .select('id, status, total, delivery_type, source, payment_status, internal_notes, created_at, estimated_ready_at, estimated_delivery_at, ready_at, delivered_at')
+          .eq('organization_id', this.organizationId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false });
 
-      if (dateFrom) query = query.gte('created_at', dateFrom);
-      if (dateTo) query = query.lte('created_at', dateTo);
-      if (branchId != null) query = query.eq('branch_id', branchId);
+        if (dateFrom) query = query.gte('created_at', dateFrom);
+        if (dateTo) query = query.lte('created_at', dateTo);
+        if (branchId != null) query = query.eq('branch_id', branchId);
 
-      const { data: orders, error } = await query;
-
-      if (error) throw error;
+        return query.range(desde, hasta);
+      });
 
       const stats = {
         total_orders: orders?.length || 0,
@@ -733,7 +852,7 @@ class WebOrdersService {
   /**
    * Suscribirse a cambios en pedidos (tiempo real)
    */
-  subscribeToOrders(callback: (payload: any) => void, branchId?: number | null) {
+  subscribeToOrders(callback: (payload: RealtimePostgresChangesPayload<WebOrder>) => void, branchId?: number | null) {
     // Cancelar suscripción previa si existe para evitar fugas de canal
     this.unsubscribeFromOrders();
     // Filtro base por organización. Cuando branchId es un número concreto,

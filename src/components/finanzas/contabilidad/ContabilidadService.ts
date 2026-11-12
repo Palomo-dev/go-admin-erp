@@ -454,16 +454,38 @@ export class ContabilidadService {
    * puede leer, la pantalla sigue sin sugerencias.
    */
   static async obtenerCatalogoPuc(padre: string): Promise<ConceptoPuc[]> {
+    // `*` y no una lista: `origen` llegó después y el catálogo sirve igual sin ella.
     const { data, error } = await supabase
       .from('puc_catalogo')
-      .select('codigo, nombre')
+      .select('*')
       .eq('padre', padre)
       .order('codigo');
     if (error) {
       console.error('Error leyendo el catálogo del PUC:', error);
       return [];
     }
-    return (data ?? []) as ConceptoPuc[];
+    return ((data ?? []) as { codigo: string; nombre: string; origen?: string | null }[]).map((c) => ({
+      codigo: c.codigo,
+      nombre: c.nombre,
+      origen: c.origen ?? null,
+    }));
+  }
+
+  /**
+   * Cuenta que pasó a título al crearle una cuenta debajo → la primera cuenta que se
+   * creó debajo (`plan_cuentas_sucesoras`). Los asientos que lleguen a la de arriba se
+   * registran en esa, aunque después se abran otras. Si no se puede leer, mapa vacío.
+   */
+  static async obtenerSucesoras(): Promise<Map<string, string>> {
+    const { data, error } = await supabase
+      .from('plan_cuentas_sucesoras')
+      .select('account_code, sucesora')
+      .eq('organization_id', this.getOrganizationId());
+    if (error) {
+      console.error('Error leyendo las cuentas sucesoras:', error);
+      return new Map();
+    }
+    return new Map(((data ?? []) as { account_code: string; sucesora: string }[]).map((f) => [f.account_code, f.sucesora]));
   }
 
   static async crearCuentaHija(entrada: {

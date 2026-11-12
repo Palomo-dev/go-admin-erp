@@ -11,7 +11,7 @@
  * y confirmar —uno o varios— pasa siempre por `webOrderConfirmationService`,
  * que crea la venta, la comanda y el cobro: no se cambia el estado a mano.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -157,6 +157,7 @@ export default function PedidosOnlinePage() {
   const [tamanoPagina, setTamanoPagina] = useState(20);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const loteEnCursoRef = useRef(false);
   const [ahora, setAhora] = useState(() => new Date());
 
   // Diálogos. Confirmar admite varios pedidos («Confirmar pendientes»).
@@ -238,6 +239,8 @@ export default function PedidosOnlinePage() {
   useEffect(() => {
     let reloadTimer: ReturnType<typeof setTimeout> | null = null;
     const scheduleReload = () => {
+      // Un lote en curso recarga al terminar; aquí solo se acumularían recargas.
+      if (loteEnCursoRef.current) return;
       if (reloadTimer) clearTimeout(reloadTimer);
       reloadTimer = setTimeout(() => {
         reloadTimer = null;
@@ -392,15 +395,32 @@ export default function PedidosOnlinePage() {
     const selected = getSelectedOrders();
     if (selected.length === 0) return;
     setBulkActionLoading(true);
+    // Mientras corre el lote, el tiempo real no recarga: cada pedido cambiado avisaría y la
+    // lista se pediría decenas de veces a la vez. Se recarga una sola vez al final.
+    loteEnCursoRef.current = true;
     try {
-      await Promise.all(selected.map((o) => webOrdersService.updateOrderStatus(o.id, status)));
-      toast({ title: t('masivo.hecho', { n: selected.length, estado: t(`estados.${status}`) }) });
-      setSelectedOrders(new Set());
-      void loadOrders();
+      const { cambiados, fallidos } = await webOrdersService.cambiarEstadoVarios(
+        selected.map((o) => o.id),
+        status,
+      );
+      const estado = t(`estados.${status}`);
+      if (fallidos.length === 0) {
+        toast({ title: t('masivo.hecho', { n: cambiados.length, estado }) });
+        setSelectedOrders(new Set());
+      } else {
+        // Los que fallaron quedan seleccionados para reintentar.
+        toast({
+          title: t('masivo.parcial', { ok: cambiados.length, fallidos: fallidos.length, estado }),
+          variant: 'destructive',
+        });
+        setSelectedOrders(new Set(fallidos.map((f) => f.id)));
+      }
     } catch {
       toast({ title: t('estadoError'), variant: 'destructive' });
     } finally {
+      loteEnCursoRef.current = false;
       setBulkActionLoading(false);
+      void loadOrders();
     }
   };
 

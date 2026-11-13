@@ -49997,6 +49997,132 @@
         "laboratorio": "Laboratoire",
         "trabajos": "Tâches",
         "configuracion": "Configuration"
+      },
+      "titulo": "IA du chat",
+      "beta": "Bêta",
+      "laboratorio": {
+        "subtitulo": "Testez comment l’IA répondrait avant de la laisser servir vos clients.",
+        "pregunta": "Question de test",
+        "preguntaPlaceholder": "Écrivez comme le ferait un client…",
+        "ejemplos": "Exemples :",
+        "ejemplo": {
+          "estadoPedido": "Où en est ma commande ?",
+          "horarios": "À quelle heure ouvrez-vous ?",
+          "mediosPago": "Comment puis-je payer ?"
+        },
+        "probar": "Tester",
+        "probando": "Test en cours…",
+        "respuesta": "Réponse de l’IA",
+        "sinRespuestaTitulo": "Pas encore de réponse",
+        "sinRespuestaDescripcion": "Écrivez une question et appuyez sur Tester pour voir les fragments trouvés par l’IA.",
+        "metricas": {
+          "confianza": "Confiance",
+          "tiempo": "Temps",
+          "tokens": "Jetons",
+          "fragmentos": "Fragments"
+        },
+        "simulada": "Réponse de test construite avec vos fragments : n’appelle pas le modèle et ne consomme pas de crédits.",
+        "convertir": "Transformer en fragment",
+        "ajustes": "Réglages du test",
+        "ajustesDescripcion": "Ils ne modifient pas la configuration réelle.",
+        "canal": "Canal",
+        "canalWeb": "Chat du site web",
+        "creatividad": "Créativité",
+        "creatividades": {
+          "c0": "précise",
+          "c1": "équilibrée",
+          "c2": "créative"
+        },
+        "largo": "Longueur maximale",
+        "largos": {
+          "l0": "Court (≈ 150 mots)",
+          "l1": "Moyen (≈ 350 mots)",
+          "l2": "Long (≈ 700 mots)"
+        },
+        "fragmentosUso": "Fragments utilisés",
+        "sinFragmentos": "Aucun fragment actif. Ajoutez-en dans Connaissances.",
+        "toasts": {
+          "errorCarga": "Impossible de charger les données du laboratoire",
+          "errorPrueba": "Impossible de terminer le test",
+          "sinMiembro": "Votre adhésion à cette organisation est introuvable",
+          "fragmentoCreado": "Fragment créé dans Connaissances",
+          "errorFragmento": "Impossible de créer le fragment"
+        }
+      },
+      "trabajos": {
+        "subtitulo": "Chaque fois que l’IA répond, résume ou classe, une trace est conservée ici.",
+        "sinCliente": "Visiteur non identifié",
+        "vacioTitulo": "Aucune tâche IA pour l’instant",
+        "vacioDescripcion": "Elles apparaissent quand l’IA répond, résume ou classe des conversations.",
+        "kpis": {
+          "etiqueta": "Résumé des tâches",
+          "total": "Total",
+          "enCola": "En file",
+          "procesando": "En cours",
+          "completados": "Terminées",
+          "fallidos": "Échouées"
+        },
+        "filtros": {
+          "estado": "État",
+          "estadoTodos": "État : tous",
+          "tipo": "Type",
+          "tipoTodos": "Type : tous",
+          "fecha": "Date",
+          "rangos": {
+            "hoy": "Aujourd’hui",
+            "7d": "7 derniers jours",
+            "30d": "30 derniers jours",
+            "todo": "Tout"
+          }
+        },
+        "tabla": {
+          "etiqueta": "Tâches de l’IA",
+          "tipo": "Type",
+          "conversacion": "Conversation",
+          "estado": "État",
+          "tokens": "Jetons",
+          "cuando": "Quand"
+        },
+        "tipos": {
+          "auto_response": "Réponse automatique",
+          "respond": "Réponse suggérée",
+          "summarize": "Résumé",
+          "classify": "Classification",
+          "translate": "Traduction",
+          "extract_intent": "Intention du client",
+          "transcribe": "Transcription audio"
+        },
+        "estados": {
+          "pending": "En file",
+          "processing": "En cours",
+          "completed": "Terminée",
+          "failed": "Échouée",
+          "cancelled": "Annulée",
+          "skipped": "Ignorée",
+          "draft": "Brouillon"
+        },
+        "detalle": {
+          "quePaso": "Ce qui s’est passé",
+          "informacion": "Informations",
+          "modelo": "Modèle",
+          "modeloConfig": "selon la configuration IA",
+          "canal": "Canal",
+          "tokens": "Jetons",
+          "confianza": "Confiance",
+          "fragmentos": "Fragments utilisés",
+          "creditos": "Crédits facturés",
+          "respuesta": "Réponse",
+          "bitacora": "Journal",
+          "reintentar": "Réessayer",
+          "cancelar": "Annuler la tâche",
+          "abrirConversacion": "Ouvrir la conversation"
+        },
+        "toasts": {
+          "sinMiembro": "Votre adhésion à cette organisation est introuvable",
+          "reintentado": "Une nouvelle tâche a été créée pour réessayer",
+          "cancelado": "Tâche annulée",
+          "error": "Impossible de terminer l’action"
+        }
       }
     },
     "canales": {
@@ -50414,6 +50540,378 @@
     },
     "comun": {
       "volver": "Retour"
+    },
+    "conocimiento": {
+      "titulo": "Connaissances",
+      "subtitulo": "Ce que l’IA peut utiliser pour répondre : politiques, FAQ, catalogue et guides.",
+      "configurarIa": "Configurer l’IA",
+      "importar": {
+        "titulo": "Importer des fragments",
+        "subtitulo": "Chargez-en plusieurs d’un coup depuis un CSV ou en collant du texte.",
+        "errorAnalisis": "Impossible de lire le contenu",
+        "paso1": "1. Fichier",
+        "paso2": "2. Aperçu",
+        "paso2Descripcion": "Vérifiez avant d’importer. Les lignes en erreur ne sont pas chargées.",
+        "paso3": "3. Options",
+        "modos": {
+          "csv": "Fichier CSV",
+          "texto": "Coller du texte"
+        },
+        "vista": {
+          "titulo": "Titre",
+          "sinTitulo": "(sans titre)",
+          "contenido": "Contenu",
+          "estado": "État",
+          "estados": {
+            "lista": "Prête",
+            "faltaTitulo": "Titre manquant",
+            "faltaContenido": "Contenu manquant"
+          },
+          "vacia": "Choisissez un fichier ou collez du texte pour voir ici ce qui sera importé.",
+          "resumen": "{mostradas} sur {total} affichées · {listas} prêtes · {errores} en erreur"
+        },
+        "opciones": {
+          "fuente": "Enregistrer dans la source",
+          "sinFuente": "Sans source",
+          "etiquetas": "Étiquettes pour tous",
+          "etiquetasAyuda": "Séparez-les par des virgules.",
+          "indexar": "Les rendre prêts pour l’IA à la fin",
+          "importar": "Importer {n, plural, one {# fragment} other {# fragments}}",
+          "creditos": "L’indexation utilise les crédits IA de votre forfait."
+        },
+        "resultado": {
+          "titulo": "{ok} sur {total} importés",
+          "errores": "{n, plural, one {# ligne n’a pas pu être chargée} other {# lignes n’ont pas pu être chargées}}.",
+          "ver": "Voir les fragments"
+        },
+        "toasts": {
+          "listo": "{n, plural, one {# fragment importé} other {# fragments importés}}",
+          "parcial": "Certains fragments n’ont pas pu être importés",
+          "error": "Impossible de terminer l’importation"
+        }
+      },
+      "nuevaFuente": "Nouvelle source",
+      "nuevoFragmento": "Nouveau fragment",
+      "buscarFragmentos": "Rechercher des fragments…",
+      "sinDato": "—",
+      "error": "Impossible de charger les connaissances",
+      "migas": {
+        "chat": "Chat",
+        "conocimiento": "Connaissances"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des connaissances",
+        "fuentes": "Sources",
+        "activas": "{n, plural, one {# active} other {# actives}}",
+        "fragmentos": "Fragments",
+        "listos": "Prêts pour l’IA",
+        "pendientes": "En attente d’indexation",
+        "pendientesDetalle": "traités en quelques minutes",
+        "activos": "Actifs",
+        "usos": "Utilisations",
+        "usosDetalle": "dans les réponses de l’IA"
+      },
+      "pestanas": {
+        "etiqueta": "Vues des connaissances",
+        "fuentes": "Sources",
+        "fragmentos": "Tous les fragments"
+      },
+      "fuentes": {
+        "verFragmentos": "Voir les fragments",
+        "editar": "Modifier",
+        "activar": "Activer",
+        "desactivar": "Désactiver",
+        "eliminar": "Supprimer",
+        "sinDescripcion": "Sans description",
+        "fragmentos": "{n, plural, one {# fragment} other {# fragments}}",
+        "actualizada": "màj {fecha}",
+        "vacioTitulo": "Aucune source pour l’instant",
+        "vacioDescripcion": "Créez une source (par exemple « Livraisons ») et ajoutez-y des fragments, ou importez un CSV."
+      },
+      "estados": {
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "activo": "Actif",
+        "inactivo": "Inactif",
+        "listo": "Prêt",
+        "pendiente": "En attente"
+      },
+      "tabla": {
+        "etiqueta": "Fragments de connaissances",
+        "fragmento": "Fragment",
+        "fuente": "Source",
+        "etiquetas": "Étiquettes",
+        "estado": "État",
+        "paraIa": "Pour l’IA",
+        "usado": "Utilisé",
+        "actualizado": "Mis à jour",
+        "abrir": "Ouvrir",
+        "editarRapido": "Modification rapide",
+        "activar": "Activer",
+        "desactivar": "Désactiver",
+        "eliminar": "Supprimer"
+      },
+      "fragmentos": {
+        "vacioTitulo": "Aucun fragment pour l’instant",
+        "vacioDescripcion": "Un fragment est une réponse courte que l’IA peut utiliser telle quelle.",
+        "vacioFuente": "Cette source n’a pas encore de fragments"
+      },
+      "toasts": {
+        "sinMiembro": "Votre adhésion à cette organisation est introuvable",
+        "error": "Impossible d’enregistrer la modification",
+        "fuenteCreada": "Source créée",
+        "fuenteActualizada": "Source mise à jour",
+        "fuenteActivada": "« {nombre} » est active",
+        "fuenteDesactivada": "« {nombre} » est inactive",
+        "fuenteEliminada": "Source supprimée",
+        "fragmentoCreado": "Fragment créé",
+        "fragmentoActualizado": "Fragment enregistré : une nouvelle version a été créée",
+        "fragmentoActivado": "Fragment actif : l’IA peut l’utiliser",
+        "fragmentoDesactivado": "Fragment inactif : l’IA ne l’utilise plus",
+        "fragmentoEliminado": "Fragment supprimé",
+        "reindexando": "Préparation pour l’IA : quelques minutes"
+      },
+      "borrar": {
+        "fuenteTitulo": "Supprimer la source ?",
+        "fuenteDescripcion": "« {nombre} » sera supprimée avec {n, plural, one {son fragment} other {ses # fragments}}. Action irréversible.",
+        "fragmentoTitulo": "Supprimer le fragment ?",
+        "fragmentoDescripcion": "« {titulo} » sera supprimé et l’IA cessera de l’utiliser. Action irréversible.",
+        "confirmar": "Supprimer"
+      },
+      "fuente": {
+        "noEncontrada": "Cette source n’existe pas ou n’appartient pas à l’organisation active",
+        "volver": "Retour aux connaissances",
+        "reindexar": "Réindexer",
+        "ajustes": "Réglages",
+        "buscar": "Rechercher dans cette source…",
+        "filtroEtiqueta": "Filtrer par étiquette",
+        "todasEtiquetas": "Toutes les étiquettes"
+      },
+      "editor": {
+        "noEncontrado": "Ce fragment n’existe pas ou n’appartient pas à l’organisation active",
+        "faltanDatos": "Saisissez le titre et le contenu",
+        "sinGuardar": "Modifications non enregistrées",
+        "regenerar": "Régénérer pour l’IA",
+        "guardar": "Enregistrer",
+        "contenidoTitulo": "Contenu",
+        "contenidoDescripcion": "Rédigez-le comme vous le diriez à un client. L’IA l’utilise tel quel.",
+        "titulo": "Titre",
+        "contenido": "Contenu",
+        "caracteres": "{n} / {max} caractères",
+        "muyLargo": "C’est trop long : divisez-le en deux fragments pour que l’IA réponde avec précision.",
+        "etiquetas": "Étiquettes",
+        "quitarEtiqueta": "Retirer {etiqueta}",
+        "nuevaEtiqueta": "Nouvelle étiquette",
+        "agregar": "Ajouter",
+        "pruebaTitulo": "Test rapide",
+        "pruebaDescripcion": "Posez la question comme un client et voyez si la recherche de l’IA trouve ce fragment. Sans crédits.",
+        "preguntaPlaceholder": "Combien coûte la livraison ?",
+        "probar": "Tester",
+        "pruebaEncontrado": "Ce fragment arrive {posicion}e sur {total}. L’IA répondrait avec lui.",
+        "pruebaNoEncontrado": "La recherche n’a pas trouvé ce fragment avec cette question. Ajoutez des mots ou étiquettes utilisés par vos clients.",
+        "pruebaGuardado": "Le test utilise la version enregistrée : enregistrez vos modifications pour les tester.",
+        "ajustes": "Réglages",
+        "fuente": "Source",
+        "sinFuente": "Sans source",
+        "prioridad": "Priorité (1 à 10)",
+        "tramos": {
+          "baja": "Basse",
+          "media": "Moyenne",
+          "alta": "Haute"
+        },
+        "activo": "Actif · l’IA peut l’utiliser",
+        "estadoIa": "État pour l’IA",
+        "indexado": "indexé {fecha}",
+        "usado": "Utilisé dans les réponses",
+        "votos": "Votes 👍 / 👎",
+        "version": "Version",
+        "actualizado": "Mis à jour"
+      }
+    },
+    "widget": {
+      "titulo": "Visiteurs du site web",
+      "subtitulo": "Qui utilise le chat de votre site maintenant et qui l’a utilisé.",
+      "configurar": "Configurer le widget",
+      "actualizar": "Actualiser",
+      "buscar": "Rechercher par nom, e-mail ou canal",
+      "anonimo": "Visiteur anonyme",
+      "cliente": "Client",
+      "sinDatos": "Sans coordonnées",
+      "vacioTitulo": "Aucun visiteur pour l’instant",
+      "vacioDescripcion": "Ils apparaissent quand quelqu’un ouvre le chat de votre site.",
+      "sustantivo": {
+        "uno": "visiteur",
+        "varios": "visiteurs"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des visiteurs",
+        "sesiones": "Sessions",
+        "enLinea": "En ligne maintenant",
+        "identificados": "Identifiés",
+        "anonimos": "Anonymes",
+        "inactivos": "Inactifs"
+      },
+      "filtros": {
+        "estado": "État",
+        "cliente": "Client",
+        "estados": {
+          "todos": "État : tous",
+          "enLinea": "En ligne",
+          "inactivo": "Inactifs"
+        },
+        "clientes": {
+          "todos": "Client : tous",
+          "identificados": "Identifiés",
+          "anonimos": "Anonymes"
+        }
+      },
+      "estados": {
+        "enLinea": "En ligne",
+        "inactivo": "Inactif"
+      },
+      "conversacion": {
+        "open": "Ouverte",
+        "pending": "En attente",
+        "closed": "Fermée",
+        "archived": "Archivée"
+      },
+      "tabla": {
+        "etiqueta": "Visiteurs du chat du site",
+        "visitante": "Visiteur",
+        "canal": "Canal",
+        "estado": "État",
+        "conversacion": "Conversation",
+        "ultimaVez": "Dernière visite",
+        "inicio": "Début"
+      },
+      "acciones": {
+        "abrir": "Ouvrir la conversation",
+        "cerrar": "Fermer la conversation",
+        "reabrir": "Rouvrir la conversation"
+      },
+      "toasts": {
+        "cerrada": "Conversation fermée",
+        "reabierta": "Conversation rouverte",
+        "error": "Impossible de terminer l’action"
+      }
+    },
+    "auditoria": {
+      "titulo": "Audit du chat",
+      "subtitulo": "Qui a modifié quoi dans les conversations, canaux et connaissances.",
+      "exportar": "Exporter en CSV",
+      "buscar": "Rechercher dans l’audit",
+      "vacioTitulo": "Aucun enregistrement pour l’instant",
+      "vacioDescripcion": "Chaque modification des canaux, connaissances, IA et conversations est conservée ici.",
+      "sustantivo": {
+        "uno": "enregistrement",
+        "varios": "enregistrements"
+      },
+      "kpis": {
+        "etiqueta": "Résumé de l’audit",
+        "registros": "Enregistrements",
+        "hoy": "Aujourd’hui",
+        "semana": "Cette semaine",
+        "canales": "Modifications de canaux"
+      },
+      "filtros": {
+        "accion": "Action",
+        "accionTodas": "Action : toutes",
+        "sobre": "Sur",
+        "sobreTodo": "Sur : tout",
+        "persona": "Personne",
+        "personaTodas": "Personne : toutes",
+        "fecha": "Date",
+        "rangos": {
+          "hoy": "Aujourd’hui",
+          "7d": "7 derniers jours",
+          "30d": "30 derniers jours",
+          "todo": "Tout"
+        }
+      },
+      "tabla": {
+        "etiqueta": "Enregistrements d’audit",
+        "que": "Ce qui s’est passé",
+        "sobre": "Sur",
+        "quien": "Qui",
+        "cuando": "Quand"
+      },
+      "detalle": {
+        "titulo": "Détail de l’enregistrement",
+        "tipoActor": "Type",
+        "ip": "IP",
+        "cambios": "Modifications"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "accion": "Action",
+        "sobre": "Sur",
+        "quien": "Qui",
+        "ip": "IP",
+        "cambios": "Modifications"
+      },
+      "toasts": {
+        "exportado": "{n, plural, one {# enregistrement exporté} other {# enregistrements exportés}}",
+        "error": "Impossible d’exporter l’audit"
+      },
+      "actores": {
+        "member": "Membre de l’équipe",
+        "system": "Système",
+        "ai": "IA",
+        "api": "API",
+        "customer": "Client"
+      },
+      "entidades": {
+        "channel": "Canal",
+        "conversation": "Conversation",
+        "message": "Message",
+        "knowledge_source": "Source de connaissances",
+        "knowledge_fragment": "Fragment de connaissances",
+        "ai_settings": "Configuration IA",
+        "ai_job": "Tâche IA",
+        "widget_session": "Visiteur du site",
+        "conversation_tag": "Étiquette",
+        "quick_reply": "Réponse rapide",
+        "channel_api_key": "Clé API",
+        "customer": "Client"
+      },
+      "acciones": {
+        "create_channel": "A créé un canal",
+        "update_channel": "A modifié un canal",
+        "update_website_settings": "A modifié le chat du site",
+        "rotate_public_key": "A généré une nouvelle clé du widget",
+        "add_allowed_domain": "A ajouté un domaine autorisé",
+        "remove_allowed_domain": "A retiré un domaine autorisé",
+        "update_channel_ai_mode": "A modifié l’aide de l’IA d’un canal",
+        "update_all_channels_ai_mode": "A modifié l’aide de l’IA de tous les canaux",
+        "update_ai_settings": "A modifié la configuration de l’IA",
+        "create_knowledge_source": "A créé une source de connaissances",
+        "update_knowledge_source": "A modifié une source de connaissances",
+        "delete_knowledge_source": "A supprimé une source de connaissances",
+        "toggle_knowledge_source": "A activé ou désactivé une source",
+        "reindex_knowledge_source": "A réindexé une source",
+        "create_knowledge_fragment": "A créé un fragment",
+        "update_knowledge_fragment": "A modifié un fragment",
+        "update_knowledge_fragment_version": "A enregistré une nouvelle version d’un fragment",
+        "delete_knowledge_fragment": "A supprimé un fragment",
+        "toggle_knowledge_fragment": "A activé ou désactivé un fragment",
+        "reindex_knowledge_fragment": "A réindexé un fragment",
+        "import_knowledge_fragments": "A importé des fragments",
+        "retry_ai_job": "A relancé une tâche IA",
+        "cancel_ai_job": "A annulé une tâche IA",
+        "block_session": "A fermé la conversation d’un visiteur",
+        "unblock_session": "A rouvert la conversation d’un visiteur",
+        "assign_conversation": "A attribué une conversation",
+        "close_conversation": "A fermé une conversation",
+        "create_tag": "A créé une étiquette",
+        "update_tag": "A modifié une étiquette",
+        "delete_tag": "A supprimé une étiquette",
+        "create_quick_reply": "A créé une réponse rapide",
+        "update_quick_reply": "A modifié une réponse rapide",
+        "delete_quick_reply": "A supprimé une réponse rapide",
+        "create_api_key": "A créé une clé API",
+        "revoke_api_key": "A révoqué une clé API"
+      }
     }
   },
   "configuracionDialogo": {

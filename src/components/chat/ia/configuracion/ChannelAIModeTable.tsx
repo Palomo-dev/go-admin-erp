@@ -33,8 +33,8 @@ import { Channel, AI_MODE_OPTIONS } from '@/lib/services/aiSettingsService';
 interface ChannelAIModeTableProps {
   channels: Channel[];
   loading: boolean;
-  onModeChange: (channelId: string, mode: 'ai_only' | 'hybrid' | 'manual') => void;
-  onApplyToAll: (mode: 'ai_only' | 'hybrid' | 'manual') => void;
+  onModeChange: (channelId: string, mode: 'auto' | 'hybrid' | 'manual') => void;
+  onApplyToAll: (mode: 'auto' | 'hybrid' | 'manual') => void;
 }
 
 const channelIcons: Record<string, React.ReactNode> = {
@@ -46,13 +46,13 @@ const channelIcons: Record<string, React.ReactNode> = {
 };
 
 const modeIcons: Record<string, React.ReactNode> = {
-  ai_only: <Bot className="h-4 w-4 text-blue-500" />,
+  auto: <Bot className="h-4 w-4 text-blue-500" />,
   hybrid: <Shuffle className="h-4 w-4 text-purple-500" />,
   manual: <Users className="h-4 w-4 text-green-500" />
 };
 
 const modeColors: Record<string, string> = {
-  ai_only: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  auto: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   hybrid: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   manual: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
 };
@@ -81,7 +81,7 @@ export default function ChannelAIModeTable({
           </CardTitle>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500 dark:text-gray-400">Aplicar a todos:</span>
-            <Select onValueChange={(value) => onApplyToAll(value as 'ai_only' | 'hybrid' | 'manual')}>
+            <Select onValueChange={(value) => onApplyToAll(value as 'auto' | 'hybrid' | 'manual')}>
               <SelectTrigger className="w-[140px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
@@ -162,7 +162,7 @@ export default function ChannelAIModeTable({
                   <TableCell>
                     <Select 
                       value={channel.ai_mode} 
-                      onValueChange={(value) => onModeChange(channel.id, value as 'ai_only' | 'hybrid' | 'manual')}
+                      onValueChange={(value) => onModeChange(channel.id, value as 'auto' | 'hybrid' | 'manual')}
                     >
                       <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
                         <SelectValue />

@@ -19,8 +19,6 @@ jest.mock('next/navigation', () => ({
 
 import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import WebsiteSettingsHeader from '@/components/chat/channels/website/id/WebsiteSettingsHeader';
-import FragmentDetailHeader from '@/components/chat/conocimiento/fragmentos/id/FragmentDetailHeader';
-import SourceDetailHeader from '@/components/chat/conocimiento/fuentes/id/SourceDetailHeader';
 import { CabeceraConversacion } from '@/components/chat/conversations/CabeceraConversacion';
 import type { ConversacionControl } from '@/components/chat/conversations/useConversacion';
 import type { ChatChannel } from '@/lib/services/chatChannelsService';
@@ -57,42 +55,8 @@ describe('Chat › detalles en celular (390 px): una sola «←»', () => {
     expect(screen.getByRole('switch')).toBeTruthy();
   });
 
-  test('fragmento de conocimiento', () => {
-    renderEnCelular(
-      <FragmentDetailHeader
-        title="Horario de atención"
-        isActive
-        hasEmbedding
-        version={3}
-        contentHash={null}
-        updatedAt="2026-10-01T15:00:00Z"
-        hasChanges={false}
-        saving={false}
-        reindexing={false}
-        onBack={nada}
-        onSave={nada}
-        onToggle={nada}
-        onReindex={nada}
-      />,
-    );
-    comprobar('Horario de atención', ['Activo', 'Indexado', 'Guardar', 'Versión 3']);
-  });
-
-  test('fuente de conocimiento', () => {
-    renderEnCelular(
-      <SourceDetailHeader
-        name="Preguntas frecuentes"
-        description="Lo que más preguntan"
-        isActive={false}
-        stats={{ totalFragments: 4, indexedFragments: 2, activeFragments: 3 }}
-        onBack={nada}
-        onRefresh={nada}
-        onReindex={nada}
-        onSettings={nada}
-      />,
-    );
-    comprobar('Preguntas frecuentes', ['Inactiva', 'Lo que más preguntan', 'Reindexar', '50%']);
-  });
+  // Fuente, fragmento e importar de Conocimiento usan la misma CabeceraDetalleChat
+  // (Figma 91-chat-31/32/33): la cubre la prueba del canal.
 
   // Vista completa de una conversación (Figma 91-chat-10/11/12): la misma
   // CabeceraConversacion en Conversación, Actividad y Archivos.

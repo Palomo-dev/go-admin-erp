@@ -49997,6 +49997,132 @@
         "laboratorio": "Lab",
         "trabajos": "Jobs",
         "configuracion": "Settings"
+      },
+      "titulo": "Chat AI",
+      "beta": "Beta",
+      "laboratorio": {
+        "subtitulo": "Test how the AI would reply before letting it serve customers.",
+        "pregunta": "Test question",
+        "preguntaPlaceholder": "Write it as a customer would…",
+        "ejemplos": "Examples:",
+        "ejemplo": {
+          "estadoPedido": "Where is my order?",
+          "horarios": "What time do you open?",
+          "mediosPago": "How can I pay?"
+        },
+        "probar": "Test",
+        "probando": "Testing…",
+        "respuesta": "AI reply",
+        "sinRespuestaTitulo": "No reply yet",
+        "sinRespuestaDescripcion": "Write a question and press Test to see which snippets the AI finds.",
+        "metricas": {
+          "confianza": "Confidence",
+          "tiempo": "Time",
+          "tokens": "Tokens",
+          "fragmentos": "Snippets"
+        },
+        "simulada": "Test reply built from your snippets: it doesn’t call the model or use credits.",
+        "convertir": "Turn into a snippet",
+        "ajustes": "Test settings",
+        "ajustesDescripcion": "They don’t change the real settings.",
+        "canal": "Channel",
+        "canalWeb": "Website chat",
+        "creatividad": "Creativity",
+        "creatividades": {
+          "c0": "precise",
+          "c1": "balanced",
+          "c2": "creative"
+        },
+        "largo": "Maximum length",
+        "largos": {
+          "l0": "Short (≈ 150 words)",
+          "l1": "Medium (≈ 350 words)",
+          "l2": "Long (≈ 700 words)"
+        },
+        "fragmentosUso": "Snippets used",
+        "sinFragmentos": "There are no active snippets. Add them in Knowledge.",
+        "toasts": {
+          "errorCarga": "The lab data couldn’t be loaded",
+          "errorPrueba": "The test couldn’t be completed",
+          "sinMiembro": "We couldn’t find your membership in this organization",
+          "fragmentoCreado": "Snippet created in Knowledge",
+          "errorFragmento": "The snippet couldn’t be created"
+        }
+      },
+      "trabajos": {
+        "subtitulo": "Every time the AI replies, summarizes or classifies, a record is kept here.",
+        "sinCliente": "Unidentified visitor",
+        "vacioTitulo": "There are no AI jobs yet",
+        "vacioDescripcion": "They appear when the AI replies to, summarizes or classifies conversations.",
+        "kpis": {
+          "etiqueta": "Jobs summary",
+          "total": "Total",
+          "enCola": "Queued",
+          "procesando": "Processing",
+          "completados": "Completed",
+          "fallidos": "Failed"
+        },
+        "filtros": {
+          "estado": "Status",
+          "estadoTodos": "Status: all",
+          "tipo": "Type",
+          "tipoTodos": "Type: all",
+          "fecha": "Date",
+          "rangos": {
+            "hoy": "Today",
+            "7d": "Last 7 days",
+            "30d": "Last 30 days",
+            "todo": "All time"
+          }
+        },
+        "tabla": {
+          "etiqueta": "AI jobs",
+          "tipo": "Type",
+          "conversacion": "Conversation",
+          "estado": "Status",
+          "tokens": "Tokens",
+          "cuando": "When"
+        },
+        "tipos": {
+          "auto_response": "Automatic reply",
+          "respond": "Suggested reply",
+          "summarize": "Summary",
+          "classify": "Classification",
+          "translate": "Translation",
+          "extract_intent": "Customer intent",
+          "transcribe": "Audio transcription"
+        },
+        "estados": {
+          "pending": "Queued",
+          "processing": "Processing",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled",
+          "skipped": "Skipped",
+          "draft": "Draft"
+        },
+        "detalle": {
+          "quePaso": "What happened",
+          "informacion": "Details",
+          "modelo": "Model",
+          "modeloConfig": "per AI settings",
+          "canal": "Channel",
+          "tokens": "Tokens",
+          "confianza": "Confidence",
+          "fragmentos": "Snippets used",
+          "creditos": "Credits charged",
+          "respuesta": "Reply",
+          "bitacora": "Log",
+          "reintentar": "Retry",
+          "cancelar": "Cancel job",
+          "abrirConversacion": "Open conversation"
+        },
+        "toasts": {
+          "sinMiembro": "We couldn’t find your membership in this organization",
+          "reintentado": "A new job was created to retry",
+          "cancelado": "Job cancelled",
+          "error": "The action couldn’t be completed"
+        }
       }
     },
     "canales": {
@@ -50414,6 +50540,378 @@
     },
     "comun": {
       "volver": "Back"
+    },
+    "conocimiento": {
+      "titulo": "Knowledge",
+      "subtitulo": "What the AI can use to reply: policies, FAQs, catalog and guides.",
+      "configurarIa": "Configure AI",
+      "importar": {
+        "titulo": "Import snippets",
+        "subtitulo": "Load many at once from a CSV or by pasting text.",
+        "errorAnalisis": "The content couldn’t be read",
+        "paso1": "1. File",
+        "paso2": "2. Preview",
+        "paso2Descripcion": "Check before importing. Rows with errors aren’t loaded.",
+        "paso3": "3. Options",
+        "modos": {
+          "csv": "CSV file",
+          "texto": "Paste text"
+        },
+        "vista": {
+          "titulo": "Title",
+          "sinTitulo": "(no title)",
+          "contenido": "Content",
+          "estado": "Status",
+          "estados": {
+            "lista": "Ready",
+            "faltaTitulo": "Missing title",
+            "faltaContenido": "Missing content"
+          },
+          "vacia": "Choose a file or paste text to see here what will be imported.",
+          "resumen": "Showing {mostradas} of {total} · {listas} ready · {errores} with errors"
+        },
+        "opciones": {
+          "fuente": "Save to source",
+          "sinFuente": "No source",
+          "etiquetas": "Tags for all",
+          "etiquetasAyuda": "Separate them with commas.",
+          "indexar": "Make them ready for the AI when done",
+          "importar": "Import {n, plural, one {# snippet} other {# snippets}}",
+          "creditos": "Indexing uses your plan’s AI credits."
+        },
+        "resultado": {
+          "titulo": "{ok} of {total} imported",
+          "errores": "{n, plural, one {# row couldn’t be loaded} other {# rows couldn’t be loaded}}.",
+          "ver": "View snippets"
+        },
+        "toasts": {
+          "listo": "{n, plural, one {# snippet imported} other {# snippets imported}}",
+          "parcial": "Some snippets couldn’t be imported",
+          "error": "The import couldn’t be completed"
+        }
+      },
+      "nuevaFuente": "New source",
+      "nuevoFragmento": "New snippet",
+      "buscarFragmentos": "Search snippets…",
+      "sinDato": "—",
+      "error": "We couldn’t load the knowledge",
+      "migas": {
+        "chat": "Chat",
+        "conocimiento": "Knowledge"
+      },
+      "kpis": {
+        "etiqueta": "Knowledge summary",
+        "fuentes": "Sources",
+        "activas": "{n} active",
+        "fragmentos": "Snippets",
+        "listos": "Ready for AI",
+        "pendientes": "Waiting to be indexed",
+        "pendientesDetalle": "processed within minutes",
+        "activos": "Active",
+        "usos": "Uses",
+        "usosDetalle": "in AI replies"
+      },
+      "pestanas": {
+        "etiqueta": "Knowledge views",
+        "fuentes": "Sources",
+        "fragmentos": "All snippets"
+      },
+      "fuentes": {
+        "verFragmentos": "View snippets",
+        "editar": "Edit",
+        "activar": "Turn on",
+        "desactivar": "Turn off",
+        "eliminar": "Delete",
+        "sinDescripcion": "No description",
+        "fragmentos": "{n, plural, one {# snippet} other {# snippets}}",
+        "actualizada": "upd. {fecha}",
+        "vacioTitulo": "There are no sources yet",
+        "vacioDescripcion": "Create a source (for example “Shipping”) and add snippets, or import a CSV."
+      },
+      "estados": {
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "listo": "Ready",
+        "pendiente": "Pending"
+      },
+      "tabla": {
+        "etiqueta": "Knowledge snippets",
+        "fragmento": "Snippet",
+        "fuente": "Source",
+        "etiquetas": "Tags",
+        "estado": "Status",
+        "paraIa": "For AI",
+        "usado": "Used",
+        "actualizado": "Updated",
+        "abrir": "Open",
+        "editarRapido": "Quick edit",
+        "activar": "Turn on",
+        "desactivar": "Turn off",
+        "eliminar": "Delete"
+      },
+      "fragmentos": {
+        "vacioTitulo": "There are no snippets yet",
+        "vacioDescripcion": "A snippet is a short answer the AI can use as is.",
+        "vacioFuente": "This source has no snippets yet"
+      },
+      "toasts": {
+        "sinMiembro": "We couldn’t find your membership in this organization",
+        "error": "The change couldn’t be saved",
+        "fuenteCreada": "Source created",
+        "fuenteActualizada": "Source updated",
+        "fuenteActivada": "“{nombre}” is now active",
+        "fuenteDesactivada": "“{nombre}” is now inactive",
+        "fuenteEliminada": "Source deleted",
+        "fragmentoCreado": "Snippet created",
+        "fragmentoActualizado": "Snippet saved: a new version was created",
+        "fragmentoActivado": "Snippet active: the AI can use it",
+        "fragmentoDesactivado": "Snippet inactive: the AI no longer uses it",
+        "fragmentoEliminado": "Snippet deleted",
+        "reindexando": "Preparing for the AI: it takes a few minutes"
+      },
+      "borrar": {
+        "fuenteTitulo": "Delete the source?",
+        "fuenteDescripcion": "“{nombre}” will be deleted with {n, plural, one {its snippet} other {its # snippets}}. This can’t be undone.",
+        "fragmentoTitulo": "Delete the snippet?",
+        "fragmentoDescripcion": "“{titulo}” will be deleted and the AI will stop using it. This can’t be undone.",
+        "confirmar": "Delete"
+      },
+      "fuente": {
+        "noEncontrada": "This source doesn’t exist or isn’t from the active organization",
+        "volver": "Back to Knowledge",
+        "reindexar": "Reindex",
+        "ajustes": "Settings",
+        "buscar": "Search this source…",
+        "filtroEtiqueta": "Filter by tag",
+        "todasEtiquetas": "All tags"
+      },
+      "editor": {
+        "noEncontrado": "This snippet doesn’t exist or isn’t from the active organization",
+        "faltanDatos": "Enter the title and the content",
+        "sinGuardar": "Unsaved changes",
+        "regenerar": "Regenerate for AI",
+        "guardar": "Save",
+        "contenidoTitulo": "Content",
+        "contenidoDescripcion": "Write it as you’d say it to a customer. The AI uses it as is.",
+        "titulo": "Title",
+        "contenido": "Content",
+        "caracteres": "{n} / {max} characters",
+        "muyLargo": "It’s too long: split it into two snippets so the AI answers accurately.",
+        "etiquetas": "Tags",
+        "quitarEtiqueta": "Remove {etiqueta}",
+        "nuevaEtiqueta": "New tag",
+        "agregar": "Add",
+        "pruebaTitulo": "Quick test",
+        "pruebaDescripcion": "Ask as a customer would and see whether the AI search finds this snippet. It doesn’t use credits.",
+        "preguntaPlaceholder": "How much is shipping?",
+        "probar": "Test",
+        "pruebaEncontrado": "This snippet comes up #{posicion} of {total}. The AI would answer with it.",
+        "pruebaNoEncontrado": "The search didn’t find this snippet with that question. Try adding words or tags your customers use.",
+        "pruebaGuardado": "The test uses the saved version: save your changes to test them.",
+        "ajustes": "Settings",
+        "fuente": "Source",
+        "sinFuente": "No source",
+        "prioridad": "Priority (1 to 10)",
+        "tramos": {
+          "baja": "Low",
+          "media": "Medium",
+          "alta": "High"
+        },
+        "activo": "Active · the AI can use it",
+        "estadoIa": "AI status",
+        "indexado": "indexed {fecha}",
+        "usado": "Used in replies",
+        "votos": "Votes 👍 / 👎",
+        "version": "Version",
+        "actualizado": "Updated"
+      }
+    },
+    "widget": {
+      "titulo": "Website visitors",
+      "subtitulo": "Who is using your website chat now and who used it.",
+      "configurar": "Configure widget",
+      "actualizar": "Refresh",
+      "buscar": "Search by name, email or channel",
+      "anonimo": "Anonymous visitor",
+      "cliente": "Customer",
+      "sinDatos": "No contact details",
+      "vacioTitulo": "There are no visitors yet",
+      "vacioDescripcion": "They appear when someone opens your website chat.",
+      "sustantivo": {
+        "uno": "visitor",
+        "varios": "visitors"
+      },
+      "kpis": {
+        "etiqueta": "Visitors summary",
+        "sesiones": "Sessions",
+        "enLinea": "Online now",
+        "identificados": "Identified",
+        "anonimos": "Anonymous",
+        "inactivos": "Inactive"
+      },
+      "filtros": {
+        "estado": "Status",
+        "cliente": "Customer",
+        "estados": {
+          "todos": "Status: all",
+          "enLinea": "Online",
+          "inactivo": "Inactive"
+        },
+        "clientes": {
+          "todos": "Customer: all",
+          "identificados": "Identified",
+          "anonimos": "Anonymous"
+        }
+      },
+      "estados": {
+        "enLinea": "Online",
+        "inactivo": "Inactive"
+      },
+      "conversacion": {
+        "open": "Open",
+        "pending": "Pending",
+        "closed": "Closed",
+        "archived": "Archived"
+      },
+      "tabla": {
+        "etiqueta": "Website chat visitors",
+        "visitante": "Visitor",
+        "canal": "Channel",
+        "estado": "Status",
+        "conversacion": "Conversation",
+        "ultimaVez": "Last seen",
+        "inicio": "Started"
+      },
+      "acciones": {
+        "abrir": "Open conversation",
+        "cerrar": "Close conversation",
+        "reabrir": "Reopen conversation"
+      },
+      "toasts": {
+        "cerrada": "Conversation closed",
+        "reabierta": "Conversation reopened",
+        "error": "The action couldn’t be completed"
+      }
+    },
+    "auditoria": {
+      "titulo": "Chat audit",
+      "subtitulo": "Who changed what in conversations, channels and knowledge.",
+      "exportar": "Export CSV",
+      "buscar": "Search the audit",
+      "vacioTitulo": "There are no records yet",
+      "vacioDescripcion": "Every change to channels, knowledge, AI and conversations is kept here.",
+      "sustantivo": {
+        "uno": "record",
+        "varios": "records"
+      },
+      "kpis": {
+        "etiqueta": "Audit summary",
+        "registros": "Records",
+        "hoy": "Today",
+        "semana": "This week",
+        "canales": "Channel changes"
+      },
+      "filtros": {
+        "accion": "Action",
+        "accionTodas": "Action: all",
+        "sobre": "About",
+        "sobreTodo": "About: everything",
+        "persona": "Person",
+        "personaTodas": "Person: all",
+        "fecha": "Date",
+        "rangos": {
+          "hoy": "Today",
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "todo": "All time"
+        }
+      },
+      "tabla": {
+        "etiqueta": "Audit records",
+        "que": "What happened",
+        "sobre": "About",
+        "quien": "Who",
+        "cuando": "When"
+      },
+      "detalle": {
+        "titulo": "Record details",
+        "tipoActor": "Type",
+        "ip": "IP",
+        "cambios": "Changes"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "accion": "Action",
+        "sobre": "About",
+        "quien": "Who",
+        "ip": "IP",
+        "cambios": "Changes"
+      },
+      "toasts": {
+        "exportado": "{n, plural, one {# record exported} other {# records exported}}",
+        "error": "The audit couldn’t be exported"
+      },
+      "actores": {
+        "member": "Team member",
+        "system": "System",
+        "ai": "AI",
+        "api": "API",
+        "customer": "Customer"
+      },
+      "entidades": {
+        "channel": "Channel",
+        "conversation": "Conversation",
+        "message": "Message",
+        "knowledge_source": "Knowledge source",
+        "knowledge_fragment": "Knowledge snippet",
+        "ai_settings": "AI settings",
+        "ai_job": "AI job",
+        "widget_session": "Website visitor",
+        "conversation_tag": "Tag",
+        "quick_reply": "Quick reply",
+        "channel_api_key": "API key",
+        "customer": "Customer"
+      },
+      "acciones": {
+        "create_channel": "Created a channel",
+        "update_channel": "Changed a channel",
+        "update_website_settings": "Changed the website chat",
+        "rotate_public_key": "Generated a new widget key",
+        "add_allowed_domain": "Added an allowed domain",
+        "remove_allowed_domain": "Removed an allowed domain",
+        "update_channel_ai_mode": "Changed a channel’s AI help",
+        "update_all_channels_ai_mode": "Changed the AI help of all channels",
+        "update_ai_settings": "Changed the AI settings",
+        "create_knowledge_source": "Created a knowledge source",
+        "update_knowledge_source": "Edited a knowledge source",
+        "delete_knowledge_source": "Deleted a knowledge source",
+        "toggle_knowledge_source": "Turned a source on or off",
+        "reindex_knowledge_source": "Reindexed a source",
+        "create_knowledge_fragment": "Created a snippet",
+        "update_knowledge_fragment": "Edited a snippet",
+        "update_knowledge_fragment_version": "Saved a new version of a snippet",
+        "delete_knowledge_fragment": "Deleted a snippet",
+        "toggle_knowledge_fragment": "Turned a snippet on or off",
+        "reindex_knowledge_fragment": "Reindexed a snippet",
+        "import_knowledge_fragments": "Imported snippets",
+        "retry_ai_job": "Retried an AI job",
+        "cancel_ai_job": "Cancelled an AI job",
+        "block_session": "Closed a visitor’s conversation",
+        "unblock_session": "Reopened a visitor’s conversation",
+        "assign_conversation": "Assigned a conversation",
+        "close_conversation": "Closed a conversation",
+        "create_tag": "Created a tag",
+        "update_tag": "Edited a tag",
+        "delete_tag": "Deleted a tag",
+        "create_quick_reply": "Created a quick reply",
+        "update_quick_reply": "Edited a quick reply",
+        "delete_quick_reply": "Deleted a quick reply",
+        "create_api_key": "Created an API key",
+        "revoke_api_key": "Revoked an API key"
+      }
     }
   },
   "configuracionDialogo": {

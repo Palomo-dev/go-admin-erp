@@ -1,233 +1,228 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Wifi } from 'lucide-react';
+/**
+ * Visitantes del sitio web (Figma 91-chat-40): quién usa el chat del sitio.
+ * Cifras, buscador, filtros de estado y cliente, y tabla paginada. Los datos
+ * son los de `widgetSessionsService` (cada visitante es una conversación del
+ * canal web); cerrar y reabrir usan sus mismos métodos.
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
+import { ExternalLink, Lock, LockOpen, RefreshCw, Settings, Users } from 'lucide-react';
+import { AvatarIniciales, DataTable, KpiStrip, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import WidgetSessionsService, { WidgetSession, SessionFilters, SessionStats } from '@/lib/services/widgetSessionsService';
-import {
-  SessionsHeader,
-  SessionsFilters,
-  SessionCard,
-  SessionDetailDialog,
-  SessionsPagination,
-} from '@/components/chat/widget/sesiones';
-import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import WidgetSessionsService, { type SessionStats, type WidgetSession } from '@/lib/services/widgetSessionsService';
+import { tiempoRelativo } from '@/components/chat/channels/canalesLogica';
+import { filtrarVisitantes, type FiltroCliente, type FiltroEstadoVisitante } from '@/components/chat/widget/visitantesLogica';
 
 export default function WidgetSessionsPage() {
+  const t = useTranslations('chatModulo.widget');
+  const locale = useLocale();
+  const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const organizationId = organization?.id;
+  const { formatTime, formatDate, getToday, toDate } = useFormatDate();
 
-  const [sessions, setSessions] = useState<WidgetSession[]>([]);
-  const [stats, setStats] = useState<SessionStats>({
-    total: 0,
-    active: 0,
-    expired: 0,
-    withCustomer: 0,
-    anonymous: 0,
-  });
-  const [channels, setChannels] = useState<{ id: string; name: string; type: string }[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedSession, setSelectedSession] = useState<WidgetSession | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [sesiones, setSesiones] = useState<WidgetSession[]>([]);
+  const [stats, setStats] = useState<SessionStats | null>(null);
+  const [canalWeb, setCanalWeb] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [estado, setEstado] = useState<FiltroEstadoVisitante>('todos');
+  const [cliente, setCliente] = useState<FiltroCliente>('todos');
+  const [pagina, setPagina] = useState(1);
+  const [tamano, setTamano] = useState(25);
 
-  // Paginación
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(12);
-
-  const [filters, setFilters] = useState<SessionFilters>({
-    status: 'all',
-    channelId: undefined,
-    hasCustomer: undefined,
-    search: '',
-  });
-
-  const loadData = useCallback(async () => {
-    if (!organization?.id) return;
-
-    setIsLoading(true);
+  const cargar = useCallback(async () => {
+    if (!organizationId) return;
+    setCargando(true);
+    setFallo(false);
     try {
-      const service = new WidgetSessionsService(organization.id);
-
-      const [sessionsData, statsData, channelsData] = await Promise.all([
-        service.getSessions(filters),
-        service.getStats(),
-        service.getChannels(),
-      ]);
-
-      setSessions(sessionsData);
-      setStats(statsData);
-      setChannels(channelsData);
-    } catch (error) {
-      console.error('Error cargando sesiones:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las sesiones del widget',
-        variant: 'destructive',
-      });
+      const s = new WidgetSessionsService(organizationId);
+      const [ss, st, cs] = await Promise.all([s.getSessions({ status: 'all' }), s.getStats(), s.getChannels()]);
+      setSesiones(ss);
+      setStats(st);
+      setCanalWeb(cs.find((c) => c.type === 'website')?.id ?? null);
+    } catch (e) {
+      console.error('Error cargando visitantes del widget:', e);
+      setFallo(true);
     } finally {
-      setIsLoading(false);
+      setCargando(false);
     }
-  }, [organization?.id, filters, toast]);
+  }, [organizationId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    cargar();
+  }, [cargar]);
 
-  const handleBlockSession = async (session: WidgetSession) => {
-    if (!organization?.id) return;
+  const visibles = useMemo(() => filtrarVisitantes(sesiones, { busqueda, estado, cliente }), [sesiones, busqueda, estado, cliente]);
+  useEffect(() => setPagina(1), [busqueda, estado, cliente]);
+  const pagina_ = visibles.slice((pagina - 1) * tamano, pagina * tamano);
+  const ahora = useMemo(() => new Date(), [sesiones]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hoy = getToday();
 
+  const cambiarConversacion = async (s: WidgetSession, cerrar: boolean) => {
+    if (!organizationId) return;
     try {
-      const service = new WidgetSessionsService(organization.id);
-      await service.blockSession(session.id);
-
-      toast({
-        title: 'Sesión bloqueada',
-        description: 'La sesión ha sido bloqueada correctamente',
-      });
-
-      loadData();
-    } catch (error) {
-      console.error('Error bloqueando sesión:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo bloquear la sesión',
-        variant: 'destructive',
-      });
+      const servicio = new WidgetSessionsService(organizationId);
+      if (cerrar) await servicio.blockSession(s.id);
+      else await servicio.unblockSession(s.id);
+      toast({ title: t(cerrar ? 'toasts.cerrada' : 'toasts.reabierta') });
+      cargar();
+    } catch (e) {
+      console.error('Error cambiando la conversación del visitante:', e);
+      toast({ title: t('toasts.error'), variant: 'destructive' });
     }
   };
 
-  const handleUnblockSession = async (session: WidgetSession) => {
-    if (!organization?.id) return;
+  const nombre = (s: WidgetSession) => s.customer?.full_name || t('anonimo');
+  const cuando = (fecha: string) => (toDate(new Date(fecha)) === hoy ? formatTime(fecha) : formatDate(fecha));
 
-    try {
-      const service = new WidgetSessionsService(organization.id);
-      await service.unblockSession(session.id);
+  const columnas: ColumnaTabla<WidgetSession>[] = [
+    {
+      id: 'visitante',
+      encabezado: t('tabla.visitante'),
+      celda: (s) => (
+        <div className="flex min-w-0 items-center gap-3">
+          <AvatarIniciales nombre={nombre(s)} tamano="sm" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-fg">{nombre(s)}</p>
+            <p className="truncate text-xs text-fg-muted">{s.customer?.email || (s.customer ? t('cliente') : t('sinDatos'))}</p>
+          </div>
+        </div>
+      ),
+    },
+    { id: 'canal', encabezado: t('tabla.canal'), ancho: 180, ocultarDebajo: 'lg', celda: (s) => <span className="truncate text-sm text-fg-secondary">{s.channel?.name ?? '—'}</span> },
+    {
+      id: 'estado',
+      encabezado: t('tabla.estado'),
+      ancho: 120,
+      celda: (s) => (
+        <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm" punto={s.is_active}>
+          {t(s.is_active ? 'estados.enLinea' : 'estados.inactivo')}
+        </Badge>
+      ),
+    },
+    {
+      id: 'conversacion',
+      encabezado: t('tabla.conversacion'),
+      ancho: 140,
+      ocultarDebajo: 'md',
+      celda: (s) => <span className="text-sm text-fg-secondary">{t.has(`conversacion.${s.conversation_status}`) ? t(`conversacion.${s.conversation_status}`) : '—'}</span>,
+    },
+    { id: 'visto', encabezado: t('tabla.ultimaVez'), ancho: 140, ocultarDebajo: 'lg', celda: (s) => <span className="text-sm text-fg-secondary">{tiempoRelativo(s.last_seen_at, ahora, locale)}</span> },
+    { id: 'inicio', encabezado: t('tabla.inicio'), ancho: 110, ocultarDebajo: 'md', celda: (s) => <span className="text-sm tabular-nums text-fg-secondary">{cuando(s.created_at)}</span> },
+  ];
 
-      toast({
-        title: 'Sesión desbloqueada',
-        description: 'La sesión ha sido desbloqueada correctamente',
-      });
-
-      loadData();
-    } catch (error) {
-      console.error('Error desbloqueando sesión:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo desbloquear la sesión',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleViewDetails = (session: WidgetSession) => {
-    setSelectedSession(session);
-    setIsDetailOpen(true);
-  };
-
-  const handleFiltersChange = (newFilters: SessionFilters) => {
-    setFilters(newFilters);
-    setCurrentPage(1); // Reset a página 1 al cambiar filtros
-  };
-
-  const handleClearFilters = () => {
-    setFilters({
-      status: 'all',
-      channelId: undefined,
-      hasCustomer: undefined,
-      search: '',
-    });
-    setCurrentPage(1);
-  };
-
-  // Calcular paginación
-  const totalPages = Math.ceil(sessions.length / itemsPerPage);
-  const paginatedSessions = sessions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Scroll al inicio de la lista
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1);
-  };
-
-  if (isLoading && sessions.length === 0) {
-    return (
-  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <PageHeaderSkeleton />
-    <StatsSkeleton count={4} />
-    <CardListSkeleton cards={3} columns="1" />
-  </div>
-);
-  }
+  const abrirConversacion = (s: WidgetSession) => router.push(`/app/chat/conversaciones/${s.id}`);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <SessionsHeader
-        stats={stats}
-        loading={isLoading}
-        onRefresh={loadData}
+    <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={Users}
+        cargando={cargando}
+        acciones={
+          <>
+            {canalWeb && (
+              <button type="button" onClick={() => router.push(`/app/chat/canales/sitio-web/${canalWeb}`)} className={clasesBoton({ variante: 'secundario' })}>
+                <Settings aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {t('configurar')}
+              </button>
+            )}
+            <button type="button" onClick={cargar} disabled={cargando} className={clasesBoton({ variante: 'fantasma' })}>
+              <RefreshCw aria-hidden="true" className={`size-4 ${cargando ? 'animate-spin' : ''}`} strokeWidth={1.5} />
+              {t('actualizar')}
+            </button>
+          </>
+        }
+        movil={{ accionesEnFila: true }}
       />
 
-      <SessionsFilters
-        filters={filters}
-        channels={channels}
-        onFiltersChange={handleFiltersChange}
-        onClearFilters={handleClearFilters}
-      />
+      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={5}>
+        <StatCard tamano="sm" etiqueta={t('kpis.sesiones')} valor={stats?.total ?? 0} cargando={!stats && !fallo} />
+        <StatCard tamano="sm" etiqueta={t('kpis.enLinea')} valor={stats?.active ?? 0} tono="exito" cargando={!stats && !fallo} onClick={() => setEstado('enLinea')} />
+        <StatCard tamano="sm" etiqueta={t('kpis.identificados')} valor={stats?.withCustomer ?? 0} cargando={!stats && !fallo} onClick={() => setCliente('identificados')} />
+        <StatCard tamano="sm" etiqueta={t('kpis.anonimos')} valor={stats?.anonymous ?? 0} cargando={!stats && !fallo} onClick={() => setCliente('anonimos')} />
+        <StatCard tamano="sm" etiqueta={t('kpis.inactivos')} valor={stats?.expired ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('inactivo')} />
+      </KpiStrip>
 
-      {sessions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
-            <Wifi className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            No hay sesiones
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md">
-            No se encontraron sesiones del widget con los filtros actuales.
-            Prueba a cambiar los filtros o espera a que los visitantes interactúen con el widget.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {paginatedSessions.map((session) => (
-              <SessionCard
-                key={session.id}
-                session={session}
-                onViewDetails={handleViewDetails}
-                onBlock={handleBlockSession}
-                onUnblock={handleUnblockSession}
-              />
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={t('buscar')} className="w-full sm:max-w-sm" />
+        <Select value={estado} onValueChange={(v) => setEstado(v as FiltroEstadoVisitante)}>
+          <SelectTrigger className="w-full sm:w-44" aria-label={t('filtros.estado')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(['todos', 'enLinea', 'inactivo'] as const).map((e) => (
+              <SelectItem key={e} value={e}>
+                {t(`filtros.estados.${e}`)}
+              </SelectItem>
             ))}
-          </div>
-
-          <SessionsPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={sessions.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
-          />
-        </>
-      )}
-
-      <SessionDetailDialog
-        session={selectedSession}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
+          </SelectContent>
+        </Select>
+        <Select value={cliente} onValueChange={(v) => setCliente(v as FiltroCliente)}>
+          <SelectTrigger className="w-full sm:w-48" aria-label={t('filtros.cliente')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(['todos', 'identificados', 'anonimos'] as const).map((c) => (
+              <SelectItem key={c} value={c}>
+                {t(`filtros.clientes.${c}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      <DataTable<WidgetSession>
+        etiqueta={t('tabla.etiqueta')}
+        columnas={columnas}
+        filas={pagina_}
+        obtenerId={(s) => s.id}
+        estado={fallo ? 'error' : cargando ? 'cargando' : visibles.length === 0 && (busqueda || estado !== 'todos' || cliente !== 'todos') ? 'sinResultados' : 'listo'}
+        termino={busqueda}
+        onReintentar={cargar}
+        onLimpiarFiltros={() => {
+          setBusqueda('');
+          setEstado('todos');
+          setCliente('todos');
+        }}
+        onFilaClick={abrirConversacion}
+        etiquetaFila={nombre}
+        vacio={{ titulo: t('vacioTitulo'), descripcion: t('vacioDescripcion') }}
+        acciones={(s) => [
+          { id: 'abrir', etiqueta: t('acciones.abrir'), icono: ExternalLink, onSelect: () => abrirConversacion(s) },
+          s.conversation_status === 'closed'
+            ? { id: 'reabrir', etiqueta: t('acciones.reabrir'), icono: LockOpen, onSelect: () => cambiarConversacion(s, false) }
+            : { id: 'cerrar', etiqueta: t('acciones.cerrar'), icono: Lock, onSelect: () => cambiarConversacion(s, true) },
+        ]}
+        tarjetaMovil={(s) => (
+          <button type="button" onClick={() => abrirConversacion(s)} className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left">
+            <AvatarIniciales nombre={nombre(s)} tamano="sm" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-fg">{nombre(s)}</span>
+              <span className="block truncate text-xs text-fg-muted">{tiempoRelativo(s.last_seen_at, ahora, locale)}</span>
+            </span>
+            <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm">
+              {t(s.is_active ? 'estados.enLinea' : 'estados.inactivo')}
+            </Badge>
+          </button>
+        )}
+        pie={
+          visibles.length > 0 ? (
+            <Pagination pagina={pagina} tamano={tamano} total={visibles.length} sustantivo={{ singular: t('sustantivo.uno'), plural: t('sustantivo.varios') }} onPaginaChange={setPagina} onTamanoChange={(n) => (setTamano(n), setPagina(1))} />
+          ) : undefined
+        }
+      />
     </div>
   );
 }

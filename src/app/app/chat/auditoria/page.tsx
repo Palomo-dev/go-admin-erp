@@ -1,222 +1,319 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Loader2, FileText, Download } from 'lucide-react';
+/**
+ * Auditoría del chat (Figma 91-chat-41): quién cambió qué en conversaciones,
+ * canales y conocimiento. Cifras, buscador, filtros (acción, sobre qué,
+ * persona, fecha), tabla paginada en el servidor y detalle en hoja lateral.
+ * Los nombres de las personas salen de `GET /api/chat/agentes` (organización
+ * de la sesión).
+ */
+import { HojaDetalle } from '@/components/kit/HojaDetalle';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Download, Shield } from 'lucide-react';
+import { AvatarIniciales, DataTable, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import ChatAuditService, { AuditLog, AuditFilters, AuditStats } from '@/lib/services/chatAuditService';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays } from '@/lib/utils/dateDisplay';
+import ChatAuditService, { type AuditFilters, type AuditLog, type AuditStats } from '@/lib/services/chatAuditService';
+import type { AgenteChat } from '@/lib/services/chat/agentesChat';
 import {
-  AuditHeader,
-  AuditFilters as AuditFiltersComponent,
-  AuditLogCard,
-  AuditDetailDialog,
-} from '@/components/chat/auditoria';
-import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+  ACCIONES_AUDITORIA,
+  ENTIDADES_AUDITORIA,
+  celdaCsv,
+  diasDeRangoAuditoria,
+  humanizarAccion,
+  iconoAccion,
+  type RangoAuditoria,
+} from '@/components/chat/audit/auditoriaLogica';
+
+const TODAS = '__todas__';
 
 export default function ChatAuditPage() {
+  const t = useTranslations('chatModulo.auditoria');
   const { toast } = useToast();
   const { organization } = useOrganization();
+  const organizationId = organization?.id;
+  const { getToday, toInstant, formatDateTime } = useFormatDate();
 
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [stats, setStats] = useState<AuditStats>({
-    total: 0,
-    today: 0,
-    thisWeek: 0,
-    byAction: {},
-    byEntity: {},
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isExporting, setIsExporting] = useState(false);
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [registros, setRegistros] = useState<AuditLog[]>([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<AuditStats | null>(null);
+  const [personas, setPersonas] = useState<AgenteChat[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState(false);
+  const [exportando, setExportando] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const [accion, setAccion] = useState(TODAS);
+  const [entidad, setEntidad] = useState(TODAS);
+  const [persona, setPersona] = useState(TODAS);
+  const [rango, setRango] = useState<RangoAuditoria>('7d');
+  const [pagina, setPagina] = useState(1);
+  const [tamano, setTamano] = useState(25);
+  const [abierto, setAbierto] = useState<AuditLog | null>(null);
 
-  const [filters, setFilters] = useState<AuditFilters>({
-    action: undefined,
-    entityType: undefined,
-    actorType: undefined,
-    dateFrom: undefined,
-    dateTo: undefined,
-    search: '',
-  });
+  const hoy = getToday();
+  const filtros = useMemo<AuditFilters>(() => {
+    const dias = diasDeRangoAuditoria(rango);
+    return {
+      action: accion === TODAS ? undefined : accion,
+      entityType: entidad === TODAS ? undefined : entidad,
+      dateFrom: dias === null ? undefined : toInstant(addPlainDays(hoy, -dias)),
+      search: busqueda || undefined,
+    };
+  }, [accion, entidad, rango, busqueda, hoy, toInstant]);
 
-  const loadData = useCallback(async () => {
-    if (!organization?.id) return;
-
-    setIsLoading(true);
-    try {
-      const service = new ChatAuditService(organization.id);
-
-      const [logsResult, statsData] = await Promise.all([
-        service.getLogs(filters),
-        service.getStats(),
-      ]);
-
-      setLogs(logsResult.logs);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error cargando logs de auditoría:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los logs de auditoría',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [organization?.id, filters, toast]);
+  useEffect(() => setPagina(1), [filtros, persona]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // Nombres de quien hizo cada cambio; si falla, se muestra el tipo de actor.
+    fetch('/api/chat/agentes', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((j: { data?: AgenteChat[] }) => setPersonas(j.data ?? []))
+      .catch(() => setPersonas([]));
+  }, [organizationId]);
 
-  const handleExport = async () => {
-    if (!organization?.id) return;
-
-    setIsExporting(true);
+  const cargar = useCallback(async () => {
+    if (!organizationId) return;
+    setCargando(true);
+    setFallo(false);
     try {
-      const service = new ChatAuditService(organization.id);
-      const logsData = await service.exportLogs(filters);
-
-      const headers = ['ID', 'Fecha', 'Acción', 'Entidad', 'Actor', 'IP', 'Cambios'];
-      const rows = logsData.map(log => [
-        log.id,
-        new Date(log.created_at).toLocaleString('es-CO'),
-        service.getActionLabel(log.action),
-        service.getEntityLabel(log.entity_type),
-        service.getActorLabel(log.actor_type),
-        log.ip_address || '',
-        log.changes ? JSON.stringify(log.changes) : ''
+      const s = new ChatAuditService(organizationId);
+      const [r, st] = await Promise.all([
+        // `persona` filtra en el cliente: el servicio no filtra por actor_id.
+        s.getLogs(filtros, persona === TODAS ? tamano : 1000, persona === TODAS ? (pagina - 1) * tamano : 0),
+        s.getStats({ hoy: toInstant(hoy), semana: toInstant(addPlainDays(hoy, -6)) }),
       ]);
-
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `audit_logs_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast({
-        title: 'Exportación exitosa',
-        description: `Se exportaron ${logsData.length} registros correctamente`,
-      });
-    } catch (error) {
-      console.error('Error exportando logs:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron exportar los logs de auditoría',
-        variant: 'destructive',
-      });
+      const filtrados = persona === TODAS ? r.logs : r.logs.filter((l) => l.actor_id === persona);
+      setRegistros(persona === TODAS ? filtrados : filtrados.slice((pagina - 1) * tamano, pagina * tamano));
+      setTotal(persona === TODAS ? r.total : filtrados.length);
+      setStats(st);
+    } catch (e) {
+      console.error('Error cargando la auditoría:', e);
+      setFallo(true);
     } finally {
-      setIsExporting(false);
+      setCargando(false);
+    }
+  }, [organizationId, filtros, persona, pagina, tamano, hoy, toInstant]);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  const nombrePersona = useCallback(
+    (l: AuditLog) => personas.find((p) => p.userId === l.actor_id)?.nombre ?? (t.has(`actores.${l.actor_type}`) ? t(`actores.${l.actor_type}`) : l.actor_type),
+    [personas, t],
+  );
+  const textoAccion = (a: string) => (t.has(`acciones.${a}`) ? t(`acciones.${a}`) : humanizarAccion(a));
+  const textoEntidad = (e: string) => (t.has(`entidades.${e}`) ? t(`entidades.${e}`) : e);
+  const detalleSobre = (l: AuditLog) => {
+    const c = (l.changes ?? {}) as Record<string, unknown>;
+    const nombre = c.channel_name ?? c.name ?? c.title ?? (l.metadata as Record<string, unknown> | null)?.name;
+    return typeof nombre === 'string' && nombre ? `${textoEntidad(l.entity_type)} · ${nombre}` : textoEntidad(l.entity_type);
+  };
+
+  const exportar = async () => {
+    if (!organizationId) return;
+    setExportando(true);
+    try {
+      const datos = await new ChatAuditService(organizationId).exportLogs(filtros);
+      const filas = (persona === TODAS ? datos : datos.filter((l) => l.actor_id === persona)).map((l) =>
+        [l.id, formatDateTime(l.created_at), textoAccion(l.action), detalleSobre(l), nombrePersona(l), l.ip_address ?? '', l.changes ? JSON.stringify(l.changes) : ''].map(celdaCsv).join(','),
+      );
+      const cabecera = [t('csv.id'), t('csv.fecha'), t('csv.accion'), t('csv.sobre'), t('csv.quien'), t('csv.ip'), t('csv.cambios')].map(celdaCsv).join(',');
+      const blob = new Blob(['﻿' + [cabecera, ...filas].join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `auditoria-chat-${hoy}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: t('toasts.exportado', { n: filas.length }) });
+    } catch (e) {
+      console.error('Error exportando la auditoría:', e);
+      toast({ title: t('toasts.error'), variant: 'destructive' });
+    } finally {
+      setExportando(false);
     }
   };
 
-  const handleViewDetails = (log: AuditLog) => {
-    setSelectedLog(log);
-    setIsDetailOpen(true);
-  };
+  const columnas: ColumnaTabla<AuditLog>[] = [
+    {
+      id: 'que',
+      encabezado: t('tabla.que'),
+      celda: (l) => {
+        const Icono = iconoAccion(l.action, l.entity_type);
+        return (
+          <div className="flex min-w-0 items-center gap-3">
+            <span aria-hidden="true" className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-subtle text-fg-secondary">
+              <Icono className="size-4" strokeWidth={1.5} />
+            </span>
+            <span className="truncate text-sm text-fg">{textoAccion(l.action)}</span>
+          </div>
+        );
+      },
+    },
+    { id: 'sobre', encabezado: t('tabla.sobre'), ancho: 260, ocultarDebajo: 'md', celda: (l) => <span className="truncate text-sm text-fg-secondary">{detalleSobre(l)}</span> },
+    {
+      id: 'quien',
+      encabezado: t('tabla.quien'),
+      ancho: 200,
+      ocultarDebajo: 'sm',
+      celda: (l) => (
+        <div className="flex min-w-0 items-center gap-2">
+          <AvatarIniciales nombre={nombrePersona(l)} tamano="sm" />
+          <span className="truncate text-sm text-fg">{nombrePersona(l)}</span>
+        </div>
+      ),
+    },
+    { id: 'cuando', encabezado: t('tabla.cuando'), ancho: 170, celda: (l) => <span className="text-sm tabular-nums text-fg-secondary">{formatDateTime(l.created_at)}</span> },
+  ];
 
-  const handleFiltersChange = (newFilters: AuditFilters) => {
-    setFilters(newFilters);
-  };
-
-  const handleClearFilters = () => {
-    setFilters({
-      action: undefined,
-      entityType: undefined,
-      actorType: undefined,
-      dateFrom: undefined,
-      dateTo: undefined,
-      search: '',
-    });
-  };
-
-  if (isLoading && logs.length === 0) {
-    return (
-  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <PageHeaderSkeleton />
-    <StatsSkeleton count={4} />
-    <CardListSkeleton cards={3} columns="1" />
-  </div>
-);
-  }
+  const canales = stats?.byEntity?.channel ?? 0;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
-      <AuditHeader
-        stats={stats}
-        loading={isLoading}
-        onRefresh={loadData}
-        onExport={handleExport}
+    <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={Shield}
+        cargando={cargando}
+        acciones={
+          <button type="button" onClick={exportar} disabled={exportando || total === 0} className={clasesBoton({ variante: 'secundario' })}>
+            <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('exportar')}
+          </button>
+        }
+        movil={{ accionesEnFila: true }}
       />
 
-      <AuditFiltersComponent
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onClearFilters={handleClearFilters}
-      />
+      <KpiStrip etiqueta={t('kpis.etiqueta')}>
+        <StatCard etiqueta={t('kpis.registros')} valor={(stats?.total ?? 0).toLocaleString()} cargando={!stats && !fallo} />
+        <StatCard etiqueta={t('kpis.hoy')} valor={(stats?.today ?? 0).toLocaleString()} cargando={!stats && !fallo} onClick={() => setRango('hoy')} />
+        <StatCard etiqueta={t('kpis.semana')} valor={(stats?.thisWeek ?? 0).toLocaleString()} cargando={!stats && !fallo} onClick={() => setRango('7d')} />
+        <StatCard etiqueta={t('kpis.canales')} valor={canales.toLocaleString()} cargando={!stats && !fallo} onClick={() => setEntidad('channel')} />
+      </KpiStrip>
 
-      {logs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-gray-100 dark:bg-gray-800 p-4 mb-4">
-            <FileText className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-            No hay registros de auditoría
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md">
-            No se encontraron registros de auditoría con los filtros actuales.
-            Prueba a cambiar los filtros o espera a que se generen nuevas acciones.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {logs.map((log) => (
-              <AuditLogCard
-                key={log.id}
-                log={log}
-                onViewDetails={handleViewDetails}
-              />
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar')} className="w-full sm:max-w-xs" />
+        <Select value={accion} onValueChange={setAccion}>
+          <SelectTrigger className="w-full sm:w-52" aria-label={t('filtros.accion')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS}>{t('filtros.accionTodas')}</SelectItem>
+            {ACCIONES_AUDITORIA.map((a) => (
+              <SelectItem key={a} value={a}>
+                {textoAccion(a)}
+              </SelectItem>
             ))}
-          </div>
-
-          {logs.length > 0 && (
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="outline"
-                onClick={handleExport}
-                disabled={isExporting}
-                className="gap-2"
-              >
-                {isExporting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Exportar resultados
-              </Button>
-            </div>
-          )}
-        </>
-      )}
-
-      <AuditDetailDialog
-        log={selectedLog}
-        open={isDetailOpen}
-        onOpenChange={setIsDetailOpen}
-      />
+          </SelectContent>
+        </Select>
+        <Select value={entidad} onValueChange={setEntidad}>
+          <SelectTrigger className="w-full sm:w-48" aria-label={t('filtros.sobre')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS}>{t('filtros.sobreTodo')}</SelectItem>
+            {ENTIDADES_AUDITORIA.map((e) => (
+              <SelectItem key={e} value={e}>
+                {textoEntidad(e)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={persona} onValueChange={setPersona}>
+          <SelectTrigger className="w-full sm:w-48" aria-label={t('filtros.persona')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS}>{t('filtros.personaTodas')}</SelectItem>
+            {personas.map((p) => (
+              <SelectItem key={p.userId} value={p.userId}>
+                {p.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={rango} onValueChange={(v) => setRango(v as RangoAuditoria)}>
+          <SelectTrigger className="w-full sm:w-40" aria-label={t('filtros.fecha')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(['hoy', '7d', '30d', 'todo'] as const).map((r) => (
+              <SelectItem key={r} value={r}>
+                {t(`filtros.rangos.${r}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+
+      <DataTable<AuditLog>
+        etiqueta={t('tabla.etiqueta')}
+        columnas={columnas}
+        filas={registros}
+        obtenerId={(l) => l.id}
+        estado={fallo ? 'error' : cargando && registros.length === 0 ? 'cargando' : registros.length === 0 && (busqueda || accion !== TODAS || entidad !== TODAS || persona !== TODAS) ? 'sinResultados' : 'listo'}
+        termino={busqueda}
+        onReintentar={cargar}
+        onLimpiarFiltros={() => {
+          setBusqueda('');
+          setAccion(TODAS);
+          setEntidad(TODAS);
+          setPersona(TODAS);
+        }}
+        onFilaClick={setAbierto}
+        etiquetaFila={(l) => textoAccion(l.action)}
+        vacio={{ titulo: t('vacioTitulo'), descripcion: t('vacioDescripcion') }}
+        tarjetaMovil={(l) => (
+          <button type="button" onClick={() => setAbierto(l)} className="flex w-full flex-col gap-1 rounded-xl border border-line bg-surface p-3 text-left">
+            <span className="text-sm font-medium text-fg">{textoAccion(l.action)}</span>
+            <span className="text-xs text-fg-muted">
+              {detalleSobre(l)} · {nombrePersona(l)} · {formatDateTime(l.created_at)}
+            </span>
+          </button>
+        )}
+        pie={
+          total > 0 ? (
+            <Pagination
+              pagina={pagina}
+              tamano={tamano}
+              total={total}
+              sustantivo={{ singular: t('sustantivo.uno'), plural: t('sustantivo.varios') }}
+              onPaginaChange={setPagina}
+              onTamanoChange={(n) => {
+                setTamano(n);
+                setPagina(1);
+              }}
+              cargando={cargando}
+            />
+          ) : undefined
+        }
+      />
+
+      {abierto && (
+        <HojaDetalle abierto onAbiertoChange={(a) => !a && setAbierto(null)} titulo={textoAccion(abierto.action)} subtitulo={formatDateTime(abierto.created_at)}>
+          <div className="flex flex-col gap-4">
+            <ListaDatos etiqueta={t('detalle.titulo')}>
+              <FilaDato etiqueta={t('tabla.sobre')} valor={detalleSobre(abierto)} />
+              <FilaDato etiqueta={t('tabla.quien')} valor={nombrePersona(abierto)} />
+              <FilaDato etiqueta={t('detalle.tipoActor')} valor={t.has(`actores.${abierto.actor_type}`) ? t(`actores.${abierto.actor_type}`) : abierto.actor_type} />
+              {abierto.ip_address && <FilaDato etiqueta={t('detalle.ip')} valor={abierto.ip_address} />}
+            </ListaDatos>
+            {abierto.changes && Object.keys(abierto.changes).length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[13px] font-semibold text-fg">{t('detalle.cambios')}</p>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-subtle p-3 font-mono text-xs text-fg-secondary">{JSON.stringify(abierto.changes, null, 2)}</pre>
+              </div>
+            )}
+          </div>
+        </HojaDetalle>
+      )}
     </div>
   );
 }

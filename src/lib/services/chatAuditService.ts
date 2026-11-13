@@ -148,12 +148,17 @@ class ChatAuditService {
     return data;
   }
 
-  async getStats(): Promise<AuditStats> {
+  /**
+   * `desde.hoy` y `desde.semana` son instantes calculados en la zona de la
+   * organización (`useFormatDate().toInstant(...)`). Sin ellos se cae al
+   * reloj del navegador, como antes.
+   */
+  async getStats(desde?: { hoy: string; semana: string }): Promise<AuditStats> {
     await this.setOrgContext();
 
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const todayStart = desde?.hoy ?? new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    const weekStart = desde?.semana ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
     const { data: allLogs } = await supabase
       .from('chat_audit_logs')

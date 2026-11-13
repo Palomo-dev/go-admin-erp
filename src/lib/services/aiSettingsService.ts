@@ -26,7 +26,7 @@ export interface Channel {
   type: string;
   name: string;
   status: string;
-  ai_mode: 'ai_only' | 'hybrid' | 'manual';
+  ai_mode: 'auto' | 'hybrid' | 'manual';
   business_hours: Record<string, unknown>;
   auto_close_inactive_hours: number;
   created_at: string;
@@ -138,7 +138,7 @@ export const LANGUAGE_OPTIONS = [
 ];
 
 export const AI_MODE_OPTIONS = [
-  { value: 'ai_only', label: 'Solo IA', description: 'La IA responde automáticamente sin intervención humana' },
+  { value: 'auto', label: 'Solo IA', description: 'La IA responde automáticamente sin intervención humana' },
   { value: 'hybrid', label: 'Híbrido', description: 'La IA responde y puede escalar a un agente humano' },
   { value: 'manual', label: 'Manual', description: 'Solo agentes humanos responden, IA desactivada' }
 ];
@@ -220,7 +220,7 @@ export default class AISettingsService {
 
   async updateChannelAIMode(
     channelId: string, 
-    aiMode: 'ai_only' | 'hybrid' | 'manual'
+    aiMode: 'auto' | 'hybrid' | 'manual'
   ): Promise<Channel> {
     await this.setOrgContext();
 
@@ -249,7 +249,7 @@ export default class AISettingsService {
   }
 
   async updateAllChannelsAIMode(
-    aiMode: 'ai_only' | 'hybrid' | 'manual'
+    aiMode: 'auto' | 'hybrid' | 'manual'
   ): Promise<void> {
     await this.setOrgContext();
 

@@ -50007,6 +50007,132 @@
         "laboratorio": "Laboratório",
         "trabajos": "Tarefas",
         "configuracion": "Configuração"
+      },
+      "titulo": "IA do chat",
+      "beta": "Beta",
+      "laboratorio": {
+        "subtitulo": "Teste como a IA responderia antes de deixá-la atender clientes.",
+        "pregunta": "Pergunta de teste",
+        "preguntaPlaceholder": "Escreva como um cliente faria…",
+        "ejemplos": "Exemplos:",
+        "ejemplo": {
+          "estadoPedido": "Como está meu pedido?",
+          "horarios": "Que horas vocês abrem?",
+          "mediosPago": "Como posso pagar?"
+        },
+        "probar": "Testar",
+        "probando": "Testando…",
+        "respuesta": "Resposta da IA",
+        "sinRespuestaTitulo": "Ainda não há resposta",
+        "sinRespuestaDescripcion": "Escreva uma pergunta e toque em Testar para ver quais fragmentos a IA encontra.",
+        "metricas": {
+          "confianza": "Confiança",
+          "tiempo": "Tempo",
+          "tokens": "Tokens",
+          "fragmentos": "Fragmentos"
+        },
+        "simulada": "Resposta de teste montada com seus fragmentos: não chama o modelo nem gasta créditos.",
+        "convertir": "Transformar em fragmento",
+        "ajustes": "Ajustes do teste",
+        "ajustesDescripcion": "Não alteram a configuração real.",
+        "canal": "Canal",
+        "canalWeb": "Chat do site",
+        "creatividad": "Criatividade",
+        "creatividades": {
+          "c0": "precisa",
+          "c1": "equilibrada",
+          "c2": "criativa"
+        },
+        "largo": "Tamanho máximo",
+        "largos": {
+          "l0": "Curto (≈ 150 palavras)",
+          "l1": "Médio (≈ 350 palavras)",
+          "l2": "Longo (≈ 700 palavras)"
+        },
+        "fragmentosUso": "Fragmentos usados",
+        "sinFragmentos": "Não há fragmentos ativos. Adicione-os em Conhecimento.",
+        "toasts": {
+          "errorCarga": "Não foi possível carregar os dados do laboratório",
+          "errorPrueba": "Não foi possível concluir o teste",
+          "sinMiembro": "Não encontramos sua participação nesta organização",
+          "fragmentoCreado": "Fragmento criado em Conhecimento",
+          "errorFragmento": "Não foi possível criar o fragmento"
+        }
+      },
+      "trabajos": {
+        "subtitulo": "Cada vez que a IA responde, resume ou classifica, fica um registro aqui.",
+        "sinCliente": "Visitante não identificado",
+        "vacioTitulo": "Ainda não há tarefas de IA",
+        "vacioDescripcion": "Aparecem quando a IA responde, resume ou classifica conversas.",
+        "kpis": {
+          "etiqueta": "Resumo das tarefas",
+          "total": "Total",
+          "enCola": "Na fila",
+          "procesando": "Processando",
+          "completados": "Concluídas",
+          "fallidos": "Com falha"
+        },
+        "filtros": {
+          "estado": "Status",
+          "estadoTodos": "Status: todos",
+          "tipo": "Tipo",
+          "tipoTodos": "Tipo: todos",
+          "fecha": "Data",
+          "rangos": {
+            "hoy": "Hoje",
+            "7d": "Últimos 7 dias",
+            "30d": "Últimos 30 dias",
+            "todo": "Tudo"
+          }
+        },
+        "tabla": {
+          "etiqueta": "Tarefas da IA",
+          "tipo": "Tipo",
+          "conversacion": "Conversa",
+          "estado": "Status",
+          "tokens": "Tokens",
+          "cuando": "Quando"
+        },
+        "tipos": {
+          "auto_response": "Resposta automática",
+          "respond": "Resposta sugerida",
+          "summarize": "Resumo",
+          "classify": "Classificação",
+          "translate": "Tradução",
+          "extract_intent": "Intenção do cliente",
+          "transcribe": "Transcrição de áudio"
+        },
+        "estados": {
+          "pending": "Na fila",
+          "processing": "Processando",
+          "completed": "Concluída",
+          "failed": "Com falha",
+          "cancelled": "Cancelada",
+          "skipped": "Ignorada",
+          "draft": "Rascunho"
+        },
+        "detalle": {
+          "quePaso": "O que aconteceu",
+          "informacion": "Informações",
+          "modelo": "Modelo",
+          "modeloConfig": "conforme a Configuração de IA",
+          "canal": "Canal",
+          "tokens": "Tokens",
+          "confianza": "Confiança",
+          "fragmentos": "Fragmentos usados",
+          "creditos": "Créditos cobrados",
+          "respuesta": "Resposta",
+          "bitacora": "Registro",
+          "reintentar": "Tentar de novo",
+          "cancelar": "Cancelar tarefa",
+          "abrirConversacion": "Abrir conversa"
+        },
+        "toasts": {
+          "sinMiembro": "Não encontramos sua participação nesta organização",
+          "reintentado": "Uma nova tarefa foi criada para tentar de novo",
+          "cancelado": "Tarefa cancelada",
+          "error": "Não foi possível concluir a ação"
+        }
       }
     },
     "canales": {
@@ -50424,6 +50550,378 @@
     },
     "comun": {
       "volver": "Voltar"
+    },
+    "conocimiento": {
+      "titulo": "Conhecimento",
+      "subtitulo": "O que a IA pode usar para responder: políticas, perguntas frequentes, catálogo e guias.",
+      "configurarIa": "Configurar IA",
+      "importar": {
+        "titulo": "Importar fragmentos",
+        "subtitulo": "Carregue vários de uma vez a partir de um CSV ou colando texto.",
+        "errorAnalisis": "Não foi possível ler o conteúdo",
+        "paso1": "1. Arquivo",
+        "paso2": "2. Pré-visualização",
+        "paso2Descripcion": "Revise antes de importar. Linhas com erro não são carregadas.",
+        "paso3": "3. Opções",
+        "modos": {
+          "csv": "Arquivo CSV",
+          "texto": "Colar texto"
+        },
+        "vista": {
+          "titulo": "Título",
+          "sinTitulo": "(sem título)",
+          "contenido": "Conteúdo",
+          "estado": "Status",
+          "estados": {
+            "lista": "Pronta",
+            "faltaTitulo": "Falta o título",
+            "faltaContenido": "Falta o conteúdo"
+          },
+          "vacia": "Escolha um arquivo ou cole texto para ver aqui o que será importado.",
+          "resumen": "Mostrando {mostradas} de {total} · {listas} prontas · {errores} com erro"
+        },
+        "opciones": {
+          "fuente": "Salvar na fonte",
+          "sinFuente": "Sem fonte",
+          "etiquetas": "Etiquetas para todos",
+          "etiquetasAyuda": "Separe-as com vírgula.",
+          "indexar": "Deixá-los prontos para a IA ao terminar",
+          "importar": "Importar {n, plural, one {# fragmento} other {# fragmentos}}",
+          "creditos": "A indexação usa créditos de IA do seu plano."
+        },
+        "resultado": {
+          "titulo": "{ok} de {total} importados",
+          "errores": "{n, plural, one {# linha não pôde ser carregada} other {# linhas não puderam ser carregadas}}.",
+          "ver": "Ver fragmentos"
+        },
+        "toasts": {
+          "listo": "{n, plural, one {# fragmento importado} other {# fragmentos importados}}",
+          "parcial": "Alguns fragmentos não puderam ser importados",
+          "error": "Não foi possível concluir a importação"
+        }
+      },
+      "nuevaFuente": "Nova fonte",
+      "nuevoFragmento": "Novo fragmento",
+      "buscarFragmentos": "Buscar fragmentos…",
+      "sinDato": "—",
+      "error": "Não foi possível carregar o conhecimento",
+      "migas": {
+        "chat": "Chat",
+        "conocimiento": "Conhecimento"
+      },
+      "kpis": {
+        "etiqueta": "Resumo do conhecimento",
+        "fuentes": "Fontes",
+        "activas": "{n, plural, one {# ativa} other {# ativas}}",
+        "fragmentos": "Fragmentos",
+        "listos": "Prontos para a IA",
+        "pendientes": "Aguardando indexação",
+        "pendientesDetalle": "processados em poucos minutos",
+        "activos": "Ativos",
+        "usos": "Usos",
+        "usosDetalle": "em respostas da IA"
+      },
+      "pestanas": {
+        "etiqueta": "Visões do conhecimento",
+        "fuentes": "Fontes",
+        "fragmentos": "Todos os fragmentos"
+      },
+      "fuentes": {
+        "verFragmentos": "Ver fragmentos",
+        "editar": "Editar",
+        "activar": "Ativar",
+        "desactivar": "Desativar",
+        "eliminar": "Excluir",
+        "sinDescripcion": "Sem descrição",
+        "fragmentos": "{n, plural, one {# fragmento} other {# fragmentos}}",
+        "actualizada": "atual. {fecha}",
+        "vacioTitulo": "Ainda não há fontes",
+        "vacioDescripcion": "Crie uma fonte (por exemplo “Envios”) e adicione fragmentos, ou importe um CSV."
+      },
+      "estados": {
+        "activa": "Ativa",
+        "inactiva": "Inativa",
+        "activo": "Ativo",
+        "inactivo": "Inativo",
+        "listo": "Pronto",
+        "pendiente": "Pendente"
+      },
+      "tabla": {
+        "etiqueta": "Fragmentos de conhecimento",
+        "fragmento": "Fragmento",
+        "fuente": "Fonte",
+        "etiquetas": "Etiquetas",
+        "estado": "Status",
+        "paraIa": "Para a IA",
+        "usado": "Usado",
+        "actualizado": "Atualizado",
+        "abrir": "Abrir",
+        "editarRapido": "Edição rápida",
+        "activar": "Ativar",
+        "desactivar": "Desativar",
+        "eliminar": "Excluir"
+      },
+      "fragmentos": {
+        "vacioTitulo": "Ainda não há fragmentos",
+        "vacioDescripcion": "Um fragmento é uma resposta curta que a IA pode usar como está.",
+        "vacioFuente": "Esta fonte ainda não tem fragmentos"
+      },
+      "toasts": {
+        "sinMiembro": "Não encontramos sua participação nesta organização",
+        "error": "Não foi possível salvar a alteração",
+        "fuenteCreada": "Fonte criada",
+        "fuenteActualizada": "Fonte atualizada",
+        "fuenteActivada": "“{nombre}” está ativa",
+        "fuenteDesactivada": "“{nombre}” está inativa",
+        "fuenteEliminada": "Fonte excluída",
+        "fragmentoCreado": "Fragmento criado",
+        "fragmentoActualizado": "Fragmento salvo: uma nova versão foi criada",
+        "fragmentoActivado": "Fragmento ativo: a IA pode usá-lo",
+        "fragmentoDesactivado": "Fragmento inativo: a IA não o usa mais",
+        "fragmentoEliminado": "Fragmento excluído",
+        "reindexando": "Preparando para a IA: leva alguns minutos"
+      },
+      "borrar": {
+        "fuenteTitulo": "Excluir a fonte?",
+        "fuenteDescripcion": "“{nombre}” será excluída com {n, plural, one {seu fragmento} other {seus # fragmentos}}. Não é possível desfazer.",
+        "fragmentoTitulo": "Excluir o fragmento?",
+        "fragmentoDescripcion": "“{titulo}” será excluído e a IA deixará de usá-lo. Não é possível desfazer.",
+        "confirmar": "Excluir"
+      },
+      "fuente": {
+        "noEncontrada": "Esta fonte não existe ou não é da organização ativa",
+        "volver": "Voltar ao Conhecimento",
+        "reindexar": "Reindexar",
+        "ajustes": "Ajustes",
+        "buscar": "Buscar nesta fonte…",
+        "filtroEtiqueta": "Filtrar por etiqueta",
+        "todasEtiquetas": "Todas as etiquetas"
+      },
+      "editor": {
+        "noEncontrado": "Este fragmento não existe ou não é da organização ativa",
+        "faltanDatos": "Digite o título e o conteúdo",
+        "sinGuardar": "Alterações não salvas",
+        "regenerar": "Regenerar para a IA",
+        "guardar": "Salvar",
+        "contenidoTitulo": "Conteúdo",
+        "contenidoDescripcion": "Escreva como você diria a um cliente. A IA o usa como está.",
+        "titulo": "Título",
+        "contenido": "Conteúdo",
+        "caracteres": "{n} / {max} caracteres",
+        "muyLargo": "Está muito longo: divida em dois fragmentos para a IA responder com precisão.",
+        "etiquetas": "Etiquetas",
+        "quitarEtiqueta": "Remover {etiqueta}",
+        "nuevaEtiqueta": "Nova etiqueta",
+        "agregar": "Adicionar",
+        "pruebaTitulo": "Teste rápido",
+        "pruebaDescripcion": "Pergunte como um cliente faria e veja se a busca da IA encontra este fragmento. Não gasta créditos.",
+        "preguntaPlaceholder": "Quanto custa o frete?",
+        "probar": "Testar",
+        "pruebaEncontrado": "Este fragmento aparece em {posicion}.º de {total}. A IA responderia com ele.",
+        "pruebaNoEncontrado": "A busca não encontrou este fragmento com essa pergunta. Tente adicionar palavras ou etiquetas que seus clientes usam.",
+        "pruebaGuardado": "O teste usa a versão salva: salve as alterações para testá-las.",
+        "ajustes": "Ajustes",
+        "fuente": "Fonte",
+        "sinFuente": "Sem fonte",
+        "prioridad": "Prioridade (1 a 10)",
+        "tramos": {
+          "baja": "Baixa",
+          "media": "Média",
+          "alta": "Alta"
+        },
+        "activo": "Ativo · a IA pode usá-lo",
+        "estadoIa": "Status para a IA",
+        "indexado": "indexado {fecha}",
+        "usado": "Usado em respostas",
+        "votos": "Votos 👍 / 👎",
+        "version": "Versão",
+        "actualizado": "Atualizado"
+      }
+    },
+    "widget": {
+      "titulo": "Visitantes do site",
+      "subtitulo": "Quem está usando o chat do seu site agora e quem já usou.",
+      "configurar": "Configurar widget",
+      "actualizar": "Atualizar",
+      "buscar": "Buscar por nome, e-mail ou canal",
+      "anonimo": "Visitante anônimo",
+      "cliente": "Cliente",
+      "sinDatos": "Sem dados de contato",
+      "vacioTitulo": "Ainda não há visitantes",
+      "vacioDescripcion": "Aparecem quando alguém abre o chat do seu site.",
+      "sustantivo": {
+        "uno": "visitante",
+        "varios": "visitantes"
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos visitantes",
+        "sesiones": "Sessões",
+        "enLinea": "On-line agora",
+        "identificados": "Identificados",
+        "anonimos": "Anônimos",
+        "inactivos": "Inativos"
+      },
+      "filtros": {
+        "estado": "Status",
+        "cliente": "Cliente",
+        "estados": {
+          "todos": "Status: todos",
+          "enLinea": "On-line",
+          "inactivo": "Inativos"
+        },
+        "clientes": {
+          "todos": "Cliente: todos",
+          "identificados": "Identificados",
+          "anonimos": "Anônimos"
+        }
+      },
+      "estados": {
+        "enLinea": "On-line",
+        "inactivo": "Inativo"
+      },
+      "conversacion": {
+        "open": "Aberta",
+        "pending": "Pendente",
+        "closed": "Fechada",
+        "archived": "Arquivada"
+      },
+      "tabla": {
+        "etiqueta": "Visitantes do chat do site",
+        "visitante": "Visitante",
+        "canal": "Canal",
+        "estado": "Status",
+        "conversacion": "Conversa",
+        "ultimaVez": "Última vez",
+        "inicio": "Início"
+      },
+      "acciones": {
+        "abrir": "Abrir conversa",
+        "cerrar": "Fechar conversa",
+        "reabrir": "Reabrir conversa"
+      },
+      "toasts": {
+        "cerrada": "Conversa fechada",
+        "reabierta": "Conversa reaberta",
+        "error": "Não foi possível concluir a ação"
+      }
+    },
+    "auditoria": {
+      "titulo": "Auditoria do chat",
+      "subtitulo": "Quem alterou o quê em conversas, canais e conhecimento.",
+      "exportar": "Exportar CSV",
+      "buscar": "Buscar na auditoria",
+      "vacioTitulo": "Ainda não há registros",
+      "vacioDescripcion": "Cada alteração em canais, conhecimento, IA e conversas fica registrada aqui.",
+      "sustantivo": {
+        "uno": "registro",
+        "varios": "registros"
+      },
+      "kpis": {
+        "etiqueta": "Resumo da auditoria",
+        "registros": "Registros",
+        "hoy": "Hoje",
+        "semana": "Esta semana",
+        "canales": "Alterações em canais"
+      },
+      "filtros": {
+        "accion": "Ação",
+        "accionTodas": "Ação: todas",
+        "sobre": "Sobre",
+        "sobreTodo": "Sobre: tudo",
+        "persona": "Pessoa",
+        "personaTodas": "Pessoa: todas",
+        "fecha": "Data",
+        "rangos": {
+          "hoy": "Hoje",
+          "7d": "Últimos 7 dias",
+          "30d": "Últimos 30 dias",
+          "todo": "Tudo"
+        }
+      },
+      "tabla": {
+        "etiqueta": "Registros de auditoria",
+        "que": "O que aconteceu",
+        "sobre": "Sobre",
+        "quien": "Quem",
+        "cuando": "Quando"
+      },
+      "detalle": {
+        "titulo": "Detalhe do registro",
+        "tipoActor": "Tipo",
+        "ip": "IP",
+        "cambios": "Alterações"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Data",
+        "accion": "Ação",
+        "sobre": "Sobre",
+        "quien": "Quem",
+        "ip": "IP",
+        "cambios": "Alterações"
+      },
+      "toasts": {
+        "exportado": "{n, plural, one {# registro exportado} other {# registros exportados}}",
+        "error": "Não foi possível exportar a auditoria"
+      },
+      "actores": {
+        "member": "Membro da equipe",
+        "system": "Sistema",
+        "ai": "IA",
+        "api": "API",
+        "customer": "Cliente"
+      },
+      "entidades": {
+        "channel": "Canal",
+        "conversation": "Conversa",
+        "message": "Mensagem",
+        "knowledge_source": "Fonte de conhecimento",
+        "knowledge_fragment": "Fragmento de conhecimento",
+        "ai_settings": "Configuração de IA",
+        "ai_job": "Tarefa de IA",
+        "widget_session": "Visitante do site",
+        "conversation_tag": "Etiqueta",
+        "quick_reply": "Resposta rápida",
+        "channel_api_key": "Chave de API",
+        "customer": "Cliente"
+      },
+      "acciones": {
+        "create_channel": "Criou um canal",
+        "update_channel": "Alterou um canal",
+        "update_website_settings": "Alterou o chat do site",
+        "rotate_public_key": "Gerou uma nova chave do widget",
+        "add_allowed_domain": "Adicionou um domínio permitido",
+        "remove_allowed_domain": "Removeu um domínio permitido",
+        "update_channel_ai_mode": "Alterou a ajuda da IA de um canal",
+        "update_all_channels_ai_mode": "Alterou a ajuda da IA de todos os canais",
+        "update_ai_settings": "Alterou a configuração da IA",
+        "create_knowledge_source": "Criou uma fonte de conhecimento",
+        "update_knowledge_source": "Editou uma fonte de conhecimento",
+        "delete_knowledge_source": "Excluiu uma fonte de conhecimento",
+        "toggle_knowledge_source": "Ativou ou desativou uma fonte",
+        "reindex_knowledge_source": "Reindexou uma fonte",
+        "create_knowledge_fragment": "Criou um fragmento",
+        "update_knowledge_fragment": "Editou um fragmento",
+        "update_knowledge_fragment_version": "Salvou uma nova versão de um fragmento",
+        "delete_knowledge_fragment": "Excluiu um fragmento",
+        "toggle_knowledge_fragment": "Ativou ou desativou um fragmento",
+        "reindex_knowledge_fragment": "Reindexou um fragmento",
+        "import_knowledge_fragments": "Importou fragmentos",
+        "retry_ai_job": "Repetiu uma tarefa de IA",
+        "cancel_ai_job": "Cancelou uma tarefa de IA",
+        "block_session": "Fechou a conversa de um visitante",
+        "unblock_session": "Reabriu a conversa de um visitante",
+        "assign_conversation": "Atribuiu uma conversa",
+        "close_conversation": "Fechou uma conversa",
+        "create_tag": "Criou uma etiqueta",
+        "update_tag": "Editou uma etiqueta",
+        "delete_tag": "Excluiu uma etiqueta",
+        "create_quick_reply": "Criou uma resposta rápida",
+        "update_quick_reply": "Editou uma resposta rápida",
+        "delete_quick_reply": "Excluiu uma resposta rápida",
+        "create_api_key": "Criou uma chave de API",
+        "revoke_api_key": "Revogou uma chave de API"
+      }
     }
   },
   "configuracionDialogo": {

@@ -167,7 +167,7 @@ export function ConfiguracionIAChat() {
     }
   };
 
-  const handleChannelModeChange = async (channelId: string, mode: 'ai_only' | 'hybrid' | 'manual') => {
+  const handleChannelModeChange = async (channelId: string, mode: 'auto' | 'hybrid' | 'manual') => {
     if (!organizationId) return;
 
     try {
@@ -191,7 +191,7 @@ export function ConfiguracionIAChat() {
     }
   };
 
-  const handleApplyToAllChannels = async (mode: 'ai_only' | 'hybrid' | 'manual') => {
+  const handleApplyToAllChannels = async (mode: 'auto' | 'hybrid' | 'manual') => {
     if (!organizationId) return;
 
     try {

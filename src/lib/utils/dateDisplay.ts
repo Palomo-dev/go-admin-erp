@@ -26,7 +26,11 @@
 // en dateRanges.ts; '@/lib/utils/timezone' es la fachada de todo ello.
 // ============================================================
 
-import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
+import {
+  DEFAULT_TIMEZONE,
+  addPlainDays as addPlainDaysCore,
+  toPlainDate as toPlainDateCore,
+} from '@/lib/utils/dateCore';
 
 // Dia calendario e instantes: una sola implementacion, en dateCore.ts.
 // Se reexportan aqui porque la mitad del repositorio los importa de
@@ -189,4 +193,60 @@ export function formatPlainDate(
 
   const [year, month, day] = datePart.split('-');
   return `${day}/${month}/${year}`;
+}
+
+/**
+ * Estimación (hora prometida) en la zona de la organización, partida para
+ * poder redactarla: el día relativo cuando es hoy o mañana y, si no, la fecha
+ * corta ("mié 11 nov"). Las promesas a otro día no pueden perder la fecha
+ * (caso real 2026-11-08: el aviso decía "14:26" de un pedido para el 11-nov).
+ */
+export interface EstimacionEnZona {
+  /** 'hoy' | 'mañana' cuando aplica; null para otro día. */
+  relativo: 'hoy' | 'mañana' | null;
+  /** Día corto en la zona de la org, p. ej. "mié 11 nov". */
+  fecha: string;
+  /** Hora HH:mm en la zona de la org. */
+  hora: string;
+}
+
+export function estimacionEnZona(
+  value: string | Date | null | undefined,
+  timezone: string = DEFAULT_TIMEZONE,
+  ahora: Date = new Date(),
+): EstimacionEnZona | null {
+  if (!value) return null;
+  const date = typeof value === 'string' ? new Date(value) : value;
+  if (isNaN(date.getTime())) return null;
+
+  const dia = toPlainDateCore(date, timezone);
+  const hoy = toPlainDateCore(ahora, timezone);
+  const relativo = dia === hoy ? 'hoy' : dia === addPlainDaysCore(hoy, 1) ? 'mañana' : null;
+  const partes = new Intl.DateTimeFormat('es-CO', {
+    timeZone: timezone,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).formatToParts(date);
+  const parte = (tipo: string) => (partes.find((p) => p.type === tipo)?.value ?? '').replace(/\./g, '');
+  return {
+    relativo,
+    fecha: `${parte('weekday')} ${parte('day')} ${parte('month')}`,
+    hora: formatTimeInTz(date, timezone),
+  };
+}
+
+/**
+ * Estimación como texto corto para una fila o etiqueta: "hoy, 14:26",
+ * "mañana, 14:26" o "mié 11 nov, 14:26". `formatTimeInTz` sigue siendo solo
+ * la hora: úsala para lo que de verdad es del mismo día (comandas, registros).
+ */
+export function formatEstimateInTz(
+  value: string | Date | null | undefined,
+  timezone: string = DEFAULT_TIMEZONE,
+  ahora: Date = new Date(),
+): string {
+  const e = estimacionEnZona(value, timezone, ahora);
+  if (!e) return '';
+  return `${e.relativo ?? e.fecha}, ${e.hora}`;
 }

@@ -28,7 +28,7 @@ export async function armarVistaPrevia(
     db.from('organizations').select('id, name').eq('id', organizationId).maybeSingle(),
     db
       .from('web_orders')
-      .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status')
+      .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status, delivery_type')
       .eq('organization_id', organizationId)
       .order('created_at', { ascending: false })
       .limit(1)

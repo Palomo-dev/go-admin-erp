@@ -22,6 +22,7 @@ import {
   asuntoAviso,
   momentoDeEstado,
   normalizarMomentos,
+  rubroDeTipoOrg,
   textoAviso,
   type AjustesAvisos,
   type CanalAviso,
@@ -30,7 +31,7 @@ import {
   type MomentoAviso,
 } from '@/lib/pos/pedidosWeb/avisosCliente';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
-import { formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { estimacionEnZona } from '@/lib/utils/dateDisplay';
 import { formatCurrency } from '@/utils/Utils';
 
 const TABLA_NO_EXISTE = /does not exist|could not find the table|schema cache/i;
@@ -138,6 +139,15 @@ export interface PedidoParaAviso {
   cancellation_reason: string | null;
   total: number | null;
   payment_status: string | null;
+  /** `delivery_own` | `pickup`…; opcional para no romper a quien no lo lee. */
+  delivery_type?: string | null;
+}
+
+/** `organization_types(name)` llega como objeto o como arreglo según el cliente. */
+export function nombreTipoOrg(org: unknown): string | null {
+  const t = (org as { organization_types?: unknown } | null)?.organization_types;
+  const fila = Array.isArray(t) ? t[0] : t;
+  return (fila as { name?: string | null } | null | undefined)?.name ?? null;
 }
 
 /** Datos de la plantilla a partir del pedido real (también la vista previa). */
@@ -149,11 +159,12 @@ export async function datosDeAviso(
   url: string | null,
 ): Promise<DatosAviso> {
   const zona = await getOrganizationTimezone(organizationId, db);
-  const [{ data: items }, { data: sede }] = await Promise.all([
+  const [{ data: items }, { data: sede }, { data: org }] = await Promise.all([
     db.from('web_order_items').select('product_name, quantity').eq('web_order_id', pedido.id).limit(30),
     pedido.branch_id
       ? db.from('branches').select('name').eq('id', pedido.branch_id).eq('organization_id', organizationId).maybeSingle()
       : Promise.resolve({ data: null }),
+    db.from('organizations').select('organization_types(name)').eq('id', organizationId).maybeSingle(),
   ]);
   const lineas = ((items ?? []) as Array<{ product_name: string | null; quantity: number | null }>)
     .map((i) => `${Number(i.quantity ?? 1)} × ${i.product_name ?? ''}`.trim())
@@ -163,12 +174,13 @@ export async function datosDeAviso(
     numero: pedido.order_number,
     negocio,
     sucursal: (sede as { name?: string } | null)?.name ?? null,
-    listoAprox: pedido.estimated_ready_at ? formatTimeInTz(pedido.estimated_ready_at, zona) : null,
-    entregaAprox: pedido.estimated_delivery_at ? formatTimeInTz(pedido.estimated_delivery_at, zona) : null,
+    listoAprox: estimacionEnZona(pedido.estimated_ready_at, zona),
+    entregaAprox: estimacionEnZona(pedido.estimated_delivery_at, zona),
     zonaHoraria: zona ? `hora de ${(zona.split('/').pop() ?? zona).replace(/_/g, ' ')}` : null,
     lineas: lineas || null,
     total: pedido.total != null ? formatCurrency(Number(pedido.total)) : null,
     pagado: pedido.payment_status === 'paid',
+    rubro: rubroDeTipoOrg(nombreTipoOrg(org)),
     motivo: pedido.cancellation_reason,
     url,
   };

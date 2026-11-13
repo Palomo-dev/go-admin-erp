@@ -35,11 +35,13 @@ describe('Avisos al cliente de pedidos web', () => {
   it('el texto confirmado lleva horas, líneas y total como la vista previa del Figma', () => {
     const t = textoAviso('confirmado', {
       cliente: 'Ana Gómez', numero: 'WO-000412', negocio: 'Mi empresa', sucursal: 'Sucursal Principal',
-      listoAprox: '14:35', entregaAprox: '15:00', zonaHoraria: 'America/Bogota',
+      listoAprox: { relativo: 'hoy', fecha: 'mié 11 nov', hora: '14:35' },
+      entregaAprox: { relativo: 'hoy', fecha: 'mié 11 nov', hora: '15:00' },
+      zonaHoraria: 'America/Bogota',
       lineas: '2 × Bandeja paisa · 1 × Limonada', total: '$ 128.900', pagado: true,
     });
     expect(t).toContain('Hola Ana,');
-    expect(t).toContain('Estará listo alrededor de las 14:35 y llegará a tu dirección alrededor de las 15:00 (America/Bogota).');
+    expect(t).toContain('Estará listo hoy alrededor de las 14:35 y llegará a tu dirección hoy alrededor de las 15:00 (America/Bogota).');
     expect(t).toContain('Total pagado: $ 128.900');
     expect(t).toContain('Mi empresa · Sucursal Principal');
     expect(asuntoAviso('confirmado', 'WO-000412')).toBe('Tu pedido WO-000412 está confirmado');

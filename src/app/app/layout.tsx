@@ -5,6 +5,7 @@ import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/component
 import { MotionProvider } from '@/components/shared/motion';
 import { SoftphoneShell } from '@/components/voice/SoftphoneShell';
 import { OrganizationTimezoneProvider } from '@/lib/context/OrganizationTimezoneContext';
+import { ConfiguracionDialogoRaiz } from '@/components/configuracion/dialogo/ConfiguracionDialogoRaiz';
 
 // Force dynamic rendering for all pages in /app/app/*
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,11 @@ export default function AppLayoutPage({
               </div>
             }>
               {children}
+            </Suspense>
+            {/* Configuración es un diálogo sobre la pantalla actual (?config=…): dentro de
+                AppLayout para que sus paneles tengan organización, sucursal y módulos. */}
+            <Suspense fallback={null}>
+              <ConfiguracionDialogoRaiz />
             </Suspense>
           </AppLayout>
           </OrganizationTimezoneProvider>

@@ -25,6 +25,8 @@ export interface WidgetSession {
   last_seen_at: string;
   expires_at: string;
   created_at: string;
+  /** Estado de la conversación del visitante (`conversations.status`). */
+  conversation_status?: string;
   channel?: {
     id: string;
     name: string;
@@ -143,6 +145,7 @@ class WidgetSessionsService {
         last_seen_at: customerLastSeen || conv.updated_at,
         expires_at: customerLastSeen || conv.updated_at,
         created_at: conv.created_at,
+        conversation_status: conv.status,
         channel: conv.channel,
         customer: conv.customer,
       };

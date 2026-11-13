@@ -119,7 +119,7 @@ export default function ChannelCard({
 
   const getAIModeLabel = (mode: AIMode): string => {
     const labels: Record<AIMode, string> = {
-      off: 'Desactivado',
+      manual: 'Desactivado',
       hybrid: 'Híbrido',
       auto: 'Automático'
     };
@@ -282,7 +282,7 @@ export default function ChannelCard({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="off">Desactivado</SelectItem>
+                  <SelectItem value="manual">Desactivado</SelectItem>
                   <SelectItem value="hybrid">Híbrido</SelectItem>
                   <SelectItem value="auto">Automático</SelectItem>
                 </SelectContent>

@@ -24,15 +24,21 @@ import {
   RetentionSettings,
   PerformanceSettings,
 } from '@/components/timeline/configuracion';
+import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuardar';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { todayInTz } from '@/lib/utils/dateDisplay';
 
 export function TimelineConfigPanel() {
   const { toast } = useToast();
   const organizationId = getOrganizationId();
+  const { timezone } = useOrgTimezone();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<TimelineSettings | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  // Lo último guardado: para contar los cambios y descartarlos desde la barra del diálogo.
+  const [guardado, setGuardado] = useState<TimelineSettings | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
   const availableSources = timelineSettingsService.getAvailableSources();
@@ -42,6 +48,7 @@ export function TimelineConfigPanel() {
       setLoading(true);
       const data = await timelineSettingsService.getSettings(organizationId);
       setSettings(data);
+      setGuardado(data);
       setHasChanges(false);
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -70,6 +77,7 @@ export function TimelineConfigPanel() {
     try {
       setSaving(true);
       await timelineSettingsService.saveSettings(organizationId, settings);
+      setGuardado(settings);
       setHasChanges(false);
       toast({ title: 'Guardado', description: 'La configuración se ha guardado correctamente' });
     } catch (error) {
@@ -85,6 +93,7 @@ export function TimelineConfigPanel() {
       setSaving(true);
       const defaultSettings = await timelineSettingsService.resetSettings(organizationId);
       setSettings(defaultSettings);
+      setGuardado(defaultSettings);
       setHasChanges(false);
       setResetDialogOpen(false);
       toast({ title: 'Restablecido', description: 'La configuración se ha restablecido a los valores por defecto' });
@@ -102,7 +111,7 @@ export function TimelineConfigPanel() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `timeline-config-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `timeline-config-${todayInTz(timezone)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -129,6 +138,17 @@ export function TimelineConfigPanel() {
     };
     input.click();
   };
+
+  // Barra «cambios sin guardar» del diálogo de Configuración.
+  useRegistrarCambios({
+    cambios: hasChanges ? Math.max(1, contarCambios(settings, guardado)) : 0,
+    guardando: saving,
+    guardar: handleSave,
+    descartar: () => {
+      setSettings(guardado);
+      setHasChanges(false);
+    },
+  });
 
   if (loading) {
     return (

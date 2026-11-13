@@ -37,7 +37,7 @@ export default function WebsiteSettingsHeader({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push('/app/chat/channels')}
+            onClick={() => router.push('/app/chat/canales')}
             className="hidden lg:inline-flex h-9 w-9 flex-shrink-0"
           >
             <ArrowLeft className="h-5 w-5" />

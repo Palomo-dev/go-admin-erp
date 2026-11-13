@@ -29,6 +29,7 @@ import {
   saveGymSettings,
   defaultGymSettings,
 } from '@/lib/services/gymSettingsService';
+import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuardar';
 
 export function GymConfigPanel() {
   const { organization } = useOrganization();
@@ -71,6 +72,14 @@ export function GymConfigPanel() {
       setIsSaving(false);
     }
   };
+
+  // Barra «cambios sin guardar» del diálogo de Configuración.
+  useRegistrarCambios({
+    cambios: hasChanges ? contarCambios(settings, originalSettings) : 0,
+    guardando: isSaving,
+    guardar: handleSave,
+    descartar: () => setSettings(originalSettings),
+  });
 
   const confirmReset = async () => {
     if (!organization?.id) return;

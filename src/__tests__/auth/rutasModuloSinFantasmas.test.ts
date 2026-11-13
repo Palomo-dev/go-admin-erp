@@ -27,6 +27,9 @@ const mapa = pares.map((p) => `'${p.ruta}': '${p.codigo}'`).join('\n');
  * de aplicar (ver `codigosCreadosPorMigracion`). Si agregas un módulo, agrégalo
  * aquí SOLO después de verificarlo en la base o de versionar su migración.
  */
+// 'roles' sigue en `modules` (y en `organization_modules`, FK) aunque desde el
+// 2026-11-13 ya no tenga rutas propias: /app/roles es una página de
+// `organizations` (migración 20261113183524_roles_dentro_de_organizacion).
 const CODIGOS_EN_MODULES = new Set([
   'pm', 'gym', 'memberships', 'chat', 'organizations', 'clientes', 'roles', 'configuracion', 'pos',
   'inventory', 'pms_hotel', 'parking', 'transport', 'crm', 'hrm', 'finance', 'reports',
@@ -82,5 +85,20 @@ describe('Sitio web: módulo base con ruta propia', () => {
 
   it("una migración versionada crea 'website' como núcleo (is_core = true)", () => {
     expect(codigosNucleoCreadosPorMigracion().has('website')).toBe(true);
+  });
+});
+
+// 2026-11-13 (Figma sección 91): «Roles y permisos» pasó a Organización › Equipo
+// sin cambiar de URL. El gate del middleware tiene que llevar /app/roles (y
+// /app/admin, que era del módulo `roles`) al módulo `organizations`: si quedara
+// en `roles`, que ya no está en el catálogo, la ruta no tendría página ni menú.
+describe('Roles y permisos: página de Organización', () => {
+  it("'/app/roles' y '/app/admin' → 'organizations'", () => {
+    expect(pares).toContainEqual({ ruta: '/app/roles', codigo: 'organizations' });
+    expect(pares).toContainEqual({ ruta: '/app/admin', codigo: 'organizations' });
+  });
+
+  it("el mapa ya no usa el código 'roles'", () => {
+    expect(pares.filter((p) => p.codigo === 'roles')).toEqual([]);
   });
 });

@@ -3,7 +3,13 @@
 /**
  * Organización › Equipo › Roles y permisos (`/app/roles`; Figma «13. Equipo ›
  * Roles y permisos», archivo EAvjINVRnlzFM70GVoWXgl, sección 1883:75201).
- * Pestañas Roles · Cargos · Comparar en la URL (`?vista=`).
+ * Vista en la URL (`?vista=roles|cargos|comparar`).
+ *
+ * Desde el 2026-11-13 (Figma sección 91, «Roles dentro de Organización») lleva
+ * las pestañas de Equipo (`PestanasEquipo`): Miembros · Invitaciones · Roles y
+ * permisos · Cargos. Roles y Cargos cambian de vista aquí mismo; «Comparar» ya
+ * no es pestaña: se llega con el botón «Comparar roles» (o «Comparar con otro
+ * rol» de una fila) y se vuelve con la pestaña Roles y permisos.
  *
  * Sustituye a las cinco pestañas anteriores (Roles, Asignación, Permisos,
  * Cargos, Analíticas). La página tenía la guarda en ningún sitio (problema 5):
@@ -16,7 +22,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { GitCompareArrows, Info, Plus, Shield, TriangleAlert, UserSearch } from 'lucide-react';
 import { PageHeader } from '@/components/kit/PageHeader';
-import { TabBar, idPanel, idPestana } from '@/components/kit/TabBar';
+import { idPanel, idPestana } from '@/components/kit/TabBar';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { useOpcionUrl } from '@/components/kit/useParametroUrl';
@@ -32,10 +38,10 @@ import { DialogoAsignarRol } from './DialogoAsignarRol';
 import { HojaQuePuedeHacer } from './HojaQuePuedeHacer';
 import { SelectorPersona } from './SelectorPersona';
 import { useCargaRoles } from './useCargaRoles';
+import { ID_PESTANAS_EQUIPO, PestanasEquipo } from '@/components/organization/equipo/PestanasEquipo';
 
 const VISTAS = ['roles', 'cargos', 'comparar'] as const;
 type Vista = (typeof VISTAS)[number];
-const ID_TABS = 'roles-permisos';
 
 export function PantallaRoles() {
   const t = useTranslations('roles');
@@ -56,6 +62,8 @@ export function PantallaRoles() {
   const modeloListo = datos?.modeloListo ?? true;
   const puedeCrear = Boolean(caps?.crear && modeloListo);
   const abrirNuevo = () => setNuevo({ modo: 'nuevo', plantilla: null });
+  // Comparar es una vista de Roles: su pestaña es «Roles y permisos».
+  const pestana = vista === 'cargos' ? 'cargos' : 'roles';
 
   const compararCon = (r: RolResumen) => {
     const otro = datos?.roles.find((x) => x.id !== r.id && x.sistema !== r.sistema) ?? datos?.roles.find((x) => x.id !== r.id);
@@ -105,19 +113,15 @@ export function PantallaRoles() {
         ) : undefined,
       }}
       debajo={
-        estado === 'listo' ? (
-          <TabBar
-            id={ID_TABS}
-            etiqueta={t('pestanas.etiqueta')}
-            valor={vista}
-            onValorChange={setVista}
-            pestanas={[
-              { valor: 'roles', etiqueta: t('pestanas.roles'), contador: datos?.roles.length },
-              { valor: 'cargos', etiqueta: t('pestanas.cargos') },
-              { valor: 'comparar', etiqueta: t('pestanas.comparar') },
-            ]}
-          />
-        ) : undefined
+        <PestanasEquipo
+          activa={pestana}
+          roles={datos?.roles.length}
+          onCambiar={(p) => {
+            if (p !== 'roles' && p !== 'cargos') return false;
+            setVista(p);
+            return true;
+          }}
+        />
       }
     />
   );
@@ -137,7 +141,7 @@ export function PantallaRoles() {
     cuerpo = <EmptyState variante="error" titulo={t('estados.errorTitulo')} descripcion={t('estados.errorDesc')} onReintentar={() => void recargar()} />;
   } else {
     cuerpo = (
-      <div id={idPanel(ID_TABS, vista)} role="tabpanel" aria-labelledby={idPestana(ID_TABS, vista)} className="flex flex-col gap-3">
+      <div id={idPanel(ID_PESTANAS_EQUIPO, pestana)} role="tabpanel" aria-labelledby={idPestana(ID_PESTANAS_EQUIPO, pestana)} className="flex flex-col gap-3">
         {vista === 'roles' && (
           <>
             <p className="flex items-start gap-2 rounded-lg border border-line-info bg-info-subtle p-3 text-sm text-info-text">

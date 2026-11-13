@@ -203,7 +203,11 @@ export async function actividadDelInicio(ctx: Ctx, rango: RangoPeriodo, sucursal
 
 // ─── Primeros pasos ─────────────────────────────────────────────────────────
 
-/** Módulos de base, activos en todas las organizaciones: no cuentan como «activar módulos». */
+/**
+ * Módulos de base, activos en todas las organizaciones: no cuentan como «activar módulos».
+ * 'roles' se queda aunque desde el 2026-11-13 no sea un módulo del menú (su página es de
+ * Organización): sus filas siguen en `organization_modules` y sin él el conteo subiría.
+ */
 const MODULOS_BASE = ['clientes', 'organizations', 'roles', 'configuracion'];
 
 /**

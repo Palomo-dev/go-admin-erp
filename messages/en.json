@@ -2089,7 +2089,9 @@
       "equipo": {
         "pestanas": "Team sections",
         "miembros": "Members",
-        "invitaciones": "Invitations"
+        "invitaciones": "Invitations",
+        "roles": "Roles and permissions",
+        "cargos": "Positions"
       },
       "miembros": {
         "titulo": "Members",
@@ -2132,6 +2134,7 @@
           "plural": "members"
         },
         "acciones": {
+          "quePuedeHacer": "What can they do?",
           "cambiarRol": "Change role…",
           "editarCargo": "Edit position…",
           "asignarSedes": "Assign locations…",
@@ -38544,6 +38547,11 @@
         "titulo": "Offline data",
         "descripcion": "Local copy to work without internet in Go Admin Desktop",
         "palabras": "offline, desktop, local copy, no connection"
+      },
+      "generalPlan": {
+        "titulo": "Plan and billing",
+        "descripcion": "Your plan, what it includes and how it is billed",
+        "palabras": "plan, subscription, billing, payment, charge, modules, upgrade"
       }
     },
     "ajustes": {
@@ -49655,6 +49663,1357 @@
       "medio_distinto_del_pactado": "That is not the medium the contract sets for the written settlement.",
       "fecha_anterior_a_la_liquidacion": "The delivery cannot be earlier than the settlement.",
       "error_desconocido": "The operation could not be completed."
+    }
+  },
+  "chatUi": {
+    "canales": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "web": "Website",
+      "telegram": "Telegram",
+      "correo": "Email"
+    },
+    "burbuja": {
+      "ia": "AI reply",
+      "iaCon": "AI reply · {detalle}",
+      "nota": "Internal note · only your team sees it",
+      "notaCon": "Internal note · {detalle}",
+      "enviado": "Sent",
+      "leido": "Read",
+      "imagen": "Image",
+      "archivo": "File",
+      "descargar": "Download",
+      "reproducir": "Play audio",
+      "pausar": "Pause audio"
+    },
+    "fila": {
+      "sinAsignar": "Unassigned",
+      "iaAutomatico": "AI · automatic",
+      "noLeidos": "{n, plural, one {# unread message} other {# unread messages}}",
+      "prefijoIa": "AI: {texto}"
+    },
+    "prioridad": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "estado": {
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed",
+      "archived": "Archived"
+    },
+    "composer": {
+      "modo": "Message type",
+      "responder": "Reply",
+      "nota": "Internal note",
+      "sugerir": "Suggest a reply with AI",
+      "sugerirCorto": "Suggest with AI",
+      "sugiriendo": "Thinking…",
+      "placeholder": "Type a message…   / for quick replies",
+      "placeholderCorto": "Type a message…",
+      "placeholderNota": "Write a note for your team…",
+      "enviar": "Send",
+      "guardarNota": "Save note",
+      "adjuntar": "Attach file",
+      "emojis": "Emojis",
+      "respuestasRapidas": "Quick replies",
+      "sinRespuestasRapidas": "No quick replies match that name.",
+      "grabar": "Record audio",
+      "grabando": "Recording… {tiempo}",
+      "cancelarAudio": "Discard audio",
+      "enviarAudio": "Stop and send audio",
+      "cerrada": "This conversation is closed. Reopen it to write again.",
+      "reabrir": "Reopen conversation",
+      "ventanaVencida": "More than 24 h have passed since the customer's last message. WhatsApp only allows an approved template.",
+      "elegirPlantilla": "Choose template",
+      "sinConsentimiento": "This customer asked not to receive WhatsApp messages. You can leave internal notes.",
+      "errores": {
+        "titulo": "Could not send",
+        "ventanaCerrada": "The WhatsApp 24 h window has expired: send an approved template.",
+        "sinConsentimiento": "The customer opted out of WhatsApp.",
+        "sinCreditos": "No credits left to send on WhatsApp.",
+        "demasiados": "Too many messages in a row. Wait a moment.",
+        "sinPlantilla": "The template is not approved or is missing data.",
+        "generico": "Check your connection and try again."
+      }
+    }
+  },
+  "chatBandeja": {
+    "notificacion": {
+      "titulo": "{persona} assigned you a conversation",
+      "contenido": "{persona} assigned you the conversation with {cliente}."
+    },
+    "avisos": {
+      "errorCargar": "Could not load the conversation",
+      "errorLista": "Could not load the chats",
+      "cerrada": "Conversation closed",
+      "pendiente": "Conversation set to pending",
+      "reabierta": "Conversation reopened",
+      "errorEstado": "Could not change the status",
+      "prioridad": "Priority updated",
+      "errorPrioridad": "Could not change the priority",
+      "asignada": "Conversation assigned",
+      "asignacionQuitada": "Assignment removed",
+      "errorAsignar": "Could not assign",
+      "errorEtiqueta": "Could not change the tag",
+      "errorNota": "Could not save the note",
+      "notaEliminada": "Note deleted",
+      "errorIA": "The AI could not respond"
+    },
+    "asignacion": {
+      "titulo": "People with Chat access",
+      "tu": "{nombre} (you)",
+      "otraPersona": "Person without Chat access",
+      "sinAsignar": "Unassigned",
+      "cambiar": "Assigned to: {nombre}. Change",
+      "buscar": "Search person…",
+      "sinResultados": "No one with that name.",
+      "cargoAbiertas": "{cargo} · {n, plural, one {# open} other {# open}}",
+      "abiertas": "{n, plural, one {# open} other {# open}}",
+      "quitar": "Remove assignment"
+    },
+    "etiquetas": {
+      "agregar": "Add",
+      "quitar": "Remove tag {nombre}",
+      "sinEtiquetas": "There are no Chat tags yet.",
+      "todasPuestas": "It already has every tag."
+    },
+    "cliente": {
+      "cliente": "Customer",
+      "desde": "Customer since {fecha}",
+      "etiqueta": "Tag",
+      "contacto": "Contact",
+      "telefono": "Phone",
+      "correo": "Email",
+      "documento": "ID",
+      "direccion": "Address",
+      "actividad": "Activity",
+      "conversaciones": "Conversations",
+      "conversacionesValor": "{total} ({mes} this month)",
+      "compras": "Purchases",
+      "comprasValor": "{n} · {total}",
+      "sinCompras": "No purchases",
+      "ultimaCompra": "Last purchase",
+      "oportunidad": "Opportunity",
+      "verFicha": "View customer record"
+    },
+    "acciones": {
+      "estadoYPrioridad": "Status and priority",
+      "estado": "Status",
+      "prioridad": "Priority",
+      "asignadoA": "Assigned to",
+      "ayudaAsignar": "The person is notified. Only people with Chat access are listed.",
+      "etiquetas": "Tags",
+      "resolver": "Mark as resolved",
+      "pendiente": "Set to pending",
+      "reabrir": "Reopen conversation",
+      "abrirFicha": "Open customer record"
+    },
+    "notas": {
+      "titulo": "Internal notes",
+      "nueva": "Note",
+      "ayuda": "Only your team sees them; the customer never gets them.",
+      "placeholder": "Write a note for your team…",
+      "cancelar": "Cancel",
+      "guardar": "Save note",
+      "vacioTitulo": "No notes",
+      "vacioDescripcion": "Leave here what your team should know about this conversation.",
+      "alguien": "A team member",
+      "fijada": "Pinned",
+      "opciones": "Note options",
+      "fijar": "Pin to top",
+      "desfijar": "Unpin",
+      "eliminar": "Delete",
+      "eliminarTitulo": "Delete this note?",
+      "eliminarDescripcion": "The note is deleted for the whole team. This cannot be undone."
+    },
+    "ia": {
+      "titulo": "AI assistant",
+      "modo": {
+        "auto": "Automatic mode",
+        "hybrid": "Hybrid mode",
+        "manual": "Manual mode"
+      },
+      "ayuda": {
+        "auto": "The AI replies on its own in this channel. Change the mode in Channels.",
+        "hybrid": "The AI suggests and a person sends. Change the mode in Channels.",
+        "manual": "The AI only helps when you ask. Change the mode in Channels."
+      },
+      "resumen": "Conversation summary",
+      "sinResumen": "No summary yet.",
+      "generarResumen": "Generate summary",
+      "actualizarResumen": "Update summary",
+      "sugerida": "Suggested reply",
+      "usar": "Use",
+      "editar": "Edit",
+      "copiar": "Copy",
+      "copiada": "Reply copied",
+      "enviada": "Reply sent",
+      "generar": "Suggest a reply",
+      "otra": "Generate another reply",
+      "creditos": "Each generated reply or summary uses AI credits."
+    },
+    "panel": {
+      "etiqueta": "Conversation details",
+      "cliente": "Customer",
+      "acciones": "Actions",
+      "notas": "Notes",
+      "ia": "AI"
+    },
+    "hilo": {
+      "etiqueta": "Conversation",
+      "cliente": "Customer",
+      "vistaCompleta": "Open full view",
+      "cargandoAnteriores": "Loading earlier messages…",
+      "vacio": "There are no messages in this conversation yet.",
+      "iniciadaDesde": "Conversation started from {canal} · {hora}",
+      "iniciada": "Conversation started · {hora}",
+      "revisoIa": "reviewed by {nombre}",
+      "irAlFinal": "Go to latest message",
+      "hoy": "Today · {fecha}",
+      "ayer": "Yesterday · {fecha}"
+    },
+    "mas": {
+      "titulo": "More actions",
+      "vistaCompleta": "Open full view",
+      "fichaCliente": "View customer record",
+      "buscar": "Search in conversation",
+      "actividad": "View activity",
+      "archivos": "View files",
+      "pendiente": "Set to pending",
+      "cerrar": "Close conversation",
+      "reabrir": "Reopen conversation"
+    },
+    "detalles": {
+      "boton": "Details",
+      "titulo": "Conversation details"
+    },
+    "lista": {
+      "titulo": "Chats",
+      "abiertas": "{n, plural, one {# open} other {# open}}",
+      "ocultar": "Hide list",
+      "mostrar": "Show list",
+      "buscar": "Search by name, phone or message",
+      "buscarCorto": "Search conversations",
+      "cargando": "Loading chats",
+      "cargandoMas": "Loading more…",
+      "deTotal": "{n} of {total} conversations",
+      "ayer": "Yesterday",
+      "sinMensajes": "No messages",
+      "adjunto": "Attachment"
+    },
+    "filtros": {
+      "titulo": "Filters",
+      "prioridad": "Priority",
+      "canal": "Channel",
+      "etiqueta": "Tag",
+      "todas": "All",
+      "todos": "All",
+      "limpiar": "Clear filters"
+    },
+    "vistas": {
+      "etiqueta": "Quick views",
+      "abiertas": "Open",
+      "mias": "Mine",
+      "sinAsignar": "Unassigned",
+      "pendientes": "Pending",
+      "cerradas": "Closed"
+    },
+    "vacio": {
+      "sinCanalesTitulo": "You have no connected channels yet",
+      "sinCanalesDescripcion": "Connect WhatsApp, Instagram, Facebook or your website chat to start receiving messages.",
+      "conectar": "Connect a channel",
+      "sinResultadosTitulo": "No chats found",
+      "sinResultadosDescripcion": "Try another name or phone, or clear the filters.",
+      "vista": {
+        "abiertas": "There are no open conversations.",
+        "mias": "You have no open conversations assigned.",
+        "sinAsignar": "Every open conversation is assigned.",
+        "pendientes": "There are no pending conversations.",
+        "cerradas": "There are no closed conversations."
+      },
+      "listaTitulo": "Your inbox is ready",
+      "listaDescripcion": "Once you connect a channel, your customers' conversations will show up here.",
+      "elegirTitulo": "Choose a conversation",
+      "elegirDescripcion": "Pick a chat from the list to read and reply. New ones arrive here in real time."
+    },
+    "movil": {
+      "titulo": "Chat",
+      "bandeja": "Inbox",
+      "subtitulo": "Inbox · {n} open",
+      "nueva": "New"
+    },
+    "vista": {
+      "titulo": "Conversation",
+      "cliente": "Customer",
+      "volver": "Back to inbox",
+      "migas": "Breadcrumb",
+      "migaChat": "Chat",
+      "migaBandeja": "Inbox",
+      "prioridad": {
+        "low": "Low priority",
+        "normal": "Normal priority",
+        "high": "High priority",
+        "urgent": "Urgent priority"
+      },
+      "secciones": "Conversation sections",
+      "pestanas": {
+        "conversacion": "Conversation",
+        "actividad": "Activity",
+        "archivos": "Files"
+      }
+    },
+    "actividad": {
+      "resumen": "Activity summary",
+      "total": "Total",
+      "estados": "Status changes",
+      "asignaciones": "Assignments",
+      "etiquetas": "Tags",
+      "ia": "AI replies",
+      "exportar": "Export CSV"
+    },
+    "archivos": {
+      "resumen": "Files summary",
+      "total": "Files",
+      "tamano": "Total size"
+    },
+    "nueva": {
+      "titulo": "New conversation",
+      "subtitulo": "Message a customer first through a connected channel.",
+      "migas": "Chat › Inbox",
+      "volver": "Back to inbox",
+      "paso1": "1. Channel and customer",
+      "paso1Ayuda": "Only your organization's active channels are listed.",
+      "canal": "Channel",
+      "elegirCanal": "Choose a channel",
+      "cliente": "Customer",
+      "clienteAyuda": "Not found? Create it quickly from the search.",
+      "paso2": "2. First message",
+      "paso2Ayuda": "This is how the conversation with the customer starts.",
+      "paso2WhatsApp": "WhatsApp only allows starting a conversation with a Meta-approved template.",
+      "elegirClientePrimero": "Choose the customer first to see templates and the preview.",
+      "sinPlantillas": "This channel has no approved templates. Create them in CRM › Templates.",
+      "sinConsentimiento": "This customer asked not to receive WhatsApp messages.",
+      "asiLoRecibira": "How they will see it",
+      "mensaje": "Message",
+      "mensajePlaceholder": "Write the first message…",
+      "paso3": "3. Organization (optional)",
+      "prioridad": "Priority",
+      "asignarA": "Assign to",
+      "etiquetas": "Tags",
+      "agregarEtiqueta": "Add tag",
+      "cancelar": "Cancel",
+      "crear": "Create and send",
+      "creando": "Sending…",
+      "antesTitulo": "Before you write",
+      "antes1": "If the customer wrote in the last 24 h, you can reply freely from the Inbox.",
+      "antes2": "After 24 h, WhatsApp requires an approved template. Manage them in CRM › Templates.",
+      "antes3": "Instagram and Facebook only allow replying to people who already wrote to you.",
+      "antes4": "The message is saved on the customer's CRM timeline.",
+      "sinCanalesTitulo": "There are no active channels",
+      "sinCanalesDescripcion": "Connect a channel to message your customers.",
+      "conectar": "Connect a channel",
+      "avisos": {
+        "creada": "Conversation created",
+        "error": "Could not create the conversation",
+        "sinPermiso": "You do not belong to this organization",
+        "clienteCreado": "Customer {nombre} created",
+        "organizarParcial": "The conversation was created, but not everything could be applied (priority, tags or assignment)."
+      }
+    }
+  },
+  "chatModulo": {
+    "pestanas": {
+      "etiqueta": "Chat sections",
+      "nuevaConversacion": "New conversation"
+    },
+    "configuracion": {
+      "etiqueta": "Chat settings",
+      "general": "General",
+      "ia": "Chat AI"
+    },
+    "ia": {
+      "pestanas": {
+        "etiqueta": "AI sections",
+        "laboratorio": "Lab",
+        "trabajos": "Jobs",
+        "configuracion": "Settings"
+      },
+      "titulo": "Chat AI",
+      "beta": "Beta",
+      "laboratorio": {
+        "subtitulo": "Test how the AI would reply before letting it serve customers.",
+        "pregunta": "Test question",
+        "preguntaPlaceholder": "Write it as a customer would…",
+        "ejemplos": "Examples:",
+        "ejemplo": {
+          "estadoPedido": "Where is my order?",
+          "horarios": "What time do you open?",
+          "mediosPago": "How can I pay?"
+        },
+        "probar": "Test",
+        "probando": "Testing…",
+        "respuesta": "AI reply",
+        "sinRespuestaTitulo": "No reply yet",
+        "sinRespuestaDescripcion": "Write a question and press Test to see which snippets the AI finds.",
+        "metricas": {
+          "confianza": "Confidence",
+          "tiempo": "Time",
+          "tokens": "Tokens",
+          "fragmentos": "Snippets"
+        },
+        "simulada": "Test reply built from your snippets: it doesn’t call the model or use credits.",
+        "convertir": "Turn into a snippet",
+        "ajustes": "Test settings",
+        "ajustesDescripcion": "They don’t change the real settings.",
+        "canal": "Channel",
+        "canalWeb": "Website chat",
+        "creatividad": "Creativity",
+        "creatividades": {
+          "c0": "precise",
+          "c1": "balanced",
+          "c2": "creative"
+        },
+        "largo": "Maximum length",
+        "largos": {
+          "l0": "Short (≈ 150 words)",
+          "l1": "Medium (≈ 350 words)",
+          "l2": "Long (≈ 700 words)"
+        },
+        "fragmentosUso": "Snippets used",
+        "sinFragmentos": "There are no active snippets. Add them in Knowledge.",
+        "toasts": {
+          "errorCarga": "The lab data couldn’t be loaded",
+          "errorPrueba": "The test couldn’t be completed",
+          "sinMiembro": "We couldn’t find your membership in this organization",
+          "fragmentoCreado": "Snippet created in Knowledge",
+          "errorFragmento": "The snippet couldn’t be created"
+        }
+      },
+      "trabajos": {
+        "subtitulo": "Every time the AI replies, summarizes or classifies, a record is kept here.",
+        "sinCliente": "Unidentified visitor",
+        "vacioTitulo": "There are no AI jobs yet",
+        "vacioDescripcion": "They appear when the AI replies to, summarizes or classifies conversations.",
+        "kpis": {
+          "etiqueta": "Jobs summary",
+          "total": "Total",
+          "enCola": "Queued",
+          "procesando": "Processing",
+          "completados": "Completed",
+          "fallidos": "Failed"
+        },
+        "filtros": {
+          "estado": "Status",
+          "estadoTodos": "Status: all",
+          "tipo": "Type",
+          "tipoTodos": "Type: all",
+          "fecha": "Date",
+          "rangos": {
+            "hoy": "Today",
+            "7d": "Last 7 days",
+            "30d": "Last 30 days",
+            "todo": "All time"
+          }
+        },
+        "tabla": {
+          "etiqueta": "AI jobs",
+          "tipo": "Type",
+          "conversacion": "Conversation",
+          "estado": "Status",
+          "tokens": "Tokens",
+          "cuando": "When"
+        },
+        "tipos": {
+          "auto_response": "Automatic reply",
+          "respond": "Suggested reply",
+          "summarize": "Summary",
+          "classify": "Classification",
+          "translate": "Translation",
+          "extract_intent": "Customer intent",
+          "transcribe": "Audio transcription"
+        },
+        "estados": {
+          "pending": "Queued",
+          "processing": "Processing",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled",
+          "skipped": "Skipped",
+          "draft": "Draft"
+        },
+        "detalle": {
+          "quePaso": "What happened",
+          "informacion": "Details",
+          "modelo": "Model",
+          "modeloConfig": "per AI settings",
+          "canal": "Channel",
+          "tokens": "Tokens",
+          "confianza": "Confidence",
+          "fragmentos": "Snippets used",
+          "creditos": "Credits charged",
+          "respuesta": "Reply",
+          "bitacora": "Log",
+          "reintentar": "Retry",
+          "cancelar": "Cancel job",
+          "abrirConversacion": "Open conversation"
+        },
+        "toasts": {
+          "sinMiembro": "We couldn’t find your membership in this organization",
+          "reintentado": "A new job was created to retry",
+          "cancelado": "Job cancelled",
+          "error": "The action couldn’t be completed"
+        }
+      }
+    },
+    "canales": {
+      "titulo": "Channels",
+      "subtitulo": "Connect the channels your customers use to reach you and choose how much the AI helps on each one.",
+      "nuevoCanal": "New channel",
+      "migas": {
+        "chat": "Chat",
+        "canales": "Channels"
+      },
+      "tipos": {
+        "whatsapp": "WhatsApp",
+        "instagram": "Instagram",
+        "facebook": "Messenger",
+        "website": "Website",
+        "telegram": "Telegram",
+        "email": "Email"
+      },
+      "kpis": {
+        "etiqueta": "Channels summary",
+        "conectados": "Connected channels",
+        "conectadosDetalle": "of {total} channels",
+        "hoy": "Conversations today",
+        "abiertas": "Open",
+        "abiertasDetalle": "open or pending",
+        "primeraRespuesta": "First response time",
+        "primeraRespuestaDetalle": "today’s average",
+        "sinDato": "—"
+      },
+      "misCanales": "My channels",
+      "tabla": {
+        "etiqueta": "Organization channels",
+        "canal": "Channel",
+        "estado": "Status",
+        "modoIa": "AI mode",
+        "abiertas": "Open",
+        "ultimaActividad": "Last activity",
+        "activo": "Active",
+        "sinActividad": "No messages",
+        "activar": "Turn on {nombre}",
+        "modoDe": "AI mode for {nombre}",
+        "vacioTitulo": "You have no channels yet",
+        "vacioDescripcion": "Connect WhatsApp, Instagram, Messenger or your website chat to reply from the Inbox.",
+        "errorTitulo": "We couldn’t load the channels"
+      },
+      "detalle": {
+        "dominios": "{valor} · {n, plural, one {# domain} other {# domains}}",
+        "sinDominios": "No allowed domains",
+        "cuentaVinculada": "Business account linked",
+        "sinCredenciales": "Not connected yet"
+      },
+      "estados": {
+        "conectado": "Connected",
+        "tokenVencido": "Token expired",
+        "sinConectar": "Not connected",
+        "suspendido": "Suspended",
+        "inactivo": "Inactive"
+      },
+      "modos": {
+        "manual": "Off",
+        "hybrid": "Hybrid (recommended)",
+        "auto": "Automatic"
+      },
+      "modosCorto": {
+        "manual": "Off",
+        "hybrid": "Hybrid · AI suggests",
+        "auto": "Automatic"
+      },
+      "modosTitulo": {
+        "manual": "Off",
+        "hybrid": "Hybrid",
+        "auto": "Automatic"
+      },
+      "modosDescripcion": {
+        "manual": "Only people reply.",
+        "hybrid": "The AI suggests; a person reviews and sends.",
+        "auto": "The AI replies on its own and hands over to a person when unsure."
+      },
+      "acciones": {
+        "configurar": "Configure"
+      },
+      "aviso": {
+        "tokenVencido": "{nombre} stopped receiving messages: the account permission expired. Reconnect it so you don’t lose conversations.",
+        "suspendido": "{nombre} is suspended and isn’t receiving messages. Check the connection.",
+        "reconectar": "Reconnect"
+      },
+      "conectar": {
+        "titulo": "Connect another channel",
+        "disponible": "Available",
+        "proximamente": "Coming soon",
+        "conectar": "Connect",
+        "nombres": {
+          "whatsapp": "WhatsApp",
+          "whatsappOtro": "Another WhatsApp number",
+          "instagram": "Instagram",
+          "instagramOtro": "Another Instagram account",
+          "facebook": "Facebook Messenger",
+          "facebookOtro": "Another Facebook page",
+          "website": "Website chat",
+          "websiteOtro": "Another website chat",
+          "telegram": "Telegram",
+          "email": "Email"
+        },
+        "descripciones": {
+          "whatsapp": "Serve your customers on WhatsApp from the Inbox.",
+          "whatsappOtro": "Keep sales and support on separate numbers.",
+          "instagram": "Reply to direct messages on your business account.",
+          "instagramOtro": "Reply to direct messages on another business account.",
+          "facebook": "Receive messages from your Facebook page.",
+          "facebookOtro": "Connect messages from another page.",
+          "website": "A chat on your website that lands in the same Inbox.",
+          "websiteOtro": "A chat for another site or brand.",
+          "telegram": "Soon you’ll be able to handle Telegram from the Inbox.",
+          "email": "Receive support emails in the same Inbox."
+        }
+      },
+      "nuevo": {
+        "titulo": "New channel",
+        "descripcion": "Choose where your customers will write to you.",
+        "tipo": "Channel type",
+        "nombre": "Channel name",
+        "nombreAyuda": "This is how your team will see it in the Inbox.",
+        "nombreObligatorio": "Enter a name for the channel.",
+        "nombrePorDefecto": {
+          "whatsapp": "WhatsApp · Sales",
+          "instagram": "Instagram",
+          "facebook": "Facebook Messenger",
+          "website": "Website chat"
+        },
+        "comoConecta": "How does it connect?",
+        "formas": {
+          "cloud_api": "Meta Cloud API",
+          "cloud_apiDescripcion": "Official 1-click connection with your Meta Business account.",
+          "coexistence": "Coexistence",
+          "coexistenceDescripcion": "Keep using the WhatsApp Business app on your phone and reply from GO too.",
+          "qr_scan": "QR code",
+          "qr_scanDescripcion": "Link a regular WhatsApp by scanning a code. Meta may block the number."
+        },
+        "recomendado": "Recommended",
+        "riesgo": "Risk of blocking",
+        "ayudaIa": "AI help",
+        "continuarMeta": "Continue with Meta",
+        "continuar": "Continue",
+        "crear": "Create channel",
+        "creado": "Channel created",
+        "errorCrear": "The channel couldn’t be created"
+      },
+      "toasts": {
+        "activado": "“{nombre}” is now active",
+        "desactivado": "“{nombre}” is now inactive",
+        "modoIa": "AI help on “{nombre}”: {modo}",
+        "error": "The change couldn’t be saved"
+      },
+      "detalleCanal": {
+        "actualizar": "Refresh",
+        "activar": "Turn on channel",
+        "desactivar": "Turn off channel",
+        "verCanales": "See my channels",
+        "noEncontrado": {
+          "titulo": "Channel not available",
+          "descripcion": "This channel doesn’t exist, was deleted or doesn’t belong to the active organization."
+        },
+        "error": {
+          "titulo": "We couldn’t load the channel",
+          "descripcion": "Check your connection and try again."
+        },
+        "kpis": {
+          "etiqueta": "Channel figures",
+          "mensajes": "Messages",
+          "enviadosHoy": "Sent today",
+          "fallidos": "Failed",
+          "fallidosDetalle": "{pct}% · see events",
+          "entrega": "Delivery rate"
+        },
+        "ayudaIa": {
+          "titulo": "AI help",
+          "descripcion": "What the AI does when a message comes in on this channel.",
+          "ajustar": "Adjust model and tone"
+        },
+        "eventos": {
+          "titulo": "Recent events",
+          "vacio": "There are no message events yet.",
+          "tipos": {
+            "sent": "Sent",
+            "delivered": "Delivered",
+            "read": "Read",
+            "failed": "Failed"
+          }
+        },
+        "webhook": {
+          "titulo": "Webhook",
+          "descripcion": "Meta sends new messages here. It’s already set up if you connected in 1 click.",
+          "url": "Webhook URL",
+          "token": "Verify token",
+          "sinToken": "No verify token saved yet.",
+          "campos": "Fields to subscribe:",
+          "copiarUrl": "Copy URL",
+          "copiada": "Copied",
+          "verToken": "Show token",
+          "ocultarToken": "Hide token",
+          "abrirMeta": "Open Meta Business"
+        },
+        "credenciales": {
+          "titulo": "Connection",
+          "descripcion": "Details of the Meta account linked to this channel.",
+          "verificado": "Connected to Meta. The credentials are valid.",
+          "verificadoEl": "Connected to Meta; verified on {fecha}.",
+          "invalido": "The credentials expired or are invalid. Reconnect the account.",
+          "sinCredenciales": "No credentials saved for this channel yet.",
+          "guardar": "Save",
+          "verificar": "Check connection",
+          "ver": "Show credentials",
+          "ocultar": "Hide credentials",
+          "campos": {
+            "instagramBusinessId": "Instagram Business account ID",
+            "paginaVinculada": "Linked Facebook Page ID",
+            "paginaId": "Page ID",
+            "appId": "App ID",
+            "appSecret": "App Secret",
+            "accessToken": "Access token",
+            "pageAccessToken": "Page access token",
+            "tokenAyuda": "GO Admin stores it. Use “Show credentials” to reveal it.",
+            "verifyToken": "Webhook verify token"
+          }
+        },
+        "toasts": {
+          "credencialesGuardadas": "Credentials saved",
+          "errorCredenciales": "The credentials couldn’t be saved",
+          "conexionValida": "Connection is valid",
+          "conexionInvalida": "The connection isn’t valid",
+          "errorValidar": "The connection couldn’t be checked",
+          "activado": "Channel turned on",
+          "desactivado": "Channel turned off",
+          "errorEstado": "The channel status couldn’t be changed",
+          "modoGuardado": "AI help updated",
+          "errorModo": "The AI help couldn’t be changed"
+        },
+        "whatsapp": {
+          "webhookNota": "There’s a single webhook for all numbers: Meta identifies each channel by its Phone Number ID.",
+          "conexion": {
+            "titulo": "Connection",
+            "descripcion": "How this number is linked."
+          },
+          "pestanas": {
+            "cloud_api": "Cloud API (recommended)",
+            "coexistence": "Coexistence",
+            "qr_scan": "QR code"
+          },
+          "cloud": {
+            "verificado": "Connected to Meta. The number is verified.",
+            "verificadoEl": "Connected to Meta; verified on {fecha}.",
+            "invalido": "The access token expired or is invalid. Reconnect with Meta.",
+            "conectadoAhora": "WhatsApp is connected. Credentials and webhook were set up automatically.",
+            "unClic": "1-click connection with Meta",
+            "unClicDescripcion": "Sign in with your Meta Business account and choose the number. Credentials and webhook are set up automatically.",
+            "conectarMeta": "Connect with Meta",
+            "conectando": "Connecting…",
+            "manual": "Enter credentials manually",
+            "phoneNumberId": "Phone Number ID",
+            "waba": "WhatsApp Business Account (WABA)",
+            "token": "Access token",
+            "tokenAyuda": "GO Admin stores it. Use “Show token” to reveal it.",
+            "tokenPlaceholder": "Permanent access token",
+            "verifyToken": "Webhook verify token",
+            "verifyTokenAyuda": "Meta uses it to check the webhook is yours.",
+            "guardar": "Save",
+            "verificar": "Check connection",
+            "reconectar": "Reconnect with Meta",
+            "verToken": "Show token",
+            "ocultarToken": "Hide token",
+            "errores": {
+              "sinOrganizacion": "The active organization couldn’t be determined.",
+              "requiereHttps": "1-click connection only works over HTTPS. Enter the credentials manually here.",
+              "cancelado": "The Meta authorization was cancelled.",
+              "sdk": "The Meta connector couldn’t be loaded. Check your connection.",
+              "callback": "Meta returned an error while connecting."
+            }
+          },
+          "coexistencia": {
+            "aviso": "Coexistence is Meta’s official mode: you keep using the WhatsApp Business app on your phone and your team also replies from GO, on the same number and with no risk of blocking.",
+            "requisitosTitulo": "Requirements",
+            "requisito1": "Meta Business portfolio with business verification approved.",
+            "requisito2": "WhatsApp Business Account (WABA) with the number registered.",
+            "requisito3": "At first, up to 2 numbers; it goes up to 20 after verification.",
+            "pasosTitulo": "Steps to turn it on",
+            "paso1": "Complete business verification in Meta Business.",
+            "paso2": "Go to WhatsApp Manager › Phone numbers.",
+            "paso3": "Choose the number › Settings › Coexistence › Enable.",
+            "paso4": "Link the number in the WhatsApp Business app on the phone.",
+            "paso5": "Here, connect the number in the Cloud API tab.",
+            "abrirManager": "Open WhatsApp Manager"
+          },
+          "qr": {
+            "riesgoTitulo": "Meta may block this number",
+            "riesgoDescripcion": "QR code connection isn’t official. Use it only for testing or with a number you can afford to lose. To sell, use Cloud API or Coexistence.",
+            "entiendo": "I understand the risk and want to continue",
+            "escanea": "Scan it from the phone",
+            "paso1": "Open WhatsApp on the number’s phone.",
+            "paso2": "Tap ⋮ › Linked devices › Link a device.",
+            "paso3": "Point the camera at this code. It expires in a few seconds.",
+            "qrAlt": "QR code to link WhatsApp",
+            "generar": "Generate code",
+            "otroCodigo": "Generate another code",
+            "detener": "Stop",
+            "borrar": "Delete session",
+            "borrarTitulo": "Delete the WhatsApp session?",
+            "borrarDescripcion": "This connection’s credentials are deleted and you’ll need to scan a new code to reconnect. This can’t be undone.",
+            "error": "The action couldn’t be completed",
+            "estados": {
+              "disconnected": "Disconnected",
+              "connecting": "Connecting…",
+              "qr_ready": "Waiting for scan…",
+              "connected": "Connected",
+              "reconnecting": "Reconnecting…",
+              "banned": "Number blocked by Meta",
+              "error": "Error"
+            }
+          }
+        }
+      },
+      "widget": {
+        "visible": "Visible on the site",
+        "oculto": "Hidden on the site",
+        "mostrarEnSitio": "Show on the site",
+        "activaPrimero": "The channel is inactive: turn it on in Channels to show it on the site.",
+        "guardado": "Saved",
+        "kpis": {
+          "etiqueta": "Website chat figures",
+          "sesiones": "Sessions",
+          "enLinea": "Online now",
+          "visitantes": "Unique visitors",
+          "celular": "From mobile"
+        },
+        "instalacion": {
+          "titulo": "Installation",
+          "descripcion": "If your site is built with GO Admin it’s already installed. On other sites paste this code right before the closing body tag.",
+          "copiar": "Copy code",
+          "copiado": "Code copied",
+          "rotarClave": "Generate new key",
+          "rotarClaveDescripcion": "The previous code stops working",
+          "dominios": "Allowed domains:",
+          "sinDominios": "none yet",
+          "dominiosAyuda": "The chat only opens on these domains. With none, it opens anywhere.",
+          "agregar": "Add",
+          "nuevoDominio": "New domain",
+          "quitarDominio": "Remove {dominio}",
+          "dominioInvalido": "Enter a domain like yourstore.com",
+          "dominioRepetido": "That domain is already on the list."
+        },
+        "apariencia": {
+          "titulo": "Appearance",
+          "color": "Main color",
+          "posicion": "Position",
+          "tamano": "Button size",
+          "posiciones": {
+            "abajoDerecha": "Bottom right",
+            "abajoIzquierda": "Bottom left",
+            "arribaDerecha": "Top right",
+            "arribaIzquierda": "Top left"
+          },
+          "tamanos": {
+            "t48": "Small · 48 px",
+            "t56": "Medium · 56 px",
+            "t64": "Large · 64 px",
+            "otro": "Custom · {px} px"
+          },
+          "avanzado": "More style options"
+        },
+        "alAbrir": {
+          "titulo": "When the chat opens",
+          "tituloChat": "Chat title",
+          "bienvenida": "Welcome message",
+          "fueraDeLinea": "If no one is online",
+          "botones": "Quick buttons:",
+          "nuevoBoton": "Button text",
+          "agregar": "Add",
+          "quitarBoton": "Remove “{boton}”",
+          "descartar": "Discard",
+          "guardar": "Save"
+        },
+        "visitante": {
+          "titulo": "Visitor details",
+          "descripcion": "Asking for them before chatting helps create the customer in the CRM.",
+          "campos": {
+            "name": "Name",
+            "phone": "WhatsApp",
+            "email": "Email"
+          },
+          "ayudaIa": "AI help"
+        },
+        "vistaPrevia": {
+          "titulo": "Preview",
+          "tituloPorDefecto": "Chat",
+          "enLinea": "Online · replies in minutes",
+          "ahora": "now",
+          "antesDeEmpezar": "Before you start",
+          "campos": {
+            "name": "Your name",
+            "phone": "Your WhatsApp",
+            "email": "Your email"
+          },
+          "empezar": "Start chat",
+          "abrir": "Open chat",
+          "cerrar": "Close chat",
+          "reiniciar": "Reset preview"
+        },
+        "toasts": {
+          "error": "The change couldn’t be saved",
+          "claveRotada": "New key ready: update the code on your site",
+          "visible": "The chat now shows on your site",
+          "oculto": "The chat no longer shows on your site",
+          "errorSitio": "Site visibility couldn’t be changed"
+        }
+      }
+    },
+    "comun": {
+      "volver": "Back"
+    },
+    "conocimiento": {
+      "titulo": "Knowledge",
+      "subtitulo": "What the AI can use to reply: policies, FAQs, catalog and guides.",
+      "configurarIa": "Configure AI",
+      "importar": {
+        "titulo": "Import snippets",
+        "subtitulo": "Load many at once from a CSV or by pasting text.",
+        "errorAnalisis": "The content couldn’t be read",
+        "paso1": "1. File",
+        "paso2": "2. Preview",
+        "paso2Descripcion": "Check before importing. Rows with errors aren’t loaded.",
+        "paso3": "3. Options",
+        "modos": {
+          "csv": "CSV file",
+          "texto": "Paste text"
+        },
+        "vista": {
+          "titulo": "Title",
+          "sinTitulo": "(no title)",
+          "contenido": "Content",
+          "estado": "Status",
+          "estados": {
+            "lista": "Ready",
+            "faltaTitulo": "Missing title",
+            "faltaContenido": "Missing content"
+          },
+          "vacia": "Choose a file or paste text to see here what will be imported.",
+          "resumen": "Showing {mostradas} of {total} · {listas} ready · {errores} with errors"
+        },
+        "opciones": {
+          "fuente": "Save to source",
+          "sinFuente": "No source",
+          "etiquetas": "Tags for all",
+          "etiquetasAyuda": "Separate them with commas.",
+          "indexar": "Make them ready for the AI when done",
+          "importar": "Import {n, plural, one {# snippet} other {# snippets}}",
+          "creditos": "Indexing uses your plan’s AI credits."
+        },
+        "resultado": {
+          "titulo": "{ok} of {total} imported",
+          "errores": "{n, plural, one {# row couldn’t be loaded} other {# rows couldn’t be loaded}}.",
+          "ver": "View snippets"
+        },
+        "toasts": {
+          "listo": "{n, plural, one {# snippet imported} other {# snippets imported}}",
+          "parcial": "Some snippets couldn’t be imported",
+          "error": "The import couldn’t be completed"
+        }
+      },
+      "nuevaFuente": "New source",
+      "nuevoFragmento": "New snippet",
+      "buscarFragmentos": "Search snippets…",
+      "sinDato": "—",
+      "error": "We couldn’t load the knowledge",
+      "migas": {
+        "chat": "Chat",
+        "conocimiento": "Knowledge"
+      },
+      "kpis": {
+        "etiqueta": "Knowledge summary",
+        "fuentes": "Sources",
+        "activas": "{n} active",
+        "fragmentos": "Snippets",
+        "listos": "Ready for AI",
+        "pendientes": "Waiting to be indexed",
+        "pendientesDetalle": "processed within minutes",
+        "activos": "Active",
+        "usos": "Uses",
+        "usosDetalle": "in AI replies"
+      },
+      "pestanas": {
+        "etiqueta": "Knowledge views",
+        "fuentes": "Sources",
+        "fragmentos": "All snippets"
+      },
+      "fuentes": {
+        "verFragmentos": "View snippets",
+        "editar": "Edit",
+        "activar": "Turn on",
+        "desactivar": "Turn off",
+        "eliminar": "Delete",
+        "sinDescripcion": "No description",
+        "fragmentos": "{n, plural, one {# snippet} other {# snippets}}",
+        "actualizada": "upd. {fecha}",
+        "vacioTitulo": "There are no sources yet",
+        "vacioDescripcion": "Create a source (for example “Shipping”) and add snippets, or import a CSV."
+      },
+      "estados": {
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "listo": "Ready",
+        "pendiente": "Pending"
+      },
+      "tabla": {
+        "etiqueta": "Knowledge snippets",
+        "fragmento": "Snippet",
+        "fuente": "Source",
+        "etiquetas": "Tags",
+        "estado": "Status",
+        "paraIa": "For AI",
+        "usado": "Used",
+        "actualizado": "Updated",
+        "abrir": "Open",
+        "editarRapido": "Quick edit",
+        "activar": "Turn on",
+        "desactivar": "Turn off",
+        "eliminar": "Delete"
+      },
+      "fragmentos": {
+        "vacioTitulo": "There are no snippets yet",
+        "vacioDescripcion": "A snippet is a short answer the AI can use as is.",
+        "vacioFuente": "This source has no snippets yet"
+      },
+      "toasts": {
+        "sinMiembro": "We couldn’t find your membership in this organization",
+        "error": "The change couldn’t be saved",
+        "fuenteCreada": "Source created",
+        "fuenteActualizada": "Source updated",
+        "fuenteActivada": "“{nombre}” is now active",
+        "fuenteDesactivada": "“{nombre}” is now inactive",
+        "fuenteEliminada": "Source deleted",
+        "fragmentoCreado": "Snippet created",
+        "fragmentoActualizado": "Snippet saved: a new version was created",
+        "fragmentoActivado": "Snippet active: the AI can use it",
+        "fragmentoDesactivado": "Snippet inactive: the AI no longer uses it",
+        "fragmentoEliminado": "Snippet deleted",
+        "reindexando": "Preparing for the AI: it takes a few minutes"
+      },
+      "borrar": {
+        "fuenteTitulo": "Delete the source?",
+        "fuenteDescripcion": "“{nombre}” will be deleted with {n, plural, one {its snippet} other {its # snippets}}. This can’t be undone.",
+        "fragmentoTitulo": "Delete the snippet?",
+        "fragmentoDescripcion": "“{titulo}” will be deleted and the AI will stop using it. This can’t be undone.",
+        "confirmar": "Delete"
+      },
+      "fuente": {
+        "noEncontrada": "This source doesn’t exist or isn’t from the active organization",
+        "volver": "Back to Knowledge",
+        "reindexar": "Reindex",
+        "ajustes": "Settings",
+        "buscar": "Search this source…",
+        "filtroEtiqueta": "Filter by tag",
+        "todasEtiquetas": "All tags"
+      },
+      "editor": {
+        "noEncontrado": "This snippet doesn’t exist or isn’t from the active organization",
+        "faltanDatos": "Enter the title and the content",
+        "sinGuardar": "Unsaved changes",
+        "regenerar": "Regenerate for AI",
+        "guardar": "Save",
+        "contenidoTitulo": "Content",
+        "contenidoDescripcion": "Write it as you’d say it to a customer. The AI uses it as is.",
+        "titulo": "Title",
+        "contenido": "Content",
+        "caracteres": "{n} / {max} characters",
+        "muyLargo": "It’s too long: split it into two snippets so the AI answers accurately.",
+        "etiquetas": "Tags",
+        "quitarEtiqueta": "Remove {etiqueta}",
+        "nuevaEtiqueta": "New tag",
+        "agregar": "Add",
+        "pruebaTitulo": "Quick test",
+        "pruebaDescripcion": "Ask as a customer would and see whether the AI search finds this snippet. It doesn’t use credits.",
+        "preguntaPlaceholder": "How much is shipping?",
+        "probar": "Test",
+        "pruebaEncontrado": "This snippet comes up #{posicion} of {total}. The AI would answer with it.",
+        "pruebaNoEncontrado": "The search didn’t find this snippet with that question. Try adding words or tags your customers use.",
+        "pruebaGuardado": "The test uses the saved version: save your changes to test them.",
+        "ajustes": "Settings",
+        "fuente": "Source",
+        "sinFuente": "No source",
+        "prioridad": "Priority (1 to 10)",
+        "tramos": {
+          "baja": "Low",
+          "media": "Medium",
+          "alta": "High"
+        },
+        "activo": "Active · the AI can use it",
+        "estadoIa": "AI status",
+        "indexado": "indexed {fecha}",
+        "usado": "Used in replies",
+        "votos": "Votes 👍 / 👎",
+        "version": "Version",
+        "actualizado": "Updated"
+      }
+    },
+    "widget": {
+      "titulo": "Website visitors",
+      "subtitulo": "Who is using your website chat now and who used it.",
+      "configurar": "Configure widget",
+      "actualizar": "Refresh",
+      "buscar": "Search by name, email or channel",
+      "anonimo": "Anonymous visitor",
+      "cliente": "Customer",
+      "sinDatos": "No contact details",
+      "vacioTitulo": "There are no visitors yet",
+      "vacioDescripcion": "They appear when someone opens your website chat.",
+      "sustantivo": {
+        "uno": "visitor",
+        "varios": "visitors"
+      },
+      "kpis": {
+        "etiqueta": "Visitors summary",
+        "sesiones": "Sessions",
+        "enLinea": "Online now",
+        "identificados": "Identified",
+        "anonimos": "Anonymous",
+        "inactivos": "Inactive"
+      },
+      "filtros": {
+        "estado": "Status",
+        "cliente": "Customer",
+        "estados": {
+          "todos": "Status: all",
+          "enLinea": "Online",
+          "inactivo": "Inactive"
+        },
+        "clientes": {
+          "todos": "Customer: all",
+          "identificados": "Identified",
+          "anonimos": "Anonymous"
+        }
+      },
+      "estados": {
+        "enLinea": "Online",
+        "inactivo": "Inactive"
+      },
+      "conversacion": {
+        "open": "Open",
+        "pending": "Pending",
+        "closed": "Closed",
+        "archived": "Archived"
+      },
+      "tabla": {
+        "etiqueta": "Website chat visitors",
+        "visitante": "Visitor",
+        "canal": "Channel",
+        "estado": "Status",
+        "conversacion": "Conversation",
+        "ultimaVez": "Last seen",
+        "inicio": "Started"
+      },
+      "acciones": {
+        "abrir": "Open conversation",
+        "cerrar": "Close conversation",
+        "reabrir": "Reopen conversation"
+      },
+      "toasts": {
+        "cerrada": "Conversation closed",
+        "reabierta": "Conversation reopened",
+        "error": "The action couldn’t be completed"
+      }
+    },
+    "auditoria": {
+      "titulo": "Chat audit",
+      "subtitulo": "Who changed what in conversations, channels and knowledge.",
+      "exportar": "Export CSV",
+      "buscar": "Search the audit",
+      "vacioTitulo": "There are no records yet",
+      "vacioDescripcion": "Every change to channels, knowledge, AI and conversations is kept here.",
+      "sustantivo": {
+        "uno": "record",
+        "varios": "records"
+      },
+      "kpis": {
+        "etiqueta": "Audit summary",
+        "registros": "Records",
+        "hoy": "Today",
+        "semana": "This week",
+        "canales": "Channel changes"
+      },
+      "filtros": {
+        "accion": "Action",
+        "accionTodas": "Action: all",
+        "sobre": "About",
+        "sobreTodo": "About: everything",
+        "persona": "Person",
+        "personaTodas": "Person: all",
+        "fecha": "Date",
+        "rangos": {
+          "hoy": "Today",
+          "7d": "Last 7 days",
+          "30d": "Last 30 days",
+          "todo": "All time"
+        }
+      },
+      "tabla": {
+        "etiqueta": "Audit records",
+        "que": "What happened",
+        "sobre": "About",
+        "quien": "Who",
+        "cuando": "When"
+      },
+      "detalle": {
+        "titulo": "Record details",
+        "tipoActor": "Type",
+        "ip": "IP",
+        "cambios": "Changes"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Date",
+        "accion": "Action",
+        "sobre": "About",
+        "quien": "Who",
+        "ip": "IP",
+        "cambios": "Changes"
+      },
+      "toasts": {
+        "exportado": "{n, plural, one {# record exported} other {# records exported}}",
+        "error": "The audit couldn’t be exported"
+      },
+      "actores": {
+        "member": "Team member",
+        "system": "System",
+        "ai": "AI",
+        "api": "API",
+        "customer": "Customer"
+      },
+      "entidades": {
+        "channel": "Channel",
+        "conversation": "Conversation",
+        "message": "Message",
+        "knowledge_source": "Knowledge source",
+        "knowledge_fragment": "Knowledge snippet",
+        "ai_settings": "AI settings",
+        "ai_job": "AI job",
+        "widget_session": "Website visitor",
+        "conversation_tag": "Tag",
+        "quick_reply": "Quick reply",
+        "channel_api_key": "API key",
+        "customer": "Customer"
+      },
+      "acciones": {
+        "create_channel": "Created a channel",
+        "update_channel": "Changed a channel",
+        "update_website_settings": "Changed the website chat",
+        "rotate_public_key": "Generated a new widget key",
+        "add_allowed_domain": "Added an allowed domain",
+        "remove_allowed_domain": "Removed an allowed domain",
+        "update_channel_ai_mode": "Changed a channel’s AI help",
+        "update_all_channels_ai_mode": "Changed the AI help of all channels",
+        "update_ai_settings": "Changed the AI settings",
+        "create_knowledge_source": "Created a knowledge source",
+        "update_knowledge_source": "Edited a knowledge source",
+        "delete_knowledge_source": "Deleted a knowledge source",
+        "toggle_knowledge_source": "Turned a source on or off",
+        "reindex_knowledge_source": "Reindexed a source",
+        "create_knowledge_fragment": "Created a snippet",
+        "update_knowledge_fragment": "Edited a snippet",
+        "update_knowledge_fragment_version": "Saved a new version of a snippet",
+        "delete_knowledge_fragment": "Deleted a snippet",
+        "toggle_knowledge_fragment": "Turned a snippet on or off",
+        "reindex_knowledge_fragment": "Reindexed a snippet",
+        "import_knowledge_fragments": "Imported snippets",
+        "retry_ai_job": "Retried an AI job",
+        "cancel_ai_job": "Cancelled an AI job",
+        "block_session": "Closed a visitor’s conversation",
+        "unblock_session": "Reopened a visitor’s conversation",
+        "assign_conversation": "Assigned a conversation",
+        "close_conversation": "Closed a conversation",
+        "create_tag": "Created a tag",
+        "update_tag": "Edited a tag",
+        "delete_tag": "Deleted a tag",
+        "create_quick_reply": "Created a quick reply",
+        "update_quick_reply": "Edited a quick reply",
+        "delete_quick_reply": "Deleted a quick reply",
+        "create_api_key": "Created an API key",
+        "revoke_api_key": "Revoked an API key"
+      }
+    }
+  },
+  "configuracionDialogo": {
+    "titulo": "Settings",
+    "cerrar": "Close settings (Esc)",
+    "volver": "Back to the settings menu",
+    "menuAria": "Settings sections",
+    "pestanasAria": "Parts of {entrada}",
+    "grupos": {
+      "organizacion": "Organization",
+      "ventas": "Sales",
+      "clientes": "Customers and communication",
+      "operacion": "Operations",
+      "conexiones": "Connections and data"
+    },
+    "entradas": {
+      "general": "General",
+      "roles": "Team and roles",
+      "plan": "Plan and billing",
+      "asistente": "GO Assistant",
+      "pos": "Point of sale",
+      "facturacion": "Electronic invoicing",
+      "sitioweb": "Website",
+      "crm": "CRM",
+      "chat": "Chat",
+      "telefonia-voz": "Phone and voice",
+      "notificaciones": "Notifications",
+      "calendario": "Calendar",
+      "hrm": "Human resources",
+      "pms": "Hotel (PMS)",
+      "parking": "Parking",
+      "gym": "Memberships",
+      "integraciones": "Integrations",
+      "timeline": "Timeline",
+      "datos-offline": "Offline data"
+    },
+    "pestanas": {
+      "chatGeneral": "General",
+      "chatIa": "AI",
+      "posGeneral": "General"
+    },
+    "buscar": {
+      "etiqueta": "Search a setting",
+      "placeholder": "Search a setting",
+      "pista": "Enter opens the first one · ↑ ↓ to move · Esc to close"
+    },
+    "cambios": {
+      "region": "Unsaved changes",
+      "contador": "{n, plural, one {# unsaved change} other {# unsaved changes}}",
+      "descartar": "Discard",
+      "guardar": "Save changes",
+      "guardarCorto": "Save"
+    },
+    "confirmar": {
+      "titulo": "Discard unsaved changes?",
+      "descripcion": "If you leave now, the changes you made in this section will be lost.",
+      "descartar": "Discard changes",
+      "seguir": "Keep editing"
     }
   }
 }

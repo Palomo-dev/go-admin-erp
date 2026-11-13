@@ -46,7 +46,11 @@ export interface NewConversationData {
   channel_id: string;
   customer_id: string;
   subject?: string;
-  initial_message: string;
+  /**
+   * @deprecated El mensaje inicial ya no se inserta aquí: va por
+   * `enviarMensajeConversacion` (WhatsApp por la API) tras crear la conversación.
+   */
+  initial_message?: string;
   priority?: 'low' | 'normal' | 'high' | 'urgent';
   tag_ids?: string[];
   assigned_member_id?: number;
@@ -145,10 +149,6 @@ class NewConversationService {
   }
 
   async createQuickCustomer(data: QuickCustomerData): Promise<Customer> {
-    const fullName = data.last_name 
-      ? `${data.first_name} ${data.last_name}`.trim()
-      : data.first_name;
-
     const { data: customer, error } = await supabase
       .from('customers')
       .insert({
@@ -175,14 +175,15 @@ class NewConversationService {
     return customer;
   }
 
-  async createConversation(
-    data: NewConversationData,
-    userId: string,
-    memberId: number
-  ): Promise<string> {
-    const now = new Date().toISOString();
-
-    // 1. Crear la conversación
+  /**
+   * Crea la conversación SIN mensaje y SIN asignar. El mensaje inicial va
+   * después por el camino único de envío (`enviarMensajeConversacion`) y la
+   * asignación por `PUT /api/chat/conversaciones/[id]/asignacion` (valida
+   * acceso al Chat, avisa a la persona y el trigger guarda el historial).
+   * Antes se insertaba el mensaje directo —también en WhatsApp, por fuera de la
+   * API— con `message_count: 1` que el trigger volvía a sumar.
+   */
+  async createConversation(data: NewConversationData, _userId: string, memberId: number): Promise<string> {
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
       .insert({
@@ -191,10 +192,7 @@ class NewConversationService {
         customer_id: data.customer_id,
         status: 'open',
         priority: data.priority || 'normal',
-        assigned_member_id: data.assigned_member_id || memberId,
-        last_message_at: now,
-        last_agent_message_at: now,
-        message_count: 1,
+        assigned_member_id: null,
         unread_count: 0,
         metadata: data.subject ? { subject: data.subject } : {}
       })
@@ -206,101 +204,25 @@ class NewConversationService {
       throw convError;
     }
 
-    const conversationId = conversation.id;
+    const conversationId = conversation.id as string;
 
-    // 2. Crear el mensaje inicial (outbound desde agente)
-    const { error: msgError } = await supabase
-      .from('messages')
-      .insert({
-        organization_id: this.organizationId,
-        conversation_id: conversationId,
-        channel_id: data.channel_id,
-        direction: 'outbound',
-        role: 'agent',
-        sender_member_id: memberId,
-        content_type: 'text',
-        content: data.initial_message,
-        payload: {},
-        is_read: true,
-        metadata: {}
-      });
-
-    if (msgError) {
-      console.error('Error creando mensaje:', msgError);
-      throw msgError;
-    }
-
-    // 3. Agregar etiquetas si se proporcionaron
     if (data.tag_ids && data.tag_ids.length > 0) {
-      const tagRelations = data.tag_ids.map(tagId => ({
-        organization_id: this.organizationId,
-        conversation_id: conversationId,
-        tag_id: tagId
-      }));
-
-      const { error: tagError } = await supabase
-        .from('conversation_tag_relations')
-        .insert(tagRelations);
-
-      if (tagError) {
-        console.error('Error agregando etiquetas:', tagError);
-      }
+      const { error: tagError } = await supabase.from('conversation_tag_relations').insert(
+        data.tag_ids.map((tagId) => ({ organization_id: this.organizationId, conversation_id: conversationId, tag_id: tagId, created_by: memberId }))
+      );
+      if (tagError) console.error('Error agregando etiquetas:', tagError);
     }
 
-    // 4. Crear asignación si se asignó a alguien diferente
-    if (data.assigned_member_id) {
-      const { error: assignError } = await supabase
-        .from('conversation_assignments')
-        .insert({
-          organization_id: this.organizationId,
-          conversation_id: conversationId,
-          assigned_member_id: data.assigned_member_id,
-          assigned_by_member_id: memberId,
-          reason: 'Asignación al crear conversación'
-        });
-
-      if (assignError) {
-        console.error('Error creando asignación:', assignError);
-      }
-    }
-
-    // 5. Registrar historial de estado inicial
-    const { error: statusError } = await supabase
-      .from('conversation_status_history')
-      .insert({
-        organization_id: this.organizationId,
-        conversation_id: conversationId,
-        from_status: null,
-        to_status: 'open',
-        changed_by_member_id: memberId,
-        reason: 'Conversación creada manualmente'
-      });
-
-    if (statusError) {
-      console.error('Error registrando historial:', statusError);
-    }
-
-    // 6. Registrar en audit log
-    const { error: auditError } = await supabase
-      .from('chat_audit_logs')
-      .insert({
-        organization_id: this.organizationId,
-        entity_type: 'conversation',
-        entity_id: conversationId,
-        action: 'create',
-        actor_member_id: memberId,
-        details: {
-          channel_id: data.channel_id,
-          customer_id: data.customer_id,
-          priority: data.priority || 'normal',
-          assigned_member_id: data.assigned_member_id,
-          tag_count: data.tag_ids?.length || 0
-        }
-      });
-
-    if (auditError) {
-      console.error('Error en audit log:', auditError);
-    }
+    // El trigger de historial solo corre en UPDATE: el estado inicial se registra aquí.
+    const { error: statusError } = await supabase.from('conversation_status_history').insert({
+      organization_id: this.organizationId,
+      conversation_id: conversationId,
+      from_status: null,
+      to_status: 'open',
+      changed_by_member_id: memberId,
+      reason: 'Conversación creada manualmente'
+    });
+    if (statusError) console.error('Error registrando historial:', statusError);
 
     return conversationId;
   }

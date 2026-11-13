@@ -2,8 +2,14 @@ import { supabase } from '@/lib/supabase/config';
 import { codigoDelWidget } from '@/lib/chat/codigoWidget';
 
 export type ChannelType = 'website' | 'whatsapp' | 'facebook' | 'instagram' | 'telegram' | 'email';
-export type ChannelStatus = 'active' | 'inactive' | 'pending';
-export type AIMode = 'off' | 'hybrid' | 'auto';
+/** `channels.status` (CHECK en BD: active · inactive · suspended). */
+export type ChannelStatus = 'active' | 'inactive' | 'suspended';
+/**
+ * `channels.ai_mode` (CHECK en BD: auto · hybrid · manual). Antes se tipaba
+ * con `'off'`, que la BD rechaza: apagar la IA de un canal fallaba siempre.
+ * `ai-auto-response` no responde en los canales `manual`.
+ */
+export type AIMode = 'manual' | 'hybrid' | 'auto';
 
 export interface ChatChannel {
   id: string;
@@ -122,6 +128,8 @@ export interface ChannelCredentials {
   credentials: Record<string, unknown>;
   is_valid: boolean;
   last_validated_at: string | null;
+  /** Solo WhatsApp: cloud_api · coexistence · qr_scan (CHECK en BD). */
+  connection_method?: 'cloud_api' | 'coexistence' | 'qr_scan';
   created_at: string;
   updated_at: string;
 }
@@ -131,6 +139,22 @@ export interface ChannelStats {
   activeChannels: number;
   byType: Record<ChannelType, number>;
   byAIMode: Record<AIMode, number>;
+}
+
+/** Actividad de los canales para la lista de Canales (Figma 91-chat-20). */
+export interface ActividadCanal {
+  /** Conversaciones abiertas o pendientes. */
+  abiertas: number;
+  /** Último mensaje de cualquier conversación del canal. */
+  ultimaActividad: string | null;
+}
+
+export interface ActividadCanales {
+  porCanal: Record<string, ActividadCanal>;
+  /** Conversaciones creadas desde `desde` (inicio del día en la zona de la organización). */
+  conversacionesHoy: number;
+  /** Promedio de `first_response_time_seconds` de esas conversaciones; `null` si ninguna tiene respuesta. */
+  primeraRespuestaSeg: number | null;
 }
 
 export interface CreateChannelData {
@@ -404,6 +428,56 @@ class ChatChannelsService {
     return stats;
   }
 
+  /**
+   * Conversaciones abiertas y última actividad por canal, más las cifras del
+   * día. Cuenta con `head: true` (sin traer filas) salvo las conversaciones de
+   * hoy, que son pocas. `desde` es un instante: el inicio del día en la zona de
+   * la organización (`useFormatDate().toInstant(getToday())`).
+   */
+  async getActividadCanales(canalIds: string[], desde: string): Promise<ActividadCanales> {
+    const porCanal: Record<string, ActividadCanal> = {};
+    await Promise.all(
+      canalIds.map(async (id) => {
+        const [abiertas, ultima] = await Promise.all([
+          supabase
+            .from('conversations')
+            .select('id', { count: 'exact', head: true })
+            .eq('organization_id', this.organizationId)
+            .eq('channel_id', id)
+            .in('status', ['open', 'pending']),
+          supabase
+            .from('conversations')
+            .select('last_message_at')
+            .eq('organization_id', this.organizationId)
+            .eq('channel_id', id)
+            .not('last_message_at', 'is', null)
+            .order('last_message_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        porCanal[id] = {
+          abiertas: abiertas.count ?? 0,
+          ultimaActividad: (ultima.data as { last_message_at: string | null } | null)?.last_message_at ?? null,
+        };
+      })
+    );
+
+    const { data: hoy, error } = await supabase
+      .from('conversations')
+      .select('first_response_time_seconds')
+      .eq('organization_id', this.organizationId)
+      .gte('created_at', desde)
+      .limit(5000);
+    if (error) throw error;
+    const filas = (hoy ?? []) as { first_response_time_seconds: number | null }[];
+    const tiempos = filas.map((f) => f.first_response_time_seconds).filter((x): x is number => typeof x === 'number');
+    return {
+      porCanal,
+      conversacionesHoy: filas.length,
+      primeraRespuestaSeg: tiempos.length ? Math.round(tiempos.reduce((a, b) => a + b, 0) / tiempos.length) : null,
+    };
+  }
+
   /** Código de instalación del widget (ver `src/lib/chat/codigoWidget.ts`). */
   generateWidgetCode(channel: ChatChannel): string {
     return codigoDelWidget(channel.public_key);
@@ -435,7 +509,7 @@ class ChatChannelsService {
 
   getAIModeLabel(mode: AIMode): string {
     const labels: Record<AIMode, string> = {
-      off: 'Desactivado',
+      manual: 'Desactivado',
       hybrid: 'Híbrido',
       auto: 'Automático'
     };

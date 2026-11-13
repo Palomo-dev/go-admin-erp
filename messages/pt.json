@@ -2089,7 +2089,9 @@
       "equipo": {
         "pestanas": "Seções da equipe",
         "miembros": "Membros",
-        "invitaciones": "Convites"
+        "invitaciones": "Convites",
+        "roles": "Funções e permissões",
+        "cargos": "Cargos"
       },
       "miembros": {
         "titulo": "Membros",
@@ -2132,6 +2134,7 @@
           "plural": "membros"
         },
         "acciones": {
+          "quePuedeHacer": "O que pode fazer?",
           "cambiarRol": "Mudar função…",
           "editarCargo": "Editar cargo…",
           "asignarSedes": "Atribuir unidades…",
@@ -38554,6 +38557,11 @@
         "titulo": "Dados offline",
         "descripcion": "Cópia local para trabalhar sem internet no Go Admin Desktop",
         "palabras": "offline, desktop, cópia local, sem conexão"
+      },
+      "generalPlan": {
+        "titulo": "Plano e cobrança",
+        "descripcion": "Seu plano, o que inclui e como é cobrado",
+        "palabras": "plano, assinatura, cobrança, pagamento, módulos, upgrade"
       }
     },
     "ajustes": {
@@ -49665,6 +49673,1357 @@
       "medio_distinto_del_pactado": "Esse não é o meio que o contrato fixa para a liquidação por escrito.",
       "fecha_anterior_a_la_liquidacion": "A entrega não pode ser anterior à liquidação.",
       "error_desconocido": "Não foi possível concluir a operação."
+    }
+  },
+  "chatUi": {
+    "canales": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "web": "Site",
+      "telegram": "Telegram",
+      "correo": "E-mail"
+    },
+    "burbuja": {
+      "ia": "Resposta da IA",
+      "iaCon": "Resposta da IA · {detalle}",
+      "nota": "Nota interna · só sua equipe vê",
+      "notaCon": "Nota interna · {detalle}",
+      "enviado": "Enviado",
+      "leido": "Lido",
+      "imagen": "Imagem",
+      "archivo": "Arquivo",
+      "descargar": "Baixar",
+      "reproducir": "Reproduzir áudio",
+      "pausar": "Pausar áudio"
+    },
+    "fila": {
+      "sinAsignar": "Sem atribuição",
+      "iaAutomatico": "IA · automático",
+      "noLeidos": "{n, plural, one {# mensagem não lida} other {# mensagens não lidas}}",
+      "prefijoIa": "IA: {texto}"
+    },
+    "prioridad": {
+      "low": "Baixa",
+      "normal": "Normal",
+      "high": "Alta",
+      "urgent": "Urgente"
+    },
+    "estado": {
+      "open": "Aberta",
+      "pending": "Pendente",
+      "closed": "Fechada",
+      "archived": "Arquivada"
+    },
+    "composer": {
+      "modo": "Tipo de mensagem",
+      "responder": "Responder",
+      "nota": "Nota interna",
+      "sugerir": "Sugerir resposta com IA",
+      "sugerirCorto": "Sugerir com IA",
+      "sugiriendo": "Pensando…",
+      "placeholder": "Escreva uma mensagem…   / para respostas rápidas",
+      "placeholderCorto": "Escreva uma mensagem…",
+      "placeholderNota": "Escreva uma nota para sua equipe…",
+      "enviar": "Enviar",
+      "guardarNota": "Salvar nota",
+      "adjuntar": "Anexar arquivo",
+      "emojis": "Emojis",
+      "respuestasRapidas": "Respostas rápidas",
+      "sinRespuestasRapidas": "Nenhuma resposta rápida com esse nome.",
+      "grabar": "Gravar áudio",
+      "grabando": "Gravando… {tiempo}",
+      "cancelarAudio": "Descartar áudio",
+      "enviarAudio": "Parar e enviar áudio",
+      "cerrada": "Esta conversa está fechada. Reabra-a para voltar a escrever.",
+      "reabrir": "Reabrir conversa",
+      "ventanaVencida": "Passaram mais de 24 h desde a última mensagem do cliente. O WhatsApp só permite enviar um modelo aprovado.",
+      "elegirPlantilla": "Escolher modelo",
+      "sinConsentimiento": "Este cliente pediu para não receber mensagens de WhatsApp. Você pode deixar notas internas.",
+      "errores": {
+        "titulo": "Não foi possível enviar",
+        "ventanaCerrada": "A janela de 24 h do WhatsApp venceu: envie um modelo aprovado.",
+        "sinConsentimiento": "O cliente pediu para não receber WhatsApp.",
+        "sinCreditos": "Não há créditos para enviar pelo WhatsApp.",
+        "demasiados": "Muitos envios seguidos. Aguarde um momento.",
+        "sinPlantilla": "O modelo não está aprovado ou faltam dados.",
+        "generico": "Verifique a conexão e tente de novo."
+      }
+    }
+  },
+  "chatBandeja": {
+    "notificacion": {
+      "titulo": "{persona} atribuiu uma conversa a você",
+      "contenido": "{persona} atribuiu a você a conversa com {cliente}."
+    },
+    "avisos": {
+      "errorCargar": "Não foi possível carregar a conversa",
+      "errorLista": "Não foi possível carregar os chats",
+      "cerrada": "Conversa fechada",
+      "pendiente": "Conversa pendente",
+      "reabierta": "Conversa reaberta",
+      "errorEstado": "Não foi possível mudar o estado",
+      "prioridad": "Prioridade atualizada",
+      "errorPrioridad": "Não foi possível mudar a prioridade",
+      "asignada": "Conversa atribuída",
+      "asignacionQuitada": "Atribuição removida",
+      "errorAsignar": "Não foi possível atribuir",
+      "errorEtiqueta": "Não foi possível mudar a etiqueta",
+      "errorNota": "Não foi possível salvar a nota",
+      "notaEliminada": "Nota excluída",
+      "errorIA": "A IA não conseguiu responder"
+    },
+    "asignacion": {
+      "titulo": "Pessoas com acesso ao Chat",
+      "tu": "{nombre} (você)",
+      "otraPersona": "Pessoa sem acesso ao Chat",
+      "sinAsignar": "Sem atribuição",
+      "cambiar": "Atribuída a: {nombre}. Alterar",
+      "buscar": "Buscar pessoa…",
+      "sinResultados": "Ninguém com esse nome.",
+      "cargoAbiertas": "{cargo} · {n, plural, one {# aberta} other {# abertas}}",
+      "abiertas": "{n, plural, one {# aberta} other {# abertas}}",
+      "quitar": "Remover atribuição"
+    },
+    "etiquetas": {
+      "agregar": "Adicionar",
+      "quitar": "Remover etiqueta {nombre}",
+      "sinEtiquetas": "Ainda não há etiquetas no Chat.",
+      "todasPuestas": "Já tem todas as etiquetas."
+    },
+    "cliente": {
+      "cliente": "Cliente",
+      "desde": "Cliente desde {fecha}",
+      "etiqueta": "Etiqueta",
+      "contacto": "Contato",
+      "telefono": "Telefone",
+      "correo": "E-mail",
+      "documento": "Documento",
+      "direccion": "Endereço",
+      "actividad": "Atividade",
+      "conversaciones": "Conversas",
+      "conversacionesValor": "{total} ({mes} este mês)",
+      "compras": "Compras",
+      "comprasValor": "{n} · {total}",
+      "sinCompras": "Sem compras",
+      "ultimaCompra": "Última compra",
+      "oportunidad": "Oportunidade",
+      "verFicha": "Ver ficha do cliente"
+    },
+    "acciones": {
+      "estadoYPrioridad": "Estado e prioridade",
+      "estado": "Estado",
+      "prioridad": "Prioridade",
+      "asignadoA": "Atribuída a",
+      "ayudaAsignar": "A pessoa é avisada por notificação. Só aparecem quem tem acesso ao Chat.",
+      "etiquetas": "Etiquetas",
+      "resolver": "Marcar como resolvida",
+      "pendiente": "Deixar pendente",
+      "reabrir": "Reabrir conversa",
+      "abrirFicha": "Abrir ficha do cliente"
+    },
+    "notas": {
+      "titulo": "Notas internas",
+      "nueva": "Nota",
+      "ayuda": "Só sua equipe as vê; o cliente nunca as recebe.",
+      "placeholder": "Escreva uma nota para sua equipe…",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar nota",
+      "vacioTitulo": "Sem notas",
+      "vacioDescripcion": "Deixe aqui o que sua equipe deve saber desta conversa.",
+      "alguien": "Alguém da equipe",
+      "fijada": "Fixada",
+      "opciones": "Opções da nota",
+      "fijar": "Fixar no topo",
+      "desfijar": "Desafixar",
+      "eliminar": "Excluir",
+      "eliminarTitulo": "Excluir esta nota?",
+      "eliminarDescripcion": "A nota é apagada para toda a equipe. Não dá para desfazer."
+    },
+    "ia": {
+      "titulo": "Assistente IA",
+      "modo": {
+        "auto": "Modo automático",
+        "hybrid": "Modo híbrido",
+        "manual": "Modo manual"
+      },
+      "ayuda": {
+        "auto": "A IA responde sozinha neste canal. Mude o modo em Canais.",
+        "hybrid": "A IA propõe e uma pessoa envia. Mude o modo em Canais.",
+        "manual": "A IA só ajuda quando você pede. Mude o modo em Canais."
+      },
+      "resumen": "Resumo da conversa",
+      "sinResumen": "Ainda não há resumo.",
+      "generarResumen": "Gerar resumo",
+      "actualizarResumen": "Atualizar resumo",
+      "sugerida": "Resposta sugerida",
+      "usar": "Usar",
+      "editar": "Editar",
+      "copiar": "Copiar",
+      "copiada": "Resposta copiada",
+      "enviada": "Resposta enviada",
+      "generar": "Sugerir uma resposta",
+      "otra": "Gerar outra resposta",
+      "creditos": "Cada resposta ou resumo gerado desconta créditos de IA."
+    },
+    "panel": {
+      "etiqueta": "Detalhes da conversa",
+      "cliente": "Cliente",
+      "acciones": "Ações",
+      "notas": "Notas",
+      "ia": "IA"
+    },
+    "hilo": {
+      "etiqueta": "Conversa",
+      "cliente": "Cliente",
+      "vistaCompleta": "Abrir visão completa",
+      "cargandoAnteriores": "Carregando mensagens anteriores…",
+      "vacio": "Ainda não há mensagens nesta conversa.",
+      "iniciadaDesde": "Conversa iniciada por {canal} · {hora}",
+      "iniciada": "Conversa iniciada · {hora}",
+      "revisoIa": "revisada por {nombre}",
+      "irAlFinal": "Ir para a última mensagem",
+      "hoy": "Hoje · {fecha}",
+      "ayer": "Ontem · {fecha}"
+    },
+    "mas": {
+      "titulo": "Mais ações",
+      "vistaCompleta": "Abrir visão completa",
+      "fichaCliente": "Ver ficha do cliente",
+      "buscar": "Buscar na conversa",
+      "actividad": "Ver atividade",
+      "archivos": "Ver arquivos",
+      "pendiente": "Deixar pendente",
+      "cerrar": "Fechar conversa",
+      "reabrir": "Reabrir conversa"
+    },
+    "detalles": {
+      "boton": "Detalhes",
+      "titulo": "Detalhes da conversa"
+    },
+    "lista": {
+      "titulo": "Chats",
+      "abiertas": "{n, plural, one {# aberta} other {# abertas}}",
+      "ocultar": "Ocultar lista",
+      "mostrar": "Mostrar lista",
+      "buscar": "Buscar por nome, telefone ou mensagem",
+      "buscarCorto": "Buscar conversas",
+      "cargando": "Carregando chats",
+      "cargandoMas": "Carregando mais…",
+      "deTotal": "{n} de {total} conversas",
+      "ayer": "Ontem",
+      "sinMensajes": "Sem mensagens",
+      "adjunto": "Anexo"
+    },
+    "filtros": {
+      "titulo": "Filtros",
+      "prioridad": "Prioridade",
+      "canal": "Canal",
+      "etiqueta": "Etiqueta",
+      "todas": "Todas",
+      "todos": "Todos",
+      "limpiar": "Limpar filtros"
+    },
+    "vistas": {
+      "etiqueta": "Visões rápidas",
+      "abiertas": "Abertas",
+      "mias": "Minhas",
+      "sinAsignar": "Sem atribuição",
+      "pendientes": "Pendentes",
+      "cerradas": "Fechadas"
+    },
+    "vacio": {
+      "sinCanalesTitulo": "Você ainda não tem canais conectados",
+      "sinCanalesDescripcion": "Conecte WhatsApp, Instagram, Facebook ou o chat do seu site para começar a receber mensagens.",
+      "conectar": "Conectar um canal",
+      "sinResultadosTitulo": "Nenhum chat encontrado",
+      "sinResultadosDescripcion": "Tente outro nome ou telefone, ou limpe os filtros.",
+      "vista": {
+        "abiertas": "Não há conversas abertas.",
+        "mias": "Você não tem conversas abertas atribuídas.",
+        "sinAsignar": "Todas as conversas abertas têm alguém.",
+        "pendientes": "Não há conversas pendentes.",
+        "cerradas": "Não há conversas fechadas."
+      },
+      "listaTitulo": "Sua caixa está pronta",
+      "listaDescripcion": "Quando você conectar um canal, verá aqui as conversas dos seus clientes.",
+      "elegirTitulo": "Escolha uma conversa",
+      "elegirDescripcion": "Selecione um chat da lista para ler e responder. Os novos chegam aqui em tempo real."
+    },
+    "movil": {
+      "titulo": "Chat",
+      "bandeja": "Caixa de entrada",
+      "subtitulo": "Caixa · {n, plural, one {# aberta} other {# abertas}}",
+      "nueva": "Nova"
+    },
+    "vista": {
+      "titulo": "Conversa",
+      "cliente": "Cliente",
+      "volver": "Voltar para a caixa",
+      "migas": "Caminho",
+      "migaChat": "Chat",
+      "migaBandeja": "Caixa de entrada",
+      "prioridad": {
+        "low": "Prioridade baixa",
+        "normal": "Prioridade normal",
+        "high": "Prioridade alta",
+        "urgent": "Prioridade urgente"
+      },
+      "secciones": "Seções da conversa",
+      "pestanas": {
+        "conversacion": "Conversa",
+        "actividad": "Atividade",
+        "archivos": "Arquivos"
+      }
+    },
+    "actividad": {
+      "resumen": "Resumo da atividade",
+      "total": "Total",
+      "estados": "Mudanças de estado",
+      "asignaciones": "Atribuições",
+      "etiquetas": "Etiquetas",
+      "ia": "Respostas da IA",
+      "exportar": "Exportar CSV"
+    },
+    "archivos": {
+      "resumen": "Resumo dos arquivos",
+      "total": "Arquivos",
+      "tamano": "Tamanho total"
+    },
+    "nueva": {
+      "titulo": "Nova conversa",
+      "subtitulo": "Escreva primeiro para um cliente por um canal conectado.",
+      "migas": "Chat › Caixa de entrada",
+      "volver": "Voltar para a caixa",
+      "paso1": "1. Canal e cliente",
+      "paso1Ayuda": "Só aparecem os canais ativos da sua organização.",
+      "canal": "Canal",
+      "elegirCanal": "Escolha um canal",
+      "cliente": "Cliente",
+      "clienteAyuda": "Não existe? Crie rápido pela busca.",
+      "paso2": "2. Mensagem inicial",
+      "paso2Ayuda": "É assim que a conversa com o cliente começa.",
+      "paso2WhatsApp": "O WhatsApp só permite iniciar uma conversa com um modelo aprovado pela Meta.",
+      "elegirClientePrimero": "Escolha primeiro o cliente para ver os modelos e a prévia.",
+      "sinPlantillas": "Este canal não tem modelos aprovados. Crie-os em CRM › Modelos.",
+      "sinConsentimiento": "Este cliente pediu para não receber mensagens de WhatsApp.",
+      "asiLoRecibira": "Assim o cliente vai receber",
+      "mensaje": "Mensagem",
+      "mensajePlaceholder": "Escreva a primeira mensagem…",
+      "paso3": "3. Organização (opcional)",
+      "prioridad": "Prioridade",
+      "asignarA": "Atribuir a",
+      "etiquetas": "Etiquetas",
+      "agregarEtiqueta": "Adicionar etiqueta",
+      "cancelar": "Cancelar",
+      "crear": "Criar e enviar",
+      "creando": "Enviando…",
+      "antesTitulo": "Antes de escrever",
+      "antes1": "Se o cliente escreveu nas últimas 24 h, você pode responder livremente pela Caixa.",
+      "antes2": "Depois de 24 h, o WhatsApp exige um modelo aprovado. Gerencie em CRM › Modelos.",
+      "antes3": "Instagram e Facebook só permitem responder a quem já escreveu.",
+      "antes4": "A mensagem fica na linha do tempo do cliente no CRM.",
+      "sinCanalesTitulo": "Não há canais ativos",
+      "sinCanalesDescripcion": "Conecte um canal para escrever aos seus clientes.",
+      "conectar": "Conectar um canal",
+      "avisos": {
+        "creada": "Conversa criada",
+        "error": "Não foi possível criar a conversa",
+        "sinPermiso": "Você não pertence a esta organização",
+        "clienteCreado": "Cliente {nombre} criado",
+        "organizarParcial": "A conversa foi criada, mas nem tudo pôde ser aplicado."
+      }
+    }
+  },
+  "chatModulo": {
+    "pestanas": {
+      "etiqueta": "Seções do chat",
+      "nuevaConversacion": "Nova conversa"
+    },
+    "configuracion": {
+      "etiqueta": "Configurações do chat",
+      "general": "Geral",
+      "ia": "IA do chat"
+    },
+    "ia": {
+      "pestanas": {
+        "etiqueta": "Seções de IA",
+        "laboratorio": "Laboratório",
+        "trabajos": "Tarefas",
+        "configuracion": "Configuração"
+      },
+      "titulo": "IA do chat",
+      "beta": "Beta",
+      "laboratorio": {
+        "subtitulo": "Teste como a IA responderia antes de deixá-la atender clientes.",
+        "pregunta": "Pergunta de teste",
+        "preguntaPlaceholder": "Escreva como um cliente faria…",
+        "ejemplos": "Exemplos:",
+        "ejemplo": {
+          "estadoPedido": "Como está meu pedido?",
+          "horarios": "Que horas vocês abrem?",
+          "mediosPago": "Como posso pagar?"
+        },
+        "probar": "Testar",
+        "probando": "Testando…",
+        "respuesta": "Resposta da IA",
+        "sinRespuestaTitulo": "Ainda não há resposta",
+        "sinRespuestaDescripcion": "Escreva uma pergunta e toque em Testar para ver quais fragmentos a IA encontra.",
+        "metricas": {
+          "confianza": "Confiança",
+          "tiempo": "Tempo",
+          "tokens": "Tokens",
+          "fragmentos": "Fragmentos"
+        },
+        "simulada": "Resposta de teste montada com seus fragmentos: não chama o modelo nem gasta créditos.",
+        "convertir": "Transformar em fragmento",
+        "ajustes": "Ajustes do teste",
+        "ajustesDescripcion": "Não alteram a configuração real.",
+        "canal": "Canal",
+        "canalWeb": "Chat do site",
+        "creatividad": "Criatividade",
+        "creatividades": {
+          "c0": "precisa",
+          "c1": "equilibrada",
+          "c2": "criativa"
+        },
+        "largo": "Tamanho máximo",
+        "largos": {
+          "l0": "Curto (≈ 150 palavras)",
+          "l1": "Médio (≈ 350 palavras)",
+          "l2": "Longo (≈ 700 palavras)"
+        },
+        "fragmentosUso": "Fragmentos usados",
+        "sinFragmentos": "Não há fragmentos ativos. Adicione-os em Conhecimento.",
+        "toasts": {
+          "errorCarga": "Não foi possível carregar os dados do laboratório",
+          "errorPrueba": "Não foi possível concluir o teste",
+          "sinMiembro": "Não encontramos sua participação nesta organização",
+          "fragmentoCreado": "Fragmento criado em Conhecimento",
+          "errorFragmento": "Não foi possível criar o fragmento"
+        }
+      },
+      "trabajos": {
+        "subtitulo": "Cada vez que a IA responde, resume ou classifica, fica um registro aqui.",
+        "sinCliente": "Visitante não identificado",
+        "vacioTitulo": "Ainda não há tarefas de IA",
+        "vacioDescripcion": "Aparecem quando a IA responde, resume ou classifica conversas.",
+        "kpis": {
+          "etiqueta": "Resumo das tarefas",
+          "total": "Total",
+          "enCola": "Na fila",
+          "procesando": "Processando",
+          "completados": "Concluídas",
+          "fallidos": "Com falha"
+        },
+        "filtros": {
+          "estado": "Status",
+          "estadoTodos": "Status: todos",
+          "tipo": "Tipo",
+          "tipoTodos": "Tipo: todos",
+          "fecha": "Data",
+          "rangos": {
+            "hoy": "Hoje",
+            "7d": "Últimos 7 dias",
+            "30d": "Últimos 30 dias",
+            "todo": "Tudo"
+          }
+        },
+        "tabla": {
+          "etiqueta": "Tarefas da IA",
+          "tipo": "Tipo",
+          "conversacion": "Conversa",
+          "estado": "Status",
+          "tokens": "Tokens",
+          "cuando": "Quando"
+        },
+        "tipos": {
+          "auto_response": "Resposta automática",
+          "respond": "Resposta sugerida",
+          "summarize": "Resumo",
+          "classify": "Classificação",
+          "translate": "Tradução",
+          "extract_intent": "Intenção do cliente",
+          "transcribe": "Transcrição de áudio"
+        },
+        "estados": {
+          "pending": "Na fila",
+          "processing": "Processando",
+          "completed": "Concluída",
+          "failed": "Com falha",
+          "cancelled": "Cancelada",
+          "skipped": "Ignorada",
+          "draft": "Rascunho"
+        },
+        "detalle": {
+          "quePaso": "O que aconteceu",
+          "informacion": "Informações",
+          "modelo": "Modelo",
+          "modeloConfig": "conforme a Configuração de IA",
+          "canal": "Canal",
+          "tokens": "Tokens",
+          "confianza": "Confiança",
+          "fragmentos": "Fragmentos usados",
+          "creditos": "Créditos cobrados",
+          "respuesta": "Resposta",
+          "bitacora": "Registro",
+          "reintentar": "Tentar de novo",
+          "cancelar": "Cancelar tarefa",
+          "abrirConversacion": "Abrir conversa"
+        },
+        "toasts": {
+          "sinMiembro": "Não encontramos sua participação nesta organização",
+          "reintentado": "Uma nova tarefa foi criada para tentar de novo",
+          "cancelado": "Tarefa cancelada",
+          "error": "Não foi possível concluir a ação"
+        }
+      }
+    },
+    "canales": {
+      "titulo": "Canais",
+      "subtitulo": "Conecte os meios pelos quais seus clientes escrevem e escolha quanto a IA ajuda em cada um.",
+      "nuevoCanal": "Novo canal",
+      "migas": {
+        "chat": "Chat",
+        "canales": "Canais"
+      },
+      "tipos": {
+        "whatsapp": "WhatsApp",
+        "instagram": "Instagram",
+        "facebook": "Messenger",
+        "website": "Site",
+        "telegram": "Telegram",
+        "email": "E-mail"
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos canais",
+        "conectados": "Canais conectados",
+        "conectadosDetalle": "de {total} canais",
+        "hoy": "Conversas hoje",
+        "abiertas": "Abertas",
+        "abiertasDetalle": "abertas ou pendentes",
+        "primeraRespuesta": "Tempo da primeira resposta",
+        "primeraRespuestaDetalle": "média de hoje",
+        "sinDato": "—"
+      },
+      "misCanales": "Meus canais",
+      "tabla": {
+        "etiqueta": "Canais da organização",
+        "canal": "Canal",
+        "estado": "Status",
+        "modoIa": "Modo de IA",
+        "abiertas": "Abertas",
+        "ultimaActividad": "Última atividade",
+        "activo": "Ativo",
+        "sinActividad": "Sem mensagens",
+        "activar": "Ativar {nombre}",
+        "modoDe": "Modo de IA de {nombre}",
+        "vacioTitulo": "Você ainda não tem canais",
+        "vacioDescripcion": "Conecte WhatsApp, Instagram, Messenger ou o chat do seu site para atender pela Caixa de entrada.",
+        "errorTitulo": "Não foi possível carregar os canais"
+      },
+      "detalle": {
+        "dominios": "{valor} · {n, plural, one {# domínio} other {# domínios}}",
+        "sinDominios": "Sem domínios permitidos",
+        "cuentaVinculada": "Conta comercial vinculada",
+        "sinCredenciales": "Ainda não conectado"
+      },
+      "estados": {
+        "conectado": "Conectado",
+        "tokenVencido": "Token expirado",
+        "sinConectar": "Não conectado",
+        "suspendido": "Suspenso",
+        "inactivo": "Inativo"
+      },
+      "modos": {
+        "manual": "Desativado",
+        "hybrid": "Híbrido (recomendado)",
+        "auto": "Automático"
+      },
+      "modosCorto": {
+        "manual": "Desativada",
+        "hybrid": "Híbrida · a IA sugere",
+        "auto": "Automática"
+      },
+      "modosTitulo": {
+        "manual": "Desativada",
+        "hybrid": "Híbrida",
+        "auto": "Automática"
+      },
+      "modosDescripcion": {
+        "manual": "Só pessoas respondem.",
+        "hybrid": "A IA sugere; uma pessoa revisa e envia.",
+        "auto": "A IA responde sozinha e passa para uma pessoa se não tiver certeza."
+      },
+      "acciones": {
+        "configurar": "Configurar"
+      },
+      "aviso": {
+        "tokenVencido": "{nombre} parou de receber mensagens: a permissão da conta expirou. Reconecte-a para não perder conversas.",
+        "suspendido": "{nombre} está suspenso e não recebe mensagens. Verifique a conexão.",
+        "reconectar": "Reconectar"
+      },
+      "conectar": {
+        "titulo": "Conectar outro canal",
+        "disponible": "Disponível",
+        "proximamente": "Em breve",
+        "conectar": "Conectar",
+        "nombres": {
+          "whatsapp": "WhatsApp",
+          "whatsappOtro": "Outro número de WhatsApp",
+          "instagram": "Instagram",
+          "instagramOtro": "Outra conta do Instagram",
+          "facebook": "Facebook Messenger",
+          "facebookOtro": "Outra página do Facebook",
+          "website": "Chat do site",
+          "websiteOtro": "Outro chat de site",
+          "telegram": "Telegram",
+          "email": "E-mail"
+        },
+        "descripciones": {
+          "whatsapp": "Atenda seus clientes pelo WhatsApp na Caixa de entrada.",
+          "whatsappOtro": "Separe vendas e suporte com números diferentes.",
+          "instagram": "Responda às mensagens diretas da sua conta comercial.",
+          "instagramOtro": "Responda às mensagens diretas de outra conta comercial.",
+          "facebook": "Receba as mensagens da sua página do Facebook.",
+          "facebookOtro": "Conecte as mensagens de outra página.",
+          "website": "Um chat no seu site que chega à mesma Caixa de entrada.",
+          "websiteOtro": "Um chat para outro site ou marca.",
+          "telegram": "Em breve você poderá atender o Telegram pela Caixa de entrada.",
+          "email": "Receba os e-mails de suporte na mesma Caixa de entrada."
+        }
+      },
+      "nuevo": {
+        "titulo": "Novo canal",
+        "descripcion": "Escolha por onde seus clientes vão escrever para você.",
+        "tipo": "Tipo de canal",
+        "nombre": "Nome do canal",
+        "nombreAyuda": "É assim que sua equipe o verá na Caixa de entrada.",
+        "nombreObligatorio": "Digite um nome para o canal.",
+        "nombrePorDefecto": {
+          "whatsapp": "WhatsApp · Vendas",
+          "instagram": "Instagram",
+          "facebook": "Facebook Messenger",
+          "website": "Chat do site"
+        },
+        "comoConecta": "Como se conecta?",
+        "formas": {
+          "cloud_api": "Cloud API da Meta",
+          "cloud_apiDescripcion": "Conexão oficial em 1 clique com sua conta do Meta Business.",
+          "coexistence": "Coexistência",
+          "coexistenceDescripcion": "Continue usando o app WhatsApp Business no celular e atenda também pelo GO.",
+          "qr_scan": "Código QR",
+          "qr_scanDescripcion": "Vincule um WhatsApp comum escaneando um código. A Meta pode bloquear o número."
+        },
+        "recomendado": "Recomendado",
+        "riesgo": "Risco de bloqueio",
+        "ayudaIa": "Ajuda da IA",
+        "continuarMeta": "Continuar com a Meta",
+        "continuar": "Continuar",
+        "crear": "Criar canal",
+        "creado": "Canal criado",
+        "errorCrear": "Não foi possível criar o canal"
+      },
+      "toasts": {
+        "activado": "“{nombre}” está ativo",
+        "desactivado": "“{nombre}” está inativo",
+        "modoIa": "Ajuda da IA em “{nombre}”: {modo}",
+        "error": "Não foi possível salvar a alteração"
+      },
+      "detalleCanal": {
+        "actualizar": "Atualizar",
+        "activar": "Ativar canal",
+        "desactivar": "Desativar canal",
+        "verCanales": "Ver meus canais",
+        "noEncontrado": {
+          "titulo": "Canal indisponível",
+          "descripcion": "Este canal não existe, foi excluído ou não pertence à organização ativa."
+        },
+        "error": {
+          "titulo": "Não foi possível carregar o canal",
+          "descripcion": "Verifique sua conexão e tente novamente."
+        },
+        "kpis": {
+          "etiqueta": "Números do canal",
+          "mensajes": "Mensagens",
+          "enviadosHoy": "Enviadas hoje",
+          "fallidos": "Com falha",
+          "fallidosDetalle": "{pct}% · ver eventos",
+          "entrega": "Taxa de entrega"
+        },
+        "ayudaIa": {
+          "titulo": "Ajuda da IA",
+          "descripcion": "O que a IA faz quando chega uma mensagem por este canal.",
+          "ajustar": "Ajustar modelo e tom"
+        },
+        "eventos": {
+          "titulo": "Eventos recentes",
+          "vacio": "Ainda não há eventos de mensagens.",
+          "tipos": {
+            "sent": "Enviado",
+            "delivered": "Entregue",
+            "read": "Lido",
+            "failed": "Com falha"
+          }
+        },
+        "webhook": {
+          "titulo": "Webhook",
+          "descripcion": "A Meta envia aqui as mensagens novas. Já fica configurado se você se conectou em 1 clique.",
+          "url": "URL do webhook",
+          "token": "Token de verificação",
+          "sinToken": "Ainda não há token de verificação salvo.",
+          "campos": "Campos para assinar:",
+          "copiarUrl": "Copiar URL",
+          "copiada": "Copiada",
+          "verToken": "Ver token",
+          "ocultarToken": "Ocultar token",
+          "abrirMeta": "Abrir Meta Business"
+        },
+        "credenciales": {
+          "titulo": "Conexão",
+          "descripcion": "Dados da conta da Meta vinculada a este canal.",
+          "verificado": "Conectado com a Meta. As credenciais são válidas.",
+          "verificadoEl": "Conectado com a Meta; verificado em {fecha}.",
+          "invalido": "As credenciais expiraram ou não são válidas. Reconecte a conta.",
+          "sinCredenciales": "Ainda não há credenciais salvas para este canal.",
+          "guardar": "Salvar",
+          "verificar": "Verificar conexão",
+          "ver": "Ver credenciais",
+          "ocultar": "Ocultar credenciais",
+          "campos": {
+            "instagramBusinessId": "ID da conta do Instagram Business",
+            "paginaVinculada": "ID da página do Facebook vinculada",
+            "paginaId": "ID da página",
+            "appId": "App ID",
+            "appSecret": "App Secret",
+            "accessToken": "Token de acesso",
+            "pageAccessToken": "Token de acesso da página",
+            "tokenAyuda": "O GO Admin o guarda. Use “Ver credenciais” para mostrá-lo.",
+            "verifyToken": "Token de verificação do webhook"
+          }
+        },
+        "toasts": {
+          "credencialesGuardadas": "Credenciais salvas",
+          "errorCredenciales": "Não foi possível salvar as credenciais",
+          "conexionValida": "Conexão válida",
+          "conexionInvalida": "A conexão não é válida",
+          "errorValidar": "Não foi possível verificar a conexão",
+          "activado": "Canal ativado",
+          "desactivado": "Canal desativado",
+          "errorEstado": "Não foi possível alterar o status do canal",
+          "modoGuardado": "Ajuda da IA atualizada",
+          "errorModo": "Não foi possível alterar a ajuda da IA"
+        },
+        "whatsapp": {
+          "webhookNota": "O webhook é um só para todos os números: a Meta identifica cada canal pelo Phone Number ID.",
+          "conexion": {
+            "titulo": "Conexão",
+            "descripcion": "Como este número está vinculado."
+          },
+          "pestanas": {
+            "cloud_api": "Cloud API (recomendado)",
+            "coexistence": "Coexistência",
+            "qr_scan": "Código QR"
+          },
+          "cloud": {
+            "verificado": "Conectado com a Meta. O número está verificado.",
+            "verificadoEl": "Conectado com a Meta; verificado em {fecha}.",
+            "invalido": "O token de acesso expirou ou não é válido. Reconecte com a Meta.",
+            "conectadoAhora": "O WhatsApp foi conectado. As credenciais e o webhook foram configurados automaticamente.",
+            "unClic": "Conexão em 1 clique com a Meta",
+            "unClicDescripcion": "Entre com sua conta do Meta Business e escolha o número. As credenciais e o webhook são configurados automaticamente.",
+            "conectarMeta": "Conectar com a Meta",
+            "conectando": "Conectando…",
+            "manual": "Inserir as credenciais manualmente",
+            "phoneNumberId": "Phone Number ID",
+            "waba": "Conta do WhatsApp Business (WABA)",
+            "token": "Token de acesso",
+            "tokenAyuda": "O GO Admin o guarda. Use “Ver token” para mostrá-lo.",
+            "tokenPlaceholder": "Token de acesso permanente",
+            "verifyToken": "Token de verificação do webhook",
+            "verifyTokenAyuda": "A Meta o usa para confirmar que o webhook é seu.",
+            "guardar": "Salvar",
+            "verificar": "Verificar conexão",
+            "reconectar": "Reconectar com a Meta",
+            "verToken": "Ver token",
+            "ocultarToken": "Ocultar token",
+            "errores": {
+              "sinOrganizacion": "Não foi possível identificar a organização ativa.",
+              "requiereHttps": "A conexão em 1 clique só funciona com HTTPS. Aqui, insira as credenciais manualmente.",
+              "cancelado": "A autorização na Meta foi cancelada.",
+              "sdk": "Não foi possível carregar o conector da Meta. Verifique a conexão.",
+              "callback": "A Meta respondeu com um erro ao conectar."
+            }
+          },
+          "coexistencia": {
+            "aviso": "Coexistência é o modo oficial da Meta: você continua usando o app WhatsApp Business no celular e sua equipe também responde pelo GO, no mesmo número e sem risco de bloqueio.",
+            "requisitosTitulo": "Requisitos",
+            "requisito1": "Portfólio do Meta Business com a verificação da empresa aprovada.",
+            "requisito2": "Conta do WhatsApp Business (WABA) com o número registrado.",
+            "requisito3": "No início, até 2 números; amplia para 20 após a verificação.",
+            "pasosTitulo": "Passos para ativar",
+            "paso1": "Conclua a verificação da empresa no Meta Business.",
+            "paso2": "Acesse WhatsApp Manager › Números de telefone.",
+            "paso3": "Escolha o número › Configurações › Coexistência › Ativar.",
+            "paso4": "Vincule o número no app WhatsApp Business do celular.",
+            "paso5": "Aqui, conecte o número na aba Cloud API.",
+            "abrirManager": "Abrir WhatsApp Manager"
+          },
+          "qr": {
+            "riesgoTitulo": "A Meta pode bloquear este número",
+            "riesgoDescripcion": "A conexão por código QR não é oficial. Use apenas para testes ou com um número que você possa perder. Para vender, use Cloud API ou Coexistência.",
+            "entiendo": "Entendo o risco e quero continuar",
+            "escanea": "Escaneie pelo celular",
+            "paso1": "Abra o WhatsApp no celular do número.",
+            "paso2": "Toque em ⋮ › Aparelhos conectados › Conectar um aparelho.",
+            "paso3": "Aponte a câmera para este código. Ele expira em alguns segundos.",
+            "qrAlt": "Código QR para vincular o WhatsApp",
+            "generar": "Gerar código",
+            "otroCodigo": "Gerar outro código",
+            "detener": "Parar",
+            "borrar": "Excluir sessão",
+            "borrarTitulo": "Excluir a sessão do WhatsApp?",
+            "borrarDescripcion": "As credenciais desta conexão serão excluídas e será preciso escanear um novo código para reconectar. Não é possível desfazer.",
+            "error": "Não foi possível concluir a ação",
+            "estados": {
+              "disconnected": "Desconectado",
+              "connecting": "Conectando…",
+              "qr_ready": "Aguardando leitura…",
+              "connected": "Conectado",
+              "reconnecting": "Reconectando…",
+              "banned": "Número bloqueado pela Meta",
+              "error": "Erro"
+            }
+          }
+        }
+      },
+      "widget": {
+        "visible": "Visível no site",
+        "oculto": "Oculto no site",
+        "mostrarEnSitio": "Mostrar no site",
+        "activaPrimero": "O canal está inativo: ative-o em Canais para mostrá-lo no site.",
+        "guardado": "Salvo",
+        "kpis": {
+          "etiqueta": "Números do chat do site",
+          "sesiones": "Sessões",
+          "enLinea": "On-line agora",
+          "visitantes": "Visitantes únicos",
+          "celular": "Pelo celular"
+        },
+        "instalacion": {
+          "titulo": "Instalação",
+          "descripcion": "Se o seu site é do GO Admin, já está instalado. Em outros sites, cole este código logo antes de fechar o body.",
+          "copiar": "Copiar código",
+          "copiado": "Código copiado",
+          "rotarClave": "Gerar nova chave",
+          "rotarClaveDescripcion": "O código anterior deixa de funcionar",
+          "dominios": "Domínios permitidos:",
+          "sinDominios": "nenhum ainda",
+          "dominiosAyuda": "O chat só abre nesses domínios. Sem domínios, abre em qualquer um.",
+          "agregar": "Adicionar",
+          "nuevoDominio": "Novo domínio",
+          "quitarDominio": "Remover {dominio}",
+          "dominioInvalido": "Digite um domínio como sualoja.com",
+          "dominioRepetido": "Esse domínio já está na lista."
+        },
+        "apariencia": {
+          "titulo": "Aparência",
+          "color": "Cor principal",
+          "posicion": "Posição",
+          "tamano": "Tamanho do botão",
+          "posiciones": {
+            "abajoDerecha": "Embaixo à direita",
+            "abajoIzquierda": "Embaixo à esquerda",
+            "arribaDerecha": "Em cima à direita",
+            "arribaIzquierda": "Em cima à esquerda"
+          },
+          "tamanos": {
+            "t48": "Pequeno · 48 px",
+            "t56": "Médio · 56 px",
+            "t64": "Grande · 64 px",
+            "otro": "Personalizado · {px} px"
+          },
+          "avanzado": "Mais opções de estilo"
+        },
+        "alAbrir": {
+          "titulo": "Ao abrir o chat",
+          "tituloChat": "Título do chat",
+          "bienvenida": "Mensagem de boas-vindas",
+          "fueraDeLinea": "Se não houver ninguém on-line",
+          "botones": "Botões rápidos:",
+          "nuevoBoton": "Texto do botão",
+          "agregar": "Adicionar",
+          "quitarBoton": "Remover “{boton}”",
+          "descartar": "Descartar",
+          "guardar": "Salvar"
+        },
+        "visitante": {
+          "titulo": "Dados do visitante",
+          "descripcion": "Pedi-los antes de conversar ajuda a criar o cliente no CRM.",
+          "campos": {
+            "name": "Nome",
+            "phone": "WhatsApp",
+            "email": "E-mail"
+          },
+          "ayudaIa": "Ajuda da IA"
+        },
+        "vistaPrevia": {
+          "titulo": "Pré-visualização",
+          "tituloPorDefecto": "Chat",
+          "enLinea": "On-line · responde em minutos",
+          "ahora": "agora",
+          "antesDeEmpezar": "Antes de começar",
+          "campos": {
+            "name": "Seu nome",
+            "phone": "Seu WhatsApp",
+            "email": "Seu e-mail"
+          },
+          "empezar": "Iniciar chat",
+          "abrir": "Abrir o chat",
+          "cerrar": "Fechar o chat",
+          "reiniciar": "Reiniciar pré-visualização"
+        },
+        "toasts": {
+          "error": "Não foi possível salvar a alteração",
+          "claveRotada": "Nova chave pronta: atualize o código no seu site",
+          "visible": "O chat já aparece no seu site",
+          "oculto": "O chat não aparece mais no seu site",
+          "errorSitio": "Não foi possível alterar a visibilidade no site"
+        }
+      }
+    },
+    "comun": {
+      "volver": "Voltar"
+    },
+    "conocimiento": {
+      "titulo": "Conhecimento",
+      "subtitulo": "O que a IA pode usar para responder: políticas, perguntas frequentes, catálogo e guias.",
+      "configurarIa": "Configurar IA",
+      "importar": {
+        "titulo": "Importar fragmentos",
+        "subtitulo": "Carregue vários de uma vez a partir de um CSV ou colando texto.",
+        "errorAnalisis": "Não foi possível ler o conteúdo",
+        "paso1": "1. Arquivo",
+        "paso2": "2. Pré-visualização",
+        "paso2Descripcion": "Revise antes de importar. Linhas com erro não são carregadas.",
+        "paso3": "3. Opções",
+        "modos": {
+          "csv": "Arquivo CSV",
+          "texto": "Colar texto"
+        },
+        "vista": {
+          "titulo": "Título",
+          "sinTitulo": "(sem título)",
+          "contenido": "Conteúdo",
+          "estado": "Status",
+          "estados": {
+            "lista": "Pronta",
+            "faltaTitulo": "Falta o título",
+            "faltaContenido": "Falta o conteúdo"
+          },
+          "vacia": "Escolha um arquivo ou cole texto para ver aqui o que será importado.",
+          "resumen": "Mostrando {mostradas} de {total} · {listas} prontas · {errores} com erro"
+        },
+        "opciones": {
+          "fuente": "Salvar na fonte",
+          "sinFuente": "Sem fonte",
+          "etiquetas": "Etiquetas para todos",
+          "etiquetasAyuda": "Separe-as com vírgula.",
+          "indexar": "Deixá-los prontos para a IA ao terminar",
+          "importar": "Importar {n, plural, one {# fragmento} other {# fragmentos}}",
+          "creditos": "A indexação usa créditos de IA do seu plano."
+        },
+        "resultado": {
+          "titulo": "{ok} de {total} importados",
+          "errores": "{n, plural, one {# linha não pôde ser carregada} other {# linhas não puderam ser carregadas}}.",
+          "ver": "Ver fragmentos"
+        },
+        "toasts": {
+          "listo": "{n, plural, one {# fragmento importado} other {# fragmentos importados}}",
+          "parcial": "Alguns fragmentos não puderam ser importados",
+          "error": "Não foi possível concluir a importação"
+        }
+      },
+      "nuevaFuente": "Nova fonte",
+      "nuevoFragmento": "Novo fragmento",
+      "buscarFragmentos": "Buscar fragmentos…",
+      "sinDato": "—",
+      "error": "Não foi possível carregar o conhecimento",
+      "migas": {
+        "chat": "Chat",
+        "conocimiento": "Conhecimento"
+      },
+      "kpis": {
+        "etiqueta": "Resumo do conhecimento",
+        "fuentes": "Fontes",
+        "activas": "{n, plural, one {# ativa} other {# ativas}}",
+        "fragmentos": "Fragmentos",
+        "listos": "Prontos para a IA",
+        "pendientes": "Aguardando indexação",
+        "pendientesDetalle": "processados em poucos minutos",
+        "activos": "Ativos",
+        "usos": "Usos",
+        "usosDetalle": "em respostas da IA"
+      },
+      "pestanas": {
+        "etiqueta": "Visões do conhecimento",
+        "fuentes": "Fontes",
+        "fragmentos": "Todos os fragmentos"
+      },
+      "fuentes": {
+        "verFragmentos": "Ver fragmentos",
+        "editar": "Editar",
+        "activar": "Ativar",
+        "desactivar": "Desativar",
+        "eliminar": "Excluir",
+        "sinDescripcion": "Sem descrição",
+        "fragmentos": "{n, plural, one {# fragmento} other {# fragmentos}}",
+        "actualizada": "atual. {fecha}",
+        "vacioTitulo": "Ainda não há fontes",
+        "vacioDescripcion": "Crie uma fonte (por exemplo “Envios”) e adicione fragmentos, ou importe um CSV."
+      },
+      "estados": {
+        "activa": "Ativa",
+        "inactiva": "Inativa",
+        "activo": "Ativo",
+        "inactivo": "Inativo",
+        "listo": "Pronto",
+        "pendiente": "Pendente"
+      },
+      "tabla": {
+        "etiqueta": "Fragmentos de conhecimento",
+        "fragmento": "Fragmento",
+        "fuente": "Fonte",
+        "etiquetas": "Etiquetas",
+        "estado": "Status",
+        "paraIa": "Para a IA",
+        "usado": "Usado",
+        "actualizado": "Atualizado",
+        "abrir": "Abrir",
+        "editarRapido": "Edição rápida",
+        "activar": "Ativar",
+        "desactivar": "Desativar",
+        "eliminar": "Excluir"
+      },
+      "fragmentos": {
+        "vacioTitulo": "Ainda não há fragmentos",
+        "vacioDescripcion": "Um fragmento é uma resposta curta que a IA pode usar como está.",
+        "vacioFuente": "Esta fonte ainda não tem fragmentos"
+      },
+      "toasts": {
+        "sinMiembro": "Não encontramos sua participação nesta organização",
+        "error": "Não foi possível salvar a alteração",
+        "fuenteCreada": "Fonte criada",
+        "fuenteActualizada": "Fonte atualizada",
+        "fuenteActivada": "“{nombre}” está ativa",
+        "fuenteDesactivada": "“{nombre}” está inativa",
+        "fuenteEliminada": "Fonte excluída",
+        "fragmentoCreado": "Fragmento criado",
+        "fragmentoActualizado": "Fragmento salvo: uma nova versão foi criada",
+        "fragmentoActivado": "Fragmento ativo: a IA pode usá-lo",
+        "fragmentoDesactivado": "Fragmento inativo: a IA não o usa mais",
+        "fragmentoEliminado": "Fragmento excluído",
+        "reindexando": "Preparando para a IA: leva alguns minutos"
+      },
+      "borrar": {
+        "fuenteTitulo": "Excluir a fonte?",
+        "fuenteDescripcion": "“{nombre}” será excluída com {n, plural, one {seu fragmento} other {seus # fragmentos}}. Não é possível desfazer.",
+        "fragmentoTitulo": "Excluir o fragmento?",
+        "fragmentoDescripcion": "“{titulo}” será excluído e a IA deixará de usá-lo. Não é possível desfazer.",
+        "confirmar": "Excluir"
+      },
+      "fuente": {
+        "noEncontrada": "Esta fonte não existe ou não é da organização ativa",
+        "volver": "Voltar ao Conhecimento",
+        "reindexar": "Reindexar",
+        "ajustes": "Ajustes",
+        "buscar": "Buscar nesta fonte…",
+        "filtroEtiqueta": "Filtrar por etiqueta",
+        "todasEtiquetas": "Todas as etiquetas"
+      },
+      "editor": {
+        "noEncontrado": "Este fragmento não existe ou não é da organização ativa",
+        "faltanDatos": "Digite o título e o conteúdo",
+        "sinGuardar": "Alterações não salvas",
+        "regenerar": "Regenerar para a IA",
+        "guardar": "Salvar",
+        "contenidoTitulo": "Conteúdo",
+        "contenidoDescripcion": "Escreva como você diria a um cliente. A IA o usa como está.",
+        "titulo": "Título",
+        "contenido": "Conteúdo",
+        "caracteres": "{n} / {max} caracteres",
+        "muyLargo": "Está muito longo: divida em dois fragmentos para a IA responder com precisão.",
+        "etiquetas": "Etiquetas",
+        "quitarEtiqueta": "Remover {etiqueta}",
+        "nuevaEtiqueta": "Nova etiqueta",
+        "agregar": "Adicionar",
+        "pruebaTitulo": "Teste rápido",
+        "pruebaDescripcion": "Pergunte como um cliente faria e veja se a busca da IA encontra este fragmento. Não gasta créditos.",
+        "preguntaPlaceholder": "Quanto custa o frete?",
+        "probar": "Testar",
+        "pruebaEncontrado": "Este fragmento aparece em {posicion}.º de {total}. A IA responderia com ele.",
+        "pruebaNoEncontrado": "A busca não encontrou este fragmento com essa pergunta. Tente adicionar palavras ou etiquetas que seus clientes usam.",
+        "pruebaGuardado": "O teste usa a versão salva: salve as alterações para testá-las.",
+        "ajustes": "Ajustes",
+        "fuente": "Fonte",
+        "sinFuente": "Sem fonte",
+        "prioridad": "Prioridade (1 a 10)",
+        "tramos": {
+          "baja": "Baixa",
+          "media": "Média",
+          "alta": "Alta"
+        },
+        "activo": "Ativo · a IA pode usá-lo",
+        "estadoIa": "Status para a IA",
+        "indexado": "indexado {fecha}",
+        "usado": "Usado em respostas",
+        "votos": "Votos 👍 / 👎",
+        "version": "Versão",
+        "actualizado": "Atualizado"
+      }
+    },
+    "widget": {
+      "titulo": "Visitantes do site",
+      "subtitulo": "Quem está usando o chat do seu site agora e quem já usou.",
+      "configurar": "Configurar widget",
+      "actualizar": "Atualizar",
+      "buscar": "Buscar por nome, e-mail ou canal",
+      "anonimo": "Visitante anônimo",
+      "cliente": "Cliente",
+      "sinDatos": "Sem dados de contato",
+      "vacioTitulo": "Ainda não há visitantes",
+      "vacioDescripcion": "Aparecem quando alguém abre o chat do seu site.",
+      "sustantivo": {
+        "uno": "visitante",
+        "varios": "visitantes"
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos visitantes",
+        "sesiones": "Sessões",
+        "enLinea": "On-line agora",
+        "identificados": "Identificados",
+        "anonimos": "Anônimos",
+        "inactivos": "Inativos"
+      },
+      "filtros": {
+        "estado": "Status",
+        "cliente": "Cliente",
+        "estados": {
+          "todos": "Status: todos",
+          "enLinea": "On-line",
+          "inactivo": "Inativos"
+        },
+        "clientes": {
+          "todos": "Cliente: todos",
+          "identificados": "Identificados",
+          "anonimos": "Anônimos"
+        }
+      },
+      "estados": {
+        "enLinea": "On-line",
+        "inactivo": "Inativo"
+      },
+      "conversacion": {
+        "open": "Aberta",
+        "pending": "Pendente",
+        "closed": "Fechada",
+        "archived": "Arquivada"
+      },
+      "tabla": {
+        "etiqueta": "Visitantes do chat do site",
+        "visitante": "Visitante",
+        "canal": "Canal",
+        "estado": "Status",
+        "conversacion": "Conversa",
+        "ultimaVez": "Última vez",
+        "inicio": "Início"
+      },
+      "acciones": {
+        "abrir": "Abrir conversa",
+        "cerrar": "Fechar conversa",
+        "reabrir": "Reabrir conversa"
+      },
+      "toasts": {
+        "cerrada": "Conversa fechada",
+        "reabierta": "Conversa reaberta",
+        "error": "Não foi possível concluir a ação"
+      }
+    },
+    "auditoria": {
+      "titulo": "Auditoria do chat",
+      "subtitulo": "Quem alterou o quê em conversas, canais e conhecimento.",
+      "exportar": "Exportar CSV",
+      "buscar": "Buscar na auditoria",
+      "vacioTitulo": "Ainda não há registros",
+      "vacioDescripcion": "Cada alteração em canais, conhecimento, IA e conversas fica registrada aqui.",
+      "sustantivo": {
+        "uno": "registro",
+        "varios": "registros"
+      },
+      "kpis": {
+        "etiqueta": "Resumo da auditoria",
+        "registros": "Registros",
+        "hoy": "Hoje",
+        "semana": "Esta semana",
+        "canales": "Alterações em canais"
+      },
+      "filtros": {
+        "accion": "Ação",
+        "accionTodas": "Ação: todas",
+        "sobre": "Sobre",
+        "sobreTodo": "Sobre: tudo",
+        "persona": "Pessoa",
+        "personaTodas": "Pessoa: todas",
+        "fecha": "Data",
+        "rangos": {
+          "hoy": "Hoje",
+          "7d": "Últimos 7 dias",
+          "30d": "Últimos 30 dias",
+          "todo": "Tudo"
+        }
+      },
+      "tabla": {
+        "etiqueta": "Registros de auditoria",
+        "que": "O que aconteceu",
+        "sobre": "Sobre",
+        "quien": "Quem",
+        "cuando": "Quando"
+      },
+      "detalle": {
+        "titulo": "Detalhe do registro",
+        "tipoActor": "Tipo",
+        "ip": "IP",
+        "cambios": "Alterações"
+      },
+      "csv": {
+        "id": "ID",
+        "fecha": "Data",
+        "accion": "Ação",
+        "sobre": "Sobre",
+        "quien": "Quem",
+        "ip": "IP",
+        "cambios": "Alterações"
+      },
+      "toasts": {
+        "exportado": "{n, plural, one {# registro exportado} other {# registros exportados}}",
+        "error": "Não foi possível exportar a auditoria"
+      },
+      "actores": {
+        "member": "Membro da equipe",
+        "system": "Sistema",
+        "ai": "IA",
+        "api": "API",
+        "customer": "Cliente"
+      },
+      "entidades": {
+        "channel": "Canal",
+        "conversation": "Conversa",
+        "message": "Mensagem",
+        "knowledge_source": "Fonte de conhecimento",
+        "knowledge_fragment": "Fragmento de conhecimento",
+        "ai_settings": "Configuração de IA",
+        "ai_job": "Tarefa de IA",
+        "widget_session": "Visitante do site",
+        "conversation_tag": "Etiqueta",
+        "quick_reply": "Resposta rápida",
+        "channel_api_key": "Chave de API",
+        "customer": "Cliente"
+      },
+      "acciones": {
+        "create_channel": "Criou um canal",
+        "update_channel": "Alterou um canal",
+        "update_website_settings": "Alterou o chat do site",
+        "rotate_public_key": "Gerou uma nova chave do widget",
+        "add_allowed_domain": "Adicionou um domínio permitido",
+        "remove_allowed_domain": "Removeu um domínio permitido",
+        "update_channel_ai_mode": "Alterou a ajuda da IA de um canal",
+        "update_all_channels_ai_mode": "Alterou a ajuda da IA de todos os canais",
+        "update_ai_settings": "Alterou a configuração da IA",
+        "create_knowledge_source": "Criou uma fonte de conhecimento",
+        "update_knowledge_source": "Editou uma fonte de conhecimento",
+        "delete_knowledge_source": "Excluiu uma fonte de conhecimento",
+        "toggle_knowledge_source": "Ativou ou desativou uma fonte",
+        "reindex_knowledge_source": "Reindexou uma fonte",
+        "create_knowledge_fragment": "Criou um fragmento",
+        "update_knowledge_fragment": "Editou um fragmento",
+        "update_knowledge_fragment_version": "Salvou uma nova versão de um fragmento",
+        "delete_knowledge_fragment": "Excluiu um fragmento",
+        "toggle_knowledge_fragment": "Ativou ou desativou um fragmento",
+        "reindex_knowledge_fragment": "Reindexou um fragmento",
+        "import_knowledge_fragments": "Importou fragmentos",
+        "retry_ai_job": "Repetiu uma tarefa de IA",
+        "cancel_ai_job": "Cancelou uma tarefa de IA",
+        "block_session": "Fechou a conversa de um visitante",
+        "unblock_session": "Reabriu a conversa de um visitante",
+        "assign_conversation": "Atribuiu uma conversa",
+        "close_conversation": "Fechou uma conversa",
+        "create_tag": "Criou uma etiqueta",
+        "update_tag": "Editou uma etiqueta",
+        "delete_tag": "Excluiu uma etiqueta",
+        "create_quick_reply": "Criou uma resposta rápida",
+        "update_quick_reply": "Editou uma resposta rápida",
+        "delete_quick_reply": "Excluiu uma resposta rápida",
+        "create_api_key": "Criou uma chave de API",
+        "revoke_api_key": "Revogou uma chave de API"
+      }
+    }
+  },
+  "configuracionDialogo": {
+    "titulo": "Configurações",
+    "cerrar": "Fechar configurações (Esc)",
+    "volver": "Voltar ao menu de configurações",
+    "menuAria": "Seções de configurações",
+    "pestanasAria": "Partes de {entrada}",
+    "grupos": {
+      "organizacion": "Organização",
+      "ventas": "Vendas",
+      "clientes": "Clientes e comunicação",
+      "operacion": "Operação",
+      "conexiones": "Conexões e dados"
+    },
+    "entradas": {
+      "general": "Geral",
+      "roles": "Equipe e funções",
+      "plan": "Plano e cobrança",
+      "asistente": "GO Assistente",
+      "pos": "Ponto de venda",
+      "facturacion": "Faturamento eletrônico",
+      "sitioweb": "Site",
+      "crm": "CRM",
+      "chat": "Chat",
+      "telefonia-voz": "Telefonia e voz",
+      "notificaciones": "Notificações",
+      "calendario": "Calendário",
+      "hrm": "Recursos humanos",
+      "pms": "Hotel (PMS)",
+      "parking": "Estacionamento",
+      "gym": "Assinaturas",
+      "integraciones": "Integrações",
+      "timeline": "Linha do tempo",
+      "datos-offline": "Dados offline"
+    },
+    "pestanas": {
+      "chatGeneral": "Geral",
+      "chatIa": "IA",
+      "posGeneral": "Geral"
+    },
+    "buscar": {
+      "etiqueta": "Buscar uma configuração",
+      "placeholder": "Buscar uma configuração",
+      "pista": "Enter abre o primeiro · ↑ ↓ para se mover · Esc para fechar"
+    },
+    "cambios": {
+      "region": "Alterações não salvas",
+      "contador": "{n, plural, one {# alteração não salva} other {# alterações não salvas}}",
+      "descartar": "Descartar",
+      "guardar": "Salvar alterações",
+      "guardarCorto": "Salvar"
+    },
+    "confirmar": {
+      "titulo": "Descartar as alterações não salvas?",
+      "descripcion": "Se você sair agora, as alterações feitas nesta seção serão perdidas.",
+      "descartar": "Descartar alterações",
+      "seguir": "Continuar editando"
     }
   }
 }

@@ -18,7 +18,7 @@ export default function AIModeSection({
 }: AIModeSectionProps) {
   const modes = [
     {
-      value: 'off' as AIMode,
+      value: 'manual' as AIMode,
       label: 'Desactivado',
       description: 'Solo agentes humanos responden. La IA no interviene.',
       icon: '🚫'

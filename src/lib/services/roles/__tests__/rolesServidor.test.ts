@@ -22,6 +22,7 @@ import {
   guardarRol,
   listarRoles,
   quePuedeHacer,
+  resumenEquipo,
   type ContextoRoles,
 } from '../rolesServidor.server';
 import { ErrorRoles, errorDeRpc } from '../erroresRoles';
@@ -186,6 +187,32 @@ describe('lista de roles', () => {
     const r = await listarRoles(contexto(cliente));
     expect(r.modeloListo).toBe(false);
     expect(r.roles.map((x) => x.id)).toEqual([4]);
+  });
+});
+
+// 2026-11-13 (Figma sección 91): las pestañas de Organización › Equipo muestran
+// «Roles y permisos» y «Cargos» solo a quien las puede abrir. El resumen usa las
+// MISMAS capacidades que las listas y, sin permiso, responde «no» en vez de 403.
+describe('resumen de Equipo (pestañas)', () => {
+  const conCargos = (n: number) => ({ job_positions: () => ({ data: null, error: null, count: n }) as Resultado });
+
+  test('admin: ve todo; cuenta los roles visibles y los cargos de la organización', async () => {
+    const { cliente } = clienteSimulado(tablasBase(conCargos(5)), {});
+    expect(await resumenEquipo(contexto(cliente))).toEqual({ verRoles: true, verCargos: true, verPersonas: true, roles: 3, cargos: 5 });
+  });
+
+  test('solo hr.positions.edit: Cargos sí, Roles no (sin contar roles)', async () => {
+    const { cliente } = clienteSimulado(tablasBase(conCargos(2)), {
+      get_user_permission_codes: () => ({ data: ['hr.positions.edit'], error: null }),
+    });
+    expect(await resumenEquipo(contexto(cliente, { roleId: 4 }))).toEqual({ verRoles: false, verCargos: true, verPersonas: false, roles: null, cargos: 2 });
+  });
+
+  test('sin permisos o si la base falla: ninguna pestaña, sin 403', async () => {
+    const { cliente } = clienteSimulado(tablasBase(), {
+      get_user_permission_codes: () => ({ data: null, error: { code: '57014', message: 'timeout' } }),
+    });
+    expect(await resumenEquipo(contexto(cliente, { roleId: 4 }))).toEqual({ verRoles: false, verCargos: false, verPersonas: false, roles: null, cargos: null });
   });
 });
 

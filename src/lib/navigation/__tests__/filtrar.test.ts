@@ -207,8 +207,18 @@ describe('rutaActiva', () => {
     expect(rutaActiva('/app/chat/ia/laboratorio')?.pagina?.href).toBe('/app/chat/ia');
   });
 
-  test('/app/admin pertenece a Roles', () => {
-    expect(rutaActiva('/app/admin/usuarios')?.modulo.id).toBe('roles');
+  // Cambió el 2026-11-13 (Figma sección 91): el módulo `roles` dejó de estar en
+  // el menú y «Roles y permisos» es una página de Organización › Equipo. Sus
+  // rutas (/app/roles y /app/admin) se mudaron con ella, sin cambiar la URL.
+  test('/app/roles y /app/admin pertenecen a Organización', () => {
+    expect(rutaActiva('/app/admin/usuarios')?.modulo.id).toBe('organizacion');
+    expect(rutaActiva('/app/roles')?.pagina?.href).toBe('/app/roles');
+    expect(rutaActiva('/app/roles/cargos/abc')?.modulo.id).toBe('organizacion');
+    expect(rutaActiva('/app/roles/12')?.pagina?.grupo).toBe('Equipo');
+  });
+
+  test('ya no hay un módulo «Roles» aparte', () => {
+    expect(CATALOGO_NAV.some((m) => m.codigo === 'roles' || m.id === 'roles')).toBe(false);
   });
 
   test('una ruta fuera del catálogo no activa nada', () => {

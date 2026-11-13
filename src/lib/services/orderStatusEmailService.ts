@@ -24,9 +24,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash, createHmac } from 'crypto';
 import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/resendClient';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
-import { formatTimeInTz } from '@/lib/utils/dateDisplay';
-import { avisarClientePedido, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
-import type { CanalAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
+import { formatEstimateInTz } from '@/lib/utils/dateDisplay';
+import { avisarClientePedido, nombreTipoOrg, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
+import { rubroDeTipoOrg, type CanalAviso, type DatosAviso } from '@/lib/pos/pedidosWeb/avisosCliente';
 import { hostPublicoOrg } from '@/lib/website/urlPublicaOrg.server';
 
 /** Estados que avisan al cliente. `pending` no: ese correo lo manda el sitio al crear el pedido. */
@@ -132,11 +132,21 @@ export function armarCorreoEstado(datos: {
   nombreCliente: string;
   nombreNegocio: string;
   urlSeguimiento: string | null;
-  horaEstimada?: string | null;
+  /** Ya formateadas en la zona de la org con su día ("hoy, 14:26", "mié 11 nov, 14:26"). */
+  listoAprox?: string | null;
+  entregaAprox?: string | null;
   motivo?: string | null;
   marca?: MarcaCorreo | null;
+  /** Una tienda no «prepara»: alista para el envío o para recoger. */
+  rubro?: DatosAviso['rubro'];
+  conEnvio?: boolean;
 }): CorreoEstadoPedido {
-  const estadoBase = ESTADOS[datos.estado];
+  const estadoBase = { ...ESTADOS[datos.estado] };
+  if (datos.estado === 'confirmed' && datos.rubro === 'tienda') {
+    estadoBase.mensaje = datos.conEnvio
+      ? 'Tu pedido ha sido confirmado y pronto lo alistaremos para el envío.'
+      : 'Tu pedido ha sido confirmado y pronto lo alistaremos para que lo recojas.';
+  }
   const colorMarca = ESTADOS_EN_ROJO.has(datos.estado) ? null : normalizarColor(datos.marca?.color);
   const c = { ...estadoBase, color: colorMarca ?? estadoBase.color };
   // Un color de marca muy claro (amarillo, crema) no se lee como texto sobre blanco ni con letra blanca encima.
@@ -148,7 +158,8 @@ export function armarCorreoEstado(datos: {
   const filas = [
     ['Pedido', escapar(datos.numeroPedido)],
     ['Estado', escapar(c.titulo)],
-    ...(datos.horaEstimada ? [['Hora estimada', escapar(datos.horaEstimada)]] : []),
+    ...(datos.listoAprox ? [['Listo aprox.', escapar(datos.listoAprox)]] : []),
+    ...(datos.entregaAprox ? [['Entrega aprox.', escapar(datos.entregaAprox)]] : []),
     ...(datos.motivo ? [['Motivo', escapar(datos.motivo)]] : []),
   ]
     .map(([k, v]) => `<tr><td style="padding:6px 0;color:#666;font-size:13px;">${k}</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#333;">${v}</td></tr>`)
@@ -172,7 +183,8 @@ ${boton}
     `Hola ${datos.nombreCliente || 'cliente'},`,
     c.mensaje,
     `Pedido ${datos.numeroPedido}: ${c.titulo}`,
-    datos.horaEstimada ? `Hora estimada: ${datos.horaEstimada}` : '',
+    datos.listoAprox ? `Listo aprox.: ${datos.listoAprox}` : '',
+    datos.entregaAprox ? `Entrega aprox.: ${datos.entregaAprox}` : '',
     datos.motivo ? `Motivo: ${datos.motivo}` : '',
     datos.urlSeguimiento ? `Seguimiento: ${datos.urlSeguimiento}` : '',
   ].filter(Boolean).join('\n');
@@ -223,7 +235,7 @@ export async function enviarCorreoEstadoPedido(
   try {
     const { data: pedido, error } = await db
       .from('web_orders')
-      .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status')
+      .select('id, organization_id, branch_id, order_number, status, customer_id, customer_email, customer_name, customer_phone, estimated_ready_at, estimated_delivery_at, cancellation_reason, total, payment_status, delivery_type')
       .eq('id', orderId)
       .eq('organization_id', organizationId)
       .maybeSingle();
@@ -231,7 +243,7 @@ export async function enviarCorreoEstadoPedido(
 
     const { data: org } = await db
       .from('organizations')
-      .select('id, name, logo_url, primary_color')
+      .select('id, name, logo_url, primary_color, organization_types(name)')
       .eq('id', organizationId)
       .maybeSingle();
     if (!org) return false;
@@ -249,7 +261,9 @@ export async function enviarCorreoEstadoPedido(
         const estado = esEstadoConAviso(pedido.status) ? pedido.status : null;
         if (!estado) return { ok: false, error: 'estado_sin_aviso' };
         const zona = await getOrganizationTimezone(organizationId, db);
-        const estimada = pedido.status === 'in_delivery' ? pedido.estimated_delivery_at : pedido.estimated_ready_at;
+        // Antes de entregar se promete listo y entrega; en camino, solo la entrega.
+        const conListo = ['confirmed', 'preparing'].includes(pedido.status);
+        const conEntrega = conListo || pedido.status === 'in_delivery';
         const negocio = extra.nombreVisible || org.name || '';
         const correo = armarCorreoEstado({
           estado,
@@ -257,9 +271,10 @@ export async function enviarCorreoEstadoPedido(
           nombreCliente: pedido.customer_name ?? '',
           nombreNegocio: negocio,
           urlSeguimiento: url,
-          horaEstimada: ['confirmed', 'preparing', 'in_delivery'].includes(pedido.status) && estimada
-            ? formatTimeInTz(estimada, zona)
-            : null,
+          listoAprox: conListo ? formatEstimateInTz(pedido.estimated_ready_at, zona) || null : null,
+          entregaAprox: conEntrega ? formatEstimateInTz(pedido.estimated_delivery_at, zona) || null : null,
+          rubro: rubroDeTipoOrg(nombreTipoOrg(org)),
+          conEnvio: !!pedido.delivery_type && pedido.delivery_type !== 'pickup',
           motivo: ['cancelled', 'rejected'].includes(pedido.status) ? pedido.cancellation_reason : null,
           marca,
         });

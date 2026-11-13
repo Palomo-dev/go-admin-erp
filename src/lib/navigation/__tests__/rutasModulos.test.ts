@@ -40,7 +40,10 @@ describe('moduloDeRuta / paginaDeRuta', () => {
     ['/app/pos/ventas/123', 'pos'],
     ['/app/organizacion/sucursales', 'organizations'],
     ['/app/plan/historial', 'organizations'],
-    ['/app/admin/algo', 'roles'],
+    // Desde el 2026-11-13 Roles y permisos es una página de Organización (la URL no cambió).
+    ['/app/admin/algo', 'organizations'],
+    ['/app/roles', 'organizations'],
+    ['/app/roles/cargos/abc', 'organizations'],
     ['/app/pm', 'pm'],
     ['/app/sitio-web/editor/abc', 'website'],
   ])('%s → %s', (ruta, codigo) => {

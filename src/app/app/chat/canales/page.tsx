@@ -1,290 +1,235 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+/**
+ * Canales del Chat (Figma 91-chat-20/21): cifras, «Mis canales» con modo de
+ * IA y Activo editables, aviso de canales con token vencido o suspendidos, y
+ * «Conectar otro canal». Toda escritura pasa por `chatChannelsService`.
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { MessageSquare, Plus } from 'lucide-react';
+import { AvisoTonal, KpiStrip, PageHeader, StatCard, clasesBoton } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { supabase } from '@/lib/supabase/config';
-import ChatChannelsService, {
-  ChatChannel,
-  ChannelStats,
-  AIMode,
-  CreateChannelData
-} from '@/lib/services/chatChannelsService';
+import ChatChannelsService, { type AIMode, type ActividadCanales, type ChatChannel } from '@/lib/services/chatChannelsService';
+import { TablaCanales } from '@/components/chat/channels/TablaCanales';
+import { TarjetaCanal } from '@/components/chat/channels/TarjetaCanal';
+import { DialogoNuevoCanal, type NuevoCanal } from '@/components/chat/channels/DialogoNuevoCanal';
+import { canalDeTipo } from '@/components/chat/ui/CanalIcono';
 import {
-  ChannelsHeader,
-  ChannelsList,
-  CreateChannelDialog,
-  WidgetCodeDialog,
-  AvailableChannels
-} from '@/components/chat/channels';
-import { ChannelType } from '@/lib/services/chatChannelsService';
+  canalesConError,
+  duracionCorta,
+  estadoConexion,
+  rutaDetalleCanal,
+  tarjetasConectar,
+  type TipoDisponible,
+} from '@/components/chat/channels/canalesLogica';
 
 export default function CanalesPage() {
+  const t = useTranslations('chatModulo.canales');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { getToday, toInstant } = useFormatDate();
 
-  const [channels, setChannels] = useState<ChatChannel[]>([]);
-  const [stats, setStats] = useState<ChannelStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showWidgetDialog, setShowWidgetDialog] = useState(false);
-  const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
-  const [preselectedType, setPreselectedType] = useState<ChannelType | null>(null);
+  const [canales, setCanales] = useState<ChatChannel[]>([]);
+  const [actividad, setActividad] = useState<ActividadCanales | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState(false);
+  const [guardando, setGuardando] = useState<Set<string>>(new Set());
+  const [dialogo, setDialogo] = useState<{ abierto: boolean; tipo: TipoDisponible | null }>({ abierto: false, tipo: null });
+
+  const cargar = useCallback(async () => {
+    if (!organizationId) return;
+    setCargando(true);
+    setFallo(false);
+    try {
+      const servicio = new ChatChannelsService(organizationId);
+      const lista = await servicio.getChannels();
+      setCanales(lista);
+      // Las cifras son secundarias: si fallan, la tabla igual se muestra.
+      servicio
+        .getActividadCanales(lista.map((c) => c.id), toInstant(getToday()))
+        .then(setActividad)
+        .catch((e) => console.error('Error cargando actividad de canales:', e));
+    } catch (e) {
+      console.error('Error cargando canales:', e);
+      setFallo(true);
+    } finally {
+      setCargando(false);
+    }
+  }, [organizationId, getToday, toInstant]);
 
   useEffect(() => {
-    if (organizationId) {
-      loadData();
-    }
-  }, [organizationId]);
+    cargar();
+  }, [cargar]);
 
-  const loadData = async () => {
-    if (!organizationId) return;
-
+  const conUsuario = async <T,>(id: string, accion: (s: ChatChannelsService, userId: string) => Promise<T>): Promise<T | null> => {
+    if (!organizationId) return null;
+    setGuardando((g) => new Set(g).add(id));
     try {
-      setLoading(true);
-      const service = new ChatChannelsService(organizationId);
-
-      const [channelsData, statsData] = await Promise.all([
-        service.getChannels(),
-        service.getStats()
-      ]);
-
-      setChannels(channelsData);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error cargando canales:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los canales',
-        variant: 'destructive'
-      });
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error('Sin sesión');
+      return await accion(new ChatChannelsService(organizationId), data.user.id);
+    } catch (e) {
+      console.error('Error guardando canal:', e);
+      toast({ title: t('toasts.error'), variant: 'destructive' });
+      return null;
     } finally {
-      setLoading(false);
+      setGuardando((g) => {
+        const n = new Set(g);
+        n.delete(id);
+        return n;
+      });
     }
   };
 
-  const handleCreateChannel = async (data: CreateChannelData) => {
+  const reemplazar = (actualizado: ChatChannel) =>
+    // `updateChannel` devuelve la fila sin credenciales ni ajustes del widget: se conservan.
+    setCanales((prev) => prev.map((c) => (c.id === actualizado.id ? { ...c, ...actualizado, credentials: c.credentials, website_settings: c.website_settings } : c)));
+
+  const alternarActivo = async (canal: ChatChannel) => {
+    const r = await conUsuario(canal.id, (s, u) => s.toggleChannelStatus(canal.id, u));
+    if (!r) return;
+    reemplazar(r);
+    toast({ title: t(r.status === 'active' ? 'toasts.activado' : 'toasts.desactivado', { nombre: canal.name }) });
+  };
+
+  const cambiarModo = async (canal: ChatChannel, modo: AIMode) => {
+    if (modo === canal.ai_mode) return;
+    const r = await conUsuario(canal.id, (s, u) => s.updateAIMode(canal.id, modo, u));
+    if (!r) return;
+    reemplazar(r);
+    toast({ title: t('toasts.modoIa', { nombre: canal.name, modo: t(`modosTitulo.${modo}`) }) });
+  };
+
+  const configurar = (canal: ChatChannel) => {
+    const ruta = rutaDetalleCanal(canal);
+    if (ruta) router.push(ruta);
+  };
+
+  const crear = async (datos: NuevoCanal) => {
     if (!organizationId) return;
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const service = new ChatChannelsService(organizationId);
-      const newChannel = await service.createChannel(data, user.id);
-
-      setChannels(prev => [newChannel, ...prev]);
-      
-      if (stats) {
-        setStats({
-          ...stats,
-          totalChannels: stats.totalChannels + 1,
-          activeChannels: stats.activeChannels + 1
-        });
-      }
-
-      toast({
-        title: 'Canal creado',
-        description: `El canal "${newChannel.name}" ha sido creado exitosamente`
-      });
-
-      if (data.type === 'website') {
-        setSelectedChannel(newChannel);
-        setShowWidgetDialog(true);
-      }
-    } catch (error) {
-      console.error('Error creando canal:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo crear el canal',
-        variant: 'destructive'
-      });
-      throw error;
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error('Sin sesión');
+      const nuevo = await new ChatChannelsService(organizationId).createChannel(
+        { type: datos.tipo, name: datos.nombre, ai_mode: datos.modo },
+        data.user.id,
+      );
+      toast({ title: t('nuevo.creado') });
+      const ruta = rutaDetalleCanal(nuevo, datos.tipo === 'whatsapp' ? datos.forma : undefined);
+      if (ruta) router.push(ruta);
+      else cargar();
+    } catch (e) {
+      console.error('Error creando canal:', e);
+      toast({ title: t('nuevo.errorCrear'), variant: 'destructive' });
+      throw e;
     }
   };
 
-  const handleToggleStatus = async (channel: ChatChannel) => {
-    if (!organizationId) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const service = new ChatChannelsService(organizationId);
-      const updatedChannel = await service.toggleChannelStatus(channel.id, user.id);
-
-      setChannels(prev => prev.map(c => 
-        c.id === channel.id ? updatedChannel : c
-      ));
-
-      if (stats) {
-        const delta = updatedChannel.status === 'active' ? 1 : -1;
-        setStats({
-          ...stats,
-          activeChannels: stats.activeChannels + delta
-        });
-      }
-
-      toast({
-        title: updatedChannel.status === 'active' ? 'Canal activado' : 'Canal desactivado',
-        description: `El canal "${channel.name}" ha sido ${updatedChannel.status === 'active' ? 'activado' : 'desactivado'}`
-      });
-    } catch (error) {
-      console.error('Error cambiando estado:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cambiar el estado del canal',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleChangeAIMode = async (channel: ChatChannel, mode: AIMode) => {
-    if (!organizationId) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const service = new ChatChannelsService(organizationId);
-      const updatedChannel = await service.updateAIMode(channel.id, mode, user.id);
-
-      setChannels(prev => prev.map(c => 
-        c.id === channel.id ? updatedChannel : c
-      ));
-
-      const modeLabels: Record<AIMode, string> = {
-        off: 'Desactivado',
-        hybrid: 'Híbrido',
-        auto: 'Automático'
-      };
-
-      toast({
-        title: 'Modo IA actualizado',
-        description: `El modo IA ahora es "${modeLabels[mode]}"`
-      });
-    } catch (error) {
-      console.error('Error cambiando modo IA:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cambiar el modo IA',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleConfigure = (channel: ChatChannel) => {
-    switch (channel.type) {
-      case 'website':
-        router.push(`/app/chat/canales/sitio-web/${channel.id}`);
-        break;
-      case 'whatsapp':
-        router.push(`/app/chat/canales/whatsapp/${channel.id}`);
-        break;
-      case 'instagram':
-        router.push(`/app/chat/canales/instagram/${channel.id}`);
-        break;
-      case 'facebook':
-        router.push(`/app/chat/canales/facebook/${channel.id}`);
-        break;
-      default:
-        router.push(`/app/chat/canales/${channel.id}/settings`);
-    }
-  };
-
-  const handleInstallWidget = (channel: ChatChannel) => {
-    setSelectedChannel(channel);
-    setShowWidgetDialog(true);
-  };
-
-  const handleConnect = (channel: ChatChannel) => {
-    switch (channel.type) {
-      case 'whatsapp':
-        router.push(`/app/chat/canales/whatsapp/${channel.id}`);
-        break;
-      case 'instagram':
-        router.push(`/app/chat/canales/instagram/${channel.id}`);
-        break;
-      case 'facebook':
-        router.push(`/app/chat/canales/facebook/${channel.id}`);
-        break;
-      default:
-        toast({
-          title: 'Información',
-          description: 'Este tipo de canal no requiere conexión adicional'
-        });
-    }
-  };
-
-  const handleConnectChannel = (type: ChannelType) => {
-    const existingChannel = channels.find(ch => ch.type === type);
-    
-    if (existingChannel) {
-      handleConfigure(existingChannel);
-    } else {
-      setPreselectedType(type);
-      setShowCreateDialog(true);
-    }
-  };
+  const conectados = canales.filter((c) => estadoConexion(c) === 'conectado').length;
+  const abiertas = actividad ? Object.values(actividad.porCanal).reduce((a, b) => a + b.abiertas, 0) : null;
+  const conError = useMemo(() => canalesConError(canales), [canales]);
+  const tarjetas = useMemo(() => tarjetasConectar(canales), [canales]);
+  const sinDato = t('kpis.sinDato');
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <ChannelsHeader
-        stats={stats}
-        loading={loading}
-        onCreateChannel={() => setShowCreateDialog(true)}
-      />
-
-      <div className="flex-1 overflow-y-auto">
-        {/* Available Channels Cards */}
-        <AvailableChannels
-          connectedChannels={channels}
-          onConnect={handleConnectChannel}
-        />
-
-        {/* Connected Channels List */}
-        {channels.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-800">
-            <div className="p-4 pb-0">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Mis Canales
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Canales configurados en tu organización
-              </p>
-            </div>
-            <ChannelsList
-              channels={channels}
-              loading={loading}
-              onToggleStatus={handleToggleStatus}
-              onChangeAIMode={handleChangeAIMode}
-              onConfigure={handleConfigure}
-              onInstallWidget={handleInstallWidget}
-              onConnect={handleConnect}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Create Channel Dialog */}
-      <CreateChannelDialog
-        open={showCreateDialog}
-        onOpenChange={(open) => {
-          setShowCreateDialog(open);
-          if (!open) setPreselectedType(null);
+    <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo')}
+        icono={MessageSquare}
+        cargando={cargando}
+        acciones={
+          <button type="button" className={clasesBoton()} onClick={() => setDialogo({ abierto: true, tipo: null })}>
+            <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('nuevoCanal')}
+          </button>
+        }
+        movil={{
+          accion: (
+            <button type="button" aria-label={t('nuevoCanal')} onClick={() => setDialogo({ abierto: true, tipo: null })}>
+              <Plus className="size-5" />
+            </button>
+          ),
         }}
-        onSubmit={handleCreateChannel}
-        preselectedType={preselectedType}
       />
 
-      {/* Widget Code Dialog */}
-      <WidgetCodeDialog
-        open={showWidgetDialog}
-        onOpenChange={setShowWidgetDialog}
-        channel={selectedChannel}
+      <KpiStrip etiqueta={t('kpis.etiqueta')}>
+        <StatCard
+          etiqueta={t('kpis.conectados')}
+          valor={cargando ? sinDato : conectados}
+          detalle={t('kpis.conectadosDetalle', { total: canales.length })}
+          cargando={cargando}
+        />
+        <StatCard etiqueta={t('kpis.hoy')} valor={actividad?.conversacionesHoy ?? sinDato} cargando={!actividad && !fallo} />
+        <StatCard etiqueta={t('kpis.abiertas')} valor={abiertas ?? sinDato} detalle={t('kpis.abiertasDetalle')} cargando={!actividad && !fallo} />
+        <StatCard
+          etiqueta={t('kpis.primeraRespuesta')}
+          valor={duracionCorta(actividad?.primeraRespuestaSeg) ?? sinDato}
+          detalle={t('kpis.primeraRespuestaDetalle')}
+          cargando={!actividad && !fallo}
+        />
+      </KpiStrip>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold text-fg">{t('misCanales')}</h2>
+        <TablaCanales
+          canales={canales}
+          actividad={actividad?.porCanal ?? {}}
+          estado={fallo ? 'error' : cargando ? 'cargando' : 'listo'}
+          guardando={guardando}
+          onCambiarModo={cambiarModo}
+          onAlternarActivo={alternarActivo}
+          onConfigurar={configurar}
+          onReintentar={cargar}
+          onNuevo={() => setDialogo({ abierto: true, tipo: null })}
+        />
+        {conError.map((c) => (
+          <AvisoTonal
+            key={c.id}
+            tono="peligro"
+            rol="alert"
+            compacto
+            titulo={t(estadoConexion(c) === 'suspendido' ? 'aviso.suspendido' : 'aviso.tokenVencido', { nombre: c.name })}
+            accion={{ etiqueta: t('aviso.reconectar'), onClick: () => configurar(c) }}
+          />
+        ))}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold text-fg">{t('conectar.titulo')}</h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {tarjetas.map(({ tipo, yaTiene, proximamente }) => {
+            const clave = yaTiene ? `${tipo}Otro` : tipo;
+            return (
+              <TarjetaCanal
+                key={tipo}
+                canal={canalDeTipo(tipo)}
+                titulo={t(`conectar.nombres.${clave}` as 'conectar.nombres.whatsapp')}
+                descripcion={t(`conectar.descripciones.${clave}` as 'conectar.descripciones.whatsapp')}
+                estado={proximamente ? 'proximamente' : 'disponible'}
+                etiquetaEstado={t(proximamente ? 'conectar.proximamente' : 'conectar.disponible')}
+                accion={{
+                  etiqueta: t(proximamente ? 'conectar.proximamente' : 'conectar.conectar'),
+                  onClick: proximamente ? undefined : () => setDialogo({ abierto: true, tipo: tipo as TipoDisponible }),
+                }}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      <DialogoNuevoCanal
+        abierto={dialogo.abierto}
+        tipoInicial={dialogo.tipo}
+        onAbiertoChange={(abierto) => setDialogo((d) => ({ ...d, abierto }))}
+        onCrear={crear}
       />
     </div>
   );

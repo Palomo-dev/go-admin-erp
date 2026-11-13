@@ -70,6 +70,17 @@ export interface ConversationFilters {
   unresponded?: boolean;
   my_conversations?: boolean;
   search?: string;
+  /** Solo conversaciones sin asignar (vista rápida «Sin asignar»). */
+  unassigned?: boolean;
+}
+
+/** Conteos de las vistas rápidas de la Bandeja (Figma 91-chat-01). */
+export interface ConteoVistas {
+  abiertas: number;
+  mias: number;
+  sinAsignar: number;
+  pendientes: number;
+  cerradas: number;
 }
 
 export interface PaginationOptions {
@@ -105,7 +116,7 @@ class ConversationsService {
           .from('conversation_tag_relations')
           .select('conversation_id')
           .eq('tag_id', filters.tag_id);
-        tagConversationIds = tagData?.map((tr: any) => tr.conversation_id) || [];
+        tagConversationIds = tagData?.map((tr: { conversation_id: string }) => tr.conversation_id) || [];
         if (tagConversationIds.length === 0) {
           return { data: [], total: 0, hasMore: false };
         }
@@ -131,6 +142,9 @@ class ConversationsService {
       }
       if (filters?.unresponded) {
         countQuery = countQuery.is('last_agent_message_at', null);
+      }
+      if (filters?.unassigned) {
+        countQuery = countQuery.is('assigned_member_id', null);
       }
       if (filters?.tag_id && tagConversationIds) {
         countQuery = countQuery.in('id', tagConversationIds);
@@ -185,6 +199,9 @@ class ConversationsService {
       if (filters?.unresponded) {
         query = query.is('last_agent_message_at', null);
       }
+      if (filters?.unassigned) {
+        query = query.is('assigned_member_id', null);
+      }
       if (filters?.tag_id && tagConversationIds) {
         query = query.in('id', tagConversationIds);
       }
@@ -213,7 +230,7 @@ class ConversationsService {
           ]);
           
           const lastMessage = messagesResult.data?.[0] || null;
-          const tags = tagsResult.data?.map((tr: any) => tr.tag).filter(Boolean) || [];
+          const tags = tagsResult.data?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
 
           return {
             ...conv,
@@ -228,9 +245,9 @@ class ConversationsService {
         total: total || 0,
         hasMore: offset + limit < (total || 0)
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error obteniendo conversaciones paginadas:', error);
-      throw new Error(error?.message || 'Error al obtener conversaciones');
+      throw new Error((error as { message?: string } | null)?.message || 'Error al obtener conversaciones');
     }
   }
 
@@ -316,7 +333,7 @@ class ConversationsService {
             `)
             .eq('conversation_id', conv.id);
 
-          const tags = tagRelations?.map((tr: any) => tr.tag).filter(Boolean) || [];
+          const tags = tagRelations?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
 
           return {
             ...conv,
@@ -339,19 +356,20 @@ class ConversationsService {
 
       if (filters?.tag_id) {
         return conversationsWithDetails.filter(conv =>
-          conv.tags?.some((tag: any) => tag.id === filters.tag_id)
+          conv.tags?.some((tag: { id: string }) => tag.id === filters.tag_id)
         );
       }
 
       return conversationsWithDetails;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { message?: string; name?: string; stack?: string } | null;
       console.error('Error obteniendo conversaciones:', {
         error,
-        message: error?.message,
-        name: error?.name,
-        stack: error?.stack?.slice(0, 500)
+        message: e?.message,
+        name: e?.name,
+        stack: e?.stack?.slice(0, 500)
       });
-      throw new Error(error?.message || 'Error desconocido al obtener conversaciones');
+      throw new Error(e?.message || 'Error desconocido al obtener conversaciones');
     }
   }
 
@@ -378,6 +396,25 @@ class ConversationsService {
       console.error('Error obteniendo estadísticas:', error);
       throw error;
     }
+  }
+
+  /** Conteos de las vistas rápidas, con `count` en la base (sin traer filas). */
+  async contarVistas(memberId: number | null): Promise<ConteoVistas> {
+    const base = () => supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('organization_id', this.organizationId);
+    const [abiertas, mias, sinAsignar, pendientes, cerradas] = await Promise.all([
+      base().eq('status', 'open'),
+      memberId ? base().eq('status', 'open').eq('assigned_member_id', memberId) : Promise.resolve({ count: 0 }),
+      base().eq('status', 'open').is('assigned_member_id', null),
+      base().eq('status', 'pending'),
+      base().eq('status', 'closed'),
+    ]);
+    return {
+      abiertas: abiertas.count ?? 0,
+      mias: mias.count ?? 0,
+      sinAsignar: sinAsignar.count ?? 0,
+      pendientes: pendientes.count ?? 0,
+      cerradas: cerradas.count ?? 0,
+    };
   }
 
   async updateConversation(id: string, updates: Partial<Conversation>): Promise<void> {
@@ -467,7 +504,7 @@ class ConversationsService {
     }
   }
 
-  private async createAuditLog(conversationId: string, action: string, details: any): Promise<void> {
+  private async createAuditLog(conversationId: string, action: string, details: unknown): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       

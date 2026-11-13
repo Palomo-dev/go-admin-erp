@@ -30,6 +30,8 @@ interface FragmentDialogProps {
   fragment: KnowledgeFragment | null;
   sources: KnowledgeSource[];
   defaultSourceId?: string;
+  /** Valores iniciales de un fragmento NUEVO (p. ej. «Convertir en fragmento» del Laboratorio). */
+  prellenado?: Pick<CreateFragmentData, 'title' | 'content'>;
   onSubmit: (data: CreateFragmentData) => Promise<void>;
 }
 
@@ -39,6 +41,7 @@ export default function FragmentDialog({
   fragment,
   sources,
   defaultSourceId,
+  prellenado,
   onSubmit
 }: FragmentDialogProps) {
   const [formData, setFormData] = useState<CreateFragmentData>({
@@ -63,14 +66,14 @@ export default function FragmentDialog({
     } else {
       setFormData({
         source_id: defaultSourceId || '',
-        title: '',
-        content: '',
+        title: prellenado?.title ?? '',
+        content: prellenado?.content ?? '',
         tags: [],
         priority: 5
       });
     }
     setTagInput('');
-  }, [fragment, defaultSourceId, open]);
+  }, [fragment, defaultSourceId, open, prellenado]);
 
   const handleAddTag = () => {
     const tag = tagInput.trim().toLowerCase();

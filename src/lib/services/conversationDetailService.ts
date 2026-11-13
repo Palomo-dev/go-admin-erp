@@ -1,4 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
+import { enviarMensajeConversacion, type MensajeAEnviar } from '@/lib/services/chat/envioMensaje';
+import { chatApi } from '@/lib/services/chat/chatApi';
 
 export interface Message {
   id: string;
@@ -11,11 +13,11 @@ export interface Message {
   sender_member_id: number | null;
   content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location';
   content: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   external_message_id: string | null;
   is_read: boolean;
   read_at: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
   attachments?: MessageAttachment[];
   events?: MessageEvent[];
@@ -29,7 +31,7 @@ export interface MessageAttachment {
   file_name: string;
   mime_type: string;
   size_bytes: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -37,7 +39,7 @@ export interface MessageEvent {
   id: string;
   message_id: string;
   event_type: 'sent' | 'delivered' | 'read' | 'failed';
-  provider_payload: Record<string, any>;
+  provider_payload: Record<string, unknown>;
   error_code: string | null;
   error_message: string | null;
   created_at: string;
@@ -188,13 +190,13 @@ class ConversationDetailService {
           `)
           .eq('conversation_id', conversationId);
 
-        const tags = tagRelations?.map((tr: any) => tr.tag).filter(Boolean) || [];
+        const tags = tagRelations?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
         return { ...data, tags };
       }
 
       return null;
-    } catch (error: any) {
-      console.error('Error obteniendo conversación:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo conversación:', (error as Error)?.message || error);
       throw error;
     }
   }
@@ -222,55 +224,35 @@ class ConversationDetailService {
         attachments: msg.attachments || [],
         events: msg.events || []
       }));
-    } catch (error: any) {
-      console.error('Error obteniendo mensajes:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo mensajes:', (error as Error)?.message || error);
       throw error;
     }
   }
 
-  async sendMessage(conversationId: string, content: string, contentType: string = 'text'): Promise<Message> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: conversation } = await supabase
-        .from('conversations')
-        .select('channel_id')
-        .eq('id', conversationId)
-        .single();
-
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          organization_id: this.organizationId,
-          conversation_id: conversationId,
-          channel_id: conversation?.channel_id,
-          direction: 'outbound',
-          role: 'agent',
-          sender_member_id: user?.id,
-          content_type: contentType,
-          content
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_agent_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', conversationId);
-
-      await this.createAuditLog(conversationId, 'message_sent', { message_id: data.id });
-
-      return data;
-    } catch (error) {
-      console.error('Error enviando mensaje:', error);
-      throw error;
-    }
+  /**
+   * Envía un mensaje del agente por el camino ÚNICO del Chat
+   * (`enviarMensajeConversacion`): WhatsApp por `/api/crm/whatsapp/send`
+   * (ventana, consentimiento y créditos), los demás canales directo. Antes
+   * este método guardaba con `sender_member_id = auth.uid()` (un uuid en una
+   * columna bigint) y sin pasar por la API de WhatsApp.
+   */
+  async sendMessage(conversationId: string, mensaje: MensajeAEnviar | string): Promise<void> {
+    const { data: conv, error } = await supabase
+      .from('conversations')
+      .select('id, channel_id, channel:channels(type)')
+      .eq('id', conversationId)
+      .eq('organization_id', this.organizationId)
+      .single();
+    if (error || !conv) throw error ?? new Error('Conversación no encontrada');
+    const canal = (conv as { channel?: { type?: string } | { type?: string }[] | null }).channel;
+    const tipoCanal = Array.isArray(canal) ? canal[0]?.type : canal?.type;
+    await enviarMensajeConversacion({
+      organizationId: this.organizationId,
+      conversacion: { id: conv.id as string, channel_id: conv.channel_id as string, tipoCanal },
+      mensaje: typeof mensaje === 'string' ? { texto: mensaje } : mensaje,
+      supabase,
+    });
   }
 
   async getNotes(conversationId: string): Promise<ConversationNote[]> {
@@ -299,11 +281,17 @@ class ConversationDetailService {
 
   async addNote(conversationId: string, note: string): Promise<ConversationNote> {
     try {
+      // Antes se buscaba el miembro sin filtrar por usuario: con más de un
+      // miembro en la organización `.single()` fallaba y la nota no se guardaba.
+      const { data: { user } } = await supabase.auth.getUser();
       const { data: member } = await supabase
         .from('organization_members')
         .select('id')
         .eq('organization_id', this.organizationId)
-        .single();
+        .eq('user_id', user?.id ?? '')
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!member) throw new Error('No perteneces a esta organización');
 
       const { data, error } = await supabase
         .from('conversation_notes')
@@ -419,15 +407,7 @@ class ConversationDetailService {
         .eq('organization_id', this.organizationId);
 
       if (error) throw error;
-
-      await supabase
-        .from('conversation_status_history')
-        .insert({
-          organization_id: this.organizationId,
-          conversation_id: conversationId,
-          status,
-          changed_at: new Date().toISOString()
-        });
+      // El historial lo escribe el trigger `fn_track_conversation_status_change`.
 
       await this.createAuditLog(conversationId, 'status_changed', { new_status: status });
     } catch (error) {
@@ -453,42 +433,13 @@ class ConversationDetailService {
     }
   }
 
+  /**
+   * Asigna o quita la asignación en el servidor (`PUT /api/chat/conversaciones/[id]/asignacion`):
+   * solo a personas con acceso al Chat, y avisa a quien la recibe. El
+   * historial lo registra el trigger `fn_track_conversation_assignment`.
+   */
   async assignConversation(conversationId: string, memberId: number | null): Promise<void> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: currentMember } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('organization_id', this.organizationId)
-        .eq('user_id', user?.id)
-        .single();
-
-      const { error } = await supabase
-        .from('conversations')
-        .update({
-          assigned_member_id: memberId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', conversationId)
-        .eq('organization_id', this.organizationId);
-
-      if (error) throw error;
-
-      await supabase
-        .from('conversation_assignments')
-        .insert({
-          organization_id: this.organizationId,
-          conversation_id: conversationId,
-          assigned_member_id: memberId,
-          assigned_by_member_id: currentMember?.id
-        });
-
-      await this.createAuditLog(conversationId, 'assigned', { assigned_to: memberId });
-    } catch (error) {
-      console.error('Error asignando conversación:', error);
-      throw error;
-    }
+    await chatApi.asignar(conversationId, memberId);
   }
 
   async addTag(conversationId: string, tagId: string): Promise<void> {
@@ -632,7 +583,7 @@ class ConversationDetailService {
     }
   }
 
-  private async createAuditLog(conversationId: string, action: string, details: any): Promise<void> {
+  private async createAuditLog(conversationId: string, action: string, details: unknown): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       

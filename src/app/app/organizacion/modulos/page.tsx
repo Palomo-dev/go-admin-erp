@@ -42,6 +42,7 @@ import {
   agruparPorVertical,
   coincideModulo,
   cupoOpcionales,
+  moduloEnCatalogo,
   estadoModulo,
   opcionalesActivos,
   type EstadoModulo,
@@ -249,7 +250,10 @@ function Modulos({ organizationId, pedidoRestablecer }: { organizationId: number
     );
   }
 
-  const grupos = agruparPorVertical(datos.modulos)
+  // `roles` sigue en `modules` y en `datos.modulos` (núcleo: el cupo de
+  // opcionales se calcula igual que antes), pero desde el 2026-11-13 su página
+  // es de Organización › Equipo: sin página propia no se pinta tarjeta.
+  const grupos = agruparPorVertical(datos.modulos.filter((m) => moduloEnCatalogo(m.code)))
     .map((g) => ({ ...g, modulos: g.modulos.filter((m) => coincideModulo(m, texto, paginasDe(m.code))) }))
     .filter((g) => g.modulos.length > 0);
   const tituloGrupo = (clave: string) => (clave === 'nucleo' ? t('grupos.nucleo') : clave === 'otros' ? t('grupos.otros') : tNav(seccionNav(clave)));

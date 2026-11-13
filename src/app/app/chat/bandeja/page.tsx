@@ -1,689 +1,506 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, Filter, Settings, Plus, Radio, Loader2, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+/**
+ * Chat › Bandeja (Figma 91-chat-01…09 y 91-chat-14…17).
+ *
+ * Escritorio: lista «Chats» con vistas rápidas · hilo con su cabecera y el
+ * compositor · panel Cliente · Acciones · Notas · IA (desde xl; debajo, la
+ * tira «Detalles» abre el mismo panel en una hoja). Celular: lista → hilo a
+ * pantalla completa (la conversación vive en `?c=<id>`, así «←» del shell
+ * vuelve a la lista) con la hoja «Detalles».
+ *
+ * La conversación seleccionada usa `useConversacion`, el mismo hook de la
+ * vista completa: estado, asignación, notas, IA y envío no se duplican.
+ */
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2, MessageSquare, PanelLeftClose, PanelLeftOpen, Plus, Radio } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { EmptyState, FilterButton, SearchInput, Skeleton, clasesBoton, useEsEscritorio } from '@/components/kit';
+import { useCabeceraMovil, ALTO_BARRA_APP } from '@/components/shell/header/cabeceraMovil';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { supabase } from '@/lib/supabase/config';
-import ConversationsService, {
-  Conversation,
-  ConversationFilters as Filters
-} from '@/lib/services/conversationsService';
+import ConversationsService, { type Conversation, type ConteoVistas } from '@/lib/services/conversationsService';
+import { ConversacionFila } from '@/components/chat/ui/ConversacionFila';
+import { canalDeTipo } from '@/components/chat/ui/canal';
+import { useAgentesChat, useConversacion } from '@/components/chat/conversations/useConversacion';
+import { AreaConversacion } from '@/components/chat/conversations/AreaConversacion';
+import { CabeceraHilo, nombreClienteConversacion } from '@/components/chat/conversations/CabeceraHilo';
+import { PanelConversacion } from '@/components/chat/conversations/panel/PanelConversacion';
+import { TiraDetalles } from '@/components/chat/conversations/HojaDetalles';
+import SearchPanel from '@/components/chat/inbox/SearchPanel';
 import {
-  ConversationItemCompact,
-  ChatView,
-  ConversationSkeletonList
-} from '@/components/chat/inbox';
-import { SearchSelect } from '@/components/ui/search-select';
+  VISTAS,
+  atencionDeFila,
+  coincideBusqueda,
+  cuandoDeFila,
+  cuentaFiltrosExtra,
+  esVista,
+  filtrosDeVista,
+  type FiltrosExtra,
+  type VistaBandeja,
+} from '@/components/chat/inbox/bandejaLogica';
+import { cn } from '@/utils/Utils';
 
-const PAGE_SIZE = 20;
+const PAGINA = 20;
+const TODOS = '__todos__';
 
+/** `useSearchParams` exige un límite de Suspense para el prerender. */
 export default function ChatBandejaPage() {
+  return (
+    <Suspense fallback={null}>
+      <Bandeja />
+    </Suspense>
+  );
+}
+
+function Bandeja() {
+  const t = useTranslations('chatBandeja');
+  const tp = useTranslations('chatUi.prioridad');
+  const tf = useTranslations('chatUi.fila');
+  const locale = useLocale();
   const router = useRouter();
+  const params = useSearchParams();
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const organizationId = organization?.id;
+  const organizationId = organization?.id as number | undefined;
+  const esEscritorio = useEsEscritorio();
+  const { formatTime, formatDate, timezone } = useFormatDate();
+  const { agentes } = useAgentesChat();
+  const miMiembro = useMemo(() => agentes.find((a) => a.esYo)?.memberId ?? null, [agentes]);
 
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [filteredConversations, setFilteredConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [showMobileChat, setShowMobileChat] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [totalConversations, setTotalConversations] = useState(0);
-  const [channels, setChannels] = useState<Array<{ id: string; name: string; type: string }>>([]);
-  const [tags, setTags] = useState<Array<{ id: string; name: string; color: string }>>([]);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [priorityFilter, setPriorityFilter] = useState<string>('all');
-  const [channelFilter, setChannelFilter] = useState<string>('all');
-  const [tagFilter, setTagFilter] = useState<string>('all');
-  const [showFilters, setShowFilters] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  
-  const listRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const seleccion = params?.get('c') ?? null;
+  const vistaParam = params?.get('vista');
+  const vista: VistaBandeja = esVista(vistaParam) ? vistaParam : 'abiertas';
+
+  const [conversaciones, setConversaciones] = useState<Conversation[]>([]);
+  const [total, setTotal] = useState(0);
+  const [hayMas, setHayMas] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [conteos, setConteos] = useState<ConteoVistas | null>(null);
+  const [canales, setCanales] = useState<Array<{ id: string; name: string; type: string }> | null>(null);
+  const [etiquetas, setEtiquetas] = useState<Array<{ id: string; name: string; color: string }>>([]);
+  const [busqueda, setBusqueda] = useState('');
+  const [extra, setExtra] = useState<FiltrosExtra>({});
+  const [listaOculta, setListaOculta] = useState(false);
+  const [buscarEnHilo, setBuscarEnHilo] = useState(false);
+  const [insertar, setInsertar] = useState<{ texto: string; clave: number } | null>(null);
+  const pedido = useRef(0);
+  const centinela = useRef<HTMLDivElement>(null);
+
+  const c = useConversacion(organizationId, seleccion);
+
+  const servicio = useMemo(() => (organizationId ? new ConversationsService(organizationId) : null), [organizationId]);
+  const filtros = useMemo(() => filtrosDeVista(vista, miMiembro, extra), [vista, miMiembro, extra]);
+
+  // ── Datos ───────────────────────────────────────────────────────────────
+  const cargar = useCallback(
+    async (silencioso = false, cantidad = PAGINA) => {
+      if (!servicio) return;
+      const id = ++pedido.current;
+      if (!silencioso) setCargando(true);
+      try {
+        const [r, n] = await Promise.all([
+          filtros ? servicio.getConversationsPaginated(filtros, { limit: cantidad, offset: 0 }) : Promise.resolve({ data: [] as Conversation[], total: 0, hasMore: false }),
+          servicio.contarVistas(miMiembro).catch(() => null),
+        ]);
+        if (id !== pedido.current) return;
+        setConversaciones(r.data);
+        setTotal(r.total);
+        setHayMas(r.hasMore);
+        if (n) setConteos(n);
+      } catch (e) {
+        if (!silencioso) toast({ title: t('avisos.errorLista'), description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+      } finally {
+        if (id === pedido.current) setCargando(false);
+      }
+    },
+    [servicio, filtros, miMiembro, toast, t],
+  );
 
   useEffect(() => {
-    if (organizationId) {
-      loadChannels();
-      loadTags();
-      loadData();
+    void cargar();
+  }, [cargar]);
 
-      // F0 (C10): se eliminó el polling a /api/integrations/whatsapp/qr/dispatch-pending
-      // desde el browser; el despacho QR lo hace el job `whatsapp` de la cola (JOBS-0).
+  useEffect(() => {
+    if (!servicio) return;
+    servicio.getChannels().then(setCanales).catch(() => setCanales([]));
+    servicio.getTags().then(setEtiquetas).catch(() => setEtiquetas([]));
+  }, [servicio]);
 
-      // Suscripción realtime para actualizar lista sin spinner
-      const channel = supabase
-        .channel('conversations-realtime')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'messages',
-            filter: `organization_id=eq.${organizationId}`
-          },
-          () => {
-            loadDataSilent();
-          }
-        )
-        .subscribe();
-      
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+  // Tiempo real: un mensaje nuevo en la organización refresca la lista sin spinner.
+  const recargarSilencioso = useRef<() => void>(() => undefined);
+  recargarSilencioso.current = () => void cargar(true, Math.max(conversaciones.length, PAGINA));
+  useEffect(() => {
+    if (!organizationId) return;
+    const canal = supabase
+      .channel('chat-bandeja')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `organization_id=eq.${organizationId}` }, () => recargarSilencioso.current())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'conversations', filter: `organization_id=eq.${organizationId}` }, () => recargarSilencioso.current())
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(canal);
+    };
   }, [organizationId]);
 
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = conversations.filter(conv => {
-        const customerName = conv.customer?.full_name || '';
-        const customerEmail = conv.customer?.email || '';
-        const lastMessage = conv.last_message?.content || '';
-        const search = searchTerm.toLowerCase();
-        return (
-          customerName.toLowerCase().includes(search) ||
-          customerEmail.toLowerCase().includes(search) ||
-          lastMessage.toLowerCase().includes(search)
-        );
-      });
-      setFilteredConversations(filtered);
-    } else {
-      setFilteredConversations(conversations);
-    }
-  }, [searchTerm, conversations]);
-
-  const loadChannels = async () => {
-    if (!organizationId) return;
+  const cargarMas = useCallback(async () => {
+    if (!servicio || !filtros || cargandoMas || !hayMas || busqueda) return;
+    setCargandoMas(true);
     try {
-      const { data } = await supabase
-        .from('channels')
-        .select('id, name, type')
-        .eq('organization_id', organizationId)
-        .eq('status', 'active')
-        .order('name');
-      if (data) setChannels(data);
-    } catch (error) {
-      console.error('Error cargando canales:', error);
-    }
-  };
-
-  const loadTags = async () => {
-    if (!organizationId) return;
-    try {
-      const service = new ConversationsService(organizationId);
-      const data = await service.getTags();
-      if (data) setTags(data);
-    } catch (error) {
-      console.error('Error cargando etiquetas:', error);
-    }
-  };
-
-  const buildFilters = (): Filters | undefined => {
-    const filters: Filters = {};
-    if (statusFilter !== 'all') filters.status = statusFilter;
-    if (priorityFilter !== 'all') filters.priority = priorityFilter;
-    if (channelFilter !== 'all') filters.channel = channelFilter;
-    if (tagFilter !== 'all') filters.tag_id = tagFilter;
-    return Object.keys(filters).length > 0 ? filters : undefined;
-  };
-
-  const loadData = async () => {
-    if (!organizationId) return;
-
-    try {
-      const service = new ConversationsService(organizationId);
-      const result = await service.getConversationsPaginated(buildFilters(), { limit: PAGE_SIZE, offset: 0 });
-      setConversations(result.data);
-      setFilteredConversations(result.data);
-      setHasMore(result.hasMore);
-      setTotalConversations(result.total);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar las conversaciones',
-        variant: 'destructive'
-      });
+      const r = await servicio.getConversationsPaginated(filtros, { limit: PAGINA, offset: conversaciones.length });
+      setConversaciones((prev) => [...prev, ...r.data.filter((n) => !prev.some((p) => p.id === n.id))]);
+      setHayMas(r.hasMore);
     } finally {
-      setLoading(false);
+      setCargandoMas(false);
     }
-  };
-
-  // Cargar más conversaciones (infinite scroll)
-  const loadMore = useCallback(async () => {
-    if (!organizationId || loadingMore || !hasMore) return;
-
-    try {
-      setLoadingMore(true);
-      const service = new ConversationsService(organizationId);
-      const result = await service.getConversationsPaginated(
-        buildFilters(),
-        { limit: PAGE_SIZE, offset: conversations.length }
-      );
-      
-      // Deduplicar por ID para evitar claves duplicadas
-      setConversations(prev => {
-        const existingIds = new Set(prev.map(c => c.id));
-        const newConvs = result.data.filter(c => !existingIds.has(c.id));
-        return [...prev, ...newConvs];
-      });
-      setFilteredConversations(prev => {
-        const existingIds = new Set(prev.map(c => c.id));
-        const newConvs = result.data.filter(c => !existingIds.has(c.id));
-        return [...prev, ...newConvs];
-      });
-      setHasMore(result.hasMore);
-    } catch (error) {
-      console.error('Error cargando más conversaciones:', error);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [organizationId, loadingMore, hasMore, conversations.length]);
-
-  // Versión silenciosa - solo actualiza las primeras conversaciones cargadas
-  const loadDataSilent = async () => {
-    if (!organizationId) return;
-    try {
-      const service = new ConversationsService(organizationId);
-      const result = await service.getConversationsPaginated(
-        buildFilters(),
-        { limit: Math.max(conversations.length, PAGE_SIZE), offset: 0 }
-      );
-      setConversations(result.data);
-      setFilteredConversations(result.data);
-      setHasMore(result.hasMore);
-      setTotalConversations(result.total);
-    } catch (error) {
-      console.error('Error actualizando datos:', error);
-    }
-  };
-
-  // Configurar IntersectionObserver para infinite scroll
-  useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore && !searchTerm) {
-          loadMore();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (loadMoreRef.current) {
-      observerRef.current.observe(loadMoreRef.current);
-    }
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [hasMore, loadingMore, loadMore, searchTerm]);
+  }, [servicio, filtros, cargandoMas, hayMas, busqueda, conversaciones.length]);
 
   useEffect(() => {
-    if (organizationId) {
-      loadData();
-    }
-  }, [statusFilter, priorityFilter, channelFilter, tagFilter]);
+    const el = centinela.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((e) => e[0]?.isIntersecting && void cargarMas(), { threshold: 0.1 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [cargarMas]);
 
-  const handleConversationSelect = async (conversation: Conversation) => {
-    setSelectedConversation(conversation);
-    setShowMobileChat(true);
-    
-    // Marcar conversación como leída
-    if (conversation.unread_count > 0) {
-      await supabase
-        .from('conversations')
-        .update({ unread_count: 0 })
-        .eq('id', conversation.id);
-      
-      // Marcar mensajes como leídos
-      await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('conversation_id', conversation.id)
-        .eq('is_read', false);
-      
-      // Actualizar estado local
-      setConversations(prev => prev.map(c => 
-        c.id === conversation.id ? { ...c, unread_count: 0 } : c
-      ));
-      setFilteredConversations(prev => prev.map(c => 
-        c.id === conversation.id ? { ...c, unread_count: 0 } : c
-      ));
-    }
+  // ── Navegación (la selección y la vista viven en la URL) ────────────────
+  const irA = useCallback(
+    (cambios: { c?: string | null; vista?: VistaBandeja }) => {
+      const p = new URLSearchParams(params?.toString() ?? '');
+      if ('c' in cambios) {
+        if (cambios.c) p.set('c', cambios.c);
+        else p.delete('c');
+      }
+      if (cambios.vista) {
+        if (cambios.vista === 'abiertas') p.delete('vista');
+        else p.set('vista', cambios.vista);
+      }
+      const url = `/app/chat/bandeja${p.toString() ? `?${p.toString()}` : ''}`;
+      // En el celular abrir un chat es una página más: «←» vuelve a la lista.
+      if (!esEscritorio && cambios.c) router.push(url, { scroll: false });
+      else router.replace(url, { scroll: false });
+    },
+    [params, router, esEscritorio],
+  );
+
+  const abrir = (conv: Conversation) => {
+    if (conv.unread_count > 0) setConversaciones((prev) => prev.map((x) => (x.id === conv.id ? { ...x, unread_count: 0 } : x)));
+    irA({ c: conv.id });
   };
 
-  const handleOpenFullView = (conversation: Conversation) => {
-    router.push(`/app/chat/conversaciones/${conversation.id}`);
+  const visibles = useMemo(() => conversaciones.filter((x) => coincideBusqueda(x, busqueda)), [conversaciones, busqueda]);
+  const sinCanales = canales !== null && canales.length === 0;
+  const ahora = new Date();
+
+  const cuando = (instante: string | null | undefined) => {
+    const r = cuandoDeFila(instante, timezone, ahora);
+    if (!r) return undefined;
+    if (r.tipo === 'hora') return formatTime(r.instante);
+    if (r.tipo === 'ayer') return t('lista.ayer');
+    if (r.tipo === 'semana') return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: timezone }).format(new Date(r.instante));
+    return formatDate(r.instante);
   };
 
-  const handleBackToList = () => {
-    setShowMobileChat(false);
+  const vistaPrevia = (conv: Conversation) => {
+    const m = conv.last_message;
+    if (!m?.content) return t('lista.sinMensajes');
+    const texto = m.content.replace(/\[IMG:[^\]]+\]/g, '').replace(/\*\*/g, '').trim() || t('lista.adjunto');
+    return m.role === 'ai' ? tf('prefijoIa', { texto }) : texto;
   };
 
-  const handleSendMessage = async (content: string, type?: 'text' | 'audio' | 'file', file?: File) => {
-    if (!selectedConversation || !organizationId) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: member } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('user_id', user?.id)
-        .single();
-      
-      let messageContent = content;
-      let contentType = 'text';
-      let metadata: Record<string, any> = {};
-
-      // Si hay archivo, subirlo a storage
-      if (file && (type === 'audio' || type === 'file')) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `chat/${organizationId}/${selectedConversation.id}/${fileName}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Error subiendo archivo:', uploadError);
-          throw uploadError;
+  // ── Cabecera del celular ────────────────────────────────────────────────
+  const nombreSel = c.detalle ? nombreClienteConversacion(c.detalle, t('hilo.cliente')) : '';
+  const asignadoSel = c.detalle ? agentes.find((a) => a.memberId === c.detalle?.assigned_member_id) : null;
+  useCabeceraMovil(
+    seleccion
+      ? {
+          modo: 'page',
+          titulo: nombreSel || t('lista.titulo'),
+          subtitulo: [c.detalle?.channel?.name, asignadoSel?.nombre].filter(Boolean).join(' · '),
+          volverA: '/app/chat/bandeja',
+          ocultarBarra: true,
         }
+      : {
+          modo: 'page',
+          titulo: t('movil.titulo'),
+          subtitulo: conteos ? t('movil.subtitulo', { n: conteos.abiertas }) : t('movil.bandeja'),
+          volverA: '/app/inicio',
+          ocultarBarra: false,
+        },
+  );
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('attachments')
-          .getPublicUrl(filePath);
-
-        messageContent = publicUrl;
-        contentType = type === 'audio' ? 'audio' : (file.type.startsWith('image/') ? 'image' : 'file');
-        metadata = {
-          file_name: file.name,
-          file_type: file.type,
-          file_size: file.size
-        };
-      }
-      
-      // F16 (C20): los mensajes salientes de WhatsApp NO se insertan a mano.
-      // Van por POST /api/crm/whatsapp/send, que comprueba la ventana de 24 h,
-      // el consentimiento (opt-out), los créditos y crea la activity. Antes se
-      // insertaba directo, así que un agente podía escribir a un cliente que
-      // había pedido la baja o fuera de la ventana (tester r1 · fallo 7).
-      const channelType = channels.find((ch) => ch.id === selectedConversation.channel_id)?.type ?? null;
-      if (channelType === 'whatsapp') {
-        const isMedia = contentType !== 'text';
-        const res = await fetch('/api/crm/whatsapp/send', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: selectedConversation.id,
-            channelId: selectedConversation.channel_id,
-            text: isMedia ? null : messageContent,
-            media: isMedia ? { url: messageContent, mime: file?.type || 'application/octet-stream', filename: file?.name } : null,
-          }),
-        });
-        const json = await res.json().catch(() => ({} as Record<string, unknown>));
-        if (!res.ok) {
-          toast({ title: 'No se pudo enviar', description: String(json.error ?? `Error ${res.status}`), variant: 'destructive' });
-          throw new Error(String(json.error ?? `Error ${res.status}`));
-        }
-        loadDataSilent();
-        return;
-      }
-
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          organization_id: organizationId,
-          conversation_id: selectedConversation.id,
-          channel_id: selectedConversation.channel_id,
-          direction: 'outbound',
-          role: 'agent',
-          sender_member_id: member?.id || null,
-          content_type: contentType,
-          content: messageContent,
-          metadata
-        });
-
-      if (error) throw error;
-
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_agent_message_at: new Date().toISOString(),
-          message_count: selectedConversation.message_count + 1
-        })
-        .eq('id', selectedConversation.id);
-      
-      loadDataSilent();
-    } catch (error) {
-      console.error('Error enviando mensaje:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo enviar el mensaje',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
-
-  const handleStatusChange = async (conversationId: string, newStatus: string) => {
-    try {
-      const { error } = await supabase
-        .from('conversations')
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq('id', conversationId);
-      if (error) throw error;
-
-      setConversations(prev => prev.map(c =>
-        c.id === conversationId ? { ...c, status: newStatus as Conversation['status'] } : c
-      ));
-      setFilteredConversations(prev => prev.map(c =>
-        c.id === conversationId ? { ...c, status: newStatus as Conversation['status'] } : c
-      ));
-      setSelectedConversation(prev => prev ? { ...prev, status: newStatus as Conversation['status'] } : prev);
-
-      toast({
-        title: newStatus === 'closed' ? 'Conversación cerrada' : newStatus === 'pending' ? 'Conversación pendiente' : 'Conversación reabierta',
-      });
-    } catch (error) {
-      console.error('Error cambiando estado:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cambiar el estado',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handlePriorityChange = async (conversationId: string, newPriority: string) => {
-    try {
-      const { error } = await supabase
-        .from('conversations')
-        .update({ priority: newPriority, updated_at: new Date().toISOString() })
-        .eq('id', conversationId);
-      if (error) throw error;
-
-      const updateFn = (c: Conversation) =>
-        c.id === conversationId ? { ...c, priority: newPriority as Conversation['priority'] } : c;
-      setConversations(prev => prev.map(updateFn));
-      setFilteredConversations(prev => prev.map(updateFn));
-      setSelectedConversation(prev => prev ? { ...prev, priority: newPriority as Conversation['priority'] } : prev);
-
-      toast({ title: 'Prioridad actualizada' });
-    } catch (error) {
-      console.error('Error cambiando prioridad:', error);
-      toast({ title: 'Error', description: 'No se pudo cambiar la prioridad', variant: 'destructive' });
-    }
-  };
-
-  const handleTagToggle = async (conversationId: string, tagId: string) => {
-    try {
-      const existingTags = selectedConversation?.tags || [];
-      const hasTag = existingTags.some(t => t.id === tagId);
-
-      if (hasTag) {
-        const { error } = await supabase
-          .from('conversation_tag_relations')
-          .delete()
-          .eq('conversation_id', conversationId)
-          .eq('tag_id', tagId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('conversation_tag_relations')
-          .insert({ conversation_id: conversationId, tag_id: tagId });
-        if (error) throw error;
-      }
-
-      const tagData = tags.find(t => t.id === tagId);
-      if (!tagData) return;
-
-      const updateFn = (c: Conversation) => {
-        if (c.id !== conversationId) return c;
-        const currentTags = c.tags || [];
-        const newTags = hasTag
-          ? currentTags.filter(t => t.id !== tagId)
-          : [...currentTags, { id: tagData.id, name: tagData.name, color: tagData.color }];
-        return { ...c, tags: newTags };
-      };
-      setConversations(prev => prev.map(updateFn));
-      setFilteredConversations(prev => prev.map(updateFn));
-      setSelectedConversation(prev => prev ? updateFn(prev) : prev);
-
-      toast({ title: hasTag ? 'Etiqueta removida' : 'Etiqueta agregada' });
-    } catch (error) {
-      console.error('Error toggling tag:', error);
-      toast({ title: 'Error', description: 'No se pudo actualizar la etiqueta', variant: 'destructive' });
-    }
-  };
+  const contador = (v: VistaBandeja) => (conteos ? conteos[v] : null);
+  const editarRespuesta = (texto: string) => setInsertar({ texto, clave: Date.now() });
 
   return (
-    <div className="h-full flex overflow-hidden bg-white dark:bg-gray-900">
-      {/* Columna izquierda - Lista de conversaciones */}
-      <div className={`
-        ${showMobileChat ? 'hidden' : 'flex'} 
-        lg:flex flex-col min-h-0 overflow-hidden
-        ${sidebarCollapsed ? 'lg:w-0 lg:overflow-hidden' : 'w-full lg:w-[380px] xl:w-[420px]'}
-        border-r dark:border-gray-800 bg-white dark:bg-gray-900
-        transition-all duration-300 ease-in-out
-      `}>
-        {/* Header de conversaciones */}
-        <div className="p-4 border-b dark:border-gray-800">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Chats
-            </h1>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => router.push('/app/chat/conversaciones/nueva')}
-                title="Nueva conversación"
+    <div className="flex h-full min-h-0 overflow-hidden bg-surface">
+      {/* Lista */}
+      <section
+        aria-label={t('lista.titulo')}
+        className={cn(
+          'min-h-0 w-full flex-col border-r border-line bg-surface lg:w-[360px] xl:w-[380px]',
+          seleccion ? 'hidden lg:flex' : 'flex',
+          listaOculta && 'lg:hidden',
+        )}
+      >
+        <div className="shrink-0 space-y-3 px-4 pb-3 pt-4">
+          <div className="hidden items-center gap-2 lg:flex">
+            <h1 className="text-lg font-semibold text-fg">{t('lista.titulo')}</h1>
+            {conteos && !sinCanales ? (
+              <span className="rounded-full bg-brand-tint px-2 py-0.5 text-xs font-medium text-brand-deep">{t('lista.abiertas', { n: conteos.abiertas })}</span>
+            ) : null}
+            <div className="ml-auto flex items-center gap-1">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <FilterButton conteo={cuentaFiltrosExtra(extra)} etiqueta={t('filtros.titulo')} />
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-72 space-y-3">
+                  <FiltroSelect
+                    etiqueta={t('filtros.prioridad')}
+                    valor={extra.prioridad}
+                    onCambio={(v) => setExtra((e) => ({ ...e, prioridad: v }))}
+                    opciones={(['low', 'normal', 'high', 'urgent'] as const).map((p) => ({ valor: p, etiqueta: tp(p) }))}
+                    todos={t('filtros.todas')}
+                  />
+                  <FiltroSelect
+                    etiqueta={t('filtros.canal')}
+                    valor={extra.canal}
+                    onCambio={(v) => setExtra((e) => ({ ...e, canal: v }))}
+                    opciones={(canales ?? []).map((ch) => ({ valor: ch.id, etiqueta: ch.name }))}
+                    todos={t('filtros.todos')}
+                  />
+                  <FiltroSelect
+                    etiqueta={t('filtros.etiqueta')}
+                    valor={extra.etiqueta}
+                    onCambio={(v) => setExtra((e) => ({ ...e, etiqueta: v }))}
+                    opciones={etiquetas.map((e) => ({ valor: e.id, etiqueta: e.name }))}
+                    todos={t('filtros.todas')}
+                  />
+                  {cuentaFiltrosExtra(extra) > 0 ? (
+                    <button type="button" onClick={() => setExtra({})} className={clasesBoton({ variante: 'fantasma', tamano: 'sm', anchoCompleto: true })}>
+                      {t('filtros.limpiar')}
+                    </button>
+                  ) : null}
+                </PopoverContent>
+              </Popover>
+              <button
+                type="button"
+                onClick={() => setListaOculta(true)}
+                aria-label={t('lista.ocultar')}
+                title={t('lista.ocultar')}
+                className="flex size-10 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
               >
-                <Plus className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => router.push('/app/chat/canales')}
-                title="Canales"
-              >
-                <Radio className="h-5 w-5" />
-              </Button>
-              <Button
-                variant={showFilters ? 'default' : 'ghost'}
-                size="icon"
-                className="h-9 w-9"
-                onClick={() => setShowFilters(!showFilters)}
-                title="Filtros"
-              >
-                <Filter className="h-5 w-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 hidden lg:flex"
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                title={sidebarCollapsed ? 'Mostrar lista' : 'Ocultar lista'}
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen className="h-5 w-5" />
-                ) : (
-                  <PanelLeftClose className="h-5 w-5" />
-                )}
-              </Button>
+                <PanelLeftClose aria-hidden="true" className="size-4" />
+              </button>
             </div>
           </div>
-          
-          {/* Búsqueda */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Buscar conversaciones..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 bg-gray-50 dark:bg-gray-800 border-0"
-            />
-          </div>
-
-          {/* Filtros con buscador */}
-          {showFilters && (
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Estado</label>
-                <SearchSelect
-                  options={[
-                    { value: 'open', label: 'Abiertas' },
-                    { value: 'pending', label: 'Pendientes' },
-                    { value: 'closed', label: 'Cerradas' },
-                  ]}
-                  value={statusFilter}
-                  onValueChange={setStatusFilter}
-                  placeholder="Estado"
-                  searchPlaceholder="Buscar estado..."
-                  emptyText="No se encontraron estados"
-                  noneLabel="Todos"
-                  noneValue="all"
-                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Prioridad</label>
-                <SearchSelect
-                  options={[
-                    { value: 'low', label: 'Baja' },
-                    { value: 'normal', label: 'Normal' },
-                    { value: 'high', label: 'Alta' },
-                    { value: 'urgent', label: 'Urgente' },
-                  ]}
-                  value={priorityFilter}
-                  onValueChange={setPriorityFilter}
-                  placeholder="Prioridad"
-                  searchPlaceholder="Buscar prioridad..."
-                  emptyText="No se encontraron prioridades"
-                  noneLabel="Todas"
-                  noneValue="all"
-                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Canal</label>
-                <SearchSelect
-                  options={channels.map((ch) => ({ value: ch.id, label: ch.name, sublabel: ch.type }))}
-                  value={channelFilter}
-                  onValueChange={setChannelFilter}
-                  placeholder="Canal"
-                  searchPlaceholder="Buscar canal..."
-                  emptyText="No se encontraron canales"
-                  noneLabel="Todos"
-                  noneValue="all"
-                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-gray-500 dark:text-gray-400">Etiqueta</label>
-                <SearchSelect
-                  options={tags.map((tag) => ({ value: tag.id, label: tag.name }))}
-                  value={tagFilter}
-                  onValueChange={setTagFilter}
-                  placeholder="Etiqueta"
-                  searchPlaceholder="Buscar etiqueta..."
-                  emptyText="No se encontraron etiquetas"
-                  noneLabel="Todas"
-                  noneValue="all"
-                  className="h-9 bg-gray-50 dark:bg-gray-800 border-0 text-sm"
-                />
-              </div>
+          <SearchInput value={busqueda} onChange={setBusqueda} placeholder={esEscritorio ? t('lista.buscar') : t('lista.buscarCorto')} atajo={false} tamano="sm" />
+          {!sinCanales ? (
+            <div role="tablist" aria-label={t('vistas.etiqueta')} className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 lg:flex-wrap">
+              {VISTAS.map((v) => {
+                const n = contador(v);
+                const activa = v === vista;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    role="tab"
+                    aria-selected={activa}
+                    onClick={() => irA({ vista: v })}
+                    className={cn(
+                      'inline-flex h-8 shrink-0 items-center gap-1 rounded-full border px-3 text-[13px] font-medium',
+                      activa ? 'border-line-brand bg-brand-tint text-brand-deep' : 'border-line bg-surface text-fg-secondary hover:bg-hover',
+                    )}
+                  >
+                    {t(`vistas.${v}`)}
+                    {n != null && v !== 'cerradas' ? <span className="text-fg-muted">· {n}</span> : null}
+                  </button>
+                );
+              })}
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Lista de conversaciones */}
-        <div ref={listRef} className="flex-1 overflow-y-auto">
-          {loading ? (
-            <ConversationSkeletonList count={6} />
-          ) : filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center px-4">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {searchTerm ? 'No se encontraron conversaciones' : 'No hay conversaciones'}
-              </p>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {cargando || canales === null ? (
+            <div aria-busy="true" aria-label={t('lista.cargando')}>
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex gap-3 border-b border-line px-4 py-3">
+                  <Skeleton className="size-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-4/5" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : sinCanales ? (
+            <EmptyState
+              compacto
+              icono={Radio}
+              titulo={t('vacio.sinCanalesTitulo')}
+              descripcion={t('vacio.sinCanalesDescripcion')}
+              accion={{ etiqueta: t('vacio.conectar'), href: '/app/chat/canales', icono: Plus }}
+              className="mt-10"
+            />
+          ) : visibles.length === 0 ? (
+            busqueda || cuentaFiltrosExtra(extra) > 0 ? (
+              <EmptyState
+                compacto
+                variante="search"
+                termino={busqueda || undefined}
+                titulo={t('vacio.sinResultadosTitulo')}
+                descripcion={t('vacio.sinResultadosDescripcion')}
+                onLimpiarFiltros={() => {
+                  setBusqueda('');
+                  setExtra({});
+                }}
+                className="mt-10"
+              />
+            ) : (
+              <EmptyState compacto icono={MessageSquare} titulo={t(`vacio.vista.${vista}`)} className="mt-10" />
+            )
           ) : (
             <>
-              {filteredConversations.map((conversation) => (
-                <ConversationItemCompact
-                  key={conversation.id}
-                  conversation={conversation}
-                  isActive={selectedConversation?.id === conversation.id}
-                  onClick={handleConversationSelect}
+              {visibles.map((conv) => (
+                <ConversacionFila
+                  key={conv.id}
+                  nombre={nombreClienteConversacion(conv, t('hilo.cliente'))}
+                  canal={canalDeTipo(conv.channel?.type)}
+                  vistaPrevia={vistaPrevia(conv)}
+                  cuando={cuando(conv.last_message?.created_at ?? conv.last_message_at)}
+                  noLeidos={conv.unread_count}
+                  prioridad={conv.priority}
+                  atencion={atencionDeFila(conv, agentes)}
+                  activa={conv.id === seleccion}
+                  onClick={() => abrir(conv)}
                 />
               ))}
-              
-              {/* Elemento para detectar scroll infinito */}
-              {!searchTerm && (
-                <div ref={loadMoreRef} className="py-4">
-                  {loadingMore ? (
-                    <div className="flex items-center justify-center gap-2 text-gray-500">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Cargando más...</span>
-                    </div>
-                  ) : hasMore ? (
-                    <div className="text-center text-xs text-gray-400">
-                      {conversations.length} de {totalConversations} conversaciones
-                    </div>
-                  ) : conversations.length > PAGE_SIZE ? (
-                    <div className="text-center text-xs text-gray-400">
-                      Todas las conversaciones cargadas ({totalConversations})
-                    </div>
+              {!busqueda ? (
+                <div ref={centinela} className="py-4 text-center text-xs text-fg-muted">
+                  {cargandoMas ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 aria-hidden="true" className="size-4 animate-spin" />
+                      {t('lista.cargandoMas')}
+                    </span>
+                  ) : hayMas ? (
+                    t('lista.deTotal', { n: conversaciones.length, total })
                   ) : null}
                 </div>
-              )}
+              ) : null}
             </>
           )}
         </div>
-      </div>
 
-      {/* Columna derecha - Chat */}
-      <div className={`
-        ${showMobileChat ? 'flex' : 'hidden'} 
-        lg:flex flex-1 flex-col min-h-0 overflow-hidden
-      `}>
-        <ChatView
-          conversation={selectedConversation}
-          onBack={handleBackToList}
-          onSendMessage={handleSendMessage}
-          organizationId={organizationId}
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-          sidebarCollapsed={sidebarCollapsed}
-          onStatusChange={handleStatusChange}
-          onPriorityChange={handlePriorityChange}
-          onTagToggle={handleTagToggle}
-          availableTags={tags}
-        />
-      </div>
+        {/* «+ Nueva» flotante del celular (en escritorio va junto a las pestañas del módulo). */}
+        <Link
+          href="/app/chat/conversaciones/nueva"
+          className={clasesBoton({ tamano: 'lg', className: 'fixed right-4 z-30 rounded-xl shadow-lg lg:hidden' })}
+          style={{ bottom: `calc(${ALTO_BARRA_APP} + 1rem)` }}
+        >
+          <Plus aria-hidden="true" className="size-5" />
+          {t('movil.nueva')}
+        </Link>
+      </section>
+
+      {listaOculta ? (
+        <div className="hidden shrink-0 border-r border-line bg-surface p-2 lg:block">
+          <button
+            type="button"
+            onClick={() => setListaOculta(false)}
+            aria-label={t('lista.mostrar')}
+            title={t('lista.mostrar')}
+            className="flex size-10 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover"
+          >
+            <PanelLeftOpen aria-hidden="true" className="size-4" />
+          </button>
+        </div>
+      ) : null}
+
+      {/* Hilo */}
+      <section aria-label={t('hilo.etiqueta')} className={cn('min-h-0 min-w-0 flex-1 flex-col bg-canvas', seleccion ? 'flex' : 'hidden lg:flex')}>
+        {seleccion ? (
+          <>
+            <div className="hidden lg:block">
+              <CabeceraHilo c={c} onBuscar={() => setBuscarEnHilo(true)} />
+            </div>
+            <TiraDetalles c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className="xl:hidden" />
+            <AreaConversacion c={c} insertar={insertar} compacto={!esEscritorio} />
+          </>
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-6">
+            {sinCanales ? (
+              <EmptyState titulo={t('vacio.listaTitulo')} descripcion={t('vacio.listaDescripcion')} />
+            ) : (
+              <EmptyState titulo={t('vacio.elegirTitulo')} descripcion={t('vacio.elegirDescripcion')} />
+            )}
+          </div>
+        )}
+      </section>
+
+      {/* Panel derecho (xl+) */}
+      {seleccion ? (
+        <aside aria-label={t('panel.etiqueta')} className="hidden w-[320px] shrink-0 border-l border-line xl:flex 2xl:w-[360px]">
+          <PanelConversacion id="panel-bandeja" c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className="w-full" />
+        </aside>
+      ) : null}
+
+      {/* Buscar en la conversación */}
+      <Sheet open={buscarEnHilo} onOpenChange={setBuscarEnHilo}>
+        <SheetContent side="right" aria-describedby={undefined} className="w-full p-0 sm:max-w-md">
+          <SheetTitle className="sr-only">{t('mas.buscar')}</SheetTitle>
+          {buscarEnHilo && c.detalle ? (
+            <SearchPanel
+              conversation={c.detalle as unknown as Conversation}
+              onScrollToMessage={(id: string) => {
+                setBuscarEnHilo(false);
+                document.getElementById(`mensaje-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }}
+            />
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
+  );
+}
+
+function FiltroSelect({
+  etiqueta,
+  valor,
+  onCambio,
+  opciones,
+  todos,
+}: {
+  etiqueta: string;
+  valor: string | null | undefined;
+  onCambio: (v: string | null) => void;
+  opciones: Array<{ valor: string; etiqueta: string }>;
+  todos: string;
+}) {
+  return (
+    <label className="block space-y-1.5 text-sm font-medium text-fg">
+      <span className="block">{etiqueta}</span>
+      <Select value={valor ?? TODOS} onValueChange={(v) => onCambio(v === TODOS ? null : v)}>
+        <SelectTrigger aria-label={etiqueta}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={TODOS}>{todos}</SelectItem>
+          {opciones.map((o) => (
+            <SelectItem key={o.valor} value={o.valor}>
+              {o.etiqueta}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
   );
 }

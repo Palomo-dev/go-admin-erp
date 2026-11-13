@@ -17,6 +17,7 @@ import type {
   QuePuedeHacer,
   RespuestaCargos,
   RespuestaRoles,
+  ResumenEquipo,
 } from '@/lib/roles/tipos';
 
 const BASE = '/api/organizacion/roles';
@@ -75,6 +76,7 @@ async function pedir<T>(ruta: string, metodo: 'GET' | 'POST' | 'PUT' | 'DELETE' 
 
 export const clienteRoles = {
   listar: () => pedir<RespuestaRoles>(''),
+  resumen: () => pedir<ResumenEquipo>('/resumen'),
   detalle: (id: number) => pedir<DetalleRol>(`/${id}`),
   crear: (e: { nombre: string; descripcion?: string | null; plantillaId?: number | null; permisoIds?: number[] | null }) =>
     pedir<{ id: number; version: number }>('', 'POST', e),

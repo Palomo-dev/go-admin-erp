@@ -37,6 +37,7 @@ import type {
   QuePuedeHacer,
   RespuestaCargos,
   RespuestaRoles,
+  ResumenEquipo,
   RolResumen,
 } from '@/lib/roles/tipos';
 import { ErrorRoles, errorDeRpc, esColumnaAusente, type ErrorPostgrest } from './erroresRoles';
@@ -429,6 +430,30 @@ async function leerCargos(ctx: ContextoRoles, id?: string): Promise<CargoResumen
 /** Funciones que existen solo tras la migración: se detecta sin escribir nada. */
 async function modeloListoDe(ctx: ContextoRoles): Promise<boolean> {
   return (await leerRolesVisibles(ctx)).modeloListo;
+}
+
+/**
+ * Pestañas de Organización › Equipo: qué ve la persona y cuántos roles y cargos
+ * hay. Las reglas son las de `listarRoles`, `listarCargos` y `quePuedeHacer`
+ * (mismas capacidades, mismas lecturas), solo que sin permiso devuelve `false`
+ * en vez de 403: la pestaña no se muestra.
+ */
+export async function resumenEquipo(ctx: ContextoRoles): Promise<ResumenEquipo> {
+  const caps = await capacidadesDe(ctx);
+  const verCargos = caps.ver || caps.editarCargos;
+  const contarCargos = async (): Promise<number> => {
+    const { count, error } = await ctx.supabase
+      .from('job_positions')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', ctx.organizationId);
+    if (error) fallo(error, 'job_positions (conteo)');
+    return count ?? 0;
+  };
+  const [roles, cargos] = await Promise.all([
+    caps.ver ? leerRolesVisibles(ctx).then((r) => r.filas.length) : Promise.resolve(null),
+    verCargos ? contarCargos() : Promise.resolve(null),
+  ]);
+  return { verRoles: caps.ver, verCargos, verPersonas: caps.verPersonas, roles, cargos };
 }
 
 export async function listarCargos(ctx: ContextoRoles): Promise<RespuestaCargos> {

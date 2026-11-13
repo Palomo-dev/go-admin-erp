@@ -20,6 +20,24 @@ export interface CapacidadesRoles {
   editarAlcance: boolean;
 }
 
+/**
+ * Lo que las pestañas de Organización › Equipo necesitan saber de Roles y
+ * permisos (`GET /api/organizacion/roles/resumen`): qué pestañas ve la persona
+ * y sus contadores. Nunca responde 403: sin permiso, `false` y `null`.
+ */
+export interface ResumenEquipo {
+  /** Pestaña «Roles y permisos»: roles.view o gestionar roles (la regla de `GET /roles`). */
+  verRoles: boolean;
+  /** Pestaña «Cargos»: roles.view o hr.positions.edit (la regla de `GET /roles/cargos`). */
+  verCargos: boolean;
+  /** «¿Qué puede hacer?» de otra persona: users.view o admin (la regla de `GET /roles/miembros/[id]`). */
+  verPersonas: boolean;
+  /** Roles visibles (sistema + propios), los mismos que lista la pestaña; `null` sin permiso. */
+  roles: number | null;
+  /** Cargos de la organización, los mismos que lista la pestaña; `null` sin permiso. */
+  cargos: number | null;
+}
+
 export interface PersonaResumen {
   id: number;
   nombre: string;

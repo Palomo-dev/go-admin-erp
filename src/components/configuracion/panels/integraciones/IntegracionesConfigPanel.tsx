@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuardar';
 
 export function IntegracionesConfigPanel() {
   const { organization } = useOrganization();
@@ -80,6 +81,14 @@ export function IntegracionesConfigPanel() {
       setSaving(false);
     }
   };
+
+  // Barra «cambios sin guardar» del diálogo de Configuración.
+  useRegistrarCambios({
+    cambios: hasChanges ? contarCambios(settings, originalSettings) : 0,
+    guardando: saving,
+    guardar: handleSave,
+    descartar: () => setSettings(originalSettings),
+  });
 
   const confirmReset = async () => {
     if (!organization?.id) return;

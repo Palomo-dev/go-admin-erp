@@ -4,7 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { useCapacidades } from '@/lib/navigation/useCapacidades';
+import { useConversacion } from '@/components/chat/conversations/useConversacion';
+import { CabeceraConversacion } from '@/components/chat/conversations/CabeceraConversacion';
 import ConversationActivityService, {
   ActivityItem,
   ActivityStats
@@ -24,13 +27,16 @@ export default function ConversationActivityPage() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [stats, setStats] = useState<ActivityStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const c = useConversacion(organizationId, conversationId);
+  const { getToday } = useFormatDate();
+  // Exportar lo decide el servidor (`/api/me/capacidades`), nunca el nombre del rol.
+  const { datos: capacidades } = useCapacidades();
 
   useEffect(() => {
     if (organizationId && conversationId) {
       loadData();
-      checkUserRole();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recarga al cambiar de organización o conversación
   }, [organizationId, conversationId]);
 
   const loadData = async () => {
@@ -59,30 +65,6 @@ export default function ConversationActivityPage() {
     }
   };
 
-  const checkUserRole = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: member } = await supabase
-        .from('organization_members')
-        .select(`
-          role_id,
-          roles:role_id (name)
-        `)
-        .eq('user_id', user.id)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (member?.roles) {
-        const roleData = member.roles as any;
-        setUserRole(roleData?.name || null);
-      }
-    } catch (error) {
-      console.error('Error verificando rol:', error);
-    }
-  };
-
   const handleExport = () => {
     if (!organizationId || activities.length === 0) return;
 
@@ -95,7 +77,7 @@ export default function ConversationActivityPage() {
       const url = URL.createObjectURL(blob);
       
       link.setAttribute('href', url);
-      link.setAttribute('download', `actividad_conversacion_${conversationId}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.setAttribute('download', `actividad_conversacion_${conversationId}_${getToday()}.csv`);
       link.style.visibility = 'hidden';
       
       document.body.appendChild(link);
@@ -116,19 +98,19 @@ export default function ConversationActivityPage() {
     }
   };
 
-  const canExport = userRole === 'admin' || userRole === 'owner' || userRole === 'Administrador';
+  const canExport = capacidades.esAdmin;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-full flex-col bg-canvas">
+      <CabeceraConversacion c={c} seccion="actividad" conversationId={conversationId} contadores={{ actividad: stats?.totalActivities ?? null }} />
       <ActivityHeader
-        conversationId={conversationId}
         stats={stats}
         loading={loading}
         onExport={handleExport}
         canExport={canExport}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         <ActivityList
           activities={activities}
           loading={loading}

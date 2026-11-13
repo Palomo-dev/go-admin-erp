@@ -6,6 +6,7 @@
  * ruta que guarda los ajustes, el envío del servidor y los tests.
  */
 import { z } from 'zod';
+import type { EstimacionEnZona } from '@/lib/utils/dateDisplay';
 
 export const MOMENTOS_AVISO = ['recibido', 'confirmado', 'listo', 'en_camino', 'entregado', 'rechazado'] as const;
 export type MomentoAviso = (typeof MOMENTOS_AVISO)[number];
@@ -99,15 +100,32 @@ export interface DatosAviso {
   numero: string;
   negocio: string;
   sucursal?: string | null;
-  listoAprox?: string | null;
-  entregaAprox?: string | null;
+  /** Promesas en la zona de la org (con día): nunca solo la hora. */
+  listoAprox?: EstimacionEnZona | null;
+  entregaAprox?: EstimacionEnZona | null;
   zonaHoraria?: string | null;
+  /** Restaurante prepara; una tienda alista para envío o para recoger. Sin dato: redacción de restaurante. */
+  rubro?: 'restaurante' | 'tienda' | null;
   lineas?: string | null;
   total?: string | null;
   pagado?: boolean;
   motivo?: string | null;
   conductor?: string | null;
   url?: string | null;
+}
+
+/** Rubro para la redacción a partir de `organization_types.name`: solo `restaurant` prepara. */
+export function rubroDeTipoOrg(nombreTipo: string | null | undefined): DatosAviso['rubro'] {
+  if (!nombreTipo) return null;
+  return nombreTipo === 'restaurant' ? 'restaurante' : 'tienda';
+}
+
+/**
+ * Promesa redactada para una frase: "hoy alrededor de las 14:26",
+ * "mañana alrededor de las 14:26" o "alrededor del mié 11 nov a las 14:26".
+ */
+export function fraseEstimacion(e: EstimacionEnZona): string {
+  return e.relativo ? `${e.relativo} alrededor de las ${e.hora}` : `alrededor del ${e.fecha} a las ${e.hora}`;
 }
 
 /** Texto del aviso por WhatsApp (y versión de texto del correo), por momento. */
@@ -120,10 +138,10 @@ export function textoAviso(momento: MomentoAviso, d: DatosAviso): string {
       partes.push(`Recibimos tu pedido ${d.numero}. Te avisamos en cuanto lo confirmemos.`);
       break;
     case 'confirmado': {
-      partes.push(`Ya estamos preparando tu pedido ${d.numero}.`);
+      partes.push(d.rubro === 'tienda' ? `Ya estamos alistando tu pedido ${d.numero}.` : `Ya estamos preparando tu pedido ${d.numero}.`);
       const horas = [
-        d.listoAprox ? `Estará listo alrededor de las ${d.listoAprox}` : null,
-        d.entregaAprox ? `llegará a tu dirección alrededor de las ${d.entregaAprox}` : null,
+        d.listoAprox ? `Estará listo ${fraseEstimacion(d.listoAprox)}` : null,
+        d.entregaAprox ? `llegará a tu dirección ${fraseEstimacion(d.entregaAprox)}` : null,
       ].filter(Boolean).join(' y ');
       if (horas) partes.push(`${horas}${d.zonaHoraria ? ` (${d.zonaHoraria})` : ''}.`);
       break;
@@ -133,7 +151,7 @@ export function textoAviso(momento: MomentoAviso, d: DatosAviso): string {
       break;
     case 'en_camino':
       partes.push(d.conductor ? `${d.conductor} lleva tu pedido ${d.numero}.` : `Tu pedido ${d.numero} va en camino.`);
-      if (d.entregaAprox) partes.push(`Llega alrededor de las ${d.entregaAprox}.`);
+      if (d.entregaAprox) partes.push(`Llega ${fraseEstimacion(d.entregaAprox)}${d.zonaHoraria ? ` (${d.zonaHoraria})` : ''}.`);
       break;
     case 'entregado':
       partes.push(`Gracias por tu compra. Tu pedido ${d.numero} fue entregado.`);

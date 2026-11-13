@@ -6,7 +6,7 @@ export interface FacebookChannel {
   type: 'facebook';
   name: string;
   status: 'active' | 'inactive' | 'pending';
-  ai_mode: 'off' | 'hybrid' | 'auto';
+  ai_mode: 'manual' | 'hybrid' | 'auto';
   business_hours: Record<string, any> | null;
   auto_close_inactive_hours: number;
   created_at: string;

@@ -1,8 +1,11 @@
 'use client';
 
-import { AvisosClientePage } from '@/components/pos/pedidos-online/avisos/AvisosClientePage';
+import { RedirigirAlDialogo } from '@/components/configuracion/dialogo/RedirigirAlDialogo';
 
-/** Configuración › POS › Avisos al cliente (Figma 464:241318). */
-export default function AvisosClienteRuta() {
-  return <AvisosClientePage />;
+/**
+ * Configuración es un diálogo (Figma pág. 10, sección 12): esta ruta vieja se
+ * conserva para que ningún enlace se rompa y abre el diálogo en su sección.
+ */
+export default function ConfiguracionRutaVieja() {
+  return <RedirigirAlDialogo />;
 }

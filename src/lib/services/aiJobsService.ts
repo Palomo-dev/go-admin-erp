@@ -6,7 +6,12 @@ export interface AIJob {
   conversation_id: string;
   trigger_message_id: string | null;
   job_type: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  /**
+   * CHECK de `ai_jobs.status`: pending · processing · completed · failed ·
+   * cancelled · skipped · draft. `running` no existe en la BD; se conserva en
+   * el tipo solo por compatibilidad con pantallas viejas.
+   */
+  status: 'pending' | 'processing' | 'running' | 'completed' | 'failed' | 'cancelled' | 'skipped' | 'draft';
   result_message_id: string | null;
   response_text: string | null;
   confidence_score: number | null;
@@ -17,6 +22,12 @@ export interface AIJob {
   error_code: string | null;
   error_message: string | null;
   metadata: Record<string, any>;
+  /** Conversación con su cliente y canal (lo trae `getJobs`). */
+  conversation?: {
+    id: string;
+    customer: { full_name: string | null } | null;
+    channel: { name: string | null; type: string | null } | null;
+  } | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -70,7 +81,7 @@ export default class AIJobsService {
 
     let query = supabase
       .from('ai_jobs')
-      .select('*')
+      .select('*, conversation:conversations(id, customer:customers(full_name), channel:channels(name, type))')
       .eq('organization_id', this.organizationId)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -136,7 +147,8 @@ export default class AIJobsService {
     return {
       total: jobs.length,
       pending: jobs.filter(j => j.status === 'pending').length,
-      running: jobs.filter(j => j.status === 'running').length,
+      // La BD guarda `processing`; `running` no existe (CHECK de ai_jobs.status).
+      running: jobs.filter(j => j.status === 'processing' || j.status === 'running').length,
       completed: jobs.filter(j => j.status === 'completed').length,
       failed: jobs.filter(j => j.status === 'failed').length,
       cancelled: jobs.filter(j => j.status === 'cancelled').length
@@ -193,7 +205,7 @@ export default class AIJobsService {
       throw new Error('Job no encontrado');
     }
 
-    if (existingJob.status !== 'pending' && existingJob.status !== 'running') {
+    if (existingJob.status !== 'pending' && existingJob.status !== 'processing' && existingJob.status !== 'running') {
       throw new Error('Solo se pueden cancelar jobs pendientes o en ejecución');
     }
 

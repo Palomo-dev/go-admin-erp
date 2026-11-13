@@ -49673,12 +49673,312 @@
       "web": "Website",
       "telegram": "Telegram",
       "correo": "Email"
+    },
+    "burbuja": {
+      "ia": "AI reply",
+      "iaCon": "AI reply · {detalle}",
+      "nota": "Internal note · only your team sees it",
+      "notaCon": "Internal note · {detalle}",
+      "enviado": "Sent",
+      "leido": "Read",
+      "imagen": "Image",
+      "archivo": "File",
+      "descargar": "Download",
+      "reproducir": "Play audio",
+      "pausar": "Pause audio"
+    },
+    "fila": {
+      "sinAsignar": "Unassigned",
+      "iaAutomatico": "AI · automatic",
+      "noLeidos": "{n, plural, one {# unread message} other {# unread messages}}",
+      "prefijoIa": "AI: {texto}"
+    },
+    "prioridad": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "estado": {
+      "open": "Open",
+      "pending": "Pending",
+      "closed": "Closed",
+      "archived": "Archived"
+    },
+    "composer": {
+      "modo": "Message type",
+      "responder": "Reply",
+      "nota": "Internal note",
+      "sugerir": "Suggest a reply with AI",
+      "sugerirCorto": "Suggest with AI",
+      "sugiriendo": "Thinking…",
+      "placeholder": "Type a message…   / for quick replies",
+      "placeholderCorto": "Type a message…",
+      "placeholderNota": "Write a note for your team…",
+      "enviar": "Send",
+      "guardarNota": "Save note",
+      "adjuntar": "Attach file",
+      "emojis": "Emojis",
+      "respuestasRapidas": "Quick replies",
+      "sinRespuestasRapidas": "No quick replies match that name.",
+      "grabar": "Record audio",
+      "grabando": "Recording… {tiempo}",
+      "cancelarAudio": "Discard audio",
+      "enviarAudio": "Stop and send audio",
+      "cerrada": "This conversation is closed. Reopen it to write again.",
+      "reabrir": "Reopen conversation",
+      "ventanaVencida": "More than 24 h have passed since the customer's last message. WhatsApp only allows an approved template.",
+      "elegirPlantilla": "Choose template",
+      "sinConsentimiento": "This customer asked not to receive WhatsApp messages. You can leave internal notes.",
+      "errores": {
+        "titulo": "Could not send",
+        "ventanaCerrada": "The WhatsApp 24 h window has expired: send an approved template.",
+        "sinConsentimiento": "The customer opted out of WhatsApp.",
+        "sinCreditos": "No credits left to send on WhatsApp.",
+        "demasiados": "Too many messages in a row. Wait a moment.",
+        "sinPlantilla": "The template is not approved or is missing data.",
+        "generico": "Check your connection and try again."
+      }
     }
   },
   "chatBandeja": {
     "notificacion": {
       "titulo": "{persona} assigned you a conversation",
       "contenido": "{persona} assigned you the conversation with {cliente}."
+    },
+    "avisos": {
+      "errorCargar": "Could not load the conversation",
+      "errorLista": "Could not load the chats",
+      "cerrada": "Conversation closed",
+      "pendiente": "Conversation set to pending",
+      "reabierta": "Conversation reopened",
+      "errorEstado": "Could not change the status",
+      "prioridad": "Priority updated",
+      "errorPrioridad": "Could not change the priority",
+      "asignada": "Conversation assigned",
+      "asignacionQuitada": "Assignment removed",
+      "errorAsignar": "Could not assign",
+      "errorEtiqueta": "Could not change the tag",
+      "errorNota": "Could not save the note",
+      "notaEliminada": "Note deleted",
+      "errorIA": "The AI could not respond"
+    },
+    "asignacion": {
+      "titulo": "People with Chat access",
+      "tu": "{nombre} (you)",
+      "otraPersona": "Person without Chat access",
+      "sinAsignar": "Unassigned",
+      "cambiar": "Assigned to: {nombre}. Change",
+      "buscar": "Search person…",
+      "sinResultados": "No one with that name.",
+      "cargoAbiertas": "{cargo} · {n, plural, one {# open} other {# open}}",
+      "abiertas": "{n, plural, one {# open} other {# open}}",
+      "quitar": "Remove assignment"
+    },
+    "etiquetas": {
+      "agregar": "Add",
+      "quitar": "Remove tag {nombre}",
+      "sinEtiquetas": "There are no Chat tags yet.",
+      "todasPuestas": "It already has every tag."
+    },
+    "cliente": {
+      "cliente": "Customer",
+      "desde": "Customer since {fecha}",
+      "etiqueta": "Tag",
+      "contacto": "Contact",
+      "telefono": "Phone",
+      "correo": "Email",
+      "documento": "ID",
+      "direccion": "Address",
+      "actividad": "Activity",
+      "conversaciones": "Conversations",
+      "conversacionesValor": "{total} ({mes} this month)",
+      "compras": "Purchases",
+      "comprasValor": "{n} · {total}",
+      "sinCompras": "No purchases",
+      "ultimaCompra": "Last purchase",
+      "oportunidad": "Opportunity",
+      "verFicha": "View customer record"
+    },
+    "acciones": {
+      "estadoYPrioridad": "Status and priority",
+      "estado": "Status",
+      "prioridad": "Priority",
+      "asignadoA": "Assigned to",
+      "ayudaAsignar": "The person is notified. Only people with Chat access are listed.",
+      "etiquetas": "Tags",
+      "resolver": "Mark as resolved",
+      "pendiente": "Set to pending",
+      "reabrir": "Reopen conversation",
+      "abrirFicha": "Open customer record"
+    },
+    "notas": {
+      "titulo": "Internal notes",
+      "nueva": "Note",
+      "ayuda": "Only your team sees them; the customer never gets them.",
+      "placeholder": "Write a note for your team…",
+      "cancelar": "Cancel",
+      "guardar": "Save note",
+      "vacioTitulo": "No notes",
+      "vacioDescripcion": "Leave here what your team should know about this conversation.",
+      "alguien": "A team member",
+      "fijada": "Pinned",
+      "opciones": "Note options",
+      "fijar": "Pin to top",
+      "desfijar": "Unpin",
+      "eliminar": "Delete",
+      "eliminarTitulo": "Delete this note?",
+      "eliminarDescripcion": "The note is deleted for the whole team. This cannot be undone."
+    },
+    "ia": {
+      "titulo": "AI assistant",
+      "modo": {
+        "auto": "Automatic mode",
+        "hybrid": "Hybrid mode",
+        "manual": "Manual mode"
+      },
+      "ayuda": {
+        "auto": "The AI replies on its own in this channel. Change the mode in Channels.",
+        "hybrid": "The AI suggests and a person sends. Change the mode in Channels.",
+        "manual": "The AI only helps when you ask. Change the mode in Channels."
+      },
+      "resumen": "Conversation summary",
+      "sinResumen": "No summary yet.",
+      "generarResumen": "Generate summary",
+      "actualizarResumen": "Update summary",
+      "sugerida": "Suggested reply",
+      "usar": "Use",
+      "editar": "Edit",
+      "copiar": "Copy",
+      "copiada": "Reply copied",
+      "enviada": "Reply sent",
+      "generar": "Suggest a reply",
+      "otra": "Generate another reply",
+      "creditos": "Each generated reply or summary uses AI credits."
+    },
+    "panel": {
+      "etiqueta": "Conversation details",
+      "cliente": "Customer",
+      "acciones": "Actions",
+      "notas": "Notes",
+      "ia": "AI"
+    },
+    "hilo": {
+      "etiqueta": "Conversation",
+      "cliente": "Customer",
+      "vistaCompleta": "Open full view",
+      "cargandoAnteriores": "Loading earlier messages…",
+      "vacio": "There are no messages in this conversation yet.",
+      "iniciadaDesde": "Conversation started from {canal} · {hora}",
+      "iniciada": "Conversation started · {hora}",
+      "revisoIa": "reviewed by {nombre}",
+      "irAlFinal": "Go to latest message",
+      "hoy": "Today · {fecha}",
+      "ayer": "Yesterday · {fecha}"
+    },
+    "mas": {
+      "titulo": "More actions",
+      "vistaCompleta": "Open full view",
+      "fichaCliente": "View customer record",
+      "buscar": "Search in conversation",
+      "actividad": "View activity",
+      "archivos": "View files",
+      "pendiente": "Set to pending",
+      "cerrar": "Close conversation",
+      "reabrir": "Reopen conversation"
+    },
+    "detalles": {
+      "boton": "Details",
+      "titulo": "Conversation details"
+    },
+    "lista": {
+      "titulo": "Chats",
+      "abiertas": "{n, plural, one {# open} other {# open}}",
+      "ocultar": "Hide list",
+      "mostrar": "Show list",
+      "buscar": "Search by name, phone or message",
+      "buscarCorto": "Search conversations",
+      "cargando": "Loading chats",
+      "cargandoMas": "Loading more…",
+      "deTotal": "{n} of {total} conversations",
+      "ayer": "Yesterday",
+      "sinMensajes": "No messages",
+      "adjunto": "Attachment"
+    },
+    "filtros": {
+      "titulo": "Filters",
+      "prioridad": "Priority",
+      "canal": "Channel",
+      "etiqueta": "Tag",
+      "todas": "All",
+      "todos": "All",
+      "limpiar": "Clear filters"
+    },
+    "vistas": {
+      "etiqueta": "Quick views",
+      "abiertas": "Open",
+      "mias": "Mine",
+      "sinAsignar": "Unassigned",
+      "pendientes": "Pending",
+      "cerradas": "Closed"
+    },
+    "vacio": {
+      "sinCanalesTitulo": "You have no connected channels yet",
+      "sinCanalesDescripcion": "Connect WhatsApp, Instagram, Facebook or your website chat to start receiving messages.",
+      "conectar": "Connect a channel",
+      "sinResultadosTitulo": "No chats found",
+      "sinResultadosDescripcion": "Try another name or phone, or clear the filters.",
+      "vista": {
+        "abiertas": "There are no open conversations.",
+        "mias": "You have no open conversations assigned.",
+        "sinAsignar": "Every open conversation is assigned.",
+        "pendientes": "There are no pending conversations.",
+        "cerradas": "There are no closed conversations."
+      },
+      "listaTitulo": "Your inbox is ready",
+      "listaDescripcion": "Once you connect a channel, your customers' conversations will show up here.",
+      "elegirTitulo": "Choose a conversation",
+      "elegirDescripcion": "Pick a chat from the list to read and reply. New ones arrive here in real time."
+    },
+    "movil": {
+      "titulo": "Chat",
+      "bandeja": "Inbox",
+      "subtitulo": "Inbox · {n} open",
+      "nueva": "New"
+    },
+    "vista": {
+      "titulo": "Conversation",
+      "cliente": "Customer",
+      "volver": "Back to inbox",
+      "migas": "Breadcrumb",
+      "migaChat": "Chat",
+      "migaBandeja": "Inbox",
+      "prioridad": {
+        "low": "Low priority",
+        "normal": "Normal priority",
+        "high": "High priority",
+        "urgent": "Urgent priority"
+      },
+      "secciones": "Conversation sections",
+      "pestanas": {
+        "conversacion": "Conversation",
+        "actividad": "Activity",
+        "archivos": "Files"
+      }
+    },
+    "actividad": {
+      "resumen": "Activity summary",
+      "total": "Total",
+      "estados": "Status changes",
+      "asignaciones": "Assignments",
+      "etiquetas": "Tags",
+      "ia": "AI replies",
+      "exportar": "Export CSV"
+    },
+    "archivos": {
+      "resumen": "Files summary",
+      "total": "Files",
+      "tamano": "Total size"
     }
   },
   "chatModulo": {

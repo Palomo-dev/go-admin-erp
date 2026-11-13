@@ -70,6 +70,17 @@ export interface ConversationFilters {
   unresponded?: boolean;
   my_conversations?: boolean;
   search?: string;
+  /** Solo conversaciones sin asignar (vista rápida «Sin asignar»). */
+  unassigned?: boolean;
+}
+
+/** Conteos de las vistas rápidas de la Bandeja (Figma 91-chat-01). */
+export interface ConteoVistas {
+  abiertas: number;
+  mias: number;
+  sinAsignar: number;
+  pendientes: number;
+  cerradas: number;
 }
 
 export interface PaginationOptions {
@@ -132,6 +143,9 @@ class ConversationsService {
       if (filters?.unresponded) {
         countQuery = countQuery.is('last_agent_message_at', null);
       }
+      if (filters?.unassigned) {
+        countQuery = countQuery.is('assigned_member_id', null);
+      }
       if (filters?.tag_id && tagConversationIds) {
         countQuery = countQuery.in('id', tagConversationIds);
       }
@@ -184,6 +198,9 @@ class ConversationsService {
       }
       if (filters?.unresponded) {
         query = query.is('last_agent_message_at', null);
+      }
+      if (filters?.unassigned) {
+        query = query.is('assigned_member_id', null);
       }
       if (filters?.tag_id && tagConversationIds) {
         query = query.in('id', tagConversationIds);
@@ -378,6 +395,25 @@ class ConversationsService {
       console.error('Error obteniendo estadísticas:', error);
       throw error;
     }
+  }
+
+  /** Conteos de las vistas rápidas, con `count` en la base (sin traer filas). */
+  async contarVistas(memberId: number | null): Promise<ConteoVistas> {
+    const base = () => supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('organization_id', this.organizationId);
+    const [abiertas, mias, sinAsignar, pendientes, cerradas] = await Promise.all([
+      base().eq('status', 'open'),
+      memberId ? base().eq('status', 'open').eq('assigned_member_id', memberId) : Promise.resolve({ count: 0 }),
+      base().eq('status', 'open').is('assigned_member_id', null),
+      base().eq('status', 'pending'),
+      base().eq('status', 'closed'),
+    ]);
+    return {
+      abiertas: abiertas.count ?? 0,
+      mias: mias.count ?? 0,
+      sinAsignar: sinAsignar.count ?? 0,
+      pendientes: pendientes.count ?? 0,
+      cerradas: cerradas.count ?? 0,
+    };
   }
 
   async updateConversation(id: string, updates: Partial<Conversation>): Promise<void> {

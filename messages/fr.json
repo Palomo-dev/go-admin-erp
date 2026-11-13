@@ -49673,12 +49673,312 @@
       "web": "Site web",
       "telegram": "Telegram",
       "correo": "E-mail"
+    },
+    "burbuja": {
+      "ia": "Réponse de l'IA",
+      "iaCon": "Réponse de l'IA · {detalle}",
+      "nota": "Note interne · visible seulement par votre équipe",
+      "notaCon": "Note interne · {detalle}",
+      "enviado": "Envoyé",
+      "leido": "Lu",
+      "imagen": "Image",
+      "archivo": "Fichier",
+      "descargar": "Télécharger",
+      "reproducir": "Lire l'audio",
+      "pausar": "Mettre l'audio en pause"
+    },
+    "fila": {
+      "sinAsignar": "Non attribuée",
+      "iaAutomatico": "IA · automatique",
+      "noLeidos": "{n, plural, one {# message non lu} other {# messages non lus}}",
+      "prefijoIa": "IA : {texto}"
+    },
+    "prioridad": {
+      "low": "Basse",
+      "normal": "Normale",
+      "high": "Haute",
+      "urgent": "Urgente"
+    },
+    "estado": {
+      "open": "Ouverte",
+      "pending": "En attente",
+      "closed": "Fermée",
+      "archived": "Archivée"
+    },
+    "composer": {
+      "modo": "Type de message",
+      "responder": "Répondre",
+      "nota": "Note interne",
+      "sugerir": "Suggérer une réponse avec l'IA",
+      "sugerirCorto": "Suggérer avec l'IA",
+      "sugiriendo": "Réflexion…",
+      "placeholder": "Écrivez un message…   / pour les réponses rapides",
+      "placeholderCorto": "Écrivez un message…",
+      "placeholderNota": "Écrivez une note pour votre équipe…",
+      "enviar": "Envoyer",
+      "guardarNota": "Enregistrer la note",
+      "adjuntar": "Joindre un fichier",
+      "emojis": "Émojis",
+      "respuestasRapidas": "Réponses rapides",
+      "sinRespuestasRapidas": "Aucune réponse rapide ne correspond.",
+      "grabar": "Enregistrer un audio",
+      "grabando": "Enregistrement… {tiempo}",
+      "cancelarAudio": "Annuler l'audio",
+      "enviarAudio": "Arrêter et envoyer l'audio",
+      "cerrada": "Cette conversation est fermée. Rouvrez-la pour écrire à nouveau.",
+      "reabrir": "Rouvrir la conversation",
+      "ventanaVencida": "Plus de 24 h se sont écoulées depuis le dernier message du client. WhatsApp n'autorise qu'un modèle approuvé.",
+      "elegirPlantilla": "Choisir un modèle",
+      "sinConsentimiento": "Ce client a demandé à ne pas recevoir de messages WhatsApp. Vous pouvez laisser des notes internes.",
+      "errores": {
+        "titulo": "Envoi impossible",
+        "ventanaCerrada": "La fenêtre de 24 h de WhatsApp est expirée : envoyez un modèle approuvé.",
+        "sinConsentimiento": "Le client a refusé WhatsApp.",
+        "sinCreditos": "Plus de crédits pour envoyer sur WhatsApp.",
+        "demasiados": "Trop d'envois d'affilée. Patientez un instant.",
+        "sinPlantilla": "Le modèle n'est pas approuvé ou il manque des données.",
+        "generico": "Vérifiez la connexion et réessayez."
+      }
     }
   },
   "chatBandeja": {
     "notificacion": {
       "titulo": "{persona} vous a attribué une conversation",
       "contenido": "{persona} vous a attribué la conversation avec {cliente}."
+    },
+    "avisos": {
+      "errorCargar": "Impossible de charger la conversation",
+      "errorLista": "Impossible de charger les discussions",
+      "cerrada": "Conversation fermée",
+      "pendiente": "Conversation en attente",
+      "reabierta": "Conversation rouverte",
+      "errorEstado": "Impossible de changer le statut",
+      "prioridad": "Priorité mise à jour",
+      "errorPrioridad": "Impossible de changer la priorité",
+      "asignada": "Conversation attribuée",
+      "asignacionQuitada": "Attribution retirée",
+      "errorAsignar": "Impossible d'attribuer",
+      "errorEtiqueta": "Impossible de modifier l'étiquette",
+      "errorNota": "Impossible d'enregistrer la note",
+      "notaEliminada": "Note supprimée",
+      "errorIA": "L'IA n'a pas pu répondre"
+    },
+    "asignacion": {
+      "titulo": "Personnes ayant accès au Chat",
+      "tu": "{nombre} (vous)",
+      "otraPersona": "Personne sans accès au Chat",
+      "sinAsignar": "Non attribuée",
+      "cambiar": "Attribuée à : {nombre}. Modifier",
+      "buscar": "Rechercher une personne…",
+      "sinResultados": "Personne avec ce nom.",
+      "cargoAbiertas": "{cargo} · {n, plural, one {# ouverte} other {# ouvertes}}",
+      "abiertas": "{n, plural, one {# ouverte} other {# ouvertes}}",
+      "quitar": "Retirer l'attribution"
+    },
+    "etiquetas": {
+      "agregar": "Ajouter",
+      "quitar": "Retirer l'étiquette {nombre}",
+      "sinEtiquetas": "Il n'y a pas encore d'étiquettes.",
+      "todasPuestas": "Elle a déjà toutes les étiquettes."
+    },
+    "cliente": {
+      "cliente": "Client",
+      "desde": "Client depuis {fecha}",
+      "etiqueta": "Étiquette",
+      "contacto": "Contact",
+      "telefono": "Téléphone",
+      "correo": "E-mail",
+      "documento": "Pièce d'identité",
+      "direccion": "Adresse",
+      "actividad": "Activité",
+      "conversaciones": "Conversations",
+      "conversacionesValor": "{total} ({mes} ce mois-ci)",
+      "compras": "Achats",
+      "comprasValor": "{n} · {total}",
+      "sinCompras": "Pas d'achats",
+      "ultimaCompra": "Dernier achat",
+      "oportunidad": "Opportunité",
+      "verFicha": "Voir la fiche du client"
+    },
+    "acciones": {
+      "estadoYPrioridad": "Statut et priorité",
+      "estado": "Statut",
+      "prioridad": "Priorité",
+      "asignadoA": "Attribuée à",
+      "ayudaAsignar": "La personne est notifiée. Seules les personnes ayant accès au Chat apparaissent.",
+      "etiquetas": "Étiquettes",
+      "resolver": "Marquer comme résolue",
+      "pendiente": "Mettre en attente",
+      "reabrir": "Rouvrir la conversation",
+      "abrirFicha": "Ouvrir la fiche du client"
+    },
+    "notas": {
+      "titulo": "Notes internes",
+      "nueva": "Note",
+      "ayuda": "Seule votre équipe les voit ; le client ne les reçoit jamais.",
+      "placeholder": "Écrivez une note pour votre équipe…",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer la note",
+      "vacioTitulo": "Aucune note",
+      "vacioDescripcion": "Notez ici ce que votre équipe doit savoir sur cette conversation.",
+      "alguien": "Quelqu'un de l'équipe",
+      "fijada": "Épinglée",
+      "opciones": "Options de la note",
+      "fijar": "Épingler en haut",
+      "desfijar": "Désépingler",
+      "eliminar": "Supprimer",
+      "eliminarTitulo": "Supprimer cette note ?",
+      "eliminarDescripcion": "La note est supprimée pour toute l'équipe. Action irréversible."
+    },
+    "ia": {
+      "titulo": "Assistant IA",
+      "modo": {
+        "auto": "Mode automatique",
+        "hybrid": "Mode hybride",
+        "manual": "Mode manuel"
+      },
+      "ayuda": {
+        "auto": "L'IA répond seule sur ce canal. Changez le mode dans Canaux.",
+        "hybrid": "L'IA propose et une personne envoie. Changez le mode dans Canaux.",
+        "manual": "L'IA n'aide que sur demande. Changez le mode dans Canaux."
+      },
+      "resumen": "Résumé de la conversation",
+      "sinResumen": "Pas encore de résumé.",
+      "generarResumen": "Générer un résumé",
+      "actualizarResumen": "Mettre à jour le résumé",
+      "sugerida": "Réponse suggérée",
+      "usar": "Utiliser",
+      "editar": "Modifier",
+      "copiar": "Copier",
+      "copiada": "Réponse copiée",
+      "enviada": "Réponse envoyée",
+      "generar": "Suggérer une réponse",
+      "otra": "Générer une autre réponse",
+      "creditos": "Chaque réponse ou résumé généré consomme des crédits IA."
+    },
+    "panel": {
+      "etiqueta": "Détails de la conversation",
+      "cliente": "Client",
+      "acciones": "Actions",
+      "notas": "Notes",
+      "ia": "IA"
+    },
+    "hilo": {
+      "etiqueta": "Conversation",
+      "cliente": "Client",
+      "vistaCompleta": "Ouvrir la vue complète",
+      "cargandoAnteriores": "Chargement des messages précédents…",
+      "vacio": "Il n'y a pas encore de messages.",
+      "iniciadaDesde": "Conversation commencée depuis {canal} · {hora}",
+      "iniciada": "Conversation commencée · {hora}",
+      "revisoIa": "relue par {nombre}",
+      "irAlFinal": "Aller au dernier message",
+      "hoy": "Aujourd'hui · {fecha}",
+      "ayer": "Hier · {fecha}"
+    },
+    "mas": {
+      "titulo": "Plus d'actions",
+      "vistaCompleta": "Ouvrir la vue complète",
+      "fichaCliente": "Voir la fiche du client",
+      "buscar": "Rechercher dans la conversation",
+      "actividad": "Voir l'activité",
+      "archivos": "Voir les fichiers",
+      "pendiente": "Mettre en attente",
+      "cerrar": "Fermer la conversation",
+      "reabrir": "Rouvrir la conversation"
+    },
+    "detalles": {
+      "boton": "Détails",
+      "titulo": "Détails de la conversation"
+    },
+    "lista": {
+      "titulo": "Discussions",
+      "abiertas": "{n, plural, one {# ouverte} other {# ouvertes}}",
+      "ocultar": "Masquer la liste",
+      "mostrar": "Afficher la liste",
+      "buscar": "Rechercher par nom, téléphone ou message",
+      "buscarCorto": "Rechercher des conversations",
+      "cargando": "Chargement des discussions",
+      "cargandoMas": "Chargement…",
+      "deTotal": "{n} sur {total} conversations",
+      "ayer": "Hier",
+      "sinMensajes": "Aucun message",
+      "adjunto": "Pièce jointe"
+    },
+    "filtros": {
+      "titulo": "Filtres",
+      "prioridad": "Priorité",
+      "canal": "Canal",
+      "etiqueta": "Étiquette",
+      "todas": "Toutes",
+      "todos": "Tous",
+      "limpiar": "Effacer les filtres"
+    },
+    "vistas": {
+      "etiqueta": "Vues rapides",
+      "abiertas": "Ouvertes",
+      "mias": "Les miennes",
+      "sinAsignar": "Non attribuées",
+      "pendientes": "En attente",
+      "cerradas": "Fermées"
+    },
+    "vacio": {
+      "sinCanalesTitulo": "Vous n'avez encore aucun canal connecté",
+      "sinCanalesDescripcion": "Connectez WhatsApp, Instagram, Facebook ou le chat de votre site pour recevoir des messages.",
+      "conectar": "Connecter un canal",
+      "sinResultadosTitulo": "Aucune discussion trouvée",
+      "sinResultadosDescripcion": "Essayez un autre nom ou téléphone, ou effacez les filtres.",
+      "vista": {
+        "abiertas": "Il n'y a aucune conversation ouverte.",
+        "mias": "Vous n'avez aucune conversation ouverte attribuée.",
+        "sinAsignar": "Toutes les conversations ouvertes sont attribuées.",
+        "pendientes": "Il n'y a aucune conversation en attente.",
+        "cerradas": "Il n'y a aucune conversation fermée."
+      },
+      "listaTitulo": "Votre boîte est prête",
+      "listaDescripcion": "Une fois un canal connecté, les conversations de vos clients apparaîtront ici.",
+      "elegirTitulo": "Choisissez une conversation",
+      "elegirDescripcion": "Sélectionnez une discussion pour la lire et répondre. Les nouvelles arrivent ici en temps réel."
+    },
+    "movil": {
+      "titulo": "Chat",
+      "bandeja": "Boîte de réception",
+      "subtitulo": "Boîte · {n, plural, one {# ouverte} other {# ouvertes}}",
+      "nueva": "Nouvelle"
+    },
+    "vista": {
+      "titulo": "Conversation",
+      "cliente": "Client",
+      "volver": "Retour à la boîte",
+      "migas": "Fil d'Ariane",
+      "migaChat": "Chat",
+      "migaBandeja": "Boîte de réception",
+      "prioridad": {
+        "low": "Priorité basse",
+        "normal": "Priorité normale",
+        "high": "Priorité haute",
+        "urgent": "Priorité urgente"
+      },
+      "secciones": "Sections de la conversation",
+      "pestanas": {
+        "conversacion": "Conversation",
+        "actividad": "Activité",
+        "archivos": "Fichiers"
+      }
+    },
+    "actividad": {
+      "resumen": "Résumé de l'activité",
+      "total": "Total",
+      "estados": "Changements de statut",
+      "asignaciones": "Attributions",
+      "etiquetas": "Étiquettes",
+      "ia": "Réponses de l'IA",
+      "exportar": "Exporter en CSV"
+    },
+    "archivos": {
+      "resumen": "Résumé des fichiers",
+      "total": "Fichiers",
+      "tamano": "Taille totale"
     }
   },
   "chatModulo": {

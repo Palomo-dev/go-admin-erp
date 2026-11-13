@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useCapacidades } from '@/lib/navigation/useCapacidades';
+import { useConversacion } from '@/components/chat/conversations/useConversacion';
+import { CabeceraConversacion } from '@/components/chat/conversations/CabeceraConversacion';
 import { supabase } from '@/lib/supabase/config';
 import ConversationFilesService, {
   ConversationFile,
@@ -24,12 +27,13 @@ export default function ChatConversationFilesPage() {
   const [files, setFiles] = useState<ConversationFile[]>([]);
   const [stats, setStats] = useState<FileStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const c = useConversacion(organizationId, conversationId);
+  // Eliminar lo decide el servidor (`/api/me/capacidades`), nunca el nombre del rol.
+  const { datos: capacidades } = useCapacidades();
 
   useEffect(() => {
     if (organizationId && conversationId) {
       loadData();
-      checkUserRole();
     }
   }, [organizationId, conversationId]);
 
@@ -56,32 +60,6 @@ export default function ChatConversationFilesPage() {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const checkUserRole = async () => {
-    try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: member } = await supabase
-        .from('organization_members')
-        .select(`
-          role_id,
-          roles:role_id (name)
-        `)
-        .eq('user_id', user.id)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (member?.roles) {
-        const roleData = member.roles as any;
-        setUserRole(roleData?.name || null);
-      }
-    } catch (error) {
-      console.error('Error verificando rol:', error);
     }
   };
 
@@ -173,17 +151,17 @@ export default function ChatConversationFilesPage() {
     }
   };
 
-  const canDelete = userRole === 'admin' || userRole === 'owner' || userRole === 'Administrador';
+  const canDelete = capacidades.esAdmin;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="flex min-h-full flex-col bg-canvas">
+      <CabeceraConversacion c={c} seccion="archivos" conversationId={conversationId} contadores={{ archivos: stats?.totalFiles ?? null }} />
       <FilesHeader
-        conversationId={conversationId}
         stats={stats}
         loading={loading}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1">
         <FilesList
           files={files}
           loading={loading}

@@ -1,154 +1,39 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, HardDrive, FileText, Image as ImageIcon, Video, Music, Archive } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { FileStats } from '@/lib/services/conversationFilesService';
-import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
+import { useTranslations } from 'next-intl';
+import { KpiStrip, StatCard } from '@/components/kit';
+import type { FileStats } from '@/lib/services/conversationFilesService';
 
 interface FilesHeaderProps {
-  conversationId: string;
   stats: FileStats | null;
   loading?: boolean;
 }
 
-export default function FilesHeader({ conversationId, stats, loading }: FilesHeaderProps) {
-  const router = useRouter();
+/** «1,5 MB»: tamaño legible. */
+export function tamanoLegible(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B';
+  const unidades = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(unidades.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(1))} ${unidades[i]}`;
+}
 
-  // Celular: una sola barra. «←» y el título van en el MobileHeader del shell.
-  useCabeceraMovil({ modo: 'page', titulo: 'Archivos de la conversación', volverA: `/app/chat/conversaciones/${conversationId}` });
-
-  const formatSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const typeIcons: Record<string, React.ReactNode> = {
-    image: <ImageIcon className="h-4 w-4" />,
-    video: <Video className="h-4 w-4" />,
-    audio: <Music className="h-4 w-4" />,
-    pdf: <FileText className="h-4 w-4" />,
-    document: <FileText className="h-4 w-4" />,
-    archive: <Archive className="h-4 w-4" />,
-    other: <FileText className="h-4 w-4" />
-  };
-
-  const typeLabels: Record<string, string> = {
-    image: 'Imágenes',
-    video: 'Videos',
-    audio: 'Audios',
-    pdf: 'PDFs',
-    document: 'Documentos',
-    spreadsheet: 'Hojas de cálculo',
-    archive: 'Archivos',
-    other: 'Otros'
-  };
-
+/**
+ * Cifras de la pestaña «Archivos» (Figma 91-chat-12). El título, «←» y las
+ * pestañas los pone `CabeceraConversacion`.
+ */
+export default function FilesHeader({ stats, loading }: FilesHeaderProps) {
+  const t = useTranslations('chatBandeja.archivos');
+  const tipos = Object.entries(stats?.byType ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 2);
   return (
-    <div className="border-b dark:border-gray-800 bg-white dark:bg-gray-900">
-      <div className="p-4">
-        <div className="flex items-center gap-4 mb-4">
-          {/* En celular «←» ya está en el MobileHeader del shell: aquí sería la segunda flecha. */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => router.push(`/app/chat/conversaciones/${conversationId}`)}
-            className="hidden lg:inline-flex h-9 w-9"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Archivos de la conversación
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Todos los archivos compartidos en esta conversación
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        {!loading && stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
-                    <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-blue-600 dark:text-blue-400">Total</p>
-                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
-                      {stats.totalFiles}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-800 rounded-lg">
-                    <HardDrive className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-purple-600 dark:text-purple-400">Tamaño</p>
-                    <p className="text-lg font-bold text-purple-700 dark:text-purple-300">
-                      {formatSize(stats.totalSize)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {Object.entries(stats.byType).slice(0, 2).map(([type, count]) => (
-              <Card 
-                key={type} 
-                className="bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-              >
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-400">
-                      {typeIcons[type] || typeIcons.other}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">
-                        {typeLabels[type] || type}
-                      </p>
-                      <p className="text-lg font-bold text-gray-700 dark:text-gray-300">
-                        {count}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Type badges */}
-        {!loading && stats && Object.keys(stats.byType).length > 2 && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            {Object.entries(stats.byType).slice(2).map(([type, count]) => (
-              <Badge 
-                key={type} 
-                variant="outline" 
-                className="flex items-center gap-1"
-              >
-                {typeIcons[type] || typeIcons.other}
-                {typeLabels[type] || type}: {count}
-              </Badge>
-            ))}
-          </div>
-        )}
-      </div>
+    <div className="px-4 pt-4 lg:px-6">
+      <KpiStrip columnas={4} etiqueta={t('resumen')}>
+        <StatCard tamano="sm" etiqueta={t('total')} valor={stats?.totalFiles ?? 0} cargando={loading} />
+        <StatCard tamano="sm" etiqueta={t('tamano')} valor={tamanoLegible(stats?.totalSize ?? 0)} cargando={loading} />
+        {tipos.map(([tipo, n]) => (
+          <StatCard key={tipo} tamano="sm" etiqueta={tipo} valor={n} cargando={loading} />
+        ))}
+      </KpiStrip>
     </div>
   );
 }

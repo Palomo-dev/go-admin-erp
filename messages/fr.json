@@ -49675,5 +49675,440 @@
       "titulo": "{persona} vous a attribué une conversation",
       "contenido": "{persona} vous a attribué la conversation avec {cliente}."
     }
+  },
+  "chatModulo": {
+    "pestanas": {
+      "etiqueta": "Sections du chat",
+      "nuevaConversacion": "Nouvelle conversation"
+    },
+    "configuracion": {
+      "etiqueta": "Paramètres du chat",
+      "general": "Général",
+      "ia": "IA du chat"
+    },
+    "ia": {
+      "pestanas": {
+        "etiqueta": "Sections IA",
+        "laboratorio": "Laboratoire",
+        "trabajos": "Tâches",
+        "configuracion": "Configuration"
+      }
+    },
+    "canales": {
+      "titulo": "Canaux",
+      "subtitulo": "Connectez les canaux par lesquels vos clients vous écrivent et choisissez le niveau d’aide de l’IA sur chacun.",
+      "nuevoCanal": "Nouveau canal",
+      "migas": {
+        "chat": "Chat",
+        "canales": "Canaux"
+      },
+      "tipos": {
+        "whatsapp": "WhatsApp",
+        "instagram": "Instagram",
+        "facebook": "Messenger",
+        "website": "Site web",
+        "telegram": "Telegram",
+        "email": "E-mail"
+      },
+      "kpis": {
+        "etiqueta": "Résumé des canaux",
+        "conectados": "Canaux connectés",
+        "conectadosDetalle": "sur {total} canaux",
+        "hoy": "Conversations aujourd’hui",
+        "abiertas": "Ouvertes",
+        "abiertasDetalle": "ouvertes ou en attente",
+        "primeraRespuesta": "Délai de première réponse",
+        "primeraRespuestaDetalle": "moyenne du jour",
+        "sinDato": "—"
+      },
+      "misCanales": "Mes canaux",
+      "tabla": {
+        "etiqueta": "Canaux de l’organisation",
+        "canal": "Canal",
+        "estado": "État",
+        "modoIa": "Mode IA",
+        "abiertas": "Ouvertes",
+        "ultimaActividad": "Dernière activité",
+        "activo": "Actif",
+        "sinActividad": "Aucun message",
+        "activar": "Activer {nombre}",
+        "modoDe": "Mode IA de {nombre}",
+        "vacioTitulo": "Vous n’avez encore aucun canal",
+        "vacioDescripcion": "Connectez WhatsApp, Instagram, Messenger ou le chat de votre site pour répondre depuis la boîte de réception.",
+        "errorTitulo": "Impossible de charger les canaux"
+      },
+      "detalle": {
+        "dominios": "{valor} · {n, plural, one {# domaine} other {# domaines}}",
+        "sinDominios": "Aucun domaine autorisé",
+        "cuentaVinculada": "Compte professionnel associé",
+        "sinCredenciales": "Pas encore connecté"
+      },
+      "estados": {
+        "conectado": "Connecté",
+        "tokenVencido": "Jeton expiré",
+        "sinConectar": "Non connecté",
+        "suspendido": "Suspendu",
+        "inactivo": "Inactif"
+      },
+      "modos": {
+        "manual": "Désactivé",
+        "hybrid": "Hybride (recommandé)",
+        "auto": "Automatique"
+      },
+      "modosCorto": {
+        "manual": "Désactivée",
+        "hybrid": "Hybride · l’IA propose",
+        "auto": "Automatique"
+      },
+      "modosTitulo": {
+        "manual": "Désactivée",
+        "hybrid": "Hybride",
+        "auto": "Automatique"
+      },
+      "modosDescripcion": {
+        "manual": "Seules des personnes répondent.",
+        "hybrid": "L’IA propose ; une personne vérifie et envoie.",
+        "auto": "L’IA répond seule et passe la main à une personne en cas de doute."
+      },
+      "acciones": {
+        "configurar": "Configurer"
+      },
+      "aviso": {
+        "tokenVencido": "{nombre} ne reçoit plus de messages : l’autorisation du compte a expiré. Reconnectez-le pour ne pas perdre de conversations.",
+        "suspendido": "{nombre} est suspendu et ne reçoit pas de messages. Vérifiez la connexion.",
+        "reconectar": "Reconnecter"
+      },
+      "conectar": {
+        "titulo": "Connecter un autre canal",
+        "disponible": "Disponible",
+        "proximamente": "Bientôt",
+        "conectar": "Connecter",
+        "nombres": {
+          "whatsapp": "WhatsApp",
+          "whatsappOtro": "Un autre numéro WhatsApp",
+          "instagram": "Instagram",
+          "instagramOtro": "Un autre compte Instagram",
+          "facebook": "Facebook Messenger",
+          "facebookOtro": "Une autre page Facebook",
+          "website": "Chat du site web",
+          "websiteOtro": "Un autre chat de site web",
+          "telegram": "Telegram",
+          "email": "E-mail"
+        },
+        "descripciones": {
+          "whatsapp": "Répondez à vos clients sur WhatsApp depuis la boîte de réception.",
+          "whatsappOtro": "Séparez ventes et support avec des numéros différents.",
+          "instagram": "Répondez aux messages directs de votre compte professionnel.",
+          "instagramOtro": "Répondez aux messages directs d’un autre compte professionnel.",
+          "facebook": "Recevez les messages de votre page Facebook.",
+          "facebookOtro": "Connectez les messages d’une autre page.",
+          "website": "Un chat sur votre site qui arrive dans la même boîte de réception.",
+          "websiteOtro": "Un chat pour un autre site ou une autre marque.",
+          "telegram": "Bientôt, vous pourrez gérer Telegram depuis la boîte de réception.",
+          "email": "Recevez les e-mails du support dans la même boîte de réception."
+        }
+      },
+      "nuevo": {
+        "titulo": "Nouveau canal",
+        "descripcion": "Choisissez par où vos clients vont vous écrire.",
+        "tipo": "Type de canal",
+        "nombre": "Nom du canal",
+        "nombreAyuda": "C’est ainsi que votre équipe le verra dans la boîte de réception.",
+        "nombreObligatorio": "Saisissez un nom pour le canal.",
+        "nombrePorDefecto": {
+          "whatsapp": "WhatsApp · Ventes",
+          "instagram": "Instagram",
+          "facebook": "Facebook Messenger",
+          "website": "Chat du site web"
+        },
+        "comoConecta": "Comment se connecte-t-il ?",
+        "formas": {
+          "cloud_api": "Cloud API de Meta",
+          "cloud_apiDescripcion": "Connexion officielle en 1 clic avec votre compte Meta Business.",
+          "coexistence": "Coexistence",
+          "coexistenceDescripcion": "Continuez à utiliser l’app WhatsApp Business sur le téléphone et répondez aussi depuis GO.",
+          "qr_scan": "Code QR",
+          "qr_scanDescripcion": "Associez un WhatsApp normal en scannant un code. Meta peut bloquer le numéro."
+        },
+        "recomendado": "Recommandé",
+        "riesgo": "Risque de blocage",
+        "ayudaIa": "Aide de l’IA",
+        "continuarMeta": "Continuer avec Meta",
+        "continuar": "Continuer",
+        "crear": "Créer le canal",
+        "creado": "Canal créé",
+        "errorCrear": "Impossible de créer le canal"
+      },
+      "toasts": {
+        "activado": "« {nombre} » est actif",
+        "desactivado": "« {nombre} » est inactif",
+        "modoIa": "Aide de l’IA sur « {nombre} » : {modo}",
+        "error": "Impossible d’enregistrer la modification"
+      },
+      "detalleCanal": {
+        "actualizar": "Actualiser",
+        "activar": "Activer le canal",
+        "desactivar": "Désactiver le canal",
+        "verCanales": "Voir mes canaux",
+        "noEncontrado": {
+          "titulo": "Canal indisponible",
+          "descripcion": "Ce canal n’existe pas, a été supprimé ou n’appartient pas à l’organisation active."
+        },
+        "error": {
+          "titulo": "Impossible de charger le canal",
+          "descripcion": "Vérifiez votre connexion et réessayez."
+        },
+        "kpis": {
+          "etiqueta": "Chiffres du canal",
+          "mensajes": "Messages",
+          "enviadosHoy": "Envoyés aujourd’hui",
+          "fallidos": "Échoués",
+          "fallidosDetalle": "{pct} % · voir les événements",
+          "entrega": "Taux de remise"
+        },
+        "ayudaIa": {
+          "titulo": "Aide de l’IA",
+          "descripcion": "Ce que fait l’IA quand un message arrive par ce canal.",
+          "ajustar": "Ajuster le modèle et le ton"
+        },
+        "eventos": {
+          "titulo": "Événements récents",
+          "vacio": "Aucun événement de message pour l’instant.",
+          "tipos": {
+            "sent": "Envoyé",
+            "delivered": "Remis",
+            "read": "Lu",
+            "failed": "Échoué"
+          }
+        },
+        "webhook": {
+          "titulo": "Webhook",
+          "descripcion": "Meta envoie ici les nouveaux messages. C’est déjà configuré si vous vous êtes connecté en 1 clic.",
+          "url": "URL du webhook",
+          "token": "Jeton de vérification",
+          "sinToken": "Aucun jeton de vérification enregistré.",
+          "campos": "Champs à souscrire :",
+          "copiarUrl": "Copier l’URL",
+          "copiada": "Copiée",
+          "verToken": "Voir le jeton",
+          "ocultarToken": "Masquer le jeton",
+          "abrirMeta": "Ouvrir Meta Business"
+        },
+        "credenciales": {
+          "titulo": "Connexion",
+          "descripcion": "Données du compte Meta associé à ce canal.",
+          "verificado": "Connecté à Meta. Les identifiants sont valides.",
+          "verificadoEl": "Connecté à Meta ; vérifié le {fecha}.",
+          "invalido": "Les identifiants ont expiré ou ne sont pas valides. Reconnectez le compte.",
+          "sinCredenciales": "Aucun identifiant enregistré pour ce canal.",
+          "guardar": "Enregistrer",
+          "verificar": "Vérifier la connexion",
+          "ver": "Voir les identifiants",
+          "ocultar": "Masquer les identifiants",
+          "campos": {
+            "instagramBusinessId": "ID du compte Instagram Business",
+            "paginaVinculada": "ID de la page Facebook associée",
+            "paginaId": "ID de la page",
+            "appId": "App ID",
+            "appSecret": "App Secret",
+            "accessToken": "Jeton d’accès",
+            "pageAccessToken": "Jeton d’accès de la page",
+            "tokenAyuda": "GO Admin le conserve. Utilisez « Voir les identifiants » pour l’afficher.",
+            "verifyToken": "Jeton de vérification du webhook"
+          }
+        },
+        "toasts": {
+          "credencialesGuardadas": "Identifiants enregistrés",
+          "errorCredenciales": "Impossible d’enregistrer les identifiants",
+          "conexionValida": "Connexion valide",
+          "conexionInvalida": "La connexion n’est pas valide",
+          "errorValidar": "Impossible de vérifier la connexion",
+          "activado": "Canal activé",
+          "desactivado": "Canal désactivé",
+          "errorEstado": "Impossible de modifier l’état du canal",
+          "modoGuardado": "Aide de l’IA mise à jour",
+          "errorModo": "Impossible de modifier l’aide de l’IA"
+        },
+        "whatsapp": {
+          "webhookNota": "Il y a un seul webhook pour tous les numéros : Meta identifie chaque canal par son Phone Number ID.",
+          "conexion": {
+            "titulo": "Connexion",
+            "descripcion": "Comment ce numéro est associé."
+          },
+          "pestanas": {
+            "cloud_api": "Cloud API (recommandé)",
+            "coexistence": "Coexistence",
+            "qr_scan": "Code QR"
+          },
+          "cloud": {
+            "verificado": "Connecté à Meta. Le numéro est vérifié.",
+            "verificadoEl": "Connecté à Meta ; vérifié le {fecha}.",
+            "invalido": "Le jeton d’accès a expiré ou n’est pas valide. Reconnectez-vous à Meta.",
+            "conectadoAhora": "WhatsApp est connecté. Les identifiants et le webhook ont été configurés automatiquement.",
+            "unClic": "Connexion en 1 clic avec Meta",
+            "unClicDescripcion": "Connectez-vous avec votre compte Meta Business et choisissez le numéro. Les identifiants et le webhook se configurent automatiquement.",
+            "conectarMeta": "Connecter avec Meta",
+            "conectando": "Connexion…",
+            "manual": "Saisir les identifiants manuellement",
+            "phoneNumberId": "Phone Number ID",
+            "waba": "Compte WhatsApp Business (WABA)",
+            "token": "Jeton d’accès",
+            "tokenAyuda": "GO Admin le conserve. Utilisez « Voir le jeton » pour l’afficher.",
+            "tokenPlaceholder": "Jeton d’accès permanent",
+            "verifyToken": "Jeton de vérification du webhook",
+            "verifyTokenAyuda": "Meta l’utilise pour vérifier que le webhook vous appartient.",
+            "guardar": "Enregistrer",
+            "verificar": "Vérifier la connexion",
+            "reconectar": "Se reconnecter à Meta",
+            "verToken": "Voir le jeton",
+            "ocultarToken": "Masquer le jeton",
+            "errores": {
+              "sinOrganizacion": "Impossible de déterminer l’organisation active.",
+              "requiereHttps": "La connexion en 1 clic ne fonctionne qu’en HTTPS. Saisissez ici les identifiants manuellement.",
+              "cancelado": "L’autorisation Meta a été annulée.",
+              "sdk": "Impossible de charger le connecteur Meta. Vérifiez la connexion.",
+              "callback": "Meta a renvoyé une erreur lors de la connexion."
+            }
+          },
+          "coexistencia": {
+            "aviso": "La coexistence est le mode officiel de Meta : vous gardez l’app WhatsApp Business sur le téléphone et votre équipe répond aussi depuis GO, sur le même numéro et sans risque de blocage.",
+            "requisitosTitulo": "Prérequis",
+            "requisito1": "Portefeuille Meta Business avec la vérification de l’entreprise approuvée.",
+            "requisito2": "Compte WhatsApp Business (WABA) avec le numéro enregistré.",
+            "requisito3": "Au début, 2 numéros maximum ; jusqu’à 20 après vérification.",
+            "pasosTitulo": "Étapes pour l’activer",
+            "paso1": "Terminez la vérification de l’entreprise dans Meta Business.",
+            "paso2": "Allez dans WhatsApp Manager › Numéros de téléphone.",
+            "paso3": "Choisissez le numéro › Paramètres › Coexistence › Activer.",
+            "paso4": "Associez le numéro dans l’app WhatsApp Business du téléphone.",
+            "paso5": "Ici, connectez le numéro dans l’onglet Cloud API.",
+            "abrirManager": "Ouvrir WhatsApp Manager"
+          },
+          "qr": {
+            "riesgoTitulo": "Meta peut bloquer ce numéro",
+            "riesgoDescripcion": "La connexion par code QR n’est pas officielle. Utilisez-la seulement pour des tests ou avec un numéro que vous pouvez perdre. Pour vendre, utilisez Cloud API ou la coexistence.",
+            "entiendo": "Je comprends le risque et je veux continuer",
+            "escanea": "Scannez-le depuis le téléphone",
+            "paso1": "Ouvrez WhatsApp sur le téléphone du numéro.",
+            "paso2": "Touchez ⋮ › Appareils connectés › Connecter un appareil.",
+            "paso3": "Pointez l’appareil photo vers ce code. Il expire en quelques secondes.",
+            "qrAlt": "Code QR pour associer WhatsApp",
+            "generar": "Générer le code",
+            "otroCodigo": "Générer un autre code",
+            "detener": "Arrêter",
+            "borrar": "Supprimer la session",
+            "borrarTitulo": "Supprimer la session WhatsApp ?",
+            "borrarDescripcion": "Les identifiants de cette connexion seront supprimés et il faudra scanner un nouveau code pour se reconnecter. Action irréversible.",
+            "error": "Impossible de terminer l’action",
+            "estados": {
+              "disconnected": "Déconnecté",
+              "connecting": "Connexion…",
+              "qr_ready": "En attente du scan…",
+              "connected": "Connecté",
+              "reconnecting": "Reconnexion…",
+              "banned": "Numéro bloqué par Meta",
+              "error": "Erreur"
+            }
+          }
+        }
+      },
+      "widget": {
+        "visible": "Visible sur le site",
+        "oculto": "Masqué sur le site",
+        "mostrarEnSitio": "Afficher sur le site",
+        "activaPrimero": "Le canal est inactif : activez-le dans Canaux pour l’afficher sur le site.",
+        "guardado": "Enregistré",
+        "kpis": {
+          "etiqueta": "Chiffres du chat du site",
+          "sesiones": "Sessions",
+          "enLinea": "En ligne maintenant",
+          "visitantes": "Visiteurs uniques",
+          "celular": "Depuis un mobile"
+        },
+        "instalacion": {
+          "titulo": "Installation",
+          "descripcion": "Si votre site est sur GO Admin, c’est déjà installé. Sur d’autres sites, collez ce code juste avant la fermeture du body.",
+          "copiar": "Copier le code",
+          "copiado": "Code copié",
+          "rotarClave": "Générer une nouvelle clé",
+          "rotarClaveDescripcion": "L’ancien code cesse de fonctionner",
+          "dominios": "Domaines autorisés :",
+          "sinDominios": "aucun pour l’instant",
+          "dominiosAyuda": "Le chat ne s’ouvre que sur ces domaines. Sans domaine, il s’ouvre partout.",
+          "agregar": "Ajouter",
+          "nuevoDominio": "Nouveau domaine",
+          "quitarDominio": "Retirer {dominio}",
+          "dominioInvalido": "Saisissez un domaine comme votreboutique.com",
+          "dominioRepetido": "Ce domaine est déjà dans la liste."
+        },
+        "apariencia": {
+          "titulo": "Apparence",
+          "color": "Couleur principale",
+          "posicion": "Position",
+          "tamano": "Taille du bouton",
+          "posiciones": {
+            "abajoDerecha": "En bas à droite",
+            "abajoIzquierda": "En bas à gauche",
+            "arribaDerecha": "En haut à droite",
+            "arribaIzquierda": "En haut à gauche"
+          },
+          "tamanos": {
+            "t48": "Petit · 48 px",
+            "t56": "Moyen · 56 px",
+            "t64": "Grand · 64 px",
+            "otro": "Personnalisé · {px} px"
+          },
+          "avanzado": "Plus d’options de style"
+        },
+        "alAbrir": {
+          "titulo": "À l’ouverture du chat",
+          "tituloChat": "Titre du chat",
+          "bienvenida": "Message de bienvenue",
+          "fueraDeLinea": "Si personne n’est en ligne",
+          "botones": "Boutons rapides :",
+          "nuevoBoton": "Texte du bouton",
+          "agregar": "Ajouter",
+          "quitarBoton": "Retirer « {boton} »",
+          "descartar": "Annuler",
+          "guardar": "Enregistrer"
+        },
+        "visitante": {
+          "titulo": "Données du visiteur",
+          "descripcion": "Les demander avant de discuter aide à créer le client dans le CRM.",
+          "campos": {
+            "name": "Nom",
+            "phone": "WhatsApp",
+            "email": "E-mail"
+          },
+          "ayudaIa": "Aide de l’IA"
+        },
+        "vistaPrevia": {
+          "titulo": "Aperçu",
+          "tituloPorDefecto": "Chat",
+          "enLinea": "En ligne · répond en quelques minutes",
+          "ahora": "maintenant",
+          "antesDeEmpezar": "Avant de commencer",
+          "campos": {
+            "name": "Votre nom",
+            "phone": "Votre WhatsApp",
+            "email": "Votre e-mail"
+          },
+          "empezar": "Commencer le chat",
+          "abrir": "Ouvrir le chat",
+          "cerrar": "Fermer le chat",
+          "reiniciar": "Réinitialiser l’aperçu"
+        },
+        "toasts": {
+          "error": "Impossible d’enregistrer la modification",
+          "claveRotada": "Nouvelle clé prête : mettez à jour le code sur votre site",
+          "visible": "Le chat s’affiche désormais sur votre site",
+          "oculto": "Le chat ne s’affiche plus sur votre site",
+          "errorSitio": "Impossible de modifier la visibilité sur le site"
+        }
+      }
+    },
+    "comun": {
+      "volver": "Retour"
+    }
   }
 }

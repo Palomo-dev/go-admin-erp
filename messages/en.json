@@ -49675,5 +49675,440 @@
       "titulo": "{persona} assigned you a conversation",
       "contenido": "{persona} assigned you the conversation with {cliente}."
     }
+  },
+  "chatModulo": {
+    "pestanas": {
+      "etiqueta": "Chat sections",
+      "nuevaConversacion": "New conversation"
+    },
+    "configuracion": {
+      "etiqueta": "Chat settings",
+      "general": "General",
+      "ia": "Chat AI"
+    },
+    "ia": {
+      "pestanas": {
+        "etiqueta": "AI sections",
+        "laboratorio": "Lab",
+        "trabajos": "Jobs",
+        "configuracion": "Settings"
+      }
+    },
+    "canales": {
+      "titulo": "Channels",
+      "subtitulo": "Connect the channels your customers use to reach you and choose how much the AI helps on each one.",
+      "nuevoCanal": "New channel",
+      "migas": {
+        "chat": "Chat",
+        "canales": "Channels"
+      },
+      "tipos": {
+        "whatsapp": "WhatsApp",
+        "instagram": "Instagram",
+        "facebook": "Messenger",
+        "website": "Website",
+        "telegram": "Telegram",
+        "email": "Email"
+      },
+      "kpis": {
+        "etiqueta": "Channels summary",
+        "conectados": "Connected channels",
+        "conectadosDetalle": "of {total} channels",
+        "hoy": "Conversations today",
+        "abiertas": "Open",
+        "abiertasDetalle": "open or pending",
+        "primeraRespuesta": "First response time",
+        "primeraRespuestaDetalle": "today’s average",
+        "sinDato": "—"
+      },
+      "misCanales": "My channels",
+      "tabla": {
+        "etiqueta": "Organization channels",
+        "canal": "Channel",
+        "estado": "Status",
+        "modoIa": "AI mode",
+        "abiertas": "Open",
+        "ultimaActividad": "Last activity",
+        "activo": "Active",
+        "sinActividad": "No messages",
+        "activar": "Turn on {nombre}",
+        "modoDe": "AI mode for {nombre}",
+        "vacioTitulo": "You have no channels yet",
+        "vacioDescripcion": "Connect WhatsApp, Instagram, Messenger or your website chat to reply from the Inbox.",
+        "errorTitulo": "We couldn’t load the channels"
+      },
+      "detalle": {
+        "dominios": "{valor} · {n, plural, one {# domain} other {# domains}}",
+        "sinDominios": "No allowed domains",
+        "cuentaVinculada": "Business account linked",
+        "sinCredenciales": "Not connected yet"
+      },
+      "estados": {
+        "conectado": "Connected",
+        "tokenVencido": "Token expired",
+        "sinConectar": "Not connected",
+        "suspendido": "Suspended",
+        "inactivo": "Inactive"
+      },
+      "modos": {
+        "manual": "Off",
+        "hybrid": "Hybrid (recommended)",
+        "auto": "Automatic"
+      },
+      "modosCorto": {
+        "manual": "Off",
+        "hybrid": "Hybrid · AI suggests",
+        "auto": "Automatic"
+      },
+      "modosTitulo": {
+        "manual": "Off",
+        "hybrid": "Hybrid",
+        "auto": "Automatic"
+      },
+      "modosDescripcion": {
+        "manual": "Only people reply.",
+        "hybrid": "The AI suggests; a person reviews and sends.",
+        "auto": "The AI replies on its own and hands over to a person when unsure."
+      },
+      "acciones": {
+        "configurar": "Configure"
+      },
+      "aviso": {
+        "tokenVencido": "{nombre} stopped receiving messages: the account permission expired. Reconnect it so you don’t lose conversations.",
+        "suspendido": "{nombre} is suspended and isn’t receiving messages. Check the connection.",
+        "reconectar": "Reconnect"
+      },
+      "conectar": {
+        "titulo": "Connect another channel",
+        "disponible": "Available",
+        "proximamente": "Coming soon",
+        "conectar": "Connect",
+        "nombres": {
+          "whatsapp": "WhatsApp",
+          "whatsappOtro": "Another WhatsApp number",
+          "instagram": "Instagram",
+          "instagramOtro": "Another Instagram account",
+          "facebook": "Facebook Messenger",
+          "facebookOtro": "Another Facebook page",
+          "website": "Website chat",
+          "websiteOtro": "Another website chat",
+          "telegram": "Telegram",
+          "email": "Email"
+        },
+        "descripciones": {
+          "whatsapp": "Serve your customers on WhatsApp from the Inbox.",
+          "whatsappOtro": "Keep sales and support on separate numbers.",
+          "instagram": "Reply to direct messages on your business account.",
+          "instagramOtro": "Reply to direct messages on another business account.",
+          "facebook": "Receive messages from your Facebook page.",
+          "facebookOtro": "Connect messages from another page.",
+          "website": "A chat on your website that lands in the same Inbox.",
+          "websiteOtro": "A chat for another site or brand.",
+          "telegram": "Soon you’ll be able to handle Telegram from the Inbox.",
+          "email": "Receive support emails in the same Inbox."
+        }
+      },
+      "nuevo": {
+        "titulo": "New channel",
+        "descripcion": "Choose where your customers will write to you.",
+        "tipo": "Channel type",
+        "nombre": "Channel name",
+        "nombreAyuda": "This is how your team will see it in the Inbox.",
+        "nombreObligatorio": "Enter a name for the channel.",
+        "nombrePorDefecto": {
+          "whatsapp": "WhatsApp · Sales",
+          "instagram": "Instagram",
+          "facebook": "Facebook Messenger",
+          "website": "Website chat"
+        },
+        "comoConecta": "How does it connect?",
+        "formas": {
+          "cloud_api": "Meta Cloud API",
+          "cloud_apiDescripcion": "Official 1-click connection with your Meta Business account.",
+          "coexistence": "Coexistence",
+          "coexistenceDescripcion": "Keep using the WhatsApp Business app on your phone and reply from GO too.",
+          "qr_scan": "QR code",
+          "qr_scanDescripcion": "Link a regular WhatsApp by scanning a code. Meta may block the number."
+        },
+        "recomendado": "Recommended",
+        "riesgo": "Risk of blocking",
+        "ayudaIa": "AI help",
+        "continuarMeta": "Continue with Meta",
+        "continuar": "Continue",
+        "crear": "Create channel",
+        "creado": "Channel created",
+        "errorCrear": "The channel couldn’t be created"
+      },
+      "toasts": {
+        "activado": "“{nombre}” is now active",
+        "desactivado": "“{nombre}” is now inactive",
+        "modoIa": "AI help on “{nombre}”: {modo}",
+        "error": "The change couldn’t be saved"
+      },
+      "detalleCanal": {
+        "actualizar": "Refresh",
+        "activar": "Turn on channel",
+        "desactivar": "Turn off channel",
+        "verCanales": "See my channels",
+        "noEncontrado": {
+          "titulo": "Channel not available",
+          "descripcion": "This channel doesn’t exist, was deleted or doesn’t belong to the active organization."
+        },
+        "error": {
+          "titulo": "We couldn’t load the channel",
+          "descripcion": "Check your connection and try again."
+        },
+        "kpis": {
+          "etiqueta": "Channel figures",
+          "mensajes": "Messages",
+          "enviadosHoy": "Sent today",
+          "fallidos": "Failed",
+          "fallidosDetalle": "{pct}% · see events",
+          "entrega": "Delivery rate"
+        },
+        "ayudaIa": {
+          "titulo": "AI help",
+          "descripcion": "What the AI does when a message comes in on this channel.",
+          "ajustar": "Adjust model and tone"
+        },
+        "eventos": {
+          "titulo": "Recent events",
+          "vacio": "There are no message events yet.",
+          "tipos": {
+            "sent": "Sent",
+            "delivered": "Delivered",
+            "read": "Read",
+            "failed": "Failed"
+          }
+        },
+        "webhook": {
+          "titulo": "Webhook",
+          "descripcion": "Meta sends new messages here. It’s already set up if you connected in 1 click.",
+          "url": "Webhook URL",
+          "token": "Verify token",
+          "sinToken": "No verify token saved yet.",
+          "campos": "Fields to subscribe:",
+          "copiarUrl": "Copy URL",
+          "copiada": "Copied",
+          "verToken": "Show token",
+          "ocultarToken": "Hide token",
+          "abrirMeta": "Open Meta Business"
+        },
+        "credenciales": {
+          "titulo": "Connection",
+          "descripcion": "Details of the Meta account linked to this channel.",
+          "verificado": "Connected to Meta. The credentials are valid.",
+          "verificadoEl": "Connected to Meta; verified on {fecha}.",
+          "invalido": "The credentials expired or are invalid. Reconnect the account.",
+          "sinCredenciales": "No credentials saved for this channel yet.",
+          "guardar": "Save",
+          "verificar": "Check connection",
+          "ver": "Show credentials",
+          "ocultar": "Hide credentials",
+          "campos": {
+            "instagramBusinessId": "Instagram Business account ID",
+            "paginaVinculada": "Linked Facebook Page ID",
+            "paginaId": "Page ID",
+            "appId": "App ID",
+            "appSecret": "App Secret",
+            "accessToken": "Access token",
+            "pageAccessToken": "Page access token",
+            "tokenAyuda": "GO Admin stores it. Use “Show credentials” to reveal it.",
+            "verifyToken": "Webhook verify token"
+          }
+        },
+        "toasts": {
+          "credencialesGuardadas": "Credentials saved",
+          "errorCredenciales": "The credentials couldn’t be saved",
+          "conexionValida": "Connection is valid",
+          "conexionInvalida": "The connection isn’t valid",
+          "errorValidar": "The connection couldn’t be checked",
+          "activado": "Channel turned on",
+          "desactivado": "Channel turned off",
+          "errorEstado": "The channel status couldn’t be changed",
+          "modoGuardado": "AI help updated",
+          "errorModo": "The AI help couldn’t be changed"
+        },
+        "whatsapp": {
+          "webhookNota": "There’s a single webhook for all numbers: Meta identifies each channel by its Phone Number ID.",
+          "conexion": {
+            "titulo": "Connection",
+            "descripcion": "How this number is linked."
+          },
+          "pestanas": {
+            "cloud_api": "Cloud API (recommended)",
+            "coexistence": "Coexistence",
+            "qr_scan": "QR code"
+          },
+          "cloud": {
+            "verificado": "Connected to Meta. The number is verified.",
+            "verificadoEl": "Connected to Meta; verified on {fecha}.",
+            "invalido": "The access token expired or is invalid. Reconnect with Meta.",
+            "conectadoAhora": "WhatsApp is connected. Credentials and webhook were set up automatically.",
+            "unClic": "1-click connection with Meta",
+            "unClicDescripcion": "Sign in with your Meta Business account and choose the number. Credentials and webhook are set up automatically.",
+            "conectarMeta": "Connect with Meta",
+            "conectando": "Connecting…",
+            "manual": "Enter credentials manually",
+            "phoneNumberId": "Phone Number ID",
+            "waba": "WhatsApp Business Account (WABA)",
+            "token": "Access token",
+            "tokenAyuda": "GO Admin stores it. Use “Show token” to reveal it.",
+            "tokenPlaceholder": "Permanent access token",
+            "verifyToken": "Webhook verify token",
+            "verifyTokenAyuda": "Meta uses it to check the webhook is yours.",
+            "guardar": "Save",
+            "verificar": "Check connection",
+            "reconectar": "Reconnect with Meta",
+            "verToken": "Show token",
+            "ocultarToken": "Hide token",
+            "errores": {
+              "sinOrganizacion": "The active organization couldn’t be determined.",
+              "requiereHttps": "1-click connection only works over HTTPS. Enter the credentials manually here.",
+              "cancelado": "The Meta authorization was cancelled.",
+              "sdk": "The Meta connector couldn’t be loaded. Check your connection.",
+              "callback": "Meta returned an error while connecting."
+            }
+          },
+          "coexistencia": {
+            "aviso": "Coexistence is Meta’s official mode: you keep using the WhatsApp Business app on your phone and your team also replies from GO, on the same number and with no risk of blocking.",
+            "requisitosTitulo": "Requirements",
+            "requisito1": "Meta Business portfolio with business verification approved.",
+            "requisito2": "WhatsApp Business Account (WABA) with the number registered.",
+            "requisito3": "At first, up to 2 numbers; it goes up to 20 after verification.",
+            "pasosTitulo": "Steps to turn it on",
+            "paso1": "Complete business verification in Meta Business.",
+            "paso2": "Go to WhatsApp Manager › Phone numbers.",
+            "paso3": "Choose the number › Settings › Coexistence › Enable.",
+            "paso4": "Link the number in the WhatsApp Business app on the phone.",
+            "paso5": "Here, connect the number in the Cloud API tab.",
+            "abrirManager": "Open WhatsApp Manager"
+          },
+          "qr": {
+            "riesgoTitulo": "Meta may block this number",
+            "riesgoDescripcion": "QR code connection isn’t official. Use it only for testing or with a number you can afford to lose. To sell, use Cloud API or Coexistence.",
+            "entiendo": "I understand the risk and want to continue",
+            "escanea": "Scan it from the phone",
+            "paso1": "Open WhatsApp on the number’s phone.",
+            "paso2": "Tap ⋮ › Linked devices › Link a device.",
+            "paso3": "Point the camera at this code. It expires in a few seconds.",
+            "qrAlt": "QR code to link WhatsApp",
+            "generar": "Generate code",
+            "otroCodigo": "Generate another code",
+            "detener": "Stop",
+            "borrar": "Delete session",
+            "borrarTitulo": "Delete the WhatsApp session?",
+            "borrarDescripcion": "This connection’s credentials are deleted and you’ll need to scan a new code to reconnect. This can’t be undone.",
+            "error": "The action couldn’t be completed",
+            "estados": {
+              "disconnected": "Disconnected",
+              "connecting": "Connecting…",
+              "qr_ready": "Waiting for scan…",
+              "connected": "Connected",
+              "reconnecting": "Reconnecting…",
+              "banned": "Number blocked by Meta",
+              "error": "Error"
+            }
+          }
+        }
+      },
+      "widget": {
+        "visible": "Visible on the site",
+        "oculto": "Hidden on the site",
+        "mostrarEnSitio": "Show on the site",
+        "activaPrimero": "The channel is inactive: turn it on in Channels to show it on the site.",
+        "guardado": "Saved",
+        "kpis": {
+          "etiqueta": "Website chat figures",
+          "sesiones": "Sessions",
+          "enLinea": "Online now",
+          "visitantes": "Unique visitors",
+          "celular": "From mobile"
+        },
+        "instalacion": {
+          "titulo": "Installation",
+          "descripcion": "If your site is built with GO Admin it’s already installed. On other sites paste this code right before the closing body tag.",
+          "copiar": "Copy code",
+          "copiado": "Code copied",
+          "rotarClave": "Generate new key",
+          "rotarClaveDescripcion": "The previous code stops working",
+          "dominios": "Allowed domains:",
+          "sinDominios": "none yet",
+          "dominiosAyuda": "The chat only opens on these domains. With none, it opens anywhere.",
+          "agregar": "Add",
+          "nuevoDominio": "New domain",
+          "quitarDominio": "Remove {dominio}",
+          "dominioInvalido": "Enter a domain like yourstore.com",
+          "dominioRepetido": "That domain is already on the list."
+        },
+        "apariencia": {
+          "titulo": "Appearance",
+          "color": "Main color",
+          "posicion": "Position",
+          "tamano": "Button size",
+          "posiciones": {
+            "abajoDerecha": "Bottom right",
+            "abajoIzquierda": "Bottom left",
+            "arribaDerecha": "Top right",
+            "arribaIzquierda": "Top left"
+          },
+          "tamanos": {
+            "t48": "Small · 48 px",
+            "t56": "Medium · 56 px",
+            "t64": "Large · 64 px",
+            "otro": "Custom · {px} px"
+          },
+          "avanzado": "More style options"
+        },
+        "alAbrir": {
+          "titulo": "When the chat opens",
+          "tituloChat": "Chat title",
+          "bienvenida": "Welcome message",
+          "fueraDeLinea": "If no one is online",
+          "botones": "Quick buttons:",
+          "nuevoBoton": "Button text",
+          "agregar": "Add",
+          "quitarBoton": "Remove “{boton}”",
+          "descartar": "Discard",
+          "guardar": "Save"
+        },
+        "visitante": {
+          "titulo": "Visitor details",
+          "descripcion": "Asking for them before chatting helps create the customer in the CRM.",
+          "campos": {
+            "name": "Name",
+            "phone": "WhatsApp",
+            "email": "Email"
+          },
+          "ayudaIa": "AI help"
+        },
+        "vistaPrevia": {
+          "titulo": "Preview",
+          "tituloPorDefecto": "Chat",
+          "enLinea": "Online · replies in minutes",
+          "ahora": "now",
+          "antesDeEmpezar": "Before you start",
+          "campos": {
+            "name": "Your name",
+            "phone": "Your WhatsApp",
+            "email": "Your email"
+          },
+          "empezar": "Start chat",
+          "abrir": "Open chat",
+          "cerrar": "Close chat",
+          "reiniciar": "Reset preview"
+        },
+        "toasts": {
+          "error": "The change couldn’t be saved",
+          "claveRotada": "New key ready: update the code on your site",
+          "visible": "The chat now shows on your site",
+          "oculto": "The chat no longer shows on your site",
+          "errorSitio": "Site visibility couldn’t be changed"
+        }
+      }
+    },
+    "comun": {
+      "volver": "Back"
+    }
   }
 }

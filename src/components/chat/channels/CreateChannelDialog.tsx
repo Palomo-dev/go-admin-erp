@@ -170,7 +170,7 @@ export default function CreateChannelDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="off">
+                <SelectItem value="manual">
                   <div className="flex flex-col">
                     <span>Desactivado</span>
                     <span className="text-xs text-gray-500">Solo agentes humanos</span>

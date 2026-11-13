@@ -17,18 +17,13 @@ jest.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import FacebookSettingsHeader from '@/components/chat/channels/facebook/id/FacebookSettingsHeader';
-import InstagramSettingsHeader from '@/components/chat/channels/instagram/id/InstagramSettingsHeader';
-import WhatsAppSettingsHeader from '@/components/chat/channels/whatsapp/id/WhatsAppSettingsHeader';
+import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import WebsiteSettingsHeader from '@/components/chat/channels/website/id/WebsiteSettingsHeader';
 import FragmentDetailHeader from '@/components/chat/conocimiento/fragmentos/id/FragmentDetailHeader';
 import SourceDetailHeader from '@/components/chat/conocimiento/fuentes/id/SourceDetailHeader';
 import ActivityHeader from '@/components/chat/conversations/id/activity/ActivityHeader';
 import FilesHeader from '@/components/chat/conversations/id/files/FilesHeader';
 import ConversationHeader from '@/components/chat/conversations/id/ConversationHeader';
-import type { FacebookChannel } from '@/lib/services/facebookChannelService';
-import type { InstagramChannel } from '@/lib/services/instagramChannelService';
-import type { WhatsAppChannel } from '@/lib/services/whatsappChannelService';
 import type { ChatChannel } from '@/lib/services/chatChannelsService';
 import type { ConversationDetail } from '@/lib/services/conversationDetailService';
 
@@ -38,15 +33,22 @@ const canal = { id: 'c1', name: 'Canal principal', status: 'active' };
 afterEach(() => simularAncho(1440));
 
 describe('Chat › detalles en celular (390 px): una sola «←»', () => {
-  test.each([
-    ['Facebook', FacebookSettingsHeader, 'Configuración del canal Facebook Messenger'],
-    ['Instagram', InstagramSettingsHeader, 'Configuración del canal Instagram Direct'],
-    ['WhatsApp', WhatsAppSettingsHeader, 'Configuración del canal WhatsApp Business'],
-  ] as const)('canal %s: título, estado y acciones a la vista', (_n, Cabecera, subtitulo) => {
-    const props = { channel: canal as unknown as FacebookChannel & InstagramChannel & WhatsAppChannel, onRefresh: nada, onToggleStatus: nada, isLoading: false };
-    renderEnCelular(<Cabecera {...props} />);
-    comprobar('Canal principal', ['Activo', subtitulo, 'Actualizar', 'Desactivar']);
+  // Detalle de canal (WhatsApp, Instagram, Messenger, sitio web; Figma 91-chat-22/24):
+  // la cabecera común del Chat con estado y acciones a la vista.
+  test('canal: título, estado y acciones a la vista', () => {
+    renderEnCelular(
+      <CabeceraDetalleChat
+        titulo="Canal principal"
+        volverA="/app/chat/canales"
+        migas={['Chat', 'Canales']}
+        subtituloMovil="WhatsApp"
+        badge={<span>Conectado</span>}
+        acciones={<button type="button">Actualizar</button>}
+      />,
+    );
+    comprobar('Canal principal', ['Conectado', 'Actualizar']);
     expect(cabeceraPublicada()?.volverA).toBe('/app/chat/canales');
+    expect(cabeceraPublicada()?.subtitulo).toBe('WhatsApp');
   });
 
   test('canal sitio web', () => {

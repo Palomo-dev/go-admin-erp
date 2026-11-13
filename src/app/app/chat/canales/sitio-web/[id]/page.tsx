@@ -1,588 +1,297 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { Globe } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+/**
+ * Detalle del chat del sitio web (Figma 91-chat-24): «Mostrar en el sitio»,
+ * cifras de sesiones, Instalación, Apariencia, Al abrir el chat, Datos del
+ * visitante y la vista previa en vivo. Toda escritura pasa por
+ * `chatChannelsService` (y `website_settings` para mostrar el chat en el sitio
+ * de GO Admin, como antes).
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { EmptyState, KpiStrip, StatCard } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import ChatChannelsService, {
-  ChatChannel,
-  WidgetStats,
-  AIMode,
-  ChannelWebsiteSettings
+  normalizarPosicionWidget,
+  type AIMode,
+  type BrandConfig,
+  type ChatChannel,
+  type CollectIdentity,
+  type WidgetBehavior,
+  type WidgetPosition,
+  type WidgetStats,
+  type WidgetStyle,
 } from '@/lib/services/chatChannelsService';
-import {
-  WebsiteSettingsHeader,
-  WidgetCodeSection,
-  AllowedDomainsSection,
-  CollectIdentitySection,
-  AIModeSection,
-  WidgetPreview,
-  WidgetPositionSection,
-  WidgetStyleSection,
-  WidgetBehaviorSection
-} from '@/components/chat/channels/website/id';
-import {
-  WidgetPosition,
-  WidgetStyle,
-  WidgetBehavior,
-  BrandConfig, normalizarPosicionWidget } from '@/lib/services/chatChannelsService';
-import { DetailSkeleton } from '@/components/common/PageSkeletons';
+import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
+import { CanalIcono } from '@/components/chat/ui/CanalIcono';
+import { AlAbrirWidget, AparienciaWidget, DatosVisitanteWidget, InstalacionWidget } from '@/components/chat/channels/website/id/SeccionesWidget';
+import { VistaPreviaWidget } from '@/components/chat/channels/website/id/VistaPreviaWidget';
+import { porcentajeCelular } from '@/components/chat/channels/website/id/widgetLogica';
+import { codigoDelWidget } from '@/lib/chat/codigoWidget';
+
+const ESTILO_BASE: WidgetStyle = {
+  primaryColor: '#4361EE',
+  iconColor: '#FFFFFF',
+  iconType: 'chat',
+  iconStyle: 'outline',
+  buttonSize: 56,
+  borderRadius: 28,
+  borderWidth: 0,
+  borderColor: '#FFFFFF',
+  shadowEnabled: true,
+  shadowStrength: 'medium',
+};
 
 export default function WebsiteChannelSettingsPage() {
   const params = useParams();
-  const router = useRouter();
+  const channelId = params?.id as string;
+  const t = useTranslations('chatModulo.canales');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
-  const channelId = params?.id as string;
 
-  const [channel, setChannel] = useState<ChatChannel | null>(null);
-  const [widgetStats, setWidgetStats] = useState<WidgetStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [isRotatingKey, setIsRotatingKey] = useState(false);
-  const [isUpdatingAI, setIsUpdatingAI] = useState(false);
-  const [showInWebsite, setShowInWebsite] = useState(false);
-  const [isTogglingWebsite, setIsTogglingWebsite] = useState(false);
+  const [canal, setCanal] = useState<ChatChannel | null>(null);
+  const [stats, setStats] = useState<WidgetStats | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<'noEncontrado' | 'error' | null>(null);
+  const [enSitio, setEnSitio] = useState(false);
+  const [cambiandoSitio, setCambiandoSitio] = useState(false);
+  const [rotando, setRotando] = useState(false);
+  const [guardandoModo, setGuardandoModo] = useState(false);
+  const [guardado, setGuardado] = useState(false);
 
-  useEffect(() => {
-    if (organizationId && channelId) {
-      loadData();
+  const cargar = useCallback(async () => {
+    if (!organizationId) return;
+    setCargando(true);
+    setError(null);
+    try {
+      const s = new ChatChannelsService(organizationId);
+      const [c, st] = await Promise.all([s.getChannel(channelId), s.getWidgetStats(channelId).catch(() => null)]);
+      if (!c || c.type !== 'website') {
+        setCanal(null);
+        setError('noEncontrado');
+        return;
+      }
+      setCanal(c);
+      setStats(st);
+      const { data } = await supabase.from('website_settings').select('chat_widget_enabled').eq('organization_id', organizationId).maybeSingle();
+      setEnSitio(data?.chat_widget_enabled ?? false);
+    } catch (e) {
+      console.error('Error cargando el chat del sitio web:', e);
+      setError('error');
+    } finally {
+      setCargando(false);
     }
   }, [organizationId, channelId]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
+
+  const ajustes = canal?.website_settings;
+  const config: BrandConfig = useMemo(() => {
+    const bc = (ajustes?.brand_config ?? {}) as Partial<BrandConfig>;
+    return {
+      ...bc,
+      position: normalizarPosicionWidget(bc.position),
+      style: { ...ESTILO_BASE, ...(bc.primary_color ? { primaryColor: bc.primary_color } : {}), ...(bc.style ?? {}) },
+      behavior: {
+        title: canal?.name ?? '',
+        welcomeMessage: ajustes?.welcome_message ?? '',
+        openDefaultView: 'chat',
+        showQuickActions: false,
+        quickActions: [],
+        offlineMessage: '',
+        offlineCollectData: true,
+        ...(bc.behavior ?? {}),
+      },
+    } as BrandConfig;
+  }, [ajustes, canal?.name]);
+  const datos: CollectIdentity = ajustes?.collect_identity ?? { name: true, email: true, phone: false };
+
+  const conUsuario = async (accion: (s: ChatChannelsService, userId: string) => Promise<void>, error: string) => {
     if (!organizationId) return;
-
     try {
-      setLoading(true);
-      const service = new ChatChannelsService(organizationId);
-
-      const [channelData, statsData] = await Promise.all([
-        service.getChannel(channelId),
-        service.getWidgetStats(channelId).catch(() => null)
-      ]);
-
-      if (!channelData) {
-        toast({
-          title: 'Error',
-          description: 'Canal no encontrado',
-          variant: 'destructive'
-        });
-        router.push('/app/chat/canales');
-        return;
-      }
-
-      if (channelData.type !== 'website') {
-        toast({
-          title: 'Error',
-          description: 'Este no es un canal de tipo Website',
-          variant: 'destructive'
-        });
-        router.push('/app/chat/canales');
-        return;
-      }
-
-      setChannel(channelData);
-      setWidgetStats(statsData);
-
-      // Cargar estado de widget en sitio web
-      const { data: wsData } = await supabase
-        .from('website_settings')
-        .select('chat_widget_enabled')
-        .eq('organization_id', organizationId)
-        .maybeSingle();
-      setShowInWebsite(wsData?.chat_widget_enabled ?? false);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cargar la configuración del canal',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) throw new Error('Sin sesión');
+      await accion(new ChatChannelsService(organizationId), data.user.id);
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2500);
+    } catch (e) {
+      console.error(error, e);
+      toast({ title: t('widget.toasts.error'), variant: 'destructive' });
+      throw e;
     }
   };
 
-  const getUserId = async (): Promise<string> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Usuario no autenticado');
-    return user.id;
-  };
+  const actualizarAjustes = (parcial: Partial<NonNullable<ChatChannel['website_settings']>>) =>
+    setCanal((c) => (c && c.website_settings ? { ...c, website_settings: { ...c.website_settings, ...parcial } } : c));
 
-  const handleToggleStatus = async () => {
-    if (!organizationId || !channel) return;
+  const guardarConfig = (nueva: BrandConfig) =>
+    conUsuario(async (s, u) => {
+      await s.updateBrandConfig(channelId, nueva, u);
+      actualizarAjustes({ brand_config: nueva });
+    }, 'Error guardando la apariencia del widget:');
 
+  const guardarPosicion = (position: WidgetPosition) => guardarConfig({ ...config, position });
+  const guardarEstilo = (style: WidgetStyle) => guardarConfig({ ...config, style, primary_color: style.primaryColor });
+  const guardarComportamiento = (behavior: WidgetBehavior) =>
+    conUsuario(async (s, u) => {
+      const nueva = { ...config, behavior };
+      await s.updateBrandConfig(channelId, nueva, u);
+      await s.updateWelcomeMessage(channelId, behavior.welcomeMessage, u);
+      actualizarAjustes({ brand_config: nueva, welcome_message: behavior.welcomeMessage });
+    }, 'Error guardando el comportamiento del widget:');
+  const guardarDatos = (c: CollectIdentity) =>
+    conUsuario(async (s, u) => {
+      await s.updateCollectIdentity(channelId, c, u);
+      actualizarAjustes({ collect_identity: c });
+    }, 'Error guardando los datos del visitante:');
+
+  const agregarDominio = (d: string) =>
+    conUsuario(async (s, u) => {
+      actualizarAjustes({ allowed_domains: await s.addAllowedDomain(channelId, d, u) });
+    }, 'Error agregando dominio:');
+  const quitarDominio = (d: string) =>
+    conUsuario(async (s, u) => {
+      actualizarAjustes({ allowed_domains: await s.removeAllowedDomain(channelId, d, u) });
+    }, 'Error quitando dominio:').catch(() => undefined);
+
+  const rotarClave = async () => {
+    setRotando(true);
     try {
-      setIsUpdating(true);
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const updatedChannel = await service.toggleChannelStatus(channelId, userId);
-      
-      setChannel({ ...channel, status: updatedChannel.status });
-      
-      toast({
-        title: updatedChannel.status === 'active' ? 'Widget activado' : 'Widget desactivado',
-        description: `El widget ahora está ${updatedChannel.status === 'active' ? 'activo' : 'inactivo'}`
-      });
-    } catch (error) {
-      console.error('Error cambiando estado:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo cambiar el estado del widget',
-        variant: 'destructive'
-      });
+      await conUsuario(async (s, u) => {
+        const clave = await s.rotatePublicKey(channelId, u);
+        setCanal((c) => (c ? { ...c, public_key: clave } : c));
+      }, 'Error rotando la clave:');
+      toast({ title: t('widget.toasts.claveRotada') });
+    } catch {
+      /* ya avisó */
     } finally {
-      setIsUpdating(false);
+      setRotando(false);
     }
   };
 
-  const handleToggleWebsite = async (enabled: boolean) => {
-    if (!organizationId || !channel) return;
-
+  const cambiarModo = async (modo: AIMode) => {
+    setGuardandoModo(true);
     try {
-      setIsTogglingWebsite(true);
-      const { data, error } = await supabase
+      await conUsuario(async (s, u) => {
+        await s.updateAIMode(channelId, modo, u);
+        setCanal((c) => (c ? { ...c, ai_mode: modo } : c));
+      }, 'Error guardando el modo de IA:');
+    } catch {
+      /* ya avisó */
+    } finally {
+      setGuardandoModo(false);
+    }
+  };
+
+  const alternarEnSitio = async (activar: boolean) => {
+    if (!organizationId || !canal) return;
+    setCambiandoSitio(true);
+    try {
+      const { data, error: e } = await supabase
         .from('website_settings')
-        .update({
-          chat_widget_enabled: enabled,
-          chat_widget_public_key: enabled ? channel.public_key : null,
-          updated_at: new Date().toISOString()
-        })
+        .update({ chat_widget_enabled: activar, chat_widget_public_key: activar ? canal.public_key : null, updated_at: new Date().toISOString() })
         .eq('organization_id', organizationId)
         .select('id');
-
-      if (error) throw error;
+      if (e) throw e;
       // Sin permiso de edición del sitio, RLS no devuelve error: actualiza 0 filas.
-      // Sin esto el interruptor decía «visible» y el sitio no cambiaba.
       if (!data || data.length === 0) throw new Error('website_settings sin filas actualizadas');
-
-      setShowInWebsite(enabled);
-      toast({
-        title: enabled ? 'Widget visible en sitio web' : 'Widget oculto en sitio web',
-        description: enabled
-          ? 'El chat ahora se muestra en las páginas de tu organización'
-          : 'El chat ya no se muestra en las páginas de tu organización'
-      });
-    } catch (error) {
-      console.error('Error actualizando website_settings:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la visibilidad del widget',
-        variant: 'destructive'
-      });
+      setEnSitio(activar);
+      toast({ title: t(activar ? 'widget.toasts.visible' : 'widget.toasts.oculto') });
+    } catch (err) {
+      console.error('Error actualizando website_settings:', err);
+      toast({ title: t('widget.toasts.errorSitio'), variant: 'destructive' });
     } finally {
-      setIsTogglingWebsite(false);
+      setCambiandoSitio(false);
     }
   };
 
-  const handleRotateKey = async () => {
-    if (!organizationId || !channel) return;
-
-    try {
-      setIsRotatingKey(true);
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const newKey = await service.rotatePublicKey(channelId, userId);
-      
-      setChannel({ ...channel, public_key: newKey });
-      
-      toast({
-        title: 'Clave rotada',
-        description: 'La clave pública ha sido regenerada. Actualiza el código del widget en tu sitio.'
-      });
-    } catch (error) {
-      console.error('Error rotando clave:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo rotar la clave pública',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsRotatingKey(false);
-    }
-  };
-
-  const handleAddDomain = async (domain: string) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const newDomains = await service.addAllowedDomain(channelId, domain, userId);
-      
-      setChannel({
-        ...channel,
-        website_settings: {
-          ...channel.website_settings!,
-          allowed_domains: newDomains
-        }
-      });
-      
-      toast({
-        title: 'Dominio agregado',
-        description: `El dominio "${domain}" ha sido agregado`
-      });
-    } catch (error) {
-      console.error('Error agregando dominio:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo agregar el dominio',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleRemoveDomain = async (domain: string) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const newDomains = await service.removeAllowedDomain(channelId, domain, userId);
-      
-      setChannel({
-        ...channel,
-        website_settings: {
-          ...channel.website_settings!,
-          allowed_domains: newDomains
-        }
-      });
-      
-      toast({
-        title: 'Dominio eliminado',
-        description: `El dominio "${domain}" ha sido eliminado`
-      });
-    } catch (error) {
-      console.error('Error eliminando dominio:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar el dominio',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  const handleUpdatePosition = async (position: WidgetPosition) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const currentConfig = channel.website_settings?.brand_config || {};
-      const newConfig = { ...currentConfig, position } as BrandConfig;
-      await service.updateBrandConfig(channelId, newConfig, userId);
-      
-      setChannel({
-        ...channel,
-        website_settings: {
-          ...channel.website_settings!,
-          brand_config: newConfig
-        }
-      });
-      
-      toast({
-        title: 'Posición actualizada',
-        description: 'La posición del widget ha sido guardada'
-      });
-    } catch (error) {
-      console.error('Error actualizando posición:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la posición',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
-
-  const handleUpdateStyle = async (style: WidgetStyle) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const currentConfig = channel.website_settings?.brand_config || {};
-      const newConfig = { ...currentConfig, style, primary_color: style.primaryColor } as BrandConfig;
-      await service.updateBrandConfig(channelId, newConfig, userId);
-      
-      setChannel({
-        ...channel,
-        website_settings: {
-          ...channel.website_settings!,
-          brand_config: newConfig
-        }
-      });
-      
-      toast({
-        title: 'Estilo actualizado',
-        description: 'El estilo del widget ha sido guardado'
-      });
-    } catch (error) {
-      console.error('Error actualizando estilo:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el estilo',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
-
-  const handleUpdateBehavior = async (behavior: WidgetBehavior) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      const currentConfig = channel.website_settings?.brand_config || {};
-      const newConfig = { ...currentConfig, behavior } as BrandConfig;
-      await service.updateBrandConfig(channelId, newConfig, userId);
-      
-      // Also update welcome_message for backward compatibility
-      await service.updateWelcomeMessage(channelId, behavior.welcomeMessage, userId);
-      
-      setChannel({
-        ...channel,
-        website_settings: {
-          ...channel.website_settings!,
-          brand_config: newConfig,
-          welcome_message: behavior.welcomeMessage
-        }
-      });
-      
-      toast({
-        title: 'Comportamiento actualizado',
-        description: 'El comportamiento del widget ha sido guardado'
-      });
-    } catch (error) {
-      console.error('Error actualizando comportamiento:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el comportamiento',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
-
-  const handleUpdateCollectIdentity = async (config: ChannelWebsiteSettings['collect_identity']) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      await service.updateCollectIdentity(channelId, config, userId);
-      
-      setChannel({
-        ...channel,
-        website_settings: {
-          ...channel.website_settings!,
-          collect_identity: config
-        }
-      });
-      
-      toast({
-        title: 'Configuración actualizada',
-        description: 'La recolección de datos ha sido actualizada'
-      });
-    } catch (error) {
-      console.error('Error actualizando collect identity:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la configuración',
-        variant: 'destructive'
-      });
-      throw error;
-    }
-  };
-
-  const handleUpdateAIMode = async (mode: AIMode) => {
-    if (!organizationId || !channel) return;
-
-    try {
-      setIsUpdatingAI(true);
-      const userId = await getUserId();
-      const service = new ChatChannelsService(organizationId);
-      await service.updateAIMode(channelId, mode, userId);
-      
-      setChannel({ ...channel, ai_mode: mode });
-      
-      const modeLabels: Record<AIMode, string> = {
-        off: 'Desactivado',
-        hybrid: 'Híbrido',
-        auto: 'Automático'
-      };
-      
-      toast({
-        title: 'Modo IA actualizado',
-        description: `El modo IA ahora es "${modeLabels[mode]}"`
-      });
-    } catch (error) {
-      console.error('Error actualizando modo IA:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el modo IA',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsUpdatingAI(false);
-    }
-  };
-
-  if (loading) {
+  if (!canal) {
     return (
-  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <DetailSkeleton />
-  </div>
-);
+      <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
+        {cargando ? (
+          <div className="flex flex-col gap-4" aria-hidden="true">
+            <Skeleton className="h-10 w-72" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-80" />
+          </div>
+        ) : (
+          <EmptyState
+            variante={error === 'noEncontrado' ? 'forbidden' : 'error'}
+            titulo={t(error === 'noEncontrado' ? 'detalleCanal.noEncontrado.titulo' : 'detalleCanal.error.titulo')}
+            descripcion={t(error === 'noEncontrado' ? 'detalleCanal.noEncontrado.descripcion' : 'detalleCanal.error.descripcion')}
+            accion={{ etiqueta: t('detalleCanal.verCanales'), href: '/app/chat/canales' }}
+            onReintentar={error === 'error' ? cargar : undefined}
+          />
+        )}
+      </div>
+    );
   }
 
-  if (!channel) {
-    return null;
-  }
-
-  const defaultBrandConfig: BrandConfig = {
-    position: { side: 'right', vertical: 'bottom', offsetX: 20, offsetY: 20 },
-    style: {
-      primaryColor: '#3B82F6',
-      iconColor: '#FFFFFF',
-      iconType: 'chat',
-      iconStyle: 'outline',
-      buttonSize: 56,
-      borderRadius: 28,
-      borderWidth: 0,
-      borderColor: '#FFFFFF',
-      shadowEnabled: true,
-      shadowStrength: 'medium'
-    },
-    behavior: {
-      title: 'Chat',
-      welcomeMessage: '¡Hola! ¿En qué podemos ayudarte?',
-      openDefaultView: 'chat',
-      showQuickActions: false,
-      quickActions: [],
-      offlineMessage: 'No estamos disponibles. Déjanos tu mensaje.',
-      offlineCollectData: true
-    },
-    primary_color: '#3B82F6'
-  };
-
-  const websiteSettings = channel.website_settings || {
-    id: '',
-    channel_id: channelId,
-    allowed_domains: [],
-    brand_config: defaultBrandConfig,
-    welcome_message: '¡Hola! ¿En qué podemos ayudarte?',
-    collect_identity: { name: true, email: true, phone: false },
-    created_at: '',
-    updated_at: ''
-  };
-
-  // Ensure brand_config has all required fields
-  const brandConfig: BrandConfig = {
-    ...defaultBrandConfig,
-    ...websiteSettings.brand_config,
-    position: normalizarPosicionWidget(websiteSettings.brand_config?.position),
-  };
+  const pctCelular = stats ? porcentajeCelular(stats.deviceBreakdown) : null;
+  const activo = canal.status === 'active';
+  const codigo = codigoDelWidget(canal.public_key);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <WebsiteSettingsHeader
-        channel={channel}
-        widgetStats={widgetStats}
-        onToggleStatus={handleToggleStatus}
-        isUpdating={isUpdating}
+    <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
+      <CabeceraDetalleChat
+        titulo={canal.name}
+        volverA="/app/chat/canales"
+        migas={[t('migas.chat'), t('migas.canales')]}
+        subtituloMovil={t('tipos.website')}
+        icono={<CanalIcono canal="web" size={40} className="rounded-lg" />}
+        badge={
+          <Badge tono={enSitio && activo ? 'exito' : 'neutro'} tamano="sm">
+            {t(enSitio && activo ? 'widget.visible' : 'widget.oculto')}
+          </Badge>
+        }
+        subtitulo={!activo ? t('widget.activaPrimero') : undefined}
+        acciones={
+          <>
+            <label className="flex items-center gap-2 text-[13px] font-medium text-fg">
+              {t('widget.mostrarEnSitio')}
+              <Switch checked={enSitio} onCheckedChange={alternarEnSitio} disabled={cambiandoSitio || !activo} />
+            </label>
+            {guardado && (
+              <Badge tono="exito" tamano="sm" role="status">
+                {t('widget.guardado')}
+              </Badge>
+            )}
+          </>
+        }
       />
 
-      <div className="max-w-6xl mx-auto p-4 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column */}
-          <div className="space-y-6">
-            {/* Mostrar en sitio web */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-blue-600" />
-                  Mostrar en Sitio Web
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      Activar widget en páginas web
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      El chat aparecerá automáticamente en tu sitio web
-                    </p>
-                  </div>
-                  <Switch
-                    checked={showInWebsite}
-                    onCheckedChange={handleToggleWebsite}
-                    disabled={isTogglingWebsite || channel.status !== 'active'}
-                  />
-                </div>
-                {channel.status !== 'active' && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                    ⚠️ Activa el canal primero para poder mostrarlo en tu sitio web
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+      <KpiStrip etiqueta={t('widget.kpis.etiqueta')}>
+        <StatCard etiqueta={t('widget.kpis.sesiones')} valor={(stats?.totalSessions ?? 0).toLocaleString()} cargando={cargando} />
+        <StatCard etiqueta={t('widget.kpis.enLinea')} valor={(stats?.activeSessions ?? 0).toLocaleString()} cargando={cargando} />
+        <StatCard etiqueta={t('widget.kpis.visitantes')} valor={(stats?.uniqueVisitors ?? 0).toLocaleString()} cargando={cargando} />
+        <StatCard etiqueta={t('widget.kpis.celular')} valor={pctCelular === null ? t('kpis.sinDato') : `${pctCelular} %`} cargando={cargando} />
+      </KpiStrip>
 
-            <WidgetCodeSection
-              channel={channel}
-              onRotateKey={handleRotateKey}
-              isRotating={isRotatingKey}
-            />
-
-            <AllowedDomainsSection
-              domains={websiteSettings.allowed_domains}
-              onAddDomain={handleAddDomain}
-              onRemoveDomain={handleRemoveDomain}
-            />
-
-            <AIModeSection
-              aiMode={channel.ai_mode}
-              onUpdate={handleUpdateAIMode}
-              isUpdating={isUpdatingAI}
-            />
-          </div>
-
-          {/* Right Column */}
-          <div className="space-y-6">
-            <WidgetPositionSection
-              position={brandConfig.position}
-              onUpdate={handleUpdatePosition}
-            />
-
-            <WidgetStyleSection
-              style={brandConfig.style}
-              onUpdate={handleUpdateStyle}
-            />
-
-            <WidgetBehaviorSection
-              behavior={brandConfig.behavior}
-              onUpdate={handleUpdateBehavior}
-            />
-
-            <CollectIdentitySection
-              collectIdentity={websiteSettings.collect_identity}
-              onUpdate={handleUpdateCollectIdentity}
-            />
-
-            <WidgetPreview
-              brandConfig={brandConfig}
-              welcomeMessage={brandConfig.behavior.welcomeMessage}
-              collectIdentity={websiteSettings.collect_identity}
-            />
-          </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-6">
+        <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
+          <InstalacionWidget
+            codigo={codigo}
+            dominios={ajustes?.allowed_domains ?? []}
+            rotando={rotando}
+            onRotarClave={rotarClave}
+            onAgregarDominio={agregarDominio}
+            onQuitarDominio={quitarDominio}
+          />
+          <AparienciaWidget config={config} onGuardarPosicion={guardarPosicion} onGuardarEstilo={guardarEstilo} />
+          <AlAbrirWidget comportamiento={config.behavior} onGuardar={guardarComportamiento} />
+          <DatosVisitanteWidget datos={datos} modo={canal.ai_mode} onGuardarDatos={guardarDatos} onCambiarModo={cambiarModo} guardandoModo={guardandoModo} />
+        </div>
+        <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+          <VistaPreviaWidget config={config} datos={datos} />
         </div>
       </div>
     </div>

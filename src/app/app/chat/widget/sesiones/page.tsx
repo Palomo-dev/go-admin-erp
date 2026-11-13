@@ -12,7 +12,6 @@ import {
   SessionDetailDialog,
   SessionsPagination,
 } from '@/components/chat/widget/sesiones';
-import { ChatNavTabs } from '@/components/chat/ChatNavTabs';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 
 export default function WidgetSessionsPage() {
@@ -171,7 +170,6 @@ export default function WidgetSessionsPage() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <ChatNavTabs />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       <SessionsHeader
         stats={stats}

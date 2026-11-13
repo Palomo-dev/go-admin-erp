@@ -409,7 +409,7 @@ export default function ChannelDetailContent({ channelId }: ChannelDetailContent
       setChannel({ ...channel, ai_mode: mode });
 
       const modeLabels: Record<AIMode, string> = {
-        off: 'Desactivado',
+        manual: 'Desactivado',
         hybrid: 'Híbrido',
         auto: 'Automático',
       };

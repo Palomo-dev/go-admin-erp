@@ -1,205 +1,63 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+/** Detalle de un canal de Instagram (Figma 91-chat-22, mismo marco que WhatsApp). */
+import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { useOrganization } from '@/lib/hooks/useOrganization';
-import { useToast } from '@/components/ui/use-toast';
+import { useTranslations } from 'next-intl';
+import InstagramChannelService, { type InstagramChannel, type InstagramCredentials } from '@/lib/services/instagramChannelService';
+import { PantallaCanalMeta } from '@/components/chat/channels/detalle/PantallaCanalMeta';
+import { useCanalMeta, type ServicioCanalMeta } from '@/components/chat/channels/detalle/useCanalMeta';
+import { CredencialesMeta, type CampoCredencial } from '@/components/chat/channels/detalle/CredencialesMeta';
 
-import InstagramChannelService, { 
-  InstagramChannel, 
-  InstagramCredentials, 
-  MessageEvent, 
-  InstagramStats 
-} from '@/lib/services/instagramChannelService';
-import {
-  InstagramSettingsHeader,
-  InstagramCredentialsCard,
-  InstagramStatsCard,
-  InstagramEventsCard,
-  InstagramWebhookCard
-} from '@/components/chat/channels/instagram/id';
-import { DetailSkeleton } from '@/components/common/PageSkeletons';
+const crearServicio = (organizationId: number) =>
+  new InstagramChannelService(organizationId) as unknown as ServicioCanalMeta<InstagramChannel, InstagramCredentials['credentials']>;
 
 export default function InstagramChannelPage() {
   const params = useParams();
   const channelId = params?.id as string;
-  const { organization } = useOrganization();
-  const { toast } = useToast();
+  const t = useTranslations('chatModulo.canales.detalleCanal.credenciales.campos');
+  const c = useCanalMeta(channelId, crearServicio);
+  const cred = c.canal?.credentials ?? null;
 
-  const [channel, setChannel] = useState<InstagramChannel | null>(null);
-  const [events, setEvents] = useState<MessageEvent[]>([]);
-  const [stats, setStats] = useState<InstagramStats>({
-    totalMessages: 0,
-    sentToday: 0,
-    deliveredRate: 0,
-    failedCount: 0
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isValidating, setIsValidating] = useState(false);
-
-  const loadData = useCallback(async () => {
-    if (!organization?.id) return;
-
-    setIsLoading(true);
-    try {
-      const service = new InstagramChannelService(organization.id);
-      
-      const [channelData, eventsData, statsData] = await Promise.all([
-        service.getChannel(channelId),
-        service.getRecentEvents(channelId),
-        service.getStats(channelId)
-      ]);
-
-      if (channelData) {
-        setChannel(channelData);
-      }
-      setEvents(eventsData);
-      setStats(statsData);
-    } catch (error) {
-      console.error('Error cargando datos:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los datos del canal',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [organization?.id, channelId, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const handleSaveCredentials = async (credentials: InstagramCredentials['credentials']) => {
-    if (!organization?.id) return;
-
-    setIsSaving(true);
-    try {
-      const service = new InstagramChannelService(organization.id);
-      const success = await service.saveCredentials(channelId, credentials);
-
-      if (success) {
-        toast({
-          title: 'Credenciales guardadas',
-          description: 'Las credenciales se guardaron correctamente'
-        });
-        await loadData();
-      } else {
-        throw new Error('Error al guardar');
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudieron guardar las credenciales',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleValidateWebhook = async () => {
-    if (!organization?.id) return;
-
-    setIsValidating(true);
-    try {
-      const service = new InstagramChannelService(organization.id);
-      const result = await service.validateWebhook(channelId);
-
-      toast({
-        title: result.valid ? 'Conexión válida' : 'Error de validación',
-        description: result.message,
-        variant: result.valid ? 'default' : 'destructive'
-      });
-
-      if (result.valid) {
-        await loadData();
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo validar la conexión',
-        variant: 'destructive'
-      });
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  const handleToggleStatus = async () => {
-    if (!organization?.id || !channel) return;
-
-    try {
-      const service = new InstagramChannelService(organization.id);
-      
-      if (channel.status === 'active') {
-        await service.updateChannel(channelId, { status: 'inactive' });
-        toast({
-          title: 'Canal desactivado',
-          description: 'El canal ha sido desactivado'
-        });
-      } else {
-        await service.activateChannel(channelId);
-        toast({
-          title: 'Canal activado',
-          description: 'El canal ha sido activado correctamente'
-        });
-      }
-      
-      await loadData();
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'No se pudo cambiar el estado del canal',
-        variant: 'destructive'
-      });
-    }
-  };
-
-  if (isLoading) {
-    return (
-  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <DetailSkeleton />
-  </div>
-);
-  }
-
-  if (!channel) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-gray-500 dark:text-gray-400">
-        <p className="text-lg">Canal no encontrado</p>
-      </div>
-    );
-  }
+  const campos = useMemo<CampoCredencial[]>(
+    () => [
+      { clave: 'instagram_business_account_id', etiqueta: t('instagramBusinessId') },
+      { clave: 'page_id', etiqueta: t('paginaVinculada') },
+      { clave: 'app_id', etiqueta: t('appId') },
+      { clave: 'app_secret', etiqueta: t('appSecret'), secreto: true },
+      { clave: 'access_token', etiqueta: t('accessToken'), secreto: true, ancho: 'completo', ayuda: t('tokenAyuda') },
+      { clave: 'webhook_verify_token', etiqueta: t('verifyToken'), ancho: 'completo' },
+    ],
+    [t],
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      <InstagramSettingsHeader
-        channel={channel}
-        onRefresh={loadData}
-        onToggleStatus={handleToggleStatus}
-        isLoading={isLoading}
-      />
-
-      <InstagramStatsCard stats={stats} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <InstagramCredentialsCard
-          credentials={channel.credentials || null}
-          onSave={handleSaveCredentials}
-          onValidate={handleValidateWebhook}
-          isSaving={isSaving}
-          isValidating={isValidating}
+    <PantallaCanalMeta
+      canal={c.canal}
+      cargando={c.cargando}
+      error={c.error}
+      estadisticas={c.estadisticas}
+      eventos={c.eventos}
+      onRefrescar={c.recargar}
+      onAlternarActivo={c.alternarActivo}
+      onCambiarModo={c.cambiarModo}
+      guardandoModo={c.guardandoModo}
+      webhook={{
+        ruta: `/api/webhooks/instagram/${channelId}`,
+        tokenVerificacion: cred?.credentials?.webhook_verify_token,
+        campos: ['messages', 'messaging_seen', 'messaging_postbacks'],
+      }}
+      conexion={
+        <CredencialesMeta
+          campos={campos}
+          valores={cred?.credentials as Record<string, string | undefined> | undefined}
+          estado={cred ? { is_valid: cred.is_valid, last_validated_at: cred.last_validated_at } : null}
+          guardando={c.guardando}
+          validando={c.validando}
+          onGuardar={(v) => c.guardarCredenciales(v as InstagramCredentials['credentials'])}
+          onValidar={c.validar}
         />
-        <InstagramWebhookCard
-          channelId={channelId}
-          credentials={channel.credentials || null}
-        />
-      </div>
-
-      <InstagramEventsCard events={events} />
-    </div>
+      }
+    />
   );
 }

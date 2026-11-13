@@ -315,7 +315,7 @@ export default function ConversationHeader({
               Ver actividad
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/app/chat/channels')}>
+            <DropdownMenuItem onClick={() => router.push('/app/chat/canales')}>
               <Radio className="h-4 w-4 mr-2" />
               Gestionar canales
             </DropdownMenuItem>

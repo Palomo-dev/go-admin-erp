@@ -49685,5 +49685,440 @@
       "titulo": "{persona} atribuiu uma conversa a você",
       "contenido": "{persona} atribuiu a você a conversa com {cliente}."
     }
+  },
+  "chatModulo": {
+    "pestanas": {
+      "etiqueta": "Seções do chat",
+      "nuevaConversacion": "Nova conversa"
+    },
+    "configuracion": {
+      "etiqueta": "Configurações do chat",
+      "general": "Geral",
+      "ia": "IA do chat"
+    },
+    "ia": {
+      "pestanas": {
+        "etiqueta": "Seções de IA",
+        "laboratorio": "Laboratório",
+        "trabajos": "Tarefas",
+        "configuracion": "Configuração"
+      }
+    },
+    "canales": {
+      "titulo": "Canais",
+      "subtitulo": "Conecte os meios pelos quais seus clientes escrevem e escolha quanto a IA ajuda em cada um.",
+      "nuevoCanal": "Novo canal",
+      "migas": {
+        "chat": "Chat",
+        "canales": "Canais"
+      },
+      "tipos": {
+        "whatsapp": "WhatsApp",
+        "instagram": "Instagram",
+        "facebook": "Messenger",
+        "website": "Site",
+        "telegram": "Telegram",
+        "email": "E-mail"
+      },
+      "kpis": {
+        "etiqueta": "Resumo dos canais",
+        "conectados": "Canais conectados",
+        "conectadosDetalle": "de {total} canais",
+        "hoy": "Conversas hoje",
+        "abiertas": "Abertas",
+        "abiertasDetalle": "abertas ou pendentes",
+        "primeraRespuesta": "Tempo da primeira resposta",
+        "primeraRespuestaDetalle": "média de hoje",
+        "sinDato": "—"
+      },
+      "misCanales": "Meus canais",
+      "tabla": {
+        "etiqueta": "Canais da organização",
+        "canal": "Canal",
+        "estado": "Status",
+        "modoIa": "Modo de IA",
+        "abiertas": "Abertas",
+        "ultimaActividad": "Última atividade",
+        "activo": "Ativo",
+        "sinActividad": "Sem mensagens",
+        "activar": "Ativar {nombre}",
+        "modoDe": "Modo de IA de {nombre}",
+        "vacioTitulo": "Você ainda não tem canais",
+        "vacioDescripcion": "Conecte WhatsApp, Instagram, Messenger ou o chat do seu site para atender pela Caixa de entrada.",
+        "errorTitulo": "Não foi possível carregar os canais"
+      },
+      "detalle": {
+        "dominios": "{valor} · {n, plural, one {# domínio} other {# domínios}}",
+        "sinDominios": "Sem domínios permitidos",
+        "cuentaVinculada": "Conta comercial vinculada",
+        "sinCredenciales": "Ainda não conectado"
+      },
+      "estados": {
+        "conectado": "Conectado",
+        "tokenVencido": "Token expirado",
+        "sinConectar": "Não conectado",
+        "suspendido": "Suspenso",
+        "inactivo": "Inativo"
+      },
+      "modos": {
+        "manual": "Desativado",
+        "hybrid": "Híbrido (recomendado)",
+        "auto": "Automático"
+      },
+      "modosCorto": {
+        "manual": "Desativada",
+        "hybrid": "Híbrida · a IA sugere",
+        "auto": "Automática"
+      },
+      "modosTitulo": {
+        "manual": "Desativada",
+        "hybrid": "Híbrida",
+        "auto": "Automática"
+      },
+      "modosDescripcion": {
+        "manual": "Só pessoas respondem.",
+        "hybrid": "A IA sugere; uma pessoa revisa e envia.",
+        "auto": "A IA responde sozinha e passa para uma pessoa se não tiver certeza."
+      },
+      "acciones": {
+        "configurar": "Configurar"
+      },
+      "aviso": {
+        "tokenVencido": "{nombre} parou de receber mensagens: a permissão da conta expirou. Reconecte-a para não perder conversas.",
+        "suspendido": "{nombre} está suspenso e não recebe mensagens. Verifique a conexão.",
+        "reconectar": "Reconectar"
+      },
+      "conectar": {
+        "titulo": "Conectar outro canal",
+        "disponible": "Disponível",
+        "proximamente": "Em breve",
+        "conectar": "Conectar",
+        "nombres": {
+          "whatsapp": "WhatsApp",
+          "whatsappOtro": "Outro número de WhatsApp",
+          "instagram": "Instagram",
+          "instagramOtro": "Outra conta do Instagram",
+          "facebook": "Facebook Messenger",
+          "facebookOtro": "Outra página do Facebook",
+          "website": "Chat do site",
+          "websiteOtro": "Outro chat de site",
+          "telegram": "Telegram",
+          "email": "E-mail"
+        },
+        "descripciones": {
+          "whatsapp": "Atenda seus clientes pelo WhatsApp na Caixa de entrada.",
+          "whatsappOtro": "Separe vendas e suporte com números diferentes.",
+          "instagram": "Responda às mensagens diretas da sua conta comercial.",
+          "instagramOtro": "Responda às mensagens diretas de outra conta comercial.",
+          "facebook": "Receba as mensagens da sua página do Facebook.",
+          "facebookOtro": "Conecte as mensagens de outra página.",
+          "website": "Um chat no seu site que chega à mesma Caixa de entrada.",
+          "websiteOtro": "Um chat para outro site ou marca.",
+          "telegram": "Em breve você poderá atender o Telegram pela Caixa de entrada.",
+          "email": "Receba os e-mails de suporte na mesma Caixa de entrada."
+        }
+      },
+      "nuevo": {
+        "titulo": "Novo canal",
+        "descripcion": "Escolha por onde seus clientes vão escrever para você.",
+        "tipo": "Tipo de canal",
+        "nombre": "Nome do canal",
+        "nombreAyuda": "É assim que sua equipe o verá na Caixa de entrada.",
+        "nombreObligatorio": "Digite um nome para o canal.",
+        "nombrePorDefecto": {
+          "whatsapp": "WhatsApp · Vendas",
+          "instagram": "Instagram",
+          "facebook": "Facebook Messenger",
+          "website": "Chat do site"
+        },
+        "comoConecta": "Como se conecta?",
+        "formas": {
+          "cloud_api": "Cloud API da Meta",
+          "cloud_apiDescripcion": "Conexão oficial em 1 clique com sua conta do Meta Business.",
+          "coexistence": "Coexistência",
+          "coexistenceDescripcion": "Continue usando o app WhatsApp Business no celular e atenda também pelo GO.",
+          "qr_scan": "Código QR",
+          "qr_scanDescripcion": "Vincule um WhatsApp comum escaneando um código. A Meta pode bloquear o número."
+        },
+        "recomendado": "Recomendado",
+        "riesgo": "Risco de bloqueio",
+        "ayudaIa": "Ajuda da IA",
+        "continuarMeta": "Continuar com a Meta",
+        "continuar": "Continuar",
+        "crear": "Criar canal",
+        "creado": "Canal criado",
+        "errorCrear": "Não foi possível criar o canal"
+      },
+      "toasts": {
+        "activado": "“{nombre}” está ativo",
+        "desactivado": "“{nombre}” está inativo",
+        "modoIa": "Ajuda da IA em “{nombre}”: {modo}",
+        "error": "Não foi possível salvar a alteração"
+      },
+      "detalleCanal": {
+        "actualizar": "Atualizar",
+        "activar": "Ativar canal",
+        "desactivar": "Desativar canal",
+        "verCanales": "Ver meus canais",
+        "noEncontrado": {
+          "titulo": "Canal indisponível",
+          "descripcion": "Este canal não existe, foi excluído ou não pertence à organização ativa."
+        },
+        "error": {
+          "titulo": "Não foi possível carregar o canal",
+          "descripcion": "Verifique sua conexão e tente novamente."
+        },
+        "kpis": {
+          "etiqueta": "Números do canal",
+          "mensajes": "Mensagens",
+          "enviadosHoy": "Enviadas hoje",
+          "fallidos": "Com falha",
+          "fallidosDetalle": "{pct}% · ver eventos",
+          "entrega": "Taxa de entrega"
+        },
+        "ayudaIa": {
+          "titulo": "Ajuda da IA",
+          "descripcion": "O que a IA faz quando chega uma mensagem por este canal.",
+          "ajustar": "Ajustar modelo e tom"
+        },
+        "eventos": {
+          "titulo": "Eventos recentes",
+          "vacio": "Ainda não há eventos de mensagens.",
+          "tipos": {
+            "sent": "Enviado",
+            "delivered": "Entregue",
+            "read": "Lido",
+            "failed": "Com falha"
+          }
+        },
+        "webhook": {
+          "titulo": "Webhook",
+          "descripcion": "A Meta envia aqui as mensagens novas. Já fica configurado se você se conectou em 1 clique.",
+          "url": "URL do webhook",
+          "token": "Token de verificação",
+          "sinToken": "Ainda não há token de verificação salvo.",
+          "campos": "Campos para assinar:",
+          "copiarUrl": "Copiar URL",
+          "copiada": "Copiada",
+          "verToken": "Ver token",
+          "ocultarToken": "Ocultar token",
+          "abrirMeta": "Abrir Meta Business"
+        },
+        "credenciales": {
+          "titulo": "Conexão",
+          "descripcion": "Dados da conta da Meta vinculada a este canal.",
+          "verificado": "Conectado com a Meta. As credenciais são válidas.",
+          "verificadoEl": "Conectado com a Meta; verificado em {fecha}.",
+          "invalido": "As credenciais expiraram ou não são válidas. Reconecte a conta.",
+          "sinCredenciales": "Ainda não há credenciais salvas para este canal.",
+          "guardar": "Salvar",
+          "verificar": "Verificar conexão",
+          "ver": "Ver credenciais",
+          "ocultar": "Ocultar credenciais",
+          "campos": {
+            "instagramBusinessId": "ID da conta do Instagram Business",
+            "paginaVinculada": "ID da página do Facebook vinculada",
+            "paginaId": "ID da página",
+            "appId": "App ID",
+            "appSecret": "App Secret",
+            "accessToken": "Token de acesso",
+            "pageAccessToken": "Token de acesso da página",
+            "tokenAyuda": "O GO Admin o guarda. Use “Ver credenciais” para mostrá-lo.",
+            "verifyToken": "Token de verificação do webhook"
+          }
+        },
+        "toasts": {
+          "credencialesGuardadas": "Credenciais salvas",
+          "errorCredenciales": "Não foi possível salvar as credenciais",
+          "conexionValida": "Conexão válida",
+          "conexionInvalida": "A conexão não é válida",
+          "errorValidar": "Não foi possível verificar a conexão",
+          "activado": "Canal ativado",
+          "desactivado": "Canal desativado",
+          "errorEstado": "Não foi possível alterar o status do canal",
+          "modoGuardado": "Ajuda da IA atualizada",
+          "errorModo": "Não foi possível alterar a ajuda da IA"
+        },
+        "whatsapp": {
+          "webhookNota": "O webhook é um só para todos os números: a Meta identifica cada canal pelo Phone Number ID.",
+          "conexion": {
+            "titulo": "Conexão",
+            "descripcion": "Como este número está vinculado."
+          },
+          "pestanas": {
+            "cloud_api": "Cloud API (recomendado)",
+            "coexistence": "Coexistência",
+            "qr_scan": "Código QR"
+          },
+          "cloud": {
+            "verificado": "Conectado com a Meta. O número está verificado.",
+            "verificadoEl": "Conectado com a Meta; verificado em {fecha}.",
+            "invalido": "O token de acesso expirou ou não é válido. Reconecte com a Meta.",
+            "conectadoAhora": "O WhatsApp foi conectado. As credenciais e o webhook foram configurados automaticamente.",
+            "unClic": "Conexão em 1 clique com a Meta",
+            "unClicDescripcion": "Entre com sua conta do Meta Business e escolha o número. As credenciais e o webhook são configurados automaticamente.",
+            "conectarMeta": "Conectar com a Meta",
+            "conectando": "Conectando…",
+            "manual": "Inserir as credenciais manualmente",
+            "phoneNumberId": "Phone Number ID",
+            "waba": "Conta do WhatsApp Business (WABA)",
+            "token": "Token de acesso",
+            "tokenAyuda": "O GO Admin o guarda. Use “Ver token” para mostrá-lo.",
+            "tokenPlaceholder": "Token de acesso permanente",
+            "verifyToken": "Token de verificação do webhook",
+            "verifyTokenAyuda": "A Meta o usa para confirmar que o webhook é seu.",
+            "guardar": "Salvar",
+            "verificar": "Verificar conexão",
+            "reconectar": "Reconectar com a Meta",
+            "verToken": "Ver token",
+            "ocultarToken": "Ocultar token",
+            "errores": {
+              "sinOrganizacion": "Não foi possível identificar a organização ativa.",
+              "requiereHttps": "A conexão em 1 clique só funciona com HTTPS. Aqui, insira as credenciais manualmente.",
+              "cancelado": "A autorização na Meta foi cancelada.",
+              "sdk": "Não foi possível carregar o conector da Meta. Verifique a conexão.",
+              "callback": "A Meta respondeu com um erro ao conectar."
+            }
+          },
+          "coexistencia": {
+            "aviso": "Coexistência é o modo oficial da Meta: você continua usando o app WhatsApp Business no celular e sua equipe também responde pelo GO, no mesmo número e sem risco de bloqueio.",
+            "requisitosTitulo": "Requisitos",
+            "requisito1": "Portfólio do Meta Business com a verificação da empresa aprovada.",
+            "requisito2": "Conta do WhatsApp Business (WABA) com o número registrado.",
+            "requisito3": "No início, até 2 números; amplia para 20 após a verificação.",
+            "pasosTitulo": "Passos para ativar",
+            "paso1": "Conclua a verificação da empresa no Meta Business.",
+            "paso2": "Acesse WhatsApp Manager › Números de telefone.",
+            "paso3": "Escolha o número › Configurações › Coexistência › Ativar.",
+            "paso4": "Vincule o número no app WhatsApp Business do celular.",
+            "paso5": "Aqui, conecte o número na aba Cloud API.",
+            "abrirManager": "Abrir WhatsApp Manager"
+          },
+          "qr": {
+            "riesgoTitulo": "A Meta pode bloquear este número",
+            "riesgoDescripcion": "A conexão por código QR não é oficial. Use apenas para testes ou com um número que você possa perder. Para vender, use Cloud API ou Coexistência.",
+            "entiendo": "Entendo o risco e quero continuar",
+            "escanea": "Escaneie pelo celular",
+            "paso1": "Abra o WhatsApp no celular do número.",
+            "paso2": "Toque em ⋮ › Aparelhos conectados › Conectar um aparelho.",
+            "paso3": "Aponte a câmera para este código. Ele expira em alguns segundos.",
+            "qrAlt": "Código QR para vincular o WhatsApp",
+            "generar": "Gerar código",
+            "otroCodigo": "Gerar outro código",
+            "detener": "Parar",
+            "borrar": "Excluir sessão",
+            "borrarTitulo": "Excluir a sessão do WhatsApp?",
+            "borrarDescripcion": "As credenciais desta conexão serão excluídas e será preciso escanear um novo código para reconectar. Não é possível desfazer.",
+            "error": "Não foi possível concluir a ação",
+            "estados": {
+              "disconnected": "Desconectado",
+              "connecting": "Conectando…",
+              "qr_ready": "Aguardando leitura…",
+              "connected": "Conectado",
+              "reconnecting": "Reconectando…",
+              "banned": "Número bloqueado pela Meta",
+              "error": "Erro"
+            }
+          }
+        }
+      },
+      "widget": {
+        "visible": "Visível no site",
+        "oculto": "Oculto no site",
+        "mostrarEnSitio": "Mostrar no site",
+        "activaPrimero": "O canal está inativo: ative-o em Canais para mostrá-lo no site.",
+        "guardado": "Salvo",
+        "kpis": {
+          "etiqueta": "Números do chat do site",
+          "sesiones": "Sessões",
+          "enLinea": "On-line agora",
+          "visitantes": "Visitantes únicos",
+          "celular": "Pelo celular"
+        },
+        "instalacion": {
+          "titulo": "Instalação",
+          "descripcion": "Se o seu site é do GO Admin, já está instalado. Em outros sites, cole este código logo antes de fechar o body.",
+          "copiar": "Copiar código",
+          "copiado": "Código copiado",
+          "rotarClave": "Gerar nova chave",
+          "rotarClaveDescripcion": "O código anterior deixa de funcionar",
+          "dominios": "Domínios permitidos:",
+          "sinDominios": "nenhum ainda",
+          "dominiosAyuda": "O chat só abre nesses domínios. Sem domínios, abre em qualquer um.",
+          "agregar": "Adicionar",
+          "nuevoDominio": "Novo domínio",
+          "quitarDominio": "Remover {dominio}",
+          "dominioInvalido": "Digite um domínio como sualoja.com",
+          "dominioRepetido": "Esse domínio já está na lista."
+        },
+        "apariencia": {
+          "titulo": "Aparência",
+          "color": "Cor principal",
+          "posicion": "Posição",
+          "tamano": "Tamanho do botão",
+          "posiciones": {
+            "abajoDerecha": "Embaixo à direita",
+            "abajoIzquierda": "Embaixo à esquerda",
+            "arribaDerecha": "Em cima à direita",
+            "arribaIzquierda": "Em cima à esquerda"
+          },
+          "tamanos": {
+            "t48": "Pequeno · 48 px",
+            "t56": "Médio · 56 px",
+            "t64": "Grande · 64 px",
+            "otro": "Personalizado · {px} px"
+          },
+          "avanzado": "Mais opções de estilo"
+        },
+        "alAbrir": {
+          "titulo": "Ao abrir o chat",
+          "tituloChat": "Título do chat",
+          "bienvenida": "Mensagem de boas-vindas",
+          "fueraDeLinea": "Se não houver ninguém on-line",
+          "botones": "Botões rápidos:",
+          "nuevoBoton": "Texto do botão",
+          "agregar": "Adicionar",
+          "quitarBoton": "Remover “{boton}”",
+          "descartar": "Descartar",
+          "guardar": "Salvar"
+        },
+        "visitante": {
+          "titulo": "Dados do visitante",
+          "descripcion": "Pedi-los antes de conversar ajuda a criar o cliente no CRM.",
+          "campos": {
+            "name": "Nome",
+            "phone": "WhatsApp",
+            "email": "E-mail"
+          },
+          "ayudaIa": "Ajuda da IA"
+        },
+        "vistaPrevia": {
+          "titulo": "Pré-visualização",
+          "tituloPorDefecto": "Chat",
+          "enLinea": "On-line · responde em minutos",
+          "ahora": "agora",
+          "antesDeEmpezar": "Antes de começar",
+          "campos": {
+            "name": "Seu nome",
+            "phone": "Seu WhatsApp",
+            "email": "Seu e-mail"
+          },
+          "empezar": "Iniciar chat",
+          "abrir": "Abrir o chat",
+          "cerrar": "Fechar o chat",
+          "reiniciar": "Reiniciar pré-visualização"
+        },
+        "toasts": {
+          "error": "Não foi possível salvar a alteração",
+          "claveRotada": "Nova chave pronta: atualize o código no seu site",
+          "visible": "O chat já aparece no seu site",
+          "oculto": "O chat não aparece mais no seu site",
+          "errorSitio": "Não foi possível alterar a visibilidade no site"
+        }
+      }
+    },
+    "comun": {
+      "volver": "Voltar"
+    }
   }
 }

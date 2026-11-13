@@ -58,6 +58,7 @@ import { LocalDataNotice } from '@/components/offline/LocalDataNotice';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { registerUserDevice } from '@/lib/auth/organizationAuth';
+import { NavegacionVisibleProvider } from '@/lib/navigation/NavegacionVisible';
 
 // Los módulos y páginas del menú salen de `src/lib/navigation/catalog.ts` (única
 // fuente). Aquí había una copia de ~300 líneas (`MODULES_WITH_SUBMENU`) que ya
@@ -922,6 +923,8 @@ export const AppLayout = ({
   );
   // Sin organización no hay módulos que esperar: solo «Inicio».
   const cargandoNav = !!orgId && !modulosError && (activeModuleCodes === undefined || jobPositionVisibleModules === undefined);
+  // Lo mismo que ve el menú, para las pestañas de los módulos (p. ej. Chat).
+  const navegacionVisible = useMemo(() => ({ secciones: seccionesNav, cargando: cargandoNav }), [seccionesNav, cargandoNav]);
 
   // Si estamos en la página de cuenta congelada, renderizar sin layout (sin sidebar/header)
   if (pathname?.startsWith('/app/cuenta-congelada')) {
@@ -939,6 +942,7 @@ export const AppLayout = ({
       <AvisoActualizacionEscritorio />
       
       <CabeceraMovilProvider>
+      <NavegacionVisibleProvider valor={navegacionVisible}>
       <div className="flex h-dynamic-screen overflow-hidden">
       {/* Sidebar, panel de submenú y drawer móvil (src/components/shell/sidebar). */}
       <SidebarShell
@@ -1025,6 +1029,7 @@ export const AppLayout = ({
       )}
 
       </div>
+      </NavegacionVisibleProvider>
       </CabeceraMovilProvider>
       </BranchProvider>
       </SoftphoneProvider>

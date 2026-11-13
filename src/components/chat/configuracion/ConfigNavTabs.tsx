@@ -1,49 +1,27 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { Tags, MessageSquareText, Key } from 'lucide-react';
+/**
+ * Atajos a la configuración del Chat. Las páginas viejas
+ * `/app/chat/configuracion/{etiquetas,respuestas-rapidas,llaves-api}` ya no
+ * existen: etiquetas, respuestas rápidas y llaves de API viven en
+ * Configuración › Chat › General, y la IA en Configuración › Chat › IA del chat.
+ */
+import { useTranslations } from 'next-intl';
+import { Bot, Settings } from 'lucide-react';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
+import { PestanasEnlace } from '../PestanasEnlace';
 
-const configTabs = [
-  {
-    name: 'Etiquetas',
-    href: '/app/chat/configuracion/etiquetas',
-    icon: <Tags className="h-4 w-4" />,
-  },
-  {
-    name: 'Respuestas Rápidas',
-    href: '/app/chat/configuracion/respuestas-rapidas',
-    icon: <MessageSquareText className="h-4 w-4" />,
-  },
-  {
-    name: 'Llaves API',
-    href: '/app/chat/configuracion/llaves-api',
-    icon: <Key className="h-4 w-4" />,
-  },
-];
-
-export function ConfigNavTabs() {
-  const pathname = usePathname();
-
+export function ConfigNavTabs({ activa, className }: { activa?: 'general' | 'ia'; className?: string }) {
+  const t = useTranslations('chatModulo.configuracion');
   return (
-    <div className="flex space-x-2 mb-6 overflow-x-auto pb-1">
-      {configTabs.map((tab) => (
-        <Link
-          key={tab.name}
-          href={tab.href}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
-            pathname === tab.href
-              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-          )}
-        >
-          {tab.icon}
-          {tab.name}
-        </Link>
-      ))}
-    </div>
+    <PestanasEnlace
+      etiqueta={t('etiqueta')}
+      className={className}
+      pestanas={[
+        { href: rutaSeccion('chat.general'), etiqueta: t('general'), icono: Settings, activa: activa === 'general' },
+        { href: rutaSeccion('chat.ia'), etiqueta: t('ia'), icono: Bot, activa: activa === 'ia' },
+      ]}
+    />
   );
 }
 

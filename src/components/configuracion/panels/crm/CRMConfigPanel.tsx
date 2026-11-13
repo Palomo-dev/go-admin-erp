@@ -230,7 +230,7 @@ export function CRMConfigPanel() {
 
       setChannels((prev) => prev.map((c) => (c.id === channel.id ? updatedChannel : c)));
 
-      const modeLabels: Record<AIMode, string> = { off: 'Desactivado', hybrid: 'Híbrido', auto: 'Automático' };
+      const modeLabels: Record<AIMode, string> = { manual: 'Desactivado', hybrid: 'Híbrido', auto: 'Automático' };
       toast({ title: 'Modo IA actualizado', description: `El modo IA ahora es "${modeLabels[mode]}"` });
     } catch (error) {
       console.error('Error cambiando modo IA:', error);

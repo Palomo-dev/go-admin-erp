@@ -1,51 +1,28 @@
 'use client';
 
-import Link from 'next/link';
+/**
+ * Sub-pestañas de IA del chat (Figma 91-chat-34/35): Laboratorio · Trabajos ·
+ * Configuración. La configuración vive en Configuración › Chat › IA del chat
+ * desde 2026-10-07; la pestaña es un atajo a esa sección.
+ */
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
-import { Settings, FlaskConical, ListChecks } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
+import { PestanasEnlace } from '../PestanasEnlace';
 
-const iaTabs = [
-  {
-    // Atajo a Configuración › Chat › IA del chat (allí vive desde 2026-10-07).
-    name: 'Configurar',
-    href: rutaSeccion('chat.ia'),
-    icon: <Settings className="h-4 w-4" />,
-  },
-  {
-    name: 'Laboratorio',
-    href: '/app/chat/ia/laboratorio',
-    icon: <FlaskConical className="h-4 w-4" />,
-  },
-  {
-    name: 'Trabajos',
-    href: '/app/chat/ia/trabajos',
-    icon: <ListChecks className="h-4 w-4" />,
-  },
-];
-
-export function IANavTabs() {
-  const pathname = usePathname();
-
+export function IANavTabs({ className }: { className?: string }) {
+  const pathname = usePathname() ?? '';
+  const t = useTranslations('chatModulo.ia.pestanas');
   return (
-    <div className="flex space-x-2 mb-6 overflow-x-auto pb-1">
-      {iaTabs.map((tab) => (
-        <Link
-          key={tab.name}
-          href={tab.href}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors whitespace-nowrap',
-            pathname === tab.href
-              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-              : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-          )}
-        >
-          {tab.icon}
-          {tab.name}
-        </Link>
-      ))}
-    </div>
+    <PestanasEnlace
+      etiqueta={t('etiqueta')}
+      className={className}
+      pestanas={[
+        { href: '/app/chat/ia/laboratorio', etiqueta: t('laboratorio'), activa: pathname.startsWith('/app/chat/ia/laboratorio') },
+        { href: '/app/chat/ia/trabajos', etiqueta: t('trabajos'), activa: pathname.startsWith('/app/chat/ia/trabajos') },
+        { href: rutaSeccion('chat.ia'), etiqueta: t('configuracion'), activa: false },
+      ]}
+    />
   );
 }
 

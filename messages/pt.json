@@ -49666,5 +49666,15 @@
       "fecha_anterior_a_la_liquidacion": "A entrega não pode ser anterior à liquidação.",
       "error_desconocido": "Não foi possível concluir a operação."
     }
+  },
+  "chatUi": {
+    "canales": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "web": "Site",
+      "telegram": "Telegram",
+      "correo": "E-mail"
+    }
   }
 }

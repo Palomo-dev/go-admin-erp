@@ -49671,5 +49671,15 @@
       "fecha_anterior_a_la_liquidacion": "La entrega no puede ser anterior a la liquidación.",
       "error_desconocido": "No se pudo completar la operación."
     }
+  },
+  "chatUi": {
+    "canales": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "web": "Sitio web",
+      "telegram": "Telegram",
+      "correo": "Correo"
+    }
   }
 }

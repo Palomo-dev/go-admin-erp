@@ -49656,5 +49656,15 @@
       "fecha_anterior_a_la_liquidacion": "La remise ne peut pas être antérieure à la liquidation.",
       "error_desconocido": "L’opération n’a pas pu être effectuée."
     }
+  },
+  "chatUi": {
+    "canales": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "web": "Site web",
+      "telegram": "Telegram",
+      "correo": "E-mail"
+    }
   }
 }

@@ -49656,5 +49656,15 @@
       "fecha_anterior_a_la_liquidacion": "The delivery cannot be earlier than the settlement.",
       "error_desconocido": "The operation could not be completed."
     }
+  },
+  "chatUi": {
+    "canales": {
+      "whatsapp": "WhatsApp",
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "web": "Website",
+      "telegram": "Telegram",
+      "correo": "Email"
+    }
   }
 }

@@ -38562,6 +38562,11 @@
         "titulo": "Datos sin conexión",
         "descripcion": "Copia local para trabajar sin internet en Go Admin Desktop",
         "palabras": "sin conexión, offline, desktop, copia local"
+      },
+      "generalPlan": {
+        "titulo": "Plan y facturación",
+        "descripcion": "Tu plan, lo que incluye y cómo se cobra",
+        "palabras": "plan, suscripción, facturación, pago, cobro, módulos, upgrade, mejorar plan"
       }
     },
     "ajustes": {
@@ -50124,6 +50129,64 @@
     },
     "comun": {
       "volver": "Volver"
+    }
+  },
+  "configuracionDialogo": {
+    "titulo": "Configuración",
+    "cerrar": "Cerrar configuración (Esc)",
+    "volver": "Volver al menú de configuración",
+    "menuAria": "Secciones de configuración",
+    "pestanasAria": "Partes de {entrada}",
+    "grupos": {
+      "organizacion": "Organización",
+      "ventas": "Ventas",
+      "clientes": "Clientes y comunicación",
+      "operacion": "Operación",
+      "conexiones": "Conexiones y datos"
+    },
+    "entradas": {
+      "general": "General",
+      "roles": "Equipo y roles",
+      "plan": "Plan y facturación",
+      "asistente": "GO Asistente",
+      "pos": "Punto de venta",
+      "facturacion": "Facturación electrónica",
+      "sitioweb": "Sitio web",
+      "crm": "CRM",
+      "chat": "Chat",
+      "telefonia-voz": "Telefonía y voz",
+      "notificaciones": "Notificaciones",
+      "calendario": "Calendario",
+      "hrm": "Recursos humanos",
+      "pms": "Hotel (PMS)",
+      "parking": "Parqueadero",
+      "gym": "Membresías",
+      "integraciones": "Integraciones",
+      "timeline": "Timeline",
+      "datos-offline": "Datos sin conexión"
+    },
+    "pestanas": {
+      "chatGeneral": "General",
+      "chatIa": "IA",
+      "posGeneral": "General"
+    },
+    "buscar": {
+      "etiqueta": "Buscar un ajuste",
+      "placeholder": "Buscar un ajuste",
+      "pista": "Enter abre el primero · ↑ ↓ para moverte · Esc para cerrar"
+    },
+    "cambios": {
+      "region": "Cambios sin guardar",
+      "contador": "{n, plural, one {# cambio sin guardar} other {# cambios sin guardar}}",
+      "descartar": "Descartar",
+      "guardar": "Guardar cambios",
+      "guardarCorto": "Guardar"
+    },
+    "confirmar": {
+      "titulo": "¿Descartar los cambios sin guardar?",
+      "descripcion": "Si sales ahora, se pierden los cambios que hiciste en esta sección.",
+      "descartar": "Descartar cambios",
+      "seguir": "Seguir editando"
     }
   }
 }

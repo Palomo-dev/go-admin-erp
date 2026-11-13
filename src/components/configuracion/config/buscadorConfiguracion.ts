@@ -27,7 +27,8 @@ export interface ResultadoBusqueda extends EntradaIndice {
 
 /** Textos que necesita el índice, ya traducidos. */
 export interface TextosIndice {
-  modulo: (moduloId: string) => string;
+  /** Nombre del primer tramo de «X › Sección»: el módulo, o la entrada del menú del diálogo (recibe la sección). */
+  modulo: (moduloId: string, seccion: SeccionConfig) => string;
   seccion: (clave: string) => { titulo: string; palabras: string };
   ajuste: (clave: string) => { titulo: string; palabras: string };
 }
@@ -52,7 +53,7 @@ function palabrasDe(lista: string): string[] {
 export function construirIndice(secciones: readonly SeccionConfig[], textos: TextosIndice): EntradaIndice[] {
   const indice: EntradaIndice[] = [];
   for (const s of secciones) {
-    const modulo = textos.modulo(s.modulo);
+    const modulo = textos.modulo(s.modulo, s);
     const sec = textos.seccion(s.clave);
     indice.push({ seccionId: s.id, titulo: sec.titulo, modulo, seccion: sec.titulo, palabras: palabrasDe(sec.palabras), href: rutaSeccion(s.id) });
     for (const a of s.ajustes) {

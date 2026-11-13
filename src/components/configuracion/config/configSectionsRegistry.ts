@@ -50,16 +50,26 @@ export interface SeccionConfig {
   ajustes: readonly AjusteConfig[];
   /**
    * La sección solo enlaza a una pantalla que se queda donde está (Sitio web,
-   * GO Assistant, avisos al cliente del POS): no se mueve ni se duplica.
+   * Plan, reservas de mesas): no se mueve ni se duplica. En el diálogo se ve
+   * como una fila con «Abrir», que navega y cierra el diálogo.
    */
   enlace?: string;
   /** La propia sección maneja su solo lectura (ajustes con permisos distintos). */
   controlaLectura?: boolean;
+  /**
+   * Entrada del menú del diálogo cuando NO es su módulo (`ENTRADAS_EXTRA` en
+   * `configModulesRegistry.ts`): «GO Asistente» y «Plan» viven en General y
+   * se muestran como entradas propias; «Telefonía y voz» reúne dos de CRM.
+   */
+  entrada?: string;
 }
 
 export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'general.general', modulo: 'general', seccion: 'general', clave: 'generalGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
-  { id: 'general.asistente', modulo: 'general', seccion: 'asistente', clave: 'generalAsistente', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/configuracion/asistente' },
+  // Antes era una página aparte (/app/configuracion/asistente); desde el diálogo es un panel.
+  { id: 'general.asistente', modulo: 'general', seccion: 'asistente', clave: 'generalAsistente', permiso: PERMISO_ADMIN, ajustes: [], entrada: 'asistente' },
+  // El plan y su cobro tienen su propia pantalla: el diálogo solo la enlaza.
+  { id: 'general.plan', modulo: 'general', seccion: 'plan', clave: 'generalPlan', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/plan', entrada: 'plan' },
   // Sitio web se queda en su módulo (decisión del dueño, 2026-10-07): aquí solo se enlaza.
   { id: 'sitioweb.general', modulo: 'sitioweb', seccion: 'general', clave: 'sitiowebGeneral', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/sitio-web/configuracion' },
   { id: 'crm.general', modulo: 'crm', seccion: 'general', clave: 'crmGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
@@ -70,6 +80,7 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
     clave: 'crmAgenteVoz',
     permiso: PERMISO_ADMIN,
     controlaLectura: true,
+    entrada: 'telefonia-voz',
     ajustes: [
       { ancla: 'interruptor', clave: 'agenteVozInterruptor' },
       { ancla: 'numeros-prueba', clave: 'agenteVozNumerosPrueba' },
@@ -77,7 +88,7 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
       { ancla: 'desinteres', clave: 'agenteVozDesinteres', permiso: 'crm.stages.manage' },
     ],
   },
-  { id: 'crm.telefonia', modulo: 'crm', seccion: 'telefonia', clave: 'crmTelefonia', permiso: PERMISO_ADMIN, ajustes: [] },
+  { id: 'crm.telefonia', modulo: 'crm', seccion: 'telefonia', clave: 'crmTelefonia', permiso: PERMISO_ADMIN, ajustes: [], entrada: 'telefonia-voz' },
   { id: 'crm.proveedores', modulo: 'crm', seccion: 'proveedores', clave: 'crmProveedores', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'crm.email', modulo: 'crm', seccion: 'email', clave: 'crmEmail', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'crm.whatsapp', modulo: 'crm', seccion: 'whatsapp', clave: 'crmWhatsapp', permiso: PERMISO_ADMIN, ajustes: [] },
@@ -88,7 +99,8 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   // Se queda en POS › Reservas de mesas: el módulo Sitio web la enlaza como «Reservas web»
   // y ese flujo no se toca (decisión del dueño, 2026-10-07). Aquí, solo el enlace.
   { id: 'pos.reservas-mesas', modulo: 'pos', seccion: 'reservas-mesas', clave: 'posReservasMesas', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/pos/reservas-mesas?tab=configuracion' },
-  { id: 'pos.avisos-cliente', modulo: 'pos', seccion: 'avisos-cliente', clave: 'posAvisosCliente', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/configuracion/pos/avisos-cliente' },
+  // Antes era una página aparte (/app/configuracion/pos/avisos-cliente); desde el diálogo es un panel.
+  { id: 'pos.avisos-cliente', modulo: 'pos', seccion: 'avisos-cliente', clave: 'posAvisosCliente', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'chat.general', modulo: 'chat', seccion: 'general', clave: 'chatGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'chat.ia', modulo: 'chat', seccion: 'ia', clave: 'chatIa', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'integraciones.general', modulo: 'integraciones', seccion: 'general', clave: 'integracionesGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

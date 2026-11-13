@@ -38547,6 +38547,11 @@
         "titulo": "Offline data",
         "descripcion": "Local copy to work without internet in Go Admin Desktop",
         "palabras": "offline, desktop, local copy, no connection"
+      },
+      "generalPlan": {
+        "titulo": "Plan and billing",
+        "descripcion": "Your plan, what it includes and how it is billed",
+        "palabras": "plan, subscription, billing, payment, charge, modules, upgrade"
       }
     },
     "ajustes": {
@@ -50109,6 +50114,64 @@
     },
     "comun": {
       "volver": "Back"
+    }
+  },
+  "configuracionDialogo": {
+    "titulo": "Settings",
+    "cerrar": "Close settings (Esc)",
+    "volver": "Back to the settings menu",
+    "menuAria": "Settings sections",
+    "pestanasAria": "Parts of {entrada}",
+    "grupos": {
+      "organizacion": "Organization",
+      "ventas": "Sales",
+      "clientes": "Customers and communication",
+      "operacion": "Operations",
+      "conexiones": "Connections and data"
+    },
+    "entradas": {
+      "general": "General",
+      "roles": "Team and roles",
+      "plan": "Plan and billing",
+      "asistente": "GO Assistant",
+      "pos": "Point of sale",
+      "facturacion": "Electronic invoicing",
+      "sitioweb": "Website",
+      "crm": "CRM",
+      "chat": "Chat",
+      "telefonia-voz": "Phone and voice",
+      "notificaciones": "Notifications",
+      "calendario": "Calendar",
+      "hrm": "Human resources",
+      "pms": "Hotel (PMS)",
+      "parking": "Parking",
+      "gym": "Memberships",
+      "integraciones": "Integrations",
+      "timeline": "Timeline",
+      "datos-offline": "Offline data"
+    },
+    "pestanas": {
+      "chatGeneral": "General",
+      "chatIa": "AI",
+      "posGeneral": "General"
+    },
+    "buscar": {
+      "etiqueta": "Search a setting",
+      "placeholder": "Search a setting",
+      "pista": "Enter opens the first one · ↑ ↓ to move · Esc to close"
+    },
+    "cambios": {
+      "region": "Unsaved changes",
+      "contador": "{n, plural, one {# unsaved change} other {# unsaved changes}}",
+      "descartar": "Discard",
+      "guardar": "Save changes",
+      "guardarCorto": "Save"
+    },
+    "confirmar": {
+      "titulo": "Discard unsaved changes?",
+      "descripcion": "If you leave now, the changes you made in this section will be lost.",
+      "descartar": "Discard changes",
+      "seguir": "Keep editing"
     }
   }
 }

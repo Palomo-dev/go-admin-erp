@@ -38557,6 +38557,11 @@
         "titulo": "Dados offline",
         "descripcion": "Cópia local para trabalhar sem internet no Go Admin Desktop",
         "palabras": "offline, desktop, cópia local, sem conexão"
+      },
+      "generalPlan": {
+        "titulo": "Plano e cobrança",
+        "descripcion": "Seu plano, o que inclui e como é cobrado",
+        "palabras": "plano, assinatura, cobrança, pagamento, módulos, upgrade"
       }
     },
     "ajustes": {
@@ -50119,6 +50124,64 @@
     },
     "comun": {
       "volver": "Voltar"
+    }
+  },
+  "configuracionDialogo": {
+    "titulo": "Configurações",
+    "cerrar": "Fechar configurações (Esc)",
+    "volver": "Voltar ao menu de configurações",
+    "menuAria": "Seções de configurações",
+    "pestanasAria": "Partes de {entrada}",
+    "grupos": {
+      "organizacion": "Organização",
+      "ventas": "Vendas",
+      "clientes": "Clientes e comunicação",
+      "operacion": "Operação",
+      "conexiones": "Conexões e dados"
+    },
+    "entradas": {
+      "general": "Geral",
+      "roles": "Equipe e funções",
+      "plan": "Plano e cobrança",
+      "asistente": "GO Assistente",
+      "pos": "Ponto de venda",
+      "facturacion": "Faturamento eletrônico",
+      "sitioweb": "Site",
+      "crm": "CRM",
+      "chat": "Chat",
+      "telefonia-voz": "Telefonia e voz",
+      "notificaciones": "Notificações",
+      "calendario": "Calendário",
+      "hrm": "Recursos humanos",
+      "pms": "Hotel (PMS)",
+      "parking": "Estacionamento",
+      "gym": "Assinaturas",
+      "integraciones": "Integrações",
+      "timeline": "Linha do tempo",
+      "datos-offline": "Dados offline"
+    },
+    "pestanas": {
+      "chatGeneral": "Geral",
+      "chatIa": "IA",
+      "posGeneral": "Geral"
+    },
+    "buscar": {
+      "etiqueta": "Buscar uma configuração",
+      "placeholder": "Buscar uma configuração",
+      "pista": "Enter abre o primeiro · ↑ ↓ para se mover · Esc para fechar"
+    },
+    "cambios": {
+      "region": "Alterações não salvas",
+      "contador": "{n, plural, one {# alteração não salva} other {# alterações não salvas}}",
+      "descartar": "Descartar",
+      "guardar": "Salvar alterações",
+      "guardarCorto": "Salvar"
+    },
+    "confirmar": {
+      "titulo": "Descartar as alterações não salvas?",
+      "descripcion": "Se você sair agora, as alterações feitas nesta seção serão perdidas.",
+      "descartar": "Descartar alterações",
+      "seguir": "Continuar editando"
     }
   }
 }

@@ -25,6 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuardar';
 
 export function ParkingConfigPanel() {
   const { organization, isLoading: orgLoading } = useOrganization();
@@ -73,6 +74,14 @@ export function ParkingConfigPanel() {
       setIsSaving(false);
     }
   };
+
+  // Barra «cambios sin guardar» del diálogo de Configuración.
+  useRegistrarCambios({
+    cambios: hasChanges ? contarCambios(config, originalConfig) : 0,
+    guardando: isSaving,
+    guardar: handleSave,
+    descartar: () => setConfig(originalConfig ? JSON.parse(JSON.stringify(originalConfig)) : originalConfig),
+  });
 
   const handleReset = async () => {
     if (!organization?.id) return;

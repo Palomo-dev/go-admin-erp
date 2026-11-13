@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Save } from 'lucide-react';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuardar';
 
 export function PMSConfigPanel() {
   const { organization } = useOrganization();
@@ -78,6 +79,14 @@ export function PMSConfigPanel() {
   const hasChanges = settings && originalSettings
     ? JSON.stringify(settings) !== JSON.stringify(originalSettings)
     : false;
+
+  // Barra «cambios sin guardar» del diálogo de Configuración.
+  useRegistrarCambios({
+    cambios: hasChanges ? contarCambios(settings, originalSettings) : 0,
+    guardando: isSaving,
+    guardar: handleSave,
+    descartar: () => setSettings(originalSettings),
+  });
 
   if (isLoading || !settings) {
     return (

@@ -17,8 +17,14 @@ import { VistaPreviaAvisoDialog } from './VistaPreviaAvisoDialog';
  * Configuración › POS › Avisos al cliente (Figma 464:241318): seis momentos
  * del pedido online con interruptor por canal, la plantilla y su vista previa,
  * y los datos del remitente. Guardar exige administración (en el servidor).
+ *
+ * `incrustado`: dentro del diálogo de Configuración (ya pone título y migas),
+ * sin cabecera de página ni márgenes; «Guardar» queda arriba a la derecha.
  */
-export function AvisosClientePage({ inicial }: { inicial?: { ajustes: AjustesAvisos; puedeEditar: boolean; disponible: boolean } } = {}) {
+export function AvisosClientePage({
+  inicial,
+  incrustado = false,
+}: { inicial?: { ajustes: AjustesAvisos; puedeEditar: boolean; disponible: boolean }; incrustado?: boolean } = {}) {
   const t = useTranslations('posAvisosCliente');
   const { toast } = useToast();
   const [ajustes, setAjustes] = React.useState<AjustesAvisos | null>(inicial?.ajustes ?? null);
@@ -66,21 +72,27 @@ export function AvisosClientePage({ inicial }: { inicial?: { ajustes: AjustesAvi
   const a = ajustes ?? AJUSTES_POR_DEFECTO;
   const bloqueado = !puedeEditar || !disponible;
 
+  const botonGuardar = (
+    <button type="button" disabled={guardando || bloqueado} onClick={() => void guardar()} className={clasesBoton({ variante: 'primario', tamano: 'md' })}>
+      {guardando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+      {t('guardar')}
+    </button>
+  );
+
   return (
-    <div className="flex flex-col gap-4 bg-canvas px-4 pb-6 pt-4 sm:px-6 lg:pt-6">
-      <PageHeader
-        titulo={t('titulo')}
-        subtitulo={t('subtitulo')}
-        icono={Settings}
-        cargando={!ajustes && !error}
-        migas={[{ etiqueta: t('migaConfiguracion'), href: '/app/configuracion' }, { etiqueta: 'POS', href: '/app/configuracion?modulo=pos' }]}
-        acciones={
-          <button type="button" disabled={guardando || bloqueado} onClick={() => void guardar()} className={clasesBoton({ variante: 'primario', tamano: 'md' })}>
-            {guardando ? <Loader2 aria-hidden="true" className="size-4 animate-spin" /> : <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />}
-            {t('guardar')}
-          </button>
-        }
-      />
+    <div className={cn('flex flex-col gap-4', !incrustado && 'bg-canvas px-4 pb-6 pt-4 sm:px-6 lg:pt-6')}>
+      {incrustado ? (
+        <div className="flex justify-end">{botonGuardar}</div>
+      ) : (
+        <PageHeader
+          titulo={t('titulo')}
+          subtitulo={t('subtitulo')}
+          icono={Settings}
+          cargando={!ajustes && !error}
+          migas={[{ etiqueta: t('migaConfiguracion'), href: '/app/configuracion' }, { etiqueta: 'POS', href: '/app/configuracion?modulo=pos' }]}
+          acciones={botonGuardar}
+        />
+      )}
 
       {error ? (
         <EmptyState variante="error" titulo={t('errorCargar')} onReintentar={cargar} />

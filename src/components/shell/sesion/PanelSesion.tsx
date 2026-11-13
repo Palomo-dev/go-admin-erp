@@ -38,6 +38,7 @@ import {
   Monitor,
   Moon,
   Plus,
+  Settings,
   X,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
@@ -53,6 +54,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { abrirReportarProblema } from '../header/ReportarProblema';
+import { abrirConfiguracion } from '@/components/configuracion/dialogo/abrirConfiguracion';
 import { DownloadDesktopDialog } from '@/components/pos/configuracion/printers/DownloadDesktopDialog';
 import {
   MAX_SAVED_ACCOUNTS,
@@ -472,6 +474,7 @@ function UsoDelPlan({ uso, onCerrar }: { uso: PlanSesion['uso']; onCerrar: () =>
 export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCerrarSesion, cerrandoSesion, onCerrar, modo }: PanelSesionProps) {
   const t = useTranslations('session');
   const tHeader = useTranslations('header');
+  const tConfig = useTranslations('configuracionDialogo');
   const router = useRouter();
   const locale = useLocale() as Locale;
   const { datos, cargando } = usePlanSesion();
@@ -732,6 +735,16 @@ export function PanelSesion({ usuario, organizacion, tema, onAlternarTema, onCer
         onAbrir={setVerIdiomas}
         onElegir={elegirIdioma}
         enHoja={modo === 'drawer'}
+      />
+      {/* Configuración es un diálogo sobre la pantalla actual (Figma pág. 10, sección 12). */}
+      <Fila
+        icono={Settings}
+        titulo={tConfig('titulo')}
+        onClick={() => {
+          onCerrar();
+          abrirConfiguracion();
+        }}
+        cola={<ChevronRight size={16} aria-hidden="true" className="text-fg-muted" />}
       />
       <Fila
         icono={CreditCard}

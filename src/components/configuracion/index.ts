@@ -1,15 +1,18 @@
-export { ConfiguracionLayout } from './layout/ConfiguracionLayout';
 export { ConfiguracionPanelRenderer } from './layout/ConfiguracionPanelRenderer';
 export { AtajoConfigurar } from './AtajoConfigurar';
+export { abrirConfiguracion, EVENTO_ABRIR_CONFIGURACION, type OpcionesAbrirConfiguracion } from './dialogo/abrirConfiguracion';
+export { useRegistrarCambios, contarCambios, type CambiosPanel } from './dialogo/cambiosSinGuardar';
 
-export { useConfiguracionState } from './hooks/useConfiguracionState';
 export { useSeccionesPermitidas } from './hooks/useSeccionesPermitidas';
 
 export {
   CONFIG_MODULES,
+  GRUPOS_CONFIG,
+  ENTRADAS_EXTRA,
   getConfigModule,
   getModuleByCode,
   type ConfigModule,
+  type GrupoConfig,
 } from './config/configModulesRegistry';
 export {
   SECCIONES_CONFIG,

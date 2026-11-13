@@ -3,7 +3,7 @@
 /**
  * Componente de cada sección del registro (`configSectionsRegistry.ts`). Los
  * componentes son los de siempre de cada módulo: aquí solo se importan
- * (perezosos, para que abrir Configuración no cargue los dieciséis paneles).
+ * (perezosos, para que abrir Configuración no cargue todos los paneles).
  *
  * Solo lectura: si el servidor dice que la persona no puede editar, la
  * sección se pinta dentro de un `<fieldset disabled>` (los controles quedan
@@ -34,6 +34,7 @@ function LoadingSkeleton() {
 
 const PANELES: Record<string, React.ComponentType> = {
   'general.general': dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'general.asistente': dynamic(() => import('../panels/asistente/AsistenteConfigPanel').then((m) => m.AsistenteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'sitioweb.general': dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.general': dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.agente-voz': dynamic(() => import('../panels/crm/AgenteVozSeccion').then((m) => m.AgenteVozSeccion), { loading: () => <LoadingSkeleton />, ssr: false }),
@@ -45,6 +46,10 @@ const PANELES: Record<string, React.ComponentType> = {
   'hrm.general': dynamic(() => import('../panels/hrm/HRMConfigPanel').then((m) => m.HRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pms.general': dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pos.general': dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'pos.avisos-cliente': dynamic(
+    () => import('@/components/pos/pedidos-online/avisos/AvisosClientePage').then((m) => function AvisosCliente() { return <m.AvisosClientePage incrustado />; }),
+    { loading: () => <LoadingSkeleton />, ssr: false },
+  ),
   'chat.general': dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'chat.ia': dynamic(() => import('@/components/chat/ia/configuracion/ConfiguracionIAChat').then((m) => m.ConfiguracionIAChat), { loading: () => <LoadingSkeleton />, ssr: false }),
   'integraciones.general': dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
@@ -65,12 +70,24 @@ const PANELES: Record<string, React.ComponentType> = {
 /** Ids de sección que tienen componente propio (lo usa la prueba del registro). */
 export const SECCIONES_CON_PANEL = Object.keys(PANELES);
 
-function SeccionEnlace({ href }: { href: string }) {
+/**
+ * Sección que es una pantalla aparte: una fila con «Abrir». En el diálogo,
+ * `onAbrir` navega y cierra el diálogo; el `href` queda para abrir en otra pestaña.
+ */
+function SeccionEnlace({ href, onAbrir }: { href: string; onAbrir?: (href: string) => void }) {
   const t = useTranslations('configuracionUnificada.enlace');
   return (
     <div className="flex max-w-3xl flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4 md:px-6 md:py-5">
       <p className="min-w-0 flex-1 text-sm text-fg-secondary">{t('descripcion')}</p>
-      <Link href={href} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+      <Link
+        href={href}
+        onClick={(e) => {
+          if (!onAbrir || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+          e.preventDefault();
+          onAbrir(href);
+        }}
+        className={clasesBoton({ variante: 'secundario', tamano: 'md' })}
+      >
         {t('abrir')}
         <ArrowUpRight aria-hidden="true" className="size-4" />
       </Link>
@@ -83,12 +100,14 @@ interface Props {
   puedeEditar: boolean;
   /** Algún ajuste de la sección tiene permiso propio y la persona sí lo tiene. */
   algunAjusteEditable: boolean;
+  /** «Abrir» de una sección enlace (el diálogo navega y se cierra). */
+  onAbrirEnlace?: (href: string) => void;
 }
 
-export function ConfiguracionPanelRenderer({ seccion, puedeEditar, algunAjusteEditable }: Props) {
+export function ConfiguracionPanelRenderer({ seccion, puedeEditar, algunAjusteEditable, onAbrirEnlace }: Props) {
   const t = useTranslations('configuracionUnificada.soloLectura');
   const Panel = PANELES[seccion.id];
-  const contenido = Panel ? <Panel /> : seccion.enlace ? <SeccionEnlace href={seccion.enlace} /> : null;
+  const contenido = Panel ? <Panel /> : seccion.enlace ? <SeccionEnlace href={seccion.enlace} onAbrir={onAbrirEnlace} /> : null;
   const soloLectura = !puedeEditar && !seccion.enlace;
   const aviso = soloLectura && !(seccion.controlaLectura && algunAjusteEditable) ? (
     <AvisoTonal tono="neutro" icono={Lock} titulo={t('titulo')} descripcion={t('descripcion')} />

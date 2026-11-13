@@ -38547,6 +38547,11 @@
         "titulo": "Données hors ligne",
         "descripcion": "Copie locale pour travailler sans internet dans Go Admin Desktop",
         "palabras": "hors ligne, desktop, copie locale, sans connexion"
+      },
+      "generalPlan": {
+        "titulo": "Forfait et facturation",
+        "descripcion": "Votre forfait, ce qu’il inclut et comment il est facturé",
+        "palabras": "forfait, abonnement, facturation, paiement, modules, mise à niveau"
       }
     },
     "ajustes": {
@@ -50109,6 +50114,64 @@
     },
     "comun": {
       "volver": "Retour"
+    }
+  },
+  "configuracionDialogo": {
+    "titulo": "Paramètres",
+    "cerrar": "Fermer les paramètres (Échap)",
+    "volver": "Retour au menu des paramètres",
+    "menuAria": "Sections des paramètres",
+    "pestanasAria": "Parties de {entrada}",
+    "grupos": {
+      "organizacion": "Organisation",
+      "ventas": "Ventes",
+      "clientes": "Clients et communication",
+      "operacion": "Opérations",
+      "conexiones": "Connexions et données"
+    },
+    "entradas": {
+      "general": "Général",
+      "roles": "Équipe et rôles",
+      "plan": "Forfait et facturation",
+      "asistente": "GO Assistant",
+      "pos": "Point de vente",
+      "facturacion": "Facturation électronique",
+      "sitioweb": "Site web",
+      "crm": "CRM",
+      "chat": "Chat",
+      "telefonia-voz": "Téléphonie et voix",
+      "notificaciones": "Notifications",
+      "calendario": "Calendrier",
+      "hrm": "Ressources humaines",
+      "pms": "Hôtel (PMS)",
+      "parking": "Parking",
+      "gym": "Abonnements",
+      "integraciones": "Intégrations",
+      "timeline": "Chronologie",
+      "datos-offline": "Données hors ligne"
+    },
+    "pestanas": {
+      "chatGeneral": "Général",
+      "chatIa": "IA",
+      "posGeneral": "Général"
+    },
+    "buscar": {
+      "etiqueta": "Rechercher un paramètre",
+      "placeholder": "Rechercher un paramètre",
+      "pista": "Entrée ouvre le premier · ↑ ↓ pour vous déplacer · Échap pour fermer"
+    },
+    "cambios": {
+      "region": "Modifications non enregistrées",
+      "contador": "{n, plural, one {# modification non enregistrée} other {# modifications non enregistrées}}",
+      "descartar": "Annuler",
+      "guardar": "Enregistrer les modifications",
+      "guardarCorto": "Enregistrer"
+    },
+    "confirmar": {
+      "titulo": "Abandonner les modifications non enregistrées ?",
+      "descripcion": "Si vous quittez maintenant, les modifications de cette section seront perdues.",
+      "descartar": "Abandonner les modifications",
+      "seguir": "Continuer la modification"
     }
   }
 }

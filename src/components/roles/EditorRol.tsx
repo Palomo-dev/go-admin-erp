@@ -206,7 +206,7 @@ function Editor({ datos, onRecargar }: { datos: DetalleRol; onRecargar: () => Pr
         subtitulo={subtitulo}
         volverA={LISTA}
         onVolver={volver}
-        migas={[{ etiqueta: tr('migaOrganizacion'), href: '/app/organizacion' }, { etiqueta: tr('titulo'), href: LISTA }, { etiqueta: rol.nombre }]}
+        migas={[{ etiqueta: tr('migaOrganizacion'), href: '/app/organizacion' }, { etiqueta: tr('migaEquipo') }, { etiqueta: tr('titulo'), href: LISTA }, { etiqueta: rol.nombre }]}
         badge={
           rol.sistema ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-subtle px-2 py-0.5 text-xs text-fg-secondary">

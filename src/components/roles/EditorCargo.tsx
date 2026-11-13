@@ -143,7 +143,7 @@ function Editor({ datos, onRecargar }: { datos: DetalleCargo; onRecargar: () => 
         subtitulo={t('editorSubtitulo', { personas: cargo.personas })}
         volverA={LISTA}
         onVolver={volver}
-        migas={[{ etiqueta: tr('migaOrganizacion'), href: '/app/organizacion' }, { etiqueta: tr('titulo'), href: '/app/roles' }, { etiqueta: t('titulo'), href: LISTA }, { etiqueta: cargo.nombre }]}
+        migas={[{ etiqueta: tr('migaOrganizacion'), href: '/app/organizacion' }, { etiqueta: tr('migaEquipo') }, { etiqueta: tr('titulo'), href: '/app/roles' }, { etiqueta: t('titulo'), href: LISTA }, { etiqueta: cargo.nombre }]}
         acciones={
           <>
             {ed.sucio && (

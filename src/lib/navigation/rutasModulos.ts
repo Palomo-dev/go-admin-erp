@@ -306,23 +306,17 @@ export const RUTAS_MODULOS: readonly RutasModulo[] = [
   },
   {
     codigo: 'organizations',
-    rutas: ['/app/organizacion', '/app/plan'],
+    rutas: ['/app/organizacion', '/app/plan', '/app/roles', '/app/admin'],
     paginas: [
       '/app/organizacion/miembros',
       '/app/organizacion/invitaciones',
+      '/app/roles',
       '/app/organizacion/sucursales',
       '/app/organizacion/plan',
       '/app/plan/historial',
       '/app/organizacion/modulos',
       '/app/organizacion/informacion',
       '/app/organizacion/mis-organizaciones',
-    ],
-  },
-  {
-    codigo: 'roles',
-    rutas: ['/app/roles', '/app/admin'],
-    paginas: [
-      '/app/roles',
     ],
   },
   {

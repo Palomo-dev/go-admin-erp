@@ -2089,7 +2089,9 @@
       "equipo": {
         "pestanas": "Team sections",
         "miembros": "Members",
-        "invitaciones": "Invitations"
+        "invitaciones": "Invitations",
+        "roles": "Roles and permissions",
+        "cargos": "Positions"
       },
       "miembros": {
         "titulo": "Members",
@@ -2132,6 +2134,7 @@
           "plural": "members"
         },
         "acciones": {
+          "quePuedeHacer": "What can they do?",
           "cambiarRol": "Change role…",
           "editarCargo": "Edit position…",
           "asignarSedes": "Assign locations…",

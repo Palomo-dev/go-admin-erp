@@ -604,14 +604,17 @@ export const CATALOGO_NAV: ModuloNav[] = [
     // Sedes, Plan y facturación, Marca. «Compras» es el historial de compras de
     // cupo (/app/plan/historial). Sitio web y Dominios viven en el módulo Sitio
     // web desde el 2026-10-05: no vuelven aquí.
-    // PENDIENTE: el diseño pone «Roles y permisos» dentro de Equipo. Su página
-    // (/app/roles) pertenece hoy al módulo `roles` (bloque de abajo) y un href
-    // no puede estar en dos módulos (`filtrar.test.ts`): se mueve aquí cuando
-    // ese bloque se pliegue en este.
-    rutas: ['/app/organizacion', '/app/plan'],
+    // «Roles y permisos» vive en Equipo desde el 2026-11-13 (Figma sección 91):
+    // el módulo `roles` dejó de ser un módulo del menú. La URL sigue siendo
+    // /app/roles (y /app/admin, que era suya), así que no hay redirecciones;
+    // el registro `roles` de `modules` se conserva en la base (FK de
+    // `organization_modules`, Configuración › Roles), pero ya no tiene páginas.
+    // Migración 20261113183524_roles_dentro_de_organizacion.
+    rutas: ['/app/organizacion', '/app/plan', '/app/roles', '/app/admin'],
     paginas: [
       { href: '/app/organizacion/miembros', nombre: 'Miembros', icono: UserCheck, grupo: 'Equipo' },
       { href: '/app/organizacion/invitaciones', nombre: 'Invitaciones', icono: UserPlus, grupo: 'Equipo' },
+      { href: '/app/roles', nombre: 'Roles y permisos', icono: Shield, grupo: 'Equipo' },
       { href: '/app/organizacion/sucursales', nombre: 'Sucursales', icono: MapPin, grupo: 'Sedes' },
       { href: '/app/organizacion/plan', nombre: 'Plan', icono: CreditCard, grupo: 'Plan y facturación' },
       { href: '/app/plan/historial', nombre: 'Compras', icono: Receipt, grupo: 'Plan y facturación' },
@@ -619,15 +622,6 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/organizacion/informacion', nombre: 'Información', icono: Info, grupo: 'Marca' },
       { href: '/app/organizacion/mis-organizaciones', nombre: 'Mis organizaciones', icono: Building2, grupo: 'Marca' },
     ],
-  },
-  {
-    codigo: 'roles',
-    id: 'roles',
-    etiqueta: 'roles',
-    icono: Shield,
-    seccion: 'organizacion',
-    rutas: ['/app/roles', '/app/admin'],
-    paginas: [{ href: '/app/roles', nombre: 'Roles y permisos', icono: Shield }],
   },
   {
     codigo: 'configuracion',

@@ -6,8 +6,9 @@ import { usePermissions } from '@/hooks/useRoles';
 import { jobPositionPermissionsService } from '@/lib/services/jobPositionPermissionsService';
 import { jobPositionModuleAccessService } from '@/lib/services/jobPositionModuleAccessService';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
-import { MODULE_PAGES, MODULE_HREF_TO_CODE, getModuleCodeByHref } from '@/lib/config/modulePages';
+import { MODULE_PAGES } from '@/lib/config/modulePages';
 import { filtrarPaginasActivas } from '@/lib/navigation/paginaActiva';
+import { moduloEnCatalogo } from '@/lib/organizacion/modulos';
 import { 
   X, 
   Search, 
@@ -77,14 +78,12 @@ export default function JobPositionPermissionsManager({
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlySelected, setShowOnlySelected] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>('permissions');
-  const [activeModuleCodes, setActiveModuleCodes] = useState<string[]>([]);
+  const [, setActiveModuleCodes] = useState<string[]>([]);
   const [moduleAccess, setModuleAccess] = useState<ModuleAccessState[]>([]);
   const [pageAccess, setPageAccess] = useState<PageAccessState[]>([]);
   const [accessLoading, setAccessLoading] = useState(false);
-  const [accessSaving, setAccessSaving] = useState(false);
   const [expandedAccessModules, setExpandedAccessModules] = useState<Set<string>>(new Set());
 
   // Función auxiliar para obtener nombre del módulo
@@ -150,7 +149,11 @@ export default function JobPositionPermissionsManager({
         jobPositionModuleAccessService.getJobPositionAccess(jobPositionId),
       ]);
 
-      const moduleCodes = modules.map(m => m.code);
+      // Solo los módulos del catálogo de navegación: `roles` sigue en la base
+      // (núcleo, FK de organization_modules) pero desde el 2026-11-13 su página
+      // es de Organización, así que una fila de cargo con `roles` ya no decide
+      // nada y ofrecerla sería un interruptor sin efecto.
+      const moduleCodes = modules.map(m => m.code).filter(moduloEnCatalogo);
       setActiveModuleCodes(moduleCodes);
 
       // Construir estado de acceso a módulos
@@ -276,10 +279,6 @@ export default function JobPositionPermissionsManager({
     }
     return grouped;
   }, [pageAccess]);
-
-  const hasAccessChanges = () => {
-    return false; // Simplificado: siempre permite guardar
-  };
 
   // Los permisos ya vienen agrupados por módulo desde el hook
   // Solo necesitamos agregar nombres localizados y ordenar
@@ -731,7 +730,6 @@ export default function JobPositionPermissionsManager({
                   <div className="space-y-4">
                     {Object.entries(pagesByModule).map(([moduleCode, pages]) => {
                       const isExpanded = expandedAccessModules.has(moduleCode);
-                      const moduleMod = moduleAccess.find(m => m.module_code === moduleCode);
                       return (
                         <div key={moduleCode} className="border border-gray-200 dark:border-gray-700 rounded-lg">
                           <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-4 bg-gray-50 dark:bg-gray-900/50">

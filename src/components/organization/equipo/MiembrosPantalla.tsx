@@ -10,8 +10,10 @@
  * - DataTable del kit: tarjetas en móvil, selección múltiple con BulkActionBar,
  *   estados vacío / sin resultados / error sin jerga técnica.
  * - Rol y cargo son etiquetas: se cambian desde «⋯» en un diálogo que dice qué
- *   va a pasar. Quitar de una sede, desactivar y quitar del equipo, con
- *   confirmación. Un error de una acción sale en un aviso: ya no borra la tabla
+ *   va a pasar. «⋯ › ¿Qué puede hacer?» abre la hoja de Roles y permisos
+ *   (`HojaQuePuedeHacer`, Figma sección 91) si el servidor deja ver los permisos
+ *   de otras personas (`verPersonas`: users.view o admin). Quitar de una sede,
+ *   desactivar y quitar del equipo, con confirmación. Un error de una acción sale en un aviso: ya no borra la tabla
  *   (P1-6).
  *
  * Escrituras por RPC con las guardas en la base (`miembrosService`).
@@ -80,8 +82,10 @@ import { PantallaOrganizacion } from '../acceso/PantallaOrganizacion';
 import { ChipCupo } from '../acceso/Cupo';
 import { DialogoCompra } from '../acceso/DialogoCompra';
 import { useCupoPlan } from '../acceso/useCupoPlan';
+import { HojaQuePuedeHacer } from '@/components/roles/HojaQuePuedeHacer';
 import { DialogoCargo, DialogoQuitarSede, DialogoRol, type OpcionSimple } from './DialogosMiembro';
 import { PestanasEquipo } from './PestanasEquipo';
+import { useResumenEquipo } from './useResumenEquipo';
 
 const TODOS = '__todos__';
 
@@ -120,6 +124,8 @@ function ListadoMiembros({ organizationId, puedeComprar }: { organizationId: num
   const [cuotasDe, setCuotasDe] = useState<{ userId: string; name: string } | null>(null);
   const [confirmacion, setConfirmacion] = useState<Confirmacion | null>(null);
   const [comprar, setComprar] = useState(false);
+  const [quePuedeDe, setQuePuedeDe] = useState<number | null>(null);
+  const resumen = useResumenEquipo(organizationId);
 
   const nombreRol = useCallback(
     (id: number | null, nombre: string | null) => (id !== null && tr.has(String(id)) ? tr(String(id)) : nombre ?? t('sinRol')),
@@ -181,6 +187,13 @@ function ListadoMiembros({ organizationId, puedeComprar }: { organizationId: num
     const alcance = alcanceSedes(m);
     const quitarSedePosible = !alcance.todas && m.sedes.some((s) => puedeQuitarSede(m, s.id));
     return [
+      {
+        id: 'quePuede',
+        etiqueta: t('acciones.quePuedeHacer'),
+        icono: ShieldCheck,
+        onSelect: () => setQuePuedeDe(Number(m.id)),
+        oculta: resumen?.verPersonas !== true && !esYo(m),
+      },
       { id: 'rol', etiqueta: t('acciones.cambiarRol'), icono: ShieldCheck, onSelect: () => setRolDe(m), deshabilitada: !!motivo, motivo },
       { id: 'cargo', etiqueta: t('acciones.editarCargo'), icono: Briefcase, onSelect: () => setCargoDe(m), deshabilitada: !!motivo, motivo },
       {
@@ -488,6 +501,7 @@ function ListadoMiembros({ organizationId, puedeComprar }: { organizationId: num
         onConfirm={ejecutarConfirmacion}
       />
 
+      <HojaQuePuedeHacer memberId={quePuedeDe} onAbiertoChange={(v) => !v && setQuePuedeDe(null)} />
       <MemberQuotasSheet open={cuotasDe !== null} onOpenChange={(o) => !o && setCuotasDe(null)} member={cuotasDe} />
       {asignarDe && (
         <BranchAssignmentModal

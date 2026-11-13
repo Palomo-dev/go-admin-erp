@@ -238,5 +238,9 @@ export interface ModuloReportes {
   reportes: ReportDefinition[];
 }
 
-/** Códigos de módulos core (siempre visibles) */
+/**
+ * Códigos de módulos core (siempre visibles). 'roles' es el `modulo` de los reportes de
+ * roles (`modulos/rolesReports.ts`), no un módulo del menú: se queda aunque la página
+ * «Roles y permisos» sea de Organización desde el 2026-11-13.
+ */
 export const MODULOS_CORE: string[] = ['organizations', 'clientes', 'roles'];

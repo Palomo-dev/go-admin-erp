@@ -45,6 +45,12 @@ export function esRutaBandeja(pathname: string): boolean {
  * vista completa de una conversación. El resto del módulo fluye con el scroll
  * del shell. En móvil estas dos no muestran las pestañas (Figma 91-chat-14/15).
  */
+export function ocultaPestanasModulo(pathname: string): boolean {
+  // La conversación (completa, actividad, archivos) y «Nueva conversación»
+  // traen su propia cabecera con «←» y pestañas: Figma 91-chat-10…13.
+  return empiezaPor(pathname, '/app/chat/conversaciones');
+}
+
 export function esPantallaAltoFijo(pathname: string): boolean {
   if (esRutaBandeja(pathname)) return true;
   const m = /^\/app\/chat\/conversaciones\/([^/]+)\/?$/.exec(pathname);

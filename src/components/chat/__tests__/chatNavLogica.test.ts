@@ -41,3 +41,14 @@ describe('pestañas del Chat', () => {
     expect(esPantallaAltoFijo('/app/chat/canales')).toBe(false);
   });
 });
+
+describe('ocultaPestanasModulo', () => {
+  it('la conversación y «Nueva conversación» traen su propia cabecera (Figma 91-chat-10…13)', () => {
+    const { ocultaPestanasModulo } = jest.requireActual('../chatNavLogica');
+    expect(ocultaPestanasModulo('/app/chat/conversaciones/abc')).toBe(true);
+    expect(ocultaPestanasModulo('/app/chat/conversaciones/abc/actividad')).toBe(true);
+    expect(ocultaPestanasModulo('/app/chat/conversaciones/nueva')).toBe(true);
+    expect(ocultaPestanasModulo('/app/chat/bandeja')).toBe(false);
+    expect(ocultaPestanasModulo('/app/chat/canales')).toBe(false);
+  });
+});

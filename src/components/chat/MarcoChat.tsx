@@ -9,14 +9,16 @@ import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/utils/Utils';
 import { ChatNavTabs } from './ChatNavTabs';
-import { esPantallaAltoFijo } from './chatNavLogica';
+import { esPantallaAltoFijo, ocultaPestanasModulo } from './chatNavLogica';
 
 export function MarcoChat({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '';
   const altoFijo = esPantallaAltoFijo(pathname);
   return (
     <div className={cn('flex min-w-0 flex-col', altoFijo ? 'h-full' : 'min-h-full')}>
-      <ChatNavTabs className={cn('shrink-0', altoFijo && 'max-lg:hidden')} />
+      {!ocultaPestanasModulo(pathname) && (
+        <ChatNavTabs className={cn('shrink-0', altoFijo && 'max-lg:hidden')} />
+      )}
       <div className={cn('flex min-w-0 flex-1 flex-col', altoFijo && 'min-h-0')}>{children}</div>
     </div>
   );

@@ -49666,5 +49666,11 @@
       "telegram": "Telegram",
       "correo": "E-mail"
     }
+  },
+  "chatBandeja": {
+    "notificacion": {
+      "titulo": "{persona} vous a attribué une conversation",
+      "contenido": "{persona} vous a attribué la conversation avec {cliente}."
+    }
   }
 }

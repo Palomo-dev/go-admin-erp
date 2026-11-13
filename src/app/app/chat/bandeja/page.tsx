@@ -18,6 +18,7 @@ import {
   ConversationSkeletonList
 } from '@/components/chat/inbox';
 import { SearchSelect } from '@/components/ui/search-select';
+import { enviarMensajeConversacion } from '@/lib/services/chat/envioMensaje';
 
 const PAGE_SIZE = 20;
 
@@ -276,111 +277,25 @@ export default function ChatBandejaPage() {
 
   const handleSendMessage = async (content: string, type?: 'text' | 'audio' | 'file', file?: File) => {
     if (!selectedConversation || !organizationId) return;
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: member } = await supabase
-        .from('organization_members')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('user_id', user?.id)
-        .single();
-      
-      let messageContent = content;
-      let contentType = 'text';
-      let metadata: Record<string, any> = {};
-
-      // Si hay archivo, subirlo a storage
-      if (file && (type === 'audio' || type === 'file')) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        const filePath = `chat/${organizationId}/${selectedConversation.id}/${fileName}`;
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('attachments')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Error subiendo archivo:', uploadError);
-          throw uploadError;
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('attachments')
-          .getPublicUrl(filePath);
-
-        messageContent = publicUrl;
-        contentType = type === 'audio' ? 'audio' : (file.type.startsWith('image/') ? 'image' : 'file');
-        metadata = {
-          file_name: file.name,
-          file_type: file.type,
-          file_size: file.size
-        };
-      }
-      
-      // F16 (C20): los mensajes salientes de WhatsApp NO se insertan a mano.
-      // Van por POST /api/crm/whatsapp/send, que comprueba la ventana de 24 h,
-      // el consentimiento (opt-out), los créditos y crea la activity. Antes se
-      // insertaba directo, así que un agente podía escribir a un cliente que
-      // había pedido la baja o fuera de la ventana (tester r1 · fallo 7).
-      const channelType = channels.find((ch) => ch.id === selectedConversation.channel_id)?.type ?? null;
-      if (channelType === 'whatsapp') {
-        const isMedia = contentType !== 'text';
-        const res = await fetch('/api/crm/whatsapp/send', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: selectedConversation.id,
-            channelId: selectedConversation.channel_id,
-            text: isMedia ? null : messageContent,
-            media: isMedia ? { url: messageContent, mime: file?.type || 'application/octet-stream', filename: file?.name } : null,
-          }),
-        });
-        const json = await res.json().catch(() => ({} as Record<string, unknown>));
-        if (!res.ok) {
-          toast({ title: 'No se pudo enviar', description: String(json.error ?? `Error ${res.status}`), variant: 'destructive' });
-          throw new Error(String(json.error ?? `Error ${res.status}`));
-        }
-        loadDataSilent();
-        return;
-      }
-
-      const { error } = await supabase
-        .from('messages')
-        .insert({
-          organization_id: organizationId,
-          conversation_id: selectedConversation.id,
+      // Camino ÚNICO de envío (el mismo de la vista completa): WhatsApp por
+      // /api/crm/whatsapp/send (ventana de 24 h, consentimiento, créditos).
+      await enviarMensajeConversacion({
+        organizationId,
+        conversacion: {
+          id: selectedConversation.id,
           channel_id: selectedConversation.channel_id,
-          direction: 'outbound',
-          role: 'agent',
-          sender_member_id: member?.id || null,
-          content_type: contentType,
-          content: messageContent,
-          metadata
-        });
-
-      if (error) throw error;
-
-      await supabase
-        .from('conversations')
-        .update({
-          last_message_at: new Date().toISOString(),
-          last_agent_message_at: new Date().toISOString(),
-          message_count: selectedConversation.message_count + 1
-        })
-        .eq('id', selectedConversation.id);
-      
+          tipoCanal: selectedConversation.channel?.type ?? channels.find((ch) => ch.id === selectedConversation.channel_id)?.type,
+        },
+        mensaje: file ? { archivo: file, esAudio: type === 'audio' } : { texto: content },
+        supabase,
+      });
       loadDataSilent();
     } catch (error) {
       console.error('Error enviando mensaje:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo enviar el mensaje',
+        title: 'No se pudo enviar',
+        description: error instanceof Error ? error.message : 'No se pudo enviar el mensaje',
         variant: 'destructive'
       });
       throw error;

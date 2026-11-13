@@ -49681,5 +49681,11 @@
       "telegram": "Telegram",
       "correo": "Correo"
     }
+  },
+  "chatBandeja": {
+    "notificacion": {
+      "titulo": "{persona} te asignó una conversación",
+      "contenido": "{persona} te asignó la conversación con {cliente}."
+    }
   }
 }

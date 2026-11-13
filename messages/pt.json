@@ -49676,5 +49676,11 @@
       "telegram": "Telegram",
       "correo": "E-mail"
     }
+  },
+  "chatBandeja": {
+    "notificacion": {
+      "titulo": "{persona} atribuiu uma conversa a você",
+      "contenido": "{persona} atribuiu a você a conversa com {cliente}."
+    }
   }
 }

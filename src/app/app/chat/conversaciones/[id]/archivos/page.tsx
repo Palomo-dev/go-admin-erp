@@ -35,6 +35,7 @@ export default function ChatConversationFilesPage() {
     if (organizationId && conversationId) {
       loadData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recarga al cambiar de organización o conversación
   }, [organizationId, conversationId]);
 
   const loadData = async () => {

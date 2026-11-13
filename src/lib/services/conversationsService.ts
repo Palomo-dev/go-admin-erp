@@ -116,7 +116,7 @@ class ConversationsService {
           .from('conversation_tag_relations')
           .select('conversation_id')
           .eq('tag_id', filters.tag_id);
-        tagConversationIds = tagData?.map((tr: any) => tr.conversation_id) || [];
+        tagConversationIds = tagData?.map((tr: { conversation_id: string }) => tr.conversation_id) || [];
         if (tagConversationIds.length === 0) {
           return { data: [], total: 0, hasMore: false };
         }
@@ -230,7 +230,7 @@ class ConversationsService {
           ]);
           
           const lastMessage = messagesResult.data?.[0] || null;
-          const tags = tagsResult.data?.map((tr: any) => tr.tag).filter(Boolean) || [];
+          const tags = tagsResult.data?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
 
           return {
             ...conv,
@@ -245,9 +245,9 @@ class ConversationsService {
         total: total || 0,
         hasMore: offset + limit < (total || 0)
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error obteniendo conversaciones paginadas:', error);
-      throw new Error(error?.message || 'Error al obtener conversaciones');
+      throw new Error((error as { message?: string } | null)?.message || 'Error al obtener conversaciones');
     }
   }
 
@@ -333,7 +333,7 @@ class ConversationsService {
             `)
             .eq('conversation_id', conv.id);
 
-          const tags = tagRelations?.map((tr: any) => tr.tag).filter(Boolean) || [];
+          const tags = tagRelations?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
 
           return {
             ...conv,
@@ -356,19 +356,20 @@ class ConversationsService {
 
       if (filters?.tag_id) {
         return conversationsWithDetails.filter(conv =>
-          conv.tags?.some((tag: any) => tag.id === filters.tag_id)
+          conv.tags?.some((tag: { id: string }) => tag.id === filters.tag_id)
         );
       }
 
       return conversationsWithDetails;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const e = error as { message?: string; name?: string; stack?: string } | null;
       console.error('Error obteniendo conversaciones:', {
         error,
-        message: error?.message,
-        name: error?.name,
-        stack: error?.stack?.slice(0, 500)
+        message: e?.message,
+        name: e?.name,
+        stack: e?.stack?.slice(0, 500)
       });
-      throw new Error(error?.message || 'Error desconocido al obtener conversaciones');
+      throw new Error(e?.message || 'Error desconocido al obtener conversaciones');
     }
   }
 
@@ -503,7 +504,7 @@ class ConversationsService {
     }
   }
 
-  private async createAuditLog(conversationId: string, action: string, details: any): Promise<void> {
+  private async createAuditLog(conversationId: string, action: string, details: unknown): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       

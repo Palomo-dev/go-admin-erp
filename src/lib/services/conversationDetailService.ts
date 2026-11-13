@@ -13,11 +13,11 @@ export interface Message {
   sender_member_id: number | null;
   content_type: 'text' | 'image' | 'audio' | 'video' | 'document' | 'location';
   content: string;
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   external_message_id: string | null;
   is_read: boolean;
   read_at: string | null;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
   attachments?: MessageAttachment[];
   events?: MessageEvent[];
@@ -31,7 +31,7 @@ export interface MessageAttachment {
   file_name: string;
   mime_type: string;
   size_bytes: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -39,7 +39,7 @@ export interface MessageEvent {
   id: string;
   message_id: string;
   event_type: 'sent' | 'delivered' | 'read' | 'failed';
-  provider_payload: Record<string, any>;
+  provider_payload: Record<string, unknown>;
   error_code: string | null;
   error_message: string | null;
   created_at: string;
@@ -190,13 +190,13 @@ class ConversationDetailService {
           `)
           .eq('conversation_id', conversationId);
 
-        const tags = tagRelations?.map((tr: any) => tr.tag).filter(Boolean) || [];
+        const tags = tagRelations?.map((tr: { tag: unknown }) => tr.tag).filter(Boolean) || [];
         return { ...data, tags };
       }
 
       return null;
-    } catch (error: any) {
-      console.error('Error obteniendo conversación:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo conversación:', (error as Error)?.message || error);
       throw error;
     }
   }
@@ -224,8 +224,8 @@ class ConversationDetailService {
         attachments: msg.attachments || [],
         events: msg.events || []
       }));
-    } catch (error: any) {
-      console.error('Error obteniendo mensajes:', error?.message || error);
+    } catch (error: unknown) {
+      console.error('Error obteniendo mensajes:', (error as Error)?.message || error);
       throw error;
     }
   }
@@ -583,7 +583,7 @@ class ConversationDetailService {
     }
   }
 
-  private async createAuditLog(conversationId: string, action: string, details: any): Promise<void> {
+  private async createAuditLog(conversationId: string, action: string, details: unknown): Promise<void> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       

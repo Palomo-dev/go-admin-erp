@@ -1,332 +1,321 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+/**
+ * Chat › Nueva conversación (Figma 91-chat-13).
+ *
+ * 1. Canal y cliente (buscar o «crear cliente rápido»).
+ * 2. Mensaje inicial:
+ *    - WhatsApp: plantilla aprobada + variables + vista previa, con el mismo
+ *      hook y selector del CRM (`useWhatsAppCompose`, `TemplatePicker`) y envío
+ *      por `/api/crm/whatsapp/send`, que crea la conversación.
+ *    - Los demás canales: se crea la conversación y el primer mensaje sale por
+ *      el camino único `enviarMensajeConversacion`.
+ * 3. Organización (opcional): prioridad, asignación (por el servidor) y etiquetas.
+ */
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MessageSquarePlus, Loader2, Send } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Send } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AvisoTonal, CustomerPicker, EmptyState, Skeleton, clasesBoton } from '@/components/kit';
+import type { ClientePicker } from '@/components/kit';
+import { useCabeceraMovil } from '@/components/shell/header/cabeceraMovil';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import NewConversationService, {
-  Customer,
-  Channel,
-  ConversationTag,
-  OrganizationMember,
-  QuickCustomerData
-} from '@/lib/services/newConversationService';
-import {
-  ChannelSelector,
-  CustomerSelector,
-  QuickCustomerDialog,
-  ConversationOptions
-} from '@/components/chat/conversations/nuevo';
-import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
+import NewConversationService, { type Channel, type ConversationTag, type Customer, type QuickCustomerData } from '@/lib/services/newConversationService';
+import ConversationDetailService from '@/lib/services/conversationDetailService';
+import { enviarMensajeConversacion, ErrorEnvio, motivoErrorEnvio } from '@/lib/services/chat/envioMensaje';
+import { chatApi } from '@/lib/services/chat/chatApi';
+import { CanalIcono } from '@/components/chat/ui/CanalIcono';
+import { canalDeTipo } from '@/components/chat/ui/canal';
+import { useAgentesChat, type Etiqueta } from '@/components/chat/conversations/useConversacion';
+import { SelectorAgente } from '@/components/chat/conversations/panel/SelectorAgente';
+import { EtiquetasConversacion } from '@/components/chat/conversations/panel/EtiquetasConversacion';
+import QuickCustomerDialog from '@/components/chat/conversations/nuevo/QuickCustomerDialog';
+import { useWhatsAppCompose } from '@/components/crm/whatsapp/compose/useWhatsAppCompose';
+import { TemplatePicker } from '@/components/crm/whatsapp/compose/TemplatePicker';
+import { BubblePreview } from '@/components/crm/whatsapp/compose/BubblePreview';
+import { ApiError } from '@/components/crm/whatsapp/api';
+
+type Prioridad = 'low' | 'normal' | 'high' | 'urgent';
+
+function aPicker(c: Customer): ClientePicker {
+  return { id: c.id, nombre: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || c.phone || '—', documento: c.doc_number, correo: c.email, telefono: c.phone };
+}
+
+function Seccion({ titulo, descripcion, children }: { titulo: string; descripcion?: string; children: React.ReactNode }) {
+  return (
+    <section className="space-y-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
+      <div>
+        <h2 className="text-base font-semibold text-fg">{titulo}</h2>
+        {descripcion ? <p className="text-sm text-fg-secondary">{descripcion}</p> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function NuevaConversacionPage() {
+  const t = useTranslations('chatBandeja.nueva');
+  const tp = useTranslations('chatUi.prioridad');
+  const te = useTranslations('chatUi.composer.errores');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
-  const organizationId = organization?.id;
+  const organizationId = organization?.id as number | undefined;
+  const { agentes } = useAgentesChat();
+  const yo = agentes.find((a) => a.esYo) ?? null;
 
-  // Data states
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [tags, setTags] = useState<ConversationTag[]>([]);
-  const [members, setMembers] = useState<OrganizationMember[]>([]);
-  
-  // Form states
-  const [selectedChannelId, setSelectedChannelId] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [subject, setSubject] = useState('');
-  const [initialMessage, setInitialMessage] = useState('');
-  const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [assignedMemberId, setAssignedMemberId] = useState<number | null>(null);
+  const [canales, setCanales] = useState<Channel[] | null>(null);
+  const [etiquetas, setEtiquetas] = useState<ConversationTag[]>([]);
+  const [canalId, setCanalId] = useState('');
+  const [cliente, setCliente] = useState<ClientePicker | null>(null);
+  const [mensaje, setMensaje] = useState('');
+  const [prioridad, setPrioridad] = useState<Prioridad>('normal');
+  const [asignado, setAsignado] = useState<number | null | undefined>(undefined);
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [crearCliente, setCrearCliente] = useState(false);
+  const [creando, setCreando] = useState(false);
 
-  // UI states
-  const [loading, setLoading] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [showQuickCustomerDialog, setShowQuickCustomerDialog] = useState(false);
+  const servicio = useMemo(() => (organizationId ? new NewConversationService(organizationId) : null), [organizationId]);
+  const canal = canales?.find((c) => c.id === canalId) ?? null;
+  const esWhatsApp = canal?.type === 'whatsapp';
+  const asignadoFinal = asignado === undefined ? yo?.memberId ?? null : asignado;
+
+  useCabeceraMovil({ modo: 'page', titulo: t('titulo'), subtitulo: '', volverA: '/app/chat/bandeja' });
 
   useEffect(() => {
-    if (organizationId) {
-      loadInitialData();
-    }
-  }, [organizationId]);
+    if (!servicio) return;
+    Promise.all([servicio.getActiveChannels(), servicio.getConversationTags().catch(() => [])])
+      .then(([ch, tags]) => {
+        setCanales(ch);
+        setEtiquetas(tags);
+        setCanalId((cur) => cur || ch.find((c) => c.type === 'whatsapp')?.id || ch[0]?.id || '');
+      })
+      .catch(() => setCanales([]));
+  }, [servicio]);
 
-  const loadInitialData = async () => {
+  // WhatsApp: plantillas, variables y vista previa con el hook del CRM.
+  const wa = useWhatsAppCompose({ customerId: esWhatsApp ? cliente?.id ?? null : null, channelId: esWhatsApp ? canalId : null, enabled: esWhatsApp });
+  const { setChannelId: fijarCanalWa, setTab: fijarPestanaWa } = wa;
+  useEffect(() => {
+    if (!esWhatsApp) return;
+    fijarCanalWa(canalId);
+    fijarPestanaWa('template');
+  }, [esWhatsApp, canalId, fijarCanalWa, fijarPestanaWa]);
+
+  const puedeCrear = !!canal && !!cliente && !creando && (esWhatsApp ? wa.canSend && wa.tab === 'template' : mensaje.trim().length > 0);
+
+  const organizar = async (conversationId: string) => {
     if (!organizationId) return;
-
-    try {
-      setLoading(true);
-      const service = new NewConversationService(organizationId);
-
-      const [channelsData, tagsData, membersData] = await Promise.all([
-        service.getActiveChannels(),
-        service.getConversationTags(),
-        service.getOrganizationMembers()
-      ]);
-
-      setChannels(channelsData);
-      setTags(tagsData);
-      setMembers(membersData);
-
-      // Preseleccionar canal Website si existe
-      const websiteChannel = channelsData.find(c => c.type === 'website');
-      if (websiteChannel) {
-        setSelectedChannelId(websiteChannel.id);
-      } else if (channelsData.length > 0) {
-        setSelectedChannelId(channelsData[0].id);
-      }
-    } catch (error) {
-      console.error('Error cargando datos iniciales:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los datos necesarios',
-        variant: 'destructive'
-      });
-    } finally {
-      setLoading(false);
-    }
+    const detalle = new ConversationDetailService(organizationId);
+    const tareas: Promise<unknown>[] = [];
+    if (esWhatsApp && prioridad !== 'normal') tareas.push(detalle.updateConversationPriority(conversationId, prioridad));
+    if (esWhatsApp) tareas.push(...tagIds.map((id) => detalle.addTag(conversationId, id).catch(() => undefined)));
+    if (asignadoFinal != null) tareas.push(chatApi.asignar(conversationId, asignadoFinal));
+    const r = await Promise.allSettled(tareas);
+    if (r.some((x) => x.status === 'rejected')) toast({ title: t('avisos.organizarParcial'), variant: 'destructive' });
   };
 
-  const handleSearchCustomers = async (search: string): Promise<Customer[]> => {
-    if (!organizationId) return [];
-    const service = new NewConversationService(organizationId);
-    return service.searchCustomers(search);
-  };
-
-  const handleCreateQuickCustomer = async (data: QuickCustomerData) => {
-    if (!organizationId) return;
-
+  const crear = async () => {
+    if (!organizationId || !servicio || !canal || !cliente) return;
+    setCreando(true);
     try {
-      const service = new NewConversationService(organizationId);
-      const customer = await service.createQuickCustomer(data);
-      setSelectedCustomer(customer);
-      toast({
-        title: 'Cliente creado',
-        description: `${customer.full_name} ha sido creado exitosamente`
-      });
-    } catch (error) {
-      console.error('Error creando cliente:', error);
-      throw error;
-    }
-  };
-
-  const handleCreateConversation = async () => {
-    if (!organizationId) return;
-
-    // Validaciones
-    if (!selectedChannelId) {
-      toast({
-        title: 'Error',
-        description: 'Selecciona un canal',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!selectedCustomer) {
-      toast({
-        title: 'Error',
-        description: 'Selecciona o crea un cliente',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (!initialMessage.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Escribe un mensaje inicial',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    try {
-      setIsCreating(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast({
-          title: 'Error',
-          description: 'No se pudo obtener el usuario actual',
-          variant: 'destructive'
-        });
-        return;
+      let conversationId: string;
+      if (esWhatsApp) {
+        const r = await wa.send();
+        conversationId = r.conversation_id;
+      } else {
+        const { data } = await supabase.auth.getUser();
+        const memberId = yo?.memberId ?? (data.user ? await servicio.getCurrentMemberId(data.user.id) : null);
+        if (!memberId) {
+          toast({ title: t('avisos.sinPermiso'), variant: 'destructive' });
+          return;
+        }
+        conversationId = await servicio.createConversation({ channel_id: canal.id, customer_id: cliente.id, priority: prioridad, tag_ids: tagIds }, data.user?.id ?? '', memberId);
+        await enviarMensajeConversacion({ organizationId, conversacion: { id: conversationId, channel_id: canal.id, tipoCanal: canal.type }, mensaje: { texto: mensaje }, supabase });
       }
-
-      const service = new NewConversationService(organizationId);
-      const memberId = await service.getCurrentMemberId(user.id);
-      
-      if (!memberId) {
-        toast({
-          title: 'Error',
-          description: 'No tienes permisos para crear conversaciones',
-          variant: 'destructive'
-        });
-        return;
-      }
-
-      const conversationId = await service.createConversation(
-        {
-          channel_id: selectedChannelId,
-          customer_id: selectedCustomer.id,
-          subject: subject.trim() || undefined,
-          initial_message: initialMessage.trim(),
-          priority,
-          tag_ids: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-          assigned_member_id: assignedMemberId || undefined
-        },
-        user.id,
-        memberId
-      );
-
-      toast({
-        title: 'Conversación creada',
-        description: 'La conversación ha sido creada exitosamente'
-      });
-
-      // Redirigir a la conversación
+      await organizar(conversationId);
+      toast({ title: t('avisos.creada') });
       router.push(`/app/chat/conversaciones/${conversationId}`);
-    } catch (error) {
-      console.error('Error creando conversación:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo crear la conversación',
-        variant: 'destructive'
-      });
+    } catch (e) {
+      const codigo = e instanceof ErrorEnvio ? e.codigo : e instanceof ApiError ? e.code : null;
+      const motivo = motivoErrorEnvio(codigo);
+      toast({ title: t('avisos.error'), description: motivo === 'generico' && e instanceof Error ? e.message : te(motivo), variant: 'destructive' });
     } finally {
-      setIsCreating(false);
+      setCreando(false);
     }
   };
 
-  const canCreate = selectedChannelId && selectedCustomer && initialMessage.trim();
+  const crearRapido = async (datos: QuickCustomerData) => {
+    if (!servicio) return;
+    const c = await servicio.createQuickCustomer(datos);
+    setCliente(aPicker(c));
+    toast({ title: t('avisos.clienteCreado', { nombre: c.full_name }) });
+  };
 
-  if (loading) {
-    return (
-  <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <PageHeaderSkeleton />
-    <StatsSkeleton count={4} />
-    <CardListSkeleton cards={3} columns="1" />
-  </div>
-);
-  }
+  const etiquetasSel: Etiqueta[] = etiquetas.filter((e) => tagIds.includes(e.id));
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.push('/app/chat/bandeja')}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <MessageSquarePlus className="h-6 w-6 text-blue-600" />
-                Nueva Conversación
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Inicia una conversación saliente con un cliente
-              </p>
-            </div>
+    <div className="min-h-full bg-canvas">
+      <div className="mx-auto max-w-6xl px-4 py-5 lg:px-6">
+        <div className="mb-5 hidden items-start gap-3 lg:flex">
+          <Link href="/app/chat/bandeja" aria-label={t('volver')} className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-fg-secondary hover:bg-hover">
+            <ArrowLeft aria-hidden="true" className="size-4" />
+          </Link>
+          <div>
+            <p className="text-xs text-fg-muted">{t('migas')}</p>
+            <h1 className="text-xl font-semibold text-fg">{t('titulo')}</h1>
+            <p className="text-sm text-fg-secondary">{t('subtitulo')}</p>
           </div>
         </div>
+
+        {canales === null ? (
+          <div className="space-y-4">
+            <Skeleton className="h-40 w-full rounded-xl" />
+            <Skeleton className="h-56 w-full rounded-xl" />
+          </div>
+        ) : canales.length === 0 ? (
+          <EmptyState titulo={t('sinCanalesTitulo')} descripcion={t('sinCanalesDescripcion')} accion={{ etiqueta: t('conectar'), href: '/app/chat/canales' }} />
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+            <div className="space-y-4">
+              <Seccion titulo={t('paso1')} descripcion={t('paso1Ayuda')}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block space-y-1.5 text-sm font-medium text-fg">
+                    <span className="block">{t('canal')} *</span>
+                    <Select value={canalId} onValueChange={setCanalId}>
+                      <SelectTrigger aria-label={t('canal')}>
+                        <SelectValue placeholder={t('elegirCanal')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {canales.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            <span className="flex items-center gap-2">
+                              <CanalIcono canal={canalDeTipo(c.type)} size={16} />
+                              {c.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <div className="space-y-1.5">
+                    <CustomerPicker
+                      layout="campo"
+                      etiqueta={`${t('cliente')} *`}
+                      cliente={cliente}
+                      buscar={async (texto) => (servicio ? (await servicio.searchCustomers(texto)).map(aPicker) : [])}
+                      onCambiar={setCliente}
+                      onQuitar={() => setCliente(null)}
+                      onCrear={() => setCrearCliente(true)}
+                    />
+                    <p className="text-xs text-fg-muted">{t('clienteAyuda')}</p>
+                  </div>
+                </div>
+              </Seccion>
+
+              <Seccion titulo={t('paso2')} descripcion={esWhatsApp ? t('paso2WhatsApp') : t('paso2Ayuda')}>
+                {esWhatsApp ? (
+                  !cliente ? (
+                    <p className="text-sm text-fg-muted">{t('elegirClientePrimero')}</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {wa.window && !wa.window.can_contact ? <AvisoTonal tono="peligro" titulo={t('sinConsentimiento')} compacto /> : null}
+                      <TemplatePicker
+                        templates={wa.templates}
+                        loading={wa.loadingTemplates}
+                        value={wa.templateId}
+                        onChange={wa.setTemplateId}
+                        variables={wa.variables}
+                        onVariable={wa.setVariable}
+                        preview={wa.preview}
+                        previewing={wa.previewing}
+                      />
+                      {!wa.loadingTemplates && wa.templates.length === 0 ? <AvisoTonal tono="advertencia" titulo={t('sinPlantillas')} compacto /> : null}
+                      {wa.preview ? (
+                        <div className="rounded-xl bg-subtle p-4">
+                          <p className="mb-2 text-xs font-medium text-fg-muted">{t('asiLoRecibira')}</p>
+                          <BubblePreview header={wa.preview.header} body={wa.preview.body} footer={wa.preview.footer} buttons={wa.preview.buttons} />
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                ) : (
+                  <label className="block space-y-1.5 text-sm font-medium text-fg">
+                    <span className="block">{t('mensaje')} *</span>
+                    <textarea
+                      rows={4}
+                      value={mensaje}
+                      onChange={(e) => setMensaje(e.target.value)}
+                      placeholder={t('mensajePlaceholder')}
+                      className="w-full resize-y rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-normal text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-brand/40"
+                    />
+                  </label>
+                )}
+              </Seccion>
+
+              <Seccion titulo={t('paso3')}>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="block space-y-1.5 text-sm font-medium text-fg">
+                    <span className="block">{t('prioridad')}</span>
+                    <Select value={prioridad} onValueChange={(v) => setPrioridad(v as Prioridad)}>
+                      <SelectTrigger aria-label={t('prioridad')}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(['low', 'normal', 'high', 'urgent'] as const).map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {tp(p)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                  <div className="space-y-1.5 text-sm font-medium text-fg">
+                    <span className="block">{t('asignarA')}</span>
+                    <SelectorAgente agentes={agentes} asignado={asignadoFinal} onAsignar={(id) => setAsignado(id)} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <span className="block text-sm font-medium text-fg">{t('etiquetas')}</span>
+                  <EtiquetasConversacion
+                    actuales={etiquetasSel}
+                    disponibles={etiquetas}
+                    onAgregar={(id) => setTagIds((v) => [...v, id])}
+                    onQuitar={(id) => setTagIds((v) => v.filter((x) => x !== id))}
+                    textoAgregar={t('agregarEtiqueta')}
+                  />
+                </div>
+              </Seccion>
+
+              <div className="flex justify-end gap-3 pb-6">
+                <Link href="/app/chat/bandeja" className={clasesBoton({ variante: 'secundario' })}>
+                  {t('cancelar')}
+                </Link>
+                <button type="button" onClick={() => void crear()} disabled={!puedeCrear} aria-busy={creando} className={clasesBoton()}>
+                  <Send aria-hidden="true" className="size-4" />
+                  {creando ? t('creando') : t('crear')}
+                </button>
+              </div>
+            </div>
+
+            <aside className="h-fit space-y-3 rounded-xl border border-line-info bg-info-subtle p-4 text-sm text-info-text">
+              <h2 className="font-semibold">{t('antesTitulo')}</h2>
+              <ul className="list-disc space-y-2 pl-4">
+                <li>{t('antes1')}</li>
+                <li>{t('antes2')}</li>
+                <li>{t('antes3')}</li>
+                <li>{t('antes4')}</li>
+              </ul>
+            </aside>
+          </div>
+        )}
       </div>
 
-      {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Canal y Cliente */}
-        <Card className="dark:bg-gray-900 dark:border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-lg">Datos de la Conversación</CardTitle>
-            <CardDescription>
-              Selecciona el canal y el cliente para iniciar la conversación
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <ChannelSelector
-              channels={channels}
-              selectedChannelId={selectedChannelId}
-              onSelect={setSelectedChannelId}
-            />
-
-            <CustomerSelector
-              selectedCustomer={selectedCustomer}
-              onSelect={setSelectedCustomer}
-              onSearchCustomers={handleSearchCustomers}
-              onCreateQuickCustomer={() => setShowQuickCustomerDialog(true)}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Mensaje y opciones */}
-        <Card className="dark:bg-gray-900 dark:border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-lg">Mensaje y Opciones</CardTitle>
-            <CardDescription>
-              Configura el mensaje inicial y las opciones de la conversación
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ConversationOptions
-              subject={subject}
-              onSubjectChange={setSubject}
-              initialMessage={initialMessage}
-              onInitialMessageChange={setInitialMessage}
-              priority={priority}
-              onPriorityChange={setPriority}
-              tags={tags}
-              selectedTagIds={selectedTagIds}
-              onTagsChange={setSelectedTagIds}
-              members={members}
-              assignedMemberId={assignedMemberId}
-              onAssignedMemberChange={setAssignedMemberId}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Acciones */}
-        <div className="flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/app/chat/bandeja')}
-            disabled={isCreating}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleCreateConversation}
-            disabled={!canCreate || isCreating}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            {isCreating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creando...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Crear Conversación
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      {/* Dialog para crear cliente rápido */}
-      <QuickCustomerDialog
-        isOpen={showQuickCustomerDialog}
-        onClose={() => setShowQuickCustomerDialog(false)}
-        onSave={handleCreateQuickCustomer}
-      />
+      <QuickCustomerDialog isOpen={crearCliente} onClose={() => setCrearCliente(false)} onSave={crearRapido} />
     </div>
   );
 }

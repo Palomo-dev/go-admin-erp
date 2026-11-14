@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,39 +11,6 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, RefreshCw, Gauge, TrendingUp } from 'lucide-react';
 import { scoringService, type ScoringConfig, type ScoringIndicator, type ScoringBands } from '@/lib/services/crm/scoringService';
 
-const DEFAULT_INDICATORS: ScoringIndicator[] = [
-  {
-    key: 'engagement',
-    label: 'Engagement',
-    weight: 30,
-    options: [
-      { value: 'low', label: 'Bajo', score: 1 },
-      { value: 'medium', label: 'Medio', score: 2 },
-      { value: 'high', label: 'Alto', score: 3 },
-    ],
-  },
-  {
-    key: 'budget',
-    label: 'Presupuesto',
-    weight: 40,
-    options: [
-      { value: 'none', label: 'Sin presupuesto', score: 0 },
-      { value: 'limited', label: 'Limitado', score: 1 },
-      { value: 'confirmed', label: 'Confirmado', score: 3 },
-    ],
-  },
-  {
-    key: 'timeline',
-    label: 'Timeline',
-    weight: 30,
-    options: [
-      { value: 'distant', label: 'Lejano', score: 1 },
-      { value: 'near', label: 'Cercano', score: 2 },
-      { value: 'immediate', label: 'Inmediato', score: 3 },
-    ],
-  },
-];
-
 const DEFAULT_BANDS: ScoringBands = {
   cold: { min: 0, max: 33 },
   warm: { min: 34, max: 66 },
@@ -50,10 +18,48 @@ const DEFAULT_BANDS: ScoringBands = {
 };
 
 export function ScoringConfigurator() {
+  const t = useTranslations('configuracionTextos.scoringConfigurator');
   const { toast } = useToast();
 
+  // Indicadores por defecto: sus etiquetas se muestran en los campos y se guardan si el usuario no las cambia.
+  const defaultIndicators = useMemo<ScoringIndicator[]>(
+    () => [
+      {
+        key: 'engagement',
+        label: t('porDefecto.engagement'),
+        weight: 30,
+        options: [
+          { value: 'low', label: t('porDefecto.bajo'), score: 1 },
+          { value: 'medium', label: t('porDefecto.medio'), score: 2 },
+          { value: 'high', label: t('porDefecto.alto'), score: 3 },
+        ],
+      },
+      {
+        key: 'budget',
+        label: t('porDefecto.presupuesto'),
+        weight: 40,
+        options: [
+          { value: 'none', label: t('porDefecto.sinPresupuesto'), score: 0 },
+          { value: 'limited', label: t('porDefecto.limitado'), score: 1 },
+          { value: 'confirmed', label: t('porDefecto.confirmado'), score: 3 },
+        ],
+      },
+      {
+        key: 'timeline',
+        label: t('porDefecto.timeline'),
+        weight: 30,
+        options: [
+          { value: 'distant', label: t('porDefecto.lejano'), score: 1 },
+          { value: 'near', label: t('porDefecto.cercano'), score: 2 },
+          { value: 'immediate', label: t('porDefecto.inmediato'), score: 3 },
+        ],
+      },
+    ],
+    [t]
+  );
+
   const [config, setConfig] = useState<ScoringConfig | null>(null);
-  const [indicators, setIndicators] = useState<ScoringIndicator[]>(DEFAULT_INDICATORS);
+  const [indicators, setIndicators] = useState<ScoringIndicator[]>(defaultIndicators);
   const [bands, setBands] = useState<ScoringBands>(DEFAULT_BANDS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -64,16 +70,16 @@ export function ScoringConfigurator() {
       const data = await scoringService.getConfig();
       if (data) {
         setConfig(data);
-        setIndicators(data.indicators?.length ? data.indicators : DEFAULT_INDICATORS);
+        setIndicators(data.indicators?.length ? data.indicators : defaultIndicators);
         setBands(data.bands || DEFAULT_BANDS);
       }
     } catch (error) {
       console.error('Error cargando configuracion de scoring:', error);
-      toast({ title: 'Error', description: 'No se pudo cargar la configuracion de scoring', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCargar'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t, defaultIndicators]);
 
   useEffect(() => {
     loadConfig();
@@ -84,8 +90,8 @@ export function ScoringConfigurator() {
   const handleSave = async () => {
     if (totalWeight !== 100) {
       toast({
-        title: 'Validacion',
-        description: `La suma de pesos debe ser 100% (actual: ${totalWeight}%)`,
+        title: t('toast.validacion'),
+        description: t('toast.sumaPesos', { total: totalWeight }),
         variant: 'destructive',
       });
       return;
@@ -99,11 +105,11 @@ export function ScoringConfigurator() {
         bands,
       });
       if (saved) setConfig(saved);
-      toast({ title: 'Configuracion guardada', description: 'El scoring GOC se guardo correctamente' });
+      toast({ title: t('toast.guardada'), description: t('toast.guardadaDescripcion') });
       loadConfig();
     } catch (error) {
       console.error('Error guardando scoring:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar la configuracion', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorGuardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -118,11 +124,11 @@ export function ScoringConfigurator() {
       ...prev,
       {
         key: `indicator_${Date.now()}`,
-        label: 'Nuevo indicador',
+        label: t('porDefecto.nuevoIndicador'),
         weight: 0,
         options: [
-          { value: 'low', label: 'Bajo', score: 1 },
-          { value: 'high', label: 'Alto', score: 3 },
+          { value: 'low', label: t('porDefecto.bajo'), score: 1 },
+          { value: 'high', label: t('porDefecto.alto'), score: 3 },
         ],
       },
     ]);
@@ -150,7 +156,7 @@ export function ScoringConfigurator() {
         if (i !== indIndex) return ind;
         return {
           ...ind,
-          options: [...ind.options, { value: `opt_${Date.now()}`, label: 'Nueva opcion', score: 1 }],
+          options: [...ind.options, { value: `opt_${Date.now()}`, label: t('porDefecto.nuevaOpcion'), score: 1 }],
         };
       })
     );
@@ -189,9 +195,9 @@ export function ScoringConfigurator() {
         <div className="flex items-center gap-2">
           <Gauge className="h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Scoring GOC</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{t('encabezado.titulo')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Configura indicadores, pesos y umbrales (Cold / Warm / Hot)
+              {t('encabezado.descripcion')}
             </p>
           </div>
         </div>
@@ -201,7 +207,7 @@ export function ScoringConfigurator() {
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving}>
             <Save className="h-4 w-4 mr-1" />
-            {saving ? 'Guardando...' : 'Guardar'}
+            {saving ? t('acciones.guardando') : t('acciones.guardar')}
           </Button>
         </div>
       </div>
@@ -209,14 +215,14 @@ export function ScoringConfigurator() {
       {/* Indicadores */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Indicadores</h4>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('indicadores.titulo')}</h4>
           <div className="flex items-center gap-3">
             <span className={`text-xs font-medium ${totalWeight === 100 ? 'text-green-600' : 'text-red-500'}`}>
-              Total: {totalWeight}%
+              {t('indicadores.total', { total: totalWeight })}
             </span>
             <Button variant="outline" size="sm" onClick={addIndicator}>
               <Plus className="h-4 w-4 mr-1" />
-              Indicador
+              {t('indicadores.agregarIndicador')}
             </Button>
           </div>
         </div>
@@ -229,7 +235,7 @@ export function ScoringConfigurator() {
                   value={indicator.label}
                   onChange={(e) => updateIndicator(indIndex, { label: e.target.value })}
                   className="font-medium"
-                  placeholder="Nombre del indicador"
+                  placeholder={t('indicadores.nombrePlaceholder')}
                 />
                 <div className="flex items-center gap-2 shrink-0">
                   <Input
@@ -255,7 +261,7 @@ export function ScoringConfigurator() {
                     value={option.label}
                     onChange={(e) => updateOption(indIndex, optIndex, 'label', e.target.value)}
                     className="flex-1"
-                    placeholder="Etiqueta de opcion"
+                    placeholder={t('indicadores.opcionPlaceholder')}
                   />
                   <Input
                     type="number"
@@ -264,7 +270,7 @@ export function ScoringConfigurator() {
                     className="w-20 text-center"
                     min={0}
                     max={10}
-                    placeholder="Score"
+                    placeholder={t('indicadores.puntajePlaceholder')}
                   />
                   <Button variant="ghost" size="icon" onClick={() => removeOption(indIndex, optIndex)}>
                     <Trash2 className="h-3 w-3 text-red-400" />
@@ -273,7 +279,7 @@ export function ScoringConfigurator() {
               ))}
               <Button variant="ghost" size="sm" onClick={() => addOption(indIndex)} className="text-xs">
                 <Plus className="h-3 w-3 mr-1" />
-                Agregar opcion
+                {t('indicadores.agregarOpcion')}
               </Button>
             </CardContent>
           </Card>
@@ -284,7 +290,7 @@ export function ScoringConfigurator() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Umbrales (Bandas)</h4>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('bandas.titulo')}</h4>
         </div>
         <div className="grid grid-cols-3 gap-3">
           {(['cold', 'warm', 'hot'] as const).map((bandKey) => {
@@ -293,14 +299,18 @@ export function ScoringConfigurator() {
               warm: 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30',
               hot: 'border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30',
             };
-            const bandLabels: Record<string, string> = { cold: 'Frio', warm: 'Tibio', hot: 'Caliente' };
+            const bandLabels: Record<string, string> = {
+              cold: t('bandas.frio'),
+              warm: t('bandas.tibio'),
+              hot: t('bandas.caliente'),
+            };
             return (
               <Card key={bandKey} className={`border-2 ${bandColors[bandKey]}`}>
                 <CardContent className="p-4 space-y-2">
                   <p className="text-sm font-medium text-gray-900 dark:text-white">{bandLabels[bandKey]}</p>
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <Label className="text-xs text-gray-500">Min</Label>
+                      <Label className="text-xs text-gray-500">{t('bandas.minimo')}</Label>
                       <Input
                         type="number"
                         value={bands[bandKey].min}
@@ -311,7 +321,7 @@ export function ScoringConfigurator() {
                       />
                     </div>
                     <div className="flex-1">
-                      <Label className="text-xs text-gray-500">Max</Label>
+                      <Label className="text-xs text-gray-500">{t('bandas.maximo')}</Label>
                       <Input
                         type="number"
                         value={bands[bandKey].max}
@@ -332,7 +342,7 @@ export function ScoringConfigurator() {
       <div className="flex justify-end pt-2">
         <Button onClick={handleSave} disabled={saving}>
           <Save className="h-4 w-4 mr-2" />
-          {saving ? 'Guardando...' : 'Guardar Configuracion'}
+          {saving ? t('acciones.guardando') : t('acciones.guardarConfiguracion')}
         </Button>
       </div>
     </div>

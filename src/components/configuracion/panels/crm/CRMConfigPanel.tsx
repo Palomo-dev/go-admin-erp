@@ -6,7 +6,6 @@ import { useTranslations } from 'next-intl';
 import { clasesBoton } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { supabase } from '@/lib/supabase/config';
 import { ArrowUpRight, MessageSquare, Tags, Key, Layers, AlertCircle, Gauge, ListChecks, DollarSign, Users, Network, Target } from 'lucide-react';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
@@ -69,6 +68,7 @@ function EnlaceCanales({ href, onAbrir, className, children }: { href: string; o
 
 export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: string) => void } = {}) {
   const tCanales = useTranslations('chatConfig.crmCanales');
+  const t = useTranslations('configuracionTextos.crmConfigPanel');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
@@ -132,11 +132,11 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       setTags(data);
     } catch (error) {
       console.error('Error cargando etiquetas:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las etiquetas', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errCargarEtiquetas'), variant: 'destructive' });
     } finally {
       setTagsLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   // === Load API Keys ===
   const loadApiKeys = useCallback(async () => {
@@ -149,11 +149,11 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       setApiChannels(channelsData);
     } catch (error) {
       console.error('Error cargando API keys:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las llaves de API', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errCargarLlaves'), variant: 'destructive' });
     } finally {
       setKeysLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   useEffect(() => {
     if (organizationId) {
@@ -174,14 +174,14 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
     try {
       if (selectedTag) {
         await service.updateTag(selectedTag.id, data);
-        toast({ title: 'Etiqueta actualizada', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('toast.etiquetaActualizada'), description: t('toast.etiquetaActualizadaDesc') });
       } else {
         await service.createTag(data);
-        toast({ title: 'Etiqueta creada', description: 'La etiqueta se creó correctamente' });
+        toast({ title: t('toast.etiquetaCreada'), description: t('toast.etiquetaCreadaDesc') });
       }
       loadTags();
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo guardar la etiqueta', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errGuardarEtiqueta'), variant: 'destructive' });
       throw error;
     }
   };
@@ -191,10 +191,10 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
     const service = new InboxConfigService(organizationId);
     try {
       await service.deleteTag(tagToDelete.id);
-      toast({ title: 'Etiqueta eliminada', description: 'La etiqueta se eliminó correctamente' });
+      toast({ title: t('toast.etiquetaEliminada'), description: t('toast.etiquetaEliminadaDesc') });
       loadTags();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar la etiqueta', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errEliminarEtiqueta'), variant: 'destructive' });
     } finally {
       setDeleteTagDialogOpen(false);
       setTagToDelete(null);
@@ -212,11 +212,11 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
     const service = new InboxConfigService(organizationId);
     try {
       const result = await service.createApiKey(data);
-      toast({ title: 'Llave creada', description: 'La llave de API se creó correctamente' });
+      toast({ title: t('toast.llaveCreada'), description: t('toast.llaveCreadaDesc') });
       loadApiKeys();
       return { rawKey: result.rawKey };
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo crear la llave de API', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errCrearLlave'), variant: 'destructive' });
       throw error;
     }
   };
@@ -226,10 +226,10 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
     const service = new InboxConfigService(organizationId);
     try {
       await service.revokeApiKey(selectedKey.id);
-      toast({ title: 'Llave revocada', description: 'La llave de API fue revocada' });
+      toast({ title: t('toast.llaveRevocada'), description: t('toast.llaveRevocadaDesc') });
       loadApiKeys();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo revocar la llave', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errRevocarLlave'), variant: 'destructive' });
     } finally {
       setRevokeDialogOpen(false);
       setSelectedKey(null);
@@ -241,13 +241,13 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
     const service = new InboxConfigService(organizationId);
     try {
       await service.rotateApiKey(selectedKey.id);
-      toast({ title: 'Llave rotada', description: 'Se generó una nueva llave.' });
+      toast({ title: t('toast.llaveRotada'), description: t('toast.llaveRotadaDesc') });
       loadApiKeys();
       setRotateDialogOpen(false);
       setSelectedKey(null);
       setKeyDialogOpen(true);
     } catch {
-      toast({ title: 'Error', description: 'No se pudo rotar la llave', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errRotarLlave'), variant: 'destructive' });
       setRotateDialogOpen(false);
       setSelectedKey(null);
     }
@@ -292,7 +292,7 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Tags className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Etiquetas</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t('etiquetas.titulo')}</h3>
         </div>
         <TagsHeader totalTags={tags.length} loading={tagsLoading} onRefresh={loadTags} onCreateTag={handleCreateTag} />
 
@@ -301,8 +301,8 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <span className="text-2xl">🏷️</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay etiquetas configuradas</h3>
-            <p className="text-gray-500 dark:text-gray-400">Crea etiquetas para organizar y clasificar tus conversaciones</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('etiquetas.vacioTitulo')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('etiquetas.vacioDescripcion')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -317,7 +317,7 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Key className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Llaves API</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t('llaves.titulo')}</h3>
         </div>
         <ApiKeysHeader
           totalKeys={apiKeys.length}
@@ -332,8 +332,8 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <span className="text-2xl">🔑</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay llaves de API configuradas</h3>
-            <p className="text-gray-500 dark:text-gray-400">Crea llaves de API para integrar el CRM con servicios externos</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('llaves.vacioTitulo')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('llaves.vacioDescripcion')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -347,24 +347,24 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       {/* === CRM Config Cards === */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-medium text-muted-foreground">Configuracion CRM</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t('tarjetas.titulo')}</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Card: Verticales */}
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <Layers className="h-5 w-5 text-indigo-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Verticales</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.verticales.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Clasifica oportunidades por linea de negocio (hotelero, retail, construccion, etc.)
+              {t('tarjetas.verticales.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setVerticalsModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -372,17 +372,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-orange-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Razones de Perdida</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.razonesPerdida.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define motivos globales y por organizacion para registrar oportunidades perdidas
+              {t('tarjetas.razonesPerdida.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setLossReasonsModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -390,17 +390,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <Gauge className="h-5 w-5 text-purple-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Scoring (GOC)</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.scoring.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Configura indicadores, pesos y umbrales Cold / Warm / Hot para scoring de oportunidades
+              {t('tarjetas.scoring.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setScoringModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -408,17 +408,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <ListChecks className="h-5 w-5 text-teal-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Etapas y Criterios</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.etapas.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define criterios de salida (exit gates) por etapa para avanzar oportunidades en el pipeline
+              {t('tarjetas.etapas.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setExitGatesModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -426,17 +426,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-green-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Vendedores y Comisiones</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.comisiones.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Configura tasa general de comision, overrides por vendedor con vigencias y simulador
+              {t('tarjetas.comisiones.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setCommissionsModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -444,17 +444,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-cyan-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Programa de Referidos</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.referidos.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Configura incentivos, elegibilidad y recompensas para referidos y partners
+              {t('tarjetas.referidos.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setReferralsModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -462,17 +462,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <Network className="h-5 w-5 text-rose-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Estructura Comercial</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.estructura.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define roles comerciales, equipos con miembros y territorios con criterios
+              {t('tarjetas.estructura.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setEstructuraModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
 
@@ -480,17 +480,17 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
           <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-5 space-y-3 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-violet-500" />
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">ICP (Ideal Customer Profile)</h4>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('tarjetas.icp.titulo')}</h4>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Perfiles A/B/C con criterios, pesos, SLA y evaluador de clientes
+              {t('tarjetas.icp.descripcion')}
             </p>
             <button
               type="button"
               onClick={() => setIcpModalOpen(true)}
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Configurar →
+              {t('tarjetas.configurar')}
             </button>
           </div>
         </div>
@@ -500,9 +500,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={verticalsModalOpen} onOpenChange={setVerticalsModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Verticales</DialogTitle>
+            <DialogTitle>{t('modales.verticales.titulo')}</DialogTitle>
             <DialogDescription>
-              Gestiona las verticales de negocio para clasificar oportunidades
+              {t('modales.verticales.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <VerticalsManager />
@@ -512,9 +512,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={lossReasonsModalOpen} onOpenChange={setLossReasonsModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Razones de Perdida</DialogTitle>
+            <DialogTitle>{t('modales.razonesPerdida.titulo')}</DialogTitle>
             <DialogDescription>
-              Gestiona los motivos por los que se pierden oportunidades
+              {t('modales.razonesPerdida.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <LossReasonsManager />
@@ -524,9 +524,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={scoringModalOpen} onOpenChange={setScoringModalOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Scoring (GOC)</DialogTitle>
+            <DialogTitle>{t('modales.scoring.titulo')}</DialogTitle>
             <DialogDescription>
-              Configura indicadores, pesos y umbrales de scoring
+              {t('modales.scoring.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <ScoringConfigurator />
@@ -536,9 +536,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={exitGatesModalOpen} onOpenChange={setExitGatesModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Etapas y Criterios de Salida</DialogTitle>
+            <DialogTitle>{t('modales.etapas.titulo')}</DialogTitle>
             <DialogDescription>
-              Define los criterios que deben cumplirse para avanzar oportunidades entre etapas
+              {t('modales.etapas.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <ExitGatesEditor />
@@ -548,9 +548,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={commissionsModalOpen} onOpenChange={setCommissionsModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Vendedores y Comisiones</DialogTitle>
+            <DialogTitle>{t('modales.comisiones.titulo')}</DialogTitle>
             <DialogDescription>
-              Configura comisiones generales y especificas por vendedor
+              {t('modales.comisiones.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <CommissionsPanel />
@@ -560,9 +560,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={referralsModalOpen} onOpenChange={setReferralsModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Programa de Referidos</DialogTitle>
+            <DialogTitle>{t('modales.referidos.titulo')}</DialogTitle>
             <DialogDescription>
-              Configura incentivos, elegibilidad y recompensas para el canal indirecto
+              {t('modales.referidos.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <ReferralsProgramCard />
@@ -572,9 +572,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={estructuraModalOpen} onOpenChange={setEstructuraModalOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Estructura Comercial</DialogTitle>
+            <DialogTitle>{t('modales.estructura.titulo')}</DialogTitle>
             <DialogDescription>
-              Gestiona roles, equipos con miembros y territorios con criterios
+              {t('modales.estructura.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <EstructuraComercialManager />
@@ -584,9 +584,9 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <Dialog open={icpModalOpen} onOpenChange={setIcpModalOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>ICP (Ideal Customer Profile)</DialogTitle>
+            <DialogTitle>{t('modales.icp.titulo')}</DialogTitle>
             <DialogDescription>
-              Perfiles A/B/C con criterios, pesos, SLA y evaluador de clientes
+              {t('modales.icp.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <ICPManager />
@@ -601,14 +601,14 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <AlertDialog open={deleteTagDialogOpen} onOpenChange={setDeleteTagDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar etiqueta?</AlertDialogTitle>
+            <AlertDialogTitle>{t('confirmar.eliminarEtiquetaTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará la etiqueta &quot;{tagToDelete?.name}&quot; y la removerá de todas las conversaciones. Esta acción no se puede deshacer.
+              {t('confirmar.eliminarEtiquetaDescripcion', { nombre: tagToDelete?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteTag} className="bg-red-600 hover:bg-red-700 text-white">Eliminar</AlertDialogAction>
+            <AlertDialogCancel>{t('confirmar.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTag} className="bg-red-600 hover:bg-red-700 text-white">{t('confirmar.eliminar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -617,14 +617,14 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Revocar llave de API?</AlertDialogTitle>
+            <AlertDialogTitle>{t('confirmar.revocarLlaveTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción revocará la llave &quot;{selectedKey?.name}&quot; de forma permanente. Cualquier integración que use esta llave dejará de funcionar.
+              {t('confirmar.revocarLlaveDescripcion', { nombre: selectedKey?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevokeKey} className="bg-red-600 hover:bg-red-700 text-white">Revocar</AlertDialogAction>
+            <AlertDialogCancel>{t('confirmar.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRevokeKey} className="bg-red-600 hover:bg-red-700 text-white">{t('confirmar.revocar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -633,14 +633,14 @@ export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: strin
       <AlertDialog open={rotateDialogOpen} onOpenChange={setRotateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Rotar llave de API?</AlertDialogTitle>
+            <AlertDialogTitle>{t('confirmar.rotarLlaveTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción creará una nueva llave con los mismos permisos y revocará la actual &quot;{selectedKey?.name}&quot;.
+              {t('confirmar.rotarLlaveDescripcion', { nombre: selectedKey?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRotateKey} className="bg-blue-600 hover:bg-blue-700 text-white">Rotar Llave</AlertDialogAction>
+            <AlertDialogCancel>{t('confirmar.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRotateKey} className="bg-blue-600 hover:bg-blue-700 text-white">{t('confirmar.rotarLlave')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,19 +120,6 @@ const OPERATORS: ICPOperator[] = [
   'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in', 'contains', 'starts_with',
 ];
 
-const OPERATOR_LABELS: Record<ICPOperator, string> = {
-  eq: '= (igual)',
-  neq: '≠ (distinto)',
-  gt: '> (mayor)',
-  gte: '≥ (mayor o igual)',
-  lt: '< (menor)',
-  lte: '≤ (menor o igual)',
-  in: '∈ (en lista)',
-  not_in: '∉ (no en lista)',
-  contains: 'contiene',
-  starts_with: 'empieza con',
-};
-
 const BAND_COLORS: Record<string, string> = {
   A: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400',
   B: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400',
@@ -175,6 +163,7 @@ const api = {
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export function ICPManager() {
+  const t = useTranslations('configuracionTextos.icpManager');
   const { toast } = useToast();
   const [profiles, setProfiles] = useState<ICPProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,11 +207,11 @@ export function ICPManager() {
       setProfiles(data);
     } catch (error) {
       console.error('Error cargando ICP profiles:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar los perfiles ICP', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errCargarPerfiles'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -250,7 +239,7 @@ export function ICPManager() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.band.trim()) {
-      toast({ title: 'Validación', description: 'Nombre y band son obligatorios', variant: 'destructive' });
+      toast({ title: t('toast.validacion'), description: t('toast.nombreBandObligatorios'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -266,16 +255,16 @@ export function ICPManager() {
       };
       if (editing) {
         await api.patch(`/api/crm/icp/${editing.id}`, payload);
-        toast({ title: 'Perfil actualizado', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('toast.perfilActualizado'), description: t('toast.perfilActualizadoDesc') });
       } else {
         await api.post('/api/crm/icp', payload);
-        toast({ title: 'Perfil creado', description: 'El perfil ICP se creó correctamente' });
+        toast({ title: t('toast.perfilCreado'), description: t('toast.perfilCreadoDesc') });
       }
       setDialogOpen(false);
       load();
     } catch (error) {
       console.error('Error guardando perfil ICP:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar el perfil', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errGuardarPerfil'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -285,11 +274,11 @@ export function ICPManager() {
     if (!toDelete) return;
     try {
       await api.del(`/api/crm/icp/${toDelete.id}`);
-      toast({ title: 'Perfil eliminado', description: 'El perfil ICP se eliminó correctamente' });
+      toast({ title: t('toast.perfilEliminado'), description: t('toast.perfilEliminadoDesc') });
       load();
     } catch (error) {
       console.error('Error eliminando perfil:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar el perfil', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errEliminarPerfil'), variant: 'destructive' });
     } finally {
       setDeleteDialogOpen(false);
       setToDelete(null);
@@ -319,7 +308,7 @@ export function ICPManager() {
   const handleSaveCriterion = async () => {
     if (!expandedProfile) return;
     if (!critForm.field_key || !critForm.operator) {
-      toast({ title: 'Validación', description: 'Field key y operator son obligatorios', variant: 'destructive' });
+      toast({ title: t('toast.validacion'), description: t('toast.campoOperadorObligatorios'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -345,16 +334,16 @@ export function ICPManager() {
 
       if (editingCrit) {
         await api.patch(`/api/crm/icp/${expandedProfile}/criteria/${editingCrit.id}`, payload);
-        toast({ title: 'Criterio actualizado', description: 'El criterio se guardó correctamente' });
+        toast({ title: t('toast.criterioActualizado'), description: t('toast.criterioActualizadoDesc') });
       } else {
         await api.post(`/api/crm/icp/${expandedProfile}/criteria`, payload);
-        toast({ title: 'Criterio creado', description: 'El criterio se añadió al perfil' });
+        toast({ title: t('toast.criterioCreado'), description: t('toast.criterioCreadoDesc') });
       }
       setCritDialogOpen(false);
       load();
     } catch (error) {
       console.error('Error guardando criterio:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar el criterio', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errGuardarCriterio'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -363,11 +352,11 @@ export function ICPManager() {
   const handleDeleteCriterion = async (profileId: string, critId: string) => {
     try {
       await api.del(`/api/crm/icp/${profileId}/criteria/${critId}`);
-      toast({ title: 'Criterio eliminado', description: 'El criterio se eliminó correctamente' });
+      toast({ title: t('toast.criterioEliminado'), description: t('toast.criterioEliminadoDesc') });
       load();
     } catch (error) {
       console.error('Error eliminando criterio:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar el criterio', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errEliminarCriterio'), variant: 'destructive' });
     }
   };
 
@@ -375,7 +364,7 @@ export function ICPManager() {
 
   const handleEvaluate = async () => {
     if (!evalCustomerId.trim()) {
-      toast({ title: 'Validación', description: 'El Customer ID es obligatorio', variant: 'destructive' });
+      toast({ title: t('toast.validacion'), description: t('toast.clienteObligatorio'), variant: 'destructive' });
       return;
     }
     setEvaluating(true);
@@ -392,14 +381,18 @@ export function ICPManager() {
       const data = json.data;
       const evaluations = data.evaluations || data;
       setEvalResults(evaluations as ICPEvaluationResult[]);
-      toast({ title: 'Evaluación completada', description: `${(evaluations as ICPEvaluationResult[]).length} perfiles evaluados` });
+      toast({ title: t('toast.evaluacionCompletada'), description: t('toast.perfilesEvaluados', { n: (evaluations as ICPEvaluationResult[]).length }) });
     } catch (error) {
       console.error('Error evaluando ICP:', error);
-      toast({ title: 'Error', description: 'No se pudo evaluar el cliente', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errEvaluar'), variant: 'destructive' });
     } finally {
       setEvaluating(false);
     }
   };
+
+  /** Etiqueta del operador; uno desconocido se muestra tal cual. */
+  const etiquetaOperador = (op: ICPOperator) =>
+    OPERATORS.includes(op) ? t(`operadores.${op}`) : op;
 
   const formatValue = (v: unknown) => {
     if (v === null || v === undefined) return '—';
@@ -415,10 +408,10 @@ export function ICPManager() {
           <Target className="h-5 w-5 text-muted-foreground" />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {profiles.length} perfil{profiles.length !== 1 ? 'es' : ''} ICP
+              {t('encabezado.conteo', { n: profiles.length })}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define perfiles de cliente ideal (A/B/C) con criterios y SLA
+              {t('encabezado.descripcion')}
             </p>
           </div>
         </div>
@@ -428,11 +421,11 @@ export function ICPManager() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => { setEvalCustomerId(''); setEvalResults(null); setEvalDialogOpen(true); }}>
             <Play className="h-4 w-4 mr-1" />
-            Evaluar
+            {t('encabezado.evaluar')}
           </Button>
           <Button size="sm" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-1" />
-            Nuevo Perfil
+            {t('encabezado.nuevoPerfil')}
           </Button>
         </div>
       </div>
@@ -449,8 +442,8 @@ export function ICPManager() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
             <Target className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay perfiles ICP configurados</h3>
-          <p className="text-gray-500 dark:text-gray-400">Crea perfiles A/B/C para clasificar y priorizar clientes</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.titulo')}</h3>
+          <p className="text-gray-500 dark:text-gray-400">{t('vacio.descripcion')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -475,15 +468,15 @@ export function ICPManager() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{profile.name}</p>
                           <Badge className={`text-xs border-0 ${BAND_COLORS[profile.band] || 'bg-gray-100 text-gray-700'}`}>
-                            Band {profile.band}
+                            {t('banda', { band: profile.band })}
                           </Badge>
                           {!profile.is_active && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">Inactivo</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">{t('perfil.inactivo')}</span>
                           )}
-                          <Badge variant="secondary" className="text-xs">{criteria.length} criterio{criteria.length !== 1 ? 's' : ''}</Badge>
+                          <Badge variant="secondary" className="text-xs">{t('perfil.conteoCriterios', { n: criteria.length })}</Badge>
                         </div>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Prioridad {profile.priority} · SLA {profile.sla_first_contact_hours}h
+                          {t('perfil.prioridadSla', { prioridad: profile.priority, horas: profile.sla_first_contact_hours })}
                           {profile.description && <> · {profile.description}</>}
                         </p>
                       </div>
@@ -501,16 +494,16 @@ export function ICPManager() {
                   {isExpanded && (
                     <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
                       {criteria.length === 0 ? (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 py-2">Sin criterios. Añade el primero.</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 py-2">{t('criterios.vacio')}</p>
                       ) : (
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Campo</TableHead>
-                              <TableHead className="text-xs">Operador</TableHead>
-                              <TableHead className="text-xs">Valor</TableHead>
-                              <TableHead className="text-xs text-center">Peso</TableHead>
-                              <TableHead className="text-xs text-center">Req</TableHead>
+                              <TableHead className="text-xs">{t('criterios.columnas.campo')}</TableHead>
+                              <TableHead className="text-xs">{t('criterios.columnas.operador')}</TableHead>
+                              <TableHead className="text-xs">{t('criterios.columnas.valor')}</TableHead>
+                              <TableHead className="text-xs text-center">{t('criterios.columnas.peso')}</TableHead>
+                              <TableHead className="text-xs text-center">{t('criterios.columnas.requerido')}</TableHead>
                               <TableHead className="text-xs w-20" />
                             </TableRow>
                           </TableHeader>
@@ -518,7 +511,7 @@ export function ICPManager() {
                             {criteria.map((c) => (
                               <TableRow key={c.id}>
                                 <TableCell className="text-xs font-mono">{c.field_key}</TableCell>
-                                <TableCell className="text-xs">{OPERATOR_LABELS[c.operator] || c.operator}</TableCell>
+                                <TableCell className="text-xs">{etiquetaOperador(c.operator)}</TableCell>
                                 <TableCell className="text-xs font-mono max-w-32 truncate">{formatValue(c.value)}</TableCell>
                                 <TableCell className="text-xs text-center">{c.weight}</TableCell>
                                 <TableCell className="text-xs text-center">
@@ -545,7 +538,7 @@ export function ICPManager() {
                       )}
                       <Button variant="outline" size="sm" onClick={handleAddCriterion}>
                         <Plus className="h-3 w-3 mr-1" />
-                        Añadir criterio
+                        {t('criterios.anadir')}
                       </Button>
                     </div>
                   )}
@@ -560,32 +553,32 @@ export function ICPManager() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar Perfil ICP' : 'Nuevo Perfil ICP'}</DialogTitle>
+            <DialogTitle>{editing ? t('dialogoPerfil.tituloEditar') : t('dialogoPerfil.tituloNuevo')}</DialogTitle>
             <DialogDescription>
-              {editing ? 'Modifica los datos del perfil' : 'Crea un perfil de cliente ideal (A/B/C)'}
+              {editing ? t('dialogoPerfil.descripcionEditar') : t('dialogoPerfil.descripcionNuevo')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="icp-name">Nombre *</Label>
-              <Input id="icp-name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Ej: Enterprise Ideal, SMB Growth" maxLength={100} />
+              <Label htmlFor="icp-name">{t('dialogoPerfil.nombre')}</Label>
+              <Input id="icp-name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder={t('dialogoPerfil.nombrePlaceholder')} maxLength={100} />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="icp-band">Band *</Label>
+                <Label htmlFor="icp-band">{t('dialogoPerfil.banda')}</Label>
                 <Select value={form.band} onValueChange={(v) => setForm((p) => ({ ...p, band: v }))}>
                   <SelectTrigger id="icp-band">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="A">A (Alto fit)</SelectItem>
-                    <SelectItem value="B">B (Medio fit)</SelectItem>
-                    <SelectItem value="C">C (Bajo fit)</SelectItem>
+                    <SelectItem value="A">{t('dialogoPerfil.bandaA')}</SelectItem>
+                    <SelectItem value="B">{t('dialogoPerfil.bandaB')}</SelectItem>
+                    <SelectItem value="C">{t('dialogoPerfil.bandaC')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="icp-color">Color</Label>
+                <Label htmlFor="icp-color">{t('dialogoPerfil.color')}</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -599,26 +592,26 @@ export function ICPManager() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="icp-priority">Prioridad</Label>
+                <Label htmlFor="icp-priority">{t('dialogoPerfil.prioridad')}</Label>
                 <Input id="icp-priority" type="number" value={form.priority} onChange={(e) => setForm((p) => ({ ...p, priority: Number(e.target.value) }))} min={0} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="icp-sla">SLA primera contacto (h)</Label>
+                <Label htmlFor="icp-sla">{t('dialogoPerfil.sla')}</Label>
                 <Input id="icp-sla" type="number" value={form.sla_first_contact_hours} onChange={(e) => setForm((p) => ({ ...p, sla_first_contact_hours: Number(e.target.value) }))} min={0} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="icp-desc">Descripción</Label>
-              <Textarea id="icp-desc" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder="Descripción del perfil ideal" rows={2} maxLength={500} />
+              <Label htmlFor="icp-desc">{t('dialogoPerfil.descripcion')}</Label>
+              <Textarea id="icp-desc" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} placeholder={t('dialogoPerfil.descripcionPlaceholder')} rows={2} maxLength={500} />
             </div>
             <div className="flex items-center justify-between">
-              <Label htmlFor="icp-active">Activo</Label>
+              <Label htmlFor="icp-active">{t('dialogoPerfil.activo')}</Label>
               <Switch id="icp-active" checked={form.is_active} onCheckedChange={(c) => setForm((p) => ({ ...p, is_active: c }))} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('acciones.cancelar')}</Button>
+            <Button onClick={handleSave} disabled={saving}>{saving ? t('acciones.guardando') : t('acciones.guardar')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -627,14 +620,14 @@ export function ICPManager() {
       <Dialog open={critDialogOpen} onOpenChange={setCritDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingCrit ? 'Editar Criterio' : 'Nuevo Criterio'}</DialogTitle>
+            <DialogTitle>{editingCrit ? t('dialogoCriterio.tituloEditar') : t('dialogoCriterio.tituloNuevo')}</DialogTitle>
             <DialogDescription>
-              Define una regla de evaluación ICP para este perfil
+              {t('dialogoCriterio.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="crit-field">Campo (field_key) *</Label>
+              <Label htmlFor="crit-field">{t('dialogoCriterio.campo')}</Label>
               <Select value={critForm.field_key} onValueChange={(v) => setCritForm((p) => ({ ...p, field_key: v }))}>
                 <SelectTrigger id="crit-field">
                   <SelectValue />
@@ -647,45 +640,45 @@ export function ICPManager() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="crit-op">Operador *</Label>
+              <Label htmlFor="crit-op">{t('dialogoCriterio.operador')}</Label>
               <Select value={critForm.operator} onValueChange={(v) => setCritForm((p) => ({ ...p, operator: v as ICPOperator }))}>
                 <SelectTrigger id="crit-op">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {OPERATORS.map((op) => (
-                    <SelectItem key={op} value={op}>{OPERATOR_LABELS[op]}</SelectItem>
+                    <SelectItem key={op} value={op}>{t(`operadores.${op}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="crit-value">Valor</Label>
+              <Label htmlFor="crit-value">{t('dialogoCriterio.valor')}</Label>
               <Input
                 id="crit-value"
                 value={critForm.value}
                 onChange={(e) => setCritForm((p) => ({ ...p, value: e.target.value }))}
-                placeholder='Ej: "large" o 1000000 o ["Bogota","Medellin"]'
+                placeholder={t('dialogoCriterio.valorPlaceholder')}
                 className="font-mono text-xs"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Para operadores in/not_in usa un array JSON: [&quot;a&quot;,&quot;b&quot;]
+                {t('dialogoCriterio.valorAyuda')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="crit-weight">Peso</Label>
+                <Label htmlFor="crit-weight">{t('dialogoCriterio.peso')}</Label>
                 <Input id="crit-weight" type="number" value={critForm.weight} onChange={(e) => setCritForm((p) => ({ ...p, weight: Number(e.target.value) }))} min={0} />
               </div>
               <div className="flex items-center justify-between pt-6">
-                <Label htmlFor="crit-required">Obligatorio</Label>
+                <Label htmlFor="crit-required">{t('dialogoCriterio.obligatorio')}</Label>
                 <Switch id="crit-required" checked={critForm.is_required} onCheckedChange={(c) => setCritForm((p) => ({ ...p, is_required: c }))} />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCritDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveCriterion} disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
+            <Button variant="outline" onClick={() => setCritDialogOpen(false)}>{t('acciones.cancelar')}</Button>
+            <Button onClick={handleSaveCriterion} disabled={saving}>{saving ? t('acciones.guardando') : t('acciones.guardar')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -694,9 +687,9 @@ export function ICPManager() {
       <Dialog open={evalDialogOpen} onOpenChange={setEvalDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Evaluar cliente contra ICP</DialogTitle>
+            <DialogTitle>{t('dialogoEvaluar.titulo')}</DialogTitle>
             <DialogDescription>
-              Ingresa el ID de un customer para evaluarlo contra todos los perfiles ICP
+              {t('dialogoEvaluar.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -704,18 +697,18 @@ export function ICPManager() {
               <Input
                 value={evalCustomerId}
                 onChange={(e) => setEvalCustomerId(e.target.value)}
-                placeholder="Customer ID (UUID)"
+                placeholder={t('dialogoEvaluar.clientePlaceholder')}
                 className="font-mono text-xs"
               />
               <Button onClick={handleEvaluate} disabled={evaluating}>
-                {evaluating ? 'Evaluando...' : 'Evaluar'}
+                {evaluating ? t('dialogoEvaluar.evaluando') : t('dialogoEvaluar.evaluar')}
               </Button>
             </div>
 
             {evalResults && (
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {evalResults.length === 0 ? (
-                  <p className="text-xs text-gray-500 text-center py-4">No hay perfiles ICP para evaluar</p>
+                  <p className="text-xs text-gray-500 text-center py-4">{t('dialogoEvaluar.sinPerfiles')}</p>
                 ) : (
                   evalResults.map((ev) => (
                     <Card key={ev.profile_id} className={`border-2 ${ev.matched ? 'border-green-300 dark:border-green-800' : 'border-gray-200 dark:border-gray-700'}`}>
@@ -729,7 +722,7 @@ export function ICPManager() {
                             )}
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{ev.profile_name}</p>
                             <Badge className={`text-xs border-0 ${BAND_COLORS[ev.band] || 'bg-gray-100 text-gray-700'}`}>
-                              Band {ev.band}
+                              {t('banda', { band: ev.band })}
                             </Badge>
                           </div>
                           <span className={`text-sm font-bold ${ev.fit_score >= 70 ? 'text-green-600' : ev.fit_score >= 40 ? 'text-amber-600' : 'text-red-500'}`}>
@@ -738,7 +731,7 @@ export function ICPManager() {
                         </div>
                         {ev.failed_required.length > 0 && (
                           <p className="text-xs text-red-500">
-                            Obligatorios fallidos: {ev.failed_required.join(', ')}
+                            {t('dialogoEvaluar.obligatoriosFallidos', { lista: ev.failed_required.join(', ') })}
                           </p>
                         )}
                         {ev.details.length > 0 && (
@@ -751,11 +744,11 @@ export function ICPManager() {
                                   <XCircle className="h-3 w-3 text-red-400 shrink-0" />
                                 )}
                                 <span className="font-mono text-gray-600 dark:text-gray-400">{d.field_key}</span>
-                                <span className="text-gray-400">{OPERATOR_LABELS[d.operator] || d.operator}</span>
+                                <span className="text-gray-400">{etiquetaOperador(d.operator)}</span>
                                 <span className="font-mono">{formatValue(d.expected)}</span>
-                                <span className="text-gray-400">→ actual:</span>
+                                <span className="text-gray-400">{t('dialogoEvaluar.actual')}</span>
                                 <span className="font-mono">{formatValue(d.actual)}</span>
-                                {d.is_required && <Badge variant="destructive" className="text-xs py-0">req</Badge>}
+                                {d.is_required && <Badge variant="destructive" className="text-xs py-0">{t('dialogoEvaluar.requerido')}</Badge>}
                               </div>
                             ))}
                           </div>
@@ -768,7 +761,7 @@ export function ICPManager() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEvalDialogOpen(false)}>Cerrar</Button>
+            <Button variant="outline" onClick={() => setEvalDialogOpen(false)}>{t('dialogoEvaluar.cerrar')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -777,14 +770,14 @@ export function ICPManager() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar perfil ICP?</AlertDialogTitle>
+            <AlertDialogTitle>{t('eliminar.titulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará el perfil &quot;{toDelete?.name}&quot; y todos sus criterios.
+              {t('eliminar.descripcion', { nombre: toDelete?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white">Eliminar</AlertDialogAction>
+            <AlertDialogCancel>{t('acciones.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white">{t('acciones.eliminar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

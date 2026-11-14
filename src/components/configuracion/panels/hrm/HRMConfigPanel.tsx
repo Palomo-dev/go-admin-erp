@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import HRMConfigService from '@/lib/services/hrmConfigService';
 import type { OrganizationHRMSettings, OrganizationCurrency, UpdateHRMSettingsDTO } from '@/lib/services/hrmConfigService';
@@ -15,6 +16,7 @@ import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSk
 export function HRMConfigPanel() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const t = useTranslations('configuracionTextos.hrmConfigPanel');
   const service = useMemo(() => new HRMConfigService(), []);
 
   const [settings, setSettings] = useState<OrganizationHRMSettings | null>(null);
@@ -41,11 +43,11 @@ export function HRMConfigPanel() {
       setCurrenciesList(availableCurrenciesData);
     } catch {
       console.error('Error loading data');
-      toast({ title: 'Error', description: 'No se pudo cargar la configuración', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorCargar'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast, service]);
+  }, [organization?.id, toast, service, t]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) loadData();
@@ -55,10 +57,10 @@ export function HRMConfigPanel() {
     if (!organization?.id) return;
     try {
       await service.updateOrganizationSettings(organization.id, data);
-      toast({ title: 'Configuración guardada correctamente' });
+      toast({ title: t('guardada') });
       await loadData();
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo guardar la configuración', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorGuardar'), variant: 'destructive' });
       throw error;
     }
   };
@@ -67,10 +69,10 @@ export function HRMConfigPanel() {
     if (!organization?.id) return;
     try {
       await service.setBaseCurrency(organization.id, currencyCode);
-      toast({ title: `${currencyCode} establecida como moneda base` });
+      toast({ title: t('monedaBaseEstablecida', { moneda: currencyCode }) });
       await loadData();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo establecer la moneda base', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorMonedaBase'), variant: 'destructive' });
     }
   };
 
@@ -78,10 +80,10 @@ export function HRMConfigPanel() {
     if (!organization?.id) return;
     try {
       await service.addCurrency(organization.id, currencyCode);
-      toast({ title: `${currencyCode} agregada` });
+      toast({ title: t('monedaAgregada', { moneda: currencyCode }) });
       await loadData();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo agregar la moneda', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorAgregar'), variant: 'destructive' });
     }
   };
 
@@ -89,10 +91,10 @@ export function HRMConfigPanel() {
     if (!organization?.id) return;
     try {
       await service.removeCurrency(organization.id, currencyCode);
-      toast({ title: `${currencyCode} eliminada` });
+      toast({ title: t('monedaEliminada', { moneda: currencyCode }) });
       await loadData();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar la moneda', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorEliminar'), variant: 'destructive' });
     }
   };
 
@@ -118,7 +120,7 @@ export function HRMConfigPanel() {
 
       {/* Configuración General */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground">Configuración General</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">{t('configuracionGeneral')}</h3>
         {settings && (
           <SettingsForm
             settings={settings}
@@ -136,14 +138,14 @@ export function HRMConfigPanel() {
               <div className="flex items-center gap-3">
                 <Globe className="h-6 w-6 text-blue-600" />
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white">Reglas de País</p>
+                  <p className="font-medium text-gray-900 dark:text-white">{t('reglasPais.titulo')}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Consulta las reglas legales de nómina por país (salario mínimo, aportes, etc.)
+                    {t('reglasPais.descripcion')}
                   </p>
                 </div>
               </div>
               <Link href="/app/hrm/reglas-pais">
-                <Button variant="outline">Ver Reglas</Button>
+                <Button variant="outline">{t('reglasPais.ver')}</Button>
               </Link>
             </div>
           </CardContent>
@@ -152,7 +154,7 @@ export function HRMConfigPanel() {
 
       {/* Monedas */}
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-muted-foreground">Monedas</h3>
+        <h3 className="text-sm font-medium text-muted-foreground">{t('monedas')}</h3>
         <CurrenciesCard
           currencies={currencies}
           availableCurrencies={currenciesList}
@@ -167,12 +169,12 @@ export function HRMConfigPanel() {
             <div className="flex items-start gap-3">
               <DollarSign className="h-5 w-5 text-amber-600 mt-0.5" />
               <div>
-                <p className="font-medium text-amber-900 dark:text-amber-100">Sobre las Monedas</p>
+                <p className="font-medium text-amber-900 dark:text-amber-100">{t('sobreMonedas.titulo')}</p>
                 <ul className="text-sm text-amber-700 dark:text-amber-300 mt-2 space-y-1">
-                  <li>• La <strong>moneda base</strong> se usa para cálculos de nómina y reportes.</li>
-                  <li>• Puede agregar múltiples monedas para operaciones internacionales.</li>
-                  <li>• Las tasas de cambio se pueden configurar manualmente o auto-actualizar.</li>
-                  <li>• No puede eliminar la moneda base; primero cambie a otra.</li>
+                  <li>• {t.rich('sobreMonedas.base', { b: (c) => <strong>{c}</strong> })}</li>
+                  <li>• {t('sobreMonedas.multiples')}</li>
+                  <li>• {t('sobreMonedas.tasas')}</li>
+                  <li>• {t('sobreMonedas.noEliminarBase')}</li>
                 </ul>
               </div>
             </div>

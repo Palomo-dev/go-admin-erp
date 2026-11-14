@@ -50904,6 +50904,7 @@
           "sinFuente": "No source",
           "etiquetas": "Tags for all",
           "etiquetasAyuda": "Separate them with commas.",
+          "etiquetasEjemplo": "faq, shipping",
           "indexar": "Make them ready for the AI when done",
           "importar": "Import {n, plural, one {# snippet} other {# snippets}}",
           "creditos": "Indexing uses your plan’s AI credits."
@@ -51348,6 +51349,1547 @@
         "titulo": "The plan couldn’t be loaded",
         "descripcion": "Try again in a few seconds."
       }
+    }
+  },
+  "configuracionTextos": {
+    "crmConfigPanel": {
+      "toast": {
+        "error": "Error",
+        "errCargarEtiquetas": "Tags could not be loaded",
+        "errCargarLlaves": "API keys could not be loaded",
+        "etiquetaActualizada": "Tag updated",
+        "etiquetaActualizadaDesc": "Changes were saved successfully",
+        "etiquetaCreada": "Tag created",
+        "etiquetaCreadaDesc": "The tag was created successfully",
+        "errGuardarEtiqueta": "The tag could not be saved",
+        "etiquetaEliminada": "Tag deleted",
+        "etiquetaEliminadaDesc": "The tag was deleted successfully",
+        "errEliminarEtiqueta": "The tag could not be deleted",
+        "llaveCreada": "Key created",
+        "llaveCreadaDesc": "The API key was created successfully",
+        "errCrearLlave": "The API key could not be created",
+        "llaveRevocada": "Key revoked",
+        "llaveRevocadaDesc": "The API key was revoked",
+        "errRevocarLlave": "The key could not be revoked",
+        "llaveRotada": "Key rotated",
+        "llaveRotadaDesc": "A new key was generated.",
+        "errRotarLlave": "The key could not be rotated"
+      },
+      "etiquetas": {
+        "titulo": "Tags",
+        "vacioTitulo": "No tags configured",
+        "vacioDescripcion": "Create tags to organize and classify your conversations"
+      },
+      "llaves": {
+        "titulo": "API keys",
+        "vacioTitulo": "No API keys configured",
+        "vacioDescripcion": "Create API keys to integrate the CRM with external services"
+      },
+      "tarjetas": {
+        "titulo": "CRM settings",
+        "configurar": "Configure →",
+        "verticales": {
+          "titulo": "Verticals",
+          "descripcion": "Classify opportunities by line of business (hospitality, retail, construction, etc.)"
+        },
+        "razonesPerdida": {
+          "titulo": "Loss reasons",
+          "descripcion": "Define global and organization-specific reasons for recording lost opportunities"
+        },
+        "scoring": {
+          "titulo": "Scoring (GOC)",
+          "descripcion": "Configure indicators, weights and Cold / Warm / Hot thresholds for opportunity scoring"
+        },
+        "etapas": {
+          "titulo": "Stages and criteria",
+          "descripcion": "Define exit criteria (exit gates) per stage to move opportunities forward in the pipeline"
+        },
+        "comisiones": {
+          "titulo": "Salespeople and commissions",
+          "descripcion": "Configure the general commission rate, per-salesperson overrides with validity periods, and a simulator"
+        },
+        "referidos": {
+          "titulo": "Referral program",
+          "descripcion": "Configure incentives, eligibility and rewards for referrers and partners"
+        },
+        "estructura": {
+          "titulo": "Sales structure",
+          "descripcion": "Define sales roles, teams with members and territories with criteria"
+        },
+        "icp": {
+          "titulo": "ICP (Ideal Customer Profile)",
+          "descripcion": "A/B/C profiles with criteria, weights, SLA and a customer evaluator"
+        }
+      },
+      "modales": {
+        "verticales": {
+          "titulo": "Verticals",
+          "descripcion": "Manage the business verticals used to classify opportunities"
+        },
+        "razonesPerdida": {
+          "titulo": "Loss reasons",
+          "descripcion": "Manage the reasons why opportunities are lost"
+        },
+        "scoring": {
+          "titulo": "Scoring (GOC)",
+          "descripcion": "Configure scoring indicators, weights and thresholds"
+        },
+        "etapas": {
+          "titulo": "Stages and exit criteria",
+          "descripcion": "Define the criteria that must be met to move opportunities between stages"
+        },
+        "comisiones": {
+          "titulo": "Salespeople and commissions",
+          "descripcion": "Configure general and salesperson-specific commissions"
+        },
+        "referidos": {
+          "titulo": "Referral program",
+          "descripcion": "Configure incentives, eligibility and rewards for the indirect channel"
+        },
+        "estructura": {
+          "titulo": "Sales structure",
+          "descripcion": "Manage roles, teams with members and territories with criteria"
+        },
+        "icp": {
+          "titulo": "ICP (Ideal Customer Profile)",
+          "descripcion": "A/B/C profiles with criteria, weights, SLA and a customer evaluator"
+        }
+      },
+      "confirmar": {
+        "cancelar": "Cancel",
+        "eliminar": "Delete",
+        "eliminarEtiquetaTitulo": "Delete tag?",
+        "eliminarEtiquetaDescripcion": "This will delete the tag \"{nombre}\" and remove it from all conversations. This action cannot be undone.",
+        "revocar": "Revoke",
+        "revocarLlaveTitulo": "Revoke API key?",
+        "revocarLlaveDescripcion": "This will permanently revoke the key \"{nombre}\". Any integration using this key will stop working.",
+        "rotarLlave": "Rotate key",
+        "rotarLlaveTitulo": "Rotate API key?",
+        "rotarLlaveDescripcion": "This will create a new key with the same permissions and revoke the current one, \"{nombre}\"."
+      }
+    },
+    "icpManager": {
+      "toast": {
+        "error": "Error",
+        "validacion": "Validation",
+        "errCargarPerfiles": "ICP profiles could not be loaded",
+        "nombreBandObligatorios": "Name and band are required",
+        "perfilActualizado": "Profile updated",
+        "perfilActualizadoDesc": "Changes were saved successfully",
+        "perfilCreado": "Profile created",
+        "perfilCreadoDesc": "The ICP profile was created successfully",
+        "errGuardarPerfil": "The profile could not be saved",
+        "perfilEliminado": "Profile deleted",
+        "perfilEliminadoDesc": "The ICP profile was deleted successfully",
+        "errEliminarPerfil": "The profile could not be deleted",
+        "campoOperadorObligatorios": "Field key and operator are required",
+        "criterioActualizado": "Criterion updated",
+        "criterioActualizadoDesc": "The criterion was saved successfully",
+        "criterioCreado": "Criterion created",
+        "criterioCreadoDesc": "The criterion was added to the profile",
+        "errGuardarCriterio": "The criterion could not be saved",
+        "criterioEliminado": "Criterion deleted",
+        "criterioEliminadoDesc": "The criterion was deleted successfully",
+        "errEliminarCriterio": "The criterion could not be deleted",
+        "clienteObligatorio": "The Customer ID is required",
+        "evaluacionCompletada": "Evaluation completed",
+        "perfilesEvaluados": "{n, plural, one {# profile evaluated} other {# profiles evaluated}}",
+        "errEvaluar": "The customer could not be evaluated"
+      },
+      "operadores": {
+        "eq": "= (equal)",
+        "neq": "≠ (not equal)",
+        "gt": "> (greater)",
+        "gte": "≥ (greater or equal)",
+        "lt": "< (less)",
+        "lte": "≤ (less or equal)",
+        "in": "∈ (in list)",
+        "not_in": "∉ (not in list)",
+        "contains": "contains",
+        "starts_with": "starts with"
+      },
+      "banda": "Band {band}",
+      "encabezado": {
+        "conteo": "{n, plural, one {# ICP profile} other {# ICP profiles}}",
+        "descripcion": "Define ideal customer profiles (A/B/C) with criteria and SLA",
+        "evaluar": "Evaluate",
+        "nuevoPerfil": "New profile"
+      },
+      "vacio": {
+        "titulo": "No ICP profiles configured",
+        "descripcion": "Create A/B/C profiles to classify and prioritize customers"
+      },
+      "perfil": {
+        "inactivo": "Inactive",
+        "conteoCriterios": "{n, plural, one {# criterion} other {# criteria}}",
+        "prioridadSla": "Priority {prioridad} · SLA {horas}h"
+      },
+      "criterios": {
+        "vacio": "No criteria. Add the first one.",
+        "anadir": "Add criterion",
+        "columnas": {
+          "campo": "Field",
+          "operador": "Operator",
+          "valor": "Value",
+          "peso": "Weight",
+          "requerido": "Req"
+        }
+      },
+      "dialogoPerfil": {
+        "tituloEditar": "Edit ICP profile",
+        "tituloNuevo": "New ICP profile",
+        "descripcionEditar": "Edit the profile details",
+        "descripcionNuevo": "Create an ideal customer profile (A/B/C)",
+        "nombre": "Name *",
+        "nombrePlaceholder": "E.g.: Enterprise Ideal, SMB Growth",
+        "banda": "Band *",
+        "bandaA": "A (High fit)",
+        "bandaB": "B (Medium fit)",
+        "bandaC": "C (Low fit)",
+        "color": "Color",
+        "prioridad": "Priority",
+        "sla": "First contact SLA (h)",
+        "descripcion": "Description",
+        "descripcionPlaceholder": "Description of the ideal profile",
+        "activo": "Active"
+      },
+      "dialogoCriterio": {
+        "tituloEditar": "Edit criterion",
+        "tituloNuevo": "New criterion",
+        "descripcion": "Define an ICP evaluation rule for this profile",
+        "campo": "Field (field_key) *",
+        "operador": "Operator *",
+        "valor": "Value",
+        "valorPlaceholder": "E.g.: \"large\" or 1000000 or [\"Bogota\",\"Medellin\"]",
+        "valorAyuda": "For in/not_in operators use a JSON array: [\"a\",\"b\"]",
+        "peso": "Weight",
+        "obligatorio": "Required"
+      },
+      "dialogoEvaluar": {
+        "titulo": "Evaluate customer against ICP",
+        "descripcion": "Enter a customer ID to evaluate it against all ICP profiles",
+        "clientePlaceholder": "Customer ID (UUID)",
+        "evaluando": "Evaluating...",
+        "evaluar": "Evaluate",
+        "sinPerfiles": "There are no ICP profiles to evaluate",
+        "obligatoriosFallidos": "Failed required criteria: {lista}",
+        "actual": "→ actual:",
+        "requerido": "req",
+        "cerrar": "Close"
+      },
+      "eliminar": {
+        "titulo": "Delete ICP profile?",
+        "descripcion": "This will delete the profile \"{nombre}\" and all its criteria."
+      },
+      "acciones": {
+        "cancelar": "Cancel",
+        "eliminar": "Delete",
+        "guardar": "Save",
+        "guardando": "Saving..."
+      }
+    },
+    "chatConfigPanel": {
+      "toast": {
+        "error": "Error",
+        "errorCargarEtiquetas": "Tags could not be loaded",
+        "errorCargarLlaves": "API keys could not be loaded",
+        "errorCargarRespuestas": "Quick replies could not be loaded",
+        "cambiosGuardados": "Changes saved successfully",
+        "etiquetaActualizada": "Tag updated",
+        "etiquetaCreada": "Tag created",
+        "etiquetaCreadaDescripcion": "The tag was created successfully",
+        "errorGuardarEtiqueta": "The tag could not be saved",
+        "etiquetaEliminada": "Tag deleted",
+        "etiquetaEliminadaDescripcion": "The tag was deleted successfully",
+        "errorEliminarEtiqueta": "The tag could not be deleted",
+        "llaveCreada": "Key created",
+        "llaveCreadaDescripcion": "The API key was created successfully",
+        "errorCrearLlave": "The API key could not be created",
+        "llaveRevocada": "Key revoked",
+        "llaveRevocadaDescripcion": "The API key was revoked and can no longer be used",
+        "errorRevocarLlave": "The API key could not be revoked",
+        "llaveRotada": "Key rotated",
+        "llaveRotadaDescripcion": "A new key was generated. The previous one was revoked.",
+        "errorRotarLlave": "The API key could not be rotated",
+        "respuestaActualizada": "Reply updated",
+        "respuestaCreada": "Reply created",
+        "respuestaCreadaDescripcion": "The quick reply was created successfully",
+        "errorGuardarRespuesta": "The quick reply could not be saved",
+        "respuestaEliminada": "Reply deleted",
+        "respuestaEliminadaDescripcion": "The quick reply was deleted successfully",
+        "errorEliminarRespuesta": "The quick reply could not be deleted"
+      },
+      "secciones": {
+        "etiquetas": "Tags",
+        "respuestasRapidas": "Quick Replies",
+        "llavesApi": "API Keys"
+      },
+      "vacio": {
+        "etiquetasTitulo": "No tags configured",
+        "etiquetasDescripcion": "Create tags to organize and classify your conversations",
+        "respuestasTitulo": "No quick replies configured",
+        "respuestasDescripcion": "Create reply templates to speed up customer service",
+        "sinCoincidencias": "No replies found matching \"{busqueda}\"",
+        "llavesTitulo": "No API keys configured",
+        "llavesDescripcion": "Create API keys to integrate the chat with your application or external services"
+      },
+      "dialogos": {
+        "cancelar": "Cancel",
+        "eliminar": "Delete",
+        "eliminarEtiquetaTitulo": "Delete tag?",
+        "eliminarEtiquetaDescripcion": "This will delete the tag \"{nombre}\" and remove it from every conversation it is assigned to. This action cannot be undone.",
+        "revocarLlaveTitulo": "Revoke API key?",
+        "revocarLlaveDescripcion": "This will permanently revoke the key \"{nombre}\". Any integration using this key will stop working immediately.",
+        "revocar": "Revoke",
+        "rotarLlaveTitulo": "Rotate API key?",
+        "rotarLlaveDescripcion": "This will create a new key with the same permissions and revoke the current key \"{nombre}\". You will need to update all integrations with the new key.",
+        "rotarLlave": "Rotate Key",
+        "eliminarRespuestaTitulo": "Delete quick reply?",
+        "eliminarRespuestaDescripcion": "This will permanently delete the reply \"{titulo}\". This action cannot be undone."
+      }
+    },
+    "scoringConfigurator": {
+      "porDefecto": {
+        "engagement": "Engagement",
+        "presupuesto": "Budget",
+        "timeline": "Timeline",
+        "bajo": "Low",
+        "medio": "Medium",
+        "alto": "High",
+        "sinPresupuesto": "No budget",
+        "limitado": "Limited",
+        "confirmado": "Confirmed",
+        "lejano": "Distant",
+        "cercano": "Near",
+        "inmediato": "Immediate",
+        "nuevoIndicador": "New indicator",
+        "nuevaOpcion": "New option"
+      },
+      "toast": {
+        "error": "Error",
+        "errorCargar": "The scoring configuration could not be loaded",
+        "validacion": "Validation",
+        "sumaPesos": "Weights must add up to 100% (current: {total}%)",
+        "guardada": "Configuration saved",
+        "guardadaDescripcion": "GOC scoring was saved successfully",
+        "errorGuardar": "The configuration could not be saved"
+      },
+      "encabezado": {
+        "titulo": "GOC Scoring",
+        "descripcion": "Configure indicators, weights and thresholds (Cold / Warm / Hot)"
+      },
+      "acciones": {
+        "guardando": "Saving...",
+        "guardar": "Save",
+        "guardarConfiguracion": "Save Configuration"
+      },
+      "indicadores": {
+        "titulo": "Indicators",
+        "total": "Total: {total}%",
+        "agregarIndicador": "Indicator",
+        "nombrePlaceholder": "Indicator name",
+        "opcionPlaceholder": "Option label",
+        "puntajePlaceholder": "Score",
+        "agregarOpcion": "Add option"
+      },
+      "bandas": {
+        "titulo": "Thresholds (Bands)",
+        "frio": "Cold",
+        "tibio": "Warm",
+        "caliente": "Hot",
+        "minimo": "Min",
+        "maximo": "Max"
+      }
+    },
+    "lossReasonsManager": {
+      "toast": {
+        "error": "Error",
+        "errorCargar": "Loss reasons could not be loaded",
+        "validacion": "Validation",
+        "razonObligatoria": "The reason is required",
+        "restriccion": "Restriction",
+        "globalesNoEditables": "Global reasons cannot be edited",
+        "actualizada": "Reason updated",
+        "cambiosGuardados": "Changes saved successfully",
+        "creada": "Reason created",
+        "creadaDescripcion": "The loss reason was created successfully",
+        "errorGuardar": "The reason could not be saved",
+        "globalesNoEliminables": "Global reasons cannot be deleted",
+        "eliminada": "Reason deleted",
+        "eliminadaDescripcion": "The loss reason was deactivated successfully",
+        "errorEliminar": "The reason could not be deleted"
+      },
+      "encabezado": {
+        "conteo": "{n, plural, one {# loss reason} other {# loss reasons}}",
+        "descripcion": "Global and organization-specific",
+        "nuevaRazon": "New Reason"
+      },
+      "lista": {
+        "inactiva": "Inactive",
+        "global": "Global",
+        "globales": "Global",
+        "deLaOrganizacion": "Organization",
+        "vacio": "No specific reasons yet. Create one to customize."
+      },
+      "dialogo": {
+        "tituloEditar": "Edit Reason",
+        "tituloNueva": "New Loss Reason",
+        "descripcionEditar": "Edit the loss reason",
+        "descripcionNueva": "Create a new reason to record why opportunities are lost",
+        "razonEtiqueta": "Reason *",
+        "razonPlaceholder": "E.g.: Price too high, No budget, Competitor..."
+      },
+      "acciones": {
+        "cancelar": "Cancel",
+        "guardando": "Saving...",
+        "guardar": "Save"
+      },
+      "desactivar": {
+        "titulo": "Deactivate loss reason?",
+        "descripcion": "This will deactivate the reason \"{razon}\". Opportunities already using this reason will keep their historical record.",
+        "confirmar": "Deactivate"
+      }
+    },
+    "verticalsManager": {
+      "toast": {
+        "error": "Error",
+        "errorCargar": "Verticals could not be loaded",
+        "activada": "Vertical activated",
+        "desactivada": "Vertical deactivated",
+        "activadaDescripcion": "\"{nombre}\" has been activated",
+        "desactivadaDescripcion": "\"{nombre}\" has been deactivated",
+        "errorEstado": "The status could not be changed",
+        "validacion": "Validation",
+        "nombreObligatorio": "The name is required",
+        "actualizada": "Vertical updated",
+        "cambiosGuardados": "Changes saved successfully",
+        "creada": "Vertical created",
+        "creadaDescripcion": "The vertical was created successfully",
+        "errorGuardar": "The vertical could not be saved",
+        "eliminada": "Vertical deleted",
+        "eliminadaDescripcion": "The vertical was deactivated successfully",
+        "errorEliminar": "The vertical could not be deleted"
+      },
+      "encabezado": {
+        "conteo": "{n, plural, one {# vertical} other {# verticals}}",
+        "descripcion": "Manage the CRM business verticals",
+        "nuevaVertical": "New Vertical"
+      },
+      "vacio": {
+        "titulo": "No verticals configured",
+        "descripcion": "Create verticals to classify your opportunities by line of business"
+      },
+      "lista": {
+        "inactiva": "Inactive"
+      },
+      "dialogo": {
+        "tituloEditar": "Edit Vertical",
+        "tituloNueva": "New Vertical",
+        "descripcionEditar": "Edit the vertical details",
+        "descripcionNueva": "Create a new vertical to classify opportunities",
+        "nombreEtiqueta": "Name *",
+        "nombrePlaceholder": "E.g.: Hospitality, Retail, Construction...",
+        "descripcionEtiqueta": "Description",
+        "descripcionPlaceholder": "Optional description of the vertical",
+        "activa": "Active"
+      },
+      "acciones": {
+        "cancelar": "Cancel",
+        "guardando": "Saving...",
+        "guardar": "Save"
+      },
+      "desactivar": {
+        "titulo": "Deactivate vertical?",
+        "descripcion": "This will deactivate the vertical \"{nombre}\". Associated opportunities will not be deleted but will lose this classification.",
+        "confirmar": "Deactivate"
+      }
+    },
+    "creditosTab": {
+      "cargandoCola": "Loading job queue",
+      "errorHttp": "Error {status}",
+      "errorDesconocido": "Unknown error",
+      "errorCarga": "Couldn’t load the credit status",
+      "reintentar": "Retry",
+      "titulo": "Credits and system",
+      "descripcion": "Balances, current month usage and providers’ reference prices.",
+      "recargar": "Reload",
+      "ilimitado": "Unlimited",
+      "kpi": {
+        "creditosIa": "AI credits",
+        "consumidosMes": "Used this month: {cantidad}",
+        "smsRestantes": "SMS remaining",
+        "whatsappRestantes": "WhatsApp remaining",
+        "minutosVoz": "Voice minutes"
+      },
+      "presupuesto": {
+        "titulo": "Monthly AI budget",
+        "gasto": "Estimated spend: <b>{gasto}</b>",
+        "gastoDe": "Estimated spend: <b>{gasto}</b> of {presupuesto}",
+        "usado": "Budget used",
+        "sinPresupuesto": "Set a budget in Providers and AI › OpenAI › Monthly budget.",
+        "alerta": "You’ve used {pct}% of this month’s budget."
+      },
+      "consumoDiario": {
+        "titulo": "Daily AI usage (credits)",
+        "vacio": "No usage recorded this month.",
+        "serie": "credits"
+      },
+      "porModelo": {
+        "titulo": "By model and channel (month)",
+        "modeloCanal": "Model / channel",
+        "llamadas": "Calls",
+        "creditos": "Credits",
+        "vacio": "No usage this month."
+      },
+      "precios": {
+        "titulo": "Reference prices (USD, excluding taxes)",
+        "vacio": "The price table (provider_pricing) hasn’t been loaded yet.",
+        "proveedor": "Provider",
+        "unidad": "Unit",
+        "noVerificado": "Not verified"
+      },
+      "colaTrabajos": "Job queue"
+    },
+    "whatsAppTab": {
+      "dias": {
+        "dom": "Sun",
+        "lun": "Mon",
+        "mar": "Tue",
+        "mie": "Wed",
+        "jue": "Thu",
+        "vie": "Fri",
+        "sab": "Sat"
+      },
+      "chips": {
+        "quitar": "Remove {palabra}",
+        "anadirA": "Add to {lista}",
+        "placeholder": "Add + Enter"
+      },
+      "toast": {
+        "errorCarga": "Couldn’t load",
+        "error": "Error",
+        "guardado": "WhatsApp settings saved",
+        "errorGuardar": "Couldn’t save"
+      },
+      "soloLectura": "Read-only: requires the administrator role.",
+      "canales": {
+        "titulo": "Channels and capabilities",
+        "canalPorDefecto": "Default CRM channel",
+        "primerCanalActivo": "First active channel",
+        "limiteWaba": "WABA limit (unique users / 24 h)",
+        "consultar": "Check",
+        "nivel": "{nivel} ({limite})",
+        "ilimitado": "unlimited",
+        "desconocido": "Unknown"
+      },
+      "tabla": {
+        "canal": "Channel",
+        "tipo": "Type",
+        "plantillas": "Templates",
+        "adjuntos": "Attachments",
+        "textoLibre": "Free text",
+        "estado": "Status",
+        "porDefecto": "default",
+        "si": "Yes",
+        "no": "No",
+        "siVentana": "Yes (24 h window)",
+        "vacio": "No WhatsApp channels. Connect them in Chat › Channels."
+      },
+      "consentimiento": {
+        "titulo": "Consent and hours (data protection)",
+        "palabrasBaja": "Opt-out keywords",
+        "palabrasAlta": "Opt-in keywords",
+        "horario": "Allowed contact hours",
+        "activo": "Active",
+        "desde": "From",
+        "a": "to",
+        "hasta": "To",
+        "zonaHoraria": "Time zone",
+        "fueraHorario": "Outside these hours, individual sends ask to be scheduled (utility messages can be forced) and campaigns wait for the next window.",
+        "limiteDiario": "Your own daily limit for outgoing messages (empty = Meta’s limit only)",
+        "indicativo": "Default country calling code (empty = 57, Colombia)",
+        "indicativoAyuda": "It completes phone numbers saved without a country code («310 987 6543»): when sending WhatsApp messages, calling from the mobile phone and opting out by keyword. A number that doesn’t look like a national phone number of that country isn’t sent."
+      },
+      "guardar": "Save"
+    },
+    "commissionsPanel": {
+      "toast": {
+        "error": "Error",
+        "generalGuardada": "General commission saved",
+        "tasaGeneral": "General rate: {tasa}%",
+        "overrideEliminado": "Override deleted",
+        "overrideEliminadoDesc": "The salesperson’s commission was deleted successfully",
+        "validacion": "Validation",
+        "faltaVendedor": "Enter the salesperson ID",
+        "overrideActualizado": "Override updated",
+        "overrideCreado": "Override created",
+        "overrideGuardadoDesc": "The salesperson’s commission was saved successfully"
+      },
+      "confirmarEliminar": "Are you sure you want to delete this commission override?",
+      "titulo": "Salespeople and commissions",
+      "descripcion": "Set the general rate and per-salesperson overrides",
+      "general": {
+        "titulo": "General commission rate",
+        "descripcion": "Percentage applied to all closed sales. It applies when there’s no specific override for the salesperson."
+      },
+      "guardando": "Saving...",
+      "guardar": "Save",
+      "cancelar": "Cancel",
+      "overrides": {
+        "titulo": "Overrides by salesperson",
+        "nuevo": "New override",
+        "vacio": "No overrides configured. All salespeople will use the general rate.",
+        "vendedor": "Salesperson",
+        "tasa": "{tasa}% commission"
+      },
+      "simulador": {
+        "titulo": "Commission simulator",
+        "monto": "Closing amount (COP)",
+        "tasaAplicable": "Applicable rate",
+        "comisionEstimada": "Estimated commission",
+        "nota": "* The simulator uses the general rate. Per-salesperson overrides are applied when the sale closes."
+      },
+      "dialogo": {
+        "tituloEditar": "Edit override",
+        "tituloNuevo": "New commission override",
+        "descripcionEditar": "Change the salesperson’s specific commission",
+        "descripcionNuevo": "Set a specific commission for a salesperson",
+        "idVendedor": "Salesperson ID *",
+        "idVendedorPlaceholder": "Salesperson UUID",
+        "idVendedorAyuda": "Enter the ID of the user who will act as the salesperson",
+        "tasa": "Commission rate (%)"
+      }
+    },
+    "timelineConfigPanel": {
+      "toast": {
+        "error": "Error",
+        "guardado": "Saved",
+        "guardadoDesc": "The settings were saved successfully",
+        "errorGuardar": "Couldn’t save the settings",
+        "restablecido": "Reset",
+        "restablecidoDesc": "The settings were reset to their default values",
+        "errorRestablecer": "Couldn’t reset the settings",
+        "exportado": "Exported",
+        "exportadoDesc": "The settings were exported successfully",
+        "importado": "Imported",
+        "importadoDesc": "The settings were imported. Save to apply the changes.",
+        "archivoInvalido": "The file isn’t valid"
+      },
+      "errorCarga": "Couldn’t load the settings",
+      "reintentar": "Retry",
+      "exportar": "Export",
+      "importar": "Import",
+      "restablecer": "Reset",
+      "guardando": "Saving...",
+      "guardarCambios": "Save changes",
+      "cambiosSinGuardar": "You have unsaved changes. Click \"Save changes\" to apply them.",
+      "dialogoRestablecer": {
+        "titulo": "Reset settings?",
+        "descripcion": "This will reset all timeline settings to their default values. This action can’t be undone."
+      },
+      "cancelar": "Cancel"
+    },
+    "exitGatesEditor": {
+      "toast": {
+        "error": "Error",
+        "errorCarga": "Couldn’t load the stages",
+        "guardados": "Criteria saved",
+        "guardadosDesc": "Exit criteria for \"{etapa}\" updated",
+        "errorGuardar": "Couldn’t save the criteria"
+      },
+      "tipos": {
+        "actividad": "Activity",
+        "campo": "Field",
+        "cotizacion": "Quote"
+      },
+      "etapas": "{n, plural, one {# stage} other {# stages}}",
+      "descripcion": "Define the exit criteria for moving opportunities forward",
+      "stageManager": "Stage Manager",
+      "vacio": {
+        "titulo": "No stages configured",
+        "descripcion": "Open the Stage Manager to create stages in your pipeline",
+        "abrir": "Open Stage Manager"
+      },
+      "sinProbabilidad": "N/A",
+      "criterios": "{n, plural, one {# criterion} other {# criteria}}",
+      "sinCriterios": "No criteria",
+      "minActividades": "Min. {n} activity(ies)",
+      "dialogo": {
+        "titulo": "Exit criteria - {etapa}",
+        "descripcion": "Define what must be met to move opportunities forward from this stage",
+        "tipo": "Type",
+        "minActividades": "Min. activities",
+        "campo": "Field",
+        "campoPlaceholder": "E.g.: company_name, amount...",
+        "mensaje": "Message",
+        "mensajePlaceholder": "Message to show if it isn’t met",
+        "vacio": "No criteria defined for this stage",
+        "agregar": "Add requirement"
+      },
+      "cancelar": "Cancel",
+      "guardando": "Saving...",
+      "guardarCriterios": "Save criteria"
+    },
+    "estructuraComercialManager": {
+      "pestanas": {
+        "roles": "Roles",
+        "equipos": "Teams",
+        "territorios": "Territories"
+      }
+    },
+    "estructuraComercialShared": {
+      "inactivo": "Inactive",
+      "cancelar": "Cancel",
+      "eliminar": "Delete"
+    },
+    "roleDialog": {
+      "tituloEditar": "Edit Role",
+      "tituloNuevo": "New Role",
+      "descripcionEditar": "Edit the sales role details",
+      "descripcionNueva": "Create a new sales role",
+      "codigo": "Code *",
+      "codigoPlaceholder": "e.g. SDR, AE, SM",
+      "nombre": "Name *",
+      "nombrePlaceholder": "e.g. Sales Development Rep",
+      "area": "Area *",
+      "areaPlaceholder": "e.g. Inside Sales, Field Sales",
+      "cargoHrm": "HRM position (optional)",
+      "sinCargo": "No mapped position",
+      "cargoHrmAyuda": "Link this sales role to a position in the HRM module. By default, the \"Vendedor\" role is already mapped to the \"Vendedor\" position.",
+      "responsabilidades": "Responsibilities",
+      "responsabilidadesPlaceholder": "One responsibility per line",
+      "activo": "Active",
+      "cancelar": "Cancel",
+      "guardando": "Saving...",
+      "guardar": "Save"
+    },
+    "rolesSection": {
+      "contador": "{n, plural, one {# role} other {# roles}}",
+      "subtitulo": "Define sales roles with area and responsibilities",
+      "nuevo": "New Role",
+      "vacio": {
+        "titulo": "No roles configured",
+        "ayuda": "Create roles such as SDR, Account Executive, Sales Manager, etc."
+      },
+      "area": "Area: {area}",
+      "cargoHrm": "· HRM position: <c>{cargo}</c>",
+      "responsabilidades": "· {n, plural, one {# responsibility} other {# responsibilities}}",
+      "eliminar": {
+        "titulo": "Delete role?",
+        "descripcion": "This will permanently delete the role \"{nombre}\"."
+      }
+    },
+    "teamCard": {
+      "contadorMiembros": "{n, plural, one {# member} other {# members}}",
+      "territorio": "Territory: {nombre}",
+      "sinMiembros": "No members. Add the first one.",
+      "columnas": {
+        "miembro": "Member",
+        "rol": "Role",
+        "territorio": "Territory",
+        "cuota": "Quota"
+      },
+      "anadirMiembro": "Add member"
+    },
+    "teamDialog": {
+      "tituloEditar": "Edit Team",
+      "tituloNuevo": "New Team",
+      "descripcionEditar": "Edit the team details",
+      "descripcionNueva": "Create a new sales team",
+      "nombre": "Name *",
+      "nombrePlaceholder": "e.g. North Team, Enterprise Sales",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "Optional description",
+      "activo": "Active",
+      "territorio": "Territory (optional)",
+      "sinTerritorio": "No territory",
+      "territorioAyuda": "Assign a territory to the team. Members inherit this territory unless they have their own.",
+      "cancelar": "Cancel",
+      "guardando": "Saving...",
+      "guardar": "Save"
+    },
+    "teamMemberDialog": {
+      "titulo": "Add member",
+      "descripcion": "Add a user to the team with their role and quota",
+      "miembro": "Organization member *",
+      "miembroPlaceholder": "Select a member...",
+      "sinMiembros": "There are no active members in the organization.",
+      "rol": "Sales role",
+      "sinRol": "No role",
+      "territorio": "Territory (optional)",
+      "heredaEquipo": "Inherited from team",
+      "territorioAyuda": "If you assign a specific territory, it overrides the team’s.",
+      "cuota": "Quota",
+      "moneda": "Currency",
+      "cancelar": "Cancel",
+      "anadiendo": "Adding...",
+      "anadir": "Add"
+    },
+    "teamsSection": {
+      "contador": "{n, plural, one {# team} other {# teams}}",
+      "subtitulo": "Manage sales teams and their members",
+      "nuevo": "New Team",
+      "vacio": {
+        "titulo": "No teams configured",
+        "ayuda": "Create teams to group salespeople by product line or region"
+      },
+      "eliminar": {
+        "titulo": "Delete team?",
+        "descripcion": "This will delete the team \"{nombre}\" and all its members."
+      }
+    },
+    "territoriesSection": {
+      "contador": "{n, plural, one {# territory} other {# territories}}",
+      "subtitulo": "Define territories with criteria (city, vertical, size)",
+      "nuevo": "New Territory",
+      "vacio": {
+        "titulo": "No territories configured",
+        "ayuda": "Create territories to assign regions or segments to your teams"
+      },
+      "eliminar": {
+        "titulo": "Delete territory?",
+        "descripcion": "This will permanently delete the territory \"{nombre}\"."
+      },
+      "criterios": {
+        "ninguno": "No criteria",
+        "resumen": "{n, plural, one {# criterion} other {# criteria}}: {claves}"
+      }
+    },
+    "territoryDialog": {
+      "tituloEditar": "Edit Territory",
+      "tituloNuevo": "New Territory",
+      "descripcionEditar": "Edit the territory details",
+      "descripcionNueva": "Create a new territory with JSON criteria",
+      "nombre": "Name *",
+      "nombrePlaceholder": "e.g. Bogotá, Andean, Enterprise",
+      "criterios": "Criteria (JSON)",
+      "criteriosAyuda": "Define assignment rules in JSON format (e.g. cities, vertical, size)",
+      "activo": "Active",
+      "cancelar": "Cancel",
+      "guardando": "Saving...",
+      "guardar": "Save"
+    },
+    "useRoles": {
+      "error": "Error",
+      "validacion": "Validation",
+      "errores": {
+        "cargar": "Could not load the roles",
+        "obligatorios": "Code, name and area are required",
+        "guardar": "Could not save the role",
+        "eliminar": "Could not delete the role"
+      },
+      "exito": {
+        "actualizado": "Role updated",
+        "actualizadoDetalle": "Changes saved successfully",
+        "creado": "Role created",
+        "creadoDetalle": "The role was created successfully",
+        "eliminado": "Role deleted",
+        "eliminadoDetalle": "The role was deleted successfully"
+      }
+    },
+    "useTeams": {
+      "error": "Error",
+      "validacion": "Validation",
+      "errores": {
+        "cargar": "Could not load the teams",
+        "nombreObligatorio": "Name is required",
+        "guardar": "Could not save the team",
+        "eliminar": "Could not delete the team",
+        "seleccionaMiembro": "Select a member",
+        "anadirMiembro": "Could not add the member",
+        "removerMiembro": "Could not remove the member"
+      },
+      "exito": {
+        "actualizado": "Team updated",
+        "actualizadoDetalle": "Changes saved successfully",
+        "creado": "Team created",
+        "creadoDetalle": "The team was created successfully",
+        "eliminado": "Team deleted",
+        "eliminadoDetalle": "The team was deleted successfully",
+        "miembroAnadido": "Member added",
+        "miembroAnadidoDetalle": "The member was added to the team",
+        "miembroRemovido": "Member removed",
+        "miembroRemovidoDetalle": "The member was removed from the team"
+      }
+    },
+    "useTerritories": {
+      "error": "Error",
+      "validacion": "Validation",
+      "errores": {
+        "cargar": "Could not load the territories",
+        "nombreObligatorio": "Name is required",
+        "jsonInvalido": "Invalid JSON in criteria",
+        "guardar": "Could not save the territory",
+        "eliminar": "Could not delete the territory"
+      },
+      "exito": {
+        "actualizado": "Territory updated",
+        "actualizadoDetalle": "Changes saved successfully",
+        "creado": "Territory created",
+        "creadoDetalle": "The territory was created successfully",
+        "eliminado": "Territory deleted",
+        "eliminadoDetalle": "The territory was deleted successfully"
+      }
+    },
+    "datosOfflinePanel": {
+      "titulo": "Offline data",
+      "soloDesktop": "This feature belongs to Go Admin Desktop. In the browser, the app always needs an internet connection.",
+      "descripcion": "Local copy of the organization’s data to read inventory, sales, finance, purchases and customers without internet. When online, it updates at startup and every 10 minutes; transactional tables keep the last {meses} months. Offline writes follow each module’s rules (the POS uses its pending sales queue).",
+      "resumen": {
+        "estado": "Status",
+        "conConexion": "Online",
+        "sinConexion": "Offline (reading local data)",
+        "ultimaReplicacion": "Last replication",
+        "filasLocales": "Local rows",
+        "filasValor": "{filas} in {replicadas}/{total} tables",
+        "tamano": "Estimated size"
+      },
+      "catalogoPos": "POS catalog: {productos} products · {clientes} customers · updated {fecha}",
+      "acciones": {
+        "sincronizando": "Syncing…",
+        "sincronizar": "Sync now",
+        "replicacionCompleta": "Full replication"
+      },
+      "sinRed": "Offline: it will update when the connection is back.",
+      "tablasConAviso": "{n, plural, one {# table with a warning} other {# tables with warnings}}",
+      "grupos": {
+        "organizacion": "Organization",
+        "catalogos": "Catalogs",
+        "inventario": "Inventory",
+        "clientes": "Customers",
+        "ventas": "Sales",
+        "compras": "Purchases",
+        "finanzas": "Finance"
+      },
+      "columnas": {
+        "entidad": "Entity",
+        "filas": "Rows",
+        "ultimaReplicacion": "Last replication",
+        "ventanaTope": "Window / cap",
+        "estado": "Status"
+      },
+      "estado": {
+        "nunca": "Never",
+        "alDia": "Up to date",
+        "pendiente": "Pending"
+      },
+      "ventanaYTope": "{meses} months · max. {max}",
+      "tope": "max. {max}",
+      "entidades": {
+        "organizations": "Organization",
+        "branches": "Branches",
+        "organization_members": "Members",
+        "profiles": "User profiles",
+        "roles": "Roles",
+        "currencies": "Currencies",
+        "organization_currencies": "Organization currencies",
+        "units": "Units",
+        "payment_methods": "Payment methods",
+        "organization_payment_methods": "Organization payment methods",
+        "municipalities": "Municipalities",
+        "tax_templates": "Tax templates",
+        "organization_taxes": "Taxes",
+        "categories": "Categories",
+        "products": "Products",
+        "product_prices": "Current prices",
+        "product_costs": "Current costs",
+        "product_images": "Product images",
+        "product_tax_relations": "Taxes per product",
+        "product_modifier_groups": "Modifier groups",
+        "product_modifiers": "Modifiers",
+        "product_suppliers": "Suppliers per product",
+        "lots": "Lots",
+        "stock_levels": "Stock",
+        "stock_movements": "Inventory movements",
+        "inventory_adjustments": "Inventory adjustments",
+        "inventory_transfers": "Transfers",
+        "suppliers": "Suppliers",
+        "customers": "Customers",
+        "customer_company_links": "Company contacts",
+        "sales": "Sales",
+        "sale_items": "Sale lines",
+        "web_orders": "Web orders",
+        "web_order_items": "Web order lines",
+        "invoice_sales": "Sales invoices",
+        "invoice_items": "Invoice lines",
+        "invoice_purchase": "Purchase invoices",
+        "purchase_orders": "Purchase orders",
+        "purchase_order_items": "Purchase order lines",
+        "payments": "Payments",
+        "accounts_receivable": "Accounts receivable",
+        "accounts_payable": "Accounts payable",
+        "cash_sessions": "Cash register sessions",
+        "cash_movements": "Cash movements",
+        "cash_counts": "Cash counts"
+      }
+    },
+    "phoneNumbersSection": {
+      "toasts": {
+        "noActualizar": "Could not update the number",
+        "error": "Error",
+        "importados": "{n, plural, one {# number imported} other {# numbers imported}}",
+        "sincronizados": "Numbers synced",
+        "webhooksConError": "Webhooks: {ok} ok · {errores} with errors",
+        "webhooksConfigurados": "Webhooks configured on {n, plural, one {# number} other {# numbers}}",
+        "noImportar": "Could not import",
+        "noGuardar": "Could not save"
+      },
+      "titulo": "Numbers",
+      "cuentaPropia": "Twilio account (own key)",
+      "cuentaPlataforma": "Twilio account (platform)",
+      "sinCuenta": "No Twilio account configured (Providers and AI tab)",
+      "avisoTrial": "Trial accounts can only call Verified Caller IDs.",
+      "importar": "Import from Twilio",
+      "vacio": {
+        "titulo": "There are no numbers in this organization yet.",
+        "ayuda": "Buy a number in Twilio (Colombia requires a regulatory bundle) and click \"Import from Twilio\"; the voice webhooks will be wired automatically."
+      },
+      "columnas": {
+        "numero": "Number",
+        "etiqueta": "Label",
+        "asignado": "Assigned to",
+        "capacidades": "Capabilities",
+        "primario": "Primary",
+        "activo": "Active"
+      },
+      "aria": {
+        "asignar": "Assign {numero}",
+        "primario": "Mark {numero} as primary",
+        "activar": "Activate {numero}"
+      },
+      "ringGroup": "Ring group (everyone)",
+      "capacidadVoz": "voice",
+      "callerId": {
+        "etiqueta": "Outbound caller ID",
+        "automatico": "Automatic (active primary number)",
+        "ayuda": "Must be a Twilio number of the organization or a Verified Caller ID."
+      },
+      "minutos": {
+        "etiqueta": "Voice minutes",
+        "ayuda": "1 minute is reserved when dialing and the rest is settled on hang-up (Credits tab)."
+      }
+    },
+    "recordingConsentSection": {
+      "toasts": {
+        "guardada": "Telephony saved",
+        "noGuardar": "Could not save",
+        "error": "Error",
+        "previewNavegador": "Preview with the browser voice",
+        "previewNavegadorAyuda": "Set up ElevenLabs in Providers and AI to hear a neural voice.",
+        "noReproducir": "Could not play"
+      },
+      "titulo": "Recording and consent",
+      "grabar": {
+        "etiqueta": "Record calls (dual-channel)",
+        "ayuda": "The customer hears the notice before connecting and it is logged in `call_consents`."
+      },
+      "consentimiento": {
+        "etiqueta": "Consent message",
+        "minimo": "minimum {n}",
+        "vozIdioma": "Voice: <b>{voz}</b> · Language: <b>{idioma}</b> (es-CO does not exist in Twilio)",
+        "detener": "Stop",
+        "escuchar": "Listen"
+      },
+      "retencion": {
+        "etiqueta": "Retention (days)",
+        "ayuda": "Deleted from Twilio and Storage when they expire (daily job)."
+      },
+      "timeout": "Ring timeout (s)",
+      "simultaneas": "Concurrent calls",
+      "guardar": "Save"
+    },
+    "myMobileSection": {
+      "toasts": {
+        "noGuardar": "Could not save",
+        "codigoEnviado": "Code sent by SMS",
+        "noEnviar": "Could not send the code",
+        "error": "Error",
+        "verificado": "Mobile phone verified",
+        "codigoIncorrecto": "Incorrect code"
+      },
+      "titulo": "My mobile phone",
+      "descripcion": "For «Call from my mobile»: Twilio calls you first and then dials the customer with the organization caller ID.",
+      "numero": "Mobile number",
+      "verificado": "Verified",
+      "enviarCodigo": "Send code",
+      "codigoSms": "SMS code",
+      "verificar": "Verify",
+      "cancelar": "Cancel",
+      "modo": {
+        "etiqueta": "Default call mode",
+        "navegador": "Browser (softphone)",
+        "celular": "My mobile phone",
+        "celularSinVerificar": "My mobile phone (verify your number)"
+      },
+      "miCallerId": {
+        "etiqueta": "My caller ID (optional)",
+        "organizacion": "The organization one"
+      }
+    },
+    "useTelephonySettings": {
+      "errorCargar": "Error while loading"
+    },
+    "telefoniaTab": {
+      "cargando": "Loading telephony…",
+      "errorCargar": "Could not load the telephony settings",
+      "reintentar": "Retry",
+      "faltaApiKey": "API Key and Secret",
+      "llavesPropias": {
+        "titulo": "The browser softphone is disabled: {faltantes} missing from your organization telephony credentials.",
+        "ayuda": "Complete them in <enlace>Providers and AI › Telephony</enlace>."
+      },
+      "plataforma": {
+        "titulo": "The browser softphone is not enabled for your organization yet.",
+        "ayuda": "Telephony is enabled by platform support; you do not need to configure anything. If you prefer to use your own telephony account, you can add it in <enlace>Providers and AI › Telephony</enlace>."
+      }
+    },
+    "addDomainDialog": {
+      "titulo": "Add sending domain",
+      "descripcion": "Recommended: a dedicated subdomain (e.g. <code>crm.yourcompany.com</code>). You will need access to the DNS.",
+      "dominio": {
+        "etiqueta": "Domain *",
+        "placeholder": "crm.yourcompany.com",
+        "invalido": "Invalid domain"
+      },
+      "remitente": {
+        "nombre": "Sender name *",
+        "nombrePlaceholder": "ACME sales team",
+        "usuario": "Sender user *",
+        "dominioGenerico": "domain"
+      },
+      "responderA": {
+        "etiqueta": "Reply to (optional)",
+        "placeholder": "Default: the salesperson email"
+      },
+      "region": "Region",
+      "regiones": {
+        "us-east-1": "United States (us-east-1)",
+        "sa-east-1": "South America (sa-east-1)",
+        "eu-west-1": "Europe (eu-west-1)",
+        "ap-northeast-1": "Asia (ap-northeast-1)"
+      },
+      "opciones": {
+        "recibir": "Receive replies in the CRM (MX)",
+        "aperturas": "Open tracking (marketing)",
+        "clics": "Click tracking (marketing)"
+      },
+      "cancelar": "Cancel",
+      "crear": "Create domain"
+    },
+    "dnsRecordsTable": {
+      "copiar": "Copy {campo}",
+      "campoNombre": "name {registro}",
+      "campoValor": "value {registro}",
+      "estados": {
+        "verificado": "Verified",
+        "fallo": "Failed",
+        "recomendado": "Recommended",
+        "pendiente": "pending"
+      },
+      "instrucciones": "Publish these records in the domain DNS and click “Verify”. Propagation can take up to 72 h.",
+      "verificar": "Verify",
+      "columnas": {
+        "registro": "Record",
+        "tipo": "Type",
+        "nombre": "Name",
+        "valor": "Value",
+        "prioridad": "Priority",
+        "estado": "Status"
+      },
+      "vacio": "No records. Click “Verify” to sync with the provider."
+    },
+    "domainSendersForm": {
+      "nombre": "Sender name",
+      "correo": "Sender email",
+      "correoInvalido": "Must belong to @{dominio}",
+      "responderA": "Reply to",
+      "responderAPlaceholder": "Salesperson email",
+      "recibir": "Receive replies (crm+id@{dominio})",
+      "dmarc": "DMARC published",
+      "aperturas": "Opens (marketing/sequences only)",
+      "clics": "Clicks (marketing/sequences only)",
+      "guardar": "Save sender"
+    },
+    "emailDomainsCard": {
+      "titulo": "Sending domains",
+      "descripcion": "Each organization sends from its own verified domain. Without a verified domain, the global sender is used according to the policy below.",
+      "anadir": "Add domain",
+      "vacio": {
+        "admin": "There are no domains yet. Add one to send from your brand.",
+        "lector": "There are no domains yet. Ask an administrator to add one."
+      },
+      "estados": {
+        "verified": "Verified",
+        "verifying": "Verifying",
+        "pending": "DNS pending",
+        "failed": "Failed"
+      },
+      "porDefecto": "Default",
+      "apiKeyIlegible": {
+        "etiqueta": "Unreadable API key — regenerate",
+        "ayuda": "The saved credential cannot be decrypted (the encryption secret changed). Regenerate it."
+      },
+      "sinApiKey": "No own API key",
+      "eliminarAria": "Delete {dominio}",
+      "verificadoEl": "Verified on {fecha} · region {region}",
+      "eliminar": {
+        "titulo": "Delete domain",
+        "descripcion": "{dominio} will be deleted in Resend (domain and API key) and in the CRM. Emails already sent keep their history.",
+        "confirmar": "Delete"
+      }
+    },
+    "emailPolicyCard": {
+      "titulo": "Sending policy",
+      "remitenteGlobal": "Global sender available: <code>{remitente}</code>.",
+      "sinRemitenteGlobal": "No global sender is configured on the platform: without a verified domain, sending will fail.",
+      "aria": "When there is no verified domain",
+      "politicas": {
+        "global_with_notice": {
+          "etiqueta": "Use the global sender with a notice",
+          "ayuda": "Sent as “Your company via GoAdmin” and includes a note in the footer."
+        },
+        "global_silent": {
+          "etiqueta": "Use the global sender without a notice",
+          "ayuda": "Same global sender, with no note in the footer."
+        },
+        "block": {
+          "etiqueta": "Block sending",
+          "ayuda": "Requires your own verified domain; sending fails with NO_SENDER."
+        }
+      },
+      "tracking": {
+        "etiqueta": "Open/click tracking in transactional emails",
+        "ayuda": "By default only marketing and sequences are tracked (better deliverability)."
+      },
+      "guardar": "Save policy"
+    },
+    "signatureEditor": {
+      "titulo": "My signature",
+      "descripcion": "It is added automatically with the “Signature” block. If you leave it empty, name, title, company, phone and email are used.",
+      "contenido": "Content",
+      "placeholder": "Ana Gómez · Sales executive · {variable}",
+      "vistaPrevia": "Preview (sample data)",
+      "sinFirma": "No custom signature: the automatic signature will be used.",
+      "guardar": "Save signature"
+    },
+    "useEmailSettings": {
+      "errorCargar": "Could not load the email settings",
+      "error": "Error",
+      "toasts": {
+        "dominioCreado": "Domain created. Publish the DNS records and verify.",
+        "porDefecto": "Default sender updated",
+        "dominioActualizado": "Domain updated",
+        "dominioEliminado": "Domain deleted",
+        "politicaGuardada": "Policy saved",
+        "firmaGuardada": "Signature saved"
+      }
+    },
+    "emailTab": {
+      "cargando": "Loading email settings",
+      "errorCargar": "Could not load the email settings",
+      "sinDatos": "No data",
+      "reintentar": "Retry",
+      "soloAdmins": "Only administrators can manage domains and the sending policy. You can edit your signature."
+    },
+    "hrmConfigPanel": {
+      "error": "Error",
+      "errorCargar": "Could not load the settings",
+      "guardada": "Settings saved successfully",
+      "errorGuardar": "Could not save the settings",
+      "monedaBaseEstablecida": "{moneda} set as the base currency",
+      "errorMonedaBase": "Could not set the base currency",
+      "monedaAgregada": "{moneda} added",
+      "errorAgregar": "Could not add the currency",
+      "monedaEliminada": "{moneda} removed",
+      "errorEliminar": "Could not remove the currency",
+      "configuracionGeneral": "General Settings",
+      "reglasPais": {
+        "titulo": "Country Rules",
+        "descripcion": "Review the legal payroll rules by country (minimum wage, contributions, etc.)",
+        "ver": "View Rules"
+      },
+      "monedas": "Currencies",
+      "sobreMonedas": {
+        "titulo": "About Currencies",
+        "base": "The <b>base currency</b> is used for payroll calculations and reports.",
+        "multiples": "You can add multiple currencies for international operations.",
+        "tasas": "Exchange rates can be set manually or updated automatically.",
+        "noEliminarBase": "You cannot remove the base currency; switch to another one first."
+      }
+    },
+    "asistenteConfigPanel": {
+      "soloOrganizacionActiva": "Changes apply only to your active organization, not to your other organizations.",
+      "seleccionaOrganizacion": "Select an organization to view its settings.",
+      "niveles": {
+        "off": {
+          "etiqueta": "Guidance only",
+          "descripcion": "Answers questions and explains the system. Does not enable read or write actions."
+        },
+        "read": {
+          "etiqueta": "Query data",
+          "descripcion": "In addition to guidance, lets it query data with the available tools. It does not create or modify records."
+        },
+        "write_low": {
+          "etiqueta": "Create catalog records",
+          "descripcion": "Lets it propose creating customers, suppliers, categories, and products. Every write requires explicit confirmation."
+        },
+        "write_full": {
+          "etiqueta": "Full operation (default)",
+          "descripcion": "Lets it use all available tools, including those for customers, suppliers, products, categories, and invoices. User permissions, enabled modules, and explicit confirmation before writing still apply."
+        }
+      },
+      "errorConsultar": "Could not retrieve the settings.",
+      "errorConexion": "Could not connect.",
+      "errorGuardar": "Could not save the settings.",
+      "guardada": "Settings saved for this organization. They will apply to the assistant’s next messages.",
+      "cargando": "Loading settings…",
+      "reintentar": "Retry",
+      "titulo": "What the assistant can do",
+      "descripcion": "GO Assistant has full operation (write_full) by default for every organization, including new ones, with no prior activation. An administrator can restrict their organization’s level. Each user’s permissions, the subscribed modules, the enabled tools, and confirmations still apply.",
+      "soloAdministrador": "Only an administrator of this organization can change these settings.",
+      "nivelCapacidad": "Capability level",
+      "notaWriteLow": "Choosing write_low restricts the assistant to the catalog, with no invoices, payments, or accounting adjustments. No level grants users additional permissions or removes confirmations.",
+      "guardando": "Saving…",
+      "guardarNivel": "Save level",
+      "confirmar": {
+        "titulo": "Change this organization’s level?",
+        "descripcion": "New level: {etiqueta} ({nivel}). {descripcion} Other organizations and voice, model, or tool preferences will not be changed. Proposals will still be subject to permissions and confirmation.",
+        "cancelar": "Cancel",
+        "aceptar": "Confirm change"
+      }
+    },
+    "parkingConfigPanel": {
+      "error": "Error",
+      "errorCargar": "Could not load the settings",
+      "guardada": {
+        "titulo": "Settings saved",
+        "descripcion": "Your changes were saved successfully"
+      },
+      "errorGuardar": "Could not save the settings",
+      "restablecida": {
+        "titulo": "Settings reset",
+        "descripcion": "Default values have been restored"
+      },
+      "errorRestablecer": "Could not reset the settings",
+      "sinConfiguracion": "Could not load the parking lot settings.",
+      "cambiosSinGuardar": "You have unsaved changes. Remember to save before leaving.",
+      "dialogoRestablecer": {
+        "titulo": "Reset settings?",
+        "descripcion": "This will restore every value to the default settings. Any current customization will be lost.",
+        "cancelar": "Cancel",
+        "confirmar": "Reset"
+      }
+    },
+    "referralsProgramCard": {
+      "estadoCambiado": {
+        "contacted": "“{nombre}”: contacted",
+        "qualified": "“{nombre}”: qualified",
+        "rejected": "“{nombre}”: rejected"
+      },
+      "errorEstado": "Could not change the status",
+      "errorDesconocido": "Unknown error",
+      "cargando": "Loading referral program",
+      "titulo": "Referral Program",
+      "subtitulo": "Set up the reward; referrals are managed on their own page",
+      "actualizar": "Refresh",
+      "programa": "“{nombre}” program",
+      "crearPrograma": "Create the program",
+      "programaGuardado": "Program saved",
+      "guardarConfiguracion": "Save settings",
+      "variosProgramas": "There are {n} programs; the most recent one is edited here. The others are in <enlace>Referrals → Programs</enlace>.",
+      "registrados": "Registered referrals ({n})",
+      "irAReferidos": "Go to Referrals",
+      "vacio": "No referrals yet. Register them from the Referrals page.",
+      "listaAria": "Registered referrals",
+      "referidoPor": "Referred by: {nombre}",
+      "clienteNoDisponible": "customer unavailable",
+      "recompensaPagada": "Reward recorded as paid",
+      "acciones": {
+        "contacted": "Mark as contacted",
+        "qualified": "Mark as qualified",
+        "rejected": "Reject"
+      }
+    },
+    "integracionesConfigPanel": {
+      "error": "Error",
+      "errorCargar": "Could not load the settings",
+      "guardada": {
+        "titulo": "Settings saved",
+        "descripcion": "Your changes were applied successfully"
+      },
+      "errorGuardar": "Could not save the settings",
+      "restaurada": {
+        "titulo": "Settings restored",
+        "descripcion": "Default values have been applied"
+      },
+      "errorRestaurar": "Could not restore the settings",
+      "dialogoRestaurar": {
+        "titulo": "Restore default settings?",
+        "descripcion": "This will overwrite all current settings with the system defaults. Unsaved changes will be lost.",
+        "cancelar": "Cancel",
+        "confirmar": "Restore Defaults"
+      }
+    },
+    "notificacionesConfigPanel": {
+      "error": "Error",
+      "errorCargar": "Could not load the preferences.",
+      "errorActualizar": "Could not update.",
+      "silenciado": {
+        "titulo": "Muted",
+        "descripcion": "All notifications muted."
+      },
+      "activado": {
+        "titulo": "Enabled",
+        "descripcion": "Notifications turned back on."
+      },
+      "errorCambiar": "Could not change it.",
+      "confirmarRestablecer": "Reset all preferences to their default values?",
+      "restablecido": {
+        "titulo": "Reset",
+        "descripcion": "Preferences reset."
+      },
+      "errorRestablecer": "Could not reset.",
+      "sinPreferencias": "No preferences configured",
+      "porCanal": "Settings by channel"
+    },
+    "gymConfigPanel": {
+      "errorCargar": "Error loading the settings",
+      "guardada": "Settings saved successfully",
+      "errorGuardar": "Error saving the settings",
+      "restablecida": "Settings reset to default values",
+      "errorRestablecer": "Error resetting the settings",
+      "dialogoRestablecer": {
+        "titulo": "Reset Settings",
+        "descripcion": "Are you sure you want to reset all settings to their default values? This action cannot be undone.",
+        "cancelar": "Cancel",
+        "confirmar": "Reset"
+      }
+    },
+    "pmsConfigPanel": {
+      "error": "Error",
+      "errorCargar": "Could not load the settings",
+      "actualizado": {
+        "titulo": "Refreshed",
+        "descripcion": "The settings have been reloaded"
+      },
+      "guardado": {
+        "titulo": "Saved",
+        "descripcion": "The settings have been saved successfully"
+      },
+      "errorGuardar": "Could not save the settings",
+      "guardando": "Saving...",
+      "guardar": "Save"
+    },
+    "calendarioConfigPanel": {
+      "guardada": {
+        "titulo": "Settings saved",
+        "descripcion": "Your changes were saved successfully."
+      },
+      "error": "Error",
+      "errorGuardar": "Could not save the settings.",
+      "restaurada": {
+        "titulo": "Settings restored",
+        "descripcion": "Default values have been restored. Remember to save your changes."
+      }
+    },
+    "proveedoresTab": {
+      "guardada": "Settings saved",
+      "clavePropiaGuardada": "Your own key was saved. It will be used instead of the platform key.",
+      "credencialesActualizadas": "Credentials updated.",
+      "errorGuardar": "Could not save",
+      "error": "Error",
+      "cargando": "Loading providers",
+      "errorCargar": "Could not load the settings",
+      "reintentar": "Retry",
+      "titulo": "Providers and AI",
+      "descripcion": "Each organization can use its own keys or the platform keys. Keys are stored on the server and are never shown again.",
+      "soloLectura": "Read only (administrators)",
+      "recargar": "Reload",
+      "categorias": {
+        "llm": "Language model (LLM)",
+        "analysis": "Call analysis",
+        "stt": "Transcription (STT)",
+        "tts": "Synthetic voice (TTS)",
+        "voice": "Telephony (voice)",
+        "sms": "SMS",
+        "email": "Email",
+        "whatsapp": "WhatsApp"
+      },
+      "ayudaCategoria": {
+        "llm": "AI writing, classification, and the brain of the voice agent.",
+        "analysis": "Summary, sentiment, and next steps for each recorded call.",
+        "stt": "Transcription of recordings. ElevenLabs Scribe v2 is the primary; Gemini is the fallback.",
+        "tts": "Synthetic voice of the AI agent (cloned voice of the salesperson in F6).",
+        "voice": "Calls from the browser and the mobile phone. Uses the platform account by default.",
+        "sms": "SMS as a secondary channel for sequences and reminders.",
+        "email": "Transactional sending and campaigns; the domain is verified per organization (F7).",
+        "whatsapp": "Primary channel Meta Cloud API; Twilio as an alternative (F16)."
+      }
+    },
+    "providerCard": {
+      "estado": {
+        "propia": "Own key",
+        "plataforma": "Platform key",
+        "sinConfigurar": "Not configured"
+      },
+      "error": "Error",
+      "activarProveedor": "Enable {proveedor}",
+      "activo": "Active",
+      "ajustes": {
+        "conversation_model": "Conversation model",
+        "cheap_model": "Task model",
+        "monthly_budget_usd": "Monthly budget (USD)",
+        "model": "Model",
+        "model_id": "Model",
+        "language_code": "Language",
+        "diarize": "Diarization",
+        "use_master_account": "Use the platform account",
+        "recording_channels": "Recording channels",
+        "consent_language": "Recording notice language",
+        "consent_voice": "Notice voice",
+        "tracking_marketing_only": "Tracking in marketing only"
+      },
+      "clavesGuardadas": "Saved keys:",
+      "soloAdministradores": "Administrators only",
+      "cambiarClave": "Change key",
+      "usarMiClave": "Use my key",
+      "probarConexion": "Test connection",
+      "guardarAjustes": "Save settings",
+      "latencia": "({ms} ms)",
+      "latenciaFuente": "({ms} ms, {fuente})",
+      "fuente": {
+        "propia": "own key",
+        "plataforma": "platform key"
+      }
+    },
+    "providerCredentialForm": {
+      "campos": {
+        "TWILIO_PHONE_NUMBER": "Number (E.164)",
+        "META_ACCESS_TOKEN": "Access token (system)",
+        "META_APP_SECRET": "App secret (webhook signature)"
+      },
+      "faltanObligatorios": "Required fields are missing: {campos}",
+      "sinCambios": "There are no changes to save",
+      "errorGuardar": "Could not save",
+      "titulo": "{proveedor} credentials",
+      "descripcion": "Keys are stored on the server and are never shown again. Leave a field empty to keep the current key.",
+      "sinCredenciales": "This provider does not require credentials.",
+      "noBorrar": "Keep",
+      "borrar": "Delete",
+      "placeholderGuardada": "•••••••••••• (saved)",
+      "pista": {
+        "seEliminara": "It will be deleted when you save.",
+        "yaGuardada": "A key is already saved. Enter a new one to replace it.",
+        "sinClavePropia": "No key of your own: the platform key will be used if available."
+      },
+      "cancelar": "Cancel",
+      "guardar": "Save"
+    },
+    "useProviderConfigs": {
+      "respuestaInvalida": "Invalid response ({status})",
+      "errorEstado": "Error {status}",
+      "errorDesconocido": "Unknown error",
+      "sinDetalle": "No details"
     }
   },
   "chatHilo": {

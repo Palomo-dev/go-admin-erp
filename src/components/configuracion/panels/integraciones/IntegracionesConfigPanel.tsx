@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -29,6 +30,7 @@ import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuar
 export function IntegracionesConfigPanel() {
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const t = useTranslations('configuracionTextos.integracionesConfigPanel');
 
   const [settings, setSettings] = useState<IntegrationSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<IntegrationSettings | null>(null);
@@ -54,12 +56,12 @@ export function IntegracionesConfigPanel() {
       setStats(statsData);
     } catch (error) {
       console.error('Error loading configuration:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'No se pudo cargar la configuración' });
+      toast({ variant: 'destructive', title: t('error'), description: t('errorCargar') });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, toast, t]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -73,9 +75,9 @@ export function IntegracionesConfigPanel() {
       const success = await integrationsService.updateIntegrationSettings(organization.id, settings);
       if (success) {
         setOriginalSettings(settings);
-        toast({ title: 'Configuración guardada', description: 'Los cambios se han aplicado correctamente' });
+        toast({ title: t('guardada.titulo'), description: t('guardada.descripcion') });
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo guardar la configuración' });
+        toast({ variant: 'destructive', title: t('error'), description: t('errorGuardar') });
       }
     } finally {
       setSaving(false);
@@ -95,10 +97,10 @@ export function IntegracionesConfigPanel() {
     try {
       const success = await integrationsService.resetIntegrationSettings(organization.id);
       if (success) {
-        toast({ title: 'Configuración restaurada', description: 'Se han aplicado los valores por defecto' });
+        toast({ title: t('restaurada.titulo'), description: t('restaurada.descripcion') });
         loadData();
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: 'No se pudo restaurar la configuración' });
+        toast({ variant: 'destructive', title: t('error'), description: t('errorRestaurar') });
       }
     } finally {
       setResetDialogOpen(false);
@@ -143,14 +145,14 @@ export function IntegracionesConfigPanel() {
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent className="dark:bg-gray-900 dark:border-gray-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">¿Restaurar configuración por defecto?</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-white">{t('dialogoRestaurar.titulo')}</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción sobrescribirá toda la configuración actual con los valores predeterminados del sistema. Los cambios no guardados se perderán.
+              {t('dialogoRestaurar.descripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="dark:border-gray-700 dark:text-gray-300">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReset} className="bg-orange-600 hover:bg-orange-700 text-white">Restaurar Defaults</AlertDialogAction>
+            <AlertDialogCancel className="dark:border-gray-700 dark:text-gray-300">{t('dialogoRestaurar.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReset} className="bg-orange-600 hover:bg-orange-700 text-white">{t('dialogoRestaurar.confirmar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

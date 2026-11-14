@@ -285,6 +285,16 @@ function analizar(archivo: string, codigo: string): { usos: Uso[]; dinamicas: Di
       const partes = e.elements.map((el) => valoresDe(el, new Set(vistos)));
       return partes.every(Boolean) ? (partes as string[][]).flat() : null;
     }
+    // `item.label` con `item` sacado de un arreglo constante de objetos literales (`LISTA.map((item) => …)`, `LISTA.find(…)`).
+    if (ts.isPropertyAccessExpression(e)) {
+      const objetos = elementos(e.expression, vistos);
+      if (!objetos?.length) return null;
+      const partes = objetos.map((o) => {
+        const prop = o.properties.find((x) => ts.isPropertyAssignment(x) && x.name.getText() === e.name.text);
+        return prop && ts.isPropertyAssignment(prop) ? valoresDe(prop.initializer, new Set(vistos)) : null;
+      });
+      return partes.every(Boolean) ? (partes as string[][]).flat() : null;
+    }
     if (!ts.isIdentifier(e)) return null;
     const filtro = filtros.get(e.text);
     if (filtro) {
@@ -338,6 +348,42 @@ function analizar(archivo: string, codigo: string): { usos: Uso[]; dinamicas: Di
       }
     }
     return null;
+  };
+
+  /** Objetos literales que puede valer una expresión que es un elemento de un arreglo constante del archivo. */
+  const elementos = (expr: ts.Expression, vistos: Set<ts.Node>): ts.ObjectLiteralExpression[] | null => {
+    const e = sinEnvoltorio(expr);
+    if (ts.isObjectLiteralExpression(e)) return [e];
+    if (ts.isConditionalExpression(e)) {
+      const a = elementos(e.whenTrue, vistos);
+      const b = elementos(e.whenFalse, vistos);
+      return a && b ? [...a, ...b] : null;
+    }
+    if (ts.isCallExpression(e) && ts.isPropertyAccessExpression(e.expression) && e.expression.name.text === 'find') return deArreglo(e.expression.expression, vistos);
+    if (!ts.isIdentifier(e)) return null;
+    const decl = resolver(e, e.text)?.nodo;
+    if (!decl || vistos.has(decl)) return null;
+    if (ts.isVariableDeclaration(decl) && ts.isIdentifier(decl.name) && decl.initializer && (decl.parent.flags & ts.NodeFlags.Const) !== 0) {
+      return elementos(decl.initializer, new Set(vistos).add(decl));
+    }
+    if (ts.isParameter(decl) && decl.parent.parameters[0] === decl) {
+      const llamada = decl.parent.parent;
+      if (ts.isCallExpression(llamada) && llamada.arguments[0] === decl.parent && ts.isPropertyAccessExpression(llamada.expression) && ITERADORES.has(llamada.expression.name.text)) {
+        return deArreglo(llamada.expression.expression, new Set(vistos).add(decl));
+      }
+    }
+    return null;
+  };
+  const deArreglo = (expr: ts.Expression, vistos: Set<ts.Node>): ts.ObjectLiteralExpression[] | null => {
+    const e = sinEnvoltorio(expr);
+    if (ts.isArrayLiteralExpression(e)) {
+      const partes = e.elements.map((el) => elementos(el, vistos));
+      return partes.every(Boolean) ? (partes as ts.ObjectLiteralExpression[][]).flat() : null;
+    }
+    if (!ts.isIdentifier(e)) return null;
+    const decl = resolver(e, e.text)?.nodo;
+    if (!decl || vistos.has(decl) || !ts.isVariableDeclaration(decl) || !decl.initializer || (decl.parent.flags & ts.NodeFlags.Const) === 0) return null;
+    return deArreglo(decl.initializer, new Set(vistos).add(decl));
   };
 
   /** `t.has(x) ? t(x) : respaldo` o `x === 'otro' ? … : t(x)`: la llamada no puede pedir una clave que falte. */
@@ -440,6 +486,7 @@ describe('el analizador de claves', () => {
   const codigo = `
     import { useTranslations } from 'next-intl';
     const PASOS = ['paso1', 'paso2'] as const;
+    const NIVELES = [{ v: 'a', etiqueta: 'niveles.a' }, { v: 'b', etiqueta: 'niveles.b' }];
     function Prop({ t }: { t: (k: string) => string }) { return t('deProps'); }
     export function A({ x, y }: { x: string; y: string }) {
       const tc = useTranslations('ns.a');
@@ -448,7 +495,7 @@ describe('el analizador de claves', () => {
       return [
         tc('literal'), tc.rich('rica'), tc(x ? 'si' : 'no'), tc(\`tonos.\${x}\`), tc.has(y) ? tc(y) : y,
         PASOS.map((p) => tc(p)), tc(y === 'never' ? 'never' : \`d\${y}\`), cupo(1, 'cupo.uno'), cupo(2, 'cupo.dos'),
-        tc.has('noSeExige'), tc(x), etiqueta, tc.raw('grupo'),
+        tc.has('noSeExige'), tc(x), etiqueta, tc.raw('grupo'), NIVELES.map((n) => tc(n.etiqueta)),
       ];
     }`;
   const { usos, dinamicas } = analizar('src/prueba.tsx', codigo);
@@ -458,6 +505,7 @@ describe('el analizador de claves', () => {
       [
         'ns.a:literal:texto', 'ns.a:rica:texto', 'ns.a:si:texto', 'ns.a:no:texto', 'ns.a:tonos.:prefijo', 'ns.a:paso1:texto',
         'ns.a:paso2:texto', 'ns.a:never:texto', 'ns.a:cupo.uno:texto', 'ns.a:cupo.dos:texto', 'ns.a:grupo:raw',
+        'ns.a:niveles.a:texto', 'ns.a:niveles.b:texto',
       ].sort(),
     );
   });
@@ -469,7 +517,7 @@ describe('el analizador de claves', () => {
 
 describe('claves de next-intl de Chat y Configuración', () => {
   test('el verificador encuentra los traductores (no está mirando a la nada)', () => {
-    expect(ANALISIS.reduce((n, a) => n + a.usos.length, 0)).toBeGreaterThan(500);
+    expect(ANALISIS.reduce((n, a) => n + a.usos.length, 0)).toBeGreaterThan(2000);
   });
 
   test.each(IDIOMAS)('%s: toda clave literal existe y es un texto (no un grupo)', (idioma) => {

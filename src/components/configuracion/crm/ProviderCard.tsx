@@ -7,6 +7,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle2, KeyRound, Loader2, PlugZap, XCircle } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import type { ProviderConfigSafe } from '@/lib/services/providerRegistry';
-import { PROVIDER_LABELS, SETTING_FIELDS, type ProviderCategory } from '@/lib/crm/providerCatalog';
+import { PROVIDER_LABELS, SETTING_FIELDS, type ProviderCategory, type SettingField } from '@/lib/crm/providerCatalog';
 import { ProviderCredentialForm } from './ProviderCredentialForm';
 import type { PutProviderInput, TestResult } from './useProviderConfigs';
 
@@ -28,13 +29,17 @@ export interface ProviderCardProps {
   onTest: (category: ProviderCategory, provider: string) => Promise<TestResult>;
 }
 
-function statusBadge(item: ProviderConfigSafe) {
-  if (item.configured) return <Badge variant="success">Clave propia</Badge>;
-  if (item.platform_available) return <Badge variant="secondary">Clave de la plataforma</Badge>;
-  return <Badge variant="warning">Sin configurar</Badge>;
+function StatusBadge({ item }: { item: ProviderConfigSafe }) {
+  const t = useTranslations('configuracionTextos.providerCard');
+  if (item.configured) return <Badge variant="success">{t('estado.propia')}</Badge>;
+  if (item.platform_available) return <Badge variant="secondary">{t('estado.plataforma')}</Badge>;
+  return <Badge variant="warning">{t('estado.sinConfigurar')}</Badge>;
 }
 
 export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProps) {
+  const t = useTranslations('configuracionTextos.providerCard');
+  // La etiqueta de cada ajuste se traduce aquí; la del catálogo queda de respaldo.
+  const etiquetaAjuste = (f: SettingField) => (t.has(`ajustes.${f.key}`) ? t(`ajustes.${f.key}`) : f.label);
   const [credOpen, setCredOpen] = useState(false);
   const [testing, setTesting] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -72,7 +77,7 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
     try {
       setResult(await onTest(item.category, item.provider));
     } catch (err) {
-      setResult({ ok: false, detail: err instanceof Error ? err.message : 'Error' });
+      setResult({ ok: false, detail: err instanceof Error ? err.message : t('error') });
     } finally {
       setTesting(false);
     }
@@ -88,17 +93,17 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
             {PROVIDER_LABELS[item.provider] ?? item.provider}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {statusBadge(item)}
+            <StatusBadge item={item} />
             <div className="flex items-center gap-1.5">
               <Switch
                 id={`active-${item.category}-${item.provider}`}
                 checked={item.is_active}
                 onCheckedChange={toggleActive}
                 disabled={disabled}
-                aria-label={`Activar ${PROVIDER_LABELS[item.provider] ?? item.provider}`}
+                aria-label={t('activarProveedor', { proveedor: PROVIDER_LABELS[item.provider] ?? item.provider })}
               />
               <Label htmlFor={`active-${item.category}-${item.provider}`} className="text-xs text-gray-500 dark:text-gray-400">
-                Activo
+                {t('activo')}
               </Label>
             </div>
           </div>
@@ -113,7 +118,7 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
               if (f.type === 'boolean') {
                 return (
                   <div key={f.key} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700">
-                    <Label htmlFor={id} className="text-sm text-gray-700 dark:text-gray-200">{f.label}</Label>
+                    <Label htmlFor={id} className="text-sm text-gray-700 dark:text-gray-200">{etiquetaAjuste(f)}</Label>
                     <Switch id={id} checked={!!val} disabled={disabled} onCheckedChange={(v) => setSettings((s) => ({ ...s, [f.key]: v }))} />
                   </div>
                 );
@@ -123,7 +128,7 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
                 const current = typeof val === 'string' && val ? val : options[0];
                 return (
                   <div key={f.key} className="space-y-1">
-                    <Label htmlFor={id} className="text-sm text-gray-700 dark:text-gray-200">{f.label}</Label>
+                    <Label htmlFor={id} className="text-sm text-gray-700 dark:text-gray-200">{etiquetaAjuste(f)}</Label>
                     <Select value={current} disabled={disabled} onValueChange={(v) => setSettings((s) => ({ ...s, [f.key]: v }))}>
                       <SelectTrigger id={id}><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -137,7 +142,7 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
               }
               return (
                 <div key={f.key} className="space-y-1">
-                  <Label htmlFor={id} className="text-sm text-gray-700 dark:text-gray-200">{f.label}</Label>
+                  <Label htmlFor={id} className="text-sm text-gray-700 dark:text-gray-200">{etiquetaAjuste(f)}</Label>
                   <Input
                     id={id}
                     type={f.type === 'number' ? 'number' : 'text'}
@@ -156,23 +161,23 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
 
         {item.credential_keys.length > 0 && (
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Claves guardadas: {item.credential_keys.map((k) => <code key={k} className="mr-1 rounded bg-gray-100 px-1 dark:bg-gray-800">{k}=••••</code>)}
+            {t('clavesGuardadas')}{' '}{item.credential_keys.map((k) => <code key={k} className="mr-1 rounded bg-gray-100 px-1 dark:bg-gray-800">{k}=••••</code>)}
           </p>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => setCredOpen(true)} disabled={!canEdit} title={!canEdit ? 'Solo administradores' : undefined}>
+          <Button type="button" size="sm" variant="outline" onClick={() => setCredOpen(true)} disabled={!canEdit} title={!canEdit ? t('soloAdministradores') : undefined}>
             <KeyRound className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            {item.configured ? 'Cambiar clave' : 'Usar mi clave'}
+            {item.configured ? t('cambiarClave') : t('usarMiClave')}
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={runTest} disabled={!canEdit || testing} aria-busy={testing}>
             {testing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" /> : <PlugZap className="mr-1.5 h-4 w-4" aria-hidden="true" />}
-            Probar conexión
+            {t('probarConexion')}
           </Button>
           {dirty && (
             <Button type="button" size="sm" onClick={persistSettings} disabled={disabled} aria-busy={saving}>
               {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden="true" />}
-              Guardar ajustes
+              {t('guardarAjustes')}
             </Button>
           )}
         </div>
@@ -190,7 +195,13 @@ export function ProviderCard({ item, canEdit, onSave, onTest }: ProviderCardProp
             {result.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />}
             <span>
               {result.detail}
-              {result.latencyMs != null && <span className="ml-1 text-xs opacity-70">({result.latencyMs} ms{result.source ? `, ${result.source === 'org' ? 'clave propia' : 'clave plataforma'}` : ''})</span>}
+              {result.latencyMs != null && (
+                <span className="ml-1 text-xs opacity-70">
+                  {result.source
+                    ? t('latenciaFuente', { ms: String(result.latencyMs), fuente: result.source === 'org' ? t('fuente.propia') : t('fuente.plataforma') })
+                    : t('latencia', { ms: String(result.latencyMs) })}
+                </span>
+              )}
             </span>
           </div>
         )}

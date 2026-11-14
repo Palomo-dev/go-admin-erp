@@ -1,6 +1,7 @@
 'use client';
 
 import { MapPin, Pencil, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -11,22 +12,30 @@ import {
   SectionHeader,
 } from './shared';
 import { TerritoryDialog } from './TerritoryDialog';
-import { criteriaSummary, useTerritories } from './useTerritories';
+import { useTerritories } from './useTerritories';
 
 /** Sección: Territorios con criterios JSON. */
 export function TerritoriesSection() {
+  const t = useTranslations('configuracionTextos.territoriesSection');
   const s = useTerritories();
+
+  /** Resumen legible de los criterios de un territorio. */
+  const criteriaSummary = (criteria: Record<string, unknown>): string => {
+    const keys = Object.keys(criteria || {});
+    if (keys.length === 0) return t('criterios.ninguno');
+    return t('criterios.resumen', { n: keys.length, claves: keys.join(', ') });
+  };
 
   return (
     <div className="space-y-3">
       <SectionHeader
         icon={MapPin}
-        title={`${s.territories.length} territorio${s.territories.length !== 1 ? 's' : ''}`}
-        subtitle="Define territorios con criterios (ciudad, vertical, tamaño)"
+        title={t('contador', { n: s.territories.length })}
+        subtitle={t('subtitulo')}
         loading={s.loading}
         onRefresh={s.load}
         onCreate={s.handleCreate}
-        createLabel="Nuevo Territorio"
+        createLabel={t('nuevo')}
       />
 
       {s.loading ? (
@@ -34,8 +43,8 @@ export function TerritoriesSection() {
       ) : s.territories.length === 0 ? (
         <EmptyState
           icon={MapPin}
-          title="No hay territorios configurados"
-          hint="Crea territorios para asignar regiones o segmentos a tus equipos"
+          title={t('vacio.titulo')}
+          hint={t('vacio.ayuda')}
         />
       ) : (
         <div className="space-y-2">
@@ -84,10 +93,8 @@ export function TerritoriesSection() {
       <ConfirmDeleteDialog
         open={s.deleteDialogOpen}
         onOpenChange={s.setDeleteDialogOpen}
-        title="¿Eliminar territorio?"
-        description={
-          <>Esta acción eliminará el territorio &quot;{s.toDelete?.name}&quot; permanentemente.</>
-        }
+        title={t('eliminar.titulo')}
+        description={t('eliminar.descripcion', { nombre: s.toDelete?.name ?? '' })}
         onConfirm={s.confirmDelete}
       />
     </div>

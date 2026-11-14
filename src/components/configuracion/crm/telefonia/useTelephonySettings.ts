@@ -7,6 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { PhoneNumber } from '@/lib/services/crm/callManagementService';
 
 export interface TelephonySettingsDto {
@@ -63,6 +64,7 @@ async function json<T>(res: Response): Promise<T & { success?: boolean; error?: 
 }
 
 export function useTelephonySettings() {
+  const t = useTranslations('configuracionTextos.useTelephonySettings');
   const [state, setState] = useState<State>({ settings: null, configured: null, members: [], numbers: [], canEdit: false, loading: true, error: null });
 
   const load = useCallback(async () => {
@@ -74,9 +76,9 @@ export function useTelephonySettings() {
       if (!sRes.ok) throw new Error(s.error || `HTTP ${sRes.status}`);
       setState({ settings: s.data, configured: s.configured, members: s.members ?? [], numbers: nRes.ok ? n.data ?? [] : [], canEdit: !!s.can_edit, loading: false, error: null });
     } catch (err) {
-      setState((s) => ({ ...s, loading: false, error: err instanceof Error ? err.message : 'Error al cargar' }));
+      setState((s) => ({ ...s, loading: false, error: err instanceof Error ? err.message : t('errorCargar') }));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();

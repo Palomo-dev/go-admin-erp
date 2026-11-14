@@ -1,6 +1,7 @@
 'use client';
 
 import { Pencil, Trash2, UserCog } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,18 +17,19 @@ import { useRoles } from './useRoles';
 
 /** Sección: Roles comerciales (lista + diálogos). */
 export function RolesSection() {
+  const t = useTranslations('configuracionTextos.rolesSection');
   const s = useRoles();
 
   return (
     <div className="space-y-3">
       <SectionHeader
         icon={UserCog}
-        title={`${s.roles.length} rol${s.roles.length !== 1 ? 'es' : ''}`}
-        subtitle="Define roles comerciales con área y responsabilidades"
+        title={t('contador', { n: s.roles.length })}
+        subtitle={t('subtitulo')}
         loading={s.loading}
         onRefresh={s.load}
         onCreate={s.handleCreate}
-        createLabel="Nuevo Rol"
+        createLabel={t('nuevo')}
       />
 
       {s.loading ? (
@@ -35,8 +37,8 @@ export function RolesSection() {
       ) : s.roles.length === 0 ? (
         <EmptyState
           icon={UserCog}
-          title="No hay roles configurados"
-          hint="Crea roles como SDR, Account Executive, Sales Manager, etc."
+          title={t('vacio.titulo')}
+          hint={t('vacio.ayuda')}
         />
       ) : (
         <div className="space-y-2">
@@ -55,19 +57,23 @@ export function RolesSection() {
                       {!role.is_active && <InactiveBadge />}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Área: {role.area}
+                      {t('area', { area: role.area })}
                       {role.job_positions?.name && (
                         <>
                           {' '}
-                          · Cargo HRM:{' '}
-                          <span className="text-blue-600 dark:text-blue-400 font-medium">
-                            {role.job_positions.name}
-                          </span>
+                          {t.rich('cargoHrm', {
+                            cargo: role.job_positions.name,
+                            c: (chunks) => (
+                              <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                {chunks}
+                              </span>
+                            ),
+                          })}
                         </>
                       )}
                       {Array.isArray(role.responsibilities) &&
                         role.responsibilities.length > 0 && (
-                          <> · {role.responsibilities.length} responsabilidades</>
+                          <> {t('responsabilidades', { n: role.responsibilities.length })}</>
                         )}
                     </p>
                   </div>
@@ -100,10 +106,8 @@ export function RolesSection() {
       <ConfirmDeleteDialog
         open={s.deleteDialogOpen}
         onOpenChange={s.setDeleteDialogOpen}
-        title="¿Eliminar rol?"
-        description={
-          <>Esta acción eliminará el rol &quot;{s.toDelete?.name}&quot; permanentemente.</>
-        }
+        title={t('eliminar.titulo')}
+        description={t('eliminar.descripcion', { nombre: s.toDelete?.name ?? '' })}
         onConfirm={s.confirmDelete}
       />
     </div>

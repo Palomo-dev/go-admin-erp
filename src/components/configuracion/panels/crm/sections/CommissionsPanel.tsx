@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { describeError } from '@/lib/utils/errorMessage';
 
 export function CommissionsPanel() {
+  const t = useTranslations('configuracionTextos.commissionsPanel');
   const { toast } = useToast();
   const { formatear: formatearMonedaBase } = useMonedaOrganizacion();
 
@@ -53,11 +55,11 @@ export function CommissionsPanel() {
       setVendorRates(allRates);
     } catch (error) {
       console.error('Error cargando comisiones:', error);
-      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
+      toast({ title: t('toast.error'), description: describeError(error), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     loadData();
@@ -77,12 +79,12 @@ export function CommissionsPanel() {
     try {
       await commissionService.saveOrgDefaultRate(generalRate);
       toast({
-        title: 'Comision general guardada',
-        description: `Tasa general: ${generalRate}%`,
+        title: t('toast.generalGuardada'),
+        description: t('toast.tasaGeneral', { tasa: String(generalRate) }),
       });
     } catch (error) {
       console.error('Error guardando comision general:', error);
-      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
+      toast({ title: t('toast.error'), description: describeError(error), variant: 'destructive' });
     } finally {
       setSavingGeneral(false);
     }
@@ -104,23 +106,23 @@ export function CommissionsPanel() {
   };
 
   const handleDeleteOverride = async (override: VendorCommissionRate) => {
-    if (!confirm('¿Estás seguro de eliminar este override de comisión?')) return;
+    if (!confirm(t('confirmarEliminar'))) return;
     try {
       await commissionService.deleteOverride(override.id);
       toast({
-        title: 'Override eliminado',
-        description: 'La comisión del vendedor se eliminó correctamente',
+        title: t('toast.overrideEliminado'),
+        description: t('toast.overrideEliminadoDesc'),
       });
       loadData();
     } catch (error) {
       console.error('Error eliminando override:', error);
-      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
+      toast({ title: t('toast.error'), description: describeError(error), variant: 'destructive' });
     }
   };
 
   const handleSaveOverride = async () => {
     if (!overrideForm.salesperson_id.trim()) {
-      toast({ title: 'Validacion', description: 'Ingresa el ID del vendedor', variant: 'destructive' });
+      toast({ title: t('toast.validacion'), description: t('toast.faltaVendedor'), variant: 'destructive' });
       return;
     }
     setSavingOverride(true);
@@ -131,14 +133,14 @@ export function CommissionsPanel() {
         editingOverride?.id ?? null
       );
       toast({
-        title: editingOverride ? 'Override actualizado' : 'Override creado',
-        description: 'La comision del vendedor se guardo correctamente',
+        title: editingOverride ? t('toast.overrideActualizado') : t('toast.overrideCreado'),
+        description: t('toast.overrideGuardadoDesc'),
       });
       setOverrideDialogOpen(false);
       loadData();
     } catch (error) {
       console.error('Error guardando override:', error);
-      toast({ title: 'Error', description: describeError(error), variant: 'destructive' });
+      toast({ title: t('toast.error'), description: describeError(error), variant: 'destructive' });
     } finally {
       setSavingOverride(false);
     }
@@ -164,9 +166,9 @@ export function CommissionsPanel() {
         <div className="flex items-center gap-2">
           <DollarSign className="h-5 w-5 text-muted-foreground" />
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Vendedores y Comisiones</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{t('titulo')}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Configura la tasa general y overrides por vendedor
+              {t('descripcion')}
             </p>
           </div>
         </div>
@@ -180,12 +182,12 @@ export function CommissionsPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-green-500" />
-            Tasa General de Comision
+            {t('general.titulo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Porcentaje aplicado a todas las ventas cerradas. Aplica cuando no hay un override especifico por vendedor.
+            {t('general.descripcion')}
           </p>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -202,7 +204,7 @@ export function CommissionsPanel() {
             </div>
             <Button onClick={handleSaveGeneral} disabled={savingGeneral} size="sm">
               <Save className="h-4 w-4 mr-1" />
-              {savingGeneral ? 'Guardando...' : 'Guardar'}
+              {savingGeneral ? t('guardando') : t('guardar')}
             </Button>
           </div>
         </CardContent>
@@ -211,10 +213,10 @@ export function CommissionsPanel() {
       {/* Overrides por vendedor */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-900 dark:text-white">Overrides por Vendedor</h4>
+          <h4 className="text-sm font-medium text-gray-900 dark:text-white">{t('overrides.titulo')}</h4>
           <Button size="sm" onClick={handleCreateOverride}>
             <DollarSign className="h-4 w-4 mr-1" />
-            Nuevo Override
+            {t('overrides.nuevo')}
           </Button>
         </div>
 
@@ -222,7 +224,7 @@ export function CommissionsPanel() {
           <div className="text-center py-8 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
             <User className="h-8 w-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No hay overrides configurados. Todos los vendedores usaran la tasa general.
+              {t('overrides.vacio')}
             </p>
           </div>
         ) : (
@@ -236,10 +238,10 @@ export function CommissionsPanel() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {override.salesperson_name
-                            || (override.salesperson_id ? `${override.salesperson_id.substring(0, 8)}...` : 'Vendedor')}
+                            || (override.salesperson_id ? `${override.salesperson_id.substring(0, 8)}...` : t('overrides.vendedor'))}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {override.rate}% comision
+                          {t('overrides.tasa', { tasa: String(override.rate) })}
                         </p>
                       </div>
                     </div>
@@ -266,12 +268,12 @@ export function CommissionsPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <Calculator className="h-4 w-4 text-blue-500" />
-            Simulador de Comisiones
+            {t('simulador.titulo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="sim-amount">Monto de cierre (COP)</Label>
+            <Label htmlFor="sim-amount">{t('simulador.monto')}</Label>
             <Input
               id="sim-amount"
               type="number"
@@ -285,13 +287,13 @@ export function CommissionsPanel() {
           <div className="rounded-lg bg-white dark:bg-gray-900 p-4 border border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Tasa aplicable</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('simulador.tasaAplicable')}</p>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   {generalRate}%
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Comision estimada</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{t('simulador.comisionEstimada')}</p>
                 <p className="text-xl font-bold text-green-600 dark:text-green-400">
                   {simResult != null ? formatCurrency(simResult) : '—'}
                 </p>
@@ -299,7 +301,7 @@ export function CommissionsPanel() {
             </div>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            * El simulador usa la tasa general. Los overrides por vendedor se aplican al cerrar la venta.
+            {t('simulador.nota')}
           </p>
         </CardContent>
       </Card>
@@ -308,29 +310,29 @@ export function CommissionsPanel() {
       <Dialog open={overrideDialogOpen} onOpenChange={setOverrideDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingOverride ? 'Editar Override' : 'Nuevo Override de Comision'}</DialogTitle>
+            <DialogTitle>{editingOverride ? t('dialogo.tituloEditar') : t('dialogo.tituloNuevo')}</DialogTitle>
             <DialogDescription>
               {editingOverride
-                ? 'Modifica la comision especifica del vendedor'
-                : 'Configura una comision especifica para un vendedor'}
+                ? t('dialogo.descripcionEditar')
+                : t('dialogo.descripcionNuevo')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="override-salesperson">ID del vendedor *</Label>
+              <Label htmlFor="override-salesperson">{t('dialogo.idVendedor')}</Label>
               <Input
                 id="override-salesperson"
                 value={overrideForm.salesperson_id}
                 onChange={(e) => setOverrideForm((prev) => ({ ...prev, salesperson_id: e.target.value }))}
-                placeholder="UUID del vendedor"
+                placeholder={t('dialogo.idVendedorPlaceholder')}
                 disabled={!!editingOverride}
               />
               <p className="text-xs text-gray-500">
-                Ingresa el ID del usuario que actuara como vendedor
+                {t('dialogo.idVendedorAyuda')}
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="override-rate">Tasa de comision (%)</Label>
+              <Label htmlFor="override-rate">{t('dialogo.tasa')}</Label>
               <Input
                 id="override-rate"
                 type="number"
@@ -343,9 +345,9 @@ export function CommissionsPanel() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOverrideDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setOverrideDialogOpen(false)}>{t('cancelar')}</Button>
             <Button onClick={handleSaveOverride} disabled={savingOverride}>
-              {savingOverride ? 'Guardando...' : 'Guardar'}
+              {savingOverride ? t('guardando') : t('guardar')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Plus, RefreshCw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -94,9 +95,10 @@ export function EmptyState({ icon: Icon, title, hint }: EmptyStateProps) {
 }
 
 export function InactiveBadge() {
+  const t = useTranslations('configuracionTextos.estructuraComercialShared');
   return (
     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">
-      Inactivo
+      {t('inactivo')}
     </span>
   );
 }
@@ -116,6 +118,7 @@ export function ConfirmDeleteDialog({
   description,
   onConfirm,
 }: ConfirmDeleteDialogProps) {
+  const t = useTranslations('configuracionTextos.estructuraComercialShared');
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -124,9 +127,9 @@ export function ConfirmDeleteDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel>{t('cancelar')}</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm} className="bg-red-600 hover:bg-red-700 text-white">
-            Eliminar
+            {t('eliminar')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

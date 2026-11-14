@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Tags, MessageSquareText, Key } from 'lucide-react';
@@ -21,6 +22,7 @@ import { ApiKeysHeader, ApiKeyCard, ApiKeyDialog } from '@/components/chat/confi
 import { QuickRepliesHeader, QuickReplyCard, QuickReplyDialog } from '@/components/chat/configuracion/respuestas-rapidas';
 
 export function ChatConfigPanel() {
+  const t = useTranslations('configuracionTextos.chatConfigPanel');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
@@ -61,11 +63,11 @@ export function ChatConfigPanel() {
       setTags(data);
     } catch (error) {
       console.error('Error cargando etiquetas:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las etiquetas', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCargarEtiquetas'), variant: 'destructive' });
     } finally {
       setTagsLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   // Load llaves API
   const loadApiKeys = useCallback(async () => {
@@ -78,11 +80,11 @@ export function ChatConfigPanel() {
       setChannels(channelsData);
     } catch (error) {
       console.error('Error cargando API keys:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las llaves de API', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCargarLlaves'), variant: 'destructive' });
     } finally {
       setKeysLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   // Load respuestas rápidas
   const loadReplies = useCallback(async () => {
@@ -94,11 +96,11 @@ export function ChatConfigPanel() {
       setReplies(data);
     } catch (error) {
       console.error('Error cargando respuestas rápidas:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las respuestas rápidas', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCargarRespuestas'), variant: 'destructive' });
     } finally {
       setRepliesLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   useEffect(() => {
     if (organizationId) {
@@ -119,14 +121,14 @@ export function ChatConfigPanel() {
     try {
       if (selectedTag) {
         await service.updateTag(selectedTag.id, data);
-        toast({ title: 'Etiqueta actualizada', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('toast.etiquetaActualizada'), description: t('toast.cambiosGuardados') });
       } else {
         await service.createTag(data);
-        toast({ title: 'Etiqueta creada', description: 'La etiqueta se creó correctamente' });
+        toast({ title: t('toast.etiquetaCreada'), description: t('toast.etiquetaCreadaDescripcion') });
       }
       loadTags();
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo guardar la etiqueta', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorGuardarEtiqueta'), variant: 'destructive' });
       throw error;
     }
   };
@@ -136,10 +138,10 @@ export function ChatConfigPanel() {
     const service = new InboxConfigService(organizationId);
     try {
       await service.deleteTag(tagToDelete.id);
-      toast({ title: 'Etiqueta eliminada', description: 'La etiqueta se eliminó correctamente' });
+      toast({ title: t('toast.etiquetaEliminada'), description: t('toast.etiquetaEliminadaDescripcion') });
       loadTags();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar la etiqueta', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorEliminarEtiqueta'), variant: 'destructive' });
     } finally {
       setDeleteTagDialogOpen(false);
       setTagToDelete(null);
@@ -157,11 +159,11 @@ export function ChatConfigPanel() {
     const service = new InboxConfigService(organizationId);
     try {
       const result = await service.createApiKey(data);
-      toast({ title: 'Llave creada', description: 'La llave de API se creó correctamente' });
+      toast({ title: t('toast.llaveCreada'), description: t('toast.llaveCreadaDescripcion') });
       loadApiKeys();
       return { rawKey: result.rawKey };
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo crear la llave de API', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCrearLlave'), variant: 'destructive' });
       throw error;
     }
   };
@@ -171,10 +173,10 @@ export function ChatConfigPanel() {
     const service = new InboxConfigService(organizationId);
     try {
       await service.revokeApiKey(selectedKey.id);
-      toast({ title: 'Llave revocada', description: 'La llave de API fue revocada y ya no puede usarse' });
+      toast({ title: t('toast.llaveRevocada'), description: t('toast.llaveRevocadaDescripcion') });
       loadApiKeys();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo revocar la llave de API', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorRevocarLlave'), variant: 'destructive' });
     } finally {
       setRevokeDialogOpen(false);
       setSelectedKey(null);
@@ -186,13 +188,13 @@ export function ChatConfigPanel() {
     const service = new InboxConfigService(organizationId);
     try {
       await service.rotateApiKey(selectedKey.id);
-      toast({ title: 'Llave rotada', description: 'Se generó una nueva llave. La anterior fue revocada.' });
+      toast({ title: t('toast.llaveRotada'), description: t('toast.llaveRotadaDescripcion') });
       loadApiKeys();
       setRotateDialogOpen(false);
       setSelectedKey(null);
       setKeyDialogOpen(true);
     } catch {
-      toast({ title: 'Error', description: 'No se pudo rotar la llave de API', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorRotarLlave'), variant: 'destructive' });
       setRotateDialogOpen(false);
       setSelectedKey(null);
     }
@@ -204,7 +206,7 @@ export function ChatConfigPanel() {
       reply.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reply.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
       reply.shortcut?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reply.tags?.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase())),
+      reply.tags?.some((etiqueta) => etiqueta.toLowerCase().includes(searchTerm.toLowerCase())),
   );
 
   const handleCreateReply = () => { setSelectedReply(null); setReplyDialogOpen(true); };
@@ -217,14 +219,14 @@ export function ChatConfigPanel() {
     try {
       if (selectedReply) {
         await service.updateQuickReply(selectedReply.id, data);
-        toast({ title: 'Respuesta actualizada', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('toast.respuestaActualizada'), description: t('toast.cambiosGuardados') });
       } else {
         await service.createQuickReply(data);
-        toast({ title: 'Respuesta creada', description: 'La respuesta rápida se creó correctamente' });
+        toast({ title: t('toast.respuestaCreada'), description: t('toast.respuestaCreadaDescripcion') });
       }
       loadReplies();
     } catch (error) {
-      toast({ title: 'Error', description: 'No se pudo guardar la respuesta rápida', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorGuardarRespuesta'), variant: 'destructive' });
       throw error;
     }
   };
@@ -234,10 +236,10 @@ export function ChatConfigPanel() {
     const service = new InboxConfigService(organizationId);
     try {
       await service.deleteQuickReply(replyToDelete.id);
-      toast({ title: 'Respuesta eliminada', description: 'La respuesta rápida se eliminó correctamente' });
+      toast({ title: t('toast.respuestaEliminada'), description: t('toast.respuestaEliminadaDescripcion') });
       loadReplies();
     } catch {
-      toast({ title: 'Error', description: 'No se pudo eliminar la respuesta rápida', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorEliminarRespuesta'), variant: 'destructive' });
     } finally {
       setDeleteReplyDialogOpen(false);
       setReplyToDelete(null);
@@ -261,7 +263,7 @@ export function ChatConfigPanel() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Tags className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Etiquetas</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t('secciones.etiquetas')}</h3>
         </div>
         <TagsHeader totalTags={tags.length} loading={tagsLoading} onRefresh={loadTags} onCreateTag={handleCreateTag} />
 
@@ -270,8 +272,8 @@ export function ChatConfigPanel() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <span className="text-2xl">🏷️</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay etiquetas configuradas</h3>
-            <p className="text-gray-500 dark:text-gray-400">Crea etiquetas para organizar y clasificar tus conversaciones</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.etiquetasTitulo')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('vacio.etiquetasDescripcion')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -286,7 +288,7 @@ export function ChatConfigPanel() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <MessageSquareText className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Respuestas Rápidas</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t('secciones.respuestasRapidas')}</h3>
         </div>
         <QuickRepliesHeader
           totalReplies={replies.length}
@@ -302,12 +304,12 @@ export function ChatConfigPanel() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <span className="text-2xl">💬</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay respuestas rápidas configuradas</h3>
-            <p className="text-gray-500 dark:text-gray-400">Crea plantillas de respuesta para agilizar la atención al cliente</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.respuestasTitulo')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('vacio.respuestasDescripcion')}</p>
           </div>
         ) : filteredReplies.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">No se encontraron respuestas que coincidan con &quot;{searchTerm}&quot;</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('vacio.sinCoincidencias', { busqueda: searchTerm })}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -322,7 +324,7 @@ export function ChatConfigPanel() {
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <Key className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Llaves API</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t('secciones.llavesApi')}</h3>
         </div>
         <ApiKeysHeader
           totalKeys={apiKeys.length}
@@ -337,8 +339,8 @@ export function ChatConfigPanel() {
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               <span className="text-2xl">🔑</span>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay llaves de API configuradas</h3>
-            <p className="text-gray-500 dark:text-gray-400">Crea llaves de API para integrar el chat con tu aplicación o servicios externos</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.llavesTitulo')}</h3>
+            <p className="text-gray-500 dark:text-gray-400">{t('vacio.llavesDescripcion')}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -358,14 +360,14 @@ export function ChatConfigPanel() {
       <AlertDialog open={deleteTagDialogOpen} onOpenChange={setDeleteTagDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar etiqueta?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dialogos.eliminarEtiquetaTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará la etiqueta &quot;{tagToDelete?.name}&quot; y la removerá de todas las conversaciones donde esté asignada. Esta acción no se puede deshacer.
+              {t('dialogos.eliminarEtiquetaDescripcion', { nombre: tagToDelete?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteTag} className="bg-red-600 hover:bg-red-700 text-white">Eliminar</AlertDialogAction>
+            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTag} className="bg-red-600 hover:bg-red-700 text-white">{t('dialogos.eliminar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -374,14 +376,14 @@ export function ChatConfigPanel() {
       <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Revocar llave de API?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dialogos.revocarLlaveTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción revocará la llave &quot;{selectedKey?.name}&quot; de forma permanente. Cualquier integración que use esta llave dejará de funcionar inmediatamente.
+              {t('dialogos.revocarLlaveDescripcion', { nombre: selectedKey?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevokeKey} className="bg-red-600 hover:bg-red-700 text-white">Revocar</AlertDialogAction>
+            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRevokeKey} className="bg-red-600 hover:bg-red-700 text-white">{t('dialogos.revocar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -390,14 +392,14 @@ export function ChatConfigPanel() {
       <AlertDialog open={rotateDialogOpen} onOpenChange={setRotateDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Rotar llave de API?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dialogos.rotarLlaveTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción creará una nueva llave con los mismos permisos y revocará la llave actual &quot;{selectedKey?.name}&quot;. Deberás actualizar todas las integraciones con la nueva llave.
+              {t('dialogos.rotarLlaveDescripcion', { nombre: selectedKey?.name ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRotateKey} className="bg-blue-600 hover:bg-blue-700 text-white">Rotar Llave</AlertDialogAction>
+            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRotateKey} className="bg-blue-600 hover:bg-blue-700 text-white">{t('dialogos.rotarLlave')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -406,14 +408,14 @@ export function ChatConfigPanel() {
       <AlertDialog open={deleteReplyDialogOpen} onOpenChange={setDeleteReplyDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar respuesta rápida?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dialogos.eliminarRespuestaTitulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará la respuesta &quot;{replyToDelete?.title}&quot; de forma permanente. Esta acción no se puede deshacer.
+              {t('dialogos.eliminarRespuestaDescripcion', { titulo: replyToDelete?.title ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteReply} className="bg-red-600 hover:bg-red-700 text-white">Eliminar</AlertDialogAction>
+            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteReply} className="bg-red-600 hover:bg-red-700 text-white">{t('dialogos.eliminar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,6 +54,7 @@ export function TeamMemberDialog({
   saving,
   onSave,
 }: TeamMemberDialogProps) {
+  const tx = useTranslations('configuracionTextos.teamMemberDialog');
   const { code: monedaBase, resuelta: monedaResuelta } = useMonedaOrganizacion();
   const opcionesMoneda = Array.from(
     new Set([monedaResuelta ? monedaBase : '', form.quota_currency, ...MONEDAS_CATALOGO].filter(Boolean)),
@@ -61,18 +63,18 @@ export function TeamMemberDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Añadir miembro</DialogTitle>
-          <DialogDescription>Añade un usuario al equipo con su rol y cuota</DialogDescription>
+          <DialogTitle>{tx('titulo')}</DialogTitle>
+          <DialogDescription>{tx('descripcion')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="member-user">Miembro de la organización *</Label>
+            <Label htmlFor="member-user">{tx('miembro')}</Label>
             <Select
               value={form.user_id}
               onValueChange={(v) => setForm((p) => ({ ...p, user_id: v }))}
             >
               <SelectTrigger id="member-user">
-                <SelectValue placeholder="Selecciona un miembro..." />
+                <SelectValue placeholder={tx('miembroPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
                 {orgMembers.map((m) => (
@@ -85,12 +87,12 @@ export function TeamMemberDialog({
             </Select>
             {orgMembers.length === 0 && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                No hay miembros activos en la organización.
+                {tx('sinMiembros')}
               </p>
             )}
           </div>
           <div className="space-y-2">
-            <Label htmlFor="member-role">Rol comercial</Label>
+            <Label htmlFor="member-role">{tx('rol')}</Label>
             <Select
               value={form.sales_role_id || 'none'}
               onValueChange={(v) =>
@@ -98,10 +100,10 @@ export function TeamMemberDialog({
               }
             >
               <SelectTrigger id="member-role">
-                <SelectValue placeholder="Sin rol" />
+                <SelectValue placeholder={tx('sinRol')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin rol</SelectItem>
+                <SelectItem value="none">{tx('sinRol')}</SelectItem>
                 {roles.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.name} ({r.code})
@@ -112,7 +114,7 @@ export function TeamMemberDialog({
           </div>
           {territories.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="member-territory">Territorio (opcional)</Label>
+              <Label htmlFor="member-territory">{tx('territorio')}</Label>
               <Select
                 value={form.territory_id || 'none'}
                 onValueChange={(v) =>
@@ -120,10 +122,10 @@ export function TeamMemberDialog({
                 }
               >
                 <SelectTrigger id="member-territory">
-                  <SelectValue placeholder="Hereda del equipo" />
+                  <SelectValue placeholder={tx('heredaEquipo')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Hereda del equipo</SelectItem>
+                  <SelectItem value="none">{tx('heredaEquipo')}</SelectItem>
                   {territories.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
@@ -132,13 +134,13 @@ export function TeamMemberDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Si asignas un territorio específico, sobreescribe el del equipo.
+                {tx('territorioAyuda')}
               </p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="member-quota">Cuota</Label>
+              <Label htmlFor="member-quota">{tx('cuota')}</Label>
               <Input
                 id="member-quota"
                 type="number"
@@ -149,7 +151,7 @@ export function TeamMemberDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="member-currency">Moneda</Label>
+              <Label htmlFor="member-currency">{tx('moneda')}</Label>
               <Select
                 value={form.quota_currency}
                 onValueChange={(v) => setForm((p) => ({ ...p, quota_currency: v }))}
@@ -170,10 +172,10 @@ export function TeamMemberDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {tx('cancelar')}
           </Button>
           <Button onClick={onSave} disabled={saving}>
-            {saving ? 'Añadiendo...' : 'Añadir'}
+            {saving ? tx('anadiendo') : tx('anadir')}
           </Button>
         </DialogFooter>
       </DialogContent>

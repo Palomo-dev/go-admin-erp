@@ -1,6 +1,7 @@
 'use client';
 
 import { Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { ConfirmDeleteDialog, EmptyState, LoadingSkeleton, SectionHeader } from './shared';
 import { TeamCard } from './TeamCard';
 import { TeamDialog } from './TeamDialog';
@@ -9,18 +10,19 @@ import { useTeams } from './useTeams';
 
 /** Sección: Equipos comerciales y sus miembros. */
 export function TeamsSection() {
+  const t = useTranslations('configuracionTextos.teamsSection');
   const s = useTeams();
 
   return (
     <div className="space-y-3">
       <SectionHeader
         icon={Users}
-        title={`${s.teams.length} equipo${s.teams.length !== 1 ? 's' : ''}`}
-        subtitle="Gestiona equipos comerciales y sus miembros"
+        title={t('contador', { n: s.teams.length })}
+        subtitle={t('subtitulo')}
         loading={s.loading}
         onRefresh={s.load}
         onCreate={s.handleCreate}
-        createLabel="Nuevo Equipo"
+        createLabel={t('nuevo')}
       />
 
       {s.loading ? (
@@ -28,8 +30,8 @@ export function TeamsSection() {
       ) : s.teams.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No hay equipos configurados"
-          hint="Crea equipos para agrupar vendedores por línea o región"
+          title={t('vacio.titulo')}
+          hint={t('vacio.ayuda')}
         />
       ) : (
         <div className="space-y-2">
@@ -74,10 +76,8 @@ export function TeamsSection() {
       <ConfirmDeleteDialog
         open={s.deleteDialogOpen}
         onOpenChange={s.setDeleteDialogOpen}
-        title="¿Eliminar equipo?"
-        description={
-          <>Esta acción eliminará el equipo &quot;{s.toDelete?.name}&quot; y todos sus miembros.</>
-        }
+        title={t('eliminar.titulo')}
+        description={t('eliminar.descripcion', { nombre: s.toDelete?.name ?? '' })}
         onConfirm={s.confirmDelete}
       />
     </div>

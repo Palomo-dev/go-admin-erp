@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { db } from './db';
@@ -31,6 +32,7 @@ export const EMPTY_MEMBER: MemberForm = {
 
 /** Estado y acciones de la sección de equipos: equipos, miembros y catálogos. */
 export function useTeams() {
+  const t = useTranslations('configuracionTextos.useTeams');
   const { toast } = useToast();
   const [teams, setTeams] = useState<SalesTeam[]>([]);
   const [roles, setRoles] = useState<SalesRole[]>([]);
@@ -71,14 +73,14 @@ export function useTeams() {
     } catch (error) {
       console.error('Error cargando equipos:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los equipos',
+        title: t('error'),
+        description: t('errores.cargar'),
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     load();
@@ -103,7 +105,7 @@ export function useTeams() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast({ title: 'Validación', description: 'El nombre es obligatorio', variant: 'destructive' });
+      toast({ title: t('validacion'), description: t('errores.nombreObligatorio'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -116,16 +118,16 @@ export function useTeams() {
       };
       if (editing) {
         await db.updateTeam(editing.id, payload);
-        toast({ title: 'Equipo actualizado', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('exito.actualizado'), description: t('exito.actualizadoDetalle') });
       } else {
         await db.createTeam(payload);
-        toast({ title: 'Equipo creado', description: 'El equipo se creó correctamente' });
+        toast({ title: t('exito.creado'), description: t('exito.creadoDetalle') });
       }
       setDialogOpen(false);
       load();
     } catch (error) {
       console.error('Error guardando equipo:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar el equipo', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errores.guardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -140,11 +142,11 @@ export function useTeams() {
     if (!toDelete) return;
     try {
       await db.deleteTeam(toDelete.id);
-      toast({ title: 'Equipo eliminado', description: 'El equipo se eliminó correctamente' });
+      toast({ title: t('exito.eliminado'), description: t('exito.eliminadoDetalle') });
       load();
     } catch (error) {
       console.error('Error eliminando equipo:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar el equipo', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errores.eliminar'), variant: 'destructive' });
     } finally {
       setDeleteDialogOpen(false);
       setToDelete(null);
@@ -158,7 +160,7 @@ export function useTeams() {
 
   const handleAddMember = async () => {
     if (!expandedTeam || !memberForm.user_id.trim()) {
-      toast({ title: 'Validación', description: 'Selecciona un miembro', variant: 'destructive' });
+      toast({ title: t('validacion'), description: t('errores.seleccionaMiembro'), variant: 'destructive' });
       return;
     }
     setSaving(true);
@@ -171,13 +173,13 @@ export function useTeams() {
         quota_currency: memberForm.quota_currency || undefined,
         territory_id: memberForm.territory_id || null,
       });
-      toast({ title: 'Miembro añadido', description: 'El miembro se añadió al equipo' });
+      toast({ title: t('exito.miembroAnadido'), description: t('exito.miembroAnadidoDetalle') });
       setMemberDialogOpen(false);
       setMemberForm(EMPTY_MEMBER);
       load();
     } catch (error) {
       console.error('Error añadiendo miembro:', error);
-      toast({ title: 'Error', description: 'No se pudo añadir el miembro', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errores.anadirMiembro'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -186,11 +188,11 @@ export function useTeams() {
   const handleRemoveMember = async (teamId: string, memberId: string) => {
     try {
       await db.removeTeamMember(teamId, memberId);
-      toast({ title: 'Miembro removido', description: 'El miembro fue removido del equipo' });
+      toast({ title: t('exito.miembroRemovido'), description: t('exito.miembroRemovidoDetalle') });
       load();
     } catch (error) {
       console.error('Error removiendo miembro:', error);
-      toast({ title: 'Error', description: 'No se pudo remover el miembro', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errores.removerMiembro'), variant: 'destructive' });
     }
   };
 

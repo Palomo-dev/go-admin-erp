@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ import { Plus, Trash2, RefreshCw, CheckSquare, ListChecks, ExternalLink } from '
 import { stageGateService, type StageWithCriteria, type StageRequirement, type ExitCriteria } from '@/lib/services/crm/stageGateService';
 
 export function ExitGatesEditor() {
+  const t = useTranslations('configuracionTextos.exitGatesEditor');
   const { toast } = useToast();
 
   const [stages, setStages] = useState<StageWithCriteria[]>([]);
@@ -35,11 +37,11 @@ export function ExitGatesEditor() {
       setStages(data);
     } catch (error) {
       console.error('Error cargando etapas con criterios:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las etapas', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCarga'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     loadStages();
@@ -103,12 +105,12 @@ export function ExitGatesEditor() {
     try {
       await stageGateService.updateExitCriteria(editingStage.id, editingStage.exit_criteria);
 
-      toast({ title: 'Criterios guardados', description: `Criterios de salida para "${editingStage.name}" actualizados` });
+      toast({ title: t('toast.guardados'), description: t('toast.guardadosDesc', { etapa: editingStage.name }) });
       setDialogOpen(false);
       loadStages();
     } catch (error) {
       console.error('Error guardando criterios:', error);
-      toast({ title: 'Error', description: 'No se pudieron guardar los criterios', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorGuardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -129,9 +131,9 @@ export function ExitGatesEditor() {
   }
 
   const reqTypeLabels: Record<string, string> = {
-    activity: 'Actividad',
-    field: 'Campo',
-    quotation: 'Cotizacion',
+    activity: t('tipos.actividad'),
+    field: t('tipos.campo'),
+    quotation: t('tipos.cotizacion'),
   };
 
   return (
@@ -142,17 +144,17 @@ export function ExitGatesEditor() {
           <ListChecks className="h-5 w-5 text-muted-foreground" />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {stages.length} etapa{stages.length !== 1 ? 's' : ''}
+              {t('etapas', { n: stages.length })}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define los criterios de salida para avanzar oportunidades
+              {t('descripcion')}
             </p>
           </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleOpenStageManager}>
             <ExternalLink className="h-4 w-4 mr-1" />
-            Stage Manager
+            {t('stageManager')}
           </Button>
           <Button variant="outline" size="sm" onClick={loadStages} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -165,13 +167,13 @@ export function ExitGatesEditor() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
             <ListChecks className="h-8 w-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No hay etapas configuradas</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.titulo')}</h3>
           <p className="text-gray-500 dark:text-gray-400 mb-4">
-            Abre el Stage Manager para crear etapas en tu pipeline
+            {t('vacio.descripcion')}
           </p>
           <Button onClick={handleOpenStageManager}>
             <ExternalLink className="h-4 w-4 mr-2" />
-            Abrir Stage Manager
+            {t('vacio.abrir')}
           </Button>
         </div>
       ) : (
@@ -189,12 +191,12 @@ export function ExitGatesEditor() {
                       />
                       <CardTitle className="text-sm">{stage.name}</CardTitle>
                       <Badge variant="secondary" className="text-xs">
-                        {stage.probability != null ? `${Math.round(Number(stage.probability))}%` : 'N/A'}
+                        {stage.probability != null ? `${Math.round(Number(stage.probability))}%` : t('sinProbabilidad')}
                       </Badge>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => handleEditCriteria(stage)}>
                       <CheckSquare className="h-4 w-4 mr-1" />
-                      {reqCount > 0 ? `${reqCount} criterio${reqCount !== 1 ? 's' : ''}` : 'Sin criterios'}
+                      {reqCount > 0 ? t('criterios', { n: reqCount }) : t('sinCriterios')}
                     </Button>
                   </div>
                 </CardHeader>
@@ -206,7 +208,7 @@ export function ExitGatesEditor() {
                           <span className="text-gray-400 mt-0.5">•</span>
                           <span>
                             <Badge variant="outline" className="text-xs mr-1">{reqTypeLabels[req.type] || req.type}</Badge>
-                            {req.message || req.field || (req.type === 'activity' ? `Min. ${req.minCount || 1} actividad(es)` : '')}
+                            {req.message || req.field || (req.type === 'activity' ? t('minActividades', { n: String(req.minCount || 1) }) : '')}
                           </span>
                         </li>
                       ))}
@@ -223,9 +225,9 @@ export function ExitGatesEditor() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Criterios de salida - {editingStage?.name}</DialogTitle>
+            <DialogTitle>{t('dialogo.titulo', { etapa: editingStage?.name ?? '' })}</DialogTitle>
             <DialogDescription>
-              Define que debe cumplirse para avanzar oportunidades desde esta etapa
+              {t('dialogo.descripcion')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -236,20 +238,20 @@ export function ExitGatesEditor() {
                   <div key={index} className="flex items-start gap-2 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs text-gray-500">Tipo</Label>
+                        <Label className="text-xs text-gray-500">{t('dialogo.tipo')}</Label>
                         <select
                           value={req.type}
                           onChange={(e) => updateRequirement(index, { type: e.target.value as StageRequirement['type'] })}
                           className="text-sm border border-gray-200 dark:border-gray-700 rounded px-2 py-1 bg-white dark:bg-gray-900"
                         >
-                          <option value="activity">Actividad</option>
-                          <option value="field">Campo</option>
-                          <option value="quotation">Cotizacion</option>
+                          <option value="activity">{reqTypeLabels.activity}</option>
+                          <option value="field">{reqTypeLabels.field}</option>
+                          <option value="quotation">{reqTypeLabels.quotation}</option>
                         </select>
                       </div>
                       {req.type === 'activity' && (
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs text-gray-500">Min. actividades</Label>
+                          <Label className="text-xs text-gray-500">{t('dialogo.minActividades')}</Label>
                           <Input
                             type="number"
                             value={req.minCount ?? 1}
@@ -261,21 +263,21 @@ export function ExitGatesEditor() {
                       )}
                       {req.type === 'field' && (
                         <div className="flex items-center gap-2">
-                          <Label className="text-xs text-gray-500">Campo</Label>
+                          <Label className="text-xs text-gray-500">{t('dialogo.campo')}</Label>
                           <Input
                             value={req.field || ''}
                             onChange={(e) => updateRequirement(index, { field: e.target.value })}
-                            placeholder="Ej: company_name, amount..."
+                            placeholder={t('dialogo.campoPlaceholder')}
                             className="flex-1"
                           />
                         </div>
                       )}
                       <div className="flex items-center gap-2">
-                        <Label className="text-xs text-gray-500">Mensaje</Label>
+                        <Label className="text-xs text-gray-500">{t('dialogo.mensaje')}</Label>
                         <Input
                           value={req.message || ''}
                           onChange={(e) => updateRequirement(index, { message: e.target.value })}
-                          placeholder="Mensaje a mostrar si no se cumple"
+                          placeholder={t('dialogo.mensajePlaceholder')}
                           className="flex-1"
                         />
                       </div>
@@ -287,7 +289,7 @@ export function ExitGatesEditor() {
                 ))
               ) : (
                 <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                  No hay criterios definidos para esta etapa
+                  {t('dialogo.vacio')}
                 </p>
               )}
             </div>
@@ -295,13 +297,13 @@ export function ExitGatesEditor() {
             {/* Agregar nuevo requisito */}
             <Button variant="outline" size="sm" onClick={addRequirement}>
               <Plus className="h-4 w-4 mr-1" />
-              Agregar requisito
+              {t('dialogo.agregar')}
             </Button>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('cancelar')}</Button>
             <Button onClick={handleSaveCriteria} disabled={saving}>
-              {saving ? 'Guardando...' : 'Guardar Criterios'}
+              {saving ? t('guardando') : t('guardarCriterios')}
             </Button>
           </DialogFooter>
         </DialogContent>

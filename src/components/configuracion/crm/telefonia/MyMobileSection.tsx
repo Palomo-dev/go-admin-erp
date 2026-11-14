@@ -9,6 +9,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckCircle2, Loader2, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,7 @@ interface Prefs {
 }
 
 export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
+  const t = useTranslations('configuracionTextos.myMobileSection');
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -51,7 +53,7 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
     const res = await fetch('/api/crm/me/comm-preferences', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) {
-      toast({ title: 'No se pudo guardar', description: body.error || `HTTP ${res.status}`, variant: 'destructive' });
+      toast({ title: t('toasts.noGuardar'), description: body.error || `HTTP ${res.status}`, variant: 'destructive' });
       return;
     }
     setPrefs(body.data);
@@ -64,9 +66,9 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setStep('sent');
-      toast({ title: 'Código enviado por SMS' });
+      toast({ title: t('toasts.codigoEnviado') });
     } catch (err) {
-      toast({ title: 'No se pudo enviar el código', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: t('toasts.noEnviar'), description: err instanceof Error ? err.message : t('toasts.error'), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -80,10 +82,10 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       setStep('idle');
       setCode('');
-      toast({ title: 'Celular verificado' });
+      toast({ title: t('toasts.verificado') });
       await load();
     } catch (err) {
-      toast({ title: 'Código incorrecto', description: err instanceof Error ? err.message : 'Error', variant: 'destructive' });
+      toast({ title: t('toasts.codigoIncorrecto'), description: err instanceof Error ? err.message : t('toasts.error'), variant: 'destructive' });
     } finally {
       setBusy(false);
     }
@@ -94,18 +96,18 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
   return (
     <section aria-labelledby="tel-mobile-title" className="space-y-4">
       <h3 id="tel-mobile-title" className="text-base font-semibold text-gray-900 dark:text-gray-100">
-        Mi celular
+        {t('titulo')}
       </h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400">Para «Llamar desde mi celular»: Twilio te llama primero y luego marca al cliente con el caller id de la organización.</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t('descripcion')}</p>
 
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
-          <Label htmlFor="tel-mobile">Número de celular</Label>
+          <Label htmlFor="tel-mobile">{t('numero')}</Label>
           <div className="flex items-center gap-2">
             <PhoneInput id="tel-mobile" value={phone} onChange={setPhone} autoComplete="tel" className="w-72" />
             {verified && (
               <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
-                <CheckCircle2 size={14} aria-hidden="true" /> Verificado
+                <CheckCircle2 size={14} aria-hidden="true" /> {t('verificado')}
               </span>
             )}
           </div>
@@ -113,20 +115,20 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
         {step === 'idle' ? (
           <Button size="sm" variant="outline" onClick={() => void sendOtp()} disabled={busy || !phoneE164 || verified}>
             {busy ? <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden="true" /> : <Smartphone size={14} className="mr-1.5" aria-hidden="true" />}
-            {verified ? 'Verificado' : 'Enviar código'}
+            {verified ? t('verificado') : t('enviarCodigo')}
           </Button>
         ) : (
           <>
             <div className="space-y-1">
-              <Label htmlFor="tel-otp">Código SMS</Label>
+              <Label htmlFor="tel-otp">{t('codigoSms')}</Label>
               <Input id="tel-otp" inputMode="numeric" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} className="w-28" maxLength={8} />
             </div>
             <Button size="sm" onClick={() => void checkOtp()} disabled={busy || code.length < 4}>
               {busy ? <Loader2 size={14} className="mr-1.5 animate-spin" aria-hidden="true" /> : null}
-              Verificar
+              {t('verificar')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setStep('idle')} disabled={busy}>
-              Cancelar
+              {t('cancelar')}
             </Button>
           </>
         )}
@@ -134,28 +136,28 @@ export function MyMobileSection({ numbers }: { numbers: PhoneNumber[] }) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <Label htmlFor="tel-mode">Modo de llamada por defecto</Label>
+          <Label htmlFor="tel-mode">{t('modo.etiqueta')}</Label>
           <select
             id="tel-mode"
             value={prefs?.default_call_mode ?? 'browser'}
             onChange={(e) => void patch({ default_call_mode: e.target.value as Prefs['default_call_mode'] })}
             className="h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           >
-            <option value="browser">Navegador (softphone)</option>
+            <option value="browser">{t('modo.navegador')}</option>
             <option value="mobile" disabled={!prefs?.mobile_verified_at}>
-              Mi celular{prefs?.mobile_verified_at ? '' : ' (verifica tu número)'}
+              {prefs?.mobile_verified_at ? t('modo.celular') : t('modo.celularSinVerificar')}
             </option>
           </select>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="tel-my-caller">Mi caller id (opcional)</Label>
+          <Label htmlFor="tel-my-caller">{t('miCallerId.etiqueta')}</Label>
           <select
             id="tel-my-caller"
             value={prefs?.default_caller_id_id ?? ''}
             onChange={(e) => void patch({ default_caller_id_id: e.target.value || null })}
             className="h-9 w-full rounded-md border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           >
-            <option value="">El de la organización</option>
+            <option value="">{t('miCallerId.organizacion')}</option>
             {numbers.filter((n) => n.is_active).map((n) => (
               <option key={n.id} value={n.id}>
                 {n.e164}

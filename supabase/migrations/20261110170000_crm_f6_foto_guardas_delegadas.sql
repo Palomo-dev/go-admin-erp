@@ -1,5 +1,5 @@
--- ESCRITA, NO APLICADA (2026-11-10). Aplicar solo por el MCP de Supabase (apply_migration)
--- con el nombre `crm_f6_foto_guardas_delegadas`. Reversión: supabase/rollbacks/20261110170000_crm_f6_foto_guardas_delegadas_rollback.sql
+-- APLICADA el 2026-11-14 por el MCP (apply_migration `crm_f6_foto_guardas_delegadas`); escrita el 2026-11-10.
+-- Reversión: supabase/rollbacks/20261110170000_crm_f6_foto_guardas_delegadas_rollback.sql
 --
 -- Qué arregla: un FALSO POSITIVO de la red de seguridad de F6 (suite
 -- src/lib/services/crm/__tests__/f6Adversarial.test.ts, bloque L), no un agujero.

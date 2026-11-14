@@ -3181,7 +3181,7 @@ describe('33. Existencias: nada fuera del núcleo escribe las tablas de stock', 
 // `buscarClientes` (RPC fn_clientes_buscar) y el POS sin red por el espejo
 // `buscarClientesEnLista` (src/lib/clientes/busqueda.ts).
 describe('Búsqueda única de clientes', () => {
-  const esPruebaCli = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const esPruebaCli = (f: string) => /[\\/]__tests__[\\/]|\.test\.tsx?$/.test(f);
 
   test('ningún archivo interpola texto en un .or() sobre columnas de clientes', () => {
     const RE = /\.or\(\s*`[^`]*\b(full_name|first_name|last_name|identification_number|doc_number|company_name|trade_name)\.ilike[^`]*\$\{/;
@@ -3216,7 +3216,7 @@ describe('Búsqueda única de clientes', () => {
 // el disparador lo rechaza. Único cambio directo permitido: salir uno mismo
 // (is_active = false en ManageOrganizationsTab).
 describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_*', () => {
-  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const esPrueba = (f: string) => /[\\/]__tests__[\\/]|\.test\.tsx?$/.test(f);
   const DE_NAVEGADOR = /from\s+['"]@\/lib\/supabase\/config['"]/;
   const ESCRITURA = /from\(\s*['"]organization_members['"]\s*\)\s*\.(?:update\(\s*\{[^}]*\b(?:role_id|is_super_admin|organization_id|job_position_id|user_id)\b|delete\()/;
 
@@ -3264,7 +3264,7 @@ describe('35. Miembros: rol, cargo, estado y retiro solo por las RPC fn_miembro_
 // (`record_type: 'lead'` en un objeto que se escribe) ni desde una migración
 // posterior a 20260930160800 (que retiró el último escritor, `web_capture_lead`).
 describe('36. CRM ola 1: escrituras de oportunidades/actividades por el servidor y sin leads-oportunidad nuevos', () => {
-  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const esPrueba = (f: string) => /[\\/]__tests__[\\/]|\.test\.tsx?$/.test(f);
   const ESCRITURA = /from\(\s*['"](opportunities|activities)['"]\s*\)\s*\.(insert|update|delete|upsert)\(/;
   const CRM_COMPONENTES = path.join(SRC_ROOT, 'components', 'crm');
   const DEUDA_NAVEGADOR = new Map<string, string>([
@@ -3792,7 +3792,7 @@ describe('42. Voz: la exención por número de prueba vive en un solo punto y no
 // (`fn_miembro_asignar_sucursales` vía `miembrosService`); el DELETE + INSERT
 // desde el navegador dejaba al miembro con acceso a todas si fallaba el INSERT.
 describe('Organización P0-8 y P0-10: verificación de dominio en el servidor y sucursales del miembro por RPC', () => {
-  const esPrueba = (f: string) => /[\/]__tests__[\/]|\.test\.tsx?$/.test(f);
+  const esPrueba = (f: string) => /[\\/]__tests__[\\/]|\.test\.tsx?$/.test(f);
   const DE_NAVEGADOR = /from\s+['"]@\/lib\/supabase\/config['"]/;
 
   // Excepción: los subdominios del sistema (`*.goadmin.io`). Los verifica la
@@ -3835,7 +3835,7 @@ describe('Organización P0-8 y P0-10: verificación de dominio en el servidor y 
 describe('Paquete E: la UI de Pedidos online no escribe web_orders.payment_status = paid', () => {
   const RAICES = ['app/app/pos/pedidos-online', 'components/pos/pedidos-online'];
   const archivosUi = () =>
-    RAICES.flatMap((r) => walkDir(path.join(SRC_ROOT, r))).filter((f) => !/[\/]__tests__[\/]/.test(f));
+    RAICES.flatMap((r) => walkDir(path.join(SRC_ROOT, r))).filter((f) => !/[\\/]__tests__[\\/]/.test(f));
 
   test('ninguna pantalla de Pedidos online escribe payment_status paid ni llama updatePaymentStatus(…, paid)', () => {
     const ofensores = archivosUi()

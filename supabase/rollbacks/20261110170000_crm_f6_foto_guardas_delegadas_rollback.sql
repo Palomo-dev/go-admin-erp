@@ -1,4 +1,4 @@
--- Reversión de 20261110170000_crm_f6_foto_guardas_delegadas (ESCRITA, NO APLICADA).
+-- Reversión de 20261110170000_crm_f6_foto_guardas_delegadas (la migración se aplicó el 2026-11-14).
 -- Restaura EXACTAMENTE la `fn_f6_privilege_snapshot` viva al 2026-11-10: el cuerpo es
 -- byte a byte el de 20260909185302_crm_v4_f06_09_privilege_snapshot_incluye_indices
 -- (md5 de pg_get_functiondef en producción: 17818c5524b8ad982be75e87f7fc907b) y el ACL

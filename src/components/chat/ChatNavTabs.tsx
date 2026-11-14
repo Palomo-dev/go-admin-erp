@@ -21,6 +21,7 @@ import { moduloPorCodigo, type PaginaNav } from '@/lib/navigation/catalog';
 import { usePaginasModulo, useNavegacionVisible } from '@/lib/navigation/NavegacionVisible';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { clasesBoton } from '@/components/kit';
+import { useDesplazamientoHorizontal } from '@/components/kit/useDesplazamientoHorizontal';
 import { destinoPestanaChat, pestanaChatActiva, esRutaBandeja } from './chatNavLogica';
 
 export function ChatNavTabs({ className }: { className?: string }) {
@@ -36,10 +37,16 @@ export function ChatNavTabs({ className }: { className?: string }) {
     : (moduloPorCodigo('chat')?.paginas.filter((p) => p.enMenu !== false) ?? []);
 
   const activa = paginas ? pestanaChatActiva(pathname, paginas.map((p) => p.href)) : null;
+  // Rueda, arrastre y táctil cuando las pestañas no caben (la barra de scroll va oculta).
+  const barra = useDesplazamientoHorizontal<HTMLElement>('[aria-current="page"]', activa);
 
   return (
     <div className={cn('flex items-center gap-3 border-b border-line bg-surface px-4 lg:px-6', className)}>
-      <nav aria-label={t('etiqueta')} className="-mb-px flex min-w-0 flex-1 items-end gap-1 overflow-x-auto [scrollbar-width:none]">
+      <nav
+        ref={barra}
+        aria-label={t('etiqueta')}
+        className="-mb-px flex min-w-0 flex-1 items-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {paginas === null
           ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="my-3 h-5 w-20 shrink-0" />)
           : paginas.map((p) => {

@@ -4,13 +4,15 @@ import * as React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { indiceSiguiente } from './navegacionTeclado';
+import { useDesplazamientoHorizontal } from './useDesplazamientoHorizontal';
 
 /**
  * Pestañas de un detalle (Figma `TabItem` 581:277913): etiqueta con contador
  * opcional y subrayado de marca en la activa. Es un `tablist` con foco
  * itinerante (flechas, Inicio, Fin); los paneles los pinta la pantalla con
  * `idPanel(valor)` y `idPestana(valor)` para enlazar `aria-controls` y
- * `aria-labelledby`. En móvil desplaza en horizontal.
+ * `aria-labelledby`. Si no caben, desplaza en horizontal: dedo, trackpad,
+ * rueda del ratón y arrastre (`useDesplazamientoHorizontal`).
  *
  * ```tsx
  * <TabBar id="prov" etiqueta="Secciones del proveedor" valor={tab} onValorChange={setTab}
@@ -51,6 +53,7 @@ export const idPanel = (id: string, valor: string) => `${id}-panel-${valor}`;
 export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, etiqueta, tamano = 'md', className }: TabBarProps<V>) {
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
   const deshabilitadas = pestanas.map((p) => !!p.deshabilitada);
+  const barra = useDesplazamientoHorizontal<HTMLDivElement>('[aria-selected="true"]', valor);
 
   const alPulsar = (e: React.KeyboardEvent, i: number) => {
     const siguiente = indiceSiguiente(i, pestanas.length, e.key, deshabilitadas);
@@ -62,10 +65,12 @@ export function TabBar<V extends string>({ id, pestanas, valor, onValorChange, e
 
   return (
     <div
+      ref={barra}
       role="tablist"
       aria-label={etiqueta}
       className={cn(
-        'flex items-end gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]',
+        // min-w-0: dentro de un flex la barra se encoge y desplaza en vez de desbordar la página.
+        'flex min-w-0 items-end gap-1 overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className,
       )}
     >

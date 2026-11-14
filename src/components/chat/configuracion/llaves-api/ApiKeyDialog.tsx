@@ -1,6 +1,11 @@
 'use client';
 
+/**
+ * Crear una llave de API del chat y mostrarla una sola vez. Textos en
+ * `chatConfig.llaves` (es/en/fr/pt) y colores por tokens.
+ */
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -29,12 +34,12 @@ interface ApiKeyDialogProps {
   onSave: (data: { name: string; channel_id?: string; scopes: string[]; expires_at?: string }) => Promise<{ rawKey: string } | void>;
 }
 
-export default function ApiKeyDialog({
-  open,
-  onOpenChange,
-  channels,
-  onSave
-}: ApiKeyDialogProps) {
+/** Vigencias que se ofrecen (días; `never` = sin vencimiento). */
+const EXPIRACIONES = ['never', '30', '90', '180', '365'] as const;
+
+export default function ApiKeyDialog({ open, onOpenChange, channels, onSave }: ApiKeyDialogProps) {
+  const t = useTranslations('chatConfig.llaves');
+  const tc = useTranslations('chatConfig.comun');
   const [name, setName] = useState('');
   const [channelId, setChannelId] = useState<string>('all');
   const [scopes, setScopes] = useState<string[]>([]);
@@ -90,69 +95,52 @@ export default function ApiKeyDialog({
   };
 
   const toggleScope = (scope: string) => {
-    if (scopes.includes(scope)) {
-      setScopes(scopes.filter(s => s !== scope));
-    } else {
-      setScopes([...scopes, scope]);
-    }
+    setScopes(scopes.includes(scope) ? scopes.filter((s) => s !== scope) : [...scopes, scope]);
   };
 
   const handleClose = () => {
-    if (generatedKey) {
-      setGeneratedKey(null);
-    }
+    if (generatedKey) setGeneratedKey(null);
     onOpenChange(false);
+  };
+
+  /** Nombre y descripción del permiso en el idioma de quien edita (`messages:read` → `messages_read`). */
+  const textoScope = (valor: string, campo: 'nombre' | 'descripcion', respaldo: string) => {
+    const clave = `scopes.${valor.replace(':', '_')}.${campo}`;
+    return t.has(clave) ? t(clave) : respaldo;
   };
 
   if (generatedKey) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
+        <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Llave de API Creada</DialogTitle>
+            <DialogTitle>{t('dialogo.creadaTitulo')}</DialogTitle>
           </DialogHeader>
 
-          <div className="py-4 space-y-4">
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="space-y-4 py-4">
+            <div role="alert" className="rounded-lg border border-line-warning bg-warning-subtle p-4">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                <AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning-text" />
                 <div>
-                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                    Guarda esta llave ahora
-                  </p>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                    Esta es la única vez que verás la llave completa. Guárdala en un lugar seguro.
-                  </p>
+                  <p className="text-sm font-medium text-warning-text">{t('dialogo.guardaAhora')}</p>
+                  <p className="mt-1 text-sm text-fg-secondary">{t('dialogo.unicaVez')}</p>
                 </div>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Tu llave de API:</Label>
-              <div className="flex items-center gap-2 min-w-0">
-                <code className="flex-1 min-w-0 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm font-mono break-all text-gray-900 dark:text-gray-100">
-                  {generatedKey}
-                </code>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyKey}
-                  className="flex-shrink-0"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
+              <Label>{t('dialogo.tuLlave')}</Label>
+              <div className="flex min-w-0 items-center gap-2">
+                <code className="min-w-0 flex-1 break-all rounded-lg bg-subtle p-3 font-mono text-sm text-fg">{generatedKey}</code>
+                <Button variant="outline" size="icon" onClick={handleCopyKey} className="flex-shrink-0" aria-label={t('dialogo.copiarLlave')} title={t('dialogo.copiarLlave')}>
+                  {copied ? <Check aria-hidden="true" className="h-4 w-4 text-success-text" /> : <Copy aria-hidden="true" className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
           </div>
 
           <DialogFooter>
-            <Button onClick={handleClose} className="bg-blue-600 hover:bg-blue-700 text-white">
-              Entendido, ya la guardé
-            </Button>
+            <Button onClick={handleClose}>{t('dialogo.entendido')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -161,31 +149,31 @@ export default function ApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[500px] md:max-w-2xl max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-[500px] md:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Nueva Llave de API</DialogTitle>
+          <DialogTitle>{t('dialogo.nuevaTitulo')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre *</Label>
+            <Label htmlFor="llave-nombre">{t('dialogo.nombre')}</Label>
             <Input
-              id="name"
+              id="llave-nombre"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Widget Web, Integración CRM..."
-              className="bg-white dark:bg-gray-800"
+              placeholder={t('dialogo.nombrePlaceholder')}
+              className="bg-surface"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Canal (opcional)</Label>
+            <Label htmlFor="llave-canal">{t('dialogo.canal')}</Label>
             <Select value={channelId} onValueChange={setChannelId}>
-              <SelectTrigger className="bg-white dark:bg-gray-800">
-                <SelectValue placeholder="Todos los canales" />
+              <SelectTrigger id="llave-canal" aria-describedby="llave-canal-ayuda" className="bg-surface">
+                <SelectValue placeholder={t('dialogo.todosCanales')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos los canales</SelectItem>
+                <SelectItem value="all">{t('dialogo.todosCanales')}</SelectItem>
                 {channels.map((ch) => (
                   <SelectItem key={ch.id} value={ch.id}>
                     {ch.name} ({ch.type})
@@ -193,75 +181,60 @@ export default function ApiKeyDialog({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500">
-              Limita el acceso a un canal específico
-            </p>
+            <p id="llave-canal-ayuda" className="text-xs text-fg-muted">{t('dialogo.canalAyuda')}</p>
           </div>
 
-          <div className="space-y-2">
-            <Label>Permisos (scopes) *</Label>
-            <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg max-h-[200px] overflow-y-auto">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-fg">{t('dialogo.permisos')}</legend>
+            <div className="max-h-[200px] space-y-2 overflow-y-auto rounded-lg bg-subtle p-3">
               {API_SCOPES.map((scope) => (
                 <div key={scope.value} className="flex items-start gap-3">
                   <Checkbox
-                    id={scope.value}
+                    id={`llave-scope-${scope.value}`}
                     checked={scopes.includes(scope.value)}
                     onCheckedChange={() => toggleScope(scope.value)}
                     className="mt-0.5"
                   />
                   <div className="flex-1">
-                    <label
-                      htmlFor={scope.value}
-                      className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer"
-                    >
-                      {scope.label}
+                    <label htmlFor={`llave-scope-${scope.value}`} className="cursor-pointer text-sm font-medium text-fg">
+                      {textoScope(scope.value, 'nombre', scope.label)}
                     </label>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {scope.description}
-                    </p>
+                    <p className="text-xs text-fg-muted">{textoScope(scope.value, 'descripcion', scope.description)}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          </fieldset>
 
           <div className="space-y-2">
-            <Label>Expiración</Label>
+            <Label htmlFor="llave-expiracion">{t('dialogo.expiracion')}</Label>
             <Select value={expiresIn} onValueChange={setExpiresIn}>
-              <SelectTrigger className="bg-white dark:bg-gray-800">
+              <SelectTrigger id="llave-expiracion" className="bg-surface">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="never">Nunca expira</SelectItem>
-                <SelectItem value="30">30 días</SelectItem>
-                <SelectItem value="90">90 días</SelectItem>
-                <SelectItem value="180">6 meses</SelectItem>
-                <SelectItem value="365">1 año</SelectItem>
+                {EXPIRACIONES.map((v) => (
+                  <SelectItem key={v} value={v}>
+                    {t(`dialogo.expiraciones.${v === 'never' ? 'never' : `d${v}`}`)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
-            Cancelar
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            {tc('cancelar')}
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim() || scopes.length === 0 || saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
+          <Button onClick={handleSave} disabled={!name.trim() || scopes.length === 0 || saving}>
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generando...
+                <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
+                {t('dialogo.generando')}
               </>
             ) : (
-              'Crear Llave'
+              t('dialogo.crear')
             )}
           </Button>
         </DialogFooter>

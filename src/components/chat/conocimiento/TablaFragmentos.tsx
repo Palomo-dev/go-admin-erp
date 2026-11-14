@@ -2,7 +2,8 @@
 
 /**
  * Tabla de fragmentos (Figma 91-chat-31): título con resumen del contenido,
- * etiquetas, estado, si la IA ya lo puede usar, veces usado y fecha. Se usa
+ * etiquetas, prioridad, estado, si la IA ya lo puede usar, votos 👍/👎, veces
+ * usado y fecha. Se usa
  * en «Todos los fragmentos» (con la columna Fuente) y en el detalle de una
  * fuente.
  */
@@ -12,6 +13,7 @@ import { DataTable, type ColumnaTabla, type EstadoTabla } from '@/components/kit
 import { Badge } from '@/components/ui/badge';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import type { KnowledgeFragment } from '@/lib/services/knowledgeService';
+import { tramoPrioridad } from './conocimientoLogica';
 
 export interface TablaFragmentosProps {
   fragmentos: readonly KnowledgeFragment[];
@@ -29,7 +31,23 @@ export interface TablaFragmentosProps {
 
 export function TablaFragmentos({ fragmentos, estado, conFuente, termino, onAbrir, onEditar, onAlternar, onEliminar, onLimpiarFiltros, onReintentar, vacio }: TablaFragmentosProps) {
   const t = useTranslations('chatModulo.conocimiento');
+  const tr = useTranslations('chatRecuperado.conocimiento');
   const { formatDate } = useFormatDate();
+
+  const prioridad = (f: KnowledgeFragment) => (
+    <span className="whitespace-nowrap text-sm text-fg-secondary">
+      {f.priority} · {t(`editor.tramos.${tramoPrioridad(f.priority)}`)}
+    </span>
+  );
+  const votos = (f: KnowledgeFragment) => {
+    const positivos = f.positive_feedback ?? 0;
+    const negativos = f.negative_feedback ?? 0;
+    return (
+      <span className="whitespace-nowrap text-sm tabular-nums text-fg-secondary" aria-label={tr('votosAria', { positivos, negativos })}>
+        <span aria-hidden="true">👍 {positivos} · 👎 {negativos}</span>
+      </span>
+    );
+  };
 
   const etiquetas = (f: KnowledgeFragment) => (
     <div className="flex flex-wrap gap-1">
@@ -57,6 +75,7 @@ export function TablaFragmentos({ fragmentos, estado, conFuente, termino, onAbri
       ? [{ id: 'fuente', encabezado: t('tabla.fuente'), ancho: 180, ocultarDebajo: 'lg' as const, celda: (f: KnowledgeFragment) => <span className="truncate text-sm text-fg-secondary">{f.source?.name ?? '—'}</span> }]
       : []),
     { id: 'etiquetas', encabezado: t('tabla.etiquetas'), ancho: 200, ocultarDebajo: 'md', celda: etiquetas },
+    { id: 'prioridad', encabezado: tr('prioridad'), ancho: 110, ocultarDebajo: 'lg', celda: prioridad },
     {
       id: 'estado',
       encabezado: t('tabla.estado'),
@@ -78,6 +97,7 @@ export function TablaFragmentos({ fragmentos, estado, conFuente, termino, onAbri
         </Badge>
       ),
     },
+    { id: 'votos', encabezado: tr('votos'), ancho: 110, ocultarDebajo: 'lg', celda: votos },
     { id: 'usado', encabezado: t('tabla.usado'), variante: 'importe', ancho: 80, ocultarDebajo: 'lg', celda: (f) => (f.usage_count ?? 0).toLocaleString() },
     { id: 'actualizado', encabezado: t('tabla.actualizado'), ancho: 120, ocultarDebajo: 'lg', celda: (f) => <span className="text-sm text-fg-secondary">{formatDate(f.updated_at)}</span> },
   ];

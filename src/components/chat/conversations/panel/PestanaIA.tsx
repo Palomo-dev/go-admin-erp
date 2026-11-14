@@ -6,12 +6,14 @@ import { useTranslations } from 'next-intl';
 import { StatusBadge, clasesBoton } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
 import type { ConversacionControl } from '../useConversacion';
+import { ValoracionRespuestaIa } from './ValoracionRespuestaIa';
 
 /**
  * Pestaña «IA» (Figma 91-chat-03): modo de la IA del canal, resumen de la
  * conversación y respuesta sugerida (Usar · Editar · copiar · otra). Las
  * generaciones pasan por las rutas del servidor, que comprueban y cobran
- * créditos; aquí no se cobra nada.
+ * créditos; aquí no se cobra nada. Bajo la sugerida, «¿Te sirvió?» 👍/👎
+ * (Figma 93-chat-pendientes-03), ligado a su trabajo de IA.
  */
 export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (texto: string) => void }) {
   const t = useTranslations('chatBandeja.ia');
@@ -20,7 +22,8 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
   const [resumiendo, setResumiendo] = React.useState(false);
   const [usando, setUsando] = React.useState(false);
   const modo = (c.detalle?.channel?.ai_mode ?? 'manual') as 'auto' | 'hybrid' | 'manual';
-  const cerrada = c.estadoEscritura !== 'normal';
+  // Contacto bloqueado: no se le escribe (Figma 93-chat-pendientes-02).
+  const cerrada = c.estadoEscritura !== 'normal' || !!c.bloqueo;
 
   const generar = async () => {
     setGenerando(true);
@@ -62,6 +65,27 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
         ) : (
           <p className="text-sm text-fg-muted">{t('sinResumen')}</p>
         )}
+        {c.resumen?.sentiment ? (
+          <p className="mt-2 flex items-center gap-2 text-xs text-fg-secondary">
+            {t('sentimiento')}
+            <StatusBadge
+              estado={c.resumen.sentiment}
+              etiqueta={t(`sentimientos.${c.resumen.sentiment}`)}
+              tono={c.resumen.sentiment === 'positive' ? 'exito' : c.resumen.sentiment === 'negative' ? 'peligro' : 'neutro'}
+              apariencia="contorno"
+            />
+          </p>
+        ) : null}
+        {c.resumen?.key_points && c.resumen.key_points.length > 0 ? (
+          <div className="mt-2">
+            <h5 className="text-xs font-semibold text-fg">{t('puntosClave')}</h5>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-fg-secondary">
+              {c.resumen.key_points.map((p, i) => (
+                <li key={i}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <button
           type="button"
           disabled={resumiendo}
@@ -109,6 +133,7 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
           </div>
         </section>
       ) : null}
+      {c.sugerencia?.texto && c.sugerencia.jobId ? <ValoracionRespuestaIa key={c.sugerencia.jobId} jobId={c.sugerencia.jobId} /> : null}
 
       <button type="button" onClick={() => void generar()} disabled={generando || cerrada} aria-busy={generando} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
         <RefreshCw aria-hidden="true" className={generando ? 'size-4 animate-spin' : 'size-4'} />

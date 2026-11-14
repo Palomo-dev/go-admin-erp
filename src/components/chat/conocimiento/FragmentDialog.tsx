@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,8 @@ export default function FragmentDialog({
   prellenado,
   onSubmit
 }: FragmentDialogProps) {
+  const t = useTranslations('chatDialogos.fragmento');
+  const tc = useTranslations('chatDialogos.comun');
   const [formData, setFormData] = useState<CreateFragmentData>({
     source_id: '',
     title: '',
@@ -117,23 +120,16 @@ export default function FragmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl bg-white dark:bg-gray-900 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-gray-900 dark:text-white">
-            {fragment ? 'Editar Fragmento' : 'Nuevo Fragmento de Conocimiento'}
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 dark:text-gray-400">
-            {fragment 
-              ? 'Modifica el contenido del fragmento'
-              : 'Agrega un nuevo fragmento de información a la base de conocimiento'
-            }
-          </DialogDescription>
+          <DialogTitle>{fragment ? t('tituloEditar') : t('tituloNuevo')}</DialogTitle>
+          <DialogDescription>{fragment ? t('descripcionEditar') : t('descripcionNueva')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="source">Fuente</Label>
+              <Label htmlFor="source">{t('fuente')}</Label>
               <Select
                 value={formData.source_id || 'none'}
                 onValueChange={(value) => setFormData({ 
@@ -141,11 +137,11 @@ export default function FragmentDialog({
                   source_id: value === 'none' ? '' : value 
                 })}
               >
-                <SelectTrigger className="bg-gray-50 dark:bg-gray-800">
-                  <SelectValue placeholder="Sin fuente" />
+                <SelectTrigger id="source">
+                  <SelectValue placeholder={t('sinFuente')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin fuente</SelectItem>
+                  <SelectItem value="none">{t('sinFuente')}</SelectItem>
                   {sources.map((source) => (
                     <SelectItem key={source.id} value={source.id}>
                       {source.icon && <span className="mr-2">{source.icon}</span>}
@@ -157,7 +153,7 @@ export default function FragmentDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="priority">Prioridad (1-10)</Label>
+              <Label htmlFor="priority">{t('prioridad')}</Label>
               <Input
                 id="priority"
                 type="number"
@@ -168,53 +164,52 @@ export default function FragmentDialog({
                   ...formData, 
                   priority: Math.max(1, Math.min(10, parseInt(e.target.value) || 5))
                 })}
-                className="bg-gray-50 dark:bg-gray-800"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Título *</Label>
+            <Label htmlFor="title">{t('titulo')} *</Label>
             <Input
               id="title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ej: ¿Cuáles son los horarios de atención?"
-              className="bg-gray-50 dark:bg-gray-800"
+              placeholder={t('tituloPlaceholder')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Contenido *</Label>
+            <Label htmlFor="content">{t('contenido')} *</Label>
             <Textarea
               id="content"
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-              placeholder="Escribe aquí el contenido del fragmento..."
+              placeholder={t('contenidoPlaceholder')}
               rows={6}
-              className="bg-gray-50 dark:bg-gray-800"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Etiquetas</Label>
+            <Label htmlFor="fragment-tag">{t('etiquetas')}</Label>
             <div className="flex gap-2">
               <Input
+                id="fragment-tag"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Escribe una etiqueta y presiona Enter"
-                className="bg-gray-50 dark:bg-gray-800 flex-1"
+                placeholder={t('etiquetaPlaceholder')}
+                className="flex-1"
               />
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
                 onClick={handleAddTag}
+                aria-label={t('agregarEtiqueta')}
               >
-                <Plus className="h-4 w-4" />
+                <Plus aria-hidden="true" className="h-4 w-4" />
               </Button>
             </div>
             {(formData.tags || []).length > 0 && (
@@ -232,8 +227,9 @@ export default function FragmentDialog({
                       size="icon"
                       className="h-4 w-4 p-0 hover:bg-transparent"
                       onClick={() => handleRemoveTag(tag)}
+                      aria-label={t('quitarEtiqueta', { etiqueta: tag })}
                     >
-                      <X className="h-3 w-3" />
+                      <X aria-hidden="true" className="h-3 w-3" />
                     </Button>
                   </Badge>
                 ))}
@@ -248,19 +244,18 @@ export default function FragmentDialog({
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
-              Cancelar
+              {tc('cancelar')}
             </Button>
             <Button
               type="submit"
               disabled={saving || !formData.title.trim() || !formData.content.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {saving ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
+                  <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />
+                  {tc('guardando')}
                 </>
-              ) : fragment ? 'Guardar Cambios' : 'Crear Fragmento'}
+              ) : fragment ? tc('guardar') : t('crear')}
             </Button>
           </DialogFooter>
         </form>

@@ -3,7 +3,10 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { ComposerChat, type ModoComposer } from '@/components/chat/ui/ComposerChat';
+import { useTranslations } from 'next-intl';
 import { HiloConversacion } from './HiloConversacion';
+import { AvisoContactoBloqueado } from './AvisoContactoBloqueado';
+import { nombreClienteConversacion } from './CabeceraHilo';
 import type { ConversacionControl } from './useConversacion';
 
 // El diálogo de WhatsApp del CRM (plantillas aprobadas, variables, vista
@@ -20,21 +23,36 @@ export interface AreaConversacionProps {
 /**
  * Hilo + compositor de una conversación: lo comparten la Bandeja (escritorio
  * y móvil) y la vista completa. El envío va SIEMPRE por `c.enviar`
- * (`enviarMensajeConversacion`).
+ * (`enviarMensajeConversacion`). Con el contacto bloqueado, en lugar del
+ * compositor va el aviso «Bloqueaste a…» con «Desbloquear» (Figma
+ * 93-chat-pendientes-02).
  */
 export function AreaConversacion({ c, insertar, compacto = false }: AreaConversacionProps) {
   const [modo, setModo] = React.useState<ModoComposer>('responder');
   const [plantillaAbierta, setPlantillaAbierta] = React.useState(false);
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const d = c.detalle;
   React.useEffect(() => setModo('responder'), [d?.id]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {d ? (
-        <HiloConversacion conversationId={d.id} notas={c.notas} agentes={c.agentes} nombreCanal={d.channel?.name ?? null} inicioConversacion={d.created_at} />
+        <HiloConversacion
+          conversationId={d.id}
+          notas={c.notas}
+          eventos={c.eventosBloqueo}
+          agentes={c.agentes}
+          nombreCliente={nombreClienteConversacion(d, tb('contacto'))}
+          organizationId={d.organization_id}
+          nombreCanal={d.channel?.name ?? null}
+          inicioConversacion={d.created_at}
+        />
       ) : (
         <div className="min-h-0 flex-1 bg-canvas" />
       )}
+      {d && c.bloqueo ? (
+        <AvisoContactoBloqueado nombre={nombreClienteConversacion(d, tb('contacto'))} onDesbloquear={c.desbloquearContacto} />
+      ) : (
       <ComposerChat
         modo={modo}
         onModoChange={setModo}
@@ -49,6 +67,7 @@ export function AreaConversacion({ c, insertar, compacto = false }: AreaConversa
         insertar={insertar}
         compacto={compacto}
       />
+      )}
       {d && d.channel?.type === 'whatsapp' && plantillaAbierta ? (
         <ComposeWhatsAppDialog
           open={plantillaAbierta}

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Maximize2 } from 'lucide-react';
+import { Maximize2, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { AvatarIniciales, StatusBadge, Skeleton } from '@/components/kit';
 import { CanalIcono } from '@/components/chat/ui/CanalIcono';
@@ -22,13 +22,27 @@ export function nombreClienteConversacion(d: { customer?: { full_name?: string |
 
 /**
  * Cabecera del hilo en la Bandeja (Figma 91-chat-01): cliente, canal y
- * teléfono, estado, «Asignado a», vista completa y «⋯ Más acciones». Solo en
- * escritorio: en el móvil la cabecera la pone el shell.
+ * teléfono, estado («Bloqueada» si el contacto está bloqueado, Figma
+ * 93-chat-pendientes-02), «Asignado a», vista completa y «⋯ Más acciones».
+ * Solo en escritorio: en el móvil la cabecera la pone el shell.
  */
-export function CabeceraHilo({ c, onBuscar }: { c: ConversacionControl; onBuscar?: () => void }) {
+export function CabeceraHilo({
+  c,
+  onBuscar,
+  panelOculto,
+  onAlternarPanel,
+}: {
+  c: ConversacionControl;
+  onBuscar?: () => void;
+  /** Panel derecho (xl+): oculto a mano. Sin `onAlternarPanel` no hay botón. */
+  panelOculto?: boolean;
+  onAlternarPanel?: () => void;
+}) {
   const t = useTranslations('chatBandeja.hilo');
   const te = useTranslations('chatUi.estado');
   const tc = useTranslations('chatUi.canales');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
+  const tp = useTranslations('chatBandeja.panel');
   const d = c.detalle;
 
   if (!d) {
@@ -54,7 +68,11 @@ export function CabeceraHilo({ c, onBuscar }: { c: ConversacionControl; onBuscar
           <span className="truncate">{[d.channel?.name || tc(canal), d.customer?.phone].filter(Boolean).join(' · ')}</span>
         </p>
       </div>
-      <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" className="hidden md:inline-flex" />
+      {c.bloqueo ? (
+        <StatusBadge estado="bloqueada" etiqueta={tb('insignia')} tono="peligro" apariencia="contorno" className="hidden md:inline-flex" />
+      ) : (
+        <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" className="hidden md:inline-flex" />
+      )}
       <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} variante="cabecera" className="hidden md:flex" />
       <Link
         href={`/app/chat/conversaciones/${d.id}`}
@@ -64,6 +82,19 @@ export function CabeceraHilo({ c, onBuscar }: { c: ConversacionControl; onBuscar
       >
         <Maximize2 aria-hidden="true" className="size-4" />
       </Link>
+      {onAlternarPanel ? (
+        <button
+          type="button"
+          onClick={onAlternarPanel}
+          aria-label={panelOculto ? tp('mostrarPanel') : tp('ocultarPanel')}
+          title={panelOculto ? tp('mostrarPanel') : tp('ocultarPanel')}
+          aria-expanded={!panelOculto}
+          aria-controls="panel-bandeja-lateral"
+          className="hidden size-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover xl:flex"
+        >
+          {panelOculto ? <PanelRightOpen aria-hidden="true" className="size-4" /> : <PanelRightClose aria-hidden="true" className="size-4" />}
+        </button>
+      ) : null}
       <MenuMasAcciones c={c} enBandeja onBuscar={onBuscar} />
     </div>
   );

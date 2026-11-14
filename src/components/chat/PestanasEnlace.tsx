@@ -5,10 +5,12 @@
  * `TabBar` del kit (Figma `TabItem` 581:277913). `TabBar` es un `tablist` que
  * cambia paneles en la misma página; aquí cada pestaña es un enlace con
  * `aria-current`, que es lo correcto para la navegación entre páginas.
+ * Si no caben, desplazan en horizontal igual que el `TabBar`.
  */
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
+import { useDesplazamientoHorizontal } from '@/components/kit/useDesplazamientoHorizontal';
 
 export interface PestanaEnlace {
   href: string;
@@ -18,8 +20,13 @@ export interface PestanaEnlace {
 }
 
 export function PestanasEnlace({ pestanas, etiqueta, className }: { pestanas: readonly PestanaEnlace[]; etiqueta: string; className?: string }) {
+  const barra = useDesplazamientoHorizontal<HTMLElement>('[aria-current="page"]', pestanas.find((p) => p.activa)?.href);
   return (
-    <nav aria-label={etiqueta} className={cn('flex items-end gap-1 overflow-x-auto border-b border-line [scrollbar-width:none]', className)}>
+    <nav
+      ref={barra}
+      aria-label={etiqueta}
+      className={cn('flex min-w-0 items-end gap-1 overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}
+    >
       {pestanas.map((p) => {
         const Icono = p.icono;
         return (

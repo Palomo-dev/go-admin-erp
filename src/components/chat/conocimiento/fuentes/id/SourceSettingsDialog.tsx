@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -30,6 +31,8 @@ export default function SourceSettingsDialog({
   source,
   onSubmit
 }: SourceSettingsDialogProps) {
+  const t = useTranslations('chatDialogos.fuente');
+  const tc = useTranslations('chatDialogos.comun');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [icon, setIcon] = useState('');
@@ -54,6 +57,7 @@ export default function SourceSettingsDialog({
         name: name.trim(),
         description: description.trim() || undefined,
         icon: icon.trim() || undefined,
+        is_active: isActive,
       });
       onOpenChange(false);
     } catch (error) {
@@ -65,71 +69,57 @@ export default function SourceSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-gray-900 dark:text-white">
-            Configuración de Fuente
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 dark:text-gray-400">
-            Modifica la configuración de esta fuente de conocimiento
-          </DialogDescription>
+          <DialogTitle>{t('ajustesTitulo')}</DialogTitle>
+          <DialogDescription>{t('ajustesDescripcion')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-gray-700 dark:text-gray-300">
-              Nombre *
-            </Label>
+            <Label htmlFor="name">{t('nombre')} *</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Preguntas Frecuentes"
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+              placeholder={t('nombrePlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-gray-700 dark:text-gray-300">
-              Descripción
-            </Label>
+            <Label htmlFor="description">{t('descripcion')}</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe el propósito de esta fuente..."
+              placeholder={t('descripcionPlaceholder')}
               rows={3}
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 resize-none"
+              className="resize-none"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="icon" className="text-gray-700 dark:text-gray-300">
-              Icono (emoji)
-            </Label>
+            <Label htmlFor="icon">{t('iconoEmoji')}</Label>
             <Input
               id="icon"
               value={icon}
               onChange={(e) => setIcon(e.target.value)}
               placeholder="📚"
               maxLength={2}
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 w-20"
+              className="w-20"
             />
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-subtle p-4">
             <div>
-              <Label className="text-gray-700 dark:text-gray-300">
-                Estado de la Fuente
-              </Label>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {isActive 
-                  ? 'Los fragmentos de esta fuente están disponibles para búsquedas'
-                  : 'Los fragmentos de esta fuente no aparecerán en búsquedas'
-                }
+              <Label htmlFor="source-active">{t('estado')}</Label>
+              <p id="source-active-ayuda" className="text-sm text-fg-secondary">
+                {isActive ? t('estadoActiva') : t('estadoInactiva')}
               </p>
             </div>
             <Switch
+              id="source-active"
+              aria-describedby="source-active-ayuda"
               checked={isActive}
               onCheckedChange={setIsActive}
             />
@@ -140,22 +130,20 @@ export default function SourceSettingsDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="border-gray-300 dark:border-gray-700"
           >
-            Cancelar
+            {tc('cancelar')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || !name.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
+                <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />
+                {tc('guardando')}
               </>
             ) : (
-              'Guardar Cambios'
+              tc('guardar')
             )}
           </Button>
         </DialogFooter>

@@ -2,15 +2,17 @@
 
 /**
  * Visitantes del sitio web (Figma 91-chat-40): quién usa el chat del sitio.
- * Cifras, buscador, filtros de estado y cliente, y tabla paginada. Los datos
+ * Cifras, buscador, filtros de estado, cliente y canal, tabla paginada y
+ * detalle de cada sesión (hoja lateral al tocar la fila). Los datos
  * son los de `widgetSessionsService` (cada visitante es una conversación del
  * canal web); cerrar y reabrir usan sus mismos métodos.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { ExternalLink, Lock, LockOpen, RefreshCw, Settings, Users } from 'lucide-react';
-import { AvatarIniciales, DataTable, KpiStrip, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { ExternalLink, Eye, Lock, LockOpen, RefreshCw, Settings, Users } from 'lucide-react';
+import { AvatarIniciales, DataTable, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,18 +22,25 @@ import WidgetSessionsService, { type SessionStats, type WidgetSession } from '@/
 import { tiempoRelativo } from '@/components/chat/channels/canalesLogica';
 import { filtrarVisitantes, type FiltroCliente, type FiltroEstadoVisitante } from '@/components/chat/widget/visitantesLogica';
 
+const TODOS_CANALES = '__todos__';
+
 export default function WidgetSessionsPage() {
   const t = useTranslations('chatModulo.widget');
+  const tr = useTranslations('chatRecuperado.widget');
+  const tTipos = useTranslations('chatModulo.canales.tipos');
   const locale = useLocale();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
-  const { formatTime, formatDate, getToday, toDate } = useFormatDate();
+  const { formatTime, formatDate, formatDateTime, getToday, toDate } = useFormatDate();
 
   const [sesiones, setSesiones] = useState<WidgetSession[]>([]);
   const [stats, setStats] = useState<SessionStats | null>(null);
-  const [canalWeb, setCanalWeb] = useState<string | null>(null);
+  const [canales, setCanales] = useState<{ id: string; name: string; type: string }[]>([]);
+  const canalWeb = canales[0]?.id ?? null;
+  const [canal, setCanal] = useState<string>(TODOS_CANALES);
+  const [abierta, setAbierta] = useState<WidgetSession | null>(null);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState(false);
   const [busqueda, setBusqueda] = useState('');
@@ -49,7 +58,7 @@ export default function WidgetSessionsPage() {
       const [ss, st, cs] = await Promise.all([s.getSessions({ status: 'all' }), s.getStats(), s.getChannels()]);
       setSesiones(ss);
       setStats(st);
-      setCanalWeb(cs.find((c) => c.type === 'website')?.id ?? null);
+      setCanales(cs.filter((c) => c.type === 'website'));
     } catch (e) {
       console.error('Error cargando visitantes del widget:', e);
       setFallo(true);
@@ -62,8 +71,11 @@ export default function WidgetSessionsPage() {
     cargar();
   }, [cargar]);
 
-  const visibles = useMemo(() => filtrarVisitantes(sesiones, { busqueda, estado, cliente }), [sesiones, busqueda, estado, cliente]);
-  useEffect(() => setPagina(1), [busqueda, estado, cliente]);
+  const visibles = useMemo(
+    () => filtrarVisitantes(sesiones, { busqueda, estado, cliente, canal: canal === TODOS_CANALES ? null : canal }),
+    [sesiones, busqueda, estado, cliente, canal],
+  );
+  useEffect(() => setPagina(1), [busqueda, estado, cliente, canal]);
   const pagina_ = visibles.slice((pagina - 1) * tamano, pagina * tamano);
   const ahora = useMemo(() => new Date(), [sesiones]); // eslint-disable-line react-hooks/exhaustive-deps
   const hoy = getToday();
@@ -181,6 +193,21 @@ export default function WidgetSessionsPage() {
             ))}
           </SelectContent>
         </Select>
+        {canales.length > 0 && (
+          <Select value={canal} onValueChange={setCanal}>
+            <SelectTrigger className="w-full sm:w-52" aria-label={tr('filtroCanal')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={TODOS_CANALES}>{tr('canalTodos')}</SelectItem>
+              {canales.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <DataTable<WidgetSession>
@@ -188,25 +215,27 @@ export default function WidgetSessionsPage() {
         columnas={columnas}
         filas={pagina_}
         obtenerId={(s) => s.id}
-        estado={fallo ? 'error' : cargando ? 'cargando' : visibles.length === 0 && (busqueda || estado !== 'todos' || cliente !== 'todos') ? 'sinResultados' : 'listo'}
+        estado={fallo ? 'error' : cargando ? 'cargando' : visibles.length === 0 && (busqueda || estado !== 'todos' || cliente !== 'todos' || canal !== TODOS_CANALES) ? 'sinResultados' : 'listo'}
         termino={busqueda}
         onReintentar={cargar}
         onLimpiarFiltros={() => {
           setBusqueda('');
           setEstado('todos');
           setCliente('todos');
+          setCanal(TODOS_CANALES);
         }}
-        onFilaClick={abrirConversacion}
+        onFilaClick={setAbierta}
         etiquetaFila={nombre}
         vacio={{ titulo: t('vacioTitulo'), descripcion: t('vacioDescripcion') }}
         acciones={(s) => [
+          { id: 'detalle', etiqueta: tr('verDetalle'), icono: Eye, onSelect: () => setAbierta(s) },
           { id: 'abrir', etiqueta: t('acciones.abrir'), icono: ExternalLink, onSelect: () => abrirConversacion(s) },
           s.conversation_status === 'closed'
             ? { id: 'reabrir', etiqueta: t('acciones.reabrir'), icono: LockOpen, onSelect: () => cambiarConversacion(s, false) }
             : { id: 'cerrar', etiqueta: t('acciones.cerrar'), icono: Lock, onSelect: () => cambiarConversacion(s, true) },
         ]}
         tarjetaMovil={(s) => (
-          <button type="button" onClick={() => abrirConversacion(s)} className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left">
+          <button type="button" onClick={() => setAbierta(s)} className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left">
             <AvatarIniciales nombre={nombre(s)} tamano="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-fg">{nombre(s)}</span>
@@ -223,6 +252,54 @@ export default function WidgetSessionsPage() {
           ) : undefined
         }
       />
+
+      {abierta && (
+        <HojaDetalle
+          abierto
+          onAbiertoChange={(a) => !a && setAbierta(null)}
+          titulo={nombre(abierta)}
+          subtitulo={tr('detalleTitulo')}
+          insignia={
+            <Badge tono={abierta.is_active ? 'exito' : 'neutro'} tamano="sm" punto={abierta.is_active}>
+              {t(abierta.is_active ? 'estados.enLinea' : 'estados.inactivo')}
+            </Badge>
+          }
+          pie={
+            <button type="button" onClick={() => abrirConversacion(abierta)} className={clasesBoton({ anchoCompleto: true })}>
+              <ExternalLink aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {tr('abrirConversacion')}
+            </button>
+          }
+        >
+          <div className="flex flex-col gap-4">
+            <ListaDatos etiqueta={tr('detalleTitulo')}>
+              <FilaDato etiqueta={tr('idAnonimo')} valor={<span className="break-all font-mono text-xs">{abierta.anon_id}</span>} />
+              <FilaDato etiqueta={tr('inicio')} valor={formatDateTime(abierta.created_at)} />
+              <FilaDato etiqueta={tr('ultimaActividad')} valor={formatDateTime(abierta.last_seen_at)} />
+              <FilaDato etiqueta={tr('canal')} valor={abierta.channel?.name ?? '—'} />
+              {abierta.channel?.type && (
+                <FilaDato etiqueta={tr('tipoCanal')} valor={tTipos.has(abierta.channel.type) ? tTipos(abierta.channel.type) : abierta.channel.type} />
+              )}
+              <FilaDato etiqueta={tr('cliente')} valor={abierta.customer?.full_name ?? t('anonimo')} />
+              <FilaDato etiqueta={tr('correo')} valor={abierta.customer?.email ?? '—'} />
+              {abierta.device_type && <FilaDato etiqueta={tr('dispositivo')} valor={abierta.device_type} />}
+              {abierta.location_data && (abierta.location_data.city || abierta.location_data.country) && (
+                <FilaDato
+                  etiqueta={tr('ubicacion')}
+                  valor={[abierta.location_data.city, abierta.location_data.region, abierta.location_data.country].filter(Boolean).join(', ')}
+                />
+              )}
+            </ListaDatos>
+            {(abierta.current_page || abierta.referrer || abierta.user_agent) && (
+              <ListaDatos>
+                {abierta.current_page && <FilaDato etiqueta={tr('pagina')} valor={<span className="break-all text-xs">{abierta.current_page}</span>} />}
+                {abierta.referrer && <FilaDato etiqueta={tr('origen')} valor={<span className="break-all text-xs">{abierta.referrer}</span>} />}
+                {abierta.user_agent && <FilaDato etiqueta={tr('navegador')} valor={<span className="break-all font-mono text-xs">{abierta.user_agent}</span>} />}
+              </ListaDatos>
+            )}
+          </div>
+        </HojaDetalle>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { categoriaArchivo } from '@/lib/services/chat/categoriaArchivo';
 
 export interface ConversationFile {
   id: string;
@@ -28,6 +29,17 @@ export interface FileStats {
   totalFiles: number;
   totalSize: number;
   byType: Record<string, number>;
+}
+
+/** Cifras de una lista ya cargada (sin volver a consultar). */
+export function estadisticasArchivos(files: readonly Pick<ConversationFile, 'mime_type' | 'size_bytes'>[]): FileStats {
+  const stats: FileStats = { totalFiles: files.length, totalSize: 0, byType: {} };
+  for (const file of files) {
+    stats.totalSize += file.size_bytes || 0;
+    const tipo = categoriaArchivo(file.mime_type);
+    stats.byType[tipo] = (stats.byType[tipo] || 0) + 1;
+  }
+  return stats;
 }
 
 class ConversationFilesService {
@@ -111,22 +123,7 @@ class ConversationFilesService {
   }
 
   async getFileStats(conversationId: string): Promise<FileStats> {
-    const files = await this.getConversationFiles(conversationId);
-
-    const stats: FileStats = {
-      totalFiles: files.length,
-      totalSize: 0,
-      byType: {}
-    };
-
-    files.forEach(file => {
-      stats.totalSize += file.size_bytes;
-      
-      const type = this.getFileCategory(file.mime_type);
-      stats.byType[type] = (stats.byType[type] || 0) + 1;
-    });
-
-    return stats;
+    return estadisticasArchivos(await this.getConversationFiles(conversationId));
   }
 
   async deleteFile(fileId: string, userId: string): Promise<void> {
@@ -185,14 +182,7 @@ class ConversationFilesService {
   }
 
   getFileCategory(mimeType: string): string {
-    if (mimeType.startsWith('image/')) return 'image';
-    if (mimeType.startsWith('video/')) return 'video';
-    if (mimeType.startsWith('audio/')) return 'audio';
-    if (mimeType.includes('pdf')) return 'pdf';
-    if (mimeType.includes('word') || mimeType.includes('document')) return 'document';
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'spreadsheet';
-    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar')) return 'archive';
-    return 'other';
+    return categoriaArchivo(mimeType);
   }
 
   getFileIcon(mimeType: string): string {

@@ -6,7 +6,8 @@ import type { ConversationFilters } from '@/lib/services/conversationsService';
 import { agenteAsignado, nombreCorto, type AgenteChat } from '@/lib/services/chat/agentesChat';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
 
-export const VISTAS = ['abiertas', 'mias', 'sinAsignar', 'pendientes', 'cerradas'] as const;
+/** «Todas»: todos los estados a la vez (la tenía el filtro de estado de antes del rediseño). */
+export const VISTAS = ['abiertas', 'mias', 'sinAsignar', 'pendientes', 'cerradas', 'todas'] as const;
 export type VistaBandeja = (typeof VISTAS)[number];
 
 export function esVista(v: string | null | undefined): v is VistaBandeja {
@@ -44,6 +45,8 @@ export function filtrosDeVista(vista: VistaBandeja, memberId: number | null, ext
       break;
     case 'cerradas':
       f.status = 'closed';
+      break;
+    case 'todas':
       break;
   }
   if (extra.prioridad) f.priority = extra.prioridad;
@@ -107,4 +110,25 @@ export function cuandoDeFila(
   if (dias === 1) return { tipo: 'ayer', instante };
   if (dias > 1 && dias < 7) return { tipo: 'semana', instante };
   return { tipo: 'fecha', instante };
+}
+
+/** «En línea»: el cliente se vio en los últimos 2 minutos (`customers.last_seen_at`). */
+export const MINUTOS_EN_LINEA = 2;
+
+export function estaEnLinea(lastSeenAt: string | null | undefined, ahora: Date): boolean {
+  if (!lastSeenAt) return false;
+  const visto = Date.parse(lastSeenAt);
+  if (Number.isNaN(visto)) return false;
+  return ahora.getTime() - visto < MINUTOS_EN_LINEA * 60_000;
+}
+
+/**
+ * ✓/✓✓ del último mensaje en la fila: solo si lo escribió el equipo (agente o
+ * IA). `null` si es del cliente o no hay mensaje.
+ */
+export function entregaUltimoMensaje(m: { role?: string | null; direction?: string | null; is_read?: boolean | null } | null | undefined): 'enviado' | 'leido' | null {
+  if (!m) return null;
+  const delEquipo = m.role === 'agent' || m.role === 'ai' || (m.direction === 'outbound' && m.role !== 'system');
+  if (!delEquipo) return null;
+  return m.is_read ? 'leido' : 'enviado';
 }

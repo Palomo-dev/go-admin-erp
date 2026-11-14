@@ -68,8 +68,9 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'general.general', modulo: 'general', seccion: 'general', clave: 'generalGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   // Antes era una página aparte (/app/configuracion/asistente); desde el diálogo es un panel.
   { id: 'general.asistente', modulo: 'general', seccion: 'asistente', clave: 'generalAsistente', permiso: PERMISO_ADMIN, ajustes: [], entrada: 'asistente' },
-  // El plan y su cobro tienen su propia pantalla: el diálogo solo la enlaza.
-  { id: 'general.plan', modulo: 'general', seccion: 'plan', clave: 'generalPlan', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/plan', entrada: 'plan' },
+  // El plan y su cobro se gestionan en su propia pantalla; el diálogo muestra un
+  // resumen de solo lectura con enlaces a ella (Figma 93-config-plan-y-facturacion-resumen).
+  { id: 'general.plan', modulo: 'general', seccion: 'plan', clave: 'generalPlan', permiso: PERMISO_ADMIN, ajustes: [], entrada: 'plan' },
   // Sitio web se queda en su módulo (decisión del dueño, 2026-10-07): aquí solo se enlaza.
   { id: 'sitioweb.general', modulo: 'sitioweb', seccion: 'general', clave: 'sitiowebGeneral', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/sitio-web/configuracion' },
   { id: 'crm.general', modulo: 'crm', seccion: 'general', clave: 'crmGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

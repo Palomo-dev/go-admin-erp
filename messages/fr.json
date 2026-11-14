@@ -49685,13 +49685,19 @@
       "archivo": "Fichier",
       "descargar": "Télécharger",
       "reproducir": "Lire l'audio",
-      "pausar": "Mettre l'audio en pause"
+      "pausar": "Mettre l'audio en pause",
+      "entregado": "Distribué",
+      "fallido": "Non distribué",
+      "ubicacion": "Position",
+      "verMapa": "Voir sur la carte"
     },
     "fila": {
       "sinAsignar": "Non attribuée",
       "iaAutomatico": "IA · automatique",
       "noLeidos": "{n, plural, one {# message non lu} other {# messages non lus}}",
-      "prefijoIa": "IA : {texto}"
+      "prefijoIa": "IA : {texto}",
+      "enLinea": "En ligne",
+      "masEtiquetas": "{n} étiquettes de plus"
     },
     "prioridad": {
       "low": "Basse",
@@ -49738,7 +49744,10 @@
         "demasiados": "Trop d'envois d'affilée. Patientez un instant.",
         "sinPlantilla": "Le modèle n'est pas approuvé ou il manque des données.",
         "generico": "Vérifiez la connexion et réessayez."
-      }
+      },
+      "negrilla": "Gras",
+      "negrillaAtajo": "Gras (Ctrl+B)",
+      "ayudaTeclas": "Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · **texte** en gras"
     }
   },
   "chatBandeja": {
@@ -49798,7 +49807,32 @@
       "sinCompras": "Pas d'achats",
       "ultimaCompra": "Dernier achat",
       "oportunidad": "Opportunité",
-      "verFicha": "Voir la fiche du client"
+      "verFicha": "Voir la fiche du client",
+      "enLinea": "En ligne",
+      "visto": "Vu {cuando}",
+      "mensajes": "Messages",
+      "primerContacto": "Premier contact",
+      "ultimoContacto": "Dernier contact",
+      "recientes": "Conversations récentes",
+      "mensajesN": "{n, plural, one {# message} other {# messages}}",
+      "estaConversacion": "Cette conversation",
+      "notasCliente": "Notes du client",
+      "vinculado": "Client lié dans le CRM",
+      "edicion": {
+        "editar": "Modifier le contact",
+        "titulo": "Modifier le contact",
+        "nombres": "Prénom",
+        "apellidos": "Nom",
+        "ciudad": "Ville",
+        "guardar": "Enregistrer",
+        "cancelar": "Annuler",
+        "guardado": "Contact mis à jour",
+        "error": "Impossible d’enregistrer le contact",
+        "errorNombre": "Saisissez le prénom",
+        "errorCorreo": "Vérifiez l’e-mail",
+        "errorTelefono": "Vérifiez le téléphone",
+        "ayudaCorreoWidget": "Ce visiteur est arrivé par le chat du site web : l’e-mail est enregistré à part et ne change pas la façon dont le chat le reconnaît."
+      }
     },
     "acciones": {
       "estadoYPrioridad": "Statut et priorité",
@@ -49854,14 +49888,24 @@
       "enviada": "Réponse envoyée",
       "generar": "Suggérer une réponse",
       "otra": "Générer une autre réponse",
-      "creditos": "Chaque réponse ou résumé généré consomme des crédits IA."
+      "creditos": "Chaque réponse ou résumé généré consomme des crédits IA.",
+      "sentimiento": "Sentiment",
+      "sentimientos": {
+        "positive": "Positif",
+        "neutral": "Neutre",
+        "negative": "Négatif"
+      },
+      "puntosClave": "Points clés"
     },
     "panel": {
       "etiqueta": "Détails de la conversation",
       "cliente": "Client",
       "acciones": "Actions",
       "notas": "Notes",
-      "ia": "IA"
+      "ia": "IA",
+      "mostrarPanel": "Afficher le panneau",
+      "ocultarPanel": "Masquer le panneau",
+      "rapidas": "Rapides"
     },
     "hilo": {
       "etiqueta": "Conversation",
@@ -49920,7 +49964,8 @@
       "mias": "Les miennes",
       "sinAsignar": "Non attribuées",
       "pendientes": "En attente",
-      "cerradas": "Fermées"
+      "cerradas": "Fermées",
+      "todas": "Toutes"
     },
     "vacio": {
       "sinCanalesTitulo": "Vous n'avez encore aucun canal connecté",
@@ -49933,7 +49978,8 @@
         "mias": "Vous n'avez aucune conversation ouverte attribuée.",
         "sinAsignar": "Toutes les conversations ouvertes sont attribuées.",
         "pendientes": "Il n'y a aucune conversation en attente.",
-        "cerradas": "Il n'y a aucune conversation fermée."
+        "cerradas": "Il n'y a aucune conversation fermée.",
+        "todas": "Aucune conversation."
       },
       "listaTitulo": "Votre boîte est prête",
       "listaDescripcion": "Une fois un canal connecté, les conversations de vos clients apparaîtront ici.",
@@ -49964,7 +50010,8 @@
         "conversacion": "Conversation",
         "actividad": "Activité",
         "archivos": "Fichiers"
-      }
+      },
+      "asunto": "Objet : {asunto}"
     },
     "actividad": {
       "resumen": "Résumé de l'activité",
@@ -50022,6 +50069,69 @@
         "sinPermiso": "Vous n'appartenez pas à cette organisation",
         "clienteCreado": "Client {nombre} créé",
         "organizarParcial": "La conversation a été créée, mais tout n'a pas pu être appliqué."
+      },
+      "asunto": "Objet (facultatif)",
+      "asuntoPlaceholder": "Ex. : commande de gros de décembre"
+    },
+    "rapidas": {
+      "titulo": "Réponses rapides",
+      "buscar": "Rechercher par titre, texte, raccourci ou étiquette",
+      "sinResultados": "Aucune réponse avec ce texte",
+      "vacio": "Pas encore de réponses rapides",
+      "vacioAyuda": "Créez-les dans Paramètres › Chat.",
+      "usos": "{n, plural, =0 {Jamais utilisée} one {Utilisée # fois} other {Utilisée # fois}}",
+      "usar": "Utiliser"
+    }
+  },
+  "chatBandejaPendientes": {
+    "bloqueo": {
+      "contacto": "ce contact",
+      "menuBloquear": "Bloquer le contact",
+      "menuDesbloquear": "Débloquer le contact",
+      "confirmarTitulo": "Bloquer {nombre} ?",
+      "confirmarDescripcion": "Ses nouveaux messages n’arriveront plus dans la boîte de réception et l’IA ne lui répondra pas. La conversation et son historique sont conservés. Vous pouvez le débloquer à tout moment depuis ce même menu.",
+      "confirmar": "Bloquer le contact",
+      "cancelar": "Annuler",
+      "insignia": "Bloquée",
+      "avisoTitulo": "Vous avez bloqué {nombre}",
+      "avisoDescripcion": "Ses nouveaux messages n’arrivent plus dans la boîte de réception et l’IA ne lui répond pas. L’historique est conservé.",
+      "desbloquear": "Débloquer",
+      "eventoBloqueo": "{persona} a bloqué le contact",
+      "eventoBloqueoSinPersona": "Le contact a été bloqué",
+      "eventoDesbloqueo": "{persona} a débloqué le contact",
+      "eventoDesbloqueoSinPersona": "Le contact a été débloqué",
+      "mensajeBloqueado": "Reçu alors que le contact était bloqué",
+      "avisos": {
+        "bloqueado": "Contact bloqué",
+        "desbloqueado": "Contact débloqué",
+        "error": "Impossible de modifier le blocage du contact"
+      }
+    },
+    "valoracion": {
+      "teSirvio": "Cela vous a aidé ?",
+      "si": "Oui",
+      "no": "Non",
+      "gracias": "Merci, votre vote est enregistré",
+      "queFallo": "Qu’est-ce qui n’allait pas ?",
+      "motivos": {
+        "dato_incorrecto": "Information incorrecte",
+        "no_respondio": "N’a pas répondu à la question",
+        "tono": "Ton",
+        "muy_larga": "Trop longue",
+        "otro": "Autre"
+      },
+      "comentario": "Dites-nous ce que vous attendiez (facultatif)",
+      "cancelar": "Annuler",
+      "enviar": "Envoyer",
+      "eligeMotivo": "Choisissez ce qui n’allait pas",
+      "ayuda": "Enregistré dans IA › Tâches avec la réponse, pour corriger la base de connaissances. Le client ne le voit pas.",
+      "error": "Impossible d’enregistrer votre vote",
+      "trabajos": {
+        "columna": "Évaluation",
+        "resumen": "{util} utiles, {noUtil} pas utiles",
+        "detalleTitulo": "Évaluation de l’équipe",
+        "util": "Utile",
+        "noUtil": "Pas utile"
       }
     }
   },
@@ -50065,7 +50175,69 @@
           "tokens": "Jetons",
           "fragmentos": "Fragments"
         },
-        "simulada": "Réponse de test construite avec vos fragments : n’appelle pas le modèle et ne consomme pas de crédits.",
+        "avisoCobro": "Chaque test consomme des crédits d’IA, comme une réponse à un client. Si le test échoue, rien n’est facturé.",
+        "modelo": "Modèle",
+        "modeloConfig": "Celui de la configuration",
+        "modeloConfigCon": "Celui de la configuration ({modelo})",
+        "creatividadAyuda": "Plus bas = réponses plus précises et reproductibles.",
+        "largoTokens": "Longueur maximale (jetons)",
+        "largoAyuda": "Entre 100 et 2 000.",
+        "maxFragmentos": "Nombre maximal de fragments",
+        "maxFragmentosAyuda": "Parmi ceux choisis (1 à 20).",
+        "reglas": "Règles du système",
+        "reglasAyuda": "Pour ce test uniquement. Elles reprennent celles de votre configuration.",
+        "reglasRestaurar": "Revenir à celles de la configuration",
+        "sinTonoIdioma": "L’IA qui répond à vos clients n’utilise ni le ton ni la langue de la configuration : elle répond dans la langue du client. C’est pourquoi ils ne sont pas testés ici.",
+        "fragmentos": {
+          "buscar": "Rechercher dans les fragments…",
+          "todos": "Tous",
+          "ninguno": "Aucun",
+          "contador": "{elegidos} sur {total} choisis",
+          "prioridad": "Priorité {n}",
+          "verMas": "Voir plus",
+          "verMenos": "Voir moins",
+          "masEtiquetas": "+{n}",
+          "sinResultados": "Aucun fragment ne correspond à la recherche.",
+          "ayuda": "Le test utilise les fragments choisis, jusqu’au nombre maximal.",
+          "actualizar": "Actualiser les fragments",
+          "estadisticas": {
+            "etiqueta": "Résumé des connaissances",
+            "total": "Total",
+            "activos": "Actifs",
+            "inactivos": "Inactifs",
+            "prioridad": "Priorité moy."
+          }
+        },
+        "resultado": {
+          "pregunta": "Question",
+          "copiar": "Copier la réponse",
+          "copiada": "Réponse copiée",
+          "errorCopiar": "Impossible de copier la réponse",
+          "costo": "Coût",
+          "costoCreditos": "{n, plural, one {# crédit} other {# crédits}}",
+          "costoProveedor": "{monto} chez le fournisseur",
+          "costoSinTarifa": "Pas de tarif pour ce modèle",
+          "pie": "{modelo} · créativité {temperatura} · {fecha}"
+        },
+        "sinCreditos": {
+          "titulo": "Vous n’avez plus de crédits d’IA",
+          "descripcion": "Chaque test consomme des crédits, comme une vraie réponse. Rechargez pour continuer à tester ; la configuration de l’IA ne change pas.",
+          "recargar": "Recharger les crédits"
+        },
+        "fallo": {
+          "proveedor": {
+            "titulo": "L’IA n’a pas pu répondre",
+            "descripcion": "Le fournisseur d’IA n’a pas répondu. Aucun crédit n’a été décompté ; réessayez dans quelques secondes."
+          },
+          "sin_permiso": {
+            "titulo": "Vous ne pouvez pas tester l’IA",
+            "descripcion": "Tester l’IA du chat nécessite l’autorisation d’administrateur de l’organisation."
+          },
+          "error": {
+            "titulo": "Le test n’a pas pu aboutir",
+            "descripcion": "Vérifiez votre connexion et réessayez. Si le test n’a pas reçu de réponse, aucun crédit n’a été décompté."
+          }
+        },
         "convertir": "Transformer en fragment",
         "ajustes": "Réglages du test",
         "ajustesDescripcion": "Ils ne modifient pas la configuration réelle.",
@@ -50116,8 +50288,11 @@
             "hoy": "Aujourd’hui",
             "7d": "7 derniers jours",
             "30d": "30 derniers jours",
-            "todo": "Tout"
-          }
+            "todo": "Tout",
+            "personalizado": "Choisir les dates"
+          },
+          "desde": "Du",
+          "hasta": "Au"
         },
         "tabla": {
           "etiqueta": "Tâches de l’IA",
@@ -50125,7 +50300,10 @@
           "conversacion": "Conversation",
           "estado": "État",
           "tokens": "Jetons",
-          "cuando": "Quand"
+          "cuando": "Quand",
+          "id": "ID",
+          "duracion": "Durée",
+          "confianza": "Confiance"
         },
         "tipos": {
           "auto_response": "Réponse automatique",
@@ -50159,14 +50337,25 @@
           "bitacora": "Journal",
           "reintentar": "Réessayer",
           "cancelar": "Annuler la tâche",
-          "abrirConversacion": "Ouvrir la conversation"
+          "abrirConversacion": "Ouvrir la conversation",
+          "id": "ID",
+          "copiarId": "Copier l’ID",
+          "copiado": "Copié",
+          "iniciado": "Démarré",
+          "completado": "Terminé",
+          "duracion": "Durée",
+          "tokensEntrada": "Jetons d’entrée",
+          "tokensSalida": "Jetons de sortie",
+          "costo": "Coût du fournisseur",
+          "idsFragmentos": "Fragments utilisés (ID)"
         },
         "toasts": {
           "sinMiembro": "Votre adhésion à cette organisation est introuvable",
           "reintentado": "Une nouvelle tâche a été créée pour réessayer",
           "cancelado": "Tâche annulée",
           "error": "Impossible de terminer l’action"
-        }
+        },
+        "actualizar": "Actualiser"
       }
     },
     "canales": {
@@ -50487,7 +50676,102 @@
           }
         }
       },
+      "filtros": {
+        "buscar": "Rechercher des canaux",
+        "tipo": "Type de canal",
+        "todosLosTipos": "Tous les types",
+        "estado": "Statut",
+        "estados": {
+          "todos": "Tous",
+          "active": "Actifs",
+          "inactive": "Inactifs"
+        },
+        "chipTipo": "Type : {valor}",
+        "chipEstado": "Statut : {valor}",
+        "verN": "Voir {n} canaux"
+      },
+      "webhookExtra": {
+        "copiarToken": "Copier le jeton",
+        "tokenCopiado": "Jeton copié",
+        "abrirDesarrolladores": "Ouvrir Meta for Developers"
+      },
       "widget": {
+        "mas": {
+          "codigoInstalacion": "Code d’installation",
+          "instalacion": {
+            "copiarClave": "Copier la clé publique",
+            "claveCopiada": "Clé copiée",
+            "confirmarRotarTitulo": "Générer une nouvelle clé ?",
+            "confirmarRotarDescripcion": "Le code déjà collé sur d’autres sites cesse de fonctionner jusqu’à ce que vous le remplaciez par le nouveau. Si le chat s’affiche sur votre site GO Admin, il s’y met à jour tout seul.",
+            "cancelar": "Annuler"
+          },
+          "apariencia": {
+            "margenHorizontal": "Marge horizontale",
+            "margenVertical": "Marge verticale",
+            "margenHorizontalAyudaDerecha": "Distance du bord droit de l’écran (0 à {max} px).",
+            "margenHorizontalAyudaIzquierda": "Distance du bord gauche de l’écran (0 à {max} px).",
+            "margenVerticalAyudaAbajo": "Distance du bas de l’écran (0 à {max} px).",
+            "margenVerticalAyudaArriba": "Distance du haut de l’écran (0 à {max} px).",
+            "logo": "Logo du chat",
+            "logoAyuda": "Lien https vers une image. Sans logo, le chat utilise celui de votre organisation.",
+            "logoInvalido": "Utilisez un lien qui commence par https://"
+          },
+          "estilo": {
+            "coloresSugeridos": "Couleurs suggérées",
+            "usarColor": "Utiliser la couleur {color}",
+            "colorIcono": "Couleur de l’icône",
+            "colorBorde": "Couleur de la bordure",
+            "colorInvalido": "Saisissez une couleur comme #3B82F6",
+            "icono": "Icône du bouton",
+            "iconos": {
+              "chat": "Chat",
+              "message": "Message",
+              "support": "Assistance",
+              "whatsapp": "Aide",
+              "custom": "Image personnalisée"
+            },
+            "iconoUrl": "Image de l’icône",
+            "iconoUrlAyuda": "Lien https vers une image carrée (PNG ou SVG).",
+            "urlInvalida": "Utilisez un lien qui commence par https://",
+            "relleno": "Style de l’icône",
+            "rellenos": {
+              "outline": "Contour",
+              "filled": "Plein"
+            },
+            "rellenoSoporte": "L’icône d’assistance est toujours en contour.",
+            "tamanoExacto": "Taille exacte",
+            "radio": "Arrondi",
+            "borde": "Épaisseur de la bordure",
+            "rango": "De {min} à {max} px",
+            "sombra": "Ombre",
+            "sombras": {
+              "none": "Sans ombre",
+              "light": "Légère",
+              "medium": "Moyenne",
+              "strong": "Forte"
+            }
+          },
+          "alAbrir": {
+            "vistaInicial": "Ce que le visiteur voit d’abord",
+            "vistas": {
+              "chat": "Chat direct · il écrit tout de suite",
+              "form": "Formulaire d’abord · demander ses coordonnées avant le chat",
+              "faq": "Questions fréquentes · boutons rapides en liste"
+            },
+            "pedirDatosFueraDeLinea": "Si personne n’est connecté, demander ses coordonnées",
+            "pedirDatosFueraDeLineaAyuda": "Pour lui répondre plus tard par e-mail ou WhatsApp.",
+            "mostrarBotones": "Afficher les boutons rapides",
+            "mensajeBoton": "Message ou lien (facultatif)",
+            "mensajeBotonAyuda": "Avec un lien https, le bouton l’ouvre ; avec un message, il l’envoie. Vide, il envoie le texte du bouton.",
+            "botonesOcultos": "Les boutons restent enregistrés, mais le visiteur ne les voit pas tant que c’est désactivé.",
+            "abreEnlace": "Ouvre un lien"
+          },
+          "vistaPrevia": {
+            "escribe": "Écrivez un message…",
+            "abreEnlace": "Ouvre un lien",
+            "escalaReal": "Marges et tailles à l’échelle réelle, en px."
+          }
+        },
         "visible": "Visible sur le site",
         "oculto": "Masqué sur le site",
         "mostrarEnSitio": "Afficher sur le site",
@@ -50954,7 +51238,9 @@
         "update_quick_reply": "A modifié une réponse rapide",
         "delete_quick_reply": "A supprimé une réponse rapide",
         "create_api_key": "A créé une clé API",
-        "revoke_api_key": "A révoqué une clé API"
+        "revoke_api_key": "A révoqué une clé API",
+        "block_contact": "A bloqué le contact",
+        "unblock_contact": "A débloqué le contact"
       }
     }
   },
@@ -51014,6 +51300,697 @@
       "descripcion": "Si vous quittez maintenant, les modifications de cette section seront perdues.",
       "descartar": "Abandonner les modifications",
       "seguir": "Continuer la modification"
+    },
+    "planResumen": {
+      "plan": "Forfait {nombre}",
+      "sinPlan": "Aucun forfait actif",
+      "periodo": {
+        "mensual": "Mensuel",
+        "anual": "Annuel"
+      },
+      "estado": {
+        "renueva": "Se renouvelle le {fecha}.",
+        "prueba": "Votre essai se termine le {fecha}.",
+        "cancela": "Le forfait se termine le {fecha} et ne sera pas renouvelé.",
+        "vencido": "L’abonnement est impayé.",
+        "cancelado": "L’abonnement est annulé.",
+        "sinPlan": "Votre organisation n’a pas de forfait actif."
+      },
+      "donde": "Changer de forfait, consulter les factures ou mettre à jour le moyen de paiement se fait sur la page Forfait et facturation.",
+      "gestionar": "Gérer le forfait et la facturation",
+      "verFacturas": "Voir les factures",
+      "usoTitulo": "Utilisation du forfait",
+      "modulos": {
+        "titulo": "Modules actifs",
+        "descripcion": "Ceux que vous voyez dans le menu latéral.",
+        "valor": "{actual} sur {total}"
+      },
+      "sucursales": {
+        "titulo": "Succursales",
+        "valor": "{actual} sur {maximo} incluses",
+        "sinLimite": "{actual} · sans limite"
+      },
+      "usuarios": {
+        "titulo": "Utilisateurs",
+        "descripcion": "Personnes ayant accès à l’organisation.",
+        "valor": "{actual} sur {maximo}",
+        "sinLimite": "{actual} · sans limite"
+      },
+      "creditos": {
+        "titulo": "Crédits d’IA",
+        "descripcion": "Utilisés par GO Assistant et l’IA du Chat.",
+        "saldo": "{n, plural, one {# disponible} other {# disponibles}}",
+        "recargar": "Recharger"
+      },
+      "nota": "Rien à enregistrer ici : ce résumé est informatif. Les changements de forfait se font sur sa page, hors de cette boîte de dialogue.",
+      "error": {
+        "titulo": "Impossible de charger le forfait",
+        "descripcion": "Réessayez dans quelques secondes."
+      }
+    }
+  },
+  "chatHilo": {
+    "comun": {
+      "hoy": "aujourd’hui {hora}",
+      "ayer": "hier {hora}",
+      "error": "Erreur"
+    },
+    "actividad": {
+      "buscar": "Rechercher dans l’activité…",
+      "filtroEtiqueta": "Type d’activité",
+      "filtros": {
+        "todas": "Toute l’activité",
+        "estados": "Changements de statut",
+        "asignaciones": "Attributions",
+        "etiquetas": "Étiquettes",
+        "ia": "Réponses de l’IA",
+        "auditoria": "Audit"
+      },
+      "conteo": "{visibles} activités affichées sur {total}",
+      "lista": "Activité de la conversation",
+      "vacioTitulo": "Pas encore d’activité",
+      "vacioDescripcion": "Les changements de statut, attributions, étiquettes et réponses de l’IA de cette conversation apparaissent ici.",
+      "sinResultadosTitulo": "Aucune activité avec ces filtres",
+      "sinResultadosDescripcion": "Essayez un autre mot ou choisissez « Toute l’activité ».",
+      "errorCarga": "Impossible de charger l’activité",
+      "alguien": "Un membre de l’équipe",
+      "actorIa": "L’IA",
+      "actorSistema": "Système",
+      "motivo": "Motif : {motivo}",
+      "estado": {
+        "conActor": "{actor} a marqué la conversation comme « {estado} »",
+        "sinActor": "La conversation est passée à « {estado} »",
+        "antes": "Avant : {estado}"
+      },
+      "asignacion": {
+        "conActor": "{actor} a attribué la conversation à {persona}",
+        "sinActor": "La conversation a été attribuée à {persona}",
+        "quitadaConActor": "{actor} a retiré l’attribution",
+        "quitadaSinActor": "La conversation n’est plus attribuée"
+      },
+      "etiqueta": {
+        "agregadaConActor": "{actor} a ajouté l’étiquette « {etiqueta} »",
+        "agregadaSinActor": "L’étiquette « {etiqueta} » a été ajoutée",
+        "quitadaConActor": "{actor} a retiré l’étiquette « {etiqueta} »",
+        "quitadaSinActor": "L’étiquette « {etiqueta} » a été retirée",
+        "sinNombre": "sans nom"
+      },
+      "ia": {
+        "auto": "L’IA a répondu automatiquement",
+        "trabajo": "IA · {tipo} : {estado}",
+        "confianza": "Confiance {valor}",
+        "fragmentos": "{n, plural, one {# fragment} other {# fragments}}",
+        "tokens": "{n} jetons",
+        "error": "Erreur : {mensaje}"
+      },
+      "auditoria": {
+        "por": "par {actor}"
+      },
+      "csv": {
+        "archivo": "activite_conversation",
+        "fecha": "Date",
+        "tipo": "Type",
+        "actor": "Qui",
+        "descripcion": "Ce qui s’est passé",
+        "detalle": "Détail"
+      },
+      "tipos": {
+        "status_change": "Changement de statut",
+        "assignment": "Attribution",
+        "tag_added": "Étiquette ajoutée",
+        "tag_removed": "Étiquette retirée",
+        "ai_job": "IA",
+        "audit": "Audit"
+      }
+    },
+    "archivos": {
+      "kpis": {
+        "imagenes": "Images",
+        "documentos": "Documents",
+        "audios": "Audios"
+      },
+      "buscar": "Rechercher des fichiers…",
+      "filtroTipo": "Type de fichier",
+      "tipos": {
+        "todos": "Tous les types",
+        "image": "Images",
+        "video": "Vidéos",
+        "audio": "Audios",
+        "pdf": "PDF",
+        "document": "Documents",
+        "spreadsheet": "Tableurs",
+        "archive": "Archives",
+        "other": "Autres"
+      },
+      "remitente": {
+        "etiqueta": "Envoyés par",
+        "todos": "Envoyés par : tous",
+        "filtro": "Envoyés par : {quien}",
+        "customer": "Client",
+        "agent": "Agent",
+        "ai": "IA",
+        "system": "Système"
+      },
+      "conteo": "{visibles} fichiers affichés sur {total}",
+      "lista": "Fichiers de la conversation",
+      "abrir": "Ouvrir",
+      "abrirArchivo": "Ouvrir {nombre}",
+      "descargar": "Télécharger",
+      "copiarEnlace": "Copier le lien (expire dans 1 heure)",
+      "eliminar": "Supprimer",
+      "aviso": "Les liens de partage d’un fichier expirent au bout d’1 heure. Supprimer un fichier ici ne le retire pas du chat du client.",
+      "vacioTitulo": "Pas encore de fichiers",
+      "vacioDescripcion": "Les photos, documents et audios partagés dans cette conversation apparaissent ici.",
+      "sinResultadosTitulo": "Aucun fichier avec ces filtres",
+      "sinResultadosDescripcion": "Essayez un autre nom ou retirez les filtres.",
+      "borrar": {
+        "titulo": "Supprimer le fichier ?",
+        "descripcion": "« {nombre} » est supprimé de GO Admin et ne peut pas être récupéré. Le client le garde dans son chat.",
+        "confirmar": "Supprimer le fichier"
+      },
+      "toasts": {
+        "errorCarga": "Impossible de charger les fichiers",
+        "errorAbrir": "Impossible d’ouvrir le fichier",
+        "descargando": "Téléchargement de {nombre}",
+        "errorDescarga": "Impossible de télécharger le fichier",
+        "enlaceCopiado": "Lien copié",
+        "enlaceVence": "Il expire dans 1 heure.",
+        "errorEnlace": "Impossible de copier le lien",
+        "eliminado": "Fichier supprimé",
+        "errorEliminar": "Impossible de supprimer le fichier"
+      }
+    },
+    "buscar": {
+      "titulo": "Rechercher dans la conversation",
+      "etiqueta": "Rechercher des messages dans cette conversation",
+      "placeholder": "Rechercher des messages…",
+      "limpiar": "Effacer la recherche",
+      "posicion": "{actual}/{total}",
+      "resultados": "{n, plural, =0 {Aucun résultat} one {# résultat} other {# résultats}}",
+      "anterior": "Résultat précédent",
+      "siguiente": "Résultat suivant",
+      "minimo": "Saisissez au moins {n} caractères pour rechercher.",
+      "error": "Impossible de rechercher dans la conversation",
+      "sinResultados": "Aucun message avec « {termino} »",
+      "lista": "Messages trouvés",
+      "roles": {
+        "customer": "Client",
+        "agent": "Agent",
+        "ai": "IA",
+        "system": "Système"
+      },
+      "navegar": "se déplacer",
+      "ir": "aller au message"
+    }
+  },
+  "chatClienteRapido": {
+    "titulo": "Créer un client rapide",
+    "descripcion": "Créez un client avec les informations minimales. Vous pourrez compléter son profil plus tard.",
+    "nombre": "Prénom",
+    "nombrePlaceholder": "Jean",
+    "apellido": "Nom",
+    "apellidoPlaceholder": "Dupont",
+    "correo": "E-mail",
+    "correoPlaceholder": "jean@exemple.com",
+    "telefono": "Téléphone",
+    "roles": "Rôles",
+    "responsabilidadFiscal": "Responsabilité fiscale",
+    "cancelar": "Annuler",
+    "crear": "Créer le client",
+    "creando": "Création…",
+    "errores": {
+      "nombreRequerido": "Le prénom est obligatoire.",
+      "alCrear": "Impossible de créer le client. Réessayez."
+    }
+  },
+  "chatDialogos": {
+    "comun": {
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer les modifications",
+      "guardando": "Enregistrement…"
+    },
+    "nuevoCanal": {
+      "nombrePlaceholder": "Ex. : Chat du site web",
+      "nombresDefecto": {
+        "website": "Chat du site web",
+        "whatsapp": "WhatsApp Business",
+        "facebook": "Facebook Messenger",
+        "instagram": "Instagram Direct",
+        "telegram": "Bot Telegram",
+        "email": "E-mail du support"
+      },
+      "avisoWebTitulo": "Chat pour votre site web",
+      "avisoWeb": "Après avoir créé le canal, vous pourrez copier le code du chat pour l’installer sur votre site.",
+      "avisoMetaTitulo": "Connexion à {red}",
+      "avisoMeta": "Après avoir créé le canal, vous devrez connecter votre compte Meta Business.",
+      "avisoWhatsApp": "Après avoir créé le canal, vous devrez connecter votre compte WhatsApp Business.",
+      "metodosTitulo": "Façons de connecter WhatsApp :",
+      "metodoCloud": "officielle de Meta, sans risque (recommandée)",
+      "metodoQr": "comme WhatsApp Web ; non officielle, Meta peut bloquer le numéro",
+      "metodoCoexistencia": "l’application sur le téléphone et l’API officielle en même temps",
+      "metodosNota": "La façon de connecter se choisit en configurant le canal, après sa création.",
+      "cancelar": "Annuler",
+      "creando": "Création…"
+    },
+    "codigoWidget": {
+      "titulo": "Installer le chat sur votre site web",
+      "descripcion": "Suivez ces étapes pour ajouter le chat à votre site web.",
+      "pestanaCodigo": "Code",
+      "pestanaPasos": "Instructions",
+      "codigo": "Code du chat",
+      "copiarCodigo": "Copier le code",
+      "copiado": "Copié !",
+      "clave": "Clé publique du canal",
+      "copiar": "Copier",
+      "copiadoCorto": "Copié",
+      "paso1": "Copiez le code du chat avec le bouton « Copier le code ».",
+      "paso2": "Ouvrez le fichier HTML principal de votre site web.",
+      "paso3": "Collez le code juste avant la balise {etiqueta}.",
+      "paso4": "Enregistrez les modifications et envoyez-les sur votre serveur.",
+      "paso5": "C’est prêt ! Le chat apparaît dans le coin que vous avez choisi.",
+      "notaTitulo": "Remarque :",
+      "nota": "Il fonctionne sur n’importe quelle page. Si le canal a des domaines autorisés, il ne fonctionne que sur ces domaines (et sur votre site GO Admin). Sur votre site GO Admin, rien à coller : il suffit d’activer « Afficher sur le site ».",
+      "cerrar": "Fermer"
+    },
+    "fragmento": {
+      "tituloNuevo": "Nouveau fragment",
+      "tituloEditar": "Modifier le fragment",
+      "descripcionNueva": "Écrivez-le comme vous le diriez à un client. L’IA l’utilise tel quel.",
+      "descripcionEditar": "L’enregistrement crée une nouvelle version du fragment.",
+      "descripcionNuevaFuente": "Ajoutez à cette source une réponse que l’IA peut utiliser telle quelle.",
+      "fuente": "Source",
+      "sinFuente": "Sans source",
+      "prioridad": "Priorité (1 à 10)",
+      "prioridadPlaceholder": "Choisissez la priorité",
+      "prioridadOpcion": "{n} · {nombre}",
+      "prioridades": {
+        "p1": "La plus basse",
+        "p2": "Basse",
+        "p3": "Plutôt basse",
+        "p4": "Moyenne basse",
+        "p5": "Normale",
+        "p6": "Moyenne haute",
+        "p7": "Plutôt haute",
+        "p8": "Haute",
+        "p9": "Très haute",
+        "p10": "La plus haute"
+      },
+      "prioridadAyuda": "Plus la priorité est haute, plus le fragment sort en premier quand l’IA cherche.",
+      "titulo": "Titre",
+      "tituloPlaceholder": "Ex. : Combien coûte la livraison ?",
+      "contenido": "Contenu",
+      "contenidoPlaceholder": "Écrivez ici le contenu du fragment…",
+      "caracteres": "{n, plural, one {# caractère} other {# caractères}}",
+      "etiquetas": "Étiquettes",
+      "etiquetaPlaceholder": "Saisissez une étiquette et appuyez sur Entrée",
+      "agregarEtiqueta": "Ajouter une étiquette",
+      "quitarEtiqueta": "Retirer l’étiquette {etiqueta}",
+      "crear": "Créer le fragment"
+    },
+    "fuente": {
+      "tituloNueva": "Nouvelle source",
+      "tituloEditar": "Modifier la source",
+      "descripcionNueva": "Une source regroupe des fragments sur un même thème, par exemple « Livraisons ».",
+      "descripcionEditar": "Modifiez le nom, la description ou l’icône de la source.",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Questions fréquentes",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "Quel type d’information contient cette source ?",
+      "icono": "Icône",
+      "iconoEmoji": "Icône (emoji)",
+      "elegirIcono": "Utiliser l’icône {icono}",
+      "crear": "Créer la source",
+      "ajustesTitulo": "Paramètres de la source",
+      "ajustesDescripcion": "Modifiez les informations de la source et si l’IA peut l’utiliser.",
+      "estado": "Source active",
+      "estadoActiva": "L’IA peut utiliser les fragments de cette source.",
+      "estadoInactiva": "L’IA n’utilise pas les fragments de cette source."
+    },
+    "importar": {
+      "archivoTitulo": "Importer un fichier",
+      "errorTipo": "Seuls les fichiers CSV ou TXT sont acceptés.",
+      "errorTamano": "Le fichier ne peut pas dépasser 5 Mo.",
+      "errorLectura": "Impossible de lire le fichier.",
+      "tipoCsv": "CSV",
+      "tipoTexto": "Texte",
+      "quitarArchivo": "Retirer le fichier",
+      "elegirArchivo": "Choisir un fichier CSV ou TXT",
+      "arrastra": "Glissez un fichier ici ou",
+      "seleccionar": "cliquez pour le choisir",
+      "formatos": "CSV ou TXT · 5 Mo maximum",
+      "formatoCsv": "Format CSV attendu :",
+      "ejemploCsv1": "\"Titre 1\",\"Contenu du fragment\",\"livraisons;paiements\",5",
+      "ejemploCsv2": "\"Titre 2\",\"Autre contenu\",\"horaires\",8",
+      "textoTitulo": "Coller du texte",
+      "pegaAqui": "Collez le contenu ici",
+      "caracteres": "{n, plural, one {# caractère} other {# caractères}}",
+      "ejemploTexto": "Titre du premier fragment\nLe contenu va sur les\nlignes suivantes.\n\n---\n\nTitre du deuxième fragment\nAutre contenu.",
+      "separador": "Séparateur entre fragments",
+      "separadorAyuda": "Ce texte sépare un fragment du suivant. Si vous ne mettez rien, {separador} est utilisé.",
+      "formatoTexto": "Format attendu :"
+    }
+  },
+  "chatConfig": {
+    "crmCanales": {
+      "titulo": "Canaux",
+      "descripcion": "Les canaux et le chat du site web se configurent dans Chat › Canaux.",
+      "irCanales": "Aller aux canaux",
+      "configurarSitio": "Configurer le chat du site web"
+    },
+    "comun": {
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement…",
+      "guardarCambios": "Enregistrer les modifications",
+      "editar": "Modifier",
+      "eliminar": "Supprimer",
+      "actualizar": "Actualiser",
+      "masAcciones": "Plus d’actions pour {nombre}",
+      "copiado": "Copié",
+      "error": "Erreur"
+    },
+    "ia": {
+      "titulo": "Configuration de l’IA",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "descripcion": "Configurez le comportement de l’assistant IA pour votre organisation",
+      "laboratorio": "Laboratoire",
+      "trabajos": "Tâches",
+      "iaActivada": "IA activée",
+      "iaDesactivada": "IA désactivée",
+      "pestanas": {
+        "etiqueta": "Parties de la configuration de l’IA",
+        "modelo": "Modèle",
+        "comportamiento": "Comportement",
+        "canales": "Canaux"
+      },
+      "cargando": "Chargement de la configuration…",
+      "cambiosSinGuardar": "Vous avez des modifications non enregistrées",
+      "descartar": "Annuler les modifications",
+      "toasts": {
+        "errorCarga": "Impossible de charger la configuration",
+        "activadaTitulo": "IA activée",
+        "activadaDesc": "L’assistant IA est maintenant actif",
+        "desactivadaTitulo": "IA désactivée",
+        "desactivadaDesc": "L’assistant IA a été désactivé",
+        "errorEstado": "Impossible de changer l’état de l’IA",
+        "guardada": "Configuration enregistrée",
+        "guardadaDesc": "Les modifications ont été appliquées",
+        "errorGuardar": "Impossible d’enregistrer la configuration",
+        "modoActualizado": "Mode mis à jour",
+        "modoActualizadoDesc": "Le mode IA du canal a été mis à jour",
+        "errorModo": "Impossible de mettre à jour le mode du canal",
+        "modosActualizados": "Modes mis à jour",
+        "modosActualizadosDesc": "Tous les canaux utilisent désormais le même mode IA",
+        "errorModos": "Impossible de mettre à jour les canaux"
+      },
+      "modelo": {
+        "titulo": "Modèle d’IA",
+        "proveedor": "Fournisseur",
+        "sinCredenciales": "sans identifiants",
+        "modelo": "Modèle",
+        "recomendado": "Recommandé",
+        "gamas": {
+          "economico": "économique",
+          "equilibrado": "équilibré",
+          "premium": "premium",
+          "legacy": "ancien"
+        },
+        "costoPorMil": "Coût estimé pour 1 000 réponses",
+        "noCalculable": "Non calculable",
+        "sinTarifa": "Ce modèle n’a pas de tarif chargé : sa dépense réelle ne peut pas être mesurée.",
+        "consumo": "Calculé avec la consommation réelle de votre chat : {entrada} jetons en entrée et {salida} en sortie par réponse.",
+        "contexto": "Contexte maximal : {n} jetons.",
+        "temperatura": "Température",
+        "temperaturaAyuda": "Valeurs basses = réponses plus précises. Valeurs hautes = réponses plus créatives.",
+        "maxTokens": "Nombre maximal de jetons",
+        "maxTokensAyuda": "Longueur maximale des réponses (100-4000)",
+        "fragmentos": "Fragments de contexte",
+        "fragmentosAyuda": "Fragments de connaissance à utiliser (1-20)"
+      },
+      "comportamiento": {
+        "tonoTitulo": "Ton et langue",
+        "tono": "Ton de communication",
+        "idioma": "Langue",
+        "reglas": "Règles du système (instructions pour l’IA)",
+        "reglasPlaceholder": "Tu es un assistant du service client. N’invente rien. Si tu ne sais pas, indique qu’un agent humain va aider…",
+        "reglasAyuda": "Définit le comportement, les limites et la personnalité de l’IA",
+        "fallback": "Message de secours",
+        "fallbackPlaceholder": "Désolé, je ne peux pas vous aider sur ce point. Un agent humain vous répondra bientôt.",
+        "fallbackAyuda": "Message utilisé quand l’IA ne peut pas répondre ou que la confiance est faible",
+        "autoTitulo": "Réponses automatiques",
+        "auto": "Réponses automatiques",
+        "autoAyuda": "L’IA répond automatiquement aux messages entrants",
+        "retraso": "Délai avant de répondre (secondes)",
+        "retrasoAyuda": "Attente avant que l’IA réponde (0-60 secondes)",
+        "umbral": "Seuil de confiance",
+        "umbralAyuda": "En dessous de ce seuil, le message de secours est utilisé"
+      },
+      "tonos": {
+        "professional": "Professionnel",
+        "friendly": "Chaleureux",
+        "formal": "Formel",
+        "casual": "Décontracté",
+        "empathetic": "Empathique"
+      },
+      "idiomas": {
+        "es": "Espagnol",
+        "en": "Anglais",
+        "pt": "Portugais",
+        "fr": "Français"
+      },
+      "canales": {
+        "titulo": "Mode IA par canal",
+        "aplicarTodos": "Appliquer à tous :",
+        "seleccionar": "Sélectionner",
+        "vacioTitulo": "Aucun canal configuré",
+        "vacioDescripcion": "Configurez des canaux de communication pour gérer leur mode IA",
+        "columnas": {
+          "canal": "Canal",
+          "tipo": "Type",
+          "estado": "État",
+          "modo": "Mode IA",
+          "cambiar": "Changer"
+        },
+        "activo": "Actif",
+        "inactivo": "Inactif",
+        "cambiarModo": "Mode IA de {canal}",
+        "modosDisponibles": "Modes disponibles :",
+        "modos": {
+          "auto": {
+            "nombre": "IA seule",
+            "descripcion": "L’IA répond automatiquement sans intervention humaine"
+          },
+          "hybrid": {
+            "nombre": "Hybride",
+            "descripcion": "L’IA répond et peut transférer à un agent humain"
+          },
+          "manual": {
+            "nombre": "Manuel",
+            "descripcion": "Seuls les agents humains répondent ; l’IA est désactivée"
+          }
+        }
+      }
+    },
+    "etiquetas": {
+      "titulo": "Étiquettes de conversation",
+      "conteo": "{n, plural, one {# étiquette configurée} other {# étiquettes configurées}}",
+      "nueva": "Nouvelle étiquette",
+      "conversaciones": "{n, plural, one {# conversation} other {# conversations}}",
+      "dialogo": {
+        "tituloNueva": "Nouvelle étiquette",
+        "tituloEditar": "Modifier l’étiquette",
+        "nombre": "Nom *",
+        "nombrePlaceholder": "Ex. : Urgent, VIP, Support…",
+        "color": "Couleur",
+        "descripcion": "Description (facultatif)",
+        "descripcionPlaceholder": "Décrivez l’usage de cette étiquette…",
+        "vistaPrevia": "Aperçu :",
+        "nombrePorDefecto": "Nom de l’étiquette",
+        "crear": "Créer l’étiquette"
+      },
+      "colores": {
+        "3b82f6": "Bleu",
+        "22c55e": "Vert",
+        "eab308": "Jaune",
+        "f97316": "Orange",
+        "ef4444": "Rouge",
+        "a855f7": "Violet",
+        "ec4899": "Rose",
+        "6366f1": "Indigo",
+        "14b8a6": "Sarcelle",
+        "64748b": "Gris"
+      }
+    },
+    "respuestas": {
+      "titulo": "Réponses rapides",
+      "conteo": "{n, plural, one {# modèle configuré} other {# modèles configurés}}",
+      "buscar": "Rechercher…",
+      "nueva": "Nouvelle réponse",
+      "inactiva": "Inactive",
+      "copiar": "Copier le contenu",
+      "copiadoDesc": "Le contenu a été copié dans le presse-papiers",
+      "usos": "{n, plural, one {Utilisée # fois} other {Utilisée # fois}}",
+      "dialogo": {
+        "tituloNueva": "Nouvelle réponse rapide",
+        "tituloEditar": "Modifier la réponse rapide",
+        "titulo": "Titre *",
+        "tituloPlaceholder": "Ex. : Accueil",
+        "atajo": "Raccourci (facultatif)",
+        "atajoPlaceholder": "Ex. : bonjour",
+        "atajoAyuda": "Tapez /{atajo} pour l’utiliser",
+        "atajoPorDefecto": "raccourci",
+        "contenido": "Contenu *",
+        "contenidoPlaceholder": "Écrivez le message de la réponse rapide…",
+        "variables": "Variables disponibles",
+        "etiquetas": "Étiquettes internes (facultatif)",
+        "etiquetaPlaceholder": "Ajouter une étiquette…",
+        "agregar": "Ajouter",
+        "quitarEtiqueta": "Retirer {etiqueta}",
+        "activa": "Réponse active",
+        "activaAyuda": "Les réponses inactives n’apparaissent pas dans les suggestions",
+        "crear": "Créer la réponse"
+      },
+      "variables": {
+        "customer_name": "Nom du client de la conversation",
+        "agent_name": "Nom de l’agent assigné",
+        "organization_name": "Nom de votre entreprise",
+        "current_date": "Date du jour",
+        "current_time": "Heure actuelle"
+      }
+    },
+    "llaves": {
+      "titulo": "Clés d’API",
+      "conteo": "{activas} sur {total, plural, one {# clé active} other {# clés actives}}",
+      "nueva": "Nouvelle clé",
+      "activa": "Active",
+      "revocada": "Révoquée",
+      "expirada": "Expirée",
+      "inactiva": "Inactive",
+      "copiarPrefijo": "Copier le préfixe",
+      "prefijoCopiado": "Préfixe de la clé copié",
+      "canal": "Canal : {nombre} ({tipo})",
+      "rotar": "Renouveler la clé",
+      "revocar": "Révoquer",
+      "permisos": "Autorisations :",
+      "creada": "Créée {cuando}",
+      "ultimoUso": "Dernière utilisation : {cuando}",
+      "expira": "Expire : {cuando}",
+      "expiro": "A expiré : {cuando}",
+      "dialogo": {
+        "creadaTitulo": "Clé d’API créée",
+        "guardaAhora": "Enregistrez cette clé maintenant",
+        "unicaVez": "C’est la seule fois que vous verrez la clé complète. Conservez-la en lieu sûr.",
+        "tuLlave": "Votre clé d’API :",
+        "copiarLlave": "Copier la clé",
+        "entendido": "Compris, je l’ai enregistrée",
+        "nuevaTitulo": "Nouvelle clé d’API",
+        "nombre": "Nom *",
+        "nombrePlaceholder": "Ex. : Widget web, intégration CRM…",
+        "canal": "Canal (facultatif)",
+        "todosCanales": "Tous les canaux",
+        "canalAyuda": "Limite l’accès à un canal précis",
+        "permisos": "Autorisations (scopes) *",
+        "expiracion": "Expiration",
+        "expiraciones": {
+          "never": "N’expire jamais",
+          "d30": "30 jours",
+          "d90": "90 jours",
+          "d180": "6 mois",
+          "d365": "1 an"
+        },
+        "generando": "Génération…",
+        "crear": "Créer la clé"
+      },
+      "scopes": {
+        "messages_read": {
+          "nombre": "Lire les messages",
+          "descripcion": "Permet de lire les messages des conversations"
+        },
+        "messages_write": {
+          "nombre": "Envoyer des messages",
+          "descripcion": "Permet d’envoyer des messages aux conversations"
+        },
+        "conversations_read": {
+          "nombre": "Lire les conversations",
+          "descripcion": "Permet de voir la liste des conversations"
+        },
+        "conversations_write": {
+          "nombre": "Gérer les conversations",
+          "descripcion": "Permet de créer et de modifier des conversations"
+        },
+        "contacts_read": {
+          "nombre": "Lire les contacts",
+          "descripcion": "Permet de voir les informations des contacts"
+        },
+        "contacts_write": {
+          "nombre": "Gérer les contacts",
+          "descripcion": "Permet de créer et de modifier des contacts"
+        },
+        "webhooks_manage": {
+          "nombre": "Webhooks",
+          "descripcion": "Permet de configurer des webhooks"
+        }
+      }
+    }
+  },
+  "chatRecuperado": {
+    "nav": {
+      "configuracion": "Paramètres"
+    },
+    "conocimiento": {
+      "filtroEtiquetas": "Filtrer par étiquettes",
+      "etiquetasPlaceholder": "Toutes les étiquettes",
+      "quitarEtiqueta": "Retirer le filtre {etiqueta}",
+      "prioridad": "Priorité",
+      "votos": "Votes",
+      "votosAria": "{positivos} votes pour et {negativos} contre",
+      "indexada": "Indexée",
+      "actualizar": "Actualiser",
+      "mostrando": "{visibles} fragments affichés sur {total}",
+      "modelo": "Modèle d’embedding",
+      "hash": "Empreinte du contenu",
+      "creado": "Créé"
+    },
+    "importar": {
+      "etiquetas": "Étiquettes",
+      "enCola": "Les embeddings sont en file d’attente : l’IA pourra utiliser les fragments dans quelques minutes.",
+      "erroresTitulo": "Lignes non importées :",
+      "fila": "Ligne {n} : {motivo}",
+      "errorGeneral": "Impossible d’enregistrer dans la base de données. Réessayez.",
+      "nuevaImportacion": "Nouvelle importation"
+    },
+    "widget": {
+      "filtroCanal": "Canal",
+      "canalTodos": "Canal : tous",
+      "verDetalle": "Voir le détail",
+      "detalleTitulo": "Détail de la session",
+      "idAnonimo": "ID anonyme",
+      "inicio": "Début",
+      "ultimaActividad": "Dernière activité",
+      "canal": "Canal",
+      "tipoCanal": "Type de canal",
+      "cliente": "Client",
+      "correo": "E-mail du client",
+      "dispositivo": "Appareil",
+      "ubicacion": "Localisation",
+      "pagina": "Page actuelle",
+      "origen": "Provenance",
+      "navegador": "Navigateur (user agent)",
+      "abrirConversacion": "Ouvrir la conversation"
+    },
+    "auditoria": {
+      "actualizar": "Actualiser",
+      "filtroActor": "Type d’acteur",
+      "actorTodos": "Acteur : tous",
+      "rangoPersonalizado": "Choisir les dates…",
+      "rangoFechas": "Dates de l’audit",
+      "identificadores": "Identifiants",
+      "idRegistro": "ID de l’enregistrement",
+      "idActor": "ID de l’auteur",
+      "entidad": "Type d’enregistrement concerné",
+      "idEntidad": "ID de l’enregistrement concerné",
+      "navegador": "Navigateur (user agent)",
+      "metadata": "Données supplémentaires"
     }
   }
 }

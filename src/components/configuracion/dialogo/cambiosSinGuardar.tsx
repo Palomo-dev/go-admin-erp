@@ -45,6 +45,14 @@ export function contarCambios(a: unknown, b: unknown): number {
 }
 
 /**
+ * ¿El panel está dentro del diálogo de Configuración? Ahí la barra
+ * «Descartar · Guardar» la pinta el diálogo: el panel no muestra la suya.
+ */
+export function useDentroDelDialogo(): boolean {
+  return useContext(CambiosContext) !== null;
+}
+
+/**
  * El panel avisa al diálogo de sus cambios sin guardar. Las funciones se leen
  * de una referencia: el panel puede pasarlas sin memorizar.
  */

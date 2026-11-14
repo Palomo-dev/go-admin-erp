@@ -2,15 +2,17 @@
 
 /**
  * Detalle del chat del sitio web (Figma 91-chat-24): «Mostrar en el sitio»,
- * cifras de sesiones, Instalación, Apariencia, Al abrir el chat, Datos del
- * visitante y la vista previa en vivo. Toda escritura pasa por
- * `chatChannelsService` (y `website_settings` para mostrar el chat en el sitio
- * de GO Admin, como antes).
+ * activar o desactivar el canal, cifras de sesiones, Instalación, Apariencia
+ * (esquina, márgenes, logo y estilo), Al abrir el chat, Datos del visitante y
+ * la vista previa en vivo. Toda escritura pasa por `chatChannelsService` (y
+ * `website_settings` para mostrar el chat en el sitio de GO Admin, como antes).
+ * Los valores por defecto son los del widget público (`configuracionDelWidget`).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { EmptyState, KpiStrip, StatCard } from '@/components/kit';
+import { Power } from 'lucide-react';
+import { EmptyState, KpiStrip, RowActionsMenu, StatCard } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -18,7 +20,6 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
 import ChatChannelsService, {
-  normalizarPosicionWidget,
   type AIMode,
   type BrandConfig,
   type ChatChannel,
@@ -32,21 +33,8 @@ import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { CanalIcono } from '@/components/chat/ui/CanalIcono';
 import { AlAbrirWidget, AparienciaWidget, DatosVisitanteWidget, InstalacionWidget } from '@/components/chat/channels/website/id/SeccionesWidget';
 import { VistaPreviaWidget } from '@/components/chat/channels/website/id/VistaPreviaWidget';
-import { porcentajeCelular } from '@/components/chat/channels/website/id/widgetLogica';
+import { configuracionDelWidget, porcentajeCelular } from '@/components/chat/channels/website/id/widgetLogica';
 import { codigoDelWidget } from '@/lib/chat/codigoWidget';
-
-const ESTILO_BASE: WidgetStyle = {
-  primaryColor: '#4361EE',
-  iconColor: '#FFFFFF',
-  iconType: 'chat',
-  iconStyle: 'outline',
-  buttonSize: 56,
-  borderRadius: 28,
-  borderWidth: 0,
-  borderColor: '#FFFFFF',
-  shadowEnabled: true,
-  shadowStrength: 'medium',
-};
 
 export default function WebsiteChannelSettingsPage() {
   const params = useParams();
@@ -64,6 +52,7 @@ export default function WebsiteChannelSettingsPage() {
   const [cambiandoSitio, setCambiandoSitio] = useState(false);
   const [rotando, setRotando] = useState(false);
   const [guardandoModo, setGuardandoModo] = useState(false);
+  const [cambiandoActivo, setCambiandoActivo] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
   const cargar = useCallback(async () => {
@@ -95,24 +84,8 @@ export default function WebsiteChannelSettingsPage() {
   }, [cargar]);
 
   const ajustes = canal?.website_settings;
-  const config: BrandConfig = useMemo(() => {
-    const bc = (ajustes?.brand_config ?? {}) as Partial<BrandConfig>;
-    return {
-      ...bc,
-      position: normalizarPosicionWidget(bc.position),
-      style: { ...ESTILO_BASE, ...(bc.primary_color ? { primaryColor: bc.primary_color } : {}), ...(bc.style ?? {}) },
-      behavior: {
-        title: canal?.name ?? '',
-        welcomeMessage: ajustes?.welcome_message ?? '',
-        openDefaultView: 'chat',
-        showQuickActions: false,
-        quickActions: [],
-        offlineMessage: '',
-        offlineCollectData: true,
-        ...(bc.behavior ?? {}),
-      },
-    } as BrandConfig;
-  }, [ajustes, canal?.name]);
+  // Mismos valores por defecto que el widget público: guardar un campo no cambia los demás.
+  const config: BrandConfig = useMemo(() => configuracionDelWidget(ajustes?.brand_config, ajustes?.welcome_message), [ajustes]);
   const datos: CollectIdentity = ajustes?.collect_identity ?? { name: true, email: true, phone: false };
 
   const conUsuario = async (accion: (s: ChatChannelsService, userId: string) => Promise<void>, error: string) => {
@@ -141,6 +114,12 @@ export default function WebsiteChannelSettingsPage() {
 
   const guardarPosicion = (position: WidgetPosition) => guardarConfig({ ...config, position });
   const guardarEstilo = (style: WidgetStyle) => guardarConfig({ ...config, style, primary_color: style.primaryColor });
+  /** Logo de la cabecera del chat (`brand_config.logo_url`); vacío = el de la organización. */
+  const guardarLogo = (url: string) => {
+    const nueva: BrandConfig = { ...config, logo_url: url };
+    if (!url) delete nueva.logo_url;
+    return guardarConfig(nueva);
+  };
   const guardarComportamiento = (behavior: WidgetBehavior) =>
     conUsuario(async (s, u) => {
       const nueva = { ...config, behavior };
@@ -169,6 +148,15 @@ export default function WebsiteChannelSettingsPage() {
       await conUsuario(async (s, u) => {
         const clave = await s.rotatePublicKey(channelId, u);
         setCanal((c) => (c ? { ...c, public_key: clave } : c));
+        // El sitio de GO Admin carga el chat con la clave guardada en `website_settings`:
+        // sin esto, rotar la clave apagaba el chat del sitio propio hasta volver a activarlo.
+        if (enSitio && organizationId) {
+          const { error: e } = await supabase
+            .from('website_settings')
+            .update({ chat_widget_public_key: clave, updated_at: new Date().toISOString() })
+            .eq('organization_id', organizationId);
+          if (e) console.error('Error actualizando la clave del chat en el sitio:', e);
+        }
       }, 'Error rotando la clave:');
       toast({ title: t('widget.toasts.claveRotada') });
     } catch {
@@ -189,6 +177,22 @@ export default function WebsiteChannelSettingsPage() {
       /* ya avisó */
     } finally {
       setGuardandoModo(false);
+    }
+  };
+
+  const alternarActivo = async () => {
+    if (!canal) return;
+    setCambiandoActivo(true);
+    try {
+      await conUsuario(async (s, u) => {
+        const r = await s.toggleChannelStatus(channelId, u);
+        setCanal((c) => (c ? { ...c, status: r.status } : c));
+        toast({ title: t(r.status === 'active' ? 'toasts.activado' : 'toasts.desactivado', { nombre: canal.name }) });
+      }, 'Error cambiando el estado del canal:');
+    } catch {
+      /* ya avisó */
+    } finally {
+      setCambiandoActivo(false);
     }
   };
 
@@ -265,6 +269,19 @@ export default function WebsiteChannelSettingsPage() {
                 {t('widget.guardado')}
               </Badge>
             )}
+            <RowActionsMenu
+              orientacion="horizontal"
+              titulo={canal.name}
+              acciones={[
+                {
+                  id: 'activo',
+                  etiqueta: t(activo ? 'detalleCanal.desactivar' : 'detalleCanal.activar'),
+                  icono: Power,
+                  onSelect: alternarActivo,
+                  deshabilitada: cambiandoActivo,
+                },
+              ]}
+            />
           </>
         }
       />
@@ -280,18 +297,19 @@ export default function WebsiteChannelSettingsPage() {
         <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
           <InstalacionWidget
             codigo={codigo}
+            clavePublica={canal.public_key ?? null}
             dominios={ajustes?.allowed_domains ?? []}
             rotando={rotando}
             onRotarClave={rotarClave}
             onAgregarDominio={agregarDominio}
             onQuitarDominio={quitarDominio}
           />
-          <AparienciaWidget config={config} onGuardarPosicion={guardarPosicion} onGuardarEstilo={guardarEstilo} />
+          <AparienciaWidget config={config} onGuardarPosicion={guardarPosicion} onGuardarEstilo={guardarEstilo} onGuardarLogo={guardarLogo} />
           <AlAbrirWidget comportamiento={config.behavior} onGuardar={guardarComportamiento} />
           <DatosVisitanteWidget datos={datos} modo={canal.ai_mode} onGuardarDatos={guardarDatos} onCambiarModo={cambiarModo} guardandoModo={guardandoModo} />
         </div>
         <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-          <VistaPreviaWidget config={config} datos={datos} />
+          <VistaPreviaWidget config={config} datos={datos} logoOrganizacion={organization?.logo_url ?? null} />
         </div>
       </div>
     </div>

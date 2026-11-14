@@ -1,153 +1,132 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Search, Filter, FileX } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { FileX } from 'lucide-react';
+import { EmptyState, SearchInput } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { ConversationFile } from '@/lib/services/conversationFilesService';
 import FileCard from './FileCard';
-import { ConversationFile } from '@/lib/services/conversationFilesService';
+import {
+  FILTROS_REMITENTE,
+  FILTROS_TIPO_ARCHIVO,
+  filtrarArchivos,
+  type FiltroRemitente,
+  type FiltroTipoArchivo,
+} from './archivosLogica';
 
 interface FilesListProps {
   files: ConversationFile[];
   loading: boolean;
+  onOpen: (file: ConversationFile) => Promise<void>;
   onDownload: (file: ConversationFile) => Promise<void>;
   onCopyLink: (file: ConversationFile) => Promise<void>;
   onDelete?: (file: ConversationFile) => Promise<void>;
   canDelete?: boolean;
 }
 
-export default function FilesList({
-  files,
-  loading,
-  onDownload,
-  onCopyLink,
-  onDelete,
-  canDelete = false
-}: FilesListProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [senderFilter, setSenderFilter] = useState<string>('all');
+/**
+ * Lista de la pestaña «Archivos» (Figma 91-chat-12): buscador, tipo y «Enviados
+ * por» en una fila; debajo, la cuadrícula de tarjetas y el aviso de enlaces.
+ */
+export default function FilesList({ files, loading, onOpen, onDownload, onCopyLink, onDelete, canDelete = false }: FilesListProps) {
+  const t = useTranslations('chatHilo.archivos');
+  const [busqueda, setBusqueda] = useState('');
+  const [tipo, setTipo] = useState<FiltroTipoArchivo>('todos');
+  const [remitente, setRemitente] = useState<FiltroRemitente>('todos');
 
-  const getFileCategory = (mimeType: string): string => {
-    if (mimeType.startsWith('image/')) return 'image';
-    if (mimeType.startsWith('video/')) return 'video';
-    if (mimeType.startsWith('audio/')) return 'audio';
-    if (mimeType.includes('pdf')) return 'pdf';
-    if (mimeType.includes('word') || mimeType.includes('document')) return 'document';
-    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'spreadsheet';
-    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar')) return 'archive';
-    return 'other';
-  };
-
-  const filteredFiles = files.filter(file => {
-    const matchesSearch = file.file_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = typeFilter === 'all' || getFileCategory(file.mime_type) === typeFilter;
-    const matchesSender = senderFilter === 'all' || file.message?.role === senderFilter;
-    
-    return matchesSearch && matchesType && matchesSender;
-  });
-
-  if (loading) {
-    return (
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
-            <Skeleton className="h-10 w-10 rounded" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-        ))}
-      </div>
-    );
-  }
+  const visibles = useMemo(() => filtrarArchivos(files, { busqueda, tipo, remitente }), [files, busqueda, tipo, remitente]);
+  const hayFiltros = busqueda.trim() !== '' || tipo !== 'todos' || remitente !== 'todos';
 
   return (
-    <div className="p-4">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar archivos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Tipo" />
+    <div className="flex flex-col gap-3 px-4 pb-6 pt-3 lg:px-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput
+          value={busqueda}
+          onChange={setBusqueda}
+          onValueChange={setBusqueda}
+          placeholder={t('buscar')}
+          etiqueta={t('buscar')}
+          tamano="sm"
+          className="w-full sm:max-w-xs"
+        />
+        <Select value={tipo} onValueChange={(v) => setTipo(v as FiltroTipoArchivo)}>
+          <SelectTrigger className="h-8 w-full sm:w-48" aria-label={t('filtroTipo')}>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los tipos</SelectItem>
-            <SelectItem value="image">Imágenes</SelectItem>
-            <SelectItem value="video">Videos</SelectItem>
-            <SelectItem value="audio">Audios</SelectItem>
-            <SelectItem value="pdf">PDFs</SelectItem>
-            <SelectItem value="document">Documentos</SelectItem>
-            <SelectItem value="spreadsheet">Hojas de cálculo</SelectItem>
-            <SelectItem value="archive">Comprimidos</SelectItem>
-            <SelectItem value="other">Otros</SelectItem>
+            {FILTROS_TIPO_ARCHIVO.map((v) => (
+              <SelectItem key={v} value={v}>
+                {t(`tipos.${v}`)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
-
-        <Select value={senderFilter} onValueChange={setSenderFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Enviado por" />
+        <Select value={remitente} onValueChange={(v) => setRemitente(v as FiltroRemitente)}>
+          <SelectTrigger className="h-8 w-full sm:w-48" aria-label={t('remitente.etiqueta')}>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="customer">Cliente</SelectItem>
-            <SelectItem value="agent">Agente</SelectItem>
-            <SelectItem value="ai">IA</SelectItem>
+            {FILTROS_REMITENTE.map((v) => (
+              <SelectItem key={v} value={v}>
+                {v === 'todos' ? t('remitente.todos') : t('remitente.filtro', { quien: t(`remitente.${v}`) })}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Files List */}
-      {filteredFiles.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-center">
-          <FileX className="h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-            {files.length === 0 ? 'No hay archivos' : 'No se encontraron archivos'}
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {files.length === 0 
-              ? 'Aún no se han compartido archivos en esta conversación'
-              : 'Intenta ajustar los filtros de búsqueda'
-            }
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredFiles.map((file) => (
-            <FileCard
-              key={file.id}
-              file={file}
-              onDownload={onDownload}
-              onCopyLink={onCopyLink}
-              onDelete={onDelete}
-              canDelete={canDelete}
-            />
+      <p className="sr-only" role="status" aria-live="polite">
+        {loading ? '' : t('conteo', { visibles: visibles.length, total: files.length })}
+      </p>
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5" aria-busy="true">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="overflow-hidden rounded-xl border border-line bg-surface">
+              <Skeleton className="h-[120px] w-full rounded-none" />
+              <div className="space-y-1.5 px-3 py-2.5">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
           ))}
         </div>
+      ) : visibles.length === 0 ? (
+        hayFiltros ? (
+          <EmptyState
+            variante="search"
+            titulo={t('sinResultadosTitulo')}
+            descripcion={t('sinResultadosDescripcion')}
+            termino={busqueda || undefined}
+            onLimpiarFiltros={() => {
+              setBusqueda('');
+              setTipo('todos');
+              setRemitente('todos');
+            }}
+          />
+        ) : (
+          <EmptyState icono={FileX} titulo={t('vacioTitulo')} descripcion={t('vacioDescripcion')} />
+        )
+      ) : (
+        <ul aria-label={t('lista')} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {visibles.map((file) => (
+            <li key={file.id}>
+              <FileCard
+                file={file}
+                onOpen={onOpen}
+                onDownload={onDownload}
+                onCopyLink={onCopyLink}
+                onDelete={onDelete}
+                canDelete={canDelete}
+              />
+            </li>
+          ))}
+        </ul>
       )}
 
-      {/* Results count */}
-      {files.length > 0 && (
-        <div className="mt-4 text-sm text-gray-500 dark:text-gray-400 text-center">
-          Mostrando {filteredFiles.length} de {files.length} archivos
-        </div>
-      )}
+      {!loading && files.length > 0 ? <p className="text-xs text-fg-muted">{t('aviso')}</p> : null}
     </div>
   );
 }

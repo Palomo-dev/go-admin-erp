@@ -121,7 +121,10 @@ export async function POST(request: NextRequest) {
       .insert({
         organization_id: organizationId,
         conversation_id: conversationId,
-        job_type: 'response',
+        // 'respond' es el valor del CHECK de ai_jobs.job_type; con 'response'
+        // el insert fallaba y la sugerencia quedaba sin trabajo (sin jobId, el
+        // 👍/👎 del panel IA no tenía a qué ligarse).
+        job_type: 'respond',
         status: 'completed',
         response_text: response.content,
         prompt_tokens: response.usage.promptTokens,

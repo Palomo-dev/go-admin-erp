@@ -1,26 +1,24 @@
 'use client';
 
 import React from 'react';
-import { Download } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { KpiStrip, StatCard, clasesBoton } from '@/components/kit';
+import { KpiStrip, StatCard } from '@/components/kit';
 import type { ActivityStats } from '@/lib/services/conversationActivityService';
 
 interface ActivityHeaderProps {
   stats: ActivityStats | null;
   loading?: boolean;
-  onExport?: () => void;
-  canExport?: boolean;
 }
 
 /**
- * Cifras de la pestaña «Actividad» (Figma 91-chat-11) y «Exportar CSV». El
- * título, «←» y las pestañas los pone `CabeceraConversacion`.
+ * Cifras de la pestaña «Actividad» (Figma 91-chat-11). El título, «←» y las
+ * pestañas los pone `CabeceraConversacion`; el buscador, el filtro y
+ * «Exportar CSV», `ActivityList`.
  */
-export default function ActivityHeader({ stats, loading, onExport, canExport = false }: ActivityHeaderProps) {
+export default function ActivityHeader({ stats, loading }: ActivityHeaderProps) {
   const t = useTranslations('chatBandeja.actividad');
   return (
-    <div className="space-y-3 px-4 pt-4 lg:px-6">
+    <div className="px-4 pt-4 lg:px-6">
       <KpiStrip columnas={5} etiqueta={t('resumen')}>
         <StatCard tamano="sm" etiqueta={t('total')} valor={stats?.totalActivities ?? 0} cargando={loading} />
         <StatCard tamano="sm" etiqueta={t('estados')} valor={stats?.statusChanges ?? 0} cargando={loading} />
@@ -28,14 +26,6 @@ export default function ActivityHeader({ stats, loading, onExport, canExport = f
         <StatCard tamano="sm" etiqueta={t('etiquetas')} valor={stats?.tagChanges ?? 0} cargando={loading} />
         <StatCard tamano="sm" etiqueta={t('ia')} valor={stats?.aiJobs ?? 0} cargando={loading} />
       </KpiStrip>
-      {canExport && onExport ? (
-        <div className="flex justify-end">
-          <button type="button" onClick={onExport} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-            <Download aria-hidden="true" className="size-4" />
-            {t('exportar')}
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

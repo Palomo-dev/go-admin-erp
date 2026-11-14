@@ -49685,13 +49685,19 @@
       "archivo": "File",
       "descargar": "Download",
       "reproducir": "Play audio",
-      "pausar": "Pause audio"
+      "pausar": "Pause audio",
+      "entregado": "Delivered",
+      "fallido": "Not delivered",
+      "ubicacion": "Location",
+      "verMapa": "View on map"
     },
     "fila": {
       "sinAsignar": "Unassigned",
       "iaAutomatico": "AI · automatic",
       "noLeidos": "{n, plural, one {# unread message} other {# unread messages}}",
-      "prefijoIa": "AI: {texto}"
+      "prefijoIa": "AI: {texto}",
+      "enLinea": "Online",
+      "masEtiquetas": "{n} more tags"
     },
     "prioridad": {
       "low": "Low",
@@ -49738,7 +49744,10 @@
         "demasiados": "Too many messages in a row. Wait a moment.",
         "sinPlantilla": "The template is not approved or is missing data.",
         "generico": "Check your connection and try again."
-      }
+      },
+      "negrilla": "Bold",
+      "negrillaAtajo": "Bold (Ctrl+B)",
+      "ayudaTeclas": "Enter to send · Shift+Enter for a new line · **text** in bold"
     }
   },
   "chatBandeja": {
@@ -49798,7 +49807,32 @@
       "sinCompras": "No purchases",
       "ultimaCompra": "Last purchase",
       "oportunidad": "Opportunity",
-      "verFicha": "View customer record"
+      "verFicha": "View customer record",
+      "enLinea": "Online",
+      "visto": "Seen {cuando}",
+      "mensajes": "Messages",
+      "primerContacto": "First contact",
+      "ultimoContacto": "Last contact",
+      "recientes": "Recent conversations",
+      "mensajesN": "{n, plural, one {# message} other {# messages}}",
+      "estaConversacion": "This conversation",
+      "notasCliente": "Customer notes",
+      "vinculado": "Linked customer in CRM",
+      "edicion": {
+        "editar": "Edit contact",
+        "titulo": "Edit contact",
+        "nombres": "First name",
+        "apellidos": "Last name",
+        "ciudad": "City",
+        "guardar": "Save",
+        "cancelar": "Cancel",
+        "guardado": "Contact updated",
+        "error": "Couldn’t save the contact",
+        "errorNombre": "Enter the first name",
+        "errorCorreo": "Check the email",
+        "errorTelefono": "Check the phone number",
+        "ayudaCorreoWidget": "This visitor came through the website chat: the email is stored separately and doesn’t change how the chat recognizes them."
+      }
     },
     "acciones": {
       "estadoYPrioridad": "Status and priority",
@@ -49854,14 +49888,24 @@
       "enviada": "Reply sent",
       "generar": "Suggest a reply",
       "otra": "Generate another reply",
-      "creditos": "Each generated reply or summary uses AI credits."
+      "creditos": "Each generated reply or summary uses AI credits.",
+      "sentimiento": "Sentiment",
+      "sentimientos": {
+        "positive": "Positive",
+        "neutral": "Neutral",
+        "negative": "Negative"
+      },
+      "puntosClave": "Key points"
     },
     "panel": {
       "etiqueta": "Conversation details",
       "cliente": "Customer",
       "acciones": "Actions",
       "notas": "Notes",
-      "ia": "AI"
+      "ia": "AI",
+      "mostrarPanel": "Show panel",
+      "ocultarPanel": "Hide panel",
+      "rapidas": "Quick"
     },
     "hilo": {
       "etiqueta": "Conversation",
@@ -49920,7 +49964,8 @@
       "mias": "Mine",
       "sinAsignar": "Unassigned",
       "pendientes": "Pending",
-      "cerradas": "Closed"
+      "cerradas": "Closed",
+      "todas": "All"
     },
     "vacio": {
       "sinCanalesTitulo": "You have no connected channels yet",
@@ -49933,7 +49978,8 @@
         "mias": "You have no open conversations assigned.",
         "sinAsignar": "Every open conversation is assigned.",
         "pendientes": "There are no pending conversations.",
-        "cerradas": "There are no closed conversations."
+        "cerradas": "There are no closed conversations.",
+        "todas": "There are no conversations."
       },
       "listaTitulo": "Your inbox is ready",
       "listaDescripcion": "Once you connect a channel, your customers' conversations will show up here.",
@@ -49964,7 +50010,8 @@
         "conversacion": "Conversation",
         "actividad": "Activity",
         "archivos": "Files"
-      }
+      },
+      "asunto": "Subject: {asunto}"
     },
     "actividad": {
       "resumen": "Activity summary",
@@ -50022,6 +50069,69 @@
         "sinPermiso": "You do not belong to this organization",
         "clienteCreado": "Customer {nombre} created",
         "organizarParcial": "The conversation was created, but not everything could be applied (priority, tags or assignment)."
+      },
+      "asunto": "Subject (optional)",
+      "asuntoPlaceholder": "E.g. December wholesale order"
+    },
+    "rapidas": {
+      "titulo": "Quick replies",
+      "buscar": "Search by title, text, shortcut or tag",
+      "sinResultados": "No replies match that text",
+      "vacio": "There are no quick replies yet",
+      "vacioAyuda": "Create them in Settings › Chat.",
+      "usos": "{n, plural, =0 {Never used} one {Used # time} other {Used # times}}",
+      "usar": "Use"
+    }
+  },
+  "chatBandejaPendientes": {
+    "bloqueo": {
+      "contacto": "this contact",
+      "menuBloquear": "Block contact",
+      "menuDesbloquear": "Unblock contact",
+      "confirmarTitulo": "Block {nombre}?",
+      "confirmarDescripcion": "Their new messages won't reach the inbox and the AI won't reply to them. The conversation and its history are kept. You can unblock them anytime from this same menu.",
+      "confirmar": "Block contact",
+      "cancelar": "Cancel",
+      "insignia": "Blocked",
+      "avisoTitulo": "You blocked {nombre}",
+      "avisoDescripcion": "Their new messages don't reach the inbox and the AI doesn't reply. The history is kept.",
+      "desbloquear": "Unblock",
+      "eventoBloqueo": "{persona} blocked the contact",
+      "eventoBloqueoSinPersona": "The contact was blocked",
+      "eventoDesbloqueo": "{persona} unblocked the contact",
+      "eventoDesbloqueoSinPersona": "The contact was unblocked",
+      "mensajeBloqueado": "Received while the contact was blocked",
+      "avisos": {
+        "bloqueado": "Contact blocked",
+        "desbloqueado": "Contact unblocked",
+        "error": "Couldn't change the contact's block"
+      }
+    },
+    "valoracion": {
+      "teSirvio": "Was this helpful?",
+      "si": "Yes",
+      "no": "No",
+      "gracias": "Thanks, we saved your vote",
+      "queFallo": "What went wrong?",
+      "motivos": {
+        "dato_incorrecto": "Wrong information",
+        "no_respondio": "Didn't answer the question",
+        "tono": "Tone",
+        "muy_larga": "Too long",
+        "otro": "Other"
+      },
+      "comentario": "Tell us what you expected (optional)",
+      "cancelar": "Cancel",
+      "enviar": "Send",
+      "eligeMotivo": "Choose what went wrong",
+      "ayuda": "It's saved in AI › Jobs with the reply, to correct the knowledge base. The customer doesn't see it.",
+      "error": "Couldn't save your vote",
+      "trabajos": {
+        "columna": "Rating",
+        "resumen": "{util} helpful, {noUtil} not helpful",
+        "detalleTitulo": "Team rating",
+        "util": "Helpful",
+        "noUtil": "Not helpful"
       }
     }
   },
@@ -50065,7 +50175,69 @@
           "tokens": "Tokens",
           "fragmentos": "Snippets"
         },
-        "simulada": "Test reply built from your snippets: it doesn’t call the model or use credits.",
+        "avisoCobro": "Each test uses AI credits, just like a reply to a customer. If the test fails, you aren’t charged.",
+        "modelo": "Model",
+        "modeloConfig": "The one in your settings",
+        "modeloConfigCon": "The one in your settings ({modelo})",
+        "creatividadAyuda": "Lower = more precise, repeatable replies.",
+        "largoTokens": "Maximum length (tokens)",
+        "largoAyuda": "Between 100 and 2,000.",
+        "maxFragmentos": "Maximum snippets",
+        "maxFragmentosAyuda": "Of the selected ones (1 to 20).",
+        "reglas": "System rules",
+        "reglasAyuda": "For this test only. They start with the ones in your settings.",
+        "reglasRestaurar": "Back to the ones in your settings",
+        "sinTonoIdioma": "The AI that answers your customers doesn’t use the tone or language from the settings: it replies in the language they write in. That’s why they aren’t tested here.",
+        "fragmentos": {
+          "buscar": "Search snippets…",
+          "todos": "All",
+          "ninguno": "None",
+          "contador": "{elegidos} of {total} selected",
+          "prioridad": "Priority {n}",
+          "verMas": "Show more",
+          "verMenos": "Show less",
+          "masEtiquetas": "+{n}",
+          "sinResultados": "No snippet matches the search.",
+          "ayuda": "The test uses the selected ones, up to the maximum snippets.",
+          "actualizar": "Refresh snippets",
+          "estadisticas": {
+            "etiqueta": "Knowledge summary",
+            "total": "Total",
+            "activos": "Active",
+            "inactivos": "Inactive",
+            "prioridad": "Avg. priority"
+          }
+        },
+        "resultado": {
+          "pregunta": "Question",
+          "copiar": "Copy reply",
+          "copiada": "Reply copied",
+          "errorCopiar": "The reply couldn’t be copied",
+          "costo": "Cost",
+          "costoCreditos": "{n, plural, one {# credit} other {# credits}}",
+          "costoProveedor": "{monto} at the provider",
+          "costoSinTarifa": "No rate for this model",
+          "pie": "{modelo} · creativity {temperatura} · {fecha}"
+        },
+        "sinCreditos": {
+          "titulo": "You have no AI credits",
+          "descripcion": "Each test uses credits, just like a real reply. Top up to keep testing; your AI settings don’t change.",
+          "recargar": "Top up credits"
+        },
+        "fallo": {
+          "proveedor": {
+            "titulo": "The AI couldn’t reply",
+            "descripcion": "The AI provider didn’t respond. No credits were used; try again in a few seconds."
+          },
+          "sin_permiso": {
+            "titulo": "You can’t test the AI",
+            "descripcion": "Testing the chat AI requires organization admin permission."
+          },
+          "error": {
+            "titulo": "The test couldn’t be completed",
+            "descripcion": "Check your connection and try again. If the test didn’t get a reply, no credits were used."
+          }
+        },
         "convertir": "Turn into a snippet",
         "ajustes": "Test settings",
         "ajustesDescripcion": "They don’t change the real settings.",
@@ -50116,8 +50288,11 @@
             "hoy": "Today",
             "7d": "Last 7 days",
             "30d": "Last 30 days",
-            "todo": "All time"
-          }
+            "todo": "All time",
+            "personalizado": "Choose dates"
+          },
+          "desde": "From",
+          "hasta": "To"
         },
         "tabla": {
           "etiqueta": "AI jobs",
@@ -50125,7 +50300,10 @@
           "conversacion": "Conversation",
           "estado": "Status",
           "tokens": "Tokens",
-          "cuando": "When"
+          "cuando": "When",
+          "id": "ID",
+          "duracion": "Duration",
+          "confianza": "Confidence"
         },
         "tipos": {
           "auto_response": "Automatic reply",
@@ -50159,14 +50337,25 @@
           "bitacora": "Log",
           "reintentar": "Retry",
           "cancelar": "Cancel job",
-          "abrirConversacion": "Open conversation"
+          "abrirConversacion": "Open conversation",
+          "id": "ID",
+          "copiarId": "Copy ID",
+          "copiado": "Copied",
+          "iniciado": "Started",
+          "completado": "Completed",
+          "duracion": "Duration",
+          "tokensEntrada": "Input tokens",
+          "tokensSalida": "Output tokens",
+          "costo": "Provider cost",
+          "idsFragmentos": "Fragments used (IDs)"
         },
         "toasts": {
           "sinMiembro": "We couldn’t find your membership in this organization",
           "reintentado": "A new job was created to retry",
           "cancelado": "Job cancelled",
           "error": "The action couldn’t be completed"
-        }
+        },
+        "actualizar": "Refresh"
       }
     },
     "canales": {
@@ -50487,7 +50676,102 @@
           }
         }
       },
+      "filtros": {
+        "buscar": "Search channels",
+        "tipo": "Channel type",
+        "todosLosTipos": "All types",
+        "estado": "Status",
+        "estados": {
+          "todos": "All",
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "chipTipo": "Type: {valor}",
+        "chipEstado": "Status: {valor}",
+        "verN": "Show {n} channels"
+      },
+      "webhookExtra": {
+        "copiarToken": "Copy token",
+        "tokenCopiado": "Token copied",
+        "abrirDesarrolladores": "Open Meta for Developers"
+      },
       "widget": {
+        "mas": {
+          "codigoInstalacion": "Install code",
+          "instalacion": {
+            "copiarClave": "Copy public key",
+            "claveCopiada": "Key copied",
+            "confirmarRotarTitulo": "Generate a new key?",
+            "confirmarRotarDescripcion": "The code you already pasted on other sites stops working until you replace it with the new one. If the chat is shown on your GO Admin site, it updates there automatically.",
+            "cancelar": "Cancel"
+          },
+          "apariencia": {
+            "margenHorizontal": "Horizontal margin",
+            "margenVertical": "Vertical margin",
+            "margenHorizontalAyudaDerecha": "Distance from the right edge of the screen (0 to {max} px).",
+            "margenHorizontalAyudaIzquierda": "Distance from the left edge of the screen (0 to {max} px).",
+            "margenVerticalAyudaAbajo": "Distance from the bottom edge of the screen (0 to {max} px).",
+            "margenVerticalAyudaArriba": "Distance from the top edge of the screen (0 to {max} px).",
+            "logo": "Chat logo",
+            "logoAyuda": "An https link to an image. Without a logo, the chat uses your organization’s.",
+            "logoInvalido": "Use a link that starts with https://"
+          },
+          "estilo": {
+            "coloresSugeridos": "Suggested colors",
+            "usarColor": "Use color {color}",
+            "colorIcono": "Icon color",
+            "colorBorde": "Border color",
+            "colorInvalido": "Type a color like #3B82F6",
+            "icono": "Button icon",
+            "iconos": {
+              "chat": "Chat",
+              "message": "Message",
+              "support": "Support",
+              "whatsapp": "Help",
+              "custom": "Custom image"
+            },
+            "iconoUrl": "Icon image",
+            "iconoUrlAyuda": "An https link to a square image (PNG or SVG).",
+            "urlInvalida": "Use a link that starts with https://",
+            "relleno": "Icon style",
+            "rellenos": {
+              "outline": "Outline",
+              "filled": "Filled"
+            },
+            "rellenoSoporte": "The support icon is always outlined.",
+            "tamanoExacto": "Exact size",
+            "radio": "Corner radius",
+            "borde": "Border width",
+            "rango": "From {min} to {max} px",
+            "sombra": "Shadow",
+            "sombras": {
+              "none": "No shadow",
+              "light": "Light",
+              "medium": "Medium",
+              "strong": "Strong"
+            }
+          },
+          "alAbrir": {
+            "vistaInicial": "What the visitor sees first",
+            "vistas": {
+              "chat": "Direct chat · they type right away",
+              "form": "Form first · ask for their details before chatting",
+              "faq": "FAQ · quick buttons as a list"
+            },
+            "pedirDatosFueraDeLinea": "If nobody is online, ask for their contact details",
+            "pedirDatosFueraDeLineaAyuda": "So you can reply later by email or WhatsApp.",
+            "mostrarBotones": "Show quick buttons",
+            "mensajeBoton": "Message or link (optional)",
+            "mensajeBotonAyuda": "If you type an https link, the button opens it; if you type a message, it sends it. Empty, it sends the button text.",
+            "botonesOcultos": "The buttons stay saved, but visitors don’t see them while this is off.",
+            "abreEnlace": "Opens a link"
+          },
+          "vistaPrevia": {
+            "escribe": "Type a message…",
+            "abreEnlace": "Opens a link",
+            "escalaReal": "Margins and sizes at real scale, in px."
+          }
+        },
         "visible": "Visible on the site",
         "oculto": "Hidden on the site",
         "mostrarEnSitio": "Show on the site",
@@ -50954,7 +51238,9 @@
         "update_quick_reply": "Edited a quick reply",
         "delete_quick_reply": "Deleted a quick reply",
         "create_api_key": "Created an API key",
-        "revoke_api_key": "Revoked an API key"
+        "revoke_api_key": "Revoked an API key",
+        "block_contact": "Blocked the contact",
+        "unblock_contact": "Unblocked the contact"
       }
     }
   },
@@ -51014,6 +51300,697 @@
       "descripcion": "If you leave now, the changes you made in this section will be lost.",
       "descartar": "Discard changes",
       "seguir": "Keep editing"
+    },
+    "planResumen": {
+      "plan": "{nombre} plan",
+      "sinPlan": "No active plan",
+      "periodo": {
+        "mensual": "Monthly",
+        "anual": "Yearly"
+      },
+      "estado": {
+        "renueva": "Renews on {fecha}.",
+        "prueba": "Your trial ends on {fecha}.",
+        "cancela": "The plan ends on {fecha} and won’t renew.",
+        "vencido": "The subscription is past due.",
+        "cancelado": "The subscription is canceled.",
+        "sinPlan": "Your organization doesn’t have an active plan."
+      },
+      "donde": "Changing plans, viewing invoices or updating the payment method is done on the Plan and billing page.",
+      "gestionar": "Manage plan and billing",
+      "verFacturas": "View invoices",
+      "usoTitulo": "Plan usage",
+      "modulos": {
+        "titulo": "Active modules",
+        "descripcion": "The ones you see in the sidebar.",
+        "valor": "{actual} of {total}"
+      },
+      "sucursales": {
+        "titulo": "Branches",
+        "valor": "{actual} of {maximo} included",
+        "sinLimite": "{actual} · unlimited"
+      },
+      "usuarios": {
+        "titulo": "Users",
+        "descripcion": "People with access to the organization.",
+        "valor": "{actual} of {maximo}",
+        "sinLimite": "{actual} · unlimited"
+      },
+      "creditos": {
+        "titulo": "AI credits",
+        "descripcion": "Used by GO Assistant and the Chat AI.",
+        "saldo": "{n, plural, one {# available} other {# available}}",
+        "recargar": "Top up"
+      },
+      "nota": "Nothing to save here: this summary is for information only. Plan changes are made on its own page, outside this dialog.",
+      "error": {
+        "titulo": "The plan couldn’t be loaded",
+        "descripcion": "Try again in a few seconds."
+      }
+    }
+  },
+  "chatHilo": {
+    "comun": {
+      "hoy": "today {hora}",
+      "ayer": "yesterday {hora}",
+      "error": "Error"
+    },
+    "actividad": {
+      "buscar": "Search activity…",
+      "filtroEtiqueta": "Activity type",
+      "filtros": {
+        "todas": "All activity",
+        "estados": "Status changes",
+        "asignaciones": "Assignments",
+        "etiquetas": "Tags",
+        "ia": "AI replies",
+        "auditoria": "Audit"
+      },
+      "conteo": "Showing {visibles} of {total} activities",
+      "lista": "Conversation activity",
+      "vacioTitulo": "No activity yet",
+      "vacioDescripcion": "Status changes, assignments, tags and AI replies for this conversation show up here.",
+      "sinResultadosTitulo": "No activity matches those filters",
+      "sinResultadosDescripcion": "Try another word or choose “All activity”.",
+      "errorCarga": "Couldn't load the activity",
+      "alguien": "Someone on the team",
+      "actorIa": "The AI",
+      "actorSistema": "System",
+      "motivo": "Reason: {motivo}",
+      "estado": {
+        "conActor": "{actor} marked the conversation as “{estado}”",
+        "sinActor": "The conversation changed to “{estado}”",
+        "antes": "Before: {estado}"
+      },
+      "asignacion": {
+        "conActor": "{actor} assigned the conversation to {persona}",
+        "sinActor": "The conversation was assigned to {persona}",
+        "quitadaConActor": "{actor} removed the assignment",
+        "quitadaSinActor": "The conversation was left unassigned"
+      },
+      "etiqueta": {
+        "agregadaConActor": "{actor} added the tag “{etiqueta}”",
+        "agregadaSinActor": "The tag “{etiqueta}” was added",
+        "quitadaConActor": "{actor} removed the tag “{etiqueta}”",
+        "quitadaSinActor": "The tag “{etiqueta}” was removed",
+        "sinNombre": "unnamed"
+      },
+      "ia": {
+        "auto": "The AI replied automatically",
+        "trabajo": "AI · {tipo}: {estado}",
+        "confianza": "Confidence {valor}",
+        "fragmentos": "{n, plural, one {# snippet} other {# snippets}}",
+        "tokens": "{n} tokens",
+        "error": "Error: {mensaje}"
+      },
+      "auditoria": {
+        "por": "by {actor}"
+      },
+      "csv": {
+        "archivo": "conversation_activity",
+        "fecha": "Date",
+        "tipo": "Type",
+        "actor": "Who",
+        "descripcion": "What happened",
+        "detalle": "Detail"
+      },
+      "tipos": {
+        "status_change": "Status change",
+        "assignment": "Assignment",
+        "tag_added": "Tag added",
+        "tag_removed": "Tag removed",
+        "ai_job": "AI",
+        "audit": "Audit"
+      }
+    },
+    "archivos": {
+      "kpis": {
+        "imagenes": "Images",
+        "documentos": "Documents",
+        "audios": "Audio"
+      },
+      "buscar": "Search files…",
+      "filtroTipo": "File type",
+      "tipos": {
+        "todos": "All types",
+        "image": "Images",
+        "video": "Videos",
+        "audio": "Audio",
+        "pdf": "PDF",
+        "document": "Documents",
+        "spreadsheet": "Spreadsheets",
+        "archive": "Archives",
+        "other": "Other"
+      },
+      "remitente": {
+        "etiqueta": "Sent by",
+        "todos": "Sent by: anyone",
+        "filtro": "Sent by: {quien}",
+        "customer": "Customer",
+        "agent": "Agent",
+        "ai": "AI",
+        "system": "System"
+      },
+      "conteo": "Showing {visibles} of {total} files",
+      "lista": "Conversation files",
+      "abrir": "Open",
+      "abrirArchivo": "Open {nombre}",
+      "descargar": "Download",
+      "copiarEnlace": "Copy link (expires in 1 hour)",
+      "eliminar": "Delete",
+      "aviso": "Share links for a file expire in 1 hour. Deleting a file here doesn't remove it from the customer's chat.",
+      "vacioTitulo": "No files yet",
+      "vacioDescripcion": "Photos, documents and audio shared in this conversation show up here.",
+      "sinResultadosTitulo": "No files match those filters",
+      "sinResultadosDescripcion": "Try another name or clear the filters.",
+      "borrar": {
+        "titulo": "Delete the file?",
+        "descripcion": "“{nombre}” is deleted from GO Admin and can't be recovered. The customer still has it in their chat.",
+        "confirmar": "Delete file"
+      },
+      "toasts": {
+        "errorCarga": "Couldn't load the files",
+        "errorAbrir": "Couldn't open the file",
+        "descargando": "Downloading {nombre}",
+        "errorDescarga": "Couldn't download the file",
+        "enlaceCopiado": "Link copied",
+        "enlaceVence": "It expires in 1 hour.",
+        "errorEnlace": "Couldn't copy the link",
+        "eliminado": "File deleted",
+        "errorEliminar": "Couldn't delete the file"
+      }
+    },
+    "buscar": {
+      "titulo": "Search the conversation",
+      "etiqueta": "Search messages in this conversation",
+      "placeholder": "Search messages…",
+      "limpiar": "Clear search",
+      "posicion": "{actual}/{total}",
+      "resultados": "{n, plural, =0 {No results} one {# result} other {# results}}",
+      "anterior": "Previous result",
+      "siguiente": "Next result",
+      "minimo": "Type at least {n} characters to search.",
+      "error": "Couldn't search the conversation",
+      "sinResultados": "No messages with “{termino}”",
+      "lista": "Messages found",
+      "roles": {
+        "customer": "Customer",
+        "agent": "Agent",
+        "ai": "AI",
+        "system": "System"
+      },
+      "navegar": "move",
+      "ir": "go to message"
+    }
+  },
+  "chatClienteRapido": {
+    "titulo": "Quick-create customer",
+    "descripcion": "Create a customer with the minimum details. You can complete the profile later.",
+    "nombre": "First name",
+    "nombrePlaceholder": "John",
+    "apellido": "Last name",
+    "apellidoPlaceholder": "Smith",
+    "correo": "Email",
+    "correoPlaceholder": "john@example.com",
+    "telefono": "Phone",
+    "roles": "Roles",
+    "responsabilidadFiscal": "Tax responsibility",
+    "cancelar": "Cancel",
+    "crear": "Create customer",
+    "creando": "Creating…",
+    "errores": {
+      "nombreRequerido": "First name is required.",
+      "alCrear": "The customer could not be created. Please try again."
+    }
+  },
+  "chatDialogos": {
+    "comun": {
+      "cancelar": "Cancel",
+      "guardar": "Save changes",
+      "guardando": "Saving…"
+    },
+    "nuevoCanal": {
+      "nombrePlaceholder": "e.g. Website chat",
+      "nombresDefecto": {
+        "website": "Website chat",
+        "whatsapp": "WhatsApp Business",
+        "facebook": "Facebook Messenger",
+        "instagram": "Instagram Direct",
+        "telegram": "Telegram bot",
+        "email": "Support email"
+      },
+      "avisoWebTitulo": "Chat for your website",
+      "avisoWeb": "After you create the channel you can copy the chat code and install it on your site.",
+      "avisoMetaTitulo": "Connecting {red}",
+      "avisoMeta": "After you create the channel you'll need to connect your Meta Business account.",
+      "avisoWhatsApp": "After you create the channel you'll need to connect your WhatsApp Business account.",
+      "metodosTitulo": "Ways to connect WhatsApp:",
+      "metodoCloud": "official from Meta, no risk (recommended)",
+      "metodoQr": "like WhatsApp Web; unofficial, and Meta may block the number",
+      "metodoCoexistencia": "the phone app and the official API at the same time",
+      "metodosNota": "You choose how to connect when you set up the channel, after creating it.",
+      "cancelar": "Cancel",
+      "creando": "Creating…"
+    },
+    "codigoWidget": {
+      "titulo": "Install the chat on your website",
+      "descripcion": "Follow these steps to add the chat to your website.",
+      "pestanaCodigo": "Code",
+      "pestanaPasos": "Instructions",
+      "codigo": "Chat code",
+      "copiarCodigo": "Copy code",
+      "copiado": "Copied!",
+      "clave": "Channel public key",
+      "copiar": "Copy",
+      "copiadoCorto": "Copied",
+      "paso1": "Copy the chat code with the “Copy code” button.",
+      "paso2": "Open your website's main HTML file.",
+      "paso3": "Paste the code right before the {etiqueta} tag.",
+      "paso4": "Save the changes and upload them to your server.",
+      "paso5": "Done! The chat appears in the corner you set up.",
+      "notaTitulo": "Note:",
+      "nota": "It works on any page. If the channel has allowed domains, it only works on those domains (and on your GO Admin site). On your GO Admin site you don't need to paste anything: just turn on “Show on site”.",
+      "cerrar": "Close"
+    },
+    "fragmento": {
+      "tituloNuevo": "New snippet",
+      "tituloEditar": "Edit snippet",
+      "descripcionNueva": "Write it the way you'd say it to a customer. The AI uses it as is.",
+      "descripcionEditar": "Saving creates a new version of the snippet.",
+      "descripcionNuevaFuente": "Add to this source an answer the AI can use as is.",
+      "fuente": "Source",
+      "sinFuente": "No source",
+      "prioridad": "Priority (1 to 10)",
+      "prioridadPlaceholder": "Choose the priority",
+      "prioridadOpcion": "{n} · {nombre}",
+      "prioridades": {
+        "p1": "Lowest",
+        "p2": "Low",
+        "p3": "Fairly low",
+        "p4": "Medium low",
+        "p5": "Normal",
+        "p6": "Medium high",
+        "p7": "Fairly high",
+        "p8": "High",
+        "p9": "Very high",
+        "p10": "Highest"
+      },
+      "prioridadAyuda": "Higher-priority snippets come first when the AI searches.",
+      "titulo": "Title",
+      "tituloPlaceholder": "e.g. How much is shipping?",
+      "contenido": "Content",
+      "contenidoPlaceholder": "Write the snippet content here…",
+      "caracteres": "{n, plural, one {# character} other {# characters}}",
+      "etiquetas": "Tags",
+      "etiquetaPlaceholder": "Type a tag and press Enter",
+      "agregarEtiqueta": "Add tag",
+      "quitarEtiqueta": "Remove the tag {etiqueta}",
+      "crear": "Create snippet"
+    },
+    "fuente": {
+      "tituloNueva": "New source",
+      "tituloEditar": "Edit source",
+      "descripcionNueva": "A source groups snippets about one topic, for example “Shipping”.",
+      "descripcionEditar": "Change the source's name, description or icon.",
+      "nombre": "Name",
+      "nombrePlaceholder": "e.g. Frequently asked questions",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "What kind of information does this source hold?",
+      "icono": "Icon",
+      "iconoEmoji": "Icon (emoji)",
+      "elegirIcono": "Use the {icono} icon",
+      "crear": "Create source",
+      "ajustesTitulo": "Source settings",
+      "ajustesDescripcion": "Change the source's details and whether the AI can use it.",
+      "estado": "Active source",
+      "estadoActiva": "The AI can use this source's snippets.",
+      "estadoInactiva": "The AI doesn't use this source's snippets."
+    },
+    "importar": {
+      "archivoTitulo": "Upload file",
+      "errorTipo": "Only CSV or TXT files are accepted.",
+      "errorTamano": "The file can't be larger than 5 MB.",
+      "errorLectura": "Couldn't read the file.",
+      "tipoCsv": "CSV",
+      "tipoTexto": "Text",
+      "quitarArchivo": "Remove the file",
+      "elegirArchivo": "Choose a CSV or TXT file",
+      "arrastra": "Drag a file here or",
+      "seleccionar": "click to choose it",
+      "formatos": "CSV or TXT · 5 MB max",
+      "formatoCsv": "Expected CSV format:",
+      "ejemploCsv1": "\"Title 1\",\"Snippet content\",\"shipping;payments\",5",
+      "ejemploCsv2": "\"Title 2\",\"More content\",\"hours\",8",
+      "textoTitulo": "Paste text",
+      "pegaAqui": "Paste the content here",
+      "caracteres": "{n, plural, one {# character} other {# characters}}",
+      "ejemploTexto": "Title of the first snippet\nThe content goes on the\nfollowing lines.\n\n---\n\nTitle of the second snippet\nMore content.",
+      "separador": "Separator between snippets",
+      "separadorAyuda": "This text separates one snippet from the next. If you leave it empty, {separador} is used.",
+      "formatoTexto": "Expected format:"
+    }
+  },
+  "chatConfig": {
+    "crmCanales": {
+      "titulo": "Channels",
+      "descripcion": "Channels and the website chat are set up in Chat › Channels.",
+      "irCanales": "Go to Channels",
+      "configurarSitio": "Set up the website chat"
+    },
+    "comun": {
+      "cancelar": "Cancel",
+      "guardando": "Saving…",
+      "guardarCambios": "Save changes",
+      "editar": "Edit",
+      "eliminar": "Delete",
+      "actualizar": "Refresh",
+      "masAcciones": "More actions for {nombre}",
+      "copiado": "Copied",
+      "error": "Error"
+    },
+    "ia": {
+      "titulo": "AI settings",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "descripcion": "Set up how the AI assistant behaves for your organization",
+      "laboratorio": "Lab",
+      "trabajos": "Jobs",
+      "iaActivada": "AI on",
+      "iaDesactivada": "AI off",
+      "pestanas": {
+        "etiqueta": "Parts of the AI settings",
+        "modelo": "Model",
+        "comportamiento": "Behavior",
+        "canales": "Channels"
+      },
+      "cargando": "Loading settings…",
+      "cambiosSinGuardar": "You have unsaved changes",
+      "descartar": "Discard",
+      "toasts": {
+        "errorCarga": "The settings couldn’t be loaded",
+        "activadaTitulo": "AI turned on",
+        "activadaDesc": "The AI assistant is now active",
+        "desactivadaTitulo": "AI turned off",
+        "desactivadaDesc": "The AI assistant was turned off",
+        "errorEstado": "The AI status couldn’t be changed",
+        "guardada": "Settings saved",
+        "guardadaDesc": "The changes were applied",
+        "errorGuardar": "The settings couldn’t be saved",
+        "modoActualizado": "Mode updated",
+        "modoActualizadoDesc": "The channel’s AI mode was updated",
+        "errorModo": "The channel mode couldn’t be updated",
+        "modosActualizados": "Modes updated",
+        "modosActualizadosDesc": "All channels now use the same AI mode",
+        "errorModos": "The channels couldn’t be updated"
+      },
+      "modelo": {
+        "titulo": "AI model",
+        "proveedor": "Provider",
+        "sinCredenciales": "no credentials",
+        "modelo": "Model",
+        "recomendado": "Recommended",
+        "gamas": {
+          "economico": "budget",
+          "equilibrado": "balanced",
+          "premium": "premium",
+          "legacy": "legacy"
+        },
+        "costoPorMil": "Estimated cost per 1,000 replies",
+        "noCalculable": "Can’t be calculated",
+        "sinTarifa": "This model has no rate loaded, so its real spend can’t be measured.",
+        "consumo": "Based on your chat’s real usage: {entrada} input tokens and {salida} output tokens per reply.",
+        "contexto": "Maximum context: {n} tokens.",
+        "temperatura": "Temperature",
+        "temperaturaAyuda": "Low values = more precise replies. High values = more creative replies.",
+        "maxTokens": "Maximum tokens",
+        "maxTokensAyuda": "Maximum reply length (100-4000)",
+        "fragmentos": "Context snippets",
+        "fragmentosAyuda": "Knowledge snippets to use (1-20)"
+      },
+      "comportamiento": {
+        "tonoTitulo": "Tone and language",
+        "tono": "Communication tone",
+        "idioma": "Language",
+        "reglas": "System rules (instructions for the AI)",
+        "reglasPlaceholder": "You are a customer service assistant. Don’t make things up. If you don’t know something, say a human agent will help…",
+        "reglasAyuda": "Defines the AI’s behavior, limits and personality",
+        "fallback": "Fallback message",
+        "fallbackPlaceholder": "Sorry, I can’t help with that. A human agent will assist you soon.",
+        "fallbackAyuda": "Message used when the AI can’t reply or confidence is low",
+        "autoTitulo": "Automatic replies",
+        "auto": "Automatic replies",
+        "autoAyuda": "The AI automatically replies to incoming messages",
+        "retraso": "Delay before replying (seconds)",
+        "retrasoAyuda": "Wait before the AI replies (0-60 seconds)",
+        "umbral": "Confidence threshold",
+        "umbralAyuda": "Below this threshold, the fallback message is used"
+      },
+      "tonos": {
+        "professional": "Professional",
+        "friendly": "Friendly",
+        "formal": "Formal",
+        "casual": "Casual",
+        "empathetic": "Empathetic"
+      },
+      "idiomas": {
+        "es": "Spanish",
+        "en": "English",
+        "pt": "Portuguese",
+        "fr": "French"
+      },
+      "canales": {
+        "titulo": "AI mode by channel",
+        "aplicarTodos": "Apply to all:",
+        "seleccionar": "Select",
+        "vacioTitulo": "No channels set up",
+        "vacioDescripcion": "Set up communication channels to manage their AI mode",
+        "columnas": {
+          "canal": "Channel",
+          "tipo": "Type",
+          "estado": "Status",
+          "modo": "AI mode",
+          "cambiar": "Change"
+        },
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "cambiarModo": "AI mode for {canal}",
+        "modosDisponibles": "Available modes:",
+        "modos": {
+          "auto": {
+            "nombre": "AI only",
+            "descripcion": "The AI replies automatically with no human involvement"
+          },
+          "hybrid": {
+            "nombre": "Hybrid",
+            "descripcion": "The AI replies and can hand off to a human agent"
+          },
+          "manual": {
+            "nombre": "Manual",
+            "descripcion": "Only human agents reply; the AI is off"
+          }
+        }
+      }
+    },
+    "etiquetas": {
+      "titulo": "Conversation tags",
+      "conteo": "{n, plural, one {# tag set up} other {# tags set up}}",
+      "nueva": "New tag",
+      "conversaciones": "{n, plural, one {# conversation} other {# conversations}}",
+      "dialogo": {
+        "tituloNueva": "New tag",
+        "tituloEditar": "Edit tag",
+        "nombre": "Name *",
+        "nombrePlaceholder": "E.g. Urgent, VIP, Support…",
+        "color": "Color",
+        "descripcion": "Description (optional)",
+        "descripcionPlaceholder": "Describe what this tag is for…",
+        "vistaPrevia": "Preview:",
+        "nombrePorDefecto": "Tag name",
+        "crear": "Create tag"
+      },
+      "colores": {
+        "3b82f6": "Blue",
+        "22c55e": "Green",
+        "eab308": "Yellow",
+        "f97316": "Orange",
+        "ef4444": "Red",
+        "a855f7": "Purple",
+        "ec4899": "Pink",
+        "6366f1": "Indigo",
+        "14b8a6": "Teal",
+        "64748b": "Gray"
+      }
+    },
+    "respuestas": {
+      "titulo": "Quick replies",
+      "conteo": "{n, plural, one {# template set up} other {# templates set up}}",
+      "buscar": "Search…",
+      "nueva": "New reply",
+      "inactiva": "Inactive",
+      "copiar": "Copy content",
+      "copiadoDesc": "The content was copied to the clipboard",
+      "usos": "{n, plural, one {Used # time} other {Used # times}}",
+      "dialogo": {
+        "tituloNueva": "New quick reply",
+        "tituloEditar": "Edit quick reply",
+        "titulo": "Title *",
+        "tituloPlaceholder": "E.g. Welcome",
+        "atajo": "Shortcut (optional)",
+        "atajoPlaceholder": "E.g. hello",
+        "atajoAyuda": "Type /{atajo} to use it",
+        "atajoPorDefecto": "shortcut",
+        "contenido": "Content *",
+        "contenidoPlaceholder": "Write the quick reply message…",
+        "variables": "Available variables",
+        "etiquetas": "Internal tags (optional)",
+        "etiquetaPlaceholder": "Add tag…",
+        "agregar": "Add",
+        "quitarEtiqueta": "Remove {etiqueta}",
+        "activa": "Active reply",
+        "activaAyuda": "Inactive replies don’t show up in suggestions",
+        "crear": "Create reply"
+      },
+      "variables": {
+        "customer_name": "Name of the customer in the conversation",
+        "agent_name": "Name of the assigned agent",
+        "organization_name": "Your company name",
+        "current_date": "Today’s date",
+        "current_time": "Current time"
+      }
+    },
+    "llaves": {
+      "titulo": "API keys",
+      "conteo": "{activas} of {total, plural, one {# key active} other {# keys active}}",
+      "nueva": "New key",
+      "activa": "Active",
+      "revocada": "Revoked",
+      "expirada": "Expired",
+      "inactiva": "Inactive",
+      "copiarPrefijo": "Copy prefix",
+      "prefijoCopiado": "Key prefix copied",
+      "canal": "Channel: {nombre} ({tipo})",
+      "rotar": "Rotate key",
+      "revocar": "Revoke",
+      "permisos": "Permissions:",
+      "creada": "Created {cuando}",
+      "ultimoUso": "Last used: {cuando}",
+      "expira": "Expires: {cuando}",
+      "expiro": "Expired: {cuando}",
+      "dialogo": {
+        "creadaTitulo": "API key created",
+        "guardaAhora": "Save this key now",
+        "unicaVez": "This is the only time you’ll see the full key. Keep it somewhere safe.",
+        "tuLlave": "Your API key:",
+        "copiarLlave": "Copy key",
+        "entendido": "Got it, I saved it",
+        "nuevaTitulo": "New API key",
+        "nombre": "Name *",
+        "nombrePlaceholder": "E.g. Web widget, CRM integration…",
+        "canal": "Channel (optional)",
+        "todosCanales": "All channels",
+        "canalAyuda": "Limits access to one channel",
+        "permisos": "Permissions (scopes) *",
+        "expiracion": "Expiration",
+        "expiraciones": {
+          "never": "Never expires",
+          "d30": "30 days",
+          "d90": "90 days",
+          "d180": "6 months",
+          "d365": "1 year"
+        },
+        "generando": "Generating…",
+        "crear": "Create key"
+      },
+      "scopes": {
+        "messages_read": {
+          "nombre": "Read messages",
+          "descripcion": "Allows reading conversation messages"
+        },
+        "messages_write": {
+          "nombre": "Send messages",
+          "descripcion": "Allows sending messages to conversations"
+        },
+        "conversations_read": {
+          "nombre": "Read conversations",
+          "descripcion": "Allows viewing the conversation list"
+        },
+        "conversations_write": {
+          "nombre": "Manage conversations",
+          "descripcion": "Allows creating and changing conversations"
+        },
+        "contacts_read": {
+          "nombre": "Read contacts",
+          "descripcion": "Allows viewing contact information"
+        },
+        "contacts_write": {
+          "nombre": "Manage contacts",
+          "descripcion": "Allows creating and changing contacts"
+        },
+        "webhooks_manage": {
+          "nombre": "Webhooks",
+          "descripcion": "Allows setting up webhooks"
+        }
+      }
+    }
+  },
+  "chatRecuperado": {
+    "nav": {
+      "configuracion": "Settings"
+    },
+    "conocimiento": {
+      "filtroEtiquetas": "Filter by tags",
+      "etiquetasPlaceholder": "All tags",
+      "quitarEtiqueta": "Remove the {etiqueta} filter",
+      "prioridad": "Priority",
+      "votos": "Votes",
+      "votosAria": "{positivos} upvotes and {negativos} downvotes",
+      "indexada": "Indexed",
+      "actualizar": "Refresh",
+      "mostrando": "Showing {visibles} of {total} snippets",
+      "modelo": "Embedding model",
+      "hash": "Content hash",
+      "creado": "Created"
+    },
+    "importar": {
+      "etiquetas": "Tags",
+      "enCola": "The embeddings are queued: the AI will be able to use the snippets in a few minutes.",
+      "erroresTitulo": "Rows that weren't loaded:",
+      "fila": "Row {n}: {motivo}",
+      "errorGeneral": "Couldn't save to the database. Try again.",
+      "nuevaImportacion": "New import"
+    },
+    "widget": {
+      "filtroCanal": "Channel",
+      "canalTodos": "Channel: all",
+      "verDetalle": "View details",
+      "detalleTitulo": "Session details",
+      "idAnonimo": "Anonymous ID",
+      "inicio": "Started",
+      "ultimaActividad": "Last activity",
+      "canal": "Channel",
+      "tipoCanal": "Channel type",
+      "cliente": "Customer",
+      "correo": "Customer email",
+      "dispositivo": "Device",
+      "ubicacion": "Location",
+      "pagina": "Current page",
+      "origen": "Came from",
+      "navegador": "Browser (user agent)",
+      "abrirConversacion": "Open conversation"
+    },
+    "auditoria": {
+      "actualizar": "Refresh",
+      "filtroActor": "Actor type",
+      "actorTodos": "Actor: all",
+      "rangoPersonalizado": "Choose dates…",
+      "rangoFechas": "Audit dates",
+      "identificadores": "Identifiers",
+      "idRegistro": "Record ID",
+      "idActor": "ID of who did it",
+      "entidad": "Affected record type",
+      "idEntidad": "Affected record ID",
+      "navegador": "Browser (user agent)",
+      "metadata": "Additional data"
     }
   }
 }

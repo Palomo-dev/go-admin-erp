@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Configuración › Chat › IA › Comportamiento: tono, idioma, reglas, mensaje de
+ * respaldo, respuestas automáticas y umbral de confianza. Textos en
+ * `chatConfig.ia` (es/en/fr/pt) y colores por tokens.
+ */
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,27 +55,29 @@ export default function BehaviorSettings({
   onDelayChange,
   onConfidenceChange
 }: BehaviorSettingsProps) {
+  const t = useTranslations('chatConfig.ia.comportamiento');
+  const ti = useTranslations('chatConfig.ia');
   return (
     <div className="space-y-6">
-      <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <Card className="border-line bg-surface">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            Tono y Lenguaje
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-fg">
+            <MessageSquare aria-hidden="true" className="h-4 w-4 text-brand" />
+            {t('tonoTitulo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">Tono de Comunicación</Label>
+              <Label htmlFor="ia-tono" className="text-fg-secondary">{t('tono')}</Label>
               <Select value={tone} onValueChange={onToneChange}>
-                <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+                <SelectTrigger id="ia-tono" className="bg-surface">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TONE_OPTIONS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
+                  {TONE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {ti.has(`tonos.${o.value}`) ? ti(`tonos.${o.value}`) : o.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -77,18 +85,18 @@ export default function BehaviorSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Globe className="h-4 w-4" />
-                Idioma
+              <Label htmlFor="ia-idioma" className="flex items-center gap-2 text-fg-secondary">
+                <Globe aria-hidden="true" className="h-4 w-4" />
+                {t('idioma')}
               </Label>
               <Select value={language} onValueChange={onLanguageChange}>
-                <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+                <SelectTrigger id="ia-idioma" className="bg-surface">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {LANGUAGE_OPTIONS.map((l) => (
-                    <SelectItem key={l.value} value={l.value}>
-                      {l.label}
+                  {LANGUAGE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {ti.has(`idiomas.${o.value}`) ? ti(`idiomas.${o.value}`) : o.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -97,86 +105,72 @@ export default function BehaviorSettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gray-700 dark:text-gray-300">
-              Reglas del Sistema (Instrucciones para la IA)
-            </Label>
+            <Label htmlFor="ia-reglas" className="text-fg-secondary">{t('reglas')}</Label>
             <Textarea
+              id="ia-reglas"
               value={systemRules}
               onChange={(e) => onSystemRulesChange(e.target.value)}
-              placeholder="Eres un asistente de atención al cliente. No inventes información. Si no sabes algo, indica que un agente humano ayudará..."
+              placeholder={t('reglasPlaceholder')}
               rows={6}
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 resize-none"
+              className="resize-none bg-surface"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define el comportamiento, restricciones y personalidad de la IA
-            </p>
+            <p className="text-xs text-fg-muted">{t('reglasAyuda')}</p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gray-700 dark:text-gray-300">
-              Mensaje de Fallback
-            </Label>
+            <Label htmlFor="ia-respaldo" className="text-fg-secondary">{t('fallback')}</Label>
             <Textarea
+              id="ia-respaldo"
               value={fallbackMessage}
               onChange={(e) => onFallbackChange(e.target.value)}
-              placeholder="Lo siento, no puedo ayudarte con eso. Un agente humano te atenderá pronto."
+              placeholder={t('fallbackPlaceholder')}
               rows={3}
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 resize-none"
+              className="resize-none bg-surface"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Mensaje cuando la IA no puede responder o la confianza es baja
-            </p>
+            <p className="text-xs text-fg-muted">{t('fallbackAyuda')}</p>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <Card className="border-line bg-surface">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            Respuestas Automáticas
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-fg">
+            <Clock aria-hidden="true" className="h-4 w-4 text-brand" />
+            {t('autoTitulo')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-subtle p-4">
             <div>
-              <p className="font-medium text-gray-900 dark:text-white">Respuestas Automáticas</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                La IA responde automáticamente a los mensajes entrantes
-              </p>
+              <p id="ia-auto" className="font-medium text-fg">{t('auto')}</p>
+              <p className="text-sm text-fg-muted">{t('autoAyuda')}</p>
             </div>
-            <Switch
-              checked={autoResponseEnabled}
-              onCheckedChange={onAutoResponseChange}
-            />
+            <Switch aria-labelledby="ia-auto" checked={autoResponseEnabled} onCheckedChange={onAutoResponseChange} />
           </div>
 
           {autoResponseEnabled && (
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300">
-                Retraso antes de responder (segundos)
-              </Label>
+              <Label htmlFor="ia-retraso" className="text-fg-secondary">{t('retraso')}</Label>
               <Input
+                id="ia-retraso"
                 type="number"
                 value={autoResponseDelay}
                 onChange={(e) => onDelayChange(parseInt(e.target.value) || 5)}
                 min={0}
                 max={60}
-                className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 max-w-[200px]"
+                className="max-w-[200px] bg-surface"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Espera antes de que la IA responda (0-60 segundos)
-              </p>
+              <p className="text-xs text-fg-muted">{t('retrasoAyuda')}</p>
             </div>
           )}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Umbral de Confianza
+              <Label className="flex items-center gap-2 text-fg-secondary">
+                <Target aria-hidden="true" className="h-4 w-4" />
+                {t('umbral')}
               </Label>
-              <span className="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+              <span className="rounded bg-subtle px-2 py-1 font-mono text-sm text-fg-secondary">
                 {(confidenceThreshold * 100).toFixed(0)}%
               </span>
             </div>
@@ -187,10 +181,9 @@ export default function BehaviorSettings({
               step={0.05}
               onValueChange={(value) => onConfidenceChange(value[0])}
               className="w-full"
+              aria-label={t('umbral')}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Si la confianza está por debajo de este umbral, se usa el mensaje de fallback
-            </p>
+            <p className="text-xs text-fg-muted">{t('umbralAyuda')}</p>
           </div>
         </CardContent>
       </Card>

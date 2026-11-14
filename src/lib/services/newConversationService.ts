@@ -61,7 +61,20 @@ export interface QuickCustomerData {
   last_name?: string;
   email?: string;
   phone?: string;
+  /** Roles elegidos en el diálogo; si no llegan, los de siempre. */
+  roles?: string[];
+  /** Responsabilidades fiscales DIAN elegidas; si no llegan, R-99-PN. */
+  fiscal_responsibilities?: string[];
+  /** Municipio fiscal elegido; si no llega, el de siempre. */
+  fiscal_municipality_id?: string;
 }
+
+/** Valores que usaba el alta rápida antes de que el diálogo los dejara elegir. */
+export const CLIENTE_RAPIDO_POR_DEFECTO = {
+  roles: ['cliente', 'huesped'],
+  fiscal_responsibilities: ['R-99-PN'],
+  fiscal_municipality_id: 'aa4b6637-0060-41bb-9459-bc95f9789e08',
+} as const;
 
 class NewConversationService {
   private organizationId: number;
@@ -157,9 +170,13 @@ class NewConversationService {
         last_name: data.last_name || null,
         email: data.email || null,
         phone: data.phone || null,
-        roles: ['cliente', 'huesped'],
-        fiscal_responsibilities: ['R-99-PN'],
-        fiscal_municipality_id: 'aa4b6637-0060-41bb-9459-bc95f9789e08',
+        // Lo que la persona eligió en el diálogo; antes se ignoraba y siempre
+        // se guardaban estos valores por defecto.
+        roles: data.roles?.length ? data.roles : [...CLIENTE_RAPIDO_POR_DEFECTO.roles],
+        fiscal_responsibilities: data.fiscal_responsibilities?.length
+          ? data.fiscal_responsibilities
+          : [...CLIENTE_RAPIDO_POR_DEFECTO.fiscal_responsibilities],
+        fiscal_municipality_id: data.fiscal_municipality_id || CLIENTE_RAPIDO_POR_DEFECTO.fiscal_municipality_id,
         tags: [],
         metadata: {},
         preferences: {}
@@ -225,6 +242,25 @@ class NewConversationService {
     if (statusError) console.error('Error registrando historial:', statusError);
 
     return conversationId;
+  }
+
+  /**
+   * Asunto de una conversación ya creada (la de WhatsApp la crea el envío de
+   * la plantilla, que no lo recibe). Une con lo que ya tenga `metadata`.
+   */
+  async setSubject(conversationId: string, subject: string): Promise<void> {
+    const asunto = subject.trim();
+    if (!asunto) return;
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('metadata')
+      .eq('id', conversationId)
+      .eq('organization_id', this.organizationId)
+      .maybeSingle();
+    if (error || !data) throw new Error(error?.message ?? 'Conversación no encontrada');
+    const metadata = { ...((data as { metadata?: Record<string, unknown> | null }).metadata ?? {}), subject: asunto };
+    const { error: errUpd } = await supabase.from('conversations').update({ metadata }).eq('id', conversationId).eq('organization_id', this.organizationId);
+    if (errUpd) throw new Error(errUpd.message);
   }
 
   async getCurrentMemberId(userId: string): Promise<number | null> {

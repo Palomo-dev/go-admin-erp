@@ -4,11 +4,13 @@
  * Trabajos de la IA del chat (Figma 91-chat-35): cifras, filtros de estado,
  * tipo y fecha, tabla y detalle en hoja lateral. Se actualiza en tiempo real
  * (`ai_jobs`). Reintentar y cancelar usan `aiJobsService` como antes.
+ * Columna «Valoración»: 👍/👎 que el equipo dio a la respuesta en la Bandeja
+ * (Figma 93-chat-pendientes-03); el motivo y el comentario, en el detalle.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Bot } from 'lucide-react';
-import { DataTable, KpiStrip, PageHeader, StatCard, type ColumnaTabla } from '@/components/kit';
+import { Bot, RefreshCw, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { CampoFecha, DataTable, KpiStrip, PageHeader, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
@@ -19,14 +21,32 @@ import { supabase } from '@/lib/supabase/config';
 import AIJobsService, { type AIJob, type AIJobStats } from '@/lib/services/aiJobsService';
 import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 import { HojaTrabajo } from '@/components/chat/ia/trabajos/HojaTrabajo';
-import { diasDeRango, estadoTrabajo, ESTADOS_TRABAJO, TIPOS_TRABAJO, tonoEstadoTrabajo, type RangoTrabajos } from '@/components/chat/ia/trabajos/trabajosLogica';
+import {
+  diasDeRango,
+  duracionMs,
+  estadoTrabajo,
+  ESTADOS_TRABAJO,
+  idCorto,
+  limitesDias,
+  RANGOS_TRABAJOS,
+  textoConfianza,
+  textoDuracion,
+  TIPOS_TRABAJO,
+  tonoConfianza,
+  tonoEstadoTrabajo,
+  type RangoTrabajos,
+} from '@/components/chat/ia/trabajos/trabajosLogica';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
 import { tiempoRelativo } from '@/components/chat/channels/canalesLogica';
+import { useAgentesChat } from '@/components/chat/conversations/useConversacion';
+import { resumenValoraciones } from '@/lib/services/chat/valoracionIa';
 
 const TODOS = 'all';
 
 export default function TrabajosPage() {
   const t = useTranslations('chatModulo.ia');
+  const tv = useTranslations('chatBandejaPendientes.valoracion.trabajos');
+  const { agentes } = useAgentesChat();
   const locale = useLocale();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -41,14 +61,21 @@ export default function TrabajosPage() {
   const [estado, setEstado] = useState(TODOS);
   const [tipo, setTipo] = useState(TODOS);
   const [rango, setRango] = useState<RangoTrabajos>('7d');
+  const [diaDesde, setDiaDesde] = useState('');
+  const [diaHasta, setDiaHasta] = useState('');
+  const [actualizando, setActualizando] = useState(false);
   const [abierto, setAbierto] = useState<AIJob | null>(null);
   const [bitacora, setBitacora] = useState<string[]>([]);
   const [ocupado, setOcupado] = useState(false);
 
-  const desde = useMemo(() => {
+  const { desde, hasta } = useMemo(() => {
+    if (rango === 'personalizado') {
+      const l = limitesDias(diaDesde, diaHasta);
+      return { desde: l.desde ? toInstant(l.desde) : undefined, hasta: l.hastaExclusivo ? toInstant(l.hastaExclusivo) : undefined };
+    }
     const dias = diasDeRango(rango);
-    return dias === null ? undefined : toInstant(addPlainDays(getToday(), -dias));
-  }, [rango, getToday, toInstant]);
+    return { desde: dias === null ? undefined : toInstant(addPlainDays(getToday(), -dias)), hasta: undefined };
+  }, [rango, diaDesde, diaHasta, getToday, toInstant]);
 
   const cargar = useCallback(async () => {
     if (!organizationId) return;
@@ -56,7 +83,7 @@ export default function TrabajosPage() {
     try {
       const s = new AIJobsService(organizationId);
       const [js, st] = await Promise.all([
-        s.getJobs({ status: estado === TODOS ? undefined : estado, jobType: tipo === TODOS ? undefined : tipo, dateFrom: desde }, 200),
+        s.getJobs({ status: estado === TODOS ? undefined : estado, jobType: tipo === TODOS ? undefined : tipo, dateFrom: desde, dateTo: hasta }, 200),
         s.getStats(),
       ]);
       setTrabajos(js);
@@ -67,7 +94,7 @@ export default function TrabajosPage() {
     } finally {
       setCargando(false);
     }
-  }, [organizationId, estado, tipo, desde]);
+  }, [organizationId, estado, tipo, desde, hasta]);
 
   useEffect(() => {
     setCargando(true);
@@ -125,6 +152,17 @@ export default function TrabajosPage() {
   const ahora = useMemo(() => new Date(), [trabajos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const columnas: ColumnaTabla<AIJob>[] = [
+    {
+      id: 'id',
+      encabezado: t('trabajos.tabla.id'),
+      ancho: 100,
+      ocultarDebajo: 'lg',
+      celda: (j) => (
+        <span className="font-mono text-xs text-fg-secondary" title={j.id}>
+          {idCorto(j.id)}
+        </span>
+      ),
+    },
     { id: 'tipo', encabezado: t('trabajos.tabla.tipo'), ancho: 220, celda: (j) => <span className="text-sm font-medium text-fg">{nombreTipo(j.job_type)}</span> },
     {
       id: 'conversacion',
@@ -157,12 +195,85 @@ export default function TrabajosPage() {
         return n ? n.toLocaleString(locale) : '—';
       },
     },
+    {
+      id: 'duracion',
+      encabezado: t('trabajos.tabla.duracion'),
+      variante: 'importe',
+      ancho: 100,
+      ocultarDebajo: 'lg',
+      celda: (j) => <span className="text-sm text-fg-secondary">{textoDuracion(duracionMs(j, ahora), locale)}</span>,
+    },
+    {
+      id: 'confianza',
+      encabezado: t('trabajos.tabla.confianza'),
+      ancho: 110,
+      ocultarDebajo: 'lg',
+      celda: (j) =>
+        j.confidence_score == null ? (
+          <span className="text-sm text-fg-muted">—</span>
+        ) : (
+          <Badge tono={tonoConfianza(j.confidence_score)} tamano="sm">
+            {textoConfianza(j.confidence_score, locale)}
+          </Badge>
+        ),
+    },
+    {
+      id: 'valoracion',
+      encabezado: tv('columna'),
+      ancho: 120,
+      ocultarDebajo: 'md',
+      celda: (j) => {
+        const r = resumenValoraciones(j.valoraciones);
+        if (!r.util && !r.noUtil) return <span className="text-sm text-fg-muted">—</span>;
+        return (
+          <span className="inline-flex items-center gap-3 text-sm text-fg-secondary" aria-label={tv('resumen', { util: r.util, noUtil: r.noUtil })}>
+            {r.util ? (
+              <span className="inline-flex items-center gap-1">
+                <ThumbsUp aria-hidden="true" className="size-3.5 text-success-text" />
+                {r.util}
+              </span>
+            ) : null}
+            {r.noUtil ? (
+              <span className="inline-flex items-center gap-1">
+                <ThumbsDown aria-hidden="true" className="size-3.5 text-danger-text" />
+                {r.noUtil}
+              </span>
+            ) : null}
+          </span>
+        );
+      },
+    },
     { id: 'cuando', encabezado: t('trabajos.tabla.cuando'), ancho: 140, ocultarDebajo: 'md', celda: (j) => <span className="text-sm text-fg-secondary">{tiempoRelativo(j.created_at, ahora, locale)}</span> },
   ];
 
   return (
     <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
-      <PageHeader titulo={t('titulo')} subtitulo={t('trabajos.subtitulo')} icono={Bot} cargando={cargando} debajo={<IANavTabs className="w-full max-w-3xl" />} />
+      <PageHeader
+        titulo={t('titulo')}
+        subtitulo={t('trabajos.subtitulo')}
+        icono={Bot}
+        cargando={cargando}
+        acciones={
+          <button
+            type="button"
+            disabled={actualizando}
+            aria-busy={actualizando || undefined}
+            onClick={async () => {
+              setActualizando(true);
+              try {
+                await cargar();
+              } finally {
+                setActualizando(false);
+              }
+            }}
+            className={clasesBoton({ variante: 'secundario' })}
+          >
+            <RefreshCw aria-hidden="true" className={actualizando ? 'size-4 animate-spin' : 'size-4'} />
+            {t('trabajos.actualizar')}
+          </button>
+        }
+        debajo={<IANavTabs className="w-full max-w-3xl" />}
+      />
 
       <KpiStrip etiqueta={t('trabajos.kpis.etiqueta')} columnas={5}>
         <StatCard tamano="sm" etiqueta={t('trabajos.kpis.total')} valor={stats?.total ?? 0} cargando={!stats && !fallo} />
@@ -212,13 +323,36 @@ export default function TrabajosPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {(['hoy', '7d', '30d', 'todo'] as const).map((r) => (
+            {RANGOS_TRABAJOS.map((r) => (
               <SelectItem key={r} value={r}>
                 {t(`trabajos.filtros.rangos.${r}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {rango === 'personalizado' ? (
+          <>
+            <CampoFecha
+              valor={diaDesde}
+              onValorChange={setDiaDesde}
+              max={diaHasta || getToday()}
+              hoy={getToday()}
+              placeholder={t('trabajos.filtros.desde')}
+              aria-label={t('trabajos.filtros.desde')}
+              tamano="sm"
+            />
+            <CampoFecha
+              valor={diaHasta}
+              onValorChange={setDiaHasta}
+              min={diaDesde || undefined}
+              max={getToday()}
+              hoy={getToday()}
+              placeholder={t('trabajos.filtros.hasta')}
+              aria-label={t('trabajos.filtros.hasta')}
+              tamano="sm"
+            />
+          </>
+        ) : null}
       </div>
 
       <DataTable<AIJob>
@@ -254,6 +388,7 @@ export default function TrabajosPage() {
       <HojaTrabajo
         trabajo={abierto}
         bitacora={bitacora}
+        nombrePersona={(memberId) => agentes.find((a) => a.memberId === memberId)?.nombre ?? null}
         ocupado={ocupado}
         onCerrar={() => setAbierto(null)}
         onReintentar={(j) => accion(j, 'reintentar')}

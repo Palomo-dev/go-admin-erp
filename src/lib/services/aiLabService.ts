@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
-// Fase 0.2: el cobro de créditos vive en /api/chat/ai/lab-test (punto de
-// generación). Aquí solo queda la comprobación previa de saldo.
-import { checkAICredits } from './aiCreditsService';
+// El saldo y el cobro de créditos viven en /api/chat/ai/lab-test (servidor):
+// este archivo corre en el navegador.
 
 export interface KnowledgeFragment {
   id: string;
@@ -39,15 +38,40 @@ export interface RetrievedFragment {
   priority: number;
 }
 
+/**
+ * Cifras reales de la prueba. No hay «confianza»: la IA de atención no calcula
+ * ninguna, y mostrar una inventada sería peor que no mostrarla.
+ */
 export interface LabMetrics {
-  totalFragments: number;
   retrievedFragments: number;
   processingTimeMs: number;
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
-  estimatedCost: number;
-  confidenceScore: number;
+  /** Créditos que se descontaron (los mismos que una respuesta a un cliente). */
+  creditsCharged: number;
+  /** Costo del proveedor en USD; `null` si el modelo no tiene tarifa cargada. */
+  providerCostUsd: number | null;
+  /** Modelo con el que respondió de verdad (puede ser el de respaldo). */
+  model: string;
+}
+
+export type CodigoFalloPrueba = 'sin_creditos' | 'proveedor' | 'sin_permiso' | 'error';
+
+export type ResultadoPrueba =
+  | { ok: true; resultado: LabTestResult; saldoRestante: number | null }
+  | { ok: false; codigo: CodigoFalloPrueba };
+
+/** Respuesta de `POST /api/chat/ai/lab-test` (`ResultadoLaboratorio`). */
+interface RespuestaServidorLab {
+  respuesta: string;
+  modelo: string;
+  tiempoMs: number;
+  tokens: { entrada: number; salida: number; total: number };
+  fragmentos: number;
+  creditosCobrados: number;
+  saldoRestante: number | null;
+  costoUsd: number | null;
 }
 
 export interface LabSettings {
@@ -222,7 +246,8 @@ class AILabService {
     }
 
     return {
-      model: data.model || 'gpt-4o-mini',
+      // Vacío = el de la configuración (el servidor resuelve el mismo que la IA real).
+      model: data.model || '',
       temperature: data.temperature || 0.7,
       maxTokens: data.max_tokens || 500,
       maxFragments: data.max_fragments_context || 5,
@@ -233,153 +258,80 @@ class AILabService {
     };
   }
 
+  /**
+   * «Probar» del laboratorio: respuesta REAL de la IA, generada en el servidor
+   * (`POST /api/chat/ai/lab-test`) con el mismo prompt y el mismo modelo que
+   * responden a los clientes. Cobra créditos allí (saldo antes, cobro después);
+   * si la prueba falla no se cobra. No envía nada a ningún cliente.
+   */
   async runTest(
     query: string,
     settings: LabSettings,
     fragments: RetrievedFragment[]
-  ): Promise<LabTestResult> {
-    // Validar créditos de IA
-    const creditsCheck = await checkAICredits(this.organizationId);
-    if (!creditsCheck.allowed) {
-      return {
+  ): Promise<ResultadoPrueba> {
+    let respuesta: Response;
+    try {
+      respuesta = await fetch('/api/chat/ai/lab-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          canal: settings.simulatedChannel,
+          temperatura: settings.temperature,
+          maxTokens: settings.maxTokens,
+          // Hasta el máximo de fragmentos de la prueba (el servidor acepta 20).
+          fragmentIds: fragments.slice(0, Math.min(20, Math.max(1, settings.maxFragments || 5))).map((f) => f.id),
+          // Ajustes de la prueba: no cambian la configuración real.
+          ...(settings.model ? { modelo: settings.model } : {}),
+          reglas: settings.systemRules,
+        }),
+      });
+    } catch {
+      return { ok: false, codigo: 'error' };
+    }
+
+    const cuerpo = (await respuesta.json().catch(() => null)) as
+      | { success?: boolean; code?: string; data?: RespuestaServidorLab }
+      | null;
+    if (!respuesta.ok || !cuerpo?.success || !cuerpo.data) {
+      const codigo: CodigoFalloPrueba =
+        cuerpo?.code === 'sin_creditos' || respuesta.status === 402
+          ? 'sin_creditos'
+          : cuerpo?.code === 'proveedor'
+            ? 'proveedor'
+            : respuesta.status === 403
+              ? 'sin_permiso'
+              : 'error';
+      return { ok: false, codigo };
+    }
+
+    const d = cuerpo.data;
+    return {
+      ok: true,
+      saldoRestante: d.saldoRestante,
+      resultado: {
         query,
         fragments,
-        response: `⚠️ ${creditsCheck.error || 'Créditos de IA insuficientes'}`,
+        response: d.respuesta,
         metrics: {
-          totalFragments: fragments.length,
-          retrievedFragments: fragments.length,
-          processingTimeMs: 0,
-          promptTokens: 0,
-          completionTokens: 0,
-          totalTokens: 0,
-          estimatedCost: 0,
-          confidenceScore: 0
+          retrievedFragments: d.fragmentos,
+          processingTimeMs: d.tiempoMs,
+          promptTokens: d.tokens.entrada,
+          completionTokens: d.tokens.salida,
+          totalTokens: d.tokens.total,
+          creditsCharged: d.creditosCobrados,
+          providerCostUsd: d.costoUsd ?? null,
+          model: d.modelo,
         },
         timestamp: new Date().toISOString(),
-        settings
-      };
-    }
-
-    const startTime = Date.now();
-
-    const fragmentsContext = fragments
-      .map(f => `[${f.title}]\n${f.content}`)
-      .join('\n\n---\n\n');
-
-    const response = await fetch('/api/chat/ai/lab-test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        organizationId: this.organizationId,
-        query,
         settings,
-        fragmentsContext
-      })
-    });
-
-    const result = await response.json();
-    const processingTimeMs = Date.now() - startTime;
-
-    // Fase 0.2: los créditos los cobra /api/chat/ai/lab-test, que es el punto de
-    // generación. Cobrarlos también aquí producía un cargo doble.
-
-    const metrics: LabMetrics = {
-      totalFragments: fragments.length,
-      retrievedFragments: fragments.length,
-      processingTimeMs,
-      promptTokens: result.usage?.promptTokens || 0,
-      completionTokens: result.usage?.completionTokens || 0,
-      totalTokens: result.usage?.totalTokens || 0,
-      estimatedCost: result.costUsd ?? 0,
-      confidenceScore: result.confidenceScore || 0.8
-    };
-
-    return {
-      query,
-      fragments,
-      response: result.response || result.error || 'Sin respuesta',
-      metrics,
-      timestamp: new Date().toISOString(),
-      settings
+      },
     };
   }
 
-  async runLocalTest(
-    query: string,
-    settings: LabSettings,
-    fragments: RetrievedFragment[]
-  ): Promise<LabTestResult> {
-    const startTime = Date.now();
-
-    const fragmentsContext = fragments
-      .map(f => `[${f.title}]\n${f.content}`)
-      .join('\n\n---\n\n');
-
-    const simulatedResponse = this.generateSimulatedResponse(query, fragments, settings);
-    const processingTimeMs = Date.now() - startTime;
-
-    const estimatedTokens = Math.ceil((query.length + fragmentsContext.length) / 4);
-    const completionTokens = Math.ceil(simulatedResponse.length / 4);
-
-    const metrics: LabMetrics = {
-      totalFragments: fragments.length,
-      retrievedFragments: fragments.length,
-      processingTimeMs: processingTimeMs + 500,
-      promptTokens: estimatedTokens,
-      completionTokens,
-      totalTokens: estimatedTokens + completionTokens,
-      // runLocalTest no llama a ningún modelo: la respuesta es simulada, así que
-      // el costo real es cero. Antes mostraba un costo inventado con la tabla de
-      // precios cableada, lo cual daba una cifra falsa para una respuesta falsa.
-      estimatedCost: 0,
-      confidenceScore: fragments.length > 0 ? 0.85 : 0.4
-    };
-
-    return {
-      query,
-      fragments,
-      response: simulatedResponse,
-      metrics,
-      timestamp: new Date().toISOString(),
-      settings
-    };
-  }
-
-  private generateSimulatedResponse(
-    query: string,
-    fragments: RetrievedFragment[],
-    settings: LabSettings
-  ): string {
-    if (fragments.length === 0) {
-      return settings.language === 'es'
-        ? 'Lo siento, no encontré información relevante en la base de conocimiento para responder tu consulta. ¿Podrías reformular tu pregunta o proporcionar más detalles?'
-        : 'Sorry, I couldn\'t find relevant information in the knowledge base to answer your query. Could you rephrase your question or provide more details?';
-    }
-
-    const tonePrefix = {
-      professional: 'Gracias por tu consulta. ',
-      friendly: '¡Hola! ',
-      formal: 'Estimado usuario, ',
-      casual: 'Hey! ',
-      empathetic: 'Entiendo tu consulta. '
-    }[settings.tone] || '';
-
-    const mainFragment = fragments[0];
-    const summary = mainFragment.content.substring(0, 300);
-
-    return `${tonePrefix}Basándome en la información disponible sobre "${mainFragment.title}", te puedo comentar lo siguiente:
-
-${summary}${mainFragment.content.length > 300 ? '...' : ''}
-
-${fragments.length > 1 ? `También encontré ${fragments.length - 1} fragmento(s) adicional(es) relacionado(s) con tu consulta.` : ''}
-
-¿Hay algo más en lo que pueda ayudarte?`;
-  }
-
-  // calculateCost() se elimino: tenia su propia tabla de precios cableada
-  // (gpt-4o, gpt-4-turbo, gpt-3.5-turbo) que caia siempre a gpt-4o-mini para
-  // cualquier modelo desconocido. El costo real ahora lo calcula
-  // /api/chat/ai/lab-test contra provider_pricing y llega en `costUsd`.
+  // runLocalTest() y generateSimulatedResponse() se eliminaron (2026-11-13):
+  // armaban una respuesta simulada con el primer fragmento. El laboratorio ya
+  // prueba con la IA real.
 
   async logLabTest(result: LabTestResult, memberId?: number): Promise<void> {
     try {

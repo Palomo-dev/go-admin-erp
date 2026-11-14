@@ -2,7 +2,7 @@
  * Reglas puras de la Auditoría del chat (Figma 91-chat-41), sin React.
  */
 import type { LucideIcon } from 'lucide-react';
-import { Bot, BookOpen, FileText, Key, Lock, MessageSquare, Radio, Settings, Tag, Trash2, User, Zap } from 'lucide-react';
+import { Bot, BookOpen, FileText, Key, Lock, MessageSquare, Radio, Settings, Tag, Trash2, User, UserCheck, UserX, Zap } from 'lucide-react';
 
 /** Acciones que registran los servicios del Chat (clave i18n `chatModulo.auditoria.acciones.*`). */
 export const ACCIONES_AUDITORIA = [
@@ -33,6 +33,8 @@ export const ACCIONES_AUDITORIA = [
   'unblock_session',
   'assign_conversation',
   'close_conversation',
+  'block_contact',
+  'unblock_contact',
   'create_tag',
   'update_tag',
   'delete_tag',
@@ -45,10 +47,34 @@ export const ACCIONES_AUDITORIA = [
 
 export const ENTIDADES_AUDITORIA = ['channel', 'conversation', 'message', 'knowledge_source', 'knowledge_fragment', 'ai_settings', 'ai_job', 'widget_session', 'conversation_tag', 'quick_reply', 'channel_api_key', 'customer'] as const;
 
-export type RangoAuditoria = 'hoy' | '7d' | '30d' | 'todo';
+/** Tipos de actor de `chat_audit_logs.actor_type` (clave i18n `chatModulo.auditoria.actores.*`). */
+export const ACTORES_AUDITORIA = ['member', 'system', 'ai', 'api', 'customer'] as const;
+
+/** `personalizado`: Desde/Hasta elegidos con el calendario. */
+export type RangoAuditoria = 'hoy' | '7d' | '30d' | 'todo' | 'personalizado';
 
 export function diasDeRangoAuditoria(r: RangoAuditoria): number | null {
   return r === 'hoy' ? 0 : r === '7d' ? 6 : r === '30d' ? 29 : null;
+}
+
+/**
+ * Días calendario (en la zona de la organización) que filtran la auditoría:
+ * `desde` incluido y `hastaExclusivo` = el día siguiente al último incluido.
+ * La pantalla los pasa a instantes con `toInstant` (nunca `toISOString`).
+ */
+export function diasDelFiltroAuditoria(
+  r: RangoAuditoria,
+  hoy: string,
+  personal: { desde: string; hasta: string } | null,
+  sumarDias: (dia: string, n: number) => string,
+): { desde?: string; hastaExclusivo?: string } {
+  if (r === 'personalizado') {
+    if (!personal) return {};
+    const [desde, hasta] = personal.desde <= personal.hasta ? [personal.desde, personal.hasta] : [personal.hasta, personal.desde];
+    return { desde, hastaExclusivo: sumarDias(hasta, 1) };
+  }
+  const dias = diasDeRangoAuditoria(r);
+  return dias === null ? {} : { desde: sumarDias(hoy, -dias) };
 }
 
 /** «update_website_settings» → «Update website settings» (para acciones nuevas sin traducción). */
@@ -58,6 +84,8 @@ export function humanizarAccion(accion: string): string {
 }
 
 export function iconoAccion(accion: string, entidad: string): LucideIcon {
+  if (accion === 'block_contact') return UserX;
+  if (accion === 'unblock_contact') return UserCheck;
   if (accion.startsWith('delete') || accion.startsWith('remove')) return Trash2;
   if (accion.includes('ai_mode') || accion.includes('ai_settings') || accion.includes('ai_job')) return Bot;
   if (accion.includes('key')) return Key;

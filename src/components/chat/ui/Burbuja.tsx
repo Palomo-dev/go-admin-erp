@@ -1,9 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Check, CheckCheck, Lock, Sparkles } from 'lucide-react';
+import { AlertCircle, Check, CheckCheck, Lock, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
+import { AvatarIniciales } from '@/components/kit';
 
 /** Quién habla en la burbuja (Figma 91-chat-00). */
 export type AutorBurbuja = 'cliente' | 'agente' | 'ia' | 'nota' | 'sistema';
@@ -13,9 +14,11 @@ export interface BurbujaProps {
   children: React.ReactNode;
   /** Hora ya formateada en la zona de la organización. */
   hora?: string;
-  /** Solo salientes: ✓ enviado, ✓✓ leído. */
-  entrega?: 'enviado' | 'leido' | null;
-  /** Detalle tras el título de IA o nota («Laura la revisó», autor de la nota). */
+  /** Solo salientes: ✓ enviado, ✓✓ entregado, ✓✓ azul leído, ⚠ fallido (`message_events`). */
+  entrega?: 'enviado' | 'entregado' | 'leido' | 'fallido' | null;
+  /** Nombre y avatar de quien escribe, cuando cambia el autor respecto al mensaje anterior. */
+  remitente?: { nombre: string; avatarUrl?: string | null } | null;
+  /** Detalle tras el título de IA o nota («Laura la revisó», autor de la nota); en el cliente, aviso al pie. */
   detalle?: string | null;
   className?: string;
   id?: string;
@@ -42,7 +45,7 @@ const CAJA: Record<Exclude<AutorBurbuja, 'sistema'>, string> = {
  * interna (derecha, amarilla punteada, «solo la ve tu equipo») y evento del
  * sistema (centrado, gris).
  */
-export function Burbuja({ autor, children, hora, entrega, detalle, className, id }: BurbujaProps) {
+export function Burbuja({ autor, children, hora, entrega, detalle, remitente, className, id }: BurbujaProps) {
   const t = useTranslations('chatUi.burbuja');
 
   if (autor === 'sistema') {
@@ -57,9 +60,15 @@ export function Burbuja({ autor, children, hora, entrega, detalle, className, id
   }
 
   const derecha = autor !== 'cliente';
-  const Entrega = entrega === 'leido' ? CheckCheck : Check;
+  const Entrega = entrega === 'fallido' ? AlertCircle : entrega === 'leido' || entrega === 'entregado' ? CheckCheck : Check;
   return (
-    <div id={id} className={cn('flex min-w-0', derecha ? 'justify-end' : 'justify-start', className)}>
+    <div id={id} className={cn('flex min-w-0 flex-col rounded-lg transition-colors', derecha ? 'items-end' : 'items-start', className)}>
+      {remitente ? (
+        <p className={cn('mb-1 flex max-w-[85%] items-center gap-1.5 text-xs font-medium text-fg-secondary', derecha && 'flex-row-reverse')}>
+          <AvatarIniciales nombre={remitente.nombre} src={remitente.avatarUrl} tamano="sm" className="size-5 text-[10px]" />
+          <span className="truncate">{remitente.nombre}</span>
+        </p>
+      ) : null}
       <div className={cn('min-w-0 max-w-[85%] rounded-xl px-3 py-2 sm:max-w-[70%]', CAJA[autor])}>
         {autor === 'ia' && (
           <p className="mb-1 flex items-center gap-1 text-xs font-medium text-brand">
@@ -74,11 +83,22 @@ export function Burbuja({ autor, children, hora, entrega, detalle, className, id
           </p>
         )}
         <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">{children}</div>
-        {(hora || entrega) && (
+        {(hora || entrega || (autor === 'cliente' && detalle)) && (
           <p className={cn('mt-1 flex items-center justify-end gap-1 text-[11px]', autor === 'agente' ? 'text-fg-on-brand/80' : 'text-fg-muted')}>
+            {/* Cliente: aviso del sistema sobre el mensaje («llegó con el contacto bloqueado»). */}
+            {autor === 'cliente' && detalle ? <span className="mr-auto pr-2">{detalle}</span> : null}
             {hora}
             {entrega && (derecha && autor !== 'nota') ? (
-              <Entrega aria-label={entrega === 'leido' ? t('leido') : t('enviado')} className="size-3.5" />
+              entrega === 'fallido' ? (
+                <span className={cn('inline-flex items-center gap-0.5 font-medium', autor === 'agente' ? 'text-fg-on-brand' : 'text-danger-text')}>
+                  <Entrega aria-hidden="true" className="size-3.5" />
+                  {t('fallido')}
+                </span>
+              ) : (
+                <span role="img" aria-label={t(entrega)} title={t(entrega)} className="inline-flex">
+                  <Entrega aria-hidden="true" className={cn('size-3.5', entrega === 'leido' && autor !== 'agente' && 'text-brand')} />
+                </span>
+              )
             ) : null}
           </p>
         )}

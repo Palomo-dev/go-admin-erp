@@ -108,6 +108,8 @@ export interface ConversationDetail {
   unread_count: number;
   created_at: string;
   updated_at: string;
+  /** `metadata.subject`: el asunto que se puso al crearla (Nueva conversación). */
+  metadata?: Record<string, unknown> | null;
   customer?: {
     id: string;
     full_name: string;

@@ -2,12 +2,15 @@
 
 /**
  * «Eventos recientes» de un canal de Meta (Figma 91-chat-22): estado de los
- * últimos mensajes (enviado, entregado, leído, fallido) con su hora relativa.
+ * últimos mensajes (enviado, entregado, leído, fallido) con su hora relativa
+ * y, al pasar el mouse, la fecha y hora exactas en la zona de la organización
+ * (la pantalla anterior las mostraba como «dd/MM HH:mm»).
  */
 import { useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Tarjeta } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { tiempoRelativo } from '../canalesLogica';
 
 export interface EventoCanal {
@@ -28,6 +31,7 @@ const TONO: Record<string, 'informacion' | 'exito' | 'marca' | 'peligro' | 'neut
 export function EventosRecientesCanal({ eventos, id }: { eventos: readonly EventoCanal[]; id?: string }) {
   const t = useTranslations('chatModulo.canales.detalleCanal.eventos');
   const locale = useLocale();
+  const { formatDateTime } = useFormatDate();
   const ahora = useMemo(() => new Date(), [eventos]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Tarjeta id={id} titulo={t('titulo')}>
@@ -45,7 +49,9 @@ export function EventosRecientesCanal({ eventos, id }: { eventos: readonly Event
                 <span className="min-w-0 truncate text-fg-muted">
                   {e.error_message ?? (e.message_id ? `#${e.message_id.slice(0, 8)}` : '')}
                   {' · '}
-                  {tiempoRelativo(e.created_at, ahora, locale)}
+                  <time dateTime={e.created_at} title={formatDateTime(e.created_at)}>
+                    {tiempoRelativo(e.created_at, ahora, locale)}
+                  </time>
                 </span>
               </li>
             );

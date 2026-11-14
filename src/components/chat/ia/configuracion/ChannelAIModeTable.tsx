@@ -1,8 +1,13 @@
 'use client';
 
+/**
+ * Configuración › Chat › IA › Canales: modo de la IA en cada canal. Textos en
+ * `chatConfig.ia.canales` (es/en/fr/pt) y colores por tokens. El modo de cada
+ * canal se guarda al instante (no pasa por la barra de guardar).
+ */
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -18,10 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { 
-  MessageCircle, 
-  Bot, 
-  Users, 
+import {
+  MessageCircle,
+  Bot,
+  Users,
   Shuffle,
   Globe,
   Instagram,
@@ -30,67 +35,71 @@ import {
 } from 'lucide-react';
 import { Channel, AI_MODE_OPTIONS } from '@/lib/services/aiSettingsService';
 
+type ModoIa = 'auto' | 'hybrid' | 'manual';
+
 interface ChannelAIModeTableProps {
   channels: Channel[];
   loading: boolean;
-  onModeChange: (channelId: string, mode: 'auto' | 'hybrid' | 'manual') => void;
-  onApplyToAll: (mode: 'auto' | 'hybrid' | 'manual') => void;
+  onModeChange: (channelId: string, mode: ModoIa) => void;
+  onApplyToAll: (mode: ModoIa) => void;
 }
 
 const channelIcons: Record<string, React.ReactNode> = {
-  whatsapp: <MessageCircle className="h-4 w-4 text-green-500" />,
-  website: <Globe className="h-4 w-4 text-blue-500" />,
-  instagram: <Instagram className="h-4 w-4 text-pink-500" />,
-  facebook: <Facebook className="h-4 w-4 text-blue-600" />,
-  default: <MessageSquare className="h-4 w-4 text-gray-500" />
+  whatsapp: <MessageCircle aria-hidden="true" className="h-4 w-4 text-success-text" />,
+  website: <Globe aria-hidden="true" className="h-4 w-4 text-brand" />,
+  instagram: <Instagram aria-hidden="true" className="h-4 w-4 text-danger-text" />,
+  facebook: <Facebook aria-hidden="true" className="h-4 w-4 text-brand" />,
+  default: <MessageSquare aria-hidden="true" className="h-4 w-4 text-fg-muted" />
 };
 
 const modeIcons: Record<string, React.ReactNode> = {
-  auto: <Bot className="h-4 w-4 text-blue-500" />,
-  hybrid: <Shuffle className="h-4 w-4 text-purple-500" />,
-  manual: <Users className="h-4 w-4 text-green-500" />
+  auto: <Bot aria-hidden="true" className="h-4 w-4 text-brand" />,
+  hybrid: <Shuffle aria-hidden="true" className="h-4 w-4 text-info-text" />,
+  manual: <Users aria-hidden="true" className="h-4 w-4 text-success-text" />
 };
 
-const modeColors: Record<string, string> = {
-  auto: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  hybrid: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  manual: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+const modeTono: Record<string, 'marca' | 'informacion' | 'exito'> = {
+  auto: 'marca',
+  hybrid: 'informacion',
+  manual: 'exito'
+};
+
+const modeFondo: Record<string, string> = {
+  auto: 'bg-brand-tint',
+  hybrid: 'bg-info-subtle',
+  manual: 'bg-success-subtle'
 };
 
 export default function ChannelAIModeTable({
   channels,
-  loading,
   onModeChange,
   onApplyToAll
 }: ChannelAIModeTableProps) {
-  const getChannelIcon = (type: string) => {
-    return channelIcons[type.toLowerCase()] || channelIcons.default;
-  };
-
-  const getModeLabel = (mode: string) => {
-    return AI_MODE_OPTIONS.find(m => m.value === mode)?.label || mode;
-  };
+  const t = useTranslations('chatConfig.ia.canales');
+  const getChannelIcon = (type: string) => channelIcons[type.toLowerCase()] || channelIcons.default;
+  const nombreModo = (mode: string) => (t.has(`modos.${mode}.nombre`) ? t(`modos.${mode}.nombre`) : AI_MODE_OPTIONS.find((m) => m.value === mode)?.label || mode);
+  const descripcionModo = (mode: string) => (t.has(`modos.${mode}.descripcion`) ? t(`modos.${mode}.descripcion`) : AI_MODE_OPTIONS.find((m) => m.value === mode)?.description || '');
 
   return (
-    <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <Card className="border-line bg-surface">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-            <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            Modo IA por Canal
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-base font-medium text-fg">
+            <MessageCircle aria-hidden="true" className="h-4 w-4 text-brand" />
+            {t('titulo')}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-400">Aplicar a todos:</span>
-            <Select onValueChange={(value) => onApplyToAll(value as 'auto' | 'hybrid' | 'manual')}>
-              <SelectTrigger className="w-[140px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
-                <SelectValue placeholder="Seleccionar" />
+            <span id="ia-aplicar-todos" className="text-sm text-fg-muted">{t('aplicarTodos')}</span>
+            <Select onValueChange={(value) => onApplyToAll(value as ModoIa)}>
+              <SelectTrigger aria-labelledby="ia-aplicar-todos" className="w-[160px] bg-surface">
+                <SelectValue placeholder={t('seleccionar')} />
               </SelectTrigger>
               <SelectContent>
                 {AI_MODE_OPTIONS.map((mode) => (
                   <SelectItem key={mode.value} value={mode.value}>
                     <div className="flex items-center gap-2">
                       {modeIcons[mode.value]}
-                      {mode.label}
+                      {nombreModo(mode.value)}
                     </div>
                   </SelectItem>
                 ))}
@@ -102,100 +111,78 @@ export default function ChannelAIModeTable({
       <CardContent>
         {channels.length === 0 ? (
           <div className="py-8 text-center">
-            <MessageCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">
-              No hay canales configurados
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-              Configura canales de comunicación para gestionar el modo de IA
-            </p>
+            <MessageCircle aria-hidden="true" className="mx-auto mb-4 h-12 w-12 text-fg-muted" />
+            <p className="text-fg-secondary">{t('vacioTitulo')}</p>
+            <p className="mt-1 text-sm text-fg-muted">{t('vacioDescripcion')}</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-gray-200 dark:border-gray-700">
-                <TableHead className="text-gray-600 dark:text-gray-400">Canal</TableHead>
-                <TableHead className="text-gray-600 dark:text-gray-400">Tipo</TableHead>
-                <TableHead className="text-gray-600 dark:text-gray-400">Estado</TableHead>
-                <TableHead className="text-gray-600 dark:text-gray-400">Modo IA</TableHead>
-                <TableHead className="text-gray-600 dark:text-gray-400 w-[180px]">Cambiar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {channels.map((channel) => (
-                <TableRow 
-                  key={channel.id}
-                  className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        {getChannelIcon(channel.type)}
-                      </div>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {channel.name}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-gray-600 dark:text-gray-400 capitalize">
-                    {channel.type}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={channel.status === 'active' ? 'default' : 'secondary'}
-                      className={channel.status === 'active' 
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                      }
-                    >
-                      {channel.status === 'active' ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={modeColors[channel.ai_mode] || modeColors.hybrid}>
-                      <span className="flex items-center gap-1">
-                        {modeIcons[channel.ai_mode]}
-                        {getModeLabel(channel.ai_mode)}
-                      </span>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Select 
-                      value={channel.ai_mode} 
-                      onValueChange={(value) => onModeChange(channel.id, value as 'auto' | 'hybrid' | 'manual')}
-                    >
-                      <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {AI_MODE_OPTIONS.map((mode) => (
-                          <SelectItem key={mode.value} value={mode.value}>
-                            <div className="flex items-center gap-2">
-                              {modeIcons[mode.value]}
-                              {mode.label}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-line">
+                  <TableHead className="text-fg-secondary">{t('columnas.canal')}</TableHead>
+                  <TableHead className="text-fg-secondary">{t('columnas.tipo')}</TableHead>
+                  <TableHead className="text-fg-secondary">{t('columnas.estado')}</TableHead>
+                  <TableHead className="text-fg-secondary">{t('columnas.modo')}</TableHead>
+                  <TableHead className="w-[180px] text-fg-secondary">{t('columnas.cambiar')}</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {channels.map((channel) => (
+                  <TableRow key={channel.id} className="border-line hover:bg-hover">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-lg bg-subtle p-2">{getChannelIcon(channel.type)}</div>
+                        <span className="font-medium text-fg">{channel.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="capitalize text-fg-secondary">{channel.type}</TableCell>
+                    <TableCell>
+                      <Badge tono={channel.status === 'active' ? 'exito' : 'neutro'} tamano="sm">
+                        {channel.status === 'active' ? t('activo') : t('inactivo')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge tono={modeTono[channel.ai_mode] ?? 'informacion'} tamano="sm">
+                        <span className="flex items-center gap-1">
+                          {modeIcons[channel.ai_mode]}
+                          {nombreModo(channel.ai_mode)}
+                        </span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Select value={channel.ai_mode} onValueChange={(value) => onModeChange(channel.id, value as ModoIa)}>
+                        <SelectTrigger aria-label={t('cambiarModo', { canal: channel.name })} className="bg-surface">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {AI_MODE_OPTIONS.map((mode) => (
+                            <SelectItem key={mode.value} value={mode.value}>
+                              <div className="flex items-center gap-2">
+                                {modeIcons[mode.value]}
+                                {nombreModo(mode.value)}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
 
-        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Modos disponibles:</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="mt-6 rounded-lg bg-subtle p-4">
+          <p className="mb-3 text-sm font-medium text-fg-secondary">{t('modosDisponibles')}</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {AI_MODE_OPTIONS.map((mode) => (
               <div key={mode.value} className="flex items-start gap-3">
-                <div className={`p-2 rounded-lg ${modeColors[mode.value]?.split(' ')[0]} bg-opacity-50`}>
-                  {modeIcons[mode.value]}
-                </div>
+                <div className={`rounded-lg p-2 ${modeFondo[mode.value] ?? 'bg-subtle'}`}>{modeIcons[mode.value]}</div>
                 <div>
-                  <p className="font-medium text-gray-900 dark:text-white text-sm">{mode.label}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{mode.description}</p>
+                  <p className="text-sm font-medium text-fg">{nombreModo(mode.value)}</p>
+                  <p className="text-xs text-fg-muted">{descripcionModo(mode.value)}</p>
                 </div>
               </div>
             ))}

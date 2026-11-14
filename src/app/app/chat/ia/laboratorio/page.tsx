@@ -3,23 +3,34 @@
 /**
  * Laboratorio de la IA del chat (Figma 91-chat-34): pregunta de prueba,
  * respuesta con sus cifras, ajustes de la prueba (no cambian la configuración
- * real) y fragmentos que usó. La lógica es la de siempre (`aiLabService`):
- * busca fragmentos y arma una respuesta simulada que no llama al modelo ni
- * gasta créditos. «Convertir en fragmento» guarda la respuesta como
- * conocimiento con `knowledgeService`.
+ * real) y fragmentos que usó. «Probar» genera la respuesta REAL de la IA en el
+ * servidor (`aiLabService.runTest` → `POST /api/chat/ai/lab-test`, mismo prompt
+ * y modelo que responden a los clientes) y descuenta créditos como una
+ * respuesta a un cliente; si falla, no se cobra (Figma 93-chat-pendientes 04).
+ * Sin créditos, «Probar» se deshabilita y se ofrece recargar (Figma 05).
+ * «Convertir en fragmento» guarda la respuesta como conocimiento con
+ * `knowledgeService`.
+ *
+ * Auditoría 2026-11-14 (Agente 3): vuelven los ajustes de la prueba (modelo,
+ * creatividad y largo libres, máximo de fragmentos, reglas del sistema), el
+ * panel completo de fragmentos y, en la respuesta, «Copiar», la pregunta, el
+ * costo (créditos cobrados y costo del proveedor si hay tarifa) y el pie con
+ * modelo, creatividad y fecha. Nada de esto cambia la configuración real.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Bot, FilePlus2, Play } from 'lucide-react';
-import { AvisoTonal, EmptyState, FormField, PageHeader, Tarjeta, clasesBoton } from '@/components/kit';
+import { Bot, FilePlus2, Info, Play } from 'lucide-react';
+import { AvisoTonal, EmptyState, PageHeader, Tarjeta, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { AjustesPrueba } from '@/components/chat/ia/laboratorio/AjustesPrueba';
+import { FragmentosPrueba, type ResumenConocimiento } from '@/components/chat/ia/laboratorio/FragmentosPrueba';
+import { RespuestaPrueba } from '@/components/chat/ia/laboratorio/RespuestaPrueba';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import AILabService, { type Channel, type LabSettings, type LabTestResult, type RetrievedFragment } from '@/lib/services/aiLabService';
+import AILabService, { type Channel, type CodigoFalloPrueba, type LabSettings, type LabTestResult, type RetrievedFragment } from '@/lib/services/aiLabService';
+import { usePlanSesion } from '@/components/shell/sesion/usePlanSesion';
 import KnowledgeService, { type CreateFragmentData, type KnowledgeSource } from '@/lib/services/knowledgeService';
 import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 import { FragmentDialog } from '@/components/chat/conocimiento';
@@ -35,9 +46,9 @@ const AJUSTES_BASE: LabSettings = {
   language: 'es',
   simulatedChannel: 'whatsapp',
 };
-const CREATIVIDAD = [0.3, 0.7, 1] as const;
-const LARGOS = [200, 500, 1000] as const;
 const EJEMPLOS = ['estadoPedido', 'horarios', 'mediosPago'] as const;
+/** Donde se recargan los créditos de IA (Organización › Plan y facturación › «Comprar más»). */
+const RUTA_RECARGAR_CREDITOS = '/app/organizacion/plan';
 
 export default function AILaboratorioPage() {
   const t = useTranslations('chatModulo.ia');
@@ -56,18 +67,44 @@ export default function AILaboratorioPage() {
   const [resultado, setResultado] = useState<LabTestResult | null>(null);
   const [fuentes, setFuentes] = useState<KnowledgeSource[]>([]);
   const [convertir, setConvertir] = useState(false);
+  const [resumen, setResumen] = useState<ResumenConocimiento | null>(null);
+  // Lo de la configuración real, para nombrarlo y volver a ello (la prueba no lo cambia).
+  const [modeloConfig, setModeloConfig] = useState('');
+  const [reglasConfig, setReglasConfig] = useState('');
+  const [fallo, setFallo] = useState<Exclude<CodigoFalloPrueba, 'sin_creditos'> | null>(null);
+  // Saldo de créditos de IA: el de `GET /api/me/plan` (misma fuente que Plan y
+  // facturación) y, tras cada prueba, el que devuelve el servidor al cobrar.
+  const plan = usePlanSesion();
+  const [saldoPrueba, setSaldoPrueba] = useState<number | null>(null);
+  const saldoPlan = plan.datos ? plan.datos.uso.creditosIa.restantesPlan + plan.datos.uso.creditosIa.comprados : null;
+  const saldo = saldoPrueba ?? saldoPlan;
+  const sinCreditos = saldo !== null && saldo <= 0;
 
   const cargar = useCallback(async () => {
     if (!organizationId) return;
     setCargando(true);
     try {
       const s = new AILabService(organizationId);
-      const [frs, cs, conf] = await Promise.all([s.getFragments({ isActive: true, limit: 50 }), s.getChannels(), s.getAISettings()]);
+      const [frs, cs, conf, stats] = await Promise.all([
+        s.getFragments({ isActive: true, limit: 50 }),
+        s.getChannels(),
+        s.getAISettings(),
+        s.getFragmentStats(),
+      ]);
       const lista: RetrievedFragment[] = frs.map((f, i) => ({ id: f.id, title: f.title, content: f.content, similarity: 1 - i * 0.05, tags: f.tags || [], priority: f.priority || 5 }));
       setFragmentos(lista);
-      setElegidos(lista.slice(0, 5).map((f) => f.id));
+      setElegidos((previos) => {
+        const vigentes = previos.filter((id) => lista.some((f) => f.id === id));
+        return vigentes.length > 0 ? vigentes : lista.slice(0, 5).map((f) => f.id);
+      });
       setCanales(cs);
-      if (conf) setAjustes(conf);
+      setResumen({ total: stats.total, active: stats.active, inactive: stats.inactive, avgPriority: stats.avgPriority });
+      if (conf) {
+        setModeloConfig(conf.model);
+        setReglasConfig(conf.systemRules);
+        // La prueba arranca con lo de la configuración; el modelo vacío = el configurado.
+        setAjustes((a) => ({ ...a, ...conf, model: '', simulatedChannel: a.simulatedChannel }));
+      }
     } catch (e) {
       console.error('Error cargando el laboratorio:', e);
       toast({ title: t('laboratorio.toasts.errorCarga'), variant: 'destructive' });
@@ -82,8 +119,9 @@ export default function AILaboratorioPage() {
 
   const probar = async () => {
     const q = pregunta.trim();
-    if (!organizationId || !q) return;
+    if (!organizationId || !q || sinCreditos) return;
     setProbando(true);
+    setFallo(null);
     try {
       const s = new AILabService(organizationId);
       const encontrados = await s.searchFragmentsByText(q, ajustes.maxFragments);
@@ -91,10 +129,20 @@ export default function AILaboratorioPage() {
         setFragmentos((prev) => [...encontrados, ...prev.filter((f) => !encontrados.some((e) => e.id === f.id))]);
         setElegidos(encontrados.map((f) => f.id));
       }
-      const usados = encontrados.length > 0 ? encontrados : fragmentos.filter((f) => elegidos.includes(f.id));
-      const r = await s.runLocalTest(q, ajustes, usados);
-      setResultado(r);
-      await s.logLabTest(r, memberId ?? undefined);
+      const usados = (encontrados.length > 0 ? encontrados : fragmentos.filter((f) => elegidos.includes(f.id))).slice(0, ajustes.maxFragments);
+      const r = await s.runTest(q, ajustes, usados);
+      if (r.ok) {
+        setResultado(r.resultado);
+        if (r.saldoRestante !== null) setSaldoPrueba(r.saldoRestante);
+        await s.logLabTest(r.resultado, memberId ?? undefined);
+      } else if (r.codigo === 'sin_creditos') {
+        setResultado(null);
+        setSaldoPrueba(0);
+      } else {
+        setFallo(r.codigo);
+      }
+      // El saldo vuelve a salir de la fuente única en cuanto se refresca.
+      void plan.recargar().then(() => setSaldoPrueba(null));
     } catch (e) {
       console.error('Error en la prueba:', e);
       toast({ title: t('laboratorio.toasts.errorPrueba'), variant: 'destructive' });
@@ -134,9 +182,6 @@ export default function AILaboratorioPage() {
     { valor: 'facebook', etiqueta: 'Messenger' },
     ...canales.filter((c) => !['whatsapp', 'webchat', 'instagram', 'facebook'].includes(c.id)).map((c) => ({ valor: c.id, etiqueta: c.name })),
   ];
-  const creatividad = CREATIVIDAD.reduce((a, b) => (Math.abs(b - ajustes.temperature) < Math.abs(a - ajustes.temperature) ? b : a), CREATIVIDAD[0]);
-  const largo = LARGOS.reduce((a, b) => (Math.abs(b - ajustes.maxTokens) < Math.abs(a - ajustes.maxTokens) ? b : a), LARGOS[0]);
-  const m = resultado?.metrics;
   // Memorizado: el diálogo reinicia el formulario cuando cambia este objeto.
   const prellenado = useMemo(() => (resultado ? { title: resultado.query, content: resultado.response } : undefined), [resultado]);
 
@@ -182,15 +227,42 @@ export default function AILaboratorioPage() {
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={probar} disabled={!pregunta.trim() || probando || !organizationId} className={clasesBoton({ className: 'self-end' })}>
-                <Play aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                {probando ? t('laboratorio.probando') : t('laboratorio.probar')}
-              </button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <p id="aviso-cobro-laboratorio" className="min-w-0 flex-1 text-[13px] text-fg-secondary">
+                  {t('laboratorio.avisoCobro')}
+                </p>
+                <button
+                  type="button"
+                  onClick={probar}
+                  disabled={!pregunta.trim() || probando || !organizationId || sinCreditos}
+                  aria-describedby="aviso-cobro-laboratorio"
+                  className={clasesBoton({ className: 'self-end sm:self-auto' })}
+                >
+                  <Play aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {probando ? t('laboratorio.probando') : t('laboratorio.probar')}
+                </button>
+              </div>
             </div>
           </Tarjeta>
 
           <Tarjeta titulo={t('laboratorio.respuesta')}>
-            {probando ? (
+            {sinCreditos && !probando ? (
+              <AvisoTonal
+                tono="neutro"
+                icono={Info}
+                rol="status"
+                titulo={t('laboratorio.sinCreditos.titulo')}
+                descripcion={t('laboratorio.sinCreditos.descripcion')}
+                accion={{ etiqueta: t('laboratorio.sinCreditos.recargar'), href: RUTA_RECARGAR_CREDITOS }}
+              />
+            ) : fallo && !probando ? (
+              <AvisoTonal
+                tono="peligro"
+                rol="alert"
+                titulo={t(`laboratorio.fallo.${fallo}.titulo`)}
+                descripcion={t(`laboratorio.fallo.${fallo}.descripcion`)}
+              />
+            ) : probando ? (
               <div className="flex flex-col gap-2" aria-hidden="true">
                 <Skeleton className="h-20" />
                 <Skeleton className="h-6 w-2/3" />
@@ -199,21 +271,7 @@ export default function AILaboratorioPage() {
               <EmptyState compacto icono={Bot} titulo={t('laboratorio.sinRespuestaTitulo')} descripcion={t('laboratorio.sinRespuestaDescripcion')} />
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="whitespace-pre-wrap rounded-xl border border-line-brand bg-brand-tint px-4 py-3 text-sm leading-6 text-fg">{resultado.response}</div>
-                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {[
-                    [t('laboratorio.metricas.confianza'), m ? m.confidenceScore.toFixed(2) : '—'],
-                    [t('laboratorio.metricas.tiempo'), m ? `${(m.processingTimeMs / 1000).toFixed(1)} s` : '—'],
-                    [t('laboratorio.metricas.tokens'), m ? m.totalTokens.toLocaleString() : '—'],
-                    [t('laboratorio.metricas.fragmentos'), m ? m.retrievedFragments : '—'],
-                  ].map(([k, v]) => (
-                    <div key={String(k)}>
-                      <dt className="text-xs text-fg-muted">{k}</dt>
-                      <dd className="text-sm font-semibold tabular-nums text-fg">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
-                <AvisoTonal tono="neutro" compacto titulo={t('laboratorio.simulada')} />
+                <RespuestaPrueba resultado={resultado} />
                 <button type="button" onClick={abrirConvertir} className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'self-start' })}>
                   <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                   {t('laboratorio.convertir')}
@@ -224,81 +282,8 @@ export default function AILaboratorioPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
-          <Tarjeta titulo={t('laboratorio.ajustes')} descripcion={t('laboratorio.ajustesDescripcion')}>
-            <div className="flex flex-col gap-4">
-              <FormField etiqueta={t('laboratorio.canal')}>
-                {(campo) => (
-                  <Select value={ajustes.simulatedChannel} onValueChange={(v) => setAjustes({ ...ajustes, simulatedChannel: v })}>
-                    <SelectTrigger id={campo.id}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {canalesPrueba.map((c) => (
-                        <SelectItem key={c.valor} value={c.valor}>
-                          {c.etiqueta}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-              <FormField etiqueta={t('laboratorio.creatividad')}>
-                {(campo) => (
-                  <Select value={String(creatividad)} onValueChange={(v) => setAjustes({ ...ajustes, temperature: Number(v) })}>
-                    <SelectTrigger id={campo.id}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CREATIVIDAD.map((c, i) => (
-                        <SelectItem key={c} value={String(c)}>
-                          {c.toLocaleString()} · {t(`laboratorio.creatividades.c${i}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-              <FormField etiqueta={t('laboratorio.largo')}>
-                {(campo) => (
-                  <Select value={String(largo)} onValueChange={(v) => setAjustes({ ...ajustes, maxTokens: Number(v) })}>
-                    <SelectTrigger id={campo.id}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LARGOS.map((l, i) => (
-                        <SelectItem key={l} value={String(l)}>
-                          {t(`laboratorio.largos.l${i}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-            </div>
-          </Tarjeta>
-
-          <Tarjeta titulo={t('laboratorio.fragmentosUso')}>
-            {cargando ? (
-              <Skeleton className="h-24" />
-            ) : fragmentos.length === 0 ? (
-              <p className="text-[13px] text-fg-muted">{t('laboratorio.sinFragmentos')}</p>
-            ) : (
-              <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-                {fragmentos.slice(0, 20).map((f) => (
-                  <li key={f.id}>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
-                      <Checkbox
-                        checked={elegidos.includes(f.id)}
-                        onCheckedChange={(v) => setElegidos((e) => (v === true ? [...e, f.id] : e.filter((x) => x !== f.id)))}
-                      />
-                      <span className="min-w-0 flex-1 truncate">{f.title}</span>
-                      <span className="shrink-0 text-xs tabular-nums text-fg-muted">{f.similarity.toFixed(2)}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Tarjeta>
+          <AjustesPrueba ajustes={ajustes} onChange={setAjustes} canales={canalesPrueba} modeloConfig={modeloConfig} reglasConfig={reglasConfig} />
+          <FragmentosPrueba fragmentos={fragmentos} elegidos={elegidos} onElegidos={setElegidos} cargando={cargando} resumen={resumen} onActualizar={() => void cargar()} />
         </div>
       </div>
 

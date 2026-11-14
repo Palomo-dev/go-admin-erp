@@ -2,7 +2,8 @@
 
 /**
  * Tarjeta de una fuente de conocimiento (Figma 91-chat-30): ícono, nombre,
- * menú, descripción, estado, cantidad de fragmentos y última actualización.
+ * menú, descripción, estado, «Indexada» si ya tiene fragmentos listos para la
+ * IA, cantidad de fragmentos y última actualización.
  * Toda la tarjeta abre la fuente.
  */
 import { useTranslations } from 'next-intl';
@@ -22,6 +23,7 @@ export interface TarjetaFuenteProps {
 
 export function TarjetaFuente({ fuente, onAbrir, onEditar, onAlternar, onEliminar }: TarjetaFuenteProps) {
   const t = useTranslations('chatModulo.conocimiento');
+  const tr = useTranslations('chatRecuperado.conocimiento');
   const { formatDate } = useFormatDate();
   return (
     <article className="relative flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong">
@@ -53,6 +55,11 @@ export function TarjetaFuente({ fuente, onAbrir, onEditar, onAlternar, onElimina
         <Badge tono={fuente.is_active ? 'exito' : 'neutro'} tamano="sm">
           {t(fuente.is_active ? 'estados.activa' : 'estados.inactiva')}
         </Badge>
+        {fuente.has_embeddings && (
+          <Badge tono="marca" tamano="sm">
+            {tr('indexada')}
+          </Badge>
+        )}
         <span>{t('fuentes.fragmentos', { n: fuente.fragment_count ?? 0 })}</span>
         <span className="ml-auto">{t('fuentes.actualizada', { fecha: formatDate(fuente.updated_at) })}</span>
       </div>

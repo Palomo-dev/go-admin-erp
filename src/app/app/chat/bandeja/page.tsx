@@ -31,6 +31,7 @@ import { ConversacionFila } from '@/components/chat/ui/ConversacionFila';
 import { canalDeTipo } from '@/components/chat/ui/canal';
 import { useAgentesChat, useConversacion } from '@/components/chat/conversations/useConversacion';
 import { AreaConversacion } from '@/components/chat/conversations/AreaConversacion';
+import { irAMensaje } from '@/components/chat/conversations/HiloConversacion';
 import { CabeceraHilo, nombreClienteConversacion } from '@/components/chat/conversations/CabeceraHilo';
 import { PanelConversacion } from '@/components/chat/conversations/panel/PanelConversacion';
 import { TiraDetalles } from '@/components/chat/conversations/HojaDetalles';
@@ -41,6 +42,8 @@ import {
   coincideBusqueda,
   cuandoDeFila,
   cuentaFiltrosExtra,
+  entregaUltimoMensaje,
+  estaEnLinea,
   esVista,
   filtrosDeVista,
   type FiltrosExtra,
@@ -50,6 +53,7 @@ import { cn } from '@/utils/Utils';
 
 const PAGINA = 20;
 const TODOS = '__todos__';
+const CLAVE_PANEL = 'chat.bandeja.panelDerecho';
 
 /** `useSearchParams` exige un límite de Suspense para el prerender. */
 export default function ChatBandejaPage() {
@@ -91,6 +95,25 @@ function Bandeja() {
   const [extra, setExtra] = useState<FiltrosExtra>({});
   const [listaOculta, setListaOculta] = useState(false);
   const [buscarEnHilo, setBuscarEnHilo] = useState(false);
+  /** Panel derecho oculto a mano (escritorio). Se recuerda en este navegador. */
+  const [panelOculto, setPanelOculto] = useState(false);
+  useEffect(() => {
+    try {
+      setPanelOculto(localStorage.getItem(CLAVE_PANEL) === 'oculto');
+    } catch {
+      /* sin almacenamiento: visible */
+    }
+  }, []);
+  const alternarPanel = useCallback(() => {
+    setPanelOculto((v) => {
+      try {
+        localStorage.setItem(CLAVE_PANEL, v ? 'visible' : 'oculto');
+      } catch {
+        /* sin almacenamiento: dura lo que la pestaña */
+      }
+      return !v;
+    });
+  }, []);
   const [insertar, setInsertar] = useState<{ texto: string; clave: number } | null>(null);
   const pedido = useRef(0);
   const centinela = useRef<HTMLDivElement>(null);
@@ -236,7 +259,7 @@ function Bandeja() {
         },
   );
 
-  const contador = (v: VistaBandeja) => (conteos ? conteos[v] : null);
+  const contador = (v: VistaBandeja) => (conteos && v !== 'todas' ? conteos[v] : null);
   const editarRespuesta = (texto: string) => setInsertar({ texto, clave: Date.now() });
 
   return (
@@ -380,6 +403,9 @@ function Bandeja() {
                   noLeidos={conv.unread_count}
                   prioridad={conv.priority}
                   atencion={atencionDeFila(conv, agentes)}
+                  etiquetas={conv.tags}
+                  enLinea={estaEnLinea(conv.customer?.last_seen_at, ahora)}
+                  entregaUltimo={entregaUltimoMensaje(conv.last_message)}
                   activa={conv.id === seleccion}
                   onClick={() => abrir(conv)}
                 />
@@ -430,9 +456,9 @@ function Bandeja() {
         {seleccion ? (
           <>
             <div className="hidden lg:block">
-              <CabeceraHilo c={c} onBuscar={() => setBuscarEnHilo(true)} />
+              <CabeceraHilo c={c} onBuscar={() => setBuscarEnHilo(true)} panelOculto={panelOculto} onAlternarPanel={alternarPanel} />
             </div>
-            <TiraDetalles c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className="xl:hidden" />
+            <TiraDetalles c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className={panelOculto ? undefined : 'xl:hidden'} />
             <AreaConversacion c={c} insertar={insertar} compacto={!esEscritorio} />
           </>
         ) : (
@@ -447,8 +473,8 @@ function Bandeja() {
       </section>
 
       {/* Panel derecho (xl+) */}
-      {seleccion ? (
-        <aside aria-label={t('panel.etiqueta')} className="hidden w-[320px] shrink-0 border-l border-line xl:flex 2xl:w-[360px]">
+      {seleccion && !panelOculto ? (
+        <aside id="panel-bandeja-lateral" aria-label={t('panel.etiqueta')} className="hidden w-[320px] shrink-0 border-l border-line xl:flex 2xl:w-[360px]">
           <PanelConversacion id="panel-bandeja" c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className="w-full" />
         </aside>
       ) : null}
@@ -462,7 +488,7 @@ function Bandeja() {
               conversation={c.detalle as unknown as Conversation}
               onScrollToMessage={(id: string) => {
                 setBuscarEnHilo(false);
-                document.getElementById(`mensaje-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                irAMensaje(id);
               }}
             />
           ) : null}

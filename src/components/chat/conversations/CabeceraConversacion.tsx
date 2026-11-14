@@ -34,16 +34,20 @@ export function CabeceraConversacion({
   seccion,
   conversationId,
   contadores,
+  onBuscar,
 }: {
   c: ConversacionControl;
   seccion: SeccionConversacion;
   conversationId: string;
   contadores?: Partial<Record<SeccionConversacion, number | null>>;
+  /** «Buscar en la conversación» en el menú ⋯ (vista completa). */
+  onBuscar?: () => void;
 }) {
   const t = useTranslations('chatBandeja.vista');
   const te = useTranslations('chatUi.estado');
   const ti = useTranslations('chatBandeja.ia.modo');
   const tc = useTranslations('chatUi.canales');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const d = c.detalle;
   const nombre = d ? nombreClienteConversacion(d, t('cliente')) : '';
   const canal = canalDeTipo(d?.channel?.type);
@@ -89,13 +93,20 @@ export function CabeceraConversacion({
                 <CanalIcono canal={canal} size={18} />
                 {d.customer?.phone ? <span className="truncate text-sm font-normal text-fg-muted">{d.customer.phone}</span> : null}
               </h1>
+              {typeof d.metadata?.subject === 'string' && d.metadata.subject.trim() ? (
+                <p className="truncate text-sm text-fg-secondary">{t('asunto', { asunto: d.metadata.subject.trim() })}</p>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 max-lg:w-full">
-              <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" />
+              {c.bloqueo ? (
+                <StatusBadge estado="bloqueada" etiqueta={tb('insignia')} tono="peligro" apariencia="contorno" />
+              ) : (
+                <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" />
+              )}
               <StatusBadge estado={prioridad} etiqueta={t(`prioridad.${prioridad}`)} tono={TONO_PRIORIDAD[prioridad]} apariencia="contorno" />
               <StatusBadge estado={modoIa} etiqueta={ti(modoIa)} tono={modoIa === 'manual' ? 'neutro' : 'informacion'} apariencia="contorno" className="hidden sm:inline-flex" />
               <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} variante="cabecera" className="max-lg:ml-auto" />
-              <MenuMasAcciones c={c} />
+              <MenuMasAcciones c={c} onBuscar={onBuscar} />
             </div>
           </>
         ) : (

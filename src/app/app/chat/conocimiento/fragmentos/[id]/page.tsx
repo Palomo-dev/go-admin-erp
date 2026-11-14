@@ -33,6 +33,7 @@ const SIN_FUENTE = '__ninguna__';
 
 export default function FragmentDetailPage() {
   const t = useTranslations('chatModulo.conocimiento');
+  const tr = useTranslations('chatRecuperado.conocimiento');
   const params = useParams();
   const fragmentId = params?.id as string;
   const { toast } = useToast();
@@ -359,8 +360,19 @@ export default function FragmentDetailPage() {
                 <FilaDato etiqueta={t('editor.usado')} valor={(fragmento.usage_count ?? 0).toLocaleString()} />
                 <FilaDato etiqueta={t('editor.votos')} valor={`${fragmento.positive_feedback ?? 0} / ${fragmento.negative_feedback ?? 0}`} />
                 <FilaDato etiqueta={t('editor.version')} valor={`v${fragmento.version}`} />
+                {fragmento.embedding_info?.model && (
+                  <FilaDato etiqueta={tr('modelo')} valor={<span className="font-mono text-xs">{fragmento.embedding_info.model}</span>} />
+                )}
+                <FilaDato etiqueta={tr('creado')} valor={formatDateTime(fragmento.created_at)} />
                 <FilaDato etiqueta={t('editor.actualizado')} valor={formatDateTime(fragmento.updated_at)} />
               </ListaDatos>
+              {fragmento.content_hash && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-[13px] text-fg-secondary">{tr('hash')}</p>
+                  {/* El hash cambia con cada versión del contenido: sirve para comparar versiones. */}
+                  <p className="break-all rounded-lg bg-subtle p-2 font-mono text-xs text-fg-secondary">{fragmento.content_hash}</p>
+                </div>
+              )}
             </div>
           </Tarjeta>
         </div>

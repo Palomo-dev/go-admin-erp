@@ -87,3 +87,16 @@ export const EMOJIS_FRECUENTES = [
   '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '💯', '✅', '❌',
   '⭐', '🌟', '🎉', '🎊', '🔥', '💪', '👀', '📦', '🚚', '🙌',
 ] as const;
+
+/**
+ * Botón «Negrilla» (como el Chat anterior): envuelve la selección en `**…**`
+ * —el formato que ya pintan las burbujas— o, sin selección, deja `****` con el
+ * cursor en medio. Devuelve el texto nuevo y la selección que queda.
+ */
+export function aplicarNegrilla(texto: string, inicio: number, fin: number): { texto: string; inicio: number; fin: number } {
+  const a = Math.max(0, Math.min(inicio, fin, texto.length));
+  const b = Math.max(a, Math.min(Math.max(inicio, fin), texto.length));
+  const sel = texto.slice(a, b);
+  const nuevo = `${texto.slice(0, a)}**${sel}**${texto.slice(b)}`;
+  return { texto: nuevo, inicio: a + 2, fin: b + 2 };
+}

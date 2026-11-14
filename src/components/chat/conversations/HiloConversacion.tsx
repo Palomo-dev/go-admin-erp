@@ -6,13 +6,27 @@ import { useLocale, useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { agenteAsignado, type AgenteChat } from '@/lib/services/chat/agentesChat';
+import { entroBloqueado, type EventoBloqueo } from '@/lib/services/chat/bloqueoContacto';
 import { Skeleton } from '@/components/kit';
 import { Burbuja, autorDeMensaje } from '@/components/chat/ui/Burbuja';
 import { ContenidoMensaje, type MensajeContenido } from '@/components/chat/ui/ContenidoMensaje';
 import { cn } from '@/utils/Utils';
-import { elementosHilo, fechaLargaDia, relacionDia, type NotaHilo } from './hiloLogica';
+import { cambiaAutor, elementosHilo, estadoEntrega, fechaLargaDia, relacionDia, type EstadoEntrega, type NotaHilo } from './hiloLogica';
 
 const PAGINA = 30;
+const EVENTOS_ENTREGA = ['sent', 'delivered', 'read', 'failed'];
+
+/**
+ * Lleva el hilo a un mensaje y lo resalta 2 s (resultado de «Buscar en la
+ * conversación», como el Chat anterior).
+ */
+export function irAMensaje(id: string): void {
+  const el = typeof document !== 'undefined' ? document.getElementById(`mensaje-${id}`) : null;
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('bg-warning-subtle');
+  window.setTimeout(() => el.classList.remove('bg-warning-subtle'), 2000);
+}
 
 interface FilaMensaje extends MensajeContenido {
   id: string;
@@ -27,7 +41,13 @@ interface FilaMensaje extends MensajeContenido {
 export interface HiloConversacionProps {
   conversationId: string;
   notas: readonly NotaHilo[];
+  /** Eventos del sistema intercalados («Laura R. bloqueó el contacto · 10:45»). */
+  eventos?: readonly EventoBloqueo[];
   agentes: readonly AgenteChat[];
+  /** Nombre del cliente: encabeza sus mensajes cuando cambia quien habla. */
+  nombreCliente?: string | null;
+  /** Para escuchar en tiempo real los estados de entrega (`message_events`). */
+  organizationId?: number | null;
   /** Canal para «Conversación iniciada desde WhatsApp». */
   nombreCanal?: string | null;
   inicioConversacion?: string | null;
@@ -39,8 +59,9 @@ export interface HiloConversacionProps {
  * arriba, en tiempo real, con las notas internas intercaladas y un separador
  * por día en la zona de la organización. Lo usan la Bandeja y la vista completa.
  */
-export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, inicioConversacion, className }: HiloConversacionProps) {
+export function HiloConversacion({ conversationId, notas, eventos = [], agentes, nombreCliente, organizationId, nombreCanal, inicioConversacion, className }: HiloConversacionProps) {
   const t = useTranslations('chatBandeja.hilo');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const locale = useLocale();
   const { formatTime, timezone, getToday } = useFormatDate();
   const [mensajes, setMensajes] = React.useState<FilaMensaje[]>([]);
@@ -48,6 +69,8 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
   const [cargandoMas, setCargandoMas] = React.useState(false);
   const [hayMas, setHayMas] = React.useState(true);
   const [lejosDelFinal, setLejosDelFinal] = React.useState(false);
+  /** Eventos del proveedor por mensaje del equipo (Entregado / Leído / Fallido). */
+  const [entregas, setEntregas] = React.useState<Record<string, Array<{ event_type: string }>>>({});
   const contenedor = React.useRef<HTMLDivElement>(null);
   const final = React.useRef<HTMLDivElement>(null);
   const tope = React.useRef<HTMLDivElement>(null);
@@ -120,6 +143,51 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
     return () => obs.disconnect();
   }, [cargarMas, cargando]);
 
+  // Estados de entrega de los mensajes del equipo cargados (`message_events`).
+  const mensajesRef = React.useRef(mensajes);
+  mensajesRef.current = mensajes;
+  const idsSalientes = React.useMemo(
+    () => mensajes.filter((m) => m.direction === 'outbound' && (m.role === 'agent' || m.role === 'ai')).map((m) => m.id),
+    [mensajes],
+  );
+  const claveSalientes = idsSalientes.join(',');
+  React.useEffect(() => {
+    if (idsSalientes.length === 0) return;
+    let vivo = true;
+    void supabase
+      .from('message_events')
+      .select('message_id, event_type')
+      .in('message_id', idsSalientes)
+      .in('event_type', EVENTOS_ENTREGA)
+      .then(({ data }) => {
+        if (!vivo || !data) return;
+        const mapa: Record<string, Array<{ event_type: string }>> = {};
+        for (const f of data as Array<{ message_id: string; event_type: string }>) (mapa[f.message_id] ??= []).push({ event_type: f.event_type });
+        setEntregas(mapa);
+      });
+    return () => {
+      vivo = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- la lista cambia solo si cambian los ids
+  }, [claveSalientes]);
+  React.useEffect(() => {
+    if (!organizationId) return;
+    const canal = supabase
+      .channel(`chat-entregas-${conversationId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'message_events', filter: `organization_id=eq.${organizationId}` }, (p) => {
+        const ev = p.new as { message_id?: string; event_type?: string };
+        if (!ev.message_id || !ev.event_type || !EVENTOS_ENTREGA.includes(ev.event_type)) return;
+        const id = ev.message_id;
+        const tipo = ev.event_type;
+        setEntregas((prev) => (prev[id] || mensajesRef.current.some((m) => m.id === id) ? { ...prev, [id]: [...(prev[id] ?? []), { event_type: tipo }] } : prev));
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(canal);
+    };
+  }, [organizationId, conversationId]);
+  const entregaDe = (m: FilaMensaje): EstadoEntrega => estadoEntrega(entregas[m.id] ?? [], m.is_read);
+
   // Si el agente está cerca del final, seguir los mensajes nuevos.
   const ultimo = mensajes[mensajes.length - 1]?.id;
   React.useEffect(() => {
@@ -138,7 +206,9 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
     return rel === 'otro' ? fecha : t(rel, { fecha });
   };
 
-  const elementos = elementosHilo(mensajes, notas, timezone, hayMas);
+  const elementos = elementosHilo(mensajes, notas, timezone, hayMas, eventos);
+  // Quién escribió el mensaje anterior (solo entre mensajes) para encabezar al cambiar de autor.
+  let anterior: FilaMensaje | null = null;
 
   return (
     <div className={cn('relative min-h-0 flex-1', className)}>
@@ -175,6 +245,15 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
                   </p>
                 );
               }
+              if (e.tipo === 'evento') {
+                const persona = agenteAsignado(agentes, e.evento.memberId)?.nombre;
+                const clave = e.evento.tipo === 'bloqueo' ? 'eventoBloqueo' : 'eventoDesbloqueo';
+                return (
+                  <Burbuja key={e.clave} autor="sistema" hora={formatTime(e.evento.created_at)}>
+                    {persona ? tb(clave, { persona }) : tb(`${clave}SinPersona`)}
+                  </Burbuja>
+                );
+              }
               if (e.tipo === 'nota') {
                 const autor = agenteAsignado(agentes, e.nota.member_id)?.nombre;
                 return (
@@ -186,14 +265,28 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
               const m = e.mensaje;
               const autor = autorDeMensaje(m);
               const revisor = autor === 'ia' ? agenteAsignado(agentes, m.metadata?.reviewed_by_member_id)?.nombre : null;
+              const nuevoAutor = cambiaAutor(anterior, m);
+              anterior = m;
+              const agente = autor === 'agente' ? agenteAsignado(agentes, m.sender_member_id) : null;
+              const remitente =
+                !nuevoAutor || autor === 'ia' || autor === 'sistema'
+                  ? null
+                  : autor === 'agente'
+                    ? agente
+                      ? { nombre: agente.nombre, avatarUrl: agente.avatarUrl }
+                      : null
+                    : nombreCliente
+                      ? { nombre: nombreCliente }
+                      : null;
               return (
                 <Burbuja
                   key={e.clave}
                   id={`mensaje-${m.id}`}
                   autor={autor}
                   hora={formatTime(m.created_at)}
-                  entrega={autor === 'agente' || autor === 'ia' ? (m.is_read ? 'leido' : 'enviado') : null}
-                  detalle={revisor ? t('revisoIa', { nombre: revisor }) : null}
+                  entrega={autor === 'agente' || autor === 'ia' ? entregaDe(m) : null}
+                  remitente={remitente}
+                  detalle={revisor ? t('revisoIa', { nombre: revisor }) : autor === 'cliente' && entroBloqueado(m.metadata) ? tb('mensajeBloqueado') : null}
                 >
                   {autor === 'sistema' ? m.content : <ContenidoMensaje mensaje={m} claro={autor === 'agente'} />}
                 </Burbuja>

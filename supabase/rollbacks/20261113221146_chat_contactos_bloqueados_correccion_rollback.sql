@@ -1,0 +1,12 @@
+-- Reversión de 20261113221146_chat_contactos_bloqueados_correccion.
+--
+-- No-op a propósito: la versión anterior de `update_conversation_last_message`
+-- (la de 20261113221114 tal como se aplicó, sin `coalesce`) dejaba de sumar
+-- los no leídos de TODOS los mensajes entrantes durante los 32 s que estuvo
+-- viva (2026-11-13 22:11:14 → 22:11:46 UTC; 0 mensajes entrantes en ese
+-- lapso, verificado por MCP). Restaurarla reintroduciría ese fallo.
+--
+-- Para revertir el bloqueo de contactos completo, usar
+-- 20261113221114_chat_contactos_bloqueados_rollback.sql, que deja la función
+-- con el cuerpo exacto previo a ambas migraciones.
+select 1;

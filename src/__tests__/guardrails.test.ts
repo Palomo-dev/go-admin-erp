@@ -1439,7 +1439,9 @@ describe('F0 Guardarraíles', () => {
       'app/api/chat/ai/classify-intent/route.ts',
       'app/api/chat/ai/generate-response/route.ts',
       'app/api/chat/ai/generate-summary/route.ts',
-      'app/api/chat/ai/lab-test/route.ts',
+      // 'app/api/chat/ai/lab-test/route.ts' salió de la lista (2026-11-13): el
+      // Laboratorio genera con el núcleo compartido de `ai-auto-response` y
+      // cobra con `chargeAiCredits` después de recibir la respuesta.
       // 'lib/services/reportes/reportAgentService.ts' salió de la lista al
       // retirarse con `/api/ai-assistant/reportes` (Figma Reportes §22): las
       // preguntas de reportes las cobra el GO Asistente con `chargeAiCredits`.

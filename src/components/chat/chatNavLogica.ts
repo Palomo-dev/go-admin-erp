@@ -56,3 +56,13 @@ export function esPantallaAltoFijo(pathname: string): boolean {
   const m = /^\/app\/chat\/conversaciones\/([^/]+)\/?$/.exec(pathname);
   return !!m && m[1] !== 'nueva';
 }
+
+/**
+ * Pantallas de la pestaña Bandeja (la lista, la conversación completa con su
+ * actividad y archivos, y «Nueva conversación»): piden el menú lateral en
+ * riel de 72 px mientras están abiertas (Figma 91-chat-01…13 y
+ * 93-chat-pendientes-00, tarjeta 1).
+ */
+export function usaRielAngosto(pathname: string): boolean {
+  return esRutaBandeja(pathname) || empiezaPor(pathname, '/app/chat/conversaciones');
+}

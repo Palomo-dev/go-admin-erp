@@ -9,6 +9,10 @@
  */
 import React, { useState } from 'react';
 import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import SearchPanel from '@/components/chat/inbox/SearchPanel';
+import type { Conversation } from '@/lib/services/conversationsService';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useEsEscritorio } from '@/components/kit';
 import { useConversacion } from '@/components/chat/conversations/useConversacion';
@@ -16,6 +20,7 @@ import { CabeceraConversacion } from '@/components/chat/conversations/CabeceraCo
 import { AreaConversacion } from '@/components/chat/conversations/AreaConversacion';
 import { PanelConversacion } from '@/components/chat/conversations/panel/PanelConversacion';
 import { TiraDetalles } from '@/components/chat/conversations/HojaDetalles';
+import { irAMensaje } from '@/components/chat/conversations/HiloConversacion';
 
 export default function ConversacionCompletaPage() {
   const params = useParams();
@@ -26,19 +31,37 @@ export default function ConversacionCompletaPage() {
   const c = useConversacion(organizationId, conversationId);
   const [insertar, setInsertar] = useState<{ texto: string; clave: number } | null>(null);
   const editarRespuesta = (texto: string) => setInsertar({ texto, clave: Date.now() });
+  const tm = useTranslations('chatBandeja.mas');
+  const [buscar, setBuscar] = useState(false);
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-canvas">
-      <CabeceraConversacion c={c} seccion="conversacion" conversationId={conversationId} />
+      <CabeceraConversacion c={c} seccion="conversacion" conversationId={conversationId} onBuscar={() => setBuscar(true)} />
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <TiraDetalles c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className="lg:hidden" />
           <AreaConversacion c={c} insertar={insertar} compacto={!esEscritorio} />
         </div>
         <aside className="hidden w-[340px] shrink-0 border-l border-line lg:flex xl:w-[360px]">
-          <PanelConversacion id="panel-conversacion" c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} className="w-full" />
+          <PanelConversacion id="panel-conversacion" c={c} organizationId={organizationId} onEditarRespuesta={editarRespuesta} conRespuestasRapidas className="w-full" />
         </aside>
       </div>
+
+      {/* Buscar en la conversación: el mismo panel que la Bandeja (SearchPanel). */}
+      <Sheet open={buscar} onOpenChange={setBuscar}>
+        <SheetContent side="right" aria-describedby={undefined} className="w-full p-0 sm:max-w-md">
+          <SheetTitle className="sr-only">{tm('buscar')}</SheetTitle>
+          {buscar && c.detalle ? (
+            <SearchPanel
+              conversation={c.detalle as unknown as Conversation}
+              onScrollToMessage={(id: string) => {
+                setBuscar(false);
+                irAMensaje(id);
+              }}
+            />
+          ) : null}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

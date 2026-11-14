@@ -153,3 +153,140 @@ export function sombraDelBoton(style: Pick<WidgetStyle, 'shadowEnabled' | 'shado
   const sombras = { light: '0 2px 8px rgba(0,0,0,.15)', medium: '0 4px 16px rgba(0,0,0,.2)', strong: '0 8px 32px rgba(0,0,0,.3)' } as const;
   return sombras[style.shadowStrength] ?? sombras.medium;
 }
+
+/* ── Imágenes del widget (logo e «Imagen propia») ──────────────────────────
+ * Se suben al bucket público `logos`, bajo un prefijo propio del widget y de la
+ * organización: `<organización>/chat-widget/<canal>/<logo|icono>-<ms>-<nombre>`.
+ * Solo lo que está bajo ese prefijo se borra al «Quitar» o «Cambiar»: nunca el
+ * logo de la organización ni un enlace externo (decisión del dueño, 2026-11-14).
+ * El formato guardado no cambia: `logo_url` y `style.iconUrl` llevan la URL.
+ */
+export const BUCKET_WIDGET = 'logos';
+export const TIPOS_IMAGEN_WIDGET = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'] as const;
+export const MAX_MB_IMAGEN_WIDGET = 2;
+export type ClaseImagenWidget = 'logo' | 'icono';
+
+export function carpetaDelWidget(organizacionId: number | string, canalId: string): string {
+  return `${organizacionId}/chat-widget/${canalId}`;
+}
+
+/** Ruta en el bucket si la URL es un archivo que subió el widget de esta organización; si no, `null`. */
+export function rutaPropiaDelWidget(
+  url: string | null | undefined,
+  organizacionId: number | string | null | undefined,
+  rutaEnBucket: (url: string, bucket: string) => string | null,
+): string | null {
+  if (!url || organizacionId === null || organizacionId === undefined || organizacionId === '') return null;
+  const ruta = rutaEnBucket(url, BUCKET_WIDGET);
+  return ruta && ruta.startsWith(`${organizacionId}/chat-widget/`) ? ruta : null;
+}
+
+/** «…/logo-1731600000000-logo-tienda.png» → «logo-tienda.png». */
+export function nombreDeArchivoWidget(ruta: string): string {
+  const ultimo = ruta.split('/').pop() ?? ruta;
+  return ultimo.replace(/^(?:logo|icono)-\d+-/, '');
+}
+
+/** «image/svg+xml» o «.svg» → «SVG». */
+export function formatoDeImagen(tipoOUrl: string): string {
+  const t = tipoOUrl.toLowerCase();
+  if (t.startsWith('image/')) return (t.slice(6).split('+')[0] === 'jpeg' ? 'jpg' : t.slice(6).split('+')[0]).toUpperCase();
+  const ext = t.split(/[?#]/)[0].split('.').pop() ?? '';
+  return (ext === 'jpeg' ? 'jpg' : ext).toUpperCase();
+}
+
+/** 86016 → «84 KB»; 3565158 → «3,4 MB» (con el separador del idioma). */
+export function tamanoArchivo(bytes: number, locale = 'es'): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toLocaleString(locale, { maximumFractionDigits: 1 })} MB`;
+  return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString(locale)} KB`;
+}
+
+/* ── Color libre ─────────────────────────────────────────────────────────── */
+
+export interface Hsv {
+  h: number;
+  s: number;
+  v: number;
+}
+
+export function hexAHsv(hex: string): Hsv {
+  const n = esColorHex(hex) ? hex.trim().slice(1) : '4361EE';
+  const r = parseInt(n.slice(0, 2), 16) / 255;
+  const g = parseInt(n.slice(2, 4), 16) / 255;
+  const b = parseInt(n.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const d = max - Math.min(r, g, b);
+  let h = 0;
+  if (d) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max ? d / max : 0, v: max };
+}
+
+export function hsvAHex({ h, s, v }: Hsv): string {
+  const c = v * s;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = v - c;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  const a = (n: number) => Math.round((n + m) * 255).toString(16).padStart(2, '0');
+  return `#${a(r)}${a(g)}${a(b)}`.toUpperCase();
+}
+
+/** «0f766e» o «#0F766E» → «#0F766E»; `null` si no es un color de 6 cifras. */
+export function normalizarHex(texto: string): string | null {
+  const t = texto.trim().replace(/^#?/, '#');
+  return esColorHex(t) ? t.toUpperCase() : null;
+}
+
+function luminancia(hex: string): number {
+  const n = hex.trim().slice(1);
+  const canal = (i: number) => {
+    const c = parseInt(n.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * canal(0) + 0.7152 * canal(2) + 0.0722 * canal(4);
+}
+
+/** Contraste WCAG entre dos colores (1 a 21), con un decimal. */
+export function contraste(a: string, b: string): number {
+  if (!esColorHex(a) || !esColorHex(b)) return 1;
+  const [l1, l2] = [luminancia(a), luminancia(b)].sort((x, y) => y - x);
+  return Math.round(((l1 + 0.05) / (l2 + 0.05)) * 10) / 10;
+}
+
+/** AA para texto e íconos pequeños: 4,5:1. */
+export const CONTRASTE_AA = 4.5;
+
+/* ── Resumen del botón («Vista previa del botón») ───────────────────────── */
+
+export type ParteResumenBoton =
+  | { clave: 'tamano'; px: number }
+  | { clave: 'imagenPropia' }
+  | { clave: 'relleno' }
+  | { clave: 'redondeo'; px: number }
+  | { clave: 'sinBorde' }
+  | { clave: 'borde'; px: number; color: string | null }
+  | { clave: 'sinSombra' }
+  | { clave: 'sombra'; fuerza: WidgetStyle['shadowStrength'] };
+
+/**
+ * «56 px · relleno · redondeo 16 · borde 4 px #99F6E4 · sombra fuerte».
+ * Con imagen propia no hay relleno ni redondeo que contar (la imagen llena el
+ * botón en círculo). `color: null` = blanco (se dice «blanco», no el hex).
+ */
+export function resumenBoton(s: WidgetStyle): ParteResumenBoton[] {
+  const partes: ParteResumenBoton[] = [{ clave: 'tamano', px: s.buttonSize }];
+  if (s.iconType === 'custom') partes.push({ clave: 'imagenPropia' });
+  else {
+    if (s.iconStyle === 'filled' && s.iconType !== 'support') partes.push({ clave: 'relleno' });
+    partes.push({ clave: 'redondeo', px: s.borderRadius });
+  }
+  if (s.borderWidth > 0) partes.push({ clave: 'borde', px: s.borderWidth, color: (s.borderColor || '').toUpperCase() === '#FFFFFF' ? null : (s.borderColor || '').toUpperCase() });
+  else partes.push({ clave: 'sinBorde' });
+  partes.push(s.shadowEnabled ? { clave: 'sombra', fuerza: s.shadowStrength } : { clave: 'sinSombra' });
+  return partes;
+}

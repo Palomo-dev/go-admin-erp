@@ -24,8 +24,11 @@ export function irAMensaje(id: string): void {
   const el = typeof document !== 'undefined' ? document.getElementById(`mensaje-${id}`) : null;
   if (!el) return;
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  el.classList.add('bg-warning-subtle');
-  window.setTimeout(() => el.classList.remove('bg-warning-subtle'), 2000);
+  // Franja amarilla de todo el ancho del hilo (Figma 94-chat-recuperado-10). El
+  // anillo la ensancha 6 px sin mover la burbuja.
+  const resaltado = ['bg-warning-subtle', 'ring-[6px]', 'ring-warning-subtle'];
+  el.classList.add(...resaltado);
+  window.setTimeout(() => el.classList.remove(...resaltado), 2500);
 }
 
 interface FilaMensaje extends MensajeContenido {

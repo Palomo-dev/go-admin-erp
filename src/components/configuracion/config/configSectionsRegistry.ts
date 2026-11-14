@@ -102,9 +102,14 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'pos.reservas-mesas', modulo: 'pos', seccion: 'reservas-mesas', clave: 'posReservasMesas', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/pos/reservas-mesas?tab=configuracion' },
   // Antes era una página aparte (/app/configuracion/pos/avisos-cliente); desde el diálogo es un panel.
   { id: 'pos.avisos-cliente', modulo: 'pos', seccion: 'avisos-cliente', clave: 'posAvisosCliente', permiso: PERMISO_ADMIN, ajustes: [] },
+  // «Etiquetas y respuestas rápidas» (Figma 12.8): el id sigue siendo `chat.general` porque es
+  // estable (enlaces y favoritos). Las etiquetas se administran SOLO aquí; CRM enlaza.
   { id: 'chat.general', modulo: 'chat', seccion: 'general', clave: 'chatGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'chat.ia', modulo: 'chat', seccion: 'ia', clave: 'chatIa', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'integraciones.general', modulo: 'integraciones', seccion: 'general', clave: 'integracionesGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
+  // Único lugar de las llaves de API (Figma 12.9, decisión del dueño): Chat y CRM solo enlazan aquí.
+  // Mismo permiso que `/api/integrations/desarrolladores/**` (`withOrg({ admin: true })`).
+  { id: 'integraciones.desarrolladores', modulo: 'integraciones', seccion: 'desarrolladores', clave: 'integracionesDesarrolladores', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'parking.general', modulo: 'parking', seccion: 'general', clave: 'parkingGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'calendario.general', modulo: 'calendario', seccion: 'general', clave: 'calendarioGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'timeline.general', modulo: 'timeline', seccion: 'general', clave: 'timelineGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

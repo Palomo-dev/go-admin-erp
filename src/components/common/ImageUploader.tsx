@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from 'react'
-import { supabase } from '@/lib/supabase/config'
+import { borrarImagenes, subirImagen, validarImagen } from './subidaImagen'
 import { useOrganization } from '@/lib/hooks/useOrganization'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -46,30 +46,25 @@ export default function ImageUploader({
     }
   }, [currentImageUrl])
 
+  /** Tipo y tamaño con la regla compartida (`subidaImagen.ts`); avisa con un toast. */
+  const validar = (file: File): boolean => {
+    const error = validarImagen(file, acceptedFormats, maxSizeMB)
+    if (!error) return true
+    toast({
+      title: error.tipo === 'formato' ? "Formato no válido" : "Archivo muy grande",
+      description: error.tipo === 'formato'
+        ? `Solo se aceptan: ${acceptedFormats.map(f => f.split('/')[1]).join(', ')}`
+        : `El tamaño máximo es ${maxSizeMB}MB`,
+      variant: "destructive"
+    })
+    return false
+  }
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validar formato
-    if (!acceptedFormats.includes(file.type)) {
-      toast({
-        title: "Formato no válido",
-        description: `Solo se aceptan: ${acceptedFormats.map(f => f.split('/')[1]).join(', ')}`,
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Validar tamaño
-    const sizeMB = file.size / (1024 * 1024)
-    if (sizeMB > maxSizeMB) {
-      toast({
-        title: "Archivo muy grande",
-        description: `El tamaño máximo es ${maxSizeMB}MB`,
-        variant: "destructive"
-      })
-      return
-    }
+    if (!validar(file)) return
 
     await uploadImage(file)
   }
@@ -81,26 +76,7 @@ export default function ImageUploader({
     const file = e.dataTransfer.files?.[0]
     if (!file) return
 
-    // Validar formato
-    if (!acceptedFormats.includes(file.type)) {
-      toast({
-        title: "Formato no válido",
-        description: `Solo se aceptan: ${acceptedFormats.map(f => f.split('/')[1]).join(', ')}`,
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Validar tamaño
-    const sizeMB = file.size / (1024 * 1024)
-    if (sizeMB > maxSizeMB) {
-      toast({
-        title: "Archivo muy grande",
-        description: `El tamaño máximo es ${maxSizeMB}MB`,
-        variant: "destructive"
-      })
-      return
-    }
+    if (!validar(file)) return
 
     await uploadImage(file)
   }
@@ -134,20 +110,8 @@ export default function ImageUploader({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       const filePath = `${organization.id}/${folder}/${fileName}`
 
-      // Subir a Supabase Storage
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-
-      if (error) throw error
-
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath)
+      // Subir a Supabase Storage (lógica compartida con la subida del chat del sitio web)
+      const publicUrl = await subirImagen({ bucket, ruta: filePath, archivo: file })
 
       setPreviewUrl(publicUrl)
       onImageUploaded(publicUrl)
@@ -156,11 +120,11 @@ export default function ImageUploader({
         title: "✅ Imagen subida",
         description: "La imagen se ha subido correctamente"
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error subiendo imagen:', error)
       toast({
         title: "Error al subir imagen",
-        description: error.message || "Ocurrió un error inesperado",
+        description: (error instanceof Error && error.message) || "Ocurrió un error inesperado",
         variant: "destructive"
       })
     } finally {
@@ -181,9 +145,7 @@ export default function ImageUploader({
         const filePath = urlParts[1]
         
         // Eliminar de Storage
-        const { error } = await supabase.storage
-          .from(bucket)
-          .remove([filePath])
+        const { error } = await borrarImagenes(bucket, [filePath])
 
         if (error) throw error
       }
@@ -197,11 +159,11 @@ export default function ImageUploader({
         title: "Imagen eliminada",
         description: "La imagen se ha eliminado correctamente"
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error eliminando imagen:', error)
       toast({
         title: "Error al eliminar",
-        description: error.message || "Ocurrió un error inesperado",
+        description: (error instanceof Error && error.message) || "Ocurrió un error inesperado",
         variant: "destructive"
       })
     }

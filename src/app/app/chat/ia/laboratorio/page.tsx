@@ -16,14 +16,18 @@
  * panel completo de fragmentos y, en la respuesta, «Copiar», la pregunta, el
  * costo (créditos cobrados y costo del proveedor si hay tarifa) y el pie con
  * modelo, creatividad y fecha. Nada de esto cambia la configuración real.
+ *
+ * Diseño aprobado 94-chat-recuperado-ia-11/12 (2026-11-14): pregunta en una
+ * línea, Tono e Idioma en los ajustes (viajan a la ruta de prueba) y 👍 Buena /
+ * 👎 Mejorable junto a «Convertir en fragmento» (el voto queda en la auditoría).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Bot, FilePlus2, Info, Play } from 'lucide-react';
+import { Bot, Info, Play } from 'lucide-react';
 import { AvisoTonal, EmptyState, PageHeader, Tarjeta, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { AjustesPrueba } from '@/components/chat/ia/laboratorio/AjustesPrueba';
 import { FragmentosPrueba, type ResumenConocimiento } from '@/components/chat/ia/laboratorio/FragmentosPrueba';
@@ -52,6 +56,7 @@ const RUTA_RECARGAR_CREDITOS = '/app/organizacion/plan';
 
 export default function AILaboratorioPage() {
   const t = useTranslations('chatModulo.ia');
+  const tr = useTranslations('chatRecuperado.laboratorio');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
@@ -65,6 +70,7 @@ export default function AILaboratorioPage() {
   const [canales, setCanales] = useState<Channel[]>([]);
   const [ajustes, setAjustes] = useState<LabSettings>(AJUSTES_BASE);
   const [resultado, setResultado] = useState<LabTestResult | null>(null);
+  const [voto, setVoto] = useState<'buena' | 'mejorable' | null>(null);
   const [fuentes, setFuentes] = useState<KnowledgeSource[]>([]);
   const [convertir, setConvertir] = useState(false);
   const [resumen, setResumen] = useState<ResumenConocimiento | null>(null);
@@ -133,8 +139,9 @@ export default function AILaboratorioPage() {
       const r = await s.runTest(q, ajustes, usados);
       if (r.ok) {
         setResultado(r.resultado);
+        setVoto(null);
         if (r.saldoRestante !== null) setSaldoPrueba(r.saldoRestante);
-        await s.logLabTest(r.resultado, memberId ?? undefined);
+        await s.logLabTest(r.resultado);
       } else if (r.codigo === 'sin_creditos') {
         setResultado(null);
         setSaldoPrueba(0);
@@ -148,6 +155,20 @@ export default function AILaboratorioPage() {
       toast({ title: t('laboratorio.toasts.errorPrueba'), variant: 'destructive' });
     } finally {
       setProbando(false);
+    }
+  };
+
+  const votar = async (v: 'buena' | 'mejorable') => {
+    if (!organizationId || !resultado || voto === v) return;
+    const previo = voto;
+    setVoto(v);
+    try {
+      await new AILabService(organizationId).logLabFeedback(resultado, v);
+      toast({ title: tr('votoGuardado') });
+    } catch (e) {
+      console.error('Error guardando el voto del laboratorio:', e);
+      setVoto(previo);
+      toast({ title: tr('votoError'), variant: 'destructive' });
     }
   };
 
@@ -204,15 +225,15 @@ export default function AILaboratorioPage() {
         <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
           <Tarjeta titulo={t('laboratorio.pregunta')}>
             <div className="flex flex-col gap-3">
-              <Textarea
+              <Input
                 value={pregunta}
-                rows={3}
                 aria-label={t('laboratorio.pregunta')}
                 placeholder={t('laboratorio.preguntaPlaceholder')}
                 onChange={(e) => setPregunta(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) probar();
+                  if (e.key === 'Enter') probar();
                 }}
+                className="h-11"
               />
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-fg-muted">{t('laboratorio.ejemplos')}</span>
@@ -272,10 +293,23 @@ export default function AILaboratorioPage() {
             ) : (
               <div className="flex flex-col gap-4">
                 <RespuestaPrueba resultado={resultado} />
-                <button type="button" onClick={abrirConvertir} className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'self-start' })}>
-                  <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                  {t('laboratorio.convertir')}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['buena', 'mejorable'] as const).map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => void votar(v)}
+                      aria-pressed={voto === v}
+                      className={clasesBoton({ variante: 'fantasma', tamano: 'sm', className: voto === v ? 'bg-brand-tint text-brand-deep' : undefined })}
+                    >
+                      <span aria-hidden="true">{v === 'buena' ? '👍' : '👎'}</span>
+                      {tr(v)}
+                    </button>
+                  ))}
+                  <button type="button" onClick={abrirConvertir} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                    {t('laboratorio.convertir')}
+                  </button>
+                </div>
               </div>
             )}
           </Tarjeta>

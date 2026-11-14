@@ -578,6 +578,33 @@ export default class KnowledgeService {
     };
   }
 
+  /**
+   * Respuestas de la IA (`ai_jobs`) desde `desde` que usaron al menos uno de
+   * estos fragmentos (`fragments_used`). Es la cifra «Usados esta semana» /
+   * «Usado en respuestas (7 días)»: `usage_count` es el total histórico.
+   * `desde` es un instante con offset (la pantalla lo arma con `toInstant`).
+   */
+  async countRecentUsage(fragmentIds: readonly string[], desde: string): Promise<number> {
+    if (fragmentIds.length === 0) return 0;
+    await this.setOrgContext();
+    const consulta = (ids: string[], soloContar: boolean) =>
+      supabase.from('ai_jobs').select('id', { count: 'exact', head: soloContar }).eq('organization_id', this.organizationId).gte('created_at', desde).overlaps('fragments_used', ids);
+    // Hasta 100 ids cabe en una URL de PostgREST (~37 caracteres cada uno): solo se cuenta.
+    if (fragmentIds.length <= 100) {
+      const { count, error } = await consulta([...fragmentIds], true);
+      if (error) throw error;
+      return count ?? 0;
+    }
+    // Más: por tandas, y una respuesta que usó fragmentos de dos tandas se cuenta una vez.
+    const vistos = new Set<string>();
+    for (let i = 0; i < fragmentIds.length; i += 100) {
+      const { data, error } = await consulta(fragmentIds.slice(i, i + 100), false);
+      if (error) throw error;
+      (data ?? []).forEach((j: { id: string }) => vistos.add(j.id));
+    }
+    return vistos.size;
+  }
+
   async getFragmentWithEmbedding(fragmentId: string): Promise<KnowledgeFragment & { embedding_info: EmbeddingInfo | null } | null> {
     await this.setOrgContext();
 
@@ -809,12 +836,11 @@ export default class KnowledgeService {
 
     for (let i = 1; i < lines.length; i++) {
       const values = this.parseCSVLine(lines[i]);
-      if (values.length <= Math.max(titleIndex, contentIndex)) continue;
-
-      const title = values[titleIndex]?.trim();
-      const content = values[contentIndex]?.trim();
-
-      if (!title || !content) continue;
+      // Las filas sin título o sin contenido se devuelven vacías (no se saltan):
+      // la vista previa de Importar las marca «Falta el título» / «Falta el
+      // contenido», no las envía, y la numeración sigue siendo la del archivo.
+      const title = values[titleIndex]?.trim() ?? '';
+      const content = values[contentIndex]?.trim() ?? '';
 
       const fragment: ImportFragmentData = { title, content };
 

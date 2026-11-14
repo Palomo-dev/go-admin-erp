@@ -1,14 +1,14 @@
 'use client';
 
 /**
- * Conocimiento del Chat (Figma 91-chat-30): lo que la IA puede usar para
+ * Conocimiento del Chat (Figma 91-chat-30 y 94-chat-recuperado-ia-01/02): lo que la IA puede usar para
  * responder. Cifras, pestañas Fuentes (tarjetas) · Todos los fragmentos
  * (tabla). Toda escritura pasa por `knowledgeService`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, BookOpen, Plus, Settings, Upload } from 'lucide-react';
+import { AlertTriangle, ArrowUp, BookOpen, Plus, Settings, Upload } from 'lucide-react';
 import { ConfirmDialog, EmptyState, KpiStrip, PageHeader, SearchInput, StatCard, TabBar, clasesBoton, idPanel } from '@/components/kit';
 import { MultiSelect } from '@/components/kit/MultiSelect';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -207,7 +207,7 @@ export default function ConocimientoPage() {
       <KpiStrip etiqueta={t('kpis.etiqueta')}>
         <StatCard etiqueta={t('kpis.fuentes')} valor={stats?.totalSources ?? sinDato} detalle={stats ? t('kpis.activas', { n: stats.activeSources }) : undefined} cargando={cargando} />
         <StatCard etiqueta={t('kpis.fragmentos')} valor={stats?.totalFragments ?? sinDato} cargando={cargando} />
-        <StatCard etiqueta={t('kpis.listos')} valor={stats ? listos : sinDato} detalle={stats && total ? `${pct} %` : undefined} tono="exito" cargando={cargando} />
+        <StatCard etiqueta={t('kpis.listos')} valor={stats ? listos : sinDato} detalle={stats && total ? `${pct} %` : undefined} tono="exito" iconoDetalle={stats && total ? ArrowUp : undefined} cargando={cargando} />
         <StatCard
           etiqueta={t('kpis.pendientes')}
           valor={stats ? pendientes : sinDato}
@@ -225,7 +225,7 @@ export default function ConocimientoPage() {
           fallo ? (
             <EmptyState variante="error" titulo={t('error')} onReintentar={cargar} />
           ) : cargando && fuentes.length === 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-hidden="true">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fill,minmax(0,366px))]" aria-hidden="true">
               {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-32 rounded-xl" />
               ))}
@@ -239,7 +239,8 @@ export default function ConocimientoPage() {
               accionSecundaria={{ etiqueta: t('importarBoton'), href: '/app/chat/conocimiento/importar' }}
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            // Tarjetas de 366 px como en Figma 94-chat-recuperado-ia-01 (tres por fila en escritorio).
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fill,minmax(0,366px))]">
               {fuentes.map((f) => (
                 <TarjetaFuente
                   key={f.id}

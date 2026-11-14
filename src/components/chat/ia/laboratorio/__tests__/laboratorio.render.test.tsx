@@ -13,6 +13,8 @@ import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import type { LabSettings, LabTestResult, RetrievedFragment } from '@/lib/services/aiLabService';
 
 jest.mock('@/lib/services/aiSettingsService', () => ({
+  TONE_OPTIONS: [{ value: 'professional', label: 'Profesional' }, { value: 'friendly', label: 'Amigable' }],
+  LANGUAGE_OPTIONS: [{ value: 'es', label: 'Español' }, { value: 'en', label: 'Inglés' }],
   fetchCatalogoModelos: async () => ({ proveedores: [], modelos: [{ provider: 'openai', value: 'gpt-4o-mini', label: 'GPT-4o mini' }, { provider: 'openai', value: 'gpt-5.6-luna', label: 'GPT-5.6 Luna' }] }),
 }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useFormatDate: () => ({ formatDateTime: () => '14 nov 2026, 10:00' }) }));
@@ -29,15 +31,24 @@ const FRAGMENTOS: RetrievedFragment[] = [
   { id: 'b', title: 'Horarios', content: 'Lunes a sábado de 8 a 6', similarity: 0.9, tags: [], priority: 5 },
 ];
 
-test('ajustes: modelo de la configuración por defecto, reglas que se pueden restaurar, aviso de tono/idioma', async () => {
+test('ajustes: modelo de la configuración por defecto, tono e idioma, reglas que se pueden restaurar', async () => {
   const onChange = jest.fn();
   renderConIdioma(
     <AjustesPrueba ajustes={{ ...AJUSTES, systemRules: 'Otra cosa' }} onChange={onChange} canales={[{ valor: 'whatsapp', etiqueta: 'WhatsApp' }]} modeloConfig="gpt-5.6-luna" reglasConfig="Sé breve." />,
     { idioma: 'es' },
   );
   expect(await screen.findByText('El de la configuración (GPT-5.6 Luna)')).toBeTruthy();
-  expect(screen.getByText(/no usa el tono ni el idioma/)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: /Volver a las de la configuración/ }));
+  // Secciones plegables (decisión del dueño): solo «Tono e idioma» abierta al entrar.
+  expect(screen.getByRole('button', { name: 'Tono e idioma' }).getAttribute('aria-expanded')).toBe('true');
+  expect(screen.getByRole('button', { name: 'Canal y modelo' }).getAttribute('aria-expanded')).toBe('false');
+  fireEvent.click(screen.getByRole('button', { name: 'Reglas' }));
+  expect(screen.getByRole('button', { name: 'Reglas' }).getAttribute('aria-expanded')).toBe('true');
+  // Tono e idioma vuelven (decisión del dueño 2026-11-14) y empiezan con los de la configuración.
+  expect(screen.getByLabelText('Tono').textContent).toContain('Profesional');
+  expect(screen.getByLabelText('Idioma').textContent).toContain('Español');
+  expect(screen.getByText(/la IA que atiende a tus clientes también los usa/)).toBeTruthy();
+  expect(screen.queryByText(/no usa el tono ni el idioma/)).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /Volver a las configuradas/ }));
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ systemRules: 'Sé breve.' }));
   fireEvent.change(screen.getByLabelText('Máximo de fragmentos'), { target: { value: '50' } });
   expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ maxFragments: 20 }));

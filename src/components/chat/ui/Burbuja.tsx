@@ -5,6 +5,7 @@ import { AlertCircle, Check, CheckCheck, Lock, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { AvatarIniciales } from '@/components/kit';
+import { Pista } from './Pista';
 
 /** Quién habla en la burbuja (Figma 91-chat-00). */
 export type AutorBurbuja = 'cliente' | 'agente' | 'ia' | 'nota' | 'sistema';
@@ -40,6 +41,16 @@ const CAJA: Record<Exclude<AutorBurbuja, 'sistema'>, string> = {
 };
 
 /**
+ * Color del ✓ / ✓✓ (Figma 94-chat-recuperado-05). Sobre el Azul GO del
+ * agente: enviado atenuado, entregado blanco y leído en azul claro (decisión
+ * del dueño, 2026-11-14). Sobre el tinte de la IA: gris y leído en azul.
+ */
+export function claseEntrega(autor: AutorBurbuja, entrega: 'enviado' | 'entregado' | 'leido'): string {
+  if (autor === 'agente') return entrega === 'leido' ? 'text-info' : entrega === 'entregado' ? 'text-fg-on-brand' : 'text-fg-on-brand/60';
+  return entrega === 'leido' ? 'text-brand' : 'text-fg-muted';
+}
+
+/**
  * Burbuja de mensaje del Chat: cliente (izquierda, blanca), agente (derecha,
  * Azul GO), respuesta de IA (derecha, tinte azul con encabezado), nota
  * interna (derecha, amarilla punteada, «solo la ve tu equipo») y evento del
@@ -64,7 +75,7 @@ export function Burbuja({ autor, children, hora, entrega, detalle, remitente, cl
   return (
     <div id={id} className={cn('flex min-w-0 flex-col rounded-lg transition-colors', derecha ? 'items-end' : 'items-start', className)}>
       {remitente ? (
-        <p className={cn('mb-1 flex max-w-[85%] items-center gap-1.5 text-xs font-medium text-fg-secondary', derecha && 'flex-row-reverse')}>
+        <p className={cn('mb-1 flex max-w-[85%] items-center gap-1.5 text-[13px] text-fg-secondary', derecha && 'flex-row-reverse')}>
           <AvatarIniciales nombre={remitente.nombre} src={remitente.avatarUrl} tamano="sm" className="size-5 text-[10px]" />
           <span className="truncate">{remitente.nombre}</span>
         </p>
@@ -90,14 +101,17 @@ export function Burbuja({ autor, children, hora, entrega, detalle, remitente, cl
             {hora}
             {entrega && (derecha && autor !== 'nota') ? (
               entrega === 'fallido' ? (
-                <span className={cn('inline-flex items-center gap-0.5 font-medium', autor === 'agente' ? 'text-fg-on-brand' : 'text-danger-text')}>
-                  <Entrega aria-hidden="true" className="size-3.5" />
+                // Decisión del dueño (2026-11-14): «No se entregó» es una píldora roja, también sobre el azul.
+                <span className="ml-0.5 inline-flex h-[18px] items-center gap-1 rounded-full bg-danger px-1.5 text-[11px] font-semibold text-fg-on-brand">
+                  <Entrega aria-hidden="true" className="size-3" />
                   {t('fallido')}
                 </span>
               ) : (
-                <span role="img" aria-label={t(entrega)} title={t(entrega)} className="inline-flex">
-                  <Entrega aria-hidden="true" className={cn('size-3.5', entrega === 'leido' && autor !== 'agente' && 'text-brand')} />
-                </span>
+                <Pista texto={t(entrega)} alineacion="end">
+                  <span role="img" aria-label={t(entrega)} className="inline-flex">
+                    <Entrega aria-hidden="true" className={cn('size-3.5', claseEntrega(autor, entrega))} />
+                  </span>
+                </Pista>
               )
             ) : null}
           </p>

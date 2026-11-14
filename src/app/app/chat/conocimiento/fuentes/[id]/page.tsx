@@ -1,20 +1,24 @@
 'use client';
 
 /**
- * Detalle de una fuente de conocimiento (Figma 91-chat-31): cifras, buscador,
- * filtro por varias etiquetas, «Mostrando X de Y» y tabla de fragmentos. Reindexar, Ajustes y Nuevo
- * fragmento usan `knowledgeService` como antes.
+ * Detalle de una fuente de conocimiento (Figma 91-chat-31 y
+ * 94-chat-recuperado-ia-03): emoji y nombre, cifras (la cuarta, «Usados esta
+ * semana», son las respuestas de la IA de los últimos 7 días que usaron algún
+ * fragmento de la fuente, de `ai_jobs.fragments_used`), buscador, filtro por
+ * varias etiquetas, «Mostrando X de Y» y tabla de fragmentos. Reindexar,
+ * Ajustes y Nuevo fragmento usan `knowledgeService` como antes.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Plus, RefreshCw, RotateCw, Settings } from 'lucide-react';
 import { ConfirmDialog, EmptyState, KpiStrip, SearchInput, StatCard, clasesBoton } from '@/components/kit';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MultiSelect } from '@/components/kit/MultiSelect';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays } from '@/lib/utils/dateDisplay';
 import KnowledgeService, { type CreateFragmentData, type CreateSourceData, type KnowledgeFragment, type KnowledgeSource } from '@/lib/services/knowledgeService';
 import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { FragmentDetailDialog, SourceSettingsDialog } from '@/components/chat/conocimiento/fuentes/id';
@@ -32,9 +36,11 @@ export default function SourceDetailPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const memberId = useMiembroActual(organizationId);
+  const { getToday, toInstant } = useFormatDate();
 
   const [fuente, setFuente] = useState<KnowledgeSource | null>(null);
   const [fragmentos, setFragmentos] = useState<KnowledgeFragment[]>([]);
+  const [usosSemana, setUsosSemana] = useState<number | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<'noEncontrada' | 'error' | null>(null);
   const [reindexando, setReindexando] = useState(false);
@@ -60,13 +66,20 @@ export default function SourceDetailPage() {
       }
       setFuente(f);
       setFragmentos(frs);
+      // Últimos 7 días contando hoy, en la zona de la organización.
+      s.countRecentUsage(frs.map((x) => x.id), toInstant(addPlainDays(getToday(), -6)))
+        .then(setUsosSemana)
+        .catch((e) => {
+          console.error('Error contando los usos de la semana:', e);
+          setUsosSemana(null);
+        });
     } catch (e) {
       console.error('Error cargando la fuente:', e);
       setError('error');
     } finally {
       setCargando(false);
     }
-  }, [organizationId, sourceId]);
+  }, [organizationId, sourceId, getToday, toInstant]);
 
   useEffect(() => {
     cargar();
@@ -131,11 +144,6 @@ export default function SourceDetailPage() {
         icono={fuente.icon ? <span aria-hidden="true" className="text-2xl leading-none">{fuente.icon}</span> : undefined}
         volverA="/app/chat/conocimiento"
         migas={[t('migas.chat'), t('migas.conocimiento')]}
-        badge={
-          <Badge tono={fuente.is_active ? 'exito' : 'neutro'} tamano="sm">
-            {t(fuente.is_active ? 'estados.activa' : 'estados.inactiva')}
-          </Badge>
-        }
         subtitulo={[fuente.description, t('fuentes.fragmentos', { n: fragmentos.length })].filter(Boolean).join(' · ')}
         acciones={
           <>
@@ -170,7 +178,7 @@ export default function SourceDetailPage() {
         <StatCard etiqueta={t('kpis.fragmentos')} valor={r.total} cargando={cargando} />
         <StatCard etiqueta={t('kpis.activos')} valor={r.activos} cargando={cargando} />
         <StatCard etiqueta={t('kpis.listos')} valor={r.listos} detalle={r.total ? `${r.pctListos} %` : undefined} tono="exito" cargando={cargando} />
-        <StatCard etiqueta={t('kpis.usos')} valor={r.usos.toLocaleString()} detalle={t('kpis.usosDetalle')} cargando={cargando} />
+        <StatCard etiqueta={tr('usadosSemana')} valor={usosSemana === null ? t('sinDato') : usosSemana.toLocaleString()} detalle={tr('usadosSemanaDetalle')} cargando={cargando} />
       </KpiStrip>
 
       <div className="flex flex-wrap items-center gap-2">

@@ -59,6 +59,11 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   'chat.general': dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'chat.ia': dynamic(() => import('@/components/chat/ia/configuracion/ConfiguracionIAChat').then((m) => m.ConfiguracionIAChat), { loading: () => <LoadingSkeleton />, ssr: false }),
   'integraciones.general': dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  // La misma pestaña de Conexiones (una pieza para las dos pantallas), sin tarjetas y con su aviso.
+  'integraciones.desarrolladores': dynamic(
+    () => import('@/components/integraciones/conexiones-v2/PestanaDesarrolladores').then((m) => function Desarrolladores() { return <m.PestanaDesarrolladores enDialogo />; }),
+    { loading: () => <LoadingSkeleton />, ssr: false },
+  ),
   'parking.general': dynamic(() => import('../panels/parking/ParkingConfigPanel').then((m) => m.ParkingConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'calendario.general': dynamic(() => import('../panels/calendario/CalendarioConfigPanel').then((m) => m.CalendarioConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'timeline.general': dynamic(() => import('../panels/timeline/TimelineConfigPanel').then((m) => m.TimelineConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),

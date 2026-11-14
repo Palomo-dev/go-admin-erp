@@ -4,7 +4,7 @@ import { useEffect, useId, useState, type ReactNode } from 'react';
 import { Loader2, type LucideIcon, TriangleAlert, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
-import { clasesBoton } from './botonClases';
+import { clasesBoton, type VarianteBoton } from './botonClases';
 import { useKitTextos } from './useIdiomaKit';
 
 /**
@@ -29,6 +29,8 @@ export interface ConfirmDialogProps {
   /** `peligro` pinta el primario y la caja del icono en rojo. */
   tono?: 'peligro' | 'advertencia' | 'marca';
   icono?: LucideIcon;
+  /** Variante del primario si no es la del tono (p. ej. `advertencia` en ámbar). */
+  varianteConfirmar?: VarianteBoton;
   cargando?: boolean;
   /** Texto que hay que escribir para confirmar. */
   confirmarCon?: string;
@@ -52,6 +54,7 @@ export function ConfirmDialog({
   onConfirmar,
   tono = 'peligro',
   icono,
+  varianteConfirmar,
   cargando = false,
   confirmarCon,
   children,
@@ -112,7 +115,7 @@ export function ConfirmDialog({
             disabled={cargando || bloqueado}
             aria-busy={cargando || undefined}
             onClick={() => void onConfirmar()}
-            className={clasesBoton({ variante: tono === 'peligro' ? 'destructivo' : 'primario', tamano: 'md' })}
+            className={clasesBoton({ variante: varianteConfirmar ?? (tono === 'peligro' ? 'destructivo' : 'primario'), tamano: 'md' })}
           >
             {cargando && <Loader2 aria-hidden="true" className="size-4 animate-spin" />}
             {textoConfirmar}

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { EmailDomain, EmailDomainStatus } from '@/lib/services/crm/email/types';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { cn } from '@/utils/Utils';
 import { AddDomainDialog } from './AddDomainDialog';
 import { DnsRecordsTable } from './DnsRecordsTable';
@@ -34,6 +35,8 @@ interface Props {
 
 export function EmailDomainsCard({ api, canEdit }: Props) {
   const t = useTranslations('configuracionTextos.emailDomainsCard');
+  // «Verificado el…» con la zona horaria de la organización (antes `toLocaleString('es-CO')`, sin zona).
+  const { formatDateTime } = useFormatDate();
   const [addOpen, setAddOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(api.domains.find((d) => d.status !== 'verified')?.id ?? null);
   const [pendingDelete, setPendingDelete] = useState<EmailDomain | null>(null);
@@ -82,7 +85,7 @@ export function EmailDomainsCard({ api, canEdit }: Props) {
               {open && (
                 <div id={`dom-${d.id}`} className="space-y-4 border-t border-gray-200 px-3 py-3 dark:border-gray-700">
                   <DnsRecordsTable records={d.dns_records} onVerify={() => api.verify(d.id)} verifying={api.busy === `verify:${d.id}`} canVerify={canEdit} />
-                  {d.verified_at && <p className="text-xs text-gray-500 dark:text-gray-400">{t('verificadoEl', { fecha: new Date(d.verified_at).toLocaleString('es-CO'), region: d.region })}</p>}
+                  {d.verified_at && <p className="text-xs text-gray-500 dark:text-gray-400">{t('verificadoEl', { fecha: formatDateTime(d.verified_at), region: d.region })}</p>}
                   <DomainSendersForm domain={d} onSave={(body) => api.update(d.id, body)} busy={api.busy === `update:${d.id}`} canEdit={canEdit} />
                 </div>
               )}

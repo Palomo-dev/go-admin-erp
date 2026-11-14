@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Vista previa en vivo del chat del sitio web (Figma 91-chat-24): ventana
+ * Vista previa en vivo del chat del sitio web (Figma 91-chat-24; estados en
+ * 94-chat-recuperado-canales-05): ventana
  * abierta con logo, título, bienvenida, botones rápidos y el formulario
  * «Antes de empezar» según los datos que se piden; el botón flotante debajo.
  *
@@ -14,18 +15,11 @@
  */
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ExternalLink, Headphones, HelpCircle, MessageCircle, MessageSquare, RotateCcw, Send, X, type LucideIcon } from 'lucide-react';
+import { ChevronRight, Link2, RotateCcw, Send, X } from 'lucide-react';
 import { clasesBoton } from '@/components/kit';
-import { cn } from '@/utils/Utils';
-import type { BrandConfig, CollectIdentity, WidgetStyle } from '@/lib/services/chatChannelsService';
-import { botonAbreEnlace, esColorHex, esUrlImagenValida, sombraDelBoton } from './widgetLogica';
-
-const ICONOS: Record<Exclude<WidgetStyle['iconType'], 'custom'>, LucideIcon> = {
-  chat: MessageCircle,
-  message: MessageSquare,
-  support: Headphones,
-  whatsapp: HelpCircle,
-};
+import type { BrandConfig, CollectIdentity } from '@/lib/services/chatChannelsService';
+import { botonAbreEnlace, esColorHex, esUrlImagenValida } from './widgetLogica';
+import { IconoBotonWidget, estiloBotonWidget } from './BotonWidgetMuestra';
 
 export function VistaPreviaWidget({ config, datos, logoOrganizacion }: { config: BrandConfig; datos: CollectIdentity; logoOrganizacion?: string | null }) {
   const t = useTranslations('chatModulo.canales.widget.vistaPrevia');
@@ -45,9 +39,6 @@ export function VistaPreviaWidget({ config, datos, logoOrganizacion }: { config:
   const enLista = behavior.openDefaultView === 'faq';
   const logoGuardado = config.logo_url && esUrlImagenValida(config.logo_url) ? config.logo_url : null;
   const logo = logoGuardado ?? (logoOrganizacion && esUrlImagenValida(logoOrganizacion) ? logoOrganizacion : null);
-  const iconoUrl = style.iconType === 'custom' && style.iconUrl && esUrlImagenValida(style.iconUrl) ? style.iconUrl : null;
-  const Icono = style.iconType === 'custom' ? MessageCircle : ICONOS[style.iconType] ?? MessageCircle;
-  const relleno = style.iconStyle === 'filled' && style.iconType !== 'support';
   const titulo = behavior.title || t('tituloPorDefecto');
 
   const formulario = pide.length > 0 && (
@@ -103,20 +94,34 @@ export function VistaPreviaWidget({ config, datos, logoOrganizacion }: { config:
                 <span className="mt-1 block text-right text-[11px] text-fg-muted">{t('ahora')}</span>
               </div>
             )}
-            {botones.length > 0 && (
-              <div className={cn('flex gap-1.5', enLista ? 'flex-col' : 'flex-wrap')}>
-                {botones.map((b) => (
-                  <span
-                    key={b.label}
-                    className={cn('inline-flex items-center gap-1 border bg-surface px-2.5 py-1 text-xs font-medium', enLista ? 'rounded-lg' : 'rounded-full')}
-                    style={{ borderColor: color, color }}
-                  >
-                    {b.label}
-                    {botonAbreEnlace(b.action) && <ExternalLink aria-label={tm('abreEnlace')} className="size-3" />}
-                  </span>
-                ))}
-              </div>
-            )}
+            {botones.length > 0 &&
+              (enLista ? (
+                <div className="flex flex-col gap-1.5">
+                  {botones.map((b) => (
+                    <span key={b.label} className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-[13px] text-fg">
+                      {b.label}
+                      {botonAbreEnlace(b.action) ? (
+                        <Link2 aria-label={tm('abreEnlace')} className="size-3.5 shrink-0" />
+                      ) : (
+                        <ChevronRight aria-hidden="true" className="size-3.5 shrink-0 text-fg-muted" />
+                      )}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {botones.map((b) => (
+                    <span
+                      key={b.label}
+                      className="inline-flex items-center gap-1 rounded-full border bg-surface px-2.5 py-1 text-xs font-medium"
+                      style={{ borderColor: `${color}66`, color }}
+                    >
+                      {botonAbreEnlace(b.action) && <Link2 aria-label={tm('abreEnlace')} className="size-3" />}
+                      {b.label}
+                    </span>
+                  ))}
+                </div>
+              ))}
             {!datosEnviados && behavior.openDefaultView !== 'form' && formulario}
           </>
         )}
@@ -138,24 +143,9 @@ export function VistaPreviaWidget({ config, datos, logoOrganizacion }: { config:
       aria-label={abierto ? t('cerrar') : t('abrir')}
       onClick={() => setAbierto((a) => !a)}
       className="absolute flex items-center justify-center overflow-hidden"
-      style={{
-        [lado]: position.offsetX,
-        [vertical]: position.offsetY,
-        width: tamano,
-        height: tamano,
-        borderRadius: style.borderRadius,
-        border: `${style.borderWidth}px solid ${esColorHex(style.borderColor) ? style.borderColor : '#FFFFFF'}`,
-        boxShadow: sombraDelBoton(style),
-        backgroundColor: color,
-        color: esColorHex(style.iconColor) ? style.iconColor : '#FFFFFF',
-      }}
+      style={{ [lado]: position.offsetX, [vertical]: position.offsetY, ...estiloBotonWidget({ ...style, primaryColor: color }) }}
     >
-      {iconoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- imagen externa elegida por la organización
-        <img src={iconoUrl} alt="" className="size-3/5 object-contain" />
-      ) : (
-        <Icono aria-hidden="true" className="size-6" strokeWidth={1.75} fill={relleno ? 'currentColor' : 'none'} />
-      )}
+      <IconoBotonWidget style={style} />
     </button>
   );
 

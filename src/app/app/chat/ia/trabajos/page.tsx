@@ -8,8 +8,9 @@
  * (Figma 93-chat-pendientes-03); el motivo y el comentario, en el detalle.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Bot, RefreshCw, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Eye, MessageSquare, RefreshCw, ThumbsDown, ThumbsUp, XCircle } from 'lucide-react';
 import { CampoFecha, DataTable, KpiStrip, PageHeader, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +29,8 @@ import {
   ESTADOS_TRABAJO,
   idCorto,
   limitesDias,
+  puedeCancelar,
+  puedeReintentar,
   RANGOS_TRABAJOS,
   textoConfianza,
   textoDuracion,
@@ -49,6 +52,7 @@ export default function TrabajosPage() {
   const { agentes } = useAgentesChat();
   const locale = useLocale();
   const { toast } = useToast();
+  const router = useRouter();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const memberId = useMiembroActual(organizationId);
@@ -84,7 +88,8 @@ export default function TrabajosPage() {
       const s = new AIJobsService(organizationId);
       const [js, st] = await Promise.all([
         s.getJobs({ status: estado === TODOS ? undefined : estado, jobType: tipo === TODOS ? undefined : tipo, dateFrom: desde, dateTo: hasta }, 200),
-        s.getStats(),
+        // Cifras de hoy en la zona de la organización (Figma 94-chat-recuperado-12).
+        s.getStats(toInstant(getToday())),
       ]);
       setTrabajos(js);
       setStats(st);
@@ -94,7 +99,7 @@ export default function TrabajosPage() {
     } finally {
       setCargando(false);
     }
-  }, [organizationId, estado, tipo, desde, hasta]);
+  }, [organizationId, estado, tipo, desde, hasta, getToday, toInstant]);
 
   useEffect(() => {
     setCargando(true);
@@ -158,7 +163,7 @@ export default function TrabajosPage() {
       ancho: 100,
       ocultarDebajo: 'lg',
       celda: (j) => (
-        <span className="font-mono text-xs text-fg-secondary" title={j.id}>
+        <span className="text-[13px] tabular-nums text-fg-secondary" title={j.id}>
           {idCorto(j.id)}
         </span>
       ),
@@ -168,10 +173,9 @@ export default function TrabajosPage() {
       id: 'conversacion',
       encabezado: t('trabajos.tabla.conversacion'),
       celda: (j) => (
-        <div className="min-w-0">
-          <p className="truncate text-sm text-fg">{j.conversation?.customer?.full_name || t('trabajos.sinCliente')}</p>
-          {j.conversation?.channel?.name && <p className="truncate text-xs text-fg-muted">{j.conversation.channel.name}</p>}
-        </div>
+        <p className="truncate text-sm text-fg" title={j.conversation?.channel?.name ?? undefined}>
+          {j.conversation?.customer?.full_name || t('trabajos.sinCliente')}
+        </p>
       ),
     },
     {
@@ -179,7 +183,7 @@ export default function TrabajosPage() {
       encabezado: t('trabajos.tabla.estado'),
       ancho: 140,
       celda: (j) => (
-        <Badge tono={tonoEstadoTrabajo(j.status)} tamano="sm">
+        <Badge tono={tonoEstadoTrabajo(j.status)} apariencia="contorno" tamano="sm">
           {nombreEstado(j.status)}
         </Badge>
       ),
@@ -201,7 +205,7 @@ export default function TrabajosPage() {
       variante: 'importe',
       ancho: 100,
       ocultarDebajo: 'lg',
-      celda: (j) => <span className="text-sm text-fg-secondary">{textoDuracion(duracionMs(j, ahora), locale)}</span>,
+      celda: (j) => <span className="text-sm text-fg">{textoDuracion(duracionMs(j, ahora), locale)}</span>,
     },
     {
       id: 'confianza',
@@ -243,7 +247,7 @@ export default function TrabajosPage() {
         );
       },
     },
-    { id: 'cuando', encabezado: t('trabajos.tabla.cuando'), ancho: 140, ocultarDebajo: 'md', celda: (j) => <span className="text-sm text-fg-secondary">{tiempoRelativo(j.created_at, ahora, locale)}</span> },
+    { id: 'cuando', encabezado: t('trabajos.tabla.cuando'), ancho: 130, ocultarDebajo: 'md', celda: (j) => <span className="text-sm text-fg">{tiempoRelativo(j.created_at, ahora, locale)}</span> },
   ];
 
   return (
@@ -251,7 +255,6 @@ export default function TrabajosPage() {
       <PageHeader
         titulo={t('titulo')}
         subtitulo={t('trabajos.subtitulo')}
-        icono={Bot}
         cargando={cargando}
         acciones={
           <button
@@ -276,19 +279,11 @@ export default function TrabajosPage() {
       />
 
       <KpiStrip etiqueta={t('trabajos.kpis.etiqueta')} columnas={5}>
-        <StatCard tamano="sm" etiqueta={t('trabajos.kpis.total')} valor={stats?.total ?? 0} cargando={!stats && !fallo} />
+        <StatCard tamano="sm" etiqueta={t('trabajos.kpis.hoy')} valor={stats?.total ?? 0} cargando={!stats && !fallo} />
         <StatCard tamano="sm" etiqueta={t('trabajos.kpis.enCola')} valor={stats?.pending ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('pending')} />
         <StatCard tamano="sm" etiqueta={t('trabajos.kpis.procesando')} valor={stats?.running ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('processing')} />
-        <StatCard tamano="sm" etiqueta={t('trabajos.kpis.completados')} valor={stats?.completed ?? 0} tono="exito" cargando={!stats && !fallo} onClick={() => setEstado('completed')} />
-        <StatCard
-          tamano="sm"
-          etiqueta={t('trabajos.kpis.fallidos')}
-          valor={stats?.failed ?? 0}
-          tono={stats?.failed ? 'peligro' : 'neutro'}
-          resaltada={!!stats?.failed}
-          cargando={!stats && !fallo}
-          onClick={() => setEstado('failed')}
-        />
+        <StatCard tamano="sm" etiqueta={t('trabajos.kpis.completados')} valor={stats?.completed ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('completed')} />
+        <StatCard tamano="sm" etiqueta={t('trabajos.kpis.fallidos')} valor={stats?.failed ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('failed')} />
       </KpiStrip>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -362,6 +357,18 @@ export default function TrabajosPage() {
         obtenerId={(j) => j.id}
         estado={fallo ? 'error' : cargando ? 'cargando' : trabajos.length === 0 && (estado !== TODOS || tipo !== TODOS) ? 'sinResultados' : 'listo'}
         onFilaClick={abrir}
+        acciones={(j) => [
+          { id: 'ver', etiqueta: t('trabajos.acciones.verDetalle'), icono: Eye, onSelect: () => void abrir(j) },
+          {
+            id: 'conversacion',
+            etiqueta: t('trabajos.detalle.abrirConversacion'),
+            icono: MessageSquare,
+            onSelect: () => router.push(`/app/chat/conversaciones/${j.conversation_id}`),
+            oculta: !j.conversation_id,
+          },
+          { id: 'reintentar', etiqueta: t('trabajos.detalle.reintentar'), icono: RefreshCw, onSelect: () => void accion(j, 'reintentar'), oculta: !puedeReintentar(j) },
+          { id: 'cancelar', etiqueta: t('trabajos.detalle.cancelar'), icono: XCircle, onSelect: () => void accion(j, 'cancelar'), oculta: !puedeCancelar(j) },
+        ]}
         etiquetaFila={(j) => nombreTipo(j.job_type)}
         tonoFila={(j) => (j.status === 'failed' ? 'peligro' : undefined)}
         onReintentar={cargar}
@@ -378,7 +385,7 @@ export default function TrabajosPage() {
                 {j.conversation?.customer?.full_name || t('trabajos.sinCliente')} · {tiempoRelativo(j.created_at, ahora, locale)}
               </span>
             </span>
-            <Badge tono={tonoEstadoTrabajo(j.status)} tamano="sm">
+            <Badge tono={tonoEstadoTrabajo(j.status)} apariencia="contorno" tamano="sm">
               {nombreEstado(j.status)}
             </Badge>
           </button>

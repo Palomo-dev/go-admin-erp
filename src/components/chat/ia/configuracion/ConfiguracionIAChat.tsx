@@ -64,7 +64,7 @@ const VALORES_INICIALES: Editables = {
   confidenceThreshold: 0.7,
 };
 
-export function ConfiguracionIAChat() {
+export function ConfiguracionIAChat({ onAbrirEnlace }: { onAbrirEnlace?: (href: string) => void } = {}) {
   const t = useTranslations('chatConfig.ia');
   const tc = useTranslations('chatConfig.comun');
   const router = useRouter();
@@ -374,6 +374,7 @@ export function ConfiguracionIAChat() {
                   onAutoResponseChange={handleChange(setAutoResponseEnabled)}
                   onDelayChange={handleChange(setAutoResponseDelay)}
                   onConfidenceChange={handleChange(setConfidenceThreshold)}
+                  onAbrirLaboratorio={onAbrirEnlace}
                 />
               </TabsContent>
 

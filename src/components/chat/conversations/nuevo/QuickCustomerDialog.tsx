@@ -4,23 +4,17 @@
  * «Crear cliente rápido» desde Nueva conversación. Los roles, la
  * responsabilidad fiscal y el municipio que se eligen aquí viajan a
  * `createQuickCustomer`; antes se mostraban pero se descartaban al guardar.
+ * Aspecto: Figma 94-chat-recuperado-11 (520 px, campos del kit, opciones con
+ * casilla y «Crear cliente» con icono).
  */
 import React, { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { User, Loader2, CreditCard } from 'lucide-react';
+import { User, UserPlus, Loader2, CreditCard } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField, clasesBoton } from '@/components/kit';
 import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
 import { CLIENTE_RAPIDO_POR_DEFECTO, type QuickCustomerData } from '@/lib/services/newConversationService';
 import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
@@ -105,63 +99,59 @@ export default function QuickCustomerDialog({ isOpen, onClose, onSave }: QuickCu
 
   const claseOpcion = (activa: boolean) =>
     cn(
-      'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors',
-      activa ? 'border-brand bg-brand-tint text-brand-deep' : 'border-line text-fg-secondary hover:bg-subtle',
+      'inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+      activa ? 'border-line-brand bg-brand-tint text-brand-deep' : 'border-line bg-surface text-fg-secondary hover:bg-hover',
     );
 
   return (
-    <Dialog open={isOpen} onOpenChange={(abierto) => !abierto && handleClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-brand" aria-hidden />
-            {t('titulo')}
-          </DialogTitle>
-          <DialogDescription>{t('descripcion')}</DialogDescription>
-        </DialogHeader>
+    <Dialog open={isOpen} onOpenChange={(abierto) => !abierto && !isSaving && handleClose()}>
+      <DialogContent className="w-[calc(100%-32px)] max-w-none gap-0 rounded-2xl border-line bg-surface p-6 text-fg sm:max-w-[520px] sm:rounded-2xl">
+        <div className="pr-8">
+          <DialogTitle className="text-lg font-semibold leading-6 text-fg">{t('titulo')}</DialogTitle>
+          <DialogDescription className="mt-1 text-sm leading-5 text-fg-secondary">{t('descripcion')}</DialogDescription>
+        </div>
 
-        <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="first_name">{t('nombre')} *</Label>
+        <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField etiqueta={t('nombre')} obligatorio error={error === t('errores.nombreRequerido') ? error : null}>
               <Input
                 id="first_name"
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                 placeholder={t('nombrePlaceholder')}
+                autoComplete="off"
                 autoFocus
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="last_name">{t('apellido')}</Label>
+            </FormField>
+            <FormField etiqueta={t('apellido')}>
               <Input
                 id="last_name"
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                 placeholder={t('apellidoPlaceholder')}
+                autoComplete="off"
               />
-            </div>
+            </FormField>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">{t('correo')}</Label>
+          <FormField etiqueta={t('correo')}>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               placeholder={t('correoPlaceholder')}
+              autoComplete="off"
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">{t('telefono')}</Label>
+          <FormField etiqueta={t('telefono')}>
             <PhoneInput id="phone" value={formData.phone} onChange={(v) => setFormData({ ...formData, phone: v })} />
-          </div>
+          </FormField>
 
           <fieldset className="space-y-2">
-            <legend className="flex items-center gap-1 text-sm font-medium text-fg">
-              <User className="h-3.5 w-3.5" aria-hidden /> {t('roles')}
+            <legend className="mb-2 flex items-center gap-1.5 text-[15px] font-medium text-fg">
+              <User className="size-4 text-fg-secondary" strokeWidth={1.5} aria-hidden /> {t('roles')}
             </legend>
             <div className="flex flex-wrap gap-1.5">
               {customerRoles.map((role) => {
@@ -174,7 +164,7 @@ export default function QuickCustomerDialog({ isOpen, onClose, onSave }: QuickCu
                     className={claseOpcion(activa)}
                     onClick={() => setSelectedRoles((prev) => alternar(prev, role.code))}
                   >
-                    <Checkbox checked={activa} className="pointer-events-none h-3 w-3" tabIndex={-1} aria-hidden />
+                    <Checkbox checked={activa} className="pointer-events-none size-3.5" tabIndex={-1} aria-hidden />
                     <span>{role.label}</span>
                   </button>
                 );
@@ -183,8 +173,8 @@ export default function QuickCustomerDialog({ isOpen, onClose, onSave }: QuickCu
           </fieldset>
 
           <fieldset className="space-y-2">
-            <legend className="flex items-center gap-1 text-sm font-medium text-fg">
-              <CreditCard className="h-3.5 w-3.5" aria-hidden /> {t('responsabilidadFiscal')}
+            <legend className="mb-2 flex items-center gap-1.5 text-[15px] font-medium text-fg">
+              <CreditCard className="size-4 text-fg-secondary" strokeWidth={1.5} aria-hidden /> {t('responsabilidadFiscal')}
             </legend>
             <div className="flex flex-wrap gap-1.5">
               {fiscalOptions.map((fiscal) => {
@@ -198,7 +188,7 @@ export default function QuickCustomerDialog({ isOpen, onClose, onSave }: QuickCu
                     className={claseOpcion(activa)}
                     onClick={() => setSelectedFiscal((prev) => alternar(prev, fiscal.code))}
                   >
-                    <Checkbox checked={activa} className="pointer-events-none h-3 w-3" tabIndex={-1} aria-hidden />
+                    <Checkbox checked={activa} className="pointer-events-none size-3.5" tabIndex={-1} aria-hidden />
                     <span>{fiscal.code}</span>
                   </button>
                 );
@@ -208,28 +198,22 @@ export default function QuickCustomerDialog({ isOpen, onClose, onSave }: QuickCu
 
           <MunicipalitySearch value={municipalityId} onChange={setMunicipalityId} compact />
 
-          {error && (
+          {error && error !== t('errores.nombreRequerido') && (
             <p role="alert" className="text-sm text-danger-text">
               {error}
             </p>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+          <button type="button" onClick={handleClose} disabled={isSaving} className={clasesBoton({ variante: 'secundario' })}>
             {t('cancelar')}
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                {t('creando')}
-              </>
-            ) : (
-              t('crear')
-            )}
-          </Button>
-        </DialogFooter>
+          </button>
+          <button type="button" onClick={() => void handleSave()} disabled={isSaving} aria-busy={isSaving || undefined} className={clasesBoton()}>
+            {isSaving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <UserPlus className="size-4" strokeWidth={1.5} aria-hidden />}
+            {isSaving ? t('creando') : t('crear')}
+          </button>
+        </div>
       </DialogContent>
     </Dialog>
   );

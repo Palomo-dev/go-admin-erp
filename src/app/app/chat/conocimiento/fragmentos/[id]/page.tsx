@@ -5,6 +5,11 @@
  * etiquetas, «Prueba rápida» (¿lo encuentra la búsqueda de la IA?), ajustes
  * (fuente, prioridad, activo) y estado para la IA. Guardar crea una versión
  * nueva (`updateFragmentWithVersion`); «Regenerar para la IA» reindexa.
+ *
+ * Figma 94-chat-recuperado-ia-04: «+ Agregar» abre el campo de etiqueta
+ * nueva; en Estado para la IA, uso de los últimos 7 días (respuestas de la IA
+ * en `ai_jobs` que lo usaron), votos, versión, modelo del embedding, creado,
+ * actualizado y hash del contenido.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
@@ -20,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { addPlainDays } from '@/lib/utils/dateDisplay';
 import KnowledgeService, { type EmbeddingInfo, type KnowledgeFragment, type KnowledgeSource } from '@/lib/services/knowledgeService';
 import AILabService from '@/lib/services/aiLabService';
 import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
@@ -40,7 +46,7 @@ export default function FragmentDetailPage() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const memberId = useMiembroActual(organizationId);
-  const { formatDateTime } = useFormatDate();
+  const { formatDateTime, getToday, toInstant } = useFormatDate();
 
   const [fragmento, setFragmento] = useState<Fragmento | null>(null);
   const [fuentes, setFuentes] = useState<KnowledgeSource[]>([]);
@@ -52,6 +58,8 @@ export default function FragmentDetailPage() {
   const [contenido, setContenido] = useState('');
   const [etiquetas, setEtiquetas] = useState<string[]>([]);
   const [nuevaEtiqueta, setNuevaEtiqueta] = useState('');
+  const [agregando, setAgregando] = useState(false);
+  const [usos7, setUsos7] = useState<number | null>(null);
   const [prioridad, setPrioridad] = useState(5);
   const [fuenteId, setFuenteId] = useState<string>(SIN_FUENTE);
   const [pregunta, setPregunta] = useState('');
@@ -71,6 +79,12 @@ export default function FragmentDetailPage() {
         return;
       }
       setFragmento(f);
+      s.countRecentUsage([f.id], toInstant(addPlainDays(getToday(), -6)))
+        .then(setUsos7)
+        .catch((e) => {
+          console.error('Error contando los usos de 7 días:', e);
+          setUsos7(null);
+        });
       setTitulo(f.title);
       setContenido(f.content);
       setEtiquetas(f.tags ?? []);
@@ -82,7 +96,7 @@ export default function FragmentDetailPage() {
     } finally {
       setCargando(false);
     }
-  }, [organizationId, fragmentId]);
+  }, [organizationId, fragmentId, getToday, toInstant]);
 
   useEffect(() => {
     cargar();
@@ -159,6 +173,7 @@ export default function FragmentDetailPage() {
     const e = nuevaEtiqueta.trim();
     if (e && !etiquetas.includes(e)) setEtiquetas([...etiquetas, e]);
     setNuevaEtiqueta('');
+    setAgregando(false);
   };
 
   const probar = async () => {
@@ -238,7 +253,7 @@ export default function FragmentDetailPage() {
                 ayuda={t('editor.caracteres', { n: largo.toLocaleString(), max: MAX_CONTENIDO_FRAGMENTO.toLocaleString() })}
                 error={largo > MAX_CONTENIDO_FRAGMENTO ? t('editor.muyLargo') : null}
               >
-                <Textarea value={contenido} rows={8} onChange={(e) => setContenido(e.target.value)} />
+                <Textarea value={contenido} rows={3} onChange={(e) => setContenido(e.target.value)} />
               </FormField>
               <div className="flex flex-col gap-2">
                 <p className="text-[13px] font-medium text-fg">{t('editor.etiquetas')}</p>
@@ -256,19 +271,32 @@ export default function FragmentDetailPage() {
                       </button>
                     </span>
                   ))}
-                  <Input
-                    value={nuevaEtiqueta}
-                    placeholder={t('editor.nuevaEtiqueta')}
-                    aria-label={t('editor.nuevaEtiqueta')}
-                    maxLength={40}
-                    onChange={(e) => setNuevaEtiqueta(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), agregarEtiqueta())}
-                    className="h-8 w-40"
-                  />
-                  <button type="button" onClick={agregarEtiqueta} disabled={!nuevaEtiqueta.trim()} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
-                    <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                    {t('editor.agregar')}
-                  </button>
+                  {agregando ? (
+                    <Input
+                      autoFocus
+                      value={nuevaEtiqueta}
+                      placeholder={t('editor.nuevaEtiqueta')}
+                      aria-label={t('editor.nuevaEtiqueta')}
+                      maxLength={40}
+                      onChange={(e) => setNuevaEtiqueta(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          agregarEtiqueta();
+                        } else if (e.key === 'Escape') {
+                          setNuevaEtiqueta('');
+                          setAgregando(false);
+                        }
+                      }}
+                      onBlur={agregarEtiqueta}
+                      className="h-8 w-40"
+                    />
+                  ) : (
+                    <button type="button" onClick={() => setAgregando(true)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+                      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                      {t('editor.agregar')}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -357,7 +385,7 @@ export default function FragmentDetailPage() {
                 )}
               </div>
               <ListaDatos>
-                <FilaDato etiqueta={t('editor.usado')} valor={(fragmento.usage_count ?? 0).toLocaleString()} />
+                <FilaDato etiqueta={tr('usado7dias')} valor={usos7 === null ? t('sinDato') : usos7.toLocaleString()} />
                 <FilaDato etiqueta={t('editor.votos')} valor={`${fragmento.positive_feedback ?? 0} / ${fragmento.negative_feedback ?? 0}`} />
                 <FilaDato etiqueta={t('editor.version')} valor={`v${fragmento.version}`} />
                 {fragmento.embedding_info?.model && (

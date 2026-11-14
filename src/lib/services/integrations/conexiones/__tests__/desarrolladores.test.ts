@@ -47,6 +47,49 @@ describe('llaves de API', () => {
     expect(fila.organization_id).toBe(ORG);
   });
 
+  describe('canal del Chat (Figma 12.9: Desarrolladores es el único lugar de las llaves)', () => {
+    const CANAL = 'cccccccc-cccc-4ccc-8ccc-000000000001';
+    const AJENO = 'cccccccc-cccc-4ccc-8ccc-000000000002';
+    const base = () =>
+      crearBaseFalsa({
+        channels: [
+          { id: CANAL, organization_id: ORG, name: 'Chat del sitio', type: 'website' },
+          { id: AJENO, organization_id: ORG + 1, name: 'Canal de otra organización', type: 'website' },
+        ],
+      });
+
+    it('asocia la llave a un canal de la organización y lo devuelve en el resumen', async () => {
+      const b = base();
+      const r = await crearLlave(b.db, { organizationId: ORG, userId: 'u', memberId: null }, { nombre: 'Formulario del sitio', alcances: ['webhooks'], canal: CANAL });
+      expect(b.tablas.channel_api_keys[0].channel_id).toBe(CANAL);
+      expect(r.llave.canal).toEqual({ id: CANAL, nombre: 'Chat del sitio', tipo: 'website' });
+    });
+
+    it('rechaza con 400 un canal de otra organización y no guarda nada', async () => {
+      const b = base();
+      await expect(
+        crearLlave(b.db, { organizationId: ORG, userId: 'u', memberId: null }, { nombre: 'Intruso', alcances: ['webhooks'], canal: AJENO }),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(b.tablas.channel_api_keys ?? []).toHaveLength(0);
+    });
+
+    it('deja rastro en ops_audit_log sin la llave completa', async () => {
+      const b = base();
+      const r = await crearLlave(b.db, { organizationId: ORG, userId: 'u', memberId: null }, { nombre: 'Formulario del sitio', alcances: ['webhooks'], canal: CANAL });
+      const rastro = b.tablas.ops_audit_log ?? [];
+      expect(rastro).toHaveLength(1);
+      expect(rastro[0]).toMatchObject({ organization_id: ORG, entity_type: 'channel_api_key', action: 'api_key_created' });
+      expect(JSON.stringify(rastro)).not.toContain(r.completa);
+    });
+
+    it('sin canal la llave es de la organización', async () => {
+      const b = base();
+      const r = await crearLlave(b.db, { organizationId: ORG, userId: 'u', memberId: null }, { nombre: 'Tienda propia', alcances: ['read:products'] });
+      expect(b.tablas.channel_api_keys[0].channel_id).toBeNull();
+      expect(r.llave.canal).toBeNull();
+    });
+  });
+
   it('el secreto de webhook también es criptográfico', () => {
     expect(generarSecretoWebhook(() => Buffer.alloc(24, 1))).toMatch(/^whsec_[A-Za-z0-9_-]{32}$/);
   });

@@ -269,7 +269,7 @@ export function iniciarWidgetGoChat(ventana: Window, api: string): void {
 .gc-oculto{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .gc-lanzador{position:fixed;z-index:2147483000;${lado}:calc(${p.x}px + env(safe-area-inset-${lado},0px));${vert}:calc(${p.y}px + env(safe-area-inset-${vert},0px));width:${e.tamano}px;height:${e.tamano}px;border-radius:${e.radio}px;border:${e.borde}px solid ${e.colorBorde};background:var(--c);color:${e.colorIcono};box-shadow:${sombra[e.sombra] || sombra.medium};display:flex;align-items:center;justify-content:center;padding:0;transition:transform .15s ease}
 .gc-lanzador:hover{transform:scale(1.05)}
-.gc-lanzador img{width:60%;height:60%;object-fit:contain}
+.gc-lanzador img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .gc-lanzador svg{width:45%;height:45%}
 .gc-insignia{position:absolute;top:-4px;${lado === 'right' ? 'left' : 'right'}:-4px;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#DC2626;color:#fff;font-size:12px;font-weight:700;line-height:20px;text-align:center;box-shadow:0 0 0 2px #fff}
 .gc-panel{position:fixed;z-index:2147483001;${lado}:calc(${p.x}px + env(safe-area-inset-${lado},0px));${vert}:calc(${p.y + e.tamano + 14}px + env(safe-area-inset-${vert},0px));width:380px;max-width:calc(100vw - ${p.x * 2}px);height:min(620px,calc(100vh - ${p.y + e.tamano + 40}px));min-height:320px;display:flex;flex-direction:column;background:#fff;border-radius:16px;box-shadow:0 12px 48px rgba(0,0,0,.22);overflow:hidden;animation:gc-entra .18s ease-out}

@@ -87,3 +87,16 @@ export function filasNoCargadas(
   );
   return [...locales, ...servidor].sort((a, b) => a.fila - b.fila);
 }
+
+/**
+ * Columnas del encabezado de un CSV («titulo, contenido, etiquetas»), tal como
+ * vienen en el archivo, para el resumen de la zona del archivo.
+ */
+export function columnasCsv(contenido: string): string[] {
+  const primera = contenido.split(/\r?\n/).find((l) => l.trim());
+  if (!primera) return [];
+  return primera
+    .split(',')
+    .map((c) => c.trim().replace(/^"(.*)"$/, '$1').trim())
+    .filter(Boolean);
+}

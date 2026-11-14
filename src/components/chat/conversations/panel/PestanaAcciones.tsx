@@ -28,11 +28,15 @@ export function PestanaAcciones({ c, conFicha = false }: { c: ConversacionContro
   const d = c.detalle;
   if (!d) return null;
   const cerrada = d.status === 'closed' || (d.status as string) === 'archived';
+  const movil = conFicha;
+  const tamano = movil ? 'lg' : 'md';
+  const icono = movil ? 'size-5' : 'size-4';
 
   return (
-    <div className="space-y-5 p-4">
+    <div className={movil ? 'space-y-4 p-4' : 'space-y-5 p-4'}>
       <section className="space-y-3">
-        <h3 className="text-xs font-semibold text-fg-secondary">{t('estadoYPrioridad')}</h3>
+        {/* Hoja del celular (Figma 91-chat-16 y 94-chat-recuperado-14/15): sin títulos de sección ni ayudas. */}
+        {movil ? null : <h3 className="text-xs font-semibold text-fg-secondary">{t('estadoYPrioridad')}</h3>}
         <div className="grid grid-cols-2 gap-3">
           <label className="space-y-1.5 text-sm font-medium text-fg">
             <span className="block">{t('estado')}</span>
@@ -68,13 +72,13 @@ export function PestanaAcciones({ c, conFicha = false }: { c: ConversacionContro
       </section>
 
       <section className="space-y-1.5">
-        <h3 className="text-xs font-semibold text-fg-secondary">{t('asignadoA')}</h3>
+        <h3 className={movil ? 'text-sm font-medium text-fg' : 'text-xs font-semibold text-fg-secondary'}>{t('asignadoA')}</h3>
         <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} />
-        <p className="text-xs text-fg-muted">{t('ayudaAsignar')}</p>
+        {movil ? null : <p className="text-xs text-fg-muted">{t('ayudaAsignar')}</p>}
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-xs font-semibold text-fg-secondary">{t('etiquetas')}</h3>
+        <h3 className={movil ? 'text-sm font-medium text-fg' : 'text-xs font-semibold text-fg-secondary'}>{t('etiquetas')}</h3>
         <EtiquetasConversacion
           actuales={d.tags ?? []}
           disponibles={c.etiquetas}
@@ -83,43 +87,44 @@ export function PestanaAcciones({ c, conFicha = false }: { c: ConversacionContro
         />
       </section>
 
-      <div className="space-y-2">
+      <div className={movil ? 'space-y-3 pt-1' : 'space-y-2'}>
         {cerrada ? (
-          <button type="button" onClick={() => void c.cambiarEstado('open')} className={clasesBoton({ anchoCompleto: true })}>
-            <RotateCcw aria-hidden="true" className="size-4" />
+          <button type="button" onClick={() => void c.cambiarEstado('open')} className={clasesBoton({ anchoCompleto: true, tamano })}>
+            <RotateCcw aria-hidden="true" className={icono} />
             {t('reabrir')}
           </button>
         ) : (
-          <button type="button" onClick={() => void c.cambiarEstado('closed')} className={clasesBoton({ anchoCompleto: true })}>
-            <Check aria-hidden="true" className="size-4" />
+          <button type="button" onClick={() => void c.cambiarEstado('closed')} className={clasesBoton({ anchoCompleto: true, tamano })}>
+            <Check aria-hidden="true" className={icono} />
             {t('resolver')}
           </button>
         )}
-        {d.status === 'open' ? (
+        {/* En el celular «Pendiente» se elige en el selector de Estado. */}
+        {d.status === 'open' && !movil ? (
           <button type="button" onClick={() => void c.cambiarEstado('pending')} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
-            <Clock aria-hidden="true" className="size-4" />
+            <Clock aria-hidden="true" className={icono} />
             {t('pendiente')}
           </button>
         ) : null}
         {conFicha ? (
-          <Link href={`/app/clientes/${d.customer_id}`} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
-            <User aria-hidden="true" className="size-4" />
+          <Link href={`/app/clientes/${d.customer_id}`} className={clasesBoton({ variante: 'secundario', anchoCompleto: true, tamano })}>
+            <User aria-hidden="true" className={icono} />
             {t('abrirFicha')}
           </Link>
         ) : null}
         {conFicha ? (
           c.bloqueo ? (
-            <button type="button" onClick={() => void c.desbloquearContacto()} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
-              <UserCheck aria-hidden="true" className="size-4" />
+            <button type="button" onClick={() => void c.desbloquearContacto()} className={clasesBoton({ variante: 'secundario', anchoCompleto: true, tamano })}>
+              <UserCheck aria-hidden="true" className={icono} />
               {tb('menuDesbloquear')}
             </button>
           ) : (
             <button
               type="button"
               onClick={() => setConfirmarBloqueo(true)}
-              className={clasesBoton({ variante: 'secundario', anchoCompleto: true, className: 'text-danger-text' })}
+              className={clasesBoton({ variante: 'secundario', anchoCompleto: true, tamano, className: 'text-danger-text' })}
             >
-              <UserX aria-hidden="true" className="size-4" />
+              <UserX aria-hidden="true" className={icono} />
               {tb('menuBloquear')}
             </button>
           )

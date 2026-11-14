@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { clasesBoton } from '@/components/kit';
 import { cn } from '@/utils/Utils';
+import { Pista } from './Pista';
 import {
   EMOJIS_FRECUENTES,
   aplicarNegrilla,
@@ -402,19 +403,6 @@ export function ComposerChat({
                 </div>
               </PopoverContent>
             </Popover>
-            {!compacto ? (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={negrilla}
-                disabled={!escribible}
-                aria-label={t('negrilla')}
-                title={t('negrillaAtajo')}
-                className="flex size-8 shrink-0 items-center justify-center rounded-md text-fg-secondary hover:bg-hover disabled:opacity-50"
-              >
-                <Bold aria-hidden="true" className="size-4" />
-              </button>
-            ) : null}
             {!esNota && !compacto ? (
               <button
                 type="button"
@@ -430,6 +418,21 @@ export function ComposerChat({
                 <Zap aria-hidden="true" className="size-4" />
               </button>
             ) : null}
+            {!compacto ? (
+              <Pista texto={t('negrillaAtajo')} lado="top">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={negrilla}
+                  disabled={!escribible}
+                  aria-label={t('negrilla')}
+                  aria-keyshortcuts="Control+B Meta+B"
+                  className="flex size-8 shrink-0 items-center justify-center rounded-md text-fg-secondary hover:bg-hover disabled:opacity-50"
+                >
+                  <Bold aria-hidden="true" className="size-4" />
+                </button>
+              </Pista>
+            ) : null}
             <label className="sr-only" htmlFor="composer-chat-texto">
               {esNota ? t('placeholderNota') : t('placeholder')}
             </label>
@@ -444,7 +447,7 @@ export function ComposerChat({
               placeholder={esNota ? t('placeholderNota') : compacto ? t('placeholderCorto') : t('placeholder')}
               className="max-h-40 min-h-8 flex-1 resize-none bg-transparent px-1 py-1.5 text-sm text-fg placeholder:text-fg-muted focus:outline-none"
             />
-            {!esNota && !texto.trim() ? (
+            {!esNota ? (
               <button
                 type="button"
                 onClick={() => void empezarGrabacion()}
@@ -467,7 +470,7 @@ export function ComposerChat({
               {esNota ? t('guardarNota') : t('enviar')}
             </button>
           </div>
-          {!compacto && escribible ? <p className="mt-1 px-1 text-[11px] text-fg-muted">{t('ayudaTeclas')}</p> : null}
+          {!compacto && escribible ? <p className="mt-1.5 px-1 text-xs text-fg-muted">{t('ayudaTeclas')}</p> : null}
         </div>
       )}
     </div>

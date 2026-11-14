@@ -196,10 +196,16 @@ describe('B5 · IVA no descontable determinado antes de contabilizar → al cost
     expect(B5).not.toMatch(/then\s+v_nd := 0;\s+end if;\s+v_inc := v_inc \+ v_nd;/);
   });
 
-  it('ronda 4: sin cuenta única de cabecera cuando las líneas son de activos o gastos distintos', () => {
+  // Ronda 4 pedía cuenta por línea si las líneas eran de distinta naturaleza
+  // (`count(distinct l.tipo) > 1`). La ronda 6 del Contador (2026-11-10) lo
+  // endureció y absorbe ese caso: con IVA no descontable y MÁS DE UNA LÍNEA, la
+  // cabecera nunca basta. Para una sola línea siguen las reglas 14… y 15….
+  it('rondas 4 a 6: sin cuenta única de cabecera con más de una línea, ni con una línea incompatible con la cabecera', () => {
     expect(B5).toContain('v_nd_fallo := public.fn_iva_no_descontable_cuenta_unica_fallo(new.id, v_debito);');
-    expect(B5).toMatch(/count\(distinct l\.tipo\) from l\) > 1/);
+    expect(B5).toMatch(/when \(select count\(\*\) from l\) > 1\s+then 'IVA no descontable en una compra de más de una línea/);
+    expect(B5).not.toMatch(/count\(distinct l\.tipo\) from l\) > 1/);
     expect(B5).toContain("coalesce(p_cuenta_cabecera, '') like '14%' and exists (select 1 from l where l.tipo = 'servicios')");
+    expect(B5).toContain("coalesce(p_cuenta_cabecera, '') like '15%' and exists (select 1 from l where l.tipo = 'servicios' or l.inventariable)");
   });
 });
 

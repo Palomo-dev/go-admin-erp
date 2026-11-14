@@ -6,11 +6,11 @@
 import type { ItemCatalogo } from './catalogoConexiones';
 import type { ConexionResumen, EventoCompleto, EventoResumen, ResultadoGuardarLlaves } from './conexiones.server';
 import type { CuentaVerificada, Prueba } from './probadoresLlaves.server';
-import type { CambiosLlave, CambiosWebhook, EntradaWebhook, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen } from './desarrolladores.server';
+import type { CambiosLlave, CambiosWebhook, CanalLlave, EntradaWebhook, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen } from './desarrolladores.server';
 import type { Ambiente, ErrorFormato, ProveedorLlaves } from './definicionesLlaves';
 
 export type { CuentaVerificada };
-export type { ItemCatalogo, ConexionResumen, EventoResumen, EventoCompleto, Prueba, LlaveApiResumen, ResultadoEnvio, WebhookSalienteResumen, CambiosLlave, CambiosWebhook, EntradaWebhook };
+export type { ItemCatalogo, ConexionResumen, EventoResumen, EventoCompleto, Prueba, LlaveApiResumen, CanalLlave, ResultadoEnvio, WebhookSalienteResumen, CambiosLlave, CambiosWebhook, EntradaWebhook };
 
 export interface DetalleConexion {
   conexion: {
@@ -133,8 +133,8 @@ export const apiConexiones = {
   eliminar: (id: string) => pedir<{ eliminada: true }>(`/api/integrations/conexiones/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   importar: (b: { conector: string; filas: { nombre: string; sucursalId?: number | null; pais?: string | null; ambiente?: string | null }[] }) =>
     pedir<{ creadas: number; fallidas: number; errores: string[] }>('/api/integrations/conexiones/importar', post(b)),
-  llavesApi: () => pedir<{ llaves: LlaveApiResumen[] }>('/api/integrations/desarrolladores/llaves'),
-  crearLlaveApi: (b: { nombre: string; alcances: string[]; expira?: string | null }) =>
+  llavesApi: () => pedir<{ llaves: LlaveApiResumen[]; canales?: CanalLlave[] }>('/api/integrations/desarrolladores/llaves'),
+  crearLlaveApi: (b: { nombre: string; alcances: string[]; expira?: string | null; canal?: string | null }) =>
     pedir<{ llave: LlaveApiResumen; completa: string }>('/api/integrations/desarrolladores/llaves', post(b)),
   editarLlaveApi: (id: string, b: CambiosLlave) =>
     pedir<{ llave: LlaveApiResumen }>(`/api/integrations/desarrolladores/llaves/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(b) }),

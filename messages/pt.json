@@ -38440,8 +38440,8 @@
       },
       "crmGeneral": {
         "titulo": "Geral",
-        "descripcion": "Canais, etiquetas, chaves de API, verticais e funil",
-        "palabras": "canais, etiquetas, chaves api, verticais, icp, pontuação, motivos de perda, comissões, indicações, estrutura comercial"
+        "descripcion": "Verticais, scoring, funil e comissões; links para canais, etiquetas e chaves",
+        "palabras": "verticais, icp, pontuação, scoring, motivos de perda, etapas, comissões, indicações, estrutura comercial"
       },
       "crmAgenteVoz": {
         "titulo": "Agente de voz",
@@ -38499,9 +38499,9 @@
         "palabras": "avisos, pedidos online, notificar o cliente, whatsapp do pedido"
       },
       "chatGeneral": {
-        "titulo": "Chat",
-        "descripcion": "Etiquetas, respostas rápidas e chaves de API",
-        "palabras": "chat, etiquetas, respostas rápidas, chaves api, caixa de entrada"
+        "titulo": "Etiquetas e respostas rápidas",
+        "descripcion": "Etiquetas das conversas e respostas rápidas da equipe",
+        "palabras": "chat, etiquetas, respostas rápidas, atalhos, caixa de entrada"
       },
       "chatIa": {
         "titulo": "IA do chat",
@@ -38562,6 +38562,11 @@
         "titulo": "Plano e cobrança",
         "descripcion": "Seu plano, o que inclui e como é cobrado",
         "palabras": "plano, assinatura, cobrança, pagamento, módulos, upgrade"
+      },
+      "integracionesDesarrolladores": {
+        "titulo": "Desenvolvedores",
+        "descripcion": "Chaves de API e webhooks de saída da organização",
+        "palabras": "desenvolvedores, chaves de api, chaves, tokens, webhooks, webhooks de saída, api"
       }
     },
     "ajustes": {
@@ -47488,7 +47493,14 @@
         "listo": "Pronto",
         "copiarLlave": "Copiar chave",
         "creadaPor": "Criada por {nombre} · {fecha}",
-        "creadaPorEtiqueta": "Criada por"
+        "creadaPorEtiqueta": "Criada por",
+        "canal": "Canal do Chat",
+        "canalAyuda": "Opcional. Escolha um canal se a chave for para enviar e ler mensagens desse chat; ela recebe o selo “Chat”.",
+        "sinCanal": "Nenhum: chave da organização",
+        "insigniaChat": "Chat",
+        "creadaEnChat": "Criada em {fecha} no Chat",
+        "canalDe": "Canal: {canal}",
+        "masPermisos": "+{n}"
       },
       "webhooks": {
         "titulo": "Webhooks de saída",
@@ -47556,9 +47568,12 @@
           "payment_received": "Pagamento recebido",
           "payment_refunded": "Reembolso"
         },
-        "copiarSecreto": "Copiar segredo"
+        "copiarSecreto": "Copiar segredo",
+        "subtitulo": "O GO Admin avisa seus sistemas quando algo acontece. Cada aviso vai assinado."
       },
-      "buscar": "Buscar chave ou webhook"
+      "buscar": "Buscar chave ou webhook",
+      "avisoDialogoTitulo": "Um só lugar para todas as chaves",
+      "avisoDialogoTexto": "Aqui são criadas, editadas e revogadas as chaves de API da organização, inclusive as que o Chat usa. Chat e CRM só mostram um link para esta aba."
     },
     "asistente": {
       "comun": {
@@ -50276,7 +50291,7 @@
         }
       },
       "trabajos": {
-        "subtitulo": "Cada vez que a IA responde, resume ou classifica, fica um registro aqui.",
+        "subtitulo": "Cada vez que a IA responde, resume ou indexa, fica um registro aqui.",
         "sinCliente": "Visitante não identificado",
         "vacioTitulo": "Ainda não há tarefas de IA",
         "vacioDescripcion": "Aparecem quando a IA responde, resume ou classifica conversas.",
@@ -50286,7 +50301,8 @@
           "enCola": "Na fila",
           "procesando": "Processando",
           "completados": "Concluídas",
-          "fallidos": "Com falha"
+          "fallidos": "Com falha",
+          "hoy": "Hoje"
         },
         "filtros": {
           "estado": "Status",
@@ -50357,7 +50373,8 @@
           "tokensEntrada": "Tokens de entrada",
           "tokensSalida": "Tokens de saída",
           "costo": "Custo do provedor",
-          "idsFragmentos": "Fragmentos usados (IDs)"
+          "idsFragmentos": "Fragmentos usados (IDs)",
+          "hoyA": "hoje {hora}"
         },
         "toasts": {
           "sinMiembro": "Não encontramos sua participação nesta organização",
@@ -50365,7 +50382,10 @@
           "cancelado": "Tarefa cancelada",
           "error": "Não foi possível concluir a ação"
         },
-        "actualizar": "Atualizar"
+        "actualizar": "Atualizar",
+        "acciones": {
+          "verDetalle": "Ver detalhes"
+        }
       }
     },
     "canales": {
@@ -50698,7 +50718,8 @@
         },
         "chipTipo": "Tipo: {valor}",
         "chipEstado": "Status: {valor}",
-        "verN": "Ver {n} canais"
+        "verN": "Ver {n} canais",
+        "nota": "Aplicados na hora · cada filtro ativo vira um chip abaixo da busca"
       },
       "webhookExtra": {
         "copiarToken": "Copiar token",
@@ -50785,14 +50806,17 @@
         "visible": "Visível no site",
         "oculto": "Oculto no site",
         "mostrarEnSitio": "Mostrar no site",
-        "activaPrimero": "O canal está inativo: ative-o em Canais para mostrá-lo no site.",
+        "activaPrimero": "O canal está inativo: ative-o no menu ⋯ para poder mostrá-lo no site.",
         "guardado": "Salvo",
         "kpis": {
           "etiqueta": "Números do chat do site",
           "sesiones": "Sessões",
           "enLinea": "On-line agora",
           "visitantes": "Visitantes únicos",
-          "celular": "Pelo celular"
+          "celular": "Pelo celular",
+          "sesionesHoy": "Sessões hoje",
+          "conDatos": "Deixaram seus dados",
+          "porcentaje": "{pct} %"
         },
         "instalacion": {
           "titulo": "Instalação",
@@ -50873,6 +50897,68 @@
           "visible": "O chat já aparece no seu site",
           "oculto": "O chat não aparece mais no seu site",
           "errorSitio": "Não foi possível alterar a visibilidade no site"
+        },
+        "subida": {
+          "arrastra": "Arraste uma imagem aqui ou envie-a",
+          "toca": "Toque para escolher uma imagem",
+          "suelta": "Solte a imagem para enviá-la",
+          "reglas": "PNG, JPG, SVG ou WebP · até {mb} MB · quadrada, mínimo 128 px",
+          "subir": "Enviar imagem",
+          "pegaEnlace": "ou cole um link",
+          "subeArchivo": "ou envie um arquivo",
+          "subiendo": "Enviando… {pct} % · {subido} de {total}",
+          "subiendoEtiqueta": "Enviando {nombre}",
+          "cancelar": "Cancelar",
+          "errorTitulo": "Não foi possível enviar a imagem",
+          "errorFormato": "«{nombre}»: formato inválido. Use PNG, JPG, SVG ou WebP de até {mb} MB.",
+          "errorTamano": "«{nombre}» tem {pesa} MB. O máximo é {mb} MB: reduza-a ou escolha outra.",
+          "errorRed": "Não foi possível enviar «{nombre}». Verifique a conexão e tente de novo.",
+          "elegirOtra": "Escolher outra imagem",
+          "cambiar": "Trocar",
+          "quitar": "Remover",
+          "dimensiones": "{ancho} × {alto} px",
+          "recorteCirculo": "recortada em círculo",
+          "enlaceAyudaLogo": "Link https de uma imagem. Se o site que a hospeda a apagar, o chat volta ao logo da organização.",
+          "enlaceAyudaIcono": "Link https de uma imagem quadrada (PNG ou SVG).",
+          "enlaceInvalido": "Use um link que comece com https://",
+          "logoAyuda": "Aparece no cabeçalho do chat. Sem logo, o chat usa o da sua organização.",
+          "imagenBoton": "Imagem do botão",
+          "imagenBotonAyuda": "Recortada em círculo para preencher o botão. PNG, JPG, SVG ou WebP até {mb} MB."
+        },
+        "color": {
+          "abrir": "Escolher {etiqueta}",
+          "cerrar": "Fechar",
+          "listo": "Pronto",
+          "saturacionBrillo": "Saturação e brilho",
+          "tono": "Matiz",
+          "hex": "Cor em hexadecimal",
+          "sugeridos": "Sugeridas",
+          "usar": "Usar a cor {color}",
+          "sugerido": "Sugerida",
+          "personalizado": "Personalizada",
+          "blanco": "branco",
+          "contrasteAA": "{origen} · contraste {ratio}:1 com o ícone {icono} · AA",
+          "contrasteBajo": "{origen} · contraste {ratio}:1 com o ícone {icono} · abaixo de AA: o ícone pode ficar difícil de ver"
+        },
+        "botonVista": {
+          "titulo": "Prévia do botão",
+          "tamanoReal": "É assim que aparece no seu site, em tamanho real.",
+          "arriba": "Fica no alto enquanto você rola",
+          "resumen": {
+            "tamano": "{px} px",
+            "imagenPropia": "imagem própria",
+            "relleno": "preenchido",
+            "redondeo": "arredondamento {px}",
+            "sinBorde": "sem borda",
+            "borde": "borda {px} px {color}",
+            "blanco": "branca",
+            "sinSombra": "sem sombra",
+            "sombra": {
+              "light": "sombra suave",
+              "medium": "sombra média",
+              "strong": "sombra forte"
+            }
+          }
         }
       }
     },
@@ -51291,9 +51377,11 @@
       "datos-offline": "Dados offline"
     },
     "pestanas": {
-      "chatGeneral": "Geral",
+      "chatGeneral": "Etiquetas e respostas rápidas",
       "chatIa": "IA",
-      "posGeneral": "Geral"
+      "posGeneral": "Geral",
+      "integracionesGeneral": "Geral",
+      "integracionesDesarrolladores": "Desenvolvedores"
     },
     "buscar": {
       "etiqueta": "Buscar uma configuração",
@@ -51388,48 +51476,53 @@
       "etiquetas": {
         "titulo": "Etiquetas",
         "vacioTitulo": "Nenhuma etiqueta configurada",
-        "vacioDescripcion": "Crie etiquetas para organizar e classificar suas conversas"
+        "vacioDescripcion": "Crie etiquetas para organizar e classificar suas conversas",
+        "enlace": "As etiquetas das conversas são gerenciadas em Chat › Etiquetas e respostas rápidas.",
+        "irEtiquetas": "Ir para Etiquetas"
       },
       "llaves": {
         "titulo": "Chaves de API",
         "vacioTitulo": "Nenhuma chave de API configurada",
-        "vacioDescripcion": "Crie chaves de API para integrar o CRM a serviços externos"
+        "vacioDescripcion": "Crie chaves de API para integrar o CRM a serviços externos",
+        "enlace": "As chaves de API são criadas e revogadas em um só lugar: Integrações › Desenvolvedores.",
+        "irDesarrolladores": "Ir para Desenvolvedores"
       },
       "tarjetas": {
-        "titulo": "Configuração do CRM",
-        "configurar": "Configurar →",
+        "titulo": "Configurações do CRM",
+        "configurar": "Configurar",
         "verticales": {
           "titulo": "Verticais",
-          "descripcion": "Classifique oportunidades por linha de negócio (hotelaria, varejo, construção etc.)"
+          "descripcion": "Classifica oportunidades por linha de negócio (hotelaria, varejo, construção etc.)."
         },
         "razonesPerdida": {
           "titulo": "Motivos de perda",
-          "descripcion": "Defina motivos globais e por organização para registrar oportunidades perdidas"
+          "descripcion": "Motivos globais e da organização para registrar oportunidades perdidas."
         },
         "scoring": {
           "titulo": "Scoring (GOC)",
-          "descripcion": "Configure indicadores, pesos e limites Cold / Warm / Hot para o scoring de oportunidades"
+          "descripcion": "Indicadores, pesos e limites Cold / Warm / Hot para qualificar oportunidades."
         },
         "etapas": {
           "titulo": "Etapas e critérios",
-          "descripcion": "Defina critérios de saída (exit gates) por etapa para avançar oportunidades no pipeline"
+          "descripcion": "Critérios de saída por etapa para avançar oportunidades no funil."
         },
         "comisiones": {
           "titulo": "Vendedores e comissões",
-          "descripcion": "Configure a taxa geral de comissão, exceções por vendedor com vigências e um simulador"
+          "descripcion": "Taxa geral de comissão, exceções por vendedor com vigências e simulador."
         },
         "referidos": {
           "titulo": "Programa de indicações",
-          "descripcion": "Configure incentivos, elegibilidade e recompensas para indicadores e parceiros"
+          "descripcion": "Incentivos, elegibilidade e recompensas para indicações e parceiros."
         },
         "estructura": {
           "titulo": "Estrutura comercial",
-          "descripcion": "Defina papéis comerciais, equipes com membros e territórios com critérios"
+          "descripcion": "Funções comerciais, equipes com seus membros e territórios com critérios."
         },
         "icp": {
-          "titulo": "ICP (Ideal Customer Profile)",
-          "descripcion": "Perfis A/B/C com critérios, pesos, SLA e avaliador de clientes"
-        }
+          "titulo": "ICP (perfil de cliente ideal)",
+          "descripcion": "Perfis A/B/C com critérios, pesos, SLA e avaliador de clientes."
+        },
+        "descripcion": "Oportunidades, comissões e estrutura comercial."
       },
       "modales": {
         "verticales": {
@@ -51656,6 +51749,19 @@
         "rotarLlave": "Rotacionar chave",
         "eliminarRespuestaTitulo": "Excluir resposta rápida?",
         "eliminarRespuestaDescripcion": "Esta ação excluirá a resposta \"{titulo}\" de forma permanente. Esta ação não pode ser desfeita."
+      },
+      "descripciones": {
+        "etiquetas": "Organizam as conversas na Caixa de entrada. São as mesmas para todo o Chat; o CRM só traz um link para cá.",
+        "respuestasRapidas": "Textos que a equipe insere com “/” ao escrever."
+      },
+      "acciones": {
+        "nuevaEtiqueta": "Nova etiqueta",
+        "nuevaRespuesta": "Nova resposta",
+        "editar": "Editar"
+      },
+      "llaves": {
+        "enlace": "As chaves para enviar e ler mensagens do chat a partir dos seus sistemas são criadas e revogadas em Integrações › Desenvolvedores, junto com as demais chaves da organização.",
+        "irDesarrolladores": "Ir para Desenvolvedores"
       }
     },
     "scoringConfigurator": {
@@ -52900,6 +53006,32 @@
       "errorEstado": "Erro {status}",
       "errorDesconocido": "Erro desconhecido",
       "sinDetalle": "Sem detalhes"
+    },
+    "chatIa": {
+      "comportamiento": {
+        "titulo": "Comportamento",
+        "auto": "Responder automaticamente",
+        "autoAyuda": "Nos canais com IA automática, a IA responde sem esperar por uma pessoa.",
+        "espera": "Esperar antes de responder",
+        "esperaAyuda": "Dá tempo para o cliente terminar de escrever.",
+        "segundos": "{n, plural, =0 {Sem espera} one {# segundo} other {# segundos}}",
+        "umbral": "Passar para uma pessoa se a IA tiver dúvida",
+        "umbralAyuda": "Abaixo desta confiança, a conversa fica para a sua equipe."
+      },
+      "tono": {
+        "titulo": "Tom e linguagem",
+        "descripcion": "Como a IA fala com seus clientes. Agora muda as respostas em todos os canais.",
+        "tono": "Tom",
+        "tonoAyuda": "A IA responde com este tom: {opciones}.",
+        "idioma": "Idioma",
+        "idiomaAyuda": "A IA responde aos seus clientes neste idioma: {opciones}.",
+        "aviso": "Antes a IA ignorava o tom e o idioma. Teste-os em Chat › IA › Laboratório antes de salvar: cada teste usa créditos, igual a uma resposta real.",
+        "abrirLaboratorio": "Abrir Laboratório"
+      },
+      "reglas": {
+        "titulo": "Regras e mensagem de reserva",
+        "descripcion": "O que a IA pode dizer e o que responde quando não sabe."
+      }
     }
   },
   "chatHilo": {
@@ -53502,7 +53634,10 @@
       "mostrando": "Mostrando {visibles} de {total} fragmentos",
       "modelo": "Modelo do embedding",
       "hash": "Hash do conteúdo",
-      "creado": "Criado"
+      "creado": "Criado",
+      "usadosSemana": "Usados esta semana",
+      "usadosSemanaDetalle": "em respostas da IA",
+      "usado7dias": "Usado em respostas (7 dias)"
     },
     "importar": {
       "etiquetas": "Etiquetas",
@@ -53510,7 +53645,10 @@
       "erroresTitulo": "Linhas que não foram carregadas:",
       "fila": "Linha {n}: {motivo}",
       "errorGeneral": "Não foi possível salvar no banco de dados. Tente novamente.",
-      "nuevaImportacion": "Nova importação"
+      "nuevaImportacion": "Nova importação",
+      "archivoResumen": "{n, plural, one {# linha} other {# linhas}} · colunas: {columnas}",
+      "archivoFilas": "{n, plural, one {# linha} other {# linhas}}",
+      "cambiar": "Trocar"
     },
     "widget": {
       "filtroCanal": "Canal",
@@ -53529,7 +53667,18 @@
       "pagina": "Página atual",
       "origen": "Veio de",
       "navegador": "Navegador (user agent)",
-      "abrirConversacion": "Abrir conversa"
+      "abrirConversacion": "Abrir conversa",
+      "subtitulo": "Quem está usando o chat do seu site agora e o que está vendo.",
+      "kpiHoy": "Sessões hoje",
+      "identificadosDetalle": "deixaram seus dados de contato",
+      "buscar": "Buscar por página, cidade ou nome",
+      "desconocido": "Desconhecido",
+      "sinAsignar": "sem responsável",
+      "dispositivos": {
+        "desktop": "Computador",
+        "mobile": "Celular",
+        "tablet": "Tablet"
+      }
     },
     "auditoria": {
       "actualizar": "Atualizar",
@@ -53543,7 +53692,27 @@
       "entidad": "Tipo de registro afetado",
       "idEntidad": "ID do registro afetado",
       "navegador": "Navegador (user agent)",
-      "metadata": "Dados adicionais"
+      "metadata": "Dados adicionais",
+      "acciones": {
+        "lab_test": "Testou a IA no Laboratório",
+        "lab_feedback": "Avaliou uma resposta do Laboratório"
+      }
+    },
+    "laboratorio": {
+      "tono": "Tom",
+      "idioma": "Idioma",
+      "tonoIdiomaAyuda": "Tom e idioma começam com os da sua configuração; a IA que atende seus clientes também os usa.",
+      "reglasRestaurar": "Voltar às configuradas",
+      "buena": "Boa",
+      "mejorable": "Pode melhorar",
+      "votoGuardado": "Obrigado: sua avaliação ficou na auditoria do chat.",
+      "votoError": "Não foi possível salvar sua avaliação",
+      "secciones": {
+        "canalModelo": "Canal e modelo",
+        "respuesta": "Resposta",
+        "tonoIdioma": "Tom e idioma",
+        "reglas": "Regras"
+      }
     }
   }
 }

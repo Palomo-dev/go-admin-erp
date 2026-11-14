@@ -122,7 +122,8 @@ test('cerrado no pinta nada; `abrirConfiguracion()` lo abre sobre la pantalla ac
   expect(within(migas).getByText('Clientes y comunicación')).toBeTruthy();
   const pestanas = within(dialogo).getByRole('radiogroup', { name: 'Partes de Chat' });
   expect(within(pestanas).getByRole('radio', { name: 'IA', checked: true })).toBeTruthy();
-  fireEvent.click(within(pestanas).getByRole('radio', { name: 'General' }));
+  // `chat.general` se llama «Etiquetas y respuestas rápidas» (Figma 12.8).
+  fireEvent.click(within(pestanas).getByRole('radio', { name: 'Etiquetas y respuestas rápidas' }));
   expect(params().get('config')).toBe('chat.general');
 
   fireEvent.keyDown(dialogo, { key: 'Escape' });

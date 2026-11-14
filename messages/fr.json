@@ -51437,6 +51437,20 @@
         "titulo": "Impossible de charger le forfait",
         "descripcion": "Réessayez dans quelques secondes."
       }
+    },
+    "enlacesPestana": {
+      "integraciones_catalogo": {
+        "etiqueta": "Catalogue",
+        "aria": "Ouvrir le Catalogue dans Intégrations"
+      },
+      "integraciones_mis": {
+        "etiqueta": "Mes connexions",
+        "aria": "Ouvrir Mes connexions dans Intégrations"
+      },
+      "integraciones_actividad": {
+        "etiqueta": "Activité",
+        "aria": "Ouvrir Activité dans Intégrations"
+      }
     }
   },
   "configuracionTextos": {
@@ -53627,7 +53641,8 @@
       "creado": "Créé",
       "usadosSemana": "Utilisés cette semaine",
       "usadosSemanaDetalle": "dans les réponses de l’IA",
-      "usado7dias": "Utilisé dans les réponses (7 jours)"
+      "usado7dias": "Utilisé dans les réponses (7 jours)",
+      "versionEditadoPor": "v{version} · modifié par {nombre}"
     },
     "importar": {
       "etiquetas": "Étiquettes",
@@ -53668,7 +53683,10 @@
         "desktop": "Ordinateur",
         "mobile": "Mobile",
         "tablet": "Tablette"
-      }
+      },
+      "kpiBloqueados": "Bloqués",
+      "bloqueado": "Bloqué",
+      "filtroBloqueados": "Bloqués"
     },
     "auditoria": {
       "actualizar": "Actualiser",

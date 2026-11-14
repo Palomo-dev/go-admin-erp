@@ -18,6 +18,18 @@ import { estadoConexion } from './presentacion';
 export const PESTANAS = ['catalogo', 'mis', 'actividad', 'desarrolladores'] as const;
 export type Pestana = (typeof PESTANAS)[number];
 
+/** Página de Conexiones (Catálogo · Mis conexiones · Actividad · Desarrolladores). */
+export const RUTA_CONEXIONES = '/app/integraciones/conexiones';
+
+/**
+ * Enlace a una pestaña de Conexiones, con la misma regla que `cambiarTab` de `ConexionesPagina`:
+ * Catálogo es la pestaña por defecto y va sin `?tab=`. Lo usa el diálogo de Configuración ›
+ * Integraciones para enlazar Catálogo, Mis conexiones y Actividad.
+ */
+export function rutaPestanaConexiones(p: Pestana): string {
+  return p === 'catalogo' ? RUTA_CONEXIONES : `${RUTA_CONEXIONES}?tab=${p}`;
+}
+
 /** Claves de filtro admitidas en la URL (unión de todas las pestañas). */
 export const FILTROS_URL = ['grupo', 'estado', 'atencion', 'conexion', 'errores', 'periodo', 'sentido', 'webhooks', 'pruebas'] as const;
 

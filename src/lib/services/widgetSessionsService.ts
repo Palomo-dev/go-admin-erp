@@ -1,5 +1,9 @@
 import { supabase } from '@/lib/supabase/config';
 import { correoVisible } from '@/lib/services/chat/fichaClienteChat';
+import { nombreCorto } from '@/lib/services/chat/nombreCortoPersona';
+import { bloqueosVigentes, estaBloqueado, leerBloqueosVigentes } from '@/lib/services/chat/bloqueoContacto';
+
+export { nombreCorto };
 
 // Tiempo máximo en minutos para considerar una sesión como "online"
 const ONLINE_THRESHOLD_MINUTES = 3;
@@ -26,6 +30,8 @@ export interface WidgetSession {
   device_type: string | null;
   /** En línea: latido del widget en los últimos minutos (`last_seen_at`). */
   is_active: boolean;
+  /** Su cliente o su conversación tienen un bloqueo vigente (`chat_contactos_bloqueados`). */
+  blocked: boolean;
   last_seen_at: string;
   expires_at: string;
   created_at: string;
@@ -60,18 +66,12 @@ export interface SessionStats {
   withCustomer: number;
   /** De las de hoy, las anónimas. */
   anonymous: number;
+  /** De las de hoy, las bloqueadas (misma regla que `blocked`). */
+  blocked: number;
 }
 
 export interface SessionFilters {
   channelId?: string;
-}
-
-/** «Laura Restrepo» → «Laura R.». */
-export function nombreCorto(nombre: string | null | undefined, apellido: string | null | undefined): string | null {
-  const n = (nombre ?? '').trim();
-  const a = (apellido ?? '').trim();
-  if (!n && !a) return null;
-  return a ? `${n} ${a.charAt(0).toUpperCase()}.`.trim() : n;
 }
 
 type Perfil = { first_name: string | null; last_name: string | null };
@@ -197,6 +197,8 @@ class WidgetSessionsService {
       }
     }
 
+    const bloqueos = bloqueosVigentes(await leerBloqueosVigentes(supabase, this.organizationId));
+
     const sesiones: WidgetSession[] = filas.map((f) => {
       const conv = conversaciones.get(f.anon_id) ?? null;
       const cliente = Array.isArray(f.customer) ? f.customer[0] : f.customer;
@@ -213,6 +215,7 @@ class WidgetSessionsService {
         location_data: f.location_data,
         device_type: f.device_type,
         is_active: this.isOnline(f.last_seen_at),
+        blocked: estaBloqueado(bloqueos, f.customer_id, conv?.id),
         last_seen_at: f.last_seen_at,
         expires_at: f.expires_at,
         created_at: f.created_at,
@@ -260,16 +263,51 @@ class WidgetSessionsService {
     await this.setOrgContext();
     const base = () => supabase.from('widget_sessions').select('id', { count: 'exact', head: true }).eq('organization_id', this.organizationId);
     const enLineaDesde = new Date(Date.now() - ONLINE_THRESHOLD_MINUTES * 60 * 1000).toISOString();
-    const [hoy, conCliente, enLinea] = await Promise.all([
+    const [hoy, conCliente, enLinea, bloqueadas] = await Promise.all([
       base().gte('created_at', inicioHoy),
       base().gte('created_at', inicioHoy).not('customer_id', 'is', null),
       base().gte('last_seen_at', enLineaDesde),
+      this.contarBloqueadasDesde(inicioHoy),
     ]);
     const error = hoy.error ?? conCliente.error ?? enLinea.error;
     if (error) throw error;
     const today = hoy.count ?? 0;
     const withCustomer = conCliente.count ?? 0;
-    return { today, active: enLinea.count ?? 0, withCustomer, anonymous: Math.max(0, today - withCustomer) };
+    return { today, active: enLinea.count ?? 0, withCustomer, anonymous: Math.max(0, today - withCustomer), blocked: bloqueadas };
+  }
+
+  /**
+   * Visitas desde `desde` que están bloqueadas, con la regla de `estaBloqueado`:
+   * su cliente tiene un bloqueo vigente, o su conversación (la de
+   * `metadata.sessionId` = `anon_id`) lo tiene. Filtros por columna con listas
+   * cortas (los bloqueos vigentes de una organización son pocos).
+   */
+  private async contarBloqueadasDesde(desde: string): Promise<number> {
+    const b = bloqueosVigentes(await leerBloqueosVigentes(supabase, this.organizationId));
+    const clientes = Array.from(b.clientes);
+    let anonIds: string[] = [];
+    if (b.conversaciones.size > 0) {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('sesion:metadata->>sessionId')
+        .eq('organization_id', this.organizationId)
+        .in('id', Array.from(b.conversaciones));
+      if (error) throw error;
+      anonIds = ((data ?? []) as unknown as { sesion: string | null }[]).map((c) => c.sesion).filter((x): x is string => !!x);
+    }
+    if (clientes.length === 0 && anonIds.length === 0) return 0;
+    const condiciones = [
+      clientes.length > 0 ? `customer_id.in.(${clientes.join(',')})` : null,
+      anonIds.length > 0 ? `anon_id.in.(${anonIds.map((a) => `"${a}"`).join(',')})` : null,
+    ].filter(Boolean).join(',');
+    const { count, error } = await supabase
+      .from('widget_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', this.organizationId)
+      .gte('created_at', desde)
+      .or(condiciones);
+    if (error) throw error;
+    return count ?? 0;
   }
 
   async blockSession(id: string, reason?: string): Promise<void> {

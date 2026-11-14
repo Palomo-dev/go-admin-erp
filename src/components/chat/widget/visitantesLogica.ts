@@ -4,13 +4,18 @@
  */
 import type { WidgetSession } from '@/lib/services/widgetSessionsService';
 
-export type FiltroEstadoVisitante = 'todos' | 'enLinea' | 'inactivo';
+export type FiltroEstadoVisitante = 'todos' | 'enLinea' | 'inactivo' | 'bloqueado';
 export type FiltroCliente = 'todos' | 'identificados' | 'anonimos';
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 type SesionMin = Pick<WidgetSession, 'is_active' | 'customer_id' | 'customer' | 'channel'> &
-  Partial<Pick<WidgetSession, 'channel_id' | 'current_page' | 'location_data' | 'referrer'>>;
+  Partial<Pick<WidgetSession, 'channel_id' | 'current_page' | 'location_data' | 'referrer' | 'blocked'>>;
+
+/** Estado que se muestra: «Bloqueado» manda sobre «En línea» e «Inactivo». */
+export function estadoVisitante(s: Pick<SesionMin, 'is_active' | 'blocked'>): 'bloqueado' | 'enLinea' | 'inactivo' {
+  return s.blocked ? 'bloqueado' : s.is_active ? 'enLinea' : 'inactivo';
+}
 
 /** «https://tienda.co/calzado/urban-run?x=1» → «/calzado/urban-run». Sin URL válida, el texto tal cual. */
 export function rutaDePagina(url: string | null | undefined): string | null {
@@ -58,8 +63,7 @@ export function filtrarVisitantes<T extends SesionMin>(
 ): T[] {
   const q = sinTildes(f.busqueda.trim());
   return sesiones.filter((s) => {
-    if (f.estado === 'enLinea' && !s.is_active) return false;
-    if (f.estado === 'inactivo' && s.is_active) return false;
+    if (f.estado !== 'todos' && estadoVisitante(s) !== f.estado) return false;
     if (f.cliente === 'identificados' && !s.customer_id) return false;
     if (f.cliente === 'anonimos' && s.customer_id) return false;
     if (f.canal && (s.channel_id ?? s.channel?.id) !== f.canal) return false;

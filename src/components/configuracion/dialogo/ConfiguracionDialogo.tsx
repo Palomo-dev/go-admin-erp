@@ -21,7 +21,7 @@
  */
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { ArrowLeft, Loader2, Search, Settings, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Loader2, Search, Settings, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Breadcrumbs, EmptyState, Kbd, SegmentedControl, useEsEscritorio } from '@/components/kit';
 import { clasesBoton } from '@/components/kit/botonClases';
@@ -29,6 +29,7 @@ import { esCapaFlotante } from '@/components/kit/capaFlotante';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/Utils';
 import { buscarAjustes, construirIndice, type ResultadoBusqueda } from '../config/buscadorConfiguracion';
+import { enlacesDeEntrada } from '../config/enlacesPestana';
 import type { DestinoDialogo } from '../config/dialogoUrl';
 import { construirMenu, entradaConSeccion, entradaDeSeccion, type EntradaMenu } from '../config/menuConfiguracion';
 import { useSeccionesPermitidas } from '../hooks/useSeccionesPermitidas';
@@ -219,6 +220,7 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
   );
 
   const tituloEntrada = entrada ? etiquetaEntrada(entrada.id) : '';
+  const enlacesEntrada = entrada ? enlacesDeEntrada(entrada.id) : [];
 
   let cuerpo: React.ReactNode;
   if (permitidas.cargando) {
@@ -242,16 +244,49 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
           {grupo && <Breadcrumbs migas={[{ etiqueta: t(`grupos.${grupo}`) }, { etiqueta: tituloEntrada }]} />}
           <h2 className="text-xl font-semibold leading-7 text-fg">{tituloEntrada}</h2>
         </div>
-        {entrada.secciones.length > 1 && (
+        {enlacesEntrada.length > 0 ? (
+          // Pestañas-enlace (Integraciones › Catálogo, Mis conexiones, Actividad): se ven como
+          // pestañas pero salen del diálogo; las secciones reales siguen en su grupo de radios.
           <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-            <SegmentedControl
-              etiqueta={t('pestanasAria', { entrada: tituloEntrada })}
-              opciones={entrada.secciones.map((s) => ({ valor: s.id, etiqueta: etiquetaPestana(s.clave) }))}
-              valor={actual.seccion.id}
-              onValorChange={(id) => onNavegar({ seccionId: id })}
-              anchoCompleto={!esEscritorio && entrada.secciones.length <= 3}
-            />
+            <div className="inline-flex items-center gap-1 rounded-lg bg-subtle p-1">
+              {enlacesEntrada.map((e) => (
+                <a
+                  key={e.clave}
+                  href={e.href}
+                  aria-label={t(`enlacesPestana.${e.clave}.aria`)}
+                  title={t(`enlacesPestana.${e.clave}.aria`)}
+                  onClick={(ev) => {
+                    if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey || ev.button !== 0) return;
+                    ev.preventDefault();
+                    onAbrirEnlace(e.href);
+                  }}
+                  className="inline-flex h-8 items-center gap-1 whitespace-nowrap rounded-md px-3 text-sm font-medium text-fg-secondary transition-colors hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  {t(`enlacesPestana.${e.clave}.etiqueta`)}
+                  <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0 text-fg-muted" />
+                </a>
+              ))}
+              <SegmentedControl
+                etiqueta={t('pestanasAria', { entrada: tituloEntrada })}
+                opciones={entrada.secciones.map((s) => ({ valor: s.id, etiqueta: etiquetaPestana(s.clave) }))}
+                valor={actual.seccion.id}
+                onValorChange={(id) => onNavegar({ seccionId: id })}
+                className="bg-transparent p-0"
+              />
+            </div>
           </div>
+        ) : (
+          entrada.secciones.length > 1 && (
+            <div className="-mx-4 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+              <SegmentedControl
+                etiqueta={t('pestanasAria', { entrada: tituloEntrada })}
+                opciones={entrada.secciones.map((s) => ({ valor: s.id, etiqueta: etiquetaPestana(s.clave) }))}
+                valor={actual.seccion.id}
+                onValorChange={(id) => onNavegar({ seccionId: id })}
+                anchoCompleto={!esEscritorio && entrada.secciones.length <= 3}
+              />
+            </div>
+          )
         )}
         <div className="sticky top-0 z-10 empty:hidden">
           <AvisoMovido origen={destino.movido ?? null} onVisto={onMovidoVisto} />

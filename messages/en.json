@@ -51437,6 +51437,20 @@
         "titulo": "The plan couldn’t be loaded",
         "descripcion": "Try again in a few seconds."
       }
+    },
+    "enlacesPestana": {
+      "integraciones_catalogo": {
+        "etiqueta": "Catalog",
+        "aria": "Open Catalog in Integrations"
+      },
+      "integraciones_mis": {
+        "etiqueta": "My connections",
+        "aria": "Open My connections in Integrations"
+      },
+      "integraciones_actividad": {
+        "etiqueta": "Activity",
+        "aria": "Open Activity in Integrations"
+      }
     }
   },
   "configuracionTextos": {
@@ -53627,7 +53641,8 @@
       "creado": "Created",
       "usadosSemana": "Used this week",
       "usadosSemanaDetalle": "in AI replies",
-      "usado7dias": "Used in replies (7 days)"
+      "usado7dias": "Used in replies (7 days)",
+      "versionEditadoPor": "v{version} · edited by {nombre}"
     },
     "importar": {
       "etiquetas": "Tags",
@@ -53668,7 +53683,10 @@
         "desktop": "Computer",
         "mobile": "Phone",
         "tablet": "Tablet"
-      }
+      },
+      "kpiBloqueados": "Blocked",
+      "bloqueado": "Blocked",
+      "filtroBloqueados": "Blocked"
     },
     "auditoria": {
       "actualizar": "Refresh",

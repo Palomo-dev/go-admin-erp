@@ -10,18 +10,24 @@
  * Sin créditos, «Probar» se deshabilita y se ofrece recargar (Figma 05).
  * «Convertir en fragmento» guarda la respuesta como conocimiento con
  * `knowledgeService`.
+ *
+ * Auditoría 2026-11-14 (Agente 3): vuelven los ajustes de la prueba (modelo,
+ * creatividad y largo libres, máximo de fragmentos, reglas del sistema), el
+ * panel completo de fragmentos y, en la respuesta, «Copiar», la pregunta, el
+ * costo (créditos cobrados y costo del proveedor si hay tarifa) y el pie con
+ * modelo, creatividad y fecha. Nada de esto cambia la configuración real.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Bot, FilePlus2, Info, Play } from 'lucide-react';
-import { AvisoTonal, EmptyState, FormField, PageHeader, Tarjeta, clasesBoton } from '@/components/kit';
+import { AvisoTonal, EmptyState, PageHeader, Tarjeta, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
+import { AjustesPrueba } from '@/components/chat/ia/laboratorio/AjustesPrueba';
+import { FragmentosPrueba, type ResumenConocimiento } from '@/components/chat/ia/laboratorio/FragmentosPrueba';
+import { RespuestaPrueba } from '@/components/chat/ia/laboratorio/RespuestaPrueba';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import AILabService, { type Channel, type CodigoFalloPrueba, type LabSettings, type LabTestResult, type RetrievedFragment } from '@/lib/services/aiLabService';
 import { usePlanSesion } from '@/components/shell/sesion/usePlanSesion';
@@ -40,8 +46,6 @@ const AJUSTES_BASE: LabSettings = {
   language: 'es',
   simulatedChannel: 'whatsapp',
 };
-const CREATIVIDAD = [0.3, 0.7, 1] as const;
-const LARGOS = [200, 500, 1000] as const;
 const EJEMPLOS = ['estadoPedido', 'horarios', 'mediosPago'] as const;
 /** Donde se recargan los créditos de IA (Organización › Plan y facturación › «Comprar más»). */
 const RUTA_RECARGAR_CREDITOS = '/app/organizacion/plan';
@@ -49,7 +53,6 @@ const RUTA_RECARGAR_CREDITOS = '/app/organizacion/plan';
 export default function AILaboratorioPage() {
   const t = useTranslations('chatModulo.ia');
   const { toast } = useToast();
-  const locale = useLocaleIntl();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const memberId = useMiembroActual(organizationId);
@@ -64,6 +67,10 @@ export default function AILaboratorioPage() {
   const [resultado, setResultado] = useState<LabTestResult | null>(null);
   const [fuentes, setFuentes] = useState<KnowledgeSource[]>([]);
   const [convertir, setConvertir] = useState(false);
+  const [resumen, setResumen] = useState<ResumenConocimiento | null>(null);
+  // Lo de la configuración real, para nombrarlo y volver a ello (la prueba no lo cambia).
+  const [modeloConfig, setModeloConfig] = useState('');
+  const [reglasConfig, setReglasConfig] = useState('');
   const [fallo, setFallo] = useState<Exclude<CodigoFalloPrueba, 'sin_creditos'> | null>(null);
   // Saldo de créditos de IA: el de `GET /api/me/plan` (misma fuente que Plan y
   // facturación) y, tras cada prueba, el que devuelve el servidor al cobrar.
@@ -78,12 +85,26 @@ export default function AILaboratorioPage() {
     setCargando(true);
     try {
       const s = new AILabService(organizationId);
-      const [frs, cs, conf] = await Promise.all([s.getFragments({ isActive: true, limit: 50 }), s.getChannels(), s.getAISettings()]);
+      const [frs, cs, conf, stats] = await Promise.all([
+        s.getFragments({ isActive: true, limit: 50 }),
+        s.getChannels(),
+        s.getAISettings(),
+        s.getFragmentStats(),
+      ]);
       const lista: RetrievedFragment[] = frs.map((f, i) => ({ id: f.id, title: f.title, content: f.content, similarity: 1 - i * 0.05, tags: f.tags || [], priority: f.priority || 5 }));
       setFragmentos(lista);
-      setElegidos(lista.slice(0, 5).map((f) => f.id));
+      setElegidos((previos) => {
+        const vigentes = previos.filter((id) => lista.some((f) => f.id === id));
+        return vigentes.length > 0 ? vigentes : lista.slice(0, 5).map((f) => f.id);
+      });
       setCanales(cs);
-      if (conf) setAjustes(conf);
+      setResumen({ total: stats.total, active: stats.active, inactive: stats.inactive, avgPriority: stats.avgPriority });
+      if (conf) {
+        setModeloConfig(conf.model);
+        setReglasConfig(conf.systemRules);
+        // La prueba arranca con lo de la configuración; el modelo vacío = el configurado.
+        setAjustes((a) => ({ ...a, ...conf, model: '', simulatedChannel: a.simulatedChannel }));
+      }
     } catch (e) {
       console.error('Error cargando el laboratorio:', e);
       toast({ title: t('laboratorio.toasts.errorCarga'), variant: 'destructive' });
@@ -108,7 +129,7 @@ export default function AILaboratorioPage() {
         setFragmentos((prev) => [...encontrados, ...prev.filter((f) => !encontrados.some((e) => e.id === f.id))]);
         setElegidos(encontrados.map((f) => f.id));
       }
-      const usados = encontrados.length > 0 ? encontrados : fragmentos.filter((f) => elegidos.includes(f.id));
+      const usados = (encontrados.length > 0 ? encontrados : fragmentos.filter((f) => elegidos.includes(f.id))).slice(0, ajustes.maxFragments);
       const r = await s.runTest(q, ajustes, usados);
       if (r.ok) {
         setResultado(r.resultado);
@@ -161,9 +182,6 @@ export default function AILaboratorioPage() {
     { valor: 'facebook', etiqueta: 'Messenger' },
     ...canales.filter((c) => !['whatsapp', 'webchat', 'instagram', 'facebook'].includes(c.id)).map((c) => ({ valor: c.id, etiqueta: c.name })),
   ];
-  const creatividad = CREATIVIDAD.reduce((a, b) => (Math.abs(b - ajustes.temperature) < Math.abs(a - ajustes.temperature) ? b : a), CREATIVIDAD[0]);
-  const largo = LARGOS.reduce((a, b) => (Math.abs(b - ajustes.maxTokens) < Math.abs(a - ajustes.maxTokens) ? b : a), LARGOS[0]);
-  const m = resultado?.metrics;
   // Memorizado: el diálogo reinicia el formulario cuando cambia este objeto.
   const prellenado = useMemo(() => (resultado ? { title: resultado.query, content: resultado.response } : undefined), [resultado]);
 
@@ -253,20 +271,7 @@ export default function AILaboratorioPage() {
               <EmptyState compacto icono={Bot} titulo={t('laboratorio.sinRespuestaTitulo')} descripcion={t('laboratorio.sinRespuestaDescripcion')} />
             ) : (
               <div className="flex flex-col gap-4">
-                <div className="whitespace-pre-wrap rounded-xl border border-line-brand bg-brand-tint px-4 py-3 text-sm leading-6 text-fg">{resultado.response}</div>
-                {/* Cifras reales de la prueba. Sin «Confianza»: la IA de atención no calcula ninguna. */}
-                <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
-                  {[
-                    [t('laboratorio.metricas.tiempo'), m ? `${(m.processingTimeMs / 1000).toLocaleString(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 })} s` : '—'],
-                    [t('laboratorio.metricas.tokens'), m ? m.totalTokens.toLocaleString(locale) : '—'],
-                    [t('laboratorio.metricas.fragmentos'), m ? m.retrievedFragments : '—'],
-                  ].map(([k, v]) => (
-                    <div key={String(k)}>
-                      <dt className="text-xs text-fg-muted">{k}</dt>
-                      <dd className="text-sm font-semibold tabular-nums text-fg">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <RespuestaPrueba resultado={resultado} />
                 <button type="button" onClick={abrirConvertir} className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'self-start' })}>
                   <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                   {t('laboratorio.convertir')}
@@ -277,81 +282,8 @@ export default function AILaboratorioPage() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-4 lg:gap-6">
-          <Tarjeta titulo={t('laboratorio.ajustes')} descripcion={t('laboratorio.ajustesDescripcion')}>
-            <div className="flex flex-col gap-4">
-              <FormField etiqueta={t('laboratorio.canal')}>
-                {(campo) => (
-                  <Select value={ajustes.simulatedChannel} onValueChange={(v) => setAjustes({ ...ajustes, simulatedChannel: v })}>
-                    <SelectTrigger id={campo.id}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {canalesPrueba.map((c) => (
-                        <SelectItem key={c.valor} value={c.valor}>
-                          {c.etiqueta}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-              <FormField etiqueta={t('laboratorio.creatividad')}>
-                {(campo) => (
-                  <Select value={String(creatividad)} onValueChange={(v) => setAjustes({ ...ajustes, temperature: Number(v) })}>
-                    <SelectTrigger id={campo.id}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CREATIVIDAD.map((c, i) => (
-                        <SelectItem key={c} value={String(c)}>
-                          {c.toLocaleString()} · {t(`laboratorio.creatividades.c${i}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-              <FormField etiqueta={t('laboratorio.largo')}>
-                {(campo) => (
-                  <Select value={String(largo)} onValueChange={(v) => setAjustes({ ...ajustes, maxTokens: Number(v) })}>
-                    <SelectTrigger id={campo.id}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LARGOS.map((l, i) => (
-                        <SelectItem key={l} value={String(l)}>
-                          {t(`laboratorio.largos.l${i}`)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </FormField>
-            </div>
-          </Tarjeta>
-
-          <Tarjeta titulo={t('laboratorio.fragmentosUso')}>
-            {cargando ? (
-              <Skeleton className="h-24" />
-            ) : fragmentos.length === 0 ? (
-              <p className="text-[13px] text-fg-muted">{t('laboratorio.sinFragmentos')}</p>
-            ) : (
-              <ul className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-                {fragmentos.slice(0, 20).map((f) => (
-                  <li key={f.id}>
-                    <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
-                      <Checkbox
-                        checked={elegidos.includes(f.id)}
-                        onCheckedChange={(v) => setElegidos((e) => (v === true ? [...e, f.id] : e.filter((x) => x !== f.id)))}
-                      />
-                      <span className="min-w-0 flex-1 truncate">{f.title}</span>
-                      <span className="shrink-0 text-xs tabular-nums text-fg-muted">{f.similarity.toFixed(2)}</span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Tarjeta>
+          <AjustesPrueba ajustes={ajustes} onChange={setAjustes} canales={canalesPrueba} modeloConfig={modeloConfig} reglasConfig={reglasConfig} />
+          <FragmentosPrueba fragmentos={fragmentos} elegidos={elegidos} onElegidos={setElegidos} cargando={cargando} resumen={resumen} onActualizar={() => void cargar()} />
         </div>
       </div>
 

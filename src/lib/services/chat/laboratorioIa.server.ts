@@ -60,12 +60,19 @@ export const pruebaLaboratorioSchema = z
     temperatura: z.number().min(0).max(2),
     maxTokens: z.number().int().min(50).max(2000),
     fragmentIds: z.array(z.string().uuid()).max(20).default([]),
+    /**
+     * Modelo de la prueba (del catálogo `ai_modelos_disponibles`). Sin él, el de
+     * la configuración. No cambia la configuración real.
+     */
+    modelo: z.string().trim().min(1).max(120).optional(),
+    /** Reglas del sistema de la prueba; sin ellas, las de la configuración. Vacías = sin reglas. */
+    reglas: z.string().max(8000).nullable().optional(),
   })
   .strict();
 
 export type PruebaLaboratorio = z.infer<typeof pruebaLaboratorioSchema>;
 
-export type CodigoErrorLaboratorio = 'sin_creditos' | 'proveedor' | 'sin_configuracion';
+export type CodigoErrorLaboratorio = 'sin_creditos' | 'proveedor' | 'sin_configuracion' | 'modelo_invalido';
 
 export class ErrorLaboratorio extends Error {
   constructor(
@@ -90,6 +97,12 @@ export interface ResultadoLaboratorio {
   creditosCobrados: number;
   /** Saldo tras el cobro; `null` si no se pudo leer. */
   saldoRestante: number | null;
+  /**
+   * Lo que le costó la prueba a GO Admin en el proveedor (USD), contra
+   * `provider_pricing`. `null` si el modelo no tiene tarifa cargada: no se inventa.
+   * A la organización se le cobran `creditosCobrados`, no este importe.
+   */
+  costoUsd: number | null;
 }
 
 type Generar = typeof generarSegunProveedor;
@@ -147,10 +160,26 @@ export async function probarEnLaboratorio(
     tipoDeCanal(ctx, prueba.canal),
   ]);
   const config = (ajustes.data ?? {}) as { provider?: string | null; model?: string | null; system_rules?: string | null };
+
+  // Modelo de la prueba: solo uno del catálogo (con su proveedor), nunca un
+  // texto libre. Se valida ANTES de llamar al proveedor y de cobrar.
+  let modeloPrueba: { model: string; provider: string } | null = null;
+  if (prueba.modelo) {
+    const { data: fila } = await ctx.supabase
+      .from('ai_modelos_disponibles')
+      .select('provider, model')
+      .eq('model', prueba.modelo)
+      .limit(1)
+      .maybeSingle();
+    const f = fila as { provider?: string; model?: string } | null;
+    if (!f?.model) throw new ErrorLaboratorio(400, 'modelo_invalido', 'Ese modelo no está en el catálogo');
+    modeloPrueba = { model: f.model, provider: f.provider || 'openai' };
+  }
   const conocimiento = (fragmentos.data ?? []) as EntradaReferencia[];
 
   const systemPrompt = construirPromptEstable({
-    systemRules: config.system_rules,
+    // Las reglas de la prueba mandan sobre las de la configuración (sin guardarlas).
+    systemRules: prueba.reglas !== undefined ? prueba.reglas : config.system_rules,
     vertical,
     orgInfo,
     checkoutConfig,
@@ -165,7 +194,7 @@ export async function probarEnLaboratorio(
   const chatMessages = [...mensajesDeSistema(systemPrompt, contextoDinamico), { role: 'user', content: prueba.query }];
 
   // 3) Generación real: modelo de la organización → entorno → default.
-  const modeloConfigurado = config.model || process.env.OPENAI_MODEL || MODELO_POR_DEFECTO_ATENCION;
+  const modeloConfigurado = modeloPrueba?.model || config.model || process.env.OPENAI_MODEL || MODELO_POR_DEFECTO_ATENCION;
   const ahora = deps.ahora ?? Date.now;
   const inicio = ahora();
   let generada: Awaited<ReturnType<Generar>>;
@@ -175,7 +204,7 @@ export async function probarEnLaboratorio(
       supabase: servicio,
       leerEnv: (clave) => process.env[clave],
       organizationId: org,
-      proveedor: config.provider || 'openai',
+      proveedor: modeloPrueba?.provider || config.provider || 'openai',
       model: modeloConfigurado,
       chatMessages,
       temperatura: prueba.temperatura,
@@ -244,5 +273,6 @@ export async function probarEnLaboratorio(
     fragmentos: conocimiento.length,
     creditosCobrados,
     saldoRestante,
+    costoUsd,
   };
 }

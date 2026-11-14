@@ -48,6 +48,12 @@ export interface LabMetrics {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** Créditos que se descontaron (los mismos que una respuesta a un cliente). */
+  creditsCharged: number;
+  /** Costo del proveedor en USD; `null` si el modelo no tiene tarifa cargada. */
+  providerCostUsd: number | null;
+  /** Modelo con el que respondió de verdad (puede ser el de respaldo). */
+  model: string;
 }
 
 export type CodigoFalloPrueba = 'sin_creditos' | 'proveedor' | 'sin_permiso' | 'error';
@@ -59,10 +65,13 @@ export type ResultadoPrueba =
 /** Respuesta de `POST /api/chat/ai/lab-test` (`ResultadoLaboratorio`). */
 interface RespuestaServidorLab {
   respuesta: string;
+  modelo: string;
   tiempoMs: number;
   tokens: { entrada: number; salida: number; total: number };
   fragmentos: number;
+  creditosCobrados: number;
   saldoRestante: number | null;
+  costoUsd: number | null;
 }
 
 export interface LabSettings {
@@ -237,7 +246,8 @@ class AILabService {
     }
 
     return {
-      model: data.model || 'gpt-4o-mini',
+      // Vacío = el de la configuración (el servidor resuelve el mismo que la IA real).
+      model: data.model || '',
       temperature: data.temperature || 0.7,
       maxTokens: data.max_tokens || 500,
       maxFragments: data.max_fragments_context || 5,
@@ -269,8 +279,11 @@ class AILabService {
           canal: settings.simulatedChannel,
           temperatura: settings.temperature,
           maxTokens: settings.maxTokens,
-          // El servidor acepta hasta 20 (los que muestra la lista).
-          fragmentIds: fragments.slice(0, 20).map((f) => f.id),
+          // Hasta el máximo de fragmentos de la prueba (el servidor acepta 20).
+          fragmentIds: fragments.slice(0, Math.min(20, Math.max(1, settings.maxFragments || 5))).map((f) => f.id),
+          // Ajustes de la prueba: no cambian la configuración real.
+          ...(settings.model ? { modelo: settings.model } : {}),
+          reglas: settings.systemRules,
         }),
       });
     } catch {
@@ -306,6 +319,9 @@ class AILabService {
           promptTokens: d.tokens.entrada,
           completionTokens: d.tokens.salida,
           totalTokens: d.tokens.total,
+          creditsCharged: d.creditosCobrados,
+          providerCostUsd: d.costoUsd ?? null,
+          model: d.modelo,
         },
         timestamp: new Date().toISOString(),
         settings,

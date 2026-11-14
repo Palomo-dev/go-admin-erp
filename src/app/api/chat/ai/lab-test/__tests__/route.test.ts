@@ -31,7 +31,7 @@ function fakeSupabase(datos: Record<string, unknown>) {
         select: () => q,
         eq: (c: string, v: unknown) => ((filtros[c] = v), q),
         in: (c: string, v: unknown) => ((filtros[`${c}:in`] = v), Promise.resolve(resolver())),
-        limit: () => Promise.resolve(resolver()),
+        limit: () => q,
         maybeSingle: async () => resolver(),
         single: async () => resolver(),
         insert: () => {
@@ -64,6 +64,7 @@ const DATOS = {
   quick_replies: [],
   knowledge_fragments: [{ title: 'Envíos', content: 'Gratis desde 150.000 en Envigado.' }],
   channels: { type: 'instagram' },
+  ai_modelos_disponibles: null as unknown,
 };
 
 const ctx = { userId: 'u-1', organizationId: 120, roleId: 3, isSuperAdmin: false, memberId: 7, supabase: fakeSupabase(DATOS) };
@@ -216,4 +217,33 @@ test('el saldo se agotó mientras generaba: 402 y no se entrega la respuesta', a
   const cuerpo = await res.json();
   expect(cuerpo.code).toBe('sin_creditos');
   expect(JSON.stringify(cuerpo)).not.toContain(RESPUESTA_LLM.content);
+});
+
+test('ajustes de la prueba: modelo del catálogo y reglas propias, sin tocar la configuración; costo real', async () => {
+  servicio.actual = fakeSupabase(DATOS);
+  ctx.supabase = fakeSupabase({ ...DATOS, ai_modelos_disponibles: { provider: 'openai', model: 'gpt-4o-mini' } });
+  const res = await POST(peticion({ ...CUERPO, modelo: 'gpt-4o-mini', reglas: 'Responde en dos líneas.' }));
+  expect(res.status).toBe(200);
+  const entrada = generar.mock.calls[0][0];
+  expect(entrada).toMatchObject({ model: 'gpt-4o-mini', proveedor: 'openai' });
+  expect(entrada.chatMessages[0].content).toContain('INSTRUCCIONES PRINCIPALES:\nResponde en dos líneas.');
+  expect(entrada.chatMessages[0].content).not.toContain('Responde en tono cercano.');
+  const { data } = await res.json();
+  // Costo: 1 crédito cobrado y el costo del proveedor que devuelve calcular_costo_llm.
+  expect(data).toMatchObject({ creditosCobrados: 1, costoUsd: 0.0004 });
+  expect(escrituras).toEqual([]);
+});
+
+test('reglas vacías: la prueba va sin reglas', async () => {
+  const res = await POST(peticion({ ...CUERPO, reglas: '' }));
+  expect(res.status).toBe(200);
+  expect(generar.mock.calls[0][0].chatMessages[0].content).not.toContain('INSTRUCCIONES PRINCIPALES');
+});
+
+test('un modelo fuera del catálogo: 400 antes de llamar al proveedor ni cobrar', async () => {
+  const res = await POST(peticion({ ...CUERPO, modelo: 'modelo-inventado' }));
+  expect(res.status).toBe(400);
+  expect((await res.json()).code).toBe('modelo_invalido');
+  expect(generar).not.toHaveBeenCalled();
+  expect(chargeAiCredits).not.toHaveBeenCalled();
 });

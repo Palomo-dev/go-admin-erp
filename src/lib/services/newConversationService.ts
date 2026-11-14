@@ -61,7 +61,20 @@ export interface QuickCustomerData {
   last_name?: string;
   email?: string;
   phone?: string;
+  /** Roles elegidos en el diálogo; si no llegan, los de siempre. */
+  roles?: string[];
+  /** Responsabilidades fiscales DIAN elegidas; si no llegan, R-99-PN. */
+  fiscal_responsibilities?: string[];
+  /** Municipio fiscal elegido; si no llega, el de siempre. */
+  fiscal_municipality_id?: string;
 }
+
+/** Valores que usaba el alta rápida antes de que el diálogo los dejara elegir. */
+export const CLIENTE_RAPIDO_POR_DEFECTO = {
+  roles: ['cliente', 'huesped'],
+  fiscal_responsibilities: ['R-99-PN'],
+  fiscal_municipality_id: 'aa4b6637-0060-41bb-9459-bc95f9789e08',
+} as const;
 
 class NewConversationService {
   private organizationId: number;
@@ -157,9 +170,13 @@ class NewConversationService {
         last_name: data.last_name || null,
         email: data.email || null,
         phone: data.phone || null,
-        roles: ['cliente', 'huesped'],
-        fiscal_responsibilities: ['R-99-PN'],
-        fiscal_municipality_id: 'aa4b6637-0060-41bb-9459-bc95f9789e08',
+        // Lo que la persona eligió en el diálogo; antes se ignoraba y siempre
+        // se guardaban estos valores por defecto.
+        roles: data.roles?.length ? data.roles : [...CLIENTE_RAPIDO_POR_DEFECTO.roles],
+        fiscal_responsibilities: data.fiscal_responsibilities?.length
+          ? data.fiscal_responsibilities
+          : [...CLIENTE_RAPIDO_POR_DEFECTO.fiscal_responsibilities],
+        fiscal_municipality_id: data.fiscal_municipality_id || CLIENTE_RAPIDO_POR_DEFECTO.fiscal_municipality_id,
         tags: [],
         metadata: {},
         preferences: {}

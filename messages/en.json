@@ -51366,6 +51366,26 @@
       "ir": "go to message"
     }
   },
+  "chatClienteRapido": {
+    "titulo": "Quick-create customer",
+    "descripcion": "Create a customer with the minimum details. You can complete the profile later.",
+    "nombre": "First name",
+    "nombrePlaceholder": "John",
+    "apellido": "Last name",
+    "apellidoPlaceholder": "Smith",
+    "correo": "Email",
+    "correoPlaceholder": "john@example.com",
+    "telefono": "Phone",
+    "roles": "Roles",
+    "responsabilidadFiscal": "Tax responsibility",
+    "cancelar": "Cancel",
+    "crear": "Create customer",
+    "creando": "Creating…",
+    "errores": {
+      "nombreRequerido": "First name is required.",
+      "alCrear": "The customer could not be created. Please try again."
+    }
+  },
   "chatDialogos": {
     "comun": {
       "cancelar": "Cancel",

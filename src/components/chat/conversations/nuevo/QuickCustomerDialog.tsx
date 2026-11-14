@@ -1,6 +1,12 @@
 'use client';
 
+/**
+ * «Crear cliente rápido» desde Nueva conversación. Los roles, la
+ * responsabilidad fiscal y el municipio que se eligen aquí viajan a
+ * `createQuickCustomer`; antes se mostraban pero se descartaban al guardar.
+ */
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { User, Loader2, CreditCard } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import {
@@ -16,8 +22,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput, mensajeErrorTelefono } from '@/components/kit/PhoneInput';
-import { QuickCustomerData } from '@/lib/services/newConversationService';
+import { CLIENTE_RAPIDO_POR_DEFECTO, type QuickCustomerData } from '@/lib/services/newConversationService';
 import { MunicipalitySearch } from '@/components/shared/MunicipalitySearch';
+import { cn } from '@/utils/Utils';
 
 interface QuickCustomerDialogProps {
   isOpen: boolean;
@@ -25,24 +32,18 @@ interface QuickCustomerDialogProps {
   onSave: (data: QuickCustomerData) => Promise<void>;
 }
 
-export default function QuickCustomerDialog({
-  isOpen,
-  onClose,
-  onSave
-}: QuickCustomerDialogProps) {
-  const [formData, setFormData] = useState<QuickCustomerData>({
-    first_name: '',
-    last_name: '',
-    email: '',
-    phone: ''
-  });
+const VACIO = { first_name: '', last_name: '', email: '', phone: '' };
+
+export default function QuickCustomerDialog({ isOpen, onClose, onSave }: QuickCustomerDialogProps) {
+  const t = useTranslations('chatClienteRapido');
+  const [formData, setFormData] = useState<QuickCustomerData>(VACIO);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(['cliente', 'huesped']);
-  const [selectedFiscal, setSelectedFiscal] = useState<string[]>(['R-99-PN']);
-  const [municipalityId, setMunicipalityId] = useState('aa4b6637-0060-41bb-9459-bc95f9789e08');
-  const [customerRoles, setCustomerRoles] = useState<{code: string; label: string}[]>([]);
-  const [fiscalOptions, setFiscalOptions] = useState<{code: string; description: string}[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([...CLIENTE_RAPIDO_POR_DEFECTO.roles]);
+  const [selectedFiscal, setSelectedFiscal] = useState<string[]>([...CLIENTE_RAPIDO_POR_DEFECTO.fiscal_responsibilities]);
+  const [municipalityId, setMunicipalityId] = useState<string>(CLIENTE_RAPIDO_POR_DEFECTO.fiscal_municipality_id);
+  const [customerRoles, setCustomerRoles] = useState<{ code: string; label: string }[]>([]);
+  const [fiscalOptions, setFiscalOptions] = useState<{ code: string; description: string }[]>([]);
 
   useEffect(() => {
     async function loadCatalogs() {
@@ -56,9 +57,17 @@ export default function QuickCustomerDialog({
     loadCatalogs();
   }, []);
 
+  const reiniciar = () => {
+    setFormData(VACIO);
+    setSelectedRoles([...CLIENTE_RAPIDO_POR_DEFECTO.roles]);
+    setSelectedFiscal([...CLIENTE_RAPIDO_POR_DEFECTO.fiscal_responsibilities]);
+    setMunicipalityId(CLIENTE_RAPIDO_POR_DEFECTO.fiscal_municipality_id);
+    setError('');
+  };
+
   const handleSave = async () => {
     if (!formData.first_name.trim()) {
-      setError('El nombre es requerido');
+      setError(t('errores.nombreRequerido'));
       return;
     }
     const errorTelefono = mensajeErrorTelefono(formData.phone);
@@ -70,153 +79,154 @@ export default function QuickCustomerDialog({
     try {
       setIsSaving(true);
       setError('');
-      await onSave(formData);
-      setFormData({ first_name: '', last_name: '', email: '', phone: '' });
+      await onSave({
+        ...formData,
+        roles: selectedRoles,
+        fiscal_responsibilities: selectedFiscal,
+        fiscal_municipality_id: municipalityId || undefined,
+      });
+      reiniciar();
       onClose();
     } catch (err) {
       console.error('Error creando cliente:', err);
-      setError('Error al crear el cliente');
+      setError(t('errores.alCrear'));
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleClose = () => {
-    setFormData({ first_name: '', last_name: '', email: '', phone: '' });
-    setError('');
+    reiniciar();
     onClose();
   };
 
+  const alternar = (lista: string[], codigo: string) =>
+    lista.includes(codigo) ? lista.filter((c) => c !== codigo) : [...lista, codigo];
+
+  const claseOpcion = (activa: boolean) =>
+    cn(
+      'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs transition-colors',
+      activa ? 'border-brand bg-brand-tint text-brand-deep' : 'border-line text-fg-secondary hover:bg-subtle',
+    );
+
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={(abierto) => !abierto && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <User className="h-5 w-5 text-blue-600" />
-            Crear Cliente Rápido
+            <User className="h-5 w-5 text-brand" aria-hidden />
+            {t('titulo')}
           </DialogTitle>
-          <DialogDescription>
-            Crea un cliente con los datos mínimos. Podrás completar su perfil después.
-          </DialogDescription>
+          <DialogDescription>{t('descripcion')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="first_name">Nombre *</Label>
+              <Label htmlFor="first_name">{t('nombre')} *</Label>
               <Input
                 id="first_name"
                 value={formData.first_name}
                 onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                placeholder="Juan"
+                placeholder={t('nombrePlaceholder')}
                 autoFocus
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="last_name">Apellido</Label>
+              <Label htmlFor="last_name">{t('apellido')}</Label>
               <Input
                 id="last_name"
                 value={formData.last_name}
                 onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                placeholder="Pérez"
+                placeholder={t('apellidoPlaceholder')}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('correo')}</Label>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="juan@ejemplo.com"
+              placeholder={t('correoPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Teléfono</Label>
-            <PhoneInput
-              id="phone"
-              value={formData.phone}
-              onChange={(v) => setFormData({ ...formData, phone: v })}
-            />
+            <Label htmlFor="phone">{t('telefono')}</Label>
+            <PhoneInput id="phone" value={formData.phone} onChange={(v) => setFormData({ ...formData, phone: v })} />
           </div>
 
-          {/* Roles del Cliente */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <User className="h-3.5 w-3.5" /> Roles
-            </Label>
+          <fieldset className="space-y-2">
+            <legend className="flex items-center gap-1 text-sm font-medium text-fg">
+              <User className="h-3.5 w-3.5" aria-hidden /> {t('roles')}
+            </legend>
             <div className="flex flex-wrap gap-1.5">
-              {customerRoles.map((role) => (
-                <div
-                  key={role.code}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
-                    selectedRoles.includes(role.code)
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}
-                  onClick={() => setSelectedRoles(prev =>
-                    prev.includes(role.code) ? prev.filter(r => r !== role.code) : [...prev, role.code]
-                  )}
-                >
-                  <Checkbox checked={selectedRoles.includes(role.code)} className="pointer-events-none h-3 w-3" />
-                  <span>{role.label}</span>
-                </div>
-              ))}
+              {customerRoles.map((role) => {
+                const activa = selectedRoles.includes(role.code);
+                return (
+                  <button
+                    key={role.code}
+                    type="button"
+                    aria-pressed={activa}
+                    className={claseOpcion(activa)}
+                    onClick={() => setSelectedRoles((prev) => alternar(prev, role.code))}
+                  >
+                    <Checkbox checked={activa} className="pointer-events-none h-3 w-3" tabIndex={-1} aria-hidden />
+                    <span>{role.label}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          </fieldset>
 
-          {/* Resp. Fiscal */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium flex items-center gap-1">
-              <CreditCard className="h-3.5 w-3.5" /> Resp. Fiscal
-            </Label>
+          <fieldset className="space-y-2">
+            <legend className="flex items-center gap-1 text-sm font-medium text-fg">
+              <CreditCard className="h-3.5 w-3.5" aria-hidden /> {t('responsabilidadFiscal')}
+            </legend>
             <div className="flex flex-wrap gap-1.5">
-              {fiscalOptions.map((fiscal) => (
-                <div
-                  key={fiscal.code}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border cursor-pointer transition-all text-xs ${
-                    selectedFiscal.includes(fiscal.code)
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                      : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}
-                  onClick={() => setSelectedFiscal(prev =>
-                    prev.includes(fiscal.code) ? prev.filter(f => f !== fiscal.code) : [...prev, fiscal.code]
-                  )}
-                >
-                  <Checkbox checked={selectedFiscal.includes(fiscal.code)} className="pointer-events-none h-3 w-3" />
-                  <span>{fiscal.code}</span>
-                </div>
-              ))}
+              {fiscalOptions.map((fiscal) => {
+                const activa = selectedFiscal.includes(fiscal.code);
+                return (
+                  <button
+                    key={fiscal.code}
+                    type="button"
+                    aria-pressed={activa}
+                    title={fiscal.description}
+                    className={claseOpcion(activa)}
+                    onClick={() => setSelectedFiscal((prev) => alternar(prev, fiscal.code))}
+                  >
+                    <Checkbox checked={activa} className="pointer-events-none h-3 w-3" tabIndex={-1} aria-hidden />
+                    <span>{fiscal.code}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          </fieldset>
 
-          {/* Municipio */}
-          <MunicipalitySearch
-            value={municipalityId}
-            onChange={setMunicipalityId}
-            compact
-          />
+          <MunicipalitySearch value={municipalityId} onChange={setMunicipalityId} compact />
 
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p role="alert" className="text-sm text-danger-text">
+              {error}
+            </p>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isSaving}>
-            Cancelar
+            {t('cancelar')}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
             {isSaving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creando...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                {t('creando')}
               </>
             ) : (
-              'Crear Cliente'
+              t('crear')
             )}
           </Button>
         </DialogFooter>

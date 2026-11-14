@@ -51376,6 +51376,26 @@
       "ir": "ir para a mensagem"
     }
   },
+  "chatClienteRapido": {
+    "titulo": "Criar cliente rápido",
+    "descripcion": "Crie um cliente com os dados mínimos. Você poderá completar o perfil depois.",
+    "nombre": "Nome",
+    "nombrePlaceholder": "João",
+    "apellido": "Sobrenome",
+    "apellidoPlaceholder": "Silva",
+    "correo": "E-mail",
+    "correoPlaceholder": "joao@exemplo.com",
+    "telefono": "Telefone",
+    "roles": "Funções",
+    "responsabilidadFiscal": "Responsabilidade fiscal",
+    "cancelar": "Cancelar",
+    "crear": "Criar cliente",
+    "creando": "Criando…",
+    "errores": {
+      "nombreRequerido": "O nome é obrigatório.",
+      "alCrear": "Não foi possível criar o cliente. Tente novamente."
+    }
+  },
   "chatDialogos": {
     "comun": {
       "cancelar": "Cancelar",

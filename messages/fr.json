@@ -51366,6 +51366,26 @@
       "ir": "aller au message"
     }
   },
+  "chatClienteRapido": {
+    "titulo": "Créer un client rapide",
+    "descripcion": "Créez un client avec les informations minimales. Vous pourrez compléter son profil plus tard.",
+    "nombre": "Prénom",
+    "nombrePlaceholder": "Jean",
+    "apellido": "Nom",
+    "apellidoPlaceholder": "Dupont",
+    "correo": "E-mail",
+    "correoPlaceholder": "jean@exemple.com",
+    "telefono": "Téléphone",
+    "roles": "Rôles",
+    "responsabilidadFiscal": "Responsabilité fiscale",
+    "cancelar": "Annuler",
+    "crear": "Créer le client",
+    "creando": "Création…",
+    "errores": {
+      "nombreRequerido": "Le prénom est obligatoire.",
+      "alCrear": "Impossible de créer le client. Réessayez."
+    }
+  },
   "chatDialogos": {
     "comun": {
       "cancelar": "Annuler",

@@ -2,20 +2,27 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Check, Clock, RotateCcw, User } from 'lucide-react';
+import { Check, Clock, RotateCcw, User, UserCheck, UserX } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { clasesBoton } from '@/components/kit';
 import { SelectorAgente } from './SelectorAgente';
 import { EtiquetasConversacion } from './EtiquetasConversacion';
+import { DialogoBloquearContacto } from '../DialogoBloquearContacto';
 import type { ConversacionControl } from '../useConversacion';
 
 const ESTADOS = ['open', 'pending', 'closed'] as const;
 const PRIORIDADES = ['low', 'normal', 'high', 'urgent'] as const;
 
-/** Pestaña «Acciones» (Figma 91-chat-02 y 91-chat-16): estado, prioridad, asignación y etiquetas. */
+/**
+ * Pestaña «Acciones» (Figma 91-chat-02 y 91-chat-16): estado, prioridad,
+ * asignación y etiquetas. En la hoja del celular (`conFicha`) también «Abrir
+ * ficha» y «Bloquear / Desbloquear contacto», que allí no tienen menú ⋯.
+ */
 export function PestanaAcciones({ c, conFicha = false }: { c: ConversacionControl; conFicha?: boolean }) {
   const t = useTranslations('chatBandeja.acciones');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
+  const [confirmarBloqueo, setConfirmarBloqueo] = React.useState(false);
   const te = useTranslations('chatUi.estado');
   const tp = useTranslations('chatUi.prioridad');
   const d = c.detalle;
@@ -100,7 +107,25 @@ export function PestanaAcciones({ c, conFicha = false }: { c: ConversacionContro
             {t('abrirFicha')}
           </Link>
         ) : null}
+        {conFicha ? (
+          c.bloqueo ? (
+            <button type="button" onClick={() => void c.desbloquearContacto()} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+              <UserCheck aria-hidden="true" className="size-4" />
+              {tb('menuDesbloquear')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmarBloqueo(true)}
+              className={clasesBoton({ variante: 'secundario', anchoCompleto: true, className: 'text-danger-text' })}
+            >
+              <UserX aria-hidden="true" className="size-4" />
+              {tb('menuBloquear')}
+            </button>
+          )
+        ) : null}
       </div>
+      {conFicha ? <DialogoBloquearContacto c={c} abierto={confirmarBloqueo} onAbiertoChange={setConfirmarBloqueo} /> : null}
     </div>
   );
 }

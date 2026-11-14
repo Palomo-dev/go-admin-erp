@@ -16,7 +16,8 @@ describe('Chat › vistas rápidas de la Bandeja', () => {
 
   test('esVista y cuentaFiltrosExtra', () => {
     expect(esVista('mias')).toBe(true);
-    expect(esVista('todas')).toBe(false);
+    expect(esVista('todas')).toBe(true); // «Todas» volvió (auditoría 2026-11-14)
+    expect(esVista('archivadas')).toBe(false);
     expect(esVista(null)).toBe(false);
     expect(cuentaFiltrosExtra({ prioridad: 'high', etiqueta: 'e1' })).toBe(2);
   });

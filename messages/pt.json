@@ -49695,13 +49695,19 @@
       "archivo": "Arquivo",
       "descargar": "Baixar",
       "reproducir": "Reproduzir áudio",
-      "pausar": "Pausar áudio"
+      "pausar": "Pausar áudio",
+      "entregado": "Entregue",
+      "fallido": "Não entregue",
+      "ubicacion": "Localização",
+      "verMapa": "Ver no mapa"
     },
     "fila": {
       "sinAsignar": "Sem atribuição",
       "iaAutomatico": "IA · automático",
       "noLeidos": "{n, plural, one {# mensagem não lida} other {# mensagens não lidas}}",
-      "prefijoIa": "IA: {texto}"
+      "prefijoIa": "IA: {texto}",
+      "enLinea": "Online",
+      "masEtiquetas": "Mais {n} etiquetas"
     },
     "prioridad": {
       "low": "Baixa",
@@ -49748,7 +49754,10 @@
         "demasiados": "Muitos envios seguidos. Aguarde um momento.",
         "sinPlantilla": "O modelo não está aprovado ou faltam dados.",
         "generico": "Verifique a conexão e tente de novo."
-      }
+      },
+      "negrilla": "Negrito",
+      "negrillaAtajo": "Negrito (Ctrl+B)",
+      "ayudaTeclas": "Enter para enviar · Shift+Enter para uma nova linha · **texto** em negrito"
     }
   },
   "chatBandeja": {
@@ -49808,7 +49817,32 @@
       "sinCompras": "Sem compras",
       "ultimaCompra": "Última compra",
       "oportunidad": "Oportunidade",
-      "verFicha": "Ver ficha do cliente"
+      "verFicha": "Ver ficha do cliente",
+      "enLinea": "Online",
+      "visto": "Visto {cuando}",
+      "mensajes": "Mensagens",
+      "primerContacto": "Primeiro contato",
+      "ultimoContacto": "Último contato",
+      "recientes": "Conversas recentes",
+      "mensajesN": "{n, plural, one {# mensagem} other {# mensagens}}",
+      "estaConversacion": "Esta conversa",
+      "notasCliente": "Notas do cliente",
+      "vinculado": "Cliente vinculado no CRM",
+      "edicion": {
+        "editar": "Editar contato",
+        "titulo": "Editar contato",
+        "nombres": "Nome",
+        "apellidos": "Sobrenome",
+        "ciudad": "Cidade",
+        "guardar": "Salvar",
+        "cancelar": "Cancelar",
+        "guardado": "Contato atualizado",
+        "error": "Não foi possível salvar o contato",
+        "errorNombre": "Escreva o nome",
+        "errorCorreo": "Verifique o e-mail",
+        "errorTelefono": "Verifique o telefone",
+        "ayudaCorreoWidget": "Este visitante chegou pelo chat do site: o e-mail é salvo à parte e não muda como o chat o reconhece."
+      }
     },
     "acciones": {
       "estadoYPrioridad": "Estado e prioridade",
@@ -49864,14 +49898,24 @@
       "enviada": "Resposta enviada",
       "generar": "Sugerir uma resposta",
       "otra": "Gerar outra resposta",
-      "creditos": "Cada resposta ou resumo gerado desconta créditos de IA."
+      "creditos": "Cada resposta ou resumo gerado desconta créditos de IA.",
+      "sentimiento": "Sentimento",
+      "sentimientos": {
+        "positive": "Positivo",
+        "neutral": "Neutro",
+        "negative": "Negativo"
+      },
+      "puntosClave": "Pontos-chave"
     },
     "panel": {
       "etiqueta": "Detalhes da conversa",
       "cliente": "Cliente",
       "acciones": "Ações",
       "notas": "Notas",
-      "ia": "IA"
+      "ia": "IA",
+      "mostrarPanel": "Mostrar painel",
+      "ocultarPanel": "Ocultar painel",
+      "rapidas": "Rápidas"
     },
     "hilo": {
       "etiqueta": "Conversa",
@@ -49930,7 +49974,8 @@
       "mias": "Minhas",
       "sinAsignar": "Sem atribuição",
       "pendientes": "Pendentes",
-      "cerradas": "Fechadas"
+      "cerradas": "Fechadas",
+      "todas": "Todas"
     },
     "vacio": {
       "sinCanalesTitulo": "Você ainda não tem canais conectados",
@@ -49943,7 +49988,8 @@
         "mias": "Você não tem conversas abertas atribuídas.",
         "sinAsignar": "Todas as conversas abertas têm alguém.",
         "pendientes": "Não há conversas pendentes.",
-        "cerradas": "Não há conversas fechadas."
+        "cerradas": "Não há conversas fechadas.",
+        "todas": "Não há conversas."
       },
       "listaTitulo": "Sua caixa está pronta",
       "listaDescripcion": "Quando você conectar um canal, verá aqui as conversas dos seus clientes.",
@@ -49974,7 +50020,8 @@
         "conversacion": "Conversa",
         "actividad": "Atividade",
         "archivos": "Arquivos"
-      }
+      },
+      "asunto": "Assunto: {asunto}"
     },
     "actividad": {
       "resumen": "Resumo da atividade",
@@ -50032,7 +50079,18 @@
         "sinPermiso": "Você não pertence a esta organização",
         "clienteCreado": "Cliente {nombre} criado",
         "organizarParcial": "A conversa foi criada, mas nem tudo pôde ser aplicado."
-      }
+      },
+      "asunto": "Assunto (opcional)",
+      "asuntoPlaceholder": "Ex.: pedido de atacado de dezembro"
+    },
+    "rapidas": {
+      "titulo": "Respostas rápidas",
+      "buscar": "Buscar por título, texto, atalho ou etiqueta",
+      "sinResultados": "Nenhuma resposta com esse texto",
+      "vacio": "Ainda não há respostas rápidas",
+      "vacioAyuda": "Crie-as em Configurações › Chat.",
+      "usos": "{n, plural, =0 {Nunca usada} one {Usada # vez} other {Usada # vezes}}",
+      "usar": "Usar"
     }
   },
   "chatBandejaPendientes": {
@@ -50240,8 +50298,11 @@
             "hoy": "Hoje",
             "7d": "Últimos 7 dias",
             "30d": "Últimos 30 dias",
-            "todo": "Tudo"
-          }
+            "todo": "Tudo",
+            "personalizado": "Escolher datas"
+          },
+          "desde": "De",
+          "hasta": "Até"
         },
         "tabla": {
           "etiqueta": "Tarefas da IA",
@@ -50249,7 +50310,10 @@
           "conversacion": "Conversa",
           "estado": "Status",
           "tokens": "Tokens",
-          "cuando": "Quando"
+          "cuando": "Quando",
+          "id": "ID",
+          "duracion": "Duração",
+          "confianza": "Confiança"
         },
         "tipos": {
           "auto_response": "Resposta automática",
@@ -50283,14 +50347,25 @@
           "bitacora": "Registro",
           "reintentar": "Tentar de novo",
           "cancelar": "Cancelar tarefa",
-          "abrirConversacion": "Abrir conversa"
+          "abrirConversacion": "Abrir conversa",
+          "id": "ID",
+          "copiarId": "Copiar ID",
+          "copiado": "Copiado",
+          "iniciado": "Iniciado",
+          "completado": "Concluído",
+          "duracion": "Duração",
+          "tokensEntrada": "Tokens de entrada",
+          "tokensSalida": "Tokens de saída",
+          "costo": "Custo do provedor",
+          "idsFragmentos": "Fragmentos usados (IDs)"
         },
         "toasts": {
           "sinMiembro": "Não encontramos sua participação nesta organização",
           "reintentado": "Uma nova tarefa foi criada para tentar de novo",
           "cancelado": "Tarefa cancelada",
           "error": "Não foi possível concluir a ação"
-        }
+        },
+        "actualizar": "Atualizar"
       }
     },
     "canales": {

@@ -244,6 +244,25 @@ class NewConversationService {
     return conversationId;
   }
 
+  /**
+   * Asunto de una conversación ya creada (la de WhatsApp la crea el envío de
+   * la plantilla, que no lo recibe). Une con lo que ya tenga `metadata`.
+   */
+  async setSubject(conversationId: string, subject: string): Promise<void> {
+    const asunto = subject.trim();
+    if (!asunto) return;
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('metadata')
+      .eq('id', conversationId)
+      .eq('organization_id', this.organizationId)
+      .maybeSingle();
+    if (error || !data) throw new Error(error?.message ?? 'Conversación no encontrada');
+    const metadata = { ...((data as { metadata?: Record<string, unknown> | null }).metadata ?? {}), subject: asunto };
+    const { error: errUpd } = await supabase.from('conversations').update({ metadata }).eq('id', conversationId).eq('organization_id', this.organizationId);
+    if (errUpd) throw new Error(errUpd.message);
+  }
+
   async getCurrentMemberId(userId: string): Promise<number | null> {
     const { data, error } = await supabase
       .from('organization_members')

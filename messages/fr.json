@@ -49685,13 +49685,19 @@
       "archivo": "Fichier",
       "descargar": "Télécharger",
       "reproducir": "Lire l'audio",
-      "pausar": "Mettre l'audio en pause"
+      "pausar": "Mettre l'audio en pause",
+      "entregado": "Distribué",
+      "fallido": "Non distribué",
+      "ubicacion": "Position",
+      "verMapa": "Voir sur la carte"
     },
     "fila": {
       "sinAsignar": "Non attribuée",
       "iaAutomatico": "IA · automatique",
       "noLeidos": "{n, plural, one {# message non lu} other {# messages non lus}}",
-      "prefijoIa": "IA : {texto}"
+      "prefijoIa": "IA : {texto}",
+      "enLinea": "En ligne",
+      "masEtiquetas": "{n} étiquettes de plus"
     },
     "prioridad": {
       "low": "Basse",
@@ -49738,7 +49744,10 @@
         "demasiados": "Trop d'envois d'affilée. Patientez un instant.",
         "sinPlantilla": "Le modèle n'est pas approuvé ou il manque des données.",
         "generico": "Vérifiez la connexion et réessayez."
-      }
+      },
+      "negrilla": "Gras",
+      "negrillaAtajo": "Gras (Ctrl+B)",
+      "ayudaTeclas": "Entrée pour envoyer · Maj+Entrée pour une nouvelle ligne · **texte** en gras"
     }
   },
   "chatBandeja": {
@@ -49798,7 +49807,32 @@
       "sinCompras": "Pas d'achats",
       "ultimaCompra": "Dernier achat",
       "oportunidad": "Opportunité",
-      "verFicha": "Voir la fiche du client"
+      "verFicha": "Voir la fiche du client",
+      "enLinea": "En ligne",
+      "visto": "Vu {cuando}",
+      "mensajes": "Messages",
+      "primerContacto": "Premier contact",
+      "ultimoContacto": "Dernier contact",
+      "recientes": "Conversations récentes",
+      "mensajesN": "{n, plural, one {# message} other {# messages}}",
+      "estaConversacion": "Cette conversation",
+      "notasCliente": "Notes du client",
+      "vinculado": "Client lié dans le CRM",
+      "edicion": {
+        "editar": "Modifier le contact",
+        "titulo": "Modifier le contact",
+        "nombres": "Prénom",
+        "apellidos": "Nom",
+        "ciudad": "Ville",
+        "guardar": "Enregistrer",
+        "cancelar": "Annuler",
+        "guardado": "Contact mis à jour",
+        "error": "Impossible d’enregistrer le contact",
+        "errorNombre": "Saisissez le prénom",
+        "errorCorreo": "Vérifiez l’e-mail",
+        "errorTelefono": "Vérifiez le téléphone",
+        "ayudaCorreoWidget": "Ce visiteur est arrivé par le chat du site web : l’e-mail est enregistré à part et ne change pas la façon dont le chat le reconnaît."
+      }
     },
     "acciones": {
       "estadoYPrioridad": "Statut et priorité",
@@ -49854,14 +49888,24 @@
       "enviada": "Réponse envoyée",
       "generar": "Suggérer une réponse",
       "otra": "Générer une autre réponse",
-      "creditos": "Chaque réponse ou résumé généré consomme des crédits IA."
+      "creditos": "Chaque réponse ou résumé généré consomme des crédits IA.",
+      "sentimiento": "Sentiment",
+      "sentimientos": {
+        "positive": "Positif",
+        "neutral": "Neutre",
+        "negative": "Négatif"
+      },
+      "puntosClave": "Points clés"
     },
     "panel": {
       "etiqueta": "Détails de la conversation",
       "cliente": "Client",
       "acciones": "Actions",
       "notas": "Notes",
-      "ia": "IA"
+      "ia": "IA",
+      "mostrarPanel": "Afficher le panneau",
+      "ocultarPanel": "Masquer le panneau",
+      "rapidas": "Rapides"
     },
     "hilo": {
       "etiqueta": "Conversation",
@@ -49920,7 +49964,8 @@
       "mias": "Les miennes",
       "sinAsignar": "Non attribuées",
       "pendientes": "En attente",
-      "cerradas": "Fermées"
+      "cerradas": "Fermées",
+      "todas": "Toutes"
     },
     "vacio": {
       "sinCanalesTitulo": "Vous n'avez encore aucun canal connecté",
@@ -49933,7 +49978,8 @@
         "mias": "Vous n'avez aucune conversation ouverte attribuée.",
         "sinAsignar": "Toutes les conversations ouvertes sont attribuées.",
         "pendientes": "Il n'y a aucune conversation en attente.",
-        "cerradas": "Il n'y a aucune conversation fermée."
+        "cerradas": "Il n'y a aucune conversation fermée.",
+        "todas": "Aucune conversation."
       },
       "listaTitulo": "Votre boîte est prête",
       "listaDescripcion": "Une fois un canal connecté, les conversations de vos clients apparaîtront ici.",
@@ -49964,7 +50010,8 @@
         "conversacion": "Conversation",
         "actividad": "Activité",
         "archivos": "Fichiers"
-      }
+      },
+      "asunto": "Objet : {asunto}"
     },
     "actividad": {
       "resumen": "Résumé de l'activité",
@@ -50022,7 +50069,18 @@
         "sinPermiso": "Vous n'appartenez pas à cette organisation",
         "clienteCreado": "Client {nombre} créé",
         "organizarParcial": "La conversation a été créée, mais tout n'a pas pu être appliqué."
-      }
+      },
+      "asunto": "Objet (facultatif)",
+      "asuntoPlaceholder": "Ex. : commande de gros de décembre"
+    },
+    "rapidas": {
+      "titulo": "Réponses rapides",
+      "buscar": "Rechercher par titre, texte, raccourci ou étiquette",
+      "sinResultados": "Aucune réponse avec ce texte",
+      "vacio": "Pas encore de réponses rapides",
+      "vacioAyuda": "Créez-les dans Paramètres › Chat.",
+      "usos": "{n, plural, =0 {Jamais utilisée} one {Utilisée # fois} other {Utilisée # fois}}",
+      "usar": "Utiliser"
     }
   },
   "chatBandejaPendientes": {
@@ -50230,8 +50288,11 @@
             "hoy": "Aujourd’hui",
             "7d": "7 derniers jours",
             "30d": "30 derniers jours",
-            "todo": "Tout"
-          }
+            "todo": "Tout",
+            "personalizado": "Choisir les dates"
+          },
+          "desde": "Du",
+          "hasta": "Au"
         },
         "tabla": {
           "etiqueta": "Tâches de l’IA",
@@ -50239,7 +50300,10 @@
           "conversacion": "Conversation",
           "estado": "État",
           "tokens": "Jetons",
-          "cuando": "Quand"
+          "cuando": "Quand",
+          "id": "ID",
+          "duracion": "Durée",
+          "confianza": "Confiance"
         },
         "tipos": {
           "auto_response": "Réponse automatique",
@@ -50273,14 +50337,25 @@
           "bitacora": "Journal",
           "reintentar": "Réessayer",
           "cancelar": "Annuler la tâche",
-          "abrirConversacion": "Ouvrir la conversation"
+          "abrirConversacion": "Ouvrir la conversation",
+          "id": "ID",
+          "copiarId": "Copier l’ID",
+          "copiado": "Copié",
+          "iniciado": "Démarré",
+          "completado": "Terminé",
+          "duracion": "Durée",
+          "tokensEntrada": "Jetons d’entrée",
+          "tokensSalida": "Jetons de sortie",
+          "costo": "Coût du fournisseur",
+          "idsFragmentos": "Fragments utilisés (ID)"
         },
         "toasts": {
           "sinMiembro": "Votre adhésion à cette organisation est introuvable",
           "reintentado": "Une nouvelle tâche a été créée pour réessayer",
           "cancelado": "Tâche annulée",
           "error": "Impossible de terminer l’action"
-        }
+        },
+        "actualizar": "Actualiser"
       }
     },
     "canales": {

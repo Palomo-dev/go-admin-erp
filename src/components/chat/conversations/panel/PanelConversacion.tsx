@@ -8,9 +8,10 @@ import { PestanaCliente } from './PestanaCliente';
 import { PestanaAcciones } from './PestanaAcciones';
 import { PestanaNotas } from './PestanaNotas';
 import { PestanaIA } from './PestanaIA';
+import { PestanaRespuestasRapidas } from './PestanaRespuestasRapidas';
 import type { ConversacionControl } from '../useConversacion';
 
-export type PestanaPanel = 'cliente' | 'acciones' | 'notas' | 'ia';
+export type PestanaPanel = 'cliente' | 'acciones' | 'notas' | 'ia' | 'rapidas';
 
 export interface PanelConversacionProps {
   c: ConversacionControl;
@@ -22,6 +23,8 @@ export interface PanelConversacionProps {
   pestanaInicial?: PestanaPanel;
   /** Hoja móvil: «Abrir ficha del cliente» en Acciones. */
   movil?: boolean;
+  /** Vista completa: pestaña «Rápidas» con el panel de respuestas rápidas. */
+  conRespuestasRapidas?: boolean;
   className?: string;
 }
 
@@ -30,7 +33,16 @@ export interface PanelConversacionProps {
  * (Figma 91-chat-01…04, 91-chat-10, 91-chat-16/17). El MISMO componente en la
  * Bandeja, la vista completa y la hoja «Detalles» del móvil.
  */
-export function PanelConversacion({ c, organizationId, onEditarRespuesta, id, pestanaInicial = 'cliente', movil = false, className }: PanelConversacionProps) {
+export function PanelConversacion({
+  c,
+  organizationId,
+  onEditarRespuesta,
+  id,
+  pestanaInicial = 'cliente',
+  movil = false,
+  conRespuestasRapidas = false,
+  className,
+}: PanelConversacionProps) {
   const t = useTranslations('chatBandeja.panel');
   const [pestana, setPestana] = React.useState<PestanaPanel>(pestanaInicial);
   React.useEffect(() => setPestana(pestanaInicial), [pestanaInicial]);
@@ -40,6 +52,7 @@ export function PanelConversacion({ c, organizationId, onEditarRespuesta, id, pe
     { valor: 'acciones' as const, etiqueta: t('acciones') },
     { valor: 'notas' as const, etiqueta: t('notas'), contador: c.notas.length || undefined },
     { valor: 'ia' as const, etiqueta: t('ia') },
+    ...(conRespuestasRapidas ? [{ valor: 'rapidas' as const, etiqueta: t('rapidas') }] : []),
   ];
 
   return (
@@ -50,6 +63,7 @@ export function PanelConversacion({ c, organizationId, onEditarRespuesta, id, pe
         {pestana === 'acciones' && <PestanaAcciones c={c} conFicha={movil} />}
         {pestana === 'notas' && <PestanaNotas c={c} />}
         {pestana === 'ia' && <PestanaIA c={c} onEditar={onEditarRespuesta} />}
+        {pestana === 'rapidas' && <PestanaRespuestasRapidas c={c} onUsar={onEditarRespuesta} />}
       </div>
     </div>
   );

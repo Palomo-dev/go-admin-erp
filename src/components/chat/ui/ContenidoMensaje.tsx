@@ -1,10 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { Download, FileText, Pause, Play } from 'lucide-react';
+import { Download, FileText, MapPin, Pause, Play } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { duracionGrabacion } from './composerLogica';
+import { enlaceMapa } from '@/components/chat/conversations/hiloLogica';
 
 /** Lo que hace falta de una fila de `messages` para pintarla. */
 export interface MensajeContenido {
@@ -15,6 +16,8 @@ export interface MensajeContenido {
     file_size?: number;
     products?: Array<{ id: number | string; name: string; price: number; imageUrl?: string | null }>;
   } | null;
+  /** Ubicación de WhatsApp: `{ latitude, longitude, name, address }`. */
+  payload?: { latitude?: unknown; longitude?: unknown; name?: unknown; address?: unknown } | null;
 }
 
 /** Partes de un texto: imágenes `[IMG:url]`, **negrilla** y saltos de línea. */
@@ -97,6 +100,28 @@ export function ContenidoMensaje({ mensaje, claro = false }: { mensaje: MensajeC
         {/* eslint-disable-next-line @next/next/no-img-element -- URL de Storage arbitraria */}
         <img src={mensaje.content} alt={meta.file_name || t('imagen')} className="h-auto max-w-full rounded-lg" loading="lazy" />
       </a>
+    );
+  } else if (tipo === 'location') {
+    const mapa = enlaceMapa(mensaje.payload);
+    const p = mensaje.payload ?? {};
+    const lugar = [p.name, p.address].filter((x): x is string => typeof x === 'string' && !!x.trim()).join(' · ');
+    const interior = (
+      <>
+        <span className={cn('flex size-9 shrink-0 items-center justify-center rounded-lg', claro ? 'bg-white/20' : 'bg-subtle text-fg-secondary')}>
+          <MapPin aria-hidden="true" className="size-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium">{t('ubicacion')}</span>
+          <span className="block truncate text-xs opacity-80">{lugar || mensaje.content}</span>
+        </span>
+      </>
+    );
+    cuerpo = mapa ? (
+      <a href={mapa} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 hover:opacity-90" title={t('verMapa')}>
+        {interior}
+      </a>
+    ) : (
+      <span className="flex items-center gap-3">{interior}</span>
     );
   } else if (tipo === 'audio') {
     cuerpo = <Audio src={mensaje.content} claro={claro} />;

@@ -42,6 +42,8 @@ export function AreaConversacion({ c, insertar, compacto = false }: AreaConversa
           notas={c.notas}
           eventos={c.eventosBloqueo}
           agentes={c.agentes}
+          nombreCliente={nombreClienteConversacion(d, tb('contacto'))}
+          organizationId={d.organization_id}
           nombreCanal={d.channel?.name ?? null}
           inicioConversacion={d.created_at}
         />

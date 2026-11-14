@@ -49685,13 +49685,19 @@
       "archivo": "File",
       "descargar": "Download",
       "reproducir": "Play audio",
-      "pausar": "Pause audio"
+      "pausar": "Pause audio",
+      "entregado": "Delivered",
+      "fallido": "Not delivered",
+      "ubicacion": "Location",
+      "verMapa": "View on map"
     },
     "fila": {
       "sinAsignar": "Unassigned",
       "iaAutomatico": "AI · automatic",
       "noLeidos": "{n, plural, one {# unread message} other {# unread messages}}",
-      "prefijoIa": "AI: {texto}"
+      "prefijoIa": "AI: {texto}",
+      "enLinea": "Online",
+      "masEtiquetas": "{n} more tags"
     },
     "prioridad": {
       "low": "Low",
@@ -49738,7 +49744,10 @@
         "demasiados": "Too many messages in a row. Wait a moment.",
         "sinPlantilla": "The template is not approved or is missing data.",
         "generico": "Check your connection and try again."
-      }
+      },
+      "negrilla": "Bold",
+      "negrillaAtajo": "Bold (Ctrl+B)",
+      "ayudaTeclas": "Enter to send · Shift+Enter for a new line · **text** in bold"
     }
   },
   "chatBandeja": {
@@ -49798,7 +49807,32 @@
       "sinCompras": "No purchases",
       "ultimaCompra": "Last purchase",
       "oportunidad": "Opportunity",
-      "verFicha": "View customer record"
+      "verFicha": "View customer record",
+      "enLinea": "Online",
+      "visto": "Seen {cuando}",
+      "mensajes": "Messages",
+      "primerContacto": "First contact",
+      "ultimoContacto": "Last contact",
+      "recientes": "Recent conversations",
+      "mensajesN": "{n, plural, one {# message} other {# messages}}",
+      "estaConversacion": "This conversation",
+      "notasCliente": "Customer notes",
+      "vinculado": "Linked customer in CRM",
+      "edicion": {
+        "editar": "Edit contact",
+        "titulo": "Edit contact",
+        "nombres": "First name",
+        "apellidos": "Last name",
+        "ciudad": "City",
+        "guardar": "Save",
+        "cancelar": "Cancel",
+        "guardado": "Contact updated",
+        "error": "Couldn’t save the contact",
+        "errorNombre": "Enter the first name",
+        "errorCorreo": "Check the email",
+        "errorTelefono": "Check the phone number",
+        "ayudaCorreoWidget": "This visitor came through the website chat: the email is stored separately and doesn’t change how the chat recognizes them."
+      }
     },
     "acciones": {
       "estadoYPrioridad": "Status and priority",
@@ -49854,14 +49888,24 @@
       "enviada": "Reply sent",
       "generar": "Suggest a reply",
       "otra": "Generate another reply",
-      "creditos": "Each generated reply or summary uses AI credits."
+      "creditos": "Each generated reply or summary uses AI credits.",
+      "sentimiento": "Sentiment",
+      "sentimientos": {
+        "positive": "Positive",
+        "neutral": "Neutral",
+        "negative": "Negative"
+      },
+      "puntosClave": "Key points"
     },
     "panel": {
       "etiqueta": "Conversation details",
       "cliente": "Customer",
       "acciones": "Actions",
       "notas": "Notes",
-      "ia": "AI"
+      "ia": "AI",
+      "mostrarPanel": "Show panel",
+      "ocultarPanel": "Hide panel",
+      "rapidas": "Quick"
     },
     "hilo": {
       "etiqueta": "Conversation",
@@ -49920,7 +49964,8 @@
       "mias": "Mine",
       "sinAsignar": "Unassigned",
       "pendientes": "Pending",
-      "cerradas": "Closed"
+      "cerradas": "Closed",
+      "todas": "All"
     },
     "vacio": {
       "sinCanalesTitulo": "You have no connected channels yet",
@@ -49933,7 +49978,8 @@
         "mias": "You have no open conversations assigned.",
         "sinAsignar": "Every open conversation is assigned.",
         "pendientes": "There are no pending conversations.",
-        "cerradas": "There are no closed conversations."
+        "cerradas": "There are no closed conversations.",
+        "todas": "There are no conversations."
       },
       "listaTitulo": "Your inbox is ready",
       "listaDescripcion": "Once you connect a channel, your customers' conversations will show up here.",
@@ -49964,7 +50010,8 @@
         "conversacion": "Conversation",
         "actividad": "Activity",
         "archivos": "Files"
-      }
+      },
+      "asunto": "Subject: {asunto}"
     },
     "actividad": {
       "resumen": "Activity summary",
@@ -50022,7 +50069,18 @@
         "sinPermiso": "You do not belong to this organization",
         "clienteCreado": "Customer {nombre} created",
         "organizarParcial": "The conversation was created, but not everything could be applied (priority, tags or assignment)."
-      }
+      },
+      "asunto": "Subject (optional)",
+      "asuntoPlaceholder": "E.g. December wholesale order"
+    },
+    "rapidas": {
+      "titulo": "Quick replies",
+      "buscar": "Search by title, text, shortcut or tag",
+      "sinResultados": "No replies match that text",
+      "vacio": "There are no quick replies yet",
+      "vacioAyuda": "Create them in Settings › Chat.",
+      "usos": "{n, plural, =0 {Never used} one {Used # time} other {Used # times}}",
+      "usar": "Use"
     }
   },
   "chatBandejaPendientes": {
@@ -50230,8 +50288,11 @@
             "hoy": "Today",
             "7d": "Last 7 days",
             "30d": "Last 30 days",
-            "todo": "All time"
-          }
+            "todo": "All time",
+            "personalizado": "Choose dates"
+          },
+          "desde": "From",
+          "hasta": "To"
         },
         "tabla": {
           "etiqueta": "AI jobs",
@@ -50239,7 +50300,10 @@
           "conversacion": "Conversation",
           "estado": "Status",
           "tokens": "Tokens",
-          "cuando": "When"
+          "cuando": "When",
+          "id": "ID",
+          "duracion": "Duration",
+          "confianza": "Confidence"
         },
         "tipos": {
           "auto_response": "Automatic reply",
@@ -50273,14 +50337,25 @@
           "bitacora": "Log",
           "reintentar": "Retry",
           "cancelar": "Cancel job",
-          "abrirConversacion": "Open conversation"
+          "abrirConversacion": "Open conversation",
+          "id": "ID",
+          "copiarId": "Copy ID",
+          "copiado": "Copied",
+          "iniciado": "Started",
+          "completado": "Completed",
+          "duracion": "Duration",
+          "tokensEntrada": "Input tokens",
+          "tokensSalida": "Output tokens",
+          "costo": "Provider cost",
+          "idsFragmentos": "Fragments used (IDs)"
         },
         "toasts": {
           "sinMiembro": "We couldn’t find your membership in this organization",
           "reintentado": "A new job was created to retry",
           "cancelado": "Job cancelled",
           "error": "The action couldn’t be completed"
-        }
+        },
+        "actualizar": "Refresh"
       }
     },
     "canales": {

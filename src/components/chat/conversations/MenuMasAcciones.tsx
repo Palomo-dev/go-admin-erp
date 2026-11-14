@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Clock, FileText, History, Maximize2, MoreHorizontal, RotateCcw, Search, User, UserCheck, UserX } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { ConfirmDialog } from '@/components/kit';
-import { nombreClienteConversacion } from './CabeceraHilo';
+import { DialogoBloquearContacto } from './DialogoBloquearContacto';
 import type { ConversacionControl } from './useConversacion';
 
 export interface MenuMasAccionesProps {
@@ -26,10 +25,8 @@ export function MenuMasAcciones({ c, enBandeja = false, onBuscar }: MenuMasAccio
   const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const router = useRouter();
   const [confirmar, setConfirmar] = React.useState(false);
-  const [bloqueando, setBloqueando] = React.useState(false);
   const d = c.detalle;
   if (!d) return null;
-  const nombre = nombreClienteConversacion(d, tb('contacto'));
   const base = `/app/chat/conversaciones/${d.id}`;
   const cerrada = d.status === 'closed' || (d.status as string) === 'archived';
 
@@ -97,24 +94,7 @@ export function MenuMasAcciones({ c, enBandeja = false, onBuscar }: MenuMasAccio
         )}
       </DropdownMenuContent>
     </DropdownMenu>
-    <ConfirmDialog
-      abierto={confirmar}
-      onAbiertoChange={setConfirmar}
-      tono="peligro"
-      titulo={tb('confirmarTitulo', { nombre })}
-      descripcion={tb('confirmarDescripcion')}
-      textoConfirmar={tb('confirmar')}
-      textoCancelar={tb('cancelar')}
-      cargando={bloqueando}
-      onConfirmar={async () => {
-        setBloqueando(true);
-        try {
-          if (await c.bloquearContacto()) setConfirmar(false);
-        } finally {
-          setBloqueando(false);
-        }
-      }}
-    />
+    <DialogoBloquearContacto c={c} abierto={confirmar} onAbiertoChange={setConfirmar} />
     </>
   );
 }

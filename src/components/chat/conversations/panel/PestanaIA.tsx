@@ -65,6 +65,27 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
         ) : (
           <p className="text-sm text-fg-muted">{t('sinResumen')}</p>
         )}
+        {c.resumen?.sentiment ? (
+          <p className="mt-2 flex items-center gap-2 text-xs text-fg-secondary">
+            {t('sentimiento')}
+            <StatusBadge
+              estado={c.resumen.sentiment}
+              etiqueta={t(`sentimientos.${c.resumen.sentiment}`)}
+              tono={c.resumen.sentiment === 'positive' ? 'exito' : c.resumen.sentiment === 'negative' ? 'peligro' : 'neutro'}
+              apariencia="contorno"
+            />
+          </p>
+        ) : null}
+        {c.resumen?.key_points && c.resumen.key_points.length > 0 ? (
+          <div className="mt-2">
+            <h5 className="text-xs font-semibold text-fg">{t('puntosClave')}</h5>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-fg-secondary">
+              {c.resumen.key_points.map((p, i) => (
+                <li key={i}>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <button
           type="button"
           disabled={resumiendo}

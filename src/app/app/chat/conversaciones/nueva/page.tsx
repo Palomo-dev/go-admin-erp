@@ -73,6 +73,8 @@ export default function NuevaConversacionPage() {
   const [canalId, setCanalId] = useState('');
   const [cliente, setCliente] = useState<ClientePicker | null>(null);
   const [mensaje, setMensaje] = useState('');
+  /** «Asunto (opcional)»: va a `conversations.metadata.subject`. */
+  const [asunto, setAsunto] = useState('');
   const [prioridad, setPrioridad] = useState<Prioridad>('normal');
   const [asignado, setAsignado] = useState<number | null | undefined>(undefined);
   const [tagIds, setTagIds] = useState<string[]>([]);
@@ -115,6 +117,7 @@ export default function NuevaConversacionPage() {
     if (esWhatsApp && prioridad !== 'normal') tareas.push(detalle.updateConversationPriority(conversationId, prioridad));
     if (esWhatsApp) tareas.push(...tagIds.map((id) => detalle.addTag(conversationId, id).catch(() => undefined)));
     if (asignadoFinal != null) tareas.push(chatApi.asignar(conversationId, asignadoFinal));
+    if (esWhatsApp && asunto.trim() && servicio) tareas.push(servicio.setSubject(conversationId, asunto));
     const r = await Promise.allSettled(tareas);
     if (r.some((x) => x.status === 'rejected')) toast({ title: t('avisos.organizarParcial'), variant: 'destructive' });
   };
@@ -134,7 +137,11 @@ export default function NuevaConversacionPage() {
           toast({ title: t('avisos.sinPermiso'), variant: 'destructive' });
           return;
         }
-        conversationId = await servicio.createConversation({ channel_id: canal.id, customer_id: cliente.id, priority: prioridad, tag_ids: tagIds }, data.user?.id ?? '', memberId);
+        conversationId = await servicio.createConversation(
+          { channel_id: canal.id, customer_id: cliente.id, priority: prioridad, tag_ids: tagIds, subject: asunto.trim() || undefined },
+          data.user?.id ?? '',
+          memberId,
+        );
         await enviarMensajeConversacion({ organizationId, conversacion: { id: conversationId, channel_id: canal.id, tipoCanal: canal.type }, mensaje: { texto: mensaje }, supabase });
       }
       await organizar(conversationId);
@@ -258,6 +265,17 @@ export default function NuevaConversacionPage() {
               </Seccion>
 
               <Seccion titulo={t('paso3')}>
+                <label className="block space-y-1.5 text-sm font-medium text-fg">
+                  <span className="block">{t('asunto')}</span>
+                  <input
+                    type="text"
+                    value={asunto}
+                    maxLength={200}
+                    onChange={(e) => setAsunto(e.target.value)}
+                    placeholder={t('asuntoPlaceholder')}
+                    className="h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm font-normal text-fg placeholder:text-fg-muted focus:outline-none focus:ring-2 focus:ring-brand/40"
+                  />
+                </label>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="block space-y-1.5 text-sm font-medium text-fg">
                     <span className="block">{t('prioridad')}</span>

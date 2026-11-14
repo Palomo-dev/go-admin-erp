@@ -49700,13 +49700,19 @@
       "archivo": "Archivo",
       "descargar": "Descargar",
       "reproducir": "Reproducir audio",
-      "pausar": "Pausar audio"
+      "pausar": "Pausar audio",
+      "entregado": "Entregado",
+      "fallido": "No se entregó",
+      "ubicacion": "Ubicación",
+      "verMapa": "Ver en el mapa"
     },
     "fila": {
       "sinAsignar": "Sin asignar",
       "iaAutomatico": "IA · automático",
       "noLeidos": "{n, plural, one {# mensaje sin leer} other {# mensajes sin leer}}",
-      "prefijoIa": "IA: {texto}"
+      "prefijoIa": "IA: {texto}",
+      "enLinea": "En línea",
+      "masEtiquetas": "{n} etiquetas más"
     },
     "prioridad": {
       "low": "Baja",
@@ -49753,7 +49759,10 @@
         "demasiados": "Demasiados envíos seguidos. Espera un momento.",
         "sinPlantilla": "La plantilla no está aprobada o le faltan datos.",
         "generico": "Revisa la conexión e inténtalo de nuevo."
-      }
+      },
+      "negrilla": "Negrilla",
+      "negrillaAtajo": "Negrilla (Ctrl+B)",
+      "ayudaTeclas": "Enter para enviar · Shift+Enter para una línea nueva · **texto** en negrilla"
     }
   },
   "chatBandeja": {
@@ -49813,7 +49822,32 @@
       "sinCompras": "Sin compras",
       "ultimaCompra": "Última compra",
       "oportunidad": "Oportunidad",
-      "verFicha": "Ver ficha del cliente"
+      "verFicha": "Ver ficha del cliente",
+      "enLinea": "En línea",
+      "visto": "Visto {cuando}",
+      "mensajes": "Mensajes",
+      "primerContacto": "Primer contacto",
+      "ultimoContacto": "Último contacto",
+      "recientes": "Conversaciones recientes",
+      "mensajesN": "{n, plural, one {# mensaje} other {# mensajes}}",
+      "estaConversacion": "Esta conversación",
+      "notasCliente": "Notas del cliente",
+      "vinculado": "Cliente vinculado en CRM",
+      "edicion": {
+        "editar": "Editar contacto",
+        "titulo": "Editar contacto",
+        "nombres": "Nombre",
+        "apellidos": "Apellido",
+        "ciudad": "Ciudad",
+        "guardar": "Guardar",
+        "cancelar": "Cancelar",
+        "guardado": "Contacto actualizado",
+        "error": "No se pudo guardar el contacto",
+        "errorNombre": "Escribe el nombre",
+        "errorCorreo": "Revisa el correo",
+        "errorTelefono": "Revisa el teléfono",
+        "ayudaCorreoWidget": "Este visitante llegó por el chat del sitio web: el correo se guarda aparte y no cambia cómo lo reconoce el chat."
+      }
     },
     "acciones": {
       "estadoYPrioridad": "Estado y prioridad",
@@ -49869,14 +49903,24 @@
       "enviada": "Respuesta enviada",
       "generar": "Sugerir una respuesta",
       "otra": "Generar otra respuesta",
-      "creditos": "Cada respuesta o resumen generado descuenta créditos de IA."
+      "creditos": "Cada respuesta o resumen generado descuenta créditos de IA.",
+      "sentimiento": "Sentimiento",
+      "sentimientos": {
+        "positive": "Positivo",
+        "neutral": "Neutral",
+        "negative": "Negativo"
+      },
+      "puntosClave": "Puntos clave"
     },
     "panel": {
       "etiqueta": "Detalles de la conversación",
       "cliente": "Cliente",
       "acciones": "Acciones",
       "notas": "Notas",
-      "ia": "IA"
+      "ia": "IA",
+      "mostrarPanel": "Mostrar panel",
+      "ocultarPanel": "Ocultar panel",
+      "rapidas": "Rápidas"
     },
     "hilo": {
       "etiqueta": "Conversación",
@@ -49935,7 +49979,8 @@
       "mias": "Mías",
       "sinAsignar": "Sin asignar",
       "pendientes": "Pendientes",
-      "cerradas": "Cerradas"
+      "cerradas": "Cerradas",
+      "todas": "Todas"
     },
     "vacio": {
       "sinCanalesTitulo": "Aún no tienes canales conectados",
@@ -49948,7 +49993,8 @@
         "mias": "No tienes conversaciones abiertas asignadas.",
         "sinAsignar": "Todas las conversaciones abiertas tienen a alguien.",
         "pendientes": "No hay conversaciones pendientes.",
-        "cerradas": "No hay conversaciones cerradas."
+        "cerradas": "No hay conversaciones cerradas.",
+        "todas": "No hay conversaciones."
       },
       "listaTitulo": "Tu bandeja está lista",
       "listaDescripcion": "Cuando conectes un canal, aquí verás las conversaciones de tus clientes.",
@@ -49979,7 +50025,8 @@
         "conversacion": "Conversación",
         "actividad": "Actividad",
         "archivos": "Archivos"
-      }
+      },
+      "asunto": "Asunto: {asunto}"
     },
     "actividad": {
       "resumen": "Resumen de la actividad",
@@ -50037,7 +50084,18 @@
         "sinPermiso": "No perteneces a esta organización",
         "clienteCreado": "Cliente {nombre} creado",
         "organizarParcial": "La conversación se creó, pero no se pudo aplicar todo (prioridad, etiquetas o asignación)."
-      }
+      },
+      "asunto": "Asunto (opcional)",
+      "asuntoPlaceholder": "Ej.: pedido mayorista de diciembre"
+    },
+    "rapidas": {
+      "titulo": "Respuestas rápidas",
+      "buscar": "Buscar por título, texto, atajo o etiqueta",
+      "sinResultados": "No hay respuestas con ese texto",
+      "vacio": "Todavía no hay respuestas rápidas",
+      "vacioAyuda": "Créalas en Configuración › Chat.",
+      "usos": "{n, plural, =0 {Sin usar} one {Usada # vez} other {Usada # veces}}",
+      "usar": "Usar"
     }
   },
   "chatBandejaPendientes": {
@@ -50245,8 +50303,11 @@
             "hoy": "Hoy",
             "7d": "Últimos 7 días",
             "30d": "Últimos 30 días",
-            "todo": "Todo"
-          }
+            "todo": "Todo",
+            "personalizado": "Elegir fechas"
+          },
+          "desde": "Desde",
+          "hasta": "Hasta"
         },
         "tabla": {
           "etiqueta": "Trabajos de la IA",
@@ -50254,7 +50315,10 @@
           "conversacion": "Conversación",
           "estado": "Estado",
           "tokens": "Tokens",
-          "cuando": "Cuándo"
+          "cuando": "Cuándo",
+          "id": "ID",
+          "duracion": "Duración",
+          "confianza": "Confianza"
         },
         "tipos": {
           "auto_response": "Respuesta automática",
@@ -50288,14 +50352,25 @@
           "bitacora": "Bitácora",
           "reintentar": "Reintentar",
           "cancelar": "Cancelar trabajo",
-          "abrirConversacion": "Abrir conversación"
+          "abrirConversacion": "Abrir conversación",
+          "id": "ID",
+          "copiarId": "Copiar ID",
+          "copiado": "Copiado",
+          "iniciado": "Iniciado",
+          "completado": "Completado",
+          "duracion": "Duración",
+          "tokensEntrada": "Tokens de entrada",
+          "tokensSalida": "Tokens de salida",
+          "costo": "Costo del proveedor",
+          "idsFragmentos": "Fragmentos usados (IDs)"
         },
         "toasts": {
           "sinMiembro": "No encontramos tu membresía en esta organización",
           "reintentado": "Se creó un trabajo nuevo para reintentar",
           "cancelado": "Trabajo cancelado",
           "error": "No se pudo completar la acción"
-        }
+        },
+        "actualizar": "Actualizar"
       }
     },
     "canales": {

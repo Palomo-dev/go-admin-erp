@@ -1,13 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Clock, Lock, Mic, Paperclip, Send, Smile, Sparkles, Square, X, Zap } from 'lucide-react';
+import { Bold, Clock, Lock, Mic, Paperclip, Send, Smile, Sparkles, Square, X, Zap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { clasesBoton } from '@/components/kit';
 import { cn } from '@/utils/Utils';
 import {
   EMOJIS_FRECUENTES,
+  aplicarNegrilla,
   duracionGrabacion,
   puedeEnviar,
   puedeEscribir,
@@ -153,10 +154,27 @@ export function ComposerChat({
         return;
       }
     }
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    // Enter envía (Shift+Enter, nueva línea). Ctrl/⌘+Enter también, como en
+    // las notas del Chat anterior.
+    if (e.key === 'Enter' && (!e.shiftKey || e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) {
       e.preventDefault();
       void enviar();
+      return;
     }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      negrilla();
+    }
+  };
+
+  const negrilla = () => {
+    const el = caja.current;
+    const r = aplicarNegrilla(texto, el?.selectionStart ?? texto.length, el?.selectionEnd ?? texto.length);
+    setTexto(r.texto);
+    requestAnimationFrame(() => {
+      el?.focus();
+      el?.setSelectionRange(r.inicio, r.fin);
+    });
   };
 
   const alElegirArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -384,6 +402,19 @@ export function ComposerChat({
                 </div>
               </PopoverContent>
             </Popover>
+            {!compacto ? (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={negrilla}
+                disabled={!escribible}
+                aria-label={t('negrilla')}
+                title={t('negrillaAtajo')}
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-fg-secondary hover:bg-hover disabled:opacity-50"
+              >
+                <Bold aria-hidden="true" className="size-4" />
+              </button>
+            ) : null}
             {!esNota && !compacto ? (
               <button
                 type="button"
@@ -436,6 +467,7 @@ export function ComposerChat({
               {esNota ? t('guardarNota') : t('enviar')}
             </button>
           </div>
+          {!compacto && escribible ? <p className="mt-1 px-1 text-[11px] text-fg-muted">{t('ayudaTeclas')}</p> : null}
         </div>
       )}
     </div>

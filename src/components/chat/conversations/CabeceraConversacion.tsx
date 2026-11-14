@@ -34,11 +34,14 @@ export function CabeceraConversacion({
   seccion,
   conversationId,
   contadores,
+  onBuscar,
 }: {
   c: ConversacionControl;
   seccion: SeccionConversacion;
   conversationId: string;
   contadores?: Partial<Record<SeccionConversacion, number | null>>;
+  /** «Buscar en la conversación» en el menú ⋯ (vista completa). */
+  onBuscar?: () => void;
 }) {
   const t = useTranslations('chatBandeja.vista');
   const te = useTranslations('chatUi.estado');
@@ -90,6 +93,9 @@ export function CabeceraConversacion({
                 <CanalIcono canal={canal} size={18} />
                 {d.customer?.phone ? <span className="truncate text-sm font-normal text-fg-muted">{d.customer.phone}</span> : null}
               </h1>
+              {typeof d.metadata?.subject === 'string' && d.metadata.subject.trim() ? (
+                <p className="truncate text-sm text-fg-secondary">{t('asunto', { asunto: d.metadata.subject.trim() })}</p>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 max-lg:w-full">
               {c.bloqueo ? (
@@ -100,7 +106,7 @@ export function CabeceraConversacion({
               <StatusBadge estado={prioridad} etiqueta={t(`prioridad.${prioridad}`)} tono={TONO_PRIORIDAD[prioridad]} apariencia="contorno" />
               <StatusBadge estado={modoIa} etiqueta={ti(modoIa)} tono={modoIa === 'manual' ? 'neutro' : 'informacion'} apariencia="contorno" className="hidden sm:inline-flex" />
               <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} variante="cabecera" className="max-lg:ml-auto" />
-              <MenuMasAcciones c={c} />
+              <MenuMasAcciones c={c} onBuscar={onBuscar} />
             </div>
           </>
         ) : (

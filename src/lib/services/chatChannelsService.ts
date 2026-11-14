@@ -190,6 +190,10 @@ export interface WidgetStats {
   totalSessions: number;
   activeSessions: number;
   uniqueVisitors: number;
+  /** Sesiones creadas desde `desde` (inicio del día en la zona de la organización). */
+  sessionsSince: number;
+  /** De esas, las que dejaron sus datos (la sesión quedó enlazada a un cliente). */
+  identifiedSince: number;
   deviceBreakdown: Record<string, number>;
   topPages: { page: string; count: number }[];
 }
@@ -611,7 +615,8 @@ class ChatChannelsService {
     return newDomains;
   }
 
-  async getWidgetStats(channelId: string): Promise<WidgetStats> {
+  /** `desde`: instante ISO del inicio del día en la zona de la organización (`toInstant(getToday())`). */
+  async getWidgetStats(channelId: string, desde?: string): Promise<WidgetStats> {
     const { data: sessions, error } = await supabase
       .from('widget_sessions')
       .select('*')
@@ -637,6 +642,9 @@ class ChatChannelsService {
       }
     });
 
+    const desdeMs = desde ? Date.parse(desde) : NaN;
+    const recientes = Number.isFinite(desdeMs) ? sessionList.filter(s => Date.parse(s.created_at) >= desdeMs) : [];
+
     const topPages = Object.entries(pageCount)
       .map(([page, count]) => ({ page, count }))
       .sort((a, b) => b.count - a.count)
@@ -646,6 +654,8 @@ class ChatChannelsService {
       totalSessions: sessionList.length,
       activeSessions: sessionList.filter(s => s.is_active).length,
       uniqueVisitors: uniqueAnons.size,
+      sessionsSince: recientes.length,
+      identifiedSince: recientes.filter(s => !!s.customer_id).length,
       deviceBreakdown,
       topPages
     };

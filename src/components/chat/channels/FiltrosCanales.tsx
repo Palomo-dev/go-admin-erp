@@ -36,7 +36,7 @@ export function FiltrosCanales({ filtros, onCambio, resultados }: { filtros: Fil
         />
       }
       filtros={
-        <FilterPanel conteo={filtrosActivos(filtros)} onLimpiar={limpiar} textoVerResultados={t('filtros.verN', { n: resultados })}>
+        <FilterPanel conteo={filtrosActivos(filtros)} onLimpiar={limpiar} nota={t('filtros.nota')} textoVerResultados={t('filtros.verN', { n: resultados })}>
           <FormField etiqueta={t('filtros.tipo')}>
             {(c) => (
               <Select value={filtros.tipo ?? TODOS} onValueChange={(v) => onCambio({ ...filtros, tipo: v === TODOS ? null : (v as ChannelType) })}>

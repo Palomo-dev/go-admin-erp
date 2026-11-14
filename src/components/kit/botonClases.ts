@@ -7,8 +7,8 @@
  */
 import { cn } from '@/utils/Utils';
 
-/** primary · outline · ghost · destructive de Figma, más el tinte de marca (secundaria suave). */
-export type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'destructivo' | 'tinte';
+/** primary · outline · ghost · destructive de Figma, más el tinte de marca (secundaria suave) y la advertencia (ámbar). */
+export type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'destructivo' | 'tinte' | 'advertencia';
 /** sm 32 · md 40 · lg 48 px. */
 export type TamanoBoton = 'sm' | 'md' | 'lg';
 export type TemaKbd = 'claro' | 'oscuro' | 'marca';
@@ -24,6 +24,8 @@ const VARIANTE: Record<VarianteBoton, string> = {
   fantasma: 'text-fg-secondary hover:bg-hover hover:text-fg',
   destructivo: 'bg-danger text-fg-on-brand hover:bg-danger-hover',
   tinte: 'bg-brand-tint text-brand-deep hover:bg-brand-tint-hover',
+  /** Acción que rompe algo recuperable («Generar clave nueva»): ámbar, no rojo. */
+  advertencia: 'bg-warning text-on-solid-warning hover:bg-warning/90',
 };
 
 const TAMANO: Record<TamanoBoton, string> = {

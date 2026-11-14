@@ -10,10 +10,11 @@
  * formulario. Lo restaurado el 2026-11-14 está en
  * `docs/design/AUDITORIA-CHAT-FUNCIONES-PERDIDAS-2026-11-14.md`.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, Copy, KeyRound, Link2, Plus, X } from 'lucide-react';
-import { CampoNumero, ConfirmDialog, FormField, RowActionsMenu, SeccionPlegable, Tarjeta, clasesBoton } from '@/components/kit';
+import { AlertCircle, Check, ChevronDown, Copy, KeyRound, Link2, Plus, X } from 'lucide-react';
+import { CampoNumero, ConfirmDialog, FormField, RowActionsMenu, Tarjeta, clasesBoton } from '@/components/kit';
+import { cn } from '@/utils/Utils';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
@@ -27,12 +28,13 @@ import {
   claveDePosicion,
   entreLimites,
   esDominioValido,
-  esUrlImagenValida,
   normalizarDominio,
   posicionDeClave,
   type ClavePosicion,
 } from './widgetLogica';
 import { EstiloAvanzadoWidget } from './EstiloAvanzadoWidget';
+import { SelectorColorLibre } from './SelectorColorLibre';
+import { SubidaImagenUnica } from './SubidaImagenUnica';
 
 /* ── Instalación ─────────────────────────────────────────────────────────── */
 
@@ -133,7 +135,8 @@ export function InstalacionWidget({
         textoConfirmar={t('rotarClave')}
         textoCancelar={tm('cancelar')}
         tono="advertencia"
-        icono={KeyRound}
+        icono={AlertCircle}
+        varianteConfirmar="advertencia"
         cargando={rotando}
         onConfirmar={() => {
           setConfirmarRotar(false);
@@ -142,7 +145,7 @@ export function InstalacionWidget({
       />
       <div className="flex flex-col gap-4">
         <div className="relative rounded-lg bg-solid-neutral p-3 pr-11">
-          <code className="block break-all font-mono text-xs leading-5 text-on-solid">{codigo}</code>
+          <code className="block whitespace-pre-wrap break-all font-mono text-xs leading-5 text-on-solid">{codigo}</code>
           <button
             type="button"
             onClick={copiar}
@@ -198,7 +201,6 @@ export function InstalacionWidget({
           )}
         </div>
         {error && <p className="text-xs text-danger-text">{error}</p>}
-        <p className="text-xs text-fg-muted">{t('dominiosAyuda')}</p>
       </div>
     </Tarjeta>
   );
@@ -208,28 +210,47 @@ export function InstalacionWidget({
 
 const TAMANOS = [48, 56, 64] as const;
 
+export interface AparienciaWidgetProps {
+  config: BrandConfig;
+  onGuardarPosicion: (p: WidgetPosition) => Promise<void>;
+  onGuardarEstilo: (s: WidgetStyle) => Promise<void>;
+  onGuardarLogo: (url: string) => Promise<void>;
+  /** Estilo en vivo (borrador) para la vista previa del widget, antes de guardar. */
+  onEstiloVivo?: (s: WidgetStyle) => void;
+  /** `<organización>/chat-widget/<canal>`: sin ella, logo e imagen propia solo por enlace. */
+  carpetaSubidas?: string | null;
+  organizacionId?: number | string | null;
+  /** Iniciales del chat para la miniatura sin logo. */
+  marcadorLogo?: string;
+}
+
 export function AparienciaWidget({
   config,
   onGuardarPosicion,
   onGuardarEstilo,
   onGuardarLogo,
-}: {
-  config: BrandConfig;
-  onGuardarPosicion: (p: WidgetPosition) => Promise<void>;
-  onGuardarEstilo: (s: WidgetStyle) => Promise<void>;
-  onGuardarLogo: (url: string) => Promise<void>;
-}) {
+  onEstiloVivo,
+  carpetaSubidas = null,
+  organizacionId = null,
+  marcadorLogo,
+}: AparienciaWidgetProps) {
   const t = useTranslations('chatModulo.canales.widget.apariencia');
   const tm = useTranslations('chatModulo.canales.widget.mas.apariencia');
-  const [color, setColor] = useState(config.style.primaryColor);
+  const tn = useTranslations('chatModulo.canales.widget.subida');
   const [margenes, setMargenes] = useState({ x: config.position.offsetX, y: config.position.offsetY });
-  const [logo, setLogo] = useState(config.logo_url ?? '');
-  useEffect(() => setColor(config.style.primaryColor), [config.style.primaryColor]);
+  const [estilo, setEstilo] = useState<WidgetStyle>(config.style);
+  const [masAbierto, setMasAbierto] = useState(true);
+  const idMas = useId();
+  const firmaGuardada = JSON.stringify(config.style);
+  useEffect(() => setEstilo(config.style), [firmaGuardada]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => setMargenes({ x: config.position.offsetX, y: config.position.offsetY }), [config.position.offsetX, config.position.offsetY]);
-  useEffect(() => setLogo(config.logo_url ?? ''), [config.logo_url]);
-  const logoInvalido = !esUrlImagenValida(logo);
+  useEffect(() => onEstiloVivo?.(estilo), [estilo]); // eslint-disable-line react-hooks/exhaustive-deps
   const izquierda = config.position.side === 'left';
   const arriba = config.position.vertical === 'top';
+
+  const cambiarEstilo = (parcial: Partial<WidgetStyle>) => setEstilo((e) => ({ ...e, ...parcial }));
+  /** Guarda el borrador completo, más lo recién elegido (que aún no está en el estado). */
+  const guardarEstilo = (parcial?: Partial<WidgetStyle>) => onGuardarEstilo({ ...estilo, ...parcial });
 
   /** Guarda los márgenes al salir del campo; conserva la esquina elegida. */
   const guardarMargenes = () => {
@@ -241,18 +262,8 @@ export function AparienciaWidget({
     }
   };
 
-  const guardarLogo = () => {
-    const v = logo.trim();
-    if (esUrlImagenValida(v) && v !== (config.logo_url ?? '')) onGuardarLogo(v).catch(() => undefined);
-  };
   const clave = claveDePosicion(config.position);
-  const tamano = TAMANOS.includes(config.style.buttonSize as 48) ? String(config.style.buttonSize) : 'otro';
-
-  const guardarColor = () => {
-    if (/^#[0-9a-fA-F]{6}$/.test(color) && color.toLowerCase() !== config.style.primaryColor.toLowerCase()) {
-      onGuardarEstilo({ ...config.style, primaryColor: color }).catch(() => undefined);
-    }
-  };
+  const tamano = TAMANOS.includes(estilo.buttonSize as 48) ? String(estilo.buttonSize) : 'otro';
 
   return (
     <Tarjeta titulo={t('titulo')}>
@@ -260,17 +271,16 @@ export function AparienciaWidget({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <FormField etiqueta={t('color')}>
             {(campo) => (
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  aria-label={t('color')}
-                  value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : '#4361ee'}
-                  onChange={(e) => setColor(e.target.value)}
-                  onBlur={guardarColor}
-                  className="size-10 shrink-0 cursor-pointer rounded-lg border border-line bg-surface p-1"
-                />
-                <Input id={campo.id} value={color} onChange={(e) => setColor(e.target.value)} onBlur={guardarColor} className="font-mono uppercase" />
-              </div>
+              <SelectorColorLibre
+                id={campo.id}
+                etiqueta={t('color')}
+                valor={estilo.primaryColor}
+                colorIcono={estilo.iconColor}
+                onCambio={(hex) => cambiarEstilo({ primaryColor: hex })}
+                onConfirmar={(hex) => {
+                  if (hex.toLowerCase() !== config.style.primaryColor.toLowerCase()) guardarEstilo({ primaryColor: hex }).catch(() => undefined);
+                }}
+              />
             )}
           </FormField>
           <FormField etiqueta={t('posicion')}>
@@ -295,7 +305,10 @@ export function AparienciaWidget({
                 value={tamano}
                 onValueChange={(v) => {
                   const n = Number(v);
-                  if (n) onGuardarEstilo({ ...config.style, buttonSize: n, borderRadius: Math.round(n / 2) }).catch(() => undefined);
+                  if (!n) return;
+                  const parcial = { buttonSize: n, borderRadius: Math.round(n / 2) };
+                  cambiarEstilo(parcial);
+                  guardarEstilo(parcial).catch(() => undefined);
                 }}
               >
                 <SelectTrigger id={campo.id}>
@@ -307,7 +320,7 @@ export function AparienciaWidget({
                       {t(`tamanos.t${n}`)}
                     </SelectItem>
                   ))}
-                  {tamano === 'otro' && <SelectItem value="otro">{t('tamanos.otro', { px: config.style.buttonSize })}</SelectItem>}
+                  {tamano === 'otro' && <SelectItem value="otro">{t('tamanos.otro', { px: estilo.buttonSize })}</SelectItem>}
                 </SelectContent>
               </Select>
             )}
@@ -343,24 +356,45 @@ export function AparienciaWidget({
             />
           </FormField>
         </div>
-        <FormField etiqueta={tm('logo')} ayuda={tm('logoAyuda')} error={logoInvalido ? tm('logoInvalido') : null}>
+        <FormField etiqueta={tm('logo')}>
           {(campo) => (
-            <div className="flex items-center gap-2">
-              <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-subtle">
-                {logo && !logoInvalido ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- imagen externa elegida por la organización
-                  <img src={logo} alt="" className="size-full object-cover" />
-                ) : (
-                  <Link2 aria-hidden="true" className="size-4 text-fg-muted" strokeWidth={1.5} />
-                )}
-              </span>
-              <Input id={campo.id} value={logo} placeholder="https://…" inputMode="url" onChange={(e) => setLogo(e.target.value)} onBlur={guardarLogo} />
-            </div>
+            <SubidaImagenUnica
+              clase="logo"
+              idCampo={campo.id}
+              valor={config.logo_url ?? ''}
+              carpeta={carpetaSubidas}
+              organizacionId={organizacionId}
+              marcador={marcadorLogo}
+              ayuda={tn('logoAyuda')}
+              onGuardar={onGuardarLogo}
+            />
           )}
         </FormField>
-        <SeccionPlegable titulo={t('avanzado')}>
-          <EstiloAvanzadoWidget estilo={config.style} onGuardar={onGuardarEstilo} />
-        </SeccionPlegable>
+
+        <div className="flex flex-col gap-4 border-t border-line pt-4">
+          <h3 className="m-0">
+            <button
+              type="button"
+              aria-expanded={masAbierto}
+              aria-controls={idMas}
+              onClick={() => setMasAbierto((a) => !a)}
+              className="flex w-full items-center justify-between gap-3 rounded-md text-left text-sm font-medium text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              {t('avanzado')}
+              <ChevronDown aria-hidden="true" className={cn('size-4 shrink-0 text-fg-muted transition-transform', masAbierto && 'rotate-180')} strokeWidth={1.5} />
+            </button>
+          </h3>
+          <div id={idMas} role="region" aria-label={t('avanzado')} hidden={!masAbierto}>
+            <EstiloAvanzadoWidget
+              estilo={estilo}
+              guardado={config.style}
+              onCambio={cambiarEstilo}
+              onGuardar={guardarEstilo}
+              carpeta={carpetaSubidas}
+              organizacionId={organizacionId}
+            />
+          </div>
+        </div>
       </div>
     </Tarjeta>
   );

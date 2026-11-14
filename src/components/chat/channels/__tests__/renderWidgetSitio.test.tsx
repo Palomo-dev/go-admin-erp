@@ -87,3 +87,63 @@ describe('Vista previa', () => {
     expect(screen.getByLabelText('Abre un enlace')).toBeTruthy();
   });
 });
+
+/* ── Diseños aprobados 94-chat-recuperado-canales (2026-11-14) ───────────── */
+
+describe('Apariencia: subida, color libre y vista previa del botón', () => {
+  const base = configuracionDelWidget({ style: { borderWidth: 2, borderColor: '#FFFFFF' } }, 'Hola');
+  const props = {
+    onGuardarPosicion: jest.fn(async () => undefined),
+    onGuardarEstilo: jest.fn(async () => undefined),
+    onGuardarLogo: jest.fn(async () => undefined),
+    carpetaSubidas: '120/chat-widget/canal-1',
+    organizacionId: 120,
+  };
+  const archivo = (nombre: string, tipo: string, bytes: number) => {
+    const f = new File(['x'], nombre, { type: tipo });
+    Object.defineProperty(f, 'size', { value: bytes });
+    return f;
+  };
+  const entradaLogo = (c: HTMLElement) => c.querySelector('input[type="file"]') as HTMLInputElement;
+
+  test('sin logo: zona para arrastrar o subir, y «o pega un enlace»', () => {
+    renderConIdioma(<AparienciaWidget config={base} {...props} />);
+    expect(screen.getByText('Arrastra una imagen aquí o súbela')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Subir imagen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /o pega un enlace/ }).length).toBeGreaterThan(0);
+  });
+
+  test('error de formato y de tamaño, sin subir nada', () => {
+    const { container } = renderConIdioma(<AparienciaWidget config={base} {...props} />);
+    fireEvent.change(entradaLogo(container), { target: { files: [archivo('logo-tienda.gif', 'image/gif', 2000)] } });
+    expect(screen.getByRole('alert').textContent).toContain('«logo-tienda.gif»: formato no válido. Usa PNG, JPG, SVG o WebP de hasta 2 MB.');
+    fireEvent.change(entradaLogo(container), { target: { files: [archivo('logo-grande.png', 'image/png', 3.4 * 1024 * 1024)] } });
+    expect(screen.getByRole('alert').textContent).toContain('«logo-grande.png» pesa 3,4 MB. El máximo es 2 MB: redúcela o elige otra.');
+    expect(screen.getByRole('button', { name: 'Elegir otra imagen' })).toBeTruthy();
+    expect(props.onGuardarLogo).not.toHaveBeenCalled();
+  });
+
+  test('los colores sugeridos viven solo dentro del selector de color', () => {
+    renderConIdioma(<AparienciaWidget config={base} {...props} />);
+    expect(screen.queryByText('Colores sugeridos')).toBeNull();
+    expect(screen.queryByText('Sugeridos')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Elegir Color principal' })).toBeTruthy();
+  });
+
+  test('vista previa del botón en vivo: resume lo que se edita antes de guardar', () => {
+    renderConIdioma(<AparienciaWidget config={base} {...props} />);
+    expect(screen.getAllByText('56 px · redondeo 28 · borde 2 px blanco · sombra media').length).toBeGreaterThan(0);
+    const radio = screen.getByLabelText('Redondeo');
+    fireEvent.focus(radio);
+    fireEvent.change(radio, { target: { value: '16' } });
+    expect(screen.getAllByText('56 px · redondeo 16 · borde 2 px blanco · sombra media').length).toBeGreaterThan(0);
+  });
+
+  test('con «Imagen propia», color y estilo del ícono quedan deshabilitados', () => {
+    const propia = configuracionDelWidget({ style: { iconType: 'custom', borderWidth: 2 } }, 'Hola');
+    renderConIdioma(<AparienciaWidget config={propia} {...props} />);
+    expect(screen.getByText('Imagen del botón')).toBeTruthy();
+    expect((screen.getByLabelText('Color del ícono', { selector: 'input:not([type="color"])' }) as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getAllByText(/imagen propia · borde 2 px blanco/).length).toBeGreaterThan(0);
+  });
+});

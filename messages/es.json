@@ -50723,7 +50723,8 @@
         },
         "chipTipo": "Tipo: {valor}",
         "chipEstado": "Estado: {valor}",
-        "verN": "Ver {n} canales"
+        "verN": "Ver {n} canales",
+        "nota": "Se aplican al instante · cada filtro activo queda como chip bajo el buscador"
       },
       "webhookExtra": {
         "copiarToken": "Copiar token",
@@ -50810,14 +50811,17 @@
         "visible": "Visible en el sitio",
         "oculto": "Oculto en el sitio",
         "mostrarEnSitio": "Mostrar en el sitio",
-        "activaPrimero": "El canal está inactivo: actívalo en Canales para poder mostrarlo en el sitio.",
+        "activaPrimero": "El canal está inactivo: actívalo en el menú ⋯ para poder mostrarlo en el sitio.",
         "guardado": "Guardado",
         "kpis": {
           "etiqueta": "Cifras del chat del sitio",
           "sesiones": "Sesiones",
           "enLinea": "En línea ahora",
           "visitantes": "Visitantes únicos",
-          "celular": "Desde celular"
+          "celular": "Desde celular",
+          "sesionesHoy": "Sesiones hoy",
+          "conDatos": "Dejaron sus datos",
+          "porcentaje": "{pct} %"
         },
         "instalacion": {
           "titulo": "Instalación",
@@ -50898,6 +50902,68 @@
           "visible": "El chat ya se muestra en tu sitio",
           "oculto": "El chat ya no se muestra en tu sitio",
           "errorSitio": "No se pudo cambiar la visibilidad en el sitio"
+        },
+        "subida": {
+          "arrastra": "Arrastra una imagen aquí o súbela",
+          "toca": "Toca para elegir una imagen",
+          "suelta": "Suelta la imagen para subirla",
+          "reglas": "PNG, JPG, SVG o WebP · hasta {mb} MB · cuadrada, mínimo 128 px",
+          "subir": "Subir imagen",
+          "pegaEnlace": "o pega un enlace",
+          "subeArchivo": "o sube un archivo",
+          "subiendo": "Subiendo… {pct} % · {subido} de {total}",
+          "subiendoEtiqueta": "Subiendo {nombre}",
+          "cancelar": "Cancelar",
+          "errorTitulo": "No se pudo subir la imagen",
+          "errorFormato": "«{nombre}»: formato no válido. Usa PNG, JPG, SVG o WebP de hasta {mb} MB.",
+          "errorTamano": "«{nombre}» pesa {pesa} MB. El máximo es {mb} MB: redúcela o elige otra.",
+          "errorRed": "«{nombre}» no se pudo subir. Revisa la conexión e inténtalo de nuevo.",
+          "elegirOtra": "Elegir otra imagen",
+          "cambiar": "Cambiar",
+          "quitar": "Quitar",
+          "dimensiones": "{ancho} × {alto} px",
+          "recorteCirculo": "se recorta en círculo",
+          "enlaceAyudaLogo": "Enlace https de una imagen. Si el sitio que la aloja la borra, el chat vuelve al logo de la organización.",
+          "enlaceAyudaIcono": "Enlace https de una imagen cuadrada (PNG o SVG).",
+          "enlaceInvalido": "Usa un enlace que empiece por https://",
+          "logoAyuda": "Sale en la cabecera del chat. Sin logo, el chat usa el de tu organización.",
+          "imagenBoton": "Imagen del botón",
+          "imagenBotonAyuda": "Se recorta en círculo y llena el botón. PNG, JPG, SVG o WebP hasta {mb} MB."
+        },
+        "color": {
+          "abrir": "Elegir {etiqueta}",
+          "cerrar": "Cerrar",
+          "listo": "Listo",
+          "saturacionBrillo": "Saturación y brillo",
+          "tono": "Tono",
+          "hex": "Color en hexadecimal",
+          "sugeridos": "Sugeridos",
+          "usar": "Usar el color {color}",
+          "sugerido": "Sugerido",
+          "personalizado": "Personalizado",
+          "blanco": "blanco",
+          "contrasteAA": "{origen} · contraste {ratio}:1 con el ícono {icono} · AA",
+          "contrasteBajo": "{origen} · contraste {ratio}:1 con el ícono {icono} · bajo AA: el ícono puede no leerse bien"
+        },
+        "botonVista": {
+          "titulo": "Vista previa del botón",
+          "tamanoReal": "Así se ve en tu sitio, a tamaño real.",
+          "arriba": "Se queda arriba mientras bajas",
+          "resumen": {
+            "tamano": "{px} px",
+            "imagenPropia": "imagen propia",
+            "relleno": "relleno",
+            "redondeo": "redondeo {px}",
+            "sinBorde": "sin borde",
+            "borde": "borde {px} px {color}",
+            "blanco": "blanco",
+            "sinSombra": "sin sombra",
+            "sombra": {
+              "light": "sombra suave",
+              "medium": "sombra media",
+              "strong": "sombra fuerte"
+            }
+          }
         }
       }
     },

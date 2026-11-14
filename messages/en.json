@@ -50708,7 +50708,8 @@
         },
         "chipTipo": "Type: {valor}",
         "chipEstado": "Status: {valor}",
-        "verN": "Show {n} channels"
+        "verN": "Show {n} channels",
+        "nota": "Applied instantly · each active filter shows as a chip under the search box"
       },
       "webhookExtra": {
         "copiarToken": "Copy token",
@@ -50795,14 +50796,17 @@
         "visible": "Visible on the site",
         "oculto": "Hidden on the site",
         "mostrarEnSitio": "Show on the site",
-        "activaPrimero": "The channel is inactive: turn it on in Channels to show it on the site.",
+        "activaPrimero": "The channel is inactive: turn it on from the ⋯ menu to show it on the site.",
         "guardado": "Saved",
         "kpis": {
           "etiqueta": "Website chat figures",
           "sesiones": "Sessions",
           "enLinea": "Online now",
           "visitantes": "Unique visitors",
-          "celular": "From mobile"
+          "celular": "From mobile",
+          "sesionesHoy": "Sessions today",
+          "conDatos": "Left their details",
+          "porcentaje": "{pct}%"
         },
         "instalacion": {
           "titulo": "Installation",
@@ -50883,6 +50887,68 @@
           "visible": "The chat now shows on your site",
           "oculto": "The chat no longer shows on your site",
           "errorSitio": "Site visibility couldn’t be changed"
+        },
+        "subida": {
+          "arrastra": "Drag an image here or upload it",
+          "toca": "Tap to choose an image",
+          "suelta": "Drop the image to upload it",
+          "reglas": "PNG, JPG, SVG or WebP · up to {mb} MB · square, at least 128 px",
+          "subir": "Upload image",
+          "pegaEnlace": "or paste a link",
+          "subeArchivo": "or upload a file",
+          "subiendo": "Uploading… {pct}% · {subido} of {total}",
+          "subiendoEtiqueta": "Uploading {nombre}",
+          "cancelar": "Cancel",
+          "errorTitulo": "The image couldn't be uploaded",
+          "errorFormato": "“{nombre}”: invalid format. Use PNG, JPG, SVG or WebP up to {mb} MB.",
+          "errorTamano": "“{nombre}” is {pesa} MB. The limit is {mb} MB: shrink it or choose another.",
+          "errorRed": "“{nombre}” couldn't be uploaded. Check your connection and try again.",
+          "elegirOtra": "Choose another image",
+          "cambiar": "Change",
+          "quitar": "Remove",
+          "dimensiones": "{ancho} × {alto} px",
+          "recorteCirculo": "cropped to a circle",
+          "enlaceAyudaLogo": "https link to an image. If the site hosting it deletes it, the chat goes back to the organization logo.",
+          "enlaceAyudaIcono": "https link to a square image (PNG or SVG).",
+          "enlaceInvalido": "Use a link that starts with https://",
+          "logoAyuda": "Shown in the chat header. Without a logo, the chat uses your organization's.",
+          "imagenBoton": "Button image",
+          "imagenBotonAyuda": "Cropped to a circle to fill the button. PNG, JPG, SVG or WebP up to {mb} MB."
+        },
+        "color": {
+          "abrir": "Choose {etiqueta}",
+          "cerrar": "Close",
+          "listo": "Done",
+          "saturacionBrillo": "Saturation and brightness",
+          "tono": "Hue",
+          "hex": "Hex color",
+          "sugeridos": "Suggested",
+          "usar": "Use color {color}",
+          "sugerido": "Suggested",
+          "personalizado": "Custom",
+          "blanco": "white",
+          "contrasteAA": "{origen} · {ratio}:1 contrast with the {icono} icon · AA",
+          "contrasteBajo": "{origen} · {ratio}:1 contrast with the {icono} icon · below AA: the icon may be hard to see"
+        },
+        "botonVista": {
+          "titulo": "Button preview",
+          "tamanoReal": "This is how it looks on your site, at real size.",
+          "arriba": "Stays on top while you scroll",
+          "resumen": {
+            "tamano": "{px} px",
+            "imagenPropia": "own image",
+            "relleno": "filled",
+            "redondeo": "radius {px}",
+            "sinBorde": "no border",
+            "borde": "{px} px {color} border",
+            "blanco": "white",
+            "sinSombra": "no shadow",
+            "sombra": {
+              "light": "light shadow",
+              "medium": "medium shadow",
+              "strong": "strong shadow"
+            }
+          }
         }
       }
     },

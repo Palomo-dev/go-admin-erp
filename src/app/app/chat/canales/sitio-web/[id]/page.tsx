@@ -1,23 +1,28 @@
 'use client';
 
 /**
- * Detalle del chat del sitio web (Figma 91-chat-24): «Mostrar en el sitio»,
- * activar o desactivar el canal, cifras de sesiones, Instalación, Apariencia
- * (esquina, márgenes, logo y estilo), Al abrir el chat, Datos del visitante y
- * la vista previa en vivo. Toda escritura pasa por `chatChannelsService` (y
+ * Detalle del chat del sitio web (Figma 91-chat-24 y los aprobados
+ * 94-chat-recuperado-canales 01 a 07 y 14 a 23): «Mostrar en el sitio»,
+ * activar o desactivar el canal (menú ⋯), cifras de hoy (sesiones, en línea,
+ * dejaron sus datos, desde celular), Instalación, Apariencia (color libre,
+ * esquina, márgenes, logo subido o enlazado y estilo con vista previa del
+ * botón), Al abrir el chat, Datos del visitante y la vista previa en vivo
+ * (refleja lo que se edita antes de guardar). Toda escritura pasa por `chatChannelsService` (y
  * `website_settings` para mostrar el chat en el sitio de GO Admin, como antes).
  * Los valores por defecto son los del widget público (`configuracionDelWidget`).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Power } from 'lucide-react';
-import { EmptyState, KpiStrip, RowActionsMenu, StatCard } from '@/components/kit';
+import { EmptyState, KpiStrip, RowActionsMenu, StatCard, inicialesDe } from '@/components/kit';
+import { cn } from '@/utils/Utils';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { supabase } from '@/lib/supabase/config';
 import ChatChannelsService, {
   type AIMode,
@@ -33,16 +38,18 @@ import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { CanalIcono } from '@/components/chat/ui/CanalIcono';
 import { AlAbrirWidget, AparienciaWidget, DatosVisitanteWidget, InstalacionWidget } from '@/components/chat/channels/website/id/SeccionesWidget';
 import { VistaPreviaWidget } from '@/components/chat/channels/website/id/VistaPreviaWidget';
-import { configuracionDelWidget, porcentajeCelular } from '@/components/chat/channels/website/id/widgetLogica';
+import { carpetaDelWidget, configuracionDelWidget, porcentajeCelular } from '@/components/chat/channels/website/id/widgetLogica';
 import { codigoDelWidget } from '@/lib/chat/codigoWidget';
 
 export default function WebsiteChannelSettingsPage() {
   const params = useParams();
   const channelId = params?.id as string;
   const t = useTranslations('chatModulo.canales');
+  const locale = useLocale();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
+  const { getToday, toInstant } = useFormatDate();
 
   const [canal, setCanal] = useState<ChatChannel | null>(null);
   const [stats, setStats] = useState<WidgetStats | null>(null);
@@ -54,6 +61,8 @@ export default function WebsiteChannelSettingsPage() {
   const [guardandoModo, setGuardandoModo] = useState(false);
   const [cambiandoActivo, setCambiandoActivo] = useState(false);
   const [guardado, setGuardado] = useState(false);
+  /** Estilo que se está editando (vista previa en vivo, antes de guardar). */
+  const [estiloVivo, setEstiloVivo] = useState<WidgetStyle | null>(null);
 
   const cargar = useCallback(async () => {
     if (!organizationId) return;
@@ -61,7 +70,7 @@ export default function WebsiteChannelSettingsPage() {
     setError(null);
     try {
       const s = new ChatChannelsService(organizationId);
-      const [c, st] = await Promise.all([s.getChannel(channelId), s.getWidgetStats(channelId).catch(() => null)]);
+      const [c, st] = await Promise.all([s.getChannel(channelId), s.getWidgetStats(channelId, toInstant(getToday())).catch(() => null)]);
       if (!c || c.type !== 'website') {
         setCanal(null);
         setError('noEncontrado');
@@ -77,7 +86,7 @@ export default function WebsiteChannelSettingsPage() {
     } finally {
       setCargando(false);
     }
-  }, [organizationId, channelId]);
+  }, [organizationId, channelId, getToday, toInstant]);
 
   useEffect(() => {
     cargar();
@@ -241,6 +250,9 @@ export default function WebsiteChannelSettingsPage() {
   }
 
   const pctCelular = stats ? porcentajeCelular(stats.deviceBreakdown) : null;
+  const pctConDatos = stats && stats.sessionsSince > 0 ? Math.round((stats.identifiedSince / stats.sessionsSince) * 100) : null;
+  const configVista: BrandConfig = estiloVivo ? { ...config, style: estiloVivo } : config;
+  const titulo = config.behavior.title || canal.name;
   const activo = canal.status === 'active';
   const codigo = codigoDelWidget(canal.public_key);
 
@@ -257,10 +269,10 @@ export default function WebsiteChannelSettingsPage() {
             {t(enSitio && activo ? 'widget.visible' : 'widget.oculto')}
           </Badge>
         }
-        subtitulo={!activo ? t('widget.activaPrimero') : undefined}
+        subtitulo={!activo ? <span className="text-warning-text">{t('widget.activaPrimero')}</span> : undefined}
         acciones={
           <>
-            <label className="flex items-center gap-2 text-[13px] font-medium text-fg">
+            <label className={cn('flex items-center gap-2 text-[13px] font-medium', activo ? 'text-fg' : 'text-fg-muted')}>
               {t('widget.mostrarEnSitio')}
               <Switch checked={enSitio} onCheckedChange={alternarEnSitio} disabled={cambiandoSitio || !activo} />
             </label>
@@ -287,10 +299,15 @@ export default function WebsiteChannelSettingsPage() {
       />
 
       <KpiStrip etiqueta={t('widget.kpis.etiqueta')}>
-        <StatCard etiqueta={t('widget.kpis.sesiones')} valor={(stats?.totalSessions ?? 0).toLocaleString()} cargando={cargando} />
-        <StatCard etiqueta={t('widget.kpis.enLinea')} valor={(stats?.activeSessions ?? 0).toLocaleString()} cargando={cargando} />
-        <StatCard etiqueta={t('widget.kpis.visitantes')} valor={(stats?.uniqueVisitors ?? 0).toLocaleString()} cargando={cargando} />
-        <StatCard etiqueta={t('widget.kpis.celular')} valor={pctCelular === null ? t('kpis.sinDato') : `${pctCelular} %`} cargando={cargando} />
+        <StatCard etiqueta={t('widget.kpis.sesionesHoy')} valor={(stats?.sessionsSince ?? 0).toLocaleString(locale)} cargando={cargando} />
+        <StatCard etiqueta={t('widget.kpis.enLinea')} valor={(stats?.activeSessions ?? 0).toLocaleString(locale)} cargando={cargando} />
+        <StatCard
+          etiqueta={t('widget.kpis.conDatos')}
+          valor={(stats?.identifiedSince ?? 0).toLocaleString(locale)}
+          detalle={pctConDatos === null ? undefined : t('widget.kpis.porcentaje', { pct: pctConDatos })}
+          cargando={cargando}
+        />
+        <StatCard etiqueta={t('widget.kpis.celular')} valor={pctCelular === null ? t('kpis.sinDato') : t('widget.kpis.porcentaje', { pct: pctCelular })} cargando={cargando} />
       </KpiStrip>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:gap-6">
@@ -304,12 +321,21 @@ export default function WebsiteChannelSettingsPage() {
             onAgregarDominio={agregarDominio}
             onQuitarDominio={quitarDominio}
           />
-          <AparienciaWidget config={config} onGuardarPosicion={guardarPosicion} onGuardarEstilo={guardarEstilo} onGuardarLogo={guardarLogo} />
+          <AparienciaWidget
+            config={config}
+            onGuardarPosicion={guardarPosicion}
+            onGuardarEstilo={guardarEstilo}
+            onGuardarLogo={guardarLogo}
+            onEstiloVivo={setEstiloVivo}
+            carpetaSubidas={organizationId ? carpetaDelWidget(organizationId, channelId) : null}
+            organizacionId={organizationId}
+            marcadorLogo={inicialesDe(titulo)}
+          />
           <AlAbrirWidget comportamiento={config.behavior} onGuardar={guardarComportamiento} />
           <DatosVisitanteWidget datos={datos} modo={canal.ai_mode} onGuardarDatos={guardarDatos} onCambiarModo={cambiarModo} guardandoModo={guardandoModo} />
         </div>
         <div className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-          <VistaPreviaWidget config={config} datos={datos} logoOrganizacion={organization?.logo_url ?? null} />
+          <VistaPreviaWidget config={configVista} datos={datos} logoOrganizacion={organization?.logo_url ?? null} />
         </div>
       </div>
     </div>

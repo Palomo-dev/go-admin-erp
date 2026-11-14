@@ -1,29 +1,35 @@
 'use client';
 
 /**
- * «Webhook» de un canal de Meta (Figma 91-chat-22): URL a la que Meta envía
- * los mensajes y token de verificación. El token se muestra con «Ver»
- * (decisión del dueño: credenciales visibles, sin cifrar por ahora).
+ * «Webhook» de un canal de Meta (Figma 91-chat-22; aprobados
+ * 94-chat-recuperado-canales 12 y 13): URL a la que Meta envía los mensajes y
+ * token de verificación. «Copiar token» lo copia sin mostrarlo y pasa 2 s a
+ * «Token copiado»; «Ver token» lo muestra (decisión del dueño: credenciales
+ * visibles, sin cifrar por ahora). Sin token no hay «Copiar token» ni «Ver
+ * token» y el campo explica por qué está vacío.
  */
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Copy, Eye, EyeOff, Link2 } from 'lucide-react';
 import { FormField, Tarjeta, clasesBoton } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { enmascarar } from './detalleLogica';
 
 export interface WebhookCanalProps {
   /** Ruta del webhook en esta app (`/api/integrations/whatsapp/webhook`). */
   ruta: string;
   tokenVerificacion?: string | null;
-  /** Campos que hay que suscribir en Meta. */
-  campos: readonly string[];
-  /** Nota propia del proveedor (p. ej. cómo identifica Meta cada canal). */
+  /**
+   * Campos que hay que suscribir en Meta y nota del proveedor. El diseño
+   * aprobado (94-chat-recuperado-canales 12 y 13) ya no los muestra: el
+   * webhook queda configurado al conectar en 1 clic. Se conservan en las
+   * páginas como documentación de cada canal.
+   */
+  campos?: readonly string[];
   nota?: string;
 }
 
-export function WebhookCanal({ ruta, tokenVerificacion, campos, nota }: WebhookCanalProps) {
+export function WebhookCanal({ ruta, tokenVerificacion }: WebhookCanalProps) {
   const t = useTranslations('chatModulo.canales.detalleCanal.webhook');
   const tx = useTranslations('chatModulo.canales.webhookExtra');
   const [copiado, setCopiado] = useState(false);
@@ -57,24 +63,14 @@ export function WebhookCanal({ ruta, tokenVerificacion, campos, nota }: WebhookC
     <Tarjeta titulo={t('titulo')} descripcion={t('descripcion')}>
       <div className="flex flex-col gap-4">
         <FormField etiqueta={t('url')}>
-          <Input value={url} readOnly className="font-mono text-[13px]" />
+          <Input value={url} readOnly />
         </FormField>
         <FormField etiqueta={t('token')} ayuda={tokenVerificacion ? undefined : t('sinToken')}>
           <Input
             value={tokenVerificacion ? (verToken ? tokenVerificacion : enmascarar(tokenVerificacion)) : ''}
             readOnly
-            className="font-mono text-[13px]"
           />
         </FormField>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[13px] text-fg-secondary">{t('campos')}</span>
-          {campos.map((c) => (
-            <Badge key={c} tono="neutro" tamano="sm" className="font-mono">
-              {c}
-            </Badge>
-          ))}
-        </div>
-        {nota && <p className="text-xs text-fg-muted">{nota}</p>}
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={copiar} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
             {copiado ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" strokeWidth={1.5} />}

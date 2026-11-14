@@ -50708,7 +50708,8 @@
         },
         "chipTipo": "Type : {valor}",
         "chipEstado": "Statut : {valor}",
-        "verN": "Voir {n} canaux"
+        "verN": "Voir {n} canaux",
+        "nota": "Appliqués immédiatement · chaque filtre actif apparaît en puce sous la recherche"
       },
       "webhookExtra": {
         "copiarToken": "Copier le jeton",
@@ -50795,14 +50796,17 @@
         "visible": "Visible sur le site",
         "oculto": "Masqué sur le site",
         "mostrarEnSitio": "Afficher sur le site",
-        "activaPrimero": "Le canal est inactif : activez-le dans Canaux pour l’afficher sur le site.",
+        "activaPrimero": "Le canal est inactif : activez-le depuis le menu ⋯ pour l’afficher sur le site.",
         "guardado": "Enregistré",
         "kpis": {
           "etiqueta": "Chiffres du chat du site",
           "sesiones": "Sessions",
           "enLinea": "En ligne maintenant",
           "visitantes": "Visiteurs uniques",
-          "celular": "Depuis un mobile"
+          "celular": "Depuis un mobile",
+          "sesionesHoy": "Sessions aujourd’hui",
+          "conDatos": "Ont laissé leurs coordonnées",
+          "porcentaje": "{pct} %"
         },
         "instalacion": {
           "titulo": "Installation",
@@ -50883,6 +50887,68 @@
           "visible": "Le chat s’affiche désormais sur votre site",
           "oculto": "Le chat ne s’affiche plus sur votre site",
           "errorSitio": "Impossible de modifier la visibilité sur le site"
+        },
+        "subida": {
+          "arrastra": "Glissez une image ici ou téléversez-la",
+          "toca": "Touchez pour choisir une image",
+          "suelta": "Déposez l’image pour la téléverser",
+          "reglas": "PNG, JPG, SVG ou WebP · jusqu’à {mb} Mo · carrée, 128 px minimum",
+          "subir": "Téléverser une image",
+          "pegaEnlace": "ou collez un lien",
+          "subeArchivo": "ou téléversez un fichier",
+          "subiendo": "Téléversement… {pct} % · {subido} sur {total}",
+          "subiendoEtiqueta": "Téléversement de {nombre}",
+          "cancelar": "Annuler",
+          "errorTitulo": "Impossible de téléverser l’image",
+          "errorFormato": "« {nombre} » : format non valide. Utilisez PNG, JPG, SVG ou WebP jusqu’à {mb} Mo.",
+          "errorTamano": "« {nombre} » pèse {pesa} Mo. Le maximum est {mb} Mo : réduisez-la ou choisissez-en une autre.",
+          "errorRed": "Impossible de téléverser « {nombre} ». Vérifiez la connexion et réessayez.",
+          "elegirOtra": "Choisir une autre image",
+          "cambiar": "Changer",
+          "quitar": "Retirer",
+          "dimensiones": "{ancho} × {alto} px",
+          "recorteCirculo": "recadrée en cercle",
+          "enlaceAyudaLogo": "Lien https d’une image. Si le site qui l’héberge la supprime, le chat revient au logo de l’organisation.",
+          "enlaceAyudaIcono": "Lien https d’une image carrée (PNG ou SVG).",
+          "enlaceInvalido": "Utilisez un lien qui commence par https://",
+          "logoAyuda": "Apparaît dans l’en-tête du chat. Sans logo, le chat utilise celui de votre organisation.",
+          "imagenBoton": "Image du bouton",
+          "imagenBotonAyuda": "Recadrée en cercle pour remplir le bouton. PNG, JPG, SVG ou WebP jusqu’à {mb} Mo."
+        },
+        "color": {
+          "abrir": "Choisir {etiqueta}",
+          "cerrar": "Fermer",
+          "listo": "Terminé",
+          "saturacionBrillo": "Saturation et luminosité",
+          "tono": "Teinte",
+          "hex": "Couleur hexadécimale",
+          "sugeridos": "Suggérées",
+          "usar": "Utiliser la couleur {color}",
+          "sugerido": "Suggérée",
+          "personalizado": "Personnalisée",
+          "blanco": "blanche",
+          "contrasteAA": "{origen} · contraste {ratio}:1 avec l’icône {icono} · AA",
+          "contrasteBajo": "{origen} · contraste {ratio}:1 avec l’icône {icono} · sous AA : l’icône risque d’être peu lisible"
+        },
+        "botonVista": {
+          "titulo": "Aperçu du bouton",
+          "tamanoReal": "Voici son apparence sur votre site, en taille réelle.",
+          "arriba": "Reste en haut pendant le défilement",
+          "resumen": {
+            "tamano": "{px} px",
+            "imagenPropia": "image personnalisée",
+            "relleno": "plein",
+            "redondeo": "arrondi {px}",
+            "sinBorde": "sans bordure",
+            "borde": "bordure {px} px {color}",
+            "blanco": "blanche",
+            "sinSombra": "sans ombre",
+            "sombra": {
+              "light": "ombre légère",
+              "medium": "ombre moyenne",
+              "strong": "ombre forte"
+            }
+          }
         }
       }
     },

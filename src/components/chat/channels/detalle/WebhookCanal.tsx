@@ -25,7 +25,9 @@ export interface WebhookCanalProps {
 
 export function WebhookCanal({ ruta, tokenVerificacion, campos, nota }: WebhookCanalProps) {
   const t = useTranslations('chatModulo.canales.detalleCanal.webhook');
+  const tx = useTranslations('chatModulo.canales.webhookExtra');
   const [copiado, setCopiado] = useState(false);
+  const [tokenCopiado, setTokenCopiado] = useState(false);
   const [verToken, setVerToken] = useState(false);
   const url = typeof window !== 'undefined' ? `${window.location.origin}${ruta}` : ruta;
 
@@ -36,6 +38,18 @@ export function WebhookCanal({ ruta, tokenVerificacion, campos, nota }: WebhookC
       setTimeout(() => setCopiado(false), 2000);
     } catch {
       /* el navegador no dejó copiar: la URL está a la vista */
+    }
+  };
+
+  /** Copia el token sin mostrarlo (como la pantalla anterior): se pega en Meta for Developers. */
+  const copiarToken = async () => {
+    if (!tokenVerificacion) return;
+    try {
+      await navigator.clipboard.writeText(tokenVerificacion);
+      setTokenCopiado(true);
+      setTimeout(() => setTokenCopiado(false), 2000);
+    } catch {
+      /* con «Ver token» se puede copiar a mano */
     }
   };
 
@@ -67,11 +81,22 @@ export function WebhookCanal({ ruta, tokenVerificacion, campos, nota }: WebhookC
             {copiado ? t('copiada') : t('copiarUrl')}
           </button>
           {tokenVerificacion && (
+            <button type="button" onClick={copiarToken} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+              {tokenCopiado ? <Check aria-hidden="true" className="size-4" /> : <Copy aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+              {tokenCopiado ? tx('tokenCopiado') : tx('copiarToken')}
+            </button>
+          )}
+          {tokenVerificacion && (
             <button type="button" onClick={() => setVerToken((v) => !v)} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
               {verToken ? <EyeOff aria-hidden="true" className="size-4" strokeWidth={1.5} /> : <Eye aria-hidden="true" className="size-4" strokeWidth={1.5} />}
               {verToken ? t('ocultarToken') : t('verToken')}
             </button>
           )}
+          {/* El webhook se configura en la app de Meta for Developers (como enlazaba la pantalla anterior). */}
+          <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener noreferrer" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+            <Link2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {tx('abrirDesarrolladores')}
+          </a>
           <a href="https://business.facebook.com/" target="_blank" rel="noopener noreferrer" className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
             <Link2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
             {t('abrirMeta')}

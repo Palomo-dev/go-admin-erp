@@ -114,3 +114,36 @@ export function duracionCorta(seg: number | null | undefined): string | null {
   const resto = min % 60;
   return resto ? `${h} h ${resto} min` : `${h} h`;
 }
+
+/* ── Búsqueda y filtros de «Mis canales» ─────────────────────────────────────
+ * Los mismos que tenía la lista anterior (`ChannelsList`): buscar por nombre,
+ * tipo de canal y estado (activo o inactivo). Restaurados el 2026-11-14.
+ */
+export const TIPOS_CANAL: readonly ChannelType[] = ['website', 'whatsapp', 'facebook', 'instagram', 'telegram', 'email'];
+export type EstadoFiltroCanal = 'active' | 'inactive';
+
+export interface FiltrosCanales {
+  busqueda: string;
+  tipo: ChannelType | null;
+  estado: EstadoFiltroCanal | null;
+}
+
+export const FILTROS_CANALES_VACIOS: FiltrosCanales = { busqueda: '', tipo: null, estado: null };
+
+const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+/** Filtra en el navegador: una organización tiene pocos canales y ya están cargados. */
+export function filtrarCanales<T extends Pick<ChatChannel, 'name' | 'type' | 'status'>>(canales: readonly T[], f: FiltrosCanales): T[] {
+  const q = sinTildes(f.busqueda);
+  return canales.filter(
+    (c) =>
+      (!q || sinTildes(c.name).includes(q)) &&
+      (!f.tipo || c.type === f.tipo) &&
+      // «Inactivo» incluye los suspendidos: no reciben mensajes.
+      (!f.estado || (f.estado === 'active' ? c.status === 'active' : c.status !== 'active')),
+  );
+}
+
+export function filtrosActivos(f: FiltrosCanales): number {
+  return (f.tipo ? 1 : 0) + (f.estado ? 1 : 0);
+}

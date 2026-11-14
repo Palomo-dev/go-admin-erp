@@ -84,10 +84,13 @@ Correcciones hechas de paso (mismo archivo, mismo dato):
 | Configurar (ir al detalle) | Igual |
 | **«Instalar widget»** (código desde la lista) — `ChannelCard` l.237-240 | **Restaurado**: «Código de instalación» en el menú ⋯ de los canales de sitio web (`WidgetCodeDialog`) |
 | «Conectar» canales sin conectar | Movido: Configurar lleva al detalle; aviso «Reconectar» para token vencido o suspendido |
-| Buscar por nombre y filtrar por tipo y estado — `ChannelsList` l.58-93 | **PERDIDO, no restaurado** (decisión pendiente): el diseño aprobado (Figma 91-chat-20) no trae barra de filtros y una organización tiene pocos canales. Si se pide, va como `ListToolbar` sobre la tabla |
+| Buscar por nombre y filtrar por tipo (6 tipos) y estado (activos / inactivos) — `ChannelsList` l.58-93 | **Restaurado** (decisión del dueño: devolver todo): `FiltrosCanales` con `ListToolbar`, `SearchInput`, `FilterPanel` y chips del kit; busca sin tildes al teclear; «sin resultados» con «Limpiar filtros». «Inactivos» incluye los suspendidos |
 | Cifras Total, Activos, Website, IA Auto — `ChannelsHeader` | Movido a otras cifras (Conectados, Conversaciones hoy, Abiertas, Primera respuesta). Las cuentas por tipo y por modo «Auto» ya no se muestran (menor) |
-| Crear canal (tipo, nombre, modo de IA) | Igual (`DialogoNuevoCanal`, con forma de conexión de WhatsApp) |
-| Detalle Meta: Actualizar, Activar/Desactivar, cifras, credenciales con «Ver», validar, webhook (URL, token, copiar, enlace a Meta), eventos recientes | Igual (`PantallaCanalMeta`, `CredencialesMeta`, `WebhookCanal`, `EventosRecientesCanal`) |
+| Diálogo «Crear nuevo canal» — `CreateChannelDialog` del respaldo: tipo (sitio web, WhatsApp, Messenger, Instagram; Telegram y correo deshabilitados), nombre con valor sugerido por tipo, modo de IA, avisos de qué sigue y métodos de conexión de WhatsApp | Igual (`DialogoNuevoCanal`): mismos tipos (Telegram y correo como «Próximamente» en «Conectar otro canal»), nombre sugerido, modo de IA; los avisos pasan a ser la elección de forma de conexión de WhatsApp (Cloud API, coexistencia, QR con riesgo) y el botón «Continuar con Meta». Sin pérdidas |
+| Detalle Meta: Actualizar, Activar/Desactivar, cifras (mensajes, enviados hoy, tasa de entrega, fallidos), credenciales con «Ver» (WhatsApp, Instagram y Facebook con los mismos campos), guardar, validar, webhook (URL, token, campos a suscribir, nota), eventos recientes con error | Igual (`PantallaCanalMeta`, `CredencialesMeta`, `WebhookCanal`, `EventosRecientesCanal`) |
+| **Copiar el token de verificación** del webhook — `*WebhookCard` l.74 | **Restaurado** («Copiar token», sin tener que mostrarlo) |
+| **Enlace a Meta for Developers** (`developers.facebook.com/apps`, donde se configura el webhook) | **Restaurado** (el rediseño solo enlazaba a Meta Business; quedan los dos) |
+| **Fecha y hora exactas** de cada evento (`dd/MM HH:mm`) — `*EventsCard` l.90 | **Restaurado** al pasar el mouse sobre la hora relativa, en la zona horaria de la organización |
 | WhatsApp: conexión en 1 clic (Embedded Signup), manual, coexistencia (requisitos, pasos), QR (iniciar, detener, cerrar sesión) | Igual (`ConexionWhatsApp`, `PanelQrWhatsApp`, `useRegistroMetaWhatsApp`) |
 | Botón «Avanzado» de la cabecera de WhatsApp | Sin pérdida (no hacía nada) |
 

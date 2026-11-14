@@ -2,8 +2,8 @@
 
 /**
  * Canales del Chat (Figma 91-chat-20/21): cifras, «Mis canales» con modo de
- * IA y Activo editables, aviso de canales con token vencido o suspendidos, y
- * «Conectar otro canal». Toda escritura pasa por `chatChannelsService`.
+ * IA y Activo editables, buscador y filtros por tipo y estado, aviso de
+ * canales con token vencido o suspendidos, y «Conectar otro canal». Toda escritura pasa por `chatChannelsService`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -19,10 +19,14 @@ import { TablaCanales } from '@/components/chat/channels/TablaCanales';
 import { TarjetaCanal } from '@/components/chat/channels/TarjetaCanal';
 import { DialogoNuevoCanal, type NuevoCanal } from '@/components/chat/channels/DialogoNuevoCanal';
 import WidgetCodeDialog from '@/components/chat/channels/WidgetCodeDialog';
+import { FiltrosCanales } from '@/components/chat/channels/FiltrosCanales';
 import { canalDeTipo } from '@/components/chat/ui/CanalIcono';
 import {
+  FILTROS_CANALES_VACIOS,
   canalesConError,
   duracionCorta,
+  filtrarCanales,
+  filtrosActivos,
   estadoConexion,
   rutaDetalleCanal,
   tarjetasConectar,
@@ -44,6 +48,7 @@ export default function CanalesPage() {
   const [guardando, setGuardando] = useState<Set<string>>(new Set());
   const [dialogo, setDialogo] = useState<{ abierto: boolean; tipo: TipoDisponible | null }>({ abierto: false, tipo: null });
   const [codigoDe, setCodigoDe] = useState<ChatChannel | null>(null);
+  const [filtros, setFiltros] = useState(FILTROS_CANALES_VACIOS);
 
   const cargar = useCallback(async () => {
     if (!organizationId) return;
@@ -138,6 +143,8 @@ export default function CanalesPage() {
   const abiertas = actividad ? Object.values(actividad.porCanal).reduce((a, b) => a + b.abiertas, 0) : null;
   const conError = useMemo(() => canalesConError(canales), [canales]);
   const tarjetas = useMemo(() => tarjetasConectar(canales), [canales]);
+  const visibles = useMemo(() => filtrarCanales(canales, filtros), [canales, filtros]);
+  const filtrando = !!filtros.busqueda.trim() || filtrosActivos(filtros) > 0;
   const sinDato = t('kpis.sinDato');
 
   return (
@@ -181,10 +188,13 @@ export default function CanalesPage() {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base font-semibold text-fg">{t('misCanales')}</h2>
+        {canales.length > 0 && <FiltrosCanales filtros={filtros} onCambio={setFiltros} resultados={visibles.length} />}
         <TablaCanales
-          canales={canales}
+          canales={visibles}
           actividad={actividad?.porCanal ?? {}}
-          estado={fallo ? 'error' : cargando ? 'cargando' : 'listo'}
+          estado={fallo ? 'error' : cargando ? 'cargando' : filtrando && visibles.length === 0 ? 'sinResultados' : 'listo'}
+          termino={filtros.busqueda.trim() || undefined}
+          onLimpiarFiltros={() => setFiltros(FILTROS_CANALES_VACIOS)}
           guardando={guardando}
           onCambiarModo={cambiarModo}
           onAlternarActivo={alternarActivo}

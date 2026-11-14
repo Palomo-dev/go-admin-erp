@@ -50558,6 +50558,25 @@
           }
         }
       },
+      "filtros": {
+        "buscar": "Search channels",
+        "tipo": "Channel type",
+        "todosLosTipos": "All types",
+        "estado": "Status",
+        "estados": {
+          "todos": "All",
+          "active": "Active",
+          "inactive": "Inactive"
+        },
+        "chipTipo": "Type: {valor}",
+        "chipEstado": "Status: {valor}",
+        "verN": "Show {n} channels"
+      },
+      "webhookExtra": {
+        "copiarToken": "Copy token",
+        "tokenCopiado": "Token copied",
+        "abrirDesarrolladores": "Open Meta for Developers"
+      },
       "widget": {
         "mas": {
           "codigoInstalacion": "Install code",

@@ -37,9 +37,12 @@ export interface TablaCanalesProps {
   onCodigoWidget?: (canal: ChatChannel) => void;
   onReintentar: () => void;
   onNuevo: () => void;
+  /** Con `estado='sinResultados'`: lo buscado y cómo limpiar búsqueda y filtros. */
+  termino?: string;
+  onLimpiarFiltros?: () => void;
 }
 
-export function TablaCanales({ canales, actividad, estado, guardando, onCambiarModo, onAlternarActivo, onConfigurar, onCodigoWidget, onReintentar, onNuevo }: TablaCanalesProps) {
+export function TablaCanales({ canales, actividad, estado, guardando, onCambiarModo, onAlternarActivo, onConfigurar, onCodigoWidget, onReintentar, onNuevo, termino, onLimpiarFiltros }: TablaCanalesProps) {
   const t = useTranslations('chatModulo.canales');
   const locale = useLocale();
   const ahora = useMemo(() => new Date(), [actividad]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -152,6 +155,8 @@ export function TablaCanales({ canales, actividad, estado, guardando, onCambiarM
           : []),
       ]}
       vacio={{ titulo: t('tabla.vacioTitulo'), descripcion: t('tabla.vacioDescripcion'), accion: { etiqueta: t('nuevoCanal'), onClick: onNuevo } }}
+      termino={termino}
+      onLimpiarFiltros={onLimpiarFiltros}
       error={{ titulo: t('tabla.errorTitulo') }}
       onReintentar={onReintentar}
       tarjetaMovil={(c) => {

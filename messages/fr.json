@@ -50558,6 +50558,25 @@
           }
         }
       },
+      "filtros": {
+        "buscar": "Rechercher des canaux",
+        "tipo": "Type de canal",
+        "todosLosTipos": "Tous les types",
+        "estado": "Statut",
+        "estados": {
+          "todos": "Tous",
+          "active": "Actifs",
+          "inactive": "Inactifs"
+        },
+        "chipTipo": "Type : {valor}",
+        "chipEstado": "Statut : {valor}",
+        "verN": "Voir {n} canaux"
+      },
+      "webhookExtra": {
+        "copiarToken": "Copier le jeton",
+        "tokenCopiado": "Jeton copié",
+        "abrirDesarrolladores": "Ouvrir Meta for Developers"
+      },
       "widget": {
         "mas": {
           "codigoInstalacion": "Code d’installation",

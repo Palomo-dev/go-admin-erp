@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { clasesBoton } from '@/components/kit';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
-import { MessageSquare, Tags, Key, Globe, Layers, AlertCircle, Gauge, ListChecks, DollarSign, Users, Network, Target } from 'lucide-react';
+import { ArrowUpRight, MessageSquare, Tags, Key, Layers, AlertCircle, Gauge, ListChecks, DollarSign, Users, Network, Target } from 'lucide-react';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
@@ -31,20 +34,7 @@ import { CommissionsPanel } from './sections/CommissionsPanel';
 import { ReferralsProgramCard } from './sections/ReferralsProgramCard';
 import { EstructuraComercialManager } from './sections/EstructuraComercialManager';
 import { ICPManager } from './sections/ICPManager';
-import ChatChannelsService, {
-  ChatChannel,
-  ChannelStats,
-  AIMode,
-  CreateChannelData,
-  ChannelType,
-} from '@/lib/services/chatChannelsService';
-import {
-  ChannelsList,
-  CreateChannelDialog,
-  WidgetCodeDialog,
-  AvailableChannels,
-  ChannelDetailDrawer,
-} from '@/components/chat/channels';
+import ChatChannelsService from '@/lib/services/chatChannelsService';
 import InboxConfigService, {
   type ConversationTag,
   type ChannelApiKey,
@@ -53,21 +43,41 @@ import InboxConfigService, {
 import { TagsHeader, TagCard, TagDialog } from '@/components/chat/configuracion/etiquetas';
 import { ApiKeysHeader, ApiKeyCard, ApiKeyDialog } from '@/components/chat/configuracion/llaves-api';
 
-export function CRMConfigPanel() {
+/** Ruta del chat del sitio web de un canal (página nueva de Canales). */
+const rutaSitioWeb = (id: string) => `/app/chat/canales/sitio-web/${id}`;
+const RUTA_CANALES = '/app/chat/canales';
+
+/**
+ * Enlace que, dentro del diálogo de Configuración, navega y lo cierra
+ * (`onAbrirEnlace`); fuera de él es un enlace normal.
+ */
+function EnlaceCanales({ href, onAbrir, className, children }: { href: string; onAbrir?: (href: string) => void; className: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={className}
+      onClick={(e) => {
+        if (!onAbrir || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        onAbrir(href);
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
+export function CRMConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href: string) => void } = {}) {
+  const tCanales = useTranslations('chatConfig.crmCanales');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
 
-  // === Canales state ===
-  const [channels, setChannels] = useState<ChatChannel[]>([]);
-  const [stats, setStats] = useState<ChannelStats | null>(null);
+  // === Canales ===
+  // Los canales y el chat del sitio web se configuran en Chat › Canales (páginas
+  // nuevas). Aquí solo se averigua si hay un chat del sitio web para enlazarlo.
   const [channelsLoading, setChannelsLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showWidgetDialog, setShowWidgetDialog] = useState(false);
-  const [selectedChannel, setSelectedChannel] = useState<ChatChannel | null>(null);
-  const [preselectedType, setPreselectedType] = useState<ChannelType | null>(null);
-  const [drawerChannelId, setDrawerChannelId] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sitioWebId, setSitioWebId] = useState<string | null>(null);
 
   // === Etiquetas state ===
   const [tagsLoading, setTagsLoading] = useState(true);
@@ -101,20 +111,16 @@ export function CRMConfigPanel() {
     if (!organizationId) return;
     setChannelsLoading(true);
     try {
-      const service = new ChatChannelsService(organizationId);
-      const [channelsData, statsData] = await Promise.all([
-        service.getChannels(),
-        service.getStats(),
-      ]);
-      setChannels(channelsData);
-      setStats(statsData);
+      const canales = await new ChatChannelsService(organizationId).getChannels();
+      const sitio = canales.find((ch) => ch.type === 'website' && ch.status === 'active') ?? canales.find((ch) => ch.type === 'website');
+      setSitioWebId(sitio?.id ?? null);
     } catch (error) {
       console.error('Error cargando canales:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar los canales', variant: 'destructive' });
+      setSitioWebId(null);
     } finally {
       setChannelsLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId]);
 
   // === Load Etiquetas ===
   const loadTags = useCallback(async () => {
@@ -156,122 +162,6 @@ export function CRMConfigPanel() {
       loadApiKeys();
     }
   }, [organizationId, loadChannels, loadTags, loadApiKeys]);
-
-  // === Canales handlers ===
-  const handleCreateChannel = async (data: CreateChannelData) => {
-    if (!organizationId) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const service = new ChatChannelsService(organizationId);
-      const newChannel = await service.createChannel(data, user.id);
-
-      setChannels((prev) => [newChannel, ...prev]);
-
-      if (stats) {
-        setStats({
-          ...stats,
-          totalChannels: stats.totalChannels + 1,
-          activeChannels: stats.activeChannels + 1,
-        });
-      }
-
-      toast({
-        title: 'Canal creado',
-        description: `El canal "${newChannel.name}" ha sido creado exitosamente`,
-      });
-
-      if (data.type === 'website') {
-        setSelectedChannel(newChannel);
-        setShowWidgetDialog(true);
-      }
-    } catch (error) {
-      console.error('Error creando canal:', error);
-      toast({ title: 'Error', description: 'No se pudo crear el canal', variant: 'destructive' });
-      throw error;
-    }
-  };
-
-  const handleToggleStatus = async (channel: ChatChannel) => {
-    if (!organizationId) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const service = new ChatChannelsService(organizationId);
-      const updatedChannel = await service.toggleChannelStatus(channel.id, user.id);
-
-      setChannels((prev) => prev.map((c) => (c.id === channel.id ? updatedChannel : c)));
-
-      if (stats) {
-        const delta = updatedChannel.status === 'active' ? 1 : -1;
-        setStats({ ...stats, activeChannels: stats.activeChannels + delta });
-      }
-
-      toast({
-        title: updatedChannel.status === 'active' ? 'Canal activado' : 'Canal desactivado',
-        description: `El canal "${channel.name}" ha sido ${updatedChannel.status === 'active' ? 'activado' : 'desactivado'}`,
-      });
-    } catch (error) {
-      console.error('Error cambiando estado:', error);
-      toast({ title: 'Error', description: 'No se pudo cambiar el estado del canal', variant: 'destructive' });
-    }
-  };
-
-  const handleChangeAIMode = async (channel: ChatChannel, mode: AIMode) => {
-    if (!organizationId) return;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Usuario no autenticado');
-
-      const service = new ChatChannelsService(organizationId);
-      const updatedChannel = await service.updateAIMode(channel.id, mode, user.id);
-
-      setChannels((prev) => prev.map((c) => (c.id === channel.id ? updatedChannel : c)));
-
-      const modeLabels: Record<AIMode, string> = { manual: 'Desactivado', hybrid: 'Híbrido', auto: 'Automático' };
-      toast({ title: 'Modo IA actualizado', description: `El modo IA ahora es "${modeLabels[mode]}"` });
-    } catch (error) {
-      console.error('Error cambiando modo IA:', error);
-      toast({ title: 'Error', description: 'No se pudo cambiar el modo IA', variant: 'destructive' });
-    }
-  };
-
-  const handleConfigure = (channel: ChatChannel) => {
-    if (channel.type === 'website') {
-      setDrawerChannelId(channel.id);
-      setDrawerOpen(true);
-    } else {
-      toast({
-        title: 'Información',
-        description: 'La configuración de este tipo de canal se gestiona desde Chat',
-      });
-    }
-  };
-
-  const handleInstallWidget = (channel: ChatChannel) => {
-    setSelectedChannel(channel);
-    setShowWidgetDialog(true);
-  };
-
-  const handleConnect = (channel: ChatChannel) => {
-    void channel;
-    toast({
-      title: 'Información',
-      description: 'La conexión de canales externos se gestiona desde Chat',
-    });
-  };
-
-  const handleConnectChannel = (type: ChannelType) => {
-    const existingChannel = channels.find((ch) => ch.type === type);
-    if (existingChannel) {
-      handleConfigure(existingChannel);
-    } else {
-      setPreselectedType(type);
-      setShowCreateDialog(true);
-    }
-  };
 
   // === Etiquetas handlers ===
   const handleCreateTag = () => { setSelectedTag(null); setTagDialogOpen(true); };
@@ -363,24 +253,9 @@ export function CRMConfigPanel() {
     }
   };
 
-  // === Widget section ===
-  const websiteChannel = channels.find((ch) => ch.type === 'website' && ch.status === 'active');
-
-  const handleConfigureWidget = () => {
-    if (websiteChannel) {
-      setDrawerChannelId(websiteChannel.id);
-      setDrawerOpen(true);
-    } else {
-      toast({
-        title: 'Sin canal web',
-        description: 'Crea y activa un canal de tipo Sitio Web primero',
-      });
-    }
-  };
-
   const isLoading = channelsLoading && tagsLoading && keysLoading;
 
-  if (isLoading && channels.length === 0 && tags.length === 0 && apiKeys.length === 0) {
+  if (isLoading && tags.length === 0 && apiKeys.length === 0) {
     return (
       <div className="space-y-8">
         <PageHeaderSkeleton />
@@ -391,40 +266,27 @@ export function CRMConfigPanel() {
 
   return (
     <div className="space-y-8">
-      {/* === Canales === */}
-      <div className="space-y-4">
+      {/* === Canales: viven en Chat › Canales; aquí solo se enlazan === */}
+      <section aria-labelledby="crm-canales-titulo" className="space-y-3">
         <div className="flex items-center gap-2">
-          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Canales</h3>
+          <MessageSquare aria-hidden="true" className="h-4 w-4 text-fg-muted" />
+          <h3 id="crm-canales-titulo" className="text-sm font-medium text-fg-muted">{tCanales('titulo')}</h3>
         </div>
-
-        <AvailableChannels
-          connectedChannels={channels}
-          onConnect={handleConnectChannel}
-        />
-
-        {channels.length > 0 && (
-          <div className="border-t border-gray-200 dark:border-gray-800">
-            <div className="p-4 pb-0">
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                Mis Canales
-              </h4>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Canales configurados en tu organización
-              </p>
-            </div>
-            <ChannelsList
-              channels={channels}
-              loading={channelsLoading}
-              onToggleStatus={handleToggleStatus}
-              onChangeAIMode={handleChangeAIMode}
-              onConfigure={handleConfigure}
-              onInstallWidget={handleInstallWidget}
-              onConnect={handleConnect}
-            />
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-4 md:px-6 md:py-5">
+          <p className="min-w-0 flex-1 text-sm text-fg-secondary">{tCanales('descripcion')}</p>
+          <div className="flex flex-wrap gap-2">
+            {!channelsLoading && sitioWebId && (
+              <EnlaceCanales href={rutaSitioWeb(sitioWebId)} onAbrir={onAbrirEnlace} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+                {tCanales('configurarSitio')}
+              </EnlaceCanales>
+            )}
+            <EnlaceCanales href={RUTA_CANALES} onAbrir={onAbrirEnlace} className={clasesBoton({ variante: 'secundario', tamano: 'md' })}>
+              {tCanales('irCanales')}
+              <ArrowUpRight aria-hidden="true" className="size-4" />
+            </EnlaceCanales>
           </div>
-        )}
-      </div>
+        </div>
+      </section>
 
       {/* === Etiquetas === */}
       <div className="space-y-4">
@@ -480,35 +342,6 @@ export function CRMConfigPanel() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* === Widget Web === */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">Widget Web</h3>
-        </div>
-        <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">
-                {websiteChannel ? 'Widget activo' : 'Sin widget configurado'}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {websiteChannel
-                  ? `Canal: ${websiteChannel.name}`
-                  : 'Crea un canal de tipo Sitio Web para configurar el widget'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleConfigureWidget}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Configurar Widget
-            </button>
-          </div>
-        </div>
       </div>
 
       {/* === CRM Config Cards === */}
@@ -761,28 +594,6 @@ export function CRMConfigPanel() {
       </Dialog>
 
       {/* === Dialogs === */}
-      <CreateChannelDialog
-        open={showCreateDialog}
-        onOpenChange={(open) => {
-          setShowCreateDialog(open);
-          if (!open) setPreselectedType(null);
-        }}
-        onSubmit={handleCreateChannel}
-        preselectedType={preselectedType}
-      />
-
-      <WidgetCodeDialog
-        open={showWidgetDialog}
-        onOpenChange={setShowWidgetDialog}
-        channel={selectedChannel}
-      />
-
-      <ChannelDetailDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        channelId={drawerChannelId}
-      />
-
       <TagDialog open={tagDialogOpen} onOpenChange={setTagDialogOpen} tag={selectedTag} onSave={handleSaveTag} />
       <ApiKeyDialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen} channels={apiChannels} onSave={handleSaveKey} />
 

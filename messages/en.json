@@ -51576,6 +51576,12 @@
     }
   },
   "chatConfig": {
+    "crmCanales": {
+      "titulo": "Channels",
+      "descripcion": "Channels and the website chat are set up in Chat › Channels.",
+      "irCanales": "Go to Channels",
+      "configurarSitio": "Set up the website chat"
+    },
     "comun": {
       "cancelar": "Cancel",
       "guardando": "Saving…",

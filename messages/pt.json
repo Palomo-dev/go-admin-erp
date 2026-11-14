@@ -51586,6 +51586,12 @@
     }
   },
   "chatConfig": {
+    "crmCanales": {
+      "titulo": "Canais",
+      "descripcion": "Os canais e o chat do site são configurados em Chat › Canais.",
+      "irCanales": "Ir para Canais",
+      "configurarSitio": "Configurar o chat do site"
+    },
     "comun": {
       "cancelar": "Cancelar",
       "guardando": "Salvando…",

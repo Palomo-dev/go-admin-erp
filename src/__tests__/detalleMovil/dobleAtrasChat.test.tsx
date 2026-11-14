@@ -5,7 +5,6 @@
  * shell. La cabecera propia conserva título, estado y acciones; solo su «←»
  * pasa a existir desde lg. Arnés: `@/test-utils/dobleAtrasMovil`.
  */
-import { screen } from '@testing-library/react';
 import { simularAncho } from '@/test-utils/renderConIdioma';
 import { cabeceraPublicada, comprobarDetalleMovil as comprobar, renderEnCelular } from '@/test-utils/dobleAtrasMovil';
 
@@ -18,13 +17,10 @@ jest.mock('next/navigation', () => ({
 }));
 
 import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
-import WebsiteSettingsHeader from '@/components/chat/channels/website/id/WebsiteSettingsHeader';
 import { CabeceraConversacion } from '@/components/chat/conversations/CabeceraConversacion';
 import type { ConversacionControl } from '@/components/chat/conversations/useConversacion';
-import type { ChatChannel } from '@/lib/services/chatChannelsService';
 
 const nada = () => undefined;
-const canal = { id: 'c1', name: 'Canal principal', status: 'active' };
 
 afterEach(() => simularAncho(1440));
 
@@ -47,13 +43,8 @@ describe('Chat › detalles en celular (390 px): una sola «←»', () => {
     expect(cabeceraPublicada()?.subtitulo).toBe('WhatsApp');
   });
 
-  test('canal sitio web', () => {
-    renderEnCelular(
-      <WebsiteSettingsHeader channel={canal as unknown as ChatChannel} widgetStats={null} onToggleStatus={async () => undefined} isUpdating={false} />,
-    );
-    comprobar('Canal principal', ['Activo', 'Configuración del widget de chat para sitio web']);
-    expect(screen.getByRole('switch')).toBeTruthy();
-  });
+  // Canal sitio web: la página nueva (/app/chat/canales/sitio-web/[id]) usa la
+  // misma CabeceraDetalleChat; la cabecera vieja del widget se retiró el 2026-11-14.
 
   // Fuente, fragmento e importar de Conocimiento usan la misma CabeceraDetalleChat
   // (Figma 91-chat-31/32/33): la cubre la prueba del canal.

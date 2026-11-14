@@ -50873,6 +50873,7 @@
       "titulo": "Connaissances",
       "subtitulo": "Ce que l’IA peut utiliser pour répondre : politiques, FAQ, catalogue et guides.",
       "configurarIa": "Configurer l’IA",
+      "importarBoton": "Importer",
       "importar": {
         "titulo": "Importer des fragments",
         "subtitulo": "Chargez-en plusieurs d’un coup depuis un CSV ou en collant du texte.",
@@ -50903,6 +50904,7 @@
           "sinFuente": "Sans source",
           "etiquetas": "Étiquettes pour tous",
           "etiquetasAyuda": "Séparez-les par des virgules.",
+          "etiquetasEjemplo": "faq, livraisons",
           "indexar": "Les rendre prêts pour l’IA à la fin",
           "importar": "Importer {n, plural, one {# fragment} other {# fragments}}",
           "creditos": "L’indexation utilise les crédits IA de votre forfait."
@@ -51347,6 +51349,1547 @@
         "titulo": "Impossible de charger le forfait",
         "descripcion": "Réessayez dans quelques secondes."
       }
+    }
+  },
+  "configuracionTextos": {
+    "crmConfigPanel": {
+      "toast": {
+        "error": "Erreur",
+        "errCargarEtiquetas": "Impossible de charger les étiquettes",
+        "errCargarLlaves": "Impossible de charger les clés d’API",
+        "etiquetaActualizada": "Étiquette mise à jour",
+        "etiquetaActualizadaDesc": "Les modifications ont été enregistrées",
+        "etiquetaCreada": "Étiquette créée",
+        "etiquetaCreadaDesc": "L’étiquette a été créée",
+        "errGuardarEtiqueta": "Impossible d’enregistrer l’étiquette",
+        "etiquetaEliminada": "Étiquette supprimée",
+        "etiquetaEliminadaDesc": "L’étiquette a été supprimée",
+        "errEliminarEtiqueta": "Impossible de supprimer l’étiquette",
+        "llaveCreada": "Clé créée",
+        "llaveCreadaDesc": "La clé d’API a été créée",
+        "errCrearLlave": "Impossible de créer la clé d’API",
+        "llaveRevocada": "Clé révoquée",
+        "llaveRevocadaDesc": "La clé d’API a été révoquée",
+        "errRevocarLlave": "Impossible de révoquer la clé",
+        "llaveRotada": "Clé renouvelée",
+        "llaveRotadaDesc": "Une nouvelle clé a été générée.",
+        "errRotarLlave": "Impossible de renouveler la clé"
+      },
+      "etiquetas": {
+        "titulo": "Étiquettes",
+        "vacioTitulo": "Aucune étiquette configurée",
+        "vacioDescripcion": "Créez des étiquettes pour organiser et classer vos conversations"
+      },
+      "llaves": {
+        "titulo": "Clés d’API",
+        "vacioTitulo": "Aucune clé d’API configurée",
+        "vacioDescripcion": "Créez des clés d’API pour intégrer le CRM à des services externes"
+      },
+      "tarjetas": {
+        "titulo": "Paramètres du CRM",
+        "configurar": "Configurer →",
+        "verticales": {
+          "titulo": "Secteurs",
+          "descripcion": "Classez les opportunités par secteur d’activité (hôtellerie, commerce de détail, construction, etc.)"
+        },
+        "razonesPerdida": {
+          "titulo": "Motifs de perte",
+          "descripcion": "Définissez des motifs globaux et propres à l’organisation pour enregistrer les opportunités perdues"
+        },
+        "scoring": {
+          "titulo": "Scoring (GOC)",
+          "descripcion": "Configurez les indicateurs, les pondérations et les seuils Cold / Warm / Hot du scoring des opportunités"
+        },
+        "etapas": {
+          "titulo": "Étapes et critères",
+          "descripcion": "Définissez des critères de sortie (exit gates) par étape pour faire avancer les opportunités dans le pipeline"
+        },
+        "comisiones": {
+          "titulo": "Vendeurs et commissions",
+          "descripcion": "Configurez le taux de commission général, les exceptions par vendeur avec périodes de validité et un simulateur"
+        },
+        "referidos": {
+          "titulo": "Programme de parrainage",
+          "descripcion": "Configurez les incitations, l’éligibilité et les récompenses pour les parrains et les partenaires"
+        },
+        "estructura": {
+          "titulo": "Structure commerciale",
+          "descripcion": "Définissez les rôles commerciaux, les équipes et leurs membres, et les territoires avec leurs critères"
+        },
+        "icp": {
+          "titulo": "ICP (Ideal Customer Profile)",
+          "descripcion": "Profils A/B/C avec critères, pondérations, SLA et évaluateur de clients"
+        }
+      },
+      "modales": {
+        "verticales": {
+          "titulo": "Secteurs",
+          "descripcion": "Gérez les secteurs d’activité utilisés pour classer les opportunités"
+        },
+        "razonesPerdida": {
+          "titulo": "Motifs de perte",
+          "descripcion": "Gérez les raisons pour lesquelles des opportunités sont perdues"
+        },
+        "scoring": {
+          "titulo": "Scoring (GOC)",
+          "descripcion": "Configurez les indicateurs, les pondérations et les seuils de scoring"
+        },
+        "etapas": {
+          "titulo": "Étapes et critères de sortie",
+          "descripcion": "Définissez les critères à remplir pour faire passer les opportunités d’une étape à l’autre"
+        },
+        "comisiones": {
+          "titulo": "Vendeurs et commissions",
+          "descripcion": "Configurez les commissions générales et propres à chaque vendeur"
+        },
+        "referidos": {
+          "titulo": "Programme de parrainage",
+          "descripcion": "Configurez les incitations, l’éligibilité et les récompenses du canal indirect"
+        },
+        "estructura": {
+          "titulo": "Structure commerciale",
+          "descripcion": "Gérez les rôles, les équipes et leurs membres, et les territoires avec leurs critères"
+        },
+        "icp": {
+          "titulo": "ICP (Ideal Customer Profile)",
+          "descripcion": "Profils A/B/C avec critères, pondérations, SLA et évaluateur de clients"
+        }
+      },
+      "confirmar": {
+        "cancelar": "Annuler",
+        "eliminar": "Supprimer",
+        "eliminarEtiquetaTitulo": "Supprimer l’étiquette ?",
+        "eliminarEtiquetaDescripcion": "Cette action supprimera l’étiquette « {nombre} » et la retirera de toutes les conversations. Cette action est irréversible.",
+        "revocar": "Révoquer",
+        "revocarLlaveTitulo": "Révoquer la clé d’API ?",
+        "revocarLlaveDescripcion": "Cette action révoquera définitivement la clé « {nombre} ». Toute intégration qui l’utilise cessera de fonctionner.",
+        "rotarLlave": "Renouveler la clé",
+        "rotarLlaveTitulo": "Renouveler la clé d’API ?",
+        "rotarLlaveDescripcion": "Cette action créera une nouvelle clé avec les mêmes autorisations et révoquera la clé actuelle « {nombre} »."
+      }
+    },
+    "icpManager": {
+      "toast": {
+        "error": "Erreur",
+        "validacion": "Validation",
+        "errCargarPerfiles": "Impossible de charger les profils ICP",
+        "nombreBandObligatorios": "Le nom et la bande sont obligatoires",
+        "perfilActualizado": "Profil mis à jour",
+        "perfilActualizadoDesc": "Les modifications ont été enregistrées",
+        "perfilCreado": "Profil créé",
+        "perfilCreadoDesc": "Le profil ICP a été créé",
+        "errGuardarPerfil": "Impossible d’enregistrer le profil",
+        "perfilEliminado": "Profil supprimé",
+        "perfilEliminadoDesc": "Le profil ICP a été supprimé",
+        "errEliminarPerfil": "Impossible de supprimer le profil",
+        "campoOperadorObligatorios": "Le champ (field key) et l’opérateur sont obligatoires",
+        "criterioActualizado": "Critère mis à jour",
+        "criterioActualizadoDesc": "Le critère a été enregistré",
+        "criterioCreado": "Critère créé",
+        "criterioCreadoDesc": "Le critère a été ajouté au profil",
+        "errGuardarCriterio": "Impossible d’enregistrer le critère",
+        "criterioEliminado": "Critère supprimé",
+        "criterioEliminadoDesc": "Le critère a été supprimé",
+        "errEliminarCriterio": "Impossible de supprimer le critère",
+        "clienteObligatorio": "L’ID client est obligatoire",
+        "evaluacionCompletada": "Évaluation terminée",
+        "perfilesEvaluados": "{n, plural, one {# profil évalué} other {# profils évalués}}",
+        "errEvaluar": "Impossible d’évaluer le client"
+      },
+      "operadores": {
+        "eq": "= (égal)",
+        "neq": "≠ (différent)",
+        "gt": "> (supérieur)",
+        "gte": "≥ (supérieur ou égal)",
+        "lt": "< (inférieur)",
+        "lte": "≤ (inférieur ou égal)",
+        "in": "∈ (dans la liste)",
+        "not_in": "∉ (hors de la liste)",
+        "contains": "contient",
+        "starts_with": "commence par"
+      },
+      "banda": "Bande {band}",
+      "encabezado": {
+        "conteo": "{n, plural, one {# profil ICP} other {# profils ICP}}",
+        "descripcion": "Définissez des profils de client idéal (A/B/C) avec critères et SLA",
+        "evaluar": "Évaluer",
+        "nuevoPerfil": "Nouveau profil"
+      },
+      "vacio": {
+        "titulo": "Aucun profil ICP configuré",
+        "descripcion": "Créez des profils A/B/C pour classer et prioriser les clients"
+      },
+      "perfil": {
+        "inactivo": "Inactif",
+        "conteoCriterios": "{n, plural, one {# critère} other {# critères}}",
+        "prioridadSla": "Priorité {prioridad} · SLA {horas} h"
+      },
+      "criterios": {
+        "vacio": "Aucun critère. Ajoutez le premier.",
+        "anadir": "Ajouter un critère",
+        "columnas": {
+          "campo": "Champ",
+          "operador": "Opérateur",
+          "valor": "Valeur",
+          "peso": "Poids",
+          "requerido": "Oblig."
+        }
+      },
+      "dialogoPerfil": {
+        "tituloEditar": "Modifier le profil ICP",
+        "tituloNuevo": "Nouveau profil ICP",
+        "descripcionEditar": "Modifiez les informations du profil",
+        "descripcionNuevo": "Créez un profil de client idéal (A/B/C)",
+        "nombre": "Nom *",
+        "nombrePlaceholder": "Ex. : Enterprise Ideal, SMB Growth",
+        "banda": "Bande *",
+        "bandaA": "A (adéquation élevée)",
+        "bandaB": "B (adéquation moyenne)",
+        "bandaC": "C (adéquation faible)",
+        "color": "Couleur",
+        "prioridad": "Priorité",
+        "sla": "SLA du premier contact (h)",
+        "descripcion": "Description",
+        "descripcionPlaceholder": "Description du profil idéal",
+        "activo": "Actif"
+      },
+      "dialogoCriterio": {
+        "tituloEditar": "Modifier le critère",
+        "tituloNuevo": "Nouveau critère",
+        "descripcion": "Définissez une règle d’évaluation ICP pour ce profil",
+        "campo": "Champ (field_key) *",
+        "operador": "Opérateur *",
+        "valor": "Valeur",
+        "valorPlaceholder": "Ex. : \"large\" ou 1000000 ou [\"Bogota\",\"Medellin\"]",
+        "valorAyuda": "Pour les opérateurs in/not_in, utilisez un tableau JSON : [\"a\",\"b\"]",
+        "peso": "Poids",
+        "obligatorio": "Obligatoire"
+      },
+      "dialogoEvaluar": {
+        "titulo": "Évaluer un client par rapport à l’ICP",
+        "descripcion": "Saisissez l’ID d’un client pour l’évaluer par rapport à tous les profils ICP",
+        "clientePlaceholder": "ID client (UUID)",
+        "evaluando": "Évaluation...",
+        "evaluar": "Évaluer",
+        "sinPerfiles": "Aucun profil ICP à évaluer",
+        "obligatoriosFallidos": "Critères obligatoires non remplis : {lista}",
+        "actual": "→ réel :",
+        "requerido": "oblig.",
+        "cerrar": "Fermer"
+      },
+      "eliminar": {
+        "titulo": "Supprimer le profil ICP ?",
+        "descripcion": "Cette action supprimera le profil « {nombre} » et tous ses critères."
+      },
+      "acciones": {
+        "cancelar": "Annuler",
+        "eliminar": "Supprimer",
+        "guardar": "Enregistrer",
+        "guardando": "Enregistrement..."
+      }
+    },
+    "chatConfigPanel": {
+      "toast": {
+        "error": "Erreur",
+        "errorCargarEtiquetas": "Impossible de charger les étiquettes",
+        "errorCargarLlaves": "Impossible de charger les clés d’API",
+        "errorCargarRespuestas": "Impossible de charger les réponses rapides",
+        "cambiosGuardados": "Les modifications ont été enregistrées",
+        "etiquetaActualizada": "Étiquette mise à jour",
+        "etiquetaCreada": "Étiquette créée",
+        "etiquetaCreadaDescripcion": "L’étiquette a été créée",
+        "errorGuardarEtiqueta": "Impossible d’enregistrer l’étiquette",
+        "etiquetaEliminada": "Étiquette supprimée",
+        "etiquetaEliminadaDescripcion": "L’étiquette a été supprimée",
+        "errorEliminarEtiqueta": "Impossible de supprimer l’étiquette",
+        "llaveCreada": "Clé créée",
+        "llaveCreadaDescripcion": "La clé d’API a été créée",
+        "errorCrearLlave": "Impossible de créer la clé d’API",
+        "llaveRevocada": "Clé révoquée",
+        "llaveRevocadaDescripcion": "La clé d’API a été révoquée et ne peut plus être utilisée",
+        "errorRevocarLlave": "Impossible de révoquer la clé d’API",
+        "llaveRotada": "Clé renouvelée",
+        "llaveRotadaDescripcion": "Une nouvelle clé a été générée. L’ancienne a été révoquée.",
+        "errorRotarLlave": "Impossible de renouveler la clé d’API",
+        "respuestaActualizada": "Réponse mise à jour",
+        "respuestaCreada": "Réponse créée",
+        "respuestaCreadaDescripcion": "La réponse rapide a été créée",
+        "errorGuardarRespuesta": "Impossible d’enregistrer la réponse rapide",
+        "respuestaEliminada": "Réponse supprimée",
+        "respuestaEliminadaDescripcion": "La réponse rapide a été supprimée",
+        "errorEliminarRespuesta": "Impossible de supprimer la réponse rapide"
+      },
+      "secciones": {
+        "etiquetas": "Étiquettes",
+        "respuestasRapidas": "Réponses rapides",
+        "llavesApi": "Clés d’API"
+      },
+      "vacio": {
+        "etiquetasTitulo": "Aucune étiquette configurée",
+        "etiquetasDescripcion": "Créez des étiquettes pour organiser et classer vos conversations",
+        "respuestasTitulo": "Aucune réponse rapide configurée",
+        "respuestasDescripcion": "Créez des modèles de réponse pour accélérer le service client",
+        "sinCoincidencias": "Aucune réponse ne correspond à « {busqueda} »",
+        "llavesTitulo": "Aucune clé d’API configurée",
+        "llavesDescripcion": "Créez des clés d’API pour intégrer le chat à votre application ou à des services externes"
+      },
+      "dialogos": {
+        "cancelar": "Annuler",
+        "eliminar": "Supprimer",
+        "eliminarEtiquetaTitulo": "Supprimer l’étiquette ?",
+        "eliminarEtiquetaDescripcion": "Cette action supprimera l’étiquette « {nombre} » et la retirera de toutes les conversations auxquelles elle est attribuée. Cette action est irréversible.",
+        "revocarLlaveTitulo": "Révoquer la clé d’API ?",
+        "revocarLlaveDescripcion": "Cette action révoquera définitivement la clé « {nombre} ». Toute intégration qui utilise cette clé cessera de fonctionner immédiatement.",
+        "revocar": "Révoquer",
+        "rotarLlaveTitulo": "Renouveler la clé d’API ?",
+        "rotarLlaveDescripcion": "Cette action créera une nouvelle clé avec les mêmes autorisations et révoquera la clé actuelle « {nombre} ». Vous devrez mettre à jour toutes les intégrations avec la nouvelle clé.",
+        "rotarLlave": "Renouveler la clé",
+        "eliminarRespuestaTitulo": "Supprimer la réponse rapide ?",
+        "eliminarRespuestaDescripcion": "Cette action supprimera définitivement la réponse « {titulo} ». Cette action est irréversible."
+      }
+    },
+    "scoringConfigurator": {
+      "porDefecto": {
+        "engagement": "Engagement",
+        "presupuesto": "Budget",
+        "timeline": "Échéance",
+        "bajo": "Faible",
+        "medio": "Moyen",
+        "alto": "Élevé",
+        "sinPresupuesto": "Sans budget",
+        "limitado": "Limité",
+        "confirmado": "Confirmé",
+        "lejano": "Lointaine",
+        "cercano": "Proche",
+        "inmediato": "Immédiate",
+        "nuevoIndicador": "Nouvel indicateur",
+        "nuevaOpcion": "Nouvelle option"
+      },
+      "toast": {
+        "error": "Erreur",
+        "errorCargar": "Impossible de charger la configuration du scoring",
+        "validacion": "Validation",
+        "sumaPesos": "La somme des pondérations doit être de 100 % (actuelle : {total} %)",
+        "guardada": "Configuration enregistrée",
+        "guardadaDescripcion": "Le scoring GOC a été enregistré",
+        "errorGuardar": "Impossible d’enregistrer la configuration"
+      },
+      "encabezado": {
+        "titulo": "Scoring GOC",
+        "descripcion": "Configurez les indicateurs, les pondérations et les seuils (Cold / Warm / Hot)"
+      },
+      "acciones": {
+        "guardando": "Enregistrement...",
+        "guardar": "Enregistrer",
+        "guardarConfiguracion": "Enregistrer la configuration"
+      },
+      "indicadores": {
+        "titulo": "Indicateurs",
+        "total": "Total : {total} %",
+        "agregarIndicador": "Indicateur",
+        "nombrePlaceholder": "Nom de l’indicateur",
+        "opcionPlaceholder": "Libellé de l’option",
+        "puntajePlaceholder": "Score",
+        "agregarOpcion": "Ajouter une option"
+      },
+      "bandas": {
+        "titulo": "Seuils (bandes)",
+        "frio": "Froid",
+        "tibio": "Tiède",
+        "caliente": "Chaud",
+        "minimo": "Min",
+        "maximo": "Max"
+      }
+    },
+    "lossReasonsManager": {
+      "toast": {
+        "error": "Erreur",
+        "errorCargar": "Impossible de charger les motifs de perte",
+        "validacion": "Validation",
+        "razonObligatoria": "Le motif est obligatoire",
+        "restriccion": "Restriction",
+        "globalesNoEditables": "Les motifs globaux ne peuvent pas être modifiés",
+        "actualizada": "Motif mis à jour",
+        "cambiosGuardados": "Les modifications ont été enregistrées",
+        "creada": "Motif créé",
+        "creadaDescripcion": "Le motif de perte a été créé",
+        "errorGuardar": "Impossible d’enregistrer le motif",
+        "globalesNoEliminables": "Les motifs globaux ne peuvent pas être supprimés",
+        "eliminada": "Motif supprimé",
+        "eliminadaDescripcion": "Le motif de perte a été désactivé",
+        "errorEliminar": "Impossible de supprimer le motif"
+      },
+      "encabezado": {
+        "conteo": "{n, plural, one {# motif de perte} other {# motifs de perte}}",
+        "descripcion": "Globaux et propres à l’organisation",
+        "nuevaRazon": "Nouveau motif"
+      },
+      "lista": {
+        "inactiva": "Inactif",
+        "global": "Global",
+        "globales": "Globaux",
+        "deLaOrganizacion": "De l’organisation",
+        "vacio": "Aucun motif spécifique. Créez-en un pour personnaliser."
+      },
+      "dialogo": {
+        "tituloEditar": "Modifier le motif",
+        "tituloNueva": "Nouveau motif de perte",
+        "descripcionEditar": "Modifiez le motif de perte",
+        "descripcionNueva": "Créez un nouveau motif pour indiquer pourquoi des opportunités sont perdues",
+        "razonEtiqueta": "Motif *",
+        "razonPlaceholder": "Ex. : Prix trop élevé, Sans budget, Concurrent..."
+      },
+      "acciones": {
+        "cancelar": "Annuler",
+        "guardando": "Enregistrement...",
+        "guardar": "Enregistrer"
+      },
+      "desactivar": {
+        "titulo": "Désactiver le motif de perte ?",
+        "descripcion": "Cette action désactivera le motif « {razon} ». Les opportunités qui utilisent déjà ce motif conserveront leur historique.",
+        "confirmar": "Désactiver"
+      }
+    },
+    "verticalsManager": {
+      "toast": {
+        "error": "Erreur",
+        "errorCargar": "Impossible de charger les verticales",
+        "activada": "Verticale activée",
+        "desactivada": "Verticale désactivée",
+        "activadaDescripcion": "« {nombre} » a été activée",
+        "desactivadaDescripcion": "« {nombre} » a été désactivée",
+        "errorEstado": "Impossible de modifier le statut",
+        "validacion": "Validation",
+        "nombreObligatorio": "Le nom est obligatoire",
+        "actualizada": "Verticale mise à jour",
+        "cambiosGuardados": "Les modifications ont été enregistrées",
+        "creada": "Verticale créée",
+        "creadaDescripcion": "La verticale a été créée",
+        "errorGuardar": "Impossible d’enregistrer la verticale",
+        "eliminada": "Verticale supprimée",
+        "eliminadaDescripcion": "La verticale a été désactivée",
+        "errorEliminar": "Impossible de supprimer la verticale"
+      },
+      "encabezado": {
+        "conteo": "{n, plural, one {# verticale} other {# verticales}}",
+        "descripcion": "Gérez les verticales métier du CRM",
+        "nuevaVertical": "Nouvelle verticale"
+      },
+      "vacio": {
+        "titulo": "Aucune verticale configurée",
+        "descripcion": "Créez des verticales pour classer vos opportunités par secteur d’activité"
+      },
+      "lista": {
+        "inactiva": "Inactive"
+      },
+      "dialogo": {
+        "tituloEditar": "Modifier la verticale",
+        "tituloNueva": "Nouvelle verticale",
+        "descripcionEditar": "Modifiez les informations de la verticale",
+        "descripcionNueva": "Créez une nouvelle verticale pour classer les opportunités",
+        "nombreEtiqueta": "Nom *",
+        "nombrePlaceholder": "Ex. : Hôtellerie, Commerce de détail, Construction...",
+        "descripcionEtiqueta": "Description",
+        "descripcionPlaceholder": "Description facultative de la verticale",
+        "activa": "Active"
+      },
+      "acciones": {
+        "cancelar": "Annuler",
+        "guardando": "Enregistrement...",
+        "guardar": "Enregistrer"
+      },
+      "desactivar": {
+        "titulo": "Désactiver la verticale ?",
+        "descripcion": "Cette action désactivera la verticale « {nombre} ». Les opportunités associées ne seront pas supprimées mais perdront cette classification.",
+        "confirmar": "Désactiver"
+      }
+    },
+    "creditosTab": {
+      "cargandoCola": "Chargement de la file des tâches",
+      "errorHttp": "Erreur {status}",
+      "errorDesconocido": "Erreur inconnue",
+      "errorCarga": "Impossible de charger l’état des crédits",
+      "reintentar": "Réessayer",
+      "titulo": "Crédits et système",
+      "descripcion": "Soldes, consommation du mois en cours et prix de référence des fournisseurs.",
+      "recargar": "Recharger",
+      "ilimitado": "Illimité",
+      "kpi": {
+        "creditosIa": "Crédits d’IA",
+        "consumidosMes": "Consommés ce mois-ci : {cantidad}",
+        "smsRestantes": "SMS restants",
+        "whatsappRestantes": "WhatsApp restants",
+        "minutosVoz": "Minutes de voix"
+      },
+      "presupuesto": {
+        "titulo": "Budget mensuel d’IA",
+        "gasto": "Dépense estimée : <b>{gasto}</b>",
+        "gastoDe": "Dépense estimée : <b>{gasto}</b> sur {presupuesto}",
+        "usado": "Budget utilisé",
+        "sinPresupuesto": "Définissez un budget dans Fournisseurs et IA › OpenAI › Budget mensuel.",
+        "alerta": "Vous avez utilisé {pct} % du budget du mois."
+      },
+      "consumoDiario": {
+        "titulo": "Consommation quotidienne d’IA (crédits)",
+        "vacio": "Aucune consommation enregistrée ce mois-ci.",
+        "serie": "crédits"
+      },
+      "porModelo": {
+        "titulo": "Par modèle et canal (mois)",
+        "modeloCanal": "Modèle / canal",
+        "llamadas": "Appels",
+        "creditos": "Crédits",
+        "vacio": "Aucune consommation ce mois-ci."
+      },
+      "precios": {
+        "titulo": "Prix de référence (USD, hors taxes)",
+        "vacio": "La table des prix (provider_pricing) n’est pas encore chargée.",
+        "proveedor": "Fournisseur",
+        "unidad": "Unité",
+        "noVerificado": "Non vérifié"
+      },
+      "colaTrabajos": "File des tâches"
+    },
+    "whatsAppTab": {
+      "dias": {
+        "dom": "Dim",
+        "lun": "Lun",
+        "mar": "Mar",
+        "mie": "Mer",
+        "jue": "Jeu",
+        "vie": "Ven",
+        "sab": "Sam"
+      },
+      "chips": {
+        "quitar": "Retirer {palabra}",
+        "anadirA": "Ajouter à {lista}",
+        "placeholder": "Ajouter + Entrée"
+      },
+      "toast": {
+        "errorCarga": "Chargement impossible",
+        "error": "Erreur",
+        "guardado": "Paramètres WhatsApp enregistrés",
+        "errorGuardar": "Enregistrement impossible"
+      },
+      "soloLectura": "Lecture seule : nécessite le rôle d’administrateur.",
+      "canales": {
+        "titulo": "Canaux et capacités",
+        "canalPorDefecto": "Canal par défaut du CRM",
+        "primerCanalActivo": "Premier canal actif",
+        "limiteWaba": "Limite du WABA (utilisateurs uniques / 24 h)",
+        "consultar": "Consulter",
+        "nivel": "{nivel} ({limite})",
+        "ilimitado": "illimité",
+        "desconocido": "Inconnu"
+      },
+      "tabla": {
+        "canal": "Canal",
+        "tipo": "Type",
+        "plantillas": "Modèles",
+        "adjuntos": "Pièces jointes",
+        "textoLibre": "Texte libre",
+        "estado": "État",
+        "porDefecto": "par défaut",
+        "si": "Oui",
+        "no": "Non",
+        "siVentana": "Oui (fenêtre de 24 h)",
+        "vacio": "Aucun canal WhatsApp. Connectez-les dans Chat › Canaux."
+      },
+      "consentimiento": {
+        "titulo": "Consentement et horaires (protection des données)",
+        "palabrasBaja": "Mots de désinscription (opt-out)",
+        "palabrasAlta": "Mots d’inscription (opt-in)",
+        "horario": "Horaires de contact autorisés",
+        "activo": "Actif",
+        "desde": "De",
+        "a": "à",
+        "hasta": "À",
+        "zonaHoraria": "Fuseau horaire",
+        "fueraHorario": "En dehors de ces horaires, les envois individuels demandent une programmation (utility peut forcer l’envoi) et les campagnes attendent la plage suivante.",
+        "limiteDiario": "Limite quotidienne propre des messages sortants (vide = uniquement celle de Meta)",
+        "indicativo": "Indicatif du pays par défaut (vide = 57, Colombie)",
+        "indicativoAyuda": "Il complète les téléphones enregistrés sans indicatif («310 987 6543») : lors de l’envoi WhatsApp, de l’appel depuis le portable et de la désinscription par mot-clé. Un numéro qui n’a pas la forme d’un téléphone national de ce pays n’est pas envoyé."
+      },
+      "guardar": "Enregistrer"
+    },
+    "commissionsPanel": {
+      "toast": {
+        "error": "Erreur",
+        "generalGuardada": "Commission générale enregistrée",
+        "tasaGeneral": "Taux général : {tasa} %",
+        "overrideEliminado": "Exception supprimée",
+        "overrideEliminadoDesc": "La commission du vendeur a été supprimée",
+        "validacion": "Validation",
+        "faltaVendedor": "Saisissez l’ID du vendeur",
+        "overrideActualizado": "Exception mise à jour",
+        "overrideCreado": "Exception créée",
+        "overrideGuardadoDesc": "La commission du vendeur a été enregistrée"
+      },
+      "confirmarEliminar": "Voulez-vous vraiment supprimer cette exception de commission ?",
+      "titulo": "Vendeurs et commissions",
+      "descripcion": "Configurez le taux général et les exceptions par vendeur",
+      "general": {
+        "titulo": "Taux général de commission",
+        "descripcion": "Pourcentage appliqué à toutes les ventes conclues. Il s’applique lorsqu’il n’y a pas d’exception spécifique pour le vendeur."
+      },
+      "guardando": "Enregistrement...",
+      "guardar": "Enregistrer",
+      "cancelar": "Annuler",
+      "overrides": {
+        "titulo": "Exceptions par vendeur",
+        "nuevo": "Nouvelle exception",
+        "vacio": "Aucune exception configurée. Tous les vendeurs utiliseront le taux général.",
+        "vendedor": "Vendeur",
+        "tasa": "{tasa} % de commission"
+      },
+      "simulador": {
+        "titulo": "Simulateur de commissions",
+        "monto": "Montant de clôture (COP)",
+        "tasaAplicable": "Taux applicable",
+        "comisionEstimada": "Commission estimée",
+        "nota": "* Le simulateur utilise le taux général. Les exceptions par vendeur s’appliquent à la conclusion de la vente."
+      },
+      "dialogo": {
+        "tituloEditar": "Modifier l’exception",
+        "tituloNuevo": "Nouvelle exception de commission",
+        "descripcionEditar": "Modifiez la commission spécifique du vendeur",
+        "descripcionNuevo": "Configurez une commission spécifique pour un vendeur",
+        "idVendedor": "ID du vendeur *",
+        "idVendedorPlaceholder": "UUID du vendeur",
+        "idVendedorAyuda": "Saisissez l’ID de l’utilisateur qui agira comme vendeur",
+        "tasa": "Taux de commission (%)"
+      }
+    },
+    "timelineConfigPanel": {
+      "toast": {
+        "error": "Erreur",
+        "guardado": "Enregistré",
+        "guardadoDesc": "La configuration a été enregistrée",
+        "errorGuardar": "Impossible d’enregistrer la configuration",
+        "restablecido": "Réinitialisé",
+        "restablecidoDesc": "La configuration a été réinitialisée aux valeurs par défaut",
+        "errorRestablecer": "Impossible de réinitialiser la configuration",
+        "exportado": "Exporté",
+        "exportadoDesc": "La configuration a été exportée",
+        "importado": "Importé",
+        "importadoDesc": "La configuration a été importée. Enregistrez pour appliquer les modifications.",
+        "archivoInvalido": "Le fichier n’est pas valide"
+      },
+      "errorCarga": "Impossible de charger la configuration",
+      "reintentar": "Réessayer",
+      "exportar": "Exporter",
+      "importar": "Importer",
+      "restablecer": "Réinitialiser",
+      "guardando": "Enregistrement...",
+      "guardarCambios": "Enregistrer les modifications",
+      "cambiosSinGuardar": "Vous avez des modifications non enregistrées. Cliquez sur « Enregistrer les modifications » pour les appliquer.",
+      "dialogoRestablecer": {
+        "titulo": "Réinitialiser la configuration ?",
+        "descripcion": "Cela réinitialisera tous les paramètres de la timeline à leurs valeurs par défaut. Cette action est irréversible."
+      },
+      "cancelar": "Annuler"
+    },
+    "exitGatesEditor": {
+      "toast": {
+        "error": "Erreur",
+        "errorCarga": "Impossible de charger les étapes",
+        "guardados": "Critères enregistrés",
+        "guardadosDesc": "Critères de sortie de « {etapa} » mis à jour",
+        "errorGuardar": "Impossible d’enregistrer les critères"
+      },
+      "tipos": {
+        "actividad": "Activité",
+        "campo": "Champ",
+        "cotizacion": "Devis"
+      },
+      "etapas": "{n, plural, one {# étape} other {# étapes}}",
+      "descripcion": "Définissez les critères de sortie pour faire avancer les opportunités",
+      "stageManager": "Stage Manager",
+      "vacio": {
+        "titulo": "Aucune étape configurée",
+        "descripcion": "Ouvrez le Stage Manager pour créer des étapes dans votre pipeline",
+        "abrir": "Ouvrir le Stage Manager"
+      },
+      "sinProbabilidad": "N/D",
+      "criterios": "{n, plural, one {# critère} other {# critères}}",
+      "sinCriterios": "Aucun critère",
+      "minActividades": "Min. {n} activité(s)",
+      "dialogo": {
+        "titulo": "Critères de sortie - {etapa}",
+        "descripcion": "Définissez ce qui doit être rempli pour faire avancer les opportunités depuis cette étape",
+        "tipo": "Type",
+        "minActividades": "Activités min.",
+        "campo": "Champ",
+        "campoPlaceholder": "Ex. : company_name, amount...",
+        "mensaje": "Message",
+        "mensajePlaceholder": "Message à afficher si le critère n’est pas rempli",
+        "vacio": "Aucun critère défini pour cette étape",
+        "agregar": "Ajouter une exigence"
+      },
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement...",
+      "guardarCriterios": "Enregistrer les critères"
+    },
+    "estructuraComercialManager": {
+      "pestanas": {
+        "roles": "Rôles",
+        "equipos": "Équipes",
+        "territorios": "Territoires"
+      }
+    },
+    "estructuraComercialShared": {
+      "inactivo": "Inactif",
+      "cancelar": "Annuler",
+      "eliminar": "Supprimer"
+    },
+    "roleDialog": {
+      "tituloEditar": "Modifier le rôle",
+      "tituloNuevo": "Nouveau rôle",
+      "descripcionEditar": "Modifiez les informations du rôle commercial",
+      "descripcionNueva": "Créez un nouveau rôle commercial",
+      "codigo": "Code *",
+      "codigoPlaceholder": "Ex. : SDR, AE, SM",
+      "nombre": "Nom *",
+      "nombrePlaceholder": "Ex. : Sales Development Rep",
+      "area": "Domaine *",
+      "areaPlaceholder": "Ex. : Inside Sales, Field Sales",
+      "cargoHrm": "Poste RH (facultatif)",
+      "sinCargo": "Aucun poste associé",
+      "cargoHrmAyuda": "Associez ce rôle commercial à un poste du module RH. Par défaut, le rôle « Vendedor » est déjà associé au poste « Vendedor ».",
+      "responsabilidades": "Responsabilités",
+      "responsabilidadesPlaceholder": "Une responsabilité par ligne",
+      "activo": "Actif",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement...",
+      "guardar": "Enregistrer"
+    },
+    "rolesSection": {
+      "contador": "{n, plural, one {# rôle} other {# rôles}}",
+      "subtitulo": "Définissez des rôles commerciaux avec leur domaine et leurs responsabilités",
+      "nuevo": "Nouveau rôle",
+      "vacio": {
+        "titulo": "Aucun rôle configuré",
+        "ayuda": "Créez des rôles comme SDR, Account Executive, Sales Manager, etc."
+      },
+      "area": "Domaine : {area}",
+      "cargoHrm": "· Poste RH : <c>{cargo}</c>",
+      "responsabilidades": "· {n, plural, one {# responsabilité} other {# responsabilités}}",
+      "eliminar": {
+        "titulo": "Supprimer le rôle ?",
+        "descripcion": "Cette action supprimera définitivement le rôle « {nombre} »."
+      }
+    },
+    "teamCard": {
+      "contadorMiembros": "{n, plural, one {# membre} other {# membres}}",
+      "territorio": "Territoire : {nombre}",
+      "sinMiembros": "Aucun membre. Ajoutez le premier.",
+      "columnas": {
+        "miembro": "Membre",
+        "rol": "Rôle",
+        "territorio": "Territoire",
+        "cuota": "Quota"
+      },
+      "anadirMiembro": "Ajouter un membre"
+    },
+    "teamDialog": {
+      "tituloEditar": "Modifier l’équipe",
+      "tituloNuevo": "Nouvelle équipe",
+      "descripcionEditar": "Modifiez les informations de l’équipe",
+      "descripcionNueva": "Créez une nouvelle équipe commerciale",
+      "nombre": "Nom *",
+      "nombrePlaceholder": "Ex. : Équipe Nord, Enterprise Sales",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "Description facultative",
+      "activo": "Active",
+      "territorio": "Territoire (facultatif)",
+      "sinTerritorio": "Aucun territoire",
+      "territorioAyuda": "Attribuez un territoire à l’équipe. Les membres héritent de ce territoire, sauf s’ils en ont un propre.",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement...",
+      "guardar": "Enregistrer"
+    },
+    "teamMemberDialog": {
+      "titulo": "Ajouter un membre",
+      "descripcion": "Ajoutez un utilisateur à l’équipe avec son rôle et son quota",
+      "miembro": "Membre de l’organisation *",
+      "miembroPlaceholder": "Sélectionnez un membre...",
+      "sinMiembros": "Aucun membre actif dans l’organisation.",
+      "rol": "Rôle commercial",
+      "sinRol": "Aucun rôle",
+      "territorio": "Territoire (facultatif)",
+      "heredaEquipo": "Hérité de l’équipe",
+      "territorioAyuda": "Si vous attribuez un territoire spécifique, il remplace celui de l’équipe.",
+      "cuota": "Quota",
+      "moneda": "Devise",
+      "cancelar": "Annuler",
+      "anadiendo": "Ajout...",
+      "anadir": "Ajouter"
+    },
+    "teamsSection": {
+      "contador": "{n, plural, one {# équipe} other {# équipes}}",
+      "subtitulo": "Gérez les équipes commerciales et leurs membres",
+      "nuevo": "Nouvelle équipe",
+      "vacio": {
+        "titulo": "Aucune équipe configurée",
+        "ayuda": "Créez des équipes pour regrouper les commerciaux par gamme ou par région"
+      },
+      "eliminar": {
+        "titulo": "Supprimer l’équipe ?",
+        "descripcion": "Cette action supprimera l’équipe « {nombre} » et tous ses membres."
+      }
+    },
+    "territoriesSection": {
+      "contador": "{n, plural, one {# territoire} other {# territoires}}",
+      "subtitulo": "Définissez des territoires avec des critères (ville, secteur, taille)",
+      "nuevo": "Nouveau territoire",
+      "vacio": {
+        "titulo": "Aucun territoire configuré",
+        "ayuda": "Créez des territoires pour attribuer des régions ou des segments à vos équipes"
+      },
+      "eliminar": {
+        "titulo": "Supprimer le territoire ?",
+        "descripcion": "Cette action supprimera définitivement le territoire « {nombre} »."
+      },
+      "criterios": {
+        "ninguno": "Aucun critère",
+        "resumen": "{n, plural, one {# critère} other {# critères}} : {claves}"
+      }
+    },
+    "territoryDialog": {
+      "tituloEditar": "Modifier le territoire",
+      "tituloNuevo": "Nouveau territoire",
+      "descripcionEditar": "Modifiez les informations du territoire",
+      "descripcionNueva": "Créez un nouveau territoire avec des critères JSON",
+      "nombre": "Nom *",
+      "nombrePlaceholder": "Ex. : Bogotá, Andes, Enterprise",
+      "criterios": "Critères (JSON)",
+      "criteriosAyuda": "Définissez les règles d’attribution au format JSON (ex. : villes, secteur, taille)",
+      "activo": "Actif",
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement...",
+      "guardar": "Enregistrer"
+    },
+    "useRoles": {
+      "error": "Erreur",
+      "validacion": "Validation",
+      "errores": {
+        "cargar": "Impossible de charger les rôles",
+        "obligatorios": "Le code, le nom et le domaine sont obligatoires",
+        "guardar": "Impossible d’enregistrer le rôle",
+        "eliminar": "Impossible de supprimer le rôle"
+      },
+      "exito": {
+        "actualizado": "Rôle mis à jour",
+        "actualizadoDetalle": "Les modifications ont été enregistrées",
+        "creado": "Rôle créé",
+        "creadoDetalle": "Le rôle a été créé",
+        "eliminado": "Rôle supprimé",
+        "eliminadoDetalle": "Le rôle a été supprimé"
+      }
+    },
+    "useTeams": {
+      "error": "Erreur",
+      "validacion": "Validation",
+      "errores": {
+        "cargar": "Impossible de charger les équipes",
+        "nombreObligatorio": "Le nom est obligatoire",
+        "guardar": "Impossible d’enregistrer l’équipe",
+        "eliminar": "Impossible de supprimer l’équipe",
+        "seleccionaMiembro": "Sélectionnez un membre",
+        "anadirMiembro": "Impossible d’ajouter le membre",
+        "removerMiembro": "Impossible de retirer le membre"
+      },
+      "exito": {
+        "actualizado": "Équipe mise à jour",
+        "actualizadoDetalle": "Les modifications ont été enregistrées",
+        "creado": "Équipe créée",
+        "creadoDetalle": "L’équipe a été créée",
+        "eliminado": "Équipe supprimée",
+        "eliminadoDetalle": "L’équipe a été supprimée",
+        "miembroAnadido": "Membre ajouté",
+        "miembroAnadidoDetalle": "Le membre a été ajouté à l’équipe",
+        "miembroRemovido": "Membre retiré",
+        "miembroRemovidoDetalle": "Le membre a été retiré de l’équipe"
+      }
+    },
+    "useTerritories": {
+      "error": "Erreur",
+      "validacion": "Validation",
+      "errores": {
+        "cargar": "Impossible de charger les territoires",
+        "nombreObligatorio": "Le nom est obligatoire",
+        "jsonInvalido": "JSON invalide dans les critères",
+        "guardar": "Impossible d’enregistrer le territoire",
+        "eliminar": "Impossible de supprimer le territoire"
+      },
+      "exito": {
+        "actualizado": "Territoire mis à jour",
+        "actualizadoDetalle": "Les modifications ont été enregistrées",
+        "creado": "Territoire créé",
+        "creadoDetalle": "Le territoire a été créé",
+        "eliminado": "Territoire supprimé",
+        "eliminadoDetalle": "Le territoire a été supprimé"
+      }
+    },
+    "datosOfflinePanel": {
+      "titulo": "Données hors ligne",
+      "soloDesktop": "Cette fonction est propre à Go Admin Desktop. Dans le navigateur, l’application a toujours besoin d’Internet.",
+      "descripcion": "Copie locale des données de l’organisation pour consulter l’inventaire, les ventes, les finances, les achats et les clients sans Internet. En ligne, elle se met à jour au démarrage et toutes les 10 minutes ; les tables transactionnelles conservent les {meses} derniers mois. Les écritures hors ligne suivent les règles de chaque module (le POS utilise sa file de ventes en attente).",
+      "resumen": {
+        "estado": "État",
+        "conConexion": "En ligne",
+        "sinConexion": "Hors ligne (lecture des données locales)",
+        "ultimaReplicacion": "Dernière réplication",
+        "filasLocales": "Lignes locales",
+        "filasValor": "{filas} dans {replicadas}/{total} tables",
+        "tamano": "Taille estimée"
+      },
+      "catalogoPos": "Catalogue du POS : {productos} produits · {clientes} clients · mis à jour {fecha}",
+      "acciones": {
+        "sincronizando": "Synchronisation…",
+        "sincronizar": "Synchroniser maintenant",
+        "replicacionCompleta": "Réplication complète"
+      },
+      "sinRed": "Hors ligne : la mise à jour se fera au retour du réseau.",
+      "tablasConAviso": "{n, plural, one {# table avec un avertissement} other {# tables avec un avertissement}}",
+      "grupos": {
+        "organizacion": "Organisation",
+        "catalogos": "Catalogues",
+        "inventario": "Inventaire",
+        "clientes": "Clients",
+        "ventas": "Ventes",
+        "compras": "Achats",
+        "finanzas": "Finances"
+      },
+      "columnas": {
+        "entidad": "Entité",
+        "filas": "Lignes",
+        "ultimaReplicacion": "Dernière réplication",
+        "ventanaTope": "Fenêtre / plafond",
+        "estado": "État"
+      },
+      "estado": {
+        "nunca": "Jamais",
+        "alDia": "À jour",
+        "pendiente": "En attente"
+      },
+      "ventanaYTope": "{meses} mois · max. {max}",
+      "tope": "max. {max}",
+      "entidades": {
+        "organizations": "Organisation",
+        "branches": "Succursales",
+        "organization_members": "Membres",
+        "profiles": "Profils utilisateur",
+        "roles": "Rôles",
+        "currencies": "Devises",
+        "organization_currencies": "Devises de l’organisation",
+        "units": "Unités",
+        "payment_methods": "Moyens de paiement",
+        "organization_payment_methods": "Moyens de paiement de l’organisation",
+        "municipalities": "Communes",
+        "tax_templates": "Modèles de taxes",
+        "organization_taxes": "Taxes",
+        "categories": "Catégories",
+        "products": "Produits",
+        "product_prices": "Prix en vigueur",
+        "product_costs": "Coûts en vigueur",
+        "product_images": "Images de produit",
+        "product_tax_relations": "Taxes par produit",
+        "product_modifier_groups": "Groupes de modificateurs",
+        "product_modifiers": "Modificateurs",
+        "product_suppliers": "Fournisseurs par produit",
+        "lots": "Lots",
+        "stock_levels": "Stock",
+        "stock_movements": "Mouvements de stock",
+        "inventory_adjustments": "Ajustements de stock",
+        "inventory_transfers": "Transferts",
+        "suppliers": "Fournisseurs",
+        "customers": "Clients",
+        "customer_company_links": "Contacts d’entreprises",
+        "sales": "Ventes",
+        "sale_items": "Lignes de vente",
+        "web_orders": "Commandes web",
+        "web_order_items": "Lignes de commande web",
+        "invoice_sales": "Factures de vente",
+        "invoice_items": "Lignes de facture",
+        "invoice_purchase": "Factures d’achat",
+        "purchase_orders": "Bons de commande",
+        "purchase_order_items": "Lignes de bon de commande",
+        "payments": "Paiements",
+        "accounts_receivable": "Comptes clients",
+        "accounts_payable": "Comptes fournisseurs",
+        "cash_sessions": "Sessions de caisse",
+        "cash_movements": "Mouvements de caisse",
+        "cash_counts": "Comptages de caisse"
+      }
+    },
+    "phoneNumbersSection": {
+      "toasts": {
+        "noActualizar": "Impossible de mettre à jour le numéro",
+        "error": "Erreur",
+        "importados": "{n, plural, one {# numéro importé} other {# numéros importés}}",
+        "sincronizados": "Numéros synchronisés",
+        "webhooksConError": "Webhooks : {ok} ok · {errores} en erreur",
+        "webhooksConfigurados": "Webhooks configurés sur {n, plural, one {# numéro} other {# numéros}}",
+        "noImportar": "Impossible d’importer",
+        "noGuardar": "Impossible d’enregistrer"
+      },
+      "titulo": "Numéros",
+      "cuentaPropia": "Compte Twilio (clé propre)",
+      "cuentaPlataforma": "Compte Twilio (plateforme)",
+      "sinCuenta": "Aucun compte Twilio configuré (onglet Fournisseurs et IA)",
+      "avisoTrial": "Les comptes d’essai n’appellent que les Verified Caller IDs.",
+      "importar": "Importer depuis Twilio",
+      "vacio": {
+        "titulo": "Aucun numéro dans cette organisation pour l’instant.",
+        "ayuda": "Achetez un numéro dans Twilio (la Colombie exige un bundle réglementaire) et cliquez sur « Importer depuis Twilio » ; les webhooks vocaux seront configurés automatiquement."
+      },
+      "columnas": {
+        "numero": "Numéro",
+        "etiqueta": "Libellé",
+        "asignado": "Attribué à",
+        "capacidades": "Capacités",
+        "primario": "Principal",
+        "activo": "Actif"
+      },
+      "aria": {
+        "asignar": "Attribuer {numero}",
+        "primario": "Marquer {numero} comme principal",
+        "activar": "Activer {numero}"
+      },
+      "ringGroup": "Ring group (tous)",
+      "capacidadVoz": "voix",
+      "callerId": {
+        "etiqueta": "Caller ID sortant",
+        "automatico": "Automatique (numéro principal actif)",
+        "ayuda": "Doit être un numéro Twilio de l’organisation ou un Verified Caller ID."
+      },
+      "minutos": {
+        "etiqueta": "Minutes vocales",
+        "ayuda": "1 minute est réservée à la numérotation et le reste est réglé au raccrochage (onglet Crédits)."
+      }
+    },
+    "recordingConsentSection": {
+      "toasts": {
+        "guardada": "Téléphonie enregistrée",
+        "noGuardar": "Impossible d’enregistrer",
+        "error": "Erreur",
+        "previewNavegador": "Aperçu avec la voix du navigateur",
+        "previewNavegadorAyuda": "Configurez ElevenLabs dans Fournisseurs et IA pour entendre une voix neuronale.",
+        "noReproducir": "Impossible de lire l’audio"
+      },
+      "titulo": "Enregistrement et consentement",
+      "grabar": {
+        "etiqueta": "Enregistrer les appels (double canal)",
+        "ayuda": "Le client entend l’avis avant la mise en relation et celui-ci est consigné dans `call_consents`."
+      },
+      "consentimiento": {
+        "etiqueta": "Message de consentement",
+        "minimo": "minimum {n}",
+        "vozIdioma": "Voix : <b>{voz}</b> · Langue : <b>{idioma}</b> (es-CO n’existe pas dans Twilio)",
+        "detener": "Arrêter",
+        "escuchar": "Écouter"
+      },
+      "retencion": {
+        "etiqueta": "Conservation (jours)",
+        "ayuda": "Supprimés de Twilio et de Storage à expiration (tâche quotidienne)."
+      },
+      "timeout": "Délai de sonnerie (s)",
+      "simultaneas": "Appels simultanés",
+      "guardar": "Enregistrer"
+    },
+    "myMobileSection": {
+      "toasts": {
+        "noGuardar": "Impossible d’enregistrer",
+        "codigoEnviado": "Code envoyé par SMS",
+        "noEnviar": "Impossible d’envoyer le code",
+        "error": "Erreur",
+        "verificado": "Mobile vérifié",
+        "codigoIncorrecto": "Code incorrect"
+      },
+      "titulo": "Mon mobile",
+      "descripcion": "Pour « Appeler depuis mon mobile » : Twilio vous appelle d’abord, puis compose le numéro du client avec le caller ID de l’organisation.",
+      "numero": "Numéro de mobile",
+      "verificado": "Vérifié",
+      "enviarCodigo": "Envoyer le code",
+      "codigoSms": "Code SMS",
+      "verificar": "Vérifier",
+      "cancelar": "Annuler",
+      "modo": {
+        "etiqueta": "Mode d’appel par défaut",
+        "navegador": "Navigateur (softphone)",
+        "celular": "Mon mobile",
+        "celularSinVerificar": "Mon mobile (vérifiez votre numéro)"
+      },
+      "miCallerId": {
+        "etiqueta": "Mon caller ID (facultatif)",
+        "organizacion": "Celui de l’organisation"
+      }
+    },
+    "useTelephonySettings": {
+      "errorCargar": "Erreur de chargement"
+    },
+    "telefoniaTab": {
+      "cargando": "Chargement de la téléphonie…",
+      "errorCargar": "Impossible de charger la configuration de téléphonie",
+      "reintentar": "Réessayer",
+      "faltaApiKey": "API Key et Secret",
+      "llavesPropias": {
+        "titulo": "Le softphone du navigateur est désactivé : il manque {faltantes} dans les identifiants de téléphonie de votre organisation.",
+        "ayuda": "Complétez-les dans <enlace>Fournisseurs et IA › Téléphonie</enlace>."
+      },
+      "plataforma": {
+        "titulo": "Le softphone du navigateur n’est pas encore activé pour votre organisation.",
+        "ayuda": "La téléphonie est activée par le support de la plateforme ; vous n’avez rien à configurer. Si vous préférez utiliser votre propre compte de téléphonie, vous pouvez l’ajouter dans <enlace>Fournisseurs et IA › Téléphonie</enlace>."
+      }
+    },
+    "addDomainDialog": {
+      "titulo": "Ajouter un domaine d’envoi",
+      "descripcion": "Recommandé : un sous-domaine dédié (p. ex. <code>crm.votreentreprise.com</code>). Vous aurez besoin d’accéder au DNS.",
+      "dominio": {
+        "etiqueta": "Domaine *",
+        "placeholder": "crm.votreentreprise.com",
+        "invalido": "Domaine invalide"
+      },
+      "remitente": {
+        "nombre": "Nom de l’expéditeur *",
+        "nombrePlaceholder": "Équipe commerciale ACME",
+        "usuario": "Utilisateur de l’expéditeur *",
+        "dominioGenerico": "domaine"
+      },
+      "responderA": {
+        "etiqueta": "Répondre à (facultatif)",
+        "placeholder": "Par défaut : l’e-mail du vendeur"
+      },
+      "region": "Région",
+      "regiones": {
+        "us-east-1": "États-Unis (us-east-1)",
+        "sa-east-1": "Amérique du Sud (sa-east-1)",
+        "eu-west-1": "Europe (eu-west-1)",
+        "ap-northeast-1": "Asie (ap-northeast-1)"
+      },
+      "opciones": {
+        "recibir": "Recevoir les réponses dans le CRM (MX)",
+        "aperturas": "Suivi des ouvertures (marketing)",
+        "clics": "Suivi des clics (marketing)"
+      },
+      "cancelar": "Annuler",
+      "crear": "Créer le domaine"
+    },
+    "dnsRecordsTable": {
+      "copiar": "Copier {campo}",
+      "campoNombre": "nom {registro}",
+      "campoValor": "valeur {registro}",
+      "estados": {
+        "verificado": "Vérifié",
+        "fallo": "Échec",
+        "recomendado": "Recommandé",
+        "pendiente": "en attente"
+      },
+      "instrucciones": "Publiez ces enregistrements dans le DNS du domaine et cliquez sur « Vérifier ». La propagation peut prendre jusqu’à 72 h.",
+      "verificar": "Vérifier",
+      "columnas": {
+        "registro": "Enregistrement",
+        "tipo": "Type",
+        "nombre": "Nom",
+        "valor": "Valeur",
+        "prioridad": "Priorité",
+        "estado": "Statut"
+      },
+      "vacio": "Aucun enregistrement. Cliquez sur « Vérifier » pour synchroniser avec le fournisseur."
+    },
+    "domainSendersForm": {
+      "nombre": "Nom de l’expéditeur",
+      "correo": "E-mail de l’expéditeur",
+      "correoInvalido": "Doit appartenir à @{dominio}",
+      "responderA": "Répondre à",
+      "responderAPlaceholder": "E-mail du vendeur",
+      "recibir": "Recevoir les réponses (crm+id@{dominio})",
+      "dmarc": "DMARC publié",
+      "aperturas": "Ouvertures (marketing/séquences uniquement)",
+      "clics": "Clics (marketing/séquences uniquement)",
+      "guardar": "Enregistrer l’expéditeur"
+    },
+    "emailDomainsCard": {
+      "titulo": "Domaines d’envoi",
+      "descripcion": "Chaque organisation envoie depuis son propre domaine vérifié. Sans domaine vérifié, l’expéditeur global est utilisé selon la politique ci-dessous.",
+      "anadir": "Ajouter un domaine",
+      "vacio": {
+        "admin": "Aucun domaine pour l’instant. Ajoutez-en un pour envoyer depuis votre marque.",
+        "lector": "Aucun domaine pour l’instant. Demandez à un administrateur d’en ajouter un."
+      },
+      "estados": {
+        "verified": "Vérifié",
+        "verifying": "Vérification en cours",
+        "pending": "DNS en attente",
+        "failed": "Échec"
+      },
+      "porDefecto": "Par défaut",
+      "apiKeyIlegible": {
+        "etiqueta": "API key illisible — régénérer",
+        "ayuda": "L’identifiant enregistré ne peut pas être déchiffré (le secret de chiffrement a changé). Régénérez-le."
+      },
+      "sinApiKey": "Pas d’API key propre",
+      "eliminarAria": "Supprimer {dominio}",
+      "verificadoEl": "Vérifié le {fecha} · région {region}",
+      "eliminar": {
+        "titulo": "Supprimer le domaine",
+        "descripcion": "{dominio} sera supprimé dans Resend (domaine et API key) et dans le CRM. Les e-mails déjà envoyés conservent leur historique.",
+        "confirmar": "Supprimer"
+      }
+    },
+    "emailPolicyCard": {
+      "titulo": "Politique d’envoi",
+      "remitenteGlobal": "Expéditeur global disponible : <code>{remitente}</code>.",
+      "sinRemitenteGlobal": "Aucun expéditeur global n’est configuré sur la plateforme : sans domaine vérifié, les envois échoueront.",
+      "aria": "Quand il n’y a pas de domaine vérifié",
+      "politicas": {
+        "global_with_notice": {
+          "etiqueta": "Utiliser l’expéditeur global avec avis",
+          "ayuda": "Envoyé comme « Votre entreprise via GoAdmin » avec une note en pied de page."
+        },
+        "global_silent": {
+          "etiqueta": "Utiliser l’expéditeur global sans avis",
+          "ayuda": "Même expéditeur global, sans note en pied de page."
+        },
+        "block": {
+          "etiqueta": "Bloquer les envois",
+          "ayuda": "Exige un domaine propre vérifié ; les envois échouent avec NO_SENDER."
+        }
+      },
+      "tracking": {
+        "etiqueta": "Suivi des ouvertures/clics dans les e-mails transactionnels",
+        "ayuda": "Par défaut, seuls le marketing et les séquences sont suivis (meilleure délivrabilité)."
+      },
+      "guardar": "Enregistrer la politique"
+    },
+    "signatureEditor": {
+      "titulo": "Ma signature",
+      "descripcion": "Elle est ajoutée automatiquement avec le bloc « Signature ». Si vous la laissez vide, le nom, le poste, l’entreprise, le téléphone et l’e-mail sont utilisés.",
+      "contenido": "Contenu",
+      "placeholder": "Ana Gómez · Chargée commerciale · {variable}",
+      "vistaPrevia": "Aperçu (données d’exemple)",
+      "sinFirma": "Aucune signature personnalisée : la signature automatique sera utilisée.",
+      "guardar": "Enregistrer la signature"
+    },
+    "useEmailSettings": {
+      "errorCargar": "Impossible de charger la configuration e-mail",
+      "error": "Erreur",
+      "toasts": {
+        "dominioCreado": "Domaine créé. Publiez les enregistrements DNS et vérifiez.",
+        "porDefecto": "Expéditeur par défaut mis à jour",
+        "dominioActualizado": "Domaine mis à jour",
+        "dominioEliminado": "Domaine supprimé",
+        "politicaGuardada": "Politique enregistrée",
+        "firmaGuardada": "Signature enregistrée"
+      }
+    },
+    "emailTab": {
+      "cargando": "Chargement de la configuration e-mail",
+      "errorCargar": "Impossible de charger la configuration e-mail",
+      "sinDatos": "Aucune donnée",
+      "reintentar": "Réessayer",
+      "soloAdmins": "Seuls les administrateurs peuvent gérer les domaines et la politique d’envoi. Vous pouvez modifier votre signature."
+    },
+    "hrmConfigPanel": {
+      "error": "Erreur",
+      "errorCargar": "Impossible de charger la configuration",
+      "guardada": "Configuration enregistrée",
+      "errorGuardar": "Impossible d’enregistrer la configuration",
+      "monedaBaseEstablecida": "{moneda} définie comme devise de base",
+      "errorMonedaBase": "Impossible de définir la devise de base",
+      "monedaAgregada": "{moneda} ajoutée",
+      "errorAgregar": "Impossible d’ajouter la devise",
+      "monedaEliminada": "{moneda} supprimée",
+      "errorEliminar": "Impossible de supprimer la devise",
+      "configuracionGeneral": "Configuration générale",
+      "reglasPais": {
+        "titulo": "Règles par pays",
+        "descripcion": "Consultez les règles légales de paie par pays (salaire minimum, cotisations, etc.)",
+        "ver": "Voir les règles"
+      },
+      "monedas": "Devises",
+      "sobreMonedas": {
+        "titulo": "À propos des devises",
+        "base": "La <b>devise de base</b> sert aux calculs de paie et aux rapports.",
+        "multiples": "Vous pouvez ajouter plusieurs devises pour les opérations internationales.",
+        "tasas": "Les taux de change peuvent être saisis manuellement ou mis à jour automatiquement.",
+        "noEliminarBase": "Vous ne pouvez pas supprimer la devise de base ; changez d’abord de devise."
+      }
+    },
+    "asistenteConfigPanel": {
+      "soloOrganizacionActiva": "Les modifications s’appliquent uniquement à votre organisation active, pas à vos autres organisations.",
+      "seleccionaOrganizacion": "Sélectionnez une organisation pour consulter sa configuration.",
+      "niveles": {
+        "off": {
+          "etiqueta": "Orientation uniquement",
+          "descripcion": "Répond aux questions et explique le système. N’active aucune action de lecture ni d’écriture."
+        },
+        "read": {
+          "etiqueta": "Consulter les données",
+          "descripcion": "En plus d’orienter, permet de consulter des données avec les outils disponibles. Ne crée ni ne modifie aucun enregistrement."
+        },
+        "write_low": {
+          "etiqueta": "Créer des fiches du catalogue",
+          "descripcion": "Permet de proposer la création de clients, de fournisseurs, de catégories et de produits. Chaque écriture exige une confirmation explicite."
+        },
+        "write_full": {
+          "etiqueta": "Fonctionnement complet (par défaut)",
+          "descripcion": "Permet d’utiliser tous les outils disponibles, y compris ceux des clients, fournisseurs, produits, catégories et factures. Les autorisations de l’utilisateur, les modules activés et la confirmation explicite avant toute écriture restent en vigueur."
+        }
+      },
+      "errorConsultar": "Impossible de consulter la configuration.",
+      "errorConexion": "Impossible de se connecter.",
+      "errorGuardar": "Impossible d’enregistrer la configuration.",
+      "guardada": "Configuration enregistrée pour cette organisation. Elle s’appliquera aux prochains messages de l’assistant.",
+      "cargando": "Chargement de la configuration…",
+      "reintentar": "Réessayer",
+      "titulo": "Ce que l’assistant peut faire",
+      "descripcion": "GO Assistant fonctionne par défaut en mode complet (write_full) pour toutes les organisations, y compris les nouvelles, sans activation préalable. Un administrateur peut restreindre le niveau de son organisation. Les autorisations de chaque utilisateur, les modules souscrits, les outils activés et les confirmations continuent de s’appliquer.",
+      "soloAdministrador": "Seul un administrateur de cette organisation peut modifier cette configuration.",
+      "nivelCapacidad": "Niveau de capacité",
+      "notaWriteLow": "Choisir write_low limite l’assistant au catalogue, sans factures, paiements ni écritures d’ajustement comptable. Aucun niveau n’accorde d’autorisations supplémentaires aux utilisateurs ni ne supprime les confirmations.",
+      "guardando": "Enregistrement…",
+      "guardarNivel": "Enregistrer le niveau",
+      "confirmar": {
+        "titulo": "Changer le niveau de cette organisation ?",
+        "descripcion": "Nouveau niveau : {etiqueta} ({nivel}). {descripcion} Les autres organisations et les préférences de voix, de modèles ou d’outils ne seront pas modifiées. Les propositions resteront soumises aux autorisations et à la confirmation.",
+        "cancelar": "Annuler",
+        "aceptar": "Confirmer la modification"
+      }
+    },
+    "parkingConfigPanel": {
+      "error": "Erreur",
+      "errorCargar": "Impossible de charger la configuration",
+      "guardada": {
+        "titulo": "Configuration enregistrée",
+        "descripcion": "Les modifications ont bien été enregistrées"
+      },
+      "errorGuardar": "Impossible d’enregistrer la configuration",
+      "restablecida": {
+        "titulo": "Configuration réinitialisée",
+        "descripcion": "Les valeurs par défaut ont été restaurées"
+      },
+      "errorRestablecer": "Impossible de réinitialiser la configuration",
+      "sinConfiguracion": "Impossible de charger la configuration du parking.",
+      "cambiosSinGuardar": "Vous avez des modifications non enregistrées. N’oubliez pas d’enregistrer avant de quitter.",
+      "dialogoRestablecer": {
+        "titulo": "Réinitialiser la configuration ?",
+        "descripcion": "Cette action rétablira toutes les valeurs de la configuration par défaut. Toute personnalisation actuelle sera perdue.",
+        "cancelar": "Annuler",
+        "confirmar": "Réinitialiser"
+      }
+    },
+    "referralsProgramCard": {
+      "estadoCambiado": {
+        "contacted": "« {nombre} » : contacté",
+        "qualified": "« {nombre} » : qualifié",
+        "rejected": "« {nombre} » : refusé"
+      },
+      "errorEstado": "Impossible de changer le statut",
+      "errorDesconocido": "Erreur inconnue",
+      "cargando": "Chargement du programme de parrainage",
+      "titulo": "Programme de parrainage",
+      "subtitulo": "Configurez la récompense ; les filleuls se gèrent sur leur propre page",
+      "actualizar": "Actualiser",
+      "programa": "Programme « {nombre} »",
+      "crearPrograma": "Créer le programme",
+      "programaGuardado": "Programme enregistré",
+      "guardarConfiguracion": "Enregistrer la configuration",
+      "variosProgramas": "Il y a {n} programmes ; le plus récent se modifie ici. Les autres, dans <enlace>Parrainages → Programmes</enlace>.",
+      "registrados": "Filleuls enregistrés ({n})",
+      "irAReferidos": "Aller aux parrainages",
+      "vacio": "Aucun filleul pour l’instant. Enregistrez-les depuis la page Parrainages.",
+      "listaAria": "Filleuls enregistrés",
+      "referidoPor": "Parrainé par : {nombre}",
+      "clienteNoDisponible": "client indisponible",
+      "recompensaPagada": "Récompense enregistrée comme payée",
+      "acciones": {
+        "contacted": "Marquer comme contacté",
+        "qualified": "Marquer comme qualifié",
+        "rejected": "Refuser"
+      }
+    },
+    "integracionesConfigPanel": {
+      "error": "Erreur",
+      "errorCargar": "Impossible de charger la configuration",
+      "guardada": {
+        "titulo": "Configuration enregistrée",
+        "descripcion": "Les modifications ont bien été appliquées"
+      },
+      "errorGuardar": "Impossible d’enregistrer la configuration",
+      "restaurada": {
+        "titulo": "Configuration restaurée",
+        "descripcion": "Les valeurs par défaut ont été appliquées"
+      },
+      "errorRestaurar": "Impossible de restaurer la configuration",
+      "dialogoRestaurar": {
+        "titulo": "Restaurer la configuration par défaut ?",
+        "descripcion": "Cette action remplacera toute la configuration actuelle par les valeurs par défaut du système. Les modifications non enregistrées seront perdues.",
+        "cancelar": "Annuler",
+        "confirmar": "Restaurer les valeurs par défaut"
+      }
+    },
+    "notificacionesConfigPanel": {
+      "error": "Erreur",
+      "errorCargar": "Impossible de charger les préférences.",
+      "errorActualizar": "Impossible de mettre à jour.",
+      "silenciado": {
+        "titulo": "Mis en sourdine",
+        "descripcion": "Toutes les notifications sont en sourdine."
+      },
+      "activado": {
+        "titulo": "Activé",
+        "descripcion": "Notifications réactivées."
+      },
+      "errorCambiar": "Impossible de modifier.",
+      "confirmarRestablecer": "Rétablir toutes les préférences à leurs valeurs par défaut ?",
+      "restablecido": {
+        "titulo": "Réinitialisé",
+        "descripcion": "Préférences réinitialisées."
+      },
+      "errorRestablecer": "Impossible de réinitialiser.",
+      "sinPreferencias": "Aucune préférence configurée",
+      "porCanal": "Configuration par canal"
+    },
+    "gymConfigPanel": {
+      "errorCargar": "Erreur lors du chargement de la configuration",
+      "guardada": "Configuration enregistrée",
+      "errorGuardar": "Erreur lors de l’enregistrement de la configuration",
+      "restablecida": "Configuration réinitialisée aux valeurs par défaut",
+      "errorRestablecer": "Erreur lors de la réinitialisation de la configuration",
+      "dialogoRestablecer": {
+        "titulo": "Réinitialiser la configuration",
+        "descripcion": "Voulez-vous vraiment rétablir toute la configuration aux valeurs par défaut ? Cette action est irréversible.",
+        "cancelar": "Annuler",
+        "confirmar": "Réinitialiser"
+      }
+    },
+    "pmsConfigPanel": {
+      "error": "Erreur",
+      "errorCargar": "Impossible de charger les paramètres",
+      "actualizado": {
+        "titulo": "Actualisé",
+        "descripcion": "Les paramètres ont été rechargés"
+      },
+      "guardado": {
+        "titulo": "Enregistré",
+        "descripcion": "Les paramètres ont bien été enregistrés"
+      },
+      "errorGuardar": "Impossible d’enregistrer les paramètres",
+      "guardando": "Enregistrement...",
+      "guardar": "Enregistrer"
+    },
+    "calendarioConfigPanel": {
+      "guardada": {
+        "titulo": "Configuration enregistrée",
+        "descripcion": "Les modifications ont bien été enregistrées."
+      },
+      "error": "Erreur",
+      "errorGuardar": "Impossible d’enregistrer la configuration.",
+      "restaurada": {
+        "titulo": "Configuration restaurée",
+        "descripcion": "Les valeurs par défaut ont été restaurées. N’oubliez pas d’enregistrer les modifications."
+      }
+    },
+    "proveedoresTab": {
+      "guardada": "Configuration enregistrée",
+      "clavePropiaGuardada": "Clé propre enregistrée. Elle sera utilisée à la place de celle de la plateforme.",
+      "credencialesActualizadas": "Identifiants mis à jour.",
+      "errorGuardar": "Impossible d’enregistrer",
+      "error": "Erreur",
+      "cargando": "Chargement des fournisseurs",
+      "errorCargar": "Impossible de charger la configuration",
+      "reintentar": "Réessayer",
+      "titulo": "Fournisseurs et IA",
+      "descripcion": "Chaque organisation peut utiliser ses propres clés ou celles de la plateforme. Les clés sont stockées sur le serveur et ne sont plus jamais affichées.",
+      "soloLectura": "Lecture seule (administrateurs)",
+      "recargar": "Recharger",
+      "categorias": {
+        "llm": "Modèle de langage (LLM)",
+        "analysis": "Analyse des appels",
+        "stt": "Transcription (STT)",
+        "tts": "Voix de synthèse (TTS)",
+        "voice": "Téléphonie (voix)",
+        "sms": "SMS",
+        "email": "E-mail",
+        "whatsapp": "WhatsApp"
+      },
+      "ayudaCategoria": {
+        "llm": "Rédaction par IA, classification et cerveau de l’agent vocal.",
+        "analysis": "Résumé, sentiment et prochaines étapes de chaque appel enregistré.",
+        "stt": "Transcription des enregistrements. ElevenLabs Scribe v2 est le principal ; Gemini sert de secours.",
+        "tts": "Voix de synthèse de l’agent IA (voix clonée du commercial en F6).",
+        "voice": "Appels depuis le navigateur et le mobile. Utilise par défaut le compte de la plateforme.",
+        "sms": "SMS comme canal secondaire pour les séquences et les rappels.",
+        "email": "Envois transactionnels et campagnes ; le domaine est vérifié par organisation (F7).",
+        "whatsapp": "Canal principal Meta Cloud API ; Twilio en alternative (F16)."
+      }
+    },
+    "providerCard": {
+      "estado": {
+        "propia": "Clé propre",
+        "plataforma": "Clé de la plateforme",
+        "sinConfigurar": "Non configuré"
+      },
+      "error": "Erreur",
+      "activarProveedor": "Activer {proveedor}",
+      "activo": "Actif",
+      "ajustes": {
+        "conversation_model": "Modèle de conversation",
+        "cheap_model": "Modèle pour les tâches",
+        "monthly_budget_usd": "Budget mensuel (USD)",
+        "model": "Modèle",
+        "model_id": "Modèle",
+        "language_code": "Langue",
+        "diarize": "Diarisation",
+        "use_master_account": "Utiliser le compte de la plateforme",
+        "recording_channels": "Canaux d’enregistrement",
+        "consent_language": "Langue de l’avis d’enregistrement",
+        "consent_voice": "Voix de l’avis",
+        "tracking_marketing_only": "Suivi uniquement en marketing"
+      },
+      "clavesGuardadas": "Clés enregistrées :",
+      "soloAdministradores": "Administrateurs uniquement",
+      "cambiarClave": "Changer la clé",
+      "usarMiClave": "Utiliser ma clé",
+      "probarConexion": "Tester la connexion",
+      "guardarAjustes": "Enregistrer les réglages",
+      "latencia": "({ms} ms)",
+      "latenciaFuente": "({ms} ms, {fuente})",
+      "fuente": {
+        "propia": "clé propre",
+        "plataforma": "clé de la plateforme"
+      }
+    },
+    "providerCredentialForm": {
+      "campos": {
+        "TWILIO_PHONE_NUMBER": "Numéro (E.164)",
+        "META_ACCESS_TOKEN": "Access token (système)",
+        "META_APP_SECRET": "App secret (signature des webhooks)"
+      },
+      "faltanObligatorios": "Champs obligatoires manquants : {campos}",
+      "sinCambios": "Aucune modification à enregistrer",
+      "errorGuardar": "Impossible d’enregistrer",
+      "titulo": "Identifiants de {proveedor}",
+      "descripcion": "Les clés sont stockées sur le serveur et ne sont plus jamais affichées. Laissez un champ vide pour conserver la clé actuelle.",
+      "sinCredenciales": "Ce fournisseur ne nécessite pas d’identifiants.",
+      "noBorrar": "Ne pas supprimer",
+      "borrar": "Supprimer",
+      "placeholderGuardada": "•••••••••••• (enregistrée)",
+      "pista": {
+        "seEliminara": "Elle sera supprimée à l’enregistrement.",
+        "yaGuardada": "Une clé est déjà enregistrée. Saisissez-en une nouvelle pour la remplacer.",
+        "sinClavePropia": "Sans clé propre : celle de la plateforme sera utilisée si elle existe."
+      },
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer"
+    },
+    "useProviderConfigs": {
+      "respuestaInvalida": "Réponse non valide ({status})",
+      "errorEstado": "Erreur {status}",
+      "errorDesconocido": "Erreur inconnue",
+      "sinDetalle": "Aucun détail"
     }
   },
   "chatHilo": {

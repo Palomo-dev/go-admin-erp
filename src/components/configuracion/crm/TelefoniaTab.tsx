@@ -25,20 +25,21 @@ import { rutaSeccion } from '@/components/configuracion/config/configSectionsReg
 export function TelefoniaTab() {
   const t = useTelephonySettings();
   const tc = useTranslations('configuracionUnificada.telefonia');
+  const tx = useTranslations('configuracionTextos.telefoniaTab');
 
   if (t.loading && !t.settings) {
     return (
       <div className="flex items-center gap-2 p-6 text-sm text-gray-500 dark:text-gray-400" role="status">
-        <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Cargando telefonía…
+        <Loader2 size={16} className="animate-spin" aria-hidden="true" /> {tx('cargando')}
       </div>
     );
   }
   if (t.error || !t.settings) {
     return (
       <div className="space-y-3 p-6 text-sm text-red-700 dark:text-red-300" role="alert">
-        <p>{t.error ?? 'No se pudo cargar la configuración de telefonía'}</p>
+        <p>{t.error ?? tx('errorCargar')}</p>
         <Button size="sm" variant="outline" onClick={() => void t.reload()}>
-          <RefreshCw size={14} className="mr-1.5" aria-hidden="true" /> Reintentar
+          <RefreshCw size={14} className="mr-1.5" aria-hidden="true" /> {tx('reintentar')}
         </Button>
       </div>
     );
@@ -46,7 +47,7 @@ export function TelefoniaTab() {
 
   const missing: string[] = [];
   if (!t.configured?.account) missing.push('Account SID / Auth Token');
-  if (!t.configured?.api_key) missing.push('API Key y Secret');
+  if (!t.configured?.api_key) missing.push(tx('faltaApiKey'));
   if (!t.configured?.twiml_app) missing.push('TwiML App SID');
   // Solo si la organización trajo sus PROPIAS llaves tiene sentido decirle qué
   // falta. Con la cuenta maestra de la plataforma (el valor por defecto), lo
@@ -62,24 +63,28 @@ export function TelefoniaTab() {
           <div>
             {llavesPropias ? (
               <>
-                <p className="font-medium">El softphone del navegador está deshabilitado: faltan {missing.join(', ')} en las credenciales de telefonía de tu organización.</p>
+                <p className="font-medium">{tx('llavesPropias.titulo', { faltantes: missing.join(', ') })}</p>
                 <p className="text-xs">
-                  Complétalas en{' '}
-                  <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
-                    Proveedores e IA › Telefonía
-                  </Link>
-                  .
+                  {tx.rich('llavesPropias.ayuda', {
+                    enlace: (c) => (
+                      <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
+                        {c}
+                      </Link>
+                    ),
+                  })}
                 </p>
               </>
             ) : (
               <>
-                <p className="font-medium">El softphone del navegador aún no está habilitado para tu organización.</p>
+                <p className="font-medium">{tx('plataforma.titulo')}</p>
                 <p className="text-xs">
-                  La telefonía la habilita el soporte de la plataforma; no necesitas configurar nada. Si prefieres usar una cuenta de telefonía propia, puedes cargarla en{' '}
-                  <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
-                    Proveedores e IA › Telefonía
-                  </Link>
-                  .
+                  {tx.rich('plataforma.ayuda', {
+                    enlace: (c) => (
+                      <Link href="/app/configuracion?modulo=crm&tab=proveedores" className="underline">
+                        {c}
+                      </Link>
+                    ),
+                  })}
                 </p>
               </>
             )}

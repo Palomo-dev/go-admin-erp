@@ -1,6 +1,7 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,30 +41,29 @@ export function TerritoryDialog({
   saving,
   onSave,
 }: TerritoryDialogProps) {
+  const t = useTranslations('configuracionTextos.territoryDialog');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? 'Editar Territorio' : 'Nuevo Territorio'}</DialogTitle>
+          <DialogTitle>{editing ? t('tituloEditar') : t('tituloNuevo')}</DialogTitle>
           <DialogDescription>
-            {editing
-              ? 'Modifica los datos del territorio'
-              : 'Crea un nuevo territorio con criterios JSON'}
+            {editing ? t('descripcionEditar') : t('descripcionNueva')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="terr-name">Nombre *</Label>
+            <Label htmlFor="terr-name">{t('nombre')}</Label>
             <Input
               id="terr-name"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="Ej: Bogotá, Andina, Enterprise"
+              placeholder={t('nombrePlaceholder')}
               maxLength={100}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="terr-criteria">Criterios (JSON)</Label>
+            <Label htmlFor="terr-criteria">{t('criterios')}</Label>
             <Textarea
               id="terr-criteria"
               value={form.criteria}
@@ -77,11 +77,11 @@ export function TerritoryDialog({
             />
             {criteriaError && <p className="text-xs text-red-500">{criteriaError}</p>}
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Define reglas de asignación en formato JSON (ej: ciudades, vertical, tamaño)
+              {t('criteriosAyuda')}
             </p>
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="terr-active">Activo</Label>
+            <Label htmlFor="terr-active">{t('activo')}</Label>
             <Switch
               id="terr-active"
               checked={form.is_active}
@@ -91,10 +91,10 @@ export function TerritoryDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('cancelar')}
           </Button>
           <Button onClick={onSave} disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar'}
+            {saving ? t('guardando') : t('guardar')}
           </Button>
         </DialogFooter>
       </DialogContent>

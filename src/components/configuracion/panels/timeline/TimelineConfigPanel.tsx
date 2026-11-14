@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -29,6 +30,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { todayInTz } from '@/lib/utils/dateDisplay';
 
 export function TimelineConfigPanel() {
+  const t = useTranslations('configuracionTextos.timelineConfigPanel');
   const { toast } = useToast();
   const organizationId = getOrganizationId();
   const { timezone } = useOrgTimezone();
@@ -52,11 +54,11 @@ export function TimelineConfigPanel() {
       setHasChanges(false);
     } catch (error) {
       console.error('Error loading settings:', error);
-      toast({ title: 'Error', description: 'No se pudo cargar la configuración', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('errorCarga'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, t]);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
 
@@ -79,10 +81,10 @@ export function TimelineConfigPanel() {
       await timelineSettingsService.saveSettings(organizationId, settings);
       setGuardado(settings);
       setHasChanges(false);
-      toast({ title: 'Guardado', description: 'La configuración se ha guardado correctamente' });
+      toast({ title: t('toast.guardado'), description: t('toast.guardadoDesc') });
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar la configuración', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorGuardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -96,10 +98,10 @@ export function TimelineConfigPanel() {
       setGuardado(defaultSettings);
       setHasChanges(false);
       setResetDialogOpen(false);
-      toast({ title: 'Restablecido', description: 'La configuración se ha restablecido a los valores por defecto' });
+      toast({ title: t('toast.restablecido'), description: t('toast.restablecidoDesc') });
     } catch (error) {
       console.error('Error resetting settings:', error);
-      toast({ title: 'Error', description: 'No se pudo restablecer la configuración', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorRestablecer'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -116,7 +118,7 @@ export function TimelineConfigPanel() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: 'Exportado', description: 'La configuración se ha exportado correctamente' });
+    toast({ title: t('toast.exportado'), description: t('toast.exportadoDesc') });
   };
 
   const handleImportConfig = () => {
@@ -131,9 +133,9 @@ export function TimelineConfigPanel() {
         const imported = JSON.parse(text) as TimelineSettings;
         setSettings(imported);
         setHasChanges(true);
-        toast({ title: 'Importado', description: 'La configuración se ha importado. Guarda para aplicar los cambios.' });
+        toast({ title: t('toast.importado'), description: t('toast.importadoDesc') });
       } catch {
-        toast({ title: 'Error', description: 'El archivo no es válido', variant: 'destructive' });
+        toast({ title: t('toast.error'), description: t('toast.archivoInvalido'), variant: 'destructive' });
       }
     };
     input.click();
@@ -164,10 +166,10 @@ export function TimelineConfigPanel() {
     return (
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">No se pudo cargar la configuración</p>
+          <p className="text-gray-500 mb-4">{t('errorCarga')}</p>
           <Button onClick={loadSettings}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Reintentar
+            {t('reintentar')}
           </Button>
         </div>
       </div>
@@ -179,26 +181,26 @@ export function TimelineConfigPanel() {
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={handleExportConfig}>
           <Download className="h-4 w-4 mr-1" />
-          Exportar
+          {t('exportar')}
         </Button>
         <Button variant="outline" size="sm" onClick={handleImportConfig}>
           <Upload className="h-4 w-4 mr-1" />
-          Importar
+          {t('importar')}
         </Button>
         <Button variant="outline" size="sm" onClick={() => setResetDialogOpen(true)}>
           <RotateCcw className="h-4 w-4 mr-1" />
-          Restablecer
+          {t('restablecer')}
         </Button>
         <Button onClick={handleSave} disabled={!hasChanges || saving} className={cn('bg-blue-600 hover:bg-blue-700', !hasChanges && 'opacity-50')}>
           {saving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          {saving ? 'Guardando...' : 'Guardar cambios'}
+          {saving ? t('guardando') : t('guardarCambios')}
         </Button>
       </div>
 
       {hasChanges && (
         <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
           <p className="text-xs text-yellow-700 dark:text-yellow-300">
-            Tienes cambios sin guardar. Haz clic en &quot;Guardar cambios&quot; para aplicarlos.
+            {t('cambiosSinGuardar')}
           </p>
         </div>
       )}
@@ -213,14 +215,14 @@ export function TimelineConfigPanel() {
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Restablecer configuración?</AlertDialogTitle>
+            <AlertDialogTitle>{t('dialogoRestablecer.titulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esto restablecerá todas las configuraciones del timeline a sus valores por defecto. Esta acción no se puede deshacer.
+              {t('dialogoRestablecer.descripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReset} className="bg-red-600 hover:bg-red-700">Restablecer</AlertDialogAction>
+            <AlertDialogCancel>{t('cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset} className="bg-red-600 hover:bg-red-700">{t('restablecer')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

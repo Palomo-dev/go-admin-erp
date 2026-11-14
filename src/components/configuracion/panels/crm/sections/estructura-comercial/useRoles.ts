@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { db } from './db';
 import type { JobPosition, SalesRole } from './types';
@@ -25,6 +26,7 @@ const EMPTY_FORM: RoleForm = {
 
 /** Estado y acciones de la sección de roles (carga, alta/edición y borrado). */
 export function useRoles() {
+  const t = useTranslations('configuracionTextos.useRoles');
   const { toast } = useToast();
   const [roles, setRoles] = useState<SalesRole[]>([]);
   const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
@@ -45,14 +47,14 @@ export function useRoles() {
     } catch (error) {
       console.error('Error cargando roles:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los roles',
+        title: t('error'),
+        description: t('errores.cargar'),
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     load();
@@ -83,8 +85,8 @@ export function useRoles() {
   const handleSave = async () => {
     if (!form.code.trim() || !form.name.trim() || !form.area.trim()) {
       toast({
-        title: 'Validación',
-        description: 'Código, nombre y área son obligatorios',
+        title: t('validacion'),
+        description: t('errores.obligatorios'),
         variant: 'destructive',
       });
       return;
@@ -106,16 +108,16 @@ export function useRoles() {
       };
       if (editing) {
         await db.updateRole(editing.id, payload);
-        toast({ title: 'Rol actualizado', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('exito.actualizado'), description: t('exito.actualizadoDetalle') });
       } else {
         await db.createRole(payload);
-        toast({ title: 'Rol creado', description: 'El rol se creó correctamente' });
+        toast({ title: t('exito.creado'), description: t('exito.creadoDetalle') });
       }
       setDialogOpen(false);
       load();
     } catch (error) {
       console.error('Error guardando rol:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar el rol', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errores.guardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -130,11 +132,11 @@ export function useRoles() {
     if (!toDelete) return;
     try {
       await db.deleteRole(toDelete.id);
-      toast({ title: 'Rol eliminado', description: 'El rol se eliminó correctamente' });
+      toast({ title: t('exito.eliminado'), description: t('exito.eliminadoDetalle') });
       load();
     } catch (error) {
       console.error('Error eliminando rol:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar el rol', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errores.eliminar'), variant: 'destructive' });
     } finally {
       setDeleteDialogOpen(false);
       setToDelete(null);

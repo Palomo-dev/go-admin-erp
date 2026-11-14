@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Settings } from 'lucide-react';
@@ -30,6 +31,7 @@ import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuar
 export function ParkingConfigPanel() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const { toast } = useToast();
+  const t = useTranslations('configuracionTextos.parkingConfigPanel');
 
   const [config, setConfig] = useState<ParkingConfig | null>(null);
   const [originalConfig, setOriginalConfig] = useState<ParkingConfig | null>(null);
@@ -46,11 +48,11 @@ export function ParkingConfigPanel() {
       setOriginalConfig(JSON.parse(JSON.stringify(data)));
     } catch (error) {
       console.error('Error loading config:', error);
-      toast({ title: 'Error', description: 'No se pudo cargar la configuración', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorCargar'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, toast, t]);
 
   useEffect(() => {
     if (organization?.id && !orgLoading) loadConfig();
@@ -66,10 +68,10 @@ export function ParkingConfigPanel() {
     try {
       await parkingConfigService.saveConfig(organization.id, config);
       setOriginalConfig(JSON.parse(JSON.stringify(config)));
-      toast({ title: 'Configuración guardada', description: 'Los cambios se han guardado correctamente' });
+      toast({ title: t('guardada.titulo'), description: t('guardada.descripcion') });
     } catch (error) {
       console.error('Error saving config:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar la configuración', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorGuardar'), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -90,10 +92,10 @@ export function ParkingConfigPanel() {
       const defaultConfig = await parkingConfigService.resetToDefaults(organization.id);
       setConfig(defaultConfig);
       setOriginalConfig(JSON.parse(JSON.stringify(defaultConfig)));
-      toast({ title: 'Configuración restablecida', description: 'Se han restaurado los valores por defecto' });
+      toast({ title: t('restablecida.titulo'), description: t('restablecida.descripcion') });
     } catch (error) {
       console.error('Error resetting config:', error);
-      toast({ title: 'Error', description: 'No se pudo restablecer la configuración', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorRestablecer'), variant: 'destructive' });
     } finally {
       setIsSaving(false);
       setShowResetDialog(false);
@@ -113,7 +115,7 @@ export function ParkingConfigPanel() {
     return (
       <div className="flex flex-col items-center justify-center h-96 text-center">
         <Settings className="h-12 w-12 text-gray-400 mb-4" />
-        <p className="text-gray-500">No se pudo cargar la configuración del parqueadero.</p>
+        <p className="text-gray-500">{t('sinConfiguracion')}</p>
       </div>
     );
   }
@@ -132,7 +134,7 @@ export function ParkingConfigPanel() {
       {hasChanges && (
         <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
           <p className="text-sm text-amber-700 dark:text-amber-400">
-            Tienes cambios sin guardar. No olvides guardar antes de salir.
+            {t('cambiosSinGuardar')}
           </p>
         </div>
       )}
@@ -153,14 +155,14 @@ export function ParkingConfigPanel() {
       <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <AlertDialogContent className="dark:bg-gray-800 dark:border-gray-700">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">¿Restablecer configuración?</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-white">{t('dialogoRestablecer.titulo')}</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-gray-400">
-              Esta acción restaurará todos los valores a la configuración por defecto. Perderás cualquier personalización actual.
+              {t('dialogoRestablecer.descripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="dark:border-gray-600 dark:text-gray-300">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReset} className="bg-amber-600 hover:bg-amber-700">Restablecer</AlertDialogAction>
+            <AlertDialogCancel className="dark:border-gray-600 dark:text-gray-300">{t('dialogoRestablecer.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset} className="bg-amber-600 hover:bg-amber-700">{t('dialogoRestablecer.confirmar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

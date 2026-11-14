@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronRight, MapPin, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,7 @@ export function TeamCard({
   onAddMember,
   onRemoveMember,
 }: TeamCardProps) {
+  const t = useTranslations('configuracionTextos.teamCard');
   const members = team.members || [];
   return (
     <Card className="border-gray-200 dark:border-gray-700">
@@ -65,7 +67,7 @@ export function TeamCard({
                 </p>
                 {!team.is_active && <InactiveBadge />}
                 <Badge variant="secondary" className="text-xs">
-                  {members.length} miembro{members.length !== 1 ? 's' : ''}
+                  {t('contadorMiembros', { n: members.length })}
                 </Badge>
               </div>
               {team.description && (
@@ -76,7 +78,7 @@ export function TeamCard({
               {team.territories?.name && (
                 <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  Territorio: {team.territories.name}
+                  {t('territorio', { nombre: team.territories.name })}
                 </p>
               )}
             </div>
@@ -95,16 +97,16 @@ export function TeamCard({
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
             {members.length === 0 ? (
               <p className="text-xs text-gray-500 dark:text-gray-400 py-2">
-                Sin miembros. Añade el primero.
+                {t('sinMiembros')}
               </p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-xs">Miembro</TableHead>
-                    <TableHead className="text-xs">Rol</TableHead>
-                    <TableHead className="text-xs">Territorio</TableHead>
-                    <TableHead className="text-xs">Cuota</TableHead>
+                    <TableHead className="text-xs">{t('columnas.miembro')}</TableHead>
+                    <TableHead className="text-xs">{t('columnas.rol')}</TableHead>
+                    <TableHead className="text-xs">{t('columnas.territorio')}</TableHead>
+                    <TableHead className="text-xs">{t('columnas.cuota')}</TableHead>
                     <TableHead className="text-xs w-10" />
                   </TableRow>
                 </TableHeader>
@@ -133,7 +135,7 @@ export function TeamCard({
             )}
             <Button variant="outline" size="sm" onClick={onAddMember}>
               <Plus className="h-3 w-3 mr-1" />
-              Añadir miembro
+              {t('anadirMiembro')}
             </Button>
           </div>
         )}

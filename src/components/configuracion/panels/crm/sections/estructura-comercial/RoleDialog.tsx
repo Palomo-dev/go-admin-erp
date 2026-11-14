@@ -1,6 +1,7 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,50 +47,51 @@ export function RoleDialog({
   saving,
   onSave,
 }: RoleDialogProps) {
+  const t = useTranslations('configuracionTextos.roleDialog');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? 'Editar Rol' : 'Nuevo Rol'}</DialogTitle>
+          <DialogTitle>{editing ? t('tituloEditar') : t('tituloNuevo')}</DialogTitle>
           <DialogDescription>
-            {editing ? 'Modifica los datos del rol comercial' : 'Crea un nuevo rol comercial'}
+            {editing ? t('descripcionEditar') : t('descripcionNueva')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label htmlFor="role-code">Código *</Label>
+              <Label htmlFor="role-code">{t('codigo')}</Label>
               <Input
                 id="role-code"
                 value={form.code}
                 onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))}
-                placeholder="Ej: SDR, AE, SM"
+                placeholder={t('codigoPlaceholder')}
                 maxLength={50}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role-name">Nombre *</Label>
+              <Label htmlFor="role-name">{t('nombre')}</Label>
               <Input
                 id="role-name"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="Ej: Sales Development Rep"
+                placeholder={t('nombrePlaceholder')}
                 maxLength={100}
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role-area">Área *</Label>
+            <Label htmlFor="role-area">{t('area')}</Label>
             <Input
               id="role-area"
               value={form.area}
               onChange={(e) => setForm((p) => ({ ...p, area: e.target.value }))}
-              placeholder="Ej: Inside Sales, Field Sales"
+              placeholder={t('areaPlaceholder')}
               maxLength={100}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role-job-position">Cargo de HRM (opcional)</Label>
+            <Label htmlFor="role-job-position">{t('cargoHrm')}</Label>
             <Select
               value={form.job_position_id || 'none'}
               onValueChange={(v) =>
@@ -97,10 +99,10 @@ export function RoleDialog({
               }
             >
               <SelectTrigger id="role-job-position">
-                <SelectValue placeholder="Sin cargo mapeado" />
+                <SelectValue placeholder={t('sinCargo')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Sin cargo mapeado</SelectItem>
+                <SelectItem value="none">{t('sinCargo')}</SelectItem>
                 {jobPositions.map((jp) => (
                   <SelectItem key={jp.id} value={jp.id}>
                     {jp.name}
@@ -109,22 +111,21 @@ export function RoleDialog({
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Vincula este rol comercial a un cargo del módulo HRM. Por defecto, el rol
-              &quot;Vendedor&quot; ya está mapeado al cargo &quot;Vendedor&quot;.
+              {t('cargoHrmAyuda')}
             </p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role-resp">Responsabilidades</Label>
+            <Label htmlFor="role-resp">{t('responsabilidades')}</Label>
             <Textarea
               id="role-resp"
               value={form.responsibilities}
               onChange={(e) => setForm((p) => ({ ...p, responsibilities: e.target.value }))}
-              placeholder="Una responsabilidad por línea"
+              placeholder={t('responsabilidadesPlaceholder')}
               rows={4}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="role-active">Activo</Label>
+            <Label htmlFor="role-active">{t('activo')}</Label>
             <Switch
               id="role-active"
               checked={form.is_active}
@@ -134,10 +135,10 @@ export function RoleDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {t('cancelar')}
           </Button>
           <Button onClick={onSave} disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar'}
+            {saving ? t('guardando') : t('guardar')}
           </Button>
         </DialogFooter>
       </DialogContent>

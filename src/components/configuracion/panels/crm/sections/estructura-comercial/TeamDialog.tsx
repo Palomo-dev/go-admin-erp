@@ -1,6 +1,7 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,39 +47,40 @@ export function TeamDialog({
   saving,
   onSave,
 }: TeamDialogProps) {
+  const tx = useTranslations('configuracionTextos.teamDialog');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{editing ? 'Editar Equipo' : 'Nuevo Equipo'}</DialogTitle>
+          <DialogTitle>{editing ? tx('tituloEditar') : tx('tituloNuevo')}</DialogTitle>
           <DialogDescription>
-            {editing ? 'Modifica los datos del equipo' : 'Crea un nuevo equipo comercial'}
+            {editing ? tx('descripcionEditar') : tx('descripcionNueva')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label htmlFor="team-name">Nombre *</Label>
+            <Label htmlFor="team-name">{tx('nombre')}</Label>
             <Input
               id="team-name"
               value={form.name}
               onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              placeholder="Ej: Equipo Norte, Enterprise Sales"
+              placeholder={tx('nombrePlaceholder')}
               maxLength={100}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="team-desc">Descripción</Label>
+            <Label htmlFor="team-desc">{tx('descripcion')}</Label>
             <Textarea
               id="team-desc"
               value={form.description}
               onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-              placeholder="Descripción opcional"
+              placeholder={tx('descripcionPlaceholder')}
               rows={3}
               maxLength={500}
             />
           </div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="team-active">Activo</Label>
+            <Label htmlFor="team-active">{tx('activo')}</Label>
             <Switch
               id="team-active"
               checked={form.is_active}
@@ -87,7 +89,7 @@ export function TeamDialog({
           </div>
           {territories.length > 0 && (
             <div className="space-y-2">
-              <Label htmlFor="team-territory">Territorio (opcional)</Label>
+              <Label htmlFor="team-territory">{tx('territorio')}</Label>
               <Select
                 value={form.territory_id || 'none'}
                 onValueChange={(v) =>
@@ -95,10 +97,10 @@ export function TeamDialog({
                 }
               >
                 <SelectTrigger id="team-territory">
-                  <SelectValue placeholder="Sin territorio" />
+                  <SelectValue placeholder={tx('sinTerritorio')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin territorio</SelectItem>
+                  <SelectItem value="none">{tx('sinTerritorio')}</SelectItem>
                   {territories.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
@@ -107,18 +109,17 @@ export function TeamDialog({
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                Asigna un territorio al equipo. Los miembros heredan este territorio a menos que
-                tengan uno propio.
+                {tx('territorioAyuda')}
               </p>
             </div>
           )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+            {tx('cancelar')}
           </Button>
           <Button onClick={onSave} disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar'}
+            {saving ? tx('guardando') : tx('guardar')}
           </Button>
         </DialogFooter>
       </DialogContent>

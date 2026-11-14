@@ -7,12 +7,13 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
-import { CREDENTIAL_FIELDS, PROVIDER_LABELS, type ProviderCategory } from '@/lib/crm/providerCatalog';
+import { CREDENTIAL_FIELDS, PROVIDER_LABELS, type CredentialField, type ProviderCategory } from '@/lib/crm/providerCatalog';
 
 export interface ProviderCredentialFormProps {
   open: boolean;
@@ -25,6 +26,9 @@ export interface ProviderCredentialFormProps {
 }
 
 export function ProviderCredentialForm({ open, onOpenChange, category, provider, existingKeys, onSubmit }: ProviderCredentialFormProps) {
+  const t = useTranslations('configuracionTextos.providerCredentialForm');
+  // Las etiquetas en español del catálogo se traducen aquí; las técnicas (API Key, SID…) quedan igual.
+  const etiquetaCampo = (f: CredentialField) => (t.has(`campos.${f.key}`) ? t(`campos.${f.key}`) : f.label);
   const fields = useMemo(() => CREDENTIAL_FIELDS[provider] ?? [], [provider]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [clear, setClear] = useState<Record<string, boolean>>({});
@@ -44,7 +48,7 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (missingRequired.length > 0) {
-      setError(`Faltan campos obligatorios: ${missingRequired.map((f) => f.label).join(', ')}`);
+      setError(t('faltanObligatorios', { campos: missingRequired.map(etiquetaCampo).join(', ') }));
       return;
     }
     const payload: Record<string, string | null> = {};
@@ -53,7 +57,7 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
       else if (values[f.key]?.trim()) payload[f.key] = values[f.key].trim();
     }
     if (Object.keys(payload).length === 0) {
-      setError('No hay cambios que guardar');
+      setError(t('sinCambios'));
       return;
     }
     setSaving(true);
@@ -62,7 +66,7 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
       await onSubmit(payload);
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo guardar');
+      setError(err instanceof Error ? err.message : t('errorGuardar'));
     } finally {
       setSaving(false);
     }
@@ -74,14 +78,14 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" aria-describedby={descId}>
         <DialogHeader>
-          <DialogTitle>Credenciales de {PROVIDER_LABELS[provider] ?? provider}</DialogTitle>
+          <DialogTitle>{t('titulo', { proveedor: PROVIDER_LABELS[provider] ?? provider })}</DialogTitle>
           <DialogDescription id={descId}>
-            Las claves se guardan en el servidor y nunca se muestran de nuevo. Deja un campo vacío para conservar la clave actual.
+            {t('descripcion')}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           {fields.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Este proveedor no requiere credenciales.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{t('sinCredenciales')}</p>
           )}
           {fields.map((f) => {
             const saved = existingKeys.includes(f.key);
@@ -91,7 +95,7 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
               <div key={f.key} className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor={inputId} className="text-gray-900 dark:text-gray-100">
-                    {f.label}
+                    {etiquetaCampo(f)}
                     {f.required && <span className="ml-1 text-red-600 dark:text-red-400" aria-hidden="true">*</span>}
                   </Label>
                   {saved && (
@@ -101,7 +105,7 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
                       className="text-xs text-red-600 hover:underline dark:text-red-400"
                       aria-pressed={!!clear[f.key]}
                     >
-                      {clear[f.key] ? 'No borrar' : 'Borrar'}
+                      {clear[f.key] ? t('noBorrar') : t('borrar')}
                     </button>
                   )}
                 </div>
@@ -111,7 +115,7 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
                   autoComplete="new-password"
                   spellCheck={false}
                   disabled={!!clear[f.key]}
-                  placeholder={saved ? '•••••••••••• (guardada)' : f.placeholder ?? ''}
+                  placeholder={saved ? t('placeholderGuardada') : f.placeholder ?? ''}
                   value={values[f.key] ?? ''}
                   onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
                   aria-describedby={hintId}
@@ -120,10 +124,10 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
                 />
                 <p id={hintId} className="text-xs text-gray-500 dark:text-gray-400">
                   {clear[f.key]
-                    ? 'Se eliminará al guardar.'
+                    ? t('pista.seEliminara')
                     : saved
-                      ? 'Ya hay una clave guardada. Escribe una nueva para reemplazarla.'
-                      : 'Sin clave propia: se usará la de la plataforma si existe.'}
+                      ? t('pista.yaGuardada')
+                      : t('pista.sinClavePropia')}
                 </p>
               </div>
             );
@@ -133,11 +137,11 @@ export function ProviderCredentialForm({ open, onOpenChange, category, provider,
           )}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancelar
+              {t('cancelar')}
             </Button>
             <Button type="submit" disabled={saving || fields.length === 0} aria-busy={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-              Guardar
+              {t('guardar')}
             </Button>
           </DialogFooter>
         </form>

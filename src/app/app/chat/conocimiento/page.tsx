@@ -186,7 +186,7 @@ export default function ConocimientoPage() {
             </a>
             <button type="button" onClick={() => router.push('/app/chat/conocimiento/importar')} className={clasesBoton({ variante: 'secundario' })}>
               <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('importar')}
+              {t('importarBoton')}
             </button>
             <button
               type="button"
@@ -236,7 +236,7 @@ export default function ConocimientoPage() {
               descripcion={t('fuentes.vacioDescripcion')}
               icono={BookOpen}
               accion={{ etiqueta: t('nuevaFuente'), onClick: () => setDialogoFuente(true) }}
-              accionSecundaria={{ etiqueta: t('importar'), href: '/app/chat/conocimiento/importar' }}
+              accionSecundaria={{ etiqueta: t('importarBoton'), href: '/app/chat/conocimiento/importar' }}
             />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">

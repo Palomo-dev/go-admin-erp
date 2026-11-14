@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ import { Plus, Pencil, Trash2, RefreshCw, AlertCircle, Globe, Building2 } from '
 import { lossReasonsService, type LossReason } from '@/lib/services/crm/lossReasonsService';
 
 export function LossReasonsManager() {
+  const t = useTranslations('configuracionTextos.lossReasonsManager');
   const { toast } = useToast();
 
   const [reasons, setReasons] = useState<LossReason[]>([]);
@@ -47,11 +49,11 @@ export function LossReasonsManager() {
       setReasons(data);
     } catch (error) {
       console.error('Error cargando razones de perdida:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las razones de perdida', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorCargar'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     loadReasons();
@@ -76,27 +78,27 @@ export function LossReasonsManager() {
 
   const handleSave = async () => {
     if (!formData.reason.trim()) {
-      toast({ title: 'Validacion', description: 'La razon es obligatoria', variant: 'destructive' });
+      toast({ title: t('toast.validacion'), description: t('toast.razonObligatoria'), variant: 'destructive' });
       return;
     }
     if (editingReason?.is_global) {
-      toast({ title: 'Restriccion', description: 'Las razones globales no se pueden editar', variant: 'destructive' });
+      toast({ title: t('toast.restriccion'), description: t('toast.globalesNoEditables'), variant: 'destructive' });
       return;
     }
     setSaving(true);
     try {
       if (editingReason) {
         await lossReasonsService.updateLossReason(editingReason.id, { reason: formData.reason.trim() });
-        toast({ title: 'Razon actualizada', description: 'Los cambios se guardaron correctamente' });
+        toast({ title: t('toast.actualizada'), description: t('toast.cambiosGuardados') });
       } else {
         await lossReasonsService.createLossReason({ reason: formData.reason.trim() });
-        toast({ title: 'Razon creada', description: 'La razon de perdida se creo correctamente' });
+        toast({ title: t('toast.creada'), description: t('toast.creadaDescripcion') });
       }
       setDialogOpen(false);
       loadReasons();
     } catch (error) {
       console.error('Error guardando razon:', error);
-      toast({ title: 'Error', description: 'No se pudo guardar la razon', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorGuardar'), variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -105,18 +107,18 @@ export function LossReasonsManager() {
   const confirmDelete = async () => {
     if (!reasonToDelete) return;
     if (reasonToDelete.is_global) {
-      toast({ title: 'Restriccion', description: 'Las razones globales no se pueden eliminar', variant: 'destructive' });
+      toast({ title: t('toast.restriccion'), description: t('toast.globalesNoEliminables'), variant: 'destructive' });
       setDeleteDialogOpen(false);
       setReasonToDelete(null);
       return;
     }
     try {
       await lossReasonsService.deleteLossReason(reasonToDelete.id);
-      toast({ title: 'Razon eliminada', description: 'La razon de perdida se desactivo correctamente' });
+      toast({ title: t('toast.eliminada'), description: t('toast.eliminadaDescripcion') });
       loadReasons();
     } catch (error) {
       console.error('Error eliminando razon:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar la razon', variant: 'destructive' });
+      toast({ title: t('toast.error'), description: t('toast.errorEliminar'), variant: 'destructive' });
     } finally {
       setDeleteDialogOpen(false);
       setReasonToDelete(null);
@@ -139,7 +141,7 @@ export function LossReasonsManager() {
             <p className="text-sm text-gray-900 dark:text-white truncate">{reason.reason}</p>
             {!reason.is_active && (
               <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">
-                Inactiva
+                {t('lista.inactiva')}
               </span>
             )}
           </div>
@@ -155,7 +157,7 @@ export function LossReasonsManager() {
               </>
             )}
             {reason.is_global && (
-              <Badge variant="secondary" className="text-xs">Global</Badge>
+              <Badge variant="secondary" className="text-xs">{t('lista.global')}</Badge>
             )}
           </div>
         </div>
@@ -170,10 +172,10 @@ export function LossReasonsManager() {
           <AlertCircle className="h-5 w-5 text-muted-foreground" />
           <div>
             <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {reasons.length} razon{reasons.length !== 1 ? 'es' : ''} de perdida
+              {t('encabezado.conteo', { n: reasons.length })}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Globales y especificas de la organizacion
+              {t('encabezado.descripcion')}
             </p>
           </div>
         </div>
@@ -183,7 +185,7 @@ export function LossReasonsManager() {
           </Button>
           <Button size="sm" onClick={handleCreate}>
             <Plus className="h-4 w-4 mr-1" />
-            Nueva Razon
+            {t('encabezado.nuevaRazon')}
           </Button>
         </div>
       </div>
@@ -200,7 +202,7 @@ export function LossReasonsManager() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4 text-blue-500" />
-                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Globales</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('lista.globales')}</h4>
               </div>
               {globalReasons.map(renderReasonItem)}
             </div>
@@ -209,12 +211,12 @@ export function LossReasonsManager() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-gray-400" />
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">De la organizacion</h4>
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t('lista.deLaOrganizacion')}</h4>
             </div>
             {orgReasons.length === 0 ? (
               <div className="text-center py-8 rounded-lg border border-dashed border-gray-200 dark:border-gray-700">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No hay razones especificas. Crea una para personalizar.
+                  {t('lista.vacio')}
                 </p>
               </div>
             ) : (
@@ -228,29 +230,29 @@ export function LossReasonsManager() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingReason ? 'Editar Razon' : 'Nueva Razon de Perdida'}</DialogTitle>
+            <DialogTitle>{editingReason ? t('dialogo.tituloEditar') : t('dialogo.tituloNueva')}</DialogTitle>
             <DialogDescription>
               {editingReason
-                ? 'Modifica la razon de perdida'
-                : 'Crea una nueva razon para registrar por que se pierden oportunidades'}
+                ? t('dialogo.descripcionEditar')
+                : t('dialogo.descripcionNueva')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="reason-text">Razon *</Label>
+              <Label htmlFor="reason-text">{t('dialogo.razonEtiqueta')}</Label>
               <Input
                 id="reason-text"
                 value={formData.reason}
                 onChange={(e) => setFormData((prev) => ({ ...prev, reason: e.target.value }))}
-                placeholder="Ej: Precio muy alto, Sin presupuesto, Competidor..."
+                placeholder={t('dialogo.razonPlaceholder')}
                 maxLength={200}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>{t('acciones.cancelar')}</Button>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Guardando...' : 'Guardar'}
+              {saving ? t('acciones.guardando') : t('acciones.guardar')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -260,19 +262,18 @@ export function LossReasonsManager() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Desactivar razon de perdida?</AlertDialogTitle>
+            <AlertDialogTitle>{t('desactivar.titulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta accion desactivara la razon &quot;{reasonToDelete?.reason}&quot;. Las oportunidades
-              que ya usen esta razon mantendran el registro historico.
+              {t('desactivar.descripcion', { razon: reasonToDelete?.reason ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>{t('acciones.cancelar')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              Desactivar
+              {t('desactivar.confirmar')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

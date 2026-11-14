@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   AlertDialog,
@@ -33,6 +34,7 @@ import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuar
 
 export function GymConfigPanel() {
   const { organization } = useOrganization();
+  const t = useTranslations('configuracionTextos.gymConfigPanel');
   const [settings, setSettings] = useState<GymSettings>(defaultGymSettings);
   const [originalSettings, setOriginalSettings] = useState<GymSettings>(defaultGymSettings);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,11 +50,11 @@ export function GymConfigPanel() {
       setOriginalSettings(data);
     } catch (error) {
       console.error('Error cargando configuración:', error);
-      toast.error('Error al cargar la configuración');
+      toast.error(t('errorCargar'));
     } finally {
       setIsLoading(false);
     }
-  }, [organization?.id]);
+  }, [organization?.id, t]);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
 
@@ -64,10 +66,10 @@ export function GymConfigPanel() {
     try {
       await saveGymSettings(organization.id, settings);
       setOriginalSettings(settings);
-      toast.success('Configuración guardada correctamente');
+      toast.success(t('guardada'));
     } catch (error) {
       console.error('Error guardando configuración:', error);
-      toast.error('Error al guardar la configuración');
+      toast.error(t('errorGuardar'));
     } finally {
       setIsSaving(false);
     }
@@ -88,10 +90,10 @@ export function GymConfigPanel() {
       await saveGymSettings(organization.id, defaultGymSettings);
       setSettings(defaultGymSettings);
       setOriginalSettings(defaultGymSettings);
-      toast.success('Configuración restablecida a valores por defecto');
+      toast.success(t('restablecida'));
     } catch (error) {
       console.error('Error restableciendo configuración:', error);
-      toast.error('Error al restablecer la configuración');
+      toast.error(t('errorRestablecer'));
     } finally {
       setIsSaving(false);
       setShowResetDialog(false);
@@ -149,14 +151,14 @@ export function GymConfigPanel() {
       <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Restablecer Configuración</AlertDialogTitle>
+            <AlertDialogTitle>{t('dialogoRestablecer.titulo')}</AlertDialogTitle>
             <AlertDialogDescription>
-              ¿Estás seguro de que deseas restablecer toda la configuración a los valores por defecto? Esta acción no se puede deshacer.
+              {t('dialogoRestablecer.descripcion')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReset} className="bg-red-600 hover:bg-red-700">Restablecer</AlertDialogAction>
+            <AlertDialogCancel>{t('dialogoRestablecer.cancelar')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReset} className="bg-red-600 hover:bg-red-700">{t('dialogoRestablecer.confirmar')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

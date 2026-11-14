@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useOrganization, getCurrentUserId } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { Settings2 } from 'lucide-react';
@@ -17,6 +18,7 @@ export function NotificacionesConfigPanel() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const { toast } = useToast();
+  const t = useTranslations('configuracionTextos.notificacionesConfigPanel');
 
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,11 +34,11 @@ export function NotificacionesConfigPanel() {
       setPreferences(data);
     } catch (error) {
       console.error('Error cargando preferencias:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las preferencias.', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorCargar'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
-  }, [userId, toast]);
+  }, [userId, toast, t]);
 
   useEffect(() => {
     if (userId) { setIsLoading(true); loadData(); }
@@ -55,7 +57,7 @@ export function NotificacionesConfigPanel() {
       setPreferences((prev) => prev.map((p) => p.channel === channel ? { ...p, ...updates, updated_at: new Date().toISOString() } : p));
       return true;
     }
-    toast({ title: 'Error', description: 'No se pudo actualizar.', variant: 'destructive' });
+    toast({ title: t('error'), description: t('errorActualizar'), variant: 'destructive' });
     return false;
   };
 
@@ -64,21 +66,21 @@ export function NotificacionesConfigPanel() {
     const ok = await PreferenciasService.muteAll(userId, mute);
     if (ok) {
       setPreferences((prev) => prev.map((p) => ({ ...p, mute })));
-      toast({ title: mute ? 'Silenciado' : 'Activado', description: mute ? 'Todas las notificaciones silenciadas.' : 'Notificaciones reactivadas.' });
+      toast({ title: mute ? t('silenciado.titulo') : t('activado.titulo'), description: mute ? t('silenciado.descripcion') : t('activado.descripcion') });
     } else {
-      toast({ title: 'Error', description: 'No se pudo cambiar.', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorCambiar'), variant: 'destructive' });
     }
   };
 
   const handleReset = async () => {
     if (!userId) return;
-    if (!confirm('¿Restablecer todas las preferencias a sus valores por defecto?')) return;
+    if (!confirm(t('confirmarRestablecer'))) return;
     const ok = await PreferenciasService.resetToDefaults(userId);
     if (ok) {
-      toast({ title: 'Restablecido', description: 'Preferencias restablecidas.' });
+      toast({ title: t('restablecido.titulo'), description: t('restablecido.descripcion') });
       loadData();
     } else {
-      toast({ title: 'Error', description: 'No se pudo restablecer.', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorRestablecer'), variant: 'destructive' });
     }
   };
 
@@ -112,13 +114,13 @@ export function NotificacionesConfigPanel() {
       ) : preferences.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-gray-400 dark:text-gray-500">
           <Settings2 className="h-12 w-12 mb-3" />
-          <p className="text-base font-medium">No hay preferencias configuradas</p>
+          <p className="text-base font-medium">{t('sinPreferencias')}</p>
         </div>
       ) : (
         <div className="max-w-2xl mx-auto space-y-4">
           <MuteGlobal isMutedAll={isMutedAll} onToggle={handleMuteAll} disabled={isLoading} />
           <div className="pt-2">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Configuración por canal</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">{t('porCanal')}</h2>
             <div className="space-y-3">
               {preferences.map((pref) => (
                 <CanalPreferencia key={pref.channel} preference={pref} onUpdate={handleUpdate} />

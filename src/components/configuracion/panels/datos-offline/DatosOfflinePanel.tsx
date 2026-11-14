@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { AlertTriangle, CheckCircle2, CloudOff, HardDrive, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,16 +12,6 @@ import { useOfflineData } from '@/lib/offline/useOfflineData';
 import { useDesktopCatalog } from '@/lib/offline/useDesktopCatalog';
 import { REPLICATION_MANIFEST, WINDOW_MONTHS, type TableManifest } from '@/lib/offline/replicationManifest';
 import type { OfflineTableMeta } from '@/lib/offline/offlineDb';
-
-const GROUP_LABELS: Record<TableManifest['group'], string> = {
-  organizacion: 'Organización',
-  catalogos: 'Catálogos',
-  inventario: 'Inventario',
-  clientes: 'Clientes',
-  ventas: 'Ventas',
-  compras: 'Compras',
-  finanzas: 'Finanzas',
-};
 
 const GROUP_ORDER: TableManifest['group'][] = ['inventario', 'ventas', 'finanzas', 'compras', 'clientes', 'organizacion', 'catalogos'];
 
@@ -40,6 +31,7 @@ function formatBytes(bytes: number): string {
  * allí (`desktopOnly` en el registro de módulos).
  */
 export function DatosOfflinePanel() {
+  const t = useTranslations('configuracionTextos.datosOfflinePanel');
   const { organization } = useOrganization();
   const organizationId = organization?.id ?? null;
   const offline = useOfflineData(organizationId);
@@ -51,6 +43,10 @@ export function DatosOfflinePanel() {
     const d = new Date(ms);
     return toDate(d) === getToday() ? formatTime(d) : formatDateTime(d);
   };
+
+  /** Nombre visible de la entidad: traducción por tabla; si falta, la etiqueta del manifiesto. */
+  const entityLabel = (m: TableManifest) =>
+    t.has(`entidades.${m.table}`) ? t(`entidades.${m.table}`) : m.label;
 
   const rows = useMemo(() => {
     const byGroup = new Map<TableManifest['group'], TableManifest[]>();
@@ -66,8 +62,8 @@ export function DatosOfflinePanel() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><CloudOff className="h-5 w-5" aria-hidden="true" /> Datos sin conexión</CardTitle>
-          <CardDescription>Esta función es de Go Admin Desktop. Desde el navegador la aplicación siempre necesita internet.</CardDescription>
+          <CardTitle className="flex items-center gap-2"><CloudOff className="h-5 w-5" aria-hidden="true" /> {t('titulo')}</CardTitle>
+          <CardDescription>{t('soloDesktop')}</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -82,50 +78,56 @@ export function DatosOfflinePanel() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" aria-hidden="true" /> Datos sin conexión</CardTitle>
-          <CardDescription>
-            Copia local de los datos de la organización para leer inventario, ventas, finanzas, compras y clientes sin internet. Con red se actualiza al
-            iniciar y cada 10 minutos; las tablas transaccionales guardan los últimos {WINDOW_MONTHS} meses. Las escrituras sin red siguen las reglas de
-            cada módulo (el POS usa su bandeja de ventas pendientes).
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2"><HardDrive className="h-5 w-5" aria-hidden="true" /> {t('titulo')}</CardTitle>
+          <CardDescription>{t('descripcion', { meses: WINDOW_MONTHS })}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4 text-sm">
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">Estado</dt>
-              <dd className="font-medium">{offline.isOnline ? 'Con conexión' : 'Sin conexión (leyendo datos locales)'}</dd>
+              <dt className="text-gray-500 dark:text-gray-400">{t('resumen.estado')}</dt>
+              <dd className="font-medium">{offline.isOnline ? t('resumen.conConexion') : t('resumen.sinConexion')}</dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">Última replicación</dt>
+              <dt className="text-gray-500 dark:text-gray-400">{t('resumen.ultimaReplicacion')}</dt>
               <dd className="font-medium">{when(status?.latestAt)}</dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">Filas locales</dt>
-              <dd className="font-medium">{status ? status.totalRows.toLocaleString('es-CO') : '—'} en {tablesReplicated}/{REPLICATION_MANIFEST.length} tablas</dd>
+              <dt className="text-gray-500 dark:text-gray-400">{t('resumen.filasLocales')}</dt>
+              <dd className="font-medium">
+                {t('resumen.filasValor', {
+                  filas: status ? status.totalRows.toLocaleString('es-CO') : '—',
+                  replicadas: tablesReplicated,
+                  total: REPLICATION_MANIFEST.length,
+                })}
+              </dd>
             </div>
             <div>
-              <dt className="text-gray-500 dark:text-gray-400">Tamaño estimado</dt>
+              <dt className="text-gray-500 dark:text-gray-400">{t('resumen.tamano')}</dt>
               <dd className="font-medium">{status ? formatBytes(status.estimatedBytes) : '—'}</dd>
             </div>
           </dl>
           {catalog.status && !catalog.status.isEmpty && (
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Catálogo del POS: {catalog.status.productsCount} productos · {catalog.status.customersCount} clientes · actualizado {when(catalog.status.replicatedAt)}
+              {t('catalogoPos', {
+                productos: catalog.status.productsCount,
+                clientes: catalog.status.customersCount,
+                fecha: when(catalog.status.replicatedAt),
+              })}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" onClick={() => offline.syncNow()} disabled={busy || !offline.isOnline}>
               <RefreshCw className={`mr-2 h-4 w-4 ${busy ? 'animate-spin' : ''}`} aria-hidden="true" />
-              {busy ? 'Sincronizando…' : 'Sincronizar ahora'}
+              {busy ? t('acciones.sincronizando') : t('acciones.sincronizar')}
             </Button>
             <Button type="button" variant="outline" onClick={() => offline.syncNow({ full: true })} disabled={busy || !offline.isOnline}>
-              Replicación completa
+              {t('acciones.replicacionCompleta')}
             </Button>
-            {!offline.isOnline && <span className="text-xs text-amber-700 dark:text-amber-300">Sin conexión: se actualizará al volver la red.</span>}
+            {!offline.isOnline && <span className="text-xs text-amber-700 dark:text-amber-300">{t('sinRed')}</span>}
             {offline.error && <span className="text-xs text-red-600 dark:text-red-400" role="alert">{offline.error}</span>}
             {tablesWithError > 0 && (
               <span className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300">
-                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> {tablesWithError} {tablesWithError === 1 ? 'tabla con aviso' : 'tablas con aviso'}
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" /> {t('tablasConAviso', { n: tablesWithError })}
               </span>
             )}
           </div>
@@ -135,17 +137,17 @@ export function DatosOfflinePanel() {
       {rows.map(({ group, tables }) => (
         <Card key={group}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">{GROUP_LABELS[group]}</CardTitle>
+            <CardTitle className="text-base">{t(`grupos.${group}`)}</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Entidad</TableHead>
-                  <TableHead className="text-right">Filas</TableHead>
-                  <TableHead>Última replicación</TableHead>
-                  <TableHead>Ventana / tope</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <TableHead>{t('columnas.entidad')}</TableHead>
+                  <TableHead className="text-right">{t('columnas.filas')}</TableHead>
+                  <TableHead>{t('columnas.ultimaReplicacion')}</TableHead>
+                  <TableHead>{t('columnas.ventanaTope')}</TableHead>
+                  <TableHead>{t('columnas.estado')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -155,13 +157,15 @@ export function DatosOfflinePanel() {
                   return (
                     <TableRow key={m.table}>
                       <TableCell>
-                        <div className="font-medium">{m.label}</div>
+                        <div className="font-medium">{entityLabel(m)}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">{m.table}</div>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{replicated ? meta!.count.toLocaleString('es-CO') : '—'}</TableCell>
-                      <TableCell>{replicated ? when(meta!.replicated_at) : 'Nunca'}</TableCell>
+                      <TableCell>{replicated ? when(meta!.replicated_at) : t('estado.nunca')}</TableCell>
                       <TableCell className="text-xs text-gray-500 dark:text-gray-400">
-                        {m.window ? `${m.window.months} meses · ` : ''}máx. {m.maxRows.toLocaleString('es-CO')}
+                        {m.window
+                          ? t('ventanaYTope', { meses: m.window.months, max: m.maxRows.toLocaleString('es-CO') })
+                          : t('tope', { max: m.maxRows.toLocaleString('es-CO') })}
                       </TableCell>
                       <TableCell>
                         {meta?.error ? (
@@ -171,10 +175,10 @@ export function DatosOfflinePanel() {
                           </span>
                         ) : replicated ? (
                           <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> Al día
+                            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" /> {t('estado.alDia')}
                           </span>
                         ) : (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Pendiente</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{t('estado.pendiente')}</span>
                         )}
                       </TableCell>
                     </TableRow>

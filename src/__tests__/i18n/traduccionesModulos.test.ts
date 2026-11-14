@@ -140,6 +140,8 @@ const MODULOS: Record<string, string[]> = {
   configuracionUnificada: ['src/components/configuracion', 'src/app/app/configuracion', 'src/components/crm/agentes', 'src/components/chat/ia'],
   // Configuración como diálogo (Figma pág. 10, sección 12): menú, buscador, barra de cambios y la fila del menú de usuario.
   configuracionDialogo: ['src/components/configuracion', 'src/components/shell/sesion'],
+  // Textos que estaban fijos en español en los paneles de Configuración (2026-11-14), un grupo por archivo.
+  configuracionTextos: ['src/components/configuracion'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

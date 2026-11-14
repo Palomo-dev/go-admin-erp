@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function DomainSendersForm({ domain, onSave, busy, canEdit }: Props) {
+  const t = useTranslations('configuracionTextos.domainSendersForm');
   const [fromName, setFromName] = useState(domain.from_name ?? '');
   const [fromEmail, setFromEmail] = useState(domain.from_email);
   const [replyTo, setReplyTo] = useState(domain.reply_to ?? '');
@@ -50,28 +52,28 @@ export function DomainSendersForm({ domain, onSave, busy, canEdit }: Props) {
     <fieldset disabled={!canEdit} className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="space-y-1">
-          <Label htmlFor={`fn-${domain.id}`} className="text-xs">Nombre del remitente</Label>
+          <Label htmlFor={`fn-${domain.id}`} className="text-xs">{t('nombre')}</Label>
           <Input id={`fn-${domain.id}`} value={fromName} onChange={(e) => setFromName(e.target.value)} className="h-8 text-sm dark:bg-gray-800" />
         </div>
         <div className="space-y-1">
-          <Label htmlFor={`fe-${domain.id}`} className="text-xs">Correo remitente</Label>
+          <Label htmlFor={`fe-${domain.id}`} className="text-xs">{t('correo')}</Label>
           <Input id={`fe-${domain.id}`} value={fromEmail} onChange={(e) => setFromEmail(e.target.value)} aria-invalid={!emailOk} className="h-8 text-sm dark:bg-gray-800" />
-          {!emailOk && <p className="text-[11px] text-red-600 dark:text-red-400">Debe pertenecer a @{domain.domain}</p>}
+          {!emailOk && <p className="text-[11px] text-red-600 dark:text-red-400">{t('correoInvalido', { dominio: domain.domain })}</p>}
         </div>
         <div className="space-y-1">
-          <Label htmlFor={`rt-${domain.id}`} className="text-xs">Responder a</Label>
-          <Input id={`rt-${domain.id}`} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="Correo del vendedor" aria-invalid={!replyOk} className="h-8 text-sm dark:bg-gray-800" />
+          <Label htmlFor={`rt-${domain.id}`} className="text-xs">{t('responderA')}</Label>
+          <Input id={`rt-${domain.id}`} value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder={t('responderAPlaceholder')} aria-invalid={!replyOk} className="h-8 text-sm dark:bg-gray-800" />
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`rx-${domain.id}`} className="text-xs">Recibir respuestas (crm+id@{domain.domain})</Label><Switch id={`rx-${domain.id}`} checked={receiving} onCheckedChange={setReceiving} /></div>
-        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`dm-${domain.id}`} className="text-xs">DMARC publicado</Label><Switch id={`dm-${domain.id}`} checked={dmarc} onCheckedChange={setDmarc} /></div>
-        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`ot-${domain.id}`} className="text-xs">Aperturas (solo marketing/secuencias)</Label><Switch id={`ot-${domain.id}`} checked={openTracking} onCheckedChange={setOpenTracking} /></div>
-        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`ct-${domain.id}`} className="text-xs">Clics (solo marketing/secuencias)</Label><Switch id={`ct-${domain.id}`} checked={clickTracking} onCheckedChange={setClickTracking} /></div>
+        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`rx-${domain.id}`} className="text-xs">{t('recibir', { dominio: domain.domain })}</Label><Switch id={`rx-${domain.id}`} checked={receiving} onCheckedChange={setReceiving} /></div>
+        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`dm-${domain.id}`} className="text-xs">{t('dmarc')}</Label><Switch id={`dm-${domain.id}`} checked={dmarc} onCheckedChange={setDmarc} /></div>
+        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`ot-${domain.id}`} className="text-xs">{t('aperturas')}</Label><Switch id={`ot-${domain.id}`} checked={openTracking} onCheckedChange={setOpenTracking} /></div>
+        <div className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 dark:border-gray-700"><Label htmlFor={`ct-${domain.id}`} className="text-xs">{t('clics')}</Label><Switch id={`ct-${domain.id}`} checked={clickTracking} onCheckedChange={setClickTracking} /></div>
       </div>
       <div className="flex justify-end">
         <Button type="button" size="sm" onClick={save} disabled={!dirty || !emailOk || !replyOk || busy} className="gap-1">
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5" aria-hidden="true" />} Guardar remitente
+          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5" aria-hidden="true" />} {t('guardar')}
         </Button>
       </div>
     </fieldset>

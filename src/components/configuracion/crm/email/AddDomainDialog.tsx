@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -22,16 +23,13 @@ interface Props {
   busy: boolean;
 }
 
-const REGIONS: Array<{ value: EmailDomainRegion; label: string }> = [
-  { value: 'us-east-1', label: 'Estados Unidos (us-east-1)' },
-  { value: 'sa-east-1', label: 'Sudamérica (sa-east-1)' },
-  { value: 'eu-west-1', label: 'Europa (eu-west-1)' },
-  { value: 'ap-northeast-1', label: 'Asia (ap-northeast-1)' },
-];
+/** Regiones de Resend; la etiqueta visible sale de `regiones.<valor>`. */
+const REGIONS: EmailDomainRegion[] = ['us-east-1', 'sa-east-1', 'eu-west-1', 'ap-northeast-1'];
 
 const DOMAIN_RE = /^(?=.{4,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i;
 
 export function AddDomainDialog({ open, onOpenChange, onSubmit, busy }: Props) {
+  const t = useTranslations('configuracionTextos.addDomainDialog');
   const [domain, setDomain] = useState('');
   const [fromName, setFromName] = useState('');
   const [local, setLocal] = useState('ventas');
@@ -61,49 +59,49 @@ export function AddDomainDialog({ open, onOpenChange, onSubmit, busy }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg dark:bg-gray-900">
         <DialogHeader>
-          <DialogTitle>Añadir dominio de envío</DialogTitle>
-          <DialogDescription>Recomendado: un subdominio dedicado (p. ej. <code>crm.tuempresa.com</code>). Necesitarás acceso al DNS.</DialogDescription>
+          <DialogTitle>{t('titulo')}</DialogTitle>
+          <DialogDescription>{t.rich('descripcion', { code: (c) => <code>{c}</code> })}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">
-            <Label htmlFor="dom-domain" className="text-xs">Dominio *</Label>
-            <Input id="dom-domain" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="crm.tuempresa.com" aria-invalid={domain.length > 0 && !domainOk} className="dark:bg-gray-800" />
-            {domain.length > 0 && !domainOk && <p className="text-xs text-red-600 dark:text-red-400">Dominio inválido</p>}
+            <Label htmlFor="dom-domain" className="text-xs">{t('dominio.etiqueta')}</Label>
+            <Input id="dom-domain" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder={t('dominio.placeholder')} aria-invalid={domain.length > 0 && !domainOk} className="dark:bg-gray-800" />
+            {domain.length > 0 && !domainOk && <p className="text-xs text-red-600 dark:text-red-400">{t('dominio.invalido')}</p>}
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1">
-              <Label htmlFor="dom-from-name" className="text-xs">Nombre del remitente *</Label>
-              <Input id="dom-from-name" value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder="Equipo comercial ACME" className="dark:bg-gray-800" />
+              <Label htmlFor="dom-from-name" className="text-xs">{t('remitente.nombre')}</Label>
+              <Input id="dom-from-name" value={fromName} onChange={(e) => setFromName(e.target.value)} placeholder={t('remitente.nombrePlaceholder')} className="dark:bg-gray-800" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="dom-local" className="text-xs">Usuario del remitente *</Label>
+              <Label htmlFor="dom-local" className="text-xs">{t('remitente.usuario')}</Label>
               <div className="flex items-center gap-1">
                 <Input id="dom-local" value={local} onChange={(e) => setLocal(e.target.value)} className="dark:bg-gray-800" aria-invalid={!localOk} />
-                <span className="text-xs text-gray-500">@{domainOk ? domain.trim().toLowerCase() : 'dominio'}</span>
+                <span className="text-xs text-gray-500">@{domainOk ? domain.trim().toLowerCase() : t('remitente.dominioGenerico')}</span>
               </div>
             </div>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="dom-reply" className="text-xs">Responder a (opcional)</Label>
-            <Input id="dom-reply" type="email" value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder="Por defecto: el correo del vendedor" className="dark:bg-gray-800" />
+            <Label htmlFor="dom-reply" className="text-xs">{t('responderA.etiqueta')}</Label>
+            <Input id="dom-reply" type="email" value={replyTo} onChange={(e) => setReplyTo(e.target.value)} placeholder={t('responderA.placeholder')} className="dark:bg-gray-800" />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Región</Label>
+            <Label className="text-xs">{t('region')}</Label>
             <Select value={region} onValueChange={(v) => setRegion(v as EmailDomainRegion)}>
-              <SelectTrigger aria-label="Región" className="dark:bg-gray-800"><SelectValue /></SelectTrigger>
-              <SelectContent>{REGIONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
+              <SelectTrigger aria-label={t('region')} className="dark:bg-gray-800"><SelectValue /></SelectTrigger>
+              <SelectContent>{REGIONS.map((r) => <SelectItem key={r} value={r}>{t(`regiones.${r}`)}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-2 rounded-md border border-gray-200 p-3 dark:border-gray-700">
-            <div className="flex items-center justify-between"><Label htmlFor="dom-receiving" className="text-xs">Recibir respuestas en el CRM (MX)</Label><Switch id="dom-receiving" checked={receiving} onCheckedChange={setReceiving} /></div>
-            <div className="flex items-center justify-between"><Label htmlFor="dom-open" className="text-xs">Seguimiento de aperturas (marketing)</Label><Switch id="dom-open" checked={openTracking} onCheckedChange={setOpenTracking} /></div>
-            <div className="flex items-center justify-between"><Label htmlFor="dom-click" className="text-xs">Seguimiento de clics (marketing)</Label><Switch id="dom-click" checked={clickTracking} onCheckedChange={setClickTracking} /></div>
+            <div className="flex items-center justify-between"><Label htmlFor="dom-receiving" className="text-xs">{t('opciones.recibir')}</Label><Switch id="dom-receiving" checked={receiving} onCheckedChange={setReceiving} /></div>
+            <div className="flex items-center justify-between"><Label htmlFor="dom-open" className="text-xs">{t('opciones.aperturas')}</Label><Switch id="dom-open" checked={openTracking} onCheckedChange={setOpenTracking} /></div>
+            <div className="flex items-center justify-between"><Label htmlFor="dom-click" className="text-xs">{t('opciones.clics')}</Label><Switch id="dom-click" checked={clickTracking} onCheckedChange={setClickTracking} /></div>
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t('cancelar')}</Button>
           <Button type="button" onClick={submit} disabled={!valid || busy} className="gap-1">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null} Crear dominio
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null} {t('crear')}
           </Button>
         </DialogFooter>
       </DialogContent>

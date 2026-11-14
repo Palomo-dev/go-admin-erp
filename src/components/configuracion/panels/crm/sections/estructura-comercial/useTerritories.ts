@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { db } from './db';
 import type { Territory } from './types';
@@ -11,15 +12,9 @@ export interface TerritoryForm {
 
 const EMPTY_FORM: TerritoryForm = { name: '', criteria: '{}', is_active: true };
 
-/** Resumen legible de los criterios de un territorio. */
-export function criteriaSummary(criteria: Record<string, unknown>): string {
-  const keys = Object.keys(criteria || {});
-  if (keys.length === 0) return 'Sin criterios';
-  return `${keys.length} criterio${keys.length !== 1 ? 's' : ''}: ${keys.join(', ')}`;
-}
-
 /** Estado y acciones de la sección de territorios. */
 export function useTerritories() {
+  const t = useTranslations('configuracionTextos.useTerritories');
   const { toast } = useToast();
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,14 +34,14 @@ export function useTerritories() {
     } catch (error) {
       console.error('Error cargando territorios:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudieron cargar los territorios',
+        title: t('error'),
+        description: t('errores.cargar'),
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     load();
@@ -72,7 +67,7 @@ export function useTerritories() {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      toast({ title: 'Validación', description: 'El nombre es obligatorio', variant: 'destructive' });
+      toast({ title: t('validacion'), description: t('errores.nombreObligatorio'), variant: 'destructive' });
       return;
     }
     let parsedCriteria: Record<string, unknown> = {};
@@ -80,7 +75,7 @@ export function useTerritories() {
       parsedCriteria = JSON.parse(form.criteria || '{}');
       setCriteriaError(null);
     } catch {
-      setCriteriaError('JSON inválido en criteria');
+      setCriteriaError(t('errores.jsonInvalido'));
       return;
     }
     setSaving(true);
@@ -93,20 +88,20 @@ export function useTerritories() {
       if (editing) {
         await db.updateTerritory(editing.id, payload);
         toast({
-          title: 'Territorio actualizado',
-          description: 'Los cambios se guardaron correctamente',
+          title: t('exito.actualizado'),
+          description: t('exito.actualizadoDetalle'),
         });
       } else {
         await db.createTerritory(payload);
-        toast({ title: 'Territorio creado', description: 'El territorio se creó correctamente' });
+        toast({ title: t('exito.creado'), description: t('exito.creadoDetalle') });
       }
       setDialogOpen(false);
       load();
     } catch (error) {
       console.error('Error guardando territorio:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo guardar el territorio',
+        title: t('error'),
+        description: t('errores.guardar'),
         variant: 'destructive',
       });
     } finally {
@@ -124,15 +119,15 @@ export function useTerritories() {
     try {
       await db.deleteTerritory(toDelete.id);
       toast({
-        title: 'Territorio eliminado',
-        description: 'El territorio se eliminó correctamente',
+        title: t('exito.eliminado'),
+        description: t('exito.eliminadoDetalle'),
       });
       load();
     } catch (error) {
       console.error('Error eliminando territorio:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo eliminar el territorio',
+        title: t('error'),
+        description: t('errores.eliminar'),
         variant: 'destructive',
       });
     } finally {

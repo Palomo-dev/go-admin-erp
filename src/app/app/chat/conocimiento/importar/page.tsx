@@ -261,7 +261,7 @@ export default function ImportPage() {
                 )}
               </FormField>
               <FormField etiqueta={t('opciones.etiquetas')} ayuda={t('opciones.etiquetasAyuda')}>
-                <Input value={etiquetasTexto} onChange={(e) => setEtiquetasTexto(e.target.value)} placeholder="faq, envíos" />
+                <Input value={etiquetasTexto} onChange={(e) => setEtiquetasTexto(e.target.value)} placeholder={t('opciones.etiquetasEjemplo')} />
               </FormField>
               <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
                 <Checkbox checked={indexar} onCheckedChange={(v) => setIndexar(v === true)} />

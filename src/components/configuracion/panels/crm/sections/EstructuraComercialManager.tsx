@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MapPin, UserCog, Users } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { RolesSection } from './estructura-comercial/RolesSection';
 import { TeamsSection } from './estructura-comercial/TeamsSection';
 import { TerritoriesSection } from './estructura-comercial/TerritoriesSection';
@@ -18,12 +19,13 @@ import type { SubSection } from './estructura-comercial/types';
  * `EstructuraComercialManager` sin props.
  */
 export function EstructuraComercialManager() {
+  const t = useTranslations('configuracionTextos.estructuraComercialManager');
   const [subSection, setSubSection] = useState<SubSection>('roles');
 
   const subTabs: { key: SubSection; label: string; icon: typeof Users }[] = [
-    { key: 'roles', label: 'Roles', icon: UserCog },
-    { key: 'teams', label: 'Equipos', icon: Users },
-    { key: 'territories', label: 'Territorios', icon: MapPin },
+    { key: 'roles', label: t('pestanas.roles'), icon: UserCog },
+    { key: 'teams', label: t('pestanas.equipos'), icon: Users },
+    { key: 'territories', label: t('pestanas.territorios'), icon: MapPin },
   ];
 
   return (

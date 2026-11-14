@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,11 +19,12 @@ const schema = z.object({
 });
 type EditableLevel = z.infer<typeof schema>['capability_level'];
 type Settings = { capability_level: EditableLevel; can_manage: boolean };
+/** Etiqueta y descripción de cada nivel: claves de `configuracionTextos.asistenteConfigPanel`. */
 const choices: { value: EditableLevel; label: string; description: string }[] = [
-  { value: 'off', label: 'Solo orientación', description: 'Responde preguntas y explica el sistema. No habilita acciones de lectura ni de escritura.' },
-  { value: 'read', label: 'Consultar datos', description: 'Además de orientar, permite consultar datos con las herramientas disponibles. No crea ni modifica registros.' },
-  { value: 'write_low', label: 'Crear registros de catálogo', description: 'Permite proponer la creación de clientes, proveedores, categorías y productos. Cada escritura requiere confirmación explícita.' },
-  { value: 'write_full', label: 'Operación completa (predeterminado)', description: 'Permite usar todas las herramientas disponibles, incluidas las de clientes, proveedores, productos, categorías y facturas. Se mantienen los permisos del usuario, los módulos habilitados y la confirmación explícita antes de escribir.' },
+  { value: 'off', label: 'niveles.off.etiqueta', description: 'niveles.off.descripcion' },
+  { value: 'read', label: 'niveles.read.etiqueta', description: 'niveles.read.descripcion' },
+  { value: 'write_low', label: 'niveles.write_low.etiqueta', description: 'niveles.write_low.descripcion' },
+  { value: 'write_full', label: 'niveles.write_full.etiqueta', description: 'niveles.write_full.descripcion' },
 ];
 
 /**
@@ -34,17 +36,19 @@ const choices: { value: EditableLevel; label: string; description: string }[] = 
  */
 export function AsistenteConfigPanel() {
   const { organization } = useOrganization();
+  const t = useTranslations('configuracionTextos.asistenteConfigPanel');
   return (
     <div className="max-w-3xl space-y-4">
-      <p className="text-sm text-fg-secondary">Los cambios se aplican únicamente a tu organización activa, no a las demás organizaciones.</p>
+      <p className="text-sm text-fg-secondary">{t('soloOrganizacionActiva')}</p>
       {organization?.id ? (
         <SettingsForm key={organization.id} organizationId={organization.id} />
-      ) : <p role="status">Selecciona una organización para consultar su configuración.</p>}
+      ) : <p role="status">{t('seleccionaOrganizacion')}</p>}
     </div>
   );
 }
 
 function SettingsForm({ organizationId }: { organizationId: number }) {
+  const t = useTranslations('configuracionTextos.asistenteConfigPanel');
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -66,16 +70,16 @@ function SettingsForm({ organizationId }: { organizationId: number }) {
       headers: { 'X-Organization-Id': String(organizationId) },
     }).then(async (response) => {
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'No se pudo consultar la configuración.');
+      if (!response.ok) throw new Error(data.error || t('errorConsultar'));
       if (controller.signal.aborted) return;
       setSettings(data);
       // Conservar la elección explícita del administrador, incluso si es restrictiva.
       form.reset({ capability_level: data.capability_level });
     }).catch((cause: unknown) => {
-      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'No se pudo conectar.');
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : t('errorConexion'));
     }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => { controller.abort(); saveController.current?.abort(); };
-  }, [organizationId, reload, form]);
+  }, [organizationId, reload, form, t]);
 
   async function save(values: z.infer<typeof schema>) {
     if (saving || !settings?.can_manage) return;
@@ -91,63 +95,63 @@ function SettingsForm({ organizationId }: { organizationId: number }) {
         body: JSON.stringify(values),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'No se pudo guardar la configuración.');
+      if (!response.ok) throw new Error(data.error || t('errorGuardar'));
       if (controller.signal.aborted) return;
       setSettings(data);
       form.reset(values);
-      setNotice('Configuración guardada para esta organización. Se aplicará en los próximos mensajes del asistente.');
+      setNotice(t('guardada'));
     } catch (cause: unknown) {
-      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : 'No se pudo conectar.');
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : t('errorConexion'));
     } finally {
       if (!controller.signal.aborted) setSaving(false);
     }
   }
 
-  if (loading) return <p role="status">Cargando configuración…</p>;
+  if (loading) return <p role="status">{t('cargando')}</p>;
   if (!settings) return (
-    <div className="space-y-3"><p role="alert">{error}</p><Button onClick={() => setReload((value) => value + 1)}>Reintentar</Button></div>
+    <div className="space-y-3"><p role="alert">{error}</p><Button onClick={() => setReload((value) => value + 1)}>{t('reintentar')}</Button></div>
   );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Qué puede hacer el asistente</CardTitle>
-        <CardDescription>GO Assistant tiene operación completa (write_full) por defecto para todas las organizaciones, incluidas las nuevas, sin activación previa. Un administrador puede restringir el nivel de su organización. Los permisos de cada usuario, los módulos contratados, las herramientas habilitadas y las confirmaciones siguen aplicándose.</CardDescription>
+        <CardTitle>{t('titulo')}</CardTitle>
+        <CardDescription>{t('descripcion')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        {!settings.can_manage && <p role="status">Solo un administrador de esta organización puede cambiar esta configuración.</p>}
+        {!settings.can_manage && <p role="status">{t('soloAdministrador')}</p>}
         <Form {...form}>
           <form onSubmit={(event) => { event.preventDefault(); }} className="space-y-5">
             <FormField control={form.control} name="capability_level" render={({ field }) => (
               <FormItem>
-                <FormLabel>Nivel de capacidad</FormLabel>
+                <FormLabel>{t('nivelCapacidad')}</FormLabel>
                 <FormControl>
                   <select {...field} disabled={!settings.can_manage || saving} className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60">
-                    {choices.map((item) => <option key={item.value} value={item.value}>{item.label} ({item.value})</option>)}
+                    {choices.map((item) => <option key={item.value} value={item.value}>{t(item.label)} ({item.value})</option>)}
                   </select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <div className="space-y-3 text-sm">
-              {choices.map((item) => <p key={item.value}><strong>{item.label}:</strong> {item.description}</p>)}
-              <p>Elegir write_low restringe el asistente al catálogo, sin facturas, pagos ni ajustes contables. Ningún nivel concede permisos adicionales a los usuarios ni elimina las confirmaciones.</p>
+              {choices.map((item) => <p key={item.value}><strong>{t(item.label)}:</strong> {t(item.description)}</p>)}
+              <p>{t('notaWriteLow')}</p>
             </div>
             {settings.can_manage && (
               <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
                 <AlertDialogTrigger asChild>
                   <Button type="button" disabled={saving || !choice || selected === settings.capability_level}>
-                    {saving ? 'Guardando…' : 'Guardar nivel'}
+                    {saving ? t('guardando') : t('guardarNivel')}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>¿Cambiar el nivel de esta organización?</AlertDialogTitle>
-                    <AlertDialogDescription>Nuevo nivel: {choice?.label} ({selected}). {choice?.description} No se modificarán otras organizaciones ni las preferencias de voz, modelos o herramientas. Las propuestas seguirán sujetas a permisos y confirmación.</AlertDialogDescription>
+                    <AlertDialogTitle>{t('confirmar.titulo')}</AlertDialogTitle>
+                    <AlertDialogDescription>{t('confirmar.descripcion', { etiqueta: choice ? t(choice.label) : '', nivel: selected, descripcion: choice ? t(choice.description) : '' })}</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => { void form.handleSubmit(save)(); }}>Confirmar cambio</AlertDialogAction>
+                    <AlertDialogCancel>{t('confirmar.cancelar')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { void form.handleSubmit(save)(); }}>{t('confirmar.aceptar')}</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

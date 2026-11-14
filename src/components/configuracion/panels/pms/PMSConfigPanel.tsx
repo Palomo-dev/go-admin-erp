@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import PMSSettingsService, { type PMSSettings } from '@/lib/services/pmsSettingsService';
@@ -19,6 +20,7 @@ import { contarCambios, useRegistrarCambios } from '../../dialogo/cambiosSinGuar
 export function PMSConfigPanel() {
   const { organization } = useOrganization();
   const { toast } = useToast();
+  const t = useTranslations('configuracionTextos.pmsConfigPanel');
 
   const [settings, setSettings] = useState<PMSSettings | null>(null);
   const [originalSettings, setOriginalSettings] = useState<PMSSettings | null>(null);
@@ -38,12 +40,12 @@ export function PMSConfigPanel() {
       setOriginalSettings(data);
     } catch (error) {
       console.error('Error loading settings:', error);
-      toast({ title: 'Error', description: 'No se pudieron cargar las configuraciones', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorCargar'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [organization?.id, toast]);
+  }, [organization?.id, toast, t]);
 
   useEffect(() => {
     if (organization?.id) loadSettings();
@@ -52,7 +54,7 @@ export function PMSConfigPanel() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await loadSettings();
-    toast({ title: 'Actualizado', description: 'Las configuraciones han sido recargadas' });
+    toast({ title: t('actualizado.titulo'), description: t('actualizado.descripcion') });
   };
 
   const handleChange = (key: keyof PMSSettings, value: unknown) => {
@@ -67,10 +69,10 @@ export function PMSConfigPanel() {
     try {
       await PMSSettingsService.saveSettings(organization.id, settings);
       setOriginalSettings(settings);
-      toast({ title: 'Guardado', description: 'Las configuraciones han sido guardadas correctamente' });
+      toast({ title: t('guardado.titulo'), description: t('guardado.descripcion') });
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast({ title: 'Error', description: 'No se pudieron guardar las configuraciones', variant: 'destructive' });
+      toast({ title: t('error'), description: t('errorGuardar'), variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }
@@ -105,7 +107,7 @@ export function PMSConfigPanel() {
         </Button>
         <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
           <Save className="h-4 w-4 mr-2" />
-          {isSaving ? 'Guardando...' : 'Guardar'}
+          {isSaving ? t('guardando') : t('guardar')}
         </Button>
       </div>
 

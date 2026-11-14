@@ -48,6 +48,22 @@ interface Props {
   onMovidoVisto: () => void;
 }
 
+/**
+ * Pestañas internas de los paneles (`TabsList` de Radix: Chat › IA y otras)
+ * que no caben en el ancho del diálogo: se desplazan en horizontal dentro de su
+ * propio ancho en lugar de desbordarse y quedar recortadas por el panel (en
+ * Chat › IA no se podían alcanzar las últimas). Solo apunta a las de Radix
+ * (`data-orientation`): el `TabBar` del kit ya se desplaza solo.
+ */
+const PESTANAS_INTERNAS_DESPLAZABLES = [
+  '[&_[role=tablist][data-orientation=horizontal]]:h-auto',
+  '[&_[role=tablist][data-orientation=horizontal]]:max-w-full',
+  '[&_[role=tablist][data-orientation=horizontal]]:justify-start',
+  '[&_[role=tablist][data-orientation=horizontal]]:overflow-x-auto',
+  '[&_[role=tablist][data-orientation=horizontal]]:overflow-y-hidden',
+  '[&_[role=tablist][data-orientation=horizontal]]:[scrollbar-width:thin]',
+].join(' ');
+
 function esCampoEditable(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
   return el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName);
@@ -320,7 +336,7 @@ export function ConfiguracionDialogo({ destino, cambios, onNavegar, onCerrar, on
               {botonCerrar}
             </div>
             <div className="absolute right-4 top-4 z-20 hidden lg:block">{botonCerrar}</div>
-            <div className="min-h-0 flex-1 overflow-y-auto bg-surface px-4 py-4 lg:px-8 lg:pb-8 lg:pt-14">{cuerpo}</div>
+            <div className={cn('min-h-0 flex-1 overflow-y-auto overscroll-contain bg-surface px-4 py-4 lg:px-8 lg:pb-8 lg:pt-14', PESTANAS_INTERNAS_DESPLAZABLES)}>{cuerpo}</div>
 
             {nCambios > 0 && (
               <div

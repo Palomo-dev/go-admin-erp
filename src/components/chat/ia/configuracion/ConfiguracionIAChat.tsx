@@ -5,6 +5,13 @@
  * ahora redirige aquí: decisión del dueño 2026-10-07, un solo lugar para todas
  * las configuraciones). Mismo contenido y mismo servicio (`AISettingsService`):
  * solo se mudó de la página del módulo a una sección de Configuración.
+ *
+ * Dentro del diálogo de Configuración usa la barra del diálogo («N cambios sin
+ * guardar · Descartar · Guardar cambios», Figma 92-config-dialogo-01): se
+ * registra con `useRegistrarCambios` y no pinta la suya; el diálogo pregunta
+ * antes de descartar al cerrar o cambiar de sección. Qué se guarda y dónde no
+ * cambia (`AISettingsService.updateSettings`). El interruptor de la IA y el
+ * modo de cada canal se siguen guardando al instante, como antes.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,6 +30,38 @@ import {
   BehaviorSettings,
   ChannelAIModeTable
 } from '@/components/chat/ia/configuracion';
+import { contarCambios, useDentroDelDialogo, useRegistrarCambios } from '@/components/configuracion/dialogo/cambiosSinGuardar';
+
+/** Lo que se edita y se guarda con «Guardar» (el interruptor de la IA se guarda al instante). */
+interface Editables {
+  provider: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  maxFragmentsContext: number;
+  tone: string;
+  language: string;
+  systemRules: string;
+  fallbackMessage: string;
+  autoResponseEnabled: boolean;
+  autoResponseDelay: number;
+  confidenceThreshold: number;
+}
+
+const VALORES_INICIALES: Editables = {
+  provider: 'openai',
+  model: 'gpt-4-turbo-preview',
+  temperature: 0.7,
+  maxTokens: 500,
+  maxFragmentsContext: 5,
+  tone: 'professional',
+  language: 'es',
+  systemRules: '',
+  fallbackMessage: '',
+  autoResponseEnabled: true,
+  autoResponseDelay: 5,
+  confidenceThreshold: 0.7,
+};
 
 export function ConfiguracionIAChat() {
   const router = useRouter();
@@ -34,21 +73,55 @@ export function ConfiguracionIAChat() {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<AISettings | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [hasChanges, setHasChanges] = useState(false);
+  const enDialogo = useDentroDelDialogo();
+  /** Lo último guardado (o los valores iniciales si la organización aún no tiene configuración). */
+  const [guardado, setGuardado] = useState<Editables>(VALORES_INICIALES);
 
-  const [provider, setProvider] = useState('openai');
-  const [model, setModel] = useState('gpt-4-turbo-preview');
-  const [temperature, setTemperature] = useState(0.7);
-  const [maxTokens, setMaxTokens] = useState(500);
-  const [maxFragmentsContext, setMaxFragmentsContext] = useState(5);
-  const [tone, setTone] = useState('professional');
-  const [language, setLanguage] = useState('es');
-  const [systemRules, setSystemRules] = useState('');
-  const [fallbackMessage, setFallbackMessage] = useState('');
-  const [autoResponseEnabled, setAutoResponseEnabled] = useState(true);
-  const [autoResponseDelay, setAutoResponseDelay] = useState(5);
-  const [confidenceThreshold, setConfidenceThreshold] = useState(0.7);
+  const [provider, setProvider] = useState(VALORES_INICIALES.provider);
+  const [model, setModel] = useState(VALORES_INICIALES.model);
+  const [temperature, setTemperature] = useState(VALORES_INICIALES.temperature);
+  const [maxTokens, setMaxTokens] = useState(VALORES_INICIALES.maxTokens);
+  const [maxFragmentsContext, setMaxFragmentsContext] = useState(VALORES_INICIALES.maxFragmentsContext);
+  const [tone, setTone] = useState(VALORES_INICIALES.tone);
+  const [language, setLanguage] = useState(VALORES_INICIALES.language);
+  const [systemRules, setSystemRules] = useState(VALORES_INICIALES.systemRules);
+  const [fallbackMessage, setFallbackMessage] = useState(VALORES_INICIALES.fallbackMessage);
+  const [autoResponseEnabled, setAutoResponseEnabled] = useState(VALORES_INICIALES.autoResponseEnabled);
+  const [autoResponseDelay, setAutoResponseDelay] = useState(VALORES_INICIALES.autoResponseDelay);
+  const [confidenceThreshold, setConfidenceThreshold] = useState(VALORES_INICIALES.confidenceThreshold);
   const [isActive, setIsActive] = useState(true);
+
+  const aplicar = useCallback((v: Editables) => {
+    setProvider(v.provider);
+    setModel(v.model);
+    setTemperature(v.temperature);
+    setMaxTokens(v.maxTokens);
+    setMaxFragmentsContext(v.maxFragmentsContext);
+    setTone(v.tone);
+    setLanguage(v.language);
+    setSystemRules(v.systemRules);
+    setFallbackMessage(v.fallbackMessage);
+    setAutoResponseEnabled(v.autoResponseEnabled);
+    setAutoResponseDelay(v.autoResponseDelay);
+    setConfidenceThreshold(v.confidenceThreshold);
+  }, []);
+
+  const editado: Editables = {
+    provider,
+    model,
+    temperature,
+    maxTokens,
+    maxFragmentsContext,
+    tone,
+    language,
+    systemRules,
+    fallbackMessage,
+    autoResponseEnabled,
+    autoResponseDelay,
+    confidenceThreshold,
+  };
+  const nCambios = contarCambios(editado, guardado);
+  const hasChanges = nCambios > 0;
 
   const loadData = useCallback(async () => {
     if (!organizationId) return;
@@ -64,23 +137,25 @@ export function ConfiguracionIAChat() {
       setSettings(settingsData);
       setChannels(channelsData);
 
-      if (settingsData) {
-        setProvider(settingsData.provider);
-        setModel(settingsData.model);
-        setTemperature(settingsData.temperature);
-        setMaxTokens(settingsData.max_tokens);
-        setMaxFragmentsContext(settingsData.max_fragments_context);
-        setTone(settingsData.tone);
-        setLanguage(settingsData.language);
-        setSystemRules(settingsData.system_rules || '');
-        setFallbackMessage(settingsData.fallback_message);
-        setAutoResponseEnabled(settingsData.auto_response_enabled);
-        setAutoResponseDelay(settingsData.auto_response_delay_seconds);
-        setConfidenceThreshold(settingsData.confidence_threshold);
-        setIsActive(settingsData.is_active);
-      }
-
-      setHasChanges(false);
+      const valores: Editables = settingsData
+        ? {
+            provider: settingsData.provider,
+            model: settingsData.model,
+            temperature: settingsData.temperature,
+            maxTokens: settingsData.max_tokens,
+            maxFragmentsContext: settingsData.max_fragments_context,
+            tone: settingsData.tone,
+            language: settingsData.language,
+            systemRules: settingsData.system_rules || '',
+            fallbackMessage: settingsData.fallback_message,
+            autoResponseEnabled: settingsData.auto_response_enabled,
+            autoResponseDelay: settingsData.auto_response_delay_seconds,
+            confidenceThreshold: settingsData.confidence_threshold,
+          }
+        : VALORES_INICIALES;
+      aplicar(valores);
+      setGuardado(valores);
+      if (settingsData) setIsActive(settingsData.is_active);
     } catch (error) {
       console.error('Error cargando configuración:', error);
       toast({
@@ -91,15 +166,16 @@ export function ConfiguracionIAChat() {
     } finally {
       setLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId, toast, aplicar]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
+  // Hay cambios cuando lo editado difiere de lo guardado (`nCambios`): volver
+  // al valor original ya no cuenta como cambio.
   const handleChange = <T,>(setter: (value: T) => void) => (value: T) => {
     setter(value);
-    setHasChanges(true);
   };
 
   // Guardar la configuración va por PATCH /api/chat/ai/settings (organización
@@ -154,7 +230,6 @@ export function ConfiguracionIAChat() {
         description: 'Los cambios se aplicaron correctamente'
       });
 
-      setHasChanges(false);
       await loadData();
     } catch (error) {
       toast({
@@ -166,6 +241,16 @@ export function ConfiguracionIAChat() {
       setSaving(false);
     }
   };
+
+  const descartar = () => aplicar(guardado);
+
+  // Barra «cambios sin guardar» del diálogo de Configuración.
+  useRegistrarCambios({
+    cambios: nCambios,
+    guardando: saving,
+    guardar: handleSave,
+    descartar,
+  });
 
   const handleChannelModeChange = async (channelId: string, mode: 'auto' | 'hybrid' | 'manual') => {
     if (!organizationId) return;
@@ -303,7 +388,7 @@ export function ConfiguracionIAChat() {
         </Tabs>
       </div>
 
-      {hasChanges && (
+      {hasChanges && !enDialogo && (
         <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -312,7 +397,7 @@ export function ConfiguracionIAChat() {
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
-                onClick={loadData}
+                onClick={descartar}
                 disabled={saving}
                 className="border-gray-300 dark:border-gray-700"
               >

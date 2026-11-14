@@ -50873,6 +50873,7 @@
       "titulo": "Connaissances",
       "subtitulo": "Ce que l’IA peut utiliser pour répondre : politiques, FAQ, catalogue et guides.",
       "configurarIa": "Configurer l’IA",
+      "importarBoton": "Importer",
       "importar": {
         "titulo": "Importer des fragments",
         "subtitulo": "Chargez-en plusieurs d’un coup depuis un CSV ou en collant du texte.",

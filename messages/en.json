@@ -50873,6 +50873,7 @@
       "titulo": "Knowledge",
       "subtitulo": "What the AI can use to reply: policies, FAQs, catalog and guides.",
       "configurarIa": "Configure AI",
+      "importarBoton": "Import",
       "importar": {
         "titulo": "Import snippets",
         "subtitulo": "Load many at once from a CSV or by pasting text.",

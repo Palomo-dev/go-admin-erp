@@ -18,6 +18,7 @@ import ChatChannelsService, { type AIMode, type ActividadCanales, type ChatChann
 import { TablaCanales } from '@/components/chat/channels/TablaCanales';
 import { TarjetaCanal } from '@/components/chat/channels/TarjetaCanal';
 import { DialogoNuevoCanal, type NuevoCanal } from '@/components/chat/channels/DialogoNuevoCanal';
+import WidgetCodeDialog from '@/components/chat/channels/WidgetCodeDialog';
 import { canalDeTipo } from '@/components/chat/ui/CanalIcono';
 import {
   canalesConError,
@@ -42,6 +43,7 @@ export default function CanalesPage() {
   const [fallo, setFallo] = useState(false);
   const [guardando, setGuardando] = useState<Set<string>>(new Set());
   const [dialogo, setDialogo] = useState<{ abierto: boolean; tipo: TipoDisponible | null }>({ abierto: false, tipo: null });
+  const [codigoDe, setCodigoDe] = useState<ChatChannel | null>(null);
 
   const cargar = useCallback(async () => {
     if (!organizationId) return;
@@ -187,6 +189,7 @@ export default function CanalesPage() {
           onCambiarModo={cambiarModo}
           onAlternarActivo={alternarActivo}
           onConfigurar={configurar}
+          onCodigoWidget={setCodigoDe}
           onReintentar={cargar}
           onNuevo={() => setDialogo({ abierto: true, tipo: null })}
         />
@@ -231,6 +234,7 @@ export default function CanalesPage() {
         onAbiertoChange={(abierto) => setDialogo((d) => ({ ...d, abierto }))}
         onCrear={crear}
       />
+      <WidgetCodeDialog open={!!codigoDe} onOpenChange={(abierto) => !abierto && setCodigoDe(null)} channel={codigoDe} />
     </div>
   );
 }

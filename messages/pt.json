@@ -50569,6 +50569,82 @@
         }
       },
       "widget": {
+        "mas": {
+          "codigoInstalacion": "Código de instalação",
+          "instalacion": {
+            "copiarClave": "Copiar chave pública",
+            "claveCopiada": "Chave copiada",
+            "confirmarRotarTitulo": "Gerar uma chave nova?",
+            "confirmarRotarDescripcion": "O código que você já colou em outros sites deixa de funcionar até você trocá-lo pelo novo. Se o chat aparece no seu site GO Admin, lá ele se atualiza sozinho.",
+            "cancelar": "Cancelar"
+          },
+          "apariencia": {
+            "margenHorizontal": "Margem horizontal",
+            "margenVertical": "Margem vertical",
+            "margenHorizontalAyudaDerecha": "Distância da borda direita da tela (0 a {max} px).",
+            "margenHorizontalAyudaIzquierda": "Distância da borda esquerda da tela (0 a {max} px).",
+            "margenVerticalAyudaAbajo": "Distância da borda inferior da tela (0 a {max} px).",
+            "margenVerticalAyudaArriba": "Distância da borda superior da tela (0 a {max} px).",
+            "logo": "Logo do chat",
+            "logoAyuda": "Link https de uma imagem. Sem logo, o chat usa o da sua organização.",
+            "logoInvalido": "Use um link que comece com https://"
+          },
+          "estilo": {
+            "coloresSugeridos": "Cores sugeridas",
+            "usarColor": "Usar a cor {color}",
+            "colorIcono": "Cor do ícone",
+            "colorBorde": "Cor da borda",
+            "colorInvalido": "Digite uma cor como #3B82F6",
+            "icono": "Ícone do botão",
+            "iconos": {
+              "chat": "Chat",
+              "message": "Mensagem",
+              "support": "Suporte",
+              "whatsapp": "Ajuda",
+              "custom": "Imagem própria"
+            },
+            "iconoUrl": "Imagem do ícone",
+            "iconoUrlAyuda": "Link https de uma imagem quadrada (PNG ou SVG).",
+            "urlInvalida": "Use um link que comece com https://",
+            "relleno": "Estilo do ícone",
+            "rellenos": {
+              "outline": "Contorno",
+              "filled": "Preenchido"
+            },
+            "rellenoSoporte": "O ícone de suporte é sempre em contorno.",
+            "tamanoExacto": "Tamanho exato",
+            "radio": "Arredondamento",
+            "borde": "Espessura da borda",
+            "rango": "De {min} a {max} px",
+            "sombra": "Sombra",
+            "sombras": {
+              "none": "Sem sombra",
+              "light": "Suave",
+              "medium": "Média",
+              "strong": "Forte"
+            }
+          },
+          "alAbrir": {
+            "vistaInicial": "O que o visitante vê primeiro",
+            "vistas": {
+              "chat": "Chat direto · escreve na hora",
+              "form": "Formulário primeiro · pede os dados antes do chat",
+              "faq": "Perguntas frequentes · botões rápidos em lista"
+            },
+            "pedirDatosFueraDeLinea": "Se ninguém estiver on-line, pedir os dados de contato",
+            "pedirDatosFueraDeLineaAyuda": "Assim você pode responder depois por e-mail ou WhatsApp.",
+            "mostrarBotones": "Mostrar os botões rápidos",
+            "mensajeBoton": "Mensagem ou link (opcional)",
+            "mensajeBotonAyuda": "Com um link https, o botão o abre; com uma mensagem, ele a envia. Vazio, envia o texto do botão.",
+            "botonesOcultos": "Os botões ficam salvos, mas o visitante não os vê enquanto isto estiver desligado.",
+            "abreEnlace": "Abre um link"
+          },
+          "vistaPrevia": {
+            "escribe": "Escreva uma mensagem…",
+            "abreEnlace": "Abre um link",
+            "escalaReal": "Margens e tamanhos em escala real, em px."
+          }
+        },
         "visible": "Visível no site",
         "oculto": "Oculto no site",
         "mostrarEnSitio": "Mostrar no site",

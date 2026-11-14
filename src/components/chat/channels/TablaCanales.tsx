@@ -7,7 +7,7 @@
  */
 import { useMemo } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Settings } from 'lucide-react';
+import { Code2, Settings } from 'lucide-react';
 import { DataTable, type ColumnaTabla, type EstadoTabla } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -33,11 +33,13 @@ export interface TablaCanalesProps {
   onCambiarModo: (canal: ChatChannel, modo: AIMode) => void;
   onAlternarActivo: (canal: ChatChannel) => void;
   onConfigurar: (canal: ChatChannel) => void;
+  /** Solo canales del sitio web: abre el código de instalación del widget. */
+  onCodigoWidget?: (canal: ChatChannel) => void;
   onReintentar: () => void;
   onNuevo: () => void;
 }
 
-export function TablaCanales({ canales, actividad, estado, guardando, onCambiarModo, onAlternarActivo, onConfigurar, onReintentar, onNuevo }: TablaCanalesProps) {
+export function TablaCanales({ canales, actividad, estado, guardando, onCambiarModo, onAlternarActivo, onConfigurar, onCodigoWidget, onReintentar, onNuevo }: TablaCanalesProps) {
   const t = useTranslations('chatModulo.canales');
   const locale = useLocale();
   const ahora = useMemo(() => new Date(), [actividad]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -143,7 +145,12 @@ export function TablaCanales({ canales, actividad, estado, guardando, onCambiarM
       estado={estado}
       onFilaClick={onConfigurar}
       etiquetaFila={(c) => c.name}
-      acciones={(c) => [{ id: 'configurar', etiqueta: t('acciones.configurar'), icono: Settings, onSelect: () => onConfigurar(c) }]}
+      acciones={(c) => [
+        { id: 'configurar', etiqueta: t('acciones.configurar'), icono: Settings, onSelect: () => onConfigurar(c) },
+        ...(c.type === 'website' && onCodigoWidget
+          ? [{ id: 'codigo', etiqueta: t('widget.mas.codigoInstalacion'), icono: Code2, onSelect: () => onCodigoWidget(c) }]
+          : []),
+      ]}
       vacio={{ titulo: t('tabla.vacioTitulo'), descripcion: t('tabla.vacioDescripcion'), accion: { etiqueta: t('nuevoCanal'), onClick: onNuevo } }}
       error={{ titulo: t('tabla.errorTitulo') }}
       onReintentar={onReintentar}

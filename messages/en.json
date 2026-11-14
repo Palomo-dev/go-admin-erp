@@ -50559,6 +50559,82 @@
         }
       },
       "widget": {
+        "mas": {
+          "codigoInstalacion": "Install code",
+          "instalacion": {
+            "copiarClave": "Copy public key",
+            "claveCopiada": "Key copied",
+            "confirmarRotarTitulo": "Generate a new key?",
+            "confirmarRotarDescripcion": "The code you already pasted on other sites stops working until you replace it with the new one. If the chat is shown on your GO Admin site, it updates there automatically.",
+            "cancelar": "Cancel"
+          },
+          "apariencia": {
+            "margenHorizontal": "Horizontal margin",
+            "margenVertical": "Vertical margin",
+            "margenHorizontalAyudaDerecha": "Distance from the right edge of the screen (0 to {max} px).",
+            "margenHorizontalAyudaIzquierda": "Distance from the left edge of the screen (0 to {max} px).",
+            "margenVerticalAyudaAbajo": "Distance from the bottom edge of the screen (0 to {max} px).",
+            "margenVerticalAyudaArriba": "Distance from the top edge of the screen (0 to {max} px).",
+            "logo": "Chat logo",
+            "logoAyuda": "An https link to an image. Without a logo, the chat uses your organization’s.",
+            "logoInvalido": "Use a link that starts with https://"
+          },
+          "estilo": {
+            "coloresSugeridos": "Suggested colors",
+            "usarColor": "Use color {color}",
+            "colorIcono": "Icon color",
+            "colorBorde": "Border color",
+            "colorInvalido": "Type a color like #3B82F6",
+            "icono": "Button icon",
+            "iconos": {
+              "chat": "Chat",
+              "message": "Message",
+              "support": "Support",
+              "whatsapp": "Help",
+              "custom": "Custom image"
+            },
+            "iconoUrl": "Icon image",
+            "iconoUrlAyuda": "An https link to a square image (PNG or SVG).",
+            "urlInvalida": "Use a link that starts with https://",
+            "relleno": "Icon style",
+            "rellenos": {
+              "outline": "Outline",
+              "filled": "Filled"
+            },
+            "rellenoSoporte": "The support icon is always outlined.",
+            "tamanoExacto": "Exact size",
+            "radio": "Corner radius",
+            "borde": "Border width",
+            "rango": "From {min} to {max} px",
+            "sombra": "Shadow",
+            "sombras": {
+              "none": "No shadow",
+              "light": "Light",
+              "medium": "Medium",
+              "strong": "Strong"
+            }
+          },
+          "alAbrir": {
+            "vistaInicial": "What the visitor sees first",
+            "vistas": {
+              "chat": "Direct chat · they type right away",
+              "form": "Form first · ask for their details before chatting",
+              "faq": "FAQ · quick buttons as a list"
+            },
+            "pedirDatosFueraDeLinea": "If nobody is online, ask for their contact details",
+            "pedirDatosFueraDeLineaAyuda": "So you can reply later by email or WhatsApp.",
+            "mostrarBotones": "Show quick buttons",
+            "mensajeBoton": "Message or link (optional)",
+            "mensajeBotonAyuda": "If you type an https link, the button opens it; if you type a message, it sends it. Empty, it sends the button text.",
+            "botonesOcultos": "The buttons stay saved, but visitors don’t see them while this is off.",
+            "abreEnlace": "Opens a link"
+          },
+          "vistaPrevia": {
+            "escribe": "Type a message…",
+            "abreEnlace": "Opens a link",
+            "escalaReal": "Margins and sizes at real scale, in px."
+          }
+        },
         "visible": "Visible on the site",
         "oculto": "Hidden on the site",
         "mostrarEnSitio": "Show on the site",

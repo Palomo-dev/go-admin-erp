@@ -50559,6 +50559,82 @@
         }
       },
       "widget": {
+        "mas": {
+          "codigoInstalacion": "Code d’installation",
+          "instalacion": {
+            "copiarClave": "Copier la clé publique",
+            "claveCopiada": "Clé copiée",
+            "confirmarRotarTitulo": "Générer une nouvelle clé ?",
+            "confirmarRotarDescripcion": "Le code déjà collé sur d’autres sites cesse de fonctionner jusqu’à ce que vous le remplaciez par le nouveau. Si le chat s’affiche sur votre site GO Admin, il s’y met à jour tout seul.",
+            "cancelar": "Annuler"
+          },
+          "apariencia": {
+            "margenHorizontal": "Marge horizontale",
+            "margenVertical": "Marge verticale",
+            "margenHorizontalAyudaDerecha": "Distance du bord droit de l’écran (0 à {max} px).",
+            "margenHorizontalAyudaIzquierda": "Distance du bord gauche de l’écran (0 à {max} px).",
+            "margenVerticalAyudaAbajo": "Distance du bas de l’écran (0 à {max} px).",
+            "margenVerticalAyudaArriba": "Distance du haut de l’écran (0 à {max} px).",
+            "logo": "Logo du chat",
+            "logoAyuda": "Lien https vers une image. Sans logo, le chat utilise celui de votre organisation.",
+            "logoInvalido": "Utilisez un lien qui commence par https://"
+          },
+          "estilo": {
+            "coloresSugeridos": "Couleurs suggérées",
+            "usarColor": "Utiliser la couleur {color}",
+            "colorIcono": "Couleur de l’icône",
+            "colorBorde": "Couleur de la bordure",
+            "colorInvalido": "Saisissez une couleur comme #3B82F6",
+            "icono": "Icône du bouton",
+            "iconos": {
+              "chat": "Chat",
+              "message": "Message",
+              "support": "Assistance",
+              "whatsapp": "Aide",
+              "custom": "Image personnalisée"
+            },
+            "iconoUrl": "Image de l’icône",
+            "iconoUrlAyuda": "Lien https vers une image carrée (PNG ou SVG).",
+            "urlInvalida": "Utilisez un lien qui commence par https://",
+            "relleno": "Style de l’icône",
+            "rellenos": {
+              "outline": "Contour",
+              "filled": "Plein"
+            },
+            "rellenoSoporte": "L’icône d’assistance est toujours en contour.",
+            "tamanoExacto": "Taille exacte",
+            "radio": "Arrondi",
+            "borde": "Épaisseur de la bordure",
+            "rango": "De {min} à {max} px",
+            "sombra": "Ombre",
+            "sombras": {
+              "none": "Sans ombre",
+              "light": "Légère",
+              "medium": "Moyenne",
+              "strong": "Forte"
+            }
+          },
+          "alAbrir": {
+            "vistaInicial": "Ce que le visiteur voit d’abord",
+            "vistas": {
+              "chat": "Chat direct · il écrit tout de suite",
+              "form": "Formulaire d’abord · demander ses coordonnées avant le chat",
+              "faq": "Questions fréquentes · boutons rapides en liste"
+            },
+            "pedirDatosFueraDeLinea": "Si personne n’est connecté, demander ses coordonnées",
+            "pedirDatosFueraDeLineaAyuda": "Pour lui répondre plus tard par e-mail ou WhatsApp.",
+            "mostrarBotones": "Afficher les boutons rapides",
+            "mensajeBoton": "Message ou lien (facultatif)",
+            "mensajeBotonAyuda": "Avec un lien https, le bouton l’ouvre ; avec un message, il l’envoie. Vide, il envoie le texte du bouton.",
+            "botonesOcultos": "Les boutons restent enregistrés, mais le visiteur ne les voit pas tant que c’est désactivé.",
+            "abreEnlace": "Ouvre un lien"
+          },
+          "vistaPrevia": {
+            "escribe": "Écrivez un message…",
+            "abreEnlace": "Ouvre un lien",
+            "escalaReal": "Marges et tailles à l’échelle réelle, en px."
+          }
+        },
         "visible": "Visible sur le site",
         "oculto": "Masqué sur le site",
         "mostrarEnSitio": "Afficher sur le site",

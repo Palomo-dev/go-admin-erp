@@ -44,6 +44,7 @@ export function CabeceraConversacion({
   const te = useTranslations('chatUi.estado');
   const ti = useTranslations('chatBandeja.ia.modo');
   const tc = useTranslations('chatUi.canales');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const d = c.detalle;
   const nombre = d ? nombreClienteConversacion(d, t('cliente')) : '';
   const canal = canalDeTipo(d?.channel?.type);
@@ -91,7 +92,11 @@ export function CabeceraConversacion({
               </h1>
             </div>
             <div className="flex flex-wrap items-center gap-2 max-lg:w-full">
-              <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" />
+              {c.bloqueo ? (
+                <StatusBadge estado="bloqueada" etiqueta={tb('insignia')} tono="peligro" apariencia="contorno" />
+              ) : (
+                <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" />
+              )}
               <StatusBadge estado={prioridad} etiqueta={t(`prioridad.${prioridad}`)} tono={TONO_PRIORIDAD[prioridad]} apariencia="contorno" />
               <StatusBadge estado={modoIa} etiqueta={ti(modoIa)} tono={modoIa === 'manual' ? 'neutro' : 'informacion'} apariencia="contorno" className="hidden sm:inline-flex" />
               <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} variante="cabecera" className="max-lg:ml-auto" />

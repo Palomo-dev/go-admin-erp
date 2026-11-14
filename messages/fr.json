@@ -50025,6 +50025,58 @@
       }
     }
   },
+  "chatBandejaPendientes": {
+    "bloqueo": {
+      "contacto": "ce contact",
+      "menuBloquear": "Bloquer le contact",
+      "menuDesbloquear": "Débloquer le contact",
+      "confirmarTitulo": "Bloquer {nombre} ?",
+      "confirmarDescripcion": "Ses nouveaux messages n’arriveront plus dans la boîte de réception et l’IA ne lui répondra pas. La conversation et son historique sont conservés. Vous pouvez le débloquer à tout moment depuis ce même menu.",
+      "confirmar": "Bloquer le contact",
+      "cancelar": "Annuler",
+      "insignia": "Bloquée",
+      "avisoTitulo": "Vous avez bloqué {nombre}",
+      "avisoDescripcion": "Ses nouveaux messages n’arrivent plus dans la boîte de réception et l’IA ne lui répond pas. L’historique est conservé.",
+      "desbloquear": "Débloquer",
+      "eventoBloqueo": "{persona} a bloqué le contact",
+      "eventoBloqueoSinPersona": "Le contact a été bloqué",
+      "eventoDesbloqueo": "{persona} a débloqué le contact",
+      "eventoDesbloqueoSinPersona": "Le contact a été débloqué",
+      "mensajeBloqueado": "Reçu alors que le contact était bloqué",
+      "avisos": {
+        "bloqueado": "Contact bloqué",
+        "desbloqueado": "Contact débloqué",
+        "error": "Impossible de modifier le blocage du contact"
+      }
+    },
+    "valoracion": {
+      "teSirvio": "Cela vous a aidé ?",
+      "si": "Oui",
+      "no": "Non",
+      "gracias": "Merci, votre vote est enregistré",
+      "queFallo": "Qu’est-ce qui n’allait pas ?",
+      "motivos": {
+        "dato_incorrecto": "Information incorrecte",
+        "no_respondio": "N’a pas répondu à la question",
+        "tono": "Ton",
+        "muy_larga": "Trop longue",
+        "otro": "Autre"
+      },
+      "comentario": "Dites-nous ce que vous attendiez (facultatif)",
+      "cancelar": "Annuler",
+      "enviar": "Envoyer",
+      "eligeMotivo": "Choisissez ce qui n’allait pas",
+      "ayuda": "Enregistré dans IA › Tâches avec la réponse, pour corriger la base de connaissances. Le client ne le voit pas.",
+      "error": "Impossible d’enregistrer votre vote",
+      "trabajos": {
+        "columna": "Évaluation",
+        "resumen": "{util} utiles, {noUtil} pas utiles",
+        "detalleTitulo": "Évaluation de l’équipe",
+        "util": "Utile",
+        "noUtil": "Pas utile"
+      }
+    }
+  },
   "chatModulo": {
     "pestanas": {
       "etiqueta": "Sections du chat",

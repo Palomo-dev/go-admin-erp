@@ -19,6 +19,7 @@ import ConversationDetailService, {
 } from '@/lib/services/conversationDetailService';
 import { enviarMensajeConversacion, ErrorEnvio, motivoErrorEnvio } from '@/lib/services/chat/envioMensaje';
 import { chatApi } from '@/lib/services/chat/chatApi';
+import { bloqueoVigente, eventosDeBloqueos, leerBloqueosCliente, type BloqueoContacto } from '@/lib/services/chat/bloqueoContacto';
 import type { AgenteChat } from '@/lib/services/chat/agentesChat';
 import { waApi } from '@/components/crm/whatsapp/api';
 import { estadoComposer, type EstadoComposer } from '@/components/chat/ui/composerLogica';
@@ -58,6 +59,7 @@ export type Etiqueta = { id: string; name: string; color: string };
 
 export function useConversacion(organizationId: number | null | undefined, conversationId: string | null | undefined) {
   const t = useTranslations('chatBandeja.avisos');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo.avisos');
   const te = useTranslations('chatUi.composer.errores');
   const { toast } = useToast();
   const { agentes, recargar: recargarAgentes } = useAgentesChat();
@@ -70,6 +72,8 @@ export function useConversacion(organizationId: number | null | undefined, conve
   const [ventana, setVentana] = useState<VentanaWhatsApp | null>(null);
   const [cargando, setCargando] = useState(true);
   const [sugerencia, setSugerencia] = useState<{ texto: string; jobId: string | null } | null>(null);
+  /** Historia de bloqueos del contacto (Figma 93-chat-pendientes-01/02). */
+  const [bloqueos, setBloqueos] = useState<BloqueoContacto[]>([]);
   const vigente = useRef<string | null>(null);
 
   const servicio = useMemo(() => (organizationId ? new ConversationDetailService(organizationId) : null), [organizationId]);
@@ -102,9 +106,23 @@ export function useConversacion(organizationId: number | null | undefined, conve
     }
   }, []);
 
+  const leerBloqueos = useCallback(
+    async (customerId: string | null | undefined, convId: string) => {
+      if (!organizationId || !customerId) return;
+      try {
+        const filas = await leerBloqueosCliente(supabase, organizationId, customerId);
+        if (vigente.current === convId) setBloqueos(filas);
+      } catch (e) {
+        console.error('[useConversacion] bloqueo del contacto', e);
+      }
+    },
+    [organizationId],
+  );
+
   useEffect(() => {
     vigente.current = conversationId ?? null;
     setDetalle(null);
+    setBloqueos([]);
     setNotas([]);
     setResumen(null);
     setVentana(null);
@@ -130,6 +148,7 @@ export function useConversacion(organizationId: number | null | undefined, conve
         setEtiquetas(tags);
         setRespuestasRapidas(rapidas);
         void leerVentana(d);
+        void leerBloqueos(d?.customer_id, conversationId);
         void servicio.markMessagesAsRead(conversationId).catch(() => undefined);
       } catch (e) {
         error(t('errorCargar'), e);
@@ -137,7 +156,7 @@ export function useConversacion(organizationId: number | null | undefined, conve
         if (vigente.current === conversationId) setCargando(false);
       }
     })();
-  }, [servicio, conversationId, error, t, leerVentana]);
+  }, [servicio, conversationId, error, t, leerVentana, leerBloqueos]);
 
   const conAviso = useCallback(
     async (fn: () => Promise<unknown>, ok: string | null, fallo: string) => {
@@ -309,6 +328,25 @@ export function useConversacion(organizationId: number | null | undefined, conve
     [servicio, conversationId],
   );
 
+  /** Bloquea o desbloquea el contacto (ruta del servidor) y relee la historia. */
+  const cambiarBloqueo = useCallback(
+    (bloquear: boolean) =>
+      conAviso(
+        async () => {
+          if (bloquear) await chatApi.bloquearContacto(conversationId!);
+          else await chatApi.desbloquearContacto(conversationId!);
+          await leerBloqueos(detalle?.customer_id, conversationId!);
+        },
+        bloquear ? tb('bloqueado') : tb('desbloqueado'),
+        tb('error'),
+      ),
+    [conAviso, conversationId, detalle?.customer_id, leerBloqueos, tb],
+  );
+  const bloquearContacto = useCallback(() => cambiarBloqueo(true), [cambiarBloqueo]);
+  const desbloquearContacto = useCallback(() => cambiarBloqueo(false), [cambiarBloqueo]);
+  const bloqueo = useMemo(() => bloqueoVigente(bloqueos), [bloqueos]);
+  const eventosBloqueo = useMemo(() => eventosDeBloqueos(bloqueos), [bloqueos]);
+
   const estadoEscritura: EstadoComposer = estadoComposer({
     estadoConversacion: detalle?.status,
     tipoCanal: detalle?.channel?.type,
@@ -326,6 +364,10 @@ export function useConversacion(organizationId: number | null | undefined, conve
     cargando,
     sugerencia,
     estadoEscritura,
+    bloqueo,
+    eventosBloqueo,
+    bloquearContacto,
+    desbloquearContacto,
     cambiarEstado,
     cambiarPrioridad,
     asignar,

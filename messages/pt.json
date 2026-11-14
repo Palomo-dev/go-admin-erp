@@ -50035,6 +50035,58 @@
       }
     }
   },
+  "chatBandejaPendientes": {
+    "bloqueo": {
+      "contacto": "este contato",
+      "menuBloquear": "Bloquear contato",
+      "menuDesbloquear": "Desbloquear contato",
+      "confirmarTitulo": "Bloquear {nombre}?",
+      "confirmarDescripcion": "As novas mensagens não chegarão à caixa de entrada e a IA não responderá. A conversa e o histórico são mantidos. Você pode desbloquear quando quiser neste mesmo menu.",
+      "confirmar": "Bloquear contato",
+      "cancelar": "Cancelar",
+      "insignia": "Bloqueada",
+      "avisoTitulo": "Você bloqueou {nombre}",
+      "avisoDescripcion": "As novas mensagens não chegam à caixa de entrada e a IA não responde. O histórico é mantido.",
+      "desbloquear": "Desbloquear",
+      "eventoBloqueo": "{persona} bloqueou o contato",
+      "eventoBloqueoSinPersona": "O contato foi bloqueado",
+      "eventoDesbloqueo": "{persona} desbloqueou o contato",
+      "eventoDesbloqueoSinPersona": "O contato foi desbloqueado",
+      "mensajeBloqueado": "Recebida com o contato bloqueado",
+      "avisos": {
+        "bloqueado": "Contato bloqueado",
+        "desbloqueado": "Contato desbloqueado",
+        "error": "Não foi possível alterar o bloqueio do contato"
+      }
+    },
+    "valoracion": {
+      "teSirvio": "Isso ajudou?",
+      "si": "Sim",
+      "no": "Não",
+      "gracias": "Obrigado, salvamos seu voto",
+      "queFallo": "O que deu errado?",
+      "motivos": {
+        "dato_incorrecto": "Informação incorreta",
+        "no_respondio": "Não respondeu à pergunta",
+        "tono": "Tom",
+        "muy_larga": "Muito longa",
+        "otro": "Outro"
+      },
+      "comentario": "Conte o que você esperava (opcional)",
+      "cancelar": "Cancelar",
+      "enviar": "Enviar",
+      "eligeMotivo": "Escolha o que deu errado",
+      "ayuda": "Fica em IA › Tarefas com a resposta, para corrigir a base de conhecimento. O cliente não vê.",
+      "error": "Não foi possível salvar seu voto",
+      "trabajos": {
+        "columna": "Avaliação",
+        "resumen": "{util} úteis, {noUtil} não úteis",
+        "detalleTitulo": "Avaliação da equipe",
+        "util": "Útil",
+        "noUtil": "Não útil"
+      }
+    }
+  },
   "chatModulo": {
     "pestanas": {
       "etiqueta": "Seções do chat",

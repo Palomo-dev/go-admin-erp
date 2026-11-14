@@ -50040,6 +50040,58 @@
       }
     }
   },
+  "chatBandejaPendientes": {
+    "bloqueo": {
+      "contacto": "este contacto",
+      "menuBloquear": "Bloquear contacto",
+      "menuDesbloquear": "Desbloquear contacto",
+      "confirmarTitulo": "¿Bloquear a {nombre}?",
+      "confirmarDescripcion": "Sus mensajes nuevos no llegarán a la bandeja y la IA no le responderá. La conversación y su historial se conservan. Puedes desbloquearlo cuando quieras desde este mismo menú.",
+      "confirmar": "Bloquear contacto",
+      "cancelar": "Cancelar",
+      "insignia": "Bloqueada",
+      "avisoTitulo": "Bloqueaste a {nombre}",
+      "avisoDescripcion": "Sus mensajes nuevos no llegan a la bandeja y la IA no le responde. El historial se conserva.",
+      "desbloquear": "Desbloquear",
+      "eventoBloqueo": "{persona} bloqueó el contacto",
+      "eventoBloqueoSinPersona": "Se bloqueó el contacto",
+      "eventoDesbloqueo": "{persona} desbloqueó el contacto",
+      "eventoDesbloqueoSinPersona": "Se desbloqueó el contacto",
+      "mensajeBloqueado": "Llegó con el contacto bloqueado",
+      "avisos": {
+        "bloqueado": "Contacto bloqueado",
+        "desbloqueado": "Contacto desbloqueado",
+        "error": "No se pudo cambiar el bloqueo del contacto"
+      }
+    },
+    "valoracion": {
+      "teSirvio": "¿Te sirvió?",
+      "si": "Sí",
+      "no": "No",
+      "gracias": "Gracias, guardamos tu voto",
+      "queFallo": "¿Qué falló?",
+      "motivos": {
+        "dato_incorrecto": "Dato incorrecto",
+        "no_respondio": "No respondió lo que preguntó",
+        "tono": "Tono",
+        "muy_larga": "Muy larga",
+        "otro": "Otro"
+      },
+      "comentario": "Cuéntanos qué esperabas (opcional)",
+      "cancelar": "Cancelar",
+      "enviar": "Enviar",
+      "eligeMotivo": "Elige qué falló",
+      "ayuda": "Queda en IA › Trabajos con la respuesta, para corregir el conocimiento. El cliente no lo ve.",
+      "error": "No se pudo guardar tu voto",
+      "trabajos": {
+        "columna": "Valoración",
+        "resumen": "{util} útiles, {noUtil} no útiles",
+        "detalleTitulo": "Valoración del equipo",
+        "util": "Útil",
+        "noUtil": "No útil"
+      }
+    }
+  },
   "chatModulo": {
     "pestanas": {
       "etiqueta": "Secciones del chat",

@@ -15,7 +15,7 @@ export interface BurbujaProps {
   hora?: string;
   /** Solo salientes: ✓ enviado, ✓✓ leído. */
   entrega?: 'enviado' | 'leido' | null;
-  /** Detalle tras el título de IA o nota («Laura la revisó», autor de la nota). */
+  /** Detalle tras el título de IA o nota («Laura la revisó», autor de la nota); en el cliente, aviso al pie. */
   detalle?: string | null;
   className?: string;
   id?: string;
@@ -74,8 +74,10 @@ export function Burbuja({ autor, children, hora, entrega, detalle, className, id
           </p>
         )}
         <div className="break-words text-sm leading-relaxed [overflow-wrap:anywhere]">{children}</div>
-        {(hora || entrega) && (
+        {(hora || entrega || (autor === 'cliente' && detalle)) && (
           <p className={cn('mt-1 flex items-center justify-end gap-1 text-[11px]', autor === 'agente' ? 'text-fg-on-brand/80' : 'text-fg-muted')}>
+            {/* Cliente: aviso del sistema sobre el mensaje («llegó con el contacto bloqueado»). */}
+            {autor === 'cliente' && detalle ? <span className="mr-auto pr-2">{detalle}</span> : null}
             {hora}
             {entrega && (derecha && autor !== 'nota') ? (
               <Entrega aria-label={entrega === 'leido' ? t('leido') : t('enviado')} className="size-3.5" />

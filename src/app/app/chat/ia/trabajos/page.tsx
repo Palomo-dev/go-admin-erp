@@ -4,10 +4,12 @@
  * Trabajos de la IA del chat (Figma 91-chat-35): cifras, filtros de estado,
  * tipo y fecha, tabla y detalle en hoja lateral. Se actualiza en tiempo real
  * (`ai_jobs`). Reintentar y cancelar usan `aiJobsService` como antes.
+ * Columna «Valoración»: 👍/👎 que el equipo dio a la respuesta en la Bandeja
+ * (Figma 93-chat-pendientes-03); el motivo y el comentario, en el detalle.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Bot } from 'lucide-react';
+import { Bot, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { DataTable, KpiStrip, PageHeader, StatCard, type ColumnaTabla } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,11 +24,15 @@ import { HojaTrabajo } from '@/components/chat/ia/trabajos/HojaTrabajo';
 import { diasDeRango, estadoTrabajo, ESTADOS_TRABAJO, TIPOS_TRABAJO, tonoEstadoTrabajo, type RangoTrabajos } from '@/components/chat/ia/trabajos/trabajosLogica';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
 import { tiempoRelativo } from '@/components/chat/channels/canalesLogica';
+import { useAgentesChat } from '@/components/chat/conversations/useConversacion';
+import { resumenValoraciones } from '@/lib/services/chat/valoracionIa';
 
 const TODOS = 'all';
 
 export default function TrabajosPage() {
   const t = useTranslations('chatModulo.ia');
+  const tv = useTranslations('chatBandejaPendientes.valoracion.trabajos');
+  const { agentes } = useAgentesChat();
   const locale = useLocale();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -157,6 +163,32 @@ export default function TrabajosPage() {
         return n ? n.toLocaleString(locale) : '—';
       },
     },
+    {
+      id: 'valoracion',
+      encabezado: tv('columna'),
+      ancho: 120,
+      ocultarDebajo: 'md',
+      celda: (j) => {
+        const r = resumenValoraciones(j.valoraciones);
+        if (!r.util && !r.noUtil) return <span className="text-sm text-fg-muted">—</span>;
+        return (
+          <span className="inline-flex items-center gap-3 text-sm text-fg-secondary" aria-label={tv('resumen', { util: r.util, noUtil: r.noUtil })}>
+            {r.util ? (
+              <span className="inline-flex items-center gap-1">
+                <ThumbsUp aria-hidden="true" className="size-3.5 text-success-text" />
+                {r.util}
+              </span>
+            ) : null}
+            {r.noUtil ? (
+              <span className="inline-flex items-center gap-1">
+                <ThumbsDown aria-hidden="true" className="size-3.5 text-danger-text" />
+                {r.noUtil}
+              </span>
+            ) : null}
+          </span>
+        );
+      },
+    },
     { id: 'cuando', encabezado: t('trabajos.tabla.cuando'), ancho: 140, ocultarDebajo: 'md', celda: (j) => <span className="text-sm text-fg-secondary">{tiempoRelativo(j.created_at, ahora, locale)}</span> },
   ];
 
@@ -254,6 +286,7 @@ export default function TrabajosPage() {
       <HojaTrabajo
         trabajo={abierto}
         bitacora={bitacora}
+        nombrePersona={(memberId) => agentes.find((a) => a.memberId === memberId)?.nombre ?? null}
         ocupado={ocupado}
         onCerrar={() => setAbierto(null)}
         onReintentar={(j) => accion(j, 'reintentar')}

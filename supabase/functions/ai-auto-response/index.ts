@@ -756,6 +756,26 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Chat › «Bloquear contacto» (2026-11-13): la IA no le responde a un
+    // contacto bloqueado. El trigger `trigger_ai_auto_response` ya no invoca
+    // esta funcion para sus mensajes; se comprueba otra vez por si llega por
+    // otra via. Sin trabajo ni cobro.
+    if (conv.customer_id) {
+      const { data: bloqueo } = await supabase
+        .from('chat_contactos_bloqueados')
+        .select('id')
+        .eq('organization_id', organizationId)
+        .eq('customer_id', conv.customer_id)
+        .is('desbloqueado_en', null)
+        .limit(1)
+        .maybeSingle();
+      if (bloqueo) {
+        return new Response(JSON.stringify({ skipped: true, reason: 'contacto_bloqueado' }), {
+          status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     const { data: channelData } = await supabase
       .from('channels')
       .select('id, type, name, ai_mode, organization_id, business_hours, ai_draft_mode')

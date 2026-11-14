@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { COLUMNAS_VALORACION, type ValoracionTrabajo } from '@/lib/services/chat/valoracionIa';
 
 export interface AIJob {
   id: string;
@@ -28,6 +29,8 @@ export interface AIJob {
     customer: { full_name: string | null } | null;
     channel: { name: string | null; type: string | null } | null;
   } | null;
+  /** 👍/👎 del equipo (`ai_training_feedback`, lo trae `getJobs`). */
+  valoraciones?: ValoracionTrabajo[] | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
@@ -81,7 +84,7 @@ export default class AIJobsService {
 
     let query = supabase
       .from('ai_jobs')
-      .select('*, conversation:conversations(id, customer:customers(full_name), channel:channels(name, type))')
+      .select(`*, conversation:conversations(id, customer:customers(full_name), channel:channels(name, type)), valoraciones:ai_training_feedback(${COLUMNAS_VALORACION})`)
       .eq('organization_id', this.organizationId)
       .order('created_at', { ascending: false })
       .limit(limit);

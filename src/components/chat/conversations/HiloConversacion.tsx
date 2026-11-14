@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { agenteAsignado, type AgenteChat } from '@/lib/services/chat/agentesChat';
+import { entroBloqueado, type EventoBloqueo } from '@/lib/services/chat/bloqueoContacto';
 import { Skeleton } from '@/components/kit';
 import { Burbuja, autorDeMensaje } from '@/components/chat/ui/Burbuja';
 import { ContenidoMensaje, type MensajeContenido } from '@/components/chat/ui/ContenidoMensaje';
@@ -27,6 +28,8 @@ interface FilaMensaje extends MensajeContenido {
 export interface HiloConversacionProps {
   conversationId: string;
   notas: readonly NotaHilo[];
+  /** Eventos del sistema intercalados («Laura R. bloqueó el contacto · 10:45»). */
+  eventos?: readonly EventoBloqueo[];
   agentes: readonly AgenteChat[];
   /** Canal para «Conversación iniciada desde WhatsApp». */
   nombreCanal?: string | null;
@@ -39,8 +42,9 @@ export interface HiloConversacionProps {
  * arriba, en tiempo real, con las notas internas intercaladas y un separador
  * por día en la zona de la organización. Lo usan la Bandeja y la vista completa.
  */
-export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, inicioConversacion, className }: HiloConversacionProps) {
+export function HiloConversacion({ conversationId, notas, eventos = [], agentes, nombreCanal, inicioConversacion, className }: HiloConversacionProps) {
   const t = useTranslations('chatBandeja.hilo');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const locale = useLocale();
   const { formatTime, timezone, getToday } = useFormatDate();
   const [mensajes, setMensajes] = React.useState<FilaMensaje[]>([]);
@@ -138,7 +142,7 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
     return rel === 'otro' ? fecha : t(rel, { fecha });
   };
 
-  const elementos = elementosHilo(mensajes, notas, timezone, hayMas);
+  const elementos = elementosHilo(mensajes, notas, timezone, hayMas, eventos);
 
   return (
     <div className={cn('relative min-h-0 flex-1', className)}>
@@ -175,6 +179,15 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
                   </p>
                 );
               }
+              if (e.tipo === 'evento') {
+                const persona = agenteAsignado(agentes, e.evento.memberId)?.nombre;
+                const clave = e.evento.tipo === 'bloqueo' ? 'eventoBloqueo' : 'eventoDesbloqueo';
+                return (
+                  <Burbuja key={e.clave} autor="sistema" hora={formatTime(e.evento.created_at)}>
+                    {persona ? tb(clave, { persona }) : tb(`${clave}SinPersona`)}
+                  </Burbuja>
+                );
+              }
               if (e.tipo === 'nota') {
                 const autor = agenteAsignado(agentes, e.nota.member_id)?.nombre;
                 return (
@@ -193,7 +206,7 @@ export function HiloConversacion({ conversationId, notas, agentes, nombreCanal, 
                   autor={autor}
                   hora={formatTime(m.created_at)}
                   entrega={autor === 'agente' || autor === 'ia' ? (m.is_read ? 'leido' : 'enviado') : null}
-                  detalle={revisor ? t('revisoIa', { nombre: revisor }) : null}
+                  detalle={revisor ? t('revisoIa', { nombre: revisor }) : autor === 'cliente' && entroBloqueado(m.metadata) ? tb('mensajeBloqueado') : null}
                 >
                   {autor === 'sistema' ? m.content : <ContenidoMensaje mensaje={m} claro={autor === 'agente'} />}
                 </Burbuja>

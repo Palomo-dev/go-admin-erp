@@ -50025,6 +50025,58 @@
       }
     }
   },
+  "chatBandejaPendientes": {
+    "bloqueo": {
+      "contacto": "this contact",
+      "menuBloquear": "Block contact",
+      "menuDesbloquear": "Unblock contact",
+      "confirmarTitulo": "Block {nombre}?",
+      "confirmarDescripcion": "Their new messages won't reach the inbox and the AI won't reply to them. The conversation and its history are kept. You can unblock them anytime from this same menu.",
+      "confirmar": "Block contact",
+      "cancelar": "Cancel",
+      "insignia": "Blocked",
+      "avisoTitulo": "You blocked {nombre}",
+      "avisoDescripcion": "Their new messages don't reach the inbox and the AI doesn't reply. The history is kept.",
+      "desbloquear": "Unblock",
+      "eventoBloqueo": "{persona} blocked the contact",
+      "eventoBloqueoSinPersona": "The contact was blocked",
+      "eventoDesbloqueo": "{persona} unblocked the contact",
+      "eventoDesbloqueoSinPersona": "The contact was unblocked",
+      "mensajeBloqueado": "Received while the contact was blocked",
+      "avisos": {
+        "bloqueado": "Contact blocked",
+        "desbloqueado": "Contact unblocked",
+        "error": "Couldn't change the contact's block"
+      }
+    },
+    "valoracion": {
+      "teSirvio": "Was this helpful?",
+      "si": "Yes",
+      "no": "No",
+      "gracias": "Thanks, we saved your vote",
+      "queFallo": "What went wrong?",
+      "motivos": {
+        "dato_incorrecto": "Wrong information",
+        "no_respondio": "Didn't answer the question",
+        "tono": "Tone",
+        "muy_larga": "Too long",
+        "otro": "Other"
+      },
+      "comentario": "Tell us what you expected (optional)",
+      "cancelar": "Cancel",
+      "enviar": "Send",
+      "eligeMotivo": "Choose what went wrong",
+      "ayuda": "It's saved in AI › Jobs with the reply, to correct the knowledge base. The customer doesn't see it.",
+      "error": "Couldn't save your vote",
+      "trabajos": {
+        "columna": "Rating",
+        "resumen": "{util} helpful, {noUtil} not helpful",
+        "detalleTitulo": "Team rating",
+        "util": "Helpful",
+        "noUtil": "Not helpful"
+      }
+    }
+  },
   "chatModulo": {
     "pestanas": {
       "etiqueta": "Chat sections",

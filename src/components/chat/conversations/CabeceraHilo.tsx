@@ -22,13 +22,15 @@ export function nombreClienteConversacion(d: { customer?: { full_name?: string |
 
 /**
  * Cabecera del hilo en la Bandeja (Figma 91-chat-01): cliente, canal y
- * teléfono, estado, «Asignado a», vista completa y «⋯ Más acciones». Solo en
- * escritorio: en el móvil la cabecera la pone el shell.
+ * teléfono, estado («Bloqueada» si el contacto está bloqueado, Figma
+ * 93-chat-pendientes-02), «Asignado a», vista completa y «⋯ Más acciones».
+ * Solo en escritorio: en el móvil la cabecera la pone el shell.
  */
 export function CabeceraHilo({ c, onBuscar }: { c: ConversacionControl; onBuscar?: () => void }) {
   const t = useTranslations('chatBandeja.hilo');
   const te = useTranslations('chatUi.estado');
   const tc = useTranslations('chatUi.canales');
+  const tb = useTranslations('chatBandejaPendientes.bloqueo');
   const d = c.detalle;
 
   if (!d) {
@@ -54,7 +56,11 @@ export function CabeceraHilo({ c, onBuscar }: { c: ConversacionControl; onBuscar
           <span className="truncate">{[d.channel?.name || tc(canal), d.customer?.phone].filter(Boolean).join(' · ')}</span>
         </p>
       </div>
-      <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" className="hidden md:inline-flex" />
+      {c.bloqueo ? (
+        <StatusBadge estado="bloqueada" etiqueta={tb('insignia')} tono="peligro" apariencia="contorno" className="hidden md:inline-flex" />
+      ) : (
+        <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" className="hidden md:inline-flex" />
+      )}
       <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} variante="cabecera" className="hidden md:flex" />
       <Link
         href={`/app/chat/conversaciones/${d.id}`}

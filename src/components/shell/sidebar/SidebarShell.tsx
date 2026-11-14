@@ -20,6 +20,9 @@
  * un modo **visible**, no una preferencia: no se guarda, y al cerrar o acoplar
  * el panel vuelve a lo que la persona tenía (`shell.sidebar`). Si en ese rato
  * pulsa «Expandir», se respeta hasta que el panel deje de estar ampliado.
+ *
+ * El mismo rail prestado lo puede pedir una página mientras está montada
+ * (`useRielMientrasMontada`, `rielSolicitado.ts`): la Bandeja del Chat.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -29,6 +32,7 @@ import { SubMenuPanel } from './SubMenuPanel';
 import { BloqueSesion } from '../sesion/BloqueSesion';
 import type { UsuarioSesion } from '../sesion/PanelSesion';
 import { useEstadoAsistente } from '../useEstadoAsistente';
+import { useRielSolicitado } from './rielSolicitado';
 
 const CLAVE_MODO = 'shell.sidebar';
 const CLAVE_FIJADO = 'shell.submenuFijado';
@@ -37,11 +41,12 @@ const PANEL_ID = 'shell-submenu';
 type ModoSidebar = 'rail' | 'expanded';
 
 /**
- * Modo que se pinta: la preferencia de la persona, salvo que el asistente esté
- * ampliado (entonces rail), y salvo que en ese rato haya pedido expandirlo.
+ * Modo que se pinta: la preferencia de la persona, salvo que el rail esté
+ * prestado (asistente ampliado o una página que lo pide), y salvo que en ese
+ * rato la persona haya pedido expandirlo.
  */
-export function modoVisibleSidebar(preferido: ModoSidebar, asistenteAmpliado: boolean, expandidoAMano: boolean): ModoSidebar {
-  if (!asistenteAmpliado) return preferido;
+export function modoVisibleSidebar(preferido: ModoSidebar, rielPrestado: boolean, expandidoAMano: boolean): ModoSidebar {
+  if (!rielPrestado) return preferido;
   return expandidoAMano ? 'expanded' : 'rail';
 }
 
@@ -100,12 +105,15 @@ export function SidebarShell({
   const [flotante, setFlotante] = useState<{ id: string; top: number } | null>(null);
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { ampliado: asistenteAmpliado } = useEstadoAsistente();
-  /** «Expandir» pulsado con el asistente ampliado: vale hasta que deje de estarlo. */
+  const rielSolicitado = useRielSolicitado();
+  /** Rail que no es preferencia: asistente ampliado o una página que lo pide. */
+  const rielPrestado = asistenteAmpliado || rielSolicitado;
+  /** «Expandir» pulsado con el rail prestado: vale hasta que deje de estarlo. */
   const [expandidoAMano, setExpandidoAMano] = useState(false);
   useEffect(() => {
-    if (!asistenteAmpliado) setExpandidoAMano(false);
-  }, [asistenteAmpliado]);
-  const modoVisible = modoVisibleSidebar(modo, asistenteAmpliado, expandidoAMano);
+    if (!rielPrestado) setExpandidoAMano(false);
+  }, [rielPrestado]);
+  const modoVisible = modoVisibleSidebar(modo, rielPrestado, expandidoAMano);
 
   // Preferencias guardadas y punto de corte.
   useEffect(() => {
@@ -138,9 +146,9 @@ export function SidebarShell({
   }, [pathname, fijado]);
 
   const alternarModo = () => {
-    // Con el asistente ampliado el rail es prestado: alternar no toca la
-    // preferencia guardada, solo lo que se ve mientras dure.
-    if (asistenteAmpliado) {
+    // Con el rail prestado (asistente ampliado o página que lo pide), alternar
+    // no toca la preferencia guardada, solo lo que se ve mientras dure.
+    if (rielPrestado) {
       setExpandidoAMano(modoVisible === 'rail');
       return;
     }

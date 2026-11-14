@@ -65,8 +65,19 @@ export async function handleWhatsAppInbound(input: InboundInput, service: Supaba
     content: input.text, contentType: input.contentType, customerName: name, direction: 'inbound', campaignId: reply?.campaign_id ?? null,
   }, service);
 
+  // Contacto bloqueado en el Chat (Figma 93-chat-pendientes-02): el mensaje se
+  // guarda (marcado por el trigger de la base) pero no se avisa a nadie.
+  const { data: bloqueo } = await service
+    .from('chat_contactos_bloqueados')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('customer_id', customerId)
+    .is('desbloqueado_en', null)
+    .limit(1)
+    .maybeSingle();
+
   let notified: string | null = null;
-  if (salespersonId) {
+  if (salespersonId && !bloqueo) {
     const { error } = await service.rpc('fn_create_org_notification', {
       p_organization_id: orgId,
       p_recipient_user_id: salespersonId,

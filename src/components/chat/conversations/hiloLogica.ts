@@ -17,32 +17,43 @@ export interface NotaHilo {
   member_id: number | null;
 }
 
-export type ElementoHilo<M extends MensajeHilo, N extends NotaHilo> =
+/** Evento del sistema en el hilo («Laura R. bloqueó el contacto · 10:45»). */
+export interface EventoHilo {
+  id: string;
+  created_at: string;
+}
+
+export type ElementoHilo<M extends MensajeHilo, N extends NotaHilo, E extends EventoHilo = EventoHilo> =
   | { tipo: 'dia'; clave: string; dia: string }
   | { tipo: 'mensaje'; clave: string; mensaje: M }
-  | { tipo: 'nota'; clave: string; nota: N };
+  | { tipo: 'nota'; clave: string; nota: N }
+  | { tipo: 'evento'; clave: string; evento: E };
 
 /**
- * Intercala mensajes y notas por `created_at` y agrega un separador al empezar
- * cada día (`YYYY-MM-DD` en `tz`). Las notas anteriores al mensaje más viejo
- * cargado no se muestran mientras haya más historia por cargar: si no, quedarían
- * fuera de lugar.
+ * Intercala mensajes, notas y eventos por `created_at` y agrega un separador
+ * al empezar cada día (`YYYY-MM-DD` en `tz`). Las notas y eventos anteriores
+ * al mensaje más viejo cargado no se muestran mientras haya más historia por
+ * cargar: si no, quedarían fuera de lugar.
  */
-export function elementosHilo<M extends MensajeHilo, N extends NotaHilo>(
+export function elementosHilo<M extends MensajeHilo, N extends NotaHilo, E extends EventoHilo = EventoHilo>(
   mensajes: readonly M[],
   notas: readonly N[],
   tz: string | undefined,
   hayMasHistoria: boolean,
-): ElementoHilo<M, N>[] {
+  eventos: readonly E[] = [],
+): ElementoHilo<M, N, E>[] {
   const desde = hayMasHistoria && mensajes.length > 0 ? mensajes.reduce((min, m) => (m.created_at < min ? m.created_at : min), mensajes[0].created_at) : null;
-  const items: Array<{ t: number; e: ElementoHilo<M, N> }> = [
+  const items: Array<{ t: number; e: ElementoHilo<M, N, E> }> = [
     ...mensajes.map((m) => ({ t: Date.parse(m.created_at), e: { tipo: 'mensaje' as const, clave: `m-${m.id}`, mensaje: m } })),
     ...notas
       .filter((n) => !desde || n.created_at >= desde)
       .map((n) => ({ t: Date.parse(n.created_at), e: { tipo: 'nota' as const, clave: `n-${n.id}`, nota: n } })),
+    ...eventos
+      .filter((ev) => !desde || ev.created_at >= desde)
+      .map((ev) => ({ t: Date.parse(ev.created_at), e: { tipo: 'evento' as const, clave: `e-${ev.id}`, evento: ev } })),
   ].sort((a, b) => a.t - b.t);
 
-  const out: ElementoHilo<M, N>[] = [];
+  const out: ElementoHilo<M, N, E>[] = [];
   let diaActual: string | null = null;
   for (const { t, e } of items) {
     const dia = toPlainDate(new Date(t), tz);

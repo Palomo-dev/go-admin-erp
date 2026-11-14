@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/config';
+import { nombreCorto } from '@/lib/services/chat/nombreCortoPersona';
 
 export interface KnowledgeSource {
   id: string;
@@ -28,10 +29,16 @@ export interface KnowledgeFragment {
   usage_count: number;
   positive_feedback: number;
   negative_feedback: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   created_by: number | null;
+  /**
+   * Usuario (auth.users.id) de la última edición. Lo pone la base con
+   * auth.uid() (trigger trg_knowledge_fragments_updated_by): nunca se envía.
+   * NULL en ediciones anteriores al 2026-11-14 o hechas sin sesión.
+   */
+  updated_by?: string | null;
   source?: KnowledgeSource;
   has_embedding?: boolean;
 }
@@ -605,7 +612,7 @@ export default class KnowledgeService {
     return vistos.size;
   }
 
-  async getFragmentWithEmbedding(fragmentId: string): Promise<KnowledgeFragment & { embedding_info: EmbeddingInfo | null } | null> {
+  async getFragmentWithEmbedding(fragmentId: string): Promise<KnowledgeFragment & { embedding_info: EmbeddingInfo | null; updated_by_name: string | null } | null> {
     await this.setOrgContext();
 
     const fragment = await this.getFragment(fragmentId);
@@ -618,8 +625,16 @@ export default class KnowledgeService {
       .eq('organization_id', this.organizationId)
       .single();
 
+    // Nombre de quien editó (perfiles visibles para los miembros de la organización).
+    let updatedByName: string | null = null;
+    if (fragment.updated_by) {
+      const { data: perfil } = await supabase.from('profiles').select('first_name, last_name').eq('id', fragment.updated_by).maybeSingle();
+      updatedByName = nombreCorto(perfil?.first_name, perfil?.last_name);
+    }
+
     return {
       ...fragment,
+      updated_by_name: updatedByName,
       has_embedding: !!embedding,
       embedding_info: embedding ? {
         id: embedding.id,
@@ -900,7 +915,7 @@ export default class KnowledgeService {
     });
   }
 
-  private async logAudit(action: string, details: Record<string, any>, memberId: number): Promise<void> {
+  private async logAudit(action: string, details: Record<string, unknown>, memberId: number): Promise<void> {
     try {
       await supabase.from('chat_audit_logs').insert({
         organization_id: this.organizationId,
@@ -910,7 +925,7 @@ export default class KnowledgeService {
         entity_type: 'knowledge',
         entity_id: details.source_id || details.fragment_id || null,
         changes: details,
-        metadata: {},
+        metadata: { member_id: memberId },
         ip_address: null,
         user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
       });

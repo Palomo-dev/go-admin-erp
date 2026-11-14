@@ -53641,7 +53641,8 @@
       "creado": "Created",
       "usadosSemana": "Used this week",
       "usadosSemanaDetalle": "in AI replies",
-      "usado7dias": "Used in replies (7 days)"
+      "usado7dias": "Used in replies (7 days)",
+      "versionEditadoPor": "v{version} · edited by {nombre}"
     },
     "importar": {
       "etiquetas": "Tags",
@@ -53682,7 +53683,10 @@
         "desktop": "Computer",
         "mobile": "Phone",
         "tablet": "Tablet"
-      }
+      },
+      "kpiBloqueados": "Blocked",
+      "bloqueado": "Blocked",
+      "filtroBloqueados": "Blocked"
     },
     "auditoria": {
       "actualizar": "Refresh",

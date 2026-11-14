@@ -67,3 +67,45 @@ export async function leerBloqueosCliente(db: SupabaseClient, organizationId: nu
   if (error) throw new Error(`No se pudo leer el bloqueo del contacto: ${error.message}`);
   return (data ?? []) as BloqueoContacto[];
 }
+
+/**
+ * Bloqueos vigentes de una organización, para marcar muchas filas a la vez
+ * (Visitantes del widget). La regla de «vigente» es la misma de
+ * `bloqueoVigente`: sin `desbloqueado_en`.
+ */
+export interface BloqueosVigentes {
+  clientes: ReadonlySet<string>;
+  conversaciones: ReadonlySet<string>;
+}
+
+export function bloqueosVigentes(filas: readonly Pick<BloqueoContacto, 'customer_id' | 'conversation_id' | 'desbloqueado_en'>[]): BloqueosVigentes {
+  const clientes = new Set<string>();
+  const conversaciones = new Set<string>();
+  for (const f of filas) {
+    if (f.desbloqueado_en) continue;
+    clientes.add(f.customer_id);
+    if (f.conversation_id) conversaciones.add(f.conversation_id);
+  }
+  return { clientes, conversaciones };
+}
+
+/** Bloqueado si su cliente o su conversación tienen un bloqueo vigente. */
+export function estaBloqueado(b: BloqueosVigentes, customerId: string | null | undefined, conversationId: string | null | undefined): boolean {
+  return (!!customerId && b.clientes.has(customerId)) || (!!conversationId && b.conversaciones.has(conversationId));
+}
+
+/**
+ * Los bloqueos vigentes de la organización (RLS: miembros activos; la política
+ * es `organization_id IN (SELECT …)`, sin EXISTS anidado). Usa el índice
+ * parcial `uq_chat_contactos_bloqueados_vigente`.
+ */
+export async function leerBloqueosVigentes(db: SupabaseClient, organizationId: number): Promise<BloqueoContacto[]> {
+  const { data, error } = await db
+    .from('chat_contactos_bloqueados')
+    .select(COLUMNAS_BLOQUEO)
+    .eq('organization_id', organizationId)
+    .is('desbloqueado_en', null)
+    .limit(1000);
+  if (error) throw new Error(`No se pudieron leer los contactos bloqueados: ${error.message}`);
+  return (data ?? []) as BloqueoContacto[];
+}

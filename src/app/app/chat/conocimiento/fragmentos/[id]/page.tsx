@@ -32,7 +32,7 @@ import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
 import { MAX_CONTENIDO_FRAGMENTO, tramoPrioridad } from '@/components/chat/conocimiento/conocimientoLogica';
 
-type Fragmento = KnowledgeFragment & { embedding_info: EmbeddingInfo | null };
+type Fragmento = KnowledgeFragment & { embedding_info: EmbeddingInfo | null; updated_by_name: string | null };
 type Prueba = { estado: 'probando' } | { estado: 'listo'; posicion: number | null; total: number } | null;
 
 const SIN_FUENTE = '__ninguna__';
@@ -387,7 +387,11 @@ export default function FragmentDetailPage() {
               <ListaDatos>
                 <FilaDato etiqueta={tr('usado7dias')} valor={usos7 === null ? t('sinDato') : usos7.toLocaleString()} />
                 <FilaDato etiqueta={t('editor.votos')} valor={`${fragmento.positive_feedback ?? 0} / ${fragmento.negative_feedback ?? 0}`} />
-                <FilaDato etiqueta={t('editor.version')} valor={`v${fragmento.version}`} />
+                {/* «editado por» solo si la base sabe quién (updated_by, desde 2026-11-14); si no, la versión sola y la fecha abajo. */}
+                <FilaDato
+                  etiqueta={t('editor.version')}
+                  valor={fragmento.updated_by_name ? tr('versionEditadoPor', { version: fragmento.version, nombre: fragmento.updated_by_name }) : `v${fragmento.version}`}
+                />
                 {fragmento.embedding_info?.model && (
                   <FilaDato etiqueta={tr('modelo')} valor={<span className="font-mono text-xs">{fragmento.embedding_info.model}</span>} />
                 )}

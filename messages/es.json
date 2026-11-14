@@ -53656,7 +53656,8 @@
       "creado": "Creado",
       "usadosSemana": "Usados esta semana",
       "usadosSemanaDetalle": "en respuestas de IA",
-      "usado7dias": "Usado en respuestas (7 días)"
+      "usado7dias": "Usado en respuestas (7 días)",
+      "versionEditadoPor": "v{version} · editado por {nombre}"
     },
     "importar": {
       "etiquetas": "Etiquetas",
@@ -53697,7 +53698,10 @@
         "desktop": "Computador",
         "mobile": "Celular",
         "tablet": "Tableta"
-      }
+      },
+      "kpiBloqueados": "Bloqueados",
+      "bloqueado": "Bloqueado",
+      "filtroBloqueados": "Bloqueados"
     },
     "auditoria": {
       "actualizar": "Actualizar",

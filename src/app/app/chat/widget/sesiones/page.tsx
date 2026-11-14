@@ -5,7 +5,9 @@
  * quién usa el chat del sitio ahora y qué está mirando. Cifras de hoy,
  * buscador (página, ciudad o nombre), filtros de estado, cliente y canal, tabla
  * paginada (visitante, página actual, dispositivo, estado, conversación e
- * inicio) y detalle de la sesión en hoja lateral.
+ * inicio) y detalle de la sesión en hoja lateral. «Bloqueado» (insignia y
+ * cifra): su cliente o su conversación tienen un bloqueo vigente en
+ * `chat_contactos_bloqueados` (regla de `bloqueoContacto.estaBloqueado`).
  *
  * Cada fila es una visita de `widget_sessions` (la Edge Function `chat-widget`
  * guarda página, origen, navegador y dispositivo) con la conversación que abrió
@@ -25,10 +27,11 @@ import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import WidgetSessionsService, { type SessionStats, type WidgetSession } from '@/lib/services/widgetSessionsService';
 import { DatoEnCaja } from '@/components/chat/DatoEnCaja';
-import { filtrarVisitantes, partesSubtitulo, rutaDePagina, type FiltroCliente, type FiltroEstadoVisitante } from '@/components/chat/widget/visitantesLogica';
+import { estadoVisitante, filtrarVisitantes, partesSubtitulo, rutaDePagina, type FiltroCliente, type FiltroEstadoVisitante } from '@/components/chat/widget/visitantesLogica';
 
 const TODOS_CANALES = '__todos__';
 const ICONO_DISPOSITIVO = { mobile: Smartphone, tablet: Tablet, desktop: Monitor } as const;
+const TONO_ESTADO = { enLinea: 'exito', inactivo: 'neutro', bloqueado: 'peligro' } as const;
 
 export default function WidgetSessionsPage() {
   const t = useTranslations('chatModulo.widget');
@@ -106,6 +109,15 @@ export default function WidgetSessionsPage() {
     const partes = [p.esCliente ? t('cliente') : null, p.ciudad, p.origen].filter(Boolean);
     return partes.length > 0 ? partes.join(' · ') : tr('desconocido');
   };
+  const etiquetaEstado = (s: WidgetSession) => {
+    const e = estadoVisitante(s);
+    return e === 'bloqueado' ? tr('bloqueado') : t(e === 'enLinea' ? 'estados.enLinea' : 'estados.inactivo');
+  };
+  const insigniaEstado = (s: WidgetSession) => (
+    <Badge tono={TONO_ESTADO[estadoVisitante(s)]} tamano="sm">
+      {etiquetaEstado(s)}
+    </Badge>
+  );
   const dispositivo = (s: WidgetSession) => (s.device_type && tr.has(`dispositivos.${s.device_type}`) ? tr(`dispositivos.${s.device_type}`) : null);
   const conversacion = (s: WidgetSession) => {
     if (!s.conversation_id || !s.conversation_status) return '—';
@@ -156,11 +168,7 @@ export default function WidgetSessionsPage() {
       id: 'estado',
       encabezado: t('tabla.estado'),
       ancho: 120,
-      celda: (s) => (
-        <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm">
-          {t(s.is_active ? 'estados.enLinea' : 'estados.inactivo')}
-        </Badge>
-      ),
+      celda: (s) => insigniaEstado(s),
     },
     { id: 'conversacion', encabezado: t('tabla.conversacion'), ancho: 170, ocultarDebajo: 'md', celda: (s) => <span className="block truncate text-sm text-fg-secondary">{conversacion(s)}</span> },
     { id: 'inicio', encabezado: t('tabla.inicio'), ancho: 100, ocultarDebajo: 'md', celda: (s) => <span className="text-sm tabular-nums text-fg-secondary">{cuando(s.created_at)}</span> },
@@ -194,11 +202,12 @@ export default function WidgetSessionsPage() {
         movil={{ accionesEnFila: true }}
       />
 
-      <KpiStrip etiqueta={t('kpis.etiqueta')}>
+      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={5}>
         <StatCard etiqueta={tr('kpiHoy')} valor={stats?.today ?? 0} cargando={!stats && !fallo} />
         <StatCard etiqueta={t('kpis.enLinea')} valor={stats?.active ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('enLinea')} />
         <StatCard etiqueta={t('kpis.identificados')} valor={stats?.withCustomer ?? 0} detalle={tr('identificadosDetalle')} cargando={!stats && !fallo} onClick={() => setCliente('identificados')} />
         <StatCard etiqueta={t('kpis.anonimos')} valor={stats?.anonymous ?? 0} cargando={!stats && !fallo} onClick={() => setCliente('anonimos')} />
+        <StatCard etiqueta={tr('kpiBloqueados')} valor={stats?.blocked ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('bloqueado')} />
       </KpiStrip>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -213,6 +222,7 @@ export default function WidgetSessionsPage() {
                 {t(`filtros.estados.${e}`)}
               </SelectItem>
             ))}
+            <SelectItem value="bloqueado">{tr('filtroBloqueados')}</SelectItem>
           </SelectContent>
         </Select>
         <Select value={cliente} onValueChange={(v) => setCliente(v as FiltroCliente)}>
@@ -275,9 +285,7 @@ export default function WidgetSessionsPage() {
               <span className="block truncate text-sm font-medium text-fg">{nombre(s)}</span>
               <span className="block truncate text-xs text-fg-muted">{rutaDePagina(s.current_page) ?? subtitulo(s)}</span>
             </span>
-            <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm">
-              {t(s.is_active ? 'estados.enLinea' : 'estados.inactivo')}
-            </Badge>
+            {insigniaEstado(s)}
           </button>
         )}
         pie={

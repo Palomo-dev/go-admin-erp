@@ -1,12 +1,13 @@
 /**
  * Diseños aprobados 94-chat-recuperado-ia (2026-11-14): reglas puras de
- * Importar, Visitantes y Auditoría, y el body de la prueba del Laboratorio con
+ * Importar, Visitantes (también los bloqueados) y Auditoría, y el body de la prueba del Laboratorio con
  * tono e idioma (decisión del dueño).
  */
 jest.mock('@/lib/supabase/config', () => ({ supabase: { rpc: jest.fn(), from: jest.fn() } }));
 
 import { columnasCsv, revisarFilasImportacion } from '@/components/chat/conocimiento/conocimientoLogica';
-import { filtrarVisitantes, origenCorto, partesSubtitulo, rutaDePagina } from '@/components/chat/widget/visitantesLogica';
+import { estadoVisitante, filtrarVisitantes, origenCorto, partesSubtitulo, rutaDePagina } from '@/components/chat/widget/visitantesLogica';
+import { bloqueosVigentes, estaBloqueado } from '@/lib/services/chat/bloqueoContacto';
 import { jsonEnLinea } from '@/components/chat/audit/auditoriaLogica';
 import { nombreCorto } from '@/lib/services/widgetSessionsService';
 import KnowledgeService from '@/lib/services/knowledgeService';
@@ -90,5 +91,33 @@ describe('Laboratorio: tono e idioma viajan a la ruta de prueba', () => {
     const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body);
     expect(body).not.toHaveProperty('tono');
     expect(body).not.toHaveProperty('idioma');
+  });
+});
+
+describe('Visitantes bloqueados (chat_contactos_bloqueados)', () => {
+  const filas = [
+    { customer_id: 'c1', conversation_id: 'v1', desbloqueado_en: null },
+    { customer_id: 'c2', conversation_id: 'v2', desbloqueado_en: '2026-11-14T10:00:00Z' },
+    { customer_id: 'c3', conversation_id: null, desbloqueado_en: null },
+  ];
+
+  test('vigente = sin desbloqueado_en; bloqueado por cliente o por conversación', () => {
+    const b = bloqueosVigentes(filas);
+    expect(estaBloqueado(b, 'c1', null)).toBe(true);
+    expect(estaBloqueado(b, null, 'v1')).toBe(true);
+    expect(estaBloqueado(b, 'c2', 'v2')).toBe(false);
+    expect(estaBloqueado(b, 'c3', 'otra')).toBe(true);
+    expect(estaBloqueado(b, null, null)).toBe(false);
+  });
+
+  test('«Bloqueado» manda sobre «En línea» y se puede filtrar', () => {
+    expect(estadoVisitante({ is_active: true, blocked: true })).toBe('bloqueado');
+    expect(estadoVisitante({ is_active: true, blocked: false })).toBe('enLinea');
+    const sesiones = [
+      { is_active: true, blocked: true, customer_id: 'c1', customer: undefined, channel: undefined },
+      { is_active: true, blocked: false, customer_id: null, customer: undefined, channel: undefined },
+    ];
+    expect(filtrarVisitantes(sesiones, { busqueda: '', estado: 'bloqueado', cliente: 'todos' })).toHaveLength(1);
+    expect(filtrarVisitantes(sesiones, { busqueda: '', estado: 'enLinea', cliente: 'todos' })).toHaveLength(1);
   });
 });

@@ -67,6 +67,10 @@ export const pruebaLaboratorioSchema = z
     modelo: z.string().trim().min(1).max(120).optional(),
     /** Reglas del sistema de la prueba; sin ellas, las de la configuración. Vacías = sin reglas. */
     reglas: z.string().max(8000).nullable().optional(),
+    /** Tono de la prueba (`TONE_OPTIONS`); sin él, el de la configuración. */
+    tono: z.enum(['professional', 'friendly', 'formal', 'casual', 'empathetic']).optional(),
+    /** Idioma principal de la prueba (`LANGUAGE_OPTIONS`); sin él, el de la configuración. */
+    idioma: z.enum(['es', 'en', 'pt', 'fr']).optional(),
   })
   .strict();
 
@@ -149,7 +153,7 @@ export async function probarEnLaboratorio(
   //    fragmentos se leen con la sesión del usuario (RLS).
   const servicio = getServiceClient();
   const [ajustes, vertical, orgInfo, checkoutConfig, respuestasRapidas, fragmentos, canal] = await Promise.all([
-    servicio.from('ai_settings').select('provider, model, system_rules').eq('organization_id', org).maybeSingle(),
+    servicio.from('ai_settings').select('provider, model, system_rules, tone, language').eq('organization_id', org).maybeSingle(),
     cargarVertical(servicio, org),
     cargarInfoOrganizacion(servicio, org),
     cargarCheckoutConfig(servicio, org),
@@ -159,7 +163,13 @@ export async function probarEnLaboratorio(
       : Promise.resolve({ data: [] as EntradaReferencia[], error: null }),
     tipoDeCanal(ctx, prueba.canal),
   ]);
-  const config = (ajustes.data ?? {}) as { provider?: string | null; model?: string | null; system_rules?: string | null };
+  const config = (ajustes.data ?? {}) as {
+    provider?: string | null;
+    model?: string | null;
+    system_rules?: string | null;
+    tone?: string | null;
+    language?: string | null;
+  };
 
   // Modelo de la prueba: solo uno del catálogo (con su proveedor), nunca un
   // texto libre. Se valida ANTES de llamar al proveedor y de cobrar.
@@ -185,6 +195,9 @@ export async function probarEnLaboratorio(
     checkoutConfig,
     quickReplies: (respuestasRapidas.data ?? []) as EntradaReferencia[],
     knowledgeFragments: conocimiento,
+    // Igual que las reglas: lo de la prueba manda, sin guardarlo.
+    tono: prueba.tono ?? config.tone,
+    idioma: prueba.idioma ?? config.language,
   });
   const contextoDinamico = construirContextoDinamico({
     customerName: CLIENTE_DE_PRUEBA,

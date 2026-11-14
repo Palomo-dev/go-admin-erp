@@ -56,6 +56,37 @@ export interface EntradaPromptEstable {
   checkoutConfig: ConfigCheckout;
   quickReplies: EntradaReferencia[] | null | undefined;
   knowledgeFragments: EntradaReferencia[] | null | undefined;
+  /** `ai_settings.tone` (Configuración › Chat › IA). Sin valor: no se agrega bloque de tono. */
+  tono?: string | null;
+  /** `ai_settings.language`. Sin valor: no se agrega bloque de idioma. */
+  idioma?: string | null;
+}
+
+/** Tonos que ofrece Configuración › Chat › IA (`TONE_OPTIONS` en aiSettingsService). */
+const INSTRUCCION_TONO: Record<string, string> = {
+  professional: 'Profesional y cordial: claro, respetuoso y directo, sin jerga ni exceso de emojis.',
+  friendly: 'Amigable y cercano: cálido y natural, como un buen asesor de la tienda; puedes usar algún emoji con moderación.',
+  formal: 'Formal: trata al cliente de "usted", con frases completas y sin emojis ni expresiones coloquiales.',
+  casual: 'Casual y relajado: conversacional y sencillo, frases cortas; puedes usar emojis con moderación.',
+  empathetic: 'Empático: reconoce primero cómo se siente el cliente o su problema, y luego ayuda con calma y paciencia.',
+};
+
+/** Idiomas que ofrece Configuración › Chat › IA (`LANGUAGE_OPTIONS`). */
+const NOMBRE_IDIOMA: Record<string, string> = { es: 'español', en: 'inglés', pt: 'portugués', fr: 'francés' };
+
+/**
+ * Bloque de estilo con el tono y el idioma de la organización. Antes la IA los
+ * ignoraba (se guardaban en `ai_settings` pero no entraban al prompt). El idioma
+ * es el principal: si el cliente escribe en otro, se le responde en el suyo,
+ * que es lo que la IA ya hacía.
+ */
+export function bloqueEstilo(tono?: string | null, idioma?: string | null): string {
+  const lineas: string[] = [];
+  const t = tono ? INSTRUCCION_TONO[tono] : undefined;
+  if (t) lineas.push(`- Tono: ${t}`);
+  const i = idioma ? NOMBRE_IDIOMA[idioma] : undefined;
+  if (i) lineas.push(`- Idioma: responde en ${i}. Si el cliente te escribe en otro idioma, respóndele en el idioma del cliente.`);
+  return lineas.length ? `ESTILO DE RESPUESTA:\n${lineas.join('\n')}\n\n` : '';
 }
 
 export interface EntradaContextoDinamico {
@@ -156,15 +187,18 @@ export async function cargarInfoOrganizacion(supabase: ClienteDatos, organizatio
  * organizacion. Es el prefijo que el proveedor puede cachear.
  */
 export function construirPromptEstable(entrada: EntradaPromptEstable): string {
-    const { systemRules, vertical, orgInfo, checkoutConfig, quickReplies, knowledgeFragments } = entrada;
+    const { systemRules, vertical, orgInfo, checkoutConfig, quickReplies, knowledgeFragments, tono, idioma } = entrada;
     const esRetail = vertical === 'retail';
 
     let systemPrompt = '';
-    
+
     if (systemRules) {
       systemPrompt = `INSTRUCCIONES PRINCIPALES:\n${systemRules}\n\nIMPORTANTE: \"Dar solución\" significa ayudar con información REAL del catálogo o redirigir al cliente. NUNCA inventes estados de pedidos, números de seguimiento, tiempos de entrega ni información que no tengas. Si no tienes datos reales, pregunta al cliente o sugiere contactar por otro medio.\n\n`;
     }
-    
+
+    // Tono e idioma de Configuración › Chat › IA (antes se guardaban y no se usaban).
+    systemPrompt += bloqueEstilo(tono, idioma);
+
     if (!esRetail) {
       // Los verticales que no venden catalogo no reciben instrucciones de
       // tarjetas, checkout ni [PEDIDO_LISTO]. Reciben su propio encargo.

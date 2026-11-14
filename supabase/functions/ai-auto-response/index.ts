@@ -1056,6 +1056,8 @@ Deno.serve(async (req: Request) => {
       checkoutConfig,
       quickReplies,
       knowledgeFragments,
+      tono: settings.tone,
+      idioma: settings.language,
     });
     const contextoDinamico = construirContextoDinamico({
       emailFromChat,

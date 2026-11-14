@@ -9,6 +9,7 @@
  * fijadas las piezas que deciden el comportamiento.
  */
 import {
+  bloqueEstilo,
   construirContextoDinamico,
   construirPromptEstable,
   mensajesDeSistema,
@@ -27,6 +28,41 @@ const CHECKOUT: ConfigCheckout = {
   taxIncluded: false,
 };
 const base = { vertical: 'retail', orgInfo: { name: 'Tienda', domain: 'tienda.example.com' }, checkoutConfig: CHECKOUT, quickReplies: null, knowledgeFragments: null };
+
+describe('bloqueEstilo: tono e idioma de Configuración › Chat › IA', () => {
+  test('sin tono ni idioma no agrega nada (el prompt queda como antes)', () => {
+    expect(bloqueEstilo()).toBe('');
+    expect(bloqueEstilo(null, null)).toBe('');
+    expect(construirPromptEstable(base)).toBe(construirPromptEstable({ ...base, tono: null, idioma: null }));
+  });
+
+  test('valores desconocidos se ignoran en vez de inventar una instrucción', () => {
+    expect(bloqueEstilo('gritón', 'klingon')).toBe('');
+  });
+
+  test('cada tono de la configuración tiene su instrucción', () => {
+    for (const tono of ['professional', 'friendly', 'formal', 'casual', 'empathetic']) {
+      expect(bloqueEstilo(tono)).toMatch(/^ESTILO DE RESPUESTA:\n- Tono: .+\n\n$/);
+    }
+    expect(bloqueEstilo('formal')).toContain('"usted"');
+  });
+
+  test('el idioma es el principal, pero al cliente se le responde en el suyo', () => {
+    const b = bloqueEstilo(undefined, 'en');
+    expect(b).toContain('responde en inglés');
+    expect(b).toContain('respóndele en el idioma del cliente');
+  });
+
+  test('va después de las reglas de la organización y antes del rol', () => {
+    const p = construirPromptEstable({ ...base, systemRules: 'No prometas descuentos.', tono: 'friendly', idioma: 'es' });
+    const iReglas = p.indexOf('INSTRUCCIONES PRINCIPALES');
+    const iEstilo = p.indexOf('ESTILO DE RESPUESTA:');
+    const iRol = p.indexOf('TU ROL:');
+    expect(iReglas).toBe(0);
+    expect(iEstilo).toBeGreaterThan(iReglas);
+    expect(iRol).toBeGreaterThan(iEstilo);
+  });
+});
 
 describe('construirPromptEstable', () => {
   test('las reglas de la organización van primero', () => {

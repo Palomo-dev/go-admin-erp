@@ -53645,7 +53645,13 @@
       "buena": "Buena",
       "mejorable": "Mejorable",
       "votoGuardado": "Gracias: tu calificación quedó en la auditoría del chat.",
-      "votoError": "No se pudo guardar tu calificación"
+      "votoError": "No se pudo guardar tu calificación",
+      "secciones": {
+        "canalModelo": "Canal y modelo",
+        "respuesta": "Respuesta",
+        "tonoIdioma": "Tono e idioma",
+        "reglas": "Reglas"
+      }
     }
   }
 }

@@ -38,6 +38,11 @@ test('ajustes: modelo de la configuración por defecto, tono e idioma, reglas qu
     { idioma: 'es' },
   );
   expect(await screen.findByText('El de la configuración (GPT-5.6 Luna)')).toBeTruthy();
+  // Secciones plegables (decisión del dueño): solo «Tono e idioma» abierta al entrar.
+  expect(screen.getByRole('button', { name: 'Tono e idioma' }).getAttribute('aria-expanded')).toBe('true');
+  expect(screen.getByRole('button', { name: 'Canal y modelo' }).getAttribute('aria-expanded')).toBe('false');
+  fireEvent.click(screen.getByRole('button', { name: 'Reglas' }));
+  expect(screen.getByRole('button', { name: 'Reglas' }).getAttribute('aria-expanded')).toBe('true');
   // Tono e idioma vuelven (decisión del dueño 2026-11-14) y empiezan con los de la configuración.
   expect(screen.getByLabelText('Tono').textContent).toContain('Profesional');
   expect(screen.getByLabelText('Idioma').textContent).toContain('Español');

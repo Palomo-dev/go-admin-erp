@@ -53630,7 +53630,13 @@
       "buena": "Bonne",
       "mejorable": "À améliorer",
       "votoGuardado": "Merci : votre note a été enregistrée dans l’audit du chat.",
-      "votoError": "Impossible d’enregistrer votre note"
+      "votoError": "Impossible d’enregistrer votre note",
+      "secciones": {
+        "canalModelo": "Canal et modèle",
+        "respuesta": "Réponse",
+        "tonoIdioma": "Ton et langue",
+        "reglas": "Règles"
+      }
     }
   }
 }

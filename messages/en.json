@@ -53630,7 +53630,13 @@
       "buena": "Good",
       "mejorable": "Could be better",
       "votoGuardado": "Thanks: your rating was saved in the chat audit log.",
-      "votoError": "Your rating could not be saved"
+      "votoError": "Your rating could not be saved",
+      "secciones": {
+        "canalModelo": "Channel and model",
+        "respuesta": "Reply",
+        "tonoIdioma": "Tone and language",
+        "reglas": "Rules"
+      }
     }
   }
 }

@@ -53640,7 +53640,13 @@
       "buena": "Boa",
       "mejorable": "Pode melhorar",
       "votoGuardado": "Obrigado: sua avaliação ficou na auditoria do chat.",
-      "votoError": "Não foi possível salvar sua avaliação"
+      "votoError": "Não foi possível salvar sua avaliação",
+      "secciones": {
+        "canalModelo": "Canal e modelo",
+        "respuesta": "Resposta",
+        "tonoIdioma": "Tom e idioma",
+        "reglas": "Regras"
+      }
     }
   }
 }

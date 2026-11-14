@@ -88,3 +88,18 @@ describe('textos del menú', () => {
     }
   });
 });
+
+describe('Plan y facturación (Figma 93-config-plan-y-facturacion-resumen)', () => {
+  test('es un panel de resumen dentro del diálogo, no un enlace que saca de él', () => {
+    const plan = seccionPorId('general.plan')!;
+    expect(plan.enlace).toBeUndefined();
+    expect(entradaDeSeccion(plan)).toBe('plan');
+  });
+
+  test.each(Object.keys(IDIOMAS))('el resumen tiene sus textos en %s', (idioma) => {
+    const ns = (IDIOMAS[idioma].configuracionDialogo as unknown as { planResumen: Record<string, unknown> }).planResumen;
+    for (const clave of ['gestionar', 'verFacturas', 'usoTitulo', 'modulos', 'sucursales', 'usuarios', 'creditos', 'nota', 'estado', 'periodo', 'error']) {
+      expect({ idioma, clave, ok: !!ns?.[clave] }).toEqual({ idioma, clave, ok: true });
+    }
+  });
+});

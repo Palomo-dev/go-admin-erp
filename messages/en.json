@@ -51087,6 +51087,53 @@
       "descripcion": "If you leave now, the changes you made in this section will be lost.",
       "descartar": "Discard changes",
       "seguir": "Keep editing"
+    },
+    "planResumen": {
+      "plan": "{nombre} plan",
+      "sinPlan": "No active plan",
+      "periodo": {
+        "mensual": "Monthly",
+        "anual": "Yearly"
+      },
+      "estado": {
+        "renueva": "Renews on {fecha}.",
+        "prueba": "Your trial ends on {fecha}.",
+        "cancela": "The plan ends on {fecha} and won’t renew.",
+        "vencido": "The subscription is past due.",
+        "cancelado": "The subscription is canceled.",
+        "sinPlan": "Your organization doesn’t have an active plan."
+      },
+      "donde": "Changing plans, viewing invoices or updating the payment method is done on the Plan and billing page.",
+      "gestionar": "Manage plan and billing",
+      "verFacturas": "View invoices",
+      "usoTitulo": "Plan usage",
+      "modulos": {
+        "titulo": "Active modules",
+        "descripcion": "The ones you see in the sidebar.",
+        "valor": "{actual} of {total}"
+      },
+      "sucursales": {
+        "titulo": "Branches",
+        "valor": "{actual} of {maximo} included",
+        "sinLimite": "{actual} · unlimited"
+      },
+      "usuarios": {
+        "titulo": "Users",
+        "descripcion": "People with access to the organization.",
+        "valor": "{actual} of {maximo}",
+        "sinLimite": "{actual} · unlimited"
+      },
+      "creditos": {
+        "titulo": "AI credits",
+        "descripcion": "Used by GO Assistant and the Chat AI.",
+        "saldo": "{n, plural, one {# available} other {# available}}",
+        "recargar": "Top up"
+      },
+      "nota": "Nothing to save here: this summary is for information only. Plan changes are made on its own page, outside this dialog.",
+      "error": {
+        "titulo": "The plan couldn’t be loaded",
+        "descripcion": "Try again in a few seconds."
+      }
     }
   },
   "chatHilo": {

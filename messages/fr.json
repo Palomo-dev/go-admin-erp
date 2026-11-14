@@ -51087,6 +51087,53 @@
       "descripcion": "Si vous quittez maintenant, les modifications de cette section seront perdues.",
       "descartar": "Abandonner les modifications",
       "seguir": "Continuer la modification"
+    },
+    "planResumen": {
+      "plan": "Forfait {nombre}",
+      "sinPlan": "Aucun forfait actif",
+      "periodo": {
+        "mensual": "Mensuel",
+        "anual": "Annuel"
+      },
+      "estado": {
+        "renueva": "Se renouvelle le {fecha}.",
+        "prueba": "Votre essai se termine le {fecha}.",
+        "cancela": "Le forfait se termine le {fecha} et ne sera pas renouvelé.",
+        "vencido": "L’abonnement est impayé.",
+        "cancelado": "L’abonnement est annulé.",
+        "sinPlan": "Votre organisation n’a pas de forfait actif."
+      },
+      "donde": "Changer de forfait, consulter les factures ou mettre à jour le moyen de paiement se fait sur la page Forfait et facturation.",
+      "gestionar": "Gérer le forfait et la facturation",
+      "verFacturas": "Voir les factures",
+      "usoTitulo": "Utilisation du forfait",
+      "modulos": {
+        "titulo": "Modules actifs",
+        "descripcion": "Ceux que vous voyez dans le menu latéral.",
+        "valor": "{actual} sur {total}"
+      },
+      "sucursales": {
+        "titulo": "Succursales",
+        "valor": "{actual} sur {maximo} incluses",
+        "sinLimite": "{actual} · sans limite"
+      },
+      "usuarios": {
+        "titulo": "Utilisateurs",
+        "descripcion": "Personnes ayant accès à l’organisation.",
+        "valor": "{actual} sur {maximo}",
+        "sinLimite": "{actual} · sans limite"
+      },
+      "creditos": {
+        "titulo": "Crédits d’IA",
+        "descripcion": "Utilisés par GO Assistant et l’IA du Chat.",
+        "saldo": "{n, plural, one {# disponible} other {# disponibles}}",
+        "recargar": "Recharger"
+      },
+      "nota": "Rien à enregistrer ici : ce résumé est informatif. Les changements de forfait se font sur sa page, hors de cette boîte de dialogue.",
+      "error": {
+        "titulo": "Impossible de charger le forfait",
+        "descripcion": "Réessayez dans quelques secondes."
+      }
     }
   },
   "chatHilo": {

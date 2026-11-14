@@ -51097,6 +51097,53 @@
       "descripcion": "Se você sair agora, as alterações feitas nesta seção serão perdidas.",
       "descartar": "Descartar alterações",
       "seguir": "Continuar editando"
+    },
+    "planResumen": {
+      "plan": "Plano {nombre}",
+      "sinPlan": "Sem plano ativo",
+      "periodo": {
+        "mensual": "Mensal",
+        "anual": "Anual"
+      },
+      "estado": {
+        "renueva": "Renova em {fecha}.",
+        "prueba": "Seu teste termina em {fecha}.",
+        "cancela": "O plano termina em {fecha} e não será renovado.",
+        "vencido": "A assinatura está vencida.",
+        "cancelado": "A assinatura está cancelada.",
+        "sinPlan": "Sua organização não tem um plano ativo."
+      },
+      "donde": "Mudar de plano, ver faturas ou atualizar a forma de pagamento é feito na página Plano e cobrança.",
+      "gestionar": "Gerenciar plano e cobrança",
+      "verFacturas": "Ver faturas",
+      "usoTitulo": "Uso do plano",
+      "modulos": {
+        "titulo": "Módulos ativos",
+        "descripcion": "Os que você vê no menu lateral.",
+        "valor": "{actual} de {total}"
+      },
+      "sucursales": {
+        "titulo": "Filiais",
+        "valor": "{actual} de {maximo} incluídas",
+        "sinLimite": "{actual} · sem limite"
+      },
+      "usuarios": {
+        "titulo": "Usuários",
+        "descripcion": "Pessoas com acesso à organização.",
+        "valor": "{actual} de {maximo}",
+        "sinLimite": "{actual} · sem limite"
+      },
+      "creditos": {
+        "titulo": "Créditos de IA",
+        "descripcion": "Usados pelo GO Assistente e pela IA do Chat.",
+        "saldo": "{n, plural, one {# disponível} other {# disponíveis}}",
+        "recargar": "Recarregar"
+      },
+      "nota": "Não há nada para salvar aqui: o resumo é só informativo. As mudanças do plano são feitas na página dele, fora desta janela.",
+      "error": {
+        "titulo": "Não foi possível carregar o plano",
+        "descripcion": "Tente novamente em alguns segundos."
+      }
     }
   },
   "chatHilo": {

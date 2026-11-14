@@ -32,8 +32,14 @@ function LoadingSkeleton() {
 // next/dynamic exige las opciones como literal de objeto en CADA llamada (el compilador las
 // analiza en estático): una constante compartida rompe `next build` («options must be an object literal»).
 
-const PANELES: Record<string, React.ComponentType> = {
+/** Props que reciben los paneles: los que enlazan fuera del diálogo lo cierran al navegar. */
+interface PropsPanel {
+  onAbrirEnlace?: (href: string) => void;
+}
+
+const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   'general.general': dynamic(() => import('../panels/general/GeneralConfigPanel').then((m) => m.GeneralConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'general.plan': dynamic(() => import('../panels/general/PlanResumenPanel').then((m) => m.PlanResumenPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'general.asistente': dynamic(() => import('../panels/asistente/AsistenteConfigPanel').then((m) => m.AsistenteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'sitioweb.general': dynamic(() => import('../panels/sitioweb/WebsiteConfigPanel').then((m) => m.WebsiteConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.general': dynamic(() => import('../panels/crm/CRMConfigPanel').then((m) => m.CRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
@@ -107,7 +113,7 @@ interface Props {
 export function ConfiguracionPanelRenderer({ seccion, puedeEditar, algunAjusteEditable, onAbrirEnlace }: Props) {
   const t = useTranslations('configuracionUnificada.soloLectura');
   const Panel = PANELES[seccion.id];
-  const contenido = Panel ? <Panel /> : seccion.enlace ? <SeccionEnlace href={seccion.enlace} onAbrir={onAbrirEnlace} /> : null;
+  const contenido = Panel ? <Panel onAbrirEnlace={onAbrirEnlace} /> : seccion.enlace ? <SeccionEnlace href={seccion.enlace} onAbrir={onAbrirEnlace} /> : null;
   const soloLectura = !puedeEditar && !seccion.enlace;
   const aviso = soloLectura && !(seccion.controlaLectura && algunAjusteEditable) ? (
     <AvisoTonal tono="neutro" icono={Lock} titulo={t('titulo')} descripcion={t('descripcion')} />

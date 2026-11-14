@@ -202,11 +202,20 @@ test('una sección de un módulo fuera del plan no se pinta', async () => {
   expect(screen.queryByRole('heading', { level: 2, name: 'Chat' })).toBeNull();
 });
 
-test('sección enlace: fila con «Abrir» que navega y cierra el diálogo', async () => {
+test('Plan y facturación ya no saca del diálogo: muestra su resumen (Figma 93-config-plan-y-facturacion-resumen)', async () => {
   ir('/app/inicio?config=general.plan');
   renderConIdioma(<ConfiguracionDialogoRaiz />, { idioma: 'es' });
+  expect(await screen.findByRole('heading', { level: 2, name: 'Plan y facturación' })).toBeTruthy();
+  expect(await screen.findByText('panel cargado')).toBeTruthy();
+  expect(screen.queryByRole('link', { name: /Abrir/ })).toBeNull();
+});
+
+test('sección enlace: fila con «Abrir» que navega y cierra el diálogo', async () => {
+  servidor([...TODO, { id: 'pos.reservas-mesas', puedeEditar: true, ajustes: {} }]);
+  ir('/app/inicio?config=pos.reservas-mesas');
+  renderConIdioma(<ConfiguracionDialogoRaiz />, { idioma: 'es' });
   fireEvent.click(await screen.findByRole('link', { name: /Abrir/ }));
-  expect(mockPush).toHaveBeenCalledWith('/app/plan');
+  expect(mockPush).toHaveBeenCalledWith('/app/pos/reservas-mesas?tab=configuracion');
   expect(params().has('config')).toBe(false);
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });

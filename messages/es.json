@@ -51823,5 +51823,65 @@
         }
       }
     }
+  },
+  "chatRecuperado": {
+    "nav": {
+      "configuracion": "Configuración"
+    },
+    "conocimiento": {
+      "filtroEtiquetas": "Filtrar por etiquetas",
+      "etiquetasPlaceholder": "Todas las etiquetas",
+      "quitarEtiqueta": "Quitar el filtro {etiqueta}",
+      "prioridad": "Prioridad",
+      "votos": "Votos",
+      "votosAria": "{positivos} votos a favor y {negativos} en contra",
+      "indexada": "Indexada",
+      "actualizar": "Actualizar",
+      "mostrando": "Mostrando {visibles} de {total} fragmentos",
+      "modelo": "Modelo del embedding",
+      "hash": "Hash del contenido",
+      "creado": "Creado"
+    },
+    "importar": {
+      "etiquetas": "Etiquetas",
+      "enCola": "Los embeddings quedaron en cola: la IA podrá usar los fragmentos en unos minutos.",
+      "erroresTitulo": "Filas que no se cargaron:",
+      "fila": "Fila {n}: {motivo}",
+      "errorGeneral": "No se pudo guardar en la base de datos. Inténtalo de nuevo.",
+      "nuevaImportacion": "Nueva importación"
+    },
+    "widget": {
+      "filtroCanal": "Canal",
+      "canalTodos": "Canal: todos",
+      "verDetalle": "Ver detalle",
+      "detalleTitulo": "Detalle de la sesión",
+      "idAnonimo": "ID anónimo",
+      "inicio": "Inicio",
+      "ultimaActividad": "Última actividad",
+      "canal": "Canal",
+      "tipoCanal": "Tipo de canal",
+      "cliente": "Cliente",
+      "correo": "Correo del cliente",
+      "dispositivo": "Dispositivo",
+      "ubicacion": "Ubicación",
+      "pagina": "Página actual",
+      "origen": "Llegó desde",
+      "navegador": "Navegador (user agent)",
+      "abrirConversacion": "Abrir conversación"
+    },
+    "auditoria": {
+      "actualizar": "Actualizar",
+      "filtroActor": "Tipo de actor",
+      "actorTodos": "Actor: todos",
+      "rangoPersonalizado": "Elegir fechas…",
+      "rangoFechas": "Fechas de la auditoría",
+      "identificadores": "Identificadores",
+      "idRegistro": "ID del registro",
+      "idActor": "ID de quien lo hizo",
+      "entidad": "Tipo de registro afectado",
+      "idEntidad": "ID del registro afectado",
+      "navegador": "Navegador (user agent)",
+      "metadata": "Datos adicionales"
+    }
   }
 }

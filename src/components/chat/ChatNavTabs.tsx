@@ -9,11 +9,16 @@
  * organización, el cargo y las capacidades (`usePaginasModulo('chat')`, el
  * mismo cálculo del menú lateral). Fuera del shell se usa el catálogo entero.
  *
+ * Al final, «Configuración» (etiquetas, respuestas rápidas, llaves de API e
+ * IA del chat): no es una página del módulo sino el diálogo de Configuración
+ * abierto sobre la pantalla actual en Chat › General (`?config=chat.general`).
+ * Solo la ve quien puede entrar a esa sección (lo decide el servidor).
+ *
  * En la Bandeja el lado derecho lleva «Nueva conversación».
  */
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Settings } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,14 +27,23 @@ import { usePaginasModulo, useNavegacionVisible } from '@/lib/navigation/Navegac
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { clasesBoton } from '@/components/kit';
 import { useDesplazamientoHorizontal } from '@/components/kit/useDesplazamientoHorizontal';
+import { useCapacidades } from '@/lib/navigation/useCapacidades';
+import { rutaSeccion } from '@/components/configuracion/config/configSectionsRegistry';
+import { abrirConfiguracion } from '@/components/configuracion/dialogo/abrirConfiguracion';
 import { destinoPestanaChat, pestanaChatActiva, esRutaBandeja } from './chatNavLogica';
+
+/** Sección del diálogo de Configuración que abre la pestaña «Configuración». */
+const SECCION_CONFIG_CHAT = 'chat.general';
 
 export function ChatNavTabs({ className }: { className?: string }) {
   const pathname = usePathname() ?? '';
   const t = useTranslations('chatModulo.pestanas');
+  const tNav = useTranslations('chatRecuperado.nav');
   const nombres = useNombresNav();
   const nav = useNavegacionVisible();
   const visibles = usePaginasModulo('chat');
+  // Chat › General pide administrador (`PERMISO_ADMIN`): lo resuelve `/api/me/capacidades`.
+  const { datos: capacidades } = useCapacidades();
 
   // Sin proveedor (fuera del shell): todo el catálogo del módulo.
   const paginas: PaginaNav[] | null = nav
@@ -66,6 +80,25 @@ export function ChatNavTabs({ className }: { className?: string }) {
                 </Link>
               );
             })}
+        {paginas !== null && capacidades.esAdmin ? (
+          <Link
+            href={rutaSeccion(SECCION_CONFIG_CHAT)}
+            onClick={(e) => {
+              // `defaultPrevented`: el diálogo ya interceptó el enlace (ver `ConfiguracionDialogoRaiz`).
+              if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
+              abrirConfiguracion({ seccionId: SECCION_CONFIG_CHAT });
+            }}
+            aria-haspopup="dialog"
+            className={cn(
+              'inline-flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 border-transparent px-3 text-sm font-medium text-fg-secondary transition-colors hover:text-fg',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand',
+            )}
+          >
+            <Settings aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />
+            {tNav('configuracion')}
+          </Link>
+        ) : null}
       </nav>
       {esRutaBandeja(pathname) && (
         <Link href="/app/chat/conversaciones/nueva" className={clasesBoton({ tamano: 'sm', className: 'my-1.5' })}>

@@ -51808,5 +51808,65 @@
         }
       }
     }
+  },
+  "chatRecuperado": {
+    "nav": {
+      "configuracion": "Settings"
+    },
+    "conocimiento": {
+      "filtroEtiquetas": "Filter by tags",
+      "etiquetasPlaceholder": "All tags",
+      "quitarEtiqueta": "Remove the {etiqueta} filter",
+      "prioridad": "Priority",
+      "votos": "Votes",
+      "votosAria": "{positivos} upvotes and {negativos} downvotes",
+      "indexada": "Indexed",
+      "actualizar": "Refresh",
+      "mostrando": "Showing {visibles} of {total} snippets",
+      "modelo": "Embedding model",
+      "hash": "Content hash",
+      "creado": "Created"
+    },
+    "importar": {
+      "etiquetas": "Tags",
+      "enCola": "The embeddings are queued: the AI will be able to use the snippets in a few minutes.",
+      "erroresTitulo": "Rows that weren't loaded:",
+      "fila": "Row {n}: {motivo}",
+      "errorGeneral": "Couldn't save to the database. Try again.",
+      "nuevaImportacion": "New import"
+    },
+    "widget": {
+      "filtroCanal": "Channel",
+      "canalTodos": "Channel: all",
+      "verDetalle": "View details",
+      "detalleTitulo": "Session details",
+      "idAnonimo": "Anonymous ID",
+      "inicio": "Started",
+      "ultimaActividad": "Last activity",
+      "canal": "Channel",
+      "tipoCanal": "Channel type",
+      "cliente": "Customer",
+      "correo": "Customer email",
+      "dispositivo": "Device",
+      "ubicacion": "Location",
+      "pagina": "Current page",
+      "origen": "Came from",
+      "navegador": "Browser (user agent)",
+      "abrirConversacion": "Open conversation"
+    },
+    "auditoria": {
+      "actualizar": "Refresh",
+      "filtroActor": "Actor type",
+      "actorTodos": "Actor: all",
+      "rangoPersonalizado": "Choose dates…",
+      "rangoFechas": "Audit dates",
+      "identificadores": "Identifiers",
+      "idRegistro": "Record ID",
+      "idActor": "ID of who did it",
+      "entidad": "Affected record type",
+      "idEntidad": "Affected record ID",
+      "navegador": "Browser (user agent)",
+      "metadata": "Additional data"
+    }
   }
 }

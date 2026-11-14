@@ -4,7 +4,9 @@
  * Importar fragmentos (Figma 91-chat-33): 1. archivo CSV o texto pegado,
  * 2. vista previa con el estado de cada fila (las filas con error no se
  * cargan), 3. opciones (fuente, etiquetas para todos, dejarlos listos para la
- * IA). El análisis y la carga son los de `knowledgeService`.
+ * IA). El análisis y la carga son los de `knowledgeService`. Al terminar:
+ * cuántas entraron, las filas que no (con su motivo), si los embeddings quedaron
+ * en cola y «Nueva importación».
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -21,7 +23,7 @@ import KnowledgeService, { type ImportFragmentData, type ImportResult, type Know
 import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { FileUploadZone, TextInputZone } from '@/components/chat/conocimiento/importar';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
-import { revisarFilasImportacion, type FilaImportacion } from '@/components/chat/conocimiento/conocimientoLogica';
+import { filasNoCargadas, revisarFilasImportacion, type FilaImportacion, type FilaNoCargada } from '@/components/chat/conocimiento/conocimientoLogica';
 
 type Modo = 'csv' | 'texto';
 const SIN_FUENTE = '__ninguna__';
@@ -30,6 +32,7 @@ const VISTA = 20;
 export default function ImportPage() {
   const t = useTranslations('chatModulo.conocimiento.importar');
   const tc = useTranslations('chatModulo.conocimiento');
+  const tr = useTranslations('chatRecuperado.importar');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -47,6 +50,7 @@ export default function ImportPage() {
   const [indexar, setIndexar] = useState(true);
   const [importando, setImportando] = useState(false);
   const [resultado, setResultado] = useState<ImportResult | null>(null);
+  const [noCargadas, setNoCargadas] = useState<FilaNoCargada[]>([]);
   const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
   const [filas, setFilas] = useState<ImportFragmentData[]>([]);
 
@@ -99,6 +103,7 @@ export default function ImportPage() {
         indexar,
       );
       setResultado(r);
+      setNoCargadas(filasNoCargadas(revisadas, r.errors));
       toast({ title: r.success ? t('toasts.listo', { n: r.successCount }) : t('toasts.parcial'), variant: r.success ? 'default' : 'destructive' });
     } catch (e) {
       console.error('Error importando fragmentos:', e);
@@ -108,10 +113,44 @@ export default function ImportPage() {
     }
   };
 
+  /** Empieza de cero: sin archivo, sin texto, sin etiquetas ni resultado. La fuente elegida se conserva. */
+  const nuevaImportacion = () => {
+    setArchivo(null);
+    setContenidoArchivo('');
+    setTexto('');
+    setEtiquetasTexto('');
+    setFilas([]);
+    setResultado(null);
+    setNoCargadas([]);
+    setErrorAnalisis(null);
+  };
+
+  const motivoNoCargada = (f: FilaNoCargada) =>
+    f.motivo === 'general' ? tr('errorGeneral') : f.motivo === 'servidor' ? (f.mensaje ?? tr('errorGeneral')) : t(`vista.estados.${f.motivo}`);
+
   const columnas: ColumnaTabla<FilaImportacion>[] = [
     { id: 'n', encabezado: '#', ancho: 48, celda: (r) => <span className="text-fg-muted">{r.fila}</span> },
     { id: 'titulo', encabezado: t('vista.titulo'), ancho: 220, celda: (r) => (r.fragmento.title?.trim() ? r.fragmento.title : <span className="text-fg-muted">{t('vista.sinTitulo')}</span>) },
     { id: 'contenido', encabezado: t('vista.contenido'), celda: (r) => <span className="line-clamp-1 text-fg-secondary">{r.fragmento.content}</span> },
+    {
+      id: 'etiquetas',
+      encabezado: tr('etiquetas'),
+      ancho: 180,
+      ocultarDebajo: 'md',
+      celda: (r) =>
+        r.fragmento.tags?.length ? (
+          <div className="flex flex-wrap gap-1">
+            {r.fragmento.tags.slice(0, 3).map((e) => (
+              <Badge key={e} tono="neutro" tamano="sm">
+                {e}
+              </Badge>
+            ))}
+            {r.fragmento.tags.length > 3 && <span className="text-xs text-fg-muted">+{r.fragmento.tags.length - 3}</span>}
+          </div>
+        ) : (
+          <span className="text-fg-muted">—</span>
+        ),
+    },
     {
       id: 'estado',
       encabezado: t('vista.estado'),
@@ -237,10 +276,29 @@ export default function ImportPage() {
           </Tarjeta>
           {resultado && (
             <AvisoTonal
-              tono={resultado.errorCount === 0 ? 'exito' : 'advertencia'}
-              titulo={t('resultado.titulo', { ok: resultado.successCount, total: resultado.totalProcessed })}
-              descripcion={resultado.errorCount > 0 ? t('resultado.errores', { n: resultado.errorCount }) : undefined}
-              accion={{ etiqueta: t('resultado.ver'), onClick: () => router.push(fuenteId === SIN_FUENTE ? '/app/chat/conocimiento' : `/app/chat/conocimiento/fuentes/${fuenteId}`) }}
+              rol="status"
+              tono={noCargadas.length === 0 ? 'exito' : 'advertencia'}
+              titulo={t('resultado.titulo', { ok: resultado.successCount, total: revisadas.length || resultado.totalProcessed })}
+              descripcion={
+                <div className="flex flex-col gap-2">
+                  {noCargadas.length > 0 && <p>{t('resultado.errores', { n: noCargadas.length })}</p>}
+                  {resultado.jobId && <p>{tr('enCola')}</p>}
+                  {noCargadas.length > 0 && (
+                    <div className="flex flex-col gap-1">
+                      <p className="font-medium">{tr('erroresTitulo')}</p>
+                      <ul className="max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5">
+                        {noCargadas.map((f, i) => (
+                          <li key={`${f.fila}-${i}`}>{f.fila > 0 ? tr('fila', { n: f.fila, motivo: motivoNoCargada(f) }) : motivoNoCargada(f)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              }
+              acciones={[
+                { etiqueta: t('resultado.ver'), onClick: () => router.push(fuenteId === SIN_FUENTE ? '/app/chat/conocimiento' : `/app/chat/conocimiento/fuentes/${fuenteId}`) },
+                { etiqueta: tr('nuevaImportacion'), onClick: nuevaImportacion },
+              ]}
             />
           )}
         </div>

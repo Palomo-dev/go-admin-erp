@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, BookOpen, Plus, Settings, Upload } from 'lucide-react';
 import { ConfirmDialog, EmptyState, KpiStrip, PageHeader, SearchInput, StatCard, TabBar, clasesBoton, idPanel } from '@/components/kit';
+import { MultiSelect } from '@/components/kit/MultiSelect';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -25,11 +26,13 @@ import { FragmentDialog, SourceDialog } from '@/components/chat/conocimiento';
 import { TarjetaFuente } from '@/components/chat/conocimiento/TarjetaFuente';
 import { TablaFragmentos } from '@/components/chat/conocimiento/TablaFragmentos';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
+import { etiquetasDeFragmentos, filtrarFragmentos } from '@/components/chat/conocimiento/conocimientoLogica';
 
 type Pestana = 'fuentes' | 'fragmentos';
 
 export default function ConocimientoPage() {
   const t = useTranslations('chatModulo.conocimiento');
+  const tr = useTranslations('chatRecuperado.conocimiento');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -43,6 +46,7 @@ export default function ConocimientoPage() {
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState(false);
   const [busqueda, setBusqueda] = useState('');
+  const [etiquetas, setEtiquetas] = useState<string[]>([]);
 
   const [fuenteEditada, setFuenteEditada] = useState<KnowledgeSource | null>(null);
   const [dialogoFuente, setDialogoFuente] = useState(false);
@@ -155,6 +159,10 @@ export default function ConocimientoPage() {
   const pct = total ? Math.round((listos / total) * 100) : 0;
   const sinDato = t('sinDato');
 
+  // La búsqueda va al servidor; las etiquetas (todas a la vez) se filtran sobre lo cargado.
+  const opcionesEtiqueta = useMemo(() => etiquetasDeFragmentos(fragmentos ?? []).map((e) => ({ valor: e, etiqueta: e })), [fragmentos]);
+  const fragmentosVisibles = useMemo(() => filtrarFragmentos(fragmentos ?? [], '', etiquetas), [fragmentos, etiquetas]);
+
   const pestanas = useMemo(
     () => [
       { valor: 'fuentes' as const, etiqueta: t('pestanas.fuentes'), contador: stats?.totalSources },
@@ -251,6 +259,20 @@ export default function ConocimientoPage() {
           <>
             <div className="flex flex-wrap items-center gap-2">
               <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscarFragmentos')} className="w-full sm:max-w-sm" />
+              {opcionesEtiqueta.length > 0 && (
+                <MultiSelect
+                  opciones={opcionesEtiqueta}
+                  valores={etiquetas}
+                  onValoresChange={setEtiquetas}
+                  placeholder={tr('etiquetasPlaceholder')}
+                  etiquetaQuitar={(e) => tr('quitarEtiqueta', { etiqueta: e })}
+                  aria-labelledby="conocimiento-filtro-etiquetas"
+                  className="w-full sm:w-72"
+                />
+              )}
+              <span id="conocimiento-filtro-etiquetas" className="sr-only">
+                {tr('filtroEtiquetas')}
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -265,10 +287,13 @@ export default function ConocimientoPage() {
             </div>
             <TablaFragmentos
               conFuente
-              fragmentos={fragmentos ?? []}
-              estado={fragmentos === null ? 'cargando' : fragmentos.length === 0 && busqueda ? 'sinResultados' : 'listo'}
+              fragmentos={fragmentosVisibles}
+              estado={fragmentos === null ? 'cargando' : fragmentosVisibles.length === 0 && (busqueda || etiquetas.length > 0) ? 'sinResultados' : 'listo'}
               termino={busqueda}
-              onLimpiarFiltros={() => setBusqueda('')}
+              onLimpiarFiltros={() => {
+                setBusqueda('');
+                setEtiquetas([]);
+              }}
               onAbrir={(f) => router.push(`/app/chat/conocimiento/fragmentos/${f.id}`)}
               onEditar={(f) => {
                 setFragmentoEditado(f);
@@ -278,6 +303,11 @@ export default function ConocimientoPage() {
               onEliminar={(f) => setBorrar({ tipo: 'fragmento', fragmento: f })}
               vacio={{ titulo: t('fragmentos.vacioTitulo'), descripcion: t('fragmentos.vacioDescripcion') }}
             />
+            {fragmentos !== null && fragmentos.length > 0 && (
+              <p className="text-xs text-fg-muted" role="status">
+                {tr('mostrando', { visibles: fragmentosVisibles.length, total: fragmentos.length })}
+              </p>
+            )}
           </>
         )}
       </div>

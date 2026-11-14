@@ -3,15 +3,17 @@
 /**
  * Auditoría del chat (Figma 91-chat-41): quién cambió qué en conversaciones,
  * canales y conocimiento. Cifras, buscador, filtros (acción, sobre qué,
- * persona, fecha), tabla paginada en el servidor y detalle en hoja lateral.
+ * persona, tipo de actor, fecha con Desde/Hasta libre), tabla paginada en el
+ * servidor y detalle en hoja lateral con los IDs, el navegador y los datos
+ * adicionales del registro.
  * Los nombres de las personas salen de `GET /api/chat/agentes` (organización
  * de la sesión).
  */
 import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Download, Shield } from 'lucide-react';
-import { AvatarIniciales, DataTable, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { Download, RotateCw, Shield } from 'lucide-react';
+import { AvatarIniciales, DataTable, DateRangeButton, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla, type RangoFechas } from '@/components/kit';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -21,9 +23,10 @@ import ChatAuditService, { type AuditFilters, type AuditLog, type AuditStats } f
 import type { AgenteChat } from '@/lib/services/chat/agentesChat';
 import {
   ACCIONES_AUDITORIA,
+  ACTORES_AUDITORIA,
   ENTIDADES_AUDITORIA,
   celdaCsv,
-  diasDeRangoAuditoria,
+  diasDelFiltroAuditoria,
   humanizarAccion,
   iconoAccion,
   type RangoAuditoria,
@@ -33,6 +36,7 @@ const TODAS = '__todas__';
 
 export default function ChatAuditPage() {
   const t = useTranslations('chatModulo.auditoria');
+  const tr = useTranslations('chatRecuperado.auditoria');
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
@@ -49,21 +53,25 @@ export default function ChatAuditPage() {
   const [accion, setAccion] = useState(TODAS);
   const [entidad, setEntidad] = useState(TODAS);
   const [persona, setPersona] = useState(TODAS);
+  const [actor, setActor] = useState(TODAS);
   const [rango, setRango] = useState<RangoAuditoria>('7d');
+  const [fechas, setFechas] = useState<RangoFechas | null>(null);
   const [pagina, setPagina] = useState(1);
   const [tamano, setTamano] = useState(25);
   const [abierto, setAbierto] = useState<AuditLog | null>(null);
 
   const hoy = getToday();
   const filtros = useMemo<AuditFilters>(() => {
-    const dias = diasDeRangoAuditoria(rango);
+    const dias = diasDelFiltroAuditoria(rango, hoy, fechas, addPlainDays);
     return {
       action: accion === TODAS ? undefined : accion,
       entityType: entidad === TODAS ? undefined : entidad,
-      dateFrom: dias === null ? undefined : toInstant(addPlainDays(hoy, -dias)),
+      actorType: actor === TODAS ? undefined : actor,
+      dateFrom: dias.desde ? toInstant(dias.desde) : undefined,
+      dateTo: dias.hastaExclusivo ? toInstant(dias.hastaExclusivo) : undefined,
       search: busqueda || undefined,
     };
-  }, [accion, entidad, rango, busqueda, hoy, toInstant]);
+  }, [accion, entidad, actor, rango, fechas, busqueda, hoy, toInstant]);
 
   useEffect(() => setPagina(1), [filtros, persona]);
 
@@ -183,10 +191,16 @@ export default function ChatAuditPage() {
         icono={Shield}
         cargando={cargando}
         acciones={
-          <button type="button" onClick={exportar} disabled={exportando || total === 0} className={clasesBoton({ variante: 'secundario' })}>
-            <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {t('exportar')}
-          </button>
+          <>
+            <button type="button" onClick={cargar} disabled={cargando} className={clasesBoton({ variante: 'fantasma' })}>
+              <RotateCw aria-hidden="true" className={`size-4 ${cargando ? 'animate-spin' : ''}`} strokeWidth={1.5} />
+              {tr('actualizar')}
+            </button>
+            <button type="button" onClick={exportar} disabled={exportando || total === 0} className={clasesBoton({ variante: 'secundario' })}>
+              <Download aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('exportar')}
+            </button>
+          </>
         }
         movil={{ accionesEnFila: true }}
       />
@@ -239,7 +253,28 @@ export default function ChatAuditPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={rango} onValueChange={(v) => setRango(v as RangoAuditoria)}>
+        <Select value={actor} onValueChange={setActor}>
+          <SelectTrigger className="w-full sm:w-44" aria-label={tr('filtroActor')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TODAS}>{tr('actorTodos')}</SelectItem>
+            {ACTORES_AUDITORIA.map((a) => (
+              <SelectItem key={a} value={a}>
+                {t(`actores.${a}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={rango}
+          onValueChange={(v) => {
+            const r = v as RangoAuditoria;
+            setRango(r);
+            // Al elegir fechas libres se parte de los últimos 7 días.
+            if (r === 'personalizado' && !fechas) setFechas({ desde: addPlainDays(hoy, -6), hasta: hoy });
+          }}
+        >
           <SelectTrigger className="w-full sm:w-40" aria-label={t('filtros.fecha')}>
             <SelectValue />
           </SelectTrigger>
@@ -249,8 +284,12 @@ export default function ChatAuditPage() {
                 {t(`filtros.rangos.${r}`)}
               </SelectItem>
             ))}
+            <SelectItem value="personalizado">{tr('rangoPersonalizado')}</SelectItem>
           </SelectContent>
         </Select>
+        {rango === 'personalizado' && fechas && (
+          <DateRangeButton valor={fechas} onValorChange={setFechas} hoy={hoy} etiqueta={tr('rangoFechas')} />
+        )}
       </div>
 
       <DataTable<AuditLog>
@@ -258,7 +297,7 @@ export default function ChatAuditPage() {
         columnas={columnas}
         filas={registros}
         obtenerId={(l) => l.id}
-        estado={fallo ? 'error' : cargando && registros.length === 0 ? 'cargando' : registros.length === 0 && (busqueda || accion !== TODAS || entidad !== TODAS || persona !== TODAS) ? 'sinResultados' : 'listo'}
+        estado={fallo ? 'error' : cargando && registros.length === 0 ? 'cargando' : registros.length === 0 && (busqueda || accion !== TODAS || entidad !== TODAS || persona !== TODAS || actor !== TODAS || rango === 'personalizado') ? 'sinResultados' : 'listo'}
         termino={busqueda}
         onReintentar={cargar}
         onLimpiarFiltros={() => {
@@ -266,6 +305,8 @@ export default function ChatAuditPage() {
           setAccion(TODAS);
           setEntidad(TODAS);
           setPersona(TODAS);
+          setActor(TODAS);
+          if (rango === 'personalizado') setRango('7d');
         }}
         onFilaClick={setAbierto}
         etiquetaFila={(l) => textoAccion(l.action)}
@@ -305,10 +346,23 @@ export default function ChatAuditPage() {
               <FilaDato etiqueta={t('detalle.tipoActor')} valor={t.has(`actores.${abierto.actor_type}`) ? t(`actores.${abierto.actor_type}`) : abierto.actor_type} />
               {abierto.ip_address && <FilaDato etiqueta={t('detalle.ip')} valor={abierto.ip_address} />}
             </ListaDatos>
+            <ListaDatos etiqueta={tr('identificadores')}>
+              <FilaDato etiqueta={tr('idRegistro')} valor={<span className="break-all font-mono text-xs">{abierto.id}</span>} />
+              {abierto.actor_id && <FilaDato etiqueta={tr('idActor')} valor={<span className="break-all font-mono text-xs">{abierto.actor_id}</span>} />}
+              <FilaDato etiqueta={tr('entidad')} valor={<span className="font-mono text-xs">{abierto.entity_type}</span>} />
+              {abierto.entity_id && <FilaDato etiqueta={tr('idEntidad')} valor={<span className="break-all font-mono text-xs">{abierto.entity_id}</span>} />}
+              {abierto.user_agent && <FilaDato etiqueta={tr('navegador')} valor={<span className="break-all text-xs">{abierto.user_agent}</span>} />}
+            </ListaDatos>
             {abierto.changes && Object.keys(abierto.changes).length > 0 && (
               <div className="flex flex-col gap-2">
                 <p className="text-[13px] font-semibold text-fg">{t('detalle.cambios')}</p>
                 <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-subtle p-3 font-mono text-xs text-fg-secondary">{JSON.stringify(abierto.changes, null, 2)}</pre>
+              </div>
+            )}
+            {abierto.metadata && Object.keys(abierto.metadata).length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[13px] font-semibold text-fg">{tr('metadata')}</p>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-subtle p-3 font-mono text-xs text-fg-secondary">{JSON.stringify(abierto.metadata, null, 2)}</pre>
               </div>
             )}
           </div>

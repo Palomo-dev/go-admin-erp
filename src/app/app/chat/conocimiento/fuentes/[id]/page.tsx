@@ -2,17 +2,17 @@
 
 /**
  * Detalle de una fuente de conocimiento (Figma 91-chat-31): cifras, buscador,
- * filtro por etiqueta y tabla de fragmentos. Reindexar, Ajustes y Nuevo
+ * filtro por varias etiquetas, «Mostrando X de Y» y tabla de fragmentos. Reindexar, Ajustes y Nuevo
  * fragmento usan `knowledgeService` como antes.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Plus, RefreshCw, Settings } from 'lucide-react';
+import { Plus, RefreshCw, RotateCw, Settings } from 'lucide-react';
 import { ConfirmDialog, EmptyState, KpiStrip, SearchInput, StatCard, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MultiSelect } from '@/components/kit/MultiSelect';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import KnowledgeService, { type CreateFragmentData, type CreateSourceData, type KnowledgeFragment, type KnowledgeSource } from '@/lib/services/knowledgeService';
@@ -20,12 +20,11 @@ import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { FragmentDetailDialog, SourceSettingsDialog } from '@/components/chat/conocimiento/fuentes/id';
 import { TablaFragmentos } from '@/components/chat/conocimiento/TablaFragmentos';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
-import { filtrarFragmentos, resumenFragmentos } from '@/components/chat/conocimiento/conocimientoLogica';
-
-const TODAS = '__todas__';
+import { etiquetasDeFragmentos, filtrarFragmentos, resumenFragmentos } from '@/components/chat/conocimiento/conocimientoLogica';
 
 export default function SourceDetailPage() {
   const t = useTranslations('chatModulo.conocimiento');
+  const tr = useTranslations('chatRecuperado.conocimiento');
   const router = useRouter();
   const params = useParams();
   const sourceId = params?.id as string;
@@ -40,7 +39,7 @@ export default function SourceDetailPage() {
   const [error, setError] = useState<'noEncontrada' | 'error' | null>(null);
   const [reindexando, setReindexando] = useState(false);
   const [busqueda, setBusqueda] = useState('');
-  const [etiqueta, setEtiqueta] = useState(TODAS);
+  const [etiquetas, setEtiquetas] = useState<string[]>([]);
   const [editado, setEditado] = useState<KnowledgeFragment | null>(null);
   const [dialogoFragmento, setDialogoFragmento] = useState(false);
   const [dialogoAjustes, setDialogoAjustes] = useState(false);
@@ -100,8 +99,8 @@ export default function SourceDetailPage() {
     }
   };
 
-  const etiquetas = useMemo(() => Array.from(new Set(fragmentos.flatMap((f) => f.tags ?? []))).sort((a, b) => a.localeCompare(b)), [fragmentos]);
-  const visibles = useMemo(() => filtrarFragmentos(fragmentos, busqueda, etiqueta === TODAS ? null : etiqueta), [fragmentos, busqueda, etiqueta]);
+  const opcionesEtiqueta = useMemo(() => etiquetasDeFragmentos(fragmentos).map((e) => ({ valor: e, etiqueta: e })), [fragmentos]);
+  const visibles = useMemo(() => filtrarFragmentos(fragmentos, busqueda, etiquetas), [fragmentos, busqueda, etiquetas]);
   const r = resumenFragmentos(fragmentos);
 
   if (!fuente) {
@@ -129,6 +128,7 @@ export default function SourceDetailPage() {
     <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
       <CabeceraDetalleChat
         titulo={fuente.name}
+        icono={fuente.icon ? <span aria-hidden="true" className="text-2xl leading-none">{fuente.icon}</span> : undefined}
         volverA="/app/chat/conocimiento"
         migas={[t('migas.chat'), t('migas.conocimiento')]}
         badge={
@@ -139,6 +139,10 @@ export default function SourceDetailPage() {
         subtitulo={[fuente.description, t('fuentes.fragmentos', { n: fragmentos.length })].filter(Boolean).join(' · ')}
         acciones={
           <>
+            <button type="button" onClick={cargar} disabled={cargando} className={clasesBoton({ variante: 'fantasma' })}>
+              <RotateCw aria-hidden="true" className={`size-4 ${cargando ? 'animate-spin' : ''}`} strokeWidth={1.5} />
+              {tr('actualizar')}
+            </button>
             <button type="button" onClick={reindexar} disabled={reindexando} className={clasesBoton({ variante: 'secundario' })}>
               <RefreshCw aria-hidden="true" className={`size-4 ${reindexando ? 'animate-spin' : ''}`} strokeWidth={1.5} />
               {t('fuente.reindexar')}
@@ -171,28 +175,36 @@ export default function SourceDetailPage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={t('fuente.buscar')} className="w-full sm:max-w-sm" />
-        <Select value={etiqueta} onValueChange={setEtiqueta}>
-          <SelectTrigger className="w-full sm:w-56" aria-label={t('fuente.filtroEtiqueta')}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TODAS}>{t('fuente.todasEtiquetas')}</SelectItem>
-            {etiquetas.map((e) => (
-              <SelectItem key={e} value={e}>
-                {e}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {opcionesEtiqueta.length > 0 && (
+          <>
+            <span id="fuente-filtro-etiquetas" className="sr-only">
+              {t('fuente.filtroEtiqueta')}
+            </span>
+            <MultiSelect
+              opciones={opcionesEtiqueta}
+              valores={etiquetas}
+              onValoresChange={setEtiquetas}
+              placeholder={t('fuente.todasEtiquetas')}
+              etiquetaQuitar={(e) => tr('quitarEtiqueta', { etiqueta: e })}
+              aria-labelledby="fuente-filtro-etiquetas"
+              className="w-full sm:w-72"
+            />
+          </>
+        )}
+        {!cargando && fragmentos.length > 0 && (
+          <p className="text-xs text-fg-muted sm:ml-auto" role="status">
+            {tr('mostrando', { visibles: visibles.length, total: fragmentos.length })}
+          </p>
+        )}
       </div>
 
       <TablaFragmentos
         fragmentos={visibles}
-        estado={cargando ? 'cargando' : visibles.length === 0 && (busqueda || etiqueta !== TODAS) ? 'sinResultados' : 'listo'}
+        estado={cargando ? 'cargando' : visibles.length === 0 && (busqueda || etiquetas.length > 0) ? 'sinResultados' : 'listo'}
         termino={busqueda}
         onLimpiarFiltros={() => {
           setBusqueda('');
-          setEtiqueta(TODAS);
+          setEtiquetas([]);
         }}
         onAbrir={(f) => router.push(`/app/chat/conocimiento/fragmentos/${f.id}`)}
         onEditar={(f) => {

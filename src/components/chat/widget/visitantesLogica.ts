@@ -8,9 +8,10 @@ export type FiltroCliente = 'todos' | 'identificados' | 'anonimos';
 
 const sinTildes = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-export function filtrarVisitantes<T extends Pick<WidgetSession, 'is_active' | 'customer_id' | 'customer' | 'channel'>>(
+/** `canal`: id del canal, o `null`/ausente para todos. */
+export function filtrarVisitantes<T extends Pick<WidgetSession, 'is_active' | 'customer_id' | 'customer' | 'channel'> & { channel_id?: string }>(
   sesiones: readonly T[],
-  f: { busqueda: string; estado: FiltroEstadoVisitante; cliente: FiltroCliente },
+  f: { busqueda: string; estado: FiltroEstadoVisitante; cliente: FiltroCliente; canal?: string | null },
 ): T[] {
   const q = sinTildes(f.busqueda.trim());
   return sesiones.filter((s) => {
@@ -18,6 +19,7 @@ export function filtrarVisitantes<T extends Pick<WidgetSession, 'is_active' | 'c
     if (f.estado === 'inactivo' && s.is_active) return false;
     if (f.cliente === 'identificados' && !s.customer_id) return false;
     if (f.cliente === 'anonimos' && s.customer_id) return false;
+    if (f.canal && (s.channel_id ?? s.channel?.id) !== f.canal) return false;
     if (!q) return true;
     return sinTildes(`${s.customer?.full_name ?? ''} ${s.customer?.email ?? ''} ${s.channel?.name ?? ''}`).includes(q);
   });

@@ -51808,5 +51808,65 @@
         }
       }
     }
+  },
+  "chatRecuperado": {
+    "nav": {
+      "configuracion": "Paramètres"
+    },
+    "conocimiento": {
+      "filtroEtiquetas": "Filtrer par étiquettes",
+      "etiquetasPlaceholder": "Toutes les étiquettes",
+      "quitarEtiqueta": "Retirer le filtre {etiqueta}",
+      "prioridad": "Priorité",
+      "votos": "Votes",
+      "votosAria": "{positivos} votes pour et {negativos} contre",
+      "indexada": "Indexée",
+      "actualizar": "Actualiser",
+      "mostrando": "{visibles} fragments affichés sur {total}",
+      "modelo": "Modèle d’embedding",
+      "hash": "Empreinte du contenu",
+      "creado": "Créé"
+    },
+    "importar": {
+      "etiquetas": "Étiquettes",
+      "enCola": "Les embeddings sont en file d’attente : l’IA pourra utiliser les fragments dans quelques minutes.",
+      "erroresTitulo": "Lignes non importées :",
+      "fila": "Ligne {n} : {motivo}",
+      "errorGeneral": "Impossible d’enregistrer dans la base de données. Réessayez.",
+      "nuevaImportacion": "Nouvelle importation"
+    },
+    "widget": {
+      "filtroCanal": "Canal",
+      "canalTodos": "Canal : tous",
+      "verDetalle": "Voir le détail",
+      "detalleTitulo": "Détail de la session",
+      "idAnonimo": "ID anonyme",
+      "inicio": "Début",
+      "ultimaActividad": "Dernière activité",
+      "canal": "Canal",
+      "tipoCanal": "Type de canal",
+      "cliente": "Client",
+      "correo": "E-mail du client",
+      "dispositivo": "Appareil",
+      "ubicacion": "Localisation",
+      "pagina": "Page actuelle",
+      "origen": "Provenance",
+      "navegador": "Navigateur (user agent)",
+      "abrirConversacion": "Ouvrir la conversation"
+    },
+    "auditoria": {
+      "actualizar": "Actualiser",
+      "filtroActor": "Type d’acteur",
+      "actorTodos": "Acteur : tous",
+      "rangoPersonalizado": "Choisir les dates…",
+      "rangoFechas": "Dates de l’audit",
+      "identificadores": "Identifiants",
+      "idRegistro": "ID de l’enregistrement",
+      "idActor": "ID de l’auteur",
+      "entidad": "Type d’enregistrement concerné",
+      "idEntidad": "ID de l’enregistrement concerné",
+      "navegador": "Navigateur (user agent)",
+      "metadata": "Données supplémentaires"
+    }
   }
 }

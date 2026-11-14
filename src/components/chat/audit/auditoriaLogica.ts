@@ -114,3 +114,14 @@ export function iconoAccion(accion: string, entidad: string): LucideIcon {
 export function celdaCsv(v: unknown): string {
   return `"${String(v ?? '').replace(/"/g, '""')}"`;
 }
+
+/**
+ * JSON de un registro en una sola línea con espacios
+ * (`{ "channel_id": "…", "ai_mode": "hybrid" }`), como en el detalle de
+ * Figma 94-chat-recuperado-ia-10: corta donde haga falta y no ocupa media hoja.
+ */
+export function jsonEnLinea(valor: unknown): string {
+  const texto = JSON.stringify(valor, null, 1);
+  if (texto === undefined) return '';
+  return texto.replace(/\n\s*/g, ' ');
+}

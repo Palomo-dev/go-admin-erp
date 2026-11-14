@@ -6,7 +6,7 @@
  * cargan), 3. opciones (fuente, etiquetas para todos, dejarlos listos para la
  * IA). El análisis y la carga son los de `knowledgeService`. Al terminar:
  * cuántas entraron, las filas que no (con su motivo), si los embeddings quedaron
- * en cola y «Nueva importación».
+ * en cola y «Nueva importación» (Figma 94-chat-recuperado-ia-05/06).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -23,7 +23,7 @@ import KnowledgeService, { type ImportFragmentData, type ImportResult, type Know
 import { CabeceraDetalleChat } from '@/components/chat/CabeceraDetalleChat';
 import { FileUploadZone, TextInputZone } from '@/components/chat/conocimiento/importar';
 import { useMiembroActual } from '@/components/chat/conocimiento/useMiembroActual';
-import { filasNoCargadas, revisarFilasImportacion, type FilaImportacion, type FilaNoCargada } from '@/components/chat/conocimiento/conocimientoLogica';
+import { columnasCsv, filasNoCargadas, revisarFilasImportacion, type FilaImportacion, type FilaNoCargada } from '@/components/chat/conocimiento/conocimientoLogica';
 
 type Modo = 'csv' | 'texto';
 const SIN_FUENTE = '__ninguna__';
@@ -77,12 +77,13 @@ export default function ImportPage() {
     try {
       const s = new KnowledgeService(organizationId);
       const crudas = modo === 'csv' ? (contenidoArchivo ? s.parseCSV(contenidoArchivo) : []) : texto ? s.parseTextBlocks(texto, separador) : [];
-      setFilas(etiquetas.length ? crudas.map((f) => ({ ...f, tags: Array.from(new Set([...(f.tags ?? []), ...etiquetas])) })) : crudas);
+      // La vista previa muestra las etiquetas del archivo; las «para todos» se suman al importar.
+      setFilas(crudas);
     } catch (e) {
       setErrorAnalisis(e instanceof Error ? e.message : t('errorAnalisis'));
       setFilas([]);
     }
-  }, [organizationId, modo, contenidoArchivo, texto, separador, etiquetas, t]);
+  }, [organizationId, modo, contenidoArchivo, texto, separador, t]);
 
   useEffect(() => {
     analizar();
@@ -97,7 +98,7 @@ export default function ImportPage() {
     setImportando(true);
     try {
       const r = await new KnowledgeService(organizationId).importFragments(
-        validas.map((v) => v.fragmento),
+        validas.map((v) => (etiquetas.length ? { ...v.fragmento, tags: Array.from(new Set([...(v.fragmento.tags ?? []), ...etiquetas])) } : v.fragmento)),
         fuenteId === SIN_FUENTE ? null : fuenteId,
         memberId,
         indexar,
@@ -188,6 +189,7 @@ export default function ImportPage() {
                 {modo === 'csv' ? (
                   <FileUploadZone
                     selectedFile={archivo}
+                    resumen={archivo && contenidoArchivo ? { filas: revisadas.length, columnas: columnasCsv(contenidoArchivo) } : null}
                     onFileSelect={(contenido, nombre, tipo) => {
                       setContenidoArchivo(contenido);
                       setArchivo({ name: nombre, type: tipo });
@@ -230,7 +232,6 @@ export default function ImportPage() {
                   columnas={columnas}
                   filas={revisadas.slice(0, VISTA)}
                   obtenerId={(r) => String(r.fila)}
-                  tonoFila={(r) => (r.estado === 'lista' ? undefined : 'peligro')}
                 />
                 <p className="text-xs text-fg-muted">
                   {t('vista.resumen', { mostradas: Math.min(VISTA, revisadas.length), total: revisadas.length, listas: validas.length, errores: conError })}
@@ -260,8 +261,10 @@ export default function ImportPage() {
                   </Select>
                 )}
               </FormField>
-              <FormField etiqueta={t('opciones.etiquetas')} ayuda={t('opciones.etiquetasAyuda')}>
-                <Input value={etiquetasTexto} onChange={(e) => setEtiquetasTexto(e.target.value)} placeholder={t('opciones.etiquetasEjemplo')} />
+              <FormField etiqueta={t('opciones.etiquetas')}>
+                {(campo) => (
+                  <Input id={campo.id} value={etiquetasTexto} onChange={(e) => setEtiquetasTexto(e.target.value)} placeholder={t('opciones.etiquetasEjemplo')} title={t('opciones.etiquetasAyuda')} />
+                )}
               </FormField>
               <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
                 <Checkbox checked={indexar} onCheckedChange={(v) => setIndexar(v === true)} />

@@ -53568,7 +53568,10 @@
       "mostrando": "Mostrando {visibles} de {total} fragmentos",
       "modelo": "Modelo do embedding",
       "hash": "Hash do conteúdo",
-      "creado": "Criado"
+      "creado": "Criado",
+      "usadosSemana": "Usados esta semana",
+      "usadosSemanaDetalle": "em respostas da IA",
+      "usado7dias": "Usado em respostas (7 dias)"
     },
     "importar": {
       "etiquetas": "Etiquetas",
@@ -53576,7 +53579,10 @@
       "erroresTitulo": "Linhas que não foram carregadas:",
       "fila": "Linha {n}: {motivo}",
       "errorGeneral": "Não foi possível salvar no banco de dados. Tente novamente.",
-      "nuevaImportacion": "Nova importação"
+      "nuevaImportacion": "Nova importação",
+      "archivoResumen": "{n, plural, one {# linha} other {# linhas}} · colunas: {columnas}",
+      "archivoFilas": "{n, plural, one {# linha} other {# linhas}}",
+      "cambiar": "Trocar"
     },
     "widget": {
       "filtroCanal": "Canal",
@@ -53595,7 +53601,18 @@
       "pagina": "Página atual",
       "origen": "Veio de",
       "navegador": "Navegador (user agent)",
-      "abrirConversacion": "Abrir conversa"
+      "abrirConversacion": "Abrir conversa",
+      "subtitulo": "Quem está usando o chat do seu site agora e o que está vendo.",
+      "kpiHoy": "Sessões hoje",
+      "identificadosDetalle": "deixaram seus dados de contato",
+      "buscar": "Buscar por página, cidade ou nome",
+      "desconocido": "Desconhecido",
+      "sinAsignar": "sem responsável",
+      "dispositivos": {
+        "desktop": "Computador",
+        "mobile": "Celular",
+        "tablet": "Tablet"
+      }
     },
     "auditoria": {
       "actualizar": "Atualizar",
@@ -53609,7 +53626,21 @@
       "entidad": "Tipo de registro afetado",
       "idEntidad": "ID do registro afetado",
       "navegador": "Navegador (user agent)",
-      "metadata": "Dados adicionais"
+      "metadata": "Dados adicionais",
+      "acciones": {
+        "lab_test": "Testou a IA no Laboratório",
+        "lab_feedback": "Avaliou uma resposta do Laboratório"
+      }
+    },
+    "laboratorio": {
+      "tono": "Tom",
+      "idioma": "Idioma",
+      "tonoIdiomaAyuda": "Tom e idioma começam com os da sua configuração; a IA que atende seus clientes também os usa.",
+      "reglasRestaurar": "Voltar às configuradas",
+      "buena": "Boa",
+      "mejorable": "Pode melhorar",
+      "votoGuardado": "Obrigado: sua avaliação ficou na auditoria do chat.",
+      "votoError": "Não foi possível salvar sua avaliação"
     }
   }
 }

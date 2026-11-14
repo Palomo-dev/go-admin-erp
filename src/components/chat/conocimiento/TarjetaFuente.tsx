@@ -26,7 +26,7 @@ export function TarjetaFuente({ fuente, onAbrir, onEditar, onAlternar, onElimina
   const tr = useTranslations('chatRecuperado.conocimiento');
   const { formatDate } = useFormatDate();
   return (
-    <article className="relative flex flex-col gap-3 rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong">
+    <article className="relative flex flex-col gap-2.5 rounded-xl border border-line bg-surface p-4 transition-colors hover:border-line-strong">
       <div className="flex items-center gap-3">
         <span aria-hidden="true" className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-subtle text-lg">
           {fuente.icon || <BookOpen className="size-4 text-fg-secondary" strokeWidth={1.5} />}

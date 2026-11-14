@@ -5,7 +5,9 @@
  * canales y conocimiento. Cifras, buscador, filtros (acción, sobre qué,
  * persona, tipo de actor, fecha con Desde/Hasta libre), tabla paginada en el
  * servidor y detalle en hoja lateral con los IDs, el navegador y los datos
- * adicionales del registro.
+ * adicionales del registro (Figma 94-chat-recuperado-ia-09/10: «Elegir
+ * fechas…» abre el calendario de rango en la segunda fila, con atajos y
+ * «Limpiar»; el detalle va en dos tarjetas y los JSON en una línea).
  * Los nombres de las personas salen de `GET /api/chat/agentes` (organización
  * de la sesión).
  */
@@ -13,7 +15,8 @@ import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Download, RotateCw, Shield } from 'lucide-react';
-import { AvatarIniciales, DataTable, DateRangeButton, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla, type RangoFechas } from '@/components/kit';
+import { AvatarIniciales, DataTable, DateRangeButton, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, Tarjeta, clasesBoton, type ColumnaTabla, type RangoFechas } from '@/components/kit';
+import { DatoEnCaja } from '@/components/chat/DatoEnCaja';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
@@ -29,6 +32,7 @@ import {
   diasDelFiltroAuditoria,
   humanizarAccion,
   iconoAccion,
+  jsonEnLinea,
   type RangoAuditoria,
 } from '@/components/chat/audit/auditoriaLogica';
 
@@ -114,7 +118,7 @@ export default function ChatAuditPage() {
     (l: AuditLog) => personas.find((p) => p.userId === l.actor_id)?.nombre ?? (t.has(`actores.${l.actor_type}`) ? t(`actores.${l.actor_type}`) : l.actor_type),
     [personas, t],
   );
-  const textoAccion = (a: string) => (t.has(`acciones.${a}`) ? t(`acciones.${a}`) : humanizarAccion(a));
+  const textoAccion = (a: string) => (t.has(`acciones.${a}`) ? t(`acciones.${a}`) : tr.has(`acciones.${a}`) ? tr(`acciones.${a}`) : humanizarAccion(a));
   const textoEntidad = (e: string) => (t.has(`entidades.${e}`) ? t(`entidades.${e}`) : e);
   const detalleSobre = (l: AuditLog) => {
     const c = (l.changes ?? {}) as Record<string, unknown>;
@@ -213,9 +217,9 @@ export default function ChatAuditPage() {
       </KpiStrip>
 
       <div className="flex flex-wrap items-center gap-2">
-        <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar')} className="w-full sm:max-w-xs" />
+        <SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar')} className="w-full sm:w-[280px]" />
         <Select value={accion} onValueChange={setAccion}>
-          <SelectTrigger className="w-full sm:w-52" aria-label={t('filtros.accion')}>
+          <SelectTrigger className="w-full sm:w-[168px]" aria-label={t('filtros.accion')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -228,7 +232,7 @@ export default function ChatAuditPage() {
           </SelectContent>
         </Select>
         <Select value={entidad} onValueChange={setEntidad}>
-          <SelectTrigger className="w-full sm:w-48" aria-label={t('filtros.sobre')}>
+          <SelectTrigger className="w-full sm:w-[168px]" aria-label={t('filtros.sobre')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -241,7 +245,7 @@ export default function ChatAuditPage() {
           </SelectContent>
         </Select>
         <Select value={persona} onValueChange={setPersona}>
-          <SelectTrigger className="w-full sm:w-48" aria-label={t('filtros.persona')}>
+          <SelectTrigger className="w-full sm:w-[168px]" aria-label={t('filtros.persona')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -254,7 +258,7 @@ export default function ChatAuditPage() {
           </SelectContent>
         </Select>
         <Select value={actor} onValueChange={setActor}>
-          <SelectTrigger className="w-full sm:w-44" aria-label={tr('filtroActor')}>
+          <SelectTrigger className="w-full sm:w-[150px]" aria-label={tr('filtroActor')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -275,7 +279,7 @@ export default function ChatAuditPage() {
             if (r === 'personalizado' && !fechas) setFechas({ desde: addPlainDays(hoy, -6), hasta: hoy });
           }}
         >
-          <SelectTrigger className="w-full sm:w-40" aria-label={t('filtros.fecha')}>
+          <SelectTrigger className="w-full sm:w-[160px]" aria-label={t('filtros.fecha')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -287,10 +291,22 @@ export default function ChatAuditPage() {
             <SelectItem value="personalizado">{tr('rangoPersonalizado')}</SelectItem>
           </SelectContent>
         </Select>
-        {rango === 'personalizado' && fechas && (
-          <DateRangeButton valor={fechas} onValorChange={setFechas} hoy={hoy} etiqueta={tr('rangoFechas')} />
-        )}
       </div>
+      {rango === 'personalizado' && fechas && (
+        <div className="-mt-2 flex lg:-mt-4">
+          <DateRangeButton
+            valor={fechas}
+            onValorChange={setFechas}
+            hoy={hoy}
+            etiqueta={tr('rangoFechas')}
+            onLimpiar={() => {
+              setRango('7d');
+              setFechas(null);
+            }}
+            className="w-full sm:w-80"
+          />
+        </div>
+      )}
 
       <DataTable<AuditLog>
         etiqueta={t('tabla.etiqueta')}
@@ -340,29 +356,33 @@ export default function ChatAuditPage() {
       {abierto && (
         <HojaDetalle abierto onAbiertoChange={(a) => !a && setAbierto(null)} titulo={textoAccion(abierto.action)} subtitulo={formatDateTime(abierto.created_at)}>
           <div className="flex flex-col gap-4">
-            <ListaDatos etiqueta={t('detalle.titulo')}>
-              <FilaDato etiqueta={t('tabla.sobre')} valor={detalleSobre(abierto)} />
-              <FilaDato etiqueta={t('tabla.quien')} valor={nombrePersona(abierto)} />
-              <FilaDato etiqueta={t('detalle.tipoActor')} valor={t.has(`actores.${abierto.actor_type}`) ? t(`actores.${abierto.actor_type}`) : abierto.actor_type} />
-              {abierto.ip_address && <FilaDato etiqueta={t('detalle.ip')} valor={abierto.ip_address} />}
-            </ListaDatos>
-            <ListaDatos etiqueta={tr('identificadores')}>
-              <FilaDato etiqueta={tr('idRegistro')} valor={<span className="break-all font-mono text-xs">{abierto.id}</span>} />
-              {abierto.actor_id && <FilaDato etiqueta={tr('idActor')} valor={<span className="break-all font-mono text-xs">{abierto.actor_id}</span>} />}
-              <FilaDato etiqueta={tr('entidad')} valor={<span className="font-mono text-xs">{abierto.entity_type}</span>} />
-              {abierto.entity_id && <FilaDato etiqueta={tr('idEntidad')} valor={<span className="break-all font-mono text-xs">{abierto.entity_id}</span>} />}
-              {abierto.user_agent && <FilaDato etiqueta={tr('navegador')} valor={<span className="break-all text-xs">{abierto.user_agent}</span>} />}
-            </ListaDatos>
+            <Tarjeta titulo={t('detalle.titulo')}>
+              <ListaDatos etiqueta={t('detalle.titulo')}>
+                <FilaDato etiqueta={t('tabla.sobre')} valor={detalleSobre(abierto)} />
+                <FilaDato etiqueta={t('tabla.quien')} valor={nombrePersona(abierto)} />
+                <FilaDato etiqueta={t('detalle.tipoActor')} valor={t.has(`actores.${abierto.actor_type}`) ? t(`actores.${abierto.actor_type}`) : abierto.actor_type} />
+                {abierto.ip_address && <FilaDato etiqueta={t('detalle.ip')} valor={abierto.ip_address} />}
+              </ListaDatos>
+            </Tarjeta>
+            <Tarjeta titulo={tr('identificadores')}>
+              <ListaDatos etiqueta={tr('identificadores')}>
+                <DatoEnCaja etiqueta={tr('idRegistro')} valor={abierto.id} mono />
+                {abierto.actor_id && <DatoEnCaja etiqueta={tr('idActor')} valor={abierto.actor_id} mono />}
+                <FilaDato etiqueta={tr('entidad')} valor={<span className="font-mono text-xs text-fg">{abierto.entity_type}</span>} />
+                {abierto.entity_id && <DatoEnCaja etiqueta={tr('idEntidad')} valor={abierto.entity_id} mono />}
+                {abierto.user_agent && <DatoEnCaja etiqueta={tr('navegador')} valor={abierto.user_agent} mono />}
+              </ListaDatos>
+            </Tarjeta>
             {abierto.changes && Object.keys(abierto.changes).length > 0 && (
               <div className="flex flex-col gap-2">
-                <p className="text-[13px] font-semibold text-fg">{t('detalle.cambios')}</p>
-                <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-subtle p-3 font-mono text-xs text-fg-secondary">{JSON.stringify(abierto.changes, null, 2)}</pre>
+                <p className="text-sm font-medium text-fg">{t('detalle.cambios')}</p>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-subtle px-2 py-2 font-mono text-xs leading-[18px] text-fg-secondary">{jsonEnLinea(abierto.changes)}</pre>
               </div>
             )}
             {abierto.metadata && Object.keys(abierto.metadata).length > 0 && (
               <div className="flex flex-col gap-2">
-                <p className="text-[13px] font-semibold text-fg">{tr('metadata')}</p>
-                <pre className="max-h-80 overflow-auto whitespace-pre-wrap rounded-lg bg-subtle p-3 font-mono text-xs text-fg-secondary">{JSON.stringify(abierto.metadata, null, 2)}</pre>
+                <p className="text-sm font-medium text-fg">{tr('metadata')}</p>
+                <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-all rounded-lg bg-subtle px-2 py-2 font-mono text-xs leading-[18px] text-fg-secondary">{jsonEnLinea(abierto.metadata)}</pre>
               </div>
             )}
           </div>

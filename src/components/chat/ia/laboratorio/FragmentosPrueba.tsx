@@ -11,7 +11,7 @@
  */
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { RefreshCw, Search, Tag } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { Tarjeta } from '@/components/kit';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -111,7 +111,7 @@ export function FragmentosPrueba({ fragmentos, elegidos, onElegidos, cargando, r
         ) : visibles.length === 0 ? (
           <p className="text-[13px] text-fg-muted">{t('fragmentos.sinResultados')}</p>
         ) : (
-          <ul className="flex max-h-96 flex-col gap-2 overflow-y-auto pr-1">
+          <ul className="flex max-h-[640px] flex-col gap-2 overflow-y-auto pr-1">
             {visibles.map((f) => {
               const elegido = elegidos.includes(f.id);
               const expandido = abierto === f.id;
@@ -130,8 +130,7 @@ export function FragmentosPrueba({ fragmentos, elegidos, onElegidos, cargando, r
                       <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-1">
                           {f.tags.slice(0, 3).map((x) => (
-                            <span key={x} className="inline-flex items-center gap-1 rounded-full bg-subtle px-2 py-0.5 text-[11px] text-fg-secondary">
-                              <Tag aria-hidden="true" className="size-2.5" />
+                            <span key={x} className="inline-flex items-center rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium text-fg-secondary">
                               {x}
                             </span>
                           ))}

@@ -15,7 +15,7 @@ export interface KnowledgeFragment {
   usage_count: number;
   positive_feedback: number;
   negative_feedback: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
@@ -91,6 +91,10 @@ export interface Channel {
   type: string;
   ai_mode: string;
 }
+
+/** Los que acepta `pruebaLaboratorioSchema` (laboratorioIa.server.ts). */
+const TONOS_PRUEBA: readonly string[] = ['professional', 'friendly', 'formal', 'casual', 'empathetic'];
+const IDIOMAS_PRUEBA: readonly string[] = ['es', 'en', 'pt', 'fr'];
 
 class AILabService {
   private organizationId: number;
@@ -189,8 +193,6 @@ class AILabService {
   ): Promise<RetrievedFragment[]> {
     await this.setOrgContext();
 
-    const startTime = Date.now();
-
     const { data, error } = await supabase
       .from('knowledge_fragments')
       .select('id, title, content, tags, priority')
@@ -284,6 +286,9 @@ class AILabService {
           // Ajustes de la prueba: no cambian la configuración real.
           ...(settings.model ? { modelo: settings.model } : {}),
           reglas: settings.systemRules,
+          // Tono e idioma de la prueba; si no son válidos, el servidor usa los de `ai_settings`.
+          ...(TONOS_PRUEBA.includes(settings.tone) ? { tono: settings.tone } : {}),
+          ...(IDIOMAS_PRUEBA.includes(settings.language) ? { idioma: settings.language } : {}),
         }),
       });
     } catch {
@@ -333,7 +338,7 @@ class AILabService {
   // armaban una respuesta simulada con el primer fragmento. El laboratorio ya
   // prueba con la IA real.
 
-  async logLabTest(result: LabTestResult, memberId?: number): Promise<void> {
+  async logLabTest(result: LabTestResult): Promise<void> {
     try {
       await supabase.from('chat_audit_logs').insert({
         organization_id: this.organizationId,
@@ -356,6 +361,34 @@ class AILabService {
     } catch (error) {
       console.error('Error logging lab test:', error);
     }
+  }
+
+  /**
+   * 👍/👎 de una respuesta del laboratorio (decisión del dueño, 2026-11-14):
+   * queda en la auditoría del chat con la pregunta, el modelo y los fragmentos
+   * que se usaron. No toca los votos de los fragmentos (`positive_feedback` /
+   * `negative_feedback`), que cuentan respuestas a clientes.
+   */
+  async logLabFeedback(result: LabTestResult, voto: 'buena' | 'mejorable'): Promise<void> {
+    const { error } = await supabase.from('chat_audit_logs').insert({
+      organization_id: this.organizationId,
+      actor_type: 'member',
+      actor_id: null,
+      action: 'lab_feedback',
+      entity_type: 'ai_lab',
+      entity_id: null,
+      changes: {
+        vote: voto,
+        query: result.query,
+        model: result.metrics.model,
+        fragmentIds: result.fragments.map((f) => f.id),
+        testedAt: result.timestamp,
+      },
+      metadata: {},
+      ip_address: null,
+      user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+    });
+    if (error) throw error;
   }
 }
 

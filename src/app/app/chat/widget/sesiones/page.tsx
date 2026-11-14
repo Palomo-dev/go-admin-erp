@@ -1,17 +1,22 @@
 'use client';
 
 /**
- * Visitantes del sitio web (Figma 91-chat-40): quién usa el chat del sitio.
- * Cifras, buscador, filtros de estado, cliente y canal, tabla paginada y
- * detalle de cada sesión (hoja lateral al tocar la fila). Los datos
- * son los de `widgetSessionsService` (cada visitante es una conversación del
- * canal web); cerrar y reabrir usan sus mismos métodos.
+ * Visitantes del sitio web (Figma 91-chat-40 y 94-chat-recuperado-ia-07/08):
+ * quién usa el chat del sitio ahora y qué está mirando. Cifras de hoy,
+ * buscador (página, ciudad o nombre), filtros de estado, cliente y canal, tabla
+ * paginada (visitante, página actual, dispositivo, estado, conversación e
+ * inicio) y detalle de la sesión en hoja lateral.
+ *
+ * Cada fila es una visita de `widget_sessions` (la Edge Function `chat-widget`
+ * guarda página, origen, navegador y dispositivo) con la conversación que abrió
+ * el visitante si llegó a escribir. Cerrar y reabrir actúan sobre esa
+ * conversación (`widgetSessionsService`).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
-import { ExternalLink, Eye, Lock, LockOpen, RefreshCw, Settings, Users } from 'lucide-react';
-import { AvatarIniciales, DataTable, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, clasesBoton, type ColumnaTabla } from '@/components/kit';
+import { useTranslations } from 'next-intl';
+import { Eye, Lock, LockOpen, MessageSquare, Monitor, RefreshCw, Settings, Smartphone, Tablet, Users } from 'lucide-react';
+import { AvatarIniciales, DataTable, FilaDato, KpiStrip, ListaDatos, PageHeader, Pagination, SearchInput, StatCard, Tarjeta, clasesBoton, type ColumnaTabla } from '@/components/kit';
 import { HojaDetalle } from '@/components/kit/HojaDetalle';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,21 +24,21 @@ import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import WidgetSessionsService, { type SessionStats, type WidgetSession } from '@/lib/services/widgetSessionsService';
-import { tiempoRelativo } from '@/components/chat/channels/canalesLogica';
-import { filtrarVisitantes, type FiltroCliente, type FiltroEstadoVisitante } from '@/components/chat/widget/visitantesLogica';
+import { DatoEnCaja } from '@/components/chat/DatoEnCaja';
+import { filtrarVisitantes, partesSubtitulo, rutaDePagina, type FiltroCliente, type FiltroEstadoVisitante } from '@/components/chat/widget/visitantesLogica';
 
 const TODOS_CANALES = '__todos__';
+const ICONO_DISPOSITIVO = { mobile: Smartphone, tablet: Tablet, desktop: Monitor } as const;
 
 export default function WidgetSessionsPage() {
   const t = useTranslations('chatModulo.widget');
   const tr = useTranslations('chatRecuperado.widget');
   const tTipos = useTranslations('chatModulo.canales.tipos');
-  const locale = useLocale();
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
-  const { formatTime, formatDate, formatDateTime, getToday, toDate } = useFormatDate();
+  const { formatTime, formatDate, formatDateTime, getToday, toDate, toInstant } = useFormatDate();
 
   const [sesiones, setSesiones] = useState<WidgetSession[]>([]);
   const [stats, setStats] = useState<SessionStats | null>(null);
@@ -49,13 +54,15 @@ export default function WidgetSessionsPage() {
   const [pagina, setPagina] = useState(1);
   const [tamano, setTamano] = useState(25);
 
+  const hoy = getToday();
+
   const cargar = useCallback(async () => {
     if (!organizationId) return;
     setCargando(true);
     setFallo(false);
     try {
       const s = new WidgetSessionsService(organizationId);
-      const [ss, st, cs] = await Promise.all([s.getSessions({ status: 'all' }), s.getStats(), s.getChannels()]);
+      const [ss, st, cs] = await Promise.all([s.getSessions(), s.getStats(toInstant(hoy)), s.getChannels()]);
       setSesiones(ss);
       setStats(st);
       setCanales(cs.filter((c) => c.type === 'website'));
@@ -65,7 +72,7 @@ export default function WidgetSessionsPage() {
     } finally {
       setCargando(false);
     }
-  }, [organizationId]);
+  }, [organizationId, hoy, toInstant]);
 
   useEffect(() => {
     cargar();
@@ -77,15 +84,13 @@ export default function WidgetSessionsPage() {
   );
   useEffect(() => setPagina(1), [busqueda, estado, cliente, canal]);
   const pagina_ = visibles.slice((pagina - 1) * tamano, pagina * tamano);
-  const ahora = useMemo(() => new Date(), [sesiones]); // eslint-disable-line react-hooks/exhaustive-deps
-  const hoy = getToday();
 
   const cambiarConversacion = async (s: WidgetSession, cerrar: boolean) => {
-    if (!organizationId) return;
+    if (!organizationId || !s.conversation_id) return;
     try {
       const servicio = new WidgetSessionsService(organizationId);
-      if (cerrar) await servicio.blockSession(s.id);
-      else await servicio.unblockSession(s.id);
+      if (cerrar) await servicio.blockSession(s.conversation_id);
+      else await servicio.unblockSession(s.conversation_id);
       toast({ title: t(cerrar ? 'toasts.cerrada' : 'toasts.reabierta') });
       cargar();
     } catch (e) {
@@ -96,6 +101,18 @@ export default function WidgetSessionsPage() {
 
   const nombre = (s: WidgetSession) => s.customer?.full_name || t('anonimo');
   const cuando = (fecha: string) => (toDate(new Date(fecha)) === hoy ? formatTime(fecha) : formatDate(fecha));
+  const subtitulo = (s: WidgetSession) => {
+    const p = partesSubtitulo(s);
+    const partes = [p.esCliente ? t('cliente') : null, p.ciudad, p.origen].filter(Boolean);
+    return partes.length > 0 ? partes.join(' · ') : tr('desconocido');
+  };
+  const dispositivo = (s: WidgetSession) => (s.device_type && tr.has(`dispositivos.${s.device_type}`) ? tr(`dispositivos.${s.device_type}`) : null);
+  const conversacion = (s: WidgetSession) => {
+    if (!s.conversation_id || !s.conversation_status) return '—';
+    const estadoConv = t.has(`conversacion.${s.conversation_status}`) ? t(`conversacion.${s.conversation_status}`) : s.conversation_status;
+    if (s.conversation_status === 'closed' || s.conversation_status === 'archived') return estadoConv;
+    return `${estadoConv} · ${s.assigned_name ?? tr('sinAsignar')}`;
+  };
 
   const columnas: ColumnaTabla<WidgetSession>[] = [
     {
@@ -105,41 +122,59 @@ export default function WidgetSessionsPage() {
         <div className="flex min-w-0 items-center gap-3">
           <AvatarIniciales nombre={nombre(s)} tamano="sm" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-fg">{nombre(s)}</p>
-            <p className="truncate text-xs text-fg-muted">{s.customer?.email || (s.customer ? t('cliente') : t('sinDatos'))}</p>
+            <p className="truncate text-[13px] font-semibold text-fg">{nombre(s)}</p>
+            <p className="truncate text-xs text-fg-muted">{subtitulo(s)}</p>
           </div>
         </div>
       ),
     },
-    { id: 'canal', encabezado: t('tabla.canal'), ancho: 180, ocultarDebajo: 'lg', celda: (s) => <span className="truncate text-sm text-fg-secondary">{s.channel?.name ?? '—'}</span> },
+    {
+      id: 'pagina',
+      encabezado: tr('pagina'),
+      ancho: 260,
+      ocultarDebajo: 'md',
+      celda: (s) => <span className="block truncate text-sm text-fg-secondary">{rutaDePagina(s.current_page) ?? '—'}</span>,
+    },
+    {
+      id: 'dispositivo',
+      encabezado: tr('dispositivo'),
+      ancho: 140,
+      ocultarDebajo: 'lg',
+      celda: (s) => {
+        const etiqueta = dispositivo(s);
+        if (!etiqueta) return <span className="text-sm text-fg-muted">—</span>;
+        const Icono = ICONO_DISPOSITIVO[s.device_type as keyof typeof ICONO_DISPOSITIVO] ?? Monitor;
+        return (
+          <span className="inline-flex items-center gap-1.5 text-sm text-fg-secondary">
+            <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {etiqueta}
+          </span>
+        );
+      },
+    },
     {
       id: 'estado',
       encabezado: t('tabla.estado'),
       ancho: 120,
       celda: (s) => (
-        <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm" punto={s.is_active}>
+        <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm">
           {t(s.is_active ? 'estados.enLinea' : 'estados.inactivo')}
         </Badge>
       ),
     },
-    {
-      id: 'conversacion',
-      encabezado: t('tabla.conversacion'),
-      ancho: 140,
-      ocultarDebajo: 'md',
-      celda: (s) => <span className="text-sm text-fg-secondary">{t.has(`conversacion.${s.conversation_status}`) ? t(`conversacion.${s.conversation_status}`) : '—'}</span>,
-    },
-    { id: 'visto', encabezado: t('tabla.ultimaVez'), ancho: 140, ocultarDebajo: 'lg', celda: (s) => <span className="text-sm text-fg-secondary">{tiempoRelativo(s.last_seen_at, ahora, locale)}</span> },
-    { id: 'inicio', encabezado: t('tabla.inicio'), ancho: 110, ocultarDebajo: 'md', celda: (s) => <span className="text-sm tabular-nums text-fg-secondary">{cuando(s.created_at)}</span> },
+    { id: 'conversacion', encabezado: t('tabla.conversacion'), ancho: 170, ocultarDebajo: 'md', celda: (s) => <span className="block truncate text-sm text-fg-secondary">{conversacion(s)}</span> },
+    { id: 'inicio', encabezado: t('tabla.inicio'), ancho: 100, ocultarDebajo: 'md', celda: (s) => <span className="text-sm tabular-nums text-fg-secondary">{cuando(s.created_at)}</span> },
   ];
 
-  const abrirConversacion = (s: WidgetSession) => router.push(`/app/chat/conversaciones/${s.id}`);
+  const abrirConversacion = (s: WidgetSession) => s.conversation_id && router.push(`/app/chat/conversaciones/${s.conversation_id}`);
+  const ubicacion = (s: WidgetSession) =>
+    [s.location_data?.city, s.location_data?.region, s.location_data?.country].filter(Boolean).join(', ') || s.customer?.city || null;
 
   return (
     <div className="flex min-w-0 flex-col gap-4 p-4 pb-28 lg:gap-6 lg:p-6 lg:pb-24">
       <PageHeader
         titulo={t('titulo')}
-        subtitulo={t('subtitulo')}
+        subtitulo={tr('subtitulo')}
         icono={Users}
         cargando={cargando}
         acciones={
@@ -159,18 +194,17 @@ export default function WidgetSessionsPage() {
         movil={{ accionesEnFila: true }}
       />
 
-      <KpiStrip etiqueta={t('kpis.etiqueta')} columnas={5}>
-        <StatCard tamano="sm" etiqueta={t('kpis.sesiones')} valor={stats?.total ?? 0} cargando={!stats && !fallo} />
-        <StatCard tamano="sm" etiqueta={t('kpis.enLinea')} valor={stats?.active ?? 0} tono="exito" cargando={!stats && !fallo} onClick={() => setEstado('enLinea')} />
-        <StatCard tamano="sm" etiqueta={t('kpis.identificados')} valor={stats?.withCustomer ?? 0} cargando={!stats && !fallo} onClick={() => setCliente('identificados')} />
-        <StatCard tamano="sm" etiqueta={t('kpis.anonimos')} valor={stats?.anonymous ?? 0} cargando={!stats && !fallo} onClick={() => setCliente('anonimos')} />
-        <StatCard tamano="sm" etiqueta={t('kpis.inactivos')} valor={stats?.expired ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('inactivo')} />
+      <KpiStrip etiqueta={t('kpis.etiqueta')}>
+        <StatCard etiqueta={tr('kpiHoy')} valor={stats?.today ?? 0} cargando={!stats && !fallo} />
+        <StatCard etiqueta={t('kpis.enLinea')} valor={stats?.active ?? 0} cargando={!stats && !fallo} onClick={() => setEstado('enLinea')} />
+        <StatCard etiqueta={t('kpis.identificados')} valor={stats?.withCustomer ?? 0} detalle={tr('identificadosDetalle')} cargando={!stats && !fallo} onClick={() => setCliente('identificados')} />
+        <StatCard etiqueta={t('kpis.anonimos')} valor={stats?.anonymous ?? 0} cargando={!stats && !fallo} onClick={() => setCliente('anonimos')} />
       </KpiStrip>
 
       <div className="flex flex-wrap items-center gap-2">
-        <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={t('buscar')} className="w-full sm:max-w-sm" />
+        <SearchInput value={busqueda} onChange={setBusqueda} onValueChange={setBusqueda} placeholder={tr('buscar')} className="w-full sm:w-80" />
         <Select value={estado} onValueChange={(v) => setEstado(v as FiltroEstadoVisitante)}>
-          <SelectTrigger className="w-full sm:w-44" aria-label={t('filtros.estado')}>
+          <SelectTrigger className="w-full sm:w-[180px]" aria-label={t('filtros.estado')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -182,7 +216,7 @@ export default function WidgetSessionsPage() {
           </SelectContent>
         </Select>
         <Select value={cliente} onValueChange={(v) => setCliente(v as FiltroCliente)}>
-          <SelectTrigger className="w-full sm:w-48" aria-label={t('filtros.cliente')}>
+          <SelectTrigger className="w-full sm:w-[180px]" aria-label={t('filtros.cliente')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -195,7 +229,7 @@ export default function WidgetSessionsPage() {
         </Select>
         {canales.length > 0 && (
           <Select value={canal} onValueChange={setCanal}>
-            <SelectTrigger className="w-full sm:w-52" aria-label={tr('filtroCanal')}>
+            <SelectTrigger className="w-full sm:w-60" aria-label={tr('filtroCanal')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -229,17 +263,17 @@ export default function WidgetSessionsPage() {
         vacio={{ titulo: t('vacioTitulo'), descripcion: t('vacioDescripcion') }}
         acciones={(s) => [
           { id: 'detalle', etiqueta: tr('verDetalle'), icono: Eye, onSelect: () => setAbierta(s) },
-          { id: 'abrir', etiqueta: t('acciones.abrir'), icono: ExternalLink, onSelect: () => abrirConversacion(s) },
+          { id: 'abrir', etiqueta: t('acciones.abrir'), icono: MessageSquare, onSelect: () => abrirConversacion(s), oculta: !s.conversation_id },
           s.conversation_status === 'closed'
-            ? { id: 'reabrir', etiqueta: t('acciones.reabrir'), icono: LockOpen, onSelect: () => cambiarConversacion(s, false) }
-            : { id: 'cerrar', etiqueta: t('acciones.cerrar'), icono: Lock, onSelect: () => cambiarConversacion(s, true) },
+            ? { id: 'reabrir', etiqueta: t('acciones.reabrir'), icono: LockOpen, onSelect: () => cambiarConversacion(s, false), oculta: !s.conversation_id }
+            : { id: 'cerrar', etiqueta: t('acciones.cerrar'), icono: Lock, onSelect: () => cambiarConversacion(s, true), oculta: !s.conversation_id },
         ]}
         tarjetaMovil={(s) => (
           <button type="button" onClick={() => setAbierta(s)} className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left">
             <AvatarIniciales nombre={nombre(s)} tamano="sm" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-fg">{nombre(s)}</span>
-              <span className="block truncate text-xs text-fg-muted">{tiempoRelativo(s.last_seen_at, ahora, locale)}</span>
+              <span className="block truncate text-xs text-fg-muted">{rutaDePagina(s.current_page) ?? subtitulo(s)}</span>
             </span>
             <Badge tono={s.is_active ? 'exito' : 'neutro'} tamano="sm">
               {t(s.is_active ? 'estados.enLinea' : 'estados.inactivo')}
@@ -254,48 +288,31 @@ export default function WidgetSessionsPage() {
       />
 
       {abierta && (
-        <HojaDetalle
-          abierto
-          onAbiertoChange={(a) => !a && setAbierta(null)}
-          titulo={nombre(abierta)}
-          subtitulo={tr('detalleTitulo')}
-          insignia={
-            <Badge tono={abierta.is_active ? 'exito' : 'neutro'} tamano="sm" punto={abierta.is_active}>
-              {t(abierta.is_active ? 'estados.enLinea' : 'estados.inactivo')}
-            </Badge>
-          }
-          pie={
-            <button type="button" onClick={() => abrirConversacion(abierta)} className={clasesBoton({ anchoCompleto: true })}>
-              <ExternalLink aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {tr('abrirConversacion')}
-            </button>
-          }
-        >
+        <HojaDetalle abierto onAbiertoChange={(a) => !a && setAbierta(null)} titulo={nombre(abierta)} subtitulo={tr('detalleTitulo')}>
           <div className="flex flex-col gap-4">
-            <ListaDatos etiqueta={tr('detalleTitulo')}>
-              <FilaDato etiqueta={tr('idAnonimo')} valor={<span className="break-all font-mono text-xs">{abierta.anon_id}</span>} />
-              <FilaDato etiqueta={tr('inicio')} valor={formatDateTime(abierta.created_at)} />
-              <FilaDato etiqueta={tr('ultimaActividad')} valor={formatDateTime(abierta.last_seen_at)} />
-              <FilaDato etiqueta={tr('canal')} valor={abierta.channel?.name ?? '—'} />
-              {abierta.channel?.type && (
-                <FilaDato etiqueta={tr('tipoCanal')} valor={tTipos.has(abierta.channel.type) ? tTipos(abierta.channel.type) : abierta.channel.type} />
-              )}
-              <FilaDato etiqueta={tr('cliente')} valor={abierta.customer?.full_name ?? t('anonimo')} />
-              <FilaDato etiqueta={tr('correo')} valor={abierta.customer?.email ?? '—'} />
-              {abierta.device_type && <FilaDato etiqueta={tr('dispositivo')} valor={abierta.device_type} />}
-              {abierta.location_data && (abierta.location_data.city || abierta.location_data.country) && (
-                <FilaDato
-                  etiqueta={tr('ubicacion')}
-                  valor={[abierta.location_data.city, abierta.location_data.region, abierta.location_data.country].filter(Boolean).join(', ')}
-                />
-              )}
-            </ListaDatos>
-            {(abierta.current_page || abierta.referrer || abierta.user_agent) && (
-              <ListaDatos>
-                {abierta.current_page && <FilaDato etiqueta={tr('pagina')} valor={<span className="break-all text-xs">{abierta.current_page}</span>} />}
-                {abierta.referrer && <FilaDato etiqueta={tr('origen')} valor={<span className="break-all text-xs">{abierta.referrer}</span>} />}
-                {abierta.user_agent && <FilaDato etiqueta={tr('navegador')} valor={<span className="break-all font-mono text-xs">{abierta.user_agent}</span>} />}
+            <Tarjeta titulo={tr('detalleTitulo')}>
+              <ListaDatos etiqueta={tr('detalleTitulo')}>
+                <DatoEnCaja etiqueta={tr('idAnonimo')} valor={abierta.anon_id} mono />
+                <FilaDato etiqueta={tr('inicio')} valor={formatDateTime(abierta.created_at)} />
+                <FilaDato etiqueta={tr('ultimaActividad')} valor={formatDateTime(abierta.last_seen_at)} />
+                <FilaDato etiqueta={tr('canal')} valor={abierta.channel?.name ?? '—'} />
+                {abierta.channel?.type && (
+                  <FilaDato etiqueta={tr('tipoCanal')} valor={tTipos.has(abierta.channel.type) ? tTipos(abierta.channel.type) : abierta.channel.type} />
+                )}
+                <FilaDato etiqueta={tr('cliente')} valor={abierta.customer?.full_name ?? t('anonimo')} />
+                <FilaDato etiqueta={tr('correo')} valor={abierta.customer?.email ?? '—'} />
+                {dispositivo(abierta) && <FilaDato etiqueta={tr('dispositivo')} valor={dispositivo(abierta)} />}
+                {ubicacion(abierta) && <FilaDato etiqueta={tr('ubicacion')} valor={ubicacion(abierta)} />}
+                {abierta.current_page && <DatoEnCaja etiqueta={tr('pagina')} valor={abierta.current_page} />}
+                {abierta.referrer && <DatoEnCaja etiqueta={tr('origen')} valor={abierta.referrer} />}
+                {abierta.user_agent && <DatoEnCaja etiqueta={tr('navegador')} valor={abierta.user_agent} mono />}
               </ListaDatos>
+            </Tarjeta>
+            {abierta.conversation_id && (
+              <button type="button" onClick={() => abrirConversacion(abierta)} className={clasesBoton({ anchoCompleto: true })}>
+                <MessageSquare aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {tr('abrirConversacion')}
+              </button>
             )}
           </div>
         </HojaDetalle>

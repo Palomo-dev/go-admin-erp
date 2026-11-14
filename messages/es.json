@@ -53573,7 +53573,10 @@
       "mostrando": "Mostrando {visibles} de {total} fragmentos",
       "modelo": "Modelo del embedding",
       "hash": "Hash del contenido",
-      "creado": "Creado"
+      "creado": "Creado",
+      "usadosSemana": "Usados esta semana",
+      "usadosSemanaDetalle": "en respuestas de IA",
+      "usado7dias": "Usado en respuestas (7 días)"
     },
     "importar": {
       "etiquetas": "Etiquetas",
@@ -53581,7 +53584,10 @@
       "erroresTitulo": "Filas que no se cargaron:",
       "fila": "Fila {n}: {motivo}",
       "errorGeneral": "No se pudo guardar en la base de datos. Inténtalo de nuevo.",
-      "nuevaImportacion": "Nueva importación"
+      "nuevaImportacion": "Nueva importación",
+      "archivoResumen": "{n, plural, one {# fila} other {# filas}} · columnas: {columnas}",
+      "archivoFilas": "{n, plural, one {# fila} other {# filas}}",
+      "cambiar": "Cambiar"
     },
     "widget": {
       "filtroCanal": "Canal",
@@ -53600,7 +53606,18 @@
       "pagina": "Página actual",
       "origen": "Llegó desde",
       "navegador": "Navegador (user agent)",
-      "abrirConversacion": "Abrir conversación"
+      "abrirConversacion": "Abrir conversación",
+      "subtitulo": "Quién está usando el chat de tu sitio ahora y qué está mirando.",
+      "kpiHoy": "Sesiones hoy",
+      "identificadosDetalle": "dejaron sus datos de contacto",
+      "buscar": "Buscar por página, ciudad o nombre",
+      "desconocido": "Desconocido",
+      "sinAsignar": "sin asignar",
+      "dispositivos": {
+        "desktop": "Computador",
+        "mobile": "Celular",
+        "tablet": "Tableta"
+      }
     },
     "auditoria": {
       "actualizar": "Actualizar",
@@ -53614,7 +53631,21 @@
       "entidad": "Tipo de registro afectado",
       "idEntidad": "ID del registro afectado",
       "navegador": "Navegador (user agent)",
-      "metadata": "Datos adicionales"
+      "metadata": "Datos adicionales",
+      "acciones": {
+        "lab_test": "Probó la IA en el Laboratorio",
+        "lab_feedback": "Calificó una respuesta del Laboratorio"
+      }
+    },
+    "laboratorio": {
+      "tono": "Tono",
+      "idioma": "Idioma",
+      "tonoIdiomaAyuda": "Tono e idioma empiezan con los de tu configuración; la IA que atiende a tus clientes también los usa.",
+      "reglasRestaurar": "Volver a las configuradas",
+      "buena": "Buena",
+      "mejorable": "Mejorable",
+      "votoGuardado": "Gracias: tu calificación quedó en la auditoría del chat.",
+      "votoError": "No se pudo guardar tu calificación"
     }
   }
 }

@@ -53558,7 +53558,10 @@
       "mostrando": "{visibles} fragments affichés sur {total}",
       "modelo": "Modèle d’embedding",
       "hash": "Empreinte du contenu",
-      "creado": "Créé"
+      "creado": "Créé",
+      "usadosSemana": "Utilisés cette semaine",
+      "usadosSemanaDetalle": "dans les réponses de l’IA",
+      "usado7dias": "Utilisé dans les réponses (7 jours)"
     },
     "importar": {
       "etiquetas": "Étiquettes",
@@ -53566,7 +53569,10 @@
       "erroresTitulo": "Lignes non importées :",
       "fila": "Ligne {n} : {motivo}",
       "errorGeneral": "Impossible d’enregistrer dans la base de données. Réessayez.",
-      "nuevaImportacion": "Nouvelle importation"
+      "nuevaImportacion": "Nouvelle importation",
+      "archivoResumen": "{n, plural, one {# ligne} other {# lignes}} · colonnes : {columnas}",
+      "archivoFilas": "{n, plural, one {# ligne} other {# lignes}}",
+      "cambiar": "Changer"
     },
     "widget": {
       "filtroCanal": "Canal",
@@ -53585,7 +53591,18 @@
       "pagina": "Page actuelle",
       "origen": "Provenance",
       "navegador": "Navigateur (user agent)",
-      "abrirConversacion": "Ouvrir la conversation"
+      "abrirConversacion": "Ouvrir la conversation",
+      "subtitulo": "Qui utilise le chat de votre site en ce moment et ce qu’il consulte.",
+      "kpiHoy": "Sessions aujourd’hui",
+      "identificadosDetalle": "ont laissé leurs coordonnées",
+      "buscar": "Rechercher par page, ville ou nom",
+      "desconocido": "Inconnu",
+      "sinAsignar": "non assignée",
+      "dispositivos": {
+        "desktop": "Ordinateur",
+        "mobile": "Mobile",
+        "tablet": "Tablette"
+      }
     },
     "auditoria": {
       "actualizar": "Actualiser",
@@ -53599,7 +53616,21 @@
       "entidad": "Type d’enregistrement concerné",
       "idEntidad": "ID de l’enregistrement concerné",
       "navegador": "Navigateur (user agent)",
-      "metadata": "Données supplémentaires"
+      "metadata": "Données supplémentaires",
+      "acciones": {
+        "lab_test": "A testé l’IA dans le Laboratoire",
+        "lab_feedback": "A noté une réponse du Laboratoire"
+      }
+    },
+    "laboratorio": {
+      "tono": "Ton",
+      "idioma": "Langue",
+      "tonoIdiomaAyuda": "Le ton et la langue reprennent ceux de votre configuration ; l’IA qui répond à vos clients les utilise aussi.",
+      "reglasRestaurar": "Revenir à celles configurées",
+      "buena": "Bonne",
+      "mejorable": "À améliorer",
+      "votoGuardado": "Merci : votre note a été enregistrée dans l’audit du chat.",
+      "votoError": "Impossible d’enregistrer votre note"
     }
   }
 }

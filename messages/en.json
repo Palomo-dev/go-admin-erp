@@ -53558,7 +53558,10 @@
       "mostrando": "Showing {visibles} of {total} snippets",
       "modelo": "Embedding model",
       "hash": "Content hash",
-      "creado": "Created"
+      "creado": "Created",
+      "usadosSemana": "Used this week",
+      "usadosSemanaDetalle": "in AI replies",
+      "usado7dias": "Used in replies (7 days)"
     },
     "importar": {
       "etiquetas": "Tags",
@@ -53566,7 +53569,10 @@
       "erroresTitulo": "Rows that weren't loaded:",
       "fila": "Row {n}: {motivo}",
       "errorGeneral": "Couldn't save to the database. Try again.",
-      "nuevaImportacion": "New import"
+      "nuevaImportacion": "New import",
+      "archivoResumen": "{n, plural, one {# row} other {# rows}} · columns: {columnas}",
+      "archivoFilas": "{n, plural, one {# row} other {# rows}}",
+      "cambiar": "Change"
     },
     "widget": {
       "filtroCanal": "Channel",
@@ -53585,7 +53591,18 @@
       "pagina": "Current page",
       "origen": "Came from",
       "navegador": "Browser (user agent)",
-      "abrirConversacion": "Open conversation"
+      "abrirConversacion": "Open conversation",
+      "subtitulo": "Who is using your website chat right now and what they are looking at.",
+      "kpiHoy": "Sessions today",
+      "identificadosDetalle": "left their contact details",
+      "buscar": "Search by page, city or name",
+      "desconocido": "Unknown",
+      "sinAsignar": "unassigned",
+      "dispositivos": {
+        "desktop": "Computer",
+        "mobile": "Phone",
+        "tablet": "Tablet"
+      }
     },
     "auditoria": {
       "actualizar": "Refresh",
@@ -53599,7 +53616,21 @@
       "entidad": "Affected record type",
       "idEntidad": "Affected record ID",
       "navegador": "Browser (user agent)",
-      "metadata": "Additional data"
+      "metadata": "Additional data",
+      "acciones": {
+        "lab_test": "Tested the AI in the Lab",
+        "lab_feedback": "Rated a Lab reply"
+      }
+    },
+    "laboratorio": {
+      "tono": "Tone",
+      "idioma": "Language",
+      "tonoIdiomaAyuda": "Tone and language start with the ones in your settings; the AI that serves your customers uses them too.",
+      "reglasRestaurar": "Back to the configured ones",
+      "buena": "Good",
+      "mejorable": "Could be better",
+      "votoGuardado": "Thanks: your rating was saved in the chat audit log.",
+      "votoError": "Your rating could not be saved"
     }
   }
 }

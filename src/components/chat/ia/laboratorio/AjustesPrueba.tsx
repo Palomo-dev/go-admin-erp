@@ -2,22 +2,24 @@
 
 /**
  * «Ajustes de la prueba» del Laboratorio de IA (auditoría 2026-11-14, Agente 3):
- * canal, modelo, creatividad, largo, máximo de fragmentos y reglas del sistema.
- * Solo valen para la prueba: no cambian la configuración real.
+ * canal, modelo, creatividad, largo, máximo de fragmentos, tono, idioma y reglas
+ * del sistema (Figma 94-chat-recuperado-ia-11). Solo valen para la prueba: no
+ * cambian la configuración real.
  *
- * Tono e idioma NO vuelven: la IA que atiende a los clientes (`ai-auto-response`)
- * no los usa —responde en el idioma en que le escriben—, así que probarlos aquí
- * prometería algo que el cliente nunca recibe. Se dice en pantalla.
+ * Tono e idioma (decisión del dueño, 2026-11-14): desde el commit 374c19bdd la
+ * IA que atiende a los clientes usa los de Configuración › Chat › IA, así que
+ * vuelven aquí. Empiezan con los de la configuración y viajan en el body de
+ * `POST /api/chat/ai/lab-test` (`tono`, `idioma`).
  */
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { RotateCcw } from 'lucide-react';
+import { RotateCw } from 'lucide-react';
 import { FormField, Tarjeta } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { fetchCatalogoModelos, type ModeloIA } from '@/lib/services/aiSettingsService';
+import { LANGUAGE_OPTIONS, TONE_OPTIONS, fetchCatalogoModelos, type ModeloIA } from '@/lib/services/aiSettingsService';
 import type { LabSettings } from '@/lib/services/aiLabService';
 
 /** Valor del selector cuando la prueba usa el modelo de la configuración. */
@@ -35,6 +37,9 @@ interface Props {
 
 export function AjustesPrueba({ ajustes, onChange, canales, modeloConfig, reglasConfig }: Props) {
   const t = useTranslations('chatModulo.ia.laboratorio');
+  const tr = useTranslations('chatRecuperado.laboratorio');
+  // Nombres de tonos e idiomas: los mismos de Configuración › Chat › IA.
+  const tc = useTranslations('chatConfig.ia');
   const [modelos, setModelos] = useState<ModeloIA[]>([]);
 
   useEffect(() => {
@@ -132,6 +137,42 @@ export function AjustesPrueba({ ajustes, onChange, canales, modeloConfig, reglas
           </FormField>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <FormField etiqueta={tr('tono')}>
+            {(campo) => (
+              <Select value={ajustes.tone} onValueChange={(v) => cambiar('tone', v)}>
+                <SelectTrigger id={campo.id}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TONE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {tc.has(`tonos.${o.value}`) ? tc(`tonos.${o.value}`) : o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+          <FormField etiqueta={tr('idioma')}>
+            {(campo) => (
+              <Select value={ajustes.language} onValueChange={(v) => cambiar('language', v)}>
+                <SelectTrigger id={campo.id}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGE_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {tc.has(`idiomas.${o.value}`) ? tc(`idiomas.${o.value}`) : o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+          <p className="col-span-2 -mt-1 text-xs text-fg-muted">{tr('tonoIdiomaAyuda')}</p>
+        </div>
+
         <FormField
           etiqueta={t('reglas')}
           ayuda={t('reglasAyuda')}
@@ -142,8 +183,8 @@ export function AjustesPrueba({ ajustes, onChange, canales, modeloConfig, reglas
                 onClick={() => cambiar('systemRules', reglasConfig)}
                 className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                <RotateCcw aria-hidden="true" className="size-3" />
-                {t('reglasRestaurar')}
+                <RotateCw aria-hidden="true" className="size-3" />
+                {tr('reglasRestaurar')}
               </button>
             ) : null
           }
@@ -152,8 +193,6 @@ export function AjustesPrueba({ ajustes, onChange, canales, modeloConfig, reglas
             <Textarea id={campo.id} rows={4} value={ajustes.systemRules} onChange={(e) => cambiar('systemRules', e.target.value)} className="resize-y text-sm" />
           )}
         </FormField>
-
-        <p className="text-xs text-fg-muted">{t('sinTonoIdioma')}</p>
       </div>
     </Tarjeta>
   );

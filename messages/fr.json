@@ -50266,7 +50266,7 @@
         }
       },
       "trabajos": {
-        "subtitulo": "Chaque fois que l’IA répond, résume ou classe, une trace est conservée ici.",
+        "subtitulo": "Chaque fois que l’IA répond, résume ou indexe, une trace est conservée ici.",
         "sinCliente": "Visiteur non identifié",
         "vacioTitulo": "Aucune tâche IA pour l’instant",
         "vacioDescripcion": "Elles apparaissent quand l’IA répond, résume ou classe des conversations.",
@@ -50276,7 +50276,8 @@
           "enCola": "En file",
           "procesando": "En cours",
           "completados": "Terminées",
-          "fallidos": "Échouées"
+          "fallidos": "Échouées",
+          "hoy": "Aujourd'hui"
         },
         "filtros": {
           "estado": "État",
@@ -50347,7 +50348,8 @@
           "tokensEntrada": "Jetons d’entrée",
           "tokensSalida": "Jetons de sortie",
           "costo": "Coût du fournisseur",
-          "idsFragmentos": "Fragments utilisés (ID)"
+          "idsFragmentos": "Fragments utilisés (ID)",
+          "hoyA": "aujourd'hui {hora}"
         },
         "toasts": {
           "sinMiembro": "Votre adhésion à cette organisation est introuvable",
@@ -50355,7 +50357,10 @@
           "cancelado": "Tâche annulée",
           "error": "Impossible de terminer l’action"
         },
-        "actualizar": "Actualiser"
+        "actualizar": "Actualiser",
+        "acciones": {
+          "verDetalle": "Voir le détail"
+        }
       }
     },
     "canales": {

@@ -15,7 +15,7 @@
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, MessageSquare, PanelLeftClose, PanelLeftOpen, Plus, Radio } from 'lucide-react';
+import { Check, Loader2, MessageSquare, PanelLeftClose, PanelLeftOpen, Plus, Radio } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -342,8 +342,9 @@ function Bandeja() {
                       activa ? 'border-line-brand bg-brand-tint text-brand-deep' : 'border-line bg-surface text-fg-secondary hover:bg-hover',
                     )}
                   >
+                    {activa ? <Check aria-hidden="true" className="size-3.5" /> : null}
                     {t(`vistas.${v}`)}
-                    {n != null && v !== 'cerradas' ? <span className="text-fg-muted">· {n}</span> : null}
+                    {n != null && v !== 'cerradas' ? <span className={activa ? undefined : 'text-fg-muted'}>· {n}</span> : null}
                   </button>
                 );
               })}

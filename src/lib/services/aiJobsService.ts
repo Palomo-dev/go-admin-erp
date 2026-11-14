@@ -133,13 +133,20 @@ export default class AIJobsService {
     return data;
   }
 
-  async getStats(): Promise<AIJobStats> {
+  /**
+   * Cifras por estado. Con `desde` (instante ISO) cuenta solo los trabajos
+   * creados desde entonces: la página de Trabajos pide las de hoy en la zona
+   * de la organización (Figma 94-chat-recuperado-12, «Hoy»).
+   */
+  async getStats(desde?: string): Promise<AIJobStats> {
     await this.setOrgContext();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('ai_jobs')
       .select('status')
       .eq('organization_id', this.organizationId);
+    if (desde) query = query.gte('created_at', desde);
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error obteniendo estadísticas:', error);

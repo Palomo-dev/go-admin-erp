@@ -49,8 +49,8 @@ function Seccion({ titulo, descripcion, children }: { titulo: string; descripcio
   return (
     <section className="space-y-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
       <div>
-        <h2 className="text-base font-semibold text-fg">{titulo}</h2>
-        {descripcion ? <p className="text-sm text-fg-secondary">{descripcion}</p> : null}
+        <h2 className="text-[15px] font-medium leading-6 text-fg">{titulo}</h2>
+        {descripcion ? <p className="text-[13px] leading-[18px] text-fg-muted">{descripcion}</p> : null}
       </div>
       {children}
     </section>
@@ -191,7 +191,7 @@ export default function NuevaConversacionPage() {
             <div className="space-y-4">
               <Seccion titulo={t('paso1')} descripcion={t('paso1Ayuda')}>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <label className="block space-y-1.5 text-sm font-medium text-fg">
+                  <label className="block space-y-1.5 text-[13px] font-medium text-fg-secondary">
                     <span className="block">{t('canal')} *</span>
                     <Select value={canalId} onValueChange={setCanalId}>
                       <SelectTrigger aria-label={t('canal')}>
@@ -251,7 +251,7 @@ export default function NuevaConversacionPage() {
                     </div>
                   )
                 ) : (
-                  <label className="block space-y-1.5 text-sm font-medium text-fg">
+                  <label className="block space-y-1.5 text-[13px] font-medium text-fg-secondary">
                     <span className="block">{t('mensaje')} *</span>
                     <textarea
                       rows={4}
@@ -265,7 +265,7 @@ export default function NuevaConversacionPage() {
               </Seccion>
 
               <Seccion titulo={t('paso3')}>
-                <label className="block space-y-1.5 text-sm font-medium text-fg">
+                <label className="block space-y-1.5 text-[13px] font-medium text-fg-secondary">
                   <span className="block">{t('asunto')}</span>
                   <input
                     type="text"
@@ -277,7 +277,7 @@ export default function NuevaConversacionPage() {
                   />
                 </label>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <label className="block space-y-1.5 text-sm font-medium text-fg">
+                  <label className="block space-y-1.5 text-[13px] font-medium text-fg-secondary">
                     <span className="block">{t('prioridad')}</span>
                     <Select value={prioridad} onValueChange={(v) => setPrioridad(v as Prioridad)}>
                       <SelectTrigger aria-label={t('prioridad')}>
@@ -292,13 +292,13 @@ export default function NuevaConversacionPage() {
                       </SelectContent>
                     </Select>
                   </label>
-                  <div className="space-y-1.5 text-sm font-medium text-fg">
+                  <div className="space-y-1.5 text-[13px] font-medium text-fg-secondary">
                     <span className="block">{t('asignarA')}</span>
                     <SelectorAgente agentes={agentes} asignado={asignadoFinal} onAsignar={(id) => setAsignado(id)} />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <span className="block text-sm font-medium text-fg">{t('etiquetas')}</span>
+                  <span className="block text-[13px] font-medium text-fg-secondary">{t('etiquetas')}</span>
                   <EtiquetasConversacion
                     actuales={etiquetasSel}
                     disponibles={etiquetas}
@@ -320,8 +320,8 @@ export default function NuevaConversacionPage() {
               </div>
             </div>
 
-            <aside className="h-fit space-y-3 rounded-xl border border-line-info bg-info-subtle p-4 text-sm text-info-text">
-              <h2 className="font-semibold">{t('antesTitulo')}</h2>
+            <aside className="h-fit space-y-3 rounded-xl bg-info-subtle p-4 text-[13px] leading-[18px] text-info-text">
+              <h2 className="text-[15px] font-medium leading-6">{t('antesTitulo')}</h2>
               <ul className="list-disc space-y-2 pl-4">
                 <li>{t('antes1')}</li>
                 <li>{t('antes2')}</li>

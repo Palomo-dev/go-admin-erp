@@ -50266,7 +50266,7 @@
         }
       },
       "trabajos": {
-        "subtitulo": "Every time the AI replies, summarizes or classifies, a record is kept here.",
+        "subtitulo": "Every time the AI replies, summarizes or indexes, a record is kept here.",
         "sinCliente": "Unidentified visitor",
         "vacioTitulo": "There are no AI jobs yet",
         "vacioDescripcion": "They appear when the AI replies to, summarizes or classifies conversations.",
@@ -50276,7 +50276,8 @@
           "enCola": "Queued",
           "procesando": "Processing",
           "completados": "Completed",
-          "fallidos": "Failed"
+          "fallidos": "Failed",
+          "hoy": "Today"
         },
         "filtros": {
           "estado": "Status",
@@ -50347,7 +50348,8 @@
           "tokensEntrada": "Input tokens",
           "tokensSalida": "Output tokens",
           "costo": "Provider cost",
-          "idsFragmentos": "Fragments used (IDs)"
+          "idsFragmentos": "Fragments used (IDs)",
+          "hoyA": "today {hora}"
         },
         "toasts": {
           "sinMiembro": "We couldn’t find your membership in this organization",
@@ -50355,7 +50357,10 @@
           "cancelado": "Job cancelled",
           "error": "The action couldn’t be completed"
         },
-        "actualizar": "Refresh"
+        "actualizar": "Refresh",
+        "acciones": {
+          "verDetalle": "View details"
+        }
       }
     },
     "canales": {

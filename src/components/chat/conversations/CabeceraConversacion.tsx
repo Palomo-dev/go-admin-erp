@@ -94,7 +94,7 @@ export function CabeceraConversacion({
                 {d.customer?.phone ? <span className="truncate text-sm font-normal text-fg-muted">{d.customer.phone}</span> : null}
               </h1>
               {typeof d.metadata?.subject === 'string' && d.metadata.subject.trim() ? (
-                <p className="truncate text-sm text-fg-secondary">{t('asunto', { asunto: d.metadata.subject.trim() })}</p>
+                <p className="truncate text-[13px] leading-[18px] text-fg-secondary">{t('asunto', { asunto: d.metadata.subject.trim() })}</p>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 max-lg:w-full">

@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { AvatarIniciales, StatusBadge, Skeleton } from '@/components/kit';
 import { CanalIcono } from '@/components/chat/ui/CanalIcono';
 import { canalDeTipo } from '@/components/chat/ui/canal';
+import { Pista } from '@/components/chat/ui/Pista';
 import { SelectorAgente } from './panel/SelectorAgente';
 import { MenuMasAcciones } from './MenuMasAcciones';
 import type { ConversacionControl } from './useConversacion';
@@ -62,8 +63,8 @@ export function CabeceraHilo({
     <div className="flex h-16 shrink-0 items-center gap-3 border-b border-line bg-surface px-4">
       <AvatarIniciales nombre={nombre} tamano="md" />
       <div className="min-w-0 flex-1">
-        <h2 className="truncate text-sm font-semibold text-fg">{nombre}</h2>
-        <p className="flex min-w-0 items-center gap-1.5 text-xs text-fg-secondary">
+        <h2 className="truncate text-[15px] font-medium leading-5 text-fg">{nombre}</h2>
+        <p className="flex min-w-0 items-center gap-1.5 text-[13px] text-fg-muted">
           <CanalIcono canal={canal} size={14} />
           <span className="truncate">{[d.channel?.name || tc(canal), d.customer?.phone].filter(Boolean).join(' · ')}</span>
         </p>
@@ -74,6 +75,21 @@ export function CabeceraHilo({
         <StatusBadge estado={estado} etiqueta={te(estado)} tono={TONO_ESTADO[estado] ?? 'neutro'} apariencia="contorno" className="hidden md:inline-flex" />
       )}
       <SelectorAgente agentes={c.agentes} asignado={d.assigned_member_id} onAsignar={c.asignar} variante="cabecera" className="hidden md:flex" />
+      {onAlternarPanel ? (
+        // Figma 94-chat-recuperado-01/02: botón de 32 px con fondo, entre «Asignado a» y la vista completa.
+        <Pista texto={panelOculto ? tp('mostrarPanel') : tp('ocultarPanel')}>
+          <button
+            type="button"
+            onClick={onAlternarPanel}
+            aria-label={panelOculto ? tp('mostrarPanel') : tp('ocultarPanel')}
+            aria-expanded={!panelOculto}
+            aria-controls="panel-bandeja-lateral"
+            className="mx-1 hidden size-8 shrink-0 items-center justify-center rounded-lg bg-subtle text-fg-secondary hover:bg-pressed hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand xl:flex"
+          >
+            {panelOculto ? <PanelRightOpen aria-hidden="true" className="size-4" /> : <PanelRightClose aria-hidden="true" className="size-4" />}
+          </button>
+        </Pista>
+      ) : null}
       <Link
         href={`/app/chat/conversaciones/${d.id}`}
         aria-label={t('vistaCompleta')}
@@ -82,19 +98,6 @@ export function CabeceraHilo({
       >
         <Maximize2 aria-hidden="true" className="size-4" />
       </Link>
-      {onAlternarPanel ? (
-        <button
-          type="button"
-          onClick={onAlternarPanel}
-          aria-label={panelOculto ? tp('mostrarPanel') : tp('ocultarPanel')}
-          title={panelOculto ? tp('mostrarPanel') : tp('ocultarPanel')}
-          aria-expanded={!panelOculto}
-          aria-controls="panel-bandeja-lateral"
-          className="hidden size-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover xl:flex"
-        >
-          {panelOculto ? <PanelRightOpen aria-hidden="true" className="size-4" /> : <PanelRightClose aria-hidden="true" className="size-4" />}
-        </button>
-      ) : null}
       <MenuMasAcciones c={c} enBandeja onBuscar={onBuscar} />
     </div>
   );

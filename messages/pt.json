@@ -50276,7 +50276,7 @@
         }
       },
       "trabajos": {
-        "subtitulo": "Cada vez que a IA responde, resume ou classifica, fica um registro aqui.",
+        "subtitulo": "Cada vez que a IA responde, resume ou indexa, fica um registro aqui.",
         "sinCliente": "Visitante não identificado",
         "vacioTitulo": "Ainda não há tarefas de IA",
         "vacioDescripcion": "Aparecem quando a IA responde, resume ou classifica conversas.",
@@ -50286,7 +50286,8 @@
           "enCola": "Na fila",
           "procesando": "Processando",
           "completados": "Concluídas",
-          "fallidos": "Com falha"
+          "fallidos": "Com falha",
+          "hoy": "Hoje"
         },
         "filtros": {
           "estado": "Status",
@@ -50357,7 +50358,8 @@
           "tokensEntrada": "Tokens de entrada",
           "tokensSalida": "Tokens de saída",
           "costo": "Custo do provedor",
-          "idsFragmentos": "Fragmentos usados (IDs)"
+          "idsFragmentos": "Fragmentos usados (IDs)",
+          "hoyA": "hoje {hora}"
         },
         "toasts": {
           "sinMiembro": "Não encontramos sua participação nesta organização",
@@ -50365,7 +50367,10 @@
           "cancelado": "Tarefa cancelada",
           "error": "Não foi possível concluir a ação"
         },
-        "actualizar": "Atualizar"
+        "actualizar": "Atualizar",
+        "acciones": {
+          "verDetalle": "Ver detalhes"
+        }
       }
     },
     "canales": {

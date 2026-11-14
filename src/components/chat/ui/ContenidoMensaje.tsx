@@ -5,6 +5,7 @@ import { Download, FileText, MapPin, Pause, Play } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { duracionGrabacion } from './composerLogica';
+import { Pista } from './Pista';
 import { enlaceMapa } from '@/components/chat/conversations/hiloLogica';
 
 /** Lo que hace falta de una fila de `messages` para pintarla. */
@@ -117,9 +118,11 @@ export function ContenidoMensaje({ mensaje, claro = false }: { mensaje: MensajeC
       </>
     );
     cuerpo = mapa ? (
-      <a href={mapa} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 hover:opacity-90" title={t('verMapa')}>
-        {interior}
-      </a>
+      <Pista texto={t('verMapa')} lado="right">
+        <a href={mapa} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-lg hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          {interior}
+        </a>
+      </Pista>
     ) : (
       <span className="flex items-center gap-3">{interior}</span>
     );

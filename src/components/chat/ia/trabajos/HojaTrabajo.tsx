@@ -12,10 +12,11 @@ import { useLocale, useTranslations } from 'next-intl';
 import { Check, Copy, RefreshCw, ThumbsDown, ThumbsUp, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { AvisoTonal, FilaDato, ListaDatos, Tarjeta, clasesBoton } from '@/components/kit';
-import { Badge } from '@/components/ui/badge';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
+import { Pista } from '@/components/chat/ui/Pista';
 import type { AIJob } from '@/lib/services/aiJobsService';
-import { creditosCobrados, duracionMs, estadoTrabajo, puedeCancelar, puedeReintentar, textoConfianza, textoDuracion, tonoEstadoTrabajo } from './trabajosLogica';
+import { creditosCobrados, duracionMs, estadoTrabajo, puedeCancelar, puedeReintentar, textoConfianza, textoDuracion } from './trabajosLogica';
 import { esMotivo, votoDeFeedback } from '@/lib/services/chat/valoracionIa';
 
 export interface HojaTrabajoProps {
@@ -33,7 +34,7 @@ export function HojaTrabajo({ trabajo, bitacora, nombrePersona, ocupado, onCerra
   const t = useTranslations('chatModulo.ia.trabajos');
   const tv = useTranslations('chatBandejaPendientes.valoracion');
   const locale = useLocale();
-  const { formatDateTime } = useFormatDate();
+  const { formatDateTime, timezone, getToday, toDate } = useFormatDate();
   const [copiado, setCopiado] = useState(false);
   if (!trabajo) return null;
   const tipo = t.has(`tipos.${trabajo.job_type}`) ? t(`tipos.${trabajo.job_type}`) : trabajo.job_type;
@@ -43,31 +44,28 @@ export function HojaTrabajo({ trabajo, bitacora, nombrePersona, ocupado, onCerra
   const creditos = creditosCobrados(trabajo);
   const modelo = typeof trabajo.metadata?.model === 'string' ? trabajo.metadata.model : t('detalle.modeloConfig');
   const tokens = (trabajo.prompt_tokens ?? 0) + (trabajo.completion_tokens ?? 0);
+  const canal = trabajo.conversation?.channel?.name ?? null;
+  // «14 nov 2026, 10:38:02» (Figma 94-chat-recuperado-13), en la zona de la organización.
+  const conSegundos = (v: string) =>
+    formatDateTimeInTz(v, timezone, { locale, day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  // Subtítulo: «hoy 10:38» si fue hoy; si no, fecha y hora.
+  const creado = toDate(new Date(trabajo.created_at)) === getToday() ? t('detalle.hoyA', { hora: formatTimeInTz(trabajo.created_at, timezone) }) : formatDateTime(trabajo.created_at);
 
   return (
     <HojaDetalle
       abierto={!!trabajo}
       onAbiertoChange={(a) => !a && onCerrar()}
       titulo={`${tipo} · ${etiquetaEstado.toLowerCase()}`}
-      subtitulo={`${cliente} · ${formatDateTime(trabajo.created_at)}`}
-      insignia={
-        <Badge tono={tonoEstadoTrabajo(trabajo.status)} tamano="sm">
-          {etiquetaEstado}
-        </Badge>
-      }
+      subtitulo={`${cliente} · ${creado}`}
       ocupado={ocupado}
       pie={
+        puedeCancelar(trabajo) || puedeReintentar(trabajo) ? (
         <>
           {puedeCancelar(trabajo) && (
             <button type="button" onClick={() => onCancelar(trabajo)} disabled={ocupado} className={clasesBoton({ variante: 'secundario' })}>
               <XCircle aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('detalle.cancelar')}
             </button>
-          )}
-          {trabajo.conversation_id && (
-            <Link href={`/app/chat/conversaciones/${trabajo.conversation_id}`} className={clasesBoton({ variante: 'secundario' })}>
-              {t('detalle.abrirConversacion')}
-            </Link>
           )}
           {puedeReintentar(trabajo) && (
             <button type="button" onClick={() => onReintentar(trabajo)} disabled={ocupado} className={clasesBoton()}>
@@ -76,9 +74,16 @@ export function HojaTrabajo({ trabajo, bitacora, nombrePersona, ocupado, onCerra
             </button>
           )}
         </>
+        ) : undefined
       }
     >
       <div className="flex flex-col gap-4">
+        {/* Figma 94-chat-recuperado-13: «Abrir conversación» arriba, a lo ancho. */}
+        {trabajo.conversation_id && (
+          <Link href={`/app/chat/conversaciones/${trabajo.conversation_id}`} className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}>
+            {t('detalle.abrirConversacion')}
+          </Link>
+        )}
         {(trabajo.error_message || trabajo.error_code) && (
           <AvisoTonal tono="peligro" titulo={t('detalle.quePaso')} descripcion={[trabajo.error_code, trabajo.error_message].filter(Boolean).join(' · ')} />
         )}
@@ -87,28 +92,29 @@ export function HojaTrabajo({ trabajo, bitacora, nombrePersona, ocupado, onCerra
             <FilaDato
               etiqueta={t('detalle.id')}
               valor={
-                <span className="inline-flex min-w-0 items-center gap-1">
-                  <code className="truncate font-mono text-xs">{trabajo.id}</code>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(trabajo.id);
-                      setCopiado(true);
-                      window.setTimeout(() => setCopiado(false), 2000);
-                    }}
-                    aria-label={copiado ? t('detalle.copiado') : t('detalle.copiarId')}
-                    title={copiado ? t('detalle.copiado') : t('detalle.copiarId')}
-                    className="flex size-7 shrink-0 items-center justify-center rounded-md text-fg-secondary hover:bg-hover"
-                  >
-                    {copiado ? <Check aria-hidden="true" className="size-3.5 text-success-text" /> : <Copy aria-hidden="true" className="size-3.5" />}
-                  </button>
+                <span className="inline-flex min-w-0 items-center gap-2">
+                  <span className="truncate text-[13px] text-fg">{trabajo.id}</span>
+                  <Pista texto={copiado ? t('detalle.copiado') : t('detalle.copiarId')} lado="top" alineacion="end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(trabajo.id);
+                        setCopiado(true);
+                        window.setTimeout(() => setCopiado(false), 2000);
+                      }}
+                      aria-label={copiado ? t('detalle.copiado') : t('detalle.copiarId')}
+                      className="flex size-7 shrink-0 items-center justify-center rounded-md bg-subtle text-fg-secondary hover:bg-pressed hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {copiado ? <Check aria-hidden="true" className="size-3.5 text-success-text" /> : <Copy aria-hidden="true" className="size-3.5" />}
+                    </button>
+                  </Pista>
                 </span>
               }
             />
             <FilaDato etiqueta={t('detalle.modelo')} valor={modelo} />
-            <FilaDato etiqueta={t('detalle.canal')} valor={trabajo.conversation?.channel?.name ?? '—'} />
-            <FilaDato etiqueta={t('detalle.iniciado')} valor={trabajo.started_at ? formatDateTime(trabajo.started_at) : '—'} />
-            <FilaDato etiqueta={t('detalle.completado')} valor={trabajo.completed_at ? formatDateTime(trabajo.completed_at) : '—'} />
+            <FilaDato etiqueta={t('detalle.canal')} valor={canal || '—'} />
+            <FilaDato etiqueta={t('detalle.iniciado')} valor={trabajo.started_at ? conSegundos(trabajo.started_at) : '—'} />
+            <FilaDato etiqueta={t('detalle.completado')} valor={trabajo.completed_at ? conSegundos(trabajo.completed_at) : '—'} />
             <FilaDato etiqueta={t('detalle.duracion')} valor={textoDuracion(duracionMs(trabajo), locale)} />
             <FilaDato etiqueta={t('detalle.tokens')} valor={tokens ? tokens.toLocaleString(locale) : '—'} />
             <FilaDato etiqueta={t('detalle.tokensEntrada')} valor={trabajo.prompt_tokens != null ? trabajo.prompt_tokens.toLocaleString(locale) : '—'} />
@@ -124,9 +130,9 @@ export function HojaTrabajo({ trabajo, bitacora, nombrePersona, ocupado, onCerra
         </Tarjeta>
         {trabajo.fragments_used && trabajo.fragments_used.length > 0 && (
           <Tarjeta titulo={t('detalle.idsFragmentos')}>
-            <ul className="max-h-40 space-y-1 overflow-auto">
+            <ul className="max-h-40 space-y-2 overflow-auto">
               {trabajo.fragments_used.map((f) => (
-                <li key={f} className="break-all font-mono text-xs text-fg-secondary">
+                <li key={f} className="break-all text-xs leading-5 text-fg-secondary">
                   {f}
                 </li>
               ))}

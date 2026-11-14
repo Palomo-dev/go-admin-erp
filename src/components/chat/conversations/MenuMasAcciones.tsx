@@ -34,7 +34,17 @@ export function MenuMasAcciones({ c, enBandeja = false, onBuscar }: MenuMasAccio
     <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label={t('titulo')} title={t('titulo')} className="flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover">
+        <button
+          type="button"
+          aria-label={t('titulo')}
+          title={t('titulo')}
+          className={
+            enBandeja
+              ? 'flex size-10 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover'
+              : // Vista completa (Figma 94-chat-recuperado-07/10): botón con borde junto a «Asignado a».
+                'flex size-10 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-fg-secondary hover:bg-hover'
+          }
+        >
           <MoreHorizontal aria-hidden="true" className="size-5" />
         </button>
       </DropdownMenuTrigger>

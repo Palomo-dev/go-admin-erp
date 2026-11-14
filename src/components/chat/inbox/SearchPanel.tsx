@@ -71,7 +71,8 @@ export default function SearchPanel({ conversation, onScrollToMessage }: SearchP
           .select('id, content, created_at, direction, role')
           .eq('conversation_id', conversationId)
           .ilike('content', `%${escaparLike(query)}%`)
-          .order('created_at', { ascending: false })
+          // En el orden del hilo (Figma 94-chat-recuperado-06): 1/3 es el más antiguo.
+          .order('created_at', { ascending: true })
           .limit(100);
         if (fallo) throw fallo;
         // Solo cuenta la última búsqueda: una respuesta lenta no pisa a la nueva.
@@ -226,7 +227,7 @@ export default function SearchPanel({ conversation, onScrollToMessage }: SearchP
                   onClick={() => ir(i)}
                   className={cn(
                     'cursor-pointer rounded-lg border p-3 transition-colors',
-                    activo ? 'border-brand bg-brand-tint' : 'border-transparent hover:bg-hover',
+                    activo ? 'border-line-brand bg-brand-tint' : 'border-transparent hover:bg-hover',
                   )}
                 >
                   <div className="mb-1 flex items-center justify-between gap-2">
@@ -235,7 +236,7 @@ export default function SearchPanel({ conversation, onScrollToMessage }: SearchP
                       {cuando.corto}
                     </time>
                   </div>
-                  <p className="line-clamp-3 text-sm text-fg-secondary">
+                  <p className="line-clamp-2 text-[13px] leading-5 text-fg-secondary">
                     {tramosResaltados(r.content ?? '', termino).map((tr, k) =>
                       tr.marcado ? (
                         <mark key={k} className="rounded bg-warning-subtle px-0.5 text-fg">

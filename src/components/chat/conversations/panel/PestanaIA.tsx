@@ -50,23 +50,23 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
   return (
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-fg">
-          <Sparkles aria-hidden="true" className="size-4 text-brand" />
+        <h3 className="flex items-center gap-2 text-[15px] font-medium text-fg">
+          <Sparkles aria-hidden="true" className="size-5 text-fg-secondary" strokeWidth={1.5} />
           {t('titulo')}
         </h3>
         <StatusBadge estado={modo} etiqueta={t(`modo.${modo}`)} tono={modo === 'manual' ? 'neutro' : 'informacion'} apariencia="contorno" />
       </div>
-      <p className="text-xs text-fg-muted">{t(`ayuda.${modo}`)}</p>
+      <p className="-mt-2 text-[13px] leading-[18px] text-fg-muted">{t(`ayuda.${modo}`)}</p>
 
       <section className="rounded-xl border border-line bg-subtle p-3">
-        <h4 className="mb-1 text-xs font-semibold text-fg">{t('resumen')}</h4>
+        <h4 className="mb-1.5 text-[13px] font-semibold text-fg">{t('resumen')}</h4>
         {c.resumen?.summary ? (
           <p className="whitespace-pre-wrap text-sm text-fg-secondary">{c.resumen.summary}</p>
         ) : (
           <p className="text-sm text-fg-muted">{t('sinResumen')}</p>
         )}
         {c.resumen?.sentiment ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-fg-secondary">
+          <p className="mt-2 flex items-center gap-2 text-[13px] text-fg-secondary">
             {t('sentimiento')}
             <StatusBadge
               estado={c.resumen.sentiment}
@@ -78,8 +78,8 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
         ) : null}
         {c.resumen?.key_points && c.resumen.key_points.length > 0 ? (
           <div className="mt-2">
-            <h5 className="text-xs font-semibold text-fg">{t('puntosClave')}</h5>
-            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-fg-secondary">
+            <h5 className="text-[13px] font-semibold text-fg">{t('puntosClave')}</h5>
+            <ul className="mt-1 list-disc space-y-1 pl-5 text-[13px] leading-[18px] text-fg-secondary">
               {c.resumen.key_points.map((p, i) => (
                 <li key={i}>{p}</li>
               ))}
@@ -107,7 +107,7 @@ export function PestanaIA({ c, onEditar }: { c: ConversacionControl; onEditar: (
 
       {c.sugerencia?.texto ? (
         <section className="rounded-xl border border-line-brand bg-brand-tint p-3">
-          <h4 className="mb-1 text-xs font-semibold text-fg">{t('sugerida')}</h4>
+          <h4 className="mb-1.5 text-[13px] font-semibold text-fg">{t('sugerida')}</h4>
           <p className="whitespace-pre-wrap text-sm text-fg">{c.sugerencia.texto}</p>
           <div className="mt-3 flex items-center gap-2">
             <button type="button" onClick={() => void usar()} disabled={usando || cerrada} aria-busy={usando} className={clasesBoton({ tamano: 'sm' })}>

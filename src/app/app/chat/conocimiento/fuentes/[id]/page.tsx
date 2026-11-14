@@ -234,8 +234,12 @@ export default function SourceDetailPage() {
         open={dialogoAjustes}
         onOpenChange={setDialogoAjustes}
         source={fuente}
-        onSubmit={async (datos: CreateSourceData) => {
-          await conMiembro((s, m) => s.updateSource(sourceId, datos, m), t('toasts.fuenteActualizada'));
+        onSubmit={async ({ is_active, ...datos }: CreateSourceData & { is_active?: boolean }) => {
+          await conMiembro(async (s, m) => {
+            await s.updateSource(sourceId, datos, m);
+            // Activar o desactivar va por su propio camino (deja su rastro en la auditoría).
+            if (is_active !== undefined && fuente && is_active !== fuente.is_active) await s.toggleSourceStatus(sourceId, m);
+          }, t('toasts.fuenteActualizada'));
           await cargar();
         }}
       />

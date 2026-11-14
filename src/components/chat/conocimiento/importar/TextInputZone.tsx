@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -19,68 +20,55 @@ export default function TextInputZone({
   onTextChange,
   onSeparatorChange
 }: TextInputZoneProps) {
+  const t = useTranslations('chatDialogos.importar');
   return (
-    <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <Card className="border-line bg-surface">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-          <AlignLeft className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          Entrada de Texto
+        <CardTitle className="text-base font-medium text-fg flex items-center gap-2">
+          <AlignLeft aria-hidden="true" className="h-4 w-4 text-brand" />
+          {t('textoTitulo')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-gray-700 dark:text-gray-300">
-              Pega el contenido aquí
-            </Label>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {textContent.length} caracteres
+            <Label htmlFor="import-text">{t('pegaAqui')}</Label>
+            <span className="text-xs text-fg-muted">
+              {t('caracteres', { n: textContent.length })}
             </span>
           </div>
           <Textarea
+            id="import-text"
             value={textContent}
             onChange={(e) => onTextChange(e.target.value)}
-            placeholder={`Título del primer fragmento
-Contenido del primer fragmento aquí...
-Puede tener múltiples líneas.
-
----
-
-Título del segundo fragmento
-Contenido del segundo fragmento...`}
+            placeholder={t('ejemploTexto')}
             rows={12}
-            className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 font-mono text-sm resize-none"
+            className="font-mono text-sm resize-none"
           />
         </div>
 
         <div className="space-y-2">
-          <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
-            <SeparatorHorizontal className="h-4 w-4" />
-            Separador entre fragmentos
+          <Label htmlFor="import-separator" className="flex items-center gap-2">
+            <SeparatorHorizontal aria-hidden="true" className="h-4 w-4" />
+            {t('separador')}
           </Label>
           <Input
+            id="import-separator"
             value={separator}
             onChange={(e) => onSeparatorChange(e.target.value)}
             placeholder="---"
-            className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 max-w-[200px]"
+            aria-describedby="import-separator-ayuda"
+            className="max-w-[200px]"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Usa este texto para separar cada fragmento. Por defecto: ---
+          <p id="import-separator-ayuda" className="text-xs text-fg-muted">
+            {t('separadorAyuda', { separador: '---' })}
           </p>
         </div>
 
-        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Formato esperado:</p>
-          <code className="text-xs text-gray-600 dark:text-gray-400 block bg-gray-100 dark:bg-gray-900 p-2 rounded whitespace-pre-wrap">
-{`Título del fragmento
-El contenido va aquí en las
-siguientes líneas.
-
----
-
-Otro título
-Más contenido para el
-segundo fragmento.`}
+        <div className="rounded-lg bg-subtle p-4">
+          <p className="mb-2 text-sm font-medium text-fg">{t('formatoTexto')}</p>
+          <code className="block whitespace-pre-wrap rounded bg-surface p-2 text-xs text-fg-secondary">
+            {t('ejemploTexto')}
           </code>
         </div>
       </CardContent>

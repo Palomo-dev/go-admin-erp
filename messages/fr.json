@@ -51006,7 +51006,9 @@
         "update_quick_reply": "A modifié une réponse rapide",
         "delete_quick_reply": "A supprimé une réponse rapide",
         "create_api_key": "A créé une clé API",
-        "revoke_api_key": "A révoqué une clé API"
+        "revoke_api_key": "A révoqué une clé API",
+        "block_contact": "A bloqué le contact",
+        "unblock_contact": "A débloqué le contact"
       }
     }
   },
@@ -51066,6 +51068,287 @@
       "descripcion": "Si vous quittez maintenant, les modifications de cette section seront perdues.",
       "descartar": "Abandonner les modifications",
       "seguir": "Continuer la modification"
+    }
+  },
+  "chatHilo": {
+    "comun": {
+      "hoy": "aujourd’hui {hora}",
+      "ayer": "hier {hora}",
+      "error": "Erreur"
+    },
+    "actividad": {
+      "buscar": "Rechercher dans l’activité…",
+      "filtroEtiqueta": "Type d’activité",
+      "filtros": {
+        "todas": "Toute l’activité",
+        "estados": "Changements de statut",
+        "asignaciones": "Attributions",
+        "etiquetas": "Étiquettes",
+        "ia": "Réponses de l’IA",
+        "auditoria": "Audit"
+      },
+      "conteo": "{visibles} activités affichées sur {total}",
+      "lista": "Activité de la conversation",
+      "vacioTitulo": "Pas encore d’activité",
+      "vacioDescripcion": "Les changements de statut, attributions, étiquettes et réponses de l’IA de cette conversation apparaissent ici.",
+      "sinResultadosTitulo": "Aucune activité avec ces filtres",
+      "sinResultadosDescripcion": "Essayez un autre mot ou choisissez « Toute l’activité ».",
+      "errorCarga": "Impossible de charger l’activité",
+      "alguien": "Un membre de l’équipe",
+      "actorIa": "L’IA",
+      "actorSistema": "Système",
+      "motivo": "Motif : {motivo}",
+      "estado": {
+        "conActor": "{actor} a marqué la conversation comme « {estado} »",
+        "sinActor": "La conversation est passée à « {estado} »",
+        "antes": "Avant : {estado}"
+      },
+      "asignacion": {
+        "conActor": "{actor} a attribué la conversation à {persona}",
+        "sinActor": "La conversation a été attribuée à {persona}",
+        "quitadaConActor": "{actor} a retiré l’attribution",
+        "quitadaSinActor": "La conversation n’est plus attribuée"
+      },
+      "etiqueta": {
+        "agregadaConActor": "{actor} a ajouté l’étiquette « {etiqueta} »",
+        "agregadaSinActor": "L’étiquette « {etiqueta} » a été ajoutée",
+        "quitadaConActor": "{actor} a retiré l’étiquette « {etiqueta} »",
+        "quitadaSinActor": "L’étiquette « {etiqueta} » a été retirée",
+        "sinNombre": "sans nom"
+      },
+      "ia": {
+        "auto": "L’IA a répondu automatiquement",
+        "trabajo": "IA · {tipo} : {estado}",
+        "confianza": "Confiance {valor}",
+        "fragmentos": "{n, plural, one {# fragment} other {# fragments}}",
+        "tokens": "{n} jetons",
+        "error": "Erreur : {mensaje}"
+      },
+      "auditoria": {
+        "por": "par {actor}"
+      },
+      "csv": {
+        "archivo": "activite_conversation",
+        "fecha": "Date",
+        "tipo": "Type",
+        "actor": "Qui",
+        "descripcion": "Ce qui s’est passé",
+        "detalle": "Détail"
+      },
+      "tipos": {
+        "status_change": "Changement de statut",
+        "assignment": "Attribution",
+        "tag_added": "Étiquette ajoutée",
+        "tag_removed": "Étiquette retirée",
+        "ai_job": "IA",
+        "audit": "Audit"
+      }
+    },
+    "archivos": {
+      "kpis": {
+        "imagenes": "Images",
+        "documentos": "Documents",
+        "audios": "Audios"
+      },
+      "buscar": "Rechercher des fichiers…",
+      "filtroTipo": "Type de fichier",
+      "tipos": {
+        "todos": "Tous les types",
+        "image": "Images",
+        "video": "Vidéos",
+        "audio": "Audios",
+        "pdf": "PDF",
+        "document": "Documents",
+        "spreadsheet": "Tableurs",
+        "archive": "Archives",
+        "other": "Autres"
+      },
+      "remitente": {
+        "etiqueta": "Envoyés par",
+        "todos": "Envoyés par : tous",
+        "filtro": "Envoyés par : {quien}",
+        "customer": "Client",
+        "agent": "Agent",
+        "ai": "IA",
+        "system": "Système"
+      },
+      "conteo": "{visibles} fichiers affichés sur {total}",
+      "lista": "Fichiers de la conversation",
+      "abrir": "Ouvrir",
+      "abrirArchivo": "Ouvrir {nombre}",
+      "descargar": "Télécharger",
+      "copiarEnlace": "Copier le lien (expire dans 1 heure)",
+      "eliminar": "Supprimer",
+      "aviso": "Les liens de partage d’un fichier expirent au bout d’1 heure. Supprimer un fichier ici ne le retire pas du chat du client.",
+      "vacioTitulo": "Pas encore de fichiers",
+      "vacioDescripcion": "Les photos, documents et audios partagés dans cette conversation apparaissent ici.",
+      "sinResultadosTitulo": "Aucun fichier avec ces filtres",
+      "sinResultadosDescripcion": "Essayez un autre nom ou retirez les filtres.",
+      "borrar": {
+        "titulo": "Supprimer le fichier ?",
+        "descripcion": "« {nombre} » est supprimé de GO Admin et ne peut pas être récupéré. Le client le garde dans son chat.",
+        "confirmar": "Supprimer le fichier"
+      },
+      "toasts": {
+        "errorCarga": "Impossible de charger les fichiers",
+        "errorAbrir": "Impossible d’ouvrir le fichier",
+        "descargando": "Téléchargement de {nombre}",
+        "errorDescarga": "Impossible de télécharger le fichier",
+        "enlaceCopiado": "Lien copié",
+        "enlaceVence": "Il expire dans 1 heure.",
+        "errorEnlace": "Impossible de copier le lien",
+        "eliminado": "Fichier supprimé",
+        "errorEliminar": "Impossible de supprimer le fichier"
+      }
+    },
+    "buscar": {
+      "titulo": "Rechercher dans la conversation",
+      "etiqueta": "Rechercher des messages dans cette conversation",
+      "placeholder": "Rechercher des messages…",
+      "limpiar": "Effacer la recherche",
+      "posicion": "{actual}/{total}",
+      "resultados": "{n, plural, =0 {Aucun résultat} one {# résultat} other {# résultats}}",
+      "anterior": "Résultat précédent",
+      "siguiente": "Résultat suivant",
+      "minimo": "Saisissez au moins {n} caractères pour rechercher.",
+      "error": "Impossible de rechercher dans la conversation",
+      "sinResultados": "Aucun message avec « {termino} »",
+      "lista": "Messages trouvés",
+      "roles": {
+        "customer": "Client",
+        "agent": "Agent",
+        "ai": "IA",
+        "system": "Système"
+      },
+      "navegar": "se déplacer",
+      "ir": "aller au message"
+    }
+  },
+  "chatDialogos": {
+    "comun": {
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer les modifications",
+      "guardando": "Enregistrement…"
+    },
+    "nuevoCanal": {
+      "nombrePlaceholder": "Ex. : Chat du site web",
+      "nombresDefecto": {
+        "website": "Chat du site web",
+        "whatsapp": "WhatsApp Business",
+        "facebook": "Facebook Messenger",
+        "instagram": "Instagram Direct",
+        "telegram": "Bot Telegram",
+        "email": "E-mail du support"
+      },
+      "avisoWebTitulo": "Chat pour votre site web",
+      "avisoWeb": "Après avoir créé le canal, vous pourrez copier le code du chat pour l’installer sur votre site.",
+      "avisoMetaTitulo": "Connexion à {red}",
+      "avisoMeta": "Après avoir créé le canal, vous devrez connecter votre compte Meta Business.",
+      "avisoWhatsApp": "Après avoir créé le canal, vous devrez connecter votre compte WhatsApp Business.",
+      "metodosTitulo": "Façons de connecter WhatsApp :",
+      "metodoCloud": "officielle de Meta, sans risque (recommandée)",
+      "metodoQr": "comme WhatsApp Web ; non officielle, Meta peut bloquer le numéro",
+      "metodoCoexistencia": "l’application sur le téléphone et l’API officielle en même temps",
+      "metodosNota": "La façon de connecter se choisit en configurant le canal, après sa création.",
+      "cancelar": "Annuler",
+      "creando": "Création…"
+    },
+    "codigoWidget": {
+      "titulo": "Installer le chat sur votre site web",
+      "descripcion": "Suivez ces étapes pour ajouter le chat à votre site web.",
+      "pestanaCodigo": "Code",
+      "pestanaPasos": "Instructions",
+      "codigo": "Code du chat",
+      "copiarCodigo": "Copier le code",
+      "copiado": "Copié !",
+      "clave": "Clé publique du canal",
+      "copiar": "Copier",
+      "copiadoCorto": "Copié",
+      "paso1": "Copiez le code du chat avec le bouton « Copier le code ».",
+      "paso2": "Ouvrez le fichier HTML principal de votre site web.",
+      "paso3": "Collez le code juste avant la balise {etiqueta}.",
+      "paso4": "Enregistrez les modifications et envoyez-les sur votre serveur.",
+      "paso5": "C’est prêt ! Le chat apparaît dans le coin que vous avez choisi.",
+      "notaTitulo": "Remarque :",
+      "nota": "Il fonctionne sur n’importe quelle page. Si le canal a des domaines autorisés, il ne fonctionne que sur ces domaines (et sur votre site GO Admin). Sur votre site GO Admin, rien à coller : il suffit d’activer « Afficher sur le site ».",
+      "cerrar": "Fermer"
+    },
+    "fragmento": {
+      "tituloNuevo": "Nouveau fragment",
+      "tituloEditar": "Modifier le fragment",
+      "descripcionNueva": "Écrivez-le comme vous le diriez à un client. L’IA l’utilise tel quel.",
+      "descripcionEditar": "L’enregistrement crée une nouvelle version du fragment.",
+      "descripcionNuevaFuente": "Ajoutez à cette source une réponse que l’IA peut utiliser telle quelle.",
+      "fuente": "Source",
+      "sinFuente": "Sans source",
+      "prioridad": "Priorité (1 à 10)",
+      "prioridadPlaceholder": "Choisissez la priorité",
+      "prioridadOpcion": "{n} · {nombre}",
+      "prioridades": {
+        "p1": "La plus basse",
+        "p2": "Basse",
+        "p3": "Plutôt basse",
+        "p4": "Moyenne basse",
+        "p5": "Normale",
+        "p6": "Moyenne haute",
+        "p7": "Plutôt haute",
+        "p8": "Haute",
+        "p9": "Très haute",
+        "p10": "La plus haute"
+      },
+      "prioridadAyuda": "Plus la priorité est haute, plus le fragment sort en premier quand l’IA cherche.",
+      "titulo": "Titre",
+      "tituloPlaceholder": "Ex. : Combien coûte la livraison ?",
+      "contenido": "Contenu",
+      "contenidoPlaceholder": "Écrivez ici le contenu du fragment…",
+      "caracteres": "{n, plural, one {# caractère} other {# caractères}}",
+      "etiquetas": "Étiquettes",
+      "etiquetaPlaceholder": "Saisissez une étiquette et appuyez sur Entrée",
+      "agregarEtiqueta": "Ajouter une étiquette",
+      "quitarEtiqueta": "Retirer l’étiquette {etiqueta}",
+      "crear": "Créer le fragment"
+    },
+    "fuente": {
+      "tituloNueva": "Nouvelle source",
+      "tituloEditar": "Modifier la source",
+      "descripcionNueva": "Une source regroupe des fragments sur un même thème, par exemple « Livraisons ».",
+      "descripcionEditar": "Modifiez le nom, la description ou l’icône de la source.",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Questions fréquentes",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "Quel type d’information contient cette source ?",
+      "icono": "Icône",
+      "iconoEmoji": "Icône (emoji)",
+      "elegirIcono": "Utiliser l’icône {icono}",
+      "crear": "Créer la source",
+      "ajustesTitulo": "Paramètres de la source",
+      "ajustesDescripcion": "Modifiez les informations de la source et si l’IA peut l’utiliser.",
+      "estado": "Source active",
+      "estadoActiva": "L’IA peut utiliser les fragments de cette source.",
+      "estadoInactiva": "L’IA n’utilise pas les fragments de cette source."
+    },
+    "importar": {
+      "archivoTitulo": "Importer un fichier",
+      "errorTipo": "Seuls les fichiers CSV ou TXT sont acceptés.",
+      "errorTamano": "Le fichier ne peut pas dépasser 5 Mo.",
+      "errorLectura": "Impossible de lire le fichier.",
+      "tipoCsv": "CSV",
+      "tipoTexto": "Texte",
+      "quitarArchivo": "Retirer le fichier",
+      "elegirArchivo": "Choisir un fichier CSV ou TXT",
+      "arrastra": "Glissez un fichier ici ou",
+      "seleccionar": "cliquez pour le choisir",
+      "formatos": "CSV ou TXT · 5 Mo maximum",
+      "formatoCsv": "Format CSV attendu :",
+      "ejemploCsv1": "\"Titre 1\",\"Contenu du fragment\",\"livraisons;paiements\",5",
+      "ejemploCsv2": "\"Titre 2\",\"Autre contenu\",\"horaires\",8",
+      "textoTitulo": "Coller du texte",
+      "pegaAqui": "Collez le contenu ici",
+      "caracteres": "{n, plural, one {# caractère} other {# caractères}}",
+      "ejemploTexto": "Titre du premier fragment\nLe contenu va sur les\nlignes suivantes.\n\n---\n\nTitre du deuxième fragment\nAutre contenu.",
+      "separador": "Séparateur entre fragments",
+      "separadorAyuda": "Ce texte sépare un fragment du suivant. Si vous ne mettez rien, {separador} est utilisé.",
+      "formatoTexto": "Format attendu :"
     }
   }
 }

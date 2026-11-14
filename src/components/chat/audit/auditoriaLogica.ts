@@ -2,7 +2,7 @@
  * Reglas puras de la Auditoría del chat (Figma 91-chat-41), sin React.
  */
 import type { LucideIcon } from 'lucide-react';
-import { Bot, BookOpen, FileText, Key, Lock, MessageSquare, Radio, Settings, Tag, Trash2, User, Zap } from 'lucide-react';
+import { Bot, BookOpen, FileText, Key, Lock, MessageSquare, Radio, Settings, Tag, Trash2, User, UserCheck, UserX, Zap } from 'lucide-react';
 
 /** Acciones que registran los servicios del Chat (clave i18n `chatModulo.auditoria.acciones.*`). */
 export const ACCIONES_AUDITORIA = [
@@ -33,6 +33,8 @@ export const ACCIONES_AUDITORIA = [
   'unblock_session',
   'assign_conversation',
   'close_conversation',
+  'block_contact',
+  'unblock_contact',
   'create_tag',
   'update_tag',
   'delete_tag',
@@ -58,6 +60,8 @@ export function humanizarAccion(accion: string): string {
 }
 
 export function iconoAccion(accion: string, entidad: string): LucideIcon {
+  if (accion === 'block_contact') return UserX;
+  if (accion === 'unblock_contact') return UserCheck;
   if (accion.startsWith('delete') || accion.startsWith('remove')) return Trash2;
   if (accion.includes('ai_mode') || accion.includes('ai_settings') || accion.includes('ai_job')) return Bot;
   if (accion.includes('key')) return Key;

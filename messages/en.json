@@ -51006,7 +51006,9 @@
         "update_quick_reply": "Edited a quick reply",
         "delete_quick_reply": "Deleted a quick reply",
         "create_api_key": "Created an API key",
-        "revoke_api_key": "Revoked an API key"
+        "revoke_api_key": "Revoked an API key",
+        "block_contact": "Blocked the contact",
+        "unblock_contact": "Unblocked the contact"
       }
     }
   },
@@ -51066,6 +51068,287 @@
       "descripcion": "If you leave now, the changes you made in this section will be lost.",
       "descartar": "Discard changes",
       "seguir": "Keep editing"
+    }
+  },
+  "chatHilo": {
+    "comun": {
+      "hoy": "today {hora}",
+      "ayer": "yesterday {hora}",
+      "error": "Error"
+    },
+    "actividad": {
+      "buscar": "Search activity…",
+      "filtroEtiqueta": "Activity type",
+      "filtros": {
+        "todas": "All activity",
+        "estados": "Status changes",
+        "asignaciones": "Assignments",
+        "etiquetas": "Tags",
+        "ia": "AI replies",
+        "auditoria": "Audit"
+      },
+      "conteo": "Showing {visibles} of {total} activities",
+      "lista": "Conversation activity",
+      "vacioTitulo": "No activity yet",
+      "vacioDescripcion": "Status changes, assignments, tags and AI replies for this conversation show up here.",
+      "sinResultadosTitulo": "No activity matches those filters",
+      "sinResultadosDescripcion": "Try another word or choose “All activity”.",
+      "errorCarga": "Couldn't load the activity",
+      "alguien": "Someone on the team",
+      "actorIa": "The AI",
+      "actorSistema": "System",
+      "motivo": "Reason: {motivo}",
+      "estado": {
+        "conActor": "{actor} marked the conversation as “{estado}”",
+        "sinActor": "The conversation changed to “{estado}”",
+        "antes": "Before: {estado}"
+      },
+      "asignacion": {
+        "conActor": "{actor} assigned the conversation to {persona}",
+        "sinActor": "The conversation was assigned to {persona}",
+        "quitadaConActor": "{actor} removed the assignment",
+        "quitadaSinActor": "The conversation was left unassigned"
+      },
+      "etiqueta": {
+        "agregadaConActor": "{actor} added the tag “{etiqueta}”",
+        "agregadaSinActor": "The tag “{etiqueta}” was added",
+        "quitadaConActor": "{actor} removed the tag “{etiqueta}”",
+        "quitadaSinActor": "The tag “{etiqueta}” was removed",
+        "sinNombre": "unnamed"
+      },
+      "ia": {
+        "auto": "The AI replied automatically",
+        "trabajo": "AI · {tipo}: {estado}",
+        "confianza": "Confidence {valor}",
+        "fragmentos": "{n, plural, one {# snippet} other {# snippets}}",
+        "tokens": "{n} tokens",
+        "error": "Error: {mensaje}"
+      },
+      "auditoria": {
+        "por": "by {actor}"
+      },
+      "csv": {
+        "archivo": "conversation_activity",
+        "fecha": "Date",
+        "tipo": "Type",
+        "actor": "Who",
+        "descripcion": "What happened",
+        "detalle": "Detail"
+      },
+      "tipos": {
+        "status_change": "Status change",
+        "assignment": "Assignment",
+        "tag_added": "Tag added",
+        "tag_removed": "Tag removed",
+        "ai_job": "AI",
+        "audit": "Audit"
+      }
+    },
+    "archivos": {
+      "kpis": {
+        "imagenes": "Images",
+        "documentos": "Documents",
+        "audios": "Audio"
+      },
+      "buscar": "Search files…",
+      "filtroTipo": "File type",
+      "tipos": {
+        "todos": "All types",
+        "image": "Images",
+        "video": "Videos",
+        "audio": "Audio",
+        "pdf": "PDF",
+        "document": "Documents",
+        "spreadsheet": "Spreadsheets",
+        "archive": "Archives",
+        "other": "Other"
+      },
+      "remitente": {
+        "etiqueta": "Sent by",
+        "todos": "Sent by: anyone",
+        "filtro": "Sent by: {quien}",
+        "customer": "Customer",
+        "agent": "Agent",
+        "ai": "AI",
+        "system": "System"
+      },
+      "conteo": "Showing {visibles} of {total} files",
+      "lista": "Conversation files",
+      "abrir": "Open",
+      "abrirArchivo": "Open {nombre}",
+      "descargar": "Download",
+      "copiarEnlace": "Copy link (expires in 1 hour)",
+      "eliminar": "Delete",
+      "aviso": "Share links for a file expire in 1 hour. Deleting a file here doesn't remove it from the customer's chat.",
+      "vacioTitulo": "No files yet",
+      "vacioDescripcion": "Photos, documents and audio shared in this conversation show up here.",
+      "sinResultadosTitulo": "No files match those filters",
+      "sinResultadosDescripcion": "Try another name or clear the filters.",
+      "borrar": {
+        "titulo": "Delete the file?",
+        "descripcion": "“{nombre}” is deleted from GO Admin and can't be recovered. The customer still has it in their chat.",
+        "confirmar": "Delete file"
+      },
+      "toasts": {
+        "errorCarga": "Couldn't load the files",
+        "errorAbrir": "Couldn't open the file",
+        "descargando": "Downloading {nombre}",
+        "errorDescarga": "Couldn't download the file",
+        "enlaceCopiado": "Link copied",
+        "enlaceVence": "It expires in 1 hour.",
+        "errorEnlace": "Couldn't copy the link",
+        "eliminado": "File deleted",
+        "errorEliminar": "Couldn't delete the file"
+      }
+    },
+    "buscar": {
+      "titulo": "Search the conversation",
+      "etiqueta": "Search messages in this conversation",
+      "placeholder": "Search messages…",
+      "limpiar": "Clear search",
+      "posicion": "{actual}/{total}",
+      "resultados": "{n, plural, =0 {No results} one {# result} other {# results}}",
+      "anterior": "Previous result",
+      "siguiente": "Next result",
+      "minimo": "Type at least {n} characters to search.",
+      "error": "Couldn't search the conversation",
+      "sinResultados": "No messages with “{termino}”",
+      "lista": "Messages found",
+      "roles": {
+        "customer": "Customer",
+        "agent": "Agent",
+        "ai": "AI",
+        "system": "System"
+      },
+      "navegar": "move",
+      "ir": "go to message"
+    }
+  },
+  "chatDialogos": {
+    "comun": {
+      "cancelar": "Cancel",
+      "guardar": "Save changes",
+      "guardando": "Saving…"
+    },
+    "nuevoCanal": {
+      "nombrePlaceholder": "e.g. Website chat",
+      "nombresDefecto": {
+        "website": "Website chat",
+        "whatsapp": "WhatsApp Business",
+        "facebook": "Facebook Messenger",
+        "instagram": "Instagram Direct",
+        "telegram": "Telegram bot",
+        "email": "Support email"
+      },
+      "avisoWebTitulo": "Chat for your website",
+      "avisoWeb": "After you create the channel you can copy the chat code and install it on your site.",
+      "avisoMetaTitulo": "Connecting {red}",
+      "avisoMeta": "After you create the channel you'll need to connect your Meta Business account.",
+      "avisoWhatsApp": "After you create the channel you'll need to connect your WhatsApp Business account.",
+      "metodosTitulo": "Ways to connect WhatsApp:",
+      "metodoCloud": "official from Meta, no risk (recommended)",
+      "metodoQr": "like WhatsApp Web; unofficial, and Meta may block the number",
+      "metodoCoexistencia": "the phone app and the official API at the same time",
+      "metodosNota": "You choose how to connect when you set up the channel, after creating it.",
+      "cancelar": "Cancel",
+      "creando": "Creating…"
+    },
+    "codigoWidget": {
+      "titulo": "Install the chat on your website",
+      "descripcion": "Follow these steps to add the chat to your website.",
+      "pestanaCodigo": "Code",
+      "pestanaPasos": "Instructions",
+      "codigo": "Chat code",
+      "copiarCodigo": "Copy code",
+      "copiado": "Copied!",
+      "clave": "Channel public key",
+      "copiar": "Copy",
+      "copiadoCorto": "Copied",
+      "paso1": "Copy the chat code with the “Copy code” button.",
+      "paso2": "Open your website's main HTML file.",
+      "paso3": "Paste the code right before the {etiqueta} tag.",
+      "paso4": "Save the changes and upload them to your server.",
+      "paso5": "Done! The chat appears in the corner you set up.",
+      "notaTitulo": "Note:",
+      "nota": "It works on any page. If the channel has allowed domains, it only works on those domains (and on your GO Admin site). On your GO Admin site you don't need to paste anything: just turn on “Show on site”.",
+      "cerrar": "Close"
+    },
+    "fragmento": {
+      "tituloNuevo": "New snippet",
+      "tituloEditar": "Edit snippet",
+      "descripcionNueva": "Write it the way you'd say it to a customer. The AI uses it as is.",
+      "descripcionEditar": "Saving creates a new version of the snippet.",
+      "descripcionNuevaFuente": "Add to this source an answer the AI can use as is.",
+      "fuente": "Source",
+      "sinFuente": "No source",
+      "prioridad": "Priority (1 to 10)",
+      "prioridadPlaceholder": "Choose the priority",
+      "prioridadOpcion": "{n} · {nombre}",
+      "prioridades": {
+        "p1": "Lowest",
+        "p2": "Low",
+        "p3": "Fairly low",
+        "p4": "Medium low",
+        "p5": "Normal",
+        "p6": "Medium high",
+        "p7": "Fairly high",
+        "p8": "High",
+        "p9": "Very high",
+        "p10": "Highest"
+      },
+      "prioridadAyuda": "Higher-priority snippets come first when the AI searches.",
+      "titulo": "Title",
+      "tituloPlaceholder": "e.g. How much is shipping?",
+      "contenido": "Content",
+      "contenidoPlaceholder": "Write the snippet content here…",
+      "caracteres": "{n, plural, one {# character} other {# characters}}",
+      "etiquetas": "Tags",
+      "etiquetaPlaceholder": "Type a tag and press Enter",
+      "agregarEtiqueta": "Add tag",
+      "quitarEtiqueta": "Remove the tag {etiqueta}",
+      "crear": "Create snippet"
+    },
+    "fuente": {
+      "tituloNueva": "New source",
+      "tituloEditar": "Edit source",
+      "descripcionNueva": "A source groups snippets about one topic, for example “Shipping”.",
+      "descripcionEditar": "Change the source's name, description or icon.",
+      "nombre": "Name",
+      "nombrePlaceholder": "e.g. Frequently asked questions",
+      "descripcion": "Description",
+      "descripcionPlaceholder": "What kind of information does this source hold?",
+      "icono": "Icon",
+      "iconoEmoji": "Icon (emoji)",
+      "elegirIcono": "Use the {icono} icon",
+      "crear": "Create source",
+      "ajustesTitulo": "Source settings",
+      "ajustesDescripcion": "Change the source's details and whether the AI can use it.",
+      "estado": "Active source",
+      "estadoActiva": "The AI can use this source's snippets.",
+      "estadoInactiva": "The AI doesn't use this source's snippets."
+    },
+    "importar": {
+      "archivoTitulo": "Upload file",
+      "errorTipo": "Only CSV or TXT files are accepted.",
+      "errorTamano": "The file can't be larger than 5 MB.",
+      "errorLectura": "Couldn't read the file.",
+      "tipoCsv": "CSV",
+      "tipoTexto": "Text",
+      "quitarArchivo": "Remove the file",
+      "elegirArchivo": "Choose a CSV or TXT file",
+      "arrastra": "Drag a file here or",
+      "seleccionar": "click to choose it",
+      "formatos": "CSV or TXT · 5 MB max",
+      "formatoCsv": "Expected CSV format:",
+      "ejemploCsv1": "\"Title 1\",\"Snippet content\",\"shipping;payments\",5",
+      "ejemploCsv2": "\"Title 2\",\"More content\",\"hours\",8",
+      "textoTitulo": "Paste text",
+      "pegaAqui": "Paste the content here",
+      "caracteres": "{n, plural, one {# character} other {# characters}}",
+      "ejemploTexto": "Title of the first snippet\nThe content goes on the\nfollowing lines.\n\n---\n\nTitle of the second snippet\nMore content.",
+      "separador": "Separator between snippets",
+      "separadorAyuda": "This text separates one snippet from the next. If you leave it empty, {separador} is used.",
+      "formatoTexto": "Expected format:"
     }
   }
 }

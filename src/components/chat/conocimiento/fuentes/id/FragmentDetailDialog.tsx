@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, Plus, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -24,6 +25,8 @@ import {
 } from '@/components/ui/select';
 import { KnowledgeFragment, CreateFragmentData } from '@/lib/services/knowledgeService';
 
+const PRIORIDADES = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] as const;
+
 interface FragmentDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,6 +42,8 @@ export default function FragmentDetailDialog({
   sourceId,
   onSubmit
 }: FragmentDetailDialogProps) {
+  const t = useTranslations('chatDialogos.fragmento');
+  const tc = useTranslations('chatDialogos.comun');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -102,69 +107,56 @@ export default function FragmentDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle className="text-gray-900 dark:text-white">
-            {fragment ? 'Editar Fragmento' : 'Nuevo Fragmento'}
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 dark:text-gray-400">
-            {fragment 
-              ? 'Modifica la información del fragmento de conocimiento'
-              : 'Agrega un nuevo fragmento de conocimiento a esta fuente'
-            }
-          </DialogDescription>
+          <DialogTitle>{fragment ? t('tituloEditar') : t('tituloNuevo')}</DialogTitle>
+          <DialogDescription>{fragment ? t('descripcionEditar') : t('descripcionNuevaFuente')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-gray-700 dark:text-gray-300">
-              Título *
-            </Label>
+            <Label htmlFor="title">{t('titulo')} *</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ej: Cómo restablecer contraseña"
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+              placeholder={t('tituloPlaceholder')}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content" className="text-gray-700 dark:text-gray-300">
-              Contenido *
-            </Label>
+            <Label htmlFor="content">{t('contenido')} *</Label>
             <Textarea
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Escribe aquí el contenido del fragmento..."
+              placeholder={t('contenidoPlaceholder')}
               rows={8}
-              className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 resize-none"
+              className="resize-none"
+              aria-describedby="fragment-content-count"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              {content.length} caracteres
+            <p id="fragment-content-count" className="text-xs text-fg-muted">
+              {t('caracteres', { n: content.length })}
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gray-700 dark:text-gray-300">
-              Etiquetas
-            </Label>
+            <Label htmlFor="fragment-detail-tag">{t('etiquetas')}</Label>
             <div className="flex gap-2">
               <Input
+                id="fragment-detail-tag"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Agregar etiqueta..."
-                className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+                placeholder={t('etiquetaPlaceholder')}
               />
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={handleAddTag}
-                className="border-gray-300 dark:border-gray-700"
+                aria-label={t('agregarEtiqueta')}
               >
-                <Plus className="h-4 w-4" />
+                <Plus aria-hidden="true" className="h-4 w-4" />
               </Button>
             </div>
             {tags.length > 0 && (
@@ -173,15 +165,16 @@ export default function FragmentDetailDialog({
                   <Badge 
                     key={idx} 
                     variant="secondary"
-                    className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 gap-1"
+                    className="gap-1 bg-brand-tint text-brand-deep"
                   >
                     {tag}
                     <button
                       type="button"
                       onClick={() => handleRemoveTag(tag)}
-                      className="ml-1 hover:text-blue-900 dark:hover:text-blue-200"
+                      aria-label={t('quitarEtiqueta', { etiqueta: tag })}
+                      className="ml-1 hover:text-fg"
                     >
-                      <X className="h-3 w-3" />
+                      <X aria-hidden="true" className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
@@ -190,28 +183,21 @@ export default function FragmentDetailDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="priority" className="text-gray-700 dark:text-gray-300">
-              Prioridad
-            </Label>
+            <Label htmlFor="priority">{t('prioridad')}</Label>
             <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
-                <SelectValue placeholder="Selecciona prioridad" />
+              <SelectTrigger id="priority" aria-describedby="priority-ayuda">
+                <SelectValue placeholder={t('prioridadPlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 - Más baja</SelectItem>
-                <SelectItem value="2">2 - Baja</SelectItem>
-                <SelectItem value="3">3 - Algo baja</SelectItem>
-                <SelectItem value="4">4 - Media baja</SelectItem>
-                <SelectItem value="5">5 - Normal</SelectItem>
-                <SelectItem value="6">6 - Media alta</SelectItem>
-                <SelectItem value="7">7 - Algo alta</SelectItem>
-                <SelectItem value="8">8 - Alta</SelectItem>
-                <SelectItem value="9">9 - Muy alta</SelectItem>
-                <SelectItem value="10">10 - Máxima</SelectItem>
+                {PRIORIDADES.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {t('prioridadOpcion', { n: p, nombre: t(`prioridades.p${p}`) })}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Los fragmentos con mayor prioridad aparecerán primero en las búsquedas
+            <p id="priority-ayuda" className="text-xs text-fg-muted">
+              {t('prioridadAyuda')}
             </p>
           </div>
         </div>
@@ -220,22 +206,20 @@ export default function FragmentDetailDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="border-gray-300 dark:border-gray-700"
           >
-            Cancelar
+            {tc('cancelar')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={saving || !title.trim() || !content.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
+                <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />
+                {tc('guardando')}
               </>
             ) : (
-              fragment ? 'Guardar Cambios' : 'Crear Fragmento'
+              fragment ? tc('guardar') : t('crear')
             )}
           </Button>
         </DialogFooter>

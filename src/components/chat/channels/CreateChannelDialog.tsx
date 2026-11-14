@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Globe,
   MessageCircle,
@@ -30,6 +31,8 @@ import {
 } from '@/components/ui/select';
 import { ChannelType, AIMode, CreateChannelData } from '@/lib/services/chatChannelsService';
 
+const MODOS: AIMode[] = ['manual', 'hybrid', 'auto'];
+
 interface CreateChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -43,6 +46,8 @@ export default function CreateChannelDialog({
   onSubmit,
   preselectedType
 }: CreateChannelDialogProps) {
+  const t = useTranslations('chatDialogos.nuevoCanal');
+  const tc = useTranslations('chatModulo.canales');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<CreateChannelData>({
     type: preselectedType || 'website',
@@ -50,12 +55,13 @@ export default function CreateChannelDialog({
     ai_mode: 'hybrid'
   });
 
+  const getDefaultName = React.useCallback((type: ChannelType): string => t(`nombresDefecto.${type}`), [t]);
+
   React.useEffect(() => {
     if (open && preselectedType) {
-      const defaultName = getDefaultName(preselectedType);
       setFormData({
         type: preselectedType,
-        name: defaultName,
+        name: getDefaultName(preselectedType),
         ai_mode: 'hybrid'
       });
     } else if (open && !preselectedType) {
@@ -65,15 +71,15 @@ export default function CreateChannelDialog({
         ai_mode: 'hybrid'
       });
     }
-  }, [open, preselectedType]);
+  }, [open, preselectedType, getDefaultName]);
 
-  const channelTypes: { value: ChannelType; label: string; icon: React.ReactNode; available: boolean }[] = [
-    { value: 'website', label: 'Sitio Web', icon: <Globe className="h-4 w-4" />, available: true },
-    { value: 'whatsapp', label: 'WhatsApp', icon: <MessageCircle className="h-4 w-4" />, available: true },
-    { value: 'facebook', label: 'Facebook Messenger', icon: <Facebook className="h-4 w-4" />, available: true },
-    { value: 'instagram', label: 'Instagram', icon: <Instagram className="h-4 w-4" />, available: true },
-    { value: 'telegram', label: 'Telegram', icon: <Send className="h-4 w-4" />, available: false },
-    { value: 'email', label: 'Email', icon: <Mail className="h-4 w-4" />, available: false }
+  const channelTypes: { value: ChannelType; icon: React.ReactNode; available: boolean }[] = [
+    { value: 'website', icon: <Globe className="h-4 w-4" />, available: true },
+    { value: 'whatsapp', icon: <MessageCircle className="h-4 w-4" />, available: true },
+    { value: 'facebook', icon: <Facebook className="h-4 w-4" />, available: true },
+    { value: 'instagram', icon: <Instagram className="h-4 w-4" />, available: true },
+    { value: 'telegram', icon: <Send className="h-4 w-4" />, available: false },
+    { value: 'email', icon: <Mail className="h-4 w-4" />, available: false }
   ];
 
   const handleSubmit = async () => {
@@ -89,57 +95,40 @@ export default function CreateChannelDialog({
     }
   };
 
-  const getDefaultName = (type: ChannelType): string => {
-    const names: Record<ChannelType, string> = {
-      website: 'Chat Web Principal',
-      whatsapp: 'WhatsApp Business',
-      facebook: 'Facebook Messenger',
-      instagram: 'Instagram Direct',
-      telegram: 'Telegram Bot',
-      email: 'Soporte Email'
-    };
-    return names[type] || '';
-  };
+  const esMeta = ['whatsapp', 'facebook', 'instagram'].includes(formData.type);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Canal</DialogTitle>
-          <DialogDescription>
-            Configura un nuevo canal de comunicación para recibir mensajes de tus clientes.
-          </DialogDescription>
+          <DialogTitle>{tc('nuevo.titulo')}</DialogTitle>
+          <DialogDescription>{tc('nuevo.descripcion')}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Channel Type */}
           <div className="space-y-2">
-            <Label>Tipo de Canal</Label>
-            <Select 
-              value={formData.type} 
+            <Label htmlFor="channel-type">{tc('nuevo.tipo')}</Label>
+            <Select
+              value={formData.type}
               onValueChange={(value: ChannelType) => {
-                setFormData({ 
-                  ...formData, 
+                setFormData({
+                  ...formData,
                   type: value,
                   name: formData.name || getDefaultName(value)
                 });
               }}
             >
-              <SelectTrigger>
+              <SelectTrigger id="channel-type">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {channelTypes.map((type) => (
-                  <SelectItem 
-                    key={type.value} 
-                    value={type.value}
-                    disabled={!type.available}
-                  >
+                  <SelectItem key={type.value} value={type.value} disabled={!type.available}>
                     <div className="flex items-center gap-2">
-                      {type.icon}
-                      <span>{type.label}</span>
+                      <span aria-hidden="true">{type.icon}</span>
+                      <span>{tc(`tipos.${type.value}`)}</span>
                       {!type.available && (
-                        <span className="text-xs text-gray-400">(Próximamente)</span>
+                        <span className="text-xs text-fg-muted">({tc('conectar.proximamente')})</span>
                       )}
                     </div>
                   </SelectItem>
@@ -148,97 +137,79 @@ export default function CreateChannelDialog({
             </Select>
           </div>
 
-          {/* Channel Name */}
           <div className="space-y-2">
-            <Label htmlFor="channel-name">Nombre del Canal</Label>
+            <Label htmlFor="channel-name">{tc('nuevo.nombre')}</Label>
             <Input
               id="channel-name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Chat Web Principal"
+              placeholder={t('nombrePlaceholder')}
+              aria-describedby="channel-name-ayuda"
             />
+            <p id="channel-name-ayuda" className="text-xs text-fg-muted">{tc('nuevo.nombreAyuda')}</p>
           </div>
 
-          {/* AI Mode */}
           <div className="space-y-2">
-            <Label>Modo de IA</Label>
-            <Select 
-              value={formData.ai_mode} 
+            <Label htmlFor="channel-ai-mode">{tc('nuevo.ayudaIa')}</Label>
+            <Select
+              value={formData.ai_mode}
               onValueChange={(value: AIMode) => setFormData({ ...formData, ai_mode: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="channel-ai-mode">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="manual">
-                  <div className="flex flex-col">
-                    <span>Desactivado</span>
-                    <span className="text-xs text-gray-500">Solo agentes humanos</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="hybrid">
-                  <div className="flex flex-col">
-                    <span>Híbrido (Recomendado)</span>
-                    <span className="text-xs text-gray-500">IA sugiere, humano decide</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="auto">
-                  <div className="flex flex-col">
-                    <span>Automático</span>
-                    <span className="text-xs text-gray-500">IA responde automáticamente</span>
-                  </div>
-                </SelectItem>
+                {MODOS.map((modo) => (
+                  <SelectItem key={modo} value={modo}>
+                    <div className="flex flex-col">
+                      <span>{tc(`modos.${modo}`)}</span>
+                      <span className="text-xs text-fg-muted">{tc(`modosDescripcion.${modo}`)}</span>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Info based on type */}
           {formData.type === 'website' && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
-              <p className="font-medium mb-1">Chat para Sitio Web</p>
-              <p className="text-xs">
-                Después de crear el canal, podrás copiar el código del widget para instalarlo en tu sitio web.
-              </p>
+            <div className="rounded-lg bg-brand-tint p-3 text-sm text-brand-deep">
+              <p className="mb-1 font-medium">{t('avisoWebTitulo')}</p>
+              <p className="text-xs">{t('avisoWeb')}</p>
             </div>
           )}
 
-          {['whatsapp', 'facebook', 'instagram'].includes(formData.type) && (
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-sm text-green-700 dark:text-green-300">
-              <p className="font-medium mb-1">Conexión con {formData.type === 'whatsapp' ? 'WhatsApp' : formData.type === 'facebook' ? 'Facebook' : 'Instagram'}</p>
-              <p className="text-xs">
-                Después de crear el canal, necesitarás conectar tu cuenta de {formData.type === 'whatsapp' ? 'WhatsApp Business' : 'Meta Business'}.
-              </p>
+          {esMeta && (
+            <div className="rounded-lg bg-success-subtle p-3 text-sm text-success-text">
+              <p className="mb-1 font-medium">{t('avisoMetaTitulo', { red: tc(`tipos.${formData.type}`) })}</p>
+              <p className="text-xs">{t(formData.type === 'whatsapp' ? 'avisoWhatsApp' : 'avisoMeta')}</p>
             </div>
           )}
 
           {formData.type === 'whatsapp' && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-xs text-blue-700 dark:text-blue-300 space-y-1">
-              <p className="font-medium">Métodos de conexión disponibles:</p>
-              <ul className="list-disc list-inside space-y-0.5">
-                <li><strong>Cloud API</strong> – oficial de Meta, sin riesgo (recomendado)</li>
-                <li><strong>QR Scan ⚠️</strong> – escanear QR como WhatsApp Web, no oficial, riesgo de ban</li>
-                <li><strong>Coexistence</strong> – app en teléfono + API oficial simultáneo</li>
+            <div className="space-y-1 rounded-lg bg-brand-tint p-3 text-xs text-brand-deep">
+              <p className="font-medium">{t('metodosTitulo')}</p>
+              <ul className="list-inside list-disc space-y-0.5">
+                <li><strong>{tc('nuevo.formas.cloud_api')}</strong> · {t('metodoCloud')}</li>
+                <li><strong>{tc('nuevo.formas.qr_scan')}</strong> · {t('metodoQr')}</li>
+                <li><strong>{tc('nuevo.formas.coexistence')}</strong> · {t('metodoCoexistencia')}</li>
               </ul>
-              <p className="pt-1">Elegirás el método al configurar el canal después de crearlo.</p>
+              <p className="pt-1">{t('metodosNota')}</p>
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            Cancelar
+            {t('cancelar')}
           </Button>
-          <Button 
-            onClick={handleSubmit} 
-            disabled={isSubmitting || !formData.name.trim()}
-          >
+          <Button onClick={handleSubmit} disabled={isSubmitting || !formData.name.trim()}>
             {isSubmitting ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creando...
+                <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />
+                {t('creando')}
               </>
             ) : (
-              'Crear Canal'
+              tc('nuevo.crear')
             )}
           </Button>
         </DialogFooter>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Copy, Check, Code, Key, FileCode, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,11 +22,14 @@ interface WidgetCodeDialogProps {
   channel: ChatChannel | null;
 }
 
+const PASOS = ['paso1', 'paso2', 'paso3', 'paso4', 'paso5'] as const;
+
 export default function WidgetCodeDialog({
   open,
   onOpenChange,
   channel
 }: WidgetCodeDialogProps) {
+  const t = useTranslations('chatDialogos.codigoWidget');
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
 
@@ -54,147 +58,93 @@ export default function WidgetCodeDialog({
     }
   };
 
-  const steps = [
-    { step: 1, text: 'Copia el código del widget usando el botón de arriba' },
-    { step: 2, text: 'Abre el archivo HTML principal de tu sitio web' },
-    { step: 3, text: 'Pega el código justo antes de la etiqueta </body>' },
-    { step: 4, text: 'Guarda los cambios y súbelos a tu servidor' },
-    { step: 5, text: '¡Listo! El chat aparecerá en la esquina que configuraste' },
-  ];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+        <DialogHeader className="pb-4 border-b border-line">
           <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-              <Code className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            Instalar Widget de Chat
+            <span aria-hidden="true" className="rounded-lg bg-brand-tint p-2">
+              <Code className="h-5 w-5 text-brand" />
+            </span>
+            {t('titulo')}
           </DialogTitle>
-          <DialogDescription className="text-base mt-2">
-            Sigue estos pasos para agregar el widget de chat a tu sitio web
-          </DialogDescription>
+          <DialogDescription className="text-base mt-2">{t('descripcion')}</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-4">
           <Tabs defaultValue="code" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="code" className="gap-2">
-                <FileCode className="h-4 w-4" />
-                Código
+                <FileCode aria-hidden="true" className="h-4 w-4" />
+                {t('pestanaCodigo')}
               </TabsTrigger>
               <TabsTrigger value="instructions" className="gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Instrucciones
+                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+                {t('pestanaPasos')}
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="code" className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Código del Widget
-                  </label>
-                  <Button
-                    size="sm"
-                    variant={copiedCode ? "default" : "outline"}
-                    className={`gap-2 ${copiedCode ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                    onClick={handleCopyCode}
-                  >
-                    {copiedCode ? (
-                      <>
-                        <Check className="h-4 w-4" />
-                        ¡Copiado!
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-4 w-4" />
-                        Copiar código
-                      </>
-                    )}
+                  <p className="text-sm font-medium text-fg">{t('codigo')}</p>
+                  <Button size="sm" variant="outline" className="gap-2" onClick={handleCopyCode}>
+                    {copiedCode ? <Check aria-hidden="true" className="h-4 w-4 text-success-text" /> : <Copy aria-hidden="true" className="h-4 w-4" />}
+                    {copiedCode ? t('copiado') : t('copiarCodigo')}
                   </Button>
                 </div>
-                <div className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                  <pre className="p-4 bg-gray-900 text-gray-100 text-sm overflow-x-auto max-h-48">
+                <div className="relative overflow-hidden rounded-lg border border-line">
+                  <pre className="max-h-48 overflow-x-auto bg-subtle p-4 font-mono text-sm text-fg">
                     <code className="language-html whitespace-pre">{widgetCode}</code>
                   </pre>
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-between mb-2">
+              <div className="rounded-lg border border-line bg-brand-tint p-4">
+                <div className="mb-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Key className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                      Clave Pública del Canal
-                    </span>
+                    <Key aria-hidden="true" className="h-4 w-4 text-brand" />
+                    <span className="text-sm font-medium text-brand-deep">{t('clave')}</span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                    onClick={handleCopyKey}
-                  >
-                    {copiedKey ? (
-                      <>
-                        <Check className="h-3 w-3 mr-1" />
-                        Copiado
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copiar
-                      </>
-                    )}
+                  <Button size="sm" variant="ghost" className="h-7 text-brand" onClick={handleCopyKey}>
+                    {copiedKey ? <Check aria-hidden="true" className="mr-1 h-3 w-3" /> : <Copy aria-hidden="true" className="mr-1 h-3 w-3" />}
+                    {copiedKey ? t('copiadoCorto') : t('copiar')}
                   </Button>
                 </div>
-                <code className="block text-sm font-mono bg-white dark:bg-gray-800 px-3 py-2 rounded border border-blue-200 dark:border-blue-700 text-gray-800 dark:text-gray-200">
+                <code className="block rounded border border-line bg-surface px-3 py-2 font-mono text-sm text-fg">
                   {channel.public_key}
                 </code>
               </div>
             </TabsContent>
 
             <TabsContent value="instructions" className="space-y-4">
-              <div className="space-y-3">
-                {steps.map(({ step, text }) => (
-                  <div 
-                    key={step}
-                    className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg"
-                  >
-                    <div className="flex-shrink-0 w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-                      {step}
-                    </div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 pt-1">
-                      {text}
-                    </p>
-                  </div>
+              <ol className="space-y-3">
+                {PASOS.map((paso, i) => (
+                  <li key={paso} className="flex items-start gap-3 rounded-lg bg-subtle p-3">
+                    <span aria-hidden="true" className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand-action text-sm font-semibold text-fg-on-brand">
+                      {i + 1}
+                    </span>
+                    <p className="pt-1 text-sm text-fg-secondary">{t(paso, { etiqueta: '</body>' })}</p>
+                  </li>
                 ))}
-              </div>
+              </ol>
 
-              <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                <p className="text-sm text-amber-800 dark:text-amber-200">
-                  <strong>Nota:</strong> Funciona en cualquier página. Si configuras dominios permitidos en el canal, solo funcionará en esos dominios (y en tu sitio GO Admin). En tu sitio GO Admin no hace falta pegar nada: basta con activar «Mostrar en sitio web».
+              <div className="rounded-lg border border-line bg-warning-subtle p-4">
+                <p className="text-sm text-warning-text">
+                  <strong>{t('notaTitulo')}</strong> {t('nota')}
                 </p>
               </div>
             </TabsContent>
           </Tabs>
         </div>
 
-        <DialogFooter className="pt-4 border-t border-gray-200 dark:border-gray-700 flex-row gap-2 sm:gap-2">
-          <Button 
-            variant="outline" 
-            className="flex-1 sm:flex-none"
-            onClick={() => onOpenChange(false)}
-          >
-            Cerrar
+        <DialogFooter className="pt-4 border-t border-line flex-row gap-2 sm:gap-2">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={() => onOpenChange(false)}>
+            {t('cerrar')}
           </Button>
-          <Button 
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white gap-2"
-            onClick={handleCopyCode}
-          >
-            {copiedCode ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copiedCode ? '¡Copiado!' : 'Copiar código'}
+          <Button className="flex-1 sm:flex-none gap-2" onClick={handleCopyCode}>
+            {copiedCode ? <Check aria-hidden="true" className="h-4 w-4" /> : <Copy aria-hidden="true" className="h-4 w-4" />}
+            {copiedCode ? t('copiado') : t('copiarCodigo')}
           </Button>
         </DialogFooter>
       </DialogContent>

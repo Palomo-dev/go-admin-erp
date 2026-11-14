@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,8 @@ export default function SourceDialog({
   source,
   onSubmit
 }: SourceDialogProps) {
+  const t = useTranslations('chatDialogos.fuente');
+  const tc = useTranslations('chatDialogos.comun');
   const [formData, setFormData] = useState<CreateSourceData>({
     name: '',
     description: '',
@@ -71,58 +74,47 @@ export default function SourceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-gray-900 dark:text-white">
-            {source ? 'Editar Fuente' : 'Nueva Fuente de Conocimiento'}
-          </DialogTitle>
-          <DialogDescription className="text-gray-500 dark:text-gray-400">
-            {source 
-              ? 'Modifica los datos de la fuente de conocimiento'
-              : 'Crea una nueva fuente para organizar tus fragmentos de conocimiento'
-            }
-          </DialogDescription>
+          <DialogTitle>{source ? t('tituloEditar') : t('tituloNueva')}</DialogTitle>
+          <DialogDescription>{source ? t('descripcionEditar') : t('descripcionNueva')}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre *</Label>
+            <Label htmlFor="name">{t('nombre')} *</Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ej: Preguntas Frecuentes"
-              className="bg-gray-50 dark:bg-gray-800"
+              placeholder={t('nombrePlaceholder')}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
+            <Label htmlFor="description">{t('descripcion')}</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Describe el tipo de información que contiene esta fuente..."
+              placeholder={t('descripcionPlaceholder')}
               rows={3}
-              className="bg-gray-50 dark:bg-gray-800"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Icono</Label>
-            <div className="flex flex-wrap gap-2">
+            <p id="source-icon" className="text-sm font-medium text-fg">{t('icono')}</p>
+            <div role="group" aria-labelledby="source-icon" className="flex flex-wrap gap-2">
               {ICONS.map((icon) => (
                 <Button
                   key={icon}
                   type="button"
                   variant="outline"
                   size="icon"
-                  className={`w-10 h-10 text-lg ${
-                    formData.icon === icon 
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' 
-                      : ''
-                  }`}
+                  aria-pressed={formData.icon === icon}
+                  aria-label={t('elegirIcono', { icono: icon })}
+                  className={`w-10 h-10 text-lg ${formData.icon === icon ? 'border-brand bg-brand-tint' : ''}`}
                   onClick={() => setFormData({ ...formData, icon })}
                 >
                   {icon}
@@ -133,7 +125,9 @@ export default function SourceDialog({
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="w-10 h-10 text-lg border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                  aria-pressed
+                  aria-label={t('elegirIcono', { icono: formData.icon })}
+                  className="w-10 h-10 text-lg border-brand bg-brand-tint"
                 >
                   {formData.icon}
                 </Button>
@@ -148,19 +142,18 @@ export default function SourceDialog({
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
-              Cancelar
+              {tc('cancelar')}
             </Button>
             <Button
               type="submit"
               disabled={saving || !formData.name.trim()}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {saving ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
+                  <Loader2 aria-hidden="true" className="h-4 w-4 mr-2 animate-spin" />
+                  {tc('guardando')}
                 </>
-              ) : source ? 'Guardar Cambios' : 'Crear Fuente'}
+              ) : source ? tc('guardar') : t('crear')}
             </Button>
           </DialogFooter>
         </form>

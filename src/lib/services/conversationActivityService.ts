@@ -77,6 +77,18 @@ export interface ActivityStats {
   auditLogs: number;
 }
 
+/** Cifras de una lista ya cargada (sin volver a consultar). */
+export function estadisticasActividad(activities: readonly Pick<ActivityItem, 'type'>[]): ActivityStats {
+  return {
+    totalActivities: activities.length,
+    statusChanges: activities.filter(a => a.type === 'status_change').length,
+    assignments: activities.filter(a => a.type === 'assignment').length,
+    tagChanges: activities.filter(a => a.type === 'tag_added' || a.type === 'tag_removed').length,
+    aiJobs: activities.filter(a => a.type === 'ai_job').length,
+    auditLogs: activities.filter(a => a.type === 'audit').length
+  };
+}
+
 class ConversationActivityService {
   private organizationId: number;
 
@@ -254,16 +266,7 @@ class ConversationActivityService {
   }
 
   async getStats(conversationId: string): Promise<ActivityStats> {
-    const activities = await this.getAllActivities(conversationId);
-
-    return {
-      totalActivities: activities.length,
-      statusChanges: activities.filter(a => a.type === 'status_change').length,
-      assignments: activities.filter(a => a.type === 'assignment').length,
-      tagChanges: activities.filter(a => a.type === 'tag_added' || a.type === 'tag_removed').length,
-      aiJobs: activities.filter(a => a.type === 'ai_job').length,
-      auditLogs: activities.filter(a => a.type === 'audit').length
-    };
+    return estadisticasActividad(await this.getAllActivities(conversationId));
   }
 
   exportToCSV(activities: ActivityItem[]): string {

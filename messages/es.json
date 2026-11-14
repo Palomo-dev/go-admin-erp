@@ -51021,7 +51021,9 @@
         "update_quick_reply": "Editó una respuesta rápida",
         "delete_quick_reply": "Eliminó una respuesta rápida",
         "create_api_key": "Creó una llave de API",
-        "revoke_api_key": "Revocó una llave de API"
+        "revoke_api_key": "Revocó una llave de API",
+        "block_contact": "Bloqueó el contacto",
+        "unblock_contact": "Desbloqueó el contacto"
       }
     }
   },
@@ -51081,6 +51083,287 @@
       "descripcion": "Si sales ahora, se pierden los cambios que hiciste en esta sección.",
       "descartar": "Descartar cambios",
       "seguir": "Seguir editando"
+    }
+  },
+  "chatHilo": {
+    "comun": {
+      "hoy": "hoy {hora}",
+      "ayer": "ayer {hora}",
+      "error": "Error"
+    },
+    "actividad": {
+      "buscar": "Buscar en la actividad…",
+      "filtroEtiqueta": "Tipo de actividad",
+      "filtros": {
+        "todas": "Todas las actividades",
+        "estados": "Cambios de estado",
+        "asignaciones": "Asignaciones",
+        "etiquetas": "Etiquetas",
+        "ia": "Respuestas de IA",
+        "auditoria": "Auditoría"
+      },
+      "conteo": "Mostrando {visibles} de {total} actividades",
+      "lista": "Actividad de la conversación",
+      "vacioTitulo": "Todavía no hay actividad",
+      "vacioDescripcion": "Aquí verás los cambios de estado, asignaciones, etiquetas y respuestas de la IA de esta conversación.",
+      "sinResultadosTitulo": "No hay actividad con esos filtros",
+      "sinResultadosDescripcion": "Prueba con otra palabra o elige «Todas las actividades».",
+      "errorCarga": "No se pudo cargar la actividad",
+      "alguien": "Alguien del equipo",
+      "actorIa": "La IA",
+      "actorSistema": "Sistema",
+      "motivo": "Motivo: {motivo}",
+      "estado": {
+        "conActor": "{actor} marcó la conversación como «{estado}»",
+        "sinActor": "La conversación pasó a «{estado}»",
+        "antes": "Antes: {estado}"
+      },
+      "asignacion": {
+        "conActor": "{actor} asignó la conversación a {persona}",
+        "sinActor": "La conversación se asignó a {persona}",
+        "quitadaConActor": "{actor} quitó la asignación",
+        "quitadaSinActor": "La conversación quedó sin asignar"
+      },
+      "etiqueta": {
+        "agregadaConActor": "{actor} agregó la etiqueta «{etiqueta}»",
+        "agregadaSinActor": "Se agregó la etiqueta «{etiqueta}»",
+        "quitadaConActor": "{actor} quitó la etiqueta «{etiqueta}»",
+        "quitadaSinActor": "Se quitó la etiqueta «{etiqueta}»",
+        "sinNombre": "sin nombre"
+      },
+      "ia": {
+        "auto": "La IA respondió automáticamente",
+        "trabajo": "IA · {tipo}: {estado}",
+        "confianza": "Confianza {valor}",
+        "fragmentos": "{n, plural, one {# fragmento} other {# fragmentos}}",
+        "tokens": "{n} tokens",
+        "error": "Error: {mensaje}"
+      },
+      "auditoria": {
+        "por": "por {actor}"
+      },
+      "csv": {
+        "archivo": "actividad_conversacion",
+        "fecha": "Fecha",
+        "tipo": "Tipo",
+        "actor": "Quién",
+        "descripcion": "Qué pasó",
+        "detalle": "Detalle"
+      },
+      "tipos": {
+        "status_change": "Cambio de estado",
+        "assignment": "Asignación",
+        "tag_added": "Etiqueta agregada",
+        "tag_removed": "Etiqueta quitada",
+        "ai_job": "IA",
+        "audit": "Auditoría"
+      }
+    },
+    "archivos": {
+      "kpis": {
+        "imagenes": "Imágenes",
+        "documentos": "Documentos",
+        "audios": "Audios"
+      },
+      "buscar": "Buscar archivos…",
+      "filtroTipo": "Tipo de archivo",
+      "tipos": {
+        "todos": "Todos los tipos",
+        "image": "Imágenes",
+        "video": "Videos",
+        "audio": "Audios",
+        "pdf": "PDF",
+        "document": "Documentos",
+        "spreadsheet": "Hojas de cálculo",
+        "archive": "Comprimidos",
+        "other": "Otros"
+      },
+      "remitente": {
+        "etiqueta": "Enviados por",
+        "todos": "Enviados por: todos",
+        "filtro": "Enviados por: {quien}",
+        "customer": "Cliente",
+        "agent": "Agente",
+        "ai": "IA",
+        "system": "Sistema"
+      },
+      "conteo": "Mostrando {visibles} de {total} archivos",
+      "lista": "Archivos de la conversación",
+      "abrir": "Abrir",
+      "abrirArchivo": "Abrir {nombre}",
+      "descargar": "Descargar",
+      "copiarEnlace": "Copiar enlace (vence en 1 hora)",
+      "eliminar": "Eliminar",
+      "aviso": "Los enlaces para compartir un archivo vencen en 1 hora. Eliminar un archivo aquí no lo borra del chat del cliente.",
+      "vacioTitulo": "Todavía no hay archivos",
+      "vacioDescripcion": "Las fotos, documentos y audios que se compartan en esta conversación aparecen aquí.",
+      "sinResultadosTitulo": "No hay archivos con esos filtros",
+      "sinResultadosDescripcion": "Prueba con otro nombre o quita los filtros.",
+      "borrar": {
+        "titulo": "¿Eliminar el archivo?",
+        "descripcion": "«{nombre}» se borra de GO Admin y no se puede recuperar. El cliente lo sigue teniendo en su chat.",
+        "confirmar": "Eliminar archivo"
+      },
+      "toasts": {
+        "errorCarga": "No se pudieron cargar los archivos",
+        "errorAbrir": "No se pudo abrir el archivo",
+        "descargando": "Descargando {nombre}",
+        "errorDescarga": "No se pudo descargar el archivo",
+        "enlaceCopiado": "Enlace copiado",
+        "enlaceVence": "Vence en 1 hora.",
+        "errorEnlace": "No se pudo copiar el enlace",
+        "eliminado": "Archivo eliminado",
+        "errorEliminar": "No se pudo eliminar el archivo"
+      }
+    },
+    "buscar": {
+      "titulo": "Buscar en la conversación",
+      "etiqueta": "Buscar mensajes de esta conversación",
+      "placeholder": "Buscar mensajes…",
+      "limpiar": "Borrar la búsqueda",
+      "posicion": "{actual}/{total}",
+      "resultados": "{n, plural, =0 {Sin resultados} one {# resultado} other {# resultados}}",
+      "anterior": "Resultado anterior",
+      "siguiente": "Resultado siguiente",
+      "minimo": "Escribe al menos {n} letras para buscar.",
+      "error": "No se pudo buscar en la conversación",
+      "sinResultados": "No hay mensajes con «{termino}»",
+      "lista": "Mensajes encontrados",
+      "roles": {
+        "customer": "Cliente",
+        "agent": "Agente",
+        "ai": "IA",
+        "system": "Sistema"
+      },
+      "navegar": "moverte",
+      "ir": "ir al mensaje"
+    }
+  },
+  "chatDialogos": {
+    "comun": {
+      "cancelar": "Cancelar",
+      "guardar": "Guardar cambios",
+      "guardando": "Guardando…"
+    },
+    "nuevoCanal": {
+      "nombrePlaceholder": "Ej.: Chat del sitio web",
+      "nombresDefecto": {
+        "website": "Chat del sitio web",
+        "whatsapp": "WhatsApp Business",
+        "facebook": "Facebook Messenger",
+        "instagram": "Instagram Direct",
+        "telegram": "Bot de Telegram",
+        "email": "Correo de soporte"
+      },
+      "avisoWebTitulo": "Chat para tu sitio web",
+      "avisoWeb": "Después de crear el canal podrás copiar el código del chat para instalarlo en tu sitio.",
+      "avisoMetaTitulo": "Conexión con {red}",
+      "avisoMeta": "Después de crear el canal tendrás que conectar tu cuenta de Meta Business.",
+      "avisoWhatsApp": "Después de crear el canal tendrás que conectar tu cuenta de WhatsApp Business.",
+      "metodosTitulo": "Formas de conectar WhatsApp:",
+      "metodoCloud": "oficial de Meta y sin riesgo (recomendada)",
+      "metodoQr": "como WhatsApp Web; no es oficial y Meta puede bloquear el número",
+      "metodoCoexistencia": "la app en el celular y la API oficial al mismo tiempo",
+      "metodosNota": "La forma se elige al configurar el canal, después de crearlo.",
+      "cancelar": "Cancelar",
+      "creando": "Creando…"
+    },
+    "codigoWidget": {
+      "titulo": "Instalar el chat en tu sitio web",
+      "descripcion": "Sigue estos pasos para poner el chat en tu sitio web.",
+      "pestanaCodigo": "Código",
+      "pestanaPasos": "Instrucciones",
+      "codigo": "Código del chat",
+      "copiarCodigo": "Copiar código",
+      "copiado": "¡Copiado!",
+      "clave": "Clave pública del canal",
+      "copiar": "Copiar",
+      "copiadoCorto": "Copiado",
+      "paso1": "Copia el código del chat con el botón «Copiar código».",
+      "paso2": "Abre el archivo HTML principal de tu sitio web.",
+      "paso3": "Pega el código justo antes de la etiqueta {etiqueta}.",
+      "paso4": "Guarda los cambios y súbelos a tu servidor.",
+      "paso5": "¡Listo! El chat aparece en la esquina que configuraste.",
+      "notaTitulo": "Nota:",
+      "nota": "Funciona en cualquier página. Si el canal tiene dominios permitidos, solo funciona en esos dominios (y en tu sitio GO Admin). En tu sitio GO Admin no hace falta pegar nada: basta con activar «Mostrar en el sitio».",
+      "cerrar": "Cerrar"
+    },
+    "fragmento": {
+      "tituloNuevo": "Nuevo fragmento",
+      "tituloEditar": "Editar fragmento",
+      "descripcionNueva": "Escríbelo como se lo dirías a un cliente. La IA lo usa tal cual.",
+      "descripcionEditar": "Al guardar se crea una versión nueva del fragmento.",
+      "descripcionNuevaFuente": "Agrega a esta fuente una respuesta que la IA pueda usar tal cual.",
+      "fuente": "Fuente",
+      "sinFuente": "Sin fuente",
+      "prioridad": "Prioridad (1 a 10)",
+      "prioridadPlaceholder": "Elige la prioridad",
+      "prioridadOpcion": "{n} · {nombre}",
+      "prioridades": {
+        "p1": "La más baja",
+        "p2": "Baja",
+        "p3": "Algo baja",
+        "p4": "Media baja",
+        "p5": "Normal",
+        "p6": "Media alta",
+        "p7": "Algo alta",
+        "p8": "Alta",
+        "p9": "Muy alta",
+        "p10": "La más alta"
+      },
+      "prioridadAyuda": "Con mayor prioridad, el fragmento sale primero cuando la IA busca.",
+      "titulo": "Título",
+      "tituloPlaceholder": "Ej.: ¿Cuánto cuesta el envío?",
+      "contenido": "Contenido",
+      "contenidoPlaceholder": "Escribe aquí el contenido del fragmento…",
+      "caracteres": "{n, plural, one {# carácter} other {# caracteres}}",
+      "etiquetas": "Etiquetas",
+      "etiquetaPlaceholder": "Escribe una etiqueta y presiona Enter",
+      "agregarEtiqueta": "Agregar etiqueta",
+      "quitarEtiqueta": "Quitar la etiqueta {etiqueta}",
+      "crear": "Crear fragmento"
+    },
+    "fuente": {
+      "tituloNueva": "Nueva fuente",
+      "tituloEditar": "Editar fuente",
+      "descripcionNueva": "Una fuente agrupa fragmentos de un mismo tema, por ejemplo «Envíos».",
+      "descripcionEditar": "Cambia el nombre, la descripción o el icono de la fuente.",
+      "nombre": "Nombre",
+      "nombrePlaceholder": "Ej.: Preguntas frecuentes",
+      "descripcion": "Descripción",
+      "descripcionPlaceholder": "¿Qué tipo de información guarda esta fuente?",
+      "icono": "Icono",
+      "iconoEmoji": "Icono (emoji)",
+      "elegirIcono": "Usar el icono {icono}",
+      "crear": "Crear fuente",
+      "ajustesTitulo": "Ajustes de la fuente",
+      "ajustesDescripcion": "Cambia los datos de la fuente y si la IA puede usarla.",
+      "estado": "Fuente activa",
+      "estadoActiva": "La IA puede usar los fragmentos de esta fuente.",
+      "estadoInactiva": "La IA no usa los fragmentos de esta fuente."
+    },
+    "importar": {
+      "archivoTitulo": "Cargar archivo",
+      "errorTipo": "Solo se aceptan archivos CSV o TXT.",
+      "errorTamano": "El archivo no puede pesar más de 5 MB.",
+      "errorLectura": "No se pudo leer el archivo.",
+      "tipoCsv": "CSV",
+      "tipoTexto": "Texto",
+      "quitarArchivo": "Quitar el archivo",
+      "elegirArchivo": "Elegir un archivo CSV o TXT",
+      "arrastra": "Arrastra un archivo aquí o",
+      "seleccionar": "haz clic para elegirlo",
+      "formatos": "CSV o TXT · máximo 5 MB",
+      "formatoCsv": "Formato CSV esperado:",
+      "ejemploCsv1": "\"Título 1\",\"Contenido del fragmento\",\"envios;pagos\",5",
+      "ejemploCsv2": "\"Título 2\",\"Otro contenido\",\"horarios\",8",
+      "textoTitulo": "Pegar texto",
+      "pegaAqui": "Pega el contenido aquí",
+      "caracteres": "{n, plural, one {# carácter} other {# caracteres}}",
+      "ejemploTexto": "Título del primer fragmento\nEl contenido va en las\nlíneas siguientes.\n\n---\n\nTítulo del segundo fragmento\nMás contenido.",
+      "separador": "Separador entre fragmentos",
+      "separadorAyuda": "Este texto separa un fragmento del siguiente. Si no escribes nada se usa {separador}.",
+      "formatoTexto": "Formato esperado:"
     }
   }
 }

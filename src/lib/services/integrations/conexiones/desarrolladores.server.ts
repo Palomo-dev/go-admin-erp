@@ -57,9 +57,22 @@ export interface LlaveApiResumen {
   activa: boolean;
   /** Nombre de quien la creó (85-53: «Creada por …»); null si no se sabe o el miembro ya no existe. */
   creadaPor: string | null;
+  /**
+   * Canal del Chat al que pertenece (`channel_api_keys.channel_id`): la llave es «del Chat»
+   * (Figma 12.9, insignia «Chat»). `null` = llave de la organización, sin canal.
+   */
+  canal: CanalLlave | null;
 }
 
-function resumirLlave(k: Fila, creadaPor: string | null = null): LlaveApiResumen {
+/** Canal del Chat que se puede asociar a una llave (solo los de la organización). */
+export interface CanalLlave {
+  id: string;
+  nombre: string;
+  tipo: string;
+}
+
+function resumirLlave(k: Fila, creadaPor: string | null = null, canales: ReadonlyMap<string, CanalLlave> = new Map()): LlaveApiResumen {
+  const canalId = k.channel_id ? texto(k.channel_id) : '';
   return {
     id: texto(k.id),
     nombre: texto(k.name),
@@ -71,7 +84,29 @@ function resumirLlave(k: Fila, creadaPor: string | null = null): LlaveApiResumen
     revocada: (k.revoked_at as string | null) ?? null,
     activa: k.is_active !== false && !k.revoked_at,
     creadaPor,
+    // Si el canal ya no existe (o no es de la organización) la llave se sigue mostrando como «del Chat».
+    canal: canalId ? canales.get(canalId) ?? { id: canalId, nombre: '', tipo: '' } : null,
   };
+}
+
+/** Canales del Chat de la organización (nunca de otra), para el campo «Canal» y la insignia. */
+export async function listarCanalesLlave(db: SupabaseClient, organizationId: number): Promise<CanalLlave[]> {
+  const { data, error } = await db.from('channels').select('id, name, type').eq('organization_id', organizationId).order('name', { ascending: true }).limit(200);
+  if (error) throw new Error(`channels: ${error.message}`);
+  return ((data as Fila[] | null) ?? []).map((c) => ({ id: texto(c.id), nombre: texto(c.name), tipo: texto(c.type) }));
+}
+
+/**
+ * Canal elegido al crear: debe ser un canal de la organización de la sesión. Un id de otra
+ * organización (o inventado) se rechaza con 400, nunca se guarda: la FK `channel_id → channels`
+ * no comprueba que el canal sea de la misma organización.
+ */
+async function canalDeLaOrganizacion(db: SupabaseClient, organizationId: number, canalId: string): Promise<CanalLlave> {
+  const { data, error } = await db.from('channels').select('id, name, type').eq('id', canalId).eq('organization_id', organizationId).maybeSingle();
+  if (error) throw new Error(`channels: ${error.message}`);
+  if (!data) throw new ConexionError(400, 'CANAL', 'Ese canal no existe en tu organización.');
+  const c = data as Fila;
+  return { id: texto(c.id), nombre: texto(c.name), tipo: texto(c.type) };
 }
 
 /**
@@ -95,10 +130,31 @@ async function nombresDeMiembros(db: SupabaseClient, organizationId: number, ids
   return nombres;
 }
 
-export async function listarLlaves(db: SupabaseClient, organizationId: number): Promise<LlaveApiResumen[]> {
+/**
+ * Rastro de crear, revocar y borrar llaves en `ops_audit_log` (quién, cuándo, cuál). La llave
+ * NUNCA va en el registro: solo nombre, máscara, permisos y canal. Si el registro falla, la
+ * operación ya ocurrió y no se deshace: se deja el error en el log del servidor.
+ */
+async function auditarLlave(db: SupabaseClient, actor: Actor, id: string, accion: 'api_key_created' | 'api_key_revoked' | 'api_key_deleted', metadata: Fila = {}): Promise<void> {
+  try {
+    const { error } = await db.from('ops_audit_log').insert({
+      organization_id: actor.organizationId,
+      user_id: actor.userId,
+      entity_type: 'channel_api_key',
+      entity_id: id,
+      action: accion,
+      metadata,
+    });
+    if (error) console.error('[desarrolladores] auditoría de llave falló', accion, error.message);
+  } catch (e) {
+    console.error('[desarrolladores] auditoría de llave falló', accion, e instanceof Error ? e.message : e);
+  }
+}
+
+export async function listarLlaves(db: SupabaseClient, organizationId: number, canales: readonly CanalLlave[] = []): Promise<LlaveApiResumen[]> {
   const { data, error } = await db
     .from('channel_api_keys')
-    .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at, created_by')
+    .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at, created_by, channel_id')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
     .limit(200);
@@ -106,13 +162,14 @@ export async function listarLlaves(db: SupabaseClient, organizationId: number): 
   const filas = (data as Fila[] | null) ?? [];
   // El nombre de quien la creó es un adorno: si su lectura falla, la lista sale igual.
   const nombres = await nombresDeMiembros(db, organizationId, filas.map((k) => Number(k.created_by))).catch(() => new Map<number, string>());
-  return filas.map((k) => resumirLlave(k, nombres.get(Number(k.created_by)) ?? null));
+  const porId = new Map(canales.map((c) => [c.id, c]));
+  return filas.map((k) => resumirLlave(k, nombres.get(Number(k.created_by)) ?? null, porId));
 }
 
 export async function crearLlave(
   db: SupabaseClient,
   actor: Actor & { memberId: number | null },
-  entrada: { nombre: string; alcances: string[]; expira?: string | null },
+  entrada: { nombre: string; alcances: string[]; expira?: string | null; canal?: string | null },
 ): Promise<{ llave: LlaveApiResumen; completa: string }> {
   const nombre = entrada.nombre.trim().slice(0, 80);
   if (!nombre) throw new ConexionError(400, 'NOMBRE', 'Ponle un nombre a la llave.');
@@ -124,6 +181,7 @@ export async function crearLlave(
     if (Number.isNaN(d.getTime()) || d.getTime() <= Date.now()) throw new ConexionError(400, 'EXPIRA', 'La fecha de vencimiento debe ser futura.');
     expira = d.toISOString();
   }
+  const canal = entrada.canal ? await canalDeLaOrganizacion(db, actor.organizationId, entrada.canal) : null;
   const { llave, hash, mascara } = generarLlaveApi();
   const { data, error } = await db
     .from('channel_api_keys')
@@ -136,12 +194,15 @@ export async function crearLlave(
       is_active: true,
       expires_at: expira,
       created_by: actor.memberId,
+      channel_id: canal?.id ?? null,
     })
-    .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at')
+    .select('id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at, channel_id')
     .single();
   if (error || !data) throw new Error(`channel_api_keys: ${error?.message ?? 'sin fila'}`);
   const nombres = actor.memberId ? await nombresDeMiembros(db, actor.organizationId, [actor.memberId]).catch(() => new Map<number, string>()) : new Map<number, string>();
-  return { llave: resumirLlave(data as Fila, actor.memberId ? nombres.get(actor.memberId) ?? null : null), completa: llave };
+  const canales = new Map(canal ? [[canal.id, canal]] : []);
+  await auditarLlave(db, actor, texto((data as Fila).id), 'api_key_created', { nombre, mascara, alcances, canal_id: canal?.id ?? null, expira });
+  return { llave: resumirLlave(data as Fila, actor.memberId ? nombres.get(actor.memberId) ?? null : null, canales), completa: llave };
 }
 
 export async function revocarLlave(db: SupabaseClient, actor: Actor & { memberId: number | null }, id: string): Promise<void> {
@@ -153,9 +214,10 @@ export async function revocarLlave(db: SupabaseClient, actor: Actor & { memberId
     .select('id');
   if (error) throw new Error(`channel_api_keys: ${error.message}`);
   if (((data as Fila[] | null) ?? []).length === 0) throw new ConexionError(404, 'NO_ENCONTRADA', 'Llave no encontrada.');
+  await auditarLlave(db, actor, id, 'api_key_revoked');
 }
 
-const COLUMNAS_LLAVE = 'id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at';
+const COLUMNAS_LLAVE = 'id, name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at, revoked_at, channel_id';
 
 /** Fecha de vencimiento validada (`null` = sin vencimiento). Debe ser futura. */
 function vencimiento(valor: string | null | undefined): string | null {
@@ -209,6 +271,7 @@ export async function borrarLlave(db: SupabaseClient, actor: Actor, id: string):
   const { data, error } = await db.from('channel_api_keys').delete().eq('id', id).eq('organization_id', actor.organizationId).select('id');
   if (error) throw new Error(`channel_api_keys: ${error.message}`);
   if (((data as Fila[] | null) ?? []).length === 0) throw new ConexionError(404, 'NO_ENCONTRADA', 'Llave no encontrada.');
+  await auditarLlave(db, actor, id, 'api_key_deleted');
 }
 
 // ─── Webhooks salientes ──────────────────────────────────────────────────────

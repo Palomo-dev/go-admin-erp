@@ -100,6 +100,9 @@ test('Chat › IA: canales y comportamiento en inglés', () => {
     />,
     { idioma: 'en' },
   );
-  expect(screen.getByText('Confidence threshold')).toBeTruthy();
+  // Figma 12.6: «Comportamiento» y «Tono y lenguaje» como filas de ajuste.
+  expect(screen.getByText('Hand over to a person if the AI is unsure')).toBeTruthy();
+  expect(screen.getByText('Tone and language')).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Open Lab' }).getAttribute('href')).toBe('/app/chat/ia/laboratorio');
   expect(screen.getByLabelText('Fallback message')).toBeTruthy();
 });

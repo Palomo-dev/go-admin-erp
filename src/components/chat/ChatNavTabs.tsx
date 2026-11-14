@@ -9,9 +9,10 @@
  * organización, el cargo y las capacidades (`usePaginasModulo('chat')`, el
  * mismo cálculo del menú lateral). Fuera del shell se usa el catálogo entero.
  *
- * Al final, «Configuración» (etiquetas, respuestas rápidas, llaves de API e
- * IA del chat): no es una página del módulo sino el diálogo de Configuración
- * abierto sobre la pantalla actual en Chat › General (`?config=chat.general`).
+ * Al final, «Configuración» (etiquetas, respuestas rápidas e IA del chat; las
+ * llaves de API viven en Integraciones › Desarrolladores): no es una página del
+ * módulo sino el diálogo de Configuración abierto sobre la pantalla actual en
+ * Chat › Etiquetas y respuestas rápidas (`?config=chat.general`).
  * Solo la ve quien puede entrar a esa sección (lo decide el servidor).
  *
  * En la Bandeja el lado derecho lleva «Nueva conversación».

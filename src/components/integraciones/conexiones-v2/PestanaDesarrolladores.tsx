@@ -9,9 +9,14 @@
  *    prueba REAL firmada (código HTTP), nuevo secreto, borrar; último envío y su respuesta en la fila.
  * Toda escritura va por `/api/integrations/desarrolladores/**` (organización y permisos de la
  * sesión, en el servidor). En celular cada tabla pasa a tarjetas del kit.
+ *
+ * Es el ÚNICO lugar de las llaves de API (Figma 12.9, decisión del dueño): Chat y CRM solo
+ * enlazan aquí. Una llave puede pertenecer a un canal del Chat (campo «Canal» al crearla); esas
+ * llevan la insignia «Chat». Dentro del diálogo de Configuración (`enDialogo`) se pinta sin
+ * tarjetas y con el aviso «Un solo lugar para todas las llaves».
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Ban, Copy, CopyPlus, KeyRound, Pause, Pencil, Play, Plus, RefreshCw, Send, Trash2, Webhook } from 'lucide-react';
 import {
@@ -36,10 +41,12 @@ import { ALCANCES_LLAVE } from '@/lib/services/integrations/conexiones/alcancesL
 import { EVENTOS_WEBHOOK, claveEventoWebhook } from '@/lib/services/integrations/conexiones/eventosWebhook';
 import {
   apiConexiones,
+  type CanalLlave,
   type LlaveApiResumen,
   type WebhookSalienteResumen,
 } from '@/lib/services/integrations/conexiones/clienteConexiones';
 import { filtrarLlaves, filtrarWebhooks, type Filtros } from './filtrosConexiones';
+import { resumenAlcances, tiempoRelativo } from './presentacionLlaves';
 
 const claveAlcance = (a: string) => a.replace(':', '_');
 const CLASE_INPUT = 'h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
@@ -51,12 +58,19 @@ export interface PestanaDesarrolladoresProps {
   busqueda?: string;
   filtros?: Filtros;
   onLimpiarFiltros?: () => void;
+  /** Dentro del diálogo de Configuración › Integraciones › Desarrolladores (Figma 12.9). */
+  enDialogo?: boolean;
 }
 
-export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarFiltros }: PestanaDesarrolladoresProps) {
+/** Valor del campo «Canal» cuando la llave es de la organización (sin canal). */
+const SIN_CANAL = '';
+
+export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarFiltros, enDialogo = false }: PestanaDesarrolladoresProps) {
   const t = useTranslations('integracionesConexiones');
+  const idioma = useLocale();
   const { formatDate, formatDateTime, toInstant, toDate } = useFormatDate();
   const [llaves, setLlaves] = useState<LlaveApiResumen[]>([]);
+  const [canales, setCanales] = useState<CanalLlave[]>([]);
   const [webhooks, setWebhooks] = useState<WebhookSalienteResumen[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +81,7 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
   const [nombre, setNombre] = useState('');
   const [alcances, setAlcances] = useState<string[]>([]);
   const [vence, setVence] = useState('');
+  const [canal, setCanal] = useState<string>(SIN_CANAL);
   const [guardando, setGuardando] = useState(false);
   const [completa, setCompleta] = useState<string | null>(null);
   const [creada, setCreada] = useState<LlaveApiResumen | null>(null);
@@ -89,6 +104,7 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
     try {
       const [l, w] = await Promise.all([apiConexiones.llavesApi(), apiConexiones.webhooks()]);
       setLlaves(l.llaves);
+      setCanales(l.canales ?? []);
       setWebhooks(w.webhooks);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('comun.errorCarga'));
@@ -119,6 +135,7 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
     setNombre(base ? (m.modo === 'duplicar' ? t('desarrolladores.llaves.copiaDe', { nombre: base.nombre }) : base.nombre) : '');
     setAlcances(base ? [...base.alcances] : []);
     setVence(base?.expira && m.modo === 'editar' ? toDate(new Date(base.expira)) : '');
+    setCanal(base?.canal?.id ?? SIN_CANAL);
     setDialogoLlave(m);
   };
 
@@ -132,7 +149,7 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
         await apiConexiones.editarLlaveApi(dialogoLlave.llave.id, { nombre: nombre.trim(), alcances, expira });
         toast.success(t('desarrolladores.llaves.editada', { nombre: nombre.trim() }));
       } else {
-        const r = await apiConexiones.crearLlaveApi({ nombre: nombre.trim(), alcances, expira });
+        const r = await apiConexiones.crearLlaveApi({ nombre: nombre.trim(), alcances, expira, canal: canal || null });
         setCreada(r.llave);
         setCompleta(r.completa);
       }
@@ -283,16 +300,32 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
     const tono = clave === 'activa' ? 'exito' : clave === 'vencida' ? 'advertencia' : 'neutro';
     return <StatusBadge estado={clave} etiqueta={t(`desarrolladores.llaves.estado.${clave}`)} tono={tono} />;
   };
-  const textoAlcances = (k: LlaveApiResumen) =>
-    k.alcances.map((a) => (t.has(`desarrolladores.alcances.${claveAlcance(a)}`) ? t(`desarrolladores.alcances.${claveAlcance(a)}`) : a)).join(' · ');
+  const nombreAlcance = (a: string) => (t.has(`desarrolladores.alcances.${claveAlcance(a)}`) ? t(`desarrolladores.alcances.${claveAlcance(a)}`) : a);
+  const textoAlcances = (k: LlaveApiResumen) => k.alcances.map(nombreAlcance).join(' · ');
+  /** «Leer productos, Leer pedidos +2» (Figma 12.9): los dos primeros y cuántos más. */
+  const alcancesCortos = (k: LlaveApiResumen) => {
+    const r = resumenAlcances(k.alcances.map(nombreAlcance));
+    return r.resto > 0 ? `${r.visibles.join(', ')} ${t('desarrolladores.llaves.masPermisos', { n: r.resto })}` : r.visibles.join(', ');
+  };
+  const ultimoUso = (iso: string) => tiempoRelativo(iso, idioma, Date.now()) ?? formatDateTime(iso);
   const subtituloLlave = (k: LlaveApiResumen) =>
     [
-      k.creada && k.creadaPor
-        ? t('desarrolladores.llaves.creadaPor', { nombre: k.creadaPor, fecha: formatDate(k.creada) })
-        : k.creada
-          ? t('desarrolladores.llaves.creada', { fecha: formatDate(k.creada) })
-          : null,
+      k.creada && k.canal
+        ? t('desarrolladores.llaves.creadaEnChat', { fecha: formatDate(k.creada) })
+        : k.creada && k.creadaPor
+          ? t('desarrolladores.llaves.creadaPor', { nombre: k.creadaPor, fecha: formatDate(k.creada) })
+          : k.creada
+            ? t('desarrolladores.llaves.creada', { fecha: formatDate(k.creada) })
+            : null,
       k.expira ? t('desarrolladores.llaves.vence', { fecha: formatDate(k.expira) }) : null].filter(Boolean).join(' · ');
+
+  /** Insignia «Chat» de las llaves de un canal del Chat; el nombre del canal va en el título. */
+  const insigniaChat = (k: LlaveApiResumen) =>
+    k.canal ? (
+      <span title={k.canal.nombre ? t('desarrolladores.llaves.canalDe', { canal: k.canal.nombre }) : undefined} className="shrink-0">
+        <StatusBadge estado="chat" etiqueta={t('desarrolladores.llaves.insigniaChat')} tono="informacion" apariencia="contorno" />
+      </span>
+    ) : null;
 
   const columnasLlaves: ColumnaTabla<LlaveApiResumen>[] = [
     {
@@ -300,17 +333,30 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
       encabezado: t('desarrolladores.llaves.col.nombre'),
       celda: (k) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-fg">{k.nombre}</p>
+          <p className="flex min-w-0 items-center gap-2">
+            <span className="truncate font-medium text-fg">{k.nombre}</span>
+            {insigniaChat(k)}
+          </p>
           <p className="truncate text-xs text-fg-muted">{subtituloLlave(k)}</p>
         </div>
       ),
     },
     { id: 'llave', encabezado: t('desarrolladores.llaves.col.llave'), celda: (k) => k.mascara, variante: 'mono', ocultarDebajo: 'sm' },
-    { id: 'permisos', encabezado: t('desarrolladores.llaves.col.permisos'), celda: textoAlcances, ocultarDebajo: 'md' },
+    {
+      id: 'permisos',
+      encabezado: t('desarrolladores.llaves.col.permisos'),
+      celda: (k) => <span title={textoAlcances(k)}>{alcancesCortos(k)}</span>,
+      ocultarDebajo: 'md',
+    },
     {
       id: 'uso',
       encabezado: t('desarrolladores.llaves.col.ultimoUso'),
-      celda: (k) => (k.ultimoUso ? formatDateTime(k.ultimoUso) : <span className="text-fg-muted">{t('desarrolladores.llaves.sinUso')}</span>),
+      celda: (k) =>
+        k.ultimoUso ? (
+          <span title={formatDateTime(k.ultimoUso)}>{ultimoUso(k.ultimoUso)}</span>
+        ) : (
+          <span className="text-fg-muted">{t('desarrolladores.llaves.sinUso')}</span>
+        ),
       ocultarDebajo: 'lg',
     },
     { id: 'estado', encabezado: t('desarrolladores.llaves.col.estado'), celda: badgeLlave },
@@ -407,12 +453,19 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
   const dialogoWebhookAbierto = !!dialogoWebhook;
 
   return (
-    <div className="flex flex-col gap-6">
-      <AvisoTonal tono="informacion" titulo={t('desarrolladores.avisoTitulo')} descripcion={t('desarrolladores.avisoTexto')} />
+    <div className={enDialogo ? 'flex flex-col gap-8' : 'flex flex-col gap-6'}>
+      {enDialogo ? (
+        <AvisoTonal tono="informacion" titulo={t('desarrolladores.avisoDialogoTitulo')} descripcion={t('desarrolladores.avisoDialogoTexto')} />
+      ) : (
+        <AvisoTonal tono="informacion" titulo={t('desarrolladores.avisoTitulo')} descripcion={t('desarrolladores.avisoTexto')} />
+      )}
 
-      <section aria-labelledby="dev-llaves" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+      <section aria-labelledby="dev-llaves" className={enDialogo ? 'flex flex-col gap-3' : 'flex flex-col gap-3 rounded-xl border border-line bg-surface p-4'}>
         <div className="flex items-center justify-between gap-3">
-          <h2 id="dev-llaves" className="text-base font-semibold text-fg">{t('desarrolladores.llaves.titulo')}</h2>
+          <div className="min-w-0">
+            <h2 id="dev-llaves" className={enDialogo ? 'text-base font-medium text-fg' : 'text-base font-semibold text-fg'}>{t('desarrolladores.llaves.titulo')}</h2>
+            {enDialogo && <p className="text-sm text-fg-muted">{t('desarrolladores.llaves.nota')}</p>}
+          </div>
           <button type="button" className={clasesBoton({ variante: 'primario', tamano: 'sm' })} onClick={() => abrirLlave({ modo: 'nueva' })}>
             <Plus aria-hidden="true" className="mr-1.5 size-4" />
             {t('desarrolladores.llaves.nueva')}
@@ -429,10 +482,10 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
           // Celular (85-53): nombre + estado, «máscara · permisos» y «creada … · último uso …»; «⋯» por llave.
           tarjetaMovil={(k) => (
             <ListCard
-              titulo={k.nombre}
+              titulo={k.canal ? `${k.nombre} · ${t('desarrolladores.llaves.insigniaChat')}` : k.nombre}
               insignia={badgeLlave(k)}
               subtitulo={`${k.mascara} · ${textoAlcances(k)}`}
-              meta={[subtituloLlave(k), k.ultimoUso ? t('desarrolladores.llaves.ultimoUsoEl', { fecha: formatDateTime(k.ultimoUso) }) : t('desarrolladores.llaves.sinUso')].filter(Boolean).join(' · ')}
+              meta={[subtituloLlave(k), k.ultimoUso ? t('desarrolladores.llaves.ultimoUsoEl', { fecha: ultimoUso(k.ultimoUso) }) : t('desarrolladores.llaves.sinUso')].filter(Boolean).join(' · ')}
               acciones={accionesLlave(k)}
             />
           )}
@@ -442,12 +495,15 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
           error={{ titulo: t('comun.errorCarga'), descripcion: error ?? undefined }}
           vacio={{ titulo: t('desarrolladores.llaves.vacio'), compacto: true }}
         />
-        <p className="text-xs text-fg-muted">{t('desarrolladores.llaves.nota')}</p>
+        {!enDialogo && <p className="text-xs text-fg-muted">{t('desarrolladores.llaves.nota')}</p>}
       </section>
 
-      <section aria-labelledby="dev-webhooks" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+      <section aria-labelledby="dev-webhooks" className={enDialogo ? 'flex flex-col gap-3' : 'flex flex-col gap-3 rounded-xl border border-line bg-surface p-4'}>
         <div className="flex items-center justify-between gap-3">
-          <h2 id="dev-webhooks" className="text-base font-semibold text-fg">{t('desarrolladores.webhooks.titulo')}</h2>
+          <div className="min-w-0">
+            <h2 id="dev-webhooks" className={enDialogo ? 'text-base font-medium text-fg' : 'text-base font-semibold text-fg'}>{t('desarrolladores.webhooks.titulo')}</h2>
+            {enDialogo && <p className="text-sm text-fg-muted">{t('desarrolladores.webhooks.subtitulo')}</p>}
+          </div>
           <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => abrirWebhook({ modo: 'nuevo' })}>
             <Plus aria-hidden="true" className="mr-1.5 size-4" />
             {t('desarrolladores.webhooks.nuevo')}
@@ -509,6 +565,20 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
             />
           )}
         </FormField>
+        {dialogoLlave?.modo !== 'editar' && (
+          <FormField etiqueta={t('desarrolladores.llaves.canal')} ayuda={t('desarrolladores.llaves.canalAyuda')}>
+            {(p) => (
+              <select id={p.id} aria-describedby={p['aria-describedby']} value={canal} onChange={(e) => setCanal(e.target.value)} className={CLASE_INPUT}>
+                <option value={SIN_CANAL}>{t('desarrolladores.llaves.sinCanal')}</option>
+                {canales.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre || c.id}
+                  </option>
+                ))}
+              </select>
+            )}
+          </FormField>
+        )}
         <FormField etiqueta={t('desarrolladores.llaves.vencimiento')} ayuda={t('desarrolladores.llaves.vencimientoAyuda')}>
           {(p) => <CampoFecha id={p.id} valor={vence} onValorChange={setVence} min={toDate(new Date())} limpiable />}
         </FormField>
@@ -558,6 +628,7 @@ export function PestanaDesarrolladores({ busqueda = '', filtros = {}, onLimpiarF
           <ListaDatos etiqueta={t('desarrolladores.llaves.creadaTitulo')}>
             <FilaDato etiqueta={t('desarrolladores.llaves.nombre')} valor={creada?.nombre ?? ''} />
             <FilaDato etiqueta={t('desarrolladores.llaves.permisos')} valor={creada ? textoAlcances(creada) : ''} />
+            {creada?.canal && <FilaDato etiqueta={t('desarrolladores.llaves.canal')} valor={creada.canal.nombre || t('desarrolladores.llaves.insigniaChat')} />}
             {creada?.creada && (
               <FilaDato
                 etiqueta={t('desarrolladores.llaves.creadaPorEtiqueta')}

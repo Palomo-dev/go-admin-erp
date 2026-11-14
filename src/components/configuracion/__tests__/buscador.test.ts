@@ -44,6 +44,12 @@ describe('buscarAjustes', () => {
     expect(r.map((x) => x.seccionId)).toEqual(expect.arrayContaining(['facturacion.resumen', 'facturacion.servicio']));
   });
 
+  test('«llaves api» lleva a Integraciones › Desarrolladores y «etiquetas» a Chat (Figma 12.7–12.9)', () => {
+    expect(buscarAjustes('llaves api', indice)[0]).toMatchObject({ seccionId: 'integraciones.desarrolladores' });
+    expect(buscarAjustes('llaves api', indice).some((r) => r.seccionId === 'crm.general' || r.seccionId === 'chat.general')).toBe(false);
+    expect(buscarAjustes('etiquetas', indice).filter((r) => r.seccionId.startsWith('crm.') || r.seccionId.startsWith('chat.')).map((r) => r.seccionId)).toEqual(['chat.general']);
+  });
+
   test('cada palabra de la consulta tiene que aparecer', () => {
     expect(buscarAjustes('números ballena', indice)).toEqual([]);
     expect(buscarAjustes('   ', indice)).toEqual([]);

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, Save, RefreshCw, Gauge, TrendingUp } from 'lucide-react';
 import { scoringService, type ScoringConfig, type ScoringIndicator, type ScoringBands } from '@/lib/services/crm/scoringService';
+import { ETIQUETAS_FABRICA, claveFabrica, indicadoresFabrica } from './etiquetasScoring';
 
 const DEFAULT_BANDS: ScoringBands = {
   cold: { min: 0, max: 33 },
@@ -21,42 +22,13 @@ export function ScoringConfigurator() {
   const t = useTranslations('configuracionTextos.scoringConfigurator');
   const { toast } = useToast();
 
-  // Indicadores por defecto: sus etiquetas se muestran en los campos y se guardan si el usuario no las cambia.
-  const defaultIndicators = useMemo<ScoringIndicator[]>(
-    () => [
-      {
-        key: 'engagement',
-        label: t('porDefecto.engagement'),
-        weight: 30,
-        options: [
-          { value: 'low', label: t('porDefecto.bajo'), score: 1 },
-          { value: 'medium', label: t('porDefecto.medio'), score: 2 },
-          { value: 'high', label: t('porDefecto.alto'), score: 3 },
-        ],
-      },
-      {
-        key: 'budget',
-        label: t('porDefecto.presupuesto'),
-        weight: 40,
-        options: [
-          { value: 'none', label: t('porDefecto.sinPresupuesto'), score: 0 },
-          { value: 'limited', label: t('porDefecto.limitado'), score: 1 },
-          { value: 'confirmed', label: t('porDefecto.confirmado'), score: 3 },
-        ],
-      },
-      {
-        key: 'timeline',
-        label: t('porDefecto.timeline'),
-        weight: 30,
-        options: [
-          { value: 'distant', label: t('porDefecto.lejano'), score: 1 },
-          { value: 'near', label: t('porDefecto.cercano'), score: 2 },
-          { value: 'immediate', label: t('porDefecto.inmediato'), score: 3 },
-        ],
-      },
-    ],
-    [t]
-  );
+  // Valores de fábrica: se guardan SIEMPRE en español y se traducen solo al mostrarlos
+  // (`etiquetasScoring.ts`). Lo que escribió la persona se muestra tal cual.
+  const defaultIndicators = useMemo<ScoringIndicator[]>(() => indicadoresFabrica(), []);
+  const mostrar = (etiqueta: string) => {
+    const clave = claveFabrica(etiqueta);
+    return clave ? t(`porDefecto.${clave}`) : etiqueta;
+  };
 
   const [config, setConfig] = useState<ScoringConfig | null>(null);
   const [indicators, setIndicators] = useState<ScoringIndicator[]>(defaultIndicators);
@@ -124,11 +96,11 @@ export function ScoringConfigurator() {
       ...prev,
       {
         key: `indicator_${Date.now()}`,
-        label: t('porDefecto.nuevoIndicador'),
+        label: ETIQUETAS_FABRICA.nuevoIndicador,
         weight: 0,
         options: [
-          { value: 'low', label: t('porDefecto.bajo'), score: 1 },
-          { value: 'high', label: t('porDefecto.alto'), score: 3 },
+          { value: 'low', label: ETIQUETAS_FABRICA.bajo, score: 1 },
+          { value: 'high', label: ETIQUETAS_FABRICA.alto, score: 3 },
         ],
       },
     ]);
@@ -156,7 +128,7 @@ export function ScoringConfigurator() {
         if (i !== indIndex) return ind;
         return {
           ...ind,
-          options: [...ind.options, { value: `opt_${Date.now()}`, label: t('porDefecto.nuevaOpcion'), score: 1 }],
+          options: [...ind.options, { value: `opt_${Date.now()}`, label: ETIQUETAS_FABRICA.nuevaOpcion, score: 1 }],
         };
       })
     );
@@ -232,7 +204,7 @@ export function ScoringConfigurator() {
             <CardHeader className="pb-3">
               <div className="flex items-center gap-3">
                 <Input
-                  value={indicator.label}
+                  value={mostrar(indicator.label)}
                   onChange={(e) => updateIndicator(indIndex, { label: e.target.value })}
                   className="font-medium"
                   placeholder={t('indicadores.nombrePlaceholder')}
@@ -258,7 +230,7 @@ export function ScoringConfigurator() {
               {indicator.options.map((option, optIndex) => (
                 <div key={optIndex} className="flex items-center gap-2">
                   <Input
-                    value={option.label}
+                    value={mostrar(option.label)}
                     onChange={(e) => updateOption(indIndex, optIndex, 'label', e.target.value)}
                     className="flex-1"
                     placeholder={t('indicadores.opcionPlaceholder')}

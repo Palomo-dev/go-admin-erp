@@ -1,25 +1,39 @@
 'use client';
 
+/**
+ * Configuración › Chat › Etiquetas y respuestas rápidas (id estable
+ * `chat.general`; Figma pág. 10, 12.8 y pantallazo 94-config-03).
+ *
+ * - Etiquetas: se administran SOLO aquí (decisión del dueño); Configuración ›
+ *   CRM enlaza a esta pestaña.
+ * - Respuestas rápidas: los textos que el equipo inserta con «/».
+ * - Llaves de API: ya no se crean aquí; un enlace lleva a Integraciones ›
+ *   Desarrolladores, el único lugar de las llaves.
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { Hash, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ConfirmDialog, RowActionsMenu, clasesBoton, type AccionFila } from '@/components/kit';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Tags, MessageSquareText, Key } from 'lucide-react';
-import { PageHeaderSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import InboxConfigService, { type ConversationTag, type ChannelApiKey, type Channel, type QuickReply } from '@/lib/services/inboxConfigService';
-import { TagsHeader, TagCard, TagDialog } from '@/components/chat/configuracion/etiquetas';
-import { ApiKeysHeader, ApiKeyCard, ApiKeyDialog } from '@/components/chat/configuracion/llaves-api';
-import { QuickRepliesHeader, QuickReplyCard, QuickReplyDialog } from '@/components/chat/configuracion/respuestas-rapidas';
+import InboxConfigService, { type ConversationTag, type QuickReply } from '@/lib/services/inboxConfigService';
+import { TagDialog } from '@/components/chat/configuracion/etiquetas';
+import { QuickReplyDialog } from '@/components/chat/configuracion/respuestas-rapidas';
+import { rutaSeccion } from '../../config/configSectionsRegistry';
+import { BotonEnlace, GrupoAjustes, TarjetaEnlace } from '../../layout/EnlacesAjuste';
+
+/** «envio» o «/envio» → «/envio». */
+const atajo = (s: string | null) => (s ? `/${s.replace(/^\/+/, '')}` : null);
+
+function FilasCargando() {
+  return (
+    <div className="flex flex-col gap-3 py-4" aria-busy="true">
+      <Skeleton className="h-4 w-1/3" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
+  );
+}
 
 export function ChatConfigPanel() {
   const t = useTranslations('configuracionTextos.chatConfigPanel');
@@ -27,40 +41,23 @@ export function ChatConfigPanel() {
   const { organization } = useOrganization();
   const organizationId = organization?.id;
 
-  // Etiquetas state
   const [tagsLoading, setTagsLoading] = useState(true);
   const [tags, setTags] = useState<ConversationTag[]>([]);
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [selectedTag, setSelectedTag] = useState<ConversationTag | null>(null);
-  const [deleteTagDialogOpen, setDeleteTagDialogOpen] = useState(false);
   const [tagToDelete, setTagToDelete] = useState<ConversationTag | null>(null);
 
-  // Llaves API state
-  const [keysLoading, setKeysLoading] = useState(true);
-  const [apiKeys, setApiKeys] = useState<ChannelApiKey[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [keyDialogOpen, setKeyDialogOpen] = useState(false);
-  const [revokeDialogOpen, setRevokeDialogOpen] = useState(false);
-  const [rotateDialogOpen, setRotateDialogOpen] = useState(false);
-  const [selectedKey, setSelectedKey] = useState<ChannelApiKey | null>(null);
-
-  // Respuestas rápidas state
   const [repliesLoading, setRepliesLoading] = useState(true);
   const [replies, setReplies] = useState<QuickReply[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [selectedReply, setSelectedReply] = useState<QuickReply | null>(null);
-  const [deleteReplyDialogOpen, setDeleteReplyDialogOpen] = useState(false);
   const [replyToDelete, setReplyToDelete] = useState<QuickReply | null>(null);
 
-  // Load etiquetas
   const loadTags = useCallback(async () => {
     if (!organizationId) return;
     setTagsLoading(true);
     try {
-      const service = new InboxConfigService(organizationId);
-      const data = await service.getTags();
-      setTags(data);
+      setTags(await new InboxConfigService(organizationId).getTags());
     } catch (error) {
       console.error('Error cargando etiquetas:', error);
       toast({ title: t('toast.error'), description: t('toast.errorCargarEtiquetas'), variant: 'destructive' });
@@ -69,31 +66,11 @@ export function ChatConfigPanel() {
     }
   }, [organizationId, toast, t]);
 
-  // Load llaves API
-  const loadApiKeys = useCallback(async () => {
-    if (!organizationId) return;
-    setKeysLoading(true);
-    try {
-      const service = new InboxConfigService(organizationId);
-      const [keysData, channelsData] = await Promise.all([service.getApiKeys(), service.getChannels()]);
-      setApiKeys(keysData);
-      setChannels(channelsData);
-    } catch (error) {
-      console.error('Error cargando API keys:', error);
-      toast({ title: t('toast.error'), description: t('toast.errorCargarLlaves'), variant: 'destructive' });
-    } finally {
-      setKeysLoading(false);
-    }
-  }, [organizationId, toast, t]);
-
-  // Load respuestas rápidas
   const loadReplies = useCallback(async () => {
     if (!organizationId) return;
     setRepliesLoading(true);
     try {
-      const service = new InboxConfigService(organizationId);
-      const data = await service.getQuickReplies();
-      setReplies(data);
+      setReplies(await new InboxConfigService(organizationId).getQuickReplies());
     } catch (error) {
       console.error('Error cargando respuestas rápidas:', error);
       toast({ title: t('toast.error'), description: t('toast.errorCargarRespuestas'), variant: 'destructive' });
@@ -104,17 +81,12 @@ export function ChatConfigPanel() {
 
   useEffect(() => {
     if (organizationId) {
-      loadTags();
-      loadApiKeys();
-      loadReplies();
+      void loadTags();
+      void loadReplies();
     }
-  }, [organizationId, loadTags, loadApiKeys, loadReplies]);
+  }, [organizationId, loadTags, loadReplies]);
 
-  // === Etiquetas handlers ===
-  const handleCreateTag = () => { setSelectedTag(null); setTagDialogOpen(true); };
-  const handleEditTag = (tag: ConversationTag) => { setSelectedTag(tag); setTagDialogOpen(true); };
-  const handleDeleteTag = (tag: ConversationTag) => { setTagToDelete(tag); setDeleteTagDialogOpen(true); };
-
+  // === Etiquetas ===
   const handleSaveTag = async (data: { name: string; color: string; description?: string }) => {
     if (!organizationId) return;
     const service = new InboxConfigService(organizationId);
@@ -126,7 +98,7 @@ export function ChatConfigPanel() {
         await service.createTag(data);
         toast({ title: t('toast.etiquetaCreada'), description: t('toast.etiquetaCreadaDescripcion') });
       }
-      loadTags();
+      void loadTags();
     } catch (error) {
       toast({ title: t('toast.error'), description: t('toast.errorGuardarEtiqueta'), variant: 'destructive' });
       throw error;
@@ -135,84 +107,23 @@ export function ChatConfigPanel() {
 
   const confirmDeleteTag = async () => {
     if (!organizationId || !tagToDelete) return;
-    const service = new InboxConfigService(organizationId);
     try {
-      await service.deleteTag(tagToDelete.id);
+      await new InboxConfigService(organizationId).deleteTag(tagToDelete.id);
       toast({ title: t('toast.etiquetaEliminada'), description: t('toast.etiquetaEliminadaDescripcion') });
-      loadTags();
+      void loadTags();
     } catch {
       toast({ title: t('toast.error'), description: t('toast.errorEliminarEtiqueta'), variant: 'destructive' });
     } finally {
-      setDeleteTagDialogOpen(false);
       setTagToDelete(null);
     }
   };
 
-  // === Llaves API handlers ===
-  const activeKeys = apiKeys.filter((k) => k.is_active && !k.revoked_at).length;
+  const accionesEtiqueta = (tag: ConversationTag): AccionFila[] => [
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => { setSelectedTag(tag); setTagDialogOpen(true); } },
+    { id: 'eliminar', etiqueta: t('dialogos.eliminar'), icono: Trash2, destructiva: true, onSelect: () => setTagToDelete(tag) },
+  ];
 
-  const handleRevokeKey = (key: ChannelApiKey) => { setSelectedKey(key); setRevokeDialogOpen(true); };
-  const handleRotateKey = (key: ChannelApiKey) => { setSelectedKey(key); setRotateDialogOpen(true); };
-
-  const handleSaveKey = async (data: { name: string; channel_id?: string; scopes: string[]; expires_at?: string }) => {
-    if (!organizationId) return;
-    const service = new InboxConfigService(organizationId);
-    try {
-      const result = await service.createApiKey(data);
-      toast({ title: t('toast.llaveCreada'), description: t('toast.llaveCreadaDescripcion') });
-      loadApiKeys();
-      return { rawKey: result.rawKey };
-    } catch (error) {
-      toast({ title: t('toast.error'), description: t('toast.errorCrearLlave'), variant: 'destructive' });
-      throw error;
-    }
-  };
-
-  const confirmRevokeKey = async () => {
-    if (!organizationId || !selectedKey) return;
-    const service = new InboxConfigService(organizationId);
-    try {
-      await service.revokeApiKey(selectedKey.id);
-      toast({ title: t('toast.llaveRevocada'), description: t('toast.llaveRevocadaDescripcion') });
-      loadApiKeys();
-    } catch {
-      toast({ title: t('toast.error'), description: t('toast.errorRevocarLlave'), variant: 'destructive' });
-    } finally {
-      setRevokeDialogOpen(false);
-      setSelectedKey(null);
-    }
-  };
-
-  const confirmRotateKey = async () => {
-    if (!organizationId || !selectedKey) return;
-    const service = new InboxConfigService(organizationId);
-    try {
-      await service.rotateApiKey(selectedKey.id);
-      toast({ title: t('toast.llaveRotada'), description: t('toast.llaveRotadaDescripcion') });
-      loadApiKeys();
-      setRotateDialogOpen(false);
-      setSelectedKey(null);
-      setKeyDialogOpen(true);
-    } catch {
-      toast({ title: t('toast.error'), description: t('toast.errorRotarLlave'), variant: 'destructive' });
-      setRotateDialogOpen(false);
-      setSelectedKey(null);
-    }
-  };
-
-  // === Respuestas rápidas handlers ===
-  const filteredReplies = replies.filter(
-    (reply) =>
-      reply.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reply.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reply.shortcut?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reply.tags?.some((etiqueta) => etiqueta.toLowerCase().includes(searchTerm.toLowerCase())),
-  );
-
-  const handleCreateReply = () => { setSelectedReply(null); setReplyDialogOpen(true); };
-  const handleEditReply = (reply: QuickReply) => { setSelectedReply(reply); setReplyDialogOpen(true); };
-  const handleDeleteReply = (reply: QuickReply) => { setReplyToDelete(reply); setDeleteReplyDialogOpen(true); };
-
+  // === Respuestas rápidas ===
   const handleSaveReply = async (data: { title: string; content: string; shortcut?: string; tags?: string[]; is_active?: boolean }) => {
     if (!organizationId) return;
     const service = new InboxConfigService(organizationId);
@@ -224,7 +135,7 @@ export function ChatConfigPanel() {
         await service.createQuickReply(data);
         toast({ title: t('toast.respuestaCreada'), description: t('toast.respuestaCreadaDescripcion') });
       }
-      loadReplies();
+      void loadReplies();
     } catch (error) {
       toast({ title: t('toast.error'), description: t('toast.errorGuardarRespuesta'), variant: 'destructive' });
       throw error;
@@ -233,192 +144,111 @@ export function ChatConfigPanel() {
 
   const confirmDeleteReply = async () => {
     if (!organizationId || !replyToDelete) return;
-    const service = new InboxConfigService(organizationId);
     try {
-      await service.deleteQuickReply(replyToDelete.id);
+      await new InboxConfigService(organizationId).deleteQuickReply(replyToDelete.id);
       toast({ title: t('toast.respuestaEliminada'), description: t('toast.respuestaEliminadaDescripcion') });
-      loadReplies();
+      void loadReplies();
     } catch {
       toast({ title: t('toast.error'), description: t('toast.errorEliminarRespuesta'), variant: 'destructive' });
     } finally {
-      setDeleteReplyDialogOpen(false);
       setReplyToDelete(null);
     }
   };
 
-  const isLoading = tagsLoading && keysLoading && repliesLoading;
-
-  if (isLoading && tags.length === 0 && apiKeys.length === 0 && replies.length === 0) {
-    return (
-      <div className="space-y-8">
-        <PageHeaderSkeleton />
-        <CardListSkeleton cards={6} columns="3" />
-      </div>
-    );
-  }
+  const accionesRespuesta = (reply: QuickReply): AccionFila[] => [
+    { id: 'editar', etiqueta: t('acciones.editar'), icono: Pencil, onSelect: () => { setSelectedReply(reply); setReplyDialogOpen(true); } },
+    { id: 'eliminar', etiqueta: t('dialogos.eliminar'), icono: Trash2, destructiva: true, onSelect: () => setReplyToDelete(reply) },
+  ];
 
   return (
-    <div className="space-y-8">
-      {/* Etiquetas */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Tags className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">{t('secciones.etiquetas')}</h3>
-        </div>
-        <TagsHeader totalTags={tags.length} loading={tagsLoading} onRefresh={loadTags} onCreateTag={handleCreateTag} />
-
-        {tags.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <span className="text-2xl">🏷️</span>
-            </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.etiquetasTitulo')}</h3>
-            <p className="text-gray-500 dark:text-gray-400">{t('vacio.etiquetasDescripcion')}</p>
-          </div>
+    <div className="flex flex-col gap-8">
+      <GrupoAjustes
+        id="chat-etiquetas-titulo"
+        titulo={t('secciones.etiquetas')}
+        descripcion={t('descripciones.etiquetas')}
+        accion={
+          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => { setSelectedTag(null); setTagDialogOpen(true); }}>
+            <Plus aria-hidden="true" className="size-4" />
+            {t('acciones.nuevaEtiqueta')}
+          </button>
+        }
+      >
+        {tagsLoading && tags.length === 0 ? (
+          <FilasCargando />
+        ) : tags.length === 0 ? (
+          <p className="py-4 text-sm text-fg-muted">{t('vacio.etiquetasDescripcion')}</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {tags.map((tag) => (
-              <TagCard key={tag.id} tag={tag} onEdit={handleEditTag} onDelete={handleDeleteTag} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Respuestas Rápidas */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <MessageSquareText className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">{t('secciones.respuestasRapidas')}</h3>
-        </div>
-        <QuickRepliesHeader
-          totalReplies={replies.length}
-          searchTerm={searchTerm}
-          loading={repliesLoading}
-          onSearchChange={setSearchTerm}
-          onRefresh={loadReplies}
-          onCreate={handleCreateReply}
-        />
-
-        {replies.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <span className="text-2xl">💬</span>
+          tags.map((tag) => (
+            <div key={tag.id} className="flex items-center gap-4 py-3.5">
+              <span aria-hidden="true" className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-fg">{tag.name}</p>
+                {tag.description && <p className="truncate text-[13px] text-fg-muted">{tag.description}</p>}
+              </div>
+              <RowActionsMenu acciones={accionesEtiqueta(tag)} titulo={tag.name} orientacion="horizontal" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.respuestasTitulo')}</h3>
-            <p className="text-gray-500 dark:text-gray-400">{t('vacio.respuestasDescripcion')}</p>
-          </div>
-        ) : filteredReplies.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">{t('vacio.sinCoincidencias', { busqueda: searchTerm })}</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredReplies.map((reply) => (
-              <QuickReplyCard key={reply.id} reply={reply} onEdit={handleEditReply} onDelete={handleDeleteReply} />
-            ))}
-          </div>
+          ))
         )}
-      </div>
+      </GrupoAjustes>
 
-      {/* Llaves API */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-medium text-muted-foreground">{t('secciones.llavesApi')}</h3>
-        </div>
-        <ApiKeysHeader
-          totalKeys={apiKeys.length}
-          activeKeys={activeKeys}
-          loading={keysLoading}
-          onRefresh={loadApiKeys}
-          onCreate={() => setKeyDialogOpen(true)}
-        />
-
-        {apiKeys.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              <span className="text-2xl">🔑</span>
+      <GrupoAjustes
+        id="chat-respuestas-titulo"
+        titulo={t('secciones.respuestasRapidas')}
+        descripcion={t('descripciones.respuestasRapidas')}
+        accion={
+          <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => { setSelectedReply(null); setReplyDialogOpen(true); }}>
+            <Plus aria-hidden="true" className="size-4" />
+            {t('acciones.nuevaRespuesta')}
+          </button>
+        }
+      >
+        {repliesLoading && replies.length === 0 ? (
+          <FilasCargando />
+        ) : replies.length === 0 ? (
+          <p className="py-4 text-sm text-fg-muted">{t('vacio.respuestasDescripcion')}</p>
+        ) : (
+          replies.map((reply) => (
+            <div key={reply.id} className="flex items-center gap-4 py-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-fg">{[atajo(reply.shortcut), reply.title].filter(Boolean).join(' · ')}</p>
+                <p className="truncate text-[13px] text-fg-muted">{reply.content}</p>
+              </div>
+              <RowActionsMenu acciones={accionesRespuesta(reply)} titulo={reply.title} orientacion="horizontal" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{t('vacio.llavesTitulo')}</h3>
-            <p className="text-gray-500 dark:text-gray-400">{t('vacio.llavesDescripcion')}</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {apiKeys.map((key) => (
-              <ApiKeyCard key={key.id} apiKey={key} onRevoke={handleRevokeKey} onRotate={handleRotateKey} />
-            ))}
-          </div>
+          ))
         )}
-      </div>
+      </GrupoAjustes>
 
-      {/* Dialogs */}
+      {/* Llaves de API: solo en Integraciones › Desarrolladores (el diálogo cambia de sección). */}
+      <GrupoAjustes id="chat-llaves-titulo" titulo={t('secciones.llavesApi')} sinFilas>
+        <TarjetaEnlace icono={Hash} texto={t('llaves.enlace')}>
+          <BotonEnlace href={rutaSeccion('integraciones.desarrolladores')}>{t('llaves.irDesarrolladores')}</BotonEnlace>
+        </TarjetaEnlace>
+      </GrupoAjustes>
+
       <TagDialog open={tagDialogOpen} onOpenChange={setTagDialogOpen} tag={selectedTag} onSave={handleSaveTag} />
-      <ApiKeyDialog open={keyDialogOpen} onOpenChange={setKeyDialogOpen} channels={channels} onSave={handleSaveKey} />
       <QuickReplyDialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen} reply={selectedReply} onSave={handleSaveReply} />
 
-      {/* Delete tag dialog */}
-      <AlertDialog open={deleteTagDialogOpen} onOpenChange={setDeleteTagDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dialogos.eliminarEtiquetaTitulo')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('dialogos.eliminarEtiquetaDescripcion', { nombre: tagToDelete?.name ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteTag} className="bg-red-600 hover:bg-red-700 text-white">{t('dialogos.eliminar')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Revoke key dialog */}
-      <AlertDialog open={revokeDialogOpen} onOpenChange={setRevokeDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dialogos.revocarLlaveTitulo')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('dialogos.revocarLlaveDescripcion', { nombre: selectedKey?.name ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRevokeKey} className="bg-red-600 hover:bg-red-700 text-white">{t('dialogos.revocar')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Rotate key dialog */}
-      <AlertDialog open={rotateDialogOpen} onOpenChange={setRotateDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dialogos.rotarLlaveTitulo')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('dialogos.rotarLlaveDescripcion', { nombre: selectedKey?.name ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmRotateKey} className="bg-blue-600 hover:bg-blue-700 text-white">{t('dialogos.rotarLlave')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete reply dialog */}
-      <AlertDialog open={deleteReplyDialogOpen} onOpenChange={setDeleteReplyDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('dialogos.eliminarRespuestaTitulo')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('dialogos.eliminarRespuestaDescripcion', { titulo: replyToDelete?.title ?? '' })}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t('dialogos.cancelar')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteReply} className="bg-red-600 hover:bg-red-700 text-white">{t('dialogos.eliminar')}</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        abierto={!!tagToDelete}
+        onAbiertoChange={(v) => !v && setTagToDelete(null)}
+        titulo={t('dialogos.eliminarEtiquetaTitulo')}
+        descripcion={t('dialogos.eliminarEtiquetaDescripcion', { nombre: tagToDelete?.name ?? '' })}
+        textoConfirmar={t('dialogos.eliminar')}
+        textoCancelar={t('dialogos.cancelar')}
+        onConfirmar={confirmDeleteTag}
+        tono="peligro"
+      />
+      <ConfirmDialog
+        abierto={!!replyToDelete}
+        onAbiertoChange={(v) => !v && setReplyToDelete(null)}
+        titulo={t('dialogos.eliminarRespuestaTitulo')}
+        descripcion={t('dialogos.eliminarRespuestaDescripcion', { titulo: replyToDelete?.title ?? '' })}
+        textoConfirmar={t('dialogos.eliminar')}
+        textoCancelar={t('dialogos.cancelar')}
+        onConfirmar={confirmDeleteReply}
+        tono="peligro"
+      />
     </div>
   );
 }

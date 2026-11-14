@@ -38430,8 +38430,8 @@
       },
       "crmGeneral": {
         "titulo": "General",
-        "descripcion": "Channels, tags, API keys, verticals and funnel",
-        "palabras": "channels, tags, api keys, verticals, icp, scoring, loss reasons, commissions, referrals, sales structure"
+        "descripcion": "Verticals, scoring, pipeline and commissions; links to channels, tags and keys",
+        "palabras": "verticals, icp, scoring, loss reasons, stages, commissions, referrals, sales structure"
       },
       "crmAgenteVoz": {
         "titulo": "Voice agent",
@@ -38489,9 +38489,9 @@
         "palabras": "notices, online orders, notify customer, order whatsapp"
       },
       "chatGeneral": {
-        "titulo": "Chat",
-        "descripcion": "Tags, quick replies and API keys",
-        "palabras": "chat, tags, quick replies, api keys, inbox"
+        "titulo": "Tags and quick replies",
+        "descripcion": "Conversation tags and your team’s quick replies",
+        "palabras": "chat, tags, labels, quick replies, shortcuts, inbox"
       },
       "chatIa": {
         "titulo": "Chat AI",
@@ -38552,6 +38552,11 @@
         "titulo": "Plan and billing",
         "descripcion": "Your plan, what it includes and how it is billed",
         "palabras": "plan, subscription, billing, payment, charge, modules, upgrade"
+      },
+      "integracionesDesarrolladores": {
+        "titulo": "Developers",
+        "descripcion": "API keys and outgoing webhooks for your organization",
+        "palabras": "developers, api keys, keys, tokens, webhooks, outgoing webhooks, api"
       }
     },
     "ajustes": {
@@ -47478,7 +47483,14 @@
         "listo": "Done",
         "copiarLlave": "Copy key",
         "creadaPor": "Created by {nombre} · {fecha}",
-        "creadaPorEtiqueta": "Created by"
+        "creadaPorEtiqueta": "Created by",
+        "canal": "Chat channel",
+        "canalAyuda": "Optional. Pick a channel if the key is for sending and reading messages in that chat; it gets the “Chat” badge.",
+        "sinCanal": "None: organization key",
+        "insigniaChat": "Chat",
+        "creadaEnChat": "Created on {fecha} for Chat",
+        "canalDe": "Channel: {canal}",
+        "masPermisos": "+{n}"
       },
       "webhooks": {
         "titulo": "Outgoing webhooks",
@@ -47546,9 +47558,12 @@
           "payment_received": "Payment received",
           "payment_refunded": "Refund"
         },
-        "copiarSecreto": "Copy secret"
+        "copiarSecreto": "Copy secret",
+        "subtitulo": "GO Admin notifies your systems when something happens. Every notice is signed."
       },
-      "buscar": "Search keys or webhooks"
+      "buscar": "Search keys or webhooks",
+      "avisoDialogoTitulo": "One place for every key",
+      "avisoDialogoTexto": "This is where your organization’s API keys are created, edited and revoked, including the ones Chat uses. Chat and CRM only show a link to this tab."
     },
     "asistente": {
       "comun": {
@@ -51286,9 +51301,11 @@
       "datos-offline": "Offline data"
     },
     "pestanas": {
-      "chatGeneral": "General",
+      "chatGeneral": "Tags and quick replies",
       "chatIa": "AI",
-      "posGeneral": "General"
+      "posGeneral": "General",
+      "integracionesGeneral": "General",
+      "integracionesDesarrolladores": "Developers"
     },
     "buscar": {
       "etiqueta": "Search a setting",
@@ -51383,48 +51400,53 @@
       "etiquetas": {
         "titulo": "Tags",
         "vacioTitulo": "No tags configured",
-        "vacioDescripcion": "Create tags to organize and classify your conversations"
+        "vacioDescripcion": "Create tags to organize and classify your conversations",
+        "enlace": "Conversation tags are managed in Chat › Tags and quick replies.",
+        "irEtiquetas": "Go to Tags"
       },
       "llaves": {
         "titulo": "API keys",
         "vacioTitulo": "No API keys configured",
-        "vacioDescripcion": "Create API keys to integrate the CRM with external services"
+        "vacioDescripcion": "Create API keys to integrate the CRM with external services",
+        "enlace": "API keys are created and revoked in one place: Integrations › Developers.",
+        "irDesarrolladores": "Go to Developers"
       },
       "tarjetas": {
         "titulo": "CRM settings",
-        "configurar": "Configure →",
+        "configurar": "Configure",
         "verticales": {
           "titulo": "Verticals",
-          "descripcion": "Classify opportunities by line of business (hospitality, retail, construction, etc.)"
+          "descripcion": "Classify opportunities by line of business (hospitality, retail, construction, etc.)."
         },
         "razonesPerdida": {
           "titulo": "Loss reasons",
-          "descripcion": "Define global and organization-specific reasons for recording lost opportunities"
+          "descripcion": "Global and organization reasons to record lost opportunities."
         },
         "scoring": {
           "titulo": "Scoring (GOC)",
-          "descripcion": "Configure indicators, weights and Cold / Warm / Hot thresholds for opportunity scoring"
+          "descripcion": "Indicators, weights and Cold / Warm / Hot thresholds to score opportunities."
         },
         "etapas": {
           "titulo": "Stages and criteria",
-          "descripcion": "Define exit criteria (exit gates) per stage to move opportunities forward in the pipeline"
+          "descripcion": "Exit criteria per stage to move opportunities forward in the pipeline."
         },
         "comisiones": {
           "titulo": "Salespeople and commissions",
-          "descripcion": "Configure the general commission rate, per-salesperson overrides with validity periods, and a simulator"
+          "descripcion": "General commission rate, per-salesperson exceptions with validity dates, and a simulator."
         },
         "referidos": {
           "titulo": "Referral program",
-          "descripcion": "Configure incentives, eligibility and rewards for referrers and partners"
+          "descripcion": "Incentives, eligibility and rewards for referrals and partners."
         },
         "estructura": {
           "titulo": "Sales structure",
-          "descripcion": "Define sales roles, teams with members and territories with criteria"
+          "descripcion": "Sales roles, teams with their members, and territories with criteria."
         },
         "icp": {
-          "titulo": "ICP (Ideal Customer Profile)",
-          "descripcion": "A/B/C profiles with criteria, weights, SLA and a customer evaluator"
-        }
+          "titulo": "ICP (ideal customer profile)",
+          "descripcion": "A/B/C profiles with criteria, weights, SLA and a customer evaluator."
+        },
+        "descripcion": "Opportunities, commissions and sales structure."
       },
       "modales": {
         "verticales": {
@@ -51626,8 +51648,8 @@
       },
       "secciones": {
         "etiquetas": "Tags",
-        "respuestasRapidas": "Quick Replies",
-        "llavesApi": "API Keys"
+        "respuestasRapidas": "Quick replies",
+        "llavesApi": "API keys"
       },
       "vacio": {
         "etiquetasTitulo": "No tags configured",
@@ -51651,6 +51673,19 @@
         "rotarLlave": "Rotate Key",
         "eliminarRespuestaTitulo": "Delete quick reply?",
         "eliminarRespuestaDescripcion": "This will permanently delete the reply \"{titulo}\". This action cannot be undone."
+      },
+      "descripciones": {
+        "etiquetas": "They organize conversations in the Inbox. They are the same across Chat; CRM only links here.",
+        "respuestasRapidas": "Texts your team inserts by typing “/”."
+      },
+      "acciones": {
+        "nuevaEtiqueta": "New tag",
+        "nuevaRespuesta": "New reply",
+        "editar": "Edit"
+      },
+      "llaves": {
+        "enlace": "Keys to send and read chat messages from your systems are created and revoked in Integrations › Developers, along with the rest of your organization’s keys.",
+        "irDesarrolladores": "Go to Developers"
       }
     },
     "scoringConfigurator": {
@@ -52895,6 +52930,32 @@
       "errorEstado": "Error {status}",
       "errorDesconocido": "Unknown error",
       "sinDetalle": "No details"
+    },
+    "chatIa": {
+      "comportamiento": {
+        "titulo": "Behavior",
+        "auto": "Reply automatically",
+        "autoAyuda": "On channels with automatic AI, the AI replies without waiting for a person.",
+        "espera": "Wait before replying",
+        "esperaAyuda": "Gives the customer time to finish typing.",
+        "segundos": "{n, plural, =0 {No wait} one {# second} other {# seconds}}",
+        "umbral": "Hand over to a person if the AI is unsure",
+        "umbralAyuda": "Below this confidence, the conversation is left to your team."
+      },
+      "tono": {
+        "titulo": "Tone and language",
+        "descripcion": "How the AI talks to your customers. It now changes its replies on every channel.",
+        "tono": "Tone",
+        "tonoAyuda": "The AI replies in this tone: {opciones}.",
+        "idioma": "Language",
+        "idiomaAyuda": "The AI replies to your customers in this language: {opciones}.",
+        "aviso": "The AI used to ignore tone and language. Try them in Chat › AI › Lab before saving: each test uses credits, just like a real reply.",
+        "abrirLaboratorio": "Open Lab"
+      },
+      "reglas": {
+        "titulo": "Rules and fallback message",
+        "descripcion": "What the AI may say and what it answers when it doesn’t know."
+      }
     }
   },
   "chatHilo": {

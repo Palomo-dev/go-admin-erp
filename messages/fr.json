@@ -38430,8 +38430,8 @@
       },
       "crmGeneral": {
         "titulo": "Général",
-        "descripcion": "Canaux, étiquettes, clés API, verticales et entonnoir",
-        "palabras": "canaux, étiquettes, clés api, verticales, icp, score, motifs de perte, commissions, parrainage, structure commerciale"
+        "descripcion": "Verticales, scoring, pipeline et commissions ; liens vers canaux, étiquettes et clés",
+        "palabras": "verticales, icp, scoring, motifs de perte, étapes, commissions, parrainage, structure commerciale"
       },
       "crmAgenteVoz": {
         "titulo": "Agent vocal",
@@ -38489,9 +38489,9 @@
         "palabras": "avis, commandes en ligne, prévenir le client, whatsapp de la commande"
       },
       "chatGeneral": {
-        "titulo": "Chat",
-        "descripcion": "Étiquettes, réponses rapides et clés API",
-        "palabras": "chat, étiquettes, réponses rapides, clés api, boîte de réception"
+        "titulo": "Étiquettes et réponses rapides",
+        "descripcion": "Étiquettes des conversations et réponses rapides de l’équipe",
+        "palabras": "chat, étiquettes, réponses rapides, raccourcis, boîte de réception"
       },
       "chatIa": {
         "titulo": "IA du chat",
@@ -38552,6 +38552,11 @@
         "titulo": "Forfait et facturation",
         "descripcion": "Votre forfait, ce qu’il inclut et comment il est facturé",
         "palabras": "forfait, abonnement, facturation, paiement, modules, mise à niveau"
+      },
+      "integracionesDesarrolladores": {
+        "titulo": "Développeurs",
+        "descripcion": "Clés API et webhooks sortants de l’organisation",
+        "palabras": "développeurs, clés api, clés, jetons, webhooks, webhooks sortants, api"
       }
     },
     "ajustes": {
@@ -47478,7 +47483,14 @@
         "listo": "Terminé",
         "copiarLlave": "Copier la clé",
         "creadaPor": "Créée par {nombre} · {fecha}",
-        "creadaPorEtiqueta": "Créée par"
+        "creadaPorEtiqueta": "Créée par",
+        "canal": "Canal du Chat",
+        "canalAyuda": "Facultatif. Choisissez un canal si la clé sert à envoyer et lire les messages de ce chat ; elle porte le badge « Chat ».",
+        "sinCanal": "Aucun : clé de l’organisation",
+        "insigniaChat": "Chat",
+        "creadaEnChat": "Créée le {fecha} pour le Chat",
+        "canalDe": "Canal : {canal}",
+        "masPermisos": "+{n}"
       },
       "webhooks": {
         "titulo": "Webhooks sortants",
@@ -47546,9 +47558,12 @@
           "payment_received": "Paiement reçu",
           "payment_refunded": "Remboursement"
         },
-        "copiarSecreto": "Copier le secret"
+        "copiarSecreto": "Copier le secret",
+        "subtitulo": "GO Admin prévient vos systèmes quand quelque chose se passe. Chaque avis est signé."
       },
-      "buscar": "Rechercher une clé ou un webhook"
+      "buscar": "Rechercher une clé ou un webhook",
+      "avisoDialogoTitulo": "Un seul endroit pour toutes les clés",
+      "avisoDialogoTexto": "C’est ici que l’on crée, modifie et révoque les clés API de l’organisation, y compris celles du Chat. Chat et CRM affichent seulement un lien vers cet onglet."
     },
     "asistente": {
       "comun": {
@@ -51286,9 +51301,11 @@
       "datos-offline": "Données hors ligne"
     },
     "pestanas": {
-      "chatGeneral": "Général",
+      "chatGeneral": "Étiquettes et réponses rapides",
       "chatIa": "IA",
-      "posGeneral": "Général"
+      "posGeneral": "Général",
+      "integracionesGeneral": "Général",
+      "integracionesDesarrolladores": "Développeurs"
     },
     "buscar": {
       "etiqueta": "Rechercher un paramètre",
@@ -51383,48 +51400,53 @@
       "etiquetas": {
         "titulo": "Étiquettes",
         "vacioTitulo": "Aucune étiquette configurée",
-        "vacioDescripcion": "Créez des étiquettes pour organiser et classer vos conversations"
+        "vacioDescripcion": "Créez des étiquettes pour organiser et classer vos conversations",
+        "enlace": "Les étiquettes des conversations se gèrent dans Chat › Étiquettes et réponses rapides.",
+        "irEtiquetas": "Aller aux étiquettes"
       },
       "llaves": {
-        "titulo": "Clés d’API",
+        "titulo": "Clés API",
         "vacioTitulo": "Aucune clé d’API configurée",
-        "vacioDescripcion": "Créez des clés d’API pour intégrer le CRM à des services externes"
+        "vacioDescripcion": "Créez des clés d’API pour intégrer le CRM à des services externes",
+        "enlace": "Les clés API se créent et se révoquent à un seul endroit : Intégrations › Développeurs.",
+        "irDesarrolladores": "Aller aux développeurs"
       },
       "tarjetas": {
         "titulo": "Paramètres du CRM",
-        "configurar": "Configurer →",
+        "configurar": "Configurer",
         "verticales": {
           "titulo": "Secteurs",
-          "descripcion": "Classez les opportunités par secteur d’activité (hôtellerie, commerce de détail, construction, etc.)"
+          "descripcion": "Classe les opportunités par secteur d’activité (hôtellerie, commerce, construction, etc.)."
         },
         "razonesPerdida": {
           "titulo": "Motifs de perte",
-          "descripcion": "Définissez des motifs globaux et propres à l’organisation pour enregistrer les opportunités perdues"
+          "descripcion": "Motifs globaux et propres à l’organisation pour enregistrer les opportunités perdues."
         },
         "scoring": {
           "titulo": "Scoring (GOC)",
-          "descripcion": "Configurez les indicateurs, les pondérations et les seuils Cold / Warm / Hot du scoring des opportunités"
+          "descripcion": "Indicateurs, pondérations et seuils Cold / Warm / Hot pour qualifier les opportunités."
         },
         "etapas": {
           "titulo": "Étapes et critères",
-          "descripcion": "Définissez des critères de sortie (exit gates) par étape pour faire avancer les opportunités dans le pipeline"
+          "descripcion": "Critères de sortie par étape pour faire avancer les opportunités dans le pipeline."
         },
         "comisiones": {
           "titulo": "Vendeurs et commissions",
-          "descripcion": "Configurez le taux de commission général, les exceptions par vendeur avec périodes de validité et un simulateur"
+          "descripcion": "Taux de commission général, exceptions par vendeur avec périodes de validité et simulateur."
         },
         "referidos": {
           "titulo": "Programme de parrainage",
-          "descripcion": "Configurez les incitations, l’éligibilité et les récompenses pour les parrains et les partenaires"
+          "descripcion": "Incitations, éligibilité et récompenses pour les parrainages et partenaires."
         },
         "estructura": {
           "titulo": "Structure commerciale",
-          "descripcion": "Définissez les rôles commerciaux, les équipes et leurs membres, et les territoires avec leurs critères"
+          "descripcion": "Rôles commerciaux, équipes avec leurs membres et territoires avec critères."
         },
         "icp": {
-          "titulo": "ICP (Ideal Customer Profile)",
-          "descripcion": "Profils A/B/C avec critères, pondérations, SLA et évaluateur de clients"
-        }
+          "titulo": "ICP (profil client idéal)",
+          "descripcion": "Profils A/B/C avec critères, pondérations, SLA et évaluateur de clients."
+        },
+        "descripcion": "Opportunités, commissions et structure commerciale."
       },
       "modales": {
         "verticales": {
@@ -51627,7 +51649,7 @@
       "secciones": {
         "etiquetas": "Étiquettes",
         "respuestasRapidas": "Réponses rapides",
-        "llavesApi": "Clés d’API"
+        "llavesApi": "Clés API"
       },
       "vacio": {
         "etiquetasTitulo": "Aucune étiquette configurée",
@@ -51651,6 +51673,19 @@
         "rotarLlave": "Renouveler la clé",
         "eliminarRespuestaTitulo": "Supprimer la réponse rapide ?",
         "eliminarRespuestaDescripcion": "Cette action supprimera définitivement la réponse « {titulo} ». Cette action est irréversible."
+      },
+      "descripciones": {
+        "etiquetas": "Elles organisent les conversations dans la boîte de réception. Ce sont les mêmes pour tout le Chat ; le CRM renvoie seulement ici.",
+        "respuestasRapidas": "Textes que l’équipe insère en tapant « / »."
+      },
+      "acciones": {
+        "nuevaEtiqueta": "Nouvelle étiquette",
+        "nuevaRespuesta": "Nouvelle réponse",
+        "editar": "Modifier"
+      },
+      "llaves": {
+        "enlace": "Les clés pour envoyer et lire les messages du chat depuis vos systèmes se créent et se révoquent dans Intégrations › Développeurs, avec les autres clés de l’organisation.",
+        "irDesarrolladores": "Aller aux développeurs"
       }
     },
     "scoringConfigurator": {
@@ -52895,6 +52930,32 @@
       "errorEstado": "Erreur {status}",
       "errorDesconocido": "Erreur inconnue",
       "sinDetalle": "Aucun détail"
+    },
+    "chatIa": {
+      "comportamiento": {
+        "titulo": "Comportement",
+        "auto": "Répondre automatiquement",
+        "autoAyuda": "Sur les canaux avec IA automatique, l’IA répond sans attendre une personne.",
+        "espera": "Attendre avant de répondre",
+        "esperaAyuda": "Laisse au client le temps de finir d’écrire.",
+        "segundos": "{n, plural, =0 {Sans attente} one {# seconde} other {# secondes}}",
+        "umbral": "Passer à une personne si l’IA hésite",
+        "umbralAyuda": "En dessous de ce niveau de confiance, la conversation revient à votre équipe."
+      },
+      "tono": {
+        "titulo": "Ton et langue",
+        "descripcion": "Comment l’IA parle à vos clients. Cela change désormais ses réponses sur tous les canaux.",
+        "tono": "Ton",
+        "tonoAyuda": "L’IA répond sur ce ton : {opciones}.",
+        "idioma": "Langue",
+        "idiomaAyuda": "L’IA répond à vos clients dans cette langue : {opciones}.",
+        "aviso": "Avant, l’IA ignorait le ton et la langue. Testez-les dans Chat › IA › Laboratoire avant d’enregistrer : chaque essai consomme des crédits, comme une vraie réponse.",
+        "abrirLaboratorio": "Ouvrir le Laboratoire"
+      },
+      "reglas": {
+        "titulo": "Règles et message de secours",
+        "descripcion": "Ce que l’IA peut dire et ce qu’elle répond quand elle ne sait pas."
+      }
     }
   },
   "chatHilo": {

@@ -15,6 +15,7 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,8 @@ const VALORES_INICIALES: Editables = {
 };
 
 export function ConfiguracionIAChat() {
+  const t = useTranslations('chatConfig.ia');
+  const tc = useTranslations('chatConfig.comun');
   const router = useRouter();
   const { toast } = useToast();
   const { organization } = useOrganization();
@@ -159,14 +162,14 @@ export function ConfiguracionIAChat() {
     } catch (error) {
       console.error('Error cargando configuración:', error);
       toast({
-        title: 'Error',
-        description: 'No se pudo cargar la configuración',
+        title: tc('error'),
+        description: t('toasts.errorCarga'),
         variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
-  }, [organizationId, toast, aplicar]);
+  }, [organizationId, toast, aplicar, t, tc]);
 
   useEffect(() => {
     loadData();
@@ -189,15 +192,13 @@ export function ConfiguracionIAChat() {
       setIsActive(newState);
 
       toast({
-        title: newState ? 'IA Activada' : 'IA Desactivada',
-        description: newState 
-          ? 'El asistente de IA está ahora activo'
-          : 'El asistente de IA ha sido desactivado'
+        title: newState ? t('toasts.activadaTitulo') : t('toasts.desactivadaTitulo'),
+        description: newState ? t('toasts.activadaDesc') : t('toasts.desactivadaDesc')
       });
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'No se pudo cambiar el estado de la IA',
+        title: tc('error'),
+        description: error instanceof Error ? error.message : t('toasts.errorEstado'),
         variant: 'destructive'
       });
     }
@@ -226,15 +227,15 @@ export function ConfiguracionIAChat() {
       });
 
       toast({
-        title: 'Configuración guardada',
-        description: 'Los cambios se aplicaron correctamente'
+        title: t('toasts.guardada'),
+        description: t('toasts.guardadaDesc')
       });
 
       await loadData();
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'No se pudo guardar la configuración',
+        title: tc('error'),
+        description: error instanceof Error ? error.message : t('toasts.errorGuardar'),
         variant: 'destructive'
       });
     } finally {
@@ -264,13 +265,13 @@ export function ConfiguracionIAChat() {
       ));
 
       toast({
-        title: 'Modo actualizado',
-        description: 'El modo de IA del canal se actualizó correctamente'
+        title: t('toasts.modoActualizado'),
+        description: t('toasts.modoActualizadoDesc')
       });
     } catch {
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el modo del canal',
+        title: tc('error'),
+        description: t('toasts.errorModo'),
         variant: 'destructive'
       });
     }
@@ -286,13 +287,13 @@ export function ConfiguracionIAChat() {
       setChannels(prev => prev.map(ch => ({ ...ch, ai_mode: mode })));
 
       toast({
-        title: 'Modos actualizados',
-        description: 'Todos los canales ahora usan el mismo modo de IA'
+        title: t('toasts.modosActualizados'),
+        description: t('toasts.modosActualizadosDesc')
       });
     } catch {
       toast({
-        title: 'Error',
-        description: 'No se pudo actualizar los canales',
+        title: tc('error'),
+        description: t('toasts.errorModos'),
         variant: 'destructive'
       });
     }
@@ -302,15 +303,15 @@ export function ConfiguracionIAChat() {
     return (
       <div className="flex min-h-64 items-center justify-center" role="status">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <p className="text-gray-500 dark:text-gray-400">Cargando configuración...</p>
+          <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-brand" />
+          <p className="text-fg-muted">{t('cargando')}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-subtle">
       <AISettingsHeader
         isActive={isActive}
         loading={loading}
@@ -322,19 +323,20 @@ export function ConfiguracionIAChat() {
 
       <div>
         <Tabs defaultValue="model" className="flex flex-col">
-          <div className="px-4 sm:px-6 pt-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <TabsList className="bg-gray-100 dark:bg-gray-800">
-              <TabsTrigger value="model" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
-                <Cpu className="h-4 w-4" />
-                Modelo
+          {/* Las pestañas se desplazan en horizontal si no caben (también fuera del diálogo). */}
+          <div className="border-b border-line bg-surface px-4 pt-4 sm:px-6">
+            <TabsList aria-label={t('pestanas.etiqueta')} className="h-auto max-w-full justify-start overflow-x-auto bg-subtle [scrollbar-width:thin]">
+              <TabsTrigger value="model" className="gap-2 data-[state=active]:bg-surface">
+                <Cpu aria-hidden="true" className="h-4 w-4" />
+                {t('pestanas.modelo')}
               </TabsTrigger>
-              <TabsTrigger value="behavior" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
-                <MessageSquare className="h-4 w-4" />
-                Comportamiento
+              <TabsTrigger value="behavior" className="gap-2 data-[state=active]:bg-surface">
+                <MessageSquare aria-hidden="true" className="h-4 w-4" />
+                {t('pestanas.comportamiento')}
               </TabsTrigger>
-              <TabsTrigger value="channels" className="gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700">
-                <MessagesSquare className="h-4 w-4" />
-                Canales
+              <TabsTrigger value="channels" className="gap-2 data-[state=active]:bg-surface">
+                <MessagesSquare aria-hidden="true" className="h-4 w-4" />
+                {t('pestanas.canales')}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -389,34 +391,32 @@ export function ConfiguracionIAChat() {
       </div>
 
       {hasChanges && !enDialogo && (
-        <div className="sticky bottom-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-          <div className="max-w-4xl mx-auto flex items-center justify-between">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Tienes cambios sin guardar
+        <div className="sticky bottom-0 border-t border-line bg-surface p-4">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-fg-secondary">
+              {t('cambiosSinGuardar')}
             </p>
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 onClick={descartar}
                 disabled={saving}
-                className="border-gray-300 dark:border-gray-700"
               >
-                Descartar
+                {t('descartar')}
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 {saving ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Guardando...
+                    <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
+                    {tc('guardando')}
                   </>
                 ) : (
                   <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Guardar Cambios
+                    <Save aria-hidden="true" className="mr-2 h-4 w-4" />
+                    {tc('guardarCambios')}
                   </>
                 )}
               </Button>

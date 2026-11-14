@@ -51416,5 +51416,282 @@
       "separadorAyuda": "Ce texte sépare un fragment du suivant. Si vous ne mettez rien, {separador} est utilisé.",
       "formatoTexto": "Format attendu :"
     }
+  },
+  "chatConfig": {
+    "comun": {
+      "cancelar": "Annuler",
+      "guardando": "Enregistrement…",
+      "guardarCambios": "Enregistrer les modifications",
+      "editar": "Modifier",
+      "eliminar": "Supprimer",
+      "actualizar": "Actualiser",
+      "masAcciones": "Plus d’actions pour {nombre}",
+      "copiado": "Copié",
+      "error": "Erreur"
+    },
+    "ia": {
+      "titulo": "Configuration de l’IA",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "descripcion": "Configurez le comportement de l’assistant IA pour votre organisation",
+      "laboratorio": "Laboratoire",
+      "trabajos": "Tâches",
+      "iaActivada": "IA activée",
+      "iaDesactivada": "IA désactivée",
+      "pestanas": {
+        "etiqueta": "Parties de la configuration de l’IA",
+        "modelo": "Modèle",
+        "comportamiento": "Comportement",
+        "canales": "Canaux"
+      },
+      "cargando": "Chargement de la configuration…",
+      "cambiosSinGuardar": "Vous avez des modifications non enregistrées",
+      "descartar": "Annuler les modifications",
+      "toasts": {
+        "errorCarga": "Impossible de charger la configuration",
+        "activadaTitulo": "IA activée",
+        "activadaDesc": "L’assistant IA est maintenant actif",
+        "desactivadaTitulo": "IA désactivée",
+        "desactivadaDesc": "L’assistant IA a été désactivé",
+        "errorEstado": "Impossible de changer l’état de l’IA",
+        "guardada": "Configuration enregistrée",
+        "guardadaDesc": "Les modifications ont été appliquées",
+        "errorGuardar": "Impossible d’enregistrer la configuration",
+        "modoActualizado": "Mode mis à jour",
+        "modoActualizadoDesc": "Le mode IA du canal a été mis à jour",
+        "errorModo": "Impossible de mettre à jour le mode du canal",
+        "modosActualizados": "Modes mis à jour",
+        "modosActualizadosDesc": "Tous les canaux utilisent désormais le même mode IA",
+        "errorModos": "Impossible de mettre à jour les canaux"
+      },
+      "modelo": {
+        "titulo": "Modèle d’IA",
+        "proveedor": "Fournisseur",
+        "sinCredenciales": "sans identifiants",
+        "modelo": "Modèle",
+        "recomendado": "Recommandé",
+        "gamas": {
+          "economico": "économique",
+          "equilibrado": "équilibré",
+          "premium": "premium",
+          "legacy": "ancien"
+        },
+        "costoPorMil": "Coût estimé pour 1 000 réponses",
+        "noCalculable": "Non calculable",
+        "sinTarifa": "Ce modèle n’a pas de tarif chargé : sa dépense réelle ne peut pas être mesurée.",
+        "consumo": "Calculé avec la consommation réelle de votre chat : {entrada} jetons en entrée et {salida} en sortie par réponse.",
+        "contexto": "Contexte maximal : {n} jetons.",
+        "temperatura": "Température",
+        "temperaturaAyuda": "Valeurs basses = réponses plus précises. Valeurs hautes = réponses plus créatives.",
+        "maxTokens": "Nombre maximal de jetons",
+        "maxTokensAyuda": "Longueur maximale des réponses (100-4000)",
+        "fragmentos": "Fragments de contexte",
+        "fragmentosAyuda": "Fragments de connaissance à utiliser (1-20)"
+      },
+      "comportamiento": {
+        "tonoTitulo": "Ton et langue",
+        "tono": "Ton de communication",
+        "idioma": "Langue",
+        "reglas": "Règles du système (instructions pour l’IA)",
+        "reglasPlaceholder": "Tu es un assistant du service client. N’invente rien. Si tu ne sais pas, indique qu’un agent humain va aider…",
+        "reglasAyuda": "Définit le comportement, les limites et la personnalité de l’IA",
+        "fallback": "Message de secours",
+        "fallbackPlaceholder": "Désolé, je ne peux pas vous aider sur ce point. Un agent humain vous répondra bientôt.",
+        "fallbackAyuda": "Message utilisé quand l’IA ne peut pas répondre ou que la confiance est faible",
+        "autoTitulo": "Réponses automatiques",
+        "auto": "Réponses automatiques",
+        "autoAyuda": "L’IA répond automatiquement aux messages entrants",
+        "retraso": "Délai avant de répondre (secondes)",
+        "retrasoAyuda": "Attente avant que l’IA réponde (0-60 secondes)",
+        "umbral": "Seuil de confiance",
+        "umbralAyuda": "En dessous de ce seuil, le message de secours est utilisé"
+      },
+      "tonos": {
+        "professional": "Professionnel",
+        "friendly": "Chaleureux",
+        "formal": "Formel",
+        "casual": "Décontracté",
+        "empathetic": "Empathique"
+      },
+      "idiomas": {
+        "es": "Espagnol",
+        "en": "Anglais",
+        "pt": "Portugais",
+        "fr": "Français"
+      },
+      "canales": {
+        "titulo": "Mode IA par canal",
+        "aplicarTodos": "Appliquer à tous :",
+        "seleccionar": "Sélectionner",
+        "vacioTitulo": "Aucun canal configuré",
+        "vacioDescripcion": "Configurez des canaux de communication pour gérer leur mode IA",
+        "columnas": {
+          "canal": "Canal",
+          "tipo": "Type",
+          "estado": "État",
+          "modo": "Mode IA",
+          "cambiar": "Changer"
+        },
+        "activo": "Actif",
+        "inactivo": "Inactif",
+        "cambiarModo": "Mode IA de {canal}",
+        "modosDisponibles": "Modes disponibles :",
+        "modos": {
+          "auto": {
+            "nombre": "IA seule",
+            "descripcion": "L’IA répond automatiquement sans intervention humaine"
+          },
+          "hybrid": {
+            "nombre": "Hybride",
+            "descripcion": "L’IA répond et peut transférer à un agent humain"
+          },
+          "manual": {
+            "nombre": "Manuel",
+            "descripcion": "Seuls les agents humains répondent ; l’IA est désactivée"
+          }
+        }
+      }
+    },
+    "etiquetas": {
+      "titulo": "Étiquettes de conversation",
+      "conteo": "{n, plural, one {# étiquette configurée} other {# étiquettes configurées}}",
+      "nueva": "Nouvelle étiquette",
+      "conversaciones": "{n, plural, one {# conversation} other {# conversations}}",
+      "dialogo": {
+        "tituloNueva": "Nouvelle étiquette",
+        "tituloEditar": "Modifier l’étiquette",
+        "nombre": "Nom *",
+        "nombrePlaceholder": "Ex. : Urgent, VIP, Support…",
+        "color": "Couleur",
+        "descripcion": "Description (facultatif)",
+        "descripcionPlaceholder": "Décrivez l’usage de cette étiquette…",
+        "vistaPrevia": "Aperçu :",
+        "nombrePorDefecto": "Nom de l’étiquette",
+        "crear": "Créer l’étiquette"
+      },
+      "colores": {
+        "3b82f6": "Bleu",
+        "22c55e": "Vert",
+        "eab308": "Jaune",
+        "f97316": "Orange",
+        "ef4444": "Rouge",
+        "a855f7": "Violet",
+        "ec4899": "Rose",
+        "6366f1": "Indigo",
+        "14b8a6": "Sarcelle",
+        "64748b": "Gris"
+      }
+    },
+    "respuestas": {
+      "titulo": "Réponses rapides",
+      "conteo": "{n, plural, one {# modèle configuré} other {# modèles configurés}}",
+      "buscar": "Rechercher…",
+      "nueva": "Nouvelle réponse",
+      "inactiva": "Inactive",
+      "copiar": "Copier le contenu",
+      "copiadoDesc": "Le contenu a été copié dans le presse-papiers",
+      "usos": "{n, plural, one {Utilisée # fois} other {Utilisée # fois}}",
+      "dialogo": {
+        "tituloNueva": "Nouvelle réponse rapide",
+        "tituloEditar": "Modifier la réponse rapide",
+        "titulo": "Titre *",
+        "tituloPlaceholder": "Ex. : Accueil",
+        "atajo": "Raccourci (facultatif)",
+        "atajoPlaceholder": "Ex. : bonjour",
+        "atajoAyuda": "Tapez /{atajo} pour l’utiliser",
+        "atajoPorDefecto": "raccourci",
+        "contenido": "Contenu *",
+        "contenidoPlaceholder": "Écrivez le message de la réponse rapide…",
+        "variables": "Variables disponibles",
+        "etiquetas": "Étiquettes internes (facultatif)",
+        "etiquetaPlaceholder": "Ajouter une étiquette…",
+        "agregar": "Ajouter",
+        "quitarEtiqueta": "Retirer {etiqueta}",
+        "activa": "Réponse active",
+        "activaAyuda": "Les réponses inactives n’apparaissent pas dans les suggestions",
+        "crear": "Créer la réponse"
+      },
+      "variables": {
+        "customer_name": "Nom du client de la conversation",
+        "agent_name": "Nom de l’agent assigné",
+        "organization_name": "Nom de votre entreprise",
+        "current_date": "Date du jour",
+        "current_time": "Heure actuelle"
+      }
+    },
+    "llaves": {
+      "titulo": "Clés d’API",
+      "conteo": "{activas} sur {total, plural, one {# clé active} other {# clés actives}}",
+      "nueva": "Nouvelle clé",
+      "activa": "Active",
+      "revocada": "Révoquée",
+      "expirada": "Expirée",
+      "inactiva": "Inactive",
+      "copiarPrefijo": "Copier le préfixe",
+      "prefijoCopiado": "Préfixe de la clé copié",
+      "canal": "Canal : {nombre} ({tipo})",
+      "rotar": "Renouveler la clé",
+      "revocar": "Révoquer",
+      "permisos": "Autorisations :",
+      "creada": "Créée {cuando}",
+      "ultimoUso": "Dernière utilisation : {cuando}",
+      "expira": "Expire : {cuando}",
+      "expiro": "A expiré : {cuando}",
+      "dialogo": {
+        "creadaTitulo": "Clé d’API créée",
+        "guardaAhora": "Enregistrez cette clé maintenant",
+        "unicaVez": "C’est la seule fois que vous verrez la clé complète. Conservez-la en lieu sûr.",
+        "tuLlave": "Votre clé d’API :",
+        "copiarLlave": "Copier la clé",
+        "entendido": "Compris, je l’ai enregistrée",
+        "nuevaTitulo": "Nouvelle clé d’API",
+        "nombre": "Nom *",
+        "nombrePlaceholder": "Ex. : Widget web, intégration CRM…",
+        "canal": "Canal (facultatif)",
+        "todosCanales": "Tous les canaux",
+        "canalAyuda": "Limite l’accès à un canal précis",
+        "permisos": "Autorisations (scopes) *",
+        "expiracion": "Expiration",
+        "expiraciones": {
+          "never": "N’expire jamais",
+          "d30": "30 jours",
+          "d90": "90 jours",
+          "d180": "6 mois",
+          "d365": "1 an"
+        },
+        "generando": "Génération…",
+        "crear": "Créer la clé"
+      },
+      "scopes": {
+        "messages_read": {
+          "nombre": "Lire les messages",
+          "descripcion": "Permet de lire les messages des conversations"
+        },
+        "messages_write": {
+          "nombre": "Envoyer des messages",
+          "descripcion": "Permet d’envoyer des messages aux conversations"
+        },
+        "conversations_read": {
+          "nombre": "Lire les conversations",
+          "descripcion": "Permet de voir la liste des conversations"
+        },
+        "conversations_write": {
+          "nombre": "Gérer les conversations",
+          "descripcion": "Permet de créer et de modifier des conversations"
+        },
+        "contacts_read": {
+          "nombre": "Lire les contacts",
+          "descripcion": "Permet de voir les informations des contacts"
+        },
+        "contacts_write": {
+          "nombre": "Gérer les contacts",
+          "descripcion": "Permet de créer et de modifier des contacts"
+        },
+        "webhooks_manage": {
+          "nombre": "Webhooks",
+          "descripcion": "Permet de configurer des webhooks"
+        }
+      }
+    }
   }
 }

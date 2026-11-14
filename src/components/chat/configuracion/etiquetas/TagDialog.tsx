@@ -1,6 +1,8 @@
 'use client';
 
+/** Crear / editar una etiqueta de conversación. Textos en `chatConfig` (es/en/fr/pt), colores por tokens. */
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -22,14 +24,13 @@ interface TagDialogProps {
   onSave: (data: { name: string; color: string; description?: string }) => Promise<void>;
 }
 
-export default function TagDialog({
-  open,
-  onOpenChange,
-  tag,
-  onSave
-}: TagDialogProps) {
+const COLOR_INICIAL = TAG_COLORS[0]?.value ?? '#3b82f6';
+
+export default function TagDialog({ open, onOpenChange, tag, onSave }: TagDialogProps) {
+  const t = useTranslations('chatConfig.etiquetas');
+  const tc = useTranslations('chatConfig.comun');
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#3b82f6');
+  const [color, setColor] = useState(COLOR_INICIAL);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -40,7 +41,7 @@ export default function TagDialog({
       setDescription(tag.description || '');
     } else {
       setName('');
-      setColor('#3b82f6');
+      setColor(COLOR_INICIAL);
       setDescription('');
     }
   }, [tag, open]);
@@ -61,91 +62,93 @@ export default function TagDialog({
     }
   };
 
+  /** Nombre del color en el idioma de quien edita; el hex es el dato. */
+  const nombreColor = (valor: string, respaldo: string) => {
+    const clave = `colores.${valor.replace('#', '')}`;
+    return t.has(clave) ? t(clave) : respaldo;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[425px] max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>
-            {tag ? 'Editar Etiqueta' : 'Nueva Etiqueta'}
-          </DialogTitle>
+          <DialogTitle>{tag ? t('dialogo.tituloEditar') : t('dialogo.tituloNueva')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre *</Label>
+            <Label htmlFor="etiqueta-nombre">{t('dialogo.nombre')}</Label>
             <Input
-              id="name"
+              id="etiqueta-nombre"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Ej: Urgente, VIP, Soporte..."
-              className="bg-white dark:bg-gray-800"
+              placeholder={t('dialogo.nombrePlaceholder')}
+              className="bg-surface"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Color</Label>
-            <div className="flex flex-wrap gap-2">
-              {TAG_COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  type="button"
-                  onClick={() => setColor(c.value)}
-                  className={`w-8 h-8 rounded-full transition-all ${
-                    color === c.value
-                      ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-900'
-                      : 'hover:scale-110'
-                  }`}
-                  style={{ backgroundColor: c.value }}
-                  title={c.label}
-                />
-              ))}
+            <Label id="etiqueta-color">{t('dialogo.color')}</Label>
+            <div role="radiogroup" aria-labelledby="etiqueta-color" className="flex flex-wrap gap-2">
+              {TAG_COLORS.map((c) => {
+                const nombre = nombreColor(c.value, c.label);
+                return (
+                  <button
+                    key={c.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={color === c.value}
+                    aria-label={nombre}
+                    title={nombre}
+                    onClick={() => setColor(c.value)}
+                    className={`h-8 w-8 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                      color === c.value ? 'ring-2 ring-brand ring-offset-2 ring-offset-surface' : 'hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: c.value }}
+                  />
+                );
+              })}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descripción (opcional)</Label>
+            <Label htmlFor="etiqueta-descripcion">{t('dialogo.descripcion')}</Label>
             <RichTextEditor
               value={description}
               onChange={(html) => setDescription(html)}
-              placeholder="Describe el uso de esta etiqueta..."
+              placeholder={t('dialogo.descripcionPlaceholder')}
               minHeight={60}
-              className="bg-white dark:bg-gray-800"
+              className="bg-surface"
             />
           </div>
 
-          <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Vista previa:</p>
+          <div className="rounded-lg bg-subtle p-3">
+            <p className="mb-2 text-sm text-fg-secondary">{t('dialogo.vistaPrevia')}</p>
             <div className="flex items-center gap-2">
               <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium text-white"
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium text-white"
                 style={{ backgroundColor: color }}
               >
-                {name || 'Nombre de etiqueta'}
+                {name || t('dialogo.nombrePorDefecto')}
               </span>
             </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
-            Cancelar
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            {tc('cancelar')}
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!name.trim() || saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
+          <Button onClick={handleSave} disabled={!name.trim() || saving}>
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
+                <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
+                {tc('guardando')}
               </>
+            ) : tag ? (
+              tc('guardarCambios')
             ) : (
-              tag ? 'Guardar Cambios' : 'Crear Etiqueta'
+              t('dialogo.crear')
             )}
           </Button>
         </DialogFooter>

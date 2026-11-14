@@ -51416,5 +51416,282 @@
       "separadorAyuda": "This text separates one snippet from the next. If you leave it empty, {separador} is used.",
       "formatoTexto": "Expected format:"
     }
+  },
+  "chatConfig": {
+    "comun": {
+      "cancelar": "Cancel",
+      "guardando": "Saving…",
+      "guardarCambios": "Save changes",
+      "editar": "Edit",
+      "eliminar": "Delete",
+      "actualizar": "Refresh",
+      "masAcciones": "More actions for {nombre}",
+      "copiado": "Copied",
+      "error": "Error"
+    },
+    "ia": {
+      "titulo": "AI settings",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "descripcion": "Set up how the AI assistant behaves for your organization",
+      "laboratorio": "Lab",
+      "trabajos": "Jobs",
+      "iaActivada": "AI on",
+      "iaDesactivada": "AI off",
+      "pestanas": {
+        "etiqueta": "Parts of the AI settings",
+        "modelo": "Model",
+        "comportamiento": "Behavior",
+        "canales": "Channels"
+      },
+      "cargando": "Loading settings…",
+      "cambiosSinGuardar": "You have unsaved changes",
+      "descartar": "Discard",
+      "toasts": {
+        "errorCarga": "The settings couldn’t be loaded",
+        "activadaTitulo": "AI turned on",
+        "activadaDesc": "The AI assistant is now active",
+        "desactivadaTitulo": "AI turned off",
+        "desactivadaDesc": "The AI assistant was turned off",
+        "errorEstado": "The AI status couldn’t be changed",
+        "guardada": "Settings saved",
+        "guardadaDesc": "The changes were applied",
+        "errorGuardar": "The settings couldn’t be saved",
+        "modoActualizado": "Mode updated",
+        "modoActualizadoDesc": "The channel’s AI mode was updated",
+        "errorModo": "The channel mode couldn’t be updated",
+        "modosActualizados": "Modes updated",
+        "modosActualizadosDesc": "All channels now use the same AI mode",
+        "errorModos": "The channels couldn’t be updated"
+      },
+      "modelo": {
+        "titulo": "AI model",
+        "proveedor": "Provider",
+        "sinCredenciales": "no credentials",
+        "modelo": "Model",
+        "recomendado": "Recommended",
+        "gamas": {
+          "economico": "budget",
+          "equilibrado": "balanced",
+          "premium": "premium",
+          "legacy": "legacy"
+        },
+        "costoPorMil": "Estimated cost per 1,000 replies",
+        "noCalculable": "Can’t be calculated",
+        "sinTarifa": "This model has no rate loaded, so its real spend can’t be measured.",
+        "consumo": "Based on your chat’s real usage: {entrada} input tokens and {salida} output tokens per reply.",
+        "contexto": "Maximum context: {n} tokens.",
+        "temperatura": "Temperature",
+        "temperaturaAyuda": "Low values = more precise replies. High values = more creative replies.",
+        "maxTokens": "Maximum tokens",
+        "maxTokensAyuda": "Maximum reply length (100-4000)",
+        "fragmentos": "Context snippets",
+        "fragmentosAyuda": "Knowledge snippets to use (1-20)"
+      },
+      "comportamiento": {
+        "tonoTitulo": "Tone and language",
+        "tono": "Communication tone",
+        "idioma": "Language",
+        "reglas": "System rules (instructions for the AI)",
+        "reglasPlaceholder": "You are a customer service assistant. Don’t make things up. If you don’t know something, say a human agent will help…",
+        "reglasAyuda": "Defines the AI’s behavior, limits and personality",
+        "fallback": "Fallback message",
+        "fallbackPlaceholder": "Sorry, I can’t help with that. A human agent will assist you soon.",
+        "fallbackAyuda": "Message used when the AI can’t reply or confidence is low",
+        "autoTitulo": "Automatic replies",
+        "auto": "Automatic replies",
+        "autoAyuda": "The AI automatically replies to incoming messages",
+        "retraso": "Delay before replying (seconds)",
+        "retrasoAyuda": "Wait before the AI replies (0-60 seconds)",
+        "umbral": "Confidence threshold",
+        "umbralAyuda": "Below this threshold, the fallback message is used"
+      },
+      "tonos": {
+        "professional": "Professional",
+        "friendly": "Friendly",
+        "formal": "Formal",
+        "casual": "Casual",
+        "empathetic": "Empathetic"
+      },
+      "idiomas": {
+        "es": "Spanish",
+        "en": "English",
+        "pt": "Portuguese",
+        "fr": "French"
+      },
+      "canales": {
+        "titulo": "AI mode by channel",
+        "aplicarTodos": "Apply to all:",
+        "seleccionar": "Select",
+        "vacioTitulo": "No channels set up",
+        "vacioDescripcion": "Set up communication channels to manage their AI mode",
+        "columnas": {
+          "canal": "Channel",
+          "tipo": "Type",
+          "estado": "Status",
+          "modo": "AI mode",
+          "cambiar": "Change"
+        },
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "cambiarModo": "AI mode for {canal}",
+        "modosDisponibles": "Available modes:",
+        "modos": {
+          "auto": {
+            "nombre": "AI only",
+            "descripcion": "The AI replies automatically with no human involvement"
+          },
+          "hybrid": {
+            "nombre": "Hybrid",
+            "descripcion": "The AI replies and can hand off to a human agent"
+          },
+          "manual": {
+            "nombre": "Manual",
+            "descripcion": "Only human agents reply; the AI is off"
+          }
+        }
+      }
+    },
+    "etiquetas": {
+      "titulo": "Conversation tags",
+      "conteo": "{n, plural, one {# tag set up} other {# tags set up}}",
+      "nueva": "New tag",
+      "conversaciones": "{n, plural, one {# conversation} other {# conversations}}",
+      "dialogo": {
+        "tituloNueva": "New tag",
+        "tituloEditar": "Edit tag",
+        "nombre": "Name *",
+        "nombrePlaceholder": "E.g. Urgent, VIP, Support…",
+        "color": "Color",
+        "descripcion": "Description (optional)",
+        "descripcionPlaceholder": "Describe what this tag is for…",
+        "vistaPrevia": "Preview:",
+        "nombrePorDefecto": "Tag name",
+        "crear": "Create tag"
+      },
+      "colores": {
+        "3b82f6": "Blue",
+        "22c55e": "Green",
+        "eab308": "Yellow",
+        "f97316": "Orange",
+        "ef4444": "Red",
+        "a855f7": "Purple",
+        "ec4899": "Pink",
+        "6366f1": "Indigo",
+        "14b8a6": "Teal",
+        "64748b": "Gray"
+      }
+    },
+    "respuestas": {
+      "titulo": "Quick replies",
+      "conteo": "{n, plural, one {# template set up} other {# templates set up}}",
+      "buscar": "Search…",
+      "nueva": "New reply",
+      "inactiva": "Inactive",
+      "copiar": "Copy content",
+      "copiadoDesc": "The content was copied to the clipboard",
+      "usos": "{n, plural, one {Used # time} other {Used # times}}",
+      "dialogo": {
+        "tituloNueva": "New quick reply",
+        "tituloEditar": "Edit quick reply",
+        "titulo": "Title *",
+        "tituloPlaceholder": "E.g. Welcome",
+        "atajo": "Shortcut (optional)",
+        "atajoPlaceholder": "E.g. hello",
+        "atajoAyuda": "Type /{atajo} to use it",
+        "atajoPorDefecto": "shortcut",
+        "contenido": "Content *",
+        "contenidoPlaceholder": "Write the quick reply message…",
+        "variables": "Available variables",
+        "etiquetas": "Internal tags (optional)",
+        "etiquetaPlaceholder": "Add tag…",
+        "agregar": "Add",
+        "quitarEtiqueta": "Remove {etiqueta}",
+        "activa": "Active reply",
+        "activaAyuda": "Inactive replies don’t show up in suggestions",
+        "crear": "Create reply"
+      },
+      "variables": {
+        "customer_name": "Name of the customer in the conversation",
+        "agent_name": "Name of the assigned agent",
+        "organization_name": "Your company name",
+        "current_date": "Today’s date",
+        "current_time": "Current time"
+      }
+    },
+    "llaves": {
+      "titulo": "API keys",
+      "conteo": "{activas} of {total, plural, one {# key active} other {# keys active}}",
+      "nueva": "New key",
+      "activa": "Active",
+      "revocada": "Revoked",
+      "expirada": "Expired",
+      "inactiva": "Inactive",
+      "copiarPrefijo": "Copy prefix",
+      "prefijoCopiado": "Key prefix copied",
+      "canal": "Channel: {nombre} ({tipo})",
+      "rotar": "Rotate key",
+      "revocar": "Revoke",
+      "permisos": "Permissions:",
+      "creada": "Created {cuando}",
+      "ultimoUso": "Last used: {cuando}",
+      "expira": "Expires: {cuando}",
+      "expiro": "Expired: {cuando}",
+      "dialogo": {
+        "creadaTitulo": "API key created",
+        "guardaAhora": "Save this key now",
+        "unicaVez": "This is the only time you’ll see the full key. Keep it somewhere safe.",
+        "tuLlave": "Your API key:",
+        "copiarLlave": "Copy key",
+        "entendido": "Got it, I saved it",
+        "nuevaTitulo": "New API key",
+        "nombre": "Name *",
+        "nombrePlaceholder": "E.g. Web widget, CRM integration…",
+        "canal": "Channel (optional)",
+        "todosCanales": "All channels",
+        "canalAyuda": "Limits access to one channel",
+        "permisos": "Permissions (scopes) *",
+        "expiracion": "Expiration",
+        "expiraciones": {
+          "never": "Never expires",
+          "d30": "30 days",
+          "d90": "90 days",
+          "d180": "6 months",
+          "d365": "1 year"
+        },
+        "generando": "Generating…",
+        "crear": "Create key"
+      },
+      "scopes": {
+        "messages_read": {
+          "nombre": "Read messages",
+          "descripcion": "Allows reading conversation messages"
+        },
+        "messages_write": {
+          "nombre": "Send messages",
+          "descripcion": "Allows sending messages to conversations"
+        },
+        "conversations_read": {
+          "nombre": "Read conversations",
+          "descripcion": "Allows viewing the conversation list"
+        },
+        "conversations_write": {
+          "nombre": "Manage conversations",
+          "descripcion": "Allows creating and changing conversations"
+        },
+        "contacts_read": {
+          "nombre": "Read contacts",
+          "descripcion": "Allows viewing contact information"
+        },
+        "contacts_write": {
+          "nombre": "Manage contacts",
+          "descripcion": "Allows creating and changing contacts"
+        },
+        "webhooks_manage": {
+          "nombre": "Webhooks",
+          "descripcion": "Allows setting up webhooks"
+        }
+      }
+    }
   }
 }

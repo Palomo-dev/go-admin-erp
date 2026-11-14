@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Configuración › Chat › IA › Modelo. Textos en `chatConfig.ia.modelo`
+ * (es/en/fr/pt) y colores por tokens. El catálogo de modelos, su costo y sus
+ * notas vienen del servidor (`fetchCatalogoModelos`).
+ */
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -13,6 +18,8 @@ import {
 } from '@/components/ui/select';
 import { Cpu, Thermometer, Hash, FileText, AlertCircle, Star } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import {
   fetchCatalogoModelos,
   estimarCostoRespuesta,
@@ -28,6 +35,13 @@ import {
  */
 const TOKENS_ENTRADA_TIPICOS = 2197;
 const TOKENS_SALIDA_TIPICOS = 56;
+
+const ESTILO_GAMA: Record<GamaModelo, string> = {
+  economico: 'bg-success-subtle text-success-text',
+  equilibrado: 'bg-brand-tint text-brand',
+  premium: 'bg-warning-subtle text-warning-text',
+  legacy: 'bg-subtle text-fg-muted',
+};
 
 interface ModelSettingsProps {
   provider: string;
@@ -54,6 +68,8 @@ export default function ModelSettings({
   onMaxTokensChange,
   onMaxFragmentsChange
 }: ModelSettingsProps) {
+  const t = useTranslations('chatConfig.ia.modelo');
+  const locale = useLocaleIntl();
   const [catalogo, setCatalogo] = useState<CatalogoModelos | null>(null);
   const [errorCatalogo, setErrorCatalogo] = useState<string | null>(null);
 
@@ -74,26 +90,11 @@ export default function ModelSettings({
     if (primero) onModelChange(primero.value);
   };
 
-  const estiloGama = (gama: GamaModelo) => {
-    switch (gama) {
-      case 'economico':   return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      case 'equilibrado': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
-      case 'premium':     return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-      case 'legacy':      return 'bg-gray-200 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
-    }
-  };
-
-  const etiquetaGama = (gama: GamaModelo) =>
-    gama === 'economico' ? 'económico'
-    : gama === 'equilibrado' ? 'equilibrado'
-    : gama === 'premium' ? 'premium'
-    : 'legacy';
-
   /** Costo por cada 1.000 respuestas, que es la unidad que se entiende. */
   const costoPorMil = (m: ModeloIA) => {
     const unitario = estimarCostoRespuesta(m, TOKENS_ENTRADA_TIPICOS, TOKENS_SALIDA_TIPICOS);
     if (unitario === null) return null;
-    return (unitario * 1000).toLocaleString('es-CO', {
+    return (unitario * 1000).toLocaleString(locale, {
       style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2,
     });
   };
@@ -101,19 +102,19 @@ export default function ModelSettings({
   const modeloActual = availableModels.find((m) => m.value === model);
 
   return (
-    <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+    <Card className="border-line bg-surface">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-          <Cpu className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          Modelo de IA
+        <CardTitle className="flex items-center gap-2 text-base font-medium text-fg">
+          <Cpu aria-hidden="true" className="h-4 w-4 text-brand" />
+          {t('titulo')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label className="text-gray-700 dark:text-gray-300">Proveedor</Label>
+            <Label htmlFor="ia-proveedor" className="text-fg-secondary">{t('proveedor')}</Label>
             <Select value={provider} onValueChange={handleProviderChange}>
-              <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+              <SelectTrigger id="ia-proveedor" className="bg-surface">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -121,11 +122,7 @@ export default function ModelSettings({
                   <SelectItem key={p.value} value={p.value} disabled={!p.usable}>
                     <span className="flex items-center gap-2">
                       {p.label}
-                      {!p.usable && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          sin credenciales
-                        </span>
-                      )}
+                      {!p.usable && <span className="text-xs text-fg-muted">{t('sinCredenciales')}</span>}
                     </span>
                   </SelectItem>
                 ))}
@@ -134,9 +131,9 @@ export default function ModelSettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-gray-700 dark:text-gray-300">Modelo</Label>
+            <Label htmlFor="ia-modelo" className="text-fg-secondary">{t('modelo')}</Label>
             <Select value={model} onValueChange={onModelChange}>
-              <SelectTrigger className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700">
+              <SelectTrigger id="ia-modelo" className="bg-surface">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -144,12 +141,10 @@ export default function ModelSettings({
                   <SelectItem key={m.value} value={m.value}>
                     <div className="flex items-center justify-between gap-3">
                       <span className="flex items-center gap-1.5">
-                        {m.recomendado && <Star className="h-3 w-3 text-amber-500 fill-amber-500" />}
+                        {m.recomendado && <Star aria-label={t('recomendado')} className="h-3 w-3 fill-current text-warning" />}
                         {m.label}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${estiloGama(m.gama)}`}>
-                        {etiquetaGama(m.gama)}
-                      </span>
+                      <span className={`rounded px-2 py-0.5 text-xs ${ESTILO_GAMA[m.gama]}`}>{t(`gamas.${m.gama}`)}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -159,57 +154,42 @@ export default function ModelSettings({
         </div>
 
         {errorCatalogo && (
-          <p className="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" />
+          <p role="alert" className="flex items-center gap-2 text-sm text-danger-text">
+            <AlertCircle aria-hidden="true" className="h-4 w-4" />
             {errorCatalogo}
           </p>
         )}
 
         {proveedores.some((p) => !p.usable) && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 flex items-start gap-2">
-            <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <p className="flex items-start gap-2 text-xs text-fg-muted">
+            <AlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             {proveedores.find((p) => !p.usable)?.motivo}
           </p>
         )}
 
         {modeloActual && (
-          <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3 space-y-1.5">
+          <div className="space-y-1.5 rounded-md border border-line bg-subtle p-3">
             <div className="flex items-baseline justify-between gap-3">
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                Costo estimado por cada 1.000 respuestas
-              </span>
-              <span className="text-sm font-mono font-semibold text-gray-900 dark:text-white">
-                {costoPorMil(modeloActual) ?? 'No calculable'}
-              </span>
+              <span className="text-xs text-fg-muted">{t('costoPorMil')}</span>
+              <span className="font-mono text-sm font-semibold text-fg">{costoPorMil(modeloActual) ?? t('noCalculable')}</span>
             </div>
-            {!modeloActual.tarifaCargada && (
-              <p className="text-xs text-amber-700 dark:text-amber-500">
-                Este modelo no tiene tarifa cargada, así que su gasto real no se puede medir.
-              </p>
-            )}
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Calculado con el consumo real de tu chat: {TOKENS_ENTRADA_TIPICOS.toLocaleString('es-CO')} tokens
-              de entrada y {TOKENS_SALIDA_TIPICOS} de salida por respuesta.
-              {modeloActual.contextoTokens
-                ? ` Contexto máximo: ${modeloActual.contextoTokens.toLocaleString('es-CO')} tokens.`
-                : ''}
+            {!modeloActual.tarifaCargada && <p className="text-xs text-warning-text">{t('sinTarifa')}</p>}
+            <p className="text-xs text-fg-muted">
+              {t('consumo', { entrada: TOKENS_ENTRADA_TIPICOS, salida: TOKENS_SALIDA_TIPICOS })}
+              {modeloActual.contextoTokens ? ` ${t('contexto', { n: modeloActual.contextoTokens })}` : ''}
             </p>
-            {modeloActual.nota && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">{modeloActual.nota}</p>
-            )}
+            {modeloActual.nota && <p className="text-xs text-fg-muted">{modeloActual.nota}</p>}
           </div>
         )}
 
         <div className="space-y-4">
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Thermometer className="h-4 w-4" />
-                Temperatura
+              <Label className="flex items-center gap-2 text-fg-secondary">
+                <Thermometer aria-hidden="true" className="h-4 w-4" />
+                {t('temperatura')}
               </Label>
-              <span className="text-sm font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                {temperature.toFixed(2)}
-              </span>
+              <span className="rounded bg-subtle px-2 py-1 font-mono text-sm text-fg-secondary">{temperature.toFixed(2)}</span>
             </div>
             <Slider
               value={[temperature]}
@@ -218,47 +198,44 @@ export default function ModelSettings({
               step={0.1}
               onValueChange={(value) => onTemperatureChange(value[0])}
               className="w-full"
+              aria-label={t('temperatura')}
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Valores bajos = respuestas más precisas. Valores altos = respuestas más creativas.
-            </p>
+            <p className="text-xs text-fg-muted">{t('temperaturaAyuda')}</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <Hash className="h-4 w-4" />
-                Máximo de Tokens
+              <Label htmlFor="ia-max-tokens" className="flex items-center gap-2 text-fg-secondary">
+                <Hash aria-hidden="true" className="h-4 w-4" />
+                {t('maxTokens')}
               </Label>
               <Input
+                id="ia-max-tokens"
                 type="number"
                 value={maxTokens}
                 onChange={(e) => onMaxTokensChange(parseInt(e.target.value) || 500)}
                 min={100}
                 max={4000}
-                className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+                className="bg-surface"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Longitud máxima de las respuestas (100-4000)
-              </p>
+              <p className="text-xs text-fg-muted">{t('maxTokensAyuda')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-gray-300 flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Fragmentos de Contexto
+              <Label htmlFor="ia-fragmentos" className="flex items-center gap-2 text-fg-secondary">
+                <FileText aria-hidden="true" className="h-4 w-4" />
+                {t('fragmentos')}
               </Label>
               <Input
+                id="ia-fragmentos"
                 type="number"
                 value={maxFragmentsContext}
                 onChange={(e) => onMaxFragmentsChange(parseInt(e.target.value) || 5)}
                 min={1}
                 max={20}
-                className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700"
+                className="bg-surface"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Fragmentos de conocimiento a usar (1-20)
-              </p>
+              <p className="text-xs text-fg-muted">{t('fragmentosAyuda')}</p>
             </div>
           </div>
         </div>

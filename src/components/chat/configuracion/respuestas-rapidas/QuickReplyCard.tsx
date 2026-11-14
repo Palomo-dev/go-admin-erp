@@ -1,6 +1,8 @@
 'use client';
 
+/** Tarjeta de una respuesta rápida. Textos en `chatConfig` (es/en/fr/pt), colores por tokens. */
 import { MoreVertical, Edit, Trash2, Copy, Hash, Tag } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -19,33 +21,30 @@ interface QuickReplyCardProps {
 }
 
 export default function QuickReplyCard({ reply, onEdit, onDelete }: QuickReplyCardProps) {
+  const t = useTranslations('chatConfig.respuestas');
+  const tc = useTranslations('chatConfig.comun');
   const { toast } = useToast();
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(reply.content);
-    toast({
-      title: 'Copiado',
-      description: 'El contenido se copió al portapapeles'
-    });
+    toast({ title: tc('copiado'), description: t('copiadoDesc') });
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 min-w-0">
+    <div className="rounded-lg border border-line bg-surface p-4 transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-medium text-gray-900 dark:text-white truncate">
-              {reply.title}
-            </h3>
+            <h3 className="truncate font-medium text-fg">{reply.title}</h3>
             {!reply.is_active && (
-              <Badge variant="secondary" className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                Inactivo
+              <Badge tono="neutro" tamano="sm">
+                {t('inactiva')}
               </Badge>
             )}
           </div>
           {reply.shortcut && (
-            <div className="flex items-center gap-1 mt-1 text-sm text-blue-600 dark:text-blue-400">
-              <Hash className="h-3 w-3" />
+            <div className="mt-1 flex items-center gap-1 text-sm text-brand">
+              <Hash aria-hidden="true" className="h-3 w-3" />
               <span className="font-mono">{reply.shortcut}</span>
             </div>
           )}
@@ -53,50 +52,42 @@ export default function QuickReplyCard({ reply, onEdit, onDelete }: QuickReplyCa
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreVertical className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={tc('masAcciones', { nombre: reply.title })}>
+              <MoreVertical aria-hidden="true" className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={handleCopy}>
-              <Copy className="h-4 w-4 mr-2" />
-              Copiar contenido
+              <Copy aria-hidden="true" className="mr-2 h-4 w-4" />
+              {t('copiar')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onEdit(reply)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
+              <Edit aria-hidden="true" className="mr-2 h-4 w-4" />
+              {tc('editar')}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(reply)}
-              className="text-red-600 dark:text-red-400"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Eliminar
+            <DropdownMenuItem onClick={() => onDelete(reply)} className="text-danger-text">
+              <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" />
+              {tc('eliminar')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <p className="mt-3 text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
-        {reply.content}
-      </p>
+      <p className="mt-3 line-clamp-3 text-sm text-fg-secondary">{reply.content}</p>
 
       {reply.tags && reply.tags.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
           {reply.tags.map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
-            >
-              <Tag className="h-2.5 w-2.5" />
+            <span key={index} className="inline-flex items-center gap-1 rounded-full bg-subtle px-2 py-0.5 text-xs text-fg-secondary">
+              <Tag aria-hidden="true" className="h-2.5 w-2.5" />
               {tag}
             </span>
           ))}
         </div>
       )}
 
-      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>Usado {reply.usage_count || 0} veces</span>
+      <div className="mt-3 flex items-center justify-between border-t border-line pt-3 text-xs text-fg-muted">
+        <span>{t('usos', { n: reply.usage_count || 0 })}</span>
       </div>
     </div>
   );

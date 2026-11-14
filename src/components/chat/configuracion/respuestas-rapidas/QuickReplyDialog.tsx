@@ -1,6 +1,8 @@
 'use client';
 
+/** Crear / editar una respuesta rápida. Textos en `chatConfig` (es/en/fr/pt), colores por tokens. */
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Dialog,
   DialogContent,
@@ -24,12 +26,9 @@ interface QuickReplyDialogProps {
   onSave: (data: { title: string; content: string; shortcut?: string; tags?: string[]; is_active?: boolean }) => Promise<void>;
 }
 
-export default function QuickReplyDialog({
-  open,
-  onOpenChange,
-  reply,
-  onSave
-}: QuickReplyDialogProps) {
+export default function QuickReplyDialog({ open, onOpenChange, reply, onSave }: QuickReplyDialogProps) {
+  const t = useTranslations('chatConfig.respuestas');
+  const tc = useTranslations('chatConfig.comun');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [shortcut, setShortcut] = useState('');
@@ -82,66 +81,71 @@ export default function QuickReplyDialog({
   };
 
   const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(t => t !== tagToRemove));
+    setTags(tags.filter((x) => x !== tagToRemove));
   };
 
   const insertVariable = (variable: string) => {
     setContent(content + variable);
   };
 
+  /** Descripción de la variable en el idioma de quien edita (`{{customer_name}}` → `customer_name`). */
+  const describirVariable = (valor: string, respaldo: string) => {
+    const clave = `variables.${valor.replace(/[{}]/g, '')}`;
+    return t.has(clave) ? t(clave) : respaldo;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[600px] md:max-w-2xl max-h-[90dvh] overflow-y-auto">
+      <DialogContent className="max-h-[90dvh] w-[calc(100%-2rem)] overflow-y-auto sm:max-w-[600px] md:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>
-            {reply ? 'Editar Respuesta Rápida' : 'Nueva Respuesta Rápida'}
-          </DialogTitle>
+          <DialogTitle>{reply ? t('dialogo.tituloEditar') : t('dialogo.tituloNueva')}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="title">Título *</Label>
+              <Label htmlFor="respuesta-titulo">{t('dialogo.titulo')}</Label>
               <Input
-                id="title"
+                id="respuesta-titulo"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ej: Saludo inicial"
-                className="bg-white dark:bg-gray-800"
+                placeholder={t('dialogo.tituloPlaceholder')}
+                className="bg-surface"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="shortcut">Atajo (opcional)</Label>
+              <Label htmlFor="respuesta-atajo">{t('dialogo.atajo')}</Label>
               <Input
-                id="shortcut"
+                id="respuesta-atajo"
                 value={shortcut}
                 onChange={(e) => setShortcut(e.target.value.replace(/\s/g, ''))}
-                placeholder="Ej: saludo"
-                className="bg-white dark:bg-gray-800 font-mono"
+                placeholder={t('dialogo.atajoPlaceholder')}
+                aria-describedby="respuesta-atajo-ayuda"
+                className="bg-surface font-mono"
               />
-              <p className="text-xs text-gray-500">Escribe /{shortcut || 'atajo'} para usar</p>
+              <p id="respuesta-atajo-ayuda" className="text-xs text-fg-muted">
+                {t('dialogo.atajoAyuda', { atajo: shortcut || t('dialogo.atajoPorDefecto') })}
+              </p>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="content">Contenido *</Label>
+            <Label htmlFor="respuesta-contenido">{t('dialogo.contenido')}</Label>
             <Textarea
-              id="content"
+              id="respuesta-contenido"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Escribe el mensaje de respuesta rápida..."
+              placeholder={t('dialogo.contenidoPlaceholder')}
               rows={5}
-              className="bg-white dark:bg-gray-800 resize-none"
+              className="resize-none bg-surface"
             />
           </div>
 
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-2 mb-2">
-              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Variables disponibles
-              </span>
+          <div className="rounded-lg border border-line-brand bg-brand-tint p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <Info aria-hidden="true" className="h-4 w-4 text-brand" />
+              <span className="text-sm font-medium text-brand">{t('dialogo.variables')}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {QUICK_REPLY_VARIABLES.map((v) => (
@@ -149,8 +153,8 @@ export default function QuickReplyDialog({
                   key={v.value}
                   type="button"
                   onClick={() => insertVariable(v.value)}
-                  className="text-xs px-2 py-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                  title={v.description}
+                  className="rounded border border-line-brand bg-surface px-2 py-1 text-xs text-brand transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  title={describirVariable(v.value, v.description)}
                 >
                   {v.value}
                 </button>
@@ -159,34 +163,32 @@ export default function QuickReplyDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Tags internos (opcional)</Label>
-            <div className="flex flex-wrap sm:flex-nowrap gap-2">
+            <Label htmlFor="respuesta-etiqueta">{t('dialogo.etiquetas')}</Label>
+            <div className="flex flex-wrap gap-2 sm:flex-nowrap">
               <Input
+                id="respuesta-etiqueta"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                placeholder="Agregar tag..."
-                className="bg-white dark:bg-gray-800"
+                placeholder={t('dialogo.etiquetaPlaceholder')}
+                className="bg-surface"
               />
               <Button type="button" variant="outline" onClick={addTag}>
-                Agregar
+                {t('dialogo.agregar')}
               </Button>
             </div>
             {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="mt-2 flex flex-wrap gap-2">
                 {tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="bg-gray-100 dark:bg-gray-800 gap-1"
-                  >
+                  <Badge key={tag} tono="neutro" tamano="sm" className="gap-1">
                     {tag}
                     <button
                       type="button"
                       onClick={() => removeTag(tag)}
-                      className="ml-1 hover:text-red-500"
+                      aria-label={t('dialogo.quitarEtiqueta', { etiqueta: tag })}
+                      className="ml-1 hover:text-danger-text"
                     >
-                      <X className="h-3 w-3" />
+                      <X aria-hidden="true" className="h-3 w-3" />
                     </button>
                   </Badge>
                 ))}
@@ -194,43 +196,31 @@ export default function QuickReplyDialog({
             )}
           </div>
 
-          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-subtle p-3 sm:flex-nowrap">
             <div className="min-w-0">
-              <Label htmlFor="is-active" className="text-sm font-medium">
-                Respuesta activa
+              <Label htmlFor="respuesta-activa" className="text-sm font-medium">
+                {t('dialogo.activa')}
               </Label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 break-words">
-                Las respuestas inactivas no aparecen en sugerencias
-              </p>
+              <p className="break-words text-xs text-fg-muted">{t('dialogo.activaAyuda')}</p>
             </div>
-            <Switch
-              id="is-active"
-              checked={isActive}
-              onCheckedChange={setIsActive}
-            />
+            <Switch id="respuesta-activa" checked={isActive} onCheckedChange={setIsActive} />
           </div>
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving}
-          >
-            Cancelar
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            {tc('cancelar')}
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!title.trim() || !content.trim() || saving}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
+          <Button onClick={handleSave} disabled={!title.trim() || !content.trim() || saving}>
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
+                <Loader2 aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" />
+                {tc('guardando')}
               </>
+            ) : reply ? (
+              tc('guardarCambios')
             ) : (
-              reply ? 'Guardar Cambios' : 'Crear Respuesta'
+              t('dialogo.crear')
             )}
           </Button>
         </DialogFooter>

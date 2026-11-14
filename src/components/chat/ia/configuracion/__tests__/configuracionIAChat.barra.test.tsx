@@ -7,7 +7,8 @@
  * guardar · Descartar · Guardar cambios») y no pinta la suya; fuera del
  * diálogo conserva su propia barra. Qué se guarda no cambia.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import { CambiosContext, type CambiosPanel } from '@/components/configuracion/dialogo/cambiosSinGuardar';
 
 const mockUpdate = jest.fn();
@@ -61,10 +62,11 @@ beforeEach(() => {
 test('en el diálogo: registra los cambios en la barra del diálogo y no pinta la suya', async () => {
   const registros: (CambiosPanel | null)[] = [];
   const registrar = jest.fn((c: CambiosPanel | null) => registros.push(c));
-  render(
+  renderConIdioma(
     <CambiosContext.Provider value={registrar}>
       <ConfiguracionIAChat />
     </CambiosContext.Provider>,
+    { idioma: 'es' },
   );
   const campo = await screen.findByRole('spinbutton', { name: 'creatividad' });
   await waitFor(() => expect((campo as HTMLInputElement).value).toBe('0.7'));
@@ -95,7 +97,7 @@ test('en el diálogo: registra los cambios en la barra del diálogo y no pinta l
 });
 
 test('fuera del diálogo: conserva su propia barra', async () => {
-  render(<ConfiguracionIAChat />);
+  renderConIdioma(<ConfiguracionIAChat />, { idioma: 'es' });
   const campo = await screen.findByRole('spinbutton', { name: 'creatividad' });
   await waitFor(() => expect((campo as HTMLInputElement).value).toBe('0.7'));
   fireEvent.change(campo, { target: { value: '0.3' } });

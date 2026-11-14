@@ -1,6 +1,8 @@
 'use client';
 
+/** Tarjeta de una etiqueta de conversación. Textos en `chatConfig` (es/en/fr/pt), colores por tokens. */
 import { MoreVertical, Edit, Trash2, MessageSquare } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,53 +19,42 @@ interface TagCardProps {
 }
 
 export default function TagCard({ tag, onEdit, onDelete }: TagCardProps) {
+  const t = useTranslations('chatConfig.etiquetas');
+  const tc = useTranslations('chatConfig.comun');
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className="w-4 h-4 rounded-full flex-shrink-0"
-            style={{ backgroundColor: tag.color }}
-          />
-          <div>
-            <h3 className="font-medium text-gray-900 dark:text-white">
-              {tag.name}
-            </h3>
-            {tag.description && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {tag.description}
-              </p>
-            )}
+    <div className="rounded-lg border border-line bg-surface p-4 transition-shadow hover:shadow-md">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-3">
+          {/* El color es el dato de la etiqueta: se pinta tal cual. */}
+          <div aria-hidden="true" className="h-4 w-4 flex-shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+          <div className="min-w-0">
+            <h3 className="truncate font-medium text-fg">{tag.name}</h3>
+            {tag.description && <p className="mt-1 text-sm text-fg-muted">{tag.description}</p>}
           </div>
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreVertical className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={tc('masAcciones', { nombre: tag.name })}>
+              <MoreVertical aria-hidden="true" className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => onEdit(tag)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
+              <Edit aria-hidden="true" className="mr-2 h-4 w-4" />
+              {tc('editar')}
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onDelete(tag)}
-              className="text-red-600 dark:text-red-400"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Eliminar
+            <DropdownMenuItem onClick={() => onDelete(tag)} className="text-danger-text">
+              <Trash2 aria-hidden="true" className="mr-2 h-4 w-4" />
+              {tc('eliminar')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      <div className="mt-4 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <MessageSquare className="h-4 w-4" />
-        <span>
-          {tag.usage_count || 0} conversación{(tag.usage_count || 0) !== 1 ? 'es' : ''}
-        </span>
+      <div className="mt-4 flex items-center gap-2 text-sm text-fg-muted">
+        <MessageSquare aria-hidden="true" className="h-4 w-4" />
+        <span>{t('conversaciones', { n: tag.usage_count || 0 })}</span>
       </div>
     </div>
   );

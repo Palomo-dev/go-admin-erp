@@ -50117,7 +50117,26 @@
           "tokens": "Tokens",
           "fragmentos": "Snippets"
         },
-        "simulada": "Test reply built from your snippets: it doesn’t call the model or use credits.",
+        "avisoCobro": "Each test uses AI credits, just like a reply to a customer. If the test fails, you aren’t charged.",
+        "sinCreditos": {
+          "titulo": "You have no AI credits",
+          "descripcion": "Each test uses credits, just like a real reply. Top up to keep testing; your AI settings don’t change.",
+          "recargar": "Top up credits"
+        },
+        "fallo": {
+          "proveedor": {
+            "titulo": "The AI couldn’t reply",
+            "descripcion": "The AI provider didn’t respond. No credits were used; try again in a few seconds."
+          },
+          "sin_permiso": {
+            "titulo": "You can’t test the AI",
+            "descripcion": "Testing the chat AI requires organization admin permission."
+          },
+          "error": {
+            "titulo": "The test couldn’t be completed",
+            "descripcion": "Check your connection and try again. If the test didn’t get a reply, no credits were used."
+          }
+        },
         "convertir": "Turn into a snippet",
         "ajustes": "Test settings",
         "ajustesDescripcion": "They don’t change the real settings.",

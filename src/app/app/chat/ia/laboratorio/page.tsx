@@ -3,14 +3,17 @@
 /**
  * Laboratorio de la IA del chat (Figma 91-chat-34): pregunta de prueba,
  * respuesta con sus cifras, ajustes de la prueba (no cambian la configuración
- * real) y fragmentos que usó. La lógica es la de siempre (`aiLabService`):
- * busca fragmentos y arma una respuesta simulada que no llama al modelo ni
- * gasta créditos. «Convertir en fragmento» guarda la respuesta como
- * conocimiento con `knowledgeService`.
+ * real) y fragmentos que usó. «Probar» genera la respuesta REAL de la IA en el
+ * servidor (`aiLabService.runTest` → `POST /api/chat/ai/lab-test`, mismo prompt
+ * y modelo que responden a los clientes) y descuenta créditos como una
+ * respuesta a un cliente; si falla, no se cobra (Figma 93-chat-pendientes 04).
+ * Sin créditos, «Probar» se deshabilita y se ofrece recargar (Figma 05).
+ * «Convertir en fragmento» guarda la respuesta como conocimiento con
+ * `knowledgeService`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Bot, FilePlus2, Play } from 'lucide-react';
+import { Bot, FilePlus2, Info, Play } from 'lucide-react';
 import { AvisoTonal, EmptyState, FormField, PageHeader, Tarjeta, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -18,8 +21,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import AILabService, { type Channel, type LabSettings, type LabTestResult, type RetrievedFragment } from '@/lib/services/aiLabService';
+import AILabService, { type Channel, type CodigoFalloPrueba, type LabSettings, type LabTestResult, type RetrievedFragment } from '@/lib/services/aiLabService';
+import { usePlanSesion } from '@/components/shell/sesion/usePlanSesion';
 import KnowledgeService, { type CreateFragmentData, type KnowledgeSource } from '@/lib/services/knowledgeService';
 import { IANavTabs } from '@/components/chat/ia/IANavTabs';
 import { FragmentDialog } from '@/components/chat/conocimiento';
@@ -38,10 +43,13 @@ const AJUSTES_BASE: LabSettings = {
 const CREATIVIDAD = [0.3, 0.7, 1] as const;
 const LARGOS = [200, 500, 1000] as const;
 const EJEMPLOS = ['estadoPedido', 'horarios', 'mediosPago'] as const;
+/** Donde se recargan los créditos de IA (Organización › Plan y facturación › «Comprar más»). */
+const RUTA_RECARGAR_CREDITOS = '/app/organizacion/plan';
 
 export default function AILaboratorioPage() {
   const t = useTranslations('chatModulo.ia');
   const { toast } = useToast();
+  const locale = useLocaleIntl();
   const { organization } = useOrganization();
   const organizationId = organization?.id;
   const memberId = useMiembroActual(organizationId);
@@ -56,6 +64,14 @@ export default function AILaboratorioPage() {
   const [resultado, setResultado] = useState<LabTestResult | null>(null);
   const [fuentes, setFuentes] = useState<KnowledgeSource[]>([]);
   const [convertir, setConvertir] = useState(false);
+  const [fallo, setFallo] = useState<Exclude<CodigoFalloPrueba, 'sin_creditos'> | null>(null);
+  // Saldo de créditos de IA: el de `GET /api/me/plan` (misma fuente que Plan y
+  // facturación) y, tras cada prueba, el que devuelve el servidor al cobrar.
+  const plan = usePlanSesion();
+  const [saldoPrueba, setSaldoPrueba] = useState<number | null>(null);
+  const saldoPlan = plan.datos ? plan.datos.uso.creditosIa.restantesPlan + plan.datos.uso.creditosIa.comprados : null;
+  const saldo = saldoPrueba ?? saldoPlan;
+  const sinCreditos = saldo !== null && saldo <= 0;
 
   const cargar = useCallback(async () => {
     if (!organizationId) return;
@@ -82,8 +98,9 @@ export default function AILaboratorioPage() {
 
   const probar = async () => {
     const q = pregunta.trim();
-    if (!organizationId || !q) return;
+    if (!organizationId || !q || sinCreditos) return;
     setProbando(true);
+    setFallo(null);
     try {
       const s = new AILabService(organizationId);
       const encontrados = await s.searchFragmentsByText(q, ajustes.maxFragments);
@@ -92,9 +109,19 @@ export default function AILaboratorioPage() {
         setElegidos(encontrados.map((f) => f.id));
       }
       const usados = encontrados.length > 0 ? encontrados : fragmentos.filter((f) => elegidos.includes(f.id));
-      const r = await s.runLocalTest(q, ajustes, usados);
-      setResultado(r);
-      await s.logLabTest(r, memberId ?? undefined);
+      const r = await s.runTest(q, ajustes, usados);
+      if (r.ok) {
+        setResultado(r.resultado);
+        if (r.saldoRestante !== null) setSaldoPrueba(r.saldoRestante);
+        await s.logLabTest(r.resultado, memberId ?? undefined);
+      } else if (r.codigo === 'sin_creditos') {
+        setResultado(null);
+        setSaldoPrueba(0);
+      } else {
+        setFallo(r.codigo);
+      }
+      // El saldo vuelve a salir de la fuente única en cuanto se refresca.
+      void plan.recargar().then(() => setSaldoPrueba(null));
     } catch (e) {
       console.error('Error en la prueba:', e);
       toast({ title: t('laboratorio.toasts.errorPrueba'), variant: 'destructive' });
@@ -182,15 +209,42 @@ export default function AILaboratorioPage() {
                   </button>
                 ))}
               </div>
-              <button type="button" onClick={probar} disabled={!pregunta.trim() || probando || !organizationId} className={clasesBoton({ className: 'self-end' })}>
-                <Play aria-hidden="true" className="size-4" strokeWidth={1.5} />
-                {probando ? t('laboratorio.probando') : t('laboratorio.probar')}
-              </button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <p id="aviso-cobro-laboratorio" className="min-w-0 flex-1 text-[13px] text-fg-secondary">
+                  {t('laboratorio.avisoCobro')}
+                </p>
+                <button
+                  type="button"
+                  onClick={probar}
+                  disabled={!pregunta.trim() || probando || !organizationId || sinCreditos}
+                  aria-describedby="aviso-cobro-laboratorio"
+                  className={clasesBoton({ className: 'self-end sm:self-auto' })}
+                >
+                  <Play aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  {probando ? t('laboratorio.probando') : t('laboratorio.probar')}
+                </button>
+              </div>
             </div>
           </Tarjeta>
 
           <Tarjeta titulo={t('laboratorio.respuesta')}>
-            {probando ? (
+            {sinCreditos && !probando ? (
+              <AvisoTonal
+                tono="neutro"
+                icono={Info}
+                rol="status"
+                titulo={t('laboratorio.sinCreditos.titulo')}
+                descripcion={t('laboratorio.sinCreditos.descripcion')}
+                accion={{ etiqueta: t('laboratorio.sinCreditos.recargar'), href: RUTA_RECARGAR_CREDITOS }}
+              />
+            ) : fallo && !probando ? (
+              <AvisoTonal
+                tono="peligro"
+                rol="alert"
+                titulo={t(`laboratorio.fallo.${fallo}.titulo`)}
+                descripcion={t(`laboratorio.fallo.${fallo}.descripcion`)}
+              />
+            ) : probando ? (
               <div className="flex flex-col gap-2" aria-hidden="true">
                 <Skeleton className="h-20" />
                 <Skeleton className="h-6 w-2/3" />
@@ -200,11 +254,11 @@ export default function AILaboratorioPage() {
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="whitespace-pre-wrap rounded-xl border border-line-brand bg-brand-tint px-4 py-3 text-sm leading-6 text-fg">{resultado.response}</div>
-                <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {/* Cifras reales de la prueba. Sin «Confianza»: la IA de atención no calcula ninguna. */}
+                <dl className="grid grid-cols-3 gap-3 sm:max-w-md">
                   {[
-                    [t('laboratorio.metricas.confianza'), m ? m.confidenceScore.toFixed(2) : '—'],
-                    [t('laboratorio.metricas.tiempo'), m ? `${(m.processingTimeMs / 1000).toFixed(1)} s` : '—'],
-                    [t('laboratorio.metricas.tokens'), m ? m.totalTokens.toLocaleString() : '—'],
+                    [t('laboratorio.metricas.tiempo'), m ? `${(m.processingTimeMs / 1000).toLocaleString(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 })} s` : '—'],
+                    [t('laboratorio.metricas.tokens'), m ? m.totalTokens.toLocaleString(locale) : '—'],
                     [t('laboratorio.metricas.fragmentos'), m ? m.retrievedFragments : '—'],
                   ].map(([k, v]) => (
                     <div key={String(k)}>
@@ -213,7 +267,6 @@ export default function AILaboratorioPage() {
                     </div>
                   ))}
                 </dl>
-                <AvisoTonal tono="neutro" compacto titulo={t('laboratorio.simulada')} />
                 <button type="button" onClick={abrirConvertir} className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'self-start' })}>
                   <FilePlus2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
                   {t('laboratorio.convertir')}

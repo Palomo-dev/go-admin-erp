@@ -50132,7 +50132,26 @@
           "tokens": "Tokens",
           "fragmentos": "Fragmentos"
         },
-        "simulada": "Respuesta de prueba armada con tus fragmentos: no llama al modelo ni gasta créditos.",
+        "avisoCobro": "Cada prueba descuenta créditos de IA, igual que una respuesta a un cliente. Si la prueba falla, no se cobra.",
+        "sinCreditos": {
+          "titulo": "No tienes créditos de IA",
+          "descripcion": "Cada prueba usa créditos, igual que una respuesta real. Recarga para seguir probando; la configuración de la IA no cambia.",
+          "recargar": "Recargar créditos"
+        },
+        "fallo": {
+          "proveedor": {
+            "titulo": "La IA no pudo responder",
+            "descripcion": "El proveedor de IA no respondió. No se descontaron créditos; inténtalo de nuevo en unos segundos."
+          },
+          "sin_permiso": {
+            "titulo": "No puedes probar la IA",
+            "descripcion": "Probar la IA del chat requiere permiso de administrador de la organización."
+          },
+          "error": {
+            "titulo": "No se pudo completar la prueba",
+            "descripcion": "Revisa tu conexión e inténtalo de nuevo. Si la prueba no llegó a responder, no se descontaron créditos."
+          }
+        },
         "convertir": "Convertir en fragmento",
         "ajustes": "Ajustes de la prueba",
         "ajustesDescripcion": "No cambian la configuración real.",

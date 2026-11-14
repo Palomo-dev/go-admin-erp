@@ -50117,7 +50117,26 @@
           "tokens": "Jetons",
           "fragmentos": "Fragments"
         },
-        "simulada": "Réponse de test construite avec vos fragments : n’appelle pas le modèle et ne consomme pas de crédits.",
+        "avisoCobro": "Chaque test consomme des crédits d’IA, comme une réponse à un client. Si le test échoue, rien n’est facturé.",
+        "sinCreditos": {
+          "titulo": "Vous n’avez plus de crédits d’IA",
+          "descripcion": "Chaque test consomme des crédits, comme une vraie réponse. Rechargez pour continuer à tester ; la configuration de l’IA ne change pas.",
+          "recargar": "Recharger les crédits"
+        },
+        "fallo": {
+          "proveedor": {
+            "titulo": "L’IA n’a pas pu répondre",
+            "descripcion": "Le fournisseur d’IA n’a pas répondu. Aucun crédit n’a été décompté ; réessayez dans quelques secondes."
+          },
+          "sin_permiso": {
+            "titulo": "Vous ne pouvez pas tester l’IA",
+            "descripcion": "Tester l’IA du chat nécessite l’autorisation d’administrateur de l’organisation."
+          },
+          "error": {
+            "titulo": "Le test n’a pas pu aboutir",
+            "descripcion": "Vérifiez votre connexion et réessayez. Si le test n’a pas reçu de réponse, aucun crédit n’a été décompté."
+          }
+        },
         "convertir": "Transformer en fragment",
         "ajustes": "Réglages du test",
         "ajustesDescripcion": "Ils ne modifient pas la configuration réelle.",

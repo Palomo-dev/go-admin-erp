@@ -211,6 +211,28 @@ test('Plan y facturación ya no saca del diálogo: muestra su resumen (Figma 93-
   expect(screen.queryByRole('link', { name: /Abrir/ })).toBeNull();
 });
 
+test('Integraciones: Catálogo, Mis conexiones y Actividad son pestañas-enlace que salen del diálogo (94-config-04)', async () => {
+  servidor([...TODO, { id: 'integraciones.general', puedeEditar: true, ajustes: {} }, { id: 'integraciones.desarrolladores', puedeEditar: true, ajustes: {} }]);
+  ir('/app/inicio?config=integraciones.desarrolladores');
+  renderConIdioma(<ConfiguracionDialogoRaiz />, { idioma: 'es' });
+  const dialogo = await screen.findByRole('dialog', { name: 'Configuración' });
+  const pestanas = await within(dialogo).findByRole('radiogroup', { name: 'Partes de Integraciones' });
+  expect(within(pestanas).getByRole('radio', { name: 'Desarrolladores', checked: true })).toBeTruthy();
+  expect(within(pestanas).getByRole('radio', { name: 'General' })).toBeTruthy();
+  expect(within(dialogo).getByRole('link', { name: 'Abrir Catálogo en Integraciones' }).getAttribute('href')).toBe('/app/integraciones/conexiones');
+  expect(within(dialogo).getByRole('link', { name: 'Abrir Mis conexiones en Integraciones' }).getAttribute('href')).toBe('/app/integraciones/conexiones?tab=mis');
+  fireEvent.click(within(dialogo).getByRole('link', { name: 'Abrir Actividad en Integraciones' }));
+  expect(mockPush).toHaveBeenCalledWith('/app/integraciones/conexiones?tab=actividad');
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+test('sin Integraciones en el plan no hay pestañas-enlace', async () => {
+  ir('/app/inicio?config=chat.general');
+  renderConIdioma(<ConfiguracionDialogoRaiz />, { idioma: 'es' });
+  await screen.findByRole('dialog', { name: 'Configuración' });
+  expect(screen.queryByRole('link', { name: /en Integraciones/ })).toBeNull();
+});
+
 test('sección enlace: fila con «Abrir» que navega y cierra el diálogo', async () => {
   servidor([...TODO, { id: 'pos.reservas-mesas', puedeEditar: true, ajustes: {} }]);
   ir('/app/inicio?config=pos.reservas-mesas');

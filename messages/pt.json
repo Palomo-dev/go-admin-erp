@@ -51447,6 +51447,20 @@
         "titulo": "Não foi possível carregar o plano",
         "descripcion": "Tente novamente em alguns segundos."
       }
+    },
+    "enlacesPestana": {
+      "integraciones_catalogo": {
+        "etiqueta": "Catálogo",
+        "aria": "Abrir Catálogo em Integrações"
+      },
+      "integraciones_mis": {
+        "etiqueta": "Minhas conexões",
+        "aria": "Abrir Minhas conexões em Integrações"
+      },
+      "integraciones_actividad": {
+        "etiqueta": "Atividade",
+        "aria": "Abrir Atividade em Integrações"
+      }
     }
   },
   "configuracionTextos": {

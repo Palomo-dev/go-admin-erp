@@ -5,7 +5,8 @@
  * correo) y de voz (Figma CRM 1395:17 listo, 1404:829863 vacío, 1404:830283
  * cargando, 1404:830739 error).
  *
- * Una sola petición (`GET /api/crm/campaigns/unified` → RPC
+ * Sin buscador (el diseño filtra solo por canal: Todas · Voz IA · WhatsApp y
+ * correo). Una sola petición (`GET /api/crm/campaigns/unified` → RPC
  * `crm_campaigns_unificadas`) trae filas, total por canal y `canManage`. Las de
  * voz abren su detalle en marcha (`/app/crm/campanas/voz/[id]`), donde están
  * pausa, reanudación y parada de emergencia; las de mensajes conservan aquí
@@ -16,11 +17,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Bot, Copy, Eye, Mail, MessageSquare, Pause, Play, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
+import { Bot, Copy, Eye, Mail, MessageSquare, Pause, Play, Plus, Send, ShieldCheck, Trash2, XCircle } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 import { PageHeader } from '@/components/kit/PageHeader';
 import { SegmentedControl } from '@/components/kit/SegmentedControl';
-import { SearchInput } from '@/components/kit/SearchInput';
 import { DataTable, type ColumnaTabla, type EstadoTabla } from '@/components/kit/DataTable';
 import { Pagination } from '@/components/kit/Pagination';
 import { StatusBadge } from '@/components/kit/StatusBadge';
@@ -29,10 +29,11 @@ import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
 import { clasesBoton } from '@/components/kit/botonClases';
 import type { AccionFila } from '@/components/kit/acciones';
 import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { pedirCrm, ErrorApiCrm } from '@/components/crm/acciones/apiCrm';
 import { CANALES_CAMPANA, TAMANO_PAGINA_CAMPANAS, type CampanaUnificada, type CanalCampana } from '@/lib/services/crm/campaignsUnificadasLogica';
 import { CampanasService } from './CampanasService';
-import { accionesCampanaMensajes, estadoFilaCampana, parametrosCampanas, rutaCampana, type AccionCampana } from './campanasListaLogica';
+import { accionesCampanaMensajes, estadoFilaCampana, parametrosCampanas, progresoFila, resultadoFila, rutaCampana, type AccionCampana } from './campanasListaLogica';
 
 interface Respuesta {
   rows: CampanaUnificada[];
@@ -47,8 +48,8 @@ export function CampanasPage() {
   const t = useTranslations('crm.campanasLista');
   const router = useRouter();
   const entero = useFormatoEntero();
+  const { formatDateTime } = useFormatDate();
   const [canal, setCanal] = useState<CanalCampana>('all');
-  const [q, setQ] = useState('');
   const [pagina, setPagina] = useState(1);
   const [revision, setRevision] = useState(0);
   const [datos, setDatos] = useState<Respuesta | null>(null);
@@ -59,17 +60,17 @@ export function CampanasPage() {
   useEffect(() => {
     const ctrl = new AbortController();
     setEstado('cargando');
-    pedirCrm<Respuesta>(`/api/crm/campaigns/unified?${parametrosCampanas({ channel: canal, q, page: pagina })}`, { signal: ctrl.signal })
+    pedirCrm<Respuesta>(`/api/crm/campaigns/unified?${parametrosCampanas({ channel: canal, q: '', page: pagina })}`, { signal: ctrl.signal })
       .then(({ data }) => {
         if (ctrl.signal.aborted) return;
         setDatos(data);
-        setEstado(data.rows.length ? 'listo' : q.trim() || canal !== 'all' ? 'sinResultados' : 'vacio');
+        setEstado(data.rows.length ? 'listo' : canal !== 'all' ? 'sinResultados' : 'vacio');
       })
       .catch((e: unknown) => {
         if (!ctrl.signal.aborted) setEstado(e instanceof ErrorApiCrm && (e.status === 401 || e.status === 403) ? 'sinPermiso' : 'error');
       });
     return () => ctrl.abort();
-  }, [canal, q, pagina, revision]);
+  }, [canal, pagina, revision]);
 
   const recargar = () => setRevision((n) => n + 1);
 
@@ -106,15 +107,19 @@ export function CampanasPage() {
   ];
 
   const resultado = (c: CampanaUnificada) => {
-    if (c.progress.total === 0) return <span className="text-fg-muted">—</span>;
-    const r = c.result;
-    return c.source === 'voice' ? (
-      <span className="text-[13px] text-fg-secondary">
-        {t('resultado.voz', { completadas: entero(r.completed ?? 0), fallidas: entero(r.failed ?? 0) })}
-        {(r.active ?? 0) > 0 && <span className="block text-success-text">{t('resultado.enCurso', { n: entero(r.active) })}</span>}
-      </span>
-    ) : (
-      <span className="text-[13px] text-fg-secondary">{t('resultado.mensajes', { entregados: entero(r.delivered ?? 0), leidos: entero(r.read ?? 0), respondieron: entero(r.replied ?? 0) })}</span>
+    const r = resultadoFila(c);
+    if (r.modo === 'vacio') return <span className="text-[13px] text-fg-muted">—</span>;
+    const [principal, secundaria] =
+      r.modo === 'voz'
+        ? [t('resultado.contactoEfectivo', { pct: r.pctEfectivo }), r.enCurso > 0 ? t('resultado.enCurso', { n: entero(r.enCurso) }) : null]
+        : r.modo === 'destinatarios'
+          ? [t('resultado.destinatarios', { n: entero(r.n) }), t('resultado.conConsentimiento')]
+          : [t(r.canal === 'email' ? 'resultado.apertura' : 'resultado.leidos', { pct: r.pctLectura }), t('resultado.respondieron', { pct: r.pctRespuesta })];
+    return (
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-fg">{principal}</p>
+        {secundaria && <p className="truncate text-xs text-fg-secondary">{secundaria}</p>}
+      </div>
     );
   };
 
@@ -137,19 +142,35 @@ export function CampanasPage() {
     const e = estadoFilaCampana(c);
     return <StatusBadge estado={e.clave} etiqueta={t(`estados.${e.clave}`)} tono={e.tono} />;
   };
-  const progreso = (c: CampanaUnificada) =>
-    c.progress.total > 0 ? (
-      <BarraProgreso valor={c.progress.pct} etiqueta={t('columnas.progreso')} textoValor={t('progreso', { hechos: entero(c.progress.done), total: entero(c.progress.total) })} tamano="sm" />
-    ) : (
-      <span className="text-[13px] text-fg-muted">{t('sinAudiencia')}</span>
+  const progreso = (c: CampanaUnificada) => {
+    const p = progresoFila(c);
+    const texto =
+      p.modo === 'conteo'
+        ? t('progreso', { hechos: entero(p.hechos), total: entero(p.total) })
+        : p.modo === 'programada'
+          ? p.fecha
+            ? t('progresoSale', { fecha: formatDateTime(p.fecha) })
+            : t('estados.programada')
+          : p.modo === 'enviados'
+            ? t('progresoEnviados', { n: entero(p.enviados) })
+            : t('sinProgramar');
+    return (
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex items-baseline justify-between gap-2 text-[13px] leading-[18px]">
+          <span className="truncate text-fg-secondary">{texto}</span>
+          <span className="shrink-0 font-medium tabular-nums text-fg">{t('porcentaje', { pct: p.pct })}</span>
+        </div>
+        <BarraProgreso valor={p.pct} etiqueta={t('columnas.progreso')} textoValor={texto} tamano="md" />
+      </div>
     );
+  };
 
   const columnas: ColumnaTabla<CampanaUnificada>[] = [
     { id: 'nombre', encabezado: t('columnas.campana'), celda: nombre },
     { id: 'canal', encabezado: t('columnas.canal'), celda: canalCelda, ocultarDebajo: 'sm' },
     { id: 'segmento', encabezado: t('columnas.segmento'), celda: (c) => <span className="text-[13px] text-fg-secondary">{c.segmentName ?? '—'}</span>, ocultarDebajo: 'lg' },
     { id: 'estado', encabezado: t('columnas.estado'), celda: estadoCelda },
-    { id: 'progreso', encabezado: t('columnas.progreso'), celda: progreso, ocultarDebajo: 'md', ancho: 200 },
+    { id: 'progreso', encabezado: t('columnas.progreso'), celda: progreso, ocultarDebajo: 'md', ancho: 180 },
     { id: 'resultado', encabezado: t('columnas.resultado'), celda: resultado, ocultarDebajo: 'xl' },
   ];
 
@@ -169,12 +190,10 @@ export function CampanasPage() {
         migas={[{ etiqueta: t('migas.crm'), href: '/app/crm' }, { etiqueta: t('titulo') }]}
         acciones={
           <>
-            <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={recargar} disabled={estado === 'cargando'} aria-label={t('actualizar')}>
-              <RefreshCw aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            </button>
+            {/* La verificación contra el RNE es por campaña de voz y vive con ellas (zona del agente de voz). */}
             <Link href="/app/crm/agentes-ia?pestana=campanas" className={clasesBoton({ variante: 'secundario' })}>
-              <Bot aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('nuevaVoz')}
+              <ShieldCheck aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('verificarRne')}
             </Link>
             {nueva}
           </>
@@ -182,7 +201,7 @@ export function CampanasPage() {
         movil={{ accion: nueva }}
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex">
         <SegmentedControl<CanalCampana>
           etiqueta={t('canal')}
           valor={canal}
@@ -190,18 +209,7 @@ export function CampanasPage() {
             setCanal(v);
             setPagina(1);
           }}
-          opciones={CANALES_CAMPANA.map((v) => ({ valor: v, etiqueta: t(`filtros.${v}`), contador: datos?.porCanal[v] }))}
-        />
-        <SearchInput
-          className="w-full sm:ml-auto sm:max-w-xs"
-          value={q}
-          onChange={(v) => {
-            setQ(v);
-            setPagina(1);
-          }}
-          etiqueta={t('buscar')}
-          placeholder={t('buscar')}
-          pistaAtajo={false}
+          opciones={CANALES_CAMPANA.map((v) => ({ valor: v, etiqueta: t(`filtros.${v}`) }))}
         />
       </div>
 
@@ -227,14 +235,12 @@ export function CampanasPage() {
             {progreso(c)}
           </div>
         )}
-        termino={q.trim() || undefined}
         vacio={{ icono: Send, titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), accion: { etiqueta: t('nueva'), href: '/app/crm/campanas/nuevo', icono: Plus } }}
-        sinResultados={{ titulo: t('sinResultados.titulo'), descripcion: t('sinResultados.descripcion') }}
+        sinResultados={{ titulo: t('sinResultados.titulo'), descripcion: t('sinResultados.descripcionCanal') }}
         error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
         sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
         onReintentar={recargar}
         onLimpiarFiltros={() => {
-          setQ('');
           setCanal('all');
           setPagina(1);
         }}

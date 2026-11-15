@@ -29959,7 +29959,7 @@
     },
     "campanasLista": {
       "titulo": "Campagnes",
-      "subtitulo": "Messages et appels vocaux au même endroit",
+      "subtitulo": "Agent vocal IA, WhatsApp et e-mail vers un segment, dans les horaires de la loi 2300 et avec vérification RNE",
       "migas": {
         "crm": "CRM"
       },
@@ -29970,8 +29970,8 @@
       "buscar": "Rechercher une campagne ou un segment",
       "filtros": {
         "all": "Toutes",
-        "voice": "Voix",
-        "messages": "Messages"
+        "voice": "Voix IA",
+        "messages": "WhatsApp et e-mail"
       },
       "columnas": {
         "campana": "Campagne",
@@ -30008,7 +30008,13 @@
       "resultado": {
         "voz": "{completadas} terminés · {fallidas} échoués",
         "enCurso": "{n} en cours",
-        "mensajes": "{entregados} remis · {leidos} lus · {respondieron} réponses"
+        "mensajes": "{entregados} remis · {leidos} lus · {respondieron} réponses",
+        "contactoEfectivo": "{pct} % de contact effectif",
+        "destinatarios": "{n} destinataires",
+        "conConsentimiento": "avec consentement",
+        "apertura": "{pct} % d’ouverture",
+        "leidos": "{pct} % lus",
+        "respondieron": "{pct} % ont répondu"
       },
       "acciones": {
         "ver": "Voir le détail",
@@ -30034,16 +30040,17 @@
         "confirmar": "Supprimer la campagne"
       },
       "vacio": {
-        "titulo": "Aucune campagne pour le moment",
-        "descripcion": "Envoyez un modèle WhatsApp ou un e-mail à un segment, ou faites appeler un agent vocal."
+        "titulo": "Vous n’avez encore lancé aucune campagne",
+        "descripcion": "Appelez avec un agent IA ou envoyez WhatsApp et e-mail à un segment. Avant d’appeler, nous vous demanderons de vérifier le RNE et votre politique de données."
       },
       "sinResultados": {
         "titulo": "Aucune campagne ne correspond",
-        "descripcion": "Essayez un autre nom ou changez de canal."
+        "descripcion": "Essayez un autre nom ou changez de canal.",
+        "descripcionCanal": "Aucune campagne sur ce canal pour l’instant."
       },
       "error": {
         "titulo": "Impossible de charger les campagnes",
-        "descripcion": "Vérifiez votre connexion et réessayez."
+        "descripcion": "Les campagnes en cours continuent d’appeler même si cette page échoue. Pour en arrêter une, utilisez « Arrêt d’urgence » depuis votre téléphone ou réessayez."
       },
       "sinPermiso": {
         "titulo": "Pas de permission pour voir les campagnes",
@@ -30201,7 +30208,12 @@
         "bounced": "Rejeté",
         "failed": "Échoué",
         "skipped": "Ignoré"
-      }
+      },
+      "verificarRne": "Vérifier le RNE",
+      "progresoSale": "Envoi {fecha}",
+      "progresoEnviados": "{n} envoyés",
+      "sinProgramar": "Non programmée",
+      "porcentaje": "{pct} %"
     },
     "duplicados": {
       "titulo": "{n, plural, one {{valor} doublon possible} other {{valor} doublons possibles}}",

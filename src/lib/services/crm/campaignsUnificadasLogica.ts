@@ -42,7 +42,7 @@ export interface CampanaUnificada {
   scheduledAt: string | null;
   createdAt: string;
   progress: { done: number; total: number; pct: number };
-  /** Voz: completadas/fallidas/en curso. Mensajes: entregados/leídos/respondidos. */
+  /** Voz: completadas/fallidas/en curso. Mensajes: enviados/entregados/leídos/respondidos. */
   result: Record<string, number>;
 }
 
@@ -76,7 +76,7 @@ export function proyectarCampana(c: CampanaUnificadaRaw): CampanaUnificada {
     progress: { done, total, pct: total ? Math.min(100, Math.round((done / total) * 100)) : 0 },
     result: voz
       ? { completed: n(vc.completed) + n(vc.transferred), failed: n(vc.failed), active: n(vc.in_progress) }
-      : { delivered: n(counts?.delivered), read: n(counts?.read), replied: n(counts?.replied) },
+      : { sent: n(counts?.sent ?? c.stats?.sent_count), delivered: n(counts?.delivered), read: n(counts?.read), replied: n(counts?.replied) },
   };
 }
 

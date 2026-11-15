@@ -56,3 +56,61 @@ export function parametrosCampanas(f: { channel: string; q: string; page: number
   if (f.q.trim()) p.set('q', f.q.trim());
   return p.toString();
 }
+
+/**
+ * Celda «Progreso» (Figma 1395:17): texto a la izquierda, porcentaje a la
+ * derecha y barra debajo. El texto cambia con el estado:
+ *  - en marcha → «1.484 de 3.905»;
+ *  - programada → «Sale <fecha>»;
+ *  - de mensajes ya enviada → «2.110 enviados»;
+ *  - borrador → «Sin programar».
+ */
+export type ProgresoFila =
+  | { modo: 'conteo'; hechos: number; total: number; pct: number }
+  | { modo: 'programada'; fecha: string | null; pct: number }
+  | { modo: 'enviados'; enviados: number; pct: number }
+  | { modo: 'sinProgramar'; pct: number };
+
+export function progresoFila(c: Pick<CampanaUnificada, 'source' | 'status' | 'scheduledAt' | 'progress'>): ProgresoFila {
+  const { done, total, pct } = c.progress;
+  if (c.status === 'scheduled') return { modo: 'programada', fecha: c.scheduledAt, pct };
+  if (c.status === 'draft' || c.status === 'materializing') return { modo: 'sinProgramar', pct: 0 };
+  if (c.source === 'message' && c.status === 'sent') return { modo: 'enviados', enviados: done, pct };
+  return { modo: 'conteo', hechos: done, total, pct };
+}
+
+/**
+ * Celda «Resultado» (Figma 1395:17), dos líneas:
+ *  - voz: «22 % contacto efectivo» (llamadas completadas sobre las hechas) y,
+ *    si hay llamadas en curso, cuántas;
+ *  - mensajes aún sin salir: «640 destinatarios · con consentimiento» (la
+ *    audiencia calculada ya excluye a quien no dio consentimiento);
+ *  - mensajes ya enviados: % de lectura (apertura en correo) y % de respuesta.
+ *  - sin audiencia o sin llamadas hechas: «—».
+ */
+export type ResultadoFila =
+  | { modo: 'vacio' }
+  | { modo: 'voz'; pctEfectivo: number; enCurso: number }
+  | { modo: 'destinatarios'; n: number }
+  | { modo: 'interaccion'; canal: 'email' | 'whatsapp'; pctLectura: number; pctRespuesta: number };
+
+const pctDe = (parte: number, base: number) => (base > 0 ? Math.min(100, Math.round((parte / base) * 100)) : 0);
+
+export function resultadoFila(c: Pick<CampanaUnificada, 'source' | 'status' | 'channel' | 'progress' | 'result'>): ResultadoFila {
+  const { done, total } = c.progress;
+  if (total === 0) return { modo: 'vacio' };
+  const r = c.result;
+  if (c.source === 'voice') {
+    if (done === 0) return { modo: 'vacio' };
+    return { modo: 'voz', pctEfectivo: pctDe(r.completed ?? 0, done), enCurso: r.active ?? 0 };
+  }
+  if (c.status === 'draft' || c.status === 'materializing' || c.status === 'scheduled') return { modo: 'destinatarios', n: total };
+  const base = (r.sent ?? 0) > 0 ? (r.sent ?? 0) : done;
+  if (base === 0) return { modo: 'vacio' };
+  return {
+    modo: 'interaccion',
+    canal: c.channel === 'email' ? 'email' : 'whatsapp',
+    pctLectura: pctDe(r.read ?? 0, base),
+    pctRespuesta: pctDe(r.replied ?? 0, base),
+  };
+}

@@ -7677,7 +7677,7 @@
     },
     "campanasLista": {
       "titulo": "Campañas",
-      "subtitulo": "Mensajes y llamadas de voz en un solo lugar",
+      "subtitulo": "Voz con agente IA, WhatsApp y correo a un segmento, con horario Ley 2300 y verificación RNE",
       "migas": {
         "crm": "CRM"
       },
@@ -7688,8 +7688,8 @@
       "buscar": "Buscar campaña o segmento",
       "filtros": {
         "all": "Todas",
-        "voice": "Voz",
-        "messages": "Mensajes"
+        "voice": "Voz IA",
+        "messages": "WhatsApp y correo"
       },
       "columnas": {
         "campana": "Campaña",
@@ -7726,7 +7726,13 @@
       "resultado": {
         "voz": "{completadas} completadas · {fallidas} fallidas",
         "enCurso": "{n} en curso",
-        "mensajes": "{entregados} entregados · {leidos} leídos · {respondieron} respondieron"
+        "mensajes": "{entregados} entregados · {leidos} leídos · {respondieron} respondieron",
+        "contactoEfectivo": "{pct} % contacto efectivo",
+        "destinatarios": "{n} destinatarios",
+        "conConsentimiento": "con consentimiento",
+        "apertura": "{pct} % apertura",
+        "leidos": "{pct} % leídos",
+        "respondieron": "{pct} % respondieron"
       },
       "acciones": {
         "ver": "Ver detalle",
@@ -7752,16 +7758,17 @@
         "confirmar": "Eliminar campaña"
       },
       "vacio": {
-        "titulo": "Aún no hay campañas",
-        "descripcion": "Envía una plantilla de WhatsApp o un correo a un segmento, o pon a llamar a un agente de voz."
+        "titulo": "Aún no has lanzado campañas",
+        "descripcion": "Llama con un agente IA o envía WhatsApp y correo a un segmento. Antes de llamar te pediremos verificar el RNE y tu política de datos."
       },
       "sinResultados": {
         "titulo": "Ninguna campaña coincide",
-        "descripcion": "Prueba con otro nombre o cambia el canal."
+        "descripcion": "Prueba con otro nombre o cambia el canal.",
+        "descripcionCanal": "Todavía no hay campañas de este canal."
       },
       "error": {
-        "titulo": "No se pudieron cargar las campañas",
-        "descripcion": "Revisa tu conexión y vuelve a intentarlo."
+        "titulo": "No pudimos cargar las campañas",
+        "descripcion": "Las campañas en curso siguen llamando aunque esta página falle. Si necesitas detener una, usa «Parada de emergencia» desde el celular o inténtalo de nuevo."
       },
       "sinPermiso": {
         "titulo": "Sin permiso para ver campañas",
@@ -7919,7 +7926,12 @@
         "bounced": "Rebotado",
         "failed": "Fallido",
         "skipped": "Omitido"
-      }
+      },
+      "verificarRne": "Verificar RNE",
+      "progresoSale": "Sale {fecha}",
+      "progresoEnviados": "{n} enviados",
+      "sinProgramar": "Sin programar",
+      "porcentaje": "{pct} %"
     },
     "duplicados": {
       "titulo": "{n, plural, one {{valor} posible duplicado} other {{valor} posibles duplicados}}",

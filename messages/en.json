@@ -7676,7 +7676,7 @@
     },
     "campanasLista": {
       "titulo": "Campaigns",
-      "subtitulo": "Messages and voice calls in one place",
+      "subtitulo": "AI voice agent, WhatsApp and email to a segment, within Law 2300 hours and with RNE verification",
       "migas": {
         "crm": "CRM"
       },
@@ -7687,8 +7687,8 @@
       "buscar": "Search campaign or segment",
       "filtros": {
         "all": "All",
-        "voice": "Voice",
-        "messages": "Messages"
+        "voice": "AI voice",
+        "messages": "WhatsApp and email"
       },
       "columnas": {
         "campana": "Campaign",
@@ -7725,7 +7725,13 @@
       "resultado": {
         "voz": "{completadas} completed · {fallidas} failed",
         "enCurso": "{n} in progress",
-        "mensajes": "{entregados} delivered · {leidos} read · {respondieron} replied"
+        "mensajes": "{entregados} delivered · {leidos} read · {respondieron} replied",
+        "contactoEfectivo": "{pct} % effective contact",
+        "destinatarios": "{n} recipients",
+        "conConsentimiento": "with consent",
+        "apertura": "{pct} % opened",
+        "leidos": "{pct} % read",
+        "respondieron": "{pct} % replied"
       },
       "acciones": {
         "ver": "View details",
@@ -7751,16 +7757,17 @@
         "confirmar": "Delete campaign"
       },
       "vacio": {
-        "titulo": "No campaigns yet",
-        "descripcion": "Send a WhatsApp template or an email to a segment, or put a voice agent to call."
+        "titulo": "You haven’t launched any campaigns yet",
+        "descripcion": "Call with an AI agent or send WhatsApp and email to a segment. Before calling we’ll ask you to verify the RNE and your data policy."
       },
       "sinResultados": {
         "titulo": "No campaign matches",
-        "descripcion": "Try another name or change the channel."
+        "descripcion": "Try another name or change the channel.",
+        "descripcionCanal": "There are no campaigns on this channel yet."
       },
       "error": {
-        "titulo": "Campaigns could not be loaded",
-        "descripcion": "Check your connection and try again."
+        "titulo": "We couldn’t load the campaigns",
+        "descripcion": "Running campaigns keep calling even if this page fails. If you need to stop one, use “Emergency stop” from your phone or try again."
       },
       "sinPermiso": {
         "titulo": "No permission to view campaigns",
@@ -7918,7 +7925,12 @@
         "bounced": "Bounced",
         "failed": "Failed",
         "skipped": "Skipped"
-      }
+      },
+      "verificarRne": "Verify RNE",
+      "progresoSale": "Goes out {fecha}",
+      "progresoEnviados": "{n} sent",
+      "sinProgramar": "Not scheduled",
+      "porcentaje": "{pct} %"
     },
     "duplicados": {
       "titulo": "{n, plural, one {{valor} possible duplicate} other {{valor} possible duplicates}}",

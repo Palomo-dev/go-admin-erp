@@ -8873,6 +8873,171 @@
         "eliminarSegmento": "Delete segment?",
         "estaAccionNoPuede": "This action cannot be undone. The segment \"{name}\" will be permanently deleted."
       }
+    },
+    "campanasAsistente": {
+      "titulo": "New campaign",
+      "subtitulo": "Step {n} of {total} · {descripcion}",
+      "migas": {
+        "crm": "CRM",
+        "campanas": "Campaigns"
+      },
+      "pasosEtiqueta": "Campaign steps",
+      "resumenPaso": "Step {n} of {total} · {etiqueta}",
+      "pasos": {
+        "audiencia": {
+          "titulo": "Audience and channel",
+          "descripcion": "who and through which channel"
+        },
+        "contenido": {
+          "titulo": "Agent or template",
+          "descripcion": "which message is sent"
+        },
+        "horario": {
+          "titulo": "Schedule and compliance",
+          "descripcion": "when it goes out and what is missing to activate it"
+        },
+        "revision": {
+          "titulo": "Review and activate",
+          "descripcion": "a last look before sending"
+        }
+      },
+      "acciones": {
+        "cancelar": "Cancel",
+        "siguiente": "Next",
+        "guardarBorrador": "Save draft",
+        "activar": "Activate now",
+        "programar": "Schedule"
+      },
+      "audiencia": {
+        "nombre": "Campaign name",
+        "nombrePlaceholder": "E.g.: Reactivate cold leads",
+        "errorNombre": "Enter a name for the campaign",
+        "segmento": "Segment",
+        "elegirSegmento": "Choose a segment",
+        "cargandoSegmentos": "Loading segments…",
+        "opcionSegmento": "{nombre} · {n, plural, one {{conteo} customer} other {{conteo} customers}}",
+        "sinSegmentos": "There are no segments yet.",
+        "crearSegmento": "Create segment",
+        "canal": "Channel",
+        "notaExclusiones": "Numbers on the RNE and on “Do not call again” are excluded automatically; they never count as recipients."
+      },
+      "canales": {
+        "voice": {
+          "titulo": "AI agent call",
+          "descripcion": "A voice agent calls, qualifies and books meetings. Uses voice minutes."
+        },
+        "whatsapp": {
+          "titulo": "WhatsApp",
+          "descripcion": "Template approved by Meta. Only to people who gave consent."
+        },
+        "email": {
+          "titulo": "Email",
+          "descripcion": "Email template with variables. Bounced addresses are excluded."
+        },
+        "contando": "Counting…",
+        "insigniaVoz": "{telefono} with phone · {excluidos} on RNE or “do not call”",
+        "insigniaWhatsapp": "{n} with consent",
+        "insigniaCorreo": "{n} with a valid email",
+        "configurar": "Go to Settings › CRM",
+        "motivos": {
+          "sinAgenteVoz": "Create a voice agent and connect telephony to use this channel.",
+          "sinWhatsapp": "Connect a WhatsApp number to use this channel.",
+          "correoSinMotor": "Bulk email sending is not available yet.",
+          "cargando": "Checking…"
+        }
+      },
+      "contenido": {
+        "numero": "WhatsApp number",
+        "plantillaWhatsapp": "WhatsApp template",
+        "sinPlantillas": "You have no approved templates",
+        "sinPlantillasDescripcion": "Create one in Templates › WhatsApp and send it to Meta for approval.",
+        "irAPlantillas": "Go to Templates",
+        "categoriaIdioma": "{categoria} · {idioma}",
+        "categorias": {
+          "utility": "Utility",
+          "marketing": "Marketing",
+          "authentication": "Authentication"
+        },
+        "asiSeVe": "How the message looks",
+        "variablesNota": "Variables are filled with each customer’s data.",
+        "variablesFaltantes": "These variables have no default value: type one and it will be used for every contact.",
+        "variable": "Variable {nombre}"
+      },
+      "horario": {
+        "legalTitulo": "Legal hours (Law 2300 of 2023)",
+        "fijoPorLey": "Set by law",
+        "franjas": {
+          "semana": {
+            "dias": "Monday to Friday",
+            "horas": "7:00 a.m. – 7:00 p.m."
+          },
+          "sabado": {
+            "dias": "Saturday",
+            "horas": "8:00 a.m. – 3:00 p.m."
+          },
+          "festivos": {
+            "dias": "Sundays and holidays",
+            "horas": "Not sent"
+          }
+        },
+        "notaLey": "Recipient’s time (+57 → Colombia time). At most 1 effective contact per channel and 2 in total per week for each person.",
+        "dentroDeVentana": "Within that window, send",
+        "ahora": "Now",
+        "programar": "Schedule",
+        "fechaHora": "Send date and time",
+        "respetarHorario": "Also respect the organization’s contact hours (Settings › WhatsApp)",
+        "requisitosTitulo": "Requirements to activate",
+        "cumplido": "met",
+        "pendiente": "pending",
+        "requisitos": {
+          "plantillaAprobada": {
+            "titulo": "Template approved by Meta",
+            "ok": "The template is approved and ready to send.",
+            "falta": "Choose a Meta-approved template in step 2."
+          },
+          "variables": {
+            "titulo": "Variables complete",
+            "ok": "Every variable has a value.",
+            "falta": "Some variables are missing a default value (step 2)."
+          },
+          "consentimiento": {
+            "titulo": "Consent (Habeas Data)",
+            "ok": "You confirmed the audience gave marketing consent.",
+            "falta": "This is a marketing template: confirm the audience gave consent.",
+            "casilla": "I have verified that the audience gave marketing consent (opt-in)"
+          },
+          "audiencia": {
+            "titulo": "Recipients and excluded numbers",
+            "sinCalcular": "Calculate the audience to see how many receive it and how many are left out.",
+            "calculada": "{pendientes} receive it · {excluidos} left out (RNE, do not contact, no consent or duplicates)."
+          }
+        },
+        "calcular": "Calculate audience",
+        "recalcular": "Recalculate",
+        "avisoRojo": "{n, plural, one {You can save the campaign, but you cannot activate it until the requirement in red is met.} other {You can save the campaign, but you cannot activate it until the # requirements in red are met.}}"
+      },
+      "revision": {
+        "nombre": "Name",
+        "segmento": "Segment",
+        "canal": "Channel",
+        "plantilla": "Template",
+        "cuando": "Goes out",
+        "destinatarios": "Recipients",
+        "destinatariosValor": "{pendientes} receive it · {excluidos} excluded",
+        "calculando": "Calculating…"
+      },
+      "ok": {
+        "borrador": "Draft saved",
+        "programada": "Campaign scheduled",
+        "activada": "Campaign activated",
+        "enCola": "{n} contacts queued"
+      },
+      "errores": {
+        "calcular": "The audience could not be calculated",
+        "guardar": "The campaign could not be saved",
+        "activar": "The campaign could not be activated",
+        "limiteWaba": "Exceeds the WhatsApp number’s daily limit"
+      }
     }
   },
   "posCustomerDisplay": {

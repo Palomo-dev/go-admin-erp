@@ -31156,6 +31156,171 @@
         "eliminarSegmento": "Supprimer le segment ?",
         "estaAccionNoPuede": "Cette action est irréversible. Le segment « {name} » sera supprimé définitivement."
       }
+    },
+    "campanasAsistente": {
+      "titulo": "Nouvelle campagne",
+      "subtitulo": "Étape {n} sur {total} · {descripcion}",
+      "migas": {
+        "crm": "CRM",
+        "campanas": "Campagnes"
+      },
+      "pasosEtiqueta": "Étapes de la campagne",
+      "resumenPaso": "Étape {n} sur {total} · {etiqueta}",
+      "pasos": {
+        "audiencia": {
+          "titulo": "Audience et canal",
+          "descripcion": "à qui et par où"
+        },
+        "contenido": {
+          "titulo": "Agent ou modèle",
+          "descripcion": "quel message est envoyé"
+        },
+        "horario": {
+          "titulo": "Horaires et conformité",
+          "descripcion": "quand elle part et ce qui manque pour l’activer"
+        },
+        "revision": {
+          "titulo": "Vérifier et activer",
+          "descripcion": "un dernier coup d’œil avant l’envoi"
+        }
+      },
+      "acciones": {
+        "cancelar": "Annuler",
+        "siguiente": "Suivant",
+        "guardarBorrador": "Enregistrer le brouillon",
+        "activar": "Activer maintenant",
+        "programar": "Programmer"
+      },
+      "audiencia": {
+        "nombre": "Nom de la campagne",
+        "nombrePlaceholder": "Ex. : Réactivation des leads froids",
+        "errorNombre": "Saisissez un nom pour la campagne",
+        "segmento": "Segment",
+        "elegirSegmento": "Choisissez un segment",
+        "cargandoSegmentos": "Chargement des segments…",
+        "opcionSegmento": "{nombre} · {n, plural, one {{conteo} client} other {{conteo} clients}}",
+        "sinSegmentos": "Aucun segment pour l’instant.",
+        "crearSegmento": "Créer un segment",
+        "canal": "Canal",
+        "notaExclusiones": "Les numéros du RNE et de « Ne plus appeler » sont exclus automatiquement ; ils ne comptent jamais comme destinataires."
+      },
+      "canales": {
+        "voice": {
+          "titulo": "Appel avec agent IA",
+          "descripcion": "Un agent vocal appelle, qualifie et prend rendez-vous. Consomme des minutes vocales."
+        },
+        "whatsapp": {
+          "titulo": "WhatsApp",
+          "descripcion": "Modèle approuvé par Meta. Uniquement aux personnes ayant donné leur consentement."
+        },
+        "email": {
+          "titulo": "E-mail",
+          "descripcion": "Modèle d’e-mail avec variables. Les adresses en rebond sont exclues."
+        },
+        "contando": "Comptage…",
+        "insigniaVoz": "{telefono} avec téléphone · {excluidos} au RNE ou « ne pas appeler »",
+        "insigniaWhatsapp": "{n} avec consentement",
+        "insigniaCorreo": "{n} avec e-mail valide",
+        "configurar": "Aller à Configuration › CRM",
+        "motivos": {
+          "sinAgenteVoz": "Créez un agent vocal et connectez la téléphonie pour utiliser ce canal.",
+          "sinWhatsapp": "Connectez un numéro WhatsApp pour utiliser ce canal.",
+          "correoSinMotor": "L’envoi d’e-mails en masse n’est pas encore disponible.",
+          "cargando": "Vérification…"
+        }
+      },
+      "contenido": {
+        "numero": "Numéro WhatsApp",
+        "plantillaWhatsapp": "Modèle WhatsApp",
+        "sinPlantillas": "Vous n’avez aucun modèle approuvé",
+        "sinPlantillasDescripcion": "Créez-en un dans Modèles › WhatsApp et envoyez-le à Meta pour approbation.",
+        "irAPlantillas": "Aller aux modèles",
+        "categoriaIdioma": "{categoria} · {idioma}",
+        "categorias": {
+          "utility": "Utilitaire",
+          "marketing": "Marketing",
+          "authentication": "Authentification"
+        },
+        "asiSeVe": "Aperçu du message",
+        "variablesNota": "Les variables sont remplies avec les données de chaque client.",
+        "variablesFaltantes": "Ces variables n’ont pas de valeur par défaut : saisissez-la et elle sera utilisée pour tous les contacts.",
+        "variable": "Variable {nombre}"
+      },
+      "horario": {
+        "legalTitulo": "Horaires légaux (loi 2300 de 2023)",
+        "fijoPorLey": "Fixé par la loi",
+        "franjas": {
+          "semana": {
+            "dias": "Du lundi au vendredi",
+            "horas": "7 h – 19 h"
+          },
+          "sabado": {
+            "dias": "Samedi",
+            "horas": "8 h – 15 h"
+          },
+          "festivos": {
+            "dias": "Dimanches et jours fériés",
+            "horas": "Aucun envoi"
+          }
+        },
+        "notaLey": "Heure du destinataire (+57 → heure de Colombie). Au maximum 1 contact effectif par canal et 2 au total par semaine pour chaque personne.",
+        "dentroDeVentana": "Dans cette plage, envoyer",
+        "ahora": "Maintenant",
+        "programar": "Programmer",
+        "fechaHora": "Date et heure d’envoi",
+        "respetarHorario": "Respecter aussi les horaires de contact de l’organisation (Configuration › WhatsApp)",
+        "requisitosTitulo": "Conditions pour activer",
+        "cumplido": "remplie",
+        "pendiente": "en attente",
+        "requisitos": {
+          "plantillaAprobada": {
+            "titulo": "Modèle approuvé par Meta",
+            "ok": "Le modèle est approuvé et prêt à être envoyé.",
+            "falta": "Choisissez un modèle approuvé par Meta à l’étape 2."
+          },
+          "variables": {
+            "titulo": "Variables complètes",
+            "ok": "Toutes les variables ont une valeur.",
+            "falta": "Certaines variables n’ont pas de valeur par défaut (étape 2)."
+          },
+          "consentimiento": {
+            "titulo": "Consentement (Habeas Data)",
+            "ok": "Vous avez confirmé que l’audience a donné son consentement marketing.",
+            "falta": "Modèle marketing : confirmez que l’audience a donné son consentement.",
+            "casilla": "J’ai vérifié que l’audience a donné son consentement (opt-in) marketing"
+          },
+          "audiencia": {
+            "titulo": "Destinataires et numéros exclus",
+            "sinCalcular": "Calculez l’audience pour voir combien la reçoivent et combien sont exclus.",
+            "calculada": "{pendientes} la reçoivent · {excluidos} exclus (RNE, ne pas contacter, sans consentement ou doublons)."
+          }
+        },
+        "calcular": "Calculer l’audience",
+        "recalcular": "Recalculer",
+        "avisoRojo": "{n, plural, one {Vous pouvez enregistrer la campagne, mais pas l’activer tant que la condition en rouge n’est pas remplie.} other {Vous pouvez enregistrer la campagne, mais pas l’activer tant que les # conditions en rouge ne sont pas remplies.}}"
+      },
+      "revision": {
+        "nombre": "Nom",
+        "segmento": "Segment",
+        "canal": "Canal",
+        "plantilla": "Modèle",
+        "cuando": "Départ",
+        "destinatarios": "Destinataires",
+        "destinatariosValor": "{pendientes} la reçoivent · {excluidos} exclus",
+        "calculando": "Calcul en cours…"
+      },
+      "ok": {
+        "borrador": "Brouillon enregistré",
+        "programada": "Campagne programmée",
+        "activada": "Campagne activée",
+        "enCola": "{n} contacts en file d’attente"
+      },
+      "errores": {
+        "calcular": "Impossible de calculer l’audience",
+        "guardar": "Impossible d’enregistrer la campagne",
+        "activar": "Impossible d’activer la campagne",
+        "limiteWaba": "Dépasse la limite quotidienne du numéro WhatsApp"
+      }
     }
   },
   "analiticaWeb": {

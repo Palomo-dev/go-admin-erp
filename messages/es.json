@@ -8874,6 +8874,171 @@
         "eliminarSegmento": "¿Eliminar segmento?",
         "estaAccionNoPuede": "Esta acción no se puede deshacer. El segmento \"{name}\" será eliminado permanentemente."
       }
+    },
+    "campanasAsistente": {
+      "titulo": "Nueva campaña",
+      "subtitulo": "Paso {n} de {total} · {descripcion}",
+      "migas": {
+        "crm": "CRM",
+        "campanas": "Campañas"
+      },
+      "pasosEtiqueta": "Pasos de la campaña",
+      "resumenPaso": "Paso {n} de {total} · {etiqueta}",
+      "pasos": {
+        "audiencia": {
+          "titulo": "Audiencia y canal",
+          "descripcion": "a quién y por dónde"
+        },
+        "contenido": {
+          "titulo": "Agente o plantilla",
+          "descripcion": "qué mensaje se envía"
+        },
+        "horario": {
+          "titulo": "Horario y cumplimiento",
+          "descripcion": "cuándo sale y qué falta para poder activar"
+        },
+        "revision": {
+          "titulo": "Revisar y activar",
+          "descripcion": "último vistazo antes de enviar"
+        }
+      },
+      "acciones": {
+        "cancelar": "Cancelar",
+        "siguiente": "Siguiente",
+        "guardarBorrador": "Guardar borrador",
+        "activar": "Activar ahora",
+        "programar": "Programar"
+      },
+      "audiencia": {
+        "nombre": "Nombre de la campaña",
+        "nombrePlaceholder": "Ej.: Reactivación de leads fríos",
+        "errorNombre": "Escribe un nombre para la campaña",
+        "segmento": "Segmento",
+        "elegirSegmento": "Elige un segmento",
+        "cargandoSegmentos": "Cargando segmentos…",
+        "opcionSegmento": "{nombre} · {n, plural, one {{conteo} cliente} other {{conteo} clientes}}",
+        "sinSegmentos": "Aún no hay segmentos.",
+        "crearSegmento": "Crear segmento",
+        "canal": "Canal",
+        "notaExclusiones": "Los números del RNE y de «No volver a llamar» se excluyen solos; nunca se cuentan como destinatarios."
+      },
+      "canales": {
+        "voice": {
+          "titulo": "Llamada con agente IA",
+          "descripcion": "Un agente de voz llama, califica y agenda. Cobra minutos de voz."
+        },
+        "whatsapp": {
+          "titulo": "WhatsApp",
+          "descripcion": "Plantilla aprobada por Meta. Solo a quien dio consentimiento."
+        },
+        "email": {
+          "titulo": "Correo",
+          "descripcion": "Plantilla de correo con variables. Se excluyen rebotados."
+        },
+        "contando": "Contando…",
+        "insigniaVoz": "{telefono} con teléfono · {excluidos} en RNE o «no llamar»",
+        "insigniaWhatsapp": "{n} con consentimiento",
+        "insigniaCorreo": "{n} con correo válido",
+        "configurar": "Ir a Configuración › CRM",
+        "motivos": {
+          "sinAgenteVoz": "Crea un agente de voz y conecta la telefonía para usar este canal.",
+          "sinWhatsapp": "Conecta un número de WhatsApp para usar este canal.",
+          "correoSinMotor": "El envío masivo por correo todavía no está disponible.",
+          "cargando": "Comprobando…"
+        }
+      },
+      "contenido": {
+        "numero": "Número de WhatsApp",
+        "plantillaWhatsapp": "Plantilla de WhatsApp",
+        "sinPlantillas": "No tienes plantillas aprobadas",
+        "sinPlantillasDescripcion": "Crea una en Plantillas › WhatsApp y envíala a Meta para que la apruebe.",
+        "irAPlantillas": "Ir a Plantillas",
+        "categoriaIdioma": "{categoria} · {idioma}",
+        "categorias": {
+          "utility": "Utilidad",
+          "marketing": "Marketing",
+          "authentication": "Autenticación"
+        },
+        "asiSeVe": "Así se ve el mensaje",
+        "variablesNota": "Las variables se llenan con los datos de cada cliente.",
+        "variablesFaltantes": "Estas variables no tienen valor por defecto: escríbelo y se usará para todos los contactos.",
+        "variable": "Variable {nombre}"
+      },
+      "horario": {
+        "legalTitulo": "Horario legal (Ley 2300 de 2023)",
+        "fijoPorLey": "Fijo por ley",
+        "franjas": {
+          "semana": {
+            "dias": "Lunes a viernes",
+            "horas": "7:00 a. m. – 7:00 p. m."
+          },
+          "sabado": {
+            "dias": "Sábado",
+            "horas": "8:00 a. m. – 3:00 p. m."
+          },
+          "festivos": {
+            "dias": "Domingos y festivos",
+            "horas": "No se envía"
+          }
+        },
+        "notaLey": "Hora del destinatario (+57 → hora de Colombia). Máximo 1 contacto efectivo por canal y 2 en total por semana a cada persona.",
+        "dentroDeVentana": "Dentro de esa ventana, enviar",
+        "ahora": "Ahora",
+        "programar": "Programar",
+        "fechaHora": "Fecha y hora de envío",
+        "respetarHorario": "Respetar además el horario de contacto de la organización (Configuración › WhatsApp)",
+        "requisitosTitulo": "Requisitos para activar",
+        "cumplido": "cumplido",
+        "pendiente": "pendiente",
+        "requisitos": {
+          "plantillaAprobada": {
+            "titulo": "Plantilla aprobada por Meta",
+            "ok": "La plantilla está aprobada y lista para enviarse.",
+            "falta": "Elige una plantilla aprobada por Meta en el paso 2."
+          },
+          "variables": {
+            "titulo": "Variables completas",
+            "ok": "Todas las variables tienen valor.",
+            "falta": "Faltan valores por defecto de algunas variables (paso 2)."
+          },
+          "consentimiento": {
+            "titulo": "Consentimiento (Habeas Data)",
+            "ok": "Confirmaste que la audiencia dio su consentimiento para marketing.",
+            "falta": "La plantilla es de marketing: confirma que la audiencia dio su consentimiento.",
+            "casilla": "He verificado que la audiencia dio su consentimiento (opt-in) para marketing"
+          },
+          "audiencia": {
+            "titulo": "Destinatarios y números excluidos",
+            "sinCalcular": "Calcula la audiencia para ver cuántos la reciben y cuántos quedan fuera.",
+            "calculada": "{pendientes} la reciben · {excluidos} quedan fuera (RNE, no contactar, sin consentimiento o duplicados)."
+          }
+        },
+        "calcular": "Calcular audiencia",
+        "recalcular": "Recalcular",
+        "avisoRojo": "{n, plural, one {Puedes guardar la campaña, pero no activarla hasta cumplir el requisito en rojo.} other {Puedes guardar la campaña, pero no activarla hasta cumplir los # requisitos en rojo.}}"
+      },
+      "revision": {
+        "nombre": "Nombre",
+        "segmento": "Segmento",
+        "canal": "Canal",
+        "plantilla": "Plantilla",
+        "cuando": "Cuándo sale",
+        "destinatarios": "Destinatarios",
+        "destinatariosValor": "{pendientes} la reciben · {excluidos} excluidos",
+        "calculando": "Calculando…"
+      },
+      "ok": {
+        "borrador": "Borrador guardado",
+        "programada": "Campaña programada",
+        "activada": "Campaña activada",
+        "enCola": "{n} contactos en cola"
+      },
+      "errores": {
+        "calcular": "No se pudo calcular la audiencia",
+        "guardar": "No se pudo guardar la campaña",
+        "activar": "No se pudo activar la campaña",
+        "limiteWaba": "Supera el límite diario del número de WhatsApp"
+      }
     }
   },
   "posCustomerDisplay": {

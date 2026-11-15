@@ -95,6 +95,28 @@ const CLAVES_DINAMICAS: Record<string, { valores: string[]; origen: string }> = 
     valores: [],
     origen: 'reenvío a describirActividad(): sus claves se verifican con TRADUCTORES_INYECTADOS (actividadLogica.ts)',
   },
+  // Configuración › Recursos humanos (fase 0).
+  'src/components/configuracion/panels/hrm/AprobacionesPanel.tsx: hrmConfig.aprobaciones.aprobador ← p.tipo': {
+    valores: ['jefe_directo', 'jefe_area', 'rrhh', 'rol'],
+    origen: "PasoRegla.tipo (TipoAprobador, src/lib/hrm/configuracion/tipos.ts); 'cargo' y 'persona' se traducen con clave fija",
+  },
+  'src/components/configuracion/panels/hrm/ParametrosLegalesPanel.tsx: hrmConfig.parametros.estado ← estado': {
+    valores: ['vigente', 'transitorio', 'litigio', 'suspendido', 'por_confirmar', 'sin_valor', 'cerrada', 'programada'],
+    origen: 'claves de TONO_ESTADO en ParametrosLegalesPanel.tsx (estado de hr_legal_parameters + cerrada/programada)',
+  },
+  'src/components/configuracion/panels/hrm/ParametrosLegalesPanel.tsx: hrmConfig.parametros.valor ← l.clave': {
+    valores: [
+      'simple.pct', 'simple.numero', 'simple.dinero', 'simple.texto', 'simple.smmlv', 'hastaSmmlv', 'vecesSmmlv', 'integral',
+      'jornada', 'horas', 'nocturnoHasta', 'trio', 'recargos', 'horasExtra', 'par', 'empleadorTrabajador', 'rango', 'segunIbc',
+      'sobreIbc', 'clasesArl', 'menosDeSmmlv', 'rangos', 'enUvt', 'licencias', 'porTramos', 'monetizacion', 'embargos',
+      'deducciones', 'topeUvt',
+    ],
+    origen: 'Lectura.clave y detalle.clave que arma src/lib/hrm/configuracion/parametrosCatalogo.ts',
+  },
+  'src/components/configuracion/panels/hrm/RegistroAccesosPanel.tsx: hrmConfig.registro.accion ← accion': {
+    valores: ['ver', 'editar', 'exportar', 'sin_permiso'],
+    origen: 'AccionRegistro (acción de hr_access_log)',
+  },
 };
 
 type Arbol = { [clave: string]: string | Arbol };

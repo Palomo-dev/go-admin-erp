@@ -5,6 +5,7 @@ import { Bot, Calendar, CheckCircle2, Copy, Globe, Mail, MessageSquare, Pencil, 
 import { cn } from '@/utils/Utils';
 import { Badge, clasesBadgeTono } from '@/components/ui/badge';
 import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
+import type { AccionFila } from '@/components/kit/acciones';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { cuandoEntrada, TONO_TIPO, type EntradaLinea, type TipoEntrada } from './timelineEntryLogica';
 
@@ -34,24 +35,32 @@ export interface TimelineEntryProps {
   onEditar?: (id: string) => void;
   onDuplicar?: (id: string) => void;
   onEliminar?: (id: string) => void;
+  /**
+   * Acciones de dominio que no dependen de `editable` («Ver detalle» de una
+   * llamada o un correo en la pestaña Actividad de la oportunidad). Aditivo.
+   */
+  accionesExtra?: readonly AccionFila[];
   ahora?: Date;
   className?: string;
 }
 
-export function TimelineEntry({ entrada: e, onAbrir, onEditar, onDuplicar, onEliminar, ahora = new Date(), className }: TimelineEntryProps) {
+export function TimelineEntry({ entrada: e, onAbrir, onEditar, onDuplicar, onEliminar, accionesExtra = [], ahora = new Date(), className }: TimelineEntryProps) {
   const t = useTranslations('crm.kit.linea');
   const idioma = useLocale();
   const { timezone } = useFormatDate();
   const Icono = ICONO[e.tipo];
   const cuando = cuandoEntrada(e.ocurrioEn, ahora, timezone, idioma);
   const meta = [cuando ? t(`cuando.${cuando.clave}`, cuando.valores) : null, e.autor].filter(Boolean).join(' · ');
-  const acciones = e.editable
+  const acciones = [
+    ...accionesExtra,
+    ...(e.editable
     ? [
         ...(onEditar ? [{ id: 'editar', etiqueta: t('editar'), icono: Pencil, onSelect: () => onEditar(e.id) }] : []),
         ...(onDuplicar ? [{ id: 'duplicar', etiqueta: t('duplicar'), icono: Copy, onSelect: () => onDuplicar(e.id) }] : []),
         ...(onEliminar ? [{ id: 'eliminar', etiqueta: t('eliminar'), icono: Trash2, destructiva: true, onSelect: () => onEliminar(e.id) }] : []),
       ]
-    : [];
+    : []),
+  ];
 
   return (
     <article aria-label={`${t(`tipo.${e.tipo}`)}: ${e.titulo}`} className={cn('flex items-start gap-3 rounded-xl border border-line bg-surface p-3', className)}>

@@ -78,6 +78,9 @@ function Body({ entry, compact, context, onAction }: TimelineEntryCardProps) {
   }
 }
 
+/** Cuerpo por tipo, sin la cabecera: «Ver detalle» de la pestaña Actividad de la oportunidad (Figma 820:66213). */
+export { Body as CuerpoEntradaTimeline };
+
 export function TimelineEntryCard(props: TimelineEntryCardProps) {
   const { entry, isNew } = props;
   const style = kindStyle(entry.kind);

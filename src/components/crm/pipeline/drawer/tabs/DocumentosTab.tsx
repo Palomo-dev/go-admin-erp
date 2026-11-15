@@ -1,13 +1,12 @@
 'use client';
 
-import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
-import { getOrganizationId } from '@/lib/hooks/useOrganization';
+import { useCatalogosCrm } from '@/components/crm/acciones/useCatalogosCrm';
+import { PestanaDocumentos } from '@/components/crm/oportunidad/pestanas/PestanaDocumentos';
 import type { DrawerTabProps } from './types';
 
-/** Pestaña Documentos: DocumentUploader existente (bucket privado crm-documents). */
-export function DocumentosTab({ opportunity, active }: DrawerTabProps) {
+/** Pestaña Documentos del drawer y del detalle (Figma 822:236526), por `/api/crm/documents/**`. */
+export function DocumentosTab({ opportunity, active, onCountChange }: DrawerTabProps & { onCountChange?: (n: number) => void }) {
+  const cat = useCatalogosCrm();
   if (!active) return null;
-  const orgId = opportunity.organization_id || getOrganizationId();
-  if (!orgId) return <p className="text-sm text-gray-500 dark:text-gray-400">Sin organización activa.</p>;
-  return <DocumentUploader organizationId={orgId} relatedType="opportunity" relatedId={opportunity.id} title="Documentos de la oportunidad" />;
+  return <PestanaDocumentos oportunidadId={opportunity.id} usuarios={cat.usuarios} onConteo={onCountChange} />;
 }

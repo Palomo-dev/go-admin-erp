@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/kit/PageHeader';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { OpportunityForm } from '@/components/crm/kit/OpportunityForm';
 import { CustomerLinkPicker } from '@/components/crm/kit/CustomerLinkPicker';
+import { crearClienteDesdeVinculador } from './crearClienteVinculador';
 import { aFechaHoraLocal } from '@/components/crm/kit/fechasCrm';
 import type { ValoresOportunidad } from '@/components/crm/kit/opportunityFormLogica';
 import { buscarClientesCrm } from '@/components/crm/acciones/buscarClientes';
@@ -154,7 +155,7 @@ export function FormularioOportunidadPagina({ modo, id, inicial }: FormularioOpo
           error={error}
         />
       )}
-      <CustomerLinkPicker abierto={picker} onAbiertoChange={setPicker} buscar={buscarClientesCrm} onSeleccionar={(c) => { setCliente({ id: c.id, nombre: c.full_name }); setPicker(false); }} />
+      <CustomerLinkPicker abierto={picker} onAbiertoChange={setPicker} buscar={buscarClientesCrm} onCrear={crearClienteDesdeVinculador} onSeleccionar={(c) => { setCliente({ id: c.id, nombre: c.full_name }); setPicker(false); }} />
       {acciones.dialogos}
     </div>
   );

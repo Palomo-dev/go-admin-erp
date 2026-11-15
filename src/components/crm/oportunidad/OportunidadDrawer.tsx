@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { X } from 'lucide-react';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { idPanel, idPestana, TabBar } from '@/components/kit/TabBar';
 import { useEsEscritorio } from '@/components/kit/useEsEscritorio';
@@ -24,6 +25,7 @@ import { IATab } from '@/components/crm/pipeline/drawer/tabs/IATab';
 import { OnboardingTab } from '@/components/crm/pipeline/drawer/tabs/OnboardingTab';
 import { etapasDeOportunidad, permisosFila, type EtapaApi, type PermisosPantalla } from './oportunidadLogica';
 import { useOportunidad } from './useOportunidad';
+import { useConteosPestanas } from './pestanas/useConteosPestanas';
 import { ResumenOportunidad } from './ResumenOportunidad';
 import type { useAccionesOportunidad } from './useAccionesOportunidad';
 
@@ -54,12 +56,12 @@ export function OportunidadDrawer(p: OportunidadDrawerProps) {
   const escritorio = useEsEscritorio();
   const moneda = useMonedaOrganizacion();
   const pais = useOrgDefaultCountry() ?? undefined;
-  const { data: op, estado } = useOportunidad(p.id);
+  const { data: op, estado, recargar } = useOportunidad(p.id);
+  const { conteos, fijar } = useConteosPestanas(p.id);
   const legado = useOpportunityData(p.id);
   const [pestana, setPestana] = useState<Pestana>('resumen');
   const [visitadas, setVisitadas] = useState<Set<Pestana>>(new Set(['resumen']));
   const [compacta, setCompacta] = useState(false);
-  const [tareas, setTareas] = useState<number | null>(null);
   useEffect(() => {
     setPestana('resumen');
     setVisitadas(new Set(['resumen']));
@@ -92,10 +94,14 @@ export function OportunidadDrawer(p: OportunidadDrawerProps) {
             {[40, 16, 64, 200].map((h, i) => <div key={i} className="animate-pulse rounded-lg bg-subtle" style={{ height: h }} />)}
           </div>
         ) : estado !== 'listo' || !op ? (
-          <div className="p-5">
-            <SheetTitle className="sr-only">{t('titulo')}</SheetTitle>
-            <SheetDescription className="sr-only">{t('noEncontrada')}</SheetDescription>
-            <EmptyState variante={estado === 'sinPermiso' ? 'forbidden' : 'error'} titulo={t(estado === 'sinPermiso' ? 'sinPermiso' : 'noEncontrada')} descripcion={t('noEncontradaDetalle')} accion={{ etiqueta: t('cerrar'), onClick: p.onCerrar }} />
+          <div className="flex h-full flex-col">
+            {/* Figma 823:245319: un solo estado para «no encontrada o sin acceso», con Reintentar. */}
+            <div className="flex h-14 items-center justify-between border-b border-line bg-surface px-4">
+              <SheetTitle className="text-base font-semibold text-fg">{t('titulo')}</SheetTitle>
+              <button type="button" onClick={p.onCerrar} aria-label={t('cerrar')} className="flex size-8 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><X aria-hidden="true" className="size-4" /></button>
+            </div>
+            <SheetDescription className="sr-only">{t('errorTitulo')}</SheetDescription>
+            <EmptyState variante="error" className="flex-1" titulo={t('errorTitulo')} descripcion={t('errorDetalle')} onReintentar={recargar} />
           </div>
         ) : (
           <>
@@ -121,7 +127,7 @@ export function OportunidadDrawer(p: OportunidadDrawerProps) {
                 onCerrar={p.onCerrar}
                 menu={<OpportunityRowMenu titulo={op.name} status={op.status} permisos={permisos} orientacion="horizontal" onAccion={(a) => (a === 'ver' ? router.push(`/app/crm/oportunidades/${op.id}`) : p.acciones.alMenu(op, a))} />}
               />
-              <TabBar id="drawer-oportunidad" etiqueta={t('pestanasAria')} valor={pestana} onValorChange={ir} className="mt-3" pestanas={pestanas.map((x) => ({ valor: x, etiqueta: t(`pestanas.${x}`), contador: x === 'tareas' && tareas !== null ? tareas : undefined }))} />
+              <TabBar id="drawer-oportunidad" etiqueta={t('pestanasAria')} valor={pestana} onValorChange={ir} className="mt-3" pestanas={pestanas.map((x) => ({ valor: x, etiqueta: t(`pestanas.${x}`), contador: x === 'tareas' || x === 'notas' || x === 'documentos' ? conteos[x] ?? undefined : undefined }))} />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-5" onScroll={(e) => setCompacta(e.currentTarget.scrollTop > 120)}>
               {panel('resumen', <ResumenOportunidad op={op} puedeEditar={!!permisos.editar} onCambio={() => undefined} />)}
@@ -129,9 +135,9 @@ export function OportunidadDrawer(p: OportunidadDrawerProps) {
                 <>
                   {conOnboarding && panel('onboarding', <OnboardingTab {...tabProps} active={visitadas.has('onboarding')} />)}
                   {panel('actividad', <ActividadTab {...tabProps} active={visitadas.has('actividad')} />)}
-                  {panel('tareas', <TareasTab {...tabProps} active={visitadas.has('tareas')} onCountChange={setTareas} />)}
-                  {panel('notas', <NotasTab {...tabProps} active={visitadas.has('notas')} />)}
-                  {panel('documentos', <DocumentosTab {...tabProps} active={visitadas.has('documentos')} />)}
+                  {panel('tareas', <TareasTab {...tabProps} active={visitadas.has('tareas')} onCountChange={fijar('tareas')} />)}
+                  {panel('notas', <NotasTab {...tabProps} active={visitadas.has('notas')} onCountChange={fijar('notas')} />)}
+                  {panel('documentos', <DocumentosTab {...tabProps} active={visitadas.has('documentos')} onCountChange={fijar('documentos')} />)}
                   {panel('ia', <IATab {...tabProps} active={visitadas.has('ia')} />)}
                 </>
               )}

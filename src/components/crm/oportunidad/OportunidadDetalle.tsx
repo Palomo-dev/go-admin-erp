@@ -15,6 +15,7 @@ import { StageBar } from '@/components/crm/kit/StageBar';
 import { OpportunityRowMenu } from '@/components/crm/kit/OpportunityRowMenu';
 import { CustomerIdentityCard } from '@/components/crm/kit/CustomerIdentityCard';
 import { CustomerLinkPicker } from '@/components/crm/kit/CustomerLinkPicker';
+import { crearClienteDesdeVinculador } from './crearClienteVinculador';
 import { TONO_PRIORIDAD, temperaturaValida } from '@/components/crm/kit/opportunityCardLogica';
 import { estadoOportunidad, TONO_ESTADO } from '@/components/crm/kit/drawerHeaderLogica';
 import { AccionesRapidasCrm } from '@/components/crm/acciones/AccionesRapidasCrm';
@@ -33,6 +34,7 @@ import { vincularCliente } from './apiOportunidades';
 import { etapasDeOportunidad, permisosFila, permisosPantalla } from './oportunidadLogica';
 import { cantidadLineas, lineasDesdeApi } from './lineasLogica';
 import { useOportunidad } from './useOportunidad';
+import { useConteosPestanas } from './pestanas/useConteosPestanas';
 import { useAccionesOportunidad } from './useAccionesOportunidad';
 import { MetricasOportunidad } from './MetricasOportunidad';
 import { LineasResumen } from './LineasResumen';
@@ -68,7 +70,8 @@ export function OportunidadDetalle({ id }: { id: string }) {
   const legado = useOpportunityData(id);
   const [pestana, setPestana] = useState<Pestana>('actividad');
   const [visitadas, setVisitadas] = useState<Set<Pestana>>(new Set(['actividad']));
-  const [tareas, setTareas] = useState<number | null>(null);
+  const { conteos, fijar } = useConteosPestanas(id);
+  const tareas = conteos.tareas;
   const [picker, setPicker] = useState(false);
   const [token, setToken] = useState(0);
   const etapas = op ? etapasDeOportunidad(cat.etapas.map((e) => ({ ...e, color: null })), op.pipeline_id) : [];
@@ -150,15 +153,15 @@ export function OportunidadDetalle({ id }: { id: string }) {
       <AccionesRapidasCrm variante="detalle" oportunidadId={op.id} oportunidadNombre={op.name} clienteId={op.customer_id} cliente={op.cliente ?? null} onAccionCompletada={() => setToken((n) => n + 1)} />
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="flex min-w-0 flex-col gap-3">
-          <TabBar id="detalle-oportunidad" etiqueta={t('pestanasAria')} valor={pestana} onValorChange={ir} pestanas={PESTANAS.map((x) => ({ valor: x, etiqueta: t(`pestanas.${x}`), contador: x === 'tareas' && tareas !== null ? tareas : x === 'lineas' ? cantidadLineas(lineasDesdeApi(op)) : undefined }))} />
+          <TabBar id="detalle-oportunidad" etiqueta={t('pestanasAria')} valor={pestana} onValorChange={ir} pestanas={PESTANAS.map((x) => ({ valor: x, etiqueta: t(`pestanas.${x}`), contador: x === 'tareas' || x === 'notas' || x === 'documentos' ? conteos[x] ?? undefined : x === 'lineas' ? cantidadLineas(lineasDesdeApi(op)) : undefined }))} />
           <div className="rounded-xl border border-line bg-surface p-4">
             {panel('lineas', <LineasResumen op={op} />)}
             {!tabProps ? <div className="h-40 animate-pulse rounded-lg bg-subtle" aria-busy="true" /> : (
               <>
                 {panel('actividad', <ActividadTab {...tabProps} active={visitadas.has('actividad')} compact={false} refreshToken={token} />)}
-                {panel('tareas', <TareasTab {...tabProps} active={visitadas.has('tareas')} onCountChange={setTareas} />)}
-                {panel('notas', <NotasTab {...tabProps} active={visitadas.has('notas')} />)}
-                {panel('documentos', <DocumentosTab {...tabProps} active={visitadas.has('documentos')} />)}
+                {panel('tareas', <TareasTab {...tabProps} active={visitadas.has('tareas')} onCountChange={fijar('tareas')} variante="detalle" />)}
+                {panel('notas', <NotasTab {...tabProps} active={visitadas.has('notas')} onCountChange={fijar('notas')} />)}
+                {panel('documentos', <DocumentosTab {...tabProps} active={visitadas.has('documentos')} onCountChange={fijar('documentos')} />)}
                 {panel('analisis', <AnalyticsTab opportunity={tabProps.opportunity} displayAmount={Number(op.amount) || 0} active={visitadas.has('analisis')} />)}
                 {panel('cierre', <ClosingTab opportunity={tabProps.opportunity} customer={tabProps.customer} active={visitadas.has('cierre')} onActivity={() => setToken((n) => n + 1)} />)}
                 {panel('ia', <IATab {...tabProps} active={visitadas.has('ia')} />)}
@@ -178,7 +181,7 @@ export function OportunidadDetalle({ id }: { id: string }) {
           <ConexionesOportunidad op={op} tareasAbiertas={tareas} />
         </aside>
       </div>
-      <CustomerLinkPicker abierto={picker} onAbiertoChange={setPicker} buscar={buscarClientesCrm} onSeleccionar={(c) => void vincular(c.id)} />
+      <CustomerLinkPicker abierto={picker} onAbiertoChange={setPicker} buscar={buscarClientesCrm} onCrear={crearClienteDesdeVinculador} onSeleccionar={(c) => void vincular(c.id)} />
       {acciones.dialogos}
     </div>
   );

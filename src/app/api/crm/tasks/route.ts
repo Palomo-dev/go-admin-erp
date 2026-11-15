@@ -4,6 +4,8 @@ import { getServerOrgContext, OrgContextError } from '@/lib/utils/orgContext';
 import { readOrgBody } from '@/lib/security/organizationBody';
 import { assertRelatedBelongsToOrg, RelatedNotFoundError } from '@/lib/services/crm/activityService';
 import { TASK_PRIORITIES } from '@/lib/crm/enums';
+import { exigirUuid, respuestaErrorCrm } from '@/lib/services/crm/crmRouteSupport';
+import { listarTareasOportunidad } from '@/lib/services/crm/tareasOportunidadService';
 
 /**
  * POST /api/crm/tasks — tarea rápida desde QuickActionsBar (FASE-09 §5.2).
@@ -11,6 +13,22 @@ import { TASK_PRIORITIES } from '@/lib/crm/enums';
  *         priority?: low|med|high|critical (default med), assigned_to? (default usuario) }
  * Inserta en `tasks` con status 'open' (CHECK real). No existe /api/tasks en el repo.
  */
+/**
+ * GET /api/crm/tasks?opportunity_id= — tareas de una oportunidad para la
+ * pestaña «Tareas» del drawer y del detalle (Figma 822:235333): responsable y
+ * quién la completó por nombre. 400 sin uuid · 404 oportunidad ajena.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const ctx = await getServerOrgContext(request);
+    const oportunidadId = exigirUuid(request.nextUrl.searchParams.get('opportunity_id') ?? '', 'opportunity_id');
+    const data = await listarTareasOportunidad(ctx, oportunidadId);
+    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    return respuestaErrorCrm(error, 'GET /api/crm/tasks');
+  }
+}
+
 const schema = z.object({
   related_to_type: z.enum(['opportunity', 'customer']),
   related_to_id: z.string().uuid(),

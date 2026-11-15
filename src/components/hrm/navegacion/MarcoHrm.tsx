@@ -5,9 +5,9 @@
  *
  * En el Figma corregido (2026-11-15) la barra de pestañas del módulo va DEBAJO
  * del `PageHeader` de cada lista: la página la pone en `debajo={<NavPestanasHrm />}`
- * (Empleados y Aprobaciones ya lo hacen, ver `PAGINAS_CON_PESTANAS_PROPIAS`).
- * Mientras Áreas, Cargos y Plazas (frente «Estructura») no la pongan en su
- * cabecera, este marco la dibuja arriba para que la navegación no se pierda.
+ * (todas las pestañas ya lo hacen, ver `PAGINAS_CON_PESTANAS_PROPIAS`). Una
+ * pestaña nueva que no la ponga en su cabecera la recibe arriba de este marco,
+ * para que la navegación no se pierda.
  * En detalle y formularios no se dibuja: las migas la reemplazan.
  */
 import type { ReactNode } from 'react';
@@ -16,7 +16,13 @@ import { NavPestanasHrm } from './NavPestanasHrm';
 import { muestraPestanasHrm, pestanaHrmActiva } from './navHrmLogica';
 
 /** Listas que ya llevan la barra en su `PageHeader` (`debajo`). */
-export const PAGINAS_CON_PESTANAS_PROPIAS: readonly string[] = ['/app/hrm/empleados', '/app/hrm/aprobaciones'];
+export const PAGINAS_CON_PESTANAS_PROPIAS: readonly string[] = [
+  '/app/hrm/empleados',
+  '/app/hrm/areas',
+  '/app/hrm/cargos',
+  '/app/hrm/plazas',
+  '/app/hrm/aprobaciones',
+];
 
 export function MarcoHrm({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? '';

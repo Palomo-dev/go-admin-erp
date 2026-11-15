@@ -55955,5 +55955,525 @@
         "verN": "Ver {n, plural, one {# solicitação} other {# solicitações}}"
       }
     }
+  },
+  "hrmEstructura": {
+    "comun": {
+      "rrhh": "Recursos humanos",
+      "volverInicio": "Voltar ao início",
+      "volver": "Voltar",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar",
+      "guardarCambios": "Salvar alterações"
+    },
+    "errores": {
+      "error_hrm": "Não foi possível concluir a operação. Tente novamente.",
+      "sin_permiso": "Sua função não tem permissão para fazer isto.",
+      "no_existe": "O registro não existe mais.",
+      "duplicado": "Já existe um registro com esses dados.",
+      "nombre_invalido": "Digite um nome de 2 a 120 caracteres.",
+      "descripcion_larga": "A descrição aceita até 500 caracteres.",
+      "area_superior_invalida": "A área superior não existe ou está arquivada.",
+      "area_superior_ciclo": "Uma área não pode ficar abaixo de si mesma nem de uma de suas subáreas.",
+      "responsable_invalido": "O responsável não é um funcionário da sua organização.",
+      "centro_costo_invalido": "O centro de custo não é da sua organização.",
+      "sede_invalida": "A unidade não é da sua organização.",
+      "area_con_personas": "Não é possível arquivar: a área tem pessoas ativas.",
+      "area_con_plazas": "Não é possível arquivar: a área tem vagas aprovadas.",
+      "area_con_hijas": "Não é possível arquivar: primeiro mova ou arquive suas subáreas.",
+      "area_invalida": "Escolha uma área da sua organização.",
+      "nivel_invalido": "Escolha o nível do cargo.",
+      "reporta_a_invalido": "O cargo ao qual se reporta não é válido.",
+      "reporta_a_ciclo": "Um cargo não pode se reportar a outro que depende dele.",
+      "texto_largo": "Um dos textos é longo demais.",
+      "demasiadas_funciones": "Um cargo aceita até 20 funções.",
+      "demasiadas_competencias": "Um cargo aceita até 30 competências.",
+      "competencia_invalida": "Revise as competências: cada uma precisa de nome, tipo e nível de 1 a 4.",
+      "documento_invalido": "Um dos documentos exigidos não é válido.",
+      "clase_arl_invalida": "A classe de risco ARL vai de I a V.",
+      "escala_sin_fecha": "Indique a partir de quando a faixa vale.",
+      "escala_sin_motivo": "Indique o motivo da mudança de faixa.",
+      "escala_invalida": "Revise a faixa: o mínimo deve ser maior que zero e não passar do médio, e o médio não passar do máximo.",
+      "escala_fecha_anterior": "Já existe uma faixa a partir dessa data ou de uma posterior. Escolha uma data mais adiante.",
+      "escala_vigencias_cruzadas": "Já existe uma faixa vigente nessas datas para essa unidade.",
+      "cargo_invalido": "Escolha um cargo da sua organização.",
+      "cantidad_invalida": "A quantidade vai de 1 a 500 vagas.",
+      "tipo_invalido": "Escolha se a vaga é permanente ou temporária.",
+      "fecha_invalida": "Indique a partir de quando a vaga é necessária.",
+      "fecha_fin_invalida": "A data de término deve ser igual ou posterior à de início.",
+      "justificacion_invalida": "Escreva uma justificativa de 5 a 500 caracteres.",
+      "aprobacion_sin_aprobador": "Não há para quem enviar a solicitação. Peça a um administrador que atribua «Aprovar solicitações de RH» a outra pessoa.",
+      "cargo_con_personas": "Não é possível excluir: o cargo tem pessoas ativas.",
+      "cargo_con_plazas": "Não é possível excluir: o cargo tem vagas aprovadas."
+    },
+    "niveles": {
+      "1": "Operacional",
+      "2": "Operacional qualificado",
+      "3": "Profissional",
+      "4": "Chefia",
+      "5": "Diretoria"
+    },
+    "documentos": {
+      "documento_identidad": "Documento de identidade",
+      "hoja_vida": "Currículo",
+      "contrato_trabajo": "Contrato de trabalho assinado",
+      "afiliacion_eps": "Filiação ao plano de saúde (EPS)",
+      "afiliacion_afp": "Filiação ao fundo de pensão",
+      "afiliacion_arl": "Filiação ao seguro de acidentes de trabalho (ARL)",
+      "afiliacion_ccf": "Filiação à caixa de compensação",
+      "afiliacion_cesantias": "Filiação ao fundo de rescisão",
+      "certificado_bancario": "Certificado bancário",
+      "concepto_aptitud": "Parecer de aptidão do exame admissional",
+      "certificacion": "Certificação ou curso exigido"
+    },
+    "areas": {
+      "titulo": "Áreas",
+      "subtitulo": "Como a empresa está organizada. Toque em uma área para ver o detalhe, as vagas e os cargos.",
+      "subtituloMovil": "O organograma, como lista",
+      "buscar": "Buscar área…",
+      "nueva": "Nova área",
+      "sinResponsable": "Sem responsável",
+      "personas": "{n, plural, one {# pessoa} other {# pessoas}}",
+      "vacantes": "{n, plural, one {# vaga aberta} other {# vagas abertas}}",
+      "hijas": "{n, plural, one {# área} other {# áreas}}",
+      "verHijas": "Ver {n, plural, one {# área} other {# áreas}}",
+      "sinResultados": "Nenhuma área corresponde à busca, aos filtros ou à unidade escolhida.",
+      "columnas": {
+        "area": "Área",
+        "responsable": "Responsável",
+        "personas": "Pessoas",
+        "vacantes": "Vagas abertas"
+      },
+      "acciones": {
+        "ver": "Ver detalhe",
+        "editar": "Editar área"
+      },
+      "vista": {
+        "etiqueta": "Visualização das áreas",
+        "organigrama": "Organograma",
+        "lista": "Lista"
+      },
+      "vacio": {
+        "titulo": "Ainda não há áreas",
+        "descripcion": "Crie a primeira. As unidades já estão na sua organização: aqui você só organiza as áreas.",
+        "crear": "Criar primeira área"
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à estrutura",
+        "descripcion": "Sua função não inclui a permissão «Ver cargos». Peça a quem administra as funções da sua organização."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar a estrutura",
+        "descripcion": "Verifique sua conexão e tente novamente. Nada foi perdido."
+      },
+      "organigrama": {
+        "etiqueta": "Organograma da empresa",
+        "alejar": "Afastar",
+        "acercar": "Aproximar",
+        "ajustar": "Ajustar",
+        "ayuda": "Arraste para se mover · Ctrl + roda ou +/− para aproximar · clique em uma área para ver o detalhe"
+      },
+      "detalle": {
+        "sede": "Unidade {id}",
+        "areaDe": "Área de {area}",
+        "areaPrincipal": "Área principal",
+        "centroCostos": "centro de custo {codigo}",
+        "verEmpleados": "Ver {n, plural, one {# funcionário} other {# funcionários}}",
+        "editar": "Editar área",
+        "responsable": "Responsável",
+        "sinResponsable": "Sem responsável",
+        "areaSuperior": "Área superior",
+        "ninguna": "Nenhuma",
+        "personas": "Pessoas",
+        "areasHijas": "Subáreas",
+        "plazasPorSede": "Vagas por unidade",
+        "sinPlazas": "A área ainda não tem vagas aprovadas nem pessoas atribuídas.",
+        "ocupadasDe": "{ocupadas} ocupadas de {aprobadas}",
+        "cargos": "Cargos da área",
+        "sinCargos": "A área ainda não tem cargos."
+      },
+      "formulario": {
+        "tituloEditar": "Editar área · {nombre}",
+        "tituloNueva": "Nova área",
+        "subtituloNueva": "Onde aparece no organograma, quem a dirige e em quais unidades opera.",
+        "noExiste": "A área não existe ou já está arquivada",
+        "sinPermiso": {
+          "titulo": "Você não pode editar áreas",
+          "descripcion": "Sua função não inclui a permissão «Gerenciar áreas». Peça a quem administra as funções da sua organização."
+        },
+        "archivar": {
+          "titulo": "Arquivar área",
+          "descripcion": "Deixa de aparecer no organograma. O histórico é mantido.",
+          "conPersonas": "Não é possível arquivar enquanto tiver pessoas ativas.",
+          "conPlazas": "Não é possível arquivar enquanto tiver vagas aprovadas.",
+          "conHijas": "Não é possível arquivar enquanto tiver subáreas.",
+          "boton": "Arquivar área",
+          "hecho": "Área «{nombre}» arquivada",
+          "confirmarTitulo": "Arquivar «{nombre}»?",
+          "confirmarDescripcion": "Deixará de aparecer no organograma e nos formulários. O histórico dela e dos funcionários é mantido."
+        },
+        "errores": {
+          "nombre": "Digite o nome da área."
+        },
+        "guardada": "Alterações salvas",
+        "creada": "Área «{nombre}» criada",
+        "cargos": "{n, plural, one {# cargo} other {# cargos}}",
+        "crear": "Criar área",
+        "datos": "Dados da área",
+        "nombre": "Nome",
+        "areaSuperior": "Área superior",
+        "areaSuperiorAyuda": "Define onde aparece no organograma.",
+        "sinAreaSuperior": "Nenhuma (área principal)",
+        "responsable": "Responsável",
+        "responsableAyuda": "Vem dos funcionários, não dos usuários do app.",
+        "sinResponsable": "Sem responsável",
+        "sinNombre": "Sem nome",
+        "centroCostos": "Centro de custo",
+        "sinCentroCostos": "Sem centro de custo",
+        "descripcion": "Descrição",
+        "sedes": "Unidades onde opera",
+        "sedesAyuda": "As unidades são as da sua organização: aqui são escolhidas, não criadas.",
+        "sinSedes": "Sua organização ainda não tem unidades ativas.",
+        "plazasSede": "{aprobadas} vagas aprovadas · {ocupadas} ocupadas",
+        "todasLasSedes": "Sem unidades marcadas, a área opera em todas.",
+        "plazasNota": "As vagas são alteradas em «Vagas» com uma solicitação aprovada, não aqui.",
+        "queAfecta": "O que afeta",
+        "personas": "Pessoas",
+        "cargosEtiqueta": "Cargos",
+        "areasHijas": "Subáreas",
+        "ninguna": "Nenhuma",
+        "vacantes": "Vagas abertas",
+        "cambiaPadre": "Mudar a área superior move a área no organograma a partir de hoje. O histórico de cada funcionário não muda."
+      },
+      "filtros": {
+        "verN": "Ver {n, plural, one {# área} other {# áreas}}",
+        "vacantes": "Com vagas abertas",
+        "sinResponsable": "Sem responsável"
+      }
+    },
+    "cargos": {
+      "titulo": "Cargos",
+      "subtitulo": "O perfil de cada cargo: nível, competências, faixa salarial por unidade e documentos exigidos.",
+      "conteo": "{n, plural, one {# cargo} other {# cargos}}",
+      "nuevo": "Novo cargo",
+      "buscar": "Buscar cargo…",
+      "sinEscala": "Sem faixa",
+      "plazasDe": "{ocupadas} de {aprobadas}",
+      "reportaA": "Reporta-se a: {cargo}",
+      "documentos": "{n, plural, one {# exigido} other {# exigidos}}",
+      "personasN": "{n, plural, one {# pessoa} other {# pessoas}}",
+      "sinResultados": "Nenhum cargo corresponde à busca ou aos filtros.",
+      "columnas": {
+        "cargo": "Cargo",
+        "area": "Área",
+        "nivel": "Nível",
+        "escala": "Faixa",
+        "escalaSede": "Faixa ({sede})",
+        "personas": "Pessoas",
+        "plazas": "Vagas",
+        "documentos": "Documentos"
+      },
+      "acciones": {
+        "ver": "Ver cargo",
+        "editar": "Editar cargo",
+        "empleados": "Ver funcionários do cargo",
+        "duplicar": "Duplicar cargo",
+        "eliminar": "Excluir cargo",
+        "eliminarDetalle": "Só se não tiver pessoas nem vagas",
+        "noEliminar": {
+          "personas": "Tem pessoas no cargo.",
+          "plazas": "Tem vagas aprovadas."
+        }
+      },
+      "filtros": {
+        "area": "Área",
+        "nivel": "Nível",
+        "todas": "Todas as áreas",
+        "todos": "Todos os níveis",
+        "verN": "Ver {n, plural, one {# cargo} other {# cargos}}",
+        "chipArea": "Área: {area}",
+        "chipNivel": "Nível: {nivel}",
+        "vacantes": "Com vagas abertas",
+        "sinPersonas": "Sem pessoas no cargo"
+      },
+      "vacio": {
+        "titulo": "Ainda não há cargos",
+        "descripcion": "Crie o primeiro com nível, competências e documentos exigidos."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os cargos",
+        "descripcion": "Verifique sua conexão e tente novamente. Nada foi perdido."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à estrutura",
+        "descripcion": "Sua função não inclui a permissão «Ver cargos». Peça a quem administra as funções da sua organização."
+      },
+      "sustantivo": {
+        "uno": "cargo",
+        "otros": "cargos"
+      },
+      "detalle": {
+        "todasLasSedes": "Todas as unidades",
+        "sede": "Unidade {id}",
+        "noExiste": "O cargo não existe ou não está mais na sua organização",
+        "reportaA": "reporta-se a {cargo}",
+        "personasEnCargo": "{n, plural, one {# pessoa no cargo} other {# pessoas no cargo}}",
+        "nivel": "Nível {nivel}",
+        "verEmpleados": "Ver {n, plural, one {# funcionário} other {# funcionários}}",
+        "editar": "Editar cargo",
+        "perfil": "Perfil",
+        "sinProposito": "O cargo ainda não tem propósito escrito.",
+        "funciones": "Funções principais",
+        "educacion": "Formação",
+        "experiencia": "Experiência",
+        "competencias": "Competências",
+        "nivelEsperado": "Nível esperado de 1 a 4",
+        "sinCompetencias": "O cargo ainda não tem competências.",
+        "tipos": {
+          "tecnica": "Técnica",
+          "comportamental": "Comportamental"
+        },
+        "nivelDe": "{n} de 4",
+        "escala": {
+          "titulo": "Faixa salarial por unidade",
+          "sensible": "Informação sensível",
+          "sede": "Unidade",
+          "minimo": "Mínimo",
+          "medio": "Médio",
+          "maximo": "Máximo",
+          "personas": "Pessoas no cargo",
+          "dentro": "{n} · todas dentro da faixa",
+          "nadie": "Ninguém no cargo",
+          "debajo": "{n} · {x} abaixo do mínimo",
+          "encima": "{n} · {x} acima do máximo",
+          "sinEscala": "O cargo ainda não tem faixa salarial.",
+          "programada": "Nova faixa a partir de {fecha}: {sedes}.",
+          "nota": "A faixa orienta e avisa: um salário fora da faixa pode ser registrado, mas pede motivo e fica sinalizado para o aprovador.",
+          "editar": "Editar faixa"
+        },
+        "plazas": "Vagas do cargo",
+        "sinPlazas": "O orçamento de vagas não detalha este cargo e ninguém o ocupa ainda.",
+        "ocupadasDe": "{ocupadas} ocupadas de {aprobadas}",
+        "personasSinPlaza": "{n, plural, one {# pessoa} other {# pessoas}} · sem vagas do cargo",
+        "documentos": "Documentos exigidos",
+        "documentoSensible": "Documento de um grupo sensível",
+        "documentosNota": "A IA compara esta lista com o prontuário de cada funcionário e avisa o que falta.",
+        "documentosBase": "O cargo usa a lista base. A IA a compara com o prontuário de cada funcionário e avisa o que falta.",
+        "cambios": "Últimas alterações do cargo",
+        "cambioEscala": "Faixa de {sede} a partir de {fecha}, registrada por {por}.",
+        "alguien": "o sistema",
+        "perfilActualizado": "Perfil atualizado em {fecha}."
+      },
+      "formulario": {
+        "tituloEditar": "Editar cargo · {nombre}",
+        "tituloNuevo": "Novo cargo",
+        "subtituloNuevo": "Nível, a quem se reporta, funções, competências e documentos exigidos.",
+        "sinPermiso": {
+          "titulo": "Você não pode editar cargos",
+          "descripcion": "Sua função não inclui a permissão «Editar cargos» ou «Criar cargos». Peça a quem administra as funções da sua organização."
+        },
+        "motivos": {
+          "ajusteAnual": "Reajuste anual",
+          "mercado": "Ajuste ao mercado",
+          "nuevoCargo": "Cargo novo",
+          "reestructuracion": "Reestruturação",
+          "correccion": "Correção de um erro"
+        },
+        "errores": {
+          "nombre": "Digite o nome do cargo.",
+          "area": "Escolha a área do cargo.",
+          "nivel": "Escolha o nível do cargo.",
+          "competencia": "Cada competência precisa de um nome.",
+          "escalaMotivo": "Escolha o motivo da mudança.",
+          "escalaFecha": {
+            "requerido": "Indique a partir de quando a faixa vale.",
+            "noPosterior": "Deve ser posterior à faixa vigente."
+          },
+          "escala": {
+            "requerido": "Obrigatório.",
+            "mayorQueCero": "Deve ser maior que zero.",
+            "medioMenorQueMinimo": "Não pode ser menor que o mínimo.",
+            "maximoMenorQueMedio": "Deve ser maior que o médio."
+          }
+        },
+        "guardado": "Alterações salvas",
+        "creado": "Cargo «{nombre}» criado",
+        "escala": {
+          "minimo": "Mínimo",
+          "medio": "Médio",
+          "maximo": "Máximo",
+          "ayuda": "Só quem tem a permissão de salário a vê e edita.",
+          "soloLectura": "Você pode ver a faixa, mas editá-la exige a permissão «Editar salário e pagamento».",
+          "desde": "Vigente a partir de",
+          "desdeAyuda": "A faixa atual (desde {fecha}) fica no histórico do cargo.",
+          "desdeAyudaNueva": "A partir de quando a faixa vale.",
+          "motivo": "Motivo",
+          "nota": "«Todas as unidades» vale onde a unidade não tiver faixa própria. Deixe uma linha vazia para não alterá-la.",
+          "auditoria": "A faixa é dado sensível: salvar fica registrado no registro de acessos.",
+          "impactoDebajo": "Com a nova faixa, {n, plural, one {# pessoa} other {# pessoas}} de {sede} {n, plural, one {fica} other {ficam}} abaixo do mínimo.",
+          "impactoEncima": "{n, plural, one {# pessoa} other {# pessoas}} de {sede} {n, plural, one {fica} other {ficam}} acima do máximo.",
+          "impactoNota": "O aviso aparece na ficha; o salário não muda sozinho: registra-se uma alteração por pessoa."
+        },
+        "crear": "Criar cargo",
+        "datos": "Dados do cargo",
+        "nombre": "Nome",
+        "area": "Área",
+        "elegir": "Escolher…",
+        "nivel": "Nível",
+        "reportaA": "Reporta-se a",
+        "nadie": "Ninguém (cargo principal)",
+        "claseArl": "Classe de risco ARL",
+        "claseArlAyuda": "É sugerida a cada pessoa do cargo.",
+        "claseArlSinPermiso": "Definida por quem tem «Gerenciar parâmetros de RH».",
+        "arlPorDefecto": "A da unidade ou a da empresa",
+        "arl": {
+          "1": "risco mínimo",
+          "2": "risco baixo",
+          "3": "risco médio",
+          "4": "risco alto",
+          "5": "risco máximo"
+        },
+        "proposito": "Propósito",
+        "funciones": "Funções principais",
+        "funcionN": "Função {n}",
+        "subir": "Subir",
+        "bajar": "Descer",
+        "quitarFuncion": "Remover função",
+        "agregarFuncion": "Adicionar função",
+        "educacion": "Formação",
+        "experiencia": "Experiência",
+        "competencias": "Competências",
+        "competenciasAyuda": "Nível esperado de 1 a 4. Usadas depois no desempenho.",
+        "sinCompetencias": "Ainda sem competências.",
+        "competenciaNombre": "Nome da competência",
+        "competenciaN": "Competência {n}",
+        "competenciaTipo": "Tipo de competência",
+        "competenciaNivel": "Nível esperado de {nombre}",
+        "quitarCompetencia": "Remover competência",
+        "agregarCompetencia": "Adicionar competência",
+        "documentos": "Documentos exigidos",
+        "documentosAyuda": "A IA usa esta lista para avisar o que falta em cada prontuário.",
+        "cambiosTitulo": "Alterações não salvas · {n}",
+        "sinCambios": "Ainda não há alterações.",
+        "cambio": {
+          "escala": "Faixa de {sedes} a partir de {fecha}",
+          "funcionesNuevas": "{n, plural, one {# função nova} other {# funções novas}}",
+          "funcionesQuitadas": "{n, plural, one {# função removida} other {# funções removidas}}",
+          "documentoNuevo": "{documento} passa a ser exigido",
+          "documentoQuitado": "{documento} deixa de ser exigido",
+          "datos": "Dados do cargo",
+          "competencias": "Competências"
+        },
+        "corrige": "{n, plural, one {Corrija # campo para salvar.} other {Corrija # campos para salvar.}}",
+        "copiaDe": "{nombre} (cópia)"
+      },
+      "eliminado": "Cargo «{nombre}» excluído",
+      "confirmarEliminar": "Excluir «{nombre}»?",
+      "confirmarEliminarDetalle": "Deixa de aparecer nas listas e formulários. O histórico de quem o ocupou é mantido."
+    },
+    "plazas": {
+      "titulo": "Vagas",
+      "subtitulo": "Orçamento de vagas: aprovadas frente a ocupadas, por área e unidade. Uma vaga nova passa por aprovação.",
+      "buscar": "Buscar área…",
+      "verN": "Ver {n, plural, one {# linha} other {# linhas}}",
+      "todas": "Todas",
+      "porAreaSede": "Por área e unidade",
+      "leyenda": "Aprovadas = orçamento vigente · Ocupadas = funcionários ativos e a ingressar",
+      "sinResultados": "Nenhuma área corresponde à busca ou aos filtros.",
+      "ocupadasDe": "{ocupadas} ocupadas de {aprobadas} aprovadas",
+      "personasSinPresupuesto": "{n, plural, one {# pessoa} other {# pessoas}} · sem vagas aprovadas",
+      "columnas": {
+        "area": "Área",
+        "ocupacion": "Ocupação",
+        "estado": "Status",
+        "areaSede": "Área e unidade"
+      },
+      "estado": {
+        "completa": "Completa",
+        "vacantes": "{n, plural, one {# vaga aberta} other {# vagas abertas}}",
+        "sobre": "{n} acima do aprovado",
+        "sinPresupuesto": "Sem orçamento"
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à estrutura",
+        "descripcion": "Sua função não inclui a permissão «Ver cargos». Peça a quem administra as funções da sua organização."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as vagas",
+        "descripcion": "Verifique sua conexão e tente novamente. Nada foi perdido."
+      },
+      "vacio": {
+        "titulo": "Ainda não há orçamento de vagas",
+        "descripcion": "Solicite as vagas de cada área e unidade. Quando aprovadas, entram no orçamento."
+      },
+      "kpi": {
+        "etiqueta": "Resumo das vagas",
+        "aprobadas": "Vagas aprovadas",
+        "enSedes": "{n, plural, one {Em # unidade} other {Em # unidades}}",
+        "ocupadas": "Ocupadas",
+        "porcentaje": "{n} % do orçamento",
+        "sinPresupuesto": "Sem orçamento aprovado",
+        "vacantes": "Vagas abertas",
+        "ninguna": "Nenhuma",
+        "sobre": "Acima do aprovado"
+      },
+      "aviso": {
+        "titulo": "{lugar} tem {personas, plural, one {# pessoa} other {# pessoas}} e {aprobadas, plural, one {# vaga aprovada} other {# vagas aprovadas}}",
+        "descripcion": "Solicite uma vaga para regularizar ou revise a transferência. Ninguém é bloqueado.",
+        "justificacion": "Regularizar {lugar}"
+      },
+      "solicitudes": {
+        "titulo": "Solicitações de vaga",
+        "pendientes": "{n, plural, one {# pendente} other {# pendentes}}",
+        "vacio": "Ainda não há solicitações.",
+        "nota": "Quando aprovada, a vaga entra no orçamento a partir da data pedida e fica no histórico da área.",
+        "item": "{cargo} · {n, plural, one {# vaga} other {# vagas}}{temporal, select, si { temporária} other {}}",
+        "hasta": "até {fecha}",
+        "permanente": "permanente",
+        "metaPendiente": "Solicitada por {quien} em {fecha} · Aprova: {aprueba}",
+        "metaAprobada": "Aprovada por {quien} em {fecha} · entra no orçamento a partir de {desde}",
+        "metaRechazada": "Recusada por {quien} em {fecha} · Motivo: {motivo}",
+        "metaCancelada": "A solicitação foi cancelada.",
+        "estados": {
+          "pendiente": "Pendente de aprovação",
+          "aprobada": "Aprovada",
+          "rechazada": "Recusada",
+          "cancelada": "Cancelada"
+        }
+      },
+      "solicitar": {
+        "boton": "Solicitar vaga",
+        "titulo": "Solicitar uma vaga nova",
+        "descripcion": "Passa por aprovação antes de entrar no orçamento. Ninguém é contratado em uma vaga não aprovada.",
+        "elegir": "Escolher…",
+        "area": "Área",
+        "sede": "Unidade",
+        "sedeAyuda": "As unidades são as da sua organização.",
+        "cargo": "Cargo",
+        "cantidad": "Quantidade",
+        "tipo": "Tipo de vaga",
+        "permanente": "Permanente",
+        "temporal": "Temporária, com data de término",
+        "desde": "Necessária a partir de",
+        "hasta": "Até",
+        "justificacion": "Justificativa",
+        "errores": {
+          "area": "Escolha a área.",
+          "sede": "Escolha a unidade.",
+          "cargo": "Escolha o cargo.",
+          "cantidad": "Indique quantas vagas.",
+          "desde": "Indique a partir de quando.",
+          "hasta": "A data de término deve ser igual ou posterior à de início.",
+          "justificacion": "Escreva por que é necessária (mínimo de 5 caracteres)."
+        },
+        "enviada": "Solicitação enviada para aprovação",
+        "enviar": "Enviar para aprovação",
+        "sinAprobador": "Não há para quem enviar a solicitação: ninguém mais tem «Aprovar solicitações de RH».",
+        "escala": "Faixa de {cargo} em {sede}: {minimo} – {maximo} (ponto médio {medio}).",
+        "apruebaRegla": "Aprovada por {quien}. Regra: «{regla}».",
+        "apruebaPorDefecto": "Aprovada por {quien} (sem regra própria para vagas).",
+        "rrhh": "RH",
+        "pasos": "A cadeia tem {n} etapas."
+      }
+    }
   }
 }

@@ -55945,5 +55945,525 @@
         "verN": "Voir {n, plural, one {# demande} other {# demandes}}"
       }
     }
+  },
+  "hrmEstructura": {
+    "comun": {
+      "rrhh": "Ressources humaines",
+      "volverInicio": "Retour à l’accueil",
+      "volver": "Retour",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "guardarCambios": "Enregistrer les modifications"
+    },
+    "errores": {
+      "error_hrm": "L’opération n’a pas pu aboutir. Réessayez.",
+      "sin_permiso": "Votre rôle n’a pas l’autorisation de faire cela.",
+      "no_existe": "L’enregistrement n’existe plus.",
+      "duplicado": "Un enregistrement avec ces données existe déjà.",
+      "nombre_invalido": "Saisissez un nom de 2 à 120 caractères.",
+      "descripcion_larga": "La description accepte jusqu’à 500 caractères.",
+      "area_superior_invalida": "Le service parent n’existe pas ou est archivé.",
+      "area_superior_ciclo": "Un service ne peut pas se trouver sous lui-même ni sous l’un de ses sous-services.",
+      "responsable_invalido": "Le responsable n’est pas un salarié de votre organisation.",
+      "centro_costo_invalido": "Le centre de coûts n’appartient pas à votre organisation.",
+      "sede_invalida": "Le site n’appartient pas à votre organisation.",
+      "area_con_personas": "Archivage impossible : le service compte des personnes actives.",
+      "area_con_plazas": "Archivage impossible : le service a des postes approuvés.",
+      "area_con_hijas": "Archivage impossible : déplacez ou archivez d’abord ses sous-services.",
+      "area_invalida": "Choisissez un service de votre organisation.",
+      "nivel_invalido": "Choisissez le niveau de l’emploi.",
+      "reporta_a_invalido": "L’emploi de rattachement n’est pas valide.",
+      "reporta_a_ciclo": "Un emploi ne peut pas être rattaché à un emploi qui dépend de lui.",
+      "texto_largo": "L’un des textes est trop long.",
+      "demasiadas_funciones": "Un emploi accepte jusqu’à 20 missions.",
+      "demasiadas_competencias": "Un emploi accepte jusqu’à 30 compétences.",
+      "competencia_invalida": "Vérifiez les compétences : chacune nécessite un nom, un type et un niveau de 1 à 4.",
+      "documento_invalido": "L’un des documents exigés n’est pas valide.",
+      "clase_arl_invalida": "La classe de risque ARL va de I à V.",
+      "escala_sin_fecha": "Indiquez à partir de quand la grille s’applique.",
+      "escala_sin_motivo": "Indiquez le motif du changement de grille.",
+      "escala_invalida": "Vérifiez la grille : le minimum doit être supérieur à zéro et ne pas dépasser le milieu, et le milieu ne pas dépasser le maximum.",
+      "escala_fecha_anterior": "Une grille existe déjà à partir de cette date ou d’une date postérieure. Choisissez une date plus tardive.",
+      "escala_vigencias_cruzadas": "Une grille est déjà en vigueur à ces dates pour ce site.",
+      "cargo_invalido": "Choisissez un emploi de votre organisation.",
+      "cantidad_invalida": "La quantité va de 1 à 500 postes.",
+      "tipo_invalido": "Indiquez si le poste est permanent ou temporaire.",
+      "fecha_invalida": "Indiquez à partir de quand le poste est nécessaire.",
+      "fecha_fin_invalida": "La date de fin doit être égale ou postérieure à la date de début.",
+      "justificacion_invalida": "Rédigez une justification de 5 à 500 caractères.",
+      "aprobacion_sin_aprobador": "Personne ne peut recevoir la demande. Demandez à un administrateur d’attribuer « Approuver les demandes RH » à quelqu’un d’autre.",
+      "cargo_con_personas": "Suppression impossible : l’emploi compte des personnes actives.",
+      "cargo_con_plazas": "Suppression impossible : l’emploi a des postes approuvés."
+    },
+    "niveles": {
+      "1": "Opérationnel",
+      "2": "Opérationnel qualifié",
+      "3": "Cadre professionnel",
+      "4": "Encadrement",
+      "5": "Direction"
+    },
+    "documentos": {
+      "documento_identidad": "Pièce d’identité",
+      "hoja_vida": "CV",
+      "contrato_trabajo": "Contrat de travail signé",
+      "afiliacion_eps": "Affiliation à l’assurance santé (EPS)",
+      "afiliacion_afp": "Affiliation à la caisse de retraite",
+      "afiliacion_arl": "Affiliation à l’assurance accidents du travail (ARL)",
+      "afiliacion_ccf": "Affiliation à la caisse d’allocations",
+      "afiliacion_cesantias": "Affiliation au fonds d’indemnités de départ",
+      "certificado_bancario": "Attestation bancaire",
+      "concepto_aptitud": "Avis d’aptitude de la visite d’embauche",
+      "certificacion": "Certification ou formation exigée"
+    },
+    "areas": {
+      "titulo": "Services",
+      "subtitulo": "Comment l’entreprise est organisée. Touchez un service pour voir son détail, ses postes et ses emplois.",
+      "subtituloMovil": "L’organigramme, sous forme de liste",
+      "buscar": "Rechercher un service…",
+      "nueva": "Nouveau service",
+      "sinResponsable": "Sans responsable",
+      "personas": "{n, plural, one {# personne} other {# personnes}}",
+      "vacantes": "{n, plural, one {# poste vacant} other {# postes vacants}}",
+      "hijas": "{n, plural, one {# service} other {# services}}",
+      "verHijas": "Voir {n, plural, one {# service} other {# services}}",
+      "sinResultados": "Aucun service ne correspond à la recherche, aux filtres ou au site choisi.",
+      "columnas": {
+        "area": "Service",
+        "responsable": "Responsable",
+        "personas": "Personnes",
+        "vacantes": "Postes vacants"
+      },
+      "acciones": {
+        "ver": "Voir le détail",
+        "editar": "Modifier le service"
+      },
+      "vista": {
+        "etiqueta": "Affichage des services",
+        "organigrama": "Organigramme",
+        "lista": "Liste"
+      },
+      "vacio": {
+        "titulo": "Aucun service pour l’instant",
+        "descripcion": "Créez le premier. Les sites existent déjà dans votre organisation : ici, vous organisez seulement les services.",
+        "crear": "Créer le premier service"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la structure",
+        "descripcion": "Votre rôle n’inclut pas l’autorisation « Voir les emplois ». Demandez-la à la personne qui gère les rôles de votre organisation."
+      },
+      "error": {
+        "titulo": "Impossible de charger la structure",
+        "descripcion": "Vérifiez votre connexion et réessayez. Rien n’a été perdu."
+      },
+      "organigrama": {
+        "etiqueta": "Organigramme de l’entreprise",
+        "alejar": "Dézoomer",
+        "acercar": "Zoomer",
+        "ajustar": "Ajuster",
+        "ayuda": "Faites glisser pour vous déplacer · Ctrl + molette ou +/− pour zoomer · cliquez sur un service pour voir son détail"
+      },
+      "detalle": {
+        "sede": "Site {id}",
+        "areaDe": "Service de {area}",
+        "areaPrincipal": "Service principal",
+        "centroCostos": "centre de coûts {codigo}",
+        "verEmpleados": "Voir {n, plural, one {# salarié} other {# salariés}}",
+        "editar": "Modifier le service",
+        "responsable": "Responsable",
+        "sinResponsable": "Sans responsable",
+        "areaSuperior": "Service parent",
+        "ninguna": "Aucun",
+        "personas": "Personnes",
+        "areasHijas": "Sous-services",
+        "plazasPorSede": "Postes par site",
+        "sinPlazas": "Le service n’a encore ni postes approuvés ni personnes affectées.",
+        "ocupadasDe": "{ocupadas} pourvus sur {aprobadas}",
+        "cargos": "Emplois du service",
+        "sinCargos": "Le service n’a encore aucun emploi."
+      },
+      "formulario": {
+        "tituloEditar": "Modifier le service · {nombre}",
+        "tituloNueva": "Nouveau service",
+        "subtituloNueva": "Où il apparaît dans l’organigramme, qui le dirige et sur quels sites il opère.",
+        "noExiste": "Le service n’existe pas ou est déjà archivé",
+        "sinPermiso": {
+          "titulo": "Vous ne pouvez pas modifier les services",
+          "descripcion": "Votre rôle n’inclut pas l’autorisation « Gérer les services ». Demandez-la à la personne qui gère les rôles de votre organisation."
+        },
+        "archivar": {
+          "titulo": "Archiver le service",
+          "descripcion": "Il n’apparaît plus dans l’organigramme. Son historique est conservé.",
+          "conPersonas": "Archivage impossible tant qu’il compte des personnes actives.",
+          "conPlazas": "Archivage impossible tant qu’il a des postes approuvés.",
+          "conHijas": "Archivage impossible tant qu’il a des sous-services.",
+          "boton": "Archiver le service",
+          "hecho": "Service « {nombre} » archivé",
+          "confirmarTitulo": "Archiver « {nombre} » ?",
+          "confirmarDescripcion": "Il n’apparaîtra plus dans l’organigramme ni dans les formulaires. Son historique et celui de ses salariés sont conservés."
+        },
+        "errores": {
+          "nombre": "Saisissez le nom du service."
+        },
+        "guardada": "Modifications enregistrées",
+        "creada": "Service « {nombre} » créé",
+        "cargos": "{n, plural, one {# emploi} other {# emplois}}",
+        "crear": "Créer le service",
+        "datos": "Informations du service",
+        "nombre": "Nom",
+        "areaSuperior": "Service parent",
+        "areaSuperiorAyuda": "Définit sa place dans l’organigramme.",
+        "sinAreaSuperior": "Aucun (service principal)",
+        "responsable": "Responsable",
+        "responsableAyuda": "Choisi parmi les salariés, pas parmi les utilisateurs de l’application.",
+        "sinResponsable": "Sans responsable",
+        "sinNombre": "Sans nom",
+        "centroCostos": "Centre de coûts",
+        "sinCentroCostos": "Sans centre de coûts",
+        "descripcion": "Description",
+        "sedes": "Sites où il opère",
+        "sedesAyuda": "Les sites sont ceux de votre organisation : ici, on les choisit, on ne les crée pas.",
+        "sinSedes": "Votre organisation n’a encore aucun site actif.",
+        "plazasSede": "{aprobadas} postes approuvés · {ocupadas} pourvus",
+        "todasLasSedes": "Sans site coché, le service opère sur tous.",
+        "plazasNota": "Les postes se modifient dans « Postes » avec une demande approuvée, pas ici.",
+        "queAfecta": "Ce que cela touche",
+        "personas": "Personnes",
+        "cargosEtiqueta": "Emplois",
+        "areasHijas": "Sous-services",
+        "ninguna": "Aucun",
+        "vacantes": "Postes vacants",
+        "cambiaPadre": "Changer le service parent déplace le service dans l’organigramme à partir d’aujourd’hui. L’historique de chaque salarié ne change pas."
+      },
+      "filtros": {
+        "verN": "Voir {n, plural, one {# service} other {# services}}",
+        "vacantes": "Avec postes vacants",
+        "sinResponsable": "Sans responsable"
+      }
+    },
+    "cargos": {
+      "titulo": "Emplois",
+      "subtitulo": "Le profil de chaque emploi : niveau, compétences, grille salariale par site et documents exigés.",
+      "conteo": "{n, plural, one {# emploi} other {# emplois}}",
+      "nuevo": "Nouvel emploi",
+      "buscar": "Rechercher un emploi…",
+      "sinEscala": "Sans grille",
+      "plazasDe": "{ocupadas} sur {aprobadas}",
+      "reportaA": "Rattaché à : {cargo}",
+      "documentos": "{n, plural, one {# exigé} other {# exigés}}",
+      "personasN": "{n, plural, one {# personne} other {# personnes}}",
+      "sinResultados": "Aucun emploi ne correspond à la recherche ou aux filtres.",
+      "columnas": {
+        "cargo": "Emploi",
+        "area": "Service",
+        "nivel": "Niveau",
+        "escala": "Grille",
+        "escalaSede": "Grille ({sede})",
+        "personas": "Personnes",
+        "plazas": "Postes",
+        "documentos": "Documents"
+      },
+      "acciones": {
+        "ver": "Voir l’emploi",
+        "editar": "Modifier l’emploi",
+        "empleados": "Voir les salariés de l’emploi",
+        "duplicar": "Dupliquer l’emploi",
+        "eliminar": "Supprimer l’emploi",
+        "eliminarDetalle": "Seulement s’il n’a ni personnes ni postes",
+        "noEliminar": {
+          "personas": "Des personnes occupent cet emploi.",
+          "plazas": "Il a des postes approuvés."
+        }
+      },
+      "filtros": {
+        "area": "Service",
+        "nivel": "Niveau",
+        "todas": "Tous les services",
+        "todos": "Tous les niveaux",
+        "verN": "Voir {n, plural, one {# emploi} other {# emplois}}",
+        "chipArea": "Service : {area}",
+        "chipNivel": "Niveau : {nivel}",
+        "vacantes": "Avec postes vacants",
+        "sinPersonas": "Sans personne dans l’emploi"
+      },
+      "vacio": {
+        "titulo": "Aucun emploi pour l’instant",
+        "descripcion": "Créez le premier avec son niveau, ses compétences et les documents exigés."
+      },
+      "error": {
+        "titulo": "Impossible de charger les emplois",
+        "descripcion": "Vérifiez votre connexion et réessayez. Rien n’a été perdu."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la structure",
+        "descripcion": "Votre rôle n’inclut pas l’autorisation « Voir les emplois ». Demandez-la à la personne qui gère les rôles de votre organisation."
+      },
+      "sustantivo": {
+        "uno": "emploi",
+        "otros": "emplois"
+      },
+      "detalle": {
+        "todasLasSedes": "Tous les sites",
+        "sede": "Site {id}",
+        "noExiste": "L’emploi n’existe pas ou n’est plus dans votre organisation",
+        "reportaA": "rattaché à {cargo}",
+        "personasEnCargo": "{n, plural, one {# personne dans l’emploi} other {# personnes dans l’emploi}}",
+        "nivel": "Niveau {nivel}",
+        "verEmpleados": "Voir {n, plural, one {# salarié} other {# salariés}}",
+        "editar": "Modifier l’emploi",
+        "perfil": "Profil",
+        "sinProposito": "L’emploi n’a pas encore de finalité rédigée.",
+        "funciones": "Missions principales",
+        "educacion": "Formation",
+        "experiencia": "Expérience",
+        "competencias": "Compétences",
+        "nivelEsperado": "Niveau attendu de 1 à 4",
+        "sinCompetencias": "L’emploi n’a pas encore de compétences.",
+        "tipos": {
+          "tecnica": "Technique",
+          "comportamental": "Comportementale"
+        },
+        "nivelDe": "{n} sur 4",
+        "escala": {
+          "titulo": "Grille salariale par site",
+          "sensible": "Information sensible",
+          "sede": "Site",
+          "minimo": "Minimum",
+          "medio": "Milieu",
+          "maximo": "Maximum",
+          "personas": "Personnes dans l’emploi",
+          "dentro": "{n} · toutes dans la fourchette",
+          "nadie": "Personne dans l’emploi",
+          "debajo": "{n} · {x} sous le minimum",
+          "encima": "{n} · {x} au-dessus du maximum",
+          "sinEscala": "L’emploi n’a pas encore de grille salariale.",
+          "programada": "Nouvelle grille à partir du {fecha} : {sedes}.",
+          "nota": "La grille oriente et alerte : un salaire hors fourchette peut être enregistré, mais un motif est demandé et il est signalé à l’approbateur.",
+          "editar": "Modifier la grille"
+        },
+        "plazas": "Postes de l’emploi",
+        "sinPlazas": "Le budget de postes ne détaille pas cet emploi et personne ne l’occupe encore.",
+        "ocupadasDe": "{ocupadas} pourvus sur {aprobadas}",
+        "personasSinPlaza": "{n, plural, one {# personne} other {# personnes}} · sans postes pour l’emploi",
+        "documentos": "Documents exigés",
+        "documentoSensible": "Document d’un groupe sensible",
+        "documentosNota": "L’IA compare cette liste avec le dossier de chaque salarié et signale ce qui manque.",
+        "documentosBase": "L’emploi utilise la liste de base. L’IA la compare avec le dossier de chaque salarié et signale ce qui manque.",
+        "cambios": "Dernières modifications de l’emploi",
+        "cambioEscala": "Grille de {sede} à partir du {fecha}, enregistrée par {por}.",
+        "alguien": "le système",
+        "perfilActualizado": "Profil mis à jour le {fecha}."
+      },
+      "formulario": {
+        "tituloEditar": "Modifier l’emploi · {nombre}",
+        "tituloNuevo": "Nouvel emploi",
+        "subtituloNuevo": "Niveau, rattachement, missions, compétences et documents exigés.",
+        "sinPermiso": {
+          "titulo": "Vous ne pouvez pas modifier les emplois",
+          "descripcion": "Votre rôle n’inclut pas l’autorisation « Modifier les emplois » ou « Créer des emplois ». Demandez-la à la personne qui gère les rôles de votre organisation."
+        },
+        "motivos": {
+          "ajusteAnual": "Ajustement annuel",
+          "mercado": "Ajustement au marché",
+          "nuevoCargo": "Nouvel emploi",
+          "reestructuracion": "Restructuration",
+          "correccion": "Correction d’une erreur"
+        },
+        "errores": {
+          "nombre": "Saisissez le nom de l’emploi.",
+          "area": "Choisissez le service de l’emploi.",
+          "nivel": "Choisissez le niveau de l’emploi.",
+          "competencia": "Chaque compétence nécessite un nom.",
+          "escalaMotivo": "Choisissez le motif du changement.",
+          "escalaFecha": {
+            "requerido": "Indiquez à partir de quand la grille s’applique.",
+            "noPosterior": "Elle doit être postérieure à la grille en vigueur."
+          },
+          "escala": {
+            "requerido": "Obligatoire.",
+            "mayorQueCero": "Doit être supérieur à zéro.",
+            "medioMenorQueMinimo": "Ne peut pas être inférieur au minimum.",
+            "maximoMenorQueMedio": "Doit être supérieur au milieu."
+          }
+        },
+        "guardado": "Modifications enregistrées",
+        "creado": "Emploi « {nombre} » créé",
+        "escala": {
+          "minimo": "Minimum",
+          "medio": "Milieu",
+          "maximo": "Maximum",
+          "ayuda": "Seules les personnes ayant l’autorisation salaire peuvent la voir et la modifier.",
+          "soloLectura": "Vous pouvez voir la grille, mais la modifier exige l’autorisation « Modifier salaire et paie ».",
+          "desde": "En vigueur à partir du",
+          "desdeAyuda": "La grille actuelle (depuis le {fecha}) reste dans l’historique de l’emploi.",
+          "desdeAyudaNueva": "À partir de quand la grille s’applique.",
+          "motivo": "Motif",
+          "nota": "« Tous les sites » s’applique là où le site n’a pas sa propre grille. Laissez une ligne vide pour ne pas la modifier.",
+          "auditoria": "La grille est une donnée sensible : l’enregistrement figure dans le journal des accès.",
+          "impactoDebajo": "Avec la nouvelle grille, {n, plural, one {# personne} other {# personnes}} de {sede} {n, plural, one {passe} other {passent}} sous le minimum.",
+          "impactoEncima": "{n, plural, one {# personne} other {# personnes}} de {sede} {n, plural, one {est} other {sont}} au-dessus du maximum.",
+          "impactoNota": "Une alerte apparaît dans leur fiche ; leur salaire ne change pas tout seul : un changement est enregistré par personne."
+        },
+        "crear": "Créer l’emploi",
+        "datos": "Informations de l’emploi",
+        "nombre": "Nom",
+        "area": "Service",
+        "elegir": "Choisir…",
+        "nivel": "Niveau",
+        "reportaA": "Rattaché à",
+        "nadie": "Personne (emploi principal)",
+        "claseArl": "Classe de risque ARL",
+        "claseArlAyuda": "Proposée à chaque personne de l’emploi.",
+        "claseArlSinPermiso": "Définie par la personne qui a « Gérer les paramètres RH ».",
+        "arlPorDefecto": "Celle du site ou de l’entreprise",
+        "arl": {
+          "1": "risque minimal",
+          "2": "risque faible",
+          "3": "risque moyen",
+          "4": "risque élevé",
+          "5": "risque maximal"
+        },
+        "proposito": "Finalité",
+        "funciones": "Missions principales",
+        "funcionN": "Mission {n}",
+        "subir": "Monter",
+        "bajar": "Descendre",
+        "quitarFuncion": "Retirer la mission",
+        "agregarFuncion": "Ajouter une mission",
+        "educacion": "Formation",
+        "experiencia": "Expérience",
+        "competencias": "Compétences",
+        "competenciasAyuda": "Niveau attendu de 1 à 4. Utilisées ensuite pour la performance.",
+        "sinCompetencias": "Pas encore de compétences.",
+        "competenciaNombre": "Nom de la compétence",
+        "competenciaN": "Compétence {n}",
+        "competenciaTipo": "Type de compétence",
+        "competenciaNivel": "Niveau attendu de {nombre}",
+        "quitarCompetencia": "Retirer la compétence",
+        "agregarCompetencia": "Ajouter une compétence",
+        "documentos": "Documents exigés",
+        "documentosAyuda": "L’IA utilise cette liste pour signaler ce qui manque dans chaque dossier.",
+        "cambiosTitulo": "Modifications non enregistrées · {n}",
+        "sinCambios": "Aucune modification pour l’instant.",
+        "cambio": {
+          "escala": "Grille de {sedes} à partir du {fecha}",
+          "funcionesNuevas": "{n, plural, one {# nouvelle mission} other {# nouvelles missions}}",
+          "funcionesQuitadas": "{n, plural, one {# mission retirée} other {# missions retirées}}",
+          "documentoNuevo": "{documento} devient exigé",
+          "documentoQuitado": "{documento} n’est plus exigé",
+          "datos": "Informations de l’emploi",
+          "competencias": "Compétences"
+        },
+        "corrige": "{n, plural, one {Corrigez # champ pour enregistrer.} other {Corrigez # champs pour enregistrer.}}",
+        "copiaDe": "{nombre} (copie)"
+      },
+      "eliminado": "Emploi « {nombre} » supprimé",
+      "confirmarEliminar": "Supprimer « {nombre} » ?",
+      "confirmarEliminarDetalle": "Il n’apparaît plus dans les listes ni les formulaires. L’historique de ceux qui l’ont occupé est conservé."
+    },
+    "plazas": {
+      "titulo": "Postes",
+      "subtitulo": "Budget de postes : approuvés face aux pourvus, par service et par site. Un nouveau poste passe par approbation.",
+      "buscar": "Rechercher un service…",
+      "verN": "Voir {n, plural, one {# ligne} other {# lignes}}",
+      "todas": "Tous",
+      "porAreaSede": "Par service et site",
+      "leyenda": "Approuvés = budget en vigueur · Pourvus = salariés actifs et à venir",
+      "sinResultados": "Aucun service ne correspond à la recherche ou aux filtres.",
+      "ocupadasDe": "{ocupadas} pourvus sur {aprobadas} approuvés",
+      "personasSinPresupuesto": "{n, plural, one {# personne} other {# personnes}} · sans postes approuvés",
+      "columnas": {
+        "area": "Service",
+        "ocupacion": "Occupation",
+        "estado": "Statut",
+        "areaSede": "Service et site"
+      },
+      "estado": {
+        "completa": "Complet",
+        "vacantes": "{n, plural, one {# poste vacant} other {# postes vacants}}",
+        "sobre": "{n} au-delà du budget",
+        "sinPresupuesto": "Sans budget"
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la structure",
+        "descripcion": "Votre rôle n’inclut pas l’autorisation « Voir les emplois ». Demandez-la à la personne qui gère les rôles de votre organisation."
+      },
+      "error": {
+        "titulo": "Impossible de charger les postes",
+        "descripcion": "Vérifiez votre connexion et réessayez. Rien n’a été perdu."
+      },
+      "vacio": {
+        "titulo": "Pas encore de budget de postes",
+        "descripcion": "Demandez les postes de chaque service et site. Une fois approuvés, ils entrent dans le budget."
+      },
+      "kpi": {
+        "etiqueta": "Résumé des postes",
+        "aprobadas": "Postes approuvés",
+        "enSedes": "{n, plural, one {Sur # site} other {Sur # sites}}",
+        "ocupadas": "Pourvus",
+        "porcentaje": "{n} % du budget",
+        "sinPresupuesto": "Sans budget approuvé",
+        "vacantes": "Postes vacants",
+        "ninguna": "Aucun",
+        "sobre": "Au-delà du budget"
+      },
+      "aviso": {
+        "titulo": "{lugar} compte {personas, plural, one {# personne} other {# personnes}} et {aprobadas, plural, one {# poste approuvé} other {# postes approuvés}}",
+        "descripcion": "Demandez un poste pour régulariser ou vérifiez le transfert. Personne n’est bloqué.",
+        "justificacion": "Régulariser {lugar}"
+      },
+      "solicitudes": {
+        "titulo": "Demandes de poste",
+        "pendientes": "{n, plural, one {# en attente} other {# en attente}}",
+        "vacio": "Aucune demande pour l’instant.",
+        "nota": "Une fois approuvé, le poste s’ajoute au budget à partir de la date demandée et reste dans l’historique du service.",
+        "item": "{cargo} · {n, plural, one {# poste} other {# postes}}{temporal, select, si { temporaire} other {}}",
+        "hasta": "jusqu’au {fecha}",
+        "permanente": "permanent",
+        "metaPendiente": "Demandé par {quien} le {fecha} · Approbateur : {aprueba}",
+        "metaAprobada": "Approuvé par {quien} le {fecha} · ajouté au budget à partir du {desde}",
+        "metaRechazada": "Refusé par {quien} le {fecha} · Motif : {motivo}",
+        "metaCancelada": "La demande a été annulée.",
+        "estados": {
+          "pendiente": "En attente d’approbation",
+          "aprobada": "Approuvée",
+          "rechazada": "Refusée",
+          "cancelada": "Annulée"
+        }
+      },
+      "solicitar": {
+        "boton": "Demander un poste",
+        "titulo": "Demander un nouveau poste",
+        "descripcion": "Il passe par approbation avant d’entrer dans le budget. Personne n’est recruté sur un poste non approuvé.",
+        "elegir": "Choisir…",
+        "area": "Service",
+        "sede": "Site",
+        "sedeAyuda": "Les sites sont ceux de votre organisation.",
+        "cargo": "Emploi",
+        "cantidad": "Quantité",
+        "tipo": "Type de poste",
+        "permanente": "Permanent",
+        "temporal": "Temporaire, avec date de fin",
+        "desde": "Nécessaire à partir du",
+        "hasta": "Jusqu’au",
+        "justificacion": "Justification",
+        "errores": {
+          "area": "Choisissez le service.",
+          "sede": "Choisissez le site.",
+          "cargo": "Choisissez l’emploi.",
+          "cantidad": "Indiquez combien de postes.",
+          "desde": "Indiquez à partir de quand.",
+          "hasta": "La date de fin doit être égale ou postérieure à la date de début.",
+          "justificacion": "Expliquez pourquoi il est nécessaire (5 caractères minimum)."
+        },
+        "enviada": "Demande envoyée pour approbation",
+        "enviar": "Envoyer pour approbation",
+        "sinAprobador": "Personne ne peut recevoir la demande : personne d’autre n’a « Approuver les demandes RH ».",
+        "escala": "Grille de {cargo} à {sede} : {minimo} – {maximo} (milieu {medio}).",
+        "apruebaRegla": "Approuvée par {quien}. Règle : « {regla} ».",
+        "apruebaPorDefecto": "Approuvée par {quien} (pas de règle propre aux postes).",
+        "rrhh": "RH",
+        "pasos": "Le circuit comporte {n} étapes."
+      }
+    }
   }
 }

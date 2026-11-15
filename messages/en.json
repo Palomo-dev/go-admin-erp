@@ -55945,5 +55945,525 @@
         "verN": "View {n, plural, one {# request} other {# requests}}"
       }
     }
+  },
+  "hrmEstructura": {
+    "comun": {
+      "rrhh": "Human resources",
+      "volverInicio": "Back to home",
+      "volver": "Back",
+      "cancelar": "Cancel",
+      "guardar": "Save",
+      "guardarCambios": "Save changes"
+    },
+    "errores": {
+      "error_hrm": "The operation could not be completed. Try again.",
+      "sin_permiso": "Your role is not allowed to do this.",
+      "no_existe": "The record no longer exists.",
+      "duplicado": "A record with that data already exists.",
+      "nombre_invalido": "Enter a name between 2 and 120 characters.",
+      "descripcion_larga": "The description allows up to 500 characters.",
+      "area_superior_invalida": "The parent area does not exist or is archived.",
+      "area_superior_ciclo": "An area cannot sit under itself or under one of its child areas.",
+      "responsable_invalido": "The manager is not an employee of your organization.",
+      "centro_costo_invalido": "The cost center does not belong to your organization.",
+      "sede_invalida": "The branch does not belong to your organization.",
+      "area_con_personas": "Cannot archive: the area has active people.",
+      "area_con_plazas": "Cannot archive: the area has approved positions.",
+      "area_con_hijas": "Cannot archive: move or archive its child areas first.",
+      "area_invalida": "Choose an area of your organization.",
+      "nivel_invalido": "Choose the job level.",
+      "reporta_a_invalido": "The job it reports to is not valid.",
+      "reporta_a_ciclo": "A job cannot report to one that depends on it.",
+      "texto_largo": "One of the texts is too long.",
+      "demasiadas_funciones": "A job allows up to 20 duties.",
+      "demasiadas_competencias": "A job allows up to 30 competencies.",
+      "competencia_invalida": "Check the competencies: each needs a name, a type and a level from 1 to 4.",
+      "documento_invalido": "One of the required documents is not valid.",
+      "clase_arl_invalida": "The ARL risk class goes from I to V.",
+      "escala_sin_fecha": "Say from when the pay range applies.",
+      "escala_sin_motivo": "Give the reason for the pay range change.",
+      "escala_invalida": "Check the pay range: the minimum must be above zero and not exceed the midpoint, and the midpoint must not exceed the maximum.",
+      "escala_fecha_anterior": "There is already a pay range from that date or a later one. Choose a later date.",
+      "escala_vigencias_cruzadas": "There is already a pay range in effect on those dates for that branch.",
+      "cargo_invalido": "Choose a job of your organization.",
+      "cantidad_invalida": "The quantity goes from 1 to 500 positions.",
+      "tipo_invalido": "Choose whether the position is permanent or temporary.",
+      "fecha_invalida": "Say from when the position is needed.",
+      "fecha_fin_invalida": "The end date must be on or after the start date.",
+      "justificacion_invalida": "Write a justification of 5 to 500 characters.",
+      "aprobacion_sin_aprobador": "There is no one to send the request to. Ask an administrator to give «Approve HR requests» to someone else.",
+      "cargo_con_personas": "Cannot delete: the job has active people.",
+      "cargo_con_plazas": "Cannot delete: the job has approved positions."
+    },
+    "niveles": {
+      "1": "Operational",
+      "2": "Skilled operational",
+      "3": "Professional",
+      "4": "Management",
+      "5": "Executive"
+    },
+    "documentos": {
+      "documento_identidad": "ID document",
+      "hoja_vida": "Résumé",
+      "contrato_trabajo": "Signed employment contract",
+      "afiliacion_eps": "Health insurer (EPS) enrollment",
+      "afiliacion_afp": "Pension fund enrollment",
+      "afiliacion_arl": "Occupational risk insurer (ARL) enrollment",
+      "afiliacion_ccf": "Family compensation fund enrollment",
+      "afiliacion_cesantias": "Severance fund enrollment",
+      "certificado_bancario": "Bank certificate",
+      "concepto_aptitud": "Pre-employment medical fitness report",
+      "certificacion": "Required certification or course"
+    },
+    "areas": {
+      "titulo": "Areas",
+      "subtitulo": "How the company is organized. Tap an area to see its details, positions and jobs.",
+      "subtituloMovil": "The org chart, as a list",
+      "buscar": "Search area…",
+      "nueva": "New area",
+      "sinResponsable": "No manager",
+      "personas": "{n, plural, one {# person} other {# people}}",
+      "vacantes": "{n, plural, one {# vacancy} other {# vacancies}}",
+      "hijas": "{n, plural, one {# area} other {# areas}}",
+      "verHijas": "See {n, plural, one {# area} other {# areas}}",
+      "sinResultados": "No area matches the search, the filters or the selected branch.",
+      "columnas": {
+        "area": "Area",
+        "responsable": "Manager",
+        "personas": "People",
+        "vacantes": "Vacancies"
+      },
+      "acciones": {
+        "ver": "View details",
+        "editar": "Edit area"
+      },
+      "vista": {
+        "etiqueta": "Areas view",
+        "organigrama": "Org chart",
+        "lista": "List"
+      },
+      "vacio": {
+        "titulo": "No areas yet",
+        "descripcion": "Create the first one. Branches already exist in your organization: here you only organize areas.",
+        "crear": "Create first area"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to the structure",
+        "descripcion": "Your role doesn't include the «View jobs» permission. Ask whoever manages your organization's roles."
+      },
+      "error": {
+        "titulo": "We couldn't load the structure",
+        "descripcion": "Check your connection and try again. Nothing was lost."
+      },
+      "organigrama": {
+        "etiqueta": "Company org chart",
+        "alejar": "Zoom out",
+        "acercar": "Zoom in",
+        "ajustar": "Fit",
+        "ayuda": "Drag to move · Ctrl + wheel or +/− to zoom · click an area to see its details"
+      },
+      "detalle": {
+        "sede": "Branch {id}",
+        "areaDe": "Area of {area}",
+        "areaPrincipal": "Top-level area",
+        "centroCostos": "cost center {codigo}",
+        "verEmpleados": "See {n, plural, one {# employee} other {# employees}}",
+        "editar": "Edit area",
+        "responsable": "Manager",
+        "sinResponsable": "No manager",
+        "areaSuperior": "Parent area",
+        "ninguna": "None",
+        "personas": "People",
+        "areasHijas": "Child areas",
+        "plazasPorSede": "Positions by branch",
+        "sinPlazas": "The area has no approved positions or assigned people yet.",
+        "ocupadasDe": "{ocupadas} filled of {aprobadas}",
+        "cargos": "Jobs in the area",
+        "sinCargos": "The area has no jobs yet."
+      },
+      "formulario": {
+        "tituloEditar": "Edit area · {nombre}",
+        "tituloNueva": "New area",
+        "subtituloNueva": "Where it appears in the org chart, who leads it and which branches it operates in.",
+        "noExiste": "The area does not exist or is already archived",
+        "sinPermiso": {
+          "titulo": "You can't edit areas",
+          "descripcion": "Your role doesn't include the «Manage areas» permission. Ask whoever manages your organization's roles."
+        },
+        "archivar": {
+          "titulo": "Archive area",
+          "descripcion": "It stops showing in the org chart. Its history is kept.",
+          "conPersonas": "It can't be archived while it has active people.",
+          "conPlazas": "It can't be archived while it has approved positions.",
+          "conHijas": "It can't be archived while it has child areas.",
+          "boton": "Archive area",
+          "hecho": "Area «{nombre}» archived",
+          "confirmarTitulo": "Archive «{nombre}»?",
+          "confirmarDescripcion": "It will stop showing in the org chart and in forms. Its history and its employees' history are kept."
+        },
+        "errores": {
+          "nombre": "Enter the area name."
+        },
+        "guardada": "Changes saved",
+        "creada": "Area «{nombre}» created",
+        "cargos": "{n, plural, one {# job} other {# jobs}}",
+        "crear": "Create area",
+        "datos": "Area details",
+        "nombre": "Name",
+        "areaSuperior": "Parent area",
+        "areaSuperiorAyuda": "Defines where it appears in the org chart.",
+        "sinAreaSuperior": "None (top-level area)",
+        "responsable": "Manager",
+        "responsableAyuda": "Comes from employees, not from app users.",
+        "sinResponsable": "No manager",
+        "sinNombre": "No name",
+        "centroCostos": "Cost center",
+        "sinCentroCostos": "No cost center",
+        "descripcion": "Description",
+        "sedes": "Branches where it operates",
+        "sedesAyuda": "Branches belong to your organization: here they are chosen, not created.",
+        "sinSedes": "Your organization has no active branches yet.",
+        "plazasSede": "{aprobadas} approved positions · {ocupadas} filled",
+        "todasLasSedes": "With no branches checked, the area operates in all of them.",
+        "plazasNota": "Positions are changed in «Positions» with an approved request, not here.",
+        "queAfecta": "What it affects",
+        "personas": "People",
+        "cargosEtiqueta": "Jobs",
+        "areasHijas": "Child areas",
+        "ninguna": "None",
+        "vacantes": "Vacancies",
+        "cambiaPadre": "Changing the parent area moves the area in the org chart from today. Each employee's history doesn't change."
+      },
+      "filtros": {
+        "verN": "See {n, plural, one {# area} other {# areas}}",
+        "vacantes": "With vacancies",
+        "sinResponsable": "No manager"
+      }
+    },
+    "cargos": {
+      "titulo": "Jobs",
+      "subtitulo": "The profile of each job: level, competencies, pay range by branch and required documents.",
+      "conteo": "{n, plural, one {# job} other {# jobs}}",
+      "nuevo": "New job",
+      "buscar": "Search job…",
+      "sinEscala": "No pay range",
+      "plazasDe": "{ocupadas} of {aprobadas}",
+      "reportaA": "Reports to: {cargo}",
+      "documentos": "{n, plural, one {# required} other {# required}}",
+      "personasN": "{n, plural, one {# person} other {# people}}",
+      "sinResultados": "No job matches the search or the filters.",
+      "columnas": {
+        "cargo": "Job",
+        "area": "Area",
+        "nivel": "Level",
+        "escala": "Pay range",
+        "escalaSede": "Pay range ({sede})",
+        "personas": "People",
+        "plazas": "Positions",
+        "documentos": "Documents"
+      },
+      "acciones": {
+        "ver": "View job",
+        "editar": "Edit job",
+        "empleados": "See the job's employees",
+        "duplicar": "Duplicate job",
+        "eliminar": "Delete job",
+        "eliminarDetalle": "Only if it has no people or positions",
+        "noEliminar": {
+          "personas": "It has people in the job.",
+          "plazas": "It has approved positions."
+        }
+      },
+      "filtros": {
+        "area": "Area",
+        "nivel": "Level",
+        "todas": "All areas",
+        "todos": "All levels",
+        "verN": "See {n, plural, one {# job} other {# jobs}}",
+        "chipArea": "Area: {area}",
+        "chipNivel": "Level: {nivel}",
+        "vacantes": "With vacant positions",
+        "sinPersonas": "No people in the job"
+      },
+      "vacio": {
+        "titulo": "No jobs yet",
+        "descripcion": "Create the first one with its level, competencies and required documents."
+      },
+      "error": {
+        "titulo": "We couldn't load the jobs",
+        "descripcion": "Check your connection and try again. Nothing was lost."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to the structure",
+        "descripcion": "Your role doesn't include the «View jobs» permission. Ask whoever manages your organization's roles."
+      },
+      "sustantivo": {
+        "uno": "job",
+        "otros": "jobs"
+      },
+      "detalle": {
+        "todasLasSedes": "All branches",
+        "sede": "Branch {id}",
+        "noExiste": "The job does not exist or is no longer in your organization",
+        "reportaA": "reports to {cargo}",
+        "personasEnCargo": "{n, plural, one {# person in the job} other {# people in the job}}",
+        "nivel": "Level {nivel}",
+        "verEmpleados": "See {n, plural, one {# employee} other {# employees}}",
+        "editar": "Edit job",
+        "perfil": "Profile",
+        "sinProposito": "The job has no written purpose yet.",
+        "funciones": "Main duties",
+        "educacion": "Education",
+        "experiencia": "Experience",
+        "competencias": "Competencies",
+        "nivelEsperado": "Expected level from 1 to 4",
+        "sinCompetencias": "The job has no competencies yet.",
+        "tipos": {
+          "tecnica": "Technical",
+          "comportamental": "Behavioral"
+        },
+        "nivelDe": "{n} of 4",
+        "escala": {
+          "titulo": "Pay range by branch",
+          "sensible": "Sensitive information",
+          "sede": "Branch",
+          "minimo": "Minimum",
+          "medio": "Midpoint",
+          "maximo": "Maximum",
+          "personas": "People in the job",
+          "dentro": "{n} · all within range",
+          "nadie": "No one in the job",
+          "debajo": "{n} · {x} below the minimum",
+          "encima": "{n} · {x} above the maximum",
+          "sinEscala": "The job has no pay range yet.",
+          "programada": "New pay range from {fecha}: {sedes}.",
+          "nota": "The pay range guides and warns: an out-of-range salary can be recorded, but it asks for a reason and is flagged for the approver.",
+          "editar": "Edit pay range"
+        },
+        "plazas": "Job positions",
+        "sinPlazas": "The position budget doesn't detail this job and no one holds it yet.",
+        "ocupadasDe": "{ocupadas} filled of {aprobadas}",
+        "personasSinPlaza": "{n, plural, one {# person} other {# people}} · no positions for the job",
+        "documentos": "Required documents",
+        "documentoSensible": "Document of a sensitive group",
+        "documentosNota": "AI compares this list with each employee's file and warns what is missing.",
+        "documentosBase": "The job uses the base list. AI compares it with each employee's file and warns what is missing.",
+        "cambios": "Latest job changes",
+        "cambioEscala": "{sede} pay range from {fecha}, recorded by {por}.",
+        "alguien": "the system",
+        "perfilActualizado": "Profile updated on {fecha}."
+      },
+      "formulario": {
+        "tituloEditar": "Edit job · {nombre}",
+        "tituloNuevo": "New job",
+        "subtituloNuevo": "Level, who it reports to, duties, competencies and required documents.",
+        "sinPermiso": {
+          "titulo": "You can't edit jobs",
+          "descripcion": "Your role doesn't include the «Edit jobs» or «Create jobs» permission. Ask whoever manages your organization's roles."
+        },
+        "motivos": {
+          "ajusteAnual": "Annual adjustment",
+          "mercado": "Market adjustment",
+          "nuevoCargo": "New job",
+          "reestructuracion": "Restructuring",
+          "correccion": "Correction of an error"
+        },
+        "errores": {
+          "nombre": "Enter the job name.",
+          "area": "Choose the job's area.",
+          "nivel": "Choose the job level.",
+          "competencia": "Each competency needs a name.",
+          "escalaMotivo": "Choose the reason for the change.",
+          "escalaFecha": {
+            "requerido": "Say from when the pay range applies.",
+            "noPosterior": "It must be after the current pay range."
+          },
+          "escala": {
+            "requerido": "Required.",
+            "mayorQueCero": "Must be greater than zero.",
+            "medioMenorQueMinimo": "Can't be less than the minimum.",
+            "maximoMenorQueMedio": "Must be greater than the midpoint."
+          }
+        },
+        "guardado": "Changes saved",
+        "creado": "Job «{nombre}» created",
+        "escala": {
+          "minimo": "Minimum",
+          "medio": "Midpoint",
+          "maximo": "Maximum",
+          "ayuda": "Only people with the salary permission can see and edit it.",
+          "soloLectura": "You can see the pay range, but editing it requires the «Edit salary and pay» permission.",
+          "desde": "Effective from",
+          "desdeAyuda": "The current pay range (from {fecha}) stays in the job's history.",
+          "desdeAyudaNueva": "From when the pay range applies.",
+          "motivo": "Reason",
+          "nota": "«All branches» applies where a branch has no range of its own. Leave a row empty to keep it unchanged.",
+          "auditoria": "The pay range is sensitive data: saving is recorded in the access log.",
+          "impactoDebajo": "With the new pay range, {n, plural, one {# person} other {# people}} at {sede} {n, plural, one {falls} other {fall}} below the minimum.",
+          "impactoEncima": "{n, plural, one {# person} other {# people}} at {sede} {n, plural, one {is} other {are}} above the maximum.",
+          "impactoNota": "Their file shows a warning; their salary doesn't change by itself: a change is recorded per person."
+        },
+        "crear": "Create job",
+        "datos": "Job details",
+        "nombre": "Name",
+        "area": "Area",
+        "elegir": "Choose…",
+        "nivel": "Level",
+        "reportaA": "Reports to",
+        "nadie": "No one (top job)",
+        "claseArl": "ARL risk class",
+        "claseArlAyuda": "Suggested for each person in the job.",
+        "claseArlSinPermiso": "Set by whoever has «Manage HR parameters».",
+        "arlPorDefecto": "The branch's or the company's",
+        "arl": {
+          "1": "minimum risk",
+          "2": "low risk",
+          "3": "medium risk",
+          "4": "high risk",
+          "5": "maximum risk"
+        },
+        "proposito": "Purpose",
+        "funciones": "Main duties",
+        "funcionN": "Duty {n}",
+        "subir": "Move up",
+        "bajar": "Move down",
+        "quitarFuncion": "Remove duty",
+        "agregarFuncion": "Add duty",
+        "educacion": "Education",
+        "experiencia": "Experience",
+        "competencias": "Competencies",
+        "competenciasAyuda": "Expected level from 1 to 4. Used later in performance reviews.",
+        "sinCompetencias": "No competencies yet.",
+        "competenciaNombre": "Competency name",
+        "competenciaN": "Competency {n}",
+        "competenciaTipo": "Competency type",
+        "competenciaNivel": "Expected level of {nombre}",
+        "quitarCompetencia": "Remove competency",
+        "agregarCompetencia": "Add competency",
+        "documentos": "Required documents",
+        "documentosAyuda": "AI uses this list to warn what is missing in each file.",
+        "cambiosTitulo": "Unsaved changes · {n}",
+        "sinCambios": "No changes yet.",
+        "cambio": {
+          "escala": "{sedes} pay range from {fecha}",
+          "funcionesNuevas": "{n, plural, one {# new duty} other {# new duties}}",
+          "funcionesQuitadas": "{n, plural, one {# duty removed} other {# duties removed}}",
+          "documentoNuevo": "{documento} becomes required",
+          "documentoQuitado": "{documento} is no longer required",
+          "datos": "Job details",
+          "competencias": "Competencies"
+        },
+        "corrige": "{n, plural, one {Fix # field to save.} other {Fix # fields to save.}}",
+        "copiaDe": "{nombre} (copy)"
+      },
+      "eliminado": "Job «{nombre}» deleted",
+      "confirmarEliminar": "Delete «{nombre}»?",
+      "confirmarEliminarDetalle": "It stops appearing in lists and forms. The history of those who held it is kept."
+    },
+    "plazas": {
+      "titulo": "Positions",
+      "subtitulo": "Position budget: approved versus filled, by area and branch. A new position goes through approval.",
+      "buscar": "Search area…",
+      "verN": "See {n, plural, one {# row} other {# rows}}",
+      "todas": "All",
+      "porAreaSede": "By area and branch",
+      "leyenda": "Approved = current budget · Filled = active and incoming employees",
+      "sinResultados": "No area matches the search or the filters.",
+      "ocupadasDe": "{ocupadas} filled of {aprobadas} approved",
+      "personasSinPresupuesto": "{n, plural, one {# person} other {# people}} · no approved positions",
+      "columnas": {
+        "area": "Area",
+        "ocupacion": "Occupancy",
+        "estado": "Status",
+        "areaSede": "Area and branch"
+      },
+      "estado": {
+        "completa": "Full",
+        "vacantes": "{n, plural, one {# vacancy} other {# vacancies}}",
+        "sobre": "{n} over budget",
+        "sinPresupuesto": "No budget"
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to the structure",
+        "descripcion": "Your role doesn't include the «View jobs» permission. Ask whoever manages your organization's roles."
+      },
+      "error": {
+        "titulo": "We couldn't load the positions",
+        "descripcion": "Check your connection and try again. Nothing was lost."
+      },
+      "vacio": {
+        "titulo": "No position budget yet",
+        "descripcion": "Request the positions for each area and branch. Once approved, they enter the budget."
+      },
+      "kpi": {
+        "etiqueta": "Positions summary",
+        "aprobadas": "Approved positions",
+        "enSedes": "{n, plural, one {In # branch} other {In # branches}}",
+        "ocupadas": "Filled",
+        "porcentaje": "{n} % of budget",
+        "sinPresupuesto": "No approved budget",
+        "vacantes": "Vacancies",
+        "ninguna": "None",
+        "sobre": "Over budget"
+      },
+      "aviso": {
+        "titulo": "{lugar} has {personas, plural, one {# person} other {# people}} and {aprobadas, plural, one {# approved position} other {# approved positions}}",
+        "descripcion": "Request a position to regularize it or review the transfer. No one is blocked.",
+        "justificacion": "Regularize {lugar}"
+      },
+      "solicitudes": {
+        "titulo": "Position requests",
+        "pendientes": "{n, plural, one {# pending} other {# pending}}",
+        "vacio": "No requests yet.",
+        "nota": "Once approved, the position is added to the budget from the requested date and stays in the area's history.",
+        "item": "{cargo} · {n, plural, one {# position} other {# positions}}{temporal, select, si { temporary} other {}}",
+        "hasta": "until {fecha}",
+        "permanente": "permanent",
+        "metaPendiente": "Requested by {quien} on {fecha} · Approver: {aprueba}",
+        "metaAprobada": "Approved by {quien} on {fecha} · added to the budget from {desde}",
+        "metaRechazada": "Rejected by {quien} on {fecha} · Reason: {motivo}",
+        "metaCancelada": "The request was canceled.",
+        "estados": {
+          "pendiente": "Pending approval",
+          "aprobada": "Approved",
+          "rechazada": "Rejected",
+          "cancelada": "Canceled"
+        }
+      },
+      "solicitar": {
+        "boton": "Request position",
+        "titulo": "Request a new position",
+        "descripcion": "It goes through approval before joining the budget. No one is hired against an unapproved position.",
+        "elegir": "Choose…",
+        "area": "Area",
+        "sede": "Branch",
+        "sedeAyuda": "Branches are your organization's.",
+        "cargo": "Job",
+        "cantidad": "Quantity",
+        "tipo": "Position type",
+        "permanente": "Permanent",
+        "temporal": "Temporary, with end date",
+        "desde": "Needed from",
+        "hasta": "Until",
+        "justificacion": "Justification",
+        "errores": {
+          "area": "Choose the area.",
+          "sede": "Choose the branch.",
+          "cargo": "Choose the job.",
+          "cantidad": "Say how many positions.",
+          "desde": "Say from when.",
+          "hasta": "The end date must be on or after the start date.",
+          "justificacion": "Write why it is needed (at least 5 characters)."
+        },
+        "enviada": "Request sent for approval",
+        "enviar": "Send for approval",
+        "sinAprobador": "There is no one to send the request to: no one else has «Approve HR requests».",
+        "escala": "{cargo} pay range at {sede}: {minimo} – {maximo} (midpoint {medio}).",
+        "apruebaRegla": "Approved by {quien}. Rule: «{regla}».",
+        "apruebaPorDefecto": "Approved by {quien} (no specific rule for positions).",
+        "rrhh": "HR",
+        "pasos": "The chain has {n} steps."
+      }
+    }
   }
 }

@@ -1,38 +1,14 @@
 /**
- * Escala salarial de un cargo en una sede (decisión 2: solo la ve quien tiene
- * el permiso de salario; un salario fuera de rango no se bloquea: pide motivo
- * y avisa al aprobador).
+ * Escala salarial de un cargo en una sede y plazas libres (decisiones 2 y 3:
+ * solo la ve quien tiene el permiso de salario; un salario fuera de rango no
+ * se bloquea: pide motivo y avisa al aprobador; contratar sin plaza libre
+ * avisa y ofrece regularizar).
  *
- * PENDIENTE (coordinación con el frente «Estructura» de la fase 1): las escalas
- * salariales, las competencias y las plazas de cargo las crea el otro agente.
- * Mientras su tabla no exista, esta función devuelve `null` y la ficha, el alta
- * y «Registrar un cambio» no muestran la posición en la escala ni el aviso de
- * fuera de rango. Cuando exista, se lee aquí (servidor, con el permiso
- * `hr.data.salario_pago.view`) y nada más cambia en las pantallas.
+ * Punto de entrada de la ficha, el alta y «Registrar un cambio». La
+ * implementación vive en `estructuraService.server.ts` (frente «Estructura»,
+ * migración `hrm_f1_02_estructura`): la escala se lee por el servidor con el
+ * permiso `hr.data.salario_pago.view` y cada lectura queda en `hr_access_log`.
+ * Sin permiso, `escalaVigente` lanza `HrmError(403, 'sin_permiso')`.
  */
-import type { ContextoPersonas } from './personasService.server';
-
-export interface EscalaSalarial {
-  minimo: number;
-  medio: number;
-  maximo: number;
-  cargo: string | null;
-  sede: string | null;
-}
-
-export interface ConsultaEscala {
-  ctx: ContextoPersonas;
-  cargoId: string | null;
-  sedeId: number | null;
-}
-
-export async function escalaVigente(consulta: ConsultaEscala): Promise<EscalaSalarial | null> {
-  void consulta;
-  return null;
-}
-
-/** Plaza libre del cargo en la sede (presupuesto de plazas). Mismo pendiente: `null`. */
-export async function plazaDisponible(consulta: ConsultaEscala): Promise<{ ocupadas: number; aprobadas: number } | null> {
-  void consulta;
-  return null;
-}
+export { escalaVigente, plazaDisponible, type ConsultaEscala, type EscalaSalarial } from './estructuraService.server';
+export { posicionEnEscala } from '@/lib/hrm/estructura/logica';

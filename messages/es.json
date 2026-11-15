@@ -55960,5 +55960,525 @@
         "verN": "Ver {n, plural, one {# solicitud} other {# solicitudes}}"
       }
     }
+  },
+  "hrmEstructura": {
+    "comun": {
+      "rrhh": "Recursos humanos",
+      "volverInicio": "Volver al inicio",
+      "volver": "Volver",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar",
+      "guardarCambios": "Guardar cambios"
+    },
+    "errores": {
+      "error_hrm": "No se pudo completar la operación. Intenta de nuevo.",
+      "sin_permiso": "Tu rol no tiene permiso para hacer esto.",
+      "no_existe": "El registro ya no existe.",
+      "duplicado": "Ya existe un registro con esos datos.",
+      "nombre_invalido": "Escribe un nombre de 2 a 120 caracteres.",
+      "descripcion_larga": "La descripción admite hasta 500 caracteres.",
+      "area_superior_invalida": "El área superior no existe o está archivada.",
+      "area_superior_ciclo": "Un área no puede quedar debajo de sí misma ni de una de sus hijas.",
+      "responsable_invalido": "El responsable no es un empleado de tu organización.",
+      "centro_costo_invalido": "El centro de costos no es de tu organización.",
+      "sede_invalida": "La sede no es de tu organización.",
+      "area_con_personas": "No se puede archivar: el área tiene personas activas.",
+      "area_con_plazas": "No se puede archivar: el área tiene plazas aprobadas.",
+      "area_con_hijas": "No se puede archivar: primero mueve o archiva sus áreas hijas.",
+      "area_invalida": "Elige un área de tu organización.",
+      "nivel_invalido": "Elige el nivel del cargo.",
+      "reporta_a_invalido": "El cargo al que reporta no es válido.",
+      "reporta_a_ciclo": "Un cargo no puede reportar a uno que depende de él.",
+      "texto_largo": "Uno de los textos es demasiado largo.",
+      "demasiadas_funciones": "Un cargo admite hasta 20 funciones.",
+      "demasiadas_competencias": "Un cargo admite hasta 30 competencias.",
+      "competencia_invalida": "Revisa las competencias: cada una necesita nombre, tipo y nivel de 1 a 4.",
+      "documento_invalido": "Uno de los documentos exigidos no es válido.",
+      "clase_arl_invalida": "La clase de riesgo ARL va de I a V.",
+      "escala_sin_fecha": "Indica desde cuándo rige la escala.",
+      "escala_sin_motivo": "Indica el motivo del cambio de escala.",
+      "escala_invalida": "Revisa la escala: el mínimo debe ser mayor que cero y no superar el medio, y el medio no superar el máximo.",
+      "escala_fecha_anterior": "Ya hay una escala desde esa fecha o una posterior. Elige una fecha más adelante.",
+      "escala_vigencias_cruzadas": "Ya hay una escala vigente en esas fechas para esa sede.",
+      "cargo_invalido": "Elige un cargo de tu organización.",
+      "cantidad_invalida": "La cantidad va de 1 a 500 plazas.",
+      "tipo_invalido": "Elige si la plaza es permanente o temporal.",
+      "fecha_invalida": "Indica desde cuándo se necesita la plaza.",
+      "fecha_fin_invalida": "La fecha de fin debe ser igual o posterior a la de inicio.",
+      "justificacion_invalida": "Escribe una justificación de 5 a 500 caracteres.",
+      "aprobacion_sin_aprobador": "No hay a quién enviar la solicitud. Pide a un administrador que asigne «Aprobar solicitudes de RR. HH.» a alguien más.",
+      "cargo_con_personas": "No se puede eliminar: el cargo tiene personas activas.",
+      "cargo_con_plazas": "No se puede eliminar: el cargo tiene plazas aprobadas."
+    },
+    "niveles": {
+      "1": "Operativo",
+      "2": "Operativo calificado",
+      "3": "Profesional",
+      "4": "Jefatura",
+      "5": "Dirección"
+    },
+    "documentos": {
+      "documento_identidad": "Documento de identidad",
+      "hoja_vida": "Hoja de vida",
+      "contrato_trabajo": "Contrato de trabajo firmado",
+      "afiliacion_eps": "Afiliación a EPS",
+      "afiliacion_afp": "Afiliación a pensión",
+      "afiliacion_arl": "Afiliación a ARL",
+      "afiliacion_ccf": "Afiliación a caja de compensación",
+      "afiliacion_cesantias": "Afiliación a cesantías",
+      "certificado_bancario": "Certificado bancario",
+      "concepto_aptitud": "Concepto de aptitud del examen de ingreso",
+      "certificacion": "Certificación o curso exigido"
+    },
+    "areas": {
+      "titulo": "Áreas",
+      "subtitulo": "Cómo está organizada la empresa. Toca un área para ver su detalle, sus plazas y sus cargos.",
+      "subtituloMovil": "El organigrama, como lista",
+      "buscar": "Buscar área…",
+      "nueva": "Nueva área",
+      "sinResponsable": "Sin responsable",
+      "personas": "{n, plural, one {# persona} other {# personas}}",
+      "vacantes": "{n, plural, one {# vacante} other {# vacantes}}",
+      "hijas": "{n, plural, one {# área} other {# áreas}}",
+      "verHijas": "Ver {n, plural, one {# área} other {# áreas}}",
+      "sinResultados": "Ninguna área coincide con la búsqueda o con la sede elegida.",
+      "columnas": {
+        "area": "Área",
+        "responsable": "Responsable",
+        "personas": "Personas",
+        "vacantes": "Vacantes"
+      },
+      "acciones": {
+        "ver": "Ver detalle",
+        "editar": "Editar área"
+      },
+      "vista": {
+        "etiqueta": "Vista de las áreas",
+        "organigrama": "Organigrama",
+        "lista": "Lista"
+      },
+      "vacio": {
+        "titulo": "Aún no hay áreas",
+        "descripcion": "Crea la primera. Las sedes ya están en tu organización: aquí solo organizas las áreas.",
+        "crear": "Crear primera área"
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a la estructura",
+        "descripcion": "Tu rol no incluye el permiso «Ver cargos». Pídeselo a quien administra los roles de tu organización."
+      },
+      "error": {
+        "titulo": "No pudimos cargar la estructura",
+        "descripcion": "Revisa tu conexión e intenta de nuevo. Nada se perdió."
+      },
+      "organigrama": {
+        "etiqueta": "Organigrama de la empresa",
+        "alejar": "Alejar",
+        "acercar": "Acercar",
+        "ajustar": "Ajustar",
+        "ayuda": "Arrastra para moverte · Ctrl + rueda o +/− para acercar · clic en un área para ver su detalle"
+      },
+      "detalle": {
+        "sede": "Sede {id}",
+        "areaDe": "Área de {area}",
+        "areaPrincipal": "Área principal",
+        "centroCostos": "centro de costos {codigo}",
+        "verEmpleados": "Ver {n, plural, one {# empleado} other {# empleados}}",
+        "editar": "Editar área",
+        "responsable": "Responsable",
+        "sinResponsable": "Sin responsable",
+        "areaSuperior": "Área superior",
+        "ninguna": "Ninguna",
+        "personas": "Personas",
+        "areasHijas": "Áreas hijas",
+        "plazasPorSede": "Plazas por sede",
+        "sinPlazas": "El área todavía no tiene plazas aprobadas ni personas asignadas.",
+        "ocupadasDe": "{ocupadas} ocupadas de {aprobadas}",
+        "cargos": "Cargos del área",
+        "sinCargos": "El área todavía no tiene cargos."
+      },
+      "formulario": {
+        "tituloEditar": "Editar área · {nombre}",
+        "tituloNueva": "Nueva área",
+        "subtituloNueva": "Dónde aparece en el organigrama, quién la dirige y en qué sedes opera.",
+        "noExiste": "El área no existe o ya está archivada",
+        "sinPermiso": {
+          "titulo": "No puedes editar áreas",
+          "descripcion": "Tu rol no incluye el permiso «Gestionar áreas». Pídeselo a quien administra los roles de tu organización."
+        },
+        "archivar": {
+          "titulo": "Archivar área",
+          "descripcion": "Deja de verse en el organigrama. Su historial se conserva.",
+          "conPersonas": "No se puede archivar mientras tenga personas activas.",
+          "conPlazas": "No se puede archivar mientras tenga plazas aprobadas.",
+          "conHijas": "No se puede archivar mientras tenga áreas hijas.",
+          "boton": "Archivar área",
+          "hecho": "Área «{nombre}» archivada",
+          "confirmarTitulo": "¿Archivar «{nombre}»?",
+          "confirmarDescripcion": "Dejará de verse en el organigrama y en los formularios. Su historial y el de sus empleados se conservan."
+        },
+        "errores": {
+          "nombre": "Escribe el nombre del área."
+        },
+        "guardada": "Cambios guardados",
+        "creada": "Área «{nombre}» creada",
+        "cargos": "{n, plural, one {# cargo} other {# cargos}}",
+        "crear": "Crear área",
+        "datos": "Datos del área",
+        "nombre": "Nombre",
+        "areaSuperior": "Área superior",
+        "areaSuperiorAyuda": "Define dónde aparece en el organigrama.",
+        "sinAreaSuperior": "Ninguna (área principal)",
+        "responsable": "Responsable",
+        "responsableAyuda": "Sale de los empleados, no de los usuarios de la app.",
+        "sinResponsable": "Sin responsable",
+        "sinNombre": "Sin nombre",
+        "centroCostos": "Centro de costos",
+        "sinCentroCostos": "Sin centro de costos",
+        "descripcion": "Descripción",
+        "sedes": "Sedes donde opera",
+        "sedesAyuda": "Las sedes son las de tu organización: aquí se eligen, no se crean.",
+        "sinSedes": "Tu organización todavía no tiene sedes activas.",
+        "plazasSede": "{aprobadas} plazas aprobadas · {ocupadas} ocupadas",
+        "todasLasSedes": "Sin sedes marcadas, el área opera en todas.",
+        "plazasNota": "Las plazas se cambian en «Plazas» con una solicitud aprobada, no aquí.",
+        "queAfecta": "Qué afecta",
+        "personas": "Personas",
+        "cargosEtiqueta": "Cargos",
+        "areasHijas": "Áreas hijas",
+        "ninguna": "Ninguna",
+        "vacantes": "Vacantes",
+        "cambiaPadre": "Cambiar el área superior mueve el área en el organigrama desde hoy. El historial de cada empleado no cambia."
+      },
+      "filtros": {
+        "verN": "Ver {n, plural, one {# área} other {# áreas}}",
+        "vacantes": "Con vacantes",
+        "sinResponsable": "Sin responsable"
+      }
+    },
+    "cargos": {
+      "titulo": "Cargos",
+      "subtitulo": "El perfil de cada puesto: nivel, competencias, escala salarial por sede y documentos que exige.",
+      "conteo": "{n, plural, one {# cargo} other {# cargos}}",
+      "nuevo": "Nuevo cargo",
+      "buscar": "Buscar cargo…",
+      "sinEscala": "Sin escala",
+      "plazasDe": "{ocupadas} de {aprobadas}",
+      "reportaA": "Reporta a: {cargo}",
+      "documentos": "{n, plural, one {# exigido} other {# exigidos}}",
+      "personasN": "{n, plural, one {# persona} other {# personas}}",
+      "sinResultados": "Ningún cargo coincide con la búsqueda o los filtros.",
+      "columnas": {
+        "cargo": "Cargo",
+        "area": "Área",
+        "nivel": "Nivel",
+        "escala": "Escala",
+        "escalaSede": "Escala ({sede})",
+        "personas": "Personas",
+        "plazas": "Plazas",
+        "documentos": "Documentos"
+      },
+      "acciones": {
+        "ver": "Ver cargo",
+        "editar": "Editar cargo",
+        "empleados": "Ver empleados del cargo",
+        "duplicar": "Duplicar cargo",
+        "eliminar": "Eliminar cargo",
+        "eliminarDetalle": "Solo si no tiene personas ni plazas",
+        "noEliminar": {
+          "personas": "Tiene personas en el cargo.",
+          "plazas": "Tiene plazas aprobadas."
+        }
+      },
+      "filtros": {
+        "area": "Área",
+        "nivel": "Nivel",
+        "todas": "Todas las áreas",
+        "todos": "Todos los niveles",
+        "verN": "Ver {n, plural, one {# cargo} other {# cargos}}",
+        "chipArea": "Área: {area}",
+        "chipNivel": "Nivel: {nivel}",
+        "vacantes": "Con plazas vacantes",
+        "sinPersonas": "Sin personas en el cargo"
+      },
+      "vacio": {
+        "titulo": "Aún no hay cargos",
+        "descripcion": "Crea el primero con su nivel, sus competencias y los documentos que exige."
+      },
+      "error": {
+        "titulo": "No pudimos cargar los cargos",
+        "descripcion": "Revisa tu conexión e intenta de nuevo. Nada se perdió."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a la estructura",
+        "descripcion": "Tu rol no incluye el permiso «Ver cargos». Pídeselo a quien administra los roles de tu organización."
+      },
+      "sustantivo": {
+        "uno": "cargo",
+        "otros": "cargos"
+      },
+      "detalle": {
+        "todasLasSedes": "Todas las sedes",
+        "sede": "Sede {id}",
+        "noExiste": "El cargo no existe o ya no está en tu organización",
+        "reportaA": "reporta a {cargo}",
+        "personasEnCargo": "{n, plural, one {# persona en el cargo} other {# personas en el cargo}}",
+        "nivel": "Nivel {nivel}",
+        "verEmpleados": "Ver {n, plural, one {# empleado} other {# empleados}}",
+        "editar": "Editar cargo",
+        "perfil": "Perfil",
+        "sinProposito": "El cargo todavía no tiene propósito escrito.",
+        "funciones": "Funciones principales",
+        "educacion": "Educación",
+        "experiencia": "Experiencia",
+        "competencias": "Competencias",
+        "nivelEsperado": "Nivel esperado de 1 a 4",
+        "sinCompetencias": "El cargo todavía no tiene competencias.",
+        "tipos": {
+          "tecnica": "Técnica",
+          "comportamental": "Comportamental"
+        },
+        "nivelDe": "{n} de 4",
+        "escala": {
+          "titulo": "Escala salarial por sede",
+          "sensible": "Información sensible",
+          "sede": "Sede",
+          "minimo": "Mínimo",
+          "medio": "Medio",
+          "maximo": "Máximo",
+          "personas": "Personas en el cargo",
+          "dentro": "{n} · todas dentro del rango",
+          "nadie": "Nadie en el cargo",
+          "debajo": "{n} · {x} por debajo del mínimo",
+          "encima": "{n} · {x} por encima del máximo",
+          "sinEscala": "El cargo todavía no tiene escala salarial.",
+          "programada": "Escala nueva desde el {fecha}: {sedes}.",
+          "nota": "La escala orienta y avisa: un salario fuera de rango se puede registrar, pero pide motivo y queda marcado para el aprobador.",
+          "editar": "Editar escala"
+        },
+        "plazas": "Plazas del cargo",
+        "sinPlazas": "El presupuesto de plazas no detalla este cargo y nadie lo ocupa todavía.",
+        "ocupadasDe": "{ocupadas} ocupadas de {aprobadas}",
+        "personasSinPlaza": "{n, plural, one {# persona} other {# personas}} · sin plazas del cargo",
+        "documentos": "Documentos que exige",
+        "documentoSensible": "Documento de un grupo sensible",
+        "documentosNota": "La IA compara esta lista con el expediente de cada empleado y avisa qué falta.",
+        "documentosBase": "El cargo usa la lista base. La IA la compara con el expediente de cada empleado y avisa qué falta.",
+        "cambios": "Últimos cambios del cargo",
+        "cambioEscala": "Escala de {sede} desde el {fecha}, registrada por {por}.",
+        "alguien": "el sistema",
+        "perfilActualizado": "Perfil actualizado el {fecha}."
+      },
+      "formulario": {
+        "tituloEditar": "Editar cargo · {nombre}",
+        "tituloNuevo": "Nuevo cargo",
+        "subtituloNuevo": "Nivel, a quién reporta, funciones, competencias y documentos que exige.",
+        "sinPermiso": {
+          "titulo": "No puedes editar cargos",
+          "descripcion": "Tu rol no incluye el permiso «Editar cargos» o «Crear cargos». Pídeselo a quien administra los roles de tu organización."
+        },
+        "motivos": {
+          "ajusteAnual": "Ajuste anual",
+          "mercado": "Ajuste al mercado",
+          "nuevoCargo": "Cargo nuevo",
+          "reestructuracion": "Reestructuración",
+          "correccion": "Corrección de un error"
+        },
+        "errores": {
+          "nombre": "Escribe el nombre del cargo.",
+          "area": "Elige el área del cargo.",
+          "nivel": "Elige el nivel del cargo.",
+          "competencia": "Cada competencia necesita un nombre.",
+          "escalaMotivo": "Elige el motivo del cambio.",
+          "escalaFecha": {
+            "requerido": "Indica desde cuándo rige la escala.",
+            "noPosterior": "Debe ser posterior a la escala vigente."
+          },
+          "escala": {
+            "requerido": "Obligatorio.",
+            "mayorQueCero": "Debe ser mayor que cero.",
+            "medioMenorQueMinimo": "No puede ser menor que el mínimo.",
+            "maximoMenorQueMedio": "Debe ser mayor que el medio."
+          }
+        },
+        "guardado": "Cambios guardados",
+        "creado": "Cargo «{nombre}» creado",
+        "escala": {
+          "minimo": "Mínimo",
+          "medio": "Medio",
+          "maximo": "Máximo",
+          "ayuda": "Solo la ve y la edita quien tiene el permiso de salario.",
+          "soloLectura": "Puedes ver la escala, pero editarla exige el permiso «Editar salario y pago».",
+          "desde": "Vigente desde",
+          "desdeAyuda": "La escala actual (desde el {fecha}) queda en el historial del cargo.",
+          "desdeAyudaNueva": "Desde cuándo rige la escala.",
+          "motivo": "Motivo",
+          "nota": "«Todas las sedes» aplica donde la sede no tenga escala propia. Deja una fila vacía para no cambiarla.",
+          "auditoria": "La escala es dato sensible: guardar queda en el registro de accesos.",
+          "impactoDebajo": "Con la nueva escala, {n, plural, one {# persona} other {# personas}} de {sede} {n, plural, one {queda} other {quedan}} por debajo del mínimo.",
+          "impactoEncima": "{n, plural, one {# persona} other {# personas}} de {sede} {n, plural, one {queda} other {quedan}} por encima del máximo.",
+          "impactoNota": "Se avisa en su ficha; su salario no cambia solo: se registra un cambio por persona."
+        },
+        "crear": "Crear cargo",
+        "datos": "Datos del cargo",
+        "nombre": "Nombre",
+        "area": "Área",
+        "elegir": "Elegir…",
+        "nivel": "Nivel",
+        "reportaA": "Reporta a",
+        "nadie": "Nadie (cargo principal)",
+        "claseArl": "Clase de riesgo ARL",
+        "claseArlAyuda": "Se propone a cada persona del cargo.",
+        "claseArlSinPermiso": "La define quien tiene «Gestionar parámetros de RR. HH.».",
+        "arlPorDefecto": "La de la sede o la de la empresa",
+        "arl": {
+          "1": "riesgo mínimo",
+          "2": "riesgo bajo",
+          "3": "riesgo medio",
+          "4": "riesgo alto",
+          "5": "riesgo máximo"
+        },
+        "proposito": "Propósito",
+        "funciones": "Funciones principales",
+        "funcionN": "Función {n}",
+        "subir": "Subir",
+        "bajar": "Bajar",
+        "quitarFuncion": "Quitar función",
+        "agregarFuncion": "Agregar función",
+        "educacion": "Educación",
+        "experiencia": "Experiencia",
+        "competencias": "Competencias",
+        "competenciasAyuda": "Nivel esperado de 1 a 4. Se usan después en desempeño.",
+        "sinCompetencias": "Sin competencias todavía.",
+        "competenciaNombre": "Nombre de la competencia",
+        "competenciaN": "Competencia {n}",
+        "competenciaTipo": "Tipo de competencia",
+        "competenciaNivel": "Nivel esperado de {nombre}",
+        "quitarCompetencia": "Quitar competencia",
+        "agregarCompetencia": "Agregar competencia",
+        "documentos": "Documentos que exige",
+        "documentosAyuda": "La IA usa esta lista para avisar qué falta en cada expediente.",
+        "cambiosTitulo": "Cambios sin guardar · {n}",
+        "sinCambios": "Todavía no hay cambios.",
+        "cambio": {
+          "escala": "Escala de {sedes} desde el {fecha}",
+          "funcionesNuevas": "{n, plural, one {# función nueva} other {# funciones nuevas}}",
+          "funcionesQuitadas": "{n, plural, one {# función quitada} other {# funciones quitadas}}",
+          "documentoNuevo": "{documento} pasa a exigirse",
+          "documentoQuitado": "{documento} ya no se exige",
+          "datos": "Datos del cargo",
+          "competencias": "Competencias"
+        },
+        "corrige": "{n, plural, one {Corrige # campo para guardar.} other {Corrige # campos para guardar.}}",
+        "copiaDe": "{nombre} (copia)"
+      },
+      "eliminado": "Cargo «{nombre}» eliminado",
+      "confirmarEliminar": "¿Eliminar «{nombre}»?",
+      "confirmarEliminarDetalle": "Deja de aparecer en los listados y formularios. El historial de quienes lo tuvieron se conserva."
+    },
+    "plazas": {
+      "titulo": "Plazas",
+      "subtitulo": "Presupuesto de plazas: aprobadas frente a ocupadas, por área y sede. Una plaza nueva pasa por aprobación.",
+      "buscar": "Buscar área…",
+      "verN": "Ver {n, plural, one {# fila} other {# filas}}",
+      "todas": "Todas",
+      "porAreaSede": "Por área y sede",
+      "leyenda": "Aprobadas = presupuesto vigente · Ocupadas = empleados activos y por ingresar",
+      "sinResultados": "Ninguna área coincide con la búsqueda o los filtros.",
+      "ocupadasDe": "{ocupadas} ocupadas de {aprobadas} aprobadas",
+      "personasSinPresupuesto": "{n, plural, one {# persona} other {# personas}} · sin plazas aprobadas",
+      "columnas": {
+        "area": "Área",
+        "ocupacion": "Ocupación",
+        "estado": "Estado",
+        "areaSede": "Área y sede"
+      },
+      "estado": {
+        "completa": "Completa",
+        "vacantes": "{n, plural, one {# vacante} other {# vacantes}}",
+        "sobre": "{n} sobre lo aprobado",
+        "sinPresupuesto": "Sin presupuesto"
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a la estructura",
+        "descripcion": "Tu rol no incluye el permiso «Ver cargos». Pídeselo a quien administra los roles de tu organización."
+      },
+      "error": {
+        "titulo": "No pudimos cargar las plazas",
+        "descripcion": "Revisa tu conexión e intenta de nuevo. Nada se perdió."
+      },
+      "vacio": {
+        "titulo": "Aún no hay presupuesto de plazas",
+        "descripcion": "Solicita las plazas de cada área y sede. Cuando se aprueban, entran al presupuesto."
+      },
+      "kpi": {
+        "etiqueta": "Resumen de plazas",
+        "aprobadas": "Plazas aprobadas",
+        "enSedes": "{n, plural, one {En # sede} other {En # sedes}}",
+        "ocupadas": "Ocupadas",
+        "porcentaje": "{n} % del presupuesto",
+        "sinPresupuesto": "Sin presupuesto aprobado",
+        "vacantes": "Vacantes",
+        "ninguna": "Ninguna",
+        "sobre": "Sobre lo aprobado"
+      },
+      "aviso": {
+        "titulo": "{lugar} tiene {personas, plural, one {# persona} other {# personas}} y {aprobadas, plural, one {# plaza aprobada} other {# plazas aprobadas}}",
+        "descripcion": "Solicita una plaza para regularizar o revisa el traslado. No se bloquea a nadie.",
+        "justificacion": "Regularizar {lugar}"
+      },
+      "solicitudes": {
+        "titulo": "Solicitudes de plaza",
+        "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
+        "vacio": "Todavía no hay solicitudes.",
+        "nota": "Al aprobarse, la plaza se suma al presupuesto desde la fecha pedida y queda en el historial del área.",
+        "item": "{cargo} · {n, plural, one {# plaza} other {# plazas}}{temporal, select, si { temporal} other {}}",
+        "hasta": "hasta el {fecha}",
+        "permanente": "permanente",
+        "metaPendiente": "Solicitó {quien} el {fecha} · Aprueba {aprueba}",
+        "metaAprobada": "Aprobó {quien} el {fecha} · se suma al presupuesto desde el {desde}",
+        "metaRechazada": "Rechazó {quien} el {fecha} · Motivo: {motivo}",
+        "metaCancelada": "La solicitud se canceló.",
+        "estados": {
+          "pendiente": "Pendiente de aprobación",
+          "aprobada": "Aprobada",
+          "rechazada": "Rechazada",
+          "cancelada": "Cancelada"
+        }
+      },
+      "solicitar": {
+        "boton": "Solicitar plaza",
+        "titulo": "Solicitar una plaza nueva",
+        "descripcion": "Pasa por aprobación antes de sumarse al presupuesto. Nadie se contrata contra una plaza sin aprobar.",
+        "elegir": "Elegir…",
+        "area": "Área",
+        "sede": "Sede",
+        "sedeAyuda": "Las sedes son las de tu organización.",
+        "cargo": "Cargo",
+        "cantidad": "Cantidad",
+        "tipo": "Tipo de plaza",
+        "permanente": "Permanente",
+        "temporal": "Temporal, con fecha de fin",
+        "desde": "Se necesita desde",
+        "hasta": "Hasta",
+        "justificacion": "Justificación",
+        "errores": {
+          "area": "Elige el área.",
+          "sede": "Elige la sede.",
+          "cargo": "Elige el cargo.",
+          "cantidad": "Indica cuántas plazas.",
+          "desde": "Indica desde cuándo.",
+          "hasta": "La fecha de fin debe ser igual o posterior a la de inicio.",
+          "justificacion": "Escribe por qué se necesita (mínimo 5 caracteres)."
+        },
+        "enviada": "Solicitud enviada a aprobación",
+        "enviar": "Enviar a aprobación",
+        "sinAprobador": "No hay a quién enviar la solicitud: nadie más tiene «Aprobar solicitudes de RR. HH.».",
+        "escala": "Escala de {cargo} en {sede}: {minimo} – {maximo} (punto medio {medio}).",
+        "apruebaRegla": "La aprueba {quien}. Regla: «{regla}».",
+        "apruebaPorDefecto": "La aprueba {quien} (sin regla propia para plazas).",
+        "rrhh": "RR. HH.",
+        "pasos": "La cadena tiene {n} pasos."
+      }
+    }
   }
 }

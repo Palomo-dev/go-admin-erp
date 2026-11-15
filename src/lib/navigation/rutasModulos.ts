@@ -267,8 +267,10 @@ export const RUTAS_MODULOS: readonly RutasModulo[] = [
     rutas: ['/app/hrm'],
     paginas: [
       '/app/hrm/empleados',
-      '/app/hrm/departamentos',
+      '/app/hrm/areas',
       '/app/hrm/cargos',
+      '/app/hrm/plazas',
+      '/app/hrm/aprobaciones',
       '/app/hrm/turnos',
       '/app/hrm/marcacion',
       '/app/hrm/asistencia',

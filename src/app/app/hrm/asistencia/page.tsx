@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Clock,
   ArrowLeft,
@@ -197,7 +196,7 @@ export default function AsistenciaPage() {
             <Link href="/app/hrm/marcacion">
               <Button variant="outline" size="sm">Marcación</Button>
             </Link>
-            <Link href="/app/hrm/reportes">
+            <Link href="/app/reportes/personas/hrm-asistencia">
               <Button variant="outline" size="sm">Reportes</Button>
             </Link>
           </div>

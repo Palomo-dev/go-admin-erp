@@ -24,6 +24,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
+  Armchair,
   ArrowLeftRight,
   BadgePercent,
   Banknote,
@@ -67,6 +68,7 @@ import {
   Headphones,
   History,
   Home,
+  IdCard,
   Image as ImageIcon,
   Inbox,
   Info,
@@ -81,6 +83,7 @@ import {
   MapPin,
   MessageCircle,
   MessageSquare,
+  Network,
   Package,
   ParkingCircle,
   Percent,
@@ -100,6 +103,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Sparkles,
+  Stamp,
   Tag,
   Tags,
   Target,
@@ -111,7 +115,6 @@ import {
   Upload,
   User,
   UserCheck,
-  UserCog,
   UserPlus,
   Users,
   UtensilsCrossed,
@@ -540,13 +543,20 @@ export const CATALOGO_NAV: ModuloNav[] = [
     codigo: 'hrm',
     id: 'hrm',
     etiqueta: 'hrm',
-    icono: UserCog,
+    // CATALOGO-ICONOS.md: RR. HH. = Briefcase (auditoría HRM-Figma 2026-11-15, H2).
+    icono: Briefcase,
     seccion: 'gestion',
     rutas: ['/app/hrm'],
     paginas: [
+      // Iconos de CATALOGO-ICONOS.md (adenda RR. HH.): Network, IdCard, Armchair, Stamp.
+    // Fase 1 (Figma 20): pestañas del módulo Empleados · Áreas · Cargos · Plazas ·
+      // Aprobaciones. «Departamentos» pasa a llamarse «Áreas». Aprobaciones no va en
+      // el menú: la pestaña solo la ve quien tiene algo por aprobar.
       { href: '/app/hrm/empleados', nombre: 'Empleados', icono: Users, grupo: 'Personas' },
-      { href: '/app/hrm/departamentos', nombre: 'Departamentos', icono: Building2, grupo: 'Personas' },
-      { href: '/app/hrm/cargos', nombre: 'Cargos', icono: Briefcase, grupo: 'Personas' },
+      { href: '/app/hrm/areas', nombre: 'Áreas', icono: Network, grupo: 'Personas' },
+      { href: '/app/hrm/cargos', nombre: 'Cargos', icono: IdCard, grupo: 'Personas' },
+      { href: '/app/hrm/plazas', nombre: 'Plazas', icono: Armchair, grupo: 'Personas' },
+      { href: '/app/hrm/aprobaciones', nombre: 'Aprobaciones', icono: Stamp, grupo: 'Personas', enMenu: false },
       { href: '/app/hrm/turnos', nombre: 'Turnos', icono: Clock, grupo: 'Tiempo' },
       { href: '/app/hrm/marcacion', nombre: 'Marcación', icono: Clock, grupo: 'Tiempo' },
       { href: '/app/hrm/asistencia', nombre: 'Asistencia', icono: UserCheck, grupo: 'Tiempo' },

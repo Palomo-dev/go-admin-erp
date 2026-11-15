@@ -186,6 +186,9 @@ const META: Record<string, MetaReporte> = {
   'hrm-nomina': { grupo: 'personas', filtros: 'c' },
   'hrm-productividad': { grupo: 'personas', filtros: 'c s' },
   'hrm-comisiones': { grupo: 'personas', filtros: 'c s f' },
+  'hrm-asistencia': { grupo: 'personas', filtros: 'c s', nuevo: true },
+  'hrm-ausencias': { grupo: 'personas', filtros: 'c', nuevo: true },
+  'hrm-prestamos': { grupo: 'personas', filtros: '', nuevo: true },
   // Clientes y CRM
   'clientes-crecimiento': { grupo: 'clientes', filtros: 'c s f' },
   'clientes-tipo': { grupo: 'clientes', filtros: 's' },

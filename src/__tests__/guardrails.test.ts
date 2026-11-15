@@ -3984,7 +3984,8 @@ describe('44. Detalles en celular: una sola «←», la del MobileHeader del she
   const PERMITIDAS: Record<string, number> = {
     'app/app/hrm/cargos/[id]/page.tsx': 1, // «Cargo no encontrado»
     'app/app/hrm/departamentos/[id]/page.tsx': 1, // «Departamento no encontrado»
-    'app/app/hrm/empleados/[id]/page.tsx': 1, // «Empleado no encontrado»
+    // `app/app/hrm/empleados/[id]/page.tsx` salió el 2026-11-15: la ficha nueva usa
+    // `PageHeader` y su «no encontrado» es un `EmptyState`, sin flecha propia.
     'app/app/hrm/turnos/[id]/page.tsx': 1, // «Turno no encontrado»
     'app/app/pos/pedidos-online/[id]/components/OrderNotFoundState.tsx': 1, // pedido no encontrado
     'components/pms/checkout/CheckoutDialog.tsx': 1, // «Atrás» entre pasos del diálogo

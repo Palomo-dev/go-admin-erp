@@ -36482,7 +36482,8 @@
       "eliminar": "Sensitive · delete",
       "acceso": "Sensitive · access",
       "corto": "Sensitive",
-      "dineroCorto": "Money"
+      "dineroCorto": "Money",
+      "datos": "Sensitive · data"
     },
     "revisar": {
       "titulo": "Save {n, plural, one {# change} other {# changes}} to «{rol}»?",
@@ -38928,9 +38929,9 @@
         "palabras": "credits, balance, usage, prices, queue, jobs, minutes"
       },
       "hrmGeneral": {
-        "titulo": "Human resources",
-        "descripcion": "General settings and currencies",
-        "palabras": "human resources, payroll, currencies, employees, hrm"
+        "titulo": "Legal parameters",
+        "descripcion": "Legal payroll values and what your company defines",
+        "palabras": "human resources, hr, payroll, minimum wage, uvt, transport allowance, working hours, surcharge, sunday, overtime, arl, pila, exemption, withholding, parameters"
       },
       "pmsGeneral": {
         "titulo": "Hotel PMS",
@@ -39021,6 +39022,21 @@
         "titulo": "Developers",
         "descripcion": "API keys and outgoing webhooks for your organization",
         "palabras": "developers, api keys, keys, tokens, webhooks, outgoing webhooks, api"
+      },
+      "hrmFestivos": {
+        "titulo": "Holidays",
+        "descripcion": "Public holidays and your company’s own days",
+        "palabras": "holidays, public holidays, company days, day off, calendar, human resources, hr"
+      },
+      "hrmAprobaciones": {
+        "titulo": "Approvals",
+        "descripcion": "Who approves each HR request, delegations and substitutes",
+        "palabras": "approvals, rules, approvers, direct manager, delegation, substitute, absences, vacation, overtime, human resources, hr"
+      },
+      "hrmRegistroAccesos": {
+        "titulo": "Access log",
+        "descripcion": "Who viewed or changed an employee’s sensitive data",
+        "palabras": "access log, audit, sensitive data, salary, bank account, health, privacy, human resources, hr"
       }
     },
     "ajustes": {
@@ -51835,7 +51851,11 @@
       "chatIa": "AI",
       "posGeneral": "General",
       "integracionesGeneral": "General",
-      "integracionesDesarrolladores": "Developers"
+      "integracionesDesarrolladores": "Developers",
+      "hrmGeneral": "Legal parameters",
+      "hrmFestivos": "Holidays",
+      "hrmAprobaciones": "Approvals",
+      "hrmRegistroAccesos": "Access log"
     },
     "buscar": {
       "etiqueta": "Search a setting",
@@ -53175,32 +53195,6 @@
       "reintentar": "Retry",
       "soloAdmins": "Only administrators can manage domains and the sending policy. You can edit your signature."
     },
-    "hrmConfigPanel": {
-      "error": "Error",
-      "errorCargar": "Could not load the settings",
-      "guardada": "Settings saved successfully",
-      "errorGuardar": "Could not save the settings",
-      "monedaBaseEstablecida": "{moneda} set as the base currency",
-      "errorMonedaBase": "Could not set the base currency",
-      "monedaAgregada": "{moneda} added",
-      "errorAgregar": "Could not add the currency",
-      "monedaEliminada": "{moneda} removed",
-      "errorEliminar": "Could not remove the currency",
-      "configuracionGeneral": "General Settings",
-      "reglasPais": {
-        "titulo": "Country Rules",
-        "descripcion": "Review the legal payroll rules by country (minimum wage, contributions, etc.)",
-        "ver": "View Rules"
-      },
-      "monedas": "Currencies",
-      "sobreMonedas": {
-        "titulo": "About Currencies",
-        "base": "The <b>base currency</b> is used for payroll calculations and reports.",
-        "multiples": "You can add multiple currencies for international operations.",
-        "tasas": "Exchange rates can be set manually or updated automatically.",
-        "noEliminarBase": "You cannot remove the base currency; switch to another one first."
-      }
-    },
     "asistenteConfigPanel": {
       "soloOrganizacionActiva": "Changes apply only to your active organization, not to your other organizations.",
       "seleccionaOrganizacion": "Select an organization to view its settings.",
@@ -54184,6 +54178,690 @@
         "respuesta": "Reply",
         "tonoIdioma": "Tone and language",
         "reglas": "Rules"
+      }
+    }
+  },
+  "hrmConfig": {
+    "comun": {
+      "sinPermiso": {
+        "titulo": "You don't have access to this section",
+        "descripcion": "Ask an administrator for the “{permiso}” permission. The other Settings sections are still available."
+      }
+    },
+    "parametros": {
+      "permiso": "Configure Human resources",
+      "error": {
+        "titulo": "We couldn't load the parameters",
+        "descripcion": "Check your connection and try again. Until they load, payroll doesn't calculate: it never uses an old value stored in the browser."
+      },
+      "vistas": {
+        "etiqueta": "Which parameters to see",
+        "ley": "Legal values",
+        "empresa": "What your company defines"
+      },
+      "soloLectura": "Read only",
+      "irAEmpresa": "Go to what your company defines",
+      "estado": {
+        "vigente": "In force",
+        "transitorio": "Transitional",
+        "litigio": "In litigation",
+        "suspendido": "Suspended",
+        "por_confirmar": "To be confirmed",
+        "sin_valor": "No value",
+        "cerrada": "Closed",
+        "programada": "Scheduled"
+      },
+      "ley": {
+        "avisoTitulo": "GO Admin maintains these values: your organization sees them but doesn't edit them",
+        "avisoDescripcion": "Each one comes with its rule, its source and its start and end dates. Payroll uses the value in force on the day of the event (the hour worked, the pay day or the cut-off date). If a value changes, it applies from its date and doesn't touch closed periods.",
+        "buscar": "Search parameter: minimum wage, surcharge, UVT…",
+        "valoresAl": "Values as of",
+        "estadoFiltro": "Status",
+        "filtro": {
+          "todos": "All",
+          "vigente": "In force",
+          "transitorio": "Transitional",
+          "litigio": "In litigation",
+          "programado": "With a scheduled change",
+          "por_confirmar": "To be confirmed"
+        },
+        "chipFecha": "Values as of: {fecha}",
+        "chipEstado": "Status: {estado}",
+        "verN": "{n, plural, =0 {No parameters} one {See # parameter} other {See # parameters}}",
+        "sinValores": {
+          "titulo": "There are no {anio} values yet",
+          "descripcion": "You chose to see the values as of {fecha}. The {anio} minimum wage, transport allowance and UVT are published at the end of the previous year; we load them as soon as they come out. Until then, a {anio} payroll can be pre-calculated but not closed.",
+          "verHoy": "See today's"
+        },
+        "porConfirmar": "To be confirmed",
+        "desde": "since {fecha}",
+        "programado": "From {fecha}: {valor}",
+        "verDetalle": "See the details of {nombre}",
+        "leyenda": "Statuses: In force · Transitional (governed by a provisional decree) · In litigation (a lawsuit may change it) · Suspended · To be confirmed (not published yet). Open a row to see its history and source.",
+        "revision": "Values as of today, {fecha}."
+      },
+      "grupo": {
+        "salario": {
+          "titulo": "Wages and caps",
+          "descripcion": "They change every year by decree or resolution."
+        },
+        "jornada": {
+          "titulo": "Working hours and surcharges",
+          "descripcion": "They change by law on a known schedule: the effective date is a given."
+        },
+        "aportes": {
+          "titulo": "Contributions and withholding",
+          "descripcion": "Rates and tables that may change by law."
+        },
+        "prestaciones": {
+          "titulo": "Benefits, leave and deductions",
+          "descripcion": "Rates, weeks and caps used in settlements."
+        },
+        "otros": {
+          "titulo": "Other",
+          "descripcion": "Values the platform already has that don't have a name on this screen yet."
+        }
+      },
+      "fila": {
+        "smmlv": "Minimum wage (SMMLV)",
+        "auxilio_transporte": "Transport allowance",
+        "uvt": "UVT",
+        "salario_integral": "Minimum all-inclusive salary",
+        "ibc_tope": "Contribution base (IBC) cap",
+        "jornada": "Maximum weekly working hours",
+        "nocturno": "Start of the night surcharge",
+        "dominical": "Sunday and holiday surcharge",
+        "recargos": "Night surcharge and overtime",
+        "horas_extra": "Overtime caps",
+        "dominical_habitual": "Regular Sunday work",
+        "salud": "Health",
+        "pension": "Pension",
+        "fsp": "Pension Solidarity Fund",
+        "parafiscales": "Family fund · ICBF · SENA",
+        "arl": "Occupational risk (ARL) by risk class",
+        "exoneracion": "Art. 114-1 exemption (threshold)",
+        "retencion": "Withholding tax table",
+        "intereses_cesantias": "Interest on severance",
+        "licencias": "Maternity and paternity leave",
+        "incapacidad": "Sick leave",
+        "indemnizacion": "Compensation for dismissal without just cause",
+        "aprendiz": "Apprentice support allowance",
+        "conectividad": "Connectivity allowance",
+        "embargos": "Garnishments",
+        "libranza": "Payroll loans",
+        "deducciones": "Exempt income and deductions"
+      },
+      "valor": {
+        "simple": {
+          "pct": "{valor}",
+          "numero": "{valor}",
+          "dinero": "{valor}",
+          "texto": "{valor}",
+          "smmlv": "up to {valor} SMMLV"
+        },
+        "hastaSmmlv": "up to {n} SMMLV",
+        "vecesSmmlv": "{n} SMMLV",
+        "integral": "{n} SMMLV · the IBC is {factor}",
+        "jornada": "{h} h · divisor {divisor}",
+        "horas": "{h} h",
+        "nocturnoHasta": "until {hora}",
+        "trio": "{a} · {b} · {c}",
+        "recargos": "night · daytime overtime · night overtime",
+        "horasExtra": "{dia} h/day · {semana} h/week",
+        "par": "{a} · {b}",
+        "empleadorTrabajador": "employer · employee",
+        "rango": "{min} to {max}",
+        "segunIbc": "depending on the IBC",
+        "sobreIbc": "on the IBC",
+        "clasesArl": "classes I to V",
+        "menosDeSmmlv": "less than {n} SMMLV",
+        "rangos": "{n} brackets · {min} to {max}",
+        "enUvt": "in UVT",
+        "licencias": "{m} and {p} weeks",
+        "porTramos": "By brackets",
+        "monetizacion": "monetization: {n} SMMLV",
+        "embargos": "child support · excess",
+        "deducciones": "{r} exempt · cap {l}",
+        "topeUvt": "cap of {n} UVT per year"
+      },
+      "detalle": {
+        "verNorma": "See the rule",
+        "hoy": "Today",
+        "divisor": "Hourly divisor",
+        "valorHora": "Hourly minimum wage",
+        "historial": "History of effective periods",
+        "historialAyuda": "The platform keeps all of them: a period is calculated with the ones in force on its dates.",
+        "desdeEl": "From {fecha}",
+        "hasta": "until {fecha}",
+        "sinFin": "no end date",
+        "notaDivisor": "The divisor (hours per week ÷ 6 × 30) isn't in the law: it's accounting practice. The platform uses July 15, the effective date of Law 2101.",
+        "cruce": "A period that spans two effective periods",
+        "cruceAyuda": "This is how the monthly payroll containing the {mes} change looks.",
+        "tramo": "{desde} – {hasta} · {dias, plural, one {# day} other {# days}}",
+        "valorHoraEs": "Hourly minimum wage: {valor}",
+        "cruceNota": "Each hour is paid at the value of the day it was worked, and the pay stub shows both segments. If a parameter changes after closing, the closed period isn't recalculated: it's corrected with an adjustment note.",
+        "dependen": "Values that depend on this one",
+        "dependenSmmlv": "The minimum all-inclusive salary, IBC cap, 114-1 threshold, FSP brackets and transport allowance cap are recalculated automatically for the dates it changes.",
+        "enTuEmpresa": "In your company",
+        "empresaPropia": "Your company set its own value from {fecha}",
+        "empresaLaDeLey": "Your company uses the legal value",
+        "empresaAyuda": "If your company gets ahead of the law, it's set in “What your company defines”.",
+        "pie": "Value maintained by GO Admin · checked on {fecha}"
+      },
+      "empresa": {
+        "guardado": "Changes saved",
+        "errorGuardar": "We couldn't save the changes. Try again.",
+        "desde": "From",
+        "elegir": "Choose…",
+        "soloLectura": "Read only",
+        "soloLecturaAyuda": "To change these values you need the “Configure Human resources” permission.",
+        "jornada": {
+          "titulo": "Working hours and surcharges",
+          "descripcion": "What your company can adopt ahead of the law. It applies from the date you choose and doesn't recalculate closed periods.",
+          "adelantar": "Adopt shorter working hours early",
+          "adelantarAyuda": "The law lowers it to {h} h on {fecha}. Your company can adopt it earlier, from the date you choose.",
+          "noAplica": "Not applicable today: the law already reached {h} h on {fecha}, the last step of the schedule."
+        },
+        "dominical": {
+          "titulo": "Pay the {pct} Sunday and holiday surcharge now",
+          "tituloSinMeta": "Sunday and holiday surcharge",
+          "ayuda": "The law requires it from {fecha}; today {hoy} applies. Your value is used first, from the date you choose.",
+          "yaRige": "The law already reached its last step: there's nothing to adopt early."
+        },
+        "aportes": {
+          "titulo": "Contributions",
+          "descripcion": "They affect the social security and PILA calculation.",
+          "exoneracion": "Apply the art. 114-1 exemption",
+          "exoneracionAyuda": "No employer health, SENA or ICBF contributions for people earning less than {n} SMMLV ({valor}). Requirement: a legal entity that pays income tax, or an individual with 2 or more employees. It doesn't apply to the family fund or to all-inclusive salaries.",
+          "pila": "PILA operator",
+          "pilaAyuda": "GO Admin generates the PILA flat file; you upload and pay it with your operator.",
+          "operador": {
+            "aportes_en_linea": "Aportes en Línea",
+            "mi_planilla": "Mi Planilla",
+            "soi": "SOI",
+            "simple": "Simple",
+            "asopagos": "Asopagos",
+            "enlace_operativo": "Enlace Operativo",
+            "arus": "ARUS"
+          }
+        },
+        "pago": {
+          "titulo": "Pay and withholding",
+          "periodicidad": "Pay frequency",
+          "periodicidadAyuda": "Weekly, every ten days, biweekly or monthly. The electronic payroll document sent to the DIAN is always monthly.",
+          "periodo": {
+            "semanal": "Weekly",
+            "decadal": "Every ten days",
+            "quincenal": "Biweekly",
+            "mensual": "Monthly"
+          },
+          "retencion": "Default withholding procedure",
+          "retencionAyuda": "It can be changed per employee. Procedure 2 calculates a fixed percentage in June and December.",
+          "procedimiento1": "Procedure 1 (art. 385)",
+          "procedimiento2": "Procedure 2 (art. 386)"
+        },
+        "arl": {
+          "titulo": "ARL risk class by branch or position",
+          "ayuda": "Your ARL assigns it according to the activity. The most specific rule wins: position at a branch › position › branch › default.",
+          "agregar": "Add rule",
+          "agregarTitulo": "Add ARL rule",
+          "editarTitulo": "Edit ARL rule",
+          "vacio": "No rules: every employee contributes at class I ({tarifa}).",
+          "sede": "Branch",
+          "cargo": "Position",
+          "clase": "Class",
+          "claseN": "Class {n}",
+          "todasSedes": "All branches",
+          "todosCargos": "All positions",
+          "porDefecto": "Default",
+          "editar": "Edit",
+          "quitar": "Remove rule",
+          "guardar": "Save rule",
+          "guardada": "ARL rule saved",
+          "quitada": "ARL rule removed",
+          "errorGuardar": "We couldn't save the ARL rule. Try again.",
+          "confirmarQuitar": {
+            "titulo": "Remove this ARL rule?",
+            "descripcion": "“{regla}” stops applying. Whoever used it takes the next most specific rule."
+          }
+        }
+      }
+    },
+    "festivos": {
+      "permiso": "Configure Human resources",
+      "error": {
+        "titulo": "We couldn't load the holidays",
+        "descripcion": "Check your connection and try again."
+      },
+      "anio": "Year",
+      "anioN": "Year: {anio}",
+      "filtro": {
+        "etiqueta": "Which days to see",
+        "todos": "All ({n})",
+        "ley": "Public ({n})",
+        "propios": "Company ({n})"
+      },
+      "agregar": "Add company day",
+      "agregado": "Company day added",
+      "quitar": "Remove",
+      "quitado": "Company day removed",
+      "errorQuitar": "We couldn't remove the day. Try again.",
+      "aviso": {
+        "titulo": "GO Admin loads the public holidays",
+        "descripcion": "They're loaded for each year (Law 51 of 1983: several are moved to Monday) and can't be edited. They count for surcharges and for vacation business days. Company days are time off your company gives: they're paid as an ordinary day, with no legal holiday surcharge, and are flagged for the Accountant to review."
+      },
+      "sinLey": {
+        "titulo": "The {anio} calendar isn't loaded yet",
+        "descripcion": "It's published as soon as it's confirmed. Meanwhile, no day that year counts as a public holiday."
+      },
+      "ley": {
+        "titulo": "Public holidays · {anio}",
+        "descripcion": "{n, plural, one {# day} other {# days}}. The {siguiente} calendar is published as soon as it's confirmed."
+      },
+      "propios": {
+        "titulo": "Your company's own days · {anio}",
+        "descripcion": "You add and remove them. You can limit them to some branches.",
+        "vacio": "Your company has no days of its own this year."
+      },
+      "trasladada": "Moved from {fecha}",
+      "diaCompleto": "Full day",
+      "medioDiaDesde": "Half day · from {hora}",
+      "todasSedes": "All branches",
+      "deLey": "Public",
+      "propio": "Company",
+      "pie": {
+        "guardado": "All saved",
+        "soloLectura": "Read only"
+      },
+      "confirmarQuitar": {
+        "titulo": "Remove this company day?",
+        "descripcion": "“{nombre}” ({fecha}) becomes an ordinary day again. Shifts already published are flagged for review."
+      },
+      "dialogo": {
+        "titulo": "Add company day",
+        "descripcion": "A day off your company gives. It doesn't replace public holidays.",
+        "fecha": "Date",
+        "nombre": "Name",
+        "nombreEjemplo": "Company anniversary",
+        "duracion": "Duration",
+        "diaCompleto": "Full day",
+        "medioDia": "Half day",
+        "desdeHora": "From what time",
+        "desdeLa": "From {hora}",
+        "sedes": "Branches",
+        "todasSedes": "All branches",
+        "aviso": "Whoever works that day does so on ordinary hours, with no holiday surcharge. Shifts already published at those branches are flagged for review.",
+        "agregar": "Add day",
+        "errores": {
+          "incompleto": "Choose the date and enter a name of at least 2 letters.",
+          "repetida": "Your company already has a day of its own on that date.",
+          "guardar": "We couldn't add the day. Try again."
+        }
+      }
+    },
+    "aprobaciones": {
+      "permiso": "Manage approvals",
+      "error": {
+        "titulo": "We couldn't load the approvals",
+        "descripcion": "Check your connection and try again. Meanwhile, requests follow the default order: direct manager, then HR."
+      },
+      "errorGuardar": "We couldn't save the change. Try again.",
+      "subvista": {
+        "etiqueta": "What to see",
+        "reglas": "Rules",
+        "delegaciones": "Delegations and substitutes",
+        "probar": "Test a rule"
+      },
+      "pie": {
+        "guardado": "All saved",
+        "soloLectura": "Read only"
+      },
+      "tipo": {
+        "ausencia": "Absence",
+        "horas_extra": "Overtime",
+        "cambio_salario": "Salary change",
+        "prestamo": "Loan",
+        "novedad_nomina": "Payroll entry",
+        "vacante": "Vacancy",
+        "oferta": "Offer",
+        "liquidacion": "Final settlement",
+        "cambio_cargo": "Position change",
+        "cambio_sede": "Branch change",
+        "cambio_area": "Department change",
+        "cambio_jefe": "Manager change",
+        "cambio_jornada": "Working hours change",
+        "cambio_contrato": "Contract change"
+      },
+      "aprobador": {
+        "jefe_directo": "Direct manager",
+        "jefe_area": "Department head",
+        "rrhh": "HR",
+        "cargo": "A position",
+        "rol": "A role",
+        "persona": "A specific person"
+      },
+      "condicion": {
+        "campo": {
+          "sede": "Branch",
+          "area": "Department",
+          "cargo": "Position",
+          "dias": "Days",
+          "horas": "Hours",
+          "monto": "Amount",
+          "aumento": "Raise"
+        },
+        "op": {
+          "gt": "is greater than",
+          "lt": "is less than",
+          "cualquiera": "is any of"
+        },
+        "resumenLista": "{campo} = {valores}",
+        "resumenNumero": "{campo} {op} {valor}"
+      },
+      "reglas": {
+        "ayuda": "Each request type has its rules. They're checked in order and the first one that matches wins; if none matches, the request goes to the direct manager and, if there's none, to HR. Use “⋯” to change the order.",
+        "n": "{n, plural, =0 {no rules} one {# rule} other {# rules}}",
+        "agregar": "Add rule",
+        "editar": "Edit",
+        "activar": "Activate",
+        "desactivar": "Deactivate",
+        "subir": "Move up",
+        "bajar": "Move down",
+        "quitar": "Remove rule",
+        "activa": "Active",
+        "inactiva": "Inactive",
+        "todasLasDemas": "All the rest",
+        "sinReglasTipo": "No rules: it goes to the direct manager and, if there's none, to HR.",
+        "porDefectoTipo": "No rules · direct manager → HR",
+        "otrosTipos": "Other request types",
+        "recomendadasListas": "Done: we loaded the recommended rules",
+        "vacio": {
+          "titulo": "There are no approval rules yet",
+          "descripcion": "Meanwhile, each request goes to the direct manager and, if there's none, to HR ({rrhh, plural, =0 {nobody has that permission today} one {# person with that permission} other {# people with that permission}}). Nobody approves their own request.",
+          "recomendadas": "Use the recommended rules"
+        },
+        "confirmarQuitar": {
+          "titulo": "Remove this rule?",
+          "descripcion": "“{nombre}” stops applying to new requests. Those already in progress keep their approvers."
+        }
+      },
+      "editor": {
+        "tituloEditar": "Edit rule · {tipo}",
+        "tituloNueva": "New rule · {tipo}",
+        "nombre": "Name",
+        "nombreEjemplo": "Absences longer than 3 days",
+        "tipo": "Request type",
+        "condiciones": "Conditions",
+        "condicionesAyuda": "The rule applies when all of them are met.",
+        "sinCondiciones": "No conditions: it applies to every request of this type that an earlier rule didn't take.",
+        "agregarCondicion": "Add condition",
+        "quitarCondicion": "Remove condition",
+        "operador": "Operator",
+        "elegir": "Choose…",
+        "cadena": "Approval chain",
+        "cadenaAyuda": "They approve in this order. If one rejects, the request stops and goes back to whoever submitted it.",
+        "paso": {
+          "jefe_directoAyuda": "Whoever is listed as the employee's manager in their profile",
+          "jefe_areaAyuda": "Whoever heads the employee's department in the org chart",
+          "rrhhAyuda": "Anyone with the “Approve HR requests” permission ({n, plural, =0 {nobody today} one {# person} other {# people}})",
+          "cargoAyuda": "Whoever holds this position",
+          "personaAyuda": "Always the same person"
+        },
+        "elegirCargo": "Choose position",
+        "elegirPersona": "Choose person",
+        "subirPaso": "Move approver up",
+        "bajarPaso": "Move approver down",
+        "quitarPaso": "Remove approver",
+        "agregarAprobador": "Add approver",
+        "agregarAprobadorAyuda": "Direct manager · Department head · HR · A position · A specific person",
+        "casos": "Special cases",
+        "siEsQuienPide": "If the approver is who submitted the request",
+        "siEsQuienPideAyuda": "Nobody approves their own request.",
+        "siNoHay": "If there's nobody to assign the step to",
+        "siNoHayAyuda": "For example, an employee with no direct manager in their profile.",
+        "pasaSiguiente": "Go to the next step",
+        "vaRrhh": "Goes to HR",
+        "cancelar": "Cancel",
+        "guardar": "Save rule",
+        "guardada": "Rule saved",
+        "errores": {
+          "nombre": "Enter a name of at least 2 letters.",
+          "paso": "Choose the position or person for each approver.",
+          "guardar": "We couldn't save the rule. Try again."
+        }
+      },
+      "delegaciones": {
+        "ayuda": "While the delegation lasts, whatever reaches the absent person reaches their substitute. What was already approved doesn't change, and the request shows that a substitute approved it.",
+        "nueva": "New delegation",
+        "quienSeAusenta": "Who will be away",
+        "quienAprueba": "Who approves instead",
+        "elegirPersona": "Choose person",
+        "desde": "From",
+        "hasta": "To",
+        "queSolicitudes": "Which requests",
+        "motivo": "Reason",
+        "alcance": {
+          "todas": "Everything that reaches them",
+          "ausencias": "Absences only",
+          "ausencias_horas": "Absences and overtime",
+          "nomina": "Payroll, overtime and loans",
+          "otras": "{n, plural, one {# request type} other {# request types}}"
+        },
+        "motivos": {
+          "vacaciones": "Vacation",
+          "licencia": "Leave",
+          "incapacidad": "Sick leave",
+          "capacitacion": "Training",
+          "viaje": "Trip",
+          "otro": "Other"
+        },
+        "cancelar": "Cancel",
+        "guardar": "Save delegation",
+        "guardada": "Delegation saved",
+        "lista": "Delegations",
+        "vacio": "There are no delegations yet.",
+        "deA": "{de} → {a}",
+        "resumen": "{desde} – {hasta} · {motivo} · {alcance}",
+        "estado": {
+          "programada": "Scheduled",
+          "activa": "Active",
+          "terminada": "Ended"
+        },
+        "terminar": "End delegation",
+        "confirmarTerminar": {
+          "titulo": "End this delegation?",
+          "descripcion": "From today, whatever reaches {de} stops going to {a}. What was already approved doesn't change."
+        },
+        "avisoReemplazo": "When the vacation of someone who approves is approved, GO Admin suggests they leave a substitute before leaving, without forcing it.",
+        "errores": {
+          "personas": "Choose two different people.",
+          "fechas": "The end date can't be before the start date.",
+          "guardar": "We couldn't save the delegation. Try again."
+        }
+      },
+      "probar": {
+        "ayuda": "Who would approve this request? Describe a sample request and we'll show you which rule applies and who it would reach. Nothing is created and nobody is notified.",
+        "tipo": "Request type",
+        "empleado": "Employee",
+        "elegirEmpleado": "Choose employee",
+        "sinEmpleados": "There are no active employees",
+        "dato": {
+          "dias": "Days",
+          "horas": "Hours",
+          "monto": "Amount",
+          "aumentoPct": "Raise"
+        },
+        "desde": "From",
+        "probar": "Test",
+        "seAplica": "Rule {orden} of {tipo} applies: “{nombre}”",
+        "porDefecto": "No rule matches: it follows the default order",
+        "autoaprobada": "There's nobody to assign it to: it would be approved automatically and logged",
+        "tambienCumple": "It also matches {reglas}, but the first one in the order wins.",
+        "reglaN": "rule {orden} “{nombre}”",
+        "nadie": "nobody",
+        "reemplaza": "Substitutes for {nombre} from {desde} to {hasta} ({motivo})",
+        "respaldo": "Fallback: there was nobody to assign the step to, so it went to HR.",
+        "bastaUno": "Approval from one of {n, plural, other {the #}} is enough",
+        "verRegla": "See the rule",
+        "soloPrueba": "It's only a test",
+        "errores": {
+          "empleado": "Choose an employee.",
+          "probar": "We couldn't test the rule. Try again."
+        }
+      }
+    },
+    "registro": {
+      "permiso": "View access log",
+      "titulo": "Access log",
+      "ayuda": "Every time someone views or changes an employee's sensitive data is logged, as is every attempt without permission. Nobody can edit or delete these records.",
+      "error": {
+        "titulo": "We couldn't load the log",
+        "descripcion": "Check your connection and try again."
+      },
+      "buscar": "Who viewed or changed",
+      "fechas": "Dates",
+      "filtro": {
+        "grupo": "Data group",
+        "accion": "Action",
+        "todos": "All",
+        "todas": "All"
+      },
+      "chip": {
+        "empleado": "Employee: {nombre}",
+        "grupo": "Group: {grupo}",
+        "accion": "Action: {accion}"
+      },
+      "verN": "{n, plural, =0 {No records} one {See # record} other {See # records}}",
+      "resumen": "Period summary",
+      "conteo": {
+        "total": "{n, plural, one {# record} other {# records}}",
+        "ver": "{n, plural, one {# view} other {# views}}",
+        "editar": "{n, plural, one {# change} other {# changes}}",
+        "exportar": "{n, plural, one {# export} other {# exports}}",
+        "sin_permiso": "{n, plural, one {# without permission} other {# without permission}}"
+      },
+      "accion": {
+        "ver": "Viewed",
+        "editar": "Changed",
+        "exportar": "Exported",
+        "sin_permiso": "No permission"
+      },
+      "grupo": {
+        "identificacion": "Identification",
+        "salario_pago": "Salary and pay",
+        "banco": "Bank account",
+        "salud": "Health (fitness)",
+        "disciplinario": "Disciplinary",
+        "sst": "OHS",
+        "basico": "Basic data",
+        "registro_accesos": "Access log"
+      },
+      "estadoAprobacion": {
+        "pendiente": "pending",
+        "aprobada": "approved",
+        "rechazada": "rejected",
+        "cancelada": "cancelled"
+      },
+      "vacio": {
+        "titulo": "No records on these dates",
+        "descripcion": "Every view or change of sensitive data will appear here."
+      },
+      "alguien": "Someone",
+      "sinEmpleado": "No employee",
+      "origenDesconocido": "Unknown origin",
+      "verDetalle": "See {quien}'s record",
+      "soloLectura": "Read only",
+      "zona": "Times in the organization's time zone ({zona}).",
+      "detalle": {
+        "error": {
+          "titulo": "We couldn't load this record",
+          "descripcion": "Check your connection and try again."
+        },
+        "titulo": {
+          "ver": "{quien} viewed {empleado}'s {grupo}",
+          "editar": "{quien} changed {empleado}'s {grupo}",
+          "exportar": "{quien} exported {empleado}'s {grupo}",
+          "sin_permiso": "{quien} tried to view {empleado}'s {grupo} without permission"
+        },
+        "quienCuando": "Who and when",
+        "persona": "Person",
+        "cuando": "When",
+        "desdeDonde": "From where",
+        "ruta": "Screen",
+        "queCambio": "What changed",
+        "queVio": "What was viewed",
+        "grupo": "Data group",
+        "empleado": "Employee",
+        "verSusRegistros": "See their records",
+        "campos": "Fields",
+        "campo": "Field",
+        "antes": "Before",
+        "despues": "After",
+        "mostrarValores": "Show values",
+        "valoresSinPermiso": "You don't have permission to see these values. The attempt was logged.",
+        "valoresError": "We couldn't show the values. Try again.",
+        "fechaEfecto": "Effective date",
+        "motivo": "Reason",
+        "aprobacion": "Approval",
+        "aprobacionTexto": "Request {estado} · {personas}",
+        "documento": "Document",
+        "nota": "Viewing the values is logged too. This record can't be edited or deleted.",
+        "otros": "Other records for {empleado} this month"
+      }
+    },
+    "rol": {
+      "verEmpleados": "View employees in their scope",
+      "nuevo": "New",
+      "alcance": {
+        "titulo": "Whose data they see",
+        "organizacion": "The whole organization",
+        "sedes": "Their branches",
+        "equipo": "Only their team",
+        "ayuda": {
+          "organizacion": "They see every employee in the organization.",
+          "sedes": "They see the employees of the branches they have access to. It's calculated on the server on every query.",
+          "equipo": "Their team = the people who report to them in the org chart, directly or indirectly. It's calculated on the server on every query."
+        }
+      },
+      "grupos": {
+        "titulo": "Sensitive data groups",
+        "ayuda": "View and edit are granted separately. Without the group, the field is hidden.",
+        "ver": "View",
+        "editar": "Edit",
+        "verGrupo": "View {grupo}",
+        "editarGrupo": "Edit {grupo}",
+        "sensible": "Sensitive",
+        "bloqueado": "Blocked",
+        "bloqueadoPorEquipo": "blocked with “Only their team”",
+        "nombre": {
+          "identificacion": "Identification",
+          "salario_pago": "Salary and pay",
+          "banco": "Bank account",
+          "salud": "Health (fitness assessment only)",
+          "disciplinario": "Disciplinary",
+          "sst": "OHS"
+        },
+        "descripcion": {
+          "identificacion": "ID document, date of birth, address and emergency contact",
+          "salario_pago": "Salary, allowances, deductions, pay stubs and settlements",
+          "banco": "Bank, account type and number for payment",
+          "salud": "Occupational medical assessment and restrictions. Never the medical record or the diagnosis",
+          "disciplinario": "Warnings, statements and sanctions",
+          "sst": "Work accidents, PPE delivered and training"
+        }
+      },
+      "avisoEquipo": {
+        "titulo": "What a manager sees with “Only their team”",
+        "descripcion": "For the people who report to them: name, position, shifts, absences, pending requests and OHS. They never see anyone's salary, bank account or health, even if checked: with this scope those groups are blocked. Whatever they view is recorded in the Access log."
+      },
+      "sinAcceso": {
+        "titulo": "This role has no access to Human resources",
+        "descripcion": "Grant “View employees” to choose whose data they see and which sensitive groups they can view or edit.",
+        "conceder": "Grant “View employees”"
+      },
+      "soloLectura": {
+        "titulo": "You can see this role, but not change its sensitive data",
+        "descripcion": "Changing the scope or HR data groups requires the “Edit roles” permission. Ask an administrator."
       }
     }
   }

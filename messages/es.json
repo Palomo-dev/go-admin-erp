@@ -36497,7 +36497,8 @@
       "eliminar": "Sensible · eliminar",
       "acceso": "Sensible · acceso",
       "corto": "Sensible",
-      "dineroCorto": "Dinero"
+      "dineroCorto": "Dinero",
+      "datos": "Sensible · datos"
     },
     "revisar": {
       "titulo": "¿Guardar {n, plural, one {# cambio} other {# cambios}} en «{rol}»?",
@@ -38943,9 +38944,9 @@
         "palabras": "créditos, saldo, consumo, precios, cola, trabajos, minutos"
       },
       "hrmGeneral": {
-        "titulo": "Recursos humanos",
-        "descripcion": "Configuración general y monedas",
-        "palabras": "recursos humanos, nómina, monedas, empleados, hrm"
+        "titulo": "Parámetros legales",
+        "descripcion": "Valores de ley de la nómina y lo que define tu empresa",
+        "palabras": "recursos humanos, rrhh, nómina, smmlv, salario mínimo, uvt, auxilio de transporte, jornada, recargo, dominical, horas extra, arl, pila, exoneración, retención, parámetros"
       },
       "pmsGeneral": {
         "titulo": "PMS Hotel",
@@ -39036,6 +39037,21 @@
         "titulo": "Desarrolladores",
         "descripcion": "Llaves de API y webhooks salientes de la organización",
         "palabras": "desarrolladores, llaves api, llaves de api, api keys, llaves, webhooks, webhooks salientes, api"
+      },
+      "hrmFestivos": {
+        "titulo": "Festivos",
+        "descripcion": "Festivos de ley y días propios de tu empresa",
+        "palabras": "festivos, feriados, días propios, descanso, calendario, recursos humanos, rrhh"
+      },
+      "hrmAprobaciones": {
+        "titulo": "Aprobaciones",
+        "descripcion": "Quién aprueba cada solicitud de RR. HH., delegaciones y reemplazos",
+        "palabras": "aprobaciones, reglas, aprobadores, jefe directo, delegación, reemplazo, ausencias, vacaciones, horas extra, recursos humanos, rrhh"
+      },
+      "hrmRegistroAccesos": {
+        "titulo": "Registro de accesos",
+        "descripcion": "Quién vio o cambió datos sensibles de un empleado",
+        "palabras": "registro de accesos, auditoría, datos sensibles, salario, cuenta bancaria, salud, privacidad, recursos humanos, rrhh"
       }
     },
     "ajustes": {
@@ -51850,7 +51866,11 @@
       "chatIa": "IA",
       "posGeneral": "General",
       "integracionesGeneral": "General",
-      "integracionesDesarrolladores": "Desarrolladores"
+      "integracionesDesarrolladores": "Desarrolladores",
+      "hrmGeneral": "Parámetros legales",
+      "hrmFestivos": "Festivos",
+      "hrmAprobaciones": "Aprobaciones",
+      "hrmRegistroAccesos": "Registro de accesos"
     },
     "buscar": {
       "etiqueta": "Buscar un ajuste",
@@ -53190,32 +53210,6 @@
       "reintentar": "Reintentar",
       "soloAdmins": "Solo los administradores pueden gestionar dominios y la política de envío. Puedes editar tu firma."
     },
-    "hrmConfigPanel": {
-      "error": "Error",
-      "errorCargar": "No se pudo cargar la configuración",
-      "guardada": "Configuración guardada correctamente",
-      "errorGuardar": "No se pudo guardar la configuración",
-      "monedaBaseEstablecida": "{moneda} establecida como moneda base",
-      "errorMonedaBase": "No se pudo establecer la moneda base",
-      "monedaAgregada": "{moneda} agregada",
-      "errorAgregar": "No se pudo agregar la moneda",
-      "monedaEliminada": "{moneda} eliminada",
-      "errorEliminar": "No se pudo eliminar la moneda",
-      "configuracionGeneral": "Configuración General",
-      "reglasPais": {
-        "titulo": "Reglas de País",
-        "descripcion": "Consulta las reglas legales de nómina por país (salario mínimo, aportes, etc.)",
-        "ver": "Ver Reglas"
-      },
-      "monedas": "Monedas",
-      "sobreMonedas": {
-        "titulo": "Sobre las Monedas",
-        "base": "La <b>moneda base</b> se usa para cálculos de nómina y reportes.",
-        "multiples": "Puede agregar múltiples monedas para operaciones internacionales.",
-        "tasas": "Las tasas de cambio se pueden configurar manualmente o auto-actualizar.",
-        "noEliminarBase": "No puede eliminar la moneda base; primero cambie a otra."
-      }
-    },
     "asistenteConfigPanel": {
       "soloOrganizacionActiva": "Los cambios se aplican únicamente a tu organización activa, no a las demás organizaciones.",
       "seleccionaOrganizacion": "Selecciona una organización para consultar su configuración.",
@@ -54199,6 +54193,690 @@
         "respuesta": "Respuesta",
         "tonoIdioma": "Tono e idioma",
         "reglas": "Reglas"
+      }
+    }
+  },
+  "hrmConfig": {
+    "comun": {
+      "sinPermiso": {
+        "titulo": "No tienes acceso a esta sección",
+        "descripcion": "Pídele a un administrador el permiso «{permiso}». Las demás secciones de la Configuración siguen disponibles."
+      }
+    },
+    "parametros": {
+      "permiso": "Configurar Recursos humanos",
+      "error": {
+        "titulo": "No pudimos cargar los parámetros",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo. Mientras no carguen, la nómina no calcula: nunca usa un valor viejo guardado en el navegador."
+      },
+      "vistas": {
+        "etiqueta": "Qué parámetros ver",
+        "ley": "Valores de ley",
+        "empresa": "Lo que define tu empresa"
+      },
+      "soloLectura": "Solo lectura",
+      "irAEmpresa": "Ir a lo que define tu empresa",
+      "estado": {
+        "vigente": "Vigente",
+        "transitorio": "Transitorio",
+        "litigio": "En litigio",
+        "suspendido": "Suspendido",
+        "por_confirmar": "Por confirmar",
+        "sin_valor": "Sin valor",
+        "cerrada": "Cerrada",
+        "programada": "Programada"
+      },
+      "ley": {
+        "avisoTitulo": "Estos valores los mantiene GO Admin: tu organización los ve, no los edita",
+        "avisoDescripcion": "Cada uno trae su norma, su fuente y sus fechas de inicio y de fin. La nómina toma el valor vigente el día del hecho (la hora trabajada, el día de pago o la fecha de corte). Si un valor cambia, se aplica desde su fecha y no toca períodos cerrados.",
+        "buscar": "Buscar parámetro: SMMLV, recargo, UVT…",
+        "valoresAl": "Valores al",
+        "estadoFiltro": "Estado",
+        "filtro": {
+          "todos": "Todos",
+          "vigente": "Vigentes",
+          "transitorio": "Transitorios",
+          "litigio": "En litigio",
+          "programado": "Con cambio programado",
+          "por_confirmar": "Por confirmar"
+        },
+        "chipFecha": "Valores al: {fecha}",
+        "chipEstado": "Estado: {estado}",
+        "verN": "{n, plural, =0 {Sin parámetros} one {Ver # parámetro} other {Ver # parámetros}}",
+        "sinValores": {
+          "titulo": "Aún no hay valores de {anio}",
+          "descripcion": "Elegiste ver los valores al {fecha}. El SMMLV, el auxilio de transporte y la UVT de {anio} se publican al final del año anterior; los cargamos apenas salgan. Hasta entonces, una nómina de {anio} se puede preliquidar, pero no cerrar.",
+          "verHoy": "Ver los de hoy"
+        },
+        "porConfirmar": "Por confirmar",
+        "desde": "desde {fecha}",
+        "programado": "Desde el {fecha}: {valor}",
+        "verDetalle": "Ver el detalle de {nombre}",
+        "leyenda": "Estados: Vigente · Transitorio (rige por un decreto provisional) · En litigio (una demanda puede cambiarlo) · Suspendido · Por confirmar (aún no se publica). Abre una fila para ver su historial y su fuente.",
+        "revision": "Valores al día de hoy, {fecha}."
+      },
+      "grupo": {
+        "salario": {
+          "titulo": "Salario y topes",
+          "descripcion": "Cambian cada año por decreto o resolución."
+        },
+        "jornada": {
+          "titulo": "Jornada y recargos",
+          "descripcion": "Cambian por ley con calendario conocido: la fecha de vigencia es un dato."
+        },
+        "aportes": {
+          "titulo": "Aportes y retención",
+          "descripcion": "Tarifas y tablas que pueden cambiar por ley."
+        },
+        "prestaciones": {
+          "titulo": "Prestaciones, licencias y descuentos",
+          "descripcion": "Tasas, semanas y topes que usa la liquidación."
+        },
+        "otros": {
+          "titulo": "Otros",
+          "descripcion": "Valores que la plataforma ya tiene y aún no tienen nombre en esta pantalla."
+        }
+      },
+      "fila": {
+        "smmlv": "Salario mínimo (SMMLV)",
+        "auxilio_transporte": "Auxilio de transporte",
+        "uvt": "UVT",
+        "salario_integral": "Salario integral mínimo",
+        "ibc_tope": "Tope del IBC",
+        "jornada": "Jornada máxima semanal",
+        "nocturno": "Inicio del recargo nocturno",
+        "dominical": "Recargo dominical y festivo",
+        "recargos": "Recargo nocturno y horas extra",
+        "horas_extra": "Topes de horas extra",
+        "dominical_habitual": "Trabajo dominical habitual",
+        "salud": "Salud",
+        "pension": "Pensión",
+        "fsp": "Fondo de Solidaridad Pensional",
+        "parafiscales": "Caja · ICBF · SENA",
+        "arl": "ARL por clase de riesgo",
+        "exoneracion": "Exoneración del art. 114-1 (umbral)",
+        "retencion": "Tabla de retención en la fuente",
+        "intereses_cesantias": "Intereses de cesantías",
+        "licencias": "Licencias de maternidad y paternidad",
+        "incapacidad": "Incapacidades",
+        "indemnizacion": "Indemnización por despido sin justa causa",
+        "aprendiz": "Apoyo de sostenimiento del aprendiz",
+        "conectividad": "Auxilio de conectividad",
+        "embargos": "Embargos",
+        "libranza": "Libranzas",
+        "deducciones": "Rentas exentas y deducciones"
+      },
+      "valor": {
+        "simple": {
+          "pct": "{valor}",
+          "numero": "{valor}",
+          "dinero": "{valor}",
+          "texto": "{valor}",
+          "smmlv": "hasta {valor} SMMLV"
+        },
+        "hastaSmmlv": "hasta {n} SMMLV",
+        "vecesSmmlv": "{n} SMMLV",
+        "integral": "{n} SMMLV · el IBC es el {factor}",
+        "jornada": "{h} h · divisor {divisor}",
+        "horas": "{h} h",
+        "nocturnoHasta": "hasta las {hora}",
+        "trio": "{a} · {b} · {c}",
+        "recargos": "nocturno · extra diurna · extra nocturna",
+        "horasExtra": "{dia} h/día · {semana} h/semana",
+        "par": "{a} · {b}",
+        "empleadorTrabajador": "empleador · trabajador",
+        "rango": "{min} a {max}",
+        "segunIbc": "según el IBC",
+        "sobreIbc": "sobre el IBC",
+        "clasesArl": "clases I a V",
+        "menosDeSmmlv": "menos de {n} SMMLV",
+        "rangos": "{n} rangos · {min} a {max}",
+        "enUvt": "en UVT",
+        "licencias": "{m} y {p} semanas",
+        "porTramos": "Por tramos",
+        "monetizacion": "monetización: {n} SMMLV",
+        "embargos": "alimentos · excedente",
+        "deducciones": "{r} exenta · límite {l}",
+        "topeUvt": "tope de {n} UVT al año"
+      },
+      "detalle": {
+        "verNorma": "Ver la norma",
+        "hoy": "Hoy",
+        "divisor": "Divisor de hora",
+        "valorHora": "Valor hora del SMMLV",
+        "historial": "Historial de vigencias",
+        "historialAyuda": "La plataforma las conserva todas: un período se calcula con las que regían en sus fechas.",
+        "desdeEl": "Desde el {fecha}",
+        "hasta": "hasta {fecha}",
+        "sinFin": "sin fecha de fin",
+        "notaDivisor": "El divisor (horas por semana ÷ 6 × 30) no está en la ley: es la práctica contable. La plataforma usa el 15 de julio, la fecha de vigencia de la Ley 2101.",
+        "cruce": "Un período que cruza dos vigencias",
+        "cruceAyuda": "Así se ve la nómina mensual que contiene el cambio del {mes}.",
+        "tramo": "{desde} – {hasta} · {dias, plural, one {# día} other {# días}}",
+        "valorHoraEs": "Valor hora del SMMLV: {valor}",
+        "cruceNota": "Cada hora se liquida con el valor del día en que se trabajó, y la colilla muestra los dos tramos. Si un parámetro cambia después del cierre, el período cerrado no se recalcula: se corrige con una nota de ajuste.",
+        "dependen": "Valores que dependen de este",
+        "dependenSmmlv": "Salario integral mínimo, tope del IBC, umbral del 114-1, rangos del FSP y tope del auxilio de transporte se recalculan solos para las fechas en que cambie.",
+        "enTuEmpresa": "En tu empresa",
+        "empresaPropia": "Tu empresa definió su propio valor desde el {fecha}",
+        "empresaLaDeLey": "Tu empresa usa el valor de ley",
+        "empresaAyuda": "Si tu empresa adelanta la ley, se define en «Lo que define tu empresa».",
+        "pie": "Valor mantenido por GO Admin · consultado el {fecha}"
+      },
+      "empresa": {
+        "guardado": "Cambios guardados",
+        "errorGuardar": "No pudimos guardar los cambios. Inténtalo de nuevo.",
+        "desde": "Desde",
+        "elegir": "Elegir…",
+        "soloLectura": "Solo lectura",
+        "soloLecturaAyuda": "Para cambiar estos valores necesitas el permiso «Configurar Recursos humanos».",
+        "jornada": {
+          "titulo": "Jornada y recargos",
+          "descripcion": "Lo que tu empresa puede adelantar a la ley. Rige desde la fecha que elijas y no recalcula períodos cerrados.",
+          "adelantar": "Adoptar antes una jornada menor",
+          "adelantarAyuda": "La ley baja a {h} h el {fecha}. Tu empresa puede adoptarla antes, desde la fecha que elijas.",
+          "noAplica": "No aplica hoy: la ley ya llegó a {h} h el {fecha}, el último escalón del calendario."
+        },
+        "dominical": {
+          "titulo": "Pagar ya el recargo dominical y festivo del {pct}",
+          "tituloSinMeta": "Recargo dominical y festivo",
+          "ayuda": "La ley lo exige desde el {fecha}; hoy rige el {hoy}. Tu valor se usa primero, desde la fecha que elijas.",
+          "yaRige": "La ley ya llegó al último escalón: no hay nada que adelantar."
+        },
+        "aportes": {
+          "titulo": "Aportes",
+          "descripcion": "Afectan el cálculo de la seguridad social y de la PILA.",
+          "exoneracion": "Aplicar la exoneración del art. 114-1",
+          "exoneracionAyuda": "Sin salud del empleador, SENA ni ICBF por quienes ganen menos de {n} SMMLV ({valor}). Requisito: persona jurídica contribuyente de renta, o persona natural con 2 o más trabajadores. No aplica a la caja ni al salario integral.",
+          "pila": "Operador PILA",
+          "pilaAyuda": "GO Admin genera el archivo plano de la PILA; tú lo cargas y lo pagas en tu operador.",
+          "operador": {
+            "aportes_en_linea": "Aportes en Línea",
+            "mi_planilla": "Mi Planilla",
+            "soi": "SOI",
+            "simple": "Simple",
+            "asopagos": "Asopagos",
+            "enlace_operativo": "Enlace Operativo",
+            "arus": "ARUS"
+          }
+        },
+        "pago": {
+          "titulo": "Pago y retención",
+          "periodicidad": "Periodicidad de pago",
+          "periodicidadAyuda": "Semanal, decadal, quincenal o mensual. El documento de nómina electrónica a la DIAN siempre es mensual.",
+          "periodo": {
+            "semanal": "Semanal",
+            "decadal": "Decadal",
+            "quincenal": "Quincenal",
+            "mensual": "Mensual"
+          },
+          "retencion": "Procedimiento de retención por defecto",
+          "retencionAyuda": "Se puede cambiar por empleado. El procedimiento 2 calcula un porcentaje fijo en junio y en diciembre.",
+          "procedimiento1": "Procedimiento 1 (art. 385)",
+          "procedimiento2": "Procedimiento 2 (art. 386)"
+        },
+        "arl": {
+          "titulo": "Clase de riesgo ARL por sede o cargo",
+          "ayuda": "La asigna tu ARL según la actividad. Gana la regla más específica: cargo en una sede › cargo › sede › por defecto.",
+          "agregar": "Agregar regla",
+          "agregarTitulo": "Agregar regla de ARL",
+          "editarTitulo": "Editar regla de ARL",
+          "vacio": "Sin reglas: todos los empleados cotizan en clase I ({tarifa}).",
+          "sede": "Sede",
+          "cargo": "Cargo",
+          "clase": "Clase",
+          "claseN": "Clase {n}",
+          "todasSedes": "Todas las sedes",
+          "todosCargos": "Todos los cargos",
+          "porDefecto": "Por defecto",
+          "editar": "Editar",
+          "quitar": "Quitar regla",
+          "guardar": "Guardar regla",
+          "guardada": "Regla de ARL guardada",
+          "quitada": "Regla de ARL quitada",
+          "errorGuardar": "No pudimos guardar la regla de ARL. Inténtalo de nuevo.",
+          "confirmarQuitar": {
+            "titulo": "¿Quitar esta regla de ARL?",
+            "descripcion": "«{regla}» deja de aplicar. Quienes la usaban toman la siguiente regla más específica."
+          }
+        }
+      }
+    },
+    "festivos": {
+      "permiso": "Configurar Recursos humanos",
+      "error": {
+        "titulo": "No pudimos cargar los festivos",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+      },
+      "anio": "Año",
+      "anioN": "Año: {anio}",
+      "filtro": {
+        "etiqueta": "Qué días ver",
+        "todos": "Todos ({n})",
+        "ley": "De ley ({n})",
+        "propios": "Propios ({n})"
+      },
+      "agregar": "Agregar día propio",
+      "agregado": "Día propio agregado",
+      "quitar": "Quitar",
+      "quitado": "Día propio quitado",
+      "errorQuitar": "No pudimos quitar el día. Inténtalo de nuevo.",
+      "aviso": {
+        "titulo": "Los festivos de ley los carga GO Admin",
+        "descripcion": "Se cargan para cada año (Ley 51 de 1983: varios se trasladan al lunes) y no se editan. Cuentan para los recargos y para los días hábiles de vacaciones. Los días propios son descanso que da tu empresa: se pagan como día ordinario, sin recargo festivo de ley, y quedan marcados para que el Contador los revise."
+      },
+      "sinLey": {
+        "titulo": "El calendario de {anio} aún no está cargado",
+        "descripcion": "Se publica en cuanto esté confirmado. Mientras tanto, ningún día de ese año cuenta como festivo de ley."
+      },
+      "ley": {
+        "titulo": "Festivos de ley · {anio}",
+        "descripcion": "{n, plural, one {# día} other {# días}}. El calendario de {siguiente} se publica en cuanto esté confirmado."
+      },
+      "propios": {
+        "titulo": "Días propios de tu empresa · {anio}",
+        "descripcion": "Los agregas y los quitas tú. Puedes limitarlos a algunas sedes.",
+        "vacio": "Tu empresa no tiene días propios este año."
+      },
+      "trasladada": "Se traslada del {fecha}",
+      "diaCompleto": "Día completo",
+      "medioDiaDesde": "Medio día · desde las {hora}",
+      "todasSedes": "Todas las sedes",
+      "deLey": "De ley",
+      "propio": "Propio",
+      "pie": {
+        "guardado": "Todo guardado",
+        "soloLectura": "Solo lectura"
+      },
+      "confirmarQuitar": {
+        "titulo": "¿Quitar este día propio?",
+        "descripcion": "«{nombre}» ({fecha}) vuelve a ser un día ordinario. Los turnos ya publicados quedan marcados para revisar."
+      },
+      "dialogo": {
+        "titulo": "Agregar día propio",
+        "descripcion": "Un día de descanso que da tu empresa. No reemplaza los festivos de ley.",
+        "fecha": "Fecha",
+        "nombre": "Nombre",
+        "nombreEjemplo": "Aniversario de la empresa",
+        "duracion": "Duración",
+        "diaCompleto": "Día completo",
+        "medioDia": "Medio día",
+        "desdeHora": "Desde qué hora",
+        "desdeLa": "Desde las {hora}",
+        "sedes": "Sedes",
+        "todasSedes": "Todas las sedes",
+        "aviso": "Quien trabaje ese día lo hace en jornada ordinaria, sin recargo festivo. Los turnos ya publicados en esas sedes quedan marcados para revisar.",
+        "agregar": "Agregar día",
+        "errores": {
+          "incompleto": "Elige la fecha y escribe un nombre de al menos 2 letras.",
+          "repetida": "Tu empresa ya tiene un día propio en esa fecha.",
+          "guardar": "No pudimos agregar el día. Inténtalo de nuevo."
+        }
+      }
+    },
+    "aprobaciones": {
+      "permiso": "Gestionar aprobaciones",
+      "error": {
+        "titulo": "No pudimos cargar las aprobaciones",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo. Mientras tanto, las solicitudes siguen el orden por defecto: jefe directo y después RR. HH."
+      },
+      "errorGuardar": "No pudimos guardar el cambio. Inténtalo de nuevo.",
+      "subvista": {
+        "etiqueta": "Qué ver",
+        "reglas": "Reglas",
+        "delegaciones": "Delegaciones y reemplazos",
+        "probar": "Probar una regla"
+      },
+      "pie": {
+        "guardado": "Todo guardado",
+        "soloLectura": "Solo lectura"
+      },
+      "tipo": {
+        "ausencia": "Ausencia",
+        "horas_extra": "Horas extra",
+        "cambio_salario": "Cambio salarial",
+        "prestamo": "Préstamo",
+        "novedad_nomina": "Novedad de nómina",
+        "vacante": "Vacante",
+        "oferta": "Oferta",
+        "liquidacion": "Liquidación",
+        "cambio_cargo": "Cambio de cargo",
+        "cambio_sede": "Cambio de sede",
+        "cambio_area": "Cambio de área",
+        "cambio_jefe": "Cambio de jefe",
+        "cambio_jornada": "Cambio de jornada",
+        "cambio_contrato": "Cambio de contrato"
+      },
+      "aprobador": {
+        "jefe_directo": "Jefe directo",
+        "jefe_area": "Jefe del área",
+        "rrhh": "RR. HH.",
+        "cargo": "Un cargo",
+        "rol": "Un rol",
+        "persona": "Una persona concreta"
+      },
+      "condicion": {
+        "campo": {
+          "sede": "Sede",
+          "area": "Área",
+          "cargo": "Cargo",
+          "dias": "Días",
+          "horas": "Horas",
+          "monto": "Monto",
+          "aumento": "Aumento"
+        },
+        "op": {
+          "gt": "es mayor que",
+          "lt": "es menor que",
+          "cualquiera": "es cualquiera de"
+        },
+        "resumenLista": "{campo} = {valores}",
+        "resumenNumero": "{campo} {op} {valor}"
+      },
+      "reglas": {
+        "ayuda": "Cada tipo de solicitud tiene sus reglas. Se revisan en orden y gana la primera que se cumple; si ninguna se cumple, la solicitud va al jefe directo y, si no hay, a RR. HH. Usa «⋯» para cambiar el orden.",
+        "n": "{n, plural, =0 {sin reglas} one {# regla} other {# reglas}}",
+        "agregar": "Agregar regla",
+        "editar": "Editar",
+        "activar": "Activar",
+        "desactivar": "Desactivar",
+        "subir": "Subir",
+        "bajar": "Bajar",
+        "quitar": "Quitar regla",
+        "activa": "Activa",
+        "inactiva": "Inactiva",
+        "todasLasDemas": "Todas las demás",
+        "sinReglasTipo": "Sin reglas: va al jefe directo y, si no hay, a RR. HH.",
+        "porDefectoTipo": "Sin reglas · jefe directo → RR. HH.",
+        "otrosTipos": "Otros tipos de solicitud",
+        "recomendadasListas": "Listo: cargamos las reglas recomendadas",
+        "vacio": {
+          "titulo": "Aún no hay reglas de aprobación",
+          "descripcion": "Mientras tanto, cada solicitud va al jefe directo y, si no hay, a RR. HH. ({rrhh, plural, =0 {nadie tiene hoy ese permiso} one {# persona con ese permiso} other {# personas con ese permiso}}). Nadie aprueba lo suyo.",
+          "recomendadas": "Usar las reglas recomendadas"
+        },
+        "confirmarQuitar": {
+          "titulo": "¿Quitar esta regla?",
+          "descripcion": "«{nombre}» deja de aplicar a las solicitudes nuevas. Las que ya están en curso conservan sus aprobadores."
+        }
+      },
+      "editor": {
+        "tituloEditar": "Editar regla · {tipo}",
+        "tituloNueva": "Nueva regla · {tipo}",
+        "nombre": "Nombre",
+        "nombreEjemplo": "Ausencias de más de 3 días",
+        "tipo": "Tipo de solicitud",
+        "condiciones": "Condiciones",
+        "condicionesAyuda": "La regla se aplica cuando se cumplen todas.",
+        "sinCondiciones": "Sin condiciones: se aplica a todas las solicitudes de este tipo que no tomó una regla anterior.",
+        "agregarCondicion": "Agregar condición",
+        "quitarCondicion": "Quitar condición",
+        "operador": "Operador",
+        "elegir": "Elegir…",
+        "cadena": "Cadena de aprobadores",
+        "cadenaAyuda": "Aprueban en este orden. Si uno rechaza, la solicitud se detiene y vuelve a quien la pidió.",
+        "paso": {
+          "jefe_directoAyuda": "Quien figura como jefe del empleado en su ficha",
+          "jefe_areaAyuda": "Quien dirige el área del empleado en el organigrama",
+          "rrhhAyuda": "Cualquiera con el permiso «Aprobar solicitudes de RR. HH.» ({n, plural, =0 {hoy nadie} one {# persona} other {# personas}})",
+          "cargoAyuda": "Quien tenga este cargo",
+          "personaAyuda": "Siempre la misma persona"
+        },
+        "elegirCargo": "Elegir cargo",
+        "elegirPersona": "Elegir persona",
+        "subirPaso": "Subir aprobador",
+        "bajarPaso": "Bajar aprobador",
+        "quitarPaso": "Quitar aprobador",
+        "agregarAprobador": "Agregar aprobador",
+        "agregarAprobadorAyuda": "Jefe directo · Jefe del área · RR. HH. · Un cargo · Una persona concreta",
+        "casos": "Casos especiales",
+        "siEsQuienPide": "Si el aprobador es quien pidió la solicitud",
+        "siEsQuienPideAyuda": "Nadie aprueba lo suyo.",
+        "siNoHay": "Si no hay a quién asignar el paso",
+        "siNoHayAyuda": "Por ejemplo, un empleado sin jefe directo en su ficha.",
+        "pasaSiguiente": "Pasa al siguiente paso",
+        "vaRrhh": "Va a RR. HH.",
+        "cancelar": "Cancelar",
+        "guardar": "Guardar regla",
+        "guardada": "Regla guardada",
+        "errores": {
+          "nombre": "Escribe un nombre de al menos 2 letras.",
+          "paso": "Elige el cargo o la persona de cada aprobador.",
+          "guardar": "No pudimos guardar la regla. Inténtalo de nuevo."
+        }
+      },
+      "delegaciones": {
+        "ayuda": "Mientras dure la delegación, lo que le llegue a la persona ausente le llega a su reemplazo. Lo ya aprobado no cambia, y la solicitud muestra que aprobó un reemplazo.",
+        "nueva": "Nueva delegación",
+        "quienSeAusenta": "Quién se ausenta",
+        "quienAprueba": "Quién aprueba en su lugar",
+        "elegirPersona": "Elegir persona",
+        "desde": "Desde",
+        "hasta": "Hasta",
+        "queSolicitudes": "Qué solicitudes",
+        "motivo": "Motivo",
+        "alcance": {
+          "todas": "Todas las que le lleguen",
+          "ausencias": "Solo ausencias",
+          "ausencias_horas": "Ausencias y horas extra",
+          "nomina": "Nómina, horas extra y préstamos",
+          "otras": "{n, plural, one {# tipo de solicitud} other {# tipos de solicitud}}"
+        },
+        "motivos": {
+          "vacaciones": "Vacaciones",
+          "licencia": "Licencia",
+          "incapacidad": "Incapacidad",
+          "capacitacion": "Capacitación",
+          "viaje": "Viaje",
+          "otro": "Otro"
+        },
+        "cancelar": "Cancelar",
+        "guardar": "Guardar delegación",
+        "guardada": "Delegación guardada",
+        "lista": "Delegaciones",
+        "vacio": "Aún no hay delegaciones.",
+        "deA": "{de} → {a}",
+        "resumen": "{desde} – {hasta} · {motivo} · {alcance}",
+        "estado": {
+          "programada": "Programada",
+          "activa": "Activa",
+          "terminada": "Terminada"
+        },
+        "terminar": "Terminar delegación",
+        "confirmarTerminar": {
+          "titulo": "¿Terminar esta delegación?",
+          "descripcion": "Desde hoy, lo que le llegue a {de} deja de pasar a {a}. Lo ya aprobado no cambia."
+        },
+        "avisoReemplazo": "Cuando se aprueban las vacaciones de alguien que aprueba, GO Admin le sugiere dejar un reemplazo antes de salir, sin obligarlo.",
+        "errores": {
+          "personas": "Elige dos personas distintas.",
+          "fechas": "La fecha final no puede ser anterior a la inicial.",
+          "guardar": "No pudimos guardar la delegación. Inténtalo de nuevo."
+        }
+      },
+      "probar": {
+        "ayuda": "¿Quién aprobaría esta solicitud? Describe una solicitud de ejemplo y te mostramos qué regla se aplica y a quién le llegaría. No se crea nada ni se avisa a nadie.",
+        "tipo": "Tipo de solicitud",
+        "empleado": "Empleado",
+        "elegirEmpleado": "Elegir empleado",
+        "sinEmpleados": "No hay empleados activos",
+        "dato": {
+          "dias": "Días",
+          "horas": "Horas",
+          "monto": "Monto",
+          "aumentoPct": "Aumento"
+        },
+        "desde": "Desde",
+        "probar": "Probar",
+        "seAplica": "Se aplica la regla {orden} de {tipo}: «{nombre}»",
+        "porDefecto": "Ninguna regla se cumple: va por el orden por defecto",
+        "autoaprobada": "No hay a quién asignarla: se aprobaría sola y quedaría registrada",
+        "tambienCumple": "También cumple {reglas}, pero gana la primera en el orden.",
+        "reglaN": "la regla {orden} «{nombre}»",
+        "nadie": "nadie",
+        "reemplaza": "Reemplaza a {nombre} del {desde} al {hasta} ({motivo})",
+        "respaldo": "Respaldo: no había a quién asignar el paso y pasó a RR. HH.",
+        "bastaUno": "Basta con que apruebe uno de {n, plural, other {los #}}",
+        "verRegla": "Ver la regla",
+        "soloPrueba": "Solo es una prueba",
+        "errores": {
+          "empleado": "Elige un empleado.",
+          "probar": "No pudimos probar la regla. Inténtalo de nuevo."
+        }
+      }
+    },
+    "registro": {
+      "permiso": "Ver registro de accesos",
+      "titulo": "Registro de accesos",
+      "ayuda": "Queda registrado cada vez que alguien ve o cambia un dato sensible de un empleado, y cada intento sin permiso. Nadie puede editar ni borrar estos registros.",
+      "error": {
+        "titulo": "No pudimos cargar el registro",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+      },
+      "buscar": "Quién consultó o cambió",
+      "fechas": "Fechas",
+      "filtro": {
+        "grupo": "Grupo de datos",
+        "accion": "Acción",
+        "todos": "Todos",
+        "todas": "Todas"
+      },
+      "chip": {
+        "empleado": "Empleado: {nombre}",
+        "grupo": "Grupo: {grupo}",
+        "accion": "Acción: {accion}"
+      },
+      "verN": "{n, plural, =0 {Sin registros} one {Ver # registro} other {Ver # registros}}",
+      "resumen": "Resumen del período",
+      "conteo": {
+        "total": "{n, plural, one {# registro} other {# registros}}",
+        "ver": "{n, plural, one {# consulta} other {# consultas}}",
+        "editar": "{n, plural, one {# cambio} other {# cambios}}",
+        "exportar": "{n, plural, one {# exportación} other {# exportaciones}}",
+        "sin_permiso": "{n, plural, one {# sin permiso} other {# sin permiso}}"
+      },
+      "accion": {
+        "ver": "Consultó",
+        "editar": "Cambió",
+        "exportar": "Exportó",
+        "sin_permiso": "Sin permiso"
+      },
+      "grupo": {
+        "identificacion": "Identificación",
+        "salario_pago": "Salario y pago",
+        "banco": "Cuenta bancaria",
+        "salud": "Salud (aptitud)",
+        "disciplinario": "Disciplinarios",
+        "sst": "SST",
+        "basico": "Datos básicos",
+        "registro_accesos": "Registro de accesos"
+      },
+      "estadoAprobacion": {
+        "pendiente": "pendiente",
+        "aprobada": "aprobada",
+        "rechazada": "rechazada",
+        "cancelada": "cancelada"
+      },
+      "vacio": {
+        "titulo": "Sin registros en estas fechas",
+        "descripcion": "Aquí aparecerá cada consulta o cambio de un dato sensible."
+      },
+      "alguien": "Alguien",
+      "sinEmpleado": "Sin empleado",
+      "origenDesconocido": "Origen desconocido",
+      "verDetalle": "Ver el registro de {quien}",
+      "soloLectura": "Solo lectura",
+      "zona": "Horas en la zona horaria de la organización ({zona}).",
+      "detalle": {
+        "error": {
+          "titulo": "No pudimos cargar este registro",
+          "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+        },
+        "titulo": {
+          "ver": "{quien} consultó {grupo} de {empleado}",
+          "editar": "{quien} cambió {grupo} de {empleado}",
+          "exportar": "{quien} exportó {grupo} de {empleado}",
+          "sin_permiso": "{quien} intentó ver {grupo} de {empleado} sin permiso"
+        },
+        "quienCuando": "Quién y cuándo",
+        "persona": "Persona",
+        "cuando": "Cuándo",
+        "desdeDonde": "Desde dónde",
+        "ruta": "Pantalla",
+        "queCambio": "Qué cambió",
+        "queVio": "Qué consultó",
+        "grupo": "Grupo de datos",
+        "empleado": "Empleado",
+        "verSusRegistros": "Ver sus registros",
+        "campos": "Campos",
+        "campo": "Campo",
+        "antes": "Antes",
+        "despues": "Después",
+        "mostrarValores": "Mostrar valores",
+        "valoresSinPermiso": "No tienes permiso para ver estos valores. El intento quedó registrado.",
+        "valoresError": "No pudimos mostrar los valores. Inténtalo de nuevo.",
+        "fechaEfecto": "Fecha de efecto",
+        "motivo": "Motivo",
+        "aprobacion": "Aprobación",
+        "aprobacionTexto": "Solicitud {estado} · {personas}",
+        "documento": "Documento",
+        "nota": "Ver los valores también queda en el registro. Este registro no se puede editar ni borrar.",
+        "otros": "Otros registros de {empleado} este mes"
+      }
+    },
+    "rol": {
+      "verEmpleados": "Ver empleados de su alcance",
+      "nuevo": "Nuevo",
+      "alcance": {
+        "titulo": "De quiénes ve datos",
+        "organizacion": "Toda la organización",
+        "sedes": "Sus sedes",
+        "equipo": "Solo su equipo",
+        "ayuda": {
+          "organizacion": "Ve a todos los empleados de la organización.",
+          "sedes": "Ve a los empleados de las sedes a las que tiene acceso. Se calcula en el servidor en cada consulta.",
+          "equipo": "Su equipo = las personas que le reportan en el organigrama, directa o indirectamente. Se calcula en el servidor en cada consulta."
+        }
+      },
+      "grupos": {
+        "titulo": "Grupos de datos sensibles",
+        "ayuda": "Ver y editar se conceden por separado. Sin el grupo, el campo sale oculto.",
+        "ver": "Ver",
+        "editar": "Editar",
+        "verGrupo": "Ver {grupo}",
+        "editarGrupo": "Editar {grupo}",
+        "sensible": "Sensible",
+        "bloqueado": "Bloqueado",
+        "bloqueadoPorEquipo": "bloqueado con «Solo su equipo»",
+        "nombre": {
+          "identificacion": "Identificación",
+          "salario_pago": "Salario y pago",
+          "banco": "Cuenta bancaria",
+          "salud": "Salud (solo concepto de aptitud)",
+          "disciplinario": "Disciplinarios",
+          "sst": "SST"
+        },
+        "descripcion": {
+          "identificacion": "Documento, fecha de nacimiento, dirección y contacto de emergencia",
+          "salario_pago": "Salario, auxilios, deducciones, colillas y liquidaciones",
+          "banco": "Banco, tipo y número de cuenta para el pago",
+          "salud": "Concepto médico ocupacional y restricciones. Nunca la historia clínica ni el diagnóstico",
+          "disciplinario": "Llamados de atención, descargos y sanciones",
+          "sst": "Accidentes de trabajo, EPP entregado y capacitaciones"
+        }
+      },
+      "avisoEquipo": {
+        "titulo": "Qué ve un jefe con «Solo su equipo»",
+        "descripcion": "De las personas que le reportan: nombre, cargo, turnos, ausencias, solicitudes pendientes y SST. Nunca ve salario, cuenta bancaria ni salud de nadie, aunque se marquen: con este alcance esos grupos quedan bloqueados. Lo que consulte queda en el Registro de accesos."
+      },
+      "sinAcceso": {
+        "titulo": "Este rol no tiene acceso a Recursos humanos",
+        "descripcion": "Concede «Ver empleados» para elegir de quiénes ve datos y qué grupos sensibles puede ver o editar.",
+        "conceder": "Conceder «Ver empleados»"
+      },
+      "soloLectura": {
+        "titulo": "Puedes ver este rol, pero no cambiar sus datos sensibles",
+        "descripcion": "Cambiar el alcance o los grupos de datos de RR. HH. requiere el permiso «Editar roles». Pídeselo a un administrador."
       }
     }
   }

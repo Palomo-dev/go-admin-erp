@@ -6,7 +6,7 @@
  * neto sin guardar («+1» / «−1») y una casilla por acción; abierta, la lista de
  * FilaPermiso. En móvil oculta las columnas de acción y FilaPermiso el código.
  */
-import { useId, useMemo } from 'react';
+import { useId, useMemo, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +39,8 @@ export interface ModuloMatrizProps {
   onAlternarAbierto: () => void;
   /** Sin él, la matriz es de solo lectura. */
   onCambiar?: (siguiente: Set<number>) => void;
+  /** Contenido propio del módulo bajo sus filas (grupos de datos de RR. HH.). */
+  extra?: ReactNode;
 }
 
 const VACIO: ReadonlySet<number> = new Set();
@@ -53,6 +55,7 @@ export function ModuloMatriz({
   abierto,
   onAlternarAbierto,
   onCambiar,
+  extra,
 }: ModuloMatrizProps) {
   const t = useTranslations('roles.matriz');
   const tr = useTranslations('roles');
@@ -138,6 +141,7 @@ export function ModuloMatriz({
               onAlternar={soloLectura ? undefined : () => onCambiar(alternarUno(seleccion, p.id))}
             />
           ))}
+          {extra}
         </div>
       )}
     </div>

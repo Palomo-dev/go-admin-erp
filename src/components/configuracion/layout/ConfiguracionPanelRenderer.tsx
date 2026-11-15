@@ -49,7 +49,10 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   'crm.email': dynamic(() => import('../crm/EmailTab').then((m) => m.EmailTab), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.whatsapp': dynamic(() => import('../crm/WhatsAppTab').then((m) => m.WhatsAppTab), { loading: () => <LoadingSkeleton />, ssr: false }),
   'crm.creditos': dynamic(() => import('../crm/CreditosTab').then((m) => m.CreditosTab), { loading: () => <LoadingSkeleton />, ssr: false }),
-  'hrm.general': dynamic(() => import('../panels/hrm/HRMConfigPanel').then((m) => m.HRMConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'hrm.general': dynamic(() => import('../panels/hrm/ParametrosLegalesPanel').then((m) => m.ParametrosLegalesPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'hrm.festivos': dynamic(() => import('../panels/hrm/FestivosPanel').then((m) => m.FestivosPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'hrm.aprobaciones': dynamic(() => import('../panels/hrm/AprobacionesPanel').then((m) => m.AprobacionesPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'hrm.registro-accesos': dynamic(() => import('../panels/hrm/RegistroAccesosPanel').then((m) => m.RegistroAccesosPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pms.general': dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pos.general': dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pos.avisos-cliente': dynamic(
@@ -119,7 +122,8 @@ export function ConfiguracionPanelRenderer({ seccion, puedeEditar, algunAjusteEd
   const t = useTranslations('configuracionUnificada.soloLectura');
   const Panel = PANELES[seccion.id];
   const contenido = Panel ? <Panel onAbrirEnlace={onAbrirEnlace} /> : seccion.enlace ? <SeccionEnlace href={seccion.enlace} onAbrir={onAbrirEnlace} /> : null;
-  const soloLectura = !puedeEditar && !seccion.enlace;
+  // `estadosPropios`: el panel ya pinta su solo lectura y su «sin acceso» (lo resuelven sus rutas).
+  const soloLectura = !puedeEditar && !seccion.enlace && !seccion.estadosPropios;
   const aviso = soloLectura && !(seccion.controlaLectura && algunAjusteEditable) ? (
     <AvisoTonal tono="neutro" icono={Lock} titulo={t('titulo')} descripcion={t('descripcion')} />
   ) : null;

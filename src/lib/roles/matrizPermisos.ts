@@ -17,8 +17,11 @@ import { nombreLegible, type FilaPermiso } from '@/lib/organizacion/permisosEfec
 export const ACCIONES = ['ver', 'crear', 'editar', 'eliminar', 'aprobar', 'otros'] as const;
 export type AccionPermiso = (typeof ACCIONES)[number];
 
-/** Por qué un permiso es delicado: mueve dinero, borra datos o abre el acceso. */
-export type Sensibilidad = 'dinero' | 'eliminar' | 'acceso';
+/**
+ * Por qué un permiso es delicado: mueve dinero, borra datos, abre el acceso o
+ * deja ver o cambiar datos sensibles de las personas (grupos de RR. HH.).
+ */
+export type Sensibilidad = 'dinero' | 'eliminar' | 'acceso' | 'datos';
 
 /** Fila de `permissions` con su id (columnas verificadas por MCP el 2026-10-06). */
 export interface FilaPermisoConId extends FilaPermiso {
@@ -37,6 +40,9 @@ export interface PermisoCatalogo {
 const VERBO_ACCION: Readonly<Record<string, AccionPermiso>> = {
   view: 'ver',
   view_all: 'ver',
+  // Alcance de lectura de RR. HH. (sus sedes / su equipo): siguen siendo «Ver».
+  view_branch: 'ver',
+  view_team: 'ver',
   ver_esperado: 'ver',
   create: 'crear',
   edit: 'editar',
@@ -69,6 +75,9 @@ const VERBOS_ELIMINAR = new Set(['delete', 'cancel', 'merge']);
  * eliminar (un `finance.void` es «dinero», no «eliminar»).
  */
 export function sensibilidadDe(codigo: string, modulo: string): Sensibilidad | null {
+  // Datos sensibles de las personas (diseño 10.RH.4): los grupos de la ficha y
+  // editar la ficha. Van primero: «Ver salario» es un dato, no mueve dinero.
+  if (codigo.startsWith('hr.data.') || codigo === 'hr.employees.edit') return 'datos';
   const segmentos = codigo.split('.');
   const verbo = verboDe(codigo);
   if (

@@ -130,6 +130,8 @@ const MODULOS: Record<string, string[]> = {
   // CRM · IA y automatización (Figma 1295:767945 y «Voz — qué sabe el agente» 1804:905009):
   // Agentes IA de voz con sus secciones, «Qué sabe el agente», voces y chips de campaña.
   'crm.agentesIa': ['src/components/crm/agentes'],
+  // Automatizaciones (fila 2 de 1295:767945): lista, constructor, historial y plantillas de regla.
+  'crm.automatizaciones': ['src/components/crm/automatizaciones'],
   vozCampanasDisparo: ['src/components/crm/agentes/campanas', 'src/components/configuracion/crm/telefonia'],
   // CRM · Red y gestión (Figma 1295:767955): secciones de Equipo.
   'crm.equipo': ['src/components/crm/equipo'],
@@ -142,6 +144,8 @@ const MODULOS: Record<string, string[]> = {
   configuracionDialogo: ['src/components/configuracion', 'src/components/shell/sesion'],
   // Textos que estaban fijos en español en los paneles de Configuración (2026-11-14), un grupo por archivo.
   configuracionTextos: ['src/components/configuracion'],
+  // Configuración › Recursos humanos (diseños 10.RH.1–3) y los grupos de datos del editor de rol (10.RH.4).
+  hrmConfig: ['src/components/configuracion/panels/hrm', 'src/components/roles'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

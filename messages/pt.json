@@ -27902,7 +27902,32 @@
         "sinEtiquetas": "Sem etiquetas",
         "actividad": "Atividade recente",
         "sinActividad": "Ainda não há atividade com este lead.",
-        "datosArchivo": "Dados do arquivo"
+        "datosArchivo": "Dados do arquivo",
+        "inasistencias": "Faltas",
+        "inasistenciasValor": "{n, plural, one {# reserva sem comparecimento} other {# reservas sem comparecimento}}",
+        "inasistenciasUltima": "{n, plural, one {# reserva sem comparecimento} other {# reservas sem comparecimento}} · última {fecha}",
+        "inasistenciasUltimaSede": "{n, plural, one {# reserva sem comparecimento} other {# reservas sem comparecimento}} · última {fecha} ({sede})",
+        "evento": {
+          "titulo": "Evento privado",
+          "sede": "Unidade",
+          "sinSede": "Nenhuma unidade escolhida",
+          "cargandoSede": "Carregando a unidade",
+          "sedeError": "Não foi possível carregar a unidade",
+          "sedeNoDisponible": "A unidade não está mais disponível",
+          "tipo": "Tipo",
+          "fecha": "Data",
+          "invitados": "Convidados",
+          "lugar": "Espaço",
+          "presupuesto": "Orçamento por pessoa",
+          "mensaje": "Mensagem",
+          "crearReserva": "Criar reserva de grupo em {sede}",
+          "verReserva": "Ver reserva",
+          "solicitud": "Solicitação de evento privado",
+          "invitadosN": "{n, plural, one {# convidado} other {# convidados}}",
+          "sitioWeb": "site",
+          "nuevo": "Novo",
+          "notaReserva": "Evento privado: {tipo}"
+        }
       },
       "lote": {
         "titulo": "{n, plural, one {Qualificar # lead} other {Qualificar # leads}}",

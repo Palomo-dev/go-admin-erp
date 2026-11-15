@@ -5619,7 +5619,32 @@
         "sinEtiquetas": "Sin etiquetas",
         "actividad": "Actividad reciente",
         "sinActividad": "Todavía no hay actividad con este lead.",
-        "datosArchivo": "Datos del archivo"
+        "datosArchivo": "Datos del archivo",
+        "inasistencias": "Inasistencias",
+        "inasistenciasValor": "{n, plural, one {# reserva sin llegar} other {# reservas sin llegar}}",
+        "inasistenciasUltima": "{n, plural, one {# reserva sin llegar} other {# reservas sin llegar}} · última {fecha}",
+        "inasistenciasUltimaSede": "{n, plural, one {# reserva sin llegar} other {# reservas sin llegar}} · última {fecha} ({sede})",
+        "evento": {
+          "titulo": "Evento privado",
+          "sede": "Sede",
+          "sinSede": "Sin sede elegida",
+          "cargandoSede": "Cargando la sede",
+          "sedeError": "No se pudo cargar la sede",
+          "sedeNoDisponible": "La sede ya no está disponible",
+          "tipo": "Tipo",
+          "fecha": "Fecha",
+          "invitados": "Invitados",
+          "lugar": "Lugar",
+          "presupuesto": "Presupuesto por persona",
+          "mensaje": "Mensaje",
+          "crearReserva": "Crear reserva de grupo en {sede}",
+          "verReserva": "Ver reserva",
+          "solicitud": "Solicitud de evento privado",
+          "invitadosN": "{n, plural, one {# invitado} other {# invitados}}",
+          "sitioWeb": "sitio web",
+          "nuevo": "Nuevo",
+          "notaReserva": "Evento privado: {tipo}"
+        }
       },
       "lote": {
         "titulo": "{n, plural, one {Calificar # lead} other {Calificar # leads}}",

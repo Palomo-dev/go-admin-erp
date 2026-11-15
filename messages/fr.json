@@ -27901,7 +27901,32 @@
         "sinEtiquetas": "Sans étiquettes",
         "actividad": "Activité récente",
         "sinActividad": "Pas encore d'activité avec ce lead.",
-        "datosArchivo": "Données du fichier"
+        "datosArchivo": "Données du fichier",
+        "inasistencias": "Absences",
+        "inasistenciasValor": "{n, plural, one {# réservation non honorée} other {# réservations non honorées}}",
+        "inasistenciasUltima": "{n, plural, one {# réservation non honorée} other {# réservations non honorées}} · dernière {fecha}",
+        "inasistenciasUltimaSede": "{n, plural, one {# réservation non honorée} other {# réservations non honorées}} · dernière {fecha} ({sede})",
+        "evento": {
+          "titulo": "Événement privé",
+          "sede": "Établissement",
+          "sinSede": "Aucun établissement choisi",
+          "cargandoSede": "Chargement de l'établissement",
+          "sedeError": "Impossible de charger l'établissement",
+          "sedeNoDisponible": "L'établissement n'est plus disponible",
+          "tipo": "Type",
+          "fecha": "Date",
+          "invitados": "Invités",
+          "lugar": "Espace",
+          "presupuesto": "Budget par personne",
+          "mensaje": "Message",
+          "crearReserva": "Créer une réservation de groupe à {sede}",
+          "verReserva": "Voir la réservation",
+          "solicitud": "Demande d'événement privé",
+          "invitadosN": "{n, plural, one {# invité} other {# invités}}",
+          "sitioWeb": "site web",
+          "nuevo": "Nouveau",
+          "notaReserva": "Événement privé : {tipo}"
+        }
       },
       "lote": {
         "titulo": "{n, plural, one {Qualifier # lead} other {Qualifier # leads}}",

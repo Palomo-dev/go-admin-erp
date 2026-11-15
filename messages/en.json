@@ -5618,7 +5618,32 @@
         "sinEtiquetas": "No tags",
         "actividad": "Recent activity",
         "sinActividad": "No activity with this lead yet.",
-        "datosArchivo": "File data"
+        "datosArchivo": "File data",
+        "inasistencias": "No-shows",
+        "inasistenciasValor": "{n, plural, one {# reservation not attended} other {# reservations not attended}}",
+        "inasistenciasUltima": "{n, plural, one {# reservation not attended} other {# reservations not attended}} · last {fecha}",
+        "inasistenciasUltimaSede": "{n, plural, one {# reservation not attended} other {# reservations not attended}} · last {fecha} ({sede})",
+        "evento": {
+          "titulo": "Private event",
+          "sede": "Location",
+          "sinSede": "No location chosen",
+          "cargandoSede": "Loading the location",
+          "sedeError": "Could not load the location",
+          "sedeNoDisponible": "The location is no longer available",
+          "tipo": "Type",
+          "fecha": "Date",
+          "invitados": "Guests",
+          "lugar": "Area",
+          "presupuesto": "Budget per person",
+          "mensaje": "Message",
+          "crearReserva": "Create group reservation at {sede}",
+          "verReserva": "View reservation",
+          "solicitud": "Private event request",
+          "invitadosN": "{n, plural, one {# guest} other {# guests}}",
+          "sitioWeb": "website",
+          "nuevo": "New",
+          "notaReserva": "Private event: {tipo}"
+        }
       },
       "lote": {
         "titulo": "{n, plural, one {Qualify # lead} other {Qualify # leads}}",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { ExternalLink, Hash, Mail, MapPin, Phone, TrendingUp, User, UserPlus, XCircle } from 'lucide-react';
@@ -13,17 +13,40 @@ import { diasDesde, fechaCortaInstante } from '@/components/crm/kit/fechasCrm';
 import { AccionesRapidasCrm } from '@/components/crm/acciones/AccionesRapidasCrm';
 import { EVENTO_CAMBIO_CRM, pedirCrm } from '@/components/crm/acciones/apiCrm';
 import { EntradaActividad } from '@/components/crm/actividades/pantalla/EntradaActividad';
+import { TimelineEntry } from '@/components/crm/kit/TimelineEntry';
 import type { EntradaFeed } from '@/components/crm/actividades/pantalla/actividadesPantallaLogica';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
 import { contactoImportado, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
+import { eventoPrivadoDeLead, solicitudSinAtender, type ContextoEventoLead } from '@/lib/crm/eventoPrivadoLead';
+import { formatPlainDate } from '@/lib/utils/dateDisplay';
+import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { usePaginasModulo } from '@/lib/navigation/NavegacionVisible';
 import type { LeadApi } from './leadsPantallaLogica';
+import { EventoPrivadoTarjeta } from './EventoPrivadoTarjeta';
+import { ReservaGrupoLeadDialog } from './ReservaGrupoLeadDialog';
+
+/** Página de POS que aloja «Reservas de mesas»: si el menú no la deja ver, no hay botón. */
+const PAGINA_RESERVAS = '/app/pos/reservas-mesas';
+
+/** El instante `a` es posterior a `b` (ambos ISO; la actividad va antes que la solicitud). */
+function posterior(a: string | null | undefined, b: string | null | undefined): boolean {
+  const x = a ? Date.parse(a) : NaN;
+  const y = b ? Date.parse(b) : NaN;
+  return !Number.isNaN(x) && !Number.isNaN(y) && x > y;
+}
 
 /**
  * Detalle rápido del lead (Figma 767:2873 escritorio, 768:7837 móvil): hoja
  * lateral con las acciones rápidas, datos de contacto, calificación,
  * etiquetas y actividad reciente (`GET /api/crm/activities?customer_id=…`).
  * Pie: «Abrir ficha», «Calificar → crear oportunidad» y «⋯».
+ *
+ * Lead de evento privado del sitio (Figma 1951:941568): tarjeta «Evento
+ * privado» con la última solicitud del formulario (`metadata.lead.capturas`),
+ * «Crear reserva de grupo en <sede>», la fila «Inasistencias» en Calificación
+ * y «Solicitud de evento privado» en la actividad. Sede e inasistencias salen
+ * de `GET /api/crm/leads/[id]/evento`.
  */
 export interface LeadDetalleHojaProps {
   lead: (LeadFila & { documento: string | null }) | null;
@@ -42,7 +65,14 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
   const { timezone } = useFormatDate();
   const [recientes, setRecientes] = useState<EntradaFeed[] | null>(null);
   const [recarga, setRecarga] = useState(0);
+  const [contexto, setContexto] = useState<{ estado: 'cargando' | 'listo' | 'error'; datos: ContextoEventoLead | null }>({ estado: 'cargando', datos: null });
+  const [reservaAbierta, setReservaAbierta] = useState(false);
+  const moneda = useMonedaOrganizacion();
+  const paginasPos = usePaginasModulo('pos');
+  const puedeReservar = !!paginasPos?.some((p) => p.href === PAGINA_RESERVAS);
   const id = lead?.id ?? null;
+  const metadataLead = api?.metadata_lead;
+  const evento = useMemo(() => eventoPrivadoDeLead(metadataLead), [metadataLead]);
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +85,18 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
       vivo = false;
     };
   }, [id, recarga]);
+  useEffect(() => {
+    if (!id) return;
+    let vivo = true;
+    setContexto({ estado: 'cargando', datos: null });
+    pedirCrm<ContextoEventoLead>(`/api/crm/leads/${id}/evento`)
+      .then(({ data }) => vivo && setContexto({ estado: 'listo', datos: data }))
+      .catch(() => vivo && setContexto({ estado: 'error', datos: null }));
+    return () => {
+      vivo = false;
+    };
+  }, [id, recarga]);
+  useEffect(() => setReservaAbierta(false), [id]);
   useEffect(() => {
     const oir = () => setRecarga((n) => n + 1);
     window.addEventListener(EVENTO_CAMBIO_CRM, oir);
@@ -79,6 +121,29 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
     </div>
   );
   const seccion = 'text-xs font-semibold uppercase tracking-wide text-fg-muted';
+  const sede = contexto.datos?.sede ?? null;
+  const inasistencias = contexto.datos?.inasistencias ?? null;
+  const textoInasistencias =
+    inasistencias && inasistencias.total > 0
+      ? inasistencias.ultima
+        ? t(inasistencias.ultima.sede ? 'inasistenciasUltimaSede' : 'inasistenciasUltima', {
+            n: inasistencias.total,
+            fecha: formatPlainDate(inasistencias.ultima.fecha, { day: 'numeric', month: 'short' }),
+            sede: inasistencias.ultima.sede ?? '',
+          })
+        : t('inasistenciasValor', { n: inasistencias.total })
+      : null;
+  const solicitud = evento
+    ? {
+        id: `solicitud-evento-${lead.id}`,
+        tipo: 'pedido' as const,
+        titulo: t('evento.solicitud'),
+        detalle: [evento.tipo, evento.invitados ? t('evento.invitadosN', { n: evento.invitados }) : null, evento.branchId == null ? t('evento.sinSede') : sede?.nombre].filter(Boolean).join(' · ') || null,
+        ocurrioEn: evento.capturadoEn,
+        autor: t('evento.sitioWeb'),
+        estado: solicitudSinAtender(evento.capturadoEn, lead.last_contact_at) ? { etiqueta: t('evento.nuevo'), tono: 'exito' as const } : null,
+      }
+    : null;
 
   return (
     <HojaDetalle
@@ -140,8 +205,18 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
           {fila(t('responsable'), lead.responsable?.nombre ?? tl('sinResponsable'))}
           {fila(t('capturado'), fechaCortaInstante(api.created_at, timezone, idioma) || '—')}
           {fila(t('ultimoContacto'), dias === null ? tl('nuncaContactado') : tl('haceDias', { dias }))}
+          {textoInasistencias && fila(t('inasistencias'), textoInasistencias)}
         </dl>
       </section>
+      {evento && (
+        <EventoPrivadoTarjeta
+          evento={evento}
+          sede={sede?.nombre ?? null}
+          estadoSede={contexto.estado}
+          formatearMonto={(v) => moneda.formatear(v)}
+          onCrearReserva={puedeReservar && sede ? () => setReservaAbierta(true) : undefined}
+        />
+      )}
       <section className="flex flex-col gap-2">
         <h3 className={seccion}>{t('etiquetas')}</h3>
         <span className="flex flex-wrap gap-1">
@@ -152,14 +227,29 @@ export function LeadDetalleHoja({ lead, api, onCerrar, onCalificar, onAsignar, o
         <h3 className={seccion}>{t('actividad')}</h3>
         {recientes === null ? (
           <div aria-busy="true" className="h-16 animate-pulse rounded-xl bg-subtle" />
-        ) : recientes.length === 0 ? (
+        ) : recientes.length === 0 && !solicitud ? (
           <p className="text-[13px] text-fg-muted">{t('sinActividad')}</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {recientes.map((e) => <EntradaActividad key={`${e.fuente}-${e.id}`} entrada={e} />)}
+            {solicitud && !recientes.some((e) => posterior(e.ocurrio_en, solicitud.ocurrioEn)) && <TimelineEntry entrada={solicitud} />}
+            {recientes.map((e, i) => (
+              <Fragment key={`${e.fuente}-${e.id}`}>
+                <EntradaActividad entrada={e} />
+                {solicitud && posterior(e.ocurrio_en, solicitud.ocurrioEn) && !posterior(recientes[i + 1]?.ocurrio_en, solicitud.ocurrioEn) && <TimelineEntry entrada={solicitud} />}
+              </Fragment>
+            ))}
           </div>
         )}
       </section>
+      {evento && sede && puedeReservar && (
+        <ReservaGrupoLeadDialog
+          abierto={reservaAbierta}
+          onAbiertoChange={setReservaAbierta}
+          sede={sede}
+          lead={{ id: lead.id, nombre, correo: api.email, telefono: api.phone }}
+          evento={evento}
+        />
+      )}
     </HojaDetalle>
   );
 }

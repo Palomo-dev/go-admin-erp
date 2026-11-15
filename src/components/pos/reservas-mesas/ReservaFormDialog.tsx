@@ -66,6 +66,20 @@ export interface ReservaFormDialogProps {
   /** Cliente de la reserva al editar (documento, teléfono, visitas). */
   clienteDeReserva?: ClientePicker | null;
   visitasCliente?: number | null;
+  /**
+   * Valores con los que abre una reserva NUEVA (p. ej. «Crear reserva de grupo»
+   * desde un lead del CRM: el cliente, la fecha del evento y los invitados).
+   * Pásalo memorizado: cambiarlo con el diálogo abierto lo reinicia.
+   */
+  inicial?: ValoresInicialesReserva | null;
+}
+
+export interface ValoresInicialesReserva {
+  cliente?: ClientePicker | null;
+  /** `YYYY-MM-DD` (día calendario, sin zona). */
+  fecha?: string;
+  personas?: number;
+  notas?: string;
 }
 
 const ESTADOS_EDITABLES: readonly ReservationStatus[] = ['pending', 'confirmed', 'seated', 'completed'];
@@ -85,6 +99,7 @@ export function ReservaFormDialog({
   crearCliente,
   clienteDeReserva,
   visitasCliente,
+  inicial,
 }: ReservaFormDialogProps) {
   const t = useTranslations('posReservasMesas.form');
   const te = useTranslations('posReservasMesas.estados');
@@ -123,17 +138,17 @@ export function ReservaFormDialog({
       setNotas(reservation.notes ?? '');
       setRecordar(true);
     } else {
-      setCliente(null);
-      setFecha(hoyRef.current());
+      setCliente(inicial?.cliente ?? null);
+      setFecha(inicial?.fecha || hoyRef.current());
       setHora('19:00');
-      setPersonas(2);
+      setPersonas(inicial?.personas && inicial.personas > 0 ? Math.min(200, Math.round(inicial.personas)) : 2);
       setDuracion(90);
       setMesa('');
-      setNotas('');
+      setNotas(inicial?.notas?.slice(0, 500) ?? '');
       setOrigen('phone');
       setRecordar(true);
     }
-  }, [open, reservation, clienteDeReserva]);
+  }, [open, reservation, clienteDeReserva, inicial]);
 
   const excluir = reservation?.id;
   useEffect(() => {

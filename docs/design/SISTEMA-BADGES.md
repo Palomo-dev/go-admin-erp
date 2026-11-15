@@ -271,3 +271,18 @@ Capturas: `docs/design/figma/14-badges-escala.png`,
 3. Decidir si el `BranchBadge` del POS debe volverse interactivo. Hoy no lo es y
    el diseño respeta eso, pero la variante `Estado=interactivo` ya existe por si
    se decide que desde el POS se pueda cambiar de sucursal.
+
+---
+
+## Adenda 2026-11-15 — «Dato sensible» (Recursos humanos)
+
+Sustituye al componente propio `AvisoSensible Tipo=insignia` de la página `20`, que se borró (hallazgo H8 de `AUDITORIA-HRM-FIGMA-2026-11-15.md`). No es una variante nueva del eje `Tono`: es un uso fijo de la escala que ya existe.
+
+| Estado en pantalla | Tono · Variant · Size | Icono | Dónde vive |
+|---|---|---|---|
+| Información sensible · Salario y pago · sin permiso | neutro · contorno · sm | `Icono=true` con `Icon/Lock` | junto al título de un bloque con datos protegidos (salario, cuenta bancaria, salud, disciplinarios) en la ficha, el alta, el cargo y «Registrar un cambio» |
+
+- Es **neutro y de contorno** porque marca una categoría del dato, no un estado de la persona: no debe competir con «Activo», «Por ingresar» o «Vencido» en la misma fila.
+- El candado es el icono del concepto «Dato sensible» (`CATALOGO-ICONOS.md`, adenda RR. HH.). El color nunca va solo: el texto dice qué grupo está protegido.
+- El banner que acompañaba al badge («Esta consulta queda registrada…») ya no es un componente propio: es `Aviso Tono=información` con `Icon/Lock`.
+- En Figma, página `20`: 20 insignias (19 eran `AvisoSensible Tipo=insignia` y 1 era `BloqueoPermiso Layout=campo`) y 8 avisos (eran `AvisoSensible Tipo=banner`), todas del kit.

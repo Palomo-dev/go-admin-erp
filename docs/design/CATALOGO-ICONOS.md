@@ -490,3 +490,49 @@ Se añade al final, sin reescribir la tabla §2. Las pantallas están en `04 Inv
 **Cambios pendientes en el código:**
 - `SidebarNavigation.tsx:210-226` y `SubMenuPanel.tsx:164-179`: aplicar esta tabla.
 - `moduleConfig.ts:127 · 129`: Categorías pasa de `Grid3X3` a `Tags` y Proveedores de `Users` a `Truck`, como ya decía §4.
+
+---
+
+## Adenda 2026-11-15 — Recursos humanos (página `20` y Configuración `10.RH`)
+
+Se añade al final, sin reescribir §2. Corrige el hallazgo H2 de `AUDITORIA-HRM-FIGMA-2026-11-15.md`: el diseño había creado `Icon/UserCog` e `Icon/Network` locales y ponía a RR. HH. en el puesto de «Proyectos y tareas» del menú. Los iconos marcados «nuevo» se importaron de lucide a `02 Componentes › Fundamentos › Iconos` (fila nueva de la rejilla, y = 952; misma construcción: 24, trazo 1,5, cabos redondeados, trazo enlazado a la variable de texto secundario). La rejilla pasa de 172 a 179 iconos.
+
+### Conceptos
+
+| Concepto | Icono (lucide) | Dónde vive |
+|---|---|---|
+| Recursos humanos (módulo) · Empleado | `Briefcase` | entrada propia del menú lateral (grupo Gestión, después de «Proyectos y tareas»), cabecera de Empleados, vacíos de empleados, entrada «Recursos humanos» del diálogo de Configuración. Ya lo pedía §5 (`HRM: Users → Briefcase`) |
+| Área · organigrama | `Network` (nuevo) | lista y organigrama de áreas, `NodoOrganigrama`, `ListCard` del árbol |
+| Cargo | `IdCard` (nuevo) | lista de cargos y sus estados |
+| Plaza (puesto presupuestado) | `Armchair` (nuevo) | presupuesto de plazas y sus estados |
+| Aprobación · solicitud por aprobar | `Stamp` (nuevo) | Mis aprobaciones, reglas de aprobación de la Configuración |
+| Parámetros legales (valores de ley) | `Gavel` (nuevo) | índice móvil de la Configuración de RR. HH. |
+| Festivo | `CalendarOff` (nuevo) | festivos de la Configuración |
+| Registro de accesos a datos sensibles | `ScrollText` (nuevo) | registro de accesos de la Configuración |
+| Dato sensible | `Lock` (dentro de `Badge`) | insignia «Información sensible» y avisos de consulta registrada; ver `SISTEMA-BADGES.md` |
+
+Ninguno choca con §2 ni con la adenda de Inventario: `Briefcase` ya estaba reservado para «Empleado» (tabla 8.2, «Tipo de tercero») y para HRM (§5). «Lo que define tu empresa» usa `Settings` porque es ajuste de la organización (§2, Configuración).
+
+### Pantalla por pantalla
+
+Las páginas de detalle usan la cabecera de «Editar rol» (`PageHeader Variant=form`: migas, «←» cuadrado junto al título, insignias y acciones a la derecha). Por la regla 5 de este catálogo, en esa variante la ranura izquierda es «← Volver» y no lleva icono.
+
+| Pantalla | Ruta | Ranura | Icono |
+|---|---|---|---|
+| Empleados — lista y sus estados (11 marcos de escritorio, incluidos panel de filtros y menú de cabecera) | `/app/hrm/empleados` | `Icono` | `Briefcase` |
+| Ficha del empleado — 10 pestañas, edición de contacto y beneficiario, cargando, error, sin permiso, menú ⋯ (18 marcos) | `/app/hrm/empleados/[id]` | `—` | — (← Volver) |
+| Registrar un cambio (9 marcos, sobre la ficha) | `/app/hrm/empleados/[id]` | `—` | — |
+| Alta de empleado (6 marcos) | `/app/hrm/empleados/nuevo` | `—` | — |
+| Áreas — organigrama, detalle en panel, cargando, vacío, error, sin permiso (6) | `/app/hrm/areas` | `Icono` | `Network` |
+| Área — editar | `/app/hrm/areas/[id]` | `—` | — |
+| Cargos — lista, cargando, error, panel de filtros, menú de fila (5) | `/app/hrm/cargos` | `Icono` | `IdCard` |
+| Cargo — perfil, competencias y escala · editar | `/app/hrm/cargos/[id]` | `—` | — |
+| Plazas — presupuesto, solicitar plaza, cargando, error (4) | `/app/hrm/plazas` | `Icono` | `Armchair` |
+| Mis aprobaciones — pendientes, revisar, vacía, cargando, panel de filtros (5) | `/app/hrm/aprobaciones` | `Icono` | `Stamp` |
+| Configuración › Recursos humanos (diálogo) | `/app/configuracion` | entrada de la navegación | `Briefcase` |
+| Celular (61 marcos de la página 20 y 29 de la Configuración) | — | `—` | — (regla 5: `MobileHeader`) |
+
+### Cambios pendientes en el código
+
+- `moduleConfig.ts` y la navegación lateral: RR. HH. con `Briefcase` como entrada propia (no sustituye a «Proyectos y tareas») y submenús con `Network`, `IdCard`, `Armchair` y `Stamp`.
+- La navegación del diálogo de Configuración: «Recursos humanos» pasa de `Users` a `Briefcase`.

@@ -108,6 +108,31 @@ export async function listarNumerosPrueba(supabase: SupabaseClient, orgId: numbe
   return (data ?? []) as NumeroPrueba[];
 }
 
+/** Número de prueba con el nombre de quien lo agregó (Figma 1810:145821: «Agregado por …»). */
+export interface NumeroPruebaConAutor extends NumeroPrueba {
+  created_by_name: string | null;
+}
+
+/**
+ * Añade a cada número el nombre de quien lo agregó (`profiles`). Con el cliente
+ * de la sesión la RLS de `profiles` solo deja ver a los miembros de la misma
+ * organización; un error de lectura deja el nombre en `null` (la lista se sigue
+ * mostrando: el nombre es informativo).
+ */
+export async function conAutoresNumerosPrueba(supabase: SupabaseClient, numeros: NumeroPrueba[]): Promise<NumeroPruebaConAutor[]> {
+  const ids = Array.from(new Set(numeros.map((n) => n.created_by).filter(Boolean)));
+  const nombres = new Map<string, string>();
+  if (ids.length > 0) {
+    const { data, error } = await supabase.from('profiles').select('id, first_name, last_name, email').in('id', ids);
+    if (error) console.warn('[voz] no se pudieron leer los autores de los números de prueba', { error: error.message });
+    for (const p of (data ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }>) {
+      const nombre = [p.first_name, p.last_name].filter(Boolean).join(' ').trim() || p.email || '';
+      if (nombre) nombres.set(p.id, nombre);
+    }
+  }
+  return numeros.map((n) => ({ ...n, created_by_name: nombres.get(n.created_by) ?? null }));
+}
+
 /** Agrega un número de prueba a nombre de `userId`. */
 export async function agregarNumeroPrueba(
   supabase: SupabaseClient,

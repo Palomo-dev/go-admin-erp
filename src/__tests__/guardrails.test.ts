@@ -3781,7 +3781,11 @@ describe('42. Voz: la exención por número de prueba vive en un solo punto y no
   test('la tabla no se escribe con el cliente de servicio: la ruta usa la sesión y la RLS vuelve a exigir admin', () => {
     const ruta = stripAllComments(readFile(path.join(SRC_ROOT, 'app/api/crm/settings/telephony/test-numbers/route.ts')));
     expect(ruta).not.toMatch(/getServiceClient|createServiceClient|service_role/);
-    expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(3);
+    // POST y DELETE exigen admin. GET no (2026-11-15, Figma 1811:908572 «Sin
+    // permiso (solo lectura)»): un miembro ve la lista, que la RLS de SELECT ya
+    // le dejaba leer, y la ruta le dice `puedeEditar` con el criterio de admin.
+    expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(2);
+    expect(ruta).toMatch(/puedeEditar\]\s*=\s*await Promise\.all\(\[[\s\S]*?hasOrgAdminOrPermission\(ctx\)/);
   });
 });
 

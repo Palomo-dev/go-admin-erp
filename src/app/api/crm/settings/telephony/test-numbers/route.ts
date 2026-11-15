@@ -2,12 +2,16 @@
  * /api/crm/settings/telephony/test-numbers — números de prueba internos del
  * agente de voz (Configuración › CRM › Telefonía).
  *
- *  GET    → números de prueba vigentes de la organización.
+ *  GET    → números de prueba vigentes de la organización, con quién los agregó
+ *           y `puedeEditar` (resuelto aquí, nunca en el cliente).
  *  POST   → { phone, label? } agrega un número (normalizado a E.164).
  *  DELETE → { id } lo da de baja (baja lógica: queda quién y cuándo).
  *
- * Los tres exigen admin de la organización (`withOrg(..., { admin: true })` →
- * `requireOrgAdminOrPermission`). La organización sale de la SESIÓN (regla
+ * POST y DELETE exigen admin de la organización (`withOrg(..., { admin: true })`
+ * → `requireOrgAdminOrPermission`). GET lo lee cualquier miembro activo (Figma
+ * 1811:908572, «Sin permiso (solo lectura)»): la RLS de SELECT de
+ * `crm_voice_test_numbers` ya lo permitía; la ruta solo añade `puedeEditar` con
+ * el MISMO criterio de admin que exigen POST, DELETE y la base. La organización sale de la SESIÓN (regla
  * dura 5): `readOrgBody` convierte una organización ajena en el cuerpo o en la
  * query en 403 + registro. Se escribe con el cliente de la sesión, así que la
  * RLS de `crm_voice_test_numbers` vuelve a exigir admin en la base (regla 6).
@@ -17,9 +21,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
+import { withOrg, readOrgBody, hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import {
   agregarNumeroPrueba,
+  conAutoresNumerosPrueba,
   listarNumerosPrueba,
   MAX_NUMEROS_PRUEBA,
   NumeroPruebaError,
@@ -46,13 +51,16 @@ export const GET = withOrg(
   async (ctx, request) => {
     readOrgBody(ctx, null, { request });
     try {
-      const data = await listarNumerosPrueba(ctx.supabase, ctx.organizationId);
-      return NextResponse.json({ success: true, data, max: MAX_NUMEROS_PRUEBA }, { headers: NO_STORE });
+      const [numeros, puedeEditar] = await Promise.all([
+        listarNumerosPrueba(ctx.supabase, ctx.organizationId),
+        hasOrgAdminOrPermission(ctx),
+      ]);
+      const data = await conAutoresNumerosPrueba(ctx.supabase, numeros);
+      return NextResponse.json({ success: true, data, max: MAX_NUMEROS_PRUEBA, puedeEditar }, { headers: NO_STORE });
     } catch (err) {
       return errorResponse(err, 'GET');
     }
-  },
-  { admin: true }
+  }
 );
 
 export const POST = withOrg(

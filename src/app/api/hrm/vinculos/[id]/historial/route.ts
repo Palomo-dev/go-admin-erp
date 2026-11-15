@@ -14,6 +14,7 @@ import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { registrarCambio, tramosDeValor, valorVigente } from '@/lib/services/hrm/historialService.server';
 import { parametroDeRuta, responderError, SIN_CACHE } from '@/lib/services/hrm/rutas.server';
 import { HrmError, contextoDePeticion, esCampoHistorial } from '@/lib/services/hrm/tipos';
+import { registrarIntento } from '@/lib/services/hrm/configuracion/registroAccesosConfig.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,15 @@ export const GET = withOrg(async (ctx, req, routeParams) => {
     if (desde || hasta) {
       return NextResponse.json({ tramos: await tramosDeValor(ctx, vinculo, campo, desde ?? '', hasta ?? '') }, { headers: SIN_CACHE });
     }
-    return NextResponse.json({ valor: await valorVigente(ctx, vinculo, campo, q.get('fecha') ?? '') }, { headers: SIN_CACHE });
+    try {
+      return NextResponse.json({ valor: await valorVigente(ctx, vinculo, campo, q.get('fecha') ?? '') }, { headers: SIN_CACHE });
+    } catch (err) {
+      if (err instanceof HrmError && err.code === 'sin_permiso') {
+        const grupo = campo === 'salario' || campo === 'periodo_salario' ? 'salario_pago' : 'basico';
+        await registrarIntento(ctx, { vinculoId: vinculo, grupo, detalle: { accion: 'ver', campos: [campo] } }, contextoDePeticion(req));
+      }
+      throw err;
+    }
   } catch (err) {
     return responderError(err, 'historial:leer');
   }

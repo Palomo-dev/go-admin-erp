@@ -476,3 +476,52 @@ Se corrieron por el MCP, todas dentro de transacciones que se deshacen: **53 cas
 - **Pantallas viejas por reemplazar:** las de alta, edición e importación de empleados, que escriben salario y banco en `employments`.
 - **Reportes:** mover `/app/hrm/reportes` a `/app/reportes` y arreglar los 4 enlaces rotos de `DepartmentReports.tsx`.
 - **Módulos que deben llamar al motor de aprobaciones:** ausencias, horas extra, préstamos y vacantes. Hoy solo lo usa el historial.
+
+## 14. Fase 2: Configuración de RR. HH. y grupos de datos en el editor de rol (2026-11-15)
+
+El dueño aprobó los diseños 10.RH.1 a 10.RH.5 (Figma `EAvjINVRnlzFM70GVoWXgl`). Esta fase los pasa a código y agrega lo que la base necesitaba para sus decisiones.
+
+### Migraciones aplicadas por el MCP
+
+Las cinco siguen las mismas reglas: aditivas, con su reversión en `supabase/rollbacks/`, prueba en seco antes de aplicar y md5 igual al de `schema_migrations`.
+
+| Versión | Nombre | Qué hace |
+|---|---|---|
+| 20261115160841 | `hrm_f0_12_alcance_sedes_y_bloqueos` | Alcance «sus sedes» (`*.view_branch`, 7 códigos), `hr.requests.approve` («Aprobar solicitudes de RR. HH.»), `fn_hr_grupos_bloqueados_equipo` y la resolución de alcance con el bloqueo |
+| 20261115160931 | `hrm_f0_13_registro_accesos_consulta` | IP parcial, intento sin permiso registrado por el servidor, consulta paginada con conteos, detalle y «Mostrar valores» (que también queda registrado) |
+| 20261115161006 | `hrm_f0_14_festivos_dias_propios` | Fecha original del festivo trasladado; días propios con sedes, medio día y revisión del Contador; `fn_hr_es_dia_propio` |
+| 20261115161205 | `hrm_f0_15_aprobaciones_config` | Pasos RR. HH. y cargo, casos especiales, delegación por tipos y motivo, plan compartido por «iniciar» y «probar», reglas recomendadas y reemplazo sugerido |
+| 20261115161247 | `hrm_f0_16_parametros_empresa_arl` | Estado `suspendido` del SMMLV, jornadas 2023 y 2024, guardado de lo que define la empresa, clase ARL por sede o cargo y bloqueo de cierre de nómina sin parámetros |
+
+### Decisiones del dueño y dónde viven
+
+| Decisión | Dónde se impone |
+|---|---|
+| El registro de accesos es una pestaña propia de RR. HH. | Sección `hrm.registro-accesos` (permiso `hr.access_log.view`) |
+| Con «Solo su equipo», salario, cuenta bancaria y salud quedan bloqueados aunque se marquen | `fn_hr_grupos_bloqueados_equipo` en la base; el editor de rol los muestra «Bloqueado» y los quita de la selección |
+| «Su equipo» incluye reportes directos e indirectos | `fn_hr_equipo_empleos_actor` |
+| Los valores del registro quedan ocultos hasta «Mostrar valores», y ese clic se registra; la IP sale parcial | `fn_hr_registro_mostrar_valores`, `fn_hr_ip_parcial` |
+| Los intentos sin permiso también se registran | `fn_hr_registrar_intento`, llamado por el servidor después del 42501 |
+| Sin reglas: jefe directo y, si no hay, RR. HH.; nadie aprueba lo suyo; un paso sin persona va a RR. HH. | `fn_hr_aprobacion_plan` |
+| Un día propio se paga como día ordinario, sin recargo festivo, y queda para revisión del Contador | `fn_hr_es_festivo` cuenta solo los de ley; `hr_org_holidays.contador_review` |
+| Clase ARL: cargo en sede › cargo › sede › por defecto | `fn_hr_clase_arl` |
+| Una nómina de 2027 no cierra sin el SMMLV y la UVT de 2027, pero se preliquida | `trg_payroll_periods_parametros_cierre` (55000 `parametros_pendientes`) |
+| Al aprobar vacaciones de alguien que aprueba, se sugiere un reemplazo sin obligar | `fn_hr_sugerir_reemplazo` |
+| Los valores [S] se cargan con su valor y su estado | Filas de `hr_legal_parameters` con `verificacion = 'S'` y su `status` |
+
+### Código
+
+- **Rutas** `src/app/api/hrm/configuracion/**`: `parametros`, `arl`, `festivos`, `festivos/[id]`, `aprobaciones`, `accesos`, `accesos/[id]`, `accesos/[id]/valores`. Todas empiezan por `withOrg`; las de escritura llaman a `readOrgBody`. El permiso lo resuelve la base.
+- **Servicios** `src/lib/services/hrm/configuracion/`. La lógica pura (vigencias, presentación de valores de ley, condiciones de reglas, agente del registro) está en `src/lib/hrm/configuracion/` y tiene pruebas.
+- **Las rutas sensibles de la fase 1** (datos por grupo, valor del historial y documento) registran el intento cuando la base responde «sin permiso».
+- **Configuración › Recursos humanos**: cuatro secciones en el diálogo (`hrm.general` conserva su id para la redirección de `/app/hrm/configuracion`, más `hrm.festivos`, `hrm.aprobaciones` y `hrm.registro-accesos`). Llevan `estadosPropios`: cada panel pinta su solo lectura y su «sin acceso», porque sus rutas los resuelven. El icono del módulo pasa a `Briefcase` (CATALOGO-ICONOS.md).
+- **Se retira** el panel viejo «Configuración general y monedas» (`HRMConfigPanel` y `components/hrm/configuracion`). Las monedas siguen en Finanzas › Monedas, y la periodicidad de pago pasa a «Lo que define tu empresa».
+- **Editor de rol**: dentro del módulo Recursos humanos, «Ver empleados de su alcance», el alcance (toda la organización, sus sedes, solo su equipo) y Ver/Editar por grupo, con el aviso de qué ve un jefe. La matriz trata `view_team` y `view_branch` como «Ver» y marca los grupos como «Sensible · datos».
+- **Kit**: filas con `FilaDato`, buscador con `FilterPanel` y chips, menús con `RowActionsMenu`, resultados con `Toast` y estados con `EmptyState` (corrección del coordinador sobre el Figma, `docs/design/AUDITORIA-HRM-FIGMA-2026-11-15.md`).
+- **Textos** en es, en, fr y pt, en el namespace `hrmConfig`.
+
+### Desvíos del Figma
+
+- En el celular se usan las pestañas del diálogo, como en Integraciones, en vez del índice propio del diseño.
+- Las reglas se reordenan con «Subir» y «Bajar» del menú «⋯», no arrastrando: `FilaDato` no tiene arrastre y así también funciona con teclado.
+- El filtro «Empleado» del registro sale al tocar «Ver sus registros» en un detalle, como chip; no hay un desplegable con todos los empleados.

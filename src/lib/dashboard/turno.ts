@@ -12,6 +12,9 @@
  *  - `antes`: aún no llega la hora de entrada → «Marcar entrada».
  *  - `sinMarcar`: pasó la hora de entrada sin marcar → badge «N min tarde».
  *  - `enTurno`: entrada marcada sin salida → «Marcar salida · 3 h 12 min».
+ *  - `enDescanso`: entrada marcada y la última marca es «inicio de descanso»
+ *    → «En descanso · 12 min» y «Terminar descanso» (decisión 7 del dueño,
+ *    2026-11-16; Figma 20.9.4).
  *  - `cerrado`: entrada y salida → «Ver mis marcaciones».
  *  - `sinTurno`: tiene contrato activo pero ningún turno hoy → acceso simple
  *    «Marcar turno» (la marcación por QR no exige turno asignado).
@@ -19,7 +22,7 @@
  */
 import { addPlainDays, wallTimeToInstant } from '@/lib/utils/dateCore';
 
-export type EstadoTurno = 'antes' | 'sinMarcar' | 'enTurno' | 'cerrado' | 'sinTurno';
+export type EstadoTurno = 'antes' | 'sinMarcar' | 'enTurno' | 'enDescanso' | 'cerrado' | 'sinTurno';
 
 export interface TurnoAsignado {
   /** `HH:mm[:ss]` de la plantilla o del turno real. */
@@ -48,8 +51,10 @@ export interface TurnoCalculado {
   salidaProgramada: string | null;
   entradaMarcada: string | null;
   salidaMarcada: string | null;
-  /** Minutos de retraso (`sinMarcar`) o transcurridos (`enTurno`/`cerrado`). */
+  /** Minutos de retraso (`sinMarcar`), transcurridos (`enTurno`/`cerrado`) o de descanso (`enDescanso`). */
   minutos: number;
+  /** Inicio del descanso en curso (`enDescanso`). */
+  descansoDesde?: string | null;
 }
 
 /** Margen antes de la hora de entrada en que una marcación ya cuenta para el turno. */
@@ -110,6 +115,18 @@ export function calcularTurno(e: EntradaTurno): TurnoCalculado {
     };
   }
   if (entradaMarcada) {
+    // La última marca después de la entrada decide si está en descanso.
+    const ultima = [...delTurno].reverse().find((m) => Date.parse(m.en) >= Date.parse(entradaMarcada.en));
+    if (ultima?.tipo === 'break_start') {
+      return {
+        ...base,
+        estado: 'enDescanso',
+        entradaMarcada: entradaMarcada.en,
+        salidaMarcada: null,
+        minutos: minutosEntre(ultima.en, e.ahora),
+        descansoDesde: ultima.en,
+      };
+    }
     return { ...base, estado: 'enTurno', entradaMarcada: entradaMarcada.en, salidaMarcada: null, minutos: minutosEntre(entradaMarcada.en, e.ahora) };
   }
   if (e.ahora.getTime() < entrada.getTime()) {

@@ -285,7 +285,7 @@ function Editor({ datos, onRecargar }: { datos: DetalleRol; onRecargar: () => Pr
               <h2 className="text-base font-semibold text-fg">{t('permisos')}</h2>
               <span className="text-xs text-fg-secondary">{t('permisosResumen', { n: ed.seleccion.size, total: catalogo.length, sensibles })}</span>
             </div>
-            <MatrizPermisos catalogo={catalogo} seleccion={ed.seleccion} original={ed.base} onCambiar={editable ? ed.setSeleccion : undefined} />
+            <MatrizPermisos catalogo={catalogo} seleccion={ed.seleccion} original={ed.base} onCambiar={editable ? ed.setSeleccion : undefined} gruposDatosHrm />
           </section>
         </div>
 

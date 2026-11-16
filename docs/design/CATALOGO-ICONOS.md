@@ -490,3 +490,92 @@ Se añade al final, sin reescribir la tabla §2. Las pantallas están en `04 Inv
 **Cambios pendientes en el código:**
 - `SidebarNavigation.tsx:210-226` y `SubMenuPanel.tsx:164-179`: aplicar esta tabla.
 - `moduleConfig.ts:127 · 129`: Categorías pasa de `Grid3X3` a `Tags` y Proveedores de `Users` a `Truck`, como ya decía §4.
+
+---
+
+## Adenda 2026-11-15 — Recursos humanos (página `20` y Configuración `10.RH`)
+
+Se añade al final, sin reescribir §2. Corrige el hallazgo H2 de `AUDITORIA-HRM-FIGMA-2026-11-15.md`: el diseño había creado `Icon/UserCog` e `Icon/Network` locales y ponía a RR. HH. en el puesto de «Proyectos y tareas» del menú. Los iconos marcados «nuevo» se importaron de lucide a `02 Componentes › Fundamentos › Iconos` (fila nueva de la rejilla, y = 952; misma construcción: 24, trazo 1,5, cabos redondeados, trazo enlazado a la variable de texto secundario). La rejilla pasa de 172 a 179 iconos.
+
+### Conceptos
+
+| Concepto | Icono (lucide) | Dónde vive |
+|---|---|---|
+| Recursos humanos (módulo) · Empleado | `Briefcase` | entrada propia del menú lateral (grupo Gestión, después de «Proyectos y tareas»), cabecera de Empleados, vacíos de empleados, entrada «Recursos humanos» del diálogo de Configuración. Ya lo pedía §5 (`HRM: Users → Briefcase`) |
+| Área · organigrama | `Network` (nuevo) | lista y organigrama de áreas, `NodoOrganigrama`, `ListCard` del árbol |
+| Cargo | `IdCard` (nuevo) | lista de cargos y sus estados |
+| Plaza (puesto presupuestado) | `Armchair` (nuevo) | presupuesto de plazas y sus estados |
+| Aprobación · solicitud por aprobar | `Stamp` (nuevo) | Mis aprobaciones, reglas de aprobación de la Configuración |
+| Parámetros legales (valores de ley) | `Gavel` (nuevo) | índice móvil de la Configuración de RR. HH. |
+| Festivo | `CalendarOff` (nuevo) | festivos de la Configuración |
+| Registro de accesos a datos sensibles | `ScrollText` (nuevo) | registro de accesos de la Configuración |
+| Dato sensible | `Lock` (dentro de `Badge`) | insignia «Información sensible» y avisos de consulta registrada; ver `SISTEMA-BADGES.md` |
+
+Ninguno choca con §2 ni con la adenda de Inventario: `Briefcase` ya estaba reservado para «Empleado» (tabla 8.2, «Tipo de tercero») y para HRM (§5). «Lo que define tu empresa» usa `Settings` porque es ajuste de la organización (§2, Configuración).
+
+### Pantalla por pantalla
+
+Las páginas de detalle usan la cabecera de «Editar rol» (`PageHeader Variant=form`: migas, «←» cuadrado junto al título, insignias y acciones a la derecha). Por la regla 5 de este catálogo, en esa variante la ranura izquierda es «← Volver» y no lleva icono.
+
+| Pantalla | Ruta | Ranura | Icono |
+|---|---|---|---|
+| Empleados — lista y sus estados (11 marcos de escritorio, incluidos panel de filtros y menú de cabecera) | `/app/hrm/empleados` | `Icono` | `Briefcase` |
+| Ficha del empleado — 10 pestañas, edición de contacto y beneficiario, cargando, error, sin permiso, menú ⋯ (18 marcos) | `/app/hrm/empleados/[id]` | `—` | — (← Volver) |
+| Registrar un cambio (9 marcos, sobre la ficha) | `/app/hrm/empleados/[id]` | `—` | — |
+| Alta de empleado (6 marcos) | `/app/hrm/empleados/nuevo` | `—` | — |
+| Áreas — organigrama, detalle en panel, cargando, vacío, error, sin permiso (6) | `/app/hrm/areas` | `Icono` | `Network` |
+| Área — editar | `/app/hrm/areas/[id]` | `—` | — |
+| Cargos — lista, cargando, error, panel de filtros, menú de fila (5) | `/app/hrm/cargos` | `Icono` | `IdCard` |
+| Cargo — perfil, competencias y escala · editar | `/app/hrm/cargos/[id]` | `—` | — |
+| Plazas — presupuesto, solicitar plaza, cargando, error (4) | `/app/hrm/plazas` | `Icono` | `Armchair` |
+| Mis aprobaciones — pendientes, revisar, vacía, cargando, panel de filtros (5) | `/app/hrm/aprobaciones` | `Icono` | `Stamp` |
+| Configuración › Recursos humanos (diálogo) | `/app/configuracion` | entrada de la navegación | `Briefcase` |
+| Celular (61 marcos de la página 20 y 29 de la Configuración) | — | `—` | — (regla 5: `MobileHeader`) |
+
+### Cambios pendientes en el código
+
+- `moduleConfig.ts` y la navegación lateral: RR. HH. con `Briefcase` como entrada propia (no sustituye a «Proyectos y tareas») y submenús con `Network`, `IdCard`, `Armchair` y `Stamp`.
+- La navegación del diálogo de Configuración: «Recursos humanos» pasa de `Users` a `Briefcase`.
+
+## Adenda 2026-11-16 — Recursos humanos, fase 2: Ausencias (Figma 20.13 y 20.14)
+
+Decisión 6 del dueño. Se añade al final, sin reescribir lo anterior. Solo los tres conceptos de Ausencias; los de Turnos, Marcación, Asistencia, Horas, Novedades y Mi equipo los anota su propia adenda.
+
+| Concepto | Icono (lucide) | Dónde vive |
+|---|---|---|
+| Vacaciones | `TreePalm` | cabecera de Ausencias › Vacaciones, vacíos de vacaciones, tarjetas de «Mis vacaciones», «Ir a Mis vacaciones» |
+| Incapacidad · licencia | `HeartPulse` | cabecera de Ausencias › Incapacidades y licencias y su vacío |
+| Permiso (calamidad, licencias del CST) | `DoorOpen` | cabecera de Ausencias › Permisos y su vacío |
+
+| Pantalla | Ruta | Ranura | Icono |
+|---|---|---|---|
+| Ausencias › Vacaciones — calendario, solicitudes y sus estados (13.1–13.11) | `/app/hrm/ausencias` | `Icono` | `TreePalm` |
+| Ausencias › Incapacidades y licencias — lista y sus estados (14.1–14.13) | `/app/hrm/ausencias?seccion=incapacidades` | `Icono` | `HeartPulse` |
+| Ausencias › Permisos (14.6, 14.8) | `/app/hrm/ausencias?seccion=permisos` | `Icono` | `DoorOpen` |
+| Incapacidad · persona (14.3, 14.4) | `/app/hrm/ausencias/[id]` | `—` | — (← Volver, cabecera de «Editar rol») |
+| Mis vacaciones (13.6) | `/app/hrm/ausencias/mis-vacaciones` | `—` | — (← Volver) |
+
+La pestaña «Ausencias» del módulo no tiene icono propio en la barra de pestañas; la cabecera toma el de la sección abierta. En el menú lateral la entrada `/app/hrm/ausencias` sigue con `Calendar` hasta que quien mantiene `src/lib/navigation/catalog.ts` la pase a `TreePalm` (la sección por defecto); no se tocó aquí porque el archivo tiene cambios de otra sesión sin commit.
+
+## Adenda 2026-11-16 — Recursos humanos, fase 2 (decisión 6 del dueño)
+
+Se añade al final, sin reescribir lo anterior. Iconos de jornadas, asistencia y ausencias (Figma página `20`, secciones 20.8 a 20.15), todos de lucide con la misma construcción de la rejilla.
+
+| Concepto | Icono (lucide) | Dónde vive |
+|---|---|---|
+| Turnos · programación | `CalendarRange` | pestaña y cabecera de Turnos, vacío de la programación, menú lateral |
+| Marcación · marcar turno | `AlarmClockCheck` | «Mi asistencia» (Inicio), menú lateral de Marcación, tarjetas de marcas |
+| Asistencia · hojas de tiempo | `CalendarCheck` | pestaña y cabecera de Asistencia |
+| Horas extra | `ClockArrowUp` | Horas y recargos, novedades de horas extra |
+| Novedad | `NotebookPen` | pestaña y cabecera de Novedades |
+| Vacaciones · ausencias | `TreePalm` | pestaña de Ausencias, bloque de ausencia en la programación |
+| Incapacidades | `HeartPulse` | incapacidades y licencias (nunca muestra el diagnóstico) |
+| Permisos (ausencias cortas) | `DoorOpen` | permisos de Ausencias |
+| Mi equipo (vista del jefe) | `LayoutDashboard` | pestaña y cabecera de Mi equipo, vacío «No tienes personas a cargo» |
+
+Lo que ya existía se conserva: `ScanLine` en `TurnoCard` y en el botón de marcar; `Coffee` para un día o un rato de descanso; `LayoutTemplate` para las plantillas de turno y `Repeat` para las rotaciones (tarjetas móviles y vacíos).
+
+### En el código
+
+- `src/lib/navigation/catalog.ts`: Turnos `CalendarRange`, Marcación `AlarmClockCheck`, Asistencia `CalendarCheck`, Novedades `NotebookPen` (nueva), Ausencias `TreePalm` y Mi equipo `LayoutDashboard` (nueva, solo para quien tiene personas a cargo: capacidad `jefeDeEquipo`).
+- Cabeceras: `TurnosPage` (`CalendarRange`), `MiEquipoPage` (`LayoutDashboard`) y `MiAsistencia` (`AlarmClockCheck`).

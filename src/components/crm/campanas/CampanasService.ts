@@ -8,7 +8,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { campaignsApi, type CreateCampaignBody } from '@/components/crm/whatsapp/api';
 import type { Campaign } from './types';
 
-export interface SegmentOption { id: string; name: string; customer_count: number }
+export interface SegmentOption { id: string; name: string; customer_count: number; filter_json?: unknown }
 export interface StageOption { id: string; name: string; pipeline_id: string; position?: number | null }
 export interface PipelineOption { id: string; name: string; is_default?: boolean | null }
 
@@ -41,7 +41,7 @@ export const CampanasService = {
   },
 
   async getSegments(): Promise<SegmentOption[]> {
-    const { data } = await supabase.from('segments').select('id, name, customer_count').eq('organization_id', getOrganizationId()).order('name');
+    const { data } = await supabase.from('segments').select('id, name, customer_count, filter_json').eq('organization_id', getOrganizationId()).order('name');
     return (data ?? []) as SegmentOption[];
   },
   async getPipelines(): Promise<PipelineOption[]> {

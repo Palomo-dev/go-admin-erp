@@ -238,6 +238,8 @@ las destructivas en rojo (`prepararMenu`). Tope de 8 entradas. Una acción desha
   masiva). Escritorio: menú alineado al borde derecho, 4 px. Móvil: abre `ActionSheet`.
   Con `etiquetaBoton` (+ `iconoBoton`) el disparador es un botón secundario de 40 px con texto
   y chevron («Importar ▾» del catálogo de productos) en lugar de «⋯».
+  Con `disparador` (`{ contenido, etiqueta }`) el contenido entero abre el menú: el bloque de un
+  turno en la programación de RR. HH. (Figma 20.8.5); `etiqueta` es su nombre accesible.
 - `ActionSheet`: `abierto`, `onAbiertoChange`, `titulo`, `descripcion?`, `acciones`.
   Filas de 52 px con icono de 20.
 
@@ -858,3 +860,11 @@ estos componentes solo la muestran. Textos en el namespace `cuentasAutomaticas`.
 - `LineaDocumento.pieLinea`: contenido bajo el producto en `DocumentoLineas`.
 
 Los conectores con la base están en `src/components/finanzas/contabilidad/cuentas/`.
+
+## Adenda 2026-11-16 — `Badge` gana `uso` (RR. HH., «Lista para nómina»)
+
+Aditivo: sin `uso`, `Badge` se comporta igual que antes.
+
+| Archivo | Cambio | Efecto |
+|---|---|---|
+| `src/components/ui/badge.tsx` | + `uso` y `USOS_BADGE` | Un uso fija tono, apariencia e icono de un estado documentado en SISTEMA-BADGES.md. El primero es `lista_nomina` (marca · suave · `Lock`, decisión 5 de la fase 2 de RR. HH.). `uso` manda sobre `tono`, `apariencia` e `icono` |

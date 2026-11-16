@@ -25,6 +25,7 @@ const capacidades: { datos: Capacidades; cargando: boolean; error: boolean } = {
       gestionarNotificaciones: false,
       verAnaliticaWeb: false,
       variasSedes: false,
+      jefeDeEquipo: false,
       crearSucursal: false,
       gestionarOrganizacion: false,
       gestionarMiembros: false,

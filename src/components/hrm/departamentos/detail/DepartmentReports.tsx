@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   FileBarChart,
   ClipboardCheck,
@@ -26,12 +25,15 @@ interface DepartmentReportsProps {
 }
 
 export function DepartmentReports({ departmentId }: DepartmentReportsProps) {
+  // Los reportes viven en el módulo Reportes (grupo «Personas»), que todavía no
+  // filtra por área: el enlace abre el reporte de toda la organización.
+  void departmentId;
   const reports: ReportLink[] = [
     {
       title: 'Reporte de Asistencia',
       description: 'Ver marcaciones y asistencia del departamento',
       icon: <ClipboardCheck className="h-5 w-5" />,
-      href: `/app/hrm/reportes/asistencia?department=${departmentId}`,
+      href: '/app/reportes/personas/hrm-asistencia',
       color: 'text-blue-600 dark:text-blue-400',
       bgColor: 'bg-blue-100 dark:bg-blue-900/30',
     },
@@ -39,7 +41,7 @@ export function DepartmentReports({ departmentId }: DepartmentReportsProps) {
       title: 'Reporte de Ausencias',
       description: 'Permisos, vacaciones y licencias',
       icon: <CalendarOff className="h-5 w-5" />,
-      href: `/app/hrm/reportes/ausencias?department=${departmentId}`,
+      href: '/app/reportes/personas/hrm-ausencias',
       color: 'text-orange-600 dark:text-orange-400',
       bgColor: 'bg-orange-100 dark:bg-orange-900/30',
     },
@@ -47,7 +49,7 @@ export function DepartmentReports({ departmentId }: DepartmentReportsProps) {
       title: 'Reporte de Nómina',
       description: 'Costos y pagos del departamento',
       icon: <DollarSign className="h-5 w-5" />,
-      href: `/app/hrm/reportes/nomina?department=${departmentId}`,
+      href: '/app/reportes/personas/hrm-nomina',
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-100 dark:bg-green-900/30',
     },
@@ -55,7 +57,7 @@ export function DepartmentReports({ departmentId }: DepartmentReportsProps) {
       title: 'Reporte de Personal',
       description: 'Headcount y rotación del departamento',
       icon: <Users className="h-5 w-5" />,
-      href: `/app/hrm/reportes/personal?department=${departmentId}`,
+      href: '/app/reportes/personas',
       color: 'text-purple-600 dark:text-purple-400',
       bgColor: 'bg-purple-100 dark:bg-purple-900/30',
     },

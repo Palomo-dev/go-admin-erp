@@ -3781,7 +3781,11 @@ describe('42. Voz: la exención por número de prueba vive en un solo punto y no
   test('la tabla no se escribe con el cliente de servicio: la ruta usa la sesión y la RLS vuelve a exigir admin', () => {
     const ruta = stripAllComments(readFile(path.join(SRC_ROOT, 'app/api/crm/settings/telephony/test-numbers/route.ts')));
     expect(ruta).not.toMatch(/getServiceClient|createServiceClient|service_role/);
-    expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(3);
+    // POST y DELETE exigen admin. GET no (2026-11-15, Figma 1811:908572 «Sin
+    // permiso (solo lectura)»): un miembro ve la lista, que la RLS de SELECT ya
+    // le dejaba leer, y la ruta le dice `puedeEditar` con el criterio de admin.
+    expect((ruta.match(/\{\s*admin:\s*true\s*\}/g) ?? []).length).toBe(2);
+    expect(ruta).toMatch(/puedeEditar\]\s*=\s*await Promise\.all\(\[[\s\S]*?hasOrgAdminOrPermission\(ctx\)/);
   });
 });
 
@@ -3978,10 +3982,10 @@ describe('44. Detalles en celular: una sola «←», la del MobileHeader del she
   //   acción de la pantalla vacía, no una segunda barra.
   // - Asistentes y diálogos: «Atrás» entre pasos, no vuelve a la página padre.
   const PERMITIDAS: Record<string, number> = {
-    'app/app/hrm/cargos/[id]/page.tsx': 1, // «Cargo no encontrado»
-    'app/app/hrm/departamentos/[id]/page.tsx': 1, // «Departamento no encontrado»
-    'app/app/hrm/empleados/[id]/page.tsx': 1, // «Empleado no encontrado»
-    'app/app/hrm/turnos/[id]/page.tsx': 1, // «Turno no encontrado»
+    // `app/app/hrm/empleados/[id]/page.tsx` salió el 2026-11-15: la ficha nueva usa
+    // `PageHeader` y su «no encontrado» es un `EmptyState`, sin flecha propia.
+    // `app/app/hrm/turnos/[id]/page.tsx` salió el 2026-11-16: la programación semanal (Figma 20.8)
+    // reemplazó al detalle del turno, que ahora redirige.
     'app/app/pos/pedidos-online/[id]/components/OrderNotFoundState.tsx': 1, // pedido no encontrado
     'components/pms/checkout/CheckoutDialog.tsx': 1, // «Atrás» entre pasos del diálogo
     'components/pos/promociones/nuevo/PromotionWizard.tsx': 1, // «Anterior» entre pasos del asistente

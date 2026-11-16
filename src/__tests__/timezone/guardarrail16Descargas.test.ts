@@ -32,7 +32,7 @@
 //   bank_files                           LA TABLA NO EXISTE (ver abajo)
 // ============================================================================
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ORG = 120;
@@ -398,7 +398,9 @@ const ARCHIVOS = [
   'src/components/finanzas/cuentas-por-pagar/id/AccountActionsCard.tsx',
   'src/components/finanzas/cuentas-por-pagar/id/CuentaPorPagarDetailPage.tsx',
   'src/components/finanzas/facturas-venta/listado/ListadoFacturasVenta.tsx',
-  'src/components/hrm/reportes/ReportTable.tsx',
+  // `src/components/hrm/reportes/ReportTable.tsx` se retiró el 2026-11-15 (fase 1 de
+  // RR. HH.): los reportes de personas viven en el módulo Reportes
+  // (`reportes/modulos/hrmReports.ts`), que muestra los `date` con su tipo `fecha`.
   'src/components/inventario/TopSKUTable.tsx',
   'src/components/inventario/productos/CatalogoProductos.tsx',
   'src/components/inventario/proveedores/CatalogoProveedores.tsx',
@@ -408,7 +410,7 @@ const ARCHIVOS = [
   'src/components/pos/reportes/reportesService.ts',
 ];
 
-describe('ninguno de los 13 archivos vuelve a derivar un día de toISOString()', () => {
+describe('ninguno de los 12 archivos vuelve a derivar un día de toISOString()', () => {
   it.each(ARCHIVOS)('%s', (ruta) => {
     const texto = leer(ruta);
     expect(texto).not.toMatch(/toISOString\(\)\s*\.\s*split\(/);
@@ -431,12 +433,8 @@ describe('los dos import prohibidos de @/utils/Utils están fuera', () => {
     expect(texto).not.toMatch(/[^a-zA-Z]parseLocalDate\(/);
   });
 
-  it('ReportTable ya no importa formatDate', () => {
-    const texto = leer('src/components/hrm/reportes/ReportTable.tsx');
-    expect(texto).not.toMatch(/^\s*import .*\bformatDate\b/m);
-    expect(texto).toContain("import { formatCurrency } from '@/utils/Utils'");
-    // Y no queda ninguna LLAMADA al helper enterrado.
-    expect(texto).not.toMatch(/[^a-zA-Z]formatDate\(/);
+  it('ReportTable de RR. HH. se retiró: sus reportes están en el módulo Reportes', () => {
+    expect(existsSync(join(process.cwd(), 'src/components/hrm/reportes/ReportTable.tsx'))).toBe(false);
   });
 });
 
@@ -484,13 +482,13 @@ describe('cada call-site usa el helper que le toca, en su sitio', () => {
     expect(rpc).toContain('dia_emision <= v_hasta');
   });
 
-  it('ReportTable usa formatPlainDate en las tres columnas `date`', () => {
-    const texto = leer('src/components/hrm/reportes/ReportTable.tsx');
-    expect(texto).toContain('{formatPlainDate(row.work_date)}');
-    expect(texto).toContain('{formatPlainDate(row.start_date)}');
-    expect(texto).toContain('{formatPlainDate(row.end_date)}');
-    // first_check_in SÍ es timestamptz y sigue convirtiéndose.
-    expect(texto).toContain('formatTimeInTz(row.first_check_in, timezone)');
+  it('los reportes de asistencia y ausencias de RR. HH. declaran sus `date` como fecha plana', () => {
+    // Movidos a `reportes/modulos/hrmReports.ts` (2026-11-15): la columna lleva
+    // `tipo: 'fecha'` y nunca se convierte de zona.
+    const texto = leer('src/lib/services/reportes/modulos/hrmReports.ts');
+    expect(texto).toContain("{ key: 'fecha', titulo: 'Fecha', tipo: 'fecha' }");
+    expect(texto).toContain("{ key: 'desde', titulo: 'Desde', tipo: 'fecha' }");
+    expect(texto).toContain("{ key: 'hasta', titulo: 'Hasta', tipo: 'fecha' }");
   });
 
   it('TopSKUTable toma el día del contexto', () => {
@@ -556,7 +554,7 @@ describe('cada call-site usa el helper que le toca, en su sitio', () => {
   });
 });
 
-describe('ninguno de los 13 archivos añade un parámetro timezone opcional', () => {
+describe('ninguno de los 12 archivos añade un parámetro timezone opcional', () => {
   // ADR-003: la zona entra por identidad. Un `timezone?: string` que nadie
   // rellena no arregla nada y no falla de forma visible.
   it.each(ARCHIVOS)('%s', (ruta) => {

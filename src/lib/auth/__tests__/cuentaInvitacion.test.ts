@@ -7,9 +7,19 @@
  * cuenta existente. Caso real del 2026-09-15: un usuario de otra
  * organización invitado como administrador tuvo que "registrarse" de nuevo.
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { estadoCuentaInvitacion, buscarUsuarioAuthPorEmail } from '../cuentaInvitacion';
 
 type Usuario = { id: string; email: string; invited_at?: string | null; user_metadata?: Record<string, unknown> };
+
+/** Consulta encadenable falsa: lo justo que usa cuentaInvitacion.ts. */
+interface ConsultaFalsa {
+  select: (cols?: string) => ConsultaFalsa;
+  eq: (col: string, val: string) => ConsultaFalsa;
+  maybeSingle: () => Promise<{ data: { id: string } | null }>;
+  then: (resolve: (v: unknown) => void) => void;
+}
+type AdminFalso = SupabaseClient & { from: (tabla: string) => ConsultaFalsa; _listUsers: jest.Mock };
 
 function adminFalso(opts: {
   usuarios: Usuario[];
@@ -24,7 +34,7 @@ function adminFalso(opts: {
     return { data: { users: opts.usuarios.slice(desde, desde + perPage) }, error: null };
   });
   const from = (tabla: string) => {
-    const q: any = {};
+    const q = {} as ConsultaFalsa;
     let userId = '';
     q.select = () => q;
     q.eq = (_col: string, val: string) => { userId = val; return q; };
@@ -33,7 +43,7 @@ function adminFalso(opts: {
       resolve({ count: tabla === 'organization_members' ? (membresias[userId] ?? 0) : 0 });
     return q;
   };
-  return { auth: { admin: { listUsers } }, from, _listUsers: listUsers } as any;
+  return { auth: { admin: { listUsers } }, from, _listUsers: listUsers } as unknown as AdminFalso;
 }
 
 const INVITACION = { code: 'abc123', organization_id: 137 };
@@ -91,6 +101,60 @@ describe('estadoCuentaInvitacion', () => {
     const r = await estadoCuentaInvitacion(admin, 'h@x.co', INVITACION);
     expect(r.estado).toBe('huerfana');
     expect(r.usuario?.id).toBe('h1');
+  });
+
+  describe('cuenta preparada por el alta de RR. HH. (revisión 2026-11-15)', () => {
+    const preparada = (extra: Partial<Usuario & { last_sign_in_at: string | null; email_confirmed_at: string | null }> = {}) => ({
+      id: 'p1',
+      email: 'operario@x.co',
+      invited_at: null,
+      last_sign_in_at: null,
+      email_confirmed_at: null,
+      user_metadata: { is_invitation: true, hr_alta: true, organization_id: 137 },
+      ...extra,
+    });
+    function adminConFilas(usuario: object, filas: { organization_id: number; is_active: boolean }[]) {
+      const base = adminFalso({ usuarios: [usuario as Usuario], perfiles: ['p1'], membresias: { p1: filas.length } });
+      const fromBase = base.from as (tabla: string) => ConsultaFalsa;
+      const fromFalso = (tabla: string): ConsultaFalsa => {
+        const q = fromBase(tabla);
+        if (tabla !== 'organization_members') return q;
+        const original = q.then;
+        q.select = (cols?: string) => {
+          if (cols && cols.includes('is_active')) q.then = (resolve: (v: unknown) => void) => resolve({ data: filas });
+          else q.then = original;
+          return q;
+        };
+        return q;
+      };
+      base.from = fromFalso as unknown as AdminFalso['from'];
+      return base;
+    }
+
+    it('huerfana: perfil y miembro inactivo de esta organización, nunca entró', async () => {
+      const admin = adminConFilas(preparada(), [{ organization_id: 137, is_active: false }]);
+      const r = await estadoCuentaInvitacion(admin, 'operario@x.co', INVITACION);
+      expect(r.estado).toBe('huerfana');
+    });
+
+    it('existente: ya inició sesión alguna vez', async () => {
+      const admin = adminConFilas(preparada({ last_sign_in_at: '2026-11-15T10:00:00Z' }), [{ organization_id: 137, is_active: false }]);
+      expect((await estadoCuentaInvitacion(admin, 'operario@x.co', INVITACION)).estado).toBe('existente');
+    });
+
+    it('existente: tiene una membresía activa o de otra organización', async () => {
+      const activa = adminConFilas(preparada(), [{ organization_id: 137, is_active: true }]);
+      expect((await estadoCuentaInvitacion(activa, 'operario@x.co', INVITACION)).estado).toBe('existente');
+      const otra = adminConFilas(preparada(), [{ organization_id: 137, is_active: false }, { organization_id: 999, is_active: false }]);
+      expect((await estadoCuentaInvitacion(otra, 'operario@x.co', INVITACION)).estado).toBe('existente');
+    });
+
+    it('existente: la preparó otra organización', async () => {
+      const admin = adminConFilas(preparada({ user_metadata: { is_invitation: true, hr_alta: true, organization_id: 999 } }), [
+        { organization_id: 999, is_active: false },
+      ]);
+      expect((await estadoCuentaInvitacion(admin, 'operario@x.co', INVITACION)).estado).toBe('existente');
+    });
   });
 
   it('existente: creada por esta organización pero ya reclamada (tiene membresía)', async () => {

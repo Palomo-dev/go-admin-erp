@@ -57,6 +57,12 @@ export interface SeccionConfig {
   /** La propia sección maneja su solo lectura (ajustes con permisos distintos). */
   controlaLectura?: boolean;
   /**
+   * La sección pinta sus propios estados de solo lectura y «sin acceso»
+   * porque sus rutas los resuelven en el servidor (Recursos humanos): el
+   * diálogo no pone su aviso ni el `<fieldset disabled>`.
+   */
+  estadosPropios?: boolean;
+  /**
    * Entrada del menú del diálogo cuando NO es su módulo (`ENTRADAS_EXTRA` en
    * `configModulesRegistry.ts`): «GO Asistente» y «Plan» viven en General y
    * se muestran como entradas propias; «Telefonía y voz» reúne dos de CRM.
@@ -94,7 +100,14 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'crm.email', modulo: 'crm', seccion: 'email', clave: 'crmEmail', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'crm.whatsapp', modulo: 'crm', seccion: 'whatsapp', clave: 'crmWhatsapp', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'crm.creditos', modulo: 'crm', seccion: 'creditos', clave: 'crmCreditos', permiso: PERMISO_ADMIN, ajustes: [] },
-  { id: 'hrm.general', modulo: 'hrm', seccion: 'general', clave: 'hrmGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
+  // Recursos humanos (diseños 10.RH.1–3): «Parámetros legales» conserva el id
+  // estable `hrm.general` (lo usan la redirección de /app/hrm/configuracion y los
+  // enlaces). Cada pestaña exige el permiso que también comprueba la base.
+  { id: 'hrm.general', modulo: 'hrm', seccion: 'general', clave: 'hrmGeneral', permiso: 'hr.parameters.manage', estadosPropios: true, ajustes: [] },
+  { id: 'hrm.festivos', modulo: 'hrm', seccion: 'festivos', clave: 'hrmFestivos', permiso: 'hr.parameters.manage', estadosPropios: true, ajustes: [] },
+  { id: 'hrm.aprobaciones', modulo: 'hrm', seccion: 'aprobaciones', clave: 'hrmAprobaciones', permiso: 'hr.approvals.manage', estadosPropios: true, ajustes: [] },
+  // Pestaña propia de RR. HH., no la Auditoría general (decisión del dueño, 2026-11-15).
+  { id: 'hrm.registro-accesos', modulo: 'hrm', seccion: 'registro-accesos', clave: 'hrmRegistroAccesos', permiso: 'hr.access_log.view', estadosPropios: true, ajustes: [] },
   { id: 'pms.general', modulo: 'pms', seccion: 'general', clave: 'pmsGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'pos.general', modulo: 'pos', seccion: 'general', clave: 'posGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   // Se queda en POS › Reservas de mesas: el módulo Sitio web la enlaza como «Reservas web»

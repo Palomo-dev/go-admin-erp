@@ -1,176 +1,314 @@
 'use client';
 
-/** /app/crm/campanas/nueva (FASE-16 §5.1): wizard 4 pasos — canal+plantilla → audiencia → programación → revisión/lanzar. */
+/**
+ * /app/crm/campanas/nuevo — asistente «Nueva campaña» (Figma CRM 1395:1065
+ * audiencia y canal, 1402:17 agente o plantilla, 1402:821 horario y
+ * cumplimiento; el paso 4 «Revisar y activar» resume y lanza).
+ *
+ * Un solo canal por campaña. «Llamada con agente IA» sigue en su asistente
+ * propio (`/app/crm/campanas/voz/nueva`) con el segmento y el nombre ya
+ * elegidos; aquí se completan WhatsApp (y correo cuando el motor lo envíe).
+ *
+ * Mismos servicios de siempre: `CampanasService` (crear/editar borrador,
+ * materializar, lanzar → `/api/crm/campaigns/**`) y `useWhatsAppCompose`
+ * (números, plantillas aprobadas, vista previa con variables).
+ */
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Loader2, Megaphone, Rocket } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/components/ui/use-toast';
-import { SegmentedControl } from '@/components/kit/SegmentedControl';
-import { ApiError } from '@/components/crm/whatsapp/api';
-import { ChannelSelect } from '@/components/crm/whatsapp/compose/ChannelSelect';
-import { TemplatePicker } from '@/components/crm/whatsapp/compose/TemplatePicker';
-import { MessageForm } from '@/components/crm/whatsapp/compose/MessageForm';
-import { useWhatsAppCompose } from '@/components/crm/whatsapp/compose/useWhatsAppCompose';
-import { CampanasService } from '../CampanasService';
-import { AudienceStep, type AudienceValue } from './AudienceStep';
-import { ScheduleStep } from './ScheduleStep';
-import type { MaterializeResult } from '@/components/crm/whatsapp/api';
-import { SKIP_REASON_LABELS } from '@/components/crm/whatsapp/api';
-import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
-import { todayInTz } from '@/lib/utils/timezone';
-import { formatPlainDate } from '@/lib/utils/dateDisplay';
 import { useTranslations } from 'next-intl';
+import { ArrowRight, Loader2, Rocket, Send } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
+import { PageHeader } from '@/components/kit/PageHeader';
+import { Stepper } from '@/components/kit/Stepper';
+import { FilaDato, ListaDatos } from '@/components/kit/FilaDato';
+import { clasesBoton } from '@/components/kit/botonClases';
+import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { pedirCrm } from '@/components/crm/acciones/apiCrm';
+import { ApiError, type MaterializeResult } from '@/components/crm/whatsapp/api';
+import { useWhatsAppCompose } from '@/components/crm/whatsapp/compose/useWhatsAppCompose';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { CampanasService, type SegmentOption } from '../CampanasService';
+import {
+  PASOS_ASISTENTE,
+  audienciaCompleta,
+  disponibilidadCanales,
+  partirFechaHoraLocal,
+  plantillaCompleta,
+  requisitosActivar,
+  requisitosEnRojo,
+  rutaAsistenteVoz,
+  type CanalAsistente,
+  type PasoAsistente,
+} from './asistenteCampanaLogica';
+import { PasoAudienciaCanal } from './PasoAudienciaCanal';
+import { PasoPlantilla } from './PasoPlantilla';
+import { PasoHorarioCumplimiento } from './PasoHorarioCumplimiento';
+import { useDesgloseSegmento } from './useDesgloseSegmento';
 
-/** Pasos del asistente: subclaves de `crm.campanasLista.campanaNuevaPage.pasosAsistente`. */
-const STEPS = ['canal', 'audiencia', 'programacion', 'revision'] as const;
+const VOLVER = '/app/crm/campanas';
 
 export function CampanaNuevaPage() {
-  const t = useTranslations('crm.campanasLista');
-  const { timezone } = useOrgTimezone();
+  const t = useTranslations('crm.campanasAsistente');
   const router = useRouter();
   const search = useSearchParams();
-  const { toast } = useToast();
-  const [step, setStep] = useState(0);
-  const [name, setName] = useState('');
+  const entero = useFormatoEntero();
+  const { formatDateTime, toInstant } = useFormatDate();
+
+  const [paso, setPaso] = useState<PasoAsistente>('audiencia');
+  const [nombre, setNombre] = useState('');
+  const [intentoSeguir, setIntentoSeguir] = useState(false);
+  const [segmentos, setSegmentos] = useState<SegmentOption[] | null>(null);
+  const [segmentId, setSegmentId] = useState<string | null>(search?.get('segment') ?? null);
+  const [canal, setCanal] = useState<CanalAsistente | null>(null);
+  const [agentesVoz, setAgentesVoz] = useState<number | null>(null);
+
   const c = useWhatsAppCompose({ enabled: true });
-  const [audience, setAudience] = useState<AudienceValue>({ source: search?.get('segment') ? 'segment' : 'stage', segment_id: search?.get('segment') ?? null, pipeline_id: null, stage_ids: [] });
-  const [scheduledAt, setScheduledAt] = useState<string | null>(null);
-  const [throttle, setThrottle] = useState(10);
-  const [respectHours, setRespectHours] = useState(true);
+  const [cuando, setCuando] = useState<'ahora' | 'programar'>('ahora');
+  const [fechaLocal, setFechaLocal] = useState('');
+  const [respetarHorario, setRespetarHorario] = useState(true);
+  const [consentimiento, setConsentimiento] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
   const [mat, setMat] = useState<MaterializeResult | null>(null);
-  const [busy, setBusy] = useState<'save' | 'mat' | 'launch' | null>(null);
-  const [optin, setOptin] = useState(false);
+  const [ocupado, setOcupado] = useState<'guardar' | 'calcular' | 'activar' | null>(null);
 
-  useEffect(() => { if (!name && c.template) setName(`${c.template.name} · ${formatPlainDate(todayInTz(timezone))}`); }, [c.template, name, timezone]);
+  useEffect(() => {
+    CampanasService.getSegments().then(setSegmentos, () => setSegmentos([]));
+    pedirCrm<unknown[]>('/api/crm/voice-agents').then(
+      ({ data }) => setAgentesVoz(Array.isArray(data) ? data.length : 0),
+      () => setAgentesVoz(0),
+    );
+  }, []);
+
+  // Todas las campañas de mensajes del asistente usan plantilla aprobada.
+  const { tab, setTab } = c;
+  useEffect(() => {
+    if (tab !== 'template') setTab('template');
+  }, [tab, setTab]);
+
+  const segmento = segmentos?.find((s) => s.id === segmentId) ?? null;
+  const { estado: estadoDesglose, desglose } = useDesgloseSegmento(segmento?.filter_json, !!segmento);
+  const disponibilidad = useMemo(
+    () => disponibilidadCanales({ agentesVoz, canalesWhatsappActivos: c.loadingChannels ? null : c.channels.filter((x) => x.status === 'active').length }),
+    [agentesVoz, c.loadingChannels, c.channels],
+  );
 
   const marketing = c.preview?.category === 'marketing';
-  const step0ok = !!c.channelId && (c.tab === 'template' ? !!c.templateId && !!c.preview && c.preview.status === 'APPROVED' : c.text.trim().length > 0);
-  const step1ok = audience.source === 'segment' ? !!audience.segment_id : audience.source === 'stage' ? audience.stage_ids.length > 0 : false;
+  const programadaPara = useMemo(() => {
+    if (cuando !== 'programar') return null;
+    const f = partirFechaHoraLocal(fechaLocal);
+    return f ? toInstant(f.fecha, f.hora) : null;
+  }, [cuando, fechaLocal, toInstant]);
+  const requisitos = requisitosActivar({
+    plantillaAprobada: c.preview?.status === 'APPROVED',
+    variablesFaltantes: c.preview?.missing.length ?? 0,
+    marketing,
+    consentimiento,
+    pendientes: mat ? mat.pending : null,
+  });
+  const enRojo = requisitosEnRojo(requisitos);
 
-  const body = useMemo(() => ({
-    name: name.trim() || 'Campaña sin nombre',
-    channel: 'whatsapp' as const,
-    channel_id: c.channelId,
-    template_id: c.tab === 'template' ? c.templateId : null,
-    content: c.tab === 'text' ? c.text : null,
-    audience: { source: audience.source, segment_id: audience.segment_id, pipeline_id: audience.pipeline_id, stage_ids: audience.stage_ids },
-    scheduled_at: scheduledAt,
-    throttle_mps: throttle,
-    respect_allowed_hours: respectHours,
-    default_variables: c.variables,
-    purpose: marketing ? 'marketing' as const : 'utility' as const,
-  }), [name, c.channelId, c.tab, c.templateId, c.text, c.variables, audience, scheduledAt, throttle, respectHours, marketing]);
+  const pasoOk: Record<PasoAsistente, boolean> = {
+    audiencia: audienciaCompleta({ nombre, segmentId, canal }, disponibilidad),
+    contenido: plantillaCompleta({ canalId: c.channelId, plantillaId: c.templateId, estadoMeta: c.preview?.status ?? null, variablesFaltantes: c.preview?.missing ?? [] }),
+    horario: cuando === 'ahora' || !!programadaPara,
+    revision: enRojo === 0,
+  };
+  const indice = PASOS_ASISTENTE.indexOf(paso);
 
-  const save = async () => {
-    setBusy('save');
-    try {
-      const saved = campaignId ? await CampanasService.updateCampaign(campaignId, body) : await CampanasService.createCampaign(body);
-      setCampaignId(saved.id);
-      return saved.id;
-    } finally { setBusy(null); }
+  const cuerpo = useMemo(
+    () => ({
+      name: nombre.trim(),
+      channel: 'whatsapp' as const,
+      channel_id: c.channelId,
+      template_id: c.templateId,
+      content: null,
+      audience: { source: 'segment' as const, segment_id: segmentId, pipeline_id: null, stage_ids: [] },
+      scheduled_at: programadaPara,
+      respect_allowed_hours: respetarHorario,
+      default_variables: c.variables,
+      purpose: marketing ? ('marketing' as const) : ('utility' as const),
+    }),
+    [nombre, c.channelId, c.templateId, c.variables, segmentId, programadaPara, respetarHorario, marketing],
+  );
+
+  const guardar = async (): Promise<string> => {
+    const g = campaignId ? await CampanasService.updateCampaign(campaignId, cuerpo) : await CampanasService.createCampaign(cuerpo);
+    setCampaignId(g.id);
+    return g.id;
   };
 
-  const materialize = async () => {
+  const errorToast = (titulo: string, e: unknown) =>
+    toast({ title: titulo, description: e instanceof Error ? e.message : undefined, variant: 'destructive' });
+
+  const calcular = async () => {
+    setOcupado('calcular');
     try {
-      const id = await save();
-      setBusy('mat');
+      const id = await guardar();
       setMat(await CampanasService.materialize(id));
     } catch (e) {
-      toast({ title: t('campanaNuevaPage.noPudoCalcularAudiencia'), description: e instanceof Error ? e.message : t('campanaNuevaPage.error'), variant: 'destructive' });
-    } finally { setBusy(null); }
+      errorToast(t('errores.calcular'), e);
+    } finally {
+      setOcupado(null);
+    }
   };
 
-  const launch = async (draftOnly = false) => {
+  const guardarBorrador = async () => {
+    setOcupado('guardar');
     try {
-      const id = await save();
-      if (draftOnly) { toast({ title: t('campanaNuevaPage.borradorGuardado') }); router.push(`/app/crm/campanas/${id}`); return; }
-      setBusy('launch');
-      if (!mat) setMat(await CampanasService.materialize(id));
-      const r = await CampanasService.launch(id, { scheduled_at: scheduledAt });
-      toast({ title: r.data.effective_status === 'scheduled' ? t('campanaNuevaPage.campanaProgramada') : t('campanaNuevaPage.campanaLanzada'), description: t('campanaNuevaPage.contactosCola', { n: mat?.pending ?? '' }) });
-      router.push(`/app/crm/campanas/${id}`);
+      const id = await guardar();
+      toast({ title: t('ok.borrador') });
+      router.push(`/app/crm/campanas/${encodeURIComponent(id)}`);
     } catch (e) {
-      const err = e instanceof ApiError ? e : null;
-      toast({ title: err?.code === 'TIER_EXCEEDED' ? t('campanaNuevaPage.superaLimiteWaba') : t('campanaNuevaPage.noPudoLanzar'), description: e instanceof Error ? e.message : t('campanaNuevaPage.error'), variant: 'destructive' });
-    } finally { setBusy(null); }
+      errorToast(t('errores.guardar'), e);
+    } finally {
+      setOcupado(null);
+    }
   };
+
+  const activar = async () => {
+    setOcupado('activar');
+    try {
+      const id = await guardar();
+      const m = mat ?? (await CampanasService.materialize(id));
+      setMat(m);
+      const r = await CampanasService.launch(id, { scheduled_at: programadaPara });
+      toast({
+        title: r.data.effective_status === 'scheduled' ? t('ok.programada') : t('ok.activada'),
+        description: t('ok.enCola', { n: entero(m.pending) }),
+      });
+      router.push(`/app/crm/campanas/${encodeURIComponent(id)}`);
+    } catch (e) {
+      errorToast(e instanceof ApiError && e.code === 'TIER_EXCEEDED' ? t('errores.limiteWaba') : t('errores.activar'), e);
+    } finally {
+      setOcupado(null);
+    }
+  };
+
+  const siguiente = () => {
+    if (paso === 'audiencia') {
+      setIntentoSeguir(true);
+      if (!pasoOk.audiencia) return;
+      if (canal === 'voice') {
+        router.push(rutaAsistenteVoz({ segmentId, nombre }));
+        return;
+      }
+    }
+    if (paso === 'contenido' && !pasoOk.contenido) return;
+    if (paso === 'horario' && !mat && pasoOk.horario) void calcular();
+    setPaso(PASOS_ASISTENTE[Math.min(indice + 1, PASOS_ASISTENTE.length - 1)]);
+  };
+
+  const errorNombre = intentoSeguir && !nombre.trim() ? t('audiencia.errorNombre') : null;
+  const puedeSeguir = paso === 'audiencia' ? !!segmentId && !!canal && disponibilidad[canal].habilitado : pasoOk[paso];
+
+  const primario =
+    paso === 'revision' ? (
+      <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={() => void activar()} disabled={!!ocupado || enRojo > 0}>
+        {ocupado === 'activar' ? <Loader2 aria-hidden="true" className="size-4 animate-spin" strokeWidth={1.5} /> : <Rocket aria-hidden="true" className="size-4" strokeWidth={1.5} />}
+        {programadaPara ? t('acciones.programar') : t('acciones.activar')}
+      </button>
+    ) : (
+      <button type="button" className={clasesBoton({ variante: 'primario' })} onClick={siguiente} disabled={!!ocupado || !puedeSeguir}>
+        <ArrowRight aria-hidden="true" className="size-4" strokeWidth={1.5} />
+        {t('acciones.siguiente')}
+      </button>
+    );
+
+  const acciones = (
+    <>
+      <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => router.push(VOLVER)} disabled={ocupado === 'activar'}>
+        {t('acciones.cancelar')}
+      </button>
+      {indice >= 2 && (
+        <button type="button" className={clasesBoton({ variante: 'secundario' })} onClick={() => void guardarBorrador()} disabled={!!ocupado}>
+          {ocupado === 'guardar' && <Loader2 aria-hidden="true" className="size-4 animate-spin" strokeWidth={1.5} />}
+          {t('acciones.guardarBorrador')}
+        </button>
+      )}
+      {primario}
+    </>
+  );
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="flex items-center gap-3">
-        <Link href="/app/crm/campanas"><Button variant="ghost" size="icon" aria-label={t('campanaNuevaPage.volver')}><ArrowLeft className="h-5 w-5" /></Button></Link>
-        <div><h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3"><div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl"><Megaphone className="h-6 w-6 text-emerald-600" /></div>{t('campanaNuevaPage.nuevaCampanaWhatsapp')}</h1><p className="text-gray-500 dark:text-gray-400">{t('campanaNuevaPage.crmCampanasNueva')}</p></div>
+    <div className="min-h-screen space-y-4 bg-canvas p-4 sm:p-6">
+      <PageHeader
+        variante="form"
+        volverA={VOLVER}
+        icono={Send}
+        titulo={t('titulo')}
+        subtitulo={t('subtitulo', { n: indice + 1, total: PASOS_ASISTENTE.length, descripcion: t(`pasos.${paso}.descripcion`) })}
+        migas={[{ etiqueta: t('migas.crm'), href: '/app/crm' }, { etiqueta: t('migas.campanas'), href: VOLVER }]}
+        acciones={acciones}
+        movil={{ accion: primario }}
+      />
+
+      <div className="rounded-xl border border-line bg-surface px-4 py-3">
+        <Stepper<PasoAsistente>
+          pasos={PASOS_ASISTENTE.map((v) => ({ valor: v, etiqueta: t(`pasos.${v}.titulo`) }))}
+          actual={paso}
+          onPasoClick={(v) => setPaso(v)}
+          etiqueta={t('pasosEtiqueta')}
+          resumenMovil={(n, total, etiqueta) => t('resumenPaso', { n, total, etiqueta })}
+        />
       </div>
 
-      <ol className="flex flex-wrap gap-2" aria-label={t('campanaNuevaPage.pasos')}>
-        {STEPS.map((s, i) => <li key={s} className={`text-xs px-3 py-1.5 rounded-full border ${i === step ? 'bg-emerald-600 text-white border-emerald-600' : i < step ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'text-gray-500 border-gray-200 dark:border-gray-700'}`} aria-current={i === step ? 'step' : undefined}>{i + 1}. {t(`campanaNuevaPage.pasosAsistente.${s}`)}</li>)}
-      </ol>
-
-      <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-        <CardHeader><CardTitle className="text-gray-900 dark:text-gray-100 text-base">{t(`campanaNuevaPage.pasosAsistente.${STEPS[step]}`)}</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          {step === 0 && (
-            <div className="space-y-4">
-              <div><Label htmlFor="camp-name" className="text-xs">{t('campanaNuevaPage.nombreCampana')}</Label><Input id="camp-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('campanaNuevaPage.ejNovedadesSeptiembre')} className="bg-gray-50 dark:bg-gray-900" /></div>
-              <ChannelSelect channels={c.channels} value={c.channelId} onChange={c.setChannelId} loading={c.loadingChannels} />
-              {/* Tipo de mensaje: alterna el contenido del mismo paso → control segmentado del kit (regla de pestañas 2026-10-06). */}
-              <SegmentedControl
-                etiqueta={t('campanaNuevaPage.tipoMensaje')}
-                tamano="sm"
-                valor={c.tab}
-                onValorChange={(v) => c.setTab(v)}
-                className="max-w-full flex-wrap"
-                opciones={[
-                  { valor: 'template', etiqueta: 'Plantilla aprobada (recomendado)', deshabilitada: !c.capabilities.templates },
-                  { valor: 'text', etiqueta: 'Texto libre (solo ventana abierta)' },
-                ]}
+      <div className="rounded-xl border border-line bg-surface p-4 sm:p-5">
+        {paso === 'audiencia' && (
+          <PasoAudienciaCanal
+            nombre={nombre}
+            onNombre={setNombre}
+            errorNombre={errorNombre}
+            segmentos={segmentos}
+            segmentId={segmentId}
+            onSegmento={(id) => {
+              setSegmentId(id || null);
+              setMat(null);
+            }}
+            canal={canal}
+            onCanal={setCanal}
+            disponibilidad={disponibilidad}
+            desglose={desglose}
+            estadoDesglose={estadoDesglose}
+          />
+        )}
+        {paso === 'contenido' && <PasoPlantilla c={c} />}
+        {paso === 'horario' && (
+          <PasoHorarioCumplimiento
+            cuando={cuando}
+            onCuando={setCuando}
+            fechaLocal={fechaLocal}
+            onFechaLocal={setFechaLocal}
+            respetarHorario={respetarHorario}
+            onRespetarHorario={setRespetarHorario}
+            requisitos={requisitos}
+            marketing={marketing}
+            consentimiento={consentimiento}
+            onConsentimiento={setConsentimiento}
+            materializado={mat}
+            calculando={ocupado === 'calcular'}
+            onCalcular={() => void calcular()}
+          />
+        )}
+        {paso === 'revision' && (
+          <div className="space-y-4">
+            <ListaDatos etiqueta={t('pasos.revision.titulo')} divisores>
+              <FilaDato etiqueta={t('revision.nombre')} valor={nombre} />
+              <FilaDato etiqueta={t('revision.segmento')} valor={segmento?.name ?? '—'} />
+              <FilaDato etiqueta={t('revision.canal')} valor={`${t('canales.whatsapp.titulo')} · ${c.channel?.name ?? '—'}`} />
+              <FilaDato etiqueta={t('revision.plantilla')} valor={c.template?.name ?? '—'} />
+              <FilaDato etiqueta={t('revision.cuando')} valor={programadaPara ? formatDateTime(programadaPara) : t('horario.ahora')} />
+              <FilaDato
+                etiqueta={t('revision.destinatarios')}
+                valor={mat ? t('revision.destinatariosValor', { pendientes: entero(mat.pending), excluidos: entero(mat.skipped) }) : ocupado === 'calcular' ? t('revision.calculando') : '—'}
               />
-              {c.tab === 'template' ? <TemplatePicker templates={c.templates} loading={c.loadingTemplates} value={c.templateId} onChange={c.setTemplateId} variables={c.variables} onVariable={c.setVariable} preview={c.preview} previewing={c.previewing} onCreateTemplate={() => router.push('/app/crm/plantillas?pestana=whatsapp')} />
-                : <MessageForm value={c.text} onChange={c.setText} media={null} onMedia={() => undefined} allowMedia={false} scheduledAt={null} onScheduledAt={() => undefined} />}
-              {c.preview && c.preview.missing.length > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">{t('campanaNuevaPage.variablesSinValorDefecto', { missing: c.preview.missing.join(', ') })}</p>}
-            </div>
-          )}
-          {step === 1 && <AudienceStep value={audience} onChange={(v) => { setAudience(v); setMat(null); }} />}
-          {step === 2 && <ScheduleStep scheduledAt={scheduledAt} onScheduledAt={setScheduledAt} throttle={throttle} onThrottle={setThrottle} respectHours={respectHours} onRespectHours={setRespectHours} />}
-          {step === 3 && (
-            <div className="space-y-3 text-sm">
-              <dl className="grid grid-cols-[140px_1fr] gap-y-1 text-xs">
-                <dt className="text-gray-500">{t('campanaNuevaPage.nombre')}</dt><dd>{name || '—'}</dd>
-                <dt className="text-gray-500">{t('canal')}</dt><dd>{c.channel?.name} · {c.channel?.provider}</dd>
-                <dt className="text-gray-500">{t('campanaNuevaPage.mensaje')}</dt><dd>{c.tab === 'template' ? t('campanaNuevaPage.plantilla', { name: c.template?.name ?? '', category: c.preview?.category ?? '' }) : t('campanaNuevaPage.textoLibreChars', { n: c.text.length })}</dd>
-                <dt className="text-gray-500">{t('campanaNuevaPage.audiencia')}</dt><dd>{audience.source === 'segment' ? t('columnas.segmento') : t('campanaNuevaPage.etapas', { n: audience.stage_ids.length })}</dd>
-                <dt className="text-gray-500">{t('campanaNuevaPage.programacion')}</dt><dd>{t('campanaNuevaPage.msgS', { valor: scheduledAt ? new Date(scheduledAt).toLocaleString('es-CO') : t('campanaNuevaPage.inmediata'), throttle, valor2: respectHours ? t('campanaNuevaPage.respetaHorario') : t('campanaNuevaPage.sinHorario') })}</dd>
-              </dl>
-              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
-                <div className="flex items-center justify-between"><p className="font-medium">{t('campanaNuevaPage.audienciaCalculada')}</p><Button type="button" size="sm" variant="outline" onClick={() => void materialize()} disabled={!!busy}>{busy === 'mat' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}{mat ? t('campanaNuevaPage.recalcular') : t('campanaNuevaPage.calcularAudiencia')}</Button></div>
-                {mat ? (
-                  <div className="text-xs space-y-1">
-                    <p><strong className="text-emerald-700 dark:text-emerald-400">{mat.pending} pendientes</strong> · {mat.skipped} {t('campanaNuevaPage.excluidos')} {mat.total}{mat.estimated_cost !== null ? t('campanaNuevaPage.costoEstimadoUsd', { estimated_cost: mat.estimated_cost.toFixed(4) }) : ''}</p>
-                    <ul className="flex flex-wrap gap-1">{Object.entries(mat.skipped_by_reason).map(([r, n]) => <li key={r} className="rounded-full border px-2 py-0.5">{SKIP_REASON_LABELS[r] ?? r}: {n}</li>)}</ul>
-                    {mat.pending === 0 && <p className="text-amber-700 dark:text-amber-400">{t('campanaNuevaPage.nadieCumpleCriteriosRevisa')}</p>}
-                  </div>
-                ) : <p className="text-xs text-gray-500">{t('campanaNuevaPage.calculaAudienciaVerPendientes')}</p>}
-              </div>
-              {marketing && <label className="flex items-center gap-2 text-xs font-medium text-amber-800 dark:text-amber-300"><Checkbox checked={optin} onCheckedChange={(v) => setOptin(v === true)} />{t('campanaNuevaPage.heVerificadoAudienciaDio')}</label>}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap justify-between gap-2">
-        <Button variant="outline" onClick={() => (step === 0 ? router.push('/app/crm/campanas') : setStep(step - 1))} disabled={!!busy}>{step === 0 ? t('campanaNuevaPage.cancelar') : t('campanaNuevaPage.atras')}</Button>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => void launch(true)} disabled={!!busy || !step0ok}>{t('campanaNuevaPage.guardarBorrador')}</Button>
-          {step < 3 ? <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setStep(step + 1)} disabled={(step === 0 && !step0ok) || (step === 1 && !step1ok)}>{t('campanaNuevaPage.continuar')}<ArrowRight className="h-4 w-4 ml-2" /></Button>
-            : <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => void launch()} disabled={!!busy || !mat || mat.pending === 0 || (marketing && !optin)}>{busy === 'launch' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Rocket className="h-4 w-4 mr-2" />}{scheduledAt ? t('campanaNuevaPage.programar') : t('campanaNuevaPage.lanzarAhora')}</Button>}
-        </div>
+            </ListaDatos>
+            {enRojo > 0 && (
+              <p role="status" className="rounded-lg bg-warning-subtle px-3 py-2 text-[13px] leading-[18px] text-warning-text">
+                {t('horario.avisoRojo', { n: enRojo })}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

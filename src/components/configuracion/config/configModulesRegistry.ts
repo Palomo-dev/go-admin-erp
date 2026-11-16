@@ -1,5 +1,6 @@
 import {
   Building2,
+  Briefcase,
   Users,
   Bed,
   ShoppingCart,
@@ -120,9 +121,10 @@ export const CONFIG_MODULES: ConfigModule[] = [
   {
     id: 'hrm',
     moduleCode: 'hrm',
-    title: 'Recursos Humanos',
-    description: 'Configuración general y monedas',
-    icon: Users,
+    title: 'Recursos humanos',
+    description: 'Parámetros legales, festivos, aprobaciones y registro de accesos',
+    // CATALOGO-ICONOS.md: el módulo RR. HH. es `Briefcase`.
+    icon: Briefcase,
     grupo: 'operacion',
   },
   {

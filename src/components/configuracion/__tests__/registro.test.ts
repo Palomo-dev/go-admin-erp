@@ -16,8 +16,21 @@ type Ns = { modulos: Record<string, string>; secciones: Record<string, Record<st
 const IDIOMAS = { es, en, fr, pt } as unknown as Record<string, { configuracionUnificada: Ns }>;
 const RENDERER = readFileSync(join(__dirname, '../layout/ConfiguracionPanelRenderer.tsx'), 'utf8');
 
-/** Códigos que existen en `permissions` (verificados por MCP el 2026-10-07). */
-const PERMISOS_CONOCIDOS = new Set([PERMISO_ADMIN, 'crm.stages.manage', 'roles.manage', 'notifications.manage', 'finance.approve']);
+/**
+ * Códigos que existen en `permissions` (verificados por MCP el 2026-10-07; los de
+ * RR. HH. el 2026-11-15: hr.parameters.manage = id 177, hr.approvals.manage = 176,
+ * hr.access_log.view = 178).
+ */
+const PERMISOS_CONOCIDOS = new Set([
+  PERMISO_ADMIN,
+  'crm.stages.manage',
+  'roles.manage',
+  'notifications.manage',
+  'finance.approve',
+  'hr.parameters.manage',
+  'hr.approvals.manage',
+  'hr.access_log.view',
+]);
 
 describe('registro de secciones', () => {
   test('ids únicos, estables y con la forma <modulo>.<seccion>', () => {

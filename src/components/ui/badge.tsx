@@ -1,6 +1,6 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import type { LucideIcon } from "lucide-react"
+import { Lock, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/utils/Utils"
 import type { AparienciaBadge, TonoBadge } from "@/components/kit/estadoTono"
@@ -91,6 +91,18 @@ const TAMANOS = {
 
 export type TamanoBadge = keyof typeof TAMANOS
 
+/**
+ * Usos fijos de la escala, documentados en SISTEMA-BADGES.md. Un uso fija tono,
+ * apariencia e icono para que el mismo estado se vea igual en todas las pantallas.
+ * - `lista_nomina`: «Lista para nómina» de RR. HH. (decisión 5 del dueño,
+ *   2026-11-16): marca · suave · candado. El período o la fila quedan cerrados.
+ */
+export const USOS_BADGE = {
+  lista_nomina: { tono: "marca", apariencia: "suave", icono: Lock },
+} as const satisfies Record<string, { tono: TonoBadge; apariencia: AparienciaBadge; icono: LucideIcon }>
+
+export type UsoBadge = keyof typeof USOS_BADGE
+
 /** Clases de la escala, para quien necesite pintar algo con la misma receta. */
 export function clasesBadgeTono(tono: TonoBadge, apariencia: AparienciaBadge = "suave", tamano: TamanoBadge = "md"): string {
   return cn(
@@ -111,9 +123,15 @@ export interface BadgeProps
   punto?: boolean
   /** Icono lucide de 11–12 px a la izquierda. Nunca un emoji. */
   icono?: LucideIcon
+  /** Uso fijo de la escala (`USOS_BADGE`): manda sobre `tono`, `apariencia` e `icono`. */
+  uso?: UsoBadge
 }
 
-function Badge({ className, variant, tono, apariencia = "suave", tamano = "md", punto, icono: Icono, children, ...props }: BadgeProps) {
+function Badge({ className, variant, tono: tonoProp, apariencia: aparienciaProp = "suave", tamano = "md", punto, icono: iconoProp, uso, children, ...props }: BadgeProps) {
+  const fijo = uso ? USOS_BADGE[uso] : null
+  const tono: TonoBadge | undefined = fijo?.tono ?? tonoProp
+  const apariencia: AparienciaBadge = fijo?.apariencia ?? aparienciaProp
+  const Icono: LucideIcon | undefined = fijo?.icono ?? iconoProp
   if (!tono) {
     return (
       <div className={cn(badgeVariants({ variant }), className)} {...props}>

@@ -37,6 +37,12 @@ export interface RowActionsMenuProps {
   etiquetaBoton?: string;
   /** Icono a la izquierda del texto del disparador. */
   iconoBoton?: LucideIcon;
+  /**
+   * Disparador propio: el contenido entero abre el menú (el bloque de un turno
+   * en la programación de RR. HH., Figma 20.8.5). `etiqueta` es su nombre
+   * accesible. Sustituye a «⋯» y a `etiquetaBoton`.
+   */
+  disparador?: { contenido: React.ReactNode; etiqueta: string };
   className?: string;
 }
 
@@ -48,6 +54,7 @@ export function RowActionsMenu({
   lado = 'bottom',
   etiquetaBoton,
   iconoBoton: IconoBoton,
+  disparador,
   className,
 }: RowActionsMenuProps) {
   const t = useKitT();
@@ -58,7 +65,13 @@ export function RowActionsMenu({
 
   const Icono = orientacion === 'vertical' ? EllipsisVertical : Ellipsis;
   const etiqueta = titulo ? t('menu.accionesDe', { titulo }) : t('menu.masAcciones');
-  const clasesBoton = etiquetaBoton
+  const clasesBoton = disparador
+    ? cn(
+        'block w-full min-w-0 rounded-md text-left transition-opacity hover:opacity-90',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+        className,
+      )
+    : etiquetaBoton
     ? cn(
         'inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-line-strong bg-surface px-3 text-sm font-medium text-fg transition-colors hover:bg-hover',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand data-[state=open]:bg-hover',
@@ -72,8 +85,10 @@ export function RowActionsMenu({
       );
   const detener = (e: React.SyntheticEvent) => e.stopPropagation();
   // Con texto visible, el nombre accesible es el propio texto.
-  const nombreAccesible = etiquetaBoton ? undefined : etiqueta;
-  const contenidoBoton = etiquetaBoton ? (
+  const nombreAccesible = disparador ? disparador.etiqueta : etiquetaBoton ? undefined : etiqueta;
+  const contenidoBoton = disparador ? (
+    disparador.contenido
+  ) : etiquetaBoton ? (
     <>
       {IconoBoton && <IconoBoton aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.5} />}
       <span>{etiquetaBoton}</span>

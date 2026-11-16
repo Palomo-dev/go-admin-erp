@@ -185,11 +185,28 @@ export async function deleteTask(taskId: string): Promise<void> {
   await pmService.deleteTask(taskId);
 }
 
+/**
+ * Cambio puntual de responsable o de vencimiento (menú «⋯» de la pestaña
+ * Tareas de la oportunidad, Figma 822:235333). `due_date` llega ya como
+ * instante ISO calculado en la zona de la organización.
+ */
+export async function updateTaskFields(
+  taskId: string,
+  fields: { assigned_to?: string | null; due_date?: string | null }
+): Promise<void> {
+  const patch: Record<string, unknown> = {};
+  if ('assigned_to' in fields) patch.assigned_to = trimOrNull(fields.assigned_to);
+  if ('due_date' in fields) patch.due_date = normalizeDueDate(fields.due_date);
+  if (Object.keys(patch).length === 0) return;
+  await pmService.updateTask(taskId, patch);
+}
+
 export const crmTaskService = {
   createTask,
   updateTask,
   setTaskStatus,
   deleteTask,
+  updateTaskFields,
   validateTaskValues,
   buildTaskPayload,
   normalizeTaskPriority,

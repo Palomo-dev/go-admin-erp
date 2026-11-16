@@ -74,9 +74,14 @@ describe('estados de nómina contra la base', () => {
     for (const { value } of servicio.getRunStatuses()) expect(ESTADOS_CORRIDA).toContain(value);
   });
 
-  it('el detalle ejecuta el cálculo real, sin simularlo ni usar un usuario inventado', () => {
+  // Fase 3 (2026-11-16, ADR-003): el cálculo salió del navegador. El detalle ya no
+  // llama a calculatePeriod (payrollCalculationService, cliente, con el error de
+  // escala ×100): preliquida en el servidor con preliquidarPeriodo, que llama a la
+  // RPC transaccional con el usuario de la sesión.
+  it('el detalle ejecuta el cálculo real en el servidor, sin simularlo ni usar un usuario inventado', () => {
     const pagina = readFileSync(join(raiz, 'src/app/app/hrm/nomina/periodos/[id]/page.tsx'), 'utf8');
-    expect(pagina).toContain('calculatePeriod(periodId, usuario)');
+    expect(pagina).toContain('preliquidarPeriodo(periodId)');
+    expect(pagina).not.toContain('calculatePeriod(');
     expect(pagina).not.toContain("'current-user'");
     expect(pagina).not.toContain('Simulate calculation');
   });

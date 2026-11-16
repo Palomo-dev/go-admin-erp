@@ -6,7 +6,8 @@
  *    lógica, nunca DELETE), traducción de los errores de la base (duplicado,
  *    tope de 10, RLS) y organización siempre la del llamador.
  *  - Ruta /api/crm/settings/telephony/test-numbers: sin sesión 401, sin admin
- *    403 (y el servicio no se toca), organización ajena 403 FOREIGN_ORGANIZATION
+ *    403 al escribir (y el servicio no se toca) y lectura con `puedeEditar:false`
+ *    (Figma 1811:908572, «Sin permiso (solo lectura)»), organización ajena 403 FOREIGN_ORGANIZATION
  *    con `readOrgBody` REAL, y escritura con el cliente de la SESIÓN.
  *
  * Los ejemplos usan números ficticios (+57 300 000 0000).
@@ -23,6 +24,7 @@ const sesion: { ctx: Record<string, unknown> | null; admin: boolean } = { ctx: n
 jest.mock('@/lib/utils/orgContext', () => ({
   OrgContextError,
   readOrgBody,
+  hasOrgAdminOrPermission: async () => sesion.admin,
   withOrg:
     (handler: (ctx: unknown, req: Request, rp: unknown) => Promise<Response>, opts?: { admin?: boolean }) =>
     async (req: Request, rp: unknown) => {
@@ -74,7 +76,7 @@ function makeSupabase(resolve: (op: Op) => Res = () => ({ data: null })) {
           return { data: r.data ?? null, error: r.error ?? null };
         };
         const proxy: Record<string, unknown> = {};
-        for (const f of ['eq', 'is', 'order', 'limit']) {
+        for (const f of ['eq', 'is', 'order', 'limit', 'in']) {
           proxy[f] = (c: string, v?: unknown) => {
             op.filters.push([f, c, v]);
             return proxy;
@@ -229,6 +231,7 @@ describe('Ruta /api/crm/settings/telephony/test-numbers', () => {
     db = makeSupabase((op) => {
       if (op.verb === 'insert') return { data: FILA };
       if (op.verb === 'update') return { data: [{ id: FILA.id }] };
+      if (op.table === 'profiles') return { data: [{ id: 'u-admin', first_name: 'Ana', last_name: 'Prueba', email: null }] };
       return { data: [FILA] };
     });
     sesion.ctx = { organizationId: 7, userId: 'u-admin', supabase: db.client };
@@ -242,12 +245,19 @@ describe('Ruta /api/crm/settings/telephony/test-numbers', () => {
     expect((await DELETE(conBody('DELETE', { id: FILA.id }), rp)).status).toBe(401);
   });
 
-  test('sin permiso de administrador → 403 y la base no se toca', async () => {
+  test('sin permiso de administrador → 403 al escribir y la base no se toca', async () => {
     sesion.admin = false;
-    expect((await GET(new NextRequest(URL_RUTA), rp)).status).toBe(403);
     expect((await POST(conBody('POST', { phone: '3000000000' }), rp)).status).toBe(403);
     expect((await DELETE(conBody('DELETE', { id: FILA.id }), rp)).status).toBe(403);
     expect(db.ops).toHaveLength(0);
+  });
+
+  test('sin permiso de administrador → GET en solo lectura: la lista y puedeEditar:false', async () => {
+    sesion.admin = false;
+    const r = await GET(new NextRequest(URL_RUTA), rp);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toMatchObject({ success: true, puedeEditar: false, data: [expect.objectContaining({ id: FILA.id })] });
+    expect(db.ops.every((o) => o.verb === 'select')).toBe(true);
   });
 
   test('organización ajena en el cuerpo o en la query → 403 FOREIGN_ORGANIZATION, sin escribir', async () => {
@@ -262,7 +272,7 @@ describe('Ruta /api/crm/settings/telephony/test-numbers', () => {
   test('GET lista los vigentes de la organización de la sesión y el tope', async () => {
     const r = await GET(new NextRequest(URL_RUTA), rp);
     expect(r.status).toBe(200);
-    expect(await r.json()).toMatchObject({ success: true, data: [FILA], max: MAX_NUMEROS_PRUEBA });
+    expect(await r.json()).toMatchObject({ success: true, data: [{ ...FILA, created_by_name: 'Ana Prueba' }], max: MAX_NUMEROS_PRUEBA, puedeEditar: true });
     expect(db.ops[0].filters).toEqual(expect.arrayContaining([['eq', 'organization_id', 7]]));
   });
 

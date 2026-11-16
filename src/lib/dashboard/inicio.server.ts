@@ -416,13 +416,17 @@ export interface TurnoInicio extends TurnoCalculado {
   sucursal: string | null;
   /** Flujo de marcación existente de HRM (escáner QR a pantalla completa). */
   hrefMarcar: string;
-  /** Historial propio en HRM › Marcación, solo si la persona ve esa página. */
+  /** «Mi asistencia» (Figma 20.9.12): el historial propio, siempre del empleado. */
   hrefMarcaciones: string | null;
+  /** Descanso planeado del turno en minutos y si es pagado (variante «en descanso»). */
+  descansoMin?: number | null;
+  descansoPagado?: boolean;
 }
 
 /** Entrada del flujo de marcación existente (`src/app/marcar`), fuera del menú. */
 export const RUTA_MARCAR = '/marcar';
-const PAGINA_MARCACIONES = '/app/hrm/marcacion';
+/** Historial propio del empleado (Figma 20.9.12, migas «Inicio › Mi asistencia»). */
+export const RUTA_MI_ASISTENCIA = '/app/inicio/mi-asistencia';
 
 const TURNO_OCULTO: TurnoInicio = {
   visible: false,
@@ -468,13 +472,14 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
 
   const hoy = todayInTz(zona);
   const desde = plainDateToInstant(addPlainDays(hoy, -1), zona);
-  const [turnoRes, eventosRes, secciones] = await Promise.all([
+  const [turnoRes, eventosRes] = await Promise.all([
     ctx.supabase
       .from('shift_assignments')
-      .select('status, actual_start_time, actual_end_time, branch_id, branches(name), shift_templates(start_time, end_time)')
+      .select('status, actual_start_time, actual_end_time, break_minutes, branch_id, branches(name), shift_templates(start_time, end_time, paid_break)')
       .eq('organization_id', ctx.organizationId)
       .eq('employment_id', empleo.id)
       .eq('work_date', hoy)
+      .eq('is_draft', false)
       .not('status', 'in', '(cancelled,swapped)')
       .maybeSingle(),
     ctx.supabase
@@ -485,13 +490,18 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
       .gte('event_at', desde)
       .order('event_at', { ascending: true })
       .limit(50),
-    seccionesVisiblesServidor(ctx).catch(() => []),
   ]);
   if (turnoRes.error) throw errorRpc('shift_assignments', turnoRes.error);
   if (eventosRes.error) throw errorRpc('attendance_events', eventosRes.error);
 
   const t = turnoRes.data as
-    | { actual_start_time: string | null; actual_end_time: string | null; branches: Rel<{ name: string }>; shift_templates: Rel<{ start_time: string; end_time: string }> }
+    | {
+        actual_start_time: string | null;
+        actual_end_time: string | null;
+        break_minutes: number | null;
+        branches: Rel<{ name: string }>;
+        shift_templates: Rel<{ start_time: string; end_time: string; paid_break: boolean | null }>;
+      }
     | null;
   const plantilla = t ? uno(t.shift_templates) : null;
   const inicio = t?.actual_start_time ?? plantilla?.start_time ?? null;
@@ -509,6 +519,8 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
     visible: true,
     sucursal: uno(t?.branches ?? null)?.name ?? uno(empleo.branches)?.name ?? null,
     hrefMarcar: RUTA_MARCAR,
-    hrefMarcaciones: paginaVisible(secciones, PAGINA_MARCACIONES) ? PAGINA_MARCACIONES : null,
+    hrefMarcaciones: RUTA_MI_ASISTENCIA,
+    descansoMin: t?.break_minutes ?? null,
+    descansoPagado: plantilla?.paid_break === true,
   };
 }

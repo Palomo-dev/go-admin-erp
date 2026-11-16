@@ -36,7 +36,27 @@ type Idioma = (typeof IDIOMAS)[number];
  * compartido sin sus subcarpetas de inventario y recetas (`useKitT()` =
  * namespace `kit`) y el redactor de WhatsApp del CRM.
  */
-const CARPETAS = ['src/app/app/chat', 'src/components/chat', 'src/components/configuracion', 'src/components/kit/*', 'src/components/crm/whatsapp'];
+const CARPETAS = [
+  'src/app/app/chat',
+  'src/components/chat',
+  'src/components/configuracion',
+  'src/components/kit/*',
+  'src/components/crm/whatsapp',
+  // RR. HH. › Ausencias (fase 2): claves por plantilla (`estados.${e}`, `errores.${codigo}`) verificadas.
+  'src/app/app/hrm/ausencias',
+  'src/components/hrm/ausencias',
+  // Asistencia, Horas extra y recargos y Novedades (fase 2, Figma 20.10–20.12).
+  'src/app/app/hrm/asistencia',
+  'src/app/app/hrm/novedades',
+  'src/components/hrm/asistencia',
+  'src/components/hrm/novedades',
+  // Turnos, Marcación y Mi equipo (fase 2, Figma 20.8, 20.9 y 20.15).
+  'src/app/app/hrm/turnos',
+  'src/components/hrm/turnos',
+  'src/app/app/hrm/mi-equipo',
+  'src/components/hrm/equipo',
+  'src/components/marcar',
+];
 
 /**
  * Archivos de lógica pura que reciben el traductor ya armado (no llaman a
@@ -94,6 +114,28 @@ const CLAVES_DINAMICAS: Record<string, { valores: string[]; origen: string }> = 
   'src/components/chat/conversations/id/activity/ActivityList.tsx: chatHilo.actividad ← clave': {
     valores: [],
     origen: 'reenvío a describirActividad(): sus claves se verifican con TRADUCTORES_INYECTADOS (actividadLogica.ts)',
+  },
+  // Configuración › Recursos humanos (fase 0).
+  'src/components/configuracion/panels/hrm/AprobacionesPanel.tsx: hrmConfig.aprobaciones.aprobador ← p.tipo': {
+    valores: ['jefe_directo', 'jefe_area', 'rrhh', 'rol'],
+    origen: "PasoRegla.tipo (TipoAprobador, src/lib/hrm/configuracion/tipos.ts); 'cargo' y 'persona' se traducen con clave fija",
+  },
+  'src/components/configuracion/panels/hrm/ParametrosLegalesPanel.tsx: hrmConfig.parametros.estado ← estado': {
+    valores: ['vigente', 'transitorio', 'litigio', 'suspendido', 'por_confirmar', 'sin_valor', 'cerrada', 'programada'],
+    origen: 'claves de TONO_ESTADO en ParametrosLegalesPanel.tsx (estado de hr_legal_parameters + cerrada/programada)',
+  },
+  'src/components/configuracion/panels/hrm/ParametrosLegalesPanel.tsx: hrmConfig.parametros.valor ← l.clave': {
+    valores: [
+      'simple.pct', 'simple.numero', 'simple.dinero', 'simple.texto', 'simple.smmlv', 'hastaSmmlv', 'vecesSmmlv', 'integral',
+      'jornada', 'horas', 'nocturnoHasta', 'trio', 'recargos', 'horasExtra', 'par', 'empleadorTrabajador', 'rango', 'segunIbc',
+      'sobreIbc', 'clasesArl', 'menosDeSmmlv', 'rangos', 'enUvt', 'licencias', 'porTramos', 'monetizacion', 'embargos',
+      'deducciones', 'topeUvt',
+    ],
+    origen: 'Lectura.clave y detalle.clave que arma src/lib/hrm/configuracion/parametrosCatalogo.ts',
+  },
+  'src/components/configuracion/panels/hrm/RegistroAccesosPanel.tsx: hrmConfig.registro.accion ← accion': {
+    valores: ['ver', 'editar', 'exportar', 'sin_permiso'],
+    origen: 'AccionRegistro (acción de hr_access_log)',
   },
 };
 

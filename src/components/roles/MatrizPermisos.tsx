@@ -14,6 +14,8 @@ import { SearchInput } from '@/components/kit/SearchInput';
 import { EmptyState } from '@/components/kit/EmptyState';
 import { agruparPorModulo, filtrarModulos, type PermisoCatalogo } from '@/lib/roles/matrizPermisos';
 import { cn } from '@/utils/Utils';
+import { esCodigoDeAlcance } from '@/lib/roles/gruposDatosHrm';
+import { GruposDatosHrm } from './GruposDatosHrm';
 import { MatrizEncabezado } from './MatrizEncabezado';
 import { ModuloMatriz } from './ModuloMatriz';
 import { useEtiquetasRoles } from './useEtiquetasRoles';
@@ -26,12 +28,17 @@ export interface MatrizPermisosProps {
   bloqueados?: ReadonlySet<number>;
   /** Sin él, la matriz es de solo lectura. */
   onCambiar?: (siguiente: Set<number>) => void;
+  /**
+   * Muestra el alcance y los grupos de datos de RR. HH. (diseño 10.RH.4) en
+   * vez de sus códigos sueltos. Solo el editor de rol.
+   */
+  gruposDatosHrm?: boolean;
   /** Módulos abiertos al montar. */
   abiertosIniciales?: readonly string[];
   className?: string;
 }
 
-export function MatrizPermisos({ catalogo, seleccion, original, bloqueados, onCambiar, abiertosIniciales, className }: MatrizPermisosProps) {
+export function MatrizPermisos({ catalogo, seleccion, original, bloqueados, onCambiar, gruposDatosHrm, abiertosIniciales, className }: MatrizPermisosProps) {
   const t = useTranslations('roles.matriz');
   const { etiquetaModulo } = useEtiquetasRoles();
   const [termino, setTermino] = useState('');
@@ -102,20 +109,24 @@ export function MatrizPermisos({ catalogo, seleccion, original, bloqueados, onCa
             compacto
           />
         ) : (
-          filtrados.map((m) => (
-            <ModuloMatriz
-              key={m.modulo}
-              modulo={completoDe.get(m.modulo) ?? m}
-              visibles={m.permisos}
-              etiqueta={etiquetaModulo(m.modulo)}
-              seleccion={seleccion}
-              original={original ?? seleccion}
-              bloqueados={bloqueados}
-              abierto={abiertos.has(m.modulo) || (hayFiltro && termino.trim() !== '')}
-              onAlternarAbierto={() => alternar(m.modulo)}
-              onCambiar={onCambiar}
-            />
-          ))
+          filtrados.map((m) => {
+            const conGrupos = gruposDatosHrm && m.modulo === 'hr';
+            return (
+              <ModuloMatriz
+                key={m.modulo}
+                modulo={completoDe.get(m.modulo) ?? m}
+                visibles={conGrupos ? m.permisos.filter((p) => !esCodigoDeAlcance(p.codigo)) : m.permisos}
+                extra={conGrupos ? <GruposDatosHrm catalogo={catalogo} seleccion={seleccion} onCambiar={onCambiar} /> : undefined}
+                etiqueta={etiquetaModulo(m.modulo)}
+                seleccion={seleccion}
+                original={original ?? seleccion}
+                bloqueados={bloqueados}
+                abierto={abiertos.has(m.modulo) || (hayFiltro && termino.trim() !== '')}
+                onAlternarAbierto={() => alternar(m.modulo)}
+                onCambiar={onCambiar}
+              />
+            );
+          })
         )}
       </div>
       <p className="text-xs text-fg-muted">{t('nota')}</p>

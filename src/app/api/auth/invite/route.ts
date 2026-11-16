@@ -12,6 +12,12 @@ import {
   type ServerOrgContext,
 } from '@/lib/utils/orgContext';
 import {
+  ESTADOS_REENVIABLES,
+  enviarCorreoInvitacion,
+  renovarInvitacion,
+  type InvitacionParaEnviar,
+} from '@/lib/auth/invitacionesEnvio.server';
+import {
   DIAS_VIGENCIA_INVITACION,
   generarCodigoInvitacion,
   normalizarCorreo,
@@ -74,8 +80,8 @@ function sinCupo(error: { hint?: string | null; message?: string | null } | null
   return cupo ? NextResponse.json({ error: cupo.mensaje, code: cupo.codigo }, { status: 409 }) : null;
 }
 
-/** Estados desde los que se puede reenviar: pendiente (vigente o vencida) o ya marcada vencida (P1-5). */
-const REENVIABLES = ['pending', 'expired'];
+/** Estados desde los que se puede reenviar (P1-5): los mismos de `renovarInvitacion`. */
+const REENVIABLES: readonly string[] = ESTADOS_REENVIABLES;
 
 function demasiadasPeticiones(rl: RateLimitResult & { blockedKey?: string }, ip: string) {
   const retryAfter = Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000));
@@ -99,15 +105,6 @@ function numeroPositivo(v: unknown): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/** Fila con la que se manda el correo. */
-interface InvitacionParaEnviar {
-  id: number;
-  code: string;
-  email: string;
-  organization_id: number;
-  role_id: number | null;
-  organizationName: string;
-}
 
 const SELECT_INVITACION = 'id, code, email, organization_id, role_id, status, organizations!inner(name)';
 
@@ -188,20 +185,15 @@ export async function POST(request: Request) {
 
       // Código nuevo y vigencia renovada: el enlace anterior deja de servir. Una
       // vencida vuelve a `pending` y vuelve a ocupar cupo (lo comprueba la base).
-      const code = generarCodigoInvitacion();
-      const { data: actualizada, error: updError } = await admin
-        .from('invitations')
-        .update({ code, expires_at: vence(), status: 'pending' })
-        .eq('id', invitationId)
-        .in('status', REENVIABLES)
-        .select('id')
-        .maybeSingle();
-      const cupoReenvio = sinCupo(updError);
-      if (cupoReenvio) return cupoReenvio;
-      if (updError || !actualizada) {
-        console.error('No se pudo renovar la invitación:', invitationId, updError);
+      const renovada = await renovarInvitacion(admin, invitationId as number);
+      if (!renovada.ok) {
+        if (renovada.cupo) {
+          return NextResponse.json({ error: renovada.cupo.mensaje, code: renovada.cupo.codigo }, { status: 409 });
+        }
+        console.error('No se pudo renovar la invitación:', invitationId);
         return invitacionNoValida();
       }
+      const code = renovada.code;
 
       invitacion = {
         id: fila.id as number,
@@ -378,113 +370,4 @@ async function validarDatosNuevos(
     }
   }
   return null;
-}
-
-/**
- * Manda el correo de la invitación. `true` si salió.
- * Metadatos de auth.users: todo sale de la invitación y de la sesión, nada del
- * body, y sin el código (rota al reenviar y no debe quedar guardado en el JWT).
- */
-async function enviarCorreoInvitacion(
-  admin: SupabaseClient,
-  invitacion: InvitacionParaEnviar,
-  origin: string,
-  invitedBy: string,
-): Promise<boolean> {
-  const { email, organization_id: organizationId, organizationName } = invitacion;
-  const inviteUrl = `${origin}/auth/invite?invite_code=${encodeURIComponent(invitacion.code)}`;
-  const inviteMetadata = {
-    organization_id: organizationId,
-    organization_name: organizationName,
-    role_id: invitacion.role_id,
-    is_invitation: true,
-    invited_by: invitedBy,
-  };
-
-  const enlaceMagico = async (): Promise<boolean> => {
-    const { createClient } = await import('@supabase/supabase-js');
-    const anonClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
-    const { error } = await anonClient.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: inviteUrl,
-        data: { organization_id: organizationId, organization_name: organizationName },
-      },
-    });
-    if (error) {
-      console.error('Error enviando Magic Link:', error);
-      return false;
-    }
-    return true;
-  };
-
-  // ¿Ya existe en auth.users? (RPC check_email_exists)
-  const { data: existsInAuth } = await admin.rpc('check_email_exists', { p_email: email });
-
-  // Si existe puede ser:
-  // A) Un usuario real con perfil y membresía → enlace mágico.
-  // B) Un usuario huérfano creado por una invitación anterior de ESTA
-  //    organización que nunca completó (sin perfil ni membresía) → se borra y
-  //    se re-invita con inviteUserByEmail para que reciba type=invite.
-  if (existsInAuth) {
-    // OJO: listUsers() sin paginar devuelve solo la primera página (50); si no
-    // aparece el huérfano, cae al enlace mágico, que también sirve.
-    const { data: userList } = await admin.auth.admin.listUsers();
-    const existingUser = userList?.users?.find((u) => u.email?.toLowerCase() === email);
-    const meta = (existingUser?.user_metadata ?? {}) as Record<string, unknown>;
-    // `deleteUser` es lo más destructivo del fichero: además de «es huérfano»
-    // se exige que el huérfano sea DE ESTA organización.
-    const esHuerfanoDeLaOrg =
-      !!existingUser &&
-      meta.is_invitation === true &&
-      String(meta.organization_id ?? '') === String(organizationId);
-
-    if (esHuerfanoDeLaOrg && existingUser) {
-      const { data: profile } = await admin.from('profiles').select('id').eq('id', existingUser.id).maybeSingle();
-      const { data: membership } = await admin
-        .from('organization_members')
-        .select('id')
-        .eq('user_id', existingUser.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (!profile && !membership) {
-        console.log('🗑️ Eliminando usuario huérfano:', existingUser.id);
-        const { error: deleteError } = await admin.auth.admin.deleteUser(existingUser.id);
-        if (!deleteError) {
-          const { error: reinviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-            redirectTo: inviteUrl,
-            data: inviteMetadata,
-          });
-          if (reinviteError) {
-            console.error('Error re-invitando usuario huérfano:', reinviteError);
-            return false;
-          }
-          return true;
-        }
-        console.error('Error eliminando usuario huérfano:', deleteError);
-        // Si falla la eliminación, cae al enlace mágico.
-      }
-    }
-    return enlaceMagico();
-  }
-
-  // Usuario nuevo: inviteUserByEmail (manda el correo).
-  // No fijar contraseña temporal: updateUserById invalida el token del correo.
-  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: inviteUrl,
-    data: inviteMetadata,
-  });
-  if (inviteError) {
-    console.error('Error enviando invitación:', inviteError);
-    if (inviteError.message.includes('already been registered') || inviteError.message.includes('already registered')) {
-      return enlaceMagico();
-    }
-    return false;
-  }
-  return true;
 }

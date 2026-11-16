@@ -22,15 +22,10 @@ import { useToast } from '@/components/ui/use-toast';
 import { ToastAction } from '@/components/ui/toast';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import { ConfirmDialog, DialogoMotivo, EmptyState, PageHeader, RowActionsMenu, TabBar, idPanel, idPestana } from '@/components/kit';
-import type { ClientePicker } from '@/components/kit/CustomerPicker';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
-import { supabase } from '@/lib/supabase/config';
-import { buscarClientes } from '@/lib/services/customers/busquedaClientesService';
-import { crearClienteRapido } from '@/lib/services/documentos/edicionDocumento';
-import type { AjustesReservaDto } from '@/lib/services/restaurantBookingSettingsService';
 import {
   reservasMesasService,
   useMensajeErrorReserva,
@@ -42,7 +37,8 @@ import {
 } from '@/components/pos/reservas-mesas';
 import { ReservasAgenda, type OpcionDia } from '@/components/pos/reservas-mesas/ReservasAgenda';
 import { ReservasTabla, type FiltrosLista } from '@/components/pos/reservas-mesas/ReservasTabla';
-import { ReservaFormDialog, type MesaOpcion } from '@/components/pos/reservas-mesas/ReservaFormDialog';
+import { ReservaFormDialog } from '@/components/pos/reservas-mesas/ReservaFormDialog';
+import { useApoyoReservaForm } from '@/components/pos/reservas-mesas/useApoyoReservaForm';
 import { ReservasConfiguracion } from '@/components/pos/reservas-mesas/ReservasConfiguracion';
 import { SolicitudReservaDialog } from '@/components/pos/reservas-mesas/SolicitudReservaDialog';
 import { RechazarSolicitudDialog } from '@/components/pos/reservas-mesas/RechazarSolicitudDialog';
@@ -93,8 +89,6 @@ export default function ReservasMesasPage() {
   const [errorCarga, setErrorCarga] = useState(false);
   const [ventas, setVentas] = useState<Map<string, VentaDeReserva>>(new Map());
   const [inasistencias, setInasistencias] = useState<Map<string, number>>(new Map());
-  const [ajustesSede, setAjustesSede] = useState<AjustesReservaDto | null>(null);
-  const [mesasSede, setMesasSede] = useState<MesaOpcion[]>([]);
   const [enVivo, setEnVivo] = useState(false);
 
   // Diálogos
@@ -177,30 +171,16 @@ export default function ReservasMesasPage() {
     return () => clearTimeout(id);
   }, [loadData, search]);
 
-  // Ajustes efectivos (turnos de la agenda, grupo grande, recordatorio) y mesas de la sede.
-  useEffect(() => {
-    if (!organization?.id) return;
-    let vivo = true;
-    const qs = branchFilter != null ? `?branchId=${branchFilter}` : '';
-    fetch(`/api/pos/reservas-mesas/configuracion${qs}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { sede?: { efectiva?: AjustesReservaDto } } | null) => vivo && setAjustesSede(d?.sede?.efectiva ?? null))
-      .catch(() => vivo && setAjustesSede(null));
-    if (branchFilter != null) {
-      supabase
-        .from('restaurant_tables')
-        .select('id, name, zone, capacity')
-        .eq('organization_id', organization.id)
-        .eq('branch_id', branchFilter)
-        .order('name')
-        .then(({ data }) => vivo && setMesasSede((data ?? []) as MesaOpcion[]));
-    } else {
-      setMesasSede([]);
-    }
-    return () => {
-      vivo = false;
-    };
-  }, [organization?.id, branchFilter, pestana]);
+  // Ajustes efectivos (turnos de la agenda, grupo grande, recordatorio), mesas de la sede
+  // y búsqueda / alta de clientes del formulario: los mismos que usa el CRM.
+  const {
+    ajustesSede,
+    mesasSede,
+    buscarClientes: buscarClientesReserva,
+    buscarPorTelefono,
+    crearCliente,
+    mesasLibres,
+  } = useApoyoReservaForm(organization?.id, branchFilter, true, pestana);
 
   // Tiempo real: «Nueva reserva web · <sede>» con «Revisar».
   const loadRef = useRef(loadData);
@@ -397,58 +377,6 @@ export default function ReservasMesasPage() {
     }
   };
 
-  // Cliente para el formulario
-  const buscarClientesReserva = useCallback(
-    async (texto: string): Promise<ClientePicker[]> => {
-      if (!organization?.id || texto.trim().length < 2) return [];
-      const { filas } = await buscarClientes(supabase, { organizationId: organization.id, texto, limite: 20 });
-      return filas.map((c) => ({
-        id: c.id,
-        nombre: c.full_name || [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || c.id,
-        documento: c.identification_number ?? null,
-        correo: c.email ?? null,
-        telefono: c.phone ?? null,
-      }));
-    },
-    [organization?.id],
-  );
-  const buscarPorTelefono = useCallback(
-    async (telefono: string) => {
-      const encontrados = await buscarClientesReserva(telefono.replace(/\D/g, '').slice(-10));
-      const c = encontrados[0];
-      if (!c) return null;
-      const visitas = await reservasMesasService.contarVisitas(c.id).catch(() => null);
-      return { cliente: c, visitas };
-    },
-    [buscarClientesReserva],
-  );
-  const crearCliente = useCallback(
-    async (d: { nombres: string; apellidos: string; telefono: string; correo: string }): Promise<ClientePicker> => {
-      if (!organization?.id) throw new Error('organizacion');
-      const fila = await crearClienteRapido(organization.id, branchFilter, {
-        tipo: 'persona',
-        tipoDocumento: '',
-        numeroDocumento: '',
-        dv: '',
-        nombres: d.nombres,
-        apellidos: d.apellidos,
-        razonSocial: '',
-        contacto: '',
-        correo: d.correo,
-        telefono: d.telefono,
-        diasCredito: null,
-      });
-      return { id: fila.id, nombre: fila.full_name ?? `${d.nombres} ${d.apellidos}`, correo: fila.email ?? d.correo, telefono: fila.phone ?? d.telefono };
-    },
-    [organization?.id, branchFilter],
-  );
-  const mesasLibres = useCallback(
-    async (f: string, h: string, n: number, dur: number, excluir?: string) => {
-      if (branchFilter == null) return [];
-      return reservasMesasService.getAvailableTables(f, h, n, branchFilter, excluir, dur);
-    },
-    [branchFilter],
-  );
 
   // Días de la agenda: hoy y los próximos 13 («Hoy · sáb 18 oct»).
   const dias = useMemo<OpcionDia[]>(

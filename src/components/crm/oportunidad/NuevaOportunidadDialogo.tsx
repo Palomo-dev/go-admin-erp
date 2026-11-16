@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from '@/components/ui/use-toast';
 import { OpportunityForm } from '@/components/crm/kit/OpportunityForm';
 import { CustomerLinkPicker } from '@/components/crm/kit/CustomerLinkPicker';
+import { crearClienteDesdeVinculador } from './crearClienteVinculador';
 import type { OpcionUsuario } from '@/components/crm/kit/camposCrm';
 import type { EtapaFormulario } from '@/components/crm/kit/opportunityFormLogica';
 import type { PipelineOpcion } from '@/components/crm/kit/OpportunityFormCampos';
@@ -83,7 +84,7 @@ export function NuevaOportunidadDialogo(p: NuevaOportunidadDialogoProps) {
         ocupado={ocupado}
         error={error}
       />
-      <CustomerLinkPicker abierto={picker} onAbiertoChange={setPicker} buscar={buscarClientesCrm} onSeleccionar={(c) => { setCliente({ id: c.id, nombre: c.full_name }); setPicker(false); }} />
+      <CustomerLinkPicker abierto={picker} onAbiertoChange={setPicker} buscar={buscarClientesCrm} onCrear={crearClienteDesdeVinculador} onSeleccionar={(c) => { setCliente({ id: c.id, nombre: c.full_name }); setPicker(false); }} />
     </>
   );
 }

@@ -115,8 +115,8 @@ describe('estadoCuentaInvitacion', () => {
     });
     function adminConFilas(usuario: object, filas: { organization_id: number; is_active: boolean }[]) {
       const base = adminFalso({ usuarios: [usuario as Usuario], perfiles: ['p1'], membresias: { p1: filas.length } });
-      const fromBase = base.from;
-      base.from = (tabla: string) => {
+      const fromBase = base.from as (tabla: string) => ConsultaFalsa;
+      const fromFalso = (tabla: string): ConsultaFalsa => {
         const q = fromBase(tabla);
         if (tabla !== 'organization_members') return q;
         const original = q.then;
@@ -127,6 +127,7 @@ describe('estadoCuentaInvitacion', () => {
         };
         return q;
       };
+      base.from = fromFalso as unknown as AdminFalso['from'];
       return base;
     }
 

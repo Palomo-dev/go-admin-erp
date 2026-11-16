@@ -6,6 +6,8 @@
  * Ahora cada fila pasa por `POST /api/hrm/empleados/alta` (la misma transacción
  * del alta manual, con sus permisos y su registro). La plantilla no tiene banco
  * ni seguridad social; el salario solo viaja con el permiso de salario.
+ * Cada fila crea su usuario de la app y le manda la invitación (revisión
+ * 2026-11-15): ocupa un usuario del plan; sin cupo se detiene.
  */
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
@@ -17,7 +19,7 @@ import { COLUMNAS_IMPORTAR, EJEMPLO_IMPORTAR, leerCsv, prepararFilas, type FilaI
 import { ErrorPersonas, pedir, useCarga, type Catalogos } from '../apiPersonas';
 
 const LISTA = '/app/hrm/empleados';
-type Resultado = 'creado' | 'duplicado' | 'error';
+type Resultado = 'creado' | 'duplicado' | 'sin_cupo' | 'error';
 
 export function ImportarEmpleados() {
   const t = useTranslations('hrmPersonas.importar');
@@ -52,13 +54,20 @@ export function ImportarEmpleados() {
   const importar = async () => {
     setImportando(true);
     let creados = 0;
+    let sinCupo = false;
     for (const f of validas) {
+      if (sinCupo) {
+        setResultados((r) => ({ ...r, [f.fila]: 'sin_cupo' }));
+        continue;
+      }
       try {
-        await pedir('/api/hrm/empleados/alta', { metodo: 'POST', cuerpo: f.cuerpo });
+        await pedir('/api/hrm/empleados/alta', { metodo: 'POST', cuerpo: { ...f.cuerpo, origin: window.location.origin } });
         creados += 1;
         setResultados((r) => ({ ...r, [f.fila]: 'creado' }));
       } catch (e) {
-        setResultados((r) => ({ ...r, [f.fila]: e instanceof ErrorPersonas && e.codigo === 'documento_duplicado' ? 'duplicado' : 'error' }));
+        const codigo = e instanceof ErrorPersonas ? e.codigo : '';
+        sinCupo = codigo === 'sin_cupo';
+        setResultados((r) => ({ ...r, [f.fila]: codigo === 'documento_duplicado' ? 'duplicado' : sinCupo ? 'sin_cupo' : 'error' }));
       }
     }
     setImportando(false);
@@ -103,7 +112,10 @@ export function ImportarEmpleados() {
             </button>
           }
         >
-          <AvisoTonal tono="informacion" compacto titulo={t('sinSensibles')} />
+          <div className="flex flex-col gap-2">
+            <AvisoTonal tono="informacion" compacto titulo={t('sinSensibles')} />
+            <AvisoTonal tono="neutro" compacto titulo={t('cadaUsuario')} />
+          </div>
         </Tarjeta>
         <Tarjeta titulo={t('paso2')} descripcion={archivo ?? t('sinArchivo')}>
           <label className={clasesBoton({ variante: 'secundario' })}>

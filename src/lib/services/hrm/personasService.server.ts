@@ -1,7 +1,9 @@
 /**
  * Personas de RR. HH. (fase 1): lista de empleados, ficha única, documentos,
  * contactos de emergencia, banco, últimas consultas, alta con reingreso y
- * registrar un cambio. Migración `hrm_f1_01_personas_ficha`.
+ * registrar un cambio. Migración `hrm_f1_01_personas_ficha`. El alta vive en
+ * `invitacionPortal.server.ts` (`altaConUsuario`): cada empleado nace con su
+ * usuario de la app (revisión 2026-11-15, `hrm_f1_04_empleado_siempre_usuario`).
  *
  * Las RPC con `p_actor` solo las ejecuta la service role: el permiso se
  * resuelve en la base con el actor de la sesión (`ctx.userId`) y la
@@ -167,10 +169,6 @@ export interface ResultadoAlta {
   por_ingresar: boolean;
   tareas: number;
   salario: boolean;
-}
-
-export function altaEmpleado(ctx: ContextoPersonas, body: Record<string, unknown>, p: ContextoPeticion) {
-  return rpc<ResultadoAlta>('fn_hr_alta_empleado', { ...base(ctx, p), p_datos: limpiarAlta(body) });
 }
 
 export function periodoCerrado(ctx: ContextoPersonas, fecha: string) {

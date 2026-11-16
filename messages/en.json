@@ -54977,14 +54977,13 @@
     },
     "lista": {
       "titulo": "Employees",
-      "subtituloBase": "An employee does not need an app user.",
+      "subtituloBase": "The people who work in your organization.",
       "buscar": "Search employee…",
       "archivo": "employees",
       "resumen": {
         "activos": "{n} active",
         "prueba": "{n} on probation",
-        "porIngresar": "{n} starting soon",
-        "sinUsuario": "An employee does not need an app user."
+        "porIngresar": "{n} starting soon"
       },
       "acciones": {
         "exportar": "Export",
@@ -54994,9 +54993,9 @@
         "registrarCambio": "Record a change",
         "registrarCambioDetalle": "Salary, position, branch, hours or social security",
         "subirDocumento": "Upload document",
-        "invitar": "Invite to the employee portal",
-        "invitarDetalle": "Has no app user",
-        "invitarCorto": "Invite to portal"
+        "reenviar": "Resend invitation",
+        "reenviarDetalle": "Their invitation is still pending",
+        "reenviarCorto": "Resend invitations"
       },
       "columnas": {
         "empleado": "Employee",
@@ -55029,7 +55028,7 @@
       },
       "vacio": {
         "titulo": "No employees yet",
-        "descripcion": "Create the first one or import them from a file. An employee does not need an app user."
+        "descripcion": "Create the first one or import them from a file."
       },
       "sinResultados": "No employee matches the search or filters.",
       "error": {
@@ -55041,33 +55040,31 @@
         "descripcion": "Your role does not include the “View employees” permission. Ask whoever manages roles in your organization.",
         "accion": "Go to home"
       },
-      "invitar": {
-        "titulo": "Send {n, plural, one {# invitation} other {# invitations}} to the employee portal?",
-        "descripcion": "The invitation goes to the email on their profile.",
-        "sinCorreo": "{nombres} {n, plural, one {has} other {have}} no email on file: it will not be sent.",
-        "confirmar": "Send {n, plural, one {# invitation} other {# invitations}}",
-        "enviadas": "{n, plural, one {# invitation sent} other {# invitations sent}}.",
-        "error": "We could not send the invitations.",
-        "nadie": "None of the selected people can be invited: they already have a user or a pending invitation."
+      "reenviar": {
+        "titulo": "Resend {n, plural, one {# pending invitation} other {# pending invitations}}?",
+        "descripcion": "They get it again at the invitation email, with a new link. The previous one stops working.",
+        "confirmar": "Resend {n, plural, one {# invitation} other {# invitations}}",
+        "enviadas": "{n, plural, one {# invitation was resent} other {# invitations were resent}}.",
+        "error": "We could not resend the invitations.",
+        "nadie": "None of the selected people has a pending invitation."
       }
     },
     "ficha": {
       "tituloSinDatos": "Employee profile",
       "jefe": "Manager: {nombre}",
-      "sinUsuario": "No app user",
-      "invitacionPendiente": "Invitation sent",
       "acciones": {
-        "invitar": "Invite to portal",
         "registrarCambio": "Record a change",
         "subirDocumento": "Upload document",
-        "leerIa": "Read document with AI"
+        "leerIa": "Read document with AI",
+        "reenviar": "Resend invitation"
       },
       "invitacion": {
-        "enviada": "Invitation sent to the email on their profile.",
-        "error": "We could not send the invitation.",
-        "sin_correo": "The profile has no email: add it in Personal data.",
-        "ya_invitado": "They already have a pending invitation.",
-        "sin_cupo": "Your plan has no room for more users."
+        "enviada": "Invitation resent. The previous link no longer works.",
+        "error": "We could not resend the invitation.",
+        "sin_cupo": "Your plan has no room for more users.",
+        "ya_entro": "They already use the app: there is no pending invitation.",
+        "sin_invitacion": "There is no pending invitation.",
+        "demasiadas": "Several invitations were sent to that email in a row. Try again in a few minutes."
       },
       "pestanas": {
         "etiqueta": "Profile sections",
@@ -55097,6 +55094,10 @@
           "descripcion": "Check your connection and try again.",
           "accion": "Retry"
         }
+      },
+      "acceso": {
+        "invitacion_pendiente": "Invitation pending",
+        "invitacion_vencida": "Invitation expired"
       }
     },
     "resumen": {
@@ -55121,19 +55122,28 @@
       "verHistorial": "View history",
       "ultimosCambios": "Latest changes",
       "sinCambios": "No changes recorded yet.",
-      "portal": "Employee portal",
-      "conUsuario": "Has user",
-      "invitado": "Invited",
-      "sinUsuario": "No user",
-      "portalConUsuario": "Already uses the app: from their phone they see payslips and certificates and make requests.",
-      "portalSinUsuario": "{nombre} is an employee even without an app user. If you invite them from the header, they can see payslips and certificates and make requests.",
       "expediente": "Employee file",
       "exigidos": "Documents required by the position",
       "deN": "{n} of {total}",
       "falta": "Missing: {lista}.",
       "porVencer": "Expiring: {lista}.",
       "irDocumentos": "Go to Documents",
-      "jefeInmediato": "Direct manager"
+      "jefeInmediato": "Direct manager",
+      "acceso": "App access",
+      "accesoEstados": {
+        "activo": "Active",
+        "invitacion_pendiente": "Invitation pending",
+        "invitacion_vencida": "Invitation expired",
+        "desactivado": "Deactivated"
+      },
+      "accesoTexto": {
+        "activo": "Already uses the app: from their phone they see pay stubs and certificates, and make requests.",
+        "invitacion_pendiente": "Sent to {correo} on {creada}. Expires on {vence}.",
+        "invitacion_pendienteSinCorreo": "Invitation sent on {creada}. Expires on {vence}.",
+        "invitacion_vencida": "The invitation to {correo} expired on {vence}. Resend it from the header.",
+        "invitacion_vencidaSinCorreo": "The invitation expired on {vence}. Resend it from the header.",
+        "desactivado": "Their user is deactivated in Organization › Team."
+      }
     },
     "datos": {
       "identificacion": "Identification",
@@ -55667,7 +55677,7 @@
     },
     "alta": {
       "titulo": "New employee",
-      "subtitulo": "A person can be an employee without an app user. Fields marked * are required.",
+      "subtitulo": "Every employee is an app user: they get an invitation and take one user seat of the plan. Fields marked with * are required.",
       "secciones": {
         "identificacion": "Identification",
         "personales": "Personal data",
@@ -55678,7 +55688,7 @@
         "salarioSinPermiso": "You do not have the salary permission: someone else completes this block.",
         "seguridad": "Social security",
         "seguridadNota": "Optional now: you can complete it later and the profile tells you what is missing.",
-        "portal": "Employee portal"
+        "acceso": "App access"
       },
       "campos": {
         "tipoDocumento": "Document type",
@@ -55687,7 +55697,6 @@
         "apellidos": "Last names",
         "nacimiento": "Date of birth",
         "celular": "Mobile",
-        "correo": "Personal email",
         "sede": "Branch",
         "sedeAyuda": "Your organization’s branches.",
         "area": "Area",
@@ -55707,10 +55716,9 @@
         "cuentaDespues": "The bank account can be added later. Without it they cannot be paid by transfer.",
         "salarioSinPermiso": "Salary and pay · no permission",
         "tareaSalario": "The employee is created without a salary. Whoever has the permission gets the task of completing it, and the profile shows the alert until then.",
-        "invitar": "Invite to the employee portal",
-        "invitarDetalle": "An invitation goes to {correo} to create their access. From their phone they will see payslips and certificates and make requests.",
-        "invitarSinCorreo": "Enter a personal email to invite them.",
-        "sinUsuario": "They do not need a GO Admin user to be an employee: if you do not invite them, they still count in the structure, payroll and reports. You can invite them later from their profile."
+        "correoInvitacion": "Invitation email",
+        "correoInvitacionAyuda": "They get the invitation to create their GO Admin user. With it they enter the employee portal.",
+        "correoInvalido": "Enter a valid email."
       },
       "duplicado": {
         "disponible": "Available: nobody in your organization has this document.",
@@ -55728,7 +55736,8 @@
         "porIngresar": "Once created it stays “Starting soon” until {fecha}.",
         "activo": "Once created it is active from today.",
         "corrige": "Fix the document to continue.",
-        "completa": "Fill in the required fields."
+        "completa": "Fill in the required fields.",
+        "sinCupo": "No user seats left in the plan"
       },
       "crear": "Create employee",
       "crearReingreso": "Record rehire",
@@ -55738,7 +55747,12 @@
         "documento_retirado": "The person with that document is terminated: record the rehire.",
         "sin_permiso": "You do not have permission to create employees with their document.",
         "sede_invalida": "Choose one of your organization’s branches.",
-        "generico": "We could not create the employee. Nothing was saved and your data is still here."
+        "generico": "We could not create the employee. Nothing was saved and your data is still here.",
+        "sin_cupo": "The plan has no user seats left. Change your plan or free a user in Organization › Team.",
+        "correo_obligatorio": "Enter the invitation email.",
+        "ya_es_usuario": "That email is already a user of your organization: look for them in Employees.",
+        "ya_invitado": "That email already has a pending invitation in Organization › Team.",
+        "demasiadas_invitaciones": "Several invitations were sent to that email in a row. Try again in a few minutes."
       },
       "sinPermiso": {
         "titulo": "You do not have permission to create employees",
@@ -55750,8 +55764,6 @@
         "porIngresar": "Starting soon · {fecha}",
         "registrado": "{nombre} has been registered",
         "reingreso": "Rehire of {nombre} recorded",
-        "sinUsuario": "No app user",
-        "invitacion": "Portal invitation sent",
         "tareaSalario": "Created without a salary: whoever has the permission got the task of completing it.",
         "falta": "What is missing in their file",
         "documentos": "Documents required by the position",
@@ -55764,7 +55776,20 @@
         "sinRegistrar": "Not recorded",
         "registrar": "Record",
         "otro": "Create another employee",
-        "irFicha": "Go to profile"
+        "irFicha": "Go to profile",
+        "invitacionEnviada": "Invitation sent to {correo}",
+        "invitacionNoSalio": "The invitation was not sent",
+        "reenviarDesdeFicha": "The employee was created, but the invitation email was not sent. Resend it from their profile."
+      },
+      "acceso": {
+        "conservaUsuario": "Keeps their app user: it does not take another user seat of the plan.",
+        "usaCupo": "Creating this employee uses 1 user seat of your plan. {restantes} of {maximo} left.",
+        "sinTope": "Your plan has no user limit.",
+        "verPlan": "View plan"
+      },
+      "sinCupo": {
+        "titulo": "Your plan allows {maximo} users and they are all taken",
+        "descripcion": "Every employee is an app user. To add someone else, change your plan or free a user in Organization › Team."
       }
     },
     "importar": {
@@ -55793,7 +55818,8 @@
       "resultados": {
         "creado": "Created",
         "duplicado": "Document already registered",
-        "error": "Could not be created"
+        "error": "Could not be created",
+        "sin_cupo": "No user seats left in the plan"
       },
       "errores": {
         "tipoDocumento": "Invalid document type",
@@ -55807,8 +55833,10 @@
         "cargo": "Position not found",
         "contrato": "Invalid contract type",
         "jornada": "Hours between 1 and 48",
-        "salario": "Invalid salary"
-      }
+        "salario": "Invalid salary",
+        "correo": "Missing invitation email"
+      },
+      "cadaUsuario": "Each row creates an app user: they get an invitation at the template email and take one user seat of the plan."
     },
     "aprobaciones": {
       "titulo": "My approvals",

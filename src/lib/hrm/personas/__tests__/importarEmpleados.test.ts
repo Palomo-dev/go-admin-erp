@@ -20,7 +20,7 @@ describe('importar empleados', () => {
   it('arma el cuerpo del alta y valida sede, área y cargo por nombre', () => {
     const [ok, mal] = prepararFilas(
       [
-        { tipo_documento: 'cc', numero_documento: '1.036.654.321', nombres: 'Andrés Felipe', apellidos: 'Morales Rincón', sede: 'sede centro', area: 'Cocina', cargo: 'Cocinero/a', fecha_ingreso: '2026-12-01', salario_mensual: '2.250.000' },
+        { tipo_documento: 'cc', numero_documento: '1.036.654.321', nombres: 'Andrés Felipe', apellidos: 'Morales Rincón', sede: 'sede centro', area: 'Cocina', cargo: 'Cocinero/a', fecha_ingreso: '2026-12-01', salario_mensual: '2.250.000', correo: 'andres@ejemplo.com' },
         { tipo_documento: 'XX', numero_documento: '1', nombres: '', apellidos: '', sede: 'Otra', fecha_ingreso: '01/12/2026' },
       ],
       cat,
@@ -29,13 +29,13 @@ describe('importar empleados', () => {
     expect(ok.errores).toEqual([]);
     expect(ok.cuerpo).toMatchObject({ doc_type: 'CC', doc_number: '1036654321', first_name: 'Andrés', second_name: 'Felipe', branch_id: 110, department_id: 'a1', position_id: 'c1' });
     expect(ok.cuerpo?.salario).toBeUndefined(); // sin permiso de salario no viaja
-    expect(mal.errores).toEqual(expect.arrayContaining(['tipoDocumento', 'numeroDocumento', 'nombre', 'fechaIngreso', 'sede']));
+    expect(mal.errores).toEqual(expect.arrayContaining(['tipoDocumento', 'numeroDocumento', 'nombre', 'fechaIngreso', 'sede', 'correo']));
     expect(mal.cuerpo).toBeNull();
   });
 
   it('con permiso de salario, el salario sí viaja', () => {
     const [f] = prepararFilas(
-      [{ tipo_documento: 'CC', numero_documento: '123456', nombres: 'Ana', apellidos: 'Ruiz', sede: '110', fecha_ingreso: '2026-12-01', salario_mensual: '2250000' }],
+      [{ tipo_documento: 'CC', numero_documento: '123456', nombres: 'Ana', apellidos: 'Ruiz', sede: '110', fecha_ingreso: '2026-12-01', salario_mensual: '2250000', correo: 'ana@ejemplo.com' }],
       cat,
       true
     );

@@ -5,8 +5,18 @@
  * del empleado de RR. HH. (`/api/hrm/empleados/invitar`): un solo camino para
  * mandar el correo (`inviteUserByEmail` o enlace mágico si ya tiene cuenta).
  * El código de la invitación solo viaja en el enlace del correo.
+ *
+ * Revisión 2026-11-15 (empleado siempre con usuario): el alta de RR. HH. crea
+ * el usuario sin contraseña antes de invitarlo (`esCuentaPreparadaPorRrhh`).
+ * A esa cuenta se le manda la invitación nativa (`inviteUserByEmail` la
+ * reenvía a un usuario sin confirmar) y, si falla, el enlace mágico.
+ * `renovarInvitacion` es el único reenvío: rota el código y renueva la
+ * vigencia (lo usan `/api/auth/invite` y el reenvío de RR. HH.).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { buscarUsuarioAuthPorEmail, esCuentaPreparadaPorRrhh } from './cuentaInvitacion';
+import { DIAS_VIGENCIA_INVITACION, generarCodigoInvitacion } from './invitaciones';
+import { errorDeCupo, type ErrorCupo } from '@/lib/services/cupoPlanService';
 
 /** Fila con la que se manda el correo. */
 export interface InvitacionParaEnviar {
@@ -69,10 +79,19 @@ export async function enviarCorreoInvitacion(
   //    organización que nunca completó (sin perfil ni membresía) → se borra y
   //    se re-invita con inviteUserByEmail para que reciba type=invite.
   if (existsInAuth) {
-    // OJO: listUsers() sin paginar devuelve solo la primera página (50); si no
-    // aparece el huérfano, cae al enlace mágico, que también sirve.
-    const { data: userList } = await admin.auth.admin.listUsers();
-    const existingUser = userList?.users?.find((u) => u.email?.toLowerCase() === email);
+    const existingUser = await buscarUsuarioAuthPorEmail(admin, email).catch(() => null);
+
+    // Cuenta que preparó el alta de RR. HH. y nadie ha usado: invitación nativa.
+    if (existingUser && esCuentaPreparadaPorRrhh(existingUser, organizationId)) {
+      const { error: invitarError } = await admin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: inviteUrl,
+        data: { ...inviteMetadata, hr_alta: true },
+      });
+      if (!invitarError) return true;
+      console.warn('Invitación nativa a cuenta preparada por RR. HH. no salió; se manda enlace mágico:', invitarError.message);
+      return enlaceMagico();
+    }
+
     const meta = (existingUser?.user_metadata ?? {}) as Record<string, unknown>;
     // `deleteUser` es lo más destructivo del fichero: además de «es huérfano»
     // se exige que el huérfano sea DE ESTA organización.
@@ -125,4 +144,34 @@ export async function enviarCorreoInvitacion(
     return false;
   }
   return true;
+}
+
+/** Estados desde los que se puede reenviar: pendiente (vigente o vencida) o ya marcada vencida. */
+export const ESTADOS_REENVIABLES = ['pending', 'expired'] as const;
+
+export type ResultadoRenovacion =
+  | { ok: true; code: string }
+  | { ok: false; cupo: ErrorCupo | null };
+
+/**
+ * Rota el código y renueva la vigencia de una invitación pendiente o vencida:
+ * el enlace anterior deja de servir. Una vencida vuelve a `pending` y vuelve a
+ * ocupar cupo (lo comprueba `trg_cupo_plan_invitacion`). Quien llama ya
+ * comprobó que la invitación es de su organización.
+ */
+export async function renovarInvitacion(admin: SupabaseClient, invitationId: number): Promise<ResultadoRenovacion> {
+  const code = generarCodigoInvitacion();
+  const { data, error } = await admin
+    .from('invitations')
+    .update({
+      code,
+      expires_at: new Date(Date.now() + DIAS_VIGENCIA_INVITACION * 24 * 3600_000).toISOString(),
+      status: 'pending',
+    })
+    .eq('id', invitationId)
+    .in('status', [...ESTADOS_REENVIABLES])
+    .select('id')
+    .maybeSingle();
+  if (error || !data) return { ok: false, cupo: errorDeCupo(error) };
+  return { ok: true, code };
 }

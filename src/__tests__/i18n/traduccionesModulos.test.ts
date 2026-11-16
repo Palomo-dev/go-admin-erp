@@ -146,6 +146,8 @@ const MODULOS: Record<string, string[]> = {
   configuracionTextos: ['src/components/configuracion'],
   // Configuración › Recursos humanos (diseños 10.RH.1–3) y los grupos de datos del editor de rol (10.RH.4).
   hrmConfig: ['src/components/configuracion/panels/hrm', 'src/components/roles'],
+  // RR. HH. › Empleados: lista, ficha, alta e importar (20.2–20.5), con el acceso a la app de cada empleado.
+  hrmPersonas: ['src/components/hrm/personas', 'src/app/app/hrm/empleados'],
 };
 
 type Arbol = { [clave: string]: string | Arbol };

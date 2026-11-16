@@ -4,7 +4,9 @@
  * Empleados (Figma 20.2, `docs/design/figma/95-hrm-02-*`), con las piezas del
  * kit (auditoría HRM-Figma 2026-11-15): PageHeader, un solo buscador con
  * «Filtros» y chips debajo, DataTable con tarjetas en el celular, menú «⋯» de
- * fila, BulkActionBar flotante e invitación masiva con ConfirmDialog.
+ * fila, BulkActionBar flotante y reenvío masivo de invitaciones pendientes con
+ * ConfirmDialog. Cada empleado es un usuario de la app (revisión 2026-11-15):
+ * «Reenviar invitación» solo aparece para quien todavía no entra.
  *
  * Lectura: `GET /api/hrm/empleados` (alcance y número de documento los decide
  * el servidor). Sin filtro de sede: el selector del header es el único
@@ -44,11 +46,12 @@ import {
   alertaPrincipal,
   conteoFiltros,
   filtrarEmpleados,
+  puedeReenviarInvitacion,
   resumenEmpleados,
   type EmpleadoFila,
   type FiltrosEmpleados,
 } from '@/lib/hrm/personas/logica';
-import { invitarAlPortal, useCarga, type ListaEmpleados as RespuestaLista } from '../apiPersonas';
+import { reenviarInvitaciones, useCarga, type ListaEmpleados as RespuestaLista } from '../apiPersonas';
 import { useTextoAlerta } from '../textosPersonas';
 import { RegistrarCambioDialogo } from '../cambio/RegistrarCambioDialogo';
 import { NavPestanasHrm } from '../../navegacion/NavPestanasHrm';
@@ -82,7 +85,7 @@ export function ListaEmpleados() {
   };
 
   const abrir = (e: EmpleadoFila) => router.push(`${RUTA}/${e.persona_id}`);
-  const invitables = (lista: EmpleadoFila[]) => lista.filter((e) => !e.tiene_usuario && !e.invitacion_pendiente && e.estado !== 'retirado');
+  const reenviables = (lista: EmpleadoFila[]) => lista.filter(puedeReenviarInvitacion);
 
   const accionesDe = (e: EmpleadoFila): AccionFila[] => [
     { id: 'ver', etiqueta: t('acciones.verFicha'), icono: UserRound, onSelect: () => abrir(e) },
@@ -96,27 +99,27 @@ export function ListaEmpleados() {
     },
     { id: 'documento', etiqueta: t('acciones.subirDocumento'), icono: Upload, onSelect: () => router.push(`${RUTA}/${e.persona_id}?pestana=documentos&subir=1`) },
     {
-      id: 'invitar',
-      etiqueta: t('acciones.invitar'),
-      descripcion: t('acciones.invitarDetalle'),
+      id: 'reenviar',
+      etiqueta: t('acciones.reenviar'),
+      descripcion: t('acciones.reenviarDetalle'),
       icono: Send,
       onSelect: () => setInvitar([e]),
-      oculta: invitables([e]).length === 0,
+      oculta: reenviables([e]).length === 0,
     },
   ];
 
   const enviarInvitaciones = async () => {
     if (!invitar) return;
-    const destino = invitables(invitar).filter((e) => e.tiene_correo);
+    const destino = reenviables(invitar);
     setEnviando(true);
     try {
-      const r = await invitarAlPortal(destino.map((e) => e.persona_id));
-      toast.success(t('invitar.enviadas', { n: r.enviadas }));
+      const r = await reenviarInvitaciones(destino.map((e) => e.persona_id));
+      toast.success(t('reenviar.enviadas', { n: r.enviadas }));
       setInvitar(null);
       setSeleccion(new Set());
       void recargar();
     } catch {
-      toast.error(t('invitar.error'));
+      toast.error(t('reenviar.error'));
     } finally {
       setEnviando(false);
     }
@@ -230,7 +233,7 @@ export function ListaEmpleados() {
         resumen.porIngresar ? t('resumen.porIngresar', { n: resumen.porIngresar }) : null,
       ]
         .filter(Boolean)
-        .join(' · ') + `. ${t('resumen.sinUsuario')}`
+        .join(' · ')
     : t('subtituloBase');
 
   // «⋯» de la cabecera (Figma 95-hrm-02-01): lo que no es Importar ni Nuevo.
@@ -239,8 +242,7 @@ export function ListaEmpleados() {
   ];
 
   const seleccionadas = todas.filter((e) => seleccion.has(e.persona_id));
-  const sinCorreo = invitar ? invitables(invitar).filter((e) => !e.tiene_correo) : [];
-  const conCorreo = invitar ? invitables(invitar).filter((e) => e.tiene_correo) : [];
+  const aReenviar = invitar ? reenviables(invitar).length : 0;
 
   return (
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
@@ -429,12 +431,12 @@ export function ListaEmpleados() {
           acciones={[
             { id: 'cambio', etiqueta: t('acciones.registrarCambio'), icono: History, onClick: () => setCambio(seleccionadas.filter((e) => e.estado !== 'retirado')) },
             {
-              id: 'invitar',
-              etiqueta: t('acciones.invitarCorto'),
+              id: 'reenviar',
+              etiqueta: t('acciones.reenviarCorto'),
               icono: Send,
               onClick: () => setInvitar(seleccionadas),
-              deshabilitada: invitables(seleccionadas).length === 0,
-              motivo: t('invitar.nadie'),
+              deshabilitada: reenviables(seleccionadas).length === 0,
+              motivo: t('reenviar.nadie'),
             },
             { id: 'exportar', etiqueta: t('acciones.exportar'), icono: Download, onClick: () => exportar(seleccionadas) },
           ]}
@@ -445,14 +447,9 @@ export function ListaEmpleados() {
       <ConfirmDialog
         abierto={invitar !== null}
         onAbiertoChange={(a) => !a && setInvitar(null)}
-        titulo={t('invitar.titulo', { n: invitar ? invitables(invitar).length : 0 })}
-        descripcion={
-          <>
-            {t('invitar.descripcion')}
-            {sinCorreo.length > 0 ? ` ${t('invitar.sinCorreo', { nombres: sinCorreo.map((e) => e.nombre).join(', '), n: sinCorreo.length })}` : ''}
-          </>
-        }
-        textoConfirmar={t('invitar.confirmar', { n: conCorreo.length })}
+        titulo={t('reenviar.titulo', { n: aReenviar })}
+        descripcion={t('reenviar.descripcion')}
+        textoConfirmar={t('reenviar.confirmar', { n: aReenviar })}
         tono="marca"
         icono={Send}
         cargando={enviando}

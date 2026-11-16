@@ -1,9 +1,14 @@
 'use client';
 
 /**
- * Nuevo empleado (Figma 20.5, `docs/design/figma/95-hrm-05-*`). Una persona
- * puede ser empleada sin usuario de la app.
+ * Nuevo empleado (Figma 20.5, `docs/design/figma/95-hrm-05-*`). Cada empleado
+ * es un usuario de la app (revisión 2026-11-15, decisión del dueño): el alta
+ * crea o enlaza su usuario, le manda la invitación al correo (obligatorio) y
+ * ocupa un usuario del plan.
  *
+ * - Cupo: la misma fuente y la misma regla de Organización › Equipo
+ *   (`useCupoPlan`). Sin cupo, el formulario se bloquea con `AvisoCupo` y el
+ *   enlace para cambiar de plan; el servidor lo vuelve a comprobar (409 `sin_cupo`).
  * - Documento duplicado (decisión 11): activa → se bloquea con «Ver su ficha»;
  *   retirada → «Registrar reingreso» en la misma ficha (conserva su historial).
  * - Sin permiso de salario (decisión 12): se crea igual y queda una tarea a
@@ -31,17 +36,31 @@ import {
   simboloMoneda,
 } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useBranchOpcional } from '@/lib/context/BranchContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { SUBSISTEMAS, TIPOS_CONTRATO, TIPOS_DOCUMENTO, normalizarNumeroDocumento } from '@/lib/hrm/personas/catalogo';
+import { AvisoCupo } from '@/components/organization/acceso/Cupo';
+import { useCupoPlan } from '@/components/organization/acceso/useCupoPlan';
 import { ErrorPersonas, pedir, useCarga, type Catalogos } from '../apiPersonas';
 import { fechaCorta } from '../textosPersonas';
 
 const LISTA = '/app/hrm/empleados';
 const CON_FIN = ['fixed_term', 'project', 'apprenticeship'];
+const PLAN = '/app/organizacion/plan';
+const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ERRORES_ALTA = [
+  'documento_duplicado',
+  'documento_retirado',
+  'sin_permiso',
+  'sede_invalida',
+  'sin_cupo',
+  'correo_obligatorio',
+  'ya_es_usuario',
+  'ya_invitado',
+  'demasiadas_invitaciones',
+];
 
 interface Duplicado {
   existe: boolean;
@@ -64,7 +83,8 @@ interface Creado {
   por_ingresar: boolean;
   tareas: number;
   salario: boolean;
-  invitacion: string | null;
+  invitacion: 'enviada' | 'error' | null;
+  correo: string | null;
 }
 
 function partir(texto: string): [string, string] {
@@ -84,6 +104,7 @@ export function AltaEmpleado() {
   const catalogos = useCarga<Catalogos>('/api/hrm/catalogos');
   const cat = catalogos.carga.estado === 'listo' ? catalogos.carga.datos : null;
   const puedeSalario = permisos.carga.estado === 'listo' && !!permisos.carga.datos.grupos.salario_pago?.editar;
+  const cupo = useCupoPlan();
 
   const [f, setF] = useState({
     doc_type: 'CC',
@@ -110,7 +131,6 @@ export function AltaEmpleado() {
     ccf: '',
     cesantias: '',
   });
-  const [invitar, setInvitar] = useState(true);
   const [duplicado, setDuplicado] = useState<Duplicado | null>(null);
   const [reingreso, setReingreso] = useState<string | null>(null);
   const [creando, setCreando] = useState(false);
@@ -145,6 +165,9 @@ export function AltaEmpleado() {
   };
 
   const bloqueado = !!duplicado?.existe && duplicado.estado !== 'retirado';
+  // Un reingreso conserva su usuario: no ocupa otro cupo ni pide correo.
+  const sinCupo = !reingreso && !!cupo.usuarios?.lleno;
+  const correoValido = CORREO.test(f.personal_email.trim());
   const retiradoSinReingreso = !!duplicado?.existe && duplicado.estado === 'retirado' && !reingreso;
   const cargos = useMemo(() => (cat?.cargos ?? []).filter((c) => !f.department_id || !c.department_id || c.department_id === f.department_id), [cat, f.department_id]);
   const centros = useMemo(() => (cat?.centros_costo ?? []).filter((c) => !c.branch_id || String(c.branch_id) === f.branch_id), [cat, f.branch_id]);
@@ -154,6 +177,7 @@ export function AltaEmpleado() {
     !!f.apellidos.trim() &&
     !!f.birth_date &&
     !!f.personal_phone.trim() &&
+    (!!reingreso || correoValido) &&
     !!f.branch_id &&
     !!f.department_id &&
     !!f.position_id &&
@@ -198,7 +222,6 @@ export function AltaEmpleado() {
           arl: f.arl || undefined,
           ccf: f.ccf || undefined,
           cesantias: f.cesantias || undefined,
-          invitar: invitar && !!f.personal_email.trim(),
           origin: window.location.origin,
         },
       });
@@ -206,7 +229,8 @@ export function AltaEmpleado() {
       window.scrollTo({ top: 0 });
     } catch (e) {
       const c = e instanceof ErrorPersonas ? e.codigo : '';
-      setError(['documento_duplicado', 'documento_retirado', 'sin_permiso', 'sede_invalida'].includes(c) ? t(`errores.${c}`) : t('errores.generico'));
+      setError(ERRORES_ALTA.includes(c) ? t(`errores.${c}`) : t('errores.generico'));
+      if (c === 'sin_cupo') void cupo.recargar();
     } finally {
       setCreando(false);
     }
@@ -242,10 +266,13 @@ export function AltaEmpleado() {
             <h2 className="text-xl font-semibold text-fg">{creado.reingreso ? t('creado.reingreso', { nombre }) : t('creado.registrado', { nombre })}</h2>
             <div className="flex flex-wrap justify-center gap-1.5">
               {creado.por_ingresar ? <StatusBadge estado="por_ingresar" tono="marca" etiqueta={t('creado.porIngresar', { fecha: fechaCorta(f.hire_date) })} /> : null}
-              <StatusBadge estado="sin_usuario" tono="neutro" apariencia="contorno" etiqueta={t('creado.sinUsuario')} />
-              {creado.invitacion === 'enviada' ? <StatusBadge estado="invitado" tono="informacion" etiqueta={t('creado.invitacion')} /> : null}
+              {creado.invitacion === 'enviada' && creado.correo ? (
+                <StatusBadge estado="invitado" tono="informacion" etiqueta={t('creado.invitacionEnviada', { correo: creado.correo })} />
+              ) : null}
+              {creado.invitacion === 'error' ? <StatusBadge estado="invitacion_error" tono="advertencia" etiqueta={t('creado.invitacionNoSalio')} /> : null}
             </div>
           </div>
+          {creado.invitacion === 'error' ? <AvisoTonal className="mt-5" tono="advertencia" compacto titulo={t('creado.reenviarDesdeFicha')} /> : null}
           {!creado.salario && creado.tareas > 0 ? <AvisoTonal className="mt-5" tono="advertencia" compacto titulo={t('creado.tareaSalario')} /> : null}
           <p className="mb-2 mt-6 text-xs text-fg-secondary">{t('creado.falta')}</p>
           <ul className="flex flex-col gap-2">
@@ -294,7 +321,7 @@ export function AltaEmpleado() {
       </SelectContent>
     </Select>
   );
-  const atenuado = bloqueado || retiradoSinReingreso ? 'pointer-events-none opacity-50' : '';
+  const atenuado = bloqueado || retiradoSinReingreso || sinCupo ? 'pointer-events-none opacity-50' : '';
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-0 sm:p-6 sm:pb-0">
@@ -308,6 +335,15 @@ export function AltaEmpleado() {
       />
 
       <div className="mx-auto flex w-full max-w-[1080px] flex-col gap-4">
+        {sinCupo ? (
+          <AvisoCupo
+            titulo={t('sinCupo.titulo', { maximo: cupo.usuarios?.maximo ?? 0 })}
+            descripcion={t('sinCupo.descripcion')}
+            textoComprar={t('sinCupo.titulo', { maximo: cupo.usuarios?.maximo ?? 0 })}
+            hrefPlan={PLAN}
+          />
+        ) : null}
+        <div className={sinCupo ? 'pointer-events-none opacity-50' : undefined} aria-disabled={sinCupo || undefined}>
         <FormSection titulo={t('secciones.identificacion')} accion={<SensibleBadgeAlta />}>
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField etiqueta={t('campos.tipoDocumento')} obligatorio>
@@ -378,18 +414,16 @@ export function AltaEmpleado() {
             </FormField>
           </div>
         </FormSection>
+        </div>
 
         <div className={atenuado}>
           <FormSection titulo={t('secciones.personales')} descripcion={t('secciones.personalesNota')}>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <FormField etiqueta={t('campos.nacimiento')} obligatorio>
                 <CampoFecha valor={f.birth_date} onValorChange={set('birth_date')} max={getToday()} />
               </FormField>
               <FormField etiqueta={t('campos.celular')} obligatorio>
                 <Input value={f.personal_phone} onChange={(e) => set('personal_phone')(e.target.value)} inputMode="tel" className="h-10" />
-              </FormField>
-              <FormField etiqueta={t('campos.correo')}>
-                <Input value={f.personal_email} onChange={(e) => set('personal_email')(e.target.value)} type="email" className="h-10" />
               </FormField>
             </div>
           </FormSection>
@@ -479,17 +513,39 @@ export function AltaEmpleado() {
         </div>
 
         <div className={atenuado}>
-          <FormSection titulo={t('secciones.portal')}>
-            <label className="flex items-start gap-3">
-              <Switch checked={invitar && !!f.personal_email.trim()} disabled={!f.personal_email.trim()} onCheckedChange={setInvitar} />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-fg">{t('campos.invitar')}</span>
-                <span className="block text-sm text-fg-secondary">
-                  {f.personal_email.trim() ? t('campos.invitarDetalle', { correo: f.personal_email.trim() }) : t('campos.invitarSinCorreo')}
-                </span>
-              </span>
-            </label>
-            <AvisoTonal className="mt-3" tono="informacion" compacto titulo={t('campos.sinUsuario')} />
+          <FormSection titulo={t('secciones.acceso')}>
+            {reingreso ? (
+              <AvisoTonal tono="neutro" compacto titulo={t('acceso.conservaUsuario')} />
+            ) : (
+              <div className="flex flex-col gap-3">
+                <FormField
+                  etiqueta={t('campos.correoInvitacion')}
+                  obligatorio
+                  ayuda={t('campos.correoInvitacionAyuda')}
+                  error={f.personal_email.trim() && !correoValido ? t('campos.correoInvalido') : null}
+                >
+                  <Input
+                    value={f.personal_email}
+                    onChange={(e) => set('personal_email')(e.target.value)}
+                    type="email"
+                    autoComplete="off"
+                    className="h-10 sm:max-w-[420px]"
+                  />
+                </FormField>
+                {cupo.usuarios ? (
+                  <AvisoTonal
+                    tono="informacion"
+                    compacto
+                    titulo={
+                      cupo.usuarios.maximo === null
+                        ? t('acceso.sinTope')
+                        : t('acceso.usaCupo', { restantes: cupo.usuarios.restantes ?? 0, maximo: cupo.usuarios.maximo })
+                    }
+                    accion={cupo.usuarios.maximo === null ? undefined : { etiqueta: t('acceso.verPlan'), href: PLAN }}
+                  />
+                ) : null}
+              </div>
+            )}
           </FormSection>
         </div>
 
@@ -498,10 +554,12 @@ export function AltaEmpleado() {
 
       <div className="sticky bottom-0 z-20 -mx-4 border-t border-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6">
         <div className="mx-auto flex max-w-[1080px] flex-wrap items-center justify-between gap-3">
-          <p className={bloqueado ? 'text-sm text-danger-text' : 'text-sm text-fg-secondary'}>
+          <p className={bloqueado || sinCupo ? 'text-sm text-danger-text' : 'text-sm text-fg-secondary'}>
             {bloqueado
               ? t('pie.corrige')
-              : f.hire_date && f.hire_date > getToday()
+              : sinCupo
+                ? t('pie.sinCupo')
+                : f.hire_date && f.hire_date > getToday()
                 ? t('pie.porIngresar', { fecha: fechaCorta(f.hire_date) })
                 : t('pie.activo')}
           </p>
@@ -512,7 +570,7 @@ export function AltaEmpleado() {
             <button
               type="button"
               onClick={() => void crear()}
-              disabled={!completos || bloqueado || retiradoSinReingreso || creando}
+              disabled={!completos || bloqueado || retiradoSinReingreso || sinCupo || creando}
               title={!completos ? t('pie.completa') : undefined}
               className={clasesBoton({ variante: 'primario' })}
             >

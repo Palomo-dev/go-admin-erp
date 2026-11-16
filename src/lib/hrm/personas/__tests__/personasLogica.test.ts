@@ -9,6 +9,7 @@ import {
   filtrarEmpleados,
   iniciales,
   primerDiaMesSiguiente,
+  puedeReenviarInvitacion,
   resumenEmpleados,
   type EmpleadoFila,
 } from '../logica';
@@ -37,9 +38,7 @@ function fila(p: Partial<EmpleadoFila>): EmpleadoFila {
     ingreso: '2025-02-03',
     retiro: null,
     estado: 'activo',
-    tiene_usuario: false,
-    invitacion_pendiente: false,
-    tiene_correo: true,
+    acceso: 'activo',
     alertas: [],
     ...p,
   };
@@ -115,5 +114,15 @@ describe('documentos: el grupo lo decide la categoría', () => {
     expect(grupoDeCategoria('certificado_bancario')).toBe('banco');
     expect(grupoDeCategoria('historia_clinica')).toBeNull();
     expect(carpetaDeCategoria('afiliacion_eps')).toBe('seguridad_social');
+  });
+});
+
+describe('reenviar invitación (revisión 2026-11-15: empleado siempre con usuario)', () => {
+  it('solo con la invitación pendiente o vencida, y no a un retirado', () => {
+    expect(puedeReenviarInvitacion(fila({ acceso: 'invitacion_pendiente' }))).toBe(true);
+    expect(puedeReenviarInvitacion(fila({ acceso: 'invitacion_vencida' }))).toBe(true);
+    expect(puedeReenviarInvitacion(fila({ acceso: 'activo' }))).toBe(false);
+    expect(puedeReenviarInvitacion(fila({ acceso: 'desactivado' }))).toBe(false);
+    expect(puedeReenviarInvitacion(fila({ acceso: 'invitacion_pendiente', estado: 'retirado' }))).toBe(false);
   });
 });

@@ -6,7 +6,9 @@
  * Cabecera: `PageHeader` del kit con migas y «←» junto al título (decisión 15,
  * igual que «Editar rol»); en el celular, la cabecera móvil del shell. Las
  * páginas de detalle no muestran la barra de pestañas del módulo.
- * «Invitar al portal» va una sola vez, en la cabecera (PATRONES §4.1).
+ * «Reenviar invitación» va una sola vez, en la cabecera (PATRONES §4.1), y solo
+ * mientras la invitación del alta está pendiente o vencida: cada empleado es un
+ * usuario de la app (revisión 2026-11-15).
  *
  * Datos: `GET /api/hrm/personas/[id]/ficha` (básicos y permisos). Cada pestaña
  * sensible pide su grupo por su ruta, y esa lectura queda registrada.
@@ -28,7 +30,8 @@ import {
   type AccionFila,
 } from '@/components/kit';
 import { TONO_ESTADO_EMPLEADO, type TipoCambio } from '@/lib/hrm/personas/catalogo';
-import { invitarAlPortal, useCarga, type Ficha } from '../apiPersonas';
+import { reenviarInvitaciones, useCarga, type Ficha } from '../apiPersonas';
+import { puedeReenviarInvitacion } from '@/lib/hrm/personas/logica';
 import { RegistrarCambioDialogo } from '../cambio/RegistrarCambioDialogo';
 import { DialogoRevisarAprobacion } from '../../aprobaciones/DialogoRevisarAprobacion';
 import { PestanaResumen } from './PestanaResumen';
@@ -114,7 +117,8 @@ export function FichaEmpleado({ id }: { id: string }) {
 
   const v = ficha.vinculo;
   const p = ficha.permisos;
-  const invitable = !ficha.persona.tiene_usuario && !ficha.persona.invitacion_pendiente && p.editar_basico && v?.estado !== 'retirado';
+  const acceso = ficha.persona.acceso.estado;
+  const reenviable = p.editar_basico && puedeReenviarInvitacion({ acceso, estado: v?.estado ?? 'activo' });
   const contexto: ContextoFicha = {
     ficha,
     recargar,
@@ -126,10 +130,10 @@ export function FichaEmpleado({ id }: { id: string }) {
   const invitar = async () => {
     setInvitando(true);
     try {
-      const r = await invitarAlPortal([ficha.persona.id]);
+      const r = await reenviarInvitaciones([ficha.persona.id]);
       const res = r.resultados[0]?.resultado ?? 'error';
       if (res === 'enviada') toast.success(t('invitacion.enviada'));
-      else toast.error(t(`invitacion.${res === 'sin_correo' || res === 'ya_invitado' || res === 'sin_cupo' ? res : 'error'}`));
+      else toast.error(t(`invitacion.${['ya_entro', 'sin_invitacion', 'sin_cupo', 'demasiadas'].includes(res) ? res : 'error'}`));
       void recargar();
     } catch {
       toast.error(t('invitacion.error'));
@@ -154,12 +158,12 @@ export function FichaEmpleado({ id }: { id: string }) {
     <span className="flex flex-wrap items-center gap-1.5">
       {v ? <StatusBadge estado={v.estado} tono={TONO_ESTADO_EMPLEADO[v.estado]} etiqueta={tc(`estados.${v.estado}`)} /> : null}
       {v?.tipo_contrato ? <StatusBadge estado="contrato" tono="neutro" etiqueta={tc(`contratos.${v.tipo_contrato}`)} /> : null}
-      {!ficha.persona.tiene_usuario ? (
+      {acceso === 'invitacion_pendiente' || acceso === 'invitacion_vencida' ? (
         <StatusBadge
-          estado="usuario"
-          tono={ficha.persona.invitacion_pendiente ? 'informacion' : 'neutro'}
+          estado={acceso}
+          tono={acceso === 'invitacion_pendiente' ? 'informacion' : 'advertencia'}
           apariencia="contorno"
-          etiqueta={ficha.persona.invitacion_pendiente ? t('invitacionPendiente') : t('sinUsuario')}
+          etiqueta={t(`acceso.${acceso}`)}
         />
       ) : null}
     </span>
@@ -167,10 +171,10 @@ export function FichaEmpleado({ id }: { id: string }) {
 
   const acciones = (
     <>
-      {invitable && (
+      {reenviable && (
         <button type="button" onClick={() => void invitar()} disabled={invitando} className={clasesBoton({ variante: 'secundario' })}>
           <Send aria-hidden className="size-4" strokeWidth={1.5} />
-          {t('acciones.invitar')}
+          {t('acciones.reenviar')}
         </button>
       )}
       {p.registrar_cambio && v && v.estado !== 'retirado' && (

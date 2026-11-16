@@ -3,6 +3,10 @@
  * (ADR-001 §2). Exige hr.employees.create, y hr.data.identificacion.edit para
  * el documento; lo comprueba `fn_hr_persona_crear` con el actor de la sesión.
  * La organización sale de la sesión: un body con otra responde 403.
+ *
+ * Revisión 2026-11-15: una persona ya no se crea suelta. `fn_hr_persona_crear`
+ * responde 409 `persona_sin_usuario`; el alta va por `POST /api/hrm/empleados/alta`,
+ * que crea su usuario de la app y lo invita.
  */
 import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody } from '@/lib/utils/orgContext';

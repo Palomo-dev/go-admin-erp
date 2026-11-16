@@ -7,7 +7,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AlertaEmpleado, EmpleadoFila } from '@/lib/hrm/personas/logica';
+import type { AlertaEmpleado, EmpleadoFila, EstadoAcceso } from '@/lib/hrm/personas/logica';
 
 export class ErrorPersonas extends Error {
   constructor(
@@ -115,8 +115,8 @@ export interface Ficha {
     preferred_name: string | null;
     work_email: string | null;
     work_phone: string | null;
-    tiene_usuario: boolean;
-    invitacion_pendiente: boolean;
+    /** Estado del acceso a la app. `correo` solo llega a quien ve la identificación o a la persona. */
+    acceso: { estado: EstadoAcceso; invitacion_id?: number; correo?: string; creada?: string; vence?: string };
     actualizado: string | null;
     actualizado_por: string | null;
   };
@@ -187,7 +187,8 @@ export interface DocumentoPersona {
 
 const persona = (id: string) => `/api/hrm/personas/${encodeURIComponent(id)}`;
 
-export function invitarAlPortal(personaIds: string[]) {
+/** «Reenviar invitación»: solo sirve para invitaciones pendientes o vencidas (rota el enlace). */
+export function reenviarInvitaciones(personaIds: string[]) {
   return pedir<{ enviadas: number; resultados: { persona_id: string; resultado: string }[] }>('/api/hrm/empleados/invitar', {
     metodo: 'POST',
     cuerpo: { persona_ids: personaIds, origin: window.location.origin },

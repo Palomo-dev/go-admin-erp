@@ -54992,14 +54992,13 @@
     },
     "lista": {
       "titulo": "Empleados",
-      "subtituloBase": "Un empleado no necesita usuario de la app.",
+      "subtituloBase": "Las personas que trabajan en tu organización.",
       "buscar": "Buscar empleado…",
       "archivo": "empleados",
       "resumen": {
         "activos": "{n, plural, one {# activo} other {# activos}}",
         "prueba": "{n} en período de prueba",
-        "porIngresar": "{n} por ingresar",
-        "sinUsuario": "Un empleado no necesita usuario de la app."
+        "porIngresar": "{n} por ingresar"
       },
       "acciones": {
         "exportar": "Exportar",
@@ -55009,9 +55008,9 @@
         "registrarCambio": "Registrar un cambio",
         "registrarCambioDetalle": "Salario, cargo, sede, jornada o seguridad social",
         "subirDocumento": "Subir documento",
-        "invitar": "Invitar al portal del empleado",
-        "invitarDetalle": "No tiene usuario de la app",
-        "invitarCorto": "Invitar al portal"
+        "reenviar": "Reenviar invitación",
+        "reenviarDetalle": "Su invitación sigue pendiente",
+        "reenviarCorto": "Reenviar invitaciones"
       },
       "columnas": {
         "empleado": "Empleado",
@@ -55044,7 +55043,7 @@
       },
       "vacio": {
         "titulo": "Aún no hay empleados",
-        "descripcion": "Crea el primero o impórtalos desde un archivo. Un empleado no necesita usuario de la app."
+        "descripcion": "Crea el primero o impórtalos desde un archivo."
       },
       "sinResultados": "Ningún empleado coincide con la búsqueda o los filtros.",
       "error": {
@@ -55056,33 +55055,31 @@
         "descripcion": "Tu rol no incluye el permiso «Ver empleados». Pídeselo a quien administra los roles de tu organización.",
         "accion": "Ir al inicio"
       },
-      "invitar": {
-        "titulo": "¿Enviar {n, plural, one {# invitación} other {# invitaciones}} al portal del empleado?",
-        "descripcion": "Les llega la invitación al correo de su ficha.",
-        "sinCorreo": "{nombres} no {n, plural, one {tiene} other {tienen}} correo registrado: no se le enviará.",
-        "confirmar": "Enviar {n, plural, one {# invitación} other {# invitaciones}}",
-        "enviadas": "{n, plural, one {Se envió # invitación} other {Se enviaron # invitaciones}}.",
-        "error": "No pudimos enviar las invitaciones.",
-        "nadie": "Ninguna de las personas elegidas se puede invitar: ya tienen usuario o una invitación pendiente."
+      "reenviar": {
+        "titulo": "¿Reenviar {n, plural, one {# invitación pendiente} other {# invitaciones pendientes}}?",
+        "descripcion": "Les llega de nuevo al correo de la invitación, con un enlace nuevo. El anterior deja de servir.",
+        "confirmar": "Reenviar {n, plural, one {# invitación} other {# invitaciones}}",
+        "enviadas": "{n, plural, one {Se reenvió # invitación} other {Se reenviaron # invitaciones}}.",
+        "error": "No pudimos reenviar las invitaciones.",
+        "nadie": "Ninguna de las personas elegidas tiene una invitación pendiente."
       }
     },
     "ficha": {
       "tituloSinDatos": "Ficha del empleado",
       "jefe": "Jefe: {nombre}",
-      "sinUsuario": "Sin usuario de la app",
-      "invitacionPendiente": "Invitación enviada",
       "acciones": {
-        "invitar": "Invitar al portal",
         "registrarCambio": "Registrar un cambio",
         "subirDocumento": "Subir documento",
-        "leerIa": "Leer documento con IA"
+        "leerIa": "Leer documento con IA",
+        "reenviar": "Reenviar invitación"
       },
       "invitacion": {
-        "enviada": "Invitación enviada al correo de su ficha.",
-        "error": "No pudimos enviar la invitación.",
-        "sin_correo": "La ficha no tiene correo: agrégalo en Datos personales.",
-        "ya_invitado": "Ya tiene una invitación pendiente.",
-        "sin_cupo": "El plan no tiene cupo para más usuarios."
+        "enviada": "Invitación reenviada. El enlace anterior ya no sirve.",
+        "error": "No pudimos reenviar la invitación.",
+        "sin_cupo": "El plan no tiene cupo para más usuarios.",
+        "ya_entro": "Ya entró a la app: no tiene una invitación pendiente.",
+        "sin_invitacion": "No tiene una invitación pendiente.",
+        "demasiadas": "Se enviaron varias invitaciones seguidas a ese correo. Intenta de nuevo en unos minutos."
       },
       "pestanas": {
         "etiqueta": "Secciones de la ficha",
@@ -55112,6 +55109,10 @@
           "descripcion": "Revisa tu conexión y vuelve a intentarlo.",
           "accion": "Reintentar"
         }
+      },
+      "acceso": {
+        "invitacion_pendiente": "Invitación pendiente",
+        "invitacion_vencida": "Invitación vencida"
       }
     },
     "resumen": {
@@ -55136,19 +55137,28 @@
       "verHistorial": "Ver historial",
       "ultimosCambios": "Últimos cambios",
       "sinCambios": "Todavía no hay cambios registrados.",
-      "portal": "Portal del empleado",
-      "conUsuario": "Con usuario",
-      "invitado": "Invitado",
-      "sinUsuario": "Sin usuario",
-      "portalConUsuario": "Ya entra a la app: desde su celular ve desprendibles y certificados, y hace solicitudes.",
-      "portalSinUsuario": "{nombre} es empleado aunque no tenga usuario de la app. Si lo invitas desde la cabecera, podrá ver desprendibles y certificados y hacer solicitudes.",
       "expediente": "Expediente",
       "exigidos": "Documentos exigidos por el cargo",
       "deN": "{n} de {total}",
       "falta": "Falta: {lista}.",
       "porVencer": "Por vencer: {lista}.",
       "irDocumentos": "Ir a Documentos",
-      "jefeInmediato": "Jefe inmediato"
+      "jefeInmediato": "Jefe inmediato",
+      "acceso": "Acceso a la app",
+      "accesoEstados": {
+        "activo": "Activo",
+        "invitacion_pendiente": "Invitación pendiente",
+        "invitacion_vencida": "Invitación vencida",
+        "desactivado": "Desactivado"
+      },
+      "accesoTexto": {
+        "activo": "Ya entra a la app: desde su celular ve desprendibles y certificados, y hace solicitudes.",
+        "invitacion_pendiente": "Enviada a {correo} el {creada}. Vence el {vence}.",
+        "invitacion_pendienteSinCorreo": "Invitación enviada el {creada}. Vence el {vence}.",
+        "invitacion_vencida": "La invitación a {correo} venció el {vence}. Reenvíala desde la cabecera.",
+        "invitacion_vencidaSinCorreo": "La invitación venció el {vence}. Reenvíala desde la cabecera.",
+        "desactivado": "Su usuario está desactivado en Organización › Equipo."
+      }
     },
     "datos": {
       "identificacion": "Identificación",
@@ -55682,7 +55692,7 @@
     },
     "alta": {
       "titulo": "Nuevo empleado",
-      "subtitulo": "Una persona puede ser empleada sin usuario de la app. Lo marcado con * es obligatorio.",
+      "subtitulo": "Cada empleado es un usuario de la app: recibe una invitación y ocupa un usuario del plan. Lo marcado con * es obligatorio.",
       "secciones": {
         "identificacion": "Identificación",
         "personales": "Datos personales",
@@ -55693,7 +55703,7 @@
         "salarioSinPermiso": "No tienes el permiso de salario: este bloque lo completa otra persona.",
         "seguridad": "Seguridad social",
         "seguridadNota": "Opcional ahora: puedes completarlo después y la ficha te avisa lo que falta.",
-        "portal": "Portal del empleado"
+        "acceso": "Acceso a la app"
       },
       "campos": {
         "tipoDocumento": "Tipo de documento",
@@ -55702,7 +55712,6 @@
         "apellidos": "Apellidos",
         "nacimiento": "Fecha de nacimiento",
         "celular": "Celular",
-        "correo": "Correo personal",
         "sede": "Sede",
         "sedeAyuda": "Las sedes de tu organización.",
         "area": "Área",
@@ -55722,10 +55731,9 @@
         "cuentaDespues": "La cuenta bancaria se puede registrar después. Sin ella no se le puede pagar por transferencia.",
         "salarioSinPermiso": "Salario y pago · sin permiso",
         "tareaSalario": "El empleado se crea sin salario. Quien tiene el permiso recibe la tarea de completarlo, y la ficha muestra la alerta hasta entonces.",
-        "invitar": "Invitar al portal del empleado",
-        "invitarDetalle": "Le llega una invitación a {correo} para crear su acceso. Desde su celular verá desprendibles y certificados y podrá hacer solicitudes.",
-        "invitarSinCorreo": "Escribe un correo personal para poder invitarlo.",
-        "sinUsuario": "No necesita usuario de GO Admin para ser empleado: si no lo invitas, igual queda en la estructura, la nómina y los reportes. Puedes invitarlo después desde su ficha."
+        "correoInvitacion": "Correo para la invitación",
+        "correoInvitacionAyuda": "Le llega la invitación para crear su usuario de GO Admin. Con él entra al portal del empleado.",
+        "correoInvalido": "Escribe un correo válido."
       },
       "duplicado": {
         "disponible": "Disponible: ninguna persona de tu organización tiene este documento.",
@@ -55743,7 +55751,8 @@
         "porIngresar": "Al crearlo queda «Por ingresar» hasta el {fecha}.",
         "activo": "Al crearlo queda activo desde hoy.",
         "corrige": "Corrige el documento para continuar.",
-        "completa": "Completa los campos obligatorios."
+        "completa": "Completa los campos obligatorios.",
+        "sinCupo": "Sin cupo de usuarios en el plan"
       },
       "crear": "Crear empleado",
       "crearReingreso": "Registrar reingreso",
@@ -55753,7 +55762,12 @@
         "documento_retirado": "La persona de ese documento está retirada: registra el reingreso.",
         "sin_permiso": "No tienes permiso para crear empleados con su documento.",
         "sede_invalida": "Elige una sede de tu organización.",
-        "generico": "No pudimos crear el empleado. No se guardó nada y tus datos siguen aquí."
+        "generico": "No pudimos crear el empleado. No se guardó nada y tus datos siguen aquí.",
+        "sin_cupo": "El plan ya no tiene cupo de usuarios. Cambia de plan o libera un usuario en Organización › Equipo.",
+        "correo_obligatorio": "Escribe el correo para la invitación.",
+        "ya_es_usuario": "Ese correo ya es usuario de tu organización: búscalo en Empleados.",
+        "ya_invitado": "Ese correo ya tiene una invitación pendiente en Organización › Equipo.",
+        "demasiadas_invitaciones": "Se enviaron varias invitaciones seguidas a ese correo. Intenta de nuevo en unos minutos."
       },
       "sinPermiso": {
         "titulo": "No tienes permiso para crear empleados",
@@ -55765,8 +55779,6 @@
         "porIngresar": "Por ingresar · {fecha}",
         "registrado": "{nombre} quedó registrado",
         "reingreso": "Reingreso de {nombre} registrado",
-        "sinUsuario": "Sin usuario de la app",
-        "invitacion": "Invitación al portal enviada",
         "tareaSalario": "Quedó sin salario: quien tiene el permiso recibió la tarea de completarlo.",
         "falta": "Lo que falta en su expediente",
         "documentos": "Documentos que exige el cargo",
@@ -55779,7 +55791,20 @@
         "sinRegistrar": "Sin registrar",
         "registrar": "Registrar",
         "otro": "Crear otro empleado",
-        "irFicha": "Ir a su ficha"
+        "irFicha": "Ir a su ficha",
+        "invitacionEnviada": "Invitación enviada a {correo}",
+        "invitacionNoSalio": "La invitación no salió",
+        "reenviarDesdeFicha": "Quedó creado, pero el correo de la invitación no salió. Reenvíalo desde su ficha."
+      },
+      "acceso": {
+        "conservaUsuario": "Conserva su usuario de la app: no ocupa otro usuario del plan.",
+        "usaCupo": "Crear este empleado usa 1 usuario de tu plan. Quedan {restantes} de {maximo}.",
+        "sinTope": "Tu plan no tiene tope de usuarios.",
+        "verPlan": "Ver plan"
+      },
+      "sinCupo": {
+        "titulo": "Tu plan permite {maximo} usuarios y ya están ocupados",
+        "descripcion": "Cada empleado es un usuario de la app. Para dar de alta a alguien más, cambia de plan o libera un usuario en Organización › Equipo."
       }
     },
     "importar": {
@@ -55808,7 +55833,8 @@
       "resultados": {
         "creado": "Creado",
         "duplicado": "Documento ya registrado",
-        "error": "No se pudo crear"
+        "error": "No se pudo crear",
+        "sin_cupo": "Sin cupo de usuarios en el plan"
       },
       "errores": {
         "tipoDocumento": "Tipo de documento inválido",
@@ -55822,8 +55848,10 @@
         "cargo": "Cargo no encontrado",
         "contrato": "Tipo de contrato inválido",
         "jornada": "Jornada entre 1 y 48 horas",
-        "salario": "Salario inválido"
-      }
+        "salario": "Salario inválido",
+        "correo": "Falta el correo para la invitación"
+      },
+      "cadaUsuario": "Cada fila crea un usuario de la app: le llega una invitación al correo de la plantilla y ocupa un usuario del plan."
     },
     "aprobaciones": {
       "titulo": "Mis aprobaciones",

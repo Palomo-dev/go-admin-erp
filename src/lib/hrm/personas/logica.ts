@@ -25,6 +25,19 @@ export interface AlertaEmpleado {
   id?: string;
 }
 
+/**
+ * Acceso a la app de un empleado (revisión 2026-11-15): cada empleado es un
+ * usuario. Mientras no acepta la invitación del alta está «pendiente» o
+ * «vencida»; «desactivado» es un usuario desactivado en Organización › Equipo.
+ */
+export const ESTADOS_ACCESO = ['activo', 'invitacion_pendiente', 'invitacion_vencida', 'desactivado'] as const;
+export type EstadoAcceso = (typeof ESTADOS_ACCESO)[number];
+
+/** «Reenviar invitación» solo para quien todavía no entra y sigue en la organización. */
+export function puedeReenviarInvitacion(e: { acceso: EstadoAcceso; estado: EstadoEmpleado }): boolean {
+  return (e.acceso === 'invitacion_pendiente' || e.acceso === 'invitacion_vencida') && e.estado !== 'retirado';
+}
+
 export interface EmpleadoFila {
   persona_id: string;
   vinculo_id: string;
@@ -42,9 +55,7 @@ export interface EmpleadoFila {
   ingreso: string | null;
   retiro: string | null;
   estado: EstadoEmpleado;
-  tiene_usuario: boolean;
-  invitacion_pendiente: boolean;
-  tiene_correo: boolean;
+  acceso: EstadoAcceso;
   alertas: AlertaEmpleado[];
 }
 

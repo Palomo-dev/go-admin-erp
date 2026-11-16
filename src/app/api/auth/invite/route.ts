@@ -11,7 +11,12 @@ import {
   OrgContextError,
   type ServerOrgContext,
 } from '@/lib/utils/orgContext';
-import { enviarCorreoInvitacion, type InvitacionParaEnviar } from '@/lib/auth/invitacionesEnvio.server';
+import {
+  ESTADOS_REENVIABLES,
+  enviarCorreoInvitacion,
+  renovarInvitacion,
+  type InvitacionParaEnviar,
+} from '@/lib/auth/invitacionesEnvio.server';
 import {
   DIAS_VIGENCIA_INVITACION,
   generarCodigoInvitacion,
@@ -75,8 +80,8 @@ function sinCupo(error: { hint?: string | null; message?: string | null } | null
   return cupo ? NextResponse.json({ error: cupo.mensaje, code: cupo.codigo }, { status: 409 }) : null;
 }
 
-/** Estados desde los que se puede reenviar: pendiente (vigente o vencida) o ya marcada vencida (P1-5). */
-const REENVIABLES = ['pending', 'expired'];
+/** Estados desde los que se puede reenviar (P1-5): los mismos de `renovarInvitacion`. */
+const REENVIABLES: readonly string[] = ESTADOS_REENVIABLES;
 
 function demasiadasPeticiones(rl: RateLimitResult & { blockedKey?: string }, ip: string) {
   const retryAfter = Math.max(1, Math.ceil((rl.resetAt.getTime() - Date.now()) / 1000));
@@ -180,20 +185,15 @@ export async function POST(request: Request) {
 
       // Código nuevo y vigencia renovada: el enlace anterior deja de servir. Una
       // vencida vuelve a `pending` y vuelve a ocupar cupo (lo comprueba la base).
-      const code = generarCodigoInvitacion();
-      const { data: actualizada, error: updError } = await admin
-        .from('invitations')
-        .update({ code, expires_at: vence(), status: 'pending' })
-        .eq('id', invitationId)
-        .in('status', REENVIABLES)
-        .select('id')
-        .maybeSingle();
-      const cupoReenvio = sinCupo(updError);
-      if (cupoReenvio) return cupoReenvio;
-      if (updError || !actualizada) {
-        console.error('No se pudo renovar la invitación:', invitationId, updError);
+      const renovada = await renovarInvitacion(admin, invitationId as number);
+      if (!renovada.ok) {
+        if (renovada.cupo) {
+          return NextResponse.json({ error: renovada.cupo.mensaje, code: renovada.cupo.codigo }, { status: 409 });
+        }
+        console.error('No se pudo renovar la invitación:', invitationId);
         return invitacionNoValida();
       }
+      const code = renovada.code;
 
       invitacion = {
         id: fila.id as number,

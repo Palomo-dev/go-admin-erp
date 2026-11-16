@@ -2,7 +2,8 @@
 
 /**
  * Resumen de la ficha (Figma 95-hrm-03-01): datos clave, alertas y
- * vencimientos, últimos cambios, portal del empleado, expediente y jefe.
+ * vencimientos, últimos cambios, acceso a la app (estado de la invitación del
+ * alta; cada empleado es un usuario, revisión 2026-11-15), expediente y jefe.
  * El Resumen nunca muestra el monto del salario (decisión 14).
  */
 import Link from 'next/link';
@@ -12,12 +13,21 @@ import { AvatarIniciales, AvisoTonal, BarraProgreso, StatusBadge, Tarjeta } from
 import { antiguedad, ordenarAlertas, type AlertaEmpleado } from '@/lib/hrm/personas/logica';
 import type { ContextoFicha } from './FichaEmpleado';
 import { fechaCorta, useNombreCategoria, useTextoAlerta, useValorCampo } from '../textosPersonas';
+import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+
+const TONO_ACCESO = {
+  activo: 'exito',
+  invitacion_pendiente: 'informacion',
+  invitacion_vencida: 'advertencia',
+  desactivado: 'neutro',
+} as const;
 
 export function PestanaResumen({ ficha, irA, verSolicitud }: ContextoFicha) {
   const t = useTranslations('hrmPersonas.resumen');
   const tc = useTranslations('hrmPersonas.comun');
   const th = useTranslations('hrmPersonas.historial');
   const textoAlerta = useTextoAlerta();
+  const { formatDate } = useFormatDate();
   const categoria = useNombreCategoria();
   const valorCampo = useValorCampo();
   const v = ficha.vinculo;
@@ -29,6 +39,16 @@ export function PestanaResumen({ ficha, irA, verSolicitud }: ContextoFicha) {
   const subidos = ficha.expediente?.subidos ?? [];
   const faltan = exigidos.filter((c) => !subidos.includes(c));
   const porVencer = alertas.filter((a) => a.tipo === 'documento_por_vencer' || a.tipo === 'certificacion_por_vencer');
+  const acceso = ficha.persona.acceso;
+  const fechas = { creada: formatDate(acceso.creada), vence: formatDate(acceso.vence) };
+  const textoAcceso =
+    acceso.estado === 'activo'
+      ? t('accesoTexto.activo')
+      : acceso.estado === 'desactivado'
+        ? t('accesoTexto.desactivado')
+        : acceso.correo
+          ? t(`accesoTexto.${acceso.estado}`, { correo: acceso.correo, ...fechas })
+          : t(`accesoTexto.${acceso.estado}SinCorreo`, fechas);
 
   const datos: [string, string][] = [
     [t('cargo'), v?.cargo ?? tc('sinDato')],
@@ -137,18 +157,10 @@ export function PestanaResumen({ ficha, irA, verSolicitud }: ContextoFicha) {
 
       <div className="flex min-w-0 flex-col gap-4">
         <Tarjeta
-          titulo={t('portal')}
-          accion={
-            <StatusBadge
-              estado="portal"
-              tono={ficha.persona.tiene_usuario ? 'exito' : ficha.persona.invitacion_pendiente ? 'informacion' : 'neutro'}
-              etiqueta={ficha.persona.tiene_usuario ? t('conUsuario') : ficha.persona.invitacion_pendiente ? t('invitado') : t('sinUsuario')}
-            />
-          }
+          titulo={t('acceso')}
+          accion={<StatusBadge estado={acceso.estado} tono={TONO_ACCESO[acceso.estado]} etiqueta={t(`accesoEstados.${acceso.estado}`)} />}
         >
-          <p className="text-sm text-fg-secondary">
-            {ficha.persona.tiene_usuario ? t('portalConUsuario') : t('portalSinUsuario', { nombre: ficha.persona.first_name })}
-          </p>
+          <p className="text-sm text-fg-secondary">{textoAcceso}</p>
         </Tarjeta>
 
         <Tarjeta

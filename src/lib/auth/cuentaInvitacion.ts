@@ -9,7 +9,9 @@ import type { SupabaseClient, User } from '@supabase/supabase-js';
  * - `huerfana`: existe un usuario creado por `inviteUserByEmail` para ESTA
  *   invitación (o esta organización) que nunca terminó: sin perfil ni
  *   membresía en ninguna organización. Nadie es dueño de esa cuenta todavía,
- *   así que se le puede fijar la contraseña desde el asistente.
+ *   así que se le puede fijar la contraseña desde el asistente. También la
+ *   cuenta que preparó el alta de RR. HH. (`esCuentaPreparadaPorRrhh`): perfil
+ *   y miembro inactivo de esta organización, pero nunca entró.
  * - `existente`: hay una cuenta real (miembro de otra organización, o un
  *   cliente de una tienda web). Solo puede aceptar la invitación con SESIÓN
  *   PROPIA: enlace mágico o inicio de sesión con su contraseña. Nunca se le
@@ -39,6 +41,28 @@ export async function buscarUsuarioAuthPorEmail(
     if (usuarios.length < porPagina) break;
   }
   return null;
+}
+
+/**
+ * ¿La cuenta la preparó el alta de RR. HH. de esta organización y nadie la ha
+ * usado? (revisión 2026-11-15: cada empleado nace con su usuario). El alta crea
+ * el usuario sin contraseña, su perfil y su miembro INACTIVO, y le manda la
+ * invitación; mientras no la acepte, nadie es dueño de esa cuenta.
+ *
+ * Solo cuenta si: la creó una invitación de esta organización marcada
+ * `hr_alta`, nunca inició sesión y no confirmó el correo. Las membresías se
+ * revisan aparte (`estadoCuentaInvitacion`): todas inactivas y de esta
+ * organización.
+ */
+export function esCuentaPreparadaPorRrhh(usuario: User, organizationId: number): boolean {
+  const meta = (usuario.user_metadata ?? {}) as Record<string, unknown>;
+  return (
+    meta.is_invitation === true &&
+    meta.hr_alta === true &&
+    String(meta.organization_id ?? '') === String(organizationId) &&
+    !usuario.last_sign_in_at &&
+    !usuario.email_confirmed_at
+  );
 }
 
 /**
@@ -72,6 +96,21 @@ export async function estadoCuentaInvitacion(
       .eq('user_id', usuario.id),
   ]);
 
-  if (perfil || (membresias ?? 0) > 0) return { estado: 'existente', usuario };
-  return { estado: 'huerfana', usuario };
+  if (!perfil && (membresias ?? 0) === 0) return { estado: 'huerfana', usuario };
+
+  // Preparada por el alta de RR. HH.: tiene perfil y un miembro inactivo de esta
+  // organización, pero nunca entró. Se trata como huérfana para que fije su
+  // contraseña al aceptar (accept_invitation_atomic activa el miembro).
+  if (esCuentaPreparadaPorRrhh(usuario, invitacion.organization_id)) {
+    const { data: filas } = await admin
+      .from('organization_members')
+      .select('organization_id, is_active')
+      .eq('user_id', usuario.id);
+    const lista = (filas ?? []) as { organization_id: number; is_active: boolean | null }[];
+    const soloInactivaDeEstaOrg =
+      lista.length > 0 &&
+      lista.every((m) => Number(m.organization_id) === Number(invitacion.organization_id) && !m.is_active);
+    if (soloInactivaDeEstaOrg) return { estado: 'huerfana', usuario };
+  }
+  return { estado: 'existente', usuario };
 }

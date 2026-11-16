@@ -54977,14 +54977,13 @@
     },
     "lista": {
       "titulo": "Employés",
-      "subtituloBase": "Un employé n’a pas besoin d’utilisateur de l’application.",
+      "subtituloBase": "Les personnes qui travaillent dans votre organisation.",
       "buscar": "Rechercher un employé…",
       "archivo": "employes",
       "resumen": {
         "activos": "{n, plural, one {# actif} other {# actifs}}",
         "prueba": "{n} en période d’essai",
-        "porIngresar": "{n} arrivée prochaine",
-        "sinUsuario": "Un employé n’a pas besoin d’utilisateur de l’application."
+        "porIngresar": "{n} arrivée prochaine"
       },
       "acciones": {
         "exportar": "Exporter",
@@ -54994,9 +54993,9 @@
         "registrarCambio": "Enregistrer un changement",
         "registrarCambioDetalle": "Salaire, poste, site, horaire ou sécurité sociale",
         "subirDocumento": "Téléverser un document",
-        "invitar": "Inviter au portail de l’employé",
-        "invitarDetalle": "N’a pas d’utilisateur de l’application",
-        "invitarCorto": "Inviter au portail"
+        "reenviar": "Renvoyer l’invitation",
+        "reenviarDetalle": "Son invitation est toujours en attente",
+        "reenviarCorto": "Renvoyer les invitations"
       },
       "columnas": {
         "empleado": "Employé",
@@ -55029,7 +55028,7 @@
       },
       "vacio": {
         "titulo": "Aucun employé pour l’instant",
-        "descripcion": "Créez le premier ou importez-les depuis un fichier. Un employé n’a pas besoin d’utilisateur de l’application."
+        "descripcion": "Créez le premier ou importez-les depuis un fichier."
       },
       "sinResultados": "Aucun employé ne correspond à la recherche ou aux filtres.",
       "error": {
@@ -55041,33 +55040,31 @@
         "descripcion": "Votre rôle n’inclut pas l’autorisation « Voir les employés ». Demandez-la à la personne qui gère les rôles de votre organisation.",
         "accion": "Aller à l’accueil"
       },
-      "invitar": {
-        "titulo": "Envoyer {n, plural, one {# invitation} other {# invitations}} au portail employé ?",
-        "descripcion": "L’invitation part vers l’e-mail de leur fiche.",
-        "sinCorreo": "{nombres} {n, plural, one {n’a} other {n’ont}} pas d’e-mail enregistré : elle ne sera pas envoyée.",
-        "confirmar": "Envoyer {n, plural, one {# invitation} other {# invitations}}",
-        "enviadas": "{n, plural, one {# invitation envoyée} other {# invitations envoyées}}.",
-        "error": "Impossible d’envoyer les invitations.",
-        "nadie": "Aucune des personnes choisies ne peut être invitée : elles ont déjà un utilisateur ou une invitation en attente."
+      "reenviar": {
+        "titulo": "Renvoyer {n, plural, one {# invitation en attente} other {# invitations en attente}} ?",
+        "descripcion": "Elles leur parviennent de nouveau à l’adresse de l’invitation, avec un nouveau lien. L’ancien ne fonctionne plus.",
+        "confirmar": "Renvoyer {n, plural, one {# invitation} other {# invitations}}",
+        "enviadas": "{n, plural, one {# invitation renvoyée} other {# invitations renvoyées}}.",
+        "error": "Nous n’avons pas pu renvoyer les invitations.",
+        "nadie": "Aucune des personnes choisies n’a d’invitation en attente."
       }
     },
     "ficha": {
       "tituloSinDatos": "Fiche de l’employé",
       "jefe": "Responsable : {nombre}",
-      "sinUsuario": "Sans utilisateur de l’application",
-      "invitacionPendiente": "Invitation envoyée",
       "acciones": {
-        "invitar": "Inviter au portail",
         "registrarCambio": "Enregistrer un changement",
         "subirDocumento": "Téléverser un document",
-        "leerIa": "Lire un document avec l’IA"
+        "leerIa": "Lire un document avec l’IA",
+        "reenviar": "Renvoyer l’invitation"
       },
       "invitacion": {
-        "enviada": "Invitation envoyée à l’e-mail de sa fiche.",
-        "error": "Impossible d’envoyer l’invitation.",
-        "sin_correo": "La fiche n’a pas d’e-mail : ajoutez-le dans Données personnelles.",
-        "ya_invitado": "Une invitation est déjà en attente.",
-        "sin_cupo": "Votre forfait n’a plus de place pour d’autres utilisateurs."
+        "enviada": "Invitation renvoyée. L’ancien lien ne fonctionne plus.",
+        "error": "Nous n’avons pas pu renvoyer l’invitation.",
+        "sin_cupo": "Votre forfait n’a plus de place pour d’autres utilisateurs.",
+        "ya_entro": "Cette personne utilise déjà l’application : aucune invitation en attente.",
+        "sin_invitacion": "Aucune invitation en attente.",
+        "demasiadas": "Plusieurs invitations ont été envoyées à cette adresse d’affilée. Réessayez dans quelques minutes."
       },
       "pestanas": {
         "etiqueta": "Sections de la fiche",
@@ -55097,6 +55094,10 @@
           "descripcion": "Vérifiez votre connexion et réessayez.",
           "accion": "Réessayer"
         }
+      },
+      "acceso": {
+        "invitacion_pendiente": "Invitation en attente",
+        "invitacion_vencida": "Invitation expirée"
       }
     },
     "resumen": {
@@ -55121,19 +55122,28 @@
       "verHistorial": "Voir l’historique",
       "ultimosCambios": "Derniers changements",
       "sinCambios": "Aucun changement enregistré pour l’instant.",
-      "portal": "Portail de l’employé",
-      "conUsuario": "Avec utilisateur",
-      "invitado": "Invité",
-      "sinUsuario": "Sans utilisateur",
-      "portalConUsuario": "Utilise déjà l’application : depuis son téléphone il voit ses bulletins et attestations et fait des demandes.",
-      "portalSinUsuario": "{nombre} est employé même sans utilisateur de l’application. Si vous l’invitez depuis l’en-tête, il pourra voir ses bulletins et attestations et faire des demandes.",
       "expediente": "Dossier",
       "exigidos": "Documents exigés par le poste",
       "deN": "{n} sur {total}",
       "falta": "Manque : {lista}.",
       "porVencer": "Bientôt expirés : {lista}.",
       "irDocumentos": "Aller aux documents",
-      "jefeInmediato": "Responsable direct"
+      "jefeInmediato": "Responsable direct",
+      "acceso": "Accès à l’application",
+      "accesoEstados": {
+        "activo": "Actif",
+        "invitacion_pendiente": "Invitation en attente",
+        "invitacion_vencida": "Invitation expirée",
+        "desactivado": "Désactivé"
+      },
+      "accesoTexto": {
+        "activo": "Utilise déjà l’application : depuis son téléphone, consulte ses bulletins et certificats et fait ses demandes.",
+        "invitacion_pendiente": "Envoyée à {correo} le {creada}. Expire le {vence}.",
+        "invitacion_pendienteSinCorreo": "Invitation envoyée le {creada}. Expire le {vence}.",
+        "invitacion_vencida": "L’invitation à {correo} a expiré le {vence}. Renvoyez-la depuis l’en-tête.",
+        "invitacion_vencidaSinCorreo": "L’invitation a expiré le {vence}. Renvoyez-la depuis l’en-tête.",
+        "desactivado": "Son utilisateur est désactivé dans Organisation › Équipe."
+      }
     },
     "datos": {
       "identificacion": "Identification",
@@ -55667,7 +55677,7 @@
     },
     "alta": {
       "titulo": "Nouvel employé",
-      "subtitulo": "Une personne peut être employée sans utilisateur de l’application. Les champs marqués * sont obligatoires.",
+      "subtitulo": "Chaque employé est un utilisateur de l’application : il reçoit une invitation et occupe un utilisateur du forfait. Les champs marqués * sont obligatoires.",
       "secciones": {
         "identificacion": "Identification",
         "personales": "Données personnelles",
@@ -55678,7 +55688,7 @@
         "salarioSinPermiso": "Vous n’avez pas l’autorisation salaire : une autre personne complète ce bloc.",
         "seguridad": "Sécurité sociale",
         "seguridadNota": "Facultatif pour l’instant : vous pouvez le compléter plus tard et la fiche indique ce qui manque.",
-        "portal": "Portail de l’employé"
+        "acceso": "Accès à l’application"
       },
       "campos": {
         "tipoDocumento": "Type de document",
@@ -55687,7 +55697,6 @@
         "apellidos": "Noms",
         "nacimiento": "Date de naissance",
         "celular": "Mobile",
-        "correo": "E-mail personnel",
         "sede": "Site",
         "sedeAyuda": "Les sites de votre organisation.",
         "area": "Service",
@@ -55707,10 +55716,9 @@
         "cuentaDespues": "Le compte bancaire peut être ajouté plus tard. Sans lui, il ne peut pas être payé par virement.",
         "salarioSinPermiso": "Salaire et paiement · sans autorisation",
         "tareaSalario": "L’employé est créé sans salaire. La personne autorisée reçoit la tâche de le compléter, et la fiche affiche l’alerte jusque-là.",
-        "invitar": "Inviter au portail de l’employé",
-        "invitarDetalle": "Une invitation part vers {correo} pour créer son accès. Depuis son téléphone il verra ses bulletins et attestations et pourra faire des demandes.",
-        "invitarSinCorreo": "Saisissez un e-mail personnel pour pouvoir l’inviter.",
-        "sinUsuario": "Pas besoin d’utilisateur GO Admin pour être employé : sans invitation, il compte quand même dans la structure, la paie et les rapports. Vous pouvez l’inviter plus tard depuis sa fiche."
+        "correoInvitacion": "E-mail pour l’invitation",
+        "correoInvitacionAyuda": "Il reçoit l’invitation pour créer son utilisateur GO Admin. Avec lui, il accède au portail de l’employé.",
+        "correoInvalido": "Saisissez un e-mail valide."
       },
       "duplicado": {
         "disponible": "Disponible : personne dans votre organisation n’a ce document.",
@@ -55728,7 +55736,8 @@
         "porIngresar": "Une fois créé, il reste « Arrivée prochaine » jusqu’au {fecha}.",
         "activo": "Une fois créé, il est actif dès aujourd’hui.",
         "corrige": "Corrigez le document pour continuer.",
-        "completa": "Remplissez les champs obligatoires."
+        "completa": "Remplissez les champs obligatoires.",
+        "sinCupo": "Plus d’utilisateurs disponibles dans le forfait"
       },
       "crear": "Créer l’employé",
       "crearReingreso": "Enregistrer la réembauche",
@@ -55738,7 +55747,12 @@
         "documento_retirado": "La personne de ce document est partie : enregistrez la réembauche.",
         "sin_permiso": "Vous n’avez pas l’autorisation de créer des employés avec leur document.",
         "sede_invalida": "Choisissez un site de votre organisation.",
-        "generico": "Impossible de créer l’employé. Rien n’a été enregistré et vos données sont toujours là."
+        "generico": "Impossible de créer l’employé. Rien n’a été enregistré et vos données sont toujours là.",
+        "sin_cupo": "Le forfait n’a plus d’utilisateurs disponibles. Changez de forfait ou libérez un utilisateur dans Organisation › Équipe.",
+        "correo_obligatorio": "Saisissez l’e-mail pour l’invitation.",
+        "ya_es_usuario": "Cet e-mail est déjà un utilisateur de votre organisation : cherchez-le dans Employés.",
+        "ya_invitado": "Cet e-mail a déjà une invitation en attente dans Organisation › Équipe.",
+        "demasiadas_invitaciones": "Plusieurs invitations ont été envoyées à cette adresse d’affilée. Réessayez dans quelques minutes."
       },
       "sinPermiso": {
         "titulo": "Vous n’avez pas l’autorisation de créer des employés",
@@ -55750,8 +55764,6 @@
         "porIngresar": "Arrivée prochaine · {fecha}",
         "registrado": "{nombre} a été enregistré",
         "reingreso": "Réembauche de {nombre} enregistrée",
-        "sinUsuario": "Sans utilisateur de l’application",
-        "invitacion": "Invitation au portail envoyée",
         "tareaSalario": "Créé sans salaire : la personne autorisée a reçu la tâche de le compléter.",
         "falta": "Ce qui manque dans son dossier",
         "documentos": "Documents exigés par le poste",
@@ -55764,7 +55776,20 @@
         "sinRegistrar": "Non enregistré",
         "registrar": "Enregistrer",
         "otro": "Créer un autre employé",
-        "irFicha": "Aller à sa fiche"
+        "irFicha": "Aller à sa fiche",
+        "invitacionEnviada": "Invitation envoyée à {correo}",
+        "invitacionNoSalio": "L’invitation n’est pas partie",
+        "reenviarDesdeFicha": "L’employé a été créé, mais l’e-mail d’invitation n’est pas parti. Renvoyez-le depuis sa fiche."
+      },
+      "acceso": {
+        "conservaUsuario": "Conserve son utilisateur de l’application : n’occupe pas d’autre utilisateur du forfait.",
+        "usaCupo": "Créer cet employé utilise 1 utilisateur de votre forfait. Il en reste {restantes} sur {maximo}.",
+        "sinTope": "Votre forfait n’a pas de limite d’utilisateurs.",
+        "verPlan": "Voir le forfait"
+      },
+      "sinCupo": {
+        "titulo": "Votre forfait permet {maximo} utilisateurs et ils sont tous occupés",
+        "descripcion": "Chaque employé est un utilisateur de l’application. Pour en ajouter un autre, changez de forfait ou libérez un utilisateur dans Organisation › Équipe."
       }
     },
     "importar": {
@@ -55793,7 +55818,8 @@
       "resultados": {
         "creado": "Créé",
         "duplicado": "Document déjà enregistré",
-        "error": "Création impossible"
+        "error": "Création impossible",
+        "sin_cupo": "Plus d’utilisateurs disponibles dans le forfait"
       },
       "errores": {
         "tipoDocumento": "Type de document invalide",
@@ -55807,8 +55833,10 @@
         "cargo": "Poste introuvable",
         "contrato": "Type de contrat invalide",
         "jornada": "Horaire entre 1 et 48 heures",
-        "salario": "Salaire invalide"
-      }
+        "salario": "Salaire invalide",
+        "correo": "E-mail d’invitation manquant"
+      },
+      "cadaUsuario": "Chaque ligne crée un utilisateur de l’application : il reçoit une invitation à l’e-mail du modèle et occupe un utilisateur du forfait."
     },
     "aprobaciones": {
       "titulo": "Mes approbations",

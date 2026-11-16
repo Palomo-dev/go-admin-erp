@@ -5,7 +5,9 @@
  * Cada fila se convierte en el cuerpo de `POST /api/hrm/empleados/alta` (la
  * misma transacción del alta manual). La plantilla NO tiene banco ni seguridad
  * social: esos datos van por la ficha, con su permiso y su registro. El salario
- * solo viaja si quien importa tiene el permiso de salario.
+ * solo viaja si quien importa tiene el permiso de salario. El correo es
+ * obligatorio: cada empleado nace con su usuario de la app y la invitación le
+ * llega a ese correo (revisión 2026-11-15).
  */
 import { esTipoDocumento, normalizarNumeroDocumento, TIPOS_CONTRATO } from './catalogo';
 import { normalizar } from './logica';
@@ -93,6 +95,7 @@ export interface FilaImportar {
 }
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function buscar<T extends { name: string }>(lista: T[], valor: string): T | undefined {
   const v = normalizar(valor);
@@ -116,6 +119,7 @@ export function prepararFilas(filas: Record<string, string>[], cat: CatalogosImp
     if (!FECHA.test(r.fecha_ingreso ?? '')) errores.push('fechaIngreso');
     if (r.fecha_nacimiento && !FECHA.test(r.fecha_nacimiento)) errores.push('fechaNacimiento');
     if (r.fin_contrato && !FECHA.test(r.fin_contrato)) errores.push('finContrato');
+    if (!CORREO.test((r.correo ?? '').trim())) errores.push('correo');
     const sede = buscar(cat.sedes, r.sede ?? '');
     if (!sede) errores.push('sede');
     const area = r.area ? buscar(cat.areas, r.area) : undefined;
@@ -147,7 +151,7 @@ export function prepararFilas(filas: Record<string, string>[], cat: CatalogosImp
               doc_number: numero,
               birth_date: r.fecha_nacimiento || undefined,
               personal_phone: r.celular || undefined,
-              personal_email: r.correo || undefined,
+              personal_email: (r.correo ?? '').trim(),
               branch_id: sede?.id,
               department_id: area?.id,
               position_id: cargo?.id,

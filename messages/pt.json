@@ -54987,14 +54987,13 @@
     },
     "lista": {
       "titulo": "Funcionários",
-      "subtituloBase": "Um funcionário não precisa de usuário do app.",
+      "subtituloBase": "As pessoas que trabalham na sua organização.",
       "buscar": "Buscar funcionário…",
       "archivo": "funcionarios",
       "resumen": {
         "activos": "{n, plural, one {# ativo} other {# ativos}}",
         "prueba": "{n} em período de experiência",
-        "porIngresar": "{n} por ingressar",
-        "sinUsuario": "Um funcionário não precisa de usuário do app."
+        "porIngresar": "{n} por ingressar"
       },
       "acciones": {
         "exportar": "Exportar",
@@ -55004,9 +55003,9 @@
         "registrarCambio": "Registrar uma alteração",
         "registrarCambioDetalle": "Salário, cargo, unidade, jornada ou seguridade social",
         "subirDocumento": "Enviar documento",
-        "invitar": "Convidar ao portal do funcionário",
-        "invitarDetalle": "Não tem usuário do app",
-        "invitarCorto": "Convidar ao portal"
+        "reenviar": "Reenviar convite",
+        "reenviarDetalle": "O convite ainda está pendente",
+        "reenviarCorto": "Reenviar convites"
       },
       "columnas": {
         "empleado": "Funcionário",
@@ -55039,7 +55038,7 @@
       },
       "vacio": {
         "titulo": "Ainda não há funcionários",
-        "descripcion": "Crie o primeiro ou importe a partir de um arquivo. Um funcionário não precisa de usuário do app."
+        "descripcion": "Crie o primeiro ou importe-os de um arquivo."
       },
       "sinResultados": "Nenhum funcionário corresponde à busca ou aos filtros.",
       "error": {
@@ -55051,33 +55050,31 @@
         "descripcion": "Seu papel não inclui a permissão «Ver funcionários». Peça a quem administra os papéis da sua organização.",
         "accion": "Ir ao início"
       },
-      "invitar": {
-        "titulo": "Enviar {n, plural, one {# convite} other {# convites}} ao portal do funcionário?",
-        "descripcion": "O convite chega ao e-mail da ficha.",
-        "sinCorreo": "{nombres} não {n, plural, one {tem} other {têm}} e-mail registrado: não será enviado.",
-        "confirmar": "Enviar {n, plural, one {# convite} other {# convites}}",
-        "enviadas": "{n, plural, one {# convite enviado} other {# convites enviados}}.",
-        "error": "Não foi possível enviar os convites.",
-        "nadie": "Nenhuma das pessoas escolhidas pode ser convidada: já têm usuário ou um convite pendente."
+      "reenviar": {
+        "titulo": "Reenviar {n, plural, one {# convite pendente} other {# convites pendentes}}?",
+        "descripcion": "Eles recebem de novo no e-mail do convite, com um link novo. O anterior deixa de funcionar.",
+        "confirmar": "Reenviar {n, plural, one {# convite} other {# convites}}",
+        "enviadas": "{n, plural, one {# convite reenviado} other {# convites reenviados}}.",
+        "error": "Não conseguimos reenviar os convites.",
+        "nadie": "Nenhuma das pessoas escolhidas tem um convite pendente."
       }
     },
     "ficha": {
       "tituloSinDatos": "Ficha do funcionário",
       "jefe": "Chefe: {nombre}",
-      "sinUsuario": "Sem usuário do app",
-      "invitacionPendiente": "Convite enviado",
       "acciones": {
-        "invitar": "Convidar ao portal",
         "registrarCambio": "Registrar uma alteração",
         "subirDocumento": "Enviar documento",
-        "leerIa": "Ler documento com IA"
+        "leerIa": "Ler documento com IA",
+        "reenviar": "Reenviar convite"
       },
       "invitacion": {
-        "enviada": "Convite enviado ao e-mail da ficha.",
-        "error": "Não foi possível enviar o convite.",
-        "sin_correo": "A ficha não tem e-mail: adicione em Dados pessoais.",
-        "ya_invitado": "Já tem um convite pendente.",
-        "sin_cupo": "Seu plano não tem vaga para mais usuários."
+        "enviada": "Convite reenviado. O link anterior não funciona mais.",
+        "error": "Não conseguimos reenviar o convite.",
+        "sin_cupo": "Seu plano não tem vaga para mais usuários.",
+        "ya_entro": "Já usa o app: não há convite pendente.",
+        "sin_invitacion": "Não há convite pendente.",
+        "demasiadas": "Vários convites foram enviados a esse e-mail seguidos. Tente de novo em alguns minutos."
       },
       "pestanas": {
         "etiqueta": "Seções da ficha",
@@ -55107,6 +55104,10 @@
           "descripcion": "Verifique sua conexão e tente de novo.",
           "accion": "Tentar de novo"
         }
+      },
+      "acceso": {
+        "invitacion_pendiente": "Convite pendente",
+        "invitacion_vencida": "Convite vencido"
       }
     },
     "resumen": {
@@ -55131,19 +55132,28 @@
       "verHistorial": "Ver histórico",
       "ultimosCambios": "Últimas alterações",
       "sinCambios": "Ainda não há alterações registradas.",
-      "portal": "Portal do funcionário",
-      "conUsuario": "Com usuário",
-      "invitado": "Convidado",
-      "sinUsuario": "Sem usuário",
-      "portalConUsuario": "Já usa o app: pelo celular vê holerites e certificados e faz solicitações.",
-      "portalSinUsuario": "{nombre} é funcionário mesmo sem usuário do app. Se você o convidar pelo cabeçalho, poderá ver holerites e certificados e fazer solicitações.",
       "expediente": "Prontuário",
       "exigidos": "Documentos exigidos pelo cargo",
       "deN": "{n} de {total}",
       "falta": "Falta: {lista}.",
       "porVencer": "A vencer: {lista}.",
       "irDocumentos": "Ir a Documentos",
-      "jefeInmediato": "Chefe imediato"
+      "jefeInmediato": "Chefe imediato",
+      "acceso": "Acesso ao app",
+      "accesoEstados": {
+        "activo": "Ativo",
+        "invitacion_pendiente": "Convite pendente",
+        "invitacion_vencida": "Convite vencido",
+        "desactivado": "Desativado"
+      },
+      "accesoTexto": {
+        "activo": "Já usa o app: pelo celular vê holerites e certificados e faz solicitações.",
+        "invitacion_pendiente": "Enviado para {correo} em {creada}. Vence em {vence}.",
+        "invitacion_pendienteSinCorreo": "Convite enviado em {creada}. Vence em {vence}.",
+        "invitacion_vencida": "O convite para {correo} venceu em {vence}. Reenvie pelo cabeçalho.",
+        "invitacion_vencidaSinCorreo": "O convite venceu em {vence}. Reenvie pelo cabeçalho.",
+        "desactivado": "O usuário está desativado em Organização › Equipe."
+      }
     },
     "datos": {
       "identificacion": "Identificação",
@@ -55677,7 +55687,7 @@
     },
     "alta": {
       "titulo": "Novo funcionário",
-      "subtitulo": "Uma pessoa pode ser funcionária sem usuário do app. O que tem * é obrigatório.",
+      "subtitulo": "Cada funcionário é um usuário do app: recebe um convite e ocupa um usuário do plano. Os campos com * são obrigatórios.",
       "secciones": {
         "identificacion": "Identificação",
         "personales": "Dados pessoais",
@@ -55688,7 +55698,7 @@
         "salarioSinPermiso": "Você não tem a permissão de salário: outra pessoa completa este bloco.",
         "seguridad": "Seguridade social",
         "seguridadNota": "Opcional agora: você pode completar depois e a ficha avisa o que falta.",
-        "portal": "Portal do funcionário"
+        "acceso": "Acesso ao app"
       },
       "campos": {
         "tipoDocumento": "Tipo de documento",
@@ -55697,7 +55707,6 @@
         "apellidos": "Sobrenomes",
         "nacimiento": "Data de nascimento",
         "celular": "Celular",
-        "correo": "E-mail pessoal",
         "sede": "Unidade",
         "sedeAyuda": "As unidades da sua organização.",
         "area": "Área",
@@ -55717,10 +55726,9 @@
         "cuentaDespues": "A conta bancária pode ser registrada depois. Sem ela não é possível pagar por transferência.",
         "salarioSinPermiso": "Salário e pagamento · sem permissão",
         "tareaSalario": "O funcionário é criado sem salário. Quem tem a permissão recebe a tarefa de completá-lo, e a ficha mostra o alerta até lá.",
-        "invitar": "Convidar ao portal do funcionário",
-        "invitarDetalle": "Chega um convite a {correo} para criar o acesso. Pelo celular verá holerites e certificados e poderá fazer solicitações.",
-        "invitarSinCorreo": "Informe um e-mail pessoal para poder convidá-lo.",
-        "sinUsuario": "Não precisa de usuário do GO Admin para ser funcionário: sem convite, continua na estrutura, na folha e nos relatórios. Você pode convidá-lo depois pela ficha."
+        "correoInvitacion": "E-mail para o convite",
+        "correoInvitacionAyuda": "Recebe o convite para criar seu usuário do GO Admin. Com ele entra no portal do funcionário.",
+        "correoInvalido": "Digite um e-mail válido."
       },
       "duplicado": {
         "disponible": "Disponível: ninguém da sua organização tem este documento.",
@@ -55738,7 +55746,8 @@
         "porIngresar": "Ao criar, fica «Por ingressar» até {fecha}.",
         "activo": "Ao criar, fica ativo a partir de hoje.",
         "corrige": "Corrija o documento para continuar.",
-        "completa": "Preencha os campos obrigatórios."
+        "completa": "Preencha os campos obrigatórios.",
+        "sinCupo": "Sem usuários disponíveis no plano"
       },
       "crear": "Criar funcionário",
       "crearReingreso": "Registrar readmissão",
@@ -55748,7 +55757,12 @@
         "documento_retirado": "A pessoa desse documento está desligada: registre a readmissão.",
         "sin_permiso": "Você não tem permissão para criar funcionários com o documento.",
         "sede_invalida": "Escolha uma unidade da sua organização.",
-        "generico": "Não foi possível criar o funcionário. Nada foi salvo e seus dados continuam aqui."
+        "generico": "Não foi possível criar o funcionário. Nada foi salvo e seus dados continuam aqui.",
+        "sin_cupo": "O plano não tem mais usuários disponíveis. Mude de plano ou libere um usuário em Organização › Equipe.",
+        "correo_obligatorio": "Digite o e-mail para o convite.",
+        "ya_es_usuario": "Esse e-mail já é usuário da sua organização: procure-o em Funcionários.",
+        "ya_invitado": "Esse e-mail já tem um convite pendente em Organização › Equipe.",
+        "demasiadas_invitaciones": "Vários convites foram enviados a esse e-mail seguidos. Tente de novo em alguns minutos."
       },
       "sinPermiso": {
         "titulo": "Você não tem permissão para criar funcionários",
@@ -55760,8 +55774,6 @@
         "porIngresar": "Por ingressar · {fecha}",
         "registrado": "{nombre} foi registrado",
         "reingreso": "Readmissão de {nombre} registrada",
-        "sinUsuario": "Sem usuário do app",
-        "invitacion": "Convite ao portal enviado",
         "tareaSalario": "Ficou sem salário: quem tem a permissão recebeu a tarefa de completá-lo.",
         "falta": "O que falta no prontuário",
         "documentos": "Documentos exigidos pelo cargo",
@@ -55774,7 +55786,20 @@
         "sinRegistrar": "Não registrada",
         "registrar": "Registrar",
         "otro": "Criar outro funcionário",
-        "irFicha": "Ir para a ficha"
+        "irFicha": "Ir para a ficha",
+        "invitacionEnviada": "Convite enviado para {correo}",
+        "invitacionNoSalio": "O convite não foi enviado",
+        "reenviarDesdeFicha": "O funcionário foi criado, mas o e-mail do convite não saiu. Reenvie pela ficha."
+      },
+      "acceso": {
+        "conservaUsuario": "Mantém seu usuário do app: não ocupa outro usuário do plano.",
+        "usaCupo": "Criar este funcionário usa 1 usuário do seu plano. Restam {restantes} de {maximo}.",
+        "sinTope": "Seu plano não tem limite de usuários.",
+        "verPlan": "Ver plano"
+      },
+      "sinCupo": {
+        "titulo": "Seu plano permite {maximo} usuários e todos estão ocupados",
+        "descripcion": "Cada funcionário é um usuário do app. Para cadastrar mais alguém, mude de plano ou libere um usuário em Organização › Equipe."
       }
     },
     "importar": {
@@ -55803,7 +55828,8 @@
       "resultados": {
         "creado": "Criado",
         "duplicado": "Documento já registrado",
-        "error": "Não foi possível criar"
+        "error": "Não foi possível criar",
+        "sin_cupo": "Sem usuários disponíveis no plano"
       },
       "errores": {
         "tipoDocumento": "Tipo de documento inválido",
@@ -55817,8 +55843,10 @@
         "cargo": "Cargo não encontrado",
         "contrato": "Tipo de contrato inválido",
         "jornada": "Jornada entre 1 e 48 horas",
-        "salario": "Salário inválido"
-      }
+        "salario": "Salário inválido",
+        "correo": "Falta o e-mail do convite"
+      },
+      "cadaUsuario": "Cada linha cria um usuário do app: recebe um convite no e-mail do modelo e ocupa um usuário do plano."
     },
     "aprobaciones": {
       "titulo": "Minhas aprovações",

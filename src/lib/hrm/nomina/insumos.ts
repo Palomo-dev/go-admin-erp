@@ -51,6 +51,8 @@ export interface EmpleadoInsumo {
   ingreso: string;
   retiro: string | null;
   remoto: boolean;
+  /** Horas semanales pactadas (employments.work_hours_per_week). */
+  jornada_semanal?: number | null;
   moneda: string | null;
   periodo_salario: PeriodoSalario;
   salario: Array<{ desde: string; hasta: string; valor: number }>;
@@ -63,14 +65,17 @@ export interface EmpleadoInsumo {
     medicina_prepagada: number;
     intereses_vivienda: number;
     aportes_voluntarios: number;
+    pension_en_licencia?: 'no' | 'empleador' | 'compartida' | null;
   } | null;
   dependientes_registrados: number;
   novedades: Array<{ id: string; concepto: string; valor: number | null; cantidad: number | null; descripcion: string | null }>;
   comisiones: Array<{ id: string; valor: number }>;
   prestamos: Array<{ cuota_id: string; prestamo_id: string; valor: number; max_deduccion_pct: number | null }>;
-  embargos: Array<{ id: string; tipo: 'alimentos' | 'cooperativa' | 'ordinario'; recibido: string; modo: 'fijo' | 'porcentaje'; valor: number; saldo: number | null }>;
+  embargos: Array<{ id: string; tipo: 'alimentos' | 'cooperativa' | 'ordinario'; recibido: string; modo: 'fijo' | 'porcentaje'; valor: number; saldo: number | null; incluye_prestaciones?: boolean | null }>;
   mes_previo: { ingresos_retencion: number; incr: number; retencion: number } | null;
   anterior: { devengado: number; neto: number } | null;
+  /** IBC del último mes cotizado (suma de sus colillas ordinarias cerradas). */
+  ibc_anterior?: number | null;
   variables_12m: { desde: string; hasta: string; valor: number };
   acumulado: { desde: string; hasta: string; variables: number; no_remunerados: Array<{ desde: string; hasta: string }> } | null;
 }
@@ -106,6 +111,8 @@ export function entradaDesdeInsumos(ins: InsumosNomina, emp: EmpleadoInsumo): En
       integral: ajustes?.integral ?? false,
       periodo_salario: emp.periodo_salario,
       remoto: emp.remoto,
+      jornada_semanal: emp.jornada_semanal === null || emp.jornada_semanal === undefined ? null : n(emp.jornada_semanal),
+      pension_en_licencia: ajustes?.pension_en_licencia === 'empleador' || ajustes?.pension_en_licencia === 'compartida' ? ajustes.pension_en_licencia : 'no',
     },
     salario: emp.salario.map((s) => ({ desde: s.desde, hasta: s.hasta, valor: n(s.valor) })),
     clase_arl: n(emp.clase_arl) || 1,
@@ -122,7 +129,7 @@ export function entradaDesdeInsumos(ins: InsumosNomina, emp: EmpleadoInsumo): En
     novedades: emp.novedades.map((x) => ({ id: x.id, concepto: x.concepto, valor: x.valor === null ? null : n(x.valor), cantidad: x.cantidad === null ? null : n(x.cantidad), descripcion: x.descripcion })),
     comisiones: emp.comisiones.map((c) => ({ id: c.id, valor: n(c.valor) })),
     prestamos: emp.prestamos.map((p) => ({ ...p, valor: n(p.valor), max_deduccion_pct: p.max_deduccion_pct === null ? null : n(p.max_deduccion_pct) })),
-    embargos: emp.embargos.map((g) => ({ ...g, valor: n(g.valor), saldo: g.saldo === null ? null : n(g.saldo) })),
+    embargos: emp.embargos.map((g) => ({ ...g, valor: n(g.valor), saldo: g.saldo === null ? null : n(g.saldo), incluye_prestaciones: g.incluye_prestaciones === true })),
     retencion: {
       procedimiento: ajustes?.procedimiento === 2 ? 2 : 1,
       porcentaje_fijo: ajustes?.porcentaje_fijo === null || ajustes?.porcentaje_fijo === undefined ? null : n(ajustes.porcentaje_fijo),
@@ -142,6 +149,7 @@ export function entradaDesdeInsumos(ins: InsumosNomina, emp: EmpleadoInsumo): En
         }
       : null,
     anterior: emp.anterior ? { devengado: n(emp.anterior.devengado), neto: n(emp.anterior.neto) } : null,
+    ibc_anterior: emp.ibc_anterior === null || emp.ibc_anterior === undefined ? null : n(emp.ibc_anterior) || null,
   };
 }
 

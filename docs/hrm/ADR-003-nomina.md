@@ -129,3 +129,27 @@ Cada una con su `.sql` (md5 igual al de `schema_migrations`) y su reversión en 
 - **Interfaz** (después de Figma): períodos y su ciclo, colilla con sus ítems y alertas, novedades, embargos y datos por vínculo, revisión, pago con elección de cuenta y archivo del banco, colillas del empleado en el portal, conceptos propios y sus cuentas, umbral de alertas en «Lo que define tu empresa», etiquetas de los tipos de aprobación `novedad_nomina` y `cierre_nomina` en los 4 idiomas.
 - **Fase 4:** nómina electrónica (el catálogo ya trae el elemento DIAN de cada concepto) y PILA (pago de aportes y su asiento; hoy los aportes quedan en 2370).
 - Liquidación de contrato (indemnización, CST 64) y auxilio de conectividad de teletrabajo como concepto propio: fases siguientes.
+
+## 11. Ronda del Contador (2026-11-16)
+
+Respuestas en `docs/contador/RESPUESTAS-CONTADOR-NOMINA-2026-11-16.md`; correcciones y casos de nuevo en
+`docs/contador/NOMINA-RONDA-2-RESULTADOS-2026-11-16.md`. El motor pasa a `hrm-nomina-2`. La bandera sigue apagada:
+el Contador aprueba encenderla empresa por empresa, por escrito.
+
+- **Cálculo** (`motorNomina.ts`, `deducciones.ts`, `retencion.ts`): extra en festivo con los dos recargos (P1; el motor
+  de horas ya los sumaba), divisor de la jornada pactada (P2), tope del auxilio medido cada mes con sueldo, comisiones y
+  recargo nocturno (P3), incapacidad al 100 % como opción de empresa (P5, `incapacidad_empleador_fraccion`), vacaciones
+  con el salario del día en que empiezan y promedio sin extras ni dominicales (P6, `fn_hr_nomina_variables_vacaciones`),
+  exoneración medida con lo salarial (P10), ARL solo por días trabajados (P12, `bases.ibc_arl`), salud del empleador en
+  la licencia no remunerada y opción de pensión (P13, `bases.ibc_licencia`,
+  `hr_payroll_employee_settings.pension_en_licencia`), redondeo PILA por subsistema (P14), redondeo de la retención del
+  art. 868 (P17, `retencion_redondeo_tabla`), embargo sobre prestaciones por oficio (P20,
+  `hr_garnishments.base_incluye_prestaciones`), libranza sobre el salario neto sin auxilio (P21), provisión de vacaciones
+  con comisiones y recargo nocturno (P22) y prima con promedio si cambió en el semestre (P23).
+- **Parámetros:** FSP de la Ley 2381 vigente desde el 2027-04-01, con el tramo del 2,8 % hasta 20 SMMLV incluidos
+  (`hasta_incluido`); luto de 5 días hábiles confirmado.
+- **Migración:** `20261116180000_hrm_f3_05_nomina_ronda_contador` (reversión en `supabase/rollbacks/`).
+- **Pruebas:** `motorNominaHrm.test.ts` (los 20 casos con los números nuevos y uno por corrección),
+  `nominaRondaContador.test.ts` (insumos nuevos y FSP 2027), `motorHorasHrm.test.ts` (extra nocturna del 20-jul).
+- **Pendiente:** P19 (porcentaje fijo calculado y guardado por el sistema en junio y diciembre), pantallas de las
+  opciones nuevas (Figma primero) y las seis preguntas de la §3 del documento de la ronda 2.

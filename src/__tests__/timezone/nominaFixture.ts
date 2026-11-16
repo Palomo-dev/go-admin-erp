@@ -70,6 +70,8 @@ export const PARAMETROS_2026: ParametrosNomina = {
     ]),
   ],
   retencion_redondeo_cop: [t(1000)],
+  // ET art. 868 (respuesta P17 del Contador): hasta $100 al peso, hasta $10.000 a la centena, más de $10.000 al millar.
+  retencion_redondeo_tabla: [j([{ hasta: 100, multiplo: 1 }, { hasta: 10_000, multiplo: 100 }, { hasta: null, multiplo: 1000 }])],
   dep_dependientes_pct: [t(0.1)],
   dep_dependientes_tope_uvt_mes: [t(32)],
   dep_medicina_prepagada_tope_uvt_mes: [t(16)],

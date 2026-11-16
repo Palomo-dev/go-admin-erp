@@ -17,7 +17,11 @@ const CODIGOS_EMPRESA = new Set([
   'pila_operador',
   'periodicidad_pago',
   'retencion_procedimiento',
+  // Opción de la empresa (respuesta P5 del Contador, 2026-11-16): pagar al 100 % los días de
+  // incapacidad común a su cargo. Nunca menos de lo legal (2/3).
+  'incapacidad_empleador_fraccion',
 ]);
+const RANGOS: Record<string, [number, number]> = { incapacidad_empleador_fraccion: [0.6667, 1] };
 
 /** Hoy en la zona de la organización (la resuelve la base, `fn_today_for`). */
 export async function hoyOrg(ctx: CtxConfig): Promise<string> {
@@ -85,6 +89,8 @@ export async function guardarEmpresa(ctx: CtxConfig, cambios: unknown): Promise<
     if (x.desde != null && !esFechaPlana(x.desde)) throw new HrmError(422, 'fecha_invalida');
     const valor = x.valor == null ? null : Number(x.valor);
     if (valor !== null && !Number.isFinite(valor)) throw new HrmError(422, 'valor_invalido');
+    const rango = RANGOS[x.code];
+    if (rango && valor !== null && (valor < rango[0] || valor > rango[1])) throw new HrmError(422, 'valor_fuera_de_rango');
     return { code: x.code, valor, valor_json: x.valor_json, desde: x.desde ?? null, activo: x.activo !== false };
   });
   const { data, error } = await ctx.supabase.rpc('fn_hr_parametros_empresa_guardar', { p_org: ctx.organizationId, p_cambios: limpios });

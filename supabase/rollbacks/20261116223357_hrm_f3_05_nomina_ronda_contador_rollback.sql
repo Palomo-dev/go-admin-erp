@@ -1,4 +1,4 @@
--- Reversión de 20261116180000_hrm_f3_05_nomina_ronda_contador.sql: vuelve a las
+-- Reversión de 20261116223357_hrm_f3_05_nomina_ronda_contador.sql: vuelve a las
 -- funciones de 20261116073811_hrm_f3_02_nomina_motor.sql y quita lo agregado.
 
 create or replace function public.fn_hr_nomina_insumos(p_actor uuid, p_org integer, p_period uuid, p_ip text, p_ua text, p_ruta text)

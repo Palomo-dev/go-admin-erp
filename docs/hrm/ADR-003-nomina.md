@@ -92,6 +92,56 @@ Cada valor en pesos se redondea **al crearse**: al peso (mitad hacia arriba); el
 - **R8:** la sede del asiento es la de la colilla (sede del empleado al corte) → la del vínculo → la sede principal; ya no la de menor id. También en `fn_auto_journal_payroll_period`, que además no asienta nada para los períodos del motor (lo hacen las colillas; los aportes se pagan por la PILA en la fase 4).
 - **Contabilizado** (`fn_hr_nomina_contabilizar`): pasa a `closed` solo si cada colilla tiene sus asientos de devengo y de pago; si no, devuelve cuáles faltan y el motivo de la bandeja. **No se toca ningún asiento publicado.**
 
+### Cuentas del Contador (C1–C6, respuesta del 2026-11-16)
+
+Migraciones `20261116223758_hrm_f3_05_nomina_cuentas_contador`, `20261116223844_hrm_f3_06_nomina_embargo_fusion` y
+`20261116224159_hrm_f3_07_nomina_preparar_plan_areas` (reversiones en `supabase/rollbacks/`). Prueba:
+`src/__tests__/timezone/nominaCatalogoConceptos.test.ts`.
+
+- **C1 · Cuentas por concepto** (semilla de plataforma = `conceptos.ts`; las filas de una empresa no se tocan):
+  sueldos, horas ordinarias, retroactivo y licencia remunerada 510506 (la licencia remunerada es tiempo pagado por el
+  empleador: sueldo); salario integral 510503; horas extra y recargos 510515; comisiones 510518; bonificaciones
+  510548; auxilio de transporte 510527; auxilios no salariales 510545; incapacidad a cargo del empleador 510524;
+  maternidad y paternidad, la parte que no paga la EPS, 510595 (otros: no es incapacidad ni sueldo). Lo que paga la
+  EPS, la ARL o el fondo (ítem con `detalle.paga` = eps, arl o fondo_pensiones, también licencias) va a 138095 con la
+  entidad (concepto `INCAPACIDAD_POR_COBRAR`, informativo, sobrescribible). Salud 237005; pensión del trabajador y del
+  empleador y fondo de solidaridad 238030; ARL 237006; caja, ICBF y SENA 237010; retención 236505; embargos 237025;
+  libranzas 237030; sindicato 237035; cooperativa 237040; fondo de empleados 237045; otros 237095 (conceptos nuevos
+  `CUOTA_SINDICAL` «Sindicatos», `APORTE_COOPERATIVA` «Cooperativa», `FONDO_EMPLEADOS` sin elemento DIAN); préstamos
+  136595, o por `employee_loans.loan_type`: housing 136505, vehicle 136510, education 136515, calamity 136525 (no hay
+  tipo «salud»: 136520 queda sin uso). Aportes 510568–510578; provisiones 510530/33/36/39 contra 2510–2525 cada mes.
+  Cesantías del año (`CESANTIAS_CONSIGNAR`): 2510 del empleado a 2510 del fondo de cesantías. Neto: la clave
+  `nomina_por_pagar` o, sin ella, la cuenta de movimiento bajo 2505 (hoy 25050501).
+- **Cuentas que no existen.** En la base, 0 de 40 planes tienen las subcuentas (todas tienen 5105, 2370, 2380, 1365 y
+  1380 de movimiento; 2365/236505 y 2505/250505 de título con auxiliar). `fn_hr_nomina_cuenta` resuelve cada código a
+  su cuenta de movimiento (la misma, la sucesora del plan o la primera de movimiento por debajo: 236505 → 23650501,
+  510506 → 51050601); si no hay, el asiento entero va a rechazos, sin bajar a la cuenta de arriba.
+  `fn_hr_nomina_preparar_plan(org, aplicar)` crea las que faltan con `fn_puc_cuenta_para_asiento` (subcuenta de título
+  + auxiliar «01»; 5105 sigue siendo de movimiento) y la llama `fn_hr_nomina_habilitar` al encender una empresa. Con
+  `aplicar = false` es la vista previa (hoy: 35 cuentas y los terceros incompletos por empresa).
+- **C2 · Área.** Sale de `cost_centers.type` (administracion, ventas, operacion; la siembra de centros ya lo trae) del
+  centro de costo vigente del empleado al corte (evento «centro_costo»), o del de su área (departamento), o del padre
+  del centro. Sin nada: administración. 5105xx → 5205xx (ventas) o 7205xx (operación o producción), con el centro de
+  costo en la línea. Sin columnas nuevas. La preparación del plan crea las variantes de todas las áreas en uso.
+- **C3 · Terceros.** Cada línea de 1365, 1380, 2365, 2370, 2380, 2505 y 2510–2525 lleva `tercero_nit` y
+  `tercero_nombre`: entidad vigente de la ficha (eps, afp, arl, ccf, cesantías en `hr_employment_events` →
+  `hr_ss_entities`), ICBF, SENA y DIAN (NIT sin dígito de verificación), demandante o juzgado
+  (`hr_garnishments.beneficiary_doc` nueva, `beneficiary`, `court_reference`), entidad del descuento
+  (`hr_payroll_novelties.tercero_nit` / `tercero_nombre` nuevas; `fn_hr_nomina_novedad_tercero` las completa aun con el
+  período cerrado) o el empleado (documento de `hr_people_identification`). **Criterio:** si falta el tercero o su NIT,
+  el asiento entero va a rechazos (`tercero_requerido`), no se asienta con aviso: una línea publicada es inmutable y
+  una línea sin NIT no concilia con la PILA ni sirve para la exógena. El rechazo se reintenta en
+  `fn_hr_nomina_contabilizar`. Hoy **ninguna** entidad de `hr_ss_entities` tiene NIT: hay que cargarlos (fuente
+  oficial) antes de encender la nómina. Las líneas de gasto no llevan tercero.
+- **C4** sin cambios. **C6:** `fn_auto_journal_payroll_period` ya no deja el rechazo `criterio_contador`.
+- **C5 · Provisión que no alcanza.** Saldo de la cuenta de la provisión con el NIT del empleado hasta la fecha del
+  asiento (`journal_lines`), más lo que provisiona el mismo asiento; el faltante va al gasto de la provisión (por área)
+  y solo el resto consume el pasivo. Fuente contable y no la suma de colillas: recoge ajustes manuales y reversiones.
+  Requiere cerrar el período ordinario antes que el de prima del mismo mes.
+- **Pendiente:** ajuste de fin de año de las provisiones al valor consolidado (sobrante de 2510–2525 por empleado);
+  pérdida de la incapacidad que la EPS no reconoce (138095 → gasto, manual); NIT de las entidades; pantallas para el
+  tercero de descuentos y embargos (Figma primero); tipo de préstamo «salud» (136520).
+
 ## 6. Permisos y RLS
 
 - Códigos: `hr.payroll.view` y `.process` existían; se crean **`hr.payroll.close`** y **`hr.payroll.pay`** (roles 1 y 2, como datos). Los datos por vínculo, embargos y la lectura del período exigen además el grupo `salario_pago`; el archivo del banco, el grupo `banco`.
@@ -148,7 +198,7 @@ el Contador aprueba encenderla empresa por empresa, por escrito.
   con comisiones y recargo nocturno (P22) y prima con promedio si cambió en el semestre (P23).
 - **Parámetros:** FSP de la Ley 2381 vigente desde el 2027-04-01, con el tramo del 2,8 % hasta 20 SMMLV incluidos
   (`hasta_incluido`); luto de 5 días hábiles confirmado.
-- **Migración:** `20261116180000_hrm_f3_05_nomina_ronda_contador` (reversión en `supabase/rollbacks/`).
+- **Migración:** `20261116223357_hrm_f3_05_nomina_ronda_contador` (reversión en `supabase/rollbacks/`).
 - **Pruebas:** `motorNominaHrm.test.ts` (los 20 casos con los números nuevos y uno por corrección),
   `nominaRondaContador.test.ts` (insumos nuevos y FSP 2027), `motorHorasHrm.test.ts` (extra nocturna del 20-jul).
 - **Pendiente:** P19 (porcentaje fijo calculado y guardado por el sistema en junio y diciembre), pantallas de las

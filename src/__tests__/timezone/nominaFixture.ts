@@ -43,12 +43,14 @@ export const PARAMETROS_2026: ParametrosNomina = {
   fsp_tabla: [
     j(
       [
-        { desde_smmlv: 4, hasta_smmlv: 16, tarifa: 0.01 },
-        { desde_smmlv: 16, hasta_smmlv: 17, tarifa: 0.012 },
-        { desde_smmlv: 17, hasta_smmlv: 18, tarifa: 0.014 },
-        { desde_smmlv: 18, hasta_smmlv: 19, tarifa: 0.016 },
-        { desde_smmlv: 19, hasta_smmlv: 20, tarifa: 0.018 },
-        { desde_smmlv: 20, hasta_smmlv: null, tarifa: 0.02 },
+        // Ley 797, art. 8 y Decreto 3771 de 2007, art. 6 (ronda 3 del Contador): 16 hasta 17
+        // inclusive, más de 17 hasta 18… La solidaridad es el 0,5 %; el resto, subsistencia.
+        { desde_smmlv: 4, hasta_smmlv: 16, tarifa: 0.01, solidaridad: 0.005 },
+        { desde_smmlv: 16, hasta_smmlv: 17, tarifa: 0.012, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 17, hasta_smmlv: 18, tarifa: 0.014, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 18, hasta_smmlv: 19, tarifa: 0.016, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 19, hasta_smmlv: 20, tarifa: 0.018, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 20, hasta_smmlv: null, tarifa: 0.02, solidaridad: 0.005 },
       ],
       '2026-01-01',
       '2027-03-31'

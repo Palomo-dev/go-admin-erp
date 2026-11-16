@@ -720,6 +720,10 @@ describe('control: idempotencia, ajustes y catálogo', () => {
     expect(por.PENSION_EMPLEADOR).toBe(12_000);
     expect(por.PROVISION_CESANTIAS).toBe(8_333);
     expect(por.PROVISION_PRIMA).toBe(8_333);
+    // La bonificación salarial habitual entra a la provisión de vacaciones (ronda 3): 100.000 × 15 / 360.
+    expect(por.PROVISION_VACACIONES).toBe(4_167);
+    // ARL: el total nuevo redondeado menos lo ya liquidado (9.661,7 → 9.700 − 9.200).
+    expect(por.ARL).toBe(500);
   });
 
   test('el período reporta un vínculo con error como bloqueo sin tumbar a los demás', () => {

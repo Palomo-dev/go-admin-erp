@@ -137,3 +137,96 @@ describe('insumos nuevos de la base al motor', () => {
     expect(r.items.find((i) => i.codigo === 'SALUD_EMPLEADOR')?.detalle).toMatchObject({ licencia: 53_833 });
   });
 });
+
+describe('ronda 3 del Contador (2026-11-16)', () => {
+  test('fondo de solidaridad en dos campos de la PILA (pregunta 2): caso 7, 4 SMMLV', () => {
+    // 7.003.620 × 0,5 % = 35.018,1 → 35.100 de solidaridad, más 35.100 de subsistencia = 70.200.
+    // Al trabajador se le descuenta 70.036; el empleador asume 164 con la pensión.
+    // Pensión: 7.003.620 × 16 % = 1.120.579,2 → 1.120.600 − 280.145 = 840.455; + 164 = 840.619.
+    const r = calcularColilla(entradaBase({ salario: salarioFijo(4 * SMMLV_2026) }));
+    expect(valor(r, 'FONDO_SOLIDARIDAD')).toBe(70_036);
+    expect(valor(r, 'PENSION_EMPLEADOR')).toBe(840_619);
+    expect(r.items.find((i) => i.codigo === 'PENSION_EMPLEADOR')?.detalle).toMatchObject({ redondeo_fondo_solidaridad: 164 });
+  });
+
+  test('fondo en dos campos: caso 4 (159.400), caso 6 (875.500) y caso 8 (420.000, sin redondeo)', () => {
+    const integral = calcularColilla(
+      entradaBase({ salario: salarioFijo(13 * SMMLV_2026), vinculo: { ingreso: '2025-01-01', retiro: null, integral: true, periodo_salario: 'monthly' } })
+    );
+    // 79.666,2 → 79.700 + 79.700 = 159.400 − 159.332 = 68.
+    expect(integral.items.find((i) => i.codigo === 'PENSION_EMPLEADOR')?.detalle).toMatchObject({ redondeo_fondo_solidaridad: 68 });
+    // 218.863,1 → 218.900 + 656.589,4 → 656.600 = 875.500 − 875.453 = 47.
+    const tope = calcularColilla(entradaBase({ salario: salarioFijo(50_000_000) }));
+    expect(tope.items.find((i) => i.codigo === 'PENSION_EMPLEADOR')?.detalle).toMatchObject({ redondeo_fondo_solidaridad: 47 });
+    // 150.000 + 270.000 = 420.000: sin diferencia.
+    const c8 = calcularColilla(entradaBase({ salario: salarioFijo(30_000_000) }));
+    expect(c8.items.find((i) => i.codigo === 'PENSION_EMPLEADOR')?.detalle).not.toHaveProperty('redondeo_fondo_solidaridad');
+  });
+
+  test.each([
+    [16, 0.012],
+    [17, 0.012],
+    [17.5, 0.014],
+    [18, 0.014],
+    [19, 0.016],
+    [20, 0.018],
+    [20.5, 0.02],
+  ])('2026: %p SMMLV exactos van al tramo de abajo → %p (pregunta 6)', (smmlv, tarifa) => {
+    const r = calcularColilla(entradaBase({ salario: salarioFijo(Math.round(smmlv * SMMLV_2026)) }));
+    expect(r.items.find((i) => i.codigo === 'FONDO_SOLIDARIDAD')?.tasa).toBe(tarifa);
+  });
+
+  test('20 SMMLV exactos: 1,8 %, al trabajador 630.326 y en la PILA 175.100 + 455.300 = 630.400', () => {
+    const r = calcularColilla(entradaBase({ salario: salarioFijo(20 * SMMLV_2026) }));
+    expect(r.bases.ibc).toBe(35_018_100);
+    expect(valor(r, 'FONDO_SOLIDARIDAD')).toBe(630_326);
+    expect(r.items.find((i) => i.codigo === 'PENSION_EMPLEADOR')?.detalle).toMatchObject({ redondeo_fondo_solidaridad: 74 });
+  });
+
+  const vacaciones = [{ id: 'v1', clase: 'vacaciones', pagada: true, desde: '2026-07-06', hasta: '2026-07-15', tramos: [{ desde: '2026-07-06', hasta: '2026-07-15', paga: 'empleador', fraccion: 1 }] }];
+
+  test('IBC de las vacaciones: el último IBC reportado por sus días, no lo pagado (pregunta 4); caso 16', () => {
+    // IBC de junio 3.300.000: salario de 20 días 2.000.000 + 3.300.000 × 10 / 30 = 1.100.000 → IBC 3.100.000.
+    const conJunio = calcularColilla(entradaBase({ salario: salarioFijo(3_000_000), promedio_variable_mensual: 300_000, ibc_anterior: 3_300_000, ausencias: vacaciones }));
+    expect(valor(conJunio, 'VACACIONES_DISFRUTADAS')).toBe(1_100_000);
+    expect(conJunio.bases.ibc).toBe(3_100_000);
+    // IBC de junio 3.000.000: los 10 días cotizan 1.000.000 aunque se paguen 1.100.000.
+    const otro = calcularColilla(entradaBase({ salario: salarioFijo(3_000_000), promedio_variable_mensual: 300_000, ibc_anterior: 3_000_000, ausencias: vacaciones }));
+    expect(otro.bases.ibc).toBe(3_000_000);
+    expect(valor(otro, 'SALUD_EMPLEADO')).toBe(120_000);
+    // Lo pagado sigue siendo base de parafiscales: 2.000.000 + 1.100.000.
+    expect(otro.bases.base_parafiscales).toBe(3_100_000);
+    expect(otro.bases.ibc_arl).toBe(2_000_000);
+  });
+
+  test('caso de P6 sin variable: con el salario del día en que empiezan, 3.000.000 / 30 × 10 = 1.000.000', () => {
+    const r = calcularColilla(
+      entradaBase({
+        salario: [
+          { desde: '2026-07-01', hasta: '2026-07-09', valor: 3_000_000 },
+          { desde: '2026-07-10', hasta: '2026-07-31', valor: 3_300_000 },
+        ],
+        ausencias: vacaciones,
+      })
+    );
+    expect(valor(r, 'VACACIONES_DISFRUTADAS')).toBe(1_000_000);
+    expect(valor(r, 'SALARIO')).toBe(2_150_000);
+  });
+
+  test('las vacaciones no cuentan en la remuneración total de la regla del 40 % (P7)', () => {
+    // Salario 3.000.000 con 10 días de vacaciones (salario 2.000.000) y bono no salarial 1.500.000.
+    // Total: 2.000.000 + 1.500.000 = 3.500.000; 40 % = 1.400.000; exceso 100.000.
+    // IBC = 2.000.000 + 100.000 + 1.000.000 (10 días con el último IBC, aquí el salario) = 3.100.000.
+    const r = calcularColilla(
+      entradaBase({ salario: salarioFijo(3_000_000), ausencias: vacaciones, novedades: [{ id: 'b', concepto: 'BONIFICACION_NO_SALARIAL', valor: 1_500_000 }] })
+    );
+    expect(r.bases.exceso_40).toBe(100_000);
+    expect(r.bases.ibc).toBe(3_100_000);
+  });
+
+  test('la bonificación salarial habitual entra a la provisión de vacaciones (pregunta 5)', () => {
+    // (1.750.905 + 100.000) × 15 / 360 = 77.121; sin el bono, 72.954: +4.167 en el ajuste del caso 20.
+    const r = calcularColilla(entradaBase({ novedades: [{ id: 'b', concepto: 'BONIFICACION_SALARIAL', valor: 100_000 }] }));
+    expect(valor(r, 'PROVISION_VACACIONES')).toBe(77_121);
+  });
+});

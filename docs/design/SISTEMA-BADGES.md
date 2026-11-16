@@ -286,3 +286,19 @@ Sustituye al componente propio `AvisoSensible Tipo=insignia` de la página `20`,
 - El candado es el icono del concepto «Dato sensible» (`CATALOGO-ICONOS.md`, adenda RR. HH.). El color nunca va solo: el texto dice qué grupo está protegido.
 - El banner que acompañaba al badge («Esta consulta queda registrada…») ya no es un componente propio: es `Aviso Tono=información` con `Icon/Lock`.
 - En Figma, página `20`: 20 insignias (19 eran `AvisoSensible Tipo=insignia` y 1 era `BloqueoPermiso Layout=campo`) y 8 avisos (eran `AvisoSensible Tipo=banner`), todas del kit.
+
+---
+
+## Adenda 2026-11-16 — «Lista para nómina» (Recursos humanos, fase 2)
+
+Decisión 5 del dueño al aprobar el diseño de la fase 2 (Figma página `20`, secciones 20.10 y 20.12). Marca el día, la hoja de tiempo o la novedad que ya pasó a la nómina: desde ahí queda cerrada para cambios y lo que llegue tarde va al período siguiente.
+
+| Estado en pantalla | Tono · Variant · Size | Icono | Dónde vive |
+|---|---|---|---|
+| Lista para nómina | marca · suave · sm (filas) / md (cabeceras) | `Icono=true` con `Icon/Lock` | columna «Estado» de Novedades (20.12.6), columna «Ajuste» de la hoja de tiempo (20.10.5) y cabecera de la hoja cuando todos sus días pasaron |
+
+- **Por qué marca y no éxito.** «Aprobada» ya es éxito (verde). «Lista para nómina» es un paso después: no dice «está bien», dice «ya es de la nómina». El azul de marca lo separa de «Aprobada» en la misma lista sin competir con «Por aprobar» (advertencia) ni con «Rechazada» (peligro).
+- **Por qué el candado.** Es el mismo icono de «Dato sensible» (adenda 2026-11-15), pero aquí con tono de marca y suave: el candado dice «cerrado», el tono dice que es un estado del flujo y no una categoría del dato. El texto siempre acompaña al icono.
+- **Manda sobre «Aprobada».** Una novedad aprobada cuyo día ya está en nómina se pinta «Lista para nómina», no «Aprobada» (`estadoVisible` en `src/components/hrm/asistencia/asistenciaLogica.ts`).
+- **En código es un uso fijo de `Badge`**, no un color suelto: `<Badge uso="lista_nomina">` (`USOS_BADGE` en `src/components/ui/badge.tsx`) fija tono, apariencia e icono. Las pantallas de RR. HH. lo pintan con `InsigniaListaNomina` (`src/components/hrm/asistencia/comunAsistencia.tsx`), que solo le pone el texto en el idioma activo.
+- **Contraste.** Es la receta marca · suave de §5: **7,93:1** en claro y **6,44:1** en oscuro. Pasa AA.

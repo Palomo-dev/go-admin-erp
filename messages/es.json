@@ -4591,7 +4591,8 @@
       "inventario_consignaciones": "Consignaciones",
       "hrm_areas": "Áreas",
       "hrm_plazas": "Plazas",
-      "hrm_aprobaciones": "Aprobaciones"
+      "hrm_aprobaciones": "Aprobaciones",
+      "hrm_novedades": "Novedades"
     },
     "grupos": {
       "venta": "Venta",
@@ -54548,7 +54549,9 @@
         "cambio_area": "Cambio de área",
         "cambio_jefe": "Cambio de jefe",
         "cambio_jornada": "Cambio de jornada",
-        "cambio_contrato": "Cambio de contrato"
+        "cambio_contrato": "Cambio de contrato",
+        "novedad_asistencia": "Novedad de asistencia",
+        "cambio_turno": "Cambio de turno"
       },
       "aprobador": {
         "jefe_directo": "Jefe directo",
@@ -55896,7 +55899,9 @@
         "vacaciones": "Vacaciones",
         "ausencia": "Ausencia",
         "horas_extra": "Horas extra",
-        "prestamo": "Préstamo"
+        "prestamo": "Préstamo",
+        "novedad_asistencia": "Novedad de asistencia",
+        "cambio_turno": "Cambio de turno"
       },
       "titulos": {
         "cargo_salario": "Aprobar cambio de cargo y salario",
@@ -55918,7 +55923,9 @@
         "vacaciones": "Aprobar vacaciones",
         "ausencia": "Aprobar ausencia",
         "horas_extra": "Aprobar horas extra",
-        "prestamo": "Aprobar préstamo"
+        "prestamo": "Aprobar préstamo",
+        "novedad_asistencia": "Aprobar novedad de asistencia",
+        "cambio_turno": "Aprobar cambio de turno"
       },
       "ligados": "{n} cambios ligados",
       "alMes": "{monto} al mes",
@@ -57018,6 +57025,591 @@
       "vacio": {
         "titulo": "Aún no has pedido vacaciones",
         "descripcion": "Pídelas aquí: verás los días hábiles que se descuentan y quién las aprueba."
+      }
+    }
+  },
+  "hrmAsistencia": {
+    "titulo": "Asistencia",
+    "comun": {
+      "irAlInicio": "Ir al inicio",
+      "cerrar": "Cerrar"
+    },
+    "vistas": {
+      "etiqueta": "Vista de asistencia",
+      "hoy": "Hoy",
+      "hojas": "Hojas de tiempo",
+      "ajustes": "Ajustes"
+    },
+    "periodo": {
+      "etiqueta": "Período",
+      "subtitulo": "Quincena del {rango}"
+    },
+    "estados": {
+      "listaNomina": "Lista para nómina"
+    },
+    "marcas": {
+      "check_in": "Entrada",
+      "check_out": "Salida",
+      "break_start": "Inicio de descanso",
+      "break_end": "Fin de descanso"
+    },
+    "categorias": {
+      "ord_diurna": "Ordinaria diurna",
+      "ord_nocturna": "Nocturna ordinaria",
+      "dom_diurna": "Dominical y festiva diurna",
+      "dom_nocturna": "Dominical y festiva nocturna",
+      "extra_diurna": "Extra diurna",
+      "extra_nocturna": "Extra nocturna",
+      "extra_dom_diurna": "Extra dominical diurna",
+      "extra_dom_nocturna": "Extra dominical nocturna"
+    },
+    "acciones": {
+      "registrarMarca": "Registrar marca manual",
+      "exportar": "Exportar",
+      "verTopes": "Horas extra y recargos",
+      "verNovedades": "Ir a Novedades",
+      "verHoja": "Ver hoja de tiempo",
+      "verHoras": "Ver horas y recargos",
+      "marcarAusencia": "Marcar ausencia justificada",
+      "aprobarHoja": "Aprobar hoja",
+      "aprobar": "Aprobar",
+      "rechazar": "Rechazar",
+      "revisar": "Revisar",
+      "agregarAjuste": "Agregar ajuste",
+      "verRecargosDia": "Ver recargos del día",
+      "verNovedad": "Ver novedad",
+      "verDesglose": "Ver desglose",
+      "verNovedadesExtra": "Ver novedades de horas extra",
+      "verTurnosSemana": "Ver turnos de la semana",
+      "marcarLista": "Marcar lista para nómina"
+    },
+    "filtros": {
+      "estado": "Estado",
+      "equipo": "Equipo",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "chipEstado": "Estado: {valor}",
+      "chipEquipo": "Equipo: {valor}",
+      "chipTipo": "Tipo: {valor}",
+      "verPersonas": "{n, plural, one {Ver # persona} other {Ver # personas}}",
+      "verHojas": "{n, plural, one {Ver # hoja} other {Ver # hojas}}",
+      "verNovedades": "{n, plural, one {Ver # novedad} other {Ver # novedades}}"
+    },
+    "errores": {
+      "guardar": "No se pudo guardar. Vuelve a intentarlo.",
+      "sinPermiso": "No tienes permiso para hacer esto.",
+      "parametro": "Falta un parámetro vigente para alguna fecha del período. Revisa los parámetros de RR. HH.",
+      "ausenciaYaRegistrada": "Esa ausencia ya está registrada.",
+      "ajusteYaPendiente": "Ya hay un ajuste de esa marca esperando aprobación.",
+      "jornadaCerrada": "Ese día ya lo liquidó la nómina: el ajuste va al período siguiente.",
+      "decision": {
+        "no_puede_aprobar_lo_propio": "No puedes aprobar lo que tú mismo pediste.",
+        "no_eres_aprobador": "Algunas ya no te tocaban: otra persona las decide.",
+        "otra": "Algunas no se pudieron decidir. Vuelve a cargar la lista."
+      }
+    },
+    "hoy": {
+      "subtitulo": "Hoy, {fecha}",
+      "festivo": "(festivo)",
+      "actualizadoHace": "{n, plural, one {actualizado hace # min} other {actualizado hace # min}}",
+      "actualizadoRecien": "actualizado hace un momento",
+      "resumen": "Asistencia de hoy",
+      "tabla": "Asistencia de hoy",
+      "buscar": "Buscar persona o cargo…",
+      "kpi": {
+        "presentes": "Presentes",
+        "presentesValor": "{n} de {total}",
+        "presentesDetalle": "con turno a esta hora",
+        "faltan": "Faltan",
+        "faltanDetalle": "sin marcar y sin ausencia",
+        "tarde": "Llegaron tarde",
+        "tardeDetalle": "más de {n} min",
+        "tardeSinTolerancia": "después de la hora del turno",
+        "descanso": "En descanso"
+      },
+      "columnas": {
+        "persona": "Persona",
+        "turno": "Turno",
+        "entrada": "Entrada",
+        "como": "Cómo",
+        "estado": "Estado"
+      },
+      "como": {
+        "ubicacion": "Ubicación",
+        "qr": "QR de la sede",
+        "remoto": "Remoto",
+        "manual": "Marca manual",
+        "app": "App"
+      },
+      "estados": {
+        "presente": "Presente",
+        "presenteRemoto": "Presente · remoto",
+        "tarde": "Tarde",
+        "tardeMin": "Tarde {n} min",
+        "falta": "Falta",
+        "descanso": "En descanso",
+        "salio": "Salió",
+        "ausencia": "Ausente",
+        "por_llegar": "Por llegar",
+        "vacaciones": "Vacaciones",
+        "incapacidad": "Ausente · incapacidad",
+        "justificada": "Ausencia justificada",
+        "licencia": "Licencia"
+      },
+      "movilEntro": "Entró {hora} · {como}",
+      "movilSinMarcar": "{turno} · sin marcar",
+      "motivoAusenciaJustificada": "Ausencia justificada registrada por Recursos humanos",
+      "ausenciaRegistrada": "Ausencia de {nombre} enviada a aprobación",
+      "ausenciaRegistradaDesc": "Aprobada, queda justificada y no se descuenta.",
+      "vacio": {
+        "titulo": "Hoy nadie tiene turno en esta sede",
+        "descripcion": "La asistencia aparece cuando hay turnos publicados. Programa la semana en Turnos.",
+        "accion": "Ir a Turnos"
+      },
+      "sinResultados": {
+        "titulo": "Nadie coincide con los filtros",
+        "descripcion": "Quita un filtro para ver a todos."
+      },
+      "error": {
+        "titulo": "No se pudo cargar la asistencia",
+        "descripcion": "Las marcas siguen llegando y se guardan. Vuelve a intentarlo."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a la asistencia",
+        "descripcion": "Ves la asistencia de tu equipo si eres jefe, o la de todos con el permiso «Ver asistencia». Tu propia asistencia está en Inicio."
+      }
+    },
+    "hojas": {
+      "nHojas": "{n, plural, one {# hoja} other {# hojas}}",
+      "tabla": "Hojas de tiempo del período",
+      "buscar": "Buscar persona…",
+      "sustantivo": {
+        "singular": "hoja",
+        "plural": "hojas"
+      },
+      "columnas": {
+        "persona": "Persona",
+        "cargo": "Cargo",
+        "programadas": "Programadas",
+        "trabajadas": "Trabajadas",
+        "extras": "Extras",
+        "nocturnas": "Nocturnas",
+        "domFest": "Dom. y fest.",
+        "ajustes": "Ajustes",
+        "estado": "Estado"
+      },
+      "estados": {
+        "por_aprobar": "Por aprobar",
+        "aprobada": "Aprobada",
+        "sin_marcas": "Sin marcas"
+      },
+      "motivoPendientes": "{n, plural, one {Tiene # ajuste por aprobar} other {Tiene # ajustes por aprobar}}",
+      "motivoNingunaAprobable": "Las hojas elegidas tienen ajustes por aprobar",
+      "aprobadas": "{n, plural, one {Hoja aprobada} other {# hojas aprobadas}}",
+      "aprobadasDesc": "Sus días quedan listos para nómina.",
+      "aprobadasParcial": "{n} de {total} hojas aprobadas",
+      "motivos": {
+        "marcacion_abierta": "Hay una entrada sin salida: agrega el ajuste de la salida.",
+        "sin_clasificar": "Hay días sin clasificar: falta un parámetro vigente o una marca.",
+        "novedades_pendientes": "Hay novedades por aprobar en esos días.",
+        "ajustes_pendientes": "Hay ajustes de marca por aprobar en esos días."
+      },
+      "movilResumen": "{trabajadas} de {programadas} · {n, plural, =0 {sin ajustes} one {# ajuste} other {# ajustes}}",
+      "movilExtras": "Extras {horas}",
+      "movilNocturnas": "nocturnas {horas}",
+      "vacio": {
+        "titulo": "No hay hojas de tiempo en este período",
+        "descripcion": "Las hojas se arman solas con los turnos publicados y las marcas."
+      },
+      "sinResultados": {
+        "titulo": "Ninguna hoja coincide",
+        "descripcion": "Quita un filtro para ver todas."
+      },
+      "error": {
+        "titulo": "No se pudieron cargar las hojas de tiempo"
+      }
+    },
+    "ajustes": {
+      "tabla": "Ajustes de marca del período",
+      "buscar": "Buscar persona o motivo…",
+      "columnas": {
+        "persona": "Persona",
+        "dia": "Día",
+        "marca": "Marca",
+        "motivo": "Motivo",
+        "solicito": "Lo pidió",
+        "estado": "Estado"
+      },
+      "vacio": {
+        "titulo": "No hay ajustes de marca en este período",
+        "descripcion": "Cada corrección de una marca pide motivo y aprobación, y queda aquí."
+      },
+      "sinResultados": "Ningún ajuste coincide con la búsqueda.",
+      "error": "No se pudieron cargar los ajustes"
+    },
+    "ajuste": {
+      "titulo": "Agregar ajuste",
+      "tituloRegistrar": "Registrar marca manual",
+      "persona": "Persona",
+      "elegirPersona": "Elige a la persona",
+      "dia": "Día",
+      "marca": "Marca que se ajusta",
+      "marcas": {
+        "entrada": "Entrada",
+        "salida": "Salida",
+        "descanso": "Descanso",
+        "inicioDescanso": "Sale a descanso",
+        "finDescanso": "Vuelve del descanso"
+      },
+      "marco": "Marcó",
+      "sinEntrada": "Sin entrada",
+      "sinSalida": "Sin salida",
+      "queda": "Queda",
+      "motivo": "Motivo",
+      "elegirMotivo": "Elige el motivo",
+      "motivos": {
+        "olvidoEntrada": "Olvidó marcar la entrada",
+        "olvidoSalida": "Olvidó marcar la salida",
+        "fallaDispositivo": "Falló el teléfono o el punto de marcación",
+        "sinSenal": "No había señal ni internet",
+        "fueraDeSede": "Trabajó fuera de la sede",
+        "otro": "Otro motivo (explícalo en el comentario)"
+      },
+      "comentario": "Soporte o comentario",
+      "cancelar": "Cancelar",
+      "enviar": "Enviar a aprobación",
+      "enviado": "Ajuste enviado a aprobación",
+      "enviadoSinAprobador": "Nadie lo puede aprobar todavía: configura una regla en Configuración › Aprobaciones.",
+      "apruebaJefe": "Lo aprueba {nombre}, su jefe directo",
+      "apruebaOtro": "Lo aprueba {nombre}",
+      "apruebaDetalle": "Mientras tanto la hoja no se puede aprobar. Queda en el historial quién lo pidió, quién lo aprobó y cuándo.",
+      "sinAprobador": "Nadie puede aprobar este ajuste todavía",
+      "sinAprobadorDetalle": "Queda pendiente; nunca se aprueba solo. Configura quién aprueba en Configuración › Aprobaciones.",
+      "errorPersona": "Elige a la persona.",
+      "errorHora": "Elige la hora.",
+      "errorHoraFuera": "La hora debe estar entre hace 62 días y ahora.",
+      "errorMotivo": "Elige el motivo."
+    },
+    "hoja": {
+      "titulo": "Hoja de tiempo · {nombre}",
+      "tituloCorto": "Hoja de tiempo",
+      "nPorAprobar": "{n, plural, one {# ajuste por aprobar} other {# ajustes por aprobar}}",
+      "motivoAprobar": "{n, plural, one {Se puede aprobar cuando el ajuste esté resuelto.} other {Se puede aprobar cuando los # ajustes estén resueltos.}}",
+      "aprobada": "Hoja aprobada",
+      "aprobadaParcial": "{n, plural, one {# día no pasó a nómina} other {# días no pasaron a nómina}}",
+      "resumen": "Resumen de la hoja",
+      "kpi": {
+        "programadas": "Programadas",
+        "trabajadas": "Trabajadas",
+        "extra": "Horas extra",
+        "extraDetalle": "van a Novedades",
+        "nocturnas": "Nocturnas",
+        "nocturnasDetalle": "desde las {hora}"
+      },
+      "columnas": {
+        "dia": "Día",
+        "turno": "Turno",
+        "entrada": "Entrada",
+        "salida": "Salida",
+        "horas": "Horas",
+        "diferencia": "Diferencia",
+        "ajuste": "Ajuste"
+      },
+      "dominical": "dominical",
+      "festivo": "festivo",
+      "descanso": "Descanso",
+      "sinSalida": "Sin salida",
+      "conAjuste": "{hora} (ajuste)",
+      "ajustes": {
+        "porAprobar": "Por aprobar",
+        "extraPorAprobar": "Extra por aprobar",
+        "tardanzaPorAprobar": "Tarde · por aprobar",
+        "salida_tempranaPorAprobar": "Salida temprana · por aprobar",
+        "ausenciaPorAprobar": "Ausencia · por aprobar",
+        "cambio_turnoPorAprobar": "Cambio · por aprobar",
+        "horas_extraPorAprobar": "Extra por aprobar",
+        "tardeJustificada": "Tarde · justificada",
+        "tardeDescuenta": "Tarde · se descuenta",
+        "extraAprobada": "Extra aprobada",
+        "ajustado": "Ajustada"
+      },
+      "nota": "Las horas nocturnas y las de domingos y festivos tienen recargo:",
+      "notaEnlace": "el desglose con su recargo está en Horas extra y recargos.",
+      "vacio": {
+        "titulo": "Sin turnos ni marcas en este período",
+        "descripcion": "La hoja se arma con los turnos publicados y las marcas de la persona."
+      },
+      "error": "No se pudo cargar la hoja de tiempo"
+    },
+    "horas": {
+      "titulo": "Horas y recargos · {nombre}",
+      "tituloCorto": "Horas y recargos",
+      "nTopes": "{n, plural, one {# tope superado} other {# topes superados}}",
+      "jornada": "jornada de {horas} h semanales",
+      "aviso": {
+        "extra_supera_tope_diario": "El {dia} pasó el tope diario de horas extra",
+        "extra_supera_tope_semanal": "La semana del {dia} pasó el tope semanal de horas extra",
+        "detalle": "Hizo {horas} extra y el tope es de {tope}. La novedad queda por aprobar con motivo; sin aprobar, no va a la nómina."
+      },
+      "trabajadas": "Horas trabajadas",
+      "composicion": "Composición de las horas trabajadas",
+      "partes": {
+        "ordinarias": "Ordinarias",
+        "dominicales": "Dominicales y festivas",
+        "extra": "Extra"
+      },
+      "recargos": "Recargos del período",
+      "sinRecargos": "En este período no hay horas con recargo.",
+      "columnas": {
+        "dia": "Día",
+        "ord_diurna": "Ordinaria diurna",
+        "ord_nocturna": "Ordinaria nocturna",
+        "dom_diurna": "Dom. y fest. diurna",
+        "dom_nocturna": "Dom. y fest. nocturna",
+        "extra_diurna": "Extra diurna",
+        "extra_nocturna": "Extra nocturna",
+        "alerta": "Alerta"
+      },
+      "alertas": {
+        "extra_supera_tope_diario": "Tope diario",
+        "extra_supera_tope_semanal": "Tope semanal",
+        "marcacion_incompleta": "Marca incompleta"
+      },
+      "ajustePorAprobar": "Ajuste por aprobar",
+      "sinClasificar": "Sin clasificar",
+      "nota": "Hora nocturna desde las {hora}. Los porcentajes son los vigentes en cada fecha; el valor de la hora sale del divisor vigente ({jornada} h semanales).",
+      "vacio": {
+        "titulo": "Sin horas clasificadas en este período",
+        "descripcion": "Cada día se clasifica al marcar la salida. Si falta un parámetro vigente, el día no se clasifica."
+      }
+    },
+    "turno": {
+      "titulo": "Turno del {de} al {a}",
+      "tituloUnDia": "Turno del {dia}",
+      "tituloMovil": "Turno y recargos",
+      "nVigencias": "{n} vigencias",
+      "avisoTitulo": "Cada hora usa el valor vigente en su fecha",
+      "avisoDetalle": "El recargo dominical y festivo cambió dentro de este turno: antes rige el {antes} y después, el {despues}.",
+      "columnas": {
+        "tramo": "Tramo",
+        "horas": "Horas",
+        "tipo": "Tipo de hora",
+        "recargo": "Recargo",
+        "vigencia": "Vigencia aplicada"
+      },
+      "domingo": "domingo",
+      "festivo": "festivo",
+      "paramDominical": "Recargo dominical y festivo",
+      "paramNocturno": "Recargo nocturno",
+      "paramExtra": "Recargo de hora extra",
+      "vigenteDelAl": "Vigente del {desde} al {hasta}",
+      "vigenteDesde": "Vigente desde el {desde}",
+      "adoptadoEmpresa": "adoptado por la empresa",
+      "parametros": "Parámetros aplicados",
+      "horaNocturna": "Hora nocturna desde",
+      "recargoNocturno": "Recargo nocturno",
+      "recargoDominical": "Recargo dominical y festivo",
+      "hasta": "{pct} hasta el {dia}",
+      "desde": "{pct} desde el {dia}",
+      "jornadaMaxima": "Jornada máxima semanal",
+      "jornadaValor": "{horas} h · desde el {desde}",
+      "trabajoDominical": "Trabajo dominical",
+      "ocasional": "Ocasional ({n} de {total} domingos del mes)",
+      "habitual": "Habitual ({n} de {total} domingos del mes)",
+      "nota": "Si un parámetro cambia después, la nómina ya liquidada no se recalcula: queda con el valor que estaba vigente.",
+      "vacio": {
+        "titulo": "Este día no tiene horas clasificadas",
+        "descripcion": "Se clasifica al marcar la salida o al aprobar el ajuste de la marca."
+      }
+    },
+    "topes": {
+      "titulo": "Horas extra y recargos",
+      "nPersonas": "{n, plural, one {# persona pasa un tope} other {# personas pasan un tope}}",
+      "buscar": "Buscar persona…",
+      "soloSuperados": "Solo con topes superados",
+      "columnas": {
+        "persona": "Persona",
+        "semana": "Semana",
+        "horas": "Horas en la semana",
+        "extra": "Extra en la semana",
+        "diaMax": "Día con más extra",
+        "tope": "Tope"
+      },
+      "tipos": {
+        "semanal": "Semanal {horas} h",
+        "diario": "Diario {horas} h",
+        "jornada": "Jornada {horas} h"
+      },
+      "movilSemanal": "{horas} extra · semana {semana}",
+      "movilDiario": "{horas} extra el {dia}",
+      "movilJornada": "{horas} en la semana {semana}",
+      "nota": "Topes vigentes: {dia} h extra al día y {semana} a la semana; jornada máxima de {jornada} h semanales. Un tope superado no bloquea el registro: exige motivo y aprobación antes de la nómina.",
+      "vacio": {
+        "titulo": "Nadie pasó un tope en este período",
+        "descripcion": "Las horas extra registradas están dentro de {dia} h al día y {semana} a la semana, y nadie pasó de {jornada} h semanales.",
+        "accion": "Ver hojas de tiempo"
+      },
+      "sinResultados": {
+        "titulo": "Nadie coincide con los filtros",
+        "descripcion": "Quita un filtro para ver a todos."
+      },
+      "error": {
+        "titulo": "No se pudo calcular el desglose",
+        "descripcion": "Falta un parámetro vigente para esta fecha o el cálculo falló. Avisa a Recursos humanos si se repite."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las horas extra",
+        "descripcion": "Las ve Recursos humanos y cada jefe con su equipo. Tus horas están en Inicio."
+      }
+    },
+    "novedades": {
+      "titulo": "Novedades",
+      "resumen": "Novedades del período",
+      "nPorAprobar": "{n} por aprobar",
+      "sinNovedades": "sin novedades",
+      "cierra": "cierra el {dia}",
+      "listaDesde": "lista para nómina desde el {cuando}",
+      "periodoSiguiente": "Ver período siguiente",
+      "motivoNoMarcar": "{n, plural, one {Disponible cuando no quede nada por aprobar (queda #).} other {Disponible cuando no quede nada por aprobar (quedan #).}}",
+      "motivoNingunaDecidible": "Ninguna de las elegidas te toca decidir",
+      "buscar": "Buscar persona o tipo de novedad…",
+      "sustantivo": {
+        "singular": "novedad",
+        "plural": "novedades"
+      },
+      "pestanas": {
+        "etiqueta": "Estado de las novedades",
+        "por_aprobar": "Por aprobar",
+        "aprobadas": "Aprobadas",
+        "todas": "Todas"
+      },
+      "columnas": {
+        "persona": "Persona",
+        "novedad": "Novedad",
+        "detalle": "Detalle",
+        "origen": "Origen",
+        "estado": "Estado"
+      },
+      "tipos": {
+        "horas_extra": "Horas extra",
+        "tardanza": "Llegada tarde",
+        "salida_temprana": "Salida temprana",
+        "ausencia": "Ausencia",
+        "cambio_turno": "Cambio de turno",
+        "ajuste_marca": "Ajuste de marca"
+      },
+      "estados": {
+        "pendiente": "Por aprobar",
+        "esperando_contraparte": "Esperando respuesta",
+        "aprobada": "Aprobada",
+        "rechazada": "Rechazada",
+        "lista_nomina": "Lista para nómina"
+      },
+      "origenes": {
+        "marcacion": "Marcación",
+        "turnos": "Turnos",
+        "ajuste": "Ajuste manual",
+        "gestor": "Recursos humanos",
+        "empleado": "La persona"
+      },
+      "pasaTope": {
+        "extra_supera_tope_diario": "pasa el tope diario",
+        "extra_supera_tope_semanal": "pasa el tope semanal",
+        "marcacion_incompleta": "marca incompleta"
+      },
+      "turnoCompleto": "turno completo",
+      "sinMarca": "Sin marca y sin ausencia aprobada",
+      "sinJustificar": "Sin justificar · se descuenta",
+      "justificada": "{motivo} · justificada",
+      "motivo": "Motivo: {motivo}",
+      "sinMotivo": "Sin motivo",
+      "loPidio": "Lo pidió {nombre}",
+      "cambio": "Cambió con {nombre}",
+      "esperando": "Esperando la respuesta de {nombre}",
+      "sinAprobador": "Nadie puede aprobar esta novedad todavía",
+      "sinAprobadorDetalle": "Queda pendiente; nunca se aprueba sola. Configura quién aprueba en Configuración › Aprobaciones.",
+      "aprobadasN": "{n, plural, one {Novedad aprobada} other {# novedades aprobadas}}",
+      "rechazadasN": "{n, plural, one {Novedad rechazada} other {# novedades rechazadas}}",
+      "decididasParcial": "{n} de {total} decididas",
+      "kpi": {
+        "aprobadas": "Aprobadas",
+        "aprobadasDetalle": "van a la nómina",
+        "rechazadas": "Rechazadas",
+        "rechazadasDetalle": "no se pagan ni descuentan",
+        "porAprobar": "Por aprobar"
+      },
+      "revisar": {
+        "nacio": {
+          "marcacion": "nació de la marcación",
+          "turnos": "nació de los turnos",
+          "ajuste": "la pidió un ajuste manual",
+          "gestor": "la registró Recursos humanos",
+          "empleado": "la pidió la persona"
+        },
+        "tope": {
+          "extra_supera_tope_diario": "Pasa el tope diario de {tope}",
+          "extra_supera_tope_semanal": "Pasa el tope semanal de {tope}",
+          "marcacion_incompleta": "Marca incompleta"
+        },
+        "topeDetalle": "Se puede aprobar con motivo; sin aprobar, no va a la nómina.",
+        "noTeToca": "Esta novedad la decide otra persona.",
+        "horas": "Horas",
+        "tipo": "Tipo",
+        "marca": "Marca",
+        "cambio": "Cambio",
+        "turno": "Turno",
+        "motivo": "Motivo de la persona",
+        "pidio": "Quién lo pidió",
+        "comentario": "Comentario",
+        "comentarioAyuda": "Para rechazar, escribe el motivo: es lo que recibe la persona.",
+        "errorMotivo": "Escribe el motivo del rechazo."
+      },
+      "rechazar": {
+        "titulo": "¿Rechazar {que} de {nombre}?",
+        "tituloVarias": "{n, plural, one {¿Rechazar # novedad?} other {¿Rechazar # novedades?}}",
+        "descripcion": "{consecuencia} {nombre} recibe tu comentario: «{comentario}».",
+        "descripcionVarias": "Cada persona recibe tu motivo. Lo rechazado no se paga y las ausencias o llegadas tarde se descuentan.",
+        "extra": "{horas} extra",
+        "que": {
+          "horas_extra": "las horas extra",
+          "tardanza": "la justificación de la llegada tarde",
+          "salida_temprana": "la justificación de la salida temprana",
+          "ausencia": "la justificación de la ausencia",
+          "cambio_turno": "el cambio de turno",
+          "ajuste_marca": "el ajuste de marca"
+        },
+        "consecuencia": {
+          "horas_extra": "No se pagan.",
+          "tardanza": "Se descuenta en la nómina.",
+          "salida_temprana": "Se descuenta en la nómina.",
+          "ausencia": "Se descuenta en la nómina.",
+          "cambio_turno": "Los turnos siguen como estaban.",
+          "ajuste_marca": "La marca no se agrega."
+        }
+      },
+      "marcar": {
+        "titulo": "¿Marcar la quincena del {rango} lista para nómina?",
+        "descripcion": "{n, plural, one {# novedad aprobada pasa a la nómina.} other {# novedades aprobadas pasan a la nómina.}} Después no se pueden cambiar: lo que llegue tarde va a la quincena siguiente."
+      },
+      "listaToast": "Quincena lista para nómina",
+      "listaToastDesc": "{n, plural, one {# novedad aprobada pasa} other {# novedades aprobadas pasan}} a la nómina del {rango}.",
+      "listaParcial": "{n, plural, one {# día no pasó a nómina} other {# días no pasaron a nómina}}",
+      "vacio": {
+        "titulo": "Nada por aprobar en esta quincena",
+        "tituloOtras": "Nada que mostrar en esta quincena",
+        "descripcion": "Las llegadas tarde, ausencias, horas extra y cambios de turno aparecen solos. Si ya revisaste todo, marca el período listo para nómina."
+      },
+      "sinResultados": {
+        "titulo": "Ninguna novedad coincide",
+        "descripcion": "Quita un filtro para ver todas."
+      },
+      "error": {
+        "titulo": "No se pudieron cargar las novedades",
+        "descripcion": "Nada se aprobó ni se rechazó. Vuelve a intentarlo."
+      },
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las novedades",
+        "descripcion": "Las aprueba cada jefe con su equipo y Recursos humanos con toda la sede."
       }
     }
   }

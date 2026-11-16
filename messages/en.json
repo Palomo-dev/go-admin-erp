@@ -4590,7 +4590,8 @@
       "inventario_consignaciones": "Consignments",
       "hrm_areas": "Areas",
       "hrm_plazas": "Positions budget",
-      "hrm_aprobaciones": "Approvals"
+      "hrm_aprobaciones": "Approvals",
+      "hrm_novedades": "Time events"
     },
     "grupos": {
       "venta": "Sales",
@@ -54533,7 +54534,9 @@
         "cambio_area": "Department change",
         "cambio_jefe": "Manager change",
         "cambio_jornada": "Working hours change",
-        "cambio_contrato": "Contract change"
+        "cambio_contrato": "Contract change",
+        "novedad_asistencia": "Attendance event",
+        "cambio_turno": "Shift swap"
       },
       "aprobador": {
         "jefe_directo": "Direct manager",
@@ -55881,7 +55884,9 @@
         "vacaciones": "Vacation",
         "ausencia": "Leave",
         "horas_extra": "Overtime",
-        "prestamo": "Loan"
+        "prestamo": "Loan",
+        "novedad_asistencia": "Attendance event",
+        "cambio_turno": "Shift swap"
       },
       "titulos": {
         "cargo_salario": "Approve position and salary change",
@@ -55903,7 +55908,9 @@
         "vacaciones": "Approve vacation",
         "ausencia": "Approve leave",
         "horas_extra": "Approve overtime",
-        "prestamo": "Approve loan"
+        "prestamo": "Approve loan",
+        "novedad_asistencia": "Approve attendance event",
+        "cambio_turno": "Approve shift swap"
       },
       "ligados": "{n} linked changes",
       "alMes": "{monto} per month",
@@ -57003,6 +57010,591 @@
       "vacio": {
         "titulo": "You haven't requested vacation yet",
         "descripcion": "Request it here: you'll see the working days deducted and who approves."
+      }
+    }
+  },
+  "hrmAsistencia": {
+    "titulo": "Attendance",
+    "comun": {
+      "irAlInicio": "Go to home",
+      "cerrar": "Close"
+    },
+    "vistas": {
+      "etiqueta": "Attendance view",
+      "hoy": "Today",
+      "hojas": "Timesheets",
+      "ajustes": "Adjustments"
+    },
+    "periodo": {
+      "etiqueta": "Period",
+      "subtitulo": "Pay period {rango}"
+    },
+    "estados": {
+      "listaNomina": "Ready for payroll"
+    },
+    "marcas": {
+      "check_in": "Clock-in",
+      "check_out": "Clock-out",
+      "break_start": "Break start",
+      "break_end": "Break end"
+    },
+    "categorias": {
+      "ord_diurna": "Regular daytime",
+      "ord_nocturna": "Regular night",
+      "dom_diurna": "Sunday and holiday daytime",
+      "dom_nocturna": "Sunday and holiday night",
+      "extra_diurna": "Daytime overtime",
+      "extra_nocturna": "Night overtime",
+      "extra_dom_diurna": "Sunday daytime overtime",
+      "extra_dom_nocturna": "Sunday night overtime"
+    },
+    "acciones": {
+      "registrarMarca": "Add manual clock entry",
+      "exportar": "Export",
+      "verTopes": "Overtime and premiums",
+      "verNovedades": "Go to Time events",
+      "verHoja": "View timesheet",
+      "verHoras": "View hours and premiums",
+      "marcarAusencia": "Mark as excused absence",
+      "aprobarHoja": "Approve timesheet",
+      "aprobar": "Approve",
+      "rechazar": "Reject",
+      "revisar": "Review",
+      "agregarAjuste": "Add adjustment",
+      "verRecargosDia": "View the day’s premiums",
+      "verNovedad": "View time event",
+      "verDesglose": "View breakdown",
+      "verNovedadesExtra": "View overtime events",
+      "verTurnosSemana": "View the week’s shifts",
+      "marcarLista": "Mark ready for payroll"
+    },
+    "filtros": {
+      "estado": "Status",
+      "equipo": "Team",
+      "tipo": "Type",
+      "todos": "All",
+      "chipEstado": "Status: {valor}",
+      "chipEquipo": "Team: {valor}",
+      "chipTipo": "Type: {valor}",
+      "verPersonas": "{n, plural, one {Show # person} other {Show # people}}",
+      "verHojas": "{n, plural, one {Show # timesheet} other {Show # timesheets}}",
+      "verNovedades": "{n, plural, one {Show # event} other {Show # events}}"
+    },
+    "errores": {
+      "guardar": "It could not be saved. Try again.",
+      "sinPermiso": "You don’t have permission to do this.",
+      "parametro": "A parameter in force is missing for some date in the period. Check the HR parameters.",
+      "ausenciaYaRegistrada": "That absence is already recorded.",
+      "ajusteYaPendiente": "There is already an adjustment for that entry waiting for approval.",
+      "jornadaCerrada": "Payroll already settled that day: the adjustment goes to the next period.",
+      "decision": {
+        "no_puede_aprobar_lo_propio": "You can’t approve what you requested yourself.",
+        "no_eres_aprobador": "Some were no longer yours: someone else decides them.",
+        "otra": "Some could not be decided. Reload the list."
+      }
+    },
+    "hoy": {
+      "subtitulo": "Today, {fecha}",
+      "festivo": "(holiday)",
+      "actualizadoHace": "{n, plural, one {updated # min ago} other {updated # min ago}}",
+      "actualizadoRecien": "updated just now",
+      "resumen": "Today’s attendance",
+      "tabla": "Today’s attendance",
+      "buscar": "Search person or position…",
+      "kpi": {
+        "presentes": "Present",
+        "presentesValor": "{n} of {total}",
+        "presentesDetalle": "with a shift right now",
+        "faltan": "Missing",
+        "faltanDetalle": "no clock-in and no absence",
+        "tarde": "Arrived late",
+        "tardeDetalle": "more than {n} min",
+        "tardeSinTolerancia": "after the shift start",
+        "descanso": "On break"
+      },
+      "columnas": {
+        "persona": "Person",
+        "turno": "Shift",
+        "entrada": "Clock-in",
+        "como": "How",
+        "estado": "Status"
+      },
+      "como": {
+        "ubicacion": "Location",
+        "qr": "Branch QR",
+        "remoto": "Remote",
+        "manual": "Manual entry",
+        "app": "App"
+      },
+      "estados": {
+        "presente": "Present",
+        "presenteRemoto": "Present · remote",
+        "tarde": "Late",
+        "tardeMin": "Late {n} min",
+        "falta": "Missing",
+        "descanso": "On break",
+        "salio": "Left",
+        "ausencia": "Absent",
+        "por_llegar": "Not arrived yet",
+        "vacaciones": "Vacation",
+        "incapacidad": "Absent · sick leave",
+        "justificada": "Excused absence",
+        "licencia": "Leave"
+      },
+      "movilEntro": "In at {hora} · {como}",
+      "movilSinMarcar": "{turno} · not clocked in",
+      "motivoAusenciaJustificada": "Excused absence recorded by Human resources",
+      "ausenciaRegistrada": "{nombre}’s absence sent for approval",
+      "ausenciaRegistradaDesc": "Once approved, it is excused and not deducted.",
+      "vacio": {
+        "titulo": "Nobody has a shift at this branch today",
+        "descripcion": "Attendance appears when shifts are published. Schedule the week in Shifts.",
+        "accion": "Go to Shifts"
+      },
+      "sinResultados": {
+        "titulo": "Nobody matches the filters",
+        "descripcion": "Remove a filter to see everyone."
+      },
+      "error": {
+        "titulo": "Attendance could not be loaded",
+        "descripcion": "Clock entries keep arriving and are saved. Try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don’t have access to attendance",
+        "descripcion": "You see your team’s attendance if you are a manager, or everyone’s with the “View attendance” permission. Your own attendance is on Home."
+      }
+    },
+    "hojas": {
+      "nHojas": "{n, plural, one {# timesheet} other {# timesheets}}",
+      "tabla": "Timesheets for the period",
+      "buscar": "Search person…",
+      "sustantivo": {
+        "singular": "timesheet",
+        "plural": "timesheets"
+      },
+      "columnas": {
+        "persona": "Person",
+        "cargo": "Position",
+        "programadas": "Scheduled",
+        "trabajadas": "Worked",
+        "extras": "Overtime",
+        "nocturnas": "Night",
+        "domFest": "Sun. & hol.",
+        "ajustes": "Adjustments",
+        "estado": "Status"
+      },
+      "estados": {
+        "por_aprobar": "To approve",
+        "aprobada": "Approved",
+        "sin_marcas": "No entries"
+      },
+      "motivoPendientes": "{n, plural, one {It has # adjustment to approve} other {It has # adjustments to approve}}",
+      "motivoNingunaAprobable": "The selected timesheets have adjustments to approve",
+      "aprobadas": "{n, plural, one {Timesheet approved} other {# timesheets approved}}",
+      "aprobadasDesc": "Their days are ready for payroll.",
+      "aprobadasParcial": "{n} of {total} timesheets approved",
+      "motivos": {
+        "marcacion_abierta": "There is a clock-in without clock-out: add the clock-out adjustment.",
+        "sin_clasificar": "Some days are not classified: a parameter in force or an entry is missing.",
+        "novedades_pendientes": "There are time events to approve on those days.",
+        "ajustes_pendientes": "There are entry adjustments to approve on those days."
+      },
+      "movilResumen": "{trabajadas} of {programadas} · {n, plural, =0 {no adjustments} one {# adjustment} other {# adjustments}}",
+      "movilExtras": "Overtime {horas}",
+      "movilNocturnas": "night {horas}",
+      "vacio": {
+        "titulo": "No timesheets in this period",
+        "descripcion": "Timesheets build themselves from published shifts and clock entries."
+      },
+      "sinResultados": {
+        "titulo": "No timesheet matches",
+        "descripcion": "Remove a filter to see them all."
+      },
+      "error": {
+        "titulo": "Timesheets could not be loaded"
+      }
+    },
+    "ajustes": {
+      "tabla": "Entry adjustments for the period",
+      "buscar": "Search person or reason…",
+      "columnas": {
+        "persona": "Person",
+        "dia": "Day",
+        "marca": "Entry",
+        "motivo": "Reason",
+        "solicito": "Requested by",
+        "estado": "Status"
+      },
+      "vacio": {
+        "titulo": "No entry adjustments in this period",
+        "descripcion": "Every correction to a clock entry needs a reason and approval, and it shows up here."
+      },
+      "sinResultados": "No adjustment matches the search.",
+      "error": "Adjustments could not be loaded"
+    },
+    "ajuste": {
+      "titulo": "Add adjustment",
+      "tituloRegistrar": "Add manual clock entry",
+      "persona": "Person",
+      "elegirPersona": "Choose the person",
+      "dia": "Day",
+      "marca": "Entry to adjust",
+      "marcas": {
+        "entrada": "Clock-in",
+        "salida": "Clock-out",
+        "descanso": "Break",
+        "inicioDescanso": "Goes on break",
+        "finDescanso": "Back from break"
+      },
+      "marco": "Recorded",
+      "sinEntrada": "No clock-in",
+      "sinSalida": "No clock-out",
+      "queda": "Becomes",
+      "motivo": "Reason",
+      "elegirMotivo": "Choose the reason",
+      "motivos": {
+        "olvidoEntrada": "Forgot to clock in",
+        "olvidoSalida": "Forgot to clock out",
+        "fallaDispositivo": "The phone or the clock-in point failed",
+        "sinSenal": "There was no signal or internet",
+        "fueraDeSede": "Worked away from the branch",
+        "otro": "Other reason (explain it in the comment)"
+      },
+      "comentario": "Proof or comment",
+      "cancelar": "Cancel",
+      "enviar": "Send for approval",
+      "enviado": "Adjustment sent for approval",
+      "enviadoSinAprobador": "Nobody can approve it yet: set up a rule in Settings › Approvals.",
+      "apruebaJefe": "{nombre}, their direct manager, approves it",
+      "apruebaOtro": "{nombre} approves it",
+      "apruebaDetalle": "Until then the timesheet can’t be approved. The history keeps who requested it, who approved it and when.",
+      "sinAprobador": "Nobody can approve this adjustment yet",
+      "sinAprobadorDetalle": "It stays pending; it is never approved on its own. Set who approves in Settings › Approvals.",
+      "errorPersona": "Choose the person.",
+      "errorHora": "Choose the time.",
+      "errorHoraFuera": "The time must be between 62 days ago and now.",
+      "errorMotivo": "Choose the reason."
+    },
+    "hoja": {
+      "titulo": "Timesheet · {nombre}",
+      "tituloCorto": "Timesheet",
+      "nPorAprobar": "{n, plural, one {# adjustment to approve} other {# adjustments to approve}}",
+      "motivoAprobar": "{n, plural, one {It can be approved once the adjustment is resolved.} other {It can be approved once the # adjustments are resolved.}}",
+      "aprobada": "Timesheet approved",
+      "aprobadaParcial": "{n, plural, one {# day did not go to payroll} other {# days did not go to payroll}}",
+      "resumen": "Timesheet summary",
+      "kpi": {
+        "programadas": "Scheduled",
+        "trabajadas": "Worked",
+        "extra": "Overtime",
+        "extraDetalle": "go to Time events",
+        "nocturnas": "Night hours",
+        "nocturnasDetalle": "from {hora}"
+      },
+      "columnas": {
+        "dia": "Day",
+        "turno": "Shift",
+        "entrada": "Clock-in",
+        "salida": "Clock-out",
+        "horas": "Hours",
+        "diferencia": "Difference",
+        "ajuste": "Adjustment"
+      },
+      "dominical": "Sunday",
+      "festivo": "holiday",
+      "descanso": "Day off",
+      "sinSalida": "No clock-out",
+      "conAjuste": "{hora} (adjustment)",
+      "ajustes": {
+        "porAprobar": "To approve",
+        "extraPorAprobar": "Overtime to approve",
+        "tardanzaPorAprobar": "Late · to approve",
+        "salida_tempranaPorAprobar": "Early leave · to approve",
+        "ausenciaPorAprobar": "Absence · to approve",
+        "cambio_turnoPorAprobar": "Swap · to approve",
+        "horas_extraPorAprobar": "Overtime to approve",
+        "tardeJustificada": "Late · excused",
+        "tardeDescuenta": "Late · deducted",
+        "extraAprobada": "Overtime approved",
+        "ajustado": "Adjusted"
+      },
+      "nota": "Night hours and Sunday and holiday hours carry a premium:",
+      "notaEnlace": "the breakdown with its premium is in Overtime and premiums.",
+      "vacio": {
+        "titulo": "No shifts or entries in this period",
+        "descripcion": "The timesheet is built from the person’s published shifts and clock entries."
+      },
+      "error": "The timesheet could not be loaded"
+    },
+    "horas": {
+      "titulo": "Hours and premiums · {nombre}",
+      "tituloCorto": "Hours and premiums",
+      "nTopes": "{n, plural, one {# cap exceeded} other {# caps exceeded}}",
+      "jornada": "{horas} h workweek",
+      "aviso": {
+        "extra_supera_tope_diario": "On {dia} the daily overtime cap was exceeded",
+        "extra_supera_tope_semanal": "The week of {dia} exceeded the weekly overtime cap",
+        "detalle": "They worked {horas} of overtime and the cap is {tope}. The event waits for approval with a reason; without approval, it doesn’t go to payroll."
+      },
+      "trabajadas": "Hours worked",
+      "composicion": "Breakdown of hours worked",
+      "partes": {
+        "ordinarias": "Regular",
+        "dominicales": "Sundays and holidays",
+        "extra": "Overtime"
+      },
+      "recargos": "Premiums for the period",
+      "sinRecargos": "There are no hours with a premium in this period.",
+      "columnas": {
+        "dia": "Day",
+        "ord_diurna": "Regular daytime",
+        "ord_nocturna": "Regular night",
+        "dom_diurna": "Sun. & hol. daytime",
+        "dom_nocturna": "Sun. & hol. night",
+        "extra_diurna": "Daytime overtime",
+        "extra_nocturna": "Night overtime",
+        "alerta": "Alert"
+      },
+      "alertas": {
+        "extra_supera_tope_diario": "Daily cap",
+        "extra_supera_tope_semanal": "Weekly cap",
+        "marcacion_incompleta": "Incomplete entry"
+      },
+      "ajustePorAprobar": "Adjustment to approve",
+      "sinClasificar": "Not classified",
+      "nota": "Night hours start at {hora}. Percentages are the ones in force on each date; the hourly value comes from the divisor in force ({jornada} h a week).",
+      "vacio": {
+        "titulo": "No classified hours in this period",
+        "descripcion": "Each day is classified at clock-out. If a parameter in force is missing, the day is not classified."
+      }
+    },
+    "turno": {
+      "titulo": "Shift from {de} to {a}",
+      "tituloUnDia": "Shift on {dia}",
+      "tituloMovil": "Shift and premiums",
+      "nVigencias": "{n} rates in force",
+      "avisoTitulo": "Each hour uses the value in force on its date",
+      "avisoDetalle": "The Sunday and holiday premium changed during this shift: {antes} applies before and {despues} after.",
+      "columnas": {
+        "tramo": "Segment",
+        "horas": "Hours",
+        "tipo": "Hour type",
+        "recargo": "Premium",
+        "vigencia": "Rate applied"
+      },
+      "domingo": "Sunday",
+      "festivo": "holiday",
+      "paramDominical": "Sunday and holiday premium",
+      "paramNocturno": "Night premium",
+      "paramExtra": "Overtime premium",
+      "vigenteDelAl": "In force from {desde} to {hasta}",
+      "vigenteDesde": "In force since {desde}",
+      "adoptadoEmpresa": "adopted by the company",
+      "parametros": "Parameters applied",
+      "horaNocturna": "Night hours from",
+      "recargoNocturno": "Night premium",
+      "recargoDominical": "Sunday and holiday premium",
+      "hasta": "{pct} until {dia}",
+      "desde": "{pct} from {dia}",
+      "jornadaMaxima": "Maximum workweek",
+      "jornadaValor": "{horas} h · since {desde}",
+      "trabajoDominical": "Sunday work",
+      "ocasional": "Occasional ({n} of {total} Sundays this month)",
+      "habitual": "Regular ({n} of {total} Sundays this month)",
+      "nota": "If a parameter changes later, payroll already settled is not recalculated: it keeps the value that was in force.",
+      "vacio": {
+        "titulo": "This day has no classified hours",
+        "descripcion": "It is classified at clock-out or when the entry adjustment is approved."
+      }
+    },
+    "topes": {
+      "titulo": "Overtime and premiums",
+      "nPersonas": "{n, plural, one {# person exceeds a cap} other {# people exceed a cap}}",
+      "buscar": "Search person…",
+      "soloSuperados": "Only caps exceeded",
+      "columnas": {
+        "persona": "Person",
+        "semana": "Week",
+        "horas": "Hours in the week",
+        "extra": "Overtime in the week",
+        "diaMax": "Day with most overtime",
+        "tope": "Cap"
+      },
+      "tipos": {
+        "semanal": "Weekly {horas} h",
+        "diario": "Daily {horas} h",
+        "jornada": "Workweek {horas} h"
+      },
+      "movilSemanal": "{horas} overtime · week {semana}",
+      "movilDiario": "{horas} overtime on {dia}",
+      "movilJornada": "{horas} in the week {semana}",
+      "nota": "Caps in force: {dia} h of overtime a day and {semana} a week; maximum workweek of {jornada} h. An exceeded cap doesn’t block the record: it requires a reason and approval before payroll.",
+      "vacio": {
+        "titulo": "Nobody exceeded a cap in this period",
+        "descripcion": "Recorded overtime is within {dia} h a day and {semana} a week, and nobody went over {jornada} h a week.",
+        "accion": "View timesheets"
+      },
+      "sinResultados": {
+        "titulo": "Nobody matches the filters",
+        "descripcion": "Remove a filter to see everyone."
+      },
+      "error": {
+        "titulo": "The breakdown could not be calculated",
+        "descripcion": "A parameter in force for this date is missing or the calculation failed. Tell Human resources if it happens again."
+      },
+      "sinPermiso": {
+        "titulo": "You don’t have access to overtime",
+        "descripcion": "Human resources sees it, and each manager sees their team. Your hours are on Home."
+      }
+    },
+    "novedades": {
+      "titulo": "Time events",
+      "resumen": "Time events for the period",
+      "nPorAprobar": "{n} to approve",
+      "sinNovedades": "no time events",
+      "cierra": "closes on {dia}",
+      "listaDesde": "ready for payroll since {cuando}",
+      "periodoSiguiente": "View next period",
+      "motivoNoMarcar": "{n, plural, one {Available when nothing is left to approve (# left).} other {Available when nothing is left to approve (# left).}}",
+      "motivoNingunaDecidible": "None of the selected ones are yours to decide",
+      "buscar": "Search person or event type…",
+      "sustantivo": {
+        "singular": "event",
+        "plural": "events"
+      },
+      "pestanas": {
+        "etiqueta": "Event status",
+        "por_aprobar": "To approve",
+        "aprobadas": "Approved",
+        "todas": "All"
+      },
+      "columnas": {
+        "persona": "Person",
+        "novedad": "Event",
+        "detalle": "Detail",
+        "origen": "Source",
+        "estado": "Status"
+      },
+      "tipos": {
+        "horas_extra": "Overtime",
+        "tardanza": "Late arrival",
+        "salida_temprana": "Early leave",
+        "ausencia": "Absence",
+        "cambio_turno": "Shift swap",
+        "ajuste_marca": "Entry adjustment"
+      },
+      "estados": {
+        "pendiente": "To approve",
+        "esperando_contraparte": "Waiting for reply",
+        "aprobada": "Approved",
+        "rechazada": "Rejected",
+        "lista_nomina": "Ready for payroll"
+      },
+      "origenes": {
+        "marcacion": "Clock entries",
+        "turnos": "Shifts",
+        "ajuste": "Manual adjustment",
+        "gestor": "Human resources",
+        "empleado": "The person"
+      },
+      "pasaTope": {
+        "extra_supera_tope_diario": "exceeds the daily cap",
+        "extra_supera_tope_semanal": "exceeds the weekly cap",
+        "marcacion_incompleta": "incomplete entry"
+      },
+      "turnoCompleto": "whole shift",
+      "sinMarca": "No entry and no approved absence",
+      "sinJustificar": "Not excused · deducted",
+      "justificada": "{motivo} · excused",
+      "motivo": "Reason: {motivo}",
+      "sinMotivo": "No reason",
+      "loPidio": "Requested by {nombre}",
+      "cambio": "Swapped with {nombre}",
+      "esperando": "Waiting for {nombre}’s reply",
+      "sinAprobador": "Nobody can approve this event yet",
+      "sinAprobadorDetalle": "It stays pending; it is never approved on its own. Set who approves in Settings › Approvals.",
+      "aprobadasN": "{n, plural, one {Event approved} other {# events approved}}",
+      "rechazadasN": "{n, plural, one {Event rejected} other {# events rejected}}",
+      "decididasParcial": "{n} of {total} decided",
+      "kpi": {
+        "aprobadas": "Approved",
+        "aprobadasDetalle": "go to payroll",
+        "rechazadas": "Rejected",
+        "rechazadasDetalle": "not paid or deducted",
+        "porAprobar": "To approve"
+      },
+      "revisar": {
+        "nacio": {
+          "marcacion": "came from the clock entries",
+          "turnos": "came from the shifts",
+          "ajuste": "requested by a manual adjustment",
+          "gestor": "recorded by Human resources",
+          "empleado": "requested by the person"
+        },
+        "tope": {
+          "extra_supera_tope_diario": "Exceeds the daily cap of {tope}",
+          "extra_supera_tope_semanal": "Exceeds the weekly cap of {tope}",
+          "marcacion_incompleta": "Incomplete entry"
+        },
+        "topeDetalle": "It can be approved with a reason; without approval, it doesn’t go to payroll.",
+        "noTeToca": "Someone else decides this event.",
+        "horas": "Hours",
+        "tipo": "Type",
+        "marca": "Entry",
+        "cambio": "Swap",
+        "turno": "Shift",
+        "motivo": "Person’s reason",
+        "pidio": "Requested by",
+        "comentario": "Comment",
+        "comentarioAyuda": "To reject, write the reason: it is what the person receives.",
+        "errorMotivo": "Write the reason for the rejection."
+      },
+      "rechazar": {
+        "titulo": "Reject {que} for {nombre}?",
+        "tituloVarias": "{n, plural, one {Reject # event?} other {Reject # events?}}",
+        "descripcion": "{consecuencia} {nombre} receives your comment: “{comentario}”.",
+        "descripcionVarias": "Each person receives your reason. Rejected overtime is not paid, and absences or late arrivals are deducted.",
+        "extra": "{horas} of overtime",
+        "que": {
+          "horas_extra": "the overtime",
+          "tardanza": "the late arrival excuse",
+          "salida_temprana": "the early leave excuse",
+          "ausencia": "the absence excuse",
+          "cambio_turno": "the shift swap",
+          "ajuste_marca": "the entry adjustment"
+        },
+        "consecuencia": {
+          "horas_extra": "It won’t be paid.",
+          "tardanza": "It is deducted in payroll.",
+          "salida_temprana": "It is deducted in payroll.",
+          "ausencia": "It is deducted in payroll.",
+          "cambio_turno": "The shifts stay as they were.",
+          "ajuste_marca": "The entry is not added."
+        }
+      },
+      "marcar": {
+        "titulo": "Mark the pay period {rango} ready for payroll?",
+        "descripcion": "{n, plural, one {# approved event goes to payroll.} other {# approved events go to payroll.}} After that they can’t be changed: anything late goes to the next pay period."
+      },
+      "listaToast": "Pay period ready for payroll",
+      "listaToastDesc": "{n, plural, one {# approved event goes} other {# approved events go}} to the payroll for {rango}.",
+      "listaParcial": "{n, plural, one {# day did not go to payroll} other {# days did not go to payroll}}",
+      "vacio": {
+        "titulo": "Nothing to approve in this pay period",
+        "tituloOtras": "Nothing to show in this pay period",
+        "descripcion": "Late arrivals, absences, overtime and shift swaps show up on their own. If you already reviewed everything, mark the period ready for payroll."
+      },
+      "sinResultados": {
+        "titulo": "No event matches",
+        "descripcion": "Remove a filter to see them all."
+      },
+      "error": {
+        "titulo": "Time events could not be loaded",
+        "descripcion": "Nothing was approved or rejected. Try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don’t have access to time events",
+        "descripcion": "Each manager approves their team’s, and Human resources the whole branch’s."
       }
     }
   }

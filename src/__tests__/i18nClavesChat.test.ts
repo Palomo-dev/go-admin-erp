@@ -45,6 +45,11 @@ const CARPETAS = [
   // RR. HH. › Ausencias (fase 2): claves por plantilla (`estados.${e}`, `errores.${codigo}`) verificadas.
   'src/app/app/hrm/ausencias',
   'src/components/hrm/ausencias',
+  // Asistencia, Horas extra y recargos y Novedades (fase 2, Figma 20.10–20.12).
+  'src/app/app/hrm/asistencia',
+  'src/app/app/hrm/novedades',
+  'src/components/hrm/asistencia',
+  'src/components/hrm/novedades',
 ];
 
 /**

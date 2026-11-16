@@ -4587,7 +4587,8 @@
       "inventario_consignaciones": "Dépôts-ventes",
       "hrm_areas": "Services",
       "hrm_plazas": "Postes budgétés",
-      "hrm_aprobaciones": "Approbations"
+      "hrm_aprobaciones": "Approbations",
+      "hrm_novedades": "Événements"
     },
     "grupos": {
       "venta": "Vente",
@@ -54533,7 +54534,9 @@
         "cambio_area": "Changement de service",
         "cambio_jefe": "Changement de responsable",
         "cambio_jornada": "Changement d’horaire",
-        "cambio_contrato": "Changement de contrat"
+        "cambio_contrato": "Changement de contrat",
+        "novedad_asistencia": "Événement de présence",
+        "cambio_turno": "Échange d’horaire"
       },
       "aprobador": {
         "jefe_directo": "Responsable direct",
@@ -55881,7 +55884,9 @@
         "vacaciones": "Congés",
         "ausencia": "Absence",
         "horas_extra": "Heures supplémentaires",
-        "prestamo": "Prêt"
+        "prestamo": "Prêt",
+        "novedad_asistencia": "Événement de présence",
+        "cambio_turno": "Échange d’horaire"
       },
       "titulos": {
         "cargo_salario": "Approuver le changement de poste et de salaire",
@@ -55903,7 +55908,9 @@
         "vacaciones": "Approuver les congés",
         "ausencia": "Approuver l’absence",
         "horas_extra": "Approuver les heures supplémentaires",
-        "prestamo": "Approuver le prêt"
+        "prestamo": "Approuver le prêt",
+        "novedad_asistencia": "Approuver l’événement de présence",
+        "cambio_turno": "Approuver l’échange d’horaire"
       },
       "ligados": "{n} changements liés",
       "alMes": "{monto} par mois",
@@ -57003,6 +57010,591 @@
       "vacio": {
         "titulo": "Vous n'avez pas encore demandé de congés",
         "descripcion": "Demandez-les ici : vous verrez les jours ouvrés décomptés et qui approuve."
+      }
+    }
+  },
+  "hrmAsistencia": {
+    "titulo": "Présence",
+    "comun": {
+      "irAlInicio": "Aller à l’accueil",
+      "cerrar": "Fermer"
+    },
+    "vistas": {
+      "etiqueta": "Vue de la présence",
+      "hoy": "Aujourd’hui",
+      "hojas": "Feuilles de temps",
+      "ajustes": "Ajustements"
+    },
+    "periodo": {
+      "etiqueta": "Période",
+      "subtitulo": "Quinzaine du {rango}"
+    },
+    "estados": {
+      "listaNomina": "Prête pour la paie"
+    },
+    "marcas": {
+      "check_in": "Entrée",
+      "check_out": "Sortie",
+      "break_start": "Début de pause",
+      "break_end": "Fin de pause"
+    },
+    "categorias": {
+      "ord_diurna": "Ordinaire de jour",
+      "ord_nocturna": "Ordinaire de nuit",
+      "dom_diurna": "Dimanche et férié de jour",
+      "dom_nocturna": "Dimanche et férié de nuit",
+      "extra_diurna": "Supplémentaire de jour",
+      "extra_nocturna": "Supplémentaire de nuit",
+      "extra_dom_diurna": "Supplémentaire du dimanche de jour",
+      "extra_dom_nocturna": "Supplémentaire du dimanche de nuit"
+    },
+    "acciones": {
+      "registrarMarca": "Enregistrer un pointage manuel",
+      "exportar": "Exporter",
+      "verTopes": "Heures supplémentaires et majorations",
+      "verNovedades": "Aller aux Événements",
+      "verHoja": "Voir la feuille de temps",
+      "verHoras": "Voir heures et majorations",
+      "marcarAusencia": "Marquer comme absence justifiée",
+      "aprobarHoja": "Approuver la feuille",
+      "aprobar": "Approuver",
+      "rechazar": "Refuser",
+      "revisar": "Examiner",
+      "agregarAjuste": "Ajouter un ajustement",
+      "verRecargosDia": "Voir les majorations du jour",
+      "verNovedad": "Voir l’événement",
+      "verDesglose": "Voir le détail",
+      "verNovedadesExtra": "Voir les événements d’heures supplémentaires",
+      "verTurnosSemana": "Voir les horaires de la semaine",
+      "marcarLista": "Marquer prête pour la paie"
+    },
+    "filtros": {
+      "estado": "Statut",
+      "equipo": "Équipe",
+      "tipo": "Type",
+      "todos": "Tous",
+      "chipEstado": "Statut : {valor}",
+      "chipEquipo": "Équipe : {valor}",
+      "chipTipo": "Type : {valor}",
+      "verPersonas": "{n, plural, one {Voir # personne} other {Voir # personnes}}",
+      "verHojas": "{n, plural, one {Voir # feuille} other {Voir # feuilles}}",
+      "verNovedades": "{n, plural, one {Voir # événement} other {Voir # événements}}"
+    },
+    "errores": {
+      "guardar": "Impossible d’enregistrer. Réessayez.",
+      "sinPermiso": "Vous n’avez pas l’autorisation de faire cela.",
+      "parametro": "Il manque un paramètre en vigueur pour une date de la période. Vérifiez les paramètres RH.",
+      "ausenciaYaRegistrada": "Cette absence est déjà enregistrée.",
+      "ajusteYaPendiente": "Un ajustement de ce pointage attend déjà une approbation.",
+      "jornadaCerrada": "La paie a déjà réglé ce jour : l’ajustement passe à la période suivante.",
+      "decision": {
+        "no_puede_aprobar_lo_propio": "Vous ne pouvez pas approuver ce que vous avez demandé vous-même.",
+        "no_eres_aprobador": "Certains ne vous revenaient plus : quelqu’un d’autre en décide.",
+        "otra": "Certains n’ont pas pu être décidés. Rechargez la liste."
+      }
+    },
+    "hoy": {
+      "subtitulo": "Aujourd’hui, {fecha}",
+      "festivo": "(férié)",
+      "actualizadoHace": "{n, plural, one {mis à jour il y a # min} other {mis à jour il y a # min}}",
+      "actualizadoRecien": "mis à jour à l’instant",
+      "resumen": "Présence du jour",
+      "tabla": "Présence du jour",
+      "buscar": "Rechercher une personne ou un poste…",
+      "kpi": {
+        "presentes": "Présents",
+        "presentesValor": "{n} sur {total}",
+        "presentesDetalle": "avec un horaire à cette heure",
+        "faltan": "Absents",
+        "faltanDetalle": "sans pointage ni absence",
+        "tarde": "En retard",
+        "tardeDetalle": "plus de {n} min",
+        "tardeSinTolerancia": "après le début de l’horaire",
+        "descanso": "En pause"
+      },
+      "columnas": {
+        "persona": "Personne",
+        "turno": "Horaire",
+        "entrada": "Entrée",
+        "como": "Comment",
+        "estado": "Statut"
+      },
+      "como": {
+        "ubicacion": "Localisation",
+        "qr": "QR du site",
+        "remoto": "À distance",
+        "manual": "Pointage manuel",
+        "app": "Application"
+      },
+      "estados": {
+        "presente": "Présent",
+        "presenteRemoto": "Présent · à distance",
+        "tarde": "En retard",
+        "tardeMin": "Retard {n} min",
+        "falta": "Absent",
+        "descanso": "En pause",
+        "salio": "Parti",
+        "ausencia": "Absent",
+        "por_llegar": "Pas encore arrivé",
+        "vacaciones": "Congés",
+        "incapacidad": "Absent · arrêt maladie",
+        "justificada": "Absence justifiée",
+        "licencia": "Congé"
+      },
+      "movilEntro": "Entré à {hora} · {como}",
+      "movilSinMarcar": "{turno} · sans pointage",
+      "motivoAusenciaJustificada": "Absence justifiée enregistrée par les Ressources humaines",
+      "ausenciaRegistrada": "Absence de {nombre} envoyée pour approbation",
+      "ausenciaRegistradaDesc": "Une fois approuvée, elle est justifiée et non déduite.",
+      "vacio": {
+        "titulo": "Personne n’a d’horaire sur ce site aujourd’hui",
+        "descripcion": "La présence apparaît quand des horaires sont publiés. Planifiez la semaine dans Horaires.",
+        "accion": "Aller aux Horaires"
+      },
+      "sinResultados": {
+        "titulo": "Personne ne correspond aux filtres",
+        "descripcion": "Retirez un filtre pour voir tout le monde."
+      },
+      "error": {
+        "titulo": "Impossible de charger la présence",
+        "descripcion": "Les pointages continuent d’arriver et sont enregistrés. Réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la présence",
+        "descripcion": "Vous voyez la présence de votre équipe si vous êtes responsable, ou celle de tous avec l’autorisation « Voir la présence ». Votre propre présence est sur l’Accueil."
+      }
+    },
+    "hojas": {
+      "nHojas": "{n, plural, one {# feuille} other {# feuilles}}",
+      "tabla": "Feuilles de temps de la période",
+      "buscar": "Rechercher une personne…",
+      "sustantivo": {
+        "singular": "feuille",
+        "plural": "feuilles"
+      },
+      "columnas": {
+        "persona": "Personne",
+        "cargo": "Poste",
+        "programadas": "Planifiées",
+        "trabajadas": "Travaillées",
+        "extras": "Supplémentaires",
+        "nocturnas": "De nuit",
+        "domFest": "Dim. et fér.",
+        "ajustes": "Ajustements",
+        "estado": "Statut"
+      },
+      "estados": {
+        "por_aprobar": "À approuver",
+        "aprobada": "Approuvée",
+        "sin_marcas": "Sans pointage"
+      },
+      "motivoPendientes": "{n, plural, one {Elle a # ajustement à approuver} other {Elle a # ajustements à approuver}}",
+      "motivoNingunaAprobable": "Les feuilles choisies ont des ajustements à approuver",
+      "aprobadas": "{n, plural, one {Feuille approuvée} other {# feuilles approuvées}}",
+      "aprobadasDesc": "Leurs jours sont prêts pour la paie.",
+      "aprobadasParcial": "{n} feuilles approuvées sur {total}",
+      "motivos": {
+        "marcacion_abierta": "Il y a une entrée sans sortie : ajoutez l’ajustement de la sortie.",
+        "sin_clasificar": "Des jours ne sont pas classés : il manque un paramètre en vigueur ou un pointage.",
+        "novedades_pendientes": "Il y a des événements à approuver ces jours-là.",
+        "ajustes_pendientes": "Il y a des ajustements de pointage à approuver ces jours-là."
+      },
+      "movilResumen": "{trabajadas} sur {programadas} · {n, plural, =0 {sans ajustement} one {# ajustement} other {# ajustements}}",
+      "movilExtras": "Supplémentaires {horas}",
+      "movilNocturnas": "de nuit {horas}",
+      "vacio": {
+        "titulo": "Aucune feuille de temps sur cette période",
+        "descripcion": "Les feuilles se construisent seules avec les horaires publiés et les pointages."
+      },
+      "sinResultados": {
+        "titulo": "Aucune feuille ne correspond",
+        "descripcion": "Retirez un filtre pour toutes les voir."
+      },
+      "error": {
+        "titulo": "Impossible de charger les feuilles de temps"
+      }
+    },
+    "ajustes": {
+      "tabla": "Ajustements de pointage de la période",
+      "buscar": "Rechercher une personne ou un motif…",
+      "columnas": {
+        "persona": "Personne",
+        "dia": "Jour",
+        "marca": "Pointage",
+        "motivo": "Motif",
+        "solicito": "Demandé par",
+        "estado": "Statut"
+      },
+      "vacio": {
+        "titulo": "Aucun ajustement de pointage sur cette période",
+        "descripcion": "Chaque correction d’un pointage demande un motif et une approbation, et apparaît ici."
+      },
+      "sinResultados": "Aucun ajustement ne correspond à la recherche.",
+      "error": "Impossible de charger les ajustements"
+    },
+    "ajuste": {
+      "titulo": "Ajouter un ajustement",
+      "tituloRegistrar": "Enregistrer un pointage manuel",
+      "persona": "Personne",
+      "elegirPersona": "Choisissez la personne",
+      "dia": "Jour",
+      "marca": "Pointage à ajuster",
+      "marcas": {
+        "entrada": "Entrée",
+        "salida": "Sortie",
+        "descanso": "Pause",
+        "inicioDescanso": "Part en pause",
+        "finDescanso": "Revient de pause"
+      },
+      "marco": "Pointé",
+      "sinEntrada": "Sans entrée",
+      "sinSalida": "Sans sortie",
+      "queda": "Devient",
+      "motivo": "Motif",
+      "elegirMotivo": "Choisissez le motif",
+      "motivos": {
+        "olvidoEntrada": "A oublié de pointer l’entrée",
+        "olvidoSalida": "A oublié de pointer la sortie",
+        "fallaDispositivo": "Le téléphone ou le point de pointage a échoué",
+        "sinSenal": "Pas de réseau ni d’internet",
+        "fueraDeSede": "A travaillé hors du site",
+        "otro": "Autre motif (expliquez-le dans le commentaire)"
+      },
+      "comentario": "Justificatif ou commentaire",
+      "cancelar": "Annuler",
+      "enviar": "Envoyer pour approbation",
+      "enviado": "Ajustement envoyé pour approbation",
+      "enviadoSinAprobador": "Personne ne peut encore l’approuver : configurez une règle dans Paramètres › Approbations.",
+      "apruebaJefe": "{nombre}, son responsable direct, l’approuve",
+      "apruebaOtro": "{nombre} l’approuve",
+      "apruebaDetalle": "En attendant, la feuille ne peut pas être approuvée. L’historique garde qui l’a demandé, qui l’a approuvé et quand.",
+      "sinAprobador": "Personne ne peut encore approuver cet ajustement",
+      "sinAprobadorDetalle": "Il reste en attente ; il n’est jamais approuvé tout seul. Définissez qui approuve dans Paramètres › Approbations.",
+      "errorPersona": "Choisissez la personne.",
+      "errorHora": "Choisissez l’heure.",
+      "errorHoraFuera": "L’heure doit être comprise entre il y a 62 jours et maintenant.",
+      "errorMotivo": "Choisissez le motif."
+    },
+    "hoja": {
+      "titulo": "Feuille de temps · {nombre}",
+      "tituloCorto": "Feuille de temps",
+      "nPorAprobar": "{n, plural, one {# ajustement à approuver} other {# ajustements à approuver}}",
+      "motivoAprobar": "{n, plural, one {Elle pourra être approuvée une fois l’ajustement résolu.} other {Elle pourra être approuvée une fois les # ajustements résolus.}}",
+      "aprobada": "Feuille approuvée",
+      "aprobadaParcial": "{n, plural, one {# jour n’est pas passé en paie} other {# jours ne sont pas passés en paie}}",
+      "resumen": "Résumé de la feuille",
+      "kpi": {
+        "programadas": "Planifiées",
+        "trabajadas": "Travaillées",
+        "extra": "Heures supplémentaires",
+        "extraDetalle": "vont aux Événements",
+        "nocturnas": "De nuit",
+        "nocturnasDetalle": "à partir de {hora}"
+      },
+      "columnas": {
+        "dia": "Jour",
+        "turno": "Horaire",
+        "entrada": "Entrée",
+        "salida": "Sortie",
+        "horas": "Heures",
+        "diferencia": "Écart",
+        "ajuste": "Ajustement"
+      },
+      "dominical": "dimanche",
+      "festivo": "férié",
+      "descanso": "Repos",
+      "sinSalida": "Sans sortie",
+      "conAjuste": "{hora} (ajustement)",
+      "ajustes": {
+        "porAprobar": "À approuver",
+        "extraPorAprobar": "Supplémentaire à approuver",
+        "tardanzaPorAprobar": "Retard · à approuver",
+        "salida_tempranaPorAprobar": "Départ anticipé · à approuver",
+        "ausenciaPorAprobar": "Absence · à approuver",
+        "cambio_turnoPorAprobar": "Échange · à approuver",
+        "horas_extraPorAprobar": "Supplémentaire à approuver",
+        "tardeJustificada": "Retard · justifié",
+        "tardeDescuenta": "Retard · déduit",
+        "extraAprobada": "Supplémentaire approuvée",
+        "ajustado": "Ajustée"
+      },
+      "nota": "Les heures de nuit, du dimanche et des jours fériés sont majorées :",
+      "notaEnlace": "le détail avec sa majoration est dans Heures supplémentaires et majorations.",
+      "vacio": {
+        "titulo": "Aucun horaire ni pointage sur cette période",
+        "descripcion": "La feuille se construit avec les horaires publiés et les pointages de la personne."
+      },
+      "error": "Impossible de charger la feuille de temps"
+    },
+    "horas": {
+      "titulo": "Heures et majorations · {nombre}",
+      "tituloCorto": "Heures et majorations",
+      "nTopes": "{n, plural, one {# plafond dépassé} other {# plafonds dépassés}}",
+      "jornada": "durée de {horas} h par semaine",
+      "aviso": {
+        "extra_supera_tope_diario": "Le {dia}, le plafond quotidien d’heures supplémentaires a été dépassé",
+        "extra_supera_tope_semanal": "La semaine du {dia} a dépassé le plafond hebdomadaire d’heures supplémentaires",
+        "detalle": "Elle a fait {horas} d’heures supplémentaires et le plafond est de {tope}. L’événement attend une approbation avec motif ; sans approbation, il ne va pas en paie."
+      },
+      "trabajadas": "Heures travaillées",
+      "composicion": "Répartition des heures travaillées",
+      "partes": {
+        "ordinarias": "Ordinaires",
+        "dominicales": "Dimanches et fériés",
+        "extra": "Supplémentaires"
+      },
+      "recargos": "Majorations de la période",
+      "sinRecargos": "Aucune heure majorée sur cette période.",
+      "columnas": {
+        "dia": "Jour",
+        "ord_diurna": "Ordinaire de jour",
+        "ord_nocturna": "Ordinaire de nuit",
+        "dom_diurna": "Dim. et fér. de jour",
+        "dom_nocturna": "Dim. et fér. de nuit",
+        "extra_diurna": "Supp. de jour",
+        "extra_nocturna": "Supp. de nuit",
+        "alerta": "Alerte"
+      },
+      "alertas": {
+        "extra_supera_tope_diario": "Plafond quotidien",
+        "extra_supera_tope_semanal": "Plafond hebdomadaire",
+        "marcacion_incompleta": "Pointage incomplet"
+      },
+      "ajustePorAprobar": "Ajustement à approuver",
+      "sinClasificar": "Non classé",
+      "nota": "Heures de nuit à partir de {hora}. Les pourcentages sont ceux en vigueur à chaque date ; la valeur de l’heure vient du diviseur en vigueur ({jornada} h par semaine).",
+      "vacio": {
+        "titulo": "Aucune heure classée sur cette période",
+        "descripcion": "Chaque jour est classé au pointage de sortie. S’il manque un paramètre en vigueur, le jour n’est pas classé."
+      }
+    },
+    "turno": {
+      "titulo": "Horaire du {de} au {a}",
+      "tituloUnDia": "Horaire du {dia}",
+      "tituloMovil": "Horaire et majorations",
+      "nVigencias": "{n} valeurs en vigueur",
+      "avisoTitulo": "Chaque heure utilise la valeur en vigueur à sa date",
+      "avisoDetalle": "La majoration du dimanche et des fériés a changé pendant cet horaire : {antes} s’applique avant et {despues} après.",
+      "columnas": {
+        "tramo": "Tranche",
+        "horas": "Heures",
+        "tipo": "Type d’heure",
+        "recargo": "Majoration",
+        "vigencia": "Valeur appliquée"
+      },
+      "domingo": "dimanche",
+      "festivo": "férié",
+      "paramDominical": "Majoration dimanche et férié",
+      "paramNocturno": "Majoration de nuit",
+      "paramExtra": "Majoration d’heure supplémentaire",
+      "vigenteDelAl": "En vigueur du {desde} au {hasta}",
+      "vigenteDesde": "En vigueur depuis le {desde}",
+      "adoptadoEmpresa": "adoptée par l’entreprise",
+      "parametros": "Paramètres appliqués",
+      "horaNocturna": "Heures de nuit à partir de",
+      "recargoNocturno": "Majoration de nuit",
+      "recargoDominical": "Majoration dimanche et férié",
+      "hasta": "{pct} jusqu’au {dia}",
+      "desde": "{pct} à partir du {dia}",
+      "jornadaMaxima": "Durée hebdomadaire maximale",
+      "jornadaValor": "{horas} h · depuis le {desde}",
+      "trabajoDominical": "Travail du dimanche",
+      "ocasional": "Occasionnel ({n} dimanches sur {total} ce mois-ci)",
+      "habitual": "Habituel ({n} dimanches sur {total} ce mois-ci)",
+      "nota": "Si un paramètre change ensuite, la paie déjà réglée n’est pas recalculée : elle garde la valeur qui était en vigueur.",
+      "vacio": {
+        "titulo": "Ce jour n’a pas d’heures classées",
+        "descripcion": "Il est classé au pointage de sortie ou à l’approbation de l’ajustement du pointage."
+      }
+    },
+    "topes": {
+      "titulo": "Heures supplémentaires et majorations",
+      "nPersonas": "{n, plural, one {# personne dépasse un plafond} other {# personnes dépassent un plafond}}",
+      "buscar": "Rechercher une personne…",
+      "soloSuperados": "Seulement les plafonds dépassés",
+      "columnas": {
+        "persona": "Personne",
+        "semana": "Semaine",
+        "horas": "Heures de la semaine",
+        "extra": "Supp. de la semaine",
+        "diaMax": "Jour avec le plus de supp.",
+        "tope": "Plafond"
+      },
+      "tipos": {
+        "semanal": "Hebdomadaire {horas} h",
+        "diario": "Quotidien {horas} h",
+        "jornada": "Durée {horas} h"
+      },
+      "movilSemanal": "{horas} supp. · semaine {semana}",
+      "movilDiario": "{horas} supp. le {dia}",
+      "movilJornada": "{horas} la semaine {semana}",
+      "nota": "Plafonds en vigueur : {dia} h supplémentaires par jour et {semana} par semaine ; durée maximale de {jornada} h par semaine. Un plafond dépassé ne bloque pas l’enregistrement : il exige un motif et une approbation avant la paie.",
+      "vacio": {
+        "titulo": "Personne n’a dépassé de plafond sur cette période",
+        "descripcion": "Les heures supplémentaires restent sous {dia} h par jour et {semana} par semaine, et personne n’a dépassé {jornada} h par semaine.",
+        "accion": "Voir les feuilles de temps"
+      },
+      "sinResultados": {
+        "titulo": "Personne ne correspond aux filtres",
+        "descripcion": "Retirez un filtre pour voir tout le monde."
+      },
+      "error": {
+        "titulo": "Impossible de calculer le détail",
+        "descripcion": "Il manque un paramètre en vigueur pour cette date ou le calcul a échoué. Prévenez les Ressources humaines si cela se répète."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès aux heures supplémentaires",
+        "descripcion": "Les Ressources humaines les voient, et chaque responsable celles de son équipe. Vos heures sont sur l’Accueil."
+      }
+    },
+    "novedades": {
+      "titulo": "Événements",
+      "resumen": "Événements de la période",
+      "nPorAprobar": "{n} à approuver",
+      "sinNovedades": "sans événement",
+      "cierra": "clôture le {dia}",
+      "listaDesde": "prête pour la paie depuis le {cuando}",
+      "periodoSiguiente": "Voir la période suivante",
+      "motivoNoMarcar": "{n, plural, one {Disponible quand il ne reste rien à approuver (il en reste #).} other {Disponible quand il ne reste rien à approuver (il en reste #).}}",
+      "motivoNingunaDecidible": "Aucun des éléments choisis ne vous revient",
+      "buscar": "Rechercher une personne ou un type d’événement…",
+      "sustantivo": {
+        "singular": "événement",
+        "plural": "événements"
+      },
+      "pestanas": {
+        "etiqueta": "Statut des événements",
+        "por_aprobar": "À approuver",
+        "aprobadas": "Approuvés",
+        "todas": "Tous"
+      },
+      "columnas": {
+        "persona": "Personne",
+        "novedad": "Événement",
+        "detalle": "Détail",
+        "origen": "Origine",
+        "estado": "Statut"
+      },
+      "tipos": {
+        "horas_extra": "Heures supplémentaires",
+        "tardanza": "Retard",
+        "salida_temprana": "Départ anticipé",
+        "ausencia": "Absence",
+        "cambio_turno": "Échange d’horaire",
+        "ajuste_marca": "Ajustement de pointage"
+      },
+      "estados": {
+        "pendiente": "À approuver",
+        "esperando_contraparte": "En attente de réponse",
+        "aprobada": "Approuvé",
+        "rechazada": "Refusé",
+        "lista_nomina": "Prêt pour la paie"
+      },
+      "origenes": {
+        "marcacion": "Pointage",
+        "turnos": "Horaires",
+        "ajuste": "Ajustement manuel",
+        "gestor": "Ressources humaines",
+        "empleado": "La personne"
+      },
+      "pasaTope": {
+        "extra_supera_tope_diario": "dépasse le plafond quotidien",
+        "extra_supera_tope_semanal": "dépasse le plafond hebdomadaire",
+        "marcacion_incompleta": "pointage incomplet"
+      },
+      "turnoCompleto": "horaire complet",
+      "sinMarca": "Sans pointage ni absence approuvée",
+      "sinJustificar": "Non justifié · déduit",
+      "justificada": "{motivo} · justifié",
+      "motivo": "Motif : {motivo}",
+      "sinMotivo": "Sans motif",
+      "loPidio": "Demandé par {nombre}",
+      "cambio": "Échangé avec {nombre}",
+      "esperando": "En attente de la réponse de {nombre}",
+      "sinAprobador": "Personne ne peut encore approuver cet événement",
+      "sinAprobadorDetalle": "Il reste en attente ; il n’est jamais approuvé tout seul. Définissez qui approuve dans Paramètres › Approbations.",
+      "aprobadasN": "{n, plural, one {Événement approuvé} other {# événements approuvés}}",
+      "rechazadasN": "{n, plural, one {Événement refusé} other {# événements refusés}}",
+      "decididasParcial": "{n} sur {total} décidés",
+      "kpi": {
+        "aprobadas": "Approuvés",
+        "aprobadasDetalle": "vont en paie",
+        "rechazadas": "Refusés",
+        "rechazadasDetalle": "ni payés ni déduits",
+        "porAprobar": "À approuver"
+      },
+      "revisar": {
+        "nacio": {
+          "marcacion": "issu du pointage",
+          "turnos": "issu des horaires",
+          "ajuste": "demandé par un ajustement manuel",
+          "gestor": "enregistré par les Ressources humaines",
+          "empleado": "demandé par la personne"
+        },
+        "tope": {
+          "extra_supera_tope_diario": "Dépasse le plafond quotidien de {tope}",
+          "extra_supera_tope_semanal": "Dépasse le plafond hebdomadaire de {tope}",
+          "marcacion_incompleta": "Pointage incomplet"
+        },
+        "topeDetalle": "Il peut être approuvé avec un motif ; sans approbation, il ne va pas en paie.",
+        "noTeToca": "Quelqu’un d’autre décide de cet événement.",
+        "horas": "Heures",
+        "tipo": "Type",
+        "marca": "Pointage",
+        "cambio": "Échange",
+        "turno": "Horaire",
+        "motivo": "Motif de la personne",
+        "pidio": "Demandé par",
+        "comentario": "Commentaire",
+        "comentarioAyuda": "Pour refuser, écrivez le motif : c’est ce que reçoit la personne.",
+        "errorMotivo": "Écrivez le motif du refus."
+      },
+      "rechazar": {
+        "titulo": "Refuser {que} de {nombre} ?",
+        "tituloVarias": "{n, plural, one {Refuser # événement ?} other {Refuser # événements ?}}",
+        "descripcion": "{consecuencia} {nombre} reçoit votre commentaire : « {comentario} ».",
+        "descripcionVarias": "Chaque personne reçoit votre motif. Ce qui est refusé n’est pas payé, et les absences ou retards sont déduits.",
+        "extra": "{horas} d’heures supplémentaires",
+        "que": {
+          "horas_extra": "les heures supplémentaires",
+          "tardanza": "la justification du retard",
+          "salida_temprana": "la justification du départ anticipé",
+          "ausencia": "la justification de l’absence",
+          "cambio_turno": "l’échange d’horaire",
+          "ajuste_marca": "l’ajustement de pointage"
+        },
+        "consecuencia": {
+          "horas_extra": "Elles ne seront pas payées.",
+          "tardanza": "C’est déduit de la paie.",
+          "salida_temprana": "C’est déduit de la paie.",
+          "ausencia": "C’est déduit de la paie.",
+          "cambio_turno": "Les horaires restent comme avant.",
+          "ajuste_marca": "Le pointage n’est pas ajouté."
+        }
+      },
+      "marcar": {
+        "titulo": "Marquer la quinzaine du {rango} prête pour la paie ?",
+        "descripcion": "{n, plural, one {# événement approuvé passe en paie.} other {# événements approuvés passent en paie.}} Ensuite, ils ne peuvent plus être modifiés : ce qui arrive en retard va à la quinzaine suivante."
+      },
+      "listaToast": "Quinzaine prête pour la paie",
+      "listaToastDesc": "{n, plural, one {# événement approuvé passe} other {# événements approuvés passent}} à la paie du {rango}.",
+      "listaParcial": "{n, plural, one {# jour n’est pas passé en paie} other {# jours ne sont pas passés en paie}}",
+      "vacio": {
+        "titulo": "Rien à approuver sur cette quinzaine",
+        "tituloOtras": "Rien à afficher sur cette quinzaine",
+        "descripcion": "Les retards, absences, heures supplémentaires et échanges d’horaires apparaissent tout seuls. Si vous avez tout examiné, marquez la période prête pour la paie."
+      },
+      "sinResultados": {
+        "titulo": "Aucun événement ne correspond",
+        "descripcion": "Retirez un filtre pour tous les voir."
+      },
+      "error": {
+        "titulo": "Impossible de charger les événements",
+        "descripcion": "Rien n’a été approuvé ni refusé. Réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès aux événements",
+        "descripcion": "Chaque responsable approuve ceux de son équipe, et les Ressources humaines ceux de tout le site."
       }
     }
   }

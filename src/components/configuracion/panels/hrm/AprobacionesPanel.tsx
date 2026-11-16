@@ -33,6 +33,8 @@ const TIPOS_PRINCIPALES = ['ausencia', 'horas_extra', 'cambio_salario', 'prestam
 export const TIPOS_SOLICITUD_UI = [
   'ausencia',
   'horas_extra',
+  'novedad_asistencia',
+  'cambio_turno',
   'cambio_salario',
   'prestamo',
   'novedad_nomina',

@@ -4588,7 +4588,8 @@
       "inventario_consignaciones": "Consignações",
       "hrm_areas": "Áreas",
       "hrm_plazas": "Vagas",
-      "hrm_aprobaciones": "Aprovações"
+      "hrm_aprobaciones": "Aprovações",
+      "hrm_novedades": "Ocorrências"
     },
     "grupos": {
       "venta": "Venda",
@@ -54543,7 +54544,9 @@
         "cambio_area": "Mudança de área",
         "cambio_jefe": "Mudança de chefe",
         "cambio_jornada": "Mudança de jornada",
-        "cambio_contrato": "Mudança de contrato"
+        "cambio_contrato": "Mudança de contrato",
+        "novedad_asistencia": "Ocorrência de frequência",
+        "cambio_turno": "Troca de turno"
       },
       "aprobador": {
         "jefe_directo": "Chefe direto",
@@ -55891,7 +55894,9 @@
         "vacaciones": "Férias",
         "ausencia": "Ausência",
         "horas_extra": "Horas extras",
-        "prestamo": "Empréstimo"
+        "prestamo": "Empréstimo",
+        "novedad_asistencia": "Ocorrência de frequência",
+        "cambio_turno": "Troca de turno"
       },
       "titulos": {
         "cargo_salario": "Aprovar alteração de cargo e salário",
@@ -55913,7 +55918,9 @@
         "vacaciones": "Aprovar férias",
         "ausencia": "Aprovar ausência",
         "horas_extra": "Aprovar horas extras",
-        "prestamo": "Aprovar empréstimo"
+        "prestamo": "Aprovar empréstimo",
+        "novedad_asistencia": "Aprovar ocorrência de frequência",
+        "cambio_turno": "Aprovar troca de turno"
       },
       "ligados": "{n} alterações ligadas",
       "alMes": "{monto} por mês",
@@ -57013,6 +57020,591 @@
       "vacio": {
         "titulo": "Você ainda não pediu férias",
         "descripcion": "Peça aqui: você verá os dias úteis descontados e quem aprova."
+      }
+    }
+  },
+  "hrmAsistencia": {
+    "titulo": "Frequência",
+    "comun": {
+      "irAlInicio": "Ir para o início",
+      "cerrar": "Fechar"
+    },
+    "vistas": {
+      "etiqueta": "Visão da frequência",
+      "hoy": "Hoje",
+      "hojas": "Folhas de ponto",
+      "ajustes": "Ajustes"
+    },
+    "periodo": {
+      "etiqueta": "Período",
+      "subtitulo": "Quinzena de {rango}"
+    },
+    "estados": {
+      "listaNomina": "Pronta para a folha"
+    },
+    "marcas": {
+      "check_in": "Entrada",
+      "check_out": "Saída",
+      "break_start": "Início do intervalo",
+      "break_end": "Fim do intervalo"
+    },
+    "categorias": {
+      "ord_diurna": "Normal diurna",
+      "ord_nocturna": "Normal noturna",
+      "dom_diurna": "Domingo e feriado diurna",
+      "dom_nocturna": "Domingo e feriado noturna",
+      "extra_diurna": "Extra diurna",
+      "extra_nocturna": "Extra noturna",
+      "extra_dom_diurna": "Extra de domingo diurna",
+      "extra_dom_nocturna": "Extra de domingo noturna"
+    },
+    "acciones": {
+      "registrarMarca": "Registrar ponto manual",
+      "exportar": "Exportar",
+      "verTopes": "Horas extras e adicionais",
+      "verNovedades": "Ir para Ocorrências",
+      "verHoja": "Ver folha de ponto",
+      "verHoras": "Ver horas e adicionais",
+      "marcarAusencia": "Marcar falta justificada",
+      "aprobarHoja": "Aprovar folha",
+      "aprobar": "Aprovar",
+      "rechazar": "Recusar",
+      "revisar": "Revisar",
+      "agregarAjuste": "Adicionar ajuste",
+      "verRecargosDia": "Ver adicionais do dia",
+      "verNovedad": "Ver ocorrência",
+      "verDesglose": "Ver detalhamento",
+      "verNovedadesExtra": "Ver ocorrências de horas extras",
+      "verTurnosSemana": "Ver turnos da semana",
+      "marcarLista": "Marcar pronta para a folha"
+    },
+    "filtros": {
+      "estado": "Status",
+      "equipo": "Equipe",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "chipEstado": "Status: {valor}",
+      "chipEquipo": "Equipe: {valor}",
+      "chipTipo": "Tipo: {valor}",
+      "verPersonas": "{n, plural, one {Ver # pessoa} other {Ver # pessoas}}",
+      "verHojas": "{n, plural, one {Ver # folha} other {Ver # folhas}}",
+      "verNovedades": "{n, plural, one {Ver # ocorrência} other {Ver # ocorrências}}"
+    },
+    "errores": {
+      "guardar": "Não foi possível salvar. Tente novamente.",
+      "sinPermiso": "Você não tem permissão para fazer isso.",
+      "parametro": "Falta um parâmetro vigente para alguma data do período. Revise os parâmetros de RH.",
+      "ausenciaYaRegistrada": "Essa falta já está registrada.",
+      "ajusteYaPendiente": "Já existe um ajuste desse ponto aguardando aprovação.",
+      "jornadaCerrada": "A folha já liquidou esse dia: o ajuste vai para o período seguinte.",
+      "decision": {
+        "no_puede_aprobar_lo_propio": "Você não pode aprovar o que você mesmo pediu.",
+        "no_eres_aprobador": "Algumas já não eram suas: outra pessoa decide.",
+        "otra": "Algumas não puderam ser decididas. Recarregue a lista."
+      }
+    },
+    "hoy": {
+      "subtitulo": "Hoje, {fecha}",
+      "festivo": "(feriado)",
+      "actualizadoHace": "{n, plural, one {atualizado há # min} other {atualizado há # min}}",
+      "actualizadoRecien": "atualizado agora mesmo",
+      "resumen": "Frequência de hoje",
+      "tabla": "Frequência de hoje",
+      "buscar": "Buscar pessoa ou cargo…",
+      "kpi": {
+        "presentes": "Presentes",
+        "presentesValor": "{n} de {total}",
+        "presentesDetalle": "com turno neste horário",
+        "faltan": "Faltam",
+        "faltanDetalle": "sem ponto e sem ausência",
+        "tarde": "Chegaram atrasados",
+        "tardeDetalle": "mais de {n} min",
+        "tardeSinTolerancia": "depois do início do turno",
+        "descanso": "Em intervalo"
+      },
+      "columnas": {
+        "persona": "Pessoa",
+        "turno": "Turno",
+        "entrada": "Entrada",
+        "como": "Como",
+        "estado": "Status"
+      },
+      "como": {
+        "ubicacion": "Localização",
+        "qr": "QR da unidade",
+        "remoto": "Remoto",
+        "manual": "Ponto manual",
+        "app": "App"
+      },
+      "estados": {
+        "presente": "Presente",
+        "presenteRemoto": "Presente · remoto",
+        "tarde": "Atrasado",
+        "tardeMin": "Atraso {n} min",
+        "falta": "Falta",
+        "descanso": "Em intervalo",
+        "salio": "Saiu",
+        "ausencia": "Ausente",
+        "por_llegar": "Ainda não chegou",
+        "vacaciones": "Férias",
+        "incapacidad": "Ausente · afastamento médico",
+        "justificada": "Falta justificada",
+        "licencia": "Licença"
+      },
+      "movilEntro": "Entrou às {hora} · {como}",
+      "movilSinMarcar": "{turno} · sem ponto",
+      "motivoAusenciaJustificada": "Falta justificada registrada por Recursos humanos",
+      "ausenciaRegistrada": "Falta de {nombre} enviada para aprovação",
+      "ausenciaRegistradaDesc": "Aprovada, fica justificada e não é descontada.",
+      "vacio": {
+        "titulo": "Hoje ninguém tem turno nesta unidade",
+        "descripcion": "A frequência aparece quando há turnos publicados. Programe a semana em Turnos.",
+        "accion": "Ir para Turnos"
+      },
+      "sinResultados": {
+        "titulo": "Ninguém corresponde aos filtros",
+        "descripcion": "Remova um filtro para ver todos."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar a frequência",
+        "descripcion": "Os pontos continuam chegando e são salvos. Tente novamente."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à frequência",
+        "descripcion": "Você vê a frequência da sua equipe se for gestor, ou a de todos com a permissão «Ver frequência». A sua própria frequência está no Início."
+      }
+    },
+    "hojas": {
+      "nHojas": "{n, plural, one {# folha} other {# folhas}}",
+      "tabla": "Folhas de ponto do período",
+      "buscar": "Buscar pessoa…",
+      "sustantivo": {
+        "singular": "folha",
+        "plural": "folhas"
+      },
+      "columnas": {
+        "persona": "Pessoa",
+        "cargo": "Cargo",
+        "programadas": "Programadas",
+        "trabajadas": "Trabalhadas",
+        "extras": "Extras",
+        "nocturnas": "Noturnas",
+        "domFest": "Dom. e fer.",
+        "ajustes": "Ajustes",
+        "estado": "Status"
+      },
+      "estados": {
+        "por_aprobar": "Para aprovar",
+        "aprobada": "Aprovada",
+        "sin_marcas": "Sem pontos"
+      },
+      "motivoPendientes": "{n, plural, one {Tem # ajuste para aprovar} other {Tem # ajustes para aprovar}}",
+      "motivoNingunaAprobable": "As folhas escolhidas têm ajustes para aprovar",
+      "aprobadas": "{n, plural, one {Folha aprovada} other {# folhas aprovadas}}",
+      "aprobadasDesc": "Os dias ficam prontos para a folha de pagamento.",
+      "aprobadasParcial": "{n} de {total} folhas aprovadas",
+      "motivos": {
+        "marcacion_abierta": "Há uma entrada sem saída: adicione o ajuste da saída.",
+        "sin_clasificar": "Há dias sem classificar: falta um parâmetro vigente ou um ponto.",
+        "novedades_pendientes": "Há ocorrências para aprovar nesses dias.",
+        "ajustes_pendientes": "Há ajustes de ponto para aprovar nesses dias."
+      },
+      "movilResumen": "{trabajadas} de {programadas} · {n, plural, =0 {sem ajustes} one {# ajuste} other {# ajustes}}",
+      "movilExtras": "Extras {horas}",
+      "movilNocturnas": "noturnas {horas}",
+      "vacio": {
+        "titulo": "Não há folhas de ponto neste período",
+        "descripcion": "As folhas se montam sozinhas com os turnos publicados e os pontos."
+      },
+      "sinResultados": {
+        "titulo": "Nenhuma folha corresponde",
+        "descripcion": "Remova um filtro para ver todas."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as folhas de ponto"
+      }
+    },
+    "ajustes": {
+      "tabla": "Ajustes de ponto do período",
+      "buscar": "Buscar pessoa ou motivo…",
+      "columnas": {
+        "persona": "Pessoa",
+        "dia": "Dia",
+        "marca": "Ponto",
+        "motivo": "Motivo",
+        "solicito": "Pedido por",
+        "estado": "Status"
+      },
+      "vacio": {
+        "titulo": "Não há ajustes de ponto neste período",
+        "descripcion": "Cada correção de um ponto pede motivo e aprovação, e aparece aqui."
+      },
+      "sinResultados": "Nenhum ajuste corresponde à busca.",
+      "error": "Não foi possível carregar os ajustes"
+    },
+    "ajuste": {
+      "titulo": "Adicionar ajuste",
+      "tituloRegistrar": "Registrar ponto manual",
+      "persona": "Pessoa",
+      "elegirPersona": "Escolha a pessoa",
+      "dia": "Dia",
+      "marca": "Ponto a ajustar",
+      "marcas": {
+        "entrada": "Entrada",
+        "salida": "Saída",
+        "descanso": "Intervalo",
+        "inicioDescanso": "Sai para o intervalo",
+        "finDescanso": "Volta do intervalo"
+      },
+      "marco": "Marcou",
+      "sinEntrada": "Sem entrada",
+      "sinSalida": "Sem saída",
+      "queda": "Fica",
+      "motivo": "Motivo",
+      "elegirMotivo": "Escolha o motivo",
+      "motivos": {
+        "olvidoEntrada": "Esqueceu de marcar a entrada",
+        "olvidoSalida": "Esqueceu de marcar a saída",
+        "fallaDispositivo": "O celular ou o ponto de marcação falhou",
+        "sinSenal": "Não havia sinal nem internet",
+        "fueraDeSede": "Trabalhou fora da unidade",
+        "otro": "Outro motivo (explique no comentário)"
+      },
+      "comentario": "Comprovante ou comentário",
+      "cancelar": "Cancelar",
+      "enviar": "Enviar para aprovação",
+      "enviado": "Ajuste enviado para aprovação",
+      "enviadoSinAprobador": "Ninguém pode aprová-lo ainda: configure uma regra em Configurações › Aprovações.",
+      "apruebaJefe": "{nombre}, gestor direto, aprova",
+      "apruebaOtro": "{nombre} aprova",
+      "apruebaDetalle": "Enquanto isso a folha não pode ser aprovada. O histórico guarda quem pediu, quem aprovou e quando.",
+      "sinAprobador": "Ninguém pode aprovar este ajuste ainda",
+      "sinAprobadorDetalle": "Fica pendente; nunca é aprovado sozinho. Defina quem aprova em Configurações › Aprovações.",
+      "errorPersona": "Escolha a pessoa.",
+      "errorHora": "Escolha o horário.",
+      "errorHoraFuera": "O horário deve estar entre 62 dias atrás e agora.",
+      "errorMotivo": "Escolha o motivo."
+    },
+    "hoja": {
+      "titulo": "Folha de ponto · {nombre}",
+      "tituloCorto": "Folha de ponto",
+      "nPorAprobar": "{n, plural, one {# ajuste para aprovar} other {# ajustes para aprovar}}",
+      "motivoAprobar": "{n, plural, one {Pode ser aprovada quando o ajuste estiver resolvido.} other {Pode ser aprovada quando os # ajustes estiverem resolvidos.}}",
+      "aprobada": "Folha aprovada",
+      "aprobadaParcial": "{n, plural, one {# dia não passou para a folha} other {# dias não passaram para a folha}}",
+      "resumen": "Resumo da folha",
+      "kpi": {
+        "programadas": "Programadas",
+        "trabajadas": "Trabalhadas",
+        "extra": "Horas extras",
+        "extraDetalle": "vão para Ocorrências",
+        "nocturnas": "Noturnas",
+        "nocturnasDetalle": "a partir das {hora}"
+      },
+      "columnas": {
+        "dia": "Dia",
+        "turno": "Turno",
+        "entrada": "Entrada",
+        "salida": "Saída",
+        "horas": "Horas",
+        "diferencia": "Diferença",
+        "ajuste": "Ajuste"
+      },
+      "dominical": "domingo",
+      "festivo": "feriado",
+      "descanso": "Folga",
+      "sinSalida": "Sem saída",
+      "conAjuste": "{hora} (ajuste)",
+      "ajustes": {
+        "porAprobar": "Para aprovar",
+        "extraPorAprobar": "Extra para aprovar",
+        "tardanzaPorAprobar": "Atraso · para aprovar",
+        "salida_tempranaPorAprobar": "Saída antecipada · para aprovar",
+        "ausenciaPorAprobar": "Falta · para aprovar",
+        "cambio_turnoPorAprobar": "Troca · para aprovar",
+        "horas_extraPorAprobar": "Extra para aprovar",
+        "tardeJustificada": "Atraso · justificado",
+        "tardeDescuenta": "Atraso · descontado",
+        "extraAprobada": "Extra aprovada",
+        "ajustado": "Ajustada"
+      },
+      "nota": "As horas noturnas e as de domingos e feriados têm adicional:",
+      "notaEnlace": "o detalhamento com o adicional está em Horas extras e adicionais.",
+      "vacio": {
+        "titulo": "Sem turnos nem pontos neste período",
+        "descripcion": "A folha se monta com os turnos publicados e os pontos da pessoa."
+      },
+      "error": "Não foi possível carregar a folha de ponto"
+    },
+    "horas": {
+      "titulo": "Horas e adicionais · {nombre}",
+      "tituloCorto": "Horas e adicionais",
+      "nTopes": "{n, plural, one {# limite ultrapassado} other {# limites ultrapassados}}",
+      "jornada": "jornada de {horas} h semanais",
+      "aviso": {
+        "extra_supera_tope_diario": "Em {dia} passou o limite diário de horas extras",
+        "extra_supera_tope_semanal": "A semana de {dia} passou o limite semanal de horas extras",
+        "detalle": "Fez {horas} de horas extras e o limite é de {tope}. A ocorrência fica para aprovar com motivo; sem aprovar, não vai para a folha."
+      },
+      "trabajadas": "Horas trabalhadas",
+      "composicion": "Composição das horas trabalhadas",
+      "partes": {
+        "ordinarias": "Normais",
+        "dominicales": "Domingos e feriados",
+        "extra": "Extras"
+      },
+      "recargos": "Adicionais do período",
+      "sinRecargos": "Neste período não há horas com adicional.",
+      "columnas": {
+        "dia": "Dia",
+        "ord_diurna": "Normal diurna",
+        "ord_nocturna": "Normal noturna",
+        "dom_diurna": "Dom. e fer. diurna",
+        "dom_nocturna": "Dom. e fer. noturna",
+        "extra_diurna": "Extra diurna",
+        "extra_nocturna": "Extra noturna",
+        "alerta": "Alerta"
+      },
+      "alertas": {
+        "extra_supera_tope_diario": "Limite diário",
+        "extra_supera_tope_semanal": "Limite semanal",
+        "marcacion_incompleta": "Ponto incompleto"
+      },
+      "ajustePorAprobar": "Ajuste para aprovar",
+      "sinClasificar": "Sem classificar",
+      "nota": "Hora noturna a partir das {hora}. As porcentagens são as vigentes em cada data; o valor da hora sai do divisor vigente ({jornada} h semanais).",
+      "vacio": {
+        "titulo": "Sem horas classificadas neste período",
+        "descripcion": "Cada dia é classificado ao marcar a saída. Se faltar um parâmetro vigente, o dia não é classificado."
+      }
+    },
+    "turno": {
+      "titulo": "Turno de {de} a {a}",
+      "tituloUnDia": "Turno de {dia}",
+      "tituloMovil": "Turno e adicionais",
+      "nVigencias": "{n} vigências",
+      "avisoTitulo": "Cada hora usa o valor vigente na sua data",
+      "avisoDetalle": "O adicional de domingo e feriado mudou dentro deste turno: antes vale {antes} e depois, {despues}.",
+      "columnas": {
+        "tramo": "Trecho",
+        "horas": "Horas",
+        "tipo": "Tipo de hora",
+        "recargo": "Adicional",
+        "vigencia": "Vigência aplicada"
+      },
+      "domingo": "domingo",
+      "festivo": "feriado",
+      "paramDominical": "Adicional de domingo e feriado",
+      "paramNocturno": "Adicional noturno",
+      "paramExtra": "Adicional de hora extra",
+      "vigenteDelAl": "Vigente de {desde} a {hasta}",
+      "vigenteDesde": "Vigente desde {desde}",
+      "adoptadoEmpresa": "adotado pela empresa",
+      "parametros": "Parâmetros aplicados",
+      "horaNocturna": "Hora noturna a partir de",
+      "recargoNocturno": "Adicional noturno",
+      "recargoDominical": "Adicional de domingo e feriado",
+      "hasta": "{pct} até {dia}",
+      "desde": "{pct} a partir de {dia}",
+      "jornadaMaxima": "Jornada máxima semanal",
+      "jornadaValor": "{horas} h · desde {desde}",
+      "trabajoDominical": "Trabalho aos domingos",
+      "ocasional": "Ocasional ({n} de {total} domingos do mês)",
+      "habitual": "Habitual ({n} de {total} domingos do mês)",
+      "nota": "Se um parâmetro mudar depois, a folha já liquidada não é recalculada: fica com o valor que estava vigente.",
+      "vacio": {
+        "titulo": "Este dia não tem horas classificadas",
+        "descripcion": "É classificado ao marcar a saída ou ao aprovar o ajuste do ponto."
+      }
+    },
+    "topes": {
+      "titulo": "Horas extras e adicionais",
+      "nPersonas": "{n, plural, one {# pessoa passa um limite} other {# pessoas passam um limite}}",
+      "buscar": "Buscar pessoa…",
+      "soloSuperados": "Só com limites ultrapassados",
+      "columnas": {
+        "persona": "Pessoa",
+        "semana": "Semana",
+        "horas": "Horas na semana",
+        "extra": "Extras na semana",
+        "diaMax": "Dia com mais extras",
+        "tope": "Limite"
+      },
+      "tipos": {
+        "semanal": "Semanal {horas} h",
+        "diario": "Diário {horas} h",
+        "jornada": "Jornada {horas} h"
+      },
+      "movilSemanal": "{horas} extras · semana {semana}",
+      "movilDiario": "{horas} extras em {dia}",
+      "movilJornada": "{horas} na semana {semana}",
+      "nota": "Limites vigentes: {dia} h extras por dia e {semana} por semana; jornada máxima de {jornada} h semanais. Um limite ultrapassado não bloqueia o registro: exige motivo e aprovação antes da folha.",
+      "vacio": {
+        "titulo": "Ninguém passou um limite neste período",
+        "descripcion": "As horas extras registradas estão dentro de {dia} h por dia e {semana} por semana, e ninguém passou de {jornada} h semanais.",
+        "accion": "Ver folhas de ponto"
+      },
+      "sinResultados": {
+        "titulo": "Ninguém corresponde aos filtros",
+        "descripcion": "Remova um filtro para ver todos."
+      },
+      "error": {
+        "titulo": "Não foi possível calcular o detalhamento",
+        "descripcion": "Falta um parâmetro vigente para esta data ou o cálculo falhou. Avise Recursos humanos se acontecer de novo."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso às horas extras",
+        "descripcion": "Recursos humanos vê, e cada gestor vê as da sua equipe. As suas horas estão no Início."
+      }
+    },
+    "novedades": {
+      "titulo": "Ocorrências",
+      "resumen": "Ocorrências do período",
+      "nPorAprobar": "{n} para aprovar",
+      "sinNovedades": "sem ocorrências",
+      "cierra": "fecha em {dia}",
+      "listaDesde": "pronta para a folha desde {cuando}",
+      "periodoSiguiente": "Ver período seguinte",
+      "motivoNoMarcar": "{n, plural, one {Disponível quando não restar nada para aprovar (resta #).} other {Disponível quando não restar nada para aprovar (restam #).}}",
+      "motivoNingunaDecidible": "Nenhuma das escolhidas cabe a você decidir",
+      "buscar": "Buscar pessoa ou tipo de ocorrência…",
+      "sustantivo": {
+        "singular": "ocorrência",
+        "plural": "ocorrências"
+      },
+      "pestanas": {
+        "etiqueta": "Status das ocorrências",
+        "por_aprobar": "Para aprovar",
+        "aprobadas": "Aprovadas",
+        "todas": "Todas"
+      },
+      "columnas": {
+        "persona": "Pessoa",
+        "novedad": "Ocorrência",
+        "detalle": "Detalhe",
+        "origen": "Origem",
+        "estado": "Status"
+      },
+      "tipos": {
+        "horas_extra": "Horas extras",
+        "tardanza": "Atraso",
+        "salida_temprana": "Saída antecipada",
+        "ausencia": "Falta",
+        "cambio_turno": "Troca de turno",
+        "ajuste_marca": "Ajuste de ponto"
+      },
+      "estados": {
+        "pendiente": "Para aprovar",
+        "esperando_contraparte": "Aguardando resposta",
+        "aprobada": "Aprovada",
+        "rechazada": "Recusada",
+        "lista_nomina": "Pronta para a folha"
+      },
+      "origenes": {
+        "marcacion": "Ponto",
+        "turnos": "Turnos",
+        "ajuste": "Ajuste manual",
+        "gestor": "Recursos humanos",
+        "empleado": "A pessoa"
+      },
+      "pasaTope": {
+        "extra_supera_tope_diario": "passa o limite diário",
+        "extra_supera_tope_semanal": "passa o limite semanal",
+        "marcacion_incompleta": "ponto incompleto"
+      },
+      "turnoCompleto": "turno completo",
+      "sinMarca": "Sem ponto e sem ausência aprovada",
+      "sinJustificar": "Sem justificar · descontada",
+      "justificada": "{motivo} · justificada",
+      "motivo": "Motivo: {motivo}",
+      "sinMotivo": "Sem motivo",
+      "loPidio": "Pedido por {nombre}",
+      "cambio": "Trocou com {nombre}",
+      "esperando": "Aguardando a resposta de {nombre}",
+      "sinAprobador": "Ninguém pode aprovar esta ocorrência ainda",
+      "sinAprobadorDetalle": "Fica pendente; nunca é aprovada sozinha. Defina quem aprova em Configurações › Aprovações.",
+      "aprobadasN": "{n, plural, one {Ocorrência aprovada} other {# ocorrências aprovadas}}",
+      "rechazadasN": "{n, plural, one {Ocorrência recusada} other {# ocorrências recusadas}}",
+      "decididasParcial": "{n} de {total} decididas",
+      "kpi": {
+        "aprobadas": "Aprovadas",
+        "aprobadasDetalle": "vão para a folha",
+        "rechazadas": "Recusadas",
+        "rechazadasDetalle": "não são pagas nem descontadas",
+        "porAprobar": "Para aprovar"
+      },
+      "revisar": {
+        "nacio": {
+          "marcacion": "nasceu do ponto",
+          "turnos": "nasceu dos turnos",
+          "ajuste": "pedida por um ajuste manual",
+          "gestor": "registrada por Recursos humanos",
+          "empleado": "pedida pela pessoa"
+        },
+        "tope": {
+          "extra_supera_tope_diario": "Passa o limite diário de {tope}",
+          "extra_supera_tope_semanal": "Passa o limite semanal de {tope}",
+          "marcacion_incompleta": "Ponto incompleto"
+        },
+        "topeDetalle": "Pode ser aprovada com motivo; sem aprovar, não vai para a folha.",
+        "noTeToca": "Outra pessoa decide esta ocorrência.",
+        "horas": "Horas",
+        "tipo": "Tipo",
+        "marca": "Ponto",
+        "cambio": "Troca",
+        "turno": "Turno",
+        "motivo": "Motivo da pessoa",
+        "pidio": "Quem pediu",
+        "comentario": "Comentário",
+        "comentarioAyuda": "Para recusar, escreva o motivo: é o que a pessoa recebe.",
+        "errorMotivo": "Escreva o motivo da recusa."
+      },
+      "rechazar": {
+        "titulo": "Recusar {que} de {nombre}?",
+        "tituloVarias": "{n, plural, one {Recusar # ocorrência?} other {Recusar # ocorrências?}}",
+        "descripcion": "{consecuencia} {nombre} recebe o seu comentário: «{comentario}».",
+        "descripcionVarias": "Cada pessoa recebe o seu motivo. O recusado não é pago, e as faltas ou atrasos são descontados.",
+        "extra": "{horas} extras",
+        "que": {
+          "horas_extra": "as horas extras",
+          "tardanza": "a justificativa do atraso",
+          "salida_temprana": "a justificativa da saída antecipada",
+          "ausencia": "a justificativa da falta",
+          "cambio_turno": "a troca de turno",
+          "ajuste_marca": "o ajuste de ponto"
+        },
+        "consecuencia": {
+          "horas_extra": "Não serão pagas.",
+          "tardanza": "É descontado na folha.",
+          "salida_temprana": "É descontado na folha.",
+          "ausencia": "É descontado na folha.",
+          "cambio_turno": "Os turnos ficam como estavam.",
+          "ajuste_marca": "O ponto não é adicionado."
+        }
+      },
+      "marcar": {
+        "titulo": "Marcar a quinzena de {rango} pronta para a folha?",
+        "descripcion": "{n, plural, one {# ocorrência aprovada passa para a folha.} other {# ocorrências aprovadas passam para a folha.}} Depois não podem ser alteradas: o que chegar atrasado vai para a quinzena seguinte."
+      },
+      "listaToast": "Quinzena pronta para a folha",
+      "listaToastDesc": "{n, plural, one {# ocorrência aprovada passa} other {# ocorrências aprovadas passam}} para a folha de {rango}.",
+      "listaParcial": "{n, plural, one {# dia não passou para a folha} other {# dias não passaram para a folha}}",
+      "vacio": {
+        "titulo": "Nada para aprovar nesta quinzena",
+        "tituloOtras": "Nada para mostrar nesta quinzena",
+        "descripcion": "Os atrasos, faltas, horas extras e trocas de turno aparecem sozinhos. Se você já revisou tudo, marque o período pronto para a folha."
+      },
+      "sinResultados": {
+        "titulo": "Nenhuma ocorrência corresponde",
+        "descripcion": "Remova um filtro para ver todas."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar as ocorrências",
+        "descripcion": "Nada foi aprovado nem recusado. Tente novamente."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso às ocorrências",
+        "descripcion": "Cada gestor aprova as da sua equipe, e Recursos humanos as de toda a unidade."
       }
     }
   }

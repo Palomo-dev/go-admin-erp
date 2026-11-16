@@ -858,3 +858,11 @@ estos componentes solo la muestran. Textos en el namespace `cuentasAutomaticas`.
 - `LineaDocumento.pieLinea`: contenido bajo el producto en `DocumentoLineas`.
 
 Los conectores con la base están en `src/components/finanzas/contabilidad/cuentas/`.
+
+## Adenda 2026-11-16 — `Badge` gana `uso` (RR. HH., «Lista para nómina»)
+
+Aditivo: sin `uso`, `Badge` se comporta igual que antes.
+
+| Archivo | Cambio | Efecto |
+|---|---|---|
+| `src/components/ui/badge.tsx` | + `uso` y `USOS_BADGE` | Un uso fija tono, apariencia e icono de un estado documentado en SISTEMA-BADGES.md. El primero es `lista_nomina` (marca · suave · `Lock`, decisión 5 de la fase 2 de RR. HH.). `uso` manda sobre `tono`, `apariencia` e `icono` |

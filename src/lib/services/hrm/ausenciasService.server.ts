@@ -22,6 +22,8 @@ function cliente() {
 
 const CODIGO_RE = /^[A-Z][A-Z0-9_]{1,20}$/;
 const CIE10_RE = /^[A-Za-z][0-9]{2}(\.?[0-9A-Za-z]{1,4})?$/;
+const HORA_RE = /^([01][0-9]|2[0-3]):[0-5][0-9]$/;
+const SECCIONES = new Set(['vacaciones', 'incapacidades', 'permisos', 'todas']);
 
 function texto(v: unknown, max: number): string | undefined {
   return typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined;
@@ -53,6 +55,19 @@ export function datosDeAusencia(body: unknown): Record<string, unknown> {
     if (!esUuid(b.prorroga_de)) throw new HrmError(400, 'prorroga_invalida');
     datos.prorroga_de = b.prorroga_de;
   }
+  // Permiso por horas (un solo día), «se repone» y fecha probable de parto: van a metadata (fn_hr_ausencia_registrar).
+  if (b.horas !== undefined && b.horas !== null) {
+    const h = b.horas as Record<string, unknown>;
+    if (typeof h !== 'object' || typeof h.inicio !== 'string' || typeof h.fin !== 'string' || !HORA_RE.test(h.inicio) || !HORA_RE.test(h.fin) || h.fin <= h.inicio || b.desde !== b.hasta) {
+      throw new HrmError(400, 'horas_invalidas');
+    }
+    datos.horas = { inicio: h.inicio, fin: h.fin };
+  }
+  if (b.se_repone === true) datos.se_repone = true;
+  if (b.fecha_parto !== undefined && b.fecha_parto !== null) {
+    if (!esFechaPlana(b.fecha_parto)) throw new HrmError(400, 'fecha_invalida');
+    datos.fecha_parto = b.fecha_parto;
+  }
   if (b.salud && typeof b.salud === 'object') {
     const s = b.salud as Record<string, unknown>;
     const codigo = texto(s.diagnostico_codigo, 10);
@@ -67,11 +82,85 @@ export function datosDeAusencia(body: unknown): Record<string, unknown> {
   return datos;
 }
 
+/** Solicita (o, para RR. HH., registra) la ausencia; guarda además horas, «se repone» y fecha de parto. */
 export async function solicitar(ctx: ContextoAusencias, body: unknown): Promise<Record<string, unknown>> {
-  const { data, error } = await cliente().rpc('fn_hr_ausencia_solicitar', {
+  const { data, error } = await cliente().rpc('fn_hr_ausencia_registrar', {
     p_actor: ctx.userId,
     p_org: ctx.organizationId,
     p_datos: datosDeAusencia(body),
+  });
+  if (error) throw errorDeRpc(error);
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/**
+ * Vista previa de una solicitud con la misma regla que la real (la base la corre y la deshace):
+ * días calendario y hábiles, festivos, saldo, cruces del equipo, tramos de pago y aprobadores.
+ */
+export async function simular(ctx: ContextoAusencias, body: unknown): Promise<Record<string, unknown>> {
+  const { data, error } = await cliente().rpc('fn_hr_ausencia_simular', {
+    p_actor: ctx.userId,
+    p_org: ctx.organizationId,
+    p_datos: datosDeAusencia(body),
+  });
+  if (error) throw errorDeRpc(error);
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/** Lista de una pestaña de Ausencias. El nivel de detalle de cada fila lo decide la base (decisión 2). */
+export async function listar(
+  ctx: ContextoAusencias,
+  q: { seccion: string; desde: string; hasta: string; propias?: boolean }
+): Promise<Record<string, unknown>> {
+  if (!SECCIONES.has(q.seccion)) throw new HrmError(400, 'seccion_invalida');
+  if (!esFechaPlana(q.desde) || !esFechaPlana(q.hasta) || q.hasta < q.desde) throw new HrmError(400, 'rango_invalido');
+  const { data, error } = await cliente().rpc('fn_hr_ausencias_listar', {
+    p_actor: ctx.userId,
+    p_org: ctx.organizationId,
+    p_seccion: q.seccion,
+    p_desde: q.desde,
+    p_hasta: q.hasta,
+    p_solo_propias: q.propias === true,
+  });
+  if (error) throw errorDeRpc(error);
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/** Detalle de una ausencia, sin el diagnóstico (ese va por `detalleSalud`, con registro). */
+export async function ver(ctx: ContextoAusencias, id: string): Promise<Record<string, unknown>> {
+  if (!esUuid(id)) throw new HrmError(400, 'ausencia_invalida');
+  const { data, error } = await cliente().rpc('fn_hr_ausencia_ver', { p_actor: ctx.userId, p_org: ctx.organizationId, p_id: id });
+  if (error) throw errorDeRpc(error);
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/** Interrumpe unas vacaciones aprobadas: el último día disfrutado y el motivo son obligatorios. */
+export async function interrumpir(ctx: ContextoAusencias, id: string, body: unknown): Promise<Record<string, unknown>> {
+  if (!esUuid(id)) throw new HrmError(400, 'ausencia_invalida');
+  const b = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  if (!esFechaPlana(b.ultimo_dia)) throw new HrmError(400, 'fecha_invalida');
+  const motivo = texto(b.motivo, 500);
+  if (!motivo) throw new HrmError(400, 'motivo_obligatorio');
+  const { data, error } = await cliente().rpc('fn_hr_ausencia_interrumpir', {
+    p_actor: ctx.userId,
+    p_org: ctx.organizationId,
+    p_id: id,
+    p_ultimo_dia: b.ultimo_dia,
+    p_motivo: motivo,
+  });
+  if (error) throw errorDeRpc(error);
+  return (data ?? {}) as Record<string, unknown>;
+}
+
+/** Enlaza el soporte ya subido a `hr-documentos` (misma persona; en salud, grupo salud: lo valida la base). */
+export async function enlazarSoporte(ctx: ContextoAusencias, id: string, documentoId: unknown): Promise<Record<string, unknown>> {
+  if (!esUuid(id)) throw new HrmError(400, 'ausencia_invalida');
+  if (!esUuid(documentoId)) throw new HrmError(400, 'documento_invalido');
+  const { data, error } = await cliente().rpc('fn_hr_ausencia_soporte', {
+    p_actor: ctx.userId,
+    p_org: ctx.organizationId,
+    p_id: id,
+    p_documento: documentoId,
   });
   if (error) throw errorDeRpc(error);
   return (data ?? {}) as Record<string, unknown>;

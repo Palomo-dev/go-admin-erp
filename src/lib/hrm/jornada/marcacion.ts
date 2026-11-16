@@ -25,6 +25,13 @@ export interface DatosMarcacion {
   remoto?: boolean;
   ubicacion?: { lat: number; lng: number; precision?: number };
   dispositivo?: { plataforma?: string; app?: string };
+  /** Motivo de una llegada tarde o de una marca fuera de turno (texto del empleado). */
+  nota?: { motivo?: string; comentario?: string; pedido_por?: string; fuera_de_turno?: boolean };
+  /**
+   * Marca guardada sin señal. La hora sigue siendo la del servidor: la capturada
+   * en el celular solo viaja como dato para que el jefe la revise.
+   */
+  fuera_de_linea?: { capturada: string };
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,6 +79,30 @@ function ubicacionDe(v: unknown): DatosMarcacion['ubicacion'] | undefined {
   return Number.isFinite(precision) && precision >= 0 ? { lat, lng, precision } : { lat, lng };
 }
 
+function texto(v: unknown, max: number): string | undefined {
+  return typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined;
+}
+
+function notaDe(v: unknown): DatosMarcacion['nota'] {
+  if (!v || typeof v !== 'object') return undefined;
+  const n = v as Record<string, unknown>;
+  const nota = {
+    motivo: texto(n.motivo, 200),
+    comentario: texto(n.comentario, 500),
+    pedido_por: texto(n.pedido_por, 120),
+    fuera_de_turno: n.fuera_de_turno === true ? true : undefined,
+  };
+  return Object.values(nota).some((x) => x !== undefined) ? nota : undefined;
+}
+
+/** Solo un instante ISO con zona; si no, la marca no se trata como guardada sin señal. */
+function fueraDeLineaDe(v: unknown): DatosMarcacion['fuera_de_linea'] {
+  if (!v || typeof v !== 'object') return undefined;
+  const c = (v as Record<string, unknown>).capturada;
+  if (typeof c !== 'string' || !/[zZ]|[+-]\d{2}:?\d{2}$/.test(c) || !Number.isFinite(Date.parse(c))) return undefined;
+  return { capturada: c };
+}
+
 /**
  * Normaliza el cuerpo que manda el cliente. Descarta cualquier hora, vínculo u
  * organización: no son del cliente.
@@ -93,13 +124,16 @@ export function datosDeMarcacion(body: unknown, orgSesion: number): DatosMarcaci
         }
       : undefined;
 
+  const nota = notaDe(b.nota);
+  const fuera_de_linea = fueraDeLineaDe(b.fuera_de_linea);
+
   if (b.qr !== undefined && b.qr !== null) {
     const qr = leerQr(b.qr);
     if (qr.org !== null && qr.org !== orgSesion) throw new MarcacionInvalida('qr_de_otra_organizacion');
-    return { metodo: 'qr', reloj_id: qr.relojId, token: qr.token, tipo, ubicacion, dispositivo };
+    return { metodo: 'qr', reloj_id: qr.relojId, token: qr.token, tipo, ubicacion, dispositivo, nota, fuera_de_linea };
   }
   if (b.metodo === 'app') {
-    return { metodo: 'app', tipo, remoto: b.remoto === true, ubicacion, dispositivo };
+    return { metodo: 'app', tipo, remoto: b.remoto === true, ubicacion, dispositivo, nota, fuera_de_linea };
   }
   throw new MarcacionInvalida('metodo_invalido');
 }

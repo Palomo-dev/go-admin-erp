@@ -13,7 +13,7 @@ import { getServiceClient } from '@/lib/supabase/server-service';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import type { DatosMarcacion, TipoEvento } from '@/lib/hrm/jornada/marcacion';
 import { recalcularDia, type ResultadoRecalculo } from './jornadaService.server';
-import { HrmError, errorDeRpc, esUuid, type ContextoPeticion } from './tipos';
+import { HrmError, errorDeRpc, esFechaPlana, esUuid, type ContextoPeticion } from './tipos';
 
 export type ContextoMarcacion = Pick<ServerOrgContext, 'userId' | 'organizationId'>;
 
@@ -29,7 +29,11 @@ export interface ResultadoMarcacion {
   modo: 'presencial' | 'remoto';
   ubicacion_guardada: boolean;
   reloj: string | null;
+  distancia_m?: number | null;
+  /** La marca vale pero el jefe la revisa: sin ubicación, desde un computador o sin señal. */
+  revisar?: 'sin_ubicacion' | 'computador_sin_qr' | 'fuera_de_linea' | null;
   jornada?: ResultadoRecalculo | { estado: 'pendiente'; motivo: string };
+  tardanza_justificada?: boolean;
 }
 
 function cliente() {
@@ -53,7 +57,52 @@ export async function marcar(ctx: ContextoMarcacion, datos: DatosMarcacion, peti
   } catch (err) {
     r.jornada = { estado: 'pendiente', motivo: err instanceof HrmError ? err.code : 'error_hrm' };
   }
+  // Llegada tarde con motivo (Figma 20.9.7): el motivo justifica la novedad de
+  // tardanza que acaba de nacer al clasificar; el jefe la revisa antes de la nómina.
+  if (r.tipo === 'check_in' && datos.nota?.motivo) {
+    r.tardanza_justificada = await justificarTardanza(ctx, r.employment_id, r.fecha_trabajo, datos.nota);
+  }
   return r;
+}
+
+async function justificarTardanza(
+  ctx: ContextoMarcacion,
+  vinculo: string,
+  fecha: string,
+  nota: NonNullable<DatosMarcacion['nota']>
+): Promise<boolean> {
+  const texto = [nota.motivo, nota.comentario].filter(Boolean).join(' · ').slice(0, 1000);
+  if (texto.length < 5) return false;
+  const { data } = await cliente()
+    .from('hr_attendance_novelties')
+    .select('id')
+    .eq('organization_id', ctx.organizationId)
+    .eq('employment_id', vinculo)
+    .eq('work_date', fecha)
+    .eq('kind', 'tardanza')
+    .in('status', ['pendiente', 'esperando_contraparte'])
+    .limit(1)
+    .maybeSingle();
+  if (!data) return false;
+  const { error } = await cliente().rpc('fn_hr_novedad_registrar', {
+    p_actor: ctx.userId,
+    p_org: ctx.organizationId,
+    p_datos: { accion: 'justificar', novedad_id: (data as { id: string }).id, justificacion: texto },
+  });
+  return !error;
+}
+
+/** «Mi asistencia» (Figma 20.9.12): los días del rango con turno, marcas y horas. */
+export async function miAsistencia(ctx: ContextoMarcacion, args: { desde: unknown; hasta: unknown }): Promise<Record<string, unknown>> {
+  if (!esFechaPlana(args.desde) || !esFechaPlana(args.hasta) || args.hasta < args.desde) throw new HrmError(400, 'rango_invalido');
+  const { data, error } = await cliente().rpc('fn_hr_mi_asistencia', {
+    p_actor: ctx.userId,
+    p_org: ctx.organizationId,
+    p_desde: args.desde,
+    p_hasta: args.hasta,
+  });
+  if (error) throw errorDeRpc(error);
+  return (data ?? {}) as Record<string, unknown>;
 }
 
 export async function estado(ctx: ContextoMarcacion): Promise<Record<string, unknown>> {

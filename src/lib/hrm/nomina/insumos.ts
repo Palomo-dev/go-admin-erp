@@ -66,6 +66,7 @@ export interface EmpleadoInsumo {
     intereses_vivienda: number;
     aportes_voluntarios: number;
     pension_en_licencia?: 'no' | 'empleador' | 'compartida' | null;
+    cotiza_por_semanas?: boolean | null;
   } | null;
   dependientes_registrados: number;
   novedades: Array<{ id: string; concepto: string; valor: number | null; cantidad: number | null; descripcion: string | null }>;
@@ -76,6 +77,8 @@ export interface EmpleadoInsumo {
   anterior: { devengado: number; neto: number } | null;
   /** IBC del último mes cotizado (suma de sus colillas ordinarias cerradas). */
   ibc_anterior?: number | null;
+  /** IBC por mes ('YYYY-MM') de los meses anteriores con colillas cerradas. */
+  ibc_meses?: Record<string, number | string> | null;
   variables_12m: { desde: string; hasta: string; valor: number };
   acumulado: { desde: string; hasta: string; variables: number; no_remunerados: Array<{ desde: string; hasta: string }> } | null;
 }
@@ -113,6 +116,7 @@ export function entradaDesdeInsumos(ins: InsumosNomina, emp: EmpleadoInsumo): En
       remoto: emp.remoto,
       jornada_semanal: emp.jornada_semanal === null || emp.jornada_semanal === undefined ? null : n(emp.jornada_semanal),
       pension_en_licencia: ajustes?.pension_en_licencia === 'empleador' || ajustes?.pension_en_licencia === 'compartida' ? ajustes.pension_en_licencia : 'no',
+      cotiza_por_semanas: ajustes?.cotiza_por_semanas === true,
     },
     salario: emp.salario.map((s) => ({ desde: s.desde, hasta: s.hasta, valor: n(s.valor) })),
     clase_arl: n(emp.clase_arl) || 1,
@@ -150,6 +154,7 @@ export function entradaDesdeInsumos(ins: InsumosNomina, emp: EmpleadoInsumo): En
       : null,
     anterior: emp.anterior ? { devengado: n(emp.anterior.devengado), neto: n(emp.anterior.neto) } : null,
     ibc_anterior: emp.ibc_anterior === null || emp.ibc_anterior === undefined ? null : n(emp.ibc_anterior) || null,
+    ibc_meses: emp.ibc_meses ? Object.fromEntries(Object.entries(emp.ibc_meses).map(([k, v]) => [k, n(v)])) : null,
   };
 }
 

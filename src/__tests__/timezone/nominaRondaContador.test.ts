@@ -230,3 +230,56 @@ describe('ronda 3 del Contador (2026-11-16)', () => {
     expect(valor(r, 'PROVISION_VACACIONES')).toBe(77_121);
   });
 });
+
+describe('ronda 4 del Contador (2026-11-16)', () => {
+  const alertas = (r: ResultadoColilla) => r.alertas.map((a) => `${a.codigo}:${a.severidad}`);
+
+  test('vacaciones que cruzan de mes: el IBC del mes anterior al inicio, aunque sea de dos meses atrás', () => {
+    // Vacaciones del 20-jul al 10-ago. Agosto liquida 10 días de vacaciones con el IBC de junio
+    // (3.300.000 × 10 / 30 = 1.100.000), no con el de julio. Salario de 20 días: 2.000.000.
+    const r = calcularColilla(
+      entradaBase({
+        periodo: { desde: '2026-08-01', hasta: '2026-08-31', tipo: 'ordinaria' },
+        salario: salarioFijo(3_000_000, '2026-07-01', '2026-08-31'),
+        ibc_meses: { '2026-06': 3_300_000, '2026-07': 2_000_000 },
+        ibc_anterior: 2_000_000,
+        ausencias: [{ id: 'v', clase: 'vacaciones', pagada: true, desde: '2026-07-20', hasta: '2026-08-10', tramos: [{ desde: '2026-07-20', hasta: '2026-08-10', paga: 'empleador', fraccion: 1 }] }],
+      })
+    );
+    expect(r.bases.ibc).toBe(3_100_000);
+    expect(alertas(r)).not.toContain('ibc_mes_anterior_sin_dato:aviso');
+  });
+
+  test('sin el IBC de ese mes en el sistema, usa el salario y lo avisa', () => {
+    const r = calcularColilla(
+      entradaBase({
+        periodo: { desde: '2026-08-01', hasta: '2026-08-31', tipo: 'ordinaria' },
+        salario: salarioFijo(3_000_000, '2026-07-01', '2026-08-31'),
+        ausencias: [{ id: 'v', clase: 'vacaciones', pagada: true, desde: '2026-07-20', hasta: '2026-08-10', tramos: [{ desde: '2026-07-20', hasta: '2026-08-10', paga: 'empleador', fraccion: 1 }] }],
+      })
+    );
+    expect(r.bases.ibc).toBe(3_000_000);
+    expect(r.alertas).toContainEqual({ codigo: 'ibc_mes_anterior_sin_dato', severidad: 'aviso', detalle: { mes: '2026-06', base_usada: 3_000_000 } });
+  });
+
+  test('jornada parcial con cotización por semanas (Decreto 2616): la colilla no se puede cerrar', () => {
+    const r = calcularColilla(entradaBase({ vinculo: { ingreso: '2025-01-01', retiro: null, integral: false, periodo_salario: 'monthly', cotiza_por_semanas: true } }));
+    expect(alertas(r)).toContain('cotizacion_por_semanas_no_soportada:bloqueo');
+  });
+
+  test('fondo sin reparto de campos de la PILA (Ley 2381 desde abril de 2027): bloquea hasta revisar el anexo', () => {
+    const parametros: ParametrosNomina = {
+      ...PARAMETROS_2026,
+      fsp_tabla: [...PARAMETROS_2026.fsp_tabla, { desde: '2027-04-01', hasta: null, valor: null, valor_json: tablaFsp2027() }],
+      smmlv: [{ desde: '2026-01-01', hasta: null, valor: SMMLV_2026 }],
+      auxilio_transporte: [{ desde: '2026-01-01', hasta: null, valor: 249_095 }],
+      uvt: [{ desde: '2026-01-01', hasta: null, valor: 52_374 }],
+    };
+    const r = calcularColilla(
+      entradaBase({ parametros, periodo: { desde: '2027-04-01', hasta: '2027-04-30', tipo: 'ordinaria' }, salario: salarioFijo(5 * SMMLV_2026, '2027-04-01', '2027-04-30') })
+    );
+    expect(alertas(r)).toContain('fsp_reparto_pila_pendiente:bloqueo');
+    // En 2026 (con reparto) no bloquea.
+    expect(alertas(calcularColilla(entradaBase({ salario: salarioFijo(5 * SMMLV_2026) })))).not.toContain('fsp_reparto_pila_pendiente:bloqueo');
+  });
+});

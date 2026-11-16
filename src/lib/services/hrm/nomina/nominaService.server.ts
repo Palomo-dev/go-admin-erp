@@ -220,6 +220,8 @@ export function guardarAjustesEmpleado(ctx: ContextoNomina, vinculoId: string, d
       aportes_voluntarios: Math.max(0, Number(datos.aportes_voluntarios) || 0),
       // Pensión en la licencia no remunerada (P13): no, empleador o compartida.
       pension_en_licencia: datos.pension_en_licencia === 'empleador' || datos.pension_en_licencia === 'compartida' ? datos.pension_en_licencia : 'no',
+      // Jornada parcial con cotización por semanas (Decreto 2616): bloquea la colilla.
+      cotiza_por_semanas: datos.cotiza_por_semanas === true,
       motivo: typeof datos.motivo === 'string' ? datos.motivo.slice(0, 300) : null,
     },
     p_ip: p.ip,

@@ -112,6 +112,11 @@ export interface EntradaColilla {
      * `compartida`: pactado y el trabajador autorizó por escrito su 4 %.
      */
     pension_en_licencia?: 'no' | 'empleador' | 'compartida';
+    /**
+     * Jornada parcial con cotización por semanas (Decreto 2616 de 2013). El motor no la
+     * liquida: la colilla queda bloqueada con un aviso claro (ronda 4 del Contador).
+     */
+    cotiza_por_semanas?: boolean;
   };
   salario: TramoSalario[];
   clase_arl: number;
@@ -136,6 +141,12 @@ export interface EntradaColilla {
   anterior?: { devengado: number; neto: number } | null;
   /** IBC mensual del último mes cotizado (base de la licencia no remunerada, P13). */
   ibc_anterior?: number | null;
+  /**
+   * IBC reportado por mes calendario ('YYYY-MM'), de las colillas cerradas de los meses
+   * anteriores. Vacaciones y licencias cotizan con el del mes anterior a su inicio, aunque
+   * sea de dos meses atrás (Decreto 780, art. 3.2.5.1; ronda 4 del Contador).
+   */
+  ibc_meses?: Readonly<Record<string, number>> | null;
 }
 
 export interface Item {
@@ -292,6 +303,17 @@ class Colilla {
   suma(filtro: (c: Concepto, i: Item) => boolean): number {
     return this.devengados().reduce((s, i) => (filtro(this.c(i.codigo), i) ? s + i.valor : s), 0);
   }
+}
+
+/** Mes calendario anterior a una fecha, como 'YYYY-MM'. */
+function mesAnterior(f: string): string {
+  let a = Number(f.slice(0, 4));
+  let m = Number(f.slice(5, 7)) - 1;
+  if (m === 0) {
+    m = 12;
+    a -= 1;
+  }
+  return `${a}-${String(m).padStart(2, '0')}`;
 }
 
 /** Días del rango en que el vínculo está vigente. */
@@ -535,18 +557,43 @@ function seguridadSocial(e: EntradaColilla, col: Colilla, vig: { desde: string; 
   const diasCotizados = sumaDiaria(vig.desde, vig.hasta, (f) => (cotiza(f) ? 1 : 0));
   const factorIntegral = e.vinculo.integral ? num(p, 'salario_integral_factor_ibc', fin) : 1;
 
-  // Último IBC mensual reportado: el del mes anterior; si no lo hay, el salario del día.
-  const ultimoIbcMensual = (fecha: string) =>
-    Math.max(e.ibc_anterior && e.ibc_anterior > 0 ? e.ibc_anterior : mensualEn(e, fecha) * factorIntegral, num(p, 'smmlv', fecha));
+  // Último IBC reportado antes de que empiece una ausencia: el del mes calendario anterior a
+  // su inicio, aunque sea de dos meses atrás. Si el sistema no tiene ese mes (la empresa
+  // empezó a liquidar aquí después), el salario del primer día, con aviso.
+  const sinDato = new Set<string>();
+  const ultimoIbcAntesDe = (inicio: string, primerDia: string) => {
+    const mes = mesAnterior(inicio);
+    const delMes = e.ibc_meses?.[mes];
+    let v: number;
+    if (delMes && delMes > 0) v = delMes;
+    else if (e.ibc_anterior && e.ibc_anterior > 0 && mes === mesAnterior(e.periodo.desde)) v = e.ibc_anterior;
+    else {
+      v = mensualEn(e, primerDia) * factorIntegral;
+      if (!sinDato.has(mes)) {
+        sinDato.add(mes);
+        col.alerta('ibc_mes_anterior_sin_dato', 'aviso', { mes, base_usada: aPeso(v) });
+      }
+    }
+    return Math.max(v, num(p, 'smmlv', primerDia));
+  };
+  /** Base de unos días de ausencia: cada ausencia con el IBC del mes anterior a su inicio. */
+  const ibcDeAusencias = (incluye: (f: string, a: { a: Ausencia }) => boolean) => {
+    const porAusencia = new Map<string, { inicio: string; primerDia: string; dias: number }>();
+    for (const f of diasDe(vig.desde, vig.hasta)) {
+      const w = pesoDia360(f);
+      const a = ausenciaDelDia(e, f);
+      if (!w || !a || !incluye(f, a)) continue;
+      const x = porAusencia.get(a.a.id) ?? { inicio: a.a.desde, primerDia: f, dias: 0 };
+      x.dias += w;
+      porAusencia.set(a.a.id, x);
+    }
+    let total = 0;
+    for (const x of porAusencia.values()) total += (ultimoIbcAntesDe(x.inicio, x.primerDia) * x.dias) / 30;
+    return total;
+  };
 
   // Vacaciones y licencias remuneradas: sus días con el último IBC, no con lo pagado.
-  const diasUltimoIbc = [...diasDe(vig.desde, vig.hasta)].filter((f) => {
-    const a = ausenciaDelDia(e, f);
-    return pesoDia360(f) > 0 && a !== null && CLASES_CON_ULTIMO_IBC.has(a.a.clase) && cotiza(f);
-  });
-  const ibcVacaciones = diasUltimoIbc.length
-    ? (ultimoIbcMensual(diasUltimoIbc[0]) * diasUltimoIbc.reduce((s, f) => s + pesoDia360(f), 0)) / 30
-    : 0;
+  const ibcVacaciones = ibcDeAusencias((f, a) => CLASES_CON_ULTIMO_IBC.has(a.a.clase) && cotiza(f));
 
   // Base salarial y regla del 40 % (Ley 1393, art. 30). La remuneración total del 40 % no
   // incluye vacaciones, incapacidades ni licencias (P7).
@@ -586,11 +633,7 @@ function seguridadSocial(e: EntradaColilla, col: Colilla, vig: { desde: string; 
   // Licencia no remunerada (P13): el empleador sigue pagando su salud sobre el último
   // IBC por esos días; la pensión solo si se pactó por escrito.
   const diasLicencia = sumaDiaria(vig.desde, vig.hasta, (f) => (cotiza(f) ? 0 : 1));
-  let ibcLicencia = 0;
-  if (diasLicencia > 0) {
-    const primerDia = [...diasDe(vig.desde, vig.hasta)].find((f) => !cotiza(f)) ?? vig.desde;
-    ibcLicencia = aPesoSuperior((ultimoIbcMensual(primerDia) * diasLicencia) / 30);
-  }
+  const ibcLicencia = diasLicencia > 0 ? aPesoSuperior(ibcDeAusencias((f) => !cotiza(f))) : 0;
 
   const tasa = (codigo: string) => promedioDiario(p, codigo, vig.desde, vig.hasta);
   const tST = tasa('aporte_salud_trabajador');
@@ -650,6 +693,12 @@ function seguridadSocial(e: EntradaColilla, col: Colilla, vig: { desde: string; 
       (r.hasta_smmlv === null || enSmmlv < r.hasta_smmlv - eps || (r.hasta_incluido === true && enSmmlv <= r.hasta_smmlv + eps))
   );
   const fspValor = fila ? ibc * fila.tarifa : 0;
+  // Sin el reparto entre los campos 51 y 52 de la PILA el fondo se redondea como un solo valor,
+  // solo de forma provisional: el Contador pide revisarlo contra el anexo técnico publicado
+  // antes de liquidar (ronda 4, para la tabla de la Ley 2381 desde abril de 2027).
+  if (fila && (fila.solidaridad === undefined || fila.solidaridad === null)) {
+    col.alerta('fsp_reparto_pila_pendiente', 'bloqueo', { tarifa: fila.tarifa });
+  }
   const fspItem = fila
     ? col.agregar('deduction', 'FONDO_SOLIDARIDAD', fspValor, { base: ibc, tasa: fila.tarifa, detalle: { ibc_en_smmlv: Math.round(enSmmlv * 100) / 100 } })
     : null;
@@ -830,6 +879,10 @@ export function calcularColilla(e: EntradaColilla): ResultadoColilla {
   let basePrest = 0;
   let ret: ResultadoRetencion | null = null;
 
+  if (vig && e.vinculo.cotiza_por_semanas) {
+    // Decreto 2616 de 2013: la colilla sale para revisar, pero no se puede cerrar.
+    col.alerta('cotizacion_por_semanas_no_soportada', 'bloqueo');
+  }
   if (!vig) {
     col.alerta('vinculo_fuera_del_periodo', 'aviso');
   } else if (e.periodo.tipo === 'ordinaria') {

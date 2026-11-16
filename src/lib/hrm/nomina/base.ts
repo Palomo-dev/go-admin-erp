@@ -9,7 +9,7 @@
  */
 import { addPlainDays } from '@/lib/utils/dateCore';
 
-export const VERSION_MOTOR_NOMINA = 'hrm-nomina-3';
+export const VERSION_MOTOR_NOMINA = 'hrm-nomina-4';
 
 /** Un tramo de vigencia de un parámetro (lo que entrega `fn_hr_parametro_tramos`). */
 export interface TramoNomina {

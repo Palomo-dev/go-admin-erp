@@ -42,6 +42,7 @@ import { diaIso } from '@/lib/hrm/turnos/programacion';
 import { useFormatoHora } from '@/components/hrm/turnos/formatoHora';
 import { ErrorEstructura, pedir, useCarga } from '@/components/hrm/estructura/comun';
 import { QRScanner } from './QRScanner';
+import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 
 const MOTIVOS = ['transporte', 'salud', 'familiar', 'clima', 'otro'] as const;
 const MOTIVOS_FUERA = ['cubrir', 'inventario', 'evento', 'otro'] as const;
@@ -70,7 +71,7 @@ export function MarcarTurno() {
   const escritorio = useEsEscritorio();
   const { carga, recargar } = useCarga<EstadoMarcacion>('/api/hrm/marcacion');
   const datos = carga.estado === 'listo' ? carga.datos : null;
-  const zona = datos?.zona ?? 'America/Bogota';
+  const zona = datos?.zona ?? DEFAULT_TIMEZONE;
   const [ahora, setAhora] = useState(() => new Date());
   const [metodo, setMetodo] = useState<MetodoPantalla | null>(null);
   const [ubicacion, setUbicacion] = useState<Ubicacion>({ estado: 'pendiente', pos: null });

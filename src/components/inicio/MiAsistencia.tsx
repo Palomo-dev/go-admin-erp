@@ -29,7 +29,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { addPlainDays } from '@/lib/utils/dateCore';
+import { addPlainDays, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { diasDeSemana, lunesDe, partesHoras } from '@/lib/hrm/turnos/programacion';
 import { useCarga } from '@/components/hrm/estructura/comun';
 import { useFormatoHora } from '@/components/hrm/turnos/formatoHora';
@@ -92,7 +92,7 @@ export function MiAsistencia() {
   const desde = addPlainDays(lunes, -7);
   const { carga, recargar } = useCarga<RespuestaAsistencia>(`/api/hrm/marcacion/mia?desde=${desde}&hasta=${hoy}`);
   const datos = carga.estado === 'listo' ? carga.datos : null;
-  const zona = datos?.zona ?? 'America/Bogota';
+  const zona = datos?.zona ?? DEFAULT_TIMEZONE;
   const [texto, setTexto] = useState('');
   const [estado, setEstado] = useState<Estado | 'todos'>('todos');
 

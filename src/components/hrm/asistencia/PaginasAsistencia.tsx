@@ -10,7 +10,7 @@ import { HorasRecargos } from './HorasRecargos';
 import { TurnoVigencias } from './TurnoVigencias';
 import { usePeriodo } from './comunAsistencia';
 
-function parametro(p: Record<string, string | string[]> | null, nombre: string): string {
+function parametro(p: ReturnType<typeof useParams>, nombre: string): string {
   const v = p?.[nombre];
   return Array.isArray(v) ? (v[0] ?? '') : (v ?? '');
 }

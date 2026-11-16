@@ -37,7 +37,7 @@ import {
 } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { toPlainDate } from '@/lib/utils/dateCore';
+import { toPlainDate, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import { celdasDe, diasDeSemana, indexarSemana, lunesDe, partesHoras, type RespuestaSemana } from '@/lib/hrm/turnos/programacion';
 import {
   conteoEquipo,
@@ -179,7 +179,7 @@ function Resumen({ datos, cargando, onPersona }: { datos: RespuestaEquipo | null
   const t = useTranslations('hrmEquipo');
   const router = useRouter();
   const f = useFormatoHora();
-  const zona = datos?.zona ?? 'America/Bogota';
+  const zona = datos?.zona ?? DEFAULT_TIMEZONE;
   const hoy = datos?.hoy ?? null;
   const texto = useTextoPendiente(zona);
   const k = datos?.kpis;
@@ -312,7 +312,7 @@ function SemanaEquipo({ personas, hoy, onPersona }: { personas: PersonaEquipo[];
   const asignaciones = useMemo(() => (datos?.asignaciones ?? []).filter((a) => ids.has(a.employment_id) && !a.borrador), [datos, ids]);
   const indice = useMemo(() => indexarSemana({ asignaciones, ausencias: datos?.ausencias ?? [], festivos: datos?.festivos ?? [] }, null), [asignaciones, datos]);
   const filas = personas.filter((p) => asignaciones.some((a) => a.employment_id === p.id) || (datos?.ausencias ?? []).some((a) => a.employment_id === p.id));
-  const zona = datos?.zona ?? 'America/Bogota';
+  const zona = datos?.zona ?? DEFAULT_TIMEZONE;
   const columnas: ColumnaTabla<PersonaEquipo>[] = [
     {
       id: 'persona',

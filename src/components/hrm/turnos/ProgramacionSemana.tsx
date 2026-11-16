@@ -61,7 +61,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBranchOpcional } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { addPlainDays } from '@/lib/utils/dateCore';
+import { addPlainDays, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 import {
   FILTROS_INICIALES,
   celdasDe,
@@ -125,7 +125,7 @@ export function ProgramacionSemana({ lunes, onLunesChange, hoy, onCabecera, sele
   const url = `/api/hrm/turnos?desde=${lunes}&hasta=${hasta}${sede ? `&sede=${sede}` : ''}`;
   const { carga, recargar } = useCarga<RespuestaSemana>(url);
   const datos = carga.estado === 'listo' ? carga.datos : null;
-  const zona = datos?.zona ?? 'America/Bogota';
+  const zona = datos?.zona ?? DEFAULT_TIMEZONE;
   const gestiona = !soloLectura && !!datos?.permisos.gestionar;
 
   const [validacion, setValidacion] = useState<Validacion | null>(null);

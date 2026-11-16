@@ -93,6 +93,8 @@ export const CATEGORIAS_DOCUMENTO: Record<string, CategoriaDocumento> = {
   certificacion: { carpeta: 'certificaciones', grupo: 'identificacion' },
   soporte_cambio: { carpeta: 'contratacion', grupo: 'salario_pago' },
   concepto_aptitud: { carpeta: 'salud', grupo: 'salud' },
+  // Soporte de una incapacidad o licencia (ADR-002 §6): grupo salud, lo enlaza `leave_requests.document_id`.
+  soporte_ausencia: { carpeta: 'salud', grupo: 'salud' },
   disciplinario: { carpeta: 'disciplinarios', grupo: 'disciplinario' },
   registro_civil_beneficiario: { carpeta: 'identificacion', grupo: 'identificacion' },
 };

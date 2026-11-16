@@ -36,7 +36,16 @@ type Idioma = (typeof IDIOMAS)[number];
  * compartido sin sus subcarpetas de inventario y recetas (`useKitT()` =
  * namespace `kit`) y el redactor de WhatsApp del CRM.
  */
-const CARPETAS = ['src/app/app/chat', 'src/components/chat', 'src/components/configuracion', 'src/components/kit/*', 'src/components/crm/whatsapp'];
+const CARPETAS = [
+  'src/app/app/chat',
+  'src/components/chat',
+  'src/components/configuracion',
+  'src/components/kit/*',
+  'src/components/crm/whatsapp',
+  // RR. HH. › Ausencias (fase 2): claves por plantilla (`estados.${e}`, `errores.${codigo}`) verificadas.
+  'src/app/app/hrm/ausencias',
+  'src/components/hrm/ausencias',
+];
 
 /**
  * Archivos de lógica pura que reciben el traductor ya armado (no llaman a

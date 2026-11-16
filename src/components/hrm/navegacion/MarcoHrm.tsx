@@ -22,6 +22,7 @@ export const PAGINAS_CON_PESTANAS_PROPIAS: readonly string[] = [
   '/app/hrm/cargos',
   '/app/hrm/plazas',
   '/app/hrm/aprobaciones',
+  '/app/hrm/ausencias',
 ];
 
 export function MarcoHrm({ children }: { children: ReactNode }) {

@@ -536,3 +536,23 @@ Las páginas de detalle usan la cabecera de «Editar rol» (`PageHeader Variant=
 
 - `moduleConfig.ts` y la navegación lateral: RR. HH. con `Briefcase` como entrada propia (no sustituye a «Proyectos y tareas») y submenús con `Network`, `IdCard`, `Armchair` y `Stamp`.
 - La navegación del diálogo de Configuración: «Recursos humanos» pasa de `Users` a `Briefcase`.
+
+## Adenda 2026-11-16 — Recursos humanos, fase 2: Ausencias (Figma 20.13 y 20.14)
+
+Decisión 6 del dueño. Se añade al final, sin reescribir lo anterior. Solo los tres conceptos de Ausencias; los de Turnos, Marcación, Asistencia, Horas, Novedades y Mi equipo los anota su propia adenda.
+
+| Concepto | Icono (lucide) | Dónde vive |
+|---|---|---|
+| Vacaciones | `TreePalm` | cabecera de Ausencias › Vacaciones, vacíos de vacaciones, tarjetas de «Mis vacaciones», «Ir a Mis vacaciones» |
+| Incapacidad · licencia | `HeartPulse` | cabecera de Ausencias › Incapacidades y licencias y su vacío |
+| Permiso (calamidad, licencias del CST) | `DoorOpen` | cabecera de Ausencias › Permisos y su vacío |
+
+| Pantalla | Ruta | Ranura | Icono |
+|---|---|---|---|
+| Ausencias › Vacaciones — calendario, solicitudes y sus estados (13.1–13.11) | `/app/hrm/ausencias` | `Icono` | `TreePalm` |
+| Ausencias › Incapacidades y licencias — lista y sus estados (14.1–14.13) | `/app/hrm/ausencias?seccion=incapacidades` | `Icono` | `HeartPulse` |
+| Ausencias › Permisos (14.6, 14.8) | `/app/hrm/ausencias?seccion=permisos` | `Icono` | `DoorOpen` |
+| Incapacidad · persona (14.3, 14.4) | `/app/hrm/ausencias/[id]` | `—` | — (← Volver, cabecera de «Editar rol») |
+| Mis vacaciones (13.6) | `/app/hrm/ausencias/mis-vacaciones` | `—` | — (← Volver) |
+
+La pestaña «Ausencias» del módulo no tiene icono propio en la barra de pestañas; la cabecera toma el de la sección abierta. En el menú lateral la entrada `/app/hrm/ausencias` sigue con `Calendar` hasta que quien mantiene `src/lib/navigation/catalog.ts` la pase a `TreePalm` (la sección por defecto); no se tocó aquí porque el archivo tiene cambios de otra sesión sin commit.

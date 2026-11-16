@@ -94,9 +94,57 @@ Casos nuevos que agregamos para las correcciones:
 5. **Bonificación salarial habitual en la base de vacaciones (P6 y P22).** Hoy no la incluimos, porque su respuesta nombra solo las comisiones y el recargo nocturno. ¿Debe entrar si es habitual?
 6. **Fondo de solidaridad de 2026 en exactamente 20 salarios.** La tabla de hoy (Ley 797) lo cobra al 2 %. El texto dice «superiores a 20» para el 2 %, así que 20 exactos irían al 1,8 %. ¿Lo cambiamos? Solo afecta a quien gane exactamente 20 salarios mínimos.
 
-## 4. Lo que sigue
+## 4. Cuentas contables (C1 a C6), ya aplicadas
 
-- **Cuentas contables (C1 a C6):** se están aplicando en paralelo. Le mando el detalle y un asiento de ejemplo en cuanto estén.
+| Concepto | Cuenta |
+|---|---|
+| Sueldo, licencia remunerada, retroactivo · salario integral | 510506 · 510503 |
+| Horas extra y recargos · comisiones · bonificaciones | 510515 · 510518 · 510548 |
+| Auxilio de transporte · auxilios no salariales | 510527 · 510545 |
+| Incapacidad, días a cargo del empleador | 510524 |
+| Lo que paga la EPS, la ARL o el fondo (incapacidad desde el día 3, licencias de maternidad y paternidad) | **138095**, con la entidad como tercero |
+| Salud · pensión y fondo de solidaridad · ARL · caja, ICBF y SENA | 237005 · 238030 · 237006 · 237010 |
+| Retención · embargos · libranzas · sindicato · cooperativas · fondo de empleados · otros | 236505 · 237025 · 237030 · 237035 · 237040 · 237045 · 237095 |
+| Préstamos | 136595; vivienda 136505, educación 136515, calamidad 136525 |
+| Aportes del empleador | 510568 a 510578 |
+| Provisiones, cada mes | 510530 / 510533 / 510536 / 510539 contra 2510 / 2515 / 2520 / 2525 |
+| Cesantías del año | Se quedan en 2510; cambia el tercero al fondo de cesantías |
+| Neto | 2505 (la auxiliar de la empresa; si existe 250505, esa) |
+
+- **C2:** el gasto va a 5105, 5205 o 7205 según el tipo del centro de costo del empleado (administración, ventas u
+  operación), con las mismas subcuentas y el centro de costo en la línea.
+- **C3:** cada línea de 1365, 1380, 2365, 2370, 2380, 2505 y 2510 a 2525 lleva su tercero. Sin el NIT del tercero, el
+  asiento **no se hace** y queda en la bandeja de rechazos; se reintenta al completarlo.
+- **C5:** si la provisión del empleado no alcanza al pagar la prima o las vacaciones, el faltante va al gasto en el
+  mismo asiento. Ejemplo probado: prima de 1.074.548 con 166.667 provisionados → 2520 débito 166.667 y gasto 907.881.
+- **Pago:** si la cuenta bancaria no tiene cuenta contable, el asiento va a rechazos. Ya no se usa la 1110.
+- Las subcuentas no existen todavía en los planes de las empresas. Se crean solas al encender la nómina de cada una.
+
+**Asiento de ejemplo: caso 1** (salario mínimo, julio de 2026, empleador exonerado), cuadrado en 2.715.752:
+
+| Cuenta | Débito | Crédito | Tercero |
+|---|---|---|---|
+| 510506 sueldos | 1.750.905 | | |
+| 510527 auxilio de transporte | 249.095 | | |
+| 510570 pensión · 510568 ARL · 510572 caja | 210.164 · 9.200 · 70.100 | | |
+| 510530 · 510533 · 510536 · 510539 provisiones | 166.667 · 20.000 · 166.667 · 72.954 | | |
+| 237005 salud | | 70.036 | EPS |
+| 238030 pensión | | 280.200 | fondo de pensiones |
+| 237006 ARL · 237010 caja | | 9.200 · 70.100 | ARL · caja |
+| 2510 · 2515 · 2520 · 2525 | | 166.667 · 20.000 · 166.667 · 72.954 | empleado |
+| 2505 neto | | 1.859.928 | empleado |
+
+En el caso 12, con el empleado en un centro de ventas, los 175.091 de la EPS van **débito 138095** con la EPS como
+tercero, y el gasto va a 5205xx.
+
+**Pendientes de esta parte:**
+- **NIT de las EPS, fondos, ARL y cajas:** el catálogo de entidades todavía no los tiene. Hay que cargarlos de la fuente oficial antes de encender, porque sin ellos todos los asientos se rechazan.
+- **Ajuste de las provisiones al cierre del año** (C5): necesita su propio proceso.
+- **Incapacidad que la EPS no reconoce:** el paso de la 138095 a pérdida queda manual.
+- **Préstamos de salud (136520):** hoy no existe ese tipo de préstamo.
+
+## 5. Lo que sigue
+
 - **P19, porcentaje fijo automático:** el sistema todavía no calcula ni guarda solo el porcentaje de junio y diciembre. Hoy se carga a mano por empleado, y sin porcentaje la colilla se bloquea. Es lo siguiente que haremos.
 - **Pantallas:** la opción de incapacidad al 100 %, la casilla del embargo y la opción de pensión en la licencia ya funcionan en el servidor. Sus pantallas pasan primero por diseño.
 - **Cesantías consignadas al fondo:** no se les aplica retención, como usted indicó, hasta confirmar si el empleador debe retener al consignar.

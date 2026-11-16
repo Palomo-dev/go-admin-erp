@@ -27,6 +27,8 @@ const PERMISO = 'hr.approvals.manage';
 export const TIPOS_SOLICITUD = [
   'ausencia',
   'horas_extra',
+  'novedad_asistencia',
+  'cambio_turno',
   'cambio_salario',
   'prestamo',
   'novedad_nomina',

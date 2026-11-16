@@ -27,6 +27,7 @@
 ## 1. Las cinco decisiones principales
 
 1. **La persona (`hr_people`) existe sin usuario, y `employments` pasa a ser su vínculo laboral.**
+   > **Revisada el 2026-11-15:** por decisión del dueño, la persona y su vínculo están siempre enlazados a su usuario. Ver «Revisión 2026-11-15: empleado siempre enlazado a usuario», al final.
    - `employments` gana `organization_id` y `person_id`.
    - `organization_member_id` se vuelve opcional, y su FK pasa de `CASCADE` a `SET NULL`.
    - Las 107 filas se conservan. A cada una se le crea su persona a partir de `profiles`.
@@ -525,3 +526,84 @@ Las cinco siguen las mismas reglas: aditivas, con su reversión en `supabase/rol
 - En el celular se usan las pestañas del diálogo, como en Integraciones, en vez del índice propio del diseño.
 - Las reglas se reordenan con «Subir» y «Bajar» del menú «⋯», no arrastrando: `FilaDato` no tiene arrastre y así también funciona con teclado.
 - El filtro «Empleado» del registro sale al tocar «Ver sus registros» en un detalle, como chip; no hay un desplegable con todos los empleados.
+
+## Revisión 2026-11-15: empleado siempre enlazado a usuario
+
+### Por qué
+
+Decisión del dueño, el 2026-11-15: «Quiero que esté enlazado el usuario y el empleado **siempre, siempre**, y que se pierda un cupo de usuario del plan».
+
+Se revierte la decisión 1 de la §1 y la parte de la §2 que permitía una persona sin usuario. Ese modelo nació de la auditoría (R4: «un operario sin cuenta no puede ser empleado»), pero el dueño prefiere el modelo de siempre de la app:
+- cada empleado es un miembro de la organización (`organization_members`);
+- su cargo y su rol definen lo que ve;
+- el portal del empleado es la misma app (decisión 4 del plan), así que todo empleado tiene con qué entrar;
+- cada empleado ocupa un usuario del plan, y eso es parte del precio.
+
+Lo que sí se conserva de la fase 0: la persona (`hr_people`) con su documento y sus datos sensibles aparte, el vínculo laboral con `organization_id` y `person_id`, el historial y los permisos por grupo. Solo cambia que la persona y su vínculo **siempre** tienen miembro y usuario.
+
+### Base de datos (`20261116023837_hrm_f1_04_empleado_siempre_usuario`)
+
+Antes de aplicar se verificó por el MCP que los datos ya cumplían: 107 vínculos y 107 personas, todos con su miembro y su usuario, sin incoherencias entre persona, miembro y vínculo. Hubo una prueba en seco (un `DO` que termina en `raise exception`) y el md5 del archivo coincide con el de `schema_migrations`.
+
+| Cambio | Detalle |
+|---|---|
+| `NOT NULL` | `employments.organization_member_id`, `hr_people.organization_member_id` y `hr_people.user_id` |
+| `ON DELETE RESTRICT` | `employments_organization_member_id_fkey`, `hr_people_organization_member_id_fkey` y `hr_people_user_id_fkey` (antes `SET NULL`) |
+| Coherencia | `trg_hr_people_miembro_coherente`: el miembro de la persona es de su organización y de su mismo usuario. `fn_hr_employments_organizacion` exige además que el vínculo de una persona sea de su miembro (23514) |
+| Alta | `fn_hr_alta_empleado(p_actor, p_org, p_datos, p_acceso, p_ip, p_ua, p_ruta)` reemplaza la versión de 6 argumentos. Ver abajo |
+| Personas sueltas | `fn_hr_persona_crear` responde 55000 `persona_sin_usuario` |
+| Trigger de miembro nuevo | `create_employment_for_new_member` pierde la rama «la persona ya existía sin usuario» y no actúa durante el alta de RR. HH. (`hr.alta_en_curso`) |
+| Estado del acceso | `fn_hr_estado_acceso(persona)`: `activo`, `invitacion_pendiente`, `invitacion_vencida` o `desactivado`, con la invitación. La lista y la ficha lo devuelven en vez de `tiene_usuario` |
+
+**Por qué `RESTRICT`.** Un miembro con historia laboral no se borra: se retira o se desactiva. La ley obliga a conservar la historia (nómina 10 años, SG-SST 20). Ninguna app borra miembros hoy: se revisó el ERP, go-admin-super y las Edge Functions. Por eso `RESTRICT` no rompe nada.
+
+Borrar una organización entera ya fallaba antes de esta migración por un disparador ajeno a RR. HH. (`categoria_invalida`), así que eso tampoco cambia.
+
+### El alta crea el usuario
+
+`POST /api/hrm/empleados/alta` → `altaConUsuario` (`src/lib/services/hrm/invitacionPortal.server.ts`):
+
+1. **Correo obligatorio.** La invitación va al correo del alta.
+2. **Cupo del plan.** Se comprueba con la misma fuente y la misma regla de Organización › Equipo: `fn_cupo_plan` vía `leerCupoPlan` y `cupoUsuarios`. La base lo vuelve a comprobar dentro de la transacción (`trg_cupo_plan_invitacion` al insertar la invitación). Sin cupo, el alta entera se deshace y la ruta responde 409 `sin_cupo`.
+3. **El usuario.**
+   - Si el correo ya es usuario de la plataforma, se enlaza ese usuario, como en Equipo: acepta con su propia sesión.
+   - Si no, se crea sin contraseña y sin mandar correo (`auth.admin.createUser`, `user_metadata.hr_alta`).
+   - Si ya es miembro de esta organización, responde `ya_es_usuario`.
+4. **Una transacción.** `fn_hr_alta_empleado` crea:
+   - el perfil;
+   - el miembro **inactivo**, con rol Empleado (4) y el cargo;
+   - la persona y su identificación;
+   - el vínculo, el salario inicial y la seguridad social;
+   - la invitación pendiente con `hr_person_id`.
+
+   Si falla, el servidor borra el usuario recién creado.
+5. **El correo.** Sale por el camino de siempre (`enviarCorreoInvitacion`). A una cuenta preparada por el alta se le manda la invitación nativa de Supabase; si no sale, el enlace mágico.
+6. **Al aceptar.** `estadoCuentaInvitacion` trata la cuenta preparada como huérfana mientras nadie la haya usado: invitación de esta organización, nunca inició sesión, correo sin confirmar y solo un miembro inactivo de esta organización. Así el empleado fija su contraseña. `accept_invitation_atomic` activa el miembro y la invitación queda usada.
+
+El cupo se cuenta igual que en Equipo: la invitación pendiente ocupa el usuario mientras no se acepta, y el miembro activo lo ocupa después.
+
+**«Reenviar invitación»** (`reenviarInvitaciones`, misma ruta `/api/hrm/empleados/invitar`):
+- solo sirve con la invitación del alta pendiente o vencida;
+- rota el código con `renovarInvitacion`, la misma función que ahora usa el reenvío de `/api/auth/invite`;
+- si la persona ya entró, responde `ya_entro`.
+
+El documento duplicado y el reingreso siguen igual. En un reingreso la persona conserva su usuario: no se crea otro ni se ocupa otro cupo.
+
+### Interfaz (Figma 20.2, 20.3 y 20.5 ajustados el mismo día)
+
+- **Alta:**
+  - la sección «Acceso a la app» pide el correo de la invitación y avisa cuánto cupo queda;
+  - sin cupo, el formulario se bloquea con el aviso de Equipo (`AvisoCupo`) y el enlace a cambiar de plan;
+  - se quitaron el interruptor «Invitar» y el aviso de «no necesita usuario».
+- **Ficha:**
+  - sin la insignia «Sin usuario de la app»;
+  - la cabecera muestra «Invitación pendiente» o «Invitación vencida» y «Reenviar invitación» solo mientras no ha entrado;
+  - la tarjeta «Acceso a la app» del Resumen muestra el estado de la invitación.
+- **Lista:**
+  - la acción de la fila y la masiva pasan a «Reenviar invitación(es)», solo para invitaciones pendientes o vencidas;
+  - se quitó la frase «Un empleado no necesita usuario de la app».
+- **Importar:** el correo es obligatorio en cada fila y se detiene al quedarse sin cupo.
+
+### Lo que queda pendiente
+
+- **Invitar por celular.** El dueño pidió «correo o celular». La app no tiene envío de invitaciones por SMS ni por WhatsApp, y la aceptación (`accept_invitation_atomic`) comprueba el correo. Por ahora el correo es obligatorio. Invitar por celular necesita un canal de envío y una aceptación por teléfono; es un frente aparte.

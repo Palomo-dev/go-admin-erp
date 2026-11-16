@@ -13,6 +13,9 @@
  *  - variasSedes: la organización tiene más de una sucursal activa (Figma 01b:
  *    «Sedes en la web» solo con más de una sucursal). Se recalcula sola cuando
  *    se crea la segunda sede: no depende de filas guardadas.
+ *  - jefeDeEquipo: tiene personas a cargo y no es de RR. HH. (decisión 1 de la
+ *    fase 2 de RR. HH.: «Mi equipo»). La misma regla que `GET /api/hrm/pestanas`
+ *    (`fn_hr_pestanas`, vista «jefe»).
  *
  * Un error cuenta como «no» (fail-closed): la UI no ofrece lo que no sabe que
  * se puede usar.
@@ -20,6 +23,7 @@
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { hasOrgAdminOrPermission } from '@/lib/utils/orgContext';
 import { veePanelCompleto } from '@/lib/dashboard/accesoPanel';
+import { getServiceClient } from '@/lib/supabase/server-service';
 import { CAPACIDADES_NAV, type CapacidadNav } from './catalog';
 
 export type ContextoCapacidades = Pick<ServerOrgContext, 'userId' | 'organizationId' | 'supabase'> &
@@ -52,10 +56,21 @@ export async function tieneVariasSedes(ctx: ContextoCapacidades): Promise<boolea
   return (count ?? 0) > 1;
 }
 
+/** ¿Ve la vista del jefe («Mi equipo»)? Misma regla que `GET /api/hrm/pestanas`. */
+export async function esJefeDeEquipo(ctx: ContextoCapacidades): Promise<boolean> {
+  const { data, error } = await getServiceClient().rpc('fn_hr_pestanas', { p_actor: ctx.userId, p_org: ctx.organizationId });
+  if (error) {
+    console.warn('[capacidadesNav] fn_hr_pestanas', error.message);
+    return false;
+  }
+  return (data as { vista?: string } | null)?.vista === 'jefe';
+}
+
 const CALCULO: Record<CapacidadNav, (ctx: ContextoCapacidades) => Promise<boolean>> = {
   gestionarNotificaciones: (ctx) => hasOrgAdminOrPermission(sujeto(ctx), 'notifications.manage'),
   verAnaliticaWeb: puedeVerAnaliticaWeb,
   variasSedes: tieneVariasSedes,
+  jefeDeEquipo: esJefeDeEquipo,
 };
 
 /**

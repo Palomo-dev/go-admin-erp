@@ -8,13 +8,16 @@
  * - `BotonTurno`: botón del encabezado del panel completo. Cambia con el
  *   estado: antes → secundario «Marcar entrada»; sin marcar → primario
  *   «Marcar entrada» + badge «N min tarde»; en turno → tinte «Marcar salida ·
- *   3 h 12 min»; cerrado → no se muestra. Sin contrato (dueño que no marca):
+ *   3 h 12 min»; en descanso → tinte «Terminar descanso»; cerrado → no se
+ *   muestra. Sin contrato (dueño que no marca):
  *   no se dibuja (frame 10).
  * - `TurnoCard`: tarjeta del panel de empleado (frame 11) y de móvil, arriba
- *   del todo.
+ *   del todo. Variante «en descanso» (decisión 7, 2026-11-16; Figma 20.9.4):
+ *   insignia ámbar «En descanso · 12 min», «Descanso desde 9:30 · 30 min no
+ *   pagado» y «Terminar descanso».
  *
- * Marcar NO se implementa aquí: los botones llevan al flujo existente de HRM
- * (`/marcar`, escáner QR → `QRAttendanceService`). El estado lo calcula el
+ * Marcar NO se implementa aquí: los botones llevan a «Marcar turno»
+ * (`/marcar`, que marca por `POST /api/hrm/marcacion`). El estado lo calcula el
  * servidor (`GET /api/inicio/turno`). Horas en la zona de la organización.
  */
 import Link from 'next/link';
@@ -47,6 +50,14 @@ export function BotonTurno({ turno }: { turno: TurnoInicio | null }) {
   const duracion = useDuracion();
   if (!turno || turno.estado === 'cerrado') return null;
   const icono = <ScanLine aria-hidden="true" className="size-4" strokeWidth={1.5} />;
+  if (turno.estado === 'enDescanso') {
+    return (
+      <Link href={turno.hrefMarcar} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })} data-estado-turno="enDescanso">
+        {icono}
+        {t('acciones.terminarDescanso')}
+      </Link>
+    );
+  }
   if (turno.estado === 'enTurno') {
     return (
       <Link href={turno.hrefMarcar} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })} data-estado-turno="enTurno">
@@ -87,14 +98,21 @@ export function TurnoCard({ turno, compacta = false, className }: { turno: Turno
       ? { etiqueta: t('estados.sinMarcar', { min: turno.minutos }), tono: 'advertencia' as const }
       : turno.estado === 'enTurno'
         ? { etiqueta: t('estados.enTurno'), tono: 'exito' as const }
+        : turno.estado === 'enDescanso'
+          ? { etiqueta: t('estados.enDescanso', { min: turno.minutos }), tono: 'advertencia' as const }
         : turno.estado === 'cerrado'
           ? { etiqueta: t('estados.cerrado'), tono: 'neutro' as const }
           : turno.estado === 'antes'
             ? { etiqueta: t('estados.antes'), tono: 'informacion' as const }
             : { etiqueta: t('estados.sinTurno'), tono: 'neutro' as const };
 
+  const descanso = turno.descansoMin
+    ? t(turno.descansoPagado ? 'detalle.descansoPagado' : 'detalle.descansoNoPagado', { min: turno.descansoMin })
+    : null;
   const detalle =
-    turno.estado === 'enTurno'
+    turno.estado === 'enDescanso'
+      ? [t('detalle.enDescanso', { hora: hora(turno.descansoDesde ?? null) }), descanso].filter(Boolean).join(' · ')
+      : turno.estado === 'enTurno'
       ? t('detalle.enTurno', { hora: hora(turno.entradaMarcada), duracion: duracion(turno.minutos), fin: hora(turno.salidaProgramada) })
       : turno.estado === 'cerrado'
         ? t('detalle.cerrado', { entrada: hora(turno.entradaMarcada), salida: hora(turno.salidaMarcada), duracion: duracion(turno.minutos) })
@@ -109,6 +127,8 @@ export function TurnoCard({ turno, compacta = false, className }: { turno: Turno
         : null
       : turno.estado === 'enTurno'
         ? { etiqueta: t('acciones.marcarSalida'), href: turno.hrefMarcar, variante: 'tinte' as const }
+        : turno.estado === 'enDescanso'
+          ? { etiqueta: t('acciones.terminarDescanso'), href: turno.hrefMarcar, variante: 'tinte' as const }
         : turno.estado === 'sinTurno'
           ? { etiqueta: t('acciones.marcarTurno'), href: turno.hrefMarcar, variante: 'secundario' as const }
           : { etiqueta: t('acciones.marcarEntrada'), href: turno.hrefMarcar, variante: 'primario' as const };

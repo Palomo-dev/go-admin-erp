@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/utils/Utils';
 import {
   UserPlus,
@@ -37,7 +36,7 @@ export function HRMQuickActions() {
       title: 'Nuevo Turno',
       description: 'Asignar turno a empleado',
       icon: <CalendarPlus className="h-5 w-5" />,
-      href: '/app/hrm/turnos/nuevo',
+      href: '/app/hrm/turnos',
       color: 'text-green-600 dark:text-green-400',
       bgColor: 'bg-green-100',
       darkBgColor: 'dark:bg-green-900/30',

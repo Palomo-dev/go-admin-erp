@@ -7,7 +7,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
-import PayrollCalculationService from '@/lib/services/payrollCalculationService';
+import { preliquidarPeriodo } from '@/lib/services/hrm/nomina/preliquidarCliente';
 import { supabase } from '@/lib/supabase/config';
 import type { PayrollPeriod, PayrollRun } from '@/lib/services/payrollService';
 import { RunsTable } from '@/components/hrm/nomina/periodos/[id]';
@@ -143,8 +143,8 @@ export default function PeriodoDetallePage() {
       const usuario = sesion.user?.id;
       if (!usuario) throw new Error('Inicia sesión de nuevo para ejecutar el cálculo');
 
-      const calculo = new PayrollCalculationService(organization.id);
-      const resultado = await calculo.calculatePeriod(periodId, usuario);
+      // Preliquida en el servidor con el motor de la fase 3 (ADR-003).
+      const resultado = await preliquidarPeriodo(periodId);
       setRunDialogOpen(false);
       toast({
         title: 'Cálculo completado',

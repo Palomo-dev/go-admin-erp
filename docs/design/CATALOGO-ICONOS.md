@@ -556,3 +556,26 @@ Decisión 6 del dueño. Se añade al final, sin reescribir lo anterior. Solo los
 | Mis vacaciones (13.6) | `/app/hrm/ausencias/mis-vacaciones` | `—` | — (← Volver) |
 
 La pestaña «Ausencias» del módulo no tiene icono propio en la barra de pestañas; la cabecera toma el de la sección abierta. En el menú lateral la entrada `/app/hrm/ausencias` sigue con `Calendar` hasta que quien mantiene `src/lib/navigation/catalog.ts` la pase a `TreePalm` (la sección por defecto); no se tocó aquí porque el archivo tiene cambios de otra sesión sin commit.
+
+## Adenda 2026-11-16 — Recursos humanos, fase 2 (decisión 6 del dueño)
+
+Se añade al final, sin reescribir lo anterior. Iconos de jornadas, asistencia y ausencias (Figma página `20`, secciones 20.8 a 20.15), todos de lucide con la misma construcción de la rejilla.
+
+| Concepto | Icono (lucide) | Dónde vive |
+|---|---|---|
+| Turnos · programación | `CalendarRange` | pestaña y cabecera de Turnos, vacío de la programación, menú lateral |
+| Marcación · marcar turno | `AlarmClockCheck` | «Mi asistencia» (Inicio), menú lateral de Marcación, tarjetas de marcas |
+| Asistencia · hojas de tiempo | `CalendarCheck` | pestaña y cabecera de Asistencia |
+| Horas extra | `ClockArrowUp` | Horas y recargos, novedades de horas extra |
+| Novedad | `NotebookPen` | pestaña y cabecera de Novedades |
+| Vacaciones · ausencias | `TreePalm` | pestaña de Ausencias, bloque de ausencia en la programación |
+| Incapacidades | `HeartPulse` | incapacidades y licencias (nunca muestra el diagnóstico) |
+| Permisos (ausencias cortas) | `DoorOpen` | permisos de Ausencias |
+| Mi equipo (vista del jefe) | `LayoutDashboard` | pestaña y cabecera de Mi equipo, vacío «No tienes personas a cargo» |
+
+Lo que ya existía se conserva: `ScanLine` en `TurnoCard` y en el botón de marcar; `Coffee` para un día o un rato de descanso; `LayoutTemplate` para las plantillas de turno y `Repeat` para las rotaciones (tarjetas móviles y vacíos).
+
+### En el código
+
+- `src/lib/navigation/catalog.ts`: Turnos `CalendarRange`, Marcación `AlarmClockCheck`, Asistencia `CalendarCheck`, Novedades `NotebookPen` (nueva), Ausencias `TreePalm` y Mi equipo `LayoutDashboard` (nueva, solo para quien tiene personas a cargo: capacidad `jefeDeEquipo`).
+- Cabeceras: `TurnosPage` (`CalendarRange`), `MiEquipoPage` (`LayoutDashboard`) y `MiAsistencia` (`AlarmClockCheck`).

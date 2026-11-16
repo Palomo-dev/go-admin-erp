@@ -238,6 +238,8 @@ las destructivas en rojo (`prepararMenu`). Tope de 8 entradas. Una acción desha
   masiva). Escritorio: menú alineado al borde derecho, 4 px. Móvil: abre `ActionSheet`.
   Con `etiquetaBoton` (+ `iconoBoton`) el disparador es un botón secundario de 40 px con texto
   y chevron («Importar ▾» del catálogo de productos) en lugar de «⋯».
+  Con `disparador` (`{ contenido, etiqueta }`) el contenido entero abre el menú: el bloque de un
+  turno en la programación de RR. HH. (Figma 20.8.5); `etiqueta` es su nombre accesible.
 - `ActionSheet`: `abierto`, `onAbiertoChange`, `titulo`, `descripcion?`, `acciones`.
   Filas de 52 px con icono de 20.
 

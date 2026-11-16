@@ -50,6 +50,12 @@ const CARPETAS = [
   'src/app/app/hrm/novedades',
   'src/components/hrm/asistencia',
   'src/components/hrm/novedades',
+  // Turnos, Marcación y Mi equipo (fase 2, Figma 20.8, 20.9 y 20.15).
+  'src/app/app/hrm/turnos',
+  'src/components/hrm/turnos',
+  'src/app/app/hrm/mi-equipo',
+  'src/components/hrm/equipo',
+  'src/components/marcar',
 ];
 
 /**

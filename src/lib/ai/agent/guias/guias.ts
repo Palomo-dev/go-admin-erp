@@ -140,6 +140,24 @@ export const GUIAS: readonly Guia[] = [
     ],
   },
   {
+    id: 'turnos',
+    titulo: 'Programar turnos y marcar asistencia',
+    palabras: ['turno', 'turnos', 'horario', 'horarios', 'programacion', 'marcar', 'marcacion', 'entrada', 'salida', 'mi equipo'],
+    pasos: [
+      'Abre Recursos humanos > Turnos: programa la semana con plantillas o rotaciones, o copia la semana anterior.',
+      'Un cruce de horarios impide publicar; si alguien pasa un tope, se publica con un motivo y queda una novedad.',
+      'Publicar avisa a cada persona. Cada empleado marca su turno desde Inicio > Marcar turno, con su ubicación o el QR de la sede.',
+      'El jefe ve a su equipo en Recursos humanos > Mi equipo, sin salario ni salud.',
+    ],
+    rutas: [
+      { ruta: '/app/hrm/turnos', nombre: 'Recursos humanos > Turnos' },
+      { ruta: '/app/hrm/turnos?vista=plantillas', nombre: 'Turnos > Plantillas' },
+      { ruta: '/app/hrm/turnos?vista=rotaciones', nombre: 'Turnos > Rotaciones' },
+      { ruta: '/app/inicio/mi-asistencia', nombre: 'Inicio > Mi asistencia' },
+      { ruta: '/app/hrm/mi-equipo', nombre: 'Recursos humanos > Mi equipo' },
+    ],
+  },
+  {
     id: 'usuarios',
     titulo: 'Invitar usuarios y administrar miembros',
     palabras: ['usuario', 'usuarios', 'invitar', 'invitacion', 'miembro', 'miembros', 'empleado nuevo', 'dar acceso'],

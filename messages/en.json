@@ -952,20 +952,25 @@
         "sinMarcar": "Not clocked in · {min} min late",
         "enTurno": "On shift",
         "cerrado": "Shift closed",
-        "sinTurno": "No shift assigned today"
+        "sinTurno": "No shift assigned today",
+        "enDescanso": "On break · {min} min"
       },
       "detalle": {
         "entrada": "Starts {hora}{sucursal}",
         "enTurno": "Since {hora} · {duracion} · your shift ends at {fin}",
         "cerrado": "{entrada} – {salida} · {duracion}",
-        "sinTurno": "Clock in with the store's QR code"
+        "sinTurno": "Clock in with the store's QR code",
+        "enDescanso": "On break since {hora}",
+        "descansoNoPagado": "{min} min unpaid",
+        "descansoPagado": "{min} min paid"
       },
       "acciones": {
         "marcarEntrada": "Clock in",
         "marcarSalida": "Clock out",
         "marcarSalidaTiempo": "Clock out · {duracion}",
         "verMarcaciones": "View my time records",
-        "marcarTurno": "Clock in/out"
+        "marcarTurno": "Clock in/out",
+        "terminarDescanso": "End break"
       }
     },
     "periodo": {
@@ -4591,7 +4596,8 @@
       "hrm_areas": "Areas",
       "hrm_plazas": "Positions budget",
       "hrm_aprobaciones": "Approvals",
-      "hrm_novedades": "Time events"
+      "hrm_novedades": "Time events",
+      "hrm_mi-equipo": "My team"
     },
     "grupos": {
       "venta": "Sales",
@@ -57595,6 +57601,804 @@
       "sinPermiso": {
         "titulo": "You don’t have access to time events",
         "descripcion": "Each manager approves their team’s, and Human resources the whole branch’s."
+      }
+    }
+  },
+  "hrmTurnos": {
+    "titulo": "Shifts",
+    "rrhh": "Human resources",
+    "vistas": {
+      "etiqueta": "Shifts view",
+      "programacion": "Schedule",
+      "plantillas": "Templates",
+      "rotaciones": "Rotations"
+    },
+    "errores": {
+      "error_hrm": "It could not be completed. Try again.",
+      "sin_permiso": "You do not have permission to schedule shifts.",
+      "turno_cruzado": "That shift overlaps another shift of the same person.",
+      "turno_sin_horario": "The shift needs a template or a start and end time.",
+      "rango_invalido": "Check the dates.",
+      "datos_invalidos": "Check the shift details.",
+      "no_existe": "That record no longer exists.",
+      "cambio_invalido": "Both shifts must be on the same day and belong to different people.",
+      "nada_que_deshacer": "More than 10 minutes have passed: it cannot be undone.",
+      "nombre_requerido": "Enter a name.",
+      "hora_invalida": "Check the start and end time.",
+      "descanso_invalido": "The break is not valid.",
+      "patron_invalido": "Check the rotation days.",
+      "plantilla_invalida": "That template is not valid.",
+      "rotacion_invalida": "That rotation is not valid.",
+      "vinculos_invalidos": "Choose at least one person.",
+      "duplicado": "One like it already exists."
+    },
+    "bloque": {
+      "festivo": "holiday",
+      "horas": "{h} h",
+      "personalizado": "Shift",
+      "ausenciaJustificada": "Absence",
+      "ausenteIncapacidad": "Absent",
+      "ausencia": "Absence",
+      "solicitada": "Requested",
+      "aprobada": "Approved",
+      "justificada": "Excused",
+      "incapacidad": "sick leave",
+      "descanso": "Rest",
+      "diaLibre": "Day off",
+      "cruzaCon": "Overlaps {plantilla}",
+      "pasaTope": "Over the limit: {h} h",
+      "pasaTopeDia": "Over the daily limit"
+    },
+    "programacion": {
+      "subtitulo": {
+        "semana": "Week of {rango}",
+        "personas": "{n, plural, one {# person} other {# people}} in {areas}",
+        "sinTurnos": "no shifts",
+        "borrador": "unpublished draft",
+        "publicada": "published {cuando}"
+      },
+      "y": " and ",
+      "copiarAnterior": "Copy previous week",
+      "copiarSiguiente": "Copy to next week",
+      "editarSemana": "Edit week",
+      "publicar": "Publish and notify",
+      "nadaQuePublicar": "There are no changes to publish",
+      "aplicarRotacion": "Apply rotation",
+      "semanaAnterior": "Previous week",
+      "semanaSiguiente": "Next week",
+      "estaSemana": "This week",
+      "dia": "Day",
+      "buscar": "Search person or position…",
+      "festivo": "holiday",
+      "horas": "{h} h",
+      "horasMin": "{h} h {m} min",
+      "sinTurno": "No shift",
+      "irInicio": "Go to home",
+      "tabla": "Shifts for the week of {rango}",
+      "turnoDe": "{nombre}'s shift · {dia}",
+      "copiada": "{n, plural, =0 {There were no shifts to copy} one {# shift copied as draft} other {# shifts copied as draft}}{omitidos, plural, =0 {} other { · # already had a shift}}",
+      "copiadoResto": "Shift copied to the rest of the week",
+      "copiaParcial": "{n, plural, one {# day could not be copied} other {# days could not be copied}}: they overlap another shift.",
+      "descansoMarcado": "Rest day set",
+      "quitado": "Shift removed",
+      "deshecha": "Publication undone: the week is a draft again.",
+      "menu": {
+        "asignar": "Assign shift",
+        "cambiarHorario": "Change hours",
+        "otraPlantilla": "Use another template",
+        "marcarDescanso": "Set rest day",
+        "copiarResto": "Copy to the rest of the week",
+        "cambiarPersona": "Swap with another person",
+        "quitar": "Remove shift"
+      },
+      "menuCabecera": {
+        "imprimir": "Print the week",
+        "csv": "Export to CSV",
+        "aplicarRotacion": "Apply a rotation",
+        "topes": "Limits and alerts",
+        "topesDescripcion": "Settings › Human resources"
+      },
+      "columnas": {
+        "persona": "Person",
+        "horas": "Hours"
+      },
+      "estado": {
+        "cruce": "Overlap",
+        "tope": "Limit",
+        "ausente": "Absent"
+      },
+      "aviso": {
+        "revisa": "Review {cruces, plural, one {# overlap} other {# overlaps}}{topes, plural, =0 {} one { and # limit} other { and # limits}} before publishing",
+        "revisaDescripcion": "An overlap blocks publishing. A limit can be published with a reason and becomes a time event.",
+        "soloTopes": "{n, plural, one {# limit left to publish with a reason} other {# limits left to publish with a reason}}",
+        "soloTopesDescripcion": "The reason goes into the overtime event so the manager approves it before payroll.",
+        "revisar": "Review",
+        "publicada": "Week published: {n, plural, one {# person notified} other {# people notified}}",
+        "publicadaAntes": "Week published",
+        "publicadaDescripcion": "Each person received their week in the app. From now on, a change is notified only to whoever it affects."
+      },
+      "publicada": {
+        "toastTitulo": "Week published",
+        "toastDescripcion": "{n, plural, one {# person notified} other {# people notified}}. You can undo it for 10 minutes.",
+        "deshacer": "Undo"
+      },
+      "confirmar": {
+        "titulo": "Publish the week of {rango} and notify {n, plural, one {# person} other {# people}}?",
+        "descripcion": "Each person receives their week in the app. From now on, a change is notified only to whoever it affects.",
+        "conTope": "Each person receives their week in the app. Someone goes over an hours limit: write the reason so it reaches Time events.",
+        "motivo": "Reason for the limit",
+        "placeholder": "E.g.: month-end inventory"
+      },
+      "quitar": {
+        "titulo": "Remove {nombre}'s shift?",
+        "borrador": "It is a draft: nobody has seen it yet.",
+        "publicado": "The shift was already published: the person is notified when you publish again.",
+        "confirmar": "Remove shift"
+      },
+      "filtros": {
+        "equipo": "Team",
+        "cargo": "Position",
+        "mostrar": "Show",
+        "todo": "All",
+        "cruces": "With overlaps",
+        "topes": "Over limits",
+        "estado": "Shift status",
+        "todos": "All",
+        "todas": "All",
+        "borrador": "Draft",
+        "plantilla": "Template",
+        "incluirAusencias": "Include approved absences",
+        "incluirDescansos": "Include rest days",
+        "soloConTurno": "Only people with shifts",
+        "nota": "Changes apply instantly. The branch is set by the selector in the header.",
+        "ver": "Show {n, plural, one {# person} other {# people}}",
+        "chipArea": "Team: {area}"
+      },
+      "vacio": {
+        "titulo": "This week has no shifts",
+        "descripcion": "Copy the previous week, apply a rotation or schedule by hand. Nobody is notified until you publish."
+      },
+      "sinResultados": {
+        "titulo": "Nobody matches the filters",
+        "descripcion": "Change the search or clear the filters."
+      },
+      "error": {
+        "titulo": "The shifts could not be loaded",
+        "descripcion": "Check your connection and try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to this branch's shifts",
+        "descripcion": "Ask Human resources for the \"Schedule shifts\" permission. Your own shifts are on Home."
+      },
+      "nota": {
+        "borrador": "Dotted shifts are drafts: nobody sees them until you publish.",
+        "nocturnas": "Night hours are counted with the parameter in force on each date.",
+        "festivos": "Shifts on {dias} count as holiday work."
+      }
+    },
+    "dialogoTurno": {
+      "titulo": {
+        "horario": "Change hours · {nombre}",
+        "plantilla": "Use another template · {nombre}",
+        "nuevo": "Assign shift · {nombre}"
+      },
+      "descripcion": "It stays as a draft until the week is published.",
+      "plantilla": "Template",
+      "personalizado": "Custom hours",
+      "empieza": "Starts",
+      "termina": "Ends",
+      "descanso": "Break",
+      "sinDescanso": "No break",
+      "descansoNoPagado": "{min} min unpaid",
+      "cruzaMedianoche": "It ends the next day: it crosses midnight.",
+      "nota": "Hours are counted in the branch's time zone.",
+      "guardar": "Save",
+      "cancelar": "Cancel",
+      "guardado": "Shift saved as draft"
+    },
+    "intercambio": {
+      "titulo": "Swap with another person · {dia}",
+      "descripcion": "{nombre} takes the other person's hours and the other person takes theirs.",
+      "con": "Swap with",
+      "descanso": "Rest",
+      "sinCandidatas": "Nobody else has a shift that day.",
+      "cambiar": "Swap shifts",
+      "cancelar": "Cancel",
+      "hecho": "Shifts swapped"
+    },
+    "hallazgos": {
+      "turno": "Shift",
+      "y": " and ",
+      "cruce": "Two shifts overlap on {dia}",
+      "enAusencia": "Shift during an absence on {dia}",
+      "enAusenciaDetalle": "They have a requested or approved absence that day",
+      "extraDia": "{h} h overtime on {dia}",
+      "jornadaDiaria": "Goes over the maximum daily hours",
+      "topeExtraDia": "Daily overtime limit: {h} h",
+      "semana": "{h} h in the week",
+      "topeSemana": "Weekly limit in force: {h} h",
+      "topeExtraSemana": "Weekly overtime limit: {h} h",
+      "sinDescanso": "Week without a rest day",
+      "sinDescansoDetalle": "Works all 7 days",
+      "diaDescanso": "Works their rest day on {dia}",
+      "ocasional": "Occasional · {n} this month",
+      "habitual": "Regular · {n} this month"
+    },
+    "revisar": {
+      "titulo": "Review before publishing",
+      "descripcion": "Week of {rango} · {n, plural, one {# issue} other {# issues}}. Overlaps block publishing; limits can be published with a reason.",
+      "persona": "Person",
+      "quePasa": "What happens",
+      "tipoCol": "Type",
+      "tipo": {
+        "cruce": "Overlap",
+        "tope": "Limit",
+        "aviso": "Notice"
+      },
+      "sinHallazgos": "There is nothing to review",
+      "topesTitulo": "Limits come from the parameters in force",
+      "topesDescripcion": "Maximum weekly hours and overtime per day and per week. They are read by date: a shift that crosses a change uses the value of each hour.",
+      "corregir": "Fix the overlap",
+      "publicarConMotivo": "Publish with a reason",
+      "cancelar": "Cancel"
+    },
+    "aplicarRotacion": {
+      "titulo": "Apply a rotation",
+      "descripcion": "Generates the week of {rango} as a draft. It does not overwrite existing shifts.",
+      "rotacion": "Rotation",
+      "personas": "People",
+      "sinRotaciones": "There are no active rotations yet.",
+      "nota": "A rotation proposes, it does not publish: you review overlaps and limits before publishing.",
+      "generar": "Generate draft",
+      "falta": "Choose a rotation and at least one person.",
+      "cancelar": "Cancel",
+      "hecho": "{n, plural, =0 {No shift was created} one {# shift created as draft} other {# shifts created as draft}}{omitidos, plural, =0 {} other { · # skipped}}"
+    },
+    "plantillas": {
+      "titulo": "Shift templates",
+      "subtitulo": "{n, plural, one {# template} other {# templates}} · used for scheduling and in rotations",
+      "nueva": "New template",
+      "buscar": "Search template…",
+      "todas": "All",
+      "activas": "Active",
+      "inactivas": "Inactive",
+      "activa": "Active",
+      "inactiva": "Inactive",
+      "ver": "Show {n, plural, one {# template} other {# templates}}",
+      "h": "{h} h",
+      "hMin": "{h} h {m} min",
+      "nocturnasDesde": "{duracion} (from {hora})",
+      "sinDescanso": "No break",
+      "descansoNoPagado": "{min} min unpaid",
+      "descansoPagado": "{min} min paid",
+      "cruzaMedianoche": "crosses midnight",
+      "personas": "{n, plural, =0 {0 people} one {# person} other {# people}}",
+      "sinUso": "Not in use",
+      "activada": "Template activated",
+      "desactivada": "Template deactivated",
+      "irInicio": "Go to home",
+      "nota": "Night hours are counted with the parameter in force on each date: today, from {hora} (Law 2466 of 2025).",
+      "sinResultados": "No template matches the search.",
+      "columnas": {
+        "plantilla": "Template",
+        "horas": "Hours",
+        "nocturnas": "Night",
+        "descanso": "Break",
+        "dias": "Days",
+        "uso": "In use",
+        "estado": "Status"
+      },
+      "menu": {
+        "editar": "Edit template",
+        "duplicar": "Duplicate",
+        "verUso": "See who uses it",
+        "desactivar": "Deactivate",
+        "activar": "Activate"
+      },
+      "vacio": {
+        "titulo": "There are no shift templates yet",
+        "descripcion": "A template stores the hours and break of a shift so you can schedule faster."
+      },
+      "error": {
+        "titulo": "The templates could not be loaded",
+        "descripcion": "Check your connection and try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to templates",
+        "descripcion": "Ask Human resources for the \"Schedule shifts\" permission."
+      },
+      "dias": {
+        "d1": "Mon",
+        "d2": "Tue",
+        "d3": "Wed",
+        "d4": "Thu",
+        "d5": "Fri",
+        "d6": "Sat",
+        "d7": "Sun",
+        "par": "{a} and {b}",
+        "rango": "{desde} to {hasta}"
+      },
+      "dialogo": {
+        "tituloNueva": "New shift template",
+        "tituloEditar": "Edit shift template",
+        "descripcion": "Used to schedule the week and in rotations.",
+        "nombre": "Name",
+        "nombreRequerido": "Enter the template name.",
+        "copiaDe": "{nombre} (copy)",
+        "empieza": "Starts",
+        "termina": "Ends",
+        "descanso": "Break",
+        "cruza": "Crosses midnight",
+        "cruzaAyuda": "It is checked automatically when the end time is earlier than or equal to the start time.",
+        "dias": "Days it is used",
+        "duracion": "Duration",
+        "nocturnas": "Night",
+        "nocturnasDesde": "{duracion} (from {hora})",
+        "diurnas": "Day",
+        "nota": "Night hours are recalculated if the parameter changes: the template stores hours, not surcharges.",
+        "crear": "Create template",
+        "guardar": "Save changes",
+        "cancelar": "Cancel",
+        "creada": "Template created",
+        "guardada": "Template saved"
+      }
+    },
+    "rotaciones": {
+      "titulo": "Rotations",
+      "subtitulo": "{n, plural, one {# rotation} other {# rotations}} · generate the schedule of the following weeks as a draft",
+      "nueva": "New rotation",
+      "buscar": "Search rotation…",
+      "todas": "All",
+      "activas": "Active",
+      "pausadas": "Paused",
+      "activa": "Active",
+      "pausadaEstado": "Paused",
+      "ver": "Show {n, plural, one {# rotation} other {# rotations}}",
+      "descanso": "rest",
+      "semanas": "{n, plural, one {# week} other {# weeks}}",
+      "dias": "{n, plural, one {# day} other {# days}}",
+      "personas": "{n, plural, =0 {0 people} one {# person} other {# people}}",
+      "borrador": "{rango} (draft)",
+      "pausada": "Rotation paused",
+      "reanudada": "Rotation resumed",
+      "irInicio": "Go to home",
+      "sinResultados": "No rotation matches the search.",
+      "columnas": {
+        "rotacion": "Rotation",
+        "ciclo": "Cycle",
+        "personas": "People",
+        "empezo": "Started",
+        "proxima": "Last week generated",
+        "estado": "Status"
+      },
+      "menu": {
+        "editar": "Edit rotation",
+        "generar": "Generate next week",
+        "pausar": "Pause",
+        "reanudar": "Resume"
+      },
+      "aviso": {
+        "titulo": "A rotation proposes, it does not publish",
+        "descripcion": "It generates the week as a draft; overlaps and limits are reviewed just like in the schedule before publishing."
+      },
+      "vacio": {
+        "titulo": "There are no rotations yet",
+        "descripcion": "A rotation repeats a cycle of templates and rest days to generate the following weeks."
+      },
+      "error": {
+        "titulo": "The rotations could not be loaded",
+        "descripcion": "Check your connection and try again."
+      },
+      "sinPermiso": {
+        "titulo": "You don't have access to rotations",
+        "descripcion": "Ask Human resources for the \"Schedule shifts\" permission."
+      },
+      "dialogo": {
+        "tituloNueva": "New rotation",
+        "tituloEditar": "Edit rotation",
+        "descripcion": "Choose the template for each day of the cycle; a day without a template is a rest day.",
+        "nombre": "Name",
+        "nombreRequerido": "Enter the rotation name.",
+        "descripcionCampo": "Description",
+        "descripcionAyuda": "E.g.: Opening → Middle → Closing",
+        "ciclo": "Cycle",
+        "semanas": "{n, plural, one {# week} other {# weeks}}",
+        "semana": "Week {n}",
+        "descanso": "Rest",
+        "crear": "Create rotation",
+        "guardar": "Save changes",
+        "cancelar": "Cancel",
+        "creada": "Rotation created",
+        "guardada": "Rotation saved"
+      }
+    }
+  },
+  "hrmEquipo": {
+    "titulo": "My team",
+    "rrhh": "Human resources",
+    "programar": "Schedule the week",
+    "irInicio": "Go to home",
+    "directo": "direct",
+    "indirecto": "indirect",
+    "pestanaPersonas": "{n, plural, one {# person} other {# people}}",
+    "subtitulo": {
+      "personas": "{n, plural, one {# person} other {# people}}",
+      "conIndirectas": "{n} people ({directas} direct and {indirectas} indirect)"
+    },
+    "vistas": {
+      "etiqueta": "Team view",
+      "resumen": "Summary",
+      "calendario": "Calendar"
+    },
+    "kpi": {
+      "etiqueta": "Team summary",
+      "porAprobar": "To approve",
+      "porAprobarDetalle": "{ausencias, plural, one {# absence} other {# absences}} · {novedades, plural, one {# time event} other {# time events}}",
+      "faltan": "Missing today",
+      "faltanDetalle": "no clock-in or absence",
+      "tarde": "Late today",
+      "ausentes": "Absent this week",
+      "ausentesDetalle": "vacations and excused absences"
+    },
+    "pendientes": {
+      "titulo": "Your team's pending items",
+      "persona": "Person",
+      "pendiente": "Pending",
+      "desde": "Since",
+      "estadoCol": "Status",
+      "estado": {
+        "porAprobar": "To approve",
+        "falta": "Missing",
+        "porRevisar": "To review"
+      },
+      "hoy": "Today, {hora}",
+      "ayer": "Yesterday",
+      "haceDias": "{n} days ago",
+      "verPersona": "View person",
+      "revisarAprobaciones": "Review in Approvals",
+      "vacio": "Nothing pending",
+      "vacioDescripcion": "When someone on your team requests something or is missing, it shows up here.",
+      "vacaciones": "Vacation",
+      "ausencia": "Absence",
+      "ausenciaJustificada": "Excused absence",
+      "diasHabiles": "{n, plural, one {# business day} other {# business days}}",
+      "horasExtra": "Overtime",
+      "cambioTurno": "Shift swap",
+      "tardanza": "Late arrival",
+      "salidaTemprana": "Early leave",
+      "faltaHoy": "Today · no clock-in or absence",
+      "marcaPorRevisar": "Clock-in to review",
+      "marca": {
+        "check_in": "clock-in",
+        "check_out": "clock-out",
+        "break_start": "break start",
+        "break_end": "break end"
+      },
+      "revisar": {
+        "sin_ubicacion": "without location",
+        "computador_sin_qr": "from a computer",
+        "fuera_de_linea": "saved offline"
+      },
+      "h": "{h} h",
+      "hMin": "{h} h {m} min",
+      "min": "{m} min"
+    },
+    "semana": {
+      "titulo": "Week of {rango}",
+      "persona": "Person",
+      "festivo": "holiday",
+      "ausenciaJustificada": "Excused absence",
+      "ausencia": "Absence",
+      "ausente": "Absent",
+      "sinTurno": "No shift",
+      "descanso": "Rest",
+      "turno": "Shift",
+      "horas": "{h} h",
+      "vacio": "Your team has no published shifts this week",
+      "error": "The week could not be loaded"
+    },
+    "calendario": {
+      "titulo": "Team calendar",
+      "anterior": "Previous month",
+      "siguiente": "Next month",
+      "festivo": "Holiday",
+      "cruce": "Overlap · {n} from {area}",
+      "mas": "+{n} more",
+      "aviso": "{area} is left with {quedan} of {total} people from {desde} to {hasta}",
+      "avisoDescripcion": "Review the requests before approving.",
+      "error": "The calendar could not be loaded",
+      "nota": "The team's vacations and excused absences; never the health reason."
+    },
+    "persona": {
+      "cargando": "Loading…",
+      "reportaA": "reports to you through {nombre}",
+      "indirecto": "indirect",
+      "estadoHoy": "Status today",
+      "ausenteRegresa": "{que} · returns on {dia}",
+      "ausenciaJustificada": "Excused absence",
+      "ausente": "Absent",
+      "enTurno": "On shift",
+      "descanso": "Rest day",
+      "programado": "Starts at {hora}",
+      "sinTurno": "No shift today",
+      "turnoSemanaEtiqueta": "This week's shift",
+      "turnoSemana": "{plantilla} · {desde} to {hasta}",
+      "sinTurnos": "No published shifts",
+      "turno": "Shift",
+      "vacaciones": "Vacation available",
+      "diasHabiles": "{n, plural, one {# business day} other {# business days}}",
+      "horasPeriodo": "Hours this period",
+      "horasDe": "{h} h of {de} h",
+      "novedades": "Time events to approve",
+      "salario": "Salary and pay",
+      "salud": "Health",
+      "soloRrhh": "Human resources only.",
+      "verTurnos": "View shifts",
+      "verHoja": "View timesheet",
+      "cerrar": "Close",
+      "sinPermiso": "This person is not on your team"
+    },
+    "privacidad": {
+      "titulo": "You see your direct and indirect team",
+      "descripcion": "Salary, bank account and health information do not appear in this view. Sick leave shows as \"Excused absence\"."
+    },
+    "vacio": {
+      "titulo": "You have no direct reports",
+      "descripcion": "When Human resources makes you someone's manager in Areas, you will see their pending items and calendar here."
+    },
+    "sinPermiso": {
+      "titulo": "This view is for managers",
+      "descripcion": "It appears when you have at least one direct report. Your own information is on Home."
+    },
+    "error": {
+      "titulo": "Your team could not be loaded",
+      "descripcion": "Check your connection and try again."
+    }
+  },
+  "hrmMarcacion": {
+    "titulo": "Clock in",
+    "volver": "Back to home",
+    "cargando": "Loading your shift",
+    "irInicio": "Go to home",
+    "tuTurno": "Your shift",
+    "turno": "Shift",
+    "remoto": "remote",
+    "elegir": "Choose an option",
+    "horaDe": "{dia} · {sede} time",
+    "iniciarDescanso": "Start break",
+    "verMarcaciones": "View my clock-ins",
+    "sinDescanso": "No break",
+    "descansoNoPagado": "{min} min unpaid",
+    "descansoPagado": "{min} min paid",
+    "accion": {
+      "check_in": "Clock in",
+      "check_out": "Clock out",
+      "break_start": "Start break",
+      "break_end": "End break"
+    },
+    "tipo": {
+      "check_in": "Clock-in",
+      "check_out": "Clock-out",
+      "break_start": "Break start",
+      "break_end": "Break end"
+    },
+    "registrada": {
+      "check_in": "Clocked in at {hora}",
+      "check_out": "Clocked out at {hora}",
+      "break_start": "Break started at {hora}",
+      "break_end": "Break ended at {hora}"
+    },
+    "estado": {
+      "enTurno": "On shift",
+      "enDescanso": "On break · {min} min",
+      "tarde": "Not clocked in · {min} min late",
+      "cerrado": "Shift closed"
+    },
+    "detalle": {
+      "entrada": "Clock-in {hora} · {lugar}",
+      "desde": "Since {hora} · {lugar}",
+      "descanso": "On break since {hora} · {descanso}",
+      "cerrado": "Clock-out {hora}",
+      "guardada": "Since {hora} · saved on the phone",
+      "sinTurno": "No shift assigned right now"
+    },
+    "filas": {
+      "entrada": "Clock-in",
+      "descanso": "Break",
+      "salida": "Expected clock-out",
+      "quedan": "{hora} · {min} min left"
+    },
+    "metodo": {
+      "ubicacion": "location",
+      "qr": "branch QR",
+      "remoto": "remote"
+    },
+    "como": {
+      "titulo": "How you clock in",
+      "etiqueta": "How you clock in",
+      "ubicacion": "Location",
+      "qr": "Branch QR",
+      "remoto": "Remote"
+    },
+    "revisar": {
+      "sin_ubicacion": "without location: your manager reviews it",
+      "computador_sin_qr": "from a computer: your manager reviews it",
+      "fuera_de_linea": "saved offline: your manager reviews it"
+    },
+    "ubicacion": {
+      "etiqueta": "Location",
+      "autorizar": "Allow location",
+      "buscando": "Searching…",
+      "noDisponible": "Not available",
+      "sinSede": "The branch has no registered location",
+      "dentro": "Inside {sede} · {m} m away",
+      "fuera": "{m} m from the branch",
+      "precision": "Accuracy",
+      "metros": "± {m} m",
+      "nota": "Only when clocking in. We do not track your route or store the map."
+    },
+    "qr": {
+      "nota": "The QR changes every day. If you cannot find it, ask whoever opens {sede}.",
+      "volver": "Go back to clocking in with location"
+    },
+    "remotoAviso": {
+      "titulo": "Today you work from home",
+      "descripcion": "You have approved remote work. We do not ask for the branch location."
+    },
+    "computador": {
+      "titulo": "On a computer you clock in without location",
+      "descripcion": "The clock-in is valid if you scan the branch QR with your phone. If not, your manager reviews it."
+    },
+    "tarde": {
+      "motivo": "Reason (optional)",
+      "titulo": "It is recorded as a late arrival",
+      "descripcion": "Your manager reviews it before payroll. If it is approved as excused, it is not deducted."
+    },
+    "motivos": {
+      "transporte": "Transport",
+      "salud": "Health",
+      "familiar": "Family matter",
+      "clima": "Weather",
+      "otro": "Other"
+    },
+    "motivosFuera": {
+      "cubrir": "Covering for a coworker",
+      "inventario": "Inventory",
+      "evento": "Event or season",
+      "otro": "Other"
+    },
+    "fuera": {
+      "titulo": "You have no shift now",
+      "conSiguiente": "Your next shift is on {dia} at {hora}. If you clock in now, it goes to approval.",
+      "sinSiguiente": "You have no upcoming published shifts. If you clock in now, it goes to approval.",
+      "motivo": "Reason",
+      "quien": "Who asked for it?",
+      "nadie": "Nobody, it was my decision",
+      "marcar": "Clock in and send for approval"
+    },
+    "lejos": {
+      "titulo": "You are {m} m from {sede}",
+      "tituloSinDistancia": "You are outside {sede}",
+      "descripcion": "To clock in with location you must be less than {radio} m away. We do not store where you are.",
+      "qr": "Clock in with the branch QR",
+      "jefe": "View my clock-ins"
+    },
+    "permiso": {
+      "titulo": "Use your location to clock in",
+      "descripcion": "We take it only when you clock in, to confirm you are at the branch. We do not track your route.",
+      "queGuardamos": "What we store",
+      "queGuardamosTexto": "We store the location of each clock-in, its accuracy and the date of your consent. You can withdraw it at any time; without it, clock in with the branch QR.",
+      "permitir": "Allow",
+      "ahoraNo": "Not now"
+    },
+    "bloqueada": {
+      "titulo": "The browser did not share your location",
+      "descripcion": "No problem: your account is still protected. To enable it, open the padlock next to the address › Location.",
+      "entendido": "Got it",
+      "cerrar": "Close"
+    },
+    "sinSenal": {
+      "badge": "Offline",
+      "titulo": "Your clock-in is saved on the phone",
+      "descripcion": "We send it as soon as the signal returns. Do not sign out or clear the app data.",
+      "porEnviar": "Clock-ins to send ({n})",
+      "fila": "{tipo} · {hora} · {dia}",
+      "pendiente": "Pending sync",
+      "guardada": "No signal: the clock-in was saved on the phone",
+      "enviadas": "{n, plural, one {# clock-in sent} other {# clock-ins sent}}"
+    },
+    "sinSesion": {
+      "titulo": "Sign in to clock in",
+      "descripcion": "You must sign in to clock in to your shift.",
+      "entrar": "Sign in"
+    },
+    "sinVinculo": {
+      "titulo": "You have no active employment",
+      "descripcion": "Ask Human resources to check your contract in this organization."
+    },
+    "noMarca": {
+      "titulo": "Your position does not clock in",
+      "descripcion": "In your organization this position does not record attendance. If you think this is a mistake, talk to Human resources."
+    },
+    "error": {
+      "titulo": "Your shift could not be loaded",
+      "descripcion": "Check your connection and try again."
+    },
+    "errores": {
+      "error_hrm": "The clock-in could not be recorded. Try again.",
+      "sin_permiso": "You do not have access to this organization.",
+      "qr_invalido": "Invalid QR code. Scan the one the screen shows now.",
+      "qr_vencido": "The QR code expired. Scan the one the screen shows now.",
+      "qr_no_es_de_marcacion": "This QR is not for attendance.",
+      "qr_de_otra_organizacion": "This QR does not belong to your organization.",
+      "sin_vinculo_activo": "You have no active employment in this organization.",
+      "mecanismo_no_permitido": "Your company did not enable this clock-in method for you.",
+      "remoto_no_permitido": "Your work arrangement is on-site.",
+      "ubicacion_requiere_consentimiento": "This point asks for your location and you have not allowed it yet.",
+      "ubicacion_requerida": "This point asks for your location. Turn on GPS and try again.",
+      "marcacion_duplicada": "You already recorded this clock-in less than a minute ago.",
+      "metodo_invalido": "Clock in with the branch QR or from the app.",
+      "datos_invalidos": "Check the clock-in details."
+    },
+    "miAsistencia": {
+      "titulo": "My attendance",
+      "inicio": "Home",
+      "semana": "Week of {rango}",
+      "horaSede": "branch time",
+      "irInicio": "Go to home",
+      "marcaciones": "My clock-ins",
+      "buscar": "Search day…",
+      "todos": "All",
+      "ver": "Show {n, plural, one {# day} other {# days}}",
+      "festivo": "holiday",
+      "sinTurno": "No shift",
+      "descanso": "Rest",
+      "turno": "Shift",
+      "diaLibre": "Day off",
+      "sinSalidaAjuste": "No clock-out · request an adjustment",
+      "horas": "{h} h {m} min",
+      "columnas": {
+        "dia": "Day",
+        "turno": "Shift",
+        "entrada": "Clock-in",
+        "descanso": "Break",
+        "salida": "Clock-out",
+        "horas": "Hours",
+        "como": "How",
+        "estado": "Status"
+      },
+      "como": {
+        "ubicacion": "Location",
+        "qr": "Branch QR",
+        "remoto": "Remote",
+        "manual": "Recorded by HR"
+      },
+      "estado": {
+        "enTurno": "On shift",
+        "aTiempo": "On time",
+        "tarde": "Late",
+        "tardeMin": "Late {min} min",
+        "sinSalida": "No clock-out",
+        "libre": "Day off",
+        "porRevisar": "To review",
+        "sinMarcar": "Not clocked in"
+      },
+      "computador": {
+        "titulo": "On a computer you clock in without location",
+        "descripcion": "The clock-in is valid if you scan the branch QR with your phone. If not, your manager reviews it."
+      },
+      "vacio": {
+        "titulo": "You have no clock-ins yet",
+        "descripcion": "When you clock in to your shift, it shows up here with its clock-in, break and clock-out."
+      },
+      "sinResultados": "No day matches the search.",
+      "error": {
+        "titulo": "Your attendance could not be loaded",
+        "descripcion": "Check your connection and try again."
+      },
+      "noMarca": {
+        "titulo": "Your position does not clock in",
+        "descripcion": "In your organization this position does not record attendance. If you think this is a mistake, talk to Human resources."
       }
     }
   }

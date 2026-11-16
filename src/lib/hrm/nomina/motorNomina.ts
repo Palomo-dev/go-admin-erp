@@ -293,6 +293,10 @@ function devengadosOrdinarios(e: EntradaColilla, col: Colilla, vig: { desde: str
   const p = e.parametros;
   const porHora = e.vinculo.periodo_salario === 'hourly';
   const codSalario = e.vinculo.integral ? 'SALARIO_INTEGRAL' : 'SALARIO';
+  // El salario integral no puede ser menor de 13 SMMLV (CST 132).
+  if (e.vinculo.integral && mensualEn(e, vig.hasta) < num(p, 'salario_integral_minimo_smmlv', vig.hasta) * num(p, 'smmlv', vig.hasta)) {
+    col.alerta('integral_bajo_minimo', 'bloqueo');
+  }
 
   // 1. Salario por días y pago de ausencias, día por día con el salario y los parámetros de cada fecha.
   let salario = 0;
@@ -347,7 +351,7 @@ function devengadosOrdinarios(e: EntradaColilla, col: Colilla, vig: { desde: str
     }
     const valorHora = porHora ? (salarioEn(e, h.fecha) ?? 0) : mensualEn(e, h.fecha) / h.divisor;
     const esExtra = h.categoria.startsWith('extra');
-    let codigo = CONCEPTO_HORAS[h.categoria];
+    const codigo = CONCEPTO_HORAS[h.categoria];
     let factor = esExtra ? 1 + h.recargo : h.recargo;
     if (porHora && !esExtra) {
       // Por hora no hay salario que cubra la ordinaria: se paga la hora y aparte su recargo.

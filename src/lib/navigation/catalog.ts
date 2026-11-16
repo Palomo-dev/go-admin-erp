@@ -23,6 +23,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
+  AlarmClockCheck,
   AlertTriangle,
   Armchair,
   ArrowLeftRight,
@@ -43,6 +44,7 @@ import {
   CalendarCheck,
   CalendarClock,
   CalendarDays,
+  CalendarRange,
   ChefHat,
   ClipboardCheck,
   ClipboardList,
@@ -75,6 +77,7 @@ import {
   Key,
   Landmark,
   Layers,
+  LayoutDashboard,
   LayoutGrid,
   Link2,
   ListChecks,
@@ -84,6 +87,7 @@ import {
   MessageCircle,
   MessageSquare,
   Network,
+  NotebookPen,
   Package,
   ParkingCircle,
   Percent,
@@ -110,6 +114,7 @@ import {
   Ticket,
   TrendingDown,
   TrendingUp,
+  TreePalm,
   Truck,
   Undo2,
   Upload,
@@ -199,10 +204,10 @@ export interface ModuloNav {
  *  - verAnaliticaWeb: la misma regla que `GET /api/analitica-web`;
  *  - variasSedes: la organización tiene más de una sucursal activa.
  */
-export type CapacidadNav = 'gestionarNotificaciones' | 'verAnaliticaWeb' | 'variasSedes';
+export type CapacidadNav = 'gestionarNotificaciones' | 'verAnaliticaWeb' | 'variasSedes' | 'jefeDeEquipo';
 
 /** Todas las capacidades del menú, en una sola lista (cliente y servidor). */
-export const CAPACIDADES_NAV: readonly CapacidadNav[] = ['gestionarNotificaciones', 'verAnaliticaWeb', 'variasSedes'];
+export const CAPACIDADES_NAV: readonly CapacidadNav[] = ['gestionarNotificaciones', 'verAnaliticaWeb', 'variasSedes', 'jefeDeEquipo'];
 
 export const SECCIONES: { codigo: CodigoSeccion; etiqueta: string }[] = [
   { codigo: 'principal', etiqueta: 'sectionMain' },
@@ -557,10 +562,17 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/hrm/cargos', nombre: 'Cargos', icono: IdCard, grupo: 'Personas' },
       { href: '/app/hrm/plazas', nombre: 'Plazas', icono: Armchair, grupo: 'Personas' },
       { href: '/app/hrm/aprobaciones', nombre: 'Aprobaciones', icono: Stamp, grupo: 'Personas', enMenu: false },
-      { href: '/app/hrm/turnos', nombre: 'Turnos', icono: Clock, grupo: 'Tiempo' },
-      { href: '/app/hrm/marcacion', nombre: 'Marcación', icono: Clock, grupo: 'Tiempo' },
-      { href: '/app/hrm/asistencia', nombre: 'Asistencia', icono: UserCheck, grupo: 'Tiempo' },
-      { href: '/app/hrm/ausencias', nombre: 'Ausencias', icono: Calendar, grupo: 'Tiempo' },
+      // Fase 2 (Figma 20.8–20.15, decisiones 1 y 6 del 2026-11-16): RR. HH. ve 9
+      // pestañas (Empleados · Áreas · Cargos · Plazas · Turnos · Asistencia ·
+      // Novedades · Ausencias · Aprobaciones) y el jefe 6 (Mi equipo · Turnos ·
+      // Asistencia · Novedades · Ausencias · Aprobaciones). «Mi equipo» solo la ve
+      // quien tiene personas a cargo y no es de RR. HH. (capacidad `jefeDeEquipo`).
+      { href: '/app/hrm/mi-equipo', nombre: 'Mi equipo', icono: LayoutDashboard, grupo: 'Personas', requiere: 'jefeDeEquipo' },
+      { href: '/app/hrm/turnos', nombre: 'Turnos', icono: CalendarRange, grupo: 'Tiempo' },
+      { href: '/app/hrm/marcacion', nombre: 'Marcación', icono: AlarmClockCheck, grupo: 'Tiempo' },
+      { href: '/app/hrm/asistencia', nombre: 'Asistencia', icono: CalendarCheck, grupo: 'Tiempo' },
+      { href: '/app/hrm/novedades', nombre: 'Novedades', icono: NotebookPen, grupo: 'Tiempo' },
+      { href: '/app/hrm/ausencias', nombre: 'Ausencias', icono: TreePalm, grupo: 'Tiempo' },
       { href: '/app/hrm/nomina', nombre: 'Nómina', icono: DollarSign, grupo: 'Pagos' },
       { href: '/app/hrm/compensacion', nombre: 'Compensación', icono: HandCoins, grupo: 'Pagos' },
       { href: '/app/hrm/prestamos', nombre: 'Préstamos', icono: Wallet, grupo: 'Pagos' },

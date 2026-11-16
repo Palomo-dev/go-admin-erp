@@ -64,6 +64,7 @@ export const GET = withOrg(async (ctx) => {
         gestionarNotificaciones: nav.has('gestionarNotificaciones'),
         verAnaliticaWeb: nav.has('verAnaliticaWeb'),
         variasSedes: nav.has('variasSedes'),
+        jefeDeEquipo: nav.has('jefeDeEquipo'),
         crearSucursal,
         gestionarOrganizacion,
         gestionarMiembros: esAdmin,

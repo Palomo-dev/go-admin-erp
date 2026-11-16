@@ -2,10 +2,15 @@
 
 /**
  * Pestañas del módulo Recursos humanos (Figma 20, decisión 1 del dueño):
- * Empleados · Áreas · Cargos · Plazas · Aprobaciones.
+ * - RR. HH.: Empleados · Áreas · Cargos · Plazas · Turnos · Asistencia ·
+ *   Novedades · Ausencias · Aprobaciones;
+ * - el jefe: Mi equipo · Turnos · Asistencia · Novedades · Ausencias · Aprobaciones.
  *
- * - La lista NO se cablea: sale del catálogo de navegación ya filtrado por la
- *   organización y el cargo (`usePaginasModulo('hrm')`), igual que el menú.
+ * - Qué vista corresponde y los contadores (Empleados, Novedades, Mi equipo)
+ *   los decide el servidor: `GET /api/hrm/pestanas`.
+ * - La lista NO se cablea por permisos: cada pestaña sale del catálogo de
+ *   navegación ya filtrado por la organización y el cargo
+ *   (`usePaginasModulo('hrm')`), igual que el menú.
  * - «Aprobaciones» lleva contador y solo la ve quien tiene algo por aprobar
  *   (o quien ya está en ella). El contador lo da `GET /api/hrm/aprobaciones`.
  * - Las páginas de detalle y de formulario no la muestran: las migas la
@@ -21,16 +26,41 @@ import { moduloPorCodigo, type PaginaNav } from '@/lib/navigation/catalog';
 import { usePaginasModulo, useNavegacionVisible } from '@/lib/navigation/NavegacionVisible';
 import { useNombresNav } from '@/lib/navigation/useNombresNav';
 import { useDesplazamientoHorizontal } from '@/components/kit/useDesplazamientoHorizontal';
-import { PESTANAS_HRM, RUTA_APROBACIONES_HRM, mostrarPestanaAprobaciones, pestanaHrmActiva } from './navHrmLogica';
+import {
+  RUTA_APROBACIONES_HRM,
+  RUTA_MI_EQUIPO,
+  RUTA_NOVEDADES_HRM,
+  contadorDePestana,
+  mostrarPestanaAprobaciones,
+  pestanaHrmActiva,
+  pestanasDeVista,
+  type ContadoresPestanas,
+  type VistaPestanas,
+} from './navHrmLogica';
 
 /** `incrustada`: dentro del `debajo` del PageHeader (Figma corregido); si no, barra a todo el ancho. */
 export function NavPestanasHrm({ className, incrustada = false }: { className?: string; incrustada?: boolean }) {
   const pathname = usePathname() ?? '';
   const t = useTranslations('hrmPersonas.pestanas');
+  const tEq = useTranslations('hrmEquipo');
   const nombres = useNombresNav();
   const nav = useNavegacionVisible();
   const visibles = usePaginasModulo('hrm');
   const [pendientes, setPendientes] = useState<number | null>(null);
+  const [vista, setVista] = useState<{ vista: VistaPestanas; contadores: ContadoresPestanas } | null>(null);
+
+  useEffect(() => {
+    let vigente = true;
+    fetch('/api/hrm/pestanas', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { vista?: VistaPestanas; contadores?: ContadoresPestanas } | null) =>
+        vigente && setVista({ vista: d?.vista ?? 'ninguna', contadores: d?.contadores ?? {} })
+      )
+      .catch(() => vigente && setVista({ vista: 'ninguna', contadores: {} }));
+    return () => {
+      vigente = false;
+    };
+  }, [pathname]);
 
   useEffect(() => {
     let vigente = true;
@@ -45,10 +75,14 @@ export function NavPestanasHrm({ className, incrustada = false }: { className?: 
 
   const catalogo = moduloPorCodigo('hrm')?.paginas ?? [];
   const base: PaginaNav[] | null = nav ? visibles : catalogo;
+  // Aprobaciones no va en el menú y «Mi equipo» la decide el servidor: si el
+  // catálogo filtrado no las trae, se toman del catálogo completo.
+  const sinMenu = (href: string) => href === RUTA_APROBACIONES_HRM || (href === RUTA_MI_EQUIPO && vista?.vista === 'jefe');
   const paginas =
-    base === null
+    base === null || vista === null
       ? null
-      : PESTANAS_HRM.map((href) => base.find((p) => p.href === href) ?? (href === RUTA_APROBACIONES_HRM ? catalogo.find((p) => p.href === href) : undefined))
+      : pestanasDeVista(vista.vista)
+          .map((href) => base.find((p) => p.href === href) ?? (sinMenu(href) ? catalogo.find((p) => p.href === href) : undefined))
           .filter((p): p is PaginaNav => !!p)
           .filter((p) => p.href !== RUTA_APROBACIONES_HRM || mostrarPestanaAprobaciones(pendientes, pathname));
   const activa = pestanaHrmActiva(pathname);
@@ -62,10 +96,10 @@ export function NavPestanasHrm({ className, incrustada = false }: { className?: 
         className="-mb-px flex min-w-0 flex-1 items-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {paginas === null
-          ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="my-3 h-5 w-20 shrink-0" />)
+          ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="my-3 h-5 w-20 shrink-0" />)
           : paginas.map((p) => {
               const esActiva = p.href === activa;
-              const contador = p.href === RUTA_APROBACIONES_HRM && pendientes ? pendientes : null;
+              const contador = contadorDePestana(p.href, vista?.contadores ?? null, pendientes);
               return (
                 <Link
                   key={p.href}
@@ -80,7 +114,11 @@ export function NavPestanasHrm({ className, incrustada = false }: { className?: 
                   {nombres.pagina(p)}
                   {contador ? (
                     <span
-                      aria-label={t('pendientes', { n: contador })}
+                      aria-label={
+                        p.href === RUTA_APROBACIONES_HRM || p.href === RUTA_NOVEDADES_HRM
+                          ? t('pendientes', { n: contador })
+                          : tEq('pestanaPersonas', { n: contador })
+                      }
                       className={cn(
                         'rounded-full px-1.5 text-xs tabular-nums',
                         esActiva ? 'bg-brand-tint text-brand-deep' : 'bg-subtle text-fg-secondary'

@@ -22,6 +22,10 @@ export const PAGINAS_CON_PESTANAS_PROPIAS: readonly string[] = [
   '/app/hrm/cargos',
   '/app/hrm/plazas',
   '/app/hrm/aprobaciones',
+  '/app/hrm/turnos',
+  '/app/hrm/mi-equipo',
+  '/app/hrm/asistencia',
+  '/app/hrm/novedades',
   '/app/hrm/ausencias',
 ];
 

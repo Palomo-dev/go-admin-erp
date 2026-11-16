@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import PayrollService from '@/lib/services/payrollService';
-import PayrollCalculationService from '@/lib/services/payrollCalculationService';
+import { preliquidarPeriodo } from '@/lib/services/hrm/nomina/preliquidarCliente';
 import type { PayrollPeriod, PeriodFilters } from '@/lib/services/payrollService';
 import { supabase } from '@/lib/supabase/config';
 import { PeriodsTable } from '@/components/hrm/nomina';
@@ -180,8 +180,8 @@ export default function NominaPage() {
 
     setIsCalculating(true);
     try {
-      const calculationService = new PayrollCalculationService(organization.id);
-      const result = await calculationService.calculatePeriod(selectedPeriodId, currentUserId);
+      // Preliquida en el servidor con el motor de la fase 3 (ADR-003).
+      const result = await preliquidarPeriodo(selectedPeriodId);
 
       toast({
         title: 'Cálculo completado',

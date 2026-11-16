@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Briefcase,
   Building2,
   Globe,
   MapPin,
@@ -44,7 +45,8 @@ export const moduleIcons: Record<string, LucideIcon> = {
   'pms_hotel': Bed,
   'parking': Car,
   'crm': UserCheck,
-  'hrm': Users,
+  // CATALOGO-ICONOS.md (adenda RR. HH.): el módulo es Briefcase.
+  'hrm': Briefcase,
   'finance': Landmark,
   'reports': BarChart3,
   'notifications': Bell,
@@ -142,7 +144,7 @@ export const moduleSubroutes: Record<string, ModuleSubroute[]> = {
     ...CRM_MODULE_SUBROUTES,
   ],
   'hrm': [
-    { name: 'Recursos Humanos', path: '/app/hrm', icon: Users }
+    { name: 'Recursos Humanos', path: '/app/hrm', icon: Briefcase }
   ],
   'finance': [
     { name: 'Finanzas', path: '/app/finanzas', icon: BarChart3 },

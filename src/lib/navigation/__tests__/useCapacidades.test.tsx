@@ -15,6 +15,7 @@ const RESPUESTA: Capacidades = {
     gestionarNotificaciones: false,
     verAnaliticaWeb: false,
     variasSedes: false,
+    jefeDeEquipo: false,
     crearSucursal: false,
     gestionarOrganizacion: true,
     gestionarMiembros: true,

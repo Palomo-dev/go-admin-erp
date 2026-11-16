@@ -952,20 +952,25 @@
         "sinMarcar": "Sem marcar · {min} min de atraso",
         "enTurno": "Em turno",
         "cerrado": "Turno encerrado",
-        "sinTurno": "Sem turno atribuído hoje"
+        "sinTurno": "Sem turno atribuído hoje",
+        "enDescanso": "Em intervalo · {min} min"
       },
       "detalle": {
         "entrada": "Entrada {hora}{sucursal}",
         "enTurno": "Desde {hora} · {duracion} · seu turno termina às {fin}",
         "cerrado": "{entrada} – {salida} · {duracion}",
-        "sinTurno": "Marque com o código QR do local"
+        "sinTurno": "Marque com o código QR do local",
+        "enDescanso": "Em intervalo desde {hora}",
+        "descansoNoPagado": "{min} min não remunerados",
+        "descansoPagado": "{min} min remunerados"
       },
       "acciones": {
         "marcarEntrada": "Marcar entrada",
         "marcarSalida": "Marcar saída",
         "marcarSalidaTiempo": "Marcar saída · {duracion}",
         "verMarcaciones": "Ver minhas marcações",
-        "marcarTurno": "Marcar ponto"
+        "marcarTurno": "Marcar ponto",
+        "terminarDescanso": "Encerrar intervalo"
       }
     },
     "periodo": {
@@ -4589,7 +4594,8 @@
       "hrm_areas": "Áreas",
       "hrm_plazas": "Vagas",
       "hrm_aprobaciones": "Aprovações",
-      "hrm_novedades": "Ocorrências"
+      "hrm_novedades": "Ocorrências",
+      "hrm_mi-equipo": "Minha equipe"
     },
     "grupos": {
       "venta": "Venda",
@@ -57605,6 +57611,804 @@
       "sinPermiso": {
         "titulo": "Você não tem acesso às ocorrências",
         "descripcion": "Cada gestor aprova as da sua equipe, e Recursos humanos as de toda a unidade."
+      }
+    }
+  },
+  "hrmTurnos": {
+    "titulo": "Turnos",
+    "rrhh": "Recursos humanos",
+    "vistas": {
+      "etiqueta": "Visualização de turnos",
+      "programacion": "Programação",
+      "plantillas": "Modelos",
+      "rotaciones": "Rodízios"
+    },
+    "errores": {
+      "error_hrm": "Não foi possível concluir. Tente novamente.",
+      "sin_permiso": "Você não tem permissão para programar turnos.",
+      "turno_cruzado": "Esse turno se sobrepõe a outro da mesma pessoa.",
+      "turno_sin_horario": "O turno precisa de um modelo ou de hora de início e de fim.",
+      "rango_invalido": "Revise as datas.",
+      "datos_invalidos": "Revise os dados do turno.",
+      "no_existe": "Esse registro não existe mais.",
+      "cambio_invalido": "Os dois turnos devem ser do mesmo dia e de pessoas diferentes.",
+      "nada_que_deshacer": "Já se passaram mais de 10 minutos: não é possível desfazer.",
+      "nombre_requerido": "Digite um nome.",
+      "hora_invalida": "Revise a hora de início e de fim.",
+      "descanso_invalido": "O intervalo não é válido.",
+      "patron_invalido": "Revise os dias do rodízio.",
+      "plantilla_invalida": "Esse modelo não é válido.",
+      "rotacion_invalida": "Esse rodízio não é válido.",
+      "vinculos_invalidos": "Escolha pelo menos uma pessoa.",
+      "duplicado": "Já existe um igual."
+    },
+    "bloque": {
+      "festivo": "feriado",
+      "horas": "{h} h",
+      "personalizado": "Turno",
+      "ausenciaJustificada": "Ausência",
+      "ausenteIncapacidad": "Ausente",
+      "ausencia": "Ausência",
+      "solicitada": "Solicitada",
+      "aprobada": "Aprovada",
+      "justificada": "Justificada",
+      "incapacidad": "licença médica",
+      "descanso": "Folga",
+      "diaLibre": "Dia livre",
+      "cruzaCon": "Sobrepõe {plantilla}",
+      "pasaTope": "Passa do limite: {h} h",
+      "pasaTopeDia": "Passa do limite do dia"
+    },
+    "programacion": {
+      "subtitulo": {
+        "semana": "Semana de {rango}",
+        "personas": "{n, plural, one {# pessoa} other {# pessoas}} em {areas}",
+        "sinTurnos": "sem turnos",
+        "borrador": "rascunho não publicado",
+        "publicada": "publicada {cuando}"
+      },
+      "y": " e ",
+      "copiarAnterior": "Copiar semana anterior",
+      "copiarSiguiente": "Copiar para a próxima semana",
+      "editarSemana": "Editar semana",
+      "publicar": "Publicar e avisar",
+      "nadaQuePublicar": "Não há mudanças para publicar",
+      "aplicarRotacion": "Aplicar rodízio",
+      "semanaAnterior": "Semana anterior",
+      "semanaSiguiente": "Próxima semana",
+      "estaSemana": "Esta semana",
+      "dia": "Dia",
+      "buscar": "Buscar pessoa ou cargo…",
+      "festivo": "feriado",
+      "horas": "{h} h",
+      "horasMin": "{h} h {m} min",
+      "sinTurno": "Sem turno",
+      "irInicio": "Ir para o início",
+      "tabla": "Turnos da semana de {rango}",
+      "turnoDe": "Turno de {nombre} · {dia}",
+      "copiada": "{n, plural, =0 {Não havia turnos para copiar} one {# turno copiado como rascunho} other {# turnos copiados como rascunho}}{omitidos, plural, =0 {} other { · # já tinham turno}}",
+      "copiadoResto": "Turno copiado para o resto da semana",
+      "copiaParcial": "{n, plural, one {# dia não pôde ser copiado} other {# dias não puderam ser copiados}}: eles se sobrepõem a outro turno.",
+      "descansoMarcado": "Dia de folga definido",
+      "quitado": "Turno removido",
+      "deshecha": "Publicação desfeita: a semana volta a ser rascunho.",
+      "menu": {
+        "asignar": "Atribuir turno",
+        "cambiarHorario": "Mudar horário",
+        "otraPlantilla": "Usar outro modelo",
+        "marcarDescanso": "Definir folga",
+        "copiarResto": "Copiar para o resto da semana",
+        "cambiarPersona": "Trocar com outra pessoa",
+        "quitar": "Remover turno"
+      },
+      "menuCabecera": {
+        "imprimir": "Imprimir a semana",
+        "csv": "Exportar para CSV",
+        "aplicarRotacion": "Aplicar um rodízio",
+        "topes": "Limites e alertas",
+        "topesDescripcion": "Configurações › Recursos humanos"
+      },
+      "columnas": {
+        "persona": "Pessoa",
+        "horas": "Horas"
+      },
+      "estado": {
+        "cruce": "Sobreposição",
+        "tope": "Limite",
+        "ausente": "Ausente"
+      },
+      "aviso": {
+        "revisa": "Revise {cruces, plural, one {# sobreposição} other {# sobreposições}}{topes, plural, =0 {} one { e # limite} other { e # limites}} antes de publicar",
+        "revisaDescripcion": "Uma sobreposição de horários impede a publicação. Um limite pode ser publicado com motivo e vira uma ocorrência.",
+        "soloTopes": "{n, plural, one {Falta # limite para publicar com motivo} other {Faltam # limites para publicar com motivo}}",
+        "soloTopesDescripcion": "O motivo fica na ocorrência de horas extras para que o gestor a aprove antes da folha.",
+        "revisar": "Revisar",
+        "publicada": "Semana publicada: {n, plural, one {# pessoa avisada} other {# pessoas avisadas}}",
+        "publicadaAntes": "Semana publicada",
+        "publicadaDescripcion": "Cada pessoa recebeu sua semana no app. A partir de agora, uma mudança é avisada só a quem ela afeta."
+      },
+      "publicada": {
+        "toastTitulo": "Semana publicada",
+        "toastDescripcion": "{n, plural, one {# pessoa avisada} other {# pessoas avisadas}}. Você pode desfazer durante 10 minutos.",
+        "deshacer": "Desfazer"
+      },
+      "confirmar": {
+        "titulo": "Publicar a semana de {rango} e avisar {n, plural, one {# pessoa} other {# pessoas}}?",
+        "descripcion": "Cada pessoa recebe sua semana no app. A partir de agora, uma mudança é avisada só a quem ela afeta.",
+        "conTope": "Cada pessoa recebe sua semana no app. Alguém passa de um limite de horas: escreva o motivo para que chegue a Ocorrências.",
+        "motivo": "Motivo do limite",
+        "placeholder": "Ex.: inventário de fim de mês"
+      },
+      "quitar": {
+        "titulo": "Remover o turno de {nombre}?",
+        "borrador": "É um rascunho: ninguém o viu ainda.",
+        "publicado": "O turno já estava publicado: a pessoa é avisada quando você publicar de novo.",
+        "confirmar": "Remover turno"
+      },
+      "filtros": {
+        "equipo": "Equipe",
+        "cargo": "Cargo",
+        "mostrar": "Mostrar",
+        "todo": "Tudo",
+        "cruces": "Com sobreposições",
+        "topes": "Com limites",
+        "estado": "Status do turno",
+        "todos": "Todos",
+        "todas": "Todos",
+        "borrador": "Rascunho",
+        "plantilla": "Modelo",
+        "incluirAusencias": "Incluir ausências aprovadas",
+        "incluirDescansos": "Incluir folgas",
+        "soloConTurno": "Só pessoas com turno",
+        "nota": "As mudanças se aplicam na hora. A unidade é definida pelo seletor do cabeçalho.",
+        "ver": "Ver {n, plural, one {# pessoa} other {# pessoas}}",
+        "chipArea": "Equipe: {area}"
+      },
+      "vacio": {
+        "titulo": "Esta semana não tem turnos",
+        "descripcion": "Copie a semana anterior, aplique um rodízio ou programe à mão. Ninguém é avisado até publicar."
+      },
+      "sinResultados": {
+        "titulo": "Ninguém corresponde aos filtros",
+        "descripcion": "Mude a busca ou limpe os filtros."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os turnos",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso aos turnos desta unidade",
+        "descripcion": "Peça ao RH a permissão «Programar turnos». Seus próprios turnos estão no Início."
+      },
+      "nota": {
+        "borrador": "Os turnos pontilhados são rascunho: ninguém os vê até publicar.",
+        "nocturnas": "As horas noturnas são contadas com o parâmetro vigente em cada data.",
+        "festivos": "Os turnos de {dias} contam como feriado."
+      }
+    },
+    "dialogoTurno": {
+      "titulo": {
+        "horario": "Mudar horário · {nombre}",
+        "plantilla": "Usar outro modelo · {nombre}",
+        "nuevo": "Atribuir turno · {nombre}"
+      },
+      "descripcion": "Fica como rascunho até publicar a semana.",
+      "plantilla": "Modelo",
+      "personalizado": "Horário personalizado",
+      "empieza": "Começa",
+      "termina": "Termina",
+      "descanso": "Intervalo",
+      "sinDescanso": "Sem intervalo",
+      "descansoNoPagado": "{min} min não remunerados",
+      "cruzaMedianoche": "Termina no dia seguinte: passa da meia-noite.",
+      "nota": "As horas são contadas no fuso horário da unidade.",
+      "guardar": "Salvar",
+      "cancelar": "Cancelar",
+      "guardado": "Turno salvo como rascunho"
+    },
+    "intercambio": {
+      "titulo": "Trocar com outra pessoa · {dia}",
+      "descripcion": "{nombre} assume o horário da outra pessoa e a outra, o dela.",
+      "con": "Trocar com",
+      "descanso": "Folga",
+      "sinCandidatas": "Ninguém mais tem turno nesse dia.",
+      "cambiar": "Trocar turnos",
+      "cancelar": "Cancelar",
+      "hecho": "Turnos trocados"
+    },
+    "hallazgos": {
+      "turno": "Turno",
+      "y": " e ",
+      "cruce": "Dois turnos se sobrepõem em {dia}",
+      "enAusencia": "Turno durante uma ausência em {dia}",
+      "enAusenciaDetalle": "Tem uma ausência solicitada ou aprovada nesse dia",
+      "extraDia": "{h} h extras em {dia}",
+      "jornadaDiaria": "Passa da jornada diária máxima",
+      "topeExtraDia": "Limite diário de horas extras: {h} h",
+      "semana": "{h} h na semana",
+      "topeSemana": "Limite semanal vigente: {h} h",
+      "topeExtraSemana": "Limite semanal de horas extras: {h} h",
+      "sinDescanso": "Semana sem dia de folga",
+      "sinDescansoDetalle": "Trabalha os 7 dias",
+      "diaDescanso": "Trabalha no dia de folga em {dia}",
+      "ocasional": "Ocasional · {n} no mês",
+      "habitual": "Habitual · {n} no mês"
+    },
+    "revisar": {
+      "titulo": "Revise antes de publicar",
+      "descripcion": "Semana de {rango} · {n, plural, one {# assunto} other {# assuntos}}. As sobreposições bloqueiam a publicação; os limites podem ser publicados com motivo.",
+      "persona": "Pessoa",
+      "quePasa": "O que acontece",
+      "tipoCol": "Tipo",
+      "tipo": {
+        "cruce": "Sobreposição",
+        "tope": "Limite",
+        "aviso": "Aviso"
+      },
+      "sinHallazgos": "Não há nada para revisar",
+      "topesTitulo": "Os limites vêm dos parâmetros vigentes",
+      "topesDescripcion": "Jornada semanal máxima e horas extras por dia e por semana. São lidos por data: um turno que atravessa uma mudança usa o valor de cada hora.",
+      "corregir": "Corrigir a sobreposição",
+      "publicarConMotivo": "Publicar com motivo",
+      "cancelar": "Cancelar"
+    },
+    "aplicarRotacion": {
+      "titulo": "Aplicar um rodízio",
+      "descripcion": "Gera a semana de {rango} como rascunho. Não substitui os turnos que já existem.",
+      "rotacion": "Rodízio",
+      "personas": "Pessoas",
+      "sinRotaciones": "Ainda não há rodízios ativos.",
+      "nota": "Um rodízio propõe, não publica: você revisa sobreposições e limites antes de publicar.",
+      "generar": "Gerar rascunho",
+      "falta": "Escolha um rodízio e pelo menos uma pessoa.",
+      "cancelar": "Cancelar",
+      "hecho": "{n, plural, =0 {Nenhum turno foi criado} one {# turno criado como rascunho} other {# turnos criados como rascunho}}{omitidos, plural, =0 {} other { · # ignorados}}"
+    },
+    "plantillas": {
+      "titulo": "Modelos de turno",
+      "subtitulo": "{n, plural, one {# modelo} other {# modelos}} · usados ao programar e nos rodízios",
+      "nueva": "Novo modelo",
+      "buscar": "Buscar modelo…",
+      "todas": "Todos",
+      "activas": "Ativos",
+      "inactivas": "Inativos",
+      "activa": "Ativo",
+      "inactiva": "Inativo",
+      "ver": "Ver {n, plural, one {# modelo} other {# modelos}}",
+      "h": "{h} h",
+      "hMin": "{h} h {m} min",
+      "nocturnasDesde": "{duracion} (a partir das {hora})",
+      "sinDescanso": "Sem intervalo",
+      "descansoNoPagado": "{min} min não remunerados",
+      "descansoPagado": "{min} min remunerados",
+      "cruzaMedianoche": "passa da meia-noite",
+      "personas": "{n, plural, =0 {0 pessoas} one {# pessoa} other {# pessoas}}",
+      "sinUso": "Sem uso",
+      "activada": "Modelo ativado",
+      "desactivada": "Modelo desativado",
+      "irInicio": "Ir para o início",
+      "nota": "As horas noturnas são contadas com o parâmetro vigente em cada data: hoje, a partir das {hora} (Lei 2466 de 2025).",
+      "sinResultados": "Nenhum modelo corresponde à busca.",
+      "columnas": {
+        "plantilla": "Modelo",
+        "horas": "Horas",
+        "nocturnas": "Noturnas",
+        "descanso": "Intervalo",
+        "dias": "Dias",
+        "uso": "Em uso",
+        "estado": "Status"
+      },
+      "menu": {
+        "editar": "Editar modelo",
+        "duplicar": "Duplicar",
+        "verUso": "Ver quem usa",
+        "desactivar": "Desativar",
+        "activar": "Ativar"
+      },
+      "vacio": {
+        "titulo": "Ainda não há modelos de turno",
+        "descripcion": "Um modelo guarda o horário e o intervalo de um turno para programar mais rápido."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os modelos",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso aos modelos",
+        "descripcion": "Peça ao RH a permissão «Programar turnos»."
+      },
+      "dias": {
+        "d1": "seg",
+        "d2": "ter",
+        "d3": "qua",
+        "d4": "qui",
+        "d5": "sex",
+        "d6": "sáb",
+        "d7": "dom",
+        "par": "{a} e {b}",
+        "rango": "{desde} a {hasta}"
+      },
+      "dialogo": {
+        "tituloNueva": "Novo modelo de turno",
+        "tituloEditar": "Editar modelo de turno",
+        "descripcion": "Serve para programar a semana e para os rodízios.",
+        "nombre": "Nome",
+        "nombreRequerido": "Digite o nome do modelo.",
+        "copiaDe": "{nombre} (cópia)",
+        "empieza": "Começa",
+        "termina": "Termina",
+        "descanso": "Intervalo",
+        "cruza": "Passa da meia-noite",
+        "cruzaAyuda": "É marcado sozinho quando a hora de fim é menor ou igual à de início.",
+        "dias": "Dias em que é usado",
+        "duracion": "Duração",
+        "nocturnas": "Noturnas",
+        "nocturnasDesde": "{duracion} (a partir das {hora})",
+        "diurnas": "Diurnas",
+        "nota": "As noturnas são recalculadas se o parâmetro mudar: o modelo guarda horas, não adicionais.",
+        "crear": "Criar modelo",
+        "guardar": "Salvar alterações",
+        "cancelar": "Cancelar",
+        "creada": "Modelo criado",
+        "guardada": "Modelo salvo"
+      }
+    },
+    "rotaciones": {
+      "titulo": "Rodízios",
+      "subtitulo": "{n, plural, one {# rodízio} other {# rodízios}} · geram a programação das próximas semanas como rascunho",
+      "nueva": "Novo rodízio",
+      "buscar": "Buscar rodízio…",
+      "todas": "Todos",
+      "activas": "Ativos",
+      "pausadas": "Pausados",
+      "activa": "Ativo",
+      "pausadaEstado": "Pausado",
+      "ver": "Ver {n, plural, one {# rodízio} other {# rodízios}}",
+      "descanso": "folga",
+      "semanas": "{n, plural, one {# semana} other {# semanas}}",
+      "dias": "{n, plural, one {# dia} other {# dias}}",
+      "personas": "{n, plural, =0 {0 pessoas} one {# pessoa} other {# pessoas}}",
+      "borrador": "{rango} (rascunho)",
+      "pausada": "Rodízio pausado",
+      "reanudada": "Rodízio retomado",
+      "irInicio": "Ir para o início",
+      "sinResultados": "Nenhum rodízio corresponde à busca.",
+      "columnas": {
+        "rotacion": "Rodízio",
+        "ciclo": "Ciclo",
+        "personas": "Pessoas",
+        "empezo": "Começou",
+        "proxima": "Última semana gerada",
+        "estado": "Status"
+      },
+      "menu": {
+        "editar": "Editar rodízio",
+        "generar": "Gerar a próxima semana",
+        "pausar": "Pausar",
+        "reanudar": "Retomar"
+      },
+      "aviso": {
+        "titulo": "Um rodízio propõe, não publica",
+        "descripcion": "Gera a semana como rascunho; sobreposições e limites são revisados como na programação antes de publicar."
+      },
+      "vacio": {
+        "titulo": "Ainda não há rodízios",
+        "descripcion": "Um rodízio repete um ciclo de modelos e folgas para gerar as próximas semanas."
+      },
+      "error": {
+        "titulo": "Não foi possível carregar os rodízios",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "sinPermiso": {
+        "titulo": "Você não tem acesso aos rodízios",
+        "descripcion": "Peça ao RH a permissão «Programar turnos»."
+      },
+      "dialogo": {
+        "tituloNueva": "Novo rodízio",
+        "tituloEditar": "Editar rodízio",
+        "descripcion": "Escolha o modelo de cada dia do ciclo; um dia sem modelo é folga.",
+        "nombre": "Nome",
+        "nombreRequerido": "Digite o nome do rodízio.",
+        "descripcionCampo": "Descrição",
+        "descripcionAyuda": "Ex.: Abertura → Intermediário → Fechamento",
+        "ciclo": "Ciclo",
+        "semanas": "{n, plural, one {# semana} other {# semanas}}",
+        "semana": "Semana {n}",
+        "descanso": "Folga",
+        "crear": "Criar rodízio",
+        "guardar": "Salvar alterações",
+        "cancelar": "Cancelar",
+        "creada": "Rodízio criado",
+        "guardada": "Rodízio salvo"
+      }
+    }
+  },
+  "hrmEquipo": {
+    "titulo": "Minha equipe",
+    "rrhh": "Recursos humanos",
+    "programar": "Programar a semana",
+    "irInicio": "Ir para o início",
+    "directo": "direto",
+    "indirecto": "indireto",
+    "pestanaPersonas": "{n, plural, one {# pessoa} other {# pessoas}}",
+    "subtitulo": {
+      "personas": "{n, plural, one {# pessoa} other {# pessoas}}",
+      "conIndirectas": "{n} pessoas ({directas} diretas e {indirectas} indiretas)"
+    },
+    "vistas": {
+      "etiqueta": "Visualização da equipe",
+      "resumen": "Resumo",
+      "calendario": "Calendário"
+    },
+    "kpi": {
+      "etiqueta": "Resumo da equipe",
+      "porAprobar": "Para aprovar",
+      "porAprobarDetalle": "{ausencias, plural, one {# ausência} other {# ausências}} · {novedades, plural, one {# ocorrência} other {# ocorrências}}",
+      "faltan": "Faltam hoje",
+      "faltanDetalle": "sem marcação nem ausência",
+      "tarde": "Chegaram atrasados hoje",
+      "ausentes": "Ausentes nesta semana",
+      "ausentesDetalle": "férias e ausências justificadas"
+    },
+    "pendientes": {
+      "titulo": "Pendências da sua equipe",
+      "persona": "Pessoa",
+      "pendiente": "Pendência",
+      "desde": "Desde",
+      "estadoCol": "Status",
+      "estado": {
+        "porAprobar": "Para aprovar",
+        "falta": "Falta",
+        "porRevisar": "Para revisar"
+      },
+      "hoy": "Hoje, {hora}",
+      "ayer": "Ontem",
+      "haceDias": "Há {n} dias",
+      "verPersona": "Ver pessoa",
+      "revisarAprobaciones": "Revisar em Aprovações",
+      "vacio": "Nada pendente",
+      "vacioDescripcion": "Quando alguém da sua equipe pedir algo ou faltar, aparece aqui.",
+      "vacaciones": "Férias",
+      "ausencia": "Ausência",
+      "ausenciaJustificada": "Ausência justificada",
+      "diasHabiles": "{n, plural, one {# dia útil} other {# dias úteis}}",
+      "horasExtra": "Horas extras",
+      "cambioTurno": "Troca de turno",
+      "tardanza": "Atraso",
+      "salidaTemprana": "Saída antecipada",
+      "faltaHoy": "Hoje · sem marcação nem ausência",
+      "marcaPorRevisar": "Marcação para revisar",
+      "marca": {
+        "check_in": "entrada",
+        "check_out": "saída",
+        "break_start": "início do intervalo",
+        "break_end": "fim do intervalo"
+      },
+      "revisar": {
+        "sin_ubicacion": "sem localização",
+        "computador_sin_qr": "de um computador",
+        "fuera_de_linea": "salva sem sinal"
+      },
+      "h": "{h} h",
+      "hMin": "{h} h {m} min",
+      "min": "{m} min"
+    },
+    "semana": {
+      "titulo": "Semana de {rango}",
+      "persona": "Pessoa",
+      "festivo": "feriado",
+      "ausenciaJustificada": "Ausência justificada",
+      "ausencia": "Ausência",
+      "ausente": "Ausente",
+      "sinTurno": "Sem turno",
+      "descanso": "Folga",
+      "turno": "Turno",
+      "horas": "{h} h",
+      "vacio": "Sua equipe não tem turnos publicados nesta semana",
+      "error": "Não foi possível carregar a semana"
+    },
+    "calendario": {
+      "titulo": "Calendário da equipe",
+      "anterior": "Mês anterior",
+      "siguiente": "Próximo mês",
+      "festivo": "Feriado",
+      "cruce": "Sobreposição · {n} de {area}",
+      "mas": "+{n} mais",
+      "aviso": "{area} fica com {quedan} de {total} pessoas de {desde} a {hasta}",
+      "avisoDescripcion": "Revise as solicitações antes de aprovar.",
+      "error": "Não foi possível carregar o calendário",
+      "nota": "Férias e ausências justificadas da equipe; nunca o motivo de saúde."
+    },
+    "persona": {
+      "cargando": "Carregando…",
+      "reportaA": "reporta a você por meio de {nombre}",
+      "indirecto": "indireto",
+      "estadoHoy": "Status hoje",
+      "ausenteRegresa": "{que} · volta em {dia}",
+      "ausenciaJustificada": "Ausência justificada",
+      "ausente": "Ausente",
+      "enTurno": "Em turno",
+      "descanso": "Dia de folga",
+      "programado": "Entra às {hora}",
+      "sinTurno": "Sem turno hoje",
+      "turnoSemanaEtiqueta": "Turno desta semana",
+      "turnoSemana": "{plantilla} · {desde} a {hasta}",
+      "sinTurnos": "Sem turnos publicados",
+      "turno": "Turno",
+      "vacaciones": "Férias disponíveis",
+      "diasHabiles": "{n, plural, one {# dia útil} other {# dias úteis}}",
+      "horasPeriodo": "Horas neste período",
+      "horasDe": "{h} h de {de} h",
+      "novedades": "Ocorrências para aprovar",
+      "salario": "Salário e pagamento",
+      "salud": "Saúde",
+      "soloRrhh": "Só Recursos humanos.",
+      "verTurnos": "Ver turnos",
+      "verHoja": "Ver folha de ponto",
+      "cerrar": "Fechar",
+      "sinPermiso": "Esta pessoa não é da sua equipe"
+    },
+    "privacidad": {
+      "titulo": "Você vê sua equipe direta e indireta",
+      "descripcion": "Salário, conta bancária e informações de saúde não aparecem nesta visualização. Uma licença médica aparece como «Ausência justificada»."
+    },
+    "vacio": {
+      "titulo": "Você não tem pessoas sob sua responsabilidade",
+      "descripcion": "Quando o RH o definir como gestor de alguém em Áreas, aqui você verá as pendências e o calendário dessa pessoa."
+    },
+    "sinPermiso": {
+      "titulo": "Esta visualização é para gestores",
+      "descripcion": "Aparece quando você tem pelo menos uma pessoa sob sua responsabilidade. Suas próprias informações estão no Início."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar sua equipe",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    }
+  },
+  "hrmMarcacion": {
+    "titulo": "Marcar ponto",
+    "volver": "Voltar ao início",
+    "cargando": "Carregando seu turno",
+    "irInicio": "Ir para o início",
+    "tuTurno": "Seu turno",
+    "turno": "Turno",
+    "remoto": "remoto",
+    "elegir": "Escolha uma opção",
+    "horaDe": "{dia} · hora de {sede}",
+    "iniciarDescanso": "Iniciar intervalo",
+    "verMarcaciones": "Ver minhas marcações",
+    "sinDescanso": "Sem intervalo",
+    "descansoNoPagado": "{min} min não remunerados",
+    "descansoPagado": "{min} min remunerados",
+    "accion": {
+      "check_in": "Marcar entrada",
+      "check_out": "Marcar saída",
+      "break_start": "Iniciar intervalo",
+      "break_end": "Encerrar intervalo"
+    },
+    "tipo": {
+      "check_in": "Entrada",
+      "check_out": "Saída",
+      "break_start": "Início do intervalo",
+      "break_end": "Fim do intervalo"
+    },
+    "registrada": {
+      "check_in": "Entrada registrada às {hora}",
+      "check_out": "Saída registrada às {hora}",
+      "break_start": "Intervalo iniciado às {hora}",
+      "break_end": "Intervalo encerrado às {hora}"
+    },
+    "estado": {
+      "enTurno": "Em turno",
+      "enDescanso": "Em intervalo · {min} min",
+      "tarde": "Sem marcar · {min} min de atraso",
+      "cerrado": "Turno encerrado"
+    },
+    "detalle": {
+      "entrada": "Entrada {hora} · {lugar}",
+      "desde": "Desde {hora} · {lugar}",
+      "descanso": "Em intervalo desde {hora} · {descanso}",
+      "cerrado": "Saída {hora}",
+      "guardada": "Desde {hora} · salva no celular",
+      "sinTurno": "Sem turno atribuído agora"
+    },
+    "filas": {
+      "entrada": "Entrada",
+      "descanso": "Intervalo",
+      "salida": "Saída prevista",
+      "quedan": "{hora} · faltam {min} min"
+    },
+    "metodo": {
+      "ubicacion": "localização",
+      "qr": "QR da unidade",
+      "remoto": "remoto"
+    },
+    "como": {
+      "titulo": "Como você marca",
+      "etiqueta": "Como você marca",
+      "ubicacion": "Localização",
+      "qr": "QR da unidade",
+      "remoto": "Remoto"
+    },
+    "revisar": {
+      "sin_ubicacion": "sem localização: seu gestor revisa",
+      "computador_sin_qr": "de um computador: seu gestor revisa",
+      "fuera_de_linea": "salva sem sinal: seu gestor revisa"
+    },
+    "ubicacion": {
+      "etiqueta": "Localização",
+      "autorizar": "Permitir localização",
+      "buscando": "Buscando…",
+      "noDisponible": "Indisponível",
+      "sinSede": "A unidade não tem localização registrada",
+      "dentro": "Dentro de {sede} · a {m} m",
+      "fuera": "A {m} m da unidade",
+      "precision": "Precisão",
+      "metros": "± {m} m",
+      "nota": "Só ao marcar. Não seguimos seu trajeto nem guardamos o mapa."
+    },
+    "qr": {
+      "nota": "O QR muda todos os dias. Se não o encontrar, peça a quem abre {sede}.",
+      "volver": "Voltar a marcar com localização"
+    },
+    "remotoAviso": {
+      "titulo": "Hoje você trabalha de casa",
+      "descripcion": "Você tem trabalho remoto aprovado. Não pedimos a localização da unidade."
+    },
+    "computador": {
+      "titulo": "No computador você marca sem localização",
+      "descripcion": "A marcação vale se você escanear o QR da unidade com o celular. Se não, fica para seu gestor revisar."
+    },
+    "tarde": {
+      "motivo": "Motivo (opcional)",
+      "titulo": "Fica como atraso",
+      "descripcion": "Seu gestor revisa antes da folha. Se for aprovado como justificado, não é descontado."
+    },
+    "motivos": {
+      "transporte": "Transporte",
+      "salud": "Saúde",
+      "familiar": "Assunto familiar",
+      "clima": "Clima",
+      "otro": "Outro"
+    },
+    "motivosFuera": {
+      "cubrir": "Cobrir um colega",
+      "inventario": "Inventário",
+      "evento": "Evento ou temporada",
+      "otro": "Outro"
+    },
+    "fuera": {
+      "titulo": "Você não tem turno agora",
+      "conSiguiente": "Seu próximo turno é {dia} às {hora}. Se marcar agora, vai para aprovação.",
+      "sinSiguiente": "Você não tem próximos turnos publicados. Se marcar agora, vai para aprovação.",
+      "motivo": "Motivo",
+      "quien": "Quem pediu?",
+      "nadie": "Ninguém, foi por minha conta",
+      "marcar": "Marcar entrada e enviar para aprovação"
+    },
+    "lejos": {
+      "titulo": "Você está a {m} m de {sede}",
+      "tituloSinDistancia": "Você está fora de {sede}",
+      "descripcion": "Para marcar com localização você precisa estar a menos de {radio} m. Não guardamos onde você está.",
+      "qr": "Marcar com o QR da unidade",
+      "jefe": "Ver minhas marcações"
+    },
+    "permiso": {
+      "titulo": "Use sua localização para marcar",
+      "descripcion": "Ela é obtida só no momento de marcar, para confirmar que você está na unidade. Não seguimos seu trajeto.",
+      "queGuardamos": "O que guardamos",
+      "queGuardamosTexto": "Guardamos a localização de cada marcação, sua precisão e a data da sua autorização. Você pode retirá-la quando quiser; sem ela, marque com o QR da unidade.",
+      "permitir": "Permitir",
+      "ahoraNo": "Agora não"
+    },
+    "bloqueada": {
+      "titulo": "O navegador não compartilhou sua localização",
+      "descripcion": "Tudo bem: sua conta continua protegida. Para ativá-la, abra o cadeado ao lado do endereço › Localização.",
+      "entendido": "Entendi",
+      "cerrar": "Fechar"
+    },
+    "sinSenal": {
+      "badge": "Sem conexão",
+      "titulo": "Sua marcação está salva no celular",
+      "descripcion": "Enviamos assim que o sinal voltar. Não saia da conta nem apague os dados do app.",
+      "porEnviar": "Marcações para enviar ({n})",
+      "fila": "{tipo} · {hora} · {dia}",
+      "pendiente": "Pendente de sincronização",
+      "guardada": "Sem sinal: a marcação ficou salva no celular",
+      "enviadas": "{n, plural, one {# marcação enviada} other {# marcações enviadas}}"
+    },
+    "sinSesion": {
+      "titulo": "Entre para marcar",
+      "descripcion": "Você precisa entrar para marcar seu turno.",
+      "entrar": "Entrar"
+    },
+    "sinVinculo": {
+      "titulo": "Você não tem vínculo ativo",
+      "descripcion": "Peça ao RH para revisar seu contrato nesta organização."
+    },
+    "noMarca": {
+      "titulo": "Seu cargo não marca ponto",
+      "descripcion": "Na sua organização este cargo não registra presença. Se acha que é um erro, fale com o RH."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar seu turno",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "errores": {
+      "error_hrm": "Não foi possível registrar a marcação. Tente novamente.",
+      "sin_permiso": "Você não tem acesso a esta organização.",
+      "qr_invalido": "Código QR inválido. Escaneie o que a tela mostra agora.",
+      "qr_vencido": "O código QR venceu. Escaneie o que a tela mostra agora.",
+      "qr_no_es_de_marcacion": "Este QR não é para marcar presença.",
+      "qr_de_otra_organizacion": "Este QR não corresponde à sua organização.",
+      "sin_vinculo_activo": "Você não tem vínculo ativo nesta organização.",
+      "mecanismo_no_permitido": "Sua empresa não habilitou este meio de marcação para você.",
+      "remoto_no_permitido": "Sua modalidade de trabalho é presencial.",
+      "ubicacion_requiere_consentimiento": "Este ponto pede sua localização e você ainda não a autorizou.",
+      "ubicacion_requerida": "Este ponto pede sua localização. Ative o GPS e tente novamente.",
+      "marcacion_duplicada": "Você já registrou esta marcação há menos de um minuto.",
+      "metodo_invalido": "Marque com o QR da unidade ou pelo app.",
+      "datos_invalidos": "Revise os dados da marcação."
+    },
+    "miAsistencia": {
+      "titulo": "Minha presença",
+      "inicio": "Início",
+      "semana": "Semana de {rango}",
+      "horaSede": "hora da unidade",
+      "irInicio": "Ir para o início",
+      "marcaciones": "Minhas marcações",
+      "buscar": "Buscar dia…",
+      "todos": "Todos",
+      "ver": "Ver {n, plural, one {# dia} other {# dias}}",
+      "festivo": "feriado",
+      "sinTurno": "Sem turno",
+      "descanso": "Folga",
+      "turno": "Turno",
+      "diaLibre": "Dia livre",
+      "sinSalidaAjuste": "Sem saída · peça um ajuste",
+      "horas": "{h} h {m} min",
+      "columnas": {
+        "dia": "Dia",
+        "turno": "Turno",
+        "entrada": "Entrada",
+        "descanso": "Intervalo",
+        "salida": "Saída",
+        "horas": "Horas",
+        "como": "Como",
+        "estado": "Status"
+      },
+      "como": {
+        "ubicacion": "Localização",
+        "qr": "QR da unidade",
+        "remoto": "Remoto",
+        "manual": "Registrada pelo RH"
+      },
+      "estado": {
+        "enTurno": "Em turno",
+        "aTiempo": "No horário",
+        "tarde": "Atrasado",
+        "tardeMin": "Atraso de {min} min",
+        "sinSalida": "Sem saída",
+        "libre": "Dia livre",
+        "porRevisar": "Para revisar",
+        "sinMarcar": "Sem marcar"
+      },
+      "computador": {
+        "titulo": "No computador você marca sem localização",
+        "descripcion": "A marcação vale se você escanear o QR da unidade com o celular. Se não, fica para seu gestor revisar."
+      },
+      "vacio": {
+        "titulo": "Você ainda não tem marcações",
+        "descripcion": "Quando marcar seu turno, ele aparece aqui com entrada, intervalo e saída."
+      },
+      "sinResultados": "Nenhum dia corresponde à busca.",
+      "error": {
+        "titulo": "Não foi possível carregar sua presença",
+        "descripcion": "Verifique sua conexão e tente novamente."
+      },
+      "noMarca": {
+        "titulo": "Seu cargo não marca ponto",
+        "descripcion": "Na sua organização este cargo não registra presença. Se acha que é um erro, fale com o RH."
       }
     }
   }

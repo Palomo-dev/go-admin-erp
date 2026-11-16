@@ -952,20 +952,25 @@
         "sinMarcar": "Non pointé · {min} min de retard",
         "enTurno": "En poste",
         "cerrado": "Poste terminé",
-        "sinTurno": "Aucun poste aujourd'hui"
+        "sinTurno": "Aucun poste aujourd'hui",
+        "enDescanso": "En pause · {min} min"
       },
       "detalle": {
         "entrada": "Début {hora}{sucursal}",
         "enTurno": "Depuis {hora} · {duracion} · votre poste se termine à {fin}",
         "cerrado": "{entrada} – {salida} · {duracion}",
-        "sinTurno": "Pointez avec le code QR du local"
+        "sinTurno": "Pointez avec le code QR du local",
+        "enDescanso": "En pause depuis {hora}",
+        "descansoNoPagado": "{min} min non payées",
+        "descansoPagado": "{min} min payées"
       },
       "acciones": {
         "marcarEntrada": "Pointer l'arrivée",
         "marcarSalida": "Pointer le départ",
         "marcarSalidaTiempo": "Pointer le départ · {duracion}",
         "verMarcaciones": "Voir mes pointages",
-        "marcarTurno": "Pointer"
+        "marcarTurno": "Pointer",
+        "terminarDescanso": "Terminer la pause"
       }
     },
     "periodo": {
@@ -4588,7 +4593,8 @@
       "hrm_areas": "Services",
       "hrm_plazas": "Postes budgétés",
       "hrm_aprobaciones": "Approbations",
-      "hrm_novedades": "Événements"
+      "hrm_novedades": "Événements",
+      "hrm_mi-equipo": "Mon équipe"
     },
     "grupos": {
       "venta": "Vente",
@@ -57595,6 +57601,804 @@
       "sinPermiso": {
         "titulo": "Vous n’avez pas accès aux événements",
         "descripcion": "Chaque responsable approuve ceux de son équipe, et les Ressources humaines ceux de tout le site."
+      }
+    }
+  },
+  "hrmTurnos": {
+    "titulo": "Horaires",
+    "rrhh": "Ressources humaines",
+    "vistas": {
+      "etiqueta": "Vue des horaires",
+      "programacion": "Planning",
+      "plantillas": "Modèles",
+      "rotaciones": "Rotations"
+    },
+    "errores": {
+      "error_hrm": "L'opération n'a pas pu aboutir. Réessayez.",
+      "sin_permiso": "Vous n'avez pas l'autorisation de planifier les horaires.",
+      "turno_cruzado": "Ce poste chevauche un autre poste de la même personne.",
+      "turno_sin_horario": "Le poste a besoin d'un modèle ou d'une heure de début et de fin.",
+      "rango_invalido": "Vérifiez les dates.",
+      "datos_invalidos": "Vérifiez les données du poste.",
+      "no_existe": "Cet élément n'existe plus.",
+      "cambio_invalido": "Les deux postes doivent être le même jour et appartenir à des personnes différentes.",
+      "nada_que_deshacer": "Plus de 10 minutes se sont écoulées : impossible d'annuler.",
+      "nombre_requerido": "Saisissez un nom.",
+      "hora_invalida": "Vérifiez l'heure de début et de fin.",
+      "descanso_invalido": "La pause n'est pas valide.",
+      "patron_invalido": "Vérifiez les jours de la rotation.",
+      "plantilla_invalida": "Ce modèle n'est pas valide.",
+      "rotacion_invalida": "Cette rotation n'est pas valide.",
+      "vinculos_invalidos": "Choisissez au moins une personne.",
+      "duplicado": "Un élément identique existe déjà."
+    },
+    "bloque": {
+      "festivo": "férié",
+      "horas": "{h} h",
+      "personalizado": "Poste",
+      "ausenciaJustificada": "Absence",
+      "ausenteIncapacidad": "Absent",
+      "ausencia": "Absence",
+      "solicitada": "Demandée",
+      "aprobada": "Approuvée",
+      "justificada": "Justifiée",
+      "incapacidad": "arrêt maladie",
+      "descanso": "Repos",
+      "diaLibre": "Jour libre",
+      "cruzaCon": "Chevauche {plantilla}",
+      "pasaTope": "Dépasse la limite : {h} h",
+      "pasaTopeDia": "Dépasse la limite du jour"
+    },
+    "programacion": {
+      "subtitulo": {
+        "semana": "Semaine du {rango}",
+        "personas": "{n, plural, one {# personne} other {# personnes}} à {areas}",
+        "sinTurnos": "sans postes",
+        "borrador": "brouillon non publié",
+        "publicada": "publiée {cuando}"
+      },
+      "y": " et ",
+      "copiarAnterior": "Copier la semaine précédente",
+      "copiarSiguiente": "Copier vers la semaine suivante",
+      "editarSemana": "Modifier la semaine",
+      "publicar": "Publier et prévenir",
+      "nadaQuePublicar": "Il n'y a pas de changements à publier",
+      "aplicarRotacion": "Appliquer une rotation",
+      "semanaAnterior": "Semaine précédente",
+      "semanaSiguiente": "Semaine suivante",
+      "estaSemana": "Cette semaine",
+      "dia": "Jour",
+      "buscar": "Rechercher une personne ou un poste…",
+      "festivo": "férié",
+      "horas": "{h} h",
+      "horasMin": "{h} h {m} min",
+      "sinTurno": "Sans poste",
+      "irInicio": "Aller à l'accueil",
+      "tabla": "Postes de la semaine du {rango}",
+      "turnoDe": "Poste de {nombre} · {dia}",
+      "copiada": "{n, plural, =0 {Aucun poste à copier} one {# poste copié en brouillon} other {# postes copiés en brouillon}}{omitidos, plural, =0 {} other { · # avaient déjà un poste}}",
+      "copiadoResto": "Poste copié sur le reste de la semaine",
+      "copiaParcial": "{n, plural, one {# jour n'a pas pu être copié} other {# jours n'ont pas pu être copiés}} : ils chevauchent un autre poste.",
+      "descansoMarcado": "Jour de repos défini",
+      "quitado": "Poste retiré",
+      "deshecha": "Publication annulée : la semaine redevient un brouillon.",
+      "menu": {
+        "asignar": "Attribuer un poste",
+        "cambiarHorario": "Changer l'horaire",
+        "otraPlantilla": "Utiliser un autre modèle",
+        "marcarDescanso": "Définir un repos",
+        "copiarResto": "Copier sur le reste de la semaine",
+        "cambiarPersona": "Échanger avec une autre personne",
+        "quitar": "Retirer le poste"
+      },
+      "menuCabecera": {
+        "imprimir": "Imprimer la semaine",
+        "csv": "Exporter en CSV",
+        "aplicarRotacion": "Appliquer une rotation",
+        "topes": "Limites et alertes",
+        "topesDescripcion": "Paramètres › Ressources humaines"
+      },
+      "columnas": {
+        "persona": "Personne",
+        "horas": "Heures"
+      },
+      "estado": {
+        "cruce": "Chevauchement",
+        "tope": "Limite",
+        "ausente": "Absent"
+      },
+      "aviso": {
+        "revisa": "Vérifiez {cruces, plural, one {# chevauchement} other {# chevauchements}}{topes, plural, =0 {} one { et # limite} other { et # limites}} avant de publier",
+        "revisaDescripcion": "Un chevauchement bloque la publication. Une limite peut être publiée avec un motif et devient un événement.",
+        "soloTopes": "{n, plural, one {Il reste # limite à publier avec un motif} other {Il reste # limites à publier avec un motif}}",
+        "soloTopesDescripcion": "Le motif va dans l'événement d'heures supplémentaires pour que le responsable l'approuve avant la paie.",
+        "revisar": "Vérifier",
+        "publicada": "Semaine publiée : {n, plural, one {# personne prévenue} other {# personnes prévenues}}",
+        "publicadaAntes": "Semaine publiée",
+        "publicadaDescripcion": "Chaque personne a reçu sa semaine dans l'application. Désormais, un changement n'est notifié qu'à la personne concernée."
+      },
+      "publicada": {
+        "toastTitulo": "Semaine publiée",
+        "toastDescripcion": "{n, plural, one {# personne prévenue} other {# personnes prévenues}}. Vous pouvez l'annuler pendant 10 minutes.",
+        "deshacer": "Annuler"
+      },
+      "confirmar": {
+        "titulo": "Publier la semaine du {rango} et prévenir {n, plural, one {# personne} other {# personnes}} ?",
+        "descripcion": "Chaque personne reçoit sa semaine dans l'application. Désormais, un changement n'est notifié qu'à la personne concernée.",
+        "conTope": "Chaque personne reçoit sa semaine dans l'application. Quelqu'un dépasse une limite d'heures : indiquez le motif pour qu'il arrive aux Événements.",
+        "motivo": "Motif de la limite",
+        "placeholder": "Ex. : inventaire de fin de mois"
+      },
+      "quitar": {
+        "titulo": "Retirer le poste de {nombre} ?",
+        "borrador": "C'est un brouillon : personne ne l'a encore vu.",
+        "publicado": "Le poste était déjà publié : la personne est prévenue quand vous publiez à nouveau.",
+        "confirmar": "Retirer le poste"
+      },
+      "filtros": {
+        "equipo": "Équipe",
+        "cargo": "Poste occupé",
+        "mostrar": "Afficher",
+        "todo": "Tout",
+        "cruces": "Avec chevauchements",
+        "topes": "Avec limites",
+        "estado": "État du poste",
+        "todos": "Tous",
+        "todas": "Tous",
+        "borrador": "Brouillon",
+        "plantilla": "Modèle",
+        "incluirAusencias": "Inclure les absences approuvées",
+        "incluirDescansos": "Inclure les repos",
+        "soloConTurno": "Seulement les personnes avec un poste",
+        "nota": "Les changements s'appliquent immédiatement. Le site est fixé par le sélecteur de l'en-tête.",
+        "ver": "Voir {n, plural, one {# personne} other {# personnes}}",
+        "chipArea": "Équipe : {area}"
+      },
+      "vacio": {
+        "titulo": "Cette semaine n'a pas de postes",
+        "descripcion": "Copiez la semaine précédente, appliquez une rotation ou planifiez à la main. Personne n'est prévenu avant la publication."
+      },
+      "sinResultados": {
+        "titulo": "Personne ne correspond aux filtres",
+        "descripcion": "Modifiez la recherche ou effacez les filtres."
+      },
+      "error": {
+        "titulo": "Les postes n'ont pas pu être chargés",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux horaires de ce site",
+        "descripcion": "Demandez aux Ressources humaines l'autorisation « Planifier les horaires ». Vos propres postes sont dans Accueil."
+      },
+      "nota": {
+        "borrador": "Les postes en pointillés sont des brouillons : personne ne les voit avant la publication.",
+        "nocturnas": "Les heures de nuit sont comptées avec le paramètre en vigueur à chaque date.",
+        "festivos": "Les postes du {dias} comptent comme fériés."
+      }
+    },
+    "dialogoTurno": {
+      "titulo": {
+        "horario": "Changer l'horaire · {nombre}",
+        "plantilla": "Utiliser un autre modèle · {nombre}",
+        "nuevo": "Attribuer un poste · {nombre}"
+      },
+      "descripcion": "Il reste en brouillon jusqu'à la publication de la semaine.",
+      "plantilla": "Modèle",
+      "personalizado": "Horaire personnalisé",
+      "empieza": "Début",
+      "termina": "Fin",
+      "descanso": "Pause",
+      "sinDescanso": "Sans pause",
+      "descansoNoPagado": "{min} min non payées",
+      "cruzaMedianoche": "Il se termine le lendemain : il passe minuit.",
+      "nota": "Les heures sont comptées dans le fuseau horaire du site.",
+      "guardar": "Enregistrer",
+      "cancelar": "Annuler",
+      "guardado": "Poste enregistré en brouillon"
+    },
+    "intercambio": {
+      "titulo": "Échanger avec une autre personne · {dia}",
+      "descripcion": "{nombre} prend l'horaire de l'autre personne et l'autre prend le sien.",
+      "con": "Échanger avec",
+      "descanso": "Repos",
+      "sinCandidatas": "Personne d'autre n'a de poste ce jour-là.",
+      "cambiar": "Échanger les postes",
+      "cancelar": "Annuler",
+      "hecho": "Postes échangés"
+    },
+    "hallazgos": {
+      "turno": "Poste",
+      "y": " et ",
+      "cruce": "Deux postes se chevauchent le {dia}",
+      "enAusencia": "Poste pendant une absence le {dia}",
+      "enAusenciaDetalle": "La personne a une absence demandée ou approuvée ce jour-là",
+      "extraDia": "{h} h supplémentaires le {dia}",
+      "jornadaDiaria": "Dépasse la durée journalière maximale",
+      "topeExtraDia": "Limite journalière d’heures supplémentaires : {h} h",
+      "semana": "{h} h dans la semaine",
+      "topeSemana": "Limite hebdomadaire en vigueur : {h} h",
+      "topeExtraSemana": "Limite hebdomadaire d’heures supplémentaires : {h} h",
+      "sinDescanso": "Semaine sans jour de repos",
+      "sinDescansoDetalle": "Travaille les 7 jours",
+      "diaDescanso": "Travaille son jour de repos le {dia}",
+      "ocasional": "Occasionnel · {n} ce mois-ci",
+      "habitual": "Habituel · {n} ce mois-ci"
+    },
+    "revisar": {
+      "titulo": "Vérifiez avant de publier",
+      "descripcion": "Semaine du {rango} · {n, plural, one {# point} other {# points}}. Les chevauchements bloquent la publication ; les limites peuvent être publiées avec un motif.",
+      "persona": "Personne",
+      "quePasa": "Ce qui se passe",
+      "tipoCol": "Type",
+      "tipo": {
+        "cruce": "Chevauchement",
+        "tope": "Limite",
+        "aviso": "Avis"
+      },
+      "sinHallazgos": "Il n'y a rien à vérifier",
+      "topesTitulo": "Les limites viennent des paramètres en vigueur",
+      "topesDescripcion": "Durée hebdomadaire maximale et heures supplémentaires par jour et par semaine. Elles se lisent par date : un poste qui traverse un changement utilise la valeur de chaque heure.",
+      "corregir": "Corriger le chevauchement",
+      "publicarConMotivo": "Publier avec un motif",
+      "cancelar": "Annuler"
+    },
+    "aplicarRotacion": {
+      "titulo": "Appliquer une rotation",
+      "descripcion": "Génère la semaine du {rango} en brouillon. Elle ne remplace pas les postes existants.",
+      "rotacion": "Rotation",
+      "personas": "Personnes",
+      "sinRotaciones": "Il n'y a pas encore de rotations actives.",
+      "nota": "Une rotation propose, elle ne publie pas : vous vérifiez les chevauchements et les limites avant de publier.",
+      "generar": "Générer le brouillon",
+      "falta": "Choisissez une rotation et au moins une personne.",
+      "cancelar": "Annuler",
+      "hecho": "{n, plural, =0 {Aucun poste n'a été créé} one {# poste créé en brouillon} other {# postes créés en brouillon}}{omitidos, plural, =0 {} other { · # ignorés}}"
+    },
+    "plantillas": {
+      "titulo": "Modèles de poste",
+      "subtitulo": "{n, plural, one {# modèle} other {# modèles}} · utilisés pour planifier et dans les rotations",
+      "nueva": "Nouveau modèle",
+      "buscar": "Rechercher un modèle…",
+      "todas": "Tous",
+      "activas": "Actifs",
+      "inactivas": "Inactifs",
+      "activa": "Actif",
+      "inactiva": "Inactif",
+      "ver": "Voir {n, plural, one {# modèle} other {# modèles}}",
+      "h": "{h} h",
+      "hMin": "{h} h {m} min",
+      "nocturnasDesde": "{duracion} (à partir de {hora})",
+      "sinDescanso": "Sans pause",
+      "descansoNoPagado": "{min} min non payées",
+      "descansoPagado": "{min} min payées",
+      "cruzaMedianoche": "passe minuit",
+      "personas": "{n, plural, =0 {0 personne} one {# personne} other {# personnes}}",
+      "sinUso": "Non utilisé",
+      "activada": "Modèle activé",
+      "desactivada": "Modèle désactivé",
+      "irInicio": "Aller à l'accueil",
+      "nota": "Les heures de nuit sont comptées avec le paramètre en vigueur à chaque date : aujourd'hui, à partir de {hora} (loi 2466 de 2025).",
+      "sinResultados": "Aucun modèle ne correspond à la recherche.",
+      "columnas": {
+        "plantilla": "Modèle",
+        "horas": "Heures",
+        "nocturnas": "Nuit",
+        "descanso": "Pause",
+        "dias": "Jours",
+        "uso": "Utilisé",
+        "estado": "État"
+      },
+      "menu": {
+        "editar": "Modifier le modèle",
+        "duplicar": "Dupliquer",
+        "verUso": "Voir qui l'utilise",
+        "desactivar": "Désactiver",
+        "activar": "Activer"
+      },
+      "vacio": {
+        "titulo": "Il n'y a pas encore de modèles de poste",
+        "descripcion": "Un modèle garde l'horaire et la pause d'un poste pour planifier plus vite."
+      },
+      "error": {
+        "titulo": "Les modèles n'ont pas pu être chargés",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux modèles",
+        "descripcion": "Demandez aux Ressources humaines l'autorisation « Planifier les horaires »."
+      },
+      "dias": {
+        "d1": "lun",
+        "d2": "mar",
+        "d3": "mer",
+        "d4": "jeu",
+        "d5": "ven",
+        "d6": "sam",
+        "d7": "dim",
+        "par": "{a} et {b}",
+        "rango": "{desde} à {hasta}"
+      },
+      "dialogo": {
+        "tituloNueva": "Nouveau modèle de poste",
+        "tituloEditar": "Modifier le modèle de poste",
+        "descripcion": "Il sert à planifier la semaine et dans les rotations.",
+        "nombre": "Nom",
+        "nombreRequerido": "Saisissez le nom du modèle.",
+        "copiaDe": "{nombre} (copie)",
+        "empieza": "Début",
+        "termina": "Fin",
+        "descanso": "Pause",
+        "cruza": "Passe minuit",
+        "cruzaAyuda": "Il se coche tout seul quand l'heure de fin est inférieure ou égale à l'heure de début.",
+        "dias": "Jours où il est utilisé",
+        "duracion": "Durée",
+        "nocturnas": "Nuit",
+        "nocturnasDesde": "{duracion} (à partir de {hora})",
+        "diurnas": "Jour",
+        "nota": "Les heures de nuit sont recalculées si le paramètre change : le modèle garde des heures, pas des majorations.",
+        "crear": "Créer le modèle",
+        "guardar": "Enregistrer",
+        "cancelar": "Annuler",
+        "creada": "Modèle créé",
+        "guardada": "Modèle enregistré"
+      }
+    },
+    "rotaciones": {
+      "titulo": "Rotations",
+      "subtitulo": "{n, plural, one {# rotation} other {# rotations}} · génèrent le planning des semaines suivantes en brouillon",
+      "nueva": "Nouvelle rotation",
+      "buscar": "Rechercher une rotation…",
+      "todas": "Toutes",
+      "activas": "Actives",
+      "pausadas": "En pause",
+      "activa": "Active",
+      "pausadaEstado": "En pause",
+      "ver": "Voir {n, plural, one {# rotation} other {# rotations}}",
+      "descanso": "repos",
+      "semanas": "{n, plural, one {# semaine} other {# semaines}}",
+      "dias": "{n, plural, one {# jour} other {# jours}}",
+      "personas": "{n, plural, =0 {0 personne} one {# personne} other {# personnes}}",
+      "borrador": "{rango} (brouillon)",
+      "pausada": "Rotation mise en pause",
+      "reanudada": "Rotation reprise",
+      "irInicio": "Aller à l'accueil",
+      "sinResultados": "Aucune rotation ne correspond à la recherche.",
+      "columnas": {
+        "rotacion": "Rotation",
+        "ciclo": "Cycle",
+        "personas": "Personnes",
+        "empezo": "Début",
+        "proxima": "Dernière semaine générée",
+        "estado": "État"
+      },
+      "menu": {
+        "editar": "Modifier la rotation",
+        "generar": "Générer la semaine suivante",
+        "pausar": "Mettre en pause",
+        "reanudar": "Reprendre"
+      },
+      "aviso": {
+        "titulo": "Une rotation propose, elle ne publie pas",
+        "descripcion": "Elle génère la semaine en brouillon ; les chevauchements et les limites se vérifient comme dans le planning avant de publier."
+      },
+      "vacio": {
+        "titulo": "Il n'y a pas encore de rotations",
+        "descripcion": "Une rotation répète un cycle de modèles et de repos pour générer les semaines suivantes."
+      },
+      "error": {
+        "titulo": "Les rotations n'ont pas pu être chargées",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux rotations",
+        "descripcion": "Demandez aux Ressources humaines l'autorisation « Planifier les horaires »."
+      },
+      "dialogo": {
+        "tituloNueva": "Nouvelle rotation",
+        "tituloEditar": "Modifier la rotation",
+        "descripcion": "Choisissez le modèle de chaque jour du cycle ; un jour sans modèle est un repos.",
+        "nombre": "Nom",
+        "nombreRequerido": "Saisissez le nom de la rotation.",
+        "descripcionCampo": "Description",
+        "descripcionAyuda": "Ex. : Ouverture → Intermédiaire → Fermeture",
+        "ciclo": "Cycle",
+        "semanas": "{n, plural, one {# semaine} other {# semaines}}",
+        "semana": "Semaine {n}",
+        "descanso": "Repos",
+        "crear": "Créer la rotation",
+        "guardar": "Enregistrer",
+        "cancelar": "Annuler",
+        "creada": "Rotation créée",
+        "guardada": "Rotation enregistrée"
+      }
+    }
+  },
+  "hrmEquipo": {
+    "titulo": "Mon équipe",
+    "rrhh": "Ressources humaines",
+    "programar": "Planifier la semaine",
+    "irInicio": "Aller à l'accueil",
+    "directo": "direct",
+    "indirecto": "indirect",
+    "pestanaPersonas": "{n, plural, one {# personne} other {# personnes}}",
+    "subtitulo": {
+      "personas": "{n, plural, one {# personne} other {# personnes}}",
+      "conIndirectas": "{n} personnes ({directas} directes et {indirectas} indirectes)"
+    },
+    "vistas": {
+      "etiqueta": "Vue de l'équipe",
+      "resumen": "Résumé",
+      "calendario": "Calendrier"
+    },
+    "kpi": {
+      "etiqueta": "Résumé de l'équipe",
+      "porAprobar": "À approuver",
+      "porAprobarDetalle": "{ausencias, plural, one {# absence} other {# absences}} · {novedades, plural, one {# événement} other {# événements}}",
+      "faltan": "Absents aujourd'hui",
+      "faltanDetalle": "sans pointage ni absence",
+      "tarde": "En retard aujourd'hui",
+      "ausentes": "Absents cette semaine",
+      "ausentesDetalle": "congés et absences justifiées"
+    },
+    "pendientes": {
+      "titulo": "En attente dans votre équipe",
+      "persona": "Personne",
+      "pendiente": "En attente",
+      "desde": "Depuis",
+      "estadoCol": "État",
+      "estado": {
+        "porAprobar": "À approuver",
+        "falta": "Absent",
+        "porRevisar": "À vérifier"
+      },
+      "hoy": "Aujourd'hui, {hora}",
+      "ayer": "Hier",
+      "haceDias": "Il y a {n} jours",
+      "verPersona": "Voir la personne",
+      "revisarAprobaciones": "Vérifier dans Approbations",
+      "vacio": "Rien en attente",
+      "vacioDescripcion": "Quand quelqu'un de votre équipe demande quelque chose ou s'absente, cela apparaît ici.",
+      "vacaciones": "Congés",
+      "ausencia": "Absence",
+      "ausenciaJustificada": "Absence justifiée",
+      "diasHabiles": "{n, plural, one {# jour ouvré} other {# jours ouvrés}}",
+      "horasExtra": "Heures supplémentaires",
+      "cambioTurno": "Échange de poste",
+      "tardanza": "Arrivée en retard",
+      "salidaTemprana": "Départ anticipé",
+      "faltaHoy": "Aujourd'hui · sans pointage ni absence",
+      "marcaPorRevisar": "Pointage à vérifier",
+      "marca": {
+        "check_in": "arrivée",
+        "check_out": "départ",
+        "break_start": "début de pause",
+        "break_end": "fin de pause"
+      },
+      "revisar": {
+        "sin_ubicacion": "sans localisation",
+        "computador_sin_qr": "depuis un ordinateur",
+        "fuera_de_linea": "enregistré hors ligne"
+      },
+      "h": "{h} h",
+      "hMin": "{h} h {m} min",
+      "min": "{m} min"
+    },
+    "semana": {
+      "titulo": "Semaine du {rango}",
+      "persona": "Personne",
+      "festivo": "férié",
+      "ausenciaJustificada": "Absence justifiée",
+      "ausencia": "Absence",
+      "ausente": "Absent",
+      "sinTurno": "Sans poste",
+      "descanso": "Repos",
+      "turno": "Poste",
+      "horas": "{h} h",
+      "vacio": "Votre équipe n'a pas de postes publiés cette semaine",
+      "error": "La semaine n'a pas pu être chargée"
+    },
+    "calendario": {
+      "titulo": "Calendrier de l'équipe",
+      "anterior": "Mois précédent",
+      "siguiente": "Mois suivant",
+      "festivo": "Férié",
+      "cruce": "Chevauchement · {n} de {area}",
+      "mas": "+{n} de plus",
+      "aviso": "{area} reste avec {quedan} sur {total} personnes du {desde} au {hasta}",
+      "avisoDescripcion": "Vérifiez les demandes avant d'approuver.",
+      "error": "Le calendrier n'a pas pu être chargé",
+      "nota": "Congés et absences justifiées de l'équipe ; jamais le motif de santé."
+    },
+    "persona": {
+      "cargando": "Chargement…",
+      "reportaA": "vous rend compte via {nombre}",
+      "indirecto": "indirect",
+      "estadoHoy": "État aujourd'hui",
+      "ausenteRegresa": "{que} · revient le {dia}",
+      "ausenciaJustificada": "Absence justifiée",
+      "ausente": "Absent",
+      "enTurno": "En poste",
+      "descanso": "Jour de repos",
+      "programado": "Commence à {hora}",
+      "sinTurno": "Sans poste aujourd'hui",
+      "turnoSemanaEtiqueta": "Poste de la semaine",
+      "turnoSemana": "{plantilla} · {desde} à {hasta}",
+      "sinTurnos": "Aucun poste publié",
+      "turno": "Poste",
+      "vacaciones": "Congés disponibles",
+      "diasHabiles": "{n, plural, one {# jour ouvré} other {# jours ouvrés}}",
+      "horasPeriodo": "Heures de la période",
+      "horasDe": "{h} h sur {de} h",
+      "novedades": "Événements à approuver",
+      "salario": "Salaire et paie",
+      "salud": "Santé",
+      "soloRrhh": "Ressources humaines uniquement.",
+      "verTurnos": "Voir les postes",
+      "verHoja": "Voir la feuille de temps",
+      "cerrar": "Fermer",
+      "sinPermiso": "Cette personne n'est pas dans votre équipe"
+    },
+    "privacidad": {
+      "titulo": "Vous voyez votre équipe directe et indirecte",
+      "descripcion": "Le salaire, le compte bancaire et les informations de santé n'apparaissent pas dans cette vue. Un arrêt maladie s'affiche comme « Absence justifiée »."
+    },
+    "vacio": {
+      "titulo": "Vous n'avez personne sous votre responsabilité",
+      "descripcion": "Quand les Ressources humaines vous désignent comme responsable de quelqu'un dans Domaines, vous verrez ici ses demandes et son calendrier."
+    },
+    "sinPermiso": {
+      "titulo": "Cette vue est réservée aux responsables",
+      "descripcion": "Elle apparaît quand vous avez au moins une personne sous votre responsabilité. Vos propres informations sont dans Accueil."
+    },
+    "error": {
+      "titulo": "Votre équipe n'a pas pu être chargée",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    }
+  },
+  "hrmMarcacion": {
+    "titulo": "Pointer",
+    "volver": "Retour à l'accueil",
+    "cargando": "Chargement de votre poste",
+    "irInicio": "Aller à l'accueil",
+    "tuTurno": "Votre poste",
+    "turno": "Poste",
+    "remoto": "à distance",
+    "elegir": "Choisissez une option",
+    "horaDe": "{dia} · heure de {sede}",
+    "iniciarDescanso": "Commencer la pause",
+    "verMarcaciones": "Voir mes pointages",
+    "sinDescanso": "Sans pause",
+    "descansoNoPagado": "{min} min non payées",
+    "descansoPagado": "{min} min payées",
+    "accion": {
+      "check_in": "Pointer l'arrivée",
+      "check_out": "Pointer le départ",
+      "break_start": "Commencer la pause",
+      "break_end": "Terminer la pause"
+    },
+    "tipo": {
+      "check_in": "Arrivée",
+      "check_out": "Départ",
+      "break_start": "Début de pause",
+      "break_end": "Fin de pause"
+    },
+    "registrada": {
+      "check_in": "Arrivée enregistrée à {hora}",
+      "check_out": "Départ enregistré à {hora}",
+      "break_start": "Pause commencée à {hora}",
+      "break_end": "Pause terminée à {hora}"
+    },
+    "estado": {
+      "enTurno": "En poste",
+      "enDescanso": "En pause · {min} min",
+      "tarde": "Non pointé · {min} min de retard",
+      "cerrado": "Poste terminé"
+    },
+    "detalle": {
+      "entrada": "Arrivée {hora} · {lugar}",
+      "desde": "Depuis {hora} · {lugar}",
+      "descanso": "En pause depuis {hora} · {descanso}",
+      "cerrado": "Départ {hora}",
+      "guardada": "Depuis {hora} · enregistré sur le téléphone",
+      "sinTurno": "Aucun poste attribué pour le moment"
+    },
+    "filas": {
+      "entrada": "Arrivée",
+      "descanso": "Pause",
+      "salida": "Départ prévu",
+      "quedan": "{hora} · reste {min} min"
+    },
+    "metodo": {
+      "ubicacion": "localisation",
+      "qr": "QR du site",
+      "remoto": "à distance"
+    },
+    "como": {
+      "titulo": "Comment vous pointez",
+      "etiqueta": "Comment vous pointez",
+      "ubicacion": "Localisation",
+      "qr": "QR du site",
+      "remoto": "À distance"
+    },
+    "revisar": {
+      "sin_ubicacion": "sans localisation : votre responsable le vérifie",
+      "computador_sin_qr": "depuis un ordinateur : votre responsable le vérifie",
+      "fuera_de_linea": "enregistré hors ligne : votre responsable le vérifie"
+    },
+    "ubicacion": {
+      "etiqueta": "Localisation",
+      "autorizar": "Autoriser la localisation",
+      "buscando": "Recherche…",
+      "noDisponible": "Indisponible",
+      "sinSede": "Le site n'a pas de localisation enregistrée",
+      "dentro": "Sur {sede} · à {m} m",
+      "fuera": "À {m} m du site",
+      "precision": "Précision",
+      "metros": "± {m} m",
+      "nota": "Seulement au moment de pointer. Nous ne suivons pas votre trajet et ne gardons pas la carte."
+    },
+    "qr": {
+      "nota": "Le QR change chaque jour. Si vous ne le trouvez pas, demandez-le à la personne qui ouvre {sede}.",
+      "volver": "Revenir au pointage avec localisation"
+    },
+    "remotoAviso": {
+      "titulo": "Aujourd'hui vous travaillez à domicile",
+      "descripcion": "Vous avez du télétravail approuvé. Nous ne demandons pas la localisation du site."
+    },
+    "computador": {
+      "titulo": "Sur un ordinateur, vous pointez sans localisation",
+      "descripcion": "Le pointage est valide si vous scannez le QR du site avec votre téléphone. Sinon, votre responsable le vérifie."
+    },
+    "tarde": {
+      "motivo": "Motif (facultatif)",
+      "titulo": "Il est enregistré comme retard",
+      "descripcion": "Votre responsable le vérifie avant la paie. S'il est approuvé comme justifié, il n'est pas déduit."
+    },
+    "motivos": {
+      "transporte": "Transport",
+      "salud": "Santé",
+      "familiar": "Raison familiale",
+      "clima": "Météo",
+      "otro": "Autre"
+    },
+    "motivosFuera": {
+      "cubrir": "Remplacer un collègue",
+      "inventario": "Inventaire",
+      "evento": "Événement ou saison",
+      "otro": "Autre"
+    },
+    "fuera": {
+      "titulo": "Vous n'avez pas de poste maintenant",
+      "conSiguiente": "Votre prochain poste est le {dia} à {hora}. Si vous pointez maintenant, cela part en approbation.",
+      "sinSiguiente": "Vous n'avez pas de postes publiés à venir. Si vous pointez maintenant, cela part en approbation.",
+      "motivo": "Motif",
+      "quien": "Qui l'a demandé ?",
+      "nadie": "Personne, c'était mon initiative",
+      "marcar": "Pointer l'arrivée et envoyer en approbation"
+    },
+    "lejos": {
+      "titulo": "Vous êtes à {m} m de {sede}",
+      "tituloSinDistancia": "Vous êtes hors de {sede}",
+      "descripcion": "Pour pointer avec la localisation, vous devez être à moins de {radio} m. Nous ne gardons pas où vous êtes.",
+      "qr": "Pointer avec le QR du site",
+      "jefe": "Voir mes pointages"
+    },
+    "permiso": {
+      "titulo": "Utilisez votre localisation pour pointer",
+      "descripcion": "Nous la prenons seulement au moment de pointer, pour confirmer que vous êtes sur le site. Nous ne suivons pas votre trajet.",
+      "queGuardamos": "Ce que nous gardons",
+      "queGuardamosTexto": "Nous gardons la localisation de chaque pointage, sa précision et la date de votre autorisation. Vous pouvez la retirer quand vous voulez ; sans elle, pointez avec le QR du site.",
+      "permitir": "Autoriser",
+      "ahoraNo": "Pas maintenant"
+    },
+    "bloqueada": {
+      "titulo": "Le navigateur n'a pas partagé votre localisation",
+      "descripcion": "Pas de souci : votre compte reste protégé. Pour l'activer, ouvrez le cadenas à côté de l'adresse › Localisation.",
+      "entendido": "Compris",
+      "cerrar": "Fermer"
+    },
+    "sinSenal": {
+      "badge": "Hors ligne",
+      "titulo": "Votre pointage est enregistré sur le téléphone",
+      "descripcion": "Nous l'envoyons dès que le signal revient. Ne vous déconnectez pas et n'effacez pas les données de l'application.",
+      "porEnviar": "Pointages à envoyer ({n})",
+      "fila": "{tipo} · {hora} · {dia}",
+      "pendiente": "En attente de synchronisation",
+      "guardada": "Pas de signal : le pointage a été enregistré sur le téléphone",
+      "enviadas": "{n, plural, one {# pointage envoyé} other {# pointages envoyés}}"
+    },
+    "sinSesion": {
+      "titulo": "Connectez-vous pour pointer",
+      "descripcion": "Vous devez vous connecter pour pointer votre poste.",
+      "entrar": "Se connecter"
+    },
+    "sinVinculo": {
+      "titulo": "Vous n'avez pas de contrat actif",
+      "descripcion": "Demandez aux Ressources humaines de vérifier votre contrat dans cette organisation."
+    },
+    "noMarca": {
+      "titulo": "Votre poste ne pointe pas",
+      "descripcion": "Dans votre organisation, ce poste n'enregistre pas la présence. Si vous pensez que c'est une erreur, parlez aux Ressources humaines."
+    },
+    "error": {
+      "titulo": "Votre poste n'a pas pu être chargé",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "errores": {
+      "error_hrm": "Le pointage n'a pas pu être enregistré. Réessayez.",
+      "sin_permiso": "Vous n'avez pas accès à cette organisation.",
+      "qr_invalido": "Code QR non valide. Scannez celui qu'affiche l'écran maintenant.",
+      "qr_vencido": "Le code QR a expiré. Scannez celui qu'affiche l'écran maintenant.",
+      "qr_no_es_de_marcacion": "Ce QR n'est pas destiné au pointage.",
+      "qr_de_otra_organizacion": "Ce QR ne correspond pas à votre organisation.",
+      "sin_vinculo_activo": "Vous n'avez pas de contrat actif dans cette organisation.",
+      "mecanismo_no_permitido": "Votre entreprise n'a pas activé ce mode de pointage pour vous.",
+      "remoto_no_permitido": "Votre mode de travail est sur site.",
+      "ubicacion_requiere_consentimiento": "Ce point demande votre localisation et vous ne l'avez pas encore autorisée.",
+      "ubicacion_requerida": "Ce point demande votre localisation. Activez le GPS et réessayez.",
+      "marcacion_duplicada": "Vous avez déjà enregistré ce pointage il y a moins d’une minute.",
+      "metodo_invalido": "Pointez avec le QR du site ou depuis l'application.",
+      "datos_invalidos": "Vérifiez les données du pointage."
+    },
+    "miAsistencia": {
+      "titulo": "Ma présence",
+      "inicio": "Accueil",
+      "semana": "Semaine du {rango}",
+      "horaSede": "heure du site",
+      "irInicio": "Aller à l'accueil",
+      "marcaciones": "Mes pointages",
+      "buscar": "Rechercher un jour…",
+      "todos": "Tous",
+      "ver": "Voir {n, plural, one {# jour} other {# jours}}",
+      "festivo": "férié",
+      "sinTurno": "Sans poste",
+      "descanso": "Repos",
+      "turno": "Poste",
+      "diaLibre": "Jour libre",
+      "sinSalidaAjuste": "Sans départ · demandez un ajustement",
+      "horas": "{h} h {m} min",
+      "columnas": {
+        "dia": "Jour",
+        "turno": "Poste",
+        "entrada": "Arrivée",
+        "descanso": "Pause",
+        "salida": "Départ",
+        "horas": "Heures",
+        "como": "Comment",
+        "estado": "État"
+      },
+      "como": {
+        "ubicacion": "Localisation",
+        "qr": "QR du site",
+        "remoto": "À distance",
+        "manual": "Enregistré par les RH"
+      },
+      "estado": {
+        "enTurno": "En poste",
+        "aTiempo": "À l'heure",
+        "tarde": "En retard",
+        "tardeMin": "Retard {min} min",
+        "sinSalida": "Sans départ",
+        "libre": "Jour libre",
+        "porRevisar": "À vérifier",
+        "sinMarcar": "Non pointé"
+      },
+      "computador": {
+        "titulo": "Sur un ordinateur, vous pointez sans localisation",
+        "descripcion": "Le pointage est valide si vous scannez le QR du site avec votre téléphone. Sinon, votre responsable le vérifie."
+      },
+      "vacio": {
+        "titulo": "Vous n'avez pas encore de pointages",
+        "descripcion": "Quand vous pointez votre poste, il apparaît ici avec son arrivée, sa pause et son départ."
+      },
+      "sinResultados": "Aucun jour ne correspond à la recherche.",
+      "error": {
+        "titulo": "Votre présence n'a pas pu être chargée",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      },
+      "noMarca": {
+        "titulo": "Votre poste ne pointe pas",
+        "descripcion": "Dans votre organisation, ce poste n'enregistre pas la présence. Si vous pensez que c'est une erreur, parlez aux Ressources humaines."
       }
     }
   }

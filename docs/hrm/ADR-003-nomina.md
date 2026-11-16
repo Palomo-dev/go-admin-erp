@@ -116,9 +116,21 @@ Migraciones `20261116223758_hrm_f3_05_nomina_cuentas_contador`, `20261116223844_
   1380 de movimiento; 2365/236505 y 2505/250505 de título con auxiliar). `fn_hr_nomina_cuenta` resuelve cada código a
   su cuenta de movimiento (la misma, la sucesora del plan o la primera de movimiento por debajo: 236505 → 23650501,
   510506 → 51050601); si no hay, el asiento entero va a rechazos, sin bajar a la cuenta de arriba.
-  `fn_hr_nomina_preparar_plan(org, aplicar)` crea las que faltan con `fn_puc_cuenta_para_asiento` (subcuenta de título
-  + auxiliar «01»; 5105 sigue siendo de movimiento) y la llama `fn_hr_nomina_habilitar` al encender una empresa. Con
-  `aplicar = false` es la vista previa (hoy: 35 cuentas y los terceros incompletos por empresa).
+  Las que faltan se crean solo al encender, con las condiciones del Contador (ronda 3, migración
+  `20261116232134_hrm_f3_09_nomina_ronda3_cuentas`):
+  (a) solo subcuentas PUC de 6 dígitos que falten, con el código y el nombre de `puc_catalogo` (5205xx y 7205xx con el
+  nombre de la 5105xx homóloga), de movimiento, debajo de la cuenta de 4 dígitos que ya existe y con la naturaleza de
+  su clase (`fn_puc_asegurar_cuenta`; 5105 sigue siendo de movimiento). Sin la cuenta de 4 dígitos no se crea nada
+  (`falta_cuenta_mayor`). (b) Nunca se sobrescribe ni se duplica: si el código existe, o tiene una auxiliar de
+  movimiento, o la empresa puso su propia cuenta en el concepto (fila suya en `hr_payroll_concepts`), se usa la suya;
+  un código que existe sin cuenta de movimiento queda `no_se_crea` y bloquea. (c) La plataforma registra la vista
+  previa (`fn_hr_nomina_plan_vista_previa(org, preparada_por)` → `hr_payroll_enablement_reviews`: lista de cuentas a
+  crear, terceros incompletos, quién y cuándo), la empresa la ve con `hr.payroll.view`, y se aprueba con
+  `fn_hr_nomina_plan_aprobar(vista, empresa_por, contador_por, referencia_de_la_aprobacion_escrita)`. (d)
+  `fn_hr_nomina_habilitar(org, true, motivo)` exige esa aprobación, la misma lista (huella), cero bloqueos y cero
+  terceros incompletos, y en la misma transacción crea las cuentas, marca la vista `aplicada` y enciende.
+  `fn_hr_nomina_preparar_plan(org, true)` fuera de `fn_hr_nomina_habilitar` falla (`plan_solo_al_encender`). Vista
+  previa hoy: 35 cuentas por empresa.
 - **C2 · Área.** Sale de `cost_centers.type` (administracion, ventas, operacion; la siembra de centros ya lo trae) del
   centro de costo vigente del empleado al corte (evento «centro_costo»), o del de su área (departamento), o del padre
   del centro. Sin nada: administración. 5105xx → 5205xx (ventas) o 7205xx (operación o producción), con el centro de
@@ -131,15 +143,37 @@ Migraciones `20261116223758_hrm_f3_05_nomina_cuentas_contador`, `20261116223844_
   período cerrado) o el empleado (documento de `hr_people_identification`). **Criterio:** si falta el tercero o su NIT,
   el asiento entero va a rechazos (`tercero_requerido`), no se asienta con aviso: una línea publicada es inmutable y
   una línea sin NIT no concilia con la PILA ni sirve para la exógena. El rechazo se reintenta en
-  `fn_hr_nomina_contabilizar`. Hoy **ninguna** entidad de `hr_ss_entities` tiene NIT: hay que cargarlos (fuente
-  oficial) antes de encender la nómina. Las líneas de gasto no llevan tercero.
+  `fn_hr_nomina_contabilizar`. Las líneas de gasto (5105, 5205, 7205) llevan al empleado de tercero (ronda 3), y la
+  línea de 2510 del fondo de cesantías lleva en su detalle el nombre y el documento del empleado.
+- **NIT de las entidades: bloqueante para encender.** Hoy ninguna fila de `hr_ss_entities` tiene NIT, y no se cargan
+  ni se infieren desde el código: los carga la plataforma, verificados, con la fuente en `verificacion`/`notes`.
+  Fuentes oficiales: los códigos de administradoras de la PILA del Ministerio de Salud y Protección Social (EPS, AFP,
+  ARL, CCF y fondos de cesantías, con su NIT); Superintendencia Nacional de Salud (EPS); Superintendencia Financiera
+  (AFP, fondos de cesantías y ARL); Superintendencia del Subsidio Familiar (cajas de compensación); y como fuente
+  definitiva el RUT de la DIAN (consulta del estado del RUT con el NIT y el dígito de verificación). Mientras falte el
+  NIT de una entidad que tenga un empleado activo, `fn_hr_nomina_habilitar` no enciende (`terceros_incompletos`) y el
+  asiento iría a rechazos.
+- **Incapacidad laboral (ronda 3):** la paga la ARL desde el día 1: todo ítem `INCAPACIDAD_LABORAL` va a 138095 con
+  la ARL, diga lo que diga `detalle.paga`. Ojo: el parámetro `incapacidad_tramos` (2026) trae para `laboral` el día 1
+  con `paga = 'empleador'` y del día 2 en adelante `arl`; el motor paga igual (fracción 1), así que el valor no cambia,
+  pero el parámetro debe corregirse para que la colilla y la PILA digan lo mismo (lo decide quien lleva el motor).
 - **C4** sin cambios. **C6:** `fn_auto_journal_payroll_period` ya no deja el rechazo `criterio_contador`.
 - **C5 · Provisión que no alcanza.** Saldo de la cuenta de la provisión con el NIT del empleado hasta la fecha del
   asiento (`journal_lines`), más lo que provisiona el mismo asiento; el faltante va al gasto de la provisión (por área)
   y solo el resto consume el pasivo. Fuente contable y no la suma de colillas: recoge ajustes manuales y reversiones.
   Requiere cerrar el período ordinario antes que el de prima del mismo mes.
-- **Pendiente:** ajuste de fin de año de las provisiones al valor consolidado (sobrante de 2510–2525 por empleado);
-  pérdida de la incapacidad que la EPS no reconoce (138095 → gasto, manual); NIT de las entidades; pantallas para el
+- **C5 · Ajuste anual (ronda 3).** `fn_hr_nomina_ajuste_anual_provisiones(actor, org, año, vacaciones)` asienta al
+  31-dic (23:00 de la zona de la empresa) un solo asiento por empresa y año, registrado en
+  `hr_payroll_year_adjustments`. Exige el período de cesantías del año cerrado y ningún período del año abierto. Con el
+  año liquidado (cesantías pasadas al fondo, intereses y prima de diciembre pagados, y el faltante ya llevado al gasto
+  por C5), el valor real de 2510, 2515 y 2520 del empleado es 0: lo que quede con su NIT es provisión de más y vuelve
+  al gasto del mismo año. 2525 se ajusta al valor de las vacaciones pendientes que manda quien llama
+  (`{vinculo_id: valor}`, obligatorio para todo vínculo activo o con saldo); ese valor lo debe calcular el motor (días
+  pendientes × base de P6/P22). **Bloqueo:** `trg_hr_nomina_exigir_ajuste_anual` impide cerrar cualquier período que
+  termine en el año siguiente de una empresa encendida que tuvo nómina cerrada ese año, si no hay ajuste.
+- **Pendiente:** el cálculo del valor de las vacaciones pendientes al 31-dic en el motor y su paso a la RPC del
+  ajuste; la liquidación de contrato (un retiro sin liquidar dejaría su saldo en el ajuste); pérdida de la incapacidad
+  que la EPS no reconoce (138095 → gasto, manual); carga de los NIT; pantallas de la vista previa del encendido y del
   tercero de descuentos y embargos (Figma primero); tipo de préstamo «salud» (136520).
 
 ## 6. Permisos y RLS
@@ -203,3 +237,19 @@ el Contador aprueba encenderla empresa por empresa, por escrito.
   `nominaRondaContador.test.ts` (insumos nuevos y FSP 2027), `motorHorasHrm.test.ts` (extra nocturna del 20-jul).
 - **Pendiente:** P19 (porcentaje fijo calculado y guardado por el sistema en junio y diciembre), pantallas de las
   opciones nuevas (Figma primero) y las seis preguntas de la §3 del documento de la ronda 2.
+
+### 11.1 Ronda 3 del Contador (2026-11-16)
+
+Respuestas en `docs/contador/RESPUESTAS-CONTADOR-NOMINA-RONDA-2-2026-11-16.md`; resultados en
+`docs/contador/NOMINA-RONDA-3-RESULTADOS-2026-11-16.md`. Motor `hrm-nomina-3`.
+
+- Vacaciones y licencias remuneradas cotizan salud y pensión con el último IBC por sus días (Decreto 780, art.
+  3.2.5.1); lo pagado queda en parafiscales. La regla del 40 % excluye vacaciones, incapacidades y licencias (P7).
+- Fondo de solidaridad redondeado por campo de la PILA (`fsp_tabla[].solidaridad`); tabla 2026 con 17 a 20 SMMLV
+  exactos al tramo de abajo (`hasta_incluido`). Bonificación salarial habitual en vacaciones y su provisión.
+- Incapacidad laboral a cargo de la ARL desde el día 1 (`incapacidad_tramos.laboral`).
+- Migraciones: `20261116231731_hrm_f3_08_nomina_ronda3_contador`, `20261116232134_hrm_f3_09_nomina_ronda3_cuentas`
+  (tercero en gasto, vista previa y aprobación del plan de cuentas, ajuste anual de provisiones) y
+  `20261116232859_hrm_f3_10_incapacidad_laboral_arl`.
+- **Pendiente:** cargar los NIT de las entidades (bloqueante), que el motor calcule el valor de las vacaciones
+  pendientes al 31-dic para el ajuste anual, liquidación de contrato, P19 y las pantallas (Figma primero).

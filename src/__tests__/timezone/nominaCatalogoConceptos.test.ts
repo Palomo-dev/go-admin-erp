@@ -180,8 +180,43 @@ describe('contabilización de la nómina (migración vigente)', () => {
     expect(cuerpoFuncion('fn_auto_journal_payroll_period')).not.toContain("'criterio_contador'");
   });
 
+  test('ronda 3: las líneas de gasto llevan al empleado de tercero', () => {
+    expect(asentar).toMatch(/if v_cuenta ~ '\^\[57\]' then\s+v_nit := v_emp_nit;\s+v_nom := v_emp_nombre;/);
+  });
+
+  test('ronda 3: la incapacidad laboral va a la cuenta por cobrar con la ARL, aunque el tramo diga empleador', () => {
+    expect(asentar).toContain("or it.code = 'INCAPACIDAD_LABORAL' then");
+    expect(asentar).toContain("when it.code = 'INCAPACIDAD_LABORAL' then 'arl'");
+  });
+
+  test('ronda 3: la línea del fondo de cesantías conserva la identificación del empleado', () => {
+    expect(asentar).toMatch(/when it\.code = 'CESANTIAS_CONSIGNAR'\s+then it\.name \|\| ' · ' \|\| coalesce\(v_emp_nombre/);
+  });
+
+  test('ronda 3 (a)–(d): subcuentas PUC solo al encender, con vista previa aprobada, sin sobrescribir', () => {
+    const plan = cuerpoFuncion('fn_hr_nomina_preparar_plan');
+    expect(plan).toContain("'plan_solo_al_encender");
+    expect(plan).toContain("'falta_cuenta_mayor'");
+    expect(plan).toContain('fn_puc_asegurar_cuenta(p_org, r.cta, v_nombre, true)');
+    expect(plan).toMatch(/Existe pero sin movimiento[\s\S]*v_estado := 'no_se_crea'/);
+    const habilitar = cuerpoFuncion('fn_hr_nomina_habilitar');
+    expect(habilitar).toContain("'vista_previa_sin_aprobar");
+    expect(habilitar).toContain("'vista_previa_desactualizada");
+    expect(habilitar).toContain("'terceros_incompletos");
+    expect(habilitar.indexOf("'terceros_incompletos")).toBeLessThan(habilitar.indexOf('fn_hr_nomina_preparar_plan(p_org, true)'));
+    expect(cuerpoFuncion('fn_hr_nomina_plan_aprobar')).toContain('aprobada_contador_por');
+  });
+
+  test('ronda 3 (C5): ajuste anual de provisiones y bloqueo del año siguiente', () => {
+    const ajuste = cuerpoFuncion('fn_hr_nomina_ajuste_anual_provisiones');
+    expect(ajuste).toContain("'falta_periodo_cesantias");
+    expect(ajuste).toContain("'falta_valor_vacaciones");
+    expect(ajuste).toContain("time '23:00'");
+    expect(cuerpoFuncion('fn_hr_nomina_exigir_ajuste_anual')).toContain("'ajuste_anual_pendiente");
+  });
+
   test('las migraciones de cuentas no usan CURRENT_DATE ni cablean la zona horaria', () => {
-    for (const f of migraciones().filter((x) => /_hrm_f3_0[5-7]_nomina_(cuentas_contador|embargo_fusion|preparar_plan_areas)\.sql$/.test(x))) {
+    for (const f of migraciones().filter((x) => /_hrm_f3_0\d_nomina_(cuentas_contador|embargo_fusion|preparar_plan_areas|ronda3_cuentas)\.sql$/.test(x))) {
       const sql = readFileSync(join(DIR, f), 'utf8');
       expect({ f, current_date: /current_date|now\(\)::date/i.test(sql), bogota: sql.includes('America/Bogota') }).toEqual({
         f,

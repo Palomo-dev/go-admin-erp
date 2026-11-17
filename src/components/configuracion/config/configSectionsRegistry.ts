@@ -106,6 +106,9 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'hrm.general', modulo: 'hrm', seccion: 'general', clave: 'hrmGeneral', permiso: 'hr.parameters.manage', estadosPropios: true, ajustes: [] },
   { id: 'hrm.festivos', modulo: 'hrm', seccion: 'festivos', clave: 'hrmFestivos', permiso: 'hr.parameters.manage', estadosPropios: true, ajustes: [] },
   { id: 'hrm.aprobaciones', modulo: 'hrm', seccion: 'aprobaciones', clave: 'hrmAprobaciones', permiso: 'hr.approvals.manage', estadosPropios: true, ajustes: [] },
+  // Nómina (diseño 20.24, aprobado 2026-11-16): conceptos y la bandera de encendido, con la vista
+  // previa del plan de cuentas y los terceros sin NIT que pide el Contador antes de encender.
+  { id: 'hrm.nomina', modulo: 'hrm', seccion: 'nomina', clave: 'hrmNomina', permiso: 'hr.payroll.view', estadosPropios: true, ajustes: [] },
   // Pestaña propia de RR. HH., no la Auditoría general (decisión del dueño, 2026-11-15).
   { id: 'hrm.registro-accesos', modulo: 'hrm', seccion: 'registro-accesos', clave: 'hrmRegistroAccesos', permiso: 'hr.access_log.view', estadosPropios: true, ajustes: [] },
   { id: 'pms.general', modulo: 'pms', seccion: 'general', clave: 'pmsGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

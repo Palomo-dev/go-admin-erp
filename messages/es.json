@@ -970,7 +970,21 @@
         "marcarSalidaTiempo": "Marcar salida · {duracion}",
         "verMarcaciones": "Ver mis marcaciones",
         "marcarTurno": "Marcar turno",
-        "terminarDescanso": "Terminar descanso"
+        "terminarDescanso": "Terminar descanso",
+        "metodo": {
+          "qr": {
+            "entrada": "Escanear el QR de la sede",
+            "salida": "Marcar salida con el QR"
+          },
+          "nfc": {
+            "entrada": "Acercar a la etiqueta NFC",
+            "salida": "Marcar salida con la etiqueta NFC"
+          }
+        }
+      },
+      "notaMetodo": {
+        "qr": "En {sede} se marca con el QR de la sede. El botón abre la cámara directo.",
+        "nfc": "En {sede} se marca con la etiqueta NFC de la entrada. El botón abre el lector directo."
       }
     },
     "periodo": {
@@ -39062,6 +39076,11 @@
         "titulo": "Registro de accesos",
         "descripcion": "Quién vio o cambió datos sensibles de un empleado",
         "palabras": "registro de accesos, auditoría, datos sensibles, salario, cuenta bancaria, salud, privacidad, recursos humanos, rrhh"
+      },
+      "hrmNomina": {
+        "titulo": "Nómina",
+        "descripcion": "Conceptos de nómina, encendido y plan de cuentas",
+        "palabras": "nómina, conceptos, cuentas contables, encender nómina, terceros, nit, preliquidación, recursos humanos, rrhh"
       }
     },
     "ajustes": {
@@ -51880,7 +51899,8 @@
       "hrmGeneral": "Parámetros legales",
       "hrmFestivos": "Festivos",
       "hrmAprobaciones": "Aprobaciones",
-      "hrmRegistroAccesos": "Registro de accesos"
+      "hrmRegistroAccesos": "Registro de accesos",
+      "hrmNomina": "Nómina"
     },
     "buscar": {
       "etiqueta": "Buscar un ajuste",
@@ -54654,8 +54674,10 @@
         "errores": {
           "nombre": "Escribe un nombre de al menos 2 letras.",
           "paso": "Elige el cargo o la persona de cada aprobador.",
-          "guardar": "No pudimos guardar la regla. Inténtalo de nuevo."
-        }
+          "guardar": "No pudimos guardar la regla. Inténtalo de nuevo.",
+          "jefeDirecto": "Las horas extra y las novedades de asistencia siempre pasan por el jefe directo. Si la persona no tiene jefe, aprueba Recursos humanos."
+        },
+        "jefeDirectoFijo": "Las horas extra y las novedades de asistencia siempre pasan por el jefe directo."
       },
       "delegaciones": {
         "ayuda": "Mientras dure la delegación, lo que le llegue a la persona ausente le llega a su reemplazo. Lo ya aprobado no cambia, y la solicitud muestra que aprobó un reemplazo.",
@@ -55907,7 +55929,8 @@
         "horas_extra": "Horas extra",
         "prestamo": "Préstamo",
         "novedad_asistencia": "Novedad de asistencia",
-        "cambio_turno": "Cambio de turno"
+        "cambio_turno": "Cambio de turno",
+        "excepcion_marcacion": "Excepción de marcación"
       },
       "titulos": {
         "cargo_salario": "Aprobar cambio de cargo y salario",
@@ -55931,7 +55954,8 @@
         "horas_extra": "Aprobar horas extra",
         "prestamo": "Aprobar préstamo",
         "novedad_asistencia": "Aprobar novedad de asistencia",
-        "cambio_turno": "Aprobar cambio de turno"
+        "cambio_turno": "Aprobar cambio de turno",
+        "excepcion_marcacion": "Aprobar excepción de marcación"
       },
       "ligados": "{n} cambios ligados",
       "alMes": "{monto} al mes",
@@ -56000,6 +56024,20 @@
         "esteMes": "Con efecto este mes",
         "pidio": "Pidió {nombre}",
         "verN": "Ver {n, plural, one {# solicitud} other {# solicitudes}}"
+      },
+      "excepcion": {
+        "metodo": "Método",
+        "vigencia": "Vigencia",
+        "vigenciaValor": "Del {desde} al {hasta}",
+        "metodos": {
+          "celular_ubicacion": "Celular con ubicación",
+          "qr": "QR de la sede",
+          "nfc_etiqueta": "Etiqueta NFC de la sede",
+          "carne": "Carné",
+          "pin": "PIN",
+          "rostro": "Rostro",
+          "huella": "Huella"
+        }
       }
     }
   },
@@ -57087,7 +57125,13 @@
       "verDesglose": "Ver desglose",
       "verNovedadesExtra": "Ver novedades de horas extra",
       "verTurnosSemana": "Ver turnos de la semana",
-      "marcarLista": "Marcar lista para nómina"
+      "marcarLista": "Marcar lista para nómina",
+      "mostrarQrSede": "Mostrar el QR de la sede",
+      "mostrarQrSedeDesc": "Para escanear con el celular en esta pantalla",
+      "mostrarQrSedeSinPantalla": "La sede aún no tiene pantalla de QR: agrégala",
+      "mostrarQrSedeCargando": "Buscando las pantallas de la sede…",
+      "metodosSede": "Métodos de marcación de la sede",
+      "dispositivos": "Dispositivos"
     },
     "filtros": {
       "estado": "Estado",
@@ -57145,7 +57189,12 @@
         "qr": "QR de la sede",
         "remoto": "Remoto",
         "manual": "Marca manual",
-        "app": "App"
+        "app": "App",
+        "nfc": "Etiqueta NFC",
+        "carne": "Carné",
+        "pin": "PIN",
+        "rostro": "Rostro",
+        "huella": "Huella"
       },
       "estados": {
         "presente": "Presente",
@@ -58226,14 +58275,17 @@
     "metodo": {
       "ubicacion": "ubicación",
       "qr": "QR de la sede",
-      "remoto": "remoto"
+      "remoto": "remoto",
+      "nfc": "etiqueta NFC"
     },
     "como": {
       "titulo": "Cómo marcas",
       "etiqueta": "Cómo marcas",
       "ubicacion": "Ubicación",
       "qr": "QR de la sede",
-      "remoto": "Remoto"
+      "remoto": "Remoto",
+      "nfc": "NFC",
+      "tituloSede": "Cómo marcas en {sede}"
     },
     "revisar": {
       "sin_ubicacion": "sin ubicación: la revisa tu jefe",
@@ -58254,7 +58306,9 @@
     },
     "qr": {
       "nota": "El QR cambia cada día. Si no lo encuentras, pídeselo a quien abre {sede}.",
-      "volver": "Volver a marcar con ubicación"
+      "volver": "Volver a marcar con ubicación",
+      "notaSede": "Apunta al QR de {sede}. Cambia cada 30 segundos: una foto del código no sirve.",
+      "notaSolo": "En {sede} se marca escaneando el QR de la entrada. Cambia cada 30 segundos: una foto del código no sirve."
     },
     "remotoAviso": {
       "titulo": "Hoy trabajas desde casa",
@@ -58300,7 +58354,7 @@
     },
     "permiso": {
       "titulo": "Usa tu ubicación para marcar",
-      "descripcion": "La tomamos solo en el momento de marcar, para confirmar que estás en la sede. No seguimos tu recorrido.",
+      "descripcion": "La usamos solo en el momento de marcar, para confirmar que estás en la sede. Nunca para rastrearte: no seguimos tu recorrido ni la vemos fuera de tus marcas.",
       "queGuardamos": "Qué guardamos",
       "queGuardamosTexto": "Guardamos la ubicación de cada marca, su precisión y la fecha de tu autorización. Puedes retirarla cuando quieras; sin ella, marca con el QR de la sede.",
       "permitir": "Permitir",
@@ -58353,7 +58407,13 @@
       "ubicacion_requerida": "Este punto pide tu ubicación. Activa el GPS e intenta de nuevo.",
       "marcacion_duplicada": "Ya registraste esta marca hace menos de un minuto.",
       "metodo_invalido": "Marca con el QR de la sede o desde la app.",
-      "datos_invalidos": "Revisa los datos de la marca."
+      "datos_invalidos": "Revisa los datos de la marca.",
+      "metodo_no_disponible_en_sede": "Tu sede no tiene habilitado este método de marcación.",
+      "computador_no_permitido": "En tu sede no se marca desde un computador. Marca con el celular o con el QR de la sede.",
+      "etiqueta_invalida": "Esta etiqueta no es de GO Admin o está dañada. No registramos nada.",
+      "qr_ya_usado": "Este código ya se usó. Espera el siguiente y escanéalo de nuevo.",
+      "etiqueta_otra_sede": "Esta etiqueta es de otra sede. No registramos nada.",
+      "fuera_de_rango": "Estás fuera de la sede. Acércate e intenta de nuevo."
     },
     "miAsistencia": {
       "titulo": "Mi asistencia",
@@ -58396,7 +58456,8 @@
         "sinSalida": "Sin salida",
         "libre": "Día libre",
         "porRevisar": "Por revisar",
-        "sinMarcar": "Sin marcar"
+        "sinMarcar": "Sin marcar",
+        "enReclamo": "Reclamo en revisión"
       },
       "computador": {
         "titulo": "En el computador marcas sin ubicación",
@@ -58414,6 +58475,1691 @@
       "noMarca": {
         "titulo": "Tu cargo no marca turno",
         "descripcion": "En tu organización este cargo no registra asistencia. Si crees que es un error, habla con Recursos humanos."
+      },
+      "metodos": {
+        "celular_ubicacion": "Celular con ubicación",
+        "qr": "QR de la sede",
+        "nfc_etiqueta": "Etiqueta NFC",
+        "carne": "Carné",
+        "carne_nfc": "Carné NFC",
+        "carne_qr": "Carné con QR",
+        "pin": "PIN",
+        "rostro": "Rostro",
+        "huella": "Huella",
+        "remoto": "Remoto",
+        "manual": "Registrada por RR. HH."
+      },
+      "acciones": {
+        "detalle": "Ver detalle de la marca",
+        "reclamar": "Reclamar esta marca"
+      },
+      "avisoSede": {
+        "titulo": "En {sede} marcas con {metodos}",
+        "metodos": {
+          "celular_ubicacion": "tu celular con ubicación",
+          "qr": "el QR de la sede",
+          "nfc_etiqueta": "la etiqueta NFC"
+        }
+      }
+    },
+    "qrUsado": {
+      "titulo": "Este código ya se usó",
+      "descripcion": "Cada QR sirve para una sola marca. Espera el siguiente (cambia en 30 s) y escanéalo de nuevo.",
+      "nota": "No registramos nada. Si alguien te envió una foto del código, no sirve: hay que estar frente a la pantalla.",
+      "otraVez": "Escanear de nuevo"
+    },
+    "nfc": {
+      "acercar": "Acerca la parte de atrás del celular a la etiqueta de la entrada",
+      "esperando": "Esperando la etiqueta…",
+      "registrando": "Registrando la marca…",
+      "nota": "La etiqueta solo dice en qué sede estás; la hora la pone GO Admin. Funciona en Android con Chrome y en la app GO Admin.",
+      "conQr": "Marcar con el QR de la sede",
+      "conUbicacion": "Marcar con mi ubicación",
+      "otraVez": "Acercar otra etiqueta",
+      "gesto": {
+        "titulo": "Activa la lectura de etiquetas",
+        "descripcion": "El navegador pide un toque para empezar a leer la etiqueta NFC.",
+        "activar": "Activar lectura NFC"
+      },
+      "noDisponible": {
+        "titulo": "Este celular no puede leer etiquetas NFC desde el navegador",
+        "descripcion": "Pasa en iPhone y en navegadores distintos de Chrome para Android. Con la app GO Admin sí se puede. Mientras tanto, marca con el QR o con tu ubicación."
+      },
+      "otraSede": {
+        "titulo": "Esta etiqueta es de {sede}",
+        "tituloSinSede": "Esta etiqueta es de otra sede",
+        "descripcion": "Hoy tu turno es en {sede}. Marca allí o pídele a tu jefe una marca con motivo.",
+        "nota": "No registramos nada. Si de verdad estás trabajando en {sede}, tu jefe puede registrar la marca y aprobarla.",
+        "notaSinSede": "No registramos nada. Si de verdad estás trabajando en otra sede, tu jefe puede registrar la marca y aprobarla."
+      }
+    },
+    "registradaNfc": {
+      "conPunto": "Con la etiqueta NFC de {punto}",
+      "sinPunto": "Con la etiqueta NFC"
+    },
+    "reclamo": {
+      "titulo": "Reclamar la marca del {dia}",
+      "tituloSinDia": "Reclamar una marca",
+      "marca": "Marca",
+      "elegirMarca": "Elige la marca",
+      "enRevision": "reclamo en revisión",
+      "metodo": "Método",
+      "que": "¿Qué está mal?",
+      "elegir": "Elige una opción",
+      "opciones": {
+        "hora": "La hora no es la real",
+        "no_es_mia": "Esta marca no es mía",
+        "tipo": "No era una entrada o una salida",
+        "metodo": "El método no es el correcto",
+        "otro": "Otra cosa"
+      },
+      "quePaso": "¿Qué pasó?",
+      "quePasoEjemplo": "Cuéntale a tu jefe qué pasó",
+      "hora": "Hora correcta, si la sabes",
+      "horaAyuda": "Opcional. Tu jefe la confirma.",
+      "aviso": {
+        "titulo": "La marca original no se cambia",
+        "descripcion": "Si tu jefe aprueba el reclamo, se agrega un ajuste con su motivo. Mientras se revisa, conservamos la foto de evidencia de esta marca."
+      },
+      "cancelar": "Cancelar",
+      "enviar": "Enviar reclamo",
+      "reclamar": "Reclamar esta marca",
+      "enviado": "Reclamo enviado",
+      "enviadoDetalle": "Lo revisa tu jefe. Conservamos la foto de esta marca mientras tanto.",
+      "errores": {
+        "reclamo_que": "Elige qué está mal.",
+        "reclamo_motivo": "Cuenta qué pasó (de 5 a 500 caracteres).",
+        "reclamo_hora": "La hora no puede ser futura ni de hace más de 62 días.",
+        "ajuste_ya_pendiente": "Esta marca ya tiene un reclamo en revisión.",
+        "marca_antigua": "Solo se reclaman marcas de los últimos 62 días.",
+        "jornada_cerrada": "Ese día ya lo pagó la nómina: habla con Recursos humanos.",
+        "sin_permiso": "Solo puedes reclamar tus propias marcas.",
+        "error_hrm": "No se pudo enviar el reclamo. Intenta de nuevo."
+      },
+      "detalle": {
+        "titulo": "Marcas del {dia}",
+        "cerrar": "Cerrar",
+        "sinMarcas": "Este día no tiene marcas.",
+        "reclamo": {
+          "pending": "Reclamo en revisión",
+          "approved": "Reclamo aprobado",
+          "rejected": "Reclamo rechazado"
+        }
+      }
+    }
+  },
+  "hrmNomina": {
+    "titulo": "Nómina",
+    "migas": {
+      "rrhh": "Recursos humanos",
+      "periodos": "Períodos"
+    },
+    "subtitulo": {
+      "empleados": "{n, plural, one {# empleado} other {# empleados}}",
+      "soloPreliquidacion": "solo preliquidación",
+      "proximoPago": "próximo pago el {fecha}"
+    },
+    "frecuencias": {
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "biweekly": "Quincenal",
+      "monthly": "Mensual"
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a la nómina",
+      "descripcion": "Pide a un administrador el permiso «Ver nómina». Tus propias colillas llegan al portal del empleado."
+    },
+    "vistas": {
+      "etiqueta": "Vistas de nómina",
+      "periodos": "Períodos",
+      "prestaciones": "Prestaciones",
+      "prestamos": "Préstamos y embargos"
+    },
+    "estados": {
+      "abierto": "Abierto",
+      "calculando": "Calculando",
+      "preliquidado": "Preliquidado",
+      "en_revision": "En revisión",
+      "cerrado": "Cerrado",
+      "pagando": "Pagando",
+      "pagado": "Pagado",
+      "contabilizado": "Contabilizado",
+      "anulado": "Anulado"
+    },
+    "tipos": {
+      "ordinaria": "Ordinaria",
+      "prima": "Prima",
+      "cesantias": "Cesantías"
+    },
+    "soloPreliquidacion": {
+      "insignia": "Solo preliquidación",
+      "titulo": "Nómina en modo solo preliquidación · pendiente del Contador",
+      "descripcion": "Puedes preliquidar, revisar diferencias y descargar resúmenes. Cerrar, pagar y contabilizar se habilitan cuando el Contador apruebe las reglas y GO Admin encienda la nómina.",
+      "verQueFalta": "Ver qué falta"
+    },
+    "nombres": {
+      "quincena1": "1.ª quincena de {mes} de {anio}",
+      "quincena2": "2.ª quincena de {mes} de {anio}",
+      "mes": "Nómina de {mes} de {anio}",
+      "prima1": "Prima del 1.er semestre de {anio}",
+      "prima2": "Prima del 2.º semestre de {anio}",
+      "cesantias": "Cesantías de {anio}",
+      "rango": "Nómina del {rango}"
+    },
+    "errores": {
+      "sin_permiso": "No tienes permiso para esta acción.",
+      "nomina_no_habilitada": "La nómina de tu empresa está en modo solo preliquidación: todavía no se puede cerrar, pagar ni ajustar.",
+      "estado_invalido": "El período ya no está en el estado que se necesita. Recarga la página.",
+      "periodo_no_existe": "El período no existe.",
+      "no_existe": "No se encontró el registro.",
+      "parametro_no_configurado": "Falta un parámetro legal del año (por ejemplo, el salario mínimo). Revísalo en Configuración › Recursos humanos.",
+      "nada_por_pagar": "No hay colillas cerradas por pagar en este período.",
+      "cuenta_bancaria_ajena": "La cuenta bancaria no es de tu empresa o está inactiva.",
+      "cuenta_bancaria_invalida": "Elige una cuenta bancaria.",
+      "fecha_invalida": "Revisa las fechas.",
+      "periodo_invalido": "Revisa el tipo, la periodicidad y las fechas del período.",
+      "periodo_con_calculo": "El período ya tiene un cálculo: no se puede eliminar.",
+      "motivo_obligatorio": "Escribe el motivo del ajuste.",
+      "novedades_invalidas": "Revisa el concepto y el valor del ajuste.",
+      "ajuste_sin_diferencia": "Con ese ajuste la colilla no cambia: no hay nada que guardar.",
+      "archivo_banco_invalido": "El archivo del banco tiene filas con errores.",
+      "formato_banco_no_soportado": "Ese formato de banco todavía no está disponible.",
+      "duplicado": "Ya existe un período con esas fechas.",
+      "periodo_cruzado": "Las fechas se cruzan con otro período del mismo tipo.",
+      "generico": "No se pudo completar la acción. Inténtalo de nuevo."
+    },
+    "motivos": {
+      "solo_preliquidacion": "La nómina está en modo solo preliquidación hasta que el Contador apruebe y GO Admin la encienda.",
+      "bloqueos": "Hay bloqueos sin resolver.",
+      "revision_pendiente": "Falta la aprobación de la gerencia.",
+      "sin_calculo": "Primero hay que preliquidar.",
+      "con_calculo": "Un período que ya se calculó no se elimina."
+    },
+    "apagada": {
+      "titulo": "La nómina se enciende después de la ronda del Contador",
+      "subtitulo": "Mientras tanto funciona en modo solo preliquidación.",
+      "entendido": "Entendido",
+      "cerrar": "Cerrar",
+      "sinPermiso": "No tienes acceso a la configuración de la nómina.",
+      "mientras": "Puedes preliquidar, revisar diferencias y descargar resúmenes. Cerrar, pagar, enviar colillas y contabilizar se habilitan al encender la nómina.",
+      "pasos": {
+        "conceptos": "Conceptos y cuentas contables",
+        "conceptosDetalle": "{n} conceptos · {conCuenta} con cuenta del Contador",
+        "plan": "Vista previa del plan de cuentas",
+        "planSinPreparar": "GO Admin todavía no prepara la vista previa de las cuentas que se crearán.",
+        "planPreparado": "{n, plural, one {# cuenta por crear} other {# cuentas por crear}} · preparada el {fecha}",
+        "terceros": "Terceros con NIT",
+        "tercerosSinPlan": "Se revisan con la vista previa del plan.",
+        "tercerosFaltan": "{n, plural, one {# dato de tercero falta} other {# datos de terceros faltan}}: sin ellos no se puede encender.",
+        "tercerosListos": "Todas las entidades y personas tienen su NIT.",
+        "aprobacion": "Aprobación escrita de la empresa y del Contador",
+        "aprobacionLista": "Aprobada el {fecha}",
+        "aprobacionPendiente": "Pendiente",
+        "encendido": "Nómina activa",
+        "encendidoListo": "Encendida",
+        "encendidoPendiente": "La enciende GO Admin con la aprobación escrita, cero bloqueos y cero terceros incompletos."
+      },
+      "cuentasTitulo": "Cuentas que se crearán",
+      "nCuentas": "{n, plural, one {# cuenta} other {# cuentas}}",
+      "sinCuentas": "Tu plan de cuentas ya tiene todas las subcuentas de la nómina.",
+      "bajo": "bajo {cuenta}",
+      "tercerosTitulo": "Terceros sin entidad o sin NIT",
+      "nTerceros": "{n, plural, one {# pendiente} other {# pendientes}}",
+      "sinTerceros": "No falta ningún tercero.",
+      "empleadoSinNombre": "Empleado",
+      "faltaNit": "falta el NIT",
+      "faltaEntidad": "falta la entidad"
+    },
+    "terceros": {
+      "eps": "EPS",
+      "afp": "Fondo de pensiones",
+      "arl": "ARL",
+      "ccf": "Caja de compensación",
+      "cesantias": "Fondo de cesantías",
+      "empleado": "Documento del empleado",
+      "icbf": "ICBF",
+      "sena": "SENA",
+      "dian": "DIAN"
+    },
+    "nuevo": {
+      "titulo": "Nuevo período",
+      "descripcion": "La prima y las cesantías van en su propio período.",
+      "crear": "Crear período",
+      "creado": "Período creado",
+      "fechasMal": "La fecha final no puede ser anterior a la inicial.",
+      "tipo": "Tipo",
+      "tipos": {
+        "ordinaria": "Ordinaria",
+        "prima": "Prima",
+        "cesantias": "Cesantías"
+      },
+      "frecuencia": "Periodicidad",
+      "frecuenciaAyuda": "El documento soporte de nómina electrónica siempre es mensual.",
+      "frecuencias": {
+        "biweekly": "Quincenal",
+        "monthly": "Mensual",
+        "weekly": "Semanal"
+      },
+      "avisoPrima": "La prima se liquida con lo causado en el semestre: salario, promedio variable y auxilio de transporte.",
+      "avisoCesantias": "Las cesantías del año se consignan al fondo; los intereses se le pagan a cada persona.",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "fechaPago": "Fecha de pago",
+      "fechaPagoAyuda": "Es la fecha del archivo del banco y del egreso.",
+      "nombre": "Nombre",
+      "nombreAyuda": "Opcional. Si lo dejas así, se nombra por sus fechas."
+    },
+    "periodos": {
+      "titulo": "Períodos de nómina",
+      "nuevo": "Nuevo período",
+      "sinCambios": "Nada cambió desde el último cálculo: se conserva la misma versión.",
+      "preliquidado": "Preliquidado: {n, plural, one {# empleado} other {# empleados}}",
+      "menu": {
+        "abrir": "Abrir",
+        "preliquidar": "Preliquidar",
+        "recalcular": "Recalcular",
+        "eliminar": "Eliminar",
+        "eliminarConCalculo": "Un período que ya se calculó no se elimina."
+      },
+      "pagada": "pagada el {fecha}",
+      "pago": "pago el {fecha}",
+      "nBloqueos": "{n, plural, one {# bloqueo} other {# bloqueos}}",
+      "nAlertas": "{n, plural, one {# alerta} other {# alertas}}",
+      "columnas": {
+        "periodo": "Período",
+        "estado": "Estado",
+        "empleados": "Empleados",
+        "neto": "Neto a pagar",
+        "netoPreliquidado": "Neto preliquidado",
+        "costo": "Costo empresa",
+        "pendientes": "Pendientes"
+      },
+      "buscar": "Buscar período por nombre o fecha de pago",
+      "verN": "Ver {n, plural, one {# período} other {# períodos}}",
+      "filtros": {
+        "estado": "Estado",
+        "tipo": "Tipo"
+      },
+      "nEmpleados": "{n, plural, one {# empleado} other {# empleados}}",
+      "vacio": {
+        "titulo": "Todavía no hay períodos de nómina",
+        "descripcion": "Crea el primer período y preliquídalo: el cálculo lo hace el servidor con la jornada aprobada y los parámetros del año."
+      },
+      "sinResultados": "Prueba con otro nombre o quita los filtros.",
+      "error": "No se pudieron cargar los períodos",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a la nómina",
+        "descripcion": "Pide el permiso «Ver nómina»."
+      },
+      "sustantivo": {
+        "singular": "período",
+        "plural": "períodos"
+      },
+      "eliminar": {
+        "titulo": "¿Eliminar este período?",
+        "descripcion": "Se elimina «{nombre}». Solo se puede porque está abierto y nunca se calculó. No se puede deshacer.",
+        "confirmar": "Eliminar período",
+        "hecho": "Período eliminado"
+      }
+    },
+    "prestaciones": {
+      "etiqueta": "Prestaciones sociales",
+      "kpi": {
+        "prima": "Prima de servicios",
+        "sinPeriodo": "Sin período de prima",
+        "cesantias": "Cesantías por consignar",
+        "cesantiasDetalle": "Al fondo antes del 14 de febrero",
+        "intereses": "Intereses sobre cesantías",
+        "interesesDetalle": "A cada persona antes del 31 de enero"
+      },
+      "pestanas": {
+        "prima": "Prima",
+        "cesantias": "Cesantías e intereses"
+      },
+      "aviso": {
+        "primaTitulo": "Prima de servicios (art. 306 del CST)",
+        "primaDescripcion": "30 días de salario por año, en dos pagos: a más tardar el 30 de junio y el 20 de diciembre. La base incluye lo variable promediado y el auxilio de transporte.",
+        "cesantiasTitulo": "Cesantías e intereses",
+        "cesantiasDescripcion": "Un mes de salario por año, consignado al fondo de cada persona; los intereses (12 % anual) se pagan directamente al trabajador."
+      },
+      "liquidarPrima": "Liquidar prima",
+      "liquidarCesantias": "Liquidar cesantías",
+      "elegirPeriodo": "Elegir período",
+      "abrirPeriodo": "Abrir período",
+      "buscar": "Buscar empleado",
+      "columnas": {
+        "empleado": "Empleado",
+        "dias": "Días",
+        "salario": "Salario",
+        "variable": "Promedio variable",
+        "auxilio": "Auxilio",
+        "base": "Base",
+        "prima": "Prima",
+        "cesantias": "Cesantías",
+        "intereses": "Intereses"
+      },
+      "nDias": "{n} días",
+      "vacio": {
+        "sinPeriodo": "Todavía no hay un período de este tipo",
+        "sinPeriodoDescripcion": "Crea el período para liquidarla: el servidor calcula días, base y valor de cada persona.",
+        "sinCalculo": "El período todavía no se preliquida",
+        "sinCalculoDescripcion": "Ábrelo y preliquídalo para ver lo de cada persona al {fecha}."
+      },
+      "sinResultados": "Prueba con otro nombre.",
+      "error": "No se pudo cargar la liquidación",
+      "sinPermiso": "No tienes acceso a este período"
+    },
+    "prestamos": {
+      "titulo": "Préstamos y embargos",
+      "nuevo": "Nuevo préstamo",
+      "menu": {
+        "ver": "Ver detalle",
+        "suspender": "Suspender embargo",
+        "reactivar": "Reactivar embargo",
+        "terminar": "Terminar embargo"
+      },
+      "empresa": "Empresa",
+      "nCuotas": "{n, plural, one {# cuota} other {# cuotas}}",
+      "sinBeneficiario": "Sin beneficiario",
+      "porcentajeSalario": "{pct} % del salario",
+      "ordena": "ordena {valor}",
+      "desde": "desde el {fecha}",
+      "clases": {
+        "prestamo": "Préstamo",
+        "anticipo": "Anticipo",
+        "embargo_alimentos": "Embargo de alimentos",
+        "embargo_cooperativa": "Embargo de cooperativa",
+        "embargo_ordinario": "Embargo ordinario"
+      },
+      "estados": {
+        "al_dia": "Al día",
+        "programado": "Programado",
+        "por_aprobar": "Por aprobar",
+        "activo": "Activo",
+        "suspendido": "Suspendido",
+        "pagado": "Pagado",
+        "terminado": "Terminado",
+        "anulado": "Anulado",
+        "en_mora": "En mora"
+      },
+      "columnas": {
+        "tipo": "Tipo",
+        "empleado": "Empleado",
+        "origen": "Acreedor u origen",
+        "monto": "Monto u orden",
+        "cuota": "Cuota",
+        "saldo": "Saldo",
+        "estado": "Estado"
+      },
+      "kpi": {
+        "prestamos": "Préstamos y anticipos",
+        "prestamosDetalle": "Saldo de {n} · cuotas de {cuotas} por período",
+        "embargos": "Embargos",
+        "embargosSinPermiso": "Necesitas acceso a «Salario y pago»",
+        "embargosDetalle": "{n, plural, =0 {Ninguno activo} one {# activo} other {# activos}}"
+      },
+      "buscar": "Buscar empleado, acreedor o número",
+      "verN": "Ver {n, plural, one {# deducción} other {# deducciones}}",
+      "filtros": {
+        "tipo": "Tipo",
+        "estado": "Estado"
+      },
+      "vacio": {
+        "titulo": "No hay préstamos ni embargos",
+        "descripcion": "Los préstamos de la empresa y los embargos judiciales se descuentan solos en cada nómina, con su tope legal."
+      },
+      "sinResultados": "Prueba con otro nombre o quita los filtros.",
+      "error": "No se pudieron cargar los préstamos y embargos",
+      "sustantivo": {
+        "singular": "deducción",
+        "plural": "deducciones"
+      },
+      "cambio": {
+        "suspendido": {
+          "titulo": "¿Suspender el embargo?",
+          "descripcion": "Mientras esté suspendido no se le descuenta a {nombre}. Hazlo solo con la orden del juzgado.",
+          "confirmar": "Suspender"
+        },
+        "activo": {
+          "titulo": "¿Reactivar el embargo?",
+          "descripcion": "Se vuelve a descontar a {nombre} desde la próxima preliquidación.",
+          "confirmar": "Reactivar"
+        },
+        "terminado": {
+          "titulo": "¿Terminar el embargo?",
+          "descripcion": "Ya no se le descontará a {nombre}. Hazlo solo con el oficio de levantamiento. No se puede deshacer.",
+          "confirmar": "Terminar embargo"
+        },
+        "hecho": "Embargo actualizado"
+      }
+    },
+    "embargo": {
+      "cerrar": "Cerrar",
+      "volver": "Volver",
+      "datos": "Datos del embargo",
+      "estado": "Estado",
+      "beneficiario": "Beneficiario",
+      "oficio": "Oficio",
+      "recibido": "Recibido",
+      "vigencia": "Vigencia",
+      "desdeSinFin": "Desde el {fecha}, sin fecha final",
+      "ordena": "Ordena",
+      "porcentaje": "{pct} % del salario",
+      "fijo": "{valor} por período",
+      "total": "Total ordenado",
+      "sinTope": "Sin tope",
+      "aplicado": "Descontado hasta hoy",
+      "saldo": "Saldo",
+      "limiteTitulo": "Límite legal",
+      "limite": {
+        "alimentos": "Los embargos por alimentos van primero y pueden llegar hasta el 50 % del salario después de las deducciones de ley.",
+        "cooperativa": "Los de cooperativa van después de los de alimentos, hasta el 50 % del salario después de las deducciones de ley.",
+        "ordinario": "Los ordinarios van al final y solo pueden tomar 1/5 de lo que el salario supera el mínimo. Lo que no cabe queda como saldo."
+      }
+    },
+    "periodo": {
+      "titulo": "Período de nómina",
+      "sinCambios": "Nada cambió desde el último cálculo: se conserva la misma versión.",
+      "devuelto": "Devuelto a preliquidación con un cálculo nuevo",
+      "calculado": "Nómina preliquidada",
+      "enviado": "Enviado a revisión",
+      "cerradoOk": "Período cerrado",
+      "acciones": {
+        "preliquidar": "Preliquidar",
+        "recalcular": "Recalcular",
+        "enviarRevision": "Enviar a revisión",
+        "devolver": "Devolver a preliquidación",
+        "cerrar": "Cerrar período",
+        "ajustar": "Ajuste con motivo",
+        "eliminar": "Eliminar período"
+      },
+      "pago": "pago el {fecha}",
+      "version": "versión {n}, calculada el {fecha}",
+      "sinCalculo": "sin calcular",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a este período",
+        "descripcion": "Pide el permiso «Ver nómina»."
+      },
+      "volver": "Volver a Nómina",
+      "noExiste": "Este período no existe o ya se eliminó",
+      "secciones": {
+        "etiqueta": "Secciones del período",
+        "empleados": "Empleados",
+        "revision": "Revisión y cierre",
+        "pago": "Pago",
+        "colillas": "Colillas"
+      },
+      "kpi": {
+        "devengado": "Devengado",
+        "empleados": "{n, plural, one {# empleado} other {# empleados}}",
+        "sinCalculo": "Sin calcular",
+        "deducciones": "Deducciones",
+        "deduccionesDetalle": "Ley, préstamos, libranzas y embargos",
+        "neto": "Neto a pagar",
+        "netoPreliquidado": "Neto preliquidado",
+        "costo": "Costo empresa",
+        "costoDetalle": "Con aportes y provisiones"
+      },
+      "cerradoAviso": {
+        "titulo": "Período cerrado: no se edita",
+        "descripcion": "Lo cerrado queda como está. Para corregir algo, haz un ajuste con motivo: se calcula con las reglas del cierre y se paga con el período."
+      },
+      "confirmarCierre": {
+        "titulo": "¿Cerrar «{nombre}»?",
+        "descripcion": "Se cierran {n, plural, one {# colilla} other {# colillas}} por un neto de {neto}. Cerrar no se puede deshacer.",
+        "confirmar": "Cerrar período",
+        "c1": "Las colillas quedan aprobadas y se asienta el devengo.",
+        "c2": "Las cuotas de préstamo descontadas se marcan pagadas y se suma lo aplicado a cada embargo.",
+        "c3": "Después solo se corrige con un ajuste con motivo; ya no se recalcula."
+      },
+      "versionCorta": "versión {n}"
+    },
+    "empleados": {
+      "titulo": "Empleados del período",
+      "ingreso": "Ingresó",
+      "revisar": {
+        "titulo": "Diferencias contra el período anterior",
+        "n": "{n} por revisar",
+        "ingreso": "{nombre} · ingresó en este período",
+        "ingresoDetalle": "Liquida {dias} días; no tiene período anterior para comparar.",
+        "subio": "{nombre} · el neto subió {pct} %",
+        "bajo": "{nombre} · el neto bajó {pct} %",
+        "variacionDetalle": "Supera el umbral de variación que definió tu empresa. Revisa horas, novedades y deducciones.",
+        "embargo": "{nombre} · el embargo se limitó a {valor}",
+        "embargoDetalle": "El oficio ordena {pedido}; la ley no permite descontar más en este período."
+      },
+      "menu": {
+        "detalle": "Ver detalle",
+        "colilla": "Ver colilla",
+        "ajuste": "Ajuste con motivo"
+      },
+      "bloqueada": "Bloqueada",
+      "columnas": {
+        "empleado": "Empleado",
+        "dias": "Días",
+        "devengado": "Devengado",
+        "deducciones": "Deducciones",
+        "neto": "Neto",
+        "costo": "Costo empresa",
+        "variacion": "Frente al anterior"
+      },
+      "sinCalculo": {
+        "titulo": "Este período todavía no se preliquida",
+        "descripcion": "Al preliquidar, el servidor calcula cada colilla con la jornada aprobada, las novedades y los parámetros del año.",
+        "accion": "Preliquidar"
+      },
+      "filtros": {
+        "titulo": "Mostrar",
+        "bloqueos": "Con bloqueos",
+        "alertas": "Con alertas",
+        "variacion": "Variación sobre el umbral"
+      },
+      "bloqueosTitulo": "{n, plural, one {# bloqueo impide} other {# bloqueos impiden}} enviar a revisión",
+      "irNovedades": "Ir a Novedades",
+      "verDetalle": "Ver detalle",
+      "buscar": "Buscar empleado, cargo o área",
+      "verN": "Ver {n, plural, one {# empleado} other {# empleados}}",
+      "nDias": "{n} días",
+      "vacio": {
+        "titulo": "Nadie en este período",
+        "descripcion": "No hay vínculos vigentes entre las fechas del período."
+      },
+      "sinResultados": "Prueba con otro nombre o quita los filtros.",
+      "sustantivo": {
+        "singular": "empleado",
+        "plural": "empleados"
+      }
+    },
+    "alertas": {
+      "sin_preliquidacion": "Falta preliquidar el período.",
+      "calculo_sin_motor": "La versión vigente no la hizo el motor nuevo: recalcula.",
+      "novedades_nomina_pendientes": "{n, plural, one {# novedad de nómina por aprobar} other {# novedades de nómina por aprobar}}",
+      "novedades_despues_del_calculo": "{n, plural, one {# novedad cambió} other {# novedades cambiaron}} después del cálculo: recalcula",
+      "novedades_asistencia_pendientes": "{n, plural, one {# novedad de asistencia por resolver} other {# novedades de asistencia por resolver}}",
+      "dias_no_listos": "{n, plural, one {# día de jornada no está listo} other {# días de jornada no están listos}} para nómina",
+      "revision_pendiente": "Falta la aprobación de la revisión.",
+      "parametros_pendientes": "Hay parámetros del año sin confirmar (salario mínimo o UVT).",
+      "acumulado_faltante": "Falta lo causado en el semestre o el año para liquidar.",
+      "auxilio_transporte_supera_tope": "El salario supera el tope del auxilio de transporte.",
+      "cotizacion_por_semanas_no_soportada": "La cotización por semanas todavía no está soportada.",
+      "fsp_reparto_pila_pendiente": "Falta el reparto del fondo de solidaridad para la PILA.",
+      "ibc_ajustado_al_minimo": "El IBC se ajustó al mínimo legal.",
+      "ibc_mes_anterior_sin_dato": "No hay IBC del mes anterior: se usó el del período.",
+      "integral_bajo_minimo": "El salario integral está por debajo de 13 salarios mínimos.",
+      "integral_con_horas": "Salario integral: no se pagan recargos ni horas extra.",
+      "integral_sin_prima_ni_cesantias": "El salario integral no causa prima ni cesantías.",
+      "licencia_no_remunerada": "Tiene licencia no remunerada en el período.",
+      "neto_negativo": "El neto sale negativo: revisa las deducciones.",
+      "novedad_sin_valor": "Hay una novedad sin valor ni cantidad.",
+      "retencion_porcentaje_fijo_faltante": "Procedimiento 2 sin porcentaje fijo de retención.",
+      "sin_periodo_anterior": "No tiene período anterior para comparar.",
+      "variacion_contra_anterior": "Cambió más que el umbral frente al período anterior.",
+      "vinculo_fuera_del_periodo": "El vínculo no cubre todo el período.",
+      "embargo_limitado": "Un embargo se limitó al tope legal.",
+      "cuota_prestamo_limitada": "Una cuota de préstamo se limitó: el trabajador debe conservar la mitad del salario.",
+      "descuento_limitado": "Un descuento se limitó al tope legal.",
+      "parametro_no_configurado": "Falta un parámetro legal.",
+      "error_calculo": "No se pudo calcular esta colilla.",
+      "otra": "Revisa esta colilla."
+    },
+    "revision": {
+      "sinPermiso": "No tienes acceso a la revisión",
+      "faltaAprobacion": "Falta la aprobación de la gerencia para cerrar",
+      "faltaAprobacionDetalle": "Se pidió el {fecha}. Cuando la aprueben, «Cerrar período» se habilita.",
+      "irAprobaciones": "Ir a Aprobaciones",
+      "antesDeCerrar": "Antes de cerrar",
+      "nListas": "{n} de {total} listas",
+      "puntos": {
+        "calculo": {
+          "titulo": "Cálculo sin bloqueos",
+          "listo": "Ninguna colilla tiene bloqueos."
+        },
+        "novedades": {
+          "titulo": "Novedades del período resueltas",
+          "listo": "No hay novedades de nómina pendientes ni cambios después del cálculo."
+        },
+        "asistencia": {
+          "titulo": "Novedades de asistencia resueltas",
+          "listo": "No hay novedades de asistencia por resolver."
+        },
+        "jornada": {
+          "titulo": "Jornada lista para nómina",
+          "listo": "Todos los días del período están listos."
+        },
+        "parametros": {
+          "titulo": "Parámetros del año cargados",
+          "listo": "Salario mínimo, auxilio de transporte y UVT confirmados."
+        },
+        "aprobacion": {
+          "titulo": "Aprobación de la gerencia",
+          "listo": "Aprobada, o tu empresa no exige aprobación para cerrar.",
+          "pendiente": "Esperando la aprobación.",
+          "rechazada": "Rechazada: devuelve a preliquidación y vuelve a enviar."
+        }
+      },
+      "ajustes": {
+        "titulo": "Ajustes del período",
+        "numero": "Ajuste · versión {n}",
+        "apagada": "La nómina está en modo solo preliquidación.",
+        "cerrado": "Ajuste cerrado",
+        "cerrar": "Cerrar ajuste"
+      },
+      "quien": {
+        "titulo": "Quién revisa y aprueba",
+        "preparo": "Preliquidó",
+        "tu": "Tú",
+        "otraPersona": "Otra persona de RR. HH.",
+        "aprueba": "Aprobación",
+        "estados": {
+          "pendiente": "Pendiente",
+          "aprobada": "Aprobada",
+          "rechazada": "Rechazada",
+          "cancelada": "Cancelada",
+          "sin_regla": "Sin regla de aprobación"
+        },
+        "regla": "RR. HH. prepara y revisa; la gerencia aprueba en Aprobaciones. Quien preliquidó no puede aprobar su propia nómina.",
+        "noPuedesAprobar": "Tú preparaste esta nómina: la aprueba otra persona."
+      },
+      "loQueSeCierra": "Lo que se va a cerrar",
+      "empleados": "Empleados",
+      "devengado": "Devengado",
+      "deducciones": "Deducciones",
+      "neto": "Neto a pagar",
+      "costo": "Costo empresa"
+    },
+    "pago": {
+      "archivo": {
+        "titulo": "1. Archivo para el banco",
+        "descripcion": "Se valida antes de generarse: con una fila mala no hay archivo.",
+        "formato": "Formato",
+        "csvGenerico": "CSV genérico (cuenta, tipo, documento y valor)",
+        "generar": "Generar y validar archivo",
+        "sinPermiso": "Necesitas el permiso para pagar la nómina y ver cuentas bancarias.",
+        "conHallazgos": "{n, plural, one {# fila tiene} other {# filas tienen}} errores: no se generó el archivo",
+        "listo": "Archivo generado",
+        "hallazgosTitulo": "{n, plural, one {# hallazgo} other {# hallazgos}} antes de generar el archivo",
+        "validado": "Archivo validado sin hallazgos",
+        "errores": {
+          "sin_cuenta": "sin cuenta bancaria",
+          "sin_documento": "sin documento",
+          "valor_invalido": "valor inválido",
+          "tipo_cuenta_invalido": "tipo de cuenta inválido",
+          "cuenta_invalida": "número de cuenta inválido"
+        }
+      },
+      "pago": {
+        "titulo": "2. Pago",
+        "descripcion": "Se registra un solo egreso por período en Tesorería, con comprobante de egreso.",
+        "pagado": "Período pagado",
+        "sinPermiso": "Necesitas el permiso para pagar la nómina.",
+        "cuenta": "Cuenta pagadora",
+        "cargandoCuentas": "Cargando cuentas…",
+        "elegirCuenta": "Elige la cuenta",
+        "fecha": "Fecha de pago",
+        "referencia": "Referencia",
+        "marcar": "Marcar como pagado",
+        "comisionesPendientes": "{n, plural, one {# colilla quedó} other {# colillas quedaron}} con comisiones por marcar pagadas: vuelve a intentarlo desde Comisiones."
+      },
+      "asiento": {
+        "titulo": "3. Asiento contable",
+        "descripcion": "Pasa a «Contabilizado» cuando cada colilla tiene su asiento de devengo y de pago.",
+        "contabilizado": "Período contabilizado",
+        "despuesDePagar": "Se contabiliza después de pagar.",
+        "listo": "Período contabilizado",
+        "contabilizar": "Contabilizar",
+        "faltan": "{n, plural, one {# asiento falta} other {# asientos faltan}}: revisa la bandeja de fallos contables",
+        "sinDetalle": "Sin detalle"
+      },
+      "resumen": {
+        "titulo": "Lo que se paga",
+        "neto": "Neto de la nómina",
+        "colillas": "Colillas por pagar",
+        "sale": "Sale de la cuenta pagadora",
+        "nota": "Los embargos y libranzas ya están descontados del neto: se pagan a cada tercero por aparte.",
+        "estados": {
+          "porPagar": "Por pagar",
+          "pagado": "Pagado",
+          "contabilizado": "Contabilizado"
+        }
+      },
+      "confirmar": {
+        "titulo": "¿Marcar la nómina como pagada?",
+        "descripcion": "Se registra un egreso por {total} desde {cuenta}. No se puede deshacer.",
+        "confirmar": "Marcar como pagado",
+        "hecho": "Pago registrado por {total}",
+        "c1": "Las colillas pasan a pagadas y se asienta la nómina por pagar contra el banco.",
+        "c2": "Las comisiones incluidas se marcan pagadas."
+      }
+    },
+    "colillas": {
+      "titulo": "Colillas del período",
+      "vistaPrevia": "Vista previa: la persona solo ve su colilla cuando el período se cierra.",
+      "buscar": "Buscar empleado",
+      "columnas": {
+        "empleado": "Empleado",
+        "neto": "Neto",
+        "estado": "Estado"
+      },
+      "ver": "Ver colilla",
+      "vacio": {
+        "titulo": "No hay colillas",
+        "descripcion": "Las colillas aparecen al preliquidar."
+      },
+      "sinResultados": "Prueba con otro nombre."
+    },
+    "colilla": {
+      "estados": {
+        "draft": "Preliquidada",
+        "approved": "Cerrada",
+        "paid": "Pagada",
+        "cancelled": "Anulada"
+      },
+      "nDias": "{n} días",
+      "nHoras": "{n} h",
+      "titulo": "Colilla",
+      "sinPermiso": "No tienes acceso a esta colilla",
+      "volver": "Volver al período",
+      "vacio": {
+        "titulo": "No hay colilla para esta persona",
+        "descripcion": "La persona no está en la versión vigente del período."
+      },
+      "tituloDe": "Colilla · {nombre}",
+      "neto": "neto {valor}",
+      "descargar": "Descargar PDF",
+      "comprobante": "Comprobante de pago de nómina",
+      "del": "Del {rango}",
+      "pagada": "pagada el {fecha}",
+      "pago": "pago el {fecha}",
+      "borrador": "Borrador: el período no está cerrado. No se entrega a la persona.",
+      "empleado": "Empleado",
+      "cargo": "Cargo",
+      "salario": "Salario básico",
+      "mensual": "{valor} mensual",
+      "devengados": "Devengados",
+      "deducciones": "Deducciones",
+      "totalDevengado": "Total devengado",
+      "totalDeducciones": "Total deducciones",
+      "netoPagar": "Neto a pagar",
+      "bloqueada": "Bloqueada",
+      "ibc": "IBC del período: {valor}.",
+      "noEsElectronica": "Este comprobante no reemplaza el documento soporte de nómina electrónica de la DIAN.",
+      "generado": "Generado el {fecha}.",
+      "electronica": {
+        "titulo": "No es la nómina electrónica",
+        "descripcion": "El documento soporte de nómina electrónica de la DIAN es mensual y llega en la fase 4. Los datos de esta colilla ya quedan listos para él."
+      },
+      "entrega": {
+        "titulo": "Entrega a la persona",
+        "descripcion": "El envío por correo y el portal del empleado llegan después. Mientras tanto, descarga el PDF y entrégalo."
+      }
+    },
+    "ajuste": {
+      "titulo": "Ajuste con motivo",
+      "descripcion": "Lo cerrado no se edita: el ajuste recalcula la colilla con las reglas del cierre y guarda solo la diferencia.",
+      "confirmar": "Guardar ajuste",
+      "motivo": "Motivo",
+      "motivoPlaceholder": "Ej.: bono de cumplimiento que no se registró a tiempo",
+      "c1": "Se calcula con los parámetros con que se cerró el período.",
+      "c2": "Queda como una versión de ajuste, con su motivo y quién la hizo.",
+      "c3": "Se cierra aparte y se paga con el período.",
+      "hecho": "Ajuste guardado",
+      "persona": "Persona",
+      "elegirPersona": "Elige la persona",
+      "concepto": "Concepto",
+      "dias": "Días",
+      "valor": "Valor",
+      "faltaPersona": "Elige la persona.",
+      "faltaValor": "Escribe el valor del ajuste."
+    },
+    "conceptos": {
+      "BONIFICACION_SALARIAL": "Bonificación salarial",
+      "BONIFICACION_NO_SALARIAL": "Bonificación no salarial",
+      "AUXILIO_NO_SALARIAL": "Auxilio no salarial",
+      "RETROACTIVO": "Retroactivo salarial",
+      "VACACIONES_COMPENSADAS": "Vacaciones compensadas en dinero",
+      "LIBRANZA": "Libranza",
+      "APORTE_COOPERATIVA": "Aporte a cooperativa",
+      "FONDO_EMPLEADOS": "Aporte al fondo de empleados",
+      "CUOTA_SINDICAL": "Cuota sindical",
+      "OTRO_DESCUENTO": "Otro descuento autorizado"
+    },
+    "detalle": {
+      "titulo": "Detalle de la persona",
+      "sinItems": "Sin conceptos en este grupo.",
+      "columnas": {
+        "concepto": "Concepto",
+        "cantidad": "Cantidad",
+        "base": "Base",
+        "valor": "Valor"
+      },
+      "salarial": "Salarial",
+      "noSalarial": "No salarial",
+      "sinPermiso": "No tienes acceso a este período",
+      "volver": "Volver al período",
+      "vacio": {
+        "titulo": "Esta persona no está en el período",
+        "descripcion": "No tiene colilla en la versión vigente."
+      },
+      "salarioMensual": "salario {valor} mensual",
+      "nDias": "{n} días",
+      "verColilla": "Ver colilla",
+      "etiqueta": "Secciones del detalle",
+      "pestanas": {
+        "resumen": "Resumen",
+        "seguridad": "Seguridad social",
+        "retencion": "Retención",
+        "deducciones": "Deducciones",
+        "provisiones": "Provisiones"
+      },
+      "devengados": "Devengados",
+      "totalDevengado": "Total devengado",
+      "deducciones": "Deducciones",
+      "totalDeducciones": "Total deducciones",
+      "netoPagar": "Neto a pagar · {devengado} − {deducciones}",
+      "bloqueada": "Bloqueada",
+      "aportesTrabajador": "Aportes del trabajador",
+      "aportesEmpleador": "Aportes y parafiscales de la empresa",
+      "total": "Total",
+      "retencion": {
+        "titulo": "Retención en la fuente",
+        "noAplica": "No hubo retención en este período (se calcula en el período que cierra el mes).",
+        "procedimiento": "Procedimiento",
+        "proc": "Procedimiento {n}",
+        "depuracion": {
+          "ingresos": "Ingresos laborales del mes",
+          "incr": "Ingresos no constitutivos de renta",
+          "ingreso_neto": "Ingreso neto",
+          "deduccion_dependientes": "Dependientes",
+          "deduccion_medicina": "Medicina prepagada",
+          "deduccion_vivienda": "Intereses de vivienda",
+          "exenta_voluntarios": "Aportes voluntarios (AFC y FVP)",
+          "exenta_25": "Renta exenta del 25 %",
+          "limite_40": "Límite del 40 %",
+          "beneficios_aplicados": "Beneficios aplicados",
+          "base": "Base gravable"
+        },
+        "porcentaje": "Porcentaje fijo",
+        "delMes": "Retención del mes",
+        "estePeriodo": "Retenido en este período"
+      },
+      "otrasDeducciones": "Préstamos, libranzas, embargos y otros descuentos",
+      "limite": {
+        "titulo": "Límite de las deducciones",
+        "descripcion": "Embargos y préstamos se aplican en orden y con tope: el trabajador conserva al menos la mitad del salario después de las deducciones de ley. Lo que no cabe queda como saldo para el próximo período."
+      },
+      "provisiones": "Provisiones del período",
+      "ibc": {
+        "titulo": "IBC del período · regla del 40 %",
+        "salarioMensual": "Salario mensual",
+        "exceso40": "Exceso no salarial sobre el 40 %",
+        "minimo": "Piso (1 SMMLV proporcional)",
+        "maximo": "Techo (25 SMMLV proporcional)",
+        "ibc": "IBC",
+        "arl": "IBC de la ARL",
+        "parafiscales": "Base de parafiscales",
+        "prestaciones": "Base de prestaciones",
+        "nota": "Art. 30 de la Ley 1393 de 2010: lo no salarial que pase del 40 % del total suma al IBC. El auxilio de transporte no entra en la cuenta.",
+        "exonerado": "Exonerado de salud del empleador, ICBF y SENA (art. 114-1 del ET)."
+      },
+      "costo": {
+        "titulo": "Costo para la empresa",
+        "devengado": "Total devengado",
+        "aportes": "Aportes y parafiscales",
+        "provisiones": "Provisiones",
+        "total": "Costo empresa"
+      },
+      "informativos": "Informativos"
+    },
+    "prestamo": {
+      "titulo": "Préstamo",
+      "noExiste": "Este préstamo no existe",
+      "volver": "Volver a Préstamos y embargos",
+      "tituloDe": "Préstamo {numero} · {nombre}",
+      "deLaEmpresa": "Préstamo de la empresa",
+      "conIntereses": "{monto} al {tasa} % anual",
+      "sinIntereses": "{monto} sin intereses",
+      "cuotasDe": "{n, plural, one {# cuota} other {# cuotas}} de {valor}",
+      "columnas": {
+        "cuota": "Cuota",
+        "vence": "Vence",
+        "valor": "Valor",
+        "saldo": "Saldo después",
+        "estado": "Estado"
+      },
+      "nDeTotal": "{n} de {total}",
+      "cuotas": {
+        "descontada": "Descontada",
+        "pending": "Programada",
+        "partial": "Parcial",
+        "paid": "Pagada",
+        "overdue": "Vencida",
+        "skipped": "Omitida"
+      },
+      "error": "No se pudo completar la acción.",
+      "rechazar": "Rechazar",
+      "aprobar": "Aprobar",
+      "anular": "Anular",
+      "cuotasTitulo": "Cuotas",
+      "saldoDespues": "Saldo después: {valor}",
+      "sinCuotas": {
+        "titulo": "Todavía no hay cuotas",
+        "descripcion": "Las cuotas se generan al aprobar el préstamo."
+      },
+      "condiciones": {
+        "estado": "Estado",
+        "titulo": "Condiciones",
+        "monto": "Monto",
+        "intereses": "Intereses",
+        "sinIntereses": "Sin intereses",
+        "total": "Total a pagar",
+        "saldo": "Saldo",
+        "descuento": "Descuento",
+        "porNomina": "Por nómina",
+        "manual": "Manual",
+        "maximo": "Máximo por período",
+        "primeraCuota": "Primera cuota",
+        "nota": "En cada nómina se descuenta la cuota con el piso de la libranza: el trabajador conserva al menos la mitad del salario."
+      },
+      "confirmarAprobar": {
+        "titulo": "¿Aprobar el préstamo?",
+        "descripcion": "Se generan {n, plural, one {# cuota} other {# cuotas}} de {valor} que la nómina descuenta sola."
+      },
+      "aprobado": "Préstamo aprobado",
+      "confirmarRechazar": {
+        "titulo": "Rechazar el préstamo"
+      },
+      "rechazado": "Préstamo rechazado",
+      "confirmarAnular": {
+        "titulo": "¿Anular el préstamo?",
+        "descripcion": "Deja de descontarse. El saldo de {saldo} queda sin cobrar por nómina. No se puede deshacer."
+      },
+      "anulado": "Préstamo anulado"
+    },
+    "nuevoPrestamo": {
+      "titulo": "Nuevo préstamo",
+      "subtitulo": "Se descuenta por nómina con autorización escrita del empleado",
+      "sinPermiso": "No tienes permiso para registrar préstamos",
+      "volver": "Volver",
+      "creado": "Préstamo registrado: queda por aprobar",
+      "error": "No se pudo registrar el préstamo.",
+      "cancelar": "Cancelar",
+      "crear": "Crear préstamo",
+      "datos": "Datos del préstamo",
+      "empleado": "Empleado",
+      "tipo": "Tipo",
+      "tipos": {
+        "prestamo": "Préstamo",
+        "anticipo": "Anticipo"
+      },
+      "monto": "Monto",
+      "cuotas": "Número de cuotas",
+      "anticipoUnaCuota": "Un anticipo se descuenta en una sola cuota.",
+      "primeraCuota": "Primera cuota",
+      "intereses": "Intereses anuales",
+      "interesesAyuda": "0 % si es sin intereses.",
+      "maximo": "Máximo por período",
+      "maximoAyuda": "Porcentaje del salario que puede tomar la cuota.",
+      "notas": "Notas",
+      "notasAyuda": "Opcional. Por ejemplo, para qué es el préstamo.",
+      "asiQueda": "Así queda",
+      "cuota": "Cuota",
+      "cuotaDe": "{valor} · {n, plural, one {# cuota} other {# cuotas}}",
+      "interesesAparte": "Intereses",
+      "alCrear": "Se suman al crear",
+      "limite": "Tope por período",
+      "limiteNota": "Si la cuota no cabe en el período, la nómina descuenta lo que la ley permite y el resto queda como saldo.",
+      "aprobacion": {
+        "titulo": "Pasa por aprobación",
+        "descripcion": "Nace «por aprobar» y no se descuenta hasta que alguien con permiso de nómina lo apruebe."
+      },
+      "autorizacion": {
+        "titulo": "Autorización escrita del empleado",
+        "descripcion": "Es obligatoria para descontar por nómina (art. 149 del CST). Súbela a los documentos de la ficha del empleado."
+      }
+    },
+    "configuracion": {
+      "sinPermiso": {
+        "titulo": "No tienes acceso a la configuración de la nómina",
+        "descripcion": "Pide el permiso «Ver nómina»."
+      },
+      "si": "Sí",
+      "no": "No",
+      "columnas": {
+        "codigo": "Código",
+        "concepto": "Concepto",
+        "tipo": "Tipo",
+        "salarial": "Salarial",
+        "prestacional": "Prestacional",
+        "cuenta": "Cuenta"
+      },
+      "tipos": {
+        "devengado": "Devengado",
+        "deduccion": "Deducción",
+        "aporte_empleador": "Aporte",
+        "provision": "Provisión",
+        "informativo": "Informativo"
+      },
+      "intro": "Cómo calcula la nómina tu empresa. Los valores de ley (SMMLV, UVT, porcentajes) viven en «Parámetros legales» y no se editan aquí.",
+      "apagada": {
+        "titulo": "La nómina está en modo solo preliquidación",
+        "descripcion": "Se calcula y se revisa, pero no se cierra, no se paga ni se contabiliza hasta que el Contador revise conceptos, IBC, provisiones, retención y cuentas. Luego GO Admin enciende «Nómina activa»."
+      },
+      "activa": {
+        "titulo": "Nómina activa",
+        "encendida": "Encendida",
+        "apagada": "Apagada · se enciende después de la ronda del Contador",
+        "porQue": "¿Por qué está apagada? Un error en un concepto o en una cuenta se repite en cada colilla, en la PILA y en el asiento. Por eso las reglas pasan antes por el Contador.",
+        "soloGoAdmin": "Solo GO Admin"
+      },
+      "conceptos": "Conceptos de nómina",
+      "buscar": "Buscar concepto o cuenta"
+    }
+  },
+  "hrmMarcacionMetodos": {
+    "contexto": "{sede} · {activos} de {total} métodos activos",
+    "elegirSede": "Elegir sede",
+    "intro": "Cada persona marca con cualquiera de los métodos activos. Los que no uses, apágalos: menos caminos, menos marcas raras.",
+    "cargando": "Cargando los métodos de marcación",
+    "guardados": "Métodos guardados",
+    "cambiosSinGuardar": "Cambios sin guardar",
+    "apagado": "Apagado",
+    "llegaKiosco": "Llega con el kiosco (M1)",
+    "llegaRelojes": "Llega con los relojes de huella o rostro",
+    "tocaMetodo": "Toca un método para ver y cambiar sus reglas.",
+    "unidades": {
+      "metros": "m",
+      "segundos": "s"
+    },
+    "sinPermiso": {
+      "titulo": "No puedes ver los métodos de marcación",
+      "descripcion": "Necesitas el permiso «Ver asistencia» o «Gestionar asistencia» de Recursos humanos.",
+      "irInicio": "Ir al inicio"
+    },
+    "error": {
+      "titulo": "No se pudieron cargar los métodos",
+      "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+    },
+    "soloLectura": {
+      "titulo": "No puedes cambiar los métodos de marcación",
+      "descripcion": "Necesitas el permiso «Gestionar asistencia» de Recursos humanos. Puedes ver cómo está configurada la sede y seguir las marcas en «En vivo».",
+      "irEnVivo": "Ir a En vivo"
+    },
+    "errores": {
+      "guardar": {
+        "sin_metodos": "La sede necesita al menos un método activo: celular, QR o etiqueta.",
+        "radio_invalido": "El radio va de {min} a {max} m.",
+        "metodo_no_disponible": "Ese método llega con el kiosco o los relojes: todavía no se puede activar.",
+        "sin_permiso": "No tienes permiso para cambiar los métodos de esta sede.",
+        "sede_requerida": "Elige una sede antes de guardar.",
+        "generico": "No se pudieron guardar los cambios. Inténtalo de nuevo."
+      }
+    },
+    "cambiarSede": {
+      "titulo": "¿Cambiar de sede sin guardar?",
+      "descripcion": "Se pierden los cambios en los métodos de {sede}.",
+      "confirmar": "Descartar y cambiar",
+      "cancelar": "Seguir editando"
+    },
+    "metodos": {
+      "celular_ubicacion": {
+        "titulo": "Celular con ubicación",
+        "corto": "Celular con ubicación"
+      },
+      "qr": {
+        "titulo": "QR de la sede",
+        "corto": "QR de la sede"
+      },
+      "nfc_etiqueta": {
+        "titulo": "Carné o etiqueta NFC",
+        "corto": "Etiqueta NFC"
+      },
+      "carne": {
+        "titulo": "Carné",
+        "corto": "Carné NFC"
+      },
+      "pin": {
+        "titulo": "Kiosco con PIN",
+        "corto": "PIN en el kiosco"
+      },
+      "rostro": {
+        "titulo": "Rostro",
+        "corto": "Rostro"
+      },
+      "huella": {
+        "titulo": "Huella",
+        "corto": "Huella"
+      }
+    },
+    "tarjetas": {
+      "noDisponible": "{metodo}: {cuando}",
+      "celular": {
+        "descripcion": "La persona marca desde su celular y GO Admin compara su ubicación con la de la sede. La ubicación se toma solo al marcar, nunca para rastrear.",
+        "resumen": "Radio {radio} m · {computador, select, si {también desde computador} other {solo desde celular}}",
+        "activar": "Celular con ubicación",
+        "radio": "Radio de la sede",
+        "radioAyuda": "Distancia máxima a la sede para aceptar la marca.",
+        "ubicacion": "Ubicación de la sede",
+        "ubicacionFijada": "{direccion} · fijada en el mapa",
+        "sinDireccion": "Sin dirección",
+        "sinUbicacion": "La sede no tiene su ubicación fijada en el mapa",
+        "sinUbicacionDetalle": "Las marcas con celular quedan «sin ubicación» para que el jefe las revise.",
+        "foto": "Pedir una foto al marcar · {cuando}",
+        "computador": "Permitir marcar desde un computador (queda para revisión del jefe)"
+      },
+      "qr": {
+        "descripcion": "La persona escanea con su celular el QR de una pantalla de la sede. Cambia cada 30 segundos y cada código sirve una sola vez.",
+        "resumen": "30 s · un solo uso · {ubicacion, select, si {con ubicación} other {sin ubicación}}",
+        "activar": "QR de la sede",
+        "comoSeMuestra": "Cómo se muestra el QR",
+        "comoSeMuestraAyuda": "El QR en el kiosco llega con el kiosco (M1).",
+        "rotativo": "Rotativo en una pantalla",
+        "cambiaCada": "Cambia cada",
+        "cambiaCadaAyuda": "Fijo: cada 30 segundos.",
+        "unSoloUso": "Un solo uso: cada código sirve para una marca",
+        "pedirAdemas": "Pedir además",
+        "ademasNada": "Nada",
+        "ademasUbicacion": "La ubicación del celular",
+        "ademasPin": "El PIN de la persona · {cuando}",
+        "abrirPantalla": "Abrir pantalla del QR",
+        "agregarPantalla": "Agregar una pantalla del QR"
+      },
+      "nfc": {
+        "descripcion": "Con una etiqueta NFC pegada en la entrada, la persona acerca su celular. El lector de carnés llega con el kiosco.",
+        "resumen": "{n, plural, =0 {Sin etiquetas} one {# etiqueta} other {# etiquetas}}",
+        "activar": "Carné o etiqueta NFC",
+        "etiquetas": "Etiquetas registradas",
+        "ninguna": "Ninguna",
+        "carnes": "Carnés entregados",
+        "exigeUbicacion": "Al marcar con una etiqueta, el celular comparte siempre su ubicación.",
+        "registrar": "Registrar etiqueta o carné"
+      },
+      "pin": {
+        "descripcion": "En la tablet de la sede la persona escribe su PIN, que nunca se muestra. Sirve de respaldo cuando no tiene celular, carné ni biometría."
+      },
+      "rostro": {
+        "descripcion": "Solo con un reloj facial: el reloj compara el rostro, nunca GO Admin. La tablet del kiosco no reconoce rostros. Necesita la autorización biométrica de cada persona."
+      },
+      "huella": {
+        "descripcion": "Solo con un lector o terminal de huella. La huella queda guardada en el lector; GO Admin recibe la marca, nunca la huella."
+      },
+      "remoto": {
+        "titulo": "Trabajo remoto",
+        "descripcion": "Se habilita por persona en su ficha (modalidad remota o híbrida). Marca desde la app sin ubicación de la sede.",
+        "resumen": "Se habilita por persona",
+        "personas": "{n, plural, =0 {Nadie} one {# persona} other {# personas}}"
+      },
+      "manual": {
+        "titulo": "Marca manual con aprobación",
+        "descripcion": "La salida cuando todo lo demás falla. Siempre pide motivo y pasa por aprobación; no se puede apagar.",
+        "resumen": "Con motivo y aprobación",
+        "siempreActiva": "Siempre activa"
+      },
+      "foto": {
+        "titulo": "Foto de evidencia y letrero",
+        "descripcion": "El kiosco toma una foto en cada marca con PIN o carné, solo de quien lo autorizó. La sede debe avisarlo con un letrero visible en la entrada.",
+        "resumen": "30 días · se conserva si hay reclamo",
+        "seBorra": "Se borra a los",
+        "dias": "{n} días",
+        "seConserva": "Si la marca está en revisión o tiene un reclamo, la foto se conserva hasta cerrar el caso.",
+        "llega": "Fotos de evidencia: {cuando}",
+        "llegaDetalle": "Hoy ninguna marca toma foto. El letrero explica a las personas qué se guarda.",
+        "letrero": "Descargar letrero para imprimir"
+      },
+      "excepciones": {
+        "titulo": "Excepciones temporales",
+        "descripcion": "Cuando a alguien se le quita un método o no puede usarlo (por ejemplo, una lesión en la mano), RR. HH. le habilita otro por unas fechas. Queda quién lo aprobó y por qué.",
+        "resumen": "{vigentes, plural, one {# vigente} other {# vigentes}} · {pendientes, plural, one {# pendiente} other {# pendientes}}",
+        "aprobo": "aprobó {nombre}",
+        "estados": {
+          "vigente": "vigente",
+          "programada": "programada",
+          "vencida": "vencida",
+          "pendiente": "pendiente",
+          "rechazada": "rechazada",
+          "revocada": "revocada",
+          "anulada": "anulada"
+        },
+        "revocar": "Revocar",
+        "revocada": "Excepción revocada",
+        "errorSinPermiso": "No tienes permiso para revocar excepciones.",
+        "errorYaRevocada": "La excepción ya no existe o ya se revocó.",
+        "errorRevocar": "No se pudo revocar la excepción.",
+        "errorCargar": "No se pudieron cargar las excepciones.",
+        "reintentar": "Reintentar",
+        "sinPermiso": "No puedes ver las excepciones.",
+        "vacio": "Nadie de esta sede tiene excepciones vigentes o recientes.",
+        "agregar": "Agregar excepción",
+        "confirmarTitulo": "¿Revocar la excepción?",
+        "confirmarDetalle": "{nombre} vuelve a los métodos de la sede. Si la excepción seguía pendiente, la solicitud de aprobación se anula.",
+        "cancelar": "Cancelar"
+      }
+    },
+    "excepcion": {
+      "titulo": "Nueva excepción temporal",
+      "descripcion": "Habilita otro método a una persona por unas fechas. La aprueba Recursos humanos.",
+      "persona": "Persona",
+      "elegirPersona": "Elige una persona",
+      "cargandoPersonas": "Cargando personas…",
+      "buscarPersona": "Buscar persona",
+      "sinPersonas": "No hay personas vigentes en esta sede",
+      "metodo": "Método que se le habilita",
+      "elegirMetodo": "Elige un método",
+      "metodoNoDisponible": "{metodo} (llega con el kiosco o los relojes)",
+      "desde": "Desde",
+      "hasta": "Hasta",
+      "elegirFecha": "Elige la fecha",
+      "maximo": "Máximo {dias} días.",
+      "motivo": "Motivo",
+      "motivoEjemplo": "Ej.: lesión en la mano, no puede usar la huella",
+      "avisoTitulo": "Queda registrada con quién la aprobó, el motivo y las fechas",
+      "avisoDetalle": "Al vencer, la persona vuelve a los métodos de la sede sin que nadie tenga que hacer nada.",
+      "cancelar": "Cancelar",
+      "enviar": "Enviar a aprobación",
+      "enviada": "Enviada a aprobación",
+      "enviadaDetalle": "La aprueba otra persona de RR. HH. en Aprobaciones.",
+      "errores": {
+        "persona": "Elige la persona.",
+        "metodo": "Elige un método que funcione hoy: celular con ubicación, QR o etiqueta NFC.",
+        "fechas": "Elige las fechas: «Hasta» no puede ser antes de «Desde».",
+        "tope": "La excepción dura máximo 90 días.",
+        "pasado": "La excepción no puede terminar en el pasado.",
+        "motivo": "Escribe el motivo (de 5 a 500 caracteres).",
+        "noPropio": "Una excepción para ti la pide otra persona de RR. HH.",
+        "personaNoExiste": "Esa persona ya no está en la organización.",
+        "vigencia": "Revisa las fechas: máximo 90 días y que no termine en el pasado.",
+        "sinPermiso": "No tienes permiso para crear excepciones.",
+        "generico": "No se pudo enviar la excepción. Inténtalo de nuevo."
+      }
+    },
+    "letrero": {
+      "titulo": "Aquí se registra la asistencia",
+      "metodos": "Métodos para marcar",
+      "imprimir": "Imprimir",
+      "cerrar": "Cerrar",
+      "sinPermiso": "No puedes ver el letrero de esta sede",
+      "error": "No se pudo preparar el letrero",
+      "responsable": "Responsable del tratamiento: {organizacion}. GO Admin genera este letrero con los datos de la organización.",
+      "responsableSinNombre": "GO Admin genera este letrero con los datos de la organización.",
+      "bloques": {
+        "queGuardamos": {
+          "titulo": "Qué guardamos",
+          "texto": "La hora de tu entrada, salida y descansos, el equipo donde marcaste y, si lo autorizaste, una foto de evidencia."
+        },
+        "foto": {
+          "titulo": "Foto de evidencia",
+          "texto": "Solo si la autorizaste. Se borra a los 30 días, salvo que tu marca esté en revisión o tengas un reclamo abierto: en ese caso, al cerrarlo."
+        },
+        "huellaRostro": {
+          "titulo": "Huella y rostro",
+          "texto": "Los compara el reloj de la sede. No se guardan en GO Admin ni en ningún otro sistema de la empresa."
+        },
+        "voluntario": {
+          "titulo": "Es voluntario",
+          "texto": "Si no autorizas la biometría o la foto, marcas con PIN, carné o el QR desde tu celular. No afecta tu contrato."
+        },
+        "derechos": {
+          "titulo": "Tus derechos",
+          "texto": "Puedes conocer, corregir o retirar tus autorizaciones en GO Admin › Mi asistencia, o escribiendo a Recursos humanos (Ley 1581 de 2012)."
+        }
+      }
+    }
+  },
+  "hrmMarcacionRrhh": {
+    "titulo": "Marcación",
+    "subtitulo": {
+      "hoy": "Hoy, {fecha}",
+      "actualizadoRecien": "actualizado hace un momento",
+      "actualizadoHace": "actualizado hace {n} min",
+      "dispositivos": "{n, plural, one {# dispositivo} other {# dispositivos}}",
+      "sinConexion": "{n} sin conexión"
+    },
+    "vistas": {
+      "etiqueta": "Vista de marcación",
+      "envivo": "En vivo",
+      "metodos": "Métodos por sede",
+      "dispositivos": "Dispositivos"
+    },
+    "comun": {
+      "irAlInicio": "Ir al inicio"
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a la marcación",
+      "descripcion": "Para ver las marcas de la sede necesitas el permiso «Ver asistencia» de Recursos humanos. Pídelo a quien administra los roles."
+    },
+    "metodos": {
+      "celular_ubicacion": "Celular con ubicación",
+      "qr": "QR de la sede",
+      "nfc_etiqueta": "Etiqueta NFC",
+      "carne": "Carné NFC",
+      "carne_nfc": "Carné NFC",
+      "carne_qr": "Carné con QR",
+      "pin": "Kiosco con PIN",
+      "rostro": "Rostro",
+      "huella": "Huella",
+      "remoto": "Remoto",
+      "manual": "Manual",
+      "desconocido": "Sin identificar"
+    },
+    "verificacion": {
+      "dentro": "Dentro de la sede",
+      "verificada": "Verificada",
+      "remoto": "Trabajo remoto",
+      "pendiente_aprobacion": "Pendiente de aprobación",
+      "sin_ubicacion": "Sin ubicación",
+      "computador": "Desde un computador",
+      "sin_senal": "Guardada sin conexión",
+      "tarde": "Tarde {n} min",
+      "rechazadaCorta": "Rechazada",
+      "rechazos": {
+        "fuera_de_rango": "Rechazada: fuera de la sede",
+        "qr_ya_usado": "Rechazada: QR ya usado",
+        "qr_vencido": "Rechazada: QR vencido",
+        "qr_invalido": "Rechazada: QR no válido",
+        "etiqueta_invalida": "Rechazada: etiqueta no válida",
+        "etiqueta_otra_sede": "Rechazada: etiqueta de otra sede",
+        "metodo_no_disponible_en_sede": "Rechazada: método no activo en la sede",
+        "mecanismo_no_permitido": "Rechazada: método no permitido",
+        "computador_no_permitido": "Rechazada: desde un computador",
+        "ubicacion_requerida": "Rechazada: sin ubicación",
+        "ubicacion_requiere_consentimiento": "Rechazada: sin permiso de ubicación",
+        "otro": "Rechazada"
+      }
+    },
+    "filtros": {
+      "metodo": "Método",
+      "verificacion": "Verificación",
+      "todos": "Todos",
+      "chipMetodo": "Método: {valor}",
+      "chipVerificacion": "Verificación: {valor}",
+      "chipEstado": "Estado: {valor}",
+      "verMarcas": "{n, plural, one {Ver # marca} other {Ver # marcas}}",
+      "grupos": {
+        "correctas": "Correctas",
+        "por_revisar": "Por revisar",
+        "rechazadas": "Rechazadas"
+      }
+    },
+    "envivo": {
+      "resumen": "Resumen de la marcación de hoy",
+      "kpi": {
+        "marcaron": "Marcaron hoy",
+        "deTotal": "{n} de {total}",
+        "sinMarcar": "{n} con turno aún no marcan",
+        "todosMarcaron": "Todos los que tienen turno ya marcaron",
+        "porRevisar": "Por revisar",
+        "nadaPorRevisar": "Nada por revisar",
+        "motivos": {
+          "sin_ubicacion": "sin ubicación",
+          "computador": "desde un computador",
+          "sin_senal": "sin conexión",
+          "manual": "manual"
+        },
+        "pantallas": "Pantallas de QR en línea",
+        "sinPantallas": "Ninguna pantalla todavía",
+        "pantallasSinConexion": "{n} sin conexión",
+        "pantallasTodas": "Todas en línea",
+        "sinSenal": "Guardadas sin señal",
+        "sinSenalDetalle": "llegan al volver la conexión"
+      },
+      "porMetodo": "Hoy por método",
+      "chipMetodo": "{metodo} · {n}",
+      "avisoPantallas": {
+        "titulo": "{n, plural, one {Una pantalla de QR no se conecta} other {# pantallas de QR no se conectan}}",
+        "descripcion": "Revisa que el televisor o monitor esté encendido, con internet y con la pantalla abierta. Mientras tanto la gente puede marcar con su celular.",
+        "accion": "Ver dispositivos"
+      },
+      "buscar": "Buscar persona, punto o dispositivo…",
+      "tabla": "Marcas de hoy",
+      "etiquetaFila": "{nombre} · {marca} {hora}",
+      "movilMarca": "{marca} {hora} · {metodo}",
+      "columnas": {
+        "persona": "Persona",
+        "hora": "Hora",
+        "marca": "Marca",
+        "metodo": "Método",
+        "punto": "Punto o dispositivo",
+        "verificacion": "Verificación"
+      },
+      "tipos": {
+        "entrada": "Entrada",
+        "salida": "Salida",
+        "inicioDescanso": "Inicio de descanso",
+        "finDescanso": "Fin de descanso",
+        "intento": "Intento",
+        "otra": "Marca"
+      },
+      "punto": {
+        "registradaPor": "Registrada por {nombre}",
+        "sedeA": "{sede} · a {m} m",
+        "aDeLaSede": "a {m} m de la sede"
+      },
+      "acciones": {
+        "verHoja": "Ver hoja de tiempo de la persona",
+        "verDispositivo": "Ver dispositivo",
+        "corregir": "Corregir con un ajuste…"
+      },
+      "vacio": {
+        "titulo": "Todavía no hay marcas hoy en esta sede",
+        "descripcion": "Las marcas aparecen aquí en cuanto alguien marca desde el celular, el QR de la sede o una etiqueta NFC. Revisa qué métodos tiene activos esta sede.",
+        "accion": "Ver métodos de la sede"
+      },
+      "sinResultados": {
+        "titulo": "Ninguna marca coincide",
+        "descripcion": "Prueba con otro nombre o quita los filtros."
+      },
+      "error": {
+        "titulo": "No pudimos cargar las marcas de hoy",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo. Las marcas que lleguen mientras tanto no se pierden."
+      }
+    },
+    "dispositivos": {
+      "agregar": "Agregar dispositivo",
+      "tabla": "Dispositivos de marcación",
+      "buscar": "Buscar dispositivo o dónde está…",
+      "verDispositivos": "{n, plural, one {Ver # dispositivo} other {Ver # dispositivos}}",
+      "columnas": {
+        "dispositivo": "Dispositivo",
+        "tipo": "Tipo",
+        "sede": "Sede",
+        "estado": "Estado",
+        "conexion": "Última conexión",
+        "hoy": "Hoy"
+      },
+      "tipos": {
+        "pantalla_qr": "Pantalla de QR",
+        "etiqueta_nfc": "Etiqueta NFC",
+        "terminal_huella": "Terminal de huella",
+        "terminal_facial": "Terminal facial",
+        "kiosco": "Kiosco en tablet",
+        "lector_escritorio": "Lector de carné",
+        "anterior": "Punto anterior"
+      },
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "estados": {
+        "en_linea": "En línea",
+        "activa": "Activa",
+        "sin_conexion": "Sin conexión",
+        "desactivado": "Desactivado"
+      },
+      "noSeConecta": "no se conecta",
+      "nunca": "nunca",
+      "hace": {
+        "ahora": "ahora",
+        "min": "hace {n} min",
+        "h": "hace {n} h",
+        "d": "{n, plural, one {hace # día} other {hace # días}}"
+      },
+      "acciones": {
+        "abrirPantalla": "Abrir pantalla",
+        "regenerarClave": "Regenerar clave…",
+        "regenerarCodigo": "Regenerar código…",
+        "activar": "Activar",
+        "desactivar": "Desactivar…"
+      },
+      "confirmar": {
+        "regenerarClaveTitulo": "¿Regenerar la clave de {nombre}?",
+        "regenerarClaveDesc": "La clave actual deja de servir de inmediato: la pantalla abierta muestra códigos que ya no valen. Vuelve a abrirla con «Abrir pantalla».",
+        "regenerarClave": "Regenerar clave",
+        "regenerarCodigoTitulo": "¿Regenerar el código de {nombre}?",
+        "regenerarCodigoDesc": "La etiqueta pegada deja de servir de inmediato. Te mostraremos una URL nueva una sola vez para grabarla en la etiqueta.",
+        "regenerarCodigo": "Regenerar código",
+        "desactivarTitulo": "¿Desactivar {nombre}?",
+        "desactivarDesc": "Nadie podrá marcar con este punto hasta que lo actives otra vez. Las marcas que ya se hicieron con él se conservan.",
+        "desactivar": "Desactivar"
+      },
+      "regenerada": "Clave de {nombre} regenerada",
+      "regeneradaPantallaDesc": "Vuelve a abrir la pantalla en el televisor para que muestre los códigos nuevos.",
+      "activada": "{nombre} está activo otra vez",
+      "desactivada": "{nombre} quedó desactivado",
+      "errores": {
+        "sinPermiso": "No tienes permiso para administrar los dispositivos de marcación.",
+        "guardar": "No pudimos guardar el cambio. Inténtalo de nuevo."
+      },
+      "vacio": {
+        "titulo": "Todavía no hay dispositivos en esta sede",
+        "descripcion": "Agrega una pantalla de QR o una etiqueta NFC para la entrada. Sin dispositivos, la gente puede marcar desde su celular."
+      },
+      "sinResultados": {
+        "titulo": "Ningún dispositivo coincide",
+        "descripcion": "Prueba con otro nombre o quita los filtros."
+      },
+      "error": {
+        "titulo": "No pudimos cargar los dispositivos",
+        "descripcion": "Revisa tu conexión e inténtalo de nuevo."
+      }
+    },
+    "alta": {
+      "titulo": "Agregar dispositivo",
+      "paso1": "Paso 1 de 2 · Qué vas a conectar",
+      "paso2": "Paso 2 de 2 · Nombre y sede",
+      "queConectar": "¿Qué vas a conectar?",
+      "continuar": "Continuar",
+      "eligeTipo": "Elige qué vas a conectar",
+      "atras": "Atrás",
+      "agregar": "Agregar",
+      "tipos": {
+        "pantalla_qr": {
+          "titulo": "Pantalla de QR",
+          "descripcion": "Un televisor o monitor que muestra el QR de la sede, que cambia cada 30 segundos, para escanearlo con el celular.",
+          "necesitas": "Necesitas: cualquier pantalla con navegador."
+        },
+        "etiqueta_nfc": {
+          "titulo": "Etiqueta NFC de la sede",
+          "descripcion": "Una etiqueta pegada en la entrada que lee el celular de la persona. En el navegador solo funciona con Android y Chrome; en iPhone, con la app GO Admin.",
+          "necesitas": "Necesitas: etiquetas NTAG213, NTAG215 o NTAG 424 DNA."
+        },
+        "terminal": {
+          "titulo": "Terminal de huella o rostro",
+          "descripcion": "Equipos que envían las marcas por internet. La huella y el rostro se quedan en el equipo.",
+          "llega": "Llega con los relojes de marcación."
+        },
+        "kiosco": {
+          "titulo": "Kiosco en una tablet",
+          "descripcion": "Una tablet fija en la entrada con QR que cambia, PIN y carné NFC.",
+          "llega": "Llega con el kiosco."
+        },
+        "lector": {
+          "titulo": "Lector de carné o QR en un computador",
+          "descripcion": "Un lector USB conectado a un computador con GO Admin Escritorio.",
+          "llega": "Llega con el kiosco y el lector de escritorio."
+        }
+      },
+      "tituloPantalla": "Agregar pantalla de QR",
+      "tituloEtiqueta": "Agregar etiqueta NFC",
+      "nombre": "Nombre",
+      "nombreEjemploPantalla": "Pantalla QR de la entrada",
+      "nombreEjemploEtiqueta": "Etiqueta · Puerta principal",
+      "sede": "Sede",
+      "eligeSede": "Elige la sede",
+      "cargandoSedes": "Cargando sedes…",
+      "donde": "Dónde está",
+      "dondeAyuda": "Para encontrarla: la entrada, la caja, la cocina…",
+      "dondeEjemploPantalla": "Televisor de la recepción",
+      "dondeEjemploEtiqueta": "Marco de la puerta principal",
+      "chip": "Chip de la etiqueta",
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "avisoUbicacion": {
+        "titulo": "La marca con esta etiqueta pide además la ubicación",
+        "ntag215": "Una etiqueta NTAG213 o NTAG215 se puede copiar, así que el celular confirma que la persona está en la sede.",
+        "ntag424": "La NTAG 424 DNA cambia su código en cada lectura; mientras llega esa verificación, la marca también pide la ubicación del celular."
+      },
+      "avisoPantalla": {
+        "titulo": "Cómo se usa",
+        "descripcion": "Después de agregarla, ábrela en el televisor con «Abrir pantalla», con una sesión que administre la asistencia. El QR cambia cada 30 segundos y cada código sirve una sola vez."
+      },
+      "creada": "{nombre} quedó agregado",
+      "creadaPantallaDesc": "Ábrela en el televisor desde el menú de la fila con «Abrir pantalla».",
+      "errores": {
+        "nombre_invalido": "Escribe un nombre de 2 a 80 caracteres.",
+        "sede_invalida": "Elige la sede.",
+        "tipo_no_disponible": "Por ahora se agregan pantallas de QR y etiquetas NFC.",
+        "chip_invalido": "Elige el chip de la etiqueta.",
+        "descripcion_invalida": "Usa hasta 200 caracteres.",
+        "sin_permiso": "No tienes permiso para agregar dispositivos de marcación.",
+        "guardar": "No pudimos agregar el dispositivo. Inténtalo de nuevo."
+      }
+    },
+    "codigoEtiqueta": {
+      "titulo": "Graba esta URL en {nombre}",
+      "descripcion": "Escríbela en la etiqueta con una app de NFC o con este celular. Al acercar el celular, se abre GO Admin › Marcar turno con la etiqueta.",
+      "copiar": "Copiar URL",
+      "copiada": "URL copiada",
+      "noCopiada": "No pudimos copiar la URL. Selecciónala y cópiala a mano.",
+      "escribir": "Escribir en la etiqueta con este celular",
+      "escrita": "Etiqueta grabada",
+      "noEscrita": "No pudimos grabar la etiqueta. Acércala otra vez y no la muevas hasta que termine.",
+      "cerrar": "Listo",
+      "unaVez": {
+        "titulo": "Esta URL no se vuelve a mostrar",
+        "descripcion": "Guardamos solo una huella del código. Si la pierdes o la etiqueta se daña, usa «Regenerar código…» en el menú del dispositivo."
+      },
+      "sinNfc": {
+        "titulo": "Este navegador no escribe etiquetas",
+        "descripcion": "Para grabarla desde el navegador abre esta pantalla en un celular Android con Chrome, o usa una app de NFC y pega la URL."
+      }
+    },
+    "pantalla": {
+      "cargando": "Cargando la pantalla…",
+      "escanea": "Escanea con tu celular",
+      "titulo": "QR de marcación",
+      "qrTitulo": "QR de marcación de {sede}",
+      "cambiaEn": "Cambia en {n} s",
+      "instrucciones": "Abre GO Admin › Marcar turno › QR de la sede. Una foto de este código no sirve: cambia cada 30 segundos y cada código sirve una sola vez.",
+      "sinInternet": "Sin internet: el código sigue cambiando",
+      "pie": "La hora de la marca es la del servidor, no la de esta pantalla ni la del celular.",
+      "pantallaCompleta": "Pantalla completa",
+      "iniciarSesion": "Iniciar sesión",
+      "reintentar": "Reintentar",
+      "irADispositivos": "Ir a dispositivos",
+      "estados": {
+        "sinSesion": {
+          "titulo": "Inicia sesión para abrir la pantalla",
+          "descripcion": "La pantalla de QR se abre con la sesión de quien administra la asistencia."
+        },
+        "sinPermiso": {
+          "titulo": "No puedes abrir esta pantalla",
+          "descripcion": "Abrir la pantalla de QR pide el permiso «Administrar asistencia» de Recursos humanos."
+        },
+        "desactivada": {
+          "titulo": "Esta pantalla está desactivada",
+          "descripcion": "Actívala en Marcación › Dispositivos para volver a mostrar el QR."
+        },
+        "noExiste": {
+          "titulo": "No encontramos esta pantalla",
+          "descripcion": "Revisa el enlace: no corresponde a una pantalla de QR de tu organización."
+        },
+        "error": {
+          "titulo": "No pudimos abrir la pantalla",
+          "descripcion": "Revisa la conexión a internet e inténtalo de nuevo."
+        }
       }
     }
   }

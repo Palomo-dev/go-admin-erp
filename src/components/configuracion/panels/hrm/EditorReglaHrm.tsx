@@ -20,12 +20,14 @@ import {
   condicionesA,
   condicionesDe,
   esCampoLista,
+  faltaJefeDirecto,
   mover,
+  pasoJefeFijo,
   type CampoCondicion,
   type Condicion,
 } from '@/lib/hrm/configuracion/reglasVista';
 import { contarCambios, useDentroDelDialogo, useRegistrarCambios } from '../../dialogo/cambiosSinGuardar';
-import { SelectorHrm, VolverA, pedirHrm } from './comun';
+import { ErrorHrm, SelectorHrm, VolverA, pedirHrm } from './comun';
 import { TIPOS_SOLICITUD_UI, URL_APROBACIONES } from './AprobacionesPanel';
 
 const APROBADORES: readonly TipoAprobador[] = ['jefe_directo', 'jefe_area', 'rrhh', 'cargo', 'persona'];
@@ -84,6 +86,11 @@ export function EditorReglaHrm({
       setError(t('errores.paso'));
       return;
     }
+    // R3 (Marcación M0): horas extra y novedades de asistencia, siempre con el jefe directo.
+    if (faltaJefeDirecto(b.tipo, b.pasos)) {
+      setError(t('errores.jefeDirecto'));
+      return;
+    }
     setGuardando(true);
     setError(null);
     try {
@@ -105,8 +112,9 @@ export function EditorReglaHrm({
       });
       toast({ title: t('guardada') });
       await onGuardada();
-    } catch {
-      toast({ title: t('errores.guardar'), variant: 'destructive' });
+    } catch (e) {
+      if (e instanceof ErrorHrm && e.codigo === 'jefe_directo_requerido') setError(t('errores.jefeDirecto'));
+      else toast({ title: t('errores.guardar'), variant: 'destructive' });
     } finally {
       setGuardando(false);
     }
@@ -233,50 +241,66 @@ export function EditorReglaHrm({
             </h4>
             <p className="text-sm text-fg-muted">{t('cadenaAyuda')}</p>
           </div>
-          {b.pasos.map((p, i) => (
-            <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-3" data-paso={p.tipo}>
-              <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-tint text-xs font-medium text-brand-deep">{i + 1}</span>
-              <div className="min-w-0 flex-1 basis-48">
-                <p className="text-sm font-medium text-fg">{ta(`aprobador.${p.tipo}`)}</p>
-                <p className="text-[13px] text-fg-muted">{descripcionPaso(p)}</p>
+          {b.pasos.map((p, i) => {
+            const fijo = pasoJefeFijo(b.tipo, b.pasos, i);
+            return (
+              <div key={i} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface p-3" data-paso={p.tipo}>
+                <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-tint text-xs font-medium text-brand-deep">{i + 1}</span>
+                <div className="min-w-0 flex-1 basis-48">
+                  <p className="text-sm font-medium text-fg">{ta(`aprobador.${p.tipo}`)}</p>
+                  <p className="text-[13px] text-fg-muted">{descripcionPaso(p)}</p>
+                  {fijo && editable && (
+                    <p id={`hrm-regla-paso-fijo-${i}`} className="text-[13px] text-fg-secondary">
+                      {t('jefeDirectoFijo')}
+                    </p>
+                  )}
+                </div>
+                {p.tipo === 'cargo' && (
+                  <SelectorHrm
+                    valor={p.cargo ?? null}
+                    onValor={(v) => setB((x) => ({ ...x, pasos: x.pasos.map((y, j) => (j === i ? { ...y, cargo: v } : y)) }))}
+                    etiqueta={ta('aprobador.cargo')}
+                    marcador={t('elegirCargo')}
+                    opciones={datos.cargos.map((c) => ({ valor: c.id, etiqueta: c.nombre }))}
+                    className="w-56"
+                    deshabilitado={!editable}
+                  />
+                )}
+                {p.tipo === 'persona' && (
+                  <SelectorHrm
+                    valor={p.persona ?? null}
+                    onValor={(v) => setB((x) => ({ ...x, pasos: x.pasos.map((y, j) => (j === i ? { ...y, persona: v } : y)) }))}
+                    etiqueta={ta('aprobador.persona')}
+                    marcador={t('elegirPersona')}
+                    opciones={datos.personas.map((c) => ({ valor: c.id, etiqueta: c.cargo ? `${c.nombre} · ${c.cargo}` : c.nombre }))}
+                    className="w-56"
+                    deshabilitado={!editable}
+                  />
+                )}
+                {editable && (
+                  <span className="flex items-center">
+                    <button type="button" aria-label={t('subirPaso')} disabled={i === 0} onClick={() => setB((x) => ({ ...x, pasos: reordenarPasos(x.pasos, i, i - 1) }))} className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-hover disabled:opacity-40">
+                      <ArrowUp aria-hidden="true" className="size-4" />
+                    </button>
+                    <button type="button" aria-label={t('bajarPaso')} disabled={i === b.pasos.length - 1} onClick={() => setB((x) => ({ ...x, pasos: reordenarPasos(x.pasos, i, i + 1) }))} className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-hover disabled:opacity-40">
+                      <ArrowDown aria-hidden="true" className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={t('quitarPaso')}
+                      aria-describedby={fijo ? `hrm-regla-paso-fijo-${i}` : undefined}
+                      title={fijo ? t('jefeDirectoFijo') : undefined}
+                      disabled={b.pasos.length === 1 || fijo}
+                      onClick={() => setB((x) => ({ ...x, pasos: x.pasos.filter((_, j) => j !== i) }))}
+                      className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-hover disabled:opacity-40"
+                    >
+                      <X aria-hidden="true" className="size-4" />
+                    </button>
+                  </span>
+                )}
               </div>
-              {p.tipo === 'cargo' && (
-                <SelectorHrm
-                  valor={p.cargo ?? null}
-                  onValor={(v) => setB((x) => ({ ...x, pasos: x.pasos.map((y, j) => (j === i ? { ...y, cargo: v } : y)) }))}
-                  etiqueta={ta('aprobador.cargo')}
-                  marcador={t('elegirCargo')}
-                  opciones={datos.cargos.map((c) => ({ valor: c.id, etiqueta: c.nombre }))}
-                  className="w-56"
-                  deshabilitado={!editable}
-                />
-              )}
-              {p.tipo === 'persona' && (
-                <SelectorHrm
-                  valor={p.persona ?? null}
-                  onValor={(v) => setB((x) => ({ ...x, pasos: x.pasos.map((y, j) => (j === i ? { ...y, persona: v } : y)) }))}
-                  etiqueta={ta('aprobador.persona')}
-                  marcador={t('elegirPersona')}
-                  opciones={datos.personas.map((c) => ({ valor: c.id, etiqueta: c.cargo ? `${c.nombre} · ${c.cargo}` : c.nombre }))}
-                  className="w-56"
-                  deshabilitado={!editable}
-                />
-              )}
-              {editable && (
-                <span className="flex items-center">
-                  <button type="button" aria-label={t('subirPaso')} disabled={i === 0} onClick={() => setB((x) => ({ ...x, pasos: reordenarPasos(x.pasos, i, i - 1) }))} className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-hover disabled:opacity-40">
-                    <ArrowUp aria-hidden="true" className="size-4" />
-                  </button>
-                  <button type="button" aria-label={t('bajarPaso')} disabled={i === b.pasos.length - 1} onClick={() => setB((x) => ({ ...x, pasos: reordenarPasos(x.pasos, i, i + 1) }))} className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-hover disabled:opacity-40">
-                    <ArrowDown aria-hidden="true" className="size-4" />
-                  </button>
-                  <button type="button" aria-label={t('quitarPaso')} disabled={b.pasos.length === 1} onClick={() => setB((x) => ({ ...x, pasos: x.pasos.filter((_, j) => j !== i) }))} className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:bg-hover disabled:opacity-40">
-                    <X aria-hidden="true" className="size-4" />
-                  </button>
-                </span>
-              )}
-            </div>
-          ))}
+            );
+          })}
           {editable && b.pasos.length < 10 && (
             <div className="flex flex-wrap items-center gap-3">
               <RowActionsMenu etiquetaBoton={t('agregarAprobador')} iconoBoton={Plus} acciones={accionesAgregar} />

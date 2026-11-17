@@ -27,6 +27,7 @@ import { calcularRangoPeriodo, type PeriodoPedido, type RangoPeriodo } from './p
 import { badgeSolido, resumirModulo, type CrudoResumen, type ResumenModulo } from './resumenModulos';
 import { desdeFila, ordenarModulos, type PreferenciasInicio } from './preferenciasInicio';
 import { calcularTurno, type TurnoCalculado } from './turno';
+import { hrefMarcarCon, leerMetodoTurno, metodoEspecial, type MetodoTurnoInicio } from '@/components/marcar/marcarMetodoLogica';
 import { ErrorInicio } from './errorInicio';
 import { leerActividad, type Actividad, type PedidoActividad } from './actividadInicio';
 import { armarPrimerosPasos, type PrimerosPasos } from './primerosPasos';
@@ -421,6 +422,12 @@ export interface TurnoInicio extends TurnoCalculado {
   /** Descanso planeado del turno en minutos y si es pagado (variante «en descanso»). */
   descansoMin?: number | null;
   descansoPagado?: boolean;
+  /**
+   * Marcación M0 (Figma 20.30.7): métodos de la sede para esta persona y el que
+   * abre el botón directo (`/marcar?metodo=qr`). Ausente si la base no lo dice:
+   * entonces el botón es el de siempre.
+   */
+  metodo?: MetodoTurnoInicio | null;
 }
 
 /** Entrada del flujo de marcación existente (`src/app/marcar`), fuera del menú. */
@@ -440,6 +447,22 @@ const TURNO_OCULTO: TurnoInicio = {
   hrefMarcar: RUTA_MARCAR,
   hrefMarcaciones: null,
 };
+
+/**
+ * Método con que marca la persona de la sesión (`fn_hr_mi_metodo_marcacion`,
+ * SECURITY DEFINER para `authenticated`). Si la RPC falla o no responde lo
+ * esperado, «Tu turno» sigue como antes: nunca rompe el inicio.
+ */
+async function metodoDeLaSede(ctx: Ctx): Promise<MetodoTurnoInicio | null> {
+  try {
+    const { data, error } = await ctx.supabase.rpc('fn_hr_mi_metodo_marcacion', { p_org: ctx.organizationId });
+    if (error) return null;
+    const m = leerMetodoTurno(data);
+    return m ? { especial: metodoEspecial(m), metodos: m.metodos } : null;
+  } catch {
+    return null;
+  }
+}
 
 type Rel<T> = T | T[] | null;
 const uno = <T,>(v: Rel<T>): T | null => (Array.isArray(v) ? v[0] ?? null : v);
@@ -472,7 +495,7 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
 
   const hoy = todayInTz(zona);
   const desde = plainDateToInstant(addPlainDays(hoy, -1), zona);
-  const [turnoRes, eventosRes] = await Promise.all([
+  const [turnoRes, eventosRes, metodo] = await Promise.all([
     ctx.supabase
       .from('shift_assignments')
       .select('status, actual_start_time, actual_end_time, break_minutes, branch_id, branches(name), shift_templates(start_time, end_time, paid_break)')
@@ -490,6 +513,7 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
       .gte('event_at', desde)
       .order('event_at', { ascending: true })
       .limit(50),
+    metodoDeLaSede(ctx),
   ]);
   if (turnoRes.error) throw errorRpc('shift_assignments', turnoRes.error);
   if (eventosRes.error) throw errorRpc('attendance_events', eventosRes.error);
@@ -518,9 +542,10 @@ export async function turnoDeHoy(ctx: Ctx, ahora: Date = new Date()): Promise<Tu
     ...calculado,
     visible: true,
     sucursal: uno(t?.branches ?? null)?.name ?? uno(empleo.branches)?.name ?? null,
-    hrefMarcar: RUTA_MARCAR,
+    hrefMarcar: hrefMarcarCon(RUTA_MARCAR, metodo?.especial),
     hrefMarcaciones: RUTA_MI_ASISTENCIA,
     descansoMin: t?.break_minutes ?? null,
     descansoPagado: plantilla?.paid_break === true,
+    metodo,
   };
 }

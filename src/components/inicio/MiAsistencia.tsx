@@ -7,10 +7,15 @@
  *
  * Decisión 3: en el computador se marca sin ubicación; la marca vale si llega
  * por el QR de la sede y, si no, queda para que el jefe la revise.
+ *
+ * Marcación M0 (Figma 20.31.4–20.31.8): aviso «En <sede> marcas con …» según
+ * los métodos de la sede, «Cómo» con su icono (incluida la etiqueta NFC), estado
+ * «Reclamo en revisión» y, en el menú de cada día con marcas, «Ver detalle de la
+ * marca» y «Reclamar esta marca» (la marca original nunca cambia).
  */
 import { useMemo, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { AlarmClockCheck, Info } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
+import { AlarmClockCheck, Eye, Info, MessageSquare } from 'lucide-react';
 import {
   AvisoTonal,
   DataTable,
@@ -34,40 +39,14 @@ import { diasDeSemana, lunesDe, partesHoras } from '@/lib/hrm/turnos/programacio
 import { useCarga } from '@/components/hrm/estructura/comun';
 import { useFormatoHora } from '@/components/hrm/turnos/formatoHora';
 import { TurnoCard, useTurnoInicio } from './TurnoInicio';
-
-interface DiaAsistencia {
-  fecha: string;
-  festivo: boolean;
-  sede: string | null;
-  turno: { plantilla: string | null; inicio: string | null; fin: string | null; dia_descanso: boolean } | null;
-  entrada: string | null;
-  salida: string | null;
-  descanso_inicio: string | null;
-  descanso_fin: string | null;
-  metodo: 'app' | 'qr' | 'manual' | null;
-  modo: 'presencial' | 'remoto' | null;
-  minutos: number | null;
-  tarde_min: number | null;
-  revisar: boolean;
-}
+import { CeldaMetodo, DialogoDetalleMarcas, DialogoReclamo } from './DialogoReclamo';
+import { ESTADOS, estadoDe, metodoDelDia, metodosDeSede, puedeReclamar, type DiaAsistencia, type Estado } from './miAsistenciaLogica';
 
 interface RespuestaAsistencia {
   vinculo: { id: string; sede: string | null } | null;
   zona?: string;
   marca?: boolean;
   dias: DiaAsistencia[];
-}
-
-type Estado = 'enTurno' | 'aTiempo' | 'tarde' | 'sinSalida' | 'libre' | 'porRevisar' | 'sinMarcar';
-const ESTADOS: readonly Estado[] = ['enTurno', 'aTiempo', 'tarde', 'sinSalida', 'libre', 'porRevisar', 'sinMarcar'];
-
-function estadoDe(d: DiaAsistencia, hoy: string): Estado {
-  if (d.turno?.dia_descanso && !d.entrada) return 'libre';
-  if (d.revisar) return 'porRevisar';
-  if (d.entrada && !d.salida) return d.fecha === hoy ? 'enTurno' : 'sinSalida';
-  if (!d.entrada) return d.turno ? 'sinMarcar' : 'libre';
-  if ((d.tarde_min ?? 0) > 0) return 'tarde';
-  return 'aTiempo';
 }
 
 const TONO: Record<Estado, 'exito' | 'advertencia' | 'peligro' | 'neutro' | 'informacion'> = {
@@ -78,6 +57,7 @@ const TONO: Record<Estado, 'exito' | 'advertencia' | 'peligro' | 'neutro' | 'inf
   libre: 'neutro',
   porRevisar: 'informacion',
   sinMarcar: 'advertencia',
+  enReclamo: 'informacion',
 };
 
 export function MiAsistencia() {
@@ -95,6 +75,9 @@ export function MiAsistencia() {
   const zona = datos?.zona ?? DEFAULT_TIMEZONE;
   const [texto, setTexto] = useState('');
   const [estado, setEstado] = useState<Estado | 'todos'>('todos');
+  const locale = useLocale();
+  const [reclamar, setReclamar] = useState<DiaAsistencia | null>(null);
+  const [detalle, setDetalle] = useState<DiaAsistencia | null>(null);
 
   const filas = useMemo(() => {
     const q = texto.trim().toLowerCase();
@@ -114,7 +97,10 @@ export function MiAsistencia() {
     const { h, m: mi } = partesHoras(m);
     return t('horas', { h, m: String(mi).padStart(2, '0') });
   };
-  const como = (d: DiaAsistencia) => (!d.metodo ? '—' : d.metodo === 'manual' ? t('como.manual') : d.metodo === 'qr' ? t('como.qr') : d.modo === 'remoto' ? t('como.remoto') : t('como.ubicacion'));
+  const como = (d: DiaAsistencia) => {
+    const m = metodoDelDia(d);
+    return m ? t(`metodos.${m}`) : '—';
+  };
   const turnoTexto = (d: DiaAsistencia) =>
     !d.turno ? t('sinTurno') : d.turno.dia_descanso ? t('descanso') : `${d.turno.plantilla ?? t('turno')} ${f.hora(d.turno.inicio, zona)} – ${f.hora(d.turno.fin, zona)}`;
   const dia = (d: DiaAsistencia) => (d.festivo ? `${f.diaCorto(d.fecha)} · ${t('festivo')}` : f.diaCorto(d.fecha));
@@ -137,11 +123,28 @@ export function MiAsistencia() {
     { id: 'descanso', encabezado: t('columnas.descanso'), ocultarDebajo: 'xl', celda: descanso },
     { id: 'salida', encabezado: t('columnas.salida'), celda: (d) => (d.salida ? f.hora(d.salida, zona) : '—') },
     { id: 'horas', encabezado: t('columnas.horas'), variante: 'importe', celda: (d) => <span className="font-medium">{horas(d.minutos)}</span> },
-    { id: 'como', encabezado: t('columnas.como'), ocultarDebajo: 'lg', celda: como },
+    { id: 'como', encabezado: t('columnas.como'), ocultarDebajo: 'lg', celda: (d) => <CeldaMetodo metodo={metodoDelDia(d)} /> },
     { id: 'estado', encabezado: t('columnas.estado'), celda: insignia },
   ];
 
   const noMarca = datos?.marca === false || (datos && !datos.vinculo);
+  // 20.31.4: «En <sede> marcas con el QR de la sede o la etiqueta NFC».
+  const metodosSede = metodosDeSede(turno?.metodo?.metodos, datos?.dias ?? []);
+  const sedeAviso = datos?.vinculo?.sede ?? turno?.sucursal ?? null;
+  const avisoMetodos =
+    metodosSede.length > 0 && sedeAviso
+      ? t('avisoSede.titulo', {
+          sede: sedeAviso,
+          metodos: new Intl.ListFormat(locale, { type: 'disjunction' }).format(metodosSede.map((m) => t(`avisoSede.metodos.${m}`))),
+        })
+      : null;
+  const acciones = (d: DiaAsistencia) =>
+    puedeReclamar(d)
+      ? [
+          { id: 'detalle', etiqueta: t('acciones.detalle'), icono: Eye, onSelect: () => setDetalle(d) },
+          { id: 'reclamar', etiqueta: t('acciones.reclamar'), icono: MessageSquare, onSelect: () => setReclamar(d) },
+        ]
+      : [];
   const subtitulo = datos
     ? [t('semana', { rango: f.rango(lunes, diasDeSemana(lunes)[6]) }), datos.vinculo?.sede, noMarca ? null : t('horaSede')].filter(Boolean).join(' · ')
     : undefined;
@@ -170,7 +173,11 @@ export function MiAsistencia() {
       ) : (
         <>
           {turno && <TurnoCard turno={turno} compacta />}
-          {escritorio && <AvisoTonal tono="informacion" icono={Info} titulo={t('computador.titulo')} descripcion={t('computador.descripcion')} />}
+          {avisoMetodos ? (
+            <AvisoTonal tono="informacion" icono={Info} titulo={avisoMetodos} descripcion={escritorio ? t('computador.descripcion') : undefined} />
+          ) : (
+            escritorio && <AvisoTonal tono="informacion" icono={Info} titulo={t('computador.titulo')} descripcion={t('computador.descripcion')} />
+          )}
           <h2 className="text-base font-semibold text-fg">{t('marcaciones')}</h2>
           <ListToolbar
             busqueda={<SearchInput value={texto} onChange={setTexto} placeholder={t('buscar')} etiqueta={t('buscar')} debounceMs={150} />}
@@ -204,6 +211,8 @@ export function MiAsistencia() {
             columnas={columnas}
             filas={filas}
             obtenerId={(d) => d.fecha}
+            etiquetaFila={(d) => dia(d)}
+            acciones={acciones}
             estado={estadoTabla}
             tarjetaMovil={(d) => (
               <ListCard
@@ -217,6 +226,7 @@ export function MiAsistencia() {
                       : [horas(d.minutos), como(d).toLowerCase()].join(' · ')
                 }
                 estado={insignia(d)}
+                acciones={acciones(d)}
               />
             )}
             vacio={{ titulo: t('vacio.titulo'), descripcion: t('vacio.descripcion'), icono: AlarmClockCheck }}
@@ -229,6 +239,17 @@ export function MiAsistencia() {
             }}
             termino={texto}
           />
+          <DialogoDetalleMarcas
+            abierto={detalle !== null}
+            onAbiertoChange={(v) => !v && setDetalle(null)}
+            dia={detalle}
+            zona={zona}
+            onReclamar={(d) => {
+              setDetalle(null);
+              setReclamar(d);
+            }}
+          />
+          <DialogoReclamo abierto={reclamar !== null} onAbiertoChange={(v) => !v && setReclamar(null)} dia={reclamar} zona={zona} onEnviado={() => void recargar()} />
         </>
       )}
     </div>

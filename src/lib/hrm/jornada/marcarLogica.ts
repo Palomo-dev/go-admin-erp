@@ -45,6 +45,11 @@ export interface EstadoMarcacion {
   marcas?: MarcaDia[];
   tolerancia_min?: number;
   jefe?: { id: string; nombre: string } | null;
+  /** Marcación M0 (Figma 20.30): lo que ofrece la sede a esta persona (sede, ficha y excepción). */
+  metodos_sede?: { ubicacion: boolean; qr: boolean; nfc: boolean } | null;
+  metodo_preferido?: 'ubicacion' | 'qr' | 'nfc' | 'remoto' | null;
+  reglas?: { qr_exige_ubicacion?: boolean; nfc_exige_ubicacion?: boolean; permitir_computador?: boolean } | null;
+  excepciones?: { metodo: string; hasta: string }[];
 }
 
 export type FaseMarcacion =
@@ -116,22 +121,44 @@ export function distanciaMetros(lat1: number, lng1: number, lat2: number, lng2: 
   return 2 * 6371000 * Math.asin(Math.sqrt(a));
 }
 
-export type MetodoPantalla = 'ubicacion' | 'qr' | 'remoto';
+export type MetodoPantalla = 'ubicacion' | 'qr' | 'remoto' | 'nfc';
+
+const METODOS_PANTALLA: readonly MetodoPantalla[] = ['ubicacion', 'qr', 'nfc', 'remoto'];
+
+/** `?metodo=` de «Marcar turno» (Inicio y Mi asistencia abren directo el método de la sede). */
+export function metodoDeParametro(v: string | null | undefined): MetodoPantalla | null {
+  return v && (METODOS_PANTALLA as readonly string[]).includes(v) ? (v as MetodoPantalla) : null;
+}
 
 /** Métodos que ofrece la pantalla según los mecanismos y la modalidad del vínculo. */
-export function metodosDisponibles(e: Pick<EstadoMarcacion, 'mecanismos' | 'modalidad'>, hoyIso: number, diasRemoto?: number[]): MetodoPantalla[] {
+export function metodosDisponibles(
+  e: Pick<EstadoMarcacion, 'mecanismos' | 'modalidad'> & Partial<Pick<EstadoMarcacion, 'metodos_sede'>>,
+  hoyIso: number,
+  diasRemoto?: number[]
+): MetodoPantalla[] {
   const mec = e.mecanismos ?? ['app', 'qr'];
   const out: MetodoPantalla[] = [];
   const remotoHoy = e.modalidad === 'remoto' || (e.modalidad === 'hibrido' && (!diasRemoto || diasRemoto.includes(hoyIso)));
-  if (mec.includes('app') && e.modalidad !== 'remoto') out.push('ubicacion');
-  if (mec.includes('qr') && e.modalidad !== 'remoto') out.push('qr');
+  const presencial = e.modalidad !== 'remoto';
+  // Con la respuesta de Marcación M0 manda la base (sede, ficha y excepciones); sin ella, como antes.
+  const sede = e.metodos_sede;
+  if (presencial && (sede ? sede.ubicacion : mec.includes('app'))) out.push('ubicacion');
+  if (presencial && (sede ? sede.qr : mec.includes('qr'))) out.push('qr');
+  if (presencial && sede?.nfc) out.push('nfc');
   if (mec.includes('app') && remotoHoy) out.push('remoto');
   return out;
 }
 
 /** Método por defecto (decisión 9): celular con ubicación; remoto si la modalidad lo es. */
-export function metodoInicial(disponibles: MetodoPantalla[], modalidad: EstadoMarcacion['modalidad']): MetodoPantalla | null {
+export function metodoInicial(
+  disponibles: MetodoPantalla[],
+  modalidad: EstadoMarcacion['modalidad'],
+  preferido?: EstadoMarcacion['metodo_preferido'],
+  pedido?: MetodoPantalla | null
+): MetodoPantalla | null {
+  if (pedido && disponibles.includes(pedido)) return pedido;
   if (modalidad === 'remoto' && disponibles.includes('remoto')) return 'remoto';
+  if (preferido && disponibles.includes(preferido)) return preferido;
   return disponibles[0] ?? null;
 }
 

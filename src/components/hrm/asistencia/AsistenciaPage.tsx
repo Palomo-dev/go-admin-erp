@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { CalendarCheck, ClockArrowUp, Download, NotebookPen, Plus } from 'lucide-react';
+import { CalendarCheck, ClockArrowUp, Download, MonitorSmartphone, NotebookPen, Plus, ScanQrCode, Settings } from 'lucide-react';
 import { DateRangeButton, PageHeader, RowActionsMenu, SegmentedControl, type AccionFila } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { useCarga } from '../personas/apiPersonas';
@@ -23,12 +23,24 @@ import { VistaHojas } from './VistaHojas';
 import { VistaAjustes } from './VistaAjustes';
 import { DialogoAjuste } from './DialogoAjuste';
 import { RUTA_NOVEDADES, RUTA_TOPES, conSede, useDias, usePeriodo, useSedeActiva } from './comunAsistencia';
-import { textoDuracion, type RespuestaHojas, type RespuestaHoy } from './asistenciaLogica';
+import {
+  RUTA_DISPOSITIVOS,
+  RUTA_METODOS_SEDE,
+  destinoQrSede,
+  textoDuracion,
+  type RespuestaHojas,
+  type RespuestaHoy,
+} from './asistenciaLogica';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 
 type Vista = 'hoy' | 'hojas' | 'ajustes';
 const VISTAS: readonly Vista[] = ['hoy', 'hojas', 'ajustes'];
 const REFRESCO_MS = 120_000;
+
+/** Lo que el menú ⋯ lee de `GET /api/hrm/marcacion/metodos` (solo las pantallas de QR). */
+interface PantallasSede {
+  pantallas: { id: string; nombre: string }[];
+}
 
 export function AsistenciaPage() {
   const t = useTranslations('hrmAsistencia');
@@ -92,6 +104,15 @@ export function AsistenciaPage() {
   }
 
   const puedeAjustar = vista === 'hoy' ? !!datosHoy : false;
+  // Marcación M0 (Figma 20.31.2): accesos a Marcación solo para quien gestiona la
+  // asistencia. Las pantallas de la sede se leen una vez (por sede).
+  const puedeGestionar = datosHoy?.puede_gestionar ?? datosHojas?.puede_gestionar ?? false;
+  const pantallas = useCarga<PantallasSede>(puedeGestionar ? conSede('/api/hrm/marcacion/metodos', sede) : null);
+  const mostrarQr = () => {
+    const destino = destinoQrSede(pantallas.carga.estado === 'listo' ? pantallas.carga.datos.pantallas : null);
+    if (destino.tipo === 'pantalla') window.open(destino.url, '_blank', 'noopener,noreferrer');
+    else router.push(destino.url);
+  };
   const masAcciones: AccionFila[] = [
     {
       id: 'topes',
@@ -104,6 +125,34 @@ export function AsistenciaPage() {
       etiqueta: t('acciones.verNovedades'),
       icono: NotebookPen,
       onSelect: () => router.push(`${RUTA_NOVEDADES}?desde=${periodo.desde}&hasta=${periodo.hasta}`),
+    },
+    {
+      id: 'qr-sede',
+      etiqueta: t('acciones.mostrarQrSede'),
+      descripcion:
+        pantallas.carga.estado === 'listo' && destinoQrSede(pantallas.carga.datos.pantallas).tipo === 'agregar'
+          ? t('acciones.mostrarQrSedeSinPantalla')
+          : t('acciones.mostrarQrSedeDesc'),
+      icono: ScanQrCode,
+      onSelect: mostrarQr,
+      separadorAntes: true,
+      oculta: !puedeGestionar,
+      deshabilitada: pantallas.carga.estado === 'cargando',
+      motivo: pantallas.carga.estado === 'cargando' ? t('acciones.mostrarQrSedeCargando') : undefined,
+    },
+    {
+      id: 'metodos-sede',
+      etiqueta: t('acciones.metodosSede'),
+      icono: Settings,
+      onSelect: () => router.push(RUTA_METODOS_SEDE),
+      oculta: !puedeGestionar,
+    },
+    {
+      id: 'dispositivos',
+      etiqueta: t('acciones.dispositivos'),
+      icono: MonitorSmartphone,
+      onSelect: () => router.push(RUTA_DISPOSITIVOS),
+      oculta: !puedeGestionar,
     },
   ];
 

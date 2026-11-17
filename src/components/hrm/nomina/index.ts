@@ -1,1 +1,0 @@
-export { PeriodsTable } from './PeriodsTable';

@@ -17,12 +17,14 @@ import { muestraPestanasHrm, pestanaHrmActiva } from './navHrmLogica';
 
 /** Listas que ya llevan la barra en su `PageHeader` (`debajo`). */
 export const PAGINAS_CON_PESTANAS_PROPIAS: readonly string[] = [
+  '/app/hrm/nomina',
   '/app/hrm/empleados',
   '/app/hrm/areas',
   '/app/hrm/cargos',
   '/app/hrm/plazas',
   '/app/hrm/aprobaciones',
   '/app/hrm/turnos',
+  '/app/hrm/marcacion',
   '/app/hrm/mi-equipo',
   '/app/hrm/asistencia',
   '/app/hrm/novedades',

@@ -30,6 +30,7 @@ const PERMISOS_CONOCIDOS = new Set([
   'hr.parameters.manage',
   'hr.approvals.manage',
   'hr.access_log.view',
+  'hr.payroll.view',
 ]);
 
 describe('registro de secciones', () => {

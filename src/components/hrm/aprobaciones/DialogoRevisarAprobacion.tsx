@@ -20,7 +20,8 @@ import { formatNumeroMoneda } from '@/lib/utils/moneda';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { ErrorPersonas, decidirAprobacion, pedir, urlDocumento } from '../personas/apiPersonas';
 import { fechaCorta, useValorCampo } from '../personas/textosPersonas';
-import { claveTitulo, diferencia, type Solicitud } from './bandejaLogica';
+import { METODOS_SEDE } from '@/lib/hrm/marcacion/metodos';
+import { claveTitulo, diferencia, excepcionMarcacion, type Solicitud } from './bandejaLogica';
 
 export interface DialogoRevisarAprobacionProps {
   instanciaId: string | null;
@@ -91,6 +92,9 @@ export function DialogoRevisarAprobacion({ instanciaId, abierto, onAbiertoChange
   const dif = s ? diferencia(s) : null;
   const sensible = !!s?.eventos.some((e) => (e.campo === 'salario' || e.campo === 'periodo_salario') && !e.oculto) || !!s?.cuenta;
   const puedeDecidir = !!s?.puede_decidir;
+  // Excepción temporal de marcación (Marcación M0): método, vigencia y motivo, del contexto.
+  const excepcion = s ? excepcionMarcacion(s) : null;
+  const metodoExcepcion = (m: string) => ((METODOS_SEDE as readonly string[]).includes(m) ? t(`excepcion.metodos.${m}`) : m);
 
   return (
     <>
@@ -190,6 +194,11 @@ export function DialogoRevisarAprobacion({ instanciaId, abierto, onAbiertoChange
                 />
               ) : null}
               {s.efecto ? <FilaDato etiqueta={t('efecto')} valor={fechaCorta(s.efecto)} /> : null}
+              {excepcion?.metodo ? <FilaDato etiqueta={t('excepcion.metodo')} valor={metodoExcepcion(excepcion.metodo)} /> : null}
+              {excepcion?.desde && excepcion.hasta ? (
+                <FilaDato etiqueta={t('excepcion.vigencia')} valor={t('excepcion.vigenciaValor', { desde: fechaCorta(excepcion.desde), hasta: fechaCorta(excepcion.hasta) })} />
+              ) : null}
+              {excepcion?.motivo ? <FilaDato etiqueta={t('motivo')} valor={excepcion.motivo} /> : null}
               {s.eventos[0]?.motivo || s.cuenta?.motivo ? <FilaDato etiqueta={t('motivo')} valor={s.eventos[0]?.motivo ?? s.cuenta?.motivo} /> : null}
               {s.en_nombre_de ? <FilaDato etiqueta={t('enNombreDe')} valor={s.en_nombre_de} /> : null}
               {s.estado !== 'pendiente' && s.decision ? (

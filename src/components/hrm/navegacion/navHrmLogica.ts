@@ -3,8 +3,11 @@
  * prueba `__tests__/navHrmLogica.test.ts`.
  *
  * Decisión 1 del dueño (fase 2, 2026-11-16):
- * - RR. HH. ve 9 pestañas: Empleados · Áreas · Cargos · Plazas · Turnos ·
- *   Asistencia · Novedades · Ausencias · Aprobaciones.
+ * - RR. HH. ve 11 pestañas: Empleados · Áreas · Cargos · Plazas · Turnos ·
+ *   Marcación · Asistencia · Novedades · Ausencias · Nómina · Aprobaciones.
+ *   «Marcación» (Figma 20.26–20.28, plan de Marcación M0) va entre Turnos y
+ *   Asistencia y no es pestaña del jefe: configura métodos y dispositivos de la
+ *   sede. «Nómina» va antes de Aprobaciones; los préstamos viven dentro de ella.
  * - El jefe ve 6 y la primera es «Mi equipo»: Mi equipo · Turnos · Asistencia ·
  *   Novedades · Ausencias · Aprobaciones.
  * Quién es quién lo decide el servidor (`GET /api/hrm/pestanas`).
@@ -22,9 +25,11 @@ export const PESTANAS_HRM = [
   '/app/hrm/cargos',
   '/app/hrm/plazas',
   '/app/hrm/turnos',
+  '/app/hrm/marcacion',
   '/app/hrm/asistencia',
   '/app/hrm/novedades',
   '/app/hrm/ausencias',
+  '/app/hrm/nomina',
   '/app/hrm/aprobaciones',
 ] as const;
 

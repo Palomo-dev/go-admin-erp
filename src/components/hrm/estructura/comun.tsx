@@ -21,7 +21,9 @@ export const RUTA_PLAZAS = '/app/hrm/plazas';
 export class ErrorEstructura extends Error {
   constructor(
     public readonly status: number,
-    public readonly codigo: string
+    public readonly codigo: string,
+    /** Datos extra de la respuesta de error (p. ej. la sede de una etiqueta NFC de otra sede). */
+    public readonly datos?: Record<string, unknown> | null
   ) {
     super(codigo);
   }
@@ -35,7 +37,7 @@ export async function pedir<T>(url: string, init?: { metodo?: 'GET' | 'POST' | '
     cache: 'no-store',
   });
   const datos = (await r.json().catch(() => null)) as (T & { code?: string }) | null;
-  if (!r.ok) throw new ErrorEstructura(r.status, datos?.code ?? 'error_hrm');
+  if (!r.ok) throw new ErrorEstructura(r.status, datos?.code ?? 'error_hrm', datos as Record<string, unknown> | null);
   return datos as T;
 }
 

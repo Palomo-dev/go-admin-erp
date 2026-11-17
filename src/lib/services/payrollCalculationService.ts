@@ -10,8 +10,8 @@ const createClient = () => createSupabaseClient();
  * Calculaba la nómina en el navegador y dividía entre 100 tarifas que ya están en
  * fracción (R1: salud y pensión salían 100 veces menores). Lo reemplaza el motor del
  * servidor: `src/lib/hrm/nomina/motorNomina.ts` + `src/lib/services/hrm/nomina/nominaService.server.ts`.
- * Lo usaban `src/app/app/hrm/nomina/page.tsx` y `src/app/app/hrm/nomina/periodos/[id]/page.tsx`,
- * que ahora preliquidan en el servidor (`preliquidarCliente.ts`) y se reemplazan con el diseño nuevo.
+ * Lo usaban las pantallas viejas de `src/app/app/hrm/nomina/**`; la interfaz nueva (Figma 20.16–20.25,
+ * `src/components/hrm/nomina/**`) preliquida por `POST /api/hrm/nomina/periodos/[id]/preliquidar`.
  *
  * Servicio para calcular nómina desde timesheets aprobados
  * Flujo: timesheets (approved) → payroll_slips

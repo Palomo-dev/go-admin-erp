@@ -5,13 +5,15 @@
  * - `fn_hr_marcar` valida el QR contra `time_clocks` (el token ya no llega al
  *   navegador del empleado), pone la hora del servidor y guarda la ubicación
  *   solo con consentimiento vigente;
- * - `fn_hr_marcacion_manual` es la única vía para una hora elegida, y exige
- *   `hr.attendance.manage`.
+ * - `fn_hr_marcacion_manual` es la única vía para una hora elegida, exige
+ *   `hr.attendance.manage` y, desde Marcación M0 (R1), crea un ajuste pendiente
+ *   de aprobación: ya no inserta la marca directo.
  * Después de marcar se reclasifica el día con el motor de horas.
  */
 import { getServiceClient } from '@/lib/supabase/server-service';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import type { DatosMarcacion, TipoEvento } from '@/lib/hrm/jornada/marcacion';
+import { MOTIVOS_INTENTO } from '@/lib/hrm/marcacion/metodos';
 import { recalcularDia, type ResultadoRecalculo } from './jornadaService.server';
 import { HrmError, errorDeRpc, esFechaPlana, esUuid, type ContextoPeticion } from './tipos';
 
@@ -32,12 +34,34 @@ export interface ResultadoMarcacion {
   distancia_m?: number | null;
   /** La marca vale pero el jefe la revisa: sin ubicación, desde un computador o sin señal. */
   revisar?: 'sin_ubicacion' | 'computador_sin_qr' | 'fuera_de_linea' | null;
+  /** Método exacto (Marcación M0): celular_ubicacion, qr, nfc_etiqueta o remoto. */
+  metodo?: string;
   jornada?: ResultadoRecalculo | { estado: 'pendiente'; motivo: string };
   tardanza_justificada?: boolean;
 }
 
 function cliente() {
   return getServiceClient();
+}
+
+/**
+ * Un rechazo de `fn_hr_marcar` deshace su transacción: el intento se guarda aparte
+ * (`hr_marcacion_intentos`, 90 días) para En vivo y el antifraude. Nunca tumba la respuesta.
+ */
+async function registrarIntento(ctx: ContextoMarcacion, datos: DatosMarcacion, err: HrmError): Promise<void> {
+  if (!MOTIVOS_INTENTO.has(err.code)) return;
+  const distancia = /estás a (\d+) m/.exec(err.message)?.[1];
+  try {
+    await cliente().rpc('fn_hr_marcacion_intento', {
+      p_actor: ctx.userId,
+      p_org: ctx.organizationId,
+      p_datos: { metodo: datos.metodo, remoto: datos.remoto ?? false, reloj_id: datos.reloj_id ?? null, dispositivo: datos.dispositivo ?? null },
+      p_motivo: err.code,
+      p_detalle: distancia ? { distancia_m: distancia } : {},
+    });
+  } catch {
+    /* el intento es informativo */
+  }
 }
 
 export async function marcar(ctx: ContextoMarcacion, datos: DatosMarcacion, peticion: ContextoPeticion): Promise<ResultadoMarcacion> {
@@ -48,7 +72,11 @@ export async function marcar(ctx: ContextoMarcacion, datos: DatosMarcacion, peti
     p_ip: peticion.ip,
     p_ua: peticion.userAgent,
   });
-  if (error) throw errorDeRpc(error);
+  if (error) {
+    const e = errorDeRpc(error);
+    await registrarIntento(ctx, datos, e);
+    throw e;
+  }
   const r = data as ResultadoMarcacion;
   // La marcación ya quedó; si la clasificación no se puede hacer ahora (un parámetro
   // por confirmar, una carrera), el día queda sin clasificar y no pasa a nómina.

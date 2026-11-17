@@ -14,12 +14,20 @@
  *   las dos quedan como novedad para el jefe.
  * - Sin señal: la marca se guarda en el celular y se envía al volver la señal.
  *   La hora sigue siendo la del servidor; la capturada viaja como dato para la revisión.
+ * - Marcación M0, «Celular según la sede» (Figma 20.30): la pantalla ofrece los
+ *   métodos que la sede tiene para la persona (`metodos_sede` del GET; sin ese
+ *   dato, como antes). `?metodo=` abre uno directo (Inicio). La etiqueta NFC se
+ *   lee con Web NFC y SIEMPRE va con la ubicación del momento; `?nfc=` (el
+ *   celular abrió la etiqueta) marca una sola vez al cargar y se limpia de la URL.
+ *   El QR es de un solo uso (20.30.11) y, si la sede lo pide, va con ubicación.
+ *   El QR con PIN (20.30.10) llega con el kiosco (M1): aquí no existe.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { AlertCircle, AlertTriangle, ArrowLeft, Coffee, Info, Laptop, LocateFixed, LogIn, MapPin, ScanLine, ScanQrCode, WifiOff } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ArrowLeft, Coffee, Info, Laptop, LocateFixed, LogIn, MapPin, Nfc, ScanLine, ScanQrCode, TriangleAlert, WifiOff } from 'lucide-react';
 import { AvisoTonal, Dialogo, EmptyState, FilaDato, FormField, SegmentedControl, Tarjeta, clasesBoton, useEsEscritorio } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -29,6 +37,7 @@ import {
   descansoRestante,
   distanciaMetros,
   leerCola,
+  metodoDeParametro,
   metodoInicial,
   metodosDisponibles,
   siguienteConCola,
@@ -42,6 +51,9 @@ import { diaIso } from '@/lib/hrm/turnos/programacion';
 import { useFormatoHora } from '@/components/hrm/turnos/formatoHora';
 import { ErrorEstructura, pedir, useCarga } from '@/components/hrm/estructura/comun';
 import { QRScanner } from './QRScanner';
+import { LectorNfc, nfcDisponible } from './LectorNfc';
+import { PanelLector } from './PanelLector';
+import { claveMetodoMarca, etiquetaDeUrl, sedeDelError } from './marcarMetodoLogica';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
 
 const MOTIVOS = ['transporte', 'salud', 'familiar', 'clima', 'otro'] as const;
@@ -49,6 +61,8 @@ const MOTIVOS_FUERA = ['cubrir', 'inventario', 'evento', 'otro'] as const;
 
 type Posicion = { lat: number; lng: number; precision: number } | null;
 type Ubicacion = { estado: 'pendiente' | 'ok' | 'denegada' | 'no_disponible'; pos: Posicion };
+/** Error que reemplaza al lector (Figma 20.30.5 y 20.30.11): «No registramos nada». */
+type ErrorLector = { tipo: 'qr_ya_usado' } | { tipo: 'etiqueta_otra_sede'; sede: string | null };
 
 function leerColaLocal(): MarcaPendiente[] {
   try {
@@ -84,6 +98,18 @@ export function MarcarTurno() {
   const [enLinea, setEnLinea] = useState(true);
   const [cola, setCola] = useState<MarcaPendiente[]>([]);
   const enviandoCola = useRef(false);
+  // Marcación M0 (20.30): lector de QR o NFC, sus errores y la etiqueta abierta por URL.
+  const parametros = useSearchParams();
+  const router = useRouter();
+  const ruta = usePathname();
+  const pedido = metodoDeParametro(parametros?.get('metodo'));
+  const nfcUrl = parametros?.get('nfc') ?? null;
+  const [pausaLector, setPausaLector] = useState(false);
+  const [errorLector, setErrorLector] = useState<ErrorLector | null>(null);
+  const [tipoLector, setTipoLector] = useState<TipoEvento | null>(null);
+  const [nfcSoportado, setNfcSoportado] = useState<boolean | null>(null);
+  const pendienteNfc = useRef<string | null>(null);
+  const nfcUrlUsada = useRef(false);
 
   useEffect(() => {
     const id = setInterval(() => setAhora(new Date()), 15_000);
@@ -104,8 +130,12 @@ export function MarcarTurno() {
   const hoyIso = datos?.hoy ? diaIso(datos.hoy) : 1;
   const disponibles = useMemo(() => (datos ? metodosDisponibles(datos, hoyIso) : []), [datos, hoyIso]);
   useEffect(() => {
-    if (datos && metodo === null) setMetodo(escritorio ? (disponibles.includes('remoto') ? 'remoto' : disponibles.includes('qr') ? 'qr' : 'ubicacion') : metodoInicial(disponibles, datos.modalidad));
-  }, [datos, disponibles, escritorio, metodo]);
+    if (!datos || metodo !== null) return;
+    // `?metodo=` (Inicio abre directo el método de la sede) manda si la sede lo ofrece.
+    if (pedido && disponibles.includes(pedido)) setMetodo(pedido);
+    else setMetodo(escritorio ? (disponibles.includes('remoto') ? 'remoto' : disponibles.includes('qr') ? 'qr' : 'ubicacion') : metodoInicial(disponibles, datos.modalidad, datos.metodo_preferido));
+  }, [datos, disponibles, escritorio, metodo, pedido]);
+  useEffect(() => setNfcSoportado(nfcDisponible()), []);
 
   const vista = datos ? vistaMarcacion(datos, ahora) : null;
   const siguiente: TipoEvento = siguienteConCola(vista?.accion ?? datos?.siguiente ?? 'check_in', cola);
@@ -114,36 +144,61 @@ export function MarcarTurno() {
   const distancia =
     ubicacion.pos && sede?.lat != null && sede?.lng != null ? Math.round(distanciaMetros(ubicacion.pos.lat, ubicacion.pos.lng, Number(sede.lat), Number(sede.lng))) : null;
   const usaUbicacion = metodo === 'ubicacion' && !escritorio;
+  /** QR o etiqueta en pantalla (20.30.2, 20.30.6); tras marcar con ellos se vuelve a la vista del turno. */
+  const modoLector = (metodo === 'qr' || metodo === 'nfc') && !pausaLector;
+  /** La etiqueta exige ubicación siempre; el QR, si la sede lo pide. Nunca desde un computador (decisión 3). */
+  const ubicacionLector = !escritorio && (metodo === 'nfc' || (metodo === 'qr' && datos?.reglas?.qr_exige_ubicacion === true));
 
   // Ubicación: solo con autorización y solo cuando la pantalla la necesita.
-  const tomarUbicacion = useCallback(() => {
-    if (!('geolocation' in navigator)) {
-      setUbicacion({ estado: 'no_disponible', pos: null });
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (p) => setUbicacion({ estado: 'ok', pos: { lat: p.coords.latitude, lng: p.coords.longitude, precision: Math.round(p.coords.accuracy) } }),
-      (e) => {
-        setUbicacion({ estado: e.code === e.PERMISSION_DENIED ? 'denegada' : 'no_disponible', pos: null });
-        if (e.code === e.PERMISSION_DENIED) setBloqueada(true);
-      },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 }
-    );
-  }, []);
+  const posicionAhora = useCallback(
+    () =>
+      new Promise<Posicion>((resolver) => {
+        if (!('geolocation' in navigator)) {
+          setUbicacion({ estado: 'no_disponible', pos: null });
+          resolver(null);
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          (p) => {
+            const pos = { lat: p.coords.latitude, lng: p.coords.longitude, precision: Math.round(p.coords.accuracy) };
+            setUbicacion({ estado: 'ok', pos });
+            resolver(pos);
+          },
+          (e) => {
+            setUbicacion({ estado: e.code === e.PERMISSION_DENIED ? 'denegada' : 'no_disponible', pos: null });
+            if (e.code === e.PERMISSION_DENIED) setBloqueada(true);
+            resolver(null);
+          },
+          { enableHighAccuracy: true, timeout: 10_000, maximumAge: 0 }
+        );
+      }),
+    []
+  );
+  const tomarUbicacion = useCallback(() => void posicionAhora(), [posicionAhora]);
   useEffect(() => {
-    if (!datos || !usaUbicacion) return;
+    if (!datos || !(usaUbicacion || ubicacionLector)) return;
     if (datos.ubicacion?.autorizada) tomarUbicacion();
-  }, [datos, usaUbicacion, tomarUbicacion]);
+  }, [datos, usaUbicacion, ubicacionLector, tomarUbicacion]);
 
   const autorizar = async (otorgar: boolean) => {
     setPedirPermiso(false);
+    const etiqueta = pendienteNfc.current;
+    pendienteNfc.current = null;
     try {
       await pedir('/api/hrm/marcacion/consentimiento', { metodo: 'POST', cuerpo: { otorgar } });
       await recargar();
-      if (otorgar) tomarUbicacion();
+      // La etiqueta que esperaba el permiso se marca ahora (su ubicación se toma al enviar).
+      if (otorgar && etiqueta) void marcarRef.current({ nfc: etiqueta, consentido: true });
+      else if (otorgar) tomarUbicacion();
     } catch {
       toast.error(t('errores.error_hrm'));
     }
+  };
+  const elegirMetodo = (m: MetodoPantalla) => {
+    setMetodo(m);
+    setPausaLector(false);
+    setErrorLector(null);
+    setTipoLector(null);
   };
 
   const enviarCola = useCallback(async () => {
@@ -175,15 +230,23 @@ export function MarcarTurno() {
     if (enLinea) void enviarCola();
   }, [enLinea, enviarCola]);
 
-  const marcar = async (opciones: { tipo?: TipoEvento; qr?: string } = {}) => {
+  const marcar = async (opciones: { tipo?: TipoEvento; qr?: string; nfc?: string; consentido?: boolean } = {}) => {
     if (!datos) return;
-    const tipo = opciones.tipo ?? siguiente;
+    const lector = opciones.qr ?? opciones.nfc;
+    const tipo = opciones.tipo ?? (lector ? (tipoLector ?? siguiente) : siguiente);
     const remoto = metodo === 'remoto';
-    if (usaUbicacion && !opciones.qr && !datos.ubicacion?.autorizada) {
+    if (usaUbicacion && !lector && !datos.ubicacion?.autorizada) {
       setPedirPermiso(true);
       return;
     }
-    if (!navigator.onLine && !opciones.qr) {
+    // La etiqueta exige la ubicación del momento; el QR, si la sede lo pide (reglas de la sede).
+    const conUbicacion = !!lector && !escritorio && (opciones.nfc !== undefined || datos.reglas?.qr_exige_ubicacion === true);
+    if (conUbicacion && !opciones.consentido && !datos.ubicacion?.autorizada) {
+      if (opciones.nfc) pendienteNfc.current = opciones.nfc;
+      setPedirPermiso(true);
+      return;
+    }
+    if (!navigator.onLine && !lector) {
       const nueva: MarcaPendiente = { id: `${Date.now()}`, tipo, capturada: new Date().toISOString(), metodo: 'app', remoto };
       const c = [...leerColaLocal(), nueva];
       guardarColaLocal(c);
@@ -198,8 +261,15 @@ export function MarcarTurno() {
         : fuera && motivo
           ? { motivo: t(`motivosFuera.${motivo}`), pedido_por: pedidoPor || undefined, fuera_de_turno: true }
           : undefined;
-    const cuerpo = opciones.qr
-      ? { qr: opciones.qr, tipo, dispositivo: { plataforma: escritorio ? 'escritorio' : 'movil' }, nota }
+    setEnviando(true);
+    setFueraDeRango(null);
+    setErrorLector(null);
+    const pos = conUbicacion ? await posicionAhora() : null;
+    const geo = pos ? { lat: pos.lat, lng: pos.lng, precision: pos.precision } : undefined;
+    const cuerpo = opciones.nfc
+      ? { nfc: opciones.nfc, tipo, ubicacion: geo, dispositivo: { plataforma: escritorio ? 'escritorio' : 'movil' }, nota }
+      : opciones.qr
+      ? { qr: opciones.qr, tipo, ubicacion: geo, dispositivo: { plataforma: escritorio ? 'escritorio' : 'movil' }, nota }
       : {
           metodo: 'app',
           tipo,
@@ -208,24 +278,53 @@ export function MarcarTurno() {
           dispositivo: { plataforma: escritorio ? 'escritorio' : 'movil' },
           nota,
         };
-    setEnviando(true);
-    setFueraDeRango(null);
     try {
-      const r = await pedir<{ tipo: TipoEvento; hora: string; revisar?: string | null; ubicacion_guardada: boolean }>('/api/hrm/marcacion', { metodo: 'POST', cuerpo });
+      const r = await pedir<{ tipo: TipoEvento; hora: string; revisar?: string | null; ubicacion_guardada: boolean; reloj?: string | null }>('/api/hrm/marcacion', { metodo: 'POST', cuerpo });
       const como = opciones.qr ? t('como.qr') : remoto ? t('como.remoto') : r.revisar ? t(`revisar.${r.revisar}`) : t('como.ubicacion');
-      toast.success(t(`registrada.${r.tipo}`, { hora: f.hora(r.hora, zona) }), { description: [sede?.nombre, como].filter(Boolean).join(' · ') });
+      // 20.30.4: «Con la etiqueta NFC de la Puerta principal · Sede Centro».
+      const descripcion = opciones.nfc
+        ? [r.reloj ? t('registradaNfc.conPunto', { punto: r.reloj }) : t('registradaNfc.sinPunto'), sede?.nombre].filter(Boolean).join(' · ')
+        : [sede?.nombre, como].filter(Boolean).join(' · ');
+      toast.success(t(`registrada.${r.tipo}`, { hora: f.hora(r.hora, zona) }), { description: descripcion });
       setMotivo('');
       setPedidoPor('');
-      if (metodo === 'qr') setMetodo(metodoInicial(disponibles, datos.modalidad));
+      if (lector) {
+        // Tras marcar con el lector se vuelve a la vista del turno (el mismo código no se relee).
+        setPausaLector(true);
+        setTipoLector(null);
+      }
+      if (opciones.qr) setMetodo(metodoInicial(disponibles, datos.modalidad, datos.metodo_preferido));
       await recargar();
     } catch (e) {
       const codigo = e instanceof ErrorEstructura ? e.codigo : 'error_hrm';
-      if (codigo === 'fuera_de_rango') setFueraDeRango(distancia);
-      else toast.error(t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.error_hrm'));
+      if (codigo === 'fuera_de_rango' && !lector) setFueraDeRango(distancia);
+      else if (codigo === 'qr_ya_usado' && opciones.qr) {
+        setErrorLector({ tipo: 'qr_ya_usado' });
+      } else if (codigo === 'etiqueta_otra_sede' && opciones.nfc && disponibles.includes('nfc')) {
+        setMetodo('nfc');
+        setPausaLector(false);
+        setErrorLector({ tipo: 'etiqueta_otra_sede', sede: sedeDelError(e instanceof ErrorEstructura ? e.datos : null) });
+      } else toast.error(t.has(`errores.${codigo}`) ? t(`errores.${codigo}`) : t('errores.error_hrm'));
     } finally {
       setEnviando(false);
     }
   };
+  const marcarRef = useRef(marcar);
+  marcarRef.current = marcar;
+
+  // `?nfc=`: el celular abrió la etiqueta. Se marca una sola vez y el parámetro se limpia.
+  useEffect(() => {
+    if (!datos?.vinculo) return;
+    const accion = etiquetaDeUrl(nfcUrl, nfcUrlUsada.current);
+    if (!accion) return;
+    nfcUrlUsada.current = true;
+    const resto = new URLSearchParams(parametros?.toString() ?? '');
+    resto.delete('nfc');
+    const consulta = resto.toString();
+    router.replace(`${ruta ?? '/marcar'}${consulta ? `?${consulta}` : ''}`, { scroll: false });
+    if ('contenido' in accion) void marcarRef.current({ nfc: accion.contenido });
+    else toast.error(t('errores.etiqueta_invalida'));
+  }, [datos, nfcUrl, parametros, router, ruta, t]);
 
   // ─── Estados de la pantalla ────────────────────────────────────────────────
   const subtitulo = [datos?.vinculo?.sede, turno ? `${turno.plantilla ?? t('turno')} ${f.hora(turno.inicio, zona)} – ${f.hora(turno.fin, zona)}` : null].filter(Boolean).join(' · ');
@@ -293,6 +392,110 @@ export function MarcarTurno() {
   const etiquetaAccion = t(`accion.${siguiente}`);
   const tonoCaja = enCurso ? 'bg-success-subtle text-success-text' : fase === 'tarde' ? 'bg-warning-subtle text-warning-text' : 'bg-brand-tint text-brand';
   const bloqueadoFuera = fase === 'fueraDeTurno' && siguiente === 'check_in' && !motivo;
+  /** Con el QR o la etiqueta elegidos, los botones del turno vuelven a abrir el lector. */
+  const metodoLector = metodo === 'qr' || metodo === 'nfc';
+  const IconoAccion = metodo === 'qr' ? ScanQrCode : metodo === 'nfc' ? Nfc : ScanLine;
+  const abrirLector = (tipo: TipoEvento | null) => {
+    setTipoLector(tipo);
+    setErrorLector(null);
+    setPausaLector(false);
+  };
+  const nombreSede = sede?.nombre ?? '';
+  /** Fila «Ubicación · Autorizar» sobre el lector cuando la marca la exige y aún no hay permiso. */
+  const autorizarLector =
+    ubicacionLector && !datos.ubicacion?.autorizada ? (
+      <Tarjeta>
+        <FilaDato
+          etiqueta={t('ubicacion.etiqueta')}
+          valor={
+            <button type="button" className="text-sm font-medium text-brand-deep underline-offset-2 hover:underline" onClick={() => setPedirPermiso(true)}>
+              {t('ubicacion.autorizar')}
+            </button>
+          }
+        />
+      </Tarjeta>
+    ) : null;
+  const botonConQr = (variante: 'primario' | 'fantasma') =>
+    disponibles.includes('qr') ? (
+      <button type="button" className={clasesBoton({ variante, anchoCompleto: variante === 'primario' })} onClick={() => elegirMetodo('qr')}>
+        <ScanQrCode aria-hidden className="size-4" strokeWidth={1.5} />
+        {t('nfc.conQr')}
+      </button>
+    ) : null;
+
+  const vistaQr =
+    errorLector?.tipo === 'qr_ya_usado' ? (
+      <>
+        <PanelLector icono={TriangleAlert} rol="alert" titulo={t('qrUsado.titulo')} descripcion={t('qrUsado.descripcion')} />
+        <p className="text-sm text-fg-secondary">{t('qrUsado.nota')}</p>
+        <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => setErrorLector(null)}>
+          <ScanQrCode aria-hidden className="size-4" strokeWidth={1.5} />
+          {t('qrUsado.otraVez')}
+        </button>
+      </>
+    ) : (
+      <>
+        {autorizarLector}
+        <div className="overflow-hidden rounded-xl bg-tooltip p-2">
+          <QRScanner onScan={(d) => void marcar({ qr: d })} isProcessing={enviando} />
+        </div>
+        <p className="text-sm text-fg-secondary">
+          {!datos.metodos_sede ? t('qr.nota', { sede: nombreSede }) : disponibles.length === 1 ? t('qr.notaSolo', { sede: nombreSede }) : t('qr.notaSede', { sede: nombreSede })}
+        </p>
+        {disponibles.includes('ubicacion') && !escritorio && (
+          <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => elegirMetodo('ubicacion')}>
+            <LocateFixed aria-hidden className="size-4" strokeWidth={1.5} />
+            {t('qr.volver')}
+          </button>
+        )}
+      </>
+    );
+
+  const vistaNfc =
+    errorLector?.tipo === 'etiqueta_otra_sede' ? (
+      // 20.30.5: la etiqueta es de otra sede de la misma organización (también en iPhone, que abre la etiqueta por URL).
+      <>
+        <PanelLector
+          icono={TriangleAlert}
+          rol="alert"
+          titulo={errorLector.sede ? t('nfc.otraSede.titulo', { sede: errorLector.sede }) : t('nfc.otraSede.tituloSinSede')}
+          descripcion={t('nfc.otraSede.descripcion', { sede: nombreSede })}
+        />
+        <p className="text-sm text-fg-secondary">{errorLector.sede ? t('nfc.otraSede.nota', { sede: errorLector.sede }) : t('nfc.otraSede.notaSinSede')}</p>
+        {botonConQr('fantasma')}
+        <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => setErrorLector(null)}>
+          <Nfc aria-hidden className="size-4" strokeWidth={1.5} />
+          {t('nfc.otraVez')}
+        </button>
+      </>
+    ) : nfcSoportado === false ? (
+      // 20.30.3: iPhone u otro navegador sin Web NFC.
+      <>
+        <AvisoTonal tono="informacion" icono={Info} titulo={t('nfc.noDisponible.titulo')} descripcion={t('nfc.noDisponible.descripcion')} />
+        {botonConQr('primario')}
+        {disponibles.includes('ubicacion') && (
+          <button type="button" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })} onClick={() => elegirMetodo('ubicacion')}>
+            <LocateFixed aria-hidden className="size-4" strokeWidth={1.5} />
+            {t('nfc.conUbicacion')}
+          </button>
+        )}
+      </>
+    ) : nfcSoportado ? (
+      // 20.30.2: acercar el celular a la etiqueta.
+      <>
+        {autorizarLector}
+        <LectorNfc
+          onLeer={(c) => void marcar({ nfc: c })}
+          onInvalida={() => toast.error(t('errores.etiqueta_invalida'))}
+          onNoDisponible={() => setNfcSoportado(false)}
+          procesando={enviando}
+        />
+        <p className="text-sm text-fg-secondary">{t('nfc.nota')}</p>
+        {botonConQr('fantasma')}
+      </>
+    ) : (
+      <div className="h-40 animate-pulse rounded-xl bg-subtle" aria-busy="true" aria-label={t('cargando')} />
+    );
 
   const reloj = (
     <Tarjeta className="text-center">
@@ -308,21 +511,15 @@ export function MarcarTurno() {
           {t('sinSenal.badge')}
         </Badge>
       )}
-      {enLinea && metodo !== 'qr' && reloj}
+      {enLinea && !modoLector && reloj}
 
-      {metodo === 'qr' ? (
+      {modoLector ? (
         <div className="flex flex-col gap-3">
-          <SegmentedControl etiqueta={t('como.etiqueta')} anchoCompleto valor={metodo} onValorChange={setMetodo} opciones={opcionesMetodo(disponibles, t)} />
-          <div className="overflow-hidden rounded-xl bg-tooltip p-2">
-            <QRScanner onScan={(d) => void marcar({ qr: d })} isProcessing={enviando} />
-          </div>
-          <p className="text-sm text-fg-secondary">{t('qr.nota', { sede: sede?.nombre ?? '' })}</p>
-          {disponibles.includes('ubicacion') && !escritorio && (
-            <button type="button" className={clasesBoton({ variante: 'fantasma' })} onClick={() => setMetodo('ubicacion')}>
-              <LocateFixed aria-hidden className="size-4" strokeWidth={1.5} />
-              {t('qr.volver')}
-            </button>
+          {/* 20.30.6: con un solo método no hay selector. */}
+          {disponibles.length > 1 && (
+            <SegmentedControl etiqueta={t('como.etiqueta')} anchoCompleto valor={metodo ?? disponibles[0]} onValorChange={elegirMetodo} opciones={opcionesMetodo(disponibles, t)} />
           )}
+          {metodo === 'qr' ? vistaQr : vistaNfc}
         </div>
       ) : (
         <>
@@ -395,16 +592,23 @@ export function MarcarTurno() {
                 type="button"
                 className={clasesBoton({ variante: enCurso ? 'tinte' : 'primario', anchoCompleto: true, className: 'mt-4' })}
                 disabled={enviando || (usaUbicacion && fueraDeRango !== null && !enCurso)}
-                onClick={() => void marcar(siguiente === 'break_start' ? { tipo: 'check_out' } : {})}
+                onClick={() =>
+                  metodoLector ? abrirLector(siguiente === 'break_start' ? 'check_out' : null) : void marcar(siguiente === 'break_start' ? { tipo: 'check_out' } : {})
+                }
               >
-                <ScanLine aria-hidden className="size-4" strokeWidth={1.5} />
+                <IconoAccion aria-hidden className="size-4" strokeWidth={1.5} />
                 {siguiente === 'break_start' ? t('accion.check_out') : etiquetaAccion}
               </button>
             </Tarjeta>
           )}
 
           {fase === 'enTurno' && (
-            <button type="button" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })} disabled={enviando} onClick={() => void marcar({ tipo: 'break_start' })}>
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'secundario', anchoCompleto: true })}
+              disabled={enviando}
+              onClick={() => (metodoLector ? abrirLector('break_start') : void marcar({ tipo: 'break_start' }))}
+            >
               <Coffee aria-hidden className="size-4" strokeWidth={1.5} />
               {t('iniciarDescanso')}
             </button>
@@ -414,7 +618,7 @@ export function MarcarTurno() {
             <Tarjeta>
               <FilaDato
                 etiqueta={t('filas.entrada')}
-                valor={<span className="font-semibold">{[f.hora(entrada, zona), metodoEntrada ? t(`metodo.${metodoEntrada.metodo === 'qr' ? 'qr' : metodoEntrada.modo === 'remoto' ? 'remoto' : 'ubicacion'}`) : null].filter(Boolean).join(' · ')}</span>}
+                valor={<span className="font-semibold">{[f.hora(entrada, zona), metodoEntrada ? t(`metodo.${claveMetodoMarca(metodoEntrada)}`) : null].filter(Boolean).join(' · ')}</span>}
               />
               <FilaDato
                 etiqueta={t('filas.descanso')}
@@ -455,7 +659,7 @@ export function MarcarTurno() {
                 descripcion={t('lejos.descripcion', { radio: sede?.radio_m ?? 150 })}
               />
               {disponibles.includes('qr') && (
-                <button type="button" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })} onClick={() => setMetodo('qr')}>
+                <button type="button" className={clasesBoton({ variante: 'secundario', anchoCompleto: true })} onClick={() => elegirMetodo('qr')}>
                   <ScanQrCode aria-hidden className="size-4" strokeWidth={1.5} />
                   {t('lejos.qr')}
                 </button>
@@ -469,10 +673,10 @@ export function MarcarTurno() {
           {!enCurso && fase !== 'cerrado' && disponibles.length > 0 && cola.length === 0 && (
             <section className="flex flex-col gap-3" aria-labelledby="como-marcas">
               <h2 id="como-marcas" className="text-base font-semibold text-fg">
-                {t('como.titulo')}
+                {datos.metodos_sede && nombreSede ? t('como.tituloSede', { sede: nombreSede }) : t('como.titulo')}
               </h2>
               {disponibles.length > 1 && (
-                <SegmentedControl etiqueta={t('como.etiqueta')} anchoCompleto valor={metodo ?? disponibles[0]} onValorChange={setMetodo} opciones={opcionesMetodo(disponibles, t)} />
+                <SegmentedControl etiqueta={t('como.etiqueta')} anchoCompleto valor={metodo ?? disponibles[0]} onValorChange={elegirMetodo} opciones={opcionesMetodo(disponibles, t)} />
               )}
               {metodo === 'ubicacion' && escritorio && (
                 <AvisoTonal tono="informacion" icono={Laptop} titulo={t('computador.titulo')} descripcion={t('computador.descripcion')} />
@@ -547,7 +751,8 @@ export function MarcarTurno() {
         textoCancelar={t('permiso.ahoraNo')}
         onCancelar={() => {
           setPedirPermiso(false);
-          if (disponibles.includes('qr')) setMetodo('qr');
+          pendienteNfc.current = null;
+          if (disponibles.includes('qr')) elegirMetodo('qr');
         }}
       >
         <details className="text-sm text-fg-secondary">

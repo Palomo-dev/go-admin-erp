@@ -20,7 +20,35 @@ export interface PersonaAsistencia {
 }
 
 export type EstadoHoy = 'presente' | 'tarde' | 'falta' | 'descanso' | 'salio' | 'ausencia' | 'por_llegar';
-export type ComoMarco = 'ubicacion' | 'qr' | 'remoto' | 'manual' | 'app';
+/**
+ * Cómo marcó (`fn_hr_asistencia_hoy.como`). Marcación M0 suma `nfc` (etiqueta de la
+ * sede), `carne`, `pin`, `rostro` y `huella` (kiosco M1 y relojes M2).
+ */
+export const COMOS_MARCO = ['ubicacion', 'qr', 'nfc', 'carne', 'pin', 'rostro', 'huella', 'remoto', 'manual', 'app'] as const;
+export type ComoMarco = (typeof COMOS_MARCO)[number];
+
+/** Valor de la base → `ComoMarco`; uno que esta versión no conoce se muestra como «—». */
+export function comoDeValor(v: unknown): ComoMarco | null {
+  return typeof v === 'string' && (COMOS_MARCO as readonly string[]).includes(v) ? (v as ComoMarco) : null;
+}
+
+/** Rutas de Marcación que abre el menú ⋯ de Asistencia (Figma 20.31.2). */
+export const RUTA_MARCACION = '/app/hrm/marcacion';
+export const RUTA_METODOS_SEDE = `${RUTA_MARCACION}?vista=metodos`;
+export const RUTA_DISPOSITIVOS = `${RUTA_MARCACION}?vista=dispositivos`;
+
+/**
+ * «Mostrar el QR de la sede»: con una pantalla de QR en la sede, se abre la
+ * primera en una pestaña nueva; sin ninguna, se lleva a agregarla.
+ */
+export function destinoQrSede(
+  pantallas: readonly { id: string }[] | null | undefined
+): { tipo: 'pantalla'; url: string } | { tipo: 'agregar'; url: string } {
+  const primera = pantallas?.find((p) => typeof p.id === 'string' && p.id.length > 0);
+  return primera
+    ? { tipo: 'pantalla', url: `/marcacion/pantalla/${encodeURIComponent(primera.id)}` }
+    : { tipo: 'agregar', url: `${RUTA_DISPOSITIVOS}&agregar=pantalla_qr` };
+}
 
 export interface FilaHoy extends PersonaAsistencia {
   turno: {

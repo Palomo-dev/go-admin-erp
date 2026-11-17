@@ -970,7 +970,21 @@
         "marcarSalidaTiempo": "Pointer le départ · {duracion}",
         "verMarcaciones": "Voir mes pointages",
         "marcarTurno": "Pointer",
-        "terminarDescanso": "Terminer la pause"
+        "terminarDescanso": "Terminer la pause",
+        "metodo": {
+          "qr": {
+            "entrada": "Scanner le QR du site",
+            "salida": "Pointer la sortie avec le QR"
+          },
+          "nfc": {
+            "entrada": "Approcher de l'étiquette NFC",
+            "salida": "Pointer la sortie avec l'étiquette NFC"
+          }
+        }
+      },
+      "notaMetodo": {
+        "qr": "À {sede}, on pointe avec le QR du site. Le bouton ouvre directement l'appareil photo.",
+        "nfc": "À {sede}, on pointe avec l'étiquette NFC de l'entrée. Le bouton ouvre directement le lecteur."
       }
     },
     "periodo": {
@@ -39047,6 +39061,11 @@
         "titulo": "Registre des accès",
         "descripcion": "Qui a consulté ou modifié les données sensibles d’un salarié",
         "palabras": "registre des accès, audit, données sensibles, salaire, compte bancaire, santé, confidentialité, ressources humaines, rh"
+      },
+      "hrmNomina": {
+        "titulo": "Paie",
+        "descripcion": "Rubriques de paie, activation et plan comptable",
+        "palabras": "paie, rubriques, comptes, activer la paie, tiers, nit, pré-liquidation, ressources humaines, rh"
       }
     },
     "ajustes": {
@@ -51865,7 +51884,8 @@
       "hrmGeneral": "Paramètres légaux",
       "hrmFestivos": "Jours fériés",
       "hrmAprobaciones": "Approbations",
-      "hrmRegistroAccesos": "Registre des accès"
+      "hrmRegistroAccesos": "Registre des accès",
+      "hrmNomina": "Paie"
     },
     "buscar": {
       "etiqueta": "Rechercher un paramètre",
@@ -54639,8 +54659,10 @@
         "errores": {
           "nombre": "Saisissez un nom d’au moins 2 lettres.",
           "paso": "Choisissez le poste ou la personne de chaque approbateur.",
-          "guardar": "Impossible d’enregistrer la règle. Réessayez."
-        }
+          "guardar": "Impossible d’enregistrer la règle. Réessayez.",
+          "jefeDirecto": "Les heures supplémentaires et les événements de présence passent toujours par le responsable direct. Si la personne n’a pas de responsable, les Ressources humaines approuvent."
+        },
+        "jefeDirectoFijo": "Les heures supplémentaires et les événements de présence passent toujours par le responsable direct."
       },
       "delegaciones": {
         "ayuda": "Pendant la délégation, ce qui arrive à la personne absente arrive à son remplaçant. Ce qui est déjà approuvé ne change pas, et la demande indique qu’un remplaçant l’a approuvée.",
@@ -55892,7 +55914,8 @@
         "horas_extra": "Heures supplémentaires",
         "prestamo": "Prêt",
         "novedad_asistencia": "Événement de présence",
-        "cambio_turno": "Échange d’horaire"
+        "cambio_turno": "Échange d’horaire",
+        "excepcion_marcacion": "Exception de pointage"
       },
       "titulos": {
         "cargo_salario": "Approuver le changement de poste et de salaire",
@@ -55916,7 +55939,8 @@
         "horas_extra": "Approuver les heures supplémentaires",
         "prestamo": "Approuver le prêt",
         "novedad_asistencia": "Approuver l’événement de présence",
-        "cambio_turno": "Approuver l’échange d’horaire"
+        "cambio_turno": "Approuver l’échange d’horaire",
+        "excepcion_marcacion": "Approuver l’exception de pointage"
       },
       "ligados": "{n} changements liés",
       "alMes": "{monto} par mois",
@@ -55985,6 +56009,20 @@
         "esteMes": "Effet ce mois-ci",
         "pidio": "Demandé par {nombre}",
         "verN": "Voir {n, plural, one {# demande} other {# demandes}}"
+      },
+      "excepcion": {
+        "metodo": "Mode",
+        "vigencia": "Validité",
+        "vigenciaValor": "Du {desde} au {hasta}",
+        "metodos": {
+          "celular_ubicacion": "Téléphone avec localisation",
+          "qr": "QR du site",
+          "nfc_etiqueta": "Étiquette NFC du site",
+          "carne": "Badge",
+          "pin": "PIN",
+          "rostro": "Visage",
+          "huella": "Empreinte"
+        }
       }
     }
   },
@@ -57072,7 +57110,13 @@
       "verDesglose": "Voir le détail",
       "verNovedadesExtra": "Voir les événements d’heures supplémentaires",
       "verTurnosSemana": "Voir les horaires de la semaine",
-      "marcarLista": "Marquer prête pour la paie"
+      "marcarLista": "Marquer prête pour la paie",
+      "mostrarQrSede": "Afficher le QR du site",
+      "mostrarQrSedeDesc": "À scanner avec le téléphone sur cet écran",
+      "mostrarQrSedeSinPantalla": "Le site n’a pas encore d’écran QR : ajoutez-en un",
+      "mostrarQrSedeCargando": "Recherche des écrans du site…",
+      "metodosSede": "Modes de pointage du site",
+      "dispositivos": "Appareils"
     },
     "filtros": {
       "estado": "Statut",
@@ -57130,7 +57174,12 @@
         "qr": "QR du site",
         "remoto": "À distance",
         "manual": "Pointage manuel",
-        "app": "Application"
+        "app": "Application",
+        "nfc": "Étiquette NFC",
+        "carne": "Badge",
+        "pin": "PIN",
+        "rostro": "Visage",
+        "huella": "Empreinte"
       },
       "estados": {
         "presente": "Présent",
@@ -58211,14 +58260,17 @@
     "metodo": {
       "ubicacion": "localisation",
       "qr": "QR du site",
-      "remoto": "à distance"
+      "remoto": "à distance",
+      "nfc": "étiquette NFC"
     },
     "como": {
       "titulo": "Comment vous pointez",
       "etiqueta": "Comment vous pointez",
       "ubicacion": "Localisation",
       "qr": "QR du site",
-      "remoto": "À distance"
+      "remoto": "À distance",
+      "nfc": "NFC",
+      "tituloSede": "Comment vous pointez à {sede}"
     },
     "revisar": {
       "sin_ubicacion": "sans localisation : votre responsable le vérifie",
@@ -58239,7 +58291,9 @@
     },
     "qr": {
       "nota": "Le QR change chaque jour. Si vous ne le trouvez pas, demandez-le à la personne qui ouvre {sede}.",
-      "volver": "Revenir au pointage avec localisation"
+      "volver": "Revenir au pointage avec localisation",
+      "notaSede": "Visez le QR de {sede}. Il change toutes les 30 secondes : une photo du code ne fonctionne pas.",
+      "notaSolo": "À {sede}, on pointe en scannant le QR de l'entrée. Il change toutes les 30 secondes : une photo du code ne fonctionne pas."
     },
     "remotoAviso": {
       "titulo": "Aujourd'hui vous travaillez à domicile",
@@ -58285,7 +58339,7 @@
     },
     "permiso": {
       "titulo": "Utilisez votre localisation pour pointer",
-      "descripcion": "Nous la prenons seulement au moment de pointer, pour confirmer que vous êtes sur le site. Nous ne suivons pas votre trajet.",
+      "descripcion": "Nous l'utilisons uniquement au moment du pointage, pour confirmer que vous êtes sur le site. Jamais pour vous suivre : nous ne suivons pas votre trajet et ne la voyons pas en dehors de vos pointages.",
       "queGuardamos": "Ce que nous gardons",
       "queGuardamosTexto": "Nous gardons la localisation de chaque pointage, sa précision et la date de votre autorisation. Vous pouvez la retirer quand vous voulez ; sans elle, pointez avec le QR du site.",
       "permitir": "Autoriser",
@@ -58338,7 +58392,13 @@
       "ubicacion_requerida": "Ce point demande votre localisation. Activez le GPS et réessayez.",
       "marcacion_duplicada": "Vous avez déjà enregistré ce pointage il y a moins d’une minute.",
       "metodo_invalido": "Pointez avec le QR du site ou depuis l'application.",
-      "datos_invalidos": "Vérifiez les données du pointage."
+      "datos_invalidos": "Vérifiez les données du pointage.",
+      "metodo_no_disponible_en_sede": "Votre site n'a pas activé ce mode de pointage.",
+      "computador_no_permitido": "Dans votre site, on ne pointe pas depuis un ordinateur. Pointez avec le téléphone ou le QR du site.",
+      "etiqueta_invalida": "Cette étiquette n'est pas de GO Admin ou est endommagée. Rien n'a été enregistré.",
+      "qr_ya_usado": "Ce code a déjà été utilisé. Attendez le suivant et scannez-le à nouveau.",
+      "etiqueta_otra_sede": "Cette étiquette appartient à un autre site. Rien n'a été enregistré.",
+      "fuera_de_rango": "Vous êtes hors du site. Rapprochez-vous et réessayez."
     },
     "miAsistencia": {
       "titulo": "Ma présence",
@@ -58381,7 +58441,8 @@
         "sinSalida": "Sans départ",
         "libre": "Jour libre",
         "porRevisar": "À vérifier",
-        "sinMarcar": "Non pointé"
+        "sinMarcar": "Non pointé",
+        "enReclamo": "Réclamation en cours"
       },
       "computador": {
         "titulo": "Sur un ordinateur, vous pointez sans localisation",
@@ -58399,6 +58460,1691 @@
       "noMarca": {
         "titulo": "Votre poste ne pointe pas",
         "descripcion": "Dans votre organisation, ce poste n'enregistre pas la présence. Si vous pensez que c'est une erreur, parlez aux Ressources humaines."
+      },
+      "metodos": {
+        "celular_ubicacion": "Téléphone avec position",
+        "qr": "QR du site",
+        "nfc_etiqueta": "Étiquette NFC",
+        "carne": "Badge",
+        "carne_nfc": "Badge NFC",
+        "carne_qr": "Badge QR",
+        "pin": "PIN",
+        "rostro": "Visage",
+        "huella": "Empreinte",
+        "remoto": "À distance",
+        "manual": "Enregistré par les RH"
+      },
+      "acciones": {
+        "detalle": "Voir le détail du pointage",
+        "reclamar": "Contester ce pointage"
+      },
+      "avisoSede": {
+        "titulo": "À {sede}, vous pointez avec {metodos}",
+        "metodos": {
+          "celular_ubicacion": "votre téléphone avec position",
+          "qr": "le QR du site",
+          "nfc_etiqueta": "l'étiquette NFC"
+        }
+      }
+    },
+    "qrUsado": {
+      "titulo": "Ce code a déjà été utilisé",
+      "descripcion": "Chaque QR ne sert qu'à un seul pointage. Attendez le suivant (il change dans 30 s) et scannez-le à nouveau.",
+      "nota": "Rien n'a été enregistré. Si quelqu'un vous a envoyé une photo du code, elle ne fonctionne pas : il faut être devant l'écran.",
+      "otraVez": "Scanner à nouveau"
+    },
+    "nfc": {
+      "acercar": "Approchez le dos du téléphone de l'étiquette de l'entrée",
+      "esperando": "En attente de l'étiquette…",
+      "registrando": "Enregistrement du pointage…",
+      "nota": "L'étiquette indique seulement dans quel site vous êtes ; l'heure est fixée par GO Admin. Fonctionne sur Android avec Chrome et dans l'app GO Admin.",
+      "conQr": "Pointer avec le QR du site",
+      "conUbicacion": "Pointer avec ma position",
+      "otraVez": "Approcher une autre étiquette",
+      "gesto": {
+        "titulo": "Activez la lecture des étiquettes",
+        "descripcion": "Le navigateur demande un appui pour commencer à lire l'étiquette NFC.",
+        "activar": "Activer la lecture NFC"
+      },
+      "noDisponible": {
+        "titulo": "Ce téléphone ne peut pas lire les étiquettes NFC depuis le navigateur",
+        "descripcion": "C'est le cas sur iPhone et dans les navigateurs autres que Chrome pour Android. L'app GO Admin le permet. En attendant, pointez avec le QR ou avec votre position."
+      },
+      "otraSede": {
+        "titulo": "Cette étiquette appartient à {sede}",
+        "tituloSinSede": "Cette étiquette appartient à un autre site",
+        "descripcion": "Aujourd'hui, votre service est à {sede}. Pointez là-bas ou demandez à votre responsable un pointage avec motif.",
+        "nota": "Rien n'a été enregistré. Si vous travaillez vraiment à {sede}, votre responsable peut enregistrer le pointage et l'approuver.",
+        "notaSinSede": "Rien n'a été enregistré. Si vous travaillez vraiment dans un autre site, votre responsable peut enregistrer le pointage et l'approuver."
+      }
+    },
+    "registradaNfc": {
+      "conPunto": "Avec l'étiquette NFC de {punto}",
+      "sinPunto": "Avec l'étiquette NFC"
+    },
+    "reclamo": {
+      "titulo": "Contester le pointage du {dia}",
+      "tituloSinDia": "Contester un pointage",
+      "marca": "Pointage",
+      "elegirMarca": "Choisissez le pointage",
+      "enRevision": "réclamation en cours",
+      "metodo": "Mode",
+      "que": "Qu'est-ce qui ne va pas ?",
+      "elegir": "Choisissez une option",
+      "opciones": {
+        "hora": "L'heure n'est pas la bonne",
+        "no_es_mia": "Ce pointage n'est pas le mien",
+        "tipo": "Ce n'était pas une entrée ou une sortie",
+        "metodo": "Le mode n'est pas le bon",
+        "otro": "Autre chose"
+      },
+      "quePaso": "Que s'est-il passé ?",
+      "quePasoEjemplo": "Expliquez à votre responsable ce qui s'est passé",
+      "hora": "Heure correcte, si vous la connaissez",
+      "horaAyuda": "Facultatif. Votre responsable la confirme.",
+      "aviso": {
+        "titulo": "Le pointage d'origine n'est pas modifié",
+        "descripcion": "Si votre responsable approuve la réclamation, un ajustement avec son motif est ajouté. Pendant l'examen, nous conservons la photo justificative de ce pointage."
+      },
+      "cancelar": "Annuler",
+      "enviar": "Envoyer la réclamation",
+      "reclamar": "Contester ce pointage",
+      "enviado": "Réclamation envoyée",
+      "enviadoDetalle": "Votre responsable l'examine. Nous conservons la photo de ce pointage en attendant.",
+      "errores": {
+        "reclamo_que": "Choisissez ce qui ne va pas.",
+        "reclamo_motivo": "Expliquez ce qui s'est passé (5 à 500 caractères).",
+        "reclamo_hora": "L'heure ne peut pas être future ni dater de plus de 62 jours.",
+        "ajuste_ya_pendiente": "Ce pointage a déjà une réclamation en cours.",
+        "marca_antigua": "Seuls les pointages des 62 derniers jours peuvent être contestés.",
+        "jornada_cerrada": "Ce jour a déjà été payé en paie : parlez aux Ressources humaines.",
+        "sin_permiso": "Vous ne pouvez contester que vos propres pointages.",
+        "error_hrm": "La réclamation n'a pas pu être envoyée. Réessayez."
+      },
+      "detalle": {
+        "titulo": "Pointages du {dia}",
+        "cerrar": "Fermer",
+        "sinMarcas": "Ce jour n'a aucun pointage.",
+        "reclamo": {
+          "pending": "Réclamation en cours",
+          "approved": "Réclamation approuvée",
+          "rejected": "Réclamation refusée"
+        }
+      }
+    }
+  },
+  "hrmNomina": {
+    "titulo": "Paie",
+    "migas": {
+      "rrhh": "Ressources humaines",
+      "periodos": "Périodes"
+    },
+    "subtitulo": {
+      "empleados": "{n, plural, one {# employé} other {# employés}}",
+      "soloPreliquidacion": "pré-calcul uniquement",
+      "proximoPago": "prochain paiement le {fecha}"
+    },
+    "frecuencias": {
+      "daily": "Quotidienne",
+      "weekly": "Hebdomadaire",
+      "biweekly": "Bimensuelle",
+      "monthly": "Mensuelle"
+    },
+    "sinPermiso": {
+      "titulo": "Vous n’avez pas accès à la paie",
+      "descripcion": "Demandez à un administrateur la permission « Voir la paie ». Vos propres bulletins de paie arrivent sur le portail de l’employé."
+    },
+    "vistas": {
+      "etiqueta": "Vues de la paie",
+      "periodos": "Périodes",
+      "prestaciones": "Prestations sociales",
+      "prestamos": "Prêts et saisies sur salaire"
+    },
+    "estados": {
+      "abierto": "Ouverte",
+      "calculando": "Calcul en cours",
+      "preliquidado": "Pré-calculée",
+      "en_revision": "En révision",
+      "cerrado": "Clôturée",
+      "pagando": "Paiement en cours",
+      "pagado": "Payée",
+      "contabilizado": "Comptabilisée",
+      "anulado": "Annulée"
+    },
+    "tipos": {
+      "ordinaria": "Ordinaire",
+      "prima": "Prime (prima)",
+      "cesantias": "Indemnité de cessation (cesantías)"
+    },
+    "soloPreliquidacion": {
+      "insignia": "Pré-calcul uniquement",
+      "titulo": "Paie en mode pré-calcul uniquement · en attente du comptable",
+      "descripcion": "Vous pouvez pré-calculer, examiner les écarts et télécharger des résumés. La clôture, le paiement et la comptabilisation seront activés lorsque le comptable aura approuvé les règles et que GO Admin aura activé la paie.",
+      "verQueFalta": "Voir ce qui manque"
+    },
+    "nombres": {
+      "quincena1": "1re quinzaine de {mes} {anio}",
+      "quincena2": "2e quinzaine de {mes} {anio}",
+      "mes": "Paie de {mes} {anio}",
+      "prima1": "Prime (prima) du 1er semestre {anio}",
+      "prima2": "Prime (prima) du 2e semestre {anio}",
+      "cesantias": "Indemnité de cessation (cesantías) {anio}",
+      "rango": "Paie du {rango}"
+    },
+    "errores": {
+      "sin_permiso": "Vous n’avez pas la permission d’effectuer cette action.",
+      "nomina_no_habilitada": "La paie de votre entreprise est en mode pré-calcul uniquement : elle ne peut pas encore être clôturée, payée ni ajustée.",
+      "estado_invalido": "La période n’est plus dans l’état requis. Rechargez la page.",
+      "periodo_no_existe": "La période n’existe pas.",
+      "no_existe": "Enregistrement introuvable.",
+      "parametro_no_configurado": "Il manque un paramètre légal de l’année (par exemple le salaire minimum). Vérifiez-le dans Configuration › Ressources humaines.",
+      "nada_por_pagar": "Aucun bulletin de paie clôturé à payer dans cette période.",
+      "cuenta_bancaria_ajena": "Le compte bancaire n’appartient pas à votre entreprise ou est inactif.",
+      "cuenta_bancaria_invalida": "Choisissez un compte bancaire.",
+      "fecha_invalida": "Vérifiez les dates.",
+      "periodo_invalido": "Vérifiez le type, la périodicité et les dates de la période.",
+      "periodo_con_calculo": "La période a déjà un calcul : elle ne peut pas être supprimée.",
+      "motivo_obligatorio": "Indiquez le motif de l’ajustement.",
+      "novedades_invalidas": "Vérifiez le libellé et le montant de l’ajustement.",
+      "ajuste_sin_diferencia": "Avec cet ajustement, le bulletin de paie ne change pas : il n’y a rien à enregistrer.",
+      "archivo_banco_invalido": "Le fichier bancaire contient des lignes en erreur.",
+      "formato_banco_no_soportado": "Ce format bancaire n’est pas encore disponible.",
+      "duplicado": "Une période avec ces dates existe déjà.",
+      "periodo_cruzado": "Les dates chevauchent une autre période du même type.",
+      "generico": "L’action n’a pas pu aboutir. Réessayez."
+    },
+    "motivos": {
+      "solo_preliquidacion": "La paie est en mode pré-calcul uniquement jusqu’à l’approbation du comptable et son activation par GO Admin.",
+      "bloqueos": "Des blocages ne sont pas résolus.",
+      "revision_pendiente": "L’approbation de la direction est en attente.",
+      "sin_calculo": "Il faut d’abord pré-calculer.",
+      "con_calculo": "Une période déjà calculée ne peut pas être supprimée."
+    },
+    "apagada": {
+      "titulo": "La paie s’active après la revue du comptable",
+      "subtitulo": "En attendant, elle fonctionne en mode pré-calcul uniquement.",
+      "entendido": "Compris",
+      "cerrar": "Fermer",
+      "sinPermiso": "Vous n’avez pas accès à la configuration de la paie.",
+      "mientras": "Vous pouvez pré-calculer, examiner les écarts et télécharger des résumés. La clôture, le paiement, l’envoi des bulletins de paie et la comptabilisation seront activés à l’activation de la paie.",
+      "pasos": {
+        "conceptos": "Rubriques et comptes comptables",
+        "conceptosDetalle": "{n} rubriques · {conCuenta} avec un compte du comptable",
+        "plan": "Aperçu du plan comptable",
+        "planSinPreparar": "GO Admin n’a pas encore préparé l’aperçu des comptes qui seront créés.",
+        "planPreparado": "{n, plural, one {# compte à créer} other {# comptes à créer}} · préparé le {fecha}",
+        "terceros": "Tiers avec NIT",
+        "tercerosSinPlan": "Ils sont vérifiés avec l’aperçu du plan.",
+        "tercerosFaltan": "{n, plural, one {# donnée de tiers manque} other {# données de tiers manquent}} : sans elles, l’activation est impossible.",
+        "tercerosListos": "Toutes les entités et personnes ont leur NIT.",
+        "aprobacion": "Approbation écrite de l’entreprise et du comptable",
+        "aprobacionLista": "Approuvée le {fecha}",
+        "aprobacionPendiente": "En attente",
+        "encendido": "Paie active",
+        "encendidoListo": "Activée",
+        "encendidoPendiente": "GO Admin l’active avec l’approbation écrite, zéro blocage et zéro tiers incomplet."
+      },
+      "cuentasTitulo": "Comptes qui seront créés",
+      "nCuentas": "{n, plural, one {# compte} other {# comptes}}",
+      "sinCuentas": "Votre plan comptable contient déjà tous les sous-comptes de la paie.",
+      "bajo": "sous {cuenta}",
+      "tercerosTitulo": "Tiers sans entité ou sans NIT",
+      "nTerceros": "{n, plural, one {# en attente} other {# en attente}}",
+      "sinTerceros": "Aucun tiers ne manque.",
+      "empleadoSinNombre": "Employé",
+      "faltaNit": "NIT manquant",
+      "faltaEntidad": "entité manquante"
+    },
+    "terceros": {
+      "eps": "EPS",
+      "afp": "Fonds de pension",
+      "arl": "ARL",
+      "ccf": "Caisse de compensation familiale",
+      "cesantias": "Fonds d’indemnité de cessation (cesantías)",
+      "empleado": "Pièce d’identité de l’employé",
+      "icbf": "ICBF",
+      "sena": "SENA",
+      "dian": "DIAN"
+    },
+    "nuevo": {
+      "titulo": "Nouvelle période",
+      "descripcion": "La prime (prima) et l’indemnité de cessation (cesantías) ont leur propre période.",
+      "crear": "Créer la période",
+      "creado": "Période créée",
+      "fechasMal": "La date de fin ne peut pas être antérieure à la date de début.",
+      "tipo": "Type",
+      "tipos": {
+        "ordinaria": "Ordinaire",
+        "prima": "Prime (prima)",
+        "cesantias": "Indemnité de cessation (cesantías)"
+      },
+      "frecuencia": "Périodicité",
+      "frecuenciaAyuda": "Le document justificatif de paie électronique est toujours mensuel.",
+      "frecuencias": {
+        "biweekly": "Bimensuelle",
+        "monthly": "Mensuelle",
+        "weekly": "Hebdomadaire"
+      },
+      "avisoPrima": "La prime (prima) se calcule sur ce qui a été acquis pendant le semestre : salaire, moyenne de la part variable et aide au transport.",
+      "avisoCesantias": "L’indemnité de cessation (cesantías) de l’année est versée au fonds ; les intérêts sont payés à chaque personne.",
+      "desde": "Du",
+      "hasta": "Au",
+      "fechaPago": "Date de paiement",
+      "fechaPagoAyuda": "C’est la date du fichier bancaire et du décaissement.",
+      "nombre": "Nom",
+      "nombreAyuda": "Facultatif. Si vous le laissez tel quel, la période est nommée d’après ses dates."
+    },
+    "periodos": {
+      "titulo": "Périodes de paie",
+      "nuevo": "Nouvelle période",
+      "sinCambios": "Rien n’a changé depuis le dernier calcul : la même version est conservée.",
+      "preliquidado": "Pré-calculée : {n, plural, one {# employé} other {# employés}}",
+      "menu": {
+        "abrir": "Ouvrir",
+        "preliquidar": "Pré-calculer",
+        "recalcular": "Recalculer",
+        "eliminar": "Supprimer",
+        "eliminarConCalculo": "Une période déjà calculée ne peut pas être supprimée."
+      },
+      "pagada": "payée le {fecha}",
+      "pago": "paiement le {fecha}",
+      "nBloqueos": "{n, plural, one {# blocage} other {# blocages}}",
+      "nAlertas": "{n, plural, one {# alerte} other {# alertes}}",
+      "columnas": {
+        "periodo": "Période",
+        "estado": "État",
+        "empleados": "Employés",
+        "neto": "Net à payer",
+        "netoPreliquidado": "Net pré-calculé",
+        "costo": "Coût employeur",
+        "pendientes": "En attente"
+      },
+      "buscar": "Rechercher une période par nom ou date de paiement",
+      "verN": "Voir {n, plural, one {# période} other {# périodes}}",
+      "filtros": {
+        "estado": "État",
+        "tipo": "Type"
+      },
+      "nEmpleados": "{n, plural, one {# employé} other {# employés}}",
+      "vacio": {
+        "titulo": "Aucune période de paie pour l’instant",
+        "descripcion": "Créez la première période et pré-calculez-la : le calcul est fait par le serveur avec le temps de travail approuvé et les paramètres de l’année."
+      },
+      "sinResultados": "Essayez un autre nom ou retirez les filtres.",
+      "error": "Impossible de charger les périodes",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la paie",
+        "descripcion": "Demandez la permission « Voir la paie »."
+      },
+      "sustantivo": {
+        "singular": "période",
+        "plural": "périodes"
+      },
+      "eliminar": {
+        "titulo": "Supprimer cette période ?",
+        "descripcion": "« {nombre} » sera supprimée. C’est possible uniquement parce qu’elle est ouverte et n’a jamais été calculée. Cette action est irréversible.",
+        "confirmar": "Supprimer la période",
+        "hecho": "Période supprimée"
+      }
+    },
+    "prestaciones": {
+      "etiqueta": "Prestations sociales",
+      "kpi": {
+        "prima": "Prime de services (prima)",
+        "sinPeriodo": "Aucune période de prime",
+        "cesantias": "Indemnité de cessation (cesantías) à verser",
+        "cesantiasDetalle": "Au fonds avant le 14 février",
+        "intereses": "Intérêts sur l’indemnité de cessation",
+        "interesesDetalle": "À chaque personne avant le 31 janvier"
+      },
+      "pestanas": {
+        "prima": "Prime (prima)",
+        "cesantias": "Indemnité de cessation et intérêts"
+      },
+      "aviso": {
+        "primaTitulo": "Prime de services (prima) (art. 306 du CST)",
+        "primaDescripcion": "30 jours de salaire par an, en deux versements : au plus tard le 30 juin et le 20 décembre. La base inclut la moyenne de la part variable et l’aide au transport.",
+        "cesantiasTitulo": "Indemnité de cessation (cesantías) et intérêts",
+        "cesantiasDescripcion": "Un mois de salaire par an, versé au fonds de chaque personne ; les intérêts (12 % par an) sont payés directement au salarié."
+      },
+      "liquidarPrima": "Calculer la prime",
+      "liquidarCesantias": "Calculer l’indemnité de cessation",
+      "elegirPeriodo": "Choisir une période",
+      "abrirPeriodo": "Ouvrir la période",
+      "buscar": "Rechercher un employé",
+      "columnas": {
+        "empleado": "Employé",
+        "dias": "Jours",
+        "salario": "Salaire",
+        "variable": "Moyenne variable",
+        "auxilio": "Aide",
+        "base": "Base",
+        "prima": "Prime",
+        "cesantias": "Cesantías",
+        "intereses": "Intérêts"
+      },
+      "nDias": "{n} jours",
+      "vacio": {
+        "sinPeriodo": "Aucune période de ce type pour l’instant",
+        "sinPeriodoDescripcion": "Créez la période pour effectuer le calcul : le serveur calcule les jours, la base et le montant de chaque personne.",
+        "sinCalculo": "La période n’a pas encore été pré-calculée",
+        "sinCalculoDescripcion": "Ouvrez-la et pré-calculez-la pour voir le montant de chaque personne au {fecha}."
+      },
+      "sinResultados": "Essayez un autre nom.",
+      "error": "Impossible de charger le calcul",
+      "sinPermiso": "Vous n’avez pas accès à cette période"
+    },
+    "prestamos": {
+      "titulo": "Prêts et saisies sur salaire",
+      "nuevo": "Nouveau prêt",
+      "menu": {
+        "ver": "Voir le détail",
+        "suspender": "Suspendre la saisie",
+        "reactivar": "Réactiver la saisie",
+        "terminar": "Mettre fin à la saisie"
+      },
+      "empresa": "Entreprise",
+      "nCuotas": "{n, plural, one {# échéance} other {# échéances}}",
+      "sinBeneficiario": "Sans bénéficiaire",
+      "porcentajeSalario": "{pct} % du salaire",
+      "ordena": "ordonne {valor}",
+      "desde": "depuis le {fecha}",
+      "clases": {
+        "prestamo": "Prêt",
+        "anticipo": "Avance",
+        "embargo_alimentos": "Saisie sur salaire pour pension alimentaire",
+        "embargo_cooperativa": "Saisie sur salaire de coopérative",
+        "embargo_ordinario": "Saisie sur salaire ordinaire"
+      },
+      "estados": {
+        "al_dia": "À jour",
+        "programado": "Programmé",
+        "por_aprobar": "À approuver",
+        "activo": "Actif",
+        "suspendido": "Suspendu",
+        "pagado": "Payé",
+        "terminado": "Terminé",
+        "anulado": "Annulé",
+        "en_mora": "En retard"
+      },
+      "columnas": {
+        "tipo": "Type",
+        "empleado": "Employé",
+        "origen": "Créancier ou origine",
+        "monto": "Montant ou ordre",
+        "cuota": "Échéance",
+        "saldo": "Solde",
+        "estado": "État"
+      },
+      "kpi": {
+        "prestamos": "Prêts et avances",
+        "prestamosDetalle": "Solde de {n} · échéances de {cuotas} par période",
+        "embargos": "Saisies sur salaire",
+        "embargosSinPermiso": "Vous avez besoin de l’accès à « Salaire et paiement »",
+        "embargosDetalle": "{n, plural, =0 {Aucune active} one {# active} other {# actives}}"
+      },
+      "buscar": "Rechercher un employé, un créancier ou un numéro",
+      "verN": "Voir {n, plural, one {# retenue} other {# retenues}}",
+      "filtros": {
+        "tipo": "Type",
+        "estado": "État"
+      },
+      "vacio": {
+        "titulo": "Aucun prêt ni saisie sur salaire",
+        "descripcion": "Les prêts de l’entreprise et les saisies judiciaires sur salaire sont déduits automatiquement à chaque paie, dans la limite légale."
+      },
+      "sinResultados": "Essayez un autre nom ou retirez les filtres.",
+      "error": "Impossible de charger les prêts et saisies sur salaire",
+      "sustantivo": {
+        "singular": "retenue",
+        "plural": "retenues"
+      },
+      "cambio": {
+        "suspendido": {
+          "titulo": "Suspendre la saisie sur salaire ?",
+          "descripcion": "Tant qu’elle est suspendue, rien n’est retenu à {nombre}. Ne le faites que sur ordre du tribunal.",
+          "confirmar": "Suspendre"
+        },
+        "activo": {
+          "titulo": "Réactiver la saisie sur salaire ?",
+          "descripcion": "La retenue sur le salaire de {nombre} reprend dès le prochain pré-calcul.",
+          "confirmar": "Réactiver"
+        },
+        "terminado": {
+          "titulo": "Mettre fin à la saisie sur salaire ?",
+          "descripcion": "Plus rien ne sera retenu à {nombre}. Ne le faites que sur présentation de l’ordre de mainlevée. Cette action est irréversible.",
+          "confirmar": "Mettre fin à la saisie"
+        },
+        "hecho": "Saisie sur salaire mise à jour"
+      }
+    },
+    "embargo": {
+      "cerrar": "Fermer",
+      "volver": "Retour",
+      "datos": "Données de la saisie sur salaire",
+      "estado": "État",
+      "beneficiario": "Bénéficiaire",
+      "oficio": "Ordre judiciaire",
+      "recibido": "Reçu",
+      "vigencia": "Validité",
+      "desdeSinFin": "Depuis le {fecha}, sans date de fin",
+      "ordena": "Ordonne",
+      "porcentaje": "{pct} % du salaire",
+      "fijo": "{valor} par période",
+      "total": "Total ordonné",
+      "sinTope": "Sans plafond",
+      "aplicado": "Retenu à ce jour",
+      "saldo": "Solde",
+      "limiteTitulo": "Limite légale",
+      "limite": {
+        "alimentos": "Les saisies pour pension alimentaire passent en premier et peuvent atteindre 50 % du salaire après les retenues légales.",
+        "cooperativa": "Celles de coopérative passent après celles pour pension alimentaire, jusqu’à 50 % du salaire après les retenues légales.",
+        "ordinario": "Les saisies ordinaires passent en dernier et ne peuvent prendre que 1/5 de la part du salaire qui dépasse le minimum. Ce qui ne rentre pas reste en solde."
+      }
+    },
+    "periodo": {
+      "titulo": "Période de paie",
+      "sinCambios": "Rien n’a changé depuis le dernier calcul : la même version est conservée.",
+      "devuelto": "Renvoyée en pré-calcul avec un nouveau calcul",
+      "calculado": "Paie pré-calculée",
+      "enviado": "Envoyée en révision",
+      "cerradoOk": "Période clôturée",
+      "acciones": {
+        "preliquidar": "Pré-calculer",
+        "recalcular": "Recalculer",
+        "enviarRevision": "Envoyer en révision",
+        "devolver": "Renvoyer en pré-calcul",
+        "cerrar": "Clôturer la période",
+        "ajustar": "Ajustement motivé",
+        "eliminar": "Supprimer la période"
+      },
+      "pago": "paiement le {fecha}",
+      "version": "version {n}, calculée le {fecha}",
+      "sinCalculo": "non calculée",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à cette période",
+        "descripcion": "Demandez la permission « Voir la paie »."
+      },
+      "volver": "Retour à la paie",
+      "noExiste": "Cette période n’existe pas ou a déjà été supprimée",
+      "secciones": {
+        "etiqueta": "Sections de la période",
+        "empleados": "Employés",
+        "revision": "Révision et clôture",
+        "pago": "Paiement",
+        "colillas": "Bulletins de paie"
+      },
+      "kpi": {
+        "devengado": "Brut",
+        "empleados": "{n, plural, one {# employé} other {# employés}}",
+        "sinCalculo": "Non calculée",
+        "deducciones": "Retenues",
+        "deduccionesDetalle": "Légales, prêts, prêts avec retenue sur salaire (libranza) et saisies sur salaire",
+        "neto": "Net à payer",
+        "netoPreliquidado": "Net pré-calculé",
+        "costo": "Coût employeur",
+        "costoDetalle": "Avec cotisations et provisions"
+      },
+      "cerradoAviso": {
+        "titulo": "Période clôturée : non modifiable",
+        "descripcion": "Ce qui est clôturé reste en l’état. Pour corriger quelque chose, faites un ajustement motivé : il est calculé avec les règles de la clôture et payé avec la période."
+      },
+      "confirmarCierre": {
+        "titulo": "Clôturer « {nombre} » ?",
+        "descripcion": "{n, plural, one {# bulletin de paie sera clôturé} other {# bulletins de paie seront clôturés}} pour un net de {neto}. La clôture est irréversible.",
+        "confirmar": "Clôturer la période",
+        "c1": "Les bulletins de paie sont approuvés et la charge de paie est comptabilisée.",
+        "c2": "Les échéances de prêt retenues sont marquées comme payées et le montant appliqué est ajouté à chaque saisie sur salaire.",
+        "c3": "Ensuite, seule une correction par ajustement motivé est possible ; la période n’est plus recalculée."
+      },
+      "versionCorta": "version {n}"
+    },
+    "empleados": {
+      "titulo": "Employés de la période",
+      "ingreso": "Entrée",
+      "revisar": {
+        "titulo": "Écarts par rapport à la période précédente",
+        "n": "{n} à examiner",
+        "ingreso": "{nombre} · entré(e) pendant cette période",
+        "ingresoDetalle": "Calcul sur {dias} jours ; pas de période précédente pour comparer.",
+        "subio": "{nombre} · le net a augmenté de {pct} %",
+        "bajo": "{nombre} · le net a baissé de {pct} %",
+        "variacionDetalle": "Dépasse le seuil de variation défini par votre entreprise. Vérifiez les heures, les événements de paie et les retenues.",
+        "embargo": "{nombre} · la saisie sur salaire a été limitée à {valor}",
+        "embargoDetalle": "L’ordre judiciaire prévoit {pedido} ; la loi ne permet pas de retenir davantage sur cette période."
+      },
+      "menu": {
+        "detalle": "Voir le détail",
+        "colilla": "Voir le bulletin de paie",
+        "ajuste": "Ajustement motivé"
+      },
+      "bloqueada": "Bloqué",
+      "columnas": {
+        "empleado": "Employé",
+        "dias": "Jours",
+        "devengado": "Brut",
+        "deducciones": "Retenues",
+        "neto": "Net",
+        "costo": "Coût employeur",
+        "variacion": "Par rapport à la précédente"
+      },
+      "sinCalculo": {
+        "titulo": "Cette période n’a pas encore été pré-calculée",
+        "descripcion": "Lors du pré-calcul, le serveur calcule chaque bulletin de paie avec le temps de travail approuvé, les événements de paie et les paramètres de l’année.",
+        "accion": "Pré-calculer"
+      },
+      "filtros": {
+        "titulo": "Afficher",
+        "bloqueos": "Avec blocages",
+        "alertas": "Avec alertes",
+        "variacion": "Variation au-dessus du seuil"
+      },
+      "bloqueosTitulo": "{n, plural, one {# blocage empêche} other {# blocages empêchent}} l’envoi en révision",
+      "irNovedades": "Aller aux événements de paie",
+      "verDetalle": "Voir le détail",
+      "buscar": "Rechercher un employé, un poste ou un service",
+      "verN": "Voir {n, plural, one {# employé} other {# employés}}",
+      "nDias": "{n} jours",
+      "vacio": {
+        "titulo": "Personne dans cette période",
+        "descripcion": "Aucun contrat en vigueur entre les dates de la période."
+      },
+      "sinResultados": "Essayez un autre nom ou retirez les filtres.",
+      "sustantivo": {
+        "singular": "employé",
+        "plural": "employés"
+      }
+    },
+    "alertas": {
+      "sin_preliquidacion": "La période n’a pas encore été pré-calculée.",
+      "calculo_sin_motor": "La version en vigueur n’a pas été faite par le nouveau moteur : recalculez.",
+      "novedades_nomina_pendientes": "{n, plural, one {# événement de paie à approuver} other {# événements de paie à approuver}}",
+      "novedades_despues_del_calculo": "{n, plural, one {# événement a changé} other {# événements ont changé}} après le calcul : recalculez",
+      "novedades_asistencia_pendientes": "{n, plural, one {# événement de présence à résoudre} other {# événements de présence à résoudre}}",
+      "dias_no_listos": "{n, plural, one {# jour de travail n’est pas prêt} other {# jours de travail ne sont pas prêts}} pour la paie",
+      "revision_pendiente": "L’approbation de la révision est en attente.",
+      "parametros_pendientes": "Des paramètres de l’année ne sont pas confirmés (salaire minimum ou UVT).",
+      "acumulado_faltante": "Il manque les montants acquis sur le semestre ou l’année pour le calcul.",
+      "auxilio_transporte_supera_tope": "Le salaire dépasse le plafond de l’aide au transport.",
+      "cotizacion_por_semanas_no_soportada": "La cotisation à la semaine n’est pas encore prise en charge.",
+      "fsp_reparto_pila_pendiente": "La répartition du fonds de solidarité pour la PILA est manquante.",
+      "ibc_ajustado_al_minimo": "L’IBC a été ajusté au minimum légal.",
+      "ibc_mes_anterior_sin_dato": "Pas d’IBC du mois précédent : celui de la période a été utilisé.",
+      "integral_bajo_minimo": "Le salaire intégral est inférieur à 13 salaires minimums.",
+      "integral_con_horas": "Salaire intégral : ni majorations ni heures supplémentaires ne sont payées.",
+      "integral_sin_prima_ni_cesantias": "Le salaire intégral n’ouvre droit ni à la prime (prima) ni à l’indemnité de cessation (cesantías).",
+      "licencia_no_remunerada": "Congé non rémunéré pendant la période.",
+      "neto_negativo": "Le net est négatif : vérifiez les retenues.",
+      "novedad_sin_valor": "Un événement de paie n’a ni montant ni quantité.",
+      "retencion_porcentaje_fijo_faltante": "Procédure 2 sans pourcentage fixe de retenue.",
+      "sin_periodo_anterior": "Pas de période précédente pour comparer.",
+      "variacion_contra_anterior": "La variation dépasse le seuil par rapport à la période précédente.",
+      "vinculo_fuera_del_periodo": "Le contrat ne couvre pas toute la période.",
+      "embargo_limitado": "Une saisie sur salaire a été limitée au plafond légal.",
+      "cuota_prestamo_limitada": "Une échéance de prêt a été limitée : le salarié doit conserver la moitié de son salaire.",
+      "descuento_limitado": "Une retenue a été limitée au plafond légal.",
+      "parametro_no_configurado": "Un paramètre légal est manquant.",
+      "error_calculo": "Impossible de calculer ce bulletin de paie.",
+      "otra": "Vérifiez ce bulletin de paie."
+    },
+    "revision": {
+      "sinPermiso": "Vous n’avez pas accès à la révision",
+      "faltaAprobacion": "L’approbation de la direction est nécessaire pour clôturer",
+      "faltaAprobacionDetalle": "Demandée le {fecha}. Une fois approuvée, « Clôturer la période » sera activé.",
+      "irAprobaciones": "Aller aux approbations",
+      "antesDeCerrar": "Avant de clôturer",
+      "nListas": "{n} sur {total} prêtes",
+      "puntos": {
+        "calculo": {
+          "titulo": "Calcul sans blocages",
+          "listo": "Aucun bulletin de paie n’a de blocage."
+        },
+        "novedades": {
+          "titulo": "Événements de la période résolus",
+          "listo": "Aucun événement de paie en attente ni modification après le calcul."
+        },
+        "asistencia": {
+          "titulo": "Événements de présence résolus",
+          "listo": "Aucun événement de présence à résoudre."
+        },
+        "jornada": {
+          "titulo": "Temps de travail prêt pour la paie",
+          "listo": "Tous les jours de la période sont prêts."
+        },
+        "parametros": {
+          "titulo": "Paramètres de l’année chargés",
+          "listo": "Salaire minimum, aide au transport et UVT confirmés."
+        },
+        "aprobacion": {
+          "titulo": "Approbation de la direction",
+          "listo": "Approuvée, ou votre entreprise n’exige pas d’approbation pour clôturer.",
+          "pendiente": "En attente d’approbation.",
+          "rechazada": "Refusée : renvoyez en pré-calcul et soumettez à nouveau."
+        }
+      },
+      "ajustes": {
+        "titulo": "Ajustements de la période",
+        "numero": "Ajustement · version {n}",
+        "apagada": "La paie est en mode pré-calcul uniquement.",
+        "cerrado": "Ajustement clôturé",
+        "cerrar": "Clôturer l’ajustement"
+      },
+      "quien": {
+        "titulo": "Qui révise et approuve",
+        "preparo": "Pré-calculée par",
+        "tu": "Vous",
+        "otraPersona": "Une autre personne des RH",
+        "aprueba": "Approbation",
+        "estados": {
+          "pendiente": "En attente",
+          "aprobada": "Approuvée",
+          "rechazada": "Refusée",
+          "cancelada": "Annulée",
+          "sin_regla": "Sans règle d’approbation"
+        },
+        "regla": "Les RH préparent et révisent ; la direction approuve dans Approbations. La personne qui a pré-calculé ne peut pas approuver sa propre paie.",
+        "noPuedesAprobar": "Vous avez préparé cette paie : une autre personne doit l’approuver."
+      },
+      "loQueSeCierra": "Ce qui va être clôturé",
+      "empleados": "Employés",
+      "devengado": "Brut",
+      "deducciones": "Retenues",
+      "neto": "Net à payer",
+      "costo": "Coût employeur"
+    },
+    "pago": {
+      "archivo": {
+        "titulo": "1. Fichier pour la banque",
+        "descripcion": "Il est validé avant d’être généré : avec une seule ligne erronée, aucun fichier n’est produit.",
+        "formato": "Format",
+        "csvGenerico": "CSV générique (compte, type, pièce d’identité et montant)",
+        "generar": "Générer et valider le fichier",
+        "sinPermiso": "Vous avez besoin de la permission de payer la paie et de voir les comptes bancaires.",
+        "conHallazgos": "{n, plural, one {# ligne contient} other {# lignes contiennent}} des erreurs : le fichier n’a pas été généré",
+        "listo": "Fichier généré",
+        "hallazgosTitulo": "{n, plural, one {# anomalie} other {# anomalies}} avant de générer le fichier",
+        "validado": "Fichier validé sans anomalie",
+        "errores": {
+          "sin_cuenta": "sans compte bancaire",
+          "sin_documento": "sans pièce d’identité",
+          "valor_invalido": "montant invalide",
+          "tipo_cuenta_invalido": "type de compte invalide",
+          "cuenta_invalida": "numéro de compte invalide"
+        }
+      },
+      "pago": {
+        "titulo": "2. Paiement",
+        "descripcion": "Un seul décaissement par période est enregistré en Trésorerie, avec pièce justificative de décaissement.",
+        "pagado": "Période payée",
+        "sinPermiso": "Vous avez besoin de la permission de payer la paie.",
+        "cuenta": "Compte payeur",
+        "cargandoCuentas": "Chargement des comptes…",
+        "elegirCuenta": "Choisissez le compte",
+        "fecha": "Date de paiement",
+        "referencia": "Référence",
+        "marcar": "Marquer comme payée",
+        "comisionesPendientes": "{n, plural, one {# bulletin de paie a encore} other {# bulletins de paie ont encore}} des commissions à marquer comme payées : réessayez depuis Commissions."
+      },
+      "asiento": {
+        "titulo": "3. Écriture comptable",
+        "descripcion": "Passe à « Comptabilisée » lorsque chaque bulletin de paie a son écriture de charge et de paiement.",
+        "contabilizado": "Période comptabilisée",
+        "despuesDePagar": "La comptabilisation se fait après le paiement.",
+        "listo": "Période comptabilisée",
+        "contabilizar": "Comptabiliser",
+        "faltan": "{n, plural, one {# écriture manque} other {# écritures manquent}} : consultez la file des échecs comptables",
+        "sinDetalle": "Sans détail"
+      },
+      "resumen": {
+        "titulo": "Ce qui est payé",
+        "neto": "Net de la paie",
+        "colillas": "Bulletins de paie à payer",
+        "sale": "Sort du compte payeur",
+        "nota": "Les saisies sur salaire et les prêts avec retenue sur salaire (libranza) sont déjà déduits du net : ils sont payés séparément à chaque tiers.",
+        "estados": {
+          "porPagar": "À payer",
+          "pagado": "Payée",
+          "contabilizado": "Comptabilisée"
+        }
+      },
+      "confirmar": {
+        "titulo": "Marquer la paie comme payée ?",
+        "descripcion": "Un décaissement de {total} sera enregistré depuis {cuenta}. Cette action est irréversible.",
+        "confirmar": "Marquer comme payée",
+        "hecho": "Paiement enregistré pour {total}",
+        "c1": "Les bulletins de paie passent à payés et la paie à payer est comptabilisée contre la banque.",
+        "c2": "Les commissions incluses sont marquées comme payées."
+      }
+    },
+    "colillas": {
+      "titulo": "Bulletins de paie de la période",
+      "vistaPrevia": "Aperçu : la personne ne voit son bulletin de paie qu’une fois la période clôturée.",
+      "buscar": "Rechercher un employé",
+      "columnas": {
+        "empleado": "Employé",
+        "neto": "Net",
+        "estado": "État"
+      },
+      "ver": "Voir le bulletin de paie",
+      "vacio": {
+        "titulo": "Aucun bulletin de paie",
+        "descripcion": "Les bulletins de paie apparaissent lors du pré-calcul."
+      },
+      "sinResultados": "Essayez un autre nom."
+    },
+    "colilla": {
+      "estados": {
+        "draft": "Pré-calculé",
+        "approved": "Clôturé",
+        "paid": "Payé",
+        "cancelled": "Annulé"
+      },
+      "nDias": "{n} jours",
+      "nHoras": "{n} h",
+      "titulo": "Bulletin de paie",
+      "sinPermiso": "Vous n’avez pas accès à ce bulletin de paie",
+      "volver": "Retour à la période",
+      "vacio": {
+        "titulo": "Aucun bulletin de paie pour cette personne",
+        "descripcion": "La personne ne figure pas dans la version en vigueur de la période."
+      },
+      "tituloDe": "Bulletin de paie · {nombre}",
+      "neto": "net {valor}",
+      "descargar": "Télécharger le PDF",
+      "comprobante": "Justificatif de paiement de la paie",
+      "del": "Du {rango}",
+      "pagada": "payé le {fecha}",
+      "pago": "paiement le {fecha}",
+      "borrador": "Brouillon : la période n’est pas clôturée. Il n’est pas remis à la personne.",
+      "empleado": "Employé",
+      "cargo": "Poste",
+      "salario": "Salaire de base",
+      "mensual": "{valor} par mois",
+      "devengados": "Gains",
+      "deducciones": "Retenues",
+      "totalDevengado": "Total brut",
+      "totalDeducciones": "Total des retenues",
+      "netoPagar": "Net à payer",
+      "bloqueada": "Bloqué",
+      "ibc": "IBC de la période : {valor}.",
+      "noEsElectronica": "Ce justificatif ne remplace pas le document justificatif de paie électronique de la DIAN.",
+      "generado": "Généré le {fecha}.",
+      "electronica": {
+        "titulo": "Ce n’est pas la paie électronique",
+        "descripcion": "Le document justificatif de paie électronique de la DIAN est mensuel et arrive en phase 4. Les données de ce bulletin de paie sont déjà prêtes pour lui."
+      },
+      "entrega": {
+        "titulo": "Remise à la personne",
+        "descripcion": "L’envoi par e-mail et le portail de l’employé arriveront plus tard. En attendant, téléchargez le PDF et remettez-le."
+      }
+    },
+    "ajuste": {
+      "titulo": "Ajustement motivé",
+      "descripcion": "Ce qui est clôturé ne se modifie pas : l’ajustement recalcule le bulletin de paie avec les règles de la clôture et n’enregistre que la différence.",
+      "confirmar": "Enregistrer l’ajustement",
+      "motivo": "Motif",
+      "motivoPlaceholder": "Ex. : prime d’objectifs qui n’a pas été saisie à temps",
+      "c1": "Le calcul utilise les paramètres avec lesquels la période a été clôturée.",
+      "c2": "Il est enregistré comme une version d’ajustement, avec son motif et son auteur.",
+      "c3": "Il est clôturé séparément et payé avec la période.",
+      "hecho": "Ajustement enregistré",
+      "persona": "Personne",
+      "elegirPersona": "Choisissez la personne",
+      "concepto": "Rubrique",
+      "dias": "Jours",
+      "valor": "Montant",
+      "faltaPersona": "Choisissez la personne.",
+      "faltaValor": "Saisissez le montant de l’ajustement."
+    },
+    "conceptos": {
+      "BONIFICACION_SALARIAL": "Prime salariale",
+      "BONIFICACION_NO_SALARIAL": "Prime non salariale",
+      "AUXILIO_NO_SALARIAL": "Aide non salariale",
+      "RETROACTIVO": "Rappel de salaire",
+      "VACACIONES_COMPENSADAS": "Congés payés compensés en argent",
+      "LIBRANZA": "Prêt avec retenue sur salaire (libranza)",
+      "APORTE_COOPERATIVA": "Cotisation à une coopérative",
+      "FONDO_EMPLEADOS": "Cotisation au fonds des employés",
+      "CUOTA_SINDICAL": "Cotisation syndicale",
+      "OTRO_DESCUENTO": "Autre retenue autorisée"
+    },
+    "detalle": {
+      "titulo": "Détail de la personne",
+      "sinItems": "Aucune rubrique dans ce groupe.",
+      "columnas": {
+        "concepto": "Rubrique",
+        "cantidad": "Quantité",
+        "base": "Base",
+        "valor": "Montant"
+      },
+      "salarial": "Salarial",
+      "noSalarial": "Non salarial",
+      "sinPermiso": "Vous n’avez pas accès à cette période",
+      "volver": "Retour à la période",
+      "vacio": {
+        "titulo": "Cette personne ne figure pas dans la période",
+        "descripcion": "Elle n’a pas de bulletin de paie dans la version en vigueur."
+      },
+      "salarioMensual": "salaire de {valor} par mois",
+      "nDias": "{n} jours",
+      "verColilla": "Voir le bulletin de paie",
+      "etiqueta": "Sections du détail",
+      "pestanas": {
+        "resumen": "Résumé",
+        "seguridad": "Sécurité sociale",
+        "retencion": "Retenue à la source",
+        "deducciones": "Retenues",
+        "provisiones": "Provisions"
+      },
+      "devengados": "Gains",
+      "totalDevengado": "Total brut",
+      "deducciones": "Retenues",
+      "totalDeducciones": "Total des retenues",
+      "netoPagar": "Net à payer · {devengado} − {deducciones}",
+      "bloqueada": "Bloqué",
+      "aportesTrabajador": "Cotisations salariales",
+      "aportesEmpleador": "Cotisations et charges parafiscales de l’entreprise",
+      "total": "Total",
+      "retencion": {
+        "titulo": "Retenue à la source",
+        "noAplica": "Aucune retenue sur cette période (elle est calculée sur la période qui clôt le mois).",
+        "procedimiento": "Procédure",
+        "proc": "Procédure {n}",
+        "depuracion": {
+          "ingresos": "Revenus du travail du mois",
+          "incr": "Revenus non constitutifs de revenu imposable",
+          "ingreso_neto": "Revenu net",
+          "deduccion_dependientes": "Personnes à charge",
+          "deduccion_medicina": "Médecine prépayée",
+          "deduccion_vivienda": "Intérêts de crédit immobilier",
+          "exenta_voluntarios": "Cotisations volontaires (AFC et FVP)",
+          "exenta_25": "Revenu exonéré de 25 %",
+          "limite_40": "Limite de 40 %",
+          "beneficios_aplicados": "Avantages appliqués",
+          "base": "Base imposable"
+        },
+        "porcentaje": "Pourcentage fixe",
+        "delMes": "Retenue du mois",
+        "estePeriodo": "Retenu sur cette période"
+      },
+      "otrasDeducciones": "Prêts, prêts avec retenue sur salaire (libranza), saisies sur salaire et autres retenues",
+      "limite": {
+        "titulo": "Limite des retenues",
+        "descripcion": "Les saisies sur salaire et les prêts s’appliquent dans l’ordre et avec un plafond : le salarié conserve au moins la moitié de son salaire après les retenues légales. Ce qui ne rentre pas reste en solde pour la période suivante."
+      },
+      "provisiones": "Provisions de la période",
+      "ibc": {
+        "titulo": "IBC de la période · règle des 40 %",
+        "salarioMensual": "Salaire mensuel",
+        "exceso40": "Excédent non salarial au-delà de 40 %",
+        "minimo": "Plancher (1 SMMLV au prorata)",
+        "maximo": "Plafond (25 SMMLV au prorata)",
+        "ibc": "IBC",
+        "arl": "IBC de l’ARL",
+        "parafiscales": "Base des charges parafiscales",
+        "prestaciones": "Base des prestations sociales",
+        "nota": "Art. 30 de la loi 1393 de 2010 : la part non salariale qui dépasse 40 % du total s’ajoute à l’IBC. L’aide au transport n’entre pas dans le calcul.",
+        "exonerado": "Exonéré de la cotisation patronale santé, ICBF et SENA (art. 114-1 de l’ET)."
+      },
+      "costo": {
+        "titulo": "Coût pour l’entreprise",
+        "devengado": "Total brut",
+        "aportes": "Cotisations et charges parafiscales",
+        "provisiones": "Provisions",
+        "total": "Coût employeur"
+      },
+      "informativos": "Informatifs"
+    },
+    "prestamo": {
+      "titulo": "Prêt",
+      "noExiste": "Ce prêt n’existe pas",
+      "volver": "Retour à Prêts et saisies sur salaire",
+      "tituloDe": "Prêt {numero} · {nombre}",
+      "deLaEmpresa": "Prêt de l’entreprise",
+      "conIntereses": "{monto} à {tasa} % par an",
+      "sinIntereses": "{monto} sans intérêts",
+      "cuotasDe": "{n, plural, one {# échéance} other {# échéances}} de {valor}",
+      "columnas": {
+        "cuota": "Échéance",
+        "vence": "Échéance le",
+        "valor": "Montant",
+        "saldo": "Solde après",
+        "estado": "État"
+      },
+      "nDeTotal": "{n} sur {total}",
+      "cuotas": {
+        "descontada": "Retenue",
+        "pending": "Programmée",
+        "partial": "Partielle",
+        "paid": "Payée",
+        "overdue": "En retard",
+        "skipped": "Omise"
+      },
+      "error": "L’action n’a pas pu aboutir.",
+      "rechazar": "Refuser",
+      "aprobar": "Approuver",
+      "anular": "Annuler",
+      "cuotasTitulo": "Échéances",
+      "saldoDespues": "Solde après : {valor}",
+      "sinCuotas": {
+        "titulo": "Aucune échéance pour l’instant",
+        "descripcion": "Les échéances sont générées à l’approbation du prêt."
+      },
+      "condiciones": {
+        "estado": "Statut",
+        "titulo": "Conditions",
+        "monto": "Montant",
+        "intereses": "Intérêts",
+        "sinIntereses": "Sans intérêts",
+        "total": "Total à payer",
+        "saldo": "Solde",
+        "descuento": "Retenue",
+        "porNomina": "Sur la paie",
+        "manual": "Manuelle",
+        "maximo": "Maximum par période",
+        "primeraCuota": "Première échéance",
+        "nota": "À chaque paie, l’échéance est retenue en respectant le plancher de la libranza : le salarié conserve au moins la moitié de son salaire."
+      },
+      "confirmarAprobar": {
+        "titulo": "Approuver le prêt ?",
+        "descripcion": "{n, plural, one {# échéance} other {# échéances}} de {valor} seront générées et retenues automatiquement sur la paie."
+      },
+      "aprobado": "Prêt approuvé",
+      "confirmarRechazar": {
+        "titulo": "Refuser le prêt"
+      },
+      "rechazado": "Prêt refusé",
+      "confirmarAnular": {
+        "titulo": "Annuler le prêt ?",
+        "descripcion": "Il ne sera plus retenu. Le solde de {saldo} ne sera plus recouvré par la paie. Cette action est irréversible."
+      },
+      "anulado": "Prêt annulé"
+    },
+    "nuevoPrestamo": {
+      "titulo": "Nouveau prêt",
+      "subtitulo": "Retenu sur la paie avec l’autorisation écrite de l’employé",
+      "sinPermiso": "Vous n’avez pas la permission d’enregistrer des prêts",
+      "volver": "Retour",
+      "creado": "Prêt enregistré : en attente d’approbation",
+      "error": "Impossible d’enregistrer le prêt.",
+      "cancelar": "Annuler",
+      "crear": "Créer le prêt",
+      "datos": "Données du prêt",
+      "empleado": "Employé",
+      "tipo": "Type",
+      "tipos": {
+        "prestamo": "Prêt",
+        "anticipo": "Avance"
+      },
+      "monto": "Montant",
+      "cuotas": "Nombre d’échéances",
+      "anticipoUnaCuota": "Une avance est retenue en une seule échéance.",
+      "primeraCuota": "Première échéance",
+      "intereses": "Intérêts annuels",
+      "interesesAyuda": "0 % s’il est sans intérêts.",
+      "maximo": "Maximum par période",
+      "maximoAyuda": "Pourcentage du salaire que l’échéance peut représenter.",
+      "notas": "Notes",
+      "notasAyuda": "Facultatif. Par exemple, l’objet du prêt.",
+      "asiQueda": "Récapitulatif",
+      "cuota": "Échéance",
+      "cuotaDe": "{valor} · {n, plural, one {# échéance} other {# échéances}}",
+      "interesesAparte": "Intérêts",
+      "alCrear": "Ajoutés à la création",
+      "limite": "Plafond par période",
+      "limiteNota": "Si l’échéance ne rentre pas dans la période, la paie retient ce que la loi permet et le reste demeure en solde.",
+      "aprobacion": {
+        "titulo": "Soumis à approbation",
+        "descripcion": "Il est créé « à approuver » et n’est pas retenu tant qu’une personne disposant de la permission de paie ne l’a pas approuvé."
+      },
+      "autorizacion": {
+        "titulo": "Autorisation écrite de l’employé",
+        "descripcion": "Elle est obligatoire pour retenir sur la paie (art. 149 du CST). Ajoutez-la aux documents de la fiche de l’employé."
+      }
+    },
+    "configuracion": {
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès à la configuration de la paie",
+        "descripcion": "Demandez la permission « Voir la paie »."
+      },
+      "si": "Oui",
+      "no": "Non",
+      "columnas": {
+        "codigo": "Code",
+        "concepto": "Rubrique",
+        "tipo": "Type",
+        "salarial": "Salarial",
+        "prestacional": "Base des prestations",
+        "cuenta": "Compte"
+      },
+      "tipos": {
+        "devengado": "Gain",
+        "deduccion": "Retenue",
+        "aporte_empleador": "Cotisation",
+        "provision": "Provision",
+        "informativo": "Informatif"
+      },
+      "intro": "Comment votre entreprise calcule la paie. Les valeurs légales (SMMLV, UVT, pourcentages) se trouvent dans « Paramètres légaux » et ne se modifient pas ici.",
+      "apagada": {
+        "titulo": "La paie est en mode pré-calcul uniquement",
+        "descripcion": "Elle est calculée et révisée, mais n’est ni clôturée, ni payée, ni comptabilisée tant que le comptable n’a pas vérifié les rubriques, l’IBC, les provisions, la retenue à la source et les comptes. Ensuite, GO Admin active « Paie active »."
+      },
+      "activa": {
+        "titulo": "Paie active",
+        "encendida": "Activée",
+        "apagada": "Désactivée · s’active après la revue du comptable",
+        "porQue": "Pourquoi est-elle désactivée ? Une erreur dans une rubrique ou un compte se répète dans chaque bulletin de paie, dans la PILA et dans l’écriture comptable. C’est pourquoi les règles passent d’abord par le comptable.",
+        "soloGoAdmin": "GO Admin uniquement"
+      },
+      "conceptos": "Rubriques de paie",
+      "buscar": "Rechercher une rubrique ou un compte"
+    }
+  },
+  "hrmMarcacionMetodos": {
+    "contexto": "{sede} · {activos} méthodes actives sur {total}",
+    "elegirSede": "Choisir le site",
+    "intro": "Chaque personne pointe avec n'importe laquelle des méthodes actives. Désactivez celles que vous n'utilisez pas : moins de chemins, moins de pointages étranges.",
+    "cargando": "Chargement des méthodes de pointage",
+    "guardados": "Méthodes enregistrées",
+    "cambiosSinGuardar": "Modifications non enregistrées",
+    "apagado": "Désactivée",
+    "llegaKiosco": "Arrive avec la borne (M1)",
+    "llegaRelojes": "Arrive avec les pointeuses à empreinte ou à visage",
+    "tocaMetodo": "Touchez une méthode pour voir et modifier ses règles.",
+    "unidades": {
+      "metros": "m",
+      "segundos": "s"
+    },
+    "sinPermiso": {
+      "titulo": "Vous ne pouvez pas voir les méthodes de pointage",
+      "descripcion": "Il vous faut l'autorisation « Voir la présence » ou « Gérer la présence » des Ressources humaines.",
+      "irInicio": "Aller à l'accueil"
+    },
+    "error": {
+      "titulo": "Impossible de charger les méthodes",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "soloLectura": {
+      "titulo": "Vous ne pouvez pas modifier les méthodes de pointage",
+      "descripcion": "Il vous faut l'autorisation « Gérer la présence » des Ressources humaines. Vous pouvez voir la configuration du site et suivre les pointages dans « En direct ».",
+      "irEnVivo": "Aller à En direct"
+    },
+    "errores": {
+      "guardar": {
+        "sin_metodos": "Le site doit avoir au moins une méthode active : téléphone, QR ou étiquette.",
+        "radio_invalido": "Le rayon va de {min} à {max} m.",
+        "metodo_no_disponible": "Cette méthode arrive avec la borne ou les pointeuses : elle ne peut pas encore être activée.",
+        "sin_permiso": "Vous n'avez pas l'autorisation de modifier les méthodes de ce site.",
+        "sede_requerida": "Choisissez un site avant d'enregistrer.",
+        "generico": "Impossible d'enregistrer les modifications. Réessayez."
+      }
+    },
+    "cambiarSede": {
+      "titulo": "Changer de site sans enregistrer ?",
+      "descripcion": "Les modifications des méthodes de {sede} seront perdues.",
+      "confirmar": "Abandonner et changer",
+      "cancelar": "Continuer la modification"
+    },
+    "metodos": {
+      "celular_ubicacion": {
+        "titulo": "Téléphone avec localisation",
+        "corto": "Téléphone avec localisation"
+      },
+      "qr": {
+        "titulo": "QR du site",
+        "corto": "QR du site"
+      },
+      "nfc_etiqueta": {
+        "titulo": "Badge ou étiquette NFC",
+        "corto": "Étiquette NFC"
+      },
+      "carne": {
+        "titulo": "Badge",
+        "corto": "Badge NFC"
+      },
+      "pin": {
+        "titulo": "Borne avec code PIN",
+        "corto": "PIN sur la borne"
+      },
+      "rostro": {
+        "titulo": "Visage",
+        "corto": "Visage"
+      },
+      "huella": {
+        "titulo": "Empreinte",
+        "corto": "Empreinte"
+      }
+    },
+    "tarjetas": {
+      "noDisponible": "{metodo} : {cuando}",
+      "celular": {
+        "descripcion": "La personne pointe depuis son téléphone et GO Admin compare sa position avec celle du site. La position n'est prise qu'au pointage, jamais pour suivre.",
+        "resumen": "Rayon {radio} m · {computador, select, si {aussi depuis un ordinateur} other {téléphone uniquement}}",
+        "activar": "Téléphone avec localisation",
+        "radio": "Rayon du site",
+        "radioAyuda": "Distance maximale du site pour accepter le pointage.",
+        "ubicacion": "Adresse du site",
+        "ubicacionFijada": "{direccion} · placée sur la carte",
+        "sinDireccion": "Sans adresse",
+        "sinUbicacion": "Le site n'est pas placé sur la carte",
+        "sinUbicacionDetalle": "Les pointages par téléphone restent « sans position » pour que le responsable les vérifie.",
+        "foto": "Demander une photo au pointage · {cuando}",
+        "computador": "Autoriser le pointage depuis un ordinateur (à vérifier par le responsable)"
+      },
+      "qr": {
+        "descripcion": "La personne scanne avec son téléphone le QR d'un écran du site. Il change toutes les 30 secondes et chaque code ne sert qu'une fois.",
+        "resumen": "30 s · usage unique · {ubicacion, select, si {avec position} other {sans position}}",
+        "activar": "QR du site",
+        "comoSeMuestra": "Affichage du QR",
+        "comoSeMuestraAyuda": "Le QR sur la borne arrive avec la borne (M1).",
+        "rotativo": "Rotatif sur un écran",
+        "cambiaCada": "Change toutes les",
+        "cambiaCadaAyuda": "Fixe : toutes les 30 secondes.",
+        "unSoloUso": "Usage unique : chaque code sert pour un pointage",
+        "pedirAdemas": "Demander aussi",
+        "ademasNada": "Rien",
+        "ademasUbicacion": "La position du téléphone",
+        "ademasPin": "Le code PIN de la personne · {cuando}",
+        "abrirPantalla": "Ouvrir l'écran du QR",
+        "agregarPantalla": "Ajouter un écran QR"
+      },
+      "nfc": {
+        "descripcion": "Avec une étiquette NFC collée à l'entrée, la personne approche son téléphone. Le lecteur de badges arrive avec la borne.",
+        "resumen": "{n, plural, =0 {Aucune étiquette} one {# étiquette} other {# étiquettes}}",
+        "activar": "Badge ou étiquette NFC",
+        "etiquetas": "Étiquettes enregistrées",
+        "ninguna": "Aucune",
+        "carnes": "Badges remis",
+        "exigeUbicacion": "En pointant avec une étiquette, le téléphone partage toujours sa position.",
+        "registrar": "Enregistrer une étiquette ou un badge"
+      },
+      "pin": {
+        "descripcion": "Sur la tablette du site, la personne saisit son code PIN, jamais affiché. C'est la solution de secours sans téléphone, badge ni biométrie."
+      },
+      "rostro": {
+        "descripcion": "Uniquement avec une pointeuse faciale : c'est la pointeuse qui compare le visage, jamais GO Admin. La tablette de la borne ne reconnaît pas les visages. Chaque personne doit autoriser la biométrie."
+      },
+      "huella": {
+        "descripcion": "Uniquement avec un lecteur ou terminal d'empreintes. L'empreinte reste dans le lecteur ; GO Admin reçoit le pointage, jamais l'empreinte."
+      },
+      "remoto": {
+        "titulo": "Télétravail",
+        "descripcion": "S'active par personne dans sa fiche (télétravail ou hybride). Elle pointe depuis l'app sans la position du site.",
+        "resumen": "S'active par personne",
+        "personas": "{n, plural, =0 {Personne} one {# personne} other {# personnes}}"
+      },
+      "manual": {
+        "titulo": "Pointage manuel avec approbation",
+        "descripcion": "La solution quand tout le reste échoue. Demande toujours un motif et passe par une approbation ; impossible à désactiver.",
+        "resumen": "Avec motif et approbation",
+        "siempreActiva": "Toujours active"
+      },
+      "foto": {
+        "titulo": "Photo justificative et affiche",
+        "descripcion": "La borne prend une photo à chaque pointage par PIN ou badge, uniquement des personnes qui l'ont autorisé. Le site doit l'annoncer avec une affiche visible à l'entrée.",
+        "resumen": "30 jours · conservée en cas de réclamation",
+        "seBorra": "Supprimée après",
+        "dias": "{n} jours",
+        "seConserva": "Si le pointage est en vérification ou fait l'objet d'une réclamation, la photo est conservée jusqu'à la clôture du dossier.",
+        "llega": "Photos justificatives : {cuando}",
+        "llegaDetalle": "Aujourd'hui, aucun pointage ne prend de photo. L'affiche explique aux personnes ce qui est conservé.",
+        "letrero": "Télécharger l'affiche à imprimer"
+      },
+      "excepciones": {
+        "titulo": "Exceptions temporaires",
+        "descripcion": "Quand une personne perd une méthode ou ne peut pas l'utiliser (par exemple, une blessure à la main), les RH lui en activent une autre pour certaines dates. Qui l'a approuvée et pourquoi est conservé.",
+        "resumen": "{vigentes, plural, one {# en cours} other {# en cours}} · {pendientes, plural, one {# en attente} other {# en attente}}",
+        "aprobo": "approuvée par {nombre}",
+        "estados": {
+          "vigente": "en cours",
+          "programada": "programmée",
+          "vencida": "expirée",
+          "pendiente": "en attente",
+          "rechazada": "refusée",
+          "revocada": "révoquée",
+          "anulada": "annulée"
+        },
+        "revocar": "Révoquer",
+        "revocada": "Exception révoquée",
+        "errorSinPermiso": "Vous n'avez pas l'autorisation de révoquer des exceptions.",
+        "errorYaRevocada": "L'exception n'existe plus ou a déjà été révoquée.",
+        "errorRevocar": "Impossible de révoquer l'exception.",
+        "errorCargar": "Impossible de charger les exceptions.",
+        "reintentar": "Réessayer",
+        "sinPermiso": "Vous ne pouvez pas voir les exceptions.",
+        "vacio": "Personne sur ce site n'a d'exception en cours ou récente.",
+        "agregar": "Ajouter une exception",
+        "confirmarTitulo": "Révoquer l'exception ?",
+        "confirmarDetalle": "{nombre} revient aux méthodes du site. Si l'exception était encore en attente, la demande d'approbation est annulée.",
+        "cancelar": "Annuler"
+      }
+    },
+    "excepcion": {
+      "titulo": "Nouvelle exception temporaire",
+      "descripcion": "Active une autre méthode pour une personne pendant certaines dates. Les Ressources humaines l'approuvent.",
+      "persona": "Personne",
+      "elegirPersona": "Choisissez une personne",
+      "cargandoPersonas": "Chargement des personnes…",
+      "buscarPersona": "Rechercher une personne",
+      "sinPersonas": "Aucune personne active sur ce site",
+      "metodo": "Méthode activée",
+      "elegirMetodo": "Choisissez une méthode",
+      "metodoNoDisponible": "{metodo} (arrive avec la borne ou les pointeuses)",
+      "desde": "Du",
+      "hasta": "Au",
+      "elegirFecha": "Choisissez la date",
+      "maximo": "{dias} jours maximum.",
+      "motivo": "Motif",
+      "motivoEjemplo": "Ex. : blessure à la main, ne peut pas utiliser l'empreinte",
+      "avisoTitulo": "Elle est enregistrée avec qui l'a approuvée, le motif et les dates",
+      "avisoDetalle": "À l'échéance, la personne revient aux méthodes du site sans que personne n'ait rien à faire.",
+      "cancelar": "Annuler",
+      "enviar": "Envoyer pour approbation",
+      "enviada": "Envoyée pour approbation",
+      "enviadaDetalle": "Une autre personne des RH l'approuve dans Approbations.",
+      "errores": {
+        "persona": "Choisissez la personne.",
+        "metodo": "Choisissez une méthode qui fonctionne aujourd'hui : téléphone avec localisation, QR ou étiquette NFC.",
+        "fechas": "Choisissez les dates : « Au » ne peut pas être avant « Du ».",
+        "tope": "L'exception dure 90 jours maximum.",
+        "pasado": "L'exception ne peut pas se terminer dans le passé.",
+        "motivo": "Écrivez le motif (de 5 à 500 caractères).",
+        "noPropio": "Une exception pour vous doit être demandée par une autre personne des RH.",
+        "personaNoExiste": "Cette personne ne fait plus partie de l'organisation.",
+        "vigencia": "Vérifiez les dates : 90 jours maximum et pas de fin dans le passé.",
+        "sinPermiso": "Vous n'avez pas l'autorisation de créer des exceptions.",
+        "generico": "Impossible d'envoyer l'exception. Réessayez."
+      }
+    },
+    "letrero": {
+      "titulo": "La présence est enregistrée ici",
+      "metodos": "Moyens de pointer",
+      "imprimir": "Imprimer",
+      "cerrar": "Fermer",
+      "sinPermiso": "Vous ne pouvez pas voir l'affiche de ce site",
+      "error": "Impossible de préparer l'affiche",
+      "responsable": "Responsable du traitement : {organizacion}. GO Admin génère cette affiche avec les données de l'organisation.",
+      "responsableSinNombre": "GO Admin génère cette affiche avec les données de l'organisation.",
+      "bloques": {
+        "queGuardamos": {
+          "titulo": "Ce que nous conservons",
+          "texto": "L'heure de votre arrivée, de votre départ et de vos pauses, l'appareil où vous avez pointé et, si vous l'avez autorisé, une photo justificative."
+        },
+        "foto": {
+          "titulo": "Photo justificative",
+          "texto": "Seulement si vous l'avez autorisée. Elle est supprimée après 30 jours, sauf si votre pointage est en vérification ou si vous avez une réclamation ouverte : dans ce cas, à sa clôture."
+        },
+        "huellaRostro": {
+          "titulo": "Empreinte et visage",
+          "texto": "C'est la pointeuse du site qui les compare. Ils ne sont conservés ni dans GO Admin ni dans aucun autre système de l'entreprise."
+        },
+        "voluntario": {
+          "titulo": "C'est volontaire",
+          "texto": "Si vous n'autorisez pas la biométrie ou la photo, vous pointez avec un code PIN, un badge ou le QR depuis votre téléphone. Cela n'affecte pas votre contrat."
+        },
+        "derechos": {
+          "titulo": "Vos droits",
+          "texto": "Vous pouvez consulter, corriger ou retirer vos autorisations dans GO Admin › Ma présence, ou en écrivant aux Ressources humaines (loi colombienne 1581 de 2012)."
+        }
+      }
+    }
+  },
+  "hrmMarcacionRrhh": {
+    "titulo": "Pointage",
+    "subtitulo": {
+      "hoy": "Aujourd'hui, {fecha}",
+      "actualizadoRecien": "mis à jour à l'instant",
+      "actualizadoHace": "mis à jour il y a {n} min",
+      "dispositivos": "{n, plural, one {# appareil} other {# appareils}}",
+      "sinConexion": "{n} hors ligne"
+    },
+    "vistas": {
+      "etiqueta": "Vue du pointage",
+      "envivo": "En direct",
+      "metodos": "Méthodes par site",
+      "dispositivos": "Appareils"
+    },
+    "comun": {
+      "irAlInicio": "Aller à l'accueil"
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas accès au pointage",
+      "descripcion": "Pour voir les pointages du site, il vous faut l'autorisation « Voir la présence » des Ressources humaines. Demandez-la à la personne qui gère les rôles."
+    },
+    "metodos": {
+      "celular_ubicacion": "Téléphone avec localisation",
+      "qr": "QR du site",
+      "nfc_etiqueta": "Étiquette NFC",
+      "carne": "Badge NFC",
+      "carne_nfc": "Badge NFC",
+      "carne_qr": "Badge QR",
+      "pin": "Borne avec PIN",
+      "rostro": "Visage",
+      "huella": "Empreinte",
+      "remoto": "À distance",
+      "manual": "Manuel",
+      "desconocido": "Non identifié"
+    },
+    "verificacion": {
+      "dentro": "Sur le site",
+      "verificada": "Vérifié",
+      "remoto": "Télétravail",
+      "pendiente_aprobacion": "En attente d'approbation",
+      "sin_ubicacion": "Sans localisation",
+      "computador": "Depuis un ordinateur",
+      "sin_senal": "Enregistré hors ligne",
+      "tarde": "{n} min de retard",
+      "rechazadaCorta": "Refusé",
+      "rechazos": {
+        "fuera_de_rango": "Refusé : hors du site",
+        "qr_ya_usado": "Refusé : QR déjà utilisé",
+        "qr_vencido": "Refusé : QR expiré",
+        "qr_invalido": "Refusé : QR non valide",
+        "etiqueta_invalida": "Refusé : étiquette non valide",
+        "etiqueta_otra_sede": "Refusé : étiquette d'un autre site",
+        "metodo_no_disponible_en_sede": "Refusé : méthode non active sur le site",
+        "mecanismo_no_permitido": "Refusé : méthode non autorisée",
+        "computador_no_permitido": "Refusé : depuis un ordinateur",
+        "ubicacion_requerida": "Refusé : sans localisation",
+        "ubicacion_requiere_consentimiento": "Refusé : localisation non autorisée",
+        "otro": "Refusé"
+      }
+    },
+    "filtros": {
+      "metodo": "Méthode",
+      "verificacion": "Vérification",
+      "todos": "Tous",
+      "chipMetodo": "Méthode : {valor}",
+      "chipVerificacion": "Vérification : {valor}",
+      "chipEstado": "Statut : {valor}",
+      "verMarcas": "{n, plural, one {Voir # pointage} other {Voir # pointages}}",
+      "grupos": {
+        "correctas": "Corrects",
+        "por_revisar": "À vérifier",
+        "rechazadas": "Refusés"
+      }
+    },
+    "envivo": {
+      "resumen": "Résumé des pointages du jour",
+      "kpi": {
+        "marcaron": "Ont pointé aujourd'hui",
+        "deTotal": "{n} sur {total}",
+        "sinMarcar": "{n} avec un poste n'ont pas encore pointé",
+        "todosMarcaron": "Tous ceux qui ont un poste ont pointé",
+        "porRevisar": "À vérifier",
+        "nadaPorRevisar": "Rien à vérifier",
+        "motivos": {
+          "sin_ubicacion": "sans localisation",
+          "computador": "depuis un ordinateur",
+          "sin_senal": "hors ligne",
+          "manual": "manuel"
+        },
+        "pantallas": "Écrans QR en ligne",
+        "sinPantallas": "Aucun écran pour l'instant",
+        "pantallasSinConexion": "{n} hors ligne",
+        "pantallasTodas": "Tous en ligne",
+        "sinSenal": "Enregistrés sans réseau",
+        "sinSenalDetalle": "arrivent au retour de la connexion"
+      },
+      "porMetodo": "Aujourd'hui par méthode",
+      "chipMetodo": "{metodo} · {n}",
+      "avisoPantallas": {
+        "titulo": "{n, plural, one {Un écran QR est hors ligne} other {# écrans QR sont hors ligne}}",
+        "descripcion": "Vérifiez que le téléviseur ou l'écran est allumé, connecté à internet et affiche la page. En attendant, chacun peut pointer avec son téléphone.",
+        "accion": "Voir les appareils"
+      },
+      "buscar": "Rechercher une personne, un point ou un appareil…",
+      "tabla": "Pointages du jour",
+      "etiquetaFila": "{nombre} · {marca} {hora}",
+      "movilMarca": "{marca} {hora} · {metodo}",
+      "columnas": {
+        "persona": "Personne",
+        "hora": "Heure",
+        "marca": "Pointage",
+        "metodo": "Méthode",
+        "punto": "Point ou appareil",
+        "verificacion": "Vérification"
+      },
+      "tipos": {
+        "entrada": "Arrivée",
+        "salida": "Départ",
+        "inicioDescanso": "Début de pause",
+        "finDescanso": "Fin de pause",
+        "intento": "Tentative",
+        "otra": "Pointage"
+      },
+      "punto": {
+        "registradaPor": "Enregistré par {nombre}",
+        "sedeA": "{sede} · à {m} m",
+        "aDeLaSede": "à {m} m du site"
+      },
+      "acciones": {
+        "verHoja": "Voir la feuille de temps de la personne",
+        "verDispositivo": "Voir l'appareil",
+        "corregir": "Corriger par un ajustement…"
+      },
+      "vacio": {
+        "titulo": "Aucun pointage aujourd'hui sur ce site",
+        "descripcion": "Les pointages s'affichent ici dès que quelqu'un pointe avec son téléphone, le QR du site ou une étiquette NFC. Vérifiez quelles méthodes sont actives sur ce site.",
+        "accion": "Voir les méthodes du site"
+      },
+      "sinResultados": {
+        "titulo": "Aucun pointage ne correspond",
+        "descripcion": "Essayez un autre nom ou retirez les filtres."
+      },
+      "error": {
+        "titulo": "Impossible de charger les pointages du jour",
+        "descripcion": "Vérifiez votre connexion et réessayez. Les pointages qui arrivent entre-temps ne sont pas perdus."
+      }
+    },
+    "dispositivos": {
+      "agregar": "Ajouter un appareil",
+      "tabla": "Appareils de pointage",
+      "buscar": "Rechercher un appareil ou son emplacement…",
+      "verDispositivos": "{n, plural, one {Voir # appareil} other {Voir # appareils}}",
+      "columnas": {
+        "dispositivo": "Appareil",
+        "tipo": "Type",
+        "sede": "Site",
+        "estado": "Statut",
+        "conexion": "Dernière connexion",
+        "hoy": "Aujourd'hui"
+      },
+      "tipos": {
+        "pantalla_qr": "Écran QR",
+        "etiqueta_nfc": "Étiquette NFC",
+        "terminal_huella": "Terminal à empreinte",
+        "terminal_facial": "Terminal facial",
+        "kiosco": "Borne sur tablette",
+        "lector_escritorio": "Lecteur de badge",
+        "anterior": "Ancien point"
+      },
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "estados": {
+        "en_linea": "En ligne",
+        "activa": "Active",
+        "sin_conexion": "Hors ligne",
+        "desactivado": "Désactivé"
+      },
+      "noSeConecta": "ne se connecte pas",
+      "nunca": "jamais",
+      "hace": {
+        "ahora": "maintenant",
+        "min": "il y a {n} min",
+        "h": "il y a {n} h",
+        "d": "{n, plural, one {il y a # jour} other {il y a # jours}}"
+      },
+      "acciones": {
+        "abrirPantalla": "Ouvrir l'écran",
+        "regenerarClave": "Régénérer la clé…",
+        "regenerarCodigo": "Régénérer le code…",
+        "activar": "Activer",
+        "desactivar": "Désactiver…"
+      },
+      "confirmar": {
+        "regenerarClaveTitulo": "Régénérer la clé de {nombre} ?",
+        "regenerarClaveDesc": "La clé actuelle cesse de fonctionner immédiatement : l'écran ouvert affiche des codes qui ne sont plus valides. Rouvrez-le avec « Ouvrir l'écran ».",
+        "regenerarClave": "Régénérer la clé",
+        "regenerarCodigoTitulo": "Régénérer le code de {nombre} ?",
+        "regenerarCodigoDesc": "L'étiquette collée cesse de fonctionner immédiatement. Nous vous montrerons une nouvelle URL une seule fois pour l'écrire sur l'étiquette.",
+        "regenerarCodigo": "Régénérer le code",
+        "desactivarTitulo": "Désactiver {nombre} ?",
+        "desactivarDesc": "Personne ne pourra pointer avec ce point tant que vous ne l'aurez pas réactivé. Les pointages déjà faits sont conservés.",
+        "desactivar": "Désactiver"
+      },
+      "regenerada": "Clé de {nombre} régénérée",
+      "regeneradaPantallaDesc": "Rouvrez l'écran sur le téléviseur pour qu'il affiche les nouveaux codes.",
+      "activada": "{nombre} est de nouveau actif",
+      "desactivada": "{nombre} est désactivé",
+      "errores": {
+        "sinPermiso": "Vous n'avez pas l'autorisation de gérer les appareils de pointage.",
+        "guardar": "Impossible d'enregistrer la modification. Réessayez."
+      },
+      "vacio": {
+        "titulo": "Aucun appareil sur ce site pour l'instant",
+        "descripcion": "Ajoutez un écran QR ou une étiquette NFC pour l'entrée. Sans appareil, chacun peut pointer depuis son téléphone."
+      },
+      "sinResultados": {
+        "titulo": "Aucun appareil ne correspond",
+        "descripcion": "Essayez un autre nom ou retirez les filtres."
+      },
+      "error": {
+        "titulo": "Impossible de charger les appareils",
+        "descripcion": "Vérifiez votre connexion et réessayez."
+      }
+    },
+    "alta": {
+      "titulo": "Ajouter un appareil",
+      "paso1": "Étape 1 sur 2 · Ce que vous allez connecter",
+      "paso2": "Étape 2 sur 2 · Nom et site",
+      "queConectar": "Qu'allez-vous connecter ?",
+      "continuar": "Continuer",
+      "eligeTipo": "Choisissez ce que vous allez connecter",
+      "atras": "Retour",
+      "agregar": "Ajouter",
+      "tipos": {
+        "pantalla_qr": {
+          "titulo": "Écran QR",
+          "descripcion": "Un téléviseur ou un écran qui affiche le QR du site, qui change toutes les 30 secondes, à scanner avec le téléphone.",
+          "necesitas": "Il vous faut : n'importe quel écran avec un navigateur."
+        },
+        "etiqueta_nfc": {
+          "titulo": "Étiquette NFC du site",
+          "descripcion": "Une étiquette collée à l'entrée que lit le téléphone de la personne. Dans le navigateur, elle ne fonctionne qu'avec Android et Chrome ; sur iPhone, avec l'application GO Admin.",
+          "necesitas": "Il vous faut : des étiquettes NTAG213, NTAG215 ou NTAG 424 DNA."
+        },
+        "terminal": {
+          "titulo": "Terminal à empreinte ou facial",
+          "descripcion": "Des appareils qui envoient les pointages par internet. L'empreinte et le visage restent dans l'appareil.",
+          "llega": "Arrive avec les pointeuses."
+        },
+        "kiosco": {
+          "titulo": "Borne sur une tablette",
+          "descripcion": "Une tablette fixée à l'entrée avec un QR qui change, un PIN et un badge NFC.",
+          "llega": "Arrive avec la borne."
+        },
+        "lector": {
+          "titulo": "Lecteur de badge ou de QR sur un ordinateur",
+          "descripcion": "Un lecteur USB branché à un ordinateur avec GO Admin Bureau.",
+          "llega": "Arrive avec la borne et le lecteur de bureau."
+        }
+      },
+      "tituloPantalla": "Ajouter un écran QR",
+      "tituloEtiqueta": "Ajouter une étiquette NFC",
+      "nombre": "Nom",
+      "nombreEjemploPantalla": "Écran QR de l'entrée",
+      "nombreEjemploEtiqueta": "Étiquette · Porte principale",
+      "sede": "Site",
+      "eligeSede": "Choisissez le site",
+      "cargandoSedes": "Chargement des sites…",
+      "donde": "Emplacement",
+      "dondeAyuda": "Pour le retrouver : l'entrée, la caisse, la cuisine…",
+      "dondeEjemploPantalla": "Téléviseur de l'accueil",
+      "dondeEjemploEtiqueta": "Cadre de la porte principale",
+      "chip": "Puce de l'étiquette",
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "avisoUbicacion": {
+        "titulo": "Pointer avec cette étiquette demande aussi la localisation",
+        "ntag215": "Une étiquette NTAG213 ou NTAG215 peut être copiée : le téléphone confirme donc que la personne est sur le site.",
+        "ntag424": "La NTAG 424 DNA change de code à chaque lecture ; en attendant cette vérification, le pointage demande aussi la localisation du téléphone."
+      },
+      "avisoPantalla": {
+        "titulo": "Comment l'utiliser",
+        "descripcion": "Après l'avoir ajouté, ouvrez-le sur le téléviseur avec « Ouvrir l'écran », avec une session qui gère la présence. Le QR change toutes les 30 secondes et chaque code ne sert qu'une fois."
+      },
+      "creada": "{nombre} a été ajouté",
+      "creadaPantallaDesc": "Ouvrez-le sur le téléviseur depuis le menu de la ligne avec « Ouvrir l'écran ».",
+      "errores": {
+        "nombre_invalido": "Saisissez un nom de 2 à 80 caractères.",
+        "sede_invalida": "Choisissez le site.",
+        "tipo_no_disponible": "Pour l'instant, on ajoute des écrans QR et des étiquettes NFC.",
+        "chip_invalido": "Choisissez la puce de l'étiquette.",
+        "descripcion_invalida": "Utilisez 200 caractères au maximum.",
+        "sin_permiso": "Vous n'avez pas l'autorisation d'ajouter des appareils de pointage.",
+        "guardar": "Impossible d'ajouter l'appareil. Réessayez."
+      }
+    },
+    "codigoEtiqueta": {
+      "titulo": "Écrivez cette URL sur {nombre}",
+      "descripcion": "Écrivez-la sur l'étiquette avec une application NFC ou avec ce téléphone. En approchant un téléphone, GO Admin › Pointer s'ouvre avec l'étiquette.",
+      "copiar": "Copier l'URL",
+      "copiada": "URL copiée",
+      "noCopiada": "Impossible de copier l'URL. Sélectionnez-la et copiez-la à la main.",
+      "escribir": "Écrire sur l'étiquette avec ce téléphone",
+      "escrita": "Étiquette écrite",
+      "noEscrita": "Impossible d'écrire l'étiquette. Approchez-la de nouveau et ne bougez pas jusqu'à la fin.",
+      "cerrar": "Terminé",
+      "unaVez": {
+        "titulo": "Cette URL ne sera plus affichée",
+        "descripcion": "Nous ne gardons qu'une empreinte du code. Si vous la perdez ou si l'étiquette s'abîme, utilisez « Régénérer le code… » dans le menu de l'appareil."
+      },
+      "sinNfc": {
+        "titulo": "Ce navigateur n'écrit pas d'étiquettes",
+        "descripcion": "Pour l'écrire depuis le navigateur, ouvrez cet écran sur un téléphone Android avec Chrome, ou utilisez une application NFC et collez l'URL."
+      }
+    },
+    "pantalla": {
+      "cargando": "Chargement de l'écran…",
+      "escanea": "Scannez avec votre téléphone",
+      "titulo": "QR de pointage",
+      "qrTitulo": "QR de pointage de {sede}",
+      "cambiaEn": "Change dans {n} s",
+      "instrucciones": "Ouvrez GO Admin › Pointer › QR du site. Une photo de ce code ne sert à rien : il change toutes les 30 secondes et chaque code ne sert qu'une fois.",
+      "sinInternet": "Sans internet : le code continue de changer",
+      "pie": "L'heure du pointage est celle du serveur, pas celle de cet écran ni du téléphone.",
+      "pantallaCompleta": "Plein écran",
+      "iniciarSesion": "Se connecter",
+      "reintentar": "Réessayer",
+      "irADispositivos": "Aller aux appareils",
+      "estados": {
+        "sinSesion": {
+          "titulo": "Connectez-vous pour ouvrir l'écran",
+          "descripcion": "L'écran QR s'ouvre avec la session d'une personne qui gère la présence."
+        },
+        "sinPermiso": {
+          "titulo": "Vous ne pouvez pas ouvrir cet écran",
+          "descripcion": "Ouvrir l'écran QR demande l'autorisation « Gérer la présence » des Ressources humaines."
+        },
+        "desactivada": {
+          "titulo": "Cet écran est désactivé",
+          "descripcion": "Activez-le dans Pointage › Appareils pour afficher de nouveau le QR."
+        },
+        "noExiste": {
+          "titulo": "Écran introuvable",
+          "descripcion": "Vérifiez le lien : il ne correspond à aucun écran QR de votre organisation."
+        },
+        "error": {
+          "titulo": "Impossible d'ouvrir l'écran",
+          "descripcion": "Vérifiez la connexion internet et réessayez."
+        }
       }
     }
   }

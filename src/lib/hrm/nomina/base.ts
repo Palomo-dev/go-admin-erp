@@ -9,7 +9,7 @@
  */
 import { addPlainDays } from '@/lib/utils/dateCore';
 
-export const VERSION_MOTOR_NOMINA = 'hrm-nomina-1';
+export const VERSION_MOTOR_NOMINA = 'hrm-nomina-4';
 
 /** Un tramo de vigencia de un parámetro (lo que entrega `fn_hr_parametro_tramos`). */
 export interface TramoNomina {
@@ -137,6 +137,15 @@ export function aPeso(x: number): number {
 /** Al peso superior (el IBC de la PILA se aproxima al peso superior). */
 export function aPesoSuperior(x: number): number {
   return Math.ceil(x - 1e-9);
+}
+
+/**
+ * Al múltiplo de 100 superior: la PILA aproxima así cada cotización (Decreto 780
+ * de 2016, art. 3.2.1.5, num. 2). El Contador lo pidió en la nómina desde ya (P14).
+ */
+export function aCentenaSuperior(x: number): number {
+  if (!Number.isFinite(x) || x <= 0) return 0;
+  return Math.ceil(x / 100 - 1e-9) * 100;
 }
 
 /** Al múltiplo más cercano (`m` = 1000 para la retención), mitad hacia arriba. */

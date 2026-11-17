@@ -144,7 +144,7 @@ describe('rutas de nómina', () => {
     const [fnG, argsG] = rpc.mock.calls[1];
     expect(fnG).toBe('fn_hr_nomina_guardar');
     expect(argsG.p_org).toBe(135);
-    expect(argsG.p_resultado.version_motor).toBe('hrm-nomina-1');
+    expect(argsG.p_resultado.version_motor).toBe('hrm-nomina-4');
     expect(argsG.p_resultado.colillas[0].totales.neto).toBe(body.totales.neto);
   });
 

@@ -7,16 +7,15 @@
  *
  * Cada caso trae su cuenta a mano en el comentario, para que el Contador la
  * verifique con calculadora (docs/contador/PREGUNTAS-CONTADOR-NOMINA-2026-11-16.md).
+ * Ronda 2 (2026-11-16): con las correcciones de docs/contador/RESPUESTAS-CONTADOR-NOMINA-2026-11-16.md
+ * (P1, P3, P5, P6, P10, P12, P13, P14, P17, P21, P22 y P23).
  * Valores 2026: SMMLV $1.750.905, auxilio $249.095, UVT $52.374.
  */
 import { calcularColilla, calcularPeriodo, diferenciaColillas, type ResultadoColilla } from '@/lib/hrm/nomina/motorNomina';
-import { dias360, pesoDia360, aPeso, aMultiplo, ParametroNominaFaltante, huella } from '@/lib/hrm/nomina/base';
-import { porcentajeFijoProcedimiento2, depurar } from '@/lib/hrm/nomina/retencion';
+import { dias360, pesoDia360, aPeso, aMultiplo, aCentenaSuperior, ParametroNominaFaltante, huella } from '@/lib/hrm/nomina/base';
+import { porcentajeFijoProcedimiento2, depurar, redondearRetencion } from '@/lib/hrm/nomina/retencion';
 import { aplicarDeducciones } from '@/lib/hrm/nomina/deducciones';
-import { CATALOGO_BASE, FILAS_CATALOGO_BASE } from '@/lib/hrm/nomina/conceptos';
 import { entradaBase, salarioFijo, PARAMETROS_2026, SMMLV_2026 } from './nominaFixture';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 
 const valor = (r: ResultadoColilla, codigo: string) => r.items.filter((i) => i.codigo === codigo).reduce((s, i) => s + i.valor, 0);
 const tiene = (r: ResultadoColilla, codigo: string) => r.items.some((i) => i.codigo === codigo);
@@ -40,6 +39,28 @@ describe('días en base 360 y redondeo', () => {
     expect(aMultiplo(3_330_317, 1000)).toBe(3_330_000);
     expect(aMultiplo(208_500, 1000)).toBe(209_000);
   });
+
+  test('aportes como la PILA: al múltiplo de $100 superior (P14)', () => {
+    expect(aCentenaSuperior(280_144.8)).toBe(280_200);
+    expect(aCentenaSuperior(70_036.2)).toBe(70_100);
+    expect(aCentenaSuperior(9_139.7)).toBe(9_200);
+    expect(aCentenaSuperior(70_000)).toBe(70_000);
+    expect(aCentenaSuperior(0)).toBe(0);
+  });
+
+  test('retención según el art. 868 (P17): más de $10.000 al millar, de $100 a $10.000 a la centena, hasta $100 al peso', () => {
+    const r = (x: number) => redondearRetencion(PARAMETROS_2026, '2026-07-31', x);
+    expect(r(3_330_382)).toBe(3_330_000);
+    expect(r(208_899)).toBe(209_000);
+    expect(r(10_500)).toBe(11_000);
+    expect(r(10_499)).toBe(10_000);
+    expect(r(10_000)).toBe(10_000);
+    expect(r(9_950)).toBe(10_000);
+    expect(r(4_349)).toBe(4_300);
+    expect(r(150)).toBe(200);
+    expect(r(100)).toBe(100);
+    expect(r(87.4)).toBe(87);
+  });
 });
 
 describe('colilla ordinaria: casos para verificar a mano', () => {
@@ -47,8 +68,10 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     // Salario 1.750.905 + auxilio 249.095 = devengado 2.000.000.
     // IBC = 1.750.905 (el auxilio no es base). Salud 4 % = 70.036,2 → 70.036; pensión igual.
     // Neto = 2.000.000 − 140.072 = 1.859.928.
-    // Empleador exonerado (114-1): sin salud, ICBF ni SENA. Pensión 12 % = 210.108,6 → 210.109;
-    // ARL clase I 0,522 % = 9.139,7 → 9.140; caja 4 % = 70.036.
+    // Empleador exonerado (114-1): sin salud propia, ICBF ni SENA.
+    // Redondeo PILA (P14), por subsistema: salud 70.036,2 → 70.100, el trabajador paga 70.036 y el
+    // empleador los 64 del redondeo; pensión 70.036,2 + 210.108,6 = 280.144,8 → 280.200, empleador
+    // 280.200 − 70.036 = 210.164; ARL clase I 0,522 % = 9.139,7 → 9.200; caja 4 % = 70.036,2 → 70.100.
     // Provisiones: cesantías 2.000.000/12 = 166.667; intereses 166.666,67 × 12 % = 20.000;
     // prima 166.667; vacaciones 1.750.905 × 15/360 = 72.954.
     const r = calcularColilla(entradaBase());
@@ -57,12 +80,12 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     expect(r.bases.ibc).toBe(1_750_905);
     expect(valor(r, 'SALUD_EMPLEADO')).toBe(70_036);
     expect(valor(r, 'PENSION_EMPLEADO')).toBe(70_036);
-    expect(r.totales).toEqual({ devengado: 2_000_000, deducciones: 140_072, neto: 1_859_928, aportes_empleador: 289_285, provisiones: 426_288, costo_empleador: 2_715_573 });
-    expect(tiene(r, 'SALUD_EMPLEADOR')).toBe(false);
+    expect(r.totales).toEqual({ devengado: 2_000_000, deducciones: 140_072, neto: 1_859_928, aportes_empleador: 289_528, provisiones: 426_288, costo_empleador: 2_715_816 });
+    expect(valor(r, 'SALUD_EMPLEADOR')).toBe(64);
     expect(tiene(r, 'ICBF')).toBe(false);
-    expect(valor(r, 'PENSION_EMPLEADOR')).toBe(210_109);
-    expect(valor(r, 'ARL')).toBe(9_140);
-    expect(valor(r, 'CAJA_COMPENSACION')).toBe(70_036);
+    expect(valor(r, 'PENSION_EMPLEADOR')).toBe(210_164);
+    expect(valor(r, 'ARL')).toBe(9_200);
+    expect(valor(r, 'CAJA_COMPENSACION')).toBe(70_100);
     expect(valor(r, 'PROVISION_CESANTIAS')).toBe(166_667);
     expect(valor(r, 'PROVISION_INTERESES')).toBe(20_000);
     expect(valor(r, 'PROVISION_PRIMA')).toBe(166_667);
@@ -75,12 +98,14 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
   });
 
   test('exoneración 114-1: sin la bandera, el empleador paga salud 8,5 %, ICBF 3 % y SENA 2 %', () => {
-    // Salud 1.750.905 × 8,5 % = 148.826,9 → 148.827; ICBF 52.527; SENA 35.018.
+    // Salud 1.750.905 × 8,5 % = 148.826,9. Con P14 el subsistema completo: 70.036,2 + 148.826,9 =
+    // 218.863,1 → 218.900; el empleador paga 218.900 − 70.036 = 148.864.
+    // ICBF 52.527,15 → 52.600; SENA 35.018,1 → 35.100.
     const r = calcularColilla(entradaBase({ exoneracion_114_1: false }));
     expect(r.bases.exonerado_114_1).toBe(false);
-    expect(valor(r, 'SALUD_EMPLEADOR')).toBe(148_827);
-    expect(valor(r, 'ICBF')).toBe(52_527);
-    expect(valor(r, 'SENA')).toBe(35_018);
+    expect(valor(r, 'SALUD_EMPLEADOR')).toBe(148_864);
+    expect(valor(r, 'ICBF')).toBe(52_600);
+    expect(valor(r, 'SENA')).toBe(35_100);
     expect(r.totales.neto).toBe(1_859_928); // al trabajador no le cambia nada
     // Sin configurar: no se exonera y se avisa.
     const s = calcularColilla(entradaBase({ exoneracion_114_1: null }));
@@ -92,6 +117,14 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     const r = calcularColilla(entradaBase({ salario: salarioFijo(10 * SMMLV_2026) }));
     expect(r.bases.exonerado_114_1).toBe(false);
     expect(tiene(r, 'SALUD_EMPLEADOR')).toBe(true);
+  });
+
+  test('exoneración 114-1 se mide solo con lo salarial (P10): un bono no salarial no la quita', () => {
+    // Salario 17.000.000 (< 10 SMMLV = 17.509.050) + bonificación no salarial 1.000.000.
+    // Con todo lo devengado (18.000.000) no se exoneraba; con lo salarial sí.
+    const r = calcularColilla(entradaBase({ salario: salarioFijo(17_000_000), novedades: [{ id: 'b', concepto: 'BONIFICACION_NO_SALARIAL', valor: 1_000_000 }] }));
+    expect(r.bases.exonerado_114_1).toBe(true);
+    expect(tiene(r, 'ICBF')).toBe(false);
   });
 
   test('salario variable con comisiones', () => {
@@ -107,12 +140,34 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     expect(r.totales.neto).toBe(3_469_095);
     expect(r.comision_ids).toEqual(['c0', 'c1']);
     expect(r.columnas.commissions).toBe(1_500_000);
+    // Provisión de vacaciones sobre el salario ordinario con las comisiones (P22):
+    // (2.000.000 + 1.500.000) × 15 / 360 = 145.833,3 → 145.833.
+    expect(valor(r, 'PROVISION_VACACIONES')).toBe(145_833);
+  });
+
+  test('auxilio de transporte: el tope de 2 SMMLV se mide con sueldo, comisiones y recargo nocturno ordinario (P3)', () => {
+    // Comisiones: 2.000.000 + 1.600.000 = 3.600.000 > 3.501.810 → ese mes no hay auxilio.
+    const a = calcularColilla(entradaBase({ salario: salarioFijo(2_000_000), comisiones: [{ id: 'c', valor: 1_600_000 }] }));
+    expect(tiene(a, 'AUXILIO_TRANSPORTE')).toBe(false);
+    expect(alertas(a)).toContain('auxilio_transporte_supera_tope');
+    // Las horas extra no cuentan: salario 3.400.000 + 20 h extra diurnas sigue con auxilio.
+    const b = calcularColilla(
+      entradaBase({ salario: salarioFijo(3_400_000), horas: [{ fecha: '2026-07-20', categoria: 'extra_diurna', recargo: 0.25, divisor: 210, minutos: 1200 }] })
+    );
+    expect(valor(b, 'AUXILIO_TRANSPORTE')).toBe(249_095);
+    // El recargo nocturno ordinario sí cuenta: 20 h × 3.400.000 / 210 × 35 % = 113.333 → 3.513.333 > tope.
+    const c = calcularColilla(
+      entradaBase({ salario: salarioFijo(3_400_000), horas: [{ fecha: '2026-07-21', categoria: 'ord_nocturna', recargo: 0.35, divisor: 210, minutos: 1200 }] })
+    );
+    expect(valor(c, 'RECARGO_NOCTURNO')).toBe(113_333);
+    expect(tiene(c, 'AUXILIO_TRANSPORTE')).toBe(false);
   });
 
   test('salario integral de 13 SMMLV: IBC del 70 %, sin auxilio, sin prima ni cesantías', () => {
     // Salario 22.761.765. IBC = 70 % = 15.933.235,5 → 15.933.236 (al peso superior).
     // Salud y pensión 4 % = 637.329; FSP: 15.933.236 / 1.750.905 = 9,1 SMMLV → 1 % = 159.332.
-    // No se exonera (integral): salud empleador 8,5 % = 1.354.325; ICBF 477.997; SENA 318.665.
+    // No se exonera (integral): salud empleador 8,5 % = 1.354.325,1. Con P14: 637.329,4 + 1.354.325,1 =
+    // 1.991.654,5 → 1.991.700; el empleador paga 1.991.700 − 637.329 = 1.354.371. ICBF 477.997,1 → 478.000.
     // Retención (procedimiento 1): ingreso neto 22.761.765 − 1.433.990 = 21.327.775; 25 % exento
     // con tope de 790 UVT/12 = 3.447.955; base 17.879.820 = 341,38 UVT →
     // (341,38 − 150) × 28 % + 10 = 63,59 UVT × 52.374 = 3.330.317 → 3.330.000.
@@ -121,8 +176,8 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     expect(r.bases.ibc).toBe(15_933_236);
     expect(valor(r, 'SALUD_EMPLEADO')).toBe(637_329);
     expect(valor(r, 'FONDO_SOLIDARIDAD')).toBe(159_332);
-    expect(valor(r, 'SALUD_EMPLEADOR')).toBe(1_354_325);
-    expect(valor(r, 'ICBF')).toBe(477_997);
+    expect(valor(r, 'SALUD_EMPLEADOR')).toBe(1_354_371);
+    expect(valor(r, 'ICBF')).toBe(478_000);
     expect(tiene(r, 'AUXILIO_TRANSPORTE')).toBe(false);
     expect(tiene(r, 'PROVISION_PRIMA')).toBe(false);
     expect(tiene(r, 'PROVISION_CESANTIAS')).toBe(false);
@@ -217,9 +272,10 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
   test('embargo por alimentos más préstamo: prelación y límites', () => {
     // Salario 3.000.000 + auxilio 249.095. Deducciones de ley: 120.000 + 120.000 = 240.000.
     // Base de embargo = 3.000.000 − 240.000 = 2.760.000. Alimentos 30 % = 828.000.
-    // Préstamo: cuota 1.000.000, tope 30 % de la base = 828.000, y el trabajador conserva el
-    // 50 % de la base (1.380.000): disponible 3.009.095 − 828.000 = 2.181.095 → caben 801.095.
-    // Neto = 3.249.095 − 240.000 − 828.000 − 801.095 = 1.380.000 (exactamente el 50 %).
+    // Préstamo (P21): el 50 % se mide sobre el salario neto de ley sin auxilio (2.760.000 → piso
+    // 1.380.000) y la libranza no se paga con el auxilio: caben 2.760.000 − 828.000 − 1.380.000 = 552.000
+    // (tope del préstamo 30 % = 828.000). Neto = 3.249.095 − 240.000 − 828.000 − 552.000 = 1.629.095:
+    // el 50 % del salario neto más el auxilio completo.
     const r = calcularColilla(
       entradaBase({
         salario: salarioFijo(3_000_000),
@@ -228,8 +284,8 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
       })
     );
     expect(valor(r, 'EMBARGO_ALIMENTOS')).toBe(828_000);
-    expect(valor(r, 'PRESTAMO')).toBe(801_095);
-    expect(r.totales.neto).toBe(1_380_000);
+    expect(valor(r, 'PRESTAMO')).toBe(552_000);
+    expect(r.totales.neto).toBe(1_629_095);
     expect(alertas(r)).toContain('cuota_prestamo_limitada');
     // El préstamo va después del embargo, aunque llegue primero en la lista.
     const orden = r.items.filter((i) => i.tipo === 'deduction').map((i) => i.codigo);
@@ -298,6 +354,40 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     expect(valor(r, 'SALARIO')).toBe(2_083_333);
     expect(valor(r, 'AUXILIO_TRANSPORTE')).toBe(207_579);
     expect(r.bases.ibc).toBe(2_375_151);
+    // ARL (P12) y parafiscales solo sobre lo de los días trabajados: 2.083.333.
+    // ARL 2.083.333 × 0,522 % = 10.875,0 → 10.900; caja 83.333,3 → 83.400.
+    expect(r.bases.ibc_arl).toBe(2_083_333);
+    expect(valor(r, 'ARL')).toBe(10_900);
+    expect(r.bases.base_parafiscales).toBe(2_083_333);
+    expect(valor(r, 'CAJA_COMPENSACION')).toBe(83_400);
+  });
+
+  test('incapacidad: la empresa puede pactar pagar al 100 % los días 1 y 2 (P5)', () => {
+    // Salario 2.500.000: 2 días × 83.333,33 = 166.667 a cargo del empleador; la EPS sigue en 175.091.
+    const r = calcularColilla(
+      entradaBase({
+        salario: salarioFijo(2_500_000),
+        parametros: { ...PARAMETROS_2026, incapacidad_empleador_fraccion: [{ desde: '2026-01-01', hasta: null, valor: 1 }] },
+        ausencias: [
+          {
+            id: 'a1',
+            clase: 'incapacidad_comun',
+            pagada: true,
+            desde: '2026-07-06',
+            hasta: '2026-07-10',
+            tramos: [
+              { desde: '2026-07-06', hasta: '2026-07-07', paga: 'empleador', fraccion: 0.6667, piso: 'smmlv_diario' },
+              { desde: '2026-07-08', hasta: '2026-07-10', paga: 'eps', fraccion: 0.6667, piso: 'smmlv_diario' },
+            ],
+          },
+        ],
+      })
+    );
+    const inc = r.items.filter((i) => i.codigo === 'INCAPACIDAD_COMUN');
+    expect(inc.map((i) => [i.detalle?.paga, i.valor])).toEqual([
+      ['empleador', 166_667],
+      ['eps', 175_091],
+    ]);
   });
 
   test('licencia no remunerada: no se paga, no se cotiza y baja el piso del IBC', () => {
@@ -310,31 +400,80 @@ describe('colilla ordinaria: casos para verificar a mano', () => {
     expect(valor(r, 'SALARIO')).toBe(1_167_270);
     expect(r.bases.ibc).toBe(1_167_270);
     expect(alertas(r)).toContain('licencia_no_remunerada');
+    // Empleador exonerado: no paga salud por los días de licencia (P13). Sin pensión por defecto.
+    expect(r.bases.ibc_licencia).toBe(583_635);
+    expect(valor(r, 'PENSION_EMPLEADO')).toBe(46_691);
+  });
+
+  test('licencia no remunerada sin exoneración: el empleador paga su salud sobre el último IBC (P13)', () => {
+    // 1.750.905 × 10 / 30 = 583.635 × 8,5 % = 49.608,98 → 49.609 por los días de licencia.
+    // Subsistema de salud: 1.167.270 × 12,5 % + 49.608,98 = 195.517,73 → 195.600; el trabajador paga
+    // 46.691 y el empleador 148.909 (99.218 del mes + 49.609 de la licencia + 82 del redondeo).
+    const lic = [{ id: 'l1', clase: 'licencia_no_remunerada', pagada: false, desde: '2026-07-01', hasta: '2026-07-10', tramos: [] }];
+    const r = calcularColilla(entradaBase({ exoneracion_114_1: false, ausencias: lic }));
+    const salud = r.items.find((i) => i.codigo === 'SALUD_EMPLEADOR');
+    expect(salud?.detalle).toMatchObject({ base_licencia: 583_635, licencia: 49_609, total_subsistema: 195_600 });
+    expect(salud?.valor).toBe(148_909);
+    // Sin pacto no se cotiza pensión por la licencia.
+    expect(r.items.find((i) => i.codigo === 'PENSION_EMPLEADOR')?.detalle).not.toHaveProperty('base_licencia');
+    // Con pacto y autorización del trabajador: él aporta su 4 % y el empleador su 12 % sobre el último IBC.
+    const c = calcularColilla(
+      entradaBase({ exoneracion_114_1: false, ausencias: lic, vinculo: { ingreso: '2025-01-01', retiro: null, integral: false, periodo_salario: 'monthly', pension_en_licencia: 'compartida' } })
+    );
+    // 1.167.270 × 4 % + 583.635 × 4 % = 46.690,8 + 23.345,4 = 70.036,2 → 70.036.
+    expect(valor(c, 'PENSION_EMPLEADO')).toBe(70_036);
+    // Pactado sin autorización: el empleador asume el 16 % de la licencia; el trabajador solo lo del mes.
+    const s = calcularColilla(
+      entradaBase({ exoneracion_114_1: false, ausencias: lic, vinculo: { ingreso: '2025-01-01', retiro: null, integral: false, periodo_salario: 'monthly', pension_en_licencia: 'empleador' } })
+    );
+    expect(valor(s, 'PENSION_EMPLEADO')).toBe(46_691);
+    // 1.167.270 × 16 % + 583.635 × 16 % = 280.144,8 → 280.200 − 46.691 = 233.509.
+    expect(valor(s, 'PENSION_EMPLEADOR')).toBe(233_509);
   });
 
   test('horas extra y recargos de la fase 2, con el divisor de cada día (220 hasta el 14-jul, 210 desde el 15)', () => {
     // Valor hora: 1.750.905 / 220 = 7.958,66 y / 210 = 8.337,64.
     // Extra diurna el 10-jul: 2 h × 7.958,66 × 1,25 = 19.896,6 → 19.897.
-    // Extra nocturna el 20-jul: 1 h × 8.337,64 × 1,75 = 14.590,9 → 14.591.
+    // Extra nocturna el 20-jul, que es festivo (P1): 1 h × 8.337,64 × (1 + 0,75 + 0,90) = 22.094,75 → 22.095.
+    // El motor de horas la clasifica como extra dominical nocturna con recargo 1,65 (ver motorHorasHrm).
     // Domingo 5-jul, 8 h ordinarias: solo el recargo, 8 × 7.958,66 × 0,90 = 57.302,4 → 57.302.
     const r = calcularColilla(
       entradaBase({
         horas: [
           { fecha: '2026-07-10', categoria: 'extra_diurna', recargo: 0.25, divisor: 220, minutos: 120 },
-          { fecha: '2026-07-20', categoria: 'extra_nocturna', recargo: 0.75, divisor: 210, minutos: 60 },
+          { fecha: '2026-07-20', categoria: 'extra_dom_nocturna', recargo: 1.65, divisor: 210, minutos: 60 },
           { fecha: '2026-07-05', categoria: 'dom_diurna', recargo: 0.9, divisor: 220, minutos: 480 },
           { fecha: '2026-07-06', categoria: 'ord_diurna', recargo: 0, divisor: 220, minutos: 480 },
         ],
       })
     );
     expect(valor(r, 'HORA_EXTRA_DIURNA')).toBe(19_897);
-    expect(valor(r, 'HORA_EXTRA_NOCTURNA')).toBe(14_591);
+    expect(valor(r, 'HORA_EXTRA_DOMINICAL_NOCTURNA')).toBe(22_095);
     expect(valor(r, 'RECARGO_DOMINICAL')).toBe(57_302);
     // La hora ordinaria diurna va con el salario: no genera ítem.
     expect(valor(r, 'SALARIO')).toBe(1_750_905);
-    // Las extras y recargos son salario: el IBC sube a 1.842.695.
-    expect(r.bases.ibc).toBe(1_842_695);
+    // Las extras y recargos son salario: 1.750.905 + 19.897 + 22.095 + 57.302 = 1.850.199.
+    expect(r.bases.ibc).toBe(1_850_199);
     expect(r.columnas.overtime_day_hours).toBe(2);
+  });
+
+  test('jornada pactada menor que la legal: el divisor de la hora sale de ella (P2)', () => {
+    // 24 h semanales → divisor 120. 2 h extra diurnas el 10-jul: 1.750.905 / 120 × 1,25 × 2 = 36.477,2 → 36.477.
+    const r = calcularColilla(
+      entradaBase({
+        vinculo: { ingreso: '2025-01-01', retiro: null, integral: false, periodo_salario: 'monthly', jornada_semanal: 24 },
+        horas: [{ fecha: '2026-07-10', categoria: 'extra_diurna', recargo: 0.25, divisor: 220, minutos: 120 }],
+      })
+    );
+    expect(valor(r, 'HORA_EXTRA_DIURNA')).toBe(36_477);
+    // Una jornada pactada mayor que la legal no cambia nada (el divisor legal manda).
+    const s = calcularColilla(
+      entradaBase({
+        vinculo: { ingreso: '2025-01-01', retiro: null, integral: false, periodo_salario: 'monthly', jornada_semanal: 48 },
+        horas: [{ fecha: '2026-07-10', categoria: 'extra_diurna', recargo: 0.25, divisor: 220, minutos: 120 }],
+      })
+    );
+    expect(valor(s, 'HORA_EXTRA_DIURNA')).toBe(19_897);
   });
 
   test('salario por horas: la ordinaria se paga completa y aparte su recargo', () => {
@@ -440,6 +579,37 @@ describe('prestaciones', () => {
     expect(valor(r, 'PRIMA_SERVICIOS')).toBe(1_074_548);
   });
 
+  test('prima: si el salario cambió en cualquier momento del semestre, el promedio del semestre (P23)', () => {
+    // Aumento el 1-feb (fuera de los últimos 3 meses): 1.800.000 × 30 + 2.100.000 × 150 = 2.050.000 de promedio.
+    // Prima = (2.050.000 + 249.095) × 180 / 360 = 1.149.547,5 → 1.149.548 (con la regla vieja daba 1.174.548).
+    const r = calcularColilla(
+      entradaBase({
+        periodo: { desde: '2026-01-01', hasta: '2026-06-30', tipo: 'prima' },
+        salario: [
+          { desde: '2026-01-01', hasta: '2026-01-31', valor: 1_800_000 },
+          { desde: '2026-02-01', hasta: '2026-06-30', valor: 2_100_000 },
+        ],
+        acumulado: { desde: '2026-01-01', hasta: '2026-06-30', variables: 0, dias_no_remunerados: 0 },
+      })
+    );
+    expect(valor(r, 'PRIMA_SERVICIOS')).toBe(1_149_548);
+    expect(r.items.find((i) => i.codigo === 'PRIMA_SERVICIOS')?.detalle).toMatchObject({ salario_promediado: true });
+  });
+
+  test('embargo de alimentos sobre la prima solo si el oficio lo ordena (P20)', () => {
+    // Prima del caso 17: 1.174.548. Oficio de alimentos del 30 % que incluye prestaciones: 352.364.
+    const base = {
+      periodo: { desde: '2026-01-01', hasta: '2026-06-30', tipo: 'prima' as const },
+      salario: salarioFijo(2_000_000, '2026-01-01', '2026-06-30'),
+      acumulado: { desde: '2026-01-01', hasta: '2026-06-30', variables: 600_000, dias_no_remunerados: 0 },
+    };
+    const emb = { id: 'e1', tipo: 'alimentos' as const, recibido: '2026-03-01', modo: 'porcentaje' as const, valor: 0.3, saldo: null };
+    const con = calcularColilla(entradaBase({ ...base, embargos: [{ ...emb, incluye_prestaciones: true }] }));
+    expect(valor(con, 'EMBARGO_ALIMENTOS')).toBe(352_364);
+    const sin = calcularColilla(entradaBase({ ...base, embargos: [emb] }));
+    expect(tiene(sin, 'EMBARGO_ALIMENTOS')).toBe(false);
+  });
+
   test('cesantías e intereses de 2026: las cesantías se consignan al fondo y los intereses se pagan', () => {
     // Base 2.000.000 + 249.095 = 2.249.095 × 360/360 = 2.249.095 al fondo.
     // Intereses = 2.249.095 × 12 % = 269.891,4 → 269.891 al trabajador. Exentos (salario < 350 UVT).
@@ -492,6 +662,26 @@ describe('prestaciones', () => {
     expect(valor(r, 'VACACIONES_DISFRUTADAS')).toBe(1_100_000);
     expect(valor(r, 'SALARIO')).toBe(2_000_000);
     expect(valor(r, 'AUXILIO_TRANSPORTE')).toBe(166_063);
+    // ARL solo por los 20 días trabajados (P12): 2.000.000 × 0,522 % = 10.440 → 10.500.
+    expect(r.bases.ibc_arl).toBe(2_000_000);
+    expect(valor(r, 'ARL')).toBe(10_500);
+  });
+
+  test('vacaciones con aumento durante el disfrute: el salario fijo es el del día en que empiezan (P6)', () => {
+    // Vacaciones del 6 al 15 de julio; el salario sube de 3.000.000 a 3.300.000 el 10-jul.
+    // Vacaciones = (3.000.000 + 300.000) / 30 × 10 = 1.100.000. Salario: 5 días × 100.000 + 15 días × 110.000 = 2.150.000.
+    const r = calcularColilla(
+      entradaBase({
+        salario: [
+          { desde: '2026-07-01', hasta: '2026-07-09', valor: 3_000_000 },
+          { desde: '2026-07-10', hasta: '2026-07-31', valor: 3_300_000 },
+        ],
+        promedio_variable_mensual: 300_000,
+        ausencias: [{ id: 'v1', clase: 'vacaciones', pagada: true, desde: '2026-07-06', hasta: '2026-07-15', tramos: [{ desde: '2026-07-06', hasta: '2026-07-15', paga: 'empleador', fraccion: 1 }] }],
+      })
+    );
+    expect(valor(r, 'VACACIONES_DISFRUTADAS')).toBe(1_100_000);
+    expect(valor(r, 'SALARIO')).toBe(2_150_000);
   });
 
   test('vacaciones compensadas por novedad: días × (salario + variable) / 30', () => {
@@ -523,6 +713,17 @@ describe('control: idempotencia, ajustes y catálogo', () => {
     expect(por.SALUD_EMPLEADO).toBe(4_000);
     expect(por.PENSION_EMPLEADO).toBe(4_000);
     expect(por.SALARIO).toBeUndefined();
+    // Neto del ajuste: 100.000 − 8.000 = 92.000.
+    expect(por.BONIFICACION_SALARIAL - por.SALUD_EMPLEADO - por.PENSION_EMPLEADO).toBe(92_000);
+    // El ajuste recalcula también los aportes del empleador y las provisiones (respuesta del caso 20).
+    // Pensión: (1.850.905 × 16 % = 296.144,8 → 296.200) − 74.036 = 222.164; antes 210.164: +12.000.
+    expect(por.PENSION_EMPLEADOR).toBe(12_000);
+    expect(por.PROVISION_CESANTIAS).toBe(8_333);
+    expect(por.PROVISION_PRIMA).toBe(8_333);
+    // La bonificación salarial habitual entra a la provisión de vacaciones (ronda 3): 100.000 × 15 / 360.
+    expect(por.PROVISION_VACACIONES).toBe(4_167);
+    // ARL: el total nuevo redondeado menos lo ya liquidado (9.661,7 → 9.700 − 9.200).
+    expect(por.ARL).toBe(500);
   });
 
   test('el período reporta un vínculo con error como bloqueo sin tumbar a los demás', () => {
@@ -532,22 +733,5 @@ describe('control: idempotencia, ajustes y catálogo', () => {
     expect(p.colillas.map((c) => c.vinculo_id)).toEqual(['a']);
     expect(p.bloqueos[0]).toMatchObject({ codigo: 'salario_sin_vigencia', detalle: { vinculo_id: 'b' } });
     expect(p.totales.neto).toBe(1_859_928);
-  });
-
-  test('el catálogo base del motor es la semilla de la migración', () => {
-    const dir = join(process.cwd(), 'supabase', 'migrations');
-    const archivo = readdirSync(dir).find((f) => f.endsWith('_hrm_f3_01_nomina_modelo.sql'));
-    expect(archivo).toBeDefined();
-    const sql = readFileSync(join(dir, archivo!), 'utf8');
-    for (const [codigo, , tipo, salarial, ss, c40, prest, ret, paraf, deb, cred] of FILAS_CATALOGO_BASE) {
-      const b = (x: boolean) => (x ? 'true' : 'false');
-      const q = (x: string | null) => (x === null ? 'null' : `'${x}'`);
-      const fila = `('${codigo}', `;
-      const i = sql.indexOf(fila);
-      expect({ codigo, encontrado: i >= 0 }).toEqual({ codigo, encontrado: true });
-      const linea = sql.slice(i, sql.indexOf('\n', i));
-      expect(linea).toContain(`'${tipo}', ${b(salarial)}, ${b(ss)}, ${b(c40)}, ${b(prest)}, ${b(ret)}, ${b(paraf)}, ${q(deb)}, ${q(cred)}`);
-    }
-    expect(Object.keys(CATALOGO_BASE)).toHaveLength(FILAS_CATALOGO_BASE.length);
   });
 });

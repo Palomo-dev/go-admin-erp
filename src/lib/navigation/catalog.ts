@@ -574,9 +574,7 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/hrm/novedades', nombre: 'Novedades', icono: NotebookPen, grupo: 'Tiempo' },
       { href: '/app/hrm/ausencias', nombre: 'Ausencias', icono: TreePalm, grupo: 'Tiempo' },
       { href: '/app/hrm/nomina', nombre: 'Nómina', icono: DollarSign, grupo: 'Pagos' },
-      { href: '/app/hrm/compensacion', nombre: 'Compensación', icono: HandCoins, grupo: 'Pagos' },
       { href: '/app/hrm/prestamos', nombre: 'Préstamos', icono: Wallet, grupo: 'Pagos' },
-      { href: '/app/hrm/reglas-pais', nombre: 'Reglas por país', icono: Globe, grupo: 'Pagos' },
     ],
   },
   {

@@ -218,6 +218,10 @@ export function guardarAjustesEmpleado(ctx: ContextoNomina, vinculoId: string, d
       medicina_prepagada: Math.max(0, Number(datos.medicina_prepagada) || 0),
       intereses_vivienda: Math.max(0, Number(datos.intereses_vivienda) || 0),
       aportes_voluntarios: Math.max(0, Number(datos.aportes_voluntarios) || 0),
+      // Pensión en la licencia no remunerada (P13): no, empleador o compartida.
+      pension_en_licencia: datos.pension_en_licencia === 'empleador' || datos.pension_en_licencia === 'compartida' ? datos.pension_en_licencia : 'no',
+      // Jornada parcial con cotización por semanas (Decreto 2616): bloquea la colilla.
+      cotiza_por_semanas: datos.cotiza_por_semanas === true,
       motivo: typeof datos.motivo === 'string' ? datos.motivo.slice(0, 300) : null,
     },
     p_ip: p.ip,
@@ -234,6 +238,9 @@ export function guardarEmbargo(ctx: ContextoNomina, datos: Record<string, unknow
     }
     const v = Number(datos.valor);
     if (!(v > 0) || (datos.modo === 'porcentaje' && v > 1) || !esFechaPlana(datos.recibido)) throw new HrmError(400, 'embargo_invalido');
+    // P20: solo un oficio de alimentos o de cooperativa puede incluir las prestaciones.
+    if (datos.incluye_prestaciones !== undefined && typeof datos.incluye_prestaciones !== 'boolean') throw new HrmError(400, 'embargo_invalido');
+    if (datos.incluye_prestaciones === true && datos.tipo === 'ordinario') throw new HrmError(400, 'embargo_invalido');
   }
   return rpc('fn_hr_nomina_embargo_guardar', {
     p_actor: ctx.userId,

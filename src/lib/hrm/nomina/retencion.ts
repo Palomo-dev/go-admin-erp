@@ -15,9 +15,27 @@
  *
  * No se usa `fn_retencion_art383`: tiene la tabla escrita en el SQL y redondea al
  * peso; aquí la tabla sale de `retencion_art383_tabla` por vigencia y el redondeo
- * de `retencion_redondeo_cop`.
+ * de `retencion_redondeo_tabla` (ET art. 868, respuesta P17 del Contador).
  */
-import { aMultiplo, num, tabla, uvt, type ParametrosNomina } from './base';
+import { aMultiplo, aPeso, num, tabla, uvt, type ParametrosNomina } from './base';
+
+/** Un tramo del redondeo de la retención: hasta `hasta` pesos (incluido), al múltiplo `multiplo`. */
+export interface TramoRedondeoRetencion {
+  hasta: number | null;
+  multiplo: number;
+}
+
+/**
+ * Redondeo de la retención de cada empleado cada mes (ET art. 868, P17): más de
+ * $10.000 al múltiplo de $1.000 más cercano; entre $100 y $10.000 al de $100; hasta
+ * $100, al peso. Los cortes salen de `retencion_redondeo_tabla` por vigencia.
+ */
+export function redondearRetencion(p: ParametrosNomina, fecha: string, valor: number): number {
+  const x = Math.max(0, valor);
+  const tramos = tabla<TramoRedondeoRetencion[]>(p, 'retencion_redondeo_tabla', fecha);
+  const t = tramos.find((r) => r.hasta === null || x <= r.hasta + 1e-9) ?? tramos[tramos.length - 1];
+  return t ? aMultiplo(x, t.multiplo) : aPeso(x);
+}
 
 export interface TramoTabla383 {
   desde_uvt: number;
@@ -119,19 +137,18 @@ export interface ResultadoRetencion {
   retencion_mes: number;
 }
 
-/** Retención del mes (procedimiento 1 o 2), redondeada con `retencion_redondeo_cop`. */
+/** Retención del mes (procedimiento 1 o 2), redondeada según el art. 868 (`redondearRetencion`). */
 export function retencionMensual(p: ParametrosNomina, e: EntradaDepuracion): ResultadoRetencion {
   const d = depurar(p, e);
-  const redondeo = num(p, 'retencion_redondeo_cop', e.fecha);
   if (e.datos.procedimiento === 2) {
     if (e.datos.porcentaje_fijo === null || !Number.isFinite(e.datos.porcentaje_fijo)) {
       throw new Error('porcentaje_fijo_faltante');
     }
-    return { procedimiento: 2, depuracion: d, porcentaje: e.datos.porcentaje_fijo, retencion_mes: aMultiplo(d.base * e.datos.porcentaje_fijo, redondeo) };
+    return { procedimiento: 2, depuracion: d, porcentaje: e.datos.porcentaje_fijo, retencion_mes: redondearRetencion(p, e.fecha, d.base * e.datos.porcentaje_fijo) };
   }
   const t = tabla<TramoTabla383[]>(p, 'retencion_art383_tabla', e.fecha);
   const imp = impuestoUvt(t, d.base_uvt) * d.uvt;
-  return { procedimiento: 1, depuracion: d, porcentaje: null, retencion_mes: aMultiplo(imp, redondeo) };
+  return { procedimiento: 1, depuracion: d, porcentaje: null, retencion_mes: redondearRetencion(p, e.fecha, imp) };
 }
 
 export interface EntradaPorcentajeFijo {

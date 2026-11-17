@@ -104,6 +104,16 @@ describe('motor de horas: turnos que cruzan la medianoche y festivos', () => {
     expect(lineas(r)).toEqual(['2026-07-20 dom_diurna 480 @0.9 /210 (festivo)']);
   });
 
+  test('la hora extra nocturna del festivo suma los dos recargos: 75 % + 90 % (lunes 20-jul-2026, 13:00 → 22:00; caso 13 del Contador)', () => {
+    // Respuesta P1 del Contador (2026-11-16): factor 1 + 0,75 + 0,90 = 2,65.
+    const r = clasificarDia(dia('2026-07-20', bog('2026-07-20', '13:00'), bog('2026-07-20', '22:00')));
+    expect(lineas(r)).toEqual([
+      '2026-07-20 dom_diurna 360 @0.9 /210 (festivo)',
+      '2026-07-20 dom_nocturna 120 @1.25 /210 (festivo)',
+      '2026-07-20 extra_dom_nocturna 60 @1.65 /210 (festivo)',
+    ]);
+  });
+
   test('un día propio de la empresa no genera recargo: no llega como festivo (jueves 31-dic-2026)', () => {
     const r = clasificarDia(dia('2026-12-31', bog('2026-12-31', '06:00'), bog('2026-12-31', '14:00')));
     expect(lineas(r)).toEqual(['2026-12-31 ord_diurna 480 @0 /210']);

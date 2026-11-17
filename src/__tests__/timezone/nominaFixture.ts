@@ -43,12 +43,14 @@ export const PARAMETROS_2026: ParametrosNomina = {
   fsp_tabla: [
     j(
       [
-        { desde_smmlv: 4, hasta_smmlv: 16, tarifa: 0.01 },
-        { desde_smmlv: 16, hasta_smmlv: 17, tarifa: 0.012 },
-        { desde_smmlv: 17, hasta_smmlv: 18, tarifa: 0.014 },
-        { desde_smmlv: 18, hasta_smmlv: 19, tarifa: 0.016 },
-        { desde_smmlv: 19, hasta_smmlv: 20, tarifa: 0.018 },
-        { desde_smmlv: 20, hasta_smmlv: null, tarifa: 0.02 },
+        // Ley 797, art. 8 y Decreto 3771 de 2007, art. 6 (ronda 3 del Contador): 16 hasta 17
+        // inclusive, más de 17 hasta 18… La solidaridad es el 0,5 %; el resto, subsistencia.
+        { desde_smmlv: 4, hasta_smmlv: 16, tarifa: 0.01, solidaridad: 0.005 },
+        { desde_smmlv: 16, hasta_smmlv: 17, tarifa: 0.012, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 17, hasta_smmlv: 18, tarifa: 0.014, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 18, hasta_smmlv: 19, tarifa: 0.016, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 19, hasta_smmlv: 20, tarifa: 0.018, hasta_incluido: true, solidaridad: 0.005 },
+        { desde_smmlv: 20, hasta_smmlv: null, tarifa: 0.02, solidaridad: 0.005 },
       ],
       '2026-01-01',
       '2027-03-31'
@@ -70,6 +72,8 @@ export const PARAMETROS_2026: ParametrosNomina = {
     ]),
   ],
   retencion_redondeo_cop: [t(1000)],
+  // ET art. 868 (respuesta P17 del Contador): hasta $100 al peso, hasta $10.000 a la centena, más de $10.000 al millar.
+  retencion_redondeo_tabla: [j([{ hasta: 100, multiplo: 1 }, { hasta: 10_000, multiplo: 100 }, { hasta: null, multiplo: 1000 }])],
   dep_dependientes_pct: [t(0.1)],
   dep_dependientes_tope_uvt_mes: [t(32)],
   dep_medicina_prepagada_tope_uvt_mes: [t(16)],

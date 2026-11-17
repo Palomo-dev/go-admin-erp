@@ -278,9 +278,7 @@ export const RUTAS_MODULOS: readonly RutasModulo[] = [
       '/app/hrm/novedades',
       '/app/hrm/ausencias',
       '/app/hrm/nomina',
-      '/app/hrm/compensacion',
       '/app/hrm/prestamos',
-      '/app/hrm/reglas-pais',
     ],
   },
   {

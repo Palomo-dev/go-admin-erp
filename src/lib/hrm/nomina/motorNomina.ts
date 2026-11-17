@@ -11,6 +11,7 @@
  * electrónica cuadran sin diferencias de centavos.
  */
 import {
+  aCentenaSuperior,
   aPeso,
   aPesoSuperior,
   dias360,
@@ -100,6 +101,22 @@ export interface EntradaColilla {
     periodo_salario: PeriodoSalario;
     /** Teletrabajo: el auxilio de transporte se paga como auxilio de conectividad. */
     remoto?: boolean;
+    /**
+     * Horas semanales pactadas. Si son menos que la jornada máxima legal, el divisor
+     * de la hora sale de ellas (horas × 5; respuesta P2 del Contador).
+     */
+    jornada_semanal?: number | null;
+    /**
+     * Pensión durante la licencia no remunerada (P13): por defecto no se cotiza.
+     * `empleador`: pactado por escrito, el empleador paga el 16 % completo.
+     * `compartida`: pactado y el trabajador autorizó por escrito su 4 %.
+     */
+    pension_en_licencia?: 'no' | 'empleador' | 'compartida';
+    /**
+     * Jornada parcial con cotización por semanas (Decreto 2616 de 2013). El motor no la
+     * liquida: la colilla queda bloqueada con un aviso claro (ronda 4 del Contador).
+     */
+    cotiza_por_semanas?: boolean;
   };
   salario: TramoSalario[];
   clase_arl: number;
@@ -122,6 +139,14 @@ export interface EntradaColilla {
   acumulado?: Acumulado | null;
   /** Colilla del período anterior, para las alertas de variación. */
   anterior?: { devengado: number; neto: number } | null;
+  /** IBC mensual del último mes cotizado (base de la licencia no remunerada, P13). */
+  ibc_anterior?: number | null;
+  /**
+   * IBC reportado por mes calendario ('YYYY-MM'), de las colillas cerradas de los meses
+   * anteriores. Vacaciones y licencias cotizan con el del mes anterior a su inicio, aunque
+   * sea de dos meses atrás (Decreto 780, art. 3.2.5.1; ronda 4 del Contador).
+   */
+  ibc_meses?: Readonly<Record<string, number>> | null;
 }
 
 export interface Item {
@@ -163,6 +188,10 @@ export interface ResultadoColilla {
     ibc: number;
     ibc_minimo: number;
     ibc_maximo: number;
+    /** IBC de la ARL: solo los días trabajados y lo devengado en ellos (P12). */
+    ibc_arl: number;
+    /** Base de los aportes del empleador por los días de licencia no remunerada (P13). */
+    ibc_licencia: number;
     exceso_40: number;
     base_parafiscales: number;
     base_prestaciones: number;
@@ -197,6 +226,38 @@ const CONCEPTO_AUSENCIA: Record<string, string> = {
   calamidad: 'LICENCIA_REMUNERADA',
   licencia_remunerada: 'LICENCIA_REMUNERADA',
 };
+
+/** Conceptos que pagan días de ausencia: no son base de la ARL (P12) ni cuentan en la regla del 40 % (P7). */
+const CONCEPTOS_DE_AUSENCIA = new Set([...Object.values(CONCEPTO_AUSENCIA)]);
+
+/**
+ * Vacaciones disfrutadas y licencias remuneradas: para salud y pensión se cotizan con
+ * el último IBC reportado antes de empezar, por sus días, no con lo pagado (Decreto
+ * 780 de 2016, art. 3.2.5.1; ronda 3 del Contador, pregunta 4). Lo pagado sigue
+ * siendo base de parafiscales.
+ */
+const CLASES_CON_ULTIMO_IBC = new Set(['vacaciones', 'luto', 'calamidad', 'licencia_remunerada']);
+const CONCEPTOS_CON_ULTIMO_IBC = new Set(['VACACIONES_DISFRUTADAS', 'LICENCIA_REMUNERADA']);
+
+/**
+ * Salario ordinario para las vacaciones y su provisión (CST 192; P6 y P22): sin
+ * horas extra, sin trabajo en días de descanso y sin auxilio; sí las comisiones y
+ * el recargo nocturno de la jornada ordinaria.
+ */
+const CONCEPTOS_SALARIO_ORDINARIO = new Set([
+  'SALARIO',
+  'SALARIO_INTEGRAL',
+  'SALARIO_HORAS',
+  'DESCUENTO_TIEMPO',
+  'LICENCIA_REMUNERADA',
+  'VACACIONES_DISFRUTADAS',
+  'COMISIONES',
+  'RECARGO_NOCTURNO',
+  'RETROACTIVO',
+  // La bonificación salarial habitual también (ronda 3, pregunta 5). La ocasional de mera
+  // liberalidad o la pactada como no salarial va en BONIFICACION_NO_SALARIAL (CST 128).
+  'BONIFICACION_SALARIAL',
+]);
 
 /** Salario mensual equivalente según la periodicidad del vínculo. */
 export function aMensual(valor: number, periodo: PeriodoSalario, divisorHora: number): number {
@@ -244,6 +305,17 @@ class Colilla {
   }
 }
 
+/** Mes calendario anterior a una fecha, como 'YYYY-MM'. */
+function mesAnterior(f: string): string {
+  let a = Number(f.slice(0, 4));
+  let m = Number(f.slice(5, 7)) - 1;
+  if (m === 0) {
+    m = 12;
+    a -= 1;
+  }
+  return `${a}-${String(m).padStart(2, '0')}`;
+}
+
 /** Días del rango en que el vínculo está vigente. */
 function rangoVigente(e: EntradaColilla): { desde: string; hasta: string } | null {
   const desde = maxFecha(e.periodo.desde, e.vinculo.ingreso);
@@ -256,8 +328,15 @@ function salarioEn(e: EntradaColilla, fecha: string): number | null {
   return null;
 }
 
+/** Divisor de la hora: el legal de la fecha, o el de la jornada pactada si es menor (P2). */
+function divisorVinculo(e: EntradaColilla, legal: number): number {
+  const h = Number(e.vinculo.jornada_semanal);
+  if (Number.isFinite(h) && h > 0 && h * 5 < legal) return h * 5;
+  return legal;
+}
+
 function divisorEn(e: EntradaColilla, fecha: string): number {
-  return num(e.parametros, 'divisor_hora_mensual', fecha);
+  return divisorVinculo(e, num(e.parametros, 'divisor_hora_mensual', fecha));
 }
 
 /** Salario mensual equivalente vigente en una fecha. Falla si el historial no cubre la fecha. */
@@ -324,8 +403,18 @@ function devengadosOrdinarios(e: EntradaColilla, col: Colilla, vig: { desde: str
       continue;
     }
     let base = diario;
-    if (aus.a.clase === 'vacaciones') base = diario + (e.promedio_variable_mensual ?? 0) / 30;
-    let valor = base * aus.t.fraccion;
+    let fraccion = aus.t.fraccion;
+    if (aus.a.clase === 'vacaciones') {
+      // El salario fijo de las vacaciones es el del día en que empiezan (P6).
+      const alIniciar = salarioEn(e, aus.a.desde) !== null ? mensualEn(e, aus.a.desde) : mensual;
+      base = (alIniciar + (e.promedio_variable_mensual ?? 0)) / 30;
+    }
+    // Una empresa puede pactar pagar al 100 % los días a su cargo de la incapacidad
+    // común (P5). Esa diferencia no se recobra: los días del empleador no se recobran.
+    if (aus.a.clase === 'incapacidad_comun' && aus.t.paga === 'empleador') {
+      fraccion = Math.max(fraccion, numOpcional(p, 'incapacidad_empleador_fraccion', f) ?? 0);
+    }
+    let valor = base * fraccion;
     if (aus.t.piso === 'smmlv_diario') valor = Math.max(valor, num(p, 'smmlv', f) / 30);
     // Un ítem por ausencia y por quién paga: lo que paga la EPS o la ARL se recobra.
     const k = `${codigo}|${aus.a.id}|${aus.t.paga ?? ''}`;
@@ -349,7 +438,7 @@ function devengadosOrdinarios(e: EntradaColilla, col: Colilla, vig: { desde: str
       col.alerta('integral_con_horas', 'aviso', { categoria: h.categoria });
       continue;
     }
-    const valorHora = porHora ? (salarioEn(e, h.fecha) ?? 0) : mensualEn(e, h.fecha) / h.divisor;
+    const valorHora = porHora ? (salarioEn(e, h.fecha) ?? 0) : mensualEn(e, h.fecha) / divisorVinculo(e, h.divisor);
     const esExtra = h.categoria.startsWith('extra');
     const codigo = CONCEPTO_HORAS[h.categoria];
     let factor = esExtra ? 1 + h.recargo : h.recargo;
@@ -401,14 +490,27 @@ function devengadosOrdinarios(e: EntradaColilla, col: Colilla, vig: { desde: str
     col.agregar(tipo, n.concepto, valor, { cantidad: n.cantidad ?? undefined, fuente: { tipo: 'hr_payroll_novelties', id: n.id } });
   }
 
-  // 6. Auxilio de transporte: hasta 2 SMMLV de salario, por los días efectivamente trabajados.
+  // 6. Auxilio de transporte, por los días efectivamente trabajados. El tope de 2
+  // SMMLV se mide cada mes con lo que paga la jornada ordinaria: sueldo básico,
+  // comisiones y recargo nocturno ordinario; no cuentan las extras, el trabajo en
+  // domingos y festivos ni lo no salarial (P3). Si se pasa, ese mes no hay auxilio.
   let auxilio = 0;
   if (!e.vinculo.integral) {
-    for (const f of diasDe(vig.desde, vig.hasta)) {
-      const w = pesoDia360(f);
-      if (!w || ausenciaDelDia(e, f)) continue;
-      const tope = num(p, 'auxilio_transporte_tope_smmlv', f) * num(p, 'smmlv', f);
-      if (mensualEn(e, f) <= tope) auxilio += (num(p, 'auxilio_transporte', f) / 30) * w;
+    const diasVig = dias360(vig.desde, vig.hasta);
+    const variableOrdinaria = col.suma((_c, i) => i.codigo === 'COMISIONES' || i.codigo === 'RECARGO_NOCTURNO' || (porHora && i.codigo === 'SALARIO_HORAS'));
+    const variableMensual = diasVig > 0 ? (variableOrdinaria / diasVig) * 30 : 0;
+    // Sueldo básico del mes: el de cada día, llevado a 30 días (un aumento a mitad de mes pesa por sus días).
+    const basico = porHora || diasVig === 0 ? 0 : (sumaDiaria(vig.desde, vig.hasta, (f) => mensualEn(e, f) / 30) / diasVig) * 30;
+    const ordinarioMensual = basico + variableMensual;
+    const tope = num(p, 'auxilio_transporte_tope_smmlv', vig.hasta) * num(p, 'smmlv', vig.hasta);
+    if (ordinarioMensual > tope + 0.005) {
+      if (variableOrdinaria > 0) col.alerta('auxilio_transporte_supera_tope', 'aviso', { ordinario_mensual: aPeso(ordinarioMensual), tope: aPeso(tope) });
+    } else {
+      for (const f of diasDe(vig.desde, vig.hasta)) {
+        const w = pesoDia360(f);
+        if (!w || ausenciaDelDia(e, f)) continue;
+        auxilio += (num(p, 'auxilio_transporte', f) / 30) * w;
+      }
     }
   }
   if (auxilio > 0) {
@@ -423,11 +525,30 @@ interface Aportes {
   ibc: number;
   ibcMinimo: number;
   ibcMaximo: number;
+  ibcArl: number;
+  ibcLicencia: number;
   exceso40: number;
   baseParafiscales: number;
   exonerado: boolean;
 }
 
+/** Topes del IBC (1 y 25 SMMLV) proporcionales a los días que cumplen `cuenta`, con el SMMLV de cada día. */
+function topesIbc(p: ParametrosNomina, vig: { desde: string; hasta: string }, cuenta: (f: string) => boolean) {
+  return {
+    minimo: sumaDiaria(vig.desde, vig.hasta, (f) => (cuenta(f) ? num(p, 'smmlv', f) / 30 : 0)),
+    maximo: sumaDiaria(vig.desde, vig.hasta, (f) => (cuenta(f) ? (num(p, 'ibc_tope_smmlv', f) * num(p, 'smmlv', f)) / 30 : 0)),
+  };
+}
+
+/**
+ * Seguridad social y parafiscales del período.
+ *
+ * Redondeo como la PILA (P14): el aporte de cada subsistema por empleado (trabajador
+ * más empleador) se aproxima al múltiplo de $100 superior; al trabajador se le
+ * descuenta su porcentaje exacto al peso y la diferencia la asume el empleador. Así
+ * la 2370 cuadra con la planilla. El fondo de solidaridad se aproxima aparte y su
+ * diferencia va con la pensión del empleador (los dos van al fondo de pensiones).
+ */
 function seguridadSocial(e: EntradaColilla, col: Colilla, vig: { desde: string; hasta: string }): Aportes {
   const p = e.parametros;
   const fin = vig.hasta;
@@ -436,18 +557,58 @@ function seguridadSocial(e: EntradaColilla, col: Colilla, vig: { desde: string; 
   const diasCotizados = sumaDiaria(vig.desde, vig.hasta, (f) => (cotiza(f) ? 1 : 0));
   const factorIntegral = e.vinculo.integral ? num(p, 'salario_integral_factor_ibc', fin) : 1;
 
-  // Base salarial y regla del 40 % (Ley 1393, art. 30).
-  const salarialSS = col.suma((c) => c.base_ss);
+  // Último IBC reportado antes de que empiece una ausencia: el del mes calendario anterior a
+  // su inicio, aunque sea de dos meses atrás. Si el sistema no tiene ese mes (la empresa
+  // empezó a liquidar aquí después), el salario del primer día, con aviso.
+  const sinDato = new Set<string>();
+  const ultimoIbcAntesDe = (inicio: string, primerDia: string) => {
+    const mes = mesAnterior(inicio);
+    const delMes = e.ibc_meses?.[mes];
+    let v: number;
+    if (delMes && delMes > 0) v = delMes;
+    else if (e.ibc_anterior && e.ibc_anterior > 0 && mes === mesAnterior(e.periodo.desde)) v = e.ibc_anterior;
+    else {
+      v = mensualEn(e, primerDia) * factorIntegral;
+      if (!sinDato.has(mes)) {
+        sinDato.add(mes);
+        col.alerta('ibc_mes_anterior_sin_dato', 'aviso', { mes, base_usada: aPeso(v) });
+      }
+    }
+    return Math.max(v, num(p, 'smmlv', primerDia));
+  };
+  /** Base de unos días de ausencia: cada ausencia con el IBC del mes anterior a su inicio. */
+  const ibcDeAusencias = (incluye: (f: string, a: { a: Ausencia }) => boolean) => {
+    const porAusencia = new Map<string, { inicio: string; primerDia: string; dias: number }>();
+    for (const f of diasDe(vig.desde, vig.hasta)) {
+      const w = pesoDia360(f);
+      const a = ausenciaDelDia(e, f);
+      if (!w || !a || !incluye(f, a)) continue;
+      const x = porAusencia.get(a.a.id) ?? { inicio: a.a.desde, primerDia: f, dias: 0 };
+      x.dias += w;
+      porAusencia.set(a.a.id, x);
+    }
+    let total = 0;
+    for (const x of porAusencia.values()) total += (ultimoIbcAntesDe(x.inicio, x.primerDia) * x.dias) / 30;
+    return total;
+  };
+
+  // Vacaciones y licencias remuneradas: sus días con el último IBC, no con lo pagado.
+  const ibcVacaciones = ibcDeAusencias((f, a) => CLASES_CON_ULTIMO_IBC.has(a.a.clase) && cotiza(f));
+
+  // Base salarial y regla del 40 % (Ley 1393, art. 30). La remuneración total del 40 % no
+  // incluye vacaciones, incapacidades ni licencias (P7).
+  const salarialSS = col.suma((c, i) => c.base_ss && !CONCEPTOS_CON_ULTIMO_IBC.has(i.codigo));
   const baseSalarial = salarialSS * factorIntegral;
   const noSalarial40 = col.suma((c) => c.cuenta_40);
-  const total = baseSalarial + noSalarial40;
+  const total = col.suma((c, i) => c.base_ss && !CONCEPTOS_DE_AUSENCIA.has(i.codigo)) * factorIntegral + noSalarial40;
   const tope40 = num(p, 'ibc_no_salarial_tope_pct', fin);
   const exceso40 = Math.max(0, noSalarial40 - tope40 * total);
 
   // Topes del IBC, con el SMMLV de cada día.
-  const ibcMinimo = sumaDiaria(vig.desde, vig.hasta, (f) => (cotiza(f) ? num(p, 'smmlv', f) / 30 : 0));
-  const ibcMaximo = sumaDiaria(vig.desde, vig.hasta, (f) => (cotiza(f) ? (num(p, 'ibc_tope_smmlv', f) * num(p, 'smmlv', f)) / 30 : 0));
-  let ibc = aPesoSuperior(baseSalarial + exceso40);
+  const t = topesIbc(p, vig, cotiza);
+  const ibcMinimo = t.minimo;
+  const ibcMaximo = t.maximo;
+  let ibc = aPesoSuperior(baseSalarial + exceso40 + ibcVacaciones);
   if (diasCotizados > 0) {
     if (ibc < ibcMinimo) {
       col.alerta('ibc_ajustado_al_minimo', 'aviso', { ibc_calculado: ibc });
@@ -457,44 +618,123 @@ function seguridadSocial(e: EntradaColilla, col: Colilla, vig: { desde: string; 
   }
   if (exceso40 > 0) col.alerta('no_salarial_supera_40', 'aviso', { exceso: aPeso(exceso40) });
 
+  // ARL: solo los días trabajados y lo devengado en ellos; no los de vacaciones,
+  // incapacidad ni licencias, remuneradas o no (Decreto 1072, art. 2.2.4.2.1.6; P12).
+  const trabajado = (f: string) => !ausenciaDelDia(e, f);
+  const diasTrabajados = sumaDiaria(vig.desde, vig.hasta, (f) => (trabajado(f) ? 1 : 0));
+  let ibcArl = 0;
+  if (diasTrabajados > 0) {
+    const ta = topesIbc(p, vig, trabajado);
+    ibcArl = aPesoSuperior(col.suma((c, i) => c.base_ss && !CONCEPTOS_DE_AUSENCIA.has(i.codigo)) * factorIntegral + exceso40);
+    if (ibcArl < ta.minimo) ibcArl = aPesoSuperior(ta.minimo);
+    if (ibcArl > ta.maximo) ibcArl = aPeso(ta.maximo);
+  }
+
+  // Licencia no remunerada (P13): el empleador sigue pagando su salud sobre el último
+  // IBC por esos días; la pensión solo si se pactó por escrito.
+  const diasLicencia = sumaDiaria(vig.desde, vig.hasta, (f) => (cotiza(f) ? 0 : 1));
+  const ibcLicencia = diasLicencia > 0 ? aPesoSuperior(ibcDeAusencias((f) => !cotiza(f))) : 0;
+
   const tasa = (codigo: string) => promedioDiario(p, codigo, vig.desde, vig.hasta);
+  const tST = tasa('aporte_salud_trabajador');
+  const tSE = tasa('aporte_salud_empleador');
+  const tPT = tasa('aporte_pension_trabajador');
+  const tPE = tasa('aporte_pension_empleador');
 
-  // Aportes del trabajador.
-  col.agregar('deduction', 'SALUD_EMPLEADO', ibc * tasa('aporte_salud_trabajador'), { base: ibc, tasa: tasa('aporte_salud_trabajador') });
-  col.agregar('deduction', 'PENSION_EMPLEADO', ibc * tasa('aporte_pension_trabajador'), { base: ibc, tasa: tasa('aporte_pension_trabajador') });
-
-  // Fondo de solidaridad: IBC mensual en SMMLV, contra la tabla vigente al corte.
+  // Exoneración del art. 114-1: bandera del empleador y salario del mes < umbral; nunca
+  // al integral. Se mide solo con lo salarial: lo no salarial bien pactado no cuenta (P10).
   const smmlvFin = num(p, 'smmlv', fin);
-  const enSmmlv = diasCotizados > 0 ? (ibc / diasCotizados) * 30 / smmlvFin : 0;
-  const fsp = tabla<Array<{ desde_smmlv: number; hasta_smmlv: number | null; tarifa: number }>>(p, 'fsp_tabla', fin);
-  const fila = fsp.find((r) => enSmmlv >= r.desde_smmlv && (r.hasta_smmlv === null || enSmmlv < r.hasta_smmlv));
-  if (fila) col.agregar('deduction', 'FONDO_SOLIDARIDAD', ibc * fila.tarifa, { base: ibc, tasa: fila.tarifa, detalle: { ibc_en_smmlv: Math.round(enSmmlv * 100) / 100 } });
-
-  // Exoneración del art. 114-1: bandera del empleador y devengado del mes < umbral; nunca al integral.
-  const devengadoTotal = col.devengados().reduce((s, i) => s + i.valor, 0);
-  const devengadoMensual = diasCotizados > 0 ? (devengadoTotal / diasCotizados) * 30 : devengadoTotal;
+  const salarialMes = col.suma((c) => c.salarial);
+  const salarialMensual = diasCotizados > 0 ? (salarialMes / diasCotizados) * 30 : salarialMes;
   if (e.exoneracion_114_1 === null) col.alerta('exoneracion_114_1_sin_configurar', 'aviso');
   const exonerado =
     e.exoneracion_114_1 === true &&
     !e.vinculo.integral &&
-    devengadoMensual < num(p, 'exoneracion_114_1_umbral_smmlv', fin) * smmlvFin;
+    salarialMensual < num(p, 'exoneracion_114_1_umbral_smmlv', fin) * smmlvFin;
 
-  // Aportes del empleador.
-  if (!exonerado) col.agregar('employer_cost', 'SALUD_EMPLEADOR', ibc * tasa('aporte_salud_empleador'), { base: ibc, tasa: tasa('aporte_salud_empleador') });
-  col.agregar('employer_cost', 'PENSION_EMPLEADOR', ibc * tasa('aporte_pension_empleador'), { base: ibc, tasa: tasa('aporte_pension_empleador') });
+  // Salud.
+  const saludTrab = ibc * tST;
+  const saludEmp = exonerado ? 0 : ibc * tSE;
+  const saludEmpLicencia = exonerado ? 0 : ibcLicencia * tSE;
+  const saludTrabItem = col.agregar('deduction', 'SALUD_EMPLEADO', saludTrab, { base: ibc, tasa: tST });
+  const saludTotal = aCentenaSuperior(saludTrab + saludEmp + saludEmpLicencia);
+  col.agregar('employer_cost', 'SALUD_EMPLEADOR', saludTotal - (saludTrabItem?.valor ?? 0), {
+    base: ibc,
+    tasa: exonerado ? 0 : tSE,
+    detalle: {
+      exonerado,
+      total_subsistema: saludTotal,
+      ...(ibcLicencia ? { base_licencia: ibcLicencia, licencia: aPeso(saludEmpLicencia) } : {}),
+    },
+  });
+
+  // Pensión.
+  const opcionLicencia = e.vinculo.pension_en_licencia ?? 'no';
+  const pensTrabLicencia = opcionLicencia === 'compartida' ? ibcLicencia * tPT : 0;
+  const pensEmpLicencia = opcionLicencia === 'empleador' ? ibcLicencia * (tPE + tPT) : opcionLicencia === 'compartida' ? ibcLicencia * tPE : 0;
+  const pensTrab = ibc * tPT + pensTrabLicencia;
+  const pensEmp = ibc * tPE + pensEmpLicencia;
+  const pensTrabItem = col.agregar('deduction', 'PENSION_EMPLEADO', pensTrab, {
+    base: ibc,
+    tasa: tPT,
+    detalle: pensTrabLicencia ? { base_licencia: ibcLicencia, licencia: aPeso(pensTrabLicencia) } : undefined,
+  });
+
+  // Fondo de solidaridad: IBC mensual en SMMLV, contra la tabla vigente al corte.
+  const enSmmlv = diasCotizados > 0 ? (ibc / diasCotizados) * 30 / smmlvFin : 0;
+  // Cada tramo va desde «igual o superior» hasta «menor», salvo que diga lo contrario
+  // (`hasta_incluido`): en la Ley 797 los 17, 18, 19 y 20 SMMLV exactos van al tramo de
+  // abajo (ronda 3, pregunta 6) y en la Ley 2381 el 2,8 % llega a 20 incluidos.
+  const fsp = tabla<Array<{ desde_smmlv: number; hasta_smmlv: number | null; tarifa: number; hasta_incluido?: boolean; solidaridad?: number }>>(p, 'fsp_tabla', fin);
+  const eps = 1e-9;
+  const fila = fsp.find(
+    (r) =>
+      enSmmlv >= r.desde_smmlv - eps &&
+      (r.hasta_smmlv === null || enSmmlv < r.hasta_smmlv - eps || (r.hasta_incluido === true && enSmmlv <= r.hasta_smmlv + eps))
+  );
+  const fspValor = fila ? ibc * fila.tarifa : 0;
+  // Sin el reparto entre los campos 51 y 52 de la PILA el fondo se redondea como un solo valor,
+  // solo de forma provisional: el Contador pide revisarlo contra el anexo técnico publicado
+  // antes de liquidar (ronda 4, para la tabla de la Ley 2381 desde abril de 2027).
+  if (fila && (fila.solidaridad === undefined || fila.solidaridad === null)) {
+    col.alerta('fsp_reparto_pila_pendiente', 'bloqueo', { tarifa: fila.tarifa });
+  }
+  const fspItem = fila
+    ? col.agregar('deduction', 'FONDO_SOLIDARIDAD', fspValor, { base: ibc, tasa: fila.tarifa, detalle: { ibc_en_smmlv: Math.round(enSmmlv * 100) / 100 } })
+    : null;
+  const pensTotal = aCentenaSuperior(pensTrab + pensEmp);
+  // La PILA lleva el fondo en dos campos (51 solidaridad y 52 subsistencia) y redondea cada
+  // uno al múltiplo de $100 superior (ronda 3, pregunta 2). La diferencia la asume el empleador.
+  const fspPila = !fila
+    ? 0
+    : fila.solidaridad !== undefined && fila.solidaridad !== null
+      ? aCentenaSuperior(ibc * fila.solidaridad) + aCentenaSuperior(ibc * (fila.tarifa - fila.solidaridad))
+      : aCentenaSuperior(fspValor);
+  const fspRedondeo = fspItem ? fspPila - fspItem.valor : 0;
+  col.agregar('employer_cost', 'PENSION_EMPLEADOR', pensTotal - (pensTrabItem?.valor ?? 0) + fspRedondeo, {
+    base: ibc,
+    tasa: tPE,
+    detalle: {
+      total_subsistema: pensTotal,
+      ...(fspRedondeo ? { redondeo_fondo_solidaridad: fspRedondeo } : {}),
+      ...(pensEmpLicencia ? { base_licencia: ibcLicencia, licencia: aPeso(pensEmpLicencia), opcion_licencia: opcionLicencia } : {}),
+    },
+  });
+
+  // ARL.
   const clase = ROMANOS[e.clase_arl] ?? 'I';
   const arl = tabla<Record<string, { inicial: number }>>(p, 'arl_tarifas', fin)[clase];
   if (!arl) throw new Error(`arl_clase_invalida: ${e.clase_arl}`);
-  col.agregar('employer_cost', 'ARL', ibc * arl.inicial, { base: ibc, tasa: arl.inicial, detalle: { clase } });
+  col.agregar('employer_cost', 'ARL', aCentenaSuperior(ibcArl * arl.inicial), { base: ibcArl, tasa: arl.inicial, detalle: { clase, dias_trabajados: diasTrabajados } });
 
   // Parafiscales: «nómina de salarios» (sin el tope de 25 SMMLV ni la regla del 40 %).
   const baseParafiscales = aPesoSuperior(col.suma((c) => c.base_parafiscales) * factorIntegral);
-  col.agregar('employer_cost', 'CAJA_COMPENSACION', baseParafiscales * tasa('aporte_ccf'), { base: baseParafiscales, tasa: tasa('aporte_ccf') });
+  col.agregar('employer_cost', 'CAJA_COMPENSACION', aCentenaSuperior(baseParafiscales * tasa('aporte_ccf')), { base: baseParafiscales, tasa: tasa('aporte_ccf') });
   if (!exonerado) {
-    col.agregar('employer_cost', 'ICBF', baseParafiscales * tasa('aporte_icbf'), { base: baseParafiscales, tasa: tasa('aporte_icbf') });
-    col.agregar('employer_cost', 'SENA', baseParafiscales * tasa('aporte_sena'), { base: baseParafiscales, tasa: tasa('aporte_sena') });
+    col.agregar('employer_cost', 'ICBF', aCentenaSuperior(baseParafiscales * tasa('aporte_icbf')), { base: baseParafiscales, tasa: tasa('aporte_icbf') });
+    col.agregar('employer_cost', 'SENA', aCentenaSuperior(baseParafiscales * tasa('aporte_sena')), { base: baseParafiscales, tasa: tasa('aporte_sena') });
   }
-  return { ibc, ibcMinimo: aPeso(ibcMinimo), ibcMaximo: aPeso(ibcMaximo), exceso40: aPeso(exceso40), baseParafiscales, exonerado };
+  return { ibc, ibcMinimo: aPeso(ibcMinimo), ibcMaximo: aPeso(ibcMaximo), ibcArl, ibcLicencia, exceso40: aPeso(exceso40), baseParafiscales, exonerado };
 }
 
 function provisiones(e: EntradaColilla, col: Colilla): number {
@@ -502,7 +742,7 @@ function provisiones(e: EntradaColilla, col: Colilla): number {
   const fin = e.periodo.hasta;
   const basePrest = col.suma((c) => c.prestacional);
   // Vacaciones: salario ordinario, sin auxilio de transporte ni extras (CST 192).
-  const baseVac = col.suma((_c, i) => ['SALARIO', 'SALARIO_INTEGRAL', 'SALARIO_HORAS', 'DESCUENTO_TIEMPO', 'LICENCIA_REMUNERADA'].includes(i.codigo) || i.codigo === 'VACACIONES_DISFRUTADAS');
+  const baseVac = col.suma((_c, i) => CONCEPTOS_SALARIO_ORDINARIO.has(i.codigo));
   const diasVac = num(p, 'vacaciones_dias_habiles_anio', fin);
   if (!e.vinculo.integral) {
     const ces = basePrest / 12;
@@ -552,23 +792,36 @@ function retencion(e: EntradaColilla, col: Colilla, extraExento = 0): ResultadoR
 // ---------------------------------------------------------------------------
 
 /**
- * Base mensual de prima o cesantías: salario (el último, o el promedio del rango
- * si cambió en los últimos 3 meses, CST 253) + promedio de lo variable + auxilio
+ * Base mensual de prima o cesantías: salario + promedio de lo variable + auxilio
  * de transporte si al corte tiene derecho.
+ *
+ * El salario es el último o el promedio del rango (respuesta P23 del Contador):
+ * - Cesantías (CST 253): el promedio si el salario cambió en los últimos 3 meses o
+ *   si hay pagos variables; si no, el último.
+ * - Prima (CST 306): la regla de los 3 meses no aplica. Si lo devengado cambió en
+ *   cualquier momento del semestre, el promedio del semestre; si no, el salario.
+ *   Los pagos variables ya entran por su promedio.
  */
-export function basePrestacional(e: EntradaColilla, desde: string, hasta: string, variables: number, dias: number): { salario: number; variable: number; auxilio: number; total: number; promedio: boolean } {
+export function basePrestacional(
+  e: EntradaColilla,
+  desde: string,
+  hasta: string,
+  variables: number,
+  dias: number,
+  tipo: 'prima' | 'cesantias' = 'cesantias'
+): { salario: number; variable: number; auxilio: number; total: number; promedio: boolean } {
   const p = e.parametros;
   const ultimo = mensualEn(e, hasta);
-  // Los últimos 3 meses calendario, incluido el del corte.
+  // Prima: todo el rango. Cesantías: los últimos 3 meses calendario, incluido el del corte.
   let anio = Number(hasta.slice(0, 4));
   let mes = Number(hasta.slice(5, 7)) - 2;
   if (mes <= 0) {
     mes += 12;
     anio -= 1;
   }
-  const tresMeses = maxFecha(desde, `${anio}-${String(mes).padStart(2, '0')}-01`);
-  let cambio = false;
-  for (const f of diasDe(tresMeses, hasta)) {
+  const tresMeses = tipo === 'prima' ? desde : maxFecha(desde, `${anio}-${String(mes).padStart(2, '0')}-01`);
+  let cambio = tipo === 'cesantias' && variables > 0;
+  for (const f of cambio ? [] : diasDe(tresMeses, hasta)) {
     if (salarioEn(e, f) !== null && Math.abs(mensualEn(e, f) - ultimo) > 0.005) {
       cambio = true;
       break;
@@ -598,7 +851,7 @@ function liquidarPrestacion(e: EntradaColilla, col: Colilla): number {
   const hasta = e.vinculo.retiro ? minFecha(acc.hasta, e.vinculo.retiro) : acc.hasta;
   const dias = Math.max(0, dias360(desde, hasta) - acc.dias_no_remunerados);
   if (dias === 0) return 0;
-  const base = basePrestacional(e, desde, hasta, acc.variables, dias);
+  const base = basePrestacional(e, desde, hasta, acc.variables, dias, e.periodo.tipo === 'prima' ? 'prima' : 'cesantias');
   const detalle = { desde, hasta, dias, salario: aPeso(base.salario), variable: aPeso(base.variable), auxilio: aPeso(base.auxilio), salario_promediado: base.promedio };
   if (e.periodo.tipo === 'prima') {
     col.agregar('earning', 'PRIMA_SERVICIOS', (base.total * dias) / 360, { cantidad: dias, base: aPeso(base.total), detalle });
@@ -622,10 +875,14 @@ export function calcularColilla(e: EntradaColilla): ResultadoColilla {
   const p = e.parametros;
   const fin = e.periodo.hasta;
   const vig = rangoVigente(e);
-  let aportes: Aportes = { ibc: 0, ibcMinimo: 0, ibcMaximo: 0, exceso40: 0, baseParafiscales: 0, exonerado: false };
+  let aportes: Aportes = { ibc: 0, ibcMinimo: 0, ibcMaximo: 0, ibcArl: 0, ibcLicencia: 0, exceso40: 0, baseParafiscales: 0, exonerado: false };
   let basePrest = 0;
   let ret: ResultadoRetencion | null = null;
 
+  if (vig && e.vinculo.cotiza_por_semanas) {
+    // Decreto 2616 de 2013: la colilla sale para revisar, pero no se puede cerrar.
+    col.alerta('cotizacion_por_semanas_no_soportada', 'bloqueo');
+  }
   if (!vig) {
     col.alerta('vinculo_fuera_del_periodo', 'aviso');
   } else if (e.periodo.tipo === 'ordinaria') {
@@ -652,6 +909,8 @@ export function calcularColilla(e: EntradaColilla): ResultadoColilla {
     const d = aplicarDeducciones({
       devengado,
       salarial,
+      // Prima e intereses de cesantías pagados al trabajador (un oficio puede incluirlos, P20).
+      prestaciones: col.suma((_c, i) => i.codigo === 'PRIMA_SERVICIOS' || i.codigo === 'INTERESES_CESANTIAS'),
       deducciones_ley: ley,
       smmlv_periodo: smmlvPeriodo,
       fraccion_alimentos: num(p, 'embargo_alimentos_max', fin),
@@ -751,6 +1010,8 @@ export function calcularColilla(e: EntradaColilla): ResultadoColilla {
       ibc: aportes.ibc,
       ibc_minimo: aportes.ibcMinimo,
       ibc_maximo: aportes.ibcMaximo,
+      ibc_arl: aportes.ibcArl,
+      ibc_licencia: aportes.ibcLicencia,
       exceso_40: aportes.exceso40,
       base_parafiscales: aportes.baseParafiscales,
       base_prestaciones: aPeso(basePrest),

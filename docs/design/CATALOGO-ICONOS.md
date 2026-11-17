@@ -579,3 +579,20 @@ Lo que ya existía se conserva: `ScanLine` en `TurnoCard` y en el botón de marc
 
 - `src/lib/navigation/catalog.ts`: Turnos `CalendarRange`, Marcación `AlarmClockCheck`, Asistencia `CalendarCheck`, Novedades `NotebookPen` (nueva), Ausencias `TreePalm` y Mi equipo `LayoutDashboard` (nueva, solo para quien tiene personas a cargo: capacidad `jefeDeEquipo`).
 - Cabeceras: `TurnosPage` (`CalendarRange`), `MiEquipoPage` (`LayoutDashboard`) y `MiAsistencia` (`AlarmClockCheck`).
+
+## Adenda 2026-11-16 — Recursos humanos, marcación con dispositivos (Figma 20.26 a 20.32)
+
+Se añade al final, sin reescribir lo anterior. Propuesta pendiente de aprobación del dueño (`docs/hrm/PLAN-MARCACION-DISPOSITIVOS.md`). Ocho iconos importados de lucide a `02 Componentes › Fundamentos › Iconos` (fila y = 1096, misma construcción: 24, trazo 1,5, cabos redondeados, trazo enlazado a `text/secondary`). La rejilla pasa a 187 iconos.
+
+| Concepto | Icono | Dónde |
+|---|---|---|
+| Huella (método y terminal de huella) | `Fingerprint` (nuevo) | columna «Método/Cómo», tarjeta del método, tipo de dispositivo |
+| Rostro (método y terminal facial) | `ScanFace` (nuevo) | ídem |
+| NFC (etiqueta de la sede y carné) | `Nfc` (nuevo) | ídem, pantalla «Acerca el celular» |
+| PIN del kiosco | `KeyRound` (nuevo) | método, kiosco |
+| Dispositivo de marcación (genérico) | `MonitorSmartphone` (nuevo) | menús «Ver dispositivo», vacío de Dispositivos, «Ver dónde marcar» |
+| Kiosco en tablet | `TabletSmartphone` (nuevo) | «Abrir kiosco», tipo de dispositivo, vincular tablet |
+| Marca manual | `PenLine` (nuevo) | método «Manual» |
+| Autorización biométrica | `FilePenLine` (nuevo) | pantalla de autorización, «Ver autorizaciones» |
+
+Se reutilizan: `AlarmClockCheck` (Marcación, cabecera de las tres vistas), `LocateFixed` (celular con ubicación), `ScanQrCode` (QR de la sede), `Laptop` (remoto), `CalendarCheck` (hoja de tiempo). `Tablet` no se usa para el kiosco porque ya es «vista tablet» del editor web.

@@ -116,6 +116,8 @@ export const FILAS_CATALOGO_BASE: readonly Fila[] = [
   // Cuenta por cobrar de lo que paga la EPS, la ARL o el fondo (no es gasto; CTCP 411 de 2015). El motor no lo emite:
   // la contabilización lo usa para los ítems con `detalle.paga` = eps, arl o fondo_pensiones.
   ['INCAPACIDAD_POR_COBRAR', 'Incapacidad o licencia por cobrar a la EPS, la ARL o el fondo', 'informativo', N, N, N, N, N, N, '138095', null, null],
+  // Sobrante de provisiones de un año ya cerrado en el ajuste anual (Contador, ronda 4): recuperaciones, no gasto.
+  ['RECUPERACION_PROVISIONES', 'Recuperación de provisiones de nómina de un año cerrado', 'informativo', N, N, N, N, N, N, null, '425050', null],
 ];
 
 export function catalogoDesdeFilas(filas: readonly Fila[]): Catalogo {

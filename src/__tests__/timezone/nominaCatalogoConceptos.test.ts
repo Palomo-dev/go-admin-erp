@@ -85,6 +85,7 @@ describe('cuentas del Contador (C1)', () => {
     ['AUXILIO_NO_SALARIAL', '510545', null],
     ['INCAPACIDAD_COMUN', '510524', null],
     ['INCAPACIDAD_POR_COBRAR', '138095', null],
+    ['RECUPERACION_PROVISIONES', null, '425050'],
     ['SALUD_EMPLEADO', null, '237005'],
     ['PENSION_EMPLEADO', null, '238030'],
     ['FONDO_SOLIDARIDAD', null, '238030'],
@@ -210,13 +211,29 @@ describe('contabilización de la nómina (migración vigente)', () => {
   test('ronda 3 (C5): ajuste anual de provisiones y bloqueo del año siguiente', () => {
     const ajuste = cuerpoFuncion('fn_hr_nomina_ajuste_anual_provisiones');
     expect(ajuste).toContain("'falta_periodo_cesantias");
-    expect(ajuste).toContain("'falta_valor_vacaciones");
+    expect(ajuste).toContain("'falta_soporte_vacaciones");
     expect(ajuste).toContain("time '23:00'");
     expect(cuerpoFuncion('fn_hr_nomina_exigir_ajuste_anual')).toContain("'ajuste_anual_pendiente");
   });
 
+  test('ronda 4: sobrante de un año cerrado a recuperaciones; criterio por el período contable del 31-dic', () => {
+    const ajuste = cuerpoFuncion('fn_hr_nomina_ajuste_anual_provisiones');
+    expect(ajuste).toContain('v_cerrado := not public.fn_is_period_open(p_org, v_corte);');
+    expect(ajuste).toContain("v_conceptos->'RECUPERACION_PROVISIONES'->>'cuenta_credito'");
+    expect(ajuste).toContain('v_contra := case when v_dif < 0 and v_cerrado then v_recupera else v_gasto end;');
+    // El saldo se mide hasta el fin del 31-dic, no hasta la fecha del asiento.
+    expect(ajuste).toContain('je.entry_date < v_tope');
+  });
+
+  test('ronda 4: el ajuste de vacaciones exige y guarda el soporte (valor, días y salario)', () => {
+    const ajuste = cuerpoFuncion('fn_hr_nomina_ajuste_anual_provisiones');
+    expect(ajuste).toContain("'falta_soporte_vacaciones");
+    expect(ajuste).toContain("'soporte_vacaciones_inconsistente");
+    expect(ajuste).toMatch(/insert into public\.hr_payroll_year_adjustments \([^)]*soporte_vacaciones, criterio, fecha_asiento\)/);
+  });
+
   test('las migraciones de cuentas no usan CURRENT_DATE ni cablean la zona horaria', () => {
-    for (const f of migraciones().filter((x) => /_hrm_f3_0\d_nomina_(cuentas_contador|embargo_fusion|preparar_plan_areas|ronda3_cuentas)\.sql$/.test(x))) {
+    for (const f of migraciones().filter((x) => /_hrm_f3_\d\d_nomina_(cuentas_contador|embargo_fusion|preparar_plan_areas|ronda3_cuentas|ajuste_anual_recuperacion)\.sql$/.test(x))) {
       const sql = readFileSync(join(DIR, f), 'utf8');
       expect({ f, current_date: /current_date|now\(\)::date/i.test(sql), bogota: sql.includes('America/Bogota') }).toEqual({
         f,

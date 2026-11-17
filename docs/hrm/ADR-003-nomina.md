@@ -168,9 +168,20 @@ Migraciones `20261116223758_hrm_f3_05_nomina_cuentas_contador`, `20261116223844_
   año liquidado (cesantías pasadas al fondo, intereses y prima de diciembre pagados, y el faltante ya llevado al gasto
   por C5), el valor real de 2510, 2515 y 2520 del empleado es 0: lo que quede con su NIT es provisión de más y vuelve
   al gasto del mismo año. 2525 se ajusta al valor de las vacaciones pendientes que manda quien llama
-  (`{vinculo_id: valor}`, obligatorio para todo vínculo activo o con saldo); ese valor lo debe calcular el motor (días
+  (obligatorio para todo vínculo activo o con saldo; formato y soporte en la ronda 4, abajo); ese valor lo debe calcular el motor (días
   pendientes × base de P6/P22). **Bloqueo:** `trg_hr_nomina_exigir_ajuste_anual` impide cerrar cualquier período que
   termine en el año siguiente de una empresa encendida que tuvo nómina cerrada ese año, si no hay ajuste.
+- **C5 · Ajuste anual, ronda 4** (`20261116235754_hrm_f3_11_nomina_ajuste_anual_recuperacion`). **Criterio del año
+  cerrado:** decide el período contable del 31-dic (`fn_is_period_open(org, 31-dic)`), no el día en que se corre el
+  ajuste. Abierto: el asiento va al 31-dic a las 23:00 y el sobrante vuelve al gasto de ese año (hecho posterior que
+  ajusta las cifras del año, NIIF para las Pymes, Sección 32). Cerrado (diciembre o el año): el asiento va fechado el
+  día en que se corre, con su período abierto, y el sobrante va a 425050 «Reintegro de otros costos y gastos»
+  (concepto `RECUPERACION_PROVISIONES`, sobrescribible, resuelto con `fn_hr_nomina_cuenta`, en la vista previa y
+  creado al encender); el faltante va al gasto del año en curso. El saldo se mide siempre hasta el fin del 31-dic.
+  `hr_payroll_year_adjustments` guarda `criterio` y `fecha_asiento`. **Soporte de vacaciones:** cada vínculo trae
+  `{valor, dias_pendientes, salario_base}` (salario base mensual usado); falta uno → `falta_soporte_vacaciones`;
+  `valor` distinto de días × salario ÷ 30 en más de un peso → `soporte_vacaciones_inconsistente`. Queda por vínculo en
+  `hr_payroll_year_adjustments.soporte_vacaciones` con el saldo de la provisión y el ajuste.
 - **Pendiente:** el cálculo del valor de las vacaciones pendientes al 31-dic en el motor y su paso a la RPC del
   ajuste; la liquidación de contrato (un retiro sin liquidar dejaría su saldo en el ajuste); pérdida de la incapacidad
   que la EPS no reconoce (138095 → gasto, manual); carga de los NIT; pantallas de la vista previa del encendido y del

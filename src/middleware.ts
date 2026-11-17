@@ -189,6 +189,7 @@ function shouldSkipRoute(pathname: string): boolean {
     '/api/crm/webhooks/', // <-- F4: webhook de ElevenLabs Scribe (firma ElevenLabs-Signature fail-closed via constructEvent)
     '/u/', // <-- F7: página pública de baja de correo (token HMAC firmado)
     '/api/pos/display/', // <-- Pantalla remota del POS (PLAN pos-doble-pantalla §7): fail-closed por token Bearer (displayAuth) o, en /revoke, por getServerOrgContext → 401 JSON, no redirect
+    '/api/hrm/kiosco/', // <-- Kiosco de Marcación y lector de carnés (plan de Marcación M1, §4.3): sin sesión; cada handler exige la clave del equipo (autenticarKiosco: Bearer, SHA-256, 401 uniforme, límite por IP) o, en /vinculo, es el canje de un código de un solo uso con límite por IP. La organización sale del equipo registrado, nunca de la petición
     '/api/web-orders/', // <-- Tienda web → ERP: cada handler exige x-webhook-secret (verifyWebOrdersSecret, fail-closed)
     // GO-sec (2026-09-28): revisados uno por uno. Meta (Facebook/Instagram por
     // canal): GET exige el verify_token del canal o META_WEBHOOK_VERIFY_TOKEN
@@ -1051,6 +1052,11 @@ async function handleRouteProtection(
     pathname === '/terminos' ||
     pathname === '/privacy' ||
     pathname === '/pos-display' ||
+    // /marcacion/kiosco: la tablet de Marcación o el lector de carnés de GO Admin
+    // Escritorio (plan de Marcación M1). No usa sesión de usuario: se autentica con
+    // la clave del equipo contra /api/hrm/kiosco/** y no muestra datos de nadie
+    // hasta que alguien marca. Un login frente a los empleados no tiene sentido.
+    pathname === '/marcacion/kiosco' ||
     pathname.startsWith('/pos-display/') ||
     pathname.includes('/_next/') ||
     pathname.includes('/auth/v1/') // API de Supabase
@@ -1216,6 +1222,6 @@ export const config = {
      * está también en shouldSkipRoute con el motivo por el que es fail-closed.
      * Solo se añade aquí lo que verifica firma o CRON_SECRET por sí mismo.
      */
-    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/web-orders|api/desktop/agent-session|api/webhooks/facebook/|api/webhooks/instagram/|api/integrations/qr/expire-sessions|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook).*)',
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|icon.svg|icon-192x192.png|icon-512x512.png|icon-maskable-192x192.png|icon-maskable-512x512.png|badge-96x96.png|placeholder-image.png|placeholder.svg|manifest.json|sw.js|api/stripe|api/integrations/twilio|api/integrations/whatsapp/webhook|api/integrations/whatsapp/qr/dispatch-pending|api/voice|api/super-admin-access|api/factus|api/facebook-feed|api/cron|api/crm/jobs/run|api/email/webhook|api/crm/webhooks|u/|api/pos/display/|api/hrm/kiosco/|api/web-orders|api/desktop/agent-session|api/webhooks/facebook/|api/webhooks/instagram/|api/integrations/qr/expire-sessions|api/auth|api/integrations/bancolombia/webhook|api/integrations/bold/webhook|api/integrations/breb/webhook|api/integrations/wompi/webhook|api/integrations/redeban/webhook|api/integrations/sendgrid/webhook|api/integrations/mercadopago/webhook|api/integrations/payu/webhook|api/integrations/paypal/webhook|api/integrations/stripe/webhook|api/integrations/meta/webhook|api/integrations/tiktok/webhook|api/crm/contracts/webhook).*)',
   ],
 };

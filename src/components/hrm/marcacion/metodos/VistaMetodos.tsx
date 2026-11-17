@@ -3,8 +3,8 @@
 /**
  * Marcación › «Métodos por sede» (Figma 20.27.1–20.27.9). Qué métodos ofrece
  * la sede y con qué reglas: celular con ubicación, QR rotativo y etiqueta NFC
- * funcionan en M0; PIN, carné, rostro y huella se ven pero llegan con el kiosco
- * (M1) y los relojes (M2). Los cambios se guardan juntos desde la barra fija
+ * funcionan en M0; desde M1, el kiosco con PIN, los carnés y la foto de evidencia
+ * (días y letrero) también; rostro y huella se ven pero llegan con los relojes (M2). Los cambios se guardan juntos desde la barra fija
  * «Cambios sin guardar» (20.27.2) por `PUT /api/hrm/marcacion/metodos`.
  *
  * La pestaña contenedora pasa la sede del header (`null` = la principal); si la
@@ -36,6 +36,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { RADIO_MAX, RADIO_MIN } from '@/lib/hrm/marcacion/metodos';
+import { FOTO_DIAS_MAX, FOTO_DIAS_MIN } from '@/lib/hrm/kiosco/foto';
+import { cambiosKiosco, cuerpoKiosco, formularioKioscoDesde, type FormKiosco } from '@/lib/hrm/kiosco/metodosKiosco';
+import { DialogoCredenciales } from '../../kiosco/DialogoCredenciales';
 import { ErrorEstructura, pedir, useCarga } from '../../estructura/comun';
 import { conSede } from '../../asistencia/comunAsistencia';
 import { DialogoExcepcion } from './DialogoExcepcion';
@@ -91,6 +94,7 @@ function InsigniaLlega({ children }: { children: string }) {
 
 export function VistaMetodos({ sede }: { sede: number | null }) {
   const t = useTranslations('hrmMarcacionMetodos');
+  const tk = useTranslations('hrmKiosco.metodos');
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const sp = useSearchParams();
@@ -110,18 +114,25 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
   const [guardando, setGuardando] = useState(false);
   const [sedePendiente, setSedePendiente] = useState<number | null>(null);
   const [nuevaExcepcion, setNuevaExcepcion] = useState(false);
+  const [baseK, setBaseK] = useState<FormKiosco | null>(null);
+  const [formK, setFormK] = useState<FormKiosco | null>(null);
+  const [credencialesAbierto, setCredencialesAbierto] = useState(false);
 
   useEffect(() => {
     if (!datos) return;
     const f = formularioDesde(datos.metodos);
     setBase(f);
     setForm(f);
+    const k = formularioKioscoDesde(datos.metodos, datos.foto);
+    setBaseK(k);
+    setFormK(k);
   }, [datos]);
 
   const gestionar = datos?.puede_gestionar === true;
-  const cambios = base && form ? cambiosFormulario(base, form) : 0;
+  const cambios = (base && form ? cambiosFormulario(base, form) : 0) + (baseK && formK ? cambiosKiosco(baseK, formK) : 0);
   const validacion = form ? cuerpoGuardar(form) : null;
-  const errorValidacion = validacion && !validacion.ok ? validacion.error : null;
+  const validacionK = formK ? cuerpoKiosco(formK) : null;
+  const errorValidacion = validacion && !validacion.ok ? validacion.error : validacionK && !validacionK.ok ? validacionK.error : null;
 
   const excepciones = useMemo(
     () => (cargaExcepciones.estado === 'listo' && datos ? excepcionesDeSede(cargaExcepciones.datos, datos.sede.id) : []),
@@ -132,24 +143,39 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
     setForm((f) => (f ? { ...f, [clave]: { ...f[clave], ...valor } } : f));
   }, []);
 
-  const descartar = useCallback(() => setForm(base), [base]);
+  const cambiarK = useCallback(<K extends keyof FormKiosco>(clave: K, valor: Partial<FormKiosco[K]>) => {
+    setFormK((f) => (f ? { ...f, [clave]: { ...f[clave], ...valor } } : f));
+  }, []);
+
+  const descartar = useCallback(() => {
+    setForm(base);
+    setFormK(baseK);
+  }, [base, baseK]);
 
   const guardar = useCallback(async () => {
-    if (!form || !datos || guardando) return;
+    if (!form || !formK || !datos || guardando) return;
     const r = cuerpoGuardar(form);
     if (!r.ok) {
       toast.error(t(`errores.guardar.${claveErrorGuardar(r.error)}`, { min: RADIO_MIN, max: RADIO_MAX }));
+      return;
+    }
+    const rk = cuerpoKiosco(formK);
+    if (!rk.ok) {
+      toast.error(tk('errores.fotoDias', { min: FOTO_DIAS_MIN, max: FOTO_DIAS_MAX }));
       return;
     }
     setGuardando(true);
     try {
       const metodos = await pedir<Partial<Record<string, MetodoApi>>>(`${URL_METODOS}?sede=${datos.sede.id}`, {
         metodo: 'PUT',
-        cuerpo: { metodos: r.metodos },
+        cuerpo: { metodos: { ...r.metodos, ...rk.metodos } },
       });
       const f = formularioDesde(metodos);
       setBase(f);
       setForm(f);
+      const k = formularioKioscoDesde(metodos, { dias: rk.metodos.foto.dias, letrero_puesto: rk.metodos.foto.letrero_puesto });
+      setBaseK(k);
+      setFormK(k);
       toast.success(t('guardados'), { description: datos.sede.nombre });
     } catch (err) {
       const c = claveErrorGuardar(err instanceof ErrorEstructura ? err.codigo : 'error_hrm');
@@ -157,7 +183,7 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
     } finally {
       setGuardando(false);
     }
-  }, [form, datos, guardando, t]);
+  }, [form, formK, datos, guardando, t, tk]);
 
   const elegirSede = (id: number) => {
     if (cambios > 0) setSedePendiente(id);
@@ -167,7 +193,7 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
   const irAgregar = (tipo: 'pantalla_qr' | 'etiqueta_nfc') => router.push(urlAgregarDispositivo(pathname, consulta, tipo));
 
   // ── Estados de carga (Figma 20.27.4–20.27.9) ───────────────────────────────
-  if (carga.estado === 'cargando' || (datos && !form)) {
+  if (carga.estado === 'cargando' || (datos && (!form || !formK))) {
     return (
       <div className="flex flex-col gap-4" aria-busy="true" aria-label={t('cargando')}>
         <Skeleton className="h-5 w-full max-w-xl" />
@@ -189,14 +215,15 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
       />
     );
   }
-  if (!datos || !form || !base) {
+  if (!datos || !form || !base || !formK) {
     return <EmptyState variante="error" titulo={t('error.titulo')} descripcion={t('error.descripcion')} onReintentar={() => void recargar()} />;
   }
 
-  const contador = contadorMetodos(form, datos.personas_remoto);
+  const contadorM0 = contadorMetodos(form, datos.personas_remoto);
+  const contador = { ...contadorM0, activos: contadorM0.activos + (formK.pin.activo ? 1 : 0) };
   const rutaQr = rutaPantallaQr(datos.pantallas);
   const nEtiquetas = datos.etiquetas.length;
-  const llegaKiosco = t('llegaKiosco');
+  const llegaKiosco = tk('proximamente');
   const llegaRelojes = t('llegaRelojes');
 
   return (
@@ -285,7 +312,7 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
           {!datos.sede.con_ubicacion && (
             <AvisoTonal compacto tono="advertencia" titulo={t('tarjetas.celular.sinUbicacion')} descripcion={t('tarjetas.celular.sinUbicacionDetalle')} />
           )}
-          <Casilla etiqueta={t('tarjetas.celular.foto', { cuando: llegaKiosco })} checked={false} disabled />
+          <Casilla etiqueta={tk('fotoCelular')} checked={false} disabled />
           <Casilla
             etiqueta={t('tarjetas.celular.computador')}
             checked={form.celular.computador}
@@ -379,7 +406,9 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
             etiqueta={t('tarjetas.nfc.etiquetas')}
             valor={nEtiquetas === 0 ? t('tarjetas.nfc.ninguna') : `${nEtiquetas} · ${datos.etiquetas.map((e) => e.nombre).join(', ')}`}
           />
-          <FilaInfo etiqueta={t('tarjetas.nfc.carnes')} valor={<InsigniaLlega>{llegaKiosco}</InsigniaLlega>} />
+          <FilaInfo etiqueta={t('tarjetas.nfc.carnes')} valor={tk('deTotal', { n: datos.credenciales?.carnes ?? 0, total: datos.personas })} />
+          <Casilla etiqueta={tk('carne.activo')} checked={formK.carne.activo} onChange={(v) => cambiarK('carne', { activo: v })} disabled={!gestionar} />
+          <Casilla etiqueta={tk('carne.foto')} checked={formK.carne.foto} onChange={(v) => cambiarK('carne', { foto: v })} disabled={!gestionar || !formK.carne.activo} />
           <p className="text-[13px] leading-[18px] text-fg-secondary">{t('tarjetas.nfc.exigeUbicacion')}</p>
           {gestionar && (
             <div>
@@ -387,22 +416,50 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
                 <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
                 {t('tarjetas.nfc.registrar')}
               </button>
+              <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm', className: 'ml-2' })} onClick={() => setCredencialesAbierto(true)}>
+                <KeyRound aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {tk('pinYCarnes')}
+              </button>
             </div>
           )}
         </TarjetaMetodo>
 
-        {/* Kiosco con PIN (M1) */}
+        {/* Kiosco con PIN (M1, D11) */}
         <TarjetaMetodo
           icono={KeyRound}
-          apagada
           titulo={t('metodos.pin.titulo')}
           descripcion={t('tarjetas.pin.descripcion')}
-          resumen={llegaKiosco}
-          control={<Switch checked={false} disabled aria-label={t('tarjetas.noDisponible', { metodo: t('metodos.pin.titulo'), cuando: llegaKiosco })} />}
+          resumen={formK.pin.activo ? tk('pin.resumen', { n: datos.credenciales?.pines ?? 0, total: datos.personas }) : t('apagado')}
+          control={
+            <Switch checked={formK.pin.activo} onCheckedChange={(v) => cambiarK('pin', { activo: v })} disabled={!gestionar} aria-label={tk('pin.activar')} />
+          }
         >
-          <div>
-            <InsigniaLlega>{llegaKiosco}</InsigniaLlega>
-          </div>
+          <FormField etiqueta={tk('pin.largo')} className="max-w-[280px]">
+            {(c) => (
+              <CampoNumero id={c.id} aria-describedby={c['aria-describedby']} className="w-[200px]" valor={6} onValorChange={() => undefined} decimales={0} sufijo={tk('pin.digitos')} disabled />
+            )}
+          </FormField>
+          <Casilla etiqueta={tk('pin.foto')} checked={formK.pin.foto} onChange={(v) => cambiarK('pin', { foto: v })} disabled={!gestionar || !formK.pin.activo} />
+          <FormField etiqueta={tk('pin.bloqueo')}>
+            {(c) => (
+              <Select value="5_15" disabled={!gestionar}>
+                <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5_15">{tk('pin.bloqueoValor')}</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </FormField>
+          {gestionar && (
+            <div>
+              <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => setCredencialesAbierto(true)}>
+                <KeyRound aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                {tk('pinYCarnes')}
+              </button>
+            </div>
+          )}
         </TarjetaMetodo>
 
         {/* Rostro (M2) */}
@@ -461,9 +518,29 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
 
         {/* Foto de evidencia y letrero */}
         <TarjetaMetodo icono={Camera} titulo={t('tarjetas.foto.titulo')} descripcion={t('tarjetas.foto.descripcion')} resumen={t('tarjetas.foto.resumen')}>
-          <FilaInfo etiqueta={t('tarjetas.foto.seBorra')} valor={t('tarjetas.foto.dias', { n: 30 })} />
-          <p className="text-[13px] leading-[18px] text-fg-secondary">{t('tarjetas.foto.seConserva')}</p>
-          <AvisoTonal compacto tono="neutro" titulo={t('tarjetas.foto.llega', { cuando: llegaKiosco })} descripcion={t('tarjetas.foto.llegaDetalle')} />
+          <FormField
+            etiqueta={t('tarjetas.foto.seBorra')}
+            ayuda={tk('foto.ayuda', { min: FOTO_DIAS_MIN, max: FOTO_DIAS_MAX })}
+            error={errorValidacion === 'foto_dias_invalido' ? tk('errores.fotoDias', { min: FOTO_DIAS_MIN, max: FOTO_DIAS_MAX }) : null}
+            className="max-w-[320px]"
+          >
+            {(c) => (
+              <CampoNumero
+                id={c.id}
+                aria-describedby={c['aria-describedby']}
+                aria-invalid={c['aria-invalid']}
+                className="w-[200px]"
+                valor={formK.foto.dias}
+                onValorChange={(v) => cambiarK('foto', { dias: v })}
+                decimales={0}
+                maximo={FOTO_DIAS_MAX}
+                sufijo={tk('foto.dias')}
+                disabled={!gestionar}
+              />
+            )}
+          </FormField>
+          <FilaInfo etiqueta={tk('foto.autorizaciones')} valor={tk('foto.personas', { n: datos.foto?.autorizadas ?? 0, total: datos.personas })} />
+          <Casilla etiqueta={tk('foto.letrero', { sede: datos.sede.nombre })} checked={formK.foto.letrero} onChange={(v) => cambiarK('foto', { letrero: v })} disabled={!gestionar} />
           <div>
             <button
               type="button"
@@ -496,9 +573,19 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
           onGuardar={() => void guardar()}
           onDescartar={descartar}
           deshabilitado={errorValidacion !== null}
-          motivo={errorValidacion ? t(`errores.guardar.${claveErrorGuardar(errorValidacion)}`, { min: RADIO_MIN, max: RADIO_MAX }) : undefined}
+          motivo={
+            errorValidacion === 'foto_dias_invalido'
+              ? tk('errores.fotoDias', { min: FOTO_DIAS_MIN, max: FOTO_DIAS_MAX })
+              : errorValidacion
+                ? t(`errores.guardar.${claveErrorGuardar(errorValidacion)}`, { min: RADIO_MIN, max: RADIO_MAX })
+                : undefined
+          }
           mensaje={t('cambiosSinGuardar')}
         />
+      )}
+
+      {gestionar && (
+        <DialogoCredenciales abierto={credencialesAbierto} onAbiertoChange={setCredencialesAbierto} sedeId={datos.sede.id} sedeNombre={datos.sede.nombre} />
       )}
 
       {gestionar && (

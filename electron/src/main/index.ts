@@ -16,6 +16,7 @@ import { getUpdateState, initUpdater, stopUpdater } from './updater';
 import { registerIpcHandlers } from './ipc';
 import { registerToolbarIpc } from './toolbarIpc';
 import { registerPosDisplayIpc } from './posDisplayIpc';
+import { registerKioscoIpc } from './kioscoMarcacion';
 import { registerScaleIpc, shutdownScale } from './scale/scaleIpc';
 import { initPosDisplay, shutdownPosDisplay } from './windows/posDisplayWindow';
 import { installAppMenu } from './menu';
@@ -133,6 +134,8 @@ if (!gotLock) {
     registerToolbarIpc();
     // Pantalla del cliente del POS: relé de mensajes + ventana secundaria.
     registerPosDisplayIpc();
+    // Marcación: clave del equipo cifrada y modo lector de carnés (M1).
+    registerKioscoIpc();
     // Báscula del POS (serialport): bytes crudos a la web, que interpreta el protocolo.
     registerScaleIpc();
     // Menú en español (aceleradores + popup del botón «⋯» de la barra).

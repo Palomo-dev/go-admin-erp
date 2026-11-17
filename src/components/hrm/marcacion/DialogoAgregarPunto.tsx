@@ -3,13 +3,14 @@
 /**
  * «Agregar dispositivo» (Figma 20.28.3, paso 1 «¿Qué vas a conectar?»), en la
  * versión de M0: solo se agregan la **Pantalla de QR** y la **Etiqueta NFC de la
- * sede**. Las otras tarjetas del Figma (terminal de huella o rostro, kiosco en
- * tablet, lector de carné) se ven deshabilitadas con «Llega con …»: no se ofrecen
- * como si funcionaran (BRIEF M0). Los pasos 2 y 3 del Figma (conectar el equipo,
+ * sede**. Desde M1 también el **kiosco en una tablet** y el **lector de carné en un
+ * computador**: se vinculan con el código que muestra el equipo
+ * (`DialogoVincularEquipo`). El terminal de huella o rostro sigue deshabilitado con
+ * «Llega con …» (M2). Los pasos 2 y 3 del Figma (conectar el equipo,
  * enlazar personas) son de los terminales (M2) y no aplican aquí; en su lugar,
  * el paso 2 pide nombre, sede y dónde está, y la etiqueta muestra su URL UNA vez.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { Copy, Fingerprint, Nfc, ScanQrCode, SquarePen, TabletSmartphone, type LucideIcon } from 'lucide-react';
@@ -19,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { urlEtiqueta } from '@/lib/hrm/marcacion/metodos';
 import { ErrorPersonas, pedir, useCarga } from '../personas/apiPersonas';
 import { CHIPS_ETIQUETA, cuerpoAlta, validarAlta, type AltaPunto, type ChipEtiqueta, type ErrorAlta, type TipoAlta } from './marcacionVista';
+import { DialogoVincularEquipo, type TipoEquipo } from '../kiosco/DialogoVincularEquipo';
 
 interface SedeOpcion {
   id: number;
@@ -42,26 +44,33 @@ export function DialogoAgregarPunto({
   tipoInicial,
   sedeInicial,
   onCreado,
+  onVinculado,
 }: {
   abierto: boolean;
   onAbiertoChange: (abierto: boolean) => void;
   tipoInicial: TipoAlta | null;
   sedeInicial: number | null;
   onCreado: (r: { id: string; tipo: TipoAlta }) => void;
+  /** M1: se vinculó un kiosco o un lector de escritorio. */
+  onVinculado?: () => void;
 }) {
   const t = useTranslations('hrmMarcacionRrhh.alta');
+  const tk = useTranslations('hrmKiosco.alta');
+  const [equipo, setEquipo] = useState<TipoEquipo | null>(null);
+  const [vincularAbierto, setVincularAbierto] = useState(false);
   const [paso, setPaso] = useState<'tipo' | 'datos'>('tipo');
   const [alta, setAlta] = useState<AltaPunto>(ALTA_VACIA);
   const [error, setError] = useState<ErrorAlta | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [etiquetaCreada, setEtiquetaCreada] = useState<{ id: string; codigo: string; nombre: string } | null>(null);
   const { carga: cargaSedes } = useCarga<{ sedes: SedeOpcion[] }>(abierto ? '/api/hrm/marcacion/metodos' : null);
-  const sedes = cargaSedes.estado === 'listo' ? cargaSedes.datos.sedes : [];
+  const sedes = useMemo(() => (cargaSedes.estado === 'listo' ? cargaSedes.datos.sedes : []), [cargaSedes]);
 
   // Cada apertura empieza limpia; con un tipo pedido desde la URL va directo al paso 2.
   useEffect(() => {
     if (!abierto) return;
     setAlta({ ...ALTA_VACIA, tipo: tipoInicial, sedeId: sedeInicial });
+    setEquipo(null);
     setPaso(tipoInicial ? 'datos' : 'tipo');
     setError(null);
   }, [abierto, tipoInicial, sedeInicial]);
@@ -113,11 +122,22 @@ export function DialogoAgregarPunto({
           titulo={t('titulo')}
           descripcion={t('paso1')}
           ancho={880}
-          primario={{ etiqueta: t('continuar'), onClick: () => setPaso('datos'), deshabilitada: !alta.tipo, motivo: t('eligeTipo') }}
+          primario={{
+            etiqueta: t('continuar'),
+            onClick: () => {
+              if (equipo) {
+                onAbiertoChange(false);
+                setVincularAbierto(true);
+              } else setPaso('datos');
+            },
+            deshabilitada: !alta.tipo && !equipo,
+            motivo: t('eligeTipo'),
+          }}
         >
           <div role="radiogroup" aria-label={t('queConectar')} className="grid gap-3 sm:grid-cols-2">
             {TARJETAS.map(({ clave, icono }) => {
               const m0 = clave === 'pantalla_qr' || clave === 'etiqueta_nfc';
+              const m1: TipoEquipo | null = clave === 'kiosco' ? 'kiosco' : clave === 'lector' ? 'lector_escritorio' : null;
               return (
                 <TarjetaSeleccionable
                   key={clave}
@@ -127,12 +147,20 @@ export function DialogoAgregarPunto({
                   descripcion={
                     <>
                       {t(`tipos.${clave}.descripcion`)}
-                      <span className="mt-1 block text-xs text-fg-muted">{m0 ? t(`tipos.${clave}.necesitas`) : t(`tipos.${clave}.llega`)}</span>
+                      <span className="mt-1 block text-xs text-fg-muted">{m0 ? t(`tipos.${clave}.necesitas`) : m1 ? tk(`necesitas.${m1}`) : t(`tipos.${clave}.llega`)}</span>
                     </>
                   }
-                  seleccionada={alta.tipo === clave}
-                  deshabilitada={!m0}
-                  onSeleccionar={() => m0 && cambiar('tipo', clave)}
+                  seleccionada={alta.tipo === clave || (m1 !== null && equipo === m1)}
+                  deshabilitada={!m0 && !m1}
+                  onSeleccionar={() => {
+                    if (m0) {
+                      setEquipo(null);
+                      cambiar('tipo', clave);
+                    } else if (m1) {
+                      setEquipo(m1);
+                      cambiar('tipo', null);
+                    }
+                  }}
                 />
               );
             })}
@@ -213,6 +241,14 @@ export function DialogoAgregarPunto({
           )}
         </Dialogo>
       )}
+
+      <DialogoVincularEquipo
+        abierto={vincularAbierto}
+        onAbiertoChange={setVincularAbierto}
+        tipo={equipo ?? 'kiosco'}
+        sedeInicial={sedeInicial}
+        onVinculado={() => onVinculado?.()}
+      />
 
       <DialogoCodigoEtiqueta
         etiqueta={etiquetaCreada}

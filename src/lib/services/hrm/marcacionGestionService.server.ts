@@ -12,6 +12,7 @@
 import { getServiceClient } from '@/lib/supabase/server-service';
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { cuerpoMetodos, cuerpoReclamo, esMetodoSede, validarExcepcion, type ConfigSede } from '@/lib/hrm/marcacion/metodos';
+import { kioscoDeCuerpo, separarCuerpo } from '@/lib/hrm/kiosco/metodosKiosco';
 import { HrmError, errorDeRpc, esFechaPlana, esUuid } from './tipos';
 
 export type ContextoGestion = Pick<ServerOrgContext, 'userId' | 'organizationId'>;
@@ -48,9 +49,13 @@ export function metodosSede(ctx: ContextoGestion, sede: number | null) {
 export function guardarMetodosSede(ctx: ContextoGestion, sede: number | null, metodos: unknown) {
   if (sede === null) throw new HrmError(422, 'sede_requerida');
   if (!metodos || typeof metodos !== 'object') throw new HrmError(422, 'datos_invalidos');
-  const r = cuerpoMetodos(metodos as ConfigSede);
+  // M1: el kiosco (PIN, carné y foto de evidencia) viaja junto con los métodos de M0.
+  const { m0, kiosco } = separarCuerpo(metodos as Record<string, unknown>);
+  const r = cuerpoMetodos(m0 as ConfigSede);
   if (!r.ok) throw new HrmError(422, r.error);
-  return rpc<Record<string, unknown>>('fn_hr_metodos_sede_guardar', { ...base(ctx), p_branch: sede, p_metodos: r.metodos });
+  const k = kiosco ? kioscoDeCuerpo(kiosco) : null;
+  if (k && !k.ok) throw new HrmError(422, k.error);
+  return rpc<Record<string, unknown>>('fn_hr_metodos_sede_guardar', { ...base(ctx), p_branch: sede, p_metodos: { ...r.metodos, ...(k?.ok ? k.valor : {}) } });
 }
 
 /** Figma 20.28 (M0: pantallas de QR y etiquetas NFC). */

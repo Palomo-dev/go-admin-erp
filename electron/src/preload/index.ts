@@ -153,6 +153,16 @@ try {
     onState: (handler: (state: unknown) => void) => subscribe('scale:state', handler),
   },
 
+  // Marcación (M1): clave del equipo como lector de carnés, cifrada con
+  // safeStorage en el proceso principal (main/kioscoMarcacion.ts), y el modo
+  // lector a pantalla completa. Solo responde a páginas de GO Admin.
+  kioscoMarcacion: {
+    leerLlave: () => ipcRenderer.invoke('kiosco:llave:leer'),
+    guardarLlave: (llave: string) => ipcRenderer.invoke('kiosco:llave:guardar', llave),
+    borrarLlave: () => ipcRenderer.invoke('kiosco:llave:borrar'),
+    abrir: () => ipcRenderer.invoke('kiosco:abrir'),
+  },
+
   // Versión y actualizaciones
   version: () => ipcRenderer.invoke('app:version'),
   updateState: () => ipcRenderer.invoke('update:state'),

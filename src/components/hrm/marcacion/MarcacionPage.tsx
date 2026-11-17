@@ -7,14 +7,15 @@
  * para que «atrás» vuelva a ella; la sede es la del header (PATRONES §9).
  *
  * En vivo se refresca cada 2 min con «actualizado hace N» (como Asistencia: no es
- * Realtime). «Abrir kiosco en esta pantalla» llega con el kiosco (M1): no se muestra.
+ * Realtime). «Abrir kiosco en esta pantalla» (M1) abre `/marcacion/kiosco` en otra
+ * pestaña: el equipo muestra su código y se vincula desde Dispositivos.
  * `?vista=dispositivos&agregar=pantalla_qr|etiqueta_nfc` abre el alta con ese tipo
  * (lo usa la vista Métodos).
  */
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlarmClockCheck, House, Plus } from 'lucide-react';
+import { AlarmClockCheck, House, Plus, TabletSmartphone } from 'lucide-react';
 import { EmptyState, PageHeader, SegmentedControl } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { useBranchOpcional } from '@/lib/context/BranchContext';
@@ -40,6 +41,7 @@ const REFRESCO_MS = 120_000;
 
 export function MarcacionPage() {
   const t = useTranslations('hrmMarcacionRrhh');
+  const tk = useTranslations('hrmKiosco.marcacion');
   const tc = useTranslations('hrmPersonas.comun');
   const sp = useSearchParams();
   const router = useRouter();
@@ -123,6 +125,10 @@ export function MarcacionPage() {
       <Button onClick={abrirAlta}>
         <Plus className="size-4" aria-hidden="true" /> {t('dispositivos.agregar')}
       </Button>
+    ) : vista === 'metodos' && !sinPermiso ? (
+      <Button variant="outline" onClick={() => window.open('/marcacion/kiosco', '_blank', 'noopener')}>
+        <TabletSmartphone className="size-4" aria-hidden="true" strokeWidth={1.5} /> {tk('abrirKiosco')}
+      </Button>
     ) : undefined;
 
   return (
@@ -171,6 +177,7 @@ export function MarcacionPage() {
         tipoInicial={alta.tipo}
         sedeInicial={sede}
         onCreado={() => void disp.recargar()}
+        onVinculado={() => void disp.recargar()}
       />
     </div>
   );

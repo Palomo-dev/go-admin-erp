@@ -37,6 +37,8 @@ export interface MarcaVivo extends PersonaVivo {
   manual: boolean;
   registrada_por: string | null;
   tarde_minutos: number | null;
+  /** M1: la marca del kiosco tiene foto de evidencia guardada. */
+  foto?: boolean;
 }
 
 export interface IntentoVivo extends PersonaVivo {
@@ -279,6 +281,9 @@ export interface Dispositivo {
   ultima_conexion: string | null;
   chip: string | null;
   hoy: number;
+  /** M1: kiosco o lector con clave vigente (null en los demás tipos). */
+  vinculado?: boolean | null;
+  clave_revocada_at?: string | null;
 }
 
 export interface RespuestaDispositivos {

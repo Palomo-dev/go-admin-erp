@@ -78,7 +78,7 @@
 
 - Una interfaz común en `src/lib/hrm/dispositivos/adaptadores/` (puro, probado con Jest): `identificar(petición) → reloj`, `leerEventos(cuerpo) → EventoReloj[]` (usuario del equipo, hora del equipo, modo de verificación, tipo si lo trae), `responder(resultado)`, `ordenes(reloj) → texto` (crear usuario, borrar plantilla, ajustar hora) y `leerRespuestaOrden`.
 - `zkteco-adms.ts` y `hikvision-isapi.ts` son los dos primeros. Sumar Anviz o Suprema es escribir un adaptador más; el receptor, la bandeja y el núcleo no cambian.
-- Los adaptadores **nunca** leen ni reenvían plantillas biométricas, aunque el equipo las ofrezca (ZKTeco `FINGERTMP`, `BIODATA`; Hikvision `FaceDataRecord`): se descartan al leer y quedan prohibidas en la prueba del adaptador.
+- Los adaptadores **leen y envían plantillas biométricas** (ZKTeco `FINGERTMP`, `BIODATA`; Hikvision `FaceDataRecord`) para que una persona registre su huella o su rostro una sola vez y se copie a los demás equipos de la organización (D4, cambiada el 2026-11-17). Solo si la persona tiene autorización vigente para ese tipo; sin ella, la plantilla se descarta al leer.
 
 ### 4.3 Receptor y clave por equipo
 
@@ -92,9 +92,9 @@
 
 ### 4.4 Personas del equipo ↔ empleados
 
-- `hr_clock_device_users`: cada usuario del equipo, enlazado a un vínculo o marcado «no enlazar». Lo único que guardamos del equipo es **su número de usuario, la hora y el equipo** (D4).
+- `hr_clock_device_users`: cada usuario del equipo, enlazado a un vínculo o marcado «no enlazar». Las plantillas van aparte, en `hr_biometric_templates` (§5.1, D4).
 - Al conectar se proponen enlaces por documento, por nombre o a mano (20.28.5). Las marcas de un usuario sin enlazar **quedan en espera**.
-- GO Admin puede crear el usuario en el equipo para que la persona registre allí su huella o su rostro, y ordena borrarla al retirar la autorización. Nunca la descarga.
+- GO Admin crea el usuario en el equipo para que la persona registre allí su huella o su rostro, guarda la plantilla y la copia a los demás equipos de la organización que la persona tenga habilitados. Al retirar la autorización o terminar el vínculo, la borra en GO Admin y ordena borrarla en cada equipo.
 
 ### 4.5 Hora, marcas sin conexión, repetidas e idempotencia
 
@@ -110,7 +110,12 @@
 
 - Los biométricos son **datos sensibles** (Ley 1581 de 2012, art. 5); su tratamiento exige autorización explícita (art. 6).
 - La autorización debe ser previa, expresa e informada, con la finalidad, y advertir que **es facultativa**: no se condiciona el empleo (Decreto 1377 de 2013, art. 6, compilado en el Decreto 1074 de 2015). Cada método biométrico tiene alternativa.
-- **Nunca huellas ni rostros en GO Admin.** Solo el número de usuario del equipo, la hora y el equipo. Al retirar la autorización se ordena borrar la plantilla en el equipo.
+- **GO Admin guarda huellas y rostros (D4, cambiada el 2026-11-17).** Con estas condiciones:
+  - Solo con autorización vigente de la persona para ese tipo (`huella`, `rostro`) en `hr_marcacion_consents`.
+  - Tabla aparte `hr_biometric_templates` (`organization_id`, `employment_id`, `kind`, `formato` del fabricante, `plantilla` cifrada, `origen_reloj`, `created_at`). **Sin acceso desde el navegador**: RLS sin políticas para `authenticated` y `anon`; solo la usan el receptor y las órdenes a equipos con `service_role`. La pantalla solo muestra «registrada: sí o no».
+  - Cifrada con una clave del servidor; nunca viaja al navegador ni a los registros.
+  - Se borra al retirar la autorización o al terminar el vínculo (en GO Admin y en cada equipo) y cada lectura, copia o borrado queda en `hr_access_log`.
+  - Sirve para no repetir el registro en cada equipo y para reponer un equipo dañado.
 - Cada autorización y cada retiro queda en `hr_marcacion_consents` (solo inserción, con versión del texto, IP y agente). El empleado descarga lo que aceptó.
 - La organización cliente incluye la marcación (biometría y foto) en su política de tratamiento y, si le aplica, en el Registro Nacional de Bases de Datos. GO Admin entrega el texto base y **el letrero** (§5.2).
 - Ubicación: solo al marcar, con autorización, **nunca para rastrear**.
@@ -155,6 +160,7 @@ Todo con `organization_id`, RLS por pertenencia con `IN (SELECT …)` y `(select
 | `hr_qr_codes_used` (nueva) | `time_clock_id`, `time_step`, `used_at`, `attendance_event_id`. PK (`time_clock_id`, `time_step`). Se purga a las 24 h. | QR de un solo uso (D9). |
 | `hr_credentials` (nueva) | `organization_id`, `employment_id`, `kind` (`pin`, `carne_nfc`, `carne_qr`), `secret_hash`, `active`, `failed_attempts`, `locked_until`, `unlocked_by`, `created_by`, `revoked_at`. | PIN y carnés (D11). |
 | `hr_marcacion_consents` (nueva) | Como `hr_geo_consents`: `granted`, `kinds` (`huella`, `rostro`, `foto_evidencia`), `policy_version`, `ip`, `user_agent`. Solo inserción. | Autorizaciones (20.32). |
+| `hr_biometric_templates` (nueva, M2) | `organization_id`, `employment_id`, `kind` (`huella`, `rostro`), `formato` (del fabricante), `plantilla` (cifrada), `origen_reloj`, `created_at`. RLS activo sin políticas para `authenticated` ni `anon`: solo `service_role`. | Plantillas biométricas (D4, cambiada el 2026-11-17). |
 | `hr_marcacion_intentos` (nueva) | `organization_id`, `employment_id` (nulo), `time_clock_id`, `method`, `reason`, `created_at`. 90 días. | Antifraude. |
 | `attendance_events` | Columnas: `method` (CHECK con los métodos de arriba más `remoto` y `manual`), `device_time`, `raw_event_id`, `photo_expires_at`, `photo_hold` (bool, por defecto `false`). | «Cómo» exacto; retención por caso. |
 | `timesheet_adjustments` | Columnas: `attendance_event_id` (la marca reclamada o corregida), `origin` (`gestor`, `empleado_reclamo`, `kiosco`, `dispositivo`), y un valor más en el uso: `adjustment_type = 'excluir_marca'` (la marca queda en la base pero el motor la ignora). | R1 y R2 sobre el mecanismo que ya existe. |
@@ -263,7 +269,7 @@ Precios aproximados del mercado colombiano a noviembre de 2026.
 | D1 | Dónde vive Marcación | **Aprobada.** Pestaña propia del módulo, entre Turnos y Asistencia, en `/app/hrm/marcacion`. Le pasa las marcas a Asistencia **sin duplicar datos**: las dos leen `attendance_events`. |
 | D2 | Marcas de hardware | **Aprobada.** ZKTeco (ADMS) y Hikvision (ISAPI) primero, sobre **adaptadores** (§4.2) para sumar otras marcas sin tocar el núcleo. |
 | D3 | Rostro | **Aprobada.** **Lo compara el reloj.** La tablet del kiosco solo toma la foto de evidencia, y el kiosco lo dice con un texto visible para el empleado. |
-| D4 | Datos biométricos | **Aprobada.** Nunca huellas ni rostros en GO Admin (Ley 1581): solo el número del empleado en el equipo, la hora y el equipo. |
+| D4 | Datos biométricos | **Cambiada el 2026-11-17 por el dueño:** «sí guardar huellas y reconocimiento de rostro y todo». GO Admin guarda las plantillas con autorización de la persona, cifradas, sin acceso desde el navegador, y las borra al retirar la autorización o terminar el vínculo (§5.1). Texto anterior: nunca huellas ni rostros en GO Admin. |
 | D5 | Foto de evidencia | **Aprobada.** 30 días por defecto, configurable de 7 a 90. **Retención por caso:** si la marca está a revisión o hay un reclamo, la foto no se borra hasta cerrar el caso. Requiere **autorización expresa** del empleado y **aviso con letrero** en la sede (plantilla para imprimir en Métodos por sede). |
 | D6 | Hora del equipo | **Aprobada.** Desfase de 2 min o menos se acepta; si no, a revisión. **Alerta al administrador** cuando un equipo se desfasa, en En vivo y en el detalle del dispositivo. |
 | D7 | Kiosco | **Aprobada.** App Capacitor en modo kiosco; guarda marcas sin internet y sincroniza después **sin duplicar** (idempotencia por `id_local`). |
@@ -292,7 +298,7 @@ Precios aproximados del mercado colombiano a noviembre de 2026.
 - **R3 · Web NFC** solo en Android con Chrome; en iPhone, la app.
 - **R4 · Regla 5 para equipos.** Los receptores no tienen sesión; la organización sale del equipo registrado. Documentarlo en el guardarraíl de rutas.
 - **R5 · CHECK de `mecanismos`.** Ampliarlo exige tocar `enums.ts` (guardarraíl 9).
-- **R6 · Gimnasio guarda plantillas.** `customer_biometrics.template_data` (0 filas) choca con D4. Revisar aparte.
+- **R6 · Gimnasio guarda plantillas.** Resuelto con el cambio de D4 (2026-11-17): `customer_biometrics.template_data` puede seguir; conviene alinear allí la autorización, el cifrado y el borrado de §5.1.
 - **R7 · Carga.** El saludo de ZKTeco llega cada pocos segundos: responder sin tocar la base cuando no hay marcas (caché).
 - **R8 · Datos del cliente.** El kiosco y el letrero muestran el nombre de la organización: es dato del cliente y no va al repositorio.
 - **R9 · DNS comodín** para la clave en el host de ZKTeco: confirmar que Vercel emite el certificado comodín del subdominio.

@@ -1,4 +1,4 @@
-import { FILTROS_BANDEJA, claveTitulo, conteoFiltrosBandeja, diasDesde, diferencia, filtrarSolicitudes, grupoDeTipo, tieneSalarioOculto, type EventoSolicitud, type Solicitud } from '../bandejaLogica';
+import { FILTROS_BANDEJA, claveTitulo, conteoFiltrosBandeja, diasDesde, diferencia, excepcionMarcacion, filtrarSolicitudes, grupoDeTipo, tieneSalarioOculto, type EventoSolicitud, type Solicitud } from '../bandejaLogica';
 
 const ev = (p: Partial<EventoSolicitud>): EventoSolicitud => ({
   id: 'e',
@@ -74,5 +74,24 @@ describe('filtros de la bandeja', () => {
     expect(filtrarSolicitudes(lista, f, '2026-11-15', etiqueta).map((s) => s.id)).toEqual(['1']);
     expect(filtrarSolicitudes(lista, f, '2026-12-03', etiqueta).map((s) => s.id)).toEqual(['2']);
     expect(conteoFiltrosBandeja(f)).toBe(1);
+  });
+});
+
+describe('excepción temporal de marcación (Marcación M0)', () => {
+  it('va en «Sede y jornada», con su propio título', () => {
+    expect(grupoDeTipo('excepcion_marcacion')).toBe('sede_jornada');
+    expect(claveTitulo({ tipo: 'excepcion_marcacion', eventos: [] })).toBe('excepcion_marcacion');
+  });
+  it('lee método, fechas y motivo del contexto', () => {
+    const contexto = { metodo: 'celular_ubicacion', desde: '2026-11-16', hasta: '2026-11-30', motivo: ' Lesión en la mano ', branch_id: 3 };
+    expect(excepcionMarcacion({ tipo: 'excepcion_marcacion', contexto })).toEqual({
+      metodo: 'celular_ubicacion',
+      desde: '2026-11-16',
+      hasta: '2026-11-30',
+      motivo: 'Lesión en la mano',
+    });
+    expect(excepcionMarcacion({ tipo: 'excepcion_marcacion', contexto: { desde: '16/11/2026', motivo: '' } })).toEqual({ metodo: null, desde: null, hasta: null, motivo: null });
+    expect(excepcionMarcacion({ tipo: 'horas_extra', contexto })).toBeNull();
+    expect(excepcionMarcacion({ tipo: 'excepcion_marcacion', contexto: null })).toBeNull();
   });
 });

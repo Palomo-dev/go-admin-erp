@@ -4,8 +4,8 @@
  *
  * Regla pura: del turno asignado hoy y las marcaciones de la persona al estado
  * de la tarjeta y del botón del encabezado. NO marca nada: marcar entrada o
- * salida sigue siendo el flujo existente de HRM (`/marcar`, escáner QR →
- * `QRAttendanceService.validateAndRecord`), que decide si el evento es entrada
+ * salida sigue siendo el flujo existente de HRM (`/marcar` → `POST /api/hrm/marcacion`
+ * → `fn_hr_marcar` en la base), que decide si el evento es entrada
  * o salida con la misma regla que se lee aquí (último evento del empleado).
  *
  * Estados (nota de comportamiento del Figma):

@@ -46,6 +46,7 @@ import {
   CalendarDays,
   CalendarRange,
   ChefHat,
+  CircleDollarSign,
   ClipboardCheck,
   ClipboardList,
   Clock,
@@ -562,19 +563,21 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/hrm/cargos', nombre: 'Cargos', icono: IdCard, grupo: 'Personas' },
       { href: '/app/hrm/plazas', nombre: 'Plazas', icono: Armchair, grupo: 'Personas' },
       { href: '/app/hrm/aprobaciones', nombre: 'Aprobaciones', icono: Stamp, grupo: 'Personas', enMenu: false },
-      // Fase 2 (Figma 20.8–20.15, decisiones 1 y 6 del 2026-11-16): RR. HH. ve 9
-      // pestañas (Empleados · Áreas · Cargos · Plazas · Turnos · Asistencia ·
-      // Novedades · Ausencias · Aprobaciones) y el jefe 6 (Mi equipo · Turnos ·
-      // Asistencia · Novedades · Ausencias · Aprobaciones). «Mi equipo» solo la ve
-      // quien tiene personas a cargo y no es de RR. HH. (capacidad `jefeDeEquipo`).
+      // Fase 2 (Figma 20.8–20.15, decisiones 1 y 6 del 2026-11-16): RR. HH. ve 10
+      // pestañas (Empleados · Áreas · Cargos · Plazas · Turnos · Marcación ·
+      // Asistencia · Novedades · Ausencias · Aprobaciones) y el jefe 6 (Mi equipo ·
+      // Turnos · Asistencia · Novedades · Ausencias · Aprobaciones). «Marcación»
+      // (Figma 20.26–20.28, plan de Marcación M0): en vivo, métodos por sede y
+      // dispositivos. «Mi equipo» solo la ve quien tiene personas a cargo y no es
+      // de RR. HH. (capacidad `jefeDeEquipo`).
       { href: '/app/hrm/mi-equipo', nombre: 'Mi equipo', icono: LayoutDashboard, grupo: 'Personas', requiere: 'jefeDeEquipo' },
       { href: '/app/hrm/turnos', nombre: 'Turnos', icono: CalendarRange, grupo: 'Tiempo' },
       { href: '/app/hrm/marcacion', nombre: 'Marcación', icono: AlarmClockCheck, grupo: 'Tiempo' },
       { href: '/app/hrm/asistencia', nombre: 'Asistencia', icono: CalendarCheck, grupo: 'Tiempo' },
       { href: '/app/hrm/novedades', nombre: 'Novedades', icono: NotebookPen, grupo: 'Tiempo' },
       { href: '/app/hrm/ausencias', nombre: 'Ausencias', icono: TreePalm, grupo: 'Tiempo' },
-      { href: '/app/hrm/nomina', nombre: 'Nómina', icono: DollarSign, grupo: 'Pagos' },
-      { href: '/app/hrm/prestamos', nombre: 'Préstamos', icono: Wallet, grupo: 'Pagos' },
+      // Nómina (Figma 20.16+): préstamos viven dentro de Nómina (/app/hrm/nomina?vista=prestamos).
+      { href: '/app/hrm/nomina', nombre: 'Nómina', icono: CircleDollarSign, grupo: 'Pagos' },
     ],
   },
   {

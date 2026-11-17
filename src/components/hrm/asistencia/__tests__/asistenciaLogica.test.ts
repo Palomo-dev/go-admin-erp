@@ -3,6 +3,11 @@
  * Los días son `date`: el resultado no depende del `TZ` del proceso.
  */
 import {
+  COMOS_MARCO,
+  RUTA_DISPOSITIVOS,
+  RUTA_METODOS_SEDE,
+  comoDeValor,
+  destinoQrSede,
   agruparTramos,
   claveEstadoHoy,
   conteoNovedades,
@@ -323,5 +328,27 @@ describe('novedades (20.12)', () => {
     expect(puedeMarcarPeriodo(r(true, false), 12)).toBe(false);
     expect(puedeMarcarPeriodo(r(false, false), 0)).toBe(false);
     expect(puedeMarcarPeriodo(r(true, true), 0)).toBe(false);
+  });
+});
+
+describe('Marcación M0 en Asistencia › Hoy (Figma 20.31)', () => {
+  test('«Cómo» reconoce los métodos nuevos y deja en «—» lo desconocido', () => {
+    for (const c of ['nfc', 'carne', 'pin', 'rostro', 'huella', 'ubicacion', 'qr', 'remoto', 'manual', 'app']) {
+      expect(comoDeValor(c)).toBe(c);
+    }
+    expect(COMOS_MARCO).toHaveLength(10);
+    expect(comoDeValor('telepatia')).toBeNull();
+    expect(comoDeValor(null)).toBeNull();
+    expect(comoDeValor(3)).toBeNull();
+  });
+  test('«Mostrar el QR de la sede»: la primera pantalla o agregar una', () => {
+    expect(destinoQrSede([{ id: 'a1' }, { id: 'b2' }])).toEqual({ tipo: 'pantalla', url: '/marcacion/pantalla/a1' });
+    expect(destinoQrSede([])).toEqual({ tipo: 'agregar', url: '/app/hrm/marcacion?vista=dispositivos&agregar=pantalla_qr' });
+    expect(destinoQrSede(null)).toEqual({ tipo: 'agregar', url: '/app/hrm/marcacion?vista=dispositivos&agregar=pantalla_qr' });
+    expect(destinoQrSede([{ id: '' }])).toEqual({ tipo: 'agregar', url: '/app/hrm/marcacion?vista=dispositivos&agregar=pantalla_qr' });
+  });
+  test('rutas del menú ⋯ hacia Marcación', () => {
+    expect(RUTA_METODOS_SEDE).toBe('/app/hrm/marcacion?vista=metodos');
+    expect(RUTA_DISPOSITIVOS).toBe('/app/hrm/marcacion?vista=dispositivos');
   });
 });

@@ -52,6 +52,7 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
   'hrm.general': dynamic(() => import('../panels/hrm/ParametrosLegalesPanel').then((m) => m.ParametrosLegalesPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'hrm.festivos': dynamic(() => import('../panels/hrm/FestivosPanel').then((m) => m.FestivosPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'hrm.aprobaciones': dynamic(() => import('../panels/hrm/AprobacionesPanel').then((m) => m.AprobacionesPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
+  'hrm.nomina': dynamic(() => import('@/components/hrm/nomina/ConfiguracionNominaPanel').then((m) => m.ConfiguracionNominaPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'hrm.registro-accesos': dynamic(() => import('../panels/hrm/RegistroAccesosPanel').then((m) => m.RegistroAccesosPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pms.general': dynamic(() => import('../panels/pms/PMSConfigPanel').then((m) => m.PMSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'pos.general': dynamic(() => import('../panels/pos/POSConfigPanel').then((m) => m.POSConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),

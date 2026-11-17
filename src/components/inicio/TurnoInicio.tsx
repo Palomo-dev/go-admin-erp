@@ -16,13 +16,19 @@
  *   insignia ámbar «En descanso · 12 min», «Descanso desde 9:30 · 30 min no
  *   pagado» y «Terminar descanso».
  *
+ * Marcación M0 (Figma 20.30.7 y 20.31.4): si la sede de la persona marca con
+ * el QR o con la etiqueta NFC (`turno.metodo.especial`), el botón lo dice
+ * («Escanear el QR de la sede», «Marcar salida con el QR», «Acercar a la
+ * etiqueta NFC»), abre `/marcar?metodo=…` y, en móvil, una nota debajo explica
+ * cómo se marca en esa sede. Sin método especial, todo queda como antes.
+ *
  * Marcar NO se implementa aquí: los botones llevan a «Marcar turno»
  * (`/marcar`, que marca por `POST /api/hrm/marcacion`). El estado lo calcula el
  * servidor (`GET /api/inicio/turno`). Horas en la zona de la organización.
  */
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { ScanLine } from 'lucide-react';
+import { Nfc, ScanLine, ScanQrCode, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { StatusBadge } from '@/components/kit/StatusBadge';
 import { clasesBoton } from '@/components/kit/botonClases';
@@ -30,6 +36,22 @@ import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { partesDuracion } from '@/lib/dashboard/turno';
 import type { TurnoInicio } from '@/lib/dashboard/inicio.server';
 import { useLecturaInicio } from './useLecturaInicio';
+import { claveAccionMetodo, type MetodoEspecial } from '@/components/marcar/marcarMetodoLogica';
+
+const ICONO_ESPECIAL: Record<MetodoEspecial, LucideIcon> = { qr: ScanQrCode, nfc: Nfc };
+
+/** Icono y texto del botón según el método de la sede (`null` = los de hoy). */
+function useAccionMetodo() {
+  const t = useTranslations('home.turno');
+  return (turno: TurnoInicio) => {
+    const especial = turno.metodo?.especial ?? null;
+    const clave = claveAccionMetodo(turno.estado, especial);
+    return {
+      Icono: especial && clave ? ICONO_ESPECIAL[especial] : ScanLine,
+      etiqueta: clave ? t(`acciones.metodo.${clave}`) : null,
+    };
+  };
+}
 
 export function useTurnoInicio(organizationId: number | null | undefined, version = 0) {
   const { estado } = useLecturaInicio<TurnoInicio>(organizationId ? '/api/inicio/turno' : null, organizationId, version);
@@ -48,8 +70,10 @@ function useDuracion() {
 export function BotonTurno({ turno }: { turno: TurnoInicio | null }) {
   const t = useTranslations('home.turno');
   const duracion = useDuracion();
+  const accionMetodo = useAccionMetodo();
   if (!turno || turno.estado === 'cerrado') return null;
-  const icono = <ScanLine aria-hidden="true" className="size-4" strokeWidth={1.5} />;
+  const { Icono, etiqueta: etiquetaMetodo } = accionMetodo(turno);
+  const icono = <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} />;
   if (turno.estado === 'enDescanso') {
     return (
       <Link href={turno.hrefMarcar} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })} data-estado-turno="enDescanso">
@@ -62,7 +86,7 @@ export function BotonTurno({ turno }: { turno: TurnoInicio | null }) {
     return (
       <Link href={turno.hrefMarcar} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })} data-estado-turno="enTurno">
         {icono}
-        {t('acciones.marcarSalidaTiempo', { duracion: duracion(turno.minutos) })}
+        {etiquetaMetodo ?? t('acciones.marcarSalidaTiempo', { duracion: duracion(turno.minutos) })}
       </Link>
     );
   }
@@ -71,7 +95,7 @@ export function BotonTurno({ turno }: { turno: TurnoInicio | null }) {
       <span className="inline-flex items-center gap-2" data-estado-turno="sinMarcar">
         <Link href={turno.hrefMarcar} className={clasesBoton({ variante: 'primario', tamano: 'sm' })}>
           {icono}
-          {t('acciones.marcarEntrada')}
+          {etiquetaMetodo ?? t('acciones.marcarEntrada')}
         </Link>
         <StatusBadge estado="tarde" etiqueta={t('tarde', { min: turno.minutos })} tono="advertencia" apariencia="suave" />
       </span>
@@ -80,7 +104,7 @@ export function BotonTurno({ turno }: { turno: TurnoInicio | null }) {
   return (
     <Link href={turno.hrefMarcar} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} data-estado-turno={turno.estado}>
       {icono}
-      {turno.estado === 'antes' ? t('acciones.marcarEntrada') : t('acciones.marcarTurno')}
+      {etiquetaMetodo ?? (turno.estado === 'antes' ? t('acciones.marcarEntrada') : t('acciones.marcarTurno'))}
     </Link>
   );
 }
@@ -90,6 +114,7 @@ export function TurnoCard({ turno, compacta = false, className }: { turno: Turno
   const t = useTranslations('home.turno');
   const { formatTime } = useFormatDate();
   const duracion = useDuracion();
+  const accionMetodo = useAccionMetodo();
   const sucursal = turno.sucursal ? ` · ${turno.sucursal}` : '';
   const hora = (v: string | null) => (v ? formatTime(v) : '');
 
@@ -133,7 +158,13 @@ export function TurnoCard({ turno, compacta = false, className }: { turno: Turno
           ? { etiqueta: t('acciones.marcarTurno'), href: turno.hrefMarcar, variante: 'secundario' as const }
           : { etiqueta: t('acciones.marcarEntrada'), href: turno.hrefMarcar, variante: 'primario' as const };
 
-  return (
+  const { Icono, etiqueta: etiquetaMetodo } = accionMetodo(turno);
+  const especial = turno.metodo?.especial ?? null;
+  // Nota de 20.30.7: solo en móvil y solo mientras el botón abre el método de la sede.
+  const nota =
+    especial && etiquetaMetodo && turno.sucursal ? t(`notaMetodo.${especial}`, { sede: turno.sucursal }) : null;
+
+  const tarjeta = (
     <section
       aria-labelledby="inicio-turno-titulo"
       data-estado-turno={turno.estado}
@@ -162,10 +193,19 @@ export function TurnoCard({ turno, compacta = false, className }: { turno: Turno
           href={accion.href}
           className={cn(clasesBoton({ variante: accion.variante, tamano: compacta ? 'sm' : 'md' }), !compacta && 'w-full justify-center')}
         >
-          <ScanLine aria-hidden="true" className="size-4" strokeWidth={1.5} />
-          {accion.etiqueta}
+          <Icono aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {etiquetaMetodo ?? accion.etiqueta}
         </Link>
       )}
     </section>
+  );
+  if (!nota) return tarjeta;
+  return (
+    <>
+      {tarjeta}
+      <p className={cn('text-sm leading-5 text-fg-secondary sm:hidden', className)} data-nota-metodo={especial}>
+        {nota}
+      </p>
+    </>
   );
 }

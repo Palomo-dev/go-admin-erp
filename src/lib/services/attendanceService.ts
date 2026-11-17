@@ -36,19 +36,6 @@ export interface AttendanceEventListItem extends AttendanceEvent {
   time_clock_name: string | null;
 }
 
-export interface CreateAttendanceEventDTO {
-  employment_id: string;
-  event_type: string;
-  event_at?: string;
-  source: string;
-  branch_id?: number;
-  time_clock_id?: string;
-  geo?: { lat: number; lng: number };
-  geo_validated?: boolean;
-  is_manual_entry?: boolean;
-  manual_reason?: string;
-}
-
 export interface AttendanceFilters {
   branchId?: number;
   employmentId?: string;
@@ -71,6 +58,11 @@ export interface DailyAttendanceSummary {
   total_hours: number | null;
 }
 
+/**
+ * Solo lecturas. Las escrituras desde el navegador (`create`, `createManualEntry`)
+ * se retiraron en Marcación M0 (R1: la marca no se inserta ni se edita desde el
+ * cliente): se marca por `POST /api/hrm/marcacion` y se corrige con un ajuste.
+ */
 export class AttendanceService {
   private organizationId: number;
 
@@ -215,51 +207,6 @@ export class AttendanceService {
     }
 
     return summaries;
-  }
-
-  async create(dto: CreateAttendanceEventDTO): Promise<AttendanceEvent> {
-    const supabase = createClient();
-    const { data: userData } = await supabase.auth.getUser();
-
-    const { data, error } = await supabase
-      .from('attendance_events')
-      .insert({
-        organization_id: this.organizationId,
-        employment_id: dto.employment_id,
-        event_type: dto.event_type,
-        event_at: dto.event_at || new Date().toISOString(),
-        source: dto.source,
-        branch_id: dto.branch_id || null,
-        time_clock_id: dto.time_clock_id || null,
-        geo: dto.geo || null,
-        geo_validated: dto.geo_validated ?? null,
-        is_manual_entry: dto.is_manual_entry ?? false,
-        manual_reason: dto.manual_reason || null,
-        created_by: userData?.user?.id || null,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
-  }
-
-  async createManualEntry(
-    employmentId: string,
-    eventType: string,
-    eventAt: string,
-    reason: string,
-    branchId?: number
-  ): Promise<AttendanceEvent> {
-    return this.create({
-      employment_id: employmentId,
-      event_type: eventType,
-      event_at: eventAt,
-      source: 'manual',
-      branch_id: branchId,
-      is_manual_entry: true,
-      manual_reason: reason,
-    });
   }
 
   async getById(id: string): Promise<AttendanceEvent | null> {

@@ -48,6 +48,20 @@ export function grupoDeTipo(tipo: string): Exclude<GrupoTipo, 'todas'> {
   return 'sede_jornada';
 }
 
+/**
+ * Excepción temporal de marcación (Marcación M0, D14): la base manda en `contexto`
+ * el método, las fechas (días de la sede, `YYYY-MM-DD`) y el motivo. Solo para ese
+ * tipo; lo que no tiene la forma esperada se omite.
+ */
+export function excepcionMarcacion(
+  s: Pick<Solicitud, 'tipo' | 'contexto'>
+): { metodo: string | null; desde: string | null; hasta: string | null; motivo: string | null } | null {
+  if (s.tipo !== 'excepcion_marcacion' || !s.contexto) return null;
+  const texto = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const dia = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  return { metodo: texto(s.contexto.metodo), desde: dia(s.contexto.desde), hasta: dia(s.contexto.hasta), motivo: texto(s.contexto.motivo) };
+}
+
 /** Clave del título: «Cambio de cargo y salario» cuando van enlazados. */
 export function claveTitulo(s: Pick<Solicitud, 'tipo' | 'eventos'>): string {
   const campos = new Set(s.eventos.map((e) => e.campo));

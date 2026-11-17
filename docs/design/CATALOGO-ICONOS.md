@@ -596,3 +596,21 @@ Se añade al final, sin reescribir lo anterior. Propuesta pendiente de aprobaci�
 | Autorización biométrica | `FilePenLine` (nuevo) | pantalla de autorización, «Ver autorizaciones» |
 
 Se reutilizan: `AlarmClockCheck` (Marcación, cabecera de las tres vistas), `LocateFixed` (celular con ubicación), `ScanQrCode` (QR de la sede), `Laptop` (remoto), `CalendarCheck` (hoja de tiempo). `Tablet` no se usa para el kiosco porque ya es «vista tablet» del editor web.
+
+## Adenda 2026-11-16 — Recursos humanos, fase 3: Nómina (Figma 20.16 a 20.25)
+
+Se añade al final, sin reescribir lo anterior. Decisión 2 del dueño al aprobar el diseño de la nómina.
+
+| Concepto | Icono | Dónde |
+|---|---|---|
+| Nómina (pestaña y cabecera) | `CircleDollarSign` | cabecera de Nómina (`NominaPage`), pestaña del módulo |
+| Prestaciones (prima, cesantías) | `PiggyBank` | vista Prestaciones (su vacío); la tarjeta de prima usa `Gift` y la de cesantías `Landmark`, que ya existían |
+| Préstamos y embargos | `BanknoteArrowDown` | vista Préstamos y embargos, tarjeta de préstamos y su vacío |
+| Colilla | `FileUser` | «Ver colilla», vacío de Colillas |
+
+Se reutilizan: `CalendarRange` (período), `Lock` (cerrado y solo preliquidación), `BookCheck` (contabilizado), `Scale` (embargo y su límite legal), `Wallet` (pago), `FileCheck2` (archivo del banco validado), `Wrench` (ajuste con motivo), `ShieldCheck` (quién revisa y aprueba).
+
+### En el código
+
+- Cabecera: `src/components/hrm/nomina/NominaPage.tsx` (`CircleDollarSign`).
+- Pendiente de quien lleva la navegación: en `src/lib/navigation/catalog.ts` la página Nómina pasa de `DollarSign` a `CircleDollarSign`, y «Préstamos» (`Wallet`) sale del menú porque es una vista de Nómina.

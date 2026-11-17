@@ -146,7 +146,7 @@ export const GUIAS: readonly Guia[] = [
     pasos: [
       'Abre Recursos humanos > Turnos: programa la semana con plantillas o rotaciones, o copia la semana anterior.',
       'Un cruce de horarios impide publicar; si alguien pasa un tope, se publica con un motivo y queda una novedad.',
-      'Publicar avisa a cada persona. Cada empleado marca su turno desde Inicio > Marcar turno, con su ubicación o el QR de la sede.',
+      'Publicar avisa a cada persona. Cada empleado marca su turno desde Inicio > Marcar turno, con su ubicación, el QR de la sede o la etiqueta NFC de la sede.',
       'El jefe ve a su equipo en Recursos humanos > Mi equipo, sin salario ni salud.',
     ],
     rutas: [
@@ -156,6 +156,23 @@ export const GUIAS: readonly Guia[] = [
       { ruta: '/app/inicio/mi-asistencia', nombre: 'Inicio > Mi asistencia' },
       { ruta: '/app/hrm/mi-equipo', nombre: 'Recursos humanos > Mi equipo' },
     ],
+  },
+  {
+    id: 'marcacion',
+    titulo: 'Configurar la marcación: métodos por sede, QR y etiquetas NFC',
+    palabras: ['marcacion', 'marcar', 'qr', 'nfc', 'etiqueta', 'pantalla qr', 'metodos', 'dispositivo', 'excepcion'],
+    pasos: [
+      'Abre Recursos humanos > Marcación. En vivo muestra quién marcó hoy, con qué método, desde dónde y las marcas por revisar o rechazadas.',
+      'En Métodos por sede eliges cómo se marca en cada sede: celular con ubicación, QR de la sede o etiqueta NFC, y das excepciones temporales a una persona.',
+      'En Dispositivos agregas una pantalla de QR (un televisor o monitor con el QR que cambia cada 30 segundos) o una etiqueta NFC para pegar en la entrada.',
+      'La URL de una etiqueta se muestra una sola vez al crearla; si se pierde, usa Regenerar código. Una marca no se edita: se corrige con un ajuste que pasa por aprobación.',
+    ],
+    rutas: [
+      { ruta: '/app/hrm/marcacion', nombre: 'Recursos humanos > Marcación' },
+      { ruta: '/app/hrm/marcacion?vista=metodos', nombre: 'Marcación > Métodos por sede' },
+      { ruta: '/app/hrm/marcacion?vista=dispositivos', nombre: 'Marcación > Dispositivos' },
+    ],
+    permisos: ['hr.attendance.manage'],
   },
   {
     id: 'usuarios',

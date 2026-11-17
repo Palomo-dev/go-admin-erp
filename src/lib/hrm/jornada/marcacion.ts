@@ -7,7 +7,10 @@
  * aporta el punto de marcación y su token, que se comparan en la base.
  */
 
-export type MetodoMarcacion = 'qr' | 'app';
+import { leerEtiqueta } from '@/lib/hrm/marcacion/metodos';
+
+/** `nfc`: etiqueta de la sede leída con el celular (Marcación M0). */
+export type MetodoMarcacion = 'qr' | 'app' | 'nfc';
 export type TipoEvento = 'check_in' | 'check_out' | 'break_start' | 'break_end';
 
 export interface QrMarcacion {
@@ -131,6 +134,12 @@ export function datosDeMarcacion(body: unknown, orgSesion: number): DatosMarcaci
     const qr = leerQr(b.qr);
     if (qr.org !== null && qr.org !== orgSesion) throw new MarcacionInvalida('qr_de_otra_organizacion');
     return { metodo: 'qr', reloj_id: qr.relojId, token: qr.token, tipo, ubicacion, dispositivo, nota, fuera_de_linea };
+  }
+  if (b.nfc !== undefined && b.nfc !== null) {
+    // La etiqueta solo dice el punto; la sede, el código y la ubicación los valida la base.
+    const etiqueta = leerEtiqueta(b.nfc);
+    if (!etiqueta) throw new MarcacionInvalida('etiqueta_invalida');
+    return { metodo: 'nfc', reloj_id: etiqueta.relojId, token: etiqueta.codigo, tipo, ubicacion, dispositivo, nota, fuera_de_linea };
   }
   if (b.metodo === 'app') {
     return { metodo: 'app', tipo, remoto: b.remoto === true, ubicacion, dispositivo, nota, fuera_de_linea };

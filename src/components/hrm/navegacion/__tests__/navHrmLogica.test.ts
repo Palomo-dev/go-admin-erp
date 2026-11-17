@@ -14,19 +14,29 @@ describe('pestañas de Recursos humanos', () => {
     expect(muestraPestanasHrm('/app/hrm/areas')).toBe(true);
     expect(muestraPestanasHrm('/app/hrm/turnos')).toBe(true);
     expect(muestraPestanasHrm('/app/hrm/mi-equipo')).toBe(true);
+    expect(muestraPestanasHrm('/app/hrm/marcacion')).toBe(true);
+    expect(muestraPestanasHrm('/app/hrm/marcacion/dispositivos')).toBe(false);
     expect(muestraPestanasHrm('/app/hrm/empleados/0b3234e0-eb69-4b72-8853-1bb84184a22e')).toBe(false);
     expect(muestraPestanasHrm('/app/hrm/empleados/nuevo')).toBe(false);
-    expect(muestraPestanasHrm('/app/hrm/nomina')).toBe(false);
+    expect(muestraPestanasHrm('/app/hrm/nomina')).toBe(true);
+    expect(muestraPestanasHrm('/app/hrm/nomina/periodos/123')).toBe(false);
+    expect(muestraPestanasHrm('/app/hrm/prestamos')).toBe(false);
   });
 
   it('la pestaña activa sale del prefijo', () => {
     expect(pestanaHrmActiva('/app/hrm/cargos/123/editar')).toBe('/app/hrm/cargos');
     expect(pestanaHrmActiva('/app/hrm/novedades')).toBe('/app/hrm/novedades');
-    expect(pestanaHrmActiva('/app/hrm/nomina')).toBeNull();
+    expect(pestanaHrmActiva('/app/hrm/nomina/periodos/123')).toBe('/app/hrm/nomina');
+    expect(pestanaHrmActiva('/app/hrm/prestamos')).toBeNull();
   });
 
-  it('decisión 1: RR. HH. ve 9 pestañas y el jefe 6, con «Mi equipo» primero', () => {
-    expect(PESTANAS_HRM).toHaveLength(9);
+  it('decisión 1: RR. HH. ve 11 pestañas (Marcación entre Turnos y Asistencia; Nómina antes de Aprobaciones) y el jefe 6, con «Mi equipo» primero', () => {
+    expect(PESTANAS_HRM).toHaveLength(11);
+    expect(PESTANAS_HRM.indexOf('/app/hrm/aprobaciones')).toBe(PESTANAS_HRM.indexOf('/app/hrm/nomina') + 1);
+    expect(PESTANAS_JEFE).not.toContain('/app/hrm/nomina');
+    expect(PESTANAS_HRM.indexOf('/app/hrm/marcacion')).toBe(PESTANAS_HRM.indexOf('/app/hrm/turnos') + 1);
+    expect(PESTANAS_HRM.indexOf('/app/hrm/asistencia')).toBe(PESTANAS_HRM.indexOf('/app/hrm/marcacion') + 1);
+    expect(PESTANAS_JEFE).not.toContain('/app/hrm/marcacion');
     expect(PESTANAS_JEFE).toHaveLength(6);
     expect(PESTANAS_JEFE[0]).toBe('/app/hrm/mi-equipo');
     expect(pestanasDeVista('jefe')).toBe(PESTANAS_JEFE);

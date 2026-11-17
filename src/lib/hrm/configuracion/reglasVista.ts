@@ -3,7 +3,7 @@
  * como filas editables (campo · operador · valor) y de vuelta al JSON que
  * evalúa `fn_hr_regla_aplica`; el estado de una delegación; el orden.
  */
-import type { Delegacion, Regla } from './tipos';
+import type { Delegacion, PasoRegla, Regla } from './tipos';
 
 export const CAMPOS_LISTA = ['sede', 'area', 'cargo'] as const;
 export const CAMPOS_NUMERO = ['dias', 'horas', 'monto', 'aumento'] as const;
@@ -76,4 +76,27 @@ export function mover(ids: readonly string[], id: string, destino: number): stri
   const d = Math.max(0, Math.min(destino, lista.length));
   lista.splice(d, 0, id);
   return lista;
+}
+
+// ─── R3 (Marcación M0): horas extra y novedades de asistencia con jefe directo ──
+
+/**
+ * Tipos de solicitud cuya regla siempre incluye al jefe directo. Si la persona
+ * no tiene jefe, el motor pasa a RR. HH. La base lo exige en `fn_hr_regla_guardar`
+ * (`jefe_directo_requerido`); aquí se valida antes, para avisar en el editor.
+ */
+export const TIPOS_CON_JEFE_DIRECTO = ['horas_extra', 'novedad_asistencia'] as const;
+
+export function exigeJefeDirecto(tipo: string | null | undefined): boolean {
+  return typeof tipo === 'string' && (TIPOS_CON_JEFE_DIRECTO as readonly string[]).includes(tipo);
+}
+
+/** La regla es de un tipo que lo exige y ningún paso es «Jefe directo». */
+export function faltaJefeDirecto(tipo: string | null | undefined, pasos: readonly Pick<PasoRegla, 'tipo'>[] | null | undefined): boolean {
+  return exigeJefeDirecto(tipo) && !(pasos ?? []).some((p) => p.tipo === 'jefe_directo');
+}
+
+/** El paso `i` es el único «Jefe directo» de una regla que lo exige: no se puede quitar. */
+export function pasoJefeFijo(tipo: string | null | undefined, pasos: readonly Pick<PasoRegla, 'tipo'>[], i: number): boolean {
+  return exigeJefeDirecto(tipo) && pasos[i]?.tipo === 'jefe_directo' && pasos.filter((p) => p.tipo === 'jefe_directo').length === 1;
 }

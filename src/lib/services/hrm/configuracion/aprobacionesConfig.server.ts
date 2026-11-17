@@ -19,6 +19,7 @@ import type {
   ResultadoPrueba,
   TipoAprobador,
 } from '@/lib/hrm/configuracion/tipos';
+import { faltaJefeDirecto } from '@/lib/hrm/configuracion/reglasVista';
 import { HrmError, errorDeRpc, esFechaPlana, esUuid } from '../tipos';
 import { cargos, exigir, puede, sedes, sinError, type CtxConfig } from './comun.server';
 import { hoyOrg } from './parametrosConfig.server';
@@ -172,6 +173,8 @@ export async function guardarRegla(ctx: CtxConfig, r: Partial<Regla>): Promise<{
     if (p.tipo === 'persona' && !esUuid(p.persona)) throw new HrmError(422, 'persona_invalida');
     return { tipo: p.tipo, cargo: p.tipo === 'cargo' ? p.cargo : null, persona: p.tipo === 'persona' ? p.persona : null };
   });
+  // R3 (Marcación M0): la base también lo exige (`fn_hr_regla_guardar`, 22023 → 422).
+  if (faltaJefeDirecto(r.tipo, pasos)) throw new HrmError(422, 'jefe_directo_requerido');
   const { data, error } = await ctx.supabase.rpc('fn_hr_regla_guardar', {
     p_org: ctx.organizationId,
     p_regla: {

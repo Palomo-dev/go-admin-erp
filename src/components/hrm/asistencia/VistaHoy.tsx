@@ -11,7 +11,24 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { CalendarCheck, CalendarRange, CircleCheck, House, Plus, TriangleAlert } from 'lucide-react';
+import {
+  CalendarCheck,
+  CalendarRange,
+  CircleCheck,
+  Fingerprint,
+  House,
+  KeyRound,
+  Laptop,
+  LocateFixed,
+  Nfc,
+  PenLine,
+  Plus,
+  ScanFace,
+  ScanQrCode,
+  Smartphone,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   DataTable,
   FilterChips,
@@ -34,16 +51,32 @@ import {
   areasDe,
   claveEstadoHoy,
   coincidePersona,
+  comoDeValor,
   ordenarHoy,
   periodoQuincena,
   resumenHoy,
   tonoHoy,
+  type ComoMarco,
   type EstadoHoy,
   type FilaHoy,
   type RespuestaHoy,
 } from './asistenciaLogica';
 
 const ESTADOS: readonly EstadoHoy[] = ['presente', 'tarde', 'falta', 'descanso', 'salio', 'ausencia', 'por_llegar'];
+
+/** Icono de «Cómo» (Figma 20.31.1; CATALOGO-ICONOS.md, adenda 2026-11-16). */
+const ICONO_COMO: Record<ComoMarco, LucideIcon> = {
+  ubicacion: LocateFixed,
+  qr: ScanQrCode,
+  nfc: Nfc,
+  carne: Nfc,
+  pin: KeyRound,
+  rostro: ScanFace,
+  huella: Fingerprint,
+  remoto: Laptop,
+  manual: PenLine,
+  app: Smartphone,
+};
 
 export function VistaHoy({
   carga,
@@ -134,7 +167,21 @@ export function VistaHoy({
   ];
 
   const turnoTexto = (f: FilaHoy) => (f.turno ? `${f.turno.nombre ? `${f.turno.nombre} ` : ''}${hora(f.turno.inicio)} – ${hora(f.turno.fin)}` : '—');
-  const comoTexto = (f: FilaHoy) => (f.como ? t(`hoy.como.${f.como}`) : '—');
+  const comoTexto = (f: FilaHoy) => {
+    const como = comoDeValor(f.como);
+    return como ? t(`hoy.como.${como}`) : '—';
+  };
+  const comoCelda = (f: FilaHoy) => {
+    const como = comoDeValor(f.como);
+    if (!como) return <span>—</span>;
+    const Icono = ICONO_COMO[como];
+    return (
+      <span className="inline-flex items-center gap-2 whitespace-nowrap">
+        <Icono className="size-4 shrink-0 text-fg-muted" aria-hidden="true" />
+        {t(`hoy.como.${como}`)}
+      </span>
+    );
+  };
   const estadoBadge = (f: FilaHoy) => (
     <InsigniaEstado tono={tonoHoy(f)}>
       {f.estado === 'tarde' ? t('hoy.estados.tardeMin', { n: f.tarde_minutos ?? 0 }) : t(`hoy.estados.${claveEstadoHoy(f)}`)}
@@ -162,7 +209,7 @@ export function VistaHoy({
       id: 'como',
       encabezado: t('hoy.columnas.como'),
       ocultarDebajo: 'lg',
-      celda: comoTexto,
+      celda: comoCelda,
     },
     { id: 'estado', encabezado: t('hoy.columnas.estado'), celda: estadoBadge },
   ];

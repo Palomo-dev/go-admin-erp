@@ -6,7 +6,7 @@
 import type { FilaParametro } from '../tipos';
 import { metaProgramada, periodoQueCruza, proximoDesde, tramos, vigenteEn } from '../parametrosVista';
 import { CATALOGO_PARAMETROS, estadoEn, filasOtros, lectorEn, type Formato } from '../parametrosCatalogo';
-import { condicionesA, condicionesDe, estadoDelegacion, mover } from '../reglasVista';
+import { condicionesA, condicionesDe, estadoDelegacion, exigeJefeDirecto, faltaJefeDirecto, mover, pasoJefeFijo } from '../reglasVista';
 import { agenteCorto } from '../registroVista';
 
 const fila = (code: string, value: number | null, desde: string, hasta: string | null, status: FilaParametro['status'] = 'vigente', value_json: unknown = null): FilaParametro => ({
@@ -117,5 +117,28 @@ describe('registro de accesos', () => {
     expect(agenteCorto('Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/131.0 Safari/537.36 Edg/131.0')).toBe('Edge · Windows');
     expect(agenteCorto('Mozilla/5.0 (Linux; Android 14) GoAdmin Capacitor')).toBe('App · Android');
     expect(agenteCorto(null)).toBeNull();
+  });
+});
+
+describe('R3: horas extra y novedades de asistencia pasan por el jefe directo (Marcación M0)', () => {
+  test('solo esos dos tipos lo exigen', () => {
+    expect(exigeJefeDirecto('horas_extra')).toBe(true);
+    expect(exigeJefeDirecto('novedad_asistencia')).toBe(true);
+    expect(exigeJefeDirecto('ausencia')).toBe(false);
+    expect(exigeJefeDirecto('excepcion_marcacion')).toBe(false);
+    expect(exigeJefeDirecto(null)).toBe(false);
+  });
+  test('falta el jefe directo si ningún paso lo es', () => {
+    expect(faltaJefeDirecto('horas_extra', [{ tipo: 'rrhh' }])).toBe(true);
+    expect(faltaJefeDirecto('novedad_asistencia', [])).toBe(true);
+    expect(faltaJefeDirecto('horas_extra', [{ tipo: 'rrhh' }, { tipo: 'jefe_directo' }])).toBe(false);
+    expect(faltaJefeDirecto('ausencia', [{ tipo: 'rrhh' }])).toBe(false);
+  });
+  test('el único «Jefe directo» de esos tipos no se puede quitar; si hay dos, sí', () => {
+    const pasos = [{ tipo: 'jefe_directo' as const }, { tipo: 'rrhh' as const }];
+    expect(pasoJefeFijo('horas_extra', pasos, 0)).toBe(true);
+    expect(pasoJefeFijo('horas_extra', pasos, 1)).toBe(false);
+    expect(pasoJefeFijo('ausencia', pasos, 0)).toBe(false);
+    expect(pasoJefeFijo('novedad_asistencia', [{ tipo: 'jefe_directo' }, { tipo: 'jefe_directo' }], 0)).toBe(false);
   });
 });

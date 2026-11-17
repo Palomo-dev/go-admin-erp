@@ -2,7 +2,7 @@
  * Marcación del empleado (ADR-002 §2). La usa `/marcar`.
  *
  * GET  → estado: vínculo, mecanismos permitidos, autorización de ubicación y última marcación.
- * POST { qr: "<contenido del QR>" | metodo: 'app', tipo?, remoto?, ubicacion?, dispositivo? }
+ * POST { qr: "<contenido del QR>" | nfc: "<url o código de la etiqueta>" | metodo: 'app', tipo?, remoto?, ubicacion?, dispositivo? }
  *
  * El QR se valida en la base (`fn_hr_marcar`), no en el navegador. La hora la
  * pone el servidor; el vínculo y la organización salen de la sesión. Un QR de
@@ -39,6 +39,11 @@ export const POST = withOrg(async (ctx, req) => {
     }
     return NextResponse.json(await marcar(ctx, datos, contextoDePeticion(req)), { headers: SIN_CACHE });
   } catch (err) {
+    // Figma 20.30.5: la etiqueta de otra sede dice cuál es (es de la misma organización).
+    if (err instanceof HrmError && err.code === 'etiqueta_otra_sede') {
+      const sede = err.message.split(':').slice(1).join(':').trim().slice(0, 120) || null;
+      return NextResponse.json({ error: err.code, code: err.code, sede }, { status: err.status, headers: SIN_CACHE });
+    }
     return responderError(err, 'marcacion:marcar');
   }
 });

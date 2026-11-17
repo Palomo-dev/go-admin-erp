@@ -970,7 +970,21 @@
         "marcarSalidaTiempo": "Clock out · {duracion}",
         "verMarcaciones": "View my time records",
         "marcarTurno": "Clock in/out",
-        "terminarDescanso": "End break"
+        "terminarDescanso": "End break",
+        "metodo": {
+          "qr": {
+            "entrada": "Scan the branch QR code",
+            "salida": "Clock out with the QR code"
+          },
+          "nfc": {
+            "entrada": "Hold to the NFC tag",
+            "salida": "Clock out with the NFC tag"
+          }
+        }
+      },
+      "notaMetodo": {
+        "qr": "At {sede} you clock in with the branch QR code. The button opens the camera directly.",
+        "nfc": "At {sede} you clock in with the NFC tag at the entrance. The button opens the reader directly."
       }
     },
     "periodo": {
@@ -39047,6 +39061,11 @@
         "titulo": "Access log",
         "descripcion": "Who viewed or changed an employee’s sensitive data",
         "palabras": "access log, audit, sensitive data, salary, bank account, health, privacy, human resources, hr"
+      },
+      "hrmNomina": {
+        "titulo": "Payroll",
+        "descripcion": "Payroll concepts, activation and chart of accounts",
+        "palabras": "payroll, concepts, accounts, enable payroll, third parties, tax id, pre-settlement, human resources, hr"
       }
     },
     "ajustes": {
@@ -51865,7 +51884,8 @@
       "hrmGeneral": "Legal parameters",
       "hrmFestivos": "Holidays",
       "hrmAprobaciones": "Approvals",
-      "hrmRegistroAccesos": "Access log"
+      "hrmRegistroAccesos": "Access log",
+      "hrmNomina": "Payroll"
     },
     "buscar": {
       "etiqueta": "Search a setting",
@@ -54639,8 +54659,10 @@
         "errores": {
           "nombre": "Enter a name of at least 2 letters.",
           "paso": "Choose the position or person for each approver.",
-          "guardar": "We couldn't save the rule. Try again."
-        }
+          "guardar": "We couldn't save the rule. Try again.",
+          "jefeDirecto": "Overtime and attendance events always go through the direct manager. If the person has no manager, Human Resources approves."
+        },
+        "jefeDirectoFijo": "Overtime and attendance events always go through the direct manager."
       },
       "delegaciones": {
         "ayuda": "While the delegation lasts, whatever reaches the absent person reaches their substitute. What was already approved doesn't change, and the request shows that a substitute approved it.",
@@ -55892,7 +55914,8 @@
         "horas_extra": "Overtime",
         "prestamo": "Loan",
         "novedad_asistencia": "Attendance event",
-        "cambio_turno": "Shift swap"
+        "cambio_turno": "Shift swap",
+        "excepcion_marcacion": "Clock-in exception"
       },
       "titulos": {
         "cargo_salario": "Approve position and salary change",
@@ -55916,7 +55939,8 @@
         "horas_extra": "Approve overtime",
         "prestamo": "Approve loan",
         "novedad_asistencia": "Approve attendance event",
-        "cambio_turno": "Approve shift swap"
+        "cambio_turno": "Approve shift swap",
+        "excepcion_marcacion": "Approve clock-in exception"
       },
       "ligados": "{n} linked changes",
       "alMes": "{monto} per month",
@@ -55985,6 +56009,20 @@
         "esteMes": "Effective this month",
         "pidio": "Requested by {nombre}",
         "verN": "View {n, plural, one {# request} other {# requests}}"
+      },
+      "excepcion": {
+        "metodo": "Method",
+        "vigencia": "Valid",
+        "vigenciaValor": "From {desde} to {hasta}",
+        "metodos": {
+          "celular_ubicacion": "Phone with location",
+          "qr": "Branch QR",
+          "nfc_etiqueta": "Branch NFC tag",
+          "carne": "ID card",
+          "pin": "PIN",
+          "rostro": "Face",
+          "huella": "Fingerprint"
+        }
       }
     }
   },
@@ -57072,7 +57110,13 @@
       "verDesglose": "View breakdown",
       "verNovedadesExtra": "View overtime events",
       "verTurnosSemana": "View the week’s shifts",
-      "marcarLista": "Mark ready for payroll"
+      "marcarLista": "Mark ready for payroll",
+      "mostrarQrSede": "Show the branch QR",
+      "mostrarQrSedeDesc": "To scan with a phone on this screen",
+      "mostrarQrSedeSinPantalla": "The branch has no QR screen yet: add one",
+      "mostrarQrSedeCargando": "Looking up the branch screens…",
+      "metodosSede": "Branch clock-in methods",
+      "dispositivos": "Devices"
     },
     "filtros": {
       "estado": "Status",
@@ -57130,7 +57174,12 @@
         "qr": "Branch QR",
         "remoto": "Remote",
         "manual": "Manual entry",
-        "app": "App"
+        "app": "App",
+        "nfc": "NFC tag",
+        "carne": "ID card",
+        "pin": "PIN",
+        "rostro": "Face",
+        "huella": "Fingerprint"
       },
       "estados": {
         "presente": "Present",
@@ -58211,14 +58260,17 @@
     "metodo": {
       "ubicacion": "location",
       "qr": "branch QR",
-      "remoto": "remote"
+      "remoto": "remote",
+      "nfc": "NFC tag"
     },
     "como": {
       "titulo": "How you clock in",
       "etiqueta": "How you clock in",
       "ubicacion": "Location",
       "qr": "Branch QR",
-      "remoto": "Remote"
+      "remoto": "Remote",
+      "nfc": "NFC",
+      "tituloSede": "How you clock in at {sede}"
     },
     "revisar": {
       "sin_ubicacion": "without location: your manager reviews it",
@@ -58239,7 +58291,9 @@
     },
     "qr": {
       "nota": "The QR changes every day. If you cannot find it, ask whoever opens {sede}.",
-      "volver": "Go back to clocking in with location"
+      "volver": "Go back to clocking in with location",
+      "notaSede": "Point at the {sede} QR code. It changes every 30 seconds: a photo of the code won't work.",
+      "notaSolo": "At {sede} you clock in by scanning the QR code at the entrance. It changes every 30 seconds: a photo of the code won't work."
     },
     "remotoAviso": {
       "titulo": "Today you work from home",
@@ -58285,7 +58339,7 @@
     },
     "permiso": {
       "titulo": "Use your location to clock in",
-      "descripcion": "We take it only when you clock in, to confirm you are at the branch. We do not track your route.",
+      "descripcion": "We use it only at the moment you clock in, to confirm you are at the branch. Never to track you: we don't follow your route or see it outside your punches.",
       "queGuardamos": "What we store",
       "queGuardamosTexto": "We store the location of each clock-in, its accuracy and the date of your consent. You can withdraw it at any time; without it, clock in with the branch QR.",
       "permitir": "Allow",
@@ -58338,7 +58392,13 @@
       "ubicacion_requerida": "This point asks for your location. Turn on GPS and try again.",
       "marcacion_duplicada": "You already recorded this clock-in less than a minute ago.",
       "metodo_invalido": "Clock in with the branch QR or from the app.",
-      "datos_invalidos": "Check the clock-in details."
+      "datos_invalidos": "Check the clock-in details.",
+      "metodo_no_disponible_en_sede": "Your branch doesn't have this clock-in method enabled.",
+      "computador_no_permitido": "At your branch you can't clock in from a computer. Use your phone or the branch QR code.",
+      "etiqueta_invalida": "This tag isn't from GO Admin or is damaged. Nothing was recorded.",
+      "qr_ya_usado": "This code was already used. Wait for the next one and scan it again.",
+      "etiqueta_otra_sede": "This tag belongs to another branch. Nothing was recorded.",
+      "fuera_de_rango": "You are outside the branch. Get closer and try again."
     },
     "miAsistencia": {
       "titulo": "My attendance",
@@ -58381,7 +58441,8 @@
         "sinSalida": "No clock-out",
         "libre": "Day off",
         "porRevisar": "To review",
-        "sinMarcar": "Not clocked in"
+        "sinMarcar": "Not clocked in",
+        "enReclamo": "Claim under review"
       },
       "computador": {
         "titulo": "On a computer you clock in without location",
@@ -58399,6 +58460,1691 @@
       "noMarca": {
         "titulo": "Your position does not clock in",
         "descripcion": "In your organization this position does not record attendance. If you think this is a mistake, talk to Human resources."
+      },
+      "metodos": {
+        "celular_ubicacion": "Phone with location",
+        "qr": "Location QR code",
+        "nfc_etiqueta": "NFC tag",
+        "carne": "Badge",
+        "carne_nfc": "NFC badge",
+        "carne_qr": "QR badge",
+        "pin": "PIN",
+        "rostro": "Face",
+        "huella": "Fingerprint",
+        "remoto": "Remote",
+        "manual": "Recorded by HR"
+      },
+      "acciones": {
+        "detalle": "View punch details",
+        "reclamar": "Dispute this punch"
+      },
+      "avisoSede": {
+        "titulo": "At {sede} you clock in with {metodos}",
+        "metodos": {
+          "celular_ubicacion": "your phone with location",
+          "qr": "the branch QR code",
+          "nfc_etiqueta": "the NFC tag"
+        }
+      }
+    },
+    "qrUsado": {
+      "titulo": "This code was already used",
+      "descripcion": "Each QR code works for a single punch. Wait for the next one (it changes in 30 s) and scan it again.",
+      "nota": "Nothing was recorded. If someone sent you a photo of the code, it won't work: you have to be in front of the screen.",
+      "otraVez": "Scan again"
+    },
+    "nfc": {
+      "acercar": "Hold the back of your phone to the tag at the entrance",
+      "esperando": "Waiting for the tag…",
+      "registrando": "Recording the punch…",
+      "nota": "The tag only says which branch you are at; GO Admin sets the time. Works on Android with Chrome and in the GO Admin app.",
+      "conQr": "Clock in with the branch QR code",
+      "conUbicacion": "Clock in with my location",
+      "otraVez": "Hold another tag",
+      "gesto": {
+        "titulo": "Turn on tag reading",
+        "descripcion": "The browser needs a tap to start reading the NFC tag.",
+        "activar": "Turn on NFC reading"
+      },
+      "noDisponible": {
+        "titulo": "This phone can't read NFC tags from the browser",
+        "descripcion": "This happens on iPhone and on browsers other than Chrome for Android. The GO Admin app can. Meanwhile, clock in with the QR code or your location."
+      },
+      "otraSede": {
+        "titulo": "This tag belongs to {sede}",
+        "tituloSinSede": "This tag belongs to another branch",
+        "descripcion": "Today your shift is at {sede}. Clock in there or ask your manager for a punch with a reason.",
+        "nota": "Nothing was recorded. If you really are working at {sede}, your manager can record the punch and approve it.",
+        "notaSinSede": "Nothing was recorded. If you really are working at another branch, your manager can record the punch and approve it."
+      }
+    },
+    "registradaNfc": {
+      "conPunto": "With the NFC tag at {punto}",
+      "sinPunto": "With the NFC tag"
+    },
+    "reclamo": {
+      "titulo": "Dispute the punch from {dia}",
+      "tituloSinDia": "Dispute a punch",
+      "marca": "Punch",
+      "elegirMarca": "Choose the punch",
+      "enRevision": "claim under review",
+      "metodo": "Method",
+      "que": "What's wrong?",
+      "elegir": "Choose an option",
+      "opciones": {
+        "hora": "The time isn't right",
+        "no_es_mia": "This punch isn't mine",
+        "tipo": "It wasn't a clock-in or clock-out",
+        "metodo": "The method isn't right",
+        "otro": "Something else"
+      },
+      "quePaso": "What happened?",
+      "quePasoEjemplo": "Tell your manager what happened",
+      "hora": "Correct time, if you know it",
+      "horaAyuda": "Optional. Your manager confirms it.",
+      "aviso": {
+        "titulo": "The original punch is not changed",
+        "descripcion": "If your manager approves the claim, an adjustment with its reason is added. While it's under review, we keep the evidence photo of this punch."
+      },
+      "cancelar": "Cancel",
+      "enviar": "Send claim",
+      "reclamar": "Dispute this punch",
+      "enviado": "Claim sent",
+      "enviadoDetalle": "Your manager will review it. We keep the photo of this punch in the meantime.",
+      "errores": {
+        "reclamo_que": "Choose what's wrong.",
+        "reclamo_motivo": "Tell us what happened (5 to 500 characters).",
+        "reclamo_hora": "The time can't be in the future or more than 62 days ago.",
+        "ajuste_ya_pendiente": "This punch already has a claim under review.",
+        "marca_antigua": "Only punches from the last 62 days can be disputed.",
+        "jornada_cerrada": "That day was already paid in payroll: talk to Human Resources.",
+        "sin_permiso": "You can only dispute your own punches.",
+        "error_hrm": "The claim couldn't be sent. Try again."
+      },
+      "detalle": {
+        "titulo": "Punches from {dia}",
+        "cerrar": "Close",
+        "sinMarcas": "This day has no punches.",
+        "reclamo": {
+          "pending": "Claim under review",
+          "approved": "Claim approved",
+          "rejected": "Claim rejected"
+        }
+      }
+    }
+  },
+  "hrmNomina": {
+    "titulo": "Payroll",
+    "migas": {
+      "rrhh": "Human resources",
+      "periodos": "Periods"
+    },
+    "subtitulo": {
+      "empleados": "{n, plural, one {# employee} other {# employees}}",
+      "soloPreliquidacion": "pre-calculation only",
+      "proximoPago": "next payment on {fecha}"
+    },
+    "frecuencias": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "biweekly": "Biweekly",
+      "monthly": "Monthly"
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to payroll",
+      "descripcion": "Ask an administrator for the “View payroll” permission. Your own payslips arrive in the employee portal."
+    },
+    "vistas": {
+      "etiqueta": "Payroll views",
+      "periodos": "Periods",
+      "prestaciones": "Benefits",
+      "prestamos": "Loans and garnishments"
+    },
+    "estados": {
+      "abierto": "Open",
+      "calculando": "Calculating",
+      "preliquidado": "Pre-calculated",
+      "en_revision": "In review",
+      "cerrado": "Closed",
+      "pagando": "Paying",
+      "pagado": "Paid",
+      "contabilizado": "Posted",
+      "anulado": "Voided"
+    },
+    "tipos": {
+      "ordinaria": "Regular",
+      "prima": "Service bonus (prima)",
+      "cesantias": "Severance (cesantías)"
+    },
+    "soloPreliquidacion": {
+      "insignia": "Pre-calculation only",
+      "titulo": "Payroll in pre-calculation-only mode · pending the accountant",
+      "descripcion": "You can pre-calculate, review differences and download summaries. Closing, paying and posting are enabled once the accountant approves the rules and GO Admin turns payroll on.",
+      "verQueFalta": "See what's missing"
+    },
+    "nombres": {
+      "quincena1": "1st half of {mes} {anio}",
+      "quincena2": "2nd half of {mes} {anio}",
+      "mes": "{mes} {anio} payroll",
+      "prima1": "Service bonus (prima), 1st half of {anio}",
+      "prima2": "Service bonus (prima), 2nd half of {anio}",
+      "cesantias": "Severance (cesantías) {anio}",
+      "rango": "Payroll for {rango}"
+    },
+    "errores": {
+      "sin_permiso": "You don't have permission for this action.",
+      "nomina_no_habilitada": "Your company's payroll is in pre-calculation-only mode: it can't be closed, paid or adjusted yet.",
+      "estado_invalido": "The period is no longer in the required status. Reload the page.",
+      "periodo_no_existe": "The period doesn't exist.",
+      "no_existe": "The record wasn't found.",
+      "parametro_no_configurado": "A legal parameter for the year is missing (for example, the minimum wage). Check it in Settings › Human resources.",
+      "nada_por_pagar": "There are no closed payslips to pay in this period.",
+      "cuenta_bancaria_ajena": "The bank account doesn't belong to your company or is inactive.",
+      "cuenta_bancaria_invalida": "Choose a bank account.",
+      "fecha_invalida": "Check the dates.",
+      "periodo_invalido": "Check the period's type, frequency and dates.",
+      "periodo_con_calculo": "The period already has a calculation: it can't be deleted.",
+      "motivo_obligatorio": "Enter the reason for the adjustment.",
+      "novedades_invalidas": "Check the adjustment's item and amount.",
+      "ajuste_sin_diferencia": "The payslip doesn't change with that adjustment: there's nothing to save.",
+      "archivo_banco_invalido": "The bank file has rows with errors.",
+      "formato_banco_no_soportado": "That bank format isn't available yet.",
+      "duplicado": "A period with those dates already exists.",
+      "periodo_cruzado": "The dates overlap another period of the same type.",
+      "generico": "The action couldn't be completed. Try again."
+    },
+    "motivos": {
+      "solo_preliquidacion": "Payroll is in pre-calculation-only mode until the accountant approves and GO Admin turns it on.",
+      "bloqueos": "There are unresolved blockers.",
+      "revision_pendiente": "Management approval is missing.",
+      "sin_calculo": "Pre-calculate first.",
+      "con_calculo": "A period that has already been calculated can't be deleted."
+    },
+    "apagada": {
+      "titulo": "Payroll is turned on after the accountant's review",
+      "subtitulo": "Meanwhile, it works in pre-calculation-only mode.",
+      "entendido": "Got it",
+      "cerrar": "Close",
+      "sinPermiso": "You don't have access to payroll settings.",
+      "mientras": "You can pre-calculate, review differences and download summaries. Closing, paying, sending payslips and posting are enabled once payroll is turned on.",
+      "pasos": {
+        "conceptos": "Items and ledger accounts",
+        "conceptosDetalle": "{n} items · {conCuenta} with an account from the accountant",
+        "plan": "Chart of accounts preview",
+        "planSinPreparar": "GO Admin hasn't prepared the preview of the accounts to be created yet.",
+        "planPreparado": "{n, plural, one {# account to create} other {# accounts to create}} · prepared on {fecha}",
+        "terceros": "Third parties with NIT",
+        "tercerosSinPlan": "They're reviewed with the chart of accounts preview.",
+        "tercerosFaltan": "{n, plural, one {# third-party detail is missing} other {# third-party details are missing}}: payroll can't be turned on without them.",
+        "tercerosListos": "All entities and people have their NIT.",
+        "aprobacion": "Written approval from the company and the accountant",
+        "aprobacionLista": "Approved on {fecha}",
+        "aprobacionPendiente": "Pending",
+        "encendido": "Active payroll",
+        "encendidoListo": "On",
+        "encendidoPendiente": "GO Admin turns it on with the written approval, zero blockers and zero incomplete third parties."
+      },
+      "cuentasTitulo": "Accounts to be created",
+      "nCuentas": "{n, plural, one {# account} other {# accounts}}",
+      "sinCuentas": "Your chart of accounts already has all the payroll sub-accounts.",
+      "bajo": "under {cuenta}",
+      "tercerosTitulo": "Third parties without entity or NIT",
+      "nTerceros": "{n, plural, one {# pending} other {# pending}}",
+      "sinTerceros": "No third parties are missing.",
+      "empleadoSinNombre": "Employee",
+      "faltaNit": "NIT missing",
+      "faltaEntidad": "entity missing"
+    },
+    "terceros": {
+      "eps": "EPS",
+      "afp": "Pension fund",
+      "arl": "ARL",
+      "ccf": "Family compensation fund",
+      "cesantias": "Severance fund",
+      "empleado": "Employee ID document",
+      "icbf": "ICBF",
+      "sena": "SENA",
+      "dian": "DIAN"
+    },
+    "nuevo": {
+      "titulo": "New period",
+      "descripcion": "The service bonus (prima) and severance (cesantías) go in their own period.",
+      "crear": "Create period",
+      "creado": "Period created",
+      "fechasMal": "The end date can't be earlier than the start date.",
+      "tipo": "Type",
+      "tipos": {
+        "ordinaria": "Regular",
+        "prima": "Service bonus (prima)",
+        "cesantias": "Severance (cesantías)"
+      },
+      "frecuencia": "Frequency",
+      "frecuenciaAyuda": "The electronic payroll support document is always monthly.",
+      "frecuencias": {
+        "biweekly": "Biweekly",
+        "monthly": "Monthly",
+        "weekly": "Weekly"
+      },
+      "avisoPrima": "The service bonus (prima) is settled on what accrued in the half-year: salary, variable average and transportation allowance.",
+      "avisoCesantias": "The year's severance (cesantías) is deposited into the fund; the interest is paid to each person.",
+      "desde": "From",
+      "hasta": "To",
+      "fechaPago": "Payment date",
+      "fechaPagoAyuda": "It's the date of the bank file and the disbursement.",
+      "nombre": "Name",
+      "nombreAyuda": "Optional. If you leave it as is, it's named after its dates."
+    },
+    "periodos": {
+      "titulo": "Payroll periods",
+      "nuevo": "New period",
+      "sinCambios": "Nothing changed since the last calculation: the same version is kept.",
+      "preliquidado": "Pre-calculated: {n, plural, one {# employee} other {# employees}}",
+      "menu": {
+        "abrir": "Open",
+        "preliquidar": "Pre-calculate",
+        "recalcular": "Recalculate",
+        "eliminar": "Delete",
+        "eliminarConCalculo": "A period that has already been calculated can't be deleted."
+      },
+      "pagada": "paid on {fecha}",
+      "pago": "payment on {fecha}",
+      "nBloqueos": "{n, plural, one {# blocker} other {# blockers}}",
+      "nAlertas": "{n, plural, one {# alert} other {# alerts}}",
+      "columnas": {
+        "periodo": "Period",
+        "estado": "Status",
+        "empleados": "Employees",
+        "neto": "Net pay",
+        "netoPreliquidado": "Pre-calculated net",
+        "costo": "Company cost",
+        "pendientes": "Pending"
+      },
+      "buscar": "Search period by name or payment date",
+      "verN": "View {n, plural, one {# period} other {# periods}}",
+      "filtros": {
+        "estado": "Status",
+        "tipo": "Type"
+      },
+      "nEmpleados": "{n, plural, one {# employee} other {# employees}}",
+      "vacio": {
+        "titulo": "No payroll periods yet",
+        "descripcion": "Create the first period and pre-calculate it: the server does the calculation with the approved work schedule and the year's parameters."
+      },
+      "sinResultados": "Try another name or clear the filters.",
+      "error": "The periods couldn't be loaded",
+      "sinPermiso": {
+        "titulo": "You don't have access to payroll",
+        "descripcion": "Ask for the “View payroll” permission."
+      },
+      "sustantivo": {
+        "singular": "period",
+        "plural": "periods"
+      },
+      "eliminar": {
+        "titulo": "Delete this period?",
+        "descripcion": "“{nombre}” will be deleted. This is only possible because it's open and was never calculated. This can't be undone.",
+        "confirmar": "Delete period",
+        "hecho": "Period deleted"
+      }
+    },
+    "prestaciones": {
+      "etiqueta": "Social benefits",
+      "kpi": {
+        "prima": "Service bonus (prima)",
+        "sinPeriodo": "No service bonus period",
+        "cesantias": "Severance (cesantías) to deposit",
+        "cesantiasDetalle": "To the fund by February 14",
+        "intereses": "Interest on severance",
+        "interesesDetalle": "To each person by January 31"
+      },
+      "pestanas": {
+        "prima": "Service bonus (prima)",
+        "cesantias": "Severance and interest"
+      },
+      "aviso": {
+        "primaTitulo": "Service bonus (prima) (art. 306 of the CST)",
+        "primaDescripcion": "30 days of salary per year, in two payments: no later than June 30 and December 20. The base includes averaged variable pay and the transportation allowance.",
+        "cesantiasTitulo": "Severance (cesantías) and interest",
+        "cesantiasDescripcion": "One month of salary per year, deposited into each person's fund; the interest (12% per year) is paid directly to the worker."
+      },
+      "liquidarPrima": "Settle service bonus",
+      "liquidarCesantias": "Settle severance",
+      "elegirPeriodo": "Choose period",
+      "abrirPeriodo": "Open period",
+      "buscar": "Search employee",
+      "columnas": {
+        "empleado": "Employee",
+        "dias": "Days",
+        "salario": "Salary",
+        "variable": "Variable average",
+        "auxilio": "Allowance",
+        "base": "Base",
+        "prima": "Service bonus",
+        "cesantias": "Severance",
+        "intereses": "Interest"
+      },
+      "nDias": "{n} days",
+      "vacio": {
+        "sinPeriodo": "There's no period of this type yet",
+        "sinPeriodoDescripcion": "Create the period to settle it: the server calculates each person's days, base and amount.",
+        "sinCalculo": "The period hasn't been pre-calculated yet",
+        "sinCalculoDescripcion": "Open it and pre-calculate it to see each person's amount as of {fecha}."
+      },
+      "sinResultados": "Try another name.",
+      "error": "The settlement couldn't be loaded",
+      "sinPermiso": "You don't have access to this period"
+    },
+    "prestamos": {
+      "titulo": "Loans and garnishments",
+      "nuevo": "New loan",
+      "menu": {
+        "ver": "View details",
+        "suspender": "Suspend garnishment",
+        "reactivar": "Reactivate garnishment",
+        "terminar": "End garnishment"
+      },
+      "empresa": "Company",
+      "nCuotas": "{n, plural, one {# installment} other {# installments}}",
+      "sinBeneficiario": "No beneficiary",
+      "porcentajeSalario": "{pct}% of salary",
+      "ordena": "orders {valor}",
+      "desde": "since {fecha}",
+      "clases": {
+        "prestamo": "Loan",
+        "anticipo": "Advance",
+        "embargo_alimentos": "Child/spousal support garnishment",
+        "embargo_cooperativa": "Cooperative garnishment",
+        "embargo_ordinario": "Ordinary garnishment"
+      },
+      "estados": {
+        "al_dia": "Up to date",
+        "programado": "Scheduled",
+        "por_aprobar": "Pending approval",
+        "activo": "Active",
+        "suspendido": "Suspended",
+        "pagado": "Paid",
+        "terminado": "Ended",
+        "anulado": "Voided",
+        "en_mora": "Overdue"
+      },
+      "columnas": {
+        "tipo": "Type",
+        "empleado": "Employee",
+        "origen": "Creditor or source",
+        "monto": "Amount or order",
+        "cuota": "Installment",
+        "saldo": "Balance",
+        "estado": "Status"
+      },
+      "kpi": {
+        "prestamos": "Loans and advances",
+        "prestamosDetalle": "Balance of {n} · installments of {cuotas} per period",
+        "embargos": "Garnishments",
+        "embargosSinPermiso": "You need access to “Salary and pay”",
+        "embargosDetalle": "{n, plural, =0 {None active} one {# active} other {# active}}"
+      },
+      "buscar": "Search employee, creditor or number",
+      "verN": "View {n, plural, one {# deduction} other {# deductions}}",
+      "filtros": {
+        "tipo": "Type",
+        "estado": "Status"
+      },
+      "vacio": {
+        "titulo": "No loans or garnishments",
+        "descripcion": "Company loans and court-ordered garnishments are deducted automatically in each payroll, within their legal cap."
+      },
+      "sinResultados": "Try another name or clear the filters.",
+      "error": "Loans and garnishments couldn't be loaded",
+      "sustantivo": {
+        "singular": "deduction",
+        "plural": "deductions"
+      },
+      "cambio": {
+        "suspendido": {
+          "titulo": "Suspend the garnishment?",
+          "descripcion": "While it's suspended, nothing is deducted from {nombre}. Only do this with the court order.",
+          "confirmar": "Suspend"
+        },
+        "activo": {
+          "titulo": "Reactivate the garnishment?",
+          "descripcion": "Deductions from {nombre} resume with the next pre-calculation.",
+          "confirmar": "Reactivate"
+        },
+        "terminado": {
+          "titulo": "End the garnishment?",
+          "descripcion": "Nothing more will be deducted from {nombre}. Only do this with the release order. This can't be undone.",
+          "confirmar": "End garnishment"
+        },
+        "hecho": "Garnishment updated"
+      }
+    },
+    "embargo": {
+      "cerrar": "Close",
+      "volver": "Back",
+      "datos": "Garnishment details",
+      "estado": "Status",
+      "beneficiario": "Beneficiary",
+      "oficio": "Court order",
+      "recibido": "Received",
+      "vigencia": "Validity",
+      "desdeSinFin": "From {fecha}, no end date",
+      "ordena": "Orders",
+      "porcentaje": "{pct}% of salary",
+      "fijo": "{valor} per period",
+      "total": "Total ordered",
+      "sinTope": "No cap",
+      "aplicado": "Deducted to date",
+      "saldo": "Balance",
+      "limiteTitulo": "Legal limit",
+      "limite": {
+        "alimentos": "Child/spousal support garnishments go first and can take up to 50% of salary after statutory deductions.",
+        "cooperativa": "Cooperative garnishments go after support garnishments, up to 50% of salary after statutory deductions.",
+        "ordinario": "Ordinary garnishments go last and can only take 1/5 of the amount by which salary exceeds the minimum wage. Whatever doesn't fit stays as a balance."
+      }
+    },
+    "periodo": {
+      "titulo": "Payroll period",
+      "sinCambios": "Nothing changed since the last calculation: the same version is kept.",
+      "devuelto": "Returned to pre-calculation with a new calculation",
+      "calculado": "Payroll pre-calculated",
+      "enviado": "Sent for review",
+      "cerradoOk": "Period closed",
+      "acciones": {
+        "preliquidar": "Pre-calculate",
+        "recalcular": "Recalculate",
+        "enviarRevision": "Send for review",
+        "devolver": "Return to pre-calculation",
+        "cerrar": "Close period",
+        "ajustar": "Adjustment with reason",
+        "eliminar": "Delete period"
+      },
+      "pago": "payment on {fecha}",
+      "version": "version {n}, calculated on {fecha}",
+      "sinCalculo": "not calculated",
+      "sinPermiso": {
+        "titulo": "You don't have access to this period",
+        "descripcion": "Ask for the “View payroll” permission."
+      },
+      "volver": "Back to Payroll",
+      "noExiste": "This period doesn't exist or was already deleted",
+      "secciones": {
+        "etiqueta": "Period sections",
+        "empleados": "Employees",
+        "revision": "Review and closing",
+        "pago": "Payment",
+        "colillas": "Payslips"
+      },
+      "kpi": {
+        "devengado": "Earnings",
+        "empleados": "{n, plural, one {# employee} other {# employees}}",
+        "sinCalculo": "Not calculated",
+        "deducciones": "Deductions",
+        "deduccionesDetalle": "Statutory, loans, payroll-deduction loans (libranzas) and garnishments",
+        "neto": "Net pay",
+        "netoPreliquidado": "Pre-calculated net",
+        "costo": "Company cost",
+        "costoDetalle": "Including contributions and provisions"
+      },
+      "cerradoAviso": {
+        "titulo": "Period closed: it can't be edited",
+        "descripcion": "What's closed stays as is. To correct something, make an adjustment with a reason: it's calculated with the closing rules and paid with the period."
+      },
+      "confirmarCierre": {
+        "titulo": "Close “{nombre}”?",
+        "descripcion": "{n, plural, one {# payslip is} other {# payslips are}} closed for a net of {neto}. Closing can't be undone.",
+        "confirmar": "Close period",
+        "c1": "Payslips are approved and the accrual is recorded.",
+        "c2": "Deducted loan installments are marked as paid and the applied amount is added to each garnishment.",
+        "c3": "Afterwards it can only be corrected with an adjustment with a reason; it's no longer recalculated."
+      },
+      "versionCorta": "version {n}"
+    },
+    "empleados": {
+      "titulo": "Period employees",
+      "ingreso": "Joined",
+      "revisar": {
+        "titulo": "Differences from the previous period",
+        "n": "{n} to review",
+        "ingreso": "{nombre} · joined in this period",
+        "ingresoDetalle": "Settles {dias} days; there's no previous period to compare.",
+        "subio": "{nombre} · net pay rose {pct}%",
+        "bajo": "{nombre} · net pay fell {pct}%",
+        "variacionDetalle": "It exceeds the variation threshold your company set. Check hours, payroll events and deductions.",
+        "embargo": "{nombre} · the garnishment was limited to {valor}",
+        "embargoDetalle": "The court order requires {pedido}; the law doesn't allow deducting more in this period."
+      },
+      "menu": {
+        "detalle": "View details",
+        "colilla": "View payslip",
+        "ajuste": "Adjustment with reason"
+      },
+      "bloqueada": "Blocked",
+      "columnas": {
+        "empleado": "Employee",
+        "dias": "Days",
+        "devengado": "Earnings",
+        "deducciones": "Deductions",
+        "neto": "Net",
+        "costo": "Company cost",
+        "variacion": "Vs. previous"
+      },
+      "sinCalculo": {
+        "titulo": "This period hasn't been pre-calculated yet",
+        "descripcion": "When you pre-calculate, the server calculates each payslip with the approved work schedule, payroll events and the year's parameters.",
+        "accion": "Pre-calculate"
+      },
+      "filtros": {
+        "titulo": "Show",
+        "bloqueos": "With blockers",
+        "alertas": "With alerts",
+        "variacion": "Variation above threshold"
+      },
+      "bloqueosTitulo": "{n, plural, one {# blocker prevents} other {# blockers prevent}} sending for review",
+      "irNovedades": "Go to Payroll events",
+      "verDetalle": "View details",
+      "buscar": "Search employee, position or area",
+      "verN": "View {n, plural, one {# employee} other {# employees}}",
+      "nDias": "{n} days",
+      "vacio": {
+        "titulo": "No one in this period",
+        "descripcion": "There are no active employment relationships within the period's dates."
+      },
+      "sinResultados": "Try another name or clear the filters.",
+      "sustantivo": {
+        "singular": "employee",
+        "plural": "employees"
+      }
+    },
+    "alertas": {
+      "sin_preliquidacion": "The period hasn't been pre-calculated.",
+      "calculo_sin_motor": "The current version wasn't made by the new engine: recalculate.",
+      "novedades_nomina_pendientes": "{n, plural, one {# payroll event pending approval} other {# payroll events pending approval}}",
+      "novedades_despues_del_calculo": "{n, plural, one {# event changed} other {# events changed}} after the calculation: recalculate",
+      "novedades_asistencia_pendientes": "{n, plural, one {# attendance event to resolve} other {# attendance events to resolve}}",
+      "dias_no_listos": "{n, plural, one {# work day isn't ready} other {# work days aren't ready}} for payroll",
+      "revision_pendiente": "Review approval is missing.",
+      "parametros_pendientes": "Some of the year's parameters are unconfirmed (minimum wage or UVT).",
+      "acumulado_faltante": "The amounts accrued in the half-year or year are missing for the settlement.",
+      "auxilio_transporte_supera_tope": "The salary exceeds the transportation allowance cap.",
+      "cotizacion_por_semanas_no_soportada": "Weekly contributions aren't supported yet.",
+      "fsp_reparto_pila_pendiente": "The solidarity fund split for PILA is missing.",
+      "ibc_ajustado_al_minimo": "The IBC was adjusted to the legal minimum.",
+      "ibc_mes_anterior_sin_dato": "There's no IBC for the previous month: the period's was used.",
+      "integral_bajo_minimo": "The integral salary is below 13 minimum wages.",
+      "integral_con_horas": "Integral salary: surcharges and overtime aren't paid.",
+      "integral_sin_prima_ni_cesantias": "The integral salary doesn't accrue service bonus (prima) or severance (cesantías).",
+      "licencia_no_remunerada": "Has unpaid leave in the period.",
+      "neto_negativo": "Net pay is negative: check the deductions.",
+      "novedad_sin_valor": "There's a payroll event with no amount or quantity.",
+      "retencion_porcentaje_fijo_faltante": "Procedure 2 without a fixed withholding percentage.",
+      "sin_periodo_anterior": "There's no previous period to compare.",
+      "variacion_contra_anterior": "Changed more than the threshold vs. the previous period.",
+      "vinculo_fuera_del_periodo": "The employment relationship doesn't cover the whole period.",
+      "embargo_limitado": "A garnishment was limited to the legal cap.",
+      "cuota_prestamo_limitada": "A loan installment was limited: the worker must keep half of the salary.",
+      "descuento_limitado": "A deduction was limited to the legal cap.",
+      "parametro_no_configurado": "A legal parameter is missing.",
+      "error_calculo": "This payslip couldn't be calculated.",
+      "otra": "Check this payslip."
+    },
+    "revision": {
+      "sinPermiso": "You don't have access to the review",
+      "faltaAprobacion": "Management approval is required to close",
+      "faltaAprobacionDetalle": "Requested on {fecha}. Once approved, “Close period” is enabled.",
+      "irAprobaciones": "Go to Approvals",
+      "antesDeCerrar": "Before closing",
+      "nListas": "{n} of {total} ready",
+      "puntos": {
+        "calculo": {
+          "titulo": "Calculation without blockers",
+          "listo": "No payslip has blockers."
+        },
+        "novedades": {
+          "titulo": "Period's payroll events resolved",
+          "listo": "There are no pending payroll events or changes after the calculation."
+        },
+        "asistencia": {
+          "titulo": "Attendance events resolved",
+          "listo": "There are no attendance events to resolve."
+        },
+        "jornada": {
+          "titulo": "Work schedule ready for payroll",
+          "listo": "All days in the period are ready."
+        },
+        "parametros": {
+          "titulo": "Year's parameters loaded",
+          "listo": "Minimum wage, transportation allowance and UVT confirmed."
+        },
+        "aprobacion": {
+          "titulo": "Management approval",
+          "listo": "Approved, or your company doesn't require approval to close.",
+          "pendiente": "Awaiting approval.",
+          "rechazada": "Rejected: return to pre-calculation and send again."
+        }
+      },
+      "ajustes": {
+        "titulo": "Period adjustments",
+        "numero": "Adjustment · version {n}",
+        "apagada": "Payroll is in pre-calculation-only mode.",
+        "cerrado": "Adjustment closed",
+        "cerrar": "Close adjustment"
+      },
+      "quien": {
+        "titulo": "Who reviews and approves",
+        "preparo": "Pre-calculated by",
+        "tu": "You",
+        "otraPersona": "Another person in HR",
+        "aprueba": "Approval",
+        "estados": {
+          "pendiente": "Pending",
+          "aprobada": "Approved",
+          "rechazada": "Rejected",
+          "cancelada": "Canceled",
+          "sin_regla": "No approval rule"
+        },
+        "regla": "HR prepares and reviews; management approves in Approvals. Whoever pre-calculated can't approve their own payroll.",
+        "noPuedesAprobar": "You prepared this payroll: someone else approves it."
+      },
+      "loQueSeCierra": "What will be closed",
+      "empleados": "Employees",
+      "devengado": "Earnings",
+      "deducciones": "Deductions",
+      "neto": "Net pay",
+      "costo": "Company cost"
+    },
+    "pago": {
+      "archivo": {
+        "titulo": "1. Bank file",
+        "descripcion": "It's validated before being generated: one bad row means no file.",
+        "formato": "Format",
+        "csvGenerico": "Generic CSV (account, type, document and amount)",
+        "generar": "Generate and validate file",
+        "sinPermiso": "You need permission to pay payroll and view bank accounts.",
+        "conHallazgos": "{n, plural, one {# row has} other {# rows have}} errors: the file wasn't generated",
+        "listo": "File generated",
+        "hallazgosTitulo": "{n, plural, one {# finding} other {# findings}} before generating the file",
+        "validado": "File validated with no findings",
+        "errores": {
+          "sin_cuenta": "no bank account",
+          "sin_documento": "no ID document",
+          "valor_invalido": "invalid amount",
+          "tipo_cuenta_invalido": "invalid account type",
+          "cuenta_invalida": "invalid account number"
+        }
+      },
+      "pago": {
+        "titulo": "2. Payment",
+        "descripcion": "A single disbursement per period is recorded in Treasury, with a disbursement voucher.",
+        "pagado": "Period paid",
+        "sinPermiso": "You need permission to pay payroll.",
+        "cuenta": "Paying account",
+        "cargandoCuentas": "Loading accounts…",
+        "elegirCuenta": "Choose the account",
+        "fecha": "Payment date",
+        "referencia": "Reference",
+        "marcar": "Mark as paid",
+        "comisionesPendientes": "{n, plural, one {# payslip still has} other {# payslips still have}} commissions to mark as paid: try again from Commissions."
+      },
+      "asiento": {
+        "titulo": "3. Journal entry",
+        "descripcion": "It moves to “Posted” when each payslip has its accrual and payment entries.",
+        "contabilizado": "Period posted",
+        "despuesDePagar": "It's posted after payment.",
+        "listo": "Period posted",
+        "contabilizar": "Post",
+        "faltan": "{n, plural, one {# entry is missing} other {# entries are missing}}: check the accounting failures inbox",
+        "sinDetalle": "No details"
+      },
+      "resumen": {
+        "titulo": "What's paid",
+        "neto": "Payroll net",
+        "colillas": "Payslips to pay",
+        "sale": "Comes out of the paying account",
+        "nota": "Garnishments and payroll-deduction loans (libranzas) are already deducted from the net: they're paid separately to each third party.",
+        "estados": {
+          "porPagar": "To pay",
+          "pagado": "Paid",
+          "contabilizado": "Posted"
+        }
+      },
+      "confirmar": {
+        "titulo": "Mark payroll as paid?",
+        "descripcion": "A disbursement of {total} is recorded from {cuenta}. This can't be undone.",
+        "confirmar": "Mark as paid",
+        "hecho": "Payment of {total} recorded",
+        "c1": "Payslips move to paid and payroll payable is posted against the bank.",
+        "c2": "Included commissions are marked as paid."
+      }
+    },
+    "colillas": {
+      "titulo": "Period payslips",
+      "vistaPrevia": "Preview: the person only sees their payslip once the period is closed.",
+      "buscar": "Search employee",
+      "columnas": {
+        "empleado": "Employee",
+        "neto": "Net",
+        "estado": "Status"
+      },
+      "ver": "View payslip",
+      "vacio": {
+        "titulo": "No payslips",
+        "descripcion": "Payslips appear when you pre-calculate."
+      },
+      "sinResultados": "Try another name."
+    },
+    "colilla": {
+      "estados": {
+        "draft": "Pre-calculated",
+        "approved": "Closed",
+        "paid": "Paid",
+        "cancelled": "Voided"
+      },
+      "nDias": "{n} days",
+      "nHoras": "{n} h",
+      "titulo": "Payslip",
+      "sinPermiso": "You don't have access to this payslip",
+      "volver": "Back to period",
+      "vacio": {
+        "titulo": "No payslip for this person",
+        "descripcion": "The person isn't in the period's current version."
+      },
+      "tituloDe": "Payslip · {nombre}",
+      "neto": "net {valor}",
+      "descargar": "Download PDF",
+      "comprobante": "Payroll payment receipt",
+      "del": "For {rango}",
+      "pagada": "paid on {fecha}",
+      "pago": "payment on {fecha}",
+      "borrador": "Draft: the period isn't closed. Don't give it to the person.",
+      "empleado": "Employee",
+      "cargo": "Position",
+      "salario": "Base salary",
+      "mensual": "{valor} monthly",
+      "devengados": "Earnings",
+      "deducciones": "Deductions",
+      "totalDevengado": "Total earnings",
+      "totalDeducciones": "Total deductions",
+      "netoPagar": "Net pay",
+      "bloqueada": "Blocked",
+      "ibc": "Period IBC: {valor}.",
+      "noEsElectronica": "This receipt doesn't replace the DIAN electronic payroll support document.",
+      "generado": "Generated on {fecha}.",
+      "electronica": {
+        "titulo": "This isn't the electronic payroll",
+        "descripcion": "The DIAN electronic payroll support document is monthly and arrives in phase 4. This payslip's data is already ready for it."
+      },
+      "entrega": {
+        "titulo": "Delivery to the person",
+        "descripcion": "Email delivery and the employee portal come later. Meanwhile, download the PDF and hand it over."
+      }
+    },
+    "ajuste": {
+      "titulo": "Adjustment with reason",
+      "descripcion": "What's closed isn't edited: the adjustment recalculates the payslip with the closing rules and saves only the difference.",
+      "confirmar": "Save adjustment",
+      "motivo": "Reason",
+      "motivoPlaceholder": "E.g.: performance bonus that wasn't recorded on time",
+      "c1": "It's calculated with the parameters the period was closed with.",
+      "c2": "It's kept as an adjustment version, with its reason and who made it.",
+      "c3": "It's closed separately and paid with the period.",
+      "hecho": "Adjustment saved",
+      "persona": "Person",
+      "elegirPersona": "Choose the person",
+      "concepto": "Item",
+      "dias": "Days",
+      "valor": "Amount",
+      "faltaPersona": "Choose the person.",
+      "faltaValor": "Enter the adjustment amount."
+    },
+    "conceptos": {
+      "BONIFICACION_SALARIAL": "Salary bonus",
+      "BONIFICACION_NO_SALARIAL": "Non-salary bonus",
+      "AUXILIO_NO_SALARIAL": "Non-salary allowance",
+      "RETROACTIVO": "Retroactive pay",
+      "VACACIONES_COMPENSADAS": "Vacation paid in cash",
+      "LIBRANZA": "Payroll-deduction loan (libranza)",
+      "APORTE_COOPERATIVA": "Cooperative contribution",
+      "FONDO_EMPLEADOS": "Employee fund contribution",
+      "CUOTA_SINDICAL": "Union dues",
+      "OTRO_DESCUENTO": "Other authorized deduction"
+    },
+    "detalle": {
+      "titulo": "Person details",
+      "sinItems": "No items in this group.",
+      "columnas": {
+        "concepto": "Item",
+        "cantidad": "Quantity",
+        "base": "Base",
+        "valor": "Amount"
+      },
+      "salarial": "Salary",
+      "noSalarial": "Non-salary",
+      "sinPermiso": "You don't have access to this period",
+      "volver": "Back to period",
+      "vacio": {
+        "titulo": "This person isn't in the period",
+        "descripcion": "They don't have a payslip in the current version."
+      },
+      "salarioMensual": "salary {valor} monthly",
+      "nDias": "{n} days",
+      "verColilla": "View payslip",
+      "etiqueta": "Detail sections",
+      "pestanas": {
+        "resumen": "Summary",
+        "seguridad": "Social security",
+        "retencion": "Withholding",
+        "deducciones": "Deductions",
+        "provisiones": "Provisions"
+      },
+      "devengados": "Earnings",
+      "totalDevengado": "Total earnings",
+      "deducciones": "Deductions",
+      "totalDeducciones": "Total deductions",
+      "netoPagar": "Net pay · {devengado} − {deducciones}",
+      "bloqueada": "Blocked",
+      "aportesTrabajador": "Worker contributions",
+      "aportesEmpleador": "Company contributions and payroll taxes",
+      "total": "Total",
+      "retencion": {
+        "titulo": "Withholding tax",
+        "noAplica": "There was no withholding in this period (it's calculated in the period that closes the month).",
+        "procedimiento": "Procedure",
+        "proc": "Procedure {n}",
+        "depuracion": {
+          "ingresos": "Month's employment income",
+          "incr": "Non-taxable income",
+          "ingreso_neto": "Net income",
+          "deduccion_dependientes": "Dependents",
+          "deduccion_medicina": "Prepaid health plan",
+          "deduccion_vivienda": "Mortgage interest",
+          "exenta_voluntarios": "Voluntary contributions (AFC and FVP)",
+          "exenta_25": "25% exempt income",
+          "limite_40": "40% limit",
+          "beneficios_aplicados": "Benefits applied",
+          "base": "Taxable base"
+        },
+        "porcentaje": "Fixed percentage",
+        "delMes": "Month's withholding",
+        "estePeriodo": "Withheld in this period"
+      },
+      "otrasDeducciones": "Loans, payroll-deduction loans (libranzas), garnishments and other deductions",
+      "limite": {
+        "titulo": "Deduction limit",
+        "descripcion": "Garnishments and loans are applied in order and with a cap: the worker keeps at least half of the salary after statutory deductions. Whatever doesn't fit stays as a balance for the next period."
+      },
+      "provisiones": "Period provisions",
+      "ibc": {
+        "titulo": "Period IBC · 40% rule",
+        "salarioMensual": "Monthly salary",
+        "exceso40": "Non-salary excess over 40%",
+        "minimo": "Floor (1 SMMLV prorated)",
+        "maximo": "Ceiling (25 SMMLV prorated)",
+        "ibc": "IBC",
+        "arl": "ARL IBC",
+        "parafiscales": "Payroll tax base",
+        "prestaciones": "Benefits base",
+        "nota": "Art. 30 of Law 1393 of 2010: non-salary pay above 40% of the total is added to the IBC. The transportation allowance isn't counted.",
+        "exonerado": "Exempt from employer health, ICBF and SENA contributions (art. 114-1 of the ET)."
+      },
+      "costo": {
+        "titulo": "Cost to the company",
+        "devengado": "Total earnings",
+        "aportes": "Contributions and payroll taxes",
+        "provisiones": "Provisions",
+        "total": "Company cost"
+      },
+      "informativos": "Informational"
+    },
+    "prestamo": {
+      "titulo": "Loan",
+      "noExiste": "This loan doesn't exist",
+      "volver": "Back to Loans and garnishments",
+      "tituloDe": "Loan {numero} · {nombre}",
+      "deLaEmpresa": "Company loan",
+      "conIntereses": "{monto} at {tasa}% per year",
+      "sinIntereses": "{monto} interest-free",
+      "cuotasDe": "{n, plural, one {# installment} other {# installments}} of {valor}",
+      "columnas": {
+        "cuota": "Installment",
+        "vence": "Due",
+        "valor": "Amount",
+        "saldo": "Balance after",
+        "estado": "Status"
+      },
+      "nDeTotal": "{n} of {total}",
+      "cuotas": {
+        "descontada": "Deducted",
+        "pending": "Scheduled",
+        "partial": "Partial",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "skipped": "Skipped"
+      },
+      "error": "The action couldn't be completed.",
+      "rechazar": "Reject",
+      "aprobar": "Approve",
+      "anular": "Void",
+      "cuotasTitulo": "Installments",
+      "saldoDespues": "Balance after: {valor}",
+      "sinCuotas": {
+        "titulo": "No installments yet",
+        "descripcion": "Installments are generated when the loan is approved."
+      },
+      "condiciones": {
+        "estado": "Status",
+        "titulo": "Terms",
+        "monto": "Amount",
+        "intereses": "Interest",
+        "sinIntereses": "Interest-free",
+        "total": "Total to pay",
+        "saldo": "Balance",
+        "descuento": "Deduction",
+        "porNomina": "Through payroll",
+        "manual": "Manual",
+        "maximo": "Maximum per period",
+        "primeraCuota": "First installment",
+        "nota": "Each payroll deducts the installment within the payroll-deduction floor: the worker keeps at least half of the salary."
+      },
+      "confirmarAprobar": {
+        "titulo": "Approve the loan?",
+        "descripcion": "{n, plural, one {# installment} other {# installments}} of {valor} will be generated and deducted automatically by payroll."
+      },
+      "aprobado": "Loan approved",
+      "confirmarRechazar": {
+        "titulo": "Reject the loan"
+      },
+      "rechazado": "Loan rejected",
+      "confirmarAnular": {
+        "titulo": "Void the loan?",
+        "descripcion": "It stops being deducted. The balance of {saldo} is no longer collected through payroll. This can't be undone."
+      },
+      "anulado": "Loan voided"
+    },
+    "nuevoPrestamo": {
+      "titulo": "New loan",
+      "subtitulo": "Deducted through payroll with the employee's written authorization",
+      "sinPermiso": "You don't have permission to record loans",
+      "volver": "Back",
+      "creado": "Loan recorded: pending approval",
+      "error": "The loan couldn't be recorded.",
+      "cancelar": "Cancel",
+      "crear": "Create loan",
+      "datos": "Loan details",
+      "empleado": "Employee",
+      "tipo": "Type",
+      "tipos": {
+        "prestamo": "Loan",
+        "anticipo": "Advance"
+      },
+      "monto": "Amount",
+      "cuotas": "Number of installments",
+      "anticipoUnaCuota": "An advance is deducted in a single installment.",
+      "primeraCuota": "First installment",
+      "intereses": "Annual interest",
+      "interesesAyuda": "0% if interest-free.",
+      "maximo": "Maximum per period",
+      "maximoAyuda": "Percentage of salary the installment can take.",
+      "notas": "Notes",
+      "notasAyuda": "Optional. For example, what the loan is for.",
+      "asiQueda": "Summary",
+      "cuota": "Installment",
+      "cuotaDe": "{valor} · {n, plural, one {# installment} other {# installments}}",
+      "interesesAparte": "Interest",
+      "alCrear": "Added on creation",
+      "limite": "Cap per period",
+      "limiteNota": "If the installment doesn't fit in the period, payroll deducts what the law allows and the rest stays as a balance.",
+      "aprobacion": {
+        "titulo": "Requires approval",
+        "descripcion": "It starts as “pending approval” and isn't deducted until someone with payroll permission approves it."
+      },
+      "autorizacion": {
+        "titulo": "Employee's written authorization",
+        "descripcion": "It's required to deduct through payroll (art. 149 of the CST). Upload it to the documents in the employee's profile."
+      }
+    },
+    "configuracion": {
+      "sinPermiso": {
+        "titulo": "You don't have access to payroll settings",
+        "descripcion": "Ask for the “View payroll” permission."
+      },
+      "si": "Yes",
+      "no": "No",
+      "columnas": {
+        "codigo": "Code",
+        "concepto": "Item",
+        "tipo": "Type",
+        "salarial": "Salary",
+        "prestacional": "Benefits base",
+        "cuenta": "Account"
+      },
+      "tipos": {
+        "devengado": "Earning",
+        "deduccion": "Deduction",
+        "aporte_empleador": "Contribution",
+        "provision": "Provision",
+        "informativo": "Informational"
+      },
+      "intro": "How your company calculates payroll. Statutory values (SMMLV, UVT, percentages) live in “Legal parameters” and aren't edited here.",
+      "apagada": {
+        "titulo": "Payroll is in pre-calculation-only mode",
+        "descripcion": "It's calculated and reviewed, but not closed, paid or posted until the accountant reviews items, IBC, provisions, withholding and accounts. Then GO Admin turns on “Active payroll”."
+      },
+      "activa": {
+        "titulo": "Active payroll",
+        "encendida": "On",
+        "apagada": "Off · turned on after the accountant's review",
+        "porQue": "Why is it off? An error in an item or an account repeats in every payslip, in PILA and in the journal entry. That's why the rules go through the accountant first.",
+        "soloGoAdmin": "GO Admin only"
+      },
+      "conceptos": "Payroll items",
+      "buscar": "Search item or account"
+    }
+  },
+  "hrmMarcacionMetodos": {
+    "contexto": "{sede} · {activos} of {total} methods active",
+    "elegirSede": "Choose location",
+    "intro": "Each person clocks in with any of the active methods. Turn off the ones you don't use: fewer paths, fewer odd punches.",
+    "cargando": "Loading clock-in methods",
+    "guardados": "Methods saved",
+    "cambiosSinGuardar": "Unsaved changes",
+    "apagado": "Off",
+    "llegaKiosco": "Coming with the kiosk (M1)",
+    "llegaRelojes": "Coming with fingerprint or face clocks",
+    "tocaMetodo": "Tap a method to see and change its rules.",
+    "unidades": {
+      "metros": "m",
+      "segundos": "s"
+    },
+    "sinPermiso": {
+      "titulo": "You can't see the clock-in methods",
+      "descripcion": "You need the Human resources permission \"View attendance\" or \"Manage attendance\".",
+      "irInicio": "Go to home"
+    },
+    "error": {
+      "titulo": "We couldn't load the methods",
+      "descripcion": "Check your connection and try again."
+    },
+    "soloLectura": {
+      "titulo": "You can't change the clock-in methods",
+      "descripcion": "You need the Human resources permission \"Manage attendance\". You can see how this location is set up and follow punches in \"Live\".",
+      "irEnVivo": "Go to Live"
+    },
+    "errores": {
+      "guardar": {
+        "sin_metodos": "The location needs at least one active method: phone, QR or tag.",
+        "radio_invalido": "The radius goes from {min} to {max} m.",
+        "metodo_no_disponible": "That method comes with the kiosk or the clocks: it can't be turned on yet.",
+        "sin_permiso": "You don't have permission to change this location's methods.",
+        "sede_requerida": "Choose a location before saving.",
+        "generico": "We couldn't save the changes. Try again."
+      }
+    },
+    "cambiarSede": {
+      "titulo": "Switch location without saving?",
+      "descripcion": "The changes to the methods of {sede} will be lost.",
+      "confirmar": "Discard and switch",
+      "cancelar": "Keep editing"
+    },
+    "metodos": {
+      "celular_ubicacion": {
+        "titulo": "Phone with location",
+        "corto": "Phone with location"
+      },
+      "qr": {
+        "titulo": "Location QR",
+        "corto": "Location QR"
+      },
+      "nfc_etiqueta": {
+        "titulo": "Badge or NFC tag",
+        "corto": "NFC tag"
+      },
+      "carne": {
+        "titulo": "Badge",
+        "corto": "NFC badge"
+      },
+      "pin": {
+        "titulo": "Kiosk with PIN",
+        "corto": "Kiosk PIN"
+      },
+      "rostro": {
+        "titulo": "Face",
+        "corto": "Face"
+      },
+      "huella": {
+        "titulo": "Fingerprint",
+        "corto": "Fingerprint"
+      }
+    },
+    "tarjetas": {
+      "noDisponible": "{metodo}: {cuando}",
+      "celular": {
+        "descripcion": "The person clocks in from their phone and GO Admin compares their location with the location's. Location is taken only when clocking in, never to track.",
+        "resumen": "Radius {radio} m · {computador, select, si {also from a computer} other {phone only}}",
+        "activar": "Phone with location",
+        "radio": "Location radius",
+        "radioAyuda": "Maximum distance from the location to accept the punch.",
+        "ubicacion": "Location address",
+        "ubicacionFijada": "{direccion} · pinned on the map",
+        "sinDireccion": "No address",
+        "sinUbicacion": "This location isn't pinned on the map",
+        "sinUbicacionDetalle": "Phone punches are marked \"no location\" for the manager to review.",
+        "foto": "Ask for a photo when clocking in · {cuando}",
+        "computador": "Allow clocking in from a computer (left for the manager to review)"
+      },
+      "qr": {
+        "descripcion": "The person scans the QR on a screen at the location with their phone. It changes every 30 seconds and each code works only once.",
+        "resumen": "30 s · single use · {ubicacion, select, si {with location} other {without location}}",
+        "activar": "Location QR",
+        "comoSeMuestra": "How the QR is shown",
+        "comoSeMuestraAyuda": "The QR on the kiosk comes with the kiosk (M1).",
+        "rotativo": "Rotating on a screen",
+        "cambiaCada": "Changes every",
+        "cambiaCadaAyuda": "Fixed: every 30 seconds.",
+        "unSoloUso": "Single use: each code works for one punch",
+        "pedirAdemas": "Also ask for",
+        "ademasNada": "Nothing",
+        "ademasUbicacion": "The phone's location",
+        "ademasPin": "The person's PIN · {cuando}",
+        "abrirPantalla": "Open QR screen",
+        "agregarPantalla": "Add a QR screen"
+      },
+      "nfc": {
+        "descripcion": "With an NFC tag stuck at the entrance, the person taps their phone. The badge reader comes with the kiosk.",
+        "resumen": "{n, plural, =0 {No tags} one {# tag} other {# tags}}",
+        "activar": "Badge or NFC tag",
+        "etiquetas": "Registered tags",
+        "ninguna": "None",
+        "carnes": "Badges issued",
+        "exigeUbicacion": "When clocking in with a tag, the phone always shares its location.",
+        "registrar": "Register tag or badge"
+      },
+      "pin": {
+        "descripcion": "On the location's tablet the person types their PIN, which is never shown. It's the fallback when they have no phone, badge or biometrics."
+      },
+      "rostro": {
+        "descripcion": "Only with a face clock: the clock compares the face, never GO Admin. The kiosk tablet doesn't recognize faces. Each person must authorize biometrics."
+      },
+      "huella": {
+        "descripcion": "Only with a fingerprint reader or terminal. The fingerprint stays in the reader; GO Admin receives the punch, never the fingerprint."
+      },
+      "remoto": {
+        "titulo": "Remote work",
+        "descripcion": "Enabled per person in their profile (remote or hybrid). They clock in from the app without the location's position.",
+        "resumen": "Enabled per person",
+        "personas": "{n, plural, =0 {No one} one {# person} other {# people}}"
+      },
+      "manual": {
+        "titulo": "Manual punch with approval",
+        "descripcion": "The way out when everything else fails. It always asks for a reason and goes through approval; it can't be turned off.",
+        "resumen": "With reason and approval",
+        "siempreActiva": "Always on"
+      },
+      "foto": {
+        "titulo": "Evidence photo and sign",
+        "descripcion": "The kiosk takes a photo on each PIN or badge punch, only of people who authorized it. The location must announce it with a visible sign at the entrance.",
+        "resumen": "30 days · kept if there's a claim",
+        "seBorra": "Deleted after",
+        "dias": "{n} days",
+        "seConserva": "If the punch is under review or has a claim, the photo is kept until the case is closed.",
+        "llega": "Evidence photos: {cuando}",
+        "llegaDetalle": "No punch takes a photo today. The sign tells people what is stored.",
+        "letrero": "Download sign to print"
+      },
+      "excepciones": {
+        "titulo": "Temporary exceptions",
+        "descripcion": "When someone loses a method or can't use it (for example, a hand injury), HR enables another one for some dates. Who approved it and why is recorded.",
+        "resumen": "{vigentes, plural, one {# active} other {# active}} · {pendientes, plural, one {# pending} other {# pending}}",
+        "aprobo": "approved by {nombre}",
+        "estados": {
+          "vigente": "active",
+          "programada": "scheduled",
+          "vencida": "expired",
+          "pendiente": "pending",
+          "rechazada": "rejected",
+          "revocada": "revoked",
+          "anulada": "cancelled"
+        },
+        "revocar": "Revoke",
+        "revocada": "Exception revoked",
+        "errorSinPermiso": "You don't have permission to revoke exceptions.",
+        "errorYaRevocada": "The exception no longer exists or was already revoked.",
+        "errorRevocar": "We couldn't revoke the exception.",
+        "errorCargar": "We couldn't load the exceptions.",
+        "reintentar": "Retry",
+        "sinPermiso": "You can't see the exceptions.",
+        "vacio": "No one at this location has active or recent exceptions.",
+        "agregar": "Add exception",
+        "confirmarTitulo": "Revoke the exception?",
+        "confirmarDetalle": "{nombre} goes back to the location's methods. If the exception was still pending, the approval request is cancelled.",
+        "cancelar": "Cancel"
+      }
+    },
+    "excepcion": {
+      "titulo": "New temporary exception",
+      "descripcion": "Enables another method for a person for some dates. Human resources approves it.",
+      "persona": "Person",
+      "elegirPersona": "Choose a person",
+      "cargandoPersonas": "Loading people…",
+      "buscarPersona": "Search person",
+      "sinPersonas": "There are no current people at this location",
+      "metodo": "Method to enable",
+      "elegirMetodo": "Choose a method",
+      "metodoNoDisponible": "{metodo} (coming with the kiosk or the clocks)",
+      "desde": "From",
+      "hasta": "To",
+      "elegirFecha": "Choose the date",
+      "maximo": "Maximum {dias} days.",
+      "motivo": "Reason",
+      "motivoEjemplo": "E.g.: hand injury, can't use the fingerprint",
+      "avisoTitulo": "It's recorded with who approved it, the reason and the dates",
+      "avisoDetalle": "When it expires, the person goes back to the location's methods without anyone having to do anything.",
+      "cancelar": "Cancel",
+      "enviar": "Send for approval",
+      "enviada": "Sent for approval",
+      "enviadaDetalle": "Another HR person approves it in Approvals.",
+      "errores": {
+        "persona": "Choose the person.",
+        "metodo": "Choose a method that works today: phone with location, QR or NFC tag.",
+        "fechas": "Choose the dates: \"To\" can't be before \"From\".",
+        "tope": "The exception lasts at most 90 days.",
+        "pasado": "The exception can't end in the past.",
+        "motivo": "Write the reason (5 to 500 characters).",
+        "noPropio": "An exception for you must be requested by another HR person.",
+        "personaNoExiste": "That person is no longer in the organization.",
+        "vigencia": "Check the dates: at most 90 days and not ending in the past.",
+        "sinPermiso": "You don't have permission to create exceptions.",
+        "generico": "We couldn't send the exception. Try again."
+      }
+    },
+    "letrero": {
+      "titulo": "Attendance is recorded here",
+      "metodos": "Ways to clock in",
+      "imprimir": "Print",
+      "cerrar": "Close",
+      "sinPermiso": "You can't see this location's sign",
+      "error": "We couldn't prepare the sign",
+      "responsable": "Data controller: {organizacion}. GO Admin generates this sign with the organization's data.",
+      "responsableSinNombre": "GO Admin generates this sign with the organization's data.",
+      "bloques": {
+        "queGuardamos": {
+          "titulo": "What we store",
+          "texto": "The time of your check-in, check-out and breaks, the device where you clocked in and, if you authorized it, an evidence photo."
+        },
+        "foto": {
+          "titulo": "Evidence photo",
+          "texto": "Only if you authorized it. It's deleted after 30 days, unless your punch is under review or you have an open claim: in that case, when it's closed."
+        },
+        "huellaRostro": {
+          "titulo": "Fingerprint and face",
+          "texto": "The location's clock compares them. They're not stored in GO Admin or in any other company system."
+        },
+        "voluntario": {
+          "titulo": "It's voluntary",
+          "texto": "If you don't authorize biometrics or the photo, you clock in with a PIN, a badge or the QR from your phone. It doesn't affect your contract."
+        },
+        "derechos": {
+          "titulo": "Your rights",
+          "texto": "You can review, correct or withdraw your authorizations in GO Admin › My attendance, or by writing to Human resources (Colombian Law 1581 of 2012)."
+        }
+      }
+    }
+  },
+  "hrmMarcacionRrhh": {
+    "titulo": "Time clock",
+    "subtitulo": {
+      "hoy": "Today, {fecha}",
+      "actualizadoRecien": "updated just now",
+      "actualizadoHace": "updated {n} min ago",
+      "dispositivos": "{n, plural, one {# device} other {# devices}}",
+      "sinConexion": "{n} offline"
+    },
+    "vistas": {
+      "etiqueta": "Time clock view",
+      "envivo": "Live",
+      "metodos": "Methods by branch",
+      "dispositivos": "Devices"
+    },
+    "comun": {
+      "irAlInicio": "Go to home"
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to the time clock",
+      "descripcion": "To see the branch's clock-ins you need the Human resources «View attendance» permission. Ask whoever manages roles."
+    },
+    "metodos": {
+      "celular_ubicacion": "Phone with location",
+      "qr": "Branch QR",
+      "nfc_etiqueta": "NFC tag",
+      "carne": "NFC badge",
+      "carne_nfc": "NFC badge",
+      "carne_qr": "QR badge",
+      "pin": "Kiosk with PIN",
+      "rostro": "Face",
+      "huella": "Fingerprint",
+      "remoto": "Remote",
+      "manual": "Manual",
+      "desconocido": "Unidentified"
+    },
+    "verificacion": {
+      "dentro": "At the branch",
+      "verificada": "Verified",
+      "remoto": "Remote work",
+      "pendiente_aprobacion": "Pending approval",
+      "sin_ubicacion": "No location",
+      "computador": "From a computer",
+      "sin_senal": "Saved offline",
+      "tarde": "{n} min late",
+      "rechazadaCorta": "Rejected",
+      "rechazos": {
+        "fuera_de_rango": "Rejected: outside the branch",
+        "qr_ya_usado": "Rejected: QR already used",
+        "qr_vencido": "Rejected: QR expired",
+        "qr_invalido": "Rejected: invalid QR",
+        "etiqueta_invalida": "Rejected: invalid tag",
+        "etiqueta_otra_sede": "Rejected: tag from another branch",
+        "metodo_no_disponible_en_sede": "Rejected: method not active at the branch",
+        "mecanismo_no_permitido": "Rejected: method not allowed",
+        "computador_no_permitido": "Rejected: from a computer",
+        "ubicacion_requerida": "Rejected: no location",
+        "ubicacion_requiere_consentimiento": "Rejected: no location permission",
+        "otro": "Rejected"
+      }
+    },
+    "filtros": {
+      "metodo": "Method",
+      "verificacion": "Verification",
+      "todos": "All",
+      "chipMetodo": "Method: {valor}",
+      "chipVerificacion": "Verification: {valor}",
+      "chipEstado": "Status: {valor}",
+      "verMarcas": "{n, plural, one {Show # clock-in} other {Show # clock-ins}}",
+      "grupos": {
+        "correctas": "Correct",
+        "por_revisar": "To review",
+        "rechazadas": "Rejected"
+      }
+    },
+    "envivo": {
+      "resumen": "Today's clock-in summary",
+      "kpi": {
+        "marcaron": "Clocked in today",
+        "deTotal": "{n} of {total}",
+        "sinMarcar": "{n} with a shift haven't clocked in yet",
+        "todosMarcaron": "Everyone with a shift has clocked in",
+        "porRevisar": "To review",
+        "nadaPorRevisar": "Nothing to review",
+        "motivos": {
+          "sin_ubicacion": "no location",
+          "computador": "from a computer",
+          "sin_senal": "offline",
+          "manual": "manual"
+        },
+        "pantallas": "QR screens online",
+        "sinPantallas": "No screens yet",
+        "pantallasSinConexion": "{n} offline",
+        "pantallasTodas": "All online",
+        "sinSenal": "Saved offline",
+        "sinSenalDetalle": "arrive when the connection is back"
+      },
+      "porMetodo": "Today by method",
+      "chipMetodo": "{metodo} · {n}",
+      "avisoPantallas": {
+        "titulo": "{n, plural, one {One QR screen is offline} other {# QR screens are offline}}",
+        "descripcion": "Check that the TV or monitor is on, connected to the internet and showing the screen. Meanwhile people can clock in with their phone.",
+        "accion": "View devices"
+      },
+      "buscar": "Search person, point or device…",
+      "tabla": "Today's clock-ins",
+      "etiquetaFila": "{nombre} · {marca} {hora}",
+      "movilMarca": "{marca} {hora} · {metodo}",
+      "columnas": {
+        "persona": "Person",
+        "hora": "Time",
+        "marca": "Clock-in",
+        "metodo": "Method",
+        "punto": "Point or device",
+        "verificacion": "Verification"
+      },
+      "tipos": {
+        "entrada": "Clock-in",
+        "salida": "Clock-out",
+        "inicioDescanso": "Break start",
+        "finDescanso": "Break end",
+        "intento": "Attempt",
+        "otra": "Entry"
+      },
+      "punto": {
+        "registradaPor": "Recorded by {nombre}",
+        "sedeA": "{sede} · {m} m away",
+        "aDeLaSede": "{m} m from the branch"
+      },
+      "acciones": {
+        "verHoja": "View the person's timesheet",
+        "verDispositivo": "View device",
+        "corregir": "Correct with an adjustment…"
+      },
+      "vacio": {
+        "titulo": "No clock-ins at this branch today yet",
+        "descripcion": "Clock-ins show up here as soon as someone clocks in with their phone, the branch QR or an NFC tag. Check which methods this branch has active.",
+        "accion": "View branch methods"
+      },
+      "sinResultados": {
+        "titulo": "No clock-ins match",
+        "descripcion": "Try another name or clear the filters."
+      },
+      "error": {
+        "titulo": "We couldn't load today's clock-ins",
+        "descripcion": "Check your connection and try again. Clock-ins that arrive meanwhile aren't lost."
+      }
+    },
+    "dispositivos": {
+      "agregar": "Add device",
+      "tabla": "Clock-in devices",
+      "buscar": "Search device or where it is…",
+      "verDispositivos": "{n, plural, one {Show # device} other {Show # devices}}",
+      "columnas": {
+        "dispositivo": "Device",
+        "tipo": "Type",
+        "sede": "Branch",
+        "estado": "Status",
+        "conexion": "Last connection",
+        "hoy": "Today"
+      },
+      "tipos": {
+        "pantalla_qr": "QR screen",
+        "etiqueta_nfc": "NFC tag",
+        "terminal_huella": "Fingerprint terminal",
+        "terminal_facial": "Face terminal",
+        "kiosco": "Tablet kiosk",
+        "lector_escritorio": "Badge reader",
+        "anterior": "Previous point"
+      },
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "estados": {
+        "en_linea": "Online",
+        "activa": "Active",
+        "sin_conexion": "Offline",
+        "desactivado": "Disabled"
+      },
+      "noSeConecta": "doesn't connect",
+      "nunca": "never",
+      "hace": {
+        "ahora": "now",
+        "min": "{n} min ago",
+        "h": "{n} h ago",
+        "d": "{n, plural, one {# day ago} other {# days ago}}"
+      },
+      "acciones": {
+        "abrirPantalla": "Open screen",
+        "regenerarClave": "Regenerate key…",
+        "regenerarCodigo": "Regenerate code…",
+        "activar": "Enable",
+        "desactivar": "Disable…"
+      },
+      "confirmar": {
+        "regenerarClaveTitulo": "Regenerate the key for {nombre}?",
+        "regenerarClaveDesc": "The current key stops working right away: the open screen shows codes that are no longer valid. Open it again with «Open screen».",
+        "regenerarClave": "Regenerate key",
+        "regenerarCodigoTitulo": "Regenerate the code for {nombre}?",
+        "regenerarCodigoDesc": "The tag on the wall stops working right away. We'll show you a new URL only once so you can write it to the tag.",
+        "regenerarCodigo": "Regenerate code",
+        "desactivarTitulo": "Disable {nombre}?",
+        "desactivarDesc": "No one can clock in with this point until you enable it again. Clock-ins already made with it are kept.",
+        "desactivar": "Disable"
+      },
+      "regenerada": "Key for {nombre} regenerated",
+      "regeneradaPantallaDesc": "Open the screen on the TV again so it shows the new codes.",
+      "activada": "{nombre} is enabled again",
+      "desactivada": "{nombre} is now disabled",
+      "errores": {
+        "sinPermiso": "You don't have permission to manage clock-in devices.",
+        "guardar": "We couldn't save the change. Try again."
+      },
+      "vacio": {
+        "titulo": "No devices at this branch yet",
+        "descripcion": "Add a QR screen or an NFC tag for the entrance. Without devices, people can clock in from their phone."
+      },
+      "sinResultados": {
+        "titulo": "No devices match",
+        "descripcion": "Try another name or clear the filters."
+      },
+      "error": {
+        "titulo": "We couldn't load the devices",
+        "descripcion": "Check your connection and try again."
+      }
+    },
+    "alta": {
+      "titulo": "Add device",
+      "paso1": "Step 1 of 2 · What you'll connect",
+      "paso2": "Step 2 of 2 · Name and branch",
+      "queConectar": "What will you connect?",
+      "continuar": "Continue",
+      "eligeTipo": "Choose what you'll connect",
+      "atras": "Back",
+      "agregar": "Add",
+      "tipos": {
+        "pantalla_qr": {
+          "titulo": "QR screen",
+          "descripcion": "A TV or monitor showing the branch QR, which changes every 30 seconds, to scan with a phone.",
+          "necesitas": "You need: any screen with a browser."
+        },
+        "etiqueta_nfc": {
+          "titulo": "Branch NFC tag",
+          "descripcion": "A tag stuck at the entrance that the person's phone reads. In the browser it only works on Android with Chrome; on iPhone, with the GO Admin app.",
+          "necesitas": "You need: NTAG213, NTAG215 or NTAG 424 DNA tags."
+        },
+        "terminal": {
+          "titulo": "Fingerprint or face terminal",
+          "descripcion": "Devices that send clock-ins over the internet. Fingerprints and faces stay on the device.",
+          "llega": "Coming with the time clocks."
+        },
+        "kiosco": {
+          "titulo": "Kiosk on a tablet",
+          "descripcion": "A tablet fixed at the entrance with a changing QR, PIN and NFC badge.",
+          "llega": "Coming with the kiosk."
+        },
+        "lector": {
+          "titulo": "Badge or QR reader on a computer",
+          "descripcion": "A USB reader connected to a computer with GO Admin Desktop.",
+          "llega": "Coming with the kiosk and the desktop reader."
+        }
+      },
+      "tituloPantalla": "Add QR screen",
+      "tituloEtiqueta": "Add NFC tag",
+      "nombre": "Name",
+      "nombreEjemploPantalla": "Entrance QR screen",
+      "nombreEjemploEtiqueta": "Tag · Main door",
+      "sede": "Branch",
+      "eligeSede": "Choose the branch",
+      "cargandoSedes": "Loading branches…",
+      "donde": "Where it is",
+      "dondeAyuda": "To find it: the entrance, the till, the kitchen…",
+      "dondeEjemploPantalla": "Reception TV",
+      "dondeEjemploEtiqueta": "Main door frame",
+      "chip": "Tag chip",
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "avisoUbicacion": {
+        "titulo": "Clocking in with this tag also asks for the location",
+        "ntag215": "An NTAG213 or NTAG215 tag can be copied, so the phone confirms the person is at the branch.",
+        "ntag424": "The NTAG 424 DNA changes its code on every read; until that check arrives, clocking in also asks for the phone's location."
+      },
+      "avisoPantalla": {
+        "titulo": "How it's used",
+        "descripcion": "After adding it, open it on the TV with «Open screen», signed in as someone who manages attendance. The QR changes every 30 seconds and each code works only once."
+      },
+      "creada": "{nombre} was added",
+      "creadaPantallaDesc": "Open it on the TV from the row menu with «Open screen».",
+      "errores": {
+        "nombre_invalido": "Enter a name of 2 to 80 characters.",
+        "sede_invalida": "Choose the branch.",
+        "tipo_no_disponible": "For now you can add QR screens and NFC tags.",
+        "chip_invalido": "Choose the tag chip.",
+        "descripcion_invalida": "Use up to 200 characters.",
+        "sin_permiso": "You don't have permission to add clock-in devices.",
+        "guardar": "We couldn't add the device. Try again."
+      }
+    },
+    "codigoEtiqueta": {
+      "titulo": "Write this URL to {nombre}",
+      "descripcion": "Write it to the tag with an NFC app or with this phone. When a phone taps it, GO Admin › Clock in opens with the tag.",
+      "copiar": "Copy URL",
+      "copiada": "URL copied",
+      "noCopiada": "We couldn't copy the URL. Select it and copy it by hand.",
+      "escribir": "Write to the tag with this phone",
+      "escrita": "Tag written",
+      "noEscrita": "We couldn't write the tag. Tap it again and hold still until it finishes.",
+      "cerrar": "Done",
+      "unaVez": {
+        "titulo": "This URL won't be shown again",
+        "descripcion": "We only keep a fingerprint of the code. If you lose it or the tag gets damaged, use «Regenerate code…» in the device menu."
+      },
+      "sinNfc": {
+        "titulo": "This browser can't write tags",
+        "descripcion": "To write it from the browser, open this screen on an Android phone with Chrome, or use an NFC app and paste the URL."
+      }
+    },
+    "pantalla": {
+      "cargando": "Loading the screen…",
+      "escanea": "Scan with your phone",
+      "titulo": "Clock-in QR",
+      "qrTitulo": "Clock-in QR for {sede}",
+      "cambiaEn": "Changes in {n} s",
+      "instrucciones": "Open GO Admin › Clock in › Branch QR. A photo of this code won't work: it changes every 30 seconds and each code works only once.",
+      "sinInternet": "No internet: the code keeps changing",
+      "pie": "The clock-in time is the server's, not this screen's or the phone's.",
+      "pantallaCompleta": "Full screen",
+      "iniciarSesion": "Sign in",
+      "reintentar": "Retry",
+      "irADispositivos": "Go to devices",
+      "estados": {
+        "sinSesion": {
+          "titulo": "Sign in to open the screen",
+          "descripcion": "The QR screen opens with the session of someone who manages attendance."
+        },
+        "sinPermiso": {
+          "titulo": "You can't open this screen",
+          "descripcion": "Opening the QR screen requires the Human resources «Manage attendance» permission."
+        },
+        "desactivada": {
+          "titulo": "This screen is disabled",
+          "descripcion": "Enable it in Time clock › Devices to show the QR again."
+        },
+        "noExiste": {
+          "titulo": "We couldn't find this screen",
+          "descripcion": "Check the link: it doesn't belong to a QR screen in your organization."
+        },
+        "error": {
+          "titulo": "We couldn't open the screen",
+          "descripcion": "Check the internet connection and try again."
+        }
       }
     }
   }

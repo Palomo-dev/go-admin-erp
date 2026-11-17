@@ -302,3 +302,25 @@ Decisión 5 del dueño al aprobar el diseño de la fase 2 (Figma página `20`, s
 - **Manda sobre «Aprobada».** Una novedad aprobada cuyo día ya está en nómina se pinta «Lista para nómina», no «Aprobada» (`estadoVisible` en `src/components/hrm/asistencia/asistenciaLogica.ts`).
 - **En código es un uso fijo de `Badge`**, no un color suelto: `<Badge uso="lista_nomina">` (`USOS_BADGE` en `src/components/ui/badge.tsx`) fija tono, apariencia e icono. Las pantallas de RR. HH. lo pintan con `InsigniaListaNomina` (`src/components/hrm/asistencia/comunAsistencia.tsx`), que solo le pone el texto en el idioma activo.
 - **Contraste.** Es la receta marca · suave de §5: **7,93:1** en claro y **6,44:1** en oscuro. Pasa AA.
+
+---
+
+## Adenda 2026-11-16 — Estados del período de nómina (Recursos humanos, fase 3)
+
+Decisión 3 del dueño al aprobar el diseño de la fase 3 (Figma página `20`, secciones 20.16 a 20.25). Los seis estados de ADR-003 §1 sobre el `CHECK` de `payroll_periods.status`. En código: `TONO_ESTADO_PERIODO` en `src/components/hrm/nomina/nominaLogica.ts` y `EstadoPeriodoBadge` en `piezasNomina.tsx` (es `StatusBadge` con el tono fijo; el texto sale de `hrmNomina.estados`).
+
+| Estado en pantalla | `status` en la base | Tono · Variant · Size | Icono |
+|---|---|---|---|
+| Abierto | `open` | neutro · suave · sm / md | — |
+| Preliquidado | `calculated` | información · suave | — |
+| En revisión | `reviewing` | advertencia · suave | — |
+| Cerrado | `approved` | marca · suave | `Icon/Lock` |
+| Pagado | `paid` | éxito · suave | — |
+| Contabilizado | `closed` | éxito · suave | `Icon/BookCheck` |
+| Solo preliquidación (junto al estado, con la nómina apagada) | — | neutro · contorno | `Icon/Lock` |
+
+- **Cerrado es marca, no éxito**, por la misma razón que «Lista para nómina»: dice «ya no se edita», no «está bien». El candado acompaña al texto.
+- **Pagado y Contabilizado son éxito**; Contabilizado lleva el libro para distinguirlo en la misma lista sin un tono más.
+- «Solo preliquidación» es una categoría del modo de la empresa, no un estado del período: neutra y de contorno, como «Dato sensible».
+- Estados auxiliares que casi no se ven (`calculating`, `paying`, `cancelled`): información, advertencia y neutro.
+- Colillas: Preliquidada (información), Cerrada (marca), Pagada (éxito), Anulada (neutro). Préstamos y embargos: Al día y Activo (éxito), Programado (información), Por aprobar y Suspendido (advertencia), En mora (peligro), Pagado, Terminado y Anulado (neutro).

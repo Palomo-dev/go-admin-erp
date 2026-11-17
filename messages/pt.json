@@ -970,7 +970,21 @@
         "marcarSalidaTiempo": "Marcar saída · {duracion}",
         "verMarcaciones": "Ver minhas marcações",
         "marcarTurno": "Marcar ponto",
-        "terminarDescanso": "Encerrar intervalo"
+        "terminarDescanso": "Encerrar intervalo",
+        "metodo": {
+          "qr": {
+            "entrada": "Escanear o QR da unidade",
+            "salida": "Registrar saída com o QR"
+          },
+          "nfc": {
+            "entrada": "Aproximar da etiqueta NFC",
+            "salida": "Registrar saída com a etiqueta NFC"
+          }
+        }
+      },
+      "notaMetodo": {
+        "qr": "Em {sede} o ponto é registrado com o QR da unidade. O botão abre a câmera direto.",
+        "nfc": "Em {sede} o ponto é registrado com a etiqueta NFC da entrada. O botão abre o leitor direto."
       }
     },
     "periodo": {
@@ -39057,6 +39071,11 @@
         "titulo": "Registro de acessos",
         "descripcion": "Quem viu ou mudou dados sensíveis de um empregado",
         "palabras": "registro de acessos, auditoria, dados sensíveis, salário, conta bancária, saúde, privacidade, recursos humanos, rh"
+      },
+      "hrmNomina": {
+        "titulo": "Folha de pagamento",
+        "descripcion": "Conceitos da folha, ativação e plano de contas",
+        "palabras": "folha de pagamento, conceitos, contas, ativar folha, terceiros, nit, pré-liquidação, recursos humanos, rh"
       }
     },
     "ajustes": {
@@ -51875,7 +51894,8 @@
       "hrmGeneral": "Parâmetros legais",
       "hrmFestivos": "Feriados",
       "hrmAprobaciones": "Aprovações",
-      "hrmRegistroAccesos": "Registro de acessos"
+      "hrmRegistroAccesos": "Registro de acessos",
+      "hrmNomina": "Folha de pagamento"
     },
     "buscar": {
       "etiqueta": "Buscar uma configuração",
@@ -54649,8 +54669,10 @@
         "errores": {
           "nombre": "Escreva um nome de pelo menos 2 letras.",
           "paso": "Escolha o cargo ou a pessoa de cada aprovador.",
-          "guardar": "Não foi possível salvar a regra. Tente de novo."
-        }
+          "guardar": "Não foi possível salvar a regra. Tente de novo.",
+          "jefeDirecto": "As horas extras e as ocorrências de ponto sempre passam pelo chefe direto. Se a pessoa não tiver chefe, o RH aprova."
+        },
+        "jefeDirectoFijo": "As horas extras e as ocorrências de ponto sempre passam pelo chefe direto."
       },
       "delegaciones": {
         "ayuda": "Enquanto durar a delegação, o que chegar à pessoa ausente chega ao seu substituto. O que já foi aprovado não muda, e a solicitação mostra que um substituto aprovou.",
@@ -55902,7 +55924,8 @@
         "horas_extra": "Horas extras",
         "prestamo": "Empréstimo",
         "novedad_asistencia": "Ocorrência de frequência",
-        "cambio_turno": "Troca de turno"
+        "cambio_turno": "Troca de turno",
+        "excepcion_marcacion": "Exceção de ponto"
       },
       "titulos": {
         "cargo_salario": "Aprovar alteração de cargo e salário",
@@ -55926,7 +55949,8 @@
         "horas_extra": "Aprovar horas extras",
         "prestamo": "Aprovar empréstimo",
         "novedad_asistencia": "Aprovar ocorrência de frequência",
-        "cambio_turno": "Aprovar troca de turno"
+        "cambio_turno": "Aprovar troca de turno",
+        "excepcion_marcacion": "Aprovar exceção de ponto"
       },
       "ligados": "{n} alterações ligadas",
       "alMes": "{monto} por mês",
@@ -55995,6 +56019,20 @@
         "esteMes": "Com efeito este mês",
         "pidio": "Solicitado por {nombre}",
         "verN": "Ver {n, plural, one {# solicitação} other {# solicitações}}"
+      },
+      "excepcion": {
+        "metodo": "Método",
+        "vigencia": "Vigência",
+        "vigenciaValor": "De {desde} a {hasta}",
+        "metodos": {
+          "celular_ubicacion": "Celular com localização",
+          "qr": "QR da unidade",
+          "nfc_etiqueta": "Etiqueta NFC da unidade",
+          "carne": "Crachá",
+          "pin": "PIN",
+          "rostro": "Rosto",
+          "huella": "Digital"
+        }
       }
     }
   },
@@ -57082,7 +57120,13 @@
       "verDesglose": "Ver detalhamento",
       "verNovedadesExtra": "Ver ocorrências de horas extras",
       "verTurnosSemana": "Ver turnos da semana",
-      "marcarLista": "Marcar pronta para a folha"
+      "marcarLista": "Marcar pronta para a folha",
+      "mostrarQrSede": "Mostrar o QR da unidade",
+      "mostrarQrSedeDesc": "Para escanear com o celular nesta tela",
+      "mostrarQrSedeSinPantalla": "A unidade ainda não tem tela de QR: adicione uma",
+      "mostrarQrSedeCargando": "Buscando as telas da unidade…",
+      "metodosSede": "Métodos de ponto da unidade",
+      "dispositivos": "Dispositivos"
     },
     "filtros": {
       "estado": "Status",
@@ -57140,7 +57184,12 @@
         "qr": "QR da unidade",
         "remoto": "Remoto",
         "manual": "Ponto manual",
-        "app": "App"
+        "app": "App",
+        "nfc": "Etiqueta NFC",
+        "carne": "Crachá",
+        "pin": "PIN",
+        "rostro": "Rosto",
+        "huella": "Digital"
       },
       "estados": {
         "presente": "Presente",
@@ -58221,14 +58270,17 @@
     "metodo": {
       "ubicacion": "localização",
       "qr": "QR da unidade",
-      "remoto": "remoto"
+      "remoto": "remoto",
+      "nfc": "etiqueta NFC"
     },
     "como": {
       "titulo": "Como você marca",
       "etiqueta": "Como você marca",
       "ubicacion": "Localização",
       "qr": "QR da unidade",
-      "remoto": "Remoto"
+      "remoto": "Remoto",
+      "nfc": "NFC",
+      "tituloSede": "Como você registra o ponto em {sede}"
     },
     "revisar": {
       "sin_ubicacion": "sem localização: seu gestor revisa",
@@ -58249,7 +58301,9 @@
     },
     "qr": {
       "nota": "O QR muda todos os dias. Se não o encontrar, peça a quem abre {sede}.",
-      "volver": "Voltar a marcar com localização"
+      "volver": "Voltar a marcar com localização",
+      "notaSede": "Aponte para o QR de {sede}. Ele muda a cada 30 segundos: uma foto do código não funciona.",
+      "notaSolo": "Em {sede}, o ponto é registrado escaneando o QR da entrada. Ele muda a cada 30 segundos: uma foto do código não funciona."
     },
     "remotoAviso": {
       "titulo": "Hoje você trabalha de casa",
@@ -58295,7 +58349,7 @@
     },
     "permiso": {
       "titulo": "Use sua localização para marcar",
-      "descripcion": "Ela é obtida só no momento de marcar, para confirmar que você está na unidade. Não seguimos seu trajeto.",
+      "descripcion": "Usamos só no momento de registrar o ponto, para confirmar que você está na unidade. Nunca para rastrear você: não seguimos seu trajeto nem a vemos fora dos seus registros.",
       "queGuardamos": "O que guardamos",
       "queGuardamosTexto": "Guardamos a localização de cada marcação, sua precisão e a data da sua autorização. Você pode retirá-la quando quiser; sem ela, marque com o QR da unidade.",
       "permitir": "Permitir",
@@ -58348,7 +58402,13 @@
       "ubicacion_requerida": "Este ponto pede sua localização. Ative o GPS e tente novamente.",
       "marcacion_duplicada": "Você já registrou esta marcação há menos de um minuto.",
       "metodo_invalido": "Marque com o QR da unidade ou pelo app.",
-      "datos_invalidos": "Revise os dados da marcação."
+      "datos_invalidos": "Revise os dados da marcação.",
+      "metodo_no_disponible_en_sede": "Sua unidade não habilitou este método de registro.",
+      "computador_no_permitido": "Na sua unidade não se registra o ponto pelo computador. Use o celular ou o QR da unidade.",
+      "etiqueta_invalida": "Esta etiqueta não é do GO Admin ou está danificada. Nada foi registrado.",
+      "qr_ya_usado": "Este código já foi usado. Espere o próximo e escaneie de novo.",
+      "etiqueta_otra_sede": "Esta etiqueta é de outra unidade. Nada foi registrado.",
+      "fuera_de_rango": "Você está fora da unidade. Aproxime-se e tente de novo."
     },
     "miAsistencia": {
       "titulo": "Minha presença",
@@ -58391,7 +58451,8 @@
         "sinSalida": "Sem saída",
         "libre": "Dia livre",
         "porRevisar": "Para revisar",
-        "sinMarcar": "Sem marcar"
+        "sinMarcar": "Sem marcar",
+        "enReclamo": "Contestação em análise"
       },
       "computador": {
         "titulo": "No computador você marca sem localização",
@@ -58409,6 +58470,1691 @@
       "noMarca": {
         "titulo": "Seu cargo não marca ponto",
         "descripcion": "Na sua organização este cargo não registra presença. Se acha que é um erro, fale com o RH."
+      },
+      "metodos": {
+        "celular_ubicacion": "Celular com localização",
+        "qr": "QR da unidade",
+        "nfc_etiqueta": "Etiqueta NFC",
+        "carne": "Crachá",
+        "carne_nfc": "Crachá NFC",
+        "carne_qr": "Crachá com QR",
+        "pin": "PIN",
+        "rostro": "Rosto",
+        "huella": "Digital",
+        "remoto": "Remoto",
+        "manual": "Registrado pelo RH"
+      },
+      "acciones": {
+        "detalle": "Ver detalhe do registro",
+        "reclamar": "Contestar este registro"
+      },
+      "avisoSede": {
+        "titulo": "Em {sede} você registra o ponto com {metodos}",
+        "metodos": {
+          "celular_ubicacion": "seu celular com localização",
+          "qr": "o QR da unidade",
+          "nfc_etiqueta": "a etiqueta NFC"
+        }
+      }
+    },
+    "qrUsado": {
+      "titulo": "Este código já foi usado",
+      "descripcion": "Cada QR serve para um único registro. Espere o próximo (muda em 30 s) e escaneie de novo.",
+      "nota": "Nada foi registrado. Se alguém te enviou uma foto do código, ela não funciona: é preciso estar diante da tela.",
+      "otraVez": "Escanear de novo"
+    },
+    "nfc": {
+      "acercar": "Aproxime a parte de trás do celular da etiqueta da entrada",
+      "esperando": "Aguardando a etiqueta…",
+      "registrando": "Registrando o ponto…",
+      "nota": "A etiqueta só diz em qual unidade você está; o horário é definido pelo GO Admin. Funciona no Android com o Chrome e no app GO Admin.",
+      "conQr": "Registrar com o QR da unidade",
+      "conUbicacion": "Registrar com minha localização",
+      "otraVez": "Aproximar outra etiqueta",
+      "gesto": {
+        "titulo": "Ative a leitura de etiquetas",
+        "descripcion": "O navegador pede um toque para começar a ler a etiqueta NFC.",
+        "activar": "Ativar leitura NFC"
+      },
+      "noDisponible": {
+        "titulo": "Este celular não consegue ler etiquetas NFC pelo navegador",
+        "descripcion": "Isso acontece no iPhone e em navegadores diferentes do Chrome para Android. Com o app GO Admin é possível. Enquanto isso, registre com o QR ou com sua localização."
+      },
+      "otraSede": {
+        "titulo": "Esta etiqueta é de {sede}",
+        "tituloSinSede": "Esta etiqueta é de outra unidade",
+        "descripcion": "Hoje seu turno é em {sede}. Registre lá ou peça ao seu gestor um registro com motivo.",
+        "nota": "Nada foi registrado. Se você realmente está trabalhando em {sede}, seu gestor pode registrar o ponto e aprová-lo.",
+        "notaSinSede": "Nada foi registrado. Se você realmente está trabalhando em outra unidade, seu gestor pode registrar o ponto e aprová-lo."
+      }
+    },
+    "registradaNfc": {
+      "conPunto": "Com a etiqueta NFC de {punto}",
+      "sinPunto": "Com a etiqueta NFC"
+    },
+    "reclamo": {
+      "titulo": "Contestar o registro de {dia}",
+      "tituloSinDia": "Contestar um registro",
+      "marca": "Registro",
+      "elegirMarca": "Escolha o registro",
+      "enRevision": "contestação em análise",
+      "metodo": "Método",
+      "que": "O que está errado?",
+      "elegir": "Escolha uma opção",
+      "opciones": {
+        "hora": "O horário não é o real",
+        "no_es_mia": "Este registro não é meu",
+        "tipo": "Não era uma entrada ou uma saída",
+        "metodo": "O método não é o correto",
+        "otro": "Outra coisa"
+      },
+      "quePaso": "O que aconteceu?",
+      "quePasoEjemplo": "Conte ao seu gestor o que aconteceu",
+      "hora": "Horário correto, se você souber",
+      "horaAyuda": "Opcional. Seu gestor confirma.",
+      "aviso": {
+        "titulo": "O registro original não é alterado",
+        "descripcion": "Se seu gestor aprovar a contestação, um ajuste com o motivo é adicionado. Enquanto é analisada, guardamos a foto de evidência deste registro."
+      },
+      "cancelar": "Cancelar",
+      "enviar": "Enviar contestação",
+      "reclamar": "Contestar este registro",
+      "enviado": "Contestação enviada",
+      "enviadoDetalle": "Seu gestor vai analisar. Guardamos a foto deste registro enquanto isso.",
+      "errores": {
+        "reclamo_que": "Escolha o que está errado.",
+        "reclamo_motivo": "Conte o que aconteceu (de 5 a 500 caracteres).",
+        "reclamo_hora": "O horário não pode ser futuro nem de mais de 62 dias atrás.",
+        "ajuste_ya_pendiente": "Este registro já tem uma contestação em análise.",
+        "marca_antigua": "Só é possível contestar registros dos últimos 62 dias.",
+        "jornada_cerrada": "Esse dia já foi pago na folha: fale com Recursos Humanos.",
+        "sin_permiso": "Você só pode contestar seus próprios registros.",
+        "error_hrm": "Não foi possível enviar a contestação. Tente de novo."
+      },
+      "detalle": {
+        "titulo": "Registros de {dia}",
+        "cerrar": "Fechar",
+        "sinMarcas": "Este dia não tem registros.",
+        "reclamo": {
+          "pending": "Contestação em análise",
+          "approved": "Contestação aprovada",
+          "rejected": "Contestação recusada"
+        }
+      }
+    }
+  },
+  "hrmNomina": {
+    "titulo": "Folha de pagamento",
+    "migas": {
+      "rrhh": "Recursos humanos",
+      "periodos": "Períodos"
+    },
+    "subtitulo": {
+      "empleados": "{n, plural, one {# funcionário} other {# funcionários}}",
+      "soloPreliquidacion": "somente pré-cálculo",
+      "proximoPago": "próximo pagamento em {fecha}"
+    },
+    "frecuencias": {
+      "daily": "Diária",
+      "weekly": "Semanal",
+      "biweekly": "Quinzenal",
+      "monthly": "Mensal"
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso à folha de pagamento",
+      "descripcion": "Peça a um administrador a permissão «Ver folha de pagamento». Seus próprios holerites chegam ao portal do funcionário."
+    },
+    "vistas": {
+      "etiqueta": "Visões da folha de pagamento",
+      "periodos": "Períodos",
+      "prestaciones": "Benefícios sociais",
+      "prestamos": "Empréstimos e penhoras"
+    },
+    "estados": {
+      "abierto": "Aberto",
+      "calculando": "Calculando",
+      "preliquidado": "Pré-calculado",
+      "en_revision": "Em revisão",
+      "cerrado": "Fechado",
+      "pagando": "Pagando",
+      "pagado": "Pago",
+      "contabilizado": "Contabilizado",
+      "anulado": "Anulado"
+    },
+    "tipos": {
+      "ordinaria": "Ordinária",
+      "prima": "Prêmio de serviços (prima)",
+      "cesantias": "Fundo de demissão (cesantías)"
+    },
+    "soloPreliquidacion": {
+      "insignia": "Somente pré-cálculo",
+      "titulo": "Folha de pagamento em modo somente pré-cálculo · pendente do contador",
+      "descripcion": "Você pode pré-calcular, revisar diferenças e baixar resumos. Fechar, pagar e contabilizar são habilitados quando o contador aprovar as regras e a GO Admin ativar a folha de pagamento.",
+      "verQueFalta": "Ver o que falta"
+    },
+    "nombres": {
+      "quincena1": "1.ª quinzena de {mes} de {anio}",
+      "quincena2": "2.ª quinzena de {mes} de {anio}",
+      "mes": "Folha de pagamento de {mes} de {anio}",
+      "prima1": "Prima do 1.º semestre de {anio}",
+      "prima2": "Prima do 2.º semestre de {anio}",
+      "cesantias": "Cesantías de {anio}",
+      "rango": "Folha de pagamento de {rango}"
+    },
+    "errores": {
+      "sin_permiso": "Você não tem permissão para esta ação.",
+      "nomina_no_habilitada": "A folha de pagamento da sua empresa está em modo somente pré-cálculo: ainda não é possível fechar, pagar nem ajustar.",
+      "estado_invalido": "O período já não está no status necessário. Recarregue a página.",
+      "periodo_no_existe": "O período não existe.",
+      "no_existe": "O registro não foi encontrado.",
+      "parametro_no_configurado": "Falta um parâmetro legal do ano (por exemplo, o salário mínimo). Verifique em Configuração › Recursos humanos.",
+      "nada_por_pagar": "Não há holerites fechados a pagar neste período.",
+      "cuenta_bancaria_ajena": "A conta bancária não é da sua empresa ou está inativa.",
+      "cuenta_bancaria_invalida": "Escolha uma conta bancária.",
+      "fecha_invalida": "Verifique as datas.",
+      "periodo_invalido": "Verifique o tipo, a periodicidade e as datas do período.",
+      "periodo_con_calculo": "O período já tem um cálculo: não pode ser excluído.",
+      "motivo_obligatorio": "Escreva o motivo do ajuste.",
+      "novedades_invalidas": "Verifique a rubrica e o valor do ajuste.",
+      "ajuste_sin_diferencia": "Com esse ajuste o holerite não muda: não há nada para salvar.",
+      "archivo_banco_invalido": "O arquivo do banco tem linhas com erros.",
+      "formato_banco_no_soportado": "Esse formato de banco ainda não está disponível.",
+      "duplicado": "Já existe um período com essas datas.",
+      "periodo_cruzado": "As datas se sobrepõem a outro período do mesmo tipo.",
+      "generico": "Não foi possível concluir a ação. Tente novamente."
+    },
+    "motivos": {
+      "solo_preliquidacion": "A folha de pagamento está em modo somente pré-cálculo até que o contador aprove e a GO Admin a ative.",
+      "bloqueos": "Há bloqueios não resolvidos.",
+      "revision_pendiente": "Falta a aprovação da gerência.",
+      "sin_calculo": "Primeiro é preciso pré-calcular.",
+      "con_calculo": "Um período que já foi calculado não é excluído."
+    },
+    "apagada": {
+      "titulo": "A folha de pagamento é ativada após a rodada do contador",
+      "subtitulo": "Enquanto isso, funciona em modo somente pré-cálculo.",
+      "entendido": "Entendi",
+      "cerrar": "Fechar",
+      "sinPermiso": "Você não tem acesso à configuração da folha de pagamento.",
+      "mientras": "Você pode pré-calcular, revisar diferenças e baixar resumos. Fechar, pagar, enviar holerites e contabilizar são habilitados ao ativar a folha de pagamento.",
+      "pasos": {
+        "conceptos": "Rubricas e contas contábeis",
+        "conceptosDetalle": "{n} rubricas · {conCuenta} com conta do contador",
+        "plan": "Pré-visualização do plano de contas",
+        "planSinPreparar": "A GO Admin ainda não preparou a pré-visualização das contas que serão criadas.",
+        "planPreparado": "{n, plural, one {# conta a criar} other {# contas a criar}} · preparada em {fecha}",
+        "terceros": "Terceiros com NIT",
+        "tercerosSinPlan": "São revisados com a pré-visualização do plano.",
+        "tercerosFaltan": "{n, plural, one {# dado de terceiro falta} other {# dados de terceiros faltam}}: sem eles não é possível ativar.",
+        "tercerosListos": "Todas as entidades e pessoas têm seu NIT.",
+        "aprobacion": "Aprovação por escrito da empresa e do contador",
+        "aprobacionLista": "Aprovada em {fecha}",
+        "aprobacionPendiente": "Pendente",
+        "encendido": "Folha de pagamento ativa",
+        "encendidoListo": "Ativada",
+        "encendidoPendiente": "A GO Admin a ativa com a aprovação por escrito, zero bloqueios e zero terceiros incompletos."
+      },
+      "cuentasTitulo": "Contas que serão criadas",
+      "nCuentas": "{n, plural, one {# conta} other {# contas}}",
+      "sinCuentas": "Seu plano de contas já tem todas as subcontas da folha de pagamento.",
+      "bajo": "sob {cuenta}",
+      "tercerosTitulo": "Terceiros sem entidade ou sem NIT",
+      "nTerceros": "{n, plural, one {# pendente} other {# pendentes}}",
+      "sinTerceros": "Não falta nenhum terceiro.",
+      "empleadoSinNombre": "Funcionário",
+      "faltaNit": "falta o NIT",
+      "faltaEntidad": "falta a entidade"
+    },
+    "terceros": {
+      "eps": "EPS",
+      "afp": "Fundo de pensões",
+      "arl": "ARL",
+      "ccf": "Caixa de compensação",
+      "cesantias": "Fundo de demissão (cesantías)",
+      "empleado": "Documento do funcionário",
+      "icbf": "ICBF",
+      "sena": "SENA",
+      "dian": "DIAN"
+    },
+    "nuevo": {
+      "titulo": "Novo período",
+      "descripcion": "A prima e as cesantías ficam em um período próprio.",
+      "crear": "Criar período",
+      "creado": "Período criado",
+      "fechasMal": "A data final não pode ser anterior à inicial.",
+      "tipo": "Tipo",
+      "tipos": {
+        "ordinaria": "Ordinária",
+        "prima": "Prêmio de serviços (prima)",
+        "cesantias": "Fundo de demissão (cesantías)"
+      },
+      "frecuencia": "Periodicidade",
+      "frecuenciaAyuda": "O documento de suporte da folha de pagamento eletrônica é sempre mensal.",
+      "frecuencias": {
+        "biweekly": "Quinzenal",
+        "monthly": "Mensal",
+        "weekly": "Semanal"
+      },
+      "avisoPrima": "A prima é calculada com o que foi acumulado no semestre: salário, média variável e auxílio-transporte.",
+      "avisoCesantias": "As cesantías do ano são depositadas no fundo; os juros são pagos a cada pessoa.",
+      "desde": "De",
+      "hasta": "Até",
+      "fechaPago": "Data de pagamento",
+      "fechaPagoAyuda": "É a data do arquivo do banco e da saída de caixa.",
+      "nombre": "Nome",
+      "nombreAyuda": "Opcional. Se deixar assim, recebe o nome pelas datas."
+    },
+    "periodos": {
+      "titulo": "Períodos da folha de pagamento",
+      "nuevo": "Novo período",
+      "sinCambios": "Nada mudou desde o último cálculo: a mesma versão é mantida.",
+      "preliquidado": "Pré-calculado: {n, plural, one {# funcionário} other {# funcionários}}",
+      "menu": {
+        "abrir": "Abrir",
+        "preliquidar": "Pré-calcular",
+        "recalcular": "Recalcular",
+        "eliminar": "Excluir",
+        "eliminarConCalculo": "Um período que já foi calculado não é excluído."
+      },
+      "pagada": "paga em {fecha}",
+      "pago": "pagamento em {fecha}",
+      "nBloqueos": "{n, plural, one {# bloqueio} other {# bloqueios}}",
+      "nAlertas": "{n, plural, one {# alerta} other {# alertas}}",
+      "columnas": {
+        "periodo": "Período",
+        "estado": "Status",
+        "empleados": "Funcionários",
+        "neto": "Líquido a pagar",
+        "netoPreliquidado": "Líquido pré-calculado",
+        "costo": "Custo para a empresa",
+        "pendientes": "Pendências"
+      },
+      "buscar": "Buscar período por nome ou data de pagamento",
+      "verN": "Ver {n, plural, one {# período} other {# períodos}}",
+      "filtros": {
+        "estado": "Status",
+        "tipo": "Tipo"
+      },
+      "nEmpleados": "{n, plural, one {# funcionário} other {# funcionários}}",
+      "vacio": {
+        "titulo": "Ainda não há períodos da folha de pagamento",
+        "descripcion": "Crie o primeiro período e pré-calcule-o: o cálculo é feito pelo servidor com a jornada aprovada e os parâmetros do ano."
+      },
+      "sinResultados": "Tente outro nome ou remova os filtros.",
+      "error": "Não foi possível carregar os períodos",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à folha de pagamento",
+        "descripcion": "Peça a permissão «Ver folha de pagamento»."
+      },
+      "sustantivo": {
+        "singular": "período",
+        "plural": "períodos"
+      },
+      "eliminar": {
+        "titulo": "Excluir este período?",
+        "descripcion": "«{nombre}» será excluído. Só é possível porque está aberto e nunca foi calculado. Não pode ser desfeito.",
+        "confirmar": "Excluir período",
+        "hecho": "Período excluído"
+      }
+    },
+    "prestaciones": {
+      "etiqueta": "Benefícios sociais",
+      "kpi": {
+        "prima": "Prêmio de serviços (prima)",
+        "sinPeriodo": "Sem período de prima",
+        "cesantias": "Cesantías a depositar",
+        "cesantiasDetalle": "No fundo antes de 14 de fevereiro",
+        "intereses": "Juros sobre cesantías",
+        "interesesDetalle": "A cada pessoa antes de 31 de janeiro"
+      },
+      "pestanas": {
+        "prima": "Prima",
+        "cesantias": "Cesantías e juros"
+      },
+      "aviso": {
+        "primaTitulo": "Prêmio de serviços (prima) (art. 306 do CST)",
+        "primaDescripcion": "30 dias de salário por ano, em dois pagamentos: no máximo até 30 de junho e 20 de dezembro. A base inclui a parte variável pela média e o auxílio-transporte.",
+        "cesantiasTitulo": "Fundo de demissão (cesantías) e juros",
+        "cesantiasDescripcion": "Um mês de salário por ano, depositado no fundo de cada pessoa; os juros (12 % ao ano) são pagos diretamente ao trabalhador."
+      },
+      "liquidarPrima": "Calcular prima",
+      "liquidarCesantias": "Calcular cesantías",
+      "elegirPeriodo": "Escolher período",
+      "abrirPeriodo": "Abrir período",
+      "buscar": "Buscar funcionário",
+      "columnas": {
+        "empleado": "Funcionário",
+        "dias": "Dias",
+        "salario": "Salário",
+        "variable": "Média variável",
+        "auxilio": "Auxílio",
+        "base": "Base",
+        "prima": "Prima",
+        "cesantias": "Cesantías",
+        "intereses": "Juros"
+      },
+      "nDias": "{n} dias",
+      "vacio": {
+        "sinPeriodo": "Ainda não há um período deste tipo",
+        "sinPeriodoDescripcion": "Crie o período para calculá-la: o servidor calcula dias, base e valor de cada pessoa.",
+        "sinCalculo": "O período ainda não foi pré-calculado",
+        "sinCalculoDescripcion": "Abra-o e pré-calcule-o para ver o valor de cada pessoa em {fecha}."
+      },
+      "sinResultados": "Tente outro nome.",
+      "error": "Não foi possível carregar o cálculo",
+      "sinPermiso": "Você não tem acesso a este período"
+    },
+    "prestamos": {
+      "titulo": "Empréstimos e penhoras",
+      "nuevo": "Novo empréstimo",
+      "menu": {
+        "ver": "Ver detalhes",
+        "suspender": "Suspender penhora",
+        "reactivar": "Reativar penhora",
+        "terminar": "Encerrar penhora"
+      },
+      "empresa": "Empresa",
+      "nCuotas": "{n, plural, one {# parcela} other {# parcelas}}",
+      "sinBeneficiario": "Sem beneficiário",
+      "porcentajeSalario": "{pct} % do salário",
+      "ordena": "determina {valor}",
+      "desde": "desde {fecha}",
+      "clases": {
+        "prestamo": "Empréstimo",
+        "anticipo": "Adiantamento",
+        "embargo_alimentos": "Penhora salarial por alimentos",
+        "embargo_cooperativa": "Penhora salarial de cooperativa",
+        "embargo_ordinario": "Penhora salarial ordinária"
+      },
+      "estados": {
+        "al_dia": "Em dia",
+        "programado": "Programado",
+        "por_aprobar": "A aprovar",
+        "activo": "Ativo",
+        "suspendido": "Suspenso",
+        "pagado": "Pago",
+        "terminado": "Encerrado",
+        "anulado": "Anulado",
+        "en_mora": "Em atraso"
+      },
+      "columnas": {
+        "tipo": "Tipo",
+        "empleado": "Funcionário",
+        "origen": "Credor ou origem",
+        "monto": "Valor ou ordem",
+        "cuota": "Parcela",
+        "saldo": "Saldo",
+        "estado": "Status"
+      },
+      "kpi": {
+        "prestamos": "Empréstimos e adiantamentos",
+        "prestamosDetalle": "Saldo de {n} · parcelas de {cuotas} por período",
+        "embargos": "Penhoras salariais",
+        "embargosSinPermiso": "Você precisa de acesso a «Salário e pagamento»",
+        "embargosDetalle": "{n, plural, =0 {Nenhuma ativa} one {# ativa} other {# ativas}}"
+      },
+      "buscar": "Buscar funcionário, credor ou número",
+      "verN": "Ver {n, plural, one {# dedução} other {# deduções}}",
+      "filtros": {
+        "tipo": "Tipo",
+        "estado": "Status"
+      },
+      "vacio": {
+        "titulo": "Não há empréstimos nem penhoras",
+        "descripcion": "Os empréstimos da empresa e as penhoras judiciais são descontados automaticamente em cada folha de pagamento, com seu limite legal."
+      },
+      "sinResultados": "Tente outro nome ou remova os filtros.",
+      "error": "Não foi possível carregar os empréstimos e penhoras",
+      "sustantivo": {
+        "singular": "dedução",
+        "plural": "deduções"
+      },
+      "cambio": {
+        "suspendido": {
+          "titulo": "Suspender a penhora?",
+          "descripcion": "Enquanto estiver suspensa, nada é descontado de {nombre}. Faça isso somente com a ordem do juízo.",
+          "confirmar": "Suspender"
+        },
+        "activo": {
+          "titulo": "Reativar a penhora?",
+          "descripcion": "Volta a ser descontada de {nombre} a partir do próximo pré-cálculo.",
+          "confirmar": "Reativar"
+        },
+        "terminado": {
+          "titulo": "Encerrar a penhora?",
+          "descripcion": "Não será mais descontado nada de {nombre}. Faça isso somente com o ofício de levantamento. Não pode ser desfeito.",
+          "confirmar": "Encerrar penhora"
+        },
+        "hecho": "Penhora atualizada"
+      }
+    },
+    "embargo": {
+      "cerrar": "Fechar",
+      "volver": "Voltar",
+      "datos": "Dados da penhora salarial",
+      "estado": "Status",
+      "beneficiario": "Beneficiário",
+      "oficio": "Ofício",
+      "recibido": "Recebido",
+      "vigencia": "Vigência",
+      "desdeSinFin": "Desde {fecha}, sem data final",
+      "ordena": "Determina",
+      "porcentaje": "{pct} % do salário",
+      "fijo": "{valor} por período",
+      "total": "Total determinado",
+      "sinTope": "Sem limite",
+      "aplicado": "Descontado até hoje",
+      "saldo": "Saldo",
+      "limiteTitulo": "Limite legal",
+      "limite": {
+        "alimentos": "As penhoras por alimentos vêm primeiro e podem chegar a até 50 % do salário após as deduções legais.",
+        "cooperativa": "As de cooperativa vêm depois das de alimentos, até 50 % do salário após as deduções legais.",
+        "ordinario": "As ordinárias vêm por último e só podem tomar 1/5 do que o salário excede o mínimo. O que não couber fica como saldo."
+      }
+    },
+    "periodo": {
+      "titulo": "Período da folha de pagamento",
+      "sinCambios": "Nada mudou desde o último cálculo: a mesma versão é mantida.",
+      "devuelto": "Devolvido ao pré-cálculo com um novo cálculo",
+      "calculado": "Folha de pagamento pré-calculada",
+      "enviado": "Enviado para revisão",
+      "cerradoOk": "Período fechado",
+      "acciones": {
+        "preliquidar": "Pré-calcular",
+        "recalcular": "Recalcular",
+        "enviarRevision": "Enviar para revisão",
+        "devolver": "Devolver ao pré-cálculo",
+        "cerrar": "Fechar período",
+        "ajustar": "Ajuste com motivo",
+        "eliminar": "Excluir período"
+      },
+      "pago": "pagamento em {fecha}",
+      "version": "versão {n}, calculada em {fecha}",
+      "sinCalculo": "não calculado",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso a este período",
+        "descripcion": "Peça a permissão «Ver folha de pagamento»."
+      },
+      "volver": "Voltar para Folha de pagamento",
+      "noExiste": "Este período não existe ou já foi excluído",
+      "secciones": {
+        "etiqueta": "Seções do período",
+        "empleados": "Funcionários",
+        "revision": "Revisão e fechamento",
+        "pago": "Pagamento",
+        "colillas": "Holerites"
+      },
+      "kpi": {
+        "devengado": "Proventos",
+        "empleados": "{n, plural, one {# funcionário} other {# funcionários}}",
+        "sinCalculo": "Não calculado",
+        "deducciones": "Deduções",
+        "deduccionesDetalle": "Legais, empréstimos, empréstimos consignados (libranzas) e penhoras",
+        "neto": "Líquido a pagar",
+        "netoPreliquidado": "Líquido pré-calculado",
+        "costo": "Custo para a empresa",
+        "costoDetalle": "Com contribuições e provisões"
+      },
+      "cerradoAviso": {
+        "titulo": "Período fechado: não é editado",
+        "descripcion": "O que foi fechado fica como está. Para corrigir algo, faça um ajuste com motivo: ele é calculado com as regras do fechamento e pago com o período."
+      },
+      "confirmarCierre": {
+        "titulo": "Fechar «{nombre}»?",
+        "descripcion": "Serão fechados {n, plural, one {# holerite} other {# holerites}} com um líquido de {neto}. O fechamento não pode ser desfeito.",
+        "confirmar": "Fechar período",
+        "c1": "Os holerites ficam aprovados e os proventos são lançados.",
+        "c2": "As parcelas de empréstimo descontadas são marcadas como pagas e o valor aplicado é somado a cada penhora.",
+        "c3": "Depois, só se corrige com um ajuste com motivo; não é mais recalculado."
+      },
+      "versionCorta": "versão {n}"
+    },
+    "empleados": {
+      "titulo": "Funcionários do período",
+      "ingreso": "Admitido",
+      "revisar": {
+        "titulo": "Diferenças em relação ao período anterior",
+        "n": "{n} a revisar",
+        "ingreso": "{nombre} · admitido neste período",
+        "ingresoDetalle": "Calcula {dias} dias; não tem período anterior para comparar.",
+        "subio": "{nombre} · o líquido subiu {pct} %",
+        "bajo": "{nombre} · o líquido caiu {pct} %",
+        "variacionDetalle": "Ultrapassa o limite de variação definido pela sua empresa. Verifique horas, ocorrências e deduções.",
+        "embargo": "{nombre} · a penhora foi limitada a {valor}",
+        "embargoDetalle": "O ofício determina {pedido}; a lei não permite descontar mais neste período."
+      },
+      "menu": {
+        "detalle": "Ver detalhes",
+        "colilla": "Ver holerite",
+        "ajuste": "Ajuste com motivo"
+      },
+      "bloqueada": "Bloqueado",
+      "columnas": {
+        "empleado": "Funcionário",
+        "dias": "Dias",
+        "devengado": "Proventos",
+        "deducciones": "Deduções",
+        "neto": "Líquido",
+        "costo": "Custo para a empresa",
+        "variacion": "Em relação ao anterior"
+      },
+      "sinCalculo": {
+        "titulo": "Este período ainda não foi pré-calculado",
+        "descripcion": "Ao pré-calcular, o servidor calcula cada holerite com a jornada aprovada, as ocorrências e os parâmetros do ano.",
+        "accion": "Pré-calcular"
+      },
+      "filtros": {
+        "titulo": "Mostrar",
+        "bloqueos": "Com bloqueios",
+        "alertas": "Com alertas",
+        "variacion": "Variação acima do limite"
+      },
+      "bloqueosTitulo": "{n, plural, one {# bloqueio impede} other {# bloqueios impedem}} o envio para revisão",
+      "irNovedades": "Ir para Ocorrências",
+      "verDetalle": "Ver detalhes",
+      "buscar": "Buscar funcionário, cargo ou área",
+      "verN": "Ver {n, plural, one {# funcionário} other {# funcionários}}",
+      "nDias": "{n} dias",
+      "vacio": {
+        "titulo": "Ninguém neste período",
+        "descripcion": "Não há vínculos vigentes entre as datas do período."
+      },
+      "sinResultados": "Tente outro nome ou remova os filtros.",
+      "sustantivo": {
+        "singular": "funcionário",
+        "plural": "funcionários"
+      }
+    },
+    "alertas": {
+      "sin_preliquidacion": "Falta pré-calcular o período.",
+      "calculo_sin_motor": "A versão vigente não foi feita pelo novo motor: recalcule.",
+      "novedades_nomina_pendientes": "{n, plural, one {# ocorrência da folha a aprovar} other {# ocorrências da folha a aprovar}}",
+      "novedades_despues_del_calculo": "{n, plural, one {# ocorrência mudou} other {# ocorrências mudaram}} depois do cálculo: recalcule",
+      "novedades_asistencia_pendientes": "{n, plural, one {# ocorrência de frequência a resolver} other {# ocorrências de frequência a resolver}}",
+      "dias_no_listos": "{n, plural, one {# dia de jornada não está pronto} other {# dias de jornada não estão prontos}} para a folha de pagamento",
+      "revision_pendiente": "Falta a aprovação da revisão.",
+      "parametros_pendientes": "Há parâmetros do ano não confirmados (salário mínimo ou UVT).",
+      "acumulado_faltante": "Falta o acumulado do semestre ou do ano para o cálculo.",
+      "auxilio_transporte_supera_tope": "O salário ultrapassa o limite do auxílio-transporte.",
+      "cotizacion_por_semanas_no_soportada": "A contribuição por semanas ainda não é suportada.",
+      "fsp_reparto_pila_pendiente": "Falta a distribuição do fundo de solidariedade para a PILA.",
+      "ibc_ajustado_al_minimo": "O IBC foi ajustado ao mínimo legal.",
+      "ibc_mes_anterior_sin_dato": "Não há IBC do mês anterior: foi usado o do período.",
+      "integral_bajo_minimo": "O salário integral está abaixo de 13 salários mínimos.",
+      "integral_con_horas": "Salário integral: não são pagos adicionais nem horas extras.",
+      "integral_sin_prima_ni_cesantias": "O salário integral não gera prima nem cesantías.",
+      "licencia_no_remunerada": "Tem licença não remunerada no período.",
+      "neto_negativo": "O líquido fica negativo: verifique as deduções.",
+      "novedad_sin_valor": "Há uma ocorrência sem valor nem quantidade.",
+      "retencion_porcentaje_fijo_faltante": "Procedimento 2 sem percentual fixo de retenção.",
+      "sin_periodo_anterior": "Não tem período anterior para comparar.",
+      "variacion_contra_anterior": "Mudou mais que o limite em relação ao período anterior.",
+      "vinculo_fuera_del_periodo": "O vínculo não cobre todo o período.",
+      "embargo_limitado": "Uma penhora foi limitada ao teto legal.",
+      "cuota_prestamo_limitada": "Uma parcela de empréstimo foi limitada: o trabalhador deve manter metade do salário.",
+      "descuento_limitado": "Um desconto foi limitado ao teto legal.",
+      "parametro_no_configurado": "Falta um parâmetro legal.",
+      "error_calculo": "Não foi possível calcular este holerite.",
+      "otra": "Verifique este holerite."
+    },
+    "revision": {
+      "sinPermiso": "Você não tem acesso à revisão",
+      "faltaAprobacion": "Falta a aprovação da gerência para fechar",
+      "faltaAprobacionDetalle": "Foi solicitada em {fecha}. Quando for aprovada, «Fechar período» será habilitado.",
+      "irAprobaciones": "Ir para Aprovações",
+      "antesDeCerrar": "Antes de fechar",
+      "nListas": "{n} de {total} prontas",
+      "puntos": {
+        "calculo": {
+          "titulo": "Cálculo sem bloqueios",
+          "listo": "Nenhum holerite tem bloqueios."
+        },
+        "novedades": {
+          "titulo": "Ocorrências do período resolvidas",
+          "listo": "Não há ocorrências da folha pendentes nem mudanças depois do cálculo."
+        },
+        "asistencia": {
+          "titulo": "Ocorrências de frequência resolvidas",
+          "listo": "Não há ocorrências de frequência a resolver."
+        },
+        "jornada": {
+          "titulo": "Jornada pronta para a folha de pagamento",
+          "listo": "Todos os dias do período estão prontos."
+        },
+        "parametros": {
+          "titulo": "Parâmetros do ano carregados",
+          "listo": "Salário mínimo, auxílio-transporte e UVT confirmados."
+        },
+        "aprobacion": {
+          "titulo": "Aprovação da gerência",
+          "listo": "Aprovada, ou sua empresa não exige aprovação para fechar.",
+          "pendiente": "Aguardando a aprovação.",
+          "rechazada": "Rejeitada: devolva ao pré-cálculo e envie novamente."
+        }
+      },
+      "ajustes": {
+        "titulo": "Ajustes do período",
+        "numero": "Ajuste · versão {n}",
+        "apagada": "A folha de pagamento está em modo somente pré-cálculo.",
+        "cerrado": "Ajuste fechado",
+        "cerrar": "Fechar ajuste"
+      },
+      "quien": {
+        "titulo": "Quem revisa e aprova",
+        "preparo": "Pré-calculou",
+        "tu": "Você",
+        "otraPersona": "Outra pessoa do RH",
+        "aprueba": "Aprovação",
+        "estados": {
+          "pendiente": "Pendente",
+          "aprobada": "Aprovada",
+          "rechazada": "Rejeitada",
+          "cancelada": "Cancelada",
+          "sin_regla": "Sem regra de aprovação"
+        },
+        "regla": "O RH prepara e revisa; a gerência aprova em Aprovações. Quem pré-calculou não pode aprovar a própria folha de pagamento.",
+        "noPuedesAprobar": "Você preparou esta folha de pagamento: outra pessoa a aprova."
+      },
+      "loQueSeCierra": "O que será fechado",
+      "empleados": "Funcionários",
+      "devengado": "Proventos",
+      "deducciones": "Deduções",
+      "neto": "Líquido a pagar",
+      "costo": "Custo para a empresa"
+    },
+    "pago": {
+      "archivo": {
+        "titulo": "1. Arquivo para o banco",
+        "descripcion": "É validado antes de ser gerado: com uma linha errada não há arquivo.",
+        "formato": "Formato",
+        "csvGenerico": "CSV genérico (conta, tipo, documento e valor)",
+        "generar": "Gerar e validar arquivo",
+        "sinPermiso": "Você precisa da permissão para pagar a folha de pagamento e ver contas bancárias.",
+        "conHallazgos": "{n, plural, one {# linha tem} other {# linhas têm}} erros: o arquivo não foi gerado",
+        "listo": "Arquivo gerado",
+        "hallazgosTitulo": "{n, plural, one {# inconsistência} other {# inconsistências}} antes de gerar o arquivo",
+        "validado": "Arquivo validado sem inconsistências",
+        "errores": {
+          "sin_cuenta": "sem conta bancária",
+          "sin_documento": "sem documento",
+          "valor_invalido": "valor inválido",
+          "tipo_cuenta_invalido": "tipo de conta inválido",
+          "cuenta_invalida": "número de conta inválido"
+        }
+      },
+      "pago": {
+        "titulo": "2. Pagamento",
+        "descripcion": "É registrada uma única saída por período na Tesouraria, com comprovante de saída.",
+        "pagado": "Período pago",
+        "sinPermiso": "Você precisa da permissão para pagar a folha de pagamento.",
+        "cuenta": "Conta pagadora",
+        "cargandoCuentas": "Carregando contas…",
+        "elegirCuenta": "Escolha a conta",
+        "fecha": "Data de pagamento",
+        "referencia": "Referência",
+        "marcar": "Marcar como pago",
+        "comisionesPendientes": "{n, plural, one {# holerite ficou} other {# holerites ficaram}} com comissões a marcar como pagas: tente novamente em Comissões."
+      },
+      "asiento": {
+        "titulo": "3. Lançamento contábil",
+        "descripcion": "Passa para «Contabilizado» quando cada holerite tem seu lançamento de proventos e de pagamento.",
+        "contabilizado": "Período contabilizado",
+        "despuesDePagar": "É contabilizado depois de pagar.",
+        "listo": "Período contabilizado",
+        "contabilizar": "Contabilizar",
+        "faltan": "{n, plural, one {# lançamento falta} other {# lançamentos faltam}}: verifique a caixa de falhas contábeis",
+        "sinDetalle": "Sem detalhes"
+      },
+      "resumen": {
+        "titulo": "O que é pago",
+        "neto": "Líquido da folha de pagamento",
+        "colillas": "Holerites a pagar",
+        "sale": "Sai da conta pagadora",
+        "nota": "As penhoras e os empréstimos consignados (libranzas) já estão descontados do líquido: são pagos a cada terceiro separadamente.",
+        "estados": {
+          "porPagar": "A pagar",
+          "pagado": "Pago",
+          "contabilizado": "Contabilizado"
+        }
+      },
+      "confirmar": {
+        "titulo": "Marcar a folha de pagamento como paga?",
+        "descripcion": "É registrada uma saída de {total} a partir de {cuenta}. Não pode ser desfeito.",
+        "confirmar": "Marcar como pago",
+        "hecho": "Pagamento registrado de {total}",
+        "c1": "Os holerites passam a pagos e a folha a pagar é lançada contra o banco.",
+        "c2": "As comissões incluídas são marcadas como pagas."
+      }
+    },
+    "colillas": {
+      "titulo": "Holerites do período",
+      "vistaPrevia": "Pré-visualização: a pessoa só vê o holerite quando o período é fechado.",
+      "buscar": "Buscar funcionário",
+      "columnas": {
+        "empleado": "Funcionário",
+        "neto": "Líquido",
+        "estado": "Status"
+      },
+      "ver": "Ver holerite",
+      "vacio": {
+        "titulo": "Não há holerites",
+        "descripcion": "Os holerites aparecem ao pré-calcular."
+      },
+      "sinResultados": "Tente outro nome."
+    },
+    "colilla": {
+      "estados": {
+        "draft": "Pré-calculado",
+        "approved": "Fechado",
+        "paid": "Pago",
+        "cancelled": "Anulado"
+      },
+      "nDias": "{n} dias",
+      "nHoras": "{n} h",
+      "titulo": "Holerite",
+      "sinPermiso": "Você não tem acesso a este holerite",
+      "volver": "Voltar ao período",
+      "vacio": {
+        "titulo": "Não há holerite para esta pessoa",
+        "descripcion": "A pessoa não está na versão vigente do período."
+      },
+      "tituloDe": "Holerite · {nombre}",
+      "neto": "líquido {valor}",
+      "descargar": "Baixar PDF",
+      "comprobante": "Comprovante de pagamento da folha",
+      "del": "De {rango}",
+      "pagada": "pago em {fecha}",
+      "pago": "pagamento em {fecha}",
+      "borrador": "Rascunho: o período não está fechado. Não é entregue à pessoa.",
+      "empleado": "Funcionário",
+      "cargo": "Cargo",
+      "salario": "Salário básico",
+      "mensual": "{valor} mensal",
+      "devengados": "Proventos",
+      "deducciones": "Deduções",
+      "totalDevengado": "Total de proventos",
+      "totalDeducciones": "Total de deduções",
+      "netoPagar": "Líquido a pagar",
+      "bloqueada": "Bloqueado",
+      "ibc": "IBC do período: {valor}.",
+      "noEsElectronica": "Este comprovante não substitui o documento de suporte da folha de pagamento eletrônica da DIAN.",
+      "generado": "Gerado em {fecha}.",
+      "electronica": {
+        "titulo": "Não é a folha de pagamento eletrônica",
+        "descripcion": "O documento de suporte da folha de pagamento eletrônica da DIAN é mensal e chega na fase 4. Os dados deste holerite já ficam prontos para ele."
+      },
+      "entrega": {
+        "titulo": "Entrega à pessoa",
+        "descripcion": "O envio por e-mail e o portal do funcionário chegam depois. Enquanto isso, baixe o PDF e entregue-o."
+      }
+    },
+    "ajuste": {
+      "titulo": "Ajuste com motivo",
+      "descripcion": "O que foi fechado não é editado: o ajuste recalcula o holerite com as regras do fechamento e salva somente a diferença.",
+      "confirmar": "Salvar ajuste",
+      "motivo": "Motivo",
+      "motivoPlaceholder": "Ex.: bônus de desempenho que não foi registrado a tempo",
+      "c1": "É calculado com os parâmetros com que o período foi fechado.",
+      "c2": "Fica como uma versão de ajuste, com seu motivo e quem a fez.",
+      "c3": "É fechado separadamente e pago com o período.",
+      "hecho": "Ajuste salvo",
+      "persona": "Pessoa",
+      "elegirPersona": "Escolha a pessoa",
+      "concepto": "Rubrica",
+      "dias": "Dias",
+      "valor": "Valor",
+      "faltaPersona": "Escolha a pessoa.",
+      "faltaValor": "Escreva o valor do ajuste."
+    },
+    "conceptos": {
+      "BONIFICACION_SALARIAL": "Bonificação salarial",
+      "BONIFICACION_NO_SALARIAL": "Bonificação não salarial",
+      "AUXILIO_NO_SALARIAL": "Auxílio não salarial",
+      "RETROACTIVO": "Retroativo salarial",
+      "VACACIONES_COMPENSADAS": "Férias indenizadas em dinheiro",
+      "LIBRANZA": "Empréstimo consignado (libranza)",
+      "APORTE_COOPERATIVA": "Contribuição à cooperativa",
+      "FONDO_EMPLEADOS": "Contribuição ao fundo de funcionários",
+      "CUOTA_SINDICAL": "Contribuição sindical",
+      "OTRO_DESCUENTO": "Outro desconto autorizado"
+    },
+    "detalle": {
+      "titulo": "Detalhes da pessoa",
+      "sinItems": "Sem rubricas neste grupo.",
+      "columnas": {
+        "concepto": "Rubrica",
+        "cantidad": "Quantidade",
+        "base": "Base",
+        "valor": "Valor"
+      },
+      "salarial": "Salarial",
+      "noSalarial": "Não salarial",
+      "sinPermiso": "Você não tem acesso a este período",
+      "volver": "Voltar ao período",
+      "vacio": {
+        "titulo": "Esta pessoa não está no período",
+        "descripcion": "Não tem holerite na versão vigente."
+      },
+      "salarioMensual": "salário {valor} mensal",
+      "nDias": "{n} dias",
+      "verColilla": "Ver holerite",
+      "etiqueta": "Seções dos detalhes",
+      "pestanas": {
+        "resumen": "Resumo",
+        "seguridad": "Seguridade social",
+        "retencion": "Retenção",
+        "deducciones": "Deduções",
+        "provisiones": "Provisões"
+      },
+      "devengados": "Proventos",
+      "totalDevengado": "Total de proventos",
+      "deducciones": "Deduções",
+      "totalDeducciones": "Total de deduções",
+      "netoPagar": "Líquido a pagar · {devengado} − {deducciones}",
+      "bloqueada": "Bloqueado",
+      "aportesTrabajador": "Contribuições do trabalhador",
+      "aportesEmpleador": "Contribuições e encargos parafiscais da empresa",
+      "total": "Total",
+      "retencion": {
+        "titulo": "Retenção na fonte",
+        "noAplica": "Não houve retenção neste período (é calculada no período que fecha o mês).",
+        "procedimiento": "Procedimento",
+        "proc": "Procedimento {n}",
+        "depuracion": {
+          "ingresos": "Rendimentos do trabalho do mês",
+          "incr": "Rendimentos não tributáveis",
+          "ingreso_neto": "Rendimento líquido",
+          "deduccion_dependientes": "Dependentes",
+          "deduccion_medicina": "Plano de saúde privado",
+          "deduccion_vivienda": "Juros de financiamento habitacional",
+          "exenta_voluntarios": "Contribuições voluntárias (AFC e FVP)",
+          "exenta_25": "Renda isenta de 25 %",
+          "limite_40": "Limite de 40 %",
+          "beneficios_aplicados": "Benefícios aplicados",
+          "base": "Base tributável"
+        },
+        "porcentaje": "Percentual fixo",
+        "delMes": "Retenção do mês",
+        "estePeriodo": "Retido neste período"
+      },
+      "otrasDeducciones": "Empréstimos, empréstimos consignados (libranzas), penhoras e outros descontos",
+      "limite": {
+        "titulo": "Limite das deduções",
+        "descripcion": "Penhoras e empréstimos são aplicados em ordem e com limite: o trabalhador mantém pelo menos metade do salário após as deduções legais. O que não couber fica como saldo para o próximo período."
+      },
+      "provisiones": "Provisões do período",
+      "ibc": {
+        "titulo": "IBC do período · regra dos 40 %",
+        "salarioMensual": "Salário mensal",
+        "exceso40": "Excesso não salarial acima de 40 %",
+        "minimo": "Piso (1 SMMLV proporcional)",
+        "maximo": "Teto (25 SMMLV proporcional)",
+        "ibc": "IBC",
+        "arl": "IBC da ARL",
+        "parafiscales": "Base dos encargos parafiscais",
+        "prestaciones": "Base dos benefícios sociais",
+        "nota": "Art. 30 da Lei 1393 de 2010: o que for não salarial e ultrapassar 40 % do total soma ao IBC. O auxílio-transporte não entra na conta.",
+        "exonerado": "Isento da contribuição patronal de saúde, ICBF e SENA (art. 114-1 do ET)."
+      },
+      "costo": {
+        "titulo": "Custo para a empresa",
+        "devengado": "Total de proventos",
+        "aportes": "Contribuições e encargos parafiscais",
+        "provisiones": "Provisões",
+        "total": "Custo para a empresa"
+      },
+      "informativos": "Informativos"
+    },
+    "prestamo": {
+      "titulo": "Empréstimo",
+      "noExiste": "Este empréstimo não existe",
+      "volver": "Voltar para Empréstimos e penhoras",
+      "tituloDe": "Empréstimo {numero} · {nombre}",
+      "deLaEmpresa": "Empréstimo da empresa",
+      "conIntereses": "{monto} a {tasa} % ao ano",
+      "sinIntereses": "{monto} sem juros",
+      "cuotasDe": "{n, plural, one {# parcela} other {# parcelas}} de {valor}",
+      "columnas": {
+        "cuota": "Parcela",
+        "vence": "Vencimento",
+        "valor": "Valor",
+        "saldo": "Saldo após",
+        "estado": "Status"
+      },
+      "nDeTotal": "{n} de {total}",
+      "cuotas": {
+        "descontada": "Descontada",
+        "pending": "Programada",
+        "partial": "Parcial",
+        "paid": "Paga",
+        "overdue": "Vencida",
+        "skipped": "Omitida"
+      },
+      "error": "Não foi possível concluir a ação.",
+      "rechazar": "Rejeitar",
+      "aprobar": "Aprovar",
+      "anular": "Anular",
+      "cuotasTitulo": "Parcelas",
+      "saldoDespues": "Saldo após: {valor}",
+      "sinCuotas": {
+        "titulo": "Ainda não há parcelas",
+        "descripcion": "As parcelas são geradas ao aprovar o empréstimo."
+      },
+      "condiciones": {
+        "estado": "Status",
+        "titulo": "Condições",
+        "monto": "Valor",
+        "intereses": "Juros",
+        "sinIntereses": "Sem juros",
+        "total": "Total a pagar",
+        "saldo": "Saldo",
+        "descuento": "Desconto",
+        "porNomina": "Em folha",
+        "manual": "Manual",
+        "maximo": "Máximo por período",
+        "primeraCuota": "Primeira parcela",
+        "nota": "Em cada folha de pagamento a parcela é descontada respeitando o piso do empréstimo consignado (libranza): o trabalhador mantém pelo menos metade do salário."
+      },
+      "confirmarAprobar": {
+        "titulo": "Aprovar o empréstimo?",
+        "descripcion": "Serão geradas {n, plural, one {# parcela} other {# parcelas}} de {valor} que a folha de pagamento desconta automaticamente."
+      },
+      "aprobado": "Empréstimo aprovado",
+      "confirmarRechazar": {
+        "titulo": "Rejeitar o empréstimo"
+      },
+      "rechazado": "Empréstimo rejeitado",
+      "confirmarAnular": {
+        "titulo": "Anular o empréstimo?",
+        "descripcion": "Deixa de ser descontado. O saldo de {saldo} fica sem cobrança em folha. Não pode ser desfeito."
+      },
+      "anulado": "Empréstimo anulado"
+    },
+    "nuevoPrestamo": {
+      "titulo": "Novo empréstimo",
+      "subtitulo": "É descontado em folha com autorização por escrito do funcionário",
+      "sinPermiso": "Você não tem permissão para registrar empréstimos",
+      "volver": "Voltar",
+      "creado": "Empréstimo registrado: fica a aprovar",
+      "error": "Não foi possível registrar o empréstimo.",
+      "cancelar": "Cancelar",
+      "crear": "Criar empréstimo",
+      "datos": "Dados do empréstimo",
+      "empleado": "Funcionário",
+      "tipo": "Tipo",
+      "tipos": {
+        "prestamo": "Empréstimo",
+        "anticipo": "Adiantamento"
+      },
+      "monto": "Valor",
+      "cuotas": "Número de parcelas",
+      "anticipoUnaCuota": "Um adiantamento é descontado em uma única parcela.",
+      "primeraCuota": "Primeira parcela",
+      "intereses": "Juros anuais",
+      "interesesAyuda": "0 % se for sem juros.",
+      "maximo": "Máximo por período",
+      "maximoAyuda": "Percentual do salário que a parcela pode tomar.",
+      "notas": "Observações",
+      "notasAyuda": "Opcional. Por exemplo, para que é o empréstimo.",
+      "asiQueda": "Resultado",
+      "cuota": "Parcela",
+      "cuotaDe": "{valor} · {n, plural, one {# parcela} other {# parcelas}}",
+      "interesesAparte": "Juros",
+      "alCrear": "Somados ao criar",
+      "limite": "Limite por período",
+      "limiteNota": "Se a parcela não couber no período, a folha de pagamento desconta o que a lei permite e o restante fica como saldo.",
+      "aprobacion": {
+        "titulo": "Passa por aprovação",
+        "descripcion": "Nasce «a aprovar» e não é descontado até que alguém com permissão da folha de pagamento o aprove."
+      },
+      "autorizacion": {
+        "titulo": "Autorização por escrito do funcionário",
+        "descripcion": "É obrigatória para descontar em folha (art. 149 do CST). Envie-a aos documentos da ficha do funcionário."
+      }
+    },
+    "configuracion": {
+      "sinPermiso": {
+        "titulo": "Você não tem acesso à configuração da folha de pagamento",
+        "descripcion": "Peça a permissão «Ver folha de pagamento»."
+      },
+      "si": "Sim",
+      "no": "Não",
+      "columnas": {
+        "codigo": "Código",
+        "concepto": "Rubrica",
+        "tipo": "Tipo",
+        "salarial": "Salarial",
+        "prestacional": "Incide em benefícios",
+        "cuenta": "Conta"
+      },
+      "tipos": {
+        "devengado": "Provento",
+        "deduccion": "Dedução",
+        "aporte_empleador": "Contribuição",
+        "provision": "Provisão",
+        "informativo": "Informativo"
+      },
+      "intro": "Como sua empresa calcula a folha de pagamento. Os valores legais (SMMLV, UVT, percentuais) ficam em «Parâmetros legais» e não são editados aqui.",
+      "apagada": {
+        "titulo": "A folha de pagamento está em modo somente pré-cálculo",
+        "descripcion": "É calculada e revisada, mas não é fechada, paga nem contabilizada até que o contador revise rubricas, IBC, provisões, retenção e contas. Depois, a GO Admin ativa «Folha de pagamento ativa»."
+      },
+      "activa": {
+        "titulo": "Folha de pagamento ativa",
+        "encendida": "Ativada",
+        "apagada": "Desativada · é ativada após a rodada do contador",
+        "porQue": "Por que está desativada? Um erro em uma rubrica ou em uma conta se repete em cada holerite, na PILA e no lançamento. Por isso as regras passam antes pelo contador.",
+        "soloGoAdmin": "Somente a GO Admin"
+      },
+      "conceptos": "Rubricas da folha de pagamento",
+      "buscar": "Buscar rubrica ou conta"
+    }
+  },
+  "hrmMarcacionMetodos": {
+    "contexto": "{sede} · {activos} de {total} métodos ativos",
+    "elegirSede": "Escolher unidade",
+    "intro": "Cada pessoa registra o ponto com qualquer um dos métodos ativos. Desative os que você não usa: menos caminhos, menos marcações estranhas.",
+    "cargando": "Carregando os métodos de ponto",
+    "guardados": "Métodos salvos",
+    "cambiosSinGuardar": "Alterações não salvas",
+    "apagado": "Desativado",
+    "llegaKiosco": "Chega com o quiosque (M1)",
+    "llegaRelojes": "Chega com os relógios de digital ou rosto",
+    "tocaMetodo": "Toque em um método para ver e alterar suas regras.",
+    "unidades": {
+      "metros": "m",
+      "segundos": "s"
+    },
+    "sinPermiso": {
+      "titulo": "Você não pode ver os métodos de ponto",
+      "descripcion": "Você precisa da permissão «Ver frequência» ou «Gerenciar frequência» de Recursos humanos.",
+      "irInicio": "Ir para o início"
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os métodos",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "soloLectura": {
+      "titulo": "Você não pode alterar os métodos de ponto",
+      "descripcion": "Você precisa da permissão «Gerenciar frequência» de Recursos humanos. Você pode ver como a unidade está configurada e acompanhar as marcações em «Ao vivo».",
+      "irEnVivo": "Ir para Ao vivo"
+    },
+    "errores": {
+      "guardar": {
+        "sin_metodos": "A unidade precisa de pelo menos um método ativo: celular, QR ou etiqueta.",
+        "radio_invalido": "O raio vai de {min} a {max} m.",
+        "metodo_no_disponible": "Esse método chega com o quiosque ou os relógios: ainda não pode ser ativado.",
+        "sin_permiso": "Você não tem permissão para alterar os métodos desta unidade.",
+        "sede_requerida": "Escolha uma unidade antes de salvar.",
+        "generico": "Não foi possível salvar as alterações. Tente novamente."
+      }
+    },
+    "cambiarSede": {
+      "titulo": "Trocar de unidade sem salvar?",
+      "descripcion": "As alterações nos métodos de {sede} serão perdidas.",
+      "confirmar": "Descartar e trocar",
+      "cancelar": "Continuar editando"
+    },
+    "metodos": {
+      "celular_ubicacion": {
+        "titulo": "Celular com localização",
+        "corto": "Celular com localização"
+      },
+      "qr": {
+        "titulo": "QR da unidade",
+        "corto": "QR da unidade"
+      },
+      "nfc_etiqueta": {
+        "titulo": "Crachá ou etiqueta NFC",
+        "corto": "Etiqueta NFC"
+      },
+      "carne": {
+        "titulo": "Crachá",
+        "corto": "Crachá NFC"
+      },
+      "pin": {
+        "titulo": "Quiosque com PIN",
+        "corto": "PIN no quiosque"
+      },
+      "rostro": {
+        "titulo": "Rosto",
+        "corto": "Rosto"
+      },
+      "huella": {
+        "titulo": "Digital",
+        "corto": "Digital"
+      }
+    },
+    "tarjetas": {
+      "noDisponible": "{metodo}: {cuando}",
+      "celular": {
+        "descripcion": "A pessoa registra o ponto pelo celular e o GO Admin compara a localização dela com a da unidade. A localização só é coletada ao registrar, nunca para rastrear.",
+        "resumen": "Raio {radio} m · {computador, select, si {também pelo computador} other {só pelo celular}}",
+        "activar": "Celular com localização",
+        "radio": "Raio da unidade",
+        "radioAyuda": "Distância máxima até a unidade para aceitar a marcação.",
+        "ubicacion": "Endereço da unidade",
+        "ubicacionFijada": "{direccion} · marcado no mapa",
+        "sinDireccion": "Sem endereço",
+        "sinUbicacion": "A unidade não está marcada no mapa",
+        "sinUbicacionDetalle": "As marcações pelo celular ficam «sem localização» para o gestor revisar.",
+        "foto": "Pedir uma foto ao registrar · {cuando}",
+        "computador": "Permitir registrar pelo computador (fica para revisão do gestor)"
+      },
+      "qr": {
+        "descripcion": "A pessoa escaneia com o celular o QR de uma tela da unidade. Ele muda a cada 30 segundos e cada código serve uma única vez.",
+        "resumen": "30 s · uso único · {ubicacion, select, si {com localização} other {sem localização}}",
+        "activar": "QR da unidade",
+        "comoSeMuestra": "Como o QR é exibido",
+        "comoSeMuestraAyuda": "O QR no quiosque chega com o quiosque (M1).",
+        "rotativo": "Rotativo em uma tela",
+        "cambiaCada": "Muda a cada",
+        "cambiaCadaAyuda": "Fixo: a cada 30 segundos.",
+        "unSoloUso": "Uso único: cada código serve para uma marcação",
+        "pedirAdemas": "Pedir também",
+        "ademasNada": "Nada",
+        "ademasUbicacion": "A localização do celular",
+        "ademasPin": "O PIN da pessoa · {cuando}",
+        "abrirPantalla": "Abrir tela do QR",
+        "agregarPantalla": "Adicionar uma tela de QR"
+      },
+      "nfc": {
+        "descripcion": "Com uma etiqueta NFC colada na entrada, a pessoa aproxima o celular. O leitor de crachás chega com o quiosque.",
+        "resumen": "{n, plural, =0 {Sem etiquetas} one {# etiqueta} other {# etiquetas}}",
+        "activar": "Crachá ou etiqueta NFC",
+        "etiquetas": "Etiquetas registradas",
+        "ninguna": "Nenhuma",
+        "carnes": "Crachás entregues",
+        "exigeUbicacion": "Ao registrar com uma etiqueta, o celular sempre compartilha sua localização.",
+        "registrar": "Registrar etiqueta ou crachá"
+      },
+      "pin": {
+        "descripcion": "No tablet da unidade a pessoa digita seu PIN, que nunca é exibido. Serve de alternativa quando ela não tem celular, crachá nem biometria."
+      },
+      "rostro": {
+        "descripcion": "Só com um relógio facial: o relógio compara o rosto, nunca o GO Admin. O tablet do quiosque não reconhece rostos. Cada pessoa precisa autorizar a biometria."
+      },
+      "huella": {
+        "descripcion": "Só com um leitor ou terminal de digital. A digital fica guardada no leitor; o GO Admin recebe a marcação, nunca a digital."
+      },
+      "remoto": {
+        "titulo": "Trabalho remoto",
+        "descripcion": "É habilitado por pessoa na ficha dela (modalidade remota ou híbrida). Ela registra pelo app sem a localização da unidade.",
+        "resumen": "Habilitado por pessoa",
+        "personas": "{n, plural, =0 {Ninguém} one {# pessoa} other {# pessoas}}"
+      },
+      "manual": {
+        "titulo": "Marcação manual com aprovação",
+        "descripcion": "A saída quando todo o resto falha. Sempre pede motivo e passa por aprovação; não pode ser desativada.",
+        "resumen": "Com motivo e aprovação",
+        "siempreActiva": "Sempre ativa"
+      },
+      "foto": {
+        "titulo": "Foto de evidência e aviso",
+        "descripcion": "O quiosque tira uma foto em cada marcação com PIN ou crachá, só de quem autorizou. A unidade deve avisar com um cartaz visível na entrada.",
+        "resumen": "30 dias · mantida se houver reclamação",
+        "seBorra": "Apagada após",
+        "dias": "{n} dias",
+        "seConserva": "Se a marcação estiver em revisão ou tiver uma reclamação, a foto é mantida até o caso ser encerrado.",
+        "llega": "Fotos de evidência: {cuando}",
+        "llegaDetalle": "Hoje nenhuma marcação tira foto. O cartaz explica às pessoas o que é guardado.",
+        "letrero": "Baixar cartaz para imprimir"
+      },
+      "excepciones": {
+        "titulo": "Exceções temporárias",
+        "descripcion": "Quando alguém perde um método ou não pode usá-lo (por exemplo, uma lesão na mão), o RH habilita outro por algumas datas. Fica registrado quem aprovou e por quê.",
+        "resumen": "{vigentes, plural, one {# vigente} other {# vigentes}} · {pendientes, plural, one {# pendente} other {# pendentes}}",
+        "aprobo": "aprovada por {nombre}",
+        "estados": {
+          "vigente": "vigente",
+          "programada": "programada",
+          "vencida": "vencida",
+          "pendiente": "pendente",
+          "rechazada": "rejeitada",
+          "revocada": "revogada",
+          "anulada": "anulada"
+        },
+        "revocar": "Revogar",
+        "revocada": "Exceção revogada",
+        "errorSinPermiso": "Você não tem permissão para revogar exceções.",
+        "errorYaRevocada": "A exceção não existe mais ou já foi revogada.",
+        "errorRevocar": "Não foi possível revogar a exceção.",
+        "errorCargar": "Não foi possível carregar as exceções.",
+        "reintentar": "Tentar novamente",
+        "sinPermiso": "Você não pode ver as exceções.",
+        "vacio": "Ninguém desta unidade tem exceções vigentes ou recentes.",
+        "agregar": "Adicionar exceção",
+        "confirmarTitulo": "Revogar a exceção?",
+        "confirmarDetalle": "{nombre} volta aos métodos da unidade. Se a exceção ainda estava pendente, a solicitação de aprovação é anulada.",
+        "cancelar": "Cancelar"
+      }
+    },
+    "excepcion": {
+      "titulo": "Nova exceção temporária",
+      "descripcion": "Habilita outro método para uma pessoa por algumas datas. Recursos humanos aprova.",
+      "persona": "Pessoa",
+      "elegirPersona": "Escolha uma pessoa",
+      "cargandoPersonas": "Carregando pessoas…",
+      "buscarPersona": "Buscar pessoa",
+      "sinPersonas": "Não há pessoas vigentes nesta unidade",
+      "metodo": "Método a habilitar",
+      "elegirMetodo": "Escolha um método",
+      "metodoNoDisponible": "{metodo} (chega com o quiosque ou os relógios)",
+      "desde": "De",
+      "hasta": "Até",
+      "elegirFecha": "Escolha a data",
+      "maximo": "Máximo de {dias} dias.",
+      "motivo": "Motivo",
+      "motivoEjemplo": "Ex.: lesão na mão, não pode usar a digital",
+      "avisoTitulo": "Fica registrada com quem aprovou, o motivo e as datas",
+      "avisoDetalle": "Ao vencer, a pessoa volta aos métodos da unidade sem que ninguém precise fazer nada.",
+      "cancelar": "Cancelar",
+      "enviar": "Enviar para aprovação",
+      "enviada": "Enviada para aprovação",
+      "enviadaDetalle": "Outra pessoa do RH aprova em Aprovações.",
+      "errores": {
+        "persona": "Escolha a pessoa.",
+        "metodo": "Escolha um método que funcione hoje: celular com localização, QR ou etiqueta NFC.",
+        "fechas": "Escolha as datas: «Até» não pode ser antes de «De».",
+        "tope": "A exceção dura no máximo 90 dias.",
+        "pasado": "A exceção não pode terminar no passado.",
+        "motivo": "Escreva o motivo (de 5 a 500 caracteres).",
+        "noPropio": "Uma exceção para você deve ser pedida por outra pessoa do RH.",
+        "personaNoExiste": "Essa pessoa não está mais na organização.",
+        "vigencia": "Revise as datas: no máximo 90 dias e sem terminar no passado.",
+        "sinPermiso": "Você não tem permissão para criar exceções.",
+        "generico": "Não foi possível enviar a exceção. Tente novamente."
+      }
+    },
+    "letrero": {
+      "titulo": "Aqui se registra a frequência",
+      "metodos": "Formas de registrar o ponto",
+      "imprimir": "Imprimir",
+      "cerrar": "Fechar",
+      "sinPermiso": "Você não pode ver o cartaz desta unidade",
+      "error": "Não foi possível preparar o cartaz",
+      "responsable": "Responsável pelo tratamento: {organizacion}. O GO Admin gera este cartaz com os dados da organização.",
+      "responsableSinNombre": "O GO Admin gera este cartaz com os dados da organização.",
+      "bloques": {
+        "queGuardamos": {
+          "titulo": "O que guardamos",
+          "texto": "O horário da sua entrada, saída e pausas, o equipamento onde você registrou e, se você autorizou, uma foto de evidência."
+        },
+        "foto": {
+          "titulo": "Foto de evidência",
+          "texto": "Só se você autorizou. É apagada após 30 dias, a menos que sua marcação esteja em revisão ou você tenha uma reclamação aberta: nesse caso, ao encerrá-la."
+        },
+        "huellaRostro": {
+          "titulo": "Digital e rosto",
+          "texto": "O relógio da unidade é que os compara. Não são guardados no GO Admin nem em nenhum outro sistema da empresa."
+        },
+        "voluntario": {
+          "titulo": "É voluntário",
+          "texto": "Se você não autorizar a biometria ou a foto, registra o ponto com PIN, crachá ou o QR pelo celular. Isso não afeta seu contrato."
+        },
+        "derechos": {
+          "titulo": "Seus direitos",
+          "texto": "Você pode consultar, corrigir ou retirar suas autorizações no GO Admin › Minha frequência, ou escrevendo para Recursos humanos (Lei colombiana 1581 de 2012)."
+        }
+      }
+    }
+  },
+  "hrmMarcacionRrhh": {
+    "titulo": "Registro de ponto",
+    "subtitulo": {
+      "hoy": "Hoje, {fecha}",
+      "actualizadoRecien": "atualizado agora mesmo",
+      "actualizadoHace": "atualizado há {n} min",
+      "dispositivos": "{n, plural, one {# dispositivo} other {# dispositivos}}",
+      "sinConexion": "{n} sem conexão"
+    },
+    "vistas": {
+      "etiqueta": "Visualização do registro de ponto",
+      "envivo": "Ao vivo",
+      "metodos": "Métodos por unidade",
+      "dispositivos": "Dispositivos"
+    },
+    "comun": {
+      "irAlInicio": "Ir para o início"
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso ao registro de ponto",
+      "descripcion": "Para ver as marcações da unidade você precisa da permissão «Ver frequência» de Recursos humanos. Peça a quem administra os perfis."
+    },
+    "metodos": {
+      "celular_ubicacion": "Celular com localização",
+      "qr": "QR da unidade",
+      "nfc_etiqueta": "Etiqueta NFC",
+      "carne": "Crachá NFC",
+      "carne_nfc": "Crachá NFC",
+      "carne_qr": "Crachá com QR",
+      "pin": "Quiosque com PIN",
+      "rostro": "Rosto",
+      "huella": "Digital",
+      "remoto": "Remoto",
+      "manual": "Manual",
+      "desconocido": "Não identificado"
+    },
+    "verificacion": {
+      "dentro": "Dentro da unidade",
+      "verificada": "Verificada",
+      "remoto": "Trabalho remoto",
+      "pendiente_aprobacion": "Aguardando aprovação",
+      "sin_ubicacion": "Sem localização",
+      "computador": "De um computador",
+      "sin_senal": "Salva sem conexão",
+      "tarde": "{n} min de atraso",
+      "rechazadaCorta": "Rejeitada",
+      "rechazos": {
+        "fuera_de_rango": "Rejeitada: fora da unidade",
+        "qr_ya_usado": "Rejeitada: QR já usado",
+        "qr_vencido": "Rejeitada: QR vencido",
+        "qr_invalido": "Rejeitada: QR inválido",
+        "etiqueta_invalida": "Rejeitada: etiqueta inválida",
+        "etiqueta_otra_sede": "Rejeitada: etiqueta de outra unidade",
+        "metodo_no_disponible_en_sede": "Rejeitada: método não ativo na unidade",
+        "mecanismo_no_permitido": "Rejeitada: método não permitido",
+        "computador_no_permitido": "Rejeitada: de um computador",
+        "ubicacion_requerida": "Rejeitada: sem localização",
+        "ubicacion_requiere_consentimiento": "Rejeitada: sem permissão de localização",
+        "otro": "Rejeitada"
+      }
+    },
+    "filtros": {
+      "metodo": "Método",
+      "verificacion": "Verificação",
+      "todos": "Todos",
+      "chipMetodo": "Método: {valor}",
+      "chipVerificacion": "Verificação: {valor}",
+      "chipEstado": "Status: {valor}",
+      "verMarcas": "{n, plural, one {Ver # marcação} other {Ver # marcações}}",
+      "grupos": {
+        "correctas": "Corretas",
+        "por_revisar": "Para revisar",
+        "rechazadas": "Rejeitadas"
+      }
+    },
+    "envivo": {
+      "resumen": "Resumo das marcações de hoje",
+      "kpi": {
+        "marcaron": "Marcaram hoje",
+        "deTotal": "{n} de {total}",
+        "sinMarcar": "{n} com turno ainda não marcaram",
+        "todosMarcaron": "Todos que têm turno já marcaram",
+        "porRevisar": "Para revisar",
+        "nadaPorRevisar": "Nada para revisar",
+        "motivos": {
+          "sin_ubicacion": "sem localização",
+          "computador": "de um computador",
+          "sin_senal": "sem conexão",
+          "manual": "manual"
+        },
+        "pantallas": "Telas de QR on-line",
+        "sinPantallas": "Nenhuma tela ainda",
+        "pantallasSinConexion": "{n} sem conexão",
+        "pantallasTodas": "Todas on-line",
+        "sinSenal": "Salvas sem sinal",
+        "sinSenalDetalle": "chegam quando a conexão volta"
+      },
+      "porMetodo": "Hoje por método",
+      "chipMetodo": "{metodo} · {n}",
+      "avisoPantallas": {
+        "titulo": "{n, plural, one {Uma tela de QR está sem conexão} other {# telas de QR estão sem conexão}}",
+        "descripcion": "Verifique se a TV ou o monitor está ligado, com internet e com a tela aberta. Enquanto isso, as pessoas podem marcar pelo celular.",
+        "accion": "Ver dispositivos"
+      },
+      "buscar": "Buscar pessoa, ponto ou dispositivo…",
+      "tabla": "Marcações de hoje",
+      "etiquetaFila": "{nombre} · {marca} {hora}",
+      "movilMarca": "{marca} {hora} · {metodo}",
+      "columnas": {
+        "persona": "Pessoa",
+        "hora": "Hora",
+        "marca": "Marcação",
+        "metodo": "Método",
+        "punto": "Ponto ou dispositivo",
+        "verificacion": "Verificação"
+      },
+      "tipos": {
+        "entrada": "Entrada",
+        "salida": "Saída",
+        "inicioDescanso": "Início do intervalo",
+        "finDescanso": "Fim do intervalo",
+        "intento": "Tentativa",
+        "otra": "Marcação"
+      },
+      "punto": {
+        "registradaPor": "Registrada por {nombre}",
+        "sedeA": "{sede} · a {m} m",
+        "aDeLaSede": "a {m} m da unidade"
+      },
+      "acciones": {
+        "verHoja": "Ver a folha de ponto da pessoa",
+        "verDispositivo": "Ver dispositivo",
+        "corregir": "Corrigir com um ajuste…"
+      },
+      "vacio": {
+        "titulo": "Ainda não há marcações hoje nesta unidade",
+        "descripcion": "As marcações aparecem aqui assim que alguém marca pelo celular, pelo QR da unidade ou por uma etiqueta NFC. Veja quais métodos esta unidade tem ativos.",
+        "accion": "Ver métodos da unidade"
+      },
+      "sinResultados": {
+        "titulo": "Nenhuma marcação corresponde",
+        "descripcion": "Tente outro nome ou remova os filtros."
+      },
+      "error": {
+        "titulo": "Não conseguimos carregar as marcações de hoje",
+        "descripcion": "Verifique sua conexão e tente de novo. As marcações que chegarem enquanto isso não se perdem."
+      }
+    },
+    "dispositivos": {
+      "agregar": "Adicionar dispositivo",
+      "tabla": "Dispositivos de registro de ponto",
+      "buscar": "Buscar dispositivo ou onde está…",
+      "verDispositivos": "{n, plural, one {Ver # dispositivo} other {Ver # dispositivos}}",
+      "columnas": {
+        "dispositivo": "Dispositivo",
+        "tipo": "Tipo",
+        "sede": "Unidade",
+        "estado": "Status",
+        "conexion": "Última conexão",
+        "hoy": "Hoje"
+      },
+      "tipos": {
+        "pantalla_qr": "Tela de QR",
+        "etiqueta_nfc": "Etiqueta NFC",
+        "terminal_huella": "Terminal de digital",
+        "terminal_facial": "Terminal facial",
+        "kiosco": "Quiosque em tablet",
+        "lector_escritorio": "Leitor de crachá",
+        "anterior": "Ponto anterior"
+      },
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "estados": {
+        "en_linea": "On-line",
+        "activa": "Ativa",
+        "sin_conexion": "Sem conexão",
+        "desactivado": "Desativado"
+      },
+      "noSeConecta": "não se conecta",
+      "nunca": "nunca",
+      "hace": {
+        "ahora": "agora",
+        "min": "há {n} min",
+        "h": "há {n} h",
+        "d": "{n, plural, one {há # dia} other {há # dias}}"
+      },
+      "acciones": {
+        "abrirPantalla": "Abrir tela",
+        "regenerarClave": "Gerar nova chave…",
+        "regenerarCodigo": "Gerar novo código…",
+        "activar": "Ativar",
+        "desactivar": "Desativar…"
+      },
+      "confirmar": {
+        "regenerarClaveTitulo": "Gerar uma nova chave para {nombre}?",
+        "regenerarClaveDesc": "A chave atual deixa de funcionar na hora: a tela aberta mostra códigos que já não valem. Abra-a de novo com «Abrir tela».",
+        "regenerarClave": "Gerar nova chave",
+        "regenerarCodigoTitulo": "Gerar um novo código para {nombre}?",
+        "regenerarCodigoDesc": "A etiqueta colada deixa de funcionar na hora. Mostraremos uma URL nova uma única vez para gravá-la na etiqueta.",
+        "regenerarCodigo": "Gerar novo código",
+        "desactivarTitulo": "Desativar {nombre}?",
+        "desactivarDesc": "Ninguém poderá marcar com este ponto até você ativá-lo de novo. As marcações já feitas com ele são mantidas.",
+        "desactivar": "Desativar"
+      },
+      "regenerada": "Nova chave de {nombre} gerada",
+      "regeneradaPantallaDesc": "Abra a tela de novo na TV para que mostre os códigos novos.",
+      "activada": "{nombre} está ativo de novo",
+      "desactivada": "{nombre} foi desativado",
+      "errores": {
+        "sinPermiso": "Você não tem permissão para administrar os dispositivos de registro de ponto.",
+        "guardar": "Não conseguimos salvar a alteração. Tente de novo."
+      },
+      "vacio": {
+        "titulo": "Ainda não há dispositivos nesta unidade",
+        "descripcion": "Adicione uma tela de QR ou uma etiqueta NFC para a entrada. Sem dispositivos, as pessoas podem marcar pelo celular."
+      },
+      "sinResultados": {
+        "titulo": "Nenhum dispositivo corresponde",
+        "descripcion": "Tente outro nome ou remova os filtros."
+      },
+      "error": {
+        "titulo": "Não conseguimos carregar os dispositivos",
+        "descripcion": "Verifique sua conexão e tente de novo."
+      }
+    },
+    "alta": {
+      "titulo": "Adicionar dispositivo",
+      "paso1": "Passo 1 de 2 · O que você vai conectar",
+      "paso2": "Passo 2 de 2 · Nome e unidade",
+      "queConectar": "O que você vai conectar?",
+      "continuar": "Continuar",
+      "eligeTipo": "Escolha o que você vai conectar",
+      "atras": "Voltar",
+      "agregar": "Adicionar",
+      "tipos": {
+        "pantalla_qr": {
+          "titulo": "Tela de QR",
+          "descripcion": "Uma TV ou monitor que mostra o QR da unidade, que muda a cada 30 segundos, para ser lido com o celular.",
+          "necesitas": "Você precisa de: qualquer tela com navegador."
+        },
+        "etiqueta_nfc": {
+          "titulo": "Etiqueta NFC da unidade",
+          "descripcion": "Uma etiqueta colada na entrada que o celular da pessoa lê. No navegador só funciona com Android e Chrome; no iPhone, com o app GO Admin.",
+          "necesitas": "Você precisa de: etiquetas NTAG213, NTAG215 ou NTAG 424 DNA."
+        },
+        "terminal": {
+          "titulo": "Terminal de digital ou rosto",
+          "descripcion": "Equipamentos que enviam as marcações pela internet. A digital e o rosto ficam no equipamento.",
+          "llega": "Chega com os relógios de ponto."
+        },
+        "kiosco": {
+          "titulo": "Quiosque em um tablet",
+          "descripcion": "Um tablet fixo na entrada com QR que muda, PIN e crachá NFC.",
+          "llega": "Chega com o quiosque."
+        },
+        "lector": {
+          "titulo": "Leitor de crachá ou QR em um computador",
+          "descripcion": "Um leitor USB conectado a um computador com o GO Admin Desktop.",
+          "llega": "Chega com o quiosque e o leitor de desktop."
+        }
+      },
+      "tituloPantalla": "Adicionar tela de QR",
+      "tituloEtiqueta": "Adicionar etiqueta NFC",
+      "nombre": "Nome",
+      "nombreEjemploPantalla": "Tela de QR da entrada",
+      "nombreEjemploEtiqueta": "Etiqueta · Porta principal",
+      "sede": "Unidade",
+      "eligeSede": "Escolha a unidade",
+      "cargandoSedes": "Carregando unidades…",
+      "donde": "Onde está",
+      "dondeAyuda": "Para encontrá-la: a entrada, o caixa, a cozinha…",
+      "dondeEjemploPantalla": "TV da recepção",
+      "dondeEjemploEtiqueta": "Batente da porta principal",
+      "chip": "Chip da etiqueta",
+      "chips": {
+        "ntag215": "NTAG215",
+        "ntag213": "NTAG213",
+        "ntag424": "NTAG 424 DNA"
+      },
+      "avisoUbicacion": {
+        "titulo": "A marcação com esta etiqueta também pede a localização",
+        "ntag215": "Uma etiqueta NTAG213 ou NTAG215 pode ser copiada, então o celular confirma que a pessoa está na unidade.",
+        "ntag424": "A NTAG 424 DNA muda o código a cada leitura; enquanto essa verificação não chega, a marcação também pede a localização do celular."
+      },
+      "avisoPantalla": {
+        "titulo": "Como se usa",
+        "descripcion": "Depois de adicioná-la, abra-a na TV com «Abrir tela», com uma sessão que administre a frequência. O QR muda a cada 30 segundos e cada código vale uma única vez."
+      },
+      "creada": "{nombre} foi adicionado",
+      "creadaPantallaDesc": "Abra-a na TV pelo menu da linha com «Abrir tela».",
+      "errores": {
+        "nombre_invalido": "Digite um nome de 2 a 80 caracteres.",
+        "sede_invalida": "Escolha a unidade.",
+        "tipo_no_disponible": "Por enquanto, adicionam-se telas de QR e etiquetas NFC.",
+        "chip_invalido": "Escolha o chip da etiqueta.",
+        "descripcion_invalida": "Use até 200 caracteres.",
+        "sin_permiso": "Você não tem permissão para adicionar dispositivos de registro de ponto.",
+        "guardar": "Não conseguimos adicionar o dispositivo. Tente de novo."
+      }
+    },
+    "codigoEtiqueta": {
+      "titulo": "Grave esta URL em {nombre}",
+      "descripcion": "Grave-a na etiqueta com um app de NFC ou com este celular. Ao aproximar o celular, abre o GO Admin › Marcar ponto com a etiqueta.",
+      "copiar": "Copiar URL",
+      "copiada": "URL copiada",
+      "noCopiada": "Não conseguimos copiar a URL. Selecione-a e copie à mão.",
+      "escribir": "Gravar na etiqueta com este celular",
+      "escrita": "Etiqueta gravada",
+      "noEscrita": "Não conseguimos gravar a etiqueta. Aproxime-a de novo e não a mova até terminar.",
+      "cerrar": "Pronto",
+      "unaVez": {
+        "titulo": "Esta URL não será mostrada de novo",
+        "descripcion": "Guardamos só uma impressão do código. Se você a perder ou a etiqueta se danificar, use «Gerar novo código…» no menu do dispositivo."
+      },
+      "sinNfc": {
+        "titulo": "Este navegador não grava etiquetas",
+        "descripcion": "Para gravá-la pelo navegador, abra esta tela em um celular Android com Chrome, ou use um app de NFC e cole a URL."
+      }
+    },
+    "pantalla": {
+      "cargando": "Carregando a tela…",
+      "escanea": "Leia com seu celular",
+      "titulo": "QR de registro de ponto",
+      "qrTitulo": "QR de registro de ponto de {sede}",
+      "cambiaEn": "Muda em {n} s",
+      "instrucciones": "Abra o GO Admin › Marcar ponto › QR da unidade. Uma foto deste código não serve: ele muda a cada 30 segundos e cada código vale uma única vez.",
+      "sinInternet": "Sem internet: o código continua mudando",
+      "pie": "A hora da marcação é a do servidor, não a desta tela nem a do celular.",
+      "pantallaCompleta": "Tela cheia",
+      "iniciarSesion": "Entrar",
+      "reintentar": "Tentar de novo",
+      "irADispositivos": "Ir para dispositivos",
+      "estados": {
+        "sinSesion": {
+          "titulo": "Entre para abrir a tela",
+          "descripcion": "A tela de QR abre com a sessão de quem administra a frequência."
+        },
+        "sinPermiso": {
+          "titulo": "Você não pode abrir esta tela",
+          "descripcion": "Abrir a tela de QR exige a permissão «Administrar frequência» de Recursos humanos."
+        },
+        "desactivada": {
+          "titulo": "Esta tela está desativada",
+          "descripcion": "Ative-a em Registro de ponto › Dispositivos para mostrar o QR de novo."
+        },
+        "noExiste": {
+          "titulo": "Não encontramos esta tela",
+          "descripcion": "Verifique o link: ele não corresponde a uma tela de QR da sua organização."
+        },
+        "error": {
+          "titulo": "Não conseguimos abrir a tela",
+          "descripcion": "Verifique a conexão com a internet e tente de novo."
+        }
       }
     }
   }

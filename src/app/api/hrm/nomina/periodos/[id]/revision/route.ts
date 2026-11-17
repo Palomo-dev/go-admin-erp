@@ -1,4 +1,5 @@
 /**
+ * GET  /api/hrm/nomina/periodos/[id]/revision — bloqueos de cierre, aprobación y quién preliquidó (Figma 20.19).
  * POST /api/hrm/nomina/periodos/[id]/revision
  *
  * Envía la preliquidación a revisión: con regla «cierre_nomina» la decide el motor de aprobaciones.
@@ -7,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { withOrg, readOrgBody } from '@/lib/utils/orgContext';
 import { responderError, parametroDeRuta, SIN_CACHE } from '@/lib/services/hrm/rutas.server';
 import { enviarRevision } from '@/lib/services/hrm/nomina/nominaService.server';
+import { revisionPeriodo } from '@/lib/services/hrm/nomina/nominaLecturas.server';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,5 +18,13 @@ export const POST = withOrg(async (ctx, req, rp) => {
     return NextResponse.json(await enviarRevision(ctx, await parametroDeRuta(rp, 'id')), { headers: SIN_CACHE });
   } catch (err) {
     return responderError(err, 'nomina:periodos/[id]/revision');
+  }
+});
+
+export const GET = withOrg(async (ctx, _req, rp) => {
+  try {
+    return NextResponse.json(await revisionPeriodo(ctx, await parametroDeRuta(rp, 'id')), { headers: SIN_CACHE });
+  } catch (err) {
+    return responderError(err, 'nomina:periodos/[id]/revision:get');
   }
 });

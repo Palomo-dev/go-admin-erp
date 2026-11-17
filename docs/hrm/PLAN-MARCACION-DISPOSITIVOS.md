@@ -1,22 +1,24 @@
 # Plan · Marcación con varios métodos y dispositivos
 
 - **Fecha:** 2026-11-16.
-- **Estado:** propuesta para que el dueño la apruebe. No hay código ni migraciones: solo este plan y el diseño en Figma.
+- **Estado:** **aprobado por el dueño el 2026-11-16, con los ajustes de §12** (decisiones D1–D14 y reglas R1–R3). La fase M0 se puede empezar a codificar con este documento. El diseño sigue en Figma.
 - **Encargo del dueño (2026-11-16):** «Quiero que mejoremos esa página vieja [Marcación de RR. HH.] con el nuevo diseño en Figma y le demos completamente funcionamiento. La marcación no siempre se va a poder manual, debería manejar diferentes dispositivos: huella, QR, reconocimiento facial, NFC, etc.»
 - **Pedido adicional del mismo día:** «Contextualizar asistencia con la página de marcación: si la marcación el admin la puso por QR, que aparezca así, como aparece en /app/inicio. No quiero que dañes lo que ya tenemos construido.»
 - **Diseño:** Figma `EAvjINVRnlzFM70GVoWXgl`, página «20 Recursos humanos», secciones 20.26 a 20.32 (x = 24000). Capturas en `docs/design/figma/98-hrm-marcacion-*.png`.
-- **Parte de:** `PLAN-GESTION-HUMANA.md` (fase 2) y `ADR-002-jornadas-asistencia-ausencias.md` §2, que ya dejó la biometría «para una fase posterior».
+- **Parte de:** `PLAN-GESTION-HUMANA.md` (fase 2) y `ADR-002-jornadas-asistencia-ausencias.md` §2, que dejó la biometría «para una fase posterior».
 
 ---
 
 ## 1. En una página
 
 1. **Hoy se marca de dos formas, las dos por el servidor:** desde el celular con la ubicación de la sede y con el QR de la sede. Todo entra por `fn_hr_marcar` a `attendance_events`, y de ahí lo leen Asistencia, las novedades y la nómina. Eso **no cambia**.
-2. **Se suman cinco formas más:** etiqueta NFC en la sede (el celular la lee), kiosco en una tablet (QR que cambia, PIN, carné NFC y, más adelante, rostro), lector de carnés en un computador con GO Admin Escritorio, y terminales comerciales de huella o rostro (ZKTeco, Hikvision). La marca manual con motivo y aprobación sigue siendo la salida de emergencia.
-3. **Un solo camino.** Todas las formas terminan en el mismo núcleo que hoy usa `fn_hr_marcar` (se extrae a una función interna). Los dispositivos no escriben en `attendance_events` por su cuenta: dejan cada evento en una bandeja (`hr_clock_raw_events`) que lo deduplica, lo enlaza con la persona y lo pasa al núcleo. Así no hay una segunda implementación (regla 7 de `CLAUDE.md`).
-4. **La biometría no entra a nuestra base.** La huella y el rostro se quedan en el terminal o en la tablet; GO Admin recibe «el usuario 3 marcó a las 6:02». Se pide autorización expresa, voluntaria y revocable (Ley 1581 de 2012, Decreto 1377 de 2013), y quien no la da marca con PIN, carné o QR.
-5. **La sede manda.** Cada sede activa sus métodos y reglas (20.27). Asistencia muestra con qué método se hizo cada marca, y el botón «Marcar» de Inicio y de Mi asistencia abre directamente el método de la sede (20.30, 20.31).
-6. **Se puede empezar sin comprar nada** (fase M0: QR que cambia cada 30 s, pantalla de QR, métodos por sede, tablero en vivo y contexto en Asistencia e Inicio). El kiosco necesita una tablet; los terminales, el equipo.
+2. **Se suman:** etiqueta NFC en la sede (el celular la lee), kiosco en una tablet (QR que cambia cada 30 s y es de un solo uso, PIN, carné NFC; la tablet **solo toma la foto de evidencia**), lector de carnés en un computador con GO Admin Escritorio, y relojes comerciales de huella o rostro (ZKTeco y Hikvision primero, por adaptadores para sumar otras marcas). **El rostro y la huella los compara el reloj, nunca la tablet ni GO Admin.** La marca manual con motivo y aprobación sigue siendo la salida de emergencia.
+3. **Un solo camino.** Todas las formas terminan en el mismo núcleo que hoy usa `fn_hr_marcar` (se extrae a una función interna). Los relojes dejan cada evento en una bandeja (`hr_clock_raw_events`) que lo deduplica, lo enlaza con la persona y lo pasa al núcleo. Marcación no guarda marcas propias: **Asistencia lee las mismas filas de `attendance_events`** (regla 7 de `CLAUDE.md`).
+4. **La marca original nunca se edita (R1).** Toda corrección es un ajuste aparte, con motivo y aprobación, como ya hace Asistencia › Ajustes.
+5. **La biometría no entra a nuestra base (Ley 1581).** GO Admin recibe solo «usuario 3 del reloj X marcó a las 6:02». Se pide autorización expresa, voluntaria y revocable, siempre con alternativa (PIN, carné, QR).
+6. **La sede manda, con excepciones temporales.** Cada sede activa sus métodos. A una persona se le pueden quitar métodos, y RR. HH. puede darle otro por un rango de fechas con motivo y registro de quién lo aprobó.
+7. **El empleado ve y reclama (R2).** En Mi asistencia ve cada marca con método y hora y puede reclamarla; el reclamo congela la foto de evidencia hasta cerrar el caso.
+8. **Sin bloqueo por plan.** Kiosco y relojes en todos los planes; queda preparado (apagado) un posible límite por número de equipos.
 
 ---
 
@@ -24,37 +26,39 @@
 
 | Pieza | Estado | Qué hacemos con ella |
 |---|---|---|
-| `attendance_events` | 0 filas. Columnas `source` (CHECK: `app`, `qr`, `biometric`, `nfc`, `rfid`, `manual`, `auto`), `time_clock_id`, `geo`, `geo_validated`, `device_info` (jsonb), `photo_path`, `work_date`, `work_mode`, `is_manual_entry`. | Se reutiliza. Columnas nuevas y opcionales: `method`, `device_time`, `raw_event_id`, `photo_expires_at` (§6). |
-| `time_clocks` | 0 filas. `type` (CHECK: `app`, `qr_static`, `qr_dynamic`, `biometric`, `nfc`, `rfid`, `manual`), `code` único por organización, `branch_id`, `geo_fence`, `require_geo_validation`, `settings`, `current_qr_token`, `qr_token_expires_at`, `is_active`. Solo la leen `hr.attendance.view` y `.manage`. | **Es la tabla de dispositivos.** No se crea otra. Se le agregan columnas (marca, modelo, serie, protocolo, clave, última conexión, desfase de hora). |
-| `fn_hr_marcar(actor, org, datos, ip, ua)` | Solo `service_role`. Valida pertenencia, vínculo activo, mecanismo permitido, QR contra la base (token y vencimiento), cerca virtual con consentimiento, ubicación contra la sede (`branches.features->>'radio_marcacion_m'`, 150 m por defecto), marca sin señal con hora del servidor, alterna entrada y salida y rechaza el doble toque en 60 s. | Se conserva su firma y su comportamiento. Su parte final (decidir el tipo, deduplicar e insertar) se extrae a `fn_hr_registrar_marca` para que la usen también el kiosco y los dispositivos. |
-| `fn_hr_marcacion_manual`, `fn_hr_reloj_qr_rotar`, `fn_hr_marcacion_estado`, `fn_hr_mi_asistencia`, `fn_hr_asistencia_hoy` | Existen. `fn_hr_asistencia_hoy` calcula «Cómo» con `remoto`, `qr`, `manual` y, si no, ubicación. | Se amplía el `CASE` de «Cómo» con los métodos nuevos (§8). |
-| `hr_attendance_settings` | 0 filas. `mecanismos` con CHECK `app`, `qr`, `sin_marcacion`. | Sigue por persona. La sede define qué se ofrece; la persona solo puede restringir (§6). |
-| `hr_geo_consents` | Solo inserción. | Modelo para `hr_biometric_consents`. |
-| `src/lib/hrm/jornada/marcacion.ts`, `marcarLogica.ts`, `marcacionService.server.ts`, `src/app/api/hrm/marcacion/**` | Validación pura del cuerpo, reglas de la pantalla, servicio y rutas. | Se amplían (método `nfc`, `kiosco`), no se reescriben. |
-| `src/components/marcar/MarcarTurno.tsx` (/marcar), `src/components/inicio/TurnoInicio.tsx`, `MiAsistencia.tsx`, `src/components/hrm/asistencia/**` | Pantallas de la fase 2 en producción. | Se contextualizan (§8). Nada se quita. |
-| `src/app/app/hrm/marcacion/**` y `src/components/hrm/marcacion/**` | Pantallas viejas (lista de marcas, dispositivos, alta y edición, diálogo de QR) sobre `timeClocksService`. | Se reemplazan por 20.26–20.28 en la misma ruta. |
-| `src/app/qr-display/[deviceId]` | Pantalla pública del QR. | La reemplaza la «Pantalla de QR» y el kiosco (20.29), con clave de dispositivo. |
-| `gym_access_devices`, `customer_biometrics` (módulo Gimnasio) | 0 filas. `customer_biometrics.template_data` **guarda la plantilla biométrica en la base**. | No se reutilizan para empleados (otra finalidad y otro titular). Ver riesgo R6. |
-| `electron/` (GO Admin Escritorio) y `mobile/` (Capacitor) | Existen. | Escritorio: «modo lector» de carnés y QR por USB y, más adelante, puente en la red local. Móvil: base del kiosco y de la lectura NFC en iPhone. |
+| `attendance_events` | 0 filas. `source` (CHECK: `app`, `qr`, `biometric`, `nfc`, `rfid`, `manual`, `auto`), `time_clock_id`, `geo`, `geo_validated`, `device_info`, `photo_path`, `work_date`, `work_mode`, `is_manual_entry`. Triggers `trg_attendance_events_validar` (antes de insertar **y de actualizar**) y `trg_attendance_event_process`. RLS: **UPDATE y DELETE permitidos a `hr.attendance.manage`**. | Se reutiliza. Columnas nuevas y opcionales (§6). **R1:** se cierran UPDATE y DELETE (§6.3). |
+| `time_clocks` | 0 filas. `type` (CHECK: `app`, `qr_static`, `qr_dynamic`, `biometric`, `nfc`, `rfid`, `manual`), `code` único por organización, `branch_id`, `geo_fence`, `require_geo_validation`, `settings`, `current_qr_token`, `qr_token_expires_at`, `is_active`. | **Es la tabla de dispositivos.** No se crea otra. Columnas nuevas (§6). |
+| `fn_hr_marcar(actor, org, datos, ip, ua)` | Solo `service_role`. Valida pertenencia, vínculo, mecanismo, QR en la base, cerca virtual con consentimiento, ubicación contra la sede (`branches.features->>'radio_marcacion_m'`, 150 m), marca sin señal con hora del servidor, alterna entrada y salida, rechaza el doble toque en 60 s. | Misma firma y comportamiento. Su parte final se extrae a `fn_hr_registrar_marca`. |
+| `timesheet_adjustments` + `fn_hr_ajuste_solicitar` + `fn_hr_ajustes_aplicar_interno` | Lo usa Asistencia › Ajustes («Registrar marca manual», `DialogoAjuste.tsx`) y «Solicitar un ajuste» de Mi asistencia. El ajuste nace pendiente (`novedad_asistencia`), se aprueba y al aplicarse **inserta una marca nueva** (`source='manual'`, `is_manual_entry`, `applied_event_id`); no toca la original. El empleado puede pedirlo para sí. | Es el mecanismo de R1 y R2. Se amplía para apuntar a una marca concreta y para excluirla del cálculo sin borrarla (§6). |
+| `fn_hr_marcacion_manual` + `POST /api/hrm/marcacion/manual` | Inserta una marca con hora elegida **sin aprobación** (solo exige `hr.attendance.manage`). | Contradice R1 y D14: pasa a crear un ajuste (`fn_hr_ajuste_solicitar`). |
+| `src/lib/services/attendanceService.ts` (`create`) | Lo usa la página vieja `/app/hrm/marcacion`: inserta en `attendance_events` desde el navegador. | Se retira con la página vieja. |
+| `fn_hr_aprobacion_plan` | Sin regla configurada: **jefe directo**; si no tiene jefe o es quien pide, RR. HH. Con regla: los pasos de la regla. | Base de R3 (§12). |
+| `fn_hr_jornada_lista_nomina` | Un día pasa a «lista para nómina» solo si está clasificado con la última versión y **sin novedades pendientes**. Las horas extra no aprobadas no van a nómina. | Base de R3. |
+| `fn_hr_reloj_qr_rotar`, `fn_hr_marcacion_estado`, `fn_hr_mi_asistencia`, `fn_hr_asistencia_hoy` | Existen. «Cómo» en `fn_hr_asistencia_hoy`: `remoto`, `qr`, `manual` o ubicación, según `source`. | Se amplía el `CASE` (§8). |
+| `hr_attendance_settings` | 0 filas. `mecanismos` con CHECK `app`, `qr`, `sin_marcacion`. | Sigue por persona para **quitar** métodos. Las excepciones temporales van aparte (§6). |
+| `hr_geo_consents` | Solo inserción. | Modelo para `hr_marcacion_consents`. |
+| `marcacion.ts`, `marcarLogica.ts`, `marcacionService.server.ts`, `src/app/api/hrm/marcacion/**` | Validación pura, reglas de pantalla, servicio y rutas. | Se amplían, no se reescriben. |
+| `MarcarTurno.tsx` (/marcar), `TurnoInicio.tsx`, `MiAsistencia.tsx`, `src/components/hrm/asistencia/**` | En producción (fase 2). | Se contextualizan (§8). Nada se quita. |
+| `src/app/app/hrm/marcacion/**`, `src/components/hrm/marcacion/**`, `src/app/qr-display/[deviceId]` | Pantallas viejas. | Se reemplazan por 20.26–20.29 en la misma ruta. |
+| `gym_access_devices`, `customer_biometrics` (Gimnasio) | 0 filas. `customer_biometrics.template_data` **guarda la plantilla en la base**. | No se reutilizan. Ver riesgo R6. |
+| `electron/` y `mobile/` (Capacitor) | Existen. | Escritorio: «modo lector» USB y puente de red local. Móvil: base del kiosco y lectura NFC en iPhone. |
 
 ---
 
-## 3. Los métodos, uno por uno
+## 3. Los métodos
 
-| Método | Cómo funciona | Qué hay que comprar | A favor | En contra | Recomendación |
-|---|---|---|---|---|---|
-| **Celular con ubicación** (existe) | La persona marca en su celular; el servidor compara la ubicación con la sede. | Nada. | Cero costo. | La ubicación se puede falsear con apps; en interiores es imprecisa. | Se queda. En sedes con problemas, combinarlo con QR o NFC. |
-| **QR de la sede** (existe, se mejora) | Una pantalla o el kiosco muestra un QR **que cambia cada 30 s**; la persona lo escanea desde «Marcar turno». El QR lleva el punto y un código firmado por tiempo (TOTP con la clave del punto), que el servidor valida. | Nada (una pantalla o tablet que ya tengan). | Una foto del código no sirve; la pantalla no necesita internet para generar el código. | Necesita que el celular tenga datos. | **Sí, en la fase M0.** Reemplaza el token guardado en la base cada 5 min (`fn_hr_reloj_qr_rotar`), que obliga a escribir en la base y no funciona sin conexión. |
-| **Carné con QR** | El kiosco o el lector de escritorio lee el QR impreso en el carné. | Carnés impresos. | Barato. | Un carné se presta: necesita foto de evidencia. | Como variante del carné NFC, con foto. |
-| **Etiqueta NFC en la sede** | Una etiqueta pegada en la entrada; el celular la lee y abre GO Admin con el código del punto. | Etiquetas. **NTAG 424 DNA** generan un código distinto en cada lectura (SUN) y no se pueden clonar; las NTAG213/215 son fijas y clonables. | Más rápido que el QR. | El navegador solo lee NFC en **Android con Chrome** (Web NFC); en iPhone hace falta la app GO Admin (Core NFC). | Fase M0 con NTAG 424 DNA donde haya riesgo; con NTAG215, exigir además la ubicación. 20.30.2–20.30.5. |
-| **Carné NFC en el kiosco o en un lector** | La persona acerca su carné (13,56 MHz) a la tablet o a un lector USB en un computador. Se guarda solo el hash del UID. | Carnés NFC; tablet con NFC o lector USB (por ejemplo ACR122U). | Rápido, no depende del celular. | Un carné se presta: foto de evidencia obligatoria. | Fase M1. |
-| **Kiosco con PIN** | La persona escribe su PIN de 6 dígitos en la tablet; se toma una foto de evidencia. | Tablet. | Respaldo universal para quien no tiene celular ni biometría. | Un PIN se comparte: foto de evidencia y bloqueo por intentos. | Fase M1. 20.29.2 y 20.29.5. |
-| **Rostro en un terminal comercial** | El terminal (Hikvision, ZKTeco SpeedFace) reconoce a la persona con cámara infrarroja y prueba de vida, y envía la marca. | Terminal facial. | La prueba de vida de los terminales es mejor que la de una tablet. | Necesita autorización biométrica. | Fase M2. |
-| **Rostro en la tablet** | Tras el carné o el PIN, la tablet compara el rostro con la plantilla guardada **en esa tablet** (1 a 1) y pide parpadear. | Tablet con buena cámara frontal. | Sin terminal extra. | La prueba de vida por software es más débil que la infrarroja. | Fase M3, opcional. En M1 el kiosco solo toma la foto de evidencia. 20.29.3. |
-| **Huella en un terminal comercial** | El lector guarda la huella y envía «usuario 3, 6:02». | Lector de huella. | Barato y conocido en Colombia. | Necesita autorización biométrica; algunas personas no registran bien la huella. | Fase M2. |
-| **Marca manual con aprobación** (existe) | RR. HH. o el jefe registra la hora con motivo; pasa por aprobación. | Nada. | Siempre disponible. | Es la puerta del fraude si se abusa. | Se queda, siempre activa, sin poderse apagar (20.27.1). |
+| Método | Cómo funciona | Qué se compra | Decisión |
+|---|---|---|---|
+| **Celular con ubicación** (existe) | Marca en el celular; el servidor compara la ubicación con la sede. **La ubicación solo se toma en el momento de marcar; nunca se rastrea** (se dice en la pantalla de permiso, 20.30.9). | Nada. | Se queda. |
+| **QR de la sede** (se mejora) | Una pantalla o el kiosco muestra un QR que **cambia cada 30 s y sirve una sola vez**: lleva el punto, el paso de tiempo y un código firmado con la clave del punto (TOTP). El servidor anota cada código usado y rechaza el segundo uso (`qr_ya_usado`). Según la sede, pide **además la ubicación o el PIN** (20.30.10). | Nada. | M0. Reemplaza el token de 5 min en la base. |
+| **Etiqueta NFC en la sede** | El celular lee la etiqueta y abre GO Admin con el código del punto. NTAG 424 DNA (código distinto en cada lectura, no clonable) donde haya riesgo; NTAG213/215 con ubicación obligatoria en el resto. Web NFC solo en Android con Chrome; en iPhone, la app. | Etiquetas. | M0. |
+| **Carné NFC o QR en el kiosco o en un lector USB** | Se guarda solo el hash del UID. Foto de evidencia. | Carnés; tablet con NFC o lector USB. | M1. |
+| **Kiosco con PIN** | PIN de 6 dígitos, guardado con hash, **nunca visible**. Tras 5 intentos fallidos, **bloqueo de 15 min o desbloqueo por un supervisor** (20.29.8). Foto de evidencia. | Tablet. | M1. |
+| **Rostro** | **Lo compara el reloj facial** (cámara infrarroja, prueba de vida). La tablet del kiosco **no reconoce rostros: solo toma la foto de evidencia**, y lo dice en pantalla (20.29.1, 20.29.3). | Reloj facial. | M2. |
+| **Huella** | La compara el lector; envía «usuario 3, 6:02». | Lector de huella. | M2. |
+| **Marca manual con aprobación** (existe) | Es un ajuste con motivo que se aprueba (R1). | Nada. | Siempre activa, no se apaga. |
 
-**Remoto** sigue siendo de la persona (modalidad `remoto` o `hibrido` en `hr_attendance_settings`), no de la sede.
+**Remoto** sigue siendo de la persona (modalidad `remoto` o `hibrido`).
 
 ---
 
@@ -64,35 +68,39 @@
 
 | Marca | Cómo envía las marcas | Lo que importa |
 |---|---|---|
-| **ZKTeco** (MB160, MB20, SpeedFace, ProFace, iClock) | **PUSH / ADMS**: el equipo hace peticiones HTTP a un servidor que se le configura (dirección y puerto). Rutas fijas: `GET /iclock/cdata?SN=…` (saludo y opciones), `POST /iclock/cdata?SN=…&table=ATTLOG` (marcas, una por línea: número de usuario, fecha y hora, estado, modo de verificación), `GET /iclock/getrequest` (el equipo pregunta si hay órdenes: crear usuario, cambiar la hora) y `POST /iclock/devicecmd` (respuesta a la orden). | El equipo **se identifica por su número de serie**, sin clave. Muchos modelos solo hablan HTTP (sin TLS); los recientes admiten HTTPS. La ruta `/iclock/...` es fija: hay que servirla en la raíz de un dominio. El equipo reintenta y guarda las marcas si no hay red. |
-| **Hikvision** (DS-K1T343, DS-K1T671, MinMoe) | **ISAPI**: (a) «HTTP listening»: el equipo envía cada evento de control de acceso (`AcsEvent`) a una URL que se le configura; (b) consulta: un programa en la red local pide los eventos con `POST /ISAPI/AccessControl/AcsEvent?format=json` (autenticación Digest). | La URL de escucha admite un token en la ruta. No todos los firmwares traen HTTPS ni la opción de escucha; la consulta exige estar en la red de la sede. |
-| **Anviz** | CrossChex Cloud (su nube, con API). | Requiere cuenta del cliente en la nube de Anviz. |
-| **Suprema** | BioStar 2 (servidor local con API REST) o BioStar Air (nube). | Pensado para empresas grandes con su propio servidor. |
-| **Genéricos sin red** | Exportan un archivo por USB. | Solo como importación manual, con aprobación. |
+| **ZKTeco** (MB160, MB20, SpeedFace, ProFace, iClock) | **PUSH / ADMS**: el equipo llama a un servidor configurado (dirección y puerto). Rutas fijas: `GET /iclock/cdata?SN=…` (saludo y opciones), `POST /iclock/cdata?SN=…&table=ATTLOG` (marcas: usuario, fecha y hora, estado, modo de verificación), `GET /iclock/getrequest` (órdenes pendientes) y `POST /iclock/devicecmd` (respuestas). | Se identifica por su número de serie; el protocolo no trae clave. La ruta es fija y va en la raíz del dominio. Muchos modelos viejos solo hablan HTTP. Guarda y reintenta sin red. |
+| **Hikvision** (DS-K1T343, DS-K1T671, MinMoe) | **ISAPI**: (a) «HTTP listening»: envía cada evento a una URL configurada; (b) consulta en la red local: `POST /ISAPI/AccessControl/AcsEvent?format=json` (Digest). | La URL admite la clave en la ruta. No todos los firmwares traen HTTPS ni escucha. |
+| **Anviz** | CrossChex Cloud (API). | Por adaptador, si un cliente lo pide. |
+| **Suprema** | BioStar 2 (API local) o BioStar Air (nube). | Ídem. |
+| **Genéricos sin red** | Archivo por USB. | Importación manual que entra como ajustes con aprobación. |
 
-Fuentes en §14. Los detalles finos del protocolo cambian por firmware: antes de certificar un modelo hay que probarlo con el equipo real.
+### 4.2 Adaptadores (conexión genérica)
 
-### 4.2 Ruta recomendada
+- Una interfaz común en `src/lib/hrm/dispositivos/adaptadores/` (puro, probado con Jest): `identificar(petición) → reloj`, `leerEventos(cuerpo) → EventoReloj[]` (usuario del equipo, hora del equipo, modo de verificación, tipo si lo trae), `responder(resultado)`, `ordenes(reloj) → texto` (crear usuario, borrar plantilla, ajustar hora) y `leerRespuestaOrden`.
+- `zkteco-adms.ts` y `hikvision-isapi.ts` son los dos primeros. Sumar Anviz o Suprema es escribir un adaptador más; el receptor, la bandeja y el núcleo no cambian.
+- Los adaptadores **nunca** leen ni reenvían plantillas biométricas, aunque el equipo las ofrezca (ZKTeco `FINGERTMP`, `BIODATA`; Hikvision `FaceDataRecord`): se descartan al leer y quedan prohibidas en la prueba del adaptador.
 
-1. **Receptor por protocolo, con el dispositivo registrado antes.**
-   - ZKTeco: `https://marcacion.<dominio>/iclock/*` → reescrito a `src/app/api/hrm/dispositivos/zk/iclock/**`. Solo acepta números de serie registrados en `time_clocks`; los desconocidos se descartan y quedan en el registro de seguridad.
-   - Hikvision: `https://marcacion.<dominio>/hik/<clave>` → `src/app/api/hrm/dispositivos/hik/[clave]`. La clave se guarda con hash.
-   - Ninguno usa sesión de usuario. **La organización sale del dispositivo registrado, nunca del cuerpo** (es la versión para equipos de la regla 5 de `CLAUDE.md`). Límite de peticiones por equipo y por IP.
-2. **Puente en GO Admin Escritorio** (fase M3) para equipos que solo hablan HTTP o solo se consultan en la red local: el computador de la sede lee el equipo (TCP 4370 de ZKTeco, ISAPI de Hikvision) y reenvía por HTTPS con la clave del puente. Vercel redirige HTTP a HTTPS y muchos equipos viejos no siguen la redirección: por eso los equipos solo-HTTP van por el puente.
-3. **Kiosco y lector de escritorio** usan la API del kiosco (`/api/hrm/kiosco/*`) con la clave que reciben al vincularse (20.29.7). La tablet guarda la clave en el almacenamiento seguro del sistema.
+### 4.3 Receptor y clave por equipo
 
-### 4.3 Personas del equipo ↔ empleados
+- **Subdominio propio** (`marcacion.<dominio>`), con HTTPS. **Cada equipo tiene su propia clave**, revocable y regenerable si se pierde o se cambia el equipo:
+  - **ZKTeco:** la clave va **en el nombre del servidor** que se escribe en el equipo: `<clave>.marcacion.<dominio>` (DNS y certificado comodín). El receptor exige que la clave del host corresponda al número de serie registrado. Revocar la clave corta al equipo aunque alguien copie la serie.
+  - **Hikvision:** `https://marcacion.<dominio>/hik/<clave>`.
+  - **Kiosco y lector de escritorio:** clave que reciben al vincularse (20.29.7), guardada en el almacenamiento seguro.
+- Las claves se guardan con hash (`time_clocks.secret_hash`) y se muestran una sola vez al crearlas o regenerarlas.
+- Ninguna ruta usa sesión de usuario: **la organización sale del equipo registrado, nunca del cuerpo** (la versión para equipos de la regla 5). Límite de peticiones por equipo y por IP.
+- Los equipos que solo hablan HTTP, o que solo se consultan en la red local, van por el **puente de GO Admin Escritorio** (M3): Vercel redirige HTTP a HTTPS y los equipos viejos no siguen la redirección.
 
-- Cada usuario del equipo (número y nombre corto) es una fila de `hr_clock_device_users`, enlazada a un vínculo (`employment_id`) o marcada «no enlazar».
-- Al conectar un equipo se proponen enlaces por número de documento, por nombre o a mano (20.28.5). Las marcas de un usuario sin enlazar **quedan en espera**, no se pierden; al enlazarlo, se procesan.
-- GO Admin puede **crear los usuarios en el equipo** (orden `DATA UPDATE USERINFO` en ZKTeco; `UserInfo/Record` en Hikvision) para que la persona registre su huella allí. Nunca descarga plantillas.
+### 4.4 Personas del equipo ↔ empleados
 
-### 4.4 Hora, marcas sin conexión, repetidas e idempotencia
+- `hr_clock_device_users`: cada usuario del equipo, enlazado a un vínculo o marcado «no enlazar». Lo único que guardamos del equipo es **su número de usuario, la hora y el equipo** (D4).
+- Al conectar se proponen enlaces por documento, por nombre o a mano (20.28.5). Las marcas de un usuario sin enlazar **quedan en espera**.
+- GO Admin puede crear el usuario en el equipo para que la persona registre allí su huella o su rostro, y ordena borrarla al retirar la autorización. Nunca la descarga.
 
-- **Hora.** Del celular nunca se usa la hora (ya es así). De un equipo sí, porque guarda marcas sin conexión: se usa la hora del equipo **si su desfase con el servidor es de 2 min o menos** (medido en cada conexión); si es mayor, la marca entra «a revisión» y se ordena al equipo sincronizar la hora. Marcas con más de 7 días o en el futuro (más de 2 min) entran a revisión.
-- **Sin conexión.** El equipo y el kiosco guardan y reenvían. Al llegar, la marca conserva su hora y se ve como «Llegó al reconectar» (20.28.8).
-- **Repetidas.** La bandeja tiene una clave única (`time_clock_id`, `device_user_id`, `device_time`, tipo). Reenviar el mismo lote no duplica nada. Además se aplica la regla actual de 60 s del núcleo.
-- **Idempotencia.** La respuesta al equipo («OK: n») se da después de guardar en la bandeja, en la misma transacción; si se cae a la mitad, el equipo reenvía y la clave única absorbe lo repetido.
+### 4.5 Hora, marcas sin conexión, repetidas e idempotencia
+
+- **Hora.** Del celular, siempre la del servidor. De un equipo, la del equipo **si su desfase es de 2 min o menos** (se mide en cada conexión, `clock_offset_s`). Si es mayor: la marca entra **a revisión** y **se alerta al administrador** en En vivo (aviso arriba, 20.26.1) y en el detalle del equipo (20.28.6), con «Sincronizar la hora». Marcas de más de 7 días o en el futuro (más de 2 min) también a revisión.
+- **Sin conexión.** Equipo y kiosco guardan y reenvían; la marca conserva su hora y se ve «Llegó al reconectar».
+- **Idempotencia.** Cada evento lleva una clave única: en el reloj (`time_clock_id`, usuario, hora del equipo, tipo); en el kiosco, un `id_local` (UUID generado en la tablet) único por equipo. Reenviar el mismo lote no duplica. La respuesta al equipo («OK: n») se da después de guardar en la bandeja, en la misma transacción.
 
 ---
 
@@ -100,115 +108,129 @@ Fuentes en §14. Los detalles finos del protocolo cambian por firmware: antes de
 
 ### 5.1 Ley colombiana
 
-- **Datos sensibles.** Los biométricos son datos sensibles (Ley 1581 de 2012, art. 5). Su tratamiento está prohibido salvo autorización explícita del titular (art. 6).
-- **Autorización.** Debe ser previa, expresa e informada, decir la finalidad y advertir que **es facultativa**: no se puede obligar a nadie a darla ni condicionar el empleo (Decreto 1377 de 2013, art. 6, compilado en el Decreto 1074 de 2015). Por eso cada método biométrico tiene alternativa (PIN, carné, QR) y la pantalla lo dice (20.32.1).
-- **Prueba.** Se guarda cada autorización y cada retiro, con la versión del texto, la IP y el agente, en una tabla de solo inserción (`hr_biometric_consents`). El empleado puede descargar lo que aceptó (20.32.2).
-- **Finalidad y minimización.** Solo para registrar la jornada. **La plantilla biométrica nunca entra a nuestra base**: vive en el equipo. Al retirar la autorización se ordena al equipo borrarla.
-- **Política de tratamiento.** La organización cliente debe incluir el control de asistencia biométrico en su política y, si le aplica, en el Registro Nacional de Bases de Datos de la SIC. GO Admin entrega un texto base; la responsabilidad de publicarlo es del cliente (es el responsable; GO Admin es encargado).
-- **Ubicación.** Se mantiene lo de la fase 2: solo al marcar y con autorización.
+- Los biométricos son **datos sensibles** (Ley 1581 de 2012, art. 5); su tratamiento exige autorización explícita (art. 6).
+- La autorización debe ser previa, expresa e informada, con la finalidad, y advertir que **es facultativa**: no se condiciona el empleo (Decreto 1377 de 2013, art. 6, compilado en el Decreto 1074 de 2015). Cada método biométrico tiene alternativa.
+- **Nunca huellas ni rostros en GO Admin.** Solo el número de usuario del equipo, la hora y el equipo. Al retirar la autorización se ordena borrar la plantilla en el equipo.
+- Cada autorización y cada retiro queda en `hr_marcacion_consents` (solo inserción, con versión del texto, IP y agente). El empleado descarga lo que aceptó.
+- La organización cliente incluye la marcación (biometría y foto) en su política de tratamiento y, si le aplica, en el Registro Nacional de Bases de Datos. GO Admin entrega el texto base y **el letrero** (§5.2).
+- Ubicación: solo al marcar, con autorización, **nunca para rastrear**.
 
 ### 5.2 Foto de evidencia
 
-- La toma el kiosco en cada marca con PIN o carné. Es dato personal (la imagen permite identificar).
-- Bucket privado `hr-marcacion-evidencia`, por organización. **Se borra a los 30 días** (tarea programada; configurable de 7 a 90). La ven solo `hr.attendance.view` y quien está revisando una novedad; cada vista queda en `hr_access_log`.
+- La toma el kiosco en cada marca con PIN o carné. Es dato personal.
+- **Requiere autorización expresa del empleado** (`hr_marcacion_consents`, tipo `foto_evidencia`) y **aviso con letrero en la sede**. Métodos por sede trae el recordatorio y una **plantilla de letrero para imprimir** (20.27.1 y 20.27.10). Sin esa autorización, el kiosco no toma la foto y la marca queda «Sin foto» (no se rechaza).
+- Bucket privado `hr-marcacion-evidencia`. **Retención: 30 días por defecto, configurable de 7 a 90.** **Retención por caso:** si la marca está a revisión o tiene un reclamo o un ajuste abierto, la foto no se borra hasta cerrar el caso (`photo_hold_until` nulo mientras el caso siga abierto; la tarea de borrado lo respeta).
+- La ven solo `hr.attendance.view` y quien revisa el caso; cada vista queda en `hr_access_log`.
 
 ### 5.3 Antifraude
 
 | Riesgo | Medida |
 |---|---|
-| Marcar por otro | Biometría con autorización; foto de evidencia en PIN y carné; alerta si el mismo celular marca a dos personas en 10 min (`user_devices`). |
-| Foto del QR enviada por chat | QR que cambia cada 30 s, con ubicación opcional en la sede. |
-| Ubicación falsa | En la app se detecta la ubicación simulada (Android); en sedes con problemas, exigir QR o NFC. |
-| Etiqueta NFC clonada | NTAG 424 DNA (código distinto por lectura) o NTAG215 con ubicación obligatoria. |
-| Reloj del equipo adulterado | Desfase medido en cada conexión; más de 2 min → a revisión y orden de sincronizar. |
-| Equipo suplantado | Solo números de serie registrados; Hikvision y kiosco con clave (hash); HTTPS; límites por equipo e IP; IP de la última conexión visible (20.28.6). |
-| PIN adivinado | 6 dígitos, hash con `crypt()` de pgcrypto, bloqueo tras 5 intentos por 10 min. |
-| Abuso de la marca manual | Motivo obligatorio, aprobación y reporte de marcas manuales por persona. |
-| Intentos rechazados | Se guardan en `hr_marcacion_intentos` (90 días) y aparecen en «En vivo» (fila «Rechazada: fuera de la sede»). Hoy `fn_hr_marcar` lanza el error y no deja rastro. |
+| Marcar por otro | Biometría del reloj con autorización; foto de evidencia; alerta si un mismo celular marca a dos personas en 10 min (`user_devices`). |
+| Foto o reenvío del QR | QR de 30 s y **de un solo uso**; según la sede, además ubicación o PIN. |
+| Ubicación falsa | Detección de ubicación simulada en la app (Android); en sedes con problemas, exigir QR o NFC. |
+| Etiqueta NFC clonada | NTAG 424 DNA, o NTAG215 con ubicación obligatoria. |
+| Reloj del equipo adulterado | Desfase medido en cada conexión; más de 2 min → a revisión y alerta. |
+| Equipo suplantado o perdido | Clave propia por equipo, en el host o en la ruta; revocable; HTTPS; límites por equipo e IP; IP de la última conexión visible. |
+| PIN | 6 dígitos, hash con `crypt()` (pgcrypto), nunca visible; 5 intentos → bloqueo de 15 min o desbloqueo por un supervisor con `hr.attendance.manage` (queda registrado). |
+| Corregir marcas en silencio | **R1**: la marca no se edita ni se borra; correcciones como ajuste con motivo y aprobación. |
+| Intentos rechazados | `hr_marcacion_intentos` (90 días); se ven en En vivo («Rechazada: fuera de la sede»). |
 
 ---
 
-## 6. Modelo de datos propuesto (aditivo)
+## 6. Modelo de datos (aditivo)
 
-Todo con `organization_id`, RLS por pertenencia con `IN (SELECT …)` y `(select auth.uid())` (sin `EXISTS` anidado), funciones `SECURITY DEFINER` con `search_path` fijo y sin `EXECUTE` para `anon`. Columnas nuevas, nulas o con valor por defecto. Ningún `DROP`.
+Todo con `organization_id`, RLS por pertenencia con `IN (SELECT …)` y `(select auth.uid())`, funciones `SECURITY DEFINER` con `search_path` fijo y sin `EXECUTE` para `anon`. Columnas nuevas nulas o con valor por defecto. Ningún `DROP` de tablas ni columnas.
+
+### 6.1 Tablas
 
 | Objeto | Cambio | Para qué |
 |---|---|---|
-| `time_clocks` | Columnas: `kind` (nuevo CHECK: `terminal_huella`, `terminal_facial`, `kiosco`, `lector_escritorio`, `etiqueta_nfc`, `pantalla_qr`), `vendor`, `model`, `serial_number` (único por organización), `protocol` (`adms`, `isapi_push`, `isapi_pull`, `kiosco`, `escritorio`, `ninguno`), `secret_hash`, `qr_secret` (cifrado, para el TOTP), `last_seen_at`, `last_ip`, `firmware`, `clock_offset_s`, `paired_at`, `disabled_at`. | La tabla de dispositivos que ya existe. `type` queda como legado. |
-| `hr_branch_clock_methods` (nueva) | `organization_id`, `branch_id`, `method` (`celular_ubicacion`, `qr`, `nfc_etiqueta`, `carne_nfc`, `pin`, `rostro`, `huella`), `enabled`, `rules` (jsonb: radio, foto, segundos del QR, intentos…), `updated_by`, `updated_at`. PK (`branch_id`, `method`). | Métodos por sede (20.27). El radio sigue leyéndose de `branches.features` hasta migrarlo. |
-| `hr_attendance_settings.mecanismos` | Se amplía el CHECK con los métodos nuevos (solo agrega valores; tabla con 0 filas). Hay que actualizar `enums.ts` (guardarraíl 9). | La persona puede restringir lo que la sede permite, nunca ampliarlo. |
-| `hr_clock_device_users` (nueva) | `organization_id`, `time_clock_id`, `device_user_id`, `device_name`, `employment_id` (nulo), `status` (`enlazado`, `sin_enlazar`, `ignorado`), `enrolled` (jsonb: huella, rostro, tarjeta), fechas. Único (`time_clock_id`, `device_user_id`). | Mapeo equipo ↔ persona (20.28.5, 20.28.7). |
-| `hr_clock_raw_events` (nueva) | `organization_id`, `time_clock_id`, `device_user_id`, `device_time`, `received_at`, `verify_mode`, `raw` (jsonb), `status` (`aceptada`, `repetida`, `en_espera`, `a_revision`, `rechazada`), `reason`, `attendance_event_id`. Único (`time_clock_id`, `device_user_id`, `device_time`, `event_kind`). Retención 180 días. | Bandeja idempotente y registro de eventos (20.28.8). |
-| `hr_credentials` (nueva) | `organization_id`, `employment_id`, `kind` (`pin`, `carne_nfc`, `carne_qr`), `secret_hash`, `active`, `created_by`, `revoked_at`. Único por organización para el hash del carné. | PIN y carnés del kiosco. |
-| `hr_biometric_consents` (nueva) | Como `hr_geo_consents`: `granted`, `kinds` (`huella`, `rostro`), `policy_version`, `ip`, `user_agent`. Solo inserción. | Autorización y retiro (20.32). |
-| `hr_marcacion_intentos` (nueva) | `organization_id`, `employment_id` (nulo), `time_clock_id`, `method`, `reason`, `created_at`. Retención 90 días. | Antifraude y fila «Rechazada» en vivo. |
-| `attendance_events` | Columnas: `method` (CHECK con los métodos de arriba más `remoto` y `manual`), `device_time`, `raw_event_id`, `photo_expires_at`. | «Cómo» exacto en Asistencia; `source` sigue igual para lo viejo. |
-| Bucket `hr-marcacion-evidencia` | Privado, ruta `org/<id>/…`. | Foto de evidencia con vencimiento. |
-| Permisos | Se reutilizan `hr.attendance.view` (ver) y `hr.attendance.manage` (configurar métodos, dispositivos, PIN y carnés). | Sin permisos nuevos. |
+| `time_clocks` | Columnas: `kind` (CHECK: `terminal_huella`, `terminal_facial`, `kiosco`, `lector_escritorio`, `etiqueta_nfc`, `pantalla_qr`), `vendor`, `adapter` (`zkteco_adms`, `hikvision_isapi`, `kiosco`, `escritorio`, `ninguno`), `model`, `serial_number` (único por organización), `secret_hash`, `secret_rotated_at`, `secret_revoked_at`, `qr_secret` (cifrado), `last_seen_at`, `last_ip`, `firmware`, `clock_offset_s`, `paired_at`, `disabled_at`. `type` queda como legado. | Dispositivos. |
+| `hr_branch_clock_methods` (nueva) | `organization_id`, `branch_id`, `method` (`celular_ubicacion`, `qr`, `nfc_etiqueta`, `carne`, `pin`, `rostro`, `huella`), `enabled`, `rules` (jsonb: radio, segundos del QR, «pedir además» `ubicacion`/`pin`, intentos y minutos de bloqueo, días de retención de la foto), `updated_by`, `updated_at`. PK (`branch_id`, `method`). | Métodos por sede (20.27). |
+| `hr_attendance_settings.mecanismos` | Se amplía el CHECK con los métodos nuevos (tabla con 0 filas; actualizar `enums.ts`, guardarraíl 9). | **Quitar** métodos a una persona. |
+| `hr_clock_method_exceptions` (nueva) | `organization_id`, `employment_id`, `method` (que se habilita), `valid_from`, `valid_to` (fechas de la sede), `reason` (obligatorio), `approval_instance_id`, `approved_by`, `approved_at`, `revoked_at`, `revoked_by`. CHECK `valid_to >= valid_from`; tope de 90 días por excepción. | **Excepción temporal** aprobada por RR. HH. (D14, 20.27.11). Solo cuenta si está aprobada y vigente. |
+| `hr_clock_device_users` (nueva) | `organization_id`, `time_clock_id`, `device_user_id`, `device_name`, `employment_id` (nulo), `status` (`enlazado`, `sin_enlazar`, `ignorado`), `enrolled` (jsonb: huella, rostro, tarjeta: solo sí o no). Único (`time_clock_id`, `device_user_id`). | Mapeo (20.28.5, 20.28.7). |
+| `hr_clock_raw_events` (nueva) | `organization_id`, `time_clock_id`, `device_user_id`, `device_time`, `local_id` (kiosco), `received_at`, `verify_mode`, `raw` (jsonb sin plantillas), `status` (`aceptada`, `repetida`, `en_espera`, `a_revision`, `rechazada`), `reason`, `attendance_event_id`. Únicos: (`time_clock_id`, `device_user_id`, `device_time`, `event_kind`) y (`time_clock_id`, `local_id`). Retención 180 días. | Bandeja idempotente y registro de eventos (20.28.8). |
+| `hr_qr_codes_used` (nueva) | `time_clock_id`, `time_step`, `used_at`, `attendance_event_id`. PK (`time_clock_id`, `time_step`). Se purga a las 24 h. | QR de un solo uso (D9). |
+| `hr_credentials` (nueva) | `organization_id`, `employment_id`, `kind` (`pin`, `carne_nfc`, `carne_qr`), `secret_hash`, `active`, `failed_attempts`, `locked_until`, `unlocked_by`, `created_by`, `revoked_at`. | PIN y carnés (D11). |
+| `hr_marcacion_consents` (nueva) | Como `hr_geo_consents`: `granted`, `kinds` (`huella`, `rostro`, `foto_evidencia`), `policy_version`, `ip`, `user_agent`. Solo inserción. | Autorizaciones (20.32). |
+| `hr_marcacion_intentos` (nueva) | `organization_id`, `employment_id` (nulo), `time_clock_id`, `method`, `reason`, `created_at`. 90 días. | Antifraude. |
+| `attendance_events` | Columnas: `method` (CHECK con los métodos de arriba más `remoto` y `manual`), `device_time`, `raw_event_id`, `photo_expires_at`, `photo_hold` (bool, por defecto `false`). | «Cómo» exacto; retención por caso. |
+| `timesheet_adjustments` | Columnas: `attendance_event_id` (la marca reclamada o corregida), `origin` (`gestor`, `empleado_reclamo`, `kiosco`, `dispositivo`), y un valor más en el uso: `adjustment_type = 'excluir_marca'` (la marca queda en la base pero el motor la ignora). | R1 y R2 sobre el mecanismo que ya existe. |
+| Bucket `hr-marcacion-evidencia` | Privado, `org/<id>/…`. | Foto de evidencia. |
+| Límite por plan | Clave `max_dispositivos_marcacion` en las características del plan, **nula = sin límite**, leída por `fn_hr_dispositivo_vincular`. Nace nula en todos los planes. | D13: preparado, sin activar. |
+| Permisos | `hr.attendance.view` (ver) y `hr.attendance.manage` (métodos, dispositivos, PIN, carnés, desbloqueos, excepciones). | Sin permisos nuevos. |
 
-### Funciones
+### 6.2 Funciones
 
-| Función | Quién la ejecuta | Qué hace |
+| Función | Quién | Qué hace |
 |---|---|---|
-| `fn_hr_registrar_marca` (interna, sin `EXECUTE` para nadie más que las de abajo) | — | Lo que hoy hacen las últimas 30 líneas de `fn_hr_marcar`: tipo por alternancia, duplicado en 60 s, `insert` en `attendance_events`. Recibe el vínculo ya validado, el método, el punto y la hora (servidor o equipo). |
-| `fn_hr_marcar` | `service_role` | **La misma firma de hoy.** Se agrega la rama `nfc` (código de la etiqueta) y la validación del QR por TOTP, y al final llama a `fn_hr_registrar_marca`. Valida que el método esté activo en la sede. Registra intentos rechazados. |
-| `fn_hr_marcar_dispositivo(reloj, lote jsonb)` | `service_role` (la llama el receptor) | Guarda cada evento en la bandeja, deduplica, enlaza la persona, revisa la autorización biométrica y la hora, y llama a `fn_hr_registrar_marca`. Devuelve cuántos aceptó. |
-| `fn_hr_marcar_kiosco(reloj, credencial jsonb, foto)` | `service_role` | Identifica por PIN o carné, aplica bloqueo por intentos y llama a `fn_hr_registrar_marca`. |
-| `fn_hr_dispositivo_vincular`, `…_regenerar_clave`, `…_enlazar_usuario` | `service_role` con `hr.attendance.manage` | Alta, clave y mapeo. |
-| `fn_hr_metodos_sede` | `service_role` | Lectura para Inicio, Mi asistencia y Asistencia. |
+| `fn_hr_registrar_marca` (interna) | Solo las de abajo | Lo que hoy hacen las últimas líneas de `fn_hr_marcar`: tipo por alternancia, duplicado en 60 s, `insert`. Recibe vínculo validado, método, punto y hora. |
+| `fn_hr_metodo_permitido(emp, metodo, fecha)` | Interna | Método activo en la sede, no quitado a la persona, **o** con excepción aprobada y vigente. |
+| `fn_hr_marcar` | `service_role` | **Misma firma.** Agrega `nfc` y el QR por TOTP de un solo uso (+ ubicación o PIN según la sede), valida con `fn_hr_metodo_permitido`, registra intentos rechazados y termina en `fn_hr_registrar_marca`. |
+| `fn_hr_marcar_dispositivo(reloj, lote)` | `service_role` | Bandeja, deduplicación, enlace, autorización biométrica vigente, desfase de hora, `fn_hr_registrar_marca`. |
+| `fn_hr_marcar_kiosco(reloj, lote)` | `service_role` | Lote con `local_id` (idempotente); identifica por PIN o carné; bloqueo; foto según autorización; `fn_hr_registrar_marca`. |
+| `fn_hr_pin_desbloquear(actor, org, emp)` | `service_role` + `hr.attendance.manage` | Desbloqueo por supervisor, con registro. |
+| `fn_hr_excepcion_solicitar` / aprobación | `service_role` | Crea la excepción con motivo; la aprueba RR. HH. por el motor de aprobaciones (tipo nuevo `excepcion_marcacion`). |
+| `fn_hr_dispositivo_vincular`, `…_regenerar_clave`, `…_revocar_clave`, `…_enlazar_usuario` | `service_role` + `hr.attendance.manage` | Alta, clave y mapeo. |
+| `fn_hr_marcacion_manual` | — | **Cambia:** crea un ajuste pendiente vía `fn_hr_ajuste_solicitar` (deja de insertar directo). |
+| Tarea `hrm-fotos-evidencia` | `pg_cron` | Borra fotos vencidas salvo `photo_hold` o caso abierto. |
+
+### 6.3 R1 · La marca original no se edita
+
+- Hoy el flujo de la app ya cumple (los ajustes insertan una marca nueva), pero **la base no lo garantiza**: RLS permite UPDATE y DELETE a `hr.attendance.manage`, `fn_hr_marcacion_manual` inserta sin aprobación y la página vieja inserta desde el navegador.
+- Se cierra en M0: se quitan las políticas `attendance_events_update` y `attendance_events_delete`; un trigger `BEFORE UPDATE OR DELETE` rechaza cualquier cambio salvo las columnas técnicas que escribe la base (`work_date`, `photo_*`, `raw_event_id`), y solo desde funciones `SECURITY DEFINER`. «Invalidar» una marca pasa a ser un ajuste `excluir_marca` con motivo y aprobación (20.26.2).
 
 ---
 
 ## 7. Flujos
 
 ```
-Celular (ubicación · QR · NFC)  ──POST /api/hrm/marcacion──────────►  fn_hr_marcar ──┐
-Kiosco / lector de escritorio   ──POST /api/hrm/kiosco/marcar──────►  fn_hr_marcar_kiosco ──┤
-Terminal ZKTeco (ADMS)          ──/iclock/cdata (serie registrada)──►  fn_hr_marcar_dispositivo ──┤──► fn_hr_registrar_marca ──► attendance_events
-Terminal Hikvision (escucha)    ──/hik/<clave>──────────────────────►  fn_hr_marcar_dispositivo ──┤        (un solo núcleo)            │
-RR. HH. (manual con motivo)     ──POST /api/hrm/marcacion/manual───►  fn_hr_marcacion_manual ─────┘                                    ▼
-                                                                              motor de horas → novedades → nómina (sin cambios)
+Celular (ubicación · QR · NFC)  ──POST /api/hrm/marcacion──────────────►  fn_hr_marcar ─────────────┐
+Kiosco / lector de escritorio   ──POST /api/hrm/kiosco/marcas (lote)───►  fn_hr_marcar_kiosco ──────┤
+Reloj ZKTeco (ADMS)             ──<clave>.marcacion…/iclock/cdata───────►  fn_hr_marcar_dispositivo ─┤──► fn_hr_registrar_marca ──► attendance_events ──► Asistencia, novedades, nómina
+Reloj Hikvision (escucha)       ──marcacion…/hik/<clave>───────────────►  fn_hr_marcar_dispositivo ─┘
+Correcciones y reclamos         ──fn_hr_ajuste_solicitar → aprobación → marca nueva o exclusión (la original no cambia)
 ```
 
-- **Alta de un terminal (20.28.3–20.28.5):** elegir el tipo → datos y número de serie → GO Admin muestra qué escribir en el menú del equipo y espera la primera conexión → enlazar personas y, si se quiere, crearlas en el equipo.
-- **Kiosco (20.29):** la tablet se vincula con un código de 6 caracteres que vence en 10 min → muestra QR, carné, PIN y (si está activo) rostro → confirma y vuelve al inicio en 5 s. Sin internet guarda las marcas y las envía al volver.
-- **Retiro de la autorización (20.32.3):** se ordena borrar la plantilla en los equipos de la sede; desde ese momento sus marcas biométricas se rechazan con aviso a RR. HH.
+- **Alta de un reloj (20.28.3–20.28.5):** tipo → datos y número de serie → qué escribir en el equipo (con su clave) → primera conexión → enlazar personas.
+- **Kiosco (20.29):** vínculo con código de 6 caracteres → QR, carné y PIN → foto de evidencia si hay autorización → confirma. Sin internet guarda con `id_local` y sincroniza sin duplicar.
+- **Reclamo (R2, 20.31.5–20.31.7):** el empleado abre la marca en Mi asistencia → «Reclamar» → elige qué está mal y explica → nace un ajuste `origen = empleado_reclamo` ligado a la marca → la foto queda retenida → el jefe aprueba o rechaza → si se aprueba, se agrega o excluye una marca; la original queda.
 
 ---
 
-## 8. Contexto en Asistencia e Inicio (pedido adicional) — sin romper lo que existe
+## 8. Contexto en Asistencia e Inicio — sin romper lo que existe
 
-**Principio: nada se quita.** Los cambios son aditivos: un campo más en las respuestas, una rama más en un `switch`, una acción más en un menú. Las pantallas de 20.9 y 20.10 siguen como están; 20.31 muestra las variantes.
+**Nada se quita.** Campos nuevos en las respuestas, ramas nuevas, acciones nuevas en menús existentes.
 
 | Pieza existente | Cambio | Por qué no rompe |
 |---|---|---|
-| `fn_hr_marcacion_estado` | Devuelve además `metodos_sede` (lista de la sede del vínculo) y `metodo_preferido`. | Campos nuevos; quien no los lee no cambia. |
-| `marcarLogica.ts` (`metodosDisponibles`, `metodoInicial`) | Cruza los métodos de la persona con los de la sede; agrega `nfc`. Si queda un solo método, la pantalla no muestra el selector (20.30.6). Si la sede marca en un dispositivo, muestra el aviso (20.30.8). Sin `metodos_sede` (respuesta vieja), se comporta como hoy. | Las pruebas de `marcarLogica.test.ts` se conservan y se agregan casos. |
-| `MarcarTurno.tsx` (/marcar) | Pestaña «NFC» (Web NFC en Android; en iPhone, aviso y alternativas, 20.30.3). Acepta `?metodo=qr|nfc|ubicacion` para abrir directo. El `POST` sigue igual; `nfc` es un método más del cuerpo que ya valida `datosDeMarcacion`. | Ubicación, QR, remoto y sin señal no cambian. |
-| `TurnoInicio.tsx` y `MiAsistencia.tsx` (Inicio y /app/inicio/mi-asistencia) | `hrefMarcar` lleva `?metodo=` según `metodo_preferido`, y el texto del botón dice el método («Escanear el QR de la sede», 20.30.7; «Marcar salida con el QR», 20.31.4). Si la sede marca en dispositivo, «Ver dónde marcar» (20.30.8). El aviso de Mi asistencia explica los métodos de la sede. | Mismos estados y mismos enlaces; solo cambia el texto y un parámetro. |
-| `fn_hr_asistencia_hoy` y `fn_hr_mi_asistencia` | El `CASE` de «Cómo» usa `attendance_events.method` cuando existe y, si no, las reglas de hoy (`remoto`, `qr`, `manual`, ubicación). | Las marcas viejas se muestran igual. |
-| `asistenciaLogica.ts` (`ComoMarco`) y `VistaHoy.tsx` | `ComoMarco` suma `nfc`, `carne`, `pin`, `rostro`, `huella`. La columna «Cómo» pasa de texto a icono + texto (20.31.1), con los iconos del catálogo. Claves nuevas en `hrm.asistencia.hoy.como.*` en los cuatro idiomas. | El tipo crece; el `t()` de los valores viejos sigue. |
-| `AsistenciaPage.tsx` (cabecera) | «Registrar marca manual» se queda donde está. El «⋯» (`masAcciones`) suma, solo si aplica a la sede: «Mostrar el QR de la sede», «Abrir kiosco en esta pantalla», «Métodos de marcación de la sede» y «Dispositivos · N sin conexión» (20.31.2). Si hay un dispositivo sin conexión, aviso arriba de la tabla con «Ver dispositivo». | Acciones nuevas en un menú que ya existe. |
+| `fn_hr_marcacion_estado` | Agrega `metodos_sede`, `metodo_preferido`, `excepciones_vigentes` y `pide_ademas` (`ubicacion`/`pin`). | Campos nuevos. |
+| `marcarLogica.ts` | Cruza persona, sede y excepciones; agrega `nfc`. Un solo método → sin selector (20.30.6). Sede de reloj → aviso (20.30.8). Sin `metodos_sede` se comporta como hoy. | Pruebas actuales intactas, casos nuevos. |
+| `MarcarTurno.tsx` | Pestaña NFC; `?metodo=`; tras el QR, PIN si la sede lo pide (20.30.10). El texto de permiso de ubicación dice que nunca se rastrea (20.30.9). | Ubicación, QR, remoto y sin señal no cambian. |
+| `TurnoInicio.tsx`, `MiAsistencia.tsx` | Botón con el método de la sede y `?metodo=`. En Mi asistencia cada marca muestra método y hora y tiene «Reclamar» (R2). | Mismos estados y enlaces; «Solicitar un ajuste» se conserva. |
+| `fn_hr_asistencia_hoy`, `fn_hr_mi_asistencia` | «Cómo» usa `attendance_events.method` cuando existe; si no, lo de hoy. `fn_hr_mi_asistencia` devuelve además `evento_id` y el reclamo abierto. | Las marcas viejas se ven igual. |
+| `asistenciaLogica.ts` (`ComoMarco`), `VistaHoy.tsx` | `ComoMarco` suma `nfc`, `carne`, `pin`, `rostro`, `huella`; columna con icono + texto; claves nuevas en los 4 idiomas. | El tipo crece. |
+| `AsistenciaPage.tsx` | «Registrar marca manual» igual. El «⋯» suma, si aplican a la sede: QR, kiosco, métodos y dispositivos. Aviso si un equipo está sin conexión o desfasado. | Acciones nuevas en un menú que existe. |
 
-**Navegación** (regla del dueño: cambiar una página limpia la navegación): la pestaña «Marcación» del módulo, el menú lateral (`AlarmClockCheck`, ya en el catálogo), el buscador, el asistente y los enlaces de `/app/hrm/marcacion`, `/dispositivos`, `/dispositivos/nuevo` y `/dispositivos/[id]/editar` (redirigen a la pestaña nueva). `/qr-display/[deviceId]` redirige a la «Pantalla de QR».
+**Navegación:** pestaña «Marcación» entre Turnos y Asistencia, menú lateral (`AlarmClockCheck`), buscador, asistente y enlaces; `/app/hrm/marcacion/dispositivos`, `/nuevo` y `/[id]/editar` redirigen; `/qr-display/[deviceId]` redirige a la Pantalla de QR.
 
 ---
 
 ## 9. Pantallas (Figma, página «20 Recursos humanos»)
 
-Todas con instancias del kit (`PageHeader`, `MobileHeader`, `TableCell`, `ListCard`, `StatCard`, `SegmentedControl`, `TabItem`, `PopoverCard` + `MenuItem`, `BottomSheet`, `ConfirmDialog`, `EmptyState`, `Skeleton`, `Aviso`, `AvisoConAccion`, `FilaDato`, `FormField`, `Select`, `NumberInput`, `Checkbox`, `Switch`, `Badge`, `IconoDestacado`, `ProgresoPasos`, `QRCard`, `TurnoCard`, `Toast`, `Isotipo`). Colores y textos con variables y estilos. Ocho iconos nuevos de lucide en «02 Componentes › Iconos»: `Fingerprint`, `ScanFace`, `Nfc`, `KeyRound`, `MonitorSmartphone`, `TabletSmartphone`, `PenLine`, `FilePenLine`.
+Todas con instancias del kit, colores con variables y textos con estilos. Iconos nuevos en «02 Componentes › Iconos»: `Fingerprint`, `ScanFace`, `Nfc`, `KeyRound`, `MonitorSmartphone`, `TabletSmartphone`, `PenLine`, `FilePenLine`.
 
 | Sección | Qué muestra |
 |---|---|
-| 20.26 Marcación › En vivo | Tablero de hoy: indicadores, «Hoy por método», aviso de dispositivo sin conexión, tabla de marcas con método, punto y verificación; menú de la fila; celular; cargando, vacío, error y sin permiso. |
-| 20.27 Marcación › Métodos por sede | Ocho métodos con su interruptor y sus reglas; cambios sin guardar con barra fija; celular; estados. |
-| 20.28 Marcación › Dispositivos | Lista, menú de la fila, alta guiada en 3 pasos, detalle (resumen, personas, eventos), confirmar «Regenerar clave», celular, estados. |
-| 20.29 Kiosco | Inicio con QR, carné, PIN y rostro; PIN; rostro con prueba de vida; marca registrada; PIN incorrecto; sin internet; vincular la tablet. |
-| 20.30 Celular según la sede | Selector con los métodos de la sede, NFC, NFC no disponible, marca con NFC, etiqueta de otra sede, sede solo con QR, Inicio con «Tu turno» contextual. |
-| 20.31 Asistencia e Inicio | Asistencia «Hoy» con el método de cada marca, menú «⋯» según la sede, celular, Mi asistencia con el método de la sede. |
-| 20.32 Autorización biométrica | Pedir, vigente, retirar (hoja) y versión de escritorio. |
-
-Los ids de nodo están en el informe de entrega y en los nombres de los PNG.
+| 20.26 En vivo | Indicadores, «Hoy por método», avisos de equipo sin conexión y **desfasado**, tabla de marcas; menú de la fila con «Corregir con un ajuste»; celular; estados. |
+| 20.27 Métodos por sede | Métodos con reglas (QR de un solo uso + ubicación o PIN; PIN con bloqueo de 15 min), **foto de evidencia y letrero**, **excepciones temporales**; cambios sin guardar; **nueva excepción**; **letrero para imprimir**; celular; estados. |
+| 20.28 Dispositivos | Lista, menú, alta en 3 pasos (clave en el host), detalle con **alerta de desfase** y clave **revocable**, personas, eventos, confirmaciones, celular, estados. |
+| 20.29 Kiosco | Inicio (texto: «esta tablet no reconoce rostros»), PIN, **foto de evidencia** (20.29.3), marca registrada, PIN incorrecto, sin internet, vincular, **PIN bloqueado** (20.29.8) y **desbloqueo por un supervisor** (20.29.9). |
+| 20.30 Celular | Métodos de la sede, NFC, NFC no disponible, marca con NFC, etiqueta de otra sede, solo QR, Inicio contextual, **permiso de ubicación** (20.30.9), **QR + PIN** (20.30.10), **QR ya usado** (20.30.11). |
+| 20.31 Asistencia e Inicio | Método en «Cómo», menú «⋯», celular, Mi asistencia con método y **Reclamar**: menú de la marca (20.31.5), formulario (20.31.6), celular (20.31.7) y reclamo en revisión (20.31.8). |
+| 20.32 Autorizaciones | Pedir (biometría y foto por separado), vigente, retirar, escritorio. |
 
 ---
 
@@ -216,63 +238,72 @@ Los ids de nodo están en el informe de entrega y en los nombres de los PNG.
 
 | Fase | Qué entra | Compras | Pantallas |
 |---|---|---|---|
-| **M0 · Base, sin hardware** | Migraciones de §6 (sin la bandeja de dispositivos), extracción de `fn_hr_registrar_marca` sin cambiar `fn_hr_marcar` hacia afuera, QR por TOTP de 30 s, «Pantalla de QR», etiquetas NFC (Android y app), métodos por sede, intentos rechazados, «En vivo», Asistencia e Inicio con el método, retiro de las páginas viejas. Pruebas: guardarraíles, `marcarLogica`, `marcacion.ts`, RLS con otra organización, idempotencia del QR. | Ninguna (etiquetas NFC si las quieren). | 20.26, 20.27, 20.28 (pantalla de QR y etiqueta), 20.30, 20.31 |
-| **M1 · Kiosco** | GO Admin Kiosco (Capacitor, modo kiosco de Android), vinculación, PIN y carnés (`hr_credentials`), foto de evidencia con vencimiento, cola sin conexión, «modo lector» USB en GO Admin Escritorio. | Tablet Android 10" con NFC y soporte; carnés NFC; lector USB opcional. | 20.29, 20.28 (kiosco y lector) |
-| **M2 · Terminales** | Receptor ZKTeco ADMS y Hikvision por escucha HTTP, bandeja, mapeo, crear usuarios en el equipo, hora y desfase, registro de eventos, autorización biométrica. Certificar 1 o 2 modelos de cada marca con el equipo en la mano. | Un terminal de prueba de cada marca que se quiera soportar. | 20.28 completo, 20.32 |
-| **M3 · Opcional** | Rostro 1 a 1 en la tablet con prueba de vida, puente de red local en Escritorio (equipos solo HTTP o solo consulta), Anviz o Suprema si un cliente lo pide, NTAG 424 DNA con verificación SUN. | Según el caso. | 20.29.3 |
+| **M0 · Base, sin hardware** | Migraciones de §6 (salvo bandeja y adaptadores), **R1 en la base** (§6.3), `fn_hr_registrar_marca`, `fn_hr_metodo_permitido`, QR TOTP de 30 s y un solo uso (+ ubicación o PIN), Pantalla de QR, etiquetas NFC, métodos por sede, excepciones temporales, intentos rechazados, En vivo, contexto en Asistencia e Inicio, **reclamo del empleado (R2)**, `fn_hr_marcacion_manual` vía ajuste, retiro de las páginas viejas y de `attendanceService.create`. Pruebas: guardarraíles, `marcarLogica`, `marcacion.ts`, RLS con otra organización, QR reusado, UPDATE/DELETE rechazados. | Ninguna. | 20.26, 20.27, 20.28 (pantalla de QR y etiqueta), 20.30, 20.31 |
+| **M1 · Kiosco** | App Capacitor en modo kiosco, vinculación, PIN y carnés, bloqueo y desbloqueo, foto con autorización y retención por caso, cola sin conexión idempotente, letrero, modo lector USB en Escritorio. | Tablet Android 10" con NFC; carnés; lector USB opcional. | 20.29, 20.28, 20.32 (foto) |
+| **M2 · Relojes** | Adaptadores ZKTeco y Hikvision, subdominio con clave por equipo, bandeja, mapeo, órdenes al equipo, hora y alertas de desfase, registro de eventos, autorización biométrica. Lista pública de modelos probados. | Un reloj de prueba de cada marca. | 20.28 completo, 20.32 |
+| **M3 · Opcional** | Puente de red local en Escritorio, Anviz o Suprema si un cliente lo pide, verificación SUN de NTAG 424 DNA. | Según el caso. | — |
 
 ---
 
 ## 11. Qué necesita comprar o configurar el dueño
 
-- **Para M0:** nada. Opcional: etiquetas NFC (NTAG 424 DNA, aprox. COP 8.000–15.000 c/u; NTAG215, aprox. COP 1.000–3.000) y un subdominio para el receptor de dispositivos (por ejemplo `marcacion.<dominio>`) apuntado a Vercel.
-- **Para M1 (piloto):** una tablet Android de 10" con NFC y cámara frontal (aprox. COP 700.000–1.200.000), soporte de pared con candado, 10 carnés NFC; opcional un lector USB tipo ACR122U (aprox. COP 150.000–250.000).
-- **Para M2 (piloto):** un terminal ZKTeco con ADMS sobre HTTPS y un terminal facial Hikvision con «HTTP listening» (cada uno aprox. COP 600.000–2.000.000 según modelo). Antes de comprar, confirmar con el vendedor que el firmware trae HTTPS y servidor en la nube.
-- **Legal:** texto de autorización biométrica y de foto de evidencia revisado por el abogado de la plataforma; plantilla de política de tratamiento para los clientes.
+- **M0:** nada. Opcional: etiquetas NFC (NTAG 424 DNA, aprox. COP 8.000–15.000 c/u; NTAG215, aprox. COP 1.000–3.000). Para M2 hará falta el subdominio con DNS comodín apuntado a Vercel.
+- **M1 (piloto):** tablet Android de 10" con NFC y cámara frontal (aprox. COP 700.000–1.200.000), soporte de pared con candado, carnés NFC; opcional lector USB tipo ACR122U (aprox. COP 150.000–250.000).
+- **M2 (piloto):** un reloj ZKTeco con ADMS sobre HTTPS y uno facial Hikvision con «HTTP listening» (aprox. COP 600.000–2.000.000 cada uno). Confirmar con el vendedor HTTPS y servidor en la nube.
+- **Legal:** textos de autorización (biometría y foto) y letrero revisados por el abogado de la plataforma.
 
-Precios aproximados del mercado colombiano a noviembre de 2026; hay que cotizarlos.
+Precios aproximados del mercado colombiano a noviembre de 2026.
 
 ---
 
-## 12. Decisiones que necesitan al dueño
+## 12. Decisiones del dueño (aprobadas el 2026-11-16)
 
-| # | Decisión | Recomendación |
+| # | Decisión | Estado y texto final |
 |---|---|---|
-| D1 | ¿Marcación como pestaña propia del módulo (entre Turnos y Asistencia) o dentro de Asistencia? | **Pestaña propia** en `/app/hrm/marcacion`, como está diseñado. Asistencia mira lo que pasó; Marcación configura y vigila los puntos. |
-| D2 | Marcas de hardware a soportar primero. | **ZKTeco (ADMS) y Hikvision (escucha HTTP)**: son las más vendidas en Colombia y envían solas por internet. Anviz y Suprema solo si un cliente lo pide. |
-| D3 | Rostro en la tablet. | **No en la primera versión.** Rostro con terminal comercial (prueba de vida infrarroja). En la tablet, solo foto de evidencia; la verificación 1 a 1 queda para M3. |
-| D4 | ¿Guardar plantillas biométricas en GO Admin? | **No, nunca.** Quedan en el equipo. Menos riesgo legal y de seguridad. |
-| D5 | Retención de la foto de evidencia. | **30 días**, configurable entre 7 y 90 por la organización. |
-| D6 | Hora de los dispositivos. | Usar la del equipo si se desfasa **2 min o menos**; si más, a revisión. Del celular, siempre la del servidor (como hoy). |
-| D7 | Kiosco como app o como página web. | **App** (Capacitor, modo kiosco): NFC, cámara, clave en almacenamiento seguro y funcionamiento sin internet. La página web `/kiosco` como respaldo sin NFC. |
-| D8 | Dominio del receptor de dispositivos. | Un **subdominio propio** con HTTPS. Los equipos que solo hablan HTTP, por el puente de Escritorio (M3), no abriendo HTTP en la plataforma. |
-| D9 | QR: código firmado que cambia cada 30 s o token en la base cada 5 min (hoy). | **Código firmado (TOTP) de 30 s.** No escribe en la base y la pantalla funciona sin internet. |
-| D10 | Etiquetas NFC: no clonables (424 DNA) o baratas con ubicación (215). | **424 DNA** en sedes con antecedentes; 215 con ubicación obligatoria en el resto. |
-| D11 | PIN. | **6 dígitos**, asignados por RR. HH., guardados con hash, bloqueo de 10 min tras 5 intentos. |
-| D12 | ¿Quién compra el hardware? | El cliente; GO Admin publica una **lista de modelos certificados** y no da soporte a otros. |
-| D13 | ¿En qué planes? | Celular, QR y NFC en todos. Kiosco y terminales desde Business. |
-| D14 | Métodos por sede o por persona. | **La sede define; la persona solo restringe.** Remoto sigue siendo por persona. |
+| D1 | Dónde vive Marcación | **Aprobada.** Pestaña propia del módulo, entre Turnos y Asistencia, en `/app/hrm/marcacion`. Le pasa las marcas a Asistencia **sin duplicar datos**: las dos leen `attendance_events`. |
+| D2 | Marcas de hardware | **Aprobada.** ZKTeco (ADMS) y Hikvision (ISAPI) primero, sobre **adaptadores** (§4.2) para sumar otras marcas sin tocar el núcleo. |
+| D3 | Rostro | **Aprobada.** **Lo compara el reloj.** La tablet del kiosco solo toma la foto de evidencia, y el kiosco lo dice con un texto visible para el empleado. |
+| D4 | Datos biométricos | **Aprobada.** Nunca huellas ni rostros en GO Admin (Ley 1581): solo el número del empleado en el equipo, la hora y el equipo. |
+| D5 | Foto de evidencia | **Aprobada.** 30 días por defecto, configurable de 7 a 90. **Retención por caso:** si la marca está a revisión o hay un reclamo, la foto no se borra hasta cerrar el caso. Requiere **autorización expresa** del empleado y **aviso con letrero** en la sede (plantilla para imprimir en Métodos por sede). |
+| D6 | Hora del equipo | **Aprobada.** Desfase de 2 min o menos se acepta; si no, a revisión. **Alerta al administrador** cuando un equipo se desfasa, en En vivo y en el detalle del dispositivo. |
+| D7 | Kiosco | **Aprobada.** App Capacitor en modo kiosco; guarda marcas sin internet y sincroniza después **sin duplicar** (idempotencia por `id_local`). |
+| D8 | Receptor | **Aprobada.** Subdominio propio; **cada equipo con su propia clave**, revocable si se pierde o se cambia. |
+| D9 | QR | **Aprobada.** Firmado, cambia cada 30 s y es **de un solo uso**; según la sede, combinado con la ubicación o con el PIN. |
+| D10 | NFC y ubicación | **Aprobada.** NTAG 424 DNA donde haya riesgo; NTAG215 con ubicación obligatoria en el resto. La ubicación **solo se usa en el momento de marcar, nunca para rastrear**, y la pantalla de permiso lo dice. |
+| D11 | PIN | **Aprobada.** 6 dígitos con hash, nunca visible; tras 5 intentos, **bloqueo de 15 minutos o desbloqueo por un supervisor** (pantalla y acción). |
+| D12 | Modelos | **Aprobada.** Lista pública solo con modelos que GO Admin haya probado. |
+| D13 | Planes | **Aprobada con cambio.** Kiosco y relojes en **todos los planes** (todos los planes tienen todos los módulos; lo que cambia es cuántos pueden estar encendidos). Sin bloqueo por plan; queda preparado un límite por número de equipos (`max_dispositivos_marcacion`), **sin activar**. |
+| D14 | Sede y persona | **Aprobada con agregado.** La sede define los métodos y a una persona se le pueden quitar. **Excepción temporal** aprobada por RR. HH. (p. ej., no puede usar la huella por una lesión: se le habilita otro método por un rango de fechas), con registro de quién la aprobó, motivo y vigencia. |
+
+### Reglas nuevas
+
+| # | Regla | Cómo está hoy y qué falta |
+|---|---|---|
+| R1 | La marca original nunca se edita; las correcciones son un ajuste aparte con motivo y quién lo aprobó. | **Cumple en la app, no en la base.** Asistencia › Ajustes (`fn_hr_ajuste_solicitar` → aprobación → `fn_hr_ajustes_aplicar_interno`) inserta una marca nueva y deja la original. Pero: RLS permite UPDATE y DELETE a `hr.attendance.manage`; `fn_hr_marcacion_manual` (`POST /api/hrm/marcacion/manual`) inserta sin aprobación; y la página vieja inserta desde el navegador (`attendanceService.create`). Se cierra en M0 (§6.3). |
+| R2 | El empleado ve sus marcas y reclama. | **Parcial.** Mi asistencia ya muestra las marcas con «Cómo» y tiene «Solicitar un ajuste» (el empleado puede pedirlo para sí). Falta: método exacto, «Reclamar» sobre una marca concreta (ajuste con `attendance_event_id` y `origen = empleado_reclamo`) y la retención de la foto mientras el caso esté abierto. M0. |
+| R3 | Antes de pasar una novedad a nómina, el jefe la aprueba. | **Cumple con el plan por defecto, con dos salvedades.** Las novedades nacen pendientes y un día solo pasa a «lista para nómina» sin novedades pendientes (`fn_hr_jornada_lista_nomina`); nunca se aprueba por omisión. Sin regla configurada aprueba el **jefe directo**. Salvedades: (1) si la persona no tiene jefe (o el jefe es quien pide), aprueba RR. HH.; (2) una regla configurada en el motor puede no incluir al jefe. **Recomendación:** que el editor de reglas no permita quitar el paso «jefe directo» en `horas_extra` y `novedad_asistencia` cuando la persona tiene jefe; el respaldo de RR. HH. sin jefe se mantiene. |
 
 ---
 
 ## 13. Riesgos y pendientes
 
-- **R1 · HTTP de equipos viejos.** Vercel fuerza HTTPS; muchos ZKTeco viejos no siguen la redirección. Mitigación: solo modelos certificados con HTTPS, o el puente de Escritorio.
-- **R2 · Protocolo por firmware.** ADMS e ISAPI varían por versión; se certifica modelo por modelo con el equipo real.
-- **R3 · Web NFC solo en Android con Chrome.** En iPhone hace falta la app (Core NFC); la pantalla ofrece QR o ubicación (20.30.3).
-- **R4 · Regla 5 para equipos.** Los receptores no tienen sesión: la organización sale del dispositivo registrado. Hay que documentarlo en el guardarraíl de rutas para que no se lea como una excepción abierta.
-- **R5 · CHECK de `mecanismos`.** Ampliarlo exige tocar `enums.ts` (guardarraíl 9). La tabla tiene 0 filas.
-- **R6 · Gimnasio guarda plantillas.** `customer_biometrics.template_data` guarda la plantilla biométrica de clientes en la base (0 filas hoy). No es de RR. HH., pero choca con el criterio de D4: conviene revisarlo aparte antes de que se use.
-- **R7 · Carga.** Un terminal envía poco (marcas sueltas), pero el saludo de ZKTeco llega cada pocos segundos: el receptor debe responder sin tocar la base cuando no hay marcas (caché de la configuración del equipo). Mismo cuidado que el incidente del 2026-09-14.
-- **R8 · Nombre comercial.** La pantalla del kiosco muestra el nombre de la organización: es dato del cliente y no va a ningún archivo del repositorio.
+- **R1 · HTTP de equipos viejos.** Vercel fuerza HTTPS. Solo modelos probados con HTTPS, o el puente de Escritorio.
+- **R2 · Protocolo por firmware.** Se prueba modelo por modelo (D12).
+- **R3 · Web NFC** solo en Android con Chrome; en iPhone, la app.
+- **R4 · Regla 5 para equipos.** Los receptores no tienen sesión; la organización sale del equipo registrado. Documentarlo en el guardarraíl de rutas.
+- **R5 · CHECK de `mecanismos`.** Ampliarlo exige tocar `enums.ts` (guardarraíl 9).
+- **R6 · Gimnasio guarda plantillas.** `customer_biometrics.template_data` (0 filas) choca con D4. Revisar aparte.
+- **R7 · Carga.** El saludo de ZKTeco llega cada pocos segundos: responder sin tocar la base cuando no hay marcas (caché).
+- **R8 · Datos del cliente.** El kiosco y el letrero muestran el nombre de la organización: es dato del cliente y no va al repositorio.
+- **R9 · DNS comodín** para la clave en el host de ZKTeco: confirmar que Vercel emite el certificado comodín del subdominio.
 
 ---
 
 ## 14. Fuentes
 
-- ZKTeco, «General Introduction of PUSH SDK Protocol» (PDF): https://cdn.tvc.mx/media/92189/General-Introduction-of-PUSH-SDK-Protocol.pdf
-- Integraciones ADMS de terceros con las rutas `/iclock/cdata`, `/iclock/getrequest`, `/iclock/devicecmd`: https://packagist.org/packages/dewanlab/laravel-zkteco-adms-core · https://webkul.com/blog/erpnext-zkteco-attendance-integration/
-- Hikvision ISAPI, eventos de control de acceso y modo escucha: https://github.com/Shaykhnazar/hikvision-isapi · https://tpp.hikvision.com/solutions/TimeAttendance-Integration · https://downloads.evtrack.com/website/docs/Hikvision_Integration_Note_Rev1.pdf
-- Web NFC (solo Chrome para Android): https://developer.chrome.com/docs/capabilities/nfc · https://developer.mozilla.org/docs/Web/API/NDEFReader
-- Ley 1581 de 2012 (arts. 5 y 6), Decreto 1377 de 2013 (art. 6), Decreto 1074 de 2015 (compilación). SIC, guías sobre datos sensibles y biométricos.
-- Código y base de este repositorio, consultados el 2026-11-16 (§2).
+- ZKTeco, «General Introduction of PUSH SDK Protocol»: https://cdn.tvc.mx/media/92189/General-Introduction-of-PUSH-SDK-Protocol.pdf
+- Integraciones ADMS (`/iclock/cdata`, `/iclock/getrequest`, `/iclock/devicecmd`): https://packagist.org/packages/dewanlab/laravel-zkteco-adms-core · https://webkul.com/blog/erpnext-zkteco-attendance-integration/
+- Hikvision ISAPI y modo escucha: https://github.com/Shaykhnazar/hikvision-isapi · https://tpp.hikvision.com/solutions/TimeAttendance-Integration · https://downloads.evtrack.com/website/docs/Hikvision_Integration_Note_Rev1.pdf
+- Web NFC: https://developer.chrome.com/docs/capabilities/nfc · https://developer.mozilla.org/docs/Web/API/NDEFReader
+- Ley 1581 de 2012 (arts. 5 y 6), Decreto 1377 de 2013 (art. 6), Decreto 1074 de 2015.
+- Código y base del repositorio, consultados el 2026-11-16 (§2 y §12).

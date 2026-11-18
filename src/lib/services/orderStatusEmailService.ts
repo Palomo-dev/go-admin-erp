@@ -12,8 +12,14 @@
  *
  * Marca (2026-11-09): el correo lleva el logo público de la organización y el color principal
  * del sitio web (o, si falta, el de la organización) en la cabecera y el botón. Cancelado y
- * rechazado conservan el rojo. El remitente todavía no cambia: pasará a `email_domains` cuando
- * los dominios estén verificados en Resend.
+ * rechazado conservan el rojo.
+ *
+ * Remitente (2026-11-18): sale del dominio verificado de la organización (`resolveSender` de
+ * `email_domains`, igual que el correo de cambios del pedido): «<nombre visible o nombre de la org>
+ * <pedidos@dominio>» con su API key y el Reply-To de los ajustes de avisos o, si no hay, el del
+ * dominio. Sin dominio verificado, o si `resolveSender` falla por cualquier motivo (NO_SENDER
+ * incluido), el remitente de siempre (EMAIL_FROM_ADDRESS con la key maestra): el aviso no deja
+ * de salir por el remitente.
  *
  * Nunca lanza: un correo que no sale no puede tumbar un cambio de estado. La
  * organización la pone quien llama desde la sesión (`withOrg`) o desde el
@@ -22,7 +28,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash, createHmac } from 'crypto';
-import { getMasterResend, getMasterResendKey } from '@/lib/services/crm/email/resendClient';
+import { getMasterResend, getMasterResendKey, getResendClient } from '@/lib/services/crm/email/resendClient';
+import { resolveSender } from '@/lib/services/crm/email/domainsService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { formatEstimateInTz } from '@/lib/utils/dateDisplay';
 import { avisarClientePedido, nombreTipoOrg, type PedidoParaAviso } from '@/lib/services/avisosClienteService';
@@ -219,6 +226,88 @@ export async function marcaDelNegocio(
   };
 }
 
+interface ClienteCorreo {
+  emails: { send: (p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
+}
+
+interface RemitenteAviso {
+  cliente: ClienteCorreo;
+  from: string;
+  replyTo: string | null;
+}
+
+const limpiarNombre = (n: string) => n.replace(/[<>"]/g, '').trim();
+
+/** El remitente de siempre: EMAIL_FROM_ADDRESS con la key maestra. `null` si no hay key maestra. */
+function remitenteDeSiempre(negocio: string, responderA: string | null): RemitenteAviso | null {
+  if (!getMasterResendKey()) return null;
+  return {
+    cliente: getMasterResend() as unknown as ClienteCorreo,
+    from: `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`,
+    replyTo: responderA,
+  };
+}
+
+/**
+ * Remitente del aviso: el dominio verificado de la org si `resolveSender` lo da (modo `org`);
+ * si devuelve el global o lanza (NO_SENDER incluido), el de siempre.
+ */
+async function remitenteAviso(
+  db: SupabaseClient,
+  organizationId: number,
+  extra: { nombreOrg: string; nombreVisible: string | null; responderA: string | null },
+): Promise<RemitenteAviso | null> {
+  const negocio = extra.nombreVisible || extra.nombreOrg || '';
+  try {
+    const s = await resolveSender(organizationId, { kind: 'transactional', orgName: negocio }, db);
+    if (s.mode === 'org' && s.fromEmail && s.apiKey) {
+      const nombre = limpiarNombre(negocio || s.domain?.from_name || '');
+      return {
+        cliente: getResendClient(s.apiKey) as unknown as ClienteCorreo,
+        from: nombre ? `${nombre} <${s.fromEmail}>` : s.fromEmail,
+        replyTo: extra.responderA ?? s.replyTo,
+      };
+    }
+  } catch (err) {
+    console.warn('[orderStatusEmail] Sin dominio propio para el aviso; sale con el remitente de siempre', {
+      organizationId,
+      err: err instanceof Error ? err.message : err,
+    });
+  }
+  return remitenteDeSiempre(negocio, extra.responderA);
+}
+
+/**
+ * Envía un aviso de estado ya armado. Nunca lanza: devuelve `{ ok: false }` si no hay proveedor
+ * o Resend lo rechaza.
+ */
+export async function enviarAvisoEstado(
+  db: SupabaseClient,
+  organizationId: number,
+  extra: { nombreOrg: string; nombreVisible: string | null; responderA: string | null },
+  mensaje: { to: string; subject: string; html: string; text: string },
+  log: { orderId?: string; estado?: string } = {},
+): Promise<{ ok: boolean; id?: string | null; error?: string | null }> {
+  try {
+    const remitente = await remitenteAviso(db, organizationId, extra);
+    if (!remitente) return { ok: false, error: 'sin_proveedor' };
+    const { data, error } = await remitente.cliente.emails.send({
+      from: remitente.from,
+      ...mensaje,
+      ...(remitente.replyTo ? { replyTo: remitente.replyTo } : {}),
+    });
+    if (error) {
+      const nombre = (error as { name?: string }).name ?? 'proveedor';
+      console.warn('[orderStatusEmail] Resend no envió el aviso de estado', { ...log, error: nombre });
+      return { ok: false, error: nombre };
+    }
+    return { ok: true, id: (data as { id?: string } | null)?.id ?? null };
+  } catch (err) {
+    console.warn('[orderStatusEmail] Error enviando el aviso de estado', { ...log, err: err instanceof Error ? err.message : err });
+    return { ok: false, error: 'proveedor' };
+  }
+}
+
 /**
  * Envía los avisos del estado ACTUAL del pedido. Devuelve si salió el correo
  * (para logs). `organizationId` sale de la sesión o del propio pedido, nunca
@@ -257,7 +346,6 @@ export async function enviarCorreoEstadoPedido(
       soloCanal: opciones.soloCanal ?? null,
       estadoConAvisoLegado: (e) => esEstadoConAviso(e),
       enviarCorreo: async (extra) => {
-        if (!getMasterResendKey()) return { ok: false, error: 'sin_proveedor' };
         const estado = esEstadoConAviso(pedido.status) ? pedido.status : null;
         if (!estado) return { ok: false, error: 'estado_sin_aviso' };
         const zona = await getOrganizationTimezone(organizationId, db);
@@ -278,20 +366,12 @@ export async function enviarCorreoEstadoPedido(
           motivo: ['cancelled', 'rejected'].includes(pedido.status) ? pedido.cancellation_reason : null,
           marca,
         });
-        const remitente = `${(negocio || process.env.EMAIL_FROM_NAME || 'GO Admin').replace(/[<>"]/g, '')} <${process.env.EMAIL_FROM_ADDRESS || 'notificaciones@goadmin.io'}>`;
-        const { data: enviado, error: envioError } = await getMasterResend().emails.send({
-          from: remitente,
+        return enviarAvisoEstado(db, organizationId, { nombreOrg: org.name ?? '', ...extra }, {
           to: pedido.customer_email as string,
           subject: extra.asunto || correo.asunto,
           html: correo.html,
           text: extra.texto || correo.text,
-          ...(extra.responderA ? { replyTo: extra.responderA } : {}),
-        });
-        if (envioError) {
-          console.warn('[orderStatusEmail] Resend no envió el aviso de estado', { orderId, estado: pedido.status, error: envioError.name });
-          return { ok: false, error: envioError.name };
-        }
-        return { ok: true, id: enviado?.id ?? null };
+        }, { orderId, estado: pedido.status });
       },
     });
     return r.email === 'sent';

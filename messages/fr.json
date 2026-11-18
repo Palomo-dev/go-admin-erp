@@ -38312,6 +38312,38 @@
       "historialPedido": "Historique de la commande"
     }
   },
+  "posNumeroPedido": {
+    "guardar": "Enregistrer",
+    "guardado": "Numéro de commande enregistré",
+    "errorGuardar": "Impossible d'enregistrer",
+    "errorCargar": "Impossible de charger le numéro de commande",
+    "cargando": "Chargement…",
+    "pendienteMigracion": "Cette option arrive bientôt : pour l’instant, les commandes gardent le numéro habituel.",
+    "soloLectura": "Seule l’administration peut modifier le numéro de commande.",
+    "sinPermiso": "Seule l’administration peut modifier le numéro de commande.",
+    "comoFunciona": "Voici comment sont numérotées les commandes de la boutique en ligne, les commandes manuelles et celles préparées par le chat IA.",
+    "existentes": "Les commandes existantes gardent leur numéro. Le changement s’applique à partir de la prochaine commande.",
+    "formato": "Format",
+    "formatos": {
+      "actual": "Actuel",
+      "consecutivo": "Séquentiel",
+      "corto": "Code court"
+    },
+    "ayudaFormato": {
+      "actual": "Le format habituel : WO, le numéro de l’organisation et un code.",
+      "consecutivo": "Préfixe et un numéro qui augmente de un en un : 0001, 0002…",
+      "corto": "Préfixe et six lettres ou chiffres au hasard, faciles à dicter."
+    },
+    "prefijo": "Préfixe du numéro de commande",
+    "ayudaPrefijo": "De 2 à 10 caractères : lettres, chiffres et tiret. Il est réservé à votre boutique.",
+    "placeholderPrefijo": "Ex. : CMD",
+    "asiSeVera": "Les commandes ressembleront à ceci",
+    "errores": {
+      "formato": "Utilisez de 2 à 10 caractères : lettres, chiffres et tiret (sans tiret au début ni à la fin).",
+      "reservado": "Le système utilise ce préfixe pour d’autres paiements. Choisissez-en un autre.",
+      "enUso": "Une autre boutique utilise déjà ce préfixe. Choisissez-en un autre."
+    }
+  },
   "pedidosOnlineListado": {
     "titulo": "Commandes en ligne",
     "subtitulo": "{total, plural, one {# commande} other {# commandes}} sur la période · {pendientes} à confirmer",
@@ -38333,7 +38365,8 @@
       "sonidoOff": "Activer l'alerte sonore",
       "autoOn": "Suspendre l'actualisation automatique",
       "autoOff": "Activer l'actualisation automatique",
-      "avisosCliente": "Notifications client"
+      "avisosCliente": "Notifications client",
+      "numeroPedido": "Numéro de commande"
     },
     "vista": {
       "etiqueta": "Vue",
@@ -38976,6 +39009,11 @@
         "titulo": "Avis au client",
         "descripcion": "Messages au client pour les commandes en ligne",
         "palabras": "avis, commandes en ligne, prévenir le client, whatsapp de la commande"
+      },
+      "posNumeroPedido": {
+        "titulo": "Numéro de commande",
+        "descripcion": "Format du numéro des commandes en ligne",
+        "palabras": "numéro de commande, séquentiel, préfixe, référence, commandes en ligne, WO"
       },
       "chatGeneral": {
         "titulo": "Étiquettes et réponses rapides",

@@ -38312,6 +38312,38 @@
       "historialPedido": "Order history"
     }
   },
+  "posNumeroPedido": {
+    "guardar": "Save",
+    "guardado": "Order number saved",
+    "errorGuardar": "Could not save",
+    "errorCargar": "Could not load the order number",
+    "cargando": "Loading…",
+    "pendienteMigracion": "This option is coming soon: for now orders keep the usual number.",
+    "soloLectura": "Only administrators can change the order number.",
+    "sinPermiso": "Only administrators can change the order number.",
+    "comoFunciona": "This is how online store orders, manual orders and orders built by the AI chat are numbered.",
+    "existentes": "Existing orders keep their number. The change applies from the next order.",
+    "formato": "Format",
+    "formatos": {
+      "actual": "Current",
+      "consecutivo": "Sequential",
+      "corto": "Short code"
+    },
+    "ayudaFormato": {
+      "actual": "The usual one: WO, the organization number and a code.",
+      "consecutivo": "Prefix and a number that goes up one at a time: 0001, 0002…",
+      "corto": "Prefix and six random letters or numbers, easy to read out."
+    },
+    "prefijo": "Order number prefix",
+    "ayudaPrefijo": "2 to 10 characters: letters, numbers and hyphen. Only your store can use it.",
+    "placeholderPrefijo": "E.g. ORD",
+    "asiSeVera": "Orders will look like this",
+    "errores": {
+      "formato": "Use 2 to 10 characters: letters, numbers and hyphen (no hyphen at the start or end).",
+      "reservado": "The system uses that prefix for other payments. Choose another one.",
+      "enUso": "Another store already uses that prefix. Choose another one."
+    }
+  },
   "pedidosOnlineListado": {
     "titulo": "Online orders",
     "subtitulo": "{total, plural, one {# order} other {# orders}} in the period · {pendientes} awaiting confirmation",
@@ -38333,7 +38365,8 @@
       "sonidoOff": "Turn on the sound alert",
       "autoOn": "Pause auto-refresh",
       "autoOff": "Turn on auto-refresh",
-      "avisosCliente": "Customer notifications"
+      "avisosCliente": "Customer notifications",
+      "numeroPedido": "Order number"
     },
     "vista": {
       "etiqueta": "View",
@@ -38976,6 +39009,11 @@
         "titulo": "Customer notices",
         "descripcion": "Messages to the customer for online orders",
         "palabras": "notices, online orders, notify customer, order whatsapp"
+      },
+      "posNumeroPedido": {
+        "titulo": "Order number",
+        "descripcion": "Format of the online order number",
+        "palabras": "order number, sequential, prefix, reference, online orders, WO"
       },
       "chatGeneral": {
         "titulo": "Tags and quick replies",

@@ -60,6 +60,7 @@ const PANELES: Record<string, React.ComponentType<PropsPanel>> = {
     () => import('@/components/pos/pedidos-online/avisos/AvisosClientePage').then((m) => function AvisosCliente() { return <m.AvisosClientePage incrustado />; }),
     { loading: () => <LoadingSkeleton />, ssr: false },
   ),
+  'pos.numero-pedido': dynamic(() => import('@/components/pos/pedidos-online/numeracion/NumeroPedidoPanel').then((m) => m.NumeroPedidoPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'chat.general': dynamic(() => import('../panels/chat/ChatConfigPanel').then((m) => m.ChatConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),
   'chat.ia': dynamic(() => import('@/components/chat/ia/configuracion/ConfiguracionIAChat').then((m) => m.ConfiguracionIAChat), { loading: () => <LoadingSkeleton />, ssr: false }),
   'integraciones.general': dynamic(() => import('../panels/integraciones/IntegracionesConfigPanel').then((m) => m.IntegracionesConfigPanel), { loading: () => <LoadingSkeleton />, ssr: false }),

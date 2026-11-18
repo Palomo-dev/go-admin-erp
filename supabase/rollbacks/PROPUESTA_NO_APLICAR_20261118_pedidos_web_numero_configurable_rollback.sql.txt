@@ -1,0 +1,8 @@
+-- Reversión de PROPUESTA_NO_APLICAR_20261118_pedidos_web_numero_configurable.sql.txt (aún sin aplicar).
+-- Los pedidos creados con PREFIJO-0001 / PREFIJO-XXXXXX conservan su número; sin la tabla de
+-- ajustes, los nuevos vuelven a WO-{org}-{ts36}-{rand4} (el código lo hace solo) y el pago de un
+-- pedido de número nuevo se sigue encontrando por order_number.
+
+drop function if exists public.siguiente_numero_pedido_web(integer);
+drop index if exists public.web_orders_order_number_key;
+drop table if exists public.web_order_number_settings;

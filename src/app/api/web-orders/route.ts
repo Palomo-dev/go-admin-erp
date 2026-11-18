@@ -3,6 +3,7 @@ import { verifyWebOrdersSecret, webhookErrorResponse } from '@/lib/security/webh
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { serialTrackingService } from '@/lib/services/serialTrackingService';
 import { promotionEngine } from '@/lib/services/promotionEngine';
+import { generarNumeroPedido } from '@/lib/services/webOrders/numeroPedidoServer';
 
 function getSupabaseClient(): SupabaseClient {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,7 +24,7 @@ interface WebOrderItemInput {
   unit_price: number;
   tax_amount?: number;
   discount_amount?: number;
-  modifiers?: any[];
+  modifiers?: unknown[];
   notes?: string;
 }
 
@@ -57,18 +58,9 @@ interface CreateWebOrderRequest {
   items: WebOrderItemInput[];
 }
 
+/** El número con el formato de la organización (Configuración › POS › Número de pedido). */
 async function generateOrderNumber(organizationId: number): Promise<string> {
-  const supabase = getSupabaseClient();
-  const { data, error } = await supabase.rpc('generate_web_order_number', { 
-    org_id: organizationId 
-  });
-  
-  if (error || !data) {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    return `WO-${today}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-  }
-  
-  return data;
+  return generarNumeroPedido(getSupabaseClient(), organizationId);
 }
 
 /**
@@ -128,7 +120,7 @@ export async function POST(request: NextRequest) {
     // Sanitizar delivery_address: conservar campos existentes + nuevos (country/state/department)
     // Solo se incluyen los campos presentes (no null) para no ensuciar el JSONB.
     const rawAddr = body.delivery_address || {};
-    const sanitizedAddress: Record<string, any> = {};
+    const sanitizedAddress: Record<string, unknown> = {};
 
     if (typeof rawAddr.address === 'string' && rawAddr.address.trim()) {
       sanitizedAddress.address = rawAddr.address.trim();
@@ -322,8 +314,8 @@ export async function POST(request: NextRequest) {
           console.log(`✅ ${serialIdsToReserve.length} seriales reservados para producto ${item.product_id} en web order ${order.id}`);
         }
       }
-    } catch (serialError: any) {
-      console.warn('⚠️ Error en auto-asignacion de seriales (no bloquea pedido):', serialError?.message);
+    } catch (serialError: unknown) {
+      console.warn('⚠️ Error en auto-asignacion de seriales (no bloquea pedido):', serialError instanceof Error ? serialError.message : serialError);
       serialWarnings.push('Error general en asignacion de seriales');
     }
 

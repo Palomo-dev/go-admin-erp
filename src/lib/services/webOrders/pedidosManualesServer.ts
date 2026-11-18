@@ -39,16 +39,16 @@ import {
 } from '@/lib/services/pagos/consultaPasarela.server';
 import {
   decidirReconstruccion,
-  generarNumeroPedidoWeb,
   montoCoincide,
   notaReconstruccion,
-  organizacionDelNumero,
   sedeSugerida,
   totalesPedidoManual,
   PedidoManualError,
   type LineaManual,
   type PedidoExistente,
 } from '@/lib/pos/pedidosWeb/pedidoManual';
+import { resolverOrganizacionReferencia } from '@/lib/pos/pedidosWeb/numeroPedido';
+import { insertarConNumero, organizacionDeReferencia, prefijosDeReferencias } from '@/lib/services/webOrders/numeroPedidoServer';
 
 /** Marcar pagado un pedido online: reconstruir y ver pagos sin pedido. */
 export const PERMISO_RECONSTRUIR = 'pos.pedidos_web.marcar_pagado';
@@ -275,9 +275,19 @@ export async function crearPedidoManual(ctx: ServerOrgContext, body: PedidoManua
   } catch (e) {
     errorDeLogica(e);
   }
-  const orderNumber = generarNumeroPedidoWeb(org, deps.ahora());
-  const fila = { ...filaPedido(org, branchId, orderNumber, body, totales), internal_notes: `[Pedido manual] ${ctx.userEmail ?? ctx.userId}` };
-  const { data: pedido, error } = await db.from('web_orders').insert(fila).select('id, order_number, total').single();
+  // El número lo decide la organización (Configuración › POS › Número de pedido); si choca, otro.
+  const notaManual = `[Pedido manual] ${ctx.userEmail ?? ctx.userId}`;
+  const { data: pedido, error, orderNumber } = await insertarConNumero(
+    db,
+    org,
+    (numero) =>
+      db
+        .from('web_orders')
+        .insert({ ...filaPedido(org, branchId, numero, body, totales), internal_notes: notaManual })
+        .select('id, order_number, total')
+        .single(),
+    deps.ahora,
+  );
   if (error || !pedido) throw new CambioPedidoError(500, 'PEDIDO_FALLO', `No se pudo crear el pedido: ${error?.message ?? 'sin datos'}`);
   const orderId = String((pedido as Fila).id);
 
@@ -322,7 +332,7 @@ export async function crearPedidoManual(ctx: ServerOrgContext, body: PedidoManua
       if (eMap) console.error('[pedidoManual] vínculo del link:', eMap.message);
       await db
         .from('web_orders')
-        .update({ internal_notes: `${fila.internal_notes} · Link de pago ${NOMBRE_PASARELA[link.proveedor]}: ${link.url}` })
+        .update({ internal_notes: `${notaManual} · Link de pago ${NOMBRE_PASARELA[link.proveedor]}: ${link.url}` })
         .eq('id', orderId)
         .eq('organization_id', org);
     }
@@ -418,11 +428,13 @@ export async function verificarCobro(ctx: ServerOrgContext, body: ReconstruirBod
   await exigirPermiso(ctx, PERMISO_RECONSTRUIR);
   const conexion = await conexionDeLaOrg(deps.db, ctx.organizationId, String(body.connection_id ?? ''));
   const cobro = await cobroVerificado(deps.db, conexion, body, deps.consulta);
+  const existentes = await pedidosDelCobro(deps.db, conexion, cobro);
   const decision = decidirReconstruccion({
     organizationId: ctx.organizationId,
     referencia: cobro.referencia,
     transaccionId: String(cobro.transaccionId),
-    existentes: await pedidosDelCobro(deps.db, conexion, cobro),
+    existentes,
+    referenciaDe: await organizacionDeReferencia(deps.db, cobro.referencia, existentes),
   });
   const productos = (body.items ?? []).map((i) => Number(i.product_id)).filter((n) => Number.isInteger(n) && n > 0);
   const sugerida = decision.tipo === 'crear_nuevo' ? await sugerirSede(deps.db, ctx.organizationId, productos) : null;
@@ -436,7 +448,14 @@ export async function reconstruirPedido(ctx: ServerOrgContext, body: Reconstruir
   const conexion = await conexionDeLaOrg(db, org, String(body?.connection_id ?? ''));
   const cobro = await cobroVerificado(db, conexion, body, deps.consulta);
   const tx = String(cobro.transaccionId);
-  const decision = decidirReconstruccion({ organizationId: org, referencia: cobro.referencia, transaccionId: tx, existentes: await pedidosDelCobro(db, conexion, cobro) });
+  const existentes = await pedidosDelCobro(db, conexion, cobro);
+  const decision = decidirReconstruccion({
+    organizationId: org,
+    referencia: cobro.referencia,
+    transaccionId: tx,
+    existentes,
+    referenciaDe: await organizacionDeReferencia(db, cobro.referencia, existentes),
+  });
   const confirmadoEn = fechaDelPago(body, cobro);
   const nota = notaReconstruccion({
     proveedor: NOMBRE_PASARELA[conexion.connectorCode],
@@ -447,7 +466,7 @@ export async function reconstruirPedido(ctx: ServerOrgContext, body: Reconstruir
   if (decision.tipo === 'ya_existe') return { estado: 'ya_existia' as const, pedido: decision.pedido, cobro };
   if (decision.tipo === 'rechazar') {
     throw new CambioPedidoError(409, decision.code, decision.code === 'OTRA_ORGANIZACION'
-      ? 'La referencia es de otra tienda (prefijo WO-…): reconstrúyelo desde esa organización.'
+      ? 'La referencia es de otra tienda: reconstrúyelo desde esa organización.'
       : 'Ese cobro ya tiene pedido en otra organización.');
   }
 
@@ -475,7 +494,7 @@ export async function reconstruirPedido(ctx: ServerOrgContext, body: Reconstruir
   } else {
     if (decision.tipo === 'crear_nuevo' && body.confirmar_tienda !== true) {
       const productos = (body.items ?? []).map((i) => Number(i.product_id)).filter((n) => Number.isInteger(n) && n > 0);
-      throw new CambioPedidoError(409, 'CONFIRMAR_TIENDA', 'El cobro no trae el prefijo WO-… de la tienda: confírmalo antes de crear el pedido.', {
+      throw new CambioPedidoError(409, 'CONFIRMAR_TIENDA', 'El cobro no trae el número de pedido de la tienda: confírmalo antes de crear el pedido.', {
         sede_sugerida: await sugerirSede(db, org, productos),
         referencia: cobro.referencia,
       });
@@ -492,16 +511,26 @@ export async function reconstruirPedido(ctx: ServerOrgContext, body: Reconstruir
     if (!montoCoincide(Math.round(totales.total * 100), Number(body.valor))) {
       throw new CambioPedidoError(409, 'TOTAL_NO_CUADRA', 'La suma de productos y envío no da el valor cobrado: ajusta precios o envío.', { total: totales.total, valor: Number(body.valor) });
     }
-    orderNumber = decision.tipo === 'crear' ? decision.orderNumber : generarNumeroPedidoWeb(org, deps.ahora());
-    const fila = {
-      ...filaPedido(org, branchId, orderNumber, { ...body, canal: body.canal ?? (decision.tipo === 'crear' ? 'website' : 'whatsapp') }, totales),
-      payment_status: 'paid',
-      payment_reference: tx,
-      payment_method: cobro.metodo,
-      confirmed_at: confirmadoEn,
-      internal_notes: nota,
-    };
-    const { data: creado, error } = await db.from('web_orders').insert(fila).select('id').single();
+    const insertar = (numero: string) =>
+      db
+        .from('web_orders')
+        .insert({
+          ...filaPedido(org, branchId, numero, { ...body, canal: body.canal ?? (decision.tipo === 'crear' ? 'website' : 'whatsapp') }, totales),
+          payment_status: 'paid',
+          payment_reference: tx,
+          payment_method: cobro.metodo,
+          confirmed_at: confirmadoEn,
+          internal_notes: nota,
+        })
+        .select('id')
+        .single();
+    // `crear`: el número de la pasarela (la tienda lo perdió). Si no, uno nuevo de la organización.
+    const r =
+      decision.tipo === 'crear'
+        ? { ...(await insertar(decision.orderNumber)), orderNumber: decision.orderNumber }
+        : await insertarConNumero(db, org, insertar, deps.ahora);
+    orderNumber = r.orderNumber;
+    const { data: creado, error } = r;
     if (error || !creado) throw new CambioPedidoError(500, 'PEDIDO_FALLO', `No se pudo crear el pedido: ${error?.message ?? 'sin datos'}`);
     orderId = String((creado as Fila).id);
     // Dos reconstrucciones a la vez del mismo cobro: gana la más antigua, la otra se borra
@@ -546,15 +575,15 @@ export async function reconstruirPedido(ctx: ServerOrgContext, body: Reconstruir
 export interface PagoSinPedido {
   cobro: CobroPasarela;
   conexion: { id: string; nombre: string; proveedor: string };
-  /** Sin prefijo WO-…: la tienda se confirma al reconstruir. */
+  /** No se sabe de qué tienda es (ni prefijo viejo `WO-{org}-` ni prefijo configurado): se confirma al reconstruir. */
   sinPrefijo: boolean;
   registradoEn: string;
 }
 
 /**
  * Cobros APROBADOS que llegaron por webhook (integration_events de las conexiones de pago de la
- * organización) y no tienen pedido. Los que traen el prefijo de otra organización (comercio
- * compartido) no se muestran. Wompi no publica un listado de transacciones: lo anterior a los
+ * organización) y no tienen pedido. Los que son de otra organización (comercio compartido: por el
+ * prefijo viejo `WO-{org}-` o por el prefijo configurado de esa tienda) no se muestran. Wompi no publica un listado de transacciones: lo anterior a los
  * eventos registrados se reconstruye con la referencia o el ID del panel de la pasarela.
  */
 export async function pagosSinPedido(ctx: ServerOrgContext, opciones: { dias?: number } = {}, deps: DepsPedidos = depsReales()): Promise<PagoSinPedido[]> {
@@ -577,15 +606,23 @@ export async function pagosSinPedido(ctx: ServerOrgContext, opciones: { dias?: n
   if (error) throw new CambioPedidoError(500, 'EVENTOS_FALLO', error.message);
 
   // Un cobro por transacción (el evento más reciente), solo aprobados y de esta organización.
-  const vistos = new Map<string, PagoSinPedido>();
+  const vistos = new Map<string, Omit<PagoSinPedido, 'sinPrefijo'>>();
   for (const e of (eventos as Fila[] | null) ?? []) {
     const conexion = porId.get(String(e.connection_id));
     if (!conexion) continue;
     const cobro = cobroDeEvento(conexion.connectorCode, (e.payload ?? {}) as Fila);
     if (!cobro?.transaccionId || vistos.has(cobro.transaccionId)) continue;
-    vistos.set(cobro.transaccionId, { cobro, conexion: { id: conexion.id, nombre: conexion.nombre, proveedor: conexion.connectorCode }, sinPrefijo: organizacionDelNumero(cobro.referencia) === null, registradoEn: String(e.created_at) });
+    vistos.set(cobro.transaccionId, { cobro, conexion: { id: conexion.id, nombre: conexion.nombre, proveedor: conexion.connectorCode }, registradoEn: String(e.created_at) });
   }
-  const candidatos = Array.from(vistos.values()).filter((p) => p.cobro.estado === 'aprobada' && (p.sinPrefijo || organizacionDelNumero(p.cobro.referencia) === org));
+  // De qué tienda es cada cobro sin pedido: prefijo viejo `WO-{org}-` o prefijo configurado (una
+  // consulta para todos). Los que ya tienen pedido salen abajo, de cualquier organización.
+  const aprobados = Array.from(vistos.values()).filter((p) => p.cobro.estado === 'aprobada');
+  const prefijos = await prefijosDeReferencias(db, aprobados.map((p) => p.cobro.referencia));
+  const candidatos: PagoSinPedido[] = [];
+  for (const p of aprobados) {
+    const de = resolverOrganizacionReferencia({ referencia: p.cobro.referencia, prefijos }).organizacion;
+    if (de === null || de === org) candidatos.push({ ...p, sinPrefijo: de === null });
+  }
   if (candidatos.length === 0) return [];
 
   // Con pedido: por número o por transacción (en cualquier organización: no duplicar).

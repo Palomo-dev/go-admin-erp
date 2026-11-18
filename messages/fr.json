@@ -38330,7 +38330,7 @@
       "corto": "Code court"
     },
     "ayudaFormato": {
-      "actual": "Le format habituel : WO, le numéro de l’organisation et un code.",
+      "actual": "Le format habituel : WO, le numéro de l’organisation et un code. Pour remplacer « WO-… » par votre propre préfixe, choisissez Séquentiel ou Code court.",
       "consecutivo": "Préfixe et un numéro qui augmente de un en un : 0001, 0002…",
       "corto": "Préfixe et six lettres ou chiffres au hasard, faciles à dicter."
     },

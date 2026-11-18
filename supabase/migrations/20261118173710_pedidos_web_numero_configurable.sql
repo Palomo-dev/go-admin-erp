@@ -12,12 +12,7 @@
 --    corto libre; null en el formato actual (quien llama usa el de siempre). Solo service_role.
 --
 -- Aditiva: no renombra pedidos existentes ni toca datos. Reversión:
--- supabase/rollbacks/PROPUESTA_NO_APLICAR_20261118_pedidos_web_numero_configurable_rollback.sql.txt
---
--- PROPUESTA: NO APLICADA. Espera el OK del dueño. Probada en seco el 2026-11-18 dentro de una
--- transacción deshecha (consecutivo PED-0001/0002, PED-9999 → PED-10000, código corto, prefijo
--- único, reservados, forma, número único). Al aplicarla con apply_migration se renombra a
--- <timestamp>_pedidos_web_numero_configurable.sql y su rollback, en el mismo commit.
+-- supabase/rollbacks/20261118173710_pedidos_web_numero_configurable_rollback.sql
 
 create table if not exists public.web_order_number_settings (
   organization_id integer primary key references public.organizations(id) on delete cascade,

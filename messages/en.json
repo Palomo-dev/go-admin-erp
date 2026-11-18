@@ -38330,7 +38330,7 @@
       "corto": "Short code"
     },
     "ayudaFormato": {
-      "actual": "The usual one: WO, the organization number and a code.",
+      "actual": "The usual one: WO, the organization number and a code. To replace “WO-…” with your own prefix, choose Sequential or Short code.",
       "consecutivo": "Prefix and a number that goes up one at a time: 0001, 0002…",
       "corto": "Prefix and six random letters or numbers, easy to read out."
     },

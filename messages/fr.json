@@ -60147,5 +60147,358 @@
         }
       }
     }
+  },
+  "hrmKiosco": {
+    "kiosco": {
+      "pantallaCompleta": "Plein écran",
+      "marca": "GO Admin Kiosque",
+      "sinVincular": "Non associé",
+      "cargando": "Chargement du kiosque…",
+      "registrando": "Enregistrement de votre pointage…",
+      "pie": "L’heure de votre pointage est celle du serveur. Photo justificative uniquement si vous l’avez autorisée : elle est supprimée après {dias} jours, ou à la clôture d’une réclamation. Plus d’informations sur l’affiche de l’entrée et dans GO Admin › Ma présence.",
+      "volverInicio": "Retour à l’accueil",
+      "cancelar": "Annuler",
+      "inicio": {
+        "escanea": "Scannez avec votre téléphone",
+        "qrTitulo": "QR de pointage",
+        "cambiaEn": "Change dans {n} s",
+        "qrInstrucciones": "Ouvrez GO Admin › Pointer › QR du site. Il change toutes les 30 secondes et chaque code ne sert qu’une fois : une photo ne marche pas.",
+        "oMarcaAqui": "Ou pointez ici",
+        "marcaAqui": "Pointez ici",
+        "carne": {
+          "titulo": "Approchez votre badge",
+          "tablet": "Du lecteur en bas de la tablette",
+          "lector": "Du lecteur connecté à cet appareil"
+        },
+        "listoParaLeer": "Prêt à lire",
+        "pin": {
+          "titulo": "Saisissez votre PIN",
+          "descripcion": "Celui à 6 chiffres remis par les Ressources humaines"
+        },
+        "sinRostro": {
+          "titulo": "Cette tablette ne reconnaît pas les visages",
+          "descripcion": "Elle prend seulement une photo justificative des personnes qui l’ont autorisée. L’empreinte et le visage sont comparés par la pointeuse de l’entrée."
+        },
+        "sinMetodos": {
+          "titulo": "Ce site n’a aucune méthode de kiosque active",
+          "descripcion": "Les Ressources humaines les activent dans GO Admin › Pointage › Méthodes par site."
+        }
+      },
+      "teclado": {
+        "titulo": "Saisissez votre PIN",
+        "escritos": "Chiffres saisis : {n} sur {total}",
+        "digito": "Chiffre {n}",
+        "borrar": "Effacer",
+        "listo": "Valider",
+        "incorrecto": "{n, plural, one {PIN incorrect · il vous reste # essai} other {PIN incorrect · il vous reste # essais}}",
+        "incorrectoDetalle": "Après 5 essais, le PIN est bloqué 15 minutes ou jusqu’à ce qu’un superviseur le débloque.",
+        "noFunciona": {
+          "titulo": "Ça ne marche pas ?",
+          "descripcion": "Pointez avec le QR depuis votre téléphone ou approchez votre badge. Si vous n’avez ni l’un ni l’autre, prévenez votre responsable : il peut enregistrer le pointage avec un motif."
+        },
+        "olvidaste": {
+          "titulo": "PIN oublié ?",
+          "descripcion": "Demandez-en un nouveau aux Ressources humaines. En attendant, vous pouvez pointer avec le QR depuis votre téléphone."
+        },
+        "despuesFoto": "Après votre PIN, la tablette prend une photo justificative si vous l’avez autorisée."
+      },
+      "foto": {
+        "mira": "Regardez la caméra : nous prenons votre photo justificative",
+        "sinCamara": "Impossible d’ouvrir la caméra : votre pointage est enregistré sans photo.",
+        "identificado": "{metodo, select, pin {{nombre}, nous vous avons identifié avec votre PIN} other {{nombre}, nous vous avons identifié avec votre badge}}",
+        "explicacion": "Cette tablette ne reconnaît pas les visages : la photo sert seulement à prouver que c’est bien vous qui avez pointé. Elle est supprimée après {dias} jours, ou à la clôture d’une éventuelle réclamation. Nous la prenons parce que vous l’avez autorisée.",
+        "retiro": "Si vous retirez l’autorisation, vous pointez quand même, sans photo."
+      },
+      "registrada": {
+        "titulo": {
+          "check_in": "Entrée enregistrée, {nombre} !",
+          "check_out": "Sortie enregistrée, {nombre} !",
+          "break_start": "Début de pause enregistré, {nombre} !",
+          "break_end": "Fin de pause enregistrée, {nombre} !"
+        },
+        "turno": "poste de {inicio} à {fin}",
+        "fotoGuardada": "Photo justificative enregistrée · supprimée le {fecha}",
+        "aRevision": "Votre responsable vérifiera ce pointage",
+        "volvemos": "Retour à l’accueil dans {n} s",
+        "guardadaSinRed": "Pointage enregistré sur cette tablette",
+        "guardadaSinRedDetalle": "Pas d’internet. Nous l’enverrons avec l’heure de la tablette ({hora}) au retour de la connexion, sans doublon. Votre responsable le vérifie."
+      },
+      "sinInternet": {
+        "titulo": "{enLinea, select, si {{n, plural, one {Envoi de # pointage enregistré sur cette tablette} other {Envoi de # pointages enregistrés sur cette tablette}}} other {{n, plural, =0 {Pas d’internet} one {Pas d’internet · # pointage enregistré sur cette tablette} other {Pas d’internet · # pointages enregistrés sur cette tablette}}}}",
+        "descripcion": "Continuez à pointer avec badge ou PIN : nous gardons l’heure de la tablette et l’envoyons au retour de la connexion, sans doublons. Votre responsable les vérifie. Le QR fonctionne toujours si votre téléphone a des données mobiles."
+      },
+      "bloqueado": {
+        "titulo": "Votre PIN est bloqué",
+        "tituloKiosco": "Le PIN est bloqué sur cette tablette",
+        "cuenta": "Déblocage automatique dans {tiempo}",
+        "descripcion": "Il y a eu 5 essais infructueux. Un superviseur peut le débloquer maintenant. En attendant, pointez avec votre badge ou avec le QR depuis votre téléphone.",
+        "supervisor": "Débloquer avec un superviseur"
+      },
+      "supervisor": {
+        "titulo": "Superviseur : saisissez votre PIN",
+        "paraNombre": "Débloquer le PIN de {nombre}",
+        "paraKiosco": "Débloquer le PIN de cette tablette",
+        "descripcion": "Seule une personne qui gère la présence du site peut le faire. L’auteur et l’heure du déblocage sont enregistrés.",
+        "podraNombre": "{nombre} pourra réessayer immédiatement.",
+        "podra": "Il sera possible de réessayer immédiatement.",
+        "errores": {
+          "rechazado": "PIN superviseur incorrect ou sans autorisation de débloquer",
+          "bloqueado": "Trop d’essais du superviseur : attendez 15 minutes",
+          "error": "Impossible de débloquer. Vérifiez la connexion et réessayez."
+        }
+      },
+      "vincular": {
+        "titulo": "Associez cette tablette comme kiosque",
+        "tituloLector": "Associez cet ordinateur comme lecteur de badges",
+        "instrucciones": "Dans GO Admin, allez dans Ressources humaines › Pointage › Appareils › Ajouter un appareil › Kiosque sur une tablette et saisissez ce code :",
+        "instruccionesLector": "Dans GO Admin, allez dans Ressources humaines › Pointage › Appareils › Ajouter un appareil › Lecteur de badge ou QR sur un ordinateur et saisissez ce code :",
+        "vence": "Le code expire dans 10 minutes. L’appareil est rattaché à un site et n’affiche les données de personne tant que personne n’a pointé.",
+        "revocado": "La clé de cet appareil a été révoquée ou n’est plus valide. Associez-le à nouveau avec ce code.",
+        "sinRed": "Hors connexion : le code apparaîtra au retour d’internet."
+      },
+      "avisos": {
+        "carne_desconocido": {
+          "titulo": "Nous ne reconnaissons pas ce badge",
+          "descripcion": "Demandez aux Ressources humaines de l’enregistrer à votre nom. En attendant, pointez avec votre PIN ou avec le QR depuis votre téléphone."
+        },
+        "otra_sede": {
+          "titulo": "Ce kiosque appartient à un autre site",
+          "descripcion": "Pointez au kiosque de votre site ou avec le QR depuis votre téléphone. Si vous travaillez ici aujourd’hui, demandez à votre responsable de vous affecter le poste sur ce site."
+        },
+        "metodo_no_disponible": {
+          "titulo": "Cette méthode n’est pas active pour vous",
+          "descripcion": "Votre site n’accepte pas les pointages par ce moyen. Pointez avec le QR depuis votre téléphone ou prévenez les Ressources humaines."
+        },
+        "sin_marcacion": {
+          "titulo": "Vous ne pointez pas",
+          "descripcion": "Votre fiche indique que vous n’enregistrez ni entrées ni sorties. S’il s’agit d’une erreur, prévenez les Ressources humaines."
+        },
+        "sin_vinculo": {
+          "titulo": "Vous n’avez pas de contrat actif",
+          "descripcion": "Votre PIN ou votre badge n’est plus valide. Adressez-vous aux Ressources humaines."
+        },
+        "credencial_invalida": {
+          "titulo": "Impossible de lire votre PIN ou votre badge",
+          "descripcion": "Réessayez. Si le problème persiste, pointez avec le QR depuis votre téléphone."
+        },
+        "duplicada": {
+          "titulo": "Vous avez déjà enregistré ce pointage, {nombre}",
+          "descripcion": "Le pointage précédent date de moins d’une minute et compte déjà. Inutile de pointer à nouveau."
+        },
+        "vencida": {
+          "titulo": "Le délai pour pointer a expiré",
+          "descripcion": "Plus de 5 minutes se sont écoulées depuis votre identification. Pointez à nouveau."
+        },
+        "repetida": {
+          "titulo": "Ce pointage était déjà enregistré",
+          "descripcion": "Il n’a pas été dupliqué. Vous pouvez continuer."
+        },
+        "error": {
+          "titulo": "Impossible d’enregistrer votre pointage",
+          "descripcion": "Réessayez. Si le problème persiste, pointez avec le QR depuis votre téléphone ou prévenez votre responsable."
+        }
+      }
+    },
+    "alta": {
+      "necesitas": {
+        "kiosco": "Il vous faut : une tablette Android de 10 pouces avec caméra frontale et support mural. Ouvrez GO Admin Kiosque sur la tablette pour voir son code.",
+        "lector_escritorio": "Il vous faut : un lecteur USB NFC 13,56 MHz ou un lecteur de QR code. Dans GO Admin Bureau : menu › Mode lecteur de badges."
+      }
+    },
+    "vincular": {
+      "tituloKiosco": "Associer un kiosque",
+      "tituloLector": "Associer un lecteur de badges",
+      "tituloDeNuevo": "Associer à nouveau · {nombre}",
+      "descripcion": "Saisissez le code affiché par l’appareil. Il sera rattaché au site que vous choisissez.",
+      "descripcionDeNuevo": "La nouvelle tablette ou le nouvel ordinateur affiche un code : saisissez-le ici. L’ancienne clé cesse de fonctionner.",
+      "vincular": "Associer",
+      "paso": {
+        "kiosco": {
+          "titulo": "Sur la tablette",
+          "descripcion": "Ouvrez GO Admin Kiosque (ou /marcacion/kiosco dans le navigateur). Un code de 6 caractères s’affiche ; il expire dans 10 minutes."
+        },
+        "lector": {
+          "titulo": "Sur l’ordinateur",
+          "descripcion": "Dans GO Admin Bureau, ouvrez le menu › Mode lecteur de badges. Un code de 6 caractères s’affiche ; il expire dans 10 minutes."
+        }
+      },
+      "codigo": "Code de l’appareil",
+      "codigoAyuda": "6 lettres et chiffres, tels qu’ils apparaissent à l’écran de l’appareil.",
+      "nombre": "Nom",
+      "nombreEjemploKiosco": "Kiosque de l’entrée",
+      "nombreEjemploLector": "Lecteur de badge · Caisse",
+      "sede": "Site",
+      "eligeSede": "Choisissez le site",
+      "donde": "Emplacement",
+      "dondeAyuda": "Facultatif. Aide à le retrouver dans la liste et dans les alertes.",
+      "vinculado": "{nombre} est associé",
+      "vinculadoDesc": "L’appareil peut maintenant recevoir des pointages. Vérifiez dans Méthodes par site que le PIN ou les badges sont actifs.",
+      "errores": {
+        "codigo_invalido": "Le code n’existe pas ou a expiré. Regardez l’écran de l’appareil : il en affiche un nouveau.",
+        "nombre_invalido": "Saisissez un nom de 2 à 80 caractères.",
+        "sede_invalida": "Choisissez un site.",
+        "descripcion_invalida": "200 caractères maximum.",
+        "sin_permiso": "Vous n’avez pas l’autorisation de gérer les appareils de pointage.",
+        "no_existe": "Cet appareil n’existe plus.",
+        "error": "Impossible d’associer l’appareil. Réessayez."
+      }
+    },
+    "marcacion": {
+      "abrirKiosco": "Ouvrir le kiosque sur cet écran"
+    },
+    "dispositivos": {
+      "abrir": "Ouvrir sur cet écran",
+      "vincularDeNuevo": "Associer à nouveau",
+      "revocar": "Révoquer la clé",
+      "sinVincular": "non associé",
+      "revocada": "La clé de {nombre} a été révoquée",
+      "revocadaDesc": "L’appareil n’enregistre plus de pointages. Pour le réutiliser, associez-le avec un code.",
+      "confirmarRevocar": {
+        "titulo": "Révoquer la clé de {nombre} ?",
+        "descripcion": "L’appareil cesse immédiatement d’enregistrer des pointages (à utiliser en cas de perte ou de remplacement). Les pointages déjà enregistrés ne changent pas. Pour le réutiliser, associez-le avec un nouveau code.",
+        "confirmar": "Révoquer la clé"
+      }
+    },
+    "metodos": {
+      "proximamente": "Bientôt disponible",
+      "fotoCelular": "Demander une photo au pointage (au kiosque uniquement pour l’instant)",
+      "deTotal": "{n} sur {total}",
+      "pinYCarnes": "PIN et badges",
+      "carne": {
+        "activo": "Accepter les badges au kiosque et sur le lecteur de bureau",
+        "foto": "Prendre une photo justificative avec le badge (si la personne l’a autorisée)"
+      },
+      "pin": {
+        "resumen": "{n} personnes sur {total} avec un PIN",
+        "activar": "Activer le kiosque avec PIN",
+        "largo": "Longueur du PIN",
+        "digitos": "chiffres",
+        "foto": "Prendre une photo justificative (si la personne l’a autorisée)",
+        "bloqueo": "Blocage après des essais infructueux",
+        "bloqueoValor": "5 essais · 15 minutes ou un superviseur"
+      },
+      "foto": {
+        "ayuda": "Entre {min} et {max}. Si le pointage est en vérification ou fait l’objet d’une réclamation, la photo est conservée jusqu’à la clôture du dossier.",
+        "dias": "jours",
+        "autorizaciones": "Autorisations de photo",
+        "personas": "{n} personnes sur {total}",
+        "letrero": "Nous avons déjà mis l’affiche à l’entrée de {sede}"
+      },
+      "errores": {
+        "fotoDias": "Les jours de conservation de la photo vont de {min} à {max}."
+      }
+    },
+    "credenciales": {
+      "titulo": "PIN et badges",
+      "descripcion": "Personnes de {sede}. Le PIN n’est affiché qu’une fois, à sa génération ; personne d’autre ne le voit.",
+      "listo": "Terminé",
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir les PIN et les badges.",
+      "error": "Impossible de charger les personnes.",
+      "soloLectura": "Lecture seule : pour générer des PIN ou enregistrer des badges, vous devez gérer la présence.",
+      "buscar": "Rechercher une personne",
+      "vacio": "Aucune personne active sur ce site.",
+      "pin": {
+        "asignado": "PIN attribué",
+        "sinPin": "Sans PIN",
+        "bloqueado": "PIN bloqué",
+        "generar": "Générer un PIN",
+        "nuevo": "Nouveau PIN",
+        "desbloquear": "Débloquer",
+        "desbloqueado": "PIN débloqué"
+      },
+      "carne": {
+        "carne_nfc": "Badge NFC",
+        "carne_qr": "Badge QR",
+        "nfc": "Badge NFC",
+        "qr": "Badge QR",
+        "quitar": "Retirer le badge {etiqueta}",
+        "registrado": "Badge enregistré au nom de {nombre}"
+      },
+      "foto": {
+        "si": "Photo autorisée",
+        "no": "Sans autorisation de photo"
+      },
+      "errores": {
+        "sin_permiso": "Vous n’avez pas l’autorisation pour cette action.",
+        "carne_en_uso": "Ce badge est déjà enregistré au nom d’une autre personne.",
+        "carne_invalido": "Impossible de lire le code du badge.",
+        "generico": "Impossible d’enregistrer. Réessayez."
+      },
+      "pinNuevo": {
+        "titulo": "PIN de {nombre}",
+        "descripcion": "Remettez-le à la personne en privé. Il lui sert à pointer au kiosque.",
+        "entregado": "Je l’ai remis",
+        "unaVez": "Il ne sera plus affiché. En cas de perte, générez-en un nouveau (l’ancien cesse de fonctionner)."
+      },
+      "carneQr": {
+        "titulo": "Badge QR de {nombre}",
+        "descripcion": "Imprimez ce code sur le badge. Il se lit avec la caméra du kiosque ou avec un lecteur de QR.",
+        "listo": "Terminé",
+        "unaVez": "Enregistrez-le ou imprimez-le maintenant : il ne sera plus affiché."
+      },
+      "leer": {
+        "titulo": "Badge NFC de {nombre}",
+        "descripcion": "Approchez la carte du lecteur USB ou, sur un téléphone Android, de l’arrière. Vous pouvez aussi saisir le code imprimé.",
+        "registrar": "Enregistrer le badge",
+        "motivo": "Lisez ou saisissez le code du badge",
+        "placeholder": "Code du badge",
+        "campo": "Code du badge",
+        "ayuda": "Il se remplit tout seul quand vous approchez la carte."
+      }
+    },
+    "autorizaciones": {
+      "abrir": "Vos autorisations",
+      "titulo": "Vos autorisations",
+      "subtitulo": "Ma présence · {sede}",
+      "pregunta": "Qu’autorisez-vous pour pointer ?",
+      "bloques": {
+        "paraQue": {
+          "titulo": "Dans quel but",
+          "texto": "Uniquement pour enregistrer vos entrées, sorties et pauses à {sede}."
+        },
+        "queSeGuarda": {
+          "titulo": "Ce qui est conservé et où",
+          "texto": "L’empreinte et le visage sont conservés chiffrés dans GO Admin et dans les pointeuses du site, pour que vous ne les enregistriez qu’une fois. Personne ne peut les voir à l’écran. Ils sont supprimés si vous retirez l’autorisation ou si votre contrat prend fin."
+        },
+        "voluntario": {
+          "titulo": "C’est facultatif",
+          "texto": "Chaque autorisation est facultative. Sans elles, vous pointez avec PIN, badge ou QR, sans effet sur votre contrat."
+        },
+        "foto": {
+          "titulo": "Photo justificative",
+          "texto": "Si vous l’autorisez, le kiosque prend une photo à chaque pointage avec PIN ou badge. Elle est supprimée après {dias} jours, ou à la clôture d’une réclamation."
+        },
+        "retirar": {
+          "titulo": "Vous pouvez la retirer",
+          "texto": "Quand vous voulez, depuis cette page."
+        }
+      },
+      "casillas": {
+        "biometria": "Empreinte et visage sur la pointeuse du site",
+        "foto": "Photo justificative au kiosque"
+      },
+      "vigenteDesde": "Autorisée depuis le {fecha}",
+      "version": "Politique de traitement des données, version 2026-11.",
+      "guardar": "Enregistrer mes autorisations",
+      "nada": "Je n’autorise rien : PIN, badge ou QR",
+      "guardado": "Vos autorisations sont enregistrées",
+      "sinVinculo": "Vous n’avez pas de contrat de travail actif dans cette organisation.",
+      "errores": {
+        "sinVinculo": "Vous n’avez pas de contrat de travail actif dans cette organisation.",
+        "guardar": "Impossible d’enregistrer. Réessayez."
+      }
+    },
+    "foto": {
+      "ver": "Voir la photo justificative",
+      "titulo": "Photo justificative · {nombre}",
+      "descripcion": "Prise par le kiosque lors du pointage, avec l’autorisation de la personne. Cette consultation est enregistrée.",
+      "cerrar": "Fermer",
+      "alt": "Photo justificative de {nombre}",
+      "retenida": "Conservée tant que le pointage a une réclamation ou un ajustement en cours.",
+      "vence": "Supprimée le {fecha}.",
+      "sinFoto": "Ce pointage n’a pas de photo justificative.",
+      "sinPermiso": "Vous n’avez pas l’autorisation de voir cette photo.",
+      "error": "Impossible de charger la photo."
+    }
   }
 }

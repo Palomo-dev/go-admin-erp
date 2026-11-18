@@ -10,7 +10,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlarmClockCheck, CalendarCheck, House, MonitorSmartphone, PenLine, Settings, TriangleAlert } from 'lucide-react';
+import { AlarmClockCheck, CalendarCheck, Camera, House, MonitorSmartphone, PenLine, Settings, TriangleAlert } from 'lucide-react';
 import {
   AvisoTonal,
   DataTable,
@@ -32,6 +32,7 @@ import type { Carga } from '../personas/apiPersonas';
 import { CeldaPersona, rutaHoja, useHora } from '../asistencia/comunAsistencia';
 import { periodoQuincena } from '../asistencia/asistenciaLogica';
 import { DialogoAjuste } from '../asistencia/DialogoAjuste';
+import { DialogoFotoEvidencia } from '../kiosco/DialogoFotoEvidencia';
 import { InsigniaVerificacion, MetodoConIcono, RUTA_MARCACION, iconoMetodo } from './comunMarcacion';
 import {
   GRUPOS_VERIFICACION,
@@ -60,6 +61,8 @@ export function VistaEnVivo({ carga, recargar }: { carga: Carga<RespuestaEnVivo>
   const [metodo, setMetodo] = useState<MetodoFila | null>(null);
   const [verificacion, setVerificacion] = useState<GrupoVerificacion | null>(null);
   const [ajustar, setAjustar] = useState<FilaVivo | null>(null);
+  const [foto, setFoto] = useState<{ id: string; nombre: string } | null>(null);
+  const tk = useTranslations('hrmKiosco.foto');
 
   const todas = useMemo(() => filasEnVivo(datos), [datos]);
   const metodos = useMemo(() => metodosDeFilas(todas), [todas]);
@@ -94,6 +97,13 @@ export function VistaEnVivo({ carga, recargar }: { carga: Carga<RespuestaEnVivo>
       icono: MonitorSmartphone,
       onSelect: () => router.push(`${RUTA_MARCACION}?vista=dispositivos`),
       oculta: f.clase !== 'marca' || !f.punto_id,
+    },
+    {
+      id: 'foto',
+      etiqueta: tk('ver'),
+      icono: Camera,
+      onSelect: () => f.clase === 'marca' && setFoto({ id: f.id, nombre: f.nombre }),
+      oculta: f.clase !== 'marca' || f.foto !== true,
     },
     {
       id: 'ajuste',
@@ -352,6 +362,8 @@ export function VistaEnVivo({ carga, recargar }: { carga: Carga<RespuestaEnVivo>
         onReintentar={() => void recargar()}
         termino={texto}
       />
+
+      <DialogoFotoEvidencia eventoId={foto?.id ?? null} nombre={foto?.nombre ?? ''} onCerrar={() => setFoto(null)} />
 
       {datos && (
         <DialogoAjuste

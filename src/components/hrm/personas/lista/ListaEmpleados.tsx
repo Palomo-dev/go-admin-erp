@@ -148,6 +148,11 @@ export function ListaEmpleados() {
     if (!a) return null;
     return <StatusBadge estado={a.tipo} tono={a.nivel === 'peligro' ? 'peligro' : 'advertencia'} etiqueta={textoAlerta(a, true)} />;
   };
+  /** En el celular la alerta va como línea gris bajo el cargo (Figma 20.2.1): a la derecha solo cabe el estado. */
+  const alertaCorta = (e: EmpleadoFila) => {
+    const a = alertaPrincipal(e.alertas);
+    return a ? textoAlerta(a, true) : undefined;
+  };
   const contrato = (e: EmpleadoFila) => (
     <div className="min-w-0">
       <p className="truncate text-fg">{e.tipo_contrato ? tc(`contratos.${e.tipo_contrato}`) : '—'}</p>
@@ -375,12 +380,8 @@ export function ListaEmpleados() {
             avatar={{ nombre: e.nombre ?? '?' }}
             titulo={e.nombre ?? ''}
             subtitulo={[e.cargo, e.sede].filter(Boolean).join(' · ')}
-            estado={
-              <span className="flex flex-wrap items-center gap-2">
-                {badge(e)}
-                {alerta(e)}
-              </span>
-            }
+            estado={badge(e)}
+            meta={alertaCorta(e)}
             onClick={() => abrir(e)}
             acciones={accionesDe(e)}
             seleccionable={ctx.modoSeleccion}

@@ -60162,5 +60162,358 @@
         }
       }
     }
+  },
+  "hrmKiosco": {
+    "kiosco": {
+      "pantallaCompleta": "Pantalla completa",
+      "marca": "GO Admin Kiosco",
+      "sinVincular": "Sin vincular",
+      "cargando": "Cargando el kiosco…",
+      "registrando": "Registrando tu marca…",
+      "pie": "La hora de tu marca es la del servidor. Foto de evidencia solo si la autorizaste: se borra a los {dias} días, o al cerrar un reclamo. Más información en el letrero de la entrada y en GO Admin › Mi asistencia.",
+      "volverInicio": "Volver al inicio",
+      "cancelar": "Cancelar",
+      "inicio": {
+        "escanea": "Escanea con tu celular",
+        "qrTitulo": "QR de marcación",
+        "cambiaEn": "Cambia en {n} s",
+        "qrInstrucciones": "Abre GO Admin › Marcar turno › QR de la sede. Cambia cada 30 segundos y cada código sirve una sola vez: una foto no sirve.",
+        "oMarcaAqui": "O marca aquí",
+        "marcaAqui": "Marca aquí",
+        "carne": {
+          "titulo": "Acerca tu carné",
+          "tablet": "Al lector de la parte de abajo de la tablet",
+          "lector": "Al lector conectado a este equipo"
+        },
+        "listoParaLeer": "Listo para leer",
+        "pin": {
+          "titulo": "Escribe tu PIN",
+          "descripcion": "El de 6 dígitos que te dio Recursos humanos"
+        },
+        "sinRostro": {
+          "titulo": "Esta tablet no reconoce rostros",
+          "descripcion": "Solo toma una foto de evidencia de quien lo autorizó. La huella y el rostro los compara el reloj de la entrada."
+        },
+        "sinMetodos": {
+          "titulo": "Esta sede no tiene métodos del kiosco activos",
+          "descripcion": "Recursos humanos los activa en GO Admin › Marcación › Métodos por sede."
+        }
+      },
+      "teclado": {
+        "titulo": "Escribe tu PIN",
+        "escritos": "Dígitos escritos: {n} de {total}",
+        "digito": "Dígito {n}",
+        "borrar": "Borrar",
+        "listo": "Listo",
+        "incorrecto": "{n, plural, one {PIN incorrecto · te queda # intento} other {PIN incorrecto · te quedan # intentos}}",
+        "incorrectoDetalle": "Tras 5 intentos el PIN se bloquea 15 minutos o hasta que un supervisor lo desbloquee.",
+        "noFunciona": {
+          "titulo": "¿No te funciona?",
+          "descripcion": "Marca con el QR desde tu celular o acerca tu carné. Si no tienes ninguno, avísale a tu jefe: él puede registrar la marca con motivo."
+        },
+        "olvidaste": {
+          "titulo": "¿Olvidaste tu PIN?",
+          "descripcion": "Pídele a Recursos humanos uno nuevo. Mientras tanto puedes marcar con el QR desde tu celular."
+        },
+        "despuesFoto": "Después de tu PIN, la tablet toma una foto de evidencia si la autorizaste."
+      },
+      "foto": {
+        "mira": "Mira a la cámara: tomamos tu foto de evidencia",
+        "sinCamara": "No pudimos abrir la cámara: tu marca queda sin foto.",
+        "identificado": "{metodo, select, pin {{nombre}, ya te identificamos con tu PIN} other {{nombre}, ya te identificamos con tu carné}}",
+        "explicacion": "Esta tablet no reconoce rostros: la foto solo sirve de evidencia de que fuiste tú quien marcó. Se borra a los {dias} días, o al cerrar un reclamo si lo hay. La tomamos porque la autorizaste.",
+        "retiro": "Si retiras la autorización, marcas igual y sin foto."
+      },
+      "registrada": {
+        "titulo": {
+          "check_in": "¡Entrada registrada, {nombre}!",
+          "check_out": "¡Salida registrada, {nombre}!",
+          "break_start": "¡Inicio de descanso registrado, {nombre}!",
+          "break_end": "¡Fin de descanso registrado, {nombre}!"
+        },
+        "turno": "turno de {inicio} a {fin}",
+        "fotoGuardada": "Foto de evidencia guardada · se borra el {fecha}",
+        "aRevision": "Tu jefe revisará esta marca",
+        "volvemos": "Volvemos al inicio en {n} s",
+        "guardadaSinRed": "Marca guardada en esta tablet",
+        "guardadaSinRedDetalle": "No hay internet. La enviamos con la hora de la tablet ({hora}) al volver la conexión, sin duplicarla. Tu jefe la revisa."
+      },
+      "sinInternet": {
+        "titulo": "{enLinea, select, si {{n, plural, one {Enviando # marca guardada en esta tablet} other {Enviando # marcas guardadas en esta tablet}}} other {{n, plural, =0 {Sin internet} one {Sin internet · # marca guardada en esta tablet} other {Sin internet · # marcas guardadas en esta tablet}}}}",
+        "descripcion": "Sigue marcando con carné o PIN: guardamos la hora de la tablet y la enviamos al volver la conexión, sin duplicar marcas. Tu jefe las revisa. El QR sigue funcionando si tu celular tiene datos."
+      },
+      "bloqueado": {
+        "titulo": "Tu PIN está bloqueado",
+        "tituloKiosco": "El PIN está bloqueado en esta tablet",
+        "cuenta": "Se desbloquea solo en {tiempo}",
+        "descripcion": "Hubo 5 intentos fallidos. Un supervisor puede desbloquearlo ahora. Mientras tanto, marca con tu carné o con el QR desde tu celular.",
+        "supervisor": "Desbloquear con un supervisor"
+      },
+      "supervisor": {
+        "titulo": "Supervisor: escribe tu PIN",
+        "paraNombre": "Desbloquear el PIN de {nombre}",
+        "paraKiosco": "Desbloquear el PIN de esta tablet",
+        "descripcion": "Solo quien gestiona la asistencia de la sede puede hacerlo. Queda registrado quién lo desbloqueó y a qué hora.",
+        "podraNombre": "{nombre} podrá intentar de nuevo de inmediato.",
+        "podra": "Se podrá intentar de nuevo de inmediato.",
+        "errores": {
+          "rechazado": "PIN de supervisor incorrecto o sin permiso para desbloquear",
+          "bloqueado": "Demasiados intentos de supervisor: espera 15 minutos",
+          "error": "No pudimos desbloquear. Revisa la conexión e intenta de nuevo."
+        }
+      },
+      "vincular": {
+        "titulo": "Vincula esta tablet como kiosco",
+        "tituloLector": "Vincula este computador como lector de carnés",
+        "instrucciones": "En GO Admin entra a Recursos humanos › Marcación › Dispositivos › Agregar dispositivo › Kiosco en una tablet y escribe este código:",
+        "instruccionesLector": "En GO Admin entra a Recursos humanos › Marcación › Dispositivos › Agregar dispositivo › Lector de carné o QR en un computador y escribe este código:",
+        "vence": "El código vence en 10 minutos. El equipo queda vinculado a una sede y no muestra datos de nadie hasta que alguien marque.",
+        "revocado": "La clave de este equipo se revocó o ya no es válida. Vincúlalo de nuevo con este código.",
+        "sinRed": "Sin conexión: el código aparece cuando vuelva internet."
+      },
+      "avisos": {
+        "carne_desconocido": {
+          "titulo": "No reconocemos este carné",
+          "descripcion": "Pídele a Recursos humanos que lo registre a tu nombre. Mientras tanto, marca con tu PIN o con el QR desde tu celular."
+        },
+        "otra_sede": {
+          "titulo": "Este kiosco es de otra sede",
+          "descripcion": "Marca en el kiosco de tu sede o con el QR desde tu celular. Si hoy trabajas aquí, pídele a tu jefe que te asigne el turno en esta sede."
+        },
+        "metodo_no_disponible": {
+          "titulo": "Este método no está activo para ti",
+          "descripcion": "Tu sede no recibe marcas por este medio. Marca con el QR desde tu celular o avísale a Recursos humanos."
+        },
+        "sin_marcacion": {
+          "titulo": "Tú no marcas asistencia",
+          "descripcion": "Tu ficha dice que no registras entradas ni salidas. Si es un error, avísale a Recursos humanos."
+        },
+        "sin_vinculo": {
+          "titulo": "No tienes un vínculo activo",
+          "descripcion": "Tu PIN o tu carné ya no está vigente. Habla con Recursos humanos."
+        },
+        "credencial_invalida": {
+          "titulo": "No pudimos leer tu PIN o tu carné",
+          "descripcion": "Intenta de nuevo. Si sigue fallando, marca con el QR desde tu celular."
+        },
+        "duplicada": {
+          "titulo": "Ya registraste esta marca, {nombre}",
+          "descripcion": "La marca anterior fue hace menos de un minuto y ya cuenta. No hace falta marcar de nuevo."
+        },
+        "vencida": {
+          "titulo": "Se venció el tiempo para marcar",
+          "descripcion": "Pasaron más de 5 minutos desde que te identificamos. Marca de nuevo."
+        },
+        "repetida": {
+          "titulo": "Esta marca ya estaba registrada",
+          "descripcion": "No se duplicó. Puedes seguir."
+        },
+        "error": {
+          "titulo": "No pudimos registrar tu marca",
+          "descripcion": "Intenta de nuevo. Si sigue fallando, marca con el QR desde tu celular o avísale a tu jefe."
+        }
+      }
+    },
+    "alta": {
+      "necesitas": {
+        "kiosco": "Necesitas: tablet Android de 10 pulgadas con cámara frontal y soporte de pared. Abre GO Admin Kiosco en la tablet para ver su código.",
+        "lector_escritorio": "Necesitas: lector USB NFC de 13,56 MHz o lector de código QR. En GO Admin Escritorio: menú › Modo lector de carnés."
+      }
+    },
+    "vincular": {
+      "tituloKiosco": "Vincular un kiosco",
+      "tituloLector": "Vincular un lector de carnés",
+      "tituloDeNuevo": "Vincular de nuevo · {nombre}",
+      "descripcion": "Escribe el código que muestra el equipo. Queda vinculado a la sede que elijas.",
+      "descripcionDeNuevo": "La tablet o el computador nuevo muestra un código: escríbelo aquí. La clave anterior deja de servir.",
+      "vincular": "Vincular",
+      "paso": {
+        "kiosco": {
+          "titulo": "En la tablet",
+          "descripcion": "Abre GO Admin Kiosco (o /marcacion/kiosco en el navegador). Muestra un código de 6 caracteres que vence en 10 minutos."
+        },
+        "lector": {
+          "titulo": "En el computador",
+          "descripcion": "En GO Admin Escritorio abre el menú › Modo lector de carnés. Muestra un código de 6 caracteres que vence en 10 minutos."
+        }
+      },
+      "codigo": "Código del equipo",
+      "codigoAyuda": "6 letras y números, como aparece en la pantalla del equipo.",
+      "nombre": "Nombre",
+      "nombreEjemploKiosco": "Kiosco de la entrada",
+      "nombreEjemploLector": "Lector de carné · Caja",
+      "sede": "Sede",
+      "eligeSede": "Elige la sede",
+      "donde": "Dónde está",
+      "dondeAyuda": "Opcional. Ayuda a encontrarlo en la lista y en las alertas.",
+      "vinculado": "{nombre} quedó vinculado",
+      "vinculadoDesc": "El equipo ya puede recibir marcas. Revisa en Métodos por sede que el PIN o los carnés estén activos.",
+      "errores": {
+        "codigo_invalido": "El código no existe o ya venció. Revisa la pantalla del equipo: muestra uno nuevo.",
+        "nombre_invalido": "Escribe un nombre de 2 a 80 caracteres.",
+        "sede_invalida": "Elige una sede.",
+        "descripcion_invalida": "Hasta 200 caracteres.",
+        "sin_permiso": "No tienes permiso para gestionar los dispositivos de marcación.",
+        "no_existe": "Ese dispositivo ya no existe.",
+        "error": "No pudimos vincular el equipo. Intenta de nuevo."
+      }
+    },
+    "marcacion": {
+      "abrirKiosco": "Abrir kiosco en esta pantalla"
+    },
+    "dispositivos": {
+      "abrir": "Abrir en esta pantalla",
+      "vincularDeNuevo": "Vincular de nuevo",
+      "revocar": "Revocar clave",
+      "sinVincular": "sin vincular",
+      "revocada": "Se revocó la clave de {nombre}",
+      "revocadaDesc": "El equipo dejó de marcar. Para usarlo de nuevo, vincúlalo con un código.",
+      "confirmarRevocar": {
+        "titulo": "¿Revocar la clave de {nombre}?",
+        "descripcion": "El equipo deja de marcar al instante (úsalo si se perdió o se cambió). Las marcas que ya registró no cambian. Para volver a usarlo, vincúlalo con un código nuevo.",
+        "confirmar": "Revocar clave"
+      }
+    },
+    "metodos": {
+      "proximamente": "Próximamente",
+      "fotoCelular": "Pedir una foto al marcar (solo en el kiosco por ahora)",
+      "deTotal": "{n} de {total}",
+      "pinYCarnes": "PIN y carnés",
+      "carne": {
+        "activo": "Recibir carnés en el kiosco y en el lector de escritorio",
+        "foto": "Tomar foto de evidencia con el carné (si la persona lo autorizó)"
+      },
+      "pin": {
+        "resumen": "{n} de {total} personas con PIN",
+        "activar": "Activar el kiosco con PIN",
+        "largo": "Largo del PIN",
+        "digitos": "dígitos",
+        "foto": "Tomar foto de evidencia (si la persona lo autorizó)",
+        "bloqueo": "Bloqueo por intentos fallidos",
+        "bloqueoValor": "5 intentos · 15 minutos o un supervisor"
+      },
+      "foto": {
+        "ayuda": "Entre {min} y {max}. Si la marca está en revisión o tiene un reclamo, la foto se conserva hasta cerrar el caso.",
+        "dias": "días",
+        "autorizaciones": "Autorizaciones de foto",
+        "personas": "{n} de {total} personas",
+        "letrero": "Ya pusimos el letrero en la entrada de {sede}"
+      },
+      "errores": {
+        "fotoDias": "Los días de la foto van de {min} a {max}."
+      }
+    },
+    "credenciales": {
+      "titulo": "PIN y carnés",
+      "descripcion": "Personas de {sede}. El PIN se muestra una sola vez al generarlo; nadie más lo ve.",
+      "listo": "Listo",
+      "sinPermiso": "No tienes permiso para ver los PIN y carnés.",
+      "error": "No pudimos cargar las personas.",
+      "soloLectura": "Solo lectura: para generar PIN o registrar carnés necesitas gestionar la asistencia.",
+      "buscar": "Buscar persona",
+      "vacio": "No hay personas activas en esta sede.",
+      "pin": {
+        "asignado": "PIN asignado",
+        "sinPin": "Sin PIN",
+        "bloqueado": "PIN bloqueado",
+        "generar": "Generar PIN",
+        "nuevo": "PIN nuevo",
+        "desbloquear": "Desbloquear",
+        "desbloqueado": "PIN desbloqueado"
+      },
+      "carne": {
+        "carne_nfc": "Carné NFC",
+        "carne_qr": "Carné QR",
+        "nfc": "Carné NFC",
+        "qr": "Carné QR",
+        "quitar": "Quitar el carné {etiqueta}",
+        "registrado": "Carné registrado a {nombre}"
+      },
+      "foto": {
+        "si": "Foto autorizada",
+        "no": "Sin autorización de foto"
+      },
+      "errores": {
+        "sin_permiso": "No tienes permiso para esta acción.",
+        "carne_en_uso": "Ese carné ya está registrado a otra persona.",
+        "carne_invalido": "No pudimos leer el código del carné.",
+        "generico": "No pudimos guardar. Intenta de nuevo."
+      },
+      "pinNuevo": {
+        "titulo": "PIN de {nombre}",
+        "descripcion": "Entrégaselo a la persona en privado. Con él marca en el kiosco.",
+        "entregado": "Ya lo entregué",
+        "unaVez": "No se vuelve a mostrar. Si se pierde, genera uno nuevo (el anterior deja de servir)."
+      },
+      "carneQr": {
+        "titulo": "Carné QR de {nombre}",
+        "descripcion": "Imprime este código en el carné. Se lee con la cámara del kiosco o con un lector de QR.",
+        "listo": "Listo",
+        "unaVez": "Guárdalo o imprímelo ahora: no se vuelve a mostrar."
+      },
+      "leer": {
+        "titulo": "Carné NFC de {nombre}",
+        "descripcion": "Acerca el carné al lector USB o, en un celular Android, a la parte de atrás. También puedes escribir el código impreso.",
+        "registrar": "Registrar carné",
+        "motivo": "Lee o escribe el código del carné",
+        "placeholder": "Código del carné",
+        "campo": "Código del carné",
+        "ayuda": "Se llena solo al acercar el carné."
+      }
+    },
+    "autorizaciones": {
+      "abrir": "Tus autorizaciones",
+      "titulo": "Tus autorizaciones",
+      "subtitulo": "Mi asistencia · {sede}",
+      "pregunta": "¿Qué autorizas para marcar?",
+      "bloques": {
+        "paraQue": {
+          "titulo": "Para qué",
+          "texto": "Solo para registrar tus entradas, salidas y descansos en {sede}."
+        },
+        "queSeGuarda": {
+          "titulo": "Qué se guarda y dónde",
+          "texto": "La huella y el rostro se guardan cifrados en GO Admin y en los relojes de la sede, para que los registres una sola vez. Nadie los puede ver en pantalla. Se borran si retiras la autorización o terminas tu vínculo."
+        },
+        "voluntario": {
+          "titulo": "Es voluntario",
+          "texto": "Cada autorización es opcional. Sin ellas marcas con PIN, carné o QR, sin efecto en tu contrato."
+        },
+        "foto": {
+          "titulo": "Foto de evidencia",
+          "texto": "Si la autorizas, el kiosco toma una foto en cada marca con PIN o carné. Se borra a los {dias} días, o al cerrar un reclamo."
+        },
+        "retirar": {
+          "titulo": "Puedes retirarla",
+          "texto": "Cuando quieras, desde aquí."
+        }
+      },
+      "casillas": {
+        "biometria": "Huella y rostro en el reloj de la sede",
+        "foto": "Foto de evidencia en el kiosco"
+      },
+      "vigenteDesde": "Autorizada desde el {fecha}",
+      "version": "Política de tratamiento de datos, versión 2026-11.",
+      "guardar": "Guardar lo que autorizo",
+      "nada": "No autorizo nada: PIN, carné o QR",
+      "guardado": "Guardamos lo que autorizas",
+      "sinVinculo": "No tienes un vínculo laboral activo en esta organización.",
+      "errores": {
+        "sinVinculo": "No tienes un vínculo laboral activo en esta organización.",
+        "guardar": "No pudimos guardar. Intenta de nuevo."
+      }
+    },
+    "foto": {
+      "ver": "Ver foto de evidencia",
+      "titulo": "Foto de evidencia · {nombre}",
+      "descripcion": "La tomó el kiosco al marcar, con la autorización de la persona. Esta vista queda registrada.",
+      "cerrar": "Cerrar",
+      "alt": "Foto de evidencia de {nombre}",
+      "retenida": "Se conserva mientras la marca tenga un reclamo o un ajuste abierto.",
+      "vence": "Se borra el {fecha}.",
+      "sinFoto": "Esta marca no tiene foto de evidencia.",
+      "sinPermiso": "No tienes permiso para ver esta foto.",
+      "error": "No pudimos cargar la foto."
+    }
   }
 }

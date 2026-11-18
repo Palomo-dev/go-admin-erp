@@ -49,6 +49,10 @@ export interface RespuestaMetodos {
   pantallas: { id: string; nombre: string }[];
   personas: number;
   personas_remoto: number;
+  /** M1: kioscos y lectores de la sede, PIN y carnés entregados, foto de evidencia. */
+  kioscos?: { id: string; nombre: string; tipo: string }[];
+  credenciales?: { pines: number; carnes: number };
+  foto?: { dias: number; letrero_puesto: boolean; letrero_puesto_at: string | null; autorizadas: number };
 }
 
 export type EstadoExcepcionApi = 'pendiente' | 'aprobada' | 'rechazada' | 'anulada' | 'revocada';

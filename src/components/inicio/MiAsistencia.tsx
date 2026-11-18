@@ -15,9 +15,10 @@
  */
 import { useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { AlarmClockCheck, Eye, Info, MessageSquare } from 'lucide-react';
+import { AlarmClockCheck, Eye, FileSignature, Info, MessageSquare } from 'lucide-react';
 import {
   AvisoTonal,
+  clasesBoton,
   DataTable,
   EmptyState,
   FilterChips,
@@ -39,6 +40,7 @@ import { diasDeSemana, lunesDe, partesHoras } from '@/lib/hrm/turnos/programacio
 import { useCarga } from '@/components/hrm/estructura/comun';
 import { useFormatoHora } from '@/components/hrm/turnos/formatoHora';
 import { TurnoCard, useTurnoInicio } from './TurnoInicio';
+import { DialogoAutorizaciones } from '@/components/hrm/kiosco/DialogoAutorizaciones';
 import { CeldaMetodo, DialogoDetalleMarcas, DialogoReclamo } from './DialogoReclamo';
 import { ESTADOS, estadoDe, metodoDelDia, metodosDeSede, puedeReclamar, type DiaAsistencia, type Estado } from './miAsistenciaLogica';
 
@@ -62,6 +64,8 @@ const TONO: Record<Estado, 'exito' | 'advertencia' | 'peligro' | 'neutro' | 'inf
 
 export function MiAsistencia() {
   const t = useTranslations('hrmMarcacion.miAsistencia');
+  const tk = useTranslations('hrmKiosco.autorizaciones');
+  const [autorizaciones, setAutorizaciones] = useState(false);
   const f = useFormatoHora();
   const escritorio = useEsEscritorio();
   const { getToday } = useFormatDate();
@@ -167,7 +171,16 @@ export function MiAsistencia() {
         icono={AlarmClockCheck}
         migas={[{ etiqueta: t('inicio'), href: '/app/inicio' }, { etiqueta: t('titulo') }]}
         cargando={carga.estado === 'cargando'}
+        acciones={
+          noMarca ? undefined : (
+            <button type="button" onClick={() => setAutorizaciones(true)} className={clasesBoton({ variante: 'secundario' })}>
+              <FileSignature className="size-4" aria-hidden="true" strokeWidth={1.5} />
+              {tk('abrir')}
+            </button>
+          )
+        }
       />
+      <DialogoAutorizaciones abierto={autorizaciones} onAbiertoChange={setAutorizaciones} />
       {carga.estado === 'sinPermiso' || noMarca ? (
         <EmptyState variante="forbidden" titulo={t('noMarca.titulo')} descripcion={t('noMarca.descripcion')} accion={{ etiqueta: t('irInicio'), href: '/app/inicio' }} />
       ) : (

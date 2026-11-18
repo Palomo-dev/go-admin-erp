@@ -2,14 +2,15 @@
 
 /**
  * Marcación › Dispositivos (Figma 20.28.1, 20.28.2, 20.28.10 y 20.28.13), en la
- * versión de M0: pantallas de QR y etiquetas NFC de la sede. Los equipos que
- * llegan con M1/M2 (kiosco, lector, terminales) aparecen si ya existen, pero solo
- * se activan o desactivan. Nunca se borra un punto: las marcas lo referencian.
+ * versión de M0: pantallas de QR y etiquetas NFC de la sede. Desde M1, el kiosco y
+ * el lector de escritorio se abren, se vinculan de nuevo o se les revoca la clave
+ * (la tablet perdida deja de marcar al instante). Los terminales (M2) solo se
+ * activan o desactivan. Nunca se borra un punto: las marcas lo referencian.
  */
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ExternalLink, House, MonitorSmartphone, Plus, Power, RefreshCw } from 'lucide-react';
+import { ExternalLink, House, KeyRound, Link2, MonitorSmartphone, Plus, Power, RefreshCw } from 'lucide-react';
 import {
   ConfirmDialog,
   DataTable,
@@ -28,6 +29,7 @@ import { ErrorPersonas, pedir, type Carga } from '../personas/apiPersonas';
 import { InsigniaEstado } from '../asistencia/comunAsistencia';
 import { iconoDispositivo } from './comunMarcacion';
 import { DialogoCodigoEtiqueta } from './DialogoAgregarPunto';
+import { DialogoVincularEquipo } from '../kiosco/DialogoVincularEquipo';
 import {
   accionesDispositivo,
   coincideDispositivo,
@@ -57,6 +59,9 @@ export function VistaDispositivos({
 }) {
   const t = useTranslations('hrmMarcacionRrhh');
   const td = useTranslations('hrmMarcacionRrhh.dispositivos');
+  const tk = useTranslations('hrmKiosco.dispositivos');
+  const [revocar, setRevocar] = useState<Dispositivo | null>(null);
+  const [revincular, setRevincular] = useState<Dispositivo | null>(null);
   const datos = carga.estado === 'listo' ? carga.datos : null;
   const puede = !!datos?.puede_gestionar;
   const [texto, setTexto] = useState('');
@@ -71,14 +76,17 @@ export function VistaDispositivos({
   const filas = todos.filter((d) => coincideDispositivo(d, texto) && (!estado || estadoDispositivo(d, ahora) === estado));
   const chips: ChipFiltro[] = estado ? [{ clave: 'estado', etiqueta: t('filtros.chipEstado', { valor: td(`estados.${estado}`) }) }] : [];
 
-  const accionar = async (d: Dispositivo, accion: 'regenerar' | 'activar' | 'desactivar') => {
+  const accionar = async (d: Dispositivo, accion: 'regenerar' | 'activar' | 'desactivar' | 'revocar') => {
     setEnviando(true);
     try {
       const r = await pedir<{ id: string; tipo?: string; codigo?: string | null }>(`/api/hrm/marcacion/dispositivos/${d.id}`, {
         metodo: 'POST',
         cuerpo: { accion },
       });
-      if (accion === 'regenerar') {
+      if (accion === 'revocar') {
+        toast.success(tk('revocada', { nombre: d.nombre }), { description: tk('revocadaDesc') });
+        setRevocar(null);
+      } else if (accion === 'regenerar') {
         if (r.codigo) setCodigo({ id: d.id, codigo: r.codigo, nombre: d.nombre });
         else toast.success(td('regenerada', { nombre: d.nombre }), { description: td('regeneradaPantallaDesc') });
       } else {
@@ -97,7 +105,30 @@ export function VistaDispositivos({
   const accionesDe = (d: Dispositivo): AccionFila[] => {
     const a = accionesDispositivo(d, puede);
     const etiqueta = tipoDispositivo(d) === 'etiqueta_nfc';
+    const equipo = tipoDispositivo(d) === 'kiosco' || tipoDispositivo(d) === 'lector_escritorio';
     return [
+      {
+        id: 'abrirKiosco',
+        etiqueta: tk('abrir'),
+        icono: ExternalLink,
+        onSelect: () => window.open(tipoDispositivo(d) === 'kiosco' ? '/marcacion/kiosco' : '/marcacion/kiosco?modo=lector', '_blank', 'noopener'),
+        oculta: !(puede && equipo && d.activo),
+      },
+      {
+        id: 'vincularDeNuevo',
+        etiqueta: tk('vincularDeNuevo'),
+        icono: Link2,
+        onSelect: () => setRevincular(d),
+        oculta: !(puede && equipo),
+      },
+      {
+        id: 'revocar',
+        etiqueta: tk('revocar'),
+        icono: KeyRound,
+        destructiva: true,
+        onSelect: () => setRevocar(d),
+        oculta: !(puede && equipo && d.vinculado === true),
+      },
       {
         id: 'abrir',
         etiqueta: td('acciones.abrirPantalla'),
@@ -133,6 +164,7 @@ export function VistaDispositivos({
 
   const textoConexion = (d: Dispositivo): string => {
     if (tipoDispositivo(d) === 'etiqueta_nfc') return td('noSeConecta');
+    if (d.vinculado === false) return tk('sinVincular');
     const h = haceCuanto(d.ultima_conexion, ahora);
     if (!h) return td('nunca');
     return h.unidad === 'ahora' ? td('hace.ahora') : td(`hace.${h.unidad}`, { n: h.n });
@@ -285,6 +317,28 @@ export function VistaDispositivos({
       />
 
       <DialogoCodigoEtiqueta etiqueta={codigo} onCerrar={() => setCodigo(null)} />
+
+      <ConfirmDialog
+        abierto={revocar !== null}
+        onAbiertoChange={(a) => !a && setRevocar(null)}
+        tono="peligro"
+        icono={KeyRound}
+        titulo={tk('confirmarRevocar.titulo', { nombre: revocar?.nombre ?? '' })}
+        descripcion={tk('confirmarRevocar.descripcion')}
+        textoConfirmar={tk('confirmarRevocar.confirmar')}
+        cargando={enviando}
+        onConfirmar={() => (revocar ? accionar(revocar, 'revocar') : undefined)}
+      />
+
+      <DialogoVincularEquipo
+        abierto={revincular !== null}
+        onAbiertoChange={(a) => !a && setRevincular(null)}
+        tipo={revincular && tipoDispositivo(revincular) === 'lector_escritorio' ? 'lector_escritorio' : 'kiosco'}
+        sedeInicial={revincular?.sede_id ?? null}
+        relojId={revincular?.id ?? null}
+        nombreActual={revincular?.nombre ?? null}
+        onVinculado={() => void recargar()}
+      />
     </>
   );
 }

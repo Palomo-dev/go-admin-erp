@@ -31,6 +31,12 @@ export interface DesktopConfig {
    * lo pide, nunca solo.
    */
   scale?: ScaleConfig;
+  /**
+   * Clave del equipo como punto de Marcación (modo lector de carnés, M1),
+   * cifrada con `safeStorage`. La genera la web al vincular el equipo; GO Admin
+   * solo guarda su hash. Ver main/kioscoMarcacion.ts.
+   */
+  encryptedKioskKey?: string;
 }
 
 export interface ScaleConfig {

@@ -2774,7 +2774,12 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
   // plataforma con `isPlatformAdmin` (fn_is_platform_admin). Que no se pueda
   // vaciar por dentro lo vigila src/app/api/modules/__tests__/
   // guardarrailServiceRoleModulos.test.ts («el resolutor: sesión primero…»).
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|resolverObjetivoModulos|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken)\s*\(/;
+  // `autenticarKiosco` (Marcación M1, src/lib/services/hrm/kioscoService.server.ts):
+  // la tablet o el lector de escritorio no tienen sesión; autentican con la clave
+  // del equipo (Bearer, SHA-256, 401 uniforme, límite por IP) y la organización sale
+  // del equipo registrado. Mismo esquema que `authenticateDisplayRequest`. Lo vigila
+  // además src/lib/hrm/kiosco/__tests__/contratoKiosco.test.ts.
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|contextoDeFacturacion|requireSessionUser|withWhatsAppRoute|withPlatformAdmin|requirePlatformAdmin|resolverObjetivoModulos|withCron|verifyCronSecret|verifyWebOrdersSecret|constructEvent|constructWebhookEvent|verifyTwilioWebhook|verifyTwilioRequest|verifyTwilioUrlSignature|verifyMetaSignature|verifyResendWebhook|safeEqual|authenticateDisplayRequest|resolveDisplayActor|requireDisplayToken|validateFeedToken|autenticarKiosco)\s*\(/;
   const SESION_USUARIO_RE = /\bgetServerUserClient\s*\(\s*\)[\s\S]*?\.auth\.getUser\s*\(/;
   const CERRADO_SIN_ENTRADA_RE = /^export\s+(?:async\s+)?function\s+(?:GET|POST|PUT|PATCH|DELETE)\s*\(\s*\)[\s\S]*status:\s*401\b/;
   const HANDLER_RE = /^export\s+(?:const|async\s+function|function)\s+(GET|POST|PUT|PATCH|DELETE)\b/;
@@ -2800,6 +2805,7 @@ describe('31. Toda ruta de src/app/api pasa por una puerta del servidor', () => 
     ['app/api/modules/public/route.ts GET', 'catálogo público de módulos para el registro; sin datos de un tenant'],
     ['app/api/pms/ical/[token]/route.ts GET', 'feed iCal público: el token secreto (≥ 32 caracteres) de la conexión es la credencial'],
     ['app/api/pos/display/pair/route.ts POST', 'canje del código de emparejamiento de un solo uso con límite de intentos (caso 5, pantalla del POS)'],
+    ['app/api/hrm/kiosco/vinculo/route.ts POST', 'código de vinculación del kiosco de Marcación (M1): el equipo sin vincular manda el SHA-256 de su clave y recibe un código de 10 min; límite por IP (checkRateLimit) y 20 por IP en la base; no devuelve datos de ninguna organización'],
     ['app/api/pricing/enterprise/route.ts GET', 'precios públicos del plan Enterprise; sin datos de un tenant'],
     ['app/api/stripe/setup-intent/route.ts POST', 'paso de tarjeta del alta, sin cuenta aún: siempre un cliente de Stripe nuevo de alta (clienteDeAlta.ts) y límite por IP'],
     ['app/api/stripe/setup-intent/route.ts GET', 'solo SetupIntents del alta cuyo cliente sigue pendiente (esClienteDeAltaPendiente); límite por IP'],

@@ -60147,5 +60147,358 @@
         }
       }
     }
+  },
+  "hrmKiosco": {
+    "kiosco": {
+      "pantallaCompleta": "Full screen",
+      "marca": "GO Admin Kiosk",
+      "sinVincular": "Not paired",
+      "cargando": "Loading the kiosk…",
+      "registrando": "Recording your punch…",
+      "pie": "Your punch uses the server time. Evidence photo only if you authorized it: it is deleted after {dias} days, or when a claim is closed. More information on the sign at the entrance and in GO Admin › My attendance.",
+      "volverInicio": "Back to start",
+      "cancelar": "Cancel",
+      "inicio": {
+        "escanea": "Scan with your phone",
+        "qrTitulo": "Clock-in QR",
+        "cambiaEn": "Changes in {n} s",
+        "qrInstrucciones": "Open GO Admin › Clock in › Branch QR. It changes every 30 seconds and each code works only once: a photo won't work.",
+        "oMarcaAqui": "Or clock in here",
+        "marcaAqui": "Clock in here",
+        "carne": {
+          "titulo": "Tap your ID card",
+          "tablet": "On the reader at the bottom of the tablet",
+          "lector": "On the reader connected to this computer"
+        },
+        "listoParaLeer": "Ready to read",
+        "pin": {
+          "titulo": "Enter your PIN",
+          "descripcion": "The 6-digit one Human resources gave you"
+        },
+        "sinRostro": {
+          "titulo": "This tablet does not recognize faces",
+          "descripcion": "It only takes an evidence photo of people who authorized it. Fingerprints and faces are matched by the time clock at the entrance."
+        },
+        "sinMetodos": {
+          "titulo": "This branch has no active kiosk methods",
+          "descripcion": "Human resources turns them on in GO Admin › Time clock › Methods by branch."
+        }
+      },
+      "teclado": {
+        "titulo": "Enter your PIN",
+        "escritos": "Digits entered: {n} of {total}",
+        "digito": "Digit {n}",
+        "borrar": "Delete",
+        "listo": "Done",
+        "incorrecto": "{n, plural, one {Wrong PIN · # attempt left} other {Wrong PIN · # attempts left}}",
+        "incorrectoDetalle": "After 5 attempts the PIN is locked for 15 minutes or until a supervisor unlocks it.",
+        "noFunciona": {
+          "titulo": "Not working?",
+          "descripcion": "Clock in with the QR from your phone or tap your ID card. If you have neither, tell your manager: they can record the punch with a reason."
+        },
+        "olvidaste": {
+          "titulo": "Forgot your PIN?",
+          "descripcion": "Ask Human resources for a new one. Meanwhile you can clock in with the QR from your phone."
+        },
+        "despuesFoto": "After your PIN, the tablet takes an evidence photo if you authorized it."
+      },
+      "foto": {
+        "mira": "Look at the camera: we're taking your evidence photo",
+        "sinCamara": "We couldn't open the camera: your punch is saved without a photo.",
+        "identificado": "{metodo, select, pin {{nombre}, we identified you with your PIN} other {{nombre}, we identified you with your ID card}}",
+        "explicacion": "This tablet does not recognize faces: the photo is only evidence that it was you who clocked in. It is deleted after {dias} days, or when a claim is closed if there is one. We take it because you authorized it.",
+        "retiro": "If you withdraw your authorization, you still clock in, without a photo."
+      },
+      "registrada": {
+        "titulo": {
+          "check_in": "Check-in recorded, {nombre}!",
+          "check_out": "Check-out recorded, {nombre}!",
+          "break_start": "Break start recorded, {nombre}!",
+          "break_end": "Break end recorded, {nombre}!"
+        },
+        "turno": "shift from {inicio} to {fin}",
+        "fotoGuardada": "Evidence photo saved · deleted on {fecha}",
+        "aRevision": "Your manager will review this punch",
+        "volvemos": "Back to start in {n} s",
+        "guardadaSinRed": "Punch saved on this tablet",
+        "guardadaSinRedDetalle": "No internet. We'll send it with the tablet time ({hora}) when the connection is back, without duplicating it. Your manager reviews it."
+      },
+      "sinInternet": {
+        "titulo": "{enLinea, select, si {{n, plural, one {Sending # punch saved on this tablet} other {Sending # punches saved on this tablet}}} other {{n, plural, =0 {No internet} one {No internet · # punch saved on this tablet} other {No internet · # punches saved on this tablet}}}}",
+        "descripcion": "Keep clocking in with ID card or PIN: we save the tablet time and send it when the connection is back, without duplicate punches. Your manager reviews them. The QR keeps working if your phone has data."
+      },
+      "bloqueado": {
+        "titulo": "Your PIN is locked",
+        "tituloKiosco": "The PIN is locked on this tablet",
+        "cuenta": "Unlocks automatically in {tiempo}",
+        "descripcion": "There were 5 failed attempts. A supervisor can unlock it now. Meanwhile, clock in with your ID card or with the QR from your phone.",
+        "supervisor": "Unlock with a supervisor"
+      },
+      "supervisor": {
+        "titulo": "Supervisor: enter your PIN",
+        "paraNombre": "Unlock {nombre}'s PIN",
+        "paraKiosco": "Unlock the PIN on this tablet",
+        "descripcion": "Only people who manage attendance at the branch can do this. Who unlocked it and when is recorded.",
+        "podraNombre": "{nombre} can try again right away.",
+        "podra": "You can try again right away.",
+        "errores": {
+          "rechazado": "Wrong supervisor PIN or no permission to unlock",
+          "bloqueado": "Too many supervisor attempts: wait 15 minutes",
+          "error": "We couldn't unlock it. Check the connection and try again."
+        }
+      },
+      "vincular": {
+        "titulo": "Pair this tablet as a kiosk",
+        "tituloLector": "Pair this computer as an ID card reader",
+        "instrucciones": "In GO Admin go to Human resources › Time clock › Devices › Add device › Kiosk on a tablet and enter this code:",
+        "instruccionesLector": "In GO Admin go to Human resources › Time clock › Devices › Add device › ID card or QR reader on a computer and enter this code:",
+        "vence": "The code expires in 10 minutes. The device is linked to one branch and shows nobody's data until someone clocks in.",
+        "revocado": "This device's key was revoked or is no longer valid. Pair it again with this code.",
+        "sinRed": "Offline: the code will appear when the internet is back."
+      },
+      "avisos": {
+        "carne_desconocido": {
+          "titulo": "We don't recognize this ID card",
+          "descripcion": "Ask Human resources to register it in your name. Meanwhile, clock in with your PIN or with the QR from your phone."
+        },
+        "otra_sede": {
+          "titulo": "This kiosk belongs to another branch",
+          "descripcion": "Clock in at your branch's kiosk or with the QR from your phone. If you're working here today, ask your manager to assign you the shift at this branch."
+        },
+        "metodo_no_disponible": {
+          "titulo": "This method is not active for you",
+          "descripcion": "Your branch doesn't accept punches this way. Clock in with the QR from your phone or tell Human resources."
+        },
+        "sin_marcacion": {
+          "titulo": "You don't clock in",
+          "descripcion": "Your record says you don't record check-ins or check-outs. If this is a mistake, tell Human resources."
+        },
+        "sin_vinculo": {
+          "titulo": "You have no active employment",
+          "descripcion": "Your PIN or ID card is no longer valid. Talk to Human resources."
+        },
+        "credencial_invalida": {
+          "titulo": "We couldn't read your PIN or ID card",
+          "descripcion": "Try again. If it keeps failing, clock in with the QR from your phone."
+        },
+        "duplicada": {
+          "titulo": "You already recorded this punch, {nombre}",
+          "descripcion": "Your previous punch was less than a minute ago and already counts. No need to clock in again."
+        },
+        "vencida": {
+          "titulo": "Time to clock in ran out",
+          "descripcion": "More than 5 minutes passed since we identified you. Clock in again."
+        },
+        "repetida": {
+          "titulo": "This punch was already recorded",
+          "descripcion": "It wasn't duplicated. You can continue."
+        },
+        "error": {
+          "titulo": "We couldn't record your punch",
+          "descripcion": "Try again. If it keeps failing, clock in with the QR from your phone or tell your manager."
+        }
+      }
+    },
+    "alta": {
+      "necesitas": {
+        "kiosco": "You need: a 10-inch Android tablet with a front camera and a wall mount. Open GO Admin Kiosk on the tablet to see its code.",
+        "lector_escritorio": "You need: a 13.56 MHz USB NFC reader or a QR code reader. In GO Admin Desktop: menu › ID card reader mode."
+      }
+    },
+    "vincular": {
+      "tituloKiosco": "Pair a kiosk",
+      "tituloLector": "Pair an ID card reader",
+      "tituloDeNuevo": "Pair again · {nombre}",
+      "descripcion": "Enter the code shown on the device. It will be linked to the branch you choose.",
+      "descripcionDeNuevo": "The new tablet or computer shows a code: enter it here. The previous key stops working.",
+      "vincular": "Pair",
+      "paso": {
+        "kiosco": {
+          "titulo": "On the tablet",
+          "descripcion": "Open GO Admin Kiosk (or /marcacion/kiosco in the browser). It shows a 6-character code that expires in 10 minutes."
+        },
+        "lector": {
+          "titulo": "On the computer",
+          "descripcion": "In GO Admin Desktop open the menu › ID card reader mode. It shows a 6-character code that expires in 10 minutes."
+        }
+      },
+      "codigo": "Device code",
+      "codigoAyuda": "6 letters and numbers, as shown on the device screen.",
+      "nombre": "Name",
+      "nombreEjemploKiosco": "Entrance kiosk",
+      "nombreEjemploLector": "ID card reader · Checkout",
+      "sede": "Branch",
+      "eligeSede": "Choose the branch",
+      "donde": "Location",
+      "dondeAyuda": "Optional. Helps find it in the list and in alerts.",
+      "vinculado": "{nombre} is now paired",
+      "vinculadoDesc": "The device can now receive punches. Check in Methods by branch that PIN or ID cards are active.",
+      "errores": {
+        "codigo_invalido": "The code doesn't exist or has expired. Check the device screen: it shows a new one.",
+        "nombre_invalido": "Enter a name of 2 to 80 characters.",
+        "sede_invalida": "Choose a branch.",
+        "descripcion_invalida": "Up to 200 characters.",
+        "sin_permiso": "You don't have permission to manage clock-in devices.",
+        "no_existe": "That device no longer exists.",
+        "error": "We couldn't pair the device. Try again."
+      }
+    },
+    "marcacion": {
+      "abrirKiosco": "Open kiosk on this screen"
+    },
+    "dispositivos": {
+      "abrir": "Open on this screen",
+      "vincularDeNuevo": "Pair again",
+      "revocar": "Revoke key",
+      "sinVincular": "not paired",
+      "revocada": "{nombre}'s key was revoked",
+      "revocadaDesc": "The device can no longer record punches. To use it again, pair it with a code.",
+      "confirmarRevocar": {
+        "titulo": "Revoke {nombre}'s key?",
+        "descripcion": "The device stops recording punches immediately (use this if it was lost or replaced). Punches it already recorded don't change. To use it again, pair it with a new code.",
+        "confirmar": "Revoke key"
+      }
+    },
+    "metodos": {
+      "proximamente": "Coming soon",
+      "fotoCelular": "Ask for a photo when clocking in (kiosk only for now)",
+      "deTotal": "{n} of {total}",
+      "pinYCarnes": "PIN and ID cards",
+      "carne": {
+        "activo": "Accept ID cards at the kiosk and the desktop reader",
+        "foto": "Take an evidence photo with the ID card (if the person authorized it)"
+      },
+      "pin": {
+        "resumen": "{n} of {total} people with a PIN",
+        "activar": "Enable the PIN kiosk",
+        "largo": "PIN length",
+        "digitos": "digits",
+        "foto": "Take an evidence photo (if the person authorized it)",
+        "bloqueo": "Lock after failed attempts",
+        "bloqueoValor": "5 attempts · 15 minutes or a supervisor"
+      },
+      "foto": {
+        "ayuda": "Between {min} and {max}. If the punch is under review or has a claim, the photo is kept until the case is closed.",
+        "dias": "days",
+        "autorizaciones": "Photo authorizations",
+        "personas": "{n} of {total} people",
+        "letrero": "We already put up the sign at the entrance of {sede}"
+      },
+      "errores": {
+        "fotoDias": "Photo retention days range from {min} to {max}."
+      }
+    },
+    "credenciales": {
+      "titulo": "PIN and ID cards",
+      "descripcion": "People at {sede}. The PIN is shown only once when generated; nobody else sees it.",
+      "listo": "Done",
+      "sinPermiso": "You don't have permission to see PINs and ID cards.",
+      "error": "We couldn't load the people.",
+      "soloLectura": "Read only: to generate PINs or register ID cards you need to manage attendance.",
+      "buscar": "Search person",
+      "vacio": "There are no active people at this branch.",
+      "pin": {
+        "asignado": "PIN assigned",
+        "sinPin": "No PIN",
+        "bloqueado": "PIN locked",
+        "generar": "Generate PIN",
+        "nuevo": "New PIN",
+        "desbloquear": "Unlock",
+        "desbloqueado": "PIN unlocked"
+      },
+      "carne": {
+        "carne_nfc": "NFC ID card",
+        "carne_qr": "QR ID card",
+        "nfc": "NFC ID card",
+        "qr": "QR ID card",
+        "quitar": "Remove ID card {etiqueta}",
+        "registrado": "ID card registered to {nombre}"
+      },
+      "foto": {
+        "si": "Photo authorized",
+        "no": "No photo authorization"
+      },
+      "errores": {
+        "sin_permiso": "You don't have permission for this action.",
+        "carne_en_uso": "That ID card is already registered to someone else.",
+        "carne_invalido": "We couldn't read the ID card code.",
+        "generico": "We couldn't save. Try again."
+      },
+      "pinNuevo": {
+        "titulo": "{nombre}'s PIN",
+        "descripcion": "Give it to the person privately. They use it to clock in at the kiosk.",
+        "entregado": "I've handed it over",
+        "unaVez": "It won't be shown again. If it's lost, generate a new one (the previous one stops working)."
+      },
+      "carneQr": {
+        "titulo": "{nombre}'s QR ID card",
+        "descripcion": "Print this code on the ID card. It is read with the kiosk camera or a QR reader.",
+        "listo": "Done",
+        "unaVez": "Save or print it now: it won't be shown again."
+      },
+      "leer": {
+        "titulo": "{nombre}'s NFC ID card",
+        "descripcion": "Hold the card to the USB reader or, on an Android phone, to the back. You can also type the printed code.",
+        "registrar": "Register ID card",
+        "motivo": "Read or type the ID card code",
+        "placeholder": "ID card code",
+        "campo": "ID card code",
+        "ayuda": "It fills in by itself when you tap the card."
+      }
+    },
+    "autorizaciones": {
+      "abrir": "Your authorizations",
+      "titulo": "Your authorizations",
+      "subtitulo": "My attendance · {sede}",
+      "pregunta": "What do you authorize for clocking in?",
+      "bloques": {
+        "paraQue": {
+          "titulo": "What for",
+          "texto": "Only to record your check-ins, check-outs and breaks at {sede}."
+        },
+        "queSeGuarda": {
+          "titulo": "What is stored and where",
+          "texto": "Your fingerprint and face are stored encrypted in GO Admin and in the branch time clocks, so you only enroll them once. Nobody can see them on screen. They are deleted if you withdraw your authorization or your employment ends."
+        },
+        "voluntario": {
+          "titulo": "It's voluntary",
+          "texto": "Each authorization is optional. Without them you clock in with PIN, ID card or QR, with no effect on your contract."
+        },
+        "foto": {
+          "titulo": "Evidence photo",
+          "texto": "If you authorize it, the kiosk takes a photo at every PIN or ID card punch. It is deleted after {dias} days, or when a claim is closed."
+        },
+        "retirar": {
+          "titulo": "You can withdraw it",
+          "texto": "Whenever you want, from here."
+        }
+      },
+      "casillas": {
+        "biometria": "Fingerprint and face at the branch time clock",
+        "foto": "Evidence photo at the kiosk"
+      },
+      "vigenteDesde": "Authorized since {fecha}",
+      "version": "Data processing policy, version 2026-11.",
+      "guardar": "Save what I authorize",
+      "nada": "I authorize nothing: PIN, ID card or QR",
+      "guardado": "We saved what you authorize",
+      "sinVinculo": "You have no active employment in this organization.",
+      "errores": {
+        "sinVinculo": "You have no active employment in this organization.",
+        "guardar": "We couldn't save. Try again."
+      }
+    },
+    "foto": {
+      "ver": "View evidence photo",
+      "titulo": "Evidence photo · {nombre}",
+      "descripcion": "Taken by the kiosk at clock-in, with the person's authorization. This view is logged.",
+      "cerrar": "Close",
+      "alt": "Evidence photo of {nombre}",
+      "retenida": "Kept while the punch has an open claim or adjustment.",
+      "vence": "Deleted on {fecha}.",
+      "sinFoto": "This punch has no evidence photo.",
+      "sinPermiso": "You don't have permission to see this photo.",
+      "error": "We couldn't load the photo."
+    }
   }
 }

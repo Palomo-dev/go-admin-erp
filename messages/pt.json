@@ -60157,5 +60157,358 @@
         }
       }
     }
+  },
+  "hrmKiosco": {
+    "kiosco": {
+      "pantallaCompleta": "Tela cheia",
+      "marca": "GO Admin Quiosque",
+      "sinVincular": "Não vinculado",
+      "cargando": "Carregando o quiosque…",
+      "registrando": "Registrando sua marcação…",
+      "pie": "O horário da sua marcação é o do servidor. Foto de evidência só se você autorizou: é apagada após {dias} dias, ou ao encerrar uma reclamação. Mais informações no aviso da entrada e em GO Admin › Minha presença.",
+      "volverInicio": "Voltar ao início",
+      "cancelar": "Cancelar",
+      "inicio": {
+        "escanea": "Escaneie com seu celular",
+        "qrTitulo": "QR de marcação",
+        "cambiaEn": "Muda em {n} s",
+        "qrInstrucciones": "Abra GO Admin › Marcar ponto › QR da unidade. Ele muda a cada 30 segundos e cada código vale uma única vez: uma foto não funciona.",
+        "oMarcaAqui": "Ou marque o ponto aqui",
+        "marcaAqui": "Marque o ponto aqui",
+        "carne": {
+          "titulo": "Aproxime seu crachá",
+          "tablet": "Do leitor na parte de baixo do tablet",
+          "lector": "Do leitor conectado a este equipamento"
+        },
+        "listoParaLeer": "Pronto para ler",
+        "pin": {
+          "titulo": "Digite seu PIN",
+          "descripcion": "O de 6 dígitos que você recebeu de Recursos humanos"
+        },
+        "sinRostro": {
+          "titulo": "Este tablet não reconhece rostos",
+          "descripcion": "Só tira uma foto de evidência de quem autorizou. A digital e o rosto são comparados pelo relógio de ponto da entrada."
+        },
+        "sinMetodos": {
+          "titulo": "Esta unidade não tem métodos do quiosque ativos",
+          "descripcion": "Recursos humanos os ativa em GO Admin › Registro de ponto › Métodos por unidade."
+        }
+      },
+      "teclado": {
+        "titulo": "Digite seu PIN",
+        "escritos": "Dígitos digitados: {n} de {total}",
+        "digito": "Dígito {n}",
+        "borrar": "Apagar",
+        "listo": "Pronto",
+        "incorrecto": "{n, plural, one {PIN incorreto · resta # tentativa} other {PIN incorreto · restam # tentativas}}",
+        "incorrectoDetalle": "Após 5 tentativas, o PIN é bloqueado por 15 minutos ou até que um supervisor o desbloqueie.",
+        "noFunciona": {
+          "titulo": "Não está funcionando?",
+          "descripcion": "Marque o ponto com o QR pelo celular ou aproxime seu crachá. Se não tiver nenhum dos dois, avise seu gestor: ele pode registrar a marcação com um motivo."
+        },
+        "olvidaste": {
+          "titulo": "Esqueceu seu PIN?",
+          "descripcion": "Peça um novo a Recursos humanos. Enquanto isso, você pode marcar o ponto com o QR pelo celular."
+        },
+        "despuesFoto": "Depois do seu PIN, o tablet tira uma foto de evidência se você autorizou."
+      },
+      "foto": {
+        "mira": "Olhe para a câmera: estamos tirando sua foto de evidência",
+        "sinCamara": "Não conseguimos abrir a câmera: sua marcação fica sem foto.",
+        "identificado": "{metodo, select, pin {{nombre}, já identificamos você pelo PIN} other {{nombre}, já identificamos você pelo crachá}}",
+        "explicacion": "Este tablet não reconhece rostos: a foto serve apenas como evidência de que foi você quem marcou o ponto. É apagada após {dias} dias, ou ao encerrar uma reclamação, se houver. Nós a tiramos porque você autorizou.",
+        "retiro": "Se você retirar a autorização, marca o ponto do mesmo jeito, sem foto."
+      },
+      "registrada": {
+        "titulo": {
+          "check_in": "Entrada registrada, {nombre}!",
+          "check_out": "Saída registrada, {nombre}!",
+          "break_start": "Início de intervalo registrado, {nombre}!",
+          "break_end": "Fim de intervalo registrado, {nombre}!"
+        },
+        "turno": "turno das {inicio} às {fin}",
+        "fotoGuardada": "Foto de evidência salva · será apagada em {fecha}",
+        "aRevision": "Seu gestor vai revisar esta marcação",
+        "volvemos": "Voltamos ao início em {n} s",
+        "guardadaSinRed": "Marcação salva neste tablet",
+        "guardadaSinRedDetalle": "Sem internet. Vamos enviá-la com o horário do tablet ({hora}) quando a conexão voltar, sem duplicá-la. Seu gestor a revisa."
+      },
+      "sinInternet": {
+        "titulo": "{enLinea, select, si {{n, plural, one {Enviando # marcação salva neste tablet} other {Enviando # marcações salvas neste tablet}}} other {{n, plural, =0 {Sem internet} one {Sem internet · # marcação salva neste tablet} other {Sem internet · # marcações salvas neste tablet}}}}",
+        "descripcion": "Continue marcando o ponto com crachá ou PIN: guardamos o horário do tablet e o enviamos quando a conexão voltar, sem duplicar marcações. Seu gestor as revisa. O QR continua funcionando se seu celular tiver dados."
+      },
+      "bloqueado": {
+        "titulo": "Seu PIN está bloqueado",
+        "tituloKiosco": "O PIN está bloqueado neste tablet",
+        "cuenta": "Desbloqueia sozinho em {tiempo}",
+        "descripcion": "Houve 5 tentativas com erro. Um supervisor pode desbloqueá-lo agora. Enquanto isso, marque o ponto com seu crachá ou com o QR pelo celular.",
+        "supervisor": "Desbloquear com um supervisor"
+      },
+      "supervisor": {
+        "titulo": "Supervisor: digite seu PIN",
+        "paraNombre": "Desbloquear o PIN de {nombre}",
+        "paraKiosco": "Desbloquear o PIN deste tablet",
+        "descripcion": "Só quem gerencia a frequência da unidade pode fazer isso. Fica registrado quem desbloqueou e a que horas.",
+        "podraNombre": "{nombre} poderá tentar de novo imediatamente.",
+        "podra": "Será possível tentar de novo imediatamente.",
+        "errores": {
+          "rechazado": "PIN de supervisor incorreto ou sem permissão para desbloquear",
+          "bloqueado": "Tentativas demais do supervisor: aguarde 15 minutos",
+          "error": "Não conseguimos desbloquear. Verifique a conexão e tente de novo."
+        }
+      },
+      "vincular": {
+        "titulo": "Vincule este tablet como quiosque",
+        "tituloLector": "Vincule este computador como leitor de crachás",
+        "instrucciones": "No GO Admin, acesse Recursos humanos › Registro de ponto › Dispositivos › Adicionar dispositivo › Quiosque em um tablet e digite este código:",
+        "instruccionesLector": "No GO Admin, acesse Recursos humanos › Registro de ponto › Dispositivos › Adicionar dispositivo › Leitor de crachá ou QR em um computador e digite este código:",
+        "vence": "O código vence em 10 minutos. O equipamento fica vinculado a uma unidade e não mostra dados de ninguém até que alguém marque o ponto.",
+        "revocado": "A chave deste equipamento foi revogada ou não é mais válida. Vincule-o de novo com este código.",
+        "sinRed": "Sem conexão: o código aparece quando a internet voltar."
+      },
+      "avisos": {
+        "carne_desconocido": {
+          "titulo": "Não reconhecemos este crachá",
+          "descripcion": "Peça a Recursos humanos para cadastrá-lo no seu nome. Enquanto isso, marque o ponto com seu PIN ou com o QR pelo celular."
+        },
+        "otra_sede": {
+          "titulo": "Este quiosque é de outra unidade",
+          "descripcion": "Marque o ponto no quiosque da sua unidade ou com o QR pelo celular. Se hoje você trabalha aqui, peça ao seu gestor para atribuir o turno nesta unidade."
+        },
+        "metodo_no_disponible": {
+          "titulo": "Este método não está ativo para você",
+          "descripcion": "Sua unidade não recebe marcações por este meio. Marque o ponto com o QR pelo celular ou avise Recursos humanos."
+        },
+        "sin_marcacion": {
+          "titulo": "Você não marca ponto",
+          "descripcion": "Seu cadastro indica que você não registra entradas nem saídas. Se for um erro, avise Recursos humanos."
+        },
+        "sin_vinculo": {
+          "titulo": "Você não tem um vínculo ativo",
+          "descripcion": "Seu PIN ou seu crachá não está mais válido. Fale com Recursos humanos."
+        },
+        "credencial_invalida": {
+          "titulo": "Não conseguimos ler seu PIN ou seu crachá",
+          "descripcion": "Tente de novo. Se continuar falhando, marque o ponto com o QR pelo celular."
+        },
+        "duplicada": {
+          "titulo": "Você já registrou esta marcação, {nombre}",
+          "descripcion": "A marcação anterior foi há menos de um minuto e já conta. Não precisa marcar de novo."
+        },
+        "vencida": {
+          "titulo": "O tempo para marcar o ponto acabou",
+          "descripcion": "Passaram mais de 5 minutos desde que identificamos você. Marque o ponto de novo."
+        },
+        "repetida": {
+          "titulo": "Esta marcação já estava registrada",
+          "descripcion": "Não foi duplicada. Pode continuar."
+        },
+        "error": {
+          "titulo": "Não conseguimos registrar sua marcação",
+          "descripcion": "Tente de novo. Se continuar falhando, marque o ponto com o QR pelo celular ou avise seu gestor."
+        }
+      }
+    },
+    "alta": {
+      "necesitas": {
+        "kiosco": "Você precisa de: tablet Android de 10 polegadas com câmera frontal e suporte de parede. Abra o GO Admin Quiosque no tablet para ver o código dele.",
+        "lector_escritorio": "Você precisa de: leitor USB NFC de 13,56 MHz ou leitor de QR code. No GO Admin Desktop: menu › Modo leitor de crachás."
+      }
+    },
+    "vincular": {
+      "tituloKiosco": "Vincular um quiosque",
+      "tituloLector": "Vincular um leitor de crachás",
+      "tituloDeNuevo": "Vincular de novo · {nombre}",
+      "descripcion": "Digite o código que o equipamento mostra. Ele fica vinculado à unidade que você escolher.",
+      "descripcionDeNuevo": "O tablet ou computador novo mostra um código: digite-o aqui. A chave anterior deixa de funcionar.",
+      "vincular": "Vincular",
+      "paso": {
+        "kiosco": {
+          "titulo": "No tablet",
+          "descripcion": "Abra o GO Admin Quiosque (ou /marcacion/kiosco no navegador). Ele mostra um código de 6 caracteres que vence em 10 minutos."
+        },
+        "lector": {
+          "titulo": "No computador",
+          "descripcion": "No GO Admin Desktop, abra o menu › Modo leitor de crachás. Ele mostra um código de 6 caracteres que vence em 10 minutos."
+        }
+      },
+      "codigo": "Código do equipamento",
+      "codigoAyuda": "6 letras e números, como aparece na tela do equipamento.",
+      "nombre": "Nome",
+      "nombreEjemploKiosco": "Quiosque da entrada",
+      "nombreEjemploLector": "Leitor de crachá · Caixa",
+      "sede": "Unidade",
+      "eligeSede": "Escolha a unidade",
+      "donde": "Onde fica",
+      "dondeAyuda": "Opcional. Ajuda a encontrá-lo na lista e nos alertas.",
+      "vinculado": "{nombre} foi vinculado",
+      "vinculadoDesc": "O equipamento já pode receber marcações. Confira em Métodos por unidade se o PIN ou os crachás estão ativos.",
+      "errores": {
+        "codigo_invalido": "O código não existe ou já venceu. Veja a tela do equipamento: ela mostra um novo.",
+        "nombre_invalido": "Digite um nome de 2 a 80 caracteres.",
+        "sede_invalida": "Escolha uma unidade.",
+        "descripcion_invalida": "Até 200 caracteres.",
+        "sin_permiso": "Você não tem permissão para gerenciar os dispositivos de ponto.",
+        "no_existe": "Esse dispositivo não existe mais.",
+        "error": "Não conseguimos vincular o equipamento. Tente de novo."
+      }
+    },
+    "marcacion": {
+      "abrirKiosco": "Abrir quiosque nesta tela"
+    },
+    "dispositivos": {
+      "abrir": "Abrir nesta tela",
+      "vincularDeNuevo": "Vincular de novo",
+      "revocar": "Revogar chave",
+      "sinVincular": "não vinculado",
+      "revocada": "A chave de {nombre} foi revogada",
+      "revocadaDesc": "O equipamento deixou de registrar marcações. Para usá-lo de novo, vincule-o com um código.",
+      "confirmarRevocar": {
+        "titulo": "Revogar a chave de {nombre}?",
+        "descripcion": "O equipamento deixa de registrar marcações na hora (use se ele foi perdido ou trocado). As marcações que ele já registrou não mudam. Para usá-lo de novo, vincule-o com um código novo.",
+        "confirmar": "Revogar chave"
+      }
+    },
+    "metodos": {
+      "proximamente": "Em breve",
+      "fotoCelular": "Pedir uma foto ao marcar o ponto (só no quiosque por enquanto)",
+      "deTotal": "{n} de {total}",
+      "pinYCarnes": "PIN e crachás",
+      "carne": {
+        "activo": "Receber crachás no quiosque e no leitor de desktop",
+        "foto": "Tirar foto de evidência com o crachá (se a pessoa autorizou)"
+      },
+      "pin": {
+        "resumen": "{n} de {total} pessoas com PIN",
+        "activar": "Ativar o quiosque com PIN",
+        "largo": "Tamanho do PIN",
+        "digitos": "dígitos",
+        "foto": "Tirar foto de evidência (se a pessoa autorizou)",
+        "bloqueo": "Bloqueio por tentativas com erro",
+        "bloqueoValor": "5 tentativas · 15 minutos ou um supervisor"
+      },
+      "foto": {
+        "ayuda": "Entre {min} e {max}. Se a marcação estiver em revisão ou tiver uma reclamação, a foto é mantida até o caso ser encerrado.",
+        "dias": "dias",
+        "autorizaciones": "Autorizações de foto",
+        "personas": "{n} de {total} pessoas",
+        "letrero": "Já colocamos o aviso na entrada de {sede}"
+      },
+      "errores": {
+        "fotoDias": "Os dias da foto vão de {min} a {max}."
+      }
+    },
+    "credenciales": {
+      "titulo": "PIN e crachás",
+      "descripcion": "Pessoas de {sede}. O PIN é mostrado uma única vez ao ser gerado; ninguém mais o vê.",
+      "listo": "Pronto",
+      "sinPermiso": "Você não tem permissão para ver os PINs e crachás.",
+      "error": "Não conseguimos carregar as pessoas.",
+      "soloLectura": "Somente leitura: para gerar PINs ou cadastrar crachás, você precisa gerenciar a frequência.",
+      "buscar": "Buscar pessoa",
+      "vacio": "Não há pessoas ativas nesta unidade.",
+      "pin": {
+        "asignado": "PIN atribuído",
+        "sinPin": "Sem PIN",
+        "bloqueado": "PIN bloqueado",
+        "generar": "Gerar PIN",
+        "nuevo": "PIN novo",
+        "desbloquear": "Desbloquear",
+        "desbloqueado": "PIN desbloqueado"
+      },
+      "carne": {
+        "carne_nfc": "Crachá NFC",
+        "carne_qr": "Crachá QR",
+        "nfc": "Crachá NFC",
+        "qr": "Crachá QR",
+        "quitar": "Remover o crachá {etiqueta}",
+        "registrado": "Crachá cadastrado para {nombre}"
+      },
+      "foto": {
+        "si": "Foto autorizada",
+        "no": "Sem autorização de foto"
+      },
+      "errores": {
+        "sin_permiso": "Você não tem permissão para esta ação.",
+        "carne_en_uso": "Esse crachá já está cadastrado para outra pessoa.",
+        "carne_invalido": "Não conseguimos ler o código do crachá.",
+        "generico": "Não conseguimos salvar. Tente de novo."
+      },
+      "pinNuevo": {
+        "titulo": "PIN de {nombre}",
+        "descripcion": "Entregue à pessoa em particular. Com ele, ela marca o ponto no quiosque.",
+        "entregado": "Já entreguei",
+        "unaVez": "Não será mostrado de novo. Se for perdido, gere um novo (o anterior deixa de funcionar)."
+      },
+      "carneQr": {
+        "titulo": "Crachá QR de {nombre}",
+        "descripcion": "Imprima este código no crachá. Ele é lido pela câmera do quiosque ou por um leitor de QR.",
+        "listo": "Pronto",
+        "unaVez": "Salve ou imprima agora: não será mostrado de novo."
+      },
+      "leer": {
+        "titulo": "Crachá NFC de {nombre}",
+        "descripcion": "Aproxime o cartão do leitor USB ou, num celular Android, da parte de trás. Você também pode digitar o código impresso.",
+        "registrar": "Cadastrar crachá",
+        "motivo": "Leia ou digite o código do crachá",
+        "placeholder": "Código do crachá",
+        "campo": "Código do crachá",
+        "ayuda": "Preenche sozinho ao aproximar o cartão."
+      }
+    },
+    "autorizaciones": {
+      "abrir": "Suas autorizações",
+      "titulo": "Suas autorizações",
+      "subtitulo": "Minha presença · {sede}",
+      "pregunta": "O que você autoriza para marcar o ponto?",
+      "bloques": {
+        "paraQue": {
+          "titulo": "Para quê",
+          "texto": "Apenas para registrar suas entradas, saídas e intervalos em {sede}."
+        },
+        "queSeGuarda": {
+          "titulo": "O que é guardado e onde",
+          "texto": "A digital e o rosto são guardados criptografados no GO Admin e nos relógios de ponto da unidade, para que você os cadastre uma única vez. Ninguém pode vê-los na tela. São apagados se você retirar a autorização ou encerrar seu vínculo."
+        },
+        "voluntario": {
+          "titulo": "É voluntário",
+          "texto": "Cada autorização é opcional. Sem elas, você marca o ponto com PIN, crachá ou QR, sem efeito no seu contrato."
+        },
+        "foto": {
+          "titulo": "Foto de evidência",
+          "texto": "Se você autorizar, o quiosque tira uma foto em cada marcação com PIN ou crachá. É apagada após {dias} dias, ou ao encerrar uma reclamação."
+        },
+        "retirar": {
+          "titulo": "Você pode retirá-la",
+          "texto": "Quando quiser, por aqui."
+        }
+      },
+      "casillas": {
+        "biometria": "Digital e rosto no relógio de ponto da unidade",
+        "foto": "Foto de evidência no quiosque"
+      },
+      "vigenteDesde": "Autorizada desde {fecha}",
+      "version": "Política de tratamento de dados, versão 2026-11.",
+      "guardar": "Salvar o que autorizo",
+      "nada": "Não autorizo nada: PIN, crachá ou QR",
+      "guardado": "Salvamos o que você autoriza",
+      "sinVinculo": "Você não tem um vínculo de trabalho ativo nesta organização.",
+      "errores": {
+        "sinVinculo": "Você não tem um vínculo de trabalho ativo nesta organização.",
+        "guardar": "Não conseguimos salvar. Tente de novo."
+      }
+    },
+    "foto": {
+      "ver": "Ver foto de evidência",
+      "titulo": "Foto de evidência · {nombre}",
+      "descripcion": "Tirada pelo quiosque ao marcar o ponto, com a autorização da pessoa. Esta visualização fica registrada.",
+      "cerrar": "Fechar",
+      "alt": "Foto de evidência de {nombre}",
+      "retenida": "É mantida enquanto a marcação tiver uma reclamação ou um ajuste em aberto.",
+      "vence": "Será apagada em {fecha}.",
+      "sinFoto": "Esta marcação não tem foto de evidência.",
+      "sinPermiso": "Você não tem permissão para ver esta foto.",
+      "error": "Não conseguimos carregar a foto."
+    }
   }
 }

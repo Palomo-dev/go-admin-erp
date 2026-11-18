@@ -14,6 +14,7 @@ import {
 } from './windows/mainWindow';
 import { checkForUpdates, getUpdateState, installUpdate } from './updater';
 import { checkNow, isOnline } from './connectivity';
+import { abrirModoLector } from './kioscoMarcacion';
 
 /**
  * Menú de aplicación en español.
@@ -47,6 +48,9 @@ export function buildAppMenu(): Menu {
             notify(online ? 'Conexión con el servidor confirmada.' : 'Sin conexión con el servidor.');
           },
         },
+        { type: 'separator' },
+        // Marcación (M1): este computador como lector de carnés USB.
+        { label: 'Modo lector de carnés (Marcación)', click: () => abrirModoLector() },
         { type: 'separator' },
         { label: 'Salir', accelerator: 'CmdOrCtrl+Q', click: () => app.quit() },
       ],

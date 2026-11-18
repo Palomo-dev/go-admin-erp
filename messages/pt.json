@@ -38340,7 +38340,7 @@
       "corto": "Código curto"
     },
     "ayudaFormato": {
-      "actual": "O de sempre: WO, o número da organização e um código.",
+      "actual": "O de sempre: WO, o número da organização e um código. Para trocar “WO-…” pelo seu próprio prefixo, escolha Sequencial ou Código curto.",
       "consecutivo": "Prefixo e um número que sobe de um em um: 0001, 0002…",
       "corto": "Prefixo e seis letras ou números aleatórios, fáceis de ditar."
     },

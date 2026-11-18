@@ -60448,11 +60448,12 @@
       },
       "leer": {
         "titulo": "Crachá NFC de {nombre}",
-        "descripcion": "Aproxime o crachá do leitor USB (ele digita o código no campo) ou, em um celular Android, da parte de trás. Você também pode digitar o código impresso.",
+        "descripcion": "Aproxime o cartão do leitor USB ou, num celular Android, da parte de trás. Você também pode digitar o código impresso.",
         "registrar": "Cadastrar crachá",
         "motivo": "Leia ou digite o código do crachá",
         "placeholder": "Código do crachá",
-        "campo": "Código do crachá"
+        "campo": "Código do crachá",
+        "ayuda": "Preenche sozinho ao aproximar o cartão."
       }
     },
     "autorizaciones": {

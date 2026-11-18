@@ -60438,11 +60438,12 @@
       },
       "leer": {
         "titulo": "Badge NFC de {nombre}",
-        "descripcion": "Approchez le badge du lecteur USB (il saisit le code dans le champ) ou, sur un téléphone Android, de l’arrière. Vous pouvez aussi saisir le code imprimé.",
+        "descripcion": "Approchez la carte du lecteur USB ou, sur un téléphone Android, de l’arrière. Vous pouvez aussi saisir le code imprimé.",
         "registrar": "Enregistrer le badge",
         "motivo": "Lisez ou saisissez le code du badge",
         "placeholder": "Code du badge",
-        "campo": "Code du badge"
+        "campo": "Code du badge",
+        "ayuda": "Il se remplit tout seul quand vous approchez la carte."
       }
     },
     "autorizaciones": {

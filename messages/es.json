@@ -60453,11 +60453,12 @@
       },
       "leer": {
         "titulo": "Carné NFC de {nombre}",
-        "descripcion": "Acerca el carné al lector USB (escribe el código en el campo) o, en un celular Android, a la parte de atrás. También puedes escribir el código impreso.",
+        "descripcion": "Acerca el carné al lector USB o, en un celular Android, a la parte de atrás. También puedes escribir el código impreso.",
         "registrar": "Registrar carné",
         "motivo": "Lee o escribe el código del carné",
         "placeholder": "Código del carné",
-        "campo": "Código del carné"
+        "campo": "Código del carné",
+        "ayuda": "Se llena solo al acercar el carné."
       }
     },
     "autorizaciones": {

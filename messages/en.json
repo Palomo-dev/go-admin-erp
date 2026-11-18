@@ -60438,11 +60438,12 @@
       },
       "leer": {
         "titulo": "{nombre}'s NFC ID card",
-        "descripcion": "Hold the ID card to the USB reader (it types the code into the field) or, on an Android phone, to the back. You can also type the printed code.",
+        "descripcion": "Hold the card to the USB reader or, on an Android phone, to the back. You can also type the printed code.",
         "registrar": "Register ID card",
         "motivo": "Read or type the ID card code",
         "placeholder": "ID card code",
-        "campo": "ID card code"
+        "campo": "ID card code",
+        "ayuda": "It fills in by itself when you tap the card."
       }
     },
     "autorizaciones": {

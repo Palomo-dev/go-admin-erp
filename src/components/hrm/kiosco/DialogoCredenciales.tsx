@@ -16,7 +16,7 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { KeyRound, Nfc, ScanQrCode, Unlock, X } from 'lucide-react';
-import { AvisoTonal, Dialogo, EmptyState, SearchInput, Skeleton, clasesBoton } from '@/components/kit';
+import { AvisoTonal, Dialogo, EmptyState, FormField, SearchInput, Skeleton, clasesBoton } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { contenidoCarneQr, leerCarne } from '@/lib/hrm/kiosco/kiosco';
@@ -76,7 +76,7 @@ export function DialogoCredenciales({ abierto, onAbiertoChange, sedeId, sedeNomb
         onAbiertoChange={onAbiertoChange}
         titulo={t('titulo')}
         descripcion={t('descripcion', { sede: sedeNombre })}
-        icono={KeyRound}
+        sinCancelar
         ancho={880}
         primario={{ etiqueta: t('listo'), onClick: () => onAbiertoChange(false) }}
       >
@@ -187,7 +187,7 @@ export function DialogoCredenciales({ abierto, onAbiertoChange, sedeId, sedeNomb
         onAbiertoChange={(a) => !a && setPinNuevo(null)}
         titulo={t('pinNuevo.titulo', { nombre: pinNuevo?.nombre ?? '' })}
         descripcion={t('pinNuevo.descripcion')}
-        icono={KeyRound}
+        sinCancelar
         ancho={440}
         primario={{ etiqueta: t('pinNuevo.entregado'), onClick: () => setPinNuevo(null) }}
       >
@@ -200,7 +200,7 @@ export function DialogoCredenciales({ abierto, onAbiertoChange, sedeId, sedeNomb
         onAbiertoChange={(a) => !a && setCarneQr(null)}
         titulo={t('carneQr.titulo', { nombre: carneQr?.nombre ?? '' })}
         descripcion={t('carneQr.descripcion')}
-        icono={ScanQrCode}
+        sinCancelar
         ancho={440}
         primario={{ etiqueta: t('carneQr.listo'), onClick: () => setCarneQr(null) }}
       >
@@ -268,25 +268,29 @@ function DialogoLeerCarne({ persona, onCerrar, onLeido }: { persona: PersonaCred
       onAbiertoChange={(a) => !a && onCerrar()}
       titulo={t('titulo', { nombre: persona?.nombre ?? '' })}
       descripcion={t('descripcion')}
-      icono={Nfc}
       ancho={440}
       primario={{ etiqueta: t('registrar'), onClick: () => void enviar(), cargando: enviando, deshabilitada: !leido, motivo: t('motivo') }}
     >
-      <Input
-        ref={campo}
-        value={valor}
-        onChange={(e) => setValor(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            void enviar();
-          }
-        }}
-        placeholder={t('placeholder')}
-        aria-label={t('campo')}
-        autoComplete="off"
-        className="font-mono"
-      />
+      <FormField etiqueta={t('campo')} ayuda={t('ayuda')}>
+        {(c) => (
+          <Input
+            ref={campo}
+            id={c.id}
+            aria-describedby={c['aria-describedby']}
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void enviar();
+              }
+            }}
+            placeholder={t('placeholder')}
+            autoComplete="off"
+            className="font-mono"
+          />
+        )}
+      </FormField>
     </Dialogo>
   );
 }

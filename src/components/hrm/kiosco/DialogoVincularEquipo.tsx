@@ -13,7 +13,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { Nfc, TabletSmartphone } from 'lucide-react';
 import { AvisoTonal, Dialogo, FormField } from '@/components/kit';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -98,7 +97,6 @@ export function DialogoVincularEquipo({
       onAbiertoChange={onAbiertoChange}
       titulo={deNuevo ? t('tituloDeNuevo', { nombre: nombreActual ?? '' }) : tipo === 'kiosco' ? t('tituloKiosco') : t('tituloLector')}
       descripcion={deNuevo ? t('descripcionDeNuevo') : t('descripcion')}
-      icono={tipo === 'kiosco' ? TabletSmartphone : Nfc}
       ancho={560}
       primario={{ etiqueta: t('vincular'), onClick: () => void vincular(), cargando: enviando }}
     >

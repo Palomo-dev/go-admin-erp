@@ -41,6 +41,8 @@ export interface DialogoProps {
   textoCancelar?: string;
   /** Ese botón hace otra cosa además de cerrar («Ir al plan de cuentas»). La «×» siempre solo cierra. */
   onCancelar?: () => void;
+  /** Sin botón «Cancelar»: el diálogo solo informa y se cierra con el primario («Listo», «Ya lo entregué») o la «×». */
+  sinCancelar?: boolean;
   ancho?: 440 | 520 | 560 | 672 | 880 | 1024;
   className?: string;
   /** Caja de icono de 40 px junto al título (Figma «Imprimir etiquetas», «Generar códigos»). */
@@ -69,6 +71,7 @@ export function Dialogo({
   primario,
   textoCancelar: textoCancelarProp,
   onCancelar,
+  sinCancelar = false,
   ancho = 520,
   className,
   icono: Icono,
@@ -117,17 +120,19 @@ export function Dialogo({
 
         <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-end">
           {pie && <div className="text-sm text-fg-secondary sm:mr-auto">{pie}</div>}
-          <button
-            type="button"
-            disabled={ocupado}
-            onClick={() => {
-              onAbiertoChange(false);
-              onCancelar?.();
-            }}
-            className="flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
-          >
-            {textoCancelar}
-          </button>
+          {!sinCancelar && (
+            <button
+              type="button"
+              disabled={ocupado}
+              onClick={() => {
+                onAbiertoChange(false);
+                onCancelar?.();
+              }}
+              className="flex h-10 items-center justify-center rounded-lg border border-line-strong bg-surface px-4 text-sm font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-50"
+            >
+              {textoCancelar}
+            </button>
+          )}
           {secundarios?.map((s) => (
             <button
               key={s.etiqueta}

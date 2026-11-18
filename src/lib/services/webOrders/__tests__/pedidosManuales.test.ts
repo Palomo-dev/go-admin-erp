@@ -231,9 +231,22 @@ describe('1 · pedido manual', () => {
     const pedido = db.tablas.web_orders[0];
     expect(pedido).toMatchObject({ organization_id: 333, branch_id: 21, status: 'pending', payment_status: 'pending', source: 'whatsapp', total: 23800, customer_email: 'laura@ejemplo.test' });
     expect(db.tablas.web_order_items).toHaveLength(1);
-    expect(db.rpcs.map((x) => x.fn)).toEqual(['reserve_stock_for_web_order']);
+    // Primero el número (formato de la organización; aquí el de siempre), luego la reserva.
+    expect(db.rpcs.map((x) => x.fn)).toEqual(['siguiente_numero_pedido_web', 'reserve_stock_for_web_order']);
     expect(db.tablas.integration_object_mappings[0]).toMatchObject({ external_type: 'payment_link', external_id: 'lnk_9', internal_table: 'web_orders', internal_id: pedido.id });
     expect(d.crearLink).toHaveBeenCalledWith(expect.anything(), 333, expect.objectContaining({ order_number: r.pedido.order_number, total: 23800 }), undefined);
+  });
+
+  test('con prefijo configurado: el número del RPC de la organización (PED-0001)', async () => {
+    const db = fakeDbPedidos(base(333).tablas, (fn, args) =>
+      fn === 'siguiente_numero_pedido_web' ? { data: args.p_organization_id === 333 ? 'PED-0001' : null, error: null } : { data: { ok: true }, error: null },
+    );
+    const d = deps(db, null);
+    const r = await crearPedidoManual(ctx(333), { branch_id: 21, cliente, items: [{ product_id: 1, quantity: 1 }] }, d);
+    expect(r.pedido.order_number).toBe('PED-0001');
+    expect(db.tablas.web_orders[0].order_number).toBe('PED-0001');
+    // El link de pago lleva ese número como referencia.
+    expect(d.crearLink).toHaveBeenCalledWith(expect.anything(), 333, expect.objectContaining({ order_number: 'PED-0001' }), undefined);
   });
 
   test('sin permiso: 403 y nada escrito', async () => {
@@ -343,6 +356,59 @@ describe('2 · reconstruir un pedido pagado', () => {
   });
 });
 
+describe('2b · confirmar un pago con número nuevo (PREFIJO-…) y viejo (WO-{org}-…)', () => {
+  const cuerpo = (referencia: string, valor = 23800) => ({ connection_id: 'cx1', referencia, valor, branch_id: 21, cliente, items: [{ product_id: 1, quantity: 2 }] });
+  const pendiente = (org: number, numero: string) => ({ id: `p-${numero}`, organization_id: org, order_number: numero, payment_status: 'pending', payment_reference: null, total: 23800, status: 'pending' });
+
+  test('número nuevo con pedido pendiente: se encuentra por order_number y se marca pagado ESE pedido', async () => {
+    const db = base(333, { web_orders: [pendiente(333, 'PED-0007')] });
+    const d = deps(db, txWompi({ id: 'tx-ped', reference: 'PED-0007', amount_in_cents: 2380000 }));
+    const r = await reconstruirPedido(ctx(333), cuerpo('PED-0007'), d);
+    expect(r.estado).toBe('completado');
+    expect(db.tablas.web_orders).toHaveLength(1);
+    expect(db.tablas.web_orders[0]).toMatchObject({ order_number: 'PED-0007', payment_status: 'paid', payment_reference: 'tx-ped' });
+    expect(d.autoConfirmar).toHaveBeenCalledWith('p-PED-0007');
+  });
+
+  test('número viejo con pedido pendiente: igual que antes', async () => {
+    const db = base(333, { web_orders: [pendiente(333, 'WO-333-MW556LJG-HD58')] });
+    const r = await reconstruirPedido(ctx(333), cuerpo('WO-333-MW556LJG-HD58'), deps(db, txWompi({ id: 'tx-wo', amount_in_cents: 2380000 })));
+    expect(r.estado).toBe('completado');
+    expect(db.tablas.web_orders[0]).toMatchObject({ payment_status: 'paid', payment_reference: 'tx-wo' });
+  });
+
+  test('número nuevo de otra tienda del mismo comercio Wompi: la organización sale del pedido, no de la conexión', async () => {
+    const db = base(339, { web_orders: [pendiente(333, 'PED-0007')] });
+    await expect(reconstruirPedido(ctx(339), cuerpo('PED-0007'), deps(db, txWompi({ id: 'tx-ped', reference: 'PED-0007', amount_in_cents: 2380000 })))).rejects.toMatchObject({
+      status: 409,
+      code: 'COBRO_DE_OTRA_ORGANIZACION',
+    });
+    expect(db.escrituras).toHaveLength(0);
+  });
+
+  test('número nuevo que la tienda perdió: se crea con el MISMO número si el prefijo es de la organización', async () => {
+    const db = base(333, { web_order_number_settings: [{ organization_id: 333, format: 'consecutivo', prefix: 'PED' }] });
+    const r = await reconstruirPedido(ctx(333), cuerpo('PED-0099'), deps(db, txWompi({ id: 'tx-99', reference: 'PED-0099', amount_in_cents: 2380000 })));
+    expect(r.estado).toBe('creado');
+    expect(db.tablas.web_orders[0]).toMatchObject({ order_number: 'PED-0099', organization_id: 333, payment_status: 'paid', payment_reference: 'tx-99' });
+  });
+
+  test('número nuevo perdido con el prefijo de otra tienda: rechazado sin escribir', async () => {
+    const db = base(339, { web_order_number_settings: [{ organization_id: 333, format: 'consecutivo', prefix: 'PED' }] });
+    await expect(reconstruirPedido(ctx(339), cuerpo('PED-0099'), deps(db, txWompi({ id: 'tx-99', reference: 'PED-0099', amount_in_cents: 2380000 })))).rejects.toMatchObject({
+      code: 'OTRA_ORGANIZACION',
+    });
+    expect(db.escrituras).toHaveLength(0);
+  });
+
+  test('cobro sin número de la tienda, confirmado: el pedido nuevo usa el formato de la organización', async () => {
+    const db = fakeDbPedidos(base(333).tablas, (fn) => (fn === 'siguiente_numero_pedido_web' ? { data: 'PED-0003', error: null } : { data: { ok: true }, error: null }));
+    const r = await reconstruirPedido(ctx(333), { ...cuerpo('REF-EXTERNA-9'), confirmar_tienda: true }, deps(db, txWompi({ reference: 'REF-EXTERNA-9', amount_in_cents: 2380000 })));
+    expect(r.pedido.order_number).toBe('PED-0003');
+    expect(String(db.tablas.web_orders[0].internal_notes)).toContain('referencia original: REF-EXTERNA-9');
+  });
+});
+
 describe('3 · pagos sin pedido', () => {
   const evento = (tx: Record<string, unknown>, connection_id = 'cx1') => ({ connection_id, direction: 'inbound', created_at: '2026-11-06T16:00:00Z', payload: { event: 'transaction.updated', data: { transaction: tx } } });
   test('solo los aprobados de esta organización sin pedido (ni los de otra con el mismo comercio)', async () => {
@@ -360,5 +426,22 @@ describe('3 · pagos sin pedido', () => {
     expect(r.map((p) => p.cobro.transaccionId).sort()).toEqual(['t-huerfano', 't-sin-prefijo']);
     expect(r.find((p) => p.cobro.transaccionId === 't-sin-prefijo')?.sinPrefijo).toBe(true);
     expect(db.escrituras).toHaveLength(0);
+  });
+
+  test('números nuevos: cada cobro va a la tienda dueña del prefijo', async () => {
+    const eventos = [
+      evento(txWompi({ id: 't-ped', reference: 'PED-0042' })),
+      evento(txWompi({ id: 't-otra', reference: 'MI-TIENDA-K7M2QX' })),
+      evento(txWompi({ id: 't-viejo', reference: 'WO-333-HUERF-AAAA' })),
+    ];
+    const ajustes = [
+      { organization_id: 333, format: 'consecutivo', prefix: 'PED' },
+      { organization_id: 339, format: 'corto', prefix: 'MI-TIENDA' },
+    ];
+    const r333 = await pagosSinPedido(ctx(333), {}, deps(base(333, { integration_events: eventos, web_order_number_settings: ajustes }), null));
+    expect(r333.map((p) => p.cobro.transaccionId).sort()).toEqual(['t-ped', 't-viejo']);
+    expect(r333.every((p) => p.sinPrefijo === false)).toBe(true);
+    const r339 = await pagosSinPedido(ctx(339), {}, deps(base(339, { integration_events: eventos, web_order_number_settings: ajustes }), null));
+    expect(r339.map((p) => p.cobro.transaccionId)).toEqual(['t-otra']);
   });
 });

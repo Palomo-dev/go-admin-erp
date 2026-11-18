@@ -38322,6 +38322,38 @@
       "historialPedido": "Histórico do pedido"
     }
   },
+  "posNumeroPedido": {
+    "guardar": "Salvar",
+    "guardado": "Número do pedido salvo",
+    "errorGuardar": "Não foi possível salvar",
+    "errorCargar": "Não foi possível carregar o número do pedido",
+    "cargando": "Carregando…",
+    "pendienteMigracion": "Esta opção chega em breve: por enquanto os pedidos mantêm o número de sempre.",
+    "soloLectura": "Só a administração pode mudar o número do pedido.",
+    "sinPermiso": "Só a administração pode mudar o número do pedido.",
+    "comoFunciona": "É assim que são numerados os pedidos da loja online, os manuais e os montados pelo chat com IA.",
+    "existentes": "Os pedidos que já existem mantêm o número. A mudança vale a partir do próximo pedido.",
+    "formato": "Formato",
+    "formatos": {
+      "actual": "Atual",
+      "consecutivo": "Sequencial",
+      "corto": "Código curto"
+    },
+    "ayudaFormato": {
+      "actual": "O de sempre: WO, o número da organização e um código.",
+      "consecutivo": "Prefixo e um número que sobe de um em um: 0001, 0002…",
+      "corto": "Prefixo e seis letras ou números aleatórios, fáceis de ditar."
+    },
+    "prefijo": "Prefixo do número do pedido",
+    "ayudaPrefijo": "De 2 a 10 caracteres: letras, números e hífen. É só da sua loja.",
+    "placeholderPrefijo": "Ex.: PED",
+    "asiSeVera": "Os pedidos vão ficar assim",
+    "errores": {
+      "formato": "Use de 2 a 10 caracteres: letras, números e hífen (sem hífen no início nem no fim).",
+      "reservado": "O sistema usa esse prefixo para outras cobranças. Escolha outro.",
+      "enUso": "Outra loja já usa esse prefixo. Escolha outro."
+    }
+  },
   "pedidosOnlineListado": {
     "titulo": "Pedidos online",
     "subtitulo": "{total, plural, one {# pedido} other {# pedidos}} no período · {pendientes} aguardando confirmação",
@@ -38343,7 +38375,8 @@
       "sonidoOff": "Ativar o alerta sonoro",
       "autoOn": "Pausar a atualização automática",
       "autoOff": "Ativar a atualização automática",
-      "avisosCliente": "Avisos ao cliente"
+      "avisosCliente": "Avisos ao cliente",
+      "numeroPedido": "Número do pedido"
     },
     "vista": {
       "etiqueta": "Visualização",
@@ -38986,6 +39019,11 @@
         "titulo": "Avisos ao cliente",
         "descripcion": "Mensagens ao cliente dos pedidos online",
         "palabras": "avisos, pedidos online, notificar o cliente, whatsapp do pedido"
+      },
+      "posNumeroPedido": {
+        "titulo": "Número do pedido",
+        "descripcion": "Formato do número dos pedidos online",
+        "palabras": "número do pedido, sequencial, prefixo, referência, pedidos online, WO"
       },
       "chatGeneral": {
         "titulo": "Etiquetas e respostas rápidas",

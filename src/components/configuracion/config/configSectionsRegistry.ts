@@ -118,6 +118,8 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'pos.reservas-mesas', modulo: 'pos', seccion: 'reservas-mesas', clave: 'posReservasMesas', permiso: PERMISO_ADMIN, ajustes: [], enlace: '/app/pos/reservas-mesas?tab=configuracion' },
   // Antes era una página aparte (/app/configuracion/pos/avisos-cliente); desde el diálogo es un panel.
   { id: 'pos.avisos-cliente', modulo: 'pos', seccion: 'avisos-cliente', clave: 'posAvisosCliente', permiso: PERMISO_ADMIN, ajustes: [] },
+  // Formato del número de los pedidos web (tienda, pedido manual, chat con IA): `numeroPedido.ts`.
+  { id: 'pos.numero-pedido', modulo: 'pos', seccion: 'numero-pedido', clave: 'posNumeroPedido', permiso: PERMISO_ADMIN, ajustes: [] },
   // «Etiquetas y respuestas rápidas» (Figma 12.8): el id sigue siendo `chat.general` porque es
   // estable (enlaces y favoritos). Las etiquetas se administran SOLO aquí; CRM enlaza.
   { id: 'chat.general', modulo: 'chat', seccion: 'general', clave: 'chatGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

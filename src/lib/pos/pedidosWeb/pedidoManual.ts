@@ -2,41 +2,29 @@
  * Pedido manual y reconstrucción de pedidos pagados en Pedidos online. PURO: sin base ni red,
  * para probarlo con mocks.
  *
- * - Número de pedido: el mismo de la tienda (goadmin-websites `app/api/orders/route.ts`,
- *   `generateOrderNumber`): `WO-{orgId}-{Date.now() en base 36}-{4 al azar}`, en mayúsculas como
- *   allá. NO se usa el RPC `generate_web_order_number` (formato viejo).
- * - La organización de un cobro sale SOLO del prefijo `WO-{orgId}-`: las organizaciones 333 y 339
- *   comparten el comercio de Wompi, así que la conexión que ve el cobro no dice de quién es.
+ * - Número de pedido: lo decide la organización (`numeroPedido.ts`: el de siempre
+ *   `WO-{orgId}-{ts36}-{rand4}`, un consecutivo `PREFIJO-0001` o un código corto
+ *   `PREFIJO-XXXXXX`); el servidor lo pide al RPC `siguiente_numero_pedido_web`.
+ * - La organización de un cobro sale del pedido que tiene ese número (`order_number`); si no hay
+ *   pedido, del prefijo viejo `WO-{orgId}-` o del prefijo configurado (`resolverOrganizacionReferencia`).
+ *   Las organizaciones 333 y 339 comparten el comercio de Wompi, así que la conexión que ve el
+ *   cobro no dice de quién es.
  * - Totales: el mismo modelo de la tienda (`construirFilasPedido`): `total` de la línea = precio ×
  *   cantidad sin impuesto, el IVA de la línea aparte, y el pedido suma el IVA solo si NO viene
  *   incluido en el precio.
  */
-
-const RE_PREFIJO = /^WO-(\d+)-/i;
-const RE_NUMERO = /^WO-\d+-[A-Z0-9]+-[A-Z0-9]{4}$/i;
+import { esNumeroLegado, numeroLegado, organizacionLegado, type ReferenciaResuelta } from './numeroPedido';
 
 const r2 = (n: number): number => Math.round((Number.isFinite(n) ? n : 0) * 100) / 100;
 
-/** `WO-{orgId}-{ts36}-{rand4}`. `ahora` y `azar` existen para las pruebas. */
-export function generarNumeroPedidoWeb(organizationId: number, ahora: number = Date.now(), azar: () => number = Math.random): string {
-  if (!Number.isInteger(organizationId) || organizationId <= 0) throw new Error('organizationId inválido');
-  const ts = ahora.toString(36).toUpperCase();
-  const rand = azar().toString(36).substring(2, 6).toUpperCase().padEnd(4, '0');
-  return `WO-${organizationId}-${ts}-${rand}`;
-}
+/** Formato de siempre `WO-{orgId}-{ts36}-{rand4}` (`numeroLegado`). */
+export const generarNumeroPedidoWeb = numeroLegado;
 
-/** Organización del prefijo `WO-{orgId}-`; null si la referencia no lo trae. */
-export function organizacionDelNumero(referencia: string | null | undefined): number | null {
-  const m = RE_PREFIJO.exec(String(referencia ?? '').trim());
-  if (!m) return null;
-  const n = Number(m[1]);
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
+/** Organización del prefijo viejo `WO-{orgId}-`; null si la referencia no lo trae. */
+export const organizacionDelNumero = organizacionLegado;
 
-/** ¿Tiene la forma completa de un número de pedido de la tienda? */
-export function esNumeroDeTienda(referencia: string | null | undefined): boolean {
-  return RE_NUMERO.test(String(referencia ?? '').trim());
-}
+/** ¿Tiene la forma completa de un número de pedido de la tienda en el formato viejo? */
+export const esNumeroDeTienda = esNumeroLegado;
 
 // ─── Totales ────────────────────────────────────────────────────────────────
 
@@ -145,6 +133,11 @@ export function decidirReconstruccion(entrada: {
   referencia: string | null;
   transaccionId: string;
   existentes: PedidoExistente[];
+  /**
+   * De qué tienda es la referencia (`resolverOrganizacionReferencia`, con los pedidos y los
+   * prefijos configurados). Sin ella, solo el prefijo viejo `WO-{orgId}-`.
+   */
+  referenciaDe?: Pick<ReferenciaResuelta, 'organizacion' | 'numeroDeTienda'>;
 }): Decision {
   const { organizationId, referencia, existentes } = entrada;
   const deOtra = existentes.find((p) => p.organization_id !== organizationId);
@@ -153,10 +146,10 @@ export function decidirReconstruccion(entrada: {
   if (pagado) return { tipo: 'ya_existe', pedido: pagado };
   if (deOtra) return { tipo: 'rechazar', code: 'COBRO_DE_OTRA_ORGANIZACION', organizacion: deOtra.organization_id };
 
-  const prefijo = organizacionDelNumero(referencia);
-  if (prefijo !== null && prefijo !== organizationId) return { tipo: 'rechazar', code: 'OTRA_ORGANIZACION', organizacion: prefijo };
+  const de = entrada.referenciaDe ?? { organizacion: organizacionDelNumero(referencia), numeroDeTienda: esNumeroDeTienda(referencia) };
+  if (de.organizacion !== null && de.organizacion !== organizationId) return { tipo: 'rechazar', code: 'OTRA_ORGANIZACION', organizacion: de.organizacion };
   if (propios[0]) return { tipo: 'completar', pedido: propios[0] };
-  if (prefijo === organizationId && esNumeroDeTienda(referencia)) return { tipo: 'crear', orderNumber: String(referencia).trim().toUpperCase(), notaOriginal: null };
+  if (de.organizacion === organizationId && de.numeroDeTienda) return { tipo: 'crear', orderNumber: String(referencia).trim().toUpperCase(), notaOriginal: null };
   return { tipo: 'crear_nuevo', notaOriginal: String(referencia ?? '').trim(), requiereConfirmarTienda: true };
 }
 

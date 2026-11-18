@@ -19,6 +19,7 @@ import {
   BellOff,
   CheckCircle,
   CircleDollarSign,
+  Hash,
   ClipboardPlus,
   Clock,
   Coins,
@@ -36,6 +37,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { abrirConfiguracion } from '@/components/configuracion/dialogo/abrirConfiguracion';
 import { useToast } from '@/components/ui/use-toast';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
@@ -631,6 +633,12 @@ export default function PedidosOnlinePage() {
       icono: Settings,
       separadorAntes: true,
       onSelect: () => router.push('/app/configuracion/pos/avisos-cliente'),
+    },
+    {
+      id: 'numero-pedido',
+      etiqueta: t('acciones.numeroPedido'),
+      icono: Hash,
+      onSelect: () => abrirConfiguracion({ seccionId: 'pos.numero-pedido' }),
     },
   ];
 

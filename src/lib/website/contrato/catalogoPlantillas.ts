@@ -1067,6 +1067,115 @@ export function textoPlantillaClara(secundario: string, fondo: string = FONDO_CL
 }
 
 /**
+ * Las clásicas renovadas (opción 1 del dueño, 2026-11-19): mismo id, misma base del sitio y la
+ * de por defecto sigue siéndolo; ahora traen, como las 7 nuevas, su tarjeta, perillas del tema y
+ * sus páginas de ficha y categoría (Figma «04 Tiendas» › «Plantilla renovada · <nombre>»). Solo
+ * cambia lo que arma la plantilla al usarla: las tiendas que ya la usan no cambian hasta volver a
+ * aplicarla. Las que aún no se renuevan siguen saliendo de `plantillaDesdeBase`.
+ */
+const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
+  // «Moderna» (Figma `323:28835`, aprobada el 2026-11-19): tienda general, azul, redondeada.
+  retail_modern: {
+    id: 'retail_modern',
+    nombre: 'Moderna',
+    descripcion: 'Limpia y luminosa, con bordes redondeados y acento azul. Sirve para casi cualquier catálogo.',
+    subgiro: 'Tienda general',
+    base: 'retail_modern',
+    inicio: [
+      ['hero', 'slider', { full_width: false, border_radius: 24, content_position: 'middle-left', text_align: 'left' }],
+      ['categories_grid', 'horizontal', { title: 'Explora por categoría', category_style: 'circle', shape: 'circle', desktop_layout: 'carousel', mobile_layout: 'carousel', show_count: false, show_view_all: true }],
+      // Oculta hasta que el dueño suba sus banners (nunca ofertas de ejemplo).
+      ['promo_banners', 'grid', { title: 'Ofertas de la semana', banner_layout: 'hero_plus_2', banners: [] }],
+      ['products_grid', 'grid', { title: 'Lo más vendido', columns_desktop: 5, show_categories: true, tabs_style: 'chips', show_all_chip: true }],
+      ['offers', 'grid', { title: 'Precios que bajan esta semana', columns: 4, section_background: { color: '#EAF0FF', width: 'full' } }],
+      ['categories_grid', 'grid', { title: 'Compra por mundo', category_style: 'bento', shape: 'rounded', show_count: true, show_color: true }],
+      ['features_grid', 'icons'],
+      ['brands', 'logos'],
+      ['testimonials', 'grid', { show_summary: true, summary_source: 'product_reviews' }],
+    ],
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#0E1726',
+    acento: '#2459E8',
+    acentoSecundario: '#FFC53D',
+    fuenteTitulos: 'Plus Jakarta Sans',
+    fuenteCuerpo: 'Plus Jakarta Sans',
+    // El tema solo admite 0, 4, 12 o 24 (contrato): 12, el más cercano; tarjetas e imágenes llevan sus 16 propios.
+    radio: 12,
+    estiloBoton: 'pastilla',
+    movimiento: 'medio',
+    claseFuentes: 'moderna',
+    tokens: { hover: 'sutil' },
+    carrusel: { indicador: 'puntos' },
+    paginacion: { estilo: 'numerada' },
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      card_radius: 16,
+      card_border_width: 1,
+      card_border_color: '#E3E8F0',
+      card_shadow: 'hover',
+      card_padding: 12,
+      card_bg: '#FFFFFF',
+      image_ratio: '1:1',
+      image_fit: 'contain',
+      image_bg: '#EEF2F8',
+      image_padding: 16,
+      image_radius: 12,
+      hover_image: 'second',
+      show_brand: true,
+      show_category: false,
+      title_lines: 2,
+      title_weight: 'medium',
+      title_size: 'md',
+      show_reviews: true,
+      reviews_position: 'below_title',
+      reviews_style: 'stars',
+      price_position: 'below_title',
+      price_size: 'lg',
+      show_compare_price: true,
+      label_shape: 'pill',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_discount: { bg: '#FFC53D', text: '#0E1726' },
+      label_new: { bg: '#FFC53D', text: '#0E1726' },
+      wishlist_style: 'circle',
+      wishlist_position: 'top_right',
+      add: { button_style: 'solid', button_shape: 'pill', button_size: 'md', button_width: 'full', button_position: 'bottom', button_visibility: 'always', icon: 'ShoppingCart', icon_side: 'left' },
+      choose_label: 'Elige una opción',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
+        ['product_shipping', 'default'],
+        ['product_benefits', 'default'],
+        ['product_anchor_nav', 'tabs'],
+        ['product_description', 'default'],
+        ['product_specs', 'icon_grid', { title: 'Características' }],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', { ...ENCABEZADO_CATEGORIA }],
+        ['category_filters', 'sidebar_facets', { show_subcategories: true, show_sort: true, clear_text: 'Limpiar filtros' }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+};
+
+/** ¿Es una clásica ya renovada (trae ficha, categoría, tarjeta y perillas)? */
+export function esPlantillaTiendaRenovada(id: string | null | undefined): boolean {
+  return !!id && Object.prototype.hasOwnProperty.call(TIENDA_RENOVADA, id);
+}
+
+/** Nuevas o renovadas: plantillas de tienda con diseño completo (tokens, ficha y categoría). */
+export function tieneDisenoTiendaCompleto(id: string | null | undefined): boolean {
+  return esPlantillaTiendaNueva(id) || esPlantillaTiendaRenovada(id);
+}
+
+/**
  * Las 4 plantillas de tienda de antes («Clásicas» en la galería, pedido del dueño 2026-11-19):
  * nombre en español, tipo de negocio y una descripción que dice para quién son. Solo cambia cómo se
  * presentan en el editor: el estilo (`estilo.nombre`), las secciones y lo que se guarda al usarlas
@@ -1202,7 +1311,9 @@ function plantillaTienda(d: DefinicionTienda): PlantillaCatalogo {
  * los demás giros (en la pestaña «Tienda», `retail_modern` sigue primero por ser la de por defecto).
  */
 export function construirCatalogo(bases: readonly PlantillaBaseSitio[]): CatalogoPlantillas {
-  const otras = bases.map(plantillaDesdeBase).filter((p): p is PlantillaCatalogo => p !== null);
+  const otras = bases
+    .map((b) => (TIENDA_RENOVADA[b.id] ? { ...plantillaTienda(TIENDA_RENOVADA[b.id]), porDefecto: b.is_default } : plantillaDesdeBase(b)))
+    .filter((p): p is PlantillaCatalogo => p !== null);
   return {
     version: VERSION_CATALOGO_PLANTILLAS,
     plantillas: [...RESTAURANTE.map(plantillaRestaurante), ...TIENDA.map(plantillaTienda), ...otras],

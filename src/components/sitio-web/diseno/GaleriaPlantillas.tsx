@@ -30,7 +30,7 @@ import { MarcoSitioWeb } from '../MarcoSitioWeb';
 import { RAIZ_SITIO_WEB } from '../rutasSitioWeb';
 import { TemplateCard } from '../ui/TemplateCard';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
-import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { esPlantillaTiendaRenovada, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import { validarPlantillaSede, type SedeParaPlantillas } from '@/lib/website/v2/plantillaSede';
 import { modoPorDefecto, paginasPropiasDePlantilla, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { MiniaturaPlantilla, useShellDePlantilla } from './MiniaturaPlantilla';
@@ -113,6 +113,8 @@ function TarjetaPlantilla({
   const t = useTextosDiseno();
   const shell = useShellDePlantilla(p);
   const nueva = esPlantillaTiendaNueva(p.id);
+  // Clásicas renovadas: también diseñan ficha y categoría; llevan «Renovada» en vez de «Nueva».
+  const renovada = esPlantillaTiendaRenovada(p.id);
   return (
     <TemplateCard
       nombre={p.nombre}
@@ -124,8 +126,8 @@ function TarjetaPlantilla({
       iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
       secciones={p.inicio.length}
       // A1: las 7 nuevas diseñan Inicio, la ficha de producto y la página de categoría.
-      paginas={nueva ? PAGINAS_PLANTILLA_TIENDA_NUEVA : paginasPropiasDePlantilla(p.id)}
-      novedad={nueva ? t('plantillas.nueva') : undefined}
+      paginas={nueva || renovada ? PAGINAS_PLANTILLA_TIENDA_NUEVA : paginasPropiasDePlantilla(p.id)}
+      novedad={nueva ? t('plantillas.nueva') : renovada ? t('plantillas.renovada') : undefined}
       enUso={enUso}
       etiquetaEnUso={etiquetaEnUso}
       onSeleccionar={onAbrir}

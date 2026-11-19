@@ -191,6 +191,8 @@ export const TEXTOS_DISENO = {
     abrir: 'Ver la plantilla «{nombre}»',
     /** Las 7 plantillas de tienda nuevas (A1): insignia y filtro por tipo de negocio de la pestaña Tienda. */
     nueva: 'Nueva',
+    /** Clásica rediseñada (Moderna desde 2026-11-19): también diseña ficha y categoría. */
+    renovada: 'Renovada',
     negocio: {
       etiqueta: 'Tipo de negocio',
       todos: 'Todos los negocios',

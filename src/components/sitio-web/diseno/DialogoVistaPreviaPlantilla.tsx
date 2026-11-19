@@ -40,7 +40,7 @@ import { CircleCheck, LayoutTemplate, Link2, Loader2, Palette } from 'lucide-rea
 import { AvisoTonal, PanelAdaptable, TarjetaSeleccionable, clasesBoton, useEsEscritorio } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
-import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { esPlantillaTiendaRenovada, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import type { ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { PAGINAS_BASE_GIRO } from '../paginas/plantillasPagina';
@@ -198,7 +198,9 @@ function DialogoAbierto({
   const ocupado = usando || Boolean(sede?.heredando);
   // D4: solo las 7 de tienda nuevas rearman la ficha y la categoría con «Plantilla completa».
   const nueva = esPlantillaTiendaNueva(plantilla.id);
-  const avisoD4 = nueva && completa && sinCompleta === null;
+  // Nuevas y clásicas renovadas: diseñan ficha y categoría (D4) y usan los textos de tienda.
+  const conDiseno = nueva || esPlantillaTiendaRenovada(plantilla.id);
+  const avisoD4 = conDiseno && completa && sinCompleta === null;
   const avisoCompletaDescripcion = !avisoD4
     ? ts('avisoCompletaDescripcion', 'dialogo.avisoCompletaDescripcion')
     : sede
@@ -241,6 +243,11 @@ function DialogoAbierto({
           {nueva && (
             <Badge tono="marca" apariencia="suave" tamano="sm" data-insignia-nueva>
               {t('plantillas.nueva')}
+            </Badge>
+          )}
+          {!nueva && conDiseno && (
+            <Badge tono="marca" apariencia="suave" tamano="sm" data-insignia-renovada>
+              {t('plantillas.renovada')}
             </Badge>
           )}
         </span>
@@ -302,7 +309,7 @@ function DialogoAbierto({
             )}
           </div>
           <div className="flex flex-col gap-4">
-            <p className="text-[13px] leading-[18px] text-fg-secondary">{t(nueva ? 'dialogo.tienda.descripcion' : 'dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>
+            <p className="text-[13px] leading-[18px] text-fg-secondary">{t(conDiseno ? 'dialogo.tienda.descripcion' : 'dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>
             <div className="flex flex-col gap-2">
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.incluye')}</h3>
               <ul className="flex flex-col gap-1.5">
@@ -314,7 +321,7 @@ function DialogoAbierto({
                 ))}
               </ul>
               {completa && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.paginas', { lista: paginas })}</p>}
-              {nueva && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.tienda.paginas')}</p>}
+              {conDiseno && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.tienda.paginas')}</p>}
             </div>
             <div className="flex flex-col gap-2" data-rasgos-shell>
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.encabezadoPie')}</h3>

@@ -16,13 +16,18 @@ describe('páginas diseñadas de las 7 plantillas de tienda', () => {
     }
   });
 
+  test('Moderna renovada también tiene sus 4 imágenes', () => {
+    for (const p of PAGINAS_DISENADAS) expect(existsSync(join(process.cwd(), 'public', imagenPaginaDisenada('retail_modern', p)!))).toBe(true);
+    expect(existsSync(join(process.cwd(), 'public', imagenPaginaDisenada('retail_modern', 'inicio', true)!))).toBe(true);
+  });
+
   test('en celular solo Inicio cambia de imagen; categoría y producto son las de computador', () => {
     expect(imagenPaginaDisenada('retail_marea', 'inicio', true)).toBe('/sitio-web/plantillas/marea/movil.webp');
     expect(imagenPaginaDisenada('retail_marea', 'producto', true)).toBe('/sitio-web/plantillas/marea/producto.webp');
   });
 
   test('las demás plantillas no tienen páginas diseñadas (siguen con el esquema)', () => {
-    for (const id of ['retail_moderno', 'restaurant_classic', 'retail_robleX', '', 'roble']) {
+    for (const id of ['retail_classic', 'retail_bold', 'retail_elegant', 'restaurant_classic', 'retail_robleX', '', 'roble']) {
       expect(tienePaginasDisenadas(id)).toBe(false);
       expect(imagenPaginaDisenada(id, 'inicio')).toBeNull();
     }

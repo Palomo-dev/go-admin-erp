@@ -455,7 +455,7 @@ describe('encabezado y pie por plantilla (láminas aprobadas en Figma)', () => {
     expect(nombresPie(d)).toEqual(['Alérgenos']);
   });
 
-  it('«Retail Moderno»: megamenú con las categorías reales del Inventario', () => {
+  it('«Moderna»: megamenú con las categorías reales del Inventario', () => {
     const d = de('retail_modern');
     expect(d.shell.header.composicion).toBe('mega');
     const mega = d.menus.find((m) => m.id === d.shell.header.menuMegaId)!;
@@ -465,7 +465,9 @@ describe('encabezado y pie por plantilla (láminas aprobadas en Figma)', () => {
       expect.objectContaining({ etiqueta: 'Bebidas', entidadId: '3' }),
     ]);
     expect(nombresPie(d)).toEqual(['Ayuda', 'Envíos y devoluciones', 'Legales']);
-    expect(d.shell.header.opciones.mobile_bottom_bar).toEqual(['whatsapp', 'llamar', 'como_llegar']);
+    // Renovada (2026-11-19): en el celular, la barra «tipo app» de la lámina en vez de WhatsApp/llamar.
+    expect(d.shell.header.opciones.mobile_bottom_bar).toBe('ninguna');
+    expect((d.shell.header.opciones.mobile_header as { bottom_nav?: { v?: number } }).bottom_nav?.v).toBe(2);
   });
 
   it('hotel: «Políticas» con su página y «Legales» sin repetirla; barra móvil del giro', () => {

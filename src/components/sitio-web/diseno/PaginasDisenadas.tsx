@@ -18,10 +18,23 @@ import { useTextosDiseno } from './textos';
 export const PAGINAS_DISENADAS = ['inicio', 'categoria', 'producto'] as const;
 export type PaginaDisenada = (typeof PAGINAS_DISENADAS)[number];
 
-/** `retail_roble` → `roble`. `null` si no es una de las 7 de tienda nuevas. */
+/**
+ * Carpeta de las imágenes de cada plantilla con páginas diseñadas: las 7 de tienda nuevas y las
+ * clásicas ya renovadas (Moderna desde el 2026-11-19). `null` si no tiene.
+ */
+const CARPETAS: Readonly<Record<string, string>> = {
+  retail_panorama: 'panorama',
+  retail_atelier: 'atelier',
+  retail_radiante: 'radiante',
+  retail_roble: 'roble',
+  retail_marea: 'marea',
+  retail_contraste: 'contraste',
+  retail_hogar: 'hogar',
+  retail_modern: 'moderna',
+};
+
 function carpeta(plantillaId: string): string | null {
-  const m = /^retail_(panorama|atelier|radiante|roble|marea|contraste|hogar)$/.exec(plantillaId);
-  return m ? m[1] : null;
+  return Object.prototype.hasOwnProperty.call(CARPETAS, plantillaId) ? CARPETAS[plantillaId] : null;
 }
 
 /**

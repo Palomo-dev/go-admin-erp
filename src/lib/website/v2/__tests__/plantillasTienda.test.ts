@@ -30,6 +30,8 @@ import {
   construirCatalogo,
   esPlantillaTiendaClasica,
   esPlantillaTiendaNueva,
+  esPlantillaTiendaRenovada,
+  tieneDisenoTiendaCompleto,
   plantillaPorId,
   plantillasDelGiro,
   tieneSerifa,
@@ -156,9 +158,10 @@ describe('catálogo: las 7 plantillas de tienda nuevas', () => {
     for (const p of clasicas) {
       const preset = TEMPLATE_PRESETS.find((t) => t.id === p.id)!;
       expect(esPlantillaTiendaClasica(p.id)).toBe(true);
-      // Solo cambia cómo se presentan: el estilo conserva el nombre del sitio y la base es la misma.
-      expect(p.estilo.nombre).toBe(preset.name);
       expect(p.base).toBe(preset.id);
+      // Las aún no renovadas solo cambian cómo se presentan: el estilo conserva el nombre del sitio.
+      // Las renovadas (opción 1 del dueño, 2026-11-19) traen su estilo propio con su nombre nuevo.
+      expect(p.estilo.nombre).toBe(esPlantillaTiendaRenovada(p.id) ? p.nombre : preset.name);
       expect(p.descripcion.length).toBeGreaterThan(20);
     }
     expect(esPlantillaTiendaClasica('retail_roble')).toBe(false);
@@ -180,14 +183,16 @@ describe('catálogo: las 7 plantillas de tienda nuevas', () => {
   });
 
   test('las plantillas de antes no traen ningún campo nuevo', () => {
-    for (const p of CATALOGO.plantillas.filter((x) => !esPlantillaTiendaNueva(x.id))) {
+    for (const p of CATALOGO.plantillas.filter((x) => !tieneDisenoTiendaCompleto(x.id))) {
       expect([p.tarjetaProducto, p.tokens, p.detalle, p.carrusel, p.paginacion, p.estilo.secundario, p.estilo.acentoSecundario]).toEqual(Array(7).fill(undefined));
       expect(p.inicio.every((s) => s.length === 2)).toBe(true);
     }
   });
 
   test('la tarjeta de cada una pasa el normalizador del contrato sin perder ni cambiar nada', () => {
-    for (const p of NUEVAS) expect({ id: p.id, tarjeta: normalizarTarjeta(p.tarjetaProducto) }).toEqual({ id: p.id, tarjeta: p.tarjetaProducto });
+    const conDiseno = CATALOGO.plantillas.filter((p) => tieneDisenoTiendaCompleto(p.id));
+    expect(conDiseno.length).toBeGreaterThanOrEqual(NUEVAS.length + 1);
+    for (const p of conDiseno) expect({ id: p.id, tarjeta: normalizarTarjeta(p.tarjetaProducto) }).toEqual({ id: p.id, tarjeta: p.tarjetaProducto });
   });
 
   test('Instrument Serif cuenta como serifa (descripción del par en Diseño)', () => {
@@ -457,8 +462,17 @@ describe('ficha y categoría (D4)', () => {
     expect(new Set(documento.paginas.map((p) => p.id)).size).toBe(documento.paginas.length);
   });
 
-  test('las plantillas de tienda de antes siguen CONSERVANDO las páginas de detalle', () => {
-    for (const id of ['retail_modern', 'retail_classic', 'retail_bold', 'retail_elegant']) {
+  test('Moderna renovada REEMPLAZA la ficha y la categoría con las de su lámina, y sigue siendo la de por defecto', () => {
+    const moderna = plantillaPorId(CATALOGO, 'retail_modern')!;
+    expect(moderna.porDefecto).toBe(true);
+    expect(esPlantillaTiendaRenovada('retail_modern')).toBe(true);
+    const { documento } = armar(moderna, TODAS_LAS_BANDERAS, borradorTienda());
+    expect(paginaDeTipo(documento, 'product_detail')!.secciones.map((x) => x.tipo)).toEqual(moderna.detalle!.producto.map(([t]) => t));
+    expect(paginaDeTipo(documento, 'category_detail')!.secciones.map((x) => x.tipo)).toEqual(moderna.detalle!.categoria.map(([t]) => t));
+  });
+
+  test('las plantillas de tienda de antes aún no renovadas siguen CONSERVANDO las páginas de detalle', () => {
+    for (const id of ['retail_modern', 'retail_classic', 'retail_bold', 'retail_elegant'].filter((x) => !esPlantillaTiendaRenovada(x))) {
       const base = borradorTienda();
       const { documento } = armar(plantillaPorId(CATALOGO, id)!, TODAS_LAS_BANDERAS, base);
       expect(paginaDeTipo(documento, 'product_detail')).toEqual(base.paginas.find((p) => p.id === 'ficha'));
@@ -472,10 +486,12 @@ describe('ficha y categoría (D4)', () => {
 describe('las plantillas de antes dan el mismo documento que antes (huellas de la rama base)', () => {
   const huella = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex');
   const huellas = HUELLAS_MAIN as Record<string, Record<string, string>>;
-  const viejas = CATALOGO.plantillas.filter((p) => !esPlantillaTiendaNueva(p.id));
+  // Las clásicas renovadas cambian A PROPÓSITO lo que arman (opción 1 del dueño, 2026-11-19): salen
+  // de esta comparación. Las tiendas que ya las usan no cambian hasta volver a aplicarlas.
+  const viejas = CATALOGO.plantillas.filter((p) => !tieneDisenoTiendaCompleto(p.id));
 
-  test('son las mismas 33 que había', () => {
-    expect(viejas.map((p) => p.id).sort()).toEqual(Object.keys(huellas).sort());
+  test('son las mismas que había, menos las renovadas', () => {
+    expect(viejas.map((p) => p.id).sort()).toEqual(Object.keys(huellas).filter((id) => !esPlantillaTiendaRenovada(id)).sort());
   });
 
   test.each(viejas.map((p) => [p.id, p] as const))('%s: «Solo estilo» y «Plantilla completa» byte a byte', (id, p) => {

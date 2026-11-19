@@ -233,18 +233,52 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
     pie: { composicion: 'minimal', menus: ['alergenos'], opciones: { footer_background: 'tema', show_powered_by: true, mobile_footer_style: 'stacked' } },
   },
   // ─── Tienda ────────────────────────────────────────────────────────────────────────────────
+  // Moderna renovada (Figma «04 Tiendas» › «Plantilla renovada · Moderna», aprobada el
+  // 2026-11-19): barra superior azul, megamenú con categorías, buscador en barra y acciones con
+  // texto; pie azul noche con boletín, categorías, WhatsApp, redes y medios de pago.
   retail_modern: {
     encabezado: {
       composicion: 'mega',
       megaCategorias: true,
       boton: null,
       boton2: null,
-      opciones: conBarra('tienda', { show_topbar: true, topbar_show_free_shipping: true, show_categories_in_header: true, mega_menu_columns: 4, search_style: 'bar', mobile_search_style: 'bar', show_header_cart: true, show_header_auth: true, mobile_menu_style: 'tabs' }),
+      opciones: {
+        show_topbar: true,
+        topbar_show_free_shipping: true,
+        topbar_show_phone: true,
+        topbar_show_email: false,
+        topbar_bg_color: '#2459E8',
+        show_categories_in_header: true,
+        mega_menu_columns: 4,
+        search_style: 'bar',
+        mobile_search_style: 'bar',
+        header_actions_style: 'icono_texto',
+        header_cart_glyph: 'carrito',
+        header_scroll: 'encoger',
+        show_header_cart: true,
+        show_header_auth: true,
+        mobile_menu_style: 'drawer',
+        mobile_bottom_bar: 'ninguna',
+        mobile_header: BARRA_APP_TIENDA,
+      },
     },
     pie: {
       composicion: 'three_columns',
       menus: ['ayuda', 'envios-devoluciones', 'legal'],
-      opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_newsletter: true, footer_show_payment_methods: true, mobile_footer_style: 'accordion' },
+      opciones: {
+        footer_background: 'custom',
+        footer_custom_bg_color: '#0C1A3A',
+        footer_show_newsletter: true,
+        footer_show_categories: true,
+        footer_show_whatsapp: true,
+        footer_show_payment_methods: true,
+        footer_show_social: true,
+        footer_show_dividers: true,
+        footer_show_contact: false,
+        footer_show_hours: false,
+        footer_show_map: false,
+        mobile_footer_style: 'accordion',
+      },
     },
   },
   retail_classic: {
@@ -687,6 +721,25 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
   },
 };
 
+/**
+ * Shell de «Retail Moderno» antes de la renovación (2026-11-19). Sigue siendo el respaldo del giro
+ * tienda (`SHELL_RESPALDO_GIRO`): lo que arman las plantillas sin lámina propia no cambia.
+ */
+const SHELL_TIENDA_RESPALDO: ShellPlantilla = {
+  encabezado: {
+    composicion: 'mega',
+    megaCategorias: true,
+    boton: null,
+    boton2: null,
+    opciones: conBarra('tienda', { show_topbar: true, topbar_show_free_shipping: true, show_categories_in_header: true, mega_menu_columns: 4, search_style: 'bar', mobile_search_style: 'bar', show_header_cart: true, show_header_auth: true, mobile_menu_style: 'tabs' }),
+  },
+  pie: {
+    composicion: 'three_columns',
+    menus: ['ayuda', 'envios-devoluciones', 'legal'],
+    opciones: { footer_show_contact: false, footer_background: 'tema', footer_show_newsletter: true, footer_show_payment_methods: true, mobile_footer_style: 'accordion' },
+  },
+};
+
 /** Plantillas del catálogo que usan una lámina con otro nombre. */
 const ALIAS_PLANTILLA: Readonly<Record<string, string>> = {
   parking_tech: 'parqueadero_B',
@@ -698,7 +751,7 @@ const ALIAS_PLANTILLA: Readonly<Record<string, string>> = {
  */
 export const SHELL_RESPALDO_GIRO: Readonly<Record<Giro, ShellPlantilla>> = {
   restaurante: SHELL_POR_PLANTILLA.noir_omakase,
-  tienda: SHELL_POR_PLANTILLA.retail_modern,
+  tienda: SHELL_TIENDA_RESPALDO,
   hotel: SHELL_POR_PLANTILLA.hotel_luxury,
   servicios: SHELL_POR_PLANTILLA.services_modern,
   gimnasio: SHELL_POR_PLANTILLA.gym_power,

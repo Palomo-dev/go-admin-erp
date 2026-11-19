@@ -184,8 +184,16 @@ describe('galería: las 7 de tienda, sin bandera', () => {
     for (const nombre of NOMBRES_RETAIL_DE_HOY) {
       const t = tarjeta(nombre);
       expect(within(t).queryByText('Nueva')).toBeNull();
+      if (nombre === 'Moderna') {
+        // Renovada (2026-11-19): «Renovada», 3 páginas y su Inicio diseñado.
+        expect(within(t).getByText('Renovada')).toBeTruthy();
+        expect(within(t).getByText(/· 3 páginas/)).toBeTruthy();
+        expect(within(t).getByRole('img').getAttribute('src')).toBe('/sitio-web/plantillas/moderna/inicio.webp');
+        continue;
+      }
+      expect(within(t).queryByText('Renovada')).toBeNull();
       expect(within(t).queryByText(/· 3 páginas/)).toBeNull();
-      // Las de antes siguen con su esquema de encabezado y pie.
+      // Las aún no renovadas siguen con su esquema de encabezado y pie.
       expect(within(t).getByRole('img').getAttribute('data-esquema-shell')).toBe('mini');
     }
   });
@@ -264,6 +272,17 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
     expect(within(dialogo).getByText(/Así es la plantilla, con productos y fotos de muestra/)).toBeTruthy();
   });
 
+  test('Moderna renovada: «Renovada», aviso D4 y sus páginas diseñadas', () => {
+    renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(tarjeta('Moderna'));
+    const dialogo = screen.getByRole('dialog');
+    expect(dialogo.querySelector('[data-insignia-renovada]')?.textContent).toBe('Renovada');
+    expect(dialogo.querySelector('[data-insignia-nueva]')).toBeNull();
+    expect(within(dialogo).getByText(AVISO_D4)).toBeTruthy();
+    const vista = dialogo.querySelector('[data-vista-disenada="retail_modern"]') as HTMLElement;
+    expect(within(vista).getByRole('img').getAttribute('src')).toBe('/sitio-web/plantillas/moderna/inicio.webp');
+  });
+
   test('la misma nueva con «Solo estilo»: sin aviso D4 (el estilo no toca páginas)', () => {
     renderConIdioma(<GaleriaPlantillas />);
     fireEvent.click(tarjeta('Atelier'));
@@ -276,14 +295,14 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
 
   test('una de las de antes con «Plantilla completa»: el aviso de siempre, sin D4 ni «Nueva»', () => {
     renderConIdioma(<GaleriaPlantillas />);
-    fireEvent.click(tarjeta('Moderna'));
+    fireEvent.click(tarjeta('Clásica'));
     const dialogo = screen.getByRole('dialog');
     expect(within(dialogo).getByRole('radio', { name: /Plantilla completa/ }).getAttribute('aria-checked')).toBe('true');
     expect(within(dialogo).queryByText(AVISO_D4)).toBeNull();
     expect(within(dialogo).queryByText('Nueva')).toBeNull();
     expect(within(dialogo).queryByText(/Páginas que diseña/)).toBeNull();
     expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.avisoCompletaDescripcion'))).toBeTruthy();
-    expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.descripcion', { descripcion: CATALOGO_SITIO.plantillas.find((p) => p.id === 'retail_modern')!.descripcion }))).toBeTruthy();
+    expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.descripcion', { descripcion: CATALOGO_SITIO.plantillas.find((p) => p.id === 'retail_classic')!.descripcion }))).toBeTruthy();
   });
 });
 

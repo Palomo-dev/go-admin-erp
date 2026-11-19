@@ -38345,7 +38345,7 @@
       "corto": "Código corto"
     },
     "ayudaFormato": {
-      "actual": "El de siempre: WO, el número de la organización y un código. Para cambiar «WO-…» por tu propio prefijo, elige Consecutivo o Código corto.",
+      "actual": "El de siempre: WO, el número de la organización y un código.",
       "consecutivo": "Prefijo y un número que sube de uno en uno: 0001, 0002…",
       "corto": "Prefijo y seis letras o números al azar, fáciles de dictar."
     },

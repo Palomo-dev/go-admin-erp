@@ -8,7 +8,7 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { Switch } from '@/components/ui/switch';
 import { Settings, Tag, FileText, ExternalLink, Hash } from 'lucide-react';
 import { IntegrationProvider, IntegrationConnector } from '@/lib/services/integrationsService';
-import { urlWebhookDeConector } from '@/lib/services/integrations/conexiones/urlsWebhook';
+import { urlWebhookDeConector, usaDominioDeTienda } from '@/lib/services/integrations/conexiones/urlsWebhook';
 
 interface StepSettingsProps {
   provider: IntegrationProvider | null;
@@ -30,6 +30,9 @@ export function StepSettings({
   onSettingsChange,
 }: StepSettingsProps) {
   const urlWebhook = connector?.capabilities?.webhooks ? urlWebhookDeConector(connector?.code) : null;
+  // Wompi y Bold: con dominio verificado la URL buena es la de la tienda, y esa se conoce al
+  // guardar (detalle de la conexión, `webhookParaOrganizacion`).
+  const urlDeLaTienda = usaDominioDeTienda(connector?.code);
   const handleSettingChange = (key: string, value: unknown) => {
     onSettingsChange({
       ...settings,
@@ -130,7 +133,9 @@ export function StepSettings({
                 className="max-w-lg bg-muted"
               />
               <p className="text-xs text-muted-foreground">
-                Configura esta URL en el panel de {provider?.name || 'el proveedor'} para recibir notificaciones
+                {urlDeLaTienda
+                  ? `Es la URL de GO Admin. Si tu organización tiene un dominio verificado, al guardar verás en el detalle de la conexión la URL de tu tienda: pega esa en el panel de ${provider?.name || 'el proveedor'}, así se confirman también los pagos de la tienda en línea.`
+                  : `Configura esta URL en el panel de ${provider?.name || 'el proveedor'} para recibir notificaciones`}
               </p>
             </div>
           )}

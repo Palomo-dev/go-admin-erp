@@ -48698,7 +48698,7 @@
     "webhookWompi": {
       "dominioTienda": "This is your online store address: it confirms store payments and passes point-of-sale, folio and payment-link payments on to GO Admin.",
       "sinDominioTitulo": "Your organization does not have a verified primary domain yet",
-      "sinDominioDescripcion": "That is why you see the GO Admin address: it confirms point-of-sale charges and payment links, but not payments made in the online store. Once you verify your domain, come back here and change the events URL in Wompi."
+      "sinDominioDescripcion": "That is why you see the GO Admin address: it confirms point-of-sale charges and payment links, but not payments made in the online store. Once you verify your domain, come back here and change the events URL in {nombre}."
     },
     "filtros": {
       "todos": "All",

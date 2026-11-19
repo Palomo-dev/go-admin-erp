@@ -30,10 +30,11 @@ import { MarcoSitioWeb } from '../MarcoSitioWeb';
 import { RAIZ_SITIO_WEB } from '../rutasSitioWeb';
 import { TemplateCard } from '../ui/TemplateCard';
 import { DialogoConflicto } from '../paginas/DialogoConflicto';
-import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { esPlantillaTiendaRenovada, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import { validarPlantillaSede, type SedeParaPlantillas } from '@/lib/website/v2/plantillaSede';
 import { modoPorDefecto, paginasPropiasDePlantilla, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { MiniaturaPlantilla, useShellDePlantilla } from './MiniaturaPlantilla';
+import { MiniaturaPaginaDisenada, tienePaginasDisenadas } from './PaginasDisenadas';
 import { DialogoVistaPreviaPlantilla } from './DialogoVistaPreviaPlantilla';
 import { useContextoDiseno } from './useContextoDiseno';
 import { pestanasGiro, usePlantillas, type PestanaGiro, type ResultadoUsoCompleto } from './usePlantillas';
@@ -76,6 +77,25 @@ function EsqueletoPlantillas() {
 }
 
 /**
+ * Grupos de la lista: en «Tienda», «Nuevas» (las 7 de tienda) y después «Clásicas» (las 4 de
+ * antes), cada uno con su título solo si los dos tienen algo. En los demás giros, un solo grupo
+ * sin título, en el orden de siempre.
+ */
+export function gruposDeTienda(
+  giro: string,
+  lista: readonly PlantillaCatalogo[],
+): { id: 'nuevas' | 'clasicas' | 'todas'; titulo: string | null; plantillas: PlantillaCatalogo[] }[] {
+  if (giro !== 'tienda') return [{ id: 'todas', titulo: null, plantillas: [...lista] }];
+  const nuevas = lista.filter((p) => esPlantillaTiendaNueva(p.id));
+  const clasicas = lista.filter((p) => !esPlantillaTiendaNueva(p.id));
+  if (nuevas.length === 0 || clasicas.length === 0) return [{ id: 'todas', titulo: null, plantillas: [...nuevas, ...clasicas] }];
+  return [
+    { id: 'nuevas', titulo: 'plantillas.grupo.nuevas', plantillas: nuevas },
+    { id: 'clasicas', titulo: 'plantillas.grupo.clasicas', plantillas: clasicas },
+  ];
+}
+
+/**
  * Tarjeta de la galería: miniatura con SU encabezado y SU pie, y la línea con lo distintivo
  * («Logo al centro · Pie centrado con WhatsApp»), de `shellPorPlantilla.ts`.
  */
@@ -93,18 +113,21 @@ function TarjetaPlantilla({
   const t = useTextosDiseno();
   const shell = useShellDePlantilla(p);
   const nueva = esPlantillaTiendaNueva(p.id);
+  // Clásicas renovadas: también diseñan ficha y categoría; llevan «Renovada» en vez de «Nueva».
+  const renovada = esPlantillaTiendaRenovada(p.id);
   return (
     <TemplateCard
       nombre={p.nombre}
       descripcion={p.descripcion}
       detalle={shell.linea}
-      miniatura={<MiniaturaPlantilla shell={shell} />}
+      // Las 7 de tienda nuevas: su Inicio diseñado (Figma), no el esquema de encabezado y pie.
+      miniatura={tienePaginasDisenadas(p.id) ? <MiniaturaPaginaDisenada plantillaId={p.id} nombre={p.nombre} /> : <MiniaturaPlantilla shell={shell} />}
       giro={t(`plantillas.giro.${p.giro}`)}
       iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
       secciones={p.inicio.length}
       // A1: las 7 nuevas diseñan Inicio, la ficha de producto y la página de categoría.
-      paginas={nueva ? PAGINAS_PLANTILLA_TIENDA_NUEVA : paginasPropiasDePlantilla(p.id)}
-      novedad={nueva ? t('plantillas.nueva') : undefined}
+      paginas={nueva || renovada ? PAGINAS_PLANTILLA_TIENDA_NUEVA : paginasPropiasDePlantilla(p.id)}
+      novedad={nueva ? t('plantillas.nueva') : renovada ? t('plantillas.renovada') : undefined}
       enUso={enUso}
       etiquetaEnUso={etiquetaEnUso}
       onSeleccionar={onAbrir}
@@ -310,13 +333,24 @@ export function GaleriaPlantillas() {
                 accion={{ etiqueta: t('plantillas.verTodas'), onClick: () => setGiro('todas') }}
               />
             ) : (
-              <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                {lista.map((p) => (
-                  <li key={p.id} className="flex">
-                    <TarjetaPlantilla plantilla={p} enUso={enUso?.id === p.id} etiquetaEnUso={etiquetaEnUso} onAbrir={() => abrir(p)} />
-                  </li>
-                ))}
-              </ul>
+              // Tienda: las 7 nuevas arriba y las 4 de antes en «Clásicas» (pedido del dueño 2026-11-19).
+              // En los demás giros, la lista de siempre.
+              gruposDeTienda(giro, lista).map((g) => (
+                <section key={g.id} className="flex flex-col gap-3" aria-labelledby={g.titulo ? `grupo-plantillas-${g.id}` : undefined} data-grupo-plantillas={g.id}>
+                  {g.titulo && (
+                    <h3 id={`grupo-plantillas-${g.id}`} className="text-sm font-semibold leading-5 text-fg">
+                      {t(g.titulo)}
+                    </h3>
+                  )}
+                  <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+                    {g.plantillas.map((p) => (
+                      <li key={p.id} className="flex">
+                        <TarjetaPlantilla plantilla={p} enUso={enUso?.id === p.id} etiquetaEnUso={etiquetaEnUso} onAbrir={() => abrir(p)} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))
             )}
           </div>
         </div>

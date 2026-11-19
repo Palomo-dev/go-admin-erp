@@ -83,7 +83,7 @@ import {
 } from '../plantillasTienda';
 
 const NOMBRES_NUEVAS = ['Panorama', 'Atelier', 'Radiante', 'Roble', 'Marea', 'Contraste', 'Hogar'];
-const NOMBRES_RETAIL_DE_HOY = ['Retail Moderno', 'Retail Clásico', 'Retail Bold', 'Retail Elegante'];
+const NOMBRES_RETAIL_DE_HOY = ['Moderna', 'Clásica', 'Vibrante', 'Elegante'];
 
 function documento(): DocumentoSitio {
   const r = validarDocumentoSitio({
@@ -157,8 +157,13 @@ describe('galería: las 7 de tienda, sin bandera', () => {
     const visibles = tarjetasVisibles();
     expect(visibles).toHaveLength(11);
     expect([...visibles].sort()).toEqual([...NOMBRES_NUEVAS, ...NOMBRES_RETAIL_DE_HOY].sort());
-    // La de por defecto va primero.
-    expect(visibles[0]).toBe('Retail Moderno');
+    // «Nuevas» (las 7) primero y «Clásicas» (las 4 de antes) después, cada grupo con su título.
+    expect(visibles.slice(0, 7).sort()).toEqual([...NOMBRES_NUEVAS].sort());
+    expect(visibles.slice(7)).toEqual(NOMBRES_RETAIL_DE_HOY);
+    expect(screen.getByRole('heading', { name: 'Nuevas' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Clásicas' })).toBeTruthy();
+    // Moderna sigue siendo la de por defecto: abre su grupo.
+    expect(visibles[7]).toBe('Moderna');
   });
 
   test('las 7 llevan «Nueva», «3 páginas», su descripción y su miniatura; las de antes no llevan «Nueva»', () => {
@@ -169,14 +174,21 @@ describe('galería: las 7 de tienda, sin bandera', () => {
       expect(within(t).getByText('Nueva')).toBeTruthy();
       expect(within(t).getByText(/· 3 páginas/)).toBeTruthy();
       expect(within(t).getByText(plantilla.descripcion)).toBeTruthy();
+      // Su Inicio diseñado (imagen de Figma), no el esquema de encabezado y pie (pedido 2026-11-19).
       const img = within(t).getByRole('img');
-      expect(img.getAttribute('data-esquema-shell')).toBe('mini');
-      expect(img.getAttribute('aria-label')).toMatch(/^Encabezado: .+\. Pie .+/);
+      const carpeta = plantilla.id.replace(/^retail_/, '');
+      expect(img.getAttribute('src')).toBe(`/sitio-web/plantillas/${carpeta}/inicio.webp`);
+      expect(img.getAttribute('alt')).toBe(`Diseño de Inicio de la plantilla ${nombre}`);
+      expect(t.querySelector('[data-esquema-shell]')).toBeNull();
     }
+    // Las 4 clásicas renovadas (2026-11-19): «Renovada», 3 páginas y su Inicio diseñado.
+    const carpetas: Record<string, string> = { Moderna: 'moderna', Clásica: 'clasica', Vibrante: 'vibrante', Elegante: 'elegante' };
     for (const nombre of NOMBRES_RETAIL_DE_HOY) {
       const t = tarjeta(nombre);
       expect(within(t).queryByText('Nueva')).toBeNull();
-      expect(within(t).queryByText(/· 3 páginas/)).toBeNull();
+      expect(within(t).getByText('Renovada')).toBeTruthy();
+      expect(within(t).getByText(/· 3 páginas/)).toBeTruthy();
+      expect(within(t).getByRole('img').getAttribute('src')).toBe(`/sitio-web/plantillas/${carpetas[nombre]}/inicio.webp`);
     }
   });
 
@@ -236,6 +248,35 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
     expect(within(dialogo).getByText(/Usa tu catálogo, tus fotos y tus textos/)).toBeTruthy();
   });
 
+  test('una nueva muestra sus páginas diseñadas (Inicio, Categoría, Producto), no el esquema', () => {
+    renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(tarjeta('Roble'));
+    const dialogo = screen.getByRole('dialog');
+    const vista = dialogo.querySelector('[data-vista-disenada="retail_roble"]') as HTMLElement;
+    expect(vista).toBeTruthy();
+    // (El esquema de encabezado y pie sigue en «Cómo aplicarla»; la vista previa es la página diseñada.)
+    expect(vista.querySelector('[data-esquema-shell]')).toBeNull();
+    const pestanas = within(vista).getAllByRole('tab');
+    expect(pestanas.map((p) => p.textContent)).toEqual(['Inicio', 'Categoría', 'Producto']);
+    const imagen = () => within(vista).getByRole('img').getAttribute('src');
+    expect(imagen()).toBe('/sitio-web/plantillas/roble/inicio.webp');
+    fireEvent.click(within(vista).getByRole('tab', { name: 'Producto' }));
+    expect(imagen()).toBe('/sitio-web/plantillas/roble/producto.webp');
+    expect(within(vista).getByRole('tab', { name: 'Producto' }).getAttribute('aria-selected')).toBe('true');
+    expect(within(dialogo).getByText(/Así es la plantilla, con productos y fotos de muestra/)).toBeTruthy();
+  });
+
+  test('Moderna renovada: «Renovada», aviso D4 y sus páginas diseñadas', () => {
+    renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(tarjeta('Moderna'));
+    const dialogo = screen.getByRole('dialog');
+    expect(dialogo.querySelector('[data-insignia-renovada]')?.textContent).toBe('Renovada');
+    expect(dialogo.querySelector('[data-insignia-nueva]')).toBeNull();
+    expect(within(dialogo).getByText(AVISO_D4)).toBeTruthy();
+    const vista = dialogo.querySelector('[data-vista-disenada="retail_modern"]') as HTMLElement;
+    expect(within(vista).getByRole('img').getAttribute('src')).toBe('/sitio-web/plantillas/moderna/inicio.webp');
+  });
+
   test('la misma nueva con «Solo estilo»: sin aviso D4 (el estilo no toca páginas)', () => {
     renderConIdioma(<GaleriaPlantillas />);
     fireEvent.click(tarjeta('Atelier'));
@@ -247,15 +288,18 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
   });
 
   test('una de las de antes con «Plantilla completa»: el aviso de siempre, sin D4 ni «Nueva»', () => {
-    renderConIdioma(<GaleriaPlantillas />);
-    fireEvent.click(tarjeta('Retail Moderno'));
+    // Las 4 de tienda ya están renovadas: la de antes de este caso es de otro giro (Hotel Lujo).
+    const { rerender } = renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(screen.getByRole('tab', { name: /Hotel/ }));
+    rerender(<GaleriaPlantillas />);
+    fireEvent.click(tarjeta('Hotel Lujo'));
     const dialogo = screen.getByRole('dialog');
     expect(within(dialogo).getByRole('radio', { name: /Plantilla completa/ }).getAttribute('aria-checked')).toBe('true');
     expect(within(dialogo).queryByText(AVISO_D4)).toBeNull();
     expect(within(dialogo).queryByText('Nueva')).toBeNull();
     expect(within(dialogo).queryByText(/Páginas que diseña/)).toBeNull();
     expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.avisoCompletaDescripcion'))).toBeTruthy();
-    expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.descripcion', { descripcion: CATALOGO_SITIO.plantillas.find((p) => p.id === 'retail_modern')!.descripcion }))).toBeTruthy();
+    expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.descripcion', { descripcion: CATALOGO_SITIO.plantillas.find((p) => p.id === 'hotel_luxury')!.descripcion }))).toBeTruthy();
   });
 });
 

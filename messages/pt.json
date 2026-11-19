@@ -48708,7 +48708,7 @@
     "webhookWompi": {
       "dominioTienda": "É o endereço da sua loja on-line: confirma os pagamentos da loja e repassa ao GO Admin os do ponto de venda, dos fólios e dos links de pagamento.",
       "sinDominioTitulo": "Sua organização ainda não tem um domínio principal verificado",
-      "sinDominioDescripcion": "Por isso você vê o endereço do GO Admin: ele confirma as cobranças do ponto de venda e os links de pagamento, mas não os pagamentos feitos na loja on-line. Quando verificar seu domínio, volte aqui e altere a URL de eventos no Wompi."
+      "sinDominioDescripcion": "Por isso você vê o endereço do GO Admin: ele confirma as cobranças do ponto de venda e os links de pagamento, mas não os pagamentos feitos na loja on-line. Quando verificar seu domínio, volte aqui e altere a URL de eventos no {nombre}."
     },
     "filtros": {
       "todos": "Todos",

@@ -1036,7 +1036,7 @@ export interface PlantillaBaseSitio {
 /** Familias con serifa del catálogo (para la descripción del par tipográfico). */
 const CON_SERIFA = new Set([
   'Playfair Display', 'Merriweather', 'Cormorant', 'Cormorant Garamond', 'Lora', 'Libre Caslon Text',
-  'DM Serif Display', 'Fraunces', 'Instrument Serif',
+  'DM Serif Display', 'Fraunces', 'Instrument Serif', 'Bodoni Moda',
 ]);
 
 /** ¿La familia es con serifa? (respaldo CSS `serif` o `sans-serif` en las muestras). */
@@ -1066,17 +1066,435 @@ export function textoPlantillaClara(secundario: string, fondo: string = FONDO_CL
   return razon !== null && razon >= CONTRASTE_AA ? secundario.toUpperCase() : TEXTO_CLARO_POR_DEFECTO;
 }
 
+/**
+ * Las clásicas renovadas (opción 1 del dueño, 2026-11-19): mismo id, misma base del sitio y la
+ * de por defecto sigue siéndolo; ahora traen, como las 7 nuevas, su tarjeta, perillas del tema y
+ * sus páginas de ficha y categoría (Figma «04 Tiendas» › «Plantilla renovada · <nombre>»). Solo
+ * cambia lo que arma la plantilla al usarla: las tiendas que ya la usan no cambian hasta volver a
+ * aplicarla. Las que aún no se renuevan siguen saliendo de `plantillaDesdeBase`.
+ */
+const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
+  // «Moderna» (Figma `323:28835`, aprobada el 2026-11-19): tienda general, azul, redondeada.
+  retail_modern: {
+    id: 'retail_modern',
+    nombre: 'Moderna',
+    descripcion: 'Limpia y luminosa, con bordes redondeados y acento azul. Sirve para casi cualquier catálogo.',
+    subgiro: 'Tienda general',
+    base: 'retail_modern',
+    inicio: [
+      ['hero', 'slider', { full_width: false, border_radius: 24, content_position: 'middle-left', text_align: 'left' }],
+      ['categories_grid', 'horizontal', { title: 'Explora por categoría', category_style: 'circle', shape: 'circle', desktop_layout: 'carousel', mobile_layout: 'carousel', show_count: false, show_view_all: true }],
+      // Oculta hasta que el dueño suba sus banners (nunca ofertas de ejemplo).
+      ['promo_banners', 'grid', { title: 'Ofertas de la semana', banner_layout: 'hero_plus_2', banners: [] }],
+      ['products_grid', 'grid', { title: 'Lo más vendido', columns_desktop: 5, show_categories: true, tabs_style: 'chips', show_all_chip: true }],
+      ['offers', 'grid', { title: 'Precios que bajan esta semana', columns: 4, section_background: { color: '#EAF0FF', width: 'full' } }],
+      ['categories_grid', 'grid', { title: 'Compra por mundo', category_style: 'bento', shape: 'rounded', show_count: true, show_color: true }],
+      ['features_grid', 'icons'],
+      ['brands', 'logos'],
+      ['testimonials', 'grid', { show_summary: true, summary_source: 'product_reviews' }],
+    ],
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#0E1726',
+    acento: '#2459E8',
+    acentoSecundario: '#FFC53D',
+    fuenteTitulos: 'Plus Jakarta Sans',
+    fuenteCuerpo: 'Plus Jakarta Sans',
+    // El tema solo admite 0, 4, 12 o 24 (contrato): 12, el más cercano; tarjetas e imágenes llevan sus 16 propios.
+    radio: 12,
+    estiloBoton: 'pastilla',
+    movimiento: 'medio',
+    claseFuentes: 'moderna',
+    tokens: { hover: 'sutil' },
+    carrusel: { indicador: 'puntos' },
+    paginacion: { estilo: 'numerada' },
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      card_radius: 16,
+      card_border_width: 1,
+      card_border_color: '#E3E8F0',
+      card_shadow: 'hover',
+      card_padding: 12,
+      card_bg: '#FFFFFF',
+      image_ratio: '1:1',
+      image_fit: 'contain',
+      image_bg: '#EEF2F8',
+      image_padding: 16,
+      image_radius: 12,
+      hover_image: 'second',
+      show_brand: true,
+      show_category: false,
+      title_lines: 2,
+      title_weight: 'medium',
+      title_size: 'md',
+      show_reviews: true,
+      reviews_position: 'below_title',
+      reviews_style: 'stars',
+      price_position: 'below_title',
+      price_size: 'lg',
+      show_compare_price: true,
+      label_shape: 'pill',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_discount: { bg: '#FFC53D', text: '#0E1726' },
+      label_new: { bg: '#FFC53D', text: '#0E1726' },
+      wishlist_style: 'circle',
+      wishlist_position: 'top_right',
+      add: { button_style: 'solid', button_shape: 'pill', button_size: 'md', button_width: 'full', button_position: 'bottom', button_visibility: 'always', icon: 'ShoppingCart', icon_side: 'left' },
+      choose_label: 'Elige una opción',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
+        ['product_shipping', 'default'],
+        ['product_benefits', 'default'],
+        ['product_anchor_nav', 'tabs'],
+        ['product_description', 'default'],
+        ['product_specs', 'icon_grid', { title: 'Características' }],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', { ...ENCABEZADO_CATEGORIA }],
+        ['category_filters', 'sidebar_facets', { show_subcategories: true, show_sort: true, clear_text: 'Limpiar filtros' }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  // «Clásica» (Figma `343:31150`, aprobada el 2026-11-19): almacén de tradición, serifa y café.
+  retail_classic: {
+    id: 'retail_classic',
+    nombre: 'Clásica',
+    descripcion: 'Títulos con serifa y tonos cálidos: sobria y confiable, para marcas de toda la vida.',
+    subgiro: 'Tienda tradicional',
+    base: 'retail_classic',
+    inicio: [
+      ['hero', 'fullscreen', {
+        content_position: 'middle-left',
+        text_align: 'left',
+        overlay_color: '#2C1810',
+        overlay_opacity: 35,
+        buttons: [
+          { label: 'Ver la colección', url: '@pagina:productos', variant: 'solid' },
+          { label: 'Nuestra historia', url: '@pagina:nosotros', variant: 'outline' },
+        ],
+      }],
+      ['features_grid', 'icons'],
+      ['categories_grid', 'grid', { title: 'Nuestras secciones', category_style: 'card_bottom', shape: 'square', desktop_layout: 'grid', desktop_columns: 3, mobile_layout: 'carousel', show_count: true, category_cta_icon: 'arrow', section_header: { eyebrow: 'Desde el mostrador', align: 'center', title_line: 'sides', title_size: '3xl', title_weight: 'semibold' } }],
+      ['featured_products', 'hero_product', { title: 'Selección de la casa', section_header: { eyebrow: 'La pieza de la temporada', align: 'center', title_line: 'sides', title_size: '3xl', title_weight: 'semibold' }, section_background: { color: '#F4ECDF', width: 'full' } }],
+      ['image_text', 'image_right', { title: 'Nuestra historia', cta_text: 'Conoce la casa', cta_url: '@pagina:nosotros' }],
+      ['products_grid', 'grid', { title: 'Los favoritos de la casa', columns_desktop: 4, show_categories: true, tabs_style: 'underline', section_header: { eyebrow: 'Lo que más se lleva', align: 'center', title_line: 'sides', title_size: '3xl', title_weight: 'semibold' } }],
+      ['offers', 'grid', { title: 'Precios de temporada', columns: 4, section_header: { eyebrow: 'Solo por esta temporada', align: 'center', title_line: 'sides', title_size: '3xl', title_weight: 'semibold' }, section_background: { color: '#F4ECDF', width: 'full' } }],
+      ['testimonials', 'quotes', { show_summary: true, summary_source: 'product_reviews', quote_mark_color: '#B8862B', rating_color: '#B8862B', text_size: 'lg' }],
+      ['newsletter', 'with_image', { title: 'Cartas de la casa', section_background: { color: '#F4ECDF', width: 'full' } }],
+    ],
+    modo: 'light',
+    fondo: '#FBF7F0',
+    texto: '#2C1810',
+    acento: '#7C3F1D',
+    acentoSecundario: '#B8862B',
+    fuenteTitulos: 'Fraunces',
+    fuenteCuerpo: 'Libre Franklin',
+    radio: 4,
+    estiloBoton: 'solido',
+    movimiento: 'bajo',
+    claseFuentes: 'clasica',
+    tokens: { hover: 'sutil' },
+    carrusel: { indicador: 'puntos' },
+    paginacion: { estilo: 'numerada' },
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      card_radius: 4,
+      card_border_width: 1,
+      card_border_color: '#E4D8C6',
+      card_shadow: 'none',
+      card_bg: '#FFFFFF',
+      card_padding: 12,
+      image_ratio: '4:5',
+      image_fit: 'contain',
+      image_bg: '#EFE5D5',
+      image_padding: 24,
+      image_radius: 2,
+      hover_image: 'second',
+      text_align: 'center',
+      show_category: true,
+      show_brand: false,
+      title_font: 'heading',
+      title_lines: 2,
+      title_weight: 'normal',
+      title_size: 'md',
+      show_reviews: true,
+      reviews_position: 'below_title',
+      reviews_style: 'stars',
+      price_position: 'below_title',
+      price_size: 'md',
+      price_color: '#2C1810',
+      show_compare_price: true,
+      label_shape: 'square',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_new: { bg: '#2C1810', text: '#F6EFE3' },
+      label_discount: { bg: '#7C3F1D', text: '#FFFFFF' },
+      wishlist_style: 'ghost',
+      wishlist_position: 'top_right',
+      add: { button_style: 'outline', button_shape: 'square', button_size: 'md', button_width: 'full', button_position: 'bottom', button_visibility: 'always' },
+      choose_label: 'Elige una opción',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
+        ['product_shipping', 'default'],
+        ['product_benefits', 'default'],
+        ['product_description', 'default'],
+        ['product_specs', 'panel', { title: 'Ficha de la pieza' }],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', { ...ENCABEZADO_CATEGORIA }],
+        ['category_filters', 'default', { subcategory_style: 'tabs', show_sort: true, show_view_toggle: false }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  // «Vibrante» (Figma `342:31338`, aprobada el 2026-11-19): ofertas y descuentos, amarillo, naranja y negro.
+  retail_bold: {
+    id: 'retail_bold',
+    nombre: 'Vibrante',
+    descripcion: 'Colores intensos, bordes marcados y sombras: para tiendas de promociones que quieren llamar la atención.',
+    subgiro: 'Ofertas y descuentos',
+    base: 'retail_bold',
+    inicio: [
+      ['hero', 'slider', { border_radius: 4, content_position: 'middle-left', text_align: 'left', title_color: '#111111', show_overlay: false }],
+      ['marquee', 'text', { size: 'lg', separator: '✦', separator_color: '#111111' }],
+      ['categories_grid', 'grid', { title: 'Compra por categoría', category_style: 'card_bottom', shape: 'square', desktop_columns: 6, mobile_layout: 'carousel', show_count: true, category_card_color: 'per_item', category_cta_icon: 'arrow' }],
+      // Sin fecha de fin queda oculta: nunca una cuenta regresiva falsa.
+      ['countdown', 'banner', { title: 'La venta relámpago termina en', mode: 'custom' }],
+      ['offers', 'grid', { title: 'Ofertas que vuelan', subtitle: 'Productos con descuento vigente. Se actualiza solo.', columns: 4, max_items: 4, show_pagination: false }],
+      ['featured_products', 'hero_product', { title: 'Destacados de la semana' }],
+      // Oculta hasta que el dueño suba sus banners.
+      ['promo_banners', 'grid', { banner_layout: 'hero_plus_2', banners: [] }],
+      ['products_grid', 'carousel', { title: 'Lo más vendido' }],
+      ['features_grid', 'icons'],
+      ['testimonials', 'grid', { show_summary: true, summary_source: 'product_reviews' }],
+      ['brands', 'logos'],
+    ],
+    modo: 'light',
+    fondo: '#FFF8EF',
+    texto: '#111111',
+    acento: '#F24E14',
+    acentoSecundario: '#FFD60A',
+    fuenteTitulos: 'Unbounded',
+    fuenteCuerpo: 'Space Grotesk',
+    radio: 4,
+    estiloBoton: 'sombra_dura',
+    movimiento: 'medio',
+    claseFuentes: 'moderna',
+    tokens: { boton: { mayusculas: true }, hover: 'expresivo' },
+    paginacion: { estilo: 'cargar_mas' },
+    tarjetaProducto: {
+      card_preset: 'boxed',
+      card_radius: 4,
+      card_border_width: 2,
+      card_border_color: '#111111',
+      card_shadow: 'none',
+      card_bg: '#FFFFFF',
+      card_padding: 12,
+      image_ratio: '1:1',
+      image_fit: 'contain',
+      image_bg: '#F4ECE1',
+      image_padding: 16,
+      image_radius: 0,
+      hover_image: 'zoom',
+      price_position: 'above_title',
+      price_size: 'lg',
+      price_color: '#111111',
+      show_compare_price: true,
+      show_reviews: true,
+      reviews_style: 'number_star',
+      reviews_position: 'below_title',
+      title_lines: 2,
+      title_weight: 'medium',
+      title_size: 'md',
+      label_shape: 'square',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_discount: { bg: '#F24E14', text: '#111111' },
+      show_sales_count: true,
+      wishlist_style: 'circle',
+      wishlist_position: 'top_right',
+      add: { button_style: 'solid', button_shape: 'square', button_size: 'md', button_width: 'full', button_position: 'bottom', button_visibility: 'always', icon: 'ShoppingCart', icon_side: 'left' },
+      choose_label: 'Elige una opción',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: true, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', show_price_in_button: true, button_hint: 'auto', sticky_mobile: true }],
+        ['product_shipping', 'default'],
+        ['product_benefits', 'default'],
+        ['product_description', 'default'],
+        ['product_specs', 'default'],
+        ['product_reviews', 'default'],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', { ...ENCABEZADO_CATEGORIA }],
+        ['category_filters', 'default', { show_sort: true, show_view_toggle: true, subcategory_style: 'chips' }],
+        ['category_products', 'default', { columns: 4 }],
+      ],
+    },
+  },
+  // «Elegante» (Figma `339:31036`, aprobada el 2026-11-19): lujo silencioso, negro, marfil y dorado.
+  retail_elegant: {
+    id: 'retail_elegant',
+    nombre: 'Elegante',
+    descripcion: 'Blanco, negro y dorado, con mucho aire: para joyería, relojes y marcas premium.',
+    subgiro: 'Lujo y joyería',
+    base: 'retail_elegant',
+    inicio: [
+      ['hero', 'fullscreen', {
+        content_position: 'bottom-center',
+        text_align: 'center',
+        overlay_opacity: 35,
+        buttons: [{ label: 'Descubrir la colección', url: '@pagina:productos', variant: 'solid', bg_color: '#C9A96E', text_color: '#111111' }],
+      }],
+      ['categories_grid', 'grid', { title: 'Explora por pieza', shape: 'square', desktop_columns: 4, mobile_layout: 'carousel', show_count: false, category_cta_icon: 'arrow', section_header: { eyebrow: 'Colecciones', align: 'center', title_size: '3xl', title_weight: 'normal', title_line: 'sides', line_color: '#C9A96E' } }],
+      ['text_block', 'centered', { section_background: { color: '#FAF8F5' } }],
+      ['featured_products', 'hero_product', { title: 'Piezas destacadas', section_header: { eyebrow: 'Selección', align: 'center', title_size: '3xl', title_weight: 'normal', title_line: 'sides', line_color: '#C9A96E' } }],
+      ['image_text', 'image_left', { cta_text: 'Conocer la casa', cta_url: '@pagina:nosotros', section_background: { color: '#FAF8F5' } }],
+      ['products_grid', 'grid', { title: 'Novedades', columns_desktop: 3, section_header: { eyebrow: 'Recién llegadas', align: 'center', title_size: '3xl', title_weight: 'normal', title_line: 'sides', line_color: '#C9A96E' } }],
+      ['testimonials', 'minimal', { section_background: { color: '#FAF8F5' } }],
+      ['features_grid', 'icons'],
+    ],
+    modo: 'light',
+    fondo: '#FFFFFF',
+    texto: '#111111',
+    acento: '#111111',
+    acentoSecundario: '#C9A96E',
+    fuenteTitulos: 'Bodoni Moda',
+    fuenteCuerpo: 'Jost',
+    radio: 0,
+    estiloBoton: 'solido',
+    movimiento: 'bajo',
+    claseFuentes: 'elegante',
+    tokens: { boton: { mayusculas: true }, hover: 'sutil' },
+    paginacion: { estilo: 'cargar_mas' },
+    tarjetaProducto: {
+      card_preset: 'minimal',
+      text_align: 'center',
+      title_font: 'heading',
+      title_size: 'md',
+      title_weight: 'normal',
+      title_lines: 2,
+      card_subtitle: 'description',
+      price_position: 'below_title',
+      price_size: 'sm',
+      show_compare_price: false,
+      show_reviews: false,
+      show_brand: false,
+      show_category: false,
+      card_radius: 0,
+      card_border_width: 0,
+      card_shadow: 'none',
+      card_padding: 0,
+      image_ratio: '4:5',
+      image_fit: 'contain',
+      image_bg: '#F4F1EC',
+      image_padding: 32,
+      image_radius: 0,
+      hover_image: 'second',
+      label_shape: 'square',
+      label_style: 'solid',
+      label_position: 'top_left',
+      label_new: { bg: '#C9A96E', text: '#111111' },
+      label_discount: { show: false },
+      label_shipping: { show: false },
+      wishlist_style: 'ghost',
+      wishlist_position: 'top_right',
+      add: { button_style: 'outline', button_shape: 'square', button_size: 'sm', button_width: 'full', button_position: 'over_image_bottom', button_visibility: 'hover' },
+      choose_label: 'Ver opciones',
+    },
+    detalle: {
+      producto: [
+        ['product_gallery', 'default', { gallery_layout: 'carousel', thumbnails_position: 'left', gallery_arrows: false, page_layout: { columns: '2', gallery_width: 55, sticky_column: true, show_breadcrumb: true } }],
+        ['product_info', 'default'],
+        ['product_actions', 'default', { buttons_layout: 'stacked', button_hint: 'auto', sticky_mobile: true }],
+        ['product_benefits', 'default'],
+        ['product_description', 'default'],
+        ['product_specs', 'panel', { title: 'Detalles de la pieza' }],
+        ['complete_the_look', 'default', { title: 'Combínalo con' }],
+        RELACIONADOS_REJILLA,
+      ],
+      categoria: [
+        ['category_header', 'default', { layout: 'split_text', show_image: false, show_breadcrumb: true, show_count: true }],
+        ['category_filters', 'default', { subcategory_style: 'text', show_sort: true, show_view_toggle: false }],
+        ['category_products', 'default', { columns: 3 }],
+      ],
+    },
+  },
+};
+
+/** ¿Es una clásica ya renovada (trae ficha, categoría, tarjeta y perillas)? */
+export function esPlantillaTiendaRenovada(id: string | null | undefined): boolean {
+  return !!id && Object.prototype.hasOwnProperty.call(TIENDA_RENOVADA, id);
+}
+
+/** Nuevas o renovadas: plantillas de tienda con diseño completo (tokens, ficha y categoría). */
+export function tieneDisenoTiendaCompleto(id: string | null | undefined): boolean {
+  return esPlantillaTiendaNueva(id) || esPlantillaTiendaRenovada(id);
+}
+
+/**
+ * Las 4 plantillas de tienda de antes («Clásicas» en la galería, pedido del dueño 2026-11-19):
+ * nombre en español, tipo de negocio y una descripción que dice para quién son. Solo cambia cómo se
+ * presentan en el editor: el estilo (`estilo.nombre`), las secciones y lo que se guarda al usarlas
+ * son los de siempre, así que las tiendas que ya las usan no cambian.
+ */
+const PRESENTACION_TIENDA_CLASICA: Readonly<Record<string, { nombre: string; subgiro: string; descripcion: string }>> = {
+  retail_modern: {
+    nombre: 'Moderna',
+    subgiro: 'Tienda general',
+    descripcion: 'Limpia y luminosa, con bordes redondeados y acento azul. Sirve para casi cualquier catálogo.',
+  },
+  retail_classic: {
+    nombre: 'Clásica',
+    subgiro: 'Tienda tradicional',
+    descripcion: 'Títulos con serifa y tonos cálidos: sobria y confiable, para marcas de toda la vida.',
+  },
+  retail_bold: {
+    nombre: 'Vibrante',
+    subgiro: 'Ofertas y descuentos',
+    descripcion: 'Colores intensos, bordes marcados y sombras: para tiendas de promociones que quieren llamar la atención.',
+  },
+  retail_elegant: {
+    nombre: 'Elegante',
+    subgiro: 'Lujo y joyería',
+    descripcion: 'Blanco, negro y dorado, con mucho aire: para joyería, relojes y marcas premium.',
+  },
+};
+
+/** ¿Es una de las 4 de tienda de antes («Clásicas»)? */
+export function esPlantillaTiendaClasica(id: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PRESENTACION_TIENDA_CLASICA, id);
+}
+
 function plantillaDesdeBase(p: PlantillaBaseSitio): PlantillaCatalogo | null {
   const giro = GIRO_DE_NEGOCIO[p.business_type];
   const inicio = SECCIONES_INICIO_BASE[p.id];
   if (!giro || giro === 'restaurante' || !inicio) return null;
   const oscuro = p.theme_mode === 'dark';
+  const presentacion = PRESENTACION_TIENDA_CLASICA[p.id];
   return {
     id: p.id,
-    nombre: p.name,
-    descripcion: p.description,
+    nombre: presentacion?.nombre ?? p.name,
+    descripcion: presentacion?.descripcion ?? p.description,
     giro,
-    subgiro: null,
+    subgiro: presentacion?.subgiro ?? null,
     base: p.id,
     inicio,
     porDefecto: p.is_default,
@@ -1167,7 +1585,9 @@ function plantillaTienda(d: DefinicionTienda): PlantillaCatalogo {
  * los demás giros (en la pestaña «Tienda», `retail_modern` sigue primero por ser la de por defecto).
  */
 export function construirCatalogo(bases: readonly PlantillaBaseSitio[]): CatalogoPlantillas {
-  const otras = bases.map(plantillaDesdeBase).filter((p): p is PlantillaCatalogo => p !== null);
+  const otras = bases
+    .map((b) => (TIENDA_RENOVADA[b.id] ? { ...plantillaTienda(TIENDA_RENOVADA[b.id]), porDefecto: b.is_default } : plantillaDesdeBase(b)))
+    .filter((p): p is PlantillaCatalogo => p !== null);
   return {
     version: VERSION_CATALOGO_PLANTILLAS,
     plantillas: [...RESTAURANTE.map(plantillaRestaurante), ...TIENDA.map(plantillaTienda), ...otras],

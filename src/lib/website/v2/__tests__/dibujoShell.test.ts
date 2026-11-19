@@ -141,13 +141,14 @@ describe('fiel a la lámina de cada plantilla', () => {
     expect(rasgoPrincipalEncabezado(circulo)).toEqual({ clave: 'encabezado.pillCirculo' });
   });
 
-  test('Retail Moderno: megamenú de 4 columnas con barra de búsqueda; pie con boletín y medios de pago', () => {
+  test('Moderna (renovada 2026-11-19): megamenú de 4 columnas con barra de búsqueda; pie con boletín y medios de pago', () => {
     const d = dibujo(porId('retail_modern'));
     expect(d.encabezado).toMatchObject({ composicion: 'mega', megamenu: { columnas: 4 }, botones: [] });
     expect(d.encabezado.acciones).toEqual(['barraBusqueda', 'cuenta', 'carrito']);
     expect(d.pie.bloques).toEqual(expect.arrayContaining(['boletin', 'pagos']));
     expect(d.pie.bloques).not.toContain('contacto');
-    expect(d.barraCelular).toEqual(['whatsapp', 'llamar', 'como_llegar']);
+    // La barra de WhatsApp, llamar y cómo llegar se cambió por la barra «tipo app» de la lámina.
+    expect(d.barraCelular).toEqual([]);
   });
 
   test('Hotel Lujo: barra de reserva y pie con mapa', () => {
@@ -220,9 +221,12 @@ describe('rasgos: la línea corta y el texto alternativo', () => {
     const r = rasgosShell(dibujo(porId('retail_modern')));
     expect(r.encabezado[0]).toEqual({ clave: 'rasgo.megaColumnas', valores: { n: 4 } });
     expect(r.encabezado.filter((x) => x.clave.includes('mega'))).toHaveLength(1);
-    expect(r.encabezado).toContainEqual({ clave: 'rasgo.barraSuperiorCon', lista: ['barra.envio', 'barra.telefono', 'barra.correo'] });
+    // Moderna renovada: envío gratis y teléfono en la barra superior (sin correo, como la lámina).
+    expect(r.encabezado).toContainEqual({ clave: 'rasgo.barraSuperiorCon', lista: ['barra.envio', 'barra.telefono'] });
     expect(r.pie).toContainEqual({ clave: 'rasgo.menus', valores: { n: 3 } });
-    expect(r.celular).toEqual({ clave: 'rasgo.barraCelular', lista: ['celular.whatsapp', 'celular.llamar', 'celular.como_llegar'] });
+    // Las tiendas renovadas ya no llevan la barra de WhatsApp/llamar/cómo llegar; el hotel sigue con la suya.
+    expect(r.celular).toBeNull();
+    expect(rasgosShell(dibujo(porId('hotel_luxury'))).celular).toEqual({ clave: 'rasgo.barraCelular', lista: ['celular.reservar', 'celular.llamar', 'celular.como_llegar'] });
   });
 });
 

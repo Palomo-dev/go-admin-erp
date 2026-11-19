@@ -15,7 +15,7 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 }));
 
 import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio } from '@/lib/website/contrato/documentoSitio';
-import { construirCatalogo, contarPorGiro, esPlantillaTiendaNueva, plantillaPorId, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { construirCatalogo, contarPorGiro, plantillaPorId, tieneDisenoTiendaCompleto, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import type { Giro } from '@/components/sitio-web/paginas/plantillasPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
@@ -214,8 +214,8 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
     sinEleccion.shell.footer.opciones = {};
     const limpio = armar(plantilla, DATOS, sinEleccion).documento.shell.footer.opciones;
     expect(limpio.show_powered_by ?? true).toBe(shell.pie.opciones.show_powered_by === true);
-    // Las tiendas de antes, sin columna Contacto; las 7 nuevas, lo que diga su lámina.
-    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(esPlantillaTiendaNueva(plantilla.id) ? shell.pie.opciones.footer_show_contact : false);
+    // Las tiendas de antes, sin columna Contacto; las 7 nuevas y las renovadas, lo que diga su lámina.
+    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(tieneDisenoTiendaCompleto(plantilla.id) ? shell.pie.opciones.footer_show_contact : false);
     const legales = documento.menus.find((m) => m.nombre === 'Legales' && documento.shell.footer.menuIds.includes(m.id));
     if (legales) {
       const tratamiento = legales.items.find((i) => i.etiqueta === 'Tratamiento de datos');
@@ -455,7 +455,7 @@ describe('encabezado y pie por plantilla (láminas aprobadas en Figma)', () => {
     expect(nombresPie(d)).toEqual(['Alérgenos']);
   });
 
-  it('«Retail Moderno»: megamenú con las categorías reales del Inventario', () => {
+  it('«Moderna»: megamenú con las categorías reales del Inventario', () => {
     const d = de('retail_modern');
     expect(d.shell.header.composicion).toBe('mega');
     const mega = d.menus.find((m) => m.id === d.shell.header.menuMegaId)!;
@@ -465,7 +465,9 @@ describe('encabezado y pie por plantilla (láminas aprobadas en Figma)', () => {
       expect.objectContaining({ etiqueta: 'Bebidas', entidadId: '3' }),
     ]);
     expect(nombresPie(d)).toEqual(['Ayuda', 'Envíos y devoluciones', 'Legales']);
-    expect(d.shell.header.opciones.mobile_bottom_bar).toEqual(['whatsapp', 'llamar', 'como_llegar']);
+    // Renovada (2026-11-19): en el celular, la barra «tipo app» de la lámina en vez de WhatsApp/llamar.
+    expect(d.shell.header.opciones.mobile_bottom_bar).toBe('ninguna');
+    expect((d.shell.header.opciones.mobile_header as { bottom_nav?: { v?: number } }).bottom_nav?.v).toBe(2);
   });
 
   it('hotel: «Políticas» con su página y «Legales» sin repetirla; barra móvil del giro', () => {

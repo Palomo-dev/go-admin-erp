@@ -40,7 +40,7 @@ import { CircleCheck, LayoutTemplate, Link2, Loader2, Palette } from 'lucide-rea
 import { AvisoTonal, PanelAdaptable, TarjetaSeleccionable, clasesBoton, useEsEscritorio } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import type { DocumentoSitio } from '@/lib/website/contrato/documentoSitio';
-import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { esPlantillaTiendaRenovada, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import type { ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { valorCampo } from '@/lib/website/v2/valorCampo';
 import { PAGINAS_BASE_GIRO } from '../paginas/plantillasPagina';
@@ -54,6 +54,7 @@ import { SelectorAnchoVista } from '../ui/SelectorAnchoVista';
 import { CLASE_TAMANO_ICONO, ICONO_GIRO_PLANTILLA, TRAZO_ICONO } from '../ui/iconosSitio';
 import { muestraDeEstilo, nombreFuentes, nombreSeccion, nombreVariante } from './catalogo';
 import { VistaEsquematicaPlantilla, enlacesDelDocumento } from './VistaEsquematicaPlantilla';
+import { VistaPaginasDisenadas, tienePaginasDisenadas } from './PaginasDisenadas';
 import { useFuentesSitio } from './useFuentesSitio';
 import { useTextosDiseno } from './textos';
 import { esPlantillaTiendaNueva, negociosDePlantilla } from './plantillasTienda';
@@ -197,7 +198,9 @@ function DialogoAbierto({
   const ocupado = usando || Boolean(sede?.heredando);
   // D4: solo las 7 de tienda nuevas rearman la ficha y la categoría con «Plantilla completa».
   const nueva = esPlantillaTiendaNueva(plantilla.id);
-  const avisoD4 = nueva && completa && sinCompleta === null;
+  // Nuevas y clásicas renovadas: diseñan ficha y categoría (D4) y usan los textos de tienda.
+  const conDiseno = nueva || esPlantillaTiendaRenovada(plantilla.id);
+  const avisoD4 = conDiseno && completa && sinCompleta === null;
   const avisoCompletaDescripcion = !avisoD4
     ? ts('avisoCompletaDescripcion', 'dialogo.avisoCompletaDescripcion')
     : sede
@@ -242,6 +245,11 @@ function DialogoAbierto({
               {t('plantillas.nueva')}
             </Badge>
           )}
+          {!nueva && conDiseno && (
+            <Badge tono="marca" apariencia="suave" tamano="sm" data-insignia-renovada>
+              {t('plantillas.renovada')}
+            </Badge>
+          )}
         </span>
       }
       pie={
@@ -281,15 +289,27 @@ function DialogoAbierto({
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-6">
           <div className="flex min-w-0 flex-col gap-2">
-            <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
-              <div className={celular ? 'max-h-[520px] overflow-y-auto' : 'max-h-[560px] overflow-y-auto'}>
-                <VistaEsquematicaPlantilla plantilla={plantilla} documento={documento} celular={celular} />
-              </div>
-            </DevicePreviewFrame>
-            <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.esquema')}</p>
+            {tienePaginasDisenadas(plantilla.id) ? (
+              // Las 7 de tienda nuevas: sus páginas diseñadas (Inicio, Categoría, Producto), no un esquema.
+              <>
+                <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
+                  <VistaPaginasDisenadas plantillaId={plantilla.id} nombre={plantilla.nombre} celular={celular} />
+                </DevicePreviewFrame>
+                <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.disenada.nota')}</p>
+              </>
+            ) : (
+              <>
+                <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
+                  <div className={celular ? 'max-h-[520px] overflow-y-auto' : 'max-h-[560px] overflow-y-auto'}>
+                    <VistaEsquematicaPlantilla plantilla={plantilla} documento={documento} celular={celular} />
+                  </div>
+                </DevicePreviewFrame>
+                <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.esquema')}</p>
+              </>
+            )}
           </div>
           <div className="flex flex-col gap-4">
-            <p className="text-[13px] leading-[18px] text-fg-secondary">{t(nueva ? 'dialogo.tienda.descripcion' : 'dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>
+            <p className="text-[13px] leading-[18px] text-fg-secondary">{t(conDiseno ? 'dialogo.tienda.descripcion' : 'dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>
             <div className="flex flex-col gap-2">
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.incluye')}</h3>
               <ul className="flex flex-col gap-1.5">
@@ -301,7 +321,7 @@ function DialogoAbierto({
                 ))}
               </ul>
               {completa && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.paginas', { lista: paginas })}</p>}
-              {nueva && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.tienda.paginas')}</p>}
+              {conDiseno && <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.tienda.paginas')}</p>}
             </div>
             <div className="flex flex-col gap-2" data-rasgos-shell>
               <h3 className="text-[13px] font-semibold leading-[18px] text-fg">{t('dialogo.encabezadoPie')}</h3>

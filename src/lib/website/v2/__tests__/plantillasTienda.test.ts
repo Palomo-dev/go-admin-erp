@@ -28,7 +28,10 @@ import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio, type Secc
 import {
   IDS_PLANTILLAS_TIENDA,
   construirCatalogo,
+  esPlantillaTiendaClasica,
   esPlantillaTiendaNueva,
+  esPlantillaTiendaRenovada,
+  tieneDisenoTiendaCompleto,
   plantillaPorId,
   plantillasDelGiro,
   tieneSerifa,
@@ -144,6 +147,27 @@ describe('catálogo: las 7 plantillas de tienda nuevas', () => {
     expect(esPlantillaTiendaNueva('retail_modern')).toBe(false);
   });
 
+  test('las 4 de antes («Clásicas»): nombre en español y tipo de negocio; el estilo que se guarda no cambia', () => {
+    const clasicas = plantillasDelGiro(CATALOGO, 'tienda').filter((p) => !esPlantillaTiendaNueva(p.id));
+    expect(clasicas.map((p) => [p.id, p.nombre, p.subgiro])).toEqual([
+      ['retail_modern', 'Moderna', 'Tienda general'],
+      ['retail_classic', 'Clásica', 'Tienda tradicional'],
+      ['retail_bold', 'Vibrante', 'Ofertas y descuentos'],
+      ['retail_elegant', 'Elegante', 'Lujo y joyería'],
+    ]);
+    for (const p of clasicas) {
+      const preset = TEMPLATE_PRESETS.find((t) => t.id === p.id)!;
+      expect(esPlantillaTiendaClasica(p.id)).toBe(true);
+      expect(p.base).toBe(preset.id);
+      // Las aún no renovadas solo cambian cómo se presentan: el estilo conserva el nombre del sitio.
+      // Las renovadas (opción 1 del dueño, 2026-11-19) traen su estilo propio con su nombre nuevo.
+      expect(p.estilo.nombre).toBe(esPlantillaTiendaRenovada(p.id) ? p.nombre : preset.name);
+      expect(p.descripcion.length).toBeGreaterThan(20);
+    }
+    expect(esPlantillaTiendaClasica('retail_roble')).toBe(false);
+    expect(esPlantillaTiendaClasica('hotel_luxury')).toBe(false);
+  });
+
   test('cada una se apoya en una plantilla del sitio que ya existe (no hace falta un preset nuevo)', () => {
     const bases = new Set(TEMPLATE_PRESETS.filter((t) => t.business_type === 'retail').map((t) => t.id));
     expect(Object.fromEntries(NUEVAS.map((p) => [p.id, p.base]))).toEqual({
@@ -159,14 +183,16 @@ describe('catálogo: las 7 plantillas de tienda nuevas', () => {
   });
 
   test('las plantillas de antes no traen ningún campo nuevo', () => {
-    for (const p of CATALOGO.plantillas.filter((x) => !esPlantillaTiendaNueva(x.id))) {
+    for (const p of CATALOGO.plantillas.filter((x) => !tieneDisenoTiendaCompleto(x.id))) {
       expect([p.tarjetaProducto, p.tokens, p.detalle, p.carrusel, p.paginacion, p.estilo.secundario, p.estilo.acentoSecundario]).toEqual(Array(7).fill(undefined));
       expect(p.inicio.every((s) => s.length === 2)).toBe(true);
     }
   });
 
   test('la tarjeta de cada una pasa el normalizador del contrato sin perder ni cambiar nada', () => {
-    for (const p of NUEVAS) expect({ id: p.id, tarjeta: normalizarTarjeta(p.tarjetaProducto) }).toEqual({ id: p.id, tarjeta: p.tarjetaProducto });
+    const conDiseno = CATALOGO.plantillas.filter((p) => tieneDisenoTiendaCompleto(p.id));
+    expect(conDiseno.length).toBeGreaterThanOrEqual(NUEVAS.length + 1);
+    for (const p of conDiseno) expect({ id: p.id, tarjeta: normalizarTarjeta(p.tarjetaProducto) }).toEqual({ id: p.id, tarjeta: p.tarjetaProducto });
   });
 
   test('Instrument Serif cuenta como serifa (descripción del par en Diseño)', () => {
@@ -436,8 +462,17 @@ describe('ficha y categoría (D4)', () => {
     expect(new Set(documento.paginas.map((p) => p.id)).size).toBe(documento.paginas.length);
   });
 
-  test('las plantillas de tienda de antes siguen CONSERVANDO las páginas de detalle', () => {
-    for (const id of ['retail_modern', 'retail_classic', 'retail_bold', 'retail_elegant']) {
+  test('Moderna renovada REEMPLAZA la ficha y la categoría con las de su lámina, y sigue siendo la de por defecto', () => {
+    const moderna = plantillaPorId(CATALOGO, 'retail_modern')!;
+    expect(moderna.porDefecto).toBe(true);
+    expect(esPlantillaTiendaRenovada('retail_modern')).toBe(true);
+    const { documento } = armar(moderna, TODAS_LAS_BANDERAS, borradorTienda());
+    expect(paginaDeTipo(documento, 'product_detail')!.secciones.map((x) => x.tipo)).toEqual(moderna.detalle!.producto.map(([t]) => t));
+    expect(paginaDeTipo(documento, 'category_detail')!.secciones.map((x) => x.tipo)).toEqual(moderna.detalle!.categoria.map(([t]) => t));
+  });
+
+  test('las plantillas de tienda de antes aún no renovadas siguen CONSERVANDO las páginas de detalle', () => {
+    for (const id of ['retail_modern', 'retail_classic', 'retail_bold', 'retail_elegant'].filter((x) => !esPlantillaTiendaRenovada(x))) {
       const base = borradorTienda();
       const { documento } = armar(plantillaPorId(CATALOGO, id)!, TODAS_LAS_BANDERAS, base);
       expect(paginaDeTipo(documento, 'product_detail')).toEqual(base.paginas.find((p) => p.id === 'ficha'));
@@ -451,10 +486,12 @@ describe('ficha y categoría (D4)', () => {
 describe('las plantillas de antes dan el mismo documento que antes (huellas de la rama base)', () => {
   const huella = (x: unknown) => createHash('sha256').update(JSON.stringify(x)).digest('hex');
   const huellas = HUELLAS_MAIN as Record<string, Record<string, string>>;
-  const viejas = CATALOGO.plantillas.filter((p) => !esPlantillaTiendaNueva(p.id));
+  // Las clásicas renovadas cambian A PROPÓSITO lo que arman (opción 1 del dueño, 2026-11-19): salen
+  // de esta comparación. Las tiendas que ya las usan no cambian hasta volver a aplicarlas.
+  const viejas = CATALOGO.plantillas.filter((p) => !tieneDisenoTiendaCompleto(p.id));
 
-  test('son las mismas 33 que había', () => {
-    expect(viejas.map((p) => p.id).sort()).toEqual(Object.keys(huellas).sort());
+  test('son las mismas que había, menos las renovadas', () => {
+    expect(viejas.map((p) => p.id).sort()).toEqual(Object.keys(huellas).filter((id) => !esPlantillaTiendaRenovada(id)).sort());
   });
 
   test.each(viejas.map((p) => [p.id, p] as const))('%s: «Solo estilo» y «Plantilla completa» byte a byte', (id, p) => {
@@ -473,6 +510,15 @@ describe('las plantillas de antes dan el mismo documento que antes (huellas de l
     for (const [clave, archivo] of Object.entries(CLAVES_QUE_LEE_EL_SITIO)) {
       const fuente = fs.readFileSync(path.join(DIR_SITIO, archivo), 'utf8');
       expect({ clave, archivo, aparece: fuente.includes(clave) }).toEqual({ clave, archivo, aparece: true });
+    }
+  });
+});
+
+describe('editable desde el editor', () => {
+  test('cada fuente que usa una plantilla de tienda se puede elegir a mano en el selector de letra', () => {
+    const { FONTS } = jest.requireActual('@/lib/services/websiteSettingsService') as { FONTS: readonly string[] };
+    for (const p of CATALOGO.plantillas.filter((x) => tieneDisenoTiendaCompleto(x.id))) {
+      for (const f of [p.estilo.fuenteTitulos, p.estilo.fuenteCuerpo]) expect({ plantilla: p.id, fuente: f, enLista: FONTS.includes(f) }).toEqual({ plantilla: p.id, fuente: f, enLista: true });
     }
   });
 });

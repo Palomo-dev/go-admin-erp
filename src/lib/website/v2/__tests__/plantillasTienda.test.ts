@@ -28,6 +28,7 @@ import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio, type Secc
 import {
   IDS_PLANTILLAS_TIENDA,
   construirCatalogo,
+  esPlantillaTiendaClasica,
   esPlantillaTiendaNueva,
   plantillaPorId,
   plantillasDelGiro,
@@ -142,6 +143,26 @@ describe('catálogo: las 7 plantillas de tienda nuevas', () => {
     }
     expect(plantillasDelGiro(CATALOGO, 'tienda')[0].id).toBe('retail_modern');
     expect(esPlantillaTiendaNueva('retail_modern')).toBe(false);
+  });
+
+  test('las 4 de antes («Clásicas»): nombre en español y tipo de negocio; el estilo que se guarda no cambia', () => {
+    const clasicas = plantillasDelGiro(CATALOGO, 'tienda').filter((p) => !esPlantillaTiendaNueva(p.id));
+    expect(clasicas.map((p) => [p.id, p.nombre, p.subgiro])).toEqual([
+      ['retail_modern', 'Moderna', 'Tienda general'],
+      ['retail_classic', 'Clásica', 'Tienda tradicional'],
+      ['retail_bold', 'Vibrante', 'Ofertas y descuentos'],
+      ['retail_elegant', 'Elegante', 'Lujo y joyería'],
+    ]);
+    for (const p of clasicas) {
+      const preset = TEMPLATE_PRESETS.find((t) => t.id === p.id)!;
+      expect(esPlantillaTiendaClasica(p.id)).toBe(true);
+      // Solo cambia cómo se presentan: el estilo conserva el nombre del sitio y la base es la misma.
+      expect(p.estilo.nombre).toBe(preset.name);
+      expect(p.base).toBe(preset.id);
+      expect(p.descripcion.length).toBeGreaterThan(20);
+    }
+    expect(esPlantillaTiendaClasica('retail_roble')).toBe(false);
+    expect(esPlantillaTiendaClasica('hotel_luxury')).toBe(false);
   });
 
   test('cada una se apoya en una plantilla del sitio que ya existe (no hace falta un preset nuevo)', () => {

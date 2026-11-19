@@ -83,7 +83,7 @@ import {
 } from '../plantillasTienda';
 
 const NOMBRES_NUEVAS = ['Panorama', 'Atelier', 'Radiante', 'Roble', 'Marea', 'Contraste', 'Hogar'];
-const NOMBRES_RETAIL_DE_HOY = ['Retail Moderno', 'Retail Clásico', 'Retail Bold', 'Retail Elegante'];
+const NOMBRES_RETAIL_DE_HOY = ['Moderna', 'Clásica', 'Vibrante', 'Elegante'];
 
 function documento(): DocumentoSitio {
   const r = validarDocumentoSitio({
@@ -157,8 +157,13 @@ describe('galería: las 7 de tienda, sin bandera', () => {
     const visibles = tarjetasVisibles();
     expect(visibles).toHaveLength(11);
     expect([...visibles].sort()).toEqual([...NOMBRES_NUEVAS, ...NOMBRES_RETAIL_DE_HOY].sort());
-    // La de por defecto va primero.
-    expect(visibles[0]).toBe('Retail Moderno');
+    // «Nuevas» (las 7) primero y «Clásicas» (las 4 de antes) después, cada grupo con su título.
+    expect(visibles.slice(0, 7).sort()).toEqual([...NOMBRES_NUEVAS].sort());
+    expect(visibles.slice(7)).toEqual(NOMBRES_RETAIL_DE_HOY);
+    expect(screen.getByRole('heading', { name: 'Nuevas' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Clásicas' })).toBeTruthy();
+    // Moderna sigue siendo la de por defecto: abre su grupo.
+    expect(visibles[7]).toBe('Moderna');
   });
 
   test('las 7 llevan «Nueva», «3 páginas», su descripción y su miniatura; las de antes no llevan «Nueva»', () => {
@@ -271,7 +276,7 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
 
   test('una de las de antes con «Plantilla completa»: el aviso de siempre, sin D4 ni «Nueva»', () => {
     renderConIdioma(<GaleriaPlantillas />);
-    fireEvent.click(tarjeta('Retail Moderno'));
+    fireEvent.click(tarjeta('Moderna'));
     const dialogo = screen.getByRole('dialog');
     expect(within(dialogo).getByRole('radio', { name: /Plantilla completa/ }).getAttribute('aria-checked')).toBe('true');
     expect(within(dialogo).queryByText(AVISO_D4)).toBeNull();

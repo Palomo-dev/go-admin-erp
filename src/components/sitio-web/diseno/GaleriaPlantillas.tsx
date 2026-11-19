@@ -77,6 +77,25 @@ function EsqueletoPlantillas() {
 }
 
 /**
+ * Grupos de la lista: en «Tienda», «Nuevas» (las 7 de tienda) y después «Clásicas» (las 4 de
+ * antes), cada uno con su título solo si los dos tienen algo. En los demás giros, un solo grupo
+ * sin título, en el orden de siempre.
+ */
+export function gruposDeTienda(
+  giro: string,
+  lista: readonly PlantillaCatalogo[],
+): { id: 'nuevas' | 'clasicas' | 'todas'; titulo: string | null; plantillas: PlantillaCatalogo[] }[] {
+  if (giro !== 'tienda') return [{ id: 'todas', titulo: null, plantillas: [...lista] }];
+  const nuevas = lista.filter((p) => esPlantillaTiendaNueva(p.id));
+  const clasicas = lista.filter((p) => !esPlantillaTiendaNueva(p.id));
+  if (nuevas.length === 0 || clasicas.length === 0) return [{ id: 'todas', titulo: null, plantillas: [...nuevas, ...clasicas] }];
+  return [
+    { id: 'nuevas', titulo: 'plantillas.grupo.nuevas', plantillas: nuevas },
+    { id: 'clasicas', titulo: 'plantillas.grupo.clasicas', plantillas: clasicas },
+  ];
+}
+
+/**
  * Tarjeta de la galería: miniatura con SU encabezado y SU pie, y la línea con lo distintivo
  * («Logo al centro · Pie centrado con WhatsApp»), de `shellPorPlantilla.ts`.
  */
@@ -312,13 +331,24 @@ export function GaleriaPlantillas() {
                 accion={{ etiqueta: t('plantillas.verTodas'), onClick: () => setGiro('todas') }}
               />
             ) : (
-              <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
-                {lista.map((p) => (
-                  <li key={p.id} className="flex">
-                    <TarjetaPlantilla plantilla={p} enUso={enUso?.id === p.id} etiquetaEnUso={etiquetaEnUso} onAbrir={() => abrir(p)} />
-                  </li>
-                ))}
-              </ul>
+              // Tienda: las 7 nuevas arriba y las 4 de antes en «Clásicas» (pedido del dueño 2026-11-19).
+              // En los demás giros, la lista de siempre.
+              gruposDeTienda(giro, lista).map((g) => (
+                <section key={g.id} className="flex flex-col gap-3" aria-labelledby={g.titulo ? `grupo-plantillas-${g.id}` : undefined} data-grupo-plantillas={g.id}>
+                  {g.titulo && (
+                    <h3 id={`grupo-plantillas-${g.id}`} className="text-sm font-semibold leading-5 text-fg">
+                      {t(g.titulo)}
+                    </h3>
+                  )}
+                  <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-6">
+                    {g.plantillas.map((p) => (
+                      <li key={p.id} className="flex">
+                        <TarjetaPlantilla plantilla={p} enUso={enUso?.id === p.id} etiquetaEnUso={etiquetaEnUso} onAbrir={() => abrir(p)} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))
             )}
           </div>
         </div>

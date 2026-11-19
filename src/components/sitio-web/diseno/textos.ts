@@ -169,6 +169,8 @@ export const TEXTOS_DISENO = {
     publicar: 'Publicar',
   },
   plantillas: {
+    /** Grupos de la pestaña «Tienda» (2026-11-19). */
+    grupo: { nuevas: 'Nuevas', clasicas: 'Clásicas' },
     subtitulo: 'Usar una plantilla crea un borrador: tu contenido se conserva',
     pestanas: 'Plantillas por giro',
     giro: {

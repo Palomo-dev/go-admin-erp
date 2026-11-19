@@ -1066,17 +1066,52 @@ export function textoPlantillaClara(secundario: string, fondo: string = FONDO_CL
   return razon !== null && razon >= CONTRASTE_AA ? secundario.toUpperCase() : TEXTO_CLARO_POR_DEFECTO;
 }
 
+/**
+ * Las 4 plantillas de tienda de antes («Clásicas» en la galería, pedido del dueño 2026-11-19):
+ * nombre en español, tipo de negocio y una descripción que dice para quién son. Solo cambia cómo se
+ * presentan en el editor: el estilo (`estilo.nombre`), las secciones y lo que se guarda al usarlas
+ * son los de siempre, así que las tiendas que ya las usan no cambian.
+ */
+const PRESENTACION_TIENDA_CLASICA: Readonly<Record<string, { nombre: string; subgiro: string; descripcion: string }>> = {
+  retail_modern: {
+    nombre: 'Moderna',
+    subgiro: 'Tienda general',
+    descripcion: 'Limpia y luminosa, con bordes redondeados y acento azul. Sirve para casi cualquier catálogo.',
+  },
+  retail_classic: {
+    nombre: 'Clásica',
+    subgiro: 'Tienda tradicional',
+    descripcion: 'Títulos con serifa y tonos cálidos: sobria y confiable, para marcas de toda la vida.',
+  },
+  retail_bold: {
+    nombre: 'Vibrante',
+    subgiro: 'Ofertas y descuentos',
+    descripcion: 'Colores intensos, bordes marcados y sombras: para tiendas de promociones que quieren llamar la atención.',
+  },
+  retail_elegant: {
+    nombre: 'Elegante',
+    subgiro: 'Lujo y joyería',
+    descripcion: 'Blanco, negro y dorado, con mucho aire: para joyería, relojes y marcas premium.',
+  },
+};
+
+/** ¿Es una de las 4 de tienda de antes («Clásicas»)? */
+export function esPlantillaTiendaClasica(id: string): boolean {
+  return Object.prototype.hasOwnProperty.call(PRESENTACION_TIENDA_CLASICA, id);
+}
+
 function plantillaDesdeBase(p: PlantillaBaseSitio): PlantillaCatalogo | null {
   const giro = GIRO_DE_NEGOCIO[p.business_type];
   const inicio = SECCIONES_INICIO_BASE[p.id];
   if (!giro || giro === 'restaurante' || !inicio) return null;
   const oscuro = p.theme_mode === 'dark';
+  const presentacion = PRESENTACION_TIENDA_CLASICA[p.id];
   return {
     id: p.id,
-    nombre: p.name,
-    descripcion: p.description,
+    nombre: presentacion?.nombre ?? p.name,
+    descripcion: presentacion?.descripcion ?? p.description,
     giro,
-    subgiro: null,
+    subgiro: presentacion?.subgiro ?? null,
     base: p.id,
     inicio,
     porDefecto: p.is_default,

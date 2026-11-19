@@ -22,6 +22,7 @@
 
 import type Stripe from 'stripe';
 import { periodoSuscripcionISO } from '@/lib/stripe/periodoSuscripcion';
+import { avisoEventoIgnorado, protegerGratisVigente, type SuscripcionLocal } from '@/lib/stripe/protegerGratisVigente';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type ResultadoCheckoutDePlan =
@@ -75,7 +76,7 @@ export async function aplicarCheckoutDePlan(
 
   const { data: existente } = await supabase
     .from('subscriptions')
-    .select('id, plan_id, stripe_subscription_id')
+    .select('id, plan_id, stripe_subscription_id, status, trial_end, current_period_end, metadata')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -112,9 +113,23 @@ export async function aplicarCheckoutDePlan(
     updated_at: ahora,
   };
 
+  // Prueba gratis vigente (metadata gratis_365_*): el Checkout no la degrada ni le acorta fechas.
+  const gratis = protegerGratisVigente({
+    local: existente as SuscripcionLocal | null,
+    stripe: { action: 'updated', status: datos.status, trial_end: datos.trial_end, current_period_end: datos.current_period_end },
+    ahora: new Date(),
+  });
+  if (gratis.protegida) {
+    datos.status = gratis.status;
+    datos.trial_end = gratis.trial_end;
+    datos.current_period_end = gratis.current_period_end;
+    if (gratis.ignorado) console.warn(avisoEventoIgnorado(organizationId, subscriptionId, gratis));
+  }
+  const fila = gratis.protegida && gratis.ignorado ? { ...datos, metadata: gratis.metadata } : datos;
+
   const escritura = existente
-    ? await supabase.from('subscriptions').update(datos).eq('id', existente.id)
-    : await supabase.from('subscriptions').insert({ ...datos, created_at: ahora });
+    ? await supabase.from('subscriptions').update(fila).eq('id', existente.id)
+    : await supabase.from('subscriptions').insert({ ...fila, created_at: ahora });
   if (escritura.error) {
     throw new Error(`No se pudo guardar la suscripción: ${escritura.error.message}`);
   }

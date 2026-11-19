@@ -16,6 +16,7 @@ import { getServiceClient } from '@/lib/supabase/server-service'
 import { aplicarCheckoutDePlan } from '@/lib/stripe/aplicarCheckoutDePlan'
 import { aplicarCompraCreditosIa, esCheckoutDeCreditosIa } from '@/lib/stripe/aplicarCompraCreditosIa'
 import { periodoSuscripcionISO } from '@/lib/stripe/periodoSuscripcion'
+import { avisoEventoIgnorado, protegerGratisVigente, type SuscripcionLocal } from '@/lib/stripe/protegerGratisVigente'
 import type Stripe from 'stripe'
 
 /** Campos de la factura de Stripe que se leen (en las versiones nuevas de la API ya no están todos tipados). */
@@ -265,7 +266,33 @@ async function updateSubscriptionInDatabase(
       return
     }
 
+    const trialEndStripe = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null
+    const periodoStripe = periodoSuscripcionISO(subscription)
+    const cambioStripe = { action, status: subscription.status, trial_end: trialEndStripe, current_period_end: periodoStripe.fin }
+
     if (action === 'deleted' || subscription.status === 'canceled') {
+      // Prueba gratis vigente (metadata gratis_365_*): ni se cancela ni se desactivan módulos;
+      // solo queda el registro del evento ignorado.
+      const { data: filasLocales } = await supabase
+        .from('subscriptions')
+        .select('id, status, trial_end, current_period_end, metadata')
+        .eq('stripe_subscription_id', subscription.id)
+      const protegidas = ((filasLocales ?? []) as Array<SuscripcionLocal & { id: string }>)
+        .map((fila) => ({ fila, decision: protegerGratisVigente({ local: fila, stripe: cambioStripe, ahora: new Date() }) }))
+        .filter((x) => x.decision.protegida)
+      if (protegidas.length > 0) {
+        for (const { fila, decision } of protegidas) {
+          if (!decision.protegida) continue
+          console.warn(avisoEventoIgnorado(organizationId, subscription.id, decision))
+          const { error } = await supabase
+            .from('subscriptions')
+            .update({ metadata: decision.metadata, updated_at: new Date().toISOString() })
+            .eq('id', fila.id)
+          if (error) throw new Error(`No se pudo registrar el evento ignorado de ${subscription.id}: ${error.message}`)
+        }
+        return
+      }
+
       // Actualizar como cancelada
       const { error } = await supabase
         .from('subscriptions')
@@ -302,7 +329,7 @@ async function updateSubscriptionInDatabase(
       // Buscar suscripción existente por organization_id o stripe_subscription_id
       const { data: existingSub } = await supabase
         .from('subscriptions')
-        .select('id')
+        .select('id, status, trial_end, current_period_end, metadata')
         .or(`organization_id.eq.${organizationId},stripe_subscription_id.eq.${subscription.id}`)
         .limit(1)
         .single()
@@ -313,21 +340,34 @@ async function updateSubscriptionInDatabase(
         stripe_customer_id: subscription.customer as string,
         plan_id: planId,
         status: subscription.status,
-        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-        current_period_start: periodoSuscripcionISO(subscription).inicio,
-        current_period_end: periodoSuscripcionISO(subscription).fin,
+        trial_end: trialEndStripe,
+        current_period_start: periodoStripe.inicio,
+        current_period_end: periodoStripe.fin,
         cancel_at_period_end: subscription.cancel_at_period_end,
         cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
         livemode: subscription.livemode,
         updated_at: new Date().toISOString(),
       }
 
+      // Prueba gratis vigente (metadata gratis_365_*): sin estado degradante ni fechas más cortas.
+      const gratis = protegerGratisVigente({ local: existingSub as SuscripcionLocal | null, stripe: cambioStripe, ahora: new Date() })
+      const datosAEscribir: typeof subscriptionData & { metadata?: Record<string, unknown> } = gratis.protegida
+        ? {
+            ...subscriptionData,
+            status: gratis.status as typeof subscriptionData.status,
+            trial_end: gratis.trial_end,
+            current_period_end: gratis.current_period_end,
+            ...(gratis.ignorado ? { metadata: gratis.metadata } : {}),
+          }
+        : subscriptionData
+      if (gratis.protegida && gratis.ignorado) console.warn(avisoEventoIgnorado(organizationId, subscription.id, gratis))
+
       let error
       if (existingSub) {
         // Actualizar suscripción existente
         const result = await supabase
           .from('subscriptions')
-          .update(subscriptionData)
+          .update(datosAEscribir)
           .eq('id', existingSub.id)
         error = result.error
       } else {

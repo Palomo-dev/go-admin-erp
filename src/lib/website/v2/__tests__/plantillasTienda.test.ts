@@ -513,3 +513,12 @@ describe('las plantillas de antes dan el mismo documento que antes (huellas de l
     }
   });
 });
+
+describe('editable desde el editor', () => {
+  test('cada fuente que usa una plantilla de tienda se puede elegir a mano en el selector de letra', () => {
+    const { FONTS } = jest.requireActual('@/lib/services/websiteSettingsService') as { FONTS: readonly string[] };
+    for (const p of CATALOGO.plantillas.filter((x) => tieneDisenoTiendaCompleto(x.id))) {
+      for (const f of [p.estilo.fuenteTitulos, p.estilo.fuenteCuerpo]) expect({ plantilla: p.id, fuente: f, enLista: FONTS.includes(f) }).toEqual({ plantilla: p.id, fuente: f, enLista: true });
+    }
+  });
+});

@@ -15,7 +15,7 @@ jest.mock('@/lib/utils/offlineCache', () => ({
 }));
 
 import { validarDocumentoSitio, type DocumentoSitio, type PaginaSitio } from '@/lib/website/contrato/documentoSitio';
-import { construirCatalogo, contarPorGiro, esPlantillaTiendaNueva, plantillaPorId, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { construirCatalogo, contarPorGiro, plantillaPorId, tieneDisenoTiendaCompleto, type PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
 import type { Giro } from '@/components/sitio-web/paginas/plantillasPagina';
 import { TEMPLATE_PRESETS } from '@/lib/website/contrato/presetsPlantillas';
 import { getSectionDefinition } from '@/lib/services/websitePageBuilderService';
@@ -214,8 +214,8 @@ describe.each(CATALOGO.plantillas.map((p) => [p.id, p] as const))('plantilla com
     sinEleccion.shell.footer.opciones = {};
     const limpio = armar(plantilla, DATOS, sinEleccion).documento.shell.footer.opciones;
     expect(limpio.show_powered_by ?? true).toBe(shell.pie.opciones.show_powered_by === true);
-    // Las tiendas de antes, sin columna Contacto; las 7 nuevas, lo que diga su lámina.
-    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(esPlantillaTiendaNueva(plantilla.id) ? shell.pie.opciones.footer_show_contact : false);
+    // Las tiendas de antes, sin columna Contacto; las 7 nuevas y las renovadas, lo que diga su lámina.
+    if (plantilla.giro === 'tienda') expect(opciones.footer_show_contact).toBe(tieneDisenoTiendaCompleto(plantilla.id) ? shell.pie.opciones.footer_show_contact : false);
     const legales = documento.menus.find((m) => m.nombre === 'Legales' && documento.shell.footer.menuIds.includes(m.id));
     if (legales) {
       const tratamiento = legales.items.find((i) => i.etiqueta === 'Tratamiento de datos');

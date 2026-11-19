@@ -16,9 +16,11 @@ describe('páginas diseñadas de las 7 plantillas de tienda', () => {
     }
   });
 
-  test('Moderna renovada también tiene sus 4 imágenes', () => {
-    for (const p of PAGINAS_DISENADAS) expect(existsSync(join(process.cwd(), 'public', imagenPaginaDisenada('retail_modern', p)!))).toBe(true);
-    expect(existsSync(join(process.cwd(), 'public', imagenPaginaDisenada('retail_modern', 'inicio', true)!))).toBe(true);
+  test('las 4 clásicas renovadas también tienen sus 4 imágenes', () => {
+    for (const id of ['retail_modern', 'retail_classic', 'retail_bold', 'retail_elegant']) {
+      for (const p of PAGINAS_DISENADAS) expect({ id, p, existe: existsSync(join(process.cwd(), 'public', imagenPaginaDisenada(id, p)!)) }).toEqual({ id, p, existe: true });
+      expect(existsSync(join(process.cwd(), 'public', imagenPaginaDisenada(id, 'inicio', true)!))).toBe(true);
+    }
   });
 
   test('en celular solo Inicio cambia de imagen; categoría y producto son las de computador', () => {
@@ -27,7 +29,7 @@ describe('páginas diseñadas de las 7 plantillas de tienda', () => {
   });
 
   test('las demás plantillas no tienen páginas diseñadas (siguen con el esquema)', () => {
-    for (const id of ['retail_classic', 'retail_bold', 'retail_elegant', 'restaurant_classic', 'retail_robleX', '', 'roble']) {
+    for (const id of ['hotel_luxury', 'restaurant_classic', 'retail_robleX', '', 'roble']) {
       expect(tienePaginasDisenadas(id)).toBe(false);
       expect(imagenPaginaDisenada(id, 'inicio')).toBeNull();
     }

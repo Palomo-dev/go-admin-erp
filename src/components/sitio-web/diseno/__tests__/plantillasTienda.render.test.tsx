@@ -181,20 +181,14 @@ describe('galería: las 7 de tienda, sin bandera', () => {
       expect(img.getAttribute('alt')).toBe(`Diseño de Inicio de la plantilla ${nombre}`);
       expect(t.querySelector('[data-esquema-shell]')).toBeNull();
     }
+    // Las 4 clásicas renovadas (2026-11-19): «Renovada», 3 páginas y su Inicio diseñado.
+    const carpetas: Record<string, string> = { Moderna: 'moderna', Clásica: 'clasica', Vibrante: 'vibrante', Elegante: 'elegante' };
     for (const nombre of NOMBRES_RETAIL_DE_HOY) {
       const t = tarjeta(nombre);
       expect(within(t).queryByText('Nueva')).toBeNull();
-      if (nombre === 'Moderna') {
-        // Renovada (2026-11-19): «Renovada», 3 páginas y su Inicio diseñado.
-        expect(within(t).getByText('Renovada')).toBeTruthy();
-        expect(within(t).getByText(/· 3 páginas/)).toBeTruthy();
-        expect(within(t).getByRole('img').getAttribute('src')).toBe('/sitio-web/plantillas/moderna/inicio.webp');
-        continue;
-      }
-      expect(within(t).queryByText('Renovada')).toBeNull();
-      expect(within(t).queryByText(/· 3 páginas/)).toBeNull();
-      // Las aún no renovadas siguen con su esquema de encabezado y pie.
-      expect(within(t).getByRole('img').getAttribute('data-esquema-shell')).toBe('mini');
+      expect(within(t).getByText('Renovada')).toBeTruthy();
+      expect(within(t).getByText(/· 3 páginas/)).toBeTruthy();
+      expect(within(t).getByRole('img').getAttribute('src')).toBe(`/sitio-web/plantillas/${carpetas[nombre]}/inicio.webp`);
     }
   });
 
@@ -294,15 +288,18 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
   });
 
   test('una de las de antes con «Plantilla completa»: el aviso de siempre, sin D4 ni «Nueva»', () => {
-    renderConIdioma(<GaleriaPlantillas />);
-    fireEvent.click(tarjeta('Clásica'));
+    // Las 4 de tienda ya están renovadas: la de antes de este caso es de otro giro (Hotel Lujo).
+    const { rerender } = renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(screen.getByRole('tab', { name: /Hotel/ }));
+    rerender(<GaleriaPlantillas />);
+    fireEvent.click(tarjeta('Hotel Lujo'));
     const dialogo = screen.getByRole('dialog');
     expect(within(dialogo).getByRole('radio', { name: /Plantilla completa/ }).getAttribute('aria-checked')).toBe('true');
     expect(within(dialogo).queryByText(AVISO_D4)).toBeNull();
     expect(within(dialogo).queryByText('Nueva')).toBeNull();
     expect(within(dialogo).queryByText(/Páginas que diseña/)).toBeNull();
     expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.avisoCompletaDescripcion'))).toBeTruthy();
-    expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.descripcion', { descripcion: CATALOGO_SITIO.plantillas.find((p) => p.id === 'retail_classic')!.descripcion }))).toBeTruthy();
+    expect(within(dialogo).getByText(textoCanonicoDiseno('dialogo.descripcion', { descripcion: CATALOGO_SITIO.plantillas.find((p) => p.id === 'hotel_luxury')!.descripcion }))).toBeTruthy();
   });
 });
 

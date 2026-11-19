@@ -240,6 +240,21 @@ export const FONTS = [
   'Space Grotesk',
   'Fredoka',
   'Lora',
+  // Las de las plantillas de tienda nuevas y renovadas (2026-11): elegibles también a mano en el
+  // editor, no solo al usar la plantilla. Todas son de Google Fonts con pesos 400–700.
+  'Plus Jakarta Sans',
+  'Fraunces',
+  'Libre Franklin',
+  'Unbounded',
+  'Bodoni Moda',
+  'Jost',
+  'Archivo',
+  'Bricolage Grotesque',
+  'DM Serif Display',
+  'Instrument Serif',
+  'Libre Caslon Text',
+  'Syne',
+  'Work Sans',
 ];
 
 // Colores predeterminados

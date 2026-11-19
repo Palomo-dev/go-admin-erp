@@ -224,9 +224,9 @@ describe('rasgos: la línea corta y el texto alternativo', () => {
     // Moderna renovada: envío gratis y teléfono en la barra superior (sin correo, como la lámina).
     expect(r.encabezado).toContainEqual({ clave: 'rasgo.barraSuperiorCon', lista: ['barra.envio', 'barra.telefono'] });
     expect(r.pie).toContainEqual({ clave: 'rasgo.menus', valores: { n: 3 } });
-    // Moderna ya no lleva la barra de WhatsApp/llamar/cómo llegar; Clásica (aún sin renovar) sí.
+    // Las tiendas renovadas ya no llevan la barra de WhatsApp/llamar/cómo llegar; el hotel sigue con la suya.
     expect(r.celular).toBeNull();
-    expect(rasgosShell(dibujo(porId('retail_classic'))).celular).toEqual({ clave: 'rasgo.barraCelular', lista: ['celular.whatsapp', 'celular.llamar', 'celular.como_llegar'] });
+    expect(rasgosShell(dibujo(porId('hotel_luxury'))).celular).toEqual({ clave: 'rasgo.barraCelular', lista: ['celular.reservar', 'celular.llamar', 'celular.como_llegar'] });
   });
 });
 

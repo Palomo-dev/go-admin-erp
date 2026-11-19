@@ -20,7 +20,7 @@ export type PaginaDisenada = (typeof PAGINAS_DISENADAS)[number];
 
 /**
  * Carpeta de las imágenes de cada plantilla con páginas diseñadas: las 7 de tienda nuevas y las
- * clásicas ya renovadas (Moderna desde el 2026-11-19). `null` si no tiene.
+ * 4 clásicas renovadas (2026-11-19). `null` si no tiene.
  */
 const CARPETAS: Readonly<Record<string, string>> = {
   retail_panorama: 'panorama',
@@ -31,6 +31,9 @@ const CARPETAS: Readonly<Record<string, string>> = {
   retail_contraste: 'contraste',
   retail_hogar: 'hogar',
   retail_modern: 'moderna',
+  retail_classic: 'clasica',
+  retail_bold: 'vibrante',
+  retail_elegant: 'elegante',
 };
 
 function carpeta(plantillaId: string): string | null {

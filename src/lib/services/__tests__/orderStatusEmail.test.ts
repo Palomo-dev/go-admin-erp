@@ -8,6 +8,10 @@
 jest.mock('@/lib/services/crm/email/resendClient', () => ({
   getMasterResend: jest.fn(),
   getMasterResendKey: jest.fn(() => null),
+  getResendClient: jest.fn(),
+}));
+jest.mock('@/lib/services/crm/email/domainsService', () => ({
+  resolveSender: jest.fn(),
 }));
 jest.mock('@/lib/services/organizationTimezoneService', () => ({
   getOrganizationTimezone: jest.fn(async () => 'America/Bogota'),
@@ -16,8 +20,11 @@ jest.mock('@/lib/services/organizationTimezoneService', () => ({
 import { createHash, createHmac } from 'crypto';
 import { hostSitio } from '@/lib/website/hostSitio';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getMasterResend, getMasterResendKey, getResendClient } from '@/lib/services/crm/email/resendClient';
+import { resolveSender } from '@/lib/services/crm/email/domainsService';
 import {
   armarCorreoEstado,
+  enviarAvisoEstado,
   esEstadoConAviso,
   logoPublico,
   marcaDelNegocio,
@@ -177,5 +184,92 @@ describe('orderStatusEmailService', () => {
       expect(await marcaDelNegocio(dbFalsa('falla'), 900, { primary_color: VERDE_MARCA }))
         .toEqual({ logoUrl: null, color: VERDE_MARCA });
     });
+  });
+});
+
+describe('remitente del aviso de estado (dominio verificado de la org)', () => {
+  const ANTES = { ...process.env };
+  const db = {} as SupabaseClient;
+  const mensaje = { to: 'ana@correo.co', subject: 'Pedido confirmado', html: '<p>x</p>', text: 'x' };
+  const enviarOrg = jest.fn(async () => ({ data: { id: 'org-1' }, error: null }));
+  const enviarMaestro = jest.fn(async () => ({ data: { id: 'master-1' }, error: null }));
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.EMAIL_FROM_ADDRESS = 'notificaciones@goadmin.io';
+    delete process.env.EMAIL_FROM_NAME;
+    (getMasterResendKey as jest.Mock).mockReturnValue('re_maestra');
+    (getMasterResend as jest.Mock).mockReturnValue({ emails: { send: enviarMaestro } });
+    (getResendClient as jest.Mock).mockReturnValue({ emails: { send: enviarOrg } });
+  });
+  afterEach(() => {
+    process.env = { ...ANTES };
+  });
+
+  const dominioOrg = (fromName: string | null = null) => ({
+    mode: 'org',
+    domain: { domain: 'tienda-prueba.co', from_name: fromName, status: 'verified', is_default: true },
+    fromEmail: 'pedidos@tienda-prueba.co',
+    from: 'pedidos@tienda-prueba.co',
+    replyTo: 'dominio@tienda-prueba.co',
+    apiKey: 're_dominio',
+  });
+
+  it('con dominio verificado y por defecto sale desde pedidos@<dominio> con el Reply-To de los ajustes', async () => {
+    (resolveSender as jest.Mock).mockResolvedValue(dominioOrg());
+    const r = await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: null, responderA: 'ventas@tienda-prueba.co' }, mensaje);
+    expect(r).toEqual({ ok: true, id: 'org-1' });
+    expect(resolveSender).toHaveBeenCalledWith(900, { kind: 'transactional', orgName: 'Casa de Prueba' }, db);
+    expect(getResendClient).toHaveBeenCalledWith('re_dominio');
+    expect(enviarMaestro).not.toHaveBeenCalled();
+    expect(enviarOrg).toHaveBeenCalledWith(expect.objectContaining({
+      from: 'Casa de Prueba <pedidos@tienda-prueba.co>',
+      replyTo: 'ventas@tienda-prueba.co',
+      to: 'ana@correo.co',
+    }));
+  });
+
+  it('sin Reply-To en los ajustes usa el del dominio', async () => {
+    (resolveSender as jest.Mock).mockResolvedValue(dominioOrg());
+    await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: null, responderA: null }, mensaje);
+    expect(enviarOrg).toHaveBeenCalledWith(expect.objectContaining({ replyTo: 'dominio@tienda-prueba.co' }));
+  });
+
+  it('sin dominio propio (resolveSender global) sale con el remitente de siempre', async () => {
+    (resolveSender as jest.Mock).mockResolvedValue({ mode: 'global', domain: null, fromEmail: 'avisos@goadmin.io', from: 'x', replyTo: null, apiKey: 're_maestra' });
+    const r = await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: null, responderA: null }, mensaje);
+    expect(r).toEqual({ ok: true, id: 'master-1' });
+    expect(getResendClient).not.toHaveBeenCalled();
+    const enviado = (enviarMaestro.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
+    expect(enviado.from).toBe('Casa de Prueba <notificaciones@goadmin.io>');
+    expect(enviado).not.toHaveProperty('replyTo');
+  });
+
+  it('si resolveSender lanza (NO_SENDER u otro), sale con el remitente de siempre y devuelve ok', async () => {
+    (resolveSender as jest.Mock).mockRejectedValue(Object.assign(new Error('La organización exige dominio propio'), { code: 'NO_SENDER' }));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const r = await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: null, responderA: 'ventas@tienda-prueba.co' }, mensaje);
+    warn.mockRestore();
+    expect(r).toEqual({ ok: true, id: 'master-1' });
+    expect(enviarMaestro).toHaveBeenCalledWith(expect.objectContaining({
+      from: 'Casa de Prueba <notificaciones@goadmin.io>',
+      replyTo: 'ventas@tienda-prueba.co',
+    }));
+  });
+
+  it('el nombre visible de los ajustes manda sobre el from_name del dominio', async () => {
+    (resolveSender as jest.Mock).mockResolvedValue(dominioOrg('Nombre del dominio'));
+    await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: 'Tienda Casa Prueba', responderA: null }, mensaje);
+    expect(resolveSender).toHaveBeenCalledWith(900, { kind: 'transactional', orgName: 'Tienda Casa Prueba' }, db);
+    expect(enviarOrg).toHaveBeenCalledWith(expect.objectContaining({ from: 'Tienda Casa Prueba <pedidos@tienda-prueba.co>' }));
+  });
+
+  it('sin key maestra ni dominio no lanza: devuelve sin_proveedor', async () => {
+    (getMasterResendKey as jest.Mock).mockReturnValue(null);
+    (resolveSender as jest.Mock).mockRejectedValue(new Error('sin red'));
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const r = await enviarAvisoEstado(db, 900, { nombreOrg: 'Casa de Prueba', nombreVisible: null, responderA: null }, mensaje);
+    warn.mockRestore();
+    expect(r).toEqual({ ok: false, error: 'sin_proveedor' });
   });
 });

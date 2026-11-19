@@ -11,6 +11,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import type { OpportunityFull } from '@/components/crm/pipeline/hooks/useOpportunityData';
 import type { CustomerDetails } from '../types';
 import { OpportunityObjectionsBlock } from '@/components/crm/objeciones/OpportunityObjectionsBlock';
+import { AdvisorPaymentLinkButton } from '@/components/crm/shared/AdvisorPaymentLinkButton';
 
 /** Sidebar del detalle: valor total, info clave, comisión, cliente y razón de pérdida (sin cambios funcionales). */
 export interface DetailSidebarProps {
@@ -68,6 +69,9 @@ export function DetailSidebar({ opportunity, customer, totals, displayAmount, on
           </CardContent>
         </Card>
       )}
+
+      {/* Botón para generar enlace de pago Stripe (solo personal interno de GO Admin) */}
+      <AdvisorPaymentLinkButton customerEmail={customer?.email} />
 
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="pb-3">

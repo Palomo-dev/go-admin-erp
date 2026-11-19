@@ -2188,7 +2188,9 @@ describe('27. RLS del catálogo: filas globales de solo lectura y nada abierto a
  * adicionales, todas fail-closed:
  *   - firmas de webhook de proveedor: `verifyWebhook` (HMAC de MercadoPago),
  *     `verifyWebhookEvent` (`constructEvent` de Stripe),
- *     `verificarChecksumWompi`, `verifyTwilioWebhook`, `verifyMetaSignature`;
+ *     `verificarChecksumWompi`, `verifyTwilioWebhook`, `verifyMetaSignature`,
+ *     `conexionQueFirmaBold` (2026-11-19: la conexión de Bold sale de la llave
+ *     secreta que valida `x-bold-signature`; sin firma válida, 401);
  *   - `verificarSuscripcionWebhook`: el GET de suscripción (token de entorno,
  *     403 sin él) de Meta, WhatsApp Cloud y TikTok;
  *   - `acceptMarketingOAuthState`: callbacks OAuth con `state` firmado
@@ -2204,7 +2206,7 @@ describe('27b. Integraciones y Factus: todo handler pasa por una puerta del serv
   const RAICES = [INTEGRACIONES, path.join(SRC_ROOT, 'app', 'api', 'factus')];
   // `verificarWebhookLogistica` (avisos de transportadoras, Effi y Dropi, GO-1 Fase 1): resuelve la
   // conexión por la URL y rechaza (501) mientras el adaptador no verifique la firma del proveedor.
-  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification|verifyWebhook|verifyWebhookEvent|verificarChecksumWompi|verifyTwilioWebhook|verifyMetaSignature|verificarSuscripcionWebhook|acceptMarketingOAuthState|requireOwnedChannel|verificarWebhookLogistica)\s*\(/;
+  const PUERTA_RE = /\b(withOrg|getServerOrgContext|getServerOrgContextFor|withPlatformAdmin|requirePlatformAdmin|resolverAlcancePayfac|withCron|verifyCronSecret|verificarTokenWebhookPrometeo|safeEqual|verifyWebhookSignature|verifyJwtNotification|verifyWebhook|verifyWebhookEvent|verificarChecksumWompi|verifyTwilioWebhook|verifyMetaSignature|verificarSuscripcionWebhook|acceptMarketingOAuthState|requireOwnedChannel|verificarWebhookLogistica|conexionQueFirmaBold)\s*\(/;
   /** `ruta MÉTODO` → motivo. Solo para lo que de verdad no aplique; vacía. */
   const SIN_PUERTA_PERMITIDA = new Map<string, string>([]);
   /** `export async function POST() { … 401 … }`: sin parámetros no lee nada de la petición. */

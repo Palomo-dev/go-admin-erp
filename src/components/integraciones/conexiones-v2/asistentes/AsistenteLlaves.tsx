@@ -367,7 +367,7 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
         )}
         {webhookUrl && webhookOrigen === 'tienda' && <p className="text-[13px] leading-[18px] text-fg-secondary">{t('webhookWompi.dominioTienda')}</p>}
         {webhookUrl && webhookSinDominio && (
-          <AvisoTonal tono="advertencia" titulo={t('webhookWompi.sinDominioTitulo')} descripcion={t('webhookWompi.sinDominioDescripcion')} />
+          <AvisoTonal tono="advertencia" titulo={t('webhookWompi.sinDominioTitulo')} descripcion={t('webhookWompi.sinDominioDescripcion', { nombre })} />
         )}
         <div className="flex items-center justify-between gap-3 rounded-lg border border-line px-4 py-3 text-sm text-fg-secondary" role="status">
           <span>{eventoRecibido ? t('asistente.llaves.webhook.recibido', { nombre }) : t('asistente.llaves.webhook.esperando', { nombre })}</span>

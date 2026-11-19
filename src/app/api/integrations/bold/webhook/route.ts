@@ -1,12 +1,17 @@
 // ============================================================
 // POST /api/integrations/bold/webhook
-// Recibe notificaciones de Bold (callback del proveedor).
-// Sin autenticacion: es un endpoint publico invocado por Bold.
-// IMPORTANTE: responde 200 inmediatamente para evitar reintentos infinitos.
+// Eventos de Bold para el ERP: cobros QR del POS y links de pago. Llegan directo de Bold (URL del
+// ERP, organizaciones sin dominio verificado) o reenviados por la tienda (cabecera
+// `x-goadmin-reenviado`), con el cuerpo y la firma intactos.
+//
+// Sin sesión: lo invoca Bold. La conexión —y con ella la organización— sale de la llave secreta
+// que valida `x-bold-signature` (firmaBold.ts). Sin firma válida: 401.
+// Bold exige 200 en menos de 2 s: el procesamiento corre con `after()`.
 // ============================================================
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { boldService, type BoldWebhookEvent } from '@/lib/services/integrations/bold';
+import { conexionQueFirmaBold } from '@/lib/services/integrations/bold/firmaBold';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
 /** Bold puede enviar campos fuera del contrato tipado; leerlos sin romper el tipo. */
@@ -16,103 +21,57 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 export async function POST(request: NextRequest) {
   try {
-    // Leer payload crudo (para verificacion de firma)
-    const rawBody = await request.text();
+    // Bytes exactos: la firma se calcula sobre ellos.
+    const cuerpo = Buffer.from(await request.arrayBuffer());
 
-    // GO-sec (2026-09-28): el body crudo ya no va a los logs (datos del
-    // pagador y del cobro); solo su tamaño.
-    console.info('[Bold Webhook] evento recibido', { bytes: rawBody.length });
+    // GO-sec (2026-09-28): el body crudo no va a los logs (datos del pagador); solo su tamaño.
+    console.info('[Bold Webhook] evento recibido', { bytes: cuerpo.length });
 
-    // Parsear el body como JSON
-    const event: BoldWebhookEvent = JSON.parse(rawBody);
-
-    // Extraer connectionId de query params o del payload
-    const url = new URL(request.url);
-    const connectionId =
-      url.searchParams.get('connectionId') ??
-      asRecord(event).connection_id as string | undefined ??
-      asRecord(event.data).connection_id as
-        | string
-        | undefined;
-
-    if (!connectionId) {
-      console.error(
-        '[Bold Webhook] No se encontro connectionId en query params ni en el payload'
-      );
-      // Responder 200 igualmente para evitar reintentos
-      return NextResponse.json({ received: true }, { status: 200 });
+    let event: BoldWebhookEvent;
+    try {
+      event = JSON.parse(cuerpo.toString('utf8')) as BoldWebhookEvent;
+    } catch {
+      return NextResponse.json({ error: 'Cuerpo inválido' }, { status: 400 });
     }
 
-    // Verificacion de firma HMAC-SHA256 (header x-bold-signature)
     const signature = request.headers.get('x-bold-signature');
     if (!signature) {
-      console.warn('[Bold Webhook] Webhook recibido sin firma x-bold-signature');
-      return NextResponse.json(
-        { error: 'Firma requerida' },
-        { status: 401 }
-      );
+      console.warn('[Bold Webhook] Evento sin firma x-bold-signature');
+      return NextResponse.json({ error: 'Firma requerida' }, { status: 401 });
     }
 
-    // Obtener secret_key de integration_credentials
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: creds } = await supabaseAdmin
-      .from('integration_credentials')
-      .select('secret_ref')
-      .eq('connection_id', connectionId)
-      .eq('purpose', 'webhook_secret')
-      .eq('status', 'active')
-      .single();
-
-    if (!creds?.secret_ref) {
-      console.warn(
-        '[Bold Webhook] No se encontro webhook_secret para verificar firma'
-      );
-      return NextResponse.json(
-        { error: 'No se encontro secreto de webhook' },
-        { status: 401 }
-      );
-    }
-
-    const isValid = boldService.verifyWebhookSignature(
-      rawBody,
-      signature,
-      creds.secret_ref
-    );
-    if (!isValid) {
-      console.error('[Bold Webhook] Firma invalida');
+    const pista = new URL(request.url).searchParams.get('connectionId');
+    const firmante = await conexionQueFirmaBold(supabaseAdmin, cuerpo, signature, pista);
+    if (!firmante) {
+      console.error('[Bold Webhook] Ninguna conexión de Bold valida la firma');
       return NextResponse.json({ error: 'Firma invalida' }, { status: 401 });
     }
 
-    console.log('[Bold Webhook] Firma verificada correctamente');
+    await supabaseAdmin.from('integration_events').insert({
+      connection_id: firmante.connectionId,
+      organization_id: firmante.organizationId,
+      source: 'webhook',
+      direction: 'inbound',
+      event_type: event.type ?? ((asRecord(event).event_type as string | undefined) ?? 'webhook'),
+      external_event_id: (asRecord(event.data).payment_id as string | undefined) ?? (asRecord(event).subject as string | undefined) ?? null,
+      payload: event as unknown as Record<string, unknown>,
+      status: 'received',
+    });
 
-    // Registrar evento en integration_events
-    await supabaseAdmin
-      .from('integration_events')
-      .insert({
-        connection_id: connectionId,
-        provider_code: 'bold',
-        event_type: (asRecord(event).event_type as string | undefined) ?? event.type ?? 'webhook',
-        external_id:
-          asRecord(event.data).id as
-            | string
-            | undefined ?? null,
-        payload: event,
-        received_at: new Date().toISOString(),
-        status: 'received',
-      });
-
-    // Responder 200 inmediatamente y procesar en background
-    // (max 2s para no bloquear la respuesta a Bold)
-    boldService
-      .processWebhook(event, connectionId)
-      .catch((procErr: unknown) => {
-        console.error('[Bold Webhook] Error procesando en background:', procErr);
-      });
+    // Responder ya y procesar después (sesión QR por referencia, de ESTA conexión).
+    after(async () => {
+      const r = await boldService.processWebhook(event, firmante.connectionId).catch((procErr: unknown) => ({
+        success: false,
+        error: procErr instanceof Error ? procErr.message : String(procErr),
+      }));
+      if (!r.success) console.warn('[Bold Webhook] Evento sin procesar:', r.error);
+    });
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
-    // Log del error pero responder 200 para que Bold no reintente
-    console.error('[Bold Webhook] Error:', err);
+    // Fallo interno ya registrado: 200 para que Bold no reintente en bucle.
+    console.error('[Bold Webhook] Error:', err instanceof Error ? err.message : String(err));
     return NextResponse.json({ received: true }, { status: 200 });
   }
 }

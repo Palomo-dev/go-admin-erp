@@ -48698,7 +48698,7 @@
     "webhookWompi": {
       "dominioTienda": "C’est l’adresse de votre boutique en ligne : elle confirme les paiements de la boutique et transmet à GO Admin ceux du point de vente, des folios et des liens de paiement.",
       "sinDominioTitulo": "Votre organisation n’a pas encore de domaine principal vérifié",
-      "sinDominioDescripcion": "C’est pourquoi vous voyez l’adresse de GO Admin : elle confirme les encaissements du point de vente et les liens de paiement, mais pas les paiements effectués dans la boutique en ligne. Une fois votre domaine vérifié, revenez ici et modifiez l’URL des événements dans Wompi."
+      "sinDominioDescripcion": "C’est pourquoi vous voyez l’adresse de GO Admin : elle confirme les encaissements du point de vente et les liens de paiement, mais pas les paiements effectués dans la boutique en ligne. Une fois votre domaine vérifié, revenez ici et modifiez l’URL des événements dans {nombre}."
     },
     "filtros": {
       "todos": "Tous",

@@ -49,8 +49,20 @@ export function urlWebhookDeConector(connectorCode: string | null | undefined, o
 /** Receptor de Wompi en la tienda (otro repositorio: no entra en RUTA_WEBHOOK_POR_CONECTOR). */
 export const RUTA_WEBHOOK_WOMPI_TIENDA = '/api/webhooks/wompi_co';
 
+/**
+ * Receptor de Bold en la tienda (2026-11-19). Mismo criterio que Wompi: la tienda confirma los
+ * pedidos web (organización = la conexión cuya llave secreta firma el evento) y reenvía al ERP,
+ * con cuerpo y firma intactos, los cobros QR del POS y los links de pago. Antes se mostraba la del
+ * ERP, que no confirma pedidos de la tienda.
+ */
+export const RUTA_WEBHOOK_BOLD_TIENDA = '/api/webhooks/bold';
+
 /** Conectores cuya URL de eventos es la de la tienda cuando la organización tiene dominio. */
-const POR_DOMINIO_DE_TIENDA: Readonly<Record<string, string>> = { wompi_co: RUTA_WEBHOOK_WOMPI_TIENDA };
+const POR_DOMINIO_DE_TIENDA: Readonly<Record<string, string>> = {
+  wompi_co: RUTA_WEBHOOK_WOMPI_TIENDA,
+  bold_link: RUTA_WEBHOOK_BOLD_TIENDA,
+  bold_pos: RUTA_WEBHOOK_BOLD_TIENDA,
+};
 
 export function usaDominioDeTienda(connectorCode: string | null | undefined): boolean {
   return !!connectorCode && connectorCode in POR_DOMINIO_DE_TIENDA;
@@ -78,14 +90,14 @@ export type OrigenWebhook = 'tienda' | 'erp';
 export interface WebhookDeConexion {
   url: string | null;
   origen: OrigenWebhook | null;
-  /** Solo Wompi sin dominio verificado: la UI explica por qué se muestra la del ERP. */
+  /** Wompi o Bold sin dominio verificado: la UI explica por qué se muestra la del ERP. */
   sinDominioVerificado: boolean;
 }
 
 /**
  * URL que se le muestra a la organización para pegar en el proveedor. Wompi con dominio
  * principal verificado → `https://{dominio}/api/webhooks/wompi_co`; sin él, la del ERP (como
- * antes) marcada `sinDominioVerificado`. El resto de conectores, sin cambios.
+ * antes) marcada `sinDominioVerificado`. Bold, igual con `/api/webhooks/bold`. El resto, sin cambios.
  */
 export function webhookDeConexion(
   connectorCode: string | null | undefined,

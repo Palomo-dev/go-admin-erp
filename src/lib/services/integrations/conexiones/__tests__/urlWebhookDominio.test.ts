@@ -91,7 +91,8 @@ describe('webhookDeConexion', () => {
     });
   });
   it('los demás conectores no cambian aunque haya dominio', () => {
-    expect(webhookDeConexion('bold_link', 'tienda-ejemplo.co', ERP)).toEqual({ url: `${ERP}/api/integrations/bold/webhook`, origen: 'erp', sinDominioVerificado: false });
+    // Bold pasó a la URL de la tienda el 2026-11-19 (bold/__tests__/firmaBold.test.ts); PayU no.
+    expect(webhookDeConexion('payu_co', 'tienda-ejemplo.co', ERP)).toEqual({ url: `${ERP}/api/integrations/payu/webhook`, origen: 'erp', sinDominioVerificado: false });
     expect(webhookDeConexion('booking_ota', 'tienda-ejemplo.co', ERP)).toEqual({ url: null, origen: null, sinDominioVerificado: false });
     expect(usaDominioDeTienda('wompi_co')).toBe(true);
     expect(usaDominioDeTienda('mp_checkout')).toBe(false);

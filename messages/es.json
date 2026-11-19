@@ -48713,7 +48713,7 @@
     "webhookWompi": {
       "dominioTienda": "Es la dirección de tu tienda en línea: confirma los pagos de la tienda y pasa a GO Admin los del punto de venta, los folios y los links de pago.",
       "sinDominioTitulo": "Tu organización aún no tiene un dominio principal verificado",
-      "sinDominioDescripcion": "Por eso ves la dirección de GO Admin: confirma los cobros del punto de venta y los links de pago, pero no los pagos hechos en la tienda en línea. Cuando verifiques tu dominio, vuelve aquí y cambia la URL de eventos en Wompi."
+      "sinDominioDescripcion": "Por eso ves la dirección de GO Admin: confirma los cobros del punto de venta y los links de pago, pero no los pagos hechos en la tienda en línea. Cuando verifiques tu dominio, vuelve aquí y cambia la URL de eventos en {nombre}."
     },
     "filtros": {
       "todos": "Todos",

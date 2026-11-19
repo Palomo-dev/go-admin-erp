@@ -2,8 +2,8 @@
 // Bold Colombia — Servicio principal
 // ============================================================
 
-import crypto from 'crypto';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
+import { firmaBoldValida } from './firmaBold';
 import { getBoldIntegrationsBaseUrl, getBoldPaymentsBaseUrl } from './boldConfig';
 import { confirmQrPayment } from '../qrShared/paymentConfirmation';
 import { getQrSessionForWebhook } from '../qrShared/qrSessionService';
@@ -280,24 +280,8 @@ class BoldService {
     signature: string,
     secretKey: string,
   ): boolean {
-    if (!secretKey || !signature) {
-      return false;
-    }
-
-    const bodyBuffer = typeof rawBody === 'string' ? Buffer.from(rawBody) : rawBody;
-    const expected = crypto
-      .createHmac('sha256', secretKey)
-      .update(bodyBuffer)
-      .digest('hex');
-
-    try {
-      return crypto.timingSafeEqual(
-        Buffer.from(expected, 'hex'),
-        Buffer.from(signature, 'hex'),
-      );
-    } catch {
-      return false;
-    }
+    // Forma documentada por Bold (HMAC del cuerpo en Base64) o la antigua: ver firmaBold.ts.
+    return firmaBoldValida(rawBody, signature, secretKey);
   }
 
   /**

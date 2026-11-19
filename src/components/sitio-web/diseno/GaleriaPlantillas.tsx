@@ -34,6 +34,7 @@ import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantilla
 import { validarPlantillaSede, type SedeParaPlantillas } from '@/lib/website/v2/plantillaSede';
 import { modoPorDefecto, paginasPropiasDePlantilla, type ModoPlantilla } from '@/lib/website/v2/plantillaCompleta';
 import { MiniaturaPlantilla, useShellDePlantilla } from './MiniaturaPlantilla';
+import { MiniaturaPaginaDisenada, tienePaginasDisenadas } from './PaginasDisenadas';
 import { DialogoVistaPreviaPlantilla } from './DialogoVistaPreviaPlantilla';
 import { useContextoDiseno } from './useContextoDiseno';
 import { pestanasGiro, usePlantillas, type PestanaGiro, type ResultadoUsoCompleto } from './usePlantillas';
@@ -98,7 +99,8 @@ function TarjetaPlantilla({
       nombre={p.nombre}
       descripcion={p.descripcion}
       detalle={shell.linea}
-      miniatura={<MiniaturaPlantilla shell={shell} />}
+      // Las 7 de tienda nuevas: su Inicio diseñado (Figma), no el esquema de encabezado y pie.
+      miniatura={tienePaginasDisenadas(p.id) ? <MiniaturaPaginaDisenada plantillaId={p.id} nombre={p.nombre} /> : <MiniaturaPlantilla shell={shell} />}
       giro={t(`plantillas.giro.${p.giro}`)}
       iconoGiro={ICONO_GIRO_PLANTILLA[p.giro]}
       secciones={p.inicio.length}

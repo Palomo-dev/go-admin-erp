@@ -54,6 +54,7 @@ import { SelectorAnchoVista } from '../ui/SelectorAnchoVista';
 import { CLASE_TAMANO_ICONO, ICONO_GIRO_PLANTILLA, TRAZO_ICONO } from '../ui/iconosSitio';
 import { muestraDeEstilo, nombreFuentes, nombreSeccion, nombreVariante } from './catalogo';
 import { VistaEsquematicaPlantilla, enlacesDelDocumento } from './VistaEsquematicaPlantilla';
+import { VistaPaginasDisenadas, tienePaginasDisenadas } from './PaginasDisenadas';
 import { useFuentesSitio } from './useFuentesSitio';
 import { useTextosDiseno } from './textos';
 import { esPlantillaTiendaNueva, negociosDePlantilla } from './plantillasTienda';
@@ -281,12 +282,24 @@ function DialogoAbierto({
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:gap-6">
           <div className="flex min-w-0 flex-col gap-2">
-            <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
-              <div className={celular ? 'max-h-[520px] overflow-y-auto' : 'max-h-[560px] overflow-y-auto'}>
-                <VistaEsquematicaPlantilla plantilla={plantilla} documento={documento} celular={celular} />
-              </div>
-            </DevicePreviewFrame>
-            <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.esquema')}</p>
+            {tienePaginasDisenadas(plantilla.id) ? (
+              // Las 7 de tienda nuevas: sus páginas diseñadas (Inicio, Categoría, Producto), no un esquema.
+              <>
+                <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
+                  <VistaPaginasDisenadas plantillaId={plantilla.id} nombre={plantilla.nombre} celular={celular} />
+                </DevicePreviewFrame>
+                <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.disenada.nota')}</p>
+              </>
+            ) : (
+              <>
+                <DevicePreviewFrame dispositivo={dispositivo} etiquetaBarra={t('dialogo.vistaPrevia')}>
+                  <div className={celular ? 'max-h-[520px] overflow-y-auto' : 'max-h-[560px] overflow-y-auto'}>
+                    <VistaEsquematicaPlantilla plantilla={plantilla} documento={documento} celular={celular} />
+                  </div>
+                </DevicePreviewFrame>
+                <p className="text-xs leading-4 text-fg-secondary">{t('dialogo.esquema')}</p>
+              </>
+            )}
           </div>
           <div className="flex flex-col gap-4">
             <p className="text-[13px] leading-[18px] text-fg-secondary">{t(nueva ? 'dialogo.tienda.descripcion' : 'dialogo.descripcion', { descripcion: plantilla.descripcion })}</p>

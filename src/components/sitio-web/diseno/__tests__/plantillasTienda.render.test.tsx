@@ -169,14 +169,19 @@ describe('galería: las 7 de tienda, sin bandera', () => {
       expect(within(t).getByText('Nueva')).toBeTruthy();
       expect(within(t).getByText(/· 3 páginas/)).toBeTruthy();
       expect(within(t).getByText(plantilla.descripcion)).toBeTruthy();
+      // Su Inicio diseñado (imagen de Figma), no el esquema de encabezado y pie (pedido 2026-11-19).
       const img = within(t).getByRole('img');
-      expect(img.getAttribute('data-esquema-shell')).toBe('mini');
-      expect(img.getAttribute('aria-label')).toMatch(/^Encabezado: .+\. Pie .+/);
+      const carpeta = plantilla.id.replace(/^retail_/, '');
+      expect(img.getAttribute('src')).toBe(`/sitio-web/plantillas/${carpeta}/inicio.webp`);
+      expect(img.getAttribute('alt')).toBe(`Diseño de Inicio de la plantilla ${nombre}`);
+      expect(t.querySelector('[data-esquema-shell]')).toBeNull();
     }
     for (const nombre of NOMBRES_RETAIL_DE_HOY) {
       const t = tarjeta(nombre);
       expect(within(t).queryByText('Nueva')).toBeNull();
       expect(within(t).queryByText(/· 3 páginas/)).toBeNull();
+      // Las de antes siguen con su esquema de encabezado y pie.
+      expect(within(t).getByRole('img').getAttribute('data-esquema-shell')).toBe('mini');
     }
   });
 
@@ -234,6 +239,24 @@ describe('diálogo: aviso D4 solo en las 7 nuevas', () => {
     const aviso = within(dialogo).getByText(/Se reemplazan el encabezado, el pie, Inicio, la ficha de producto, la página de categoría/);
     expect(aviso.textContent).toContain('«antes de restaurar»');
     expect(within(dialogo).getByText(/Usa tu catálogo, tus fotos y tus textos/)).toBeTruthy();
+  });
+
+  test('una nueva muestra sus páginas diseñadas (Inicio, Categoría, Producto), no el esquema', () => {
+    renderConIdioma(<GaleriaPlantillas />);
+    fireEvent.click(tarjeta('Roble'));
+    const dialogo = screen.getByRole('dialog');
+    const vista = dialogo.querySelector('[data-vista-disenada="retail_roble"]') as HTMLElement;
+    expect(vista).toBeTruthy();
+    // (El esquema de encabezado y pie sigue en «Cómo aplicarla»; la vista previa es la página diseñada.)
+    expect(vista.querySelector('[data-esquema-shell]')).toBeNull();
+    const pestanas = within(vista).getAllByRole('tab');
+    expect(pestanas.map((p) => p.textContent)).toEqual(['Inicio', 'Categoría', 'Producto']);
+    const imagen = () => within(vista).getByRole('img').getAttribute('src');
+    expect(imagen()).toBe('/sitio-web/plantillas/roble/inicio.webp');
+    fireEvent.click(within(vista).getByRole('tab', { name: 'Producto' }));
+    expect(imagen()).toBe('/sitio-web/plantillas/roble/producto.webp');
+    expect(within(vista).getByRole('tab', { name: 'Producto' }).getAttribute('aria-selected')).toBe('true');
+    expect(within(dialogo).getByText(/Así es la plantilla, con productos y fotos de muestra/)).toBeTruthy();
   });
 
   test('la misma nueva con «Solo estilo»: sin aviso D4 (el estilo no toca páginas)', () => {

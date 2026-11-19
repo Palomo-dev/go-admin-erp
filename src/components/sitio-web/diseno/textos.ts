@@ -223,6 +223,14 @@ export const TEXTOS_DISENO = {
     estilo: 'Estilo',
     descripcion: '{descripcion} Usa tu carta, tus fotos y tus textos: así se vería tu sitio.',
     esquema: 'Muestra el orden de las secciones con tu nombre y tu menú. Tus textos y fotos de cada sección se conservan al aplicarla.',
+    /** Páginas diseñadas de las 7 plantillas de tienda (imágenes de Figma). Marcadores: `{nombre}`, `{pagina}`. */
+    disenada: {
+      paginas: 'Páginas de la plantilla',
+      pagina: { inicio: 'Inicio', categoria: 'Categoría', producto: 'Producto' },
+      alt: 'Diseño de {pagina} de la plantilla {nombre}',
+      nota: 'Así es la plantilla, con productos y fotos de muestra. Al usarla se arma con tu catálogo, tus fotos y tus textos.',
+      soloComputador: 'Esta página se muestra en computador; en el celular se acomoda a una columna.',
+    },
     avisoTitulo: 'Reemplaza el diseño, conserva tu contenido',
     avisoDescripcion:
       'Cambian el estilo, el orden y las variantes de las secciones. Tus textos, fotos, carta y páginas se conservan. Se crea un borrador: nada cambia en línea hasta que publiques.',

@@ -647,6 +647,9 @@ export const SHELL_POR_PLANTILLA: Readonly<Record<string, ShellPlantilla>> = {
       opciones: {
         footer_background: 'custom',
         footer_custom_bg_color: '#161616',
+        // Lámina de Figma: boletín y la marca gigante al pie (faltaban; tienda de prueba 2026-11-20).
+        footer_show_newsletter: true,
+        footer_brand_display: 'giant',
         footer_show_whatsapp: true,
         footer_show_map: false,
         footer_show_payment_methods: true,

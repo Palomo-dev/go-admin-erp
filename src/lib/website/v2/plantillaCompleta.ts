@@ -377,6 +377,12 @@ interface ContextoSeccion {
   pagina: { titulo: string; slug: string };
   /** Botón principal de la plantilla con su destino ya resuelto (o `null`). */
   cta: { texto: string; url: string } | null;
+  /**
+   * Cuántas secciones del mismo tipo hay antes de esta en la página (0 en la primera). Con dos
+   * bloques iguales en Inicio (Hogar: dos `promo_banners`; Marea: dos `image_text`), el segundo
+   * no repite el texto ni las categorías del primero.
+   */
+  ocurrencia?: number;
 }
 
 interface SeccionArmada {
@@ -620,11 +626,14 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
         visible: Boolean(pedir),
       };
     case 'promo_banners': {
-      const banners = datos.categorias.slice(0, 3).map((cat) => {
+      // El segundo bloque de banners sigue con las categorías siguientes (rota si no alcanzan).
+      const desde = datos.categorias.length > 3 ? ((c.ocurrencia ?? 0) * 3) % datos.categorias.length : 0;
+      const enOrden = [...datos.categorias.slice(desde), ...datos.categorias.slice(0, desde)];
+      const banners = enOrden.slice(0, 3).map((cat) => {
         const foto = datos.productos.find((p) => p.categoriaId === cat.id && p.imagenUrl);
         return conValor({ title: cat.nombre, image_url: foto?.imagenUrl, link_type: 'category', link_category_id: cat.id, button_text: 'Ver más' });
       });
-      return { contenido: { title: 'Lo que tenemos para ti', banners }, visible: banners.length > 0 };
+      return { contenido: { title: (c.ocurrencia ?? 0) > 0 ? 'Más para descubrir' : 'Lo que tenemos para ti', banners }, visible: banners.length > 0 };
     }
     case 'image_text':
       // Bloque de color (Marea): uno por categoría real, lo arma `bloquesDeColor`. Sin categoría, vacío y oculto.
@@ -636,6 +645,19 @@ export function contenidoInicial(tipo: string, variante: string, c: ContextoSecc
             body: limpio(datos.descripcion) ?? `${nombre ?? 'Nuestro equipo'} te recibe con gusto. Conoce quiénes somos y lo que hacemos cada día.`,
             image_url: fotos[0]?.url ?? c.portada,
             image_small_url: fotos[1]?.url,
+          }),
+          visible: true,
+        };
+      }
+      // Segundo bloque de imagen y texto en la misma página: no repite «Nuestra historia».
+      if ((c.ocurrencia ?? 0) > 0) {
+        return {
+          contenido: conValor({
+            title: 'Lo que nos mueve',
+            body: 'Escogemos cada producto pensando en quien lo va a usar y te acompañamos en cada compra.',
+            image_url: fotos[1]?.url ?? fotos[0]?.url ?? c.portada,
+            cta_text: c.ruta('productos') ? 'Ver productos' : null,
+            cta_url: c.ruta('productos'),
           }),
           visible: true,
         };
@@ -883,7 +905,32 @@ function conContenidoPropio(
   if (tipo === 'hero' && (typeof contenido.cta_url === 'string' || (Array.isArray(contenido.buttons) && contenido.buttons.length > 0))) {
     contenido.show_cta = true;
   }
-  return { contenido, visible };
+  return { contenido: conFondoSinFoto(tipo, variante, contenido), visible };
+}
+
+/**
+ * Portada a pantalla completa SIN foto: el sitio pinta el título y el encabezado transparente en
+ * blanco, así que sin foto ni capa quedaban blanco sobre el fondo claro de la página (Atelier,
+ * Roble, Clásica y Elegante en la tienda de prueba, 2026-11-20). Sin foto, la capa va encendida y
+ * opaca con el color de la plantilla (`overlay_color`, o el primario, que en las cuatro es oscuro).
+ * Con foto, nada cambia. Cuando el dueño suba la foto, la capa vuelve a su opacidad por defecto si
+ * la ajusta en el editor.
+ */
+function conFondoSinFoto(tipo: string, variante: string, contenido: Record<string, unknown>): Record<string, unknown> {
+  if (!(tipo === 'hero' && variante === 'fullscreen')) return contenido;
+  if (limpio(contenido.image_url as string | null) || limpio(contenido.image_url_mobile as string | null)) return contenido;
+  // Los botones de contorno y de enlace toman el primario: sobre la capa (del mismo tono) no se
+  // verían (Clásica, Roble). Sin foto van en blanco, salvo que la plantilla les dé su color.
+  const botones = Array.isArray(contenido.buttons)
+    ? contenido.buttons.map((b) => {
+        if (!b || typeof b !== 'object') return b;
+        const boton = b as Record<string, unknown>;
+        if (boton.variant === 'outline') return { ...boton, text_color: boton.text_color ?? '#FFFFFF', bg_color: boton.bg_color ?? '#FFFFFF' };
+        if (boton.variant === 'link') return { ...boton, text_color: boton.text_color ?? '#FFFFFF' };
+        return boton;
+      })
+    : undefined;
+  return { ...contenido, show_overlay: true, overlay_opacity: 100, ...(botones ? { buttons: botones } : {}) };
 }
 
 function armarSeccion(
@@ -893,7 +940,8 @@ function armarSeccion(
   ocultas: SeccionOculta[],
 ): SeccionSitio {
   const inicial = contenidoInicial(tipo, variante, contexto);
-  const { contenido, visible } = propio ? conContenidoPropio(tipo, variante, inicial, propio, contexto.ruta) : inicial;
+  const armada = propio ? conContenidoPropio(tipo, variante, inicial, propio, contexto.ruta) : inicial;
+  const { contenido, visible } = propio ? armada : { ...armada, contenido: conFondoSinFoto(tipo, variante, armada.contenido) };
   if (!visible) ocultas.push({ pagina: contexto.pagina.titulo, tipo });
   return {
     id: generarId(),
@@ -1310,8 +1358,13 @@ export function armarPlantillaCompleta(
       ? estructuraInicio(plantilla, portada, datos)
       : b.secciones.map((s) => [s.tipo, s.variante] as const);
     const contexto: ContextoSeccion = { giro, datos, textos, ruta, portada, fotos, esInicio: inicio, pagina, cta };
+    const vistas = new Map<string, number>();
     const armadas = estructura.map((s, i) => {
-      const armada = armarSeccion(s, contexto, generarId, ocultas);
+      // Los bloques de color (Marea) son `image_text` aparte: no cuentan para el texto de los demás.
+      const clave = s[0] === 'image_text' && s[1] === 'color_block' ? 'image_text.color_block' : s[0];
+      const ocurrencia = vistas.get(clave) ?? 0;
+      vistas.set(clave, ocurrencia + 1);
+      const armada = armarSeccion(s, { ...contexto, ocurrencia }, generarId, ocultas);
       // Texto propio de la página del shell (p. ej. alérgenos), sobre el de ejemplo.
       const propio = inicio ? null : b.secciones[i]?.contenido;
       return propio && Object.keys(propio).length > 0 ? { ...armada, contenido: { ...propio } } : armada;

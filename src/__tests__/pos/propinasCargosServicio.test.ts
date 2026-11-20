@@ -235,7 +235,7 @@ describe('Cargos de servicio: fixed_amount, null explícito y organización', ()
   it('la ayuda del CSV ya no documenta «fixed» a secas', () => {
     const es = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'messages/es.json'), 'utf8'));
     expect(es.posCargosServicio.csvAyuda.tipoCargo).toContain('fixed_amount');
-    const cabecera = fs.readFileSync(path.join(process.cwd(), 'src/components/pos/cargos-servicio/ChargesHeader.tsx'), 'utf8');
+    const cabecera = fs.readFileSync(path.join(process.cwd(), 'src/components/pos/cargos-servicio/CargosServicioContent.tsx'), 'utf8');
     expect(cabecera).not.toMatch(/percentage o fixed</);
   });
 
@@ -265,8 +265,10 @@ describe('Cargos de servicio: fixed_amount, null explícito y organización', ()
     resultado = { data: [], error: null };
     await expect(CargosServicioService.update(3, { is_active: true })).rejects.toMatchObject({ codigo: 'SIN_PERMISO' });
     llamadas.length = 0;
-    await expect(CargosServicioService.delete(3)).rejects.toMatchObject({ codigo: 'SIN_PERMISO' });
+    // Archivar reemplaza al borrado físico (migración 20261120180425): también acotado.
+    await expect(CargosServicioService.archive(3)).rejects.toMatchObject({ codigo: 'SIN_PERMISO' });
     expect(eqs()).toEqual([['id', 3], ['organization_id', 120]]);
+    expect(llamadas.some((l) => l.metodo === 'delete')).toBe(false);
     llamadas.length = 0;
     resultado = { data: null, error: null };
     await expect(CargosServicioService.getById(3)).resolves.toBeNull();
@@ -283,7 +285,7 @@ describe('Cargos de servicio: fixed_amount, null explícito y organización', ()
   });
 
   it('el filtro de sucursal de la página no escribe en la sucursal global', () => {
-    const cabecera = fs.readFileSync(path.join(process.cwd(), 'src/components/pos/cargos-servicio/ChargesHeader.tsx'), 'utf8');
+    const cabecera = fs.readFileSync(path.join(process.cwd(), 'src/components/pos/cargos-servicio/CargosServicioContent.tsx'), 'utf8');
     expect(cabecera).not.toMatch(/setSelectedBranch/);
   });
 

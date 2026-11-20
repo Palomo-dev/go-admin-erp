@@ -61036,5 +61036,179 @@
       "sinPermiso": "You don't have permission to see this photo.",
       "error": "We couldn't load the photo."
     }
+  },
+  "posCargos": {
+    "titulo": "Service charges",
+    "subtitulo": "Added to the bill before taxes and invoiced as their own line · they are not a tip",
+    "migaPos": "POS",
+    "todasSucursales": "All branches",
+    "todas": "All",
+    "sinImpuesto": "None",
+    "copiaSufijo": " (copy)",
+    "actualizar": "Refresh",
+    "importarBoton": "Import",
+    "plantilla": "Download CSV template",
+    "verArchivados": "View archived",
+    "nuevo": "New charge",
+    "buscar": "Search by name",
+    "sustantivo": {
+      "singular": "charge",
+      "plural": "charges"
+    },
+    "tipo": {
+      "percentage": "Percentage",
+      "fixed_amount": "Fixed amount"
+    },
+    "aplicaA": {
+      "all": "All services",
+      "dine_in": "Dine-in",
+      "delivery": "Delivery",
+      "takeout": "Takeout"
+    },
+    "estado": {
+      "activo": "Active",
+      "inactivo": "Inactive",
+      "archivado": "Archived"
+    },
+    "cobro": {
+      "obligatorio": "Mandatory",
+      "opcional": "Optional"
+    },
+    "condicion": {
+      "comensales": "{n}+ guests",
+      "compraMinima": "Minimum purchase",
+      "compraMinimaCorta": "Minimum purchase {monto}",
+      "sinCompraMinima": "no minimum purchase",
+      "siempre": "Always"
+    },
+    "columnas": {
+      "nombre": "Name",
+      "tipo": "Type",
+      "valor": "Value",
+      "aplicaA": "Applies to",
+      "impuesto": "Tax",
+      "condicion": "Condition",
+      "sucursal": "Branch",
+      "cobro": "Charging",
+      "estado": "Status"
+    },
+    "acciones": {
+      "editar": "Edit",
+      "duplicar": "Duplicate",
+      "verVentas": "View sales with this charge",
+      "verVentasMotivo": "The POS does not charge service charges yet: there are no sales with a charge.",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "archivar": "Archive",
+      "restaurar": "Restore"
+    },
+    "toast": {
+      "duplicado": "Charge duplicated",
+      "activado": "Charge activated",
+      "desactivado": "Charge deactivated",
+      "archivado": "Charge archived. Find it under “View archived”.",
+      "restaurado": "Charge restored. It is inactive: activate it when you want to charge it."
+    },
+    "errores": {
+      "SIN_PERMISO": "You do not have permission to manage service charges.",
+      "NO_ENCONTRADO": "The charge does not exist in this organization.",
+      "TIPO_INVALIDO": "Invalid charge type: use percentage or fixed amount.",
+      "IMPUESTO_INVALIDO": "The selected tax does not belong to this organization.",
+      "DESCONOCIDO": "The operation could not be completed. Try again."
+    },
+    "kpi": {
+      "etiqueta": "Charges summary",
+      "activos": "Active",
+      "activosValor": "{activos} of {total}",
+      "inactivos": "{n, plural, =0 {none inactive} one {# inactive} other {# inactive}}",
+      "cobrado": "Charged this month",
+      "ventasConCargo": "Sales with a charge",
+      "quitados": "Removed by the cashier",
+      "sinCobro": "The POS does not charge them yet"
+    },
+    "filtros": {
+      "estado": "Status",
+      "aplicaA": "Applies to",
+      "aplicaAAyuda": "Includes charges that apply to all services.",
+      "cobro": "Charging",
+      "verResultados": "View {n, plural, one {# charge} other {# charges}}",
+      "estados": {
+        "todos": "All",
+        "activos": "Active",
+        "inactivos": "Inactive",
+        "archivados": "Archived"
+      }
+    },
+    "vacio": {
+      "titulo": "No service charges yet",
+      "descripcion": "Create a charge for large tables, deliveries or packaging. It is added to the bill before taxes."
+    },
+    "error": {
+      "titulo": "Charges could not be loaded",
+      "descripcion": "Check your connection and try again."
+    },
+    "sinPermiso": {
+      "titulo": "You do not have access to service charges",
+      "descripcion": "Ask an organization admin to give you POS access."
+    },
+    "formulario": {
+      "tituloNuevo": "New service charge",
+      "tituloEditar": "Edit service charge",
+      "descripcion": "Calculated on the subtotal after discounts and before taxes.",
+      "nombre": "Name",
+      "nombrePlaceholder": "E.g.: Large table service",
+      "tipo": "Charge type",
+      "porcentaje": "Percentage",
+      "montoFijo": "Fixed amount",
+      "valor": "Value",
+      "impuesto": "Charge tax",
+      "impuestoAyuda": "Usually the same as the products.",
+      "impuestoSinConfigurar": "The organization has no active taxes: set them up in Finance.",
+      "sinImpuesto": "None",
+      "aplicaA": "Applies to",
+      "comensalesMinimos": "Minimum guests",
+      "comensalesAyuda": "Empty: no minimum.",
+      "compraMinima": "Minimum purchase",
+      "compraMinimaAyuda": "Before taxes. Empty: no minimum.",
+      "sucursal": "Branch",
+      "todasSucursales": "All branches",
+      "cobro": "How it is charged",
+      "obligatorio": "Mandatory",
+      "obligatorioDescripcion": "Applied automatically. Removing it requires a reason and the “Remove charge” permission (or a supervisor).",
+      "opcional": "Optional",
+      "opcionalDescripcion": "The cashier asks the customer; if they decline, it is not charged.",
+      "parecePropina": "This looks like a suggested tip",
+      "parecePropinaDescripcion": "A tip is voluntary, belongs to the staff and is not invoiced. Set it up in Tips, not as a charge.",
+      "irAPropinas": "Go to Tips",
+      "pareceFlete": "Is this the delivery fee?",
+      "pareceFleteDescripcion": "Delivery is charged as a delivery fee at checkout. Use this charge only for services such as packaging.",
+      "vistaPrevia": "How it will look on the receipt",
+      "subtotalComensales": "Subtotal ({n} guests)",
+      "subtotalEjemplo": "Sample subtotal",
+      "totalFactura": "Invoice total",
+      "propinaFuera": "Suggested voluntary tip: outside the invoice. The example assumes products carry the same tax as the charge.",
+      "cargoSinNombre": "Charge",
+      "cancelar": "Cancel",
+      "guardar": "Save charge",
+      "guardando": "Saving…",
+      "actualizado": "Charge updated",
+      "creado": "Charge created",
+      "error": {
+        "nombre": "Enter a name.",
+        "valor": "The value must be greater than 0.",
+        "porcentajeMaximo": "The percentage cannot exceed 100%."
+      }
+    },
+    "importar": {
+      "titulo": "Import charges",
+      "descripcion": "Upload a CSV file with one charge per row.",
+      "cancelar": "Cancel",
+      "plantilla": "Template",
+      "importar": "Import",
+      "importando": "Importing…",
+      "eligeArchivo": "Choose a CSV file",
+      "formato": "Columns: name, charge_type, charge_value and, optionally, min_amount, min_guests, applies_to, is_optional.",
+      "ayudaImpuesto": "Imported charges have no tax: choose it when editing them."
+    }
   }
 }

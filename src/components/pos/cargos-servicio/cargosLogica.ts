@@ -48,10 +48,16 @@ export function filaParaInsertar(data: CreateServiceChargeData) {
     min_amount: opcionalPositivo(data.min_amount),
     min_guests: opcionalPositivo(data.min_guests, true),
     applies_to: data.applies_to,
-    is_taxable: data.is_taxable,
     is_optional: data.is_optional,
     branch_id: sucursalOpcional(data.branch_id),
+    // `is_taxable` lo deriva la base de `tax_id` (trigger de la migración 20261120180425).
+    tax_id: impuestoOpcional(data.tax_id),
   };
+}
+
+function impuestoOpcional(valor: unknown): string | null {
+  const v = typeof valor === 'string' ? valor.trim() : '';
+  return v && v !== 'ninguno' ? v : null;
 }
 
 /**
@@ -69,7 +75,7 @@ export function cambiosParaActualizar(data: UpdateServiceChargeData): Record<str
   if ('min_guests' in data) cambios.min_guests = opcionalPositivo(data.min_guests, true);
   if ('branch_id' in data) cambios.branch_id = sucursalOpcional(data.branch_id);
   if ('applies_to' in data && data.applies_to !== undefined) cambios.applies_to = data.applies_to;
-  if ('is_taxable' in data && data.is_taxable !== undefined) cambios.is_taxable = data.is_taxable;
+  if ('tax_id' in data) cambios.tax_id = impuestoOpcional(data.tax_id);
   if ('is_optional' in data && data.is_optional !== undefined) cambios.is_optional = data.is_optional;
   if ('is_active' in data && data.is_active !== undefined) cambios.is_active = data.is_active;
   return cambios;
@@ -100,6 +106,28 @@ export interface ErrorFilaCsv {
 export const COLUMNAS_OBLIGATORIAS_CSV = ['name', 'charge_type', 'charge_value'] as const;
 
 /**
+ * Una línea de CSV en celdas, respetando comillas («"Servicio, mesa grande"») y
+ * las comillas dobladas dentro de ellas. Antes se partía con `split(',')`.
+ */
+export function dividirLineaCsv(linea: string): string[] {
+  const celdas: string[] = [];
+  let actual = '';
+  let entreComillas = false;
+  for (let i = 0; i < linea.length; i++) {
+    const c = linea[i];
+    if (entreComillas) {
+      if (c === '"' && linea[i + 1] === '"') { actual += '"'; i++; }
+      else if (c === '"') entreComillas = false;
+      else actual += c;
+    } else if (c === '"') entreComillas = true;
+    else if (c === ',') { celdas.push(actual.trim()); actual = ''; }
+    else actual += c;
+  }
+  celdas.push(actual.trim());
+  return celdas;
+}
+
+/**
  * CSV del importador → filas válidas y errores por fila (numeradas como en la
  * hoja: la fila 1 es el encabezado). Si faltan columnas obligatorias devuelve
  * `columnasFaltantes` y ninguna fila.
@@ -110,7 +138,7 @@ export function parsearCsvCargos(csv: string): {
   columnasFaltantes: string[];
 } {
   const lineas = csv.replace(/^﻿/, '').trim().split(/\r?\n/);
-  const encabezados = (lineas[0] || '').toLowerCase().split(',').map((h) => h.trim());
+  const encabezados = dividirLineaCsv(lineas[0] || '').map((h) => h.toLowerCase());
   const columnasFaltantes = COLUMNAS_OBLIGATORIAS_CSV.filter((h) => !encabezados.includes(h));
   if (columnasFaltantes.length > 0) return { filas: [], errores: [], columnasFaltantes };
 
@@ -120,7 +148,7 @@ export function parsearCsvCargos(csv: string): {
   for (let i = 1; i < lineas.length; i++) {
     if (!lineas[i].trim()) continue;
     const fila = i + 1;
-    const valores = lineas[i].split(',').map((v) => v.trim());
+    const valores = dividirLineaCsv(lineas[i]);
     const r: Record<string, string> = {};
     encabezados.forEach((h, idx) => { r[h] = valores[idx] || ''; });
 
@@ -153,7 +181,7 @@ export function parsearCsvCargos(csv: string): {
         min_amount: opcionalPositivo(r.min_amount),
         min_guests: opcionalPositivo(r.min_guests, true),
         applies_to: aplica,
-        is_taxable: r.is_taxable?.toLowerCase() === 'true',
+        // El CSV no trae impuesto: el cargo entra sin impuesto y se elige al editarlo.
         is_optional: r.is_optional?.toLowerCase() === 'true',
       },
     });
@@ -162,7 +190,7 @@ export function parsearCsvCargos(csv: string): {
   return { filas, errores, columnasFaltantes: [] };
 }
 
-export const CODIGOS_ERROR_CARGO = ['SIN_PERMISO', 'NO_ENCONTRADO', 'TIPO_INVALIDO', 'DESCONOCIDO'] as const;
+export const CODIGOS_ERROR_CARGO = ['SIN_PERMISO', 'NO_ENCONTRADO', 'TIPO_INVALIDO', 'IMPUESTO_INVALIDO', 'DESCONOCIDO'] as const;
 export type CodigoErrorCargo = (typeof CODIGOS_ERROR_CARGO)[number];
 
 export class CargoServicioError extends Error {
@@ -179,6 +207,7 @@ export function codigoErrorCargo(error: unknown): CodigoErrorCargo {
   const mensaje = e.message || '';
   if (e.code === '42501' || /row-level security|permission denied/i.test(mensaje)) return 'SIN_PERMISO';
   if (e.code === '23514' && /charge_type/.test(mensaje)) return 'TIPO_INVALIDO';
+  if ((e.code === '23514' && /impuesto/i.test(mensaje)) || (e.code === '23503' && /tax_id/.test(mensaje))) return 'IMPUESTO_INVALIDO';
   if (e.code === 'PGRST116') return 'NO_ENCONTRADO';
   return 'DESCONOCIDO';
 }

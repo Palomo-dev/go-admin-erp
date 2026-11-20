@@ -61051,5 +61051,179 @@
       "sinPermiso": "No tienes permiso para ver esta foto.",
       "error": "No pudimos cargar la foto."
     }
+  },
+  "posCargos": {
+    "titulo": "Cargos de servicio",
+    "subtitulo": "Se suman a la cuenta antes de impuestos y van a la factura como línea propia · no son propina",
+    "migaPos": "POS",
+    "todasSucursales": "Todas las sucursales",
+    "todas": "Todas",
+    "sinImpuesto": "Ninguno",
+    "copiaSufijo": " (copia)",
+    "actualizar": "Actualizar",
+    "importarBoton": "Importar",
+    "plantilla": "Descargar plantilla CSV",
+    "verArchivados": "Ver archivados",
+    "nuevo": "Nuevo cargo",
+    "buscar": "Buscar por nombre",
+    "sustantivo": {
+      "singular": "cargo",
+      "plural": "cargos"
+    },
+    "tipo": {
+      "percentage": "Porcentaje",
+      "fixed_amount": "Monto fijo"
+    },
+    "aplicaA": {
+      "all": "Todos los servicios",
+      "dine_in": "Mesa",
+      "delivery": "Domicilio",
+      "takeout": "Para llevar"
+    },
+    "estado": {
+      "activo": "Activo",
+      "inactivo": "Inactivo",
+      "archivado": "Archivado"
+    },
+    "cobro": {
+      "obligatorio": "Obligatorio",
+      "opcional": "Opcional"
+    },
+    "condicion": {
+      "comensales": "{n}+ comensales",
+      "compraMinima": "Compra mínima",
+      "compraMinimaCorta": "Compra mínima {monto}",
+      "sinCompraMinima": "sin compra mínima",
+      "siempre": "Siempre"
+    },
+    "columnas": {
+      "nombre": "Nombre",
+      "tipo": "Tipo",
+      "valor": "Valor",
+      "aplicaA": "Aplica a",
+      "impuesto": "Impuesto",
+      "condicion": "Condición",
+      "sucursal": "Sucursal",
+      "cobro": "Cobro",
+      "estado": "Estado"
+    },
+    "acciones": {
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "verVentas": "Ver ventas con este cargo",
+      "verVentasMotivo": "El POS aún no cobra los cargos de servicio: todavía no hay ventas con cargo.",
+      "activar": "Activar",
+      "desactivar": "Desactivar",
+      "archivar": "Archivar",
+      "restaurar": "Restaurar"
+    },
+    "toast": {
+      "duplicado": "Cargo duplicado",
+      "activado": "Cargo activado",
+      "desactivado": "Cargo desactivado",
+      "archivado": "Cargo archivado. Lo encuentras en «Ver archivados».",
+      "restaurado": "Cargo restaurado. Quedó inactivo: actívalo cuando quieras cobrarlo."
+    },
+    "errores": {
+      "SIN_PERMISO": "No tienes permiso para gestionar cargos de servicio.",
+      "NO_ENCONTRADO": "El cargo no existe en esta organización.",
+      "TIPO_INVALIDO": "Tipo de cargo no válido: usa porcentaje o monto fijo.",
+      "IMPUESTO_INVALIDO": "El impuesto elegido no es de esta organización.",
+      "DESCONOCIDO": "No se pudo completar la operación. Inténtalo de nuevo."
+    },
+    "kpi": {
+      "etiqueta": "Resumen de cargos",
+      "activos": "Activos",
+      "activosValor": "{activos} de {total}",
+      "inactivos": "{n, plural, =0 {ninguno inactivo} one {# inactivo} other {# inactivos}}",
+      "cobrado": "Cobrado este mes",
+      "ventasConCargo": "Ventas con cargo",
+      "quitados": "Quitados por el cajero",
+      "sinCobro": "El POS aún no cobra cargos"
+    },
+    "filtros": {
+      "estado": "Estado",
+      "aplicaA": "Aplica a",
+      "aplicaAAyuda": "Incluye los cargos que aplican a todos los servicios.",
+      "cobro": "Cobro",
+      "verResultados": "Ver {n, plural, one {# cargo} other {# cargos}}",
+      "estados": {
+        "todos": "Todos",
+        "activos": "Activos",
+        "inactivos": "Inactivos",
+        "archivados": "Archivados"
+      }
+    },
+    "vacio": {
+      "titulo": "Aún no hay cargos de servicio",
+      "descripcion": "Crea un cargo para mesas grandes, domicilios o empaques. Se suma a la cuenta antes de impuestos."
+    },
+    "error": {
+      "titulo": "No se pudieron cargar los cargos",
+      "descripcion": "Revisa la conexión e inténtalo de nuevo."
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a los cargos de servicio",
+      "descripcion": "Pide a un administrador de la organización que te dé acceso al POS."
+    },
+    "formulario": {
+      "tituloNuevo": "Nuevo cargo de servicio",
+      "tituloEditar": "Editar cargo de servicio",
+      "descripcion": "Se calcula sobre el subtotal después de descuentos y antes de impuestos.",
+      "nombre": "Nombre",
+      "nombrePlaceholder": "Ej.: Servicio mesa grande",
+      "tipo": "Tipo de cargo",
+      "porcentaje": "Porcentaje",
+      "montoFijo": "Monto fijo",
+      "valor": "Valor",
+      "impuesto": "Impuesto del cargo",
+      "impuestoAyuda": "Normalmente, el mismo de los productos.",
+      "impuestoSinConfigurar": "La organización no tiene impuestos activos: configúralos en Finanzas.",
+      "sinImpuesto": "Ninguno",
+      "aplicaA": "Aplica a",
+      "comensalesMinimos": "Comensales mínimos",
+      "comensalesAyuda": "Vacío: sin mínimo.",
+      "compraMinima": "Compra mínima",
+      "compraMinimaAyuda": "Antes de impuestos. Vacío: sin mínimo.",
+      "sucursal": "Sucursal",
+      "todasSucursales": "Todas las sucursales",
+      "cobro": "Cómo se cobra",
+      "obligatorio": "Obligatorio",
+      "obligatorioDescripcion": "Se aplica solo. Quitarlo pide motivo y el permiso «Quitar cargo» (o un supervisor).",
+      "opcional": "Opcional",
+      "opcionalDescripcion": "El cajero pregunta al cliente; si no acepta, no se cobra.",
+      "parecePropina": "Esto parece una propina sugerida",
+      "parecePropinaDescripcion": "La propina es voluntaria, es de los trabajadores y no va en la factura. Configúrala en Propinas, no como cargo.",
+      "irAPropinas": "Ir a Propinas",
+      "pareceFlete": "¿Es el flete?",
+      "pareceFleteDescripcion": "El domicilio se cobra como flete en la entrega del cobro. Usa este cargo solo para servicios como el empaque.",
+      "vistaPrevia": "Así se verá en el recibo",
+      "subtotalComensales": "Subtotal ({n} comensales)",
+      "subtotalEjemplo": "Subtotal de ejemplo",
+      "totalFactura": "Total de la factura",
+      "propinaFuera": "Propina voluntaria sugerida: fuera de la factura. El ejemplo supone que los productos llevan el mismo impuesto del cargo.",
+      "cargoSinNombre": "Cargo",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar cargo",
+      "guardando": "Guardando…",
+      "actualizado": "Cargo actualizado",
+      "creado": "Cargo creado",
+      "error": {
+        "nombre": "Escribe un nombre.",
+        "valor": "El valor debe ser mayor que 0.",
+        "porcentajeMaximo": "El porcentaje no puede pasar de 100 %."
+      }
+    },
+    "importar": {
+      "titulo": "Importar cargos",
+      "descripcion": "Sube un archivo CSV con un cargo por fila.",
+      "cancelar": "Cancelar",
+      "plantilla": "Plantilla",
+      "importar": "Importar",
+      "importando": "Importando…",
+      "eligeArchivo": "Elige un archivo CSV",
+      "formato": "Columnas: name, charge_type, charge_value y, opcionales, min_amount, min_guests, applies_to, is_optional.",
+      "ayudaImpuesto": "Los cargos importados entran sin impuesto: elígelo al editarlos."
+    }
   }
 }

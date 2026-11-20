@@ -61046,5 +61046,179 @@
       "sinPermiso": "Você não tem permissão para ver esta foto.",
       "error": "Não conseguimos carregar a foto."
     }
+  },
+  "posCargos": {
+    "titulo": "Taxas de serviço",
+    "subtitulo": "Somam-se à conta antes dos impostos e vão para a fatura como linha própria · não são gorjeta",
+    "migaPos": "PDV",
+    "todasSucursales": "Todas as filiais",
+    "todas": "Todas",
+    "sinImpuesto": "Nenhum",
+    "copiaSufijo": " (cópia)",
+    "actualizar": "Atualizar",
+    "importarBoton": "Importar",
+    "plantilla": "Baixar modelo CSV",
+    "verArchivados": "Ver arquivados",
+    "nuevo": "Nova taxa",
+    "buscar": "Buscar por nome",
+    "sustantivo": {
+      "singular": "taxa",
+      "plural": "taxas"
+    },
+    "tipo": {
+      "percentage": "Porcentagem",
+      "fixed_amount": "Valor fixo"
+    },
+    "aplicaA": {
+      "all": "Todos os serviços",
+      "dine_in": "Mesa",
+      "delivery": "Entrega",
+      "takeout": "Para viagem"
+    },
+    "estado": {
+      "activo": "Ativa",
+      "inactivo": "Inativa",
+      "archivado": "Arquivada"
+    },
+    "cobro": {
+      "obligatorio": "Obrigatória",
+      "opcional": "Opcional"
+    },
+    "condicion": {
+      "comensales": "{n}+ pessoas",
+      "compraMinima": "Compra mínima",
+      "compraMinimaCorta": "Compra mínima {monto}",
+      "sinCompraMinima": "sem compra mínima",
+      "siempre": "Sempre"
+    },
+    "columnas": {
+      "nombre": "Nome",
+      "tipo": "Tipo",
+      "valor": "Valor",
+      "aplicaA": "Aplica-se a",
+      "impuesto": "Imposto",
+      "condicion": "Condição",
+      "sucursal": "Filial",
+      "cobro": "Cobrança",
+      "estado": "Status"
+    },
+    "acciones": {
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "verVentas": "Ver vendas com esta taxa",
+      "verVentasMotivo": "O PDV ainda não cobra taxas de serviço: ainda não há vendas com taxa.",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "archivar": "Arquivar",
+      "restaurar": "Restaurar"
+    },
+    "toast": {
+      "duplicado": "Taxa duplicada",
+      "activado": "Taxa ativada",
+      "desactivado": "Taxa desativada",
+      "archivado": "Taxa arquivada. Ela está em “Ver arquivados”.",
+      "restaurado": "Taxa restaurada. Ficou inativa: ative-a quando quiser cobrá-la."
+    },
+    "errores": {
+      "SIN_PERMISO": "Você não tem permissão para gerenciar taxas de serviço.",
+      "NO_ENCONTRADO": "A taxa não existe nesta organização.",
+      "TIPO_INVALIDO": "Tipo de taxa inválido: use porcentagem ou valor fixo.",
+      "IMPUESTO_INVALIDO": "O imposto escolhido não pertence a esta organização.",
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "kpi": {
+      "etiqueta": "Resumo das taxas",
+      "activos": "Ativas",
+      "activosValor": "{activos} de {total}",
+      "inactivos": "{n, plural, =0 {nenhuma inativa} one {# inativa} other {# inativas}}",
+      "cobrado": "Cobrado este mês",
+      "ventasConCargo": "Vendas com taxa",
+      "quitados": "Removidas pelo caixa",
+      "sinCobro": "O PDV ainda não as cobra"
+    },
+    "filtros": {
+      "estado": "Status",
+      "aplicaA": "Aplica-se a",
+      "aplicaAAyuda": "Inclui as taxas que se aplicam a todos os serviços.",
+      "cobro": "Cobrança",
+      "verResultados": "Ver {n, plural, one {# taxa} other {# taxas}}",
+      "estados": {
+        "todos": "Todas",
+        "activos": "Ativas",
+        "inactivos": "Inativas",
+        "archivados": "Arquivadas"
+      }
+    },
+    "vacio": {
+      "titulo": "Ainda não há taxas de serviço",
+      "descripcion": "Crie uma taxa para mesas grandes, entregas ou embalagens. Ela soma à conta antes dos impostos."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar as taxas",
+      "descripcion": "Verifique a conexão e tente novamente."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso às taxas de serviço",
+      "descripcion": "Peça a um administrador da organização acesso ao PDV."
+    },
+    "formulario": {
+      "tituloNuevo": "Nova taxa de serviço",
+      "tituloEditar": "Editar taxa de serviço",
+      "descripcion": "Calculada sobre o subtotal depois dos descontos e antes dos impostos.",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Ex.: Serviço mesa grande",
+      "tipo": "Tipo de taxa",
+      "porcentaje": "Porcentagem",
+      "montoFijo": "Valor fixo",
+      "valor": "Valor",
+      "impuesto": "Imposto da taxa",
+      "impuestoAyuda": "Normalmente, o mesmo dos produtos.",
+      "impuestoSinConfigurar": "A organização não tem impostos ativos: configure-os em Finanças.",
+      "sinImpuesto": "Nenhum",
+      "aplicaA": "Aplica-se a",
+      "comensalesMinimos": "Mínimo de pessoas",
+      "comensalesAyuda": "Vazio: sem mínimo.",
+      "compraMinima": "Compra mínima",
+      "compraMinimaAyuda": "Antes dos impostos. Vazio: sem mínimo.",
+      "sucursal": "Filial",
+      "todasSucursales": "Todas as filiais",
+      "cobro": "Como é cobrada",
+      "obligatorio": "Obrigatória",
+      "obligatorioDescripcion": "Aplica-se sozinha. Removê-la exige motivo e a permissão “Remover taxa” (ou um supervisor).",
+      "opcional": "Opcional",
+      "opcionalDescripcion": "O caixa pergunta ao cliente; se não aceitar, não é cobrada.",
+      "parecePropina": "Isto parece uma gorjeta sugerida",
+      "parecePropinaDescripcion": "A gorjeta é voluntária, é dos trabalhadores e não vai na fatura. Configure-a em Gorjetas, não como taxa.",
+      "irAPropinas": "Ir para Gorjetas",
+      "pareceFlete": "É o frete?",
+      "pareceFleteDescripcion": "A entrega é cobrada como frete no pagamento. Use esta taxa só para serviços como a embalagem.",
+      "vistaPrevia": "Como ficará no recibo",
+      "subtotalComensales": "Subtotal ({n} pessoas)",
+      "subtotalEjemplo": "Subtotal de exemplo",
+      "totalFactura": "Total da fatura",
+      "propinaFuera": "Gorjeta voluntária sugerida: fora da fatura. O exemplo supõe que os produtos têm o mesmo imposto da taxa.",
+      "cargoSinNombre": "Taxa",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar taxa",
+      "guardando": "Salvando…",
+      "actualizado": "Taxa atualizada",
+      "creado": "Taxa criada",
+      "error": {
+        "nombre": "Digite um nome.",
+        "valor": "O valor deve ser maior que 0.",
+        "porcentajeMaximo": "A porcentagem não pode passar de 100%."
+      }
+    },
+    "importar": {
+      "titulo": "Importar taxas",
+      "descripcion": "Envie um arquivo CSV com uma taxa por linha.",
+      "cancelar": "Cancelar",
+      "plantilla": "Modelo",
+      "importar": "Importar",
+      "importando": "Importando…",
+      "eligeArchivo": "Escolha um arquivo CSV",
+      "formato": "Colunas: name, charge_type, charge_value e, opcionais, min_amount, min_guests, applies_to, is_optional.",
+      "ayudaImpuesto": "As taxas importadas entram sem imposto: escolha-o ao editá-las."
+    }
   }
 }

@@ -20,15 +20,28 @@ export interface ServiceCharge {
   min_amount?: number | null;
   min_guests?: number | null;
   applies_to: AppliesTo;
+  /** Derivado de `tax_id` por el trigger de la base: no se escribe a mano. */
   is_taxable: boolean;
   is_optional: boolean;
   is_active: boolean;
+  /** Impuesto del cargo (`organization_taxes`). null = sin impuesto. */
+  tax_id?: string | null;
+  /** Archivado (reemplaza al borrado físico). Implica `is_active = false`. */
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
   branch?: {
     id: number;
     name: string;
   } | null;
+  tax?: ImpuestoCargo | null;
+}
+
+/** Impuesto elegible para un cargo: `organization_taxes` de la organización, clase `tax`. */
+export interface ImpuestoCargo {
+  id: string;
+  name: string;
+  rate: number;
 }
 
 /**
@@ -42,9 +55,11 @@ export interface CreateServiceChargeData {
   min_amount?: number | null;
   min_guests?: number | null;
   applies_to: AppliesTo;
-  is_taxable: boolean;
+  /** Compatibilidad con el CSV viejo: la base lo deriva de `tax_id`. */
+  is_taxable?: boolean;
   is_optional: boolean;
   branch_id?: number | null;
+  tax_id?: string | null;
 }
 
 export interface UpdateServiceChargeData extends Partial<CreateServiceChargeData> {
@@ -53,6 +68,8 @@ export interface UpdateServiceChargeData extends Partial<CreateServiceChargeData
 
 export interface ServiceChargeFilters {
   is_active?: boolean;
+  /** Por defecto los archivados no salen; `true` trae solo los archivados. */
+  archivados?: boolean;
   /** Muestra los cargos de esa sucursal y los globales. */
   branch_id?: number;
   applies_to?: AppliesTo;

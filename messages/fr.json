@@ -61036,5 +61036,179 @@
       "sinPermiso": "Vous n’avez pas l’autorisation de voir cette photo.",
       "error": "Impossible de charger la photo."
     }
+  },
+  "posCargos": {
+    "titulo": "Frais de service",
+    "subtitulo": "Ajoutés à l’addition avant taxes et facturés sur une ligne à part · ce n’est pas un pourboire",
+    "migaPos": "PDV",
+    "todasSucursales": "Toutes les succursales",
+    "todas": "Toutes",
+    "sinImpuesto": "Aucune",
+    "copiaSufijo": " (copie)",
+    "actualizar": "Actualiser",
+    "importarBoton": "Importer",
+    "plantilla": "Télécharger le modèle CSV",
+    "verArchivados": "Voir les archivés",
+    "nuevo": "Nouveaux frais",
+    "buscar": "Rechercher par nom",
+    "sustantivo": {
+      "singular": "frais",
+      "plural": "frais"
+    },
+    "tipo": {
+      "percentage": "Pourcentage",
+      "fixed_amount": "Montant fixe"
+    },
+    "aplicaA": {
+      "all": "Tous les services",
+      "dine_in": "Sur place",
+      "delivery": "Livraison",
+      "takeout": "À emporter"
+    },
+    "estado": {
+      "activo": "Actif",
+      "inactivo": "Inactif",
+      "archivado": "Archivé"
+    },
+    "cobro": {
+      "obligatorio": "Obligatoire",
+      "opcional": "Facultatif"
+    },
+    "condicion": {
+      "comensales": "{n}+ convives",
+      "compraMinima": "Achat minimum",
+      "compraMinimaCorta": "Achat minimum {monto}",
+      "sinCompraMinima": "sans achat minimum",
+      "siempre": "Toujours"
+    },
+    "columnas": {
+      "nombre": "Nom",
+      "tipo": "Type",
+      "valor": "Valeur",
+      "aplicaA": "S’applique à",
+      "impuesto": "Taxe",
+      "condicion": "Condition",
+      "sucursal": "Succursale",
+      "cobro": "Facturation",
+      "estado": "Statut"
+    },
+    "acciones": {
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "verVentas": "Voir les ventes avec ces frais",
+      "verVentasMotivo": "Le PDV ne facture pas encore les frais de service : aucune vente n’en contient.",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "archivar": "Archiver",
+      "restaurar": "Restaurer"
+    },
+    "toast": {
+      "duplicado": "Frais dupliqués",
+      "activado": "Frais activés",
+      "desactivado": "Frais désactivés",
+      "archivado": "Frais archivés. Retrouvez-les dans « Voir les archivés ».",
+      "restaurado": "Frais restaurés. Ils sont inactifs : activez-les quand vous voulez les facturer."
+    },
+    "errores": {
+      "SIN_PERMISO": "Vous n’avez pas l’autorisation de gérer les frais de service.",
+      "NO_ENCONTRADO": "Ces frais n’existent pas dans cette organisation.",
+      "TIPO_INVALIDO": "Type de frais non valide : utilisez pourcentage ou montant fixe.",
+      "IMPUESTO_INVALIDO": "La taxe choisie n’appartient pas à cette organisation.",
+      "DESCONOCIDO": "L’opération n’a pas pu aboutir. Réessayez."
+    },
+    "kpi": {
+      "etiqueta": "Résumé des frais",
+      "activos": "Actifs",
+      "activosValor": "{activos} sur {total}",
+      "inactivos": "{n, plural, =0 {aucun inactif} one {# inactif} other {# inactifs}}",
+      "cobrado": "Facturé ce mois-ci",
+      "ventasConCargo": "Ventes avec frais",
+      "quitados": "Retirés par le caissier",
+      "sinCobro": "Le PDV ne les facture pas encore"
+    },
+    "filtros": {
+      "estado": "Statut",
+      "aplicaA": "S’applique à",
+      "aplicaAAyuda": "Inclut les frais qui s’appliquent à tous les services.",
+      "cobro": "Facturation",
+      "verResultados": "Voir {n, plural, one {# frais} other {# frais}}",
+      "estados": {
+        "todos": "Tous",
+        "activos": "Actifs",
+        "inactivos": "Inactifs",
+        "archivados": "Archivés"
+      }
+    },
+    "vacio": {
+      "titulo": "Aucuns frais de service pour l’instant",
+      "descripcion": "Créez des frais pour les grandes tables, les livraisons ou les emballages. Ils s’ajoutent avant taxes."
+    },
+    "error": {
+      "titulo": "Impossible de charger les frais",
+      "descripcion": "Vérifiez la connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n’avez pas accès aux frais de service",
+      "descripcion": "Demandez à un administrateur de l’organisation l’accès au PDV."
+    },
+    "formulario": {
+      "tituloNuevo": "Nouveaux frais de service",
+      "tituloEditar": "Modifier les frais de service",
+      "descripcion": "Calculés sur le sous-total après remises et avant taxes.",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Service grande table",
+      "tipo": "Type de frais",
+      "porcentaje": "Pourcentage",
+      "montoFijo": "Montant fixe",
+      "valor": "Valeur",
+      "impuesto": "Taxe des frais",
+      "impuestoAyuda": "En général, la même que celle des produits.",
+      "impuestoSinConfigurar": "L’organisation n’a aucune taxe active : configurez-les dans Finances.",
+      "sinImpuesto": "Aucune",
+      "aplicaA": "S’applique à",
+      "comensalesMinimos": "Convives minimum",
+      "comensalesAyuda": "Vide : pas de minimum.",
+      "compraMinima": "Achat minimum",
+      "compraMinimaAyuda": "Avant taxes. Vide : pas de minimum.",
+      "sucursal": "Succursale",
+      "todasSucursales": "Toutes les succursales",
+      "cobro": "Mode de facturation",
+      "obligatorio": "Obligatoire",
+      "obligatorioDescripcion": "S’applique automatiquement. Le retirer exige un motif et l’autorisation « Retirer les frais » (ou un superviseur).",
+      "opcional": "Facultatif",
+      "opcionalDescripcion": "Le caissier demande au client ; s’il refuse, ce n’est pas facturé.",
+      "parecePropina": "Cela ressemble à un pourboire suggéré",
+      "parecePropinaDescripcion": "Le pourboire est volontaire, revient au personnel et n’est pas facturé. Configurez-le dans Pourboires, pas comme frais.",
+      "irAPropinas": "Aller aux Pourboires",
+      "pareceFlete": "S’agit-il des frais de livraison ?",
+      "pareceFleteDescripcion": "La livraison se facture comme frais de livraison à l’encaissement. Utilisez ces frais seulement pour des services comme l’emballage.",
+      "vistaPrevia": "Aperçu sur le reçu",
+      "subtotalComensales": "Sous-total ({n} convives)",
+      "subtotalEjemplo": "Sous-total d’exemple",
+      "totalFactura": "Total de la facture",
+      "propinaFuera": "Pourboire volontaire suggéré : hors facture. L’exemple suppose que les produits ont la même taxe que les frais.",
+      "cargoSinNombre": "Frais",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "guardando": "Enregistrement…",
+      "actualizado": "Frais mis à jour",
+      "creado": "Frais créés",
+      "error": {
+        "nombre": "Saisissez un nom.",
+        "valor": "La valeur doit être supérieure à 0.",
+        "porcentajeMaximo": "Le pourcentage ne peut pas dépasser 100 %."
+      }
+    },
+    "importar": {
+      "titulo": "Importer des frais",
+      "descripcion": "Téléversez un fichier CSV avec des frais par ligne.",
+      "cancelar": "Annuler",
+      "plantilla": "Modèle",
+      "importar": "Importer",
+      "importando": "Importation…",
+      "eligeArchivo": "Choisissez un fichier CSV",
+      "formato": "Colonnes : name, charge_type, charge_value et, en option, min_amount, min_guests, applies_to, is_optional.",
+      "ayudaImpuesto": "Les frais importés n’ont pas de taxe : choisissez-la en les modifiant."
+    }
   }
 }

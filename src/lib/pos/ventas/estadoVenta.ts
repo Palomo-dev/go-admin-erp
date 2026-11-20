@@ -98,3 +98,15 @@ export function origenVenta(v: {
   if (v.source === 'invoice') return 'factura';
   return 'pos';
 }
+
+/**
+ * Tono del badge de origen (Figma `329:36071`; SISTEMA-BADGES §4, «Origen de
+ * venta»): POS en marca, Mesa en advertencia, Web en información y Factura en
+ * neutro. Siempre con texto: el color solo acompaña.
+ */
+export const TONO_ORIGEN_VENTA: Record<OrigenVenta, 'marca' | 'advertencia' | 'informacion' | 'neutro'> = {
+  pos: 'marca',
+  mesa: 'advertencia',
+  web: 'informacion',
+  factura: 'neutro',
+};

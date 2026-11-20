@@ -251,6 +251,14 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
   show_topbar: { zona: 'header', porDefecto: false },
   search_style: { zona: 'header', porDefecto: 'icon' },
   show_categories_in_header: { zona: 'header', porDefecto: false },
+  /**
+   * Botón «Todas las categorías» a la izquierda de la barra de menú (Figma 2689:57377, aprobado
+   * 2026-11-19). Encendido por defecto: reemplaza al «Categorías ⌄» del final del menú; en el celular
+   * las categorías pasan a ser la primera opción del menú. `false` = lo de antes.
+   */
+  header_categories_button: { zona: 'header', porDefecto: true, regla: BOOL, nueva: true },
+  /** Texto del botón. Sin valor, «Todas las categorías». */
+  header_categories_button_text: { zona: 'header', porDefecto: null, regla: { tipo: 'texto', max: 40 }, nueva: true },
   mega_menu_columns: { zona: 'header', porDefecto: 4 },
   mobile_menu_style: { zona: 'header', porDefecto: 'drawer' },
   mobile_search_style: { zona: 'header', porDefecto: 'icon' },

@@ -409,7 +409,40 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           onCambiar={(v) => cambiar({ header_show_branch_selector: v })}
         />
       </section>
+
+      {/* Botón «Todas las categorías» de la barra de menú (Figma 2689:57377): encendido por defecto. */}
+      <section className="flex flex-col gap-3">
+        <TituloBloque>{t('zonaGlobal.acciones.categoriasTitulo')}</TituloBloque>
+        <FilaInterruptor
+          titulo={t('zonaGlobal.acciones.categorias')}
+          ayuda={t('zonaGlobal.acciones.categoriasAyuda')}
+          nuevo
+          valor={opcionBooleana(a, 'header_categories_button')}
+          onCambiar={(v) => cambiar({ header_categories_button: v })}
+        />
+        {opcionBooleana(a, 'header_categories_button') && <TextoBotonCategorias ajustes={a} cambiar={cambiar} />}
+      </section>
     </>
+  );
+}
+
+function TextoBotonCategorias({ ajustes, cambiar }: { ajustes: Record<string, unknown>; cambiar: (c: Record<string, unknown>) => void }) {
+  const t = useTextosEditor();
+  const id = useId();
+  const valor = typeof ajustes.header_categories_button_text === 'string' ? ajustes.header_categories_button_text : '';
+  return (
+    <div className="flex flex-col gap-1.5">
+      <EtiquetaGrupo id={id}>{t('zonaGlobal.acciones.categoriasTexto')}</EtiquetaGrupo>
+      <Input
+        aria-labelledby={id}
+        aria-describedby={`${id}-ayuda`}
+        value={valor}
+        maxLength={40}
+        placeholder="Todas las categorías"
+        onChange={(e) => cambiar({ header_categories_button_text: e.target.value === '' ? null : e.target.value })}
+      />
+      <p id={`${id}-ayuda`} className="text-xs text-muted-foreground">{t('zonaGlobal.acciones.categoriasTextoAyuda')}</p>
+    </div>
   );
 }
 

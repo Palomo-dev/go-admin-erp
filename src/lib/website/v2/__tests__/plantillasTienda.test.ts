@@ -600,3 +600,12 @@ describe('tienda de prueba: tarjetas sin «Comprar ahora» que la lámina no tra
     },
   );
 });
+
+describe('tienda de prueba: venta relámpago sin fecha', () => {
+  it('Vibrante: la cuenta regresiva sin fecha de fin nace oculta (no deja una franja vacía)', () => {
+    const d = armar(plantillaPorId(CATALOGO, 'retail_bold')!, TODAS_LAS_BANDERAS).documento;
+    const cuenta = d.paginas.find((p) => esInicio(p))!.secciones.find((s) => s.tipo === 'countdown')!;
+    expect(cuenta.contenido.end_date ?? null).toBeNull();
+    expect(cuenta.visibilidad).toEqual({ movil: false, escritorio: false });
+  });
+});

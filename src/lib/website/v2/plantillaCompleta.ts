@@ -902,6 +902,9 @@ function conContenidoPropio(
   let visible = inicial.visible;
   if (tipo === 'promo_banners') visible = Array.isArray(contenido.banners) && contenido.banners.length > 0;
   if (tipo === 'image_text' && variante === 'color_block') visible = Boolean(contenido.title || contenido.image_url);
+  // Cuenta regresiva a una fecha sin fecha: nace oculta (nunca una cuenta falsa). Visible, el
+  // sitio no pintaba el contador pero dejaba la franja vacía (Vibrante, tienda de prueba).
+  if (tipo === 'countdown' && contenido.mode === 'custom' && !contenido.end_date) visible = false;
   if (tipo === 'hero' && (typeof contenido.cta_url === 'string' || (Array.isArray(contenido.buttons) && contenido.buttons.length > 0))) {
     contenido.show_cta = true;
   }

@@ -1,4 +1,5 @@
 // Tipos para el módulo de promociones
+import type { FranjaSemanal } from '@/lib/promotions/vigencia';
 
 /**
  * Los valores DEBEN coincidir con el CHECK `promotions_promotion_type_check`
@@ -64,6 +65,11 @@ export interface Promotion {
   /** Franja `HH:mm` o `HH:mm:ss` en la zona de la organización. Nulo = todo el día. */
   start_time?: string | null;
   end_time?: string | null;
+  /**
+   * Franjas semanales que cruzan días (20261120180000). Con lista no vacía
+   * manda sobre `applicable_days` + `start_time`/`end_time`, que van NULL.
+   */
+  schedule_windows?: FranjaSemanal[] | null;
   /** Precio del paquete. Si está puesto, manda sobre el porcentaje. */
   bundle_price?: number | null;
   created_by?: string;
@@ -122,6 +128,8 @@ export interface CreatePromotionData {
   applicable_days?: WeekDay[] | null;
   start_time?: string | null;
   end_time?: string | null;
+  /** Franjas semanales (ver `Promotion.schedule_windows`). */
+  schedule_windows?: FranjaSemanal[] | null;
   bundle_price?: number | null;
   rules?: CreatePromotionRuleData[];
 }

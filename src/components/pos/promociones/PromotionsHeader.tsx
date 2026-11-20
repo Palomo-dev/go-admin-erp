@@ -23,8 +23,13 @@ interface PromotionsHeaderProps {
   onFiltersChange: (filters: PromotionFilters) => void;
   onRefresh: () => void;
   totalPromotions: number;
+  /** Vigentes en este instante con el mismo criterio del motor (incluye el horario). */
   activePromotions: number;
+  /** Activas que empiezan más adelante. */
+  scheduledPromotions?: number;
   loading: boolean;
+  /** Sin permiso: solo la cabecera, sin cifras ni filtros (Figma 97-pos-promociones-05). */
+  sinPermiso?: boolean;
 }
 
 export function PromotionsHeader({
@@ -33,7 +38,9 @@ export function PromotionsHeader({
   onRefresh,
   totalPromotions,
   activePromotions,
+  scheduledPromotions = 0,
   loading,
+  sinPermiso = false,
 }: PromotionsHeaderProps) {
   const t = useTranslations('posPromociones');
 
@@ -66,21 +73,36 @@ export function PromotionsHeader({
     <div className="flex flex-col gap-4">
       <PageHeader
         titulo={t('pantalla.titulo')}
-        subtitulo={t('pantalla.subtitulo')}
+        subtitulo={
+          sinPermiso || loading
+            ? t('pantalla.subtitulo')
+            : t('pantalla.subtituloConteo', { n: totalPromotions, activas: activePromotions })
+        }
         icono={Tag}
         migas={[
           { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
           { etiqueta: t('pantalla.titulo') },
         ]}
         acciones={
-          <>
-            <Link href="/app/pos/cupones" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
-              {t('pantalla.cupones')}
-            </Link>
-            {nueva}
-          </>
+          sinPermiso ? undefined : (
+            <>
+              <button
+                type="button"
+                onClick={onRefresh}
+                disabled={loading}
+                aria-label={t('pantalla.actualizar')}
+                className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'w-9 px-0')}
+              >
+                <RefreshCw className={cn('size-4', loading && 'animate-spin')} aria-hidden="true" />
+              </button>
+              <Link href="/app/pos/cupones" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+                {t('pantalla.cupones')}
+              </Link>
+              {nueva}
+            </>
+          )
         }
-        movil={{
+        movil={sinPermiso ? false : {
           accion: (
             <Link
               href="/app/pos/promociones/nuevo"
@@ -93,9 +115,12 @@ export function PromotionsHeader({
         }}
       />
 
-      <KpiStrip columnas={2} etiqueta={t('pantalla.titulo')}>
-        <StatCard etiqueta={t('pantalla.total')} valor={totalPromotions} tono="marca" icono={Tag} cargando={loading} />
-        <StatCard etiqueta={t('pantalla.activas')} valor={activePromotions} tono="exito" cargando={loading} />
+      {!sinPermiso && (
+      <>
+      <KpiStrip columnas={3} etiqueta={t('pantalla.titulo')}>
+        <StatCard etiqueta={t('pantalla.total')} valor={totalPromotions} detalle={t('pantalla.totalDetalle')} tono="marca" icono={Tag} cargando={loading} />
+        <StatCard etiqueta={t('pantalla.activasAhora')} valor={activePromotions} detalle={t('pantalla.activasAhoraDetalle')} tono="exito" cargando={loading} />
+        <StatCard etiqueta={t('pantalla.programadas')} valor={scheduledPromotions} detalle={t('pantalla.programadasDetalle')} cargando={loading} />
       </KpiStrip>
 
       <div className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-4 sm:flex sm:flex-wrap sm:items-center">
@@ -141,11 +166,13 @@ export function PromotionsHeader({
           onClick={onRefresh}
           disabled={loading}
           aria-label={t('pantalla.actualizar')}
-          className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'col-span-2 sm:w-10 sm:px-0')}
+          className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'col-span-2 lg:hidden')}
         >
           <RefreshCw className={cn('size-4', loading && 'animate-spin')} aria-hidden="true" />
         </button>
       </div>
+      </>
+      )}
     </div>
   );
 }

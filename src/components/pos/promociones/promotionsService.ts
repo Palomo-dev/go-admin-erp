@@ -9,7 +9,6 @@ import {
   UpdatePromotionData,
   PromotionFilters,
   CreatePromotionRuleData,
-  WeekDay
 } from './types';
 
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
@@ -19,6 +18,8 @@ import { avisarCambioPromociones } from '@/lib/pos/venta/avisosPromociones';
 import { copiaDePromocion } from '@/lib/promotions/cantidadMinima';
 import { cantidadDeRegla, prepararPromocion } from '@/lib/promotions/prepararPromocion';
 import { conflictosSolapados, type ProductoCatalogo, type PromoSolape } from '@/lib/promotions/solapamiento';
+import { franjasSemanalesDe } from '@/lib/promotions/vigencia';
+import type { ColumnasHorario } from '@/lib/promotions/horarioPromocion';
 
 // ============================================================
 // Vigencias en zona de la organizacion (Fase B, tanda 4).
@@ -57,6 +58,17 @@ function limpiarFranjaYPaquete<T extends Partial<CreatePromotionData>>(datos: T)
   };
   if ('start_time' in out) out.start_time = hora(out.start_time);
   if ('end_time' in out) out.end_time = hora(out.end_time);
+  // Franjas semanales (20261120180000): solo las legibles; lista vacía = NULL.
+  // Con franjas, el horario diario va NULL (CHECK promotions_schedule_windows_exclusivo).
+  if ('schedule_windows' in out) {
+    const franjas = franjasSemanalesDe(out.schedule_windows);
+    out.schedule_windows = franjas && franjas.length > 0 ? franjas : null;
+    if (out.schedule_windows) {
+      out.applicable_days = null;
+      out.start_time = null;
+      out.end_time = null;
+    }
+  }
   if ('bundle_price' in out) {
     const n = Number(out.bundle_price);
     out.bundle_price = Number.isFinite(n) && n > 0 ? n : null;
@@ -112,31 +124,27 @@ export class PromotionsService {
   }
 
   /**
-   * Edición masiva de días y franja horaria. Solo toca las promociones de la
-   * organización activa (`organization_id`, además del RLS) y solo las
-   * columnas pedidas: `undefined` = no cambiar ese campo. Días vacíos o
-   * `null` = todos los días; franja `{ null, null }` = todo el día.
-   * Devuelve cuántas filas cambió la base.
+   * Edición masiva del horario («Cuándo está activa»). Solo toca las
+   * promociones de la organización activa (`organization_id`, además del
+   * RLS) y reemplaza el horario COMPLETO: días, franja diaria y franjas
+   * semanales, con las mismas reglas que el asistente (un modo deja en NULL
+   * las columnas del otro). Devuelve cuántas filas cambió la base.
    */
-  static async updateHorarioMasivo(
-    ids: string[],
-    cambios: {
-      applicable_days?: WeekDay[] | null;
-      franja?: { start_time: string | null; end_time: string | null };
-    },
-  ): Promise<number> {
+  static async updateHorarioMasivo(ids: string[], horario: ColumnasHorario): Promise<number> {
     const unicos = Array.from(new Set(ids.filter(Boolean)));
     if (unicos.length === 0) return 0;
-    const fila: Record<string, unknown> = {};
-    if (cambios.applicable_days !== undefined) {
-      fila.applicable_days = cambios.applicable_days && cambios.applicable_days.length > 0 ? cambios.applicable_days : null;
-    }
-    if (cambios.franja !== undefined) {
-      const limpia = limpiarFranjaYPaquete({ start_time: cambios.franja.start_time, end_time: cambios.franja.end_time });
-      fila.start_time = limpia.start_time ?? null;
-      fila.end_time = limpia.end_time ?? null;
-    }
-    if (Object.keys(fila).length === 0) return 0;
+    const limpia = limpiarFranjaYPaquete({
+      applicable_days: horario.applicable_days && horario.applicable_days.length > 0 ? horario.applicable_days : null,
+      start_time: horario.start_time,
+      end_time: horario.end_time,
+      schedule_windows: horario.schedule_windows,
+    });
+    const fila: Record<string, unknown> = {
+      applicable_days: limpia.applicable_days ?? null,
+      start_time: limpia.start_time ?? null,
+      end_time: limpia.end_time ?? null,
+      schedule_windows: limpia.schedule_windows ?? null,
+    };
     const organizationId = this.getOrganizationId();
     const { data, error } = await supabase
       .from('promotions')
@@ -209,7 +217,8 @@ export class PromotionsService {
 
       if (error) {
         console.error('Error fetching promotions:', error);
-        throw new Error(`Error al obtener promociones: ${error.message}`);
+        // El código (42501 = sin permiso) decide qué estado muestra el listado.
+        throw Object.assign(new Error(`Error al obtener promociones: ${error.message}`), { code: error.code });
       }
 
       return (data || []).map(promo => ({
@@ -629,7 +638,7 @@ export class PromotionsService {
     const organizationId = this.getOrganizationId();
     const { data, error } = await supabase
       .from('promotions')
-      .select('id, name, is_combinable, is_active, applies_to, branches, applies_to_web, applies_to_pos, applies_to_finances, start_date, end_date, applicable_days, start_time, end_time, promotion_rules(rule_type, product_id, category_id)')
+      .select('id, name, is_combinable, is_active, applies_to, branches, applies_to_web, applies_to_pos, applies_to_finances, start_date, end_date, applicable_days, start_time, end_time, schedule_windows, promotion_rules(rule_type, product_id, category_id)')
       .eq('organization_id', organizationId)
       .eq('is_active', true);
     if (error || !data) return [];

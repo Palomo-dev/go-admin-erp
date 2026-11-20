@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { Calendar, CalendarClock, CircleCheck, CircleOff, Copy, Edit, Plus, Tag, Trash2 } from 'lucide-react';
+import { Calendar, CalendarClock, CircleCheck, CircleOff, Copy, Edit, Lock, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DataTable, type ColumnaTabla } from '@/components/kit/DataTable';
 import { BulkActionBar } from '@/components/kit/BulkActionBar';
@@ -12,8 +12,13 @@ import { ConfirmDialog } from '@/components/kit/ConfirmDialog';
 import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
 import type { AccionFila } from '@/components/kit/acciones';
 import { localeIntl } from '@/components/kit/idioma';
-import { Promotion, type WeekDay } from './types';
+import { Pagination } from '@/components/kit/Pagination';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { Promotion } from './types';
 import { diasDelIdioma } from './diasPromocion';
+import { estadoDePromocion } from './estadoPromocion';
+import { lineasHorario } from './horario/textoHorario';
 import { PromotionsService } from './promotionsService';
 import { EdicionMasivaHorario } from './EdicionMasivaHorario';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -21,27 +26,29 @@ import { toast } from 'sonner';
 
 interface PromotionsListProps {
   promotions: Promotion[];
-  loading: boolean;
+  /** Estado de la carga: la tabla pinta esqueleto, error con «Reintentar» o «sin permiso». */
+  estadoCarga: 'cargando' | 'listo' | 'error' | 'sinPermiso';
   filtrado?: boolean;
+  /** Texto buscado, para el estado «sin resultados». */
+  termino?: string;
   onLimpiarFiltros?: () => void;
   onRefresh: () => void;
 }
 
-type EstadoPromo = 'inactiva' | 'programada' | 'expirada' | 'activa';
+const TAMANO_PAGINA = 20;
 
 function textoPlano(valor: string): string {
   return valor.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
-function estadoPromo(promo: Promotion): EstadoPromo {
-  if (!promo.is_active) return 'inactiva';
-  const now = new Date();
-  if (new Date(promo.start_date) > now) return 'programada';
-  if (promo.end_date && new Date(promo.end_date) < now) return 'expirada';
-  return 'activa';
-}
-
-export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros, onRefresh }: PromotionsListProps) {
+export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onLimpiarFiltros, onRefresh }: PromotionsListProps) {
+  const { timezone } = useOrgTimezone();
+  const [pagina, setPagina] = useState(1);
+  const [tamano, setTamano] = useState(TAMANO_PAGINA);
+  // Otra búsqueda o filtro vuelve a la primera página.
+  useEffect(() => { setPagina(1); }, [promotions]);
+  const ahora = new Date();
+  const estadoPromo = (promo: Promotion) => estadoDePromocion(promo, ahora, timezone);
   const router = useRouter();
   const { formatear } = useMonedaOrganizacion();
   const t = useTranslations('posPromociones');
@@ -93,13 +100,9 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(localeIntl(locale), {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
+  // Fechas de vigencia en la zona de la organización (el fin es 23:59:59 de ese día allí).
+  const formatDate = (dateString: string) =>
+    formatDateInTz(dateString, timezone, { locale: localeIntl(locale), day: 'numeric', month: 'short', year: 'numeric' });
 
   const getDiscountDisplay = (promo: Promotion) => {
     switch (promo.promotion_type) {
@@ -133,25 +136,15 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
     }
   };
 
-  const diasDeVigencia = (dias: WeekDay[] | null | undefined): string | null => {
-    if (!dias || dias.length === 0) return null;
-    const cortos = diasSemana.filter((d) => dias.includes(d.value)).map((d) => d.corto);
-    return cortos.length > 0 ? cortos.join(', ') : null;
-  };
+  /** Días y franja diaria, o franjas que cruzan días («Sáb 16:00 → Dom 14:00»). Nunca un «00:00» de relleno. */
+  const horarioDe = (promo: Promotion): string[] => lineasHorario(promo, t, diasSemana);
 
-  const horaCorta = (valor: string | null | undefined): string => {
-    if (!valor) return '';
-    return String(valor).slice(0, 5);
-  };
-
-  /** «Todo el día», «Desde 18:00», «Hasta 02:00» o «18:00–02:00 (día siguiente)». Nunca un «00:00» de relleno. */
-  const franjaDe = (promo: Promotion): string => {
-    const ini = horaCorta(promo.start_time);
-    const fin = horaCorta(promo.end_time);
-    if (!ini && !fin) return t('lista.todoElDia');
-    if (ini && !fin) return t('lista.desde', { hora: ini });
-    if (!ini && fin) return t('lista.hasta', { hora: fin });
-    return fin < ini ? `${ini}–${fin} (${t('lista.diaSiguiente')})` : `${ini}–${fin}`;
+  const canalesDe = (promo: Promotion): string => {
+    const canales: string[] = [];
+    if (promo.applies_to_pos !== false) canales.push(t('lista.canalPos'));
+    if (promo.applies_to_web !== false) canales.push(t('lista.canalWeb'));
+    if (promo.applies_to_finances === true) canales.push(t('lista.canalFinanzas'));
+    return canales.length > 0 ? canales.join(' · ') : '—';
   };
 
   const accionesDe = (promo: Promotion): AccionFila[] => [
@@ -225,11 +218,12 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
             <Calendar className="size-3" aria-hidden="true" />
             <span>
               {formatDate(promo.start_date)}
-              {promo.end_date ? ` – ${formatDate(promo.end_date)}` : ''}
+              {promo.end_date ? ` – ${formatDate(promo.end_date)}` : ` · ${t('lista.sinFechaFin')}`}
             </span>
           </div>
-          {diasDeVigencia(promo.applicable_days) && <div>{diasDeVigencia(promo.applicable_days)}</div>}
-          <div className="tabular-nums">{franjaDe(promo)}</div>
+          {horarioDe(promo).map((linea) => (
+            <div key={linea} className="tabular-nums">{linea}</div>
+          ))}
         </div>
       ),
     },
@@ -245,10 +239,10 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
       ),
     },
     {
-      id: 'prioridad',
-      encabezado: t('lista.prioridad'),
-      alinear: 'centro',
-      celda: (promo) => <span className="tabular-nums text-fg">{promo.priority}</span>,
+      id: 'canales',
+      encabezado: t('lista.canales'),
+      ocultarDebajo: 'lg',
+      celda: (promo) => <span className="whitespace-nowrap text-fg-secondary">{canalesDe(promo)}</span>,
     },
     {
       id: 'estado',
@@ -259,13 +253,17 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
   ];
 
   const vacio = promotions.length === 0;
-  const estado = loading ? 'cargando' : vacio ? (filtrado ? 'sinResultados' : 'vacio') : 'listo';
+  const estado =
+    estadoCarga === 'listo' ? (vacio ? (filtrado ? 'sinResultados' : 'vacio') : 'listo') : estadoCarga;
+  const totalPaginas = Math.max(1, Math.ceil(promotions.length / tamano));
+  const paginaVisible = Math.min(pagina, totalPaginas);
+  const filasPagina = promotions.slice((paginaVisible - 1) * tamano, paginaVisible * tamano);
 
   return (
     <>
       <DataTable
         columnas={columnas}
-        filas={promotions}
+        filas={filasPagina}
         obtenerId={(promo) => promo.id}
         etiqueta={t('pantalla.titulo')}
         estado={estado}
@@ -275,6 +273,36 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
         seleccion={seleccion}
         onSeleccionChange={setSeleccion}
         onLimpiarFiltros={onLimpiarFiltros}
+        onReintentar={onRefresh}
+        termino={termino}
+        sinResultados={{
+          titulo: t('lista.sinResultadosTitulo'),
+          descripcion: termino ? t('lista.sinResultadosConTermino', { termino }) : t('lista.sinResultadosDescripcion'),
+          icono: Search,
+        }}
+        error={{
+          titulo: t('lista.errorTitulo'),
+          descripcion: t('lista.errorDescripcion'),
+        }}
+        sinPermiso={{
+          titulo: t('lista.sinPermisoTitulo'),
+          descripcion: t('lista.sinPermisoDescripcion'),
+          icono: Lock,
+          accion: { etiqueta: t('lista.volverPos'), href: '/app/pos' },
+        }}
+        pie={
+          promotions.length > 0 ? (
+            <Pagination
+              pagina={paginaVisible}
+              tamano={tamano}
+              total={promotions.length}
+              onPaginaChange={setPagina}
+              onTamanoChange={(n) => { setTamano(n); setPagina(1); }}
+              sustantivo={{ singular: t('lista.sustantivoSingular'), plural: t('lista.sustantivoPlural') }}
+              cargando={estadoCarga === 'cargando'}
+            />
+          ) : undefined
+        }
         vacio={{
           titulo: t('lista.vacioTitulo'),
           descripcion: t('lista.vacioDescripcion'),
@@ -294,6 +322,7 @@ export function PromotionsList({ promotions, loading, filtrado, onLimpiarFiltros
               </div>
               <p className="mt-1 text-[13px] leading-[18px] text-fg-secondary">{t(`tipos.${promo.promotion_type}`)}</p>
               <p className="mt-1 text-sm font-medium tabular-nums text-brand-deep">{getDiscountDisplay(promo)}</p>
+              <p className="mt-1 text-[13px] tabular-nums leading-[18px] text-fg-secondary">{horarioDe(promo).join(' · ')}</p>
             </button>
             <RowActionsMenu acciones={accionesDe(promo)} titulo={promo.name} />
           </article>

@@ -15,13 +15,18 @@
  *   tarifa por zona de Transporte (B/10-04 nota 3).
  */
 import { useEffect, useId, useMemo, useState } from 'react';
-import { BadgeCheck, Lock, Plus, RotateCcw, ShieldCheck, Trash2, Truck, type LucideIcon } from 'lucide-react';
-import { CampoNumero, ChipsOpcion, Dialogo, FormField, FormSection, SegmentedControl, SettingRow, clasesBoton } from '@/components/kit';
+import Link from 'next/link';
+import { useLocale } from 'next-intl';
+import { ArrowRight, BadgeCheck, Lock, Plus, RotateCcw, ShieldCheck, Trash2, Truck, type LucideIcon } from 'lucide-react';
+import { CampoNumero, Dialogo, FormField, FormSection, SegmentedControl, SettingRow, clasesBoton } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import type { AjustesCheckout } from '@/lib/website/ventasSitio.server';
-import { MAX_SELLOS, MAX_TEXTO_SELLO, type CambiosCheckout, type SelloConfianza, type TipoEntrega } from './estadoVentas';
+import { gruposMarcados, resumenDelTipo, type GrupoEnvio, type ResumenTarifasGrupo, type TarifasDomicilio } from '@/lib/website/tarifasDomicilio';
+import { MAX_SELLOS, MAX_TEXTO_SELLO, type CambiosCheckout, type EnlaceVenta, type SelloConfianza, type TipoEntrega } from './estadoVentas';
 import { CajaIcono } from '../ui/CajaIcono';
 import { ICONO_ENTREGA, ICONO_MODO_CHECKOUT, ICONO_SECCION_CHECKOUT } from './iconosVentas';
 import { CLASE_TAMANO_ICONO, TRAZO_ICONO } from '../ui/iconosSitio';
@@ -34,6 +39,68 @@ export function iconoSello(icono: string): LucideIcon {
   if (icono.includes('\u21A9') || icono.includes('\u{1F504}') || /devol|return/i.test(icono)) return RotateCcw;
   if (icono.includes('\u2705') || /check/i.test(icono)) return BadgeCheck;
   return ShieldCheck;
+}
+
+/**
+ * Un tipo de entrega con su casilla y lo que verá el cliente («En la tienda: …»). En los domicilios
+ * marcados, el resumen de tarifas web: cuántas, desde cuánto y en cuánto tiempo, o el aviso de
+ * que se cobra la tarifa plana sin tiempo de entrega (Figma 2686:57152).
+ */
+function FilaTipoEntrega({
+  id, etiqueta, ayuda, marcado, onMarcar, resumen, envioActivo, tarifaPlana, simboloMoneda, enlaceTarifas,
+}: {
+  id: string;
+  etiqueta: string;
+  ayuda: string;
+  marcado: boolean;
+  onMarcar: (v: boolean) => void;
+  resumen: ResumenTarifasGrupo | null;
+  envioActivo: boolean;
+  tarifaPlana: number | null;
+  simboloMoneda: string;
+  enlaceTarifas: EnlaceVenta | null;
+}) {
+  const t = useTextosVentas();
+  const locale = useLocale();
+  const precio = (n: number) => `${simboloMoneda} ${new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(n)}`;
+  const dias = (d: number) => (d === 0 ? t('ventas.checkout.tiempoHoy') : d === 1 ? t('ventas.checkout.tiempoManana') : t('ventas.checkout.tiempoDias', { n: d }));
+  let tiempo: string | null = null;
+  if (resumen && resumen.diasMin !== null && resumen.diasMax !== null) {
+    tiempo = resumen.diasMin === resumen.diasMax ? dias(resumen.diasMin) : t('ventas.checkout.tiempoRango', { min: resumen.diasMin, max: resumen.diasMax });
+  }
+  const conTarifas = !!resumen && resumen.cantidad > 0;
+  const enlaceVisible = !!enlaceTarifas?.visible;
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border bg-card px-3.5 py-3">
+      <div className="flex items-center gap-2.5">
+        <Checkbox id={id} checked={marcado} onCheckedChange={(v) => onMarcar(v === true)} />
+        <label htmlFor={id} className="text-sm font-medium text-foreground">{etiqueta}</label>
+      </div>
+      <p className="pl-[26px] text-xs text-muted-foreground">{ayuda}</p>
+      {resumen && (
+        <div className="ml-[26px] flex flex-wrap items-center gap-3 rounded-md bg-muted px-3 py-2" data-resumen-tarifas="">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <Badge tono={conTarifas ? 'exito' : 'advertencia'} tamano="sm" className="self-start">
+              {conTarifas ? (resumen.cantidad === 1 ? t('ventas.checkout.tarifaWeb') : t('ventas.checkout.tarifasWeb', { n: resumen.cantidad })) : t('ventas.checkout.sinTarifasWeb')}
+            </Badge>
+            <p className="text-xs text-foreground">
+              {conTarifas
+                ? [t('ventas.checkout.tarifasDesde', { precio: precio(resumen.desde ?? 0) }), tiempo].filter(Boolean).join(' · ')
+                : envioActivo
+                  ? t('ventas.checkout.sinTarifasPlana', { precio: precio(tarifaPlana ?? 0) })
+                  : t('ventas.checkout.sinTarifasGratis')}
+            </p>
+          </div>
+          {enlaceVisible && (
+            <Link href={enlaceTarifas!.href} className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}>
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              {conTarifas ? t('ventas.checkout.verEnTransporte') : t('ventas.checkout.agregarTarifa')}
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Cambios entre lo guardado y el formulario (solo los campos tocados). */
@@ -61,9 +128,16 @@ export interface DialogoCheckoutProps {
   onGuardar: (cambios: CambiosCheckout) => Promise<void>;
   /** Giro restaurante: ofrece «Comer aquí» (`dine_in`). */
   esRestaurante?: boolean;
+  /**
+   * Tarifas web por tipo de domicilio (Figma 2686:57152): bajo «Domicilio propio» y «Domicilio de
+   * tercero» se ve cuántas hay, desde cuánto y en cuánto tiempo. `null`/ausente: sin resumen.
+   */
+  tarifasDomicilio?: TarifasDomicilio | null;
+  /** Transporte › Tarifas de envío (si la persona lo ve). */
+  enlaceTarifas?: EnlaceVenta | null;
 }
 
-export function DialogoCheckout({ abierto, onAbiertoChange, ajustes, simboloMoneda, onGuardar, esRestaurante = false }: DialogoCheckoutProps) {
+export function DialogoCheckout({ abierto, onAbiertoChange, ajustes, simboloMoneda, onGuardar, esRestaurante = false, tarifasDomicilio = null, enlaceTarifas = null }: DialogoCheckoutProps) {
   const t = useTextosVentas();
   const { toast } = useToast();
   const id = useId();
@@ -139,13 +213,31 @@ export function DialogoCheckout({ abierto, onAbiertoChange, ajustes, simboloMone
           </FormField>
           <FormField etiqueta={t('ventas.checkout.tiposEntrega')} ayuda={ayudaEntrega} error={entregaValida ? null : ayudaEntrega}>
             {(campo) => (
-              <ChipsOpcion
-                multiple
-                aria-labelledby={campo.idEtiqueta}
-                opciones={opcionesEntrega}
-                valor={form.tiposEntrega}
-                onValorChange={(v) => poner('tiposEntrega', v)}
-              />
+              <div role="group" aria-labelledby={campo.idEtiqueta} className="flex flex-col gap-2" data-tipos-entrega="">
+                {opcionesEntrega.map((o) => {
+                  const marcado = form.tiposEntrega.includes(o.valor);
+                  const grupo: GrupoEnvio | null = o.valor === 'delivery_own' ? 'own' : o.valor === 'delivery_third_party' ? 'third_party' : null;
+                  return (
+                    <FilaTipoEntrega
+                      key={o.valor}
+                      id={`${id}-entrega-${o.valor}`}
+                      etiqueta={o.etiqueta}
+                      ayuda={t(`ventas.checkout.enTienda.${o.valor}`)}
+                      marcado={marcado}
+                      onMarcar={(v) => poner('tiposEntrega', v ? [...form.tiposEntrega, o.valor] : form.tiposEntrega.filter((x) => x !== o.valor))}
+                      resumen={
+                        grupo && marcado && tarifasDomicilio
+                          ? resumenDelTipo(tarifasDomicilio, grupo, gruposMarcados(form.tiposEntrega))
+                          : null
+                      }
+                      envioActivo={form.envioActivo}
+                      tarifaPlana={form.tarifaPlana}
+                      simboloMoneda={simboloMoneda}
+                      enlaceTarifas={enlaceTarifas}
+                    />
+                  );
+                })}
+              </div>
             )}
           </FormField>
           <SettingRow titulo={t('ventas.checkout.ventaEnLinea')} descripcion={t('ventas.checkout.ventaEnLineaAyuda')} htmlFor={`${id}-venta`}>

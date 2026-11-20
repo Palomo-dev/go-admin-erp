@@ -107,7 +107,11 @@ function nuevaSolicitud(): string {
       });
 }
 
-export function PropinasContent() {
+/**
+ * `embedded`: dentro del diálogo de Configuración › POS (`ConfigModals.tsx`):
+ * sin migas ni el relleno de página, como `CargosServicioContent`.
+ */
+export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
   const t = useTranslations('posPropinas');
   const router = useRouter();
   const f = useFormatoPropinas();
@@ -602,13 +606,13 @@ export function PropinasContent() {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
+    <div className={embedded ? 'flex flex-col gap-4 lg:gap-5' : 'flex flex-col gap-4 p-4 sm:p-6 lg:gap-5'}>
       <PageHeader
         titulo={t('pagina.titulo')}
         subtitulo={subtitulo}
         icono={HandCoins}
         cargando={cargando}
-        migas={[{ etiqueta: t('pagina.migaPos'), href: '/app/pos' }, { etiqueta: t('pagina.titulo') }]}
+        migas={embedded ? undefined : [{ etiqueta: t('pagina.migaPos'), href: '/app/pos' }, { etiqueta: t('pagina.titulo') }]}
         acciones={
           <>
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} aria-label={t('pagina.actualizar')} title={t('pagina.actualizar')}>

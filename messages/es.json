@@ -20147,7 +20147,9 @@
         "min": "Importe mínimo",
         "max": "Importe máximo",
         "minChip": "Desde {monto}",
-        "maxChip": "Hasta {monto}"
+        "maxChip": "Hasta {monto}",
+        "periodoChip": "Periodo: {rango}",
+        "desdeHasta": "Desde / Hasta"
       },
       "vacio": {
         "titulo": "Aún no hay ventas en este periodo",
@@ -20158,7 +20160,8 @@
       "sinPermiso": {
         "titulo": "Sin acceso a las ventas",
         "descripcion": "Pida a un administrador el permiso para ver las ventas del POS."
-      }
+      },
+      "masDocumentos": "{count, plural, one {# documento más: {documentos}} other {# documentos más: {documentos}}}"
     },
     "kpis": {
       "etiqueta": "Cifras del periodo",

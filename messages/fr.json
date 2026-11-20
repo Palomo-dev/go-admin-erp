@@ -15498,7 +15498,9 @@
         "min": "Montant minimum",
         "max": "Montant maximum",
         "minChip": "À partir de {monto}",
-        "maxChip": "Jusqu'à {monto}"
+        "maxChip": "Jusqu'à {monto}",
+        "periodoChip": "Période : {rango}",
+        "desdeHasta": "Du / Au"
       },
       "vacio": {
         "titulo": "Aucune vente sur cette période",
@@ -15509,7 +15511,8 @@
       "sinPermiso": {
         "titulo": "Pas d'accès aux ventes",
         "descripcion": "Demandez à un administrateur l'autorisation de voir les ventes du PDV."
-      }
+      },
+      "masDocumentos": "{count, plural, one {# autre document : {documentos}} other {# autres documents : {documentos}}}"
     },
     "kpis": {
       "etiqueta": "Chiffres de la période",

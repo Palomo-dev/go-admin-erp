@@ -13,7 +13,7 @@
  *   permisos resueltos en el servidor (`/api/pos/ventas/permisos`).
  * - Desktop sin red: la réplica local con aviso (`clienteVentas.ts`).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -40,6 +40,8 @@ import {
   SegmentedControl,
   StatCard,
   StatusBadge,
+  etiquetaRango,
+  etiquetaRangoLarga,
   inicioDeMes,
   useListadoServidor,
   type AccionFila,
@@ -49,7 +51,7 @@ import {
 } from '@/components/kit';
 import { ChipDocumento } from '@/components/kit/documento';
 import { simboloMoneda } from '@/components/kit/documento/documentoLineasLogica';
-import { useFormatoEntero } from '@/components/kit/useIdiomaKit';
+import { useFormatoEntero, useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -60,6 +62,7 @@ import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { guardarArchivo, imprimirDocumento } from '@/lib/documents/cliente';
 import { filasACsv } from '@/lib/utils/csv';
+import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { listarClientes } from '@/lib/services/clientesListadoService';
 import { BADGE_ESTADO_VENTA, ESTADOS_VENTA, ORIGENES_VENTA } from '@/lib/pos/ventas/estadoVenta';
 import { CAMPOS_ORDEN_VENTAS } from '@/lib/pos/ventas/filtrosVentas';
@@ -92,7 +95,8 @@ export function VentasPage() {
   const entero = useFormatoEntero();
   const moneda = useMonedaOrganizacion();
   const { branchFilter } = useBranch();
-  const { getToday } = useFormatDate();
+  const { getToday, timezone } = useFormatDate();
+  const locale = useLocaleIntl();
   const fechaHora = useFechaHoraCaja();
   const etiquetaMetodo = useEtiquetaMetodoPago();
   const metodosActivos = useMetodosPagoActivos();
@@ -121,6 +125,8 @@ export function VentasPage() {
   // Periodo por defecto: el mes en curso de la organización (el mismo de las cifras).
   const desde = l.filtros.desde ?? inicioDeMes(hoy);
   const hasta = l.filtros.hasta ?? hoy;
+  /** Hay un periodo elegido a mano (distinto del mes en curso): se ve como chip. */
+  const periodoElegido = !!(l.filtros.desde || l.filtros.hasta);
 
   const consulta = useMemo(() => {
     const q = new URLSearchParams();
@@ -318,6 +324,7 @@ export function VentasPage() {
       : filas.find((f) => f.cliente?.id === l.filtros.cliente)?.cliente?.nombre ?? null;
 
   const chips: ChipFiltro[] = [
+    periodoElegido ? { clave: 'desde', etiqueta: t('listado.filtros.periodoChip', { rango: etiquetaRango({ desde, hasta }, locale) }) } : null,
     l.filtros.origen ? { clave: 'origen', etiqueta: t('listado.filtros.origenChip', { origen: t(`listado.origenes.${l.filtros.origen}` as never) }) } : null,
     l.filtros.estado ? { clave: 'estado', etiqueta: t(`estados.${l.filtros.estado}` as never) } : null,
     l.filtros.metodo ? { clave: 'metodo', etiqueta: t('listado.filtros.metodoChip', { metodo: etiquetaMetodo(l.filtros.metodo) }) } : null,
@@ -327,30 +334,93 @@ export function VentasPage() {
     l.filtros.max ? { clave: 'max', etiqueta: t('listado.filtros.maxChip', { monto: formatear(Number(l.filtros.max)) }) } : null,
   ].filter((c): c is ChipFiltro => c !== null);
 
+  // El chip del periodo representa `desde` y `hasta` a la vez: quitarlo vuelve al mes en curso.
+  const quitarChip = (clave: string) => {
+    if (clave === 'desde') l.actualizar({ filtros: Object.fromEntries(Object.entries(l.filtros).filter(([k]) => k !== 'desde' && k !== 'hasta')) });
+    else l.setFiltro(clave, null);
+  };
+
+  // Subtítulo de la cabecera (Figma): «N ventas · 1 al 20 de noviembre de 2026».
+  const textoPeriodo = etiquetaRangoLarga({ desde, hasta }, locale);
+  const subtitulo = `${t('listado.subtitulo', { n: entero(total), count: total })} · ${textoPeriodo}`;
+
   const badgeEstado = (f: FilaVenta) => <StatusBadge estado={BADGE_ESTADO_VENTA[f.estado]} etiqueta={t(`estados.${f.estado}`)} />;
   const badgeOrigen = (f: FilaVenta) => (
     <Badge tono="neutro" apariencia="contorno" tamano="sm">
       {t(`listado.origenes.${f.origen}`)}
     </Badge>
   );
-  const documentos = (f: FilaVenta) => (
-    <div className="flex flex-wrap items-center gap-1">
-      {f.factura_id && f.numero && f.tipo_numero === 'factura' && (
-        <ChipDocumento tipo="factura" numero={f.numero} href={`/app/finanzas/facturas-venta/${f.factura_id}`} anulado={f.estado === 'anulada'} />
-      )}
-      {f.cxc_id && <ChipDocumento tipo="cuentaPorCobrar" numero={t('listado.cxc')} href={`/app/finanzas/cuentas-por-cobrar/${f.cxc_id}`} />}
-      {f.notas_credito > 0 && <ChipDocumento tipo="notaCredito" numero={t('listado.notasCredito', { count: f.notas_credito })} />}
-      {f.web_order_id && f.tipo_numero === 'pedido' && f.numero && <ChipDocumento tipo="pedido" numero={f.numero} />}
-    </div>
-  );
+  /**
+   * Documentos en una sola línea: el principal como chip y el resto como «+N»
+   * (con sus nombres en la ayuda). Apilados hacían las filas el doble de altas.
+   */
+  const documentos = (f: FilaVenta) => {
+    const lista: { nombre: string; chip: ReactNode }[] = [];
+    if (f.factura_id && f.numero && f.tipo_numero === 'factura')
+      lista.push({
+        nombre: f.numero,
+        chip: <ChipDocumento tipo="factura" numero={f.numero} href={`/app/finanzas/facturas-venta/${f.factura_id}`} anulado={f.estado === 'anulada'} />,
+      });
+    if (f.cxc_id)
+      lista.push({
+        nombre: t('listado.cxc'),
+        chip: <ChipDocumento tipo="cuentaPorCobrar" numero={t('listado.cxc')} href={`/app/finanzas/cuentas-por-cobrar/${f.cxc_id}`} />,
+      });
+    if (f.notas_credito > 0) {
+      const nombre = t('listado.notasCredito', { count: f.notas_credito });
+      lista.push({ nombre, chip: <ChipDocumento tipo="notaCredito" numero={nombre} /> });
+    }
+    if (f.web_order_id && f.tipo_numero === 'pedido' && f.numero) lista.push({ nombre: f.numero, chip: <ChipDocumento tipo="pedido" numero={f.numero} /> });
+    if (lista.length === 0) return <span className="text-fg-muted">—</span>;
+    const [principal, ...resto] = lista;
+    const ayuda = resto.map((d) => d.nombre).join(' · ');
+    return (
+      <div className="flex items-center gap-1 whitespace-nowrap">
+        {principal.chip}
+        {resto.length > 0 && (
+          <Badge tono="neutro" apariencia="contorno" tamano="sm" title={ayuda}>
+            <span aria-hidden="true">+{resto.length}</span>
+            <span className="sr-only">{t('listado.masDocumentos', { count: resto.length, documentos: ayuda })}</span>
+          </Badge>
+        )}
+      </div>
+    );
+  };
+
+  /**
+   * Texto de columna secundaria con tope de ancho y «…» (el completo en la
+   * ayuda). En una tabla `auto` un `truncate` sin tope no recorta: la columna
+   * crece hasta el texto entero y la tabla desborda.
+   */
+  const textoCorto = (texto: string | null | undefined) =>
+    texto ? (
+      <span className="block max-w-[8.5rem] truncate" title={texto}>
+        {texto}
+      </span>
+    ) : (
+      <span className="text-fg-muted">—</span>
+    );
 
   const columnas: ColumnaTabla<FilaVenta>[] = [
-    { id: 'fecha', encabezado: t('listado.columnas.fecha'), ordenable: true, celda: (f) => <span className="whitespace-nowrap">{fechaHora(f.fecha)}</span> },
+    {
+      id: 'fecha',
+      encabezado: t('listado.columnas.fecha'),
+      ordenable: true,
+      // Fecha y hora en dos líneas (Figma): la columna queda angosta.
+      celda: (f) => (
+        <div className="flex flex-col whitespace-nowrap" title={fechaHora(f.fecha)}>
+          <span>{formatDateTimeInTz(f.fecha, timezone, { locale, day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+          <span className="text-xs text-fg-secondary">{formatDateTimeInTz(f.fecha, timezone, { locale, hour: '2-digit', minute: '2-digit' })}</span>
+        </div>
+      ),
+    },
     {
       id: 'numero',
       encabezado: t('listado.columnas.numero'),
       ordenable: true,
       variante: 'mono',
+      // Sin partir: «FACT-0707» no se corta en el guion.
+      className: 'whitespace-nowrap',
       celda: (f) => <span className="font-medium text-fg">{numeroDe(f)}</span>,
     },
     { id: 'origen', encabezado: t('listado.columnas.origen'), ocultarDebajo: 'lg', celda: badgeOrigen },
@@ -359,19 +429,19 @@ export function VentasPage() {
       encabezado: t('listado.columnas.cliente'),
       ordenable: true,
       celda: (f) => (
-        <div className="flex min-w-0 flex-col">
+        <div className="flex max-w-[13rem] flex-col">
           <span className="truncate text-fg">{f.cliente?.nombre ?? t('listado.consumidorFinal')}</span>
           {f.cliente?.documento && <span className="truncate text-xs text-fg-secondary">{f.cliente.documento}</span>}
         </div>
       ),
     },
-    { id: 'sucursal', encabezado: t('listado.columnas.sucursal'), ocultarDebajo: 'xl', celda: (f) => <span className="truncate">{f.sucursal.nombre ?? '—'}</span> },
-    { id: 'cajero', encabezado: t('listado.columnas.cajero'), ocultarDebajo: 'xl', celda: (f) => <span className="truncate">{f.cajero.nombre ?? '—'}</span> },
+    { id: 'sucursal', encabezado: t('listado.columnas.sucursal'), ocultarDebajo: 'xl', celda: (f) => textoCorto(f.sucursal.nombre) },
+    { id: 'cajero', encabezado: t('listado.columnas.cajero'), ocultarDebajo: 'xl', celda: (f) => textoCorto(f.cajero.nombre) },
     {
       id: 'metodos',
       encabezado: t('listado.columnas.metodos'),
       ocultarDebajo: 'lg',
-      celda: (f) => <span className="truncate">{f.metodos.length ? f.metodos.map(etiquetaMetodo).join(', ') : '—'}</span>,
+      celda: (f) => textoCorto(f.metodos.length ? f.metodos.map(etiquetaMetodo).join(', ') : null),
     },
     { id: 'documentos', encabezado: t('listado.columnas.documentos'), ocultarDebajo: 'xl', celda: documentos },
     {
@@ -386,7 +456,7 @@ export function VentasPage() {
         </div>
       ),
     },
-    { id: 'estado', encabezado: t('listado.columnas.estado'), celda: badgeEstado },
+    { id: 'estado', encabezado: t('listado.columnas.estado'), className: 'whitespace-nowrap', celda: badgeEstado },
   ];
 
   const estadoTabla =
@@ -410,7 +480,7 @@ export function VentasPage() {
     <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
       <PageHeader
         titulo={t('listado.titulo')}
-        subtitulo={t('listado.subtitulo', { n: entero(total), count: total })}
+        subtitulo={subtitulo}
         icono={Receipt}
         cargando={cargando}
         migas={[{ etiqueta: t('listado.migas.pos'), href: '/app/pos' }, { etiqueta: t('listado.titulo') }]}
@@ -496,19 +566,10 @@ export function VentasPage() {
             cargando={cargando}
             placeholder={t('listado.buscar.placeholder')}
             etiqueta={t('listado.buscar.etiqueta')}
-            accesorio={
-              <DateRangeButton
-                valor={{ desde, hasta }}
-                hoy={hoy}
-                max={hoy}
-                etiqueta={t('listado.filtros.periodo')}
-                onValorChange={(r) => l.actualizar({ filtros: { ...l.filtros, desde: r.desde, hasta: r.hasta } })}
-              />
-            }
           />
         }
         filtros={
-          <FilterPanel conteo={l.filtrosActivos} onLimpiar={l.limpiarFiltros} textoVerResultados={t('listado.filtros.verN', { count: total, n: entero(total) })}>
+          <FilterPanel conteo={chips.length} onLimpiar={l.limpiarFiltros} textoVerResultados={t('listado.filtros.verN', { count: total, n: entero(total) })}>
             <FormField etiqueta={t('listado.filtros.origen')}>
               {(c) => (
                 <SegmentedControl
@@ -557,6 +618,17 @@ export function VentasPage() {
                 </Select>
               )}
             </FormField>
+            <FormField etiqueta={t('listado.filtros.desdeHasta')}>
+              {() => (
+                <DateRangeButton
+                  valor={{ desde, hasta }}
+                  hoy={hoy}
+                  max={hoy}
+                  etiqueta={t('listado.filtros.periodo')}
+                  onValorChange={(r) => l.actualizar({ filtros: { ...l.filtros, desde: r.desde, hasta: r.hasta } })}
+                />
+              )}
+            </FormField>
             <CustomerPicker
               layout="campo"
               cliente={l.filtros.cliente ? (clienteElegido?.id === l.filtros.cliente ? clienteElegido : { id: l.filtros.cliente, nombre: nombreClienteFiltro ?? t('listado.filtros.clienteChip') }) : null}
@@ -599,7 +671,7 @@ export function VentasPage() {
             </div>
           </FilterPanel>
         }
-        chips={<FilterChips chips={chips} onQuitar={(c) => l.setFiltro(c, null)} onLimpiarTodo={l.limpiarFiltros} />}
+        chips={<FilterChips chips={chips} onQuitar={quitarChip} onLimpiarTodo={l.limpiarFiltros} />}
       />
 
       <DataTable

@@ -20146,7 +20146,9 @@
         "min": "Minimum amount",
         "max": "Maximum amount",
         "minChip": "From {monto}",
-        "maxChip": "Up to {monto}"
+        "maxChip": "Up to {monto}",
+        "periodoChip": "Period: {rango}",
+        "desdeHasta": "From / To"
       },
       "vacio": {
         "titulo": "No sales in this period yet",
@@ -20157,7 +20159,8 @@
       "sinPermiso": {
         "titulo": "No access to sales",
         "descripcion": "Ask an administrator for permission to view POS sales."
-      }
+      },
+      "masDocumentos": "{count, plural, one {# more document: {documentos}} other {# more documents: {documentos}}}"
     },
     "kpis": {
       "etiqueta": "Figures for the period",

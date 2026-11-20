@@ -15499,7 +15499,9 @@
         "min": "Valor mínimo",
         "max": "Valor máximo",
         "minChip": "A partir de {monto}",
-        "maxChip": "Até {monto}"
+        "maxChip": "Até {monto}",
+        "periodoChip": "Período: {rango}",
+        "desdeHasta": "De / Até"
       },
       "vacio": {
         "titulo": "Ainda não há vendas neste período",
@@ -15510,7 +15512,8 @@
       "sinPermiso": {
         "titulo": "Sem acesso às vendas",
         "descripcion": "Peça a um administrador a permissão para ver as vendas do PDV."
-      }
+      },
+      "masDocumentos": "{count, plural, one {Mais # documento: {documentos}} other {Mais # documentos: {documentos}}}"
     },
     "kpis": {
       "etiqueta": "Números do período",

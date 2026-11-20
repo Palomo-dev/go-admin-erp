@@ -12,12 +12,14 @@
  */
 import { useEffect, useState, Suspense } from 'react';
 import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { proceedWithLogin } from '@/lib/auth';
 import { EscenaAcceso, TarjetaAcceso, ProgresoPasos } from '@/components/kit/acceso';
 import { AsistenteAltaOrganizacion, type PasoAlta } from '@/components/auth/alta/AsistenteAltaOrganizacion';
 import { leerReferido, olvidarReferido } from '@/lib/auth/referido';
+import { leerParamsRegistro, limpiarParamsRegistro } from '@/lib/auth/registroParams';
 
 interface Persona {
   correo: string;
@@ -35,21 +37,56 @@ async function sesionDesdeFragmento(): Promise<void> {
   if (access_token && refresh_token) await supabase.auth.setSession({ access_token, refresh_token });
 }
 
+/** Códigos de plan válidos (de la tabla plans). */
+const PLANES_VALIDOS = ['pro', 'business', 'ultimate'] as const;
+/** Períodos válidos. */
+const PERIODOS_VALIDOS = ['monthly', 'yearly'] as const;
+
 function OrganizacionContent() {
   const t = useTranslations('acceso.alta');
   const tc = useTranslations('acceso.comun');
+  const params = useSearchParams();
   const [persona, setPersona] = useState<Persona | null>(null);
   const [paso, setPaso] = useState<PasoAlta>(1);
   const [saliendo, setSaliendo] = useState(false);
+  const [planInicial, setPlanInicial] = useState<string | undefined>(undefined);
+  const [periodoInicial, setPeriodoInicial] = useState<'monthly' | 'yearly' | undefined>(undefined);
 
   useEffect(() => {
     let vivo = true;
     (async () => {
+      // Leer parámetros de URL o sessionStorage (si vienen del flujo de registro completo).
+      const planParam = params?.get('plan');
+      const cycleParam = params?.get('cycle');
+      const paramsStorage = leerParamsRegistro();
+      
+      // Priorizar parámetros de URL sobre sessionStorage.
+      const planFinal = planParam || paramsStorage.plan;
+      const cycleFinal = cycleParam || paramsStorage.cycle;
+      
+      if (planFinal) {
+        const planNormalizado = planFinal.toLowerCase();
+        if (PLANES_VALIDOS.includes(planNormalizado as typeof PLANES_VALIDOS[number])) {
+          setPlanInicial(planNormalizado);
+        }
+      }
+      if (cycleFinal) {
+        const cycleNormalizado = cycleFinal.toLowerCase() as 'monthly' | 'yearly';
+        if (PERIODOS_VALIDOS.includes(cycleNormalizado)) {
+          setPeriodoInicial(cycleNormalizado);
+        }
+      }
+
       await sesionDesdeFragmento();
       const { data } = await supabase.auth.getSession();
       const s = data.session;
       if (!s) {
-        window.location.replace(`/auth/login?redirectTo=${encodeURIComponent('/auth/signup/organizacion')}`);
+        // Preservar parámetros de URL en el redirect.
+        const query = new URLSearchParams();
+        query.set('redirectTo', '/auth/signup/organizacion');
+        if (planParam) query.set('plan', planParam);
+        if (cycleParam) query.set('cycle', cycleParam);
+        window.location.replace(`/auth/login?${query.toString()}`);
         return;
       }
       const { data: miembros } = await supabase
@@ -74,7 +111,7 @@ function OrganizacionContent() {
     return () => {
       vivo = false;
     };
-  }, []);
+  }, [params]);
 
   if (!persona || saliendo) {
     return (
@@ -112,10 +149,13 @@ function OrganizacionContent() {
           nombre={persona.nombre}
           apellido={persona.apellido}
           referido={leerReferido()}
+          planInicial={planInicial}
+          periodoInicial={periodoInicial}
           onPaso={setPaso}
           onCreada={async () => {
             setSaliendo(true);
             olvidarReferido();
+            limpiarParamsRegistro();
             await proceedWithLogin(false, persona.correo, { destino: '/app/inicio?welcome=true' });
           }}
         />

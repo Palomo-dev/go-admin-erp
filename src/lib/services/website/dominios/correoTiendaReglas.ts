@@ -4,6 +4,11 @@
  * El dominio que se registra en el proveedor es el de la tienda (pedidos@ese
  * dominio). El proveedor publica SPF y DKIM en subdominios; el MX de la raíz
  * no se crea ni se pisa. Un DMARC que ya exista tampoco.
+ *
+ * Resend pide además un CNAME de subdominio (`rsend` → `send.forge.rmta.net`);
+ * sin él el dominio no termina de verificarse. Un CNAME en la raíz nunca se
+ * crea, y tampoco uno sobre un nombre que ya tenga cualquier registro (un CNAME
+ * no puede convivir con otros en el mismo nombre: no se pisa nada).
  */
 
 export const RESPALDO_CORREO_PEDIDOS = 'pedidos@goadmin.io';
@@ -27,7 +32,7 @@ export const VALOR_DMARC = 'v=DMARC1; p=none; rua=mailto:dmarc@goadmin.io';
 const TIPOS_ENVIABLES = new Set(['custom_domain', 'custom_subdomain', 'www_alias']);
 
 export interface RegistroDnsCorreo {
-  tipo: 'TXT' | 'MX';
+  tipo: 'TXT' | 'MX' | 'CNAME';
   nombre: string;
   valor: string;
   prioridad: number | null;
@@ -152,7 +157,7 @@ export function registrosDeProveedor(records: unknown, zona: string): RegistroDn
   for (const crudo of lista) {
     if (!esRegistro(crudo)) continue;
     const tipo = String(crudo.type || '').toUpperCase();
-    if (tipo !== 'TXT' && tipo !== 'MX') continue;
+    if (tipo !== 'TXT' && tipo !== 'MX' && tipo !== 'CNAME') continue;
     const nombre = String(crudo.name || '').trim();
     const valor = String(crudo.value || '').trim();
     if (!nombre || !valor || valor.length > 2000) continue;
@@ -176,6 +181,10 @@ export function debePublicar(
 ): boolean {
   if (esMxRaiz(nuevo, zona)) return false;
   const nombre = nombreRelativo(nuevo.nombre, zona);
+  if (nuevo.tipo === 'CNAME') {
+    if (nombre === '') return false;
+    return !existentes.some((e) => nombreRelativo(e.nombre, zona) === nombre);
+  }
   if (nombre === '_dmarc') {
     const publicado = existentes.find((e) => e.tipo.toUpperCase() === 'TXT' && nombreRelativo(e.nombre, zona) === '_dmarc');
     if (publicado && conservarDmarc(publicado.valor)) return false;

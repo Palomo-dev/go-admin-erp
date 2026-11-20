@@ -55,6 +55,29 @@ describe('correo de pedidos de la tienda', () => {
     )).toBe(false);
   });
 
+  test('el CNAME rsend de Resend se conserva, se publica si falta y no se duplica', () => {
+    const registros = registrosDeProveedor([
+      { type: 'TXT', name: 'resend._domainkey', value: 'p=MIGfMA0GCSq' },
+      { type: 'MX', name: 'send', value: 'feedback-smtp.sa-east-1.amazonses.com', priority: 10 },
+      { type: 'TXT', name: 'send', value: 'v=spf1 include:amazonses.com ~all' },
+      { type: 'CNAME', name: 'rsend', value: 'send.forge.rmta.net' },
+    ], 'tienda.example');
+    const rsend = registros.find((r) => r.tipo === 'CNAME');
+    expect(rsend).toEqual({ tipo: 'CNAME', nombre: 'rsend', valor: 'send.forge.rmta.net', prioridad: null });
+    // Falta: se publica.
+    expect(debePublicar([{ tipo: 'TXT', nombre: 'send', valor: 'v=spf1 include:amazonses.com ~all' }], rsend!, 'tienda.example')).toBe(true);
+    // Ya existe (igual o con el punto final que devuelve el DNS): no se duplica.
+    expect(debePublicar([{ tipo: 'CNAME', nombre: 'rsend', valor: 'send.forge.rmta.net' }], rsend!, 'tienda.example')).toBe(false);
+    expect(debePublicar([{ tipo: 'CNAME', nombre: 'rsend.tienda.example', valor: 'send.forge.rmta.net.' }], rsend!, 'tienda.example')).toBe(false);
+    // Cualquier otro registro en ese nombre: no se pisa.
+    expect(debePublicar([{ tipo: 'TXT', nombre: 'rsend', valor: 'algo' }], rsend!, 'tienda.example')).toBe(false);
+    // En la raíz, nunca.
+    expect(debePublicar([], { tipo: 'CNAME', nombre: 'tienda.example', valor: 'x.example.net', prioridad: null }, 'tienda.example')).toBe(false);
+    expect(debePublicar([], { tipo: 'CNAME', nombre: '@', valor: 'x.example.net', prioridad: null }, 'tienda.example')).toBe(false);
+    // Otros tipos siguen fuera.
+    expect(registrosDeProveedor([{ type: 'A', name: 'x', value: '1.2.3.4' }], 'tienda.example').map((r) => r.tipo)).toEqual(['TXT']);
+  });
+
   test('el límite del plan no se reintenta y cualquier otro fallo sí deja el mensaje', () => {
     const limite = falloAlCrearDominio(403, {
       name: 'validation_error',

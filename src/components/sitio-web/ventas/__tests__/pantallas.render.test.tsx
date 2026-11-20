@@ -86,6 +86,7 @@ function respuesta(t: EntradaTablero[] = tablero()): RespuestaVentas {
     zonaHoraria: 'America/Bogota',
     sitio: { host: 'tu-marca.goadmin.io', url: 'https://tu-marca.goadmin.io', publicado: true },
     tarifasEnvio: enlace('irTransporteTarifas', 'transport'),
+    tarifasDomicilio: null,
   };
 }
 

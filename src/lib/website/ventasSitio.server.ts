@@ -36,6 +36,7 @@ import type { ContextoMoneda } from '@/lib/utils/moneda';
 import { direccionDelSitio } from '@/components/sitio-web/seoanalitica/seo.server';
 import { giroDesdeTipo, leerOnboarding, type GiroSitio } from './onboardingSitio';
 import { tienePasarela } from './resumenSitio';
+import { resumirTarifasDomicilio, type FilaTarifaDomicilio, type TarifasDomicilio } from './tarifasDomicilio';
 import {
   COLUMNAS_PENDIENTES_CHECKOUT,
   TIPOS_ENTREGA,
@@ -102,6 +103,11 @@ export interface RespuestaVentas {
   sitio: { host: string | null; url: string | null; publicado: boolean };
   /** Enlace a Tarifas de envío y si la persona puede usarlo (sección Envíos). */
   tarifasEnvio: EnlaceVenta;
+  /**
+   * Tarifas web por tipo de domicilio (Domicilio / Transportadora) para el diálogo del checkout.
+   * `null` si no se pudieron leer: el diálogo no muestra el resumen.
+   */
+  tarifasDomicilio: TarifasDomicilio | null;
 }
 
 // ─── Enlaces a los módulos dueños (B/10-05) ──────────────────────────────────
@@ -271,6 +277,22 @@ async function leerEnvios(ctx: Ctx): Promise<number> {
   );
 }
 
+/** Tarifas activas con «Web», resumidas por el tipo de su transportadora (tarifasDomicilio.ts). */
+async function leerTarifasDomicilio(ctx: Ctx): Promise<TarifasDomicilio | null> {
+  const { data, error } = await ctx.supabase
+    .from('shipping_rates')
+    .select('base_rate, min_charge, estimated_transit_days, transport_carriers:carrier_id(carrier_type)')
+    .eq('organization_id', ctx.organizationId)
+    .eq('is_active', true)
+    .eq('show_on_website', true)
+    .limit(500);
+  if (error) {
+    console.error('[ventasSitio] tarifas por domicilio sin leer', { organizationId: ctx.organizationId, message: error.message });
+    return null;
+  }
+  return resumirTarifasDomicilio((data ?? []) as unknown as FilaTarifaDomicilio[]);
+}
+
 async function leerCupones(ctx: Ctx, ahora: Date) {
   const iso = ahora.toISOString();
   const [cupones, promociones] = await Promise.all([
@@ -402,7 +424,7 @@ export async function leerVentasSitio(ctx: Ctx, ahora: Date = new Date()): Promi
   const permisos = await permisosSitio(ctx);
   if (!permisos.editar) throw new ErrorVentas('sin_permiso', 403, 'No tienes permiso para ver las ventas del sitio.');
 
-  const [orgRes, estadoRes, ajustes, rutas, zona, moneda, direccion] = await Promise.all([
+  const [orgRes, estadoRes, ajustes, rutas, zona, moneda, direccion, tarifasDomicilio] = await Promise.all([
     ctx.supabase.from('organizations').select('type_id').eq('id', ctx.organizationId).maybeSingle(),
     ctx.supabase.from('website_site_states').select('onboarding, published_revision_id').eq('organization_id', ctx.organizationId).is('branch_id', null).maybeSingle(),
     leerAjustes(ctx),
@@ -410,6 +432,7 @@ export async function leerVentasSitio(ctx: Ctx, ahora: Date = new Date()): Promi
     getOrganizationTimezone(ctx.organizationId, ctx.supabase),
     resolverContextoMoneda(ctx.supabase, ctx.organizationId),
     direccionDelSitio(ctx),
+    leerTarifasDomicilio(ctx),
   ]);
   if (orgRes.error) throw orgRes.error;
   const estadoSitio = estadoRes.error ? null : (estadoRes.data as { onboarding: unknown; published_revision_id: string | null } | null);
@@ -424,6 +447,7 @@ export async function leerVentasSitio(ctx: Ctx, ahora: Date = new Date()): Promi
     checkout: ajustes,
     sitio: { host: direccion.host, url: direccion.url, publicado: !!estadoSitio?.published_revision_id },
     tarifasEnvio: enlaces.envios,
+    tarifasDomicilio,
   };
   if (!ajustes) return { ...base, estado: 'primera_vez', tablero: [], progreso: { listos: 0, total: 0, faltan: [], sinVender: false } };
 

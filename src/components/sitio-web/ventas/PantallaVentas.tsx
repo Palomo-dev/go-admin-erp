@@ -221,6 +221,8 @@ export function PantallaVentas() {
           simboloMoneda={simboloMoneda(datos.moneda)}
           onGuardar={guardarCheckout}
           esRestaurante={datos.giro === 'restaurante'}
+          tarifasDomicilio={datos.tarifasDomicilio}
+          enlaceTarifas={datos.tarifasEnvio}
         />
       )}
 

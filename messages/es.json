@@ -20065,14 +20065,15 @@
       "pendiente_pago": "Pendiente de pago"
     },
     "listado": {
-      "titulo": "Ventas",
+      "titulo": "Historial de ventas",
       "subtitulo": "{count, plural, one {{n} venta} other {{n} ventas}}",
       "migas": {
-        "pos": "Punto de venta"
+        "pos": "Punto de venta",
+        "ventas": "Ventas"
       },
       "actualizar": "Actualizar",
       "nueva": "Nueva venta",
-      "exportar": "Exportar CSV",
+      "exportar": "Exportar",
       "exportando": "Exportando…",
       "exportarError": "No se pudieron exportar las ventas. Intente de nuevo.",
       "exportarTruncado": "Se exportaron las primeras {n} ventas. Acote el periodo o los filtros para exportar el resto.",
@@ -20114,7 +20115,8 @@
         "devolver": "Crear devolución",
         "imprimir": "Imprimir",
         "duplicar": "Duplicar en el POS",
-        "anular": "Anular venta"
+        "anular": "Anular venta",
+        "verCxc": "Ver cuenta por cobrar"
       },
       "motivos": {
         "sin_permiso": "No tiene permiso para esta acción.",
@@ -20149,7 +20151,22 @@
         "minChip": "Desde {monto}",
         "maxChip": "Hasta {monto}",
         "periodoChip": "Periodo: {rango}",
-        "desdeHasta": "Desde / Hasta"
+        "desdeHasta": "Desde / Hasta",
+        "sucursal": "Sucursal",
+        "sucursalChip": "Sucursal: {sucursal}",
+        "todosEstados": "Todos los estados",
+        "cajero": "Cajero",
+        "cajeroChipNombre": "Cajero: {nombre}",
+        "pago": "Estado de pago",
+        "pagoChip": "Pago: {pago}",
+        "metodoPlaceholder": "Todos los métodos",
+        "nota": "Los cambios se aplican al instante · la sucursal también se cambia desde el header",
+        "casillas": {
+          "titulo": "Opciones",
+          "saldo": "Con saldo pendiente",
+          "devolucion": "Con devolución",
+          "sync": "Pendientes de sincronizar"
+        }
       },
       "vacio": {
         "titulo": "Aún no hay ventas en este periodo",
@@ -20161,7 +20178,21 @@
         "titulo": "Sin acceso a las ventas",
         "descripcion": "Pida a un administrador el permiso para ver las ventas del POS."
       },
-      "masDocumentos": "{count, plural, one {# documento más: {documentos}} other {# documentos más: {documentos}}}"
+      "masDocumentos": "{count, plural, one {# documento más: {documentos}} other {# documentos más: {documentos}}}",
+      "encontradas": "{count, plural, one {{n} venta encontrada} other {{n} ventas encontradas}}",
+      "todasSucursales": "Todas las sucursales",
+      "credito": "Crédito",
+      "saldoLinea": "saldo {monto}",
+      "pedidoWeb": "pedido web",
+      "mesaN": "Mesa {n}",
+      "sinNombre": "Sin nombre",
+      "pedidosOnline": "Ver pedidos online",
+      "pagos": {
+        "paid": "Pagado",
+        "partial": "Pago parcial",
+        "pending": "Pendiente",
+        "refunded": "Reembolsado"
+      }
     },
     "kpis": {
       "etiqueta": "Cifras del periodo",
@@ -20172,7 +20203,23 @@
       "facturado": "Facturado: {monto}",
       "ventasCobradas": "{count, plural, one {{n} venta cobrada} other {{n} ventas cobradas}}",
       "vsAnterior": "{pct} % frente al periodo anterior",
-      "sinAnterior": "Sin cobros en el periodo anterior"
+      "sinAnterior": "Sin ventas en el periodo anterior",
+      "ventas": "Ventas del periodo",
+      "ventasCorto": "Ventas",
+      "ticketCorto": "Ticket",
+      "transacciones": "Transacciones",
+      "transaccionesCorto": "Trans.",
+      "impuestos": "Impuestos",
+      "sobreTransacciones": "{count, plural, one {sobre {n} transacción} other {sobre {n} transacciones}}",
+      "impuestoTasa": "{tipo} {tasa} %",
+      "impuestoSinDetalle": "Otros impuestos",
+      "sinImpuestos": "Sin impuestos en el periodo",
+      "partes": {
+        "pagadas": "{count, plural, one {{n} pagada} other {{n} pagadas}}",
+        "pendientes": "{count, plural, one {{n} pendiente} other {{n} pendientes}}",
+        "anuladas": "{count, plural, one {{n} anulada} other {{n} anuladas}}",
+        "devueltas": "{count, plural, one {{n} devuelta} other {{n} devueltas}}"
+      }
     },
     "anular": {
       "titulo": "Anular venta",

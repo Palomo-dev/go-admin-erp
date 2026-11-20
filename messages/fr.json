@@ -15416,14 +15416,15 @@
       "pendiente_pago": "Paiement en attente"
     },
     "listado": {
-      "titulo": "Ventes",
+      "titulo": "Historique des ventes",
       "subtitulo": "{count, plural, one {{n} vente} other {{n} ventes}}",
       "migas": {
-        "pos": "Point de vente"
+        "pos": "Point de vente",
+        "ventas": "Ventes"
       },
       "actualizar": "Actualiser",
       "nueva": "Nouvelle vente",
-      "exportar": "Exporter en CSV",
+      "exportar": "Exporter",
       "exportando": "Exportation…",
       "exportarError": "Les ventes n'ont pas pu être exportées. Réessayez.",
       "exportarTruncado": "Les {n} premières ventes ont été exportées. Réduisez la période ou les filtres pour exporter le reste.",
@@ -15465,7 +15466,8 @@
         "devolver": "Créer un retour",
         "imprimir": "Imprimer",
         "duplicar": "Dupliquer dans le PDV",
-        "anular": "Annuler la vente"
+        "anular": "Annuler la vente",
+        "verCxc": "Voir la créance"
       },
       "motivos": {
         "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
@@ -15500,7 +15502,22 @@
         "minChip": "À partir de {monto}",
         "maxChip": "Jusqu'à {monto}",
         "periodoChip": "Période : {rango}",
-        "desdeHasta": "Du / Au"
+        "desdeHasta": "Du / Au",
+        "sucursal": "Succursale",
+        "sucursalChip": "Succursale : {sucursal}",
+        "todosEstados": "Tous les statuts",
+        "cajero": "Caissier",
+        "cajeroChipNombre": "Caissier : {nombre}",
+        "pago": "Statut du paiement",
+        "pagoChip": "Paiement : {pago}",
+        "metodoPlaceholder": "Tous les moyens",
+        "nota": "Les changements s'appliquent immédiatement · la succursale se change aussi depuis l'en-tête",
+        "casillas": {
+          "titulo": "Options",
+          "saldo": "Avec solde dû",
+          "devolucion": "Avec retour",
+          "sync": "En attente de synchronisation"
+        }
       },
       "vacio": {
         "titulo": "Aucune vente sur cette période",
@@ -15512,7 +15529,21 @@
         "titulo": "Pas d'accès aux ventes",
         "descripcion": "Demandez à un administrateur l'autorisation de voir les ventes du PDV."
       },
-      "masDocumentos": "{count, plural, one {# autre document : {documentos}} other {# autres documents : {documentos}}}"
+      "masDocumentos": "{count, plural, one {# autre document : {documentos}} other {# autres documents : {documentos}}}",
+      "encontradas": "{count, plural, one {{n} vente trouvée} other {{n} ventes trouvées}}",
+      "todasSucursales": "Toutes les succursales",
+      "credito": "Crédit",
+      "saldoLinea": "solde {monto}",
+      "pedidoWeb": "commande web",
+      "mesaN": "Table {n}",
+      "sinNombre": "Sans nom",
+      "pedidosOnline": "Voir les commandes en ligne",
+      "pagos": {
+        "paid": "Payé",
+        "partial": "Paiement partiel",
+        "pending": "En attente",
+        "refunded": "Remboursé"
+      }
     },
     "kpis": {
       "etiqueta": "Chiffres de la période",
@@ -15523,7 +15554,23 @@
       "facturado": "Facturé : {monto}",
       "ventasCobradas": "{count, plural, one {{n} vente encaissée} other {{n} ventes encaissées}}",
       "vsAnterior": "{pct} % par rapport à la période précédente",
-      "sinAnterior": "Aucun encaissement sur la période précédente"
+      "sinAnterior": "Aucune vente sur la période précédente",
+      "ventas": "Ventes de la période",
+      "ventasCorto": "Ventes",
+      "ticketCorto": "Panier",
+      "transacciones": "Transactions",
+      "transaccionesCorto": "Trans.",
+      "impuestos": "Taxes",
+      "sobreTransacciones": "{count, plural, one {sur {n} transaction} other {sur {n} transactions}}",
+      "impuestoTasa": "{tipo} {tasa} %",
+      "impuestoSinDetalle": "Autres taxes",
+      "sinImpuestos": "Aucune taxe sur la période",
+      "partes": {
+        "pagadas": "{count, plural, one {{n} payée} other {{n} payées}}",
+        "pendientes": "{count, plural, one {{n} en attente} other {{n} en attente}}",
+        "anuladas": "{count, plural, one {{n} annulée} other {{n} annulées}}",
+        "devueltas": "{count, plural, one {{n} retournée} other {{n} retournées}}"
+      }
     },
     "anular": {
       "titulo": "Annuler la vente",

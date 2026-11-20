@@ -20064,14 +20064,15 @@
       "pendiente_pago": "Payment pending"
     },
     "listado": {
-      "titulo": "Sales",
+      "titulo": "Sales history",
       "subtitulo": "{count, plural, one {{n} sale} other {{n} sales}}",
       "migas": {
-        "pos": "Point of sale"
+        "pos": "Point of sale",
+        "ventas": "Sales"
       },
       "actualizar": "Refresh",
       "nueva": "New sale",
-      "exportar": "Export CSV",
+      "exportar": "Export",
       "exportando": "Exporting…",
       "exportarError": "The sales could not be exported. Try again.",
       "exportarTruncado": "The first {n} sales were exported. Narrow the period or the filters to export the rest.",
@@ -20113,7 +20114,8 @@
         "devolver": "Create return",
         "imprimir": "Print",
         "duplicar": "Duplicate in the POS",
-        "anular": "Void sale"
+        "anular": "Void sale",
+        "verCxc": "View account receivable"
       },
       "motivos": {
         "sin_permiso": "You do not have permission for this action.",
@@ -20148,7 +20150,22 @@
         "minChip": "From {monto}",
         "maxChip": "Up to {monto}",
         "periodoChip": "Period: {rango}",
-        "desdeHasta": "From / To"
+        "desdeHasta": "From / To",
+        "sucursal": "Branch",
+        "sucursalChip": "Branch: {sucursal}",
+        "todosEstados": "All statuses",
+        "cajero": "Cashier",
+        "cajeroChipNombre": "Cashier: {nombre}",
+        "pago": "Payment status",
+        "pagoChip": "Payment: {pago}",
+        "metodoPlaceholder": "All methods",
+        "nota": "Changes apply instantly · the branch can also be changed from the header",
+        "casillas": {
+          "titulo": "Options",
+          "saldo": "With balance due",
+          "devolucion": "With return",
+          "sync": "Pending sync"
+        }
       },
       "vacio": {
         "titulo": "No sales in this period yet",
@@ -20160,7 +20177,21 @@
         "titulo": "No access to sales",
         "descripcion": "Ask an administrator for permission to view POS sales."
       },
-      "masDocumentos": "{count, plural, one {# more document: {documentos}} other {# more documents: {documentos}}}"
+      "masDocumentos": "{count, plural, one {# more document: {documentos}} other {# more documents: {documentos}}}",
+      "encontradas": "{count, plural, one {{n} sale found} other {{n} sales found}}",
+      "todasSucursales": "All branches",
+      "credito": "Credit",
+      "saldoLinea": "balance {monto}",
+      "pedidoWeb": "web order",
+      "mesaN": "Table {n}",
+      "sinNombre": "No name",
+      "pedidosOnline": "View online orders",
+      "pagos": {
+        "paid": "Paid",
+        "partial": "Partially paid",
+        "pending": "Pending",
+        "refunded": "Refunded"
+      }
     },
     "kpis": {
       "etiqueta": "Figures for the period",
@@ -20171,7 +20202,23 @@
       "facturado": "Invoiced: {monto}",
       "ventasCobradas": "{count, plural, one {{n} sale collected} other {{n} sales collected}}",
       "vsAnterior": "{pct}% vs. the previous period",
-      "sinAnterior": "No payments in the previous period"
+      "sinAnterior": "No sales in the previous period",
+      "ventas": "Sales for the period",
+      "ventasCorto": "Sales",
+      "ticketCorto": "Ticket",
+      "transacciones": "Transactions",
+      "transaccionesCorto": "Trans.",
+      "impuestos": "Taxes",
+      "sobreTransacciones": "{count, plural, one {over {n} transaction} other {over {n} transactions}}",
+      "impuestoTasa": "{tipo} {tasa}%",
+      "impuestoSinDetalle": "Other taxes",
+      "sinImpuestos": "No taxes in the period",
+      "partes": {
+        "pagadas": "{n} paid",
+        "pendientes": "{n} pending",
+        "anuladas": "{n} voided",
+        "devueltas": "{n} returned"
+      }
     },
     "anular": {
       "titulo": "Void sale",

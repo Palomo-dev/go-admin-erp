@@ -15417,14 +15417,15 @@
       "pendiente_pago": "Pagamento pendente"
     },
     "listado": {
-      "titulo": "Vendas",
+      "titulo": "Histórico de vendas",
       "subtitulo": "{count, plural, one {{n} venda} other {{n} vendas}}",
       "migas": {
-        "pos": "Ponto de venda"
+        "pos": "Ponto de venda",
+        "ventas": "Vendas"
       },
       "actualizar": "Atualizar",
       "nueva": "Nova venda",
-      "exportar": "Exportar CSV",
+      "exportar": "Exportar",
       "exportando": "Exportando…",
       "exportarError": "Não foi possível exportar as vendas. Tente novamente.",
       "exportarTruncado": "Foram exportadas as primeiras {n} vendas. Reduza o período ou os filtros para exportar o restante.",
@@ -15466,7 +15467,8 @@
         "devolver": "Criar devolução",
         "imprimir": "Imprimir",
         "duplicar": "Duplicar no PDV",
-        "anular": "Cancelar venda"
+        "anular": "Cancelar venda",
+        "verCxc": "Ver conta a receber"
       },
       "motivos": {
         "sin_permiso": "Você não tem permissão para esta ação.",
@@ -15501,7 +15503,22 @@
         "minChip": "A partir de {monto}",
         "maxChip": "Até {monto}",
         "periodoChip": "Período: {rango}",
-        "desdeHasta": "De / Até"
+        "desdeHasta": "De / Até",
+        "sucursal": "Filial",
+        "sucursalChip": "Filial: {sucursal}",
+        "todosEstados": "Todos os status",
+        "cajero": "Caixa",
+        "cajeroChipNombre": "Caixa: {nombre}",
+        "pago": "Status do pagamento",
+        "pagoChip": "Pagamento: {pago}",
+        "metodoPlaceholder": "Todos os métodos",
+        "nota": "As alterações são aplicadas na hora · a filial também pode ser trocada no cabeçalho",
+        "casillas": {
+          "titulo": "Opções",
+          "saldo": "Com saldo pendente",
+          "devolucion": "Com devolução",
+          "sync": "Pendentes de sincronização"
+        }
       },
       "vacio": {
         "titulo": "Ainda não há vendas neste período",
@@ -15513,7 +15530,21 @@
         "titulo": "Sem acesso às vendas",
         "descripcion": "Peça a um administrador a permissão para ver as vendas do PDV."
       },
-      "masDocumentos": "{count, plural, one {Mais # documento: {documentos}} other {Mais # documentos: {documentos}}}"
+      "masDocumentos": "{count, plural, one {Mais # documento: {documentos}} other {Mais # documentos: {documentos}}}",
+      "encontradas": "{count, plural, one {{n} venda encontrada} other {{n} vendas encontradas}}",
+      "todasSucursales": "Todas as filiais",
+      "credito": "Crédito",
+      "saldoLinea": "saldo {monto}",
+      "pedidoWeb": "pedido web",
+      "mesaN": "Mesa {n}",
+      "sinNombre": "Sem nome",
+      "pedidosOnline": "Ver pedidos online",
+      "pagos": {
+        "paid": "Pago",
+        "partial": "Pagamento parcial",
+        "pending": "Pendente",
+        "refunded": "Reembolsado"
+      }
     },
     "kpis": {
       "etiqueta": "Números do período",
@@ -15524,7 +15555,23 @@
       "facturado": "Faturado: {monto}",
       "ventasCobradas": "{count, plural, one {{n} venda recebida} other {{n} vendas recebidas}}",
       "vsAnterior": "{pct}% em relação ao período anterior",
-      "sinAnterior": "Sem recebimentos no período anterior"
+      "sinAnterior": "Sem vendas no período anterior",
+      "ventas": "Vendas do período",
+      "ventasCorto": "Vendas",
+      "ticketCorto": "Ticket",
+      "transacciones": "Transações",
+      "transaccionesCorto": "Trans.",
+      "impuestos": "Impostos",
+      "sobreTransacciones": "{count, plural, one {sobre {n} transação} other {sobre {n} transações}}",
+      "impuestoTasa": "{tipo} {tasa}%",
+      "impuestoSinDetalle": "Outros impostos",
+      "sinImpuestos": "Sem impostos no período",
+      "partes": {
+        "pagadas": "{count, plural, one {{n} paga} other {{n} pagas}}",
+        "pendientes": "{count, plural, one {{n} pendente} other {{n} pendentes}}",
+        "anuladas": "{count, plural, one {{n} anulada} other {{n} anuladas}}",
+        "devueltas": "{count, plural, one {{n} devolvida} other {{n} devolvidas}}"
+      }
     },
     "anular": {
       "titulo": "Cancelar venda",

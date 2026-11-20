@@ -13480,7 +13480,17 @@
       "cantidad": "Pourboires"
     },
     "acciones": {
-      "anular": "Annuler"
+      "anular": "Annuler avec motif",
+      "anularCorto": "Annuler",
+      "anularLiquidacion": "Annuler la répartition",
+      "corregir": "Corriger le montant",
+      "imprimir": "Imprimer le justificatif",
+      "reasignar": "Réattribuer la personne",
+      "sinPago": "Marquer réglé sans paiement",
+      "verDetalle": "Voir le détail",
+      "verLiquidacion": "Voir la répartition {codigo}",
+      "verMesa": "Voir la table {mesa}",
+      "verVenta": "Voir la vente {numero}"
     },
     "anular": {
       "titulo": "Annuler le pourboire ?",
@@ -13502,7 +13512,10 @@
       "distribuidas": "{count, plural, one {# pourboire marqué comme distribué} other {# pourboires marqués comme distribués}}",
       "ningunaDistribuida": "Aucun pourboire en attente à distribuer : ils étaient déjà distribués ou annulés.",
       "actualizada": "Pourboire mis à jour",
-      "registrada": "Pourboire enregistré"
+      "registrada": "Pourboire enregistré",
+      "liquidada": "Répartition {codigo} enregistrée",
+      "liquidacionAnulada": "Répartition {codigo} annulée",
+      "reasignada": "Pourboire réattribué"
     },
     "errores": {
       "SIN_PERMISO": "Vous n'avez pas l'autorisation pour cette action.",
@@ -13512,7 +13525,23 @@
       "PROPINA_INEXISTENTE": "Le pourboire n'existe pas dans cette organisation.",
       "PERIODO_CERRADO": "La période comptable d'aujourd'hui est clôturée : la contre-passation ne peut pas être enregistrée.",
       "SIN_SUCURSAL": "Sélectionnez une succursale pour enregistrer le pourboire.",
-      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez.",
+      "MOTIVO_REQUERIDO": "Saisissez le motif (au moins 3 caractères).",
+      "MOTIVO_AJUSTE_REQUERIDO": "Un montant ajusté à la main doit avoir un motif.",
+      "SIN_PROPINAS": "Choisissez au moins un pourboire à répartir.",
+      "PROPINAS_NO_DISPONIBLES": "Certains pourboires ne sont plus à répartir (quelqu’un d’autre les a réglés ou annulés). Rechargez.",
+      "VENTA_ABIERTA": "Certains pourboires viennent de ventes non encore encaissées : ils se répartiront une fois la vente encaissée.",
+      "REPARTO_INVALIDO": "Ce mode de répartition n’est pas encore disponible.",
+      "PORCENTAJES_INVALIDOS": "Les parts doivent faire 100 %.",
+      "PERSONA_INVALIDA": "Une personne de la répartition n’est plus un membre actif.",
+      "AJUSTES_NO_SUMAN_CERO": "Les ajustements doivent faire zéro : ce qu’on retire à l’un va à un autre.",
+      "AJUSTE_NEGATIVO": "Personne ne peut avoir un montant négatif.",
+      "MEDIO_INVALIDO": "Ce moyen de paiement n’est pas encore disponible.",
+      "REFERENCIA_REQUERIDA": "Saisissez la référence de chaque virement.",
+      "CAJA_CERRADA": "Aucune caisse ouverte dans cette succursale : ouvrez-la pour payer en espèces.",
+      "LIQUIDACION_INEXISTENTE": "La répartition n’existe pas dans cette organisation.",
+      "SOLICITUD_REQUERIDA": "La demande n’a pas pu être identifiée. Réessayez.",
+      "DATOS_INVALIDOS": "Vérifiez les filtres : une valeur n’est pas valide."
     },
     "cabecera": {
       "titulo": "Gestion des pourboires",
@@ -13574,6 +13603,325 @@
       "pendiente": "En attente",
       "editar": "Modifier",
       "marcarDistribuida": "Marquer comme réparti"
+    },
+    "anularV2": {
+      "titulo": "Annuler le pourboire de {monto}",
+      "tituloVarias": "{count, plural, one {Annuler # pourboire} other {Annuler # pourboires}} pour {monto}",
+      "descripcion": "{documento}. Une écriture d’extourne est générée ; la vente ne change pas.",
+      "descripcionVarias": "Chaque pourboire est annulé avec son écriture d’extourne ; les ventes ne changent pas.",
+      "confirmar": "Annuler le pourboire",
+      "motivo": "Motif",
+      "consecuencia1": "Le pourboire ne compte plus dans les totaux ni dans ce qui reste à répartir.",
+      "consecuencia2": "S’il a une écriture comptable, son extourne est enregistrée à la date du jour.",
+      "rapidos": {
+        "duplicada": "Enregistré deux fois",
+        "errorMonto": "Montant erroné",
+        "devuelta": "Rendu au client",
+        "noEra": "Ce n’était pas un pourboire"
+      }
+    },
+    "anularLiquidacion": {
+      "titulo": "Annuler la répartition {codigo}",
+      "descripcion": "Elle reste dans l’historique comme annulée, avec son motif.",
+      "confirmar": "Annuler la répartition",
+      "consecuenciaCaja": "{monto} reviennent dans la caisse ouverte comme réintégration de la sortie.",
+      "consecuenciaAsiento": "L’écriture de la répartition est extournée, s’il y en a une.",
+      "consecuenciaPropinas": "Ses pourboires reviennent dans « À répartir »."
+    },
+    "sinPagoDialogo": {
+      "titulo": "Marquer réglé sans paiement ({monto})",
+      "descripcion": "Enregistré comme une répartition sans mouvement d’argent (par exemple, déjà payé en dehors). Rien ne sort de la caisse.",
+      "confirmar": "Marquer réglé",
+      "rapidos": {
+        "pagadaPorFuera": "Déjà payé en dehors",
+        "nomina": "Payé avec la paie"
+      }
+    },
+    "columnas": {
+      "atendio": "Servi par",
+      "cargo": "Poste",
+      "documento": "Document",
+      "estado": "Statut",
+      "fecha": "Date",
+      "mesa": "Table",
+      "monto": "Montant",
+      "motivo": "Motif",
+      "tipo": "Type"
+    },
+    "detalle": {
+      "titulo": "Répartition",
+      "tituloCodigo": "Répartition {codigo}",
+      "subtitulo": "{periodo} · {sucursal} · réglée par {persona} le {fecha}",
+      "noExiste": "Cette répartition n’existe pas dans votre organisation",
+      "volver": "Retour aux répartitions",
+      "imprimir": "Imprimer le justificatif",
+      "avisoAnulada": "Annulée le {fecha} : {motivo}",
+      "reparto": "Répartition",
+      "firma": "Signature",
+      "ref": "Réf. {ref}",
+      "motivoAjuste": "Motif de l’ajustement : {motivo}",
+      "incluidas": "Pourboires inclus ({count})",
+      "verTodas": "Voir les {count} pourboires",
+      "pago": "Paiement",
+      "totalPropinas": "Total des pourboires",
+      "efectivo": "En espèces",
+      "banco": "Par carte ou en ligne",
+      "ajustes": "Ajustements",
+      "pagado": "Payé",
+      "medio": "Moyen",
+      "egreso": "Sortie de caisse",
+      "reingreso": "Réintégration en caisse",
+      "asiento": "Écriture comptable",
+      "asientoEnCobro": "Celle de chaque pourboire, à l’encaissement",
+      "sinAsiento": "Sans écriture",
+      "motivoSinPago": "Motif",
+      "comprobante": "Justificatif",
+      "comprobanteFirmas": "{count, plural, one {À signer par # personne} other {À signer par # personnes}}",
+      "historialTitulo": "Historique",
+      "historial": {
+        "liquidada": "Réglée par {persona}",
+        "egreso": "Sortie {numero} de la caisse {caja}",
+        "asiento": "Écriture {numero}",
+        "anulada": "Annulée par {persona} : {motivo}",
+        "reingreso": "Réintégration {numero} dans la caisse {caja}"
+      }
+    },
+    "estados": {
+      "cargando": "Chargement…",
+      "reintentar": "Réessayer",
+      "por_liquidar": "À répartir",
+      "liquidada": "Réglé",
+      "anulada": "Annulé",
+      "ventaAbierta": "Vente non encaissée"
+    },
+    "filtros": {
+      "buscar": "Rechercher par document, table ou personne",
+      "buscarLiquidaciones": "Rechercher par numéro ou personne",
+      "buscarEtiqueta": "Rechercher des pourboires",
+      "estado": "Statut",
+      "medio": "Payé par",
+      "periodo": "Date",
+      "persona": "Personne",
+      "tipo": "Type",
+      "todos": "Tous",
+      "fechaHoy": "Date : aujourd’hui",
+      "fechaChip": "Date : {rango}",
+      "tipoChip": "Type : {tipo}",
+      "personaChip": "Personne : {persona}",
+      "verN": "{count, plural, =0 {Aucun résultat} one {Voir # résultat} other {Voir {n} résultats}}"
+    },
+    "formularioV2": {
+      "tituloNueva": "Nouveau pourboire",
+      "tituloReasignar": "Réattribuer la personne",
+      "tituloCorregir": "Corriger le montant",
+      "descripcion": "Pourboire de {monto} · {persona}",
+      "persona": "Personne qui a servi",
+      "guardar": "Enregistrer",
+      "motivo": "Motif de la correction",
+      "motivoAyuda": "Il reste dans les notes du pourboire.",
+      "motivoRequerido": "Saisissez le motif (au moins 3 caractères).",
+      "notaCorreccion": "[Correction] Avant {antes} : {motivo}"
+    },
+    "kpis": {
+      "etiqueta": "Résumé des pourboires",
+      "porLiquidar": "À répartir",
+      "porLiquidarDetalle": "{count, plural, =0 {Rien en attente} one {# pourboire de {personas, plural, one {# personne} other {# personnes}}} other {{n} pourboires de {personas, plural, one {# personne} other {# personnes}}}}",
+      "liquidadoMes": "Réparti en {mes}",
+      "liquidaciones": "{count, plural, =0 {Aucune répartition} one {# répartition} other {# répartitions}}",
+      "promedio": "Pourboire moyen",
+      "promedioDetalle": "{count, plural, =0 {Aucun pourboire sur la période} one {Sur # pourboire} other {Sur # pourboires}}",
+      "ventasConPropina": "Ventes avec pourboire",
+      "ventasDetalle": "{con} sur {total} ventes de la période",
+      "propinas": "Pourboires",
+      "conPropina": "Avec pourboire"
+    },
+    "liquidaciones": {
+      "titulo": "Répartitions",
+      "sustantivo": {
+        "singular": "répartition",
+        "plural": "répartitions"
+      },
+      "columnas": {
+        "numero": "Numéro",
+        "periodo": "Période",
+        "personas": "Personnes",
+        "reparto": "Répartition",
+        "pagadoCon": "Payé par",
+        "total": "Total",
+        "estado": "Statut"
+      },
+      "estados": {
+        "pagada": "Payée",
+        "anulada": "Annulée"
+      },
+      "liquidadaEl": "réglée le {fecha}",
+      "anuladaEl": "annulée le {fecha}",
+      "efectivoCaja": "Espèces · Caisse {caja}",
+      "egreso": "Sortie {numero}",
+      "egresoAnulado": "Sortie annulée",
+      "referencias": "Réf. {refs}",
+      "personasN": "{count, plural, one {# personne} other {# personnes}}"
+    },
+    "liquidar": {
+      "titulo": "Répartir les pourboires",
+      "descripcionPaso1": "{sucursal} · {caja}",
+      "descripcion": "{periodo} · {sucursal} · {personas, plural, one {# personne} other {# personnes}} · {monto}",
+      "cajaAbierta": "Caisse {caja} ouverte",
+      "sinCaja": "aucune caisse ouverte",
+      "eligeSucursal": "Choisissez une succursale dans la barre supérieure pour répartir.",
+      "cancelar": "Annuler",
+      "atras": "Retour",
+      "siguienteReparto": "Suivant · Comment répartir",
+      "continuar": "Continuer",
+      "confirmar": "Répartir {monto}",
+      "liquidando": "Répartition…",
+      "errorCarga": "Impossible de charger les pourboires à répartir.",
+      "pasos": {
+        "etiqueta": "Étapes de la répartition",
+        "que": "Ce qui est réparti",
+        "queResumen": "{count, plural, one {# pourboire} other {{n} pourboires}} · {monto}",
+        "reparto": "Comment répartir",
+        "repartoResumen": "À qui a servi",
+        "repartoConAjustes": "{reparto} · {count, plural, one {# ajustement} other {# ajustements}}",
+        "pago": "Comment payer",
+        "pendiente": "En attente",
+        "efectivoDeCaja": "Espèces de la caisse {caja}"
+      },
+      "periodo": "Période",
+      "periodoAyuda": "Jours de l’organisation.",
+      "persona": "Personne",
+      "personaAyuda": "Personnes avec des pourboires en attente.",
+      "todasPersonas": "Toutes les personnes",
+      "medio": "Moyen",
+      "medioAyuda": "Les pourboires par carte sont arrivés à la banque.",
+      "medios": {
+        "todos": "Espèces et carte",
+        "efectivo": "Espèces seulement",
+        "banco": "Carte et en ligne"
+      },
+      "todas": "Tous ({n} sur {total} sélectionnés)",
+      "sinPropinas": "Aucun pourboire à répartir sur cette période.",
+      "ventaSinCerrar": "vente non clôturée",
+      "efectivo": "Espèces (sortent de la caisse)",
+      "efectivoSaleDe": "Espèces (sortent de la caisse {caja})",
+      "banco": "Carte et commandes web (arrivés à la banque)",
+      "totalALiquidar": "Total à répartir",
+      "ventasAbiertas": "{count, plural, one {La vente {venta} est encore ouverte : son pourboire se répartira une fois encaissée.} other {Il y a # ventes ouvertes (comme {venta}) : leurs pourboires se répartiront une fois encaissées.}}",
+      "reparto": "Mode de répartition",
+      "porcentajesNoSuman": "Les parts font {pct} % : elles doivent faire 100 %.",
+      "columnas": {
+        "persona": "Personne",
+        "base": "Base",
+        "participacion": "Part",
+        "calculado": "Calculé",
+        "ajuste": "Ajustement",
+        "aPagar": "À payer"
+      },
+      "participacionDe": "Part de {persona}",
+      "ajusteDe": "Ajustement de {persona}",
+      "agregarAlPozo": "Ajouter à la cagnotte",
+      "agregarAlPozoPlaceholder": "Choisissez une personne de la succursale",
+      "motivoAjuste": "Motif de l’ajustement",
+      "motivoAjusteAyuda": "Obligatoire quand un montant est ajusté à la main.",
+      "motivoCorto": "Saisissez au moins 3 caractères.",
+      "ajustesNoSuman": "Les ajustements font {monto} : ils doivent faire zéro.",
+      "totalPropinas": "Total des pourboires",
+      "ajustesSumanCero": "Ajustements (font zéro)",
+      "aPagar": "À payer",
+      "pago": {
+        "efectivo": "Espèces de la caisse ouverte",
+        "efectivoDetalle": "Caisse {caja} · ouverte par {persona} · espèces attendues {esperado}. Sort comme sortie « Répartition des pourboires ».",
+        "esperadoOculto": "masqué (clôture à l’aveugle)",
+        "recomendado": "Recommandé",
+        "sinCaja": "Aucune caisse ouverte dans cette succursale.",
+        "sinCajaTitulo": "Pour payer en espèces, ouvrez la caisse",
+        "sinCajaDescripcion": "Les espèces sortent de la caisse ouverte, comme pour les remboursements et les encaissements.",
+        "abrirCaja": "Ouvrir la caisse",
+        "transferencia": "Virement",
+        "transferenciaDetalle": "Un par personne ; la référence de chacun est enregistrée.",
+        "referenciaDe": "Référence · {persona} ({monto})",
+        "nomina": "Avec la paie",
+        "nominaDetalle": "Ajouté comme revenu non salarial à la prochaine paie (module RH).",
+        "requiereHrm": "Nécessite RH",
+        "notaEfectivo": "Les pourboires par carte sont déjà à la banque : les espèces qui sortent de la caisse les compensent. Un justificatif à signer est généré.",
+        "notaTransferencia": "Aucune espèce ne sort de la caisse : le reclassement de la caisse vers la banque et le justificatif à signer sont enregistrés.",
+        "imprimir": "Imprimer le justificatif à faire signer par chaque personne"
+      }
+    },
+    "medios": {
+      "efectivo": "Espèces",
+      "transferencia": "Virement",
+      "nomina": "Paie",
+      "sin_pago": "Sans paiement"
+    },
+    "motivos": {
+      "eligeSucursal": "Choisissez une succursale dans la barre supérieure",
+      "nadaQueExportar": "Aucun pourboire dans la liste",
+      "sinPermisoAnular": "Il vous faut le droit d’annuler au point de vente",
+      "sinPermisoAnularLiquidacion": "Il vous faut les droits de répartir les pourboires et d’annuler",
+      "sinPermisoLiquidar": "Il vous faut le droit « Répartir les pourboires »",
+      "sinPermisoRegistrar": "Il vous faut le droit de vendre au point de vente",
+      "ventaAbierta": "La vente n’est pas encore encaissée"
+    },
+    "origenes": {
+      "domicilio": "Livraison",
+      "mostrador": "Comptoir",
+      "web": "Commande web"
+    },
+    "pagina": {
+      "titulo": "Pourboires",
+      "migaPos": "PDV",
+      "actualizar": "Actualiser",
+      "nueva": "Nouveau pourboire",
+      "liquidar": "Répartir ({n})",
+      "liquidarMovil": "{count, plural, one {Répartir # pourboire} other {Répartir # pourboires}} · {monto}",
+      "exportar": "Exporter",
+      "dineroTerceros": "Voir dans Argent de tiers",
+      "todasSucursales": "Toutes les succursales",
+      "todasLasFechas": "toutes les dates",
+      "sustantivo": {
+        "singular": "pourboire",
+        "plural": "pourboires"
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Vues des pourboires",
+      "por_liquidar": "À répartir",
+      "liquidaciones": "Répartitions",
+      "anuladas": "Annulés",
+      "todas": "Tous"
+    },
+    "porPersona": {
+      "titulo": "Par personne",
+      "liquidarTodos": "Tout répartir",
+      "propinas": "{count, plural, one {# pourboire} other {# pourboires}}",
+      "total": "Total à répartir"
+    },
+    "repartos": {
+      "atendio": "À qui a servi",
+      "horas": "Cagnotte par heures",
+      "porcentaje": "Cagnotte par pourcentage"
+    },
+    "seleccion": {
+      "liquidar": "Répartir · {monto}",
+      "resumen": "{count, plural, one {# sélectionné} other {# sélectionnés}} · {monto}"
+    },
+    "tabla": {
+      "manual": "Saisie manuelle",
+      "sinDocumento": "Sans document",
+      "sinNumero": "Sans numéro"
+    },
+    "vacios": {
+      "titulo": "Aucun pourboire à répartir",
+      "descripcion": "Les pourboires apparaissent ici quand ils sont encaissés au point de vente, aux tables ou dans les commandes web.",
+      "anuladasTitulo": "Aucun pourboire annulé",
+      "anuladasDescripcion": "Les pourboires annulés restent ici, avec leur motif.",
+      "liquidacionesTitulo": "Pas encore de répartitions",
+      "liquidacionesDescripcion": "Chaque répartition garde un document LIQ avec sa répartition, son paiement et son justificatif.",
+      "sinResultados": "Aucun pourboire ne correspond à la recherche ou aux filtres.",
+      "error": "Impossible de charger les pourboires",
+      "sinPermisoTitulo": "Vous n’avez pas accès aux Pourboires",
+      "sinPermisoDescripcion": "Demandez à un administrateur le droit de voir le point de vente ou de répartir les pourboires."
     }
   },
   "posCargosServicio": {

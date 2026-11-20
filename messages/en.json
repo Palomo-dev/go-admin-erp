@@ -18128,7 +18128,17 @@
       "cantidad": "Tips"
     },
     "acciones": {
-      "anular": "Void"
+      "anular": "Void with reason",
+      "anularCorto": "Void",
+      "anularLiquidacion": "Void settlement",
+      "corregir": "Correct amount",
+      "imprimir": "Print receipt",
+      "reasignar": "Reassign person",
+      "sinPago": "Mark settled without payment",
+      "verDetalle": "View details",
+      "verLiquidacion": "View settlement {codigo}",
+      "verMesa": "View table {mesa}",
+      "verVenta": "View sale {numero}"
     },
     "anular": {
       "titulo": "Void tip?",
@@ -18150,7 +18160,10 @@
       "distribuidas": "{count, plural, one {# tip marked as distributed} other {# tips marked as distributed}}",
       "ningunaDistribuida": "There were no pending tips to distribute: they were already distributed or voided.",
       "actualizada": "Tip updated successfully",
-      "registrada": "Tip recorded successfully"
+      "registrada": "Tip recorded successfully",
+      "liquidada": "Settlement {codigo} recorded",
+      "liquidacionAnulada": "Settlement {codigo} voided",
+      "reasignada": "Tip reassigned"
     },
     "errores": {
       "SIN_PERMISO": "You do not have permission for this action.",
@@ -18160,7 +18173,23 @@
       "PROPINA_INEXISTENTE": "The tip does not exist in this organization.",
       "PERIODO_CERRADO": "Today's accounting period is closed: the reversal cannot be posted.",
       "SIN_SUCURSAL": "Select a branch to record the tip.",
-      "DESCONOCIDO": "The operation could not be completed. Please try again."
+      "DESCONOCIDO": "The operation could not be completed. Please try again.",
+      "MOTIVO_REQUERIDO": "Enter the reason (at least 3 characters).",
+      "MOTIVO_AJUSTE_REQUERIDO": "A manually adjusted amount needs a reason.",
+      "SIN_PROPINAS": "Choose at least one tip to settle.",
+      "PROPINAS_NO_DISPONIBLES": "Some tips are no longer pending (someone else settled or voided them). Reload.",
+      "VENTA_ABIERTA": "Some tips belong to sales not yet charged: they can be settled once the sale is charged.",
+      "REPARTO_INVALIDO": "That distribution method is not available yet.",
+      "PORCENTAJES_INVALIDOS": "Shares must add up to 100%.",
+      "PERSONA_INVALIDA": "A person in the distribution is no longer an active member.",
+      "AJUSTES_NO_SUMAN_CERO": "Adjustments must add up to zero: what is taken from one person goes to another.",
+      "AJUSTE_NEGATIVO": "Nobody can end up with a negative amount.",
+      "MEDIO_INVALIDO": "That payment method is not available yet.",
+      "REFERENCIA_REQUERIDA": "Enter the reference of each transfer.",
+      "CAJA_CERRADA": "There is no open register in this branch: open one to pay in cash.",
+      "LIQUIDACION_INEXISTENTE": "The settlement does not exist in this organization.",
+      "SOLICITUD_REQUERIDA": "The request could not be identified. Try again.",
+      "DATOS_INVALIDOS": "Check the filters: one value is not valid."
     },
     "cabecera": {
       "titulo": "Tip Management",
@@ -18222,6 +18251,325 @@
       "pendiente": "Pending",
       "editar": "Edit",
       "marcarDistribuida": "Mark as Distributed"
+    },
+    "anularV2": {
+      "titulo": "Void the {monto} tip",
+      "tituloVarias": "{count, plural, one {Void # tip} other {Void # tips}} for {monto}",
+      "descripcion": "{documento}. A reversing entry is posted; the sale does not change.",
+      "descripcionVarias": "Each tip is voided with its reversing entry; the sales do not change.",
+      "confirmar": "Void tip",
+      "motivo": "Reason",
+      "consecuencia1": "The tip no longer counts in the totals or in what is pending settlement.",
+      "consecuencia2": "If it has a journal entry, its reversal is posted with today's date.",
+      "rapidos": {
+        "duplicada": "Recorded twice",
+        "errorMonto": "Wrong amount",
+        "devuelta": "Returned to the customer",
+        "noEra": "It was not a tip"
+      }
+    },
+    "anularLiquidacion": {
+      "titulo": "Void settlement {codigo}",
+      "descripcion": "It stays in the history as voided, with its reason.",
+      "confirmar": "Void settlement",
+      "consecuenciaCaja": "{monto} goes back into the open register as a re-entry of the payout.",
+      "consecuenciaAsiento": "The settlement's journal entry is reversed, if it has one.",
+      "consecuenciaPropinas": "Its tips go back to “Pending”."
+    },
+    "sinPagoDialogo": {
+      "titulo": "Mark settled without payment ({monto})",
+      "descripcion": "It is recorded as a settlement with no money movement (for example, it was already paid outside). Nothing leaves the register.",
+      "confirmar": "Mark settled",
+      "rapidos": {
+        "pagadaPorFuera": "Already paid outside",
+        "nomina": "Paid through payroll"
+      }
+    },
+    "columnas": {
+      "atendio": "Served by",
+      "cargo": "Position",
+      "documento": "Document",
+      "estado": "Status",
+      "fecha": "Date",
+      "mesa": "Table",
+      "monto": "Amount",
+      "motivo": "Reason",
+      "tipo": "Type"
+    },
+    "detalle": {
+      "titulo": "Settlement",
+      "tituloCodigo": "Settlement {codigo}",
+      "subtitulo": "{periodo} · {sucursal} · settled by {persona} on {fecha}",
+      "noExiste": "This settlement does not exist in your organization",
+      "volver": "Back to settlements",
+      "imprimir": "Print receipt",
+      "avisoAnulada": "Voided on {fecha}: {motivo}",
+      "reparto": "Distribution",
+      "firma": "Signature",
+      "ref": "Ref. {ref}",
+      "motivoAjuste": "Adjustment reason: {motivo}",
+      "incluidas": "Included tips ({count})",
+      "verTodas": "View all {count} tips",
+      "pago": "Payment",
+      "totalPropinas": "Total tips",
+      "efectivo": "In cash",
+      "banco": "By card or online",
+      "ajustes": "Adjustments",
+      "pagado": "Paid",
+      "medio": "Method",
+      "egreso": "Register payout",
+      "reingreso": "Register re-entry",
+      "asiento": "Journal entry",
+      "asientoEnCobro": "Each tip's, when it was charged",
+      "sinAsiento": "No entry",
+      "motivoSinPago": "Reason",
+      "comprobante": "Receipt",
+      "comprobanteFirmas": "{count, plural, one {To be signed by # person} other {To be signed by # people}}",
+      "historialTitulo": "History",
+      "historial": {
+        "liquidada": "Settled by {persona}",
+        "egreso": "Payout {numero} from Register {caja}",
+        "asiento": "Entry {numero}",
+        "anulada": "Voided by {persona}: {motivo}",
+        "reingreso": "Re-entry {numero} into Register {caja}"
+      }
+    },
+    "estados": {
+      "cargando": "Loading…",
+      "reintentar": "Retry",
+      "por_liquidar": "Pending",
+      "liquidada": "Settled",
+      "anulada": "Voided",
+      "ventaAbierta": "Sale not charged"
+    },
+    "filtros": {
+      "buscar": "Search by document, table or person",
+      "buscarLiquidaciones": "Search by number or person",
+      "buscarEtiqueta": "Search tips",
+      "estado": "Status",
+      "medio": "Paid with",
+      "periodo": "Date",
+      "persona": "Person",
+      "tipo": "Type",
+      "todos": "All",
+      "fechaHoy": "Date: today",
+      "fechaChip": "Date: {rango}",
+      "tipoChip": "Type: {tipo}",
+      "personaChip": "Person: {persona}",
+      "verN": "{count, plural, =0 {No results} one {See # result} other {See {n} results}}"
+    },
+    "formularioV2": {
+      "tituloNueva": "New tip",
+      "tituloReasignar": "Reassign person",
+      "tituloCorregir": "Correct amount",
+      "descripcion": "{monto} tip · {persona}",
+      "persona": "Person who served",
+      "guardar": "Save",
+      "motivo": "Reason for the correction",
+      "motivoAyuda": "It is kept in the tip's notes.",
+      "motivoRequerido": "Enter the reason (at least 3 characters).",
+      "notaCorreccion": "[Correction] Previously {antes}: {motivo}"
+    },
+    "kpis": {
+      "etiqueta": "Tips summary",
+      "porLiquidar": "Pending settlement",
+      "porLiquidarDetalle": "{count, plural, =0 {Nothing pending} one {# tip from {personas, plural, one {# person} other {# people}}} other {{n} tips from {personas, plural, one {# person} other {# people}}}}",
+      "liquidadoMes": "Settled in {mes}",
+      "liquidaciones": "{count, plural, =0 {No settlements} one {# settlement} other {# settlements}}",
+      "promedio": "Average tip",
+      "promedioDetalle": "{count, plural, =0 {No tips in the period} one {From # tip} other {From # tips}}",
+      "ventasConPropina": "Sales with a tip",
+      "ventasDetalle": "{con} of {total} sales in the period",
+      "propinas": "Tips",
+      "conPropina": "With tip"
+    },
+    "liquidaciones": {
+      "titulo": "Settlements",
+      "sustantivo": {
+        "singular": "settlement",
+        "plural": "settlements"
+      },
+      "columnas": {
+        "numero": "Number",
+        "periodo": "Period",
+        "personas": "People",
+        "reparto": "Distribution",
+        "pagadoCon": "Paid with",
+        "total": "Total",
+        "estado": "Status"
+      },
+      "estados": {
+        "pagada": "Paid",
+        "anulada": "Voided"
+      },
+      "liquidadaEl": "settled on {fecha}",
+      "anuladaEl": "voided on {fecha}",
+      "efectivoCaja": "Cash · Register {caja}",
+      "egreso": "Payout {numero}",
+      "egresoAnulado": "Payout voided",
+      "referencias": "Ref. {refs}",
+      "personasN": "{count, plural, one {# person} other {# people}}"
+    },
+    "liquidar": {
+      "titulo": "Settle tips",
+      "descripcionPaso1": "{sucursal} · {caja}",
+      "descripcion": "{periodo} · {sucursal} · {personas, plural, one {# person} other {# people}} · {monto}",
+      "cajaAbierta": "Register {caja} open",
+      "sinCaja": "no open register",
+      "eligeSucursal": "Choose a branch in the top bar to settle.",
+      "cancelar": "Cancel",
+      "atras": "Back",
+      "siguienteReparto": "Next · How it is split",
+      "continuar": "Continue",
+      "confirmar": "Settle {monto}",
+      "liquidando": "Settling…",
+      "errorCarga": "Pending tips could not be loaded.",
+      "pasos": {
+        "etiqueta": "Settlement steps",
+        "que": "What is settled",
+        "queResumen": "{count, plural, one {# tip} other {{n} tips}} · {monto}",
+        "reparto": "How it is split",
+        "repartoResumen": "To who served",
+        "repartoConAjustes": "{reparto} · {count, plural, one {# adjustment} other {# adjustments}}",
+        "pago": "How it is paid",
+        "pendiente": "Pending",
+        "efectivoDeCaja": "Cash from Register {caja}"
+      },
+      "periodo": "Period",
+      "periodoAyuda": "Organization days.",
+      "persona": "Person",
+      "personaAyuda": "People with pending tips.",
+      "todasPersonas": "Everyone",
+      "medio": "Method",
+      "medioAyuda": "Card tips went into the bank.",
+      "medios": {
+        "todos": "Cash and card",
+        "efectivo": "Cash only",
+        "banco": "Card and online"
+      },
+      "todas": "All ({n} of {total} selected)",
+      "sinPropinas": "There are no pending tips in this period.",
+      "ventaSinCerrar": "sale still open",
+      "efectivo": "Cash (leaves the register)",
+      "efectivoSaleDe": "Cash (leaves Register {caja})",
+      "banco": "Card and web orders (went into the bank)",
+      "totalALiquidar": "Total to settle",
+      "ventasAbiertas": "{count, plural, one {Sale {venta} is still open: its tip can be settled once it is charged.} other {There are # open sales (such as {venta}): their tips can be settled once they are charged.}}",
+      "reparto": "Distribution method",
+      "porcentajesNoSuman": "Shares add up to {pct}%: they must add up to 100%.",
+      "columnas": {
+        "persona": "Person",
+        "base": "Base",
+        "participacion": "Share",
+        "calculado": "Calculated",
+        "ajuste": "Adjustment",
+        "aPagar": "To pay"
+      },
+      "participacionDe": "{persona}'s share",
+      "ajusteDe": "{persona}'s adjustment",
+      "agregarAlPozo": "Add to the pool",
+      "agregarAlPozoPlaceholder": "Choose a person from the branch",
+      "motivoAjuste": "Adjustment reason",
+      "motivoAjusteAyuda": "Required when an amount is adjusted manually.",
+      "motivoCorto": "Enter at least 3 characters.",
+      "ajustesNoSuman": "Adjustments add up to {monto}: they must add up to zero.",
+      "totalPropinas": "Total tips",
+      "ajustesSumanCero": "Adjustments (add up to zero)",
+      "aPagar": "To pay",
+      "pago": {
+        "efectivo": "Cash from the open register",
+        "efectivoDetalle": "Register {caja} · opened by {persona} · expected cash {esperado}. It leaves as a “Tip settlement” payout.",
+        "esperadoOculto": "hidden (blind close)",
+        "recomendado": "Recommended",
+        "sinCaja": "There is no open register in this branch.",
+        "sinCajaTitulo": "To pay in cash, open the register",
+        "sinCajaDescripcion": "Cash leaves as a payout from the open register, just like refunds and payments.",
+        "abrirCaja": "Open register",
+        "transferencia": "Transfer",
+        "transferenciaDetalle": "One per person; each one's reference is recorded.",
+        "referenciaDe": "Reference · {persona} ({monto})",
+        "nomina": "Through payroll",
+        "nominaDetalle": "Added as non-salary income in the next pay period (HRM module).",
+        "requiereHrm": "Requires HRM",
+        "notaEfectivo": "Card tips already went into the bank: the cash leaving the register offsets them. A receipt to sign is generated.",
+        "notaTransferencia": "No cash leaves the register: the reclassification from cash to bank and the receipt to sign are recorded.",
+        "imprimir": "Print the receipt for each person to sign"
+      }
+    },
+    "medios": {
+      "efectivo": "Cash",
+      "transferencia": "Transfer",
+      "nomina": "Payroll",
+      "sin_pago": "No payment"
+    },
+    "motivos": {
+      "eligeSucursal": "Choose a branch in the top bar",
+      "nadaQueExportar": "There are no tips in the list",
+      "sinPermisoAnular": "You need the POS void permission",
+      "sinPermisoAnularLiquidacion": "You need the permissions to settle tips and to void",
+      "sinPermisoLiquidar": "You need the “Settle tips” permission",
+      "sinPermisoRegistrar": "You need the POS sell permission",
+      "ventaAbierta": "The sale has not been charged yet"
+    },
+    "origenes": {
+      "domicilio": "Delivery",
+      "mostrador": "Counter",
+      "web": "Web order"
+    },
+    "pagina": {
+      "titulo": "Tips",
+      "migaPos": "POS",
+      "actualizar": "Refresh",
+      "nueva": "New tip",
+      "liquidar": "Settle ({n})",
+      "liquidarMovil": "{count, plural, one {Settle # tip} other {Settle # tips}} · {monto}",
+      "exportar": "Export",
+      "dineroTerceros": "View in Third-party money",
+      "todasSucursales": "All branches",
+      "todasLasFechas": "all dates",
+      "sustantivo": {
+        "singular": "tip",
+        "plural": "tips"
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Tip views",
+      "por_liquidar": "Pending",
+      "liquidaciones": "Settlements",
+      "anuladas": "Voided",
+      "todas": "All"
+    },
+    "porPersona": {
+      "titulo": "By person",
+      "liquidarTodos": "Settle everyone",
+      "propinas": "{count, plural, one {# tip} other {# tips}}",
+      "total": "Total pending"
+    },
+    "repartos": {
+      "atendio": "To who served",
+      "horas": "Pool by hours",
+      "porcentaje": "Pool by percentage"
+    },
+    "seleccion": {
+      "liquidar": "Settle · {monto}",
+      "resumen": "{count, plural, one {# selected} other {# selected}} · {monto}"
+    },
+    "tabla": {
+      "manual": "Manual entry",
+      "sinDocumento": "No document",
+      "sinNumero": "No number"
+    },
+    "vacios": {
+      "titulo": "No pending tips",
+      "descripcion": "Tips show up here when they are charged at the POS, at tables or in web orders.",
+      "anuladasTitulo": "No voided tips",
+      "anuladasDescripcion": "Voided tips stay here, with their reason.",
+      "liquidacionesTitulo": "No settlements yet",
+      "liquidacionesDescripcion": "Every time you settle tips, a LIQ document is kept with its distribution, payment and receipt.",
+      "sinResultados": "No tip matches the search or the filters.",
+      "error": "Tips could not be loaded",
+      "sinPermisoTitulo": "You do not have access to Tips",
+      "sinPermisoDescripcion": "Ask an administrator for the permission to view the POS or to settle tips."
     }
   },
   "posCargosServicio": {

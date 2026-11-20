@@ -13481,7 +13481,17 @@
       "cantidad": "Gorjetas"
     },
     "acciones": {
-      "anular": "Anular"
+      "anular": "Anular com motivo",
+      "anularCorto": "Anular",
+      "anularLiquidacion": "Anular liquidação",
+      "corregir": "Corrigir valor",
+      "imprimir": "Imprimir comprovante",
+      "reasignar": "Reatribuir pessoa",
+      "sinPago": "Marcar liquidada sem pagamento",
+      "verDetalle": "Ver detalhe",
+      "verLiquidacion": "Ver liquidação {codigo}",
+      "verMesa": "Ver mesa {mesa}",
+      "verVenta": "Ver venda {numero}"
     },
     "anular": {
       "titulo": "Anular gorjeta?",
@@ -13503,7 +13513,10 @@
       "distribuidas": "{count, plural, one {# gorjeta marcada como distribuída} other {# gorjetas marcadas como distribuídas}}",
       "ningunaDistribuida": "Não havia gorjetas pendentes para distribuir: já estavam distribuídas ou anuladas.",
       "actualizada": "Gorjeta atualizada com sucesso",
-      "registrada": "Gorjeta registrada com sucesso"
+      "registrada": "Gorjeta registrada com sucesso",
+      "liquidada": "Liquidação {codigo} registrada",
+      "liquidacionAnulada": "Liquidação {codigo} anulada",
+      "reasignada": "Gorjeta reatribuída"
     },
     "errores": {
       "SIN_PERMISO": "Você não tem permissão para esta ação.",
@@ -13513,7 +13526,23 @@
       "PROPINA_INEXISTENTE": "A gorjeta não existe nesta organização.",
       "PERIODO_CERRADO": "O período contábil de hoje está fechado: não é possível registrar o estorno.",
       "SIN_SUCURSAL": "Selecione uma filial para registrar a gorjeta.",
-      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente.",
+      "MOTIVO_REQUERIDO": "Escreva o motivo (pelo menos 3 caracteres).",
+      "MOTIVO_AJUSTE_REQUERIDO": "Um valor ajustado à mão precisa de motivo.",
+      "SIN_PROPINAS": "Escolha pelo menos uma gorjeta para liquidar.",
+      "PROPINAS_NO_DISPONIBLES": "Algumas gorjetas já não estão a liquidar (outra pessoa as liquidou ou anulou). Recarregue.",
+      "VENTA_ABIERTA": "Há gorjetas de vendas ainda não cobradas: serão liquidadas quando a venda for cobrada.",
+      "REPARTO_INVALIDO": "Essa forma de divisão ainda não está disponível.",
+      "PORCENTAJES_INVALIDOS": "As participações devem somar 100 %.",
+      "PERSONA_INVALIDA": "Uma pessoa da divisão já não é membro ativo.",
+      "AJUSTES_NO_SUMAN_CERO": "Os ajustes devem somar zero: o que se tira de uma pessoa vai para outra.",
+      "AJUSTE_NEGATIVO": "Ninguém pode ficar com valor negativo.",
+      "MEDIO_INVALIDO": "Esse meio de pagamento ainda não está disponível.",
+      "REFERENCIA_REQUERIDA": "Escreva a referência de cada transferência.",
+      "CAJA_CERRADA": "Não há caixa aberto nesta filial: abra-o para pagar em dinheiro.",
+      "LIQUIDACION_INEXISTENTE": "A liquidação não existe nesta organização.",
+      "SOLICITUD_REQUERIDA": "Não foi possível identificar a solicitação. Tente novamente.",
+      "DATOS_INVALIDOS": "Revise os filtros: há um valor inválido."
     },
     "cabecera": {
       "titulo": "Gestão de gorjetas",
@@ -13575,6 +13604,325 @@
       "pendiente": "Pendente",
       "editar": "Editar",
       "marcarDistribuida": "Marcar como distribuída"
+    },
+    "anularV2": {
+      "titulo": "Anular a gorjeta de {monto}",
+      "tituloVarias": "{count, plural, one {Anular # gorjeta} other {Anular # gorjetas}} por {monto}",
+      "descripcion": "{documento}. É gerado o estorno contábil; a venda não muda.",
+      "descripcionVarias": "Cada gorjeta é anulada com seu estorno; as vendas não mudam.",
+      "confirmar": "Anular gorjeta",
+      "motivo": "Motivo",
+      "consecuencia1": "A gorjeta deixa de contar nos totais e no que falta liquidar.",
+      "consecuencia2": "Se tiver lançamento contábil, o estorno é registrado com a data de hoje.",
+      "rapidos": {
+        "duplicada": "Registrada duas vezes",
+        "errorMonto": "Valor errado",
+        "devuelta": "Devolvida ao cliente",
+        "noEra": "Não era gorjeta"
+      }
+    },
+    "anularLiquidacion": {
+      "titulo": "Anular a liquidação {codigo}",
+      "descripcion": "Fica no histórico como anulada, com seu motivo.",
+      "confirmar": "Anular liquidação",
+      "consecuenciaCaja": "Entram {monto} no caixa aberto como reingresso da saída.",
+      "consecuenciaAsiento": "O lançamento da liquidação é estornado, se houver.",
+      "consecuenciaPropinas": "Suas gorjetas voltam para «A liquidar»."
+    },
+    "sinPagoDialogo": {
+      "titulo": "Marcar liquidada sem pagamento ({monto})",
+      "descripcion": "Fica como uma liquidação sem movimento de dinheiro (por exemplo, já paga por fora). Nada sai do caixa.",
+      "confirmar": "Marcar liquidada",
+      "rapidos": {
+        "pagadaPorFuera": "Já foi paga por fora",
+        "nomina": "Paga na folha de pagamento"
+      }
+    },
+    "columnas": {
+      "atendio": "Atendeu",
+      "cargo": "Cargo",
+      "documento": "Documento",
+      "estado": "Status",
+      "fecha": "Data",
+      "mesa": "Mesa",
+      "monto": "Valor",
+      "motivo": "Motivo",
+      "tipo": "Tipo"
+    },
+    "detalle": {
+      "titulo": "Liquidação",
+      "tituloCodigo": "Liquidação {codigo}",
+      "subtitulo": "{periodo} · {sucursal} · liquidada por {persona} em {fecha}",
+      "noExiste": "Esta liquidação não existe na sua organização",
+      "volver": "Voltar às liquidações",
+      "imprimir": "Imprimir comprovante",
+      "avisoAnulada": "Anulada em {fecha}: {motivo}",
+      "reparto": "Divisão",
+      "firma": "Assinatura",
+      "ref": "Ref. {ref}",
+      "motivoAjuste": "Motivo do ajuste: {motivo}",
+      "incluidas": "Gorjetas incluídas ({count})",
+      "verTodas": "Ver as {count} gorjetas",
+      "pago": "Pagamento",
+      "totalPropinas": "Total de gorjetas",
+      "efectivo": "Em dinheiro",
+      "banco": "Com cartão ou online",
+      "ajustes": "Ajustes",
+      "pagado": "Pago",
+      "medio": "Meio",
+      "egreso": "Saída de caixa",
+      "reingreso": "Reingresso no caixa",
+      "asiento": "Lançamento contábil",
+      "asientoEnCobro": "O de cada gorjeta, ao cobrá-la",
+      "sinAsiento": "Sem lançamento",
+      "motivoSinPago": "Motivo",
+      "comprobante": "Comprovante",
+      "comprobanteFirmas": "{count, plural, one {Para assinatura de # pessoa} other {Para assinatura de # pessoas}}",
+      "historialTitulo": "Histórico",
+      "historial": {
+        "liquidada": "Liquidada por {persona}",
+        "egreso": "Saída {numero} no Caixa {caja}",
+        "asiento": "Lançamento {numero}",
+        "anulada": "Anulada por {persona}: {motivo}",
+        "reingreso": "Reingresso {numero} no Caixa {caja}"
+      }
+    },
+    "estados": {
+      "cargando": "Carregando…",
+      "reintentar": "Tentar novamente",
+      "por_liquidar": "A liquidar",
+      "liquidada": "Liquidada",
+      "anulada": "Anulada",
+      "ventaAbierta": "Venda não cobrada"
+    },
+    "filtros": {
+      "buscar": "Buscar por documento, mesa ou pessoa",
+      "buscarLiquidaciones": "Buscar por número ou pessoa",
+      "buscarEtiqueta": "Buscar gorjetas",
+      "estado": "Status",
+      "medio": "Pago com",
+      "periodo": "Data",
+      "persona": "Pessoa",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "fechaHoy": "Data: hoje",
+      "fechaChip": "Data: {rango}",
+      "tipoChip": "Tipo: {tipo}",
+      "personaChip": "Pessoa: {persona}",
+      "verN": "{count, plural, =0 {Sem resultados} one {Ver # resultado} other {Ver {n} resultados}}"
+    },
+    "formularioV2": {
+      "tituloNueva": "Nova gorjeta",
+      "tituloReasignar": "Reatribuir pessoa",
+      "tituloCorregir": "Corrigir valor",
+      "descripcion": "Gorjeta de {monto} · {persona}",
+      "persona": "Pessoa que atendeu",
+      "guardar": "Salvar",
+      "motivo": "Motivo da correção",
+      "motivoAyuda": "Fica nas notas da gorjeta.",
+      "motivoRequerido": "Escreva o motivo (pelo menos 3 caracteres).",
+      "notaCorreccion": "[Correção] Antes {antes}: {motivo}"
+    },
+    "kpis": {
+      "etiqueta": "Resumo de gorjetas",
+      "porLiquidar": "A liquidar",
+      "porLiquidarDetalle": "{count, plural, =0 {Nada pendente} one {# gorjeta de {personas, plural, one {# pessoa} other {# pessoas}}} other {{n} gorjetas de {personas, plural, one {# pessoa} other {# pessoas}}}}",
+      "liquidadoMes": "Liquidado em {mes}",
+      "liquidaciones": "{count, plural, =0 {Sem liquidações} one {# liquidação} other {# liquidações}}",
+      "promedio": "Gorjeta média",
+      "promedioDetalle": "{count, plural, =0 {Sem gorjetas no período} one {De # gorjeta} other {De # gorjetas}}",
+      "ventasConPropina": "Vendas com gorjeta",
+      "ventasDetalle": "{con} de {total} vendas do período",
+      "propinas": "Gorjetas",
+      "conPropina": "Com gorjeta"
+    },
+    "liquidaciones": {
+      "titulo": "Liquidações",
+      "sustantivo": {
+        "singular": "liquidação",
+        "plural": "liquidações"
+      },
+      "columnas": {
+        "numero": "Número",
+        "periodo": "Período",
+        "personas": "Pessoas",
+        "reparto": "Divisão",
+        "pagadoCon": "Pago com",
+        "total": "Total",
+        "estado": "Status"
+      },
+      "estados": {
+        "pagada": "Paga",
+        "anulada": "Anulada"
+      },
+      "liquidadaEl": "liquidada em {fecha}",
+      "anuladaEl": "anulada em {fecha}",
+      "efectivoCaja": "Dinheiro · Caixa {caja}",
+      "egreso": "Saída {numero}",
+      "egresoAnulado": "Saída anulada",
+      "referencias": "Ref. {refs}",
+      "personasN": "{count, plural, one {# pessoa} other {# pessoas}}"
+    },
+    "liquidar": {
+      "titulo": "Liquidar gorjetas",
+      "descripcionPaso1": "{sucursal} · {caja}",
+      "descripcion": "{periodo} · {sucursal} · {personas, plural, one {# pessoa} other {# pessoas}} · {monto}",
+      "cajaAbierta": "Caixa {caja} aberto",
+      "sinCaja": "sem caixa aberto",
+      "eligeSucursal": "Escolha uma filial na barra superior para liquidar.",
+      "cancelar": "Cancelar",
+      "atras": "Voltar",
+      "siguienteReparto": "Próximo · Como se divide",
+      "continuar": "Continuar",
+      "confirmar": "Liquidar {monto}",
+      "liquidando": "Liquidando…",
+      "errorCarga": "Não foi possível carregar as gorjetas a liquidar.",
+      "pasos": {
+        "etiqueta": "Etapas da liquidação",
+        "que": "O que se liquida",
+        "queResumen": "{count, plural, one {# gorjeta} other {{n} gorjetas}} · {monto}",
+        "reparto": "Como se divide",
+        "repartoResumen": "Para quem atendeu",
+        "repartoConAjustes": "{reparto} · {count, plural, one {# ajuste} other {# ajustes}}",
+        "pago": "Como se paga",
+        "pendiente": "Pendente",
+        "efectivoDeCaja": "Dinheiro do Caixa {caja}"
+      },
+      "periodo": "Período",
+      "periodoAyuda": "Dias da organização.",
+      "persona": "Pessoa",
+      "personaAyuda": "Pessoas com gorjetas pendentes.",
+      "todasPersonas": "Todas as pessoas",
+      "medio": "Meio",
+      "medioAyuda": "O de cartão entrou no banco.",
+      "medios": {
+        "todos": "Dinheiro e cartão",
+        "efectivo": "Só dinheiro",
+        "banco": "Cartão e online"
+      },
+      "todas": "Todas ({n} de {total} selecionadas)",
+      "sinPropinas": "Não há gorjetas a liquidar neste período.",
+      "ventaSinCerrar": "venda não fechada",
+      "efectivo": "Dinheiro (sai do caixa)",
+      "efectivoSaleDe": "Dinheiro (sai do Caixa {caja})",
+      "banco": "Cartão e pedidos web (entrou no banco)",
+      "totalALiquidar": "Total a liquidar",
+      "ventasAbiertas": "{count, plural, one {A venda {venta} continua aberta: sua gorjeta poderá ser liquidada quando for cobrada.} other {Há # vendas abertas (como {venta}): suas gorjetas poderão ser liquidadas quando forem cobradas.}}",
+      "reparto": "Forma de divisão",
+      "porcentajesNoSuman": "As participações somam {pct} %: devem somar 100 %.",
+      "columnas": {
+        "persona": "Pessoa",
+        "base": "Base",
+        "participacion": "Participação",
+        "calculado": "Calculado",
+        "ajuste": "Ajuste",
+        "aPagar": "A pagar"
+      },
+      "participacionDe": "Participação de {persona}",
+      "ajusteDe": "Ajuste de {persona}",
+      "agregarAlPozo": "Adicionar ao fundo",
+      "agregarAlPozoPlaceholder": "Escolha uma pessoa da filial",
+      "motivoAjuste": "Motivo do ajuste",
+      "motivoAjusteAyuda": "Obrigatório quando um valor é ajustado à mão.",
+      "motivoCorto": "Escreva pelo menos 3 caracteres.",
+      "ajustesNoSuman": "Os ajustes somam {monto}: devem somar zero.",
+      "totalPropinas": "Total de gorjetas",
+      "ajustesSumanCero": "Ajustes (somam zero)",
+      "aPagar": "A pagar",
+      "pago": {
+        "efectivo": "Dinheiro do caixa aberto",
+        "efectivoDetalle": "Caixa {caja} · aberto por {persona} · dinheiro esperado {esperado}. Sai como saída «Liquidação de gorjetas».",
+        "esperadoOculto": "oculto (fechamento cego)",
+        "recomendado": "Recomendado",
+        "sinCaja": "Não há caixa aberto nesta filial.",
+        "sinCajaTitulo": "Para pagar em dinheiro é preciso abrir o caixa",
+        "sinCajaDescripcion": "O dinheiro sai como saída do caixa aberto, igual a devoluções e cobranças.",
+        "abrirCaja": "Abrir caixa",
+        "transferencia": "Transferência",
+        "transferenciaDetalle": "Uma por pessoa; registra-se a referência de cada uma.",
+        "referenciaDe": "Referência · {persona} ({monto})",
+        "nomina": "Na folha de pagamento",
+        "nominaDetalle": "Somada como rendimento não salarial na próxima quinzena (módulo RH).",
+        "requiereHrm": "Requer RH",
+        "notaEfectivo": "As gorjetas com cartão já entraram no banco: o dinheiro que sai do caixa as compensa. Gera-se o comprovante para assinatura.",
+        "notaTransferencia": "Não sai dinheiro do caixa: registra-se a reclassificação de caixa para bancos e o comprovante para assinatura.",
+        "imprimir": "Imprimir o comprovante para assinatura de cada pessoa"
+      }
+    },
+    "medios": {
+      "efectivo": "Dinheiro",
+      "transferencia": "Transferência",
+      "nomina": "Folha de pagamento",
+      "sin_pago": "Sem pagamento"
+    },
+    "motivos": {
+      "eligeSucursal": "Escolha uma filial na barra superior",
+      "nadaQueExportar": "Não há gorjetas na lista",
+      "sinPermisoAnular": "Você precisa da permissão para anular no PDV",
+      "sinPermisoAnularLiquidacion": "Você precisa das permissões de liquidar gorjetas e de anular",
+      "sinPermisoLiquidar": "Você precisa da permissão «Liquidar gorjetas»",
+      "sinPermisoRegistrar": "Você precisa da permissão para vender no PDV",
+      "ventaAbierta": "A venda ainda não foi cobrada"
+    },
+    "origenes": {
+      "domicilio": "Entrega",
+      "mostrador": "Balcão",
+      "web": "Pedido web"
+    },
+    "pagina": {
+      "titulo": "Gorjetas",
+      "migaPos": "PDV",
+      "actualizar": "Atualizar",
+      "nueva": "Nova gorjeta",
+      "liquidar": "Liquidar ({n})",
+      "liquidarMovil": "{count, plural, one {Liquidar # gorjeta} other {Liquidar # gorjetas}} · {monto}",
+      "exportar": "Exportar",
+      "dineroTerceros": "Ver em Dinheiro de terceiros",
+      "todasSucursales": "Todas as filiais",
+      "todasLasFechas": "todas as datas",
+      "sustantivo": {
+        "singular": "gorjeta",
+        "plural": "gorjetas"
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Vistas de gorjetas",
+      "por_liquidar": "A liquidar",
+      "liquidaciones": "Liquidações",
+      "anuladas": "Anuladas",
+      "todas": "Todas"
+    },
+    "porPersona": {
+      "titulo": "Por pessoa",
+      "liquidarTodos": "Liquidar todos",
+      "propinas": "{count, plural, one {# gorjeta} other {# gorjetas}}",
+      "total": "Total a liquidar"
+    },
+    "repartos": {
+      "atendio": "Para quem atendeu",
+      "horas": "Fundo por horas",
+      "porcentaje": "Fundo por porcentagem"
+    },
+    "seleccion": {
+      "liquidar": "Liquidar · {monto}",
+      "resumen": "{count, plural, one {# selecionada} other {# selecionadas}} · {monto}"
+    },
+    "tabla": {
+      "manual": "Registro manual",
+      "sinDocumento": "Sem documento",
+      "sinNumero": "Sem número"
+    },
+    "vacios": {
+      "titulo": "Não há gorjetas a liquidar",
+      "descripcion": "As gorjetas aparecem aqui quando são cobradas no PDV, nas mesas ou nos pedidos web.",
+      "anuladasTitulo": "Não há gorjetas anuladas",
+      "anuladasDescripcion": "Aqui ficam as gorjetas anuladas, com seu motivo.",
+      "liquidacionesTitulo": "Ainda não há liquidações",
+      "liquidacionesDescripcion": "Cada vez que você liquida gorjetas fica um documento LIQ com sua divisão, pagamento e comprovante.",
+      "sinResultados": "Nenhuma gorjeta corresponde à busca ou aos filtros.",
+      "error": "Não foi possível carregar as gorjetas",
+      "sinPermisoTitulo": "Você não tem acesso a Gorjetas",
+      "sinPermisoDescripcion": "Peça a um administrador a permissão para ver o PDV ou para liquidar gorjetas."
     }
   },
   "posCargosServicio": {

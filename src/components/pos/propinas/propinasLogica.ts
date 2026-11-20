@@ -89,45 +89,14 @@ export function rangoDeFiltros(
   return rango;
 }
 
-/** Códigos de error que la pantalla sabe traducir (claves de `posPropinas.errores`). */
-export const CODIGOS_ERROR_PROPINA = [
-  'SIN_PERMISO',
-  'PROPINA_DISTRIBUIDA',
-  'PROPINA_ANULADA',
-  'PROPINA_CON_ASIENTO',
-  'PROPINA_INEXISTENTE',
-  'PERIODO_CERRADO',
-  'SIN_SUCURSAL',
-  'DESCONOCIDO',
-] as const;
-export type CodigoErrorPropina = (typeof CODIGOS_ERROR_PROPINA)[number];
-
-export class PropinaError extends Error {
-  constructor(public readonly codigo: CodigoErrorPropina, detalle?: string) {
-    super(detalle || codigo);
-    this.name = 'PropinaError';
-  }
-}
-
 /**
- * Traduce un error de Supabase/Postgres al código de la pantalla. Las RPC y la
- * guarda de la tabla levantan `CODIGO: detalle`; la RLS responde 42501.
+ * Códigos de error que la pantalla sabe traducir (claves de `posPropinas.errores`).
+ * Viven en `@/lib/pos/propinas/errores`, que comparten el servidor y el navegador.
  */
-export function codigoErrorPropina(error: unknown): CodigoErrorPropina {
-  if (error instanceof PropinaError) return error.codigo;
-  const e = (error ?? {}) as { code?: string; message?: string };
-  const mensaje = e.message || '';
-  for (const codigo of CODIGOS_ERROR_PROPINA) {
-    if (mensaje.startsWith(codigo) || mensaje.includes(`${codigo}:`)) return codigo;
-  }
-  if (e.code === '42501' || /row-level security|permission denied/i.test(mensaje)) return 'SIN_PERMISO';
-  if (e.code === 'P0002') return 'PROPINA_INEXISTENTE';
-  return 'DESCONOCIDO';
-}
-
-/** Error listo para lanzar desde el servicio. */
-export function errorPropina(error: unknown): PropinaError {
-  if (error instanceof PropinaError) return error;
-  const mensaje = (error as { message?: string } | null)?.message;
-  return new PropinaError(codigoErrorPropina(error), mensaje);
-}
+export {
+  CODIGOS_ERROR_PROPINA,
+  PropinaError,
+  codigoErrorPropina,
+  errorPropina,
+  type CodigoErrorPropina,
+} from '@/lib/pos/propinas/errores';

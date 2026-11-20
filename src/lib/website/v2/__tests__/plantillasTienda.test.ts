@@ -522,3 +522,81 @@ describe('editable desde el editor', () => {
     }
   });
 });
+
+/**
+ * Lo que mostró la tienda de prueba (org 391, 2026-11-20) con el sitio real: portadas sin foto
+ * ilegibles, bloques repetidos con el mismo texto y el pie de Contraste sin boletín ni marca.
+ */
+describe('tienda de prueba: lo que se veía mal', () => {
+  const SIN_FOTOS: DatosNegocio = {
+    ...DATOS,
+    portadaUrl: null,
+    productos: DATOS.productos.map((p) => ({ ...p, imagenUrl: null })),
+    categorias: DATOS.categorias.map((c) => ({ ...c, imagenUrl: null })),
+  };
+  const sinBanner = (): DocumentoSitio => {
+    const d = borradorTienda();
+    return {
+      ...d,
+      paginas: d.paginas.map((p) => ({
+        ...p,
+        secciones: p.secciones.map((s) => (s.tipo === 'hero' ? { ...s, contenido: { ...s.contenido, image_url: null, slides: [] } } : s)),
+      })),
+    };
+  };
+  const inicio = (id: string, datos: DatosNegocio = DATOS, base: DocumentoSitio = borradorTienda()) =>
+    armar(plantillaPorId(CATALOGO, id)!, TODAS_LAS_BANDERAS, base, datos).documento.paginas.find((p) => esInicio(p))!;
+
+  it.each(['retail_atelier', 'retail_roble', 'retail_classic', 'retail_elegant'])(
+    '%s: portada a pantalla completa sin foto → capa encendida y opaca (el título blanco se lee)',
+    (id) => {
+      const hero = inicio(id, SIN_FOTOS, sinBanner()).secciones.find((s) => s.tipo === 'hero')!;
+      expect(hero.variante).toBe('fullscreen');
+      expect(hero.contenido.image_url ?? null).toBeNull();
+      expect({ capa: hero.contenido.show_overlay, opacidad: hero.contenido.overlay_opacity }).toEqual({ capa: true, opacidad: 100 });
+      // Botones de contorno o de enlace: en blanco sobre la capa (con el primario no se veían).
+      for (const b of (hero.contenido.buttons as Record<string, unknown>[] | undefined) ?? []) {
+        if (b.variant === 'outline' || b.variant === 'link') expect(b.text_color).toBe('#FFFFFF');
+      }
+    },
+  );
+
+  it('con foto de portada la capa queda como la pide la plantilla (no se fuerza opaca)', () => {
+    const conFoto = { ...DATOS, portadaUrl: 'https://example.com/portada.jpg' };
+    const hero = inicio('retail_elegant', conFoto).secciones.find((s) => s.tipo === 'hero')!;
+    expect(hero.contenido.image_url).toBeTruthy();
+    expect(hero.contenido.overlay_opacity).toBe(35);
+  });
+
+  it('Hogar: los dos bloques de banners llevan los títulos de la lámina, no el mismo dos veces', () => {
+    const banners = inicio('retail_hogar').secciones.filter((s) => s.tipo === 'promo_banners');
+    expect(banners.map((s) => s.contenido.title)).toEqual(['Zona de ofertas', 'Taller']);
+    const cats = banners.map((s) => (s.contenido.banners as { link_category_id: number }[]).map((b) => b.link_category_id));
+    expect(cats[0]).not.toEqual(cats[1]);
+  });
+
+  it('Marea: el segundo bloque de imagen y texto no repite «Nuestra historia»', () => {
+    const titulos = inicio('retail_marea').secciones
+      .filter((s) => s.tipo === 'image_text' && s.variante !== 'color_block')
+      .map((s) => s.contenido.title);
+    expect(titulos).toHaveLength(2);
+    expect(new Set(titulos).size).toBe(2);
+  });
+
+  it('Contraste: el pie trae el boletín y la marca gigante de la lámina', () => {
+    const pie = shellDePlantilla('retail_contraste', 'tienda').pie.opciones;
+    expect(pie.footer_show_newsletter).toBe(true);
+    expect(pie.footer_brand_display).toBe('giant');
+  });
+});
+
+describe('tienda de prueba: tarjetas sin «Comprar ahora» que la lámina no trae', () => {
+  it.each(['retail_panorama', 'retail_radiante', 'retail_contraste', 'retail_modern', 'retail_classic', 'retail_bold'])(
+    '%s: la tarjeta «boxed» apaga «Comprar ahora» y el normalizador lo conserva',
+    (id) => {
+      const p = plantillaPorId(CATALOGO, id)!;
+      expect(p.tarjetaProducto?.card_preset).toBe('boxed');
+      expect(normalizarTarjeta(p.tarjetaProducto)?.buy).toEqual({ show: false });
+    },
+  );
+});

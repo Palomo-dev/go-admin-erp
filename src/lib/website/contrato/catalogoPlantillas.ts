@@ -477,6 +477,8 @@ const TIENDA: readonly DefinicionTienda[] = [
     tokens: { hover: 'expresivo' },
     tarjetaProducto: {
       card_preset: 'boxed',
+      // Las láminas no llevan «Comprar ahora»: el preset «boxed» lo enciende (tienda de prueba 2026-11-20).
+      buy: { show: false },
       add: { button_style: 'icon_only', button_shape: 'circle', button_size: 'md', button_width: 'auto', button_position: 'inline_price', button_visibility: 'always', icon: 'ArrowRight' },
       label_shape: 'pill',
       label_style: 'soft',
@@ -627,6 +629,8 @@ const TIENDA: readonly DefinicionTienda[] = [
     claseFuentes: 'editorial',
     tarjetaProducto: {
       card_preset: 'boxed',
+      // Las láminas no llevan «Comprar ahora»: el preset «boxed» lo enciende (tienda de prueba 2026-11-20).
+      buy: { show: false },
       add: { button_style: 'soft', button_shape: 'pill', button_size: 'md', button_width: 'full', button_position: 'bottom', button_visibility: 'always', icon: '' },
       label_shape: 'pill',
       label_style: 'solid',
@@ -861,6 +865,8 @@ const TIENDA: readonly DefinicionTienda[] = [
     tokens: { boton: { mayusculas: true } },
     tarjetaProducto: {
       card_preset: 'boxed',
+      // Las láminas no llevan «Comprar ahora»: el preset «boxed» lo enciende (tienda de prueba 2026-11-20).
+      buy: { show: false },
       add: { button_style: 'icon_only', button_shape: 'circle', button_size: 'md', button_width: 'auto', button_position: 'over_image_corner', button_visibility: 'hover', icon: 'ShoppingBag' },
       label_shape: 'square',
       label_style: 'solid',
@@ -918,8 +924,9 @@ const TIENDA: readonly DefinicionTienda[] = [
       ['products_grid', 'grid'],
       ['image_text', 'image_left'],
       ['features_grid', 'icons'],
-      ['promo_banners', 'carousel', { layout: 'carousel' }],
-      ['promo_banners', 'grid', { banner_layout: 'triple_center' }],
+      // Títulos de la lámina de Figma: dos bloques de banners con nombre propio, no el mismo dos veces.
+      ['promo_banners', 'carousel', { layout: 'carousel', title: 'Zona de ofertas' }],
+      ['promo_banners', 'grid', { banner_layout: 'triple_center', title: 'Taller' }],
       ['featured_products', 'carousel'],
       ['shop_the_look', 'hotspots'],
       ['categories_grid', 'grid', { category_style: 'card_bottom', shape: 'rounded', desktop_columns: 3, show_count: true, category_cta_icon: 'arrow_circle' }],
@@ -1110,6 +1117,8 @@ const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
     paginacion: { estilo: 'numerada' },
     tarjetaProducto: {
       card_preset: 'boxed',
+      // Las láminas no llevan «Comprar ahora»: el preset «boxed» lo enciende (tienda de prueba 2026-11-20).
+      buy: { show: false },
       card_radius: 16,
       card_border_width: 1,
       card_border_color: '#E3E8F0',
@@ -1206,6 +1215,8 @@ const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
     paginacion: { estilo: 'numerada' },
     tarjetaProducto: {
       card_preset: 'boxed',
+      // Las láminas no llevan «Comprar ahora»: el preset «boxed» lo enciende (tienda de prueba 2026-11-20).
+      buy: { show: false },
       card_radius: 4,
       card_border_width: 1,
       card_border_color: '#E4D8C6',
@@ -1298,6 +1309,8 @@ const TIENDA_RENOVADA: Readonly<Record<string, DefinicionTienda>> = {
     paginacion: { estilo: 'cargar_mas' },
     tarjetaProducto: {
       card_preset: 'boxed',
+      // Las láminas no llevan «Comprar ahora»: el preset «boxed» lo enciende (tienda de prueba 2026-11-20).
+      buy: { show: false },
       card_radius: 4,
       card_border_width: 2,
       card_border_color: '#111111',

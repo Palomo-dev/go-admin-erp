@@ -165,6 +165,24 @@ export function diaEfectivoDeFranja(promotion: FranjaHoraria, diaReloj: WeekDay,
   return esMadrugadaDeFranja(promotion, hora) ? diaAnterior(diaReloj) : diaReloj;
 }
 
+/**
+ * ¿Sigue vigente según `end_date`, contando la cola de la franja? En la
+ * madrugada de una franja que cruza la medianoche (p. ej. «sábado 16:00 a
+ * domingo 14:00», guardada como sábado + 16:00–14:00) la franja empezó el día
+ * ANTERIOR: si la promoción vence ese día (fecha fin = sábado, que se guarda
+ * como sábado 23:59:59 en la zona de la organización), la cola del domingo
+ * todavía le pertenece. Se compara `end_date` contra el último instante del
+ * día anterior (ahora − segundos desde la medianoche − 1 s). Fuera de la
+ * madrugada, igual que `isWithinEndDate`.
+ */
+export function isWithinEndDateConFranja(promotion: PromotionVigencia & FranjaHoraria, now: Date, hora: string): boolean {
+  if (!esMadrugadaDeFranja(promotion, hora)) return isWithinEndDate(promotion, now);
+  const [hh, mm, ss] = hora.split(':').map((parte) => Number(parte) || 0);
+  // Aterriza en las 23:59:59.000 del día anterior (los husos tienen segundos enteros).
+  const desdeMedianoche = (hh * 3600 + mm * 60 + ss + 1) * 1000 + now.getUTCMilliseconds();
+  return isWithinEndDate(promotion, new Date(now.getTime() - desdeMedianoche));
+}
+
 export function appliesToBranch(promotion: PromotionVigencia, branchId: number | null): boolean {
   const branches = promotion.branches;
   if (!Array.isArray(branches) || branches.length === 0) return true;

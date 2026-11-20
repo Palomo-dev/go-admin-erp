@@ -293,6 +293,54 @@ describe('vigencia general', () => {
     const conDescuento = promo({ ...lunAMie, id: lunAMie.id });
     expect(evaluarPromociones([conDescuento], [linea(1, 1, 10000)], jueves1am).discountTotal).toBeGreaterThan(0);
   });
+  describe('fin de semana «sábado 16:00 a domingo 14:00» (caso de un cliente, 2026-11-20)', () => {
+    // Se guarda como sábado + franja 16:00–14:00: el sábado es el día en que EMPIEZA.
+    // Sábado 21 de noviembre de 2026 en Bogotá (UTC−5).
+    const bog = (dia: string, hora: string) => new Date(`2026-11-${dia}T${hora}:00-05:00`);
+    const finde = (extra: Partial<FilaPromocion> = {}) =>
+      promo({ applicable_days: ['saturday'], start_time: '16:00:00', end_time: '14:00:00', ...extra });
+    const vigente = (p: FilaPromocion, ahora: Date) => promocionVigente(p, ctx({ ahora }));
+
+    it('activa del sábado 16:00 al domingo 14:00, ni un minuto antes ni después', () => {
+      const p = finde();
+      expect(vigente(p, bog('21', '15:59'))).toBe(false);
+      expect(vigente(p, bog('21', '16:00'))).toBe(true);
+      expect(vigente(p, bog('21', '23:59'))).toBe(true);
+      expect(vigente(p, bog('22', '00:00'))).toBe(true);
+      expect(vigente(p, bog('22', '09:30'))).toBe(true);
+      expect(vigente(p, bog('22', '14:00'))).toBe(true);
+      expect(vigente(p, bog('22', '14:01'))).toBe(false);
+      expect(vigente(p, bog('22', '18:00'))).toBe(false);
+      // Sábado por la mañana es la cola del viernes: no aplica.
+      expect(vigente(p, bog('21', '10:00'))).toBe(false);
+      // Lunes temprano: no aplica.
+      expect(vigente(p, bog('23', '01:00'))).toBe(false);
+    });
+
+    it('igual con el servidor en UTC (la hora sale de la zona de la organización)', () => {
+      const p = finde();
+      expect(vigente(p, new Date('2026-11-22T05:30:00Z'))).toBe(true); // domingo 00:30 Bogotá
+      expect(vigente(p, new Date('2026-11-22T19:30:00Z'))).toBe(false); // domingo 14:30 Bogotá
+    });
+
+    it('si la promoción vence el sábado, la madrugada y la mañana del domingo siguen contando', () => {
+      // Fecha fin «sábado 21» = último instante del sábado en Bogotá.
+      const p = finde({ end_date: '2026-11-21T23:59:59.999-05:00' });
+      expect(vigente(p, bog('21', '20:00'))).toBe(true);
+      expect(vigente(p, bog('22', '00:00'))).toBe(true);
+      expect(vigente(p, bog('22', '13:59'))).toBe(true);
+      expect(vigente(p, bog('22', '14:01'))).toBe(false);
+      // El fin de semana siguiente ya venció.
+      expect(vigente(p, bog('28', '17:00'))).toBe(false);
+      expect(vigente(p, bog('29', '01:00'))).toBe(false);
+    });
+
+    it('una promoción que vence el viernes no se cuela el sábado por la madrugada', () => {
+      const p = promo({ applicable_days: ['friday'], start_time: '22:00:00', end_time: '02:00:00', end_date: '2026-11-20T23:59:59.999-05:00' });
+      expect(vigente(p, bog('21', '01:00'))).toBe(true); // cola del viernes 20
+      expect(vigente(p, bog('28', '01:00'))).toBe(false); // cola del viernes 27: vencida
+    });
+  });
 });
 
 describe('cantidad mínima y compra mínima de las líneas que entran', () => {

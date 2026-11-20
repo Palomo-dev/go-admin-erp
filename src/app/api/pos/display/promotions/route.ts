@@ -5,7 +5,7 @@ import { displayCostRateLimitStore } from '@/lib/pos/display/server/displayRateL
 import { resolveDisplayActor } from '@/lib/pos/display/server/displayActor';
 import { DISPLAY_PROMOTIONS_MAX, toDisplayPromotion, type DisplayPromotion } from '@/lib/pos/display/promotions';
 import { PROMOTIONS_RATE_LIMIT, PROMOTIONS_RATE_LIMIT_PREFIX, PROMOTIONS_READ_LIMIT } from '@/lib/pos/display/server/displayFeedback';
-import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, diaEfectivoDeFranja, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
+import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, diaEfectivoDeFranja, horaEnZona, isWithinEndDateConFranja, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
 import { tieneUsosDisponibles } from '@/lib/promotions/motorPromociones';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
 import { toPlainDate } from '@/lib/utils/dateDisplay';
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
     const rows = (Array.isArray(promotionsRes.data) ? promotionsRes.data : []) as Array<Record<string, unknown>>;
     const promotions: DisplayPromotion[] = rows
       // Con usos agotados el POS ya no la aplica: la pantalla tampoco la anuncia.
-      .filter((row) => isWithinEndDate(row, now) && appliesOnWeekDay(row, diaEfectivoDeFranja(row, weekDay, hora)) && appliesInTimeWindow(row, hora) && appliesToBranch(row, branchId) && tieneUsosDisponibles(row))
+      .filter((row) => isWithinEndDateConFranja(row, now, hora) && appliesOnWeekDay(row, diaEfectivoDeFranja(row, weekDay, hora)) && appliesInTimeWindow(row, hora) && appliesToBranch(row, branchId) && tieneUsosDisponibles(row))
       .map(toDisplayPromotion)
       .filter((p): p is DisplayPromotion => p !== null)
       .slice(0, DISPLAY_PROMOTIONS_MAX);

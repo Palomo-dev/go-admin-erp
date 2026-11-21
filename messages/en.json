@@ -61921,17 +61921,19 @@
       "iva": {
         "descontable": "Your organization is VAT-registered according to its tax profile: the commission VAT is deducted.",
         "gasto": "Your organization is not VAT-registered: the commission VAT is added to the expense.",
-        "exterior": "This processor is marked as foreign: its statement has no Colombian VAT. Reverse-charge VAT is applied separately and stays in Accounting pending items.",
+        "exterior": "Foreign service: your organization is not VAT-registered, so no VAT is withheld.",
         "sinIva": "No VAT on the commission: nothing to deduct.",
-        "sinPerfil": "Set up the organization’s tax profile to know whether the commission VAT is deductible."
+        "sinPerfil": "Set up the organization’s tax profile to know whether the commission VAT is deductible.",
+        "reverseCharge": "Foreign service without Colombian VAT: 19 % of the commission ({valor}) is withheld as VAT (reverse charge). It goes to deductible VAT 24081003 and VAT withholding 23670502, and is filed in forms 300 and 350 for the same period."
       },
       "ivaInsignia": {
         "descontable": "Deductible VAT · 24081001",
         "proporcional": "Deductible VAT · 24081001",
         "gasto": "VAT to expense · 53051501",
-        "exterior": "Foreign · no VAT on the statement",
+        "exterior": "Foreign · no withholding",
         "sin_iva": "No VAT on the commission",
-        "sin_perfil": "Tax profile missing"
+        "sin_perfil": "Tax profile missing",
+        "reverse_charge": "Reverse charge · 19 % withheld"
       },
       "factura": "Processor's electronic invoice",
       "facturaOpcional": "Processor's invoice (optional)",
@@ -61970,7 +61972,8 @@
         "reteiva": "VAT withholding credit",
         "reteica": "ICA withholding credit",
         "saldo": "Processor balance: {antes} → {despues}",
-        "pendienteExterior": "It stays in Accounting pending items: reverse-charge VAT on {valor}."
+        "ivaExterior": "Deductible VAT on foreign services",
+        "reteivaExterior": "VAT withholding on foreign services"
       }
     },
     "datos": {
@@ -61984,7 +61987,8 @@
         "nombre": "Name as third party",
         "origen": "Origin",
         "retiene": "Keeps balance",
-        "retieneLargo": "Keeps a balance on purpose"
+        "retieneLargo": "Keeps a balance on purpose",
+        "identificacion": "Identification"
       },
       "etiquetaNit": "Tax ID of {procesador}",
       "etiquetaNombre": "Name of {procesador} as third party",
@@ -61993,9 +61997,18 @@
       "nitEjemplo": "E.g. 900.123.456-7",
       "deFabrica": "Default",
       "faltaNit": "Missing: without a tax ID the payout cannot be recorded.",
-      "notaFabrica": "Wompi, Mercado Pago and PayU come with their tax ID by default. Each organization enters the card terminal and Bold; Stripe and PayPal, as the accountant indicates. Without a tax ID, charging works as usual but the payout cannot be recorded.",
-      "notaExterior": "The processor provides the service from outside Colombia and its statement has no Colombian VAT. Reverse-charge VAT (art. 437-2 no. 3 ET) is applied later without changing the payout form. Changing the origin only affects payouts recorded from then on.",
-      "notaRetiene": "The processor holds the money and it is withdrawn when you decide. It does not trigger the 5-business-day alert: the dashboard shows the kept balance and alerts after more than 30 days without any withdrawal to the bank. It is on for Stripe and PayPal and off for the rest by default."
+      "notaFabrica": "Wompi, Bold, Mercado Pago and PayU come with their tax ID by default. Each organization enters the card terminal. Stripe and PayPal do not: enter the company and number shown in your contract or statement, with its document type (42 for a tax number from its country; 43 if its country has no tax number, and 444444001 is assigned). Without identification, charging works as usual but the payout cannot be recorded.",
+      "notaExterior": "The processor provides the service from outside Colombia. If its statement has no Colombian VAT and your organization is VAT-registered, recording the payout withholds 19 % of the commission (reverse charge, art. 437-2 no. 3 ET). Changing the origin only affects payouts recorded from then on.",
+      "notaRetiene": "The processor holds the money and it is withdrawn when you decide. It does not trigger the 5-business-day alert: the dashboard shows the kept balance and alerts after more than 30 days without any withdrawal to the bank. It is on for Stripe and PayPal and off for the rest by default.",
+      "etiquetaTipo": "Document type of {procesador}",
+      "tipoElegir": "Document type",
+      "tipos": {
+        "31": "31 · NIT (DIAN)",
+        "42": "42 · Foreign tax number",
+        "43": "43 · No tax number"
+      },
+      "nitGenerico": "444444001… is assigned",
+      "faltaTipo": "Choose the document type: without it the exógena cannot be reported."
     },
     "errores": {
       "SESION_REQUERIDA": "Your session ended. Sign in again.",
@@ -62022,7 +62035,8 @@
       "ABONO_INEXISTENTE": "The payout does not exist or is not from your organization.",
       "MOTIVO_REQUERIDO": "Enter the reason for voiding.",
       "datos_invalidos": "Check the form data.",
-      "DESCONOCIDO": "It could not be completed. Try again in a moment."
+      "DESCONOCIDO": "It could not be completed. Try again in a moment.",
+      "TIPO_DOCUMENTO_INVALIDO": "The document type is 31 (NIT), 42 (foreign tax number) or 43 (no tax number)."
     }
   },
   "finanzasImpuestos": {

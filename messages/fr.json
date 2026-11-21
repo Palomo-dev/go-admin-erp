@@ -61921,17 +61921,19 @@
       "iva": {
         "descontable": "Votre organisation est assujettie à la TVA selon son profil fiscal : la TVA de la commission est déduite.",
         "gasto": "Votre organisation n’est pas assujettie à la TVA : la TVA de la commission s’ajoute à la charge.",
-        "exterior": "Ce prestataire est marqué comme étranger : son relevé n’a pas de TVA colombienne. La TVA en autoliquidation s’applique à part et reste dans les éléments comptables en attente.",
+        "exterior": "Service étranger : votre organisation n’est pas assujettie à la TVA, aucune TVA n’est retenue.",
         "sinIva": "Pas de TVA sur la commission : rien à déduire.",
-        "sinPerfil": "Définissez le profil fiscal de l’organisation pour savoir si la TVA de la commission est déductible."
+        "sinPerfil": "Définissez le profil fiscal de l’organisation pour savoir si la TVA de la commission est déductible.",
+        "reverseCharge": "Service étranger sans TVA colombienne : 19 % de la commission ({valor}) est retenu au titre de la TVA (autoliquidation). Il va à la TVA déductible 24081003 et à la retenue de TVA 23670502, et se déclare dans les formulaires 300 et 350 de la même période."
       },
       "ivaInsignia": {
         "descontable": "TVA déductible · 24081001",
         "proporcional": "TVA déductible · 24081001",
         "gasto": "TVA en charge · 53051501",
-        "exterior": "Étranger · sans TVA sur le relevé",
+        "exterior": "Étranger · sans retenue",
         "sin_iva": "Sans TVA sur la commission",
-        "sin_perfil": "Profil fiscal manquant"
+        "sin_perfil": "Profil fiscal manquant",
+        "reverse_charge": "Autoliquidation · 19 % retenu"
       },
       "factura": "Facture électronique du prestataire",
       "facturaOpcional": "Facture du prestataire (facultatif)",
@@ -61970,7 +61972,8 @@
         "reteiva": "Avance retenue de TVA",
         "reteica": "Avance retenue ICA",
         "saldo": "Solde du prestataire : {antes} → {despues}",
-        "pendienteExterior": "Reste dans les éléments comptables en attente : TVA en autoliquidation sur {valor}."
+        "ivaExterior": "TVA déductible sur services étrangers",
+        "reteivaExterior": "Retenue de TVA sur services étrangers"
       }
     },
     "datos": {
@@ -61984,7 +61987,8 @@
         "nombre": "Nom en tant que tiers",
         "origen": "Origine",
         "retiene": "Conserve un solde",
-        "retieneLargo": "Conserve un solde volontairement"
+        "retieneLargo": "Conserve un solde volontairement",
+        "identificacion": "Identification"
       },
       "etiquetaNit": "NIT de {procesador}",
       "etiquetaNombre": "Nom de {procesador} en tant que tiers",
@@ -61993,9 +61997,18 @@
       "nitEjemplo": "Ex. : 900.123.456-7",
       "deFabrica": "Par défaut",
       "faltaNit": "Manquant : sans NIT le versement ne peut pas être enregistré.",
-      "notaFabrica": "Wompi, Mercado Pago et PayU ont leur NIT par défaut. Chaque organisation saisit le TPE et Bold ; Stripe et PayPal, selon l’indication du comptable. Sans NIT, l’encaissement continue normalement mais le versement ne peut pas être enregistré.",
-      "notaExterior": "Le prestataire fournit le service depuis l’étranger et son relevé n’a pas de TVA colombienne. La TVA en autoliquidation (art. 437-2 n° 3 ET) s’applique ensuite sans modifier le formulaire du versement. Changer l’origine n’affecte que les versements enregistrés ensuite.",
-      "notaRetiene": "Le prestataire garde l’argent et on le retire quand on le décide. Pas d’alerte à 5 jours ouvrés : le tableau affiche le solde conservé et alerte après plus de 30 jours sans retrait vers la banque. Activé par défaut pour Stripe et PayPal, désactivé pour les autres."
+      "notaFabrica": "Wompi, Bold, Mercado Pago et PayU ont leur NIT par défaut. Chaque organisation saisit le TPE. Stripe et PayPal non : saisissez la société et le numéro indiqués dans votre contrat ou relevé, avec leur type de document (42 pour un numéro fiscal de leur pays ; 43 si leur pays n’en a pas, et 444444001 est attribué). Sans identification, l’encaissement continue normalement mais le versement ne peut pas être enregistré.",
+      "notaExterior": "Le prestataire fournit le service depuis l’étranger. Si son relevé n’a pas de TVA colombienne et que votre organisation est assujettie, l’enregistrement du versement retient 19 % de la commission (autoliquidation, art. 437-2 n° 3 ET). Changer l’origine n’affecte que les versements enregistrés ensuite.",
+      "notaRetiene": "Le prestataire garde l’argent et on le retire quand on le décide. Pas d’alerte à 5 jours ouvrés : le tableau affiche le solde conservé et alerte après plus de 30 jours sans retrait vers la banque. Activé par défaut pour Stripe et PayPal, désactivé pour les autres.",
+      "etiquetaTipo": "Type de document de {procesador}",
+      "tipoElegir": "Type de document",
+      "tipos": {
+        "31": "31 · NIT (DIAN)",
+        "42": "42 · Numéro fiscal étranger",
+        "43": "43 · Sans numéro fiscal"
+      },
+      "nitGenerico": "444444001… est attribué",
+      "faltaTipo": "Choisissez le type de document : sans lui, l’exógena ne peut pas être déclarée."
     },
     "errores": {
       "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous.",
@@ -62022,7 +62035,8 @@
       "ABONO_INEXISTENTE": "Le versement n'existe pas ou n'appartient pas à votre organisation.",
       "MOTIVO_REQUERIDO": "Indiquez le motif de l'annulation.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
-      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez dans un instant."
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez dans un instant.",
+      "TIPO_DOCUMENTO_INVALIDO": "Le type de document est 31 (NIT), 42 (numéro fiscal étranger) ou 43 (sans numéro fiscal)."
     }
   },
   "finanzasImpuestos": {

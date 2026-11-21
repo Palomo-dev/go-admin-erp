@@ -26,8 +26,13 @@ import {
   type OrigenProcesador,
   type RespuestaProcesadores,
   type SaldoProcesador,
+  type TipoDocumentoProcesador,
   type TratamientoIva,
+  TIPOS_DOCUMENTO_PROCESADOR,
 } from '@/lib/finanzas/procesadoresPago/procesadoresLogica';
+
+const esTipoDocumento = (v: unknown): v is TipoDocumentoProcesador =>
+  typeof v === 'string' && (TIPOS_DOCUMENTO_PROCESADOR as readonly string[]).includes(v);
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase'>;
 
@@ -84,13 +89,13 @@ async function leerDatosProcesadores(ctx: Ctx, servicio: SupabaseClient): Promis
     servicio.rpc('fn_procesadores_pago_catalogo'),
     ctx.supabase
       .from('payment_processor_settings')
-      .select('processor, tercero_nit, tercero_nombre')
+      .select('processor, tercero_nit, tercero_nombre, tercero_doc_type')
       .eq('organization_id', ctx.organizationId),
   ]);
   if (catalogo.error) lanzar(catalogo.error);
   if (propios.error) lanzar(propios.error);
   const porCodigo = new Map(
-    ((propios.data ?? []) as { processor: string; tercero_nit: string | null; tercero_nombre: string | null }[]).map((p) => [p.processor, p]),
+    ((propios.data ?? []) as { processor: string; tercero_nit: string | null; tercero_nombre: string | null; tercero_doc_type: string | null }[]).map((p) => [p.processor, p]),
   );
   const filas = ((catalogo.data ?? []) as { codigo: string; nombre: string; cuenta: string }[]).filter((k) => esCodigoProcesador(k.codigo));
   return Promise.all(
@@ -114,6 +119,8 @@ async function leerDatosProcesadores(ctx: Ctx, servicio: SupabaseClient): Promis
         nitPropio,
         nombrePropio: propio?.tercero_nombre?.trim() || null,
         nitDeFabrica: !nitPropio && !!t?.nit,
+        // Sin tipo elegido, un NIT de fábrica (empresa colombiana) es 31.
+        tipoDocumento: esTipoDocumento(propio?.tercero_doc_type) ? propio!.tercero_doc_type : !nitPropio && t?.nit ? '31' : null,
         origen: p?.origen ?? 'nacional',
         retieneSaldo: !!p?.retiene_saldo,
       };
@@ -125,7 +132,7 @@ async function leerAbonos(ctx: Ctx): Promise<AbonoProcesador[]> {
   const { data, error } = await ctx.supabase
     .from('payment_processor_payouts')
     .select(
-      'id, processor, payout_date, gross_amount, commission, commission_vat, withholding_income, withholding_vat, withholding_ica, net_amount, bank_account_id, bank_account_code, reference, commission_invoice, vat_treatment, status, journal_entry_id',
+      'id, processor, payout_date, gross_amount, commission, commission_vat, commission_vat_withheld, withholding_income, withholding_vat, withholding_ica, net_amount, bank_account_id, bank_account_code, reference, commission_invoice, vat_treatment, status, journal_entry_id',
     )
     .eq('organization_id', ctx.organizationId)
     .order('payout_date', { ascending: false })
@@ -141,6 +148,7 @@ async function leerAbonos(ctx: Ctx): Promise<AbonoProcesador[]> {
       bruto: num(a.gross_amount),
       comision: num(a.commission),
       ivaComision: num(a.commission_vat),
+      ivaRetenidoExterior: num(a.commission_vat_withheld),
       retenciones: num(a.withholding_income) + num(a.withholding_vat) + num(a.withholding_ica),
       neto: num(a.net_amount),
       cuentaBancariaId: a.bank_account_id === null ? null : num(a.bank_account_id),
@@ -197,6 +205,7 @@ export interface EntradaConfigurar {
   nombre?: string | null;
   origen?: OrigenProcesador | null;
   retiene_saldo?: boolean | null;
+  tipo_documento?: TipoDocumentoProcesador | null;
 }
 
 export async function configurarProcesador(ctx: Ctx, entrada: EntradaConfigurar) {

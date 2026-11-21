@@ -56,11 +56,24 @@ export interface DatosProcesador {
   nitPropio: string | null;
   nombrePropio: string | null;
   nitDeFabrica: boolean;
+  /** Tipo de documento para la exógena: 31 NIT · 42 número fiscal del exterior · 43 sin número fiscal. */
+  tipoDocumento: TipoDocumentoProcesador | null;
   origen: OrigenProcesador;
   retieneSaldo: boolean;
 }
 
-export type TratamientoIva = 'descontable' | 'gasto' | 'proporcional' | 'exterior';
+export const TIPOS_DOCUMENTO_PROCESADOR = ['31', '42', '43'] as const;
+export type TipoDocumentoProcesador = (typeof TIPOS_DOCUMENTO_PROCESADOR)[number];
+
+/**
+ * Pendiente para la exógena (Contador 2026-11-21, parágrafo 6 de la Res. DIAN 000033 de 2026): sin
+ * NIT, o del exterior sin tipo de documento elegido (Stripe y PayPal no se cargan de fábrica).
+ */
+export function identificacionPendiente(p: Pick<DatosProcesador, 'nit' | 'origen' | 'tipoDocumento'>): boolean {
+  return !p.nit || (p.origen === 'exterior' && !p.tipoDocumento);
+}
+
+export type TratamientoIva = 'descontable' | 'gasto' | 'proporcional' | 'exterior' | 'reverse_charge';
 
 export interface AbonoProcesador {
   id: string;
@@ -69,6 +82,8 @@ export interface AbonoProcesador {
   bruto: number;
   comision: number;
   ivaComision: number;
+  /** IVA retenido al 100 % por servicio del exterior (reverse charge). */
+  ivaRetenidoExterior: number;
   retenciones: number;
   neto: number;
   cuentaBancariaId: number | null;
@@ -180,19 +195,32 @@ export function cuadreAbono(v: ValoresAbono): CuadreAbono {
 }
 
 /**
- * Cómo se va a tratar el IVA de la comisión, igual que la base: del exterior →
- * pendiente (reverse charge); sin IVA → nada que tratar; responsable → descontable;
- * no responsable → gasto; sin perfil tributario → no se puede decidir.
+ * Cómo se va a tratar el IVA de la comisión, igual que la base (Contador 2026-11-21):
+ * - del exterior SIN IVA colombiano en el extracto: si la organización es responsable de IVA,
+ *   reverse charge (se retiene el 19 % de la comisión, arts. 437-1 y 437-2 num. 3 ET); si no lo es,
+ *   no retiene ('exterior');
+ * - del exterior CON IVA colombiano (está inscrito en la DIAN) o nacional: responsable →
+ *   descontable; no responsable → gasto; sin IVA → nada que tratar;
+ * - sin perfil tributario no se puede decidir.
  */
 export function tratamientoDelIva(
   origen: OrigenProcesador,
   responsableIva: boolean | null,
   ivaComision: number | null,
 ): TratamientoIva | 'sin_iva' | 'sin_perfil' {
-  if (origen === 'exterior') return 'exterior';
-  if (pesos(ivaComision) <= 0) return 'sin_iva';
+  const conIva = pesos(ivaComision) > 0;
+  if (origen === 'exterior' && !conIva) {
+    if (responsableIva === null) return 'sin_perfil';
+    return responsableIva ? 'reverse_charge' : 'exterior';
+  }
+  if (!conIva) return 'sin_iva';
   if (responsableIva === null) return 'sin_perfil';
   return responsableIva ? 'descontable' : 'gasto';
+}
+
+/** IVA del servicio del exterior que se retiene al 100 %: 19 % de la comisión, en pesos. */
+export function ivaReverseCharge(comision: number | null): number {
+  return Math.round(pesos(comision) * 0.19);
 }
 
 /** La factura del procesador solo es obligatoria cuando el IVA va al descontable. */
@@ -244,6 +272,7 @@ const CODIGOS_BASE = [
   'ORIGEN_INVALIDO',
   'RETIENE_SALDO_INVALIDO',
   'ABONO_INEXISTENTE',
+  'TIPO_DOCUMENTO_INVALIDO',
   'MOTIVO_REQUERIDO',
 ] as const;
 export type CodigoErrorProcesador = (typeof CODIGOS_BASE)[number] | 'DESCONOCIDO';

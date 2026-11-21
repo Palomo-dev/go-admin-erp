@@ -16,10 +16,16 @@ import { Wallet } from 'lucide-react';
 import { AvisoTonal, Dialogo, SegmentedControl } from '@/components/kit';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toastSuccess } from '@/components/ui/use-toast';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
-import type { DatosProcesador, OrigenProcesador } from '@/lib/finanzas/procesadoresPago/procesadoresLogica';
+import {
+  TIPOS_DOCUMENTO_PROCESADOR,
+  type DatosProcesador,
+  type OrigenProcesador,
+  type TipoDocumentoProcesador,
+} from '@/lib/finanzas/procesadoresPago/procesadoresLogica';
 
 const NS = 'finanzasProcesadores';
 export const RUTA_API_DATOS = '/api/finanzas/procesadores-pago/datos';
@@ -27,6 +33,8 @@ export const RUTA_API_DATOS = '/api/finanzas/procesadores-pago/datos';
 interface Fila {
   nit: string;
   nombre: string;
+  /** Tipo de documento para la exógena; '' = sin elegir. */
+  tipo: TipoDocumentoProcesador | '';
   origen: OrigenProcesador;
   retiene: boolean;
 }
@@ -34,6 +42,7 @@ interface Fila {
 const inicial = (p: DatosProcesador): Fila => ({
   nit: p.nitPropio ?? '',
   nombre: p.nombrePropio ?? '',
+  tipo: p.tipoDocumento ?? '',
   origen: p.origen,
   retiene: p.retieneSaldo,
 });
@@ -42,7 +51,11 @@ const inicial = (p: DatosProcesador): Fila => ({
 export function cambiosDeFila(p: DatosProcesador, f: Fila): Record<string, unknown> | null {
   const base = inicial(p);
   const cambios: Record<string, unknown> = {};
-  if (f.nit.trim() !== base.nit) cambios.nit = f.nit.trim() || null;
+  if (f.tipo !== base.tipo) cambios.tipo_documento = f.tipo || null;
+  // 43 · sin número fiscal: la base asigna 444444001 y los siguientes (Contador 2026-11-21).
+  if (f.tipo === '43') {
+    if (base.tipo !== '43') cambios.nit = null;
+  } else if (f.nit.trim() !== base.nit) cambios.nit = f.nit.trim() || null;
   if (f.nombre.trim() !== base.nombre) cambios.nombre = f.nombre.trim() || null;
   if (f.origen !== base.origen) cambios.origen = f.origen;
   if (f.retiene !== base.retiene) cambios.retiene_saldo = f.retiene;
@@ -130,7 +143,7 @@ export function DatosProcesadoresDialog({ abierto, onAbiertoChange, procesadores
         <div role="table" aria-label={t('datos.titulo')} className="flex flex-col">
           <div role="row" className="hidden grid-cols-[150px_minmax(0,1fr)_minmax(0,1fr)_190px_96px] gap-3 border-b border-line bg-subtle px-2 py-2 text-xs font-medium text-fg-secondary md:grid">
             <span role="columnheader">{t('datos.columnas.procesador')}</span>
-            <span role="columnheader">{t('datos.columnas.nit')}</span>
+            <span role="columnheader">{t('datos.columnas.identificacion')}</span>
             <span role="columnheader">{t('datos.columnas.nombre')}</span>
             <span role="columnheader">{t('datos.columnas.origen')}</span>
             <span role="columnheader">{t('datos.columnas.retiene')}</span>
@@ -138,7 +151,9 @@ export function DatosProcesadoresDialog({ abierto, onAbiertoChange, procesadores
           {procesadores.map((p) => {
             const f = filas[p.codigo];
             if (!f) return null;
-            const sinNit = !f.nit.trim() && !p.nitDeFabrica;
+            const sinNit = f.tipo !== '43' && !f.nit.trim() && !p.nitDeFabrica;
+            // Del exterior sin tipo de documento: queda pendiente para la exógena (Contador 2026-11-21).
+            const sinTipo = f.origen === 'exterior' && !f.tipo;
             const idNit = `nit-${p.codigo}`;
             return (
               <div
@@ -151,24 +166,45 @@ export function DatosProcesadoresDialog({ abierto, onAbiertoChange, procesadores
                   <span className="text-xs text-fg-muted">{p.cuenta}</span>
                 </div>
                 <div role="cell" className="flex flex-col gap-1">
+                  <Select
+                    value={f.tipo || undefined}
+                    onValueChange={(v) => cambiar(p.codigo, { tipo: v as TipoDocumentoProcesador })}
+                    disabled={!puedeEditar}
+                  >
+                    <SelectTrigger
+                      aria-label={t('datos.etiquetaTipo', { procesador: p.etiqueta })}
+                      aria-invalid={sinTipo || undefined}
+                      className={`h-9 border-line-strong bg-surface text-xs ${sinTipo ? 'border-line-danger' : ''}`}
+                    >
+                      <SelectValue placeholder={t('datos.tipoElegir')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIPOS_DOCUMENTO_PROCESADOR.map((tipo) => (
+                        <SelectItem key={tipo} value={tipo}>
+                          {t(`datos.tipos.${tipo}`)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     id={idNit}
                     aria-label={t('datos.etiquetaNit', { procesador: p.etiqueta })}
                     aria-invalid={sinNit || undefined}
                     aria-describedby={sinNit ? `${idNit}-error` : undefined}
-                    value={f.nit}
-                    placeholder={p.nitDeFabrica && p.nit ? p.nit : t('datos.nitEjemplo')}
+                    value={f.tipo === '43' && (p.tipoDocumento !== '43' || !p.nitPropio) ? '' : f.nit}
+                    placeholder={f.tipo === '43' ? t('datos.nitGenerico') : p.nitDeFabrica && p.nit ? p.nit : t('datos.nitEjemplo')}
                     maxLength={20}
-                    disabled={!puedeEditar}
+                    disabled={!puedeEditar || f.tipo === '43'}
                     onChange={(e) => cambiar(p.codigo, { nit: e.target.value })}
                     className={`h-9 ${sinNit ? 'border-line-danger' : ''}`}
                   />
-                  {p.nitDeFabrica && !f.nit.trim() && <span className="text-xs text-fg-muted">{t('datos.deFabrica')}</span>}
+                  {p.nitDeFabrica && !f.nit.trim() && f.tipo !== '43' && <span className="text-xs text-fg-muted">{t('datos.deFabrica')}</span>}
                   {sinNit && (
                     <span id={`${idNit}-error`} className="text-xs text-danger-text">
                       {t('datos.faltaNit')}
                     </span>
                   )}
+                  {sinTipo && !sinNit && <span className="text-xs text-danger-text">{t('datos.faltaTipo')}</span>}
                 </div>
                 <div role="cell">
                   <Input

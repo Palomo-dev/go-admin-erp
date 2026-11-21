@@ -10,6 +10,8 @@ import {
   cuadreAbono,
   erroresAbono,
   facturaObligatoria,
+  identificacionPendiente,
+  ivaReverseCharge,
   moverMes,
   ordenarSaldos,
   totalesSaldos,
@@ -53,9 +55,26 @@ describe('cuadre del abono: bruto = neto + comisión + IVA + retenciones', () =>
 });
 
 describe('IVA de la comisión y factura del procesador', () => {
-  it('exterior manda sobre el perfil: pendiente, factura opcional', () => {
-    expect(tratamientoDelIva('exterior', true, 5000)).toBe('exterior');
+  it('exterior sin IVA colombiano: reverse charge si es responsable de IVA, nada si no; factura opcional', () => {
+    expect(tratamientoDelIva('exterior', true, 0)).toBe('reverse_charge');
+    expect(tratamientoDelIva('exterior', false, 0)).toBe('exterior');
+    expect(tratamientoDelIva('exterior', null, 0)).toBe('sin_perfil');
+    expect(facturaObligatoria('reverse_charge')).toBe(false);
     expect(facturaObligatoria('exterior')).toBe(false);
+    // 19 % de la comisión, en pesos (Stripe 3.400 → 646).
+    expect(ivaReverseCharge(3400)).toBe(646);
+  });
+
+  it('exterior que cobró IVA colombiano (inscrito en la DIAN): como uno nacional', () => {
+    expect(tratamientoDelIva('exterior', true, 646)).toBe('descontable');
+    expect(tratamientoDelIva('exterior', false, 646)).toBe('gasto');
+  });
+
+  it('identificación pendiente: sin NIT, o del exterior sin tipo de documento', () => {
+    expect(identificacionPendiente({ nit: null, origen: 'nacional', tipoDocumento: null })).toBe(true);
+    expect(identificacionPendiente({ nit: '901281572-4', origen: 'nacional', tipoDocumento: '31' })).toBe(false);
+    expect(identificacionPendiente({ nit: 'US-1', origen: 'exterior', tipoDocumento: null })).toBe(true);
+    expect(identificacionPendiente({ nit: '444444001', origen: 'exterior', tipoDocumento: '43' })).toBe(false);
   });
 
   it('responsable → descontable y factura obligatoria; no responsable → gasto y opcional', () => {
@@ -135,17 +154,25 @@ describe('datos de los procesadores: solo se envía lo que cambió', () => {
     nitPropio: null,
     nombrePropio: null,
     nitDeFabrica: true,
+    tipoDocumento: '31' as const,
     origen: 'nacional' as const,
     retieneSaldo: false,
   };
   it('sin cambios no envía nada', () => {
-    expect(cambiosDeFila(p, { nit: '', nombre: '', origen: 'nacional', retiene: false })).toBeNull();
+    expect(cambiosDeFila(p, { nit: '', nombre: '', tipo: '31', origen: 'nacional', retiene: false })).toBeNull();
   });
   it('solo el interruptor', () => {
-    expect(cambiosDeFila(p, { nit: '', nombre: '', origen: 'nacional', retiene: true })).toEqual({ procesador: 'wompi', retiene_saldo: true });
+    expect(cambiosDeFila(p, { nit: '', nombre: '', tipo: '31', origen: 'nacional', retiene: true })).toEqual({ procesador: 'wompi', retiene_saldo: true });
   });
   it('borrar el NIT propio vuelve al de fábrica (null)', () => {
-    expect(cambiosDeFila({ ...p, nitPropio: '123' }, { nit: ' ', nombre: '', origen: 'exterior', retiene: false })).toEqual({ procesador: 'wompi', nit: null, origen: 'exterior' });
+    expect(cambiosDeFila({ ...p, nitPropio: '123' }, { nit: ' ', nombre: '', tipo: '31', origen: 'exterior', retiene: false })).toEqual({ procesador: 'wompi', nit: null, origen: 'exterior' });
+  });
+  it('tipo 43 (sin número fiscal): manda el tipo y deja que la base asigne 444444001', () => {
+    const stripe = { ...p, codigo: 'stripe' as const, nit: null, nombre: 'Stripe', nitDeFabrica: false, tipoDocumento: null, origen: 'exterior' as const };
+    expect(cambiosDeFila(stripe, { nit: 'algo', nombre: '', tipo: '43', origen: 'exterior', retiene: false })).toEqual({ procesador: 'stripe', tipo_documento: '43', nit: null });
+    expect(cambiosDeFila(stripe, { nit: 'US-46-1234567', nombre: 'Stripe Payments Company', tipo: '42', origen: 'exterior', retiene: false })).toEqual({
+      procesador: 'stripe', tipo_documento: '42', nit: 'US-46-1234567', nombre: 'Stripe Payments Company',
+    });
   });
 });
 
@@ -174,7 +201,8 @@ describe('textos en 4 idiomas', () => {
   it('las claves dinámicas también existen', () => {
     const es = new Set(claves(leer('es')));
     const dinamicas = [
-      ...['descontable', 'proporcional', 'gasto', 'exterior', 'sin_iva', 'sin_perfil'].map((x) => `abono.ivaInsignia.${x}`),
+      ...['descontable', 'proporcional', 'gasto', 'exterior', 'reverse_charge', 'sin_iva', 'sin_perfil'].map((x) => `abono.ivaInsignia.${x}`),
+      ...['31', '42', '43'].map((x) => `datos.tipos.${x}`),
       ...['sinAbono', 'sinRetiro', 'negativo'].map((x) => `estado.${x}`),
       'origen.nacional',
       'origen.exterior',

@@ -321,7 +321,11 @@ export function LiquidacionDetalle({ id }: { id: string }) {
           )}
           <FilaDato
             etiqueta={t('detalle.asiento')}
-            valor={asiento ? `${asiento.prefijo ?? ''}-${asiento.numero ?? asiento.id}` : d.medio === 'efectivo' ? t('detalle.asientoEnCobro') : t('detalle.sinAsiento')}
+            valor={
+              asiento
+                ? `${asiento.prefijo ?? ''}-${asiento.numero ?? asiento.id}${d.asientos.length > 1 ? ` +${d.asientos.length - 1}` : ''}`
+                : t('detalle.sinAsiento')
+            }
             tono={asiento ? 'enlace' : 'neutro'}
             href={asiento ? `/app/finanzas/contabilidad/asientos/${asiento.id}` : undefined}
           />

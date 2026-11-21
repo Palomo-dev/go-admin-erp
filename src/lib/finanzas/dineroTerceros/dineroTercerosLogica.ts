@@ -6,9 +6,10 @@
  *
  * No hay tablas nuevas: se lee lo que ya existe.
  * - Propinas: la tabla `tips` del POS (recibido = no anuladas; liquidado =
- *   repartidas, `is_distributed`). Su asiento hoy va a GASTO (clave contable
- *   'propinas' → 5105): mientras la cuenta no sea de pasivo, la pantalla avisa
- *   «Falta definir la cuenta» y el Contador decide (no se cambia aquí).
+ *   repartidas, `is_distributed`). Su asiento va al pasivo 28150501 «Propinas
+ *   recibidas para trabajadores» (clave contable 'propinas', Contador
+ *   2026-11-20). Si una organización la cambia a una cuenta que no es de
+ *   pasivo, la pantalla avisa «Falta definir la cuenta».
  * - Recaudos para terceros: el mayor de la cuenta de recaudos (clave
  *   'recaudos_terceros'; 2815 «Ingresos recibidos para terceros» si no está
  *   configurada) por tercero, con `fn_auxiliar_tercero`. Se registran y se

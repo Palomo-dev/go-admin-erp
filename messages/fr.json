@@ -41438,7 +41438,7 @@
       },
       "propinas": {
         "nombre": "Pourboires",
-        "ayuda": "Le 5105 seulement quand le document est un pourboire."
+        "ayuda": "28150501, dette envers le personnel : le pourboire n'est ni un produit ni une charge."
       },
       "comisiones": {
         "nombre": "Commissions",

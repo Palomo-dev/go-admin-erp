@@ -36592,6 +36592,27 @@
           "editar": "Modifier",
           "vacio": "Votre site utilise les modèles de détail de son design. Ils sont créés en ouvrant l'éditeur.",
           "soloV2": "Ce modèle se modifie lorsque le site passera au nouvel éditeur.",
+          "crear": {
+            "product_detail": {
+              "titulo": "Fiche produit",
+              "descripcion": "Un seul modèle pour tous les produits : l’ordre et les sections se modifient dans l’éditeur et s’appliquent à toutes les fiches.",
+              "vacioTitulo": "Votre site n’a pas encore de fiche produit modifiable",
+              "vacioTexto": "Pour l’instant, chaque produit utilise le design par défaut. Créez la fiche avec ces mêmes blocs (galerie, nom et prix, achat, avantages, description, produits associés et avis) et modifiez-la dans l’éditeur. Le reste du site ne change pas.",
+              "boton": "Créer une fiche modifiable"
+            },
+            "category_detail": {
+              "titulo": "Page de catégorie",
+              "descripcion": "Modèle de /categorias/[slug] : en-tête, filtres et grille. Le texte et l’image viennent de la catégorie dans l’Inventaire.",
+              "vacioTitulo": "Votre site n’a pas encore de page de catégorie modifiable",
+              "vacioTexto": "Pour l’instant, les catégories utilisent le design par défaut. Créez la page avec ces mêmes blocs et modifiez-la dans l’éditeur. Le reste du site ne change pas.",
+              "boton": "Créer une page modifiable"
+            },
+            "creando": "Création…",
+            "sinPermiso": "Lecture seule : demandez l’autorisation « Modifier le site web ».",
+            "conflicto": "Quelqu’un a enregistré le site entre-temps. Nous avons rechargé l’écran : réessayez.",
+            "error": "Impossible de créer la page : {mensaje}",
+            "publicar": "Créée dans le brouillon : elle apparaît sur votre site quand vous publiez."
+          },
           "tipos": {
             "product_detail": "Détail du produit",
             "category_detail": "Détail de la catégorie",

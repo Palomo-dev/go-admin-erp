@@ -36592,6 +36592,27 @@
           "editar": "Edit",
           "vacio": "Your site uses the detail templates of its design. They're created when you open the editor.",
           "soloV2": "This template is edited once the site moves to the new editor.",
+          "crear": {
+            "product_detail": {
+              "titulo": "Product page",
+              "descripcion": "One template for every product: the order and sections are edited in the editor and apply to every product page.",
+              "vacioTitulo": "Your site does not have an editable product page yet",
+              "vacioTexto": "Right now every product uses the default design. Create the product page with those same blocks (gallery, name and price, buy, benefits, description, related products and reviews) and edit it in the editor. Nothing else on your site changes.",
+              "boton": "Create editable product page"
+            },
+            "category_detail": {
+              "titulo": "Category page",
+              "descripcion": "Template for /categorias/[slug]: header, filters and grid. The text and image come from the category in Inventory.",
+              "vacioTitulo": "Your site does not have an editable category page yet",
+              "vacioTexto": "Right now categories use the default design. Create the page with those same blocks and edit it in the editor. Nothing else on your site changes.",
+              "boton": "Create editable page"
+            },
+            "creando": "Creating…",
+            "sinPermiso": "Read only: ask for the «Edit website» permission.",
+            "conflicto": "Someone saved the site in the meantime. We reloaded the screen: try again.",
+            "error": "We could not create the page: {mensaje}",
+            "publicar": "Created in the draft: it shows on your site when you publish."
+          },
           "tipos": {
             "product_detail": "Product detail",
             "category_detail": "Category detail",

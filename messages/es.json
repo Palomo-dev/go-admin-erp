@@ -36607,6 +36607,27 @@
           "editar": "Editar",
           "vacio": "Tu sitio usa las plantillas de detalle de su diseño. Se crean al abrir el editor.",
           "soloV2": "Esta plantilla se edita cuando el sitio pase al editor nuevo.",
+          "crear": {
+            "product_detail": {
+              "titulo": "Ficha de producto",
+              "descripcion": "Una sola plantilla para todos los productos: el orden y las secciones se editan en el editor y valen en todas las fichas.",
+              "vacioTitulo": "Tu sitio todavía no tiene ficha editable",
+              "vacioTexto": "Hoy cada producto se ve con el diseño por defecto. Crea la ficha con esos mismos bloques (galería, nombre y precio, comprar, beneficios, descripción, relacionados y reseñas) y edítala en el editor. El resto del sitio no cambia.",
+              "boton": "Crear ficha editable"
+            },
+            "category_detail": {
+              "titulo": "Página de categoría",
+              "descripcion": "Plantilla de /categorias/[slug]: encabezado, filtros y cuadrícula. El texto y la imagen salen de la categoría en Inventario.",
+              "vacioTitulo": "Tu sitio todavía no tiene página de categoría editable",
+              "vacioTexto": "Hoy las categorías se ven con el diseño por defecto. Créala con esos mismos bloques y edítala en el editor. El resto del sitio no cambia.",
+              "boton": "Crear página editable"
+            },
+            "creando": "Creando…",
+            "sinPermiso": "Solo lectura: pide el permiso «Editar sitio web».",
+            "conflicto": "Alguien guardó el sitio mientras tanto. Recargamos la pantalla: intenta de nuevo.",
+            "error": "No pudimos crear la página: {mensaje}",
+            "publicar": "Creada en el borrador: se ve en tu sitio cuando publiques."
+          },
           "tipos": {
             "product_detail": "Detalle de producto",
             "category_detail": "Detalle de categoría",

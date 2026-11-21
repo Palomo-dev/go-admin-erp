@@ -155,6 +155,13 @@ export async function probarLlaves(
       const r = await llamar(fetchImpl, 'https://integrations.api.bold.co/online/link/v1/payment_methods', {
         headers: { Authorization: `x-api-key ${v.identity_key}`, Accept: 'application/json' },
       });
+      // Con una llave de identidad de PRUEBA, la API de links responde 406 (lo vio el dueño el
+      // 2026-11-21; la de producción responde 200). Una llave inválida responde 401/403. El 406
+      // dice entonces que la llave existe y es de pruebas: la tienda cobra con el Botón de pagos,
+      // que sí acepta llaves de prueba. Si se eligió «Producción», guardarLlaves lo avisa.
+      if (r && r.status === 406) {
+        return { resultado: 'correcta', http: 406, verificado: ['identity_key'], cuenta: { nombre: 'Bold', ambiente: 'sandbox' } };
+      }
       if (!r || !r.ok) return porRespuesta(r, ['identity_key']);
       const d = await leerJson(r);
       const lista = d?.payment_methods ?? (d?.payload as Record<string, unknown> | undefined)?.payment_methods;

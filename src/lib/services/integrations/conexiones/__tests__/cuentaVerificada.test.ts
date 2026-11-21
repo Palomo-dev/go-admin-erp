@@ -60,6 +60,19 @@ describe('probarLlaves devuelve con quién quedó conectado', () => {
     expect(q.cuenta?.ambiente).toBe('production');
   });
 
+  it('Bold: producción responde 200; una llave de PRUEBA responde 406 y vale como de pruebas; una inválida, 401', async () => {
+    const llaves = { identity_key: 'id-x', secret_key: 'sec-y' };
+    const real = jest.fn(async (_url: string) => responder({ payment_methods: [{ name: 'CREDIT_CARD' }, { name: 'PSE' }] }));
+    const p = await probarLlaves('bold', 'production', llaves, real as unknown as typeof fetch);
+    expect(p).toMatchObject({ resultado: 'correcta', cuenta: { nombre: 'Bold', metodos: ['CREDIT_CARD', 'PSE'] } });
+    expect(String(real.mock.calls[0][0])).toBe('https://integrations.api.bold.co/online/link/v1/payment_methods');
+    const prueba = jest.fn(async (_url: string) => responder({ message: 'Not Acceptable' }, 406));
+    const q = await probarLlaves('bold', 'sandbox', llaves, prueba as unknown as typeof fetch);
+    expect(q).toMatchObject({ resultado: 'correcta', http: 406, cuenta: { ambiente: 'sandbox' } });
+    const mala = jest.fn(async (_url: string) => responder({ message: 'Unauthorized' }, 401));
+    expect((await probarLlaves('bold', 'sandbox', llaves, mala as unknown as typeof fetch)).resultado).toBe('rechazada');
+  });
+
   it('Stripe: /v1/account (nombre del negocio, país, modo)', async () => {
     const f = jest.fn(async (_url: string) => responder({ id: 'acct_1', country: 'US', business_profile: { name: 'Negocio Prueba' } }));
     const p = await probarLlaves('stripe', 'production', { publishable_key: 'pk_live_x', secret_key: 'sk_live_y' }, f as unknown as typeof fetch);

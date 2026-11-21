@@ -148,6 +148,21 @@ export async function probarLlaves(
         idExterno: textoDe(d?.id),
       } : undefined);
     }
+    case 'bold': {
+      // Métodos de pago del link (`boldService.getPaymentMethods`): responde solo con una llave de
+      // identidad válida. La llave secreta no tiene prueba en la API (solo firma los eventos): se
+      // verifica cuando llega el primer evento firmado. Bold usa la misma URL en los dos ambientes.
+      const r = await llamar(fetchImpl, 'https://integrations.api.bold.co/online/link/v1/payment_methods', {
+        headers: { Authorization: `x-api-key ${v.identity_key}`, Accept: 'application/json' },
+      });
+      if (!r || !r.ok) return porRespuesta(r, ['identity_key']);
+      const d = await leerJson(r);
+      const lista = d?.payment_methods ?? (d?.payload as Record<string, unknown> | undefined)?.payment_methods;
+      const metodos = Array.isArray(lista)
+        ? (lista as unknown[]).map((m) => (m && typeof m === 'object' ? textoDe((m as Record<string, unknown>).name) : textoDe(m))).filter((x): x is string => !!x)
+        : [];
+      return porRespuesta(r, ['identity_key'], { nombre: 'Bold', ambiente: null, metodos });
+    }
     case 'stripe': {
       const r = await llamar(fetchImpl, 'https://api.stripe.com/v1/account', { headers: { Authorization: `Bearer ${v.secret_key}` } });
       if (!r || !r.ok) return porRespuesta(r, ['secret_key']);

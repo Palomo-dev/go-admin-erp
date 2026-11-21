@@ -47920,9 +47920,8 @@
           "The money goes to your Bold account; GO Admin never touches it."
         ],
         "queNecesitas": [
-          "A Bold account with its integration keys.",
-          "The serial number of each terminal and its branch.",
-          "10 minutes."
+          "A Bold account with its identity key and secret key.",
+          "5 minutes."
         ]
       },
       "stripe": {
@@ -48350,6 +48349,11 @@
           "Its integration credentials.",
           "10 minutes."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "Do you take payments with Bold card terminals in the POS?",
+        "texto": "The keys are for payment links and the online store. Each branch’s card terminals are set up separately, with their serial number.",
+        "enlace": "Set up Bold card terminals"
       }
     },
     "misConexiones": {
@@ -48702,6 +48706,11 @@
             "p1": "Go to SendGrid › Settings › API Keys.",
             "p2": "Create a key with mail send permission.",
             "p3": "Copy it and enter the verified sender you will use."
+          },
+          "bold": {
+            "p1": "Sign in to panel.bold.co.",
+            "p2": "Go to Integrations and open the {ambiente} integration keys.",
+            "p3": "Copy the identity key and the secret key."
           }
         },
         "abrirPanel": "Open the {nombre} dashboard in a new tab",
@@ -48777,7 +48786,8 @@
             "payu": "In PayU, paste it as your account confirmation URL.",
             "stripe": "In Stripe, go to Developers › Webhooks › Add endpoint and paste it.",
             "paypal": "In PayPal, open your application › Webhooks › Add webhook and paste it.",
-            "sendgrid": "In SendGrid, go to Settings › Mail Settings › Event Webhook and paste it."
+            "sendgrid": "In SendGrid, go to Settings › Mail Settings › Event Webhook and paste it.",
+            "bold": "In the Bold panel, go to Integrations › Webhooks and paste it as the notification URL."
           },
           "p3": "Save in {nombre} and come back here.",
           "sinUrl": "This provider does not send notifications to GO Admin",

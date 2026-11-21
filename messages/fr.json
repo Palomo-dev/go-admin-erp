@@ -47920,9 +47920,8 @@
           "L’argent arrive sur votre compte Bold ; GO Admin n’y touche pas."
         ],
         "queNecesitas": [
-          "Un compte Bold avec ses clés d’intégration.",
-          "Le numéro de série de chaque terminal et son agence.",
-          "10 minutes."
+          "Un compte Bold avec sa clé d’identité et sa clé secrète.",
+          "5 minutes."
         ]
       },
       "stripe": {
@@ -48350,6 +48349,11 @@
           "Ses identifiants d’intégration.",
           "10 minutes."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "Vous encaissez avec des TPE Bold au point de vente ?",
+        "texto": "Les clés servent aux liens de paiement et à la boutique en ligne. Les TPE de chaque établissement se configurent à part, avec leur numéro de série.",
+        "enlace": "Configurer les TPE Bold"
       }
     },
     "misConexiones": {
@@ -48702,6 +48706,11 @@
             "p1": "Allez dans SendGrid › Settings › API Keys.",
             "p2": "Créez une clé avec le droit d'envoi d'e-mails.",
             "p3": "Copiez-la et saisissez l'expéditeur vérifié que vous utiliserez."
+          },
+          "bold": {
+            "p1": "Connectez-vous à panel.bold.co.",
+            "p2": "Allez dans Intégrations et ouvrez les clés d’intégration de {ambiente}.",
+            "p3": "Copiez la clé d’identité et la clé secrète."
           }
         },
         "abrirPanel": "Ouvrir le tableau de bord de {nombre} dans un nouvel onglet",
@@ -48777,7 +48786,8 @@
             "payu": "Dans PayU, collez-la comme URL de confirmation de votre compte.",
             "stripe": "Dans Stripe, allez dans Développeurs › Webhooks › Ajouter un endpoint et collez-la.",
             "paypal": "Dans PayPal, ouvrez votre application › Webhooks › Ajouter un webhook et collez-la.",
-            "sendgrid": "Dans SendGrid, allez dans Settings › Mail Settings › Event Webhook et collez-la."
+            "sendgrid": "Dans SendGrid, allez dans Settings › Mail Settings › Event Webhook et collez-la.",
+            "bold": "Dans le panneau Bold, allez dans Intégrations › Webhooks et collez-la comme URL de notification."
           },
           "p3": "Enregistrez dans {nombre} et revenez ici.",
           "sinUrl": "Ce fournisseur n'envoie pas d'avis à GO Admin",

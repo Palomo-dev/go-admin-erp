@@ -34,12 +34,12 @@ async function codigoDeProveedor(id: string): Promise<string | null> {
   }
 }
 
-async function proveedorDeConexion(id: string): Promise<string | null> {
+async function proveedorDeConexion(id: string): Promise<{ proveedor: string | null; conector: string | null }> {
   try {
     const db = await getServerUserClient();
     const { data } = await db
       .from('integration_connections')
-      .select('connector:integration_connectors(provider:integration_providers(code))')
+      .select('connector:integration_connectors(code, provider:integration_providers(code))')
       .eq('id', id)
       .maybeSingle();
     const conector = (data as { connector?: unknown } | null)?.connector;
@@ -47,9 +47,10 @@ async function proveedorDeConexion(id: string): Promise<string | null> {
     const p = (c as { provider?: unknown } | undefined)?.provider;
     const prov = Array.isArray(p) ? p[0] : p;
     const code = (prov as { code?: unknown } | undefined)?.code;
-    return typeof code === 'string' ? code : null;
+    const codigoConector = (c as { code?: unknown } | undefined)?.code;
+    return { proveedor: typeof code === 'string' ? code : null, conector: typeof codigoConector === 'string' ? codigoConector : null };
   } catch {
-    return null;
+    return { proveedor: null, conector: null };
   }
 }
 
@@ -67,7 +68,8 @@ export default async function NuevaConexionPage({ searchParams }: { searchParams
     mode,
     id,
     proveedor,
-    proveedorDeConexion: deConexion,
+    proveedorDeConexion: deConexion?.proveedor ?? null,
+    conector: deConexion?.conector ?? uno('conector'),
     volver: uno('return'),
     sucursalId: Number.isInteger(sucursal) && sucursal > 0 ? sucursal : null,
   });

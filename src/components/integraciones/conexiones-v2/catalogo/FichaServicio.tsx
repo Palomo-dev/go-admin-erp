@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { AvisoTonal, PanelAdaptable, clasesBoton } from '@/components/kit';
 import type { ItemCatalogo } from '@/lib/services/integrations/conexiones/catalogoConexiones';
+import { RUTA_DATAFONOS_BOLD } from '@/lib/services/integrations/conexiones/rutaAsistente';
 import { LogoServicio } from '../logos';
 
 function ListaNumerada({ items, etiqueta }: { items: string[]; etiqueta: string }) {
@@ -82,6 +83,14 @@ export function FichaServicio({ item, nombre, onCerrar, onConectar }: FichaServi
           <h3 className="text-sm font-semibold text-fg">{t('ficha.queNecesitas')}</h3>
           <ListaNumerada items={lista('queNecesitas')} etiqueta={t('ficha.queNecesitas')} />
         </section>
+        {item.id === 'bold' && (
+          <AvisoTonal
+            tono="neutro"
+            titulo={t('ficha.datafonosBold.titulo')}
+            descripcion={t('ficha.datafonosBold.texto')}
+            accion={{ etiqueta: t('ficha.datafonosBold.enlace'), href: RUTA_DATAFONOS_BOLD }}
+          />
+        )}
         {item.grupo === 'cobros' && (
           <AvisoTonal
             tono="informacion"

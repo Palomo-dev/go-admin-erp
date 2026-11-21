@@ -47930,9 +47930,8 @@
           "O dinheiro chega à sua conta Bold; a GO Admin não o toca."
         ],
         "queNecesitas": [
-          "Uma conta Bold com suas chaves de integração.",
-          "O número de série de cada maquininha e sua filial.",
-          "10 minutos."
+          "Uma conta Bold com a chave de identidade e a chave secreta.",
+          "5 minutos."
         ]
       },
       "stripe": {
@@ -48360,6 +48359,11 @@
           "As credenciais de integração.",
           "10 minutos."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "Você cobra com maquininhas Bold no PDV?",
+        "texto": "As chaves servem para os links de pagamento e a loja virtual. As maquininhas de cada unidade são configuradas à parte, com o número de série.",
+        "enlace": "Configurar maquininhas Bold"
       }
     },
     "misConexiones": {
@@ -48712,6 +48716,11 @@
             "p1": "Vá para SendGrid › Settings › API Keys.",
             "p2": "Crie uma chave com permissão de envio de e-mails.",
             "p3": "Copie-a e informe o remetente verificado que vai usar."
+          },
+          "bold": {
+            "p1": "Entre em panel.bold.co com seu usuário.",
+            "p2": "Vá em Integrações e abra as chaves de integração de {ambiente}.",
+            "p3": "Copie a chave de identidade e a chave secreta."
           }
         },
         "abrirPanel": "Abrir o painel de {nombre} em outra aba",
@@ -48787,7 +48796,8 @@
             "payu": "Na PayU, cole como URL de confirmação da sua conta.",
             "stripe": "Na Stripe, vá para Desenvolvedores › Webhooks › Adicionar endpoint e cole.",
             "paypal": "No PayPal, abra sua aplicação › Webhooks › Adicionar webhook e cole.",
-            "sendgrid": "No SendGrid, vá para Settings › Mail Settings › Event Webhook e cole."
+            "sendgrid": "No SendGrid, vá para Settings › Mail Settings › Event Webhook e cole.",
+            "bold": "No painel da Bold, vá em Integrações › Webhooks e cole como URL de notificações."
           },
           "p3": "Salve em {nombre} e volte aqui.",
           "sinUrl": "Este provedor não envia avisos ao GO Admin",

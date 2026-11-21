@@ -47935,9 +47935,8 @@
           "El dinero llega a tu cuenta Bold; GO Admin no lo toca."
         ],
         "queNecesitas": [
-          "Una cuenta Bold con sus llaves de integración.",
-          "El serial de cada datáfono y su sucursal.",
-          "10 minutos."
+          "Una cuenta Bold con su llave de identidad y su llave secreta.",
+          "5 minutos."
         ]
       },
       "stripe": {
@@ -48365,6 +48364,11 @@
           "Sus credenciales de integración.",
           "10 minutos."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "¿Cobras con datáfonos Bold en el POS?",
+        "texto": "Las llaves sirven para los links de pago y la tienda web. Los datáfonos de cada sucursal se configuran aparte, con su serial.",
+        "enlace": "Configurar datáfonos Bold"
       }
     },
     "misConexiones": {
@@ -48717,6 +48721,11 @@
             "p1": "Entra a SendGrid › Settings › API Keys.",
             "p2": "Crea una llave con permiso de envío de correos.",
             "p3": "Cópiala y escribe el remitente verificado que vas a usar."
+          },
+          "bold": {
+            "p1": "Entra a panel.bold.co con tu usuario.",
+            "p2": "Ve a Integraciones y abre las llaves de integración de {ambiente}.",
+            "p3": "Copia la llave de identidad y la llave secreta."
           }
         },
         "abrirPanel": "Abrir el panel de {nombre} en otra pestaña",
@@ -48792,7 +48801,8 @@
             "payu": "En PayU, pégala como URL de confirmación de tu cuenta.",
             "stripe": "En Stripe, ve a Desarrolladores › Webhooks › Añadir endpoint y pégala.",
             "paypal": "En PayPal, abre tu aplicación › Webhooks › Añadir webhook y pégala.",
-            "sendgrid": "En SendGrid, ve a Settings › Mail Settings › Event Webhook y pégala."
+            "sendgrid": "En SendGrid, ve a Settings › Mail Settings › Event Webhook y pégala.",
+            "bold": "En el panel de Bold, ve a Integraciones › Webhooks y pégala como URL de notificaciones."
           },
           "p3": "Guarda en {nombre} y vuelve aquí.",
           "sinUrl": "Este proveedor no envía avisos a GO Admin",

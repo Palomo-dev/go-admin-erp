@@ -70,7 +70,19 @@ export type MedioLiquidacion = (typeof MEDIOS_LIQUIDACION)[number];
 /** Medios que la base acepta hoy («nómina» espera la integración con HRM). */
 export const MEDIOS_DISPONIBLES: readonly MedioLiquidacion[] = ['efectivo', 'transferencia', 'sin_pago'];
 
-export type EstadoLiquidacion = 'pagada' | 'anulada';
+/** «por_pagar»: liquidada (28150502) y sin pagar a todos (migración 20261121030426). */
+export type EstadoLiquidacion = 'por_pagar' | 'pagada' | 'anulada';
+
+/** Medio con que se pagó cada línea. */
+export type MedioPagoLinea = 'efectivo' | 'transferencia' | 'nomina';
+
+/** Pagar una liquidación «por pagar» (todas sus personas o las elegidas). */
+export interface DatosPagoLiquidacion {
+  solicitud: string;
+  medio: 'efectivo' | 'transferencia';
+  personas?: string[];
+  referencias?: { persona: string; referencia: string }[];
+}
 
 export interface FilaLiquidacion {
   id: string;
@@ -101,6 +113,9 @@ export interface LineaLiquidacion extends PersonaPropina {
   ajuste: number;
   monto: number;
   referencia: string | null;
+  /** Null mientras esté por pagar. */
+  pagado_en?: string | null;
+  medio_pago?: MedioPagoLinea | null;
 }
 
 export interface MovimientoCajaRef {

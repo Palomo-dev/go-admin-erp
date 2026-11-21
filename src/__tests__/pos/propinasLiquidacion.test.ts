@@ -46,6 +46,8 @@ import {
   cajaAbiertaPropinas,
   crearLiquidacion,
   filtrosPropinas,
+  pagarLiquidacion,
+  validarDatosPago,
   listarPropinas,
   resolverPermisosPropinas,
   validarDatosLiquidacion,
@@ -384,5 +386,44 @@ describe('Textos en 4 idiomas', () => {
     const usadas = new Set(fuentes.flatMap((s) => [...s.matchAll(/\bt\('([a-zA-Z0-9_.]+)'/g)].map((m) => m[1])));
     const faltan = [...usadas].filter((k) => !es.has(k));
     expect(faltan).toEqual([]);
+  });
+});
+
+describe('Por pagar: 28150501 → 28150502 → caja o bancos (Contador, 2026-11-20)', () => {
+  const POR_PAGAR = leer('supabase/migrations/20261121030426_pos_propinas_por_pagar_28150502.sql');
+  const POR_PAGAR_ROLLBACK = leer('supabase/rollbacks/20261121030426_pos_propinas_por_pagar_28150502_rollback.sql');
+
+  it('liquidar acredita 28150502 y pagar la debita, un asiento por trabajador', () => {
+    expect(POR_PAGAR).toMatch(/array\['28150501'\]\);\s+v_contra := public\.fn_primera_cuenta_detalle\(p_organization_id, array\['28150502'\]\)/);
+    expect(POR_PAGAR).toMatch(/'tip_settlement:' \|\| v_id::text \|\| ':' \|\| v_rec\.person_id::text/);
+    expect(POR_PAGAR).toMatch(/'tip_settlement_pago:' \|\| v_s\.id::text \|\| ':' \|\| v_rec\.person_id::text/);
+  });
+
+  it('«pagar después» deja la liquidación por pagar; anular no toca una pagada por nómina', () => {
+    expect(POR_PAGAR).toMatch(/update public\.tip_settlements set status = 'por_pagar' where id = v_id/);
+    expect(POR_PAGAR).toMatch(/PAGADA_POR_NOMINA/);
+    expect(POR_PAGAR_ROLLBACK).toMatch(/Hay liquidaciones por pagar o movimientos en 28150502/);
+  });
+
+  it('los códigos nuevos tienen traducción en los 4 idiomas', () => {
+    for (const idioma of ['es', 'en', 'fr', 'pt']) {
+      const m = JSON.parse(leer(`messages/${idioma}.json`)) as { posPropinas: { errores: Record<string, string>; liquidaciones: { estados: Record<string, string> } } };
+      for (const c of ['LIQUIDACION_ANULADA', 'PAGADA_POR_NOMINA', 'SIN_CUENTA']) expect(m.posPropinas.errores[c]).toBeTruthy();
+      expect(m.posPropinas.liquidaciones.estados.por_pagar).toBeTruthy();
+    }
+  });
+
+  it('pagar valida el cuerpo y manda solo la liquidación y los datos del pago', async () => {
+    expect(() => validarDatosPago({ medio: 'efectivo' })).toThrow('SOLICITUD_REQUERIDA');
+    expect(() => validarDatosPago({ solicitud: S1, medio: 'nomina' })).toThrow('MEDIO_INVALIDO');
+    expect(() => validarDatosPago({ solicitud: S1, medio: 'efectivo', personas: ['x'] })).toThrow('PERSONA_INVALIDA');
+    const rpc = jest.fn(async () => ({ data: { id: S1, codigo: 'LIQ-000001', ya_pagada: false, estado: 'pagada' }, error: null }));
+    const c = { organizationId: 120, userId: U1, roleId: 3, isSuperAdmin: false, supabase: { rpc } as never };
+    const datos = validarDatosPago({ solicitud: S1, medio: 'transferencia', referencias: [{ persona: U2, referencia: 'REF-1' }], organization_id: 999 });
+    await expect(pagarLiquidacion(c, S1, datos)).resolves.toMatchObject({ estado: 'pagada' });
+    expect(rpc).toHaveBeenCalledWith('fn_propinas_liquidacion_pagar', {
+      p_settlement_id: S1,
+      p_datos: { solicitud: S1, medio: 'transferencia', personas: undefined, referencias: [{ persona: U2, referencia: 'REF-1' }] },
+    });
   });
 });

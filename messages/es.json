@@ -18189,6 +18189,9 @@
       "REFERENCIA_REQUERIDA": "Escribe la referencia de cada transferencia.",
       "CAJA_CERRADA": "No hay una caja abierta en esta sucursal: ábrela para pagar en efectivo.",
       "LIQUIDACION_INEXISTENTE": "La liquidación no existe en esta organización.",
+      "LIQUIDACION_ANULADA": "La liquidación está anulada: no se puede pagar.",
+      "PAGADA_POR_NOMINA": "Parte de esta liquidación se pagó por nómina: se corrige en la nómina.",
+      "SIN_CUENTA": "Falta una cuenta contable de propinas (28150501 o 28150502) o la de caja o bancos.",
       "SOLICITUD_REQUERIDA": "No se pudo identificar la solicitud. Inténtalo de nuevo.",
       "DATOS_INVALIDOS": "Revisa los filtros: hay un dato que no es válido."
     },
@@ -18400,6 +18403,7 @@
         "estado": "Estado"
       },
       "estados": {
+        "por_pagar": "Por pagar",
         "pagada": "Pagada",
         "anulada": "Anulada"
       },

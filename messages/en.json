@@ -18188,6 +18188,9 @@
       "REFERENCIA_REQUERIDA": "Enter the reference of each transfer.",
       "CAJA_CERRADA": "There is no open register in this branch: open one to pay in cash.",
       "LIQUIDACION_INEXISTENTE": "The settlement does not exist in this organization.",
+      "LIQUIDACION_ANULADA": "The settlement is voided: it cannot be paid.",
+      "PAGADA_POR_NOMINA": "Part of this settlement was paid through payroll: correct it in payroll.",
+      "SIN_CUENTA": "A tips ledger account (28150501 or 28150502) or the cash or bank account is missing.",
       "SOLICITUD_REQUERIDA": "The request could not be identified. Try again.",
       "DATOS_INVALIDOS": "Check the filters: one value is not valid."
     },
@@ -18399,6 +18402,7 @@
         "estado": "Status"
       },
       "estados": {
+        "por_pagar": "To pay",
         "pagada": "Paid",
         "anulada": "Voided"
       },

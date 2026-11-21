@@ -13540,6 +13540,9 @@
       "REFERENCIA_REQUERIDA": "Saisissez la référence de chaque virement.",
       "CAJA_CERRADA": "Aucune caisse ouverte dans cette succursale : ouvrez-la pour payer en espèces.",
       "LIQUIDACION_INEXISTENTE": "La répartition n’existe pas dans cette organisation.",
+      "LIQUIDACION_ANULADA": "La répartition est annulée : elle ne peut pas être payée.",
+      "PAGADA_POR_NOMINA": "Une partie de cette répartition a été payée par la paie : corrigez-la dans la paie.",
+      "SIN_CUENTA": "Il manque un compte de pourboires (28150501 ou 28150502) ou le compte de caisse ou de banque.",
       "SOLICITUD_REQUERIDA": "La demande n’a pas pu être identifiée. Réessayez.",
       "DATOS_INVALIDOS": "Vérifiez les filtres : une valeur n’est pas valide."
     },
@@ -13751,6 +13754,7 @@
         "estado": "Statut"
       },
       "estados": {
+        "por_pagar": "À payer",
         "pagada": "Payée",
         "anulada": "Annulée"
       },

@@ -11,6 +11,7 @@ import type {
   CajaAbiertaPropinas,
   CifrasPropinas,
   DatosLiquidacion,
+  DatosPagoLiquidacion,
   DetalleLiquidacion,
   PaginaLiquidaciones,
   PaginaPropinas,
@@ -56,6 +57,13 @@ export const liquidarPropinas = (datos: DatosLiquidacion) => enviar<ResultadoLiq
 
 export const anularLiquidacionPropinas = (id: string, motivo: string) =>
   enviar<{ id: string; codigo: string; ya_anulada: boolean }>(`/api/pos/propinas/liquidaciones/${encodeURIComponent(id)}/anular`, { motivo });
+
+/** Paga una liquidación «por pagar» (28150502 contra caja o bancos). */
+export const pagarLiquidacionPropinas = (id: string, datos: DatosPagoLiquidacion) =>
+  enviar<{ id: string; codigo: string; ya_pagada: boolean; estado?: string }>(
+    `/api/pos/propinas/liquidaciones/${encodeURIComponent(id)}/pagar`,
+    datos,
+  );
 
 export const anularPropinaConMotivo = (id: string, motivo: string) =>
   enviar<{ asientosRevertidos: number; yaAnulada: boolean }>(`/api/pos/propinas/${encodeURIComponent(id)}/anular`, { motivo });

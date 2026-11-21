@@ -8,7 +8,8 @@
  *   `fn_propinas_liquidaciones_listado`, `fn_propinas_liquidacion_detalle`.
  * - Escrituras: `fn_propinas_liquidacion_crear` (egreso de caja con
  *   `pos_caja_registrar_movimiento`, en la misma transacción),
- *   `fn_propinas_liquidacion_anular` y `fn_propina_anular`, todas con motivo
+ *   `fn_propinas_liquidacion_anular`, `fn_propinas_liquidacion_pagar` (pagar
+ *   una liquidación «por pagar») y `fn_propina_anular`, todas con motivo
  *   donde corresponde.
  * - Días en la zona (y el horario) de la organización: `rangoDeDias` de Ventas.
  */
@@ -27,6 +28,7 @@ import {
   type CajaAbiertaPropinas,
   type CifrasPropinas,
   type DatosLiquidacion,
+  type DatosPagoLiquidacion,
   type DetalleLiquidacion,
   type PaginaLiquidaciones,
   type PaginaPropinas,
@@ -237,6 +239,38 @@ export async function anularLiquidacion(ctx: Ctx, id: string, motivo: unknown): 
   const { data, error } = await ctx.supabase.rpc('fn_propinas_liquidacion_anular', { p_settlement_id: id, p_motivo: motivoValido(motivo) });
   if (error) throw errorPropina(error);
   return data as { id: string; codigo: string; ya_anulada: boolean };
+}
+
+/** Valida el cuerpo del pago de una liquidación «por pagar». */
+export function validarDatosPago(cuerpo: unknown): DatosPagoLiquidacion {
+  const c = (cuerpo ?? {}) as Partial<DatosPagoLiquidacion>;
+  if (!esUuid(c.solicitud)) throw new PropinaError('SOLICITUD_REQUERIDA');
+  if (c.medio !== 'efectivo' && c.medio !== 'transferencia') throw new PropinaError('MEDIO_INVALIDO');
+  const personas = Array.isArray(c.personas) ? c.personas.filter(esUuid) : undefined;
+  if (personas && personas.length !== c.personas!.length) throw new PropinaError('PERSONA_INVALIDA');
+  const referencias = Array.isArray(c.referencias)
+    ? c.referencias
+        .map((x) => (x ?? {}) as Record<string, unknown>)
+        .filter((x) => esUuid(x.persona) && typeof x.referencia === 'string')
+        .map((x) => ({ persona: x.persona as string, referencia: (x.referencia as string).slice(0, 120) }))
+    : undefined;
+  return { solicitud: c.solicitud, medio: c.medio, personas, referencias };
+}
+
+/**
+ * Paga una liquidación «por pagar» (`fn_propinas_liquidacion_pagar`): Débito
+ * 28150502 / Crédito caja o bancos, un asiento por trabajador; en efectivo,
+ * con su egreso de caja.
+ */
+export async function pagarLiquidacion(
+  ctx: Ctx,
+  id: string,
+  datos: DatosPagoLiquidacion,
+): Promise<{ id: string; codigo: string; ya_pagada: boolean; estado?: string; total?: number; movimiento_caja?: number | null }> {
+  if (!esUuid(id)) throw new PropinaError('LIQUIDACION_INEXISTENTE');
+  const { data, error } = await ctx.supabase.rpc('fn_propinas_liquidacion_pagar', { p_settlement_id: id, p_datos: datos });
+  if (error) throw errorPropina(error);
+  return data as { id: string; codigo: string; ya_pagada: boolean; estado?: string; total?: number; movimiento_caja?: number | null };
 }
 
 export async function anularPropina(ctx: Ctx, id: string, motivo: unknown): Promise<{ asientosRevertidos: number; yaAnulada: boolean }> {

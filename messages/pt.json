@@ -13541,6 +13541,9 @@
       "REFERENCIA_REQUERIDA": "Escreva a referência de cada transferência.",
       "CAJA_CERRADA": "Não há caixa aberto nesta filial: abra-o para pagar em dinheiro.",
       "LIQUIDACION_INEXISTENTE": "A liquidação não existe nesta organização.",
+      "LIQUIDACION_ANULADA": "A liquidação está anulada: não pode ser paga.",
+      "PAGADA_POR_NOMINA": "Parte desta liquidação foi paga pela folha: corrija na folha de pagamento.",
+      "SIN_CUENTA": "Falta uma conta contábil de gorjetas (28150501 ou 28150502) ou a de caixa ou banco.",
       "SOLICITUD_REQUERIDA": "Não foi possível identificar a solicitação. Tente novamente.",
       "DATOS_INVALIDOS": "Revise os filtros: há um valor inválido."
     },
@@ -13752,6 +13755,7 @@
         "estado": "Status"
       },
       "estados": {
+        "por_pagar": "A pagar",
         "pagada": "Paga",
         "anulada": "Anulada"
       },

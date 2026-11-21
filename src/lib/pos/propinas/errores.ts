@@ -1,6 +1,7 @@
 /**
  * Códigos de error de Propinas. Las funciones de la base levantan
- * `CODIGO: detalle` (migraciones 20260925110000 y 20261120200000); la RLS
+ * `CODIGO: detalle` (migraciones 20260925110000, 20261120200000 y
+ * 20261121030426); la RLS
  * responde 42501. La pantalla traduce cada código con
  * `posPropinas.errores.<CODIGO>`. Módulo hoja, sin dependencias: lo usan el
  * servidor (route handlers) y el navegador.
@@ -28,6 +29,9 @@ export const CODIGOS_ERROR_PROPINA = [
   'REFERENCIA_REQUERIDA',
   'CAJA_CERRADA',
   'LIQUIDACION_INEXISTENTE',
+  'LIQUIDACION_ANULADA',
+  'PAGADA_POR_NOMINA',
+  'SIN_CUENTA',
   'SOLICITUD_REQUERIDA',
   'DATOS_INVALIDOS',
   'DESCONOCIDO',

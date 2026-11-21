@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Camera, Info, Package, Tag, type LucideIcon } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import { CampoNumero, Dialogo, FormField } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { ReturnReason, CreateReturnReasonData, UpdateReturnReasonData } from '../types';
 import { ReturnReasonsService, claveErrorMotivo } from './returnReasonsService';
@@ -125,27 +124,17 @@ export function ReturnReasonForm({
     }
   };
 
-  const interruptor = (
-    campo: 'requires_photo' | 'affects_inventory' | 'is_active',
-    Icono: LucideIcon,
-    etiqueta: string,
-    ayuda: string,
-  ) => {
+  const interruptor = (campo: 'requires_photo' | 'affects_inventory' | 'is_active', etiqueta: string, ayuda: string) => {
     const id = `motivo-${campo}`;
     return (
-      <div className="flex items-center justify-between gap-3 rounded-lg bg-subtle p-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
-            <Icono className="size-4" strokeWidth={1.5} />
-          </span>
-          <div className="min-w-0">
-            <label htmlFor={id} className="text-sm font-medium text-fg">
-              {etiqueta}
-            </label>
-            <p id={`${id}-ayuda`} className="text-xs text-fg-secondary">
-              {ayuda}
-            </p>
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <label htmlFor={id} className="text-sm font-medium text-fg">
+            {etiqueta}
+          </label>
+          <p id={`${id}-ayuda`} className="text-xs text-fg-secondary">
+            {ayuda}
+          </p>
         </div>
         <Switch
           id={id}
@@ -163,24 +152,42 @@ export function ReturnReasonForm({
       abierto={open}
       onAbiertoChange={onOpenChange}
       titulo={isEditing ? t('tituloEditar') : t('tituloNuevo')}
-      icono={Tag}
+      descripcion={t('descripcionDialogo')}
+      icono={ClipboardList}
       ancho={520}
       textoCancelar={tComun('cancelar')}
       primario={{
-        etiqueta: isEditing ? t('actualizar') : t('crear'),
+        etiqueta: t('guardar'),
         onClick: () => formRef.current?.requestSubmit(),
         cargando: loading,
       }}
     >
       <form ref={formRef} onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-        <FormField etiqueta={t('codigo')} obligatorio error={errors.code || null}>
-          <Input
-            value={formData.code}
-            onChange={(e) => handleChange('code', e.target.value.toUpperCase())}
-            placeholder={t('codigoPlaceholder')}
-            disabled={loading}
-          />
-        </FormField>
+        <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+          <FormField etiqueta={t('codigo')} obligatorio ayuda={t('codigoAyuda')} error={errors.code || null}>
+            <Input
+              value={formData.code}
+              onChange={(e) => handleChange('code', e.target.value.toUpperCase())}
+              placeholder={t('codigoPlaceholder')}
+              disabled={loading}
+            />
+          </FormField>
+          <FormField etiqueta={t('orden')}>
+            {(c) => (
+              <CampoNumero
+                id={c.id}
+                aria-describedby={c['aria-describedby']}
+                valor={formData.display_order ?? 0}
+                onValorChange={(v) => handleChange('display_order', v ?? 0)}
+                decimales={0}
+                minimo={0}
+                alinear="izquierda"
+                disabled={loading}
+                className="w-28"
+              />
+            )}
+          </FormField>
+        </div>
 
         <FormField etiqueta={t('nombre')} obligatorio error={errors.name || null}>
           <Input
@@ -191,37 +198,20 @@ export function ReturnReasonForm({
           />
         </FormField>
 
-        <FormField etiqueta={t('descripcion')} error={errors.description || null}>
-          <Textarea
+        <FormField etiqueta={t('descripcionOpcional')} error={errors.description || null}>
+          <Input
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             placeholder={t('descripcionPlaceholder')}
-            rows={3}
-            className="resize-none"
+            maxLength={500}
             disabled={loading}
           />
         </FormField>
 
-        <FormField etiqueta={t('orden')} ayuda={t('ordenAyuda')}>
-          {(c) => (
-            <CampoNumero
-              id={c.id}
-              aria-describedby={c['aria-describedby']}
-              valor={formData.display_order ?? 0}
-              onValorChange={(v) => handleChange('display_order', v ?? 0)}
-              decimales={0}
-              minimo={0}
-              alinear="izquierda"
-              disabled={loading}
-              className="w-32"
-            />
-          )}
-        </FormField>
-
         <div className="flex flex-col gap-3 pt-1">
-          {interruptor('requires_photo', Camera, t('requiereFoto'), t('requiereFotoAyuda'))}
-          {interruptor('affects_inventory', Package, t('afectaInventario'), t('afectaInventarioAyuda'))}
-          {interruptor('is_active', Info, t('activo'), t('activoAyuda'))}
+          {interruptor('affects_inventory', t('afectaInventario'), t('afectaInventarioAyuda'))}
+          {interruptor('requires_photo', t('requiereFoto'), t('requiereFotoAyuda'))}
+          {interruptor('is_active', t('activo'), t('activoAyuda'))}
         </div>
       </form>
     </Dialogo>

@@ -18910,7 +18910,8 @@
         "todos": "All",
         "inactivos": "Inactive",
         "actualizar": "Refresh",
-        "subtituloConteo": "{total, plural, one {# reason} other {# reasons}} · {activos, plural, one {# active} other {# active}}"
+        "subtituloConteo": "{total, plural, one {# reason} other {# reasons}} · {activos, plural, one {# active} other {# active}}",
+        "importarCsv": "Import CSV"
       },
       "lista": {
         "eliminado": "Reason deleted successfully",
@@ -18963,7 +18964,11 @@
           "descripcionLarga": "The description cannot exceed 500 characters"
         },
         "orden": "Order",
-        "ordenAyuda": "Position of the reason in the list (0 comes first)"
+        "ordenAyuda": "Position of the reason in the list (0 comes first)",
+        "descripcionDialogo": "Shown when creating returns, in the order you set.",
+        "codigoAyuda": "Saved in uppercase; unique in the organization.",
+        "descripcionOpcional": "Description (optional)",
+        "guardar": "Save reason"
       },
       "errores": {
         "codigoDuplicado": "A reason with the code \"{codigo}\" already exists",
@@ -18974,7 +18979,264 @@
         "duplicar": "Could not duplicate the reason",
         "cambiarEstado": "Could not change the status",
         "importar": "Could not import"
+      },
+      "tabla": {
+        "orden": "Order",
+        "afectaInventario": "Affects inventory",
+        "requiereFoto": "Requires photo",
+        "usos": "Uses",
+        "usosN": "{n, plural, one {# use} other {# uses}}",
+        "activo": "Active",
+        "inactivo": "Inactive",
+        "activar": "Activate",
+        "desactivar": "Deactivate",
+        "enUsoNoBorrar": "It has returns: deactivate it instead of deleting it"
       }
+    },
+    "listado": {
+      "titulo": "Returns",
+      "migas": {
+        "pos": "POS",
+        "devoluciones": "Returns"
+      },
+      "actualizar": "Refresh",
+      "motivos": "Reasons",
+      "nueva": "New return",
+      "exportar": "Export CSV",
+      "exportando": "Exporting…",
+      "exportarError": "The returns could not be exported",
+      "irVentas": "View sales",
+      "todasSucursales": "All branches",
+      "sustantivo": {
+        "singular": "return",
+        "plural": "returns"
+      },
+      "buscar": {
+        "placeholder": "Search by return no., invoice, customer or ID…",
+        "etiqueta": "Search returns"
+      },
+      "columnas": {
+        "numero": "No.",
+        "documentos": "Sale and documents",
+        "cliente": "Customer",
+        "motivo": "Reason",
+        "unidades": "Units",
+        "reintegro": "Refund",
+        "metodo": "Method",
+        "estado": "Status"
+      },
+      "unidadesDe": "{devueltas} of {vendidas}",
+      "consumidorFinal": "Walk-in customer",
+      "mostrador": "Counter",
+      "sinMotivo": "No reason",
+      "ventaSinNumero": "Sale without invoice",
+      "parcial": "Partial",
+      "metodos": {
+        "cash": "Cash",
+        "store_credit": "Store credit",
+        "sin_definir": "Not set"
+      },
+      "metodoCaja": "Cash · Register #{sesion}",
+      "estados": {
+        "processed": "Processed",
+        "pending": "Pending",
+        "cancelled": "Voided"
+      },
+      "acciones": {
+        "ver": "View details",
+        "verVenta": "View sale {numero}",
+        "verVentaSinNumero": "View sale",
+        "verNc": "View credit note {numero}",
+        "imprimir": "Print receipt",
+        "enviar": "Send to customer",
+        "anular": "Void return"
+      },
+      "motivosAccion": {
+        "sinNc": "This return has no credit note to print",
+        "enviarPronto": "Sending to the customer is not available yet",
+        "anularPronto": "Voiding a return is not available yet"
+      },
+      "vacio": {
+        "titulo": "No returns yet",
+        "descripcion": "When a customer returns products, the return will show up here with its credit note and refund."
+      },
+      "sinResultados": "No returns match the search or filters.",
+      "errorCarga": "The returns could not be loaded",
+      "sinPermiso": {
+        "titulo": "You don't have access to returns",
+        "descripcion": "Ask an administrator for permission to view the POS or process returns."
+      },
+      "filtros": {
+        "nota": "Dates are the return dates, in the organization's time zone.",
+        "periodo": "Period",
+        "desdeHasta": "Dates",
+        "estado": "Status",
+        "metodo": "Refund method",
+        "motivo": "Reason",
+        "todos": "All",
+        "periodoChip": "Period: {rango}",
+        "estadoChip": "Status: {estado}",
+        "metodoChip": "Method: {metodo}",
+        "motivoChip": "Reason: {motivo}",
+        "verN": "{count, plural, one {View # return} other {View {n} returns}}"
+      },
+      "csv": {
+        "numero": "No.",
+        "fecha": "Date",
+        "factura": "Invoice",
+        "notaCredito": "Credit note",
+        "cliente": "Customer",
+        "documento": "ID",
+        "motivo": "Reason",
+        "unidades": "Units",
+        "reintegro": "Refund",
+        "metodo": "Method",
+        "estado": "Status",
+        "sucursal": "Branch"
+      }
+    },
+    "kpis": {
+      "etiqueta": "Return figures",
+      "devuelto": "Refunded in the period",
+      "devoluciones": "Returns",
+      "sobreVentas": "Share of sales",
+      "motivoPrincipal": "Top reason",
+      "detalleUnidades": "{unidades, plural, one {# unit} other {# units}} · {parciales, plural, one {# partial} other {# partial}}",
+      "deVendido": "of {monto} sold in the period",
+      "sinVentas": "No sales in the period",
+      "motivoDetalle": "{n} of {total} returns",
+      "sinDevuelto": "No processed returns",
+      "devueltoCorto": "Refunded",
+      "sobreVentasCorto": "Of sales"
+    },
+    "nueva": {
+      "titulo": "New return",
+      "descripcion": "Find the paid sale the customer wants to return.",
+      "buscar": "Search by invoice, customer, ID or phone",
+      "elegir": "Choose",
+      "elegirDe": "Choose {numero} · {cliente}",
+      "yaDevuelta": "Already fully returned",
+      "resumen": "{fecha} · {productos, plural, one {# product} other {# products}} · {total}",
+      "devueltasN": "{count, plural, one {# unit already returned} other {{n} units already returned}}",
+      "sinNumero": "Sale without invoice",
+      "clienteGenerico": "Walk-in customer",
+      "aviso": "Only paid sales are listed. A sale with earlier returns stays available while it has units left to return.",
+      "vacio": "No paid sales match.",
+      "error": "The sales could not be searched",
+      "sinPermiso": "You don't have permission to process returns.",
+      "cancelar": "Cancel"
+    },
+    "crear": {
+      "titulo": "Create return · {numero}",
+      "tituloSinNumero": "Create return",
+      "descripcion": "Sale on {fecha} · {cliente} · paid by {metodo}",
+      "descripcionSinMetodo": "Sale on {fecha} · {cliente}",
+      "clienteGenerico": "Walk-in customer",
+      "ventaSinNumero": "Sale without invoice",
+      "avisoSinCaja": "There is no open register for this branch. Cash refunds are blocked so the cash count balances: choose another method or open the register.",
+      "abrirCaja": "Open register",
+      "pasoLineas": "1. What is returned",
+      "pasoMotivo": "2. Reason",
+      "pasoReintegro": "3. How it is refunded",
+      "vendidas": "Sold {vendidas} · returned {devueltas} · available {disponibles}",
+      "yaDevuelta": "Sold {vendidas} · already returned",
+      "agotada": "Exhausted",
+      "cantidadDe": "{producto}: quantity to return",
+      "impuestoIncluido": "Tax included {monto}",
+      "motivo": "Return reason",
+      "motivoPlaceholder": "Choose a reason",
+      "motivoAyuda": "From the reasons catalog.",
+      "motivoAyudaRepone": "From the reasons catalog. This reason puts the product back into inventory.",
+      "motivoAyudaNoRepone": "From the reasons catalog. This reason does not put the product back into inventory.",
+      "requiereFoto": "This reason asks for a photo of the product: take it before processing.",
+      "notas": "Notes (optional)",
+      "notasAyuda": "Plain text, stored with the return.",
+      "efectivo": "Cash from the open register",
+      "cajaCargando": "Looking for the open register…",
+      "efectivoDescripcion": "Paid out of the register (session #{sesion}) as a «Return» expense.",
+      "efectivoBloqueado": "Blocked: cash can only come out of an open register at this branch.",
+      "saldo": "Customer store credit",
+      "saldoDescripcion": "Stays on {cliente}'s profile and applies to their next purchase (internal credit note).",
+      "saldoSinCliente": "The sale has no customer: store credit needs one.",
+      "original": "Original payment method",
+      "originalDescripcion": "For now it is refunded in cash from the open register; the card terminal or gateway reversal is recorded separately.",
+      "resumen": "Refund summary",
+      "base": "Returned base",
+      "impuestos": "Taxes",
+      "descuento": "Prorated discount",
+      "total": "Total to refund",
+      "efectoNc": "The credit note will be recorded against {factura}.",
+      "efectoInventario": "{n, plural, =0 {No units go back to inventory.} one {# unit will go back to inventory.} other {# units will go back to inventory.}}",
+      "efectoVentaParcial": "The sale will become «Partially returned».",
+      "efectoVentaTotal": "The sale will become «Returned».",
+      "cancelar": "Cancel",
+      "procesando": "Processing…",
+      "procesar": "Process return · {monto}",
+      "hecha": "Return {numero} processed. Refund: {monto}",
+      "errorCarga": "The sale could not be loaded"
+    },
+    "detalle": {
+      "titulo": "Return {numero}",
+      "cargando": "Loading return…",
+      "subtitulo": "{fecha} · {sucursal} · processed by {usuario}",
+      "subtituloSinUsuario": "{fecha} · {sucursal}",
+      "noExiste": {
+        "titulo": "This return does not exist",
+        "descripcion": "The link may be wrong or the return may belong to another organization."
+      },
+      "error": "The return could not be loaded",
+      "volver": "Back to returns",
+      "imprimir": "Print credit note",
+      "ncEstado": "CN {estado}",
+      "parcial": "Partial · {unidades} of {vendidas} units",
+      "total": "Full · {unidades} of {vendidas} units",
+      "cadena": "Document chain",
+      "productos": "Returned products ({n})",
+      "sinLineas": "The return has no lines",
+      "colProducto": "Product",
+      "colCantidad": "Qty",
+      "colNeto": "Net",
+      "colImpuesto": "Tax",
+      "colReintegro": "Refund",
+      "colInventario": "Inventory",
+      "lineaDe": "line {n} of {factura}",
+      "serialesLinea": "Serials: {lista}",
+      "repuesto": "Restocked",
+      "noRepuesto": "Not restocked",
+      "reintegro": "Refund",
+      "metodo": "Method",
+      "movimientoCaja": "Cash movement",
+      "movimientoTexto": "Expense {monto} · {hora} · «{numero}»",
+      "saldoFavor": "Store credit",
+      "saldoTexto": "{monto} · balance {saldo}",
+      "notaCredito": "Credit note",
+      "ncTexto": "{numero} · {monto}",
+      "asiento": "Journal entry",
+      "totalReintegrado": "Total refunded",
+      "historial": "History",
+      "eventos": {
+        "creada": "Created and processed the return",
+        "egreso_caja": "Cash expense recorded in session #{sesion}",
+        "nota_credito": "Credit note {numero} recorded",
+        "saldo_a_favor": "Store credit recorded on the customer's profile",
+        "asiento": "Journal entry {numero} posted"
+      },
+      "sistema": "System",
+      "ventaOriginal": "Original sale",
+      "cliente": "Customer",
+      "fecha": "Date",
+      "totalVenta": "Sale total",
+      "devueltoAntes": "Returned before",
+      "devueltoAhora": "Returned now",
+      "estadoVenta": "Sale status",
+      "motivoTitulo": "Reason",
+      "motivo": "Reason",
+      "afectaInventario": "Affects inventory",
+      "requiereFoto": "Requires photo",
+      "notas": "Notes",
+      "si": "Yes",
+      "no": "No",
+      "sinDato": "—"
     }
   },
   "posCobroServidor": {
@@ -47920,9 +48182,8 @@
           "The money goes to your Bold account; GO Admin never touches it."
         ],
         "queNecesitas": [
-          "A Bold account with its integration keys.",
-          "The serial number of each terminal and its branch.",
-          "10 minutes."
+          "A Bold account with its identity key and secret key.",
+          "5 minutes."
         ]
       },
       "stripe": {
@@ -48350,6 +48611,11 @@
           "Its integration credentials.",
           "10 minutes."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "Do you take payments with Bold card terminals in the POS?",
+        "texto": "The keys are for payment links and the online store. Each branch’s card terminals are set up separately, with their serial number.",
+        "enlace": "Set up Bold card terminals"
       }
     },
     "misConexiones": {
@@ -48702,6 +48968,11 @@
             "p1": "Go to SendGrid › Settings › API Keys.",
             "p2": "Create a key with mail send permission.",
             "p3": "Copy it and enter the verified sender you will use."
+          },
+          "bold": {
+            "p1": "Sign in to panel.bold.co.",
+            "p2": "Go to Integrations and open the {ambiente} integration keys.",
+            "p3": "Copy the identity key and the secret key."
           }
         },
         "abrirPanel": "Open the {nombre} dashboard in a new tab",
@@ -48777,7 +49048,8 @@
             "payu": "In PayU, paste it as your account confirmation URL.",
             "stripe": "In Stripe, go to Developers › Webhooks › Add endpoint and paste it.",
             "paypal": "In PayPal, open your application › Webhooks › Add webhook and paste it.",
-            "sendgrid": "In SendGrid, go to Settings › Mail Settings › Event Webhook and paste it."
+            "sendgrid": "In SendGrid, go to Settings › Mail Settings › Event Webhook and paste it.",
+            "bold": "In the Bold panel, go to Integrations › Webhooks and paste it as the notification URL."
           },
           "p3": "Save in {nombre} and come back here.",
           "sinUrl": "This provider does not send notifications to GO Admin",
@@ -61496,6 +61768,236 @@
       "canalValor": "{web} web · {pos} POS",
       "ultimaVez": "Last time",
       "usoCupo": "Quota used"
+    }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Payment processors",
+    "subtitulo": "What the card terminal and payment gateways collected and have not yet paid out to the bank · {mes}",
+    "migas": {
+      "finanzas": "Finance",
+      "tesoreria": "Treasury"
+    },
+    "acciones": {
+      "actualizar": "Refresh",
+      "datos": "Processor details",
+      "registrarAbono": "Record payout",
+      "abonar": "Record payout",
+      "completar": "Complete",
+      "cancelar": "Cancel",
+      "guardar": "Save"
+    },
+    "pestanas": {
+      "saldos": "Balances",
+      "abonos": "Payouts",
+      "alertas": "Alerts"
+    },
+    "mes": {
+      "etiqueta": "Month",
+      "anterior": "Previous month",
+      "siguiente": "Next month"
+    },
+    "kpi": {
+      "porCobrar": "Due from processors",
+      "porCobrarDetalle": "Balance of accounts 138020xx",
+      "cobrado": "Collected in {mes}",
+      "cobradoDetalle": "Card and gateways · sale + tip",
+      "abonado": "Paid out in {mes}",
+      "abonadoDetalle": "Gross of recorded payouts",
+      "alertas": "With alert",
+      "sinAlertas": "All up to date"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# processor with an alert} other {# processors with an alert}}",
+      "sinAbono": "{procesador} has gone {dias} business days without a payout (oldest charge: {fecha}, {saldo} pending).",
+      "sinRetiro": "{procesador} keeps {saldo} and has gone {dias} days without any withdrawal to the bank.",
+      "negativo": "{procesador} has a negative balance ({saldo}): more was paid out than collected. Review the payouts.",
+      "verAlertas": "See alerts"
+    },
+    "columnas": {
+      "procesador": "Processor",
+      "origen": "Origin",
+      "cobrado": "Collected",
+      "abonado": "Paid out",
+      "saldo": "Balance",
+      "pendienteDesde": "Pending since",
+      "estado": "Status"
+    },
+    "origen": {
+      "nacional": "Domestic",
+      "exterior": "Foreign"
+    },
+    "estado": {
+      "alDia": "Up to date",
+      "sinAbono": "Alert · over 5 business days",
+      "sinRetiro": "Alert · 30 days without withdrawal",
+      "negativo": "Negative balance",
+      "retenido": "Balance kept at the processor",
+      "faltaNit": "Processor's tax ID missing"
+    },
+    "nitCorto": "Tax ID {nit}",
+    "sinNit": "No tax ID",
+    "diasHabiles": "{count, plural, =0 {today} one {# business day} other {# business days}}",
+    "diasSinRetiro": "{count, plural, =0 {withdrawn today} one {# day without withdrawal} other {# days without withdrawal}}",
+    "etiquetaFila": "{procesador} · balance {saldo}",
+    "total": "Total",
+    "errorCarga": "The payment processors could not be loaded",
+    "sinPermiso": {
+      "titulo": "You do not have access to payment processors",
+      "descripcion": "Ask for the view finance permission."
+    },
+    "vacio": {
+      "titulo": "No card or gateway payments yet",
+      "descripcion": "When you charge with a card terminal, Wompi, Bold, Mercado Pago or another gateway, you will see here what they owe you and when they pay it out.",
+      "sinAlertasTitulo": "No alerts",
+      "sinAlertasDescripcion": "No processor has gone over 5 business days without a payout or 30 days without a withdrawal."
+    },
+    "pie": "Collected and paid out: for the chosen month. Balance: everything pending as of today. Business days: Monday to Friday, excluding holidays; payouts settle the oldest charges first. Processors that keep a balance on purpose (Stripe and PayPal by default) do not alert after 5 business days: they alert after more than 30 days without any withdrawal to the bank.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Date",
+        "bruto": "Gross",
+        "descuentos": "Deductions",
+        "neto": "Net to bank",
+        "factura": "Invoice"
+      },
+      "estado": {
+        "registrado": "Recorded",
+        "anulado": "Voided"
+      },
+      "anular": "Void payout",
+      "anulado": "Payout voided: the processor's balance went back up.",
+      "anularTitulo": "Void payout",
+      "anularDescripcion": "A reversing entry is recorded for the {neto} payout of {fecha} and the processor’s balance goes back up.",
+      "etiquetaFila": "Payout of {fecha} · net {neto}",
+      "vacioTitulo": "No payouts recorded",
+      "vacioDescripcion": "When the processor deposits, record the payout with the amounts from its statement."
+    },
+    "abono": {
+      "titulo": "Record payout",
+      "tituloDe": "Record payout from {procesador}",
+      "descripcion": "Copy the amounts from the processor's statement. Net is what reached the bank.",
+      "registrar": "Record payout",
+      "corregir": "Fix the highlighted fields to record the payout.",
+      "procesador": "Processor",
+      "elegirProcesador": "Choose the processor",
+      "fecha": "Payout date",
+      "banco": "Bank where it arrived",
+      "sinBancos": "There are no active bank accounts: the default bank account will be used.",
+      "elegirBanco": "Choose the account",
+      "bruto": "Statement gross",
+      "neto": "Net received at the bank",
+      "descuentos": "What the processor deducted",
+      "descuentosAyuda": "As shown on the statement.",
+      "comision": "Commission",
+      "ivaComision": "Commission VAT",
+      "retencionFuente": "Income tax withholding",
+      "retencionIva": "VAT withholding",
+      "retencionIca": "ICA withholding",
+      "iva": {
+        "descontable": "Your organization is VAT-registered according to its tax profile: the commission VAT is deducted.",
+        "gasto": "Your organization is not VAT-registered: the commission VAT is added to the expense.",
+        "exterior": "This processor is marked as foreign: its statement has no Colombian VAT. Reverse-charge VAT is applied separately and stays in Accounting pending items.",
+        "sinIva": "No VAT on the commission: nothing to deduct.",
+        "sinPerfil": "Set up the organization’s tax profile to know whether the commission VAT is deductible."
+      },
+      "ivaInsignia": {
+        "descontable": "Deductible VAT · 24081001",
+        "proporcional": "Deductible VAT · 24081001",
+        "gasto": "VAT to expense · 53051501",
+        "exterior": "Foreign · no VAT on the statement",
+        "sin_iva": "No VAT on the commission",
+        "sin_perfil": "Tax profile missing"
+      },
+      "factura": "Processor's electronic invoice",
+      "facturaOpcional": "Processor's invoice (optional)",
+      "facturaAyuda": "Required because the VAT is deductible.",
+      "facturaOpcionalAyuda": "Optional: the VAT is not deductible.",
+      "facturaEjemplo": "E.g. FE 118240",
+      "referencia": "Statement reference (optional)",
+      "registrado": "Payout from {procesador} recorded.",
+      "validacion": {
+        "procesador": "Choose the processor.",
+        "fecha": "Enter the statement date.",
+        "nit": "{procesador}'s tax ID is missing: add it in «Processor details» to record the payout.",
+        "bruto": "Enter the statement gross.",
+        "neto": "Enter what reached the bank.",
+        "descuadre": "It does not balance: gross minus deductions is {calculado}.",
+        "factura": "Required when the VAT is deductible."
+      },
+      "cuadre": {
+        "titulo": "Payout reconciliation",
+        "bruto": "Statement gross",
+        "comision": "− Commission",
+        "iva": "− Commission VAT",
+        "retenciones": "− Withholdings",
+        "calculado": "Calculated net",
+        "banco": "Net that reached the bank",
+        "cuadra": "✓ Balanced",
+        "diferencia": "Difference {valor}",
+        "regla": "Gross = net + commission + VAT + withholdings. It cannot be saved until it balances."
+      },
+      "asiento": {
+        "titulo": "Entry that will be recorded",
+        "banco": "Bank",
+        "comision": "Commissions",
+        "ivaDescontable": "Deductible VAT",
+        "retefuente": "Income tax withholding credit",
+        "reteiva": "VAT withholding credit",
+        "reteica": "ICA withholding credit",
+        "saldo": "Processor balance: {antes} → {despues}",
+        "pendienteExterior": "It stays in Accounting pending items: reverse-charge VAT on {valor}."
+      }
+    },
+    "datos": {
+      "titulo": "Processor details",
+      "descripcion": "Each processor is the third party of its 138020xx account. The origin decides how its commission VAT is handled.",
+      "sinPermiso": "Read only: ask for the create permission in finance.",
+      "guardado": "Processor details saved.",
+      "columnas": {
+        "procesador": "Processor",
+        "nit": "Tax ID",
+        "nombre": "Name as third party",
+        "origen": "Origin",
+        "retiene": "Keeps balance",
+        "retieneLargo": "Keeps a balance on purpose"
+      },
+      "etiquetaNit": "Tax ID of {procesador}",
+      "etiquetaNombre": "Name of {procesador} as third party",
+      "etiquetaOrigen": "Origin of {procesador}",
+      "etiquetaRetiene": "{procesador} keeps a balance on purpose",
+      "nitEjemplo": "E.g. 900.123.456-7",
+      "deFabrica": "Default",
+      "faltaNit": "Missing: without a tax ID the payout cannot be recorded.",
+      "notaFabrica": "Wompi, Mercado Pago and PayU come with their tax ID by default. Each organization enters the card terminal and Bold; Stripe and PayPal, as the accountant indicates. Without a tax ID, charging works as usual but the payout cannot be recorded.",
+      "notaExterior": "The processor provides the service from outside Colombia and its statement has no Colombian VAT. Reverse-charge VAT (art. 437-2 no. 3 ET) is applied later without changing the payout form. Changing the origin only affects payouts recorded from then on.",
+      "notaRetiene": "The processor holds the money and it is withdrawn when you decide. It does not trigger the 5-business-day alert: the dashboard shows the kept balance and alerts after more than 30 days without any withdrawal to the bank. It is on for Stripe and PayPal and off for the rest by default."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Your session ended. Sign in again.",
+      "SIN_PERMISO": "You do not have permission for this action.",
+      "PROCESADOR_INVALIDO": "Choose a processor from the list.",
+      "FECHA_REQUERIDA": "Enter the payout date from the statement.",
+      "FECHA_FUTURA": "The payout cannot have a future date.",
+      "PERIODO_CERRADO": "The accounting period for that date is closed.",
+      "IMPORTE_INVALIDO": "Check the amounts: gross must be greater than zero and deductions cannot be negative.",
+      "NETO_INVALIDO": "Deductions are larger than the gross amount.",
+      "NETO_DESCUADRADO": "It does not balance: gross minus deductions does not equal the net received.",
+      "SUCURSAL_INVALIDA": "The branch does not belong to your organization.",
+      "CUENTA_BANCARIA_INVALIDA": "The bank account does not belong to your organization or has no ledger account.",
+      "PROPORCION_INVALIDA": "The deductible share goes from 0 to 1.",
+      "PROPORCION_NO_APLICA": "Your organization is not VAT-registered: the commission VAT is an expense.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Set up the organization's tax profile to know whether the commission VAT is deductible.",
+      "FACTURA_REQUERIDA": "To deduct the commission VAT you need the processor's electronic invoice.",
+      "ABONO_MAYOR_QUE_SALDO": "The payout is larger than what the processor owed on that date.",
+      "NIT_PROCESADOR_REQUERIDO": "The processor's tax ID is missing: add it in «Processor details».",
+      "SIN_CUENTA": "Ledger accounts are missing for this entry. Check the chart of accounts.",
+      "SOLICITUD_REQUERIDA": "The request could not be identified. Try again.",
+      "ORIGEN_INVALIDO": "The origin is domestic or foreign.",
+      "RETIENE_SALDO_INVALIDO": "«Keeps a balance» is yes or no.",
+      "ABONO_INEXISTENTE": "The payout does not exist or is not from your organization.",
+      "MOTIVO_REQUERIDO": "Enter the reason for voiding.",
+      "datos_invalidos": "Check the form data.",
+      "DESCONOCIDO": "It could not be completed. Try again in a moment."
     }
   }
 }

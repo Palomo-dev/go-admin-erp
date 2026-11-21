@@ -27,6 +27,7 @@ const PANEL_PROVEEDOR: Record<string, string> = {
   wompi: 'https://comercios.wompi.co',
   mercadopago: 'https://www.mercadopago.com.co/developers/panel/app',
   payu: 'https://merchants.payulatam.com',
+  bold: 'https://panel.bold.co',
   stripe: 'https://dashboard.stripe.com/apikeys',
   paypal: 'https://developer.paypal.com/dashboard/applications',
   sendgrid: 'https://app.sendgrid.com/settings/api_keys',

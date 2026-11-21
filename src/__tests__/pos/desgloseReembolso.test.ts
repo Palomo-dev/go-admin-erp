@@ -46,7 +46,10 @@ describe('desgloseReembolso', () => {
 
 describe('el historial deja de prorratear el impuesto de la venta', () => {
   const service = leer('components/pos/devoluciones/devolucionesService.ts');
-  const historial = leer('components/pos/devoluciones/ReturnsHistory.tsx');
+  // Rediseño 2026-11-21: el historial (`ReturnsHistory`) es ahora el listado
+  // `DevolucionesPage` + el detalle; el reintegro sale tal cual de total_refund.
+  const listado = leer('components/pos/devoluciones/DevolucionesPage.tsx');
+  const detalle = leer('lib/pos/devoluciones/detalleServidor.ts');
 
   test('el servicio lee el impuesto de las líneas de la organización', () => {
     expect(service).toContain("from('return_lines')");
@@ -58,11 +61,12 @@ describe('el historial deja de prorratear el impuesto de la venta', () => {
     expect(service).not.toMatch(/refundAmount\s*-\s*originalSubtotal/);
   });
 
-  test('la pantalla, el KPI y el CSV muestran el total y el subtotal ya descontado', () => {
-    expect(historial).not.toContain('refund_total_with_tax');
-    expect(historial).toContain('desglose.total');
-    expect(historial).toContain('desglose.subtotal');
-    expect(historial).toContain('desglose.impuesto');
-    expect(historial).toContain('desgloseReembolso(ret.total_refund, ret.refund_tax_amount).total');
+  test('el listado, el CSV y el detalle muestran el total sin volver a sumar el impuesto', () => {
+    expect(listado).not.toContain('refund_total_with_tax');
+    expect(listado).toContain('formatear(f.total)');
+    expect(listado).not.toMatch(/f\.total\s*\+\s*f\.impuesto/);
+    // Neto de la línea = reintegro − impuesto de la línea (no un prorrateo de la venta).
+    expect(detalle).toContain('neto: n(l.refund_amount) - n(l.tax_amount)');
+    expect(detalle).toContain('total: n(r.total_refund)');
   });
 });

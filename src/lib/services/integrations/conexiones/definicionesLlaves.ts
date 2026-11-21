@@ -15,7 +15,7 @@
  *   'card' (la tienda usa 'card' para Wompi).
  */
 export type Ambiente = 'sandbox' | 'production';
-export type ProveedorLlaves = 'wompi' | 'mercadopago' | 'payu' | 'stripe' | 'paypal' | 'sendgrid';
+export type ProveedorLlaves = 'wompi' | 'mercadopago' | 'payu' | 'bold' | 'stripe' | 'paypal' | 'sendgrid';
 
 export interface CampoLlave {
   proposito: string;
@@ -85,6 +85,22 @@ export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
     webhook: '/api/integrations/payu/webhook',
     metodoPago: 'payu',
     usos: ['tienda'],
+  },
+  // Bold (2026-11-21): link de pago y tienda web. Los propósitos son los que leen `boldService`
+  // (`identity_key` en `Authorization: x-api-key`) y `firmaBold` (`secret_key` firma los eventos).
+  // Los datáfonos del POS (`bold_pos`, con seriales por sucursal) siguen en el formulario avanzado.
+  bold: {
+    proveedor: 'bold',
+    conector: 'bold_link',
+    ambientes: ['sandbox', 'production'],
+    campos: [
+      { proposito: 'identity_key', tipoCredencial: 'api_key', secreto: true, requerido: true },
+      { proposito: 'secret_key', tipoCredencial: 'secret', secreto: true, requerido: true },
+    ],
+    guardado: 'como_hoy',
+    webhook: '/api/integrations/bold/webhook',
+    metodoPago: 'bold_link',
+    usos: ['tienda', 'pos'],
   },
   stripe: {
     proveedor: 'stripe',

@@ -18911,7 +18911,8 @@
         "todos": "Todos",
         "inactivos": "Inactivos",
         "actualizar": "Actualizar",
-        "subtituloConteo": "{total, plural, one {# motivo} other {# motivos}} · {activos, plural, one {# activo} other {# activos}}"
+        "subtituloConteo": "{total, plural, one {# motivo} other {# motivos}} · {activos, plural, one {# activo} other {# activos}}",
+        "importarCsv": "Importar CSV"
       },
       "lista": {
         "eliminado": "Motivo eliminado correctamente",
@@ -18964,7 +18965,11 @@
           "descripcionLarga": "La descripción no puede exceder 500 caracteres"
         },
         "orden": "Orden",
-        "ordenAyuda": "Posición del motivo en la lista (0 va primero)"
+        "ordenAyuda": "Posición del motivo en la lista (0 va primero)",
+        "descripcionDialogo": "Aparece al crear devoluciones, en el orden que definas.",
+        "codigoAyuda": "Se guarda en mayúsculas; único en la organización.",
+        "descripcionOpcional": "Descripción (opcional)",
+        "guardar": "Guardar motivo"
       },
       "errores": {
         "codigoDuplicado": "Ya existe un motivo con el código \"{codigo}\"",
@@ -18975,7 +18980,264 @@
         "duplicar": "Error al duplicar el motivo",
         "cambiarEstado": "Error al cambiar estado",
         "importar": "No se pudo importar"
+      },
+      "tabla": {
+        "orden": "Orden",
+        "afectaInventario": "Afecta inventario",
+        "requiereFoto": "Requiere foto",
+        "usos": "Usos",
+        "usosN": "{n, plural, one {# uso} other {# usos}}",
+        "activo": "Activo",
+        "inactivo": "Inactivo",
+        "activar": "Activar",
+        "desactivar": "Desactivar",
+        "enUsoNoBorrar": "Tiene devoluciones: desactívalo en lugar de borrarlo"
       }
+    },
+    "listado": {
+      "titulo": "Devoluciones",
+      "migas": {
+        "pos": "POS",
+        "devoluciones": "Devoluciones"
+      },
+      "actualizar": "Actualizar",
+      "motivos": "Motivos",
+      "nueva": "Nueva devolución",
+      "exportar": "Exportar CSV",
+      "exportando": "Exportando…",
+      "exportarError": "No se pudieron exportar las devoluciones",
+      "irVentas": "Ver ventas",
+      "todasSucursales": "Todas las sucursales",
+      "sustantivo": {
+        "singular": "devolución",
+        "plural": "devoluciones"
+      },
+      "buscar": {
+        "placeholder": "Buscar por N.º de devolución, factura, cliente o documento…",
+        "etiqueta": "Buscar devoluciones"
+      },
+      "columnas": {
+        "numero": "N.º",
+        "documentos": "Venta y documentos",
+        "cliente": "Cliente",
+        "motivo": "Motivo",
+        "unidades": "Unidades",
+        "reintegro": "Reintegro",
+        "metodo": "Método",
+        "estado": "Estado"
+      },
+      "unidadesDe": "{devueltas} de {vendidas}",
+      "consumidorFinal": "Cliente genérico",
+      "mostrador": "Mostrador",
+      "sinMotivo": "Sin motivo",
+      "ventaSinNumero": "Venta sin factura",
+      "parcial": "Parcial",
+      "metodos": {
+        "cash": "Efectivo",
+        "store_credit": "Saldo a favor",
+        "sin_definir": "Por definir"
+      },
+      "metodoCaja": "Efectivo · Caja #{sesion}",
+      "estados": {
+        "processed": "Procesada",
+        "pending": "Pendiente",
+        "cancelled": "Anulada"
+      },
+      "acciones": {
+        "ver": "Ver detalle",
+        "verVenta": "Ver venta {numero}",
+        "verVentaSinNumero": "Ver venta",
+        "verNc": "Ver nota crédito {numero}",
+        "imprimir": "Imprimir comprobante",
+        "enviar": "Enviar al cliente",
+        "anular": "Anular devolución"
+      },
+      "motivosAccion": {
+        "sinNc": "La devolución no tiene nota crédito para imprimir",
+        "enviarPronto": "El envío al cliente aún no está disponible",
+        "anularPronto": "Anular una devolución aún no está disponible"
+      },
+      "vacio": {
+        "titulo": "Aún no hay devoluciones",
+        "descripcion": "Cuando un cliente devuelva productos, la devolución aparecerá aquí con su nota crédito y su reintegro."
+      },
+      "sinResultados": "Ninguna devolución coincide con la búsqueda o los filtros.",
+      "errorCarga": "No se pudieron cargar las devoluciones",
+      "sinPermiso": {
+        "titulo": "No tienes acceso a las devoluciones",
+        "descripcion": "Pide a un administrador el permiso de ver el POS o de procesar devoluciones."
+      },
+      "filtros": {
+        "nota": "Las fechas son las de la devolución, en la zona horaria de la organización.",
+        "periodo": "Periodo",
+        "desdeHasta": "Fechas",
+        "estado": "Estado",
+        "metodo": "Método de reintegro",
+        "motivo": "Motivo",
+        "todos": "Todos",
+        "periodoChip": "Periodo: {rango}",
+        "estadoChip": "Estado: {estado}",
+        "metodoChip": "Método: {metodo}",
+        "motivoChip": "Motivo: {motivo}",
+        "verN": "{count, plural, one {Ver # devolución} other {Ver {n} devoluciones}}"
+      },
+      "csv": {
+        "numero": "N.º",
+        "fecha": "Fecha",
+        "factura": "Factura",
+        "notaCredito": "Nota crédito",
+        "cliente": "Cliente",
+        "documento": "Documento",
+        "motivo": "Motivo",
+        "unidades": "Unidades",
+        "reintegro": "Reintegro",
+        "metodo": "Método",
+        "estado": "Estado",
+        "sucursal": "Sucursal"
+      }
+    },
+    "kpis": {
+      "etiqueta": "Cifras de devoluciones",
+      "devuelto": "Devuelto en el periodo",
+      "devoluciones": "Devoluciones",
+      "sobreVentas": "Sobre las ventas",
+      "motivoPrincipal": "Motivo principal",
+      "detalleUnidades": "{unidades, plural, one {# unidad} other {# unidades}} · {parciales, plural, one {# parcial} other {# parciales}}",
+      "deVendido": "de {monto} vendidos en el periodo",
+      "sinVentas": "Sin ventas en el periodo",
+      "motivoDetalle": "{n} de {total} devoluciones",
+      "sinDevuelto": "Sin devoluciones procesadas",
+      "devueltoCorto": "Devuelto",
+      "sobreVentasCorto": "Sobre ventas"
+    },
+    "nueva": {
+      "titulo": "Nueva devolución",
+      "descripcion": "Busca la venta pagada que el cliente quiere devolver.",
+      "buscar": "Buscar por factura, cliente, documento o teléfono",
+      "elegir": "Elegir",
+      "elegirDe": "Elegir {numero} · {cliente}",
+      "yaDevuelta": "Ya devuelta por completo",
+      "resumen": "{fecha} · {productos, plural, one {# producto} other {# productos}} · {total}",
+      "devueltasN": "{count, plural, one {# unidad ya devuelta} other {{n} unidades ya devueltas}}",
+      "sinNumero": "Venta sin factura",
+      "clienteGenerico": "Cliente genérico",
+      "aviso": "Solo aparecen ventas pagadas. Una venta con devoluciones previas sigue disponible mientras le queden unidades por devolver.",
+      "vacio": "No hay ventas pagadas que coincidan.",
+      "error": "No se pudieron buscar las ventas",
+      "sinPermiso": "No tienes permiso para procesar devoluciones.",
+      "cancelar": "Cancelar"
+    },
+    "crear": {
+      "titulo": "Crear devolución · {numero}",
+      "tituloSinNumero": "Crear devolución",
+      "descripcion": "Venta del {fecha} · {cliente} · pagada en {metodo}",
+      "descripcionSinMetodo": "Venta del {fecha} · {cliente}",
+      "clienteGenerico": "Cliente genérico",
+      "ventaSinNumero": "Venta sin factura",
+      "avisoSinCaja": "No hay una caja abierta para esta sucursal. El reintegro en efectivo queda bloqueado para que el arqueo cuadre: elige otro método o abre la caja.",
+      "abrirCaja": "Abrir caja",
+      "pasoLineas": "1. Qué se devuelve",
+      "pasoMotivo": "2. Motivo",
+      "pasoReintegro": "3. Cómo se reintegra",
+      "vendidas": "Vendidas {vendidas} · devueltas {devueltas} · disponibles {disponibles}",
+      "yaDevuelta": "Vendidas {vendidas} · ya devuelta",
+      "agotada": "Agotada",
+      "cantidadDe": "{producto}: cantidad a devolver",
+      "impuestoIncluido": "Impuesto incluido {monto}",
+      "motivo": "Motivo de la devolución",
+      "motivoPlaceholder": "Elige un motivo",
+      "motivoAyuda": "Del catálogo de motivos.",
+      "motivoAyudaRepone": "Del catálogo de motivos. Este motivo devuelve el producto al inventario.",
+      "motivoAyudaNoRepone": "Del catálogo de motivos. Este motivo no devuelve el producto al inventario.",
+      "requiereFoto": "Este motivo pide foto del producto: tómala antes de procesar.",
+      "notas": "Notas (opcional)",
+      "notasAyuda": "Texto plano, queda en la devolución.",
+      "efectivo": "Efectivo de la caja abierta",
+      "cajaCargando": "Buscando la caja abierta…",
+      "efectivoDescripcion": "Sale de la caja (sesión #{sesion}) como egreso «Devolución».",
+      "efectivoBloqueado": "Bloqueado: el efectivo solo sale de una caja abierta de esta sucursal.",
+      "saldo": "Saldo a favor del cliente",
+      "saldoDescripcion": "Queda en la ficha de {cliente} y se aplica en su próxima compra (nota crédito interna).",
+      "saldoSinCliente": "La venta no tiene cliente: el saldo a favor necesita uno.",
+      "original": "Medio de pago original",
+      "originalDescripcion": "Por ahora se reintegra en efectivo desde la caja abierta; el reverso del datáfono o de la pasarela se registra aparte.",
+      "resumen": "Resumen del reintegro",
+      "base": "Base devuelta",
+      "impuestos": "Impuestos",
+      "descuento": "Descuento prorrateado",
+      "total": "Total a reintegrar",
+      "efectoNc": "Se registrará la nota crédito sobre {factura}.",
+      "efectoInventario": "{n, plural, =0 {Ninguna unidad vuelve al inventario.} one {Volverá # unidad al inventario.} other {Volverán # unidades al inventario.}}",
+      "efectoVentaParcial": "La venta quedará «Devuelta parcial».",
+      "efectoVentaTotal": "La venta quedará «Devuelta».",
+      "cancelar": "Cancelar",
+      "procesando": "Procesando…",
+      "procesar": "Procesar devolución · {monto}",
+      "hecha": "Devolución {numero} procesada. Reintegro: {monto}",
+      "errorCarga": "No se pudo cargar la venta"
+    },
+    "detalle": {
+      "titulo": "Devolución {numero}",
+      "cargando": "Cargando devolución…",
+      "subtitulo": "{fecha} · {sucursal} · procesó {usuario}",
+      "subtituloSinUsuario": "{fecha} · {sucursal}",
+      "noExiste": {
+        "titulo": "Esta devolución no existe",
+        "descripcion": "Puede que el enlace esté mal o que la devolución sea de otra organización."
+      },
+      "error": "No se pudo cargar la devolución",
+      "volver": "Volver a devoluciones",
+      "imprimir": "Imprimir nota crédito",
+      "ncEstado": "NC {estado}",
+      "parcial": "Parcial · {unidades} de {vendidas} unidades",
+      "total": "Total · {unidades} de {vendidas} unidades",
+      "cadena": "Cadena del documento",
+      "productos": "Productos devueltos ({n})",
+      "sinLineas": "La devolución no tiene líneas",
+      "colProducto": "Producto",
+      "colCantidad": "Cant.",
+      "colNeto": "Neto",
+      "colImpuesto": "Impuesto",
+      "colReintegro": "Reintegro",
+      "colInventario": "Inventario",
+      "lineaDe": "línea {n} de {factura}",
+      "serialesLinea": "Seriales: {lista}",
+      "repuesto": "Repuesto",
+      "noRepuesto": "No repuesto",
+      "reintegro": "Reintegro",
+      "metodo": "Método",
+      "movimientoCaja": "Movimiento de caja",
+      "movimientoTexto": "Egreso {monto} · {hora} · «{numero}»",
+      "saldoFavor": "Saldo a favor",
+      "saldoTexto": "{monto} · saldo {saldo}",
+      "notaCredito": "Nota crédito",
+      "ncTexto": "{numero} · {monto}",
+      "asiento": "Asiento contable",
+      "totalReintegrado": "Total reintegrado",
+      "historial": "Historial",
+      "eventos": {
+        "creada": "Creó y procesó la devolución",
+        "egreso_caja": "Egreso de caja registrado en la sesión #{sesion}",
+        "nota_credito": "Nota crédito {numero} registrada",
+        "saldo_a_favor": "Saldo a favor registrado en la ficha del cliente",
+        "asiento": "Asiento {numero} contabilizado"
+      },
+      "sistema": "Sistema",
+      "ventaOriginal": "Venta original",
+      "cliente": "Cliente",
+      "fecha": "Fecha",
+      "totalVenta": "Total de la venta",
+      "devueltoAntes": "Devuelto antes",
+      "devueltoAhora": "Devuelto ahora",
+      "estadoVenta": "Estado de la venta",
+      "motivoTitulo": "Motivo",
+      "motivo": "Motivo",
+      "afectaInventario": "Afecta inventario",
+      "requiereFoto": "Requiere foto",
+      "notas": "Notas",
+      "si": "Sí",
+      "no": "No",
+      "sinDato": "—"
     }
   },
   "posCobroServidor": {
@@ -47935,9 +48197,8 @@
           "El dinero llega a tu cuenta Bold; GO Admin no lo toca."
         ],
         "queNecesitas": [
-          "Una cuenta Bold con sus llaves de integración.",
-          "El serial de cada datáfono y su sucursal.",
-          "10 minutos."
+          "Una cuenta Bold con su llave de identidad y su llave secreta.",
+          "5 minutos."
         ]
       },
       "stripe": {
@@ -48365,6 +48626,11 @@
           "Sus credenciales de integración.",
           "10 minutos."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "¿Cobras con datáfonos Bold en el POS?",
+        "texto": "Las llaves sirven para los links de pago y la tienda web. Los datáfonos de cada sucursal se configuran aparte, con su serial.",
+        "enlace": "Configurar datáfonos Bold"
       }
     },
     "misConexiones": {
@@ -48717,6 +48983,11 @@
             "p1": "Entra a SendGrid › Settings › API Keys.",
             "p2": "Crea una llave con permiso de envío de correos.",
             "p3": "Cópiala y escribe el remitente verificado que vas a usar."
+          },
+          "bold": {
+            "p1": "Entra a panel.bold.co con tu usuario.",
+            "p2": "Ve a Integraciones y abre las llaves de integración de {ambiente}.",
+            "p3": "Copia la llave de identidad y la llave secreta."
           }
         },
         "abrirPanel": "Abrir el panel de {nombre} en otra pestaña",
@@ -48792,7 +49063,8 @@
             "payu": "En PayU, pégala como URL de confirmación de tu cuenta.",
             "stripe": "En Stripe, ve a Desarrolladores › Webhooks › Añadir endpoint y pégala.",
             "paypal": "En PayPal, abre tu aplicación › Webhooks › Añadir webhook y pégala.",
-            "sendgrid": "En SendGrid, ve a Settings › Mail Settings › Event Webhook y pégala."
+            "sendgrid": "En SendGrid, ve a Settings › Mail Settings › Event Webhook y pégala.",
+            "bold": "En el panel de Bold, ve a Integraciones › Webhooks y pégala como URL de notificaciones."
           },
           "p3": "Guarda en {nombre} y vuelve aquí.",
           "sinUrl": "Este proveedor no envía avisos a GO Admin",
@@ -61511,6 +61783,236 @@
       "canalValor": "{web} web · {pos} POS",
       "ultimaVez": "Última vez",
       "usoCupo": "Uso del cupo"
+    }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Procesadores de pago",
+    "subtitulo": "Lo que el datáfono y las pasarelas cobraron y todavía no han abonado al banco · {mes}",
+    "migas": {
+      "finanzas": "Finanzas",
+      "tesoreria": "Tesorería"
+    },
+    "acciones": {
+      "actualizar": "Actualizar",
+      "datos": "Datos de los procesadores",
+      "registrarAbono": "Registrar abono",
+      "abonar": "Abonar",
+      "completar": "Completar",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar"
+    },
+    "pestanas": {
+      "saldos": "Saldos",
+      "abonos": "Abonos",
+      "alertas": "Alertas"
+    },
+    "mes": {
+      "etiqueta": "Mes",
+      "anterior": "Mes anterior",
+      "siguiente": "Mes siguiente"
+    },
+    "kpi": {
+      "porCobrar": "Por cobrar a procesadores",
+      "porCobrarDetalle": "Saldo de las cuentas 138020xx",
+      "cobrado": "Cobrado en {mes}",
+      "cobradoDetalle": "Tarjeta y pasarelas · venta + propina",
+      "abonado": "Abonado en {mes}",
+      "abonadoDetalle": "Bruto de los abonos registrados",
+      "alertas": "Con alerta",
+      "sinAlertas": "Todos al día"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# procesador con alerta} other {# procesadores con alerta}}",
+      "sinAbono": "{procesador} lleva {dias} días hábiles sin abonar (cobro más viejo: {fecha}, {saldo} pendientes).",
+      "sinRetiro": "{procesador} retiene {saldo} y lleva {dias} días sin ningún retiro al banco.",
+      "negativo": "{procesador} tiene saldo negativo ({saldo}): se abonó más de lo cobrado. Revisa los abonos.",
+      "verAlertas": "Ver alertas"
+    },
+    "columnas": {
+      "procesador": "Procesador",
+      "origen": "Origen",
+      "cobrado": "Cobrado",
+      "abonado": "Abonado",
+      "saldo": "Saldo",
+      "pendienteDesde": "Pendiente desde",
+      "estado": "Estado"
+    },
+    "origen": {
+      "nacional": "Nacional",
+      "exterior": "Exterior"
+    },
+    "estado": {
+      "alDia": "Al día",
+      "sinAbono": "Alerta · más de 5 días hábiles",
+      "sinRetiro": "Alerta · 30 días sin retiro",
+      "negativo": "Saldo negativo",
+      "retenido": "Saldo retenido en el procesador",
+      "faltaNit": "Falta el NIT del procesador"
+    },
+    "nitCorto": "NIT {nit}",
+    "sinNit": "Sin NIT",
+    "diasHabiles": "{count, plural, =0 {hoy} one {# día hábil} other {# días hábiles}}",
+    "diasSinRetiro": "{count, plural, =0 {retiro hoy} one {# día sin retiro} other {# días sin retiro}}",
+    "etiquetaFila": "{procesador} · saldo {saldo}",
+    "total": "Total",
+    "errorCarga": "No se pudieron cargar los procesadores de pago",
+    "sinPermiso": {
+      "titulo": "No tienes acceso a los procesadores de pago",
+      "descripcion": "Pide el permiso de ver finanzas."
+    },
+    "vacio": {
+      "titulo": "Todavía no hay cobros con tarjeta ni pasarelas",
+      "descripcion": "Cuando cobres con datáfono, Wompi, Bold, Mercado Pago u otra pasarela, aquí verás lo que te deben y cuándo lo abonan.",
+      "sinAlertasTitulo": "Sin alertas",
+      "sinAlertasDescripcion": "Ningún procesador pasa de 5 días hábiles sin abonar ni de 30 días sin retiro."
+    },
+    "pie": "Cobrado y abonado: del mes elegido. Saldo: todo lo pendiente a hoy. Días hábiles: de lunes a viernes, sin festivos; los abonos saldan primero los cobros más viejos. Los procesadores que retienen saldo a propósito (por defecto Stripe y PayPal) no alertan a los 5 días hábiles: alertan si pasan más de 30 días sin ningún retiro al banco.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Fecha",
+        "bruto": "Bruto",
+        "descuentos": "Descuentos",
+        "neto": "Neto al banco",
+        "factura": "Factura"
+      },
+      "estado": {
+        "registrado": "Registrado",
+        "anulado": "Anulado"
+      },
+      "anular": "Anular abono",
+      "anulado": "Abono anulado: el saldo del procesador volvió a subir.",
+      "anularTitulo": "Anular abono",
+      "anularDescripcion": "Se registra un contra-asiento del abono de {neto} del {fecha} y el saldo del procesador vuelve a subir.",
+      "etiquetaFila": "Abono del {fecha} · neto {neto}",
+      "vacioTitulo": "Sin abonos registrados",
+      "vacioDescripcion": "Cuando el procesador te deposite, registra el abono con los valores de su extracto."
+    },
+    "abono": {
+      "titulo": "Registrar abono",
+      "tituloDe": "Registrar abono de {procesador}",
+      "descripcion": "Copia los valores del extracto del procesador. El neto es lo que llegó al banco.",
+      "registrar": "Registrar abono",
+      "corregir": "Corrige lo marcado para registrar el abono.",
+      "procesador": "Procesador",
+      "elegirProcesador": "Elige el procesador",
+      "fecha": "Fecha del abono",
+      "banco": "Banco donde llegó",
+      "sinBancos": "No hay cuentas bancarias activas: se usará la cuenta de bancos por defecto.",
+      "elegirBanco": "Elige la cuenta",
+      "bruto": "Bruto del extracto",
+      "neto": "Neto recibido en el banco",
+      "descuentos": "Lo que descontó el procesador",
+      "descuentosAyuda": "Tal como aparece en el extracto.",
+      "comision": "Comisión",
+      "ivaComision": "IVA de la comisión",
+      "retencionFuente": "Retención en la fuente",
+      "retencionIva": "Retención de IVA",
+      "retencionIca": "Retención de ICA",
+      "iva": {
+        "descontable": "Tu organización es responsable de IVA según su perfil tributario: el IVA de la comisión se descuenta.",
+        "gasto": "Tu organización no es responsable de IVA: el IVA de la comisión se suma al gasto.",
+        "exterior": "Este procesador está marcado como del exterior: su extracto no trae IVA colombiano. El IVA por reverse charge se aplica aparte y queda en Pendientes contables.",
+        "sinIva": "Sin IVA en la comisión: no hay nada que descontar.",
+        "sinPerfil": "Define el perfil tributario de la organización para saber si el IVA de la comisión es descontable."
+      },
+      "ivaInsignia": {
+        "descontable": "IVA descontable · 24081001",
+        "proporcional": "IVA descontable · 24081001",
+        "gasto": "IVA al gasto · 53051501",
+        "exterior": "Exterior · sin IVA en el extracto",
+        "sin_iva": "Sin IVA en la comisión",
+        "sin_perfil": "Falta el perfil tributario"
+      },
+      "factura": "Factura electrónica del procesador",
+      "facturaOpcional": "Factura del procesador (opcional)",
+      "facturaAyuda": "Obligatoria porque el IVA va al descontable.",
+      "facturaOpcionalAyuda": "Opcional: el IVA no va al descontable.",
+      "facturaEjemplo": "Ej.: FE 118240",
+      "referencia": "Referencia del extracto (opcional)",
+      "registrado": "Abono de {procesador} registrado.",
+      "validacion": {
+        "procesador": "Elige el procesador.",
+        "fecha": "Escribe la fecha del extracto.",
+        "nit": "Falta el NIT de {procesador}: complétalo en «Datos de los procesadores» para registrar el abono.",
+        "bruto": "Escribe el bruto del extracto.",
+        "neto": "Escribe lo que llegó al banco.",
+        "descuadre": "No cuadra: el bruto menos los descuentos da {calculado}.",
+        "factura": "Obligatoria cuando el IVA va al descontable."
+      },
+      "cuadre": {
+        "titulo": "Cuadre del abono",
+        "bruto": "Bruto del extracto",
+        "comision": "− Comisión",
+        "iva": "− IVA de la comisión",
+        "retenciones": "− Retenciones",
+        "calculado": "Neto calculado",
+        "banco": "Neto que llegó al banco",
+        "cuadra": "✓ Cuadra",
+        "diferencia": "Diferencia {valor}",
+        "regla": "Bruto = neto + comisión + IVA + retenciones. No se puede guardar hasta que cuadre."
+      },
+      "asiento": {
+        "titulo": "Asiento que se genera",
+        "banco": "Banco",
+        "comision": "Comisiones",
+        "ivaDescontable": "IVA descontable",
+        "retefuente": "Anticipo retención en la fuente",
+        "reteiva": "Anticipo retención de IVA",
+        "reteica": "Anticipo retención de ICA",
+        "saldo": "Saldo del procesador: {antes} → {despues}",
+        "pendienteExterior": "Queda en Pendientes contables: IVA por reverse charge sobre {valor}."
+      }
+    },
+    "datos": {
+      "titulo": "Datos de los procesadores",
+      "descripcion": "Cada procesador es el tercero de su cuenta 138020xx. El origen decide cómo se trata el IVA de su comisión.",
+      "sinPermiso": "Solo lectura: pide el permiso de crear en finanzas.",
+      "guardado": "Datos de los procesadores guardados.",
+      "columnas": {
+        "procesador": "Procesador",
+        "nit": "NIT o ID fiscal",
+        "nombre": "Nombre como tercero",
+        "origen": "Origen",
+        "retiene": "Retiene saldo",
+        "retieneLargo": "Retiene saldo a propósito"
+      },
+      "etiquetaNit": "NIT de {procesador}",
+      "etiquetaNombre": "Nombre de {procesador} como tercero",
+      "etiquetaOrigen": "Origen de {procesador}",
+      "etiquetaRetiene": "{procesador} retiene saldo a propósito",
+      "nitEjemplo": "Ej.: 900.123.456-7",
+      "deFabrica": "De fábrica",
+      "faltaNit": "Falta: sin NIT el abono no se puede registrar.",
+      "notaFabrica": "Wompi, Mercado Pago y PayU traen su NIT de fábrica. El datáfono y Bold los escribe cada organización; Stripe y PayPal, según indique el Contador. Sin NIT, el cobro sigue normal pero el abono no se puede registrar.",
+      "notaExterior": "El procesador presta el servicio desde fuera de Colombia y su extracto no trae IVA colombiano. Después se le aplica el IVA por reverse charge (art. 437-2 num. 3 ET) sin tocar el formulario del abono. Cambiar el origen solo afecta los abonos que se registren de ahí en adelante.",
+      "notaRetiene": "El procesador guarda la plata y se retira cuando se decide. No lanza la alerta de 5 días hábiles: el tablero muestra el saldo retenido y alerta si pasan más de 30 días sin ningún retiro al banco. Viene en sí para Stripe y PayPal y en no para los demás."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "SIN_PERMISO": "No tienes permiso para esta acción.",
+      "PROCESADOR_INVALIDO": "Elige un procesador de la lista.",
+      "FECHA_REQUERIDA": "Escribe la fecha del abono según el extracto.",
+      "FECHA_FUTURA": "El abono no puede tener una fecha futura.",
+      "PERIODO_CERRADO": "El periodo contable de esa fecha está cerrado.",
+      "IMPORTE_INVALIDO": "Revisa los valores: el bruto debe ser mayor que cero y los descuentos no pueden ser negativos.",
+      "NETO_INVALIDO": "Los descuentos son mayores que el bruto.",
+      "NETO_DESCUADRADO": "No cuadra: el bruto menos los descuentos no da el neto recibido.",
+      "SUCURSAL_INVALIDA": "La sede no es de tu organización.",
+      "CUENTA_BANCARIA_INVALIDA": "La cuenta bancaria no es de tu organización o no tiene cuenta contable.",
+      "PROPORCION_INVALIDA": "La proporción descontable va de 0 a 1.",
+      "PROPORCION_NO_APLICA": "Tu organización no es responsable de IVA: el IVA de la comisión es gasto.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Define el perfil tributario de la organización para saber si el IVA de la comisión es descontable.",
+      "FACTURA_REQUERIDA": "Para descontar el IVA de la comisión se necesita la factura electrónica del procesador.",
+      "ABONO_MAYOR_QUE_SALDO": "El abono es mayor que lo que el procesador debe a esa fecha.",
+      "NIT_PROCESADOR_REQUERIDO": "Falta el NIT del procesador: complétalo en «Datos de los procesadores».",
+      "SIN_CUENTA": "Faltan cuentas contables para este asiento. Revisa el plan de cuentas.",
+      "SOLICITUD_REQUERIDA": "No se pudo identificar la solicitud. Intenta de nuevo.",
+      "ORIGEN_INVALIDO": "El origen es nacional o exterior.",
+      "RETIENE_SALDO_INVALIDO": "«Retiene saldo» es sí o no.",
+      "ABONO_INEXISTENTE": "El abono no existe o no es de tu organización.",
+      "MOTIVO_REQUERIDO": "Escribe el motivo de la anulación.",
+      "datos_invalidos": "Revisa los datos del formulario.",
+      "DESCONOCIDO": "No se pudo completar. Intenta de nuevo en un momento."
     }
   }
 }

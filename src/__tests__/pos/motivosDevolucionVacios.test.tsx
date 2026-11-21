@@ -3,21 +3,32 @@
  *
  * El formulario de devolución no inventa motivos. Si el catálogo activo está
  * vacío, avisa, enlaza a la pantalla de motivos y no llama a procesar_devolucion.
+ *
+ * Rediseño 2026-11-21: el formulario es `CrearDevolucionDialog` (Figma
+ * 874:578120, sustituye a `ReturnForm`); la garantía es la misma.
  */
 import fs from 'fs';
 import path from 'path';
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import type { ReturnReason, SaleForReturn } from '@/components/pos/devoluciones/types';
 
 const mockGetActive = jest.fn();
 const mockProcesar = jest.fn();
+const mockVenta = jest.fn();
+const mockCaja = jest.fn();
 
 jest.mock('@/components/pos/devoluciones/motivos/returnReasonsService', () => ({
   ReturnReasonsService: { getActive: () => mockGetActive() },
 }));
 jest.mock('@/components/pos/devoluciones/devolucionesService', () => ({
-  DevolucionesService: { procesarDevolucion: (...args: unknown[]) => mockProcesar(...args) },
+  DevolucionesService: {
+    obtenerDetalleVenta: (...args: unknown[]) => mockVenta(...args),
+    procesarDevolucion: (...args: unknown[]) => mockProcesar(...args),
+  },
+}));
+jest.mock('@/lib/pos/devoluciones/clienteDevoluciones', () => ({
+  pedirCajaParaDevolucion: (...args: unknown[]) => mockCaja(...args),
 }));
 jest.mock('@/lib/hooks/useOrgCurrency', () => ({
   useMonedaOrganizacion: () => ({ formatear: (n: number) => String(n) }),
@@ -25,20 +36,9 @@ jest.mock('@/lib/hooks/useOrgCurrency', () => ({
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({
   useFormatDate: () => ({ formatDate: () => '23 oct 2026' }),
 }));
-jest.mock('@/components/shared/RichTextEditor', () => ({
-  RichTextEditor: () => null,
-}));
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }));
-jest.mock('next/link', () => {
-  const React = require('react') as typeof import('react');
-  return {
-    __esModule: true,
-    default: ({ href, children }: { href: string; children: React.ReactNode }) =>
-      React.createElement('a', { href }, children),
-  };
-});
+jest.mock('@/components/ui/use-toast', () => ({ toastError: jest.fn(), toastSuccess: jest.fn() }));
 
-import { ReturnForm } from '@/components/pos/devoluciones/ReturnForm';
+import { CrearDevolucionDialog } from '@/components/pos/devoluciones/CrearDevolucionDialog';
 
 const REPO = path.resolve(__dirname, '..', '..', '..');
 const AVISO = 'No hay motivos de devolución activos. Cree uno para poder procesar la devolución.';
@@ -47,6 +47,8 @@ const venta: SaleForReturn = {
   id: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
   organization_id: 140,
   branch_id: 1,
+  customer_id: 'cccccccc-0000-0000-0000-000000000001',
+  customer: { id: 'cccccccc-0000-0000-0000-000000000001', full_name: 'Cliente de prueba' },
   user_id: '00000000-0000-0000-0000-000000000001',
   total: 10000,
   subtotal: 10000,
@@ -78,9 +80,14 @@ const motivo = (code: string, name: string, id: number): ReturnReason => ({
   created_at: '2026-10-23T15:00:00.000Z',
 });
 
+const abrir = () =>
+  renderConIdioma(<CrearDevolucionDialog abierto onAbiertoChange={jest.fn()} ventaId={venta.id} onDevuelta={jest.fn()} />);
+
 beforeEach(() => {
   mockGetActive.mockReset();
   mockProcesar.mockReset();
+  mockVenta.mockReset().mockResolvedValue(venta);
+  mockCaja.mockReset().mockResolvedValue(482);
 });
 
 test('con el catálogo vacío avisa, enlaza a motivos y no llama la RPC', async () => {
@@ -89,8 +96,8 @@ test('con el catálogo vacío avisa, enlaza a motivos y no llama la RPC', async 
     resolver = resolve;
   }));
 
-  renderConIdioma(<ReturnForm sale={venta} onBack={jest.fn()} onSuccess={jest.fn()} />);
-
+  abrir();
+  expect(await screen.findByText('Producto de prueba')).toBeTruthy();
   expect(screen.queryByText(AVISO)).toBeNull();
 
   await act(async () => {
@@ -102,30 +109,42 @@ test('con el catálogo vacío avisa, enlaza a motivos y no llama la RPC', async 
   expect(screen.queryByRole('option', { name: 'Producto defectuoso' })).toBeNull();
 
   fireEvent.click(screen.getByRole('checkbox', { name: 'Producto de prueba: seleccionar para devolver' }));
-  const procesar = screen.getByRole('button', { name: 'Procesar Devolución' }) as HTMLButtonElement;
+  const procesar = screen.getByRole('button', { name: /Procesar devolución/ }) as HTMLButtonElement;
   expect(procesar.disabled).toBe(true);
   fireEvent.click(procesar);
   expect(mockProcesar).not.toHaveBeenCalled();
 });
 
-test('con motivos del catálogo se puede procesar y no sale el aviso', async () => {
+test('con motivos del catálogo no sale el aviso y falta elegir el motivo para procesar', async () => {
   mockGetActive.mockResolvedValue([
     motivo('DEFECTUOSO', 'Producto defectuoso', 1),
-    motivo('INCORRECTO', 'Producto incorrecto', 2),
-    motivo('DANADO', 'Producto dañado', 3),
-    motivo('NO_CONFORME', 'No conforme', 4),
     motivo('GARANTIA', 'Garantía', 5),
-    motivo('OTRO', 'Otro motivo', 6),
   ]);
 
-  renderConIdioma(<ReturnForm sale={venta} onBack={jest.fn()} onSuccess={jest.fn()} />);
+  abrir();
 
   expect(await screen.findByText('Producto de prueba')).toBeTruthy();
+  await waitFor(() => expect(mockGetActive).toHaveBeenCalled());
   expect(screen.queryByText(AVISO)).toBeNull();
 
   fireEvent.click(screen.getByRole('checkbox', { name: 'Producto de prueba: seleccionar para devolver' }));
-  const procesar = screen.getByRole('button', { name: 'Procesar Devolución' }) as HTMLButtonElement;
-  expect(procesar.disabled).toBe(false);
+  // Sin motivo elegido el botón sigue bloqueado: el motivo es obligatorio.
+  const procesar = screen.getByRole('button', { name: /Procesar devolución/ }) as HTMLButtonElement;
+  expect(procesar.disabled).toBe(true);
+  expect(screen.getByText('Total a reintegrar')).toBeTruthy();
+});
+
+test('sin caja abierta el efectivo queda bloqueado y se elige saldo a favor', async () => {
+  mockGetActive.mockResolvedValue([motivo('DEFECTUOSO', 'Producto defectuoso', 1)]);
+  mockCaja.mockResolvedValue(null);
+
+  abrir();
+
+  const efectivo = (await screen.findByRole('radio', { name: /Efectivo de la caja abierta/ })) as HTMLButtonElement;
+  await waitFor(() => expect(efectivo.disabled).toBe(true));
+  expect(screen.getByText(/No hay una caja abierta para esta sucursal/)).toBeTruthy();
+  await waitFor(() => expect(screen.getByRole('radio', { name: /Saldo a favor del cliente/ }).getAttribute('aria-checked')).toBe('true'));
+  expect((screen.getByRole('radio', { name: /Medio de pago original/ }) as HTMLButtonElement).disabled).toBe(true);
 });
 
 describe('textos y migración de motivos', () => {
@@ -141,15 +160,15 @@ describe('textos y migración de motivos', () => {
 
   test('la pantalla no manda códigos fijos y corta antes de la RPC', () => {
     const form = fs.readFileSync(
-      path.join(REPO, 'src/components/pos/devoluciones/ReturnForm.tsx'),
+      path.join(REPO, 'src/components/pos/devoluciones/CrearDevolucionDialog.tsx'),
       'utf8',
     );
     expect(form).not.toContain('motivosRespaldo');
     expect(form).not.toContain('value="defectuoso"');
-    expect(form).toContain('value={reasonOption.code}');
-    expect(form).toContain('href="/app/pos/devoluciones/motivos"');
-    expect(form).toContain('if (returnReasons.length === 0)');
-    expect(form).toContain('procesarDevolucion(sale.id, refundData, claveIntento.current)');
+    expect(form).toContain('value={m.code}');
+    expect(form).toContain("href: '/app/pos/devoluciones/motivos'");
+    expect(form).toContain('deshabilitarProcesar = procesando || !venta || sinMotivos');
+    expect(form).toContain('procesarDevolucion(venta.id, datosDevolucion(lineas, motivo, metodo, notas), claveIntento.current)');
   });
 
   test('la migración siembra los seis códigos sin borrar los existentes', () => {

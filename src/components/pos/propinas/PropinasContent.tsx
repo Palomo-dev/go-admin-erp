@@ -234,6 +234,7 @@ export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
   const elegidas = filas.filter((x) => seleccion.has(x.id));
   const montoElegido = elegidas.reduce((a, x) => a + x.monto, 0);
   const pendientes = cifras?.por_liquidar.cantidad ?? 0;
+  const conResumenPorPersona = pestana === 'por_liquidar' && (cifras?.por_persona.length ?? 0) > 0;
   const sustantivo = { singular: t('pagina.sustantivo.singular'), plural: t('pagina.sustantivo.plural'), genero: 'femenino' as const };
 
   const motivoLiquidar = !permisos.liquidar ? t('motivos.sinPermisoLiquidar') : !sucursalLiquidar ? t('motivos.eligeSucursal') : undefined;
@@ -790,7 +791,9 @@ export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
           pie={pie}
         />
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        // La columna de 320 px solo existe cuando hay resumen por persona; si no, la tabla
+        // quedaba con un hueco vacío a la derecha.
+        <div className={conResumenPorPersona ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]' : 'grid gap-4'}>
           <DataTable
             etiqueta={t(`pestanas.${pestana}`)}
             columnas={columnas}
@@ -828,7 +831,7 @@ export function PropinasContent({ embedded = false }: { embedded?: boolean }) {
             pie={pie}
           />
 
-          {pestana === 'por_liquidar' && (cifras?.por_persona.length ?? 0) > 0 && (
+          {conResumenPorPersona && (
             <Tarjeta
               titulo={t('porPersona.titulo')}
               icono={Users}

@@ -341,6 +341,7 @@ export function TarjetaDevoluciones({ venta, formatear }: { venta: DetalleVenta;
             etiqueta={t('devoluciones.devolucion', { id: d.id })}
             descripcion={[formatDate(d.fecha), d.motivo].filter(Boolean).join(' · ')}
             valor={formatear(d.total)}
+            href={`/app/pos/devoluciones/${d.id}`}
             accesorio={d.estado ? <StatusBadge estado={d.estado} /> : undefined}
           />
         ))}

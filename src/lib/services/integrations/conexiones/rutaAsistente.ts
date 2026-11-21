@@ -15,12 +15,20 @@ import { SERVICIOS, type DefinicionServicio } from './catalogoConexiones';
 export const RUTA_CONEXIONES = '/app/integraciones/conexiones';
 export const RUTA_LOGISTICA = '/app/integraciones/conexiones/logistica';
 
+/**
+ * Conectores que el asistente nuevo todavía no configura: los datáfonos Bold del POS
+ * (`settings.terminals` con serial y sucursal). Su formulario sigue siendo el viejo.
+ */
+const SOLO_FORMULARIO_AVANZADO = new Set(['bold_pos']);
+export const RUTA_DATAFONOS_BOLD = '/app/integraciones/conexiones/nueva?provider=bold&conector=bold_pos';
+
 /** Tipos de asistente que el NUEVO resuelve por sí mismo. */
 const CUBIERTOS = new Set<DefinicionServicio['asistente']>(['llaves', 'ota', 'ical', 'oauth', 'domicilios', 'logistica']);
 
 /** Códigos de MÉTODO DE PAGO (`payment_methods.code`) que no coinciden con el del proveedor. */
 const ALIAS_METODO_PAGO: Readonly<Record<string, string>> = {
   mp: 'mercadopago',
+  bold_link: 'bold',
 };
 
 /**
@@ -75,6 +83,8 @@ export interface ParametrosAsistenteViejo {
   proveedor?: string | null;
   /** Código del conector de la conexión en edición/duplicado. */
   proveedorDeConexion?: string | null;
+  /** Conector pedido (`?conector=`) o el de la conexión en edición: `bold_pos` se queda en el viejo. */
+  conector?: string | null;
   volver?: string | null;
   sucursalId?: number | null;
 }
@@ -88,6 +98,7 @@ export interface ParametrosAsistenteViejo {
  */
 export function destinoDelAsistenteViejo(p: ParametrosAsistenteViejo): string | null {
   const modo = p.mode === 'edit' || p.mode === 'duplicate' ? p.mode : 'create';
+  if (p.conector && SOLO_FORMULARIO_AVANZADO.has(p.conector)) return null;
   if (modo === 'create') {
     if (!p.proveedor) return RUTA_CONEXIONES;
     const s = servicioDelAsistenteNuevo(p.proveedor);

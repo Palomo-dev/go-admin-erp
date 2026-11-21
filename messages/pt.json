@@ -61507,5 +61507,235 @@
       "ultimaVez": "Última vez",
       "usoCupo": "Uso da cota"
     }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Processadores de pagamento",
+    "subtitulo": "O que a maquininha e os gateways receberam e ainda não repassaram ao banco · {mes}",
+    "migas": {
+      "finanzas": "Finanças",
+      "tesoreria": "Tesouraria"
+    },
+    "acciones": {
+      "actualizar": "Atualizar",
+      "datos": "Dados dos processadores",
+      "registrarAbono": "Registrar repasse",
+      "abonar": "Registrar",
+      "completar": "Completar",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar"
+    },
+    "pestanas": {
+      "saldos": "Saldos",
+      "abonos": "Repasses",
+      "alertas": "Alertas"
+    },
+    "mes": {
+      "etiqueta": "Mês",
+      "anterior": "Mês anterior",
+      "siguiente": "Próximo mês"
+    },
+    "kpi": {
+      "porCobrar": "A receber dos processadores",
+      "porCobrarDetalle": "Saldo das contas 138020xx",
+      "cobrado": "Recebido em {mes}",
+      "cobradoDetalle": "Cartão e gateways · venda + gorjeta",
+      "abonado": "Repassado em {mes}",
+      "abonadoDetalle": "Bruto dos repasses registrados",
+      "alertas": "Com alerta",
+      "sinAlertas": "Todos em dia"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# processador com alerta} other {# processadores com alerta}}",
+      "sinAbono": "{procesador} está há {dias} dias úteis sem repasse (cobrança mais antiga: {fecha}, {saldo} pendentes).",
+      "sinRetiro": "{procesador} retém {saldo} e está há {dias} dias sem nenhum saque para o banco.",
+      "negativo": "{procesador} tem saldo negativo ({saldo}): foi repassado mais do que recebido. Revise os repasses.",
+      "verAlertas": "Ver alertas"
+    },
+    "columnas": {
+      "procesador": "Processador",
+      "origen": "Origem",
+      "cobrado": "Recebido",
+      "abonado": "Repassado",
+      "saldo": "Saldo",
+      "pendienteDesde": "Pendente desde",
+      "estado": "Status"
+    },
+    "origen": {
+      "nacional": "Nacional",
+      "exterior": "Exterior"
+    },
+    "estado": {
+      "alDia": "Em dia",
+      "sinAbono": "Alerta · mais de 5 dias úteis",
+      "sinRetiro": "Alerta · 30 dias sem saque",
+      "negativo": "Saldo negativo",
+      "retenido": "Saldo retido no processador",
+      "faltaNit": "Falta o NIT do processador"
+    },
+    "nitCorto": "NIT {nit}",
+    "sinNit": "Sem NIT",
+    "diasHabiles": "{count, plural, =0 {hoje} one {# dia útil} other {# dias úteis}}",
+    "diasSinRetiro": "{count, plural, =0 {saque hoje} one {# dia sem saque} other {# dias sem saque}}",
+    "etiquetaFila": "{procesador} · saldo {saldo}",
+    "total": "Total",
+    "errorCarga": "Não foi possível carregar os processadores de pagamento",
+    "sinPermiso": {
+      "titulo": "Você não tem acesso aos processadores de pagamento",
+      "descripcion": "Peça a permissão de ver finanças."
+    },
+    "vacio": {
+      "titulo": "Ainda não há cobranças com cartão nem gateways",
+      "descripcion": "Quando você cobrar com maquininha, Wompi, Bold, Mercado Pago ou outro gateway, verá aqui o que lhe devem e quando repassam.",
+      "sinAlertasTitulo": "Sem alertas",
+      "sinAlertasDescripcion": "Nenhum processador passa de 5 dias úteis sem repasse nem de 30 dias sem saque."
+    },
+    "pie": "Recebido e repassado: do mês escolhido. Saldo: tudo o que está pendente até hoje. Dias úteis: de segunda a sexta, sem feriados; os repasses quitam primeiro as cobranças mais antigas. Os processadores que retêm saldo de propósito (por padrão Stripe e PayPal) não alertam após 5 dias úteis: alertam se passarem mais de 30 dias sem nenhum saque para o banco.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Data",
+        "bruto": "Bruto",
+        "descuentos": "Descontos",
+        "neto": "Líquido no banco",
+        "factura": "Fatura"
+      },
+      "estado": {
+        "registrado": "Registrado",
+        "anulado": "Cancelado"
+      },
+      "anular": "Cancelar repasse",
+      "anulado": "Repasse cancelado: o saldo do processador voltou a subir.",
+      "anularTitulo": "Cancelar repasse",
+      "anularDescripcion": "É registrado um estorno do repasse de {neto} de {fecha} e o saldo do processador volta a subir.",
+      "etiquetaFila": "Repasse de {fecha} · líquido {neto}",
+      "vacioTitulo": "Sem repasses registrados",
+      "vacioDescripcion": "Quando o processador depositar, registre o repasse com os valores do extrato."
+    },
+    "abono": {
+      "titulo": "Registrar repasse",
+      "tituloDe": "Registrar repasse de {procesador}",
+      "descripcion": "Copie os valores do extrato do processador. O líquido é o que chegou ao banco.",
+      "registrar": "Registrar repasse",
+      "corregir": "Corrija o que está marcado para registrar o repasse.",
+      "procesador": "Processador",
+      "elegirProcesador": "Escolha o processador",
+      "fecha": "Data do repasse",
+      "banco": "Banco onde chegou",
+      "sinBancos": "Não há contas bancárias ativas: será usada a conta de bancos padrão.",
+      "elegirBanco": "Escolha a conta",
+      "bruto": "Bruto do extrato",
+      "neto": "Líquido recebido no banco",
+      "descuentos": "O que o processador descontou",
+      "descuentosAyuda": "Como aparece no extrato.",
+      "comision": "Comissão",
+      "ivaComision": "IVA da comissão",
+      "retencionFuente": "Retenção na fonte",
+      "retencionIva": "Retenção de IVA",
+      "retencionIca": "Retenção de ICA",
+      "iva": {
+        "descontable": "Sua organização é contribuinte de IVA segundo o perfil tributário: o IVA da comissão é deduzido.",
+        "gasto": "Sua organização não é contribuinte de IVA: o IVA da comissão soma à despesa.",
+        "exterior": "Este processador está marcado como do exterior: o extrato não traz IVA colombiano. O IVA por reverse charge é aplicado à parte e fica em Pendências contábeis.",
+        "sinIva": "Sem IVA na comissão: não há nada a deduzir.",
+        "sinPerfil": "Defina o perfil tributário da organização para saber se o IVA da comissão é dedutível."
+      },
+      "ivaInsignia": {
+        "descontable": "IVA dedutível · 24081001",
+        "proporcional": "IVA dedutível · 24081001",
+        "gasto": "IVA na despesa · 53051501",
+        "exterior": "Exterior · sem IVA no extrato",
+        "sin_iva": "Sem IVA na comissão",
+        "sin_perfil": "Falta o perfil tributário"
+      },
+      "factura": "Fatura eletrônica do processador",
+      "facturaOpcional": "Fatura do processador (opcional)",
+      "facturaAyuda": "Obrigatória porque o IVA é dedutível.",
+      "facturaOpcionalAyuda": "Opcional: o IVA não é dedutível.",
+      "facturaEjemplo": "Ex.: FE 118240",
+      "referencia": "Referência do extrato (opcional)",
+      "registrado": "Repasse de {procesador} registrado.",
+      "validacion": {
+        "procesador": "Escolha o processador.",
+        "fecha": "Informe a data do extrato.",
+        "nit": "Falta o NIT de {procesador}: complete em «Dados dos processadores» para registrar o repasse.",
+        "bruto": "Informe o bruto do extrato.",
+        "neto": "Informe o que chegou ao banco.",
+        "descuadre": "Não fecha: o bruto menos os descontos dá {calculado}.",
+        "factura": "Obrigatória quando o IVA é dedutível."
+      },
+      "cuadre": {
+        "titulo": "Conferência do repasse",
+        "bruto": "Bruto do extrato",
+        "comision": "− Comissão",
+        "iva": "− IVA da comissão",
+        "retenciones": "− Retenções",
+        "calculado": "Líquido calculado",
+        "banco": "Líquido que chegou ao banco",
+        "cuadra": "✓ Fecha",
+        "diferencia": "Diferença {valor}",
+        "regla": "Bruto = líquido + comissão + IVA + retenções. Não é possível salvar até fechar."
+      },
+      "asiento": {
+        "titulo": "Lançamento gerado",
+        "banco": "Banco",
+        "comision": "Comissões",
+        "ivaDescontable": "IVA dedutível",
+        "retefuente": "Antecipação retenção na fonte",
+        "reteiva": "Antecipação retenção de IVA",
+        "reteica": "Antecipação retenção de ICA",
+        "saldo": "Saldo do processador: {antes} → {despues}",
+        "pendienteExterior": "Fica em Pendências contábeis: IVA por reverse charge sobre {valor}."
+      }
+    },
+    "datos": {
+      "titulo": "Dados dos processadores",
+      "descripcion": "Cada processador é o terceiro da sua conta 138020xx. A origem define como é tratado o IVA da comissão.",
+      "sinPermiso": "Somente leitura: peça a permissão de criar em finanças.",
+      "guardado": "Dados dos processadores salvos.",
+      "columnas": {
+        "procesador": "Processador",
+        "nit": "NIT ou ID fiscal",
+        "nombre": "Nome como terceiro",
+        "origen": "Origem",
+        "retiene": "Retém saldo",
+        "retieneLargo": "Retém saldo de propósito"
+      },
+      "etiquetaNit": "NIT de {procesador}",
+      "etiquetaNombre": "Nome de {procesador} como terceiro",
+      "etiquetaOrigen": "Origem de {procesador}",
+      "etiquetaRetiene": "{procesador} retém saldo de propósito",
+      "nitEjemplo": "Ex.: 900.123.456-7",
+      "deFabrica": "Padrão",
+      "faltaNit": "Falta: sem NIT o repasse não pode ser registrado.",
+      "notaFabrica": "Wompi, Mercado Pago e PayU vêm com o NIT padrão. A maquininha e a Bold cada organização informa; Stripe e PayPal, conforme indicar o Contador. Sem NIT, a cobrança segue normal, mas o repasse não pode ser registrado.",
+      "notaExterior": "O processador presta o serviço de fora da Colômbia e o extrato não traz IVA colombiano. Depois aplica-se o IVA por reverse charge (art. 437-2 núm. 3 ET) sem mudar o formulário do repasse. Mudar a origem só afeta os repasses registrados a partir daí.",
+      "notaRetiene": "O processador guarda o dinheiro e ele é sacado quando se decide. Não dispara o alerta de 5 dias úteis: o painel mostra o saldo retido e alerta se passarem mais de 30 dias sem nenhum saque para o banco. Vem ativado para Stripe e PayPal e desativado para os demais."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Sua sessão terminou. Entre novamente.",
+      "SIN_PERMISO": "Você não tem permissão para esta ação.",
+      "PROCESADOR_INVALIDO": "Escolha um processador da lista.",
+      "FECHA_REQUERIDA": "Informe a data do repasse conforme o extrato.",
+      "FECHA_FUTURA": "O repasse não pode ter data futura.",
+      "PERIODO_CERRADO": "O período contábil dessa data está fechado.",
+      "IMPORTE_INVALIDO": "Revise os valores: o bruto deve ser maior que zero e os descontos não podem ser negativos.",
+      "NETO_INVALIDO": "Os descontos são maiores que o bruto.",
+      "NETO_DESCUADRADO": "Não fecha: o bruto menos os descontos não dá o líquido recebido.",
+      "SUCURSAL_INVALIDA": "A unidade não é da sua organização.",
+      "CUENTA_BANCARIA_INVALIDA": "A conta bancária não é da sua organização ou não tem conta contábil.",
+      "PROPORCION_INVALIDA": "A proporção dedutível vai de 0 a 1.",
+      "PROPORCION_NO_APLICA": "Sua organização não é contribuinte de IVA: o IVA da comissão é despesa.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Defina o perfil tributário da organização para saber se o IVA da comissão é dedutível.",
+      "FACTURA_REQUERIDA": "Para deduzir o IVA da comissão é necessária a fatura eletrônica do processador.",
+      "ABONO_MAYOR_QUE_SALDO": "O repasse é maior do que o processador devia nessa data.",
+      "NIT_PROCESADOR_REQUERIDO": "Falta o NIT do processador: complete em «Dados dos processadores».",
+      "SIN_CUENTA": "Faltam contas contábeis para este lançamento. Revise o plano de contas.",
+      "SOLICITUD_REQUERIDA": "Não foi possível identificar a solicitação. Tente de novo.",
+      "ORIGEN_INVALIDO": "A origem é nacional ou exterior.",
+      "RETIENE_SALDO_INVALIDO": "«Retém saldo» é sim ou não.",
+      "ABONO_INEXISTENTE": "O repasse não existe ou não é da sua organização.",
+      "MOTIVO_REQUERIDO": "Informe o motivo do cancelamento.",
+      "datos_invalidos": "Revise os dados do formulário.",
+      "DESCONOCIDO": "Não foi possível concluir. Tente de novo em instantes."
+    }
   }
 }

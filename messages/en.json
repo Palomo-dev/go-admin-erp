@@ -61497,5 +61497,235 @@
       "ultimaVez": "Last time",
       "usoCupo": "Quota used"
     }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Payment processors",
+    "subtitulo": "What the card terminal and payment gateways collected and have not yet paid out to the bank · {mes}",
+    "migas": {
+      "finanzas": "Finance",
+      "tesoreria": "Treasury"
+    },
+    "acciones": {
+      "actualizar": "Refresh",
+      "datos": "Processor details",
+      "registrarAbono": "Record payout",
+      "abonar": "Record payout",
+      "completar": "Complete",
+      "cancelar": "Cancel",
+      "guardar": "Save"
+    },
+    "pestanas": {
+      "saldos": "Balances",
+      "abonos": "Payouts",
+      "alertas": "Alerts"
+    },
+    "mes": {
+      "etiqueta": "Month",
+      "anterior": "Previous month",
+      "siguiente": "Next month"
+    },
+    "kpi": {
+      "porCobrar": "Due from processors",
+      "porCobrarDetalle": "Balance of accounts 138020xx",
+      "cobrado": "Collected in {mes}",
+      "cobradoDetalle": "Card and gateways · sale + tip",
+      "abonado": "Paid out in {mes}",
+      "abonadoDetalle": "Gross of recorded payouts",
+      "alertas": "With alert",
+      "sinAlertas": "All up to date"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# processor with an alert} other {# processors with an alert}}",
+      "sinAbono": "{procesador} has gone {dias} business days without a payout (oldest charge: {fecha}, {saldo} pending).",
+      "sinRetiro": "{procesador} keeps {saldo} and has gone {dias} days without any withdrawal to the bank.",
+      "negativo": "{procesador} has a negative balance ({saldo}): more was paid out than collected. Review the payouts.",
+      "verAlertas": "See alerts"
+    },
+    "columnas": {
+      "procesador": "Processor",
+      "origen": "Origin",
+      "cobrado": "Collected",
+      "abonado": "Paid out",
+      "saldo": "Balance",
+      "pendienteDesde": "Pending since",
+      "estado": "Status"
+    },
+    "origen": {
+      "nacional": "Domestic",
+      "exterior": "Foreign"
+    },
+    "estado": {
+      "alDia": "Up to date",
+      "sinAbono": "Alert · over 5 business days",
+      "sinRetiro": "Alert · 30 days without withdrawal",
+      "negativo": "Negative balance",
+      "retenido": "Balance kept at the processor",
+      "faltaNit": "Processor's tax ID missing"
+    },
+    "nitCorto": "Tax ID {nit}",
+    "sinNit": "No tax ID",
+    "diasHabiles": "{count, plural, =0 {today} one {# business day} other {# business days}}",
+    "diasSinRetiro": "{count, plural, =0 {withdrawn today} one {# day without withdrawal} other {# days without withdrawal}}",
+    "etiquetaFila": "{procesador} · balance {saldo}",
+    "total": "Total",
+    "errorCarga": "The payment processors could not be loaded",
+    "sinPermiso": {
+      "titulo": "You do not have access to payment processors",
+      "descripcion": "Ask for the view finance permission."
+    },
+    "vacio": {
+      "titulo": "No card or gateway payments yet",
+      "descripcion": "When you charge with a card terminal, Wompi, Bold, Mercado Pago or another gateway, you will see here what they owe you and when they pay it out.",
+      "sinAlertasTitulo": "No alerts",
+      "sinAlertasDescripcion": "No processor has gone over 5 business days without a payout or 30 days without a withdrawal."
+    },
+    "pie": "Collected and paid out: for the chosen month. Balance: everything pending as of today. Business days: Monday to Friday, excluding holidays; payouts settle the oldest charges first. Processors that keep a balance on purpose (Stripe and PayPal by default) do not alert after 5 business days: they alert after more than 30 days without any withdrawal to the bank.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Date",
+        "bruto": "Gross",
+        "descuentos": "Deductions",
+        "neto": "Net to bank",
+        "factura": "Invoice"
+      },
+      "estado": {
+        "registrado": "Recorded",
+        "anulado": "Voided"
+      },
+      "anular": "Void payout",
+      "anulado": "Payout voided: the processor's balance went back up.",
+      "anularTitulo": "Void payout",
+      "anularDescripcion": "A reversing entry is recorded for the {neto} payout of {fecha} and the processor’s balance goes back up.",
+      "etiquetaFila": "Payout of {fecha} · net {neto}",
+      "vacioTitulo": "No payouts recorded",
+      "vacioDescripcion": "When the processor deposits, record the payout with the amounts from its statement."
+    },
+    "abono": {
+      "titulo": "Record payout",
+      "tituloDe": "Record payout from {procesador}",
+      "descripcion": "Copy the amounts from the processor's statement. Net is what reached the bank.",
+      "registrar": "Record payout",
+      "corregir": "Fix the highlighted fields to record the payout.",
+      "procesador": "Processor",
+      "elegirProcesador": "Choose the processor",
+      "fecha": "Payout date",
+      "banco": "Bank where it arrived",
+      "sinBancos": "There are no active bank accounts: the default bank account will be used.",
+      "elegirBanco": "Choose the account",
+      "bruto": "Statement gross",
+      "neto": "Net received at the bank",
+      "descuentos": "What the processor deducted",
+      "descuentosAyuda": "As shown on the statement.",
+      "comision": "Commission",
+      "ivaComision": "Commission VAT",
+      "retencionFuente": "Income tax withholding",
+      "retencionIva": "VAT withholding",
+      "retencionIca": "ICA withholding",
+      "iva": {
+        "descontable": "Your organization is VAT-registered according to its tax profile: the commission VAT is deducted.",
+        "gasto": "Your organization is not VAT-registered: the commission VAT is added to the expense.",
+        "exterior": "This processor is marked as foreign: its statement has no Colombian VAT. Reverse-charge VAT is applied separately and stays in Accounting pending items.",
+        "sinIva": "No VAT on the commission: nothing to deduct.",
+        "sinPerfil": "Set up the organization’s tax profile to know whether the commission VAT is deductible."
+      },
+      "ivaInsignia": {
+        "descontable": "Deductible VAT · 24081001",
+        "proporcional": "Deductible VAT · 24081001",
+        "gasto": "VAT to expense · 53051501",
+        "exterior": "Foreign · no VAT on the statement",
+        "sin_iva": "No VAT on the commission",
+        "sin_perfil": "Tax profile missing"
+      },
+      "factura": "Processor's electronic invoice",
+      "facturaOpcional": "Processor's invoice (optional)",
+      "facturaAyuda": "Required because the VAT is deductible.",
+      "facturaOpcionalAyuda": "Optional: the VAT is not deductible.",
+      "facturaEjemplo": "E.g. FE 118240",
+      "referencia": "Statement reference (optional)",
+      "registrado": "Payout from {procesador} recorded.",
+      "validacion": {
+        "procesador": "Choose the processor.",
+        "fecha": "Enter the statement date.",
+        "nit": "{procesador}'s tax ID is missing: add it in «Processor details» to record the payout.",
+        "bruto": "Enter the statement gross.",
+        "neto": "Enter what reached the bank.",
+        "descuadre": "It does not balance: gross minus deductions is {calculado}.",
+        "factura": "Required when the VAT is deductible."
+      },
+      "cuadre": {
+        "titulo": "Payout reconciliation",
+        "bruto": "Statement gross",
+        "comision": "− Commission",
+        "iva": "− Commission VAT",
+        "retenciones": "− Withholdings",
+        "calculado": "Calculated net",
+        "banco": "Net that reached the bank",
+        "cuadra": "✓ Balanced",
+        "diferencia": "Difference {valor}",
+        "regla": "Gross = net + commission + VAT + withholdings. It cannot be saved until it balances."
+      },
+      "asiento": {
+        "titulo": "Entry that will be recorded",
+        "banco": "Bank",
+        "comision": "Commissions",
+        "ivaDescontable": "Deductible VAT",
+        "retefuente": "Income tax withholding credit",
+        "reteiva": "VAT withholding credit",
+        "reteica": "ICA withholding credit",
+        "saldo": "Processor balance: {antes} → {despues}",
+        "pendienteExterior": "It stays in Accounting pending items: reverse-charge VAT on {valor}."
+      }
+    },
+    "datos": {
+      "titulo": "Processor details",
+      "descripcion": "Each processor is the third party of its 138020xx account. The origin decides how its commission VAT is handled.",
+      "sinPermiso": "Read only: ask for the create permission in finance.",
+      "guardado": "Processor details saved.",
+      "columnas": {
+        "procesador": "Processor",
+        "nit": "Tax ID",
+        "nombre": "Name as third party",
+        "origen": "Origin",
+        "retiene": "Keeps balance",
+        "retieneLargo": "Keeps a balance on purpose"
+      },
+      "etiquetaNit": "Tax ID of {procesador}",
+      "etiquetaNombre": "Name of {procesador} as third party",
+      "etiquetaOrigen": "Origin of {procesador}",
+      "etiquetaRetiene": "{procesador} keeps a balance on purpose",
+      "nitEjemplo": "E.g. 900.123.456-7",
+      "deFabrica": "Default",
+      "faltaNit": "Missing: without a tax ID the payout cannot be recorded.",
+      "notaFabrica": "Wompi, Mercado Pago and PayU come with their tax ID by default. Each organization enters the card terminal and Bold; Stripe and PayPal, as the accountant indicates. Without a tax ID, charging works as usual but the payout cannot be recorded.",
+      "notaExterior": "The processor provides the service from outside Colombia and its statement has no Colombian VAT. Reverse-charge VAT (art. 437-2 no. 3 ET) is applied later without changing the payout form. Changing the origin only affects payouts recorded from then on.",
+      "notaRetiene": "The processor holds the money and it is withdrawn when you decide. It does not trigger the 5-business-day alert: the dashboard shows the kept balance and alerts after more than 30 days without any withdrawal to the bank. It is on for Stripe and PayPal and off for the rest by default."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Your session ended. Sign in again.",
+      "SIN_PERMISO": "You do not have permission for this action.",
+      "PROCESADOR_INVALIDO": "Choose a processor from the list.",
+      "FECHA_REQUERIDA": "Enter the payout date from the statement.",
+      "FECHA_FUTURA": "The payout cannot have a future date.",
+      "PERIODO_CERRADO": "The accounting period for that date is closed.",
+      "IMPORTE_INVALIDO": "Check the amounts: gross must be greater than zero and deductions cannot be negative.",
+      "NETO_INVALIDO": "Deductions are larger than the gross amount.",
+      "NETO_DESCUADRADO": "It does not balance: gross minus deductions does not equal the net received.",
+      "SUCURSAL_INVALIDA": "The branch does not belong to your organization.",
+      "CUENTA_BANCARIA_INVALIDA": "The bank account does not belong to your organization or has no ledger account.",
+      "PROPORCION_INVALIDA": "The deductible share goes from 0 to 1.",
+      "PROPORCION_NO_APLICA": "Your organization is not VAT-registered: the commission VAT is an expense.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Set up the organization's tax profile to know whether the commission VAT is deductible.",
+      "FACTURA_REQUERIDA": "To deduct the commission VAT you need the processor's electronic invoice.",
+      "ABONO_MAYOR_QUE_SALDO": "The payout is larger than what the processor owed on that date.",
+      "NIT_PROCESADOR_REQUERIDO": "The processor's tax ID is missing: add it in «Processor details».",
+      "SIN_CUENTA": "Ledger accounts are missing for this entry. Check the chart of accounts.",
+      "SOLICITUD_REQUERIDA": "The request could not be identified. Try again.",
+      "ORIGEN_INVALIDO": "The origin is domestic or foreign.",
+      "RETIENE_SALDO_INVALIDO": "«Keeps a balance» is yes or no.",
+      "ABONO_INEXISTENTE": "The payout does not exist or is not from your organization.",
+      "MOTIVO_REQUERIDO": "Enter the reason for voiding.",
+      "datos_invalidos": "Check the form data.",
+      "DESCONOCIDO": "It could not be completed. Try again in a moment."
+    }
   }
 }

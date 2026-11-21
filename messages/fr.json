@@ -61497,5 +61497,235 @@
       "ultimaVez": "Dernière fois",
       "usoCupo": "Quota utilisé"
     }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Prestataires de paiement",
+    "subtitulo": "Ce que le TPE et les passerelles ont encaissé et pas encore versé à la banque · {mes}",
+    "migas": {
+      "finanzas": "Finances",
+      "tesoreria": "Trésorerie"
+    },
+    "acciones": {
+      "actualizar": "Actualiser",
+      "datos": "Données des prestataires",
+      "registrarAbono": "Enregistrer un versement",
+      "abonar": "Verser",
+      "completar": "Compléter",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer"
+    },
+    "pestanas": {
+      "saldos": "Soldes",
+      "abonos": "Versements",
+      "alertas": "Alertes"
+    },
+    "mes": {
+      "etiqueta": "Mois",
+      "anterior": "Mois précédent",
+      "siguiente": "Mois suivant"
+    },
+    "kpi": {
+      "porCobrar": "À recevoir des prestataires",
+      "porCobrarDetalle": "Solde des comptes 138020xx",
+      "cobrado": "Encaissé en {mes}",
+      "cobradoDetalle": "Carte et passerelles · vente + pourboire",
+      "abonado": "Versé en {mes}",
+      "abonadoDetalle": "Brut des versements enregistrés",
+      "alertas": "En alerte",
+      "sinAlertas": "Tous à jour"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# prestataire en alerte} other {# prestataires en alerte}}",
+      "sinAbono": "{procesador} n’a rien versé depuis {dias} jours ouvrés (encaissement le plus ancien : {fecha}, {saldo} en attente).",
+      "sinRetiro": "{procesador} conserve {saldo} et aucun retrait vers la banque depuis {dias} jours.",
+      "negativo": "{procesador} a un solde négatif ({saldo}) : plus versé qu’encaissé. Vérifiez les versements.",
+      "verAlertas": "Voir les alertes"
+    },
+    "columnas": {
+      "procesador": "Prestataire",
+      "origen": "Origine",
+      "cobrado": "Encaissé",
+      "abonado": "Versé",
+      "saldo": "Solde",
+      "pendienteDesde": "En attente depuis",
+      "estado": "Statut"
+    },
+    "origen": {
+      "nacional": "National",
+      "exterior": "Étranger"
+    },
+    "estado": {
+      "alDia": "À jour",
+      "sinAbono": "Alerte · plus de 5 jours ouvrés",
+      "sinRetiro": "Alerte · 30 jours sans retrait",
+      "negativo": "Solde négatif",
+      "retenido": "Solde conservé chez le prestataire",
+      "faltaNit": "NIT du prestataire manquant"
+    },
+    "nitCorto": "NIT {nit}",
+    "sinNit": "Sans NIT",
+    "diasHabiles": "{count, plural, =0 {aujourd’hui} one {# jour ouvré} other {# jours ouvrés}}",
+    "diasSinRetiro": "{count, plural, =0 {retrait aujourd’hui} one {# jour sans retrait} other {# jours sans retrait}}",
+    "etiquetaFila": "{procesador} · solde {saldo}",
+    "total": "Total",
+    "errorCarga": "Impossible de charger les prestataires de paiement",
+    "sinPermiso": {
+      "titulo": "Vous n’avez pas accès aux prestataires de paiement",
+      "descripcion": "Demandez l’autorisation de consulter les finances."
+    },
+    "vacio": {
+      "titulo": "Aucun encaissement par carte ou passerelle pour l’instant",
+      "descripcion": "Quand vous encaissez par TPE, Wompi, Bold, Mercado Pago ou une autre passerelle, vous verrez ici ce qu’on vous doit et quand c’est versé.",
+      "sinAlertasTitulo": "Aucune alerte",
+      "sinAlertasDescripcion": "Aucun prestataire ne dépasse 5 jours ouvrés sans versement ni 30 jours sans retrait."
+    },
+    "pie": "Encaissé et versé : du mois choisi. Solde : tout ce qui est en attente à ce jour. Jours ouvrés : du lundi au vendredi, hors jours fériés ; les versements soldent d’abord les encaissements les plus anciens. Les prestataires qui conservent un solde volontairement (Stripe et PayPal par défaut) n’alertent pas après 5 jours ouvrés : ils alertent après plus de 30 jours sans retrait vers la banque.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Date",
+        "bruto": "Brut",
+        "descuentos": "Retenues",
+        "neto": "Net à la banque",
+        "factura": "Facture"
+      },
+      "estado": {
+        "registrado": "Enregistré",
+        "anulado": "Annulé"
+      },
+      "anular": "Annuler le versement",
+      "anulado": "Versement annulé : le solde du prestataire est remonté.",
+      "anularTitulo": "Annuler le versement",
+      "anularDescripcion": "Une contre-écriture est passée pour le versement de {neto} du {fecha} et le solde du prestataire remonte.",
+      "etiquetaFila": "Versement du {fecha} · net {neto}",
+      "vacioTitulo": "Aucun versement enregistré",
+      "vacioDescripcion": "Quand le prestataire verse les fonds, enregistrez le versement avec les montants de son relevé."
+    },
+    "abono": {
+      "titulo": "Enregistrer un versement",
+      "tituloDe": "Enregistrer un versement de {procesador}",
+      "descripcion": "Recopiez les montants du relevé du prestataire. Le net est ce qui est arrivé à la banque.",
+      "registrar": "Enregistrer le versement",
+      "corregir": "Corrigez les champs signalés pour enregistrer le versement.",
+      "procesador": "Prestataire",
+      "elegirProcesador": "Choisissez le prestataire",
+      "fecha": "Date du versement",
+      "banco": "Banque de réception",
+      "sinBancos": "Aucun compte bancaire actif : le compte bancaire par défaut sera utilisé.",
+      "elegirBanco": "Choisissez le compte",
+      "bruto": "Brut du relevé",
+      "neto": "Net reçu à la banque",
+      "descuentos": "Ce que le prestataire a retenu",
+      "descuentosAyuda": "Tel qu’indiqué sur le relevé.",
+      "comision": "Commission",
+      "ivaComision": "TVA de la commission",
+      "retencionFuente": "Retenue à la source",
+      "retencionIva": "Retenue de TVA",
+      "retencionIca": "Retenue ICA",
+      "iva": {
+        "descontable": "Votre organisation est assujettie à la TVA selon son profil fiscal : la TVA de la commission est déduite.",
+        "gasto": "Votre organisation n’est pas assujettie à la TVA : la TVA de la commission s’ajoute à la charge.",
+        "exterior": "Ce prestataire est marqué comme étranger : son relevé n’a pas de TVA colombienne. La TVA en autoliquidation s’applique à part et reste dans les éléments comptables en attente.",
+        "sinIva": "Pas de TVA sur la commission : rien à déduire.",
+        "sinPerfil": "Définissez le profil fiscal de l’organisation pour savoir si la TVA de la commission est déductible."
+      },
+      "ivaInsignia": {
+        "descontable": "TVA déductible · 24081001",
+        "proporcional": "TVA déductible · 24081001",
+        "gasto": "TVA en charge · 53051501",
+        "exterior": "Étranger · sans TVA sur le relevé",
+        "sin_iva": "Sans TVA sur la commission",
+        "sin_perfil": "Profil fiscal manquant"
+      },
+      "factura": "Facture électronique du prestataire",
+      "facturaOpcional": "Facture du prestataire (facultatif)",
+      "facturaAyuda": "Obligatoire car la TVA est déductible.",
+      "facturaOpcionalAyuda": "Facultatif : la TVA n’est pas déductible.",
+      "facturaEjemplo": "Ex. : FE 118240",
+      "referencia": "Référence du relevé (facultatif)",
+      "registrado": "Versement de {procesador} enregistré.",
+      "validacion": {
+        "procesador": "Choisissez le prestataire.",
+        "fecha": "Saisissez la date du relevé.",
+        "nit": "Le NIT de {procesador} manque : complétez-le dans « Données des prestataires » pour enregistrer le versement.",
+        "bruto": "Saisissez le brut du relevé.",
+        "neto": "Saisissez ce qui est arrivé à la banque.",
+        "descuadre": "Ça ne s’équilibre pas : le brut moins les retenues donne {calculado}.",
+        "factura": "Obligatoire quand la TVA est déductible."
+      },
+      "cuadre": {
+        "titulo": "Équilibre du versement",
+        "bruto": "Brut du relevé",
+        "comision": "− Commission",
+        "iva": "− TVA de la commission",
+        "retenciones": "− Retenues",
+        "calculado": "Net calculé",
+        "banco": "Net arrivé à la banque",
+        "cuadra": "✓ Équilibré",
+        "diferencia": "Écart {valor}",
+        "regla": "Brut = net + commission + TVA + retenues. Impossible d’enregistrer tant que ce n’est pas équilibré."
+      },
+      "asiento": {
+        "titulo": "Écriture générée",
+        "banco": "Banque",
+        "comision": "Commissions",
+        "ivaDescontable": "TVA déductible",
+        "retefuente": "Avance retenue à la source",
+        "reteiva": "Avance retenue de TVA",
+        "reteica": "Avance retenue ICA",
+        "saldo": "Solde du prestataire : {antes} → {despues}",
+        "pendienteExterior": "Reste dans les éléments comptables en attente : TVA en autoliquidation sur {valor}."
+      }
+    },
+    "datos": {
+      "titulo": "Données des prestataires",
+      "descripcion": "Chaque prestataire est le tiers de son compte 138020xx. L’origine détermine le traitement de la TVA de sa commission.",
+      "sinPermiso": "Lecture seule : demandez l’autorisation de création en finances.",
+      "guardado": "Données des prestataires enregistrées.",
+      "columnas": {
+        "procesador": "Prestataire",
+        "nit": "NIT ou identifiant fiscal",
+        "nombre": "Nom en tant que tiers",
+        "origen": "Origine",
+        "retiene": "Conserve un solde",
+        "retieneLargo": "Conserve un solde volontairement"
+      },
+      "etiquetaNit": "NIT de {procesador}",
+      "etiquetaNombre": "Nom de {procesador} en tant que tiers",
+      "etiquetaOrigen": "Origine de {procesador}",
+      "etiquetaRetiene": "{procesador} conserve un solde volontairement",
+      "nitEjemplo": "Ex. : 900.123.456-7",
+      "deFabrica": "Par défaut",
+      "faltaNit": "Manquant : sans NIT le versement ne peut pas être enregistré.",
+      "notaFabrica": "Wompi, Mercado Pago et PayU ont leur NIT par défaut. Chaque organisation saisit le TPE et Bold ; Stripe et PayPal, selon l’indication du comptable. Sans NIT, l’encaissement continue normalement mais le versement ne peut pas être enregistré.",
+      "notaExterior": "Le prestataire fournit le service depuis l’étranger et son relevé n’a pas de TVA colombienne. La TVA en autoliquidation (art. 437-2 n° 3 ET) s’applique ensuite sans modifier le formulaire du versement. Changer l’origine n’affecte que les versements enregistrés ensuite.",
+      "notaRetiene": "Le prestataire garde l’argent et on le retire quand on le décide. Pas d’alerte à 5 jours ouvrés : le tableau affiche le solde conservé et alerte après plus de 30 jours sans retrait vers la banque. Activé par défaut pour Stripe et PayPal, désactivé pour les autres."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous.",
+      "SIN_PERMISO": "Vous n'avez pas l'autorisation pour cette action.",
+      "PROCESADOR_INVALIDO": "Choisissez un prestataire dans la liste.",
+      "FECHA_REQUERIDA": "Saisissez la date du versement indiquée sur le relevé.",
+      "FECHA_FUTURA": "Le versement ne peut pas avoir une date future.",
+      "PERIODO_CERRADO": "La période comptable de cette date est clôturée.",
+      "IMPORTE_INVALIDO": "Vérifiez les montants : le brut doit être supérieur à zéro et les retenues ne peuvent pas être négatives.",
+      "NETO_INVALIDO": "Les retenues sont supérieures au brut.",
+      "NETO_DESCUADRADO": "Ça ne s'équilibre pas : le brut moins les retenues ne donne pas le net reçu.",
+      "SUCURSAL_INVALIDA": "L'établissement n'appartient pas à votre organisation.",
+      "CUENTA_BANCARIA_INVALIDA": "Le compte bancaire n'appartient pas à votre organisation ou n'a pas de compte comptable.",
+      "PROPORCION_INVALIDA": "La part déductible va de 0 à 1.",
+      "PROPORCION_NO_APLICA": "Votre organisation n'est pas assujettie à la TVA : la TVA de la commission est une charge.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Définissez le profil fiscal de l'organisation pour savoir si la TVA de la commission est déductible.",
+      "FACTURA_REQUERIDA": "Pour déduire la TVA de la commission, la facture électronique du prestataire est nécessaire.",
+      "ABONO_MAYOR_QUE_SALDO": "Le versement dépasse ce que le prestataire devait à cette date.",
+      "NIT_PROCESADOR_REQUERIDO": "Le NIT du prestataire manque : complétez-le dans « Données des prestataires ».",
+      "SIN_CUENTA": "Des comptes comptables manquent pour cette écriture. Vérifiez le plan comptable.",
+      "SOLICITUD_REQUERIDA": "La demande n'a pas pu être identifiée. Réessayez.",
+      "ORIGEN_INVALIDO": "L'origine est nationale ou étrangère.",
+      "RETIENE_SALDO_INVALIDO": "« Conserve un solde » est oui ou non.",
+      "ABONO_INEXISTENTE": "Le versement n'existe pas ou n'appartient pas à votre organisation.",
+      "MOTIVO_REQUERIDO": "Indiquez le motif de l'annulation.",
+      "datos_invalidos": "Vérifiez les données du formulaire.",
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez dans un instant."
+    }
   }
 }

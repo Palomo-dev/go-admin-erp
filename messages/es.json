@@ -61512,5 +61512,235 @@
       "ultimaVez": "Última vez",
       "usoCupo": "Uso del cupo"
     }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Procesadores de pago",
+    "subtitulo": "Lo que el datáfono y las pasarelas cobraron y todavía no han abonado al banco · {mes}",
+    "migas": {
+      "finanzas": "Finanzas",
+      "tesoreria": "Tesorería"
+    },
+    "acciones": {
+      "actualizar": "Actualizar",
+      "datos": "Datos de los procesadores",
+      "registrarAbono": "Registrar abono",
+      "abonar": "Abonar",
+      "completar": "Completar",
+      "cancelar": "Cancelar",
+      "guardar": "Guardar"
+    },
+    "pestanas": {
+      "saldos": "Saldos",
+      "abonos": "Abonos",
+      "alertas": "Alertas"
+    },
+    "mes": {
+      "etiqueta": "Mes",
+      "anterior": "Mes anterior",
+      "siguiente": "Mes siguiente"
+    },
+    "kpi": {
+      "porCobrar": "Por cobrar a procesadores",
+      "porCobrarDetalle": "Saldo de las cuentas 138020xx",
+      "cobrado": "Cobrado en {mes}",
+      "cobradoDetalle": "Tarjeta y pasarelas · venta + propina",
+      "abonado": "Abonado en {mes}",
+      "abonadoDetalle": "Bruto de los abonos registrados",
+      "alertas": "Con alerta",
+      "sinAlertas": "Todos al día"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# procesador con alerta} other {# procesadores con alerta}}",
+      "sinAbono": "{procesador} lleva {dias} días hábiles sin abonar (cobro más viejo: {fecha}, {saldo} pendientes).",
+      "sinRetiro": "{procesador} retiene {saldo} y lleva {dias} días sin ningún retiro al banco.",
+      "negativo": "{procesador} tiene saldo negativo ({saldo}): se abonó más de lo cobrado. Revisa los abonos.",
+      "verAlertas": "Ver alertas"
+    },
+    "columnas": {
+      "procesador": "Procesador",
+      "origen": "Origen",
+      "cobrado": "Cobrado",
+      "abonado": "Abonado",
+      "saldo": "Saldo",
+      "pendienteDesde": "Pendiente desde",
+      "estado": "Estado"
+    },
+    "origen": {
+      "nacional": "Nacional",
+      "exterior": "Exterior"
+    },
+    "estado": {
+      "alDia": "Al día",
+      "sinAbono": "Alerta · más de 5 días hábiles",
+      "sinRetiro": "Alerta · 30 días sin retiro",
+      "negativo": "Saldo negativo",
+      "retenido": "Saldo retenido en el procesador",
+      "faltaNit": "Falta el NIT del procesador"
+    },
+    "nitCorto": "NIT {nit}",
+    "sinNit": "Sin NIT",
+    "diasHabiles": "{count, plural, =0 {hoy} one {# día hábil} other {# días hábiles}}",
+    "diasSinRetiro": "{count, plural, =0 {retiro hoy} one {# día sin retiro} other {# días sin retiro}}",
+    "etiquetaFila": "{procesador} · saldo {saldo}",
+    "total": "Total",
+    "errorCarga": "No se pudieron cargar los procesadores de pago",
+    "sinPermiso": {
+      "titulo": "No tienes acceso a los procesadores de pago",
+      "descripcion": "Pide el permiso de ver finanzas."
+    },
+    "vacio": {
+      "titulo": "Todavía no hay cobros con tarjeta ni pasarelas",
+      "descripcion": "Cuando cobres con datáfono, Wompi, Bold, Mercado Pago u otra pasarela, aquí verás lo que te deben y cuándo lo abonan.",
+      "sinAlertasTitulo": "Sin alertas",
+      "sinAlertasDescripcion": "Ningún procesador pasa de 5 días hábiles sin abonar ni de 30 días sin retiro."
+    },
+    "pie": "Cobrado y abonado: del mes elegido. Saldo: todo lo pendiente a hoy. Días hábiles: de lunes a viernes, sin festivos; los abonos saldan primero los cobros más viejos. Los procesadores que retienen saldo a propósito (por defecto Stripe y PayPal) no alertan a los 5 días hábiles: alertan si pasan más de 30 días sin ningún retiro al banco.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Fecha",
+        "bruto": "Bruto",
+        "descuentos": "Descuentos",
+        "neto": "Neto al banco",
+        "factura": "Factura"
+      },
+      "estado": {
+        "registrado": "Registrado",
+        "anulado": "Anulado"
+      },
+      "anular": "Anular abono",
+      "anulado": "Abono anulado: el saldo del procesador volvió a subir.",
+      "anularTitulo": "Anular abono",
+      "anularDescripcion": "Se registra un contra-asiento del abono de {neto} del {fecha} y el saldo del procesador vuelve a subir.",
+      "etiquetaFila": "Abono del {fecha} · neto {neto}",
+      "vacioTitulo": "Sin abonos registrados",
+      "vacioDescripcion": "Cuando el procesador te deposite, registra el abono con los valores de su extracto."
+    },
+    "abono": {
+      "titulo": "Registrar abono",
+      "tituloDe": "Registrar abono de {procesador}",
+      "descripcion": "Copia los valores del extracto del procesador. El neto es lo que llegó al banco.",
+      "registrar": "Registrar abono",
+      "corregir": "Corrige lo marcado para registrar el abono.",
+      "procesador": "Procesador",
+      "elegirProcesador": "Elige el procesador",
+      "fecha": "Fecha del abono",
+      "banco": "Banco donde llegó",
+      "sinBancos": "No hay cuentas bancarias activas: se usará la cuenta de bancos por defecto.",
+      "elegirBanco": "Elige la cuenta",
+      "bruto": "Bruto del extracto",
+      "neto": "Neto recibido en el banco",
+      "descuentos": "Lo que descontó el procesador",
+      "descuentosAyuda": "Tal como aparece en el extracto.",
+      "comision": "Comisión",
+      "ivaComision": "IVA de la comisión",
+      "retencionFuente": "Retención en la fuente",
+      "retencionIva": "Retención de IVA",
+      "retencionIca": "Retención de ICA",
+      "iva": {
+        "descontable": "Tu organización es responsable de IVA según su perfil tributario: el IVA de la comisión se descuenta.",
+        "gasto": "Tu organización no es responsable de IVA: el IVA de la comisión se suma al gasto.",
+        "exterior": "Este procesador está marcado como del exterior: su extracto no trae IVA colombiano. El IVA por reverse charge se aplica aparte y queda en Pendientes contables.",
+        "sinIva": "Sin IVA en la comisión: no hay nada que descontar.",
+        "sinPerfil": "Define el perfil tributario de la organización para saber si el IVA de la comisión es descontable."
+      },
+      "ivaInsignia": {
+        "descontable": "IVA descontable · 24081001",
+        "proporcional": "IVA descontable · 24081001",
+        "gasto": "IVA al gasto · 53051501",
+        "exterior": "Exterior · sin IVA en el extracto",
+        "sin_iva": "Sin IVA en la comisión",
+        "sin_perfil": "Falta el perfil tributario"
+      },
+      "factura": "Factura electrónica del procesador",
+      "facturaOpcional": "Factura del procesador (opcional)",
+      "facturaAyuda": "Obligatoria porque el IVA va al descontable.",
+      "facturaOpcionalAyuda": "Opcional: el IVA no va al descontable.",
+      "facturaEjemplo": "Ej.: FE 118240",
+      "referencia": "Referencia del extracto (opcional)",
+      "registrado": "Abono de {procesador} registrado.",
+      "validacion": {
+        "procesador": "Elige el procesador.",
+        "fecha": "Escribe la fecha del extracto.",
+        "nit": "Falta el NIT de {procesador}: complétalo en «Datos de los procesadores» para registrar el abono.",
+        "bruto": "Escribe el bruto del extracto.",
+        "neto": "Escribe lo que llegó al banco.",
+        "descuadre": "No cuadra: el bruto menos los descuentos da {calculado}.",
+        "factura": "Obligatoria cuando el IVA va al descontable."
+      },
+      "cuadre": {
+        "titulo": "Cuadre del abono",
+        "bruto": "Bruto del extracto",
+        "comision": "− Comisión",
+        "iva": "− IVA de la comisión",
+        "retenciones": "− Retenciones",
+        "calculado": "Neto calculado",
+        "banco": "Neto que llegó al banco",
+        "cuadra": "✓ Cuadra",
+        "diferencia": "Diferencia {valor}",
+        "regla": "Bruto = neto + comisión + IVA + retenciones. No se puede guardar hasta que cuadre."
+      },
+      "asiento": {
+        "titulo": "Asiento que se genera",
+        "banco": "Banco",
+        "comision": "Comisiones",
+        "ivaDescontable": "IVA descontable",
+        "retefuente": "Anticipo retención en la fuente",
+        "reteiva": "Anticipo retención de IVA",
+        "reteica": "Anticipo retención de ICA",
+        "saldo": "Saldo del procesador: {antes} → {despues}",
+        "pendienteExterior": "Queda en Pendientes contables: IVA por reverse charge sobre {valor}."
+      }
+    },
+    "datos": {
+      "titulo": "Datos de los procesadores",
+      "descripcion": "Cada procesador es el tercero de su cuenta 138020xx. El origen decide cómo se trata el IVA de su comisión.",
+      "sinPermiso": "Solo lectura: pide el permiso de crear en finanzas.",
+      "guardado": "Datos de los procesadores guardados.",
+      "columnas": {
+        "procesador": "Procesador",
+        "nit": "NIT o ID fiscal",
+        "nombre": "Nombre como tercero",
+        "origen": "Origen",
+        "retiene": "Retiene saldo",
+        "retieneLargo": "Retiene saldo a propósito"
+      },
+      "etiquetaNit": "NIT de {procesador}",
+      "etiquetaNombre": "Nombre de {procesador} como tercero",
+      "etiquetaOrigen": "Origen de {procesador}",
+      "etiquetaRetiene": "{procesador} retiene saldo a propósito",
+      "nitEjemplo": "Ej.: 900.123.456-7",
+      "deFabrica": "De fábrica",
+      "faltaNit": "Falta: sin NIT el abono no se puede registrar.",
+      "notaFabrica": "Wompi, Mercado Pago y PayU traen su NIT de fábrica. El datáfono y Bold los escribe cada organización; Stripe y PayPal, según indique el Contador. Sin NIT, el cobro sigue normal pero el abono no se puede registrar.",
+      "notaExterior": "El procesador presta el servicio desde fuera de Colombia y su extracto no trae IVA colombiano. Después se le aplica el IVA por reverse charge (art. 437-2 num. 3 ET) sin tocar el formulario del abono. Cambiar el origen solo afecta los abonos que se registren de ahí en adelante.",
+      "notaRetiene": "El procesador guarda la plata y se retira cuando se decide. No lanza la alerta de 5 días hábiles: el tablero muestra el saldo retenido y alerta si pasan más de 30 días sin ningún retiro al banco. Viene en sí para Stripe y PayPal y en no para los demás."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Tu sesión terminó. Vuelve a iniciar sesión.",
+      "SIN_PERMISO": "No tienes permiso para esta acción.",
+      "PROCESADOR_INVALIDO": "Elige un procesador de la lista.",
+      "FECHA_REQUERIDA": "Escribe la fecha del abono según el extracto.",
+      "FECHA_FUTURA": "El abono no puede tener una fecha futura.",
+      "PERIODO_CERRADO": "El periodo contable de esa fecha está cerrado.",
+      "IMPORTE_INVALIDO": "Revisa los valores: el bruto debe ser mayor que cero y los descuentos no pueden ser negativos.",
+      "NETO_INVALIDO": "Los descuentos son mayores que el bruto.",
+      "NETO_DESCUADRADO": "No cuadra: el bruto menos los descuentos no da el neto recibido.",
+      "SUCURSAL_INVALIDA": "La sede no es de tu organización.",
+      "CUENTA_BANCARIA_INVALIDA": "La cuenta bancaria no es de tu organización o no tiene cuenta contable.",
+      "PROPORCION_INVALIDA": "La proporción descontable va de 0 a 1.",
+      "PROPORCION_NO_APLICA": "Tu organización no es responsable de IVA: el IVA de la comisión es gasto.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Define el perfil tributario de la organización para saber si el IVA de la comisión es descontable.",
+      "FACTURA_REQUERIDA": "Para descontar el IVA de la comisión se necesita la factura electrónica del procesador.",
+      "ABONO_MAYOR_QUE_SALDO": "El abono es mayor que lo que el procesador debe a esa fecha.",
+      "NIT_PROCESADOR_REQUERIDO": "Falta el NIT del procesador: complétalo en «Datos de los procesadores».",
+      "SIN_CUENTA": "Faltan cuentas contables para este asiento. Revisa el plan de cuentas.",
+      "SOLICITUD_REQUERIDA": "No se pudo identificar la solicitud. Intenta de nuevo.",
+      "ORIGEN_INVALIDO": "El origen es nacional o exterior.",
+      "RETIENE_SALDO_INVALIDO": "«Retiene saldo» es sí o no.",
+      "ABONO_INEXISTENTE": "El abono no existe o no es de tu organización.",
+      "MOTIVO_REQUERIDO": "Escribe el motivo de la anulación.",
+      "datos_invalidos": "Revisa los datos del formulario.",
+      "DESCONOCIDO": "No se pudo completar. Intenta de nuevo en un momento."
+    }
   }
 }

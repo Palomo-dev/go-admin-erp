@@ -233,6 +233,7 @@ export const RUTAS_MODULOS: readonly RutasModulo[] = [
       '/app/finanzas/tesoreria/conciliacion',
       '/app/finanzas/tesoreria/transferencias',
       '/app/finanzas/tesoreria/dinero-de-terceros',
+      '/app/finanzas/tesoreria/procesadores-pago',
       '/app/finanzas/categorias-tesoreria',
       '/app/finanzas/open-finance',
       '/app/finanzas/payfac/dispersiones',

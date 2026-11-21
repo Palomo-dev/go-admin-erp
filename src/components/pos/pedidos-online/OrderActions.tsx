@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { clasesBoton } from '@/components/kit';
 import { cobroDelPedido } from './cobroPedido';
+import { metodoDePago } from '@/lib/pos/pedidosWeb/metodoDePago';
 import { esComerAqui, esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { 
   CheckCircle, 
@@ -201,7 +202,7 @@ export function OrderActions({
             {isLoading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <CheckCircle className="size-4" aria-hidden="true" />}
             {t('cobro.marcarPagadoPasarela')}
           </button>
-          <p className="text-sm text-fg-secondary">{t('cobro.marcarPagadoPasarelaAyuda', { pasarela: order.payment_method ?? '' })}</p>
+          <p className="text-sm text-fg-secondary">{t('cobro.marcarPagadoPasarelaAyuda', { pasarela: metodoDePago({ payment_method: order.payment_method }) })}</p>
         </div>
       )}
 

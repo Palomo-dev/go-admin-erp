@@ -87,7 +87,10 @@ export const FILAS_CATALOGO_BASE: readonly Fila[] = [
   ['INTERESES_CESANTIAS', 'Intereses sobre cesantías', 'devengado', N, N, N, N, S, N, '2515', null, 'Cesantias'],
   // Contador 2026-11-20: la propina no es gasto ni salario (art. 131 CST, Ley 1935 de 2018); sale de lo
   // liquidado y por pagar al trabajador (28150502) y no entra en aportes, prestaciones ni la regla del 40 %.
-  ['PROPINAS', 'Propinas (no salarial)', 'devengado', N, N, N, N, N, N, '28150502', null, null],
+  // Tampoco en la base de retención (Contador 2026-11-21: la paga el cliente, art. 383 ET no aplica).
+  // Nómina electrónica: Devengados/OtrosConceptos/OtroConcepto, DescripcionConcepto="Propinas", valor
+  // en ConceptoNS (NIE148, anexo técnico 1.0, Res. 000013 de 2021).
+  ['PROPINAS', 'Propinas (no salarial)', 'devengado', N, N, N, N, N, N, '28150502', null, 'OtroConceptoNS'],
   // Deducciones
   ['SALUD_EMPLEADO', 'Salud (trabajador)', 'deduccion', N, N, N, N, N, N, null, '237005', 'Salud'],
   ['PENSION_EMPLEADO', 'Pensión (trabajador)', 'deduccion', N, N, N, N, N, N, null, '238030', 'FondoPension'],

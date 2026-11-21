@@ -35,7 +35,7 @@ function cabeceras(json: boolean): HeadersInit {
 }
 
 /** fetch común del área: 401/403 → sin permiso; otro error → mensaje del servidor. */
-export async function pedirJson<T>(url: string, init?: { method: 'PUT' | 'PATCH'; cuerpo: unknown }): Promise<T> {
+export async function pedirJson<T>(url: string, init?: { method: 'PUT' | 'PATCH' | 'POST'; cuerpo: unknown }): Promise<T> {
   const r = await fetch(url, {
     method: init?.method ?? 'GET',
     credentials: 'same-origin',
@@ -43,8 +43,12 @@ export async function pedirJson<T>(url: string, init?: { method: 'PUT' | 'PATCH'
     body: init ? JSON.stringify(init.cuerpo) : undefined,
   });
   if (r.ok) return (await r.json()) as T;
-  const cuerpo = (await r.json().catch(() => null)) as { error?: string; codigo?: string } | null;
-  throw new ErrorApiVentas(r.status === 401 || r.status === 403 ? 'sin_permiso' : 'error', cuerpo?.error ?? 'Error inesperado', cuerpo?.codigo ?? null);
+  // Dos formas de error: { error, codigo } (rutas del área) y { error: { code, message } } (rutas del sitio V2).
+  const cuerpo = (await r.json().catch(() => null)) as { error?: string | { code?: string; message?: string }; codigo?: string } | null;
+  const error = cuerpo?.error;
+  const mensaje = typeof error === 'string' ? error : error?.message;
+  const codigo = cuerpo?.codigo ?? (typeof error === 'object' ? error?.code : undefined) ?? null;
+  throw new ErrorApiVentas(r.status === 401 || r.status === 403 ? 'sin_permiso' : 'error', mensaje ?? 'Error inesperado', codigo);
 }
 
 export interface VentasSitio {

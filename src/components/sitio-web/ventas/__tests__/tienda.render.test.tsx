@@ -10,6 +10,7 @@ import { renderConIdioma } from '@/test-utils/renderConIdioma';
 import type { RespuestaResenas, RespuestaTienda } from '@/lib/website/tiendaSitio.server';
 
 jest.mock('@/lib/supabase/config', () => ({ supabase: {} }));
+const mockCrearDetalle = jest.fn(async (..._a: unknown[]) => 'pagina-nueva');
 let tab = 'catalogo';
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
@@ -28,6 +29,7 @@ const tienda: RespuestaTienda = {
   kpis: { productosActivos: 2, categorias: 1, resenasPendientes: 1 },
   sedes: [{ id: 1, nombre: 'Sede Centro', principal: true, ocultos: 0, agotados: 0 }],
   plantillas: [],
+  detalles: { faltan: ['product_detail', 'category_detail'], version: 3 },
   autoAprobarResenas: false,
   inventarioVisible: false,
 };
@@ -58,7 +60,7 @@ const resenas: RespuestaResenas = {
 const moderar = jest.fn().mockResolvedValue(undefined);
 jest.mock('../useTiendaSitio', () => ({
   ...jest.requireActual('../useTiendaSitio'),
-  useTiendaSitio: () => ({ datos: tienda, cargando: false, fallo: null, recargar: jest.fn(), refrescar: jest.fn(), alternarAutoAprobar: jest.fn() }),
+  useTiendaSitio: () => ({ datos: tienda, cargando: false, fallo: null, recargar: jest.fn(), refrescar: jest.fn(), alternarAutoAprobar: jest.fn(), crearDetalle: (...a: unknown[]) => mockCrearDetalle(...a) }),
   useCatalogoSede: () => ({
     datos: {
       productos: [{ id: 5, name: 'Producto de ejemplo', sku: 'SKU-1', precio_vigente: 10000, ajuste: null }],
@@ -77,6 +79,8 @@ jest.mock('../useTiendaSitio', () => ({
 
 import { PantallaTienda } from '../PantallaTienda';
 
+
+
 describe('Tienda', () => {
   test('catálogo en móvil: cada interruptor con su nombre visible', () => {
     tab = 'catalogo';
@@ -93,6 +97,17 @@ describe('Tienda', () => {
     expect(screen.getAllByText('Por revisar').length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole('button', { name: /^Aprobar$/ })[0]);
     expect(moderar).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001', 'aprobar', undefined);
+  });
+
+  test('Plantillas sin ficha: tarjetas con «Crear ficha editable» y «Crear página editable»', async () => {
+    tab = 'plantillas';
+    mockCrearDetalle.mockClear();
+    renderConIdioma(<PantallaTienda />);
+    expect(screen.getByText('Tu sitio todavía no tiene ficha editable')).toBeTruthy();
+    expect(screen.getByText('Tu sitio todavía no tiene página de categoría editable')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Crear ficha editable/ }));
+    await screen.findByRole('button', { name: /Crear ficha editable/ });
+    expect(mockCrearDetalle).toHaveBeenCalledWith('product_detail');
   });
 
   test('Reseñas: la hoja de detalle publica la respuesta', () => {

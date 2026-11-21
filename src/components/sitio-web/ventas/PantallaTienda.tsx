@@ -17,7 +17,8 @@
  */
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { Boxes, EyeOff, FileText, Package, PackageX, Pencil, Star, Tags, type LucideIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Boxes, EyeOff, FileText, Package, PackageX, Pencil, Plus, Star, Tags, type LucideIcon } from 'lucide-react';
 import {
   DataTable,
   EmptyState,
@@ -54,6 +55,8 @@ import { ICONO_INTERRUPTOR_CATALOGO, ICONO_PESTANA_TIENDA, iconoDestino } from '
 import { ModeracionResenas } from './ModeracionResenas';
 import { useTextosVentas, type TraductorVentas } from './textos';
 import { useCatalogoSede, useTiendaSitio } from './useTiendaSitio';
+import { ErrorApiVentas } from './useVentasSitio';
+import type { TipoPaginaDetalle } from '../paginas/paginasDetalle';
 
 export const RUTA_TIENDA = `${RAIZ_SITIO_WEB}/tienda`;
 const RUTA_INVENTARIO = '/app/inventario/productos';
@@ -253,7 +256,68 @@ function CatalogoWeb({ datos, t }: { datos: RespuestaTienda; t: TraductorVentas 
   );
 }
 
-function PlantillasDetalle({ plantillas, t }: { plantillas: readonly PlantillaTienda[]; t: TraductorVentas }) {
+/**
+ * «Crear ficha editable» / «Crear página editable» (Figma 2700:57498): una tarjeta por página de
+ * detalle que el borrador no tiene. Al crearla abre el editor en ella.
+ */
+function DetallesFaltantes({
+  faltan,
+  puedeEditar,
+  onCrear,
+  t,
+}: {
+  faltan: readonly TipoPaginaDetalle[];
+  puedeEditar: boolean;
+  onCrear: (tipo: TipoPaginaDetalle) => Promise<void>;
+  t: TraductorVentas;
+}) {
+  const [creando, setCreando] = useState<TipoPaginaDetalle | null>(null);
+  const crear = async (tipo: TipoPaginaDetalle) => {
+    setCreando(tipo);
+    try {
+      await onCrear(tipo);
+    } finally {
+      setCreando(null);
+    }
+  };
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {faltan.map((tipo) => (
+        <Tarjeta key={tipo} titulo={t(`tienda.plantillas.crear.${tipo}.titulo`)} descripcion={t(`tienda.plantillas.crear.${tipo}.descripcion`)}>
+          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-line bg-subtle px-4 py-6 text-center">
+            <p className="text-sm font-semibold text-fg">{t(`tienda.plantillas.crear.${tipo}.vacioTitulo`)}</p>
+            <p className="max-w-prose text-[13px] leading-[18px] text-fg-secondary">{t(`tienda.plantillas.crear.${tipo}.vacioTexto`)}</p>
+            <button
+              type="button"
+              className={clasesBoton({ variante: 'primario', tamano: 'md', className: 'mt-2' })}
+              disabled={!puedeEditar || creando !== null}
+              aria-busy={creando === tipo}
+              onClick={() => void crear(tipo)}
+            >
+              <Plus aria-hidden="true" className={CLASE_TAMANO_ICONO.base} strokeWidth={TRAZO_ICONO} />
+              {creando === tipo ? t('tienda.plantillas.crear.creando') : t(`tienda.plantillas.crear.${tipo}.boton`)}
+            </button>
+            {!puedeEditar && <p className="text-xs text-fg-secondary">{t('tienda.plantillas.crear.sinPermiso')}</p>}
+          </div>
+        </Tarjeta>
+      ))}
+    </div>
+  );
+}
+
+function PlantillasDetalle({
+  plantillas,
+  faltan,
+  puedeEditar,
+  onCrear,
+  t,
+}: {
+  plantillas: readonly PlantillaTienda[];
+  faltan: readonly TipoPaginaDetalle[];
+  puedeEditar: boolean;
+  onCrear: (tipo: TipoPaginaDetalle) => Promise<void>;
+  t: TraductorVentas;
+}) {
   const tipo = (p: PlantillaTienda) => {
     const clave = `tienda.plantillas.tipos.${p.tipo}`;
     const texto = t(clave);
@@ -285,6 +349,8 @@ function PlantillasDetalle({ plantillas, t }: { plantillas: readonly PlantillaTi
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[13px] text-fg-secondary">{t('tienda.plantillas.descripcion')}</p>
+      {faltan.length > 0 && <DetallesFaltantes faltan={faltan} puedeEditar={puedeEditar} onCrear={onCrear} t={t} />}
+      {(plantillas.length > 0 || faltan.length === 0) && (
       <DataTable
         etiqueta={t('tienda.pestanas.plantillas')}
         columnas={columnas}
@@ -293,6 +359,7 @@ function PlantillasDetalle({ plantillas, t }: { plantillas: readonly PlantillaTi
         vacio={{ titulo: t('tienda.plantillas.vacio'), icono: FileText }}
         tarjetaMovil={(p) => <ListCard inicio="icono" icono={FileText} titulo={p.titulo} subtitulo={`${tipo(p)} · ${p.ruta}`} estado={editar(p)} />}
       />
+      )}
     </div>
   );
 }
@@ -340,7 +407,23 @@ function Resenas({
 
 export function PantallaTienda() {
   const t = useTextosVentas();
-  const { datos, cargando, fallo, recargar, refrescar, alternarAutoAprobar } = useTiendaSitio();
+  const { datos, cargando, fallo, recargar, refrescar, alternarAutoAprobar, crearDetalle } = useTiendaSitio();
+  const router = useRouter();
+  const { toast } = useToast();
+  const onCrearDetalle = async (tipo: TipoPaginaDetalle) => {
+    try {
+      const paginaId = await crearDetalle(tipo);
+      toast({ title: t('tienda.plantillas.crear.publicar') });
+      router?.push(rutaEditorSitio(paginaId));
+    } catch (error) {
+      if (error instanceof ErrorApiVentas && error.codigo === 'conflicto_version') {
+        toast({ title: t('tienda.plantillas.crear.conflicto'), variant: 'destructive' });
+        await refrescar();
+        return;
+      }
+      toast({ title: t('tienda.plantillas.crear.error', { mensaje: (error as Error).message }), variant: 'destructive' });
+    }
+  };
   const [pestana, setPestana] = useOpcionUrl<PestanaTienda>('tab', PESTANAS, 'catalogo', 'replace');
 
   const estado: EstadoVistaSitio = cargando ? 'cargando' : fallo === 'sin_permiso' ? 'sin_permiso' : fallo || !datos ? 'error' : 'listo';
@@ -374,7 +457,15 @@ export function PantallaTienda() {
           />
           <div role="tabpanel" id={idPanel(ID_TABS, pestana)} aria-labelledby={idPestana(ID_TABS, pestana)}>
             {pestana === 'catalogo' && <CatalogoWeb datos={datos} t={t} />}
-            {pestana === 'plantillas' && <PlantillasDetalle plantillas={datos.plantillas} t={t} />}
+            {pestana === 'plantillas' && (
+              <PlantillasDetalle
+                plantillas={datos.plantillas}
+                faltan={datos.detalles.faltan}
+                puedeEditar={datos.permisos.editar}
+                onCrear={onCrearDetalle}
+                t={t}
+              />
+            )}
             {pestana === 'resenas' && (
               <>
                 {datos.kpis.resenasPendientes > 0 && (

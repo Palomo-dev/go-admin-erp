@@ -24,6 +24,7 @@ import { listarSitios, obtenerBorrador } from '@/lib/services/website/siteDocume
 import { seccionesVisiblesServidor } from '@/lib/navigation/navegacionServidor';
 import { getServiceClient } from '@/lib/supabase/server-service';
 import { esPlantillaTienda, TIPOS_PLANTILLA_TIENDA } from '@/components/sitio-web/paginas/tipoPagina';
+import { tiposDetalleFaltantes, type TipoPaginaDetalle } from '@/components/sitio-web/paginas/paginasDetalle';
 import { agotadoAhora } from '@/lib/services/website/cartaSede';
 import {
   actualizarResenaProducto,
@@ -57,6 +58,11 @@ export interface RespuestaTienda {
   kpis: { productosActivos: number; categorias: number; resenasPendientes: number };
   sedes: SedeTienda[];
   plantillas: PlantillaTienda[];
+  /**
+   * Páginas de detalle que el borrador V2 del sitio principal todavía no tiene, y la versión del
+   * borrador para crearlas («Crear ficha editable», Figma 2700:57498). Sin sitio V2: nada que crear.
+   */
+  detalles: { faltan: TipoPaginaDetalle[]; version: number | null };
   autoAprobarResenas: boolean;
   /** «Editar en Inventario» solo si la persona ve esa página. */
   inventarioVisible: boolean;
@@ -106,14 +112,17 @@ async function contar(consulta: PromiseLike<{ count: number | null; error: unkno
   return count ?? 0;
 }
 
-async function leerPlantillas(ctx: Ctx): Promise<PlantillaTienda[]> {
+async function leerPlantillas(ctx: Ctx): Promise<{ plantillas: PlantillaTienda[]; detalles: RespuestaTienda['detalles'] }> {
   const sitios = await listarSitios(ctx.supabase, ctx.organizationId);
   const principal = sitios.find((s) => s.branchId === null);
   if (principal?.versionBorrador) {
     const b = await obtenerBorrador(ctx.supabase, ctx.organizationId, principal.id);
-    return b.documento.paginas
-      .filter((p) => esPlantillaTienda(p))
-      .map((p) => ({ id: p.id, titulo: p.titulo, tipo: p.tipo, ruta: `/${p.slug}`, origen: 'v2' as const }));
+    return {
+      plantillas: b.documento.paginas
+        .filter((p) => esPlantillaTienda(p))
+        .map((p) => ({ id: p.id, titulo: p.titulo, tipo: p.tipo, ruta: `/${p.slug}`, origen: 'v2' as const })),
+      detalles: { faltan: tiposDetalleFaltantes(b.documento), version: b.version },
+    };
   }
   const { data, error } = await ctx.supabase
     .from('website_pages')
@@ -123,13 +132,14 @@ async function leerPlantillas(ctx: Ctx): Promise<PlantillaTienda[]> {
     .in('page_type', [...TIPOS_PLANTILLA_TIENDA])
     .order('title');
   if (error) throw error;
-  return ((data ?? []) as { id: string; title: string; slug: string; page_type: string }[]).map((p) => ({
+  const plantillas = ((data ?? []) as { id: string; title: string; slug: string; page_type: string }[]).map((p) => ({
     id: p.id,
     titulo: p.title,
     tipo: p.page_type,
     ruta: `/${p.slug}`,
     origen: 'legacy' as const,
   }));
+  return { plantillas, detalles: { faltan: [], version: null } };
 }
 
 export async function leerTiendaSitio(ctx: Ctx, ahora: Date = new Date()): Promise<RespuestaTienda> {
@@ -166,7 +176,8 @@ export async function leerTiendaSitio(ctx: Ctx, ahora: Date = new Date()): Promi
       ocultos: porSede.get(s.id)?.ocultos ?? 0,
       agotados: porSede.get(s.id)?.agotados ?? 0,
     })),
-    plantillas,
+    plantillas: plantillas.plantillas,
+    detalles: plantillas.detalles,
     autoAprobarResenas: (ajustes.data as { reviews_auto_approve: boolean | null } | null)?.reviews_auto_approve === true,
     inventarioVisible: rutas.has(RUTA_INVENTARIO_PRODUCTOS),
   };

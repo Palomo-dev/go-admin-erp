@@ -36602,6 +36602,27 @@
           "editar": "Editar",
           "vacio": "Seu site usa os modelos de detalhe do seu design. Eles são criados ao abrir o editor.",
           "soloV2": "Este modelo é editado quando o site passar para o novo editor.",
+          "crear": {
+            "product_detail": {
+              "titulo": "Página do produto",
+              "descripcion": "Um único modelo para todos os produtos: a ordem e as seções são editadas no editor e valem em todas as páginas de produto.",
+              "vacioTitulo": "Seu site ainda não tem uma página de produto editável",
+              "vacioTexto": "Hoje cada produto usa o design padrão. Crie a página com esses mesmos blocos (galeria, nome e preço, comprar, benefícios, descrição, relacionados e avaliações) e edite-a no editor. O resto do site não muda.",
+              "boton": "Criar página de produto editável"
+            },
+            "category_detail": {
+              "titulo": "Página de categoria",
+              "descripcion": "Modelo de /categorias/[slug]: cabeçalho, filtros e grade. O texto e a imagem vêm da categoria no Inventário.",
+              "vacioTitulo": "Seu site ainda não tem uma página de categoria editável",
+              "vacioTexto": "Hoje as categorias usam o design padrão. Crie a página com esses mesmos blocos e edite-a no editor. O resto do site não muda.",
+              "boton": "Criar página editável"
+            },
+            "creando": "Criando…",
+            "sinPermiso": "Somente leitura: peça a permissão «Editar site».",
+            "conflicto": "Alguém salvou o site nesse meio-tempo. Recarregamos a tela: tente de novo.",
+            "error": "Não foi possível criar a página: {mensaje}",
+            "publicar": "Criada no rascunho: aparece no seu site quando você publicar."
+          },
           "tipos": {
             "product_detail": "Detalhe de produto",
             "category_detail": "Detalhe de categoria",

@@ -1,10 +1,11 @@
 /**
  * GET /api/pos/ventas — listado de ventas paginado, filtrado y ordenado en el
- * servidor (`pos_ventas_listado`, solo filas de `sales`; D1 de
+ * servidor (`pos_ventas_listado_v2`, solo filas de `sales`; D1 de
  * docs/implementacion/CAJAS-VENTAS-PLAN.md).
  *
- * Query: `q`, `origen`, `estado`, `metodo`, `cliente`, `cajero`, `desde`,
- * `hasta` (días de la organización), `min`, `max`, `orden`, `dir`, `pagina`,
+ * Query: `q`, `origen`, `estado`, `metodo`, `pago`, `cliente`, `cajero`, `desde`,
+ * `hasta` (días de la organización), `min`, `max`, `saldo`, `devolucion`, `sync`
+ * (casillas, `1`), `orden`, `dir`, `pagina`,
  * `tamano` (lista blanca de `filtrosVentas`) y `sucursal` (la del selector;
  * la base comprueba el acceso). La organización sale de la sesión (`withOrg`).
  */

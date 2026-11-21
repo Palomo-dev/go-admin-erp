@@ -81,7 +81,7 @@ export const DEFINICIONES_CLAVE: DefinicionClave[] = [
   { clave: 'retefuente', nombre: 'ReteFuente', grupo: 'Impuestos', ayuda: 'Reemplaza el 2365 cuando la compra no tiene una cuenta propia en el impuesto.' },
   { clave: 'reteiva', nombre: 'ReteIVA', grupo: 'Impuestos', ayuda: '23670501 (auxiliar de 2367, título).' },
   { clave: 'reteica', nombre: 'ReteICA', grupo: 'Impuestos', ayuda: '23680501 (auxiliar de 2368, título).' },
-  { clave: 'propinas', nombre: 'Propinas', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es una propina.' },
+  { clave: 'propinas', nombre: 'Propinas', grupo: 'Personal', ayuda: '28150501, pasivo con los trabajadores: la propina no es ingreso ni gasto.' },
   { clave: 'comisiones', nombre: 'Comisiones', grupo: 'Personal', ayuda: '52950501 (canales/OTA, auxiliar de 529505) o 52051801 (empleados). 5235 es «Servicios» de ventas, no comisiones.' },
   { clave: 'nomina', nombre: 'Nómina', grupo: 'Personal', ayuda: 'El 5105 solo cuando el documento es nómina.' },
   { clave: 'nomina_por_pagar', nombre: 'Nómina por pagar', grupo: 'Personal', ayuda: 'El 2505 solo en la nómina.' },
@@ -109,7 +109,7 @@ export function esClaveContable(valor: string): valor is ClaveContable {
   return (CLAVES_CONTABLES as readonly string[]).includes(valor);
 }
 
-const ORIGENES_PROPINA = new Set(['tip', 'tips']);
+const ORIGENES_PROPINA = new Set(['tip', 'tips', 'tip_settlements']);
 const ORIGENES_NOMINA = new Set(['payroll', 'payroll_slips', 'payroll_period', 'payroll_periods']);
 const ORIGENES_PRESTAMO = new Set([
   'loan',
@@ -158,7 +158,8 @@ export function claveDeCuenta(
   if (code === '2368' || code === '236805' || code === '23680501') return 'reteica';
   if (code === '2805') return 'anticipos';
   if (code === '529505' || code === '52950501' || code === '52051801') return 'comisiones';
-  if (code === '5105' && ORIGENES_PROPINA.has(origen)) return 'propinas';
+  // Propinas (Contador, 2026-11-20): dinero de los trabajadores, pasivo 28150501 (Ley 1935 de 2018).
+  if ((code === '2815' || code === '281505' || code === '28150501') && ORIGENES_PROPINA.has(origen)) return 'propinas';
   if (code === '5105' && ORIGENES_NOMINA.has(origen)) return 'nomina';
   if ((code === '2505' || code === '25050501') && ORIGENES_NOMINA.has(origen)) return 'nomina_por_pagar';
   if (code === '2370' && ORIGENES_NOMINA.has(origen)) return 'nomina_aportes';
@@ -314,7 +315,7 @@ const COMPARTIDAS: Record<ClaveContable, string> = {
   retefuente: '23654001',
   reteiva: '23670501',
   reteica: '23680501',
-  propinas: '5105',
+  propinas: '28150501',
   comisiones: '52051801',
   anticipos: '2805',
   nomina: '5105',

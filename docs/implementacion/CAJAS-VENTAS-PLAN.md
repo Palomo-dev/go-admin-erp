@@ -744,3 +744,18 @@ responsable, abierta_desde, saldo, href }`. `saldo` es el efectivo esperado de
 - `parametrosArqueo` descarta los métodos contados en 0.
 - Las versiones `20260926130000` y `20260926140000` coinciden con dos migraciones de compras; son copias documentales (la política ya admite versiones repetidas) y la base las registró con su propia versión.
 - Verificación visual en navegador: el preview pide iniciar sesión y no se escriben contraseñas.
+
+### Ventas — cierre del Figma del listado (2026-11-20)
+
+El dueño aprobó cerrar todo lo que faltaba frente a `16-ventas-listado-escritorio.png`,
+`16-ventas-listado-filtros.png` y `16-ventas-listado-movil.png` (migración
+`20261120180446_pos_ventas_listado_figma_filtros_y_cifras`).
+
+| # | Decisión |
+|---|---|
+| D2-bis | **Los KPI del listado describen las ventas listadas**, por fecha de venta y con los mismos filtros (`pos_ventas_cifras`): «Ventas del periodo» (sin anuladas ni borradores) con variación frente al periodo anterior de igual duración, «Ticket promedio», «Transacciones» (= «N ventas encontradas»; pagadas · pendientes · anuladas) e «Impuestos» con detalle por impuesto. El Figma pide lo vendido, no lo cobrado: el criterio de caja (D2) queda en `fn_inicio_ventas_rango` para el Inicio, sin cambios. Cobrado y Reintegros salen del listado. |
+| — | Detalle de impuestos desde las líneas de la factura vigente (`invoice_items.tax_code`/`tax_rate`, cuadra al peso con `invoice_sales.tax_total`); sin factura, `sales.tax_breakdown` o `sales.tax_total` como «Otros impuestos». `sale_items.tax_rate` no sirve (dice 0 con impuesto). |
+| — | Una sola regla de filtros en SQL (`pos_ventas_filtradas`, solo service_role) para listado y cifras. `pos_ventas_listado_v2` es nombre nuevo (no sobrecarga) para no romper el código desplegado que llama a `pos_ventas_listado`; esa se puede borrar cuando este cambio llegue a producción. |
+| — | Filtros nuevos: Sucursal (es la del header: el panel llama a `setSelectedBranch`, y su chip vuelve a «Todas»), Cajero con selector (`pos_ventas_cajeros`, `GET /api/pos/ventas/cajeros`), Estado de pago (`payment_status`), Método múltiple, Origen como desplegable, y las casillas «Con saldo pendiente», «Con devolución» (devoluciones procesadas o NC) y «Pendientes de sincronizar» (en el servidor no hay ventas sin sincronizar: devuelve 0; en el Desktop sin red filtra la réplica). El panel crece a dos columnas (`FilterPanel ancho="amplio"`, 560 px). |
+| — | Tabla: sin columna «Documentos» ni impresora rápida (no están en el Figma); «Ver factura», «Ver cuenta por cobrar» e «Imprimir» siguen en el ⋯. Segunda línea del N.º: saldo, NC, «pedido web», «local-…» o el id corto; del cliente: «CC …»/«NIT …», «Mesa 7 · Laura R.» o teléfono. Origen con color (`TONO_ORIGEN_VENTA`, SISTEMA-BADGES). |
+| — | Cerrado lo que el registro anterior dejaba pendiente: el filtro «Cajero» ya tiene selector. |

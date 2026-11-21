@@ -2,7 +2,7 @@
  * Filtros del listado de ventas con lista blanca (V-b de
  * docs/implementacion/CAJAS-VENTAS-PLAN.md). Lo que llega de la URL o del
  * cliente se valida aquí y termina como parámetros de la RPC de lectura
- * (`pos_ventas_listado`): nunca se interpola en un `.or()` de PostgREST (antes
+ * (`pos_ventas_listado_v2` y `pos_ventas_cifras`): nunca se interpola en un `.or()` de PostgREST (antes
  * la búsqueda se pegaba sin escapar, V10). Módulo hoja.
  */
 import { ESTADOS_VENTA, ORIGENES_VENTA, type EstadoVenta, type OrigenVenta } from './estadoVenta';
@@ -11,6 +11,10 @@ export const CAMPOS_ORDEN_VENTAS = ['fecha', 'total', 'numero', 'cliente'] as co
 export type CampoOrdenVentas = (typeof CAMPOS_ORDEN_VENTAS)[number];
 
 export const TAMANOS_VENTAS = [10, 20, 50, 100] as const;
+
+/** Estado de pago (`sales.payment_status`, con `status` si viene vacío). */
+export const ESTADOS_PAGO_VENTA = ['paid', 'partial', 'pending', 'refunded'] as const;
+export type EstadoPagoVenta = (typeof ESTADOS_PAGO_VENTA)[number];
 
 export interface FiltrosVentas {
   busqueda: string | null;
@@ -24,6 +28,11 @@ export interface FiltrosVentas {
   hasta: string | null;
   importeMin: number | null;
   importeMax: number | null;
+  pagos: EstadoPagoVenta[];
+  /** Casillas del panel (Figma 329:111220). */
+  conSaldo: boolean;
+  conDevolucion: boolean;
+  pendientesSync: boolean;
   orden: { campo: CampoOrdenVentas; direccion: 'asc' | 'desc' };
   pagina: number;
   tamano: number;
@@ -53,6 +62,12 @@ function fecha(valor: string | string[] | null | undefined): string | null {
   const [a, m, d] = v.split('-').map(Number);
   const diasDelMes = new Date(Date.UTC(a, m, 0)).getUTCDate();
   return m >= 1 && m <= 12 && d >= 1 && d <= diasDelMes ? v : null;
+}
+
+/** Casilla: solo `1` o `true` la marcan. */
+function casilla(valor: string | string[] | null | undefined): boolean {
+  const v = uno(valor);
+  return v === '1' || v === 'true';
 }
 
 function importe(valor: string | string[] | null | undefined): number | null {
@@ -95,6 +110,10 @@ export function filtrosVentas(crudo: Crudo): FiltrosVentas {
     hasta,
     importeMin: min,
     importeMax: max,
+    pagos: lista(crudo.pago).filter((p): p is EstadoPagoVenta => (ESTADOS_PAGO_VENTA as readonly string[]).includes(p)),
+    conSaldo: casilla(crudo.saldo),
+    conDevolucion: casilla(crudo.devolucion),
+    pendientesSync: casilla(crudo.sync),
     orden: {
       campo: (CAMPOS_ORDEN_VENTAS as readonly string[]).includes(campo ?? '') ? (campo as CampoOrdenVentas) : 'fecha',
       direccion: direccion === 'asc' ? 'asc' : 'desc',
@@ -104,11 +123,18 @@ export function filtrosVentas(crudo: Crudo): FiltrosVentas {
   };
 }
 
-/** Parámetros de `pos_ventas_listado` (el rango de instantes lo calcula el servidor con la zona). */
-export function parametrosListado(
-  f: FiltrosVentas,
-  ctx: { organizacionId: number; sucursalId: number | null; desde: string | null; hasta: string | null },
-) {
+interface ContextoParametros {
+  organizacionId: number;
+  sucursalId: number | null;
+  desde: string | null;
+  hasta: string | null;
+}
+
+/**
+ * Filtros comunes del listado y de las cifras (`pos_ventas_filtradas`): la
+ * misma lista para que «N ventas encontradas» y «Transacciones» coincidan.
+ */
+export function parametrosFiltro(f: FiltrosVentas, ctx: ContextoParametros) {
   return {
     p_organization_id: ctx.organizacionId,
     p_branch_id: ctx.sucursalId,
@@ -122,9 +148,42 @@ export function parametrosListado(
     p_cajero_id: f.cajeroId,
     p_importe_min: f.importeMin,
     p_importe_max: f.importeMax,
+    p_pagos: f.pagos.length ? f.pagos : null,
+    p_con_saldo: f.conSaldo,
+    p_con_devolucion: f.conDevolucion,
+    p_pendientes_sync: f.pendientesSync,
+  };
+}
+
+/** Parámetros de `pos_ventas_listado_v2` (el rango de instantes lo calcula el servidor con la zona). */
+export function parametrosListado(f: FiltrosVentas, ctx: ContextoParametros) {
+  return {
+    ...parametrosFiltro(f, ctx),
     p_orden: f.orden.campo,
     p_direccion: f.orden.direccion,
     p_limite: f.tamano,
     p_desplazamiento: (f.pagina - 1) * f.tamano,
   };
+}
+
+/** Días entre dos fechas calendario (YYYY-MM-DD), `hasta` incluido. */
+function diasIncluidos(desde: string, hasta: string): number {
+  const [a1, m1, d1] = desde.split('-').map(Number);
+  const [a2, m2, d2] = hasta.split('-').map(Number);
+  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86_400_000) + 1;
+}
+
+function sumarDias(fecha: string, dias: number): string {
+  const [a, m, d] = fecha.split('-').map(Number);
+  const x = new Date(Date.UTC(a, m - 1, d + dias));
+  return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, '0')}-${String(x.getUTCDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Periodo anterior de igual duración en días calendario («1–20 nov» → «12–31
+ * oct»): contra él se calcula la variación de «Ventas del periodo».
+ */
+export function periodoAnterior(desde: string, hasta: string): { desde: string; hasta: string } {
+  const n = Math.max(1, diasIncluidos(desde, hasta));
+  return { desde: sumarDias(desde, -n), hasta: sumarDias(desde, -1) };
 }

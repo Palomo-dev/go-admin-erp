@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { useBranch } from '@/lib/context/BranchContext';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { PageHeaderSkeleton, StatsSkeleton, CardListSkeleton } from '@/components/common/PageSkeletons';
 import {
   PromotionsList,
@@ -11,30 +12,42 @@ import {
   PromotionsService,
 } from '@/components/pos/promociones';
 import { Promotion, PromotionFilters } from '@/components/pos/promociones/types';
-import { toast } from 'sonner';
+import { estadoDePromocion } from '@/components/pos/promociones/estadoPromocion';
+import { usePuedeGestionarPromociones } from '@/components/pos/promociones/usePuedeGestionarPromociones';
+
+type EstadoCarga = 'cargando' | 'listo' | 'error' | 'sinPermiso';
+
+/** 42501 (Postgres) o 401/403 (PostgREST): la sesión no puede leer promociones. */
+function esSinPermiso(error: unknown): boolean {
+  const e = error as { code?: unknown; status?: unknown } | null;
+  const code = String(e?.code ?? '');
+  return code === '42501' || code === 'PGRST301' || e?.status === 401 || e?.status === 403;
+}
 
 export default function PromocionesPage() {
   const t = useTranslations('posPromociones');
   const { organization, isLoading: orgLoading } = useOrganization();
+  const puedeGestionar = usePuedeGestionarPromociones(organization?.id);
   const { branchFilter } = useBranch();
+  const { timezone } = useOrgTimezone();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [estado, setEstado] = useState<EstadoCarga>('cargando');
   const [filters, setFilters] = useState<PromotionFilters>({});
 
   const loadPromotions = useCallback(async () => {
     if (!organization?.id) return;
 
-    setLoading(true);
+    setEstado('cargando');
     try {
       const data = await PromotionsService.getAll({ ...filters, branchId: branchFilter });
       setPromotions(data);
+      setEstado('listo');
     } catch (error: unknown) {
       console.error('Error loading promotions:', error);
-      toast.error(t('pantalla.errorCargar'));
-    } finally {
-      setLoading(false);
+      // Sin toast: el error se ve en la tabla con «Reintentar» (Figma 27 · estados).
+      setEstado(esSinPermiso(error) ? 'sinPermiso' : 'error');
     }
-  }, [organization?.id, filters, branchFilter, t]);
+  }, [organization?.id, filters, branchFilter]);
 
   useEffect(() => {
     loadPromotions();
@@ -42,19 +55,24 @@ export default function PromocionesPage() {
 
   const hayFiltros = Boolean(filters.search || filters.is_active !== undefined || filters.promotion_type);
 
-  const activePromotions = promotions.filter((p) => {
-    if (!p.is_active) return false;
-    const now = new Date();
-    const startDate = new Date(p.start_date);
-    const endDate = p.end_date ? new Date(p.end_date) : null;
-    return startDate <= now && (!endDate || endDate >= now);
-  }).length;
+  // «Activa ahora» con el mismo criterio que el motor: estado, fechas y horario semanal.
+  const { activas, programadas } = useMemo(() => {
+    const ahora = new Date();
+    let a = 0;
+    let p = 0;
+    for (const promo of promotions) {
+      const e = estadoDePromocion(promo, ahora, timezone);
+      if (e === 'activa') a++;
+      else if (e === 'programada') p++;
+    }
+    return { activas: a, programadas: p };
+  }, [promotions, timezone]);
 
   if (orgLoading) {
     return (
       <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
         <PageHeaderSkeleton />
-        <StatsSkeleton count={2} />
+        <StatsSkeleton count={3} />
         <CardListSkeleton cards={5} columns="1" />
       </div>
     );
@@ -68,16 +86,21 @@ export default function PromocionesPage() {
           onFiltersChange={setFilters}
           onRefresh={loadPromotions}
           totalPromotions={promotions.length}
-          activePromotions={activePromotions}
-          loading={loading}
+          activePromotions={activas}
+          scheduledPromotions={programadas}
+          loading={estado === 'cargando'}
+          sinPermiso={estado === 'sinPermiso'}
+          puedeGestionar={puedeGestionar}
         />
 
         <PromotionsList
           promotions={promotions}
-          loading={loading}
+          estadoCarga={estado}
           filtrado={hayFiltros}
+          termino={filters.search?.trim() || undefined}
           onLimpiarFiltros={() => setFilters({})}
           onRefresh={loadPromotions}
+          puedeGestionar={puedeGestionar}
         />
       </div>
     </div>

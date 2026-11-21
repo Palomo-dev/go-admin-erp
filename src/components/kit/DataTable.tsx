@@ -174,6 +174,27 @@ export function DataTable<T>({
     ro.observe(el);
     return () => ro.disconnect();
   }, [usarVirtual]);
+
+  // La columna «⋯» es fija: cuando la tabla desborda a lo ancho, las últimas
+  // columnas pasan por debajo de ella. Sin una marca parecía que el icono
+  // «tapaba» el estado de la fila; con la sombra se lee como columna fija y
+  // se entiende que hay más a la derecha. Solo se pinta mientras haya algo debajo.
+  const [hayContenidoBajoAcciones, setHayContenidoBajoAcciones] = React.useState(false);
+  const medirDesborde = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setHayContenidoBajoAcciones(el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft) > 1);
+  }, []);
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!conAcciones || !el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(medirDesborde);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    medirDesborde();
+    return () => ro.disconnect();
+  }, [conAcciones, medirDesborde]);
+  const sombraAcciones = hayContenidoBajoAcciones && 'shadow-[-6px_0_8px_-6px_rgb(15_23_42/0.16)]';
   const ventana = usarVirtual
     ? calcularVentana({ scrollTop: scroll.top, altoVisible: scroll.alto, altoFila: alto, total: filas.length })
     : { inicio: 0, fin: filas.length, espacioArriba: 0, espacioAbajo: 0 };
@@ -255,7 +276,7 @@ export function DataTable<T>({
           );
         })}
         {conAcciones && (
-          <th scope="col" className="sticky right-0 w-11 min-w-11 bg-subtle pr-2">
+          <th scope="col" className={cn('sticky right-0 w-11 min-w-11 bg-subtle pr-2', sombraAcciones)}>
             <span className="sr-only">{t('comun.acciones')}</span>
           </th>
         )}
@@ -280,7 +301,7 @@ export function DataTable<T>({
                 <Skeleton className={cn('h-4', c.variante === 'importe' ? 'ml-auto w-16' : 'w-3/4')} />
               </td>
             ))}
-            {conAcciones && <td className="sticky right-0 bg-surface" />}
+            {conAcciones && <td className={cn('sticky right-0 bg-surface', sombraAcciones)} />}
           </tr>
         ))}
 
@@ -360,6 +381,7 @@ export function DataTable<T>({
                 <td
                   className={cn(
                     'sticky right-0 w-11 bg-surface pr-2 text-right group-hover/fila:bg-hover',
+                    sombraAcciones,
                     tono && TONO_FILA[tono],
                     marcada && 'bg-brand-tint',
                     celdaPad,
@@ -425,7 +447,14 @@ export function DataTable<T>({
       <div className={cn('overflow-hidden rounded-xl border border-line bg-surface', tarjetaMovil && 'hidden lg:block')}>
         <div
           ref={scrollRef}
-          onScroll={usarVirtual ? (e) => setScroll({ top: e.currentTarget.scrollTop, alto: e.currentTarget.clientHeight }) : undefined}
+          onScroll={
+            usarVirtual || conAcciones
+              ? (e) => {
+                  if (usarVirtual) setScroll({ top: e.currentTarget.scrollTop, alto: e.currentTarget.clientHeight });
+                  if (conAcciones) medirDesborde();
+                }
+              : undefined
+          }
           className={cn('overflow-x-auto', usarVirtual && 'overflow-y-auto')}
           style={usarVirtual ? { maxHeight: altoMaximo } : undefined}
         >

@@ -84,7 +84,8 @@ export function asientoDeMovimientoCaja(
  * reversa el ingreso (4105): no es un gasto de clase 5.
  */
 export const DEBITO_REVISADO: Record<string, { debito: string; clase: 'gasto' | 'pasivo' | 'contra_ingreso' | 'costo' }> = {
-  'tip.created': { debito: '5105', clase: 'gasto' },
+  // La propina no está aquí: no es gasto. Débito la cuenta del cliente que salda
+  // el cobro, crédito 28150501 (Contador, 2026-11-20).
   'payroll.created': { debito: '5105', clase: 'gasto' },
   'payroll.paid': { debito: '25050501', clase: 'pasivo' },
   'commission.accrued': { debito: '52051801', clase: 'gasto' },

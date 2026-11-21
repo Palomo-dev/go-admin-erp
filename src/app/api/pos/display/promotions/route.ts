@@ -5,10 +5,9 @@ import { displayCostRateLimitStore } from '@/lib/pos/display/server/displayRateL
 import { resolveDisplayActor } from '@/lib/pos/display/server/displayActor';
 import { DISPLAY_PROMOTIONS_MAX, toDisplayPromotion, type DisplayPromotion } from '@/lib/pos/display/promotions';
 import { PROMOTIONS_RATE_LIMIT, PROMOTIONS_RATE_LIMIT_PREFIX, PROMOTIONS_READ_LIMIT } from '@/lib/pos/display/server/displayFeedback';
-import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, diaEfectivoDeFranja, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
+import { appliesToBranch, vigenteEnHorario } from '@/lib/promotions/vigencia';
 import { tieneUsosDisponibles } from '@/lib/promotions/motorPromociones';
 import { DEFAULT_TIMEZONE } from '@/lib/utils/timezone';
-import { toPlainDate } from '@/lib/utils/dateDisplay';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +25,10 @@ const NO_STORE = { 'Cache-Control': 'no-store' } as const;
  * «Activa» es EXACTAMENTE lo que entiende `promotionEngine`, y ya no una
  * segunda definición parecida: `is_active`, `applies_to_pos`,
  * `start_date <= now` en SQL, y después, en memoria y con los predicados
- * compartidos de `lib/promotions/vigencia.ts`, `end_date`, el DÍA DE LA
- * SEMANA (`applicable_days`) y la sucursal (`branches`).
+ * compartidos de `lib/promotions/vigencia.ts`, el HORARIO SEMANAL
+ * (`vigenteEnHorario`: días, franja diaria o franjas `schedule_windows` que
+ * cruzan días, y `end_date` con la cola de la franja) y la sucursal
+ * (`branches`).
  *
  * Ronda 2 · QA-3 y QA-4. El día no se miraba: la pantalla anunciaba la
  * promoción de los sábados un martes (12 de las 19 filas de la base llevan
@@ -76,7 +77,7 @@ export async function GET(request: Request) {
     const [promotionsRes, orgRes] = await Promise.all([
       service
         .from('promotions')
-        .select('id, name, description, start_date, end_date, applicable_days, start_time, end_time, branches, usage_limit, usage_count')
+        .select('id, name, description, start_date, end_date, applicable_days, start_time, end_time, schedule_windows, branches, usage_limit, usage_count')
         .eq('organization_id', organizationId)
         .eq('is_active', true)
         .eq('applies_to_pos', true)
@@ -94,21 +95,13 @@ export async function GET(request: Request) {
     // dejar la pantalla sin cartelera (CLAUDE.md: America/Bogota solo como respaldo).
     if (orgRes.error) console.warn('[pos-display/promotions] zona horaria no legible; se usa la de respaldo:', orgRes.error.message);
     const timezone = (orgRes.data as { timezone?: string | null } | null)?.timezone || DEFAULT_TIMEZONE;
-    let weekDay: ReturnType<typeof weekDayOfPlainDate>;
-    try {
-      weekDay = weekDayOfPlainDate(toPlainDate(now, timezone));
-    } catch {
-      weekDay = weekDayOfPlainDate(toPlainDate(now, DEFAULT_TIMEZONE));
-    }
 
-    // Misma franja que el POS (`promocionVigente`): fuera de horario no se
-    // anuncia, y la madrugada de una franja que cruza la medianoche cuenta
-    // como el día en que empezó.
-    const hora = horaEnZona(now, timezone);
+    // Mismo horario que el POS (`promocionVigente`): fuera de sus franjas no
+    // se anuncia, y la cola de una franja que cruza días es del día en que empezó.
     const rows = (Array.isArray(promotionsRes.data) ? promotionsRes.data : []) as Array<Record<string, unknown>>;
     const promotions: DisplayPromotion[] = rows
       // Con usos agotados el POS ya no la aplica: la pantalla tampoco la anuncia.
-      .filter((row) => isWithinEndDate(row, now) && appliesOnWeekDay(row, diaEfectivoDeFranja(row, weekDay, hora)) && appliesInTimeWindow(row, hora) && appliesToBranch(row, branchId) && tieneUsosDisponibles(row))
+      .filter((row) => vigenteEnHorario(row, now, timezone) && appliesToBranch(row, branchId) && tieneUsosDisponibles(row))
       .map(toDisplayPromotion)
       .filter((p): p is DisplayPromotion => p !== null)
       .slice(0, DISPLAY_PROMOTIONS_MAX);

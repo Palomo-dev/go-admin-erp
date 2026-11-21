@@ -1,417 +1,274 @@
 import { supabase } from '@/lib/supabase/config';
-import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
-import { 
-  Coupon, 
-  CouponRedemption,
-  CreateCouponData, 
-  UpdateCouponData,
-  CouponFilters
-} from './types';
-
+import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { resolveTimezone } from '@/lib/services/timezoneResolver';
 import { toPlainDate, plainDateToInstant } from '@/lib/utils/dateCore';
 import { getDayRange } from '@/lib/utils/dateRanges';
+import { CuponError, cambiosCupon, codigoAlAzar, errorCupon, normalizarPrefijo } from './cuponesVista';
+import type {
+  CanjesCupon,
+  Coupon,
+  CreateCouponData,
+  DatosLote,
+  FiltroEstadoCupon,
+  ListadoCupones,
+  LoteCreado,
+  ResumenCupones,
+  UpdateCouponData,
+} from './types';
 
 // ============================================================
-// Vigencias en zona de la organizacion (Fase B, tanda 4).
+// Vigencias en la zona de la organización.
 //
-// `coupons.start_date` y `.end_date` son **timestamptz**, no `date`
-// (verificado en `information_schema.columns`). El formulario entrega
-// 'YYYY-MM-DD' y Postgres lo lee a medianoche del `TimeZone` de la sesion
-// (UTC). El motor que decide si un cupon esta vigente compara INSTANTES
-// (`lte('start_date', ahora)` y el predicado de `end_date`), asi que una
-// vigencia "del 1 al 30" empezaba en Bogota a las 19:00 del 31 anterior y se
-// apagaba a las 19:00 del 29: un dia de descuento perdido por cada extremo.
-//
-// Regla: el dia de inicio empieza a las 00:00 de la zona de la organizacion y
-// el dia de fin termina a las 23:59:59.999 de esa misma zona.
+// `coupons.start_date` y `.end_date` son timestamptz. El formulario entrega
+// días 'YYYY-MM-DD': el día de inicio empieza a las 00:00 de la zona de la
+// organización y el de fin termina a las 23:59:59.999 de esa misma zona
+// («El último día cuenta entero», Figma 458:83786).
 // ============================================================
 
-/** Dia calendario 'YYYY-MM-DD' de un valor que puede venir ya como instante. */
+/** Día calendario 'YYYY-MM-DD' de un valor que puede venir ya como instante. */
 function diaDe(valor: string, timezone: string): string {
   return valor.length <= 10 ? valor : toPlainDate(new Date(valor), timezone);
 }
 
-/** Convierte los dias del formulario en los instantes que van a la columna. */
 async function vigenciaEnInstantes(
   organizationId: number,
   datos: { start_date?: string | null; end_date?: string | null },
 ): Promise<Record<string, string | null>> {
   const zona = await resolveTimezone(organizationId);
   const convertido: Record<string, string | null> = {};
-  if (datos.start_date) {
-    convertido.start_date = plainDateToInstant(diaDe(datos.start_date, zona), zona, '00:00');
+  if ('start_date' in datos) {
+    convertido.start_date = datos.start_date ? plainDateToInstant(diaDe(datos.start_date, zona), zona, '00:00') : null;
   }
-  if (datos.end_date) {
-    convertido.end_date = getDayRange(diaDe(datos.end_date, zona), zona).end;
+  if ('end_date' in datos) {
+    convertido.end_date = datos.end_date ? getDayRange(diaDe(datos.end_date, zona), zona).end : null;
   }
   return convertido;
 }
 
+// `estado_codigo`: columna calculada (fn_cupon_estado), la misma regla de la lista.
+const SELECT_CUPON = `
+  *,
+  estado_codigo,
+  customer:customers ( id, full_name, email ),
+  promotion:promotions ( id, name )
+`;
+
+/**
+ * Cupones del POS. Lectura por RPC (`pos_cupones_listar`, `pos_cupones_resumen`,
+ * `pos_cupon_canjes`: estado y KPI calculados en la base, con la RLS de la
+ * sesión). Escritura acotada a la organización de la sesión; el trigger
+ * `trg_coupons_guarda` exige `pos.cupones.gestionar` y guarda el código en
+ * mayúsculas. «Crear lote» es una sola transacción en el servidor.
+ *
+ * No valida canjes: eso lo hacen el POS (`POSService.aplicarCupon` →
+ * `validarCupon`) y la tienda web.
+ */
 export class CouponsService {
-  private static getOrganizationId(): number {
-    const org = obtenerOrganizacionActiva();
-    return org.id;
+  static async listar(params: {
+    branchId?: number | null;
+    busqueda?: string;
+    estado?: FiltroEstadoCupon;
+    limite: number;
+    desplazamiento: number;
+  }): Promise<ListadoCupones> {
+    const { data, error } = await supabase.rpc('pos_cupones_listar', {
+      p_organization_id: getOrganizationId(),
+      p_branch_id: params.branchId ?? null,
+      p_busqueda: params.busqueda?.trim() || null,
+      p_estado: params.estado ?? 'todos',
+      p_limite: params.limite,
+      p_desplazamiento: params.desplazamiento,
+    });
+    if (error) throw errorCupon(error);
+    const r = (data ?? { total: 0, filas: [] }) as ListadoCupones;
+    return { total: Number(r.total) || 0, filas: r.filas ?? [] };
   }
 
-  /**
-   * Obtener todos los cupones
-   */
-  static async getAll(filters: CouponFilters = {}): Promise<Coupon[]> {
-    try {
-      const organizationId = this.getOrganizationId();
-      
-      let query = supabase
-        .from('coupons')
-        .select(`
-          *,
-          customer:customers (
-            id,
-            full_name,
-            email
-          ),
-          promotion:promotions (
-            id,
-            branches
-          )
-        `)
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false });
-
-      if (filters.search) {
-        query = query.or(`code.ilike.%${filters.search}%,name.ilike.%${filters.search}%`);
-      }
-
-      if (filters.is_active !== undefined) {
-        query = query.eq('is_active', filters.is_active);
-      }
-
-      if (filters.discount_type) {
-        query = query.eq('discount_type', filters.discount_type);
-      }
-
-      if (filters.dateFrom) {
-        query = query.gte('start_date', filters.dateFrom);
-      }
-
-      if (filters.dateTo) {
-        query = query.lte('end_date', filters.dateTo);
-      }
-
-      // Filtro por sucursal: los cupones no tienen branch_id directo,
-      // se filtra vía la promoción asociada (que tiene branches JSONB).
-      // Se resuelve en la query (no en cliente): se obtienen los IDs de
-      // promociones que aplican a la sucursal (branches contiene branchId,
-      // o branches es null/vacío = global) y se filtra por promotion_id.
-      // Los cupones sin promoción asociada se consideran globales.
-      if (filters.branchId != null && typeof filters.branchId === 'number') {
-        const branchId = filters.branchId;
-        const nowIso = new Date().toISOString();
-        // branches es JSONB: el operador `cs` (@>) necesita JSON (`[117]`),
-        // no array literal de Postgres (`{117}`), que provoca 22P02.
-        const { data: matchingPromos, error: promosError } = await supabase
-          .from('promotions')
-          .select('id')
-          .eq('organization_id', organizationId)
-          .eq('is_active', true)
-          .or(`branches.cs.[${branchId}],branches.is.null,branches.eq.[]`)
-          .or(`start_date.is.null,start_date.lte.${nowIso}`)
-          .or(`end_date.is.null,end_date.gte.${nowIso}`);
-
-        if (promosError) {
-          console.error('Error filtrando promociones por sucursal:', promosError);
-          throw new Error(`Error al obtener cupones: ${promosError.message}`);
-        }
-
-        const promoIds = (matchingPromos || []).map((p: any) => p.id);
-        if (promoIds.length > 0) {
-          query = query.or(`promotion_id.in.(${promoIds.join(',')}),promotion_id.is.null`);
-        } else {
-          // Ninguna promoción aplica; solo cupones sin promoción (globales)
-          query = query.is('promotion_id', null);
-        }
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching coupons:', error);
-        throw new Error(`Error al obtener cupones: ${error.message}`);
-      }
-
-      return (data || []) as Coupon[];
-    } catch (error) {
-      console.error('Error in getAll:', error);
-      throw error;
-    }
+  /** KPI de la lista. `desde`/`hasta`: instantes del mes de la organización. */
+  static async resumen(params: { branchId?: number | null; desde: string; hasta: string }): Promise<ResumenCupones> {
+    const { data, error } = await supabase.rpc('pos_cupones_resumen', {
+      p_organization_id: getOrganizationId(),
+      p_branch_id: params.branchId ?? null,
+      p_desde: params.desde,
+      p_hasta: params.hasta,
+    });
+    if (error) throw errorCupon(error);
+    const r = (data ?? {}) as Partial<ResumenCupones>;
+    return {
+      total: Number(r.total) || 0,
+      activos: Number(r.activos) || 0,
+      agotados_o_vencidos: Number(r.agotados_o_vencidos) || 0,
+      con_canje: Number(r.con_canje) || 0,
+      canjes: Number(r.canjes) || 0,
+      descuento: Number(r.descuento) || 0,
+    };
   }
 
-  /**
-   * Obtener cupón por ID
-   */
+  static async canjes(couponId: string, limite: number, desplazamiento: number): Promise<CanjesCupon> {
+    const { data, error } = await supabase.rpc('pos_cupon_canjes', {
+      p_organization_id: getOrganizationId(),
+      p_coupon_id: couponId,
+      p_limite: limite,
+      p_desplazamiento: desplazamiento,
+    });
+    if (error) throw errorCupon(error);
+    return data as CanjesCupon;
+  }
+
   static async getById(id: string): Promise<Coupon | null> {
-    try {
-      const organizationId = this.getOrganizationId();
-
-      const { data, error } = await supabase
-        .from('coupons')
-        .select(`
-          *,
-          customer:customers (
-            id,
-            full_name,
-            email
-          )
-        `)
-        .eq('id', id)
-        .eq('organization_id', organizationId)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null;
-        throw new Error(`Error al obtener cupón: ${error.message}`);
-      }
-
-      return data;
-    } catch (error) {
-      console.error('Error in getById:', error);
-      throw error;
-    }
+    const { data, error } = await supabase
+      .from('coupons')
+      .select(SELECT_CUPON)
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .maybeSingle();
+    if (error) throw errorCupon(error);
+    return (data as Coupon | null) ?? null;
   }
 
-  /**
-   * Crear cupón
-   */
-  static async create(data: CreateCouponData): Promise<Coupon> {
-    try {
-      const organizationId = this.getOrganizationId();
-      const { data: userData } = await supabase.auth.getUser();
-
-      // Verificar código único
-      const { data: existing } = await supabase
-        .from('coupons')
-        .select('id')
-        .eq('organization_id', organizationId)
-        .eq('code', data.code.toUpperCase())
-        .single();
-
-      if (existing) {
-        throw new Error(`Ya existe un cupón con el código "${data.code}"`);
-      }
-
-      const { data: result, error } = await supabase
-        .from('coupons')
-        .insert([{
-          ...data,
-          ...(await vigenciaEnInstantes(organizationId, data)),
-          code: data.code.toUpperCase(),
-          organization_id: organizationId,
-          created_by: userData?.user?.id,
-          is_active: data.is_active ?? true,
-          applies_to_first_purchase: data.applies_to_first_purchase ?? false,
-          usage_count: 0
-        }])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating coupon:', error);
-        throw new Error(`Error al crear cupón: ${error.message}`);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in create:', error);
-      throw error;
-    }
+  static async create(datos: CreateCouponData): Promise<Coupon> {
+    const organizationId = getOrganizationId();
+    const fila = {
+      ...cambiosCupon(datos),
+      ...(await vigenciaEnInstantes(organizationId, { start_date: datos.start_date ?? null, end_date: datos.end_date ?? null })),
+      organization_id: organizationId,
+      usage_count: 0,
+    };
+    const { data, error } = await supabase.from('coupons').insert(fila).select().single();
+    if (error) throw errorCupon(error);
+    return data as Coupon;
   }
 
-  /**
-   * Actualizar cupón
-   */
-  static async update(id: string, data: UpdateCouponData): Promise<Coupon> {
-    try {
-      const organizationId = this.getOrganizationId();
-
-      // Verificar código único si se está cambiando
-      if (data.code) {
-        const { data: existing } = await supabase
-          .from('coupons')
-          .select('id')
-          .eq('organization_id', organizationId)
-          .eq('code', data.code.toUpperCase())
-          .neq('id', id)
-          .single();
-
-        if (existing) {
-          throw new Error(`Ya existe un cupón con el código "${data.code}"`);
-        }
-      }
-
-      const updateData: Record<string, unknown> = {
-        ...data,
-        ...(await vigenciaEnInstantes(organizationId, data)),
-      };
-      if (data.code) {
-        updateData.code = data.code.toUpperCase();
-      }
-
-      const { data: result, error } = await supabase
-        .from('coupons')
-        .update({
-          ...updateData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('organization_id', organizationId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating coupon:', error);
-        throw new Error(`Error al actualizar cupón: ${error.message}`);
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in update:', error);
-      throw error;
-    }
+  /** Las claves presentes y vacías viajan como null: así se vacían campos al editar. */
+  static async update(id: string, datos: UpdateCouponData): Promise<Coupon> {
+    const organizationId = getOrganizationId();
+    const fechas: { start_date?: string | null; end_date?: string | null } = {};
+    if ('start_date' in datos) fechas.start_date = datos.start_date ?? null;
+    if ('end_date' in datos) fechas.end_date = datos.end_date ?? null;
+    const cambios = { ...cambiosCupon(datos), ...(await vigenciaEnInstantes(organizationId, fechas)) };
+    return this.escribir(id, cambios);
   }
 
-  /**
-   * Eliminar cupón
-   */
-  static async delete(id: string): Promise<void> {
-    try {
-      const organizationId = this.getOrganizationId();
-
-      // Verificar si tiene redenciones
-      const { data: redemptions } = await supabase
-        .from('coupon_redemptions')
-        .select('id')
-        .eq('coupon_id', id)
-        .limit(1);
-
-      if (redemptions && redemptions.length > 0) {
-        throw new Error('No se puede eliminar el cupón porque tiene redenciones. Puede desactivarlo en su lugar.');
-      }
-
-      const { error } = await supabase
-        .from('coupons')
-        .delete()
-        .eq('id', id)
-        .eq('organization_id', organizationId);
-
-      if (error) {
-        console.error('Error deleting coupon:', error);
-        throw new Error(`Error al eliminar cupón: ${error.message}`);
-      }
-    } catch (error) {
-      console.error('Error in delete:', error);
-      throw error;
-    }
+  static async setActivo(id: string, activo: boolean): Promise<Coupon> {
+    return this.escribir(id, { is_active: activo });
   }
 
-  /**
-   * Duplicar cupón
-   */
+  /** Reemplaza al borrado físico, que se llevaba el historial de canjes (ON DELETE CASCADE). */
+  static async archive(id: string): Promise<Coupon> {
+    return this.escribir(id, { archived_at: new Date().toISOString(), is_active: false });
+  }
+
+  /** Sale del archivo inactivo: activarlo es otra decisión. */
+  static async restore(id: string): Promise<Coupon> {
+    return this.escribir(id, { archived_at: null });
+  }
+
+  /** Copia con un código nuevo al azar (antes `_COPIA` fijo, que chocaba al duplicar dos veces). */
   static async duplicate(id: string): Promise<Coupon> {
-    try {
-      const original = await this.getById(id);
-      if (!original) throw new Error('Cupón no encontrado');
-
-      const { id: _, created_at, updated_at, usage_count, customer, ...data } = original;
-
-      return this.create({
-        ...data,
-        code: `${data.code}_COPIA`,
-        name: data.name ? `${data.name} (Copia)` : undefined,
-        is_active: false
-      });
-    } catch (error) {
-      console.error('Error in duplicate:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Cambiar estado activo/inactivo
-   */
-  static async toggleActive(id: string): Promise<Coupon> {
-    const coupon = await this.getById(id);
-    if (!coupon) throw new Error('Cupón no encontrado');
-    
-    return this.update(id, { is_active: !coupon.is_active });
-  }
-
-  /**
-   * Obtener redenciones de un cupón
-   */
-  static async getRedemptions(couponId: string): Promise<CouponRedemption[]> {
-    try {
-      const { data, error } = await supabase
-        .from('coupon_redemptions')
-        .select(`
-          *,
-          sale:sales (
-            id,
-            total,
-            sale_date,
-            branch:branches (
-              id,
-              name
-            )
-          ),
-          customer:customers (
-            id,
-            full_name,
-            email
-          )
-        `)
-        .eq('coupon_id', couponId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching redemptions:', error);
-        throw new Error(`Error al obtener redenciones: ${error.message}`);
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error('Error in getRedemptions:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Importar cupones desde CSV
-   */
-  static async importFromData(data: CreateCouponData[]): Promise<{ success: number; errors: string[] }> {
-    const errors: string[] = [];
-    let success = 0;
-
-    for (const item of data) {
+    const original = await this.getById(id);
+    if (!original) throw new CuponError('NO_ENCONTRADO');
+    const prefijo = normalizarPrefijo(original.code.split('-')[0] || original.code);
+    for (let intento = 0; intento < 3; intento++) {
       try {
-        await this.create(item);
-        success++;
-      } catch (error: any) {
-        errors.push(`${item.code}: ${error.message}`);
+        const { data, error } = await supabase
+          .from('coupons')
+          .insert({
+            organization_id: getOrganizationId(),
+            code: codigoAlAzar(prefijo),
+            name: original.name ?? null,
+            discount_type: original.discount_type,
+            discount_value: original.discount_value,
+            min_purchase_amount: original.min_purchase_amount ?? null,
+            max_discount_amount: original.max_discount_amount ?? null,
+            usage_limit: original.usage_limit ?? null,
+            usage_limit_per_customer: original.usage_limit_per_customer ?? null,
+            start_date: original.start_date ?? null,
+            end_date: original.end_date ?? null,
+            applies_to_first_purchase: original.applies_to_first_purchase,
+            customer_id: original.customer_id ?? null,
+            promotion_id: original.promotion_id ?? null,
+            usage_count: 0,
+            is_active: false,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return data as Coupon;
+      } catch (e) {
+        if (errorCupon(e).codigo !== 'CODIGO_DUPLICADO') throw errorCupon(e);
       }
     }
-
-    return { success, errors };
+    throw new CuponError('CODIGO_DUPLICADO');
   }
 
-  /**
-   * Generar código único
-   */
-  static generateCode(prefix: string = 'CUP'): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = prefix;
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
+  /** «Crear lote»: códigos únicos generados y guardados en una sola transacción. */
+  static async crearLote(datos: DatosLote): Promise<LoteCreado> {
+    const organizationId = getOrganizationId();
+    const vigencia = await vigenciaEnInstantes(organizationId, { start_date: datos.start_date ?? null, end_date: datos.end_date ?? null });
+    const { data, error } = await supabase.rpc('pos_cupones_crear_lote', {
+      p_organization_id: organizationId,
+      p_prefijo: normalizarPrefijo(datos.prefijo),
+      p_cantidad: datos.cantidad,
+      p_datos: {
+        discount_type: datos.discount_type,
+        discount_value: datos.discount_value,
+        max_discount_amount: datos.discount_type === 'percentage' ? datos.max_discount_amount ?? null : null,
+        min_purchase_amount: datos.min_purchase_amount ?? null,
+        usage_limit: datos.usage_limit ?? null,
+        usage_limit_per_customer: datos.usage_limit_per_customer ?? null,
+        start_date: vigencia.start_date,
+        end_date: vigencia.end_date,
+        promotion_id: datos.promotion_id ?? null,
+      },
+    });
+    if (error) throw errorCupon(error);
+    const r = data as LoteCreado;
+    return { lote: r.lote, creados: Number(r.creados) || 0, codigos: r.codigos ?? [] };
+  }
+
+  /** Códigos de un lote ya creado (para volver a exportarlo). */
+  static async codigosDelLote(batchId: string): Promise<string[]> {
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('code')
+      .eq('organization_id', getOrganizationId())
+      .eq('batch_id', batchId)
+      .order('code')
+      .limit(5000);
+    if (error) throw errorCupon(error);
+    return ((data ?? []) as { code: string }[]).map((c) => c.code);
+  }
+
+  static async promociones(): Promise<{ id: string; name: string }[]> {
+    const { data, error } = await supabase
+      .from('promotions')
+      .select('id, name')
+      .eq('organization_id', getOrganizationId())
+      .eq('is_active', true)
+      .order('name')
+      .limit(200);
+    if (error) throw errorCupon(error);
+    return ((data ?? []) as { id: string; name: string | null }[]).map((p) => ({ id: p.id, name: p.name ?? '—' }));
+  }
+
+  /** Solo decide qué botones se ven: el trigger de la base vuelve a comprobarlo al escribir. */
+  static async puedeGestionar(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('fn_tiene_permiso', {
+      p_organization_id: getOrganizationId(),
+      p_code: 'pos.cupones.gestionar',
+    });
+    return !error && data === true;
+  }
+
+  private static async escribir(id: string, cambios: Record<string, unknown>): Promise<Coupon> {
+    const { data, error } = await supabase
+      .from('coupons')
+      .update(cambios)
+      .eq('id', id)
+      .eq('organization_id', getOrganizationId())
+      .select();
+    if (error) throw errorCupon(error);
+    if (!data || data.length === 0) throw new CuponError('SIN_PERMISO');
+    return data[0] as Coupon;
   }
 }

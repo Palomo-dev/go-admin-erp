@@ -128,7 +128,7 @@ describe('importar motivos (D16)', () => {
 });
 
 describe('migración de lectura de devoluciones', () => {
-  const nombre = '20261121210000_pos_devoluciones_listado_cifras';
+  const nombre = '20261121192518_pos_devoluciones_listado_cifras';
   const sql = leer(`supabase/migrations/${nombre}.sql`);
   const rollback = leer(`supabase/rollbacks/${nombre}_rollback.sql`);
 

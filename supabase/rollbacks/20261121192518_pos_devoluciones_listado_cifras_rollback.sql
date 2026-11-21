@@ -1,4 +1,4 @@
--- Reversión de 20261121210000_pos_devoluciones_listado_cifras.sql.
+-- Reversión de 20261121192518_pos_devoluciones_listado_cifras.sql.
 -- Solo funciones de lectura nuevas: no toca datos ni otras funciones.
 -- Antes de aplicarla, la pantalla /app/pos/devoluciones debe volver a la versión
 -- anterior (las rutas /api/pos/devoluciones/* llaman a estas funciones).

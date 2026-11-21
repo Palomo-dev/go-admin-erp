@@ -5502,7 +5502,19 @@
     "tabla": {
       "seleccionarPagina": "Sélectionner cette page",
       "seleccionarFila": "Sélectionner la ligne",
-      "seleccionar": "Sélectionner {nombre}"
+      "seleccionar": "Sélectionner {nombre}",
+      "arrastre": {
+        "columna": "Réordonner",
+        "asa": "Déplacer {nombre}",
+        "ayuda": "Faites glisser pour changer l’ordre",
+        "ayudaTeclado": "Clavier : Espace pour saisir · ↑ ↓ pour déplacer · Espace pour déposer",
+        "rol": "élément ordonnable",
+        "instrucciones": "Appuyez sur Espace pour saisir la ligne, utilisez ↑ et ↓ pour la déplacer et Espace pour la déposer. Échap annule.",
+        "tomar": "{nombre} saisi. Position {pos} sur {total}.",
+        "mover": "{nombre} passe en position {pos} sur {total}.",
+        "soltar": "{nombre} est maintenant en position {pos} sur {total}.",
+        "cancelar": "Annulé. {nombre} est revenu en position {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Actions pour {titulo}",
@@ -50726,7 +50738,9 @@
       "errorOrden": "Impossible d'enregistrer l'ordre.",
       "errorEliminar": "Impossible de supprimer le moyen de paiement.",
       "sinPermisoEliminar": "Impossible de supprimer le moyen de paiement : votre poste ou rôle n'a pas l'autorisation de facturation.",
-      "eliminado": "{nombre} supprimé"
+      "eliminado": "{nombre} supprimé",
+      "ordenDescripcion": "Le POS et la boutique en ligne affichent désormais {nombre} en position {n}.",
+      "deshacer": "Annuler"
     },
     "estados": {
       "vacioTitulo": "Vous n'avez encore aucun moyen de paiement",

@@ -10150,7 +10150,19 @@
     "tabla": {
       "seleccionarPagina": "Select this page",
       "seleccionarFila": "Select row",
-      "seleccionar": "Select {nombre}"
+      "seleccionar": "Select {nombre}",
+      "arrastre": {
+        "columna": "Reorder",
+        "asa": "Move {nombre}",
+        "ayuda": "Drag to change the order",
+        "ayudaTeclado": "Keyboard: Space to pick up · ↑ ↓ to move · Space to drop",
+        "rol": "sortable item",
+        "instrucciones": "Press Space to pick up the row, use ↑ and ↓ to move it and Space to drop it. Esc cancels.",
+        "tomar": "Picked up {nombre}. It is in position {pos} of {total}.",
+        "mover": "{nombre} moves to position {pos} of {total}.",
+        "soltar": "{nombre} is now in position {pos} of {total}.",
+        "cancelar": "Cancelled. {nombre} went back to position {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Actions for {titulo}",
@@ -50726,7 +50738,9 @@
       "errorOrden": "Could not save the order.",
       "errorEliminar": "Could not delete the payment method.",
       "sinPermisoEliminar": "Could not delete the payment method: your position or role lacks the billing permission.",
-      "eliminado": "{nombre} deleted"
+      "eliminado": "{nombre} deleted",
+      "ordenDescripcion": "The POS and the online store now show {nombre} in position {n}.",
+      "deshacer": "Undo"
     },
     "estados": {
       "vacioTitulo": "You have no payment methods yet",

@@ -5503,7 +5503,19 @@
     "tabla": {
       "seleccionarPagina": "Selecionar esta página",
       "seleccionarFila": "Selecionar linha",
-      "seleccionar": "Selecionar {nombre}"
+      "seleccionar": "Selecionar {nombre}",
+      "arrastre": {
+        "columna": "Ordenar",
+        "asa": "Mover {nombre}",
+        "ayuda": "Arraste para mudar a ordem",
+        "ayudaTeclado": "Teclado: Espaço para pegar · ↑ ↓ para mover · Espaço para soltar",
+        "rol": "item ordenável",
+        "instrucciones": "Pressione Espaço para pegar a linha, use ↑ e ↓ para movê-la e Espaço para soltá-la. Esc cancela.",
+        "tomar": "Você pegou {nombre}. Está na posição {pos} de {total}.",
+        "mover": "{nombre} passa para a posição {pos} de {total}.",
+        "soltar": "{nombre} ficou na posição {pos} de {total}.",
+        "cancelar": "Cancelado. {nombre} voltou para a posição {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Ações de {titulo}",
@@ -50736,7 +50748,9 @@
       "errorOrden": "Não foi possível salvar a ordem.",
       "errorEliminar": "Não foi possível excluir o método de pagamento.",
       "sinPermisoEliminar": "Não foi possível excluir o método de pagamento: seu cargo ou função não tem a permissão de faturamento.",
-      "eliminado": "{nombre} excluído"
+      "eliminado": "{nombre} excluído",
+      "ordenDescripcion": "O PDV e a loja virtual já mostram {nombre} na posição {n}.",
+      "deshacer": "Desfazer"
     },
     "estados": {
       "vacioTitulo": "Você ainda não tem métodos de pagamento",

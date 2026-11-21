@@ -10151,7 +10151,19 @@
     "tabla": {
       "seleccionarPagina": "Seleccionar esta página",
       "seleccionarFila": "Seleccionar fila",
-      "seleccionar": "Seleccionar {nombre}"
+      "seleccionar": "Seleccionar {nombre}",
+      "arrastre": {
+        "columna": "Ordenar",
+        "asa": "Mover {nombre}",
+        "ayuda": "Arrastra para cambiar el orden",
+        "ayudaTeclado": "Teclado: Espacio para tomar · ↑ ↓ para mover · Espacio para soltar",
+        "rol": "elemento ordenable",
+        "instrucciones": "Pulsa Espacio para tomar la fila, usa ↑ y ↓ para moverla y Espacio para soltarla. Esc cancela.",
+        "tomar": "Tomaste {nombre}. Está en la posición {pos} de {total}.",
+        "mover": "{nombre} pasa a la posición {pos} de {total}.",
+        "soltar": "{nombre} quedó en la posición {pos} de {total}.",
+        "cancelar": "Cancelado. {nombre} volvió a la posición {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Acciones de {titulo}",
@@ -50741,7 +50753,9 @@
       "errorOrden": "No se pudo guardar el orden.",
       "errorEliminar": "No se pudo eliminar el método de pago.",
       "sinPermisoEliminar": "No se pudo eliminar el método de pago: tu cargo o rol no tiene el permiso de facturación.",
-      "eliminado": "{nombre} eliminado"
+      "eliminado": "{nombre} eliminado",
+      "ordenDescripcion": "El POS y la tienda web ya muestran {nombre} en el lugar {n}.",
+      "deshacer": "Deshacer"
     },
     "estados": {
       "vacioTitulo": "Aún no tienes métodos de pago",

@@ -26,6 +26,7 @@ import {
   cuadreAbono,
   erroresAbono,
   facturaObligatoria,
+  ivaReverseCharge,
   tratamientoDelIva,
   type CodigoProcesador,
   type RespuestaProcesadores,
@@ -99,6 +100,7 @@ export function AbonoProcesadorDialog({ abierto, onAbiertoChange, datos, hoy, pr
   const valores = { bruto, neto, comision, ivaComision: iva, retencionFuente: rf, retencionIva: riva, retencionIca: rica };
   const cuadre = cuadreAbono(valores);
   const tratamiento = tratamientoDelIva(proc?.origen ?? 'nacional', datos.responsableIva, iva);
+  const reverseCharge = tratamiento === 'reverse_charge' ? ivaReverseCharge(comision) : 0;
   const exigeFactura = facturaObligatoria(tratamiento);
   const errores = erroresAbono(valores, { procesador, fecha, factura, nit: proc?.nit ?? null, tratamiento });
   const hay = (e: (typeof errores)[number]) => errores.includes(e);
@@ -116,8 +118,11 @@ export function AbonoProcesadorDialog({ abierto, onAbiertoChange, datos, hoy, pr
       { lado: 'D' as const, cuenta: '13551701', nombre: t('abono.asiento.reteiva'), valor: Math.round(riva ?? 0) },
       { lado: 'D' as const, cuenta: '13551801', nombre: t('abono.asiento.reteica'), valor: Math.round(rica ?? 0) },
       { lado: 'C' as const, cuenta: proc.cuenta, nombre: proc.etiqueta, valor: cuadre.bruto },
+      // Reverse charge (Contador 2026-11-21): 19 % de la comisión, retenido al 100 %.
+      { lado: 'D' as const, cuenta: '24081003', nombre: t('abono.asiento.ivaExterior'), valor: reverseCharge },
+      { lado: 'C' as const, cuenta: '23670502', nombre: t('abono.asiento.reteivaExterior'), valor: reverseCharge },
     ].filter((l) => l.valor > 0);
-  }, [proc, bancoSel, cuadre, tratamiento, rf, riva, rica, t]);
+  }, [proc, bancoSel, cuadre, tratamiento, rf, riva, rica, t, reverseCharge]);
 
   const guardar = async () => {
     setIntentado(true);
@@ -175,6 +180,7 @@ export function AbonoProcesadorDialog({ abierto, onAbiertoChange, datos, hoy, pr
     exterior: t('abono.iva.exterior'),
     sin_iva: t('abono.iva.sinIva'),
     sin_perfil: t('abono.iva.sinPerfil'),
+    reverse_charge: t('abono.iva.reverseCharge', { valor: fmt(reverseCharge) }),
   }[tratamiento];
 
   return (
@@ -265,12 +271,12 @@ export function AbonoProcesadorDialog({ abierto, onAbiertoChange, datos, hoy, pr
           {proc && (
             <div
               className={
-                tratamiento === 'exterior'
+                tratamiento === 'exterior' || tratamiento === 'reverse_charge'
                   ? 'flex flex-col items-start gap-1.5 rounded-lg border border-line-info bg-info-subtle px-3 py-2.5'
                   : 'flex flex-col items-start gap-1.5 rounded-lg border border-line bg-subtle px-3 py-2.5'
               }
             >
-              <Badge tono={tratamiento === 'exterior' ? 'informacion' : tratamiento === 'sin_perfil' ? 'advertencia' : 'marca'} apariencia="suave" tamano="sm">
+              <Badge tono={tratamiento === 'exterior' || tratamiento === 'reverse_charge' ? 'informacion' : tratamiento === 'sin_perfil' ? 'advertencia' : 'marca'} apariencia="suave" tamano="sm">
                 {t(`abono.ivaInsignia.${tratamiento}`)}
               </Badge>
               <p className="text-xs text-fg-secondary">{textoTratamiento}</p>
@@ -330,9 +336,6 @@ export function AbonoProcesadorDialog({ abierto, onAbiertoChange, datos, hoy, pr
               </ul>
               {saldo !== null && (
                 <p className="text-xs text-fg-secondary">{t('abono.asiento.saldo', { antes: fmt(saldo), despues: fmt(saldo - cuadre.bruto) })}</p>
-              )}
-              {tratamiento === 'exterior' && cuadre.comision + cuadre.ivaComision > 0 && (
-                <p className="text-xs text-fg-secondary">{t('abono.asiento.pendienteExterior', { valor: fmt(cuadre.comision + cuadre.ivaComision) })}</p>
               )}
             </section>
           )}

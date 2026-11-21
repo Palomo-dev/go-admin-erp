@@ -8,6 +8,7 @@ import {
   estadoListaMetodos,
   filtrarFilasMetodos,
   moverMetodo,
+  reordenarMetodos,
   resumirMetodos,
   tipoMetodoPago,
   ultimosDigitos,
@@ -132,6 +133,28 @@ describe('moverMetodo (Subir/Bajar = el orden que lee el POS)', () => {
     expect(moverMetodo(filas, 'org-1', -1)).toBeNull();
     expect(moverMetodo(filas, 'org-9', 1)).toBeNull();
     expect(moverMetodo(filas, 'uso-nequi', -1)).toBeNull();
+  });
+});
+
+describe('reordenarMetodos (arrastrar y soltar)', () => {
+  const filas = construirFilasMetodos({
+    metodos: [
+      base('cash', { id: 1, website_display_order: 0 }),
+      base('card', { id: 2, website_display_order: 1 }),
+      base('transfer', { id: 9, website_display_order: 2 }),
+      base('wompi', { id: 4, website_display_order: 3 }),
+    ],
+    bancos: [],
+    conexiones: [],
+    exigeCaja: true,
+    usoPorMetodo: { nequi: 1 },
+  });
+  test('sube el cuarto al segundo lugar y corre los demás', () => expect(reordenarMetodos(filas, 'org-4', 'org-2')).toEqual([1, 4, 2, 9]));
+  test('baja el primero al último lugar', () => expect(reordenarMetodos(filas, 'org-1', 'org-4')).toEqual([2, 9, 4, 1]));
+  test('sobre sí mismo, sobre una sin configurar o una sin configurar: no mueve', () => {
+    expect(reordenarMetodos(filas, 'org-2', 'org-2')).toBeNull();
+    expect(reordenarMetodos(filas, 'org-2', 'uso-nequi')).toBeNull();
+    expect(reordenarMetodos(filas, 'uso-nequi', 'org-1')).toBeNull();
   });
 });
 

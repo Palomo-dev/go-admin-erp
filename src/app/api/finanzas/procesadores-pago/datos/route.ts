@@ -23,6 +23,7 @@ const esquema = z
     nombre: z.string().trim().max(120).nullable().optional(),
     origen: z.enum(['nacional', 'exterior']).optional(),
     retiene_saldo: z.boolean().optional(),
+    tipo_documento: z.enum(['31', '42', '43']).nullable().optional(),
   })
   .strict();
 

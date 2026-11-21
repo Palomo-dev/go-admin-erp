@@ -39,6 +39,7 @@ export {
 
 // Tabla, tarjetas y acciones
 export { DataTable, type DataTableProps, type ColumnaTabla, type EstadoTabla, type ContextoTarjeta } from './DataTable';
+export type { ArrastreTabla } from './arrastreTabla';
 export { RowActionsMenu, type RowActionsMenuProps } from './RowActionsMenu';
 export { ActionSheet, type ActionSheetProps } from './ActionSheet';
 export { BulkActionBar, aplanarMenuMasivo, type BulkActionBarProps, type AccionMasiva, type GrupoMenuMasivo } from './BulkActionBar';

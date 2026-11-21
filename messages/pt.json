@@ -5503,7 +5503,19 @@
     "tabla": {
       "seleccionarPagina": "Selecionar esta página",
       "seleccionarFila": "Selecionar linha",
-      "seleccionar": "Selecionar {nombre}"
+      "seleccionar": "Selecionar {nombre}",
+      "arrastre": {
+        "columna": "Ordenar",
+        "asa": "Mover {nombre}",
+        "ayuda": "Arraste para mudar a ordem",
+        "ayudaTeclado": "Teclado: Espaço para pegar · ↑ ↓ para mover · Espaço para soltar",
+        "rol": "item ordenável",
+        "instrucciones": "Pressione Espaço para pegar a linha, use ↑ e ↓ para movê-la e Espaço para soltá-la. Esc cancela.",
+        "tomar": "Você pegou {nombre}. Está na posição {pos} de {total}.",
+        "mover": "{nombre} passa para a posição {pos} de {total}.",
+        "soltar": "{nombre} ficou na posição {pos} de {total}.",
+        "cancelar": "Cancelado. {nombre} voltou para a posição {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Ações de {titulo}",
@@ -50736,7 +50748,9 @@
       "errorOrden": "Não foi possível salvar a ordem.",
       "errorEliminar": "Não foi possível excluir o método de pagamento.",
       "sinPermisoEliminar": "Não foi possível excluir o método de pagamento: seu cargo ou função não tem a permissão de faturamento.",
-      "eliminado": "{nombre} excluído"
+      "eliminado": "{nombre} excluído",
+      "ordenDescripcion": "O PDV e a loja virtual já mostram {nombre} na posição {n}.",
+      "deshacer": "Desfazer"
     },
     "estados": {
       "vacioTitulo": "Você ainda não tem métodos de pagamento",
@@ -61931,17 +61945,19 @@
       "iva": {
         "descontable": "Sua organização é contribuinte de IVA segundo o perfil tributário: o IVA da comissão é deduzido.",
         "gasto": "Sua organização não é contribuinte de IVA: o IVA da comissão soma à despesa.",
-        "exterior": "Este processador está marcado como do exterior: o extrato não traz IVA colombiano. O IVA por reverse charge é aplicado à parte e fica em Pendências contábeis.",
+        "exterior": "Serviço do exterior: sua organização não é contribuinte de IVA, então não se retém IVA.",
         "sinIva": "Sem IVA na comissão: não há nada a deduzir.",
-        "sinPerfil": "Defina o perfil tributário da organização para saber se o IVA da comissão é dedutível."
+        "sinPerfil": "Defina o perfil tributário da organização para saber se o IVA da comissão é dedutível.",
+        "reverseCharge": "Serviço do exterior sem IVA colombiano: retém-se 19 % da comissão ({valor}) como IVA (reverse charge). Vai para o IVA dedutível 24081003 e para a retenção de IVA 23670502, e é declarado nos formulários 300 e 350 do mesmo período."
       },
       "ivaInsignia": {
         "descontable": "IVA dedutível · 24081001",
         "proporcional": "IVA dedutível · 24081001",
         "gasto": "IVA na despesa · 53051501",
-        "exterior": "Exterior · sem IVA no extrato",
+        "exterior": "Exterior · sem retenção",
         "sin_iva": "Sem IVA na comissão",
-        "sin_perfil": "Falta o perfil tributário"
+        "sin_perfil": "Falta o perfil tributário",
+        "reverse_charge": "Reverse charge · 19 % retido"
       },
       "factura": "Fatura eletrônica do processador",
       "facturaOpcional": "Fatura do processador (opcional)",
@@ -61980,7 +61996,8 @@
         "reteiva": "Antecipação retenção de IVA",
         "reteica": "Antecipação retenção de ICA",
         "saldo": "Saldo do processador: {antes} → {despues}",
-        "pendienteExterior": "Fica em Pendências contábeis: IVA por reverse charge sobre {valor}."
+        "ivaExterior": "IVA dedutível por serviços do exterior",
+        "reteivaExterior": "Retenção de IVA por serviços do exterior"
       }
     },
     "datos": {
@@ -61994,7 +62011,8 @@
         "nombre": "Nome como terceiro",
         "origen": "Origem",
         "retiene": "Retém saldo",
-        "retieneLargo": "Retém saldo de propósito"
+        "retieneLargo": "Retém saldo de propósito",
+        "identificacion": "Identificação"
       },
       "etiquetaNit": "NIT de {procesador}",
       "etiquetaNombre": "Nome de {procesador} como terceiro",
@@ -62003,9 +62021,18 @@
       "nitEjemplo": "Ex.: 900.123.456-7",
       "deFabrica": "Padrão",
       "faltaNit": "Falta: sem NIT o repasse não pode ser registrado.",
-      "notaFabrica": "Wompi, Mercado Pago e PayU vêm com o NIT padrão. A maquininha e a Bold cada organização informa; Stripe e PayPal, conforme indicar o Contador. Sem NIT, a cobrança segue normal, mas o repasse não pode ser registrado.",
-      "notaExterior": "O processador presta o serviço de fora da Colômbia e o extrato não traz IVA colombiano. Depois aplica-se o IVA por reverse charge (art. 437-2 núm. 3 ET) sem mudar o formulário do repasse. Mudar a origem só afeta os repasses registrados a partir daí.",
-      "notaRetiene": "O processador guarda o dinheiro e ele é sacado quando se decide. Não dispara o alerta de 5 dias úteis: o painel mostra o saldo retido e alerta se passarem mais de 30 dias sem nenhum saque para o banco. Vem ativado para Stripe e PayPal e desativado para os demais."
+      "notaFabrica": "Wompi, Bold, Mercado Pago e PayU vêm com o NIT padrão. A maquininha cada organização informa. Stripe e PayPal não: informe a empresa e o número do seu contrato ou extrato, com o tipo de documento (42 se for um número fiscal do país; 43 se o país não usa número fiscal, e é atribuído 444444001). Sem identificação, a cobrança segue normal, mas o repasse não pode ser registrado.",
+      "notaExterior": "O processador presta o serviço de fora da Colômbia. Se o extrato não traz IVA colombiano e sua organização é contribuinte de IVA, ao registrar o repasse retém-se 19 % da comissão (reverse charge, art. 437-2 núm. 3 ET). Mudar a origem só afeta os repasses registrados a partir daí.",
+      "notaRetiene": "O processador guarda o dinheiro e ele é sacado quando se decide. Não dispara o alerta de 5 dias úteis: o painel mostra o saldo retido e alerta se passarem mais de 30 dias sem nenhum saque para o banco. Vem ativado para Stripe e PayPal e desativado para os demais.",
+      "etiquetaTipo": "Tipo de documento de {procesador}",
+      "tipoElegir": "Tipo de documento",
+      "tipos": {
+        "31": "31 · NIT (DIAN)",
+        "42": "42 · Número fiscal do exterior",
+        "43": "43 · Sem número fiscal"
+      },
+      "nitGenerico": "É atribuído 444444001…",
+      "faltaTipo": "Escolha o tipo de documento: sem ele não é possível reportar na exógena."
     },
     "errores": {
       "SESION_REQUERIDA": "Sua sessão terminou. Entre novamente.",
@@ -62032,7 +62059,8 @@
       "ABONO_INEXISTENTE": "O repasse não existe ou não é da sua organização.",
       "MOTIVO_REQUERIDO": "Informe o motivo do cancelamento.",
       "datos_invalidos": "Revise os dados do formulário.",
-      "DESCONOCIDO": "Não foi possível concluir. Tente de novo em instantes."
+      "DESCONOCIDO": "Não foi possível concluir. Tente de novo em instantes.",
+      "TIPO_DOCUMENTO_INVALIDO": "O tipo de documento é 31 (NIT), 42 (número fiscal do exterior) ou 43 (sem número fiscal)."
     }
   },
   "finanzasImpuestos": {

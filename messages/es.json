@@ -10151,7 +10151,19 @@
     "tabla": {
       "seleccionarPagina": "Seleccionar esta página",
       "seleccionarFila": "Seleccionar fila",
-      "seleccionar": "Seleccionar {nombre}"
+      "seleccionar": "Seleccionar {nombre}",
+      "arrastre": {
+        "columna": "Ordenar",
+        "asa": "Mover {nombre}",
+        "ayuda": "Arrastra para cambiar el orden",
+        "ayudaTeclado": "Teclado: Espacio para tomar · ↑ ↓ para mover · Espacio para soltar",
+        "rol": "elemento ordenable",
+        "instrucciones": "Pulsa Espacio para tomar la fila, usa ↑ y ↓ para moverla y Espacio para soltarla. Esc cancela.",
+        "tomar": "Tomaste {nombre}. Está en la posición {pos} de {total}.",
+        "mover": "{nombre} pasa a la posición {pos} de {total}.",
+        "soltar": "{nombre} quedó en la posición {pos} de {total}.",
+        "cancelar": "Cancelado. {nombre} volvió a la posición {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Acciones de {titulo}",
@@ -50741,7 +50753,9 @@
       "errorOrden": "No se pudo guardar el orden.",
       "errorEliminar": "No se pudo eliminar el método de pago.",
       "sinPermisoEliminar": "No se pudo eliminar el método de pago: tu cargo o rol no tiene el permiso de facturación.",
-      "eliminado": "{nombre} eliminado"
+      "eliminado": "{nombre} eliminado",
+      "ordenDescripcion": "El POS y la tienda web ya muestran {nombre} en el lugar {n}.",
+      "deshacer": "Deshacer"
     },
     "estados": {
       "vacioTitulo": "Aún no tienes métodos de pago",
@@ -61936,17 +61950,19 @@
       "iva": {
         "descontable": "Tu organización es responsable de IVA según su perfil tributario: el IVA de la comisión se descuenta.",
         "gasto": "Tu organización no es responsable de IVA: el IVA de la comisión se suma al gasto.",
-        "exterior": "Este procesador está marcado como del exterior: su extracto no trae IVA colombiano. El IVA por reverse charge se aplica aparte y queda en Pendientes contables.",
+        "exterior": "Servicio del exterior: tu organización no es responsable de IVA, así que no se retiene IVA.",
         "sinIva": "Sin IVA en la comisión: no hay nada que descontar.",
-        "sinPerfil": "Define el perfil tributario de la organización para saber si el IVA de la comisión es descontable."
+        "sinPerfil": "Define el perfil tributario de la organización para saber si el IVA de la comisión es descontable.",
+        "reverseCharge": "Servicio del exterior sin IVA colombiano: se retiene el 19 % de la comisión ({valor}) como IVA (reverse charge). Va al IVA descontable 24081003 y a la ReteIVA 23670502, y se declara en el 300 y el 350 del mismo periodo."
       },
       "ivaInsignia": {
         "descontable": "IVA descontable · 24081001",
         "proporcional": "IVA descontable · 24081001",
         "gasto": "IVA al gasto · 53051501",
-        "exterior": "Exterior · sin IVA en el extracto",
+        "exterior": "Exterior · sin retención",
         "sin_iva": "Sin IVA en la comisión",
-        "sin_perfil": "Falta el perfil tributario"
+        "sin_perfil": "Falta el perfil tributario",
+        "reverse_charge": "Reverse charge · 19 % retenido"
       },
       "factura": "Factura electrónica del procesador",
       "facturaOpcional": "Factura del procesador (opcional)",
@@ -61985,7 +62001,8 @@
         "reteiva": "Anticipo retención de IVA",
         "reteica": "Anticipo retención de ICA",
         "saldo": "Saldo del procesador: {antes} → {despues}",
-        "pendienteExterior": "Queda en Pendientes contables: IVA por reverse charge sobre {valor}."
+        "ivaExterior": "IVA descontable por servicios del exterior",
+        "reteivaExterior": "ReteIVA por servicios del exterior"
       }
     },
     "datos": {
@@ -61999,7 +62016,8 @@
         "nombre": "Nombre como tercero",
         "origen": "Origen",
         "retiene": "Retiene saldo",
-        "retieneLargo": "Retiene saldo a propósito"
+        "retieneLargo": "Retiene saldo a propósito",
+        "identificacion": "Identificación"
       },
       "etiquetaNit": "NIT de {procesador}",
       "etiquetaNombre": "Nombre de {procesador} como tercero",
@@ -62008,9 +62026,18 @@
       "nitEjemplo": "Ej.: 900.123.456-7",
       "deFabrica": "De fábrica",
       "faltaNit": "Falta: sin NIT el abono no se puede registrar.",
-      "notaFabrica": "Wompi, Mercado Pago y PayU traen su NIT de fábrica. El datáfono y Bold los escribe cada organización; Stripe y PayPal, según indique el Contador. Sin NIT, el cobro sigue normal pero el abono no se puede registrar.",
-      "notaExterior": "El procesador presta el servicio desde fuera de Colombia y su extracto no trae IVA colombiano. Después se le aplica el IVA por reverse charge (art. 437-2 num. 3 ET) sin tocar el formulario del abono. Cambiar el origen solo afecta los abonos que se registren de ahí en adelante.",
-      "notaRetiene": "El procesador guarda la plata y se retira cuando se decide. No lanza la alerta de 5 días hábiles: el tablero muestra el saldo retenido y alerta si pasan más de 30 días sin ningún retiro al banco. Viene en sí para Stripe y PayPal y en no para los demás."
+      "notaFabrica": "Wompi, Bold, Mercado Pago y PayU traen su NIT de fábrica. El datáfono lo escribe cada organización. Stripe y PayPal no: escribe la empresa y el número que dice tu contrato o extracto, con su tipo de documento (42 si es un número fiscal de su país; 43 si su país no usa número fiscal, y se asigna 444444001). Sin identificación, el cobro sigue normal pero el abono no se puede registrar.",
+      "notaExterior": "El procesador presta el servicio desde fuera de Colombia. Si su extracto no trae IVA colombiano y tu organización es responsable de IVA, al registrar el abono se retiene el 19 % de la comisión (reverse charge, art. 437-2 num. 3 ET). Cambiar el origen solo afecta los abonos que se registren de ahí en adelante.",
+      "notaRetiene": "El procesador guarda la plata y se retira cuando se decide. No lanza la alerta de 5 días hábiles: el tablero muestra el saldo retenido y alerta si pasan más de 30 días sin ningún retiro al banco. Viene en sí para Stripe y PayPal y en no para los demás.",
+      "etiquetaTipo": "Tipo de documento de {procesador}",
+      "tipoElegir": "Tipo de documento",
+      "tipos": {
+        "31": "31 · NIT (DIAN)",
+        "42": "42 · Número fiscal del exterior",
+        "43": "43 · Sin número fiscal"
+      },
+      "nitGenerico": "Se asigna 444444001…",
+      "faltaTipo": "Elige el tipo de documento: sin él no se puede reportar en la exógena."
     },
     "errores": {
       "SESION_REQUERIDA": "Tu sesión terminó. Vuelve a iniciar sesión.",
@@ -62037,7 +62064,8 @@
       "ABONO_INEXISTENTE": "El abono no existe o no es de tu organización.",
       "MOTIVO_REQUERIDO": "Escribe el motivo de la anulación.",
       "datos_invalidos": "Revisa los datos del formulario.",
-      "DESCONOCIDO": "No se pudo completar. Intenta de nuevo en un momento."
+      "DESCONOCIDO": "No se pudo completar. Intenta de nuevo en un momento.",
+      "TIPO_DOCUMENTO_INVALIDO": "El tipo de documento es 31 (NIT), 42 (número fiscal del exterior) o 43 (sin número fiscal)."
     }
   },
   "finanzasImpuestos": {

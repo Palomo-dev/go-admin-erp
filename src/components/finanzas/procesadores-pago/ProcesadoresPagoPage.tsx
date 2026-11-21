@@ -33,6 +33,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { usePermisosFinanzas } from '@/lib/finanzas/usePermisosFinanzas';
 import {
+  identificacionPendiente,
   moverMes,
   ordenarSaldos,
   totalesSaldos,
@@ -100,6 +101,12 @@ export function ProcesadoresPagoPage() {
 
   const fecha = (d: string | null) => (d ? formatPlainDate(d, { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
+  // Sin NIT, o del exterior sin tipo de documento: pendiente para la exógena (Contador 2026-11-21).
+  const pendienteIdentificacion = (s: SaldoProcesador) => {
+    const d = datos?.procesadores.find((p) => p.codigo === s.procesador);
+    return d ? identificacionPendiente(d) : !s.nit;
+  };
+
   const insignia = (s: SaldoProcesador) => {
     if (s.estado === 'alerta') {
       const clave = s.motivo_alerta === 'saldo_retenido_sin_retiro' ? 'sinRetiro' : s.motivo_alerta === 'saldo_negativo' ? 'negativo' : 'sinAbono';
@@ -109,7 +116,7 @@ export function ProcesadoresPagoPage() {
         </Badge>
       );
     }
-    if (!s.nit && s.saldo > 0)
+    if (pendienteIdentificacion(s) && s.saldo > 0)
       return (
         <Badge tono="advertencia" apariencia="suave" tamano="sm">
           {t('estado.faltaNit')}
@@ -141,7 +148,7 @@ export function ProcesadoresPagoPage() {
 
   const botonAbonar = (s: SaldoProcesador) =>
     permisos.crear ? (
-      !s.nit ? (
+      pendienteIdentificacion(s) ? (
         <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => setDatosAbiertos(true)}>
           {t('acciones.completar')}
         </button>

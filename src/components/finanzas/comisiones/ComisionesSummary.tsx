@@ -1,105 +1,85 @@
 'use client';
 
 /**
- * Tarjetas devengado / pagado / pendiente (+ canceladas) del filtro activo,
- * SOLO en la moneda base; las demás monedas se listan aparte, nunca sumadas
- * (ronda 2: 18 COP + 1 USD no es un «devengado»). Estado siempre con icono y
- * texto, nunca solo color (brief §2). Si la carga falló, «—» en vez de $0.
+ * Cifras de Comisiones (Figma 1012:87993): devengado, por pagar, pagado y
+ * vendedores. SOLO en la moneda base; las demás monedas se listan aparte,
+ * nunca sumadas (ronda 2: 18 COP + 1 USD no es un «devengado»). Si la carga
+ * falló y no hay datos (`unavailable`), «—» en vez de $0.
  */
 
-import { CheckCircle2, Clock, TrendingUp, XCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslations } from 'next-intl';
+import { TriangleAlert } from 'lucide-react';
+import { StatCard } from '@/components/kit';
 import type { CurrencySummary } from '@/lib/services/crm/commissionTransitions';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
-import { pluralComisiones } from './comisionesModel';
 
 interface Props {
   summary: CurrencySummary;
   /** Otras monedas del mismo filtro, cada una con su resumen. */
   others?: CurrencySummary[];
   currency: string;
+  /** Vendedores con comisiones en la lista. */
+  vendedores: number;
+  /** La pestaña es «Por pagar»: los vendedores son los que tienen comisiones abiertas. */
+  soloPendientes: boolean;
   loading: boolean;
   /** La última carga falló y no hay datos previos: no se muestran ceros que mientan. */
   unavailable?: boolean;
 }
 
-export function ComisionesSummary({ summary, others = [], currency, loading, unavailable = false }: Props) {
-  // Cada importe en la moneda de su comisión (o la que llega por props), con
-  // el locale y los decimales de la organización. Nunca pesos fijos.
+export function ComisionesSummary({ summary, others = [], currency, vendedores, soloPendientes, loading, unavailable = false }: Props) {
+  const t = useTranslations('finanzasComisiones.cifras');
   const { paraDocumento } = useMonedaOrganizacion();
-  const formatCurrency = (valor: number, moneda?: string | null) => formatMoneda(valor, paraDocumento(moneda));
-  const cards = [
-    {
-      key: 'accrued',
-      label: 'Devengado',
-      hint: `${summary.count_pending + summary.count_paid} comisiones vivas`,
-      value: summary.accrued_total,
-      icon: TrendingUp,
-      iconClass: 'text-blue-700 dark:text-blue-300',
-      bg: 'bg-blue-100 dark:bg-blue-900/40',
-    },
-    {
-      key: 'paid',
-      label: 'Pagado',
-      hint: `${summary.count_paid} pagadas`,
-      value: summary.paid_total,
-      icon: CheckCircle2,
-      iconClass: 'text-green-700 dark:text-green-300',
-      bg: 'bg-green-100 dark:bg-green-900/40',
-    },
-    {
-      key: 'pending',
-      label: 'Pendiente de pago',
-      hint: `${summary.count_pending} por pagar`,
-      value: summary.pending_total,
-      icon: Clock,
-      iconClass: 'text-amber-700 dark:text-amber-300',
-      bg: 'bg-amber-100 dark:bg-amber-900/40',
-    },
-    {
-      key: 'cancelled',
-      label: 'Canceladas',
-      hint:
-        summary.count_cancelled === 0
-          ? 'ninguna'
-          : `${formatCurrency(summary.rejected_total, currency)} rechazadas · ${formatCurrency(summary.clawback_total, currency)} clawback`,
-      value: summary.cancelled_total,
-      icon: XCircle,
-      iconClass: 'text-red-700 dark:text-red-300',
-      bg: 'bg-red-100 dark:bg-red-900/40',
-    },
-  ];
+  const fmt = (valor: number, moneda?: string | null) => (unavailable ? '—' : formatMoneda(valor, paraDocumento(moneda || currency)));
+  const detalle = (texto: string) => (unavailable ? t('noDisponible') : texto);
 
   return (
-    <section aria-label="Resumen de comisiones del filtro" className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-      {cards.map((c) => (
-        <Card key={c.key} className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-          <CardContent className="p-4 sm:p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <span className={`rounded-lg p-2 ${c.bg}`} aria-hidden="true">
-                <c.icon className={`h-4 w-4 ${c.iconClass}`} />
-              </span>
-              <p className="text-sm text-gray-700 dark:text-gray-300">{c.label}</p>
-            </div>
-            {loading ? (
-              <Skeleton className="h-8 w-28" />
-            ) : unavailable ? (
-              <p className="text-2xl font-semibold text-gray-900 dark:text-white" aria-label="No disponible">—</p>
-            ) : (
-              <p className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-white">{formatCurrency(c.value, currency)}</p>
-            )}
-            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">{loading ? ' ' : unavailable ? 'No se pudo cargar' : c.hint}</p>
-          </CardContent>
-        </Card>
-      ))}
+    <section aria-label={t('etiqueta')} className="flex flex-col gap-2">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard
+          etiqueta={t('devengado')}
+          valor={fmt(summary.accrued_total)}
+          detalle={detalle(t('devengadoDetalle', { count: summary.count_pending + summary.count_paid }))}
+          cargando={loading}
+        />
+        <StatCard
+          etiqueta={t('porPagar')}
+          valor={fmt(summary.pending_total)}
+          detalle={detalle(t('porPagarDetalle', { count: summary.count_pending }))}
+          tono={!unavailable && summary.count_pending > 0 ? 'advertencia' : 'neutro'}
+          iconoDetalle={!unavailable && summary.count_pending > 0 ? TriangleAlert : undefined}
+          cargando={loading}
+        />
+        <StatCard
+          etiqueta={t('pagado')}
+          valor={fmt(summary.paid_total)}
+          detalle={detalle(summary.count_paid === 0 ? t('sinPagos') : t('pagadoDetalle', { count: summary.count_paid }))}
+          cargando={loading}
+        />
+        <StatCard
+          etiqueta={t('vendedores')}
+          valor={unavailable ? '—' : String(vendedores)}
+          detalle={detalle(soloPendientes ? t('vendedoresAbiertas') : t('vendedoresLista'))}
+          cargando={loading}
+        />
+      </div>
+      {!loading && !unavailable && summary.count_cancelled > 0 && (
+        <p className="text-xs text-fg-secondary">
+          {t('canceladas', { count: summary.count_cancelled, rechazadas: fmt(summary.rejected_total), clawback: fmt(summary.clawback_total) })}
+        </p>
+      )}
       {!loading && !unavailable && others.length > 0 && (
-        <ul className="col-span-2 space-y-1 text-sm text-gray-700 md:col-span-4 dark:text-gray-300" aria-label="Comisiones en otras monedas">
+        <ul className="flex flex-col gap-0.5 text-xs text-fg-secondary" aria-label={t('otrasMonedas')}>
           {others.map((o) => (
             <li key={o.currency}>
-              + {pluralComisiones(o.count)} en {o.currency}: {formatCurrency(o.accrued_total, o.currency)} devengado · {formatCurrency(o.paid_total, o.currency)} pagado ·{' '}
-              {formatCurrency(o.pending_total, o.currency)} pendiente
+              {t('otraMoneda', {
+                count: o.count,
+                moneda: o.currency,
+                devengado: fmt(o.accrued_total, o.currency),
+                pagado: fmt(o.paid_total, o.currency),
+                pendiente: fmt(o.pending_total, o.currency),
+              })}
             </li>
           ))}
         </ul>

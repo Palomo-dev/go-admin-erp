@@ -62204,5 +62204,157 @@
         "otro": "revisa que la cuenta exista y que tengas permiso de impuestos."
       }
     }
+  },
+  "finanzasComisiones": {
+    "titulo": "Comisiones",
+    "migas": {
+      "finanzas": "Finanzas",
+      "configuracion": "Configuración"
+    },
+    "pagarComisiones": "Pagar comisiones",
+    "sinNombre": "Sin nombre",
+    "todasLasFechas": "Todas las fechas",
+    "nVendedores": "{count, plural, =0 {sin vendedores} one {# vendedor} other {# vendedores}}",
+    "nComisiones": "{count, plural, one {# comisión} other {# comisiones}}",
+    "tablaEtiqueta": "Comisiones agrupadas por vendedor",
+    "pestanas": {
+      "etiqueta": "Estado de las comisiones",
+      "porPagar": "Por pagar",
+      "pagadas": "Pagadas",
+      "canceladas": "Canceladas",
+      "todas": "Todas"
+    },
+    "columnas": {
+      "vendedor": "Vendedor / documento",
+      "fecha": "Fecha",
+      "base": "Base",
+      "metodo": "Método",
+      "comision": "Comisión",
+      "estado": "Estado",
+      "asiento": "Asiento"
+    },
+    "estado": {
+      "porPagar": "Por pagar",
+      "sinPendientes": "Al día",
+      "devengada": "Devengada",
+      "pagada": "Pagada",
+      "clawback": "Clawback",
+      "rechazada": "Rechazada",
+      "cancelada": "Cancelada"
+    },
+    "origen": {
+      "sale": "Venta POS",
+      "invoice_sale": "Factura de venta",
+      "invoice_purchase": "Factura de compra",
+      "opportunity": "Oportunidad"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fijo",
+    "motivo": "Motivo: {motivo}",
+    "plegar": "Ocultar las comisiones de {nombre}",
+    "desplegar": "Mostrar las comisiones de {nombre}",
+    "acciones": {
+      "pagar": "Pagar",
+      "pagarPendientes": "{count, plural, one {Pagar la pendiente} other {Pagar las # pendientes}}",
+      "rechazar": "Rechazar",
+      "rechazarPendientes": "{count, plural, one {Rechazar la pendiente} other {Rechazar las # pendientes}}",
+      "clawback": "Revertir pago (clawback)",
+      "verOrigen": "Ver documento de origen",
+      "verAsiento": "Ver asiento",
+      "actualizar": "Actualizar",
+      "reglas": "Reglas de comisión"
+    },
+    "cifras": {
+      "etiqueta": "Resumen de comisiones del filtro",
+      "devengado": "Devengado",
+      "devengadoDetalle": "{count, plural, one {# comisión vigente} other {# comisiones vigentes}}",
+      "porPagar": "Por pagar",
+      "porPagarDetalle": "{count, plural, =0 {nada pendiente} one {# comisión por pagar} other {# comisiones por pagar}}",
+      "pagado": "Pagado",
+      "pagadoDetalle": "{count, plural, one {# pagada} other {# pagadas}}",
+      "sinPagos": "Aún no hay pagos",
+      "vendedores": "Vendedores",
+      "vendedoresAbiertas": "con comisiones abiertas",
+      "vendedoresLista": "en la lista",
+      "noDisponible": "No se pudo cargar",
+      "canceladas": "{count, plural, one {# cancelada} other {# canceladas}}: {rechazadas} rechazadas · {clawback} en clawback",
+      "otrasMonedas": "Comisiones en otras monedas",
+      "otraMoneda": "+ {count, plural, one {# comisión} other {# comisiones}} en {moneda}: {devengado} devengado · {pagado} pagado · {pendiente} pendiente"
+    },
+    "filtros": {
+      "buscar": "Buscar vendedor o nota",
+      "fechas": "Fechas",
+      "titulo": "Filtrar comisiones",
+      "origen": "Origen",
+      "miembro": "Vendedor",
+      "todos": "Todos"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "No hay comisiones por pagar",
+        "descripcion": "Las comisiones se generan solas al facturar con vendedor o al ganar una oportunidad, con la tasa de las reglas de comisión."
+      },
+      "pagadas": {
+        "titulo": "Aún no hay comisiones pagadas",
+        "descripcion": "Cuando pagues comisiones aparecerán aquí con su asiento."
+      },
+      "canceladas": {
+        "titulo": "No hay comisiones canceladas",
+        "descripcion": "Aquí aparecen las rechazadas y las revertidas (clawback), con su motivo."
+      },
+      "todas": {
+        "titulo": "Aún no hay comisiones",
+        "descripcion": "Se generan solas al facturar con vendedor o al ganar una oportunidad, con la tasa de las reglas de comisión."
+      }
+    },
+    "sinResultados": {
+      "titulo": "Ninguna comisión coincide",
+      "descripcion": "Prueba a ampliar las fechas, cambiar el vendedor o quitar filtros."
+    },
+    "error": {
+      "titulo": "No se pudieron cargar las comisiones",
+      "descripcion": "Revisa tu conexión y vuelve a intentarlo."
+    },
+    "errorParcial": "No se pudo actualizar la lista ({error}). Se muestra la última conocida.",
+    "mostrando": "Mostrando {shown} de {total} comisiones · {vendedores, plural, one {# vendedor} other {# vendedores}}",
+    "mostrandoTodo": "{count, plural, one {# comisión} other {# comisiones}} · {vendedores, plural, one {# vendedor} other {# vendedores}}",
+    "cargarMas": "Cargar más",
+    "cargando": "Cargando…",
+    "errores": {
+      "pagar": "No se pudo pagar",
+      "rechazar": "No se pudo rechazar",
+      "clawback": "No se pudo revertir"
+    },
+    "pagar": {
+      "titulo": "Pagar comisiones de {nombre}",
+      "tituloVarios": "Pagar comisiones de {count, plural, one {# vendedor} other {# vendedores}}",
+      "subtitulo": "{count, plural, one {# comisión pendiente} other {# comisiones pendientes}}. Solo se pagan las que sigan pendientes.",
+      "base": "Base de las ventas",
+      "baseMoneda": "Base de las ventas ({moneda})",
+      "total": "Total a pagar",
+      "totalMoneda": "Total a pagar ({moneda})",
+      "variasMonedas": "Hay comisiones en varias monedas: cada una se paga en la suya, nunca se suman.",
+      "fecha": "Fecha de pago",
+      "fechaAyuda": "El pago queda con la fecha de hoy.",
+      "referencia": "Referencia",
+      "referenciaEjemplo": "Ej: Transferencia 99120",
+      "asiento": "El asiento del pago debita la cuenta de comisiones por pagar y acredita la cuenta de donde sale el dinero.",
+      "confirmar": "Pagar",
+      "confirmarTotal": "Pagar {total}",
+      "nadaPendiente": "No hay comisiones pendientes para pagar."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Rechazar comisión} other {Rechazar # comisiones}}",
+      "descripcion": "{count, plural, one {La comisión de {nombre} quedará cancelada (rechazada).} other {Las # comisiones de {nombre} quedarán canceladas (rechazadas).}}",
+      "consecuencia": "Se revierte su asiento de devengo y el motivo queda en cada comisión.",
+      "confirmar": "Rechazar"
+    },
+    "clawback": {
+      "titulo": "Revertir comisión pagada (clawback)",
+      "descripcion": "Vas a revertir {importe} de {nombre}.",
+      "consecuencia1": "La comisión pasa a cancelada; la fecha de pago se conserva como evidencia.",
+      "consecuencia2": "Se revierten sus asientos. No se puede deshacer desde aquí.",
+      "confirmar": "Revertir"
+    }
   }
 }

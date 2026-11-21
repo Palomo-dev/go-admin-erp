@@ -62189,5 +62189,157 @@
         "otro": "vérifiez que le compte existe et que vous avez la permission sur les taxes."
       }
     }
+  },
+  "finanzasComisiones": {
+    "titulo": "Commissions",
+    "migas": {
+      "finanzas": "Finances",
+      "configuracion": "Configuration"
+    },
+    "pagarComisiones": "Payer les commissions",
+    "sinNombre": "Sans nom",
+    "todasLasFechas": "Toutes les dates",
+    "nVendedores": "{count, plural, =0 {aucun vendeur} one {# vendeur} other {# vendeurs}}",
+    "nComisiones": "{count, plural, one {# commission} other {# commissions}}",
+    "tablaEtiqueta": "Commissions regroupées par vendeur",
+    "pestanas": {
+      "etiqueta": "Statut des commissions",
+      "porPagar": "À payer",
+      "pagadas": "Payées",
+      "canceladas": "Annulées",
+      "todas": "Toutes"
+    },
+    "columnas": {
+      "vendedor": "Vendeur / document",
+      "fecha": "Date",
+      "base": "Base",
+      "metodo": "Méthode",
+      "comision": "Commission",
+      "estado": "Statut",
+      "asiento": "Écriture"
+    },
+    "estado": {
+      "porPagar": "À payer",
+      "sinPendientes": "À jour",
+      "devengada": "Acquise",
+      "pagada": "Payée",
+      "clawback": "Clawback",
+      "rechazada": "Rejetée",
+      "cancelada": "Annulée"
+    },
+    "origen": {
+      "sale": "Vente POS",
+      "invoice_sale": "Facture de vente",
+      "invoice_purchase": "Facture d'achat",
+      "opportunity": "Opportunité"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixe",
+    "motivo": "Motif : {motivo}",
+    "plegar": "Masquer les commissions de {nombre}",
+    "desplegar": "Afficher les commissions de {nombre}",
+    "acciones": {
+      "pagar": "Payer",
+      "pagarPendientes": "{count, plural, one {Payer celle en attente} other {Payer les # en attente}}",
+      "rechazar": "Rejeter",
+      "rechazarPendientes": "{count, plural, one {Rejeter celle en attente} other {Rejeter les # en attente}}",
+      "clawback": "Annuler le paiement (clawback)",
+      "verOrigen": "Voir le document d'origine",
+      "verAsiento": "Voir l'écriture",
+      "actualizar": "Actualiser",
+      "reglas": "Règles de commission"
+    },
+    "cifras": {
+      "etiqueta": "Résumé des commissions du filtre",
+      "devengado": "Acquis",
+      "devengadoDetalle": "{count, plural, one {# commission en cours} other {# commissions en cours}}",
+      "porPagar": "À payer",
+      "porPagarDetalle": "{count, plural, =0 {rien en attente} one {# commission à payer} other {# commissions à payer}}",
+      "pagado": "Payé",
+      "pagadoDetalle": "{count, plural, one {# payée} other {# payées}}",
+      "sinPagos": "Aucun paiement pour l'instant",
+      "vendedores": "Vendeurs",
+      "vendedoresAbiertas": "avec des commissions ouvertes",
+      "vendedoresLista": "dans la liste",
+      "noDisponible": "Chargement impossible",
+      "canceladas": "{count, plural, one {# annulée} other {# annulées}} : {rechazadas} rejetées · {clawback} en clawback",
+      "otrasMonedas": "Commissions dans d'autres devises",
+      "otraMoneda": "+ {count, plural, one {# commission} other {# commissions}} en {moneda} : {devengado} acquis · {pagado} payé · {pendiente} en attente"
+    },
+    "filtros": {
+      "buscar": "Rechercher un vendeur ou une note",
+      "fechas": "Dates",
+      "titulo": "Filtrer les commissions",
+      "origen": "Origine",
+      "miembro": "Vendeur",
+      "todos": "Tous"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "Aucune commission à payer",
+        "descripcion": "Les commissions sont créées automatiquement en facturant avec un vendeur ou en gagnant une opportunité, avec le taux des règles de commission."
+      },
+      "pagadas": {
+        "titulo": "Aucune commission payée pour l'instant",
+        "descripcion": "Quand vous payerez des commissions, elles apparaîtront ici avec leur écriture."
+      },
+      "canceladas": {
+        "titulo": "Aucune commission annulée",
+        "descripcion": "Les commissions rejetées et annulées (clawback) apparaissent ici avec leur motif."
+      },
+      "todas": {
+        "titulo": "Aucune commission pour l'instant",
+        "descripcion": "Elles sont créées automatiquement en facturant avec un vendeur ou en gagnant une opportunité, avec le taux des règles de commission."
+      }
+    },
+    "sinResultados": {
+      "titulo": "Aucune commission ne correspond",
+      "descripcion": "Élargissez les dates, changez de vendeur ou retirez des filtres."
+    },
+    "error": {
+      "titulo": "Impossible de charger les commissions",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "errorParcial": "Impossible d'actualiser la liste ({error}). La dernière connue est affichée.",
+    "mostrando": "{shown} sur {total} commissions · {vendedores, plural, one {# vendeur} other {# vendeurs}}",
+    "mostrandoTodo": "{count, plural, one {# commission} other {# commissions}} · {vendedores, plural, one {# vendeur} other {# vendeurs}}",
+    "cargarMas": "Charger plus",
+    "cargando": "Chargement…",
+    "errores": {
+      "pagar": "Paiement impossible",
+      "rechazar": "Rejet impossible",
+      "clawback": "Annulation impossible"
+    },
+    "pagar": {
+      "titulo": "Payer les commissions de {nombre}",
+      "tituloVarios": "Payer les commissions de {count, plural, one {# vendeur} other {# vendeurs}}",
+      "subtitulo": "{count, plural, one {# commission en attente} other {# commissions en attente}}. Seules celles toujours en attente sont payées.",
+      "base": "Base des ventes",
+      "baseMoneda": "Base des ventes ({moneda})",
+      "total": "Total à payer",
+      "totalMoneda": "Total à payer ({moneda})",
+      "variasMonedas": "Il y a des commissions dans plusieurs devises : chacune est payée dans la sienne, jamais additionnées.",
+      "fecha": "Date de paiement",
+      "fechaAyuda": "Le paiement est enregistré à la date du jour.",
+      "referencia": "Référence",
+      "referenciaEjemplo": "Ex. : Virement 99120",
+      "asiento": "L'écriture du paiement débite les commissions à payer et crédite le compte d'où sort l'argent.",
+      "confirmar": "Payer",
+      "confirmarTotal": "Payer {total}",
+      "nadaPendiente": "Il n'y a aucune commission en attente à payer."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Rejeter la commission} other {Rejeter # commissions}}",
+      "descripcion": "{count, plural, one {La commission de {nombre} sera annulée (rejetée).} other {Les # commissions de {nombre} seront annulées (rejetées).}}",
+      "consecuencia": "Son écriture d'acquisition est contrepassée et le motif est conservé sur chaque commission.",
+      "confirmar": "Rejeter"
+    },
+    "clawback": {
+      "titulo": "Annuler une commission payée (clawback)",
+      "descripcion": "Vous allez annuler {importe} de {nombre}.",
+      "consecuencia1": "La commission passe à annulée ; la date de paiement est conservée comme preuve.",
+      "consecuencia2": "Ses écritures sont contrepassées. Irréversible depuis cet écran.",
+      "confirmar": "Annuler le paiement"
+    }
   }
 }

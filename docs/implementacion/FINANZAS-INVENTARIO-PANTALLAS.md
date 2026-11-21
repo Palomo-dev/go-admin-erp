@@ -100,7 +100,7 @@ del visor (mayor, balance general, libro diario, auxiliar) y 5 con la tabla gen�
 | Transferencias: lista, nueva, detalle | `/finanzas/transferencias`, `/[id]` | Interfaz vieja | `TransferenciasPage.tsx`: 56 `dark:`; `TransferenciaDetalle.tsx`: 51; `NuevaTransferenciaDialog.tsx`: 25 |
 | Métodos de pago: listo, agregar, editar, Cobros QR, móvil | `/finanzas/metodos-pago` | Parcial: cabecera, pestañas, Cobros QR, formulario y «desactivar en vez de borrar» están hechos. La tabla sigue en `ui/table`, y el mapeo contable y las pasarelas son viejos | `PaymentMethodsList.tsx`; `AccountMappingForm.tsx` con 34 `dark:` |
 | Monedas y tasas: tres pestañas, agregar, tasa manual, histórico, móvil | `/finanzas/monedas` | Hecha según diseño. La tasa manual todavía no la leen facturas ni contabilidad | `609093167`; `FINANZAS-R2-PLAN.md`, frente C |
-| Comisiones por pagar y pagar comisiones | `/finanzas/comisiones` | Interfaz vieja | `comisiones/*`: 0 kit salvo `SearchInput`, `ComisionesList` con 24 `dark:` |
+| Comisiones por pagar y pagar comisiones | `/finanzas/comisiones` | Hecha según diseño (2026-11-21): pestañas por estado, cifras, tabla del kit agrupada por vendedor con asiento, diálogo «Pagar comisiones» con cuenta y referencia. Falta «Exportar» y la fecha de pago distinta de hoy (la ruta no la admite) | `page.tsx`, `ComisionesList.tsx`, `PagarComisionesDialog.tsx` |
 | Mapa de menú y rutas de Tesorería v2 | `src/lib/navigation/catalog.ts` | No existe: el menú sigue con Ingresos, Egresos, Transferencias y Bancos por separado | `catalog.ts`, líneas 478–485 |
 
 ## 3. Documentos y facturación electrónica
@@ -148,8 +148,8 @@ Quedan componentes viejos sin uso (`facturas-compra/id/*`, `nueva-factura/*`, `c
 
 | Pantalla (Figma) | Ruta en código | Estado | Evidencia |
 |---|---|---|---|
-| Impuestos: listado de escritorio y móvil con estados (listo, cargando, vacío, sin resultados, error, sin permiso, menú de fila) | `/finanzas/impuestos` | Parcial: `PageHeader`, `TabBar` y tarifa por defecto son del kit. La pestaña de impuestos es la tabla vieja y no hay móvil propio | `TaxesIndexPage.tsx`; `TaxesTable.tsx`: `ui/table`, 69 `dark:` |
-| Formulario de impuesto: nuevo y editar | diálogo | Interfaz vieja | `TaxForm.tsx`: 754 líneas, 72 `dark:` |
+| Impuestos: listado de escritorio y móvil con estados (listo, cargando, vacío, sin resultados, error, sin permiso, menú de fila) | `/finanzas/impuestos` | Hecha según diseño (2026-11-21): `DataTable` con tarjetas en móvil, tipo, código DIAN, productos por impuesto (`fn_impuestos_uso_productos`), menú ⋯ (editar, duplicar, predeterminado, activar, eliminar) y cobertura de la tarifa por defecto | `TaxesTable.tsx`, `TarifaPorDefectoCard.tsx`, `impuestosLogica.ts` |
+| Formulario de impuesto: nuevo y editar | diálogo | Hecha con el kit (2026-11-21): `Dialogo`, plantilla del país y código DIAN de solo lectura. «Tipo de tributo», «Aplica sobre» y «Exento/excluido» del Figma no tienen columna en la base | `TaxForm.tsx` |
 | Retenciones (Tesorería v2: impuestos con retenciones) | `/finanzas/impuestos`, pestaña Retenciones | Hecha según diseño | `RetencionesTable.tsx` con `DataTable` |
 | Producto › Impuestos | formulario de producto de Inventario | Hecha (fuera de Finanzas) | `SeccionImpuestos.tsx` |
 | Acción masiva «Asignar impuesto» | listado de productos | No existe | `inventario/productos/bulk/*` sin impuestos |

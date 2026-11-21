@@ -62189,5 +62189,157 @@
         "otro": "check that the account exists and that you have tax permission."
       }
     }
+  },
+  "finanzasComisiones": {
+    "titulo": "Commissions",
+    "migas": {
+      "finanzas": "Finance",
+      "configuracion": "Settings"
+    },
+    "pagarComisiones": "Pay commissions",
+    "sinNombre": "No name",
+    "todasLasFechas": "All dates",
+    "nVendedores": "{count, plural, =0 {no salespeople} one {# salesperson} other {# salespeople}}",
+    "nComisiones": "{count, plural, one {# commission} other {# commissions}}",
+    "tablaEtiqueta": "Commissions grouped by salesperson",
+    "pestanas": {
+      "etiqueta": "Commission status",
+      "porPagar": "To pay",
+      "pagadas": "Paid",
+      "canceladas": "Cancelled",
+      "todas": "All"
+    },
+    "columnas": {
+      "vendedor": "Salesperson / document",
+      "fecha": "Date",
+      "base": "Base",
+      "metodo": "Method",
+      "comision": "Commission",
+      "estado": "Status",
+      "asiento": "Entry"
+    },
+    "estado": {
+      "porPagar": "To pay",
+      "sinPendientes": "Up to date",
+      "devengada": "Accrued",
+      "pagada": "Paid",
+      "clawback": "Clawback",
+      "rechazada": "Rejected",
+      "cancelada": "Cancelled"
+    },
+    "origen": {
+      "sale": "POS sale",
+      "invoice_sale": "Sales invoice",
+      "invoice_purchase": "Purchase invoice",
+      "opportunity": "Opportunity"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixed",
+    "motivo": "Reason: {motivo}",
+    "plegar": "Hide {nombre}'s commissions",
+    "desplegar": "Show {nombre}'s commissions",
+    "acciones": {
+      "pagar": "Pay",
+      "pagarPendientes": "{count, plural, one {Pay the pending one} other {Pay the # pending}}",
+      "rechazar": "Reject",
+      "rechazarPendientes": "{count, plural, one {Reject the pending one} other {Reject the # pending}}",
+      "clawback": "Reverse payment (clawback)",
+      "verOrigen": "View source document",
+      "verAsiento": "View entry",
+      "actualizar": "Refresh",
+      "reglas": "Commission rules"
+    },
+    "cifras": {
+      "etiqueta": "Commission summary for the filter",
+      "devengado": "Accrued",
+      "devengadoDetalle": "{count, plural, one {# active commission} other {# active commissions}}",
+      "porPagar": "To pay",
+      "porPagarDetalle": "{count, plural, =0 {nothing pending} one {# commission to pay} other {# commissions to pay}}",
+      "pagado": "Paid",
+      "pagadoDetalle": "{count, plural, one {# paid} other {# paid}}",
+      "sinPagos": "No payments yet",
+      "vendedores": "Salespeople",
+      "vendedoresAbiertas": "with open commissions",
+      "vendedoresLista": "in the list",
+      "noDisponible": "Could not be loaded",
+      "canceladas": "{count, plural, one {# cancelled} other {# cancelled}}: {rechazadas} rejected · {clawback} clawed back",
+      "otrasMonedas": "Commissions in other currencies",
+      "otraMoneda": "+ {count, plural, one {# commission} other {# commissions}} in {moneda}: {devengado} accrued · {pagado} paid · {pendiente} pending"
+    },
+    "filtros": {
+      "buscar": "Search salesperson or note",
+      "fechas": "Dates",
+      "titulo": "Filter commissions",
+      "origen": "Source",
+      "miembro": "Salesperson",
+      "todos": "All"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "No commissions to pay",
+        "descripcion": "Commissions are created automatically when invoicing with a salesperson or winning an opportunity, with the rate in the commission rules."
+      },
+      "pagadas": {
+        "titulo": "No paid commissions yet",
+        "descripcion": "When you pay commissions they will appear here with their entry."
+      },
+      "canceladas": {
+        "titulo": "No cancelled commissions",
+        "descripcion": "Rejected and reversed (clawback) commissions appear here with their reason."
+      },
+      "todas": {
+        "titulo": "No commissions yet",
+        "descripcion": "They are created automatically when invoicing with a salesperson or winning an opportunity, with the rate in the commission rules."
+      }
+    },
+    "sinResultados": {
+      "titulo": "No commission matches",
+      "descripcion": "Try widening the dates, changing the salesperson or clearing filters."
+    },
+    "error": {
+      "titulo": "Commissions could not be loaded",
+      "descripcion": "Check your connection and try again."
+    },
+    "errorParcial": "The list could not be refreshed ({error}). Showing the last known one.",
+    "mostrando": "Showing {shown} of {total} commissions · {vendedores, plural, one {# salesperson} other {# salespeople}}",
+    "mostrandoTodo": "{count, plural, one {# commission} other {# commissions}} · {vendedores, plural, one {# salesperson} other {# salespeople}}",
+    "cargarMas": "Load more",
+    "cargando": "Loading…",
+    "errores": {
+      "pagar": "Could not pay",
+      "rechazar": "Could not reject",
+      "clawback": "Could not reverse"
+    },
+    "pagar": {
+      "titulo": "Pay {nombre}'s commissions",
+      "tituloVarios": "Pay commissions of {count, plural, one {# salesperson} other {# salespeople}}",
+      "subtitulo": "{count, plural, one {# pending commission} other {# pending commissions}}. Only those still pending are paid.",
+      "base": "Sales base",
+      "baseMoneda": "Sales base ({moneda})",
+      "total": "Total to pay",
+      "totalMoneda": "Total to pay ({moneda})",
+      "variasMonedas": "There are commissions in several currencies: each one is paid in its own, never added together.",
+      "fecha": "Payment date",
+      "fechaAyuda": "The payment is recorded with today's date.",
+      "referencia": "Reference",
+      "referenciaEjemplo": "E.g.: Transfer 99120",
+      "asiento": "The payment entry debits commissions payable and credits the account the money comes from.",
+      "confirmar": "Pay",
+      "confirmarTotal": "Pay {total}",
+      "nadaPendiente": "There are no pending commissions to pay."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Reject commission} other {Reject # commissions}}",
+      "descripcion": "{count, plural, one {{nombre}'s commission will be cancelled (rejected).} other {{nombre}'s # commissions will be cancelled (rejected).}}",
+      "consecuencia": "Its accrual entry is reversed and the reason is stored on each commission.",
+      "confirmar": "Reject"
+    },
+    "clawback": {
+      "titulo": "Reverse paid commission (clawback)",
+      "descripcion": "You are about to reverse {importe} from {nombre}.",
+      "consecuencia1": "The commission becomes cancelled; the payment date is kept as evidence.",
+      "consecuencia2": "Its entries are reversed. It cannot be undone from here.",
+      "confirmar": "Reverse"
+    }
   }
 }

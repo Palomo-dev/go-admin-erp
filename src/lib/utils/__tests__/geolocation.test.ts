@@ -1,8 +1,8 @@
 /// <reference types="jest" />
 /**
- * Ubicación sin diálogo propio (2026-11-06). El permiso es solo el del navegador:
- * sin preferencia guardada se le pide la posición directamente, y un rechazo
- * guardado evita volver a preguntar en cada inicio de sesión.
+ * Ubicación al iniciar sesión SIN abrir el aviso de permiso (2026-11-20). En
+ * iPhone el aviso salía sobre «Elige una organización» y volvía a salir tras la
+ * redirección: solo se lee la posición si el permiso ya estaba concedido.
  */
 import { getLocationFromBrowser, getGeolocationPreference } from '../geolocation';
 
@@ -13,12 +13,13 @@ type Fallo = (e: { code: number; message: string }) => void;
 
 const globales = globalThis as unknown as Record<string, unknown>;
 
-function preparar(cookie: string, responder: (ok: Exito, ko: Fallo) => void) {
+function preparar(cookie: string, responder: (ok: Exito, ko: Fallo) => void, permiso: PermissionState | null = 'granted') {
   const getCurrentPosition = jest.fn(responder);
   const doc = { cookie };
   globales.document = doc;
+  const permissions = permiso === null ? undefined : { query: jest.fn(async () => ({ state: permiso })) };
   Object.defineProperty(globalThis, 'navigator', {
-    value: { geolocation: { getCurrentPosition } },
+    value: { geolocation: { getCurrentPosition }, permissions },
     configurable: true,
   });
   return { getCurrentPosition, doc };
@@ -31,7 +32,20 @@ afterEach(() => {
 });
 
 describe('getLocationFromBrowser', () => {
-  it('sin preferencia guardada pide la posición al navegador', async () => {
+  it('sin permiso concedido NO abre el aviso del navegador', async () => {
+    const { getCurrentPosition, doc } = preparar('', conPosicion, 'prompt');
+    await expect(getLocationFromBrowser()).resolves.toBe('Ubicación no solicitada al iniciar sesión');
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+    expect(doc.cookie).toBe('');
+  });
+
+  it('sin Permissions API (no se puede saber) tampoco pregunta', async () => {
+    const { getCurrentPosition } = preparar('', conPosicion, null);
+    await expect(getLocationFromBrowser()).resolves.toBe('Ubicación no solicitada al iniciar sesión');
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('con el permiso ya concedido lee la posición', async () => {
     const { getCurrentPosition, doc } = preparar('', conPosicion);
     await expect(getLocationFromBrowser()).resolves.toBe('Coordenadas GPS: 4.7110, -74.0721');
     expect(getCurrentPosition).toHaveBeenCalledTimes(1);

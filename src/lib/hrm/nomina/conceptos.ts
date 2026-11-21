@@ -85,6 +85,9 @@ export const FILAS_CATALOGO_BASE: readonly Fila[] = [
   ['LICENCIA_REMUNERADA', 'Licencia remunerada', 'devengado', S, S, N, S, S, S, '510506', null, 'LicenciaR'],
   ['PRIMA_SERVICIOS', 'Prima de servicios', 'devengado', N, N, N, N, S, N, '2520', null, 'Primas'],
   ['INTERESES_CESANTIAS', 'Intereses sobre cesantías', 'devengado', N, N, N, N, S, N, '2515', null, 'Cesantias'],
+  // Contador 2026-11-20: la propina no es gasto ni salario (art. 131 CST, Ley 1935 de 2018); sale de lo
+  // liquidado y por pagar al trabajador (28150502) y no entra en aportes, prestaciones ni la regla del 40 %.
+  ['PROPINAS', 'Propinas (no salarial)', 'devengado', N, N, N, N, N, N, '28150502', null, null],
   // Deducciones
   ['SALUD_EMPLEADO', 'Salud (trabajador)', 'deduccion', N, N, N, N, N, N, null, '237005', 'Salud'],
   ['PENSION_EMPLEADO', 'Pensión (trabajador)', 'deduccion', N, N, N, N, N, N, null, '238030', 'FondoPension'],

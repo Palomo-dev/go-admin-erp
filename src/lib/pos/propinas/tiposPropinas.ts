@@ -116,6 +116,8 @@ export interface LineaLiquidacion extends PersonaPropina {
   /** Null mientras esté por pagar. */
   pagado_en?: string | null;
   medio_pago?: MedioPagoLinea | null;
+  /** Lo ya pagado de esta línea (la nómina puede pagar una parte). */
+  pagado_monto?: number;
 }
 
 export interface MovimientoCajaRef {

@@ -61,7 +61,12 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   nequi: 'Nequi',
   daviplata: 'Daviplata',
   pse: 'PSE',
-  mp_checkout: 'MercadoPago',
+  // Mercado Pago: el método se guarda con el código 'mp' (el que enlaza el ERP); los otros dos
+  // son el nombre del conector y el de la pasarela.
+  mp: 'Mercado Pago',
+  mercadopago: 'Mercado Pago',
+  mp_checkout: 'Mercado Pago',
+  boton_bancolombia: 'Botón Bancolombia',
   stripe_payments: 'Stripe',
   payu_co: 'PayU',
   paypal_checkout: 'PayPal',

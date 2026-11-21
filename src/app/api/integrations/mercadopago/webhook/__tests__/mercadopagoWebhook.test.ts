@@ -72,6 +72,21 @@ describe('MercadoPago webhook: busca la conexión por el estado real del CHECK',
     expect(mockAdmin.inserts).toEqual([]);
   });
 
+  it('firma válida y pago inexistente («Simular notificación»): se anota como recibido, sin procesar', async () => {
+    mockAdmin = makeAdminFake({ integration_connections: connectionFixture('mercadopago', 'mercadopago') });
+    fetchSpy.mockResolvedValueOnce({ ok: false, json: async () => ({}) } as never);
+
+    const res = await POST(req({ type: 'payment', data: { id: 'pago-1' } }));
+
+    expect(await res.json()).toEqual({ received: true, processed: false });
+    expect(mockAdmin.inserts).toEqual([
+      expect.objectContaining({
+        table: 'integration_events',
+        payload: expect.objectContaining({ connection_id: connectionId('connected'), status: 'received', direction: 'inbound' }),
+      }),
+    ]);
+  });
+
   it('el select solo pide columnas reales de integration_connections', async () => {
     mockAdmin = makeAdminFake({ integration_connections: connectionFixture('mercadopago', 'mercadopago') });
     await POST(req({ type: 'payment', data: { id: 'pago-1' } }));

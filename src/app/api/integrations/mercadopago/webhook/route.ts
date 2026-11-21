@@ -95,7 +95,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (!paymentData) {
-      console.warn('[MercadoPago Webhook] no se pudo obtener el pago de la conexión que firmó');
+      // La firma es válida pero el pago no existe: es la «Simular notificación» del panel de
+      // Mercado Pago (manda un id inventado) o un pago de otra cuenta. Se anota igual como recibido:
+      // prueba que la URL y el secreto quedaron bien, y el asistente deja de decir «sin eventos».
+      console.warn('[MercadoPago Webhook] firma válida, pago no encontrado con el token de la conexión');
+      await admin.from('integration_events').insert({
+        connection_id: firmante.id,
+        organization_id: firmante.organizationId,
+        source: 'webhook',
+        direction: 'inbound',
+        event_type: notification.action || 'payment',
+        external_event_id: paymentId,
+        payload: { payment_id: paymentId, verified: true, pago_encontrado: false },
+        status: 'received',
+      });
       return NextResponse.json({ received: true, processed: false });
     }
 

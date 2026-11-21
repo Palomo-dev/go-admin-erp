@@ -53,7 +53,8 @@ describe('plural de «comisión» por función pura', () => {
   });
   it('ninguna fuente de la zona escribe «comisiónes» ni el patrón comisión${…es}', () => {
     const files = [
-      'src/components/finanzas/comisiones/ComisionesToolbar.tsx',
+      'src/app/app/finanzas/comisiones/page.tsx',
+      'src/components/finanzas/comisiones/PagarComisionesDialog.tsx',
       'src/components/finanzas/comisiones/useComisiones.ts',
       'src/components/finanzas/comisiones/ComisionesSummary.tsx',
       'src/components/inicio/widgets/CommissionsWidget.tsx',
@@ -80,16 +81,17 @@ describe('plural de «comisión» por función pura', () => {
 });
 
 describe('contrato de fuente — foco, motivo visible, porcentaje real, contraste', () => {
-  it('los tres useReturnFocus de comisiones llevan fallback y la barra no se desmonta con el diálogo abierto', () => {
-    const toolbar = stripComments(read('src/components/finanzas/comisiones/ComisionesToolbar.tsx'));
+  it('rediseño 2026-11-21 (Figma 1012:87993): los diálogos de comisiones son los del kit, que devuelven el foco al cerrar', () => {
+    // La barra de selección y sus tres useReturnFocus se retiraron con el rediseño
+    // (pagar por vendedor o desde ⋯ de la fila). Rechazo y clawback van por
+    // DialogoMotivo; el pago por el Dialogo del kit. Ninguno es el ConfirmDialog
+    // viejo ni el ReasonDialog con `dark:`.
     const page = stripComments(read('src/app/app/finanzas/comisiones/page.tsx'));
-    const clawback = stripComments(read('src/components/finanzas/comisiones/ClawbackDialog.tsx'));
-    expect(toolbar).toMatch(/useReturnFocus\([^)]*,\s*\w+\)/);
-    expect(page).toMatch(/useReturnFocus\([^)]*,\s*\w+\)/);
-    expect(clawback).toMatch(/useReturnFocus\(open,\s*\w+\)/);
-    // La barra solo se retira cuando no hay selección Y no hay diálogo abierto.
-    expect(toolbar).toMatch(/selectedRows\.length === 0 && dialog === null\) return null/);
-    expect(toolbar).not.toMatch(/if \(selectedRows\.length === 0\) return null/);
+    const pagar = stripComments(read('src/components/finanzas/comisiones/PagarComisionesDialog.tsx'));
+    expect(page).toMatch(/<DialogoMotivo\b/);
+    expect(page).toMatch(/maximo=\{REASON_MAX\}/);
+    expect(pagar).toMatch(/<Dialogo\b/);
+    expect(page).not.toMatch(/ConfirmDialog|ReasonDialog|ComisionesToolbar/);
   });
   it('borrar cuota: fallback a la siguiente cuota o al botón «Guardar cuota» del bloque «Nueva cuota»', () => {
     const history = stripComments(read('src/components/organization/quotas/QuotaHistory.tsx'));
@@ -99,8 +101,11 @@ describe('contrato de fuente — foco, motivo visible, porcentaje real, contrast
   });
   it('la lista muestra el motivo del rechazo/clawback como texto, no solo en title', () => {
     const list = stripComments(read('src/components/finanzas/comisiones/ComisionesList.tsx'));
-    expect(list).not.toMatch(/title=\{c\.status === 'cancelled'/);
-    expect(list).toMatch(/Motivo:\s*\{c\.notes\}/);
+    expect(list).not.toMatch(/title=\{[^}]*status === 'cancelled'/);
+    // El texto vive en messages (finanzasComisiones.motivo = «Motivo: {motivo}»).
+    expect(list).toMatch(/t\('motivo', \{ motivo: f\.fila\.notes \}\)/);
+    const es = JSON.parse(read('messages/es.json'));
+    expect(es.finanzasComisiones.motivo).toBe('Motivo: {motivo}');
   });
   it('el historial de cuotas muestra el porcentaje real (raw_pct), no el acotado a 100', () => {
     const history = stripComments(read('src/components/organization/quotas/QuotaHistory.tsx'));

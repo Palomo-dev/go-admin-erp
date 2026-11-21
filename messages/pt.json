@@ -42363,6 +42363,27 @@
         "codigo": "O código deve ter pelo menos 2 caracteres",
         "guardar": "Não foi possível salvar a forma de pagamento",
         "estado": "Não foi possível alterar o status da forma"
+      },
+      "selector": {
+        "buscar": "Buscar método, banco ou gateway…",
+        "vacio": "Não há métodos para adicionar",
+        "sinResultados": "Nenhum método corresponde",
+        "crearTexto": "Criar «{texto}» como método personalizado",
+        "filtrosEtiqueta": "Tipo de método",
+        "requiereConexion": "Requer conexão",
+        "yaLoTienes": "Você já tem",
+        "conectada": "Conectado",
+        "sinConectar": "Não conectado",
+        "grupo": {
+          "manual": "Método",
+          "pasarela": "Gateway"
+        },
+        "filtros": {
+          "efectivo_bancos": "Dinheiro e bancos",
+          "billeteras": "Carteiras",
+          "pasarelas": "Gateways",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49096,6 +49117,10 @@
           "descripcion": "O provedor aceitou as chaves e elas foram guardadas no servidor. Você só verá os últimos 4 caracteres.",
           "webhookPendiente": "Quando chegar o primeiro evento, você o verá em Atividade.",
           "verConexion": "Ver conexão"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} não permite verificar chaves de teste",
+          "descripcion": "Elas são salvas sem verificação. Faça um pagamento de teste na sua loja para confirmar que funcionam."
         }
       },
       "ota": {
@@ -62008,6 +62033,348 @@
       "MOTIVO_REQUERIDO": "Informe o motivo do cancelamento.",
       "datos_invalidos": "Revise os dados do formulário.",
       "DESCONOCIDO": "Não foi possível concluir. Tente de novo em instantes."
+    }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Novo imposto",
+    "subtitulo": "{impuestos, plural, =0 {Sem impostos de venda e compra} one {# imposto de venda e compra} other {# impostos de venda e compra}} · {retenciones, plural, =0 {sem retenções} one {# retenção} other {# retenções}}",
+    "subtituloTarifa": "alíquota padrão: {tarifa}",
+    "subtituloSinTarifa": "sem alíquota padrão",
+    "subtituloMovil": "{impuestos, plural, one {# imposto} other {# impostos}} · {activos, plural, one {# ativo} other {# ativos}}",
+    "pestanas": {
+      "impuestos": "Impostos"
+    },
+    "tablaEtiqueta": "Impostos de venda e compra da organização",
+    "buscar": "Buscar imposto por nome ou alíquota",
+    "columnas": {
+      "nombre": "Nome",
+      "tipo": "Tipo",
+      "tarifa": "Alíquota",
+      "codigoDian": "Código DIAN",
+      "productos": "Produtos",
+      "estado": "Status"
+    },
+    "tipos": {
+      "iva": "IVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Outro"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Ativo",
+      "inactivo": "Inativo"
+    },
+    "insignias": {
+      "exento": "Isento",
+      "predeterminado": "Padrão",
+      "incluido": "Incluído",
+      "incluidoLargo": "incluído no preço"
+    },
+    "filtros": {
+      "titulo": "Filtrar impostos",
+      "estado": "Status",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "activos": "Ativos",
+      "inactivos": "Inativos"
+    },
+    "acciones": {
+      "editar": "Editar imposto",
+      "duplicar": "Duplicar",
+      "predeterminado": "Tornar padrão",
+      "predeterminadoInactivo": "Ative-o primeiro: um imposto inativo não pode ser a alíquota padrão.",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "activarNombre": "Ativar {nombre}",
+      "desactivarNombre": "Desativar {nombre}",
+      "eliminar": "Excluir imposto",
+      "eliminarPredeterminado": "É a alíquota padrão: escolha outra antes de excluí-lo.",
+      "eliminarEnUso": "{count, plural, one {Usado por # produto} other {Usado por # produtos}}: remova-o deles ou desative-o.",
+      "actualizar": "Atualizar"
+    },
+    "vacio": {
+      "titulo": "Ainda não há impostos",
+      "descripcion": "Crie o IVA e os outros impostos que você cobra, ou carregue o modelo do seu país."
+    },
+    "sinResultados": {
+      "titulo": "Nenhum imposto corresponde",
+      "descripcion": "Tente outro nome ou alíquota, ou limpe os filtros."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os impostos",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso aos impostos",
+      "descripcion": "Peça a um administrador da organização acesso a Finanças."
+    },
+    "sustantivo": {
+      "singular": "imposto",
+      "plural": "impostos"
+    },
+    "plantilla": {
+      "cargar": "Carregar modelo de {pais}",
+      "cargada": "Os impostos que faltavam do modelo de {pais} foram adicionados.",
+      "error": "Não foi possível carregar o modelo de impostos."
+    },
+    "toast": {
+      "errorTitulo": "Erro",
+      "sinOrganizacion": "Nenhuma organização ativa foi encontrada.",
+      "errorOrganizacion": "Não foi possível obter as informações da organização.",
+      "activado": "{nombre} ficou ativo.",
+      "desactivado": "{nombre} ficou inativo.",
+      "errorEstado": "Não foi possível mudar o status do imposto.",
+      "predeterminado": "{nombre} agora é a alíquota padrão.",
+      "errorPredeterminado": "Não foi possível mudar a alíquota padrão."
+    },
+    "tarifa": {
+      "titulo": "Alíquota para produtos sem imposto: {tarifa}",
+      "ninguna": "Nenhuma ({tasa})",
+      "cobertura": "{con} de {total} produtos têm imposto atribuído. Os outros {sin} são vendidos com esta alíquota. Um produto isento ou excluído é marcado assim no produto: nunca usa esta alíquota.",
+      "ayuda": "Aplica-se em faturas, orçamentos e PDV aos produtos sem imposto próprio. Se escolher «Nenhuma», essas vendas saem sem IVA e você verá um aviso antes de emitir.",
+      "barraEtiqueta": "Produtos com imposto atribuído",
+      "leyenda": "Com imposto {con} % · Isento ou excluído {exentos} % · Sem configurar {sin} %",
+      "cambiar": "Mudar alíquota",
+      "dialogoTitulo": "Alíquota para produtos sem imposto",
+      "etiqueta": "Alíquota padrão",
+      "elegir": "Selecione uma alíquota",
+      "opcionNinguna": "Nenhuma — vendo produtos excluídos ou isentos",
+      "guardar": "Salvar alíquota",
+      "guardadaTitulo": "Alíquota padrão atualizada",
+      "guardadaNinguna": "Os produtos sem imposto atribuído serão vendidos sem IVA.",
+      "guardadaTarifa": "Os produtos sem imposto atribuído usarão esta alíquota.",
+      "errorTitulo": "Erro",
+      "error": "Não foi possível salvar a alíquota padrão. Tente novamente."
+    },
+    "eliminar": {
+      "titulo": "Excluir {nombre}?",
+      "descripcion": "Você vai excluir <b>{nombre}</b> ({tasa}). Esta ação não pode ser desfeita. Se produtos o usam ou se é a alíquota padrão, não é excluído.",
+      "confirmar": "Excluir",
+      "errorTitulo": "Não excluído",
+      "error": "Não foi possível excluir o imposto. Tente novamente.",
+      "hecho": "Imposto excluído."
+    },
+    "formulario": {
+      "nuevo": "Novo imposto",
+      "editar": "Editar imposto",
+      "duplicar": "Duplicar imposto",
+      "nombreCopia": "{nombre} (cópia)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {sem produtos} one {usado em # produto} other {usado em # produtos}}",
+      "guardar": "Salvar",
+      "guardarCambios": "Salvar alterações",
+      "plantillas": {
+        "aviso": "São mostrados os modelos de impostos do seu país. Você pode usar um como base ou criar um imposto personalizado.",
+        "usar": "Usar modelo de imposto",
+        "etiqueta": "Modelos de impostos disponíveis",
+        "etiquetaPais": "Modelos de impostos disponíveis ({pais})",
+        "ayuda": "Apenas os modelos do seu país de operação.",
+        "sinPlantillas": "Não há modelos de impostos para o seu país.",
+        "elegir": "Selecione o modelo"
+      },
+      "nombre": "Nome",
+      "nombreEjemplo": "Ex.: IVA 19 %",
+      "tasa": "Alíquota (%)",
+      "tasaEjemplo": "Ex.: 19",
+      "tasaAyuda": "Entre 0 e 100. Até 3 decimais (ICA por mil: 0,966).",
+      "codigoDian": "Código DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Não vai como imposto da linha",
+      "codigoDianAyuda": "Usado pela fatura eletrônica; vem do modelo ou do nome.",
+      "tipos": {
+        "iva": "IVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Outro"
+      },
+      "descripcion": "Descrição",
+      "descripcionEjemplo": "Descrição do imposto",
+      "cuentaIva": "Conta a pagar (plano de contas)",
+      "elegirCuenta": "Selecione a conta",
+      "cuentaIvaAyuda": "O IVA a pagar é 2408. Só são oferecidas contas de passivo de detalhe que existem no plano.",
+      "cuentaIvaInexistente": "O mapeamento atual ({cuenta}) não existe no plano. Escolha uma conta real; 2408 é o IVA a pagar.",
+      "cuentaIvaSinDetalle": "O plano não tem conta de detalhe sob 2408 (IVA a pagar). Escolha outra de passivo de detalhe ou crie-a no plano de contas.",
+      "cuentaIvaAuxiliar": "A 2408 é de título no seu plano; o IVA é registrado na sua subconta {cuenta}.",
+      "cuentaRetencionInexistente": "A conta {cuenta} não está no plano ou é de título. Escolha uma de detalhe.",
+      "opciones": "Opções do imposto",
+      "activo": "Imposto ativo",
+      "activaRetencion": "Retenção ativa",
+      "predeterminado": "Alíquota padrão",
+      "predeterminadoAyuda": "Usada pelos produtos sem imposto atribuído (não os isentos). Só existe uma.",
+      "incluido": "Incluído no preço",
+      "incluidoAyuda": "O preço do produto já inclui este imposto. Não é somado ao total.",
+      "errorTitulo": "Erro",
+      "errorGuardar": "Não foi possível salvar o imposto. Tente novamente.",
+      "creado": "Imposto criado.",
+      "actualizado": "Imposto atualizado.",
+      "validacion": {
+        "nombre": "O nome do imposto é obrigatório.",
+        "tasa": "A alíquota deve estar entre 0 e 100 %.",
+        "cuentaTitulo": "Conta contábil obrigatória",
+        "cuenta": "O IVA a pagar precisa de uma conta de passivo de detalhe. A conta canônica é 2408."
+      },
+      "cuentaGuardadaSinCuenta": "O imposto foi salvo, mas não a conta",
+      "cuentaErrorDetalle": "O IVA a pagar é 2408: {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "a conta não existe no plano de contas.",
+        "cuenta_de_titulo": "a conta é de título e não recebe o IVA. Escolha uma de detalhe.",
+        "cuenta_no_es_pasivo": "a conta não é de passivo.",
+        "otro": "verifique se a conta existe e se você tem permissão de impostos."
+      }
+    }
+  },
+  "finanzasComisiones": {
+    "titulo": "Comissões",
+    "migas": {
+      "finanzas": "Finanças",
+      "configuracion": "Configuração"
+    },
+    "pagarComisiones": "Pagar comissões",
+    "sinNombre": "Sem nome",
+    "todasLasFechas": "Todas as datas",
+    "nVendedores": "{count, plural, =0 {sem vendedores} one {# vendedor} other {# vendedores}}",
+    "nComisiones": "{count, plural, one {# comissão} other {# comissões}}",
+    "tablaEtiqueta": "Comissões agrupadas por vendedor",
+    "pestanas": {
+      "etiqueta": "Status das comissões",
+      "porPagar": "A pagar",
+      "pagadas": "Pagas",
+      "canceladas": "Canceladas",
+      "todas": "Todas"
+    },
+    "columnas": {
+      "vendedor": "Vendedor / documento",
+      "fecha": "Data",
+      "base": "Base",
+      "metodo": "Método",
+      "comision": "Comissão",
+      "estado": "Status",
+      "asiento": "Lançamento"
+    },
+    "estado": {
+      "porPagar": "A pagar",
+      "sinPendientes": "Em dia",
+      "devengada": "Apurada",
+      "pagada": "Paga",
+      "clawback": "Clawback",
+      "rechazada": "Rejeitada",
+      "cancelada": "Cancelada"
+    },
+    "origen": {
+      "sale": "Venda PDV",
+      "invoice_sale": "Fatura de venda",
+      "invoice_purchase": "Fatura de compra",
+      "opportunity": "Oportunidade"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixo",
+    "motivo": "Motivo: {motivo}",
+    "plegar": "Ocultar as comissões de {nombre}",
+    "desplegar": "Mostrar as comissões de {nombre}",
+    "acciones": {
+      "pagar": "Pagar",
+      "pagarPendientes": "{count, plural, one {Pagar a pendente} other {Pagar as # pendentes}}",
+      "rechazar": "Rejeitar",
+      "rechazarPendientes": "{count, plural, one {Rejeitar a pendente} other {Rejeitar as # pendentes}}",
+      "clawback": "Reverter pagamento (clawback)",
+      "verOrigen": "Ver documento de origem",
+      "verAsiento": "Ver lançamento",
+      "actualizar": "Atualizar",
+      "reglas": "Regras de comissão"
+    },
+    "cifras": {
+      "etiqueta": "Resumo das comissões do filtro",
+      "devengado": "Apurado",
+      "devengadoDetalle": "{count, plural, one {# comissão vigente} other {# comissões vigentes}}",
+      "porPagar": "A pagar",
+      "porPagarDetalle": "{count, plural, =0 {nada pendente} one {# comissão a pagar} other {# comissões a pagar}}",
+      "pagado": "Pago",
+      "pagadoDetalle": "{count, plural, one {# paga} other {# pagas}}",
+      "sinPagos": "Ainda não há pagamentos",
+      "vendedores": "Vendedores",
+      "vendedoresAbiertas": "com comissões abertas",
+      "vendedoresLista": "na lista",
+      "noDisponible": "Não foi possível carregar",
+      "canceladas": "{count, plural, one {# cancelada} other {# canceladas}}: {rechazadas} rejeitadas · {clawback} em clawback",
+      "otrasMonedas": "Comissões em outras moedas",
+      "otraMoneda": "+ {count, plural, one {# comissão} other {# comissões}} em {moneda}: {devengado} apurado · {pagado} pago · {pendiente} pendente"
+    },
+    "filtros": {
+      "buscar": "Buscar vendedor ou nota",
+      "fechas": "Datas",
+      "titulo": "Filtrar comissões",
+      "origen": "Origem",
+      "miembro": "Vendedor",
+      "todos": "Todos"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "Não há comissões a pagar",
+        "descripcion": "As comissões são geradas sozinhas ao faturar com vendedor ou ganhar uma oportunidade, com a taxa das regras de comissão."
+      },
+      "pagadas": {
+        "titulo": "Ainda não há comissões pagas",
+        "descripcion": "Quando você pagar comissões, elas aparecerão aqui com o lançamento."
+      },
+      "canceladas": {
+        "titulo": "Não há comissões canceladas",
+        "descripcion": "Aqui aparecem as rejeitadas e as revertidas (clawback), com o motivo."
+      },
+      "todas": {
+        "titulo": "Ainda não há comissões",
+        "descripcion": "São geradas sozinhas ao faturar com vendedor ou ganhar uma oportunidade, com a taxa das regras de comissão."
+      }
+    },
+    "sinResultados": {
+      "titulo": "Nenhuma comissão corresponde",
+      "descripcion": "Tente ampliar as datas, trocar o vendedor ou limpar os filtros."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar as comissões",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "errorParcial": "Não foi possível atualizar a lista ({error}). Mostrando a última conhecida.",
+    "mostrando": "Mostrando {shown} de {total} comissões · {vendedores, plural, one {# vendedor} other {# vendedores}}",
+    "mostrandoTodo": "{count, plural, one {# comissão} other {# comissões}} · {vendedores, plural, one {# vendedor} other {# vendedores}}",
+    "cargarMas": "Carregar mais",
+    "cargando": "Carregando…",
+    "errores": {
+      "pagar": "Não foi possível pagar",
+      "rechazar": "Não foi possível rejeitar",
+      "clawback": "Não foi possível reverter"
+    },
+    "pagar": {
+      "titulo": "Pagar comissões de {nombre}",
+      "tituloVarios": "Pagar comissões de {count, plural, one {# vendedor} other {# vendedores}}",
+      "subtitulo": "{count, plural, one {# comissão pendente} other {# comissões pendentes}}. Só são pagas as que continuarem pendentes.",
+      "base": "Base das vendas",
+      "baseMoneda": "Base das vendas ({moneda})",
+      "total": "Total a pagar",
+      "totalMoneda": "Total a pagar ({moneda})",
+      "variasMonedas": "Há comissões em várias moedas: cada uma é paga na sua, nunca são somadas.",
+      "fecha": "Data do pagamento",
+      "fechaAyuda": "O pagamento fica com a data de hoje.",
+      "referencia": "Referência",
+      "referenciaEjemplo": "Ex.: Transferência 99120",
+      "asiento": "O lançamento do pagamento debita comissões a pagar e credita a conta de onde sai o dinheiro.",
+      "confirmar": "Pagar",
+      "confirmarTotal": "Pagar {total}",
+      "nadaPendiente": "Não há comissões pendentes para pagar."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Rejeitar comissão} other {Rejeitar # comissões}}",
+      "descripcion": "{count, plural, one {A comissão de {nombre} ficará cancelada (rejeitada).} other {As # comissões de {nombre} ficarão canceladas (rejeitadas).}}",
+      "consecuencia": "Seu lançamento de apuração é estornado e o motivo fica em cada comissão.",
+      "confirmar": "Rejeitar"
+    },
+    "clawback": {
+      "titulo": "Reverter comissão paga (clawback)",
+      "descripcion": "Você vai reverter {importe} de {nombre}.",
+      "consecuencia1": "A comissão passa a cancelada; a data de pagamento é mantida como evidência.",
+      "consecuencia2": "Seus lançamentos são estornados. Não pode ser desfeito daqui.",
+      "confirmar": "Reverter"
     }
   }
 }

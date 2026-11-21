@@ -152,6 +152,11 @@ export async function probarLlaves(
       // Métodos de pago del link (`boldService.getPaymentMethods`): responde solo con una llave de
       // identidad válida. La llave secreta no tiene prueba en la API (solo firma los eventos): se
       // verifica cuando llega el primer evento firmado. Bold usa la misma URL en los dos ambientes.
+      // Llaves de PRUEBA: ninguna API de Bold las acepta (link, pagos en línea, voucher y
+      // datáfono responden 403, igual que con una llave inventada: comprobado el 2026-11-21 con
+      // llaves de prueba reales). Solo el Botón de pagos de la tienda las usa. No hay forma de
+      // probarlas desde el servidor: 'sin_prueba', y `LLAVES.bold.sinPruebaEn` permite guardarlas.
+      if (ambiente === 'sandbox') return { resultado: 'sin_prueba', verificado: [], cuenta: { nombre: 'Bold', ambiente: 'sandbox' } };
       const r = await llamar(fetchImpl, 'https://integrations.api.bold.co/online/link/v1/payment_methods', {
         headers: { Authorization: `x-api-key ${v.identity_key}`, Accept: 'application/json' },
       });

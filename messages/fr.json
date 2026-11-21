@@ -42353,6 +42353,27 @@
         "codigo": "Le code doit comporter au moins 2 caractères",
         "guardar": "Impossible d'enregistrer le moyen de paiement",
         "estado": "Impossible de changer le statut du moyen"
+      },
+      "selector": {
+        "buscar": "Rechercher un moyen, une banque ou une passerelle…",
+        "vacio": "Aucun moyen à ajouter",
+        "sinResultados": "Aucun moyen ne correspond",
+        "crearTexto": "Créer « {texto} » comme moyen personnalisé",
+        "filtrosEtiqueta": "Type de moyen",
+        "requiereConexion": "Connexion requise",
+        "yaLoTienes": "Vous l’avez déjà",
+        "conectada": "Connectée",
+        "sinConectar": "Non connectée",
+        "grupo": {
+          "manual": "Moyen",
+          "pasarela": "Passerelle"
+        },
+        "filtros": {
+          "efectivo_bancos": "Espèces et banques",
+          "billeteras": "Portefeuilles",
+          "pasarelas": "Passerelles",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49086,6 +49107,10 @@
           "descripcion": "Le fournisseur a accepté les clés et elles ont été enregistrées sur le serveur. Vous ne verrez que leurs 4 derniers caractères.",
           "webhookPendiente": "Quand le premier événement arrivera, vous le verrez dans Activité.",
           "verConexion": "Voir la connexion"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} ne permet pas de vérifier les clés de test",
+          "descripcion": "Elles sont enregistrées sans vérification. Faites un paiement test dans votre boutique pour confirmer qu’elles fonctionnent."
         }
       },
       "ota": {
@@ -61998,6 +62023,348 @@
       "MOTIVO_REQUERIDO": "Indiquez le motif de l'annulation.",
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez dans un instant."
+    }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Nouvelle taxe",
+    "subtitulo": "{impuestos, plural, =0 {Aucune taxe de vente et d'achat} one {# taxe de vente et d'achat} other {# taxes de vente et d'achat}} · {retenciones, plural, =0 {aucune retenue} one {# retenue} other {# retenues}}",
+    "subtituloTarifa": "taux par défaut : {tarifa}",
+    "subtituloSinTarifa": "sans taux par défaut",
+    "subtituloMovil": "{impuestos, plural, one {# taxe} other {# taxes}} · {activos, plural, one {# active} other {# actives}}",
+    "pestanas": {
+      "impuestos": "Taxes"
+    },
+    "tablaEtiqueta": "Taxes de vente et d'achat de l'organisation",
+    "buscar": "Rechercher une taxe par nom ou taux",
+    "columnas": {
+      "nombre": "Nom",
+      "tipo": "Type",
+      "tarifa": "Taux",
+      "codigoDian": "Code DIAN",
+      "productos": "Produits",
+      "estado": "Statut"
+    },
+    "tipos": {
+      "iva": "TVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Autre"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "insignias": {
+      "exento": "Exonérée",
+      "predeterminado": "Par défaut",
+      "incluido": "Incluse",
+      "incluidoLargo": "incluse dans le prix"
+    },
+    "filtros": {
+      "titulo": "Filtrer les taxes",
+      "estado": "Statut",
+      "tipo": "Type",
+      "todos": "Toutes",
+      "activos": "Actives",
+      "inactivos": "Inactives"
+    },
+    "acciones": {
+      "editar": "Modifier la taxe",
+      "duplicar": "Dupliquer",
+      "predeterminado": "Définir par défaut",
+      "predeterminadoInactivo": "Activez-la d'abord : une taxe inactive ne peut pas être le taux par défaut.",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "activarNombre": "Activer {nombre}",
+      "desactivarNombre": "Désactiver {nombre}",
+      "eliminar": "Supprimer la taxe",
+      "eliminarPredeterminado": "C'est le taux par défaut : choisissez-en un autre avant de la supprimer.",
+      "eliminarEnUso": "{count, plural, one {Utilisée par # produit} other {Utilisée par # produits}} : retirez-la ou désactivez-la.",
+      "actualizar": "Actualiser"
+    },
+    "vacio": {
+      "titulo": "Aucune taxe pour l'instant",
+      "descripcion": "Créez la TVA et les autres taxes que vous facturez, ou chargez le modèle de votre pays."
+    },
+    "sinResultados": {
+      "titulo": "Aucune taxe ne correspond",
+      "descripcion": "Essayez un autre nom ou taux, ou retirez les filtres."
+    },
+    "error": {
+      "titulo": "Impossible de charger les taxes",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas accès aux taxes",
+      "descripcion": "Demandez à un administrateur de l'organisation de vous donner accès à Finances."
+    },
+    "sustantivo": {
+      "singular": "taxe",
+      "plural": "taxes"
+    },
+    "plantilla": {
+      "cargar": "Charger le modèle {pais}",
+      "cargada": "Les taxes manquantes du modèle {pais} ont été ajoutées.",
+      "error": "Impossible de charger le modèle de taxes."
+    },
+    "toast": {
+      "errorTitulo": "Erreur",
+      "sinOrganizacion": "Aucune organisation active n'a été trouvée.",
+      "errorOrganizacion": "Impossible d'obtenir les informations de l'organisation.",
+      "activado": "{nombre} est maintenant active.",
+      "desactivado": "{nombre} est maintenant inactive.",
+      "errorEstado": "Impossible de changer le statut de la taxe.",
+      "predeterminado": "{nombre} est maintenant le taux par défaut.",
+      "errorPredeterminado": "Impossible de changer le taux par défaut."
+    },
+    "tarifa": {
+      "titulo": "Taux pour les produits sans taxe : {tarifa}",
+      "ninguna": "Aucun ({tasa})",
+      "cobertura": "{con} produits sur {total} ont une taxe assignée. Les {sin} autres sont vendus avec ce taux. Un produit exonéré ou exclu est marqué ainsi sur le produit : il n'utilise jamais ce taux.",
+      "ayuda": "S'applique aux factures, devis et au POS pour les produits sans taxe propre. Si vous choisissez « Aucun », ces ventes sortent sans TVA et un avertissement s'affiche avant l'émission.",
+      "barraEtiqueta": "Produits avec une taxe assignée",
+      "leyenda": "Avec taxe {con} % · Exonéré ou exclu {exentos} % · Non configuré {sin} %",
+      "cambiar": "Changer le taux",
+      "dialogoTitulo": "Taux pour les produits sans taxe",
+      "etiqueta": "Taux par défaut",
+      "elegir": "Sélectionnez un taux",
+      "opcionNinguna": "Aucun — je vends des produits exclus ou exonérés",
+      "guardar": "Enregistrer le taux",
+      "guardadaTitulo": "Taux par défaut mis à jour",
+      "guardadaNinguna": "Les produits sans taxe assignée seront vendus sans TVA.",
+      "guardadaTarifa": "Les produits sans taxe assignée utiliseront ce taux.",
+      "errorTitulo": "Erreur",
+      "error": "Impossible d'enregistrer le taux par défaut. Réessayez."
+    },
+    "eliminar": {
+      "titulo": "Supprimer {nombre} ?",
+      "descripcion": "Vous allez supprimer <b>{nombre}</b> ({tasa}). Cette action est irréversible. Si des produits l'utilisent ou si c'est le taux par défaut, elle n'est pas supprimée.",
+      "confirmar": "Supprimer",
+      "errorTitulo": "Non supprimée",
+      "error": "Impossible de supprimer la taxe. Réessayez.",
+      "hecho": "Taxe supprimée."
+    },
+    "formulario": {
+      "nuevo": "Nouvelle taxe",
+      "editar": "Modifier la taxe",
+      "duplicar": "Dupliquer la taxe",
+      "nombreCopia": "{nombre} (copie)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {aucun produit} one {utilisée dans # produit} other {utilisée dans # produits}}",
+      "guardar": "Enregistrer",
+      "guardarCambios": "Enregistrer les modifications",
+      "plantillas": {
+        "aviso": "Les modèles de taxes de votre pays sont affichés. Vous pouvez en utiliser un comme base ou créer une taxe personnalisée.",
+        "usar": "Utiliser un modèle de taxe",
+        "etiqueta": "Modèles de taxes disponibles",
+        "etiquetaPais": "Modèles de taxes disponibles ({pais})",
+        "ayuda": "Seulement les modèles de votre pays d'activité.",
+        "sinPlantillas": "Il n'y a pas de modèles de taxes pour votre pays.",
+        "elegir": "Sélectionnez le modèle"
+      },
+      "nombre": "Nom",
+      "nombreEjemplo": "Ex. : TVA 19 %",
+      "tasa": "Taux (%)",
+      "tasaEjemplo": "Ex. : 19",
+      "tasaAyuda": "Entre 0 et 100. Jusqu'à 3 décimales (ICA pour mille : 0,966).",
+      "codigoDian": "Code DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Non envoyée comme taxe de ligne",
+      "codigoDianAyuda": "Utilisé par la facture électronique ; vient du modèle ou du nom.",
+      "tipos": {
+        "iva": "TVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Autre"
+      },
+      "descripcion": "Description",
+      "descripcionEjemplo": "Description de la taxe",
+      "cuentaIva": "Compte à payer (plan comptable)",
+      "elegirCuenta": "Sélectionnez le compte",
+      "cuentaIvaAyuda": "La TVA à payer est le 2408. Seuls les comptes de passif de détail existants sont proposés.",
+      "cuentaIvaInexistente": "Le mappage actuel ({cuenta}) n'existe pas dans le plan. Choisissez un compte réel ; 2408 est la TVA à payer.",
+      "cuentaIvaSinDetalle": "Le plan n'a pas de compte de détail sous 2408 (TVA à payer). Choisissez un autre compte de passif de détail ou créez-le dans le plan comptable.",
+      "cuentaIvaAuxiliar": "Le 2408 est un compte de titre dans votre plan ; la TVA est enregistrée dans son sous-compte {cuenta}.",
+      "cuentaRetencionInexistente": "Le compte {cuenta} n'est pas dans le plan ou est un compte de titre. Choisissez un compte de détail.",
+      "opciones": "Options de la taxe",
+      "activo": "Taxe active",
+      "activaRetencion": "Retenue active",
+      "predeterminado": "Taux par défaut",
+      "predeterminadoAyuda": "Utilisé par les produits sans taxe assignée (pas les exonérés). Il n'y en a qu'un.",
+      "incluido": "Incluse dans le prix",
+      "incluidoAyuda": "Le prix du produit inclut déjà cette taxe. Elle ne s'ajoute pas au total.",
+      "errorTitulo": "Erreur",
+      "errorGuardar": "Impossible d'enregistrer la taxe. Réessayez.",
+      "creado": "Taxe créée.",
+      "actualizado": "Taxe mise à jour.",
+      "validacion": {
+        "nombre": "Le nom de la taxe est obligatoire.",
+        "tasa": "Le taux doit être compris entre 0 et 100 %.",
+        "cuentaTitulo": "Compte comptable requis",
+        "cuenta": "La TVA à payer nécessite un compte de passif de détail. Le compte canonique est 2408."
+      },
+      "cuentaGuardadaSinCuenta": "La taxe a été enregistrée, mais pas le compte",
+      "cuentaErrorDetalle": "La TVA à payer est le 2408 : {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "le compte n'existe pas dans le plan comptable.",
+        "cuenta_de_titulo": "le compte est un compte de titre et ne reçoit pas la TVA. Choisissez un compte de détail.",
+        "cuenta_no_es_pasivo": "le compte n'est pas un passif.",
+        "otro": "vérifiez que le compte existe et que vous avez la permission sur les taxes."
+      }
+    }
+  },
+  "finanzasComisiones": {
+    "titulo": "Commissions",
+    "migas": {
+      "finanzas": "Finances",
+      "configuracion": "Configuration"
+    },
+    "pagarComisiones": "Payer les commissions",
+    "sinNombre": "Sans nom",
+    "todasLasFechas": "Toutes les dates",
+    "nVendedores": "{count, plural, =0 {aucun vendeur} one {# vendeur} other {# vendeurs}}",
+    "nComisiones": "{count, plural, one {# commission} other {# commissions}}",
+    "tablaEtiqueta": "Commissions regroupées par vendeur",
+    "pestanas": {
+      "etiqueta": "Statut des commissions",
+      "porPagar": "À payer",
+      "pagadas": "Payées",
+      "canceladas": "Annulées",
+      "todas": "Toutes"
+    },
+    "columnas": {
+      "vendedor": "Vendeur / document",
+      "fecha": "Date",
+      "base": "Base",
+      "metodo": "Méthode",
+      "comision": "Commission",
+      "estado": "Statut",
+      "asiento": "Écriture"
+    },
+    "estado": {
+      "porPagar": "À payer",
+      "sinPendientes": "À jour",
+      "devengada": "Acquise",
+      "pagada": "Payée",
+      "clawback": "Clawback",
+      "rechazada": "Rejetée",
+      "cancelada": "Annulée"
+    },
+    "origen": {
+      "sale": "Vente POS",
+      "invoice_sale": "Facture de vente",
+      "invoice_purchase": "Facture d'achat",
+      "opportunity": "Opportunité"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixe",
+    "motivo": "Motif : {motivo}",
+    "plegar": "Masquer les commissions de {nombre}",
+    "desplegar": "Afficher les commissions de {nombre}",
+    "acciones": {
+      "pagar": "Payer",
+      "pagarPendientes": "{count, plural, one {Payer celle en attente} other {Payer les # en attente}}",
+      "rechazar": "Rejeter",
+      "rechazarPendientes": "{count, plural, one {Rejeter celle en attente} other {Rejeter les # en attente}}",
+      "clawback": "Annuler le paiement (clawback)",
+      "verOrigen": "Voir le document d'origine",
+      "verAsiento": "Voir l'écriture",
+      "actualizar": "Actualiser",
+      "reglas": "Règles de commission"
+    },
+    "cifras": {
+      "etiqueta": "Résumé des commissions du filtre",
+      "devengado": "Acquis",
+      "devengadoDetalle": "{count, plural, one {# commission en cours} other {# commissions en cours}}",
+      "porPagar": "À payer",
+      "porPagarDetalle": "{count, plural, =0 {rien en attente} one {# commission à payer} other {# commissions à payer}}",
+      "pagado": "Payé",
+      "pagadoDetalle": "{count, plural, one {# payée} other {# payées}}",
+      "sinPagos": "Aucun paiement pour l'instant",
+      "vendedores": "Vendeurs",
+      "vendedoresAbiertas": "avec des commissions ouvertes",
+      "vendedoresLista": "dans la liste",
+      "noDisponible": "Chargement impossible",
+      "canceladas": "{count, plural, one {# annulée} other {# annulées}} : {rechazadas} rejetées · {clawback} en clawback",
+      "otrasMonedas": "Commissions dans d'autres devises",
+      "otraMoneda": "+ {count, plural, one {# commission} other {# commissions}} en {moneda} : {devengado} acquis · {pagado} payé · {pendiente} en attente"
+    },
+    "filtros": {
+      "buscar": "Rechercher un vendeur ou une note",
+      "fechas": "Dates",
+      "titulo": "Filtrer les commissions",
+      "origen": "Origine",
+      "miembro": "Vendeur",
+      "todos": "Tous"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "Aucune commission à payer",
+        "descripcion": "Les commissions sont créées automatiquement en facturant avec un vendeur ou en gagnant une opportunité, avec le taux des règles de commission."
+      },
+      "pagadas": {
+        "titulo": "Aucune commission payée pour l'instant",
+        "descripcion": "Quand vous payerez des commissions, elles apparaîtront ici avec leur écriture."
+      },
+      "canceladas": {
+        "titulo": "Aucune commission annulée",
+        "descripcion": "Les commissions rejetées et annulées (clawback) apparaissent ici avec leur motif."
+      },
+      "todas": {
+        "titulo": "Aucune commission pour l'instant",
+        "descripcion": "Elles sont créées automatiquement en facturant avec un vendeur ou en gagnant une opportunité, avec le taux des règles de commission."
+      }
+    },
+    "sinResultados": {
+      "titulo": "Aucune commission ne correspond",
+      "descripcion": "Élargissez les dates, changez de vendeur ou retirez des filtres."
+    },
+    "error": {
+      "titulo": "Impossible de charger les commissions",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "errorParcial": "Impossible d'actualiser la liste ({error}). La dernière connue est affichée.",
+    "mostrando": "{shown} sur {total} commissions · {vendedores, plural, one {# vendeur} other {# vendeurs}}",
+    "mostrandoTodo": "{count, plural, one {# commission} other {# commissions}} · {vendedores, plural, one {# vendeur} other {# vendeurs}}",
+    "cargarMas": "Charger plus",
+    "cargando": "Chargement…",
+    "errores": {
+      "pagar": "Paiement impossible",
+      "rechazar": "Rejet impossible",
+      "clawback": "Annulation impossible"
+    },
+    "pagar": {
+      "titulo": "Payer les commissions de {nombre}",
+      "tituloVarios": "Payer les commissions de {count, plural, one {# vendeur} other {# vendeurs}}",
+      "subtitulo": "{count, plural, one {# commission en attente} other {# commissions en attente}}. Seules celles toujours en attente sont payées.",
+      "base": "Base des ventes",
+      "baseMoneda": "Base des ventes ({moneda})",
+      "total": "Total à payer",
+      "totalMoneda": "Total à payer ({moneda})",
+      "variasMonedas": "Il y a des commissions dans plusieurs devises : chacune est payée dans la sienne, jamais additionnées.",
+      "fecha": "Date de paiement",
+      "fechaAyuda": "Le paiement est enregistré à la date du jour.",
+      "referencia": "Référence",
+      "referenciaEjemplo": "Ex. : Virement 99120",
+      "asiento": "L'écriture du paiement débite les commissions à payer et crédite le compte d'où sort l'argent.",
+      "confirmar": "Payer",
+      "confirmarTotal": "Payer {total}",
+      "nadaPendiente": "Il n'y a aucune commission en attente à payer."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Rejeter la commission} other {Rejeter # commissions}}",
+      "descripcion": "{count, plural, one {La commission de {nombre} sera annulée (rejetée).} other {Les # commissions de {nombre} seront annulées (rejetées).}}",
+      "consecuencia": "Son écriture d'acquisition est contrepassée et le motif est conservé sur chaque commission.",
+      "confirmar": "Rejeter"
+    },
+    "clawback": {
+      "titulo": "Annuler une commission payée (clawback)",
+      "descripcion": "Vous allez annuler {importe} de {nombre}.",
+      "consecuencia1": "La commission passe à annulée ; la date de paiement est conservée comme preuve.",
+      "consecuencia2": "Ses écritures sont contrepassées. Irréversible depuis cet écran.",
+      "confirmar": "Annuler le paiement"
     }
   }
 }

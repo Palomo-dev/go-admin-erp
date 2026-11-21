@@ -36,6 +36,11 @@ export interface DefinicionLlaves {
   metodoPago: string | null;
   /** Dónde puede usarse: tienda web y/o punto de venta. */
   usos: ('tienda' | 'pos')[];
+  /**
+   * Ambientes en los que el proveedor no deja probar las llaves desde el servidor: se guardan
+   * sin prueba y se confirman con el primer pago (Bold en pruebas).
+   */
+  sinPruebaEn?: Ambiente[];
 }
 
 export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
@@ -101,6 +106,8 @@ export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
     webhook: '/api/integrations/bold/webhook',
     metodoPago: 'bold_link',
     usos: ['tienda', 'pos'],
+    // Las APIs de Bold rechazan (403) toda llave de prueba: solo el Botón de pagos las usa.
+    sinPruebaEn: ['sandbox'],
   },
   stripe: {
     proveedor: 'stripe',

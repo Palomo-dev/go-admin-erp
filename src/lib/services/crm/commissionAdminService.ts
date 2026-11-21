@@ -109,6 +109,46 @@ export async function listCommissions(
   return { data: (data || []) as unknown as CommissionRow[], count: count || 0 };
 }
 
+/** Asiento contable de una comisión (Figma 1012:87993, columna «Asiento»). */
+export interface AsientoComision {
+  id: number;
+  comprobante_prefijo: string | null;
+  comprobante_numero: number | null;
+}
+
+/**
+ * Asiento vigente de cada comisión: el del pago si lo hay, si no el del
+ * devengo. Los escribe `fn_auto_journal_commission` con `source = 'commissions'`
+ * y `source_id = '<id>:accrued' | '<id>:paid'`. Solo lectura, acotada a la
+ * organización; en lotes para no pasar del largo de la URL.
+ */
+export async function listCommissionEntries(
+  orgId: number,
+  supabase: SupabaseClient,
+  commissionIds: readonly string[],
+): Promise<Record<string, AsientoComision>> {
+  const ids = Array.from(new Set(commissionIds));
+  const out: Record<string, AsientoComision & { evento: string }> = {};
+  for (let i = 0; i < ids.length; i += 100) {
+    const lote = ids.slice(i, i + 100).flatMap((id) => [`${id}:accrued`, `${id}:paid`]);
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('id, source_id, comprobante_prefijo, comprobante_numero')
+      .eq('organization_id', orgId)
+      .eq('source', 'commissions')
+      .in('source_id', lote);
+    if (error) throw error;
+    for (const je of (data ?? []) as Array<AsientoComision & { source_id: string }>) {
+      const [id, evento] = je.source_id.split(':');
+      if (out[id] && out[id].evento === 'paid') continue;
+      out[id] = { id: je.id, comprobante_prefijo: je.comprobante_prefijo, comprobante_numero: je.comprobante_numero, evento };
+    }
+  }
+  return Object.fromEntries(
+    Object.entries(out).map(([k, v]) => [k, { id: v.id, comprobante_prefijo: v.comprobante_prefijo, comprobante_numero: v.comprobante_numero }]),
+  );
+}
+
 /** Filas mínimas del MISMO filtro, sin paginar, para el resumen devengado/pagado/pendiente. */
 export async function listCommissionSummaryRows(
   orgId: number,

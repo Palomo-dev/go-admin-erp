@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getServerOrgContext } from '@/lib/utils/orgContext';
 import { plainDateToInstant } from '@/lib/utils/dateDisplay';
-import { listCommissions, listCommissionSummaryRows } from '@/lib/services/crm/commissionAdminService';
+import { listCommissionEntries, listCommissions, listCommissionSummaryRows } from '@/lib/services/crm/commissionAdminService';
 import { COMMISSION_STATUSES, canManageCommissions, summarizeCommissionsByCurrency } from '@/lib/services/crm/commissionTransitions';
 import { addDaysPlain } from '@/lib/services/crm/quotaProgress';
 import { getOrgBaseCurrency } from '@/lib/services/crm/salesTargetService';
@@ -19,6 +19,7 @@ const PLAIN_RE = /^\d{4}-\d{2}-\d{2}$/;
  * Un empleado solo ve sus propias comisiones (`payee_id` forzado al usuario de la sesión).
  * `summary` es SOLO de la moneda base (`currency`); `summary_others` trae las demás
  * monedas cada una aparte: nunca se suman importes de monedas distintas.
+ * `asientos` trae el asiento vigente de cada comisión de la página (pago o devengo).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -55,6 +56,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     const summary = summarizeCommissionsByCurrency(summaryRows, baseCurrency);
+    // El asiento de cada comisión es un complemento: si la lectura falla, la lista sale igual.
+    const asientos = await listCommissionEntries(ctx.organizationId, ctx.supabase, list.data.map((r) => r.id)).catch((err) => {
+      console.error('[CRM Commissions GET] asientos', err);
+      return {};
+    });
     return jsonOk(list.data, {
       count: list.count,
       summary: summary.primary,
@@ -62,6 +68,7 @@ export async function GET(request: NextRequest) {
       currency: summary.primary.currency || null,
       can_manage: canManage,
       timezone: tz,
+      asientos,
     });
   } catch (error) {
     return routeError(error, 'CRM Commissions GET');

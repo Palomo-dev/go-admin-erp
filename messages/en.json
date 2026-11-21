@@ -42353,6 +42353,27 @@
         "codigo": "The code must have at least 2 characters",
         "guardar": "The payment method could not be saved",
         "estado": "The method status could not be changed"
+      },
+      "selector": {
+        "buscar": "Search method, bank or gateway…",
+        "vacio": "There are no methods to add",
+        "sinResultados": "No method matches",
+        "crearTexto": "Create «{texto}» as a custom method",
+        "filtrosEtiqueta": "Method type",
+        "requiereConexion": "Requires connection",
+        "yaLoTienes": "You already have it",
+        "conectada": "Connected",
+        "sinConectar": "Not connected",
+        "grupo": {
+          "manual": "Method",
+          "pasarela": "Gateway"
+        },
+        "filtros": {
+          "efectivo_bancos": "Cash and banks",
+          "billeteras": "Wallets",
+          "pasarelas": "Gateways",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49086,6 +49107,10 @@
           "descripcion": "The provider accepted the keys and they were saved on the server. You will only see their last 4 characters.",
           "webhookPendiente": "When the first event arrives you will see it in Activity.",
           "verConexion": "View connection"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} does not allow checking test keys",
+          "descripcion": "They are saved without a check. Make a test payment in your store to confirm they work."
         }
       },
       "ota": {
@@ -61998,6 +62023,348 @@
       "MOTIVO_REQUERIDO": "Enter the reason for voiding.",
       "datos_invalidos": "Check the form data.",
       "DESCONOCIDO": "It could not be completed. Try again in a moment."
+    }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "New tax",
+    "subtitulo": "{impuestos, plural, =0 {No sales and purchase taxes} one {# sales and purchase tax} other {# sales and purchase taxes}} · {retenciones, plural, =0 {no withholdings} one {# withholding} other {# withholdings}}",
+    "subtituloTarifa": "default rate: {tarifa}",
+    "subtituloSinTarifa": "no default rate",
+    "subtituloMovil": "{impuestos, plural, one {# tax} other {# taxes}} · {activos, plural, one {# active} other {# active}}",
+    "pestanas": {
+      "impuestos": "Taxes"
+    },
+    "tablaEtiqueta": "Organization sales and purchase taxes",
+    "buscar": "Search tax by name or rate",
+    "columnas": {
+      "nombre": "Name",
+      "tipo": "Type",
+      "tarifa": "Rate",
+      "codigoDian": "DIAN code",
+      "productos": "Products",
+      "estado": "Status"
+    },
+    "tipos": {
+      "iva": "VAT",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Other"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "insignias": {
+      "exento": "Exempt",
+      "predeterminado": "Default",
+      "incluido": "Included",
+      "incluidoLargo": "included in price"
+    },
+    "filtros": {
+      "titulo": "Filter taxes",
+      "estado": "Status",
+      "tipo": "Type",
+      "todos": "All",
+      "activos": "Active",
+      "inactivos": "Inactive"
+    },
+    "acciones": {
+      "editar": "Edit tax",
+      "duplicar": "Duplicate",
+      "predeterminado": "Make default",
+      "predeterminadoInactivo": "Activate it first: an inactive tax cannot be the default rate.",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "activarNombre": "Activate {nombre}",
+      "desactivarNombre": "Deactivate {nombre}",
+      "eliminar": "Delete tax",
+      "eliminarPredeterminado": "It is the default rate: choose another one before deleting it.",
+      "eliminarEnUso": "{count, plural, one {Used by # product} other {Used by # products}}: remove it from them or deactivate it.",
+      "actualizar": "Refresh"
+    },
+    "vacio": {
+      "titulo": "No taxes yet",
+      "descripcion": "Create VAT and the other taxes you charge, or load your country's template."
+    },
+    "sinResultados": {
+      "titulo": "No tax matches",
+      "descripcion": "Try another name or rate, or clear the filters."
+    },
+    "error": {
+      "titulo": "Taxes could not be loaded",
+      "descripcion": "Check your connection and try again."
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to taxes",
+      "descripcion": "Ask an organization administrator to give you access to Finance."
+    },
+    "sustantivo": {
+      "singular": "tax",
+      "plural": "taxes"
+    },
+    "plantilla": {
+      "cargar": "Load {pais} template",
+      "cargada": "The missing taxes from the {pais} template were added.",
+      "error": "The tax template could not be loaded."
+    },
+    "toast": {
+      "errorTitulo": "Error",
+      "sinOrganizacion": "No active organization was found.",
+      "errorOrganizacion": "The organization information could not be retrieved.",
+      "activado": "{nombre} is now active.",
+      "desactivado": "{nombre} is now inactive.",
+      "errorEstado": "The tax status could not be changed.",
+      "predeterminado": "{nombre} is now the default rate.",
+      "errorPredeterminado": "The default rate could not be changed."
+    },
+    "tarifa": {
+      "titulo": "Rate for products without tax: {tarifa}",
+      "ninguna": "None ({tasa})",
+      "cobertura": "{con} of {total} products have a tax assigned. The other {sin} are sold with this rate. An exempt or excluded product is marked as such on the product: it never uses this rate.",
+      "ayuda": "Applies on invoices, quotes and POS to products without their own tax. If you choose “None”, those sales go out without VAT and you will see a warning before issuing.",
+      "barraEtiqueta": "Products with a tax assigned",
+      "leyenda": "With tax {con} % · Exempt or excluded {exentos} % · Not configured {sin} %",
+      "cambiar": "Change rate",
+      "dialogoTitulo": "Rate for products without tax",
+      "etiqueta": "Default rate",
+      "elegir": "Select a rate",
+      "opcionNinguna": "None — I sell excluded or exempt products",
+      "guardar": "Save rate",
+      "guardadaTitulo": "Default rate updated",
+      "guardadaNinguna": "Products without an assigned tax will be sold without VAT.",
+      "guardadaTarifa": "Products without an assigned tax will use this rate.",
+      "errorTitulo": "Error",
+      "error": "The default rate could not be saved. Try again."
+    },
+    "eliminar": {
+      "titulo": "Delete {nombre}?",
+      "descripcion": "You are about to delete <b>{nombre}</b> ({tasa}). This cannot be undone. If products use it or it is the default rate, it is not deleted.",
+      "confirmar": "Delete",
+      "errorTitulo": "Not deleted",
+      "error": "The tax could not be deleted. Try again.",
+      "hecho": "Tax deleted."
+    },
+    "formulario": {
+      "nuevo": "New tax",
+      "editar": "Edit tax",
+      "duplicar": "Duplicate tax",
+      "nombreCopia": "{nombre} (copy)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {no products} one {used in # product} other {used in # products}}",
+      "guardar": "Save",
+      "guardarCambios": "Save changes",
+      "plantillas": {
+        "aviso": "Your country's tax templates are shown. You can use one as a base or create a custom tax.",
+        "usar": "Use tax template",
+        "etiqueta": "Available tax templates",
+        "etiquetaPais": "Available tax templates ({pais})",
+        "ayuda": "Only the templates of your country of operation.",
+        "sinPlantillas": "There are no tax templates for your country.",
+        "elegir": "Select the template"
+      },
+      "nombre": "Name",
+      "nombreEjemplo": "E.g.: VAT 19 %",
+      "tasa": "Rate (%)",
+      "tasaEjemplo": "E.g.: 19",
+      "tasaAyuda": "Between 0 and 100. Up to 3 decimals (ICA per thousand: 0.966).",
+      "codigoDian": "DIAN code",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Not sent as a line tax",
+      "codigoDianAyuda": "Used by the electronic invoice; comes from the template or the name.",
+      "tipos": {
+        "iva": "VAT",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Other"
+      },
+      "descripcion": "Description",
+      "descripcionEjemplo": "Tax description",
+      "cuentaIva": "Payable account (chart of accounts)",
+      "elegirCuenta": "Select the account",
+      "cuentaIvaAyuda": "VAT payable is 2408. Only detail liability accounts that exist in the chart are offered.",
+      "cuentaIvaInexistente": "The current mapping ({cuenta}) does not exist in the chart. Choose a real account; 2408 is VAT payable.",
+      "cuentaIvaSinDetalle": "The chart has no detail account under 2408 (VAT payable). Choose another detail liability account or create it in the chart of accounts.",
+      "cuentaIvaAuxiliar": "2408 is a header account in your chart; VAT is posted to its sub-account {cuenta}.",
+      "cuentaRetencionInexistente": "Account {cuenta} is not in the chart or is a header account. Choose a detail one.",
+      "opciones": "Tax options",
+      "activo": "Active tax",
+      "activaRetencion": "Active withholding",
+      "predeterminado": "Default rate",
+      "predeterminadoAyuda": "Used by products without an assigned tax (not exempt ones). There is only one.",
+      "incluido": "Included in price",
+      "incluidoAyuda": "The product price already includes this tax. It is not added to the total.",
+      "errorTitulo": "Error",
+      "errorGuardar": "The tax could not be saved. Try again.",
+      "creado": "Tax created.",
+      "actualizado": "Tax updated.",
+      "validacion": {
+        "nombre": "The tax name is required.",
+        "tasa": "The rate must be between 0 and 100 %.",
+        "cuentaTitulo": "Account required",
+        "cuenta": "VAT payable needs a detail liability account. The canonical account is 2408."
+      },
+      "cuentaGuardadaSinCuenta": "The tax was saved, but not the account",
+      "cuentaErrorDetalle": "VAT payable is 2408: {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "the account does not exist in the chart of accounts.",
+        "cuenta_de_titulo": "the account is a header account and cannot receive VAT. Choose a detail one.",
+        "cuenta_no_es_pasivo": "the account is not a liability.",
+        "otro": "check that the account exists and that you have tax permission."
+      }
+    }
+  },
+  "finanzasComisiones": {
+    "titulo": "Commissions",
+    "migas": {
+      "finanzas": "Finance",
+      "configuracion": "Settings"
+    },
+    "pagarComisiones": "Pay commissions",
+    "sinNombre": "No name",
+    "todasLasFechas": "All dates",
+    "nVendedores": "{count, plural, =0 {no salespeople} one {# salesperson} other {# salespeople}}",
+    "nComisiones": "{count, plural, one {# commission} other {# commissions}}",
+    "tablaEtiqueta": "Commissions grouped by salesperson",
+    "pestanas": {
+      "etiqueta": "Commission status",
+      "porPagar": "To pay",
+      "pagadas": "Paid",
+      "canceladas": "Cancelled",
+      "todas": "All"
+    },
+    "columnas": {
+      "vendedor": "Salesperson / document",
+      "fecha": "Date",
+      "base": "Base",
+      "metodo": "Method",
+      "comision": "Commission",
+      "estado": "Status",
+      "asiento": "Entry"
+    },
+    "estado": {
+      "porPagar": "To pay",
+      "sinPendientes": "Up to date",
+      "devengada": "Accrued",
+      "pagada": "Paid",
+      "clawback": "Clawback",
+      "rechazada": "Rejected",
+      "cancelada": "Cancelled"
+    },
+    "origen": {
+      "sale": "POS sale",
+      "invoice_sale": "Sales invoice",
+      "invoice_purchase": "Purchase invoice",
+      "opportunity": "Opportunity"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixed",
+    "motivo": "Reason: {motivo}",
+    "plegar": "Hide {nombre}'s commissions",
+    "desplegar": "Show {nombre}'s commissions",
+    "acciones": {
+      "pagar": "Pay",
+      "pagarPendientes": "{count, plural, one {Pay the pending one} other {Pay the # pending}}",
+      "rechazar": "Reject",
+      "rechazarPendientes": "{count, plural, one {Reject the pending one} other {Reject the # pending}}",
+      "clawback": "Reverse payment (clawback)",
+      "verOrigen": "View source document",
+      "verAsiento": "View entry",
+      "actualizar": "Refresh",
+      "reglas": "Commission rules"
+    },
+    "cifras": {
+      "etiqueta": "Commission summary for the filter",
+      "devengado": "Accrued",
+      "devengadoDetalle": "{count, plural, one {# active commission} other {# active commissions}}",
+      "porPagar": "To pay",
+      "porPagarDetalle": "{count, plural, =0 {nothing pending} one {# commission to pay} other {# commissions to pay}}",
+      "pagado": "Paid",
+      "pagadoDetalle": "{count, plural, one {# paid} other {# paid}}",
+      "sinPagos": "No payments yet",
+      "vendedores": "Salespeople",
+      "vendedoresAbiertas": "with open commissions",
+      "vendedoresLista": "in the list",
+      "noDisponible": "Could not be loaded",
+      "canceladas": "{count, plural, one {# cancelled} other {# cancelled}}: {rechazadas} rejected · {clawback} clawed back",
+      "otrasMonedas": "Commissions in other currencies",
+      "otraMoneda": "+ {count, plural, one {# commission} other {# commissions}} in {moneda}: {devengado} accrued · {pagado} paid · {pendiente} pending"
+    },
+    "filtros": {
+      "buscar": "Search salesperson or note",
+      "fechas": "Dates",
+      "titulo": "Filter commissions",
+      "origen": "Source",
+      "miembro": "Salesperson",
+      "todos": "All"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "No commissions to pay",
+        "descripcion": "Commissions are created automatically when invoicing with a salesperson or winning an opportunity, with the rate in the commission rules."
+      },
+      "pagadas": {
+        "titulo": "No paid commissions yet",
+        "descripcion": "When you pay commissions they will appear here with their entry."
+      },
+      "canceladas": {
+        "titulo": "No cancelled commissions",
+        "descripcion": "Rejected and reversed (clawback) commissions appear here with their reason."
+      },
+      "todas": {
+        "titulo": "No commissions yet",
+        "descripcion": "They are created automatically when invoicing with a salesperson or winning an opportunity, with the rate in the commission rules."
+      }
+    },
+    "sinResultados": {
+      "titulo": "No commission matches",
+      "descripcion": "Try widening the dates, changing the salesperson or clearing filters."
+    },
+    "error": {
+      "titulo": "Commissions could not be loaded",
+      "descripcion": "Check your connection and try again."
+    },
+    "errorParcial": "The list could not be refreshed ({error}). Showing the last known one.",
+    "mostrando": "Showing {shown} of {total} commissions · {vendedores, plural, one {# salesperson} other {# salespeople}}",
+    "mostrandoTodo": "{count, plural, one {# commission} other {# commissions}} · {vendedores, plural, one {# salesperson} other {# salespeople}}",
+    "cargarMas": "Load more",
+    "cargando": "Loading…",
+    "errores": {
+      "pagar": "Could not pay",
+      "rechazar": "Could not reject",
+      "clawback": "Could not reverse"
+    },
+    "pagar": {
+      "titulo": "Pay {nombre}'s commissions",
+      "tituloVarios": "Pay commissions of {count, plural, one {# salesperson} other {# salespeople}}",
+      "subtitulo": "{count, plural, one {# pending commission} other {# pending commissions}}. Only those still pending are paid.",
+      "base": "Sales base",
+      "baseMoneda": "Sales base ({moneda})",
+      "total": "Total to pay",
+      "totalMoneda": "Total to pay ({moneda})",
+      "variasMonedas": "There are commissions in several currencies: each one is paid in its own, never added together.",
+      "fecha": "Payment date",
+      "fechaAyuda": "The payment is recorded with today's date.",
+      "referencia": "Reference",
+      "referenciaEjemplo": "E.g.: Transfer 99120",
+      "asiento": "The payment entry debits commissions payable and credits the account the money comes from.",
+      "confirmar": "Pay",
+      "confirmarTotal": "Pay {total}",
+      "nadaPendiente": "There are no pending commissions to pay."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Reject commission} other {Reject # commissions}}",
+      "descripcion": "{count, plural, one {{nombre}'s commission will be cancelled (rejected).} other {{nombre}'s # commissions will be cancelled (rejected).}}",
+      "consecuencia": "Its accrual entry is reversed and the reason is stored on each commission.",
+      "confirmar": "Reject"
+    },
+    "clawback": {
+      "titulo": "Reverse paid commission (clawback)",
+      "descripcion": "You are about to reverse {importe} from {nombre}.",
+      "consecuencia1": "The commission becomes cancelled; the payment date is kept as evidence.",
+      "consecuencia2": "Its entries are reversed. It cannot be undone from here.",
+      "confirmar": "Reverse"
     }
   }
 }

@@ -12,7 +12,7 @@
  *      200 sin efecto (el UPDATE solo lleva `updated_at`); lo honesto es 400 o
  *      volver a la moneda base.
  *  D3. El motivo de reject/clawback no tiene tope en el servidor: la UI limita a
- *      `REASON_MAX` (ReasonDialog.tsx) pero 10 000 caracteres se guardan íntegros.
+ *      `REASON_MAX` (comisionesModel.ts) pero 10 000 caracteres se guardan íntegros.
  */
 import { createFakeSupabase, type FakeDb, type Row } from './f13FakeSupabase';
 import { readFileSync } from 'node:fs';
@@ -58,8 +58,8 @@ const req = (url: string, method: string, body?: unknown) =>
   new NextRequest(`http://localhost${url}`, { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { 'Content-Type': 'application/json' } });
 const target = (id: string) => db.rows.sales_targets.find((t) => t.id === id)!;
 const validQuota = { user_id: 'u-1', period: 'monthly', period_start: '2026-10-01', period_end: '2026-10-31', target_amount: 500 };
-/** `REASON_MAX` vive en un .tsx (jest no lo transpila): se lee del fuente. */
-const REASON_MAX = Number(/REASON_MAX = (\d+)/.exec(readFileSync(join(process.cwd(), 'src/components/finanzas/comisiones/ReasonDialog.tsx'), 'utf8'))?.[1] ?? 0);
+/** `REASON_MAX` (tope del motivo en la UI) se lee del fuente del modelo de la pantalla. */
+const REASON_MAX = Number(/REASON_MAX = (\d+)/.exec(readFileSync(join(process.cwd(), 'src/components/finanzas/comisiones/comisionesModel.ts'), 'utf8'))?.[1] ?? 0);
 
 beforeEach(() => {
   db = seed();

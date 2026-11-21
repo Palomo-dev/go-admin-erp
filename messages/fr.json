@@ -42353,6 +42353,27 @@
         "codigo": "Le code doit comporter au moins 2 caractères",
         "guardar": "Impossible d'enregistrer le moyen de paiement",
         "estado": "Impossible de changer le statut du moyen"
+      },
+      "selector": {
+        "buscar": "Rechercher un moyen, une banque ou une passerelle…",
+        "vacio": "Aucun moyen à ajouter",
+        "sinResultados": "Aucun moyen ne correspond",
+        "crearTexto": "Créer « {texto} » comme moyen personnalisé",
+        "filtrosEtiqueta": "Type de moyen",
+        "requiereConexion": "Connexion requise",
+        "yaLoTienes": "Vous l’avez déjà",
+        "conectada": "Connectée",
+        "sinConectar": "Non connectée",
+        "grupo": {
+          "manual": "Moyen",
+          "pasarela": "Passerelle"
+        },
+        "filtros": {
+          "efectivo_bancos": "Espèces et banques",
+          "billeteras": "Portefeuilles",
+          "pasarelas": "Passerelles",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49086,6 +49107,10 @@
           "descripcion": "Le fournisseur a accepté les clés et elles ont été enregistrées sur le serveur. Vous ne verrez que leurs 4 derniers caractères.",
           "webhookPendiente": "Quand le premier événement arrivera, vous le verrez dans Activité.",
           "verConexion": "Voir la connexion"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} ne permet pas de vérifier les clés de test",
+          "descripcion": "Elles sont enregistrées sans vérification. Faites un paiement test dans votre boutique pour confirmer qu’elles fonctionnent."
         }
       },
       "ota": {

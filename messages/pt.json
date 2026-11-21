@@ -42363,6 +42363,27 @@
         "codigo": "O código deve ter pelo menos 2 caracteres",
         "guardar": "Não foi possível salvar a forma de pagamento",
         "estado": "Não foi possível alterar o status da forma"
+      },
+      "selector": {
+        "buscar": "Buscar método, banco ou gateway…",
+        "vacio": "Não há métodos para adicionar",
+        "sinResultados": "Nenhum método corresponde",
+        "crearTexto": "Criar «{texto}» como método personalizado",
+        "filtrosEtiqueta": "Tipo de método",
+        "requiereConexion": "Requer conexão",
+        "yaLoTienes": "Você já tem",
+        "conectada": "Conectado",
+        "sinConectar": "Não conectado",
+        "grupo": {
+          "manual": "Método",
+          "pasarela": "Gateway"
+        },
+        "filtros": {
+          "efectivo_bancos": "Dinheiro e bancos",
+          "billeteras": "Carteiras",
+          "pasarelas": "Gateways",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49096,6 +49117,10 @@
           "descripcion": "O provedor aceitou as chaves e elas foram guardadas no servidor. Você só verá os últimos 4 caracteres.",
           "webhookPendiente": "Quando chegar o primeiro evento, você o verá em Atividade.",
           "verConexion": "Ver conexão"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} não permite verificar chaves de teste",
+          "descripcion": "Elas são salvas sem verificação. Faça um pagamento de teste na sua loja para confirmar que funcionam."
         }
       },
       "ota": {

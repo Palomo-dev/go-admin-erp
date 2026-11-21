@@ -42368,6 +42368,27 @@
         "codigo": "El código debe tener al menos 2 caracteres",
         "guardar": "No se pudo guardar el método de pago",
         "estado": "No se pudo cambiar el estado del método"
+      },
+      "selector": {
+        "buscar": "Buscar método, banco o pasarela…",
+        "vacio": "No hay métodos para agregar",
+        "sinResultados": "Ningún método coincide",
+        "crearTexto": "Crear «{texto}» como método personalizado",
+        "filtrosEtiqueta": "Tipo de método",
+        "requiereConexion": "Requiere conexión",
+        "yaLoTienes": "Ya lo tienes",
+        "conectada": "Conectada",
+        "sinConectar": "Sin conectar",
+        "grupo": {
+          "manual": "Método",
+          "pasarela": "Pasarela"
+        },
+        "filtros": {
+          "efectivo_bancos": "Efectivo y bancos",
+          "billeteras": "Billeteras",
+          "pasarelas": "Pasarelas",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49101,6 +49122,10 @@
           "descripcion": "El proveedor aceptó las llaves y quedaron guardadas en el servidor. Solo verás sus últimos 4 caracteres.",
           "webhookPendiente": "Cuando llegue el primer evento lo verás en Actividad.",
           "verConexion": "Ver conexión"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} no deja comprobar llaves de prueba",
+          "descripcion": "Se guardan sin probarlas. Haz un pago de prueba en tu tienda para confirmar que funcionan."
         }
       },
       "ota": {

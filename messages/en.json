@@ -42353,6 +42353,27 @@
         "codigo": "The code must have at least 2 characters",
         "guardar": "The payment method could not be saved",
         "estado": "The method status could not be changed"
+      },
+      "selector": {
+        "buscar": "Search method, bank or gateway…",
+        "vacio": "There are no methods to add",
+        "sinResultados": "No method matches",
+        "crearTexto": "Create «{texto}» as a custom method",
+        "filtrosEtiqueta": "Method type",
+        "requiereConexion": "Requires connection",
+        "yaLoTienes": "You already have it",
+        "conectada": "Connected",
+        "sinConectar": "Not connected",
+        "grupo": {
+          "manual": "Method",
+          "pasarela": "Gateway"
+        },
+        "filtros": {
+          "efectivo_bancos": "Cash and banks",
+          "billeteras": "Wallets",
+          "pasarelas": "Gateways",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -49086,6 +49107,10 @@
           "descripcion": "The provider accepted the keys and they were saved on the server. You will only see their last 4 characters.",
           "webhookPendiente": "When the first event arrives you will see it in Activity.",
           "verConexion": "View connection"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} does not allow checking test keys",
+          "descripcion": "They are saved without a check. Make a test payment in your store to confirm they work."
         }
       },
       "ota": {

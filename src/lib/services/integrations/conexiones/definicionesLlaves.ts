@@ -59,8 +59,11 @@ export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
     conector: 'mp_checkout',
     ambientes: ['sandbox', 'production'],
     campos: [
-      { proposito: 'public_key', tipoCredencial: 'api_key', secreto: false, requerido: true, prefijos: { sandbox: ['TEST-'], production: ['APP_USR-'] } },
-      { proposito: 'access_token', tipoCredencial: 'api_key', secreto: true, requerido: true, prefijos: { sandbox: ['TEST-'], production: ['APP_USR-'] } },
+      // Mercado Pago cambió el formato: las credenciales de prueba nuevas (las de la pestaña «Prueba»
+      // del panel, que pertenecen a un usuario de prueba) también empiezan por APP_USR-. El ambiente
+      // real lo confirma `probarLlaves` con la cuenta dueña del token (usuario de prueba o no).
+      { proposito: 'public_key', tipoCredencial: 'api_key', secreto: false, requerido: true, prefijos: { sandbox: ['TEST-', 'APP_USR-'], production: ['APP_USR-'] } },
+      { proposito: 'access_token', tipoCredencial: 'api_key', secreto: true, requerido: true, prefijos: { sandbox: ['TEST-', 'APP_USR-'], production: ['APP_USR-'] } },
       { proposito: 'webhook_secret', tipoCredencial: 'webhook_secret', secreto: true, requerido: false },
     ],
     guardado: 'como_hoy',
@@ -155,7 +158,8 @@ export function validarFormatoLlaves(proveedor: ProveedorLlaves, ambiente: Ambie
   return errores;
 }
 
-/** Primer prefijo esperado (para el texto de ayuda «Empieza por …»). */
+/** Prefijos esperados (para el texto de ayuda «Empieza por …»): todos los válidos, separados por « / ». */
 export function prefijoEsperado(campo: CampoLlave, ambiente: Ambiente): string | null {
-  return campo.prefijos?.[ambiente]?.[0] ?? null;
+  const prefijos = campo.prefijos?.[ambiente] ?? [];
+  return prefijos.length > 0 ? prefijos.join(' / ') : null;
 }

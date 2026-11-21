@@ -272,7 +272,7 @@ export default function PromocionDetallePage() {
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <div className="flex w-full flex-col gap-4">
         <PageHeader
           variante="detail"
           titulo={promotion.name}

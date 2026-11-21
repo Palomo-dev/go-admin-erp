@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/config';
 import { obtenerOrganizacionActiva } from '@/lib/hooks/useOrganization';
+import { normalizarCodigoMotivo } from '@/lib/pos/devoluciones/motivosCsv';
 import { 
   ReturnReason, 
   CreateReturnReasonData, 
@@ -57,8 +58,10 @@ export class ReturnReasonsService {
         .order('display_order', { ascending: true })
         .order('name', { ascending: true });
 
-      if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,code.ilike.%${filters.search}%`);
+      // Sin caracteres que rompan el filtro `.or()` de PostgREST (coma, paréntesis, comodines).
+      const busqueda = (filters.search ?? '').replace(/[,()%*\\]/g, ' ').trim().slice(0, 80);
+      if (busqueda) {
+        query = query.or(`name.ilike.%${busqueda}%,code.ilike.%${busqueda}%`);
       }
 
       if (filters.is_active !== undefined) {
@@ -77,6 +80,20 @@ export class ReturnReasonsService {
       console.error('Error in getAll:', error);
       throw error;
     }
+  }
+
+  /**
+   * Cuántas devoluciones usan cada motivo (`pos_motivos_devolucion_usos`):
+   * columna «Usos» y «desactivar en lugar de borrar».
+   */
+  static async getUsos(): Promise<Record<number, number>> {
+    const { data, error } = await supabase.rpc('pos_motivos_devolucion_usos', {
+      p_organization_id: this.getOrganizationId(),
+    });
+    if (error) throw new Error(`Error al contar los usos de los motivos: ${error.message}`);
+    const salida: Record<number, number> = {};
+    for (const [id, n] of Object.entries((data ?? {}) as Record<string, number>)) salida[Number(id)] = Number(n) || 0;
+    return salida;
   }
 
   /**
@@ -120,22 +137,24 @@ export class ReturnReasonsService {
   static async create(data: CreateReturnReasonData): Promise<ReturnReason> {
     try {
       const organizationId = this.getOrganizationId();
+      // El código se guarda en MAYÚSCULAS: la unicidad se compara igual (D16).
+      const codigo = normalizarCodigoMotivo(data.code);
 
       // Verificar código único
       const { data: existing } = await supabase
         .from('return_reasons')
         .select('id')
         .eq('organization_id', organizationId)
-        .eq('code', data.code)
-        .single();
+        .eq('code', codigo)
+        .maybeSingle();
 
       if (existing) {
-        throw new ErrorMotivoDevolucion('codigoDuplicado', `Ya existe un motivo con el código "${data.code}"`, { codigo: data.code });
+        throw new ErrorMotivoDevolucion('codigoDuplicado', `Ya existe un motivo con el código "${codigo}"`, { codigo });
       }
 
       const insertData = {
         organization_id: organizationId,
-        code: data.code.toUpperCase(),
+        code: codigo,
         name: data.name,
         description: data.description || null,
         requires_photo: data.requires_photo ?? false,
@@ -169,24 +188,25 @@ export class ReturnReasonsService {
     try {
       const organizationId = this.getOrganizationId();
 
-      // Verificar código único si se está cambiando
-      if (data.code) {
+      // Verificar código único si se está cambiando (en MAYÚSCULAS, como se guarda).
+      const codigo = data.code ? normalizarCodigoMotivo(data.code) : null;
+      if (codigo) {
         const { data: existing } = await supabase
           .from('return_reasons')
           .select('id')
           .eq('organization_id', organizationId)
-          .eq('code', data.code)
+          .eq('code', codigo)
           .neq('id', id)
-          .single();
+          .maybeSingle();
 
         if (existing) {
-          throw new ErrorMotivoDevolucion('codigoDuplicado', `Ya existe un motivo con el código "${data.code}"`, { codigo: data.code });
+          throw new ErrorMotivoDevolucion('codigoDuplicado', `Ya existe un motivo con el código "${codigo}"`, { codigo });
         }
       }
 
       const updateData: UpdateReturnReasonData = { ...data };
-      if (data.code) {
-        updateData.code = data.code.toUpperCase();
+      if (codigo) {
+        updateData.code = codigo;
       }
 
       const { data: result, error } = await supabase
@@ -216,14 +236,16 @@ export class ReturnReasonsService {
     try {
       const organizationId = this.getOrganizationId();
 
-      // Verificar si está siendo usado en devoluciones
-      const { data: usedInReturns } = await supabase
-        .from('returns')
-        .select('id')
-        .eq('reason_id', id)
-        .limit(1);
+      // Verificar si está siendo usado en devoluciones (cabecera o líneas).
+      const [enDevoluciones, enLineas] = await Promise.all([
+        supabase.from('returns').select('id').eq('organization_id', organizationId).eq('reason_id', id).limit(1),
+        supabase.from('return_lines').select('id').eq('organization_id', organizationId).eq('reason_id', id).limit(1),
+      ]);
+      if (enDevoluciones.error || enLineas.error) {
+        throw new Error(`Error al comprobar los usos del motivo: ${(enDevoluciones.error ?? enLineas.error)?.message}`);
+      }
 
-      if (usedInReturns && usedInReturns.length > 0) {
+      if ((enDevoluciones.data?.length ?? 0) > 0 || (enLineas.data?.length ?? 0) > 0) {
         throw new ErrorMotivoDevolucion('enUso', 'No se puede eliminar el motivo porque está siendo usado en devoluciones existentes. Puede desactivarlo en su lugar.');
       }
 

@@ -1,27 +1,21 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Copy, Percent, Pencil, Plus } from 'lucide-react';
+import { AvisoTonal, Dialogo, FormField, SettingGroup, SettingRow } from '@/components/kit';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
-import { Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { esRetencion, type ClaseImpuesto } from '@/lib/services/taxResolverCore';
 import { baseMinimaEnMoneda } from '@/lib/services/compras/logica';
 import { esCuentaDeTitulo } from '@/lib/finanzas/cuentasTitulo';
 import { esImpuestoIva } from '@/lib/finanzas/mapeoImpuesto';
+import { codigoDian, tipoImpuesto } from './impuestosLogica';
 import {
   configurarRetencion,
   cuentasDePasivo,
@@ -81,6 +75,10 @@ interface TaxFormProps {
   /** Solo retenciones: UVT vigente, para mostrar la base mínima en moneda. */
   uvt?: UvtVigente | null;
   formatearUvt?: (valor: number) => string;
+  /** Duplicar (menú ⋯ de la fila, Figma 830:529376): impuesto nuevo con los datos de este. */
+  duplicarDe?: OrganizationTax | null;
+  /** Productos que usan el impuesto (subtítulo «usado en N productos», Figma 1012:87865). */
+  productos?: number | null;
 }
 
 const TaxForm: React.FC<TaxFormProps> = ({
@@ -93,8 +91,11 @@ const TaxForm: React.FC<TaxFormProps> = ({
   retencion = null,
   uvt = null,
   formatearUvt,
+  duplicarDe = null,
+  productos = null,
 }) => {
   const t = useTranslations('impuestosRetenciones');
+  const tf = useTranslations('finanzasImpuestos.formulario');
   const esClaseRetencion = clase === 'withholding';
   // Estado para el formulario
   const [name, setName] = useState('');
@@ -199,6 +200,16 @@ const TaxForm: React.FC<TaxFormProps> = ({
       setTaxIncluded(tax.tax_included || false);
       setSelectedTemplate(tax.template_id);
       setUseTemplate(!!tax.template_id);
+    } else if (duplicarDe) {
+      // Copia: mismos datos, impuesto nuevo; nunca nace predeterminado (solo hay uno).
+      setName(tf('nombreCopia', { nombre: duplicarDe.name }));
+      setRate(duplicarDe.rate.toString());
+      setDescription(duplicarDe.description || '');
+      setIsDefault(false);
+      setIsActive(true);
+      setTaxIncluded(duplicarDe.tax_included || false);
+      setSelectedTemplate(duplicarDe.template_id);
+      setUseTemplate(false);
     } else {
       // Valores por defecto para un nuevo impuesto
       setName('');
@@ -210,7 +221,9 @@ const TaxForm: React.FC<TaxFormProps> = ({
       setSelectedTemplate(null);
       setUseTemplate(false);
     }
-  }, [editMode, tax]);
+    // tf es estable; la copia solo se arma al abrir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, tax, duplicarDe]);
 
   // Solo las plantillas de la clase que se está creando: una retención no se
   // ofrece como impuesto de venta ni al revés.
@@ -218,7 +231,7 @@ const TaxForm: React.FC<TaxFormProps> = ({
     (tpl) => esRetencion({ kind: tpl.kind, tax_templates: { code: tpl.code } }) === esClaseRetencion,
   );
   const plantillaElegida = templates.find(
-    (tpl) => tpl.id === (useTemplate ? selectedTemplate : tax?.template_id ?? null),
+    (tpl) => tpl.id === (useTemplate ? selectedTemplate : tax?.template_id ?? duplicarDe?.template_id ?? null),
   );
   const esIva = !esClaseRetencion && esImpuestoIva(plantillaElegida?.code ?? null, name);
 
@@ -313,29 +326,17 @@ const TaxForm: React.FC<TaxFormProps> = ({
   const handleSave = async () => {
     // Validaciones básicas
     if (!name.trim()) {
-      toast({
-        title: 'Error',
-        description: 'El nombre del impuesto es obligatorio.',
-        variant: 'destructive',
-      });
+      toast({ title: tf('errorTitulo'), description: tf('validacion.nombre'), variant: 'destructive' });
       return;
     }
 
     if (parseFloat(rate.toString()) < 0 || parseFloat(rate.toString()) > 100) {
-      toast({
-        title: 'Error',
-        description: 'La tasa debe estar entre 0 y 100%.',
-        variant: 'destructive',
-      });
+      toast({ title: tf('errorTitulo'), description: tf('validacion.tasa'), variant: 'destructive' });
       return;
     }
 
     if (esIva && !cuentaEnDetalle) {
-      toast({
-        title: 'Cuenta contable requerida',
-        description: 'El IVA por pagar necesita una cuenta de pasivo de detalle. La cuenta canónica es 2408.',
-        variant: 'destructive',
-      });
+      toast({ title: tf('validacion.cuentaTitulo'), description: tf('validacion.cuenta'), variant: 'destructive' });
       return;
     }
 
@@ -392,28 +393,17 @@ const TaxForm: React.FC<TaxFormProps> = ({
           console.error('Error al vincular la cuenta del IVA:', errConfig);
           const mensaje = errConfig instanceof Error ? errConfig.message : String((errConfig as { message?: string })?.message ?? '');
           const codigo = ERRORES_CONFIGURACION.find((c) => mensaje.includes(c));
-          const detalle = codigo === 'cuenta_no_existe'
-            ? 'la cuenta no existe en el plan de cuentas.'
-            : codigo === 'cuenta_de_titulo'
-              ? 'la cuenta es de título y no recibe el IVA. Elige una de detalle.'
-              : codigo === 'cuenta_no_es_pasivo'
-                ? 'la cuenta no es de pasivo.'
-                : 'revisa que la cuenta exista y que tengas permiso de impuestos.';
-          toast({
-            title: 'El impuesto se guardó, pero no la cuenta',
-            description: `El IVA por pagar es 2408. ${detalle}`,
-            variant: 'destructive',
-          });
+          const detalle = codigo === 'cuenta_no_existe' || codigo === 'cuenta_de_titulo' || codigo === 'cuenta_no_es_pasivo'
+            ? tf(`cuentaErrores.${codigo}`)
+            : tf('cuentaErrores.otro');
+          toast({ title: tf('cuentaGuardadaSinCuenta'), description: tf('cuentaErrorDetalle', { detalle }), variant: 'destructive' });
           onClose(true);
           return;
         }
       }
 
       // Mostrar mensaje de éxito
-      toast({
-        title: 'Éxito',
-        description: data.message || (editMode ? 'Impuesto actualizado correctamente.' : 'Impuesto creado correctamente.'),
-      });
+      toast({ description: data?.message || tf(editMode ? 'actualizado' : 'creado') });
 
       // No necesitamos actualizar manualmente otros impuestos como predeterminados
       // porque la función RPC ya se encarga de eso
@@ -422,9 +412,9 @@ const TaxForm: React.FC<TaxFormProps> = ({
     } catch (error) {
       console.error('Error al guardar el impuesto:', error);
       toast({
-        title: 'Error',
+        title: tf('errorTitulo'),
         // El mensaje del servidor dice por qué (sin permiso, tasa fuera de rango…).
-        description: error instanceof Error && error.message ? error.message : 'No se pudo guardar el impuesto. Intente de nuevo.',
+        description: error instanceof Error && error.message ? error.message : tf('errorGuardar'),
         variant: 'destructive',
       });
     } finally {
@@ -432,312 +422,238 @@ const TaxForm: React.FC<TaxFormProps> = ({
     }
   };
 
+  const tipo = tipoImpuesto(plantillaElegida?.code ?? null, name);
+  const dian = esClaseRetencion ? null : codigoDian(plantillaElegida?.code ?? null, name);
+  const selectorCuenta = 'h-10 border-line-strong bg-surface';
+  const opcionAutomatica = '__automatica__';
+
+  const titulo = esClaseRetencion
+    ? t(editMode ? 'formulario.editar' : 'formulario.nueva')
+    : tf(editMode ? 'editar' : duplicarDe ? 'duplicar' : 'nuevo');
+  const descripcionDialogo = editMode && tax
+    ? productos !== null && productos !== undefined
+      ? tf('subtituloUso', { nombre: tax.name, count: productos })
+      : tax.name
+    : undefined;
+
+  // Diálogo del kit (Figma 1012:87865 editar, 195:13699 nuevo con plantilla del país).
   return (
-    <Dialog open={open} onOpenChange={() => !loading && onClose()}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700 bg-white border-gray-200">
-        <DialogHeader className="px-4 sm:px-6">
-          <DialogTitle className="text-lg sm:text-xl text-blue-600 dark:text-blue-400">
-            {esClaseRetencion
-              ? t(editMode ? 'formulario.editar' : 'formulario.nueva')
-              : editMode ? 'Editar Impuesto' : 'Nuevo Impuesto'}
-          </DialogTitle>
-        </DialogHeader>
+    <Dialogo
+      abierto={open}
+      onAbiertoChange={(abierto) => !abierto && !loading && onClose()}
+      titulo={titulo}
+      descripcion={descripcionDialogo}
+      icono={editMode ? Pencil : duplicarDe ? Copy : esClaseRetencion ? Plus : Percent}
+      ancho={560}
+      primario={{
+        etiqueta: tf(editMode ? 'guardarCambios' : 'guardar'),
+        onClick: () => void handleSave(),
+        cargando: loading,
+        deshabilitada: !isFormValid(),
+      }}
+    >
+      <div className="flex flex-col gap-4">
+        {esClaseRetencion && <AvisoTonal tono="informacion" compacto titulo={t('formulario.nota')} />}
 
-        {esClaseRetencion && (
-          <p className="mx-4 sm:mx-6 text-xs sm:text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-            {t('formulario.nota')}
-          </p>
+        {!editMode && !duplicarDe && !esClaseRetencion && plantillas.length > 0 && (
+          <AvisoTonal tono="informacion" compacto titulo={tf('plantillas.aviso')} />
         )}
-        
-        {!editMode && !esClaseRetencion && plantillas.length > 0 && (
-          <div className="mx-4 sm:mx-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-              ℹ️ <strong>Plantillas sugeridas:</strong> Se muestran automáticamente los impuestos 
-              configurados para su país de operación. Puede usar una plantilla o crear un impuesto personalizado.
-            </p>
-          </div>
-        )}
-        
-        <div className="grid gap-4 py-4 px-4 sm:px-6">
-          {!editMode && (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="useTemplate" 
-                  checked={useTemplate} 
-                  onCheckedChange={(checked) => setUseTemplate(!!checked)}
-                  className="dark:border-gray-600"
-                />
-                <Label htmlFor="useTemplate" className="text-sm dark:text-gray-300 cursor-pointer">
-                  Usar plantilla de impuesto
-                </Label>
-              </div>
-              
-              {useTemplate && (
-                <div className="grid grid-cols-1 gap-2">
-                  <Label htmlFor="template" className="text-sm dark:text-gray-300">
-                    Plantillas de Impuestos Disponibles
-                    {plantillas.length > 0 && plantillas[0]?.country && (
-                      <span className="ml-2 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                        ({plantillas[0].country})
-                      </span>
-                    )}
-                  </Label>
-                  {plantillas.length === 0 ? (
-                    <div className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-50 dark:bg-gray-800/50 text-center">
-                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                        No hay plantillas de impuestos disponibles para su país
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      <select
-                        id="template"
-                        value={selectedTemplate || ''}
-                        onChange={(e) => setSelectedTemplate(Number(e.target.value))}
-                        className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
-                      >
-                        <option value="" className="dark:bg-gray-900 dark:text-gray-400">Seleccionar plantilla del país</option>
-                        {plantillas.map((template) => (
-                          <option key={template.id} value={template.id} className="dark:bg-gray-900 dark:text-gray-200">
-                            {template.name} - {template.rate}% {template.description ? `(${template.description})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Se muestran solo las plantillas específicas para su país de operación
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
 
-          <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="name" className="text-sm dark:text-gray-300">
-              Nombre <span className="text-red-500">*</span>
-            </Label>
-            <Input 
-              id="name" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)}
-              className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
-              placeholder="Ej: IVA 19%"
-            />
-          </div>
+        {!editMode && !duplicarDe && (
+          <div className="flex flex-col gap-3">
+            <label htmlFor="useTemplate" className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+              <Checkbox id="useTemplate" checked={useTemplate} onCheckedChange={(checked) => setUseTemplate(!!checked)} />
+              {tf('plantillas.usar')}
+            </label>
 
-          <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="rate" className="text-sm dark:text-gray-300">
-              Tasa (%) <span className="text-red-500">*</span>
-            </Label>
-            <Input 
-              id="rate" 
-              value={rate} 
-              onChange={(e) => {
-                // Solo permitir números y punto decimal
-                const value = e.target.value.replace(/[^0-9.]/g, '');
-                setRate(value);
-              }}
-              className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
-              placeholder="Ej: 19"
-              type="text"
-              inputMode="decimal"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="description" className="text-sm dark:text-gray-300">
-              Descripción
-            </Label>
-            <Textarea 
-              id="description" 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)}
-              className="resize-none min-h-[80px] dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
-              placeholder="Descripción del impuesto"
-            />
-          </div>
-
-          {esIva && (
-            <div className="grid grid-cols-1 gap-2">
-              <Label htmlFor="cuentaIva" className="text-sm dark:text-gray-300">
-                Cuenta por pagar (PUC) <span className="text-red-500">*</span>
-              </Label>
-              <select
-                id="cuentaIva"
-                value={cuentaEnDetalle ? cuenta : ''}
-                onChange={(e) => {
-                  cuentaTocada.current = true;
-                  setMapeoInexistente(null);
-                  setCuenta(e.target.value);
-                }}
-                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
+            {useTemplate && (
+              <FormField
+                etiqueta={plantillas[0]?.country ? tf('plantillas.etiquetaPais', { pais: plantillas[0].country }) : tf('plantillas.etiqueta')}
+                ayuda={plantillas.length > 0 ? tf('plantillas.ayuda') : undefined}
               >
-                <option value="">Selecciona la cuenta</option>
-                {cuentasDetalle.map((c) => (
-                  <option key={c.codigo} value={c.codigo}>
-                    {c.codigo} · {c.nombre}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                El IVA por pagar es 2408. Solo se ofrecen cuentas de pasivo de detalle que existen en el plan.
-              </p>
-              {mapeoInexistente && (
-                <p className="text-xs text-amber-700 dark:text-amber-300">
-                  El mapeo actual ({mapeoInexistente}) no existe en el plan. Elige una cuenta real; 2408 es la de IVA por pagar.
-                </p>
-              )}
-              {!cuentasDetalle.some((c) => c.codigo === '2408') && (
-                cuentaIvaSugerida(cuentasDetalle) ? (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    La 2408 es de título en tu plan; el IVA se registra en su auxiliar {cuentaIvaSugerida(cuentasDetalle)}.
-                  </p>
-                ) : (
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    El plan no tiene una cuenta de detalle bajo 2408 (IVA por pagar). Elige otra de pasivo de detalle, o créala en el plan de cuentas.
-                  </p>
-                )
-              )}
-            </div>
-          )}
-
-          {esClaseRetencion && (
-            <>
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="cuentaRetencion" className="text-sm dark:text-gray-300">
-                  {t('formulario.cuenta')}
-                </Label>
-                <select
-                  id="cuentaRetencion"
-                  value={cuentaEnDetalle ? cuenta : ''}
-                  onChange={(e) => {
-                    cuentaTocada.current = true;
-                    setCuenta(e.target.value);
-                  }}
-                  aria-describedby="cuentaRetencionAyuda"
-                  className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-offset-2"
-                >
-                  <option value="">
-                    {retencion && !retencion.cuentaPropia
-                      ? t('formulario.cuentaAutomaticaActual', { cuenta: retencion.cuenta })
-                      : t('formulario.cuentaAutomatica')}
-                  </option>
-                  {cuentasDetalle.map((c) => (
-                    <option key={c.codigo} value={c.codigo}>
-                      {c.codigo} · {c.nombre}
-                    </option>
-                  ))}
-                </select>
-                {mapeoInexistente && (
-                  <p className="text-xs text-amber-700 dark:text-amber-300">
-                    La cuenta {mapeoInexistente} no está en el plan o es de título. Elige una de detalle.
-                  </p>
-                )}
-                <p id="cuentaRetencionAyuda" className="text-xs text-gray-500 dark:text-gray-400">
-                  {t('formulario.cuentaAyuda')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2">
-                <Label htmlFor="baseMinimaUvt" className="text-sm dark:text-gray-300">
-                  {t('formulario.baseMinima')}
-                </Label>
-                <Input
-                  id="baseMinimaUvt"
-                  value={baseMinima}
-                  onChange={(e) => setBaseMinima(e.target.value.replace(/[^0-9.]/g, ''))}
-                  className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500"
-                  placeholder={t('formulario.baseMinimaPlaceholder')}
-                  type="text"
-                  inputMode="decimal"
-                  aria-invalid={!baseMinimaValida}
-                  aria-describedby="baseMinimaAyuda"
-                />
-                <p id="baseMinimaAyuda" className="text-xs text-gray-500 dark:text-gray-400">
-                  {!baseMinimaValida
-                    ? t('formulario.errores.base_minima_invalida')
-                    : baseMinimaMoneda !== null && uvt && formatearUvt
-                      ? t('formulario.baseMinimaEquivale', { valor: formatearUvt(baseMinimaMoneda), anio: uvt.anio })
-                      : t('formulario.baseMinimaAyuda')}
-                </p>
-              </div>
-            </>
-          )}
-
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="isActive" 
-              checked={isActive} 
-              onCheckedChange={setIsActive}
-              className="data-[state=checked]:bg-green-600 dark:data-[state=checked]:bg-green-700"
-            />
-            <Label htmlFor="isActive" className="text-sm dark:text-gray-300 cursor-pointer">
-              Impuesto activo
-            </Label>
+                {(c) =>
+                  plantillas.length === 0 ? (
+                    <p id={c.id} className="rounded-lg border border-line bg-subtle px-3 py-2.5 text-sm text-fg-secondary">
+                      {tf('plantillas.sinPlantillas')}
+                    </p>
+                  ) : (
+                    <Select value={selectedTemplate ? String(selectedTemplate) : ''} onValueChange={(v) => setSelectedTemplate(Number(v))}>
+                      <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className={selectorCuenta}>
+                        <SelectValue placeholder={tf('plantillas.elegir')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {plantillas.map((template) => (
+                          <SelectItem key={template.id} value={String(template.id)}>
+                            {template.name} · {template.rate} %{template.description ? ` (${template.description})` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                }
+              </FormField>
+            )}
           </div>
+        )}
 
+        <FormField etiqueta={tf('nombre')} obligatorio>
+          {(c) => <Input {...c} value={name} onChange={(e) => setName(e.target.value)} placeholder={tf('nombreEjemplo')} maxLength={100} className="h-10" />}
+        </FormField>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField etiqueta={tf('tasa')} obligatorio ayuda={tf('tasaAyuda')}>
+            {(c) => (
+              <Input
+                {...c}
+                value={rate}
+                onChange={(e) => setRate(e.target.value.replace(/[^0-9.]/g, ''))}
+                placeholder={tf('tasaEjemplo')}
+                type="text"
+                inputMode="decimal"
+                className="h-10"
+              />
+            )}
+          </FormField>
           {!esClaseRetencion && (
-          <>
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="isDefault" 
-              checked={isDefault} 
-              onCheckedChange={setIsDefault}
-              className="data-[state=checked]:bg-amber-600 dark:data-[state=checked]:bg-amber-700"
-            />
-            <Label htmlFor="isDefault" className="text-sm dark:text-gray-300 cursor-pointer">
-              Impuesto predeterminado
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch 
-              id="taxIncluded" 
-              checked={taxIncluded} 
-              onCheckedChange={setTaxIncluded}
-              className="data-[state=checked]:bg-blue-600 dark:data-[state=checked]:bg-blue-700"
-            />
-            <Label htmlFor="taxIncluded" className="text-sm dark:text-gray-300 cursor-pointer">
-              Impuesto incluido en el precio
-            </Label>
-          </div>
-          {taxIncluded && (
-            <p className="text-xs text-blue-600 dark:text-blue-400 -mt-2 ml-10">
-              El precio del producto ya incluye este impuesto. No se sumará al total.
-            </p>
-          )}
-          </>
+            <FormField etiqueta={tf('codigoDian')} ayuda={tf('codigoDianAyuda')}>
+              {(c) => (
+                <p id={c.id} className="flex h-10 items-center rounded-lg border border-line bg-subtle px-3 text-sm text-fg">
+                  {dian ? tf('codigoDianValor', { codigo: dian, tipo: tf(`tipos.${tipo}`) }) : tf('codigoDianNinguno')}
+                </p>
+              )}
+            </FormField>
           )}
         </div>
 
-        <DialogFooter className="px-4 sm:px-6 flex-col sm:flex-row gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => onClose()} 
-            disabled={loading}
-            className="w-full sm:w-auto dark:border-gray-700 dark:hover:bg-gray-700 dark:text-gray-300"
+        <FormField etiqueta={tf('descripcion')}>
+          {(c) => (
+            <Textarea
+              {...c}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[72px] resize-none"
+              placeholder={tf('descripcionEjemplo')}
+            />
+          )}
+        </FormField>
+
+        {esIva && (
+          <FormField
+            etiqueta={tf('cuentaIva')}
+            obligatorio
+            ayuda={tf('cuentaIvaAyuda')}
+            error={
+              mapeoInexistente
+                ? tf('cuentaIvaInexistente', { cuenta: mapeoInexistente })
+                : !cuentasDetalle.some((c) => c.codigo === '2408') && !cuentaIvaSugerida(cuentasDetalle)
+                  ? tf('cuentaIvaSinDetalle')
+                  : null
+            }
           >
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSave} 
-            disabled={loading || !isFormValid()}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span className="text-sm sm:text-base">Guardando...</span>
-              </>
-            ) : (
-              <span className="text-sm sm:text-base">Guardar</span>
+            {(c) => (
+              <div className="flex flex-col gap-1.5">
+                <Select
+                  value={cuentaEnDetalle ? cuenta : ''}
+                  onValueChange={(v) => {
+                    cuentaTocada.current = true;
+                    setMapeoInexistente(null);
+                    setCuenta(v);
+                  }}
+                >
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-invalid={c['aria-invalid']} className={selectorCuenta}>
+                    <SelectValue placeholder={tf('elegirCuenta')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cuentasDetalle.map((cta) => (
+                      <SelectItem key={cta.codigo} value={cta.codigo}>
+                        {cta.codigo} · {cta.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!cuentasDetalle.some((cta) => cta.codigo === '2408') && cuentaIvaSugerida(cuentasDetalle) && (
+                  <p className="text-xs text-fg-secondary">{tf('cuentaIvaAuxiliar', { cuenta: cuentaIvaSugerida(cuentasDetalle) ?? '' })}</p>
+                )}
+              </div>
             )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </FormField>
+        )}
+
+        {esClaseRetencion && (
+          <>
+            <FormField
+              etiqueta={t('formulario.cuenta')}
+              ayuda={t('formulario.cuentaAyuda')}
+              error={mapeoInexistente ? tf('cuentaRetencionInexistente', { cuenta: mapeoInexistente }) : null}
+            >
+              {(c) => (
+                <Select
+                  value={cuentaEnDetalle ? cuenta : opcionAutomatica}
+                  onValueChange={(v) => {
+                    cuentaTocada.current = true;
+                    setCuenta(v === opcionAutomatica ? '' : v);
+                  }}
+                >
+                  <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c['aria-describedby']} className={selectorCuenta}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={opcionAutomatica}>
+                      {retencion && !retencion.cuentaPropia
+                        ? t('formulario.cuentaAutomaticaActual', { cuenta: retencion.cuenta })
+                        : t('formulario.cuentaAutomatica')}
+                    </SelectItem>
+                    {cuentasDetalle.map((cta) => (
+                      <SelectItem key={cta.codigo} value={cta.codigo}>
+                        {cta.codigo} · {cta.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+
+            <FormField
+              etiqueta={t('formulario.baseMinima')}
+              error={!baseMinimaValida ? t('formulario.errores.base_minima_invalida') : null}
+              ayuda={
+                baseMinimaMoneda !== null && uvt && formatearUvt
+                  ? t('formulario.baseMinimaEquivale', { valor: formatearUvt(baseMinimaMoneda), anio: uvt.anio })
+                  : t('formulario.baseMinimaAyuda')
+              }
+            >
+              {(c) => (
+                <Input
+                  {...c}
+                  value={baseMinima}
+                  onChange={(e) => setBaseMinima(e.target.value.replace(/[^0-9.]/g, ''))}
+                  placeholder={t('formulario.baseMinimaPlaceholder')}
+                  type="text"
+                  inputMode="decimal"
+                  className="h-10"
+                />
+              )}
+            </FormField>
+          </>
+        )}
+
+        <SettingGroup etiqueta={tf('opciones')}>
+          <SettingRow titulo={tf(esClaseRetencion ? 'activaRetencion' : 'activo')} htmlFor="isActive">
+            <Switch id="isActive" checked={isActive} onCheckedChange={setIsActive} />
+          </SettingRow>
+          {!esClaseRetencion && (
+            <>
+              <SettingRow titulo={tf('predeterminado')} descripcion={tf('predeterminadoAyuda')} htmlFor="isDefault">
+                <Switch id="isDefault" checked={isDefault} onCheckedChange={setIsDefault} />
+              </SettingRow>
+              <SettingRow titulo={tf('incluido')} descripcion={tf('incluidoAyuda')} htmlFor="taxIncluded">
+                <Switch id="taxIncluded" checked={taxIncluded} onCheckedChange={setTaxIncluded} />
+              </SettingRow>
+            </>
+          )}
+        </SettingGroup>
+      </div>
+    </Dialogo>
   );
 };
 

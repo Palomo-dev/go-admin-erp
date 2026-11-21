@@ -62014,5 +62014,195 @@
       "datos_invalidos": "Revisa los datos del formulario.",
       "DESCONOCIDO": "No se pudo completar. Intenta de nuevo en un momento."
     }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Nuevo impuesto",
+    "subtitulo": "{impuestos, plural, =0 {Sin impuestos de venta y compra} one {# impuesto de venta y compra} other {# impuestos de venta y compra}} · {retenciones, plural, =0 {sin retenciones} one {# retención} other {# retenciones}}",
+    "subtituloTarifa": "tarifa predeterminada: {tarifa}",
+    "subtituloSinTarifa": "sin tarifa predeterminada",
+    "subtituloMovil": "{impuestos, plural, one {# impuesto} other {# impuestos}} · {activos, plural, one {# activo} other {# activos}}",
+    "pestanas": {
+      "impuestos": "Impuestos"
+    },
+    "tablaEtiqueta": "Impuestos de venta y compra de la organización",
+    "buscar": "Buscar impuesto por nombre o tarifa",
+    "columnas": {
+      "nombre": "Nombre",
+      "tipo": "Tipo",
+      "tarifa": "Tarifa",
+      "codigoDian": "Código DIAN",
+      "productos": "Productos",
+      "estado": "Estado"
+    },
+    "tipos": {
+      "iva": "IVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Otro"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Activo",
+      "inactivo": "Inactivo"
+    },
+    "insignias": {
+      "exento": "Exento",
+      "predeterminado": "Predeterminado",
+      "incluido": "Incluido",
+      "incluidoLargo": "incluido en el precio"
+    },
+    "filtros": {
+      "titulo": "Filtrar impuestos",
+      "estado": "Estado",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "activos": "Activos",
+      "inactivos": "Inactivos"
+    },
+    "acciones": {
+      "editar": "Editar impuesto",
+      "duplicar": "Duplicar",
+      "predeterminado": "Hacer predeterminado",
+      "predeterminadoInactivo": "Actívalo primero: un impuesto inactivo no puede ser la tarifa por defecto.",
+      "activar": "Activar",
+      "desactivar": "Desactivar",
+      "activarNombre": "Activar {nombre}",
+      "desactivarNombre": "Desactivar {nombre}",
+      "eliminar": "Eliminar impuesto",
+      "eliminarPredeterminado": "Es la tarifa por defecto: elige otra antes de eliminarlo.",
+      "eliminarEnUso": "{count, plural, one {Lo usa # producto} other {Lo usan # productos}}: quítalo de ellos o desactívalo.",
+      "actualizar": "Actualizar"
+    },
+    "vacio": {
+      "titulo": "Aún no hay impuestos",
+      "descripcion": "Crea el IVA y los demás impuestos que cobras, o carga la plantilla de tu país."
+    },
+    "sinResultados": {
+      "titulo": "Ningún impuesto coincide",
+      "descripcion": "Prueba con otro nombre o tarifa, o quita los filtros."
+    },
+    "error": {
+      "titulo": "No se pudieron cargar los impuestos",
+      "descripcion": "Revisa tu conexión y vuelve a intentarlo."
+    },
+    "sinPermiso": {
+      "titulo": "No tienes acceso a los impuestos",
+      "descripcion": "Pide a un administrador de la organización que te dé acceso a Finanzas."
+    },
+    "sustantivo": {
+      "singular": "impuesto",
+      "plural": "impuestos"
+    },
+    "plantilla": {
+      "cargar": "Cargar plantilla de {pais}",
+      "cargada": "Se agregaron los impuestos de la plantilla de {pais} que faltaban.",
+      "error": "No se pudo cargar la plantilla de impuestos."
+    },
+    "toast": {
+      "errorTitulo": "Error",
+      "sinOrganizacion": "No se encontró una organización activa.",
+      "errorOrganizacion": "No se pudo obtener la información de la organización.",
+      "activado": "{nombre} quedó activo.",
+      "desactivado": "{nombre} quedó inactivo.",
+      "errorEstado": "No se pudo cambiar el estado del impuesto.",
+      "predeterminado": "{nombre} es ahora la tarifa por defecto.",
+      "errorPredeterminado": "No se pudo cambiar la tarifa por defecto."
+    },
+    "tarifa": {
+      "titulo": "Tarifa para productos sin impuesto: {tarifa}",
+      "ninguna": "Ninguna ({tasa})",
+      "cobertura": "{con} de {total} productos tienen impuesto asignado. Los otros {sin} se venden con esta tarifa. Un producto exento o excluido se marca así en el producto: nunca usa esta tarifa.",
+      "ayuda": "Se aplica en facturas, cotizaciones y POS a los productos que no tienen un impuesto propio. Si eliges «Ninguna», esas ventas salen sin IVA y verás una advertencia antes de emitir.",
+      "barraEtiqueta": "Productos con impuesto asignado",
+      "leyenda": "Con impuesto {con} % · Exento o excluido {exentos} % · Sin configurar {sin} %",
+      "cambiar": "Cambiar tarifa",
+      "dialogoTitulo": "Tarifa para productos sin impuesto",
+      "etiqueta": "Tarifa por defecto",
+      "elegir": "Selecciona una tarifa",
+      "opcionNinguna": "Ninguna — vendo productos excluidos o exentos",
+      "guardar": "Guardar tarifa",
+      "guardadaTitulo": "Tarifa por defecto actualizada",
+      "guardadaNinguna": "Los productos sin impuesto asignado se venderán sin IVA.",
+      "guardadaTarifa": "Los productos sin impuesto asignado usarán esta tarifa.",
+      "errorTitulo": "Error",
+      "error": "No se pudo guardar la tarifa por defecto. Intenta de nuevo."
+    },
+    "eliminar": {
+      "titulo": "¿Eliminar {nombre}?",
+      "descripcion": "Vas a eliminar <b>{nombre}</b> ({tasa}). Esta acción no se puede deshacer. Si lo usan productos o es la tarifa por defecto, no se elimina.",
+      "confirmar": "Eliminar",
+      "errorTitulo": "No se eliminó",
+      "error": "No se pudo eliminar el impuesto. Intenta de nuevo.",
+      "hecho": "Impuesto eliminado."
+    },
+    "formulario": {
+      "nuevo": "Nuevo impuesto",
+      "editar": "Editar impuesto",
+      "duplicar": "Duplicar impuesto",
+      "nombreCopia": "{nombre} (copia)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {sin productos} one {usado en # producto} other {usado en # productos}}",
+      "guardar": "Guardar",
+      "guardarCambios": "Guardar cambios",
+      "plantillas": {
+        "aviso": "Se muestran las plantillas de impuestos de tu país. Puedes usar una como base o crear un impuesto personalizado.",
+        "usar": "Usar plantilla de impuesto",
+        "etiqueta": "Plantillas de impuestos disponibles",
+        "etiquetaPais": "Plantillas de impuestos disponibles ({pais})",
+        "ayuda": "Solo las plantillas de tu país de operación.",
+        "sinPlantillas": "No hay plantillas de impuestos para tu país.",
+        "elegir": "Selecciona la plantilla"
+      },
+      "nombre": "Nombre",
+      "nombreEjemplo": "Ej: IVA 19 %",
+      "tasa": "Tarifa (%)",
+      "tasaEjemplo": "Ej: 19",
+      "tasaAyuda": "Entre 0 y 100. Hasta 3 decimales (ICA por mil: 0,966).",
+      "codigoDian": "Código DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "No va como impuesto de la línea",
+      "codigoDianAyuda": "Lo usa la factura electrónica; sale de la plantilla o del nombre.",
+      "tipos": {
+        "iva": "IVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Otro"
+      },
+      "descripcion": "Descripción",
+      "descripcionEjemplo": "Descripción del impuesto",
+      "cuentaIva": "Cuenta por pagar (PUC)",
+      "elegirCuenta": "Selecciona la cuenta",
+      "cuentaIvaAyuda": "El IVA por pagar es 2408. Solo se ofrecen cuentas de pasivo de detalle que existen en el plan.",
+      "cuentaIvaInexistente": "El mapeo actual ({cuenta}) no existe en el plan. Elige una cuenta real; 2408 es la de IVA por pagar.",
+      "cuentaIvaSinDetalle": "El plan no tiene una cuenta de detalle bajo 2408 (IVA por pagar). Elige otra de pasivo de detalle o créala en el plan de cuentas.",
+      "cuentaIvaAuxiliar": "La 2408 es de título en tu plan; el IVA se registra en su auxiliar {cuenta}.",
+      "cuentaRetencionInexistente": "La cuenta {cuenta} no está en el plan o es de título. Elige una de detalle.",
+      "opciones": "Opciones del impuesto",
+      "activo": "Impuesto activo",
+      "activaRetencion": "Retención activa",
+      "predeterminado": "Tarifa predeterminada",
+      "predeterminadoAyuda": "La usan los productos sin impuesto asignado (no los exentos). Solo hay una.",
+      "incluido": "Incluido en el precio",
+      "incluidoAyuda": "El precio del producto ya incluye este impuesto. No se suma al total.",
+      "errorTitulo": "Error",
+      "errorGuardar": "No se pudo guardar el impuesto. Intenta de nuevo.",
+      "creado": "Impuesto creado.",
+      "actualizado": "Impuesto actualizado.",
+      "validacion": {
+        "nombre": "El nombre del impuesto es obligatorio.",
+        "tasa": "La tarifa debe estar entre 0 y 100 %.",
+        "cuentaTitulo": "Cuenta contable requerida",
+        "cuenta": "El IVA por pagar necesita una cuenta de pasivo de detalle. La cuenta canónica es 2408."
+      },
+      "cuentaGuardadaSinCuenta": "El impuesto se guardó, pero no la cuenta",
+      "cuentaErrorDetalle": "El IVA por pagar es 2408: {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "la cuenta no existe en el plan de cuentas.",
+        "cuenta_de_titulo": "la cuenta es de título y no recibe el IVA. Elige una de detalle.",
+        "cuenta_no_es_pasivo": "la cuenta no es de pasivo.",
+        "otro": "revisa que la cuenta exista y que tengas permiso de impuestos."
+      }
+    }
   }
 }

@@ -62009,5 +62009,195 @@
       "datos_invalidos": "Revise os dados do formulário.",
       "DESCONOCIDO": "Não foi possível concluir. Tente de novo em instantes."
     }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Novo imposto",
+    "subtitulo": "{impuestos, plural, =0 {Sem impostos de venda e compra} one {# imposto de venda e compra} other {# impostos de venda e compra}} · {retenciones, plural, =0 {sem retenções} one {# retenção} other {# retenções}}",
+    "subtituloTarifa": "alíquota padrão: {tarifa}",
+    "subtituloSinTarifa": "sem alíquota padrão",
+    "subtituloMovil": "{impuestos, plural, one {# imposto} other {# impostos}} · {activos, plural, one {# ativo} other {# ativos}}",
+    "pestanas": {
+      "impuestos": "Impostos"
+    },
+    "tablaEtiqueta": "Impostos de venda e compra da organização",
+    "buscar": "Buscar imposto por nome ou alíquota",
+    "columnas": {
+      "nombre": "Nome",
+      "tipo": "Tipo",
+      "tarifa": "Alíquota",
+      "codigoDian": "Código DIAN",
+      "productos": "Produtos",
+      "estado": "Status"
+    },
+    "tipos": {
+      "iva": "IVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Outro"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Ativo",
+      "inactivo": "Inativo"
+    },
+    "insignias": {
+      "exento": "Isento",
+      "predeterminado": "Padrão",
+      "incluido": "Incluído",
+      "incluidoLargo": "incluído no preço"
+    },
+    "filtros": {
+      "titulo": "Filtrar impostos",
+      "estado": "Status",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "activos": "Ativos",
+      "inactivos": "Inativos"
+    },
+    "acciones": {
+      "editar": "Editar imposto",
+      "duplicar": "Duplicar",
+      "predeterminado": "Tornar padrão",
+      "predeterminadoInactivo": "Ative-o primeiro: um imposto inativo não pode ser a alíquota padrão.",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "activarNombre": "Ativar {nombre}",
+      "desactivarNombre": "Desativar {nombre}",
+      "eliminar": "Excluir imposto",
+      "eliminarPredeterminado": "É a alíquota padrão: escolha outra antes de excluí-lo.",
+      "eliminarEnUso": "{count, plural, one {Usado por # produto} other {Usado por # produtos}}: remova-o deles ou desative-o.",
+      "actualizar": "Atualizar"
+    },
+    "vacio": {
+      "titulo": "Ainda não há impostos",
+      "descripcion": "Crie o IVA e os outros impostos que você cobra, ou carregue o modelo do seu país."
+    },
+    "sinResultados": {
+      "titulo": "Nenhum imposto corresponde",
+      "descripcion": "Tente outro nome ou alíquota, ou limpe os filtros."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os impostos",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso aos impostos",
+      "descripcion": "Peça a um administrador da organização acesso a Finanças."
+    },
+    "sustantivo": {
+      "singular": "imposto",
+      "plural": "impostos"
+    },
+    "plantilla": {
+      "cargar": "Carregar modelo de {pais}",
+      "cargada": "Os impostos que faltavam do modelo de {pais} foram adicionados.",
+      "error": "Não foi possível carregar o modelo de impostos."
+    },
+    "toast": {
+      "errorTitulo": "Erro",
+      "sinOrganizacion": "Nenhuma organização ativa foi encontrada.",
+      "errorOrganizacion": "Não foi possível obter as informações da organização.",
+      "activado": "{nombre} ficou ativo.",
+      "desactivado": "{nombre} ficou inativo.",
+      "errorEstado": "Não foi possível mudar o status do imposto.",
+      "predeterminado": "{nombre} agora é a alíquota padrão.",
+      "errorPredeterminado": "Não foi possível mudar a alíquota padrão."
+    },
+    "tarifa": {
+      "titulo": "Alíquota para produtos sem imposto: {tarifa}",
+      "ninguna": "Nenhuma ({tasa})",
+      "cobertura": "{con} de {total} produtos têm imposto atribuído. Os outros {sin} são vendidos com esta alíquota. Um produto isento ou excluído é marcado assim no produto: nunca usa esta alíquota.",
+      "ayuda": "Aplica-se em faturas, orçamentos e PDV aos produtos sem imposto próprio. Se escolher «Nenhuma», essas vendas saem sem IVA e você verá um aviso antes de emitir.",
+      "barraEtiqueta": "Produtos com imposto atribuído",
+      "leyenda": "Com imposto {con} % · Isento ou excluído {exentos} % · Sem configurar {sin} %",
+      "cambiar": "Mudar alíquota",
+      "dialogoTitulo": "Alíquota para produtos sem imposto",
+      "etiqueta": "Alíquota padrão",
+      "elegir": "Selecione uma alíquota",
+      "opcionNinguna": "Nenhuma — vendo produtos excluídos ou isentos",
+      "guardar": "Salvar alíquota",
+      "guardadaTitulo": "Alíquota padrão atualizada",
+      "guardadaNinguna": "Os produtos sem imposto atribuído serão vendidos sem IVA.",
+      "guardadaTarifa": "Os produtos sem imposto atribuído usarão esta alíquota.",
+      "errorTitulo": "Erro",
+      "error": "Não foi possível salvar a alíquota padrão. Tente novamente."
+    },
+    "eliminar": {
+      "titulo": "Excluir {nombre}?",
+      "descripcion": "Você vai excluir <b>{nombre}</b> ({tasa}). Esta ação não pode ser desfeita. Se produtos o usam ou se é a alíquota padrão, não é excluído.",
+      "confirmar": "Excluir",
+      "errorTitulo": "Não excluído",
+      "error": "Não foi possível excluir o imposto. Tente novamente.",
+      "hecho": "Imposto excluído."
+    },
+    "formulario": {
+      "nuevo": "Novo imposto",
+      "editar": "Editar imposto",
+      "duplicar": "Duplicar imposto",
+      "nombreCopia": "{nombre} (cópia)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {sem produtos} one {usado em # produto} other {usado em # produtos}}",
+      "guardar": "Salvar",
+      "guardarCambios": "Salvar alterações",
+      "plantillas": {
+        "aviso": "São mostrados os modelos de impostos do seu país. Você pode usar um como base ou criar um imposto personalizado.",
+        "usar": "Usar modelo de imposto",
+        "etiqueta": "Modelos de impostos disponíveis",
+        "etiquetaPais": "Modelos de impostos disponíveis ({pais})",
+        "ayuda": "Apenas os modelos do seu país de operação.",
+        "sinPlantillas": "Não há modelos de impostos para o seu país.",
+        "elegir": "Selecione o modelo"
+      },
+      "nombre": "Nome",
+      "nombreEjemplo": "Ex.: IVA 19 %",
+      "tasa": "Alíquota (%)",
+      "tasaEjemplo": "Ex.: 19",
+      "tasaAyuda": "Entre 0 e 100. Até 3 decimais (ICA por mil: 0,966).",
+      "codigoDian": "Código DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Não vai como imposto da linha",
+      "codigoDianAyuda": "Usado pela fatura eletrônica; vem do modelo ou do nome.",
+      "tipos": {
+        "iva": "IVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Outro"
+      },
+      "descripcion": "Descrição",
+      "descripcionEjemplo": "Descrição do imposto",
+      "cuentaIva": "Conta a pagar (plano de contas)",
+      "elegirCuenta": "Selecione a conta",
+      "cuentaIvaAyuda": "O IVA a pagar é 2408. Só são oferecidas contas de passivo de detalhe que existem no plano.",
+      "cuentaIvaInexistente": "O mapeamento atual ({cuenta}) não existe no plano. Escolha uma conta real; 2408 é o IVA a pagar.",
+      "cuentaIvaSinDetalle": "O plano não tem conta de detalhe sob 2408 (IVA a pagar). Escolha outra de passivo de detalhe ou crie-a no plano de contas.",
+      "cuentaIvaAuxiliar": "A 2408 é de título no seu plano; o IVA é registrado na sua subconta {cuenta}.",
+      "cuentaRetencionInexistente": "A conta {cuenta} não está no plano ou é de título. Escolha uma de detalhe.",
+      "opciones": "Opções do imposto",
+      "activo": "Imposto ativo",
+      "activaRetencion": "Retenção ativa",
+      "predeterminado": "Alíquota padrão",
+      "predeterminadoAyuda": "Usada pelos produtos sem imposto atribuído (não os isentos). Só existe uma.",
+      "incluido": "Incluído no preço",
+      "incluidoAyuda": "O preço do produto já inclui este imposto. Não é somado ao total.",
+      "errorTitulo": "Erro",
+      "errorGuardar": "Não foi possível salvar o imposto. Tente novamente.",
+      "creado": "Imposto criado.",
+      "actualizado": "Imposto atualizado.",
+      "validacion": {
+        "nombre": "O nome do imposto é obrigatório.",
+        "tasa": "A alíquota deve estar entre 0 e 100 %.",
+        "cuentaTitulo": "Conta contábil obrigatória",
+        "cuenta": "O IVA a pagar precisa de uma conta de passivo de detalhe. A conta canônica é 2408."
+      },
+      "cuentaGuardadaSinCuenta": "O imposto foi salvo, mas não a conta",
+      "cuentaErrorDetalle": "O IVA a pagar é 2408: {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "a conta não existe no plano de contas.",
+        "cuenta_de_titulo": "a conta é de título e não recebe o IVA. Escolha uma de detalhe.",
+        "cuenta_no_es_pasivo": "a conta não é de passivo.",
+        "otro": "verifique se a conta existe e se você tem permissão de impostos."
+      }
+    }
   }
 }

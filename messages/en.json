@@ -61999,5 +61999,195 @@
       "datos_invalidos": "Check the form data.",
       "DESCONOCIDO": "It could not be completed. Try again in a moment."
     }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "New tax",
+    "subtitulo": "{impuestos, plural, =0 {No sales and purchase taxes} one {# sales and purchase tax} other {# sales and purchase taxes}} · {retenciones, plural, =0 {no withholdings} one {# withholding} other {# withholdings}}",
+    "subtituloTarifa": "default rate: {tarifa}",
+    "subtituloSinTarifa": "no default rate",
+    "subtituloMovil": "{impuestos, plural, one {# tax} other {# taxes}} · {activos, plural, one {# active} other {# active}}",
+    "pestanas": {
+      "impuestos": "Taxes"
+    },
+    "tablaEtiqueta": "Organization sales and purchase taxes",
+    "buscar": "Search tax by name or rate",
+    "columnas": {
+      "nombre": "Name",
+      "tipo": "Type",
+      "tarifa": "Rate",
+      "codigoDian": "DIAN code",
+      "productos": "Products",
+      "estado": "Status"
+    },
+    "tipos": {
+      "iva": "VAT",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Other"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "insignias": {
+      "exento": "Exempt",
+      "predeterminado": "Default",
+      "incluido": "Included",
+      "incluidoLargo": "included in price"
+    },
+    "filtros": {
+      "titulo": "Filter taxes",
+      "estado": "Status",
+      "tipo": "Type",
+      "todos": "All",
+      "activos": "Active",
+      "inactivos": "Inactive"
+    },
+    "acciones": {
+      "editar": "Edit tax",
+      "duplicar": "Duplicate",
+      "predeterminado": "Make default",
+      "predeterminadoInactivo": "Activate it first: an inactive tax cannot be the default rate.",
+      "activar": "Activate",
+      "desactivar": "Deactivate",
+      "activarNombre": "Activate {nombre}",
+      "desactivarNombre": "Deactivate {nombre}",
+      "eliminar": "Delete tax",
+      "eliminarPredeterminado": "It is the default rate: choose another one before deleting it.",
+      "eliminarEnUso": "{count, plural, one {Used by # product} other {Used by # products}}: remove it from them or deactivate it.",
+      "actualizar": "Refresh"
+    },
+    "vacio": {
+      "titulo": "No taxes yet",
+      "descripcion": "Create VAT and the other taxes you charge, or load your country's template."
+    },
+    "sinResultados": {
+      "titulo": "No tax matches",
+      "descripcion": "Try another name or rate, or clear the filters."
+    },
+    "error": {
+      "titulo": "Taxes could not be loaded",
+      "descripcion": "Check your connection and try again."
+    },
+    "sinPermiso": {
+      "titulo": "You don't have access to taxes",
+      "descripcion": "Ask an organization administrator to give you access to Finance."
+    },
+    "sustantivo": {
+      "singular": "tax",
+      "plural": "taxes"
+    },
+    "plantilla": {
+      "cargar": "Load {pais} template",
+      "cargada": "The missing taxes from the {pais} template were added.",
+      "error": "The tax template could not be loaded."
+    },
+    "toast": {
+      "errorTitulo": "Error",
+      "sinOrganizacion": "No active organization was found.",
+      "errorOrganizacion": "The organization information could not be retrieved.",
+      "activado": "{nombre} is now active.",
+      "desactivado": "{nombre} is now inactive.",
+      "errorEstado": "The tax status could not be changed.",
+      "predeterminado": "{nombre} is now the default rate.",
+      "errorPredeterminado": "The default rate could not be changed."
+    },
+    "tarifa": {
+      "titulo": "Rate for products without tax: {tarifa}",
+      "ninguna": "None ({tasa})",
+      "cobertura": "{con} of {total} products have a tax assigned. The other {sin} are sold with this rate. An exempt or excluded product is marked as such on the product: it never uses this rate.",
+      "ayuda": "Applies on invoices, quotes and POS to products without their own tax. If you choose “None”, those sales go out without VAT and you will see a warning before issuing.",
+      "barraEtiqueta": "Products with a tax assigned",
+      "leyenda": "With tax {con} % · Exempt or excluded {exentos} % · Not configured {sin} %",
+      "cambiar": "Change rate",
+      "dialogoTitulo": "Rate for products without tax",
+      "etiqueta": "Default rate",
+      "elegir": "Select a rate",
+      "opcionNinguna": "None — I sell excluded or exempt products",
+      "guardar": "Save rate",
+      "guardadaTitulo": "Default rate updated",
+      "guardadaNinguna": "Products without an assigned tax will be sold without VAT.",
+      "guardadaTarifa": "Products without an assigned tax will use this rate.",
+      "errorTitulo": "Error",
+      "error": "The default rate could not be saved. Try again."
+    },
+    "eliminar": {
+      "titulo": "Delete {nombre}?",
+      "descripcion": "You are about to delete <b>{nombre}</b> ({tasa}). This cannot be undone. If products use it or it is the default rate, it is not deleted.",
+      "confirmar": "Delete",
+      "errorTitulo": "Not deleted",
+      "error": "The tax could not be deleted. Try again.",
+      "hecho": "Tax deleted."
+    },
+    "formulario": {
+      "nuevo": "New tax",
+      "editar": "Edit tax",
+      "duplicar": "Duplicate tax",
+      "nombreCopia": "{nombre} (copy)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {no products} one {used in # product} other {used in # products}}",
+      "guardar": "Save",
+      "guardarCambios": "Save changes",
+      "plantillas": {
+        "aviso": "Your country's tax templates are shown. You can use one as a base or create a custom tax.",
+        "usar": "Use tax template",
+        "etiqueta": "Available tax templates",
+        "etiquetaPais": "Available tax templates ({pais})",
+        "ayuda": "Only the templates of your country of operation.",
+        "sinPlantillas": "There are no tax templates for your country.",
+        "elegir": "Select the template"
+      },
+      "nombre": "Name",
+      "nombreEjemplo": "E.g.: VAT 19 %",
+      "tasa": "Rate (%)",
+      "tasaEjemplo": "E.g.: 19",
+      "tasaAyuda": "Between 0 and 100. Up to 3 decimals (ICA per thousand: 0.966).",
+      "codigoDian": "DIAN code",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Not sent as a line tax",
+      "codigoDianAyuda": "Used by the electronic invoice; comes from the template or the name.",
+      "tipos": {
+        "iva": "VAT",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Other"
+      },
+      "descripcion": "Description",
+      "descripcionEjemplo": "Tax description",
+      "cuentaIva": "Payable account (chart of accounts)",
+      "elegirCuenta": "Select the account",
+      "cuentaIvaAyuda": "VAT payable is 2408. Only detail liability accounts that exist in the chart are offered.",
+      "cuentaIvaInexistente": "The current mapping ({cuenta}) does not exist in the chart. Choose a real account; 2408 is VAT payable.",
+      "cuentaIvaSinDetalle": "The chart has no detail account under 2408 (VAT payable). Choose another detail liability account or create it in the chart of accounts.",
+      "cuentaIvaAuxiliar": "2408 is a header account in your chart; VAT is posted to its sub-account {cuenta}.",
+      "cuentaRetencionInexistente": "Account {cuenta} is not in the chart or is a header account. Choose a detail one.",
+      "opciones": "Tax options",
+      "activo": "Active tax",
+      "activaRetencion": "Active withholding",
+      "predeterminado": "Default rate",
+      "predeterminadoAyuda": "Used by products without an assigned tax (not exempt ones). There is only one.",
+      "incluido": "Included in price",
+      "incluidoAyuda": "The product price already includes this tax. It is not added to the total.",
+      "errorTitulo": "Error",
+      "errorGuardar": "The tax could not be saved. Try again.",
+      "creado": "Tax created.",
+      "actualizado": "Tax updated.",
+      "validacion": {
+        "nombre": "The tax name is required.",
+        "tasa": "The rate must be between 0 and 100 %.",
+        "cuentaTitulo": "Account required",
+        "cuenta": "VAT payable needs a detail liability account. The canonical account is 2408."
+      },
+      "cuentaGuardadaSinCuenta": "The tax was saved, but not the account",
+      "cuentaErrorDetalle": "VAT payable is 2408: {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "the account does not exist in the chart of accounts.",
+        "cuenta_de_titulo": "the account is a header account and cannot receive VAT. Choose a detail one.",
+        "cuenta_no_es_pasivo": "the account is not a liability.",
+        "otro": "check that the account exists and that you have tax permission."
+      }
+    }
   }
 }

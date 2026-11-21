@@ -61999,5 +61999,195 @@
       "datos_invalidos": "Vérifiez les données du formulaire.",
       "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez dans un instant."
     }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Nouvelle taxe",
+    "subtitulo": "{impuestos, plural, =0 {Aucune taxe de vente et d'achat} one {# taxe de vente et d'achat} other {# taxes de vente et d'achat}} · {retenciones, plural, =0 {aucune retenue} one {# retenue} other {# retenues}}",
+    "subtituloTarifa": "taux par défaut : {tarifa}",
+    "subtituloSinTarifa": "sans taux par défaut",
+    "subtituloMovil": "{impuestos, plural, one {# taxe} other {# taxes}} · {activos, plural, one {# active} other {# actives}}",
+    "pestanas": {
+      "impuestos": "Taxes"
+    },
+    "tablaEtiqueta": "Taxes de vente et d'achat de l'organisation",
+    "buscar": "Rechercher une taxe par nom ou taux",
+    "columnas": {
+      "nombre": "Nom",
+      "tipo": "Type",
+      "tarifa": "Taux",
+      "codigoDian": "Code DIAN",
+      "productos": "Produits",
+      "estado": "Statut"
+    },
+    "tipos": {
+      "iva": "TVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Autre"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "insignias": {
+      "exento": "Exonérée",
+      "predeterminado": "Par défaut",
+      "incluido": "Incluse",
+      "incluidoLargo": "incluse dans le prix"
+    },
+    "filtros": {
+      "titulo": "Filtrer les taxes",
+      "estado": "Statut",
+      "tipo": "Type",
+      "todos": "Toutes",
+      "activos": "Actives",
+      "inactivos": "Inactives"
+    },
+    "acciones": {
+      "editar": "Modifier la taxe",
+      "duplicar": "Dupliquer",
+      "predeterminado": "Définir par défaut",
+      "predeterminadoInactivo": "Activez-la d'abord : une taxe inactive ne peut pas être le taux par défaut.",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "activarNombre": "Activer {nombre}",
+      "desactivarNombre": "Désactiver {nombre}",
+      "eliminar": "Supprimer la taxe",
+      "eliminarPredeterminado": "C'est le taux par défaut : choisissez-en un autre avant de la supprimer.",
+      "eliminarEnUso": "{count, plural, one {Utilisée par # produit} other {Utilisée par # produits}} : retirez-la ou désactivez-la.",
+      "actualizar": "Actualiser"
+    },
+    "vacio": {
+      "titulo": "Aucune taxe pour l'instant",
+      "descripcion": "Créez la TVA et les autres taxes que vous facturez, ou chargez le modèle de votre pays."
+    },
+    "sinResultados": {
+      "titulo": "Aucune taxe ne correspond",
+      "descripcion": "Essayez un autre nom ou taux, ou retirez les filtres."
+    },
+    "error": {
+      "titulo": "Impossible de charger les taxes",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas accès aux taxes",
+      "descripcion": "Demandez à un administrateur de l'organisation de vous donner accès à Finances."
+    },
+    "sustantivo": {
+      "singular": "taxe",
+      "plural": "taxes"
+    },
+    "plantilla": {
+      "cargar": "Charger le modèle {pais}",
+      "cargada": "Les taxes manquantes du modèle {pais} ont été ajoutées.",
+      "error": "Impossible de charger le modèle de taxes."
+    },
+    "toast": {
+      "errorTitulo": "Erreur",
+      "sinOrganizacion": "Aucune organisation active n'a été trouvée.",
+      "errorOrganizacion": "Impossible d'obtenir les informations de l'organisation.",
+      "activado": "{nombre} est maintenant active.",
+      "desactivado": "{nombre} est maintenant inactive.",
+      "errorEstado": "Impossible de changer le statut de la taxe.",
+      "predeterminado": "{nombre} est maintenant le taux par défaut.",
+      "errorPredeterminado": "Impossible de changer le taux par défaut."
+    },
+    "tarifa": {
+      "titulo": "Taux pour les produits sans taxe : {tarifa}",
+      "ninguna": "Aucun ({tasa})",
+      "cobertura": "{con} produits sur {total} ont une taxe assignée. Les {sin} autres sont vendus avec ce taux. Un produit exonéré ou exclu est marqué ainsi sur le produit : il n'utilise jamais ce taux.",
+      "ayuda": "S'applique aux factures, devis et au POS pour les produits sans taxe propre. Si vous choisissez « Aucun », ces ventes sortent sans TVA et un avertissement s'affiche avant l'émission.",
+      "barraEtiqueta": "Produits avec une taxe assignée",
+      "leyenda": "Avec taxe {con} % · Exonéré ou exclu {exentos} % · Non configuré {sin} %",
+      "cambiar": "Changer le taux",
+      "dialogoTitulo": "Taux pour les produits sans taxe",
+      "etiqueta": "Taux par défaut",
+      "elegir": "Sélectionnez un taux",
+      "opcionNinguna": "Aucun — je vends des produits exclus ou exonérés",
+      "guardar": "Enregistrer le taux",
+      "guardadaTitulo": "Taux par défaut mis à jour",
+      "guardadaNinguna": "Les produits sans taxe assignée seront vendus sans TVA.",
+      "guardadaTarifa": "Les produits sans taxe assignée utiliseront ce taux.",
+      "errorTitulo": "Erreur",
+      "error": "Impossible d'enregistrer le taux par défaut. Réessayez."
+    },
+    "eliminar": {
+      "titulo": "Supprimer {nombre} ?",
+      "descripcion": "Vous allez supprimer <b>{nombre}</b> ({tasa}). Cette action est irréversible. Si des produits l'utilisent ou si c'est le taux par défaut, elle n'est pas supprimée.",
+      "confirmar": "Supprimer",
+      "errorTitulo": "Non supprimée",
+      "error": "Impossible de supprimer la taxe. Réessayez.",
+      "hecho": "Taxe supprimée."
+    },
+    "formulario": {
+      "nuevo": "Nouvelle taxe",
+      "editar": "Modifier la taxe",
+      "duplicar": "Dupliquer la taxe",
+      "nombreCopia": "{nombre} (copie)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {aucun produit} one {utilisée dans # produit} other {utilisée dans # produits}}",
+      "guardar": "Enregistrer",
+      "guardarCambios": "Enregistrer les modifications",
+      "plantillas": {
+        "aviso": "Les modèles de taxes de votre pays sont affichés. Vous pouvez en utiliser un comme base ou créer une taxe personnalisée.",
+        "usar": "Utiliser un modèle de taxe",
+        "etiqueta": "Modèles de taxes disponibles",
+        "etiquetaPais": "Modèles de taxes disponibles ({pais})",
+        "ayuda": "Seulement les modèles de votre pays d'activité.",
+        "sinPlantillas": "Il n'y a pas de modèles de taxes pour votre pays.",
+        "elegir": "Sélectionnez le modèle"
+      },
+      "nombre": "Nom",
+      "nombreEjemplo": "Ex. : TVA 19 %",
+      "tasa": "Taux (%)",
+      "tasaEjemplo": "Ex. : 19",
+      "tasaAyuda": "Entre 0 et 100. Jusqu'à 3 décimales (ICA pour mille : 0,966).",
+      "codigoDian": "Code DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Non envoyée comme taxe de ligne",
+      "codigoDianAyuda": "Utilisé par la facture électronique ; vient du modèle ou du nom.",
+      "tipos": {
+        "iva": "TVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Autre"
+      },
+      "descripcion": "Description",
+      "descripcionEjemplo": "Description de la taxe",
+      "cuentaIva": "Compte à payer (plan comptable)",
+      "elegirCuenta": "Sélectionnez le compte",
+      "cuentaIvaAyuda": "La TVA à payer est le 2408. Seuls les comptes de passif de détail existants sont proposés.",
+      "cuentaIvaInexistente": "Le mappage actuel ({cuenta}) n'existe pas dans le plan. Choisissez un compte réel ; 2408 est la TVA à payer.",
+      "cuentaIvaSinDetalle": "Le plan n'a pas de compte de détail sous 2408 (TVA à payer). Choisissez un autre compte de passif de détail ou créez-le dans le plan comptable.",
+      "cuentaIvaAuxiliar": "Le 2408 est un compte de titre dans votre plan ; la TVA est enregistrée dans son sous-compte {cuenta}.",
+      "cuentaRetencionInexistente": "Le compte {cuenta} n'est pas dans le plan ou est un compte de titre. Choisissez un compte de détail.",
+      "opciones": "Options de la taxe",
+      "activo": "Taxe active",
+      "activaRetencion": "Retenue active",
+      "predeterminado": "Taux par défaut",
+      "predeterminadoAyuda": "Utilisé par les produits sans taxe assignée (pas les exonérés). Il n'y en a qu'un.",
+      "incluido": "Incluse dans le prix",
+      "incluidoAyuda": "Le prix du produit inclut déjà cette taxe. Elle ne s'ajoute pas au total.",
+      "errorTitulo": "Erreur",
+      "errorGuardar": "Impossible d'enregistrer la taxe. Réessayez.",
+      "creado": "Taxe créée.",
+      "actualizado": "Taxe mise à jour.",
+      "validacion": {
+        "nombre": "Le nom de la taxe est obligatoire.",
+        "tasa": "Le taux doit être compris entre 0 et 100 %.",
+        "cuentaTitulo": "Compte comptable requis",
+        "cuenta": "La TVA à payer nécessite un compte de passif de détail. Le compte canonique est 2408."
+      },
+      "cuentaGuardadaSinCuenta": "La taxe a été enregistrée, mais pas le compte",
+      "cuentaErrorDetalle": "La TVA à payer est le 2408 : {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "le compte n'existe pas dans le plan comptable.",
+        "cuenta_de_titulo": "le compte est un compte de titre et ne reçoit pas la TVA. Choisissez un compte de détail.",
+        "cuenta_no_es_pasivo": "le compte n'est pas un passif.",
+        "otro": "vérifiez que le compte existe et que vous avez la permission sur les taxes."
+      }
+    }
   }
 }

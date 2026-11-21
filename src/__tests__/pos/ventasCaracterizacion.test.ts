@@ -317,9 +317,10 @@ describe('Paso 16 · detalle de venta en una respuesta', () => {
   });
 
   test('V4: «Crear devolución» abre el formulario del agente de devoluciones con la venta (no una ruta inexistente)', () => {
+    // Rediseño 2026-11-21: el panel abre `CrearDevolucionDialog`, que carga la venta.
     const panel = leer('components/pos/ventas/detalle/DevolucionPanel.tsx');
-    expect(panel).toMatch(/DevolucionesService\.obtenerDetalleVenta\(ventaId\)/);
-    expect(panel).toMatch(/<ReturnForm/);
+    expect(panel).toMatch(/<CrearDevolucionDialog/);
+    expect(leer('components/pos/devoluciones/CrearDevolucionDialog.tsx')).toMatch(/DevolucionesService\.obtenerDetalleVenta\(ventaId\)/);
     expect(leer('components/pos/ventas/detalle/VentaDetallePage.tsx')).not.toMatch(/devoluciones\/nuevo\?sale_id/);
   });
 

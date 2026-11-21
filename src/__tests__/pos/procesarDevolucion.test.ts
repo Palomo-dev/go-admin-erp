@@ -143,15 +143,19 @@ describe('Guardarraíles de devoluciones', () => {
     }
   });
 
+  // Rediseño 2026-11-21: `ReturnForm` se sustituyó por `CrearDevolucionDialog`
+  // (Figma 874:578120) y sus reglas pasaron a `formularioDevolucion.ts`. Las
+  // mismas garantías se comprueban en los archivos nuevos.
   test('la pantalla manda una clave de idempotencia por intento', () => {
-    const form = leer('components/pos/devoluciones/ReturnForm.tsx');
-    expect(form).toMatch(/procesarDevolucion\(sale\.id, refundData, claveIntento\.current\)/);
+    const form = leer('components/pos/devoluciones/CrearDevolucionDialog.tsx');
+    expect(form).toMatch(/procesarDevolucion\(venta\.id, datosDevolucion\(lineas, motivo, metodo, notas\), claveIntento\.current\)/);
   });
 
   test('el reembolso de la pantalla usa lo cobrado, no el precio de lista', () => {
-    const form = leer('components/pos/devoluciones/ReturnForm.tsx');
-    expect(form).toContain('montoReembolsoLinea(item.total_cobrado, item.original_quantity');
-    expect(form).not.toMatch(/refund_amount:.*unit_price \*/);
+    const logica = leer('lib/pos/devoluciones/formularioDevolucion.ts');
+    expect(logica).toContain('montoReembolsoLinea(importe, l.vendida, cantidad)');
+    expect(logica).toContain('prorrateo(l.total_cobrado, l, l.cantidad)');
+    expect(logica).not.toMatch(/unit_price \*/);
   });
 
   test('el resumen de caja no resta dos veces las devoluciones nuevas', () => {

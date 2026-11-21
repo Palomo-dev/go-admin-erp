@@ -13,6 +13,7 @@ import {
 } from '@/components/pos/promociones';
 import { Promotion, PromotionFilters } from '@/components/pos/promociones/types';
 import { estadoDePromocion } from '@/components/pos/promociones/estadoPromocion';
+import { usePuedeGestionarPromociones } from '@/components/pos/promociones/usePuedeGestionarPromociones';
 
 type EstadoCarga = 'cargando' | 'listo' | 'error' | 'sinPermiso';
 
@@ -26,6 +27,7 @@ function esSinPermiso(error: unknown): boolean {
 export default function PromocionesPage() {
   const t = useTranslations('posPromociones');
   const { organization, isLoading: orgLoading } = useOrganization();
+  const puedeGestionar = usePuedeGestionarPromociones(organization?.id);
   const { branchFilter } = useBranch();
   const { timezone } = useOrgTimezone();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -88,6 +90,7 @@ export default function PromocionesPage() {
           scheduledPromotions={programadas}
           loading={estado === 'cargando'}
           sinPermiso={estado === 'sinPermiso'}
+          puedeGestionar={puedeGestionar}
         />
 
         <PromotionsList
@@ -97,6 +100,7 @@ export default function PromocionesPage() {
           termino={filters.search?.trim() || undefined}
           onLimpiarFiltros={() => setFilters({})}
           onRefresh={loadPromotions}
+          puedeGestionar={puedeGestionar}
         />
       </div>
     </div>

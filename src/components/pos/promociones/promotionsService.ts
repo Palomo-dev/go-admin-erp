@@ -118,6 +118,19 @@ async function vigenciaEnInstantes(
 }
 
 export class PromotionsService {
+  /**
+   * ¿La sesión puede crear, editar o borrar promociones? Solo decide qué
+   * botones se ven: el trigger `trg_promotions_guarda` lo vuelve a exigir al
+   * escribir (`pos.promociones.gestionar`, migración 20261121001052).
+   */
+  static async puedeGestionar(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('fn_tiene_permiso', {
+      p_organization_id: this.getOrganizationId(),
+      p_code: 'pos.promociones.gestionar',
+    });
+    return !error && data === true;
+  }
+
   private static getOrganizationId(): number {
     const org = obtenerOrganizacionActiva();
     return org.id;

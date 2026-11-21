@@ -30,6 +30,8 @@ interface PromotionsHeaderProps {
   loading: boolean;
   /** Sin permiso: solo la cabecera, sin cifras ni filtros (Figma 97-pos-promociones-05). */
   sinPermiso?: boolean;
+  /** `pos.promociones.gestionar`: sin él no se ofrece «Nueva promoción». */
+  puedeGestionar?: boolean;
 }
 
 export function PromotionsHeader({
@@ -41,6 +43,7 @@ export function PromotionsHeader({
   scheduledPromotions = 0,
   loading,
   sinPermiso = false,
+  puedeGestionar = true,
 }: PromotionsHeaderProps) {
   const t = useTranslations('posPromociones');
 
@@ -98,12 +101,12 @@ export function PromotionsHeader({
               <Link href="/app/pos/cupones" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
                 {t('pantalla.cupones')}
               </Link>
-              {nueva}
+              {puedeGestionar && nueva}
             </>
           )
         }
         movil={sinPermiso ? false : {
-          accion: (
+          accion: !puedeGestionar ? undefined : (
             <Link
               href="/app/pos/promociones/nuevo"
               aria-label={t('pantalla.nueva')}

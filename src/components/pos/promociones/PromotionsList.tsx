@@ -33,6 +33,8 @@ interface PromotionsListProps {
   termino?: string;
   onLimpiarFiltros?: () => void;
   onRefresh: () => void;
+  /** `pos.promociones.gestionar`: sin él, solo ver (sin menú de gestión, selección ni «Nueva»). */
+  puedeGestionar?: boolean;
 }
 
 const TAMANO_PAGINA = 20;
@@ -41,7 +43,7 @@ function textoPlano(valor: string): string {
   return valor.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
 }
 
-export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onLimpiarFiltros, onRefresh }: PromotionsListProps) {
+export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onLimpiarFiltros, onRefresh, puedeGestionar = true }: PromotionsListProps) {
   const { timezone } = useOrgTimezone();
   const [pagina, setPagina] = useState(1);
   const [tamano, setTamano] = useState(TAMANO_PAGINA);
@@ -147,7 +149,7 @@ export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onL
     return canales.length > 0 ? canales.join(' · ') : '—';
   };
 
-  const accionesDe = (promo: Promotion): AccionFila[] => [
+  const accionesDe = (promo: Promotion): AccionFila[] => !puedeGestionar ? [] : [
     {
       id: 'editar',
       etiqueta: t('lista.editar'),
@@ -269,9 +271,9 @@ export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onL
         estado={estado}
         onFilaClick={(promo) => router.push(`/app/pos/promociones/${promo.id}`)}
         etiquetaFila={(promo) => promo.name}
-        acciones={accionesDe}
-        seleccion={seleccion}
-        onSeleccionChange={setSeleccion}
+        acciones={puedeGestionar ? accionesDe : undefined}
+        seleccion={puedeGestionar ? seleccion : undefined}
+        onSeleccionChange={puedeGestionar ? setSeleccion : undefined}
         onLimpiarFiltros={onLimpiarFiltros}
         onReintentar={onRefresh}
         termino={termino}
@@ -307,7 +309,7 @@ export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onL
           titulo: t('lista.vacioTitulo'),
           descripcion: t('lista.vacioDescripcion'),
           icono: Tag,
-          accion: { etiqueta: t('pantalla.nueva'), href: '/app/pos/promociones/nuevo', icono: Plus },
+          accion: puedeGestionar ? { etiqueta: t('pantalla.nueva'), href: '/app/pos/promociones/nuevo', icono: Plus } : undefined,
         }}
         tarjetaMovil={(promo) => (
           <article className="flex items-start gap-3 rounded-xl border border-line bg-surface p-4">
@@ -324,7 +326,7 @@ export function PromotionsList({ promotions, estadoCarga, filtrado, termino, onL
               <p className="mt-1 text-sm font-medium tabular-nums text-brand-deep">{getDiscountDisplay(promo)}</p>
               <p className="mt-1 text-[13px] tabular-nums leading-[18px] text-fg-secondary">{horarioDe(promo).join(' · ')}</p>
             </button>
-            <RowActionsMenu acciones={accionesDe(promo)} titulo={promo.name} />
+            {puedeGestionar && <RowActionsMenu acciones={accionesDe(promo)} titulo={promo.name} />}
           </article>
         )}
       />

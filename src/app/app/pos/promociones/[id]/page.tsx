@@ -21,6 +21,7 @@ import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
 import { localeIntl } from '@/components/kit/idioma';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
+import { usePuedeGestionarPromociones } from '@/components/pos/promociones/usePuedeGestionarPromociones';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
 import { Promotion } from '@/components/pos/promociones/types';
 import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
@@ -41,7 +42,8 @@ export default function PromocionDetallePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoading: orgLoading } = useOrganization();
+  const { organization, isLoading: orgLoading } = useOrganization();
+  const puedeGestionar = usePuedeGestionarPromociones(organization?.id);
   const { formatear } = useMonedaOrganizacion();
   const t = useTranslations('posPromociones');
   const locale = useLocale();
@@ -284,7 +286,7 @@ export default function PromocionDetallePage() {
             { etiqueta: promotion.name },
           ]}
           acciones={
-            <>
+            !puedeGestionar ? undefined : <>
               <Link
                 href={`/app/pos/promociones/${promotionId}?edit=true`}
                 className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
@@ -306,7 +308,7 @@ export default function PromocionDetallePage() {
               </button>
             </>
           }
-          movil={{ accion: <RowActionsMenu acciones={accionesMenu} titulo={promotion.name} tamano="md" orientacion="horizontal" /> }}
+          movil={{ accion: puedeGestionar ? <RowActionsMenu acciones={accionesMenu} titulo={promotion.name} tamano="md" orientacion="horizontal" /> : undefined }}
         />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -410,7 +412,7 @@ export default function PromocionDetallePage() {
             <Tarjeta titulo={t('detalle.estado')}>
               <SettingGroup>
                 <SettingRow titulo={t('detalle.estado')} descripcion={<StatusBadge estado={estadoDePromocion(promotion, new Date(), timezone)} />}>
-                  <Switch checked={promotion.is_active} onCheckedChange={handleToggleActive} disabled={toggling} />
+                  <Switch checked={promotion.is_active} onCheckedChange={handleToggleActive} disabled={toggling || !puedeGestionar} />
                 </SettingRow>
               </SettingGroup>
             </Tarjeta>

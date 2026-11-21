@@ -390,9 +390,10 @@ class ConversationDetailService {
         .eq('organization_id', this.organizationId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        // maybeSingle: que no haya fila es lo normal; .single() respondía 406 en la consola.
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data;
     } catch (error) {
       console.error('Error obteniendo resumen:', error);
@@ -554,9 +555,10 @@ class ConversationDetailService {
         .in('status', ['pending', 'processing'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        // maybeSingle: que no haya fila es lo normal; .single() respondía 406 en la consola.
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return data;
     } catch (error) {
       console.error('Error obteniendo trabajo IA activo:', error);

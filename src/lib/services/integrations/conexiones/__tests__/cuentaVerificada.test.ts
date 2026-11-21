@@ -50,6 +50,16 @@ describe('probarLlaves devuelve con quién quedó conectado', () => {
     expect(String(f.mock.calls[0][0])).toBe('https://api.mercadopago.com/users/me');
   });
 
+  it('Mercado Pago: las llaves de prueba nuevas empiezan por APP_USR- y son de un usuario de prueba', async () => {
+    expect(validarFormatoLlaves('mercadopago', 'sandbox', { public_key: 'APP_USR-x', access_token: 'APP_USR-y' })).toEqual([]);
+    const prueba = jest.fn(async (_url: string) => responder({ id: 1, nickname: 'TESTUSER123', tags: ['normal', 'test_user'], country_id: 'CO' }));
+    const p = await probarLlaves('mercadopago', 'sandbox', { public_key: 'APP_USR-x', access_token: 'APP_USR-y' }, prueba as unknown as typeof fetch);
+    expect(p.cuenta?.ambiente).toBe('sandbox');
+    const real = jest.fn(async (_url: string) => responder({ id: 2, nickname: 'TIENDAREAL', tags: ['normal'], country_id: 'CO' }));
+    const q = await probarLlaves('mercadopago', 'sandbox', { public_key: 'APP_USR-x', access_token: 'APP_USR-y' }, real as unknown as typeof fetch);
+    expect(q.cuenta?.ambiente).toBe('production');
+  });
+
   it('Stripe: /v1/account (nombre del negocio, país, modo)', async () => {
     const f = jest.fn(async (_url: string) => responder({ id: 'acct_1', country: 'US', business_profile: { name: 'Negocio Prueba' } }));
     const p = await probarLlaves('stripe', 'production', { publishable_key: 'pk_live_x', secret_key: 'sk_live_y' }, f as unknown as typeof fetch);

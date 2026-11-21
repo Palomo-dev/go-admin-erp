@@ -135,12 +135,16 @@ export async function probarLlaves(
       if (!r || !r.ok) return porRespuesta(r, ['access_token']);
       const d = await leerJson(r);
       const nombre = textoDe(d?.nickname) ?? textoDe(d?.first_name);
+      // Las credenciales de prueba nuevas empiezan por APP_USR- igual que las reales: lo que dice
+      // si son de prueba es que la cuenta dueña sea un usuario de prueba (etiqueta `test_user`).
+      const etiquetas = Array.isArray(d?.tags) ? (d?.tags as unknown[]).map(textoDe) : [];
+      const deUsuarioPrueba = etiquetas.includes('test_user') || /^TESTUSER/i.test(nombre ?? '');
       return porRespuesta(r, ['access_token'], nombre ? {
         nombre,
         razonSocial: textoDe((d?.company as Record<string, unknown> | undefined)?.brand_name),
         correo: textoDe(d?.email),
         pais: textoDe(d?.country_id) ?? textoDe(d?.site_id),
-        ambiente: (v.access_token ?? '').startsWith('TEST-') ? 'sandbox' : 'production',
+        ambiente: (v.access_token ?? '').startsWith('TEST-') || deUsuarioPrueba ? 'sandbox' : 'production',
         idExterno: textoDe(d?.id),
       } : undefined);
     }

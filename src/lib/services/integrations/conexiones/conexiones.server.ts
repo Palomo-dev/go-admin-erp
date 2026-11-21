@@ -641,6 +641,13 @@ export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: G
     if (conexionId) await registrarEvento(db, actor.organizationId, conexionId, 'prueba_de_llaves_nuevas', prueba);
     return { conexionId: conexionId ?? '', prueba, webhookUrl: null, webhookOrigen: null, webhookSinDominio: false };
   }
+  // El proveedor dice de qué ambiente son las llaves (Mercado Pago usa APP_USR- en los dos): unas
+  // llaves reales nunca se guardan como «Prueba», ni unas de prueba como «Producción».
+  if (prueba.cuenta?.ambiente && prueba.cuenta.ambiente !== entrada.ambiente) {
+    throw new ConexionError(400, 'AMBIENTE', prueba.cuenta.ambiente === 'production'
+      ? 'Estas llaves son de producción (cobran de verdad). Vuelve al paso 1 y elige «Producción».'
+      : 'Estas llaves son de prueba. Vuelve al paso 1 y elige «Prueba».');
+  }
 
   const ahora = new Date().toISOString();
   if (!conexionId) {

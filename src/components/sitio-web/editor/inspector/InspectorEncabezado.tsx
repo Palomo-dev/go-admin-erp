@@ -52,7 +52,7 @@ import {
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
-import { CabeceraVistaTienda, FilaAbrirVistaTienda, VistaCarrito, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
+import { CabeceraVistaTienda, FilaAbrirVistaTienda, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
 import { CabeceraBoton, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonEncabezado } from './PildoraYBoton';
 import type { BotonEncabezado } from './pildoraLogica';
 import {
@@ -124,8 +124,8 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   const [vistaBoton, setVistaBoton] = useState<BotonEncabezado | null>(null);
   const abrirBoton = () => setVistaBoton('principal');
   const abrirSegundo = () => setVistaBoton('segundo');
-  // Cabecera de la tienda (Figma 2754:59674, 2757:60344, 2754:60110): Íconos, Selector de moneda
-  // y Carrito, cada una en su vista con «volver», como el botón principal.
+  // Cabecera de la tienda (Figma 2754:59674, 2757:60344, 2754:60110, 2772:62317): Íconos, Selector
+  // de moneda, Carrito y Favoritos, cada una en su vista con «volver», como el botón principal.
   const [vistaTienda, setVistaTienda] = useState<VistaCabeceraTienda | null>(null);
 
   if (vistaTienda) {
@@ -136,6 +136,7 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
           {vistaTienda === 'iconos' && <VistaIconos ajustes={a} cambiar={cambiar} onAbrir={setVistaTienda} />}
           {vistaTienda === 'moneda' && <VistaMoneda ajustes={a} cambiar={cambiar} organizationId={p.organizationId} />}
           {vistaTienda === 'carrito' && <VistaCarrito ajustes={a} cambiar={cambiar} enBorrador={p.enBorrador} />}
+          {vistaTienda === 'favoritos' && <VistaFavoritos ajustes={a} cambiar={cambiar} />}
         </div>
       </aside>
     );
@@ -412,6 +413,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
         <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
         {opcionBooleana(a, 'show_header_cart') && <SelectorIconoAccion accion="cart" ajustes={a} cambiar={cambiar} />}
         {opcionBooleana(a, 'show_header_cart') && p.onAbrirVista && <FilaAbrirVistaTienda vista="carrito" onAbrir={p.onAbrirVista} />}
+        {opcionBooleana(a, 'show_header_cart') && p.onAbrirVista && <FilaAbrirVistaTienda vista="favoritos" onAbrir={p.onAbrirVista} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.cuenta')}
           ayuda={t('zonaGlobal.acciones.cuentaAyuda')}
@@ -707,6 +709,7 @@ function Estilo(p: Interno) {
         {p.onAbrirVista && <FilaAbrirVistaTienda vista="iconos" onAbrir={p.onAbrirVista} />}
         {p.onAbrirVista && <FilaAbrirVistaTienda vista="moneda" onAbrir={p.onAbrirVista} />}
         {p.onAbrirVista && <FilaAbrirVistaTienda vista="carrito" onAbrir={p.onAbrirVista} />}
+        {p.onAbrirVista && <FilaAbrirVistaTienda vista="favoritos" onAbrir={p.onAbrirVista} />}
         <CajaIconos ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
         <IconosAcciones ajustes={a} cambiar={cambiar} />
         {circuloAcentoActivo(a) && !cajaIconos(a) && (() => {

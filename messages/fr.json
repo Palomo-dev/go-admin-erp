@@ -35759,7 +35759,9 @@
           },
           "favoritosAyuda": "Ouvre Mon compte › Favoris : les produits que le client a marqués d’un cœur.",
           "monedaEstilo": "Style et devises",
-          "monedaVer": "Voir «Sélecteur de devise»"
+          "monedaVer": "Voir «Sélecteur de devise»",
+          "favoritosAyudaPanel": "Ouvre le panneau des favoris ou la page /favoritos (En-tête › Favoris).",
+          "favoritosVer": "Voir « Favoris »"
         },
         "moneda": {
           "titulo": "En-tête › Sélecteur de devise",
@@ -35845,7 +35847,119 @@
           "otros": "Autres libellés",
           "tituloCajon": "Titre du tiroir",
           "seguir": "Continuer mes achats",
-          "textosSoloBorrador": "Les libellés du tiroir sont enregistrés quand le site passe au nouveau brouillon ; en attendant, ils s’affichent dans l’aperçu."
+          "textosSoloBorrador": "Les libellés du tiroir sont enregistrés quand le site passe au nouveau brouillon ; en attendant, ils s’affichent dans l’aperçu.",
+          "botonAyudaModos": "Choisissez comment le texte du bouton change. L’aperçu montre le résultat.",
+          "comoCambia": "Comment le texte change",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixe (toujours le même)",
+              "ayuda": "Un seul texte pour le bouton"
+            },
+            "al_abrir": {
+              "titulo": "Change à chaque ouverture du panier",
+              "ayuda": "Un texte différent à chaque ouverture"
+            },
+            "mientras_abierto": {
+              "titulo": "Change seulement tant qu’il est ouvert",
+              "ayuda": "Tourne toutes les quelques secondes, avec transition"
+            },
+            "segun_carrito": {
+              "titulo": "Selon le panier",
+              "ayuda": "Dépend de la livraison gratuite et des offres"
+            }
+          },
+          "opcionesDe": "Options de « {modo} »",
+          "textoFijoAyudaLargo": "Vide = « {texto} » (le texte par défaut). {largo} caractères maximum.",
+          "orden": "Ordre",
+          "ordenOpcion": {
+            "azar": "Au hasard",
+            "orden": "Dans l’ordre"
+          },
+          "ordenAyuda": "« Au hasard » : n’importe lequel, sans répéter le précédent. « Dans l’ordre » : le 1er la première fois, le 2e la suivante… puis on recommence.",
+          "segundos": "Toutes les combien de secondes",
+          "segundosValor": "{n} s",
+          "transicion": "Transition",
+          "transicionOpcion": {
+            "fundido": "Fondu",
+            "deslizar": "Glisser",
+            "ninguna": "Sans effet"
+          },
+          "pausar": "Pause au survol de la souris",
+          "pausarAyuda": "Sur mobile, pause tant que le doigt est sur le bouton. Si le visiteur a demandé « réduire les animations », change sans effet.",
+          "reglas": {
+            "faltaEnvio": "1 · S’il manque pour la livraison gratuite",
+            "oferta": "2 · S’il y a des produits en promotion",
+            "envioGratis": "3 · S’il a déjà la livraison gratuite",
+            "porDefecto": "Par défaut (aucune ne s’applique)"
+          },
+          "reglaVacia": "Vide : passe à la suivante",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' est remplacé par le montant manquant. Seulement s’il existe un seuil de livraison gratuite.",
+            "oferta": "Compte si un produit du panier a un prix barré.",
+            "pie": "Si plusieurs s’appliquent, le plus petit numéro l’emporte. Un champ vide passe à la suivante."
+          },
+          "usarEnPagina": "Utiliser la même chose pour « Acheter » du panier complet",
+          "usarEnPaginaAyuda": "Activé, le bouton « Acheter » de la page /carrito change comme celui du tiroir. Désactivé, il a sa propre configuration.",
+          "botonPagina": "Bouton « Acheter » de /carrito",
+          "soloBorrador": "Disponible quand le site passe au nouveau brouillon.",
+          "vistaPrevia": {
+            "etiqueta": "Aperçu",
+            "fijo": "Résultat · toujours le même texte",
+            "al_abrir_azar": "Résultat · un texte différent à chaque ouverture (au hasard)",
+            "al_abrir_orden": "Résultat · un texte différent à chaque ouverture (dans l’ordre)",
+            "mientras_abierto": "Résultat · tourne toutes les {n} s tant que le tiroir reste ouvert",
+            "segun_carrito": "Résultat · le texte dépend du contenu du panier",
+            "vez": "{n}e fois",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "En-tête › Favoris",
+          "migas": "Global · cœur, panneau latéral et page /favoritos",
+          "abrir": "Favoris",
+          "abrirAyuda": "Cœur, panneau latéral et page /favoritos",
+          "corazon": "Cœur dans l’en-tête",
+          "mostrar": "Afficher le cœur",
+          "contador": "Compteur de produits enregistrés",
+          "corazonAyuda": "Le style de l’icône (icône seule, avec texte, pilule…) se choisit dans En-tête › Icônes.",
+          "alTocar": "En touchant le cœur",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Ouvrir le panneau latéral",
+              "ayuda": "Liste rapide sans quitter la page"
+            },
+            "pagina": {
+              "titulo": "Aller à la page",
+              "ayuda": "Mène à /favoritos"
+            }
+          },
+          "alTocarAyuda": "Sur mobile, le panneau s’ouvre en plein écran.",
+          "textos": "Textes",
+          "textosAyuda": "Le texte en gris est celui par défaut. Si vous laissez le champ vide, la boutique l’utilise.",
+          "texto": {
+            "tituloPagina": "Titre de la page",
+            "tituloPanel": "Titre du panneau",
+            "botonPrincipal": "Bouton principal",
+            "botonBorde": "Bouton avec bordure",
+            "vacioTitulo": "Message vide · titre",
+            "vacioTexto": "Message vide · texte",
+            "avisoSesion": "Avis pour le visiteur non connecté"
+          },
+          "paginaPanel": "Page /favoritos et panneau",
+          "sugerencias": "Afficher « Vous aimerez aussi »",
+          "fuente": "Origine des suggestions",
+          "fuenteOpcion": {
+            "categorias": "Des mêmes catégories",
+            "mas_vendidos": "Meilleures ventes",
+            "destacados": "Produits mis en avant"
+          },
+          "fuenteAyuda": "« Mis en avant » : d’abord ceux en promotion, puis les meilleures ventes. Masqué s’il n’y a pas de produits.",
+          "avisoSesion": "Afficher l’avis de connexion",
+          "compartir": "Bouton « Partager la liste »",
+          "tarjetas": "Cartes produit",
+          "corazonTarjetas": "Cœur sur les cartes",
+          "corazonFicha": "Cœur sur la fiche produit",
+          "tarjetasAyuda": "Le style et la position du cœur sur la carte restent dans Style du site › Carte produit."
         }
       }
     },

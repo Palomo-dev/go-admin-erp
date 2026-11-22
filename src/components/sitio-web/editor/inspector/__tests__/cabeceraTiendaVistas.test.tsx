@@ -71,20 +71,20 @@ describe('Encabezado › Carrito', () => {
     const cambiar = jest.fn();
     render(<VistaCarrito ajustes={{ cart_button_mode: 'fixed', cart_button_texts: ['Pagar ya'] }} cambiar={cambiar} enBorrador />);
     expect(cambiar).not.toHaveBeenCalled();
-    expect(screen.getByRole('radio', { name: /carrito.modo.fijo/ }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'carrito.modos.fijo.titulo' }).getAttribute('aria-checked')).toBe('true');
   });
 
   test('pasar a «Dinámico» guarda la forma extensible en el documento', () => {
     const cambiar = jest.fn();
     render(<VistaCarrito ajustes={{ cart_button_mode: 'fixed', cart_button_texts: ['Pagar ya', 'Otro'] }} cambiar={cambiar} enBorrador />);
-    fireEvent.click(screen.getByRole('radio', { name: /carrito.modo.al_abrir/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'carrito.modos.al_abrir.titulo' }));
     expect(cambiar).toHaveBeenLastCalledWith({ header_carrito: { boton: { modo: 'al_abrir', textos: ['Pagar ya', 'Otro'], orden: 'azar' } } });
   });
 
   test('sin borrador también escribe las columnas de siempre', () => {
     const cambiar = jest.fn();
     render(<VistaCarrito ajustes={{}} cambiar={cambiar} enBorrador={false} />);
-    fireEvent.click(screen.getByRole('radio', { name: /carrito.modo.fijo/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'carrito.modos.fijo.titulo' }));
     expect(cambiar.mock.calls[0][0]).toMatchObject({ cart_button_mode: 'fixed' });
   });
 });

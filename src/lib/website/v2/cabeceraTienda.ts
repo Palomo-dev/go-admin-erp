@@ -2,11 +2,13 @@
  * Cabecera de la tienda: íconos, selector de moneda y cajón del carrito (Figma «16 Sitio web»,
  * sección 2747:57859, aprobada el 2026-11-22).
  *
- * Tres opciones nuevas del documento V2, cada una un objeto en `shell.header.opciones`
+ * Cuatro opciones nuevas del documento V2, cada una un objeto en `shell.header.opciones`
  * (OPCIONES_SHELL de mapeoAjustes.ts, sin columna en `website_settings`, ADR-002):
  * - `header_iconos`: estilo, tamaño, trazo, textos propios, contador del carrito y favoritos.
  * - `header_moneda`: estilo del selector, flecha, monedas visibles, moneda al entrar y celular.
- * - `header_carrito`: botón principal, enlace secundario, «Seguir comprando», título y envío gratis.
+ * - `header_carrito`: botón principal (4 modos), botón «Comprar» de /carrito, enlace secundario,
+ *   «Seguir comprando», título y envío gratis.
+ * - `header_favoritos`: corazón de la cabecera, panel lateral y página /favoritos (Figma 2762:61067).
  *
  * La regla de siempre: sin la clave (o con un valor que no cumple), la tienda se ve como hoy.
  * Por eso cada lector devuelve el default de hoy y `configurado` dice si hay algo nuevo; quien
@@ -304,16 +306,39 @@ export function datosMoneda(codigo: string, respaldoNombre?: string | null): Dat
 // ─── Cajón del carrito ─────────────────────────────────────────────────────────────────────
 
 /**
- * Cómo elige su texto el botón principal. Forma extensible (decisión del dueño, 2026-11-22):
- * vendrán «cada N segundos» y quizá «según el carrito» sin migrar lo guardado.
+ * Cómo elige su texto el botón principal (Figma 2773:62797 · 2774:63297 · 2774:64169 · 2775:64409,
+ * aprobado 2026-11-22). La forma es la misma de siempre (`{ modo, textos, orden?, texto? }`) con
+ * campos nuevos opcionales; un modo que esta versión no conoce cae a la fila legacy (lo de hoy).
  * - `fijo`: siempre `texto` (vacío = el primero de la lista o «Comprar ahora»).
- * - `al_abrir`: uno de `textos` cada vez que se abre el carrito (hoy, al azar).
+ * - `al_abrir`: uno de `textos` cada vez que se abre el carrito, al azar (sin repetir el de la
+ *   vez anterior) o en orden (el 1.º la primera vez, el 2.º la siguiente… y vuelve a empezar).
+ * - `mientras_abierto`: rota cada `segundos` (2–10) mientras el cajón sigue abierto, con
+ *   `transicion` y `pausar` al pasar el mouse. Con «reducir movimiento», cambia sin efecto.
+ * - `segun_carrito`: el texto depende del carrito (`reglas`, por prioridad: falta para el envío
+ *   gratis › hay productos en oferta › ya tiene envío gratis › por defecto).
  */
-export const MODOS_BOTON_CARRITO = ['fijo', 'al_abrir'] as const;
+export const MODOS_BOTON_CARRITO = ['fijo', 'al_abrir', 'mientras_abierto', 'segun_carrito'] as const;
 export type ModoBotonCarrito = (typeof MODOS_BOTON_CARRITO)[number];
-/** `orden` se acepta y se conserva; por ahora la tienda elige al azar en los dos casos. */
 export const ORDENES_BOTON_CARRITO = ['azar', 'orden'] as const;
 export type OrdenBotonCarrito = (typeof ORDENES_BOTON_CARRITO)[number];
+/** Transición del modo «mientras está abierto»: fundido (300 ms), deslizar o sin efecto. */
+export const TRANSICIONES_BOTON_CARRITO = ['fundido', 'deslizar', 'ninguna'] as const;
+export type TransicionBotonCarrito = (typeof TRANSICIONES_BOTON_CARRITO)[number];
+/** Segundos entre textos del modo «mientras está abierto» (Figma: 2 a 10, 4 por defecto). */
+export const SEGUNDOS_BOTON_CARRITO = { min: 2, max: 10, porDefecto: 4 } as const;
+
+/** Reglas del modo «según el carrito», en orden de prioridad (gana la de número menor). */
+export const REGLAS_BOTON_CARRITO = ['faltaEnvio', 'oferta', 'envioGratis'] as const;
+export type ReglaBotonCarrito = (typeof REGLAS_BOTON_CARRITO)[number];
+export type ClaveTextoRegla = ReglaBotonCarrito | 'porDefecto';
+/** Textos por defecto de cada regla (Figma 2775:64409). `{monto}` = lo que falta. */
+export const TEXTOS_REGLAS_BOTON_CARRITO: Readonly<Record<ClaveTextoRegla, string>> = {
+  faltaEnvio: 'Te faltan {monto} para envío gratis',
+  oferta: 'Aprovechar oferta',
+  envioGratis: 'Comprar con envío gratis',
+  porDefecto: 'Comprar ahora',
+};
+export const LARGO_TEXTO_REGLA_BOTON = 40;
 
 /** Los textos de hoy: default de la columna `cart_button_texts` (verificado por MCP 2026-11-22). */
 export const TEXTOS_BOTON_CARRITO_HOY: readonly string[] = ['Comprar Ahora', 'Aprovechar Oferta', 'Obtener Descuento', 'Comprar con Descuento'];
@@ -327,6 +352,17 @@ export interface BotonCarrito {
   orden?: OrdenBotonCarrito;
   /** Texto del modo `fijo`. */
   texto?: string;
+  /** `mientras_abierto`: segundos entre textos (2–10). Sin valor, 4. */
+  segundos?: number;
+  /** `mientras_abierto`: transición. Sin valor, fundido. */
+  transicion?: TransicionBotonCarrito;
+  /** `mientras_abierto`: se detiene con el mouse encima (o el dedo, en el celular). Sin valor, sí. */
+  pausar?: boolean;
+  /**
+   * `segun_carrito`: texto de cada regla. Clave ausente = el texto por defecto; texto vacío (`''`)
+   * = la regla se salta y pasa a la siguiente («un campo vacío salta a la siguiente»).
+   */
+  reglas?: Partial<Record<ClaveTextoRegla, string>>;
 }
 
 export const ESTILOS_ENLACE_CARRITO = ['borde', 'enlace'] as const;
@@ -335,6 +371,15 @@ export type EstiloEnlaceCarrito = (typeof ESTILOS_ENLACE_CARRITO)[number];
 export interface OpcionesCarrito {
   configurado: boolean;
   boton: BotonCarrito;
+  /**
+   * Botón «Comprar» de la página /carrito (Figma 2777:64932). `null` = el de hoy (uno de los
+   * textos de siempre, al azar en cada visita). Con el botón del cajón configurado en el documento
+   * y «Usar lo mismo en «Comprar» del carrito completo» encendido (por defecto), es el mismo
+   * botón; apagado, el propio (`header_carrito.botonPagina`).
+   */
+  botonPagina: BotonCarrito | null;
+  /** «Usar lo mismo en «Comprar» del carrito completo» (por defecto, sí). */
+  usarEnPagina: boolean;
   /** «Ver carrito completo»: botón con borde (hoy) o enlace. */
   enlace: { mostrar: boolean; texto: string; estilo: EstiloEnlaceCarrito };
   seguirComprando: string;
@@ -346,7 +391,7 @@ export interface OpcionesCarrito {
 export const MARCADOR_MONTO = '{monto}';
 
 /** Lo que la tienda pinta sin configuración (textos de hoy). */
-export const CARRITO_HOY: Readonly<Omit<OpcionesCarrito, 'configurado' | 'boton'>> = {
+export const CARRITO_HOY: Readonly<Omit<OpcionesCarrito, 'configurado' | 'boton' | 'botonPagina' | 'usarEnPagina'>> = {
   enlace: { mostrar: true, texto: 'Ver carrito completo', estilo: 'borde' },
   seguirComprando: 'Continuar Comprando',
   titulo: 'Tu Carrito',
@@ -385,7 +430,26 @@ export function botonCarritoDesdeLegacy(modo: unknown, textos: unknown): BotonCa
   };
 }
 
-/** Botón del documento (`header_carrito.boton`); `null` si no hay uno válido. */
+/** Segundos válidos (entero de 2 a 10); `null` si no es un número. */
+export function segundosValidos(v: unknown): number | null {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  return Math.min(SEGUNDOS_BOTON_CARRITO.max, Math.max(SEGUNDOS_BOTON_CARRITO.min, Math.round(v)));
+}
+
+/** Textos de las reglas: la clave ausente no se guarda; el texto vacío se conserva (salta la regla). */
+function reglasValidas(v: unknown): Partial<Record<ClaveTextoRegla, string>> | null {
+  const o = objeto(v);
+  if (!o) return null;
+  const salida: Partial<Record<ClaveTextoRegla, string>> = {};
+  for (const clave of [...REGLAS_BOTON_CARRITO, 'porDefecto'] as const) {
+    const crudo = o[clave];
+    if (typeof crudo !== 'string') continue;
+    salida[clave] = textoCorto(crudo, LARGO_TEXTO_REGLA_BOTON) ?? '';
+  }
+  return Object.keys(salida).length > 0 ? salida : null;
+}
+
+/** Botón del documento (`header_carrito.boton`); `null` si no hay uno válido (modo desconocido incluido). */
 export function botonCarritoDelDocumento(valor: unknown): BotonCarrito | null {
   const b = objeto(valor);
   if (!b) return null;
@@ -397,6 +461,13 @@ export function botonCarritoDelDocumento(valor: unknown): BotonCarrito | null {
   if (orden) boton.orden = orden;
   const texto = textoCorto(b.texto, LARGO_TEXTO_BOTON_CARRITO);
   if (texto) boton.texto = texto;
+  const segundos = segundosValidos(b.segundos);
+  if (segundos !== null) boton.segundos = segundos;
+  const transicion = unoDe(TRANSICIONES_BOTON_CARRITO, b.transicion);
+  if (transicion) boton.transicion = transicion;
+  if (typeof b.pausar === 'boolean') boton.pausar = b.pausar;
+  const reglas = reglasValidas(b.reglas);
+  if (reglas) boton.reglas = reglas;
   return boton;
 }
 
@@ -408,6 +479,8 @@ export function opcionesCarrito(ajustes: Ajustes): OpcionesCarrito {
   const a = ajustes ?? {};
   const crudo = objeto(a.header_carrito) ?? {};
   const botonDoc = botonCarritoDelDocumento(crudo.boton);
+  const botonPaginaDoc = botonCarritoDelDocumento(crudo.botonPagina);
+  const usarEnPagina = crudo.usarEnPagina !== false;
   const enlace = objeto(crudo.enlace) ?? {};
   const envio = objeto(crudo.envioGratis) ?? {};
   const seguir = textoCorto(crudo.seguirComprando, LARGO_TEXTO_CARRITO);
@@ -420,9 +493,11 @@ export function opcionesCarrito(ajustes: Ajustes): OpcionesCarrito {
   const logrado = textoCorto(envio.logrado, LARGO_MENSAJE_ENVIO);
   return {
     configurado:
-      botonDoc !== null || seguir !== null || titulo !== null || enlaceMostrar !== null || enlaceTexto !== null ||
-      enlaceEstilo !== null || barra !== null || mensaje !== null || logrado !== null,
+      botonDoc !== null || botonPaginaDoc !== null || crudo.usarEnPagina === false || seguir !== null || titulo !== null ||
+      enlaceMostrar !== null || enlaceTexto !== null || enlaceEstilo !== null || barra !== null || mensaje !== null || logrado !== null,
     boton: botonDoc ?? botonCarritoDesdeLegacy(a.cart_button_mode, a.cart_button_texts),
+    botonPagina: usarEnPagina ? botonDoc : botonPaginaDoc,
+    usarEnPagina,
     enlace: {
       mostrar: enlaceMostrar ?? CARRITO_HOY.enlace.mostrar,
       texto: enlaceTexto ?? CARRITO_HOY.enlace.texto,
@@ -438,16 +513,89 @@ export function opcionesCarrito(ajustes: Ajustes): OpcionesCarrito {
   };
 }
 
+/** Lista con la que rota el botón (la propia o la de hoy). */
+export function textosBotonCarrito(boton: BotonCarrito): readonly string[] {
+  return boton.textos.length > 0 ? boton.textos : TEXTOS_BOTON_CARRITO_HOY;
+}
+
 /**
- * Texto del botón principal. `fijo`: el escrito, o el primero de la lista, o «Comprar ahora».
- * `al_abrir`: uno de la lista; se llama una vez cada vez que se abre el carrito y se queda
- * mientras esté abierto (decisión del dueño). `azar` es inyectable para las pruebas.
+ * Índice del texto para una nueva apertura del cajón (`al_abrir`). `anterior` = el de la apertura
+ * anterior (`null` la primera vez). «En orden»: el siguiente y vuelta a empezar. «Al azar»: uno
+ * cualquiera, sin repetir el de la vez anterior (con un solo texto, ese). `azar` es inyectable.
+ */
+export function indiceAlAbrir(boton: BotonCarrito, anterior: number | null, azar: () => number = Math.random): number {
+  const n = textosBotonCarrito(boton).length;
+  if (n <= 1) return 0;
+  if (boton.orden === 'orden') return anterior === null || anterior < 0 ? 0 : (anterior + 1) % n;
+  if (anterior === null || anterior < 0 || anterior >= n) return Math.min(n - 1, Math.max(0, Math.floor(azar() * n)));
+  // n-1 candidatos (todos menos el anterior).
+  const i = Math.min(n - 2, Math.max(0, Math.floor(azar() * (n - 1))));
+  return i >= anterior ? i + 1 : i;
+}
+
+/**
+ * Texto del botón principal sin estado del carrito. `fijo`: el escrito, o el primero de la lista,
+ * o «Comprar ahora». `al_abrir`: uno de la lista al azar (o el primero, en orden).
+ * `mientras_abierto`: el primero (con el que arranca la rotación). `segun_carrito`: el de «por
+ * defecto» (sin datos del carrito no se cumple ninguna regla). `azar` es inyectable.
  */
 export function textoBotonCarrito(boton: BotonCarrito, azar: () => number = Math.random): string {
-  const lista = boton.textos.length > 0 ? boton.textos : TEXTOS_BOTON_CARRITO_HOY;
+  const lista = textosBotonCarrito(boton);
   if (boton.modo === 'fijo') return boton.texto || lista[0] || TEXTO_BOTON_CARRITO_FIJO;
-  const i = Math.min(lista.length - 1, Math.max(0, Math.floor(azar() * lista.length)));
-  return lista[i] || TEXTO_BOTON_CARRITO_FIJO;
+  if (boton.modo === 'segun_carrito') return textoRegla(boton, 'porDefecto') || TEXTO_BOTON_CARRITO_FIJO;
+  if (boton.modo === 'mientras_abierto') return lista[0] || TEXTO_BOTON_CARRITO_FIJO;
+  return lista[indiceAlAbrir(boton, null, azar)] || TEXTO_BOTON_CARRITO_FIJO;
+}
+
+/** Segundos de la rotación (`mientras_abierto`). */
+export function segundosBotonCarrito(boton: BotonCarrito): number {
+  return boton.segundos ?? SEGUNDOS_BOTON_CARRITO.porDefecto;
+}
+
+/** Transición efectiva: con «reducir movimiento» del visitante, siempre sin efecto. */
+export function transicionBotonCarrito(boton: BotonCarrito, reducirMovimiento: boolean): TransicionBotonCarrito {
+  if (reducirMovimiento) return 'ninguna';
+  return boton.transicion ?? 'fundido';
+}
+
+/** Texto guardado de una regla: el propio, el de por defecto si no hay, o `''` si se dejó vacío. */
+export function textoRegla(boton: Pick<BotonCarrito, 'reglas'>, clave: ClaveTextoRegla): string {
+  const propio = boton.reglas?.[clave];
+  return typeof propio === 'string' ? propio : TEXTOS_REGLAS_BOTON_CARRITO[clave];
+}
+
+/** Lo que sabe el cajón del carrito para el modo «según el carrito». */
+export interface EstadoCarritoBoton {
+  subtotal: number;
+  /** Tope de envío gratis; 0 o negativo = la tienda no tiene tope. */
+  topeEnvioGratis: number;
+  /** Algún producto con precio anterior (o promoción aplicada). */
+  hayOferta: boolean;
+}
+
+/**
+ * Regla que gana en «según el carrito» y su texto (con `{monto}` sin reemplazar: quien pinta lo
+ * formatea en la moneda del visitante con {@link partirMensajeMonto}). Prioridad: 1 falta para
+ * el envío gratis, 2 hay productos en oferta, 3 ya tiene envío gratis; si no, «por defecto».
+ * Una regla con texto vacío se salta.
+ */
+export function reglaBotonCarrito(
+  boton: Pick<BotonCarrito, 'reglas'>,
+  estado: EstadoCarritoBoton,
+): { regla: ClaveTextoRegla; plantilla: string; monto: number | null } {
+  const tope = estado.topeEnvioGratis > 0 ? estado.topeEnvioGratis : 0;
+  const cumple: Record<ReglaBotonCarrito, boolean> = {
+    faltaEnvio: tope > 0 && estado.subtotal < tope,
+    oferta: estado.hayOferta,
+    envioGratis: tope > 0 && estado.subtotal >= tope,
+  };
+  for (const regla of REGLAS_BOTON_CARRITO) {
+    if (!cumple[regla]) continue;
+    const plantilla = textoRegla(boton, regla);
+    if (!plantilla) continue;
+    return { regla, plantilla, monto: regla === 'faltaEnvio' ? Math.max(0, tope - estado.subtotal) : null };
+  }
+  return { regla: 'porDefecto', plantilla: textoRegla(boton, 'porDefecto') || TEXTO_BOTON_CARRITO_FIJO, monto: null };
 }
 
 /**
@@ -470,4 +618,106 @@ export function mensajeEnvioGratis(plantilla: string, monto: string): string {
 export function avanceEnvioGratis(subtotal: number, tope: number): number {
   if (!(tope > 0)) return 0;
   return Math.max(0, Math.min(1, subtotal / tope));
+}
+
+// ─── Favoritos ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Favoritos de la tienda (Figma «16 Sitio web» 2762:61067, aprobado 2026-11-22): corazón de la
+ * cabecera, panel lateral y página pública /favoritos. Opción `header_favoritos` del documento V2
+ * (`shell.header.opciones`, sin columna). «Mostrar el corazón» sigue siendo `header_iconos.favoritos`.
+ *
+ * Sin la clave: el panel al tocar el corazón, contador, aviso de sesión, «Compartir lista»,
+ * sugerencias de las mismas categorías y los textos de abajo.
+ */
+export const AL_TOCAR_FAVORITOS = ['panel', 'pagina'] as const;
+export type AlTocarFavoritos = (typeof AL_TOCAR_FAVORITOS)[number];
+/** «También te puede gustar»: de las mismas categorías, los más vendidos o los destacados (ofertas y más vendidos). */
+export const FUENTES_SUGERENCIAS_FAVORITOS = ['categorias', 'mas_vendidos', 'destacados'] as const;
+export type FuenteSugerenciasFavoritos = (typeof FUENTES_SUGERENCIAS_FAVORITOS)[number];
+
+export const TEXTOS_FAVORITOS = ['tituloPagina', 'tituloPanel', 'botonPrincipal', 'botonBorde', 'vacioTitulo', 'vacioTexto', 'avisoSesion'] as const;
+export type TextoFavoritos = (typeof TEXTOS_FAVORITOS)[number];
+/** Textos por defecto (los grises del editor, Figma 2772:62317). */
+export const TEXTOS_FAVORITOS_POR_DEFECTO: Readonly<Record<TextoFavoritos, string>> = {
+  tituloPagina: 'Mis favoritos',
+  tituloPanel: 'Tus favoritos',
+  botonPrincipal: 'Agregar todo al carrito',
+  botonBorde: 'Ver todos los favoritos',
+  vacioTitulo: 'Aún no tienes favoritos',
+  vacioTexto: 'Toca el corazón en cualquier producto para guardarlo aquí.',
+  avisoSesion: 'Tus favoritos se guardan en este dispositivo. Inicia sesión para verlos en cualquier lugar.',
+};
+/** Largo máximo de cada texto: los títulos y botones cortos; el vacío y el aviso, una frase. */
+export const LARGO_TEXTOS_FAVORITOS: Readonly<Record<TextoFavoritos, number>> = {
+  tituloPagina: 40,
+  tituloPanel: 40,
+  botonPrincipal: 40,
+  botonBorde: 40,
+  vacioTitulo: 60,
+  vacioTexto: 140,
+  avisoSesion: 160,
+};
+
+export interface OpcionesFavoritos {
+  /** `true` si `header_favoritos` trae al menos una opción válida. */
+  configurado: boolean;
+  /** Al tocar el corazón de la cabecera: abrir el panel lateral o ir a /favoritos. */
+  alTocar: AlTocarFavoritos;
+  /** Contador de productos guardados sobre el corazón. */
+  contador: boolean;
+  textos: Record<TextoFavoritos, string>;
+  sugerencias: { mostrar: boolean; fuente: FuenteSugerenciasFavoritos };
+  /** Aviso «se guardan en este dispositivo» para el visitante sin sesión. */
+  avisoSesion: boolean;
+  /** Botón «Compartir lista». */
+  compartir: boolean;
+  /** Corazón en las tarjetas de producto (además de lo que diga el estilo de la tarjeta). */
+  corazonTarjetas: boolean;
+  /** Corazón en la ficha del producto. */
+  corazonFicha: boolean;
+}
+
+const booleano = (v: unknown): boolean | null => (typeof v === 'boolean' ? v : null);
+
+export function opcionesFavoritos(ajustes: Ajustes): OpcionesFavoritos {
+  const crudo = objeto((ajustes ?? {}).header_favoritos) ?? {};
+  const alTocar = unoDe(AL_TOCAR_FAVORITOS, crudo.alTocar);
+  const contador = booleano(crudo.contador);
+  const avisoSesion = booleano(crudo.avisoSesion);
+  const compartir = booleano(crudo.compartir);
+  const corazonTarjetas = booleano(crudo.corazonTarjetas);
+  const corazonFicha = booleano(crudo.corazonFicha);
+  const sug = objeto(crudo.sugerencias) ?? {};
+  const sugMostrar = booleano(sug.mostrar);
+  const sugFuente = unoDe(FUENTES_SUGERENCIAS_FAVORITOS, sug.fuente);
+  const textosCrudos = objeto(crudo.textos) ?? {};
+  const textos = { ...TEXTOS_FAVORITOS_POR_DEFECTO };
+  let textosPropios = 0;
+  for (const clave of TEXTOS_FAVORITOS) {
+    const t = textoCorto(textosCrudos[clave], LARGO_TEXTOS_FAVORITOS[clave]);
+    if (t) {
+      textos[clave] = t;
+      textosPropios++;
+    }
+  }
+  return {
+    configurado:
+      alTocar !== null || contador !== null || avisoSesion !== null || compartir !== null || corazonTarjetas !== null ||
+      corazonFicha !== null || sugMostrar !== null || sugFuente !== null || textosPropios > 0,
+    alTocar: alTocar ?? 'panel',
+    contador: contador ?? true,
+    textos,
+    sugerencias: { mostrar: sugMostrar ?? true, fuente: sugFuente ?? 'categorias' },
+    avisoSesion: avisoSesion ?? true,
+    compartir: compartir ?? true,
+    corazonTarjetas: corazonTarjetas ?? true,
+    corazonFicha: corazonFicha ?? true,
+  };
+}
+
+/** Contador del corazón: «99+» desde 100; sin favoritos, nada. */
+export function contadorFavoritos(cantidad: number, mostrar: boolean): string | null {
+  if (!mostrar || !(cantidad > 0)) return null;
+  return cantidad > 99 ? '99+' : String(Math.floor(cantidad));
 }

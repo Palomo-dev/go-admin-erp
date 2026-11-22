@@ -1,18 +1,27 @@
 /**
- * Cambios de las vistas «Encabezado › Íconos», «Selector de moneda» y «Carrito» (Figma 2754:59674,
- * 2757:60344 y 2754:60110). Lógica pura: arma el cambio de ajustes que el editor escribe en el
- * documento V2 (`shell.header.opciones.header_iconos | header_moneda | header_carrito`) o, en un
- * sitio sin borrador, en la fila legacy. Nada se escribe al abrir: sin cambios, la tienda no cambia.
+ * Cambios de las vistas «Encabezado › Íconos», «Selector de moneda», «Carrito» y «Favoritos»
+ * (Figma 2754:59674, 2757:60344, 2754:60110, 2773:62797 y 2772:62317). Lógica pura: arma el
+ * cambio de ajustes que el editor escribe en el documento V2
+ * (`shell.header.opciones.header_iconos | header_moneda | header_carrito | header_favoritos`) o,
+ * en un sitio sin borrador, en la fila legacy. Nada se escribe al abrir: sin cambios, la tienda no cambia.
  *
  * Lectura y defaults: `@/lib/website/v2/cabeceraTienda` (el mismo archivo que lee la tienda).
  */
 import {
   ESTILOS_ICONOS_NUEVOS,
+  LARGO_TEXTO_REGLA_BOTON,
+  LARGO_TEXTOS_FAVORITOS,
   MAX_TEXTOS_BOTON_CARRITO,
+  REGLAS_BOTON_CARRITO,
+  TEXTOS_REGLAS_BOTON_CARRITO,
+  segundosValidos,
   textosBotonLimpios,
   type BotonCarrito,
+  type ClaveTextoRegla,
   type EstiloIconos,
   type IconoConTexto,
+  type ModoBotonCarrito,
+  type TextoFavoritos,
 } from '@/lib/website/v2/cabeceraTienda';
 import { cambioForma } from './encabezadoCapacidades';
 
@@ -101,7 +110,10 @@ export function cambioCarrito(a: Ajustes, parte: Record<string, unknown>): Ajust
   return mezclar(a, 'header_carrito', parte);
 }
 
-/** Columnas legacy del botón (`fixed` usa el primer texto: el fijo va primero). */
+/**
+ * Columnas legacy del botón (`fixed` usa el primer texto: el fijo va primero). La fila solo sabe
+ * de fijo y dinámico; los modos nuevos (que un sitio sin borrador no puede elegir) van a dinámico.
+ */
 export function columnasLegacyBoton(boton: BotonCarrito): { cart_button_mode: 'fixed' | 'dynamic'; cart_button_texts: string[] } {
   const textos = textosBotonLimpios(boton.textos);
   if (boton.modo === 'fijo') {
@@ -113,17 +125,74 @@ export function columnasLegacyBoton(boton: BotonCarrito): { cart_button_mode: 'f
 }
 
 /**
+ * Forma que se guarda del botón: modo y textos limpios, y solo los campos que el modo usa o que ya
+ * traía (se conservan al cambiar de modo para no perder lo escrito). Los textos se guardan sin
+ * recortar del todo: la tienda recorta al leer y así el campo no se come el espacio que se escribe.
+ */
+export function botonGuardable(boton: BotonCarrito): Record<string, unknown> {
+  const guardar: Record<string, unknown> = { modo: boton.modo, textos: textosBotonLimpios(boton.textos) };
+  if (boton.orden) guardar.orden = boton.orden;
+  if (boton.texto && boton.texto.trim()) guardar.texto = boton.texto.slice(0, 30);
+  const segundos = segundosValidos(boton.segundos);
+  if (segundos !== null) guardar.segundos = segundos;
+  if (boton.transicion) guardar.transicion = boton.transicion;
+  if (typeof boton.pausar === 'boolean') guardar.pausar = boton.pausar;
+  if (boton.reglas) {
+    const reglas: Record<string, string> = {};
+    for (const clave of [...REGLAS_BOTON_CARRITO, 'porDefecto'] as const) {
+      const v = boton.reglas[clave];
+      if (typeof v === 'string') reglas[clave] = v.slice(0, LARGO_TEXTO_REGLA_BOTON);
+    }
+    if (Object.keys(reglas).length > 0) guardar.reglas = reglas;
+  }
+  return guardar;
+}
+
+/**
  * Botón principal del carrito. En el borrador V2 va a `header_carrito.boton` (la fila legacy
  * queda como respaldo, sin tocar). En un sitio sin borrador, a las columnas de siempre
  * (`cart_button_mode` / `cart_button_texts`), que son las que ese sitio lee.
  */
 export function cambioBotonCarrito(a: Ajustes, boton: BotonCarrito, enBorrador: boolean): Ajustes {
-  const guardar: Record<string, unknown> = { modo: boton.modo, textos: textosBotonLimpios(boton.textos) };
-  if (boton.orden) guardar.orden = boton.orden;
-  // Sin recortar: la tienda recorta al leer y así el campo no se come el espacio que se escribe.
-  if (boton.texto && boton.texto.trim()) guardar.texto = boton.texto.slice(0, 30);
-  const cambio = cambioCarrito(a, { boton: guardar });
+  const cambio = cambioCarrito(a, { boton: botonGuardable(boton) });
   return enBorrador ? cambio : { ...cambio, ...columnasLegacyBoton(boton) };
+}
+
+/** Los modos nuevos solo los lee el documento V2: un sitio sin borrador elige entre fijo y al abrir. */
+export function modoDisponible(modo: ModoBotonCarrito, enBorrador: boolean): boolean {
+  return enBorrador || modo === 'fijo' || modo === 'al_abrir';
+}
+
+/**
+ * Pasa el botón a otro modo. «Al abrir» arranca al azar; «Según el carrito» escribe los textos de
+ * sus reglas (los por defecto) para que se vean en los campos y se puedan vaciar (vacío = saltar).
+ */
+export function botonEnModo(boton: BotonCarrito, modo: ModoBotonCarrito): BotonCarrito {
+  const siguiente: BotonCarrito = { ...boton, modo };
+  if (modo === 'al_abrir' && !siguiente.orden) siguiente.orden = 'azar';
+  if (modo === 'segun_carrito') {
+    const reglas: Partial<Record<ClaveTextoRegla, string>> = { ...(boton.reglas ?? {}) };
+    for (const clave of [...REGLAS_BOTON_CARRITO, 'porDefecto'] as const) {
+      if (typeof reglas[clave] !== 'string') reglas[clave] = TEXTOS_REGLAS_BOTON_CARRITO[clave];
+    }
+    siguiente.reglas = reglas;
+  }
+  return siguiente;
+}
+
+/**
+ * «Usar lo mismo en «Comprar» del carrito completo» (Figma 2777:64932). Encendido (por defecto) no
+ * se guarda; al apagarlo, el botón de la página arranca como copia del del cajón.
+ */
+export function cambioUsarEnPagina(a: Ajustes, usar: boolean, botonCajon: BotonCarrito): Ajustes {
+  if (usar) return cambioCarrito(a, { usarEnPagina: null });
+  const actual = objeto(objeto(a.header_carrito)?.botonPagina);
+  return cambioCarrito(a, { usarEnPagina: false, botonPagina: actual ?? botonGuardable(botonCajon) });
+}
+
+/** Botón propio de la página /carrito (con «Usar lo mismo» apagado). */
+export function cambioBotonPagina(a: Ajustes, boton: BotonCarrito): Ajustes {
+  return cambioCarrito(a, { botonPagina: botonGuardable(boton) });
 }
 
 /** Mueve un texto de la lista (arrastrar para ordenar). */
@@ -133,4 +202,30 @@ export function moverTexto(lista: readonly string[], desde: number, hasta: numbe
   const [item] = copia.splice(desde, 1);
   copia.splice(hasta, 0, item);
   return copia;
+}
+
+// ─── Favoritos ──────────────────────────────────────────────────────────────────────────────
+
+export function cambioFavoritos(a: Ajustes, parte: Record<string, unknown>): Ajustes {
+  return mezclar(a, 'header_favoritos', parte);
+}
+
+/** Texto propio de favoritos. Vacío = el texto por defecto (el gris del campo). */
+export function cambioTextoFavoritos(a: Ajustes, clave: TextoFavoritos, texto: string | null): Ajustes {
+  const textos = { ...(objeto(objeto(a.header_favoritos)?.textos) ?? {}) };
+  textos[clave] = texto === null || texto.trim() === '' ? null : texto.slice(0, LARGO_TEXTOS_FAVORITOS[clave]);
+  return cambioFavoritos(a, { textos });
+}
+
+/** «También te puede gustar»: mostrar y de dónde salen. Los valores por defecto no se guardan. */
+export function cambioSugerenciasFavoritos(a: Ajustes, parte: { mostrar?: boolean; fuente?: string }): Ajustes {
+  const actual = { ...(objeto(objeto(a.header_favoritos)?.sugerencias) ?? {}) };
+  if (parte.mostrar !== undefined) actual.mostrar = parte.mostrar ? null : false;
+  if (parte.fuente !== undefined) actual.fuente = parte.fuente === 'categorias' ? null : parte.fuente;
+  return cambioFavoritos(a, { sugerencias: actual });
+}
+
+/** Interruptor de favoritos cuyo valor por defecto es «sí»: encendido no se guarda. */
+export function cambioInterruptorFavoritos(a: Ajustes, campo: 'contador' | 'avisoSesion' | 'compartir' | 'corazonTarjetas' | 'corazonFicha', valor: boolean): Ajustes {
+  return cambioFavoritos(a, { [campo]: valor ? null : false });
 }

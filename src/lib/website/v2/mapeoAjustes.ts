@@ -390,11 +390,20 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    *   contador del carrito y favoritos. «Solo ícono» y «Círculo» siguen en header_icons_circle/_box.
    * - `header_moneda`: estilo del selector, flecha, monedas visibles, moneda al entrar y celular.
    * - `header_carrito`: botón principal (modo y textos; sin él, `cart_button_mode`/`_texts` de la
-   *   fila legacy), enlace secundario, «Seguir comprando», título y mensajes de envío gratis.
+   *   fila legacy; modos fijo, al abrir, mientras está abierto y según el carrito), botón «Comprar»
+   *   de /carrito (`usarEnPagina`, `botonPagina`), enlace secundario, «Seguir comprando», título y
+   *   mensajes de envío gratis.
    */
   header_iconos: { zona: 'header', porDefecto: null, nueva: true },
   header_moneda: { zona: 'header', porDefecto: null, nueva: true },
   header_carrito: { zona: 'header', porDefecto: null, nueva: true },
+  /**
+   * Favoritos de la tienda (Figma 2762:61067, aprobado 2026-11-22): al tocar el corazón (panel o
+   * página /favoritos), contador, textos, sugerencias, aviso de sesión, «Compartir lista» y el
+   * corazón en tarjetas y ficha. Lo valida `cabeceraTienda.ts` (`opcionesFavoritos`). `null` = los
+   * valores por defecto del diseño. «Mostrar el corazón» sigue en `header_iconos.favoritos`.
+   */
+  header_favoritos: { zona: 'header', porDefecto: null, nueva: true },
   /**
    * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
    * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.

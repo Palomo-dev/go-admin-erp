@@ -35759,7 +35759,9 @@
           },
           "favoritosAyuda": "Opens My account › Favorites: the products the customer saved with the heart.",
           "monedaEstilo": "Style and currencies",
-          "monedaVer": "See «Currency selector»"
+          "monedaVer": "See «Currency selector»",
+          "favoritosAyudaPanel": "Opens the favorites panel or the /favoritos page (Header › Favorites).",
+          "favoritosVer": "See “Favorites”"
         },
         "moneda": {
           "titulo": "Header › Currency selector",
@@ -35845,7 +35847,119 @@
           "otros": "Other labels",
           "tituloCajon": "Drawer title",
           "seguir": "Continue shopping",
-          "textosSoloBorrador": "Drawer labels are saved once the site moves to the new draft; meanwhile they show in the preview."
+          "textosSoloBorrador": "Drawer labels are saved once the site moves to the new draft; meanwhile they show in the preview.",
+          "botonAyudaModos": "Choose how the button text changes. The preview shows the result.",
+          "comoCambia": "How the text changes",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixed (always the same)",
+              "ayuda": "A single text for the button"
+            },
+            "al_abrir": {
+              "titulo": "Changes every time the cart opens",
+              "ayuda": "A different one on each opening"
+            },
+            "mientras_abierto": {
+              "titulo": "Changes only while it is open",
+              "ayuda": "Rotates every few seconds, with a transition"
+            },
+            "segun_carrito": {
+              "titulo": "Based on the cart",
+              "ayuda": "Depends on free shipping and offers"
+            }
+          },
+          "opcionesDe": "“{modo}” options",
+          "textoFijoAyudaLargo": "Empty = “{texto}” (the default text). Up to {largo} characters.",
+          "orden": "Order",
+          "ordenOpcion": {
+            "azar": "Random",
+            "orden": "In order"
+          },
+          "ordenAyuda": "“Random”: any of them, never the same as last time. “In order”: the 1st the first time, the 2nd the next… and starts over.",
+          "segundos": "Every how many seconds",
+          "segundosValor": "{n} s",
+          "transicion": "Transition",
+          "transicionOpcion": {
+            "fundido": "Fade",
+            "deslizar": "Slide",
+            "ninguna": "No effect"
+          },
+          "pausar": "Pause on mouse hover",
+          "pausarAyuda": "On phones it pauses while the finger is on the button. If the visitor asked for “reduced motion”, it changes with no effect.",
+          "reglas": {
+            "faltaEnvio": "1 · If free shipping is not reached yet",
+            "oferta": "2 · If there are products on sale",
+            "envioGratis": "3 · If it already has free shipping",
+            "porDefecto": "Default (none applies)"
+          },
+          "reglaVacia": "Empty: skips to the next one",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' is replaced with the amount left. Only if there is a free shipping threshold.",
+            "oferta": "Counts if any product in the cart has a previous price.",
+            "pie": "If several apply, the lowest number wins. An empty field skips to the next one."
+          },
+          "usarEnPagina": "Use the same for “Buy” on the full cart",
+          "usarEnPaginaAyuda": "On, the “Buy” button on the /carrito page changes like the drawer one. Off, it has its own settings.",
+          "botonPagina": "“Buy” button on /carrito",
+          "soloBorrador": "Available once the site moves to the new draft.",
+          "vistaPrevia": {
+            "etiqueta": "Preview",
+            "fijo": "Result · always the same text",
+            "al_abrir_azar": "Result · a different text each time it opens (random)",
+            "al_abrir_orden": "Result · a different text each time it opens (in order)",
+            "mientras_abierto": "Result · rotates every {n} s while the drawer stays open",
+            "segun_carrito": "Result · the text depends on what is in the cart",
+            "vez": "Time {n}",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "Header › Favorites",
+          "migas": "Global · heart, side panel and /favoritos page",
+          "abrir": "Favorites",
+          "abrirAyuda": "Heart, side panel and /favoritos page",
+          "corazon": "Heart in the header",
+          "mostrar": "Show the heart",
+          "contador": "Saved products counter",
+          "corazonAyuda": "The icon style (icon only, with text, pill…) is chosen in Header › Icons.",
+          "alTocar": "When tapping the heart",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Open the side panel",
+              "ayuda": "Quick list without leaving"
+            },
+            "pagina": {
+              "titulo": "Go to the page",
+              "ayuda": "Takes you to /favoritos"
+            }
+          },
+          "alTocarAyuda": "On phones the panel opens full screen.",
+          "textos": "Texts",
+          "textosAyuda": "The grey text is the default. If you leave the field empty, the store uses it.",
+          "texto": {
+            "tituloPagina": "Page title",
+            "tituloPanel": "Panel title",
+            "botonPrincipal": "Main button",
+            "botonBorde": "Outlined button",
+            "vacioTitulo": "Empty message · title",
+            "vacioTexto": "Empty message · text",
+            "avisoSesion": "Notice for visitors not signed in"
+          },
+          "paginaPanel": "/favoritos page and panel",
+          "sugerencias": "Show “You may also like”",
+          "fuente": "Where suggestions come from",
+          "fuenteOpcion": {
+            "categorias": "From the same categories",
+            "mas_vendidos": "Best sellers",
+            "destacados": "Featured products"
+          },
+          "fuenteAyuda": "“Featured”: products on sale first, then best sellers. Hidden when there are no products.",
+          "avisoSesion": "Show sign-in notice",
+          "compartir": "“Share list” button",
+          "tarjetas": "Product cards",
+          "corazonTarjetas": "Heart on cards",
+          "corazonFicha": "Heart on the product page",
+          "tarjetasAyuda": "The style and position of the heart on the card stay in Site style › Product card."
         }
       }
     },

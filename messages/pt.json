@@ -35769,7 +35769,9 @@
           },
           "favoritosAyuda": "Abre Minha conta › Favoritos: os produtos que o cliente marcou com o coração.",
           "monedaEstilo": "Estilo e moedas",
-          "monedaVer": "Ver «Seletor de moeda»"
+          "monedaVer": "Ver «Seletor de moeda»",
+          "favoritosAyudaPanel": "Abre o painel de favoritos ou a página /favoritos (Cabeçalho › Favoritos).",
+          "favoritosVer": "Ver «Favoritos»"
         },
         "moneda": {
           "titulo": "Cabeçalho › Seletor de moeda",
@@ -35855,7 +35857,119 @@
           "otros": "Outros textos",
           "tituloCajon": "Título da gaveta",
           "seguir": "Continuar comprando",
-          "textosSoloBorrador": "Os textos da gaveta são salvos quando o site passa ao novo rascunho; enquanto isso, aparecem na pré-visualização."
+          "textosSoloBorrador": "Os textos da gaveta são salvos quando o site passa ao novo rascunho; enquanto isso, aparecem na pré-visualização.",
+          "botonAyudaModos": "Escolha como muda o texto do botão. A pré-visualização mostra o resultado.",
+          "comoCambia": "Como o texto muda",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixo (sempre o mesmo)",
+              "ayuda": "Um único texto para o botão"
+            },
+            "al_abrir": {
+              "titulo": "Muda cada vez que o carrinho abre",
+              "ayuda": "Sai um diferente em cada abertura"
+            },
+            "mientras_abierto": {
+              "titulo": "Muda só enquanto está aberto",
+              "ayuda": "Alterna a cada poucos segundos, com transição"
+            },
+            "segun_carrito": {
+              "titulo": "Conforme o carrinho",
+              "ayuda": "Depende do frete grátis e das ofertas"
+            }
+          },
+          "opcionesDe": "Opções de «{modo}»",
+          "textoFijoAyudaLargo": "Vazio = «{texto}» (o texto padrão). Máximo de {largo} caracteres.",
+          "orden": "Ordem",
+          "ordenOpcion": {
+            "azar": "Aleatório",
+            "orden": "Em ordem"
+          },
+          "ordenAyuda": "«Aleatório»: sai qualquer um, sem repetir o da vez anterior. «Em ordem»: o 1.º na primeira vez, o 2.º na seguinte… e recomeça.",
+          "segundos": "A cada quantos segundos",
+          "segundosValor": "{n} s",
+          "transicion": "Transição",
+          "transicionOpcion": {
+            "fundido": "Esmaecer",
+            "deslizar": "Deslizar",
+            "ninguna": "Sem efeito"
+          },
+          "pausar": "Pausar ao passar o mouse",
+          "pausarAyuda": "No celular pausa enquanto o dedo está sobre o botão. Se o visitante pediu «reduzir movimento», muda sem efeito.",
+          "reglas": {
+            "faltaEnvio": "1 · Se falta para o frete grátis",
+            "oferta": "2 · Se há produtos em oferta",
+            "envioGratis": "3 · Se já tem frete grátis",
+            "porDefecto": "Padrão (nenhuma se cumpre)"
+          },
+          "reglaVacia": "Vazio: pula para a seguinte",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' é trocado pelo que falta. Só se houver valor mínimo para frete grátis.",
+            "oferta": "Conta se algum produto do carrinho tem preço anterior.",
+            "pie": "Se várias se cumprem, vence a de número menor. Um campo vazio pula para a seguinte."
+          },
+          "usarEnPagina": "Usar o mesmo em «Comprar» do carrinho completo",
+          "usarEnPaginaAyuda": "Ligado, o botão «Comprar» da página /carrito muda igual ao da gaveta. Desligado, tem a sua própria configuração.",
+          "botonPagina": "Botão «Comprar» de /carrito",
+          "soloBorrador": "Disponível quando o site passar para o novo rascunho.",
+          "vistaPrevia": {
+            "etiqueta": "Pré-visualização",
+            "fijo": "Resultado · sempre o mesmo texto",
+            "al_abrir_azar": "Resultado · um texto diferente cada vez que abre (aleatório)",
+            "al_abrir_orden": "Resultado · um texto diferente cada vez que abre (em ordem)",
+            "mientras_abierto": "Resultado · alterna a cada {n} s enquanto a gaveta continua aberta",
+            "segun_carrito": "Resultado · o texto depende do que há no carrinho",
+            "vez": "{n}.ª vez",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "Cabeçalho › Favoritos",
+          "migas": "Global · coração, painel lateral e página /favoritos",
+          "abrir": "Favoritos",
+          "abrirAyuda": "Coração, painel lateral e página /favoritos",
+          "corazon": "Coração no cabeçalho",
+          "mostrar": "Mostrar o coração",
+          "contador": "Contador de produtos salvos",
+          "corazonAyuda": "O estilo do ícone (só ícone, com texto, pílula…) é escolhido em Cabeçalho › Ícones.",
+          "alTocar": "Ao tocar no coração",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Abrir o painel lateral",
+              "ayuda": "Lista rápida sem sair"
+            },
+            "pagina": {
+              "titulo": "Ir para a página",
+              "ayuda": "Leva a /favoritos"
+            }
+          },
+          "alTocarAyuda": "No celular o painel abre em tela cheia.",
+          "textos": "Textos",
+          "textosAyuda": "O texto em cinza é o padrão. Se deixar o campo vazio, a loja usa esse.",
+          "texto": {
+            "tituloPagina": "Título da página",
+            "tituloPanel": "Título do painel",
+            "botonPrincipal": "Botão principal",
+            "botonBorde": "Botão com borda",
+            "vacioTitulo": "Mensagem vazia · título",
+            "vacioTexto": "Mensagem vazia · texto",
+            "avisoSesion": "Aviso para visitante sem sessão"
+          },
+          "paginaPanel": "Página /favoritos e painel",
+          "sugerencias": "Mostrar «Você também pode gostar»",
+          "fuente": "De onde vêm as sugestões",
+          "fuenteOpcion": {
+            "categorias": "Das mesmas categorias",
+            "mas_vendidos": "Mais vendidos",
+            "destacados": "Produtos em destaque"
+          },
+          "fuenteAyuda": "«Em destaque»: primeiro os que estão em oferta, depois os mais vendidos. Oculta-se se não houver produtos.",
+          "avisoSesion": "Mostrar aviso de sessão",
+          "compartir": "Botão «Compartilhar lista»",
+          "tarjetas": "Cartões de produto",
+          "corazonTarjetas": "Coração nos cartões",
+          "corazonFicha": "Coração na página do produto",
+          "tarjetasAyuda": "O estilo e a posição do coração no cartão continuam em Estilo do site › Cartão de produto."
         }
       }
     },

@@ -62529,5 +62529,46 @@
       "ventaNueva": "Nouvelle vente",
       "reventaDe": "Revente de"
     }
+  },
+  "detallesMarca": {
+    "producto": {
+      "eliminado": "Produit supprimé",
+      "abrirFicha": "Ouvrir la fiche du produit"
+    },
+    "pagos": {
+      "metodo": "Méthode",
+      "referencia": "Référence",
+      "fecha": "Date",
+      "cobrado": "Encaissé",
+      "importe": "Montant",
+      "seCobraAlEntregar": "Encaissé à la livraison",
+      "pagoDe": "Paiement par {metodo}",
+      "concilia": "Rapproché dans <enlace>Processeurs de paiement</enlace>.",
+      "submetodos": {
+        "card": "Carte",
+        "transfer": "Virement",
+        "cash": "Espèces",
+        "botonBancolombia": "Bouton Bancolombia",
+        "corresponsalBancolombia": "Correspondant Bancolombia",
+        "cuotasBancolombia": "Paiement échelonné Bancolombia",
+        "dineroEnCuenta": "Solde du compte",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tienda": {
+      "ver": "Voir dans la boutique",
+      "otraPestana": "(s’ouvre dans un nouvel onglet)",
+      "abre": "Ouvre ce produit dans votre boutique, dans un nouvel onglet",
+      "noPublicado": "Non publié dans la boutique en ligne",
+      "motivos": {
+        "inactivo": "Seuls les produits actifs apparaissent dans la boutique : activez-le pour le voir.",
+        "eliminado": "Le produit est supprimé et la boutique ne l’affiche pas.",
+        "padreInactivo": "Le produit parent n’est pas actif : activez-le pour voir cette variante dans la boutique.",
+        "padreEliminado": "Le produit parent est supprimé et la boutique ne l’affiche pas."
+      }
+    }
   }
 }

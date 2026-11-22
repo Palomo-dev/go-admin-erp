@@ -12,6 +12,7 @@
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { estadoVenta, type EstadoVenta } from '@/lib/pos/ventas/estadoVenta';
 import { numeroDevolucion, textoPlano } from './presentacionDevoluciones';
+import { productoLineaEliminado } from '@/lib/inventario/enlaceProducto';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId'>;
 
@@ -23,7 +24,15 @@ export class ErrorDetalleDevolucion extends Error {
 
 export interface LineaDetalleDevolucion {
   id: number;
-  producto: { id: number | null; nombre: string | null; sku: string | null };
+  producto: {
+    id: number | null;
+    nombre: string | null;
+    sku: string | null;
+    /** Variante: el producto padre (la línea enlaza a su ficha). */
+    padre_id?: number | null;
+    /** Baja lógica del producto o de su padre: no enlaza y dice «Producto eliminado». */
+    eliminado?: boolean;
+  };
   /** Posición de la línea en la venta (1, 2…), o null si no se encontró. */
   linea_venta: number | null;
   cantidad: number;
@@ -144,7 +153,7 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
   const [lineasRes, ventaRes, itemsRes, docsRes, motivoRes, ramaRes, devsRes, asientosRes, movRes, creditoRes, usuario] = await Promise.all([
     ctx.supabase
       .from('return_lines')
-      .select('id, sale_item_id, product_id, quantity, refund_amount, tax_amount, restocked, serial_ids, serial_dispositions, products(name, sku)')
+      .select('id, sale_item_id, product_id, quantity, refund_amount, tax_amount, restocked, serial_ids, serial_dispositions, products(name, sku, status, parent_product_id, padre:products!parent_product_id(status))')
       .eq('organization_id', ctx.organizationId)
       .eq('return_id', id)
       .order('id', { ascending: true }),
@@ -208,7 +217,13 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
   // Seriales de las líneas: los códigos se leen en una sola consulta.
   type LineaFila = {
     id: number; sale_item_id: string | null; product_id: number | null; quantity: number | string; refund_amount: number | string; tax_amount: number | string;
-    restocked: boolean; serial_ids: number[] | null; serial_dispositions: Record<string, string> | null; products: { name: string | null; sku: string | null } | null;
+    restocked: boolean; serial_ids: number[] | null; serial_dispositions: Record<string, string> | null; products: {
+      name: string | null;
+      sku: string | null;
+      status?: string | null;
+      parent_product_id?: number | null;
+      padre?: { status: string | null } | { status: string | null }[] | null;
+    } | null;
   };
   const filasLineas = (lineasRes.data ?? []) as unknown as LineaFila[];
   const idsSeriales = [...new Set(filasLineas.flatMap((l) => l.serial_ids ?? []))];
@@ -219,7 +234,18 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
   }
   const lineas: LineaDetalleDevolucion[] = filasLineas.map((l) => ({
     id: Number(l.id),
-    producto: { id: l.product_id, nombre: l.products?.name ?? null, sku: l.products?.sku ?? null },
+    producto: {
+      id: l.product_id,
+      nombre: l.products?.name ?? null,
+      sku: l.products?.sku ?? null,
+      padre_id: l.products?.parent_product_id ?? null,
+      eliminado: productoLineaEliminado({
+        id: l.product_id,
+        status: l.products?.status,
+        parent_product_id: l.products?.parent_product_id,
+        padreStatus: (Array.isArray(l.products?.padre) ? l.products?.padre[0] : l.products?.padre)?.status,
+      }),
+    },
     linea_venta: l.sale_item_id ? posicion.get(l.sale_item_id) ?? null : null,
     cantidad: n(l.quantity),
     neto: n(l.refund_amount) - n(l.tax_amount),

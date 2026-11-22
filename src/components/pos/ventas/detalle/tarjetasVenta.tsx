@@ -33,6 +33,7 @@ import type { ContextoMoneda } from '@/lib/utils/moneda';
 import type { DetalleVenta, PagoDetalle } from '@/lib/pos/ventas/detalleServidor';
 import { useFechaHoraCaja } from '@/components/pos/cajas/comunesCaja';
 import { useEtiquetaMetodoPago } from '@/components/pos/cajas/paymentMethodLabels';
+import { enlaceLineaProducto } from '@/lib/inventario/enlaceProducto';
 
 type Formato = (v: number) => string;
 
@@ -47,23 +48,34 @@ function BotonPie({ href, children }: { href: string; children: ReactNode }) {
 
 export function TarjetaProductos({ venta, moneda, formatear }: { venta: DetalleVenta; moneda: ContextoMoneda; formatear: Formato }) {
   const t = useTranslations('posVentas.detalle');
+  const tm = useTranslations('detallesMarca.producto');
   // Tabla de líneas del kit en modo lectura (Figma `332:40658`), la misma de la factura de venta.
   // La venta guarda la tarifa por línea pero no el nombre del impuesto: se muestra «Impuesto 19 %».
-  const lineas: LineaDocumento[] = venta.lineas.map((l) => ({
-    id: String(l.id),
-    descripcion: l.nombre ?? t('productos.sinNombre'),
-    sku: l.sku,
-    nota: [l.nota, l.sin_promocion ? t('productos.sinPromocion') : null].filter(Boolean).join(' · ') || null,
-    seriales: l.seriales.map((s) => s.codigo),
-    serialesEnlace: l.seriales,
-    cantidad: l.cantidad,
-    unidad: l.unidad,
-    precioUnitario: l.precio,
-    descuento: l.descuento > 0 ? l.descuento : null,
-    impuestos: (l.tasa !== null && l.tasa > 0) || l.impuesto > 0 ? [{ nombre: t('productos.impuesto'), tarifa: l.tasa, incluido: venta.impuestos_incluidos }] : [],
-    total: l.total,
-    detalleTotal: l.impuesto > 0 ? `${t('productos.impuesto')} ${formatear(l.impuesto)}` : null,
-  }));
+  // El nombre enlaza a la ficha del producto (Figma `2724:192134`); eliminado, sin enlace y con sello.
+  const lineas: LineaDocumento[] = venta.lineas.map((l) => {
+    const enlace = enlaceLineaProducto({
+      id: l.product_id,
+      parent_product_id: l.producto_padre_id ?? null,
+      status: l.producto_eliminado ? 'deleted' : null,
+    });
+    return {
+      id: String(l.id),
+      descripcion: l.nombre ?? t('productos.sinNombre'),
+      enlace: enlace.tipo === 'enlace' ? enlace.href : null,
+      insignias: enlace.tipo === 'eliminado' ? [{ texto: tm('eliminado'), tono: 'neutro' as const }] : undefined,
+      sku: l.sku,
+      nota: [l.nota, l.sin_promocion ? t('productos.sinPromocion') : null].filter(Boolean).join(' · ') || null,
+      seriales: l.seriales.map((s) => s.codigo),
+      serialesEnlace: l.seriales,
+      cantidad: l.cantidad,
+      unidad: l.unidad,
+      precioUnitario: l.precio,
+      descuento: l.descuento > 0 ? l.descuento : null,
+      impuestos: (l.tasa !== null && l.tasa > 0) || l.impuesto > 0 ? [{ nombre: t('productos.impuesto'), tarifa: l.tasa, incluido: venta.impuestos_incluidos }] : [],
+      total: l.total,
+      detalleTotal: l.impuesto > 0 ? `${t('productos.impuesto')} ${formatear(l.impuesto)}` : null,
+    };
+  });
   return (
     <DocumentoLineas
       modo="lectura"

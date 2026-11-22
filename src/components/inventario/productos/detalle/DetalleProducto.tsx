@@ -44,6 +44,7 @@ import { ProveedorContextoProducto, useMensajeErrorProducto, useProductoDetalle 
 import { cargarProductoDetalle } from './cargarProducto';
 import { KpisProducto } from './KpisProducto';
 import { CabeceraMovilProducto } from './CabeceraProducto';
+import { VerEnTienda } from './VerEnTienda';
 import {
   esPestana,
   subPestanaValida,
@@ -343,7 +344,13 @@ function ContenidoDetalle({ tab, sub }: { tab: PestanaDetalle; sub: string | nul
           { etiqueta: t('migas.productos'), href: RUTA_CATALOGO },
           { etiqueta: producto.name },
         ]}
-        badge={<StatusBadge estado={producto.status} etiqueta={t(`estado.${estadoConocido(producto.status)}`)} />}
+        badge={
+          <>
+            <StatusBadge estado={producto.status} etiqueta={t(`estado.${estadoConocido(producto.status)}`)} />
+            {/* «Ver en la tienda ↗» (Figma 2726:193647 / 2726:194089) */}
+            <VerEnTienda productoUuid={producto.uuid} version={`${producto.status}:${producto.updated_at ?? ''}`} />
+          </>
+        }
         miniatura={miniatura}
         acciones={accionesCabecera}
         movil={{

@@ -13,6 +13,7 @@ import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateTimeInTz, formatTimeInTz } from '@/lib/utils/dateDisplay';
 import { esDomicilio, mesaCortaDelPedido, mesaDelPedido, tipoEntregaEfectivo, zonaDelPedido } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { clasesBoton } from '@/components/kit';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderDeliveryCardProps {
   order: WebOrder;
@@ -83,7 +84,7 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Truck className="size-4" aria-hidden="true" strokeWidth={1.5} />
+            <IconoCabecera icono={Truck} />
             {t('ficha.entrega')}
           </CardTitle>
         </CardHeader>
@@ -113,8 +114,8 @@ export function OrderDeliveryCard({ order, onAssignDelivery, showTracking = true
   const baseCard = (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
-          <Truck className="h-4 w-4 dark:text-gray-300" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <IconoCabecera icono={Truck} />
           {t('ficha.entrega')}
         </CardTitle>
       </CardHeader>

@@ -2,7 +2,7 @@
 
 import { useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
-import { CircleAlert, Package, Trash2, TriangleAlert } from 'lucide-react';
+import { ArrowUpRight, CircleAlert, Package, Trash2, TriangleAlert } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { crearFormateadorMoneda, type ContextoMoneda } from '@/lib/utils/moneda';
 import { CampoNumero } from '../CampoNumero';
@@ -144,6 +144,15 @@ export function DocumentoLineas({
             l.error ? 'border-line-danger' : 'border-line-strong',
           )}
         />
+      ) : l.enlace ? (
+        <Link
+          href={l.enlace}
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex min-w-0 items-center gap-1 self-start rounded font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <span className="truncate">{l.descripcion}</span>
+          <ArrowUpRight aria-hidden="true" className="size-3.5 shrink-0" strokeWidth={1.75} />
+        </Link>
       ) : (
         <span className="truncate font-medium text-fg">{l.descripcion}</span>
       )}

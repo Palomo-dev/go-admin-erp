@@ -62539,5 +62539,46 @@
       "ventaNueva": "Venda nova",
       "reventaDe": "Revenda de"
     }
+  },
+  "detallesMarca": {
+    "producto": {
+      "eliminado": "Produto excluído",
+      "abrirFicha": "Abrir a ficha do produto"
+    },
+    "pagos": {
+      "metodo": "Método",
+      "referencia": "Referência",
+      "fecha": "Data",
+      "cobrado": "Recebido",
+      "importe": "Valor",
+      "seCobraAlEntregar": "Cobrado na entrega",
+      "pagoDe": "Pagamento com {metodo}",
+      "concilia": "Conciliado em <enlace>Processadores de pagamento</enlace>.",
+      "submetodos": {
+        "card": "Cartão",
+        "transfer": "Transferência",
+        "cash": "Dinheiro",
+        "botonBancolombia": "Botão Bancolombia",
+        "corresponsalBancolombia": "Correspondente Bancolombia",
+        "cuotasBancolombia": "Parcelas Bancolombia",
+        "dineroEnCuenta": "Saldo em conta",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tienda": {
+      "ver": "Ver na loja",
+      "otraPestana": "(abre em outra aba)",
+      "abre": "Abre este produto na sua loja, em outra aba",
+      "noPublicado": "Não publicado na loja online",
+      "motivos": {
+        "inactivo": "Só produtos ativos aparecem na loja: ative-o para poder vê-lo.",
+        "eliminado": "O produto foi excluído e a loja não o mostra.",
+        "padreInactivo": "O produto pai não está ativo: ative-o para ver esta variante na loja.",
+        "padreEliminado": "O produto pai foi excluído e a loja não o mostra."
+      }
+    }
   }
 }

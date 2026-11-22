@@ -6,6 +6,7 @@ import { FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FilaDato, ListaDatos } from '@/components/kit';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderDocumentsCardProps {
   order: WebOrder;
@@ -28,8 +29,8 @@ export function OrderDocumentsCard({ order, factura, comandaId, cajaEtiqueta }: 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base flex items-center gap-2 dark:text-gray-100">
-          <FileText className="h-4 w-4 dark:text-gray-300" aria-hidden="true" />
+        <CardTitle className="flex items-center gap-2 text-base">
+          <IconoCabecera icono={FileText} />
           {t('documentos.titulo')}
         </CardTitle>
       </CardHeader>

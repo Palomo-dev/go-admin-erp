@@ -21,6 +21,7 @@ import { facturaDeVenta, notasCreditoDeVenta, numeroVenta, pagosDeVenta, totalPa
 import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
 import { idsSerialesLinea, serialesVisiblesDeLinea } from '@/lib/pos/devoluciones/serialesLinea';
 import { numeroDevolucion } from '@/lib/pos/devoluciones/presentacionDevoluciones';
+import { productoLineaEliminado } from '@/lib/inventario/enlaceProducto';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId' | 'roleId' | 'isSuperAdmin'>;
 
@@ -55,6 +56,10 @@ export interface LineaDetalle {
   /** Le quitaron la promoción. El cobro no se la volvió a aplicar. */
   sin_promocion: boolean;
   seriales: { id: number; codigo: string }[];
+  /** Variante: el producto padre (la línea enlaza a su ficha). */
+  producto_padre_id?: number | null;
+  /** Baja lógica del producto o de su padre: la línea no enlaza y dice «Producto eliminado». */
+  producto_eliminado?: boolean;
 }
 
 export interface AuditoriaPromo {
@@ -233,7 +238,7 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
   const [itemsRes, docsRes, devRes, mesaRes, pedidoRes, comRes, clienteRes, ramaRes, permisos] = await Promise.all([
     ctx.supabase
       .from('sale_items')
-      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, promo_excluded, serial_ids, products(name, sku, unit_code, sale_mode, qty_decimals)')
+      .select('id, product_id, quantity, unit_price, total, tax_amount, tax_rate, discount_amount, notes, promo_excluded, serial_ids, products(name, sku, unit_code, sale_mode, qty_decimals, status, parent_product_id, padre:products!parent_product_id(status))')
       .eq('sale_id', id),
     ctx.supabase
       .from('invoice_sales')
@@ -363,8 +368,18 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
     vendedor: s.salesperson_id ? { id: s.salesperson_id as string, nombre: gente.get(s.salesperson_id as string) ?? null } : null,
     lineas: filasItems.map((l) => {
       const prod = (Array.isArray(l.products) ? l.products[0] : l.products) as
-        | { name?: string; sku?: string; unit_code?: string | null; sale_mode?: string | null; qty_decimals?: number | null }
+        | {
+            name?: string;
+            sku?: string;
+            unit_code?: string | null;
+            sale_mode?: string | null;
+            qty_decimals?: number | null;
+            status?: string | null;
+            parent_product_id?: number | null;
+            padre?: { status: string | null } | { status: string | null }[] | null;
+          }
         | null;
+      const padre = Array.isArray(prod?.padre) ? prod?.padre[0] : prod?.padre;
       const notas = l.notes as Record<string, unknown> | null;
       return {
         id: l.id as string,
@@ -387,6 +402,8 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
           saleId: id,
           catalogo: catalogoSeriales,
         }),
+        producto_padre_id: prod?.parent_product_id ?? null,
+        producto_eliminado: productoLineaEliminado({ id: (l.product_id as number | null) ?? null, status: prod?.status, parent_product_id: prod?.parent_product_id, padreStatus: padre?.status }),
       };
     }),
     auditoria_promos: auditoriaCruda.map((a) => {

@@ -62529,5 +62529,46 @@
       "ventaNueva": "New sale",
       "reventaDe": "Resale of"
     }
+  },
+  "detallesMarca": {
+    "producto": {
+      "eliminado": "Deleted product",
+      "abrirFicha": "Open the product page"
+    },
+    "pagos": {
+      "metodo": "Method",
+      "referencia": "Reference",
+      "fecha": "Date",
+      "cobrado": "Collected",
+      "importe": "Amount",
+      "seCobraAlEntregar": "Collected on delivery",
+      "pagoDe": "Payment with {metodo}",
+      "concilia": "Reconciled in <enlace>Payment processors</enlace>.",
+      "submetodos": {
+        "card": "Card",
+        "transfer": "Transfer",
+        "cash": "Cash",
+        "botonBancolombia": "Bancolombia button",
+        "corresponsalBancolombia": "Bancolombia agent",
+        "cuotasBancolombia": "Bancolombia installments",
+        "dineroEnCuenta": "Account balance",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tienda": {
+      "ver": "View in store",
+      "otraPestana": "(opens in a new tab)",
+      "abre": "Opens this product in your store, in a new tab",
+      "noPublicado": "Not published in the online store",
+      "motivos": {
+        "inactivo": "Only active products appear in the store: activate it to see it.",
+        "eliminado": "The product is deleted and the store does not show it.",
+        "padreInactivo": "The parent product is not active: activate it to see this variant in the store.",
+        "padreEliminado": "The parent product is deleted and the store does not show it."
+      }
+    }
   }
 }

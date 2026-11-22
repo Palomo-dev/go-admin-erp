@@ -166,6 +166,12 @@ export interface CheckoutEnvelope {
   table_session_id?: string;
   paid_sale_item_ids?: string[];
   split_id?: string;
+  /**
+   * Venta nueva que revende una devolución («Registrar venta nueva»). El
+   * servidor la valida (`fn_venta_reventa_de`) y la guarda en
+   * `sales.resale_of_return_id`; nunca viaja en un cobro de venta existente.
+   */
+  resale_of_return_id?: number;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -316,6 +322,9 @@ export function buildCheckoutEnvelope(input: CheckoutEnvelopeInput): CheckoutEnv
       : null,
     invoice: { prefix: 'FACT', commission_amount: input.invoiceCommissionAmount },
     promotion_ids: input.promotionIds,
+    ...(input.mode !== 'settle' && Number.isInteger(cart.resale_of_return_id) && Number(cart.resale_of_return_id) > 0
+      ? { resale_of_return_id: Number(cart.resale_of_return_id) }
+      : {}),
     ...(input.mode && input.mode !== 'sale' ? { mode: input.mode } : {}),
     ...(input.mode === 'settle' ? { payment_key: input.paymentKey } : {}),
     ...(input.mode === 'debt' && input.debt

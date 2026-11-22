@@ -56,6 +56,7 @@ const RUTA = '/app/pos/ventas';
 
 export function VentaDetallePage({ ventaId }: { ventaId: string }) {
   const t = useTranslations('posVentas');
+  const tAnular = useTranslations('posDevolucionesAnular');
   const router = useRouter();
   const params = useSearchParams();
   const moneda = useMonedaOrganizacion();
@@ -274,6 +275,18 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
         ]
       : []),
     ...venta.pagos.map((p) => ({ id: `pago-${p.id}`, tipo: 'pago' as const, numero: fechaHora(p.fecha), importe: formatear(p.monto), estado: p.estado })),
+    // Venta nueva que revende una devolución con nota crédito aceptada por la DIAN.
+    ...(venta.reventa_de
+      ? [
+          {
+            id: `reventa-${venta.reventa_de.id}`,
+            tipo: 'devolucion' as const,
+            etiquetaTipo: tAnular('cadena.reventaDe'),
+            numero: venta.reventa_de.numero,
+            href: `/app/pos/devoluciones/${venta.reventa_de.id}`,
+          },
+        ]
+      : []),
     ...venta.devoluciones.map((d) => ({
       id: `dev-${d.id}`,
       tipo: 'devolucion' as const,

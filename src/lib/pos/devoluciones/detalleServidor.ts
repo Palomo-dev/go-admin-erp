@@ -39,7 +39,23 @@ export type EventoHistorial =
   | { tipo: 'egreso_caja'; fecha: string; sesion: number | null }
   | { tipo: 'nota_credito'; fecha: string; numero: string | null }
   | { tipo: 'saldo_a_favor'; fecha: string }
-  | { tipo: 'asiento'; fecha: string; numero: string };
+  | { tipo: 'asiento'; fecha: string; numero: string }
+  | { tipo: 'anulada'; fecha: string; usuario: string | null; motivo: string }
+  | { tipo: 'espejo'; fecha: string; numeros: string; monto: number | null; sesion: number | null };
+
+/**
+ * Anulación de la devolución (`fn_devolucion_anular`, Figma 2721:17): quién,
+ * cuándo y por qué, los asientos espejo, el ingreso de caja y lo que volvió a
+ * salir del inventario.
+ */
+export interface AnulacionDevolucion {
+  fecha: string;
+  usuario: { id: string | null; nombre: string | null };
+  motivo: string;
+  espejos: { id: number; numero: string; fecha: string | null }[];
+  ingreso_caja: { id: number; monto: number; fecha: string | null; sesion: number | null } | null;
+  unidades_retiradas: number;
+}
 
 export interface DetalleDevolucion {
   id: number;
@@ -67,10 +83,28 @@ export interface DetalleDevolucion {
     factura: { id: string; numero: string | null; estado: string | null; total: number } | null;
     cobros: { id: string; metodo: string | null; monto: number; fecha: string | null; estado: string | null }[];
   };
-  nota_credito: { id: string; numero: string | null; total: number; estado: string | null; einvoice_status: string | null; fecha: string | null } | null;
+  nota_credito: {
+    id: string;
+    numero: string | null;
+    total: number;
+    estado: string | null;
+    einvoice_status: string | null;
+    fecha: string | null;
+    /** Último envío a la DIAN (`electronic_invoicing_jobs`): para «Reenviar nota crédito a la DIAN». */
+    envio?: { job_id: string; estado: string } | null;
+  } | null;
+  /**
+   * Ventas nuevas que revenden esta devolución (`sales.resale_of_return_id`,
+   * «Registrar venta nueva»): la cadena termina en «Venta nueva».
+   */
+  ventas_nuevas?: { id: string; numero: string | null; fecha: string | null; total: number; estado: EstadoVenta }[];
+  /** Acciones que el servidor permite (permisos de la sesión). */
+  permisos?: { reenviar_nc: boolean };
   caja: { sesion_id: number; movimiento: { id: number; monto: number; fecha: string | null } | null } | null;
   saldo_a_favor: { id: string; monto: number; saldo: number; estado: string | null } | null;
   asientos: { id: number; fecha: string | null; memo: string | null; numero: string }[];
+  /** Solo si la devolución está anulada. */
+  anulacion?: AnulacionDevolucion | null;
   historial: EventoHistorial[];
 }
 
@@ -93,7 +127,7 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
 
   const { data: fila, error } = await ctx.supabase
     .from('returns')
-    .select('id, branch_id, sale_id, user_id, total_refund, reason, reason_id, return_date, created_at, status, refund_method, cash_session_id, cash_movement_id, credit_note_invoice_id, customer_credit_id, notes')
+    .select('id, branch_id, sale_id, user_id, total_refund, reason, reason_id, return_date, created_at, status, refund_method, cash_session_id, cash_movement_id, credit_note_invoice_id, customer_credit_id, notes, voided_at, voided_by, void_reason')
     .eq('id', id)
     .eq('organization_id', ctx.organizationId)
     .maybeSingle();
@@ -103,6 +137,7 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
     id: number; branch_id: number; sale_id: string; user_id: string; total_refund: number | string; reason: string | null; reason_id: number | null;
     return_date: string | null; created_at: string | null; status: string | null; refund_method: string | null; cash_session_id: number | null;
     cash_movement_id: number | null; credit_note_invoice_id: string | null; customer_credit_id: string | null; notes: string | null;
+    voided_at: string | null; voided_by: string | null; void_reason: string | null;
   };
   const fecha = r.return_date ?? r.created_at ?? '';
 
@@ -211,12 +246,29 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
     numero: a.comprobante_numero ? `${a.comprobante_prefijo ?? ''}${a.comprobante_numero}` : `#${a.id}`,
   }));
 
+  const anulacion = r.status === 'cancelled' ? await leerAnulacion(ctx, r, asientos.map((a) => a.id), filasLineas.map((l) => l.product_id)) : null;
+  const [envio, ventasNuevas] = await Promise.all([nc ? ultimoEnvio(ctx, nc.id) : Promise.resolve(null), leerVentasNuevas(ctx, r.id)]);
+
   const historial: EventoHistorial[] = [
     { tipo: 'creada' as const, fecha, usuario },
     ...(mov?.created_at ? [{ tipo: 'egreso_caja' as const, fecha: mov.created_at, sesion: mov.cash_session_id ?? r.cash_session_id }] : []),
     ...(nc?.created_at ? [{ tipo: 'nota_credito' as const, fecha: nc.created_at, numero: nc.number }] : []),
     ...(credito ? [{ tipo: 'saldo_a_favor' as const, fecha }] : []),
     ...asientos.filter((a) => a.fecha).map((a) => ({ tipo: 'asiento' as const, fecha: a.fecha as string, numero: a.numero })),
+    ...(anulacion
+      ? [
+          { tipo: 'anulada' as const, fecha: anulacion.fecha, usuario: anulacion.usuario.nombre, motivo: anulacion.motivo },
+          ...(anulacion.espejos.length || anulacion.ingreso_caja
+            ? [{
+                tipo: 'espejo' as const,
+                fecha: anulacion.fecha,
+                numeros: anulacion.espejos.map((e) => e.numero).join(', '),
+                monto: anulacion.ingreso_caja?.monto ?? null,
+                sesion: anulacion.ingreso_caja?.sesion ?? null,
+              }]
+            : []),
+        ]
+      : []),
   ].sort((a, b) => a.fecha.localeCompare(b.fecha));
 
   return {
@@ -264,10 +316,123 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
         estado: p.status,
       })),
     },
-    nota_credito: nc ? { id: nc.id, numero: nc.number, total: n(nc.total), estado: nc.status, einvoice_status: nc.einvoice_status, fecha: nc.created_at } : null,
+    nota_credito: nc ? { id: nc.id, numero: nc.number, total: n(nc.total), estado: nc.status, einvoice_status: nc.einvoice_status, fecha: nc.created_at, envio } : null,
+    ventas_nuevas: ventasNuevas,
     caja: r.cash_session_id ? { sesion_id: r.cash_session_id, movimiento: mov ? { id: Number(mov.id), monto: n(mov.amount), fecha: mov.created_at } : null } : null,
     saldo_a_favor: credito ? { id: credito.id, monto: n(credito.amount), saldo: n(credito.balance), estado: credito.status } : null,
     asientos,
+    anulacion,
     historial,
+  };
+}
+
+/** Último envío de la nota crédito a la DIAN (la cola de facturación electrónica). */
+async function ultimoEnvio(ctx: Ctx, notaId: string): Promise<{ job_id: string; estado: string } | null> {
+  const { data } = await ctx.supabase
+    .from('electronic_invoicing_jobs')
+    .select('id, status')
+    .eq('organization_id', ctx.organizationId)
+    .eq('invoice_id', notaId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const job = data as { id: string; status: string | null } | null;
+  return job ? { job_id: String(job.id), estado: job.status ?? 'pending' } : null;
+}
+
+/** Ventas que revenden la devolución (sin las anuladas), con el número de su factura. */
+async function leerVentasNuevas(ctx: Ctx, devolucionId: number): Promise<NonNullable<DetalleDevolucion['ventas_nuevas']>> {
+  const { data } = await ctx.supabase
+    .from('sales')
+    .select('id, sale_date, total, status, payment_status')
+    .eq('organization_id', ctx.organizationId)
+    .eq('resale_of_return_id', devolucionId)
+    .neq('status', 'void')
+    .order('sale_date', { ascending: true });
+  const ventas = (data ?? []) as Array<{ id: string; sale_date: string | null; total: number | string; status: string | null; payment_status: string | null }>;
+  if (!ventas.length) return [];
+  const { data: facturas } = await ctx.supabase
+    .from('invoice_sales')
+    .select('sale_id, number, document_type, status, created_at')
+    .eq('organization_id', ctx.organizationId)
+    .in('sale_id', ventas.map((v) => v.id));
+  const numero = new Map<string, string>();
+  for (const f of ((facturas ?? []) as Array<{ sale_id: string; number: string | null; document_type: string | null; status: string | null }>)) {
+    if (f.document_type === 'credit_note' || !f.number || ['void', 'voided', 'cancelled'].includes(String(f.status))) continue;
+    if (!numero.has(f.sale_id)) numero.set(f.sale_id, f.number);
+  }
+  return ventas.map((v) => ({
+    id: v.id,
+    numero: numero.get(v.id) ?? null,
+    fecha: v.sale_date,
+    total: n(v.total),
+    estado: estadoVenta({ status: v.status, payment_status: v.payment_status, total: v.total, devuelto: 0 }),
+  }));
+}
+
+/**
+ * Lo que dejó `fn_devolucion_anular`: los contra-asientos (`reversal:<id>`) de
+ * los asientos de la devolución, de su nota crédito y de su saldo a favor; el
+ * ingreso de caja (movimiento `in` con `return_id`) y las salidas de kardex
+ * (origen `return`, dirección `out`) de los productos devueltos.
+ */
+async function leerAnulacion(
+  ctx: Ctx,
+  r: { id: number; credit_note_invoice_id: string | null; customer_credit_id: string | null; voided_at: string | null; voided_by: string | null; void_reason: string | null; return_date: string | null; created_at: string | null },
+  asientosDevolucion: number[],
+  productos: Array<number | null>,
+): Promise<AnulacionDevolucion> {
+  const claves = [
+    ...(r.credit_note_invoice_id ? [`accrual:credit_note:${r.credit_note_invoice_id}`] : []),
+    ...(r.customer_credit_id ? [`customer_credit:${r.customer_credit_id}`] : []),
+  ];
+  const [otrosRes, cajaRes, stockRes, usuario] = await Promise.all([
+    claves.length
+      ? ctx.supabase.from('journal_entries').select('id').eq('organization_id', ctx.organizationId).in('fact_key', claves)
+      : Promise.resolve({ data: [] as Array<{ id: number }> }),
+    ctx.supabase
+      .from('cash_movements')
+      .select('id, amount, created_at, cash_session_id')
+      .eq('organization_id', ctx.organizationId)
+      .eq('return_id', r.id)
+      .eq('type', 'in')
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    ctx.supabase
+      .from('stock_movements')
+      .select('product_id, qty')
+      .eq('organization_id', ctx.organizationId)
+      .eq('source', 'return')
+      .eq('source_id', String(r.id))
+      .eq('direction', 'out'),
+    nombrePerfil(ctx, r.voided_by),
+  ]);
+  const originales = [...asientosDevolucion, ...((otrosRes.data ?? []) as Array<{ id: number }>).map((a) => Number(a.id))];
+  let espejos: AnulacionDevolucion['espejos'] = [];
+  if (originales.length) {
+    const { data } = await ctx.supabase
+      .from('journal_entries')
+      .select('id, entry_date, comprobante_prefijo, comprobante_numero')
+      .eq('organization_id', ctx.organizationId)
+      .in('fact_key', originales.map((id) => `reversal:${id}`))
+      .order('id', { ascending: true });
+    espejos = ((data ?? []) as Array<{ id: number; entry_date: string | null; comprobante_prefijo: string | null; comprobante_numero: number | null }>).map((a) => ({
+      id: Number(a.id),
+      numero: a.comprobante_numero ? `${a.comprobante_prefijo ?? ''}${a.comprobante_numero}` : `#${a.id}`,
+      fecha: a.entry_date,
+    }));
+  }
+  const devueltos = new Set(productos.filter((p): p is number => p !== null).map(Number));
+  const caja = cajaRes.data as { id: number; amount: number | string; created_at: string | null; cash_session_id: number | null } | null;
+  return {
+    fecha: r.voided_at ?? r.return_date ?? r.created_at ?? '',
+    usuario: { id: r.voided_by, nombre: usuario },
+    motivo: textoPlano(r.void_reason),
+    espejos,
+    ingreso_caja: caja ? { id: Number(caja.id), monto: n(caja.amount), fecha: caja.created_at, sesion: caja.cash_session_id } : null,
+    unidades_retiradas: ((stockRes.data ?? []) as Array<{ product_id: number; qty: number | string }>)
+      .filter((m) => devueltos.has(Number(m.product_id)))
+      .reduce((a, m) => a + n(m.qty), 0),
   };
 }

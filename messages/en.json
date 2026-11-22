@@ -62394,5 +62394,140 @@
       "consecuencia2": "Its entries are reversed. It cannot be undone from here.",
       "confirmar": "Reverse"
     }
+  },
+  "posDevolucionesAnular": {
+    "menu": {
+      "imprimir": "Print receipt",
+      "anular": "Void return…",
+      "anularAyuda": "Opens the dialog that matches the credit note status.",
+      "motivoAnulada": "The return is already voided.",
+      "motivoSinPermiso": "You need the “Void sales” permission.",
+      "reenviar": "Resend credit note to the DIAN",
+      "reenviando": "Resending the credit note…",
+      "motivoSinPermisoFinanzas": "You need the “Record in finance” permission to resend to the DIAN.",
+      "reenviada": "{numero} is queued to be resent to the DIAN.",
+      "errorReenvio": "The credit note could not be resent. Try again or check it in Electronic invoicing."
+    },
+    "estadosNota": {
+      "aceptada": "accepted",
+      "rechazada": "rejected",
+      "en_envio": "being sent to the DIAN",
+      "sin_transmitir": "not transmitted",
+      "anulada": "voided"
+    },
+    "dialogo": {
+      "titulo": "Void {numero}",
+      "descEfectivo": "Cash refund of {monto}",
+      "descSaldo": "Store credit of {monto}",
+      "descNota": "{numero} {estado}",
+      "avisoRechazada": {
+        "titulo": "It can be voided: the DIAN rejected credit note {numero}.",
+        "texto": "A rejected or untransmitted credit note has no tax effect, so the return is reversed with a mirror entry."
+      },
+      "avisoSinTransmitir": {
+        "titulo": "It can be voided: credit note {numero} has not been sent to the DIAN.",
+        "texto": "It is reversed with a mirror entry."
+      },
+      "avisoSinNota": {
+        "titulo": "It can be voided: the sale has no invoice, so there is no credit note.",
+        "texto": "It is reversed with a mirror entry."
+      },
+      "periodoCerradoHoy": "The return's period is closed, so the mirror entry is dated today."
+    },
+    "queSeRevierte": "What is reversed",
+    "consecuencias": {
+      "asientos": "Reversed with a mirror entry: {numeros}.",
+      "sinAsientos": "There are no posted entries to reverse.",
+      "inventario": "{unidades, plural, one {# unit} other {# units}} of {productos} leave inventory again ({sucursal}).",
+      "notaRechazada": "Credit note {numero} is voided: the DIAN did not validate it, so there is nothing to reverse there.",
+      "notaSinTransmitir": "Credit note {numero} was never sent: it is voided without sending anything to the DIAN.",
+      "caja": "The register (session #{sesion}) records the {monto} the customer gives back.",
+      "cajaSinSesion": "An open register records the {monto} the customer gives back (requires an open register).",
+      "saldo": "The store credit of {monto} is voided.",
+      "venta": "Sale {venta} goes back to “Paid” and the return stays visible as “Voided” with its reason.",
+      "laVenta": "original"
+    },
+    "fecha": {
+      "etiqueta": "Mirror entry date",
+      "hoy": "Today · {dia}",
+      "hoyCerrado": "Today · closed",
+      "original": "Original date · {dia}",
+      "originalCerrado": "Original date · closed",
+      "ayudaAbierto": "{mes} is still open: you can keep the mirror entry on the original date. With “Today” it goes to {mesHoy}.",
+      "ayudaMismoMes": "{mes} is still open: with either date the mirror entry stays in the same period.",
+      "ayudaCerrado": "{mes} is closed. Nothing is ever reversed inside a closed period: the mirror entry is dated today.",
+      "ayudaHoyCerrado": "{mesHoy} is closed: the mirror entry uses the original date."
+    },
+    "motivosRapidos": {
+      "error": "Recorded by mistake",
+      "producto": "Wrong product",
+      "noDevolvio": "The customer didn't return it"
+    },
+    "etiquetaMotivo": "Reason",
+    "placeholder": "Why the return is voided. It stays in the history.",
+    "confirmar": "Void return",
+    "cargando": "Checking the credit note, the period and the register…",
+    "errorCarga": "The return could not be checked. Close and try again.",
+    "hecho": "{numero} was voided",
+    "hechoPendiente": "{numero} was voided; {n, plural, one {# mirror entry is} other {# mirror entries are}} in accounting pending items.",
+    "noSePuede": {
+      "titulo": "{numero} can't be voided",
+      "descripcion": "{numero} accepted by the DIAN on {fecha}",
+      "descripcionSinFecha": "{numero} accepted by the DIAN",
+      "avisoTitulo": "Credit note {numero} was already validated by the DIAN.",
+      "avisoTexto": "A return with an accepted credit note is not reversed: neither with a mirror entry nor by deleting it.",
+      "queHacer": "What to do instead",
+      "pasos": {
+        "venta": "If the customer keeps the product again, record a new sale with its new electronic invoice.",
+        "sinCambios": "The return and the credit note don't change; inventory and cash move with the new sale.",
+        "enlace": "The new sale is linked to this return: it shows in the chain Sale → Return → CN → New sale."
+      },
+      "cerrar": "Close",
+      "registrarVenta": "Record new sale"
+    },
+    "errores": {
+      "motivoObligatorio": "Write the reason (at least 5 characters).",
+      "fechaEspejoInvalida": "Choose the mirror entry date.",
+      "devolucionNoEncontrada": "The return doesn't exist.",
+      "devolucionInvalida": "The return is not valid.",
+      "sinAccesoSucursal": "You don't have access to this return's branch.",
+      "sinPermiso": "You need the “Void sales” permission to void a return. Ask the organization's administrator.",
+      "yaAnulada": "The return is already voided.",
+      "estadoInvalido": "Only a processed return can be voided.",
+      "notaAceptadaDian": "The DIAN already accepted the credit note: the return is not voided.",
+      "notaEnEnvioDian": "The credit note is being sent to the DIAN and there is no answer yet. Wait a few minutes and open this dialog again: if it is rejected it can be voided; if it is accepted, record a new sale.",
+      "notaYaAnulada": "The credit note was already voided from Finance, so its entry is already reversed. Review the return with the accountant before changing it: it can't be voided from here.",
+      "devolucionDeGarantia": "This return came from a warranty claim and its damaged units have their own movements. Manage it from the warranty (Inventory › Serials) instead of voiding it here.",
+      "devolucionConMembresia": "The return trimmed or cancelled a membership and that is not undone automatically. Adjust the membership in Memberships and, if the customer keeps it, record a new sale.",
+      "saldoAFavorAplicado": "The customer already used (all or part of) the store credit this return created. First void that use in Finance › Store credit and try again.",
+      "serialNoDisponible": "A serial from the return is no longer as the return left it: it was sold or moved to another branch. Check its history in Inventory › Serials; meanwhile the return can't be voided.",
+      "periodoCerrado": "Both the return's period and today's are closed, and nothing is ever reversed inside a closed period. Ask the accountant to reopen one of them.",
+      "periodoOriginalCerrado": "The original date's period is closed: use today's date.",
+      "periodoHoyCerrado": "Today's period is closed: use the original date.",
+      "efectivoSinCaja": "The refund was in cash and the money the customer gives back has to go into a register. Open the branch register in POS › Registers and try again.",
+      "stockInsuficiente": "The product is no longer in the branch's inventory (it was sold again): it can't leave again.",
+      "generico": "The return could not be voided. Try again."
+    },
+    "detalle": {
+      "avisoTitulo": "Voided on {fecha} by {usuario} · “{motivo}”",
+      "avisoTituloSinUsuario": "Voided on {fecha} · “{motivo}”",
+      "avisoEspejo": "Mirror entry {numeros}",
+      "avisoIngreso": "{monto} received in session #{sesion}",
+      "avisoUnidades": "{unidades, plural, one {# unit} other {# units}} left inventory again",
+      "avisoNota": "{numero} voided",
+      "avisoNotaRechazada": "{numero} voided (the DIAN had rejected it)",
+      "devueltoAnulada": "{monto} · voided",
+      "estadoVentaAnulada": "{estado} (return voided)",
+      "eventos": {
+        "anulada": "Voided the return · “{motivo}”",
+        "espejo": "Mirror entry {numeros}",
+        "espejoIngreso": "Mirror entry {numeros} and {monto} received in session #{sesion}",
+        "ingreso": "{monto} received in session #{sesion}"
+      }
+    },
+    "cadena": {
+      "ventaNueva": "New sale",
+      "reventaDe": "Resale of"
+    }
   }
 }

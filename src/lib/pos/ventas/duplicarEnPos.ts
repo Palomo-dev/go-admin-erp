@@ -13,7 +13,7 @@
 import { POSService } from '@/lib/services/posService';
 import { getCurrentBranchId } from '@/lib/hooks/useOrganization';
 import { pedirDetalleVenta } from './clienteVentas';
-import { lineasDuplicadas } from './lineasDuplicadas';
+import { lineasDuplicadas, type LineaOriginal } from './lineasDuplicadas';
 
 export interface ResultadoDuplicarEnPos {
   agregadas: number;
@@ -23,11 +23,25 @@ export interface ResultadoDuplicarEnPos {
 
 export async function duplicarVentaEnPos(ventaId: string): Promise<ResultadoDuplicarEnPos> {
   const venta = await pedirDetalleVenta(ventaId);
-  const { lineas, omitidas } = lineasDuplicadas(
+  return llevarLineasAlPos(
     venta.lineas.map((l) => ({ product_id: l.product_id, quantity: l.cantidad, products: { name: l.nombre } })),
+    venta.sucursal.id,
   );
-  const sucursal = getCurrentBranchId() ?? venta.sucursal.id;
-  const carrito = await POSService.createCart(sucursal);
+}
+
+/**
+ * Crea un carrito NUEVO del POS con esas líneas (cantidades conservadas,
+ * precio vigente de hoy). Lo usan «Duplicar venta» y «Registrar venta nueva»
+ * de una devolución con nota crédito aceptada por la DIAN.
+ */
+export async function llevarLineasAlPos(
+  items: readonly LineaOriginal[],
+  sucursalPorDefecto: number,
+  opciones?: { reventaDeDevolucion?: number },
+): Promise<ResultadoDuplicarEnPos> {
+  const { lineas, omitidas } = lineasDuplicadas(items);
+  const sucursal = getCurrentBranchId() ?? sucursalPorDefecto;
+  const carrito = await POSService.createCart(sucursal, { resaleOfReturnId: opciones?.reventaDeDevolucion ?? null });
   let agregadas = 0;
   let fallidas = 0;
   for (const linea of lineas) {

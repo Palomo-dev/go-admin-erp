@@ -11,11 +11,34 @@
  * - Columna principal: Productos devueltos, Reintegro (con enlaces al
  *   movimiento de caja, la nota crédito y el asiento) e Historial.
  * - Columna lateral: Venta original y Motivo.
+ * - Menú ⋯ (Figma 2721:955): imprimir comprobante y «Anular devolución…»
+ *   (`AnularDevolucionDialog`); `?anular=1` lo abre al llegar desde el listado.
+ * - «Reenviar nota crédito a la DIAN» en el ⋯ solo si la DIAN la rechazó o
+ *   su envío falló: reutiliza el reintento de la cola (`reintentarEnvioDian`,
+ *   `POST /api/factus/jobs`, permiso finance.create en el servidor).
+ * - Cadena Venta → Devolución → NC → Venta nueva («Registrar venta nueva»,
+ *   `sales.resale_of_return_id`).
+ * - Anulada (Figma 2721:17): badge «Anulada», aviso rojo con quién, cuándo y
+ *   por qué, y el asiento espejo, el ingreso de caja y la nota en el historial.
  */
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ClipboardList, History, Package, Printer, Receipt, RefreshCw, Undo2, Wallet } from 'lucide-react';
-import { BranchBadge, DataTable, EmptyState, FilaDato, ListaDatos, PageHeader, StatusBadge, Tarjeta, type ColumnaTabla } from '@/components/kit';
+import { Ban, ClipboardList, History, Package, Printer, Receipt, RefreshCw, Send, Undo2, Wallet } from 'lucide-react';
+import {
+  AvisoTonal,
+  BranchBadge,
+  DataTable,
+  EmptyState,
+  FilaDato,
+  ListaDatos,
+  PageHeader,
+  RowActionsMenu,
+  StatusBadge,
+  Tarjeta,
+  type AccionFila,
+  type ColumnaTabla,
+} from '@/components/kit';
 import { CadenaDocumento, type EslabonDocumento } from '@/components/kit/documento';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +47,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { imprimirDocumento } from '@/lib/documents/cliente';
+import { reintentarEnvioDian } from '@/lib/finanzas/notas/clienteNotas';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { reenvioNotaCredito } from '@/lib/pos/devoluciones/anularDevolucionLogica';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { BADGE_ESTADO_VENTA } from '@/lib/pos/ventas/estadoVenta';
 import { useFechaHoraCaja } from '@/components/pos/cajas/comunesCaja';
@@ -32,6 +58,7 @@ import { BADGE_ESTADO_DEVOLUCION, esParcial, estadoDevolucion } from '@/lib/pos/
 import { ErrorPeticionDevoluciones, pedirDetalleDevolucion } from '@/lib/pos/devoluciones/clienteDevoluciones';
 import type { DetalleDevolucion, EventoHistorial, LineaDetalleDevolucion } from '@/lib/pos/devoluciones/detalleServidor';
 import { BadgeEstadoDevolucion } from './BadgeEstadoDevolucion';
+import { AnularDevolucionDialog } from './AnularDevolucionDialog';
 
 const RUTA = '/app/pos/devoluciones';
 
@@ -39,6 +66,11 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
   const t = useTranslations('posDevoluciones.detalle');
   const tl = useTranslations('posDevoluciones.listado');
   const tVentas = useTranslations('posVentas.estados');
+  const ta = useTranslations('posDevolucionesAnular');
+  const router = useRouter();
+  const params = useSearchParams();
+  const [anular, setAnular] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
   const { formatear } = useMonedaOrganizacion();
   const fechaHora = useFechaHoraCaja();
   const { timezone } = useFormatDate();
@@ -67,6 +99,16 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
   }, [devolucionId, recarga]);
 
   const recargar = useCallback(() => setRecarga((n) => n + 1), []);
+
+  // `?anular=1` (menú de la fila del listado): abre el diálogo una vez cargado el detalle.
+  const pideAnular = params?.get('anular') === '1';
+  useEffect(() => {
+    if (pideAnular && dev && dev.estado !== 'cancelled') setAnular(true);
+  }, [pideAnular, dev]);
+  const cambiarAnular = (abierto: boolean) => {
+    setAnular(abierto);
+    if (!abierto && pideAnular) router.replace(`${RUTA}/${devolucionId}`);
+  };
   const hora = (v: string | null) => (v ? formatDateTimeInTz(v, timezone, { locale, hour: '2-digit', minute: '2-digit' }) : '');
   const cantidad = (v: number) => new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(v);
   const migas = [
@@ -144,6 +186,17 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
     ...(nc
       ? [{ id: `nc-${nc.id}`, tipo: 'notaCredito' as const, numero: nc.numero ?? '—', estado: nc.einvoice_status ?? nc.estado, importe: formatear(nc.total), href: `/app/finanzas/facturas-venta/${nc.id}` }]
       : []),
+    // Venta nueva que revende esta devolución (Venta → Devolución → NC → Venta nueva).
+    ...(dev.ventas_nuevas ?? []).map((v) => ({
+      id: `venta-nueva-${v.id}`,
+      tipo: 'venta' as const,
+      etiquetaTipo: ta('cadena.ventaNueva'),
+      numero: v.numero ?? tl('ventaSinNumero'),
+      estado: BADGE_ESTADO_VENTA[v.estado],
+      fecha: v.fecha ? fechaHora(v.fecha) : null,
+      importe: formatear(v.total),
+      href: `/app/pos/ventas/${v.id}`,
+    })),
     ...dev.asientos.map((a) => ({ id: `asiento-${a.id}`, tipo: 'asiento' as const, numero: a.numero, href: `/app/finanzas/contabilidad/asientos/${a.id}` })),
   ];
 
@@ -185,9 +238,83 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
         return t('eventos.saldo_a_favor');
       case 'asiento':
         return t('eventos.asiento', { numero: e.numero });
+      case 'anulada':
+        return ta('detalle.eventos.anulada', { motivo: e.motivo });
+      case 'espejo':
+        if (e.numeros && e.monto !== null) return ta('detalle.eventos.espejoIngreso', { numeros: e.numeros, monto: formatear(e.monto), sesion: e.sesion ?? '—' });
+        if (e.monto !== null) return ta('detalle.eventos.ingreso', { monto: formatear(e.monto), sesion: e.sesion ?? '—' });
+        return ta('detalle.eventos.espejo', { numeros: e.numeros });
     }
   };
-  const actorEvento = (e: EventoHistorial) => (e.tipo === 'creada' ? e.usuario ?? t('sinDato') : t('sistema'));
+  const actorEvento = (e: EventoHistorial) =>
+    e.tipo === 'creada' || e.tipo === 'anulada' ? e.usuario ?? t('sinDato') : t('sistema');
+
+  const anulada = estado === 'cancelled';
+  const anulacion = dev.anulacion ?? null;
+  const avisoAnulada = anulacion
+    ? {
+        titulo: anulacion.usuario.nombre
+          ? ta('detalle.avisoTitulo', { fecha: fechaHora(anulacion.fecha), usuario: anulacion.usuario.nombre, motivo: anulacion.motivo })
+          : ta('detalle.avisoTituloSinUsuario', { fecha: fechaHora(anulacion.fecha), motivo: anulacion.motivo }),
+        texto: [
+          anulacion.espejos.length
+            ? ta('detalle.avisoEspejo', {
+                numeros: anulacion.espejos.map((e) => (e.fecha ? `${e.numero} (${fechaHora(e.fecha)})` : e.numero)).join(', '),
+              })
+            : null,
+          anulacion.ingreso_caja ? ta('detalle.avisoIngreso', { monto: formatear(anulacion.ingreso_caja.monto), sesion: anulacion.ingreso_caja.sesion ?? '—' }) : null,
+          anulacion.unidades_retiradas > 0 ? ta('detalle.avisoUnidades', { unidades: anulacion.unidades_retiradas }) : null,
+          nc ? ta(nc.einvoice_status === 'rejected' ? 'detalle.avisoNotaRechazada' : 'detalle.avisoNota', { numero: nc.numero ?? '—' }) : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      }
+    : null;
+
+  const reenvio = reenvioNotaCredito(nc, { anulada, permiso: dev.permisos?.reenviar_nc === true });
+  const reenviarNota = async () => {
+    if (!reenvio.visible || !reenvio.permitido) return;
+    setReenviando(true);
+    try {
+      await reintentarEnvioDian(reenvio.jobId);
+      toastSuccess(ta('menu.reenviada', { numero: nc?.numero ?? '—' }));
+      recargar();
+    } catch {
+      toastError(ta('menu.errorReenvio'));
+    } finally {
+      setReenviando(false);
+    }
+  };
+
+  const accionesMenu: AccionFila[] = [
+    {
+      id: 'imprimir',
+      etiqueta: ta('menu.imprimir'),
+      icono: Printer,
+      deshabilitada: !nc,
+      motivo: tl('motivosAccion.sinNc'),
+      onSelect: () => nc && imprimirDocumento('nota-credito', nc.id),
+    },
+    {
+      id: 'reenviar',
+      etiqueta: ta('menu.reenviar'),
+      icono: Send,
+      oculta: !reenvio.visible,
+      deshabilitada: reenviando || (reenvio.visible && !reenvio.permitido),
+      motivo: reenviando ? ta('menu.reenviando') : ta('menu.motivoSinPermisoFinanzas'),
+      onSelect: () => void reenviarNota(),
+    },
+    {
+      id: 'anular',
+      etiqueta: ta('menu.anular'),
+      descripcion: anulada ? undefined : ta('menu.anularAyuda'),
+      icono: Ban,
+      destructiva: true,
+      deshabilitada: anulada,
+      motivo: ta('menu.motivoAnulada'),
+      onSelect: () => setAnular(true),
+    },
+  ];
 
   const subtitulo = dev.usuario.nombre
     ? t('subtitulo', { fecha: fechaHora(dev.fecha), sucursal: dev.sucursal.nombre ?? '—', usuario: dev.usuario.nombre })
@@ -209,10 +336,7 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
             <Button variant="outline" size="icon" className="size-10" onClick={recargar} disabled={cargando} aria-label={tl('actualizar')} title={tl('actualizar')}>
               <RefreshCw aria-hidden="true" className={cargando ? 'size-4 animate-spin' : 'size-4'} strokeWidth={1.5} />
             </Button>
-            <Button variant="outline" className="h-10 gap-2" disabled={!nc} title={nc ? undefined : tl('motivosAccion.sinNc')} onClick={() => nc && imprimirDocumento('nota-credito', nc.id)}>
-              <Printer aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {t('imprimir')}
-            </Button>
+            <RowActionsMenu orientacion="horizontal" tamano="md" titulo={dev.numero} acciones={accionesMenu} />
           </>
         }
         debajo={
@@ -226,8 +350,11 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
         }
       />
 
+      {avisoAnulada && <AvisoTonal tono="peligro" titulo={avisoAnulada.titulo} descripcion={avisoAnulada.texto || undefined} />}
+
       <section aria-label={t('cadena')} className="overflow-x-auto rounded-xl border border-line bg-surface p-3">
-        <CadenaDocumento eslabones={eslabones} etiqueta={t('cadena')} />
+        {/* Orden propio: la venta nueva va después de la nota crédito, no al principio. */}
+        <CadenaDocumento eslabones={eslabones} etiqueta={t('cadena')} ordenar={false} />
       </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -309,11 +436,15 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
               <FilaDato etiqueta={t('fecha')} valor={dev.venta.fecha ? fechaHora(dev.venta.fecha) : t('sinDato')} />
               <FilaDato etiqueta={t('totalVenta')} valor={formatear(dev.venta.total)} />
               <FilaDato etiqueta={t('devueltoAntes')} valor={formatear(dev.venta.devuelto_antes)} />
-              <FilaDato etiqueta={t('devueltoAhora')} valor={formatear(dev.total)} tono="peligro" />
+              <FilaDato
+                etiqueta={t('devueltoAhora')}
+                valor={anulada ? ta('detalle.devueltoAnulada', { monto: formatear(0) }) : formatear(dev.total)}
+                tono="peligro"
+              />
               <FilaDato
                 etiqueta={t('estadoVenta')}
-                valor={tVentas(dev.venta.estado)}
-                tono={dev.venta.estado === 'devuelta_parcial' ? 'advertencia' : dev.venta.estado === 'devuelta' ? 'peligro' : 'neutro'}
+                valor={anulada ? ta('detalle.estadoVentaAnulada', { estado: tVentas(dev.venta.estado) }) : tVentas(dev.venta.estado)}
+                tono={anulada || dev.venta.estado === 'devuelta_parcial' ? 'advertencia' : dev.venta.estado === 'devuelta' ? 'peligro' : 'neutro'}
               />
             </ListaDatos>
           </Tarjeta>
@@ -331,6 +462,8 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
           </Tarjeta>
         </div>
       </div>
+
+      <AnularDevolucionDialog abierto={anular} onAbiertoChange={cambiarAnular} devolucion={dev} onAnulada={recargar} />
     </div>
   );
 }

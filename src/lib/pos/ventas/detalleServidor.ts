@@ -20,6 +20,7 @@ import { estadoVenta, origenVenta, type EstadoVenta, type OrigenVenta } from './
 import { facturaDeVenta, notasCreditoDeVenta, numeroVenta, pagosDeVenta, totalPagado, type NumeroVenta } from './documentosVenta';
 import { decimalesCantidad, esMedido, unidadVisible } from '@/lib/pos/peso/modoVenta';
 import { idsSerialesLinea, serialesVisiblesDeLinea } from '@/lib/pos/devoluciones/serialesLinea';
+import { numeroDevolucion } from '@/lib/pos/devoluciones/presentacionDevoluciones';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId' | 'roleId' | 'isSuperAdmin'>;
 
@@ -149,6 +150,11 @@ export interface DetalleVenta {
   mesa: { nombre: string | null; mesero: string | null; comensales: number | null; abierta: string | null; cerrada: string | null } | null;
   pedido: { id: string; numero: string | null; entrega: string | null; direccion: string | null; cupon: string | null } | null;
   incluida_en_caja: boolean;
+  /**
+   * Devolución que esta venta revende («Registrar venta nueva» de una
+   * devolución con nota crédito aceptada; `sales.resale_of_return_id`).
+   */
+  reventa_de?: { id: number; numero: string } | null;
   permisos: PermisosVentas;
 }
 
@@ -438,6 +444,9 @@ export async function detalleVenta(ctx: Ctx, id: string): Promise<DetalleVenta> 
       ? { id: pedido.id, numero: pedido.order_number, entrega: pedido.delivery_type, direccion: direccionTexto(pedido.delivery_address), cupon: pedido.coupon_code }
       : null,
     incluida_en_caja: s.include_in_cash_register === true,
+    reventa_de: Number(s.resale_of_return_id) > 0
+      ? { id: Number(s.resale_of_return_id), numero: numeroDevolucion(Number(s.resale_of_return_id)) }
+      : null,
     permisos,
   };
 }

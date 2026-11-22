@@ -5,6 +5,8 @@
  * `?duplicar=` redirige al POS; con `?duplicar={id}` crea antes un carrito del
  * POS con las líneas de esa venta (`duplicarVentaEnPos`). Sustituye a
  * `NuevaVentaPage`, que tenía su propio carrito (segunda implementación).
+ * Con `?devolucion={id}` («Registrar venta nueva» de una devolución cuya nota
+ * crédito aceptó la DIAN) el carrito lleva los productos de esa devolución.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,6 +15,7 @@ import { Copy } from 'lucide-react';
 import { EmptyState } from '@/components/kit';
 import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { duplicarVentaEnPos } from '@/lib/pos/ventas/duplicarEnPos';
+import { venderDeNuevoEnPos } from '@/lib/pos/devoluciones/venderDeNuevoEnPos';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -21,17 +24,19 @@ export function NuevaVenta() {
   const router = useRouter();
   const params = useSearchParams();
   const duplicar = params?.get('duplicar') ?? null;
+  const devolucion = params?.get('devolucion') ?? null;
   const hecho = useRef(false);
   const [fallo, setFallo] = useState(false);
 
   useEffect(() => {
     if (hecho.current) return;
     hecho.current = true;
-    if (!duplicar || !UUID.test(duplicar)) {
+    const desdeDevolucion = !!devolucion && /^\d{1,9}$/.test(devolucion);
+    if (!desdeDevolucion && (!duplicar || !UUID.test(duplicar))) {
       router.replace('/app/pos');
       return;
     }
-    duplicarVentaEnPos(duplicar)
+    (desdeDevolucion ? venderDeNuevoEnPos(devolucion as string) : duplicarVentaEnPos(duplicar as string))
       .then((r) => {
         if (r.agregadas === 0) toastError(t('ninguna'));
         else if (r.omitidas > 0) toastSuccess(t('conOmitidas', { n: r.agregadas, omitidas: r.omitidas }));
@@ -39,7 +44,7 @@ export function NuevaVenta() {
         router.replace('/app/pos');
       })
       .catch(() => setFallo(true));
-  }, [duplicar, router, t]);
+  }, [duplicar, devolucion, router, t]);
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center bg-canvas p-4">
@@ -51,7 +56,7 @@ export function NuevaVenta() {
             accion={{ etiqueta: t('irAlPos'), href: '/app/pos' }}
           />
         ) : (
-          <EmptyState variante="empty" icono={Copy} titulo={duplicar ? t('preparando') : t('abriendo')} />
+          <EmptyState variante="empty" icono={Copy} titulo={duplicar || devolucion ? t('preparando') : t('abriendo')} />
         )}
       </div>
     </div>

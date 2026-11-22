@@ -988,7 +988,7 @@ export class POSService {
   // ===============================
   // CARRITOS
   // ===============================
-  static async createCart(branchId: number): Promise<Cart> {
+  static async createCart(branchId: number, opciones?: { resaleOfReturnId?: number | null }): Promise<Cart> {
     try {
       const cartId = crypto.randomUUID();
       
@@ -1007,6 +1007,7 @@ export class POSService {
         discount_total: 0,
         total: 0,
         tax_included: incluidos,
+        ...(opciones?.resaleOfReturnId ? { resale_of_return_id: opciones.resaleOfReturnId } : {}),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };

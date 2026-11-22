@@ -72,6 +72,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function DevolucionesPage() {
   const t = useTranslations('posDevoluciones.listado');
   const tk = useTranslations('posDevoluciones.kpis');
+  const ta = useTranslations('posDevolucionesAnular');
   const router = useRouter();
   const params = useSearchParams();
   const entero = useFormatoEntero();
@@ -220,9 +221,10 @@ export function DevolucionesPage() {
       icono: Ban,
       destructiva: true,
       separadorAntes: true,
-      deshabilitada: true,
-      motivo: t('motivosAccion.anularPronto'),
-      onSelect: () => undefined,
+      // El diálogo vive en el detalle: elige el caso con el diagnóstico de la nota crédito.
+      deshabilitada: f.estado === 'cancelled' || !permisos.anular,
+      motivo: f.estado === 'cancelled' ? ta('menu.motivoAnulada') : ta('menu.motivoSinPermiso'),
+      onSelect: () => router.push(`${RUTA}/${f.id}?anular=1`),
     },
   ];
 

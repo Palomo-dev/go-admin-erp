@@ -62409,5 +62409,140 @@
       "consecuencia2": "Se revierten sus asientos. No se puede deshacer desde aquí.",
       "confirmar": "Revertir"
     }
+  },
+  "posDevolucionesAnular": {
+    "menu": {
+      "imprimir": "Imprimir comprobante",
+      "anular": "Anular devolución…",
+      "anularAyuda": "Abre el diálogo que corresponde según el estado de la nota crédito.",
+      "motivoAnulada": "La devolución ya está anulada.",
+      "motivoSinPermiso": "Necesitas el permiso «Anular ventas».",
+      "reenviar": "Reenviar nota crédito a la DIAN",
+      "reenviando": "Reenviando la nota crédito…",
+      "motivoSinPermisoFinanzas": "Necesitas el permiso «Registrar en finanzas» para reenviar a la DIAN.",
+      "reenviada": "{numero} quedó en cola para reenviarse a la DIAN.",
+      "errorReenvio": "No se pudo reenviar la nota crédito. Inténtalo de nuevo o revísala en Facturación electrónica."
+    },
+    "estadosNota": {
+      "aceptada": "aceptada",
+      "rechazada": "rechazada",
+      "en_envio": "en envío a la DIAN",
+      "sin_transmitir": "sin transmitir",
+      "anulada": "anulada"
+    },
+    "dialogo": {
+      "titulo": "Anular {numero}",
+      "descEfectivo": "Reintegro en efectivo de {monto}",
+      "descSaldo": "Saldo a favor de {monto}",
+      "descNota": "{numero} {estado}",
+      "avisoRechazada": {
+        "titulo": "Se puede anular: la DIAN rechazó la nota crédito {numero}.",
+        "texto": "Una nota crédito rechazada o sin transmitir no tiene efecto fiscal; por eso la devolución se reversa con un asiento espejo."
+      },
+      "avisoSinTransmitir": {
+        "titulo": "Se puede anular: la nota crédito {numero} no se ha transmitido a la DIAN.",
+        "texto": "Se reversa con un asiento espejo."
+      },
+      "avisoSinNota": {
+        "titulo": "Se puede anular: la venta no tiene factura, así que no hay nota crédito.",
+        "texto": "Se reversa con un asiento espejo."
+      },
+      "periodoCerradoHoy": "El periodo de la devolución está cerrado, así que el espejo va con fecha de hoy."
+    },
+    "queSeRevierte": "Qué se revierte",
+    "consecuencias": {
+      "asientos": "Se reversa con un asiento espejo: {numeros}.",
+      "sinAsientos": "No hay asientos publicados que reversar.",
+      "inventario": "Vuelve a salir del inventario {unidades, plural, one {# unidad} other {# unidades}} de {productos} ({sucursal}).",
+      "notaRechazada": "La nota crédito {numero} queda anulada: la DIAN no la validó, no hay nada que reversar allá.",
+      "notaSinTransmitir": "La nota crédito {numero} nunca se transmitió: se anula sin enviar nada a la DIAN.",
+      "caja": "La caja (sesión #{sesion}) registra el ingreso de {monto} que el cliente devuelve.",
+      "cajaSinSesion": "Una caja abierta registra el ingreso de {monto} que el cliente devuelve (requiere caja abierta).",
+      "saldo": "El saldo a favor de {monto} queda anulado.",
+      "venta": "La venta {venta} vuelve a «Pagada» y la devolución queda visible como «Anulada» con su motivo.",
+      "laVenta": "original"
+    },
+    "fecha": {
+      "etiqueta": "Fecha del asiento espejo",
+      "hoy": "Hoy · {dia}",
+      "hoyCerrado": "Hoy · cerrado",
+      "original": "Fecha original · {dia}",
+      "originalCerrado": "Fecha original · cerrado",
+      "ayudaAbierto": "{mes} sigue abierto: puedes dejar el espejo en la fecha original. Con «Hoy» queda en {mesHoy}.",
+      "ayudaMismoMes": "{mes} sigue abierto: con cualquiera de las dos fechas el espejo queda en el mismo periodo.",
+      "ayudaCerrado": "{mes} está cerrado. Nunca se reversa dentro de un periodo cerrado: el espejo va con fecha de hoy.",
+      "ayudaHoyCerrado": "{mesHoy} está cerrado: el espejo va con la fecha original."
+    },
+    "motivosRapidos": {
+      "error": "Registrada por error",
+      "producto": "Producto equivocado",
+      "noDevolvio": "El cliente no lo devolvió"
+    },
+    "etiquetaMotivo": "Motivo",
+    "placeholder": "Por qué se anula la devolución. Queda en el historial.",
+    "confirmar": "Anular devolución",
+    "cargando": "Revisando la nota crédito, el periodo y la caja…",
+    "errorCarga": "No se pudo revisar la devolución. Cierra e inténtalo de nuevo.",
+    "hecho": "{numero} quedó anulada",
+    "hechoPendiente": "{numero} quedó anulada; {n, plural, one {# asiento espejo quedó} other {# asientos espejo quedaron}} en Pendientes contables.",
+    "noSePuede": {
+      "titulo": "No se puede anular {numero}",
+      "descripcion": "{numero} aceptada por la DIAN el {fecha}",
+      "descripcionSinFecha": "{numero} aceptada por la DIAN",
+      "avisoTitulo": "La nota crédito {numero} ya fue validada por la DIAN.",
+      "avisoTexto": "Una devolución con nota crédito aceptada no se reversa: ni con asiento espejo ni borrándola.",
+      "queHacer": "Qué hacer en su lugar",
+      "pasos": {
+        "venta": "Si el cliente se queda otra vez con el producto, registra una venta nueva con su factura electrónica nueva.",
+        "sinCambios": "La devolución y la nota crédito no cambian; el inventario y la caja se mueven con la venta nueva.",
+        "enlace": "La venta nueva queda enlazada a esta devolución: aparece en la cadena Venta → Devolución → NC → Venta nueva."
+      },
+      "cerrar": "Cerrar",
+      "registrarVenta": "Registrar venta nueva"
+    },
+    "errores": {
+      "motivoObligatorio": "Escribe el motivo (mínimo 5 caracteres).",
+      "fechaEspejoInvalida": "Elige la fecha del asiento espejo.",
+      "devolucionNoEncontrada": "La devolución no existe.",
+      "devolucionInvalida": "La devolución no es válida.",
+      "sinAccesoSucursal": "No tienes acceso a la sucursal de esta devolución.",
+      "sinPermiso": "Necesitas el permiso «Anular ventas» para anular una devolución. Pídeselo al administrador de la organización.",
+      "yaAnulada": "La devolución ya está anulada.",
+      "estadoInvalido": "Solo se anula una devolución procesada.",
+      "notaAceptadaDian": "La DIAN ya aceptó la nota crédito: la devolución no se anula.",
+      "notaEnEnvioDian": "La nota crédito se está enviando a la DIAN y aún no hay respuesta. Espera unos minutos y vuelve a abrir este diálogo: si la rechaza se podrá anular; si la acepta, registra una venta nueva.",
+      "notaYaAnulada": "La nota crédito ya se anuló desde Finanzas, así que el asiento de la nota ya está reversado. Revisa la devolución con el Contador antes de tocarla: desde aquí no se puede anular.",
+      "devolucionDeGarantia": "Esta devolución nació de una garantía y sus unidades dañadas tienen movimientos propios. Gestiónala desde la garantía (Inventario › Seriales) en lugar de anularla aquí.",
+      "devolucionConMembresia": "La devolución recortó o canceló una membresía y eso no se deshace automáticamente. Ajusta la membresía desde Membresías y, si el cliente la conserva, registra una venta nueva.",
+      "saldoAFavorAplicado": "El cliente ya usó (todo o parte) el saldo a favor que dejó esta devolución. Anula primero ese uso en Finanzas › Saldos a favor y vuelve a intentarlo.",
+      "serialNoDisponible": "Un serial de la devolución ya no está como lo dejó la devolución: se vendió o se movió de sucursal. Revisa su historial en Inventario › Seriales; mientras tanto la devolución no se puede anular.",
+      "periodoCerrado": "El periodo de la devolución y el de hoy están cerrados, y nunca se reversa dentro de un periodo cerrado. Pide al Contador que reabra uno de los dos periodos.",
+      "periodoOriginalCerrado": "El periodo de la fecha original está cerrado: usa la fecha de hoy.",
+      "periodoHoyCerrado": "El periodo de hoy está cerrado: usa la fecha original.",
+      "efectivoSinCaja": "El reintegro fue en efectivo y el dinero que el cliente devuelve tiene que entrar a una caja. Abre la caja de la sucursal en POS › Cajas y vuelve a intentarlo.",
+      "stockInsuficiente": "El producto ya no está en el inventario de la sucursal (se volvió a vender): no puede salir otra vez.",
+      "generico": "No se pudo anular la devolución. Inténtalo de nuevo."
+    },
+    "detalle": {
+      "avisoTitulo": "Anulada el {fecha} por {usuario} · «{motivo}»",
+      "avisoTituloSinUsuario": "Anulada el {fecha} · «{motivo}»",
+      "avisoEspejo": "Asiento espejo {numeros}",
+      "avisoIngreso": "ingreso de {monto} en la sesión #{sesion}",
+      "avisoUnidades": "{unidades, plural, one {# unidad volvió} other {# unidades volvieron}} a salir del inventario",
+      "avisoNota": "{numero} anulada",
+      "avisoNotaRechazada": "{numero} anulada (la DIAN la había rechazado)",
+      "devueltoAnulada": "{monto} · anulada",
+      "estadoVentaAnulada": "{estado} (devolución anulada)",
+      "eventos": {
+        "anulada": "Anuló la devolución · «{motivo}»",
+        "espejo": "Asiento espejo {numeros}",
+        "espejoIngreso": "Asiento espejo {numeros} e ingreso de {monto} en la sesión #{sesion}",
+        "ingreso": "Ingreso de {monto} en la sesión #{sesion}"
+      }
+    },
+    "cadena": {
+      "ventaNueva": "Venta nueva",
+      "reventaDe": "Reventa de"
+    }
   }
 }

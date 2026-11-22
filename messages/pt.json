@@ -8354,7 +8354,9 @@
     "ficha": {
       "comun": {
         "sinNombre": "Sem nome",
-        "usuario": "Usuário"
+        "usuario": "Usuário",
+        "hoyHora": "Hoje {hora}",
+        "ayerHora": "Ontem {hora}"
       },
       "pagina": {
         "noEncontrado": "Cliente não encontrado",
@@ -8372,7 +8374,8 @@
           "sinId": "ID do cliente não encontrado",
           "noExiste": "Não existe ou não pertence à sua organização.",
           "carga": "Erro ao carregar os dados do cliente"
-        }
+        },
+        "noEncontradoDetalle": "Não foi possível encontrar o cliente solicitado. Ele pode ter sido excluído, pertencer a outra organização ou não estar na filial ativa."
       },
       "pestanasAria": "Seções do cliente",
       "pestanas": {
@@ -8382,7 +8385,9 @@
         "actividad": "Atividade",
         "cuentas": "Contas a receber",
         "notas": "Notas e arquivos",
-        "contactos": "Contatos"
+        "contactos": "Contatos",
+        "finanzas": "Finanças",
+        "notasDocumentos": "Notas e documentos"
       },
       "cabecera": {
         "error": "Erro",
@@ -8402,7 +8407,11 @@
           "plata": "Prata",
           "bronce": "Bronze",
           "basico": "Básico"
-        }
+        },
+        "identidad": "Identidade do cliente",
+        "salud": "Saúde {n}",
+        "contactoPrincipal": "Contato principal:",
+        "etiquetas": "Etiquetas:"
       },
       "resumen": {
         "compras": "Compras",
@@ -8429,7 +8438,16 @@
           "reserva": "Reserva {fecha}",
           "pedido": "Pedido nº {numero}",
           "estadoReserva": "reserva"
-        }
+        },
+        "saldoCartera": "Saldo a receber",
+        "facturasVencidas": "{count, plural, one {# fatura vencida} other {# faturas vencidas}}",
+        "facturasVencidasHace": "{count, plural, one {# fatura vencida há {dias} d} other {# faturas vencidas, a mais antiga há {dias} d}}",
+        "carteraSinPermiso": "Sem permissão para ver as contas a receber",
+        "carteraError": "Não foi possível consultar as contas a receber",
+        "verTodaActividad": "Ver toda a atividade",
+        "productos": "{count, plural, one {# produto} other {# produtos}}",
+        "kpisAria": "Indicadores do cliente",
+        "comprasConteo": "{count, plural, =0 {Sem compras} one {# compra} other {# compras}}"
       },
       "info": {
         "titulo": "Informações completas do cliente",
@@ -8485,7 +8503,13 @@
         "error": "Erro: {mensaje}",
         "errorCarga": "Erro ao carregar as informações do cliente",
         "sinDatos": "Nenhum dado do cliente foi encontrado",
-        "noSePudoCargar": "Não foi possível carregar as informações do cliente"
+        "noSePudoCargar": "Não foi possível carregar as informações do cliente",
+        "noLlamar": "Não ligar",
+        "zonaHoraria": "Fuso horário",
+        "tamanoEmpresa": "Tamanho da empresa",
+        "preferenciasContacto": "Preferências e contato",
+        "soloLectura": "Somente leitura",
+        "editarSeccion": "Editar {seccion}"
       },
       "oportunidades": {
         "estados": {
@@ -8500,7 +8524,8 @@
         "abiertas": "Abertas",
         "ganadas": "Ganhas",
         "titulo": "Oportunidades ({n})",
-        "cierreEsperado": "Fechamento previsto: {fecha}"
+        "cierreEsperado": "Fechamento previsto: {fecha}",
+        "kpisAria": "Resumo de oportunidades"
       },
       "actividad": {
         "titulo": "Histórico de atividade",
@@ -8548,7 +8573,9 @@
           "complete": "Concluído",
           "scheduled": "Agendado",
           "cancelled": "Cancelado"
-        }
+        },
+        "hoy": "Hoje",
+        "ayer": "Ontem"
       },
       "cuentas": {
         "errorCarga": "Erro ao carregar as contas a receber",
@@ -8601,7 +8628,8 @@
         "errorCarga": "Erro ao carregar as notas",
         "fijar": "Fixar nota",
         "desfijar": "Desafixar nota",
-        "eliminar": "Excluir nota"
+        "eliminar": "Excluir nota",
+        "fijada": "Fixada"
       },
       "tareas": {
         "titulo": "Tarefas",
@@ -8625,7 +8653,108 @@
           "enProgreso": "Em andamento",
           "completada": "Concluída",
           "cancelada": "Cancelada"
+        },
+        "verTodasCliente": "Ver todas as tarefas do cliente",
+        "verMenos": "Ver menos",
+        "vence": {
+          "vencida": "Vencida",
+          "hoy": "Vence hoje",
+          "manana": "Vence amanhã",
+          "enDias": "{count, plural, one {Em # dia} other {Em # dias}}"
         }
+      },
+      "columnaLateral": "Tarefas e saúde do cliente",
+      "estado": {
+        "cliente": "Cliente",
+        "lead": "Lead",
+        "prospecto": "Prospecto",
+        "inactivo": "Inativo"
+      },
+      "menu": {
+        "editar": "Editar cliente",
+        "registrarPago": "Registrar pagamento",
+        "nuevaVenta": "Nova venda",
+        "nuevaOportunidad": "Nova oportunidade",
+        "estadoCuenta": "Extrato de conta (PDF)",
+        "exportarFicha": "Exportar ficha",
+        "marcarInactivo": "Marcar como inativo",
+        "reactivar": "Reativar",
+        "unificar": "Unificar com outro cliente",
+        "eliminar": "Excluir cliente"
+      },
+      "motivos": {
+        "cargandoCartera": "Consultando as contas a receber do cliente…",
+        "sinPermisoCobro": "Você não tem permissão para registrar pagamentos.",
+        "errorCartera": "Não foi possível consultar as contas a receber do cliente.",
+        "sinSaldo": "Sem saldo a receber",
+        "sinPermisoCartera": "Você não tem permissão para ver as contas a receber.",
+        "exportarFicha": "Ainda não disponível: a exportação da ficha está em construção."
+      },
+      "salud": {
+        "titulo": "Saúde do cliente",
+        "puntaje": "{n} / 100",
+        "alertasLinea": "Alertas: {lista}",
+        "alertas": {
+          "overdue": "contas vencidas",
+          "noInvoice": "sem compras há {dias} d",
+          "noInvoiceNunca": "sem compras registradas",
+          "noActivity": "sem atividade há {dias} d",
+          "noActivityNunca": "sem atividade registrada"
+        },
+        "bandas": {
+          "green": "Saudável",
+          "yellow": "Atenção",
+          "red": "Crítico"
+        },
+        "sinDatos": "A saúde é medida apenas para clientes: ainda não há faturas nem atividade mensurável.",
+        "etapaSinFacturas": "A saúde é medida apenas para clientes; esta ficha é {etapa} sem faturas.",
+        "etapaConFacturas": "A saúde é medida apenas para clientes; esta ficha é {etapa} com {count, plural, one {# fatura} other {# faturas}}. Mude-a para cliente para medi-la.",
+        "etapas": {
+          "lead": "um lead",
+          "prospect": "um prospecto",
+          "otra": "“{etapa}”"
+        }
+      },
+      "finanzas": {
+        "kpisAria": "Resumo financeiro do cliente",
+        "deudaTotal": "Dívida total",
+        "facturasMasFolios": "Faturas + fólios",
+        "sinDeuda": "Sem dívida pendente",
+        "foliosPendientes": "Fólios pendentes",
+        "foliosDetalle": "{items, plural, one {# item} other {# itens}} em {count, plural, one {# fólio aberto} other {# fólios abertos}}",
+        "sinFolios": "Sem fólios abertos",
+        "facturasPorCobrar": "Faturas a receber",
+        "vencidasDetalle": "{count, plural, one {# vencida há {dias} d} other {# vencidas, a mais antiga há {dias} d}}",
+        "alDia": "Em dia",
+        "enviarRecordatorio": "Enviar lembrete",
+        "estadoCuenta": "Extrato de conta (PDF)",
+        "moneda": "Moeda: {codigo}",
+        "listaTitulo": "Faturas a receber ({facturas}) · Fólios de reservas ({folios}) · Contas a receber ({cuentas})",
+        "factura": "Fatura {numero}",
+        "cuenta": "Conta a receber",
+        "cuentaNumero": "Conta a receber · {numero}",
+        "folio": "Fólio de reserva",
+        "vence": "Vence: {fecha}",
+        "sinVencimiento": "Sem data de vencimento",
+        "cuotas": "{pendientes} de {count} parcelas pendentes",
+        "deMonto": "de {monto}",
+        "items": "{count, plural, one {# item} other {# itens}}",
+        "ver": "Ver",
+        "pagar": "Pagar",
+        "vencidaDias": "Vencida {dias} d",
+        "sinPermiso": "Você não tem permissão para ver as contas a receber deste cliente: apenas os fólios são exibidos.",
+        "reintentar": "Tentar novamente",
+        "sinVencidas": "Sem faturas vencidas",
+        "verCartera": "Ver as contas a receber do cliente em Finanças",
+        "sustantivo": {
+          "singular": "conta",
+          "plural": "contas"
+        },
+        "recordatorioTitulo": "Enviar lembrete de pagamento",
+        "recordatorioDescripcion": "{count, plural, one {Será enviado um e-mail ao cliente pela conta vencida.} other {Será enviado um e-mail ao cliente por cada uma das # contas vencidas.}}",
+        "recordatorioEnviado": "{count, plural, one {Lembrete enviado} other {# lembretes enviados}}",
+        "recordatorioSinEnviar": "Não foi possível enviar o lembrete. Verifique se o cliente tem e-mail.",
+        "recordatorioParcial": "{count, plural, one {# lembrete enviado; os demais falharam.} other {# lembretes enviados; os demais falharam.}}"
       }
     },
     "formulario": {

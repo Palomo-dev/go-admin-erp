@@ -8353,7 +8353,9 @@
     "ficha": {
       "comun": {
         "sinNombre": "Sans nom",
-        "usuario": "Utilisateur"
+        "usuario": "Utilisateur",
+        "hoyHora": "Aujourd'hui {hora}",
+        "ayerHora": "Hier {hora}"
       },
       "pagina": {
         "noEncontrado": "Client introuvable",
@@ -8371,7 +8373,8 @@
           "sinId": "ID client introuvable",
           "noExiste": "Il n’existe pas ou n’appartient pas à votre organisation.",
           "carga": "Erreur lors du chargement des données du client"
-        }
+        },
+        "noEncontradoDetalle": "Le client demandé est introuvable. Il a peut-être été supprimé, appartient à une autre organisation ou n'est pas dans l'agence active."
       },
       "pestanasAria": "Sections du client",
       "pestanas": {
@@ -8381,7 +8384,9 @@
         "actividad": "Activité",
         "cuentas": "Créances clients",
         "notas": "Notes et fichiers",
-        "contactos": "Contacts"
+        "contactos": "Contacts",
+        "finanzas": "Finances",
+        "notasDocumentos": "Notes et documents"
       },
       "cabecera": {
         "error": "Erreur",
@@ -8401,7 +8406,11 @@
           "plata": "Argent",
           "bronce": "Bronze",
           "basico": "Basique"
-        }
+        },
+        "identidad": "Identité du client",
+        "salud": "Santé {n}",
+        "contactoPrincipal": "Contact principal :",
+        "etiquetas": "Étiquettes :"
       },
       "resumen": {
         "compras": "Achats",
@@ -8428,7 +8437,16 @@
           "reserva": "Réservation du {fecha}",
           "pedido": "Commande nº {numero}",
           "estadoReserva": "réservation"
-        }
+        },
+        "saldoCartera": "Solde des créances",
+        "facturasVencidas": "{count, plural, one {# facture échue} other {# factures échues}}",
+        "facturasVencidasHace": "{count, plural, one {# facture échue depuis {dias} j} other {# factures échues, la plus ancienne depuis {dias} j}}",
+        "carteraSinPermiso": "Pas d’autorisation pour voir les créances",
+        "carteraError": "Impossible de consulter les créances",
+        "verTodaActividad": "Voir toute l’activité",
+        "productos": "{count, plural, one {# produit} other {# produits}}",
+        "kpisAria": "Indicateurs du client",
+        "comprasConteo": "{count, plural, =0 {Aucun achat} one {# achat} other {# achats}}"
       },
       "info": {
         "titulo": "Informations complètes du client",
@@ -8484,7 +8502,13 @@
         "error": "Erreur : {mensaje}",
         "errorCarga": "Erreur lors du chargement des informations du client",
         "sinDatos": "Aucune donnée trouvée pour ce client",
-        "noSePudoCargar": "Impossible de charger les informations du client"
+        "noSePudoCargar": "Impossible de charger les informations du client",
+        "noLlamar": "Ne pas appeler",
+        "zonaHoraria": "Fuseau horaire",
+        "tamanoEmpresa": "Taille de l'entreprise",
+        "preferenciasContacto": "Préférences et contact",
+        "soloLectura": "Lecture seule",
+        "editarSeccion": "Modifier {seccion}"
       },
       "oportunidades": {
         "estados": {
@@ -8499,7 +8523,8 @@
         "abiertas": "Ouvertes",
         "ganadas": "Gagnées",
         "titulo": "Opportunités ({n})",
-        "cierreEsperado": "Clôture prévue : {fecha}"
+        "cierreEsperado": "Clôture prévue : {fecha}",
+        "kpisAria": "Résumé des opportunités"
       },
       "actividad": {
         "titulo": "Historique d’activité",
@@ -8547,7 +8572,9 @@
           "complete": "Terminé",
           "scheduled": "Planifié",
           "cancelled": "Annulé"
-        }
+        },
+        "hoy": "Aujourd'hui",
+        "ayer": "Hier"
       },
       "cuentas": {
         "errorCarga": "Erreur lors du chargement des créances clients",
@@ -8600,7 +8627,8 @@
         "errorCarga": "Erreur lors du chargement des notes",
         "fijar": "Épingler la note",
         "desfijar": "Désépingler la note",
-        "eliminar": "Supprimer la note"
+        "eliminar": "Supprimer la note",
+        "fijada": "Épinglée"
       },
       "tareas": {
         "titulo": "Tâches",
@@ -8624,7 +8652,108 @@
           "enProgreso": "En cours",
           "completada": "Terminée",
           "cancelada": "Annulée"
+        },
+        "verTodasCliente": "Voir toutes les tâches du client",
+        "verMenos": "Voir moins",
+        "vence": {
+          "vencida": "En retard",
+          "hoy": "Échéance aujourd'hui",
+          "manana": "Échéance demain",
+          "enDias": "{count, plural, one {Dans # jour} other {Dans # jours}}"
         }
+      },
+      "columnaLateral": "Tâches et santé du client",
+      "estado": {
+        "cliente": "Client",
+        "lead": "Lead",
+        "prospecto": "Prospect",
+        "inactivo": "Inactif"
+      },
+      "menu": {
+        "editar": "Modifier le client",
+        "registrarPago": "Enregistrer un paiement",
+        "nuevaVenta": "Nouvelle vente",
+        "nuevaOportunidad": "Nouvelle opportunité",
+        "estadoCuenta": "Relevé de compte (PDF)",
+        "exportarFicha": "Exporter la fiche",
+        "marcarInactivo": "Marquer comme inactif",
+        "reactivar": "Réactiver",
+        "unificar": "Fusionner avec un autre client",
+        "eliminar": "Supprimer le client"
+      },
+      "motivos": {
+        "cargandoCartera": "Consultation des créances du client…",
+        "sinPermisoCobro": "Vous n'avez pas l'autorisation d'enregistrer des paiements.",
+        "errorCartera": "Impossible de consulter les créances du client.",
+        "sinSaldo": "Aucun solde à encaisser",
+        "sinPermisoCartera": "Vous n'avez pas l'autorisation de voir les créances.",
+        "exportarFicha": "Pas encore disponible : l'export de la fiche est en construction."
+      },
+      "salud": {
+        "titulo": "Santé du client",
+        "puntaje": "{n} / 100",
+        "alertasLinea": "Alertes : {lista}",
+        "alertas": {
+          "overdue": "créances échues",
+          "noInvoice": "pas d'achat depuis {dias} j",
+          "noInvoiceNunca": "aucun achat enregistré",
+          "noActivity": "pas d'activité depuis {dias} j",
+          "noActivityNunca": "aucune activité enregistrée"
+        },
+        "bandas": {
+          "green": "En bonne santé",
+          "yellow": "Attention",
+          "red": "Critique"
+        },
+        "sinDatos": "La santé ne se mesure que pour les clients : pas encore de factures ni d'activité mesurable.",
+        "etapaSinFacturas": "La santé ne se mesure que pour les clients ; cette fiche est {etapa} sans factures.",
+        "etapaConFacturas": "La santé ne se mesure que pour les clients ; cette fiche est {etapa} avec {count, plural, one {# facture} other {# factures}}. Passez-la en client pour la mesurer.",
+        "etapas": {
+          "lead": "un lead",
+          "prospect": "un prospect",
+          "otra": "« {etapa} »"
+        }
+      },
+      "finanzas": {
+        "kpisAria": "Résumé financier du client",
+        "deudaTotal": "Dette totale",
+        "facturasMasFolios": "Factures + folios",
+        "sinDeuda": "Aucune dette en cours",
+        "foliosPendientes": "Folios en attente",
+        "foliosDetalle": "{items, plural, one {# article} other {# articles}} dans {count, plural, one {# folio ouvert} other {# folios ouverts}}",
+        "sinFolios": "Aucun folio ouvert",
+        "facturasPorCobrar": "Factures à encaisser",
+        "vencidasDetalle": "{count, plural, one {# échue depuis {dias} j} other {# échues, la plus ancienne depuis {dias} j}}",
+        "alDia": "À jour",
+        "enviarRecordatorio": "Envoyer un rappel",
+        "estadoCuenta": "Relevé de compte (PDF)",
+        "moneda": "Devise : {codigo}",
+        "listaTitulo": "Factures à encaisser ({facturas}) · Folios de réservation ({folios}) · Comptes clients ({cuentas})",
+        "factura": "Facture {numero}",
+        "cuenta": "Compte client",
+        "cuentaNumero": "Compte client · {numero}",
+        "folio": "Folio de réservation",
+        "vence": "Échéance : {fecha}",
+        "sinVencimiento": "Sans date d'échéance",
+        "cuotas": "{pendientes} échéances sur {count} en attente",
+        "deMonto": "sur {monto}",
+        "items": "{count, plural, one {# article} other {# articles}}",
+        "ver": "Voir",
+        "pagar": "Payer",
+        "vencidaDias": "Échue {dias} j",
+        "sinPermiso": "Vous n'avez pas l'autorisation de voir les créances de ce client : seuls les folios sont affichés.",
+        "reintentar": "Réessayer",
+        "sinVencidas": "Aucune facture échue",
+        "verCartera": "Voir les créances du client dans Finances",
+        "sustantivo": {
+          "singular": "compte",
+          "plural": "comptes"
+        },
+        "recordatorioTitulo": "Envoyer un rappel de paiement",
+        "recordatorioDescripcion": "{count, plural, one {Un e-mail sera envoyé au client pour le compte échu.} other {Un e-mail sera envoyé au client pour chacun des # comptes échus.}}",
+        "recordatorioEnviado": "{count, plural, one {Rappel envoyé} other {# rappels envoyés}}",
+        "recordatorioSinEnviar": "Le rappel n'a pas pu être envoyé. Vérifiez que le client a un e-mail.",
+        "recordatorioParcial": "{count, plural, one {# rappel envoyé ; les autres ont échoué.} other {# rappels envoyés ; les autres ont échoué.}}"
       }
     },
     "formulario": {

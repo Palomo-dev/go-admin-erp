@@ -13001,7 +13001,9 @@
     "ficha": {
       "comun": {
         "sinNombre": "No name",
-        "usuario": "User"
+        "usuario": "User",
+        "hoyHora": "Today {hora}",
+        "ayerHora": "Yesterday {hora}"
       },
       "pagina": {
         "noEncontrado": "Customer not found",
@@ -13019,7 +13021,8 @@
           "sinId": "Customer ID not found",
           "noExiste": "It doesn’t exist or doesn’t belong to your organization.",
           "carga": "Error loading customer data"
-        }
+        },
+        "noEncontradoDetalle": "The requested customer could not be found. It may have been deleted, belong to another organization or not be in the active branch."
       },
       "pestanasAria": "Customer sections",
       "pestanas": {
@@ -13029,7 +13032,9 @@
         "actividad": "Activity",
         "cuentas": "Accounts receivable",
         "notas": "Notes and files",
-        "contactos": "Contacts"
+        "contactos": "Contacts",
+        "finanzas": "Finance",
+        "notasDocumentos": "Notes and documents"
       },
       "cabecera": {
         "error": "Error",
@@ -13049,7 +13054,11 @@
           "plata": "Silver",
           "bronce": "Bronze",
           "basico": "Basic"
-        }
+        },
+        "identidad": "Customer identity",
+        "salud": "Health {n}",
+        "contactoPrincipal": "Main contact:",
+        "etiquetas": "Tags:"
       },
       "resumen": {
         "compras": "Purchases",
@@ -13076,7 +13085,16 @@
           "reserva": "Booking {fecha}",
           "pedido": "Order #{numero}",
           "estadoReserva": "booking"
-        }
+        },
+        "saldoCartera": "Receivables balance",
+        "facturasVencidas": "{count, plural, one {# overdue invoice} other {# overdue invoices}}",
+        "facturasVencidasHace": "{count, plural, one {# invoice overdue for {dias} d} other {# overdue invoices, oldest {dias} d}}",
+        "carteraSinPermiso": "No permission to view receivables",
+        "carteraError": "Receivables could not be loaded",
+        "verTodaActividad": "View all activity",
+        "productos": "{count, plural, one {# product} other {# products}}",
+        "kpisAria": "Customer indicators",
+        "comprasConteo": "{count, plural, =0 {No purchases} one {# purchase} other {# purchases}}"
       },
       "info": {
         "titulo": "Full customer details",
@@ -13132,7 +13150,13 @@
         "error": "Error: {mensaje}",
         "errorCarga": "Error loading customer information",
         "sinDatos": "No customer data was found",
-        "noSePudoCargar": "Couldn’t load the customer information"
+        "noSePudoCargar": "Couldn’t load the customer information",
+        "noLlamar": "Do not call",
+        "zonaHoraria": "Time zone",
+        "tamanoEmpresa": "Company size",
+        "preferenciasContacto": "Preferences and contact",
+        "soloLectura": "Read only",
+        "editarSeccion": "Edit {seccion}"
       },
       "oportunidades": {
         "estados": {
@@ -13147,7 +13171,8 @@
         "abiertas": "Open",
         "ganadas": "Won",
         "titulo": "Opportunities ({n})",
-        "cierreEsperado": "Expected close: {fecha}"
+        "cierreEsperado": "Expected close: {fecha}",
+        "kpisAria": "Opportunities summary"
       },
       "actividad": {
         "titulo": "Activity history",
@@ -13195,7 +13220,9 @@
           "complete": "Completed",
           "scheduled": "Scheduled",
           "cancelled": "Canceled"
-        }
+        },
+        "hoy": "Today",
+        "ayer": "Yesterday"
       },
       "cuentas": {
         "errorCarga": "Error loading accounts receivable",
@@ -13248,7 +13275,8 @@
         "errorCarga": "Error loading notes",
         "fijar": "Pin note",
         "desfijar": "Unpin note",
-        "eliminar": "Delete note"
+        "eliminar": "Delete note",
+        "fijada": "Pinned"
       },
       "tareas": {
         "titulo": "Tasks",
@@ -13272,7 +13300,108 @@
           "enProgreso": "In progress",
           "completada": "Completed",
           "cancelada": "Canceled"
+        },
+        "verTodasCliente": "View all of the customer's tasks",
+        "verMenos": "Show less",
+        "vence": {
+          "vencida": "Overdue",
+          "hoy": "Due today",
+          "manana": "Due tomorrow",
+          "enDias": "{count, plural, one {In # day} other {In # days}}"
         }
+      },
+      "columnaLateral": "Customer tasks and health",
+      "estado": {
+        "cliente": "Customer",
+        "lead": "Lead",
+        "prospecto": "Prospect",
+        "inactivo": "Inactive"
+      },
+      "menu": {
+        "editar": "Edit customer",
+        "registrarPago": "Record payment",
+        "nuevaVenta": "New sale",
+        "nuevaOportunidad": "New opportunity",
+        "estadoCuenta": "Account statement (PDF)",
+        "exportarFicha": "Export profile",
+        "marcarInactivo": "Mark as inactive",
+        "reactivar": "Reactivate",
+        "unificar": "Merge with another customer",
+        "eliminar": "Delete customer"
+      },
+      "motivos": {
+        "cargandoCartera": "Checking the customer's receivables…",
+        "sinPermisoCobro": "You don't have permission to record payments.",
+        "errorCartera": "The customer's receivables could not be loaded.",
+        "sinSaldo": "No balance due",
+        "sinPermisoCartera": "You don't have permission to view receivables.",
+        "exportarFicha": "Not available yet: profile export is under construction."
+      },
+      "salud": {
+        "titulo": "Customer health",
+        "puntaje": "{n} / 100",
+        "alertasLinea": "Alerts: {lista}",
+        "alertas": {
+          "overdue": "overdue receivables",
+          "noInvoice": "no purchases in {dias} d",
+          "noInvoiceNunca": "no purchases recorded",
+          "noActivity": "no activity in {dias} d",
+          "noActivityNunca": "no activity recorded"
+        },
+        "bandas": {
+          "green": "Healthy",
+          "yellow": "Attention",
+          "red": "Critical"
+        },
+        "sinDatos": "Health is measured only for customers: there are no invoices or measurable activity yet.",
+        "etapaSinFacturas": "Health is measured only for customers; this profile is {etapa} without invoices.",
+        "etapaConFacturas": "Health is measured only for customers; this profile is {etapa} with {count, plural, one {# invoice} other {# invoices}}. Change it to customer to measure it.",
+        "etapas": {
+          "lead": "a lead",
+          "prospect": "a prospect",
+          "otra": "“{etapa}”"
+        }
+      },
+      "finanzas": {
+        "kpisAria": "Customer financial summary",
+        "deudaTotal": "Total debt",
+        "facturasMasFolios": "Invoices + folios",
+        "sinDeuda": "No outstanding debt",
+        "foliosPendientes": "Pending folios",
+        "foliosDetalle": "{items, plural, one {# item} other {# items}} in {count, plural, one {# open folio} other {# open folios}}",
+        "sinFolios": "No open folios",
+        "facturasPorCobrar": "Invoices receivable",
+        "vencidasDetalle": "{count, plural, one {# overdue for {dias} d} other {# overdue, oldest {dias} d}}",
+        "alDia": "Up to date",
+        "enviarRecordatorio": "Send reminder",
+        "estadoCuenta": "Account statement (PDF)",
+        "moneda": "Currency: {codigo}",
+        "listaTitulo": "Invoices receivable ({facturas}) · Booking folios ({folios}) · Accounts receivable ({cuentas})",
+        "factura": "Invoice {numero}",
+        "cuenta": "Account receivable",
+        "cuentaNumero": "Account receivable · {numero}",
+        "folio": "Booking folio",
+        "vence": "Due: {fecha}",
+        "sinVencimiento": "No due date",
+        "cuotas": "{pendientes} of {count} installments pending",
+        "deMonto": "of {monto}",
+        "items": "{count, plural, one {# item} other {# items}}",
+        "ver": "View",
+        "pagar": "Pay",
+        "vencidaDias": "Overdue {dias} d",
+        "sinPermiso": "You don't have permission to view this customer's receivables: only folios are shown.",
+        "reintentar": "Retry",
+        "sinVencidas": "No overdue invoices",
+        "verCartera": "View the customer's receivables in Finance",
+        "sustantivo": {
+          "singular": "account",
+          "plural": "accounts"
+        },
+        "recordatorioTitulo": "Send payment reminder",
+        "recordatorioDescripcion": "{count, plural, one {An email will be sent to the customer for the overdue account.} other {An email will be sent to the customer for each of the # overdue accounts.}}",
+        "recordatorioEnviado": "{count, plural, one {Reminder sent} other {# reminders sent}}",
+        "recordatorioSinEnviar": "The reminder could not be sent. Check that the customer has an email.",
+        "recordatorioParcial": "{count, plural, one {# reminder sent; the rest failed.} other {# reminders sent; the rest failed.}}"
       }
     },
     "formulario": {

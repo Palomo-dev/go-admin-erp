@@ -55,6 +55,8 @@ export async function anularDevolucion(ctx: Ctx, idTexto: string, cuerpo: unknow
     p_return_id: id,
     p_motivo: entrada.motivo,
     p_fecha_espejo: entrada.fecha_espejo,
+    p_confirmar_saldo_usado: entrada.confirmar_saldo_usado,
+    p_mercancia_vuelve: entrada.mercancia_vuelve,
   });
   if (error) throw new ErrorAnulacionDevolucion(codigoErrorAnulacion(error), error.message);
   const r = (data ?? {}) as Record<string, unknown>;
@@ -68,5 +70,7 @@ export async function anularDevolucion(ctx: Ctx, idTexto: string, cuerpo: unknow
     movimiento_caja: r.movimiento_caja == null ? null : Number(r.movimiento_caja),
     sesion_caja: r.sesion_caja == null ? null : Number(r.sesion_caja),
     unidades_retiradas: Number(r.unidades_retiradas) || 0,
+    saldo_usado: Number(r.saldo_usado) || 0,
+    cuenta_por_cobrar: typeof r.cuenta_por_cobrar === 'string' ? r.cuenta_por_cobrar : null,
   };
 }

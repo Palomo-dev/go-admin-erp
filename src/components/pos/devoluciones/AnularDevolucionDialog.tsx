@@ -11,8 +11,12 @@
  *   motivos rápidos y motivo obligatorio.
  * - Nota crédito aceptada por la DIAN (2719:190584): no se anula; ofrece
  *   «Registrar venta nueva» con los productos de la devolución.
- * - Otro impedimento (sin caja abierta, saldo a favor usado, sin permiso…):
+ * - Otro impedimento (sin caja abierta, saldo a favor anulado, sin permiso…):
  *   el mismo diálogo con el primario deshabilitado y la razón.
+ * - Contador 2026-11-22 (Figma 2729:192869 / 2729:192931): casilla «El
+ *   cliente se lleva otra vez la mercancía» (si se queda en la bodega, venta
+ *   nueva) y, si ya usó parte del saldo a favor, el aviso y la casilla de que
+ *   ese valor queda como cuenta por cobrar en su cartera.
  *
  * La anulación la hace la RPC (`fn_devolucion_anular`) en una transacción.
  */
@@ -21,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Ban, TriangleAlert } from 'lucide-react';
 import { AvisoTonal, Dialogo, DialogoMotivo, SegmentedControl } from '@/components/kit';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 import { toastSuccess } from '@/components/ui/use-toast';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
@@ -32,12 +37,14 @@ import {
   bloqueoAnulacion,
   claveErrorAnulacion,
   codigoErrorAnulacion,
+  comprasDelSaldo,
   consecuenciasAnulacion,
   diaDeFecha,
   dialogoAnulacion,
   mesDeFecha,
   MOTIVO_MINIMO_ANULACION,
   opcionesFechaEspejo,
+  saldoUsado,
   type Consecuencia,
   type DiagnosticoAnulacion,
   type FechaEspejo,
@@ -64,6 +71,8 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
   const [fecha, setFecha] = useState<FechaEspejo>('hoy');
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mercanciaVuelve, setMercanciaVuelve] = useState(false);
+  const [entiendeSaldo, setEntiendeSaldo] = useState(false);
 
   useEffect(() => {
     if (!abierto) return;
@@ -71,6 +80,8 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
     setDiag(null);
     setErrorCarga(false);
     setError(null);
+    setMercanciaVuelve(false);
+    setEntiendeSaldo(false);
     pedirDiagnosticoAnulacion(devolucion.id)
       .then((d) => {
         if (!vigente) return;
@@ -124,17 +135,33 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
         return t('consecuencias.cajaSinSesion', { monto });
       case 'saldo':
         return t('consecuencias.saldo', { monto });
+      case 'saldoUsado':
+        return t('consecuencias.saldoUsado', { disponible: formatear(c.disponible), usado: formatear(c.usado) });
       case 'venta':
         return t('consecuencias.venta', { venta: devolucion.venta.factura?.numero ?? t('consecuencias.laVenta') });
     }
   };
 
+  const usado = diag ? saldoUsado(diag) : 0;
+  const venderDeNuevo = () => {
+    onAbiertoChange(false);
+    router.push(`/app/pos/ventas/nuevo?devolucion=${devolucion.id}`);
+  };
+
   const confirmar = async (motivo: string) => {
     if (!diag) return;
+    if (!mercanciaVuelve) {
+      setError(t('confirmaciones.faltaMercancia'));
+      return;
+    }
+    if (usado > 0 && !entiendeSaldo) {
+      setError(t('confirmaciones.faltaSaldo', { usado: formatear(usado) }));
+      return;
+    }
     setEnviando(true);
     setError(null);
     try {
-      const r = await enviarAnulacionDevolucion(devolucion.id, motivo, fecha);
+      const r = await enviarAnulacionDevolucion(devolucion.id, motivo, fecha, { saldoUsado: usado > 0 && entiendeSaldo, mercanciaVuelve });
       if (r.asientos_pendientes) toastSuccess(t('hechoPendiente', { numero: devolucion.numero, n: r.asientos_pendientes }));
       else toastSuccess(t('hecho', { numero: devolucion.numero }));
       onAbiertoChange(false);
@@ -165,10 +192,7 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
         textoCancelar={t('noSePuede.cerrar')}
         primario={{
           etiqueta: t('noSePuede.registrarVenta'),
-          onClick: () => {
-            onAbiertoChange(false);
-            router.push(`/app/pos/ventas/nuevo?devolucion=${devolucion.id}`);
-          },
+          onClick: venderDeNuevo,
         }}
       >
         <AvisoTonal tono="advertencia" titulo={t('noSePuede.avisoTitulo', { numero: numeroNota })} descripcion={t('noSePuede.avisoTexto')} />
@@ -218,6 +242,17 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
       {diag && !bloqueo && opciones && (
         <>
           <AvisoTonal tono="informacion" titulo={aviso.titulo} descripcion={textoAviso} />
+          {usado > 0 && (
+            <AvisoTonal
+              tono="advertencia"
+              titulo={t('saldoUsado.titulo', { usado: formatear(usado) })}
+              descripcion={
+                comprasDelSaldo(diag)
+                  ? t('saldoUsado.texto', { cliente: diag.saldo_a_favor?.cliente?.nombre ?? t('saldoUsado.elCliente'), compras: comprasDelSaldo(diag) ?? '' })
+                  : t('saldoUsado.textoSinCompra', { cliente: diag.saldo_a_favor?.cliente?.nombre ?? t('saldoUsado.elCliente') })
+              }
+            />
+          )}
           <div>
             <p className="text-sm font-medium text-fg">{t('queSeRevierte')}</p>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-fg-secondary">
@@ -258,6 +293,48 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
                     ? t('fecha.ayudaCerrado', { mes: mesOriginal })
                     : t('fecha.ayudaHoyCerrado', { mesHoy })}
             </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start gap-2.5">
+              <Checkbox
+                id="anular-devolucion-mercancia"
+                className="mt-0.5"
+                checked={mercanciaVuelve}
+                aria-describedby="anular-devolucion-mercancia-ayuda"
+                onCheckedChange={(v) => {
+                  setMercanciaVuelve(v === true);
+                  setError(null);
+                }}
+              />
+              <div className="flex flex-col gap-0.5">
+                <label htmlFor="anular-devolucion-mercancia" className="cursor-pointer text-sm text-fg">
+                  {t('confirmaciones.mercancia')}
+                </label>
+                <p id="anular-devolucion-mercancia-ayuda" className="text-xs leading-4 text-fg-secondary">
+                  {t('confirmaciones.mercanciaAyudaAntes')}{' '}
+                  <button type="button" onClick={venderDeNuevo} className="font-medium text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                    {t('confirmaciones.mercanciaAyudaEnlace')}
+                  </button>
+                  {t('confirmaciones.mercanciaAyudaDespues')}
+                </p>
+              </div>
+            </div>
+            {usado > 0 && (
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id="anular-devolucion-saldo"
+                  className="mt-0.5"
+                  checked={entiendeSaldo}
+                  onCheckedChange={(v) => {
+                    setEntiendeSaldo(v === true);
+                    setError(null);
+                  }}
+                />
+                <label htmlFor="anular-devolucion-saldo" className="cursor-pointer text-sm text-fg">
+                  {t('confirmaciones.saldo', { usado: formatear(usado) })}
+                </label>
+              </div>
+            )}
           </div>
         </>
       )}

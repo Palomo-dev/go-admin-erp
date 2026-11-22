@@ -102,8 +102,15 @@ test('nota rechazada, periodo abierto: aviso, qué se revierte, fecha y anula co
   expect(original.hasAttribute('disabled')).toBe(false);
   fireEvent.click(original);
   fireEvent.change(screen.getByRole('textbox'), { target: { value: 'El cliente cambió de talla en la misma visita' } });
+  // Sin marcar que la mercancía vuelve al cliente no se envía nada.
   fireEvent.click(screen.getByRole('button', { name: 'Anular devolución' }));
-  await waitFor(() => expect(enviarAnulacion).toHaveBeenCalledWith(8, 'El cliente cambió de talla en la misma visita', 'original'));
+  expect(await screen.findByText(/Marca que el cliente se lleva otra vez la mercancía/)).toBeTruthy();
+  expect(enviarAnulacion).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'El cliente se lleva otra vez la mercancía.' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Anular devolución' }));
+  await waitFor(() =>
+    expect(enviarAnulacion).toHaveBeenCalledWith(8, 'El cliente cambió de talla en la misma visita', 'original', { saldoUsado: false, mercanciaVuelve: true }),
+  );
   await waitFor(() => expect(onAnulada).toHaveBeenCalled());
   expect(toastSuccess).toHaveBeenCalledWith('DEV-000008 quedó anulada');
 });
@@ -140,9 +147,46 @@ test('error de la RPC al confirmar: se muestra traducido y no se cierra', async 
   renderConIdioma(<AnularDevolucionDialog abierto onAbiertoChange={jest.fn()} devolucion={DEV} onAnulada={onAnulada} />);
   await screen.findByText('Qué se revierte');
   fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Registrada por error' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'El cliente se lleva otra vez la mercancía.' }));
   fireEvent.click(screen.getByRole('button', { name: 'Anular devolución' }));
   expect(await screen.findByText(/ya no está en el inventario de la sucursal/)).toBeTruthy();
   expect(onAnulada).not.toHaveBeenCalled();
+});
+
+test('saldo a favor ya usado: aviso, línea de cartera y doble confirmación (Figma 2729:192869)', async () => {
+  pedirDiagnostico.mockResolvedValue({
+    ...DIAG,
+    metodo: 'store_credit',
+    caja_abierta: null,
+    saldo_a_favor: {
+      id: 's1',
+      monto: 120000,
+      disponible: 40000,
+      usado: 80000,
+      usos: [{ factura_id: 'f9', numero: 'FV-1042', monto: 80000 }],
+      cliente: { id: 'c1', nombre: 'Cliente de prueba' },
+    },
+  });
+  enviarAnulacion.mockResolvedValue({ return_id: 8, ya_anulada: false, asientos_pendientes: 0, saldo_usado: 80000 });
+  renderConIdioma(<AnularDevolucionDialog abierto onAbiertoChange={jest.fn()} devolucion={DEV} onAnulada={jest.fn()} />);
+  expect(await screen.findByText('El cliente ya usó $ 80000 del saldo a favor')).toBeTruthy();
+  expect(screen.getByText(/cuenta por cobrar a Cliente de prueba en su cartera.*FV-1042/)).toBeTruthy();
+  expect(screen.getByText('El saldo a favor sin usar ($ 40000) se cancela y lo usado ($ 80000) pasa a cuenta por cobrar del cliente.')).toBeTruthy();
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Registrada por error' } });
+  fireEvent.click(screen.getByRole('checkbox', { name: 'El cliente se lleva otra vez la mercancía.' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Anular devolución' }));
+  expect(await screen.findByText('Confirma que $ 80000 quedarán como cuenta por cobrar al cliente.')).toBeTruthy();
+  expect(enviarAnulacion).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Entiendo que $ 80000 quedarán como cuenta por cobrar al cliente.' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Anular devolución' }));
+  await waitFor(() => expect(enviarAnulacion).toHaveBeenCalledWith(8, 'Registrada por error', 'hoy', { saldoUsado: true, mercanciaVuelve: true }));
+});
+
+test('la mercancía se queda en la bodega: el enlace lleva a registrar una venta nueva', async () => {
+  pedirDiagnostico.mockResolvedValue(DIAG);
+  renderConIdioma(<AnularDevolucionDialog abierto onAbiertoChange={jest.fn()} devolucion={DEV} onAnulada={jest.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: 'registra una venta nueva' }));
+  expect(push).toHaveBeenCalledWith('/app/pos/ventas/nuevo?devolucion=8');
 });
 
 describe('detalle: venta nueva en la cadena y reenvío de la nota crédito', () => {

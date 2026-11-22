@@ -62445,7 +62445,8 @@
       "cajaSinSesion": "Une caisse ouverte enregistre l’entrée des {monto} que le client rend (caisse ouverte requise).",
       "saldo": "L’avoir client de {monto} est annulé.",
       "venta": "La vente {venta} redevient « Payée » et le retour reste visible comme « Annulé » avec son motif.",
-      "laVenta": "d’origine"
+      "laVenta": "d’origine",
+      "saldoUsado": "L'avoir non utilisé ({disponible}) est annulé et la partie utilisée ({usado}) devient une créance sur le client."
     },
     "fecha": {
       "etiqueta": "Date de l’écriture miroir",
@@ -62506,7 +62507,12 @@
       "periodoHoyCerrado": "La période d’aujourd’hui est clôturée : utilisez la date d’origine.",
       "efectivoSinCaja": "Le remboursement a été fait en espèces et l’argent que le client rend doit entrer dans une caisse. Ouvrez la caisse de l’agence dans PDV › Caisses puis réessayez.",
       "stockInsuficiente": "Le produit n’est plus dans le stock de l’agence (il a été revendu) : il ne peut pas ressortir.",
-      "generico": "Impossible d’annuler le retour. Réessayez."
+      "generico": "Impossible d’annuler le retour. Réessayez.",
+      "saldoAFavorNoVigente": "L'avoir issu de ce retour a déjà été annulé ou a expiré dans Finances › Avoirs. Vérifiez-le avec le comptable : il ne peut pas être annulé ici.",
+      "confirmarSaldoUsado": "Confirmez que ce que le client a déjà utilisé de l'avoir deviendra une créance.",
+      "mercanciaEnBodega": "Si la marchandise reste à l'entrepôt, le retour n'est pas annulé : enregistrez une nouvelle vente avec une nouvelle facture.",
+      "asientoSaldoNoEncontrado": "L'avoir n'a pas d'écriture comptable publiée. Vérifiez Finances › En attente comptable et réessayez.",
+      "sinCuentaPorCobrar": "Le compte clients manque dans la configuration comptable. Demandez au comptable de le configurer."
     },
     "detalle": {
       "avisoTitulo": "Annulé le {fecha} par {usuario} · « {motivo} »",
@@ -62528,6 +62534,21 @@
     "cadena": {
       "ventaNueva": "Nouvelle vente",
       "reventaDe": "Revente de"
+    },
+    "saldoUsado": {
+      "titulo": "Le client a déjà utilisé {usado} de l'avoir",
+      "texto": "Ce montant deviendra une créance sur {cliente} dans son compte client, comptée à partir de la date d'annulation. L'achat où il l'a dépensé ({compras}) ne change pas.",
+      "textoSinCompra": "Ce montant deviendra une créance sur {cliente} dans son compte client, comptée à partir de la date d'annulation.",
+      "elCliente": "le client"
+    },
+    "confirmaciones": {
+      "mercancia": "Le client reprend la marchandise.",
+      "mercanciaAyudaAntes": "La marchandise reste-t-elle à l'entrepôt ? Alors le retour n'est pas annulé :",
+      "mercanciaAyudaEnlace": "enregistrez une nouvelle vente",
+      "mercanciaAyudaDespues": " avec une nouvelle facture.",
+      "saldo": "Je comprends que {usado} deviendront une créance sur le client.",
+      "faltaMercancia": "Cochez que le client reprend la marchandise. Si elle reste à l'entrepôt, enregistrez une nouvelle vente.",
+      "faltaSaldo": "Confirmez que {usado} deviendront une créance sur le client."
     }
   },
   "detallesMarca": {

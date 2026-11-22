@@ -14,6 +14,7 @@ import {
   bloqueoAnulacion,
   claveErrorAnulacion,
   codigoErrorAnulacion,
+  comprasDelSaldo,
   CODIGOS_ERROR_ANULACION,
   consecuenciasAnulacion,
   cuerpoAnulacion,
@@ -24,6 +25,7 @@ import {
   normalizarDiagnostico,
   opcionesFechaEspejo,
   reenvioNotaCredito,
+  saldoUsado,
   type DiagnosticoAnulacion,
 } from '@/lib/pos/devoluciones/anularDevolucionLogica';
 import { buildCheckoutEnvelope } from '@/lib/offline/checkoutRpc';
@@ -121,16 +123,39 @@ describe('qué se revierte', () => {
   });
 
   test('saldo a favor, nota sin transmitir y sin caja abierta', () => {
-    const d = { ...BASE, metodo: 'store_credit' as const, caja_abierta: null, saldo_a_favor: { id: 's1', usado: false }, nota: { ...BASE.nota!, estado_dian: 'sin_transmitir' as const } };
+    const d = { ...BASE, metodo: 'store_credit' as const, caja_abierta: null, saldo_a_favor: { id: 's1', monto: 50, disponible: 50, usado: 0, usos: [], cliente: null }, nota: { ...BASE.nota!, estado_dian: 'sin_transmitir' as const } };
     expect(consecuenciasAnulacion(d, []).map((c) => c.clave)).toEqual(['asientos', 'notaSinTransmitir', 'saldo', 'venta']);
     expect(consecuenciasAnulacion({ ...BASE, caja_abierta: null, asientos: [], nota: null }, []).map((c) => c.clave)).toEqual(['sinAsientos', 'cajaSinSesion', 'venta']);
+  });
+
+  test('saldo a favor ya usado (Contador 2026-11-22): lo usado va a cartera y lo libre se cancela', () => {
+    const crudo = {
+      ...BASE,
+      metodo: 'store_credit',
+      saldo_a_favor: {
+        id: 's1', monto: '120000', disponible: '40000', usado: '80000',
+        usos: [{ factura_id: 'f9', numero: 'FV-1042', monto: '50000' }, { factura_id: 'f10', numero: 'FV-1050', monto: '30000' }],
+        cliente: { id: 'c1', nombre: 'Cliente de prueba' },
+      },
+    };
+    const d = normalizarDiagnostico(crudo);
+    expect(d.saldo_a_favor).toMatchObject({ disponible: 40000, usado: 80000, cliente: { id: 'c1', nombre: 'Cliente de prueba' } });
+    expect(saldoUsado(d)).toBe(80000);
+    expect(comprasDelSaldo(d)).toBe('FV-1042, FV-1050');
+    expect(consecuenciasAnulacion(d, []).find((c) => c.clave.startsWith('saldo'))).toEqual({ clave: 'saldoUsado', disponible: 40000, usado: 80000 });
+    expect(saldoUsado(normalizarDiagnostico({ ...BASE, saldo_a_favor: null }))).toBe(0);
+    expect(comprasDelSaldo(normalizarDiagnostico({ ...BASE, saldo_a_favor: { id: 's2', usado: 10, usos: [] } }))).toBeNull();
   });
 });
 
 describe('route handler: cuerpo y errores', () => {
   test('motivo de 5+ caracteres limpio y fecha hoy | original (hoy por defecto)', () => {
-    expect(cuerpoAnulacion({ motivo: '  Registrada   por error ', fecha_espejo: 'original' })).toEqual({ motivo: 'Registrada por error', fecha_espejo: 'original' });
-    expect(cuerpoAnulacion({ motivo: 'Cambio de talla' })).toEqual({ motivo: 'Cambio de talla', fecha_espejo: 'hoy' });
+    const sin = { confirmar_saldo_usado: false, mercancia_vuelve: false };
+    expect(cuerpoAnulacion({ motivo: '  Registrada   por error ', fecha_espejo: 'original' })).toEqual({ motivo: 'Registrada por error', fecha_espejo: 'original', ...sin });
+    expect(cuerpoAnulacion({ motivo: 'Cambio de talla' })).toEqual({ motivo: 'Cambio de talla', fecha_espejo: 'hoy', ...sin });
+    // Las confirmaciones solo valen como true literal.
+    expect(cuerpoAnulacion({ motivo: 'Cambio de talla', confirmar_saldo_usado: true, mercancia_vuelve: true })).toMatchObject({ confirmar_saldo_usado: true, mercancia_vuelve: true });
+    expect(cuerpoAnulacion({ motivo: 'Cambio de talla', confirmar_saldo_usado: 'true', mercancia_vuelve: 1 })).toMatchObject(sin);
     expect(cuerpoAnulacion({ motivo: 'abc' })).toEqual({ error: 'motivo_obligatorio' });
     expect(cuerpoAnulacion({ motivo: 'Motivo suficiente', fecha_espejo: 'ayer' })).toEqual({ error: 'fecha_espejo_invalida' });
     expect(cuerpoAnulacion(null)).toEqual({ error: 'motivo_obligatorio' });
@@ -147,6 +172,9 @@ describe('route handler: cuerpo y errores', () => {
     expect(estadoHttpAnulacion('efectivo_sin_caja')).toBe(409);
     expect(estadoHttpAnulacion('generico')).toBe(500);
     expect(claveErrorAnulacion('saldo_a_favor_aplicado')).toBe('saldoAFavorAplicado');
+    expect(codigoErrorAnulacion({ message: 'mercancia_en_bodega' })).toBe('mercancia_en_bodega');
+    expect(codigoErrorAnulacion({ message: 'confirmar_saldo_usado' })).toBe('confirmar_saldo_usado');
+    expect(estadoHttpAnulacion('saldo_a_favor_no_vigente')).toBe(409);
   });
 });
 

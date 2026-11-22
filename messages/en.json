@@ -62445,7 +62445,8 @@
       "cajaSinSesion": "An open register records the {monto} the customer gives back (requires an open register).",
       "saldo": "The store credit of {monto} is voided.",
       "venta": "Sale {venta} goes back to “Paid” and the return stays visible as “Voided” with its reason.",
-      "laVenta": "original"
+      "laVenta": "original",
+      "saldoUsado": "The unused store credit ({disponible}) is cancelled and the used part ({usado}) becomes an account receivable from the customer."
     },
     "fecha": {
       "etiqueta": "Mirror entry date",
@@ -62506,7 +62507,12 @@
       "periodoHoyCerrado": "Today's period is closed: use the original date.",
       "efectivoSinCaja": "The refund was in cash and the money the customer gives back has to go into a register. Open the branch register in POS › Registers and try again.",
       "stockInsuficiente": "The product is no longer in the branch's inventory (it was sold again): it can't leave again.",
-      "generico": "The return could not be voided. Try again."
+      "generico": "The return could not be voided. Try again.",
+      "saldoAFavorNoVigente": "The store credit from this return was already voided or expired in Finance › Store credit. Review it with the accountant: it cannot be voided from here.",
+      "confirmarSaldoUsado": "Confirm that what the customer already used of the credit will become an account receivable.",
+      "mercanciaEnBodega": "If the goods stay in the warehouse, the return is not voided: record a new sale with a new invoice.",
+      "asientoSaldoNoEncontrado": "The store credit has no posted journal entry. Check Finance › Accounting pending items and try again.",
+      "sinCuentaPorCobrar": "The receivables account is missing in the accounting settings. Ask the accountant to set it up."
     },
     "detalle": {
       "avisoTitulo": "Voided on {fecha} by {usuario} · “{motivo}”",
@@ -62528,6 +62534,21 @@
     "cadena": {
       "ventaNueva": "New sale",
       "reventaDe": "Resale of"
+    },
+    "saldoUsado": {
+      "titulo": "The customer already used {usado} of the store credit",
+      "texto": "That amount will become an account receivable from {cliente} in their receivables, aged from the void date. The purchase where it was spent ({compras}) does not change.",
+      "textoSinCompra": "That amount will become an account receivable from {cliente} in their receivables, aged from the void date.",
+      "elCliente": "the customer"
+    },
+    "confirmaciones": {
+      "mercancia": "The customer takes the goods back.",
+      "mercanciaAyudaAntes": "Are the goods staying in the warehouse? Then the return is not voided:",
+      "mercanciaAyudaEnlace": "record a new sale",
+      "mercanciaAyudaDespues": " with a new invoice.",
+      "saldo": "I understand that {usado} will become an account receivable from the customer.",
+      "faltaMercancia": "Check that the customer takes the goods back. If they stay in the warehouse, record a new sale.",
+      "faltaSaldo": "Confirm that {usado} will become an account receivable from the customer."
     }
   },
   "detallesMarca": {

@@ -62455,7 +62455,8 @@
       "cajaSinSesion": "Um caixa aberto registra a entrada de {monto} que o cliente devolve (requer caixa aberto).",
       "saldo": "O saldo a favor de {monto} fica anulado.",
       "venta": "A venda {venta} volta a «Paga» e a devolução fica visível como «Anulada» com seu motivo.",
-      "laVenta": "original"
+      "laVenta": "original",
+      "saldoUsado": "O saldo a favor não usado ({disponible}) é cancelado e o usado ({usado}) passa a conta a receber do cliente."
     },
     "fecha": {
       "etiqueta": "Data do lançamento espelho",
@@ -62516,7 +62517,12 @@
       "periodoHoyCerrado": "O período de hoje está fechado: use a data original.",
       "efectivoSinCaja": "O reembolso foi em dinheiro e o dinheiro que o cliente devolve precisa entrar em um caixa. Abra o caixa da filial em PDV › Caixas e tente de novo.",
       "stockInsuficiente": "O produto já não está no estoque da filial (foi vendido de novo): não pode sair outra vez.",
-      "generico": "Não foi possível anular a devolução. Tente de novo."
+      "generico": "Não foi possível anular a devolução. Tente de novo.",
+      "saldoAFavorNoVigente": "O saldo a favor desta devolução já foi anulado ou venceu em Finanças › Saldos a favor. Revise com o contador: daqui não é possível anular.",
+      "confirmarSaldoUsado": "Confirme que o que o cliente já usou do saldo ficará como conta a receber.",
+      "mercanciaEnBodega": "Se a mercadoria fica no depósito, a devolução não é anulada: registre uma venda nova com nota fiscal nova.",
+      "asientoSaldoNoEncontrado": "O saldo a favor não tem lançamento contábil publicado. Verifique Finanças › Pendências contábeis e tente de novo.",
+      "sinCuentaPorCobrar": "Falta a conta de clientes na configuração contábil. Peça ao contador para configurá-la."
     },
     "detalle": {
       "avisoTitulo": "Anulada em {fecha} por {usuario} · «{motivo}»",
@@ -62538,6 +62544,21 @@
     "cadena": {
       "ventaNueva": "Venda nova",
       "reventaDe": "Revenda de"
+    },
+    "saldoUsado": {
+      "titulo": "O cliente já usou {usado} do saldo a favor",
+      "texto": "Esse valor ficará como conta a receber de {cliente} na carteira, contada a partir da data da anulação. A compra onde foi gasto ({compras}) não muda.",
+      "textoSinCompra": "Esse valor ficará como conta a receber de {cliente} na carteira, contada a partir da data da anulação.",
+      "elCliente": "o cliente"
+    },
+    "confirmaciones": {
+      "mercancia": "O cliente leva a mercadoria de volta.",
+      "mercanciaAyudaAntes": "A mercadoria fica no depósito? Então não se anula:",
+      "mercanciaAyudaEnlace": "registre uma venda nova",
+      "mercanciaAyudaDespues": " com nota fiscal nova.",
+      "saldo": "Entendo que {usado} ficarão como conta a receber do cliente.",
+      "faltaMercancia": "Marque que o cliente leva a mercadoria de volta. Se ela ficar no depósito, registre uma venda nova.",
+      "faltaSaldo": "Confirme que {usado} ficarão como conta a receber do cliente."
     }
   },
   "detallesMarca": {

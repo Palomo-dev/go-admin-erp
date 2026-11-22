@@ -63,13 +63,23 @@ export function pedirDiagnosticoAnulacion(id: string | number): Promise<Diagnost
 }
 
 /** Anula la devolución; los errores llegan con el código de la RPC. */
-export async function enviarAnulacionDevolucion(id: string | number, motivo: string, fechaEspejo: FechaEspejo): Promise<ResultadoAnulacion> {
+export async function enviarAnulacionDevolucion(
+  id: string | number,
+  motivo: string,
+  fechaEspejo: FechaEspejo,
+  confirmaciones: { saldoUsado: boolean; mercanciaVuelve: boolean },
+): Promise<ResultadoAnulacion> {
   const r = await fetch(`/api/pos/devoluciones/${encodeURIComponent(String(id))}/anular`, {
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
     headers: { 'Content-Type': 'application/json', ...cabeceras() },
-    body: JSON.stringify({ motivo, fecha_espejo: fechaEspejo }),
+    body: JSON.stringify({
+      motivo,
+      fecha_espejo: fechaEspejo,
+      confirmar_saldo_usado: confirmaciones.saldoUsado,
+      mercancia_vuelve: confirmaciones.mercanciaVuelve,
+    }),
   });
   const cuerpo = (await r.json().catch(() => null)) as (ResultadoAnulacion & { codigo?: string }) | null;
   if (!r.ok || !cuerpo) throw new ErrorPeticionDevoluciones(cuerpo?.codigo ?? (r.status === 403 ? 'sin_permiso' : 'generico'), r.status);

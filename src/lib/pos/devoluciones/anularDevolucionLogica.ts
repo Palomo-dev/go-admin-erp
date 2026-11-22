@@ -10,6 +10,10 @@
  *   fecha original si ese periodo sigue abierto (2719:190434); con el periodo
  *   original cerrado, «Fecha original» queda deshabilitada (2719:190511).
  * - Efectivo: necesita una caja abierta, igual que al crear la devolución.
+ * - Contador 2026-11-22: anular es que el cliente se lleva otra vez la
+ *   mercancía (si se queda en la bodega va una venta nueva con factura nueva),
+ *   y lo que ya usó del saldo a favor queda como cuenta por cobrar en su
+ *   cartera. Las dos cosas se confirman en el diálogo.
  */
 
 export type EstadoDianNota = 'aceptada' | 'rechazada' | 'en_envio' | 'sin_transmitir' | 'anulada';
@@ -37,10 +41,28 @@ export interface DiagnosticoAnulacion {
   periodo_original_abierto: boolean;
   periodo_hoy_abierto: boolean;
   caja_abierta: number | null;
-  saldo_a_favor: { id: string; usado: boolean } | null;
+  saldo_a_favor: SaldoAFavorAnulacion | null;
   asientos: AsientoAReversar[];
   bloqueo: string | null;
   caso: CasoAnulacion;
+}
+
+export interface UsoSaldoAFavor {
+  factura_id: string | null;
+  numero: string | null;
+  monto: number;
+}
+
+export interface SaldoAFavorAnulacion {
+  id: string;
+  monto: number;
+  /** Lo que el cliente no ha usado: se cancela. */
+  disponible: number;
+  /** Lo que ya usó: queda como cuenta por cobrar. */
+  usado: number;
+  /** Las compras donde lo gastó. */
+  usos: UsoSaldoAFavor[];
+  cliente: { id: string; nombre: string | null } | null;
 }
 
 export interface ResultadoAnulacion {
@@ -53,6 +75,9 @@ export interface ResultadoAnulacion {
   movimiento_caja?: number | null;
   sesion_caja?: number | null;
   unidades_retiradas?: number;
+  /** Lo del saldo a favor que pasó a cuenta por cobrar. */
+  saldo_usado?: number;
+  cuenta_por_cobrar?: string | null;
 }
 
 const ESTADOS_DIAN: readonly EstadoDianNota[] = ['aceptada', 'rechazada', 'en_envio', 'sin_transmitir', 'anulada'];
@@ -68,6 +93,31 @@ const fechaPlana = (v: unknown): string => {
   const s = typeof v === 'string' ? v.slice(0, 10) : '';
   return FECHA_PLANA.test(s) ? s : '';
 };
+
+function normalizarSaldo(s: Record<string, unknown>): SaldoAFavorAnulacion {
+  const cliente = s.cliente && typeof s.cliente === 'object' ? (s.cliente as Record<string, unknown>) : null;
+  return {
+    id: String(s.id),
+    monto: num(s.monto),
+    disponible: num(s.disponible),
+    usado: num(s.usado),
+    usos: Array.isArray(s.usos)
+      ? (s.usos as Array<Record<string, unknown>>).map((u) => ({ factura_id: texto(u.factura_id), numero: texto(u.numero), monto: num(u.monto) }))
+      : [],
+    cliente: cliente && texto(cliente.id) ? { id: String(cliente.id), nombre: texto(cliente.nombre) } : null,
+  };
+}
+
+/** Lo que el cliente ya usó del saldo a favor (0 si no hay saldo o no usó nada). */
+export function saldoUsado(d: Pick<DiagnosticoAnulacion, 'saldo_a_favor'>): number {
+  return d.saldo_a_favor && d.saldo_a_favor.usado > 0 ? d.saldo_a_favor.usado : 0;
+}
+
+/** Las compras donde gastó el saldo («FV-1042, FV-1050»), o null. */
+export function comprasDelSaldo(d: Pick<DiagnosticoAnulacion, 'saldo_a_favor'>): string | null {
+  const numeros = (d.saldo_a_favor?.usos ?? []).map((u) => u.numero).filter((n): n is string => !!n);
+  return numeros.length ? [...new Set(numeros)].join(', ') : null;
+}
 
 /** El JSON de la RPC con tipos seguros (lo que falte queda en su valor más prudente). */
 export function normalizarDiagnostico(crudo: unknown): DiagnosticoAnulacion {
@@ -90,7 +140,7 @@ export function normalizarDiagnostico(crudo: unknown): DiagnosticoAnulacion {
     periodo_original_abierto: d.periodo_original_abierto === true,
     periodo_hoy_abierto: d.periodo_hoy_abierto === true,
     caja_abierta: d.caja_abierta === null || d.caja_abierta === undefined ? null : num(d.caja_abierta) || null,
-    saldo_a_favor: saldo && texto(saldo.id) ? { id: String(saldo.id), usado: saldo.usado === true } : null,
+    saldo_a_favor: saldo && texto(saldo.id) ? normalizarSaldo(saldo) : null,
     asientos: Array.isArray(d.asientos)
       ? (d.asientos as Array<Record<string, unknown>>).map((a) => ({
           id: num(a.id),
@@ -171,6 +221,7 @@ export type Consecuencia =
   | { clave: 'caja'; sesion: number }
   | { clave: 'cajaSinSesion' }
   | { clave: 'saldo' }
+  | { clave: 'saldoUsado'; disponible: number; usado: number }
   | { clave: 'venta' };
 
 export function consecuenciasAnulacion(
@@ -191,7 +242,11 @@ export function consecuenciasAnulacion(
     salida.push({ clave: d.nota.estado_dian === 'rechazada' ? 'notaRechazada' : 'notaSinTransmitir', numero: d.nota.numero ?? '—' });
   }
   if (d.metodo === 'cash') salida.push(d.caja_abierta ? { clave: 'caja', sesion: d.caja_abierta } : { clave: 'cajaSinSesion' });
-  if (d.saldo_a_favor) salida.push({ clave: 'saldo' });
+  if (d.saldo_a_favor) {
+    salida.push(
+      d.saldo_a_favor.usado > 0 ? { clave: 'saldoUsado', disponible: d.saldo_a_favor.disponible, usado: d.saldo_a_favor.usado } : { clave: 'saldo' },
+    );
+  }
   salida.push({ clave: 'venta' });
   return salida;
 }
@@ -224,14 +279,31 @@ export function reenvioNotaCredito(
 export const MOTIVO_MINIMO_ANULACION = 5;
 export const MOTIVO_MAXIMO_ANULACION = 500;
 
-/** Lo que el route handler acepta: motivo y fecha del espejo. La organización NUNCA viene de aquí. */
-export function cuerpoAnulacion(crudo: unknown): { motivo: string; fecha_espejo: FechaEspejo } | { error: 'motivo_obligatorio' | 'fecha_espejo_invalida' } {
+export interface CuerpoAnulacion {
+  motivo: string;
+  fecha_espejo: FechaEspejo;
+  /** Quien anula confirmó que lo usado del saldo queda como cuenta por cobrar. */
+  confirmar_saldo_usado: boolean;
+  /** El cliente se lleva otra vez la mercancía. */
+  mercancia_vuelve: boolean;
+}
+
+/**
+ * Lo que el route handler acepta. La organización NUNCA viene de aquí. Las dos
+ * confirmaciones solo valen como `true` literal; la base las vuelve a exigir.
+ */
+export function cuerpoAnulacion(crudo: unknown): CuerpoAnulacion | { error: 'motivo_obligatorio' | 'fecha_espejo_invalida' } {
   const c = (crudo && typeof crudo === 'object' ? crudo : {}) as Record<string, unknown>;
   const motivo = typeof c.motivo === 'string' ? c.motivo.replace(/\s+/g, ' ').trim() : '';
   if (Array.from(motivo).length < MOTIVO_MINIMO_ANULACION) return { error: 'motivo_obligatorio' };
   const fecha = c.fecha_espejo ?? 'hoy';
   if (fecha !== 'hoy' && fecha !== 'original') return { error: 'fecha_espejo_invalida' };
-  return { motivo: Array.from(motivo).slice(0, MOTIVO_MAXIMO_ANULACION).join(''), fecha_espejo: fecha };
+  return {
+    motivo: Array.from(motivo).slice(0, MOTIVO_MAXIMO_ANULACION).join(''),
+    fecha_espejo: fecha,
+    confirmar_saldo_usado: c.confirmar_saldo_usado === true,
+    mercancia_vuelve: c.mercancia_vuelve === true,
+  };
 }
 
 /** Códigos que lanzan `fn_devolucion_anular` / `fn_devolucion_anulacion_estado`. */
@@ -250,6 +322,11 @@ export const CODIGOS_ERROR_ANULACION = [
   'devolucion_de_garantia',
   'devolucion_con_membresia',
   'saldo_a_favor_aplicado',
+  'saldo_a_favor_no_vigente',
+  'confirmar_saldo_usado',
+  'mercancia_en_bodega',
+  'asiento_saldo_no_encontrado',
+  'sin_cuenta_por_cobrar',
   'serial_no_disponible',
   'periodo_cerrado',
   'periodo_original_cerrado',

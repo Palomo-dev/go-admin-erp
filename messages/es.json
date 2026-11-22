@@ -34972,7 +34972,8 @@
         "sinPermisoPublicar": "Tu rol no puede publicar el sitio. Pide el permiso «Publicar sitio web».",
         "nadaQuePublicar": "No hay cambios por publicar",
         "nadaQueGuardar": "No hay cambios por guardar",
-        "sitio": "Sitio o sede que editas"
+        "sitio": "Sitio o sede que editas",
+        "plantillasTienda": "Plantillas de la tienda"
       },
       "acciones": {
         "reintentar": "Reintentar",
@@ -35028,7 +35029,16 @@
         "seccion": "{seccion} · clic para editar",
         "seccionPropia": "{seccion} · tipografía propia · vista previa en vivo",
         "encabezado": "Encabezado · global · clic en un enlace para editar el menú",
-        "pie": "Pie de página · global · clic en un enlace para editar el menú"
+        "pie": "Pie de página · global · clic en un enlace para editar el menú",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Ver con el producto",
+            "category_detail": "Ver con la categoría",
+            "space_detail": "Ver con el espacio"
+          },
+          "sinOpciones": "Aún no hay registros activos para la vista: el lienzo muestra el listado de la tienda.",
+          "publicada": "El lienzo muestra la versión publicada de esta plantilla: tus cambios se ven aquí después de publicar."
+        }
       },
       "inspector": {
         "etiqueta": "Inspector: {nombre}",

@@ -9,7 +9,6 @@
  * `aplicarAlBorrador` (permiso, versión y guardado con historial).
  */
 import { LIMITES_DOCUMENTO, type DocumentoSitio, type PaginaSitio, type SeccionSitio } from '@/lib/website/contrato/documentoSitio';
-import { DEFAULT_PRODUCT_DETAIL_SECTIONS } from '@/lib/services/website/defaultProductDetailSections';
 import type { GenerarId } from './operacionesMenu';
 import type { ResultadoPagina } from './operacionesPagina';
 
@@ -34,11 +33,35 @@ const TITULO_PAGINA_DETALLE: Readonly<Record<TipoPaginaDetalle, string>> = {
 type Bloque = readonly [tipo: string, variante: string, contenido?: Record<string, unknown>];
 
 /**
- * Bloques por defecto. Ficha: los de `DEFAULT_PRODUCT_DETAIL_SECTIONS` (el diseño que la tienda
- * pinta sin plantilla). Categoría: encabezado, filtros y cuadrícula, como las plantillas de tienda.
+ * Ficha de producto = el diseño FIJO que la tienda pinta hoy sin plantilla
+ * (goadmin-websites `app/productos/[id]/page.tsx`, rama sin `hasTemplateSections`), bloque por
+ * bloque y en su orden:
+ * - columna de la galería: `product_gallery`;
+ * - columna de información: `product_info` (SKU, nombre, reseñas, precio) → contador → descripción
+ *   → acciones → beneficios. El contador no es un bloque: `ProductDetailRenderer` lo pinta justo
+ *   después de `product_info` cuando la plantilla no trae el marcador `product_urgency`;
+ * - a todo el ancho: `related_products` y `product_reviews`.
+ * Todos con `contenido` vacío: cada bloque de la tienda, sin opciones, pinta lo de siempre
+ * (`buttons_layout` 'stacked', relacionados en carrusel, descripción de 180 caracteres, los cuatro
+ * beneficios y ninguno en un restaurante). Ojo: NO es el orden de `DEFAULT_PRODUCT_DETAIL_SECTIONS`
+ * (allí la descripción va tras los beneficios, y la ficha cambiaría de aspecto al publicar).
+ */
+export const BLOQUES_FICHA_FIJA: readonly Bloque[] = [
+  ['product_gallery', 'default'],
+  ['product_info', 'default'],
+  ['product_description', 'default'],
+  ['product_actions', 'default'],
+  ['product_benefits', 'default'],
+  ['related_products', 'default'],
+  ['product_reviews', 'default'],
+];
+
+/**
+ * Bloques por defecto. Ficha: {@link BLOQUES_FICHA_FIJA}. Categoría: encabezado, filtros y
+ * cuadrícula, como las plantillas de tienda.
  */
 export const BLOQUES_PAGINA_DETALLE: Readonly<Record<TipoPaginaDetalle, readonly Bloque[]>> = {
-  product_detail: DEFAULT_PRODUCT_DETAIL_SECTIONS.map((s) => [s.section_type, s.section_variant] as const),
+  product_detail: BLOQUES_FICHA_FIJA,
   category_detail: [
     ['category_header', 'default', { show_image: false, show_breadcrumb: true, show_count: true }],
     ['category_filters', 'default', { show_sort: true, show_view_toggle: true, subcategory_style: 'chips' }],
@@ -78,4 +101,24 @@ export function crearPaginaDetalle(documento: DocumentoSitio, tipo: TipoPaginaDe
   }));
   const pagina: PaginaSitio = { id: generarId(), slug, tipo, titulo: TITULO_PAGINA_DETALLE[tipo], publicada: true, secciones };
   return { ok: true, documento: { ...documento, paginas: [...documento.paginas, pagina] }, paginaId: pagina.id, creadas: 1 };
+}
+
+/**
+ * Ficha de producto editable «desde el inicio» (decisión del dueño, 2026-11-22, opción A): si el
+ * documento no tiene ficha, se le agrega con {@link crearPaginaDetalle}; si ya la tiene (en la
+ * dirección canónica o en otra), no se toca. Nunca falla: con el tope de páginas lleno o la
+ * dirección canónica ocupada por otra página, devuelve el documento tal cual (el sitio sigue con
+ * el diseño fijo, como hoy). Pura e idempotente: aplicarla dos veces da lo mismo que una.
+ *
+ * La usan `crearSitio` (sitio principal nuevo: la ficha nace en el documento) y `obtenerBorrador`
+ * (sitios existentes: el borrador leído ya la trae, con ids estables; se guarda con el siguiente
+ * guardado normal y solo sale a la web al publicar).
+ */
+export function asegurarFichaProducto(
+  documento: DocumentoSitio,
+  generarId: GenerarId,
+): { documento: DocumentoSitio; creada: boolean; paginaId: string | null } {
+  const r = crearPaginaDetalle(documento, 'product_detail', generarId);
+  if (!r.ok) return { documento, creada: false, paginaId: null };
+  return { documento: r.documento, creada: r.creadas === 1, paginaId: r.paginaId ?? null };
 }

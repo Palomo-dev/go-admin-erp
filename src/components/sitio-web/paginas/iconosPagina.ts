@@ -37,6 +37,11 @@ import {
   UtensilsCrossed,
   BedDouble,
   Briefcase,
+  ClipboardCheck,
+  CreditCard,
+  ShoppingBag,
+  ShoppingCart,
+  UserRound,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -44,7 +49,7 @@ import { ICONO_TIPO_ENLACE_MENU } from '@/components/sitio-web/ui/MenuLinkRow';
 import type { ItemMenu, PaginaSitio } from '@/lib/website/contrato/documentoSitio';
 import { tipoEnlace } from './operacionesMenu';
 import type { SaludSeo } from './saludSeo';
-import { claveTipoPagina, type ClaveTipoPagina, type PaginaTipificable } from './tipoPagina';
+import { claveTipoPagina, esPlantillaTienda, type ClaveTipoPagina, type PaginaTipificable } from './tipoPagina';
 
 export const ICONO_TIPO_PAGINA: Record<ClaveTipoPagina, LucideIcon> = {
   inicio: Home,
@@ -69,6 +74,27 @@ export const ICONO_TIPO_PAGINA: Record<ClaveTipoPagina, LucideIcon> = {
   membresias: Dumbbell,
   personalizada: FileText,
 };
+
+/**
+ * Plantillas de la tienda (las que Páginas no lista: ficha de producto, carrito…). Solo las ve el
+ * selector de páginas del editor y Tienda › Plantillas. La ficha es la bolsa y no la caja: la caja
+ * (Package) ya es «Productos», la página del catálogo.
+ */
+export const ICONO_PLANTILLA_TIENDA: Readonly<Record<string, LucideIcon>> = {
+  product_detail: ShoppingBag,
+  category_detail: LayoutGrid,
+  cart: ShoppingCart,
+  checkout: CreditCard,
+  order_confirmation: ClipboardCheck,
+  space_detail: BedDouble,
+  account: UserRound,
+};
+
+/** Icono de una página en el selector del editor: el de su plantilla de tienda o el de su tipo. */
+export function iconoPaginaEditor(p: PaginaTipificable): LucideIcon {
+  if (esPlantillaTienda(p)) return ICONO_PLANTILLA_TIENDA[p.tipo] ?? FileText;
+  return ICONO_TIPO_PAGINA[claveTipoPagina(p)];
+}
 
 /** Icono para enlaces de menú a una página (mismo criterio que la lista). */
 export function iconoDePagina(p: PaginaTipificable | undefined): LucideIcon {

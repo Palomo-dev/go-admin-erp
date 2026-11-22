@@ -34957,7 +34957,8 @@
         "sinPermisoPublicar": "Your role can't publish the site. Ask for the “Publish website” permission.",
         "nadaQuePublicar": "No changes to publish",
         "nadaQueGuardar": "No changes to save",
-        "sitio": "Site or location you are editing"
+        "sitio": "Site or location you are editing",
+        "plantillasTienda": "Store templates"
       },
       "acciones": {
         "reintentar": "Retry",
@@ -35013,7 +35014,16 @@
         "seccion": "{seccion} · click to edit",
         "seccionPropia": "{seccion} · own typography · live preview",
         "encabezado": "Header · global · click a link to edit the menu",
-        "pie": "Footer · global · click a link to edit the menu"
+        "pie": "Footer · global · click a link to edit the menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Preview with product",
+            "category_detail": "Preview with category",
+            "space_detail": "Preview with space"
+          },
+          "sinOpciones": "There are no active records to preview yet: the canvas shows the store listing.",
+          "publicada": "The canvas shows the published version of this template: your changes appear here after you publish."
+        }
       },
       "inspector": {
         "etiqueta": "Inspector: {nombre}",

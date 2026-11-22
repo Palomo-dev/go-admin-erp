@@ -34967,7 +34967,8 @@
         "sinPermisoPublicar": "Seu perfil não pode publicar o site. Peça a permissão “Publicar site”.",
         "nadaQuePublicar": "Não há alterações para publicar",
         "nadaQueGuardar": "Não há alterações para salvar",
-        "sitio": "Site ou unidade que você edita"
+        "sitio": "Site ou unidade que você edita",
+        "plantillasTienda": "Modelos da loja"
       },
       "acciones": {
         "reintentar": "Tentar novamente",
@@ -35023,7 +35024,16 @@
         "seccion": "{seccion} · clique para editar",
         "seccionPropia": "{seccion} · tipografia própria · pré-visualização ao vivo",
         "encabezado": "Cabeçalho · global · clique em um link para editar o menu",
-        "pie": "Rodapé · global · clique em um link para editar o menu"
+        "pie": "Rodapé · global · clique em um link para editar o menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Ver com o produto",
+            "category_detail": "Ver com a categoria",
+            "space_detail": "Ver com o espaço"
+          },
+          "sinOpciones": "Ainda não há registros ativos para a prévia: a tela mostra a listagem da loja.",
+          "publicada": "A tela mostra a versão publicada deste modelo: suas alterações aparecem aqui depois de publicar."
+        }
       },
       "inspector": {
         "etiqueta": "Inspetor: {nombre}",

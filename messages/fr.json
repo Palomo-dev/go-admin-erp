@@ -34957,7 +34957,8 @@
         "sinPermisoPublicar": "Ton rôle ne peut pas publier le site. Demande l’autorisation « Publier le site web ».",
         "nadaQuePublicar": "Aucune modification à publier",
         "nadaQueGuardar": "Aucune modification à enregistrer",
-        "sitio": "Site ou établissement que vous modifiez"
+        "sitio": "Site ou établissement que vous modifiez",
+        "plantillasTienda": "Modèles de la boutique"
       },
       "acciones": {
         "reintentar": "Réessayer",
@@ -35013,7 +35014,16 @@
         "seccion": "{seccion} · cliquez pour modifier",
         "seccionPropia": "{seccion} · typographie propre · aperçu en direct",
         "encabezado": "En-tête · global · cliquez sur un lien pour modifier le menu",
-        "pie": "Pied de page · global · cliquez sur un lien pour modifier le menu"
+        "pie": "Pied de page · global · cliquez sur un lien pour modifier le menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Voir avec le produit",
+            "category_detail": "Voir avec la catégorie",
+            "space_detail": "Voir avec l'espace"
+          },
+          "sinOpciones": "Aucun enregistrement actif pour l'aperçu : le canevas affiche la liste de la boutique.",
+          "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication."
+        }
       },
       "inspector": {
         "etiqueta": "Inspecteur : {nombre}",

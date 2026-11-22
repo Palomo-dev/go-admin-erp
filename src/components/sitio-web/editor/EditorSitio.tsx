@@ -70,6 +70,7 @@ import { EditorMovil } from './movil/EditorMovil';
 import { nombreDeSeccion } from './iconosSeccion';
 import { LECTOR_PUBLICO_V2_LISTO, useEditorSitio, type ZonaGlobal } from './useEditorSitio';
 import { useTextosEditor } from './textos';
+import { tieneMuestra } from './MuestraPlantillaLienzo';
 import { useTextosPlantillaSede } from '@/components/sitio-web/plantillaSede/textos';
 import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { esTipoSedePlantilla } from '@/lib/website/v2/plantillaSede';
@@ -640,7 +641,7 @@ function Editor() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-canvas text-fg">
       <BarraEditor
-        paginas={ed.pages.map((p) => ({ id: p.id, title: p.title }))}
+        paginas={ed.pages.map((p) => ({ id: p.id, title: p.title, tipo: p.page_type, slug: p.slug }))}
         paginaId={pagina.id}
         onCambiarPagina={(id) => (!ed.enV2 && ed.hasChanges ? setCambioPagina(id) : void ed.cambiarPagina(id))}
         sitioActual={sitioActual}
@@ -743,6 +744,11 @@ function Editor() {
           ajustes={ed.ajustesLienzo}
           seleccion={ed.activeSectionId ?? ed.zonaGlobal}
           pagina={{ tipo: pagina?.page_type ?? null, slug: pagina?.slug ?? null }}
+          muestra={
+            !ed.vistaVersion && tieneMuestra(pagina?.page_type)
+              ? { tipo: pagina.page_type, opciones: ed.previewEntities, valor: ed.previewEntityId, onCambiar: ed.setPreviewEntityId }
+              : null
+          }
           etiquetaSeleccion={ed.vistaVersion ? null : etiquetaSeleccion}
           avisoSeccion={ed.avisoSeccion}
           onClic={ed.vistaVersion ? undefined : seleccionarDesdeLienzo}

@@ -5,6 +5,8 @@
  * - el documento se valida con el contrato antes de escribir y de publicar (422);
  * - crear importa legacy (principal) o hereda (sede) y llama a ensure_site_draft;
  * - restaurar copia la revisión al borrador y nunca la edita;
+ * - el principal trae la ficha de producto desde el inicio (al crearlo y al leer su borrador), sin
+ *   escribir al leer ni tocar lo publicado;
  * - los SQLSTATE de las RPC se traducen a códigos de la API.
  * Organizaciones ficticias 120 y 999. No se toca la base.
  */
@@ -36,6 +38,9 @@ const REV = '44444444-4444-4444-8444-444444444444';
 const MENU = '55555555-5555-4555-8555-555555555555';
 const MENU_COPIA = '66666666-6666-4666-8666-666666666666';
 const PAGINA = '77777777-7777-4777-8777-777777777777';
+
+/** Bloques del diseño fijo de la ficha de la tienda (`BLOQUES_FICHA_FIJA`). */
+const ORDEN_FICHA_FIJA = ['product_gallery', 'product_info', 'product_description', 'product_actions', 'product_benefits', 'related_products', 'product_reviews'];
 
 function documento(titulo = 'Inicio'): DocumentoSitio {
   return {
@@ -351,7 +356,24 @@ describe('crearSitio', () => {
     expect(rpcs[0].args.p_branch).toBeNull();
     const doc = rpcs[0].args.p_document as DocumentoSitio;
     expect(doc.tema.colores.primario).toEqual({ mode: 'value', value: '#abcdef' });
-    expect(doc.paginas.map((p) => p.id)).toEqual([PAGINA]);
+    // La ficha de producto nace en el documento, con el diseño fijo de la tienda.
+    expect(doc.paginas[0].id).toBe(PAGINA);
+    expect(doc.paginas.map((p) => [p.slug, p.tipo])).toEqual([['home', 'home'], ['plantillas/product-detail', 'product_detail']]);
+    expect(doc.paginas[1].secciones.map((x) => x.tipo)).toEqual(ORDEN_FICHA_FIJA);
+  });
+
+  test('principal nuevo cuyo sitio importado ya trae ficha: se conserva la suya, sin duplicar', async () => {
+    const t = tablasBase();
+    t.website_site_states = [];
+    t.website_site_drafts = [];
+    t.website_pages.push({ id: '99999999-9999-4999-8999-999999999999', organization_id: 120, branch_id: null, slug: 'detalle-producto', title: 'Detalle', page_type: 'product_detail', is_published: true, show_in_header: false, show_in_footer: false, header_order: 0, footer_order: 0, parent_page_id: null, meta_title: null, meta_description: null, og_image_url: null });
+    const { cliente, rpcs } = clienteFake(t, (fn, args) => {
+      t.website_site_states.push({ id: SITIO, organization_id: args.p_org, branch_id: null, v2_adopted: false, v2_adopted_at: null, published_revision_id: null });
+      return { data: { site_id: SITIO, creado: true, version: 1 } };
+    });
+    await crearSitio(cliente, 120, null);
+    const doc = rpcs[0].args.p_document as DocumentoSitio;
+    expect(doc.paginas.filter((p) => p.tipo === 'product_detail').map((p) => p.id)).toEqual(['99999999-9999-4999-8999-999999999999']);
   });
 
   test('sede: hereda de la revisión publicada del principal', async () => {
@@ -385,6 +407,83 @@ describe('obtenerBorrador', () => {
     expect(b.basePrincipal?.principalConCambiosSinPublicar).toBe(true); // borrador v3, publicada desde v2
     expect(b.sitio.branchId).toBe(7);
     expect(b.erroresContrato).toEqual([]);
+  });
+});
+
+describe('obtenerBorrador: ficha de producto editable desde el inicio', () => {
+  const fichaDe = (doc: DocumentoSitio) => doc.paginas.filter((p) => p.tipo === 'product_detail');
+
+  test('principal sin ficha: el borrador leído la trae, sin escribir nada ni inventar cambios sin publicar', async () => {
+    const t = tablasBase();
+    t.website_site_drafts[0].version = 2; // igual a la publicada (source_draft_version 2)
+    const { cliente, llamadas, rpcs } = clienteFake(t);
+    const b = await obtenerBorrador(cliente, 120, SITIO);
+    const ficha = fichaDe(b.documento);
+    expect(ficha).toHaveLength(1);
+    expect(ficha[0]).toMatchObject({ slug: 'plantillas/product-detail', publicada: true });
+    expect(ficha[0].secciones.map((x) => x.tipo)).toEqual(ORDEN_FICHA_FIJA);
+    expect(validarDocumentoSitio(b.documento).ok).toBe(true);
+    expect(b.version).toBe(2);
+    expect(b.sitio.cambiosSinPublicar).toBe(false);
+    expect(llamadas.some((l) => l.op === 'update')).toBe(false);
+    expect(rpcs).toHaveLength(0);
+    // Lo guardado y lo publicado no cambian.
+    expect(fichaDe(t.website_site_drafts[0].document as DocumentoSitio)).toHaveLength(0);
+    expect(fichaDe(t.website_site_revisions[0].document as DocumentoSitio)).toHaveLength(0);
+  });
+
+  test('ids estables: dos lecturas dan la misma ficha (el editor la vuelve a abrir por su id); otro sitio, otros ids', async () => {
+    const t = tablasBase();
+    const { cliente } = clienteFake(t);
+    const a = await obtenerBorrador(cliente, 120, SITIO);
+    const b = await obtenerBorrador(cliente, 120, SITIO);
+    expect(fichaDe(a.documento)).toEqual(fichaDe(b.documento));
+    expect(fichaDe(a.documento)[0].id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    const otro = await obtenerBorrador(clienteFake(tablasBase()).cliente, 999, SITIO_AJENO);
+    expect(fichaDe(otro.documento)[0].id).not.toBe(fichaDe(a.documento)[0].id);
+  });
+
+  test('el siguiente guardado normal la deja en el borrador (compare-and-swap) y una lectura más no la duplica', async () => {
+    const t = tablasBase();
+    const { cliente } = clienteFake(t);
+    const leido = await obtenerBorrador(cliente, 120, SITIO);
+    const editado = { ...leido.documento, paginas: leido.documento.paginas.map((p) => (p.slug === 'home' ? { ...p, titulo: 'Inicio editado' } : p)) };
+    const g = await guardarBorrador(cliente, 120, SITIO, editado, leido.version);
+    expect(g.version).toBe(4);
+    const guardado = t.website_site_drafts[0].document as DocumentoSitio;
+    expect(fichaDe(guardado).map((p) => p.id)).toEqual(fichaDe(leido.documento).map((p) => p.id));
+    const otra = await obtenerBorrador(cliente, 120, SITIO);
+    expect(fichaDe(otra.documento)).toHaveLength(1);
+    expect(otra.documento).toEqual(guardado);
+    // La revisión publicada sigue sin ficha: solo sale a la web al publicar.
+    expect(fichaDe(t.website_site_revisions[0].document as DocumentoSitio)).toHaveLength(0);
+  });
+
+  test('ficha ya guardada: el documento se devuelve tal cual', async () => {
+    const t = tablasBase();
+    const propia = { ...documento(), paginas: [...documento().paginas, { id: 'ficha-propia', slug: 'plantillas/product-detail', tipo: 'product_detail', titulo: 'Mi ficha', publicada: true, secciones: [] }] };
+    t.website_site_drafts[0].document = propia;
+    const { cliente } = clienteFake(t);
+    const b = await obtenerBorrador(cliente, 120, SITIO);
+    expect(fichaDe(b.documento).map((p) => p.id)).toEqual(['ficha-propia']);
+    expect(b.documento.paginas).toHaveLength(2);
+  });
+
+  test('sede: no se le agrega (hereda la del principal)', async () => {
+    const t = tablasBase();
+    t.website_site_states.push({ id: SEDE, organization_id: 120, branch_id: 7, v2_adopted: false, v2_adopted_at: null, published_revision_id: null });
+    t.website_site_drafts.push({ site_state_id: SEDE, organization_id: 120, version: 1, updated_at: 'x', document: documento('Sede') });
+    const { cliente } = clienteFake(t);
+    expect(fichaDe((await obtenerBorrador(cliente, 120, SEDE)).documento)).toHaveLength(0);
+  });
+
+  test('«Descartar cambios» no entra en ciclo: tras descartar, la lectura trae la ficha y sigue sin cambios', async () => {
+    const t = tablasBase();
+    const { cliente } = clienteFake(t);
+    await descartarBorrador(cliente, 120, SITIO, 3);
+    const b = await obtenerBorrador(cliente, 120, SITIO);
+    expect(fichaDe(b.documento)).toHaveLength(1);
+    expect(b.sitio.cambiosSinPublicar).toBe(false);
   });
 });
 

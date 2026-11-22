@@ -140,7 +140,9 @@ export function CampoSeccion({
       return (
         <RepetidorSeccion
           campo={campo}
-          valor={valor}
+          // Sin ítems guardados, la lista arranca con los que la tienda pinta por defecto (p. ej. los
+          // 4 beneficios de la ficha): editar uno guarda la lista completa, no la deja en uno solo.
+          valor={(!Array.isArray(valor) || valor.length === 0) && Array.isArray(campo.defaultValue) ? campo.defaultValue : valor}
           onCambiar={onCambiar}
           organizationId={organizationId}
           paleta={paleta}

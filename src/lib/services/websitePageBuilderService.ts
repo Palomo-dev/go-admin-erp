@@ -3711,6 +3711,13 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
         type: 'repeater',
         group: 'content',
         itemLabelKey: 'title',
+        // Los mismos que pinta la tienda sin ítems (ProductBenefits.tsx, DEFAULT_BENEFITS).
+        defaultValue: [
+          { icon: 'Truck', title: 'Envío rápido', description: '24-48 horas' },
+          { icon: 'Shield', title: 'Garantía', description: '30 días' },
+          { icon: 'Package', title: 'Empaque seguro', description: 'Protección total' },
+          { icon: 'Star', title: 'Calidad', description: '100% original' },
+        ],
         itemFields: [
           { key: 'icon', label: 'Icono', type: 'icon' },
           { key: 'title', label: 'Título', type: 'text', placeholder: 'Envío rápido' },

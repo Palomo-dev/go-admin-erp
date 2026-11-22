@@ -92,7 +92,9 @@ export interface InspectorSeccionProps {
 
 export function InspectorSeccion(p: InspectorSeccionProps) {
   const t = useTextosEditor();
-  const [pestana, setPestana] = useState<PestanaSeccion>(p.pestanaInicial ?? 'diseno');
+  // Sin pestaña elegida: «Diseño», salvo que esté vacía (bloques de la ficha de producto,
+  // beneficios, relacionados…): entonces «Contenido», donde están sus opciones.
+  const [pestanaElegida, setPestana] = useState<PestanaSeccion | null>(p.pestanaInicial ?? null);
   const s = p.seccion;
   const definicion = getSectionDefinition(s.section_type);
   const nombre = nombreDeSeccion(s.section_type);
@@ -132,6 +134,15 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
       }
       return true;
     }).map((c) => campoLayoutCategorias(c, contenido, s.section_type) ?? c);
+
+  const disenoVacio =
+    !(definicion && definicion.variants.length > 1) &&
+    !esSeccionTarjetaProducto(s.section_type) &&
+    s.section_type !== 'promo_banners' &&
+    !(TIPOS_PAGINACION as readonly string[]).includes(s.section_type) &&
+    !(TIPOS_CARRUSEL as readonly string[]).includes(s.section_type) &&
+    campos('diseno').length === 0;
+  const pestana: PestanaSeccion = pestanaElegida ?? (disenoVacio && campos('contenido').length > 0 ? 'contenido' : 'diseno');
 
   const pintarCampo = (c: ContentFieldDef) => {
     if (c.type === 'carta') {

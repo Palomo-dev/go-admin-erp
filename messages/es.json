@@ -62460,7 +62460,8 @@
       "cajaSinSesion": "Una caja abierta registra el ingreso de {monto} que el cliente devuelve (requiere caja abierta).",
       "saldo": "El saldo a favor de {monto} queda anulado.",
       "venta": "La venta {venta} vuelve a «Pagada» y la devolución queda visible como «Anulada» con su motivo.",
-      "laVenta": "original"
+      "laVenta": "original",
+      "saldoUsado": "El saldo a favor sin usar ({disponible}) se cancela y lo usado ({usado}) pasa a cuenta por cobrar del cliente."
     },
     "fecha": {
       "etiqueta": "Fecha del asiento espejo",
@@ -62521,7 +62522,12 @@
       "periodoHoyCerrado": "El periodo de hoy está cerrado: usa la fecha original.",
       "efectivoSinCaja": "El reintegro fue en efectivo y el dinero que el cliente devuelve tiene que entrar a una caja. Abre la caja de la sucursal en POS › Cajas y vuelve a intentarlo.",
       "stockInsuficiente": "El producto ya no está en el inventario de la sucursal (se volvió a vender): no puede salir otra vez.",
-      "generico": "No se pudo anular la devolución. Inténtalo de nuevo."
+      "generico": "No se pudo anular la devolución. Inténtalo de nuevo.",
+      "saldoAFavorNoVigente": "El saldo a favor que dejó esta devolución ya se anuló o venció en Finanzas › Saldos a favor. Revísalo con el Contador: desde aquí no se puede anular.",
+      "confirmarSaldoUsado": "Confirma que lo que el cliente ya usó del saldo quedará como cuenta por cobrar.",
+      "mercanciaEnBodega": "Si la mercancía se queda en la bodega, la devolución no se anula: registra una venta nueva con factura nueva.",
+      "asientoSaldoNoEncontrado": "El saldo a favor no tiene su asiento contable publicado. Revisa Finanzas › Pendientes contables y vuelve a intentarlo.",
+      "sinCuentaPorCobrar": "Falta la cuenta de cartera en la configuración contable. Pídele al Contador que la configure."
     },
     "detalle": {
       "avisoTitulo": "Anulada el {fecha} por {usuario} · «{motivo}»",
@@ -62543,6 +62549,21 @@
     "cadena": {
       "ventaNueva": "Venta nueva",
       "reventaDe": "Reventa de"
+    },
+    "saldoUsado": {
+      "titulo": "El cliente ya usó {usado} del saldo a favor",
+      "texto": "Ese valor quedará como cuenta por cobrar a {cliente} en su cartera, contada desde la fecha de la anulación. La compra donde lo gastó ({compras}) no cambia.",
+      "textoSinCompra": "Ese valor quedará como cuenta por cobrar a {cliente} en su cartera, contada desde la fecha de la anulación.",
+      "elCliente": "el cliente"
+    },
+    "confirmaciones": {
+      "mercancia": "El cliente se lleva otra vez la mercancía.",
+      "mercanciaAyudaAntes": "¿La mercancía se queda en la bodega? Entonces no se anula:",
+      "mercanciaAyudaEnlace": "registra una venta nueva",
+      "mercanciaAyudaDespues": " con factura nueva.",
+      "saldo": "Entiendo que {usado} quedarán como cuenta por cobrar al cliente.",
+      "faltaMercancia": "Marca que el cliente se lleva otra vez la mercancía. Si se queda en la bodega, registra una venta nueva.",
+      "faltaSaldo": "Confirma que {usado} quedarán como cuenta por cobrar al cliente."
     }
   },
   "detallesMarca": {

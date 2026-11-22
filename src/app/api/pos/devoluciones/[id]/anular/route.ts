@@ -4,7 +4,7 @@
  * - GET: el diagnóstico que elige el diálogo (`fn_devolucion_anulacion_estado`):
  *   estado de la nota crédito ante la DIAN, periodos (original y hoy), caja
  *   abierta, asientos a reversar y lo que bloquea.
- * - POST `{ motivo, fecha_espejo: 'hoy' | 'original' }`: la anulación en una
+ * - POST `{ motivo, fecha_espejo, confirmar_saldo_usado, mercancia_vuelve }`: la anulación en una
  *   transacción (`fn_devolucion_anular`).
  *
  * La organización sale de la sesión (`withOrg`); si el body trae otra, 403 y

@@ -35468,6 +35468,16 @@
       "errorTitulo": "Não conseguimos abrir a configuração do site",
       "errorDescripcion": "Seu progresso está salvo. Verifique a conexão e tente de novo.",
       "conflicto": "Outra pessoa salvou uma versão mais nova do site. Recarregamos para você continuar a partir da última.",
+      "omitir": "Pular esta etapa",
+      "omitirCorto": "Pular",
+      "saltar": {
+        "boton": "Pular configuração",
+        "titulo": "Pular a configuração?",
+        "descripcion": "Guardamos o que você já escolheu. Seu site fica como rascunho e não é publicado. Você pode terminar a configuração quando quiser em Site › Resumo, ou montá-lo direto no editor.",
+        "seguir": "Continuar configurando",
+        "irEditor": "Ir para o editor",
+        "irResumen": "Pular e ir para o resumo"
+      },
       "pasos": {
         "giro": "Ramo e objetivo",
         "plantilla": "Modelo",
@@ -35503,12 +35513,15 @@
       },
       "plantilla": {
         "titulo": "Escolha um modelo",
-        "descripcion": "Mostramos primeiro os de {giro}. O modelo define a estrutura; o estilo você escolhe no próximo passo.",
+        "descripcion": "Mostramos primeiro os de {giro}. Cada modelo traz seu design completo e você pode trocá-lo quando quiser em Design.",
         "todas": "Todos",
         "filtros": "Filtrar modelos",
         "errorCatalogo": "Não conseguimos carregar os modelos",
         "vacio": "Não há modelos para este filtro. Tente «Todos».",
-        "elige": "Escolha um modelo para continuar."
+        "elige": "Escolha um modelo para continuar.",
+        "descripcionTienda": "Mostramos primeiro os de loja. Cada modelo traz seu design completo: início, página de categoria e página de produto. Você pode trocá-lo quando quiser em Design.",
+        "soloEstilo": "Seu site já está publicado: do modelo pegamos as cores e as fontes, e seu conteúdo fica como está. Para mudar a estrutura inteira, use Design › Modelos.",
+        "nueva": "Novo"
       },
       "estilo": {
         "titulo": "Escolha um estilo",

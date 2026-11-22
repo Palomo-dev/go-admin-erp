@@ -35458,6 +35458,16 @@
       "errorTitulo": "Nous n'avons pas pu ouvrir la configuration du site",
       "errorDescripcion": "Votre avancement est enregistré. Vérifiez la connexion et réessayez.",
       "conflicto": "Quelqu'un d'autre a enregistré une version plus récente du site. Nous avons rechargé pour que vous repreniez depuis la dernière.",
+      "omitir": "Ignorer cette étape",
+      "omitirCorto": "Ignorer",
+      "saltar": {
+        "boton": "Passer la configuration",
+        "titulo": "Passer la configuration ?",
+        "descripcion": "Nous gardons ce que vous avez déjà choisi. Votre site reste en brouillon et n'est pas publié. Vous pouvez terminer la configuration quand vous voulez depuis Site web › Résumé, ou le construire directement dans l'éditeur.",
+        "seguir": "Continuer la configuration",
+        "irEditor": "Aller à l'éditeur",
+        "irResumen": "Passer et aller au résumé"
+      },
       "pasos": {
         "giro": "Activité et objectif",
         "plantilla": "Modèle",
@@ -35493,12 +35503,15 @@
       },
       "plantilla": {
         "titulo": "Choisissez un modèle",
-        "descripcion": "Nous montrons d'abord ceux pour {giro}. Le modèle définit la structure ; vous choisissez le style à l'étape suivante.",
+        "descripcion": "Nous montrons d'abord ceux pour {giro}. Chaque modèle apporte son design complet et vous pouvez le changer quand vous voulez dans Design.",
         "todas": "Tous",
         "filtros": "Filtrer les modèles",
         "errorCatalogo": "Nous n'avons pas pu charger les modèles",
         "vacio": "Aucun modèle pour ce filtre. Essayez « Tous ».",
-        "elige": "Choisissez un modèle pour continuer."
+        "elige": "Choisissez un modèle pour continuer.",
+        "descripcionTienda": "Nous montrons d'abord ceux pour boutique. Chaque modèle apporte son design complet : accueil, page de catégorie et fiche produit. Vous pouvez le changer quand vous voulez dans Design.",
+        "soloEstilo": "Votre site est déjà publié : nous prenons les couleurs et les polices du modèle et votre contenu reste tel quel. Pour changer toute la structure, utilisez Design › Modèles.",
+        "nueva": "Nouveau"
       },
       "estilo": {
         "titulo": "Choisissez un style",

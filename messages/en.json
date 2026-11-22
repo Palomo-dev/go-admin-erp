@@ -35458,6 +35458,16 @@
       "errorTitulo": "We couldn't open the site setup",
       "errorDescripcion": "Your progress is saved. Check your connection and try again.",
       "conflicto": "Someone else saved a newer version of the site. We reloaded so you continue from the latest.",
+      "omitir": "Skip this step",
+      "omitirCorto": "Skip",
+      "saltar": {
+        "boton": "Skip setup",
+        "titulo": "Skip the setup?",
+        "descripcion": "We keep what you already chose. Your site stays as a draft and is not published. You can finish the setup any time from Website › Overview, or build it directly in the editor.",
+        "seguir": "Keep setting up",
+        "irEditor": "Go to the editor",
+        "irResumen": "Skip and go to the overview"
+      },
       "pasos": {
         "giro": "Business type and goal",
         "plantilla": "Template",
@@ -35493,12 +35503,15 @@
       },
       "plantilla": {
         "titulo": "Choose a template",
-        "descripcion": "We show {giro} templates first. The template defines the structure; you choose the style in the next step.",
+        "descripcion": "We show {giro} templates first. Each template comes with its complete design, and you can change it any time in Design.",
         "todas": "All",
         "filtros": "Filter templates",
         "errorCatalogo": "We couldn't load the templates",
         "vacio": "There are no templates for this filter. Try «All».",
-        "elige": "Choose a template to continue."
+        "elige": "Choose a template to continue.",
+        "descripcionTienda": "We show store templates first. Each template comes with its complete design: home, category page and product page. You can change it any time in Design.",
+        "soloEstilo": "Your site is already published: we take the colors and fonts from the template and your content stays as it is. To change the whole structure, use Design › Templates.",
+        "nueva": "New"
       },
       "estilo": {
         "titulo": "Choose a style",

@@ -13,7 +13,11 @@
 import { TEMPLATE_PRESETS, type TemplatePresetInfo } from '@/lib/services/websiteSettingsService';
 import type { MuestraEstilo } from '../../ui/StylePresetCard';
 import type { TemaVistaSitio } from '../../ui/temaVistaSitio';
-import type { GiroSitio } from '@/lib/website/onboardingSitio';
+import { GIROS_SITIO, type GiroSitio } from '@/lib/website/onboardingSitio';
+import type { PlantillaCatalogo } from '@/lib/website/contrato/catalogoPlantillas';
+import { secundarioDe } from '@/lib/website/v2/tokensEstilo';
+import { CATALOGO_SITIO, muestraDeEstilo, nombreFuentes, temaVistaDeEstilo } from '../../diseno/catalogo';
+import { esPlantillaTiendaNueva } from '../../diseno/plantillasTienda';
 import type { PresetTema } from '@/lib/website/v2/temaDesdePreset';
 import { fondoDelModo } from '@/lib/website/v2/temaDesdePreset';
 import { contraste } from '@/lib/utils/contrasteColor';
@@ -104,4 +108,97 @@ export function plantillasDelGiro(giro: GiroSitio | 'todas', lista: readonly Pla
 /** Giros con al menos una plantilla, para los filtros del paso 2. */
 export function girosConPlantillas(lista: readonly PlantillaAsistente[] = PLANTILLAS_ASISTENTE): GiroSitio[] {
   return Array.from(new Set(lista.map((p) => p.giro)));
+}
+
+// ─── Paso 2 con el catálogo real (Figma «Asistente / Paso 2 — todas a la vista», 2026-11-22) ──
+//
+// El paso 2 ya no ofrece los 28 presets de color: muestra las plantillas del catálogo de Diseño
+// (`CATALOGO_SITIO`), con su Inicio diseñado como miniatura, y al elegir una se arma el sitio
+// con ella (la misma «Plantilla completa» de Diseño). El paso 3 sigue con los presets de estilo.
+
+/** Plantilla del paso 2: la del catálogo, con lo que pintan las tarjetas y el paso 3. */
+export interface PlantillaCatalogoAsistente extends PlantillaAsistente {
+  /** La del catálogo (`plantillaCompleta` y «Solo estilo» la necesitan entera). */
+  catalogo: PlantillaCatalogo;
+  /** Las 7 de tienda de 2026-11: insignia «Nueva». */
+  nueva: boolean;
+}
+
+function giroDelAsistente(giro: PlantillaCatalogo['giro']): GiroSitio {
+  return (GIROS_SITIO as readonly string[]).includes(giro) ? (giro as GiroSitio) : 'otro';
+}
+
+export function plantillaDesdeCatalogo(p: PlantillaCatalogo): PlantillaCatalogoAsistente {
+  const e = p.estilo;
+  const muestra = muestraDeEstilo(e);
+  return {
+    id: p.id,
+    nombre: p.nombre,
+    descripcion: p.descripcion,
+    giro: giroDelAsistente(p.giro),
+    porDefecto: p.porDefecto,
+    fuentes: nombreFuentes(e),
+    preset: {
+      id: p.id,
+      modo: e.modo,
+      primario: e.acento,
+      secundario: e.secundario ?? secundarioDe(e),
+      fuenteTitulos: e.fuenteTitulos,
+      fuenteCuerpo: e.fuenteCuerpo,
+    },
+    muestra,
+    tema: temaVistaDeEstilo(e),
+    catalogo: p,
+    nueva: esPlantillaTiendaNueva(p.id),
+  };
+}
+
+/**
+ * Orden del paso 2 dentro de un giro: en tienda, las 4 clásicas renovadas primero (la de por
+ * defecto encabeza) y después las 7 nuevas en el orden de la galería; en los demás giros, la de
+ * por defecto y luego el orden del catálogo.
+ */
+function ordenDelPaso(a: PlantillaCatalogoAsistente, b: PlantillaCatalogoAsistente): number {
+  return Number(a.nueva) - Number(b.nueva) || Number(b.porDefecto) - Number(a.porDefecto);
+}
+
+export const PLANTILLAS_CATALOGO_ASISTENTE: readonly PlantillaCatalogoAsistente[] = CATALOGO_SITIO.plantillas.map(plantillaDesdeCatalogo);
+
+/** Las del filtro, en el orden del paso 2; `'todas'` pone primero las del giro del sitio. */
+export function plantillasCatalogoDelGiro(
+  filtro: GiroSitio | 'todas',
+  giroSitio: GiroSitio,
+  lista: readonly PlantillaCatalogoAsistente[] = PLANTILLAS_CATALOGO_ASISTENTE,
+): PlantillaCatalogoAsistente[] {
+  if (filtro !== 'todas') return lista.filter((p) => p.giro === filtro).sort(ordenDelPaso);
+  // `sort` es estable: dentro de cada giro se respeta el orden del paso.
+  const giros = Array.from(new Set(lista.map((p) => p.giro)));
+  const orden = [giroSitio, ...giros.filter((g) => g !== giroSitio)];
+  return [...lista].sort((a, b) => orden.indexOf(a.giro) - orden.indexOf(b.giro) || ordenDelPaso(a, b));
+}
+
+/**
+ * La plantilla del paso 2 a partir de lo guardado: el id del catálogo (lo que guarda el asistente
+ * nuevo y `tema.preset`) o, para lo guardado antes, la plantilla del sitio que lo traía de base.
+ */
+export function plantillaCatalogoPorId(
+  id: string | null | undefined,
+  lista: readonly PlantillaCatalogoAsistente[] = PLANTILLAS_CATALOGO_ASISTENTE,
+): PlantillaCatalogoAsistente | null {
+  if (!id) return null;
+  return lista.find((p) => p.id === id) ?? lista.find((p) => p.catalogo.base === id && p.porDefecto) ?? lista.find((p) => p.catalogo.base === id) ?? null;
+}
+
+/**
+ * Estilos del paso 3 cuando la plantilla elegida no es uno de los presets: la plantilla va
+ * primero («quedarse con el de la plantilla») y después los presets del giro.
+ */
+export function estilosConPlantilla(
+  plantilla: PlantillaAsistente | null,
+  giro: GiroSitio,
+  lista: readonly PlantillaAsistente[] = PLANTILLAS_ASISTENTE,
+): readonly PlantillaAsistente[] | undefined {
+  if (!plantilla || lista.some((p) => p.id === plantilla.id)) return undefined;
+  // Con el giro del sitio, para que el paso 3 la muestre aunque se haya elegido de otro giro.
+  return [{ ...plantilla, giro, porDefecto: true }, ...lista.map((p) => (p.porDefecto ? { ...p, porDefecto: false } : p))];
 }

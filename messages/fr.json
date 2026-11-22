@@ -35696,6 +35696,146 @@
       "controles": {
         "degradado1": "Couleur de début du dégradé",
         "degradado2": "Couleur de fin du dégradé"
+      },
+      "cabeceraTienda": {
+        "volver": "Retour à l’en-tête",
+        "comoHoy": "Revenir à l’état actuel",
+        "iconos": {
+          "titulo": "En-tête › Icônes",
+          "migas": "Global · visible sur toutes les pages",
+          "abrir": "Icônes de l’en-tête",
+          "abrirAyuda": "Style, taille, libellés et compteur du panier",
+          "estilo": "Style des icônes",
+          "estiloAyuda": "S’applique au compte, au panier, aux favoris et à la devise. Icône seule et Cercle utilisent votre boîte d’icônes actuelle, qui est conservée.",
+          "estiloOpcion": {
+            "icono": "Icône seule",
+            "texto": "Avec libellé",
+            "pildora": "Pilule",
+            "relleno": "Plein",
+            "circulo": "Cercle"
+          },
+          "miniTexto": "Panier",
+          "posicionTexto": "Libellé",
+          "debajo": "Dessous",
+          "alLado": "À côté",
+          "tamano": "Taille",
+          "trazo": "Trait",
+          "trazoOpcion": {
+            "fino": "Fin",
+            "normal": "Normal"
+          },
+          "mostrarTexto": "Afficher le libellé",
+          "mostrarTextoAyuda": "Avec «Avec libellé» il va sous l’icône ; avec «Pilule» et «Plein», à côté.",
+          "mostrarTextoSinTexto": "Icône seule et Cercle n’ont pas de libellé.",
+          "cuales": "Icônes affichées",
+          "cualesAyuda": "Chaque libellé est modifiable. Vide = le libellé par défaut.",
+          "cuenta": "Compte",
+          "carrito": "Panier",
+          "favoritos": "Favoris",
+          "moneda": "Devise",
+          "texto": "Libellé",
+          "porDefecto": "Par défaut : «{texto}».",
+          "contador": "Compteur",
+          "contadorOpcion": {
+            "numero": "Nombre",
+            "punto": "Point",
+            "oculto": "Masqué"
+          },
+          "glifo": "Icône",
+          "glifoOpcion": {
+            "carrito": "Chariot",
+            "bolsa": "Sac"
+          },
+          "favoritosAyuda": "Ouvre Mon compte › Favoris : les produits que le client a marqués d’un cœur.",
+          "monedaEstilo": "Style et devises",
+          "monedaVer": "Voir «Sélecteur de devise»"
+        },
+        "moneda": {
+          "titulo": "En-tête › Sélecteur de devise",
+          "migas": "Global · visible sur toutes les pages",
+          "abrir": "Sélecteur de devise",
+          "abrirAyuda": "Style, devises visibles et devise à l’arrivée",
+          "selector": "Sélecteur de devise",
+          "mostrar": "Afficher dans l’en-tête",
+          "mostrarAyuda": "Visible seulement si la boutique propose plus d’une devise.",
+          "estilo": "Style du sélecteur",
+          "estiloAyuda": "Sans choix, celui d’aujourd’hui : globe, code et flèche.",
+          "estiloOpcion": {
+            "codigo": "Code",
+            "bandera": "Drapeau + code",
+            "simbolo": "Code + symbole",
+            "icono": "Icône seule",
+            "segmento": "Segment"
+          },
+          "flecha": "Afficher la flèche",
+          "visibles": "Devises visibles dans la boutique",
+          "visiblesAyuda": "Ici vous choisissez seulement celles que voit le client.",
+          "base": "(base)",
+          "visiblesPie": "La devise de base est toujours visible et en premier.",
+          "alEntrar": "Devise à l’arrivée",
+          "alEntrarOpcion": {
+            "pais": "Selon le pays du visiteur",
+            "base": "Toujours la devise de base ({base})"
+          },
+          "alEntrarAyuda": "Aujourd’hui la boutique détecte le pays. Si ce pays n’a pas de devise visible, {base} est utilisée.",
+          "celular": "Sur mobile",
+          "celularOpcion": {
+            "hoja": "Feuille du bas",
+            "lateral": "Menu latéral",
+            "chips": "Puces",
+            "barra": "Dans la barre"
+          },
+          "celularAyuda": {
+            "hoja": "Comme aujourd’hui : une ligne du menu ouvre la feuille des devises.",
+            "lateral": "La liste se déplie dans le menu latéral.",
+            "chips": "Les devises s’affichent en puces dans le menu.",
+            "barra": "Le drapeau (ou le code) est à côté du panier et ouvre la feuille."
+          }
+        },
+        "carrito": {
+          "titulo": "En-tête › Panier",
+          "migas": "Global · tiroir ouvert depuis l’icône du panier",
+          "abrir": "Tiroir du panier",
+          "abrirAyuda": "Bouton principal, liens et livraison gratuite",
+          "boton": "Bouton principal du panier",
+          "botonAyuda": "Avant, seulement dans l’ancien éditeur (Réglages globaux). Maintenant ici, avec les mêmes libellés.",
+          "modo": {
+            "al_abrir": "Dynamique (alterne)",
+            "fijo": "Libellé fixe"
+          },
+          "modoAyuda": {
+            "al_abrir": "Alterne entre plusieurs libellés",
+            "fijo": "Toujours le même"
+          },
+          "textos": "Libellés qui alternent",
+          "textoN": "Libellé {n}",
+          "quitarTexto": "Retirer le libellé {n}",
+          "agregarTexto": "Ajouter un libellé",
+          "textosAyuda": "Glissez pour réordonner. Jusqu’à {max} libellés de {largo} caractères.",
+          "cuando": "Quand il change",
+          "cuandoAlAbrir": "À chaque ouverture du panier",
+          "textoFijo": "Libellé du bouton",
+          "textoFijoAyuda": "Vide = «{texto}».",
+          "sinBorrador": "Ce site n’a pas encore de brouillon : le bouton est enregistré dans les réglages habituels.",
+          "enlace": "Lien secondaire",
+          "enlaceMostrar": "Afficher",
+          "enlaceTexto": "Libellé",
+          "enlaceAyuda": "Ouvre la page du panier.",
+          "enlaceEstilo": "Style",
+          "enlaceEstiloOpcion": {
+            "borde": "Avec bordure",
+            "enlace": "Lien"
+          },
+          "envio": "Livraison gratuite",
+          "envioBarra": "Afficher la barre de progression",
+          "envioFalta": "Tant qu’il manque",
+          "envioFaltaAyuda": "'{monto}' est remplacé par le montant restant. Le seuil est dans Ventes en ligne › Livraisons.",
+          "envioLogrado": "Une fois atteint",
+          "otros": "Autres libellés",
+          "tituloCajon": "Titre du tiroir",
+          "seguir": "Continuer mes achats",
+          "textosSoloBorrador": "Les libellés du tiroir sont enregistrés quand le site passe au nouveau brouillon ; en attendant, ils s’affichent dans l’aperçu."
+        }
       }
     },
     "paginas": {

@@ -793,6 +793,7 @@ function Editor() {
                 dispositivo={ed.dispositivo}
                 coloresTema={coloresTema}
                 giro={giroShell}
+                organizationId={ed.organizationId}
                 onEditarMenu={() => setHojaMenu(true)}
                 onCerrar={() => ed.seleccionarZona(null)}
               />

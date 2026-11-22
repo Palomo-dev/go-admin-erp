@@ -35696,6 +35696,146 @@
       "controles": {
         "degradado1": "Gradient start color",
         "degradado2": "Gradient end color"
+      },
+      "cabeceraTienda": {
+        "volver": "Back to Header",
+        "comoHoy": "Back to how it is today",
+        "iconos": {
+          "titulo": "Header › Icons",
+          "migas": "Global · shown on every page",
+          "abrir": "Header icons",
+          "abrirAyuda": "Style, size, labels and cart counter",
+          "estilo": "Icon style",
+          "estiloAyuda": "Applies to account, cart, favorites and currency. Icon only and Circle use your current icon box, which is kept.",
+          "estiloOpcion": {
+            "icono": "Icon only",
+            "texto": "With label",
+            "pildora": "Pill",
+            "relleno": "Filled",
+            "circulo": "Circle"
+          },
+          "miniTexto": "Cart",
+          "posicionTexto": "Label",
+          "debajo": "Below",
+          "alLado": "Beside",
+          "tamano": "Size",
+          "trazo": "Stroke",
+          "trazoOpcion": {
+            "fino": "Thin",
+            "normal": "Regular"
+          },
+          "mostrarTexto": "Show label",
+          "mostrarTextoAyuda": "With «With label» it goes below the icon; with «Pill» and «Filled», beside it.",
+          "mostrarTextoSinTexto": "Icon only and Circle have no label.",
+          "cuales": "Which icons are shown",
+          "cualesAyuda": "Every label can be edited. Empty = the default label.",
+          "cuenta": "Account",
+          "carrito": "Cart",
+          "favoritos": "Favorites",
+          "moneda": "Currency",
+          "texto": "Label",
+          "porDefecto": "Default: «{texto}».",
+          "contador": "Counter",
+          "contadorOpcion": {
+            "numero": "Number",
+            "punto": "Dot",
+            "oculto": "Hidden"
+          },
+          "glifo": "Icon",
+          "glifoOpcion": {
+            "carrito": "Cart",
+            "bolsa": "Bag"
+          },
+          "favoritosAyuda": "Opens My account › Favorites: the products the customer saved with the heart.",
+          "monedaEstilo": "Style and currencies",
+          "monedaVer": "See «Currency selector»"
+        },
+        "moneda": {
+          "titulo": "Header › Currency selector",
+          "migas": "Global · shown on every page",
+          "abrir": "Currency selector",
+          "abrirAyuda": "Style, visible currencies and starting currency",
+          "selector": "Currency selector",
+          "mostrar": "Show in the header",
+          "mostrarAyuda": "Only shown when the store offers more than one currency.",
+          "estilo": "Selector style",
+          "estiloAyuda": "With none chosen, today's: globe, code and arrow.",
+          "estiloOpcion": {
+            "codigo": "Code",
+            "bandera": "Flag + code",
+            "simbolo": "Code + symbol",
+            "icono": "Icon only",
+            "segmento": "Segment"
+          },
+          "flecha": "Show arrow",
+          "visibles": "Currencies visible in the store",
+          "visiblesAyuda": "Here you only choose which ones the customer sees.",
+          "base": "(base)",
+          "visiblesPie": "The base currency is always visible and comes first.",
+          "alEntrar": "Starting currency",
+          "alEntrarOpcion": {
+            "pais": "Based on the visitor's country",
+            "base": "Always the base currency ({base})"
+          },
+          "alEntrarAyuda": "Today the store detects the country. If that country has no visible currency, {base} is used.",
+          "celular": "On mobile",
+          "celularOpcion": {
+            "hoja": "Bottom sheet",
+            "lateral": "Side menu",
+            "chips": "Chips",
+            "barra": "In the bar"
+          },
+          "celularAyuda": {
+            "hoja": "As today: a row in the menu opens the sheet with the currencies.",
+            "lateral": "The list unfolds inside the side menu.",
+            "chips": "Currencies are shown as chips inside the menu.",
+            "barra": "The flag (or the code) sits next to the cart and opens the sheet."
+          }
+        },
+        "carrito": {
+          "titulo": "Header › Cart",
+          "migas": "Global · drawer opened from the cart icon",
+          "abrir": "Cart drawer",
+          "abrirAyuda": "Main button, links and free shipping",
+          "boton": "Main cart button",
+          "botonAyuda": "Previously only in the old editor (Global settings). Now here, with the same labels.",
+          "modo": {
+            "al_abrir": "Dynamic (rotates)",
+            "fijo": "Fixed label"
+          },
+          "modoAyuda": {
+            "al_abrir": "Switches between several labels",
+            "fijo": "Always the same"
+          },
+          "textos": "Rotating labels",
+          "textoN": "Label {n}",
+          "quitarTexto": "Remove label {n}",
+          "agregarTexto": "Add label",
+          "textosAyuda": "Drag to reorder. Up to {max} labels of {largo} characters.",
+          "cuando": "When it changes",
+          "cuandoAlAbrir": "Every time the cart opens",
+          "textoFijo": "Button label",
+          "textoFijoAyuda": "Empty = «{texto}».",
+          "sinBorrador": "This site has no draft yet: the button is saved in the usual settings.",
+          "enlace": "Secondary link",
+          "enlaceMostrar": "Show",
+          "enlaceTexto": "Label",
+          "enlaceAyuda": "Opens the cart page.",
+          "enlaceEstilo": "Style",
+          "enlaceEstiloOpcion": {
+            "borde": "Outlined",
+            "enlace": "Link"
+          },
+          "envio": "Free shipping",
+          "envioBarra": "Show progress bar",
+          "envioFalta": "While missing",
+          "envioFaltaAyuda": "'{monto}' is replaced with the amount left. The threshold is in Online sales › Shipping.",
+          "envioLogrado": "Once reached",
+          "otros": "Other labels",
+          "tituloCajon": "Drawer title",
+          "seguir": "Continue shopping",
+          "textosSoloBorrador": "Drawer labels are saved once the site moves to the new draft; meanwhile they show in the preview."
+        }
       }
     },
     "paginas": {

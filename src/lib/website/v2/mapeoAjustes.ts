@@ -383,6 +383,19 @@ export const OPCIONES_SHELL: Readonly<Record<string, OpcionShell>> = {
    */
   header_icons_box: { zona: 'header', porDefecto: null, nueva: true },
   /**
+   * Cabecera de la tienda (Figma «16 Sitio web» 2747:57859, aprobado 2026-11-22). Tres objetos que
+   * lee y valida `cabeceraTienda.ts` (sin regla aquí: se aceptan tal cual y el lector descarta lo
+   * que no cumple). `null` = la tienda de hoy.
+   * - `header_iconos`: estilo (con texto, píldora, relleno), tamaño S/M/L, trazo, textos propios,
+   *   contador del carrito y favoritos. «Solo ícono» y «Círculo» siguen en header_icons_circle/_box.
+   * - `header_moneda`: estilo del selector, flecha, monedas visibles, moneda al entrar y celular.
+   * - `header_carrito`: botón principal (modo y textos; sin él, `cart_button_mode`/`_texts` de la
+   *   fila legacy), enlace secundario, «Seguir comprando», título y mensajes de envío gratis.
+   */
+  header_iconos: { zona: 'header', porDefecto: null, nueva: true },
+  header_moneda: { zona: 'header', porDefecto: null, nueva: true },
+  header_carrito: { zona: 'header', porDefecto: null, nueva: true },
+  /**
    * Menú del celular (cajón, hoja, pantalla completa y pestañas). `null` = automático:
    * hereda el encabezado y, si hace falta, el contraste del fondo. No pisa lo ya guardado.
    */

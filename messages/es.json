@@ -35711,6 +35711,146 @@
       "controles": {
         "degradado1": "Color inicial del degradado",
         "degradado2": "Color final del degradado"
+      },
+      "cabeceraTienda": {
+        "volver": "Volver a Encabezado",
+        "comoHoy": "Volver a como está hoy",
+        "iconos": {
+          "titulo": "Encabezado › Íconos",
+          "migas": "Global · aparece en todas las páginas",
+          "abrir": "Íconos de la cabecera",
+          "abrirAyuda": "Estilo, tamaño, textos y contador del carrito",
+          "estilo": "Estilo de los íconos",
+          "estiloAyuda": "Se aplica a cuenta, carrito, favoritos y moneda. Solo ícono y Círculo usan la caja de íconos que ya tienes; se conserva.",
+          "estiloOpcion": {
+            "icono": "Solo ícono",
+            "texto": "Con texto",
+            "pildora": "Píldora",
+            "relleno": "Relleno",
+            "circulo": "Círculo"
+          },
+          "miniTexto": "Carrito",
+          "posicionTexto": "Texto",
+          "debajo": "Debajo",
+          "alLado": "Al lado",
+          "tamano": "Tamaño",
+          "trazo": "Trazo",
+          "trazoOpcion": {
+            "fino": "Fino",
+            "normal": "Normal"
+          },
+          "mostrarTexto": "Mostrar texto",
+          "mostrarTextoAyuda": "Con «Con texto» va debajo del ícono; con «Píldora» y «Relleno», al lado.",
+          "mostrarTextoSinTexto": "Solo ícono y Círculo no llevan texto.",
+          "cuales": "Qué íconos se muestran",
+          "cualesAyuda": "Cada texto es editable. Vacío = el texto por defecto.",
+          "cuenta": "Cuenta",
+          "carrito": "Carrito",
+          "favoritos": "Favoritos",
+          "moneda": "Moneda",
+          "texto": "Texto",
+          "porDefecto": "Por defecto: «{texto}».",
+          "contador": "Contador",
+          "contadorOpcion": {
+            "numero": "Número",
+            "punto": "Punto",
+            "oculto": "Oculto"
+          },
+          "glifo": "Ícono",
+          "glifoOpcion": {
+            "carrito": "Carrito",
+            "bolsa": "Bolsa"
+          },
+          "favoritosAyuda": "Lleva a Mi cuenta › Favoritos: los productos que el cliente marcó con el corazón.",
+          "monedaEstilo": "Estilo y monedas",
+          "monedaVer": "Ver «Selector de moneda»"
+        },
+        "moneda": {
+          "titulo": "Encabezado › Selector de moneda",
+          "migas": "Global · aparece en todas las páginas",
+          "abrir": "Selector de moneda",
+          "abrirAyuda": "Estilo, monedas visibles y moneda al entrar",
+          "selector": "Selector de moneda",
+          "mostrar": "Mostrar en la cabecera",
+          "mostrarAyuda": "Solo aparece si la tienda ofrece más de una moneda.",
+          "estilo": "Estilo del selector",
+          "estiloAyuda": "Sin elegir, el de hoy: globo, código y flecha.",
+          "estiloOpcion": {
+            "codigo": "Código",
+            "bandera": "Bandera + código",
+            "simbolo": "Código + símbolo",
+            "icono": "Solo ícono",
+            "segmento": "Segmento"
+          },
+          "flecha": "Mostrar flecha",
+          "visibles": "Monedas visibles en la tienda",
+          "visiblesAyuda": "Aquí solo eliges cuáles ve el cliente.",
+          "base": "(base)",
+          "visiblesPie": "La base siempre se ve y va primero.",
+          "alEntrar": "Moneda al entrar",
+          "alEntrarOpcion": {
+            "pais": "Según el país del visitante",
+            "base": "Siempre la moneda base ({base})"
+          },
+          "alEntrarAyuda": "Hoy la tienda detecta el país. Si el país no tiene una moneda visible, se usa {base}.",
+          "celular": "En el celular",
+          "celularOpcion": {
+            "hoja": "Hoja inferior",
+            "lateral": "Menú lateral",
+            "chips": "Chips",
+            "barra": "En la barra"
+          },
+          "celularAyuda": {
+            "hoja": "Como hoy: una fila en el menú abre la hoja con las monedas.",
+            "lateral": "La lista se despliega dentro del menú lateral.",
+            "chips": "Las monedas van como chips dentro del menú.",
+            "barra": "La bandera (o el código) va junto al carrito y abre la hoja."
+          }
+        },
+        "carrito": {
+          "titulo": "Encabezado › Carrito",
+          "migas": "Global · cajón que se abre desde el ícono del carrito",
+          "abrir": "Cajón del carrito",
+          "abrirAyuda": "Botón principal, enlaces y envío gratis",
+          "boton": "Botón principal del carrito",
+          "botonAyuda": "Antes solo en el editor anterior (Ajustes globales). Ahora aquí, con los mismos textos.",
+          "modo": {
+            "al_abrir": "Dinámico (rota)",
+            "fijo": "Texto fijo"
+          },
+          "modoAyuda": {
+            "al_abrir": "Cambia entre varios textos",
+            "fijo": "Siempre el mismo"
+          },
+          "textos": "Textos que rotan",
+          "textoN": "Texto {n}",
+          "quitarTexto": "Quitar el texto {n}",
+          "agregarTexto": "Agregar texto",
+          "textosAyuda": "Arrastra para ordenar. Máximo {max} textos de {largo} letras.",
+          "cuando": "Cuándo cambia",
+          "cuandoAlAbrir": "Cada vez que se abre el carrito",
+          "textoFijo": "Texto del botón",
+          "textoFijoAyuda": "Vacío = «{texto}».",
+          "sinBorrador": "Este sitio aún no tiene borrador: el botón se guarda en los ajustes de siempre.",
+          "enlace": "Enlace secundario",
+          "enlaceMostrar": "Mostrar",
+          "enlaceTexto": "Texto",
+          "enlaceAyuda": "Lleva a la página del carrito.",
+          "enlaceEstilo": "Estilo",
+          "enlaceEstiloOpcion": {
+            "borde": "Con borde",
+            "enlace": "Enlace"
+          },
+          "envio": "Envío gratis",
+          "envioBarra": "Mostrar barra de progreso",
+          "envioFalta": "Mientras falta",
+          "envioFaltaAyuda": "'{monto}' se cambia por lo que falta. El tope está en Ventas en línea › Envíos.",
+          "envioLogrado": "Al lograrlo",
+          "otros": "Otros textos",
+          "tituloCajon": "Título del cajón",
+          "seguir": "Seguir comprando",
+          "textosSoloBorrador": "Los textos del cajón se guardan cuando el sitio pasa al borrador nuevo; mientras tanto se ven en la vista previa."
+        }
       }
     },
     "paginas": {

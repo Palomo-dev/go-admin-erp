@@ -1,6 +1,6 @@
 import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
 import { saveBiometricCredentials } from '@/lib/services/biometricService';
-import { guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
+import { guardarOrganizacionActiva, invalidateBranchIdCache, organizacionGuardadaId } from '@/lib/hooks/useOrganization';
 import { destinoTrasLogin } from '@/lib/auth/recuperacionSesion';
 import { huellaDispositivo } from '@/lib/auth/huellaDispositivo';
 import { sesionAuthDeToken } from '@/lib/auth/sesionAuth';
@@ -32,8 +32,15 @@ export interface Organization {
  */
 export function activarOrganizacion(organization: Pick<Organization, 'id' | 'name' | 'logo_url'>): void {
   localStorage.removeItem('appLayout_userData_cache');
-  localStorage.removeItem('currentBranchId');
-  sessionStorage.removeItem('currentBranchId');
+  // La sucursal guardada se conserva si se vuelve a entrar a la MISMA
+  // organización en este equipo: es la «última usada» del paso de sucursal
+  // (/auth/select-organization/sucursal). De otra organización, se borra. El
+  // servidor y el BranchProvider la validan de todos modos contra el alcance.
+  if (organizacionGuardadaId() !== Number(organization.id)) {
+    localStorage.removeItem('currentBranchId');
+    sessionStorage.removeItem('currentBranchId');
+    localStorage.removeItem('branchFilterAll');
+  }
   invalidateBranchIdCache();
   guardarOrganizacionActiva({
     id: Number(organization.id),

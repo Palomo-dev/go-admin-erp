@@ -58,6 +58,8 @@ import { BADGE_ESTADO_DEVOLUCION, esParcial, estadoDevolucion } from '@/lib/pos/
 import { ErrorPeticionDevoluciones, pedirDetalleDevolucion } from '@/lib/pos/devoluciones/clienteDevoluciones';
 import type { DetalleDevolucion, EventoHistorial, LineaDetalleDevolucion } from '@/lib/pos/devoluciones/detalleServidor';
 import { BadgeEstadoDevolucion } from './BadgeEstadoDevolucion';
+import { EnlaceFichaProducto } from '@/components/inventario/productos/EnlaceFichaProducto';
+import { enlaceLineaProducto } from '@/lib/inventario/enlaceProducto';
 import { AnularDevolucionDialog } from './AnularDevolucionDialog';
 
 const RUTA = '/app/pos/devoluciones';
@@ -200,13 +202,17 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
     ...dev.asientos.map((a) => ({ id: `asiento-${a.id}`, tipo: 'asiento' as const, numero: a.numero, href: `/app/finanzas/contabilidad/asientos/${a.id}` })),
   ];
 
+  // El producto abre su ficha (Figma 2724:191376); eliminado, sin enlace y con sello.
+  const enlaceDe = (l: LineaDetalleDevolucion) =>
+    enlaceLineaProducto({ id: l.producto.id, parent_product_id: l.producto.padre_id ?? null, status: l.producto.eliminado ? 'deleted' : null });
+
   const columnas: ColumnaTabla<LineaDetalleDevolucion>[] = [
     {
       id: 'producto',
       encabezado: t('colProducto'),
       celda: (l) => (
         <div className="flex min-w-0 flex-col">
-          <span className="truncate text-fg">{l.producto.nombre ?? t('sinDato')}</span>
+          <EnlaceFichaProducto nombre={l.producto.nombre ?? t('sinDato')} enlace={enlaceDe(l)} className="text-sm" />
           <span className="truncate text-xs text-fg-secondary">
             {[l.producto.sku, l.linea_venta && factura?.numero ? t('lineaDe', { n: l.linea_venta, factura: factura.numero }) : null].filter(Boolean).join(' · ')}
           </span>
@@ -370,7 +376,7 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
               tarjetaMovil={(l) => (
                 <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-b-0">
                   <div className="min-w-0">
-                    <p className="truncate text-sm text-fg">{l.producto.nombre ?? t('sinDato')}</p>
+                    <EnlaceFichaProducto nombre={l.producto.nombre ?? t('sinDato')} enlace={enlaceDe(l)} className="text-sm" />
                     <p className="text-xs text-fg-secondary">
                       {cantidad(l.cantidad)} · {l.repuesta ? t('repuesto') : t('noRepuesto')}
                     </p>

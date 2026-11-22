@@ -418,20 +418,12 @@ export function getOrganizationName(): string {
 }
 
 // Interfaces para tipos base de datos
-interface DbBranch {
-  id: number;
-  name: string;
-  address?: string;
-  is_main?: boolean;
-  created_at?: string;
-  organization_id: number;
-  [key: string]: any; // Para otros campos adicionales
-}
-
 interface DbOrganization {
   id: number;
   name: string;
   created_at?: string;
+  // Fila de `organizations` con columnas que varían; los consumidores leen campos sueltos.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -468,6 +460,8 @@ interface FormattedOrganization {
    * created_at o branches.
    */
   isPartial?: boolean;
+  // Forma legada: los consumidores del hook leen campos sueltos (slug, logo_url, subdomain…).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any;
 }
 
@@ -629,9 +623,9 @@ export async function getUserOrganization(userId: string): Promise<GetOrganizati
     console.log("Datos procesados de organización (FINAL):", JSON.stringify(formattedData));
     
     return { data: formattedData, error: null, usedFallback };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error al obtener la organización:", error);
-    return { data: null, error };
+    return { data: null, error: error instanceof Error ? error : String(error) };
   }
 }
 
@@ -724,6 +718,57 @@ export const BRANCH_CHANGED_EVENT = 'branch-changed';
 
 // Nombre del evento global emitido al cambiar de organización activa
 export const ORGANIZATION_CHANGED_EVENT = 'organization-changed';
+
+/**
+ * Guarda la sucursal elegida (o «todas») en este equipo: las mismas claves que
+ * leen `getCurrentBranchId` / `getBranchFilterAll` y el `BranchProvider`, y
+ * avisa con `BRANCH_CHANGED_EVENT`. Es la única escritura: la usan el selector
+ * de la barra superior (`BranchContext.setSelectedBranch`) y el paso de
+ * sucursal al entrar. Con «todas» se conserva la sucursal concreta guardada
+ * (la usan las escrituras: POS, caja).
+ */
+export function guardarSucursalActiva(seleccion: number | 'all'): void {
+  try {
+    if (seleccion === 'all') {
+      localStorage.setItem(BRANCH_ALL_KEY_LOCAL, '1');
+      void setMobileStorage(BRANCH_ALL_KEY_LOCAL, '1');
+      setBranchFilterAllCache(true);
+    } else {
+      const selStr = seleccion.toString();
+      localStorage.setItem(BRANCH_ALL_KEY_LOCAL, '0');
+      localStorage.setItem(BRANCH_ID_KEY, selStr);
+      sessionStorage.setItem(BRANCH_ID_KEY, selStr);
+      void setMobileStorage(BRANCH_ALL_KEY_LOCAL, '0');
+      void setMobileStorage(BRANCH_ID_KEY, selStr);
+      setBranchFilterAllCache(false);
+      invalidateBranchIdCache();
+    }
+  } catch (error) {
+    console.error('Error guardando selección de sucursal:', error);
+  }
+
+  // Notificar globalmente para que páginas/servicios reaccionen
+  try {
+    window.dispatchEvent(new CustomEvent(BRANCH_CHANGED_EVENT));
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Id de la organización que quedó activa en este equipo (`organizacionActiva`),
+ * sin efectos (no reescribe cookies). Sobrevive al cierre de sesión: con ella
+ * el login sabe si vuelve a la MISMA organización y conserva su sucursal.
+ */
+export function organizacionGuardadaId(): number | null {
+  try {
+    const crudo = localStorage.getItem(STORAGE_KEY);
+    const id = crudo ? Number((JSON.parse(crudo) as { id?: unknown })?.id) : NaN;
+    return Number.isInteger(id) && id > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Indica si el usuario tiene activo el modo "Todas las sucursales".
@@ -945,7 +990,7 @@ export function useOrganization() {
             error: 'No se encontraron datos de organización'
           });
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error al obtener datos de organización:', err);
         
         // Intentar usar datos locales como respaldo si hay un error en la API
@@ -974,7 +1019,7 @@ export function useOrganization() {
             organization: null,
             branch_id: null,
             isLoading: false,
-            error: err?.message || 'Error al cargar datos de organización'
+            error: (err instanceof Error ? err.message : '') || 'Error al cargar datos de organización'
           });
         }
       }
@@ -992,7 +1037,7 @@ export function useOrganization() {
 }
 
 // Exportar todo como objeto por defecto para compatibilidad con código existente
-export default {
+const useOrganizationPorDefecto = {
   useOrganization,
   getUserOrganization,
   getMainBranch,
@@ -1008,3 +1053,5 @@ export default {
   getBranchFilterAll,
   initOrganizationCache
 };
+
+export default useOrganizationPorDefecto;

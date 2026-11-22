@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Receipt } from 'lucide-react';
@@ -8,6 +8,8 @@ import { OrderItemsList, OrderTotals } from '@/components/pos/pedidos-online';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { useTranslations } from 'next-intl';
 import { useToast } from '@/components/ui/use-toast';
+import { useProductosDeLineas } from '../hooks/useProductosDeLineas';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderProductsCardProps {
   order: WebOrder;
@@ -21,6 +23,8 @@ export function OrderProductsCard({ order, puedeQuitarPromocion = false, onCambi
   const { toast } = useToast();
   const [ocupado, setOcupado] = useState(false);
   const yaPagado = order.payment_status === 'paid';
+  const idsProductos = useMemo(() => (order.items ?? []).map((i) => i.product_id), [order.items]);
+  const productos = useProductosDeLineas(order.organization_id, idsProductos);
 
   const cambiar = async (itemId: string, excluded: boolean) => {
     if (ocupado) return;
@@ -56,7 +60,7 @@ export function OrderProductsCard({ order, puedeQuitarPromocion = false, onCambi
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Receipt className="size-4" aria-hidden="true" strokeWidth={1.5} />
+          <IconoCabecera icono={Receipt} />
           {t('orderProductsCard.productos', { n: order.items?.length || 0 })}
         </CardTitle>
       </CardHeader>
@@ -69,6 +73,7 @@ export function OrderProductsCard({ order, puedeQuitarPromocion = false, onCambi
         <OrderItemsList
           items={order.items || []}
           showStatus
+          productos={productos}
           puedeQuitarPromocion={puedeQuitarPromocion && !yaPagado && !ocupado}
           onQuitarPromocion={(id) => void cambiar(id, true)}
           onRestaurarPromocion={(id) => void cambiar(id, false)}

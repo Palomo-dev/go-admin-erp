@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase/config';
 import { movimientosService } from '@/lib/services/movimientosService';
 import { webOrderConfirmationService } from '@/lib/services/webOrderConfirmationService';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { pagoPresentable, type FilaPagoPedido, type PagoPresentable } from '@/lib/pos/pedidosWeb/pagosDelPedido';
 
 /**
  * Lo que el detalle del pedido web muestra alrededor del cobro (Figma
@@ -12,18 +13,31 @@ import type { WebOrder } from '@/lib/services/webOrdersService';
  * base. Columnas verificadas por MCP (2026-10-06): `invoice_sales(id, number,
  * status, sale_id)`, `kitchen_tickets(id, sale_id)`, `payments(source,
  * source_id, method, amount, status, payment_date, voided_at)` y
- * `stock_reservations(ref_type='web_order', ref_id, released_at)`.
+ * `stock_reservations(ref_type='web_order', ref_id, released_at)`. Desde 2026-11-21 los
+ * pagos traen además `reference`, `processor` y rutas de `processor_response`
+ * (pasarela y submétodo, Figma `2725:192149`).
  *
  * La caja sale de `fn_caja_abierta_para` (vía `movimientosService`), la misma
  * regla con que `fn_cobrar_pedido_web_en_caja` elige la caja al cobrar.
  */
-export interface PagoDelPedido {
-  id: string;
-  metodo: string;
-  monto: number;
-  estado: string;
-  fecha: string | null;
-}
+/** Pago del pedido con pasarela, submétodo y referencia (`pagosDelPedido.ts`). */
+export type PagoDelPedido = PagoPresentable;
+
+/**
+ * Solo las rutas de `processor_response` que muestra la tarjeta «Pagos» (nunca la
+ * respuesta entera: trae datos del pagador). Ver `pagosDelPedido.ts`.
+ */
+const SELECT_PAGOS = [
+  'id, method, amount, status, payment_date, created_at, reference, processor',
+  'mp_metodo:processor_response->>payment_method_id',
+  'mp_tipo:processor_response->>payment_type_id',
+  'mp_ultimos4:processor_response->card->>last_four_digits',
+  'bold_metodo:processor_response->>payment_method',
+  'wompi_tipo:processor_response->>payment_method_type',
+  'wompi_marca:processor_response->payment_method->extra->>brand',
+  'wompi_ultimos4:processor_response->payment_method->extra->>last_four',
+  'manual_pasarela:processor_response->>pasarela',
+].join(', ');
 
 export interface TrazabilidadPedido {
   /** La base ya tiene el cobro en caja (E4). Mientras no, el cobro usa el respaldo sin caja. */
@@ -99,7 +113,7 @@ export function useTrazabilidadPedido(order: WebOrder | null) {
         : `and(source.eq.web_order,source_id.eq.${orderId})`;
       const { data: pagos } = await supabase
         .from('payments')
-        .select('id, method, amount, status, payment_date, created_at')
+        .select(SELECT_PAGOS)
         .eq('organization_id', orgId)
         .is('voided_at', null)
         .or(filtroPagos)
@@ -110,9 +124,7 @@ export function useTrazabilidadPedido(order: WebOrder | null) {
         cajaId,
         factura: fila ? { id: fila.id, numero: fila.number } : null,
         comandaId: (comanda.data as { id: number } | null)?.id ?? null,
-        pagos: ((pagos ?? []) as Array<{ id: string; method: string; amount: number; status: string; payment_date: string | null; created_at: string }>).map(
-          (p) => ({ id: p.id, metodo: p.method, monto: Number(p.amount) || 0, estado: p.status, fecha: p.payment_date ?? p.created_at }),
-        ),
+        pagos: ((pagos ?? []) as unknown as FilaPagoPedido[]).map(pagoPresentable),
         reservaActiva: (('count' in reserva ? reserva.count : 0) ?? 0) > 0,
       });
     } catch (error) {

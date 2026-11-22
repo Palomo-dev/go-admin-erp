@@ -62544,5 +62544,68 @@
       "ventaNueva": "Venta nueva",
       "reventaDe": "Reventa de"
     }
+  },
+  "detallesMarca": {
+    "producto": {
+      "eliminado": "Producto eliminado",
+      "abrirFicha": "Abrir la ficha del producto"
+    },
+    "pagos": {
+      "metodo": "Método",
+      "referencia": "Referencia",
+      "fecha": "Fecha",
+      "cobrado": "Cobrado",
+      "importe": "Importe",
+      "seCobraAlEntregar": "Se cobra al entregar",
+      "pagoDe": "Pago con {metodo}",
+      "concilia": "Se concilia en <enlace>Procesadores de pago</enlace>.",
+      "submetodos": {
+        "card": "Tarjeta",
+        "transfer": "Transferencia",
+        "cash": "Efectivo",
+        "botonBancolombia": "Botón Bancolombia",
+        "corresponsalBancolombia": "Corresponsal Bancolombia",
+        "cuotasBancolombia": "Cuotas Bancolombia",
+        "dineroEnCuenta": "Dinero en cuenta",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tienda": {
+      "ver": "Ver en la tienda",
+      "otraPestana": "(se abre en otra pestaña)",
+      "abre": "Abre este producto en tu tienda, en otra pestaña",
+      "noPublicado": "No está publicado en la tienda web",
+      "motivos": {
+        "inactivo": "Solo los productos activos se ven en la tienda: actívalo para poder verlo.",
+        "eliminado": "El producto está eliminado y la tienda no lo muestra.",
+        "padreInactivo": "El producto padre no está activo: actívalo para ver esta variante en la tienda.",
+        "padreEliminado": "El producto padre está eliminado y la tienda no lo muestra."
+      }
+    }
+  },
+  "accesoSucursal": {
+    "titulo": "¿En qué sucursal trabajas hoy?",
+    "descripcion": "{organizacion} · tienes acceso a {total} sucursales. La cambias cuando quieras desde la barra superior.",
+    "buscar": "Buscar sucursal…",
+    "sinResultados": "Ninguna sucursal coincide con «{texto}».",
+    "ultimaUsada": "Última usada",
+    "abierta": "Abierta",
+    "cerrada": "Cerrada",
+    "abreHoy": "abre {hora}",
+    "abreDia": "abre el {dia} {hora}",
+    "cajaAbierta": "Caja #{id} abierta",
+    "todas": "Todas las sucursales",
+    "todasDetalle": "Vista general de la organización",
+    "resumen": "Resumen",
+    "entrarA": "Entrar a {nombre}",
+    "cambiarOrganizacion": "Cambiar de organización",
+    "noEsTuCuenta": "¿No es tu cuenta?",
+    "entrarConOtra": "Entrar con otra",
+    "error": "No pudimos cargar tus sucursales.",
+    "entrarSinElegir": "Entrar sin elegir sucursal",
+    "rechazada": "Ya no tienes acceso a esa sucursal. Elige otra."
   }
 }

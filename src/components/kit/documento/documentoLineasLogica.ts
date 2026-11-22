@@ -19,6 +19,11 @@ export interface ImpuestoLinea {
 export interface LineaDocumento {
   id: string;
   descripcion: string;
+  /**
+   * Lectura: la descripción enlaza aquí (la ficha del producto) con «↗»; es un `<a>`
+   * real (Ctrl/⌘ + clic abre otra pestaña). Sin valor, texto.
+   */
+  enlace?: string | null;
   sku?: string | null;
   variante?: string | null;
   nota?: string | null;

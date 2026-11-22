@@ -79,7 +79,9 @@ export function FilaDato({
   return (
     <div
       className={cn(
-        'flex items-start justify-between gap-3 py-1',
+        // flex-wrap: un valor largo (dirección, correo) baja a su propia línea
+        // y se parte ahí, en vez de salirse de la tarjeta y comerse la etiqueta.
+        'flex flex-wrap items-start justify-between gap-x-3 py-1',
         TAMANO[tamano].fila,
         SANGRIA[sangria],
         separadorAntes && 'mt-1 border-t border-line pt-2',
@@ -90,7 +92,7 @@ export function FilaDato({
         <span className="block truncate">{etiqueta}</span>
         {descripcion && <span className="block text-xs leading-4 text-fg-muted">{descripcion}</span>}
       </dt>
-      <dd className={cn('flex shrink-0 items-center gap-1.5 text-right tabular-nums', clasesTonoFilaDato(oculto ? 'neutro' : tonoFinal), TAMANO[tamano].valor)}>
+      <dd className={cn('ml-auto flex min-w-0 max-w-full items-center justify-end gap-1.5 text-right tabular-nums [overflow-wrap:anywhere]', clasesTonoFilaDato(oculto ? 'neutro' : tonoFinal), TAMANO[tamano].valor)}>
         {contenidoValor ?? '—'}
         {accesorio}
       </dd>

@@ -14,6 +14,7 @@ import type { CierreGuardado, ResumenCierre } from './cierres/cierres.server';
 import type { ProgramadoVista } from './programados/programados.server';
 import type { DestinatarioDisponible } from './programados/destinatarios.server';
 import type { ResultadoSolicitud, SolicitudAcceso } from './solicitudAcceso.server';
+import type { OpcionesVentas } from './opcionesVentas.server';
 
 export interface PermisosReportes {
   exportar: boolean;
@@ -94,6 +95,8 @@ async function descargarExcel(id: string, idioma: string): Promise<void> {
 
 export const clienteReportes = {
   permisos: () => pedir<PermisosReportes>('/api/reportes/permisos'),
+  /** Personas y métodos de pago de los filtros de los reportes de ventas. */
+  opcionesVentas: () => pedir<OpcionesVentas>('/api/reportes/opciones-ventas'),
   solicitarAcceso: (s: SolicitudAcceso) => pedir<ResultadoSolicitud>('/api/reportes/solicitar-acceso', { method: 'POST', body: s }),
 
   vistaPreviaCierre: (datos: PedidoCierre) =>

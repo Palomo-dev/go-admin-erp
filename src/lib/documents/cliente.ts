@@ -27,11 +27,11 @@ export interface OpcionesDocumentoCliente {
   /** Estado de cuenta: días `YYYY-MM-DD`. */
   desde?: string;
   hasta?: string;
-  /** Reporte del catálogo: `periodo`, `sucursal`, `hi`, `hf`, `vista`, `comparar` (los valida el servidor). */
+  /** Reporte del catálogo: `periodo`, `sucursal`, `hi`, `hf`, `vista`, `comparar`, `persona`, `metodo`, `contar` (los valida el servidor). */
   parametros?: Readonly<Record<string, string>>;
 }
 
-const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar'] as const;
+const PARAMETROS_REPORTE = ['periodo', 'sucursal', 'hi', 'hf', 'vista', 'comparar', 'persona', 'metodo', 'contar'] as const;
 
 export class ErrorDocumento extends Error {
   constructor(message: string, readonly status: number, readonly codigo: string | null) {

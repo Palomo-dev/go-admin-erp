@@ -89,6 +89,24 @@ const RPC_NUEVAS: Record<string, string> = {
   fn_reporte_ordenes_compra: '20260930233000_reportes_v2_consultas_nuevas',
   // «Stock crítico» calculado en la base (antes: todas las existencias al navegador).
   fn_reporte_stock_critico_detalle: '20261005121435_reportes_stock_critico_detalle',
+  // Reportes de ventas ampliados y despacho de mercancías (2026-11-22).
+  fn_reporte_ventas_personas: '20261122075104_reportes_ventas_ampliados',
+  fn_reporte_mas_vendido: '20261122075104_reportes_ventas_ampliados',
+  fn_reporte_items_vendidos: '20261122075104_reportes_ventas_ampliados',
+  fn_reporte_despachos: '20261122075104_reportes_ventas_ampliados',
+};
+
+/**
+ * Parámetros que van DESPUÉS de `p_branch_id` en las RPC de ventas ampliadas:
+ * los filtros persona, método de pago y «Contar por» (y, en ítems, solo
+ * descuento y límite). Todos con DEFAULT, así una llamada con solo los cuatro
+ * de siempre sigue resolviendo la misma firma. Las demás terminan en
+ * `p_branch_id`.
+ */
+const FILTROS_TRAS_SUCURSAL: Record<string, number> = {
+  fn_reporte_ventas_personas: 3,
+  fn_reporte_mas_vendido: 3,
+  fn_reporte_items_vendidos: 5,
 };
 
 /**
@@ -99,6 +117,9 @@ const RPC_NUEVAS: Record<string, string> = {
  */
 const FIRMA_ROLLBACK: Record<string, string> = {
   fn_reporte_stock_critico_detalle: 'bigint, bigint',
+  fn_reporte_ventas_personas: 'bigint, timestamptz, timestamptz, bigint, text, uuid, text[]',
+  fn_reporte_mas_vendido: 'bigint, timestamptz, timestamptz, bigint, text, uuid, text[]',
+  fn_reporte_items_vendidos: 'bigint, timestamptz, timestamptz, bigint, text, uuid, text[], boolean, integer',
 };
 const FIRMA_PERIODO = 'bigint, timestamptz, timestamptz, bigint';
 
@@ -108,7 +129,7 @@ const RPCS_FRONTEND = rpcsConBranchId();
 const RPCS = RPCS_FRONTEND.filter((rpc) => !(rpc in RPC_NUEVAS));
 
 describe('reportes — el frontend y la migración de p_branch_id cuadran', () => {
-  it('el frontend sigue llamando con p_branch_id a las 18 RPC conocidas', () => {
+  it('el frontend sigue llamando con p_branch_id a las 22 RPC conocidas', () => {
     // Si este test falla porque la lista creció, NO lo relajes: añade la función
     // nueva a la migración (o a una nueva, registrada en RPC_NUEVAS) antes de
     // tocar el frontend. La décima, fn_reporte_retenciones_practicadas, es la
@@ -116,6 +137,8 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
     // son de los reportes de sucursal de la v2 (bancos, caja y bancos,
     // gastos operativos, rentabilidad, movimiento valorizado, compras y
     // órdenes de compra), en `20260930233000_reportes_v2_consultas_nuevas`.
+    // Las cuatro de ventas ampliadas y despachos (personas, más vendido,
+    // ítems y despachos) son de `20261122075104_reportes_ventas_ampliados`.
     expect(RPCS_FRONTEND).toEqual([
       'fn_reporte_bancos_conciliacion',
       'fn_reporte_caja_bancos_diario',
@@ -123,9 +146,12 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
       'fn_reporte_compras_proveedor',
       'fn_reporte_cxc_aging',
       'fn_reporte_cxp_aging',
+      'fn_reporte_despachos',
       'fn_reporte_flujo_efectivo',
       'fn_reporte_gastos_naturaleza',
       'fn_reporte_impuestos',
+      'fn_reporte_items_vendidos',
+      'fn_reporte_mas_vendido',
       'fn_reporte_movimiento_valorizado',
       'fn_reporte_movimientos_inventario',
       'fn_reporte_ordenes_compra',
@@ -133,6 +159,7 @@ describe('reportes — el frontend y la migración de p_branch_id cuadran', () =
       'fn_reporte_retenciones_practicadas',
       'fn_reporte_rotacion_inventario',
       'fn_reporte_stock_critico_detalle',
+      'fn_reporte_ventas_personas',
       'fn_reporte_ventas_por_hora',
       'fn_reporte_ventas_resumen',
     ]);
@@ -231,7 +258,7 @@ describe('reportes — las RPC nuevas nacen con p_branch_id bien declarado', () 
     expect(creates).toHaveLength(1);
   });
 
-  it.each(CASOS_NUEVAS)('$rpc declara p_branch_id como ÚLTIMO parámetro y con DEFAULT NULL', ({ rpc, sql }) => {
+  it.each(CASOS_NUEVAS)('$rpc declara p_branch_id como ÚLTIMO parámetro (o seguido solo de filtros con DEFAULT) y con DEFAULT NULL', ({ rpc, sql }) => {
     const m = new RegExp(
       `CREATE OR REPLACE FUNCTION public\\.${rpc}\\(([\\s\\S]*?)\\)\\s*\\n\\s*RETURNS`,
       'i',
@@ -242,7 +269,9 @@ describe('reportes — las RPC nuevas nacen con p_branch_id bien declarado', () 
       .split(',')
       .map((p) => p.trim().replace(/\s+/g, ' ').toLowerCase())
       .filter(Boolean);
-    expect(params[params.length - 1]).toBe('p_branch_id bigint default null');
+    const tras = FILTROS_TRAS_SUCURSAL[rpc] ?? 0;
+    expect(params[params.length - 1 - tras]).toBe('p_branch_id bigint default null');
+    expect(params.slice(params.length - tras).every((p) => p.includes(' default '))).toBe(true);
     expect(params.filter((p) => p.startsWith('p_branch_id'))).toHaveLength(1);
   });
 
@@ -261,7 +290,8 @@ describe('reportes — las RPC nuevas nacen con p_branch_id bien declarado', () 
 
   it.each(CASOS_NUEVAS)('$rpc es SECURITY DEFINER, fija el search_path y pone la guarda de pertenencia', ({ rpc, sql }) => {
     const cuerpo = new RegExp(
-      `CREATE OR REPLACE FUNCTION public\\.${rpc}\\([\\s\\S]*?\\nEND;\\s*\\n\\$\\$`,
+      // El cuerpo cierra con `$$` o con `$function$` (las de 20261122075104).
+      `CREATE OR REPLACE FUNCTION public\\.${rpc}\\([\\s\\S]*?\\nEND;\\s*\\n\\$(function)?\\$`,
       'i',
     ).exec(sql)![0];
     expect(cuerpo).toMatch(/security definer/i);
@@ -278,7 +308,8 @@ describe('reportes — las RPC nuevas nacen con p_branch_id bien declarado', () 
 
   it.each(CASOS_NUEVAS)('la reversión de $rpc borra la firma con p_branch_id', ({ rpc, rollback }) => {
     const firma = FIRMA_ROLLBACK[rpc] ?? FIRMA_PERIODO;
-    expect(firma.endsWith('bigint')).toBe(true);
+    const tipos = firma.split(', ');
+    expect(tipos[tipos.length - 1 - (FILTROS_TRAS_SUCURSAL[rpc] ?? 0)]).toBe('bigint');
     expect(rollback.toLowerCase()).toContain(`drop function if exists public.${rpc}(${firma});`);
   });
 });

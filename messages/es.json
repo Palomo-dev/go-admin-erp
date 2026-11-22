@@ -32477,7 +32477,20 @@
       "todaLaOrganizacion": "Toda la organización",
       "todasLasSucursales": "Todas las sucursales",
       "franjaNoAplica": "Franja: no aplica",
-      "franjaNoAplicaMotivo": "Este reporte se calcula por día"
+      "franjaNoAplicaMotivo": "Este reporte se calcula por día",
+      "persona": "Persona",
+      "personaTodas": "Todas las personas",
+      "personaBuscar": "Buscar persona",
+      "personaOtra": "Persona elegida",
+      "metodoPago": "Método de pago",
+      "metodoTodos": "Todos los métodos",
+      "metodoBuscar": "Buscar método",
+      "sinResultados": "Sin resultados",
+      "contarPor": "Contar por",
+      "contarCajero": "Cajero",
+      "contarVendedor": "Vendedor",
+      "contarMesero": "Mesero",
+      "contarAyuda": "Cajero: quien cobró · Vendedor: quien registró la venta · Mesero: quien atendió la mesa"
     },
     "alcance": {
       "titulo": "{n, plural, =0 {No tienes sucursales asignadas} one {Estás viendo solo {sucursales}} other {Estás viendo solo {sucursales}}}",

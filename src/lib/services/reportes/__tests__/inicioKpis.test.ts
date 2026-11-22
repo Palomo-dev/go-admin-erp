@@ -32,6 +32,9 @@ describe('plan de KPI del inicio: todo en un solo lote', () => {
     sucursal: undefined,
     comparar: null,
     vista: null,
+    persona: null,
+    metodos: [],
+    contarPor: null,
   };
   const ids = reportesDeKpis(KPIS_INICIO);
 

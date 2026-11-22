@@ -67,7 +67,16 @@ export default function ReportAnswerCard({ tarjeta }: { tarjeta: TarjetaReporte 
     if (exportando) return;
     setExportando(true);
     try {
-      const efectivos = { periodo: periodoDe(tarjeta), sucursal: tarjeta.sucursalId, comparar: null, vista: tarjeta.vista };
+      // El asistente no elige persona, método ni «Contar por»: valores por defecto.
+      const efectivos = {
+        periodo: periodoDe(tarjeta),
+        sucursal: tarjeta.sucursalId,
+        comparar: null,
+        vista: tarjeta.vista,
+        persona: null,
+        metodos: [],
+        contarPor: null,
+      };
       await descargarDocumento('reporte', tarjeta.reporteId, parametrosDocumento(efectivos));
     } catch (error) {
       toastError(t('errorExportar'), error instanceof Error ? error.message : undefined);

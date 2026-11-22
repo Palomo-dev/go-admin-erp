@@ -32476,7 +32476,20 @@
       "todaLaOrganizacion": "Whole organization",
       "todasLasSucursales": "All branches",
       "franjaNoAplica": "Time range: not applicable",
-      "franjaNoAplicaMotivo": "This report is calculated by day"
+      "franjaNoAplicaMotivo": "This report is calculated by day",
+      "persona": "Person",
+      "personaTodas": "All people",
+      "personaBuscar": "Search person",
+      "personaOtra": "Selected person",
+      "metodoPago": "Payment method",
+      "metodoTodos": "All methods",
+      "metodoBuscar": "Search method",
+      "sinResultados": "No results",
+      "contarPor": "Count by",
+      "contarCajero": "Cashier",
+      "contarVendedor": "Salesperson",
+      "contarMesero": "Server",
+      "contarAyuda": "Cashier: who took the payment · Salesperson: who recorded the sale · Server: who served the table"
     },
     "alcance": {
       "titulo": "{n, plural, =0 {You have no assigned branches} one {You are only seeing {sucursales}} other {You are only seeing {sucursales}}}",

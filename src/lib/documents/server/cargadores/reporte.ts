@@ -4,8 +4,10 @@
  * `id` es el id del reporte (`estado-resultados`). Parámetros de la query:
  * `desde`/`hasta` (días `YYYY-MM-DD`), `periodo` (tipo de cierre, para la
  * etiqueta), `hi`/`hf` (franja `HH:mm`),
- * `sucursal` (id; vacío = consolidado), `vista` (id de la pestaña) y
- * `comparar` (`anterior` | `anio-anterior`).
+ * `sucursal` (id; vacío = consolidado), `vista` (id de la pestaña),
+ * `comparar` (`anterior` | `anio-anterior`) y, en los reportes de ventas que
+ * los declaran, `persona` (uuid), `metodo` (códigos separados por coma) y
+ * `contar` (`cajero` | `vendedor` | `mesero`).
  *
  * - Plan y alcance de sucursal en el servidor (`acceso.server.ts`); la RPC
  *   del reporte vuelve a exigirlos con el cliente de la sesión.
@@ -21,7 +23,8 @@ import { registrarEventoReporte } from '@/lib/services/reportes/historialService
 import { compararKpis, lecturaDelReporte } from '@/lib/services/reportes/comparativo';
 import { esTipoCierre, normalizarPeriodo, periodoAnioAnterior, periodoAnterior } from '@/lib/services/reportes/periodosService';
 import { ejecutarReporte } from '@/lib/services/reportes/reportesEngine';
-import type { PeriodoCierre, ReportDefinition } from '@/lib/services/reportes/types';
+import { opcionesDeParametros } from '@/lib/services/reportes/filtrosVentas';
+import type { OpcionesReporte, PeriodoCierre, ReportDefinition } from '@/lib/services/reportes/types';
 import { seccionesDeReporte } from '../../reporteSecciones';
 import type { Traductor } from '../../textos';
 import type { Campo, DocumentoPayload } from '../../tipos';
@@ -79,9 +82,16 @@ export async function prepararReporte(
         ? periodoAnterior(periodo)
         : periodoAnioAnterior(periodo)
       : null;
+  // Persona, métodos y «Contar por» solo en los reportes que los declaran (como en el visor).
+  const deVentas = opcionesDeParametros(p);
+  const opciones: OpcionesReporte = {
+    persona: def.filtros.includes('persona') ? deVentas.persona : null,
+    metodos: def.filtros.includes('metodoPago') ? deVentas.metodos : null,
+    ...(def.filtros.includes('contarPor') && deVentas.contarPor ? { contarPor: deVentas.contarPor } : {}),
+  };
   const [data, previo] = await Promise.all([
-    ejecutarReporte(def.id, sesion.organizationId, periodo, branchId, sesion.supabase),
-    referencia ? ejecutarReporte(def.id, sesion.organizationId, referencia, branchId, sesion.supabase).catch(() => null) : Promise.resolve(null),
+    ejecutarReporte(def.id, sesion.organizationId, periodo, branchId, sesion.supabase, opciones),
+    referencia ? ejecutarReporte(def.id, sesion.organizationId, referencia, branchId, sesion.supabase, opciones).catch(() => null) : Promise.resolve(null),
   ]);
   const conLectura = referencia && previo ? { ...data, lectura: lecturaDelReporte(data, compararKpis(data, previo), referencia.etiqueta) } : data;
   return {

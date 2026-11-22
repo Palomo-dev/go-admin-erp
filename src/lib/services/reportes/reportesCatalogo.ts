@@ -102,13 +102,23 @@ export function esGrupoReporte(valor: unknown): valor is GrupoReporte {
 // Grupo y filtros de cada reporte
 // ============================================================
 // Filtros, en clave corta: c = comparativo, s = sucursal, f = franja,
-// k = centro de costo. `catalogoV2.test.ts` exige que cuadren con la
+// k = centro de costo, p = persona, m = método de pago, x = «Contar por»
+// (cajero, vendedor o mesero). `catalogoV2.test.ts` exige que cuadren con la
 // consulta: `s` si y solo si el alcance es de sucursal, `f` solo si el
-// reporte consulta por instantes (`rangoDelPeriodo`) y `c` solo si el
-// resultado depende del periodo.
+// reporte consulta por instantes (`rangoDelPeriodo`), `c` solo si el
+// resultado depende del periodo y `p`/`m`/`x` si y solo si el reporte pasa
+// las opciones a su RPC (`parametrosRpcVentas(opciones)`, `filtrosVentas.ts`).
 
-type Clave = 'c' | 's' | 'f' | 'k';
-const FILTRO_DE_CLAVE: Record<Clave, FiltroReporte> = { c: 'comparativo', s: 'sucursal', f: 'franja', k: 'centroCosto' };
+type Clave = 'c' | 's' | 'f' | 'k' | 'p' | 'm' | 'x';
+const FILTRO_DE_CLAVE: Record<Clave, FiltroReporte> = {
+  c: 'comparativo',
+  s: 'sucursal',
+  f: 'franja',
+  k: 'centroCosto',
+  p: 'persona',
+  m: 'metodoPago',
+  x: 'contarPor',
+};
 
 interface MetaReporte {
   grupo: GrupoReporte;
@@ -158,11 +168,13 @@ const META: Record<string, MetaReporte> = {
   'categorias-tesoreria': { grupo: 'finanzas', filtros: 'c s f' },
   // Ventas y POS
   'cierre-caja': { grupo: 'ventas', filtros: 'c s f' },
-  'ventas-periodo': { grupo: 'ventas', filtros: 'c s f' },
+  'ventas-periodo': { grupo: 'ventas', filtros: 'c s f p m x' },
   'ventas-hora': { grupo: 'ventas', filtros: 'c s f' },
-  'ventas-vendedor': { grupo: 'ventas', filtros: 'c s f' },
-  'devoluciones-descuentos': { grupo: 'ventas', filtros: 'c s f' },
+  'ventas-vendedor': { grupo: 'ventas', filtros: 'c s f p m x' },
+  'devoluciones-descuentos': { grupo: 'ventas', filtros: 'c s f p m x' },
   'pedidos-online': { grupo: 'ventas', filtros: 'c s f' },
+  'mas-vendido': { grupo: 'ventas', filtros: 'c s f p m x', nuevo: true },
+  'items-vendidos': { grupo: 'ventas', filtros: 'c s f p m x', nuevo: true },
   // Inventario
   'stock-critico': { grupo: 'inventario', filtros: 's' },
   'movimientos-inventario': { grupo: 'inventario', filtros: 'c s f' },
@@ -173,6 +185,7 @@ const META: Record<string, MetaReporte> = {
   'garantias-reporte': { grupo: 'inventario', filtros: 'c f' },
   'seriales-proveedor': { grupo: 'inventario', filtros: 'c s f' },
   'movimiento-valorizado': { grupo: 'inventario', filtros: 'c s', nuevo: true },
+  'despacho-mercancias': { grupo: 'inventario', filtros: 'c s f', nuevo: true },
   // Compras
   'retenciones-practicadas': { grupo: 'compras', filtros: 'c s' },
   'retenciones-por-proveedor': {

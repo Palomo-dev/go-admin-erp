@@ -13,8 +13,12 @@
  *   encabezado.
  * - `comparar`: `anterior` | `anio-anterior`.
  * - `vista`: id de la pestaña del visor.
+ * - `persona`: uuid de la persona (reportes de ventas).
+ * - `metodo`: códigos de método de pago separados por coma (`cash,nequi`).
+ * - `contar`: `cajero` | `vendedor` | `mesero` (sin él, cajero).
  */
 import { esFechaPlana, esHora, esTipoCierre, periodoAnioAnterior, periodoAnterior, resolverPeriodo } from './periodosService';
+import { leerContarPor, leerMetodos, leerPersona, type ContarPor } from './filtrosVentas';
 import type { PeriodoCierre, ReportDefinition, TipoCierre } from './types';
 
 export const COMPARACIONES = ['anterior', 'anio-anterior'] as const;
@@ -28,6 +32,12 @@ export interface FiltrosReportes {
   sucursal: number | null | undefined;
   comparar: Comparacion | null;
   vista: string | null;
+  /** Ventas: persona (uuid) o null (todas). */
+  persona: string | null;
+  /** Ventas: códigos de método de pago; vacío = todos. */
+  metodos: string[];
+  /** Ventas: a quién se atribuye la venta; null = cajero (el valor por defecto). */
+  contarPor: ContarPor | null;
 }
 
 type Fuente = { get(clave: string): string | null };
@@ -60,6 +70,9 @@ export function leerFiltrosReportes(q: Fuente, hoy: string): FiltrosReportes {
     sucursal,
     comparar: esComparacion(comparar) ? comparar : null,
     vista: vista && VISTA_RE.test(vista) ? vista : null,
+    persona: leerPersona(q.get('persona')),
+    metodos: leerMetodos(q.get('metodo')),
+    contarPor: leerContarPor(q.get('contar')),
   };
 }
 
@@ -87,6 +100,9 @@ export function escribirFiltrosReportes(f: Partial<FiltrosReportes>, hoy: string
   else if (typeof f.sucursal === 'number') q.sucursal = String(f.sucursal);
   if (f.comparar) q.comparar = f.comparar;
   if (f.vista) q.vista = f.vista;
+  if (f.persona) q.persona = f.persona;
+  if (f.metodos?.length) q.metodo = f.metodos.join(',');
+  if (f.contarPor) q.contar = f.contarPor;
   return q;
 }
 
@@ -100,6 +116,7 @@ export function aQuery(q: Record<string, string>): string {
  * Lo que el reporte realmente usa de los filtros: sin franja si no la admite,
  * sin comparativo si no depende del periodo y sin sucursal si es de toda la
  * organización. La vista solo si existe en el resultado (la valida quien pinta).
+ * Persona, métodos y «Contar por», solo en los reportes que los declaran.
  */
 export function filtrosEfectivos(def: Pick<ReportDefinition, 'filtros' | 'alcance'>, f: FiltrosReportes, sucursal: number | null): FiltrosReportes & { sucursal: number | null } {
   const franja = def.filtros.includes('franja');
@@ -108,6 +125,9 @@ export function filtrosEfectivos(def: Pick<ReportDefinition, 'filtros' | 'alcanc
     sucursal: def.alcance === 'organizacion' ? null : sucursal,
     comparar: def.filtros.includes('comparativo') ? f.comparar : null,
     vista: f.vista,
+    persona: def.filtros.includes('persona') ? f.persona : null,
+    metodos: def.filtros.includes('metodoPago') ? f.metodos : [],
+    contarPor: def.filtros.includes('contarPor') ? f.contarPor : null,
   };
 }
 
@@ -132,5 +152,8 @@ export function parametrosDocumento(f: FiltrosReportes & { sucursal: number | nu
   }
   if (f.vista) parametros.vista = f.vista;
   if (f.comparar) parametros.comparar = f.comparar;
+  if (f.persona) parametros.persona = f.persona;
+  if (f.metodos.length) parametros.metodo = f.metodos.join(',');
+  if (f.contarPor) parametros.contar = f.contarPor;
   return { desde: f.periodo.fechaInicio, hasta: f.periodo.fechaFin, parametros };
 }

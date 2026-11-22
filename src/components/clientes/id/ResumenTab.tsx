@@ -1,13 +1,32 @@
 'use client';
 
-import { useState, useEffect, type ReactNode } from 'react';
+/**
+ * Pestaña «Resumen» de la ficha del cliente (Figma 06 Clientes 331:112627;
+ * móvil 332:118153):
+ *
+ * - 6 KPIs en dos filas de tres, sin iconos: Compras · Gasto total · Saldo en
+ *   cartera / Estadías · Pedidos web · Saldo folios. En móvil solo «Saldo en
+ *   cartera» y «Gasto total» (con el número de compras), como el Figma.
+ * - «Reservas futuras» ya no es tarjeta: la próxima reserva se anuncia en el
+ *   detalle de «Estadías» («Próxima: 12 dic»), que es donde se lee junto con
+ *   la última estancia. Así quedan los 6 KPIs aprobados sin perder el dato.
+ * - Historial reciente con «Ver toda la actividad» y cada entrada con su
+ *   detalle (productos · sucursal · importe; hora · persona).
+ *
+ * El saldo en cartera no se calcula aquí: llega de `useCarteraFicha` (el mismo
+ * listado de Cuentas por cobrar, organización de la sesión).
+ */
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { CalendarDays, ShoppingBag, ShoppingCart, TriangleAlert } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { StatsSkeleton } from '@/components/common/PageSkeletons';
-import { useEtiquetaEstado } from '@/components/kit/useIdiomaKit';
-import { ShoppingBag, Calendar, DollarSign, Home, CalendarClock, Receipt } from 'lucide-react';
+import { EmptyState, StatCard, StatusBadge, Tarjeta } from '@/components/kit';
+import { Skeleton } from '@/components/ui/skeleton';
+import { todayInTz } from '@/lib/utils/dateDisplay';
+import { EntradaHistorial, unirPartes } from './EntradaHistorial';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
+import type { CarteraFicha } from './useCarteraFicha';
 
 interface HistorialItem {
   id: string;
@@ -17,15 +36,9 @@ interface HistorialItem {
   fecha: string;
   monto: number;
   status: string;
-}
-
-// Interfaces para estadísticas del cliente
-interface EstadisticaCard {
-  title: string;
-  value: string | number;
-  icon: React.ReactNode;
-  description?: string;
-  change?: number;
+  productos?: number;
+  sucursal?: string | null;
+  usuarioId?: string | null;
 }
 
 interface ResumenTabProps {
@@ -36,9 +49,12 @@ interface ResumenTabProps {
    * historial (Nota, Registrar llamada, Registrar venta). Sin él, el texto de siempre.
    */
   vacio?: ReactNode;
+  /** Cartera del cliente (la misma que usa «Registrar pago» de la cabecera). */
+  cartera?: Pick<CarteraFicha, 'estado' | 'resumen' | 'filas'>;
+  /** «Ver toda la actividad»: abre la pestaña Actividad. */
+  onVerActividad?: () => void;
 }
 
-/** Fila de reserva que usa el resumen (checkin es columna date). */
 interface ReservaResumen {
   id: string;
   start_date: string;
@@ -51,66 +67,104 @@ interface FolioResumen {
   balance: number | string | null;
 }
 
-const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+interface VentaResumen {
+  id: string;
+  total: number | string | null;
+  sale_date: string;
+  status: string | null;
+  payment_status: string | null;
+  user_id: string | null;
+  branch: { name: string | null } | { name: string | null }[] | null;
+  sale_items: { count: number }[] | null;
+}
 
-export default function ResumenTab({ clienteId, organizationId, vacio }: ResumenTabProps) {
+interface PedidoResumen {
+  id: string;
+  order_number: string | number;
+  status: string | null;
+  total: number | string | null;
+  created_at: string;
+  branch: { name: string | null } | { name: string | null }[] | null;
+}
+
+interface Perfil {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+}
+
+const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
+const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+const DIA_MES_ANIO: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+
+interface Stats {
+  totalCompras: number;
+  totalEstadias: number;
+  montoTotalGastado: number;
+  ultimaCompra: Date | null;
+  ultimaEstadia: Date | null;
+  totalWebOrders: number;
+  ultimaWebOrder: Date | null;
+  historial: HistorialItem[];
+  folioSaldoPendiente: number;
+  folioItemsPendientes: number;
+  proximaReserva: string | null;
+  personas: Record<string, string>;
+}
+
+const STATS_VACIAS: Stats = {
+  totalCompras: 0,
+  totalEstadias: 0,
+  montoTotalGastado: 0,
+  ultimaCompra: null,
+  ultimaEstadia: null,
+  totalWebOrders: 0,
+  ultimaWebOrder: null,
+  historial: [],
+  folioSaldoPendiente: 0,
+  folioItemsPendientes: 0,
+  proximaReserva: null,
+  personas: {},
+};
+
+export default function ResumenTab({ clienteId, organizationId, vacio, cartera, onVerActividad }: ResumenTabProps) {
   const t = useTranslations('clientes.ficha');
   // Ventas, folios y cartera no traen moneda propia: la base de la organización.
   const { formatear } = useMonedaOrganizacion();
-  const etiquetaEstado = useEtiquetaEstado();
-  const { instante, plana } = useFechasFicha();
+  const { instante, plana, cuando, timezone } = useFechasFicha();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ mensaje: string | null } | null>(null);
-  const [stats, setStats] = useState({
-    totalCompras: 0,
-    totalEstadias: 0,
-    montoTotalGastado: 0,
-    ultimaCompra: null as Date | null,
-    ultimaEstadia: null as Date | null,
-    totalWebOrders: 0,
-    webOrdersPendientes: 0,
-    webOrdersPagadas: 0,
-    webOrdersCanceladas: 0,
-    ultimaWebOrder: null as Date | null,
-    historial: [] as HistorialItem[],
-    // Nuevos stats de reservas y folios
-    reservasFuturas: 0,
-    reservasCanceladas: 0,
-    reservasNoShow: 0,
-    folioSaldoPendiente: 0,
-    folioItemsPendientes: 0,
-    proximaReserva: null as string | null,
-  });
+  const [vuelta, setVuelta] = useState(0);
+  const [stats, setStats] = useState<Stats>(STATS_VACIAS);
 
-  // Cargar datos para el resumen del cliente
   useEffect(() => {
+    let cancelado = false;
     const fetchResumenData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
-        // 1. Obtener total de ventas del cliente
-        const { data: salesData, error: salesError } = await supabase
-          .from('sales')
-          .select('id, total, sale_date, status')
-          .eq('customer_id', clienteId)
-          .eq('organization_id', organizationId)
-          .order('sale_date', { ascending: false });
-        
-        if (salesError) throw salesError;
-        
-        // 2. Obtener total de reservas del cliente
+
+        // 1. Ventas del cliente, con sucursal y número de líneas para el historial.
+        // Si el conteo embebido no estuviera disponible, se repite sin él: el resumen no se cae por un detalle.
+        const consultarVentas = (columnas: string) =>
+          supabase.from('sales').select(columnas).eq('customer_id', clienteId).eq('organization_id', organizationId).order('sale_date', { ascending: false });
+        const BASE_VENTAS = 'id, total, sale_date, status, payment_status, user_id, branch:branches(name)';
+        let ventasRes = await consultarVentas(`${BASE_VENTAS}, sale_items(count)`);
+        if (ventasRes.error) ventasRes = await consultarVentas(BASE_VENTAS);
+        if (ventasRes.error) throw ventasRes.error;
+        const ventas = (ventasRes.data ?? []) as unknown as VentaResumen[];
+
+        // 2. Reservas (checkin es columna date).
         const { data: reservationsData, error: reservationsError } = await supabase
           .from('reservations')
           .select('id, start_date, end_date, checkin, checkout, status')
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId)
           .order('start_date', { ascending: false });
-          
         if (reservationsError) throw reservationsError;
-
-        // 2b. Obtener folios de las reservas para saldo pendiente y total pagado
         const reservas: ReservaResumen[] = reservationsData || [];
+
+        // 2b. Folios de las reservas: saldo pendiente (abiertos) y consumo pagado (cerrados).
         const reservationIds = reservas.map((r) => r.id);
         let folioSaldoPendiente = 0;
         let folioItemsPendientes = 0;
@@ -118,7 +172,6 @@ export default function ResumenTab({ clienteId, organizationId, vacio }: Resumen
         let foliosPagadosMonto = 0;
 
         if (reservationIds.length > 0) {
-          // Folios abiertos (saldo pendiente)
           const { data: foliosOpenData } = await supabase
             .from('folios')
             .select('id, balance, status')
@@ -129,21 +182,16 @@ export default function ResumenTab({ clienteId, organizationId, vacio }: Resumen
             const foliosAbiertos: FolioResumen[] = foliosOpenData;
             const folioIds = foliosAbiertos.map((f) => f.id);
             folioSaldoPendiente = foliosAbiertos.reduce((sum, f) => sum + Number(f.balance), 0);
-
             if (folioIds.length > 0) {
               const { data: folioItemsData } = await supabase
                 .from('folio_items')
                 .select('id, payment_status')
                 .in('folio_id', folioIds)
                 .eq('payment_status', 'pending');
-
-              if (folioItemsData) {
-                folioItemsPendientes = folioItemsData.length;
-              }
+              folioItemsPendientes = folioItemsData?.length ?? 0;
             }
           }
 
-          // Folios cerrados (pagados) - contar como compras
           const { data: foliosClosedData } = await supabase
             .from('folios')
             .select('id, reservation_id, balance, status, created_at')
@@ -152,274 +200,288 @@ export default function ResumenTab({ clienteId, organizationId, vacio }: Resumen
 
           if (foliosClosedData && foliosClosedData.length > 0) {
             const foliosCerrados: FolioResumen[] = foliosClosedData;
-            const closedFolioIds = foliosCerrados.map((f) => f.id);
             const { data: closedFolioItems } = await supabase
               .from('folio_items')
               .select('folio_id, amount')
-              .in('folio_id', closedFolioIds);
-
+              .in(
+                'folio_id',
+                foliosCerrados.map((f) => f.id),
+              );
             const folioTotalMap = new Map<string, number>();
-            if (closedFolioItems) {
-              for (const fi of closedFolioItems) {
-                const fid = fi.folio_id;
-                const amt = Number(fi.amount) || 0;
-                folioTotalMap.set(fid, (folioTotalMap.get(fid) || 0) + amt);
-              }
+            for (const fi of closedFolioItems ?? []) {
+              folioTotalMap.set(fi.folio_id, (folioTotalMap.get(fi.folio_id) || 0) + (Number(fi.amount) || 0));
             }
-
             foliosPagadosCount = foliosClosedData.length;
             foliosPagadosMonto = foliosCerrados.reduce((sum, f) => sum + (folioTotalMap.get(f.id) || 0), 0);
           }
         }
 
-        // 2c. Calcular stats de reservas por estado
-        const now = new Date();
-        const reservasFuturas = reservas.filter((r) =>
-          new Date(r.checkin ?? '') > now && ['confirmed', 'tentative'].includes(r.status)
-        ).length;
-        const reservasCanceladas = reservas.filter((r) => r.status === 'cancelled').length;
-        const reservasNoShow = reservas.filter((r) => r.status === 'no_show').length;
-        const proximaReservaRaw = reservas
-          .filter((r) => new Date(r.checkin ?? '') > now && ['confirmed', 'tentative'].includes(r.status))
-          .sort((a, b) => new Date(a.checkin ?? '').getTime() - new Date(b.checkin ?? '').getTime());
-        // checkin es un día calendario (date): se guarda tal cual y se formatea sin zona.
-        const proximaReserva = proximaReservaRaw.length > 0 ? proximaReservaRaw[0].checkin : null;
+        // 2c. Próxima reserva: día calendario de llegada posterior a hoy en la zona de la organización.
+        const hoy = todayInTz(timezone);
+        const futuras = reservas
+          .filter((r) => !!r.checkin && r.checkin.slice(0, 10) > hoy && ['confirmed', 'tentative'].includes(r.status))
+          .sort((a, b) => (a.checkin ?? '').localeCompare(b.checkin ?? ''));
+        const proximaReserva = futuras[0]?.checkin ?? null;
 
-        // 3. Obtener pedidos web del cliente
+        // 3. Pedidos web.
         const { data: webOrdersData, error: webOrdersError } = await supabase
           .from('web_orders')
-          .select('id, order_number, status, total, created_at')
+          .select('id, order_number, status, total, created_at, branch:branches(name)')
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId)
           .order('created_at', { ascending: false });
-        
         if (webOrdersError) throw webOrdersError;
+        const pedidos = (webOrdersData ?? []) as unknown as PedidoResumen[];
 
-        // 4. Calcular estadísticas — web orders pagadas y folios pagados cuentan como compras
-        const paidWebOrders = (webOrdersData || []).filter(o => o.status === 'paid' || o.status === 'delivered');
-        const totalCompras = (salesData?.length || 0) + paidWebOrders.length + foliosPagadosCount;
-        const totalEstadias = reservationsData?.length || 0;
-        const montoVentas = salesData?.reduce((sum, sale) => sum + (parseFloat(sale.total) || 0), 0) || 0;
-        const montoWebPaid = paidWebOrders.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0);
-        const montoTotalGastado = montoVentas + montoWebPaid + foliosPagadosMonto;
-        
-        const ultimaCompraRaw = [
-          ...(salesData || []).map(s => new Date(s.sale_date)),
-          ...paidWebOrders.map(o => new Date(o.created_at)),
-        ].sort((a, b) => b.getTime() - a.getTime());
-        const ultimaCompra = ultimaCompraRaw.length > 0 ? ultimaCompraRaw[0] : null;
-        const ultimaEstadia = reservationsData && reservationsData.length > 0 ? new Date(reservationsData[0].start_date) : null;
+        // 4. Estadísticas: pedidos web pagados y folios cerrados cuentan como compras.
+        const paidWebOrders = pedidos.filter((o) => o.status === 'paid' || o.status === 'delivered');
+        const totalCompras = ventas.length + paidWebOrders.length + foliosPagadosCount;
+        const montoVentas = ventas.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+        const montoWebPaid = paidWebOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+        const ultimaCompraRaw = [...ventas.map((s) => new Date(s.sale_date)), ...paidWebOrders.map((o) => new Date(o.created_at))].sort(
+          (a, b) => b.getTime() - a.getTime(),
+        );
 
-        const totalWebOrders = webOrdersData?.length || 0;
-        const webOrdersPendientes = webOrdersData?.filter(o => ['pending', 'confirmed'].includes(o.status))?.length || 0;
-        const webOrdersPagadas = paidWebOrders.length;
-        const webOrdersCanceladas = webOrdersData?.filter(o => o.status === 'cancelled')?.length || 0;
-        const ultimaWebOrder = webOrdersData && webOrdersData.length > 0 ? new Date(webOrdersData[0].created_at) : null;
-
-        // 5. Construir historial unificado (ventas + reservas + web orders)
+        // 5. Historial unificado (ventas + reservas + pedidos web).
         const historial: HistorialItem[] = [
-          ...(salesData || []).slice(0, 10).map(s => ({
-            id: `sale-${s.id}`, tipo: 'venta' as const,
-            referencia: s.id.slice(0, 8),
-            fecha: s.sale_date, monto: parseFloat(s.total) || 0,
-            status: s.status || 'N/A',
+          ...ventas.slice(0, 10).map((s) => ({
+            id: `sale-${s.id}`,
+            tipo: 'venta' as const,
+            referencia: s.id.slice(0, 8).toUpperCase(),
+            fecha: s.sale_date,
+            monto: Number(s.total) || 0,
+            status: s.payment_status || s.status || '',
+            productos: uno(s.sale_items)?.count ?? undefined,
+            sucursal: uno(s.branch)?.name ?? null,
+            usuarioId: s.user_id,
           })),
-          ...(reservationsData || []).slice(0, 10).map(r => ({
-            id: `res-${r.id}`, tipo: 'reserva' as const,
+          ...reservas.slice(0, 10).map((r) => ({
+            id: `res-${r.id}`,
+            tipo: 'reserva' as const,
             referencia: r.start_date,
-            fecha: r.start_date, monto: 0,
-            status: 'reserva',
+            fecha: r.start_date,
+            monto: 0,
+            status: r.status || '',
           })),
-          ...(webOrdersData || []).slice(0, 10).map(o => ({
-            id: `web-${o.id}`, tipo: 'web_order' as const,
+          ...pedidos.slice(0, 10).map((o) => ({
+            id: `web-${o.id}`,
+            tipo: 'web_order' as const,
             referencia: String(o.order_number),
-            fecha: o.created_at, monto: parseFloat(o.total) || 0,
-            status: o.status || 'N/A',
+            fecha: o.created_at,
+            monto: Number(o.total) || 0,
+            status: o.status || '',
+            sucursal: uno(o.branch)?.name ?? null,
           })),
-        ].sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()).slice(0, 8);
+        ]
+          .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+          .slice(0, 8);
 
-        // 6. Actualizar el estado
+        // 6. Quién registró cada venta del historial.
+        const ids = Array.from(new Set(historial.map((h) => h.usuarioId).filter((v): v is string => !!v)));
+        const personas: Record<string, string> = {};
+        if (ids.length > 0) {
+          const { data: perfiles } = await supabase.from('profiles').select('id, first_name, last_name').in('id', ids);
+          for (const p of (perfiles ?? []) as Perfil[]) {
+            const nombre = `${p.first_name ?? ''} ${p.last_name ?? ''}`.trim();
+            if (nombre) personas[p.id] = nombre;
+          }
+        }
+
+        if (cancelado) return;
         setStats({
           totalCompras,
-          totalEstadias,
-          montoTotalGastado,
-          ultimaCompra,
-          ultimaEstadia,
-          totalWebOrders,
-          webOrdersPendientes,
-          webOrdersPagadas,
-          webOrdersCanceladas,
-          ultimaWebOrder,
+          totalEstadias: reservas.length,
+          montoTotalGastado: montoVentas + montoWebPaid + foliosPagadosMonto,
+          ultimaCompra: ultimaCompraRaw[0] ?? null,
+          ultimaEstadia: reservas[0] ? new Date(reservas[0].start_date) : null,
+          totalWebOrders: pedidos.length,
+          ultimaWebOrder: pedidos[0] ? new Date(pedidos[0].created_at) : null,
           historial,
-          reservasFuturas,
-          reservasCanceladas,
-          reservasNoShow,
           folioSaldoPendiente,
           folioItemsPendientes,
           proximaReserva,
+          personas,
         });
-
       } catch (err) {
         console.error('Error al cargar el resumen:', err);
-        setError({ mensaje: mensajeError(err) });
+        if (!cancelado) setError({ mensaje: mensajeError(err) });
       } finally {
-        setLoading(false);
+        if (!cancelado) setLoading(false);
       }
     };
 
-    fetchResumenData();
-  }, [clienteId, organizationId]);
+    void fetchResumenData();
+    return () => {
+      cancelado = true;
+    };
+  }, [clienteId, organizationId, timezone, vuelta]);
 
-  // Preparar tarjetas de estadísticas — 6 KPIs compactos
-  const estadisticas: EstadisticaCard[] = [
-    {
-      title: t('resumen.compras'),
-      value: stats.totalCompras,
-      icon: <ShoppingBag className="h-5 w-5" />,
-      description: stats.ultimaCompra
-        ? t('resumen.ultima', { fecha: instante(stats.ultimaCompra) })
-        : t('resumen.sinCompras')
-    },
-    {
-      title: t('resumen.estadias'),
-      value: stats.totalEstadias,
-      icon: <Home className="h-5 w-5" />,
-      description: stats.ultimaEstadia
-        ? t('resumen.ultima', { fecha: instante(stats.ultimaEstadia) })
-        : t('resumen.sinEstadias')
-    },
-    {
-      title: t('resumen.gastoTotal'),
-      value: formatear(stats.montoTotalGastado),
-      icon: <DollarSign className="h-5 w-5" />,
-      description: t('resumen.gastoTotalDescripcion')
-    },
-    {
-      title: t('resumen.pedidosWeb'),
-      value: stats.totalWebOrders,
-      icon: <ShoppingBag className="h-5 w-5" />,
-      description: stats.ultimaWebOrder
-        ? t('resumen.ultimo', { fecha: instante(stats.ultimaWebOrder) })
-        : t('resumen.sinPedidosWeb')
-    },
-    {
-      title: t('resumen.reservasFuturas'),
-      value: stats.reservasFuturas,
-      icon: <CalendarClock className="h-5 w-5" />,
-      description: stats.proximaReserva
-        ? t('resumen.proxima', { fecha: plana(stats.proximaReserva, DIA_MES) })
-        : t('resumen.sinReservasFuturas')
-    },
-    {
-      title: t('resumen.saldoFolios'),
-      value: formatear(stats.folioSaldoPendiente),
-      icon: <Receipt className="h-5 w-5" />,
-      description: stats.folioItemsPendientes > 0
-        ? t('resumen.itemsPendientes', { count: stats.folioItemsPendientes })
-        : t('resumen.sinSaldoPendiente')
-    },
-  ];
+  // Cartera: «N facturas vencidas», con los días de la más antigua en móvil.
+  const carteraKpi = useMemo(() => {
+    const estado = cartera?.estado ?? 'cargando';
+    const resumen = cartera?.resumen ?? null;
+    const vencidas = resumen?.cuentas_vencidas ?? 0;
+    const diasMax = (cartera?.filas ?? []).reduce((m, f) => Math.max(m, f.dias || 0), 0);
+    return { estado, resumen, vencidas, diasMax };
+  }, [cartera]);
 
-  // Mostrar estado de carga
-  if (loading) {
-    return (
-      <div className="py-4">
-        <StatsSkeleton count={4} />
-      </div>
-    );
-  }
-
-  // Mostrar error si existe
   if (error) {
     return (
-      <div className="w-full py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-700 dark:text-red-400">{error.mensaje || t('resumen.errorCarga')}</p>
-        </div>
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState variante="error" compacto descripcion={error.mensaje || t('resumen.errorCarga')} onReintentar={() => setVuelta((n) => n + 1)} />
       </div>
     );
   }
 
-  if (vacio && stats.historial.length === 0) return <>{vacio}</>;
+  if (!loading && vacio && stats.historial.length === 0) return <>{vacio}</>;
+
+  const saldoCartera =
+    carteraKpi.estado === 'listo' ? formatear(carteraKpi.resumen?.por_cobrar ?? 0) : carteraKpi.estado === 'cargando' ? '' : '—';
+  const detalleCartera = (largo: boolean): string =>
+    carteraKpi.estado === 'sinPermiso'
+      ? t('resumen.carteraSinPermiso')
+      : carteraKpi.estado === 'error'
+        ? t('resumen.carteraError')
+        : carteraKpi.vencidas > 0
+          ? largo && carteraKpi.diasMax > 0
+            ? t('resumen.facturasVencidasHace', { count: carteraKpi.vencidas, dias: carteraKpi.diasMax })
+            : t('resumen.facturasVencidas', { count: carteraKpi.vencidas })
+          : t('resumen.sinSaldoPendiente');
+  const carteraVencida = carteraKpi.estado === 'listo' && carteraKpi.vencidas > 0;
+  const tarjetaCartera = (largo: boolean) => (
+    <StatCard
+      etiqueta={t('resumen.saldoCartera')}
+      valor={saldoCartera}
+      detalle={detalleCartera(largo)}
+      tono={carteraVencida ? 'peligro' : 'neutro'}
+      tendencia={carteraVencida ? 'baja' : undefined}
+      cargando={carteraKpi.estado === 'cargando'}
+      tamano="sm"
+    />
+  );
+  const tarjetaGasto = (detalle: string) => (
+    <StatCard etiqueta={t('resumen.gastoTotal')} valor={formatear(stats.montoTotalGastado)} detalle={detalle} cargando={loading} tamano="sm" />
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Sección de KPIs — 2x2 en móvil, 3x2 en tablet, 6 en línea en desktop */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-5">
-        {estadisticas.map((stat, index) => (
-          <div 
-            key={`stat-${index}`} 
-            className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-medium">
-                {stat.title}
-              </div>
-              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-full text-primary">
-                {stat.icon}
-              </div>
-            </div>
-            <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white break-words whitespace-normal">
-              {stat.value}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words whitespace-normal">
-              {stat.description}
-            </div>
-          </div>
-        ))}
+    <div className="flex flex-col gap-3">
+      {/* Móvil (Figma 332:118153): lo que se mira de pie en el mostrador. */}
+      <div className="grid grid-cols-1 gap-3 sm:hidden">
+        {tarjetaCartera(true)}
+        {tarjetaGasto(t('resumen.comprasConteo', { count: stats.totalCompras }))}
       </div>
 
-      {/* Sección de historial reciente — ventas, reservas y pedidos web unificados */}
-      <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 className="text-base sm:text-lg font-medium text-gray-900 dark:text-white mb-4">
-          {t('resumen.historialReciente')}
-        </h3>
-        {stats.historial.length > 0 ? (
-          <div className="space-y-2">
+      <section aria-label={t('resumen.kpisAria')} className="hidden grid-cols-3 gap-2.5 sm:grid">
+        <StatCard
+          etiqueta={t('resumen.compras')}
+          valor={stats.totalCompras}
+          detalle={stats.ultimaCompra ? t('resumen.ultima', { fecha: instante(stats.ultimaCompra, DIA_MES_ANIO) }) : t('resumen.sinCompras')}
+          cargando={loading}
+          tamano="sm"
+        />
+        {tarjetaGasto(t('resumen.gastoTotalDescripcion'))}
+        {tarjetaCartera(false)}
+        <StatCard
+          etiqueta={t('resumen.estadias')}
+          valor={stats.totalEstadias}
+          detalle={
+            stats.proximaReserva
+              ? t('resumen.proxima', { fecha: plana(stats.proximaReserva, DIA_MES_ANIO) })
+              : stats.ultimaEstadia
+                ? t('resumen.ultima', { fecha: instante(stats.ultimaEstadia, DIA_MES_ANIO) })
+                : t('resumen.sinEstadias')
+          }
+          tono={stats.proximaReserva ? 'informacion' : 'neutro'}
+          cargando={loading}
+          tamano="sm"
+        />
+        <StatCard
+          etiqueta={t('resumen.pedidosWeb')}
+          valor={stats.totalWebOrders}
+          detalle={stats.ultimaWebOrder ? t('resumen.ultimo', { fecha: instante(stats.ultimaWebOrder, DIA_MES_ANIO) }) : t('resumen.sinPedidosWeb')}
+          cargando={loading}
+          tamano="sm"
+        />
+        <StatCard
+          etiqueta={t('resumen.saldoFolios')}
+          valor={formatear(stats.folioSaldoPendiente)}
+          detalle={stats.folioItemsPendientes > 0 ? t('resumen.itemsPendientes', { count: stats.folioItemsPendientes }) : t('resumen.sinSaldoPendiente')}
+          tono={stats.folioItemsPendientes > 0 ? 'advertencia' : 'neutro'}
+          iconoDetalle={stats.folioItemsPendientes > 0 ? TriangleAlert : undefined}
+          cargando={loading}
+          tamano="sm"
+        />
+      </section>
+
+      <Tarjeta
+        titulo={t('resumen.historialReciente')}
+        accion={
+          onVerActividad ? (
+            <button
+              type="button"
+              onClick={onVerActividad}
+              className="rounded text-xs font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              {t('resumen.verTodaActividad')}
+            </button>
+          ) : undefined
+        }
+      >
+        {loading ? (
+          <div className="flex flex-col gap-2" aria-busy="true">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : stats.historial.length > 0 ? (
+          <ul className="flex flex-col gap-2">
             {stats.historial.map((item) => {
-              const titulo =
-                item.tipo === 'venta'
-                  ? t('resumen.historial.venta', { numero: item.referencia })
-                  : item.tipo === 'reserva'
-                    ? t('resumen.historial.reserva', { fecha: instante(item.referencia, DIA_MES) })
-                    : t('resumen.historial.pedido', { numero: item.referencia });
-              const estado = item.status === 'reserva' ? t('resumen.historial.estadoReserva') : etiquetaEstado(item.status);
-              const iconMap = {
-                venta: <DollarSign className="h-4 w-4 text-green-500" />,
-                reserva: <Calendar className="h-4 w-4 text-blue-500" />,
-                web_order: <ShoppingBag className="h-4 w-4 text-purple-500" />,
-              };
-              const statusColor = (s: string) => {
-                const sl = s.toLowerCase();
-                if (['cancelled', 'cancelled', 'cancelado'].some(x => sl.includes(x)))
-                  return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
-                if (['paid', 'delivered', 'complete', 'checked_in', 'checked_out'].some(x => sl.includes(x)))
-                  return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
-                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400';
-              };
+              const persona = item.usuarioId ? stats.personas[item.usuarioId] : undefined;
+              if (item.tipo === 'venta') {
+                return (
+                  <EntradaHistorial
+                    key={item.id}
+                    icono={ShoppingCart}
+                    tono="exito"
+                    titulo={t('resumen.historial.venta', { numero: item.referencia })}
+                    estado={item.status ? <StatusBadge estado={item.status} /> : undefined}
+                    detalle={unirPartes([
+                      item.productos !== undefined ? t('resumen.productos', { count: item.productos }) : null,
+                      item.sucursal,
+                      item.monto > 0 ? formatear(item.monto) : null,
+                    ])}
+                    meta={unirPartes([cuando(item.fecha), persona])}
+                  />
+                );
+              }
+              if (item.tipo === 'reserva') {
+                return (
+                  <EntradaHistorial
+                    key={item.id}
+                    icono={CalendarDays}
+                    tono="informacion"
+                    titulo={t('resumen.historial.reserva', { fecha: instante(item.referencia, DIA_MES) })}
+                    estado={item.status ? <StatusBadge estado={item.status} /> : undefined}
+                  />
+                );
+              }
               return (
-                <div key={item.id} className="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 rounded-lg px-3 sm:px-4 py-2">
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                    {iconMap[item.tipo]}
-                    <div className="min-w-0">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white block break-words whitespace-normal min-w-0">{titulo}</span>
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${statusColor(item.status)}`}>{estado}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end flex-shrink-0">
-                    {item.monto > 0 && <span className="text-sm font-medium text-gray-900 dark:text-white">{formatear(item.monto)}</span>}
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{instante(item.fecha, DIA_MES)}</span>
-                  </div>
-                </div>
+                <EntradaHistorial
+                  key={item.id}
+                  icono={ShoppingBag}
+                  tono="marca"
+                  titulo={t('resumen.historial.pedido', { numero: item.referencia })}
+                  estado={item.status ? <StatusBadge estado={item.status} /> : undefined}
+                  detalle={unirPartes([item.sucursal, item.monto > 0 ? formatear(item.monto) : null])}
+                  meta={cuando(item.fecha)}
+                />
               );
             })}
-          </div>
+          </ul>
         ) : (
-          <div className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-            {t('resumen.sinActividad')}
-          </div>
+          <p className="py-4 text-center text-sm text-fg-secondary">{t('resumen.sinActividad')}</p>
         )}
-      </div>
+      </Tarjeta>
     </div>
   );
 }

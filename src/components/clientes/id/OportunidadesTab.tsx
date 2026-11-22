@@ -1,5 +1,11 @@
 'use client';
 
+/**
+ * Pestaña «Oportunidades» de la ficha (Figma 06 Clientes 332:114792 y CRM
+ * 772:19838): cuatro cifras (Total · Abiertas · Ganadas · Perdidas) y la lista
+ * con etapa, importe y estado; «Nueva oportunidad» abre la hoja del CRM.
+ */
+
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -7,8 +13,9 @@ import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { formatMoneda } from '@/lib/utils/moneda';
 import { Badge } from '@/components/ui/badge';
-import { Plus, TrendingUp } from 'lucide-react';
-import { DetailSkeleton } from '@/components/common/PageSkeletons';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ChevronRight, Plus, TrendingUp } from 'lucide-react';
+import { EmptyState, StatCard, clasesBoton, type TonoBadge } from '@/components/kit';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 
 interface Oportunidad {
@@ -41,6 +48,8 @@ interface OportunidadesTabProps {
   /** Cambia tras crear una oportunidad: se vuelve a leer. */
   recarga?: number;
 }
+
+const DIA_MES_ANIO: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
 
 export default function OportunidadesTab({ clienteId, organizationId, onNuevaOportunidad, recarga }: OportunidadesTabProps) {
   const t = useTranslations('clientes.ficha');
@@ -82,136 +91,120 @@ export default function OportunidadesTab({ clienteId, organizationId, onNuevaOpo
     fetchOportunidades();
   }, [clienteId, organizationId, recarga]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'open':
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">{t('oportunidades.estados.abierta')}</Badge>;
-      case 'won':
-        return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">{t('oportunidades.estados.ganada')}</Badge>;
-      case 'lost':
-        return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">{t('oportunidades.estados.perdida')}</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
-    }
+  const ESTADOS: Record<string, { clave: string; tono: TonoBadge }> = {
+    open: { clave: 'abierta', tono: 'informacion' },
+    won: { clave: 'ganada', tono: 'exito' },
+    lost: { clave: 'perdida', tono: 'peligro' },
   };
 
+  const kpis = (valores: { total: number; abiertas: number; ganadas: number; perdidas: number } | null) => (
+    <section aria-label={t('oportunidades.kpisAria')} className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <StatCard etiqueta={t('oportunidades.total')} valor={valores?.total ?? 0} cargando={!valores} tamano="sm" />
+      <StatCard etiqueta={t('oportunidades.abiertas')} valor={valores?.abiertas ?? 0} cargando={!valores} tamano="sm" />
+      <StatCard etiqueta={t('oportunidades.ganadas')} valor={valores?.ganadas ?? 0} cargando={!valores} tamano="sm" />
+      <StatCard etiqueta={tc('perdidas')} valor={valores?.perdidas ?? 0} cargando={!valores} tamano="sm" />
+    </section>
+  );
+
+  const botonNueva = onNuevaOportunidad ? (
+    <button type="button" onClick={onNuevaOportunidad} className={clasesBoton({ tamano: 'sm' })}>
+      <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+      {tc('nueva')}
+    </button>
+  ) : null;
+
   if (loading) {
-    return <DetailSkeleton />;
+    return (
+      <div className="flex flex-col gap-3" aria-busy="true">
+        {kpis(null)}
+        <Skeleton className="h-48 w-full rounded-xl" />
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-        <p className="text-red-600 dark:text-red-400">{error.mensaje || t('oportunidades.errorCarga')}</p>
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState variante="error" compacto descripcion={error.mensaje || t('oportunidades.errorCarga')} />
       </div>
     );
   }
 
   if (oportunidades.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-        <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-          <TrendingUp className="h-8 w-8 text-blue-500" />
-        </div>
-        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{t('oportunidades.vacioTitulo')}</h3>
-        <p className="mt-2 text-gray-500 dark:text-gray-400">
-          {t('oportunidades.vacioDescripcion')}
-        </p>
-        {onNuevaOportunidad && (
-          <button type="button" onClick={onNuevaOportunidad} className="mt-4 inline-flex h-10 items-center gap-2 rounded-lg bg-brand-action px-4 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-            <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-            {tc('nueva')}
-          </button>
-        )}
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState
+          icono={TrendingUp}
+          titulo={t('oportunidades.vacioTitulo')}
+          descripcion={t('oportunidades.vacioDescripcion')}
+          accion={onNuevaOportunidad ? { etiqueta: tc('nueva'), onClick: onNuevaOportunidad, icono: Plus } : undefined}
+        />
       </div>
     );
   }
 
-  const ganadas = oportunidades.filter(o => o.status === 'won').length;
-  const abiertas = oportunidades.filter(o => o.status === 'open').length;
-  const perdidas = oportunidades.filter(o => o.status === 'lost').length;
+  const ganadas = oportunidades.filter((o) => o.status === 'won').length;
+  const abiertas = oportunidades.filter((o) => o.status === 'open').length;
+  const perdidas = oportunidades.filter((o) => o.status === 'lost').length;
 
   return (
-    <div className="space-y-4">
-      {/* Resumen */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{t('oportunidades.total')}</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white">{oportunidades.length}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{t('oportunidades.abiertas')}</p>
-          <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{abiertas}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{t('oportunidades.ganadas')}</p>
-          <p className="text-xl font-bold text-green-600 dark:text-green-400">{ganadas}</p>
-        </div>
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{tc('perdidas')}</p>
-          <p className="text-xl font-bold text-red-600 dark:text-red-400">{perdidas}</p>
-        </div>
-      </div>
+    <div className="flex flex-col gap-3">
+      {kpis({ total: oportunidades.length, abiertas, ganadas, perdidas })}
 
-      {/* Lista de oportunidades */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+      <section aria-labelledby="oportunidades-titulo" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 id="oportunidades-titulo" className="text-[13px] font-semibold leading-[19px] text-fg">
             {t('oportunidades.titulo', { n: oportunidades.length })}
           </h3>
-          {onNuevaOportunidad && (
-            <button type="button" onClick={onNuevaOportunidad} className="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-action px-3 text-sm font-medium text-fg-on-brand hover:bg-brand-action-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
-              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {tc('nueva')}
-            </button>
-          )}
+          {botonNueva}
         </div>
-        <div className="space-y-3">
-          {oportunidades.map((opp) => (
-            <Link
-              key={opp.id}
-              href={`/app/crm/oportunidades/${opp.id}`}
-              className="block p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 dark:text-white break-words whitespace-normal">
-                    {opp.name}
-                  </h4>
-                  <div className="flex flex-wrap items-center gap-2 mt-1">
-                    {opp.pipeline && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {opp.pipeline.name}
-                      </span>
-                    )}
-                    {opp.stage && (
-                      <span
-                        className="text-xs px-2 py-0.5 rounded-full"
-                        style={opp.stage.color ? { backgroundColor: opp.stage.color + '20', color: opp.stage.color } : undefined}
-                      >
-                        {opp.stage.name}
-                      </span>
+        <ul className="flex flex-col gap-2">
+          {oportunidades.map((opp) => {
+            const estado = ESTADOS[opp.status];
+            return (
+              <li key={opp.id}>
+                <Link
+                  href={`/app/crm/oportunidades/${opp.id}`}
+                  className="flex items-center gap-3 rounded-lg border border-line bg-surface px-3 py-3 transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <p className="break-words text-[13px] font-semibold leading-[18px] text-fg">{opp.name}</p>
+                    <p className="text-[11px] leading-4 text-fg-muted">
+                      {[opp.pipeline?.name, opp.expected_close_date ? t('oportunidades.cierreEsperado', { fecha: plana(opp.expected_close_date, DIA_MES_ANIO) }) : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      {opp.stage && (
+                        <Badge tono="marca" apariencia="contorno" tamano="sm">
+                          {opp.stage.name}
+                        </Badge>
+                      )}
+                      {Number(opp.amount) > 0 && (
+                        <span className="text-sm font-semibold tabular-nums text-fg">
+                          {formatMoneda(parseFloat(String(opp.amount)), paraDocumento(opp.currency))}
+                        </span>
+                      )}
+                    </div>
+                    {estado ? (
+                      <Badge tono={estado.tono} tamano="sm">
+                        {t(`oportunidades.estados.${estado.clave}`)}
+                      </Badge>
+                    ) : (
+                      <Badge tono="neutro" tamano="sm">
+                        {opp.status}
+                      </Badge>
                     )}
                   </div>
-                </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  {opp.amount > 0 && (
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {formatMoneda(parseFloat(String(opp.amount)), paraDocumento(opp.currency))}
-                    </span>
-                  )}
-                  {getStatusBadge(opp.status)}
-                </div>
-              </div>
-              {opp.expected_close_date && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  {t('oportunidades.cierreEsperado', { fecha: plana(opp.expected_close_date) })}
-                </p>
-              )}
-            </Link>
-          ))}
-        </div>
-      </div>
+                  <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-fg-muted" strokeWidth={1.5} />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
     </div>
   );
 }

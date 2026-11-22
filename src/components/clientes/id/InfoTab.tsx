@@ -1,12 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * Pestaña «Información» de la ficha (Figma 06 Clientes 331:113517): tarjetas
+ * en dos columnas con filas etiqueta / valor, lápiz que lleva a «Editar» y
+ * «Solo lectura» en las que no se editan desde el formulario.
+ */
+
+import { useState, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/lib/supabase/config';
-import { Building2 } from 'lucide-react';
-import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Building2, Pencil } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 import { DatosImportadosLead } from '@/components/crm/leads/DatosImportadosLead';
 import { cargoImportado, contactoImportado, departamentoImportado, telefonosAdicionalesDe, tieneDatosImportados } from '@/lib/crm/importacionLeads/datosFicha';
@@ -42,6 +48,9 @@ interface ClienteInfo {
   is_registered?: boolean | null;
   notes?: string | null;
   preferences?: Record<string, unknown> | null;
+  do_not_call?: boolean | null;
+  timezone?: string | null;
+  company_size?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }
@@ -186,39 +195,35 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
 
   if (loading) {
     return (
-      <div className="py-4">
-        <CardListSkeleton cards={4} columns="1" />
+      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2" aria-busy="true">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-48 w-full rounded-xl" />
+        ))}
       </div>
     );
   }
 
   if (error || !clienteInfo) {
     return (
-      <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 rounded-lg p-4 my-4">
-        <p className="text-red-600 dark:text-red-400 font-medium">
-          {t('info.error', {
-            mensaje:
-              error?.mensaje ||
-              (error?.sinDatos ? t('info.sinDatos') : error ? t('info.errorCarga') : t('info.noSePudoCargar')),
-          })}
-        </p>
-      </div>
+      <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-4 text-sm font-medium text-danger-text">
+        {t('info.error', {
+          mensaje:
+            error?.mensaje ||
+            (error?.sinDatos ? t('info.sinDatos') : error ? t('info.errorCarga') : t('info.noSePudoCargar')),
+        })}
+      </p>
     );
   }
 
   const noEspecificado = t('info.noEspecificado');
+  const editar = `/app/clientes/${encodeURIComponent(clienteInfo.id)}/editar`;
 
-  // Formatear las fechas si existen (created_at y updated_at son timestamptz)
+  // created_at y updated_at son timestamptz: zona de la organización.
   const createdAt = clienteInfo.created_at ? instante(clienteInfo.created_at) : t('info.noDisponible');
   const updatedAt = clienteInfo.updated_at ? instante(clienteInfo.updated_at) : t('info.noDisponible');
 
-  // Extraer los roles del cliente (si existen)
   const roles = clienteInfo.roles || [];
-  const rolesFormatted = Array.isArray(roles) && roles.length > 0
-    ? roles.join(', ')
-    : noEspecificado;
-
-  // Extraer responsabilidades fiscales
+  const rolesFormatted = Array.isArray(roles) && roles.length > 0 ? roles.join(', ') : noEspecificado;
   const fiscalResp = clienteInfo.fiscal_responsibilities || [];
 
   const isCompany = clienteInfo?.customer_type === 'company';
@@ -231,320 +236,232 @@ export default function InfoTab({ clienteId, organizationId }: InfoTabProps) {
   const cargoPropio = nombreContacto ? cargoImportado(importacion, leadMeta) : null;
   const otrosTelefonos = telefonosAdicionalesDe(importacion, leadMeta, clienteInfo.notes, clienteInfo.phone);
   const departamento = municipalityState || departamentoImportado(importacion, leadMeta);
+  const preferencias = clienteInfo.preferences && typeof clienteInfo.preferences === 'object' ? Object.entries(clienteInfo.preferences) : [];
+  const valorPreferencia = (v: unknown) => (v === null || v === undefined ? noEspecificado : typeof v === 'object' ? JSON.stringify(v) : String(v));
+  const hayFiscales = isCompany || !!clienteInfo.company_name || !!clienteInfo.trade_name || clienteInfo.dv != null || fiscalResp.length > 0;
+
+  const datosPrincipales = (
+    <Seccion
+      titulo={isCompany ? t('info.datosEmpresa') : t('info.datosPersonales')}
+      descripcion={isCompany ? t('info.datosEmpresaDescripcion') : t('info.datosPersonalesDescripcion')}
+      editar={editar}
+    >
+      <Dato etiqueta={isCompany ? t('info.razonSocial') : t('info.nombreCompleto')}>
+        {clienteInfo.full_name || `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() || noEspecificado}
+      </Dato>
+      {isCompany && clienteInfo.trade_name && <Dato etiqueta={t('info.nombreComercial')}>{clienteInfo.trade_name}</Dato>}
+      {isCompany && primaryContact && (
+        <Dato etiqueta={t('info.personaContacto')}>
+          {primaryContact.position ? t('info.contactoConCargo', { nombre: primaryContact.name, cargo: primaryContact.position }) : primaryContact.name}
+          {primaryContact.email && <span className="block text-fg-secondary">{primaryContact.email}</span>}
+          {primaryContact.phone && <span className="block text-fg-secondary">{primaryContact.phone}</span>}
+        </Dato>
+      )}
+      {nombreContacto && (
+        <Dato etiqueta={t('info.personaContacto')}>{cargoPropio ? t('info.contactoConCargo', { nombre: nombreContacto, cargo: cargoPropio }) : nombreContacto}</Dato>
+      )}
+      <Dato etiqueta={t('info.correo')}>{clienteInfo.email || noEspecificado}</Dato>
+      <Dato etiqueta={t('info.telefono')}>
+        {clienteInfo.phone || noEspecificado}
+        {otrosTelefonos.length > 0 && (
+          <span className="block text-fg-secondary">
+            {tImp('campos.telefonosAdicionales')}: {otrosTelefonos.join(' · ')}
+          </span>
+        )}
+      </Dato>
+      <Dato etiqueta={t('info.identificacion')}>
+        {clienteInfo.identification_type
+          ? t('info.identificacionValor', { tipo: clienteInfo.identification_type, numero: clienteInfo.identification_number || noEspecificado })
+          : noEspecificado}
+      </Dato>
+    </Seccion>
+  );
+
+  const direccion = (
+    <Seccion titulo={t('info.direccion')} descripcion={t('info.direccionDescripcion')} editar={editar}>
+      <Dato etiqueta={t('info.direccionCompleta')}>{clienteInfo.address || noEspecificado}</Dato>
+      <Dato etiqueta={tImp('campos.ciudad')}>{clienteInfo.city || noEspecificado}</Dato>
+      <Dato etiqueta={t('info.municipio')}>{municipalityName || noEspecificado}</Dato>
+      <Dato etiqueta={t('info.estadoProvincia')}>{departamento || noEspecificado}</Dato>
+      <Dato etiqueta={t('info.codigoPostal')}>{municipalityPostalCode || noEspecificado}</Dato>
+    </Seccion>
+  );
+
+  const rolesEtiquetas = (
+    <Seccion titulo={t('info.rolesEtiquetas')} descripcion={t('info.rolesEtiquetasDescripcion')} editar={editar}>
+      <Dato etiqueta={t('info.roles')}>{rolesFormatted}</Dato>
+      <Dato etiqueta={t('info.etiquetas')}>
+        {Array.isArray(clienteInfo.tags) && clienteInfo.tags.length > 0 ? (
+          <span className="flex flex-wrap gap-1">
+            {clienteInfo.tags.map((tag) => (
+              <Badge key={tag} tono="neutro" apariencia="contorno" tamano="sm" className="bg-surface">
+                {tag}
+              </Badge>
+            ))}
+          </span>
+        ) : (
+          <span className="text-fg-secondary">{t('info.sinEtiquetas')}</span>
+        )}
+      </Dato>
+      <Dato etiqueta={t('info.clienteRegistrado')}>{clienteInfo.is_registered ? t('info.si') : t('info.no')}</Dato>
+    </Seccion>
+  );
+
+  const fiscales = hayFiscales ? (
+    <Seccion
+      titulo={isCompany ? t('info.datosFiscales') : t('info.datosEmpresarialesFiscales')}
+      descripcion={t('info.datosFiscalesDescripcion')}
+      editar={editar}
+    >
+      {!isCompany && <Dato etiqueta={t('info.razonSocial')}>{clienteInfo.company_name || noEspecificado}</Dato>}
+      {!isCompany && <Dato etiqueta={t('info.nombreComercial')}>{clienteInfo.trade_name || noEspecificado}</Dato>}
+      {isCompany && <Dato etiqueta={t('info.razonSocial')}>{clienteInfo.company_name || clienteInfo.full_name || noEspecificado}</Dato>}
+      {isCompany && <Dato etiqueta={t('info.nombreComercial')}>{clienteInfo.trade_name || noEspecificado}</Dato>}
+      <Dato etiqueta={t('info.digitoVerificacion')}>{clienteInfo.dv != null ? clienteInfo.dv : noEspecificado}</Dato>
+      <Dato etiqueta={t('info.responsabilidadFiscal')}>{fiscalResp.length > 0 ? fiscalResp.join(' · ') : noEspecificado}</Dato>
+    </Seccion>
+  ) : null;
+
+  const preferenciasContacto = (
+    <Seccion titulo={t('info.preferenciasContacto')} descripcion={t('info.preferenciasDescripcion')} editar={editar} soloLectura={t('info.soloLectura')}>
+      {preferencias.length > 0 ? (
+        preferencias.map(([clave, valor]) => (
+          <Dato key={clave} etiqueta={clave}>
+            {valorPreferencia(valor)}
+          </Dato>
+        ))
+      ) : (
+        <Dato etiqueta={t('info.preferencias')}>
+          <span className="text-fg-secondary">{t('info.sinPreferencias')}</span>
+        </Dato>
+      )}
+      <Dato etiqueta={t('info.noLlamar')}>{clienteInfo.do_not_call ? t('info.si') : t('info.no')}</Dato>
+      {clienteInfo.timezone && <Dato etiqueta={t('info.zonaHoraria')}>{clienteInfo.timezone}</Dato>}
+      {isCompany && clienteInfo.company_size && <Dato etiqueta={t('info.tamanoEmpresa')}>{clienteInfo.company_size}</Dato>}
+    </Seccion>
+  );
+
+  const sistema = (
+    <Seccion titulo={t('info.datosSistema')} descripcion={t('info.datosSistemaDescripcion')} soloLectura={t('info.soloLectura')}>
+      <Dato etiqueta={t('info.idCliente')}>
+        <span className="break-all font-mono text-xs">{clienteInfo.id}</span>
+      </Dato>
+      <Dato etiqueta={t('info.idOrganizacion')}>{clienteInfo.organization_id}</Dato>
+      <Dato etiqueta={t('info.fechaAlta')}>{createdAt}</Dato>
+      <Dato etiqueta={t('info.ultimaActualizacion')}>{updatedAt}</Dato>
+    </Seccion>
+  );
 
   return (
-    <div className="space-y-6">
-      <h3 className="text-lg font-medium">{t('info.titulo')}</h3>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Información personal / empresarial */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{isCompany ? t('info.datosEmpresa') : t('info.datosPersonales')}</CardTitle>
-            <CardDescription>{isCompany ? t('info.datosEmpresaDescripcion') : t('info.datosPersonalesDescripcion')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{isCompany ? t('info.razonSocial') : t('info.nombreCompleto')}</p>
-                <p>{clienteInfo.full_name || `${clienteInfo.first_name || ''} ${clienteInfo.last_name || ''}`.trim() || noEspecificado}</p>
-              </div>
-
-              {isCompany && primaryContact && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.personaContacto')}</p>
-                  <p>
-                    {primaryContact.position
-                      ? t('info.contactoConCargo', { nombre: primaryContact.name, cargo: primaryContact.position })
-                      : primaryContact.name}
-                  </p>
-                  {primaryContact.email && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{primaryContact.email}</p>
-                  )}
-                  {primaryContact.phone && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{primaryContact.phone}</p>
-                  )}
-                </div>
-              )}
-
-              {nombreContacto && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.personaContacto')}</p>
-                  <p>{cargoPropio ? t('info.contactoConCargo', { nombre: nombreContacto, cargo: cargoPropio }) : nombreContacto}</p>
-                </div>
-              )}
-
-              {isCompany && clienteInfo.trade_name && (
-                <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.nombreComercial')}</p>
-                  <p>{clienteInfo.trade_name}</p>
-                </div>
-              )}
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.correo')}</p>
-                <p>{clienteInfo.email || noEspecificado}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.telefono')}</p>
-                <p>{clienteInfo.phone || noEspecificado}</p>
-                {otrosTelefonos.length > 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {tImp('campos.telefonosAdicionales')}: {otrosTelefonos.join(' · ')}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.identificacion')}</p>
-                <p>
-                  {clienteInfo.identification_type
-                    ? t('info.identificacionValor', {
-                        tipo: clienteInfo.identification_type,
-                        numero: clienteInfo.identification_number || noEspecificado,
-                      })
-                    : noEspecificado}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Información de dirección */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('info.direccion')}</CardTitle>
-            <CardDescription>{t('info.direccionDescripcion')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.direccionCompleta')}</p>
-                <p>{clienteInfo.address || noEspecificado}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{tImp('campos.ciudad')}</p>
-                <p>{clienteInfo.city || noEspecificado}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.municipio')}</p>
-                <p>{municipalityName || noEspecificado}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.estadoProvincia')}</p>
-                <p>{departamento || noEspecificado}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.codigoPostal')}</p>
-                <p>{municipalityPostalCode || noEspecificado}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="flex flex-col gap-3">
+      {/* Figma 331:113517: dos columnas de tarjetas que se apilan en móvil. */}
+      <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-2">
+        <div className="flex flex-col gap-3">
+          {datosPrincipales}
+          {direccion}
+          {rolesEtiquetas}
+        </div>
+        <div className="flex flex-col gap-3">
+          {fiscales}
+          {preferenciasContacto}
+          {sistema}
+        </div>
       </div>
 
-      {/* Empresas vinculadas - solo para personas */}
+      {/* Empresas vinculadas: solo personas. */}
       {!isCompany && linkedCompanies.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              {t('info.empresasVinculadas')}
-            </CardTitle>
-            <CardDescription>{t('info.empresasVinculadasDescripcion')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {linkedCompanies.map((company) => (
-                <div key={company.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <Building2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <Link href={`/app/clientes/${company.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                        {company.name ?? t('comun.sinNombre')}
-                      </Link>
-                      {company.position && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{company.position}</p>
-                      )}
-                    </div>
-                  </div>
-                  {company.is_primary && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                      {t('info.principal')}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Datos Empresariales y Fiscales - solo mostrar si hay datos */}
-      {(isCompany || clienteInfo.company_name || clienteInfo.trade_name || clienteInfo.dv != null || fiscalResp.length > 0) && (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>{isCompany ? t('info.datosFiscales') : t('info.datosEmpresarialesFiscales')}</CardTitle>
-          <CardDescription>{t('info.datosFiscalesDescripcion')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {!isCompany && (
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.razonSocial')}</p>
-                <p>{clienteInfo.company_name || noEspecificado}</p>
-              </div>
-            )}
-            {!isCompany && (
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.nombreComercial')}</p>
-                <p>{clienteInfo.trade_name || noEspecificado}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.digitoVerificacion')}</p>
-              <p>{clienteInfo.dv != null ? clienteInfo.dv : noEspecificado}</p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.responsabilidadFiscal')}</p>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {fiscalResp.length > 0 ? fiscalResp.map((code: string) => (
-                <span key={code} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                  {code}
+        <Seccion titulo={t('info.empresasVinculadas')} descripcion={t('info.empresasVinculadasDescripcion')} lista={false}>
+          <ul className="flex flex-col gap-2">
+            {linkedCompanies.map((company) => (
+              <li key={company.id} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-tint text-brand">
+                    <Building2 className="size-4" strokeWidth={1.5} />
+                  </span>
+                  <span className="min-w-0">
+                    <Link href={`/app/clientes/${company.id}`} className="block truncate text-sm font-medium text-link hover:underline">
+                      {company.name ?? t('comun.sinNombre')}
+                    </Link>
+                    {company.position && <span className="block text-xs text-fg-secondary">{company.position}</span>}
+                  </span>
                 </span>
-              )) : <p>{noEspecificado}</p>}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                {company.is_primary && (
+                  <Badge tono="marca" tamano="sm">
+                    {t('info.principal')}
+                  </Badge>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Seccion>
       )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        {/* Metadatos y preferencias */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('info.rolesEtiquetas')}</CardTitle>
-            <CardDescription>{t('info.rolesEtiquetasDescripcion')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.roles')}</p>
-                <p>{rolesFormatted}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.etiquetas')}</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {Array.isArray(clienteInfo.tags) && clienteInfo.tags.length > 0 ? (
-                    clienteInfo.tags.map((tag: string, index: number) => (
-                      <span
-                        key={index}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400"
-                      >
-                        {tag}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-gray-500 dark:text-gray-400">{t('info.sinEtiquetas')}</span>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.clienteRegistrado')}</p>
-                <p>{clienteInfo.is_registered ? t('info.si') : t('info.no')}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Información del sistema */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('info.datosSistema')}</CardTitle>
-            <CardDescription>{t('info.datosSistemaDescripcion')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.idCliente')}</p>
-                <p className="font-mono text-sm">{clienteInfo.id}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.idOrganizacion')}</p>
-                <p>{clienteInfo.organization_id}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.fechaAlta')}</p>
-                <p>{createdAt}</p>
-              </div>
-
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('info.ultimaActualizacion')}</p>
-                <p>{updatedAt}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Datos del archivo de importación sin columna propia en la ficha */}
       {tieneDatosImportados(importacion, leadMeta) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{tImp('titulo')}</CardTitle>
-            <CardDescription>{tImp('descripcion')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DatosImportadosLead importacion={importacion} lead={leadMeta} />
-          </CardContent>
-        </Card>
+        <Seccion titulo={tImp('titulo')} descripcion={tImp('descripcion')} lista={false}>
+          <DatosImportadosLead importacion={importacion} lead={leadMeta} />
+        </Seccion>
       )}
 
-      {/* Notas */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('info.notas')}</CardTitle>
-          <CardDescription>{t('info.notasDescripcion')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 whitespace-pre-wrap">
-            {clienteInfo.notes ? (
-              <p>{clienteInfo.notes}</p>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400 italic">{t('info.sinNotas')}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <Seccion titulo={t('info.notas')} descripcion={t('info.notasDescripcion')} editar={editar} lista={false}>
+        <p className={`whitespace-pre-wrap rounded-lg bg-subtle p-3 text-[13px] leading-[18px] ${clienteInfo.notes ? 'text-fg' : 'italic text-fg-secondary'}`}>
+          {clienteInfo.notes || t('info.sinNotas')}
+        </p>
+      </Seccion>
+    </div>
+  );
+}
 
-      {/* Preferencias */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('info.preferencias')}</CardTitle>
-          <CardDescription>{t('info.preferenciasDescripcion')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {clienteInfo.preferences && Object.keys(clienteInfo.preferences).length > 0 ? (
-            <pre className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-4 overflow-x-auto text-sm">
-              {JSON.stringify(clienteInfo.preferences, null, 2)}
-            </pre>
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 italic">{t('info.sinPreferencias')}</p>
-          )}
-        </CardContent>
-      </Card>
+/** Tarjeta de la pestaña (Figma 331:113517): título, descripción, «Solo lectura» y lápiz que lleva a editar. */
+function Seccion({
+  titulo,
+  descripcion,
+  editar,
+  soloLectura,
+  lista = true,
+  children,
+}: {
+  titulo: string;
+  descripcion?: string;
+  editar?: string;
+  soloLectura?: string;
+  /** `false` si el contenido no son filas etiqueta / valor. */
+  lista?: boolean;
+  children: ReactNode;
+}) {
+  const t = useTranslations('clientes.ficha');
+  return (
+    <section aria-label={titulo} className="flex flex-col gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[13px] font-semibold leading-[19px] text-fg">{titulo}</h3>
+          {descripcion && <p className="truncate text-[11px] leading-4 text-fg-muted">{descripcion}</p>}
+        </div>
+        {soloLectura && (
+          <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-subtle px-2.5 text-xs font-medium text-fg-secondary">{soloLectura}</span>
+        )}
+        {editar && (
+          <Link
+            href={editar}
+            aria-label={t('info.editarSeccion', { seccion: titulo })}
+            title={t('info.editarSeccion', { seccion: titulo })}
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-hover hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <Pencil aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          </Link>
+        )}
+      </div>
+      {lista ? <dl className="flex flex-col gap-2">{children}</dl> : <div className="flex flex-col gap-2">{children}</div>}
+    </section>
+  );
+}
+
+/** Fila etiqueta / valor: etiqueta atenuada a la izquierda, valor a la derecha (en móvil, uno bajo el otro). */
+function Dato({ etiqueta, children }: { etiqueta: ReactNode; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-0.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:gap-3">
+      <dt className="text-[11px] leading-4 text-fg-muted sm:text-xs">{etiqueta}</dt>
+      <dd className="min-w-0 break-words text-[13px] leading-[18px] text-fg">{children}</dd>
     </div>
   );
 }

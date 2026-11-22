@@ -1,37 +1,69 @@
 'use client';
 
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+/**
+ * Tarjeta de identidad del cliente (Figma 06 Clientes `CustomerIdentityCard`,
+ * 331:112918; móvil 332:118153):
+ *
+ * - avatar con subida de foto;
+ * - badges: Empresa/Persona, estado (Cliente · Lead · Inactivo), «Salud N»
+ *   si `customers.health_score` tiene valor y nivel de fidelidad. La pastilla
+ *   «Nuevo» del Figma es la marca de diseño «Marca/Nuevo» (se retira al
+ *   implementar), no un dato del cliente;
+ * - datos con icono: documento, correo, teléfono, ciudad · dirección (solo
+ *   los que existen);
+ * - «Contacto principal» (empresas) o «Vinculado a» (personas) y etiquetas;
+ * - barra de acciones rápidas del CRM (`pie`, Figma 772:19838).
+ *
+ * En móvil la tarjeta se reduce a avatar, nombre, badges y acciones: el
+ * documento va en la cabecera y el resto en «Información».
+ */
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Camera, Loader2, Building2, User } from 'lucide-react';
+import { Building2, Camera, FileText, Loader2, Mail, MapPin, Smartphone } from 'lucide-react';
 import { UserAvatar } from '@/components/app-layout/Header/GlobalSearch/UserAvatar';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from '@/components/ui/use-toast';
+import { documentoCliente } from '@/lib/services/clientesListadoService';
+import {
+  TONO_ESTADO_FICHA,
+  TONO_NIVEL,
+  estadoFicha,
+  etiquetasVisibles,
+  nivelFidelidad,
+  tonoSalud,
+} from './fichaLogica';
 
-// Interfaz para las props del componente
 interface ClienteHeaderProps {
   cliente: {
     id: string;
     first_name?: string;
     last_name?: string;
     full_name?: string;
-    email?: string;
-    tags?: string[];
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    tags?: string[] | null;
     avatar_url?: string | null;
     customer_type?: string | null;
+    identification_type?: string | null;
+    identification_number?: string | null;
+    dv?: number | null;
+    status?: string | null;
+    lifecycle_stage?: string | null;
+    health_score?: number | null;
+    created_at?: string | null;
   };
   onAvatarUpdate?: (newUrl: string) => void;
   /** CRM ola 3A (Figma 772:19838): barra de acciones rápidas dentro de la tarjeta, bajo los datos. */
   pie?: ReactNode;
 }
 
-// Ya no necesitamos este componente porque usaremos UserAvatar
-
 interface PersonaVinculada {
   first_name?: string | null;
   last_name?: string | null;
-  email?: string | null;
-  phone?: string | null;
 }
 interface EnlaceEmpresa {
   is_primary?: boolean | null;
@@ -41,120 +73,70 @@ interface EnlaceEmpresa {
 }
 const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? v[0] ?? null : v ?? null);
 
-type Nivel = 'oro' | 'plata' | 'bronce' | 'basico';
+const CLASE_ETIQUETA_FILA = 'shrink-0 text-xs font-semibold leading-4 text-fg-muted';
+const CLASE_CHIP_BASE = 'inline-flex h-7 max-w-full items-center gap-1.5 truncate rounded-full bg-subtle px-2.5 text-xs font-medium';
+const CLASE_CHIP = `${CLASE_CHIP_BASE} text-fg-secondary`;
 
-// Componente para mostrar el nivel de fidelidad del cliente
-const NivelFidelidad = ({ nivel, etiqueta }: { nivel: Nivel; etiqueta: string }) => {
-  let color = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-  
-  switch(nivel) {
-    case 'oro':
-      color = 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-500';
-      break;
-    case 'plata':
-      color = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
-      break;
-    case 'bronce':
-      color = 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-500';
-      break;
-    default:
-      color = 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500';
-  }
-  
+function Dato({ icono: Icono, children }: { icono: typeof Mail; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
-      {etiqueta}
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-medium leading-4 text-fg-secondary">
+      <Icono aria-hidden="true" className="size-3.5 shrink-0 text-fg-muted" strokeWidth={1.5} />
+      <span className="truncate">{children}</span>
     </span>
   );
-};
+}
 
-// Componente principal del encabezado del cliente
 export default function ClienteHeader({ cliente, onAvatarUpdate, pie }: ClienteHeaderProps) {
   const t = useTranslations('clientes.ficha');
   const nombreCompleto = cliente.full_name || `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim();
+  const esEmpresa = cliente.customer_type === 'company';
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(cliente.avatar_url);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [primaryContact, setPrimaryContact] = useState<{ name: string; email: string | null; phone: string | null; position: string | null } | null>(null);
-  const [linkedCompanies, setLinkedCompanies] = useState<Array<{ id: string; name: string | null; position: string | null; is_primary: boolean }>>([]);
+  const [contactoPrincipal, setContactoPrincipal] = useState<{ nombre: string; cargo: string | null } | null>(null);
+  const [empresas, setEmpresas] = useState<Array<{ id: string; nombre: string | null; principal: boolean }>>([]);
 
   useEffect(() => {
     if (!cliente.id) return;
-
-    // Si es empresa, cargar contacto principal
-    if (cliente.customer_type === 'company') {
-      async function loadPrimaryContact() {
-        const { data: linkData } = await supabase
+    let cancelado = false;
+    if (esEmpresa) {
+      void (async () => {
+        const { data } = await supabase
           .from('customer_company_links')
-          .select(`
-            is_primary,
-            position,
-            person:customers!customer_company_links_person_id_fkey(
-              first_name,
-              last_name,
-              email,
-              phone
-            )
-          `)
+          .select('is_primary, position, person:customers!customer_company_links_person_id_fkey(first_name, last_name)')
           .eq('company_id', cliente.id)
           .order('is_primary', { ascending: false });
-
-        if (linkData && linkData.length > 0) {
-          const enlaces = linkData as EnlaceEmpresa[];
-          const primary = enlaces.find((l) => l.is_primary) || enlaces[0];
-          const person = uno(primary.person);
-          if (person) {
-            setPrimaryContact({
-              name: `${person.first_name || ''} ${person.last_name || ''}`.trim(),
-              email: person.email || null,
-              phone: person.phone || null,
-              position: primary.position || null,
-            });
-          }
+        const enlaces = (data ?? []) as EnlaceEmpresa[];
+        const principal = enlaces.find((l) => l.is_primary) ?? enlaces[0];
+        const persona = principal ? uno(principal.person) : null;
+        if (!cancelado && persona) {
+          setContactoPrincipal({ nombre: `${persona.first_name || ''} ${persona.last_name || ''}`.trim(), cargo: principal?.position || null });
         }
-      }
-      loadPrimaryContact();
+      })();
     } else {
-      // Si es persona, cargar empresas vinculadas
-      async function loadLinkedCompanies() {
-        const { data: companyLinks } = await supabase
+      void (async () => {
+        const { data } = await supabase
           .from('customer_company_links')
-          .select(`
-            is_primary,
-            position,
-            company:customers!customer_company_links_company_id_fkey(
-              id,
-              full_name
-            )
-          `)
+          .select('is_primary, position, company:customers!customer_company_links_company_id_fkey(id, full_name)')
           .eq('person_id', cliente.id)
           .order('is_primary', { ascending: false });
-
-        if (companyLinks && companyLinks.length > 0) {
-          const companies = (companyLinks as EnlaceEmpresa[]).map((link) => {
-            const company = uno(link.company);
-            return {
-              id: company?.id || '',
-              name: company?.full_name || null,
-              position: link.position || null,
-              is_primary: link.is_primary || false,
-            };
-          }).filter((c) => c.id);
-          setLinkedCompanies(companies);
-        }
-      }
-      loadLinkedCompanies();
+        const lista = ((data ?? []) as EnlaceEmpresa[])
+          .map((l) => {
+            const c = uno(l.company);
+            return { id: c?.id || '', nombre: c?.full_name || null, principal: !!l.is_primary };
+          })
+          .filter((c) => c.id);
+        if (!cancelado) setEmpresas(lista);
+      })();
     }
-  }, [cliente.id, cliente.customer_type]);
-
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
+    return () => {
+      cancelado = true;
+    };
+  }, [cliente.id, esEmpresa]);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) {
       toast({ title: t('cabecera.error'), description: t('cabecera.soloImagenes'), variant: 'destructive' });
       return;
@@ -163,31 +145,18 @@ export default function ClienteHeader({ cliente, onAvatarUpdate, pie }: ClienteH
       toast({ title: t('cabecera.error'), description: t('cabecera.imagenMuyGrande'), variant: 'destructive' });
       return;
     }
-
     setUploadingAvatar(true);
     try {
       const ext = file.name.split('.').pop();
       const filePath = `customers/${cliente.id}/avatar.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('profiles')
-        .upload(filePath, file, { upsert: true });
-
+      const { error: uploadError } = await supabase.storage.from('profiles').upload(filePath, file, { upsert: true });
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('profiles')
-        .getPublicUrl(filePath);
-
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('profiles').getPublicUrl(filePath);
       const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
-
-      const { error: updateError } = await supabase
-        .from('customers')
-        .update({ avatar_url: urlWithCacheBust })
-        .eq('id', cliente.id);
-
+      const { error: updateError } = await supabase.from('customers').update({ avatar_url: urlWithCacheBust }).eq('id', cliente.id);
       if (updateError) throw updateError;
-
       setAvatarUrl(urlWithCacheBust);
       onAvatarUpdate?.(urlWithCacheBust);
       toast({ title: t('cabecera.avatarActualizado'), description: t('cabecera.avatarActualizadoDescripcion') });
@@ -199,94 +168,115 @@ export default function ClienteHeader({ cliente, onAvatarUpdate, pie }: ClienteH
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
-  
-  // Determinar el nivel de fidelidad basado en tags (si existen)
-  const nivelFidelidad: Nivel = cliente.tags?.includes('oro')
-    ? 'oro'
-    : cliente.tags?.includes('plata')
-      ? 'plata'
-      : cliente.tags?.includes('bronce')
-        ? 'bronce'
-        : 'basico';
-  
+
+  const estado = estadoFicha(cliente);
+  const nivel = nivelFidelidad(cliente.tags);
+  const etiquetas = etiquetasVisibles(cliente.tags);
+  const salud = typeof cliente.health_score === 'number' ? cliente.health_score : null;
+  const documento = documentoCliente({
+    identification_type: cliente.identification_type ?? null,
+    identification_number: cliente.identification_number ?? null,
+    dv: cliente.dv ?? null,
+  });
+  const ubicacion = [cliente.city, cliente.address].map((v) => v?.trim()).filter(Boolean).join(' · ');
+  const hayDatos = !!(documento || cliente.email || cliente.phone || ubicacion);
+  const hayVinculos = !!contactoPrincipal || empresas.length > 0 || etiquetas.length > 0;
+
   return (
-    <div className="flex flex-col md:flex-row md:flex-wrap items-start md:items-center justify-between gap-4 p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative group cursor-pointer" onClick={handleAvatarClick} title={t('cabecera.cambiarFoto')}>
-          <UserAvatar name={nombreCompleto} avatarUrl={avatarUrl} size="lg" className="w-16 h-16" />
-          <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            {uploadingAvatar ? (
-              <Loader2 className="h-5 w-5 text-white animate-spin" />
-            ) : (
-              <Camera className="h-5 w-5 text-white" />
-            )}
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarUpload}
+    <section aria-label={t('cabecera.identidad')} className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-4 py-4 sm:px-5">
+      <div className="flex min-w-0 items-center gap-4">
+        <button
+          type="button"
+          className="group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          onClick={() => fileInputRef.current?.click()}
+          title={t('cabecera.cambiarFoto')}
+          aria-label={t('cabecera.cambiarFoto')}
+        >
+          <UserAvatar name={nombreCompleto} avatarUrl={avatarUrl} size="lg" className="size-12" />
+          <span
+            aria-hidden="true"
+            className={`absolute inset-0 rounded-full bg-tooltip transition-opacity group-hover:opacity-60 group-focus-visible:opacity-60 ${uploadingAvatar ? 'opacity-60' : 'opacity-0'}`}
           />
-        </div>
-        
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">{nombreCompleto}</h2>
-            {cliente.customer_type === 'company' ? (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                <Building2 className="h-3 w-3" />
-                {t('cabecera.empresa')}
-              </span>
+          <span
+            className={`absolute inset-0 flex items-center justify-center transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 ${uploadingAvatar ? 'opacity-100' : 'opacity-0'}`}
+          >
+            {uploadingAvatar ? (
+              <Loader2 aria-hidden="true" className="size-5 animate-spin text-fg-on-brand" />
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-                <User className="h-3 w-3" />
-                {t('cabecera.persona')}
-              </span>
+              <Camera aria-hidden="true" className="size-5 text-fg-on-brand" />
             )}
+          </span>
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          {/* En escritorio el nombre ya está en la cabecera de la página. */}
+          <h2 className="truncate text-[15px] font-semibold leading-5 text-fg sm:sr-only">{nombreCompleto}</h2>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge tono={esEmpresa ? 'informacion' : 'neutro'} tamano="md">
+              {esEmpresa ? t('cabecera.empresa') : t('cabecera.persona')}
+            </Badge>
+            <Badge tono={estado === 'cliente' ? 'marca' : TONO_ESTADO_FICHA[estado].tono} apariencia={TONO_ESTADO_FICHA[estado].apariencia} tamano="md">
+              {t(`estado.${estado}`)}
+            </Badge>
+            {salud !== null && (
+              <Badge tono={tonoSalud(salud)} tamano="md">
+                {t('cabecera.salud', { n: salud })}
+              </Badge>
+            )}
+            <Badge tono={TONO_NIVEL[nivel].tono} apariencia={TONO_NIVEL[nivel].apariencia} tamano="md" className="hidden sm:inline-flex">
+              {t(`cabecera.fidelidad.${nivel}`)}
+            </Badge>
           </div>
-          
-          {/* Mostrar contacto principal para empresas */}
-          {cliente.customer_type === 'company' && primaryContact && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {primaryContact.position
-                ? t('cabecera.contactoConCargo', { nombre: primaryContact.name, cargo: primaryContact.position })
-                : t('cabecera.contacto', { nombre: primaryContact.name })}
-            </p>
-          )}
-          
-          {/* Mostrar empresas vinculadas para personas */}
-          {cliente.customer_type !== 'company' && linkedCompanies.length > 0 && (
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-gray-500 dark:text-gray-400">{t('cabecera.vinculadoA')}</span>
-              {linkedCompanies.map((company, idx) => (
-                <span key={company.id} className="inline-flex items-center gap-1">
-                  <Link 
-                    href={`/app/clientes/${company.id}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full hover:underline"
-                  >
-                    <Building2 className="h-3 w-3" />
-                    {company.name ?? t('comun.sinNombre')}
-                    {company.is_primary && <span className="text-blue-400">·</span>}
-                  </Link>
-                  {idx < linkedCompanies.length - 1 && <span className="text-gray-300">,</span>}
-                </span>
-              ))}
+
+          {hayDatos && (
+            <div className="hidden min-w-0 flex-wrap items-center gap-x-4 gap-y-1 sm:flex">
+              {documento && <Dato icono={FileText}>{documento}</Dato>}
+              {cliente.email && <Dato icono={Mail}>{cliente.email}</Dato>}
+              {cliente.phone && <Dato icono={Smartphone}>{cliente.phone}</Dato>}
+              {ubicacion && <Dato icono={MapPin}>{ubicacion}</Dato>}
             </div>
           )}
-          
-          <div className="mt-1 flex flex-wrap items-center gap-3">
-            {cliente.email && (
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {cliente.email}
-              </span>
-            )}
-            
-            <NivelFidelidad nivel={nivelFidelidad} etiqueta={t(`cabecera.fidelidad.${nivelFidelidad}`)} />
-          </div>
+
+          {hayVinculos && (
+            <div className="hidden min-w-0 flex-wrap items-center gap-1.5 sm:flex">
+              {contactoPrincipal && (
+                <>
+                  <span className={CLASE_ETIQUETA_FILA}>{t('cabecera.contactoPrincipal')}</span>
+                  <span className={CLASE_CHIP}>{[contactoPrincipal.nombre, contactoPrincipal.cargo].filter(Boolean).join(' · ')}</span>
+                </>
+              )}
+              {empresas.length > 0 && (
+                <>
+                  <span className={CLASE_ETIQUETA_FILA}>{t('cabecera.vinculadoA')}</span>
+                  {empresas.map((e) => (
+                    <Link
+                      key={e.id}
+                      href={`/app/clientes/${e.id}`}
+                      className={`${CLASE_CHIP_BASE} text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand`}
+                    >
+                      <Building2 aria-hidden="true" className="size-3 shrink-0" strokeWidth={1.5} />
+                      {e.nombre ?? t('comun.sinNombre')}
+                    </Link>
+                  ))}
+                </>
+              )}
+              {etiquetas.length > 0 && (
+                <>
+                  <span className={CLASE_ETIQUETA_FILA}>{t('cabecera.etiquetas')}</span>
+                  {etiquetas.map((etiqueta) => (
+                    <Badge key={etiqueta} tono="neutro" apariencia="contorno" tamano="sm" className="bg-surface">
+                      {etiqueta}
+                    </Badge>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
-      {pie && <div className="w-full md:basis-full">{pie}</div>}
-    </div>
+      {pie && <div className="w-full min-w-0">{pie}</div>}
+    </section>
   );
 }

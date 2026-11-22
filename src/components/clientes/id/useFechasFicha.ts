@@ -7,13 +7,15 @@
  * - `instante` → columnas timestamptz (convierte a la zona de la organización).
  * - `plana` → columnas date (día calendario puro: no convierte zona).
  * - `relativa` → «hace 3 días» / «in 2 days» con date-fns en el idioma activo.
+ * - `cuando` → «Hoy 10:24», «Ayer 18:05» o «18 sep 10:24» (Figma
+ *   `TimelineEntry`): el día se compara en la zona de la organización.
  */
 import { useCallback } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { formatDistanceToNow, type Locale } from 'date-fns';
 import { enUS, es, fr, ptBR } from 'date-fns/locale';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { formatDateInTz } from '@/lib/utils/dateDisplay';
+import { addPlainDays, formatDateInTz, toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
 import { useLocaleIntl } from '@/components/kit/useIdiomaKit';
 
 const LOCALES_DATE_FNS: Readonly<Record<string, Locale>> = { es, en: enUS, fr, pt: ptBR };
@@ -24,6 +26,7 @@ export function useFechasFicha() {
   const locale = useLocaleIntl();
   const idioma = useLocale();
   const { timezone } = useFormatDate();
+  const t = useTranslations('clientes.ficha.comun');
 
   const instante = useCallback(
     (valor: string | Date | null | undefined, opciones?: Intl.DateTimeFormatOptions) =>
@@ -54,7 +57,22 @@ export function useFechasFicha() {
     [idioma],
   );
 
-  return { instante, plana, relativa, locale };
+  const cuando = useCallback(
+    (valor: string | Date | null | undefined) => {
+      if (!valor) return '';
+      const fecha = typeof valor === 'string' ? new Date(valor) : valor;
+      if (isNaN(fecha.getTime())) return '';
+      const dia = toPlainDate(fecha, timezone);
+      const hoy = todayInTz(timezone);
+      const hora = formatDateInTz(fecha, timezone, { locale, hour: '2-digit', minute: '2-digit' });
+      if (dia === hoy) return t('hoyHora', { hora });
+      if (dia === addPlainDays(hoy, -1)) return t('ayerHora', { hora });
+      return formatDateInTz(fecha, timezone, { locale, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    },
+    [timezone, locale, t],
+  );
+
+  return { instante, plana, relativa, cuando, locale, timezone };
 }
 
 /** Mensaje de un error de Supabase o de JS; `null` si no trae uno. */

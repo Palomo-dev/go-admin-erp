@@ -50,11 +50,21 @@ interface InvoiceDebt {
   currency: string | null;
 }
 
-/** Reserva embebida en el folio (PostgREST puede devolver objeto o arreglo). */
+/**
+ * Reserva embebida en el folio. `reservations` no tiene código propio: se
+ * muestra el inicio de su id, como en el resto del PMS.
+ */
 interface ReservaEmbebida {
-  code?: string;
-  spaces?: { label?: string } | null;
+  id?: string;
+  spaces?: { label?: string } | { label?: string }[] | null;
 }
+
+interface ItemFolio {
+  amount: number | string | null;
+  payment_status: string | null;
+}
+
+const uno = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null));
 
 export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps) {
   const { organization } = useOrganization();
@@ -73,6 +83,10 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
     setIsLoading(true);
     try {
       const [foliosResult, invoicesResult] = await Promise.all([
+        // Folios de las reservas del cliente: filtro por la reserva embebida
+        // (!inner), con la organización de la sesión, y sus ítems en la misma
+        // consulta. Antes se pasaba una consulta como valor de `eq` (llegaba
+        // «[object Object]») y se pedía `reservations.code`, que no existe: 400.
         supabase
           .from('folios')
           .select(`
@@ -81,19 +95,14 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
             balance,
             created_at,
             reservation_id,
-            reservations (
-              code,
-              spaces (
-                label
-              )
-            )
+            reservations!inner (
+              id,
+              spaces!fk_reservations_space ( label )
+            ),
+            folio_items ( amount, payment_status )
           `)
-          .eq('reservation_id',
-            supabase
-              .from('reservations')
-              .select('id')
-              .eq('customer_id', customerId)
-          )
+          .eq('reservations.customer_id', customerId)
+          .eq('reservations.organization_id', organization.id)
           .order('created_at', { ascending: false }),
         supabase
           .from('invoice_sales')
@@ -110,10 +119,7 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
       const foliosData: FolioWithDetails[] = [];
 
       for (const folio of foliosResult.data || []) {
-        const { data: items } = await supabase
-          .from('folio_items')
-          .select('amount, payment_status')
-          .eq('folio_id', folio.id);
+        const items = ((folio as { folio_items?: ItemFolio[] | null }).folio_items ?? []) as ItemFolio[];
 
         const pending = (items || [])
           .filter((i) => i.payment_status === 'pending')
@@ -122,15 +128,15 @@ export function CustomerFoliosSection({ customerId }: CustomerFoliosSectionProps
           .filter((i) => i.payment_status === 'paid')
           .reduce((sum, i) => sum + Number(i.amount), 0);
 
-        const reservationData = folio.reservations as unknown as ReservaEmbebida | null;
+        const reservationData = uno(folio.reservations as unknown as ReservaEmbebida | ReservaEmbebida[] | null);
         foliosData.push({
           id: folio.id,
           status: folio.status,
           balance: Number(folio.balance),
           created_at: folio.created_at,
           reservation_id: folio.reservation_id,
-          reservation_code: reservationData?.code,
-          space_label: reservationData?.spaces?.label,
+          reservation_code: reservationData?.id ? reservationData.id.slice(0, 8).toUpperCase() : undefined,
+          space_label: uno(reservationData?.spaces)?.label,
           pending_total: pending,
           paid_total: paid,
           items_count: items?.length || 0,

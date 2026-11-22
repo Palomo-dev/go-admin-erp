@@ -1,14 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+/**
+ * Tareas del cliente en la columna derecha de la ficha (Figma 06 Clientes,
+ * «Barra lateral» 331:113188; vacío 772:21523):
+ *
+ * - «Tareas pendientes» con su conteo y «+ Nueva» (tarea rápida del CRM);
+ * - cada tarea con prioridad, estado y vencimiento («Vence mañana», «En 3
+ *   días»), contado en días calendario de la zona de la organización;
+ * - «Tareas finalizadas» con su conteo;
+ * - «Ver todas las tareas del cliente» despliega aquí mismo las pendientes que
+ *   no caben y las finalizadas (Proyectos y tareas no filtra por cliente).
+ *
+ * Lee las tareas del cliente y las de sus oportunidades.
+ */
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ListPlus, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { TonoBadge } from '@/components/kit';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
+import { diasParaVencer } from './fichaLogica';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 
-// Interfaces para el componente
 interface Tarea {
   id: string;
   title: string;
@@ -17,9 +32,6 @@ interface Tarea {
   status: string;
   priority: string;
   assigned_to: string | null;
-  assigned_name?: string;
-  customer_id: string | null;
-  parent_task_id: string | null;
 }
 
 interface PerfilUsuario {
@@ -37,363 +49,233 @@ interface TareasSidebarProps {
   recarga?: number;
 }
 
+/** Pendientes que se ven sin desplegar (Figma: dos o tres tarjetas). */
+const VISIBLES = 3;
+
+const PRIORIDAD: Record<string, { clave: string; tono: TonoBadge }> = {
+  high: { clave: 'alta', tono: 'peligro' },
+  medium: { clave: 'media', tono: 'advertencia' },
+  low: { clave: 'baja', tono: 'informacion' },
+};
+
+const ESTADO: Record<string, string> = {
+  pending: 'pendiente',
+  in_progress: 'enProgreso',
+  completed: 'completada',
+  canceled: 'cancelada',
+  cancelled: 'cancelada',
+};
+
 export default function TareasSidebar({ clienteId, organizationId, onNuevaTarea, recarga }: TareasSidebarProps) {
   const t = useTranslations('clientes.ficha');
   const tc = useTranslations('crm.fichaCliente.tareas');
-  const { relativa } = useFechasFicha();
+  const { timezone } = useFechasFicha();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ mensaje: string | null } | null>(null);
-  const [tareasPendientes, setTareasPendientes] = useState<Tarea[]>([]);
-  const [tareasCompletadas, setTareasCompletadas] = useState<Tarea[]>([]);
-  const [users, setUsers] = useState<Record<string, PerfilUsuario>>({});
+  const [pendientes, setPendientes] = useState<Tarea[]>([]);
+  const [finalizadas, setFinalizadas] = useState<Tarea[]>([]);
+  const [usuarios, setUsuarios] = useState<Record<string, string>>({});
+  const [desplegado, setDesplegado] = useState(false);
 
   useEffect(() => {
-    const fetchTareas = async () => {
+    let cancelado = false;
+    const cargar = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // Obtener IDs de oportunidades del cliente
-        const { data: oppsData } = await supabase
-          .from('opportunities')
-          .select('id')
-          .eq('customer_id', clienteId)
-          .eq('organization_id', organizationId);
+        const { data: oppsData } = await supabase.from('opportunities').select('id').eq('customer_id', clienteId).eq('organization_id', organizationId);
+        const oppIds = (oppsData || []).map((o) => o.id);
 
-        const oppIds = (oppsData || []).map(o => o.id);
-
-        // Query 1: Tareas del cliente por customer_id
-        const { data: customerTasks, error: customerTasksError } = await supabase
+        const { data: delCliente, error: errCliente } = await supabase
           .from('tasks')
-          .select('*')
+          .select('id, title, description, due_date, status, priority, assigned_to')
           .eq('customer_id', clienteId)
           .eq('organization_id', organizationId)
           .order('due_date', { ascending: true })
           .order('priority', { ascending: false });
+        if (errCliente) throw errCliente;
 
-        if (customerTasksError) throw customerTasksError;
+        const mapa = new Map<string, Tarea>();
+        for (const tarea of (delCliente ?? []) as Tarea[]) mapa.set(tarea.id, tarea);
 
-        let allTasks: Tarea[] = customerTasks || [];
-
-        // Query 2: Tareas de las oportunidades del cliente
         if (oppIds.length > 0) {
-          const { data: oppTasks, error: oppTasksError } = await supabase
+          const { data: deOportunidades, error: errOpp } = await supabase
             .from('tasks')
-            .select('*')
+            .select('id, title, description, due_date, status, priority, assigned_to')
             .eq('related_to_type', 'opportunity')
             .in('related_to_id', oppIds)
             .eq('organization_id', organizationId)
             .order('due_date', { ascending: true })
             .order('priority', { ascending: false });
-
-          if (oppTasksError) throw oppTasksError;
-
-          // Merge y deduplicar por id
-          const taskMap = new Map<string, Tarea>();
-          [...allTasks, ...((oppTasks || []) as Tarea[])].forEach((tarea) => taskMap.set(tarea.id, tarea));
-          allTasks = Array.from(taskMap.values());
+          if (errOpp) throw errOpp;
+          for (const tarea of (deOportunidades ?? []) as Tarea[]) mapa.set(tarea.id, tarea);
         }
 
-        const tareasData = allTasks;
-
-        if (tareasData) {
-          // Separar tareas por estado
-          const pendientes = tareasData.filter(task =>
-            ['pending', 'in_progress'].includes(task.status));
-          const completadas = tareasData.filter(task =>
-            ['completed', 'canceled'].includes(task.status));
-
-          setTareasPendientes(pendientes);
-          setTareasCompletadas(completadas);
-
-          // Recolectar IDs de usuarios únicos para asignados
-          const userIds = tareasData
-            .map(task => task.assigned_to)
-            .filter(id => id !== null) as string[];
-
-          // Usamos Array.from en lugar del spread operator para mayor compatibilidad
-          const uniqueUserIds = Array.from(new Set(userIds));
-
-          // Obtener información de los usuarios asignados
-          if (uniqueUserIds.length > 0) {
-            const { data: usersData, error: usersError } = await supabase
-              .from('profiles')
-              .select('id, first_name, last_name')
-              .in('id', uniqueUserIds);
-
-            if (usersError) throw usersError;
-
-            // Crear mapa de usuarios para fácil acceso
-            const usersMap: Record<string, PerfilUsuario> = {};
-            usersData?.forEach(user => {
-              usersMap[user.id] = user;
-            });
-
-            setUsers(usersMap);
-          }
-
+        const todas = Array.from(mapa.values());
+        const ids = Array.from(new Set(todas.map((x) => x.assigned_to).filter((v): v is string => !!v)));
+        const nombres: Record<string, string> = {};
+        if (ids.length > 0) {
+          const { data: perfiles, error: errPerfiles } = await supabase.from('profiles').select('id, first_name, last_name').in('id', ids);
+          if (errPerfiles) throw errPerfiles;
+          for (const p of (perfiles ?? []) as PerfilUsuario[]) nombres[p.id] = `${p.first_name || ''} ${p.last_name || ''}`.trim();
         }
+
+        if (cancelado) return;
+        setPendientes(todas.filter((x) => ['pending', 'in_progress'].includes(x.status)));
+        setFinalizadas(todas.filter((x) => ['completed', 'canceled', 'cancelled'].includes(x.status)));
+        setUsuarios(nombres);
       } catch (err) {
         console.error('Error al cargar tareas:', err);
-        setError({ mensaje: mensajeError(err) });
+        if (!cancelado) setError({ mensaje: mensajeError(err) });
       } finally {
-        setLoading(false);
+        if (!cancelado) setLoading(false);
       }
     };
-
-    fetchTareas();
+    void cargar();
+    return () => {
+      cancelado = true;
+    };
   }, [clienteId, organizationId, recarga]);
 
-  // Formatear fecha relativa
-  const formatRelativeDate = (dateString: string | null) => {
-    if (!dateString) return t('tareas.sinFecha');
-
-    try {
-      return relativa(dateString);
-    } catch {
-      return t('tareas.fechaInvalida');
-    }
+  const vencimiento = (tarea: Tarea): { texto: string; tono: TonoBadge } | null => {
+    const dias = diasParaVencer(tarea.due_date, timezone);
+    if (dias === null) return null;
+    if (dias < 0) return { texto: t('tareas.vence.vencida'), tono: 'peligro' };
+    if (dias === 0) return { texto: t('tareas.vence.hoy'), tono: 'advertencia' };
+    if (dias === 1) return { texto: t('tareas.vence.manana'), tono: 'advertencia' };
+    return { texto: t('tareas.vence.enDias', { count: dias }), tono: 'informacion' };
   };
 
-  // Obtener color según prioridad
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'text-red-500 dark:text-red-400 bg-red-100 dark:bg-red-900/20';
-      case 'medium':
-        return 'text-amber-500 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20';
-      case 'low':
-        return 'text-blue-500 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20';
-      default:
-        return 'text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800';
-    }
+  const nombreAsignado = (id: string | null) => (id ? usuarios[id] || t('comun.usuario') : t('tareas.sinAsignar'));
+
+  const tarjetaTarea = (tarea: Tarea, finalizada = false) => {
+    const prioridad = PRIORIDAD[tarea.priority] ?? { clave: 'normal', tono: 'neutro' as TonoBadge };
+    const vence = finalizada ? null : vencimiento(tarea);
+    const claveEstado = ESTADO[tarea.status];
+    return (
+      <li key={tarea.id} className={`flex flex-col gap-1 rounded-lg bg-subtle px-2.5 py-2 ${finalizada ? 'opacity-75' : ''}`}>
+        <p className="break-words text-xs font-semibold leading-[17px] text-fg">{tarea.title}</p>
+        {tarea.description ? (
+          <HtmlContentRenderer html={tarea.description} className="line-clamp-2 break-words text-[11px] leading-4 text-fg-secondary" />
+        ) : (
+          <p className="text-[11px] leading-4 text-fg-secondary">{nombreAsignado(tarea.assigned_to)}</p>
+        )}
+        <div className="flex flex-wrap items-center gap-1">
+          {!finalizada && (
+            <Badge tono={prioridad.tono} tamano="sm">
+              {t(`tareas.prioridades.${prioridad.clave}`)}
+            </Badge>
+          )}
+          <Badge tono="neutro" apariencia="contorno" tamano="sm" className="bg-surface">
+            {claveEstado ? t(`tareas.estados.${claveEstado}`) : tarea.status}
+          </Badge>
+          {vence && (
+            <Badge tono={vence.tono} apariencia="contorno" tamano="sm" className="bg-surface">
+              {vence.texto}
+            </Badge>
+          )}
+        </div>
+      </li>
+    );
   };
 
-  // Obtener icono según estado
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-          </svg>
-        );
-      case 'in_progress':
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
-          </svg>
-        );
-      default:
-        return (
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-          </svg>
-        );
-    }
-  };
+  const cabecera = (
+    <div className="flex items-center gap-1.5">
+      <h3 className="text-[13px] font-semibold leading-[19px] text-fg">{t('tareas.pendientes')}</h3>
+      {!loading && !error && (
+        <Badge tono="marca" apariencia="solido" tamano="sm">
+          {pendientes.length}
+        </Badge>
+      )}
+      <span className="flex-1" />
+      {onNuevaTarea && (
+        <button
+          type="button"
+          onClick={onNuevaTarea}
+          className="inline-flex h-8 items-center gap-2 rounded-lg px-3 text-xs font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
+          {tc('nueva')}
+        </button>
+      )}
+    </div>
+  );
 
-  // Obtener nombre del asignado
-  const getAssigneeName = (userId: string | null) => {
-    if (!userId) return t('tareas.sinAsignar');
+  const contenedor = 'flex flex-col gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3';
 
-    const user = users[userId];
-    if (!user) return t('comun.usuario');
-
-    return `${user.first_name || ''} ${user.last_name || ''}`.trim() || t('comun.usuario');
-  };
-
-  // Obtener texto de prioridad
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return t('tareas.prioridades.alta');
-      case 'medium':
-        return t('tareas.prioridades.media');
-      case 'low':
-        return t('tareas.prioridades.baja');
-      default:
-        return t('tareas.prioridades.normal');
-    }
-  };
-
-  // Obtener texto de estado
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return t('tareas.estados.pendiente');
-      case 'in_progress':
-        return t('tareas.estados.enProgreso');
-      case 'completed':
-        return t('tareas.estados.completada');
-      case 'cancelled':
-      case 'canceled':
-        return t('tareas.estados.cancelada');
-      default:
-        return status;
-    }
-  };
-
-  // Mostrar estado de carga
   if (loading) {
     return (
-      <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-        <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">{t('tareas.titulo')}</h3>
-        <CardListSkeleton cards={3} columns="1" />
-      </div>
+      <section aria-label={t('tareas.titulo')} aria-busy="true" className={contenedor}>
+        {cabecera}
+        {Array.from({ length: 2 }, (_, i) => (
+          <Skeleton key={i} className="h-[72px] w-full rounded-lg" />
+        ))}
+      </section>
     );
   }
 
-  // Mostrar error si existe
   if (error) {
     return (
-      <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-        <h3 className="font-medium text-lg mb-4 text-gray-900 dark:text-white">{t('tareas.titulo')}</h3>
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-3">
-          <p className="text-sm text-red-700 dark:text-red-400">{error.mensaje || t('tareas.errorCarga')}</p>
-        </div>
-      </div>
+      <section aria-label={t('tareas.titulo')} className={contenedor}>
+        {cabecera}
+        <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle px-3 py-2 text-xs text-danger-text">
+          {error.mensaje || t('tareas.errorCarga')}
+        </p>
+      </section>
     );
   }
 
-  return (
-    <div className="p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-      {/* Sección de tareas pendientes */}
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium text-lg text-gray-900 dark:text-white">
-          {t('tareas.pendientes')}
-        </h3>
-        <span className="flex items-center gap-2">
-          <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-            {tareasPendientes.length}
-          </span>
-          {onNuevaTarea && (
-            <button type="button" onClick={onNuevaTarea} className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
-              {tc('nueva')}
-            </button>
-          )}
-        </span>
-      </div>
+  const visibles = desplegado ? pendientes : pendientes.slice(0, VISIBLES);
+  const hayMas = pendientes.length > VISIBLES || finalizadas.length > 0;
 
-      {tareasPendientes.length === 0 ? (
-        <div className="text-center py-4">
-          <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 mx-auto flex items-center justify-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {t('tareas.sinPendientes')}
-          </p>
+  return (
+    <section aria-label={t('tareas.titulo')} className={contenedor}>
+      {cabecera}
+
+      {pendientes.length === 0 ? (
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-[11px] leading-4 text-fg-muted">{t('tareas.sinPendientes')}</p>
           {onNuevaTarea && (
-            <button type="button" onClick={onNuevaTarea} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-[13px] font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            <button
+              type="button"
+              onClick={onNuevaTarea}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3 text-xs font-medium text-fg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
               <ListPlus aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {tc('primera')}
             </button>
           )}
         </div>
       ) : (
-        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 mb-6">
-          {tareasPendientes.map(tarea => (
-            <div
-              key={tarea.id}
-              className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-            >
-              <div className="flex flex-wrap items-start gap-2">
-                <div className="mt-0.5 text-gray-500 dark:text-gray-400">
-                  {getStatusIcon(tarea.status)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 dark:text-white text-sm break-words whitespace-normal">
-                    {tarea.title}
-                  </h4>
-
-                  {tarea.description && (
-                    <HtmlContentRenderer html={tarea.description} className="text-xs text-gray-500 dark:text-gray-400 mt-1 break-words" />
-                  )}
-
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${getPriorityColor(tarea.priority)}`}>
-                      {getPriorityText(tarea.priority)}
-                    </span>
-
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                      {getStatusText(tarea.status)}
-                    </span>
-
-                    {tarea.due_date && (
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        new Date(tarea.due_date) < new Date()
-                          ? 'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                          : 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
-                      }`}>
-                        {formatRelativeDate(tarea.due_date)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-2 flex items-center text-xs text-gray-500 dark:text-gray-400">
-                    <span className="break-words whitespace-normal">
-                      {getAssigneeName(tarea.assigned_to)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <ul className="flex flex-col gap-2.5">
+          {visibles.map((tarea) => tarjetaTarea(tarea))}
+        </ul>
       )}
 
-      {/* Sección de tareas completadas/canceladas */}
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-medium text-lg text-gray-900 dark:text-white">
-          {t('tareas.finalizadas')}
-        </h3>
-        <span className="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-          {tareasCompletadas.length}
-        </span>
+      <div className="flex items-center gap-1.5">
+        <h4 className="text-xs font-medium leading-[17px] text-fg-secondary">{t('tareas.finalizadas')}</h4>
+        <Badge tono="neutro" tamano="sm">
+          {finalizadas.length}
+        </Badge>
       </div>
 
-      {tareasCompletadas.length === 0 ? (
-        <div className="text-center py-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {t('tareas.sinFinalizadas')}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
-          {tareasCompletadas.map(tarea => (
-            <div
-              key={tarea.id}
-              className="p-3 border border-gray-100 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition opacity-75"
-            >
-              <div className="flex flex-wrap items-start gap-2">
-                <div className="mt-0.5 text-gray-500 dark:text-gray-400">
-                  {getStatusIcon(tarea.status)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-600 dark:text-gray-300 text-sm break-words whitespace-normal">
-                    {tarea.title}
-                  </h4>
-
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                      {getStatusText(tarea.status)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      {desplegado && finalizadas.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {finalizadas.map((tarea) => tarjetaTarea(tarea, true))}
+        </ul>
       )}
 
-      <div className="pt-4 flex justify-center border-t border-gray-100 dark:border-gray-700 mt-4">
-        <a href="/app/tareas" className="text-xs text-primary hover:underline">
-          {t('tareas.verTodas')}
-        </a>
-      </div>
-    </div>
+      {hayMas && (
+        <button
+          type="button"
+          onClick={() => setDesplegado((v) => !v)}
+          aria-expanded={desplegado}
+          className="self-start rounded text-xs font-medium leading-[17px] text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          {desplegado ? t('tareas.verMenos') : t('tareas.verTodasCliente')}
+        </button>
+      )}
+    </section>
   );
 }

@@ -1,9 +1,18 @@
 'use client';
 
+/**
+ * Notas del cliente en «Notas y documentos» (Figma 06 Clientes 332:116009):
+ * agregar nota, la lista con la fijada destacada, fijar y eliminar. Los
+ * documentos van al lado (`DocumentUploader` del CRM, en la página).
+ */
+
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
-import { CardListSkeleton } from '@/components/common/PageSkeletons';
+import { Pin, Save, StickyNote, Trash2 } from 'lucide-react';
+import { AvatarIniciales, EmptyState, clasesBoton } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
@@ -241,22 +250,12 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
     return `${user.first_name || ''} ${user.last_name || ''}`.trim() || t('comun.usuario');
   };
 
-  // Renderizar avatar
-  const renderAvatar = (userId: string) => {
-    const initials = renderUser(userId).substring(0, 2).toUpperCase();
-
-    return (
-      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-        {initials}
-      </div>
-    );
-  };
-
   // Mostrar estado de carga
   if (loading) {
     return (
-      <div className="py-4">
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="flex flex-col gap-3" aria-busy="true">
+        <Skeleton className="h-40 w-full rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-xl" />
       </div>
     );
   }
@@ -264,129 +263,84 @@ export default function NotasArchivosTab({ clienteId, organizationId }: NotasArc
   // Mostrar error si existe
   if (error) {
     return (
-      <div className="w-full py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-700 dark:text-red-400">{error.mensaje || t('notas.errorCarga')}</p>
-        </div>
-      </div>
+      <p role="alert" className="rounded-lg border border-line-danger bg-danger-subtle p-4 text-sm text-danger-text">
+        {error.mensaje || t('notas.errorCarga')}
+      </p>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Formulario para agregar nueva nota */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+    <div className="flex flex-col gap-3">
+      {/* Figma 332:116009: «Agregar nota» y, debajo, las notas con la fijada destacada. */}
+      <section aria-labelledby="notas-agregar" className="flex flex-col gap-3 rounded-xl border border-line bg-surface px-3.5 py-3">
+        <h3 id="notas-agregar" className="text-[13px] font-semibold leading-[19px] text-fg">
           {t('notas.agregar')}
         </h3>
-        <div>
-          <RichTextEditor
-            value={nuevaNota}
-            onChange={setNuevaNota}
-            placeholder={t('notas.placeholder')}
-            minHeight={100}
-            className="dark:bg-gray-800 dark:border-gray-700"
-          />
-          <div className="mt-3 flex justify-end">
-            <button
-              onClick={handleSaveNote}
-              disabled={!nuevaNota.trim() || savingNote}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              {savingNote ? t('notas.guardando') : t('notas.guardar')}
-            </button>
-          </div>
+        <RichTextEditor value={nuevaNota} onChange={setNuevaNota} placeholder={t('notas.placeholder')} minHeight={100} />
+        <div className="flex justify-end">
+          <button type="button" onClick={handleSaveNote} disabled={!nuevaNota.trim() || savingNote} className={clasesBoton({ tamano: 'sm' })}>
+            <Save aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {savingNote ? t('notas.guardando') : t('notas.guardar')}
+          </button>
         </div>
-      </div>
+      </section>
 
-      {/* Listado de notas */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
+      <section aria-labelledby="notas-lista" className="flex flex-col gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3">
+        <h3 id="notas-lista" className="text-[13px] font-semibold leading-[19px] text-fg">
           {t('notas.titulo', { n: notas.length })}
         </h3>
 
         {notas.length === 0 ? (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h4 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{t('notas.vacioTitulo')}</h4>
-            <p className="mt-2 text-gray-500 dark:text-gray-400">
-              {t('notas.vacioDescripcion')}
-            </p>
-          </div>
+          <EmptyState compacto icono={StickyNote} titulo={t('notas.vacioTitulo')} descripcion={t('notas.vacioDescripcion')} />
         ) : (
-          <div className="space-y-4">
-            {notas.map(nota => (
-              <div
+          <ul className="flex flex-col gap-2">
+            {notas.map((nota) => (
+              <li
                 key={nota.id}
-                className={`border ${nota.is_pinned ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10' : 'border-gray-100 dark:border-gray-700'} rounded-lg p-4`}
+                className={`flex flex-col gap-2 rounded-lg border px-3 py-2.5 ${nota.is_pinned ? 'border-line-warning bg-warning-subtle' : 'border-line bg-surface'}`}
               >
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {renderAvatar(nota.user_id)}
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {renderUser(nota.user_id)}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(nota.created_at)}
-                      </p>
-                    </div>
+                <div className="flex items-start gap-2">
+                  <AvatarIniciales nombre={renderUser(nota.user_id)} tamano="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-semibold leading-4 text-fg">{renderUser(nota.user_id)}</p>
+                    <p className="text-[11px] leading-4 text-fg-muted">{formatDate(nota.created_at)}</p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => togglePinNote(nota.id, nota.is_pinned)}
-                      aria-label={nota.is_pinned ? t('notas.desfijar') : t('notas.fijar')}
-                      title={nota.is_pinned ? t('notas.desfijar') : t('notas.fijar')}
-                      className={`p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                        nota.is_pinned ? 'text-amber-500' : 'text-gray-400 dark:text-gray-500'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteNote(nota.id)}
-                      aria-label={t('notas.eliminar')}
-                      title={t('notas.eliminar')}
-                      className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400 dark:text-gray-500"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
+                  {nota.is_pinned && (
+                    <Badge tono="advertencia" apariencia="contorno" tamano="sm" className="bg-surface">
+                      {t('notas.fijada')}
+                    </Badge>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => togglePinNote(nota.id, nota.is_pinned)}
+                    aria-label={nota.is_pinned ? t('notas.desfijar') : t('notas.fijar')}
+                    title={nota.is_pinned ? t('notas.desfijar') : t('notas.fijar')}
+                    aria-pressed={nota.is_pinned}
+                    className={`flex size-8 shrink-0 items-center justify-center rounded-lg hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${nota.is_pinned ? 'text-warning-text' : 'text-fg-secondary'}`}
+                  >
+                    <Pin aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteNote(nota.id)}
+                    aria-label={t('notas.eliminar')}
+                    title={t('notas.eliminar')}
+                    className="flex size-8 shrink-0 items-center justify-center rounded-lg text-fg-secondary hover:bg-danger-subtle hover:text-danger-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <Trash2 aria-hidden="true" className="size-4" strokeWidth={1.5} />
+                  </button>
                 </div>
                 {nota.opportunity_name && (
-                  <div className="mb-2">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                      {t('notas.oportunidad', { nombre: nota.opportunity_name })}
-                    </span>
-                  </div>
+                  <Badge tono="marca" tamano="sm" className="self-start">
+                    {t('notas.oportunidad', { nombre: nota.opportunity_name })}
+                  </Badge>
                 )}
-                <HtmlContentRenderer html={nota.body} className="mt-3 text-gray-700 dark:text-gray-300" />
-              </div>
+                <HtmlContentRenderer html={nota.body} className="break-words text-[13px] leading-[18px] text-fg" />
+              </li>
             ))}
-          </div>
+          </ul>
         )}
-      </div>
-
-      {/* Sección de archivos - Para futura implementación */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-        <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        </div>
-        <h4 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{t('notas.archivosTitulo')}</h4>
-        <p className="mt-2 text-gray-500 dark:text-gray-400">
-          {t('notas.archivosDescripcion')}
-        </p>
-      </div>
+      </section>
     </div>
   );
 }

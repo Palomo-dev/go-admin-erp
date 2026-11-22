@@ -32476,7 +32476,20 @@
       "todaLaOrganizacion": "Toute l'organisation",
       "todasLasSucursales": "Toutes les succursales",
       "franjaNoAplica": "Plage : sans objet",
-      "franjaNoAplicaMotivo": "Ce rapport se calcule par jour"
+      "franjaNoAplicaMotivo": "Ce rapport se calcule par jour",
+      "persona": "Personne",
+      "personaTodas": "Toutes les personnes",
+      "personaBuscar": "Rechercher une personne",
+      "personaOtra": "Personne choisie",
+      "metodoPago": "Moyen de paiement",
+      "metodoTodos": "Tous les moyens",
+      "metodoBuscar": "Rechercher un moyen",
+      "sinResultados": "Aucun résultat",
+      "contarPor": "Compter par",
+      "contarCajero": "Caissier",
+      "contarVendedor": "Vendeur",
+      "contarMesero": "Serveur",
+      "contarAyuda": "Caissier : qui a encaissé · Vendeur : qui a enregistré la vente · Serveur : qui a servi la table"
     },
     "alcance": {
       "titulo": "{n, plural, =0 {Vous n'avez aucune succursale assignée} one {Vous ne voyez que {sucursales}} other {Vous ne voyez que {sucursales}}}",

@@ -10,7 +10,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { aQuery, escribirFiltrosReportes, leerFiltrosReportes, type FiltrosReportes } from '@/lib/services/reportes/filtrosUrl';
 
-const CLAVES_FILTRO = ['periodo', 'ref', 'desde', 'hasta', 'hi', 'hf', 'sucursal', 'comparar', 'vista'];
+const CLAVES_FILTRO = ['periodo', 'ref', 'desde', 'hasta', 'hi', 'hf', 'sucursal', 'comparar', 'vista', 'persona', 'metodo', 'contar'];
 
 export function useFiltrosReportes() {
   // Tras `next build`, los tipos de compatibilidad de App Router admiten null

@@ -4,6 +4,7 @@
 // ============================================================
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ContarPor } from './filtrosVentas';
 
 /** Períodos de cierre soportados */
 export type TipoCierre =
@@ -169,8 +170,11 @@ export type GrupoReporte =
  * - `franja`: la consulta usa instantes (`rangoDelPeriodo`), así que respeta
  *   la franja horaria; los reportes por día contable no.
  * - `centroCosto`: tiene la vista por centro de costo.
+ * - `persona`, `metodoPago`, `contarPor`: reportes de ventas cuyas RPC reciben
+ *   `p_persona`, `p_metodos` y `p_contar_por` (`filtrosVentas.ts`). La barra
+ *   solo los muestra en los reportes que los declaran.
  */
-export type FiltroReporte = 'comparativo' | 'sucursal' | 'franja' | 'centroCosto';
+export type FiltroReporte = 'comparativo' | 'sucursal' | 'franja' | 'centroCosto' | 'persona' | 'metodoPago' | 'contarPor';
 
 /** Definición tal como la escribe cada archivo de `modulos/`. */
 export interface DefinicionModulo {
@@ -184,10 +188,16 @@ export interface DefinicionModulo {
   fetch: (orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient, opciones?: OpcionesReporte) => Promise<ReportData>;
 }
 
-/** Opciones extra de un reporte (hoy solo las usa PMS). */
+/** Opciones extra de un reporte (PMS y los filtros de ventas). */
 export interface OpcionesReporte {
   /** PMS consolidado: incluir sucursales no hoteleras (p. ej. restaurante). Por defecto solo hotel o sin tipo. */
   incluirTodasSucursales?: boolean;
+  /** Ventas: solo las de esta persona (uuid del usuario), según `contarPor`. */
+  persona?: string | null;
+  /** Ventas: solo las pagadas con alguno de estos métodos (`payment_methods.code`). */
+  metodos?: string[] | null;
+  /** Ventas: a quién se atribuye la venta. Por defecto `cajero`. */
+  contarPor?: ContarPor;
 }
 
 /** Definición (catálogo) de un reporte disponible */

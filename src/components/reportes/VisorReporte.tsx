@@ -20,7 +20,7 @@ import { listarGuardados, marcarFavorito, recordarUso } from '@/lib/services/rep
 import { getReporteById } from '@/lib/services/reportes/reportesCatalogo';
 import { ejecutarReporte } from '@/lib/services/reportes/reportesEngine';
 import { congelarReporte } from '@/lib/services/reportes/cierres/snapshot';
-import type { ReportData } from '@/lib/services/reportes/types';
+import type { OpcionesReporte, ReportData } from '@/lib/services/reportes/types';
 import { useAccionesReportes } from './accionesReportes';
 import { AvisoAlcance } from './AvisoAlcance';
 import { BarraFiltros } from './BarraFiltros';
@@ -81,6 +81,8 @@ export function VisorReporte({
     [opcionPms, incluirTodas, sucursalesOrg],
   );
 
+  const metodosClave = efectivos?.metodos.join(',') ?? '';
+
   useEffect(() => {
     if (!ctx.orgId || !def || !efectivos || !permitido) return;
     if (def.sinTabla) {
@@ -93,7 +95,13 @@ export function VisorReporte({
     setEstado('cargando');
     void (async () => {
       try {
-        const opciones = { incluirTodasSucursales: incluirTodas };
+        // Persona, métodos y «Contar por» ya vienen anulados si el reporte no los declara (filtrosEfectivos).
+        const opciones: OpcionesReporte = {
+          incluirTodasSucursales: incluirTodas,
+          persona: efectivos.persona,
+          metodos: efectivos.metodos.length ? efectivos.metodos : null,
+          ...(efectivos.contarPor ? { contarPor: efectivos.contarPor } : {}),
+        };
         const actual = await ejecutarReporte(def.id, ctx.orgId!, efectivos.periodo, efectivos.sucursal, undefined, opciones);
         const anterior = comparado ? await ejecutarReporte(def.id, ctx.orgId!, comparado, efectivos.sucursal, undefined, opciones).catch(() => null) : null;
         if (!vivo) return;
@@ -109,7 +117,7 @@ export function VisorReporte({
     };
     // efectivos se reconstruye en cada render; la clave estable es el periodo y la sucursal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.orgId, def?.id, efectivos?.periodo.tipo, efectivos?.periodo.fechaInicio, efectivos?.periodo.fechaFin, efectivos?.periodo.horaInicio, efectivos?.periodo.horaFin, efectivos?.sucursal, efectivos?.comparar, permitido, recarga, incluirTodas]);
+  }, [ctx.orgId, def?.id, efectivos?.periodo.tipo, efectivos?.periodo.fechaInicio, efectivos?.periodo.fechaFin, efectivos?.periodo.horaInicio, efectivos?.periodo.horaFin, efectivos?.sucursal, efectivos?.comparar, efectivos?.persona, metodosClave, efectivos?.contarPor, permitido, recarga, incluirTodas]);
 
   useEffect(() => {
     if (!ctx.orgId || !def || !efectivos || estado !== 'listo') return;

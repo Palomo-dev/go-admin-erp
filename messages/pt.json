@@ -32477,7 +32477,20 @@
       "todaLaOrganizacion": "Toda a organização",
       "todasLasSucursales": "Todas as filiais",
       "franjaNoAplica": "Faixa: não se aplica",
-      "franjaNoAplicaMotivo": "Este relatório é calculado por dia"
+      "franjaNoAplicaMotivo": "Este relatório é calculado por dia",
+      "persona": "Pessoa",
+      "personaTodas": "Todas as pessoas",
+      "personaBuscar": "Buscar pessoa",
+      "personaOtra": "Pessoa escolhida",
+      "metodoPago": "Forma de pagamento",
+      "metodoTodos": "Todas as formas",
+      "metodoBuscar": "Buscar forma",
+      "sinResultados": "Sem resultados",
+      "contarPor": "Contar por",
+      "contarCajero": "Caixa",
+      "contarVendedor": "Vendedor",
+      "contarMesero": "Garçom",
+      "contarAyuda": "Caixa: quem recebeu · Vendedor: quem registrou a venda · Garçom: quem atendeu a mesa"
     },
     "alcance": {
       "titulo": "{n, plural, =0 {Você não tem filiais atribuídas} one {Você está vendo só {sucursales}} other {Você está vendo só {sucursales}}}",

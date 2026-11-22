@@ -82,6 +82,9 @@ const PERIODO: PeriodoCierre = {
 
 const ORG_ID = 142;
 
+/** Firma de `fn_reporte_ventas_personas` y `fn_reporte_mas_vendido` (y base de `fn_reporte_items_vendidos`). */
+const CLAVES_VENTAS = ['p_organization_id', 'p_from', 'p_to', 'p_branch_id', 'p_contar_por', 'p_persona', 'p_metodos'] as const;
+
 /**
  * Los reportes que el frontend llama con `p_branch_id`: las 9 RPC de la
  * migración del filtro por sucursal, los dos reportes de retenciones, que
@@ -112,7 +115,33 @@ const CASOS: Array<{ reporte: DefinicionModulo; rpc: string; claves: string[] }>
   { reporte: buscar(inventarioReports, 'fn_reporte_stock_critico_detalle'), rpc: 'fn_reporte_stock_critico_detalle', claves: ['p_organization_id', 'p_branch_id'] },
   { reporte: buscar(comprasFinanzasReports, 'fn_reporte_compras_proveedor'), rpc: 'fn_reporte_compras_proveedor', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
   { reporte: buscar(comprasInventarioReports, 'fn_reporte_ordenes_compra'), rpc: 'fn_reporte_ordenes_compra', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
+  // Reportes de ventas ampliados (20261122075104): sin opciones viajan los
+  // valores por defecto (cajero, sin persona, sin métodos), nunca claves ausentes.
+  ...ventasReports
+    .filter((d) => d.fetch.toString().includes("'fn_reporte_ventas_personas'"))
+    .map((reporte) => ({ reporte, rpc: 'fn_reporte_ventas_personas', claves: [...CLAVES_VENTAS] })),
+  ...ventasReports
+    .filter((d) => d.fetch.toString().includes("'fn_reporte_mas_vendido'"))
+    .map((reporte) => ({ reporte, rpc: 'fn_reporte_mas_vendido', claves: [...CLAVES_VENTAS] })),
+  ...ventasReports
+    .filter((d) => d.fetch.toString().includes("'fn_reporte_items_vendidos'"))
+    .map((reporte) => ({ reporte, rpc: 'fn_reporte_items_vendidos', claves: [...CLAVES_VENTAS, 'p_solo_descuento', 'p_limite'] })),
+  { reporte: buscar(inventarioReports, 'fn_reporte_despachos'), rpc: 'fn_reporte_despachos', claves: ['p_organization_id', 'p_from', 'p_to', 'p_branch_id'] },
 ];
+
+test('las RPC de ventas ampliadas las llama cada reporte que las usa', () => {
+  const ids = (rpc: string) => CASOS.filter((c) => c.rpc === rpc).map((c) => c.reporte.id).sort();
+  expect(ids('fn_reporte_ventas_personas')).toEqual(['ventas-periodo', 'ventas-vendedor']);
+  expect(ids('fn_reporte_mas_vendido')).toEqual(['mas-vendido', 'ventas-hora']);
+  expect(ids('fn_reporte_items_vendidos')).toEqual(['devoluciones-descuentos', 'items-vendidos']);
+});
+
+it.each(CASOS.filter((c) => CLAVES_VENTAS.every((k) => c.claves.includes(k))))('$rpc ($reporte.id) sin opciones manda cajero, sin persona ni métodos', async ({ reporte, rpc }) => {
+  const { client, llamadas } = crearDoble();
+  await reporte.fetch(ORG_ID, PERIODO, null, client);
+  const llamada = llamadas.find((l) => l.fn === rpc)!;
+  expect(llamada.params).toMatchObject({ p_contar_por: 'cajero', p_persona: null, p_metodos: null });
+});
 
 test('las dos rentabilidades por producto llaman a la RPC con costo real', () => {
   expect(CASOS.filter((c) => c.rpc === 'fn_reporte_rentabilidad_producto').map((c) => c.reporte.id).sort())

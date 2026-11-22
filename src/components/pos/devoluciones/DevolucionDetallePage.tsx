@@ -13,13 +13,18 @@
  * - Columna lateral: Venta original y Motivo.
  * - Menú ⋯ (Figma 2721:955): imprimir comprobante y «Anular devolución…»
  *   (`AnularDevolucionDialog`); `?anular=1` lo abre al llegar desde el listado.
+ * - «Reenviar nota crédito a la DIAN» en el ⋯ solo si la DIAN la rechazó o
+ *   su envío falló: reutiliza el reintento de la cola (`reintentarEnvioDian`,
+ *   `POST /api/factus/jobs`, permiso finance.create en el servidor).
+ * - Cadena Venta → Devolución → NC → Venta nueva («Registrar venta nueva»,
+ *   `sales.resale_of_return_id`).
  * - Anulada (Figma 2721:17): badge «Anulada», aviso rojo con quién, cuándo y
  *   por qué, y el asiento espejo, el ingreso de caja y la nota en el historial.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Ban, ClipboardList, History, Package, Printer, Receipt, RefreshCw, Undo2, Wallet } from 'lucide-react';
+import { Ban, ClipboardList, History, Package, Printer, Receipt, RefreshCw, Send, Undo2, Wallet } from 'lucide-react';
 import {
   AvisoTonal,
   BranchBadge,
@@ -42,6 +47,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { imprimirDocumento } from '@/lib/documents/cliente';
+import { reintentarEnvioDian } from '@/lib/finanzas/notas/clienteNotas';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { reenvioNotaCredito } from '@/lib/pos/devoluciones/anularDevolucionLogica';
 import { formatDateTimeInTz } from '@/lib/utils/dateDisplay';
 import { BADGE_ESTADO_VENTA } from '@/lib/pos/ventas/estadoVenta';
 import { useFechaHoraCaja } from '@/components/pos/cajas/comunesCaja';
@@ -62,6 +70,7 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
   const router = useRouter();
   const params = useSearchParams();
   const [anular, setAnular] = useState(false);
+  const [reenviando, setReenviando] = useState(false);
   const { formatear } = useMonedaOrganizacion();
   const fechaHora = useFechaHoraCaja();
   const { timezone } = useFormatDate();
@@ -177,6 +186,17 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
     ...(nc
       ? [{ id: `nc-${nc.id}`, tipo: 'notaCredito' as const, numero: nc.numero ?? '—', estado: nc.einvoice_status ?? nc.estado, importe: formatear(nc.total), href: `/app/finanzas/facturas-venta/${nc.id}` }]
       : []),
+    // Venta nueva que revende esta devolución (Venta → Devolución → NC → Venta nueva).
+    ...(dev.ventas_nuevas ?? []).map((v) => ({
+      id: `venta-nueva-${v.id}`,
+      tipo: 'venta' as const,
+      etiquetaTipo: ta('cadena.ventaNueva'),
+      numero: v.numero ?? tl('ventaSinNumero'),
+      estado: BADGE_ESTADO_VENTA[v.estado],
+      fecha: v.fecha ? fechaHora(v.fecha) : null,
+      importe: formatear(v.total),
+      href: `/app/pos/ventas/${v.id}`,
+    })),
     ...dev.asientos.map((a) => ({ id: `asiento-${a.id}`, tipo: 'asiento' as const, numero: a.numero, href: `/app/finanzas/contabilidad/asientos/${a.id}` })),
   ];
 
@@ -251,6 +271,21 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
       }
     : null;
 
+  const reenvio = reenvioNotaCredito(nc, { anulada, permiso: dev.permisos?.reenviar_nc === true });
+  const reenviarNota = async () => {
+    if (!reenvio.visible || !reenvio.permitido) return;
+    setReenviando(true);
+    try {
+      await reintentarEnvioDian(reenvio.jobId);
+      toastSuccess(ta('menu.reenviada', { numero: nc?.numero ?? '—' }));
+      recargar();
+    } catch {
+      toastError(ta('menu.errorReenvio'));
+    } finally {
+      setReenviando(false);
+    }
+  };
+
   const accionesMenu: AccionFila[] = [
     {
       id: 'imprimir',
@@ -259,6 +294,15 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
       deshabilitada: !nc,
       motivo: tl('motivosAccion.sinNc'),
       onSelect: () => nc && imprimirDocumento('nota-credito', nc.id),
+    },
+    {
+      id: 'reenviar',
+      etiqueta: ta('menu.reenviar'),
+      icono: Send,
+      oculta: !reenvio.visible,
+      deshabilitada: reenviando || (reenvio.visible && !reenvio.permitido),
+      motivo: reenviando ? ta('menu.reenviando') : ta('menu.motivoSinPermisoFinanzas'),
+      onSelect: () => void reenviarNota(),
     },
     {
       id: 'anular',
@@ -309,7 +353,8 @@ export function DevolucionDetallePage({ devolucionId }: { devolucionId: string }
       {avisoAnulada && <AvisoTonal tono="peligro" titulo={avisoAnulada.titulo} descripcion={avisoAnulada.texto || undefined} />}
 
       <section aria-label={t('cadena')} className="overflow-x-auto rounded-xl border border-line bg-surface p-3">
-        <CadenaDocumento eslabones={eslabones} etiqueta={t('cadena')} />
+        {/* Orden propio: la venta nueva va después de la nota crédito, no al principio. */}
+        <CadenaDocumento eslabones={eslabones} etiqueta={t('cadena')} ordenar={false} />
       </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

@@ -23,8 +23,10 @@ import {
   mesDeFecha,
   normalizarDiagnostico,
   opcionesFechaEspejo,
+  reenvioNotaCredito,
   type DiagnosticoAnulacion,
 } from '@/lib/pos/devoluciones/anularDevolucionLogica';
+import { buildCheckoutEnvelope } from '@/lib/offline/checkoutRpc';
 
 const BASE: DiagnosticoAnulacion = normalizarDiagnostico({
   return_id: 8,
@@ -203,5 +205,61 @@ describe('contrato de la migración 20261122001319', () => {
     expect(rollback).toMatch(/drop function if exists public\.fn_devolucion_anular/);
     expect(rollback).toMatch(/drop column if exists voided_at/);
     expect(rollback).toMatch(/no revierte datos/i);
+  });
+});
+
+describe('«Reenviar nota crédito a la DIAN»', () => {
+  const nota = (estado: string, extra: Partial<{ estado: string; einvoice_status: string | null }> = {}) => ({
+    estado: 'issued',
+    einvoice_status: null as string | null,
+    ...extra,
+    envio: { job_id: 'job-1', estado },
+  });
+
+  test('solo con el envío rechazado o fallido, la nota viva y la devolución sin anular', () => {
+    expect(reenvioNotaCredito(nota('rejected'), { anulada: false, permiso: true })).toEqual({ visible: true, jobId: 'job-1', permitido: true });
+    expect(reenvioNotaCredito(nota('failed'), { anulada: false, permiso: false })).toEqual({ visible: true, jobId: 'job-1', permitido: false });
+    for (const estado of ['accepted', 'pending', 'processing', 'sent', 'cancelled']) {
+      expect([estado, reenvioNotaCredito(nota(estado), { anulada: false, permiso: true }).visible]).toEqual([estado, false]);
+    }
+    expect(reenvioNotaCredito(nota('rejected', { einvoice_status: 'accepted' }), { anulada: false, permiso: true }).visible).toBe(false);
+    expect(reenvioNotaCredito(nota('rejected', { estado: 'void' }), { anulada: false, permiso: true }).visible).toBe(false);
+    expect(reenvioNotaCredito(nota('rejected'), { anulada: true, permiso: true }).visible).toBe(false);
+    expect(reenvioNotaCredito({ estado: 'issued', einvoice_status: null, envio: null }, { anulada: false, permiso: true }).visible).toBe(false);
+    expect(reenvioNotaCredito(null, { anulada: false, permiso: true }).visible).toBe(false);
+  });
+
+  test('reutiliza el reintento de la cola (sin segunda implementación de envío)', () => {
+    const pagina = fs.readFileSync(path.join(__dirname, '../../../components/pos/devoluciones/DevolucionDetallePage.tsx'), 'utf8');
+    expect(pagina).toMatch(/import \{ reintentarEnvioDian \} from '@\/lib\/finanzas\/notas\/clienteNotas'/);
+    expect(pagina).not.toMatch(/\/api\/factus\/credit-note|encolarDocumento/);
+  });
+});
+
+describe('venta nueva enlazada a la devolución (20261122004635)', () => {
+  const sql = fs.readFileSync(path.join(__dirname, '../../../../supabase/migrations/20261122004635_pos_venta_reventa_de_devolucion.sql'), 'utf8');
+  const rollback = fs.readFileSync(path.join(__dirname, '../../../../supabase/rollbacks/20261122004635_pos_venta_reventa_de_devolucion_rollback.sql'), 'utf8');
+
+  test('columna nula en sales, validación en la base y parche verificado de pos_checkout_v1', () => {
+    expect(sql).toMatch(/alter table public\.sales add column if not exists resale_of_return_id integer\s+references public\.returns\(id\) on delete set null/);
+    expect(sql).toMatch(/r\.organization_id = p_org and r\.status = 'processed'/);
+    expect(sql).toMatch(/revoke all on function public\.fn_venta_reventa_de\(integer, jsonb\) from public, anon, authenticated/);
+    expect(sql).toMatch(/no aparecen una sola vez/);
+    expect(rollback).toMatch(/drop column if exists resale_of_return_id/);
+    expect(rollback).toMatch(/no revierte datos/i);
+  });
+
+  test('el sobre lleva la devolución solo en una venta nueva', () => {
+    const base = {
+      saleId: 's1', createdAt: '2026-11-21T10:00:00Z', organizationId: 7, branchId: 3, userId: null, currency: 'COP',
+      itemCalcs: [], subtotal: 0, taxTotal: 0, discountTotal: 0, total: 0, promotionIds: [], invoiceCommissionAmount: 0,
+    };
+    const carrito = (extra: Record<string, unknown>) => ({ id: 'c1', organization_id: 7, branch_id: 3, status: 'active', items: [], subtotal: 0, tax_amount: 0, tax_total: 0, discount_amount: 0, discount_total: 0, total: 0, created_at: '', updated_at: '', ...extra });
+    const sobre = (cart: Record<string, unknown>, mode?: 'sale' | 'debt' | 'settle') =>
+      buildCheckoutEnvelope({ ...base, mode, checkout: { cart, payments: [] } } as unknown as Parameters<typeof buildCheckoutEnvelope>[0]);
+    expect(sobre(carrito({ resale_of_return_id: 8 })).resale_of_return_id).toBe(8);
+    expect(sobre(carrito({ resale_of_return_id: 8 }), 'debt').resale_of_return_id).toBe(8);
+    expect(sobre(carrito({ resale_of_return_id: 8 }), 'settle').resale_of_return_id).toBeUndefined();
+    expect('resale_of_return_id' in sobre(carrito({}))).toBe(false);
   });
 });

@@ -3,9 +3,12 @@
  * respuesta (Figma `874:578562`): líneas, motivo, venta original con factura y
  * cobros, nota crédito, egreso de caja o saldo a favor, asientos e historial.
  * Organización de la sesión; lectura con el cliente de la sesión (RLS).
+ * `permisos.reenviar_nc`: `finance.create` resuelto aquí (el mismo que exige
+ * `POST /api/factus/jobs` para reintentar el envío de la nota crédito).
  */
 import { NextResponse } from 'next/server';
-import { withOrg } from '@/lib/utils/orgContext';
+import { hasOrgAdminOrPermission, withOrg } from '@/lib/utils/orgContext';
+import { PERMISOS_FINANZAS } from '@/lib/security/orgGuards';
 import { detalleDevolucion, ErrorDetalleDevolucion } from '@/lib/pos/devoluciones/detalleServidor';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +18,7 @@ export const GET = withOrg(async (ctx, _req, routeParams) => {
   const id = typeof params.id === 'string' ? params.id : '';
   try {
     const devolucion = await detalleDevolucion(ctx, id);
+    devolucion.permisos = { reenviar_nc: devolucion.nota_credito?.envio ? await hasOrgAdminOrPermission(ctx, PERMISOS_FINANZAS.CREAR) : false };
     return NextResponse.json(devolucion, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err) {
     if (err instanceof ErrorDetalleDevolucion) {

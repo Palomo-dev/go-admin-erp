@@ -83,7 +83,23 @@ export interface DetalleDevolucion {
     factura: { id: string; numero: string | null; estado: string | null; total: number } | null;
     cobros: { id: string; metodo: string | null; monto: number; fecha: string | null; estado: string | null }[];
   };
-  nota_credito: { id: string; numero: string | null; total: number; estado: string | null; einvoice_status: string | null; fecha: string | null } | null;
+  nota_credito: {
+    id: string;
+    numero: string | null;
+    total: number;
+    estado: string | null;
+    einvoice_status: string | null;
+    fecha: string | null;
+    /** Último envío a la DIAN (`electronic_invoicing_jobs`): para «Reenviar nota crédito a la DIAN». */
+    envio?: { job_id: string; estado: string } | null;
+  } | null;
+  /**
+   * Ventas nuevas que revenden esta devolución (`sales.resale_of_return_id`,
+   * «Registrar venta nueva»): la cadena termina en «Venta nueva».
+   */
+  ventas_nuevas?: { id: string; numero: string | null; fecha: string | null; total: number; estado: EstadoVenta }[];
+  /** Acciones que el servidor permite (permisos de la sesión). */
+  permisos?: { reenviar_nc: boolean };
   caja: { sesion_id: number; movimiento: { id: number; monto: number; fecha: string | null } | null } | null;
   saldo_a_favor: { id: string; monto: number; saldo: number; estado: string | null } | null;
   asientos: { id: number; fecha: string | null; memo: string | null; numero: string }[];
@@ -231,6 +247,7 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
   }));
 
   const anulacion = r.status === 'cancelled' ? await leerAnulacion(ctx, r, asientos.map((a) => a.id), filasLineas.map((l) => l.product_id)) : null;
+  const [envio, ventasNuevas] = await Promise.all([nc ? ultimoEnvio(ctx, nc.id) : Promise.resolve(null), leerVentasNuevas(ctx, r.id)]);
 
   const historial: EventoHistorial[] = [
     { tipo: 'creada' as const, fecha, usuario },
@@ -299,13 +316,58 @@ export async function detalleDevolucion(ctx: Ctx, idTexto: string): Promise<Deta
         estado: p.status,
       })),
     },
-    nota_credito: nc ? { id: nc.id, numero: nc.number, total: n(nc.total), estado: nc.status, einvoice_status: nc.einvoice_status, fecha: nc.created_at } : null,
+    nota_credito: nc ? { id: nc.id, numero: nc.number, total: n(nc.total), estado: nc.status, einvoice_status: nc.einvoice_status, fecha: nc.created_at, envio } : null,
+    ventas_nuevas: ventasNuevas,
     caja: r.cash_session_id ? { sesion_id: r.cash_session_id, movimiento: mov ? { id: Number(mov.id), monto: n(mov.amount), fecha: mov.created_at } : null } : null,
     saldo_a_favor: credito ? { id: credito.id, monto: n(credito.amount), saldo: n(credito.balance), estado: credito.status } : null,
     asientos,
     anulacion,
     historial,
   };
+}
+
+/** Último envío de la nota crédito a la DIAN (la cola de facturación electrónica). */
+async function ultimoEnvio(ctx: Ctx, notaId: string): Promise<{ job_id: string; estado: string } | null> {
+  const { data } = await ctx.supabase
+    .from('electronic_invoicing_jobs')
+    .select('id, status')
+    .eq('organization_id', ctx.organizationId)
+    .eq('invoice_id', notaId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const job = data as { id: string; status: string | null } | null;
+  return job ? { job_id: String(job.id), estado: job.status ?? 'pending' } : null;
+}
+
+/** Ventas que revenden la devolución (sin las anuladas), con el número de su factura. */
+async function leerVentasNuevas(ctx: Ctx, devolucionId: number): Promise<NonNullable<DetalleDevolucion['ventas_nuevas']>> {
+  const { data } = await ctx.supabase
+    .from('sales')
+    .select('id, sale_date, total, status, payment_status')
+    .eq('organization_id', ctx.organizationId)
+    .eq('resale_of_return_id', devolucionId)
+    .neq('status', 'void')
+    .order('sale_date', { ascending: true });
+  const ventas = (data ?? []) as Array<{ id: string; sale_date: string | null; total: number | string; status: string | null; payment_status: string | null }>;
+  if (!ventas.length) return [];
+  const { data: facturas } = await ctx.supabase
+    .from('invoice_sales')
+    .select('sale_id, number, document_type, status, created_at')
+    .eq('organization_id', ctx.organizationId)
+    .in('sale_id', ventas.map((v) => v.id));
+  const numero = new Map<string, string>();
+  for (const f of ((facturas ?? []) as Array<{ sale_id: string; number: string | null; document_type: string | null; status: string | null }>)) {
+    if (f.document_type === 'credit_note' || !f.number || ['void', 'voided', 'cancelled'].includes(String(f.status))) continue;
+    if (!numero.has(f.sale_id)) numero.set(f.sale_id, f.number);
+  }
+  return ventas.map((v) => ({
+    id: v.id,
+    numero: numero.get(v.id) ?? null,
+    fecha: v.sale_date,
+    total: n(v.total),
+    estado: estadoVenta({ status: v.status, payment_status: v.payment_status, total: v.total, devuelto: 0 }),
+  }));
 }
 
 /**

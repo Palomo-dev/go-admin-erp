@@ -16,6 +16,8 @@ jest.mock('next/navigation', () => ({
 }));
 
 const pedirDiagnostico = jest.fn();
+const pedirDetalle = jest.fn();
+const reintentar = jest.fn();
 const enviarAnulacion = jest.fn();
 jest.mock('@/lib/pos/devoluciones/clienteDevoluciones', () => {
   const real = jest.requireActual('@/lib/pos/devoluciones/clienteDevoluciones');
@@ -23,8 +25,13 @@ jest.mock('@/lib/pos/devoluciones/clienteDevoluciones', () => {
     ErrorPeticionDevoluciones: real.ErrorPeticionDevoluciones,
     pedirDiagnosticoAnulacion: (...a: unknown[]) => pedirDiagnostico(...a),
     enviarAnulacionDevolucion: (...a: unknown[]) => enviarAnulacion(...a),
+    pedirDetalleDevolucion: (...a: unknown[]) => pedirDetalle(...a),
   };
 });
+jest.mock('@/lib/finanzas/notas/clienteNotas', () => ({ reintentarEnvioDian: (...a: unknown[]) => reintentar(...a) }));
+jest.mock('@/components/pos/cajas/comunesCaja', () => ({ useFechaHoraCaja: () => (v: string | null | undefined) => String(v ?? '') }));
+jest.mock('@/components/pos/cajas/paymentMethodLabels', () => ({ useEtiquetaMetodoPago: () => (m: string) => m }));
+jest.mock('@/lib/documents/cliente', () => ({ imprimirDocumento: jest.fn(), guardarArchivo: jest.fn() }));
 jest.mock('@/lib/hooks/useOrganization', () => ({ getOrganizationId: () => 7 }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({ useFormatDate: () => ({ timezone: 'America/Bogota' }) }));
 const BASE_MONEDA = { code: 'COP', decimals: 0, locale: 'es-CO' };
@@ -33,6 +40,7 @@ const toastSuccess = jest.fn();
 jest.mock('@/components/ui/use-toast', () => ({ toastError: jest.fn(), toastSuccess: (...a: unknown[]) => toastSuccess(...a) }));
 
 import { AnularDevolucionDialog } from '@/components/pos/devoluciones/AnularDevolucionDialog';
+import { DevolucionDetallePage } from '@/components/pos/devoluciones/DevolucionDetallePage';
 import { ErrorPeticionDevoluciones } from '@/lib/pos/devoluciones/clienteDevoluciones';
 
 const DEV = {
@@ -113,6 +121,7 @@ test('nota aceptada por la DIAN: no se anula y ofrece registrar una venta nueva 
   renderConIdioma(<AnularDevolucionDialog abierto onAbiertoChange={jest.fn()} devolucion={DEV} onAnulada={jest.fn()} />);
   expect(await screen.findByText('No se puede anular DEV-000008')).toBeTruthy();
   expect(screen.getByText('La nota crédito NC-000033 ya fue validada por la DIAN.')).toBeTruthy();
+  expect(screen.getByText('La venta nueva queda enlazada a esta devolución: aparece en la cadena Venta → Devolución → NC → Venta nueva.')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Registrar venta nueva' }));
   expect(push).toHaveBeenCalledWith('/app/pos/ventas/nuevo?devolucion=8');
 });
@@ -120,7 +129,7 @@ test('nota aceptada por la DIAN: no se anula y ofrece registrar una venta nueva 
 test('efectivo sin caja abierta: bloqueado con la razón y el error del servidor traducido', async () => {
   pedirDiagnostico.mockResolvedValue({ ...DIAG, caso: 'bloqueada', bloqueo: 'efectivo_sin_caja', caja_abierta: null });
   renderConIdioma(<AnularDevolucionDialog abierto onAbiertoChange={jest.fn()} devolucion={DEV} onAnulada={jest.fn()} />);
-  expect(await screen.findAllByText('El reintegro fue en efectivo: abre una caja para recibir el dinero que el cliente devuelve.')).not.toHaveLength(0);
+  expect(await screen.findAllByText(/El reintegro fue en efectivo y el dinero que el cliente devuelve tiene que entrar a una caja\. Abre la caja/)).not.toHaveLength(0);
   expect((screen.getByRole('button', { name: 'Anular devolución' }) as HTMLButtonElement).disabled).toBe(true);
 });
 
@@ -134,4 +143,42 @@ test('error de la RPC al confirmar: se muestra traducido y no se cierra', async 
   fireEvent.click(screen.getByRole('button', { name: 'Anular devolución' }));
   expect(await screen.findByText(/ya no está en el inventario de la sucursal/)).toBeTruthy();
   expect(onAnulada).not.toHaveBeenCalled();
+});
+
+describe('detalle: venta nueva en la cadena y reenvío de la nota crédito', () => {
+  const conReventa = {
+    ...DEV,
+    nota_credito: { ...DEV.nota_credito!, envio: { job_id: 'job-9', estado: 'rejected' } },
+    ventas_nuevas: [{ id: 'v-nueva', numero: 'F-001900', fecha: '2026-11-21T15:00:00Z', total: 89900, estado: 'pagada' }],
+    permisos: { reenviar_nc: true },
+  } as unknown as DetalleDevolucion;
+
+  test('la cadena termina en «Venta nueva» con enlace a la venta', async () => {
+    pedirDetalle.mockResolvedValue(conReventa);
+    renderConIdioma(<DevolucionDetallePage devolucionId="8" />);
+    const enlace = await screen.findByRole('link', { name: 'F-001900' });
+    expect(enlace.getAttribute('href')).toBe('/app/pos/ventas/v-nueva');
+    expect(screen.getByText('Venta nueva')).toBeTruthy();
+  });
+
+  test('NC rechazada: el ⋯ ofrece reenviarla con el reintento de la cola', async () => {
+    pedirDetalle.mockResolvedValue(conReventa);
+    reintentar.mockResolvedValue(undefined);
+    renderConIdioma(<DevolucionDetallePage devolucionId="8" />);
+    await screen.findByRole('heading', { name: 'Devolución DEV-000008' });
+    const boton = screen.getByRole('button', { name: /DEV-000008/ });
+    fireEvent.keyDown(boton, { key: 'Enter' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: /Reenviar nota crédito a la DIAN/ }));
+    await waitFor(() => expect(reintentar).toHaveBeenCalledWith('job-9'));
+    expect(toastSuccess).toHaveBeenCalledWith('NC-000033 quedó en cola para reenviarse a la DIAN.');
+  });
+
+  test('NC aceptada: el ⋯ no ofrece reenviar', async () => {
+    pedirDetalle.mockResolvedValue({ ...conReventa, nota_credito: { ...conReventa.nota_credito!, einvoice_status: 'accepted', envio: { job_id: 'job-9', estado: 'accepted' } } });
+    renderConIdioma(<DevolucionDetallePage devolucionId="8" />);
+    await screen.findByRole('heading', { name: 'Devolución DEV-000008' });
+    fireEvent.keyDown(screen.getByRole('button', { name: /DEV-000008/ }), { key: 'Enter' });
+    await screen.findByRole('menuitem', { name: /Anular devolución/ });
+    expect(screen.queryByRole('menuitem', { name: /Reenviar/ })).toBeNull();
+  });
 });

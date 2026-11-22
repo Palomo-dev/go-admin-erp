@@ -217,6 +217,13 @@ export interface Cart {
    * deuda en vez de crear otra. Se limpia al quedar registrada.
    */
   debt_attempt_id?: string | null;
+  /**
+   * «Registrar venta nueva» de una devolución cuya nota crédito aceptó la DIAN:
+   * la devolución que revende esta venta. Viaja en el sobre y `pos_checkout_v1`
+   * la guarda en `sales.resale_of_return_id` (migración 20261122004635). Un
+   * carrito abandonado no enlaza nada.
+   */
+  resale_of_return_id?: number | null;
 }
 
 export interface Sale {

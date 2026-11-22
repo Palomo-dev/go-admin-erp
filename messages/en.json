@@ -62401,7 +62401,12 @@
       "anular": "Void return…",
       "anularAyuda": "Opens the dialog that matches the credit note status.",
       "motivoAnulada": "The return is already voided.",
-      "motivoSinPermiso": "You need the “Void sales” permission."
+      "motivoSinPermiso": "You need the “Void sales” permission.",
+      "reenviar": "Resend credit note to the DIAN",
+      "reenviando": "Resending the credit note…",
+      "motivoSinPermisoFinanzas": "You need the “Record in finance” permission to resend to the DIAN.",
+      "reenviada": "{numero} is queued to be resent to the DIAN.",
+      "errorReenvio": "The credit note could not be resent. Try again or check it in Electronic invoicing."
     },
     "estadosNota": {
       "aceptada": "accepted",
@@ -62474,8 +62479,8 @@
       "queHacer": "What to do instead",
       "pasos": {
         "venta": "If the customer keeps the product again, record a new sale with its new electronic invoice.",
-        "productos": "“Record new sale” opens the point of sale with a cart holding the products of this return.",
-        "sinCambios": "The return and the credit note don't change; inventory and cash move with the new sale."
+        "sinCambios": "The return and the credit note don't change; inventory and cash move with the new sale.",
+        "enlace": "The new sale is linked to this return: it shows in the chain Sale → Return → CN → New sale."
       },
       "cerrar": "Close",
       "registrarVenta": "Record new sale"
@@ -62486,20 +62491,20 @@
       "devolucionNoEncontrada": "The return doesn't exist.",
       "devolucionInvalida": "The return is not valid.",
       "sinAccesoSucursal": "You don't have access to this return's branch.",
-      "sinPermiso": "You need the “Void sales” permission to void a return.",
+      "sinPermiso": "You need the “Void sales” permission to void a return. Ask the organization's administrator.",
       "yaAnulada": "The return is already voided.",
       "estadoInvalido": "Only a processed return can be voided.",
       "notaAceptadaDian": "The DIAN already accepted the credit note: the return is not voided.",
-      "notaEnEnvioDian": "The credit note is being sent to the DIAN: wait for the answer before voiding.",
-      "notaYaAnulada": "The credit note was already voided from Finance; the return can't be voided from here.",
-      "devolucionDeGarantia": "This return came from a warranty claim: manage it from the warranty.",
-      "devolucionConMembresia": "The return trimmed or cancelled a membership: it can't be voided automatically.",
-      "saldoAFavorAplicado": "The customer already used this return's store credit: void that application first.",
-      "serialNoDisponible": "A serial from the return is no longer as the return left it (sold or moved).",
-      "periodoCerrado": "Both the return's period and today's are closed: nothing is reversed inside a closed period.",
+      "notaEnEnvioDian": "The credit note is being sent to the DIAN and there is no answer yet. Wait a few minutes and open this dialog again: if it is rejected it can be voided; if it is accepted, record a new sale.",
+      "notaYaAnulada": "The credit note was already voided from Finance, so its entry is already reversed. Review the return with the accountant before changing it: it can't be voided from here.",
+      "devolucionDeGarantia": "This return came from a warranty claim and its damaged units have their own movements. Manage it from the warranty (Inventory › Serials) instead of voiding it here.",
+      "devolucionConMembresia": "The return trimmed or cancelled a membership and that is not undone automatically. Adjust the membership in Memberships and, if the customer keeps it, record a new sale.",
+      "saldoAFavorAplicado": "The customer already used (all or part of) the store credit this return created. First void that use in Finance › Store credit and try again.",
+      "serialNoDisponible": "A serial from the return is no longer as the return left it: it was sold or moved to another branch. Check its history in Inventory › Serials; meanwhile the return can't be voided.",
+      "periodoCerrado": "Both the return's period and today's are closed, and nothing is ever reversed inside a closed period. Ask the accountant to reopen one of them.",
       "periodoOriginalCerrado": "The original date's period is closed: use today's date.",
       "periodoHoyCerrado": "Today's period is closed: use the original date.",
-      "efectivoSinCaja": "The refund was in cash: open a register to receive the money the customer gives back.",
+      "efectivoSinCaja": "The refund was in cash and the money the customer gives back has to go into a register. Open the branch register in POS › Registers and try again.",
       "stockInsuficiente": "The product is no longer in the branch's inventory (it was sold again): it can't leave again.",
       "generico": "The return could not be voided. Try again."
     },
@@ -62519,6 +62524,10 @@
         "espejoIngreso": "Mirror entry {numeros} and {monto} received in session #{sesion}",
         "ingreso": "{monto} received in session #{sesion}"
       }
+    },
+    "cadena": {
+      "ventaNueva": "New sale",
+      "reventaDe": "Resale of"
     }
   }
 }

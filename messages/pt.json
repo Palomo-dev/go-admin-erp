@@ -62411,7 +62411,12 @@
       "anular": "Anular devolução…",
       "anularAyuda": "Abre o diálogo que corresponde ao estado da nota de crédito.",
       "motivoAnulada": "A devolução já está anulada.",
-      "motivoSinPermiso": "Você precisa da permissão «Anular vendas»."
+      "motivoSinPermiso": "Você precisa da permissão «Anular vendas».",
+      "reenviar": "Reenviar nota de crédito à DIAN",
+      "reenviando": "Reenviando a nota de crédito…",
+      "motivoSinPermisoFinanzas": "Você precisa da permissão «Registrar em finanças» para reenviar à DIAN.",
+      "reenviada": "{numero} ficou na fila para ser reenviada à DIAN.",
+      "errorReenvio": "Não foi possível reenviar a nota de crédito. Tente de novo ou confira em Faturamento eletrônico."
     },
     "estadosNota": {
       "aceptada": "aceita",
@@ -62484,8 +62489,8 @@
       "queHacer": "O que fazer no lugar",
       "pasos": {
         "venta": "Se o cliente ficar de novo com o produto, registre uma venda nova com sua nova fatura eletrônica.",
-        "productos": "«Registrar venda nova» abre o ponto de venda com um carrinho com os produtos desta devolução.",
-        "sinCambios": "A devolução e a nota de crédito não mudam; o estoque e o caixa se movem com a venda nova."
+        "sinCambios": "A devolução e a nota de crédito não mudam; o estoque e o caixa se movem com a venda nova.",
+        "enlace": "A venda nova fica vinculada a esta devolução: aparece na cadeia Venda → Devolução → NC → Venda nova."
       },
       "cerrar": "Fechar",
       "registrarVenta": "Registrar venda nova"
@@ -62496,20 +62501,20 @@
       "devolucionNoEncontrada": "A devolução não existe.",
       "devolucionInvalida": "A devolução não é válida.",
       "sinAccesoSucursal": "Você não tem acesso à filial desta devolução.",
-      "sinPermiso": "Você precisa da permissão «Anular vendas» para anular uma devolução.",
+      "sinPermiso": "Você precisa da permissão «Anular vendas» para anular uma devolução. Peça ao administrador da organização.",
       "yaAnulada": "A devolução já está anulada.",
       "estadoInvalido": "Só se anula uma devolução processada.",
       "notaAceptadaDian": "A DIAN já aceitou a nota de crédito: a devolução não é anulada.",
-      "notaEnEnvioDian": "A nota de crédito está sendo enviada à DIAN: espere a resposta antes de anular.",
-      "notaYaAnulada": "A nota de crédito já foi anulada em Finanças; a devolução não pode ser anulada aqui.",
-      "devolucionDeGarantia": "Esta devolução nasceu de uma garantia: é gerida a partir da garantia.",
-      "devolucionConMembresia": "A devolução reduziu ou cancelou uma assinatura: não pode ser anulada automaticamente.",
-      "saldoAFavorAplicado": "O cliente já usou o saldo a favor desta devolução: anule primeiro sua aplicação.",
-      "serialNoDisponible": "Um número de série da devolução já não está como a devolução o deixou (foi vendido ou movido).",
-      "periodoCerrado": "O período da devolução e o de hoje estão fechados: nunca se reverte dentro de um período fechado.",
+      "notaEnEnvioDian": "A nota de crédito está sendo enviada à DIAN e ainda não há resposta. Espere alguns minutos e abra este diálogo de novo: se for rejeitada, poderá ser anulada; se for aceita, registre uma venda nova.",
+      "notaYaAnulada": "A nota de crédito já foi anulada em Finanças, então seu lançamento já está revertido. Revise a devolução com o Contador antes de mexer nela: daqui não pode ser anulada.",
+      "devolucionDeGarantia": "Esta devolução nasceu de uma garantia e suas unidades danificadas têm movimentos próprios. Gerencie-a a partir da garantia (Estoque › Números de série) em vez de anulá-la aqui.",
+      "devolucionConMembresia": "A devolução reduziu ou cancelou uma assinatura e isso não se desfaz automaticamente. Ajuste a assinatura em Assinaturas e, se o cliente a mantiver, registre uma venda nova.",
+      "saldoAFavorAplicado": "O cliente já usou (total ou parcialmente) o saldo a favor que esta devolução gerou. Anule primeiro esse uso em Finanças › Saldos a favor e tente de novo.",
+      "serialNoDisponible": "Um número de série da devolução já não está como a devolução o deixou: foi vendido ou mudou de filial. Confira seu histórico em Estoque › Números de série; enquanto isso, a devolução não pode ser anulada.",
+      "periodoCerrado": "O período da devolução e o de hoje estão fechados, e nunca se reverte dentro de um período fechado. Peça ao Contador para reabrir um dos dois.",
       "periodoOriginalCerrado": "O período da data original está fechado: use a data de hoje.",
       "periodoHoyCerrado": "O período de hoje está fechado: use a data original.",
-      "efectivoSinCaja": "O reembolso foi em dinheiro: abra um caixa para receber o dinheiro que o cliente devolve.",
+      "efectivoSinCaja": "O reembolso foi em dinheiro e o dinheiro que o cliente devolve precisa entrar em um caixa. Abra o caixa da filial em PDV › Caixas e tente de novo.",
       "stockInsuficiente": "O produto já não está no estoque da filial (foi vendido de novo): não pode sair outra vez.",
       "generico": "Não foi possível anular a devolução. Tente de novo."
     },
@@ -62529,6 +62534,10 @@
         "espejoIngreso": "Lançamento espelho {numeros} e entrada de {monto} na sessão #{sesion}",
         "ingreso": "Entrada de {monto} na sessão #{sesion}"
       }
+    },
+    "cadena": {
+      "ventaNueva": "Venda nova",
+      "reventaDe": "Revenda de"
     }
   }
 }

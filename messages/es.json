@@ -62416,7 +62416,12 @@
       "anular": "Anular devolución…",
       "anularAyuda": "Abre el diálogo que corresponde según el estado de la nota crédito.",
       "motivoAnulada": "La devolución ya está anulada.",
-      "motivoSinPermiso": "Necesitas el permiso «Anular ventas»."
+      "motivoSinPermiso": "Necesitas el permiso «Anular ventas».",
+      "reenviar": "Reenviar nota crédito a la DIAN",
+      "reenviando": "Reenviando la nota crédito…",
+      "motivoSinPermisoFinanzas": "Necesitas el permiso «Registrar en finanzas» para reenviar a la DIAN.",
+      "reenviada": "{numero} quedó en cola para reenviarse a la DIAN.",
+      "errorReenvio": "No se pudo reenviar la nota crédito. Inténtalo de nuevo o revísala en Facturación electrónica."
     },
     "estadosNota": {
       "aceptada": "aceptada",
@@ -62489,8 +62494,8 @@
       "queHacer": "Qué hacer en su lugar",
       "pasos": {
         "venta": "Si el cliente se queda otra vez con el producto, registra una venta nueva con su factura electrónica nueva.",
-        "productos": "«Registrar venta nueva» abre el punto de venta con un carrito con los productos de esta devolución.",
-        "sinCambios": "La devolución y la nota crédito no cambian; el inventario y la caja se mueven con la venta nueva."
+        "sinCambios": "La devolución y la nota crédito no cambian; el inventario y la caja se mueven con la venta nueva.",
+        "enlace": "La venta nueva queda enlazada a esta devolución: aparece en la cadena Venta → Devolución → NC → Venta nueva."
       },
       "cerrar": "Cerrar",
       "registrarVenta": "Registrar venta nueva"
@@ -62501,20 +62506,20 @@
       "devolucionNoEncontrada": "La devolución no existe.",
       "devolucionInvalida": "La devolución no es válida.",
       "sinAccesoSucursal": "No tienes acceso a la sucursal de esta devolución.",
-      "sinPermiso": "Necesitas el permiso «Anular ventas» para anular una devolución.",
+      "sinPermiso": "Necesitas el permiso «Anular ventas» para anular una devolución. Pídeselo al administrador de la organización.",
       "yaAnulada": "La devolución ya está anulada.",
       "estadoInvalido": "Solo se anula una devolución procesada.",
       "notaAceptadaDian": "La DIAN ya aceptó la nota crédito: la devolución no se anula.",
-      "notaEnEnvioDian": "La nota crédito se está enviando a la DIAN: espera la respuesta antes de anular.",
-      "notaYaAnulada": "La nota crédito ya se anuló desde Finanzas; la devolución no se puede anular desde aquí.",
-      "devolucionDeGarantia": "Esta devolución nació de una garantía: se gestiona desde la garantía.",
-      "devolucionConMembresia": "La devolución recortó o canceló una membresía: no se puede anular automáticamente.",
-      "saldoAFavorAplicado": "El cliente ya usó el saldo a favor de esta devolución: anula primero su aplicación.",
-      "serialNoDisponible": "Un serial de la devolución ya no está como lo dejó la devolución (se vendió o se movió).",
-      "periodoCerrado": "El periodo de la devolución y el de hoy están cerrados: nunca se reversa dentro de un periodo cerrado.",
+      "notaEnEnvioDian": "La nota crédito se está enviando a la DIAN y aún no hay respuesta. Espera unos minutos y vuelve a abrir este diálogo: si la rechaza se podrá anular; si la acepta, registra una venta nueva.",
+      "notaYaAnulada": "La nota crédito ya se anuló desde Finanzas, así que el asiento de la nota ya está reversado. Revisa la devolución con el Contador antes de tocarla: desde aquí no se puede anular.",
+      "devolucionDeGarantia": "Esta devolución nació de una garantía y sus unidades dañadas tienen movimientos propios. Gestiónala desde la garantía (Inventario › Seriales) en lugar de anularla aquí.",
+      "devolucionConMembresia": "La devolución recortó o canceló una membresía y eso no se deshace automáticamente. Ajusta la membresía desde Membresías y, si el cliente la conserva, registra una venta nueva.",
+      "saldoAFavorAplicado": "El cliente ya usó (todo o parte) el saldo a favor que dejó esta devolución. Anula primero ese uso en Finanzas › Saldos a favor y vuelve a intentarlo.",
+      "serialNoDisponible": "Un serial de la devolución ya no está como lo dejó la devolución: se vendió o se movió de sucursal. Revisa su historial en Inventario › Seriales; mientras tanto la devolución no se puede anular.",
+      "periodoCerrado": "El periodo de la devolución y el de hoy están cerrados, y nunca se reversa dentro de un periodo cerrado. Pide al Contador que reabra uno de los dos periodos.",
       "periodoOriginalCerrado": "El periodo de la fecha original está cerrado: usa la fecha de hoy.",
       "periodoHoyCerrado": "El periodo de hoy está cerrado: usa la fecha original.",
-      "efectivoSinCaja": "El reintegro fue en efectivo: abre una caja para recibir el dinero que el cliente devuelve.",
+      "efectivoSinCaja": "El reintegro fue en efectivo y el dinero que el cliente devuelve tiene que entrar a una caja. Abre la caja de la sucursal en POS › Cajas y vuelve a intentarlo.",
       "stockInsuficiente": "El producto ya no está en el inventario de la sucursal (se volvió a vender): no puede salir otra vez.",
       "generico": "No se pudo anular la devolución. Inténtalo de nuevo."
     },
@@ -62534,6 +62539,10 @@
         "espejoIngreso": "Asiento espejo {numeros} e ingreso de {monto} en la sesión #{sesion}",
         "ingreso": "Ingreso de {monto} en la sesión #{sesion}"
       }
+    },
+    "cadena": {
+      "ventaNueva": "Venta nueva",
+      "reventaDe": "Reventa de"
     }
   }
 }

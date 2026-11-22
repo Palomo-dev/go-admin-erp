@@ -176,7 +176,7 @@ export function AnularDevolucionDialog({ abierto, onAbiertoChange, devolucion, o
           <p className="text-sm font-medium text-fg">{t('noSePuede.queHacer')}</p>
           <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-5 text-fg-secondary">
             <li>{t('noSePuede.pasos.venta')}</li>
-            <li>{t('noSePuede.pasos.productos')}</li>
+            <li>{t('noSePuede.pasos.enlace')}</li>
             <li>{t('noSePuede.pasos.sinCambios')}</li>
           </ul>
         </div>

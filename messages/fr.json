@@ -62401,7 +62401,12 @@
       "anular": "Annuler le retour…",
       "anularAyuda": "Ouvre la boîte de dialogue adaptée à l’état de l’avoir.",
       "motivoAnulada": "Le retour est déjà annulé.",
-      "motivoSinPermiso": "Il vous faut l’autorisation « Annuler des ventes »."
+      "motivoSinPermiso": "Il vous faut l’autorisation « Annuler des ventes ».",
+      "reenviar": "Renvoyer l’avoir à la DIAN",
+      "reenviando": "Renvoi de l’avoir…",
+      "motivoSinPermisoFinanzas": "Il vous faut l’autorisation « Enregistrer en finances » pour renvoyer à la DIAN.",
+      "reenviada": "{numero} est en file d’attente pour être renvoyé à la DIAN.",
+      "errorReenvio": "Impossible de renvoyer l’avoir. Réessayez ou consultez-le dans Facturation électronique."
     },
     "estadosNota": {
       "aceptada": "accepté",
@@ -62474,8 +62479,8 @@
       "queHacer": "Que faire à la place",
       "pasos": {
         "venta": "Si le client garde de nouveau le produit, enregistrez une nouvelle vente avec sa nouvelle facture électronique.",
-        "productos": "« Enregistrer une nouvelle vente » ouvre le point de vente avec un panier contenant les produits de ce retour.",
-        "sinCambios": "Le retour et l’avoir ne changent pas ; le stock et la caisse bougent avec la nouvelle vente."
+        "sinCambios": "Le retour et l’avoir ne changent pas ; le stock et la caisse bougent avec la nouvelle vente.",
+        "enlace": "La nouvelle vente est liée à ce retour : elle apparaît dans la chaîne Vente → Retour → Avoir → Nouvelle vente."
       },
       "cerrar": "Fermer",
       "registrarVenta": "Enregistrer une nouvelle vente"
@@ -62486,20 +62491,20 @@
       "devolucionNoEncontrada": "Le retour n’existe pas.",
       "devolucionInvalida": "Le retour n’est pas valide.",
       "sinAccesoSucursal": "Vous n’avez pas accès à l’agence de ce retour.",
-      "sinPermiso": "Il vous faut l’autorisation « Annuler des ventes » pour annuler un retour.",
+      "sinPermiso": "Il vous faut l’autorisation « Annuler des ventes » pour annuler un retour. Demandez-la à l’administrateur de l’organisation.",
       "yaAnulada": "Le retour est déjà annulé.",
       "estadoInvalido": "Seul un retour traité peut être annulé.",
       "notaAceptadaDian": "La DIAN a déjà accepté l’avoir : le retour n’est pas annulé.",
-      "notaEnEnvioDian": "L’avoir est en cours d’envoi à la DIAN : attendez la réponse avant d’annuler.",
-      "notaYaAnulada": "L’avoir a déjà été annulé depuis Finances ; le retour ne peut pas être annulé ici.",
-      "devolucionDeGarantia": "Ce retour provient d’une garantie : il se gère depuis la garantie.",
-      "devolucionConMembresia": "Le retour a réduit ou annulé un abonnement : il ne peut pas être annulé automatiquement.",
-      "saldoAFavorAplicado": "Le client a déjà utilisé l’avoir de ce retour : annulez d’abord son utilisation.",
-      "serialNoDisponible": "Un numéro de série du retour n’est plus dans l’état laissé par le retour (vendu ou déplacé).",
-      "periodoCerrado": "La période du retour et celle d’aujourd’hui sont clôturées : on ne contrepasse jamais dans une période clôturée.",
+      "notaEnEnvioDian": "L’avoir est en cours d’envoi à la DIAN et il n’y a pas encore de réponse. Attendez quelques minutes et rouvrez cette boîte de dialogue : s’il est rejeté, il pourra être annulé ; s’il est accepté, enregistrez une nouvelle vente.",
+      "notaYaAnulada": "L’avoir a déjà été annulé depuis Finances : son écriture est déjà contrepassée. Revoyez le retour avec le comptable avant d’y toucher : il ne peut pas être annulé ici.",
+      "devolucionDeGarantia": "Ce retour provient d’une garantie et ses unités endommagées ont leurs propres mouvements. Gérez-le depuis la garantie (Stock › Numéros de série) au lieu de l’annuler ici.",
+      "devolucionConMembresia": "Le retour a réduit ou annulé un abonnement et cela ne s’annule pas automatiquement. Ajustez l’abonnement dans Abonnements et, si le client le garde, enregistrez une nouvelle vente.",
+      "saldoAFavorAplicado": "Le client a déjà utilisé (tout ou partie de) l’avoir créé par ce retour. Annulez d’abord cette utilisation dans Finances › Avoirs clients puis réessayez.",
+      "serialNoDisponible": "Un numéro de série du retour n’est plus dans l’état laissé par le retour : il a été vendu ou changé d’agence. Consultez son historique dans Stock › Numéros de série ; d’ici là, le retour ne peut pas être annulé.",
+      "periodoCerrado": "La période du retour et celle d’aujourd’hui sont clôturées, et on ne contrepasse jamais dans une période clôturée. Demandez au comptable de rouvrir l’une des deux.",
       "periodoOriginalCerrado": "La période de la date d’origine est clôturée : utilisez la date d’aujourd’hui.",
       "periodoHoyCerrado": "La période d’aujourd’hui est clôturée : utilisez la date d’origine.",
-      "efectivoSinCaja": "Le remboursement a été fait en espèces : ouvrez une caisse pour recevoir l’argent que le client rend.",
+      "efectivoSinCaja": "Le remboursement a été fait en espèces et l’argent que le client rend doit entrer dans une caisse. Ouvrez la caisse de l’agence dans PDV › Caisses puis réessayez.",
       "stockInsuficiente": "Le produit n’est plus dans le stock de l’agence (il a été revendu) : il ne peut pas ressortir.",
       "generico": "Impossible d’annuler le retour. Réessayez."
     },
@@ -62519,6 +62524,10 @@
         "espejoIngreso": "Écriture miroir {numeros} et entrée de {monto} dans la session n° {sesion}",
         "ingreso": "Entrée de {monto} dans la session n° {sesion}"
       }
+    },
+    "cadena": {
+      "ventaNueva": "Nouvelle vente",
+      "reventaDe": "Revente de"
     }
   }
 }

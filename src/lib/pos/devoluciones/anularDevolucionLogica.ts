@@ -196,6 +196,29 @@ export function consecuenciasAnulacion(
   return salida;
 }
 
+// ─── «Reenviar nota crédito a la DIAN» (menú ⋯ del detalle) ────────────────
+
+/** Estados del envío (`electronic_invoicing_jobs.status`) en que se ofrece reenviar. */
+export const ESTADOS_ENVIO_REENVIABLES = ['rejected', 'failed'] as const;
+
+export type ReenvioNota = { visible: false } | { visible: true; jobId: string; permitido: boolean };
+
+/**
+ * Solo cuando la DIAN rechazó la nota o su envío falló: nunca aceptada, nunca
+ * en envío, nunca anulada. Reutiliza el reintento de la cola
+ * (`POST /api/factus/jobs`, `fn_einvoicing_accion_manual`), que vuelve a
+ * exigir el estado y el permiso `finance.create` en el servidor.
+ */
+export function reenvioNotaCredito(
+  nota: { estado: string | null; einvoice_status: string | null; envio?: { job_id: string; estado: string } | null } | null,
+  opciones: { anulada: boolean; permiso: boolean },
+): ReenvioNota {
+  if (!nota?.envio || opciones.anulada) return { visible: false };
+  if (nota.einvoice_status === 'accepted' || ['void', 'voided', 'cancelled'].includes(String(nota.estado))) return { visible: false };
+  if (!(ESTADOS_ENVIO_REENVIABLES as readonly string[]).includes(nota.envio.estado)) return { visible: false };
+  return { visible: true, jobId: nota.envio.job_id, permitido: opciones.permiso };
+}
+
 // ─── Cuerpo de la petición y errores ────────────────────────────────────────
 
 export const MOTIVO_MINIMO_ANULACION = 5;

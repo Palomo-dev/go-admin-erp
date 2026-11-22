@@ -62570,5 +62570,27 @@
         "padreEliminado": "Le produit parent est supprimé et la boutique ne l’affiche pas."
       }
     }
+  },
+  "accesoSucursal": {
+    "titulo": "Dans quelle succursale travaillez-vous aujourd’hui ?",
+    "descripcion": "{organizacion} · vous avez accès à {total} succursales. Vous pouvez la changer à tout moment depuis la barre supérieure.",
+    "buscar": "Rechercher une succursale…",
+    "sinResultados": "Aucune succursale ne correspond à « {texto} ».",
+    "ultimaUsada": "Dernière utilisée",
+    "abierta": "Ouverte",
+    "cerrada": "Fermée",
+    "abreHoy": "ouvre à {hora}",
+    "abreDia": "ouvre {dia} à {hora}",
+    "cajaAbierta": "Caisse n° {id} ouverte",
+    "todas": "Toutes les succursales",
+    "todasDetalle": "Vue d’ensemble de l’organisation",
+    "resumen": "Résumé",
+    "entrarA": "Entrer dans {nombre}",
+    "cambiarOrganizacion": "Changer d’organisation",
+    "noEsTuCuenta": "Ce n’est pas votre compte ?",
+    "entrarConOtra": "Se connecter avec un autre",
+    "error": "Impossible de charger vos succursales.",
+    "entrarSinElegir": "Continuer sans choisir de succursale",
+    "rechazada": "Vous n’avez plus accès à cette succursale. Choisissez-en une autre."
   }
 }

@@ -62570,5 +62570,27 @@
         "padreEliminado": "The parent product is deleted and the store does not show it."
       }
     }
+  },
+  "accesoSucursal": {
+    "titulo": "Which branch are you working at today?",
+    "descripcion": "{organizacion} · you have access to {total} branches. You can change it anytime from the top bar.",
+    "buscar": "Search branch…",
+    "sinResultados": "No branch matches “{texto}”.",
+    "ultimaUsada": "Last used",
+    "abierta": "Open",
+    "cerrada": "Closed",
+    "abreHoy": "opens {hora}",
+    "abreDia": "opens {dia} {hora}",
+    "cajaAbierta": "Register #{id} open",
+    "todas": "All branches",
+    "todasDetalle": "Organization overview",
+    "resumen": "Summary",
+    "entrarA": "Enter {nombre}",
+    "cambiarOrganizacion": "Switch organization",
+    "noEsTuCuenta": "Not your account?",
+    "entrarConOtra": "Sign in with another",
+    "error": "We couldn't load your branches.",
+    "entrarSinElegir": "Continue without choosing a branch",
+    "rechazada": "You no longer have access to that branch. Choose another one."
   }
 }

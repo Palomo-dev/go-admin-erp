@@ -62580,5 +62580,27 @@
         "padreEliminado": "O produto pai foi excluído e a loja não o mostra."
       }
     }
+  },
+  "accesoSucursal": {
+    "titulo": "Em qual filial você trabalha hoje?",
+    "descripcion": "{organizacion} · você tem acesso a {total} filiais. Você pode trocá-la quando quiser na barra superior.",
+    "buscar": "Buscar filial…",
+    "sinResultados": "Nenhuma filial corresponde a “{texto}”.",
+    "ultimaUsada": "Última usada",
+    "abierta": "Aberta",
+    "cerrada": "Fechada",
+    "abreHoy": "abre às {hora}",
+    "abreDia": "abre {dia} às {hora}",
+    "cajaAbierta": "Caixa #{id} aberto",
+    "todas": "Todas as filiais",
+    "todasDetalle": "Visão geral da organização",
+    "resumen": "Resumo",
+    "entrarA": "Entrar em {nombre}",
+    "cambiarOrganizacion": "Trocar de organização",
+    "noEsTuCuenta": "Não é sua conta?",
+    "entrarConOtra": "Entrar com outra",
+    "error": "Não foi possível carregar suas filiais.",
+    "entrarSinElegir": "Entrar sem escolher filial",
+    "rechazada": "Você não tem mais acesso a essa filial. Escolha outra."
   }
 }

@@ -62585,5 +62585,27 @@
         "padreEliminado": "El producto padre está eliminado y la tienda no lo muestra."
       }
     }
+  },
+  "accesoSucursal": {
+    "titulo": "¿En qué sucursal trabajas hoy?",
+    "descripcion": "{organizacion} · tienes acceso a {total} sucursales. La cambias cuando quieras desde la barra superior.",
+    "buscar": "Buscar sucursal…",
+    "sinResultados": "Ninguna sucursal coincide con «{texto}».",
+    "ultimaUsada": "Última usada",
+    "abierta": "Abierta",
+    "cerrada": "Cerrada",
+    "abreHoy": "abre {hora}",
+    "abreDia": "abre el {dia} {hora}",
+    "cajaAbierta": "Caja #{id} abierta",
+    "todas": "Todas las sucursales",
+    "todasDetalle": "Vista general de la organización",
+    "resumen": "Resumen",
+    "entrarA": "Entrar a {nombre}",
+    "cambiarOrganizacion": "Cambiar de organización",
+    "noEsTuCuenta": "¿No es tu cuenta?",
+    "entrarConOtra": "Entrar con otra",
+    "error": "No pudimos cargar tus sucursales.",
+    "entrarSinElegir": "Entrar sin elegir sucursal",
+    "rechazada": "Ya no tienes acceso a esa sucursal. Elige otra."
   }
 }

@@ -9,6 +9,7 @@
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import type { CifrasDevoluciones, PaginaDevoluciones, VentaParaDevolver } from './listadoServidor';
 import type { DetalleDevolucion } from './detalleServidor';
+import type { DiagnosticoAnulacion, FechaEspejo, ResultadoAnulacion } from './anularDevolucionLogica';
 
 export class ErrorPeticionDevoluciones extends Error {
   constructor(
@@ -54,4 +55,23 @@ export async function pedirCajaParaDevolucion(sucursal: number): Promise<number 
 
 export function pedirDetalleDevolucion(id: string | number): Promise<DetalleDevolucion> {
   return pedir<DetalleDevolucion>(`/api/pos/devoluciones/${encodeURIComponent(String(id))}`);
+}
+
+/** «Anular devolución»: qué diálogo aplica (nota ante la DIAN, periodos, caja). */
+export function pedirDiagnosticoAnulacion(id: string | number): Promise<DiagnosticoAnulacion> {
+  return pedir<DiagnosticoAnulacion>(`/api/pos/devoluciones/${encodeURIComponent(String(id))}/anular`);
+}
+
+/** Anula la devolución; los errores llegan con el código de la RPC. */
+export async function enviarAnulacionDevolucion(id: string | number, motivo: string, fechaEspejo: FechaEspejo): Promise<ResultadoAnulacion> {
+  const r = await fetch(`/api/pos/devoluciones/${encodeURIComponent(String(id))}/anular`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', ...cabeceras() },
+    body: JSON.stringify({ motivo, fecha_espejo: fechaEspejo }),
+  });
+  const cuerpo = (await r.json().catch(() => null)) as (ResultadoAnulacion & { codigo?: string }) | null;
+  if (!r.ok || !cuerpo) throw new ErrorPeticionDevoluciones(cuerpo?.codigo ?? (r.status === 403 ? 'sin_permiso' : 'generico'), r.status);
+  return cuerpo;
 }

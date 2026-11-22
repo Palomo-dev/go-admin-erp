@@ -96,7 +96,8 @@ export const META_ORIGEN: Record<OrigenMovimientoStock, MetaOrigen> = {
   sale: { tono: 'peligro', direccion: 'out', documento: 'venta' },
   adjustment: { tono: 'advertencia', direccion: 'ambas', documento: 'ajuste' },
   transfer: { tono: 'informacion', direccion: 'ambas', documento: 'traslado' },
-  return: { tono: 'exito', direccion: 'in', documento: 'devolucion' },
+  // Entra con la devolución y sale con su anulación (fn_devolucion_anular, 20261122001319).
+  return: { tono: 'exito', direccion: 'ambas', documento: 'devolucion' },
   loss: { tono: 'peligro', direccion: 'out', documento: 'producto' },
   production: { tono: 'marca', direccion: 'ambas', documento: 'orden_produccion' },
   initial: { tono: 'neutro', direccion: 'in', documento: 'producto' },

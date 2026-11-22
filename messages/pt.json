@@ -62404,5 +62404,131 @@
       "consecuencia2": "Seus lançamentos são estornados. Não pode ser desfeito daqui.",
       "confirmar": "Reverter"
     }
+  },
+  "posDevolucionesAnular": {
+    "menu": {
+      "imprimir": "Imprimir comprovante",
+      "anular": "Anular devolução…",
+      "anularAyuda": "Abre o diálogo que corresponde ao estado da nota de crédito.",
+      "motivoAnulada": "A devolução já está anulada.",
+      "motivoSinPermiso": "Você precisa da permissão «Anular vendas»."
+    },
+    "estadosNota": {
+      "aceptada": "aceita",
+      "rechazada": "rejeitada",
+      "en_envio": "em envio à DIAN",
+      "sin_transmitir": "não transmitida",
+      "anulada": "anulada"
+    },
+    "dialogo": {
+      "titulo": "Anular {numero}",
+      "descEfectivo": "Reembolso em dinheiro de {monto}",
+      "descSaldo": "Saldo a favor de {monto}",
+      "descNota": "{numero} {estado}",
+      "avisoRechazada": {
+        "titulo": "Pode ser anulada: a DIAN rejeitou a nota de crédito {numero}.",
+        "texto": "Uma nota de crédito rejeitada ou não transmitida não tem efeito fiscal; por isso a devolução é revertida com um lançamento espelho."
+      },
+      "avisoSinTransmitir": {
+        "titulo": "Pode ser anulada: a nota de crédito {numero} não foi transmitida à DIAN.",
+        "texto": "É revertida com um lançamento espelho."
+      },
+      "avisoSinNota": {
+        "titulo": "Pode ser anulada: a venda não tem fatura, então não há nota de crédito.",
+        "texto": "É revertida com um lançamento espelho."
+      },
+      "periodoCerradoHoy": "O período da devolução está fechado, então o espelho vai com a data de hoje."
+    },
+    "queSeRevierte": "O que é revertido",
+    "consecuencias": {
+      "asientos": "Revertido com um lançamento espelho: {numeros}.",
+      "sinAsientos": "Não há lançamentos publicados para reverter.",
+      "inventario": "{unidades, plural, one {# unidade} other {# unidades}} de {productos} volta a sair do estoque ({sucursal}).",
+      "notaRechazada": "A nota de crédito {numero} fica anulada: a DIAN não a validou, não há nada a reverter lá.",
+      "notaSinTransmitir": "A nota de crédito {numero} nunca foi transmitida: é anulada sem enviar nada à DIAN.",
+      "caja": "O caixa (sessão #{sesion}) registra a entrada de {monto} que o cliente devolve.",
+      "cajaSinSesion": "Um caixa aberto registra a entrada de {monto} que o cliente devolve (requer caixa aberto).",
+      "saldo": "O saldo a favor de {monto} fica anulado.",
+      "venta": "A venda {venta} volta a «Paga» e a devolução fica visível como «Anulada» com seu motivo.",
+      "laVenta": "original"
+    },
+    "fecha": {
+      "etiqueta": "Data do lançamento espelho",
+      "hoy": "Hoje · {dia}",
+      "hoyCerrado": "Hoje · fechado",
+      "original": "Data original · {dia}",
+      "originalCerrado": "Data original · fechado",
+      "ayudaAbierto": "{mes} continua aberto: você pode deixar o espelho na data original. Com «Hoje» ele fica em {mesHoy}.",
+      "ayudaMismoMes": "{mes} continua aberto: com qualquer das duas datas o espelho fica no mesmo período.",
+      "ayudaCerrado": "{mes} está fechado. Nunca se reverte dentro de um período fechado: o espelho vai com a data de hoje.",
+      "ayudaHoyCerrado": "{mesHoy} está fechado: o espelho vai com a data original."
+    },
+    "motivosRapidos": {
+      "error": "Registrada por engano",
+      "producto": "Produto errado",
+      "noDevolvio": "O cliente não o devolveu"
+    },
+    "etiquetaMotivo": "Motivo",
+    "placeholder": "Por que a devolução é anulada. Fica no histórico.",
+    "confirmar": "Anular devolução",
+    "cargando": "Verificando a nota de crédito, o período e o caixa…",
+    "errorCarga": "Não foi possível verificar a devolução. Feche e tente de novo.",
+    "hecho": "{numero} foi anulada",
+    "hechoPendiente": "{numero} foi anulada; {n, plural, one {# lançamento espelho ficou} other {# lançamentos espelho ficaram}} em Pendências contábeis.",
+    "noSePuede": {
+      "titulo": "Não é possível anular {numero}",
+      "descripcion": "{numero} aceita pela DIAN em {fecha}",
+      "descripcionSinFecha": "{numero} aceita pela DIAN",
+      "avisoTitulo": "A nota de crédito {numero} já foi validada pela DIAN.",
+      "avisoTexto": "Uma devolução com nota de crédito aceita não é revertida: nem com lançamento espelho nem apagando-a.",
+      "queHacer": "O que fazer no lugar",
+      "pasos": {
+        "venta": "Se o cliente ficar de novo com o produto, registre uma venda nova com sua nova fatura eletrônica.",
+        "productos": "«Registrar venda nova» abre o ponto de venda com um carrinho com os produtos desta devolução.",
+        "sinCambios": "A devolução e a nota de crédito não mudam; o estoque e o caixa se movem com a venda nova."
+      },
+      "cerrar": "Fechar",
+      "registrarVenta": "Registrar venda nova"
+    },
+    "errores": {
+      "motivoObligatorio": "Escreva o motivo (mínimo 5 caracteres).",
+      "fechaEspejoInvalida": "Escolha a data do lançamento espelho.",
+      "devolucionNoEncontrada": "A devolução não existe.",
+      "devolucionInvalida": "A devolução não é válida.",
+      "sinAccesoSucursal": "Você não tem acesso à filial desta devolução.",
+      "sinPermiso": "Você precisa da permissão «Anular vendas» para anular uma devolução.",
+      "yaAnulada": "A devolução já está anulada.",
+      "estadoInvalido": "Só se anula uma devolução processada.",
+      "notaAceptadaDian": "A DIAN já aceitou a nota de crédito: a devolução não é anulada.",
+      "notaEnEnvioDian": "A nota de crédito está sendo enviada à DIAN: espere a resposta antes de anular.",
+      "notaYaAnulada": "A nota de crédito já foi anulada em Finanças; a devolução não pode ser anulada aqui.",
+      "devolucionDeGarantia": "Esta devolução nasceu de uma garantia: é gerida a partir da garantia.",
+      "devolucionConMembresia": "A devolução reduziu ou cancelou uma assinatura: não pode ser anulada automaticamente.",
+      "saldoAFavorAplicado": "O cliente já usou o saldo a favor desta devolução: anule primeiro sua aplicação.",
+      "serialNoDisponible": "Um número de série da devolução já não está como a devolução o deixou (foi vendido ou movido).",
+      "periodoCerrado": "O período da devolução e o de hoje estão fechados: nunca se reverte dentro de um período fechado.",
+      "periodoOriginalCerrado": "O período da data original está fechado: use a data de hoje.",
+      "periodoHoyCerrado": "O período de hoje está fechado: use a data original.",
+      "efectivoSinCaja": "O reembolso foi em dinheiro: abra um caixa para receber o dinheiro que o cliente devolve.",
+      "stockInsuficiente": "O produto já não está no estoque da filial (foi vendido de novo): não pode sair outra vez.",
+      "generico": "Não foi possível anular a devolução. Tente de novo."
+    },
+    "detalle": {
+      "avisoTitulo": "Anulada em {fecha} por {usuario} · «{motivo}»",
+      "avisoTituloSinUsuario": "Anulada em {fecha} · «{motivo}»",
+      "avisoEspejo": "Lançamento espelho {numeros}",
+      "avisoIngreso": "entrada de {monto} na sessão #{sesion}",
+      "avisoUnidades": "{unidades, plural, one {# unidade voltou} other {# unidades voltaram}} a sair do estoque",
+      "avisoNota": "{numero} anulada",
+      "avisoNotaRechazada": "{numero} anulada (a DIAN a havia rejeitado)",
+      "devueltoAnulada": "{monto} · anulada",
+      "estadoVentaAnulada": "{estado} (devolução anulada)",
+      "eventos": {
+        "anulada": "Anulou a devolução · «{motivo}»",
+        "espejo": "Lançamento espelho {numeros}",
+        "espejoIngreso": "Lançamento espelho {numeros} e entrada de {monto} na sessão #{sesion}",
+        "ingreso": "Entrada de {monto} na sessão #{sesion}"
+      }
+    }
   }
 }

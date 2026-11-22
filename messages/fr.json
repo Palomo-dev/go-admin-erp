@@ -62394,5 +62394,131 @@
       "consecuencia2": "Ses écritures sont contrepassées. Irréversible depuis cet écran.",
       "confirmar": "Annuler le paiement"
     }
+  },
+  "posDevolucionesAnular": {
+    "menu": {
+      "imprimir": "Imprimer le justificatif",
+      "anular": "Annuler le retour…",
+      "anularAyuda": "Ouvre la boîte de dialogue adaptée à l’état de l’avoir.",
+      "motivoAnulada": "Le retour est déjà annulé.",
+      "motivoSinPermiso": "Il vous faut l’autorisation « Annuler des ventes »."
+    },
+    "estadosNota": {
+      "aceptada": "accepté",
+      "rechazada": "rejeté",
+      "en_envio": "en cours d’envoi à la DIAN",
+      "sin_transmitir": "non transmis",
+      "anulada": "annulé"
+    },
+    "dialogo": {
+      "titulo": "Annuler {numero}",
+      "descEfectivo": "Remboursement en espèces de {monto}",
+      "descSaldo": "Avoir client de {monto}",
+      "descNota": "{numero} {estado}",
+      "avisoRechazada": {
+        "titulo": "Annulation possible : la DIAN a rejeté l’avoir {numero}.",
+        "texto": "Un avoir rejeté ou non transmis n’a pas d’effet fiscal ; le retour est donc contrepassé par une écriture miroir."
+      },
+      "avisoSinTransmitir": {
+        "titulo": "Annulation possible : l’avoir {numero} n’a pas été transmis à la DIAN.",
+        "texto": "Il est contrepassé par une écriture miroir."
+      },
+      "avisoSinNota": {
+        "titulo": "Annulation possible : la vente n’a pas de facture, donc pas d’avoir.",
+        "texto": "Il est contrepassé par une écriture miroir."
+      },
+      "periodoCerradoHoy": "La période du retour est clôturée : l’écriture miroir est datée d’aujourd’hui."
+    },
+    "queSeRevierte": "Ce qui est contrepassé",
+    "consecuencias": {
+      "asientos": "Contrepassé par une écriture miroir : {numeros}.",
+      "sinAsientos": "Aucune écriture comptabilisée à contrepasser.",
+      "inventario": "{unidades, plural, one {# unité} other {# unités}} de {productos} ressort du stock ({sucursal}).",
+      "notaRechazada": "L’avoir {numero} est annulé : la DIAN ne l’a pas validé, il n’y a rien à contrepasser de ce côté.",
+      "notaSinTransmitir": "L’avoir {numero} n’a jamais été transmis : il est annulé sans rien envoyer à la DIAN.",
+      "caja": "La caisse (session n° {sesion}) enregistre l’entrée des {monto} que le client rend.",
+      "cajaSinSesion": "Une caisse ouverte enregistre l’entrée des {monto} que le client rend (caisse ouverte requise).",
+      "saldo": "L’avoir client de {monto} est annulé.",
+      "venta": "La vente {venta} redevient « Payée » et le retour reste visible comme « Annulé » avec son motif.",
+      "laVenta": "d’origine"
+    },
+    "fecha": {
+      "etiqueta": "Date de l’écriture miroir",
+      "hoy": "Aujourd’hui · {dia}",
+      "hoyCerrado": "Aujourd’hui · clôturée",
+      "original": "Date d’origine · {dia}",
+      "originalCerrado": "Date d’origine · clôturée",
+      "ayudaAbierto": "{mes} est encore ouvert : vous pouvez garder l’écriture miroir à la date d’origine. Avec « Aujourd’hui », elle tombe en {mesHoy}.",
+      "ayudaMismoMes": "{mes} est encore ouvert : avec l’une ou l’autre date, l’écriture miroir reste dans la même période.",
+      "ayudaCerrado": "{mes} est clôturé. On ne contrepasse jamais dans une période clôturée : l’écriture miroir est datée d’aujourd’hui.",
+      "ayudaHoyCerrado": "{mesHoy} est clôturé : l’écriture miroir prend la date d’origine."
+    },
+    "motivosRapidos": {
+      "error": "Saisi par erreur",
+      "producto": "Mauvais produit",
+      "noDevolvio": "Le client ne l’a pas rendu"
+    },
+    "etiquetaMotivo": "Motif",
+    "placeholder": "Pourquoi le retour est annulé. Il reste dans l’historique.",
+    "confirmar": "Annuler le retour",
+    "cargando": "Vérification de l’avoir, de la période et de la caisse…",
+    "errorCarga": "Impossible de vérifier le retour. Fermez et réessayez.",
+    "hecho": "{numero} a été annulé",
+    "hechoPendiente": "{numero} a été annulé ; {n, plural, one {# écriture miroir est restée} other {# écritures miroir sont restées}} en attente comptable.",
+    "noSePuede": {
+      "titulo": "Impossible d’annuler {numero}",
+      "descripcion": "{numero} accepté par la DIAN le {fecha}",
+      "descripcionSinFecha": "{numero} accepté par la DIAN",
+      "avisoTitulo": "L’avoir {numero} a déjà été validé par la DIAN.",
+      "avisoTexto": "Un retour avec un avoir accepté n’est pas contrepassé : ni par une écriture miroir ni en le supprimant.",
+      "queHacer": "Que faire à la place",
+      "pasos": {
+        "venta": "Si le client garde de nouveau le produit, enregistrez une nouvelle vente avec sa nouvelle facture électronique.",
+        "productos": "« Enregistrer une nouvelle vente » ouvre le point de vente avec un panier contenant les produits de ce retour.",
+        "sinCambios": "Le retour et l’avoir ne changent pas ; le stock et la caisse bougent avec la nouvelle vente."
+      },
+      "cerrar": "Fermer",
+      "registrarVenta": "Enregistrer une nouvelle vente"
+    },
+    "errores": {
+      "motivoObligatorio": "Saisissez le motif (5 caractères minimum).",
+      "fechaEspejoInvalida": "Choisissez la date de l’écriture miroir.",
+      "devolucionNoEncontrada": "Le retour n’existe pas.",
+      "devolucionInvalida": "Le retour n’est pas valide.",
+      "sinAccesoSucursal": "Vous n’avez pas accès à l’agence de ce retour.",
+      "sinPermiso": "Il vous faut l’autorisation « Annuler des ventes » pour annuler un retour.",
+      "yaAnulada": "Le retour est déjà annulé.",
+      "estadoInvalido": "Seul un retour traité peut être annulé.",
+      "notaAceptadaDian": "La DIAN a déjà accepté l’avoir : le retour n’est pas annulé.",
+      "notaEnEnvioDian": "L’avoir est en cours d’envoi à la DIAN : attendez la réponse avant d’annuler.",
+      "notaYaAnulada": "L’avoir a déjà été annulé depuis Finances ; le retour ne peut pas être annulé ici.",
+      "devolucionDeGarantia": "Ce retour provient d’une garantie : il se gère depuis la garantie.",
+      "devolucionConMembresia": "Le retour a réduit ou annulé un abonnement : il ne peut pas être annulé automatiquement.",
+      "saldoAFavorAplicado": "Le client a déjà utilisé l’avoir de ce retour : annulez d’abord son utilisation.",
+      "serialNoDisponible": "Un numéro de série du retour n’est plus dans l’état laissé par le retour (vendu ou déplacé).",
+      "periodoCerrado": "La période du retour et celle d’aujourd’hui sont clôturées : on ne contrepasse jamais dans une période clôturée.",
+      "periodoOriginalCerrado": "La période de la date d’origine est clôturée : utilisez la date d’aujourd’hui.",
+      "periodoHoyCerrado": "La période d’aujourd’hui est clôturée : utilisez la date d’origine.",
+      "efectivoSinCaja": "Le remboursement a été fait en espèces : ouvrez une caisse pour recevoir l’argent que le client rend.",
+      "stockInsuficiente": "Le produit n’est plus dans le stock de l’agence (il a été revendu) : il ne peut pas ressortir.",
+      "generico": "Impossible d’annuler le retour. Réessayez."
+    },
+    "detalle": {
+      "avisoTitulo": "Annulé le {fecha} par {usuario} · « {motivo} »",
+      "avisoTituloSinUsuario": "Annulé le {fecha} · « {motivo} »",
+      "avisoEspejo": "Écriture miroir {numeros}",
+      "avisoIngreso": "entrée de {monto} dans la session n° {sesion}",
+      "avisoUnidades": "{unidades, plural, one {# unité est ressortie} other {# unités sont ressorties}} du stock",
+      "avisoNota": "{numero} annulé",
+      "avisoNotaRechazada": "{numero} annulé (la DIAN l’avait rejeté)",
+      "devueltoAnulada": "{monto} · annulé",
+      "estadoVentaAnulada": "{estado} (retour annulé)",
+      "eventos": {
+        "anulada": "A annulé le retour · « {motivo} »",
+        "espejo": "Écriture miroir {numeros}",
+        "espejoIngreso": "Écriture miroir {numeros} et entrée de {monto} dans la session n° {sesion}",
+        "ingreso": "Entrée de {monto} dans la session n° {sesion}"
+      }
+    }
   }
 }

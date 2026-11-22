@@ -45,7 +45,6 @@ import { motivoSinCobro, useCarteraFicha } from '@/components/clientes/id/useCar
 import { CompanyContactsManager } from '@/components/clientes/CompanyContactsManager';
 import { mensajeError, useFechasFicha } from '@/components/clientes/id/useFechasFicha';
 import { useFichaClienteCrm } from '@/components/crm/ficha/useFichaClienteCrm';
-import { CustomerFoliosSection } from '@/components/crm/clientes/CustomerFoliosSection';
 import { DocumentUploader } from '@/components/crm/documents/DocumentUploader';
 import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
 import { EstadoCuentaDialog } from '@/components/finanzas/cartera/EstadoCuentaDialog';
@@ -351,8 +350,6 @@ export default function PerfilCliente() {
                 onEstadoCuenta={abrirEstadoCuenta}
                 motivoEstadoCuenta={motivoEstadoCuenta}
               />
-              {/* Antes en /app/crm/clientes/[id] (D1): folios del PMS. */}
-              <CustomerFoliosSection customerId={cliente.id} />
             </div>
           )}
           {pestana === 'oportunidades' && (

@@ -89,7 +89,6 @@ jest.mock('@/components/clientes/id/useCarteraFicha', () => {
   const real = jest.requireActual('@/components/clientes/id/useCarteraFicha');
   return { ...real, useCarteraFicha: () => cartera };
 });
-jest.mock('@/components/crm/clientes/CustomerFoliosSection', () => ({ CustomerFoliosSection: () => null }));
 jest.mock('@/components/crm/documents/DocumentUploader', () => ({ DocumentUploader: () => null }));
 
 import PerfilCliente from '@/app/app/clientes/[id]/page';

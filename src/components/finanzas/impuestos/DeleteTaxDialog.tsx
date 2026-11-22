@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Dialogo } from '@/components/kit';
 import { supabase } from '@/lib/supabase/config';
 import { useToast } from '@/components/ui/use-toast';
@@ -23,12 +24,11 @@ interface DeleteTaxDialogProps {
 const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const t = useTranslations('finanzasImpuestos.eliminar');
 
   const handleDelete = async () => {
     setLoading(true);
     try {
-      console.log('Eliminando impuesto con ID:', tax.id);
-      
       // Obtener el ID de la organización
       const organizationId = getOrganizationId();
       
@@ -55,28 +55,18 @@ const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax })
         // La función RPC devolvió un error de lógica de negocio
         console.error('Error de validación:', data.message, 'Código:', data.code);
         
-        toast({
-          title: 'Error',
-          description: data.message || 'No se pudo eliminar el impuesto.',
-          variant: 'destructive',
-        });
+        // El servidor dice por qué (predeterminado, en uso en N productos, sin permiso).
+        toast({ title: t('errorTitulo'), description: data.message || t('error'), variant: 'destructive' });
         return;
       }
       
       // Operación exitosa
-      toast({
-        title: 'Éxito',
-        description: data?.message || 'Impuesto eliminado correctamente.',
-      });
+      toast({ description: data?.message || t('hecho') });
       
       onClose(true); // Cerrar el diálogo y refrescar la lista de impuestos
     } catch (error) {
       console.error('Error al eliminar el impuesto:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo eliminar el impuesto. Intente de nuevo.',
-        variant: 'destructive',
-      });
+      toast({ title: t('errorTitulo'), description: t('error'), variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -87,15 +77,14 @@ const DeleteTaxDialog: React.FC<DeleteTaxDialogProps> = ({ open, onClose, tax })
     <Dialogo
       abierto={open}
       onAbiertoChange={(v) => !v && !loading && onClose()}
-      titulo="Eliminar impuesto"
-      descripcion={
-        <>
-          ¿Está seguro de que desea eliminar el impuesto <strong className="font-semibold text-fg">{tax.name}</strong> ({formatPercent(tax.rate)})? Esta
-          acción no se puede deshacer. El impuesto será eliminado permanentemente.
-        </>
-      }
+      titulo={t('titulo', { nombre: tax.name })}
+      descripcion={t.rich('descripcion', {
+        nombre: tax.name,
+        tasa: formatPercent(tax.rate),
+        b: (chunks) => <strong className="font-semibold text-fg">{chunks}</strong>,
+      })}
       ancho={440}
-      primario={{ etiqueta: 'Eliminar', onClick: () => void handleDelete(), destructiva: true, cargando: loading }}
+      primario={{ etiqueta: t('confirmar'), onClick: () => void handleDelete(), destructiva: true, cargando: loading }}
     />
   );
 };

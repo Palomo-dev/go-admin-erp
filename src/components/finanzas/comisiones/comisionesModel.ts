@@ -178,3 +178,112 @@ export function cuentaPagoABody(v: CuentaPagoValor): { payment_method?: string; 
   }
   return {};
 }
+
+// ─── Rediseño Tesorería v2 (Figma 1012:87993 y 1012:89017) ───────────────────
+
+/** Tope del motivo de rechazo y clawback en la UI (el servidor guarda lo que llegue). */
+export const REASON_MAX = 500;
+
+/** Lotes de la ruta de pago masivo (`bulk-pay` admite hasta 200 por llamada). */
+export const PAGO_LOTE_MAX = 200;
+
+/** Parte una lista en lotes de `tamano` sin perder el orden. */
+export function enLotes<T>(lista: readonly T[], tamano = PAGO_LOTE_MAX): T[][] {
+  const lotes: T[][] = [];
+  for (let i = 0; i < lista.length; i += tamano) lotes.push(lista.slice(i, i + tamano));
+  return lotes;
+}
+
+/** Pestañas de la pantalla: cada una es un filtro de estado de la API. */
+export type PestanaComisiones = 'porPagar' | 'pagadas' | 'canceladas' | 'todas';
+export const ESTADO_DE_PESTANA: Record<PestanaComisiones, ComisionesFiltersState['status']> = {
+  porPagar: 'accrued',
+  pagadas: 'paid',
+  canceladas: 'cancelled',
+  todas: 'all',
+};
+export function pestanaDeEstado(status: ComisionesFiltersState['status']): PestanaComisiones {
+  return (Object.keys(ESTADO_DE_PESTANA) as PestanaComisiones[]).find((p) => ESTADO_DE_PESTANA[p] === status) ?? 'todas';
+}
+
+export interface FilaAgrupable {
+  id: string;
+  payee_id: string | null;
+  payee_name: string | null;
+  payee_type: string;
+  base_amount: number | string;
+  commission_amount: number | string;
+  currency: string | null;
+  status: string;
+}
+
+/** Total por moneda: nunca se suman importes de monedas distintas. */
+export interface TotalMoneda {
+  moneda: string | null;
+  base: number;
+  comision: number;
+}
+
+export function totalesPorMoneda(filas: readonly FilaAgrupable[], monedaBase: string | null = null): TotalMoneda[] {
+  const mapa = new Map<string | null, TotalMoneda>();
+  for (const f of filas) {
+    const moneda = f.currency || monedaBase;
+    const t = mapa.get(moneda) ?? { moneda, base: 0, comision: 0 };
+    t.base += Number(f.base_amount) || 0;
+    t.comision += Number(f.commission_amount) || 0;
+    mapa.set(moneda, t);
+  }
+  // La moneda base primero; las demás en orden alfabético.
+  return Array.from(mapa.values()).sort((a, b) =>
+    a.moneda === monedaBase ? -1 : b.moneda === monedaBase ? 1 : String(a.moneda).localeCompare(String(b.moneda)),
+  );
+}
+
+export interface GrupoVendedor<T extends FilaAgrupable> {
+  clave: string;
+  nombre: string | null;
+  payeeType: string;
+  filas: T[];
+  /** Las que siguen pendientes (`accrued`): lo que paga «Pagar» del grupo. */
+  pendientes: T[];
+  totales: TotalMoneda[];
+}
+
+/** Clave del vendedor: su id; sin id, el nombre (beneficiarios externos). */
+export function claveVendedor(f: Pick<FilaAgrupable, 'payee_id' | 'payee_name' | 'payee_type'>): string {
+  return f.payee_id ? `id:${f.payee_id}` : `nombre:${f.payee_type}:${(f.payee_name ?? '').trim().toLowerCase()}`;
+}
+
+/** Agrupa por vendedor (Figma «por pagar agrupado por vendedor»), en el orden en que aparece cada uno. */
+export function agruparPorVendedor<T extends FilaAgrupable>(filas: readonly T[], monedaBase: string | null = null): GrupoVendedor<T>[] {
+  const grupos = new Map<string, GrupoVendedor<T>>();
+  for (const f of filas) {
+    const clave = claveVendedor(f);
+    let g = grupos.get(clave);
+    if (!g) {
+      g = { clave, nombre: f.payee_name, payeeType: f.payee_type, filas: [], pendientes: [], totales: [] };
+      grupos.set(clave, g);
+    }
+    g.filas.push(f);
+    if (f.status === 'accrued') g.pendientes.push(f);
+  }
+  return Array.from(grupos.values()).map((g) => ({ ...g, totales: totalesPorMoneda(g.filas, monedaBase) }));
+}
+
+/** Fila de la tabla: la cabecera del vendedor o una comisión suya. */
+export type FilaTablaComision<T extends FilaAgrupable> =
+  | { tipo: 'grupo'; id: string; grupo: GrupoVendedor<T> }
+  | { tipo: 'comision'; id: string; fila: T; grupo: GrupoVendedor<T> };
+
+/** Aplana los grupos para la tabla; los plegados solo muestran su cabecera. */
+export function filasDeTabla<T extends FilaAgrupable>(grupos: readonly GrupoVendedor<T>[], plegados: ReadonlySet<string>): FilaTablaComision<T>[] {
+  return grupos.flatMap((grupo) => [
+    { tipo: 'grupo' as const, id: `g:${grupo.clave}`, grupo },
+    ...(plegados.has(grupo.clave) ? [] : grupo.filas.map((fila) => ({ tipo: 'comision' as const, id: fila.id, fila, grupo }))),
+  ]);
+}
+
+/** Número del comprobante del asiento («CC-12») o «#id» si no tiene consecutivo. */
+export function numeroAsiento(a: { id: number; comprobante_prefijo?: string | null; comprobante_numero?: number | null }): string {
+  return a.comprobante_numero ? `${a.comprobante_prefijo ?? ''}${a.comprobante_numero}` : `#${a.id}`;
+}

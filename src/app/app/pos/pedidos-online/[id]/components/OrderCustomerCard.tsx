@@ -11,6 +11,7 @@ import { esDomicilio } from '@/lib/pos/pedidosWeb/tipoEntrega';
 import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
 import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderCustomerCardProps {
   order: WebOrder;
@@ -62,7 +63,7 @@ export function OrderCustomerCard({ order }: OrderCustomerCardProps) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-base">
-          <User className="size-4" aria-hidden="true" strokeWidth={1.5} />
+          <IconoCabecera icono={User} />
           {t('cliente')}
         </CardTitle>
       </CardHeader>

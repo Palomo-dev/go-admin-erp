@@ -5,6 +5,7 @@ import { Zap } from 'lucide-react';
 import { OrderActions } from '@/components/pos/pedidos-online';
 import type { WebOrder } from '@/lib/services/webOrdersService';
 import { useTranslations } from 'next-intl';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderActionsCardProps {
   order: WebOrder;
@@ -49,7 +50,7 @@ export function OrderActionsCard({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Zap className="size-4" aria-hidden="true" strokeWidth={1.5} />
+          <IconoCabecera icono={Zap} />
           {t('orderActionsCard.acciones')}
         </CardTitle>
       </CardHeader>

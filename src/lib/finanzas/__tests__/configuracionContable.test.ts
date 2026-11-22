@@ -48,7 +48,7 @@ const BANCOS: FilaConfiguracion = { clave: 'bancos', account_code: '111005', bra
 const VENTAS: FilaConfiguracion = { clave: 'ventas_productos', account_code: '4135', branch_id: null };
 const IVA_GEN: FilaConfiguracion = { clave: 'iva_generado', account_code: '240801', branch_id: null };
 const IVA_DESC: FilaConfiguracion = { clave: 'iva_descontable', account_code: '240802', branch_id: null };
-const PROPINAS: FilaConfiguracion = { clave: 'propinas', account_code: '5195', branch_id: null };
+const PROPINAS: FilaConfiguracion = { clave: 'propinas', account_code: '28159501', branch_id: null };
 const NOMINA: FilaConfiguracion = { clave: 'nomina', account_code: '5105', branch_id: null };
 const DEVOL: FilaConfiguracion = { clave: 'devoluciones', account_code: '4175', branch_id: null };
 const DESCU: FilaConfiguracion = { clave: 'descuentos', account_code: '417505', branch_id: null };
@@ -85,9 +85,11 @@ describe('clave de la cuenta', () => {
     expect(claveDeCuenta('bank_transactions', 'debito', '111005')).toBeNull();
   });
 
-  test('la propina y la nómina no comparten el 5105', () => {
-    expect(claveDeCuenta('tips', 'debito', '5105')).toBe('propinas');
-    expect(claveDeCuenta('tip', 'debito', '5105')).toBe('propinas');
+  test('la propina es el pasivo 28150501 y no comparte el 5105 con la nómina', () => {
+    expect(claveDeCuenta('tips', 'credito', '28150501')).toBe('propinas');
+    expect(claveDeCuenta('tip_settlements', 'debito', '28150501')).toBe('propinas');
+    expect(claveDeCuenta('tips', 'debito', '5105')).toBeNull();
+    expect(claveDeCuenta('sales', 'credito', '28150501')).toBeNull();
     expect(claveDeCuenta('payroll_slips', 'debito', '5105')).toBe('nomina');
     expect(claveDeCuenta('payroll', 'debito', '5105')).toBe('nomina');
     expect(claveDeCuenta('payroll_periods', 'credito', '2505')).toBe('nomina_por_pagar');
@@ -96,9 +98,9 @@ describe('clave de la cuenta', () => {
     expect(claveDeCuenta('maintenance', 'debito', '5105')).toBeNull();
     expect(claveDeCuenta('bank_transactions', 'credito', '5105')).toBeNull();
 
-    const propina = aplicar('tips', '5105', '1105', [PROPINAS, NOMINA, CAJA]);
-    expect(propina.debito).toBe('5195');
-    expect(propina.credito).toBe('110505');
+    const propina = aplicar('tips', '1105', '28150501', [PROPINAS, NOMINA, CAJA]);
+    expect(propina.debito).toBe('110505');
+    expect(propina.credito).toBe('28159501');
   });
 
   test('la comisión no se lleva la cuenta de aportes de nómina', () => {
@@ -242,7 +244,7 @@ describe('plantilla por sector', () => {
       retefuente: '23654001',
       reteiva: '23670501',
       reteica: '23680501',
-      propinas: '5105',
+      propinas: '28150501',
       comisiones: '52051801',
       anticipos: '2805',
       nomina: '5105',

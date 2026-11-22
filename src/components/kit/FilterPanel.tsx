@@ -35,6 +35,11 @@ export interface FilterPanelProps {
   abierto?: boolean;
   onAbiertoChange?: (abierto: boolean) => void;
   etiquetaBoton?: string;
+  /**
+   * Ancho del popover de escritorio: `normal` (360 px, una columna) o `amplio`
+   * (560 px, para paneles a dos columnas como el de Ventas, Figma 329:111220).
+   */
+  ancho?: 'normal' | 'amplio';
   className?: string;
 }
 
@@ -95,6 +100,7 @@ export function FilterPanel({
   abierto: abiertoControlado,
   onAbiertoChange,
   etiquetaBoton,
+  ancho = 'normal',
   className,
 }: FilterPanelProps) {
   const t = useKitT();
@@ -122,7 +128,10 @@ export function FilterPanel({
             sideOffset={8}
             collisionPadding={16}
             aria-label={titulo}
-            className="z-50 flex max-h-[min(640px,var(--radix-popover-content-available-height))] w-[360px] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-xl border border-line bg-surface text-fg shadow-lg outline-none"
+            className={cn(
+              'z-50 flex max-h-[min(640px,var(--radix-popover-content-available-height))] max-w-[calc(100vw-32px)] flex-col overflow-hidden rounded-xl border border-line bg-surface text-fg shadow-lg outline-none',
+              ancho === 'amplio' ? 'w-[560px]' : 'w-[360px]',
+            )}
           >
             <Cabecera titulo={titulo} conteo={conteo} onLimpiar={onLimpiar} enHoja={false} />
             <div className="flex flex-col gap-4 overflow-y-auto p-4">{children}</div>

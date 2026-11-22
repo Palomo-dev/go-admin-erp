@@ -1,23 +1,21 @@
 /**
- * GET /api/pos/ventas/cifras?desde=YYYY-MM-DD&hasta=YYYY-MM-DD&sucursal=N — KPI
- * de Ventas con CRITERIO DE CAJA (D2 de docs/implementacion/CAJAS-VENTAS-PLAN.md,
- * PARIDAD-DASHBOARD-INICIO §V.9c): lo cobrado en el periodo por fecha de pago,
- * menos reintegros, con el periodo anterior de igual duración. Sale de
- * `fn_inicio_ventas_rango`, la misma función que usará el Inicio.
+ * GET /api/pos/ventas/cifras?… — KPI del listado de Ventas (Figma aprobado el
+ * 2026-11-20): ventas del periodo con variación frente al periodo anterior,
+ * ticket promedio, transacciones (pagadas · pendientes · anuladas) e impuestos
+ * con su detalle. Mismos parámetros y lista blanca que `GET /api/pos/ventas`
+ * (sin orden ni paginación): las cifras describen exactamente las ventas
+ * listadas. Sale de `pos_ventas_cifras`; la organización sale de la sesión.
  */
 import { NextResponse } from 'next/server';
 import { withOrg } from '@/lib/utils/orgContext';
-import { cifrasVentas, ErrorVentas, sucursalDeQuery } from '@/lib/pos/ventas/listadoServidor';
-import { filtrosVentas } from '@/lib/pos/ventas/filtrosVentas';
+import { cifrasVentas, ErrorVentas, queryAObjeto, sucursalDeQuery } from '@/lib/pos/ventas/listadoServidor';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withOrg(async (ctx, req) => {
   const url = new URL(req.url);
-  // Mismas fechas validadas que el listado.
-  const f = filtrosVentas({ desde: url.searchParams.get('desde') ?? undefined, hasta: url.searchParams.get('hasta') ?? undefined });
   try {
-    const cifras = await cifrasVentas(ctx, f.desde, f.hasta, sucursalDeQuery(url));
+    const cifras = await cifrasVentas(ctx, queryAObjeto(url), sucursalDeQuery(url));
     return NextResponse.json(cifras, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (err) {
     if (err instanceof ErrorVentas) {

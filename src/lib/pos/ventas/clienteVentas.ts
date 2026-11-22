@@ -20,7 +20,7 @@ import { getOperatingHours } from '@/lib/services/organizationOperatingHoursServ
 import { getDateRange } from '@/lib/utils/dateRanges';
 import { filaVentaLocal, type FilaSalesLocal } from './ventaLocal';
 import { filtrosVentas } from './filtrosVentas';
-import type { CifrasVentas, FilaVenta, PaginaVentas } from './listadoServidor';
+import type { CajeroVentas, CifrasVentas, FilaVenta, PaginaVentas } from './listadoServidor';
 import type { DetalleVenta } from './detalleServidor';
 import { SIN_PERMISOS_VENTAS, type PermisosVentas } from './accionesVenta';
 
@@ -66,6 +66,13 @@ export async function pedirCifrasVentas(consulta: URLSearchParams): Promise<Cifr
   return pedir<CifrasVentas>(`/api/pos/ventas/cifras?${consulta.toString()}`);
 }
 
+/** Quiénes han vendido (selector «Cajero»). Sin red: lista vacía, el filtro espera a la red. */
+export async function pedirCajerosVentas(consulta: URLSearchParams): Promise<CajeroVentas[]> {
+  if (sinRed()) return [];
+  const r = await pedir<{ cajeros: CajeroVentas[] }>(`/api/pos/ventas/cajeros?${consulta.toString()}`);
+  return r.cajeros ?? [];
+}
+
 export async function pedirExportacionVentas(consulta: URLSearchParams): Promise<{ filas: FilaVenta[]; truncado: boolean }> {
   return pedir(`/api/pos/ventas/exportar?${consulta.toString()}`);
 }
@@ -95,6 +102,8 @@ async function ventasSinRed(consulta: URLSearchParams): Promise<PaginaVentasClie
     .range((f.pagina - 1) * f.tamano, f.pagina * f.tamano - 1);
   if (sucursal) q = q.eq('branch_id', sucursal);
   if (f.clienteId) q = q.eq('customer_id', f.clienteId);
+  // El resolutor local marca así las ventas del outbox (aún sin subir).
+  if (f.pendientesSync) q = q.eq('status', 'pending_sync');
   if (f.desde || f.hasta) {
     const [zona, horas] = await Promise.all([getOrganizationTimezone(org), getOperatingHours(org)]);
     const r = getDateRange(f.desde ?? (f.hasta as string), f.hasta ?? (f.desde as string), zona, horas);

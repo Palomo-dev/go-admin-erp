@@ -2,10 +2,16 @@
  * Lectura de ventas en el servidor (paso 14 de docs/implementacion/CAJAS-VENTAS-PLAN.md).
  *
  * - `listarVentas`: el listado de /app/pos/ventas paginado, filtrado y ordenado
- *   en la base (`pos_ventas_listado`, solo filas de `sales`, D1). Los filtros
+ *   en la base (`pos_ventas_listado_v2`, solo filas de `sales`, D1). Los filtros
  *   pasan por la lista blanca de `filtrosVentas`.
- * - `cifrasVentas`: los KPI con criterio de caja (`fn_inicio_ventas_rango`, D2),
- *   la MISMA función que usará el Inicio.
+ * - `cifrasVentas`: los KPI del Figma aprobado el 2026-11-20 (`pos_ventas_cifras`)
+ *   sobre LAS VENTAS LISTADAS, con los mismos filtros y por fecha de venta:
+ *   ventas del periodo (con variación frente al periodo anterior de igual
+ *   duración), ticket promedio, transacciones e impuestos con su detalle.
+ *   «Transacciones» es siempre el «N ventas encontradas» de la cabecera. El
+ *   criterio de caja (D2, `fn_inicio_ventas_rango`) queda para el Inicio: el
+ *   Figma del listado pide lo vendido, no lo cobrado.
+ * - `cajerosVentas`: quiénes han vendido (selector «Cajero» de los filtros).
  * - El rango de días se convierte a instantes con la zona y las horas de
  *   operación de la organización (`getDateRange`), nunca con la del servidor.
  *
@@ -17,7 +23,7 @@ import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneServ
 import { getOperatingHours } from '@/lib/services/organizationOperatingHoursService';
 import { getDateRange } from '@/lib/utils/dateRanges';
 import { todayInTz } from '@/lib/utils/dateCore';
-import { filtrosVentas, parametrosListado, type FiltrosVentas } from './filtrosVentas';
+import { filtrosVentas, parametrosFiltro, parametrosListado, periodoAnterior, type FiltrosVentas } from './filtrosVentas';
 import type { EstadoVenta, OrigenVenta } from './estadoVenta';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase' | 'userId'>;
@@ -37,12 +43,23 @@ export interface FilaVenta {
   factura_id: string | null;
   cxc_id: string | null;
   web_order_id: string | null;
-  cliente: { id: string; nombre: string | null; documento: string | null } | null;
+  cliente: {
+    id: string;
+    nombre: string | null;
+    documento: string | null;
+    /** «CC», «NIT»… (declarado; una empresa sin tipo, NIT). */
+    tipo_documento?: string | null;
+    telefono?: string | null;
+  } | null;
   cajero: { id: string; nombre: string | null };
   sucursal: { id: number; nombre: string | null };
+  /** Nombre de la mesa (ventas de origen «mesa»). */
+  mesa?: string | null;
   metodos: string[];
   devuelto: number;
   notas_credito: number;
+  /** Número de la última nota crédito de la venta. */
+  nota_credito_numero?: string | null;
 }
 
 export interface PaginaVentas {
@@ -52,26 +69,38 @@ export interface PaginaVentas {
   tamano: number;
 }
 
-export interface CifrasPeriodo {
-  cobrado: number;
-  reintegros: number;
-  neto: number;
-  num_cobros: number;
-  ventas_cobradas: number;
+/** Impuesto del periodo: código de la factura («IVA_19»), nombre del desglose («IVA 19%») o null (sin detalle). */
+export interface ImpuestoVentas {
+  codigo: string | null;
+  tasa: number | null;
+  monto: number;
 }
 
 export interface CifrasVentas {
   desde: string;
   hasta: string;
-  desde_anterior: string;
-  actual: CifrasPeriodo & {
+  actual: {
+    /** Σ total de las ventas listadas que no están anuladas ni en borrador. */
+    ventas: number;
+    /** Todas las ventas listadas (= «N ventas encontradas»). */
+    transacciones: number;
+    /** Las que cuentan para el ticket: ni anuladas ni borradores. */
+    efectivas: number;
+    pagadas: number;
+    pendientes: number;
+    anuladas: number;
+    devueltas: number;
     ticket_promedio: number;
     impuestos: number;
-    facturado: number;
-    por_canal: Record<string, number>;
-    por_sucursal: Record<string, number>;
+    impuestos_detalle: ImpuestoVentas[];
   };
-  anterior: CifrasPeriodo;
+  /** Mismos filtros en el periodo anterior de igual duración. */
+  anterior: { ventas: number; transacciones: number } | null;
+}
+
+export interface CajeroVentas {
+  id: string;
+  nombre: string | null;
 }
 
 /** `?sucursal=` validado (la base vuelve a comprobar el acceso). */
@@ -118,7 +147,7 @@ export async function listarVentas(ctx: Ctx, crudo: Record<string, string | stri
   const f = filtrosVentas(crudo);
   const rango = await rangoDeDias(ctx, f.desde, f.hasta);
   const { data, error } = await ctx.supabase.rpc(
-    'pos_ventas_listado',
+    'pos_ventas_listado_v2',
     parametrosListado(f, { organizacionId: ctx.organizationId, sucursalId, desde: rango.desde, hasta: rango.hasta }),
   );
   if (error) throw errorRpc(error);
@@ -141,20 +170,29 @@ export async function exportarVentas(ctx: Ctx, crudo: Record<string, string | st
   return { filas: filas.slice(0, MAX_FILAS_EXPORTACION), truncado: total > MAX_FILAS_EXPORTACION };
 }
 
-/** KPI del periodo con criterio de caja. Sin rango: el mes en curso de la organización. */
-export async function cifrasVentas(ctx: Ctx, desde: string | null, hasta: string | null, sucursalId: number | null): Promise<CifrasVentas> {
+/**
+ * KPI de las ventas listadas (mismos filtros que `listarVentas`). Sin rango:
+ * el mes en curso de la organización, como el listado.
+ */
+export async function cifrasVentas(ctx: Ctx, crudo: Record<string, string | string[] | undefined>, sucursalId: number | null): Promise<CifrasVentas> {
+  const f = filtrosVentas(crudo);
   const hoy = todayInTz(await getOrganizationTimezone(ctx.organizationId, ctx.supabase));
-  const d = desde ?? `${hoy.slice(0, 8)}01`;
-  const h = hasta ?? hoy;
-  const rango = await rangoDeDias(ctx, d, h);
-  // `fn_inicio_ventas_rango` usa [desde, hasta): el fin del día + 1 ms.
-  const hastaExclusivo = new Date(new Date(rango.hasta as string).getTime() + 1).toISOString();
-  const { data, error } = await ctx.supabase.rpc('fn_inicio_ventas_rango', {
-    p_organization_id: ctx.organizationId,
-    p_desde: rango.desde,
-    p_hasta: hastaExclusivo,
-    p_branch_id: sucursalId,
+  const desde = f.desde ?? `${hoy.slice(0, 8)}01`;
+  const hasta = f.hasta ?? hoy;
+  const previo = periodoAnterior(desde, hasta);
+  const [rango, rangoPrevio] = await Promise.all([rangoDeDias(ctx, desde, hasta), rangoDeDias(ctx, previo.desde, previo.hasta)]);
+  const { data, error } = await ctx.supabase.rpc('pos_ventas_cifras', {
+    ...parametrosFiltro(f, { organizacionId: ctx.organizationId, sucursalId, desde: rango.desde, hasta: rango.hasta }),
+    p_desde_anterior: rangoPrevio.desde,
+    p_hasta_anterior: rangoPrevio.hasta,
   });
   if (error) throw errorRpc(error);
   return data as CifrasVentas;
+}
+
+/** Quiénes han vendido en las sucursales visibles (o en la elegida). */
+export async function cajerosVentas(ctx: Ctx, sucursalId: number | null): Promise<CajeroVentas[]> {
+  const { data, error } = await ctx.supabase.rpc('pos_ventas_cajeros', { p_organization_id: ctx.organizationId, p_branch_id: sucursalId });
+  if (error) throw errorRpc(error);
+  return ((data ?? []) as CajeroVentas[]).filter((c) => !!c.id);
 }

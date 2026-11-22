@@ -29,6 +29,8 @@ export interface FilaComision {
   commission_amount: number | string | null;
   status: string;
   currency: string | null;
+  /** Sede de la comisión (pestaña «Por sede»). */
+  branch_id?: number | null;
 }
 
 export interface ResumenComisionVendedor {
@@ -80,6 +82,31 @@ export function resumirComisionesPorVendedor(rows: readonly FilaComision[]): Res
     grupos.set(key, g);
   }
   return Array.from(grupos.values()).sort((a, b) => b.comision - a.comision);
+}
+
+/**
+ * Pestaña «Por sede» de Comisiones: una fila de sede en negrita
+ * (`nivel: 'subtotal'`) con su subtotal y, debajo, sus personas
+ * (`resumirComisionesPorVendedor` dentro de la sede). La sede se repite en las
+ * filas de persona para que el Excel y el CSV se lean solos. Sedes de mayor a
+ * menor comisión; sin sede, al final.
+ */
+export function comisionesPorSede(rows: readonly FilaComision[], nombreSede: (id: number) => string): Record<string, unknown>[] {
+  const porSede = new Map<number, FilaComision[]>();
+  for (const r of rows) {
+    const id = Number(r.branch_id) > 0 ? Number(r.branch_id) : 0;
+    porSede.set(id, [...(porSede.get(id) ?? []), r]);
+  }
+  const grupos = Array.from(porSede.entries()).map(([id, filas]) => {
+    const personas = resumirComisionesPorVendedor(filas);
+    const suma = (k: 'ventas' | 'total' | 'comision' | 'pagado' | 'pendiente') => r2(personas.reduce((s, p) => s + p[k], 0));
+    return { id, sede: id ? nombreSede(id) : 'Sin sede', personas, comision: suma('comision'), suma };
+  });
+  grupos.sort((a, b) => (a.id === 0 ? 1 : b.id === 0 ? -1 : b.comision - a.comision));
+  return grupos.flatMap((g) => [
+    { sede: g.sede, persona: `${g.personas.length} ${g.personas.length === 1 ? 'persona' : 'personas'}`, nivel: 'subtotal', ventas: g.suma('ventas'), total: g.suma('total'), comision: g.suma('comision'), pagado: g.suma('pagado'), pendiente: g.suma('pendiente') },
+    ...g.personas.map((p) => ({ sede: g.sede, persona: p.vendedor, nivel: 'linea', ventas: p.ventas, total: p.total, comision: p.comision, pagado: p.pagado, pendiente: p.pendiente })),
+  ]);
 }
 
 export const hrmReports: DefinicionModulo[] = [
@@ -197,7 +224,7 @@ export const hrmReports: DefinicionModulo[] = [
       // ocurre: el tipo es 'salesperson') y sobre el total CON impuestos.
       let query = db
         .from('commissions')
-        .select('payee_id, payee_name, base_amount, commission_amount, status, currency, accrued_at')
+        .select('payee_id, payee_name, base_amount, commission_amount, status, currency, accrued_at, branch_id')
         .eq('organization_id', orgId)
         .in('status', ['accrued', 'paid'])
         .gte('accrued_at', start)
@@ -207,10 +234,17 @@ export const hrmReports: DefinicionModulo[] = [
 
       if (error) throw error;
 
-      const filas = resumirComisionesPorVendedor((data ?? []) as FilaComision[]);
+      const comisiones = (data ?? []) as FilaComision[];
+      const filas = resumirComisionesPorVendedor(comisiones);
       const totalComision = filas.reduce((s, f) => s + f.comision, 0);
 
-      return buildReportData(
+      // Nombres de las sedes de la pestaña «Por sede» (misma consulta, agrupada por branch_id).
+      const sedeIds = [...new Set(comisiones.map((c) => Number(c.branch_id)).filter((id) => id > 0))];
+      const { data: sedes } = sedeIds.length ? await db.from('branches').select('id, name').in('id', sedeIds) : { data: [] };
+      const nombreSede = new Map(((sedes ?? []) as Array<{ id: number; name: string | null }>).map((b) => [Number(b.id), b.name ?? '—']));
+      const totalesComision = { comision: totalComision, pagado: filas.reduce((s, f) => s + f.pagado, 0), pendiente: filas.reduce((s, f) => s + f.pendiente, 0) };
+
+      const base = buildReportData(
         'hrm-comisiones', 'Comisiones', 'hrm', periodo,
         [
           { titulo: 'Total Comisiones', valor: totalComision, formato: 'moneda' },
@@ -225,8 +259,29 @@ export const hrmReports: DefinicionModulo[] = [
           { key: 'pendiente', titulo: 'Pendiente', tipo: 'moneda', alinear: 'right' },
         ],
         filas as unknown as Record<string, unknown>[],
-        { comision: totalComision, pagado: filas.reduce((s, f) => s + f.pagado, 0), pendiente: filas.reduce((s, f) => s + f.pendiente, 0) },
+        totalesComision,
       );
+      return {
+        ...base,
+        vistaPrincipal: 'Por persona',
+        vistas: [
+          {
+            id: 'por-sede',
+            titulo: 'Por sede',
+            columnas: [
+              { key: 'sede', titulo: 'Sede', tipo: 'texto' },
+              { key: 'persona', titulo: 'Persona', tipo: 'texto' },
+              { key: 'ventas', titulo: 'N° Comisiones', tipo: 'numero', alinear: 'right' },
+              { key: 'total', titulo: 'Base', tipo: 'moneda', alinear: 'right' },
+              { key: 'comision', titulo: 'Comisión', tipo: 'moneda', alinear: 'right' },
+              { key: 'pagado', titulo: 'Pagado', tipo: 'moneda', alinear: 'right' },
+              { key: 'pendiente', titulo: 'Pendiente', tipo: 'moneda', alinear: 'right' },
+            ],
+            filas: comisionesPorSede(comisiones, (id) => nombreSede.get(id) ?? '—'),
+            totales: totalesComision,
+          },
+        ],
+      };
     },
   },
   // ── Movidos desde /app/hrm/reportes (fase 1 de RR. HH., 2026-11-15): los

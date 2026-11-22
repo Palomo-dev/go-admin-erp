@@ -111,8 +111,8 @@ describe('egreso que no es compra', () => {
     expect(asientoDeMovimientoCaja('out', 'cambioEfectivo', PLAN)).toEqual({ tipo: 'omitir' });
   });
 
-  it('propina y nómina van a gasto; la devolución reversa la venta', () => {
-    expect(DEBITO_REVISADO['tip.created']).toEqual({ debito: '5105', clase: 'gasto' });
+  it('la nómina va a gasto, la propina no (pasivo 28150501); la devolución reversa la venta', () => {
+    expect(DEBITO_REVISADO['tip.created']).toBeUndefined();
     expect(DEBITO_REVISADO['payroll.created'].debito.startsWith('5')).toBe(true);
     expect(DEBITO_REVISADO['payroll.paid']).toEqual({ debito: '25050501', clase: 'pasivo' });
     expect(DEBITO_REVISADO['commission.accrued'].debito.startsWith('5')).toBe(true);

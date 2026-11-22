@@ -1,8 +1,14 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { ImageIcon } from 'lucide-react';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
+import { enlaceLineaProducto, type ProductoDeLinea } from '@/lib/inventario/enlaceProducto';
+import { EnlaceFichaProducto } from '@/components/inventario/productos/EnlaceFichaProducto';
 import type { WebOrderItem } from '@/lib/services/webOrdersService';
+
+/** Producto de una línea: estado y padre (para el enlace) y la miniatura ya resuelta. */
+export type ProductoLineaConImagen = ProductoDeLinea & { imagenUrl?: string | null };
 
 interface OrderItemsListProps {
   items: WebOrderItem[];
@@ -13,14 +19,25 @@ interface OrderItemsListProps {
   puedeQuitarPromocion?: boolean;
   onQuitarPromocion?: (itemId: string) => void;
   onRestaurarPromocion?: (itemId: string) => void;
+  /**
+   * Detalle (Figma `2725:192149`): productos de las líneas por id. Con él, cada línea lleva
+   * miniatura de 44 px y el nombre enlaza a la ficha (`enlaceLineaProducto`).
+   */
+  productos?: ReadonlyMap<number, ProductoLineaConImagen>;
 }
 
-const ITEM_STATUS_CONFIG = {
-  pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-  preparing: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
-  ready: { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-  cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
-};
+/** Miniatura de 44 px: la imagen principal o el marcador. */
+function MiniaturaLinea({ url }: { url: string | null | undefined }) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element -- miniatura de 44 px desde storage público
+    return <img src={url} alt="" loading="lazy" className="size-11 shrink-0 rounded-lg border border-line object-cover" />;
+  }
+  return (
+    <span aria-hidden="true" className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-line bg-subtle text-fg-muted">
+      <ImageIcon className="size-4" strokeWidth={1.5} />
+    </span>
+  );
+}
 
 export function OrderItemsList({ 
   items, 
@@ -30,6 +47,7 @@ export function OrderItemsList({
   puedeQuitarPromocion = false,
   onQuitarPromocion,
   onRestaurarPromocion,
+  productos,
 }: OrderItemsListProps) {
   const t = useTranslations('pedidoWeb');
   const { formatear } = useMonedaOrganizacion();
@@ -84,9 +102,18 @@ export function OrderItemsList({
     <div>
       {displayItems.map((item) => (
         <div key={item.id} className="flex items-start justify-between gap-4 border-b border-line py-3 first:pt-0 last:border-0">
+          {productos && <MiniaturaLinea url={item.product_id != null ? productos.get(item.product_id)?.imagenUrl : null} />}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[13px] font-semibold text-fg">{item.product_name}</p>
+              {productos ? (
+                <EnlaceFichaProducto
+                  nombre={item.product_name}
+                  enlace={enlaceLineaProducto(item.product_id != null ? productos.get(item.product_id) ?? { id: item.product_id } : null)}
+                  className="text-[13px] font-semibold"
+                />
+              ) : (
+                <p className="text-[13px] font-semibold text-fg">{item.product_name}</p>
+              )}
               {showStatus && (
                 <span className="rounded-full bg-subtle px-2 text-[11px] font-medium leading-5 text-fg-secondary">
                   {t(`orderItemsList.estados.${item.status}`)}

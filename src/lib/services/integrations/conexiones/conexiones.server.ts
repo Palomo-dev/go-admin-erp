@@ -620,6 +620,8 @@ export interface ResultadoGuardarLlaves {
   webhookOrigen: OrigenWebhook | null;
   /** Wompi sin dominio principal verificado: se muestra la URL del ERP y la UI explica por qué. */
   webhookSinDominio: boolean;
+  /** Guardadas sin prueba porque el proveedor no deja probarlas en este ambiente (Bold en pruebas). */
+  guardadaSinPrueba?: boolean;
 }
 
 export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: GuardarLlaves): Promise<ResultadoGuardarLlaves> {
@@ -637,9 +639,19 @@ export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: G
   }
 
   const prueba = await probarLlaves(entrada.proveedor, entrada.ambiente, entrada.valores);
-  if (prueba.resultado !== 'correcta') {
+  // Bold en pruebas: el proveedor no deja probar llaves de prueba; se guardan y se confirman con
+  // el primer pago. Cualquier otro resultado que no sea «correcta» no guarda nada.
+  const guardadaSinPrueba = prueba.resultado === 'sin_prueba' && (def.sinPruebaEn ?? []).includes(entrada.ambiente);
+  if (prueba.resultado !== 'correcta' && !guardadaSinPrueba) {
     if (conexionId) await registrarEvento(db, actor.organizationId, conexionId, 'prueba_de_llaves_nuevas', prueba);
     return { conexionId: conexionId ?? '', prueba, webhookUrl: null, webhookOrigen: null, webhookSinDominio: false };
+  }
+  // El proveedor dice de qué ambiente son las llaves (Mercado Pago usa APP_USR- en los dos): unas
+  // llaves reales nunca se guardan como «Prueba», ni unas de prueba como «Producción».
+  if (prueba.cuenta?.ambiente && prueba.cuenta.ambiente !== entrada.ambiente) {
+    throw new ConexionError(400, 'AMBIENTE', prueba.cuenta.ambiente === 'production'
+      ? 'Estas llaves son de producción (cobran de verdad). Vuelve al paso 1 y elige «Producción».'
+      : 'Estas llaves son de prueba. Vuelve al paso 1 y elige «Prueba».');
   }
 
   const ahora = new Date().toISOString();
@@ -689,7 +701,7 @@ export async function guardarLlaves(db: SupabaseClient, actor: Actor, entrada: G
   await guardarCuentaVerificada(db, actor.organizationId, conexionId, prueba.cuenta);
   await registrarEvento(db, actor.organizationId, conexionId, entrada.conexionId ? 'llaves_reemplazadas' : 'prueba_de_conexion', prueba);
   const webhook = await webhookParaOrganizacion(db, actor.organizationId, def.conector);
-  return { conexionId, prueba, webhookUrl: webhook.url, webhookOrigen: webhook.origen, webhookSinDominio: webhook.sinDominioVerificado };
+  return { conexionId, prueba, webhookUrl: webhook.url, webhookOrigen: webhook.origen, webhookSinDominio: webhook.sinDominioVerificado, guardadaSinPrueba };
 }
 
 // ─── Dónde se usa (paso 5) ───────────────────────────────────────────────────

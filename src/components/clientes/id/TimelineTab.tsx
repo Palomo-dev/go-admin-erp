@@ -1,12 +1,23 @@
 'use client';
 
+/**
+ * Pestaña «Actividad» de la ficha (Figma 06 Clientes 331:114345; móvil
+ * 332:118462): ventas, reservas, actividades del CRM (del cliente y de sus
+ * oportunidades) y pedidos web, agrupados por día («Hoy», «Ayer», fecha) en
+ * la zona de la organización, cada uno como `TimelineEntry`.
+ */
+
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { CardListSkeleton } from '@/components/common/PageSkeletons';
 import { HtmlContentRenderer } from '@/components/shared/HtmlContentRenderer';
-import { ShoppingBag } from 'lucide-react';
+import { Activity, CalendarDays, Mail, MessageSquare, Phone, ShoppingBag, ShoppingCart, StickyNote, type LucideIcon } from 'lucide-react';
+import { EmptyState, StatusBadge } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { addPlainDays, toPlainDate, todayInTz } from '@/lib/utils/dateDisplay';
+import { EntradaHistorial, unirPartes } from './EntradaHistorial';
 import { mensajeError, useFechasFicha } from './useFechasFicha';
 
 // Interfaces para los elementos del timeline
@@ -15,7 +26,6 @@ interface TimelineItem {
   id: string;
   type: 'sale' | 'reservation' | 'activity' | 'web_order';
   date: Date;
-  icon: React.ReactNode;
   amount?: number;
   /** Número de venta o de pedido web. */
   referencia?: string;
@@ -94,7 +104,8 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
   const t = useTranslations('clientes.ficha');
   // Ventas, folios y cartera no traen moneda propia: la base de la organización.
   const { formatear } = useMonedaOrganizacion();
-  const { instante, plana } = useFechasFicha();
+  const { instante, plana, cuando, timezone } = useFechasFicha();
+  const [vuelta, setVuelta] = useState(0);
   const formatDate = (date: Date | string) => instante(date, FECHA_HORA);
 
   // Estados de pedidos web y de pagos; lo desconocido se muestra tal cual.
@@ -138,12 +149,6 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
       case 'web_order':
         return `${traducirEstadoWebOrder(item.tipoEntrega)} | ${traducirEstadoWebOrder(item.originalStatus)}`;
     }
-  };
-
-  // Chip de estado: ventas y reservas con los estados de pago, pedidos web con los suyos.
-  const estadoDe = (item: TimelineItem): string | null => {
-    if (item.type === 'activity') return null;
-    return item.type === 'web_order' ? traducirEstadoWebOrder(item.originalStatus) : traducirEstadoPago(item.originalStatus);
   };
 
   const [loading, setLoading] = useState(true);
@@ -279,11 +284,6 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
             originalStatus: sale.status,
             originalPaymentStatus: sale.payment_status,
             amount: parseFloat(sale.total) || 0,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
-              </svg>
-            ),
           })),
 
           // Transformar reservas con info de folio y espacios
@@ -301,11 +301,6 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
               date: new Date(reservation.start_date),
               fin: reservation.end_date,
               notas: reservation.notes,
-              icon: (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
-              ),
               originalStatus: reservation.status,
               checkin: reservation.checkin,
               checkout: reservation.checkout,
@@ -327,11 +322,6 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
             tipoActividad: activity.activity_type,
             oportunidad: activity.related_type === 'opportunity' ? oppNameMap[activity.related_id] || undefined : undefined,
             notas: activity.notes,
-            icon: (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-            )
           })),
           // Transformar pedidos web
           ...(webOrdersData || []).map(order => ({
@@ -343,7 +333,6 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
             originalStatus: order.status,
             originalPaymentStatus: order.payment_status,
             amount: parseFloat(order.total) || 0,
-            icon: <ShoppingBag className="h-5 w-5" />,
           })),
         ];
 
@@ -360,217 +349,155 @@ export default function TimelineTab({ clienteId, organizationId }: TimelineTabPr
     };
 
     fetchTimelineData();
-  }, [clienteId, organizationId]);
+  }, [clienteId, organizationId, vuelta]);
 
-  // Renderizar estado de carga
+  const iconoActividad = (tipo?: string): LucideIcon => {
+    const k = (tipo ?? '').toLowerCase();
+    if (k.includes('call') || k.includes('llamada')) return Phone;
+    if (k.includes('email') || k.includes('correo')) return Mail;
+    if (k.includes('whatsapp') || k.includes('sms') || k.includes('message')) return MessageSquare;
+    if (k.includes('meeting') || k.includes('reunion')) return CalendarDays;
+    if (k.includes('note') || k.includes('nota')) return StickyNote;
+    return Activity;
+  };
+
+  // Grupos por día calendario en la zona de la organización (Figma: «HOY», «AYER», fecha).
+  const grupos = (() => {
+    const hoy = todayInTz(timezone);
+    const ayer = addPlainDays(hoy, -1);
+    const lista: { dia: string; titulo: string; items: TimelineItem[] }[] = [];
+    for (const item of timelineItems) {
+      const dia = toPlainDate(item.date, timezone);
+      let grupo = lista[lista.length - 1];
+      if (!grupo || grupo.dia !== dia) {
+        const titulo = dia === hoy ? t('actividad.hoy') : dia === ayer ? t('actividad.ayer') : instante(item.date, DIA_MES_ANIO);
+        grupo = { dia, titulo, items: [] };
+        lista.push(grupo);
+      }
+      grupo.items.push(item);
+    }
+    return lista;
+  })();
+
   if (loading) {
     return (
-      <div className="py-4">
-        <CardListSkeleton cards={3} columns="1" />
+      <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4" aria-busy="true">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-lg" />
+        ))}
       </div>
     );
   }
 
-  // Renderizar error si existe
   if (error) {
     return (
-      <div className="w-full py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-700 dark:text-red-400">{error.mensaje || t('actividad.errorCarga')}</p>
-        </div>
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState variante="error" compacto descripcion={error.mensaje || t('actividad.errorCarga')} onReintentar={() => setVuelta((n) => n + 1)} />
       </div>
     );
   }
 
-  // Renderizar timeline vacío
   if (timelineItems.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-        <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{t('actividad.vacioTitulo')}</h3>
-        <p className="mt-2 text-gray-500 dark:text-gray-400">
-          {t('actividad.vacioDescripcion')}
-        </p>
+      <div className="rounded-xl border border-line bg-surface">
+        <EmptyState titulo={t('actividad.vacioTitulo')} descripcion={t('actividad.vacioDescripcion')} />
       </div>
     );
   }
 
-  // Renderizar timeline con datos
+  const entrada = (item: TimelineItem) => {
+    const meta = cuando(item.date);
+    switch (item.type) {
+      case 'sale':
+        return (
+          <EntradaHistorial
+            key={item.id}
+            icono={ShoppingCart}
+            tono="exito"
+            titulo={tituloDe(item)}
+            meta={meta}
+            estado={item.originalPaymentStatus || item.originalStatus ? <StatusBadge estado={item.originalPaymentStatus || item.originalStatus} /> : undefined}
+            detalle={unirPartes([item.amount !== undefined ? formatear(item.amount) : null, item.originalStatus ? traducirEstadoPago(item.originalStatus) : null])}
+          />
+        );
+      case 'web_order':
+        return (
+          <EntradaHistorial
+            key={item.id}
+            icono={ShoppingBag}
+            tono="marca"
+            titulo={tituloDe(item)}
+            meta={meta}
+            estado={item.originalStatus ? <StatusBadge estado={item.originalStatus} /> : undefined}
+            detalle={unirPartes([item.tipoEntrega ? traducirEstadoWebOrder(item.tipoEntrega) : null, item.amount !== undefined ? formatear(item.amount) : null])}
+          />
+        );
+      case 'activity':
+        return (
+          <EntradaHistorial key={item.id} icono={iconoActividad(item.tipoActividad)} tono="advertencia" titulo={tituloDe(item)} meta={meta}>
+            <HtmlContentRenderer html={descripcionDe(item)} className="line-clamp-3 break-words text-xs leading-4 text-fg-secondary" />
+          </EntradaHistorial>
+        );
+      case 'reservation':
+        return (
+          <EntradaHistorial
+            key={item.id}
+            icono={CalendarDays}
+            tono="informacion"
+            titulo={tituloDe(item)}
+            estado={item.originalStatus ? <StatusBadge estado={item.originalStatus} /> : undefined}
+            detalle={unirPartes([
+              item.spaces && item.spaces.length > 0 ? item.spaces.join(', ') : null,
+              item.checkin && item.checkout ? `${plana(item.checkin, DIA_MES_ANIO)} → ${plana(item.checkout, DIA_MES_ANIO)}` : null,
+            ])}
+          >
+            {item.notas && <HtmlContentRenderer html={item.notas} className="line-clamp-2 break-words text-xs leading-4 text-fg-secondary" />}
+            {item.reservationId && (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {item.folioItemsCount !== undefined && item.folioItemsCount > 0 ? (
+                  <>
+                    <Badge tono="informacion" tamano="sm">
+                      {t('actividad.folioItems', { count: item.folioItemsCount })}
+                    </Badge>
+                    {(item.folioPendingItems ?? 0) > 0 ? (
+                      <Badge tono="advertencia" tamano="sm">
+                        {t('actividad.folioPendientes', { count: item.folioPendingItems ?? 0, monto: formatear(item.folioPendingAmount || 0) })}
+                      </Badge>
+                    ) : (
+                      <Badge tono="exito" tamano="sm">
+                        {t('actividad.todoPagado')}
+                      </Badge>
+                    )}
+                    {item.folioBalance !== undefined && item.folioBalance > 0 && (
+                      <Badge tono="peligro" tamano="sm">
+                        {t('actividad.saldo', { monto: formatear(item.folioBalance) })}
+                      </Badge>
+                    )}
+                    <a
+                      href={`/app/pms/folios?reservation=${item.reservationId}`}
+                      className="ml-auto rounded text-xs font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {t('actividad.verFolio')}
+                    </a>
+                  </>
+                ) : (
+                  <span className="text-xs text-fg-muted">{t('actividad.sinConsumos')}</span>
+                )}
+              </div>
+            )}
+          </EntradaHistorial>
+        );
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">{t('actividad.titulo')}</h3>
-
-        <div className="relative">
-          {/* Línea vertical del timeline */}
-          <div className="absolute top-0 left-5 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
-
-          {/* Items del timeline */}
-          <div className="space-y-8">
-            {timelineItems.map((item) => {
-              const estado = estadoDe(item);
-              // Definir color según el tipo
-              let iconBg = '';
-              let iconColor = '';
-
-              switch(item.type) {
-                case 'sale':
-                  iconBg = 'bg-green-100 dark:bg-green-900/20';
-                  iconColor = 'text-green-500';
-                  break;
-                case 'reservation':
-                  iconBg = 'bg-blue-100 dark:bg-blue-900/20';
-                  iconColor = 'text-blue-500';
-                  break;
-                case 'activity':
-                  iconBg = 'bg-amber-100 dark:bg-amber-900/20';
-                  iconColor = 'text-amber-500';
-                  break;
-                case 'web_order':
-                  iconBg = 'bg-purple-100 dark:bg-purple-900/20';
-                  iconColor = 'text-purple-500';
-                  break;
-              }
-
-              return (
-                <div key={item.id} className="relative pl-10">
-                  {/* Icono del evento */}
-                  <div className={`absolute left-0 p-2 rounded-full ${iconBg} ${iconColor}`}>
-                    {item.icon}
-                  </div>
-
-                  {/* Contenido del evento */}
-                  <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                    <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                        {tituloDe(item)}
-                      </h4>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatDate(item.date)}
-                      </span>
-                    </div>
-
-                    <HtmlContentRenderer html={descripcionDe(item)}  className="text-sm text-gray-600 dark:text-gray-300 mb-1" />
-
-                    {item.amount !== undefined && (
-                      <div className="mt-2">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {t('actividad.monto', { monto: formatear(item.amount) })}
-                        </span>
-                      </div>
-                    )}
-
-                    {estado && (
-                      <div className="mt-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                          ${(item.originalStatus || '').toLowerCase().includes('complete') ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500' :
-                            (item.originalStatus || '').toLowerCase().includes('pending') ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500' :
-                              'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500'}`}
-                        >
-                          {t('actividad.estado', { estado })}
-                        </span>
-                      </div>
-                    )}
-
-                    {item.type === 'sale' && (
-                      <div className="mt-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                          ${(item.originalPaymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500' :
-                            (item.originalPaymentStatus || '').toLowerCase() === 'partial' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500' :
-                            (item.originalPaymentStatus || '').toLowerCase() === 'refunded' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-500' :
-                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-500'}`}
-                        >
-                          {t('actividad.pago', { pago: traducirEstadoPago(item.originalPaymentStatus) })}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Info enriquecida para reservas: espacios, folio, consumos */}
-                    {item.type === 'reservation' && item.reservationId && (
-                      <div className="mt-3 space-y-2 border-t border-gray-200 dark:border-gray-600 pt-2">
-                        {/* Espacios ocupados */}
-                        {item.spaces && item.spaces.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">{t('actividad.espacios')}</span>
-                            {item.spaces.map((space, i) => (
-                              <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
-                                {space}
-                                {item.spaceTypes?.[i] && <span className="ml-1 text-gray-400">· {item.spaceTypes[i]}</span>}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Fechas checkin / checkout */}
-                        {item.checkin && item.checkout && (
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <span>
-                              {t.rich('actividad.checkin', {
-                                fecha: plana(item.checkin, DIA_MES_ANIO),
-                                b: (fragmento) => <strong className="text-gray-700 dark:text-gray-300">{fragmento}</strong>,
-                              })}
-                            </span>
-                            <span>→</span>
-                            <span>
-                              {t.rich('actividad.checkout', {
-                                fecha: plana(item.checkout, DIA_MES_ANIO),
-                                b: (fragmento) => <strong className="text-gray-700 dark:text-gray-300">{fragmento}</strong>,
-                              })}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Folio info */}
-                        {item.folioItemsCount !== undefined && item.folioItemsCount > 0 && (
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium">
-                              {t('actividad.folioItems', { count: item.folioItemsCount })}
-                            </span>
-                            {(item.folioPendingItems ?? 0) > 0 ? (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium">
-                                {t('actividad.folioPendientes', {
-                                  count: item.folioPendingItems ?? 0,
-                                  monto: formatear(item.folioPendingAmount || 0),
-                                })}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
-                                {t('actividad.todoPagado')}
-                              </span>
-                            )}
-                            {item.folioBalance !== undefined && item.folioBalance > 0 && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-medium">
-                                {t('actividad.saldo', { monto: formatear(item.folioBalance) })}
-                              </span>
-                            )}
-                            <a
-                              href={`/app/pms/folios?reservation=${item.reservationId}`}
-                              className="ml-auto text-blue-600 dark:text-blue-400 hover:underline"
-                            >
-                              {t('actividad.verFolio')}
-                            </a>
-                          </div>
-                        )}
-
-                        {/* Reserva sin folio */}
-                        {item.folioItemsCount === 0 && (
-                          <div className="text-xs text-gray-400 dark:text-gray-500">
-                            {t('actividad.sinConsumos')}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <section aria-label={t('actividad.titulo')} className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+      {grupos.map((g) => (
+        <div key={g.dia} className="flex flex-col gap-2">
+          <h3 className="text-[11px] font-semibold uppercase leading-4 tracking-wide text-fg-muted">{g.titulo}</h3>
+          <ul className="flex flex-col gap-2">{g.items.map(entrada)}</ul>
         </div>
-      </div>
-    </div>
+      ))}
+    </section>
   );
 }

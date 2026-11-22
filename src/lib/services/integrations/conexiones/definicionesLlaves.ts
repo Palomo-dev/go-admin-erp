@@ -15,7 +15,7 @@
  *   'card' (la tienda usa 'card' para Wompi).
  */
 export type Ambiente = 'sandbox' | 'production';
-export type ProveedorLlaves = 'wompi' | 'mercadopago' | 'payu' | 'stripe' | 'paypal' | 'sendgrid';
+export type ProveedorLlaves = 'wompi' | 'mercadopago' | 'payu' | 'bold' | 'stripe' | 'paypal' | 'sendgrid';
 
 export interface CampoLlave {
   proposito: string;
@@ -36,6 +36,11 @@ export interface DefinicionLlaves {
   metodoPago: string | null;
   /** Dónde puede usarse: tienda web y/o punto de venta. */
   usos: ('tienda' | 'pos')[];
+  /**
+   * Ambientes en los que el proveedor no deja probar las llaves desde el servidor: se guardan
+   * sin prueba y se confirman con el primer pago (Bold en pruebas).
+   */
+  sinPruebaEn?: Ambiente[];
 }
 
 export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
@@ -59,8 +64,11 @@ export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
     conector: 'mp_checkout',
     ambientes: ['sandbox', 'production'],
     campos: [
-      { proposito: 'public_key', tipoCredencial: 'api_key', secreto: false, requerido: true, prefijos: { sandbox: ['TEST-'], production: ['APP_USR-'] } },
-      { proposito: 'access_token', tipoCredencial: 'api_key', secreto: true, requerido: true, prefijos: { sandbox: ['TEST-'], production: ['APP_USR-'] } },
+      // Mercado Pago cambió el formato: las credenciales de prueba nuevas (las de la pestaña «Prueba»
+      // del panel, que pertenecen a un usuario de prueba) también empiezan por APP_USR-. El ambiente
+      // real lo confirma `probarLlaves` con la cuenta dueña del token (usuario de prueba o no).
+      { proposito: 'public_key', tipoCredencial: 'api_key', secreto: false, requerido: true, prefijos: { sandbox: ['TEST-', 'APP_USR-'], production: ['APP_USR-'] } },
+      { proposito: 'access_token', tipoCredencial: 'api_key', secreto: true, requerido: true, prefijos: { sandbox: ['TEST-', 'APP_USR-'], production: ['APP_USR-'] } },
       { proposito: 'webhook_secret', tipoCredencial: 'webhook_secret', secreto: true, requerido: false },
     ],
     guardado: 'como_hoy',
@@ -82,6 +90,24 @@ export const LLAVES: Record<ProveedorLlaves, DefinicionLlaves> = {
     webhook: '/api/integrations/payu/webhook',
     metodoPago: 'payu',
     usos: ['tienda'],
+  },
+  // Bold (2026-11-21): link de pago y tienda web. Los propósitos son los que leen `boldService`
+  // (`identity_key` en `Authorization: x-api-key`) y `firmaBold` (`secret_key` firma los eventos).
+  // Los datáfonos del POS (`bold_pos`, con seriales por sucursal) siguen en el formulario avanzado.
+  bold: {
+    proveedor: 'bold',
+    conector: 'bold_link',
+    ambientes: ['sandbox', 'production'],
+    campos: [
+      { proposito: 'identity_key', tipoCredencial: 'api_key', secreto: true, requerido: true },
+      { proposito: 'secret_key', tipoCredencial: 'secret', secreto: true, requerido: true },
+    ],
+    guardado: 'como_hoy',
+    webhook: '/api/integrations/bold/webhook',
+    metodoPago: 'bold_link',
+    usos: ['tienda', 'pos'],
+    // Las APIs de Bold rechazan (403) toda llave de prueba: solo el Botón de pagos las usa.
+    sinPruebaEn: ['sandbox'],
   },
   stripe: {
     proveedor: 'stripe',
@@ -155,7 +181,8 @@ export function validarFormatoLlaves(proveedor: ProveedorLlaves, ambiente: Ambie
   return errores;
 }
 
-/** Primer prefijo esperado (para el texto de ayuda «Empieza por …»). */
+/** Prefijos esperados (para el texto de ayuda «Empieza por …»): todos los válidos, separados por « / ». */
 export function prefijoEsperado(campo: CampoLlave, ambiente: Ambiente): string | null {
-  return campo.prefijos?.[ambiente]?.[0] ?? null;
+  const prefijos = campo.prefijos?.[ambiente] ?? [];
+  return prefijos.length > 0 ? prefijos.join(' / ') : null;
 }

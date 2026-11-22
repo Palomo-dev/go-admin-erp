@@ -12,6 +12,7 @@ import type { OrdenListado } from './listadoUrl';
 import { alternarId, alternarPagina, estadoCasillaCabecera } from './seleccion';
 import { UMBRAL_VIRTUALIZACION, calcularVentana } from './virtualizacion';
 import { useKitT } from './useIdiomaKit';
+import { AsaArrastre, AsaEnCapa, CLASES_HUECO, Ordenable, ZonaOrdenable, useTextosArrastre, type ArrastreTabla, type FilaOrdenable } from './arrastreTabla';
 
 /**
  * La tabla del kit (Figma `DataTable` + `TableCell` 106:3688, PATRONES §5–7).
@@ -27,6 +28,8 @@ import { useKitT } from './useIdiomaKit';
  * - Móvil (< lg) con `tarjetaMovil`: una tarjeta por registro, sin scroll
  *   horizontal (`Layout=cards`).
  * - Más de 500 filas en el navegador: se virtualiza (solo se montan las visibles).
+ * - `arrastre`: columna con el tirador ⠿ para ordenar arrastrando (y teclado); en
+ *   móvil, mantener presionada la tarjeta. Con arrastre no se virtualiza.
  */
 export type EstadoTabla = 'listo' | 'cargando' | 'vacio' | 'sinResultados' | 'error' | 'sinPermiso';
 
@@ -98,6 +101,8 @@ export interface DataTableProps<T> {
   /** Alto máximo del área con scroll cuando se virtualiza. */
   altoMaximo?: string;
   filasEsqueleto?: number;
+  /** Ordenar arrastrando (ver `arrastreTabla.tsx`). */
+  arrastre?: ArrastreTabla<T>;
   className?: string;
 }
 
@@ -151,20 +156,32 @@ export function DataTable<T>({
   altoFila,
   altoMaximo = '70vh',
   filasEsqueleto = 8,
+  arrastre,
   className,
 }: DataTableProps<T>) {
   const t = useKitT();
+  const textosArrastre = useTextosArrastre();
   const estado: EstadoTabla = estadoProp === 'listo' && filas.length === 0 ? 'vacio' : estadoProp;
   const seleccionable = !!onSeleccionChange;
   const sel = React.useMemo(() => seleccion ?? new Set<string>(), [seleccion]);
   const idsPagina = React.useMemo(() => filas.map(obtenerId), [filas, obtenerId]);
   const casillaCabecera = estadoCasillaCabecera(sel, idsPagina);
   const conAcciones = !!acciones || !!accionesRapidas;
-  const totalColumnas = columnas.length + (seleccionable ? 1 : 0) + (conAcciones ? 1 : 0);
+  const conArrastre = !!arrastre;
+  const totalColumnas = columnas.length + (seleccionable ? 1 : 0) + (conAcciones ? 1 : 0) + (conArrastre ? 1 : 0);
+  const movibles = React.useMemo(
+    () => (arrastre ? filas.filter((f) => arrastre.puedeMover?.(f) ?? true).map(obtenerId) : []),
+    [arrastre, filas, obtenerId],
+  );
+  const movible = React.useMemo(() => new Set(movibles), [movibles]);
+  const nombreDeId = (id: string) => {
+    const f = filas[idsPagina.indexOf(id)];
+    return (f && etiquetaFila?.(f)) || id;
+  };
   const alto = altoFila ?? (densidad === 'comoda' ? 52 : 40);
 
   const usarVirtual =
-    estado === 'listo' && (virtualizar === true || (virtualizar === 'auto' && filas.length > UMBRAL_VIRTUALIZACION));
+    estado === 'listo' && !conArrastre && (virtualizar === true || (virtualizar === 'auto' && filas.length > UMBRAL_VIRTUALIZACION));
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const [scroll, setScroll] = React.useState({ top: 0, alto: 600 });
   React.useEffect(() => {
@@ -174,6 +191,27 @@ export function DataTable<T>({
     ro.observe(el);
     return () => ro.disconnect();
   }, [usarVirtual]);
+
+  // La columna «⋯» es fija: cuando la tabla desborda a lo ancho, las últimas
+  // columnas pasan por debajo de ella. Sin una marca parecía que el icono
+  // «tapaba» el estado de la fila; con la sombra se lee como columna fija y
+  // se entiende que hay más a la derecha. Solo se pinta mientras haya algo debajo.
+  const [hayContenidoBajoAcciones, setHayContenidoBajoAcciones] = React.useState(false);
+  const medirDesborde = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setHayContenidoBajoAcciones(el.scrollWidth - el.clientWidth - Math.abs(el.scrollLeft) > 1);
+  }, []);
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (!conAcciones || !el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(medirDesborde);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    medirDesborde();
+    return () => ro.disconnect();
+  }, [conAcciones, medirDesborde]);
+  const sombraAcciones = hayContenidoBajoAcciones && 'shadow-[-6px_0_8px_-6px_rgb(15_23_42/0.16)]';
   const ventana = usarVirtual
     ? calcularVentana({ scrollTop: scroll.top, altoVisible: scroll.alto, altoFila: alto, total: filas.length })
     : { inicio: 0, fin: filas.length, espacioArriba: 0, espacioAbajo: 0 };
@@ -206,6 +244,11 @@ export function DataTable<T>({
   const cabecera = (
     <thead className={cn('bg-subtle', usarVirtual && 'sticky top-0 z-20')}>
       <tr className="border-b border-line">
+        {conArrastre && (
+          <th scope="col" className="w-10 min-w-10 pl-2 pr-0">
+            <span className="sr-only">{textosArrastre.columna}</span>
+          </th>
+        )}
         {seleccionable && (
           <th scope="col" className="w-11 min-w-11 pl-4 pr-0">
             <Checkbox
@@ -255,7 +298,7 @@ export function DataTable<T>({
           );
         })}
         {conAcciones && (
-          <th scope="col" className="sticky right-0 w-11 min-w-11 bg-subtle pr-2">
+          <th scope="col" className={cn('sticky right-0 w-11 min-w-11 bg-subtle pr-2', sombraAcciones)}>
             <span className="sr-only">{t('comun.acciones')}</span>
           </th>
         )}
@@ -265,11 +308,142 @@ export function DataTable<T>({
 
   // ── Cuerpo ───────────────────────────────────────────────────────────────
   const celdaPad = densidad === 'comoda' ? 'py-2.5' : 'py-1.5';
+
+  // Anchos de las celdas de la fila que se levanta, para que la capa calce con la tabla.
+  const [anchosCapa, setAnchosCapa] = React.useState<number[]>([]);
+  const medirFila = (id: string) => {
+    const tr = Array.from(scrollRef.current?.querySelectorAll<HTMLTableRowElement>('tr[data-fila-orden]') ?? []).find(
+      (n) => n.dataset.filaOrden === id,
+    );
+    setAnchosCapa(tr ? Array.from(tr.cells).map((c) => c.getBoundingClientRect().width) : []);
+  };
+
+  /**
+   * Una fila. `ord` = fila ordenable (tirador y, si es la que se arrastra, el
+   * hueco); `'capa'` = la copia levantada que sigue al puntero (sin eventos).
+   */
+  const renderFila = (fila: T, indice: number, ord?: FilaOrdenable | 'capa') => {
+    const id = idsPagina[indice];
+    const enCapa = ord === 'capa';
+    const ordenable = ord && ord !== 'capa' ? ord : undefined;
+    const marcada = sel.has(id);
+    const nombre = etiquetaFila?.(fila);
+    const tono = tonoFila?.(fila);
+    const accionesFila = acciones?.(fila);
+    const clicFila = enCapa ? undefined : onFilaClick;
+    let celda = 0;
+    const ancho = (): React.CSSProperties | undefined => {
+      const w = enCapa ? anchosCapa[celda] : undefined;
+      celda += 1;
+      return w ? { width: w, minWidth: w, maxWidth: w } : undefined;
+    };
+    return (
+      <tr
+        key={id}
+        ref={ordenable?.ref}
+        data-fila-orden={conArrastre && !enCapa ? id : undefined}
+        {...atributosFila?.(fila)}
+        aria-rowindex={usarVirtual ? indice + 2 : undefined}
+        aria-selected={seleccionable && !enCapa ? marcada : undefined}
+        tabIndex={clicFila ? 0 : undefined}
+        onClick={clicFila ? () => clicFila(fila) : undefined}
+        onKeyDown={
+          clicFila
+            ? (e) => {
+                if (e.target !== e.currentTarget) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  clicFila(fila);
+                }
+              }
+            : undefined
+        }
+        style={{ ...(usarVirtual ? { height: alto } : undefined), ...ordenable?.estilo }}
+        className={cn(
+          'group/fila border-b border-line text-sm text-fg last:border-b-0',
+          tono && TONO_FILA[tono],
+          marcada && 'bg-brand-tint/50',
+          clicFila &&
+            'cursor-pointer hover:bg-hover focus-visible:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand',
+          ordenable && 'relative',
+          ordenable?.arrastrando && CLASES_HUECO,
+          enCapa && 'border-b-0 bg-surface',
+        )}
+      >
+        {conArrastre && (
+          <td style={ancho()} className={cn('w-10 pl-2 pr-0', celdaPad)} onClick={(e) => e.stopPropagation()}>
+            {enCapa ? <AsaEnCapa /> : ordenable ? <AsaArrastre asa={ordenable.asa} nombre={nombre ?? id} deshabilitada={arrastre?.deshabilitado} /> : null}
+          </td>
+        )}
+        {seleccionable && (
+          <td style={ancho()} className={cn('pl-4 pr-0', celdaPad)} onClick={(e) => e.stopPropagation()}>
+            <Checkbox
+              checked={marcada}
+              onCheckedChange={(v) => alternarFila(id, v === true)}
+              aria-label={nombre ? t('tabla.seleccionar', { nombre }) : t('tabla.seleccionarFila')}
+              className="size-[18px] rounded"
+            />
+          </td>
+        )}
+        {columnas.map((c) => (
+          <td
+            key={c.id}
+            style={enCapa ? ancho() : estiloAncho(c.ancho)}
+            className={cn(
+              'px-3 align-middle',
+              !conArrastre && 'first:pl-4',
+              celdaPad,
+              alineacion(c),
+              c.variante === 'importe' && 'whitespace-nowrap tabular-nums',
+              c.variante === 'mono' && 'font-mono text-[13px]',
+              c.ocultarDebajo && OCULTAR[c.ocultarDebajo],
+              c.className,
+            )}
+          >
+            {c.celda(fila, indice)}
+          </td>
+        ))}
+        {conAcciones && (
+          <td
+            style={ancho()}
+            className={cn(
+              'sticky right-0 w-11 bg-surface pr-2 text-right group-hover/fila:bg-hover',
+              sombraAcciones,
+              tono && TONO_FILA[tono],
+              marcada && 'bg-brand-tint',
+              ordenable?.arrastrando && 'bg-transparent',
+              celdaPad,
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-end gap-1">
+              {accionesRapidas?.(fila)}
+              {accionesFila && accionesFila.length > 0 && <RowActionsMenu acciones={accionesFila} titulo={nombre} />}
+            </div>
+          </td>
+        )}
+      </tr>
+    );
+  };
+
+  /** La fila levantada: una tabla de una fila con los anchos medidos. */
+  const capaFila = (id: string) => {
+    const indice = idsPagina.indexOf(id);
+    if (indice < 0) return null;
+    return (
+      <div aria-hidden="true" className="pointer-events-none overflow-hidden rounded-xl bg-surface shadow-lg ring-[1.5px] ring-brand">
+        <table className="w-full table-fixed border-collapse">
+          <tbody>{renderFila(filas[indice], indice, 'capa')}</tbody>
+        </table>
+      </div>
+    );
+  };
   const cuerpo = (
     <tbody>
       {estado === 'cargando' &&
         Array.from({ length: filasEsqueleto }, (_, i) => (
           <tr key={`esq-${i}`} className="border-b border-line last:border-b-0" style={{ height: alto }}>
+            {conArrastre && <td className="pl-2" />}
             {seleccionable && (
               <td className="pl-4">
                 <Skeleton className="size-[18px] rounded" />
@@ -280,7 +454,7 @@ export function DataTable<T>({
                 <Skeleton className={cn('h-4', c.variante === 'importe' ? 'ml-auto w-16' : 'w-3/4')} />
               </td>
             ))}
-            {conAcciones && <td className="sticky right-0 bg-surface" />}
+            {conAcciones && <td className={cn('sticky right-0 bg-surface', sombraAcciones)} />}
           </tr>
         ))}
 
@@ -297,82 +471,11 @@ export function DataTable<T>({
         filas.slice(ventana.inicio, ventana.fin).map((fila, i) => {
           const indice = ventana.inicio + i;
           const id = idsPagina[indice];
-          const marcada = sel.has(id);
-          const nombre = etiquetaFila?.(fila);
-          const tono = tonoFila?.(fila);
-          const accionesFila = acciones?.(fila);
+          if (!conArrastre || !movible.has(id)) return renderFila(fila, indice);
           return (
-            <tr
-              key={id}
-              {...atributosFila?.(fila)}
-              aria-rowindex={usarVirtual ? indice + 2 : undefined}
-              aria-selected={seleccionable ? marcada : undefined}
-              tabIndex={onFilaClick ? 0 : undefined}
-              onClick={onFilaClick ? () => onFilaClick(fila) : undefined}
-              onKeyDown={
-                onFilaClick
-                  ? (e) => {
-                      if (e.target !== e.currentTarget) return;
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onFilaClick(fila);
-                      }
-                    }
-                  : undefined
-              }
-              style={usarVirtual ? { height: alto } : undefined}
-              className={cn(
-                'group/fila border-b border-line text-sm text-fg last:border-b-0',
-                tono && TONO_FILA[tono],
-                marcada && 'bg-brand-tint/50',
-                onFilaClick &&
-                  'cursor-pointer hover:bg-hover focus-visible:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand',
-              )}
-            >
-              {seleccionable && (
-                <td className={cn('pl-4 pr-0', celdaPad)} onClick={(e) => e.stopPropagation()}>
-                  <Checkbox
-                    checked={marcada}
-                    onCheckedChange={(v) => alternarFila(id, v === true)}
-                    aria-label={nombre ? t('tabla.seleccionar', { nombre }) : t('tabla.seleccionarFila')}
-                    className="size-[18px] rounded"
-                  />
-                </td>
-              )}
-              {columnas.map((c) => (
-                <td
-                  key={c.id}
-                  style={estiloAncho(c.ancho)}
-                  className={cn(
-                    'px-3 align-middle first:pl-4',
-                    celdaPad,
-                    alineacion(c),
-                    c.variante === 'importe' && 'whitespace-nowrap tabular-nums',
-                    c.variante === 'mono' && 'font-mono text-[13px]',
-                    c.ocultarDebajo && OCULTAR[c.ocultarDebajo],
-                    c.className,
-                  )}
-                >
-                  {c.celda(fila, indice)}
-                </td>
-              ))}
-              {conAcciones && (
-                <td
-                  className={cn(
-                    'sticky right-0 w-11 bg-surface pr-2 text-right group-hover/fila:bg-hover',
-                    tono && TONO_FILA[tono],
-                    marcada && 'bg-brand-tint',
-                    celdaPad,
-                  )}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="flex items-center justify-end gap-1">
-                    {accionesRapidas?.(fila)}
-                    {accionesFila && accionesFila.length > 0 && <RowActionsMenu acciones={accionesFila} titulo={nombre} />}
-                  </div>
-                </td>
-              )}
-            </tr>
+            <Ordenable key={id} id={id} deshabilitada={arrastre?.deshabilitado}>
+              {(ord) => renderFila(fila, indice, ord)}
+            </Ordenable>
           );
         })}
       {estado === 'listo' && ventana.espacioAbajo > 0 && (
@@ -383,6 +486,41 @@ export function DataTable<T>({
 
   // ── Móvil: tarjetas ──────────────────────────────────────────────────────
   const modoSeleccion = sel.size > 0;
+  const ctxTarjeta = (id: string): ContextoTarjeta => ({
+    seleccionado: sel.has(id),
+    modoSeleccion: seleccionable && modoSeleccion,
+    alternar: (v) => alternarFila(id, v),
+  });
+  const listaTarjetas = tarjetaMovil && (
+    <ul aria-label={etiqueta} className="flex flex-col gap-3">
+      {filas.map((fila, i) => {
+        const id = idsPagina[i];
+        if (!conArrastre || !movible.has(id)) {
+          return (
+            <li key={id} {...atributosFila?.(fila)}>
+              {tarjetaMovil(fila, ctxTarjeta(id))}
+            </li>
+          );
+        }
+        // Mantener presionada la tarjeta la levanta; el toque corto sigue abriendo sus acciones.
+        return (
+          <Ordenable key={id} id={id} deshabilitada={arrastre?.deshabilitado}>
+            {(ord) => (
+              <li
+                ref={ord.ref}
+                {...atributosFila?.(fila)}
+                {...ord.oyentes}
+                style={{ ...ord.estilo, touchAction: 'manipulation', WebkitTouchCallout: 'none' }}
+                className={cn('relative select-none', ord.arrastrando && cn('rounded-xl', CLASES_HUECO))}
+              >
+                {tarjetaMovil(fila, ctxTarjeta(id))}
+              </li>
+            )}
+          </Ordenable>
+        );
+      })}
+    </ul>
+  );
   const tarjetas = tarjetaMovil && (
     <div className="flex flex-col gap-3 lg:hidden">
       {estado === 'cargando' &&
@@ -399,24 +537,40 @@ export function DataTable<T>({
       {estado !== 'listo' && estado !== 'cargando' && (
         <div className="rounded-xl border border-line bg-surface">{estadoVacio(true)}</div>
       )}
-      {estado === 'listo' && (
-        <ul aria-label={etiqueta} className="flex flex-col gap-3">
-          {filas.map((fila, i) => {
-            const id = idsPagina[i];
-            return (
-              <li key={id} {...atributosFila?.(fila)}>
-                {tarjetaMovil(fila, {
-                  seleccionado: sel.has(id),
-                  modoSeleccion: seleccionable && modoSeleccion,
-                  alternar: (v) => alternarFila(id, v),
-                })}
-              </li>
+      {estado === 'listo' && conArrastre && arrastre && (
+        <ZonaOrdenable
+          ids={movibles}
+          nombre={nombreDeId}
+          modo="tarjetas"
+          deshabilitado={arrastre.deshabilitado}
+          onMover={arrastre.onMover}
+          capa={(id) => {
+            const i = idsPagina.indexOf(id);
+            return i < 0 ? null : (
+              <div aria-hidden="true" className="pointer-events-none scale-[1.03] rounded-xl shadow-lg ring-[1.5px] ring-brand">
+                {tarjetaMovil(filas[i], ctxTarjeta(id))}
+              </div>
             );
-          })}
-        </ul>
+          }}
+        >
+          {listaTarjetas}
+        </ZonaOrdenable>
       )}
+      {estado === 'listo' && !conArrastre && listaTarjetas}
       {mostrarPie && <div>{pie}</div>}
     </div>
+  );
+
+  const tabla = (
+    <table
+      aria-label={etiqueta}
+      aria-busy={estado === 'cargando' || undefined}
+      aria-rowcount={usarVirtual ? filas.length + 1 : undefined}
+      className="w-full border-collapse"
+    >
+      {cabecera}
+      {cuerpo}
+    </table>
   );
 
   return (
@@ -425,19 +579,32 @@ export function DataTable<T>({
       <div className={cn('overflow-hidden rounded-xl border border-line bg-surface', tarjetaMovil && 'hidden lg:block')}>
         <div
           ref={scrollRef}
-          onScroll={usarVirtual ? (e) => setScroll({ top: e.currentTarget.scrollTop, alto: e.currentTarget.clientHeight }) : undefined}
+          onScroll={
+            usarVirtual || conAcciones
+              ? (e) => {
+                  if (usarVirtual) setScroll({ top: e.currentTarget.scrollTop, alto: e.currentTarget.clientHeight });
+                  if (conAcciones) medirDesborde();
+                }
+              : undefined
+          }
           className={cn('overflow-x-auto', usarVirtual && 'overflow-y-auto')}
           style={usarVirtual ? { maxHeight: altoMaximo } : undefined}
         >
-          <table
-            aria-label={etiqueta}
-            aria-busy={estado === 'cargando' || undefined}
-            aria-rowcount={usarVirtual ? filas.length + 1 : undefined}
-            className="w-full border-collapse"
-          >
-            {cabecera}
-            {cuerpo}
-          </table>
+          {conArrastre && arrastre && estado === 'listo' ? (
+            <ZonaOrdenable
+              ids={movibles}
+              nombre={nombreDeId}
+              modo="tabla"
+              deshabilitado={arrastre.deshabilitado}
+              onMover={arrastre.onMover}
+              onInicio={medirFila}
+              capa={capaFila}
+            >
+              {tabla}
+            </ZonaOrdenable>
+          ) : (
+            tabla
+          )}
         </div>
         {mostrarPie && <div className="border-t border-line px-4 py-3">{pie}</div>}
       </div>

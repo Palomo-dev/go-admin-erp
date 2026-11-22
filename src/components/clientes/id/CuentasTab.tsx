@@ -1,51 +1,47 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+/**
+ * Pestaña «Finanzas» de la ficha del cliente (antes «Cuentas por cobrar»;
+ * Figma 06 Clientes 331:115207):
+ *
+ * - KPIs: Deuda total (facturas + folios), Folios pendientes y Facturas por
+ *   cobrar con las vencidas en rojo.
+ * - Barra: Registrar pago · Enviar recordatorio · Estado de cuenta (PDF) y la
+ *   moneda de la cartera.
+ * - Una lista con las facturas por cobrar, los folios de reservas con saldo y
+ *   las demás cuentas por cobrar, cada fila con «Ver» y su cobro.
+ *
+ * La cartera llega de `useCarteraFicha` (`GET /api/cartera`, organización de
+ * la sesión); el cobro es el diálogo único `RegistrarPagoConectado` y el
+ * recordatorio, `POST /api/cartera/[id]/recordatorio`. Aquí no se escribe nada.
+ * Los folios del PMS se leen como antes (reservas del cliente → folios con saldo).
+ */
+import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { BedDouble, Bell, ChevronRight, FileText, HandCoins, Receipt, TriangleAlert, WalletCards } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { useKitT } from '@/components/kit/useIdiomaKit';
-import { useFechasFicha } from './useFechasFicha';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
-import { TableSkeleton } from '@/components/common/PageSkeletons';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Receipt, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ConfirmDialog, EmptyState, Pagination, StatCard, StatusBadge, clasesBoton } from '@/components/kit';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toastError, toastSuccess } from '@/components/ui/use-toast';
+import { enviarRecordatorio } from '@/lib/finanzas/cartera/clienteCartera';
+import type { FilaCartera } from '@/lib/finanzas/cartera/listadoCartera';
+import { RegistrarPagoConectado } from '@/components/finanzas/pagos/RegistrarPagoConectado';
+import { cn } from '@/utils/Utils';
+import { useFechasFicha } from './useFechasFicha';
+import type { CarteraFicha } from './useCarteraFicha';
 
-// Interfaces para el componente
-interface CuentaPorCobrar {
-  id: string;
-  sale_id?: number;
-  amount: number;
-  balance: number;
-  due_date: string;
-  status: string;
-  days_overdue: number;
-  created_at: string;
-}
-
-interface CuentasTabProps {
-  clienteId: string;
-  organizationId: number;
-}
-
-// Interfaces para folios PMS
 interface FolioPendiente {
   id: string;
   reservation_id: string;
   balance: number;
-  status: string;
   items_pendientes: number;
   items_total: number;
-  monto_pendiente: number;
   checkin?: string;
   checkout?: string;
   space_label?: string;
-}
-
-// Filas crudas que devuelven la RPC y las consultas de PMS
-interface CuentaCruda extends Omit<CuentaPorCobrar, 'amount' | 'balance'> {
-  amount: number | string | null;
-  balance: number | string | null;
 }
 
 interface ReservaConEspacios {
@@ -65,536 +61,394 @@ interface FolioCrudo {
 interface ItemFolio {
   id: string;
   folio_id: string;
-  amount: number | string | null;
   payment_status: string;
 }
 
-// Opciones de tamaño de página
-const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+interface CuentasTabProps {
+  clienteId: string;
+  organizationId: number;
+  cartera: Pick<CarteraFicha, 'estado' | 'resumen' | 'filas' | 'puedeCobrar' | 'permisosCargando' | 'recargar'>;
+  /** Motivo por el que no se puede cobrar (traducido) o `null`. */
+  motivoPago: string | null;
+  onRegistrarPago: () => void;
+  onEstadoCuenta: () => void;
+  motivoEstadoCuenta: string | null;
+}
+
+type Fila = { tipo: 'factura' | 'cuenta'; cuenta: FilaCartera } | { tipo: 'folio'; folio: FolioPendiente };
 
 const DIA_MES: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' };
+const DIA_MES_ANIO: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', year: 'numeric' };
+const TAMANOS = [10, 25, 50] as const;
 
-export default function CuentasTab({ clienteId, organizationId }: CuentasTabProps) {
+export default function CuentasTab({ clienteId, organizationId, cartera, motivoPago, onRegistrarPago, onEstadoCuenta, motivoEstadoCuenta }: CuentasTabProps) {
   const t = useTranslations('clientes.ficha');
-  // Ventas, folios y cartera no traen moneda propia: la base de la organización.
-  const { formatear } = useMonedaOrganizacion();
-  const tKit = useKitT();
+  // Folios y cartera sin moneda propia: la base de la organización.
+  const { formatear, code: monedaBase } = useMonedaOrganizacion();
   const { instante, plana } = useFechasFicha();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [cuentas, setCuentas] = useState<CuentaPorCobrar[]>([]);
-  const [resumen, setResumen] = useState({
-    totalDeuda: 0,
-    totalVencido: 0,
-    totalPendiente: 0
-  });
   const [folios, setFolios] = useState<FolioPendiente[]>([]);
+  const [cargandoFolios, setCargandoFolios] = useState(true);
+  const [pagina, setPagina] = useState(1);
+  const [tamano, setTamano] = useState<number>(25);
+  const [cobrarId, setCobrarId] = useState<string | null>(null);
+  const [recordar, setRecordar] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
-  // Estados de paginación
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
-
-  // Calcular datos paginados
-  const totalItems = cuentas.length;
-  const totalPages = Math.ceil(totalItems / pageSize);
-
-  const paginatedCuentas = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return cuentas.slice(startIndex, endIndex);
-  }, [cuentas, currentPage, pageSize]);
-
-  // Resetear página cuando cambia el tamaño
-  const handlePageSizeChange = (newSize: string) => {
-    setPageSize(Number(newSize));
-    setCurrentPage(1);
-  };
-
-  // Funciones de navegación
-  const goToFirstPage = () => setCurrentPage(1);
-  const goToLastPage = () => setCurrentPage(totalPages);
-  const goToPrevPage = () => setCurrentPage(prev => Math.max(1, prev - 1));
-  const goToNextPage = () => setCurrentPage(prev => Math.min(totalPages, prev + 1));
-
-  // Calcular rango de elementos mostrados
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const endItem = Math.min(currentPage * pageSize, totalItems);
-
-  // Cargar datos de cuentas por cobrar
+  // Folios del PMS con saldo: reservas del cliente → folios → ítems pendientes.
   useEffect(() => {
-    const fetchCuentas = async () => {
+    let cancelado = false;
+    void (async () => {
+      setCargandoFolios(true);
       try {
-        setLoading(true);
-        setError(false);
-
-        // La tabla accounts_receivable usa UUID como customer_id, no INTEGER
-        // Usamos directamente el clienteId que ya es un UUID
-
-        if (clienteId && clienteId.length > 0) {
-          try {
-            // Consultar cuentas por cobrar usando el UUID del cliente directamente
-            console.log('Consultando cuentas para cliente UUID:', clienteId);
-            console.log('Consultando accounts_receivable con organizationId:', organizationId);
-
-            // Utilizamos la función RPC con SECURITY DEFINER para evitar problemas con RLS
-            const { data, error } = await supabase
-              .rpc('obtener_cuentas_por_cobrar_cliente', {
-                p_customer_id: clienteId,
-                p_organization_id: organizationId
-              });
-
-            if (error) {
-              console.log('Error en consulta de cuentas:', error);
-              setError(true);
-            } else {
-              console.log('Datos recibidos de cuentas:', data);
-
-              if (data && data.length > 0) {
-                // Convertir los datos recibidos al formato que espera el componente
-                const cuentasFormateadas: CuentaPorCobrar[] = (data as CuentaCruda[]).map((cuenta) => ({
-                  ...cuenta,
-                  amount: parseFloat(String(cuenta.amount || '0')),
-                  balance: parseFloat(String(cuenta.balance || '0'))
-                }));
-
-                console.log('Cuentas formateadas:', cuentasFormateadas);
-                setCuentas(cuentasFormateadas);
-
-                // Calcular resumen de deudas con los datos ya convertidos
-                const totalDeuda = cuentasFormateadas.reduce((sum, cuenta) =>
-                  sum + cuenta.amount, 0);
-                const totalPendiente = cuentasFormateadas.reduce((sum, cuenta) =>
-                  sum + cuenta.balance, 0);
-                const totalVencido = cuentasFormateadas
-                  .filter((cuenta) => cuenta.days_overdue > 0 && cuenta.status !== 'paid')
-                  .reduce((sum, cuenta) => sum + cuenta.balance, 0);
-
-                setResumen({
-                  totalDeuda,
-                  totalVencido,
-                  totalPendiente
-                });
-
-                // Ya tenemos datos, salimos de la función
-                setLoading(false);
-                return;
-              } else {
-                console.log('No se encontraron cuentas por cobrar para el cliente');
-              }
-            }
-          } catch (idErr) {
-            console.error('Error al consultar cuentas:', idErr);
-          }
+        const { data: reservationsData } = await supabase
+          .from('reservations')
+          .select('id, checkin, checkout, reservation_spaces ( spaces ( label ) )')
+          .eq('customer_id', clienteId)
+          .eq('organization_id', organizationId);
+        const reservas = (reservationsData ?? []) as unknown as ReservaConEspacios[];
+        if (reservas.length === 0) {
+          if (!cancelado) setFolios([]);
+          return;
         }
-
-        // Si llegamos aquí, no hay datos o no pudimos hacer la consulta
-        // Mostramos lista vacía
-        setCuentas([]);
-        setResumen({
-          totalDeuda: 0,
-          totalVencido: 0,
-          totalPendiente: 0
+        const { data: foliosData } = await supabase
+          .from('folios')
+          .select('id, reservation_id, balance, status')
+          .in(
+            'reservation_id',
+            reservas.map((r) => r.id),
+          )
+          .order('created_at', { ascending: false });
+        const conSaldo = ((foliosData ?? []) as FolioCrudo[]).filter((f) => Number(f.balance) > 0);
+        if (conSaldo.length === 0) {
+          if (!cancelado) setFolios([]);
+          return;
+        }
+        const { data: itemsData } = await supabase
+          .from('folio_items')
+          .select('id, folio_id, payment_status')
+          .in(
+            'folio_id',
+            conSaldo.map((f) => f.id),
+          );
+        const porFolio = new Map<string, ItemFolio[]>();
+        for (const item of (itemsData ?? []) as ItemFolio[]) porFolio.set(item.folio_id, [...(porFolio.get(item.folio_id) ?? []), item]);
+        const reservaDe = new Map(reservas.map((r) => [r.id, r]));
+        const lista = conSaldo.map((f) => {
+          const items = porFolio.get(f.id) ?? [];
+          const reserva = reservaDe.get(f.reservation_id);
+          return {
+            id: f.id,
+            reservation_id: f.reservation_id,
+            balance: Number(f.balance),
+            items_pendientes: items.filter((i) => i.payment_status === 'pending').length,
+            items_total: items.length,
+            checkin: reserva?.checkin,
+            checkout: reserva?.checkout,
+            space_label: reserva?.reservation_spaces?.[0]?.spaces?.label,
+          };
         });
-
-        // 2. Cargar folios PMS con saldo pendiente del cliente
-        try {
-          const { data: reservationsData } = await supabase
-            .from('reservations')
-              .select(`
-                id, checkin, checkout, status,
-                reservation_spaces (
-                  spaces ( label )
-                )
-              `)
-              .eq('customer_id', clienteId)
-              .eq('organization_id', organizationId);
-
-          if (reservationsData && reservationsData.length > 0) {
-            const reservas = reservationsData as ReservaConEspacios[];
-            const reservationIds = reservas.map((r) => r.id);
-
-            const { data: foliosData } = await supabase
-              .from('folios')
-              .select('id, reservation_id, balance, status')
-              .in('reservation_id', reservationIds)
-              .order('created_at', { ascending: false });
-
-            if (foliosData && foliosData.length > 0) {
-              const foliosCrudos = foliosData as FolioCrudo[];
-              const folioIds = foliosCrudos.map((f) => f.id);
-
-              const { data: folioItemsData } = await supabase
-                .from('folio_items')
-                .select('id, folio_id, amount, payment_status')
-                .in('folio_id', folioIds);
-
-              const itemsByFolio: Record<string, ItemFolio[]> = {};
-              ((folioItemsData || []) as ItemFolio[]).forEach((item) => {
-                if (!itemsByFolio[item.folio_id]) itemsByFolio[item.folio_id] = [];
-                itemsByFolio[item.folio_id].push(item);
-              });
-
-              const reservationMap: Record<string, ReservaConEspacios> = {};
-              reservas.forEach((r) => {
-                reservationMap[r.id] = r;
-              });
-
-              const foliosPendientes: FolioPendiente[] = foliosCrudos
-                .filter((f) => Number(f.balance) > 0)
-                .map((f) => {
-                  const items = itemsByFolio[f.id] || [];
-                  const pendingItems = items.filter((i) => i.payment_status === 'pending');
-                  const pendingAmount = pendingItems.reduce((sum, i) => sum + Number(i.amount), 0);
-                  const reservation = reservationMap[f.reservation_id];
-                  const spaceLabel = reservation?.reservation_spaces?.[0]?.spaces?.label;
-
-                  return {
-                    id: f.id,
-                    reservation_id: f.reservation_id,
-                    balance: Number(f.balance),
-                    status: f.status,
-                    items_pendientes: pendingItems.length,
-                    items_total: items.length,
-                    monto_pendiente: pendingAmount,
-                    checkin: reservation?.checkin,
-                    checkout: reservation?.checkout,
-                    space_label: spaceLabel,
-                  };
-                });
-
-              setFolios(foliosPendientes);
-            }
-          }
-        } catch (folioErr) {
-          console.error('Error al cargar folios:', folioErr);
-        }
+        if (!cancelado) setFolios(lista);
       } catch (err) {
-        console.error('Error al cargar cuentas por cobrar:', err);
-        // No mostramos error, simplemente lista vacía
-        setCuentas([]);
-        setResumen({
-          totalDeuda: 0,
-          totalVencido: 0,
-          totalPendiente: 0
-        });
+        console.error('Error al cargar folios:', err);
+        if (!cancelado) setFolios([]);
       } finally {
-        setLoading(false);
+        if (!cancelado) setCargandoFolios(false);
       }
+    })();
+    return () => {
+      cancelado = true;
     };
-
-    fetchCuentas();
   }, [clienteId, organizationId]);
 
-  // Función para determinar el color de estado
-  const getStatusColor = (status: string, daysOverdue: number) => {
-    if (status === 'paid') {
-      return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-500';
-    }
+  const facturas = useMemo(() => cartera.filas.filter((f) => f.origen === 'factura'), [cartera.filas]);
+  const otras = useMemo(() => cartera.filas.filter((f) => f.origen !== 'factura'), [cartera.filas]);
+  const filas: Fila[] = useMemo(
+    () => [
+      ...facturas.map((cuenta) => ({ tipo: 'factura' as const, cuenta })),
+      ...folios.map((folio) => ({ tipo: 'folio' as const, folio })),
+      ...otras.map((cuenta) => ({ tipo: 'cuenta' as const, cuenta })),
+    ],
+    [facturas, folios, otras],
+  );
+  useEffect(() => setPagina(1), [filas.length, tamano]);
 
-    if (daysOverdue > 30) {
-      return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-500';
-    }
+  const carteraLista = cartera.estado === 'listo';
+  const porCobrar = cartera.resumen?.por_cobrar ?? 0;
+  const vencidas = cartera.filas.filter((f) => f.dias > 0);
+  const diasMax = vencidas.reduce((m, f) => Math.max(m, f.dias), 0);
+  const totalFolios = folios.reduce((s, f) => s + f.balance, 0);
+  const itemsFolios = folios.reduce((s, f) => s + f.items_pendientes, 0);
+  const deuda = porCobrar + totalFolios;
+  const puedeCobrarFila = cartera.puedeCobrar && !cartera.permisosCargando;
+  const monedas = cartera.resumen?.monedas?.length ? cartera.resumen.monedas : [monedaBase];
+  const motivoRecordatorio = !puedeCobrarFila ? t('motivos.sinPermisoCobro') : vencidas.length === 0 ? t('finanzas.sinVencidas') : null;
 
-    if (daysOverdue > 0) {
-      return 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-500';
-    }
+  const cargandoTodo = cartera.estado === 'cargando' || cargandoFolios;
+  const visibles = filas.slice((pagina - 1) * tamano, pagina * tamano);
 
-    return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-500';
+  const enviarRecordatorios = async () => {
+    setEnviando(true);
+    let enviados = 0;
+    try {
+      for (const f of vencidas) {
+        const r = await enviarRecordatorio(f.id, { canal: 'correo', origen: 'finanzas' });
+        if (r.enviado) enviados += 1;
+      }
+      if (enviados > 0) toastSuccess(t('finanzas.recordatorioEnviado', { count: enviados }));
+      else toastError(t('finanzas.recordatorioSinEnviar'));
+      setRecordar(false);
+      cartera.recargar();
+    } catch {
+      toastError(enviados > 0 ? t('finanzas.recordatorioParcial', { count: enviados }) : t('finanzas.recordatorioSinEnviar'));
+    } finally {
+      setEnviando(false);
+    }
   };
 
-  // Función para mostrar texto de estado
-  const getStatusText = (status: string, daysOverdue: number) => {
-    if (status === 'paid') {
-      return t('cuentas.estados.pagado');
-    }
+  const botonDeshabilitado = (motivo: string | null, contenido: React.ReactNode, onClick: () => void, variante: 'primario' | 'secundario', id: string) => (
+    <>
+      <button
+        type="button"
+        disabled={!!motivo}
+        onClick={onClick}
+        title={motivo ?? undefined}
+        aria-describedby={motivo ? id : undefined}
+        className={clasesBoton({ variante, tamano: 'sm' })}
+      >
+        {contenido}
+      </button>
+      {motivo && (
+        <span id={id} className="sr-only">
+          {motivo}
+        </span>
+      )}
+    </>
+  );
 
-    if (daysOverdue > 30) {
-      return t('cuentas.estados.vencido', { count: daysOverdue });
-    }
+  const estadoCuenta = (f: FilaCartera) =>
+    f.dias > 0 ? <StatusBadge estado="overdue" etiqueta={t('finanzas.vencidaDias', { dias: f.dias })} /> : <StatusBadge estado={f.estado} />;
 
-    if (daysOverdue > 0) {
-      return t('cuentas.estados.atrasado', { count: daysOverdue });
-    }
-
-    return t('cuentas.estados.pendiente');
-  };
-
-  // Mostrar estado de carga
-  if (loading) {
-    return <TableSkeleton rows={5} columns={5} />;
-  }
-
-  // Mostrar error si existe
-  if (error) {
-    return (
-      <div className="w-full py-8">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <p className="text-red-700 dark:text-red-400">{t('cuentas.errorCarga')}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Mostrar mensaje si no hay cuentas ni folios
-  if (cuentas.length === 0 && folios.length === 0) {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 text-center">
-        <div className="w-16 h-16 mx-auto bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <h3 className="mt-4 text-lg font-medium text-gray-900 dark:text-white">{t('cuentas.vacioTitulo')}</h3>
-        <p className="mt-2 text-gray-500 dark:text-gray-400">
-          {t('cuentas.vacioDescripcion')}
+  const filaCuenta = (f: FilaCartera, tipo: 'factura' | 'cuenta') => (
+    <li key={f.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-3 py-3 sm:flex-nowrap">
+      <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-subtle text-fg-secondary">
+        {tipo === 'factura' ? <Receipt className="size-4" strokeWidth={1.5} /> : <WalletCards className="size-4" strokeWidth={1.5} />}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="truncate text-sm font-medium leading-5 text-fg">
+          {tipo === 'factura'
+            ? t('finanzas.factura', { numero: f.numero ?? '' })
+            : f.numero
+              ? t('finanzas.cuentaNumero', { numero: f.numero })
+              : t('finanzas.cuenta')}
+        </p>
+        <p className={cn('text-xs leading-4', f.dias > 0 ? 'text-danger-text' : 'text-fg-muted')}>
+          {f.vencimiento ? t('finanzas.vence', { fecha: instante(f.vencimiento, DIA_MES_ANIO) }) : t('finanzas.sinVencimiento')}
+          {f.cuotas > 0 ? ` · ${t('finanzas.cuotas', { pendientes: f.cuotas_pendientes, count: f.cuotas })}` : ''}
         </p>
       </div>
-    );
-  }
-
-  // Mostrar tabla de cuentas y folios
-  return (
-    <div className="space-y-6">
-      {/* Sección de folios PMS con saldo pendiente */}
-      {folios.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border-l-4 border-amber-400">
-          <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-            <div className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-amber-500" />
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{t('cuentas.foliosTitulo')}</h3>
-              <span className="ml-auto text-sm font-bold text-amber-600 dark:text-amber-400">
-                {formatear(folios.reduce((sum, f) => sum + f.balance, 0))}
-              </span>
-            </div>
-          </div>
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
-            {folios.map((folio) => (
-              <div key={folio.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800/70">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {folio.space_label && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
-                          {folio.space_label}
-                        </span>
-                      )}
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                        folio.status === 'open'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                          : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                      }`}>
-                        {folio.status === 'open' ? t('cuentas.folioAbierto') : t('cuentas.folioCerrado')}
-                      </span>
-                    </div>
-                    {folio.checkin && folio.checkout && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {plana(folio.checkin, DIA_MES)} → {plana(folio.checkout, DIA_MES)}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {t('cuentas.itemsPendientes', { pendientes: folio.items_pendientes, count: folio.items_total })}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
-                      {formatear(folio.balance)}
-                    </span>
-                    <a
-                      href={`/app/pms/folios?reservation=${folio.reservation_id}`}
-                      className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      {t('cuentas.verFolio')} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tarjetas de resumen (solo si hay cuentas por cobrar) */}
-      {cuentas.length > 0 && (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.totalDeuda')}</div>
-          <div className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
-            {formatear(resumen.totalDeuda)}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.montoVencido')}</div>
-          <div className="mt-1 text-xl font-semibold text-red-600 dark:text-red-400">
-            {formatear(resumen.totalVencido)}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.pendientePago')}</div>
-          <div className="mt-1 text-xl font-semibold text-blue-600 dark:text-blue-400">
-            {formatear(resumen.totalPendiente)}
-          </div>
-        </div>
+      {estadoCuenta(f)}
+      <div className="flex min-w-[104px] flex-col items-end">
+        <span className={cn('text-sm font-medium tabular-nums', f.dias > 0 ? 'text-danger-text' : 'text-fg')}>{formatear(f.saldo)}</span>
+        {f.monto > f.saldo && <span className="text-xs text-fg-muted tabular-nums">{t('finanzas.deMonto', { monto: formatear(f.monto) })}</span>}
       </div>
-      )}
-
-      {/* Tabla de cuentas por cobrar (solo si hay cuentas) */}
-      {cuentas.length > 0 && (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-max text-left">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-700/50">
-                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  {t('cuentas.columnas.idVenta')}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  {t('cuentas.columnas.monto')}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  {t('cuentas.columnas.saldo')}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  {t('cuentas.columnas.vencimiento')}
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                  {t('cuentas.columnas.estado')}
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {paginatedCuentas.map(cuenta => (
-                <tr key={cuenta.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/70">
-                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {cuenta.sale_id || '-'}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {formatear(cuenta.amount)}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {formatear(cuenta.balance)}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {instante(cuenta.due_date)}
-                  </td>
-                  <td className="px-3 sm:px-6 py-4 text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cuenta.status, cuenta.days_overdue)}`}>
-                      {getStatusText(cuenta.status, cuenta.days_overdue)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Paginación */}
-        {totalItems > 0 && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Información y selector de tamaño */}
-              <div className="flex flex-wrap items-center gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.paginacion.mostrar')}</span>
-                  <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger
-                      className="w-[70px] h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                      aria-label={tKit('paginacion.porPaginaEtiqueta')}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PAGE_SIZE_OPTIONS.map(size => (
-                        <SelectItem key={size} value={size.toString()}>
-                          {size}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{t('cuentas.paginacion.porPagina')}</span>
-                </div>
-
-                <div className="hidden sm:block h-4 w-px bg-gray-300 dark:bg-gray-600" />
-
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {t.rich('cuentas.paginacion.rango', {
-                    desde: startItem,
-                    hasta: endItem,
-                    total: totalItems,
-                    count: totalItems,
-                    b: (fragmento) => <span className="font-medium">{fragmento}</span>,
-                  })}
-                </span>
-              </div>
-
-              {/* Controles de navegación */}
-              <div className="flex flex-wrap items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
-                  onClick={goToFirstPage}
-                  disabled={currentPage === 1}
-                  title={tKit('paginacion.primera')}
-                  aria-label={tKit('paginacion.primera')}
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  title={tKit('paginacion.anterior')}
-                  aria-label={tKit('paginacion.anterior')}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-
-                {/* Indicador de página */}
-                <div className="flex flex-wrap items-center gap-1 px-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
-                    {t.rich('cuentas.paginacion.pagina', {
-                      actual: currentPage,
-                      total: totalPages,
-                      destacado: (fragmento) => (
-                        <span className="font-semibold text-blue-600 dark:text-blue-400">{fragmento}</span>
-                      ),
-                      b: (fragmento) => <span className="font-medium">{fragmento}</span>,
-                    })}
-                  </span>
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  title={tKit('paginacion.siguiente')}
-                  aria-label={tKit('paginacion.siguiente')}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-gray-200 dark:border-gray-700"
-                  onClick={goToLastPage}
-                  disabled={currentPage === totalPages}
-                  title={tKit('paginacion.ultima')}
-                  aria-label={tKit('paginacion.ultima')}
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Link href={`/app/finanzas/cuentas-por-cobrar/${encodeURIComponent(f.id)}`} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+          {t('finanzas.ver')}
+        </Link>
+        {puedeCobrarFila && f.saldo > 0 && (
+          <button type="button" onClick={() => setCobrarId(f.id)} className={clasesBoton({ tamano: 'sm' })}>
+            {t('pagina.registrarPago')}
+          </button>
         )}
       </div>
+    </li>
+  );
+
+  const filaFolio = (f: FolioPendiente) => (
+    <li key={f.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-surface px-3 py-3 sm:flex-nowrap">
+      <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-subtle text-fg-secondary">
+        <BedDouble className="size-4" strokeWidth={1.5} />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className="truncate text-sm font-medium leading-5 text-fg">{t('finanzas.folio')}</p>
+        <p className="text-xs leading-4 text-fg-muted">
+          {[
+            f.space_label,
+            f.checkin && f.checkout ? `${plana(f.checkin, DIA_MES)} → ${plana(f.checkout, DIA_MES)}` : null,
+            t('cuentas.itemsPendientes', { pendientes: f.items_pendientes, count: f.items_total }),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      </div>
+      <Badge tono="informacion" apariencia="contorno" tamano="sm">
+        {t('cuentas.folioAbierto')}
+      </Badge>
+      <div className="flex min-w-[104px] flex-col items-end">
+        <span className="text-sm font-medium tabular-nums text-fg">{formatear(f.balance)}</span>
+        <span className="text-xs text-fg-muted">{t('finanzas.items', { count: f.items_total })}</span>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <Link href={`/app/pms/reservas/${encodeURIComponent(f.reservation_id)}`} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+          {t('finanzas.ver')}
+        </Link>
+        <Link href={`/app/pms/folios?reservation=${encodeURIComponent(f.reservation_id)}`} className={clasesBoton({ tamano: 'sm' })}>
+          {t('finanzas.pagar')}
+        </Link>
+      </div>
+    </li>
+  );
+
+  return (
+    <div className="flex flex-col gap-4">
+      <section aria-label={t('finanzas.kpisAria')} className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <StatCard
+          etiqueta={t('finanzas.deudaTotal')}
+          valor={carteraLista ? formatear(deuda) : cartera.estado === 'cargando' ? '' : formatear(totalFolios)}
+          detalle={deuda > 0 ? t('finanzas.facturasMasFolios') : t('finanzas.sinDeuda')}
+          tono={deuda > 0 ? 'advertencia' : 'neutro'}
+          iconoDetalle={deuda > 0 ? TriangleAlert : undefined}
+          cargando={cargandoTodo}
+          tamano="sm"
+        />
+        <StatCard
+          etiqueta={t('finanzas.foliosPendientes')}
+          valor={formatear(totalFolios)}
+          detalle={folios.length > 0 ? t('finanzas.foliosDetalle', { items: itemsFolios, count: folios.length }) : t('finanzas.sinFolios')}
+          cargando={cargandoFolios}
+          tamano="sm"
+        />
+        <StatCard
+          etiqueta={t('finanzas.facturasPorCobrar')}
+          valor={carteraLista ? formatear(porCobrar) : '—'}
+          detalle={
+            cartera.estado === 'sinPermiso'
+              ? t('resumen.carteraSinPermiso')
+              : cartera.estado === 'error'
+                ? t('resumen.carteraError')
+                : vencidas.length > 0
+                  ? t('finanzas.vencidasDetalle', { count: vencidas.length, dias: diasMax })
+                  : t('finanzas.alDia')
+          }
+          tono={vencidas.length > 0 ? 'peligro' : 'neutro'}
+          tendencia={vencidas.length > 0 ? 'baja' : undefined}
+          cargando={cartera.estado === 'cargando'}
+          tamano="sm"
+        />
+      </section>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {botonDeshabilitado(
+          motivoPago,
+          <>
+            <HandCoins aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('pagina.registrarPago')}
+          </>,
+          onRegistrarPago,
+          'primario',
+          'motivo-finanzas-pago',
+        )}
+        {botonDeshabilitado(
+          motivoRecordatorio,
+          <>
+            <Bell aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('finanzas.enviarRecordatorio')}
+          </>,
+          () => setRecordar(true),
+          'secundario',
+          'motivo-finanzas-recordatorio',
+        )}
+        {botonDeshabilitado(
+          motivoEstadoCuenta,
+          <>
+            <FileText aria-hidden="true" className="size-4" strokeWidth={1.5} />
+            {t('finanzas.estadoCuenta')}
+          </>,
+          onEstadoCuenta,
+          'secundario',
+          'motivo-finanzas-estado',
+        )}
+        <span className="flex-1" />
+        <Badge tono="neutro" apariencia="contorno" tamano="md" className="bg-surface">
+          {t('finanzas.moneda', { codigo: monedas.join(' · ') })}
+        </Badge>
+      </div>
+
+      <section aria-labelledby="finanzas-lista" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
+        <h3 id="finanzas-lista" className="text-[13px] font-semibold leading-[19px] text-fg">
+          {t('finanzas.listaTitulo', { facturas: facturas.length, folios: folios.length, cuentas: otras.length })}
+        </h3>
+
+        {cartera.estado === 'sinPermiso' && (
+          <p className="rounded-lg border border-line bg-subtle px-3 py-2 text-xs text-fg-secondary">{t('finanzas.sinPermiso')}</p>
+        )}
+        {cartera.estado === 'error' && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line-danger bg-danger-subtle px-3 py-2 text-xs text-danger-text">
+            <span className="flex-1">{t('cuentas.errorCarga')}</span>
+            <button type="button" onClick={cartera.recargar} className={clasesBoton({ variante: 'secundario', tamano: 'sm' })}>
+              {t('finanzas.reintentar')}
+            </button>
+          </div>
+        )}
+
+        {cargandoTodo ? (
+          <div className="flex flex-col gap-2" aria-busy="true">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : filas.length === 0 ? (
+          <EmptyState compacto icono={WalletCards} titulo={t('cuentas.vacioTitulo')} descripcion={t('cuentas.vacioDescripcion')} />
+        ) : (
+          <>
+            <ul className="flex flex-col gap-2">
+              {visibles.map((f) => (f.tipo === 'folio' ? filaFolio(f.folio) : filaCuenta(f.cuenta, f.tipo)))}
+            </ul>
+            {filas.length > TAMANOS[0] && (
+              <Pagination
+                pagina={pagina}
+                tamano={tamano}
+                total={filas.length}
+                onPaginaChange={setPagina}
+                onTamanoChange={setTamano}
+                opcionesTamano={TAMANOS}
+                sustantivo={{ singular: t('finanzas.sustantivo.singular'), plural: t('finanzas.sustantivo.plural') }}
+              />
+            )}
+          </>
+        )}
+        {carteraLista && cartera.filas.length > 0 && (
+          <Link
+            href={`/app/finanzas/cuentas-por-cobrar/cliente/${encodeURIComponent(clienteId)}`}
+            className="inline-flex items-center gap-1 self-start rounded text-xs font-medium text-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            {t('finanzas.verCartera')}
+            <ChevronRight aria-hidden="true" className="size-3.5" strokeWidth={1.5} />
+          </Link>
+        )}
+      </section>
+
+      {cobrarId && (
+        <RegistrarPagoConectado
+          abierto={cobrarId !== null}
+          onAbiertoChange={(v) => !v && setCobrarId(null)}
+          destino={{ tipo: 'cuenta', id: cobrarId }}
+          origen="ficha_cliente"
+          onRegistrado={() => cartera.recargar()}
+        />
       )}
+
+      <ConfirmDialog
+        abierto={recordar}
+        onAbiertoChange={(v) => !enviando && setRecordar(v)}
+        titulo={t('finanzas.recordatorioTitulo')}
+        descripcion={t('finanzas.recordatorioDescripcion', { count: vencidas.length })}
+        textoConfirmar={t('finanzas.enviarRecordatorio')}
+        onConfirmar={enviarRecordatorios}
+        tono="marca"
+        icono={Bell}
+        cargando={enviando}
+      />
     </div>
   );
 }

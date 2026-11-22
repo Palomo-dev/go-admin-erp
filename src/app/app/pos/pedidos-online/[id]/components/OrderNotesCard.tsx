@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { clasesBoton } from '@/components/kit';
 import { notasInternasVisibles } from '@/components/pos/pedidos-online/notasPedido';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderNotesCardProps {
   order: WebOrder;
@@ -43,7 +44,7 @@ export function OrderNotesCard({ order, comandaId = null, onGuardarNotaInterna }
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <FileText className="size-5" aria-hidden="true" strokeWidth={1.5} />
+          <IconoCabecera icono={FileText} />
           {t('ficha.notas')}
         </CardTitle>
       </CardHeader>

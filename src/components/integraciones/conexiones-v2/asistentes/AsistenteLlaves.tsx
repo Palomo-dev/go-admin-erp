@@ -27,6 +27,7 @@ const PANEL_PROVEEDOR: Record<string, string> = {
   wompi: 'https://comercios.wompi.co',
   mercadopago: 'https://www.mercadopago.com.co/developers/panel/app',
   payu: 'https://merchants.payulatam.com',
+  bold: 'https://panel.bold.co',
   stripe: 'https://dashboard.stripe.com/apikeys',
   paypal: 'https://developer.paypal.com/dashboard/applications',
   sendgrid: 'https://app.sendgrid.com/settings/api_keys',
@@ -145,7 +146,8 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
     try {
       const r = await apiConexiones.guardarLlaves({ proveedor, ambiente, valores, conexionId: conexionReemplazo ?? null, sucursalId: conexionReemplazo ? null : sucursalId ?? null });
       setPrueba(r.prueba);
-      const estado = estadoTrasPrueba(r.prueba.resultado);
+      // Bold en pruebas: no se pueden probar, pero quedaron guardadas (se confirman con el primer pago).
+      const estado = r.guardadaSinPrueba ? 'correcta' : estadoTrasPrueba(r.prueba.resultado);
       setEstadoPrueba(estado);
       if (estado === 'correcta') {
         setValores({}); // ya están guardadas en el servidor: el navegador las olvida
@@ -297,6 +299,9 @@ export function AsistenteLlaves({ item, abierto, onCerrar, onConectado, conexion
       <div className="flex flex-col gap-4">
         {aviso && <AvisoTonal tono={aviso.tono} titulo={aviso.titulo} descripcion={aviso.descripcion} rol="alert" />}
         {estadoPrueba === 'probando' && <AvisoTonal tono="informacion" rol="status" titulo={t('asistente.llaves.probando', { nombre })} />}
+        {(def.sinPruebaEn ?? []).includes(ambiente) && (
+          <AvisoTonal tono="informacion" titulo={t('asistente.llaves.sinPruebaEnAmbiente.titulo', { nombre })} descripcion={t('asistente.llaves.sinPruebaEnAmbiente.descripcion', { nombre })} />
+        )}
         {conexionReemplazo && actuales.length > 0 && (
           <div className="rounded-lg border border-line bg-subtle px-3 py-2">
             <p className="text-sm font-medium text-fg">{t('credencial.actuales')}</p>

@@ -53,8 +53,9 @@ export const SERVICIOS: readonly DefinicionServicio[] = [
   { id: 'wompi', grupo: 'cobros', proveedor: 'wompi', conectores: ['wompi_co'], asistente: 'llaves', llaves: 'wompi', conectorReal: true },
   { id: 'mercadopago', grupo: 'cobros', proveedor: 'mercadopago', conectores: ['mp_checkout'], asistente: 'llaves', llaves: 'mercadopago', conectorReal: true },
   { id: 'payu', grupo: 'cobros', proveedor: 'payu', conectores: ['payu_co'], asistente: 'llaves', llaves: 'payu', conectorReal: true },
-  // Bold necesita datáfonos por sucursal: sigue en el formulario avanzado, que ya los guarda.
-  { id: 'bold', grupo: 'cobros', proveedor: 'bold', conectores: ['bold_link', 'bold_pos'], asistente: 'avanzado', enlace: '/app/integraciones/conexiones/nueva?provider=bold', conectorReal: true },
+  // Bold (2026-11-21): las llaves (link de pago y tienda) van por el asistente nuevo. Los datáfonos
+  // por sucursal (`bold_pos`) siguen en el formulario avanzado: RUTA_DATAFONOS_BOLD.
+  { id: 'bold', grupo: 'cobros', proveedor: 'bold', conectores: ['bold_link', 'bold_pos'], asistente: 'llaves', llaves: 'bold', conectorReal: true },
   { id: 'stripe', grupo: 'cobros', proveedor: 'stripe', conectores: ['stripe_payments'], asistente: 'llaves', llaves: 'stripe', conectorReal: true },
   { id: 'paypal', grupo: 'cobros', proveedor: 'paypal', conectores: ['paypal_checkout'], asistente: 'llaves', llaves: 'paypal', conectorReal: true },
   // Hospedaje y agencias de viaje (5). Booking/Expedia: el modo iCal es real; el de API pide

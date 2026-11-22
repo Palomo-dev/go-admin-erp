@@ -23,11 +23,13 @@ jest.mock('next/navigation', () => ({
 }));
 
 const pedirVentas = jest.fn();
+const setSelectedBranch = jest.fn();
 const pedirCifrasVentas = jest.fn();
 jest.mock('@/lib/pos/ventas/clienteVentas', () => ({
   ...jest.requireActual('@/lib/pos/ventas/clienteVentas'),
   pedirVentas: (...a: unknown[]) => pedirVentas(...a),
   pedirCifrasVentas: (...a: unknown[]) => pedirCifrasVentas(...a),
+  pedirCajerosVentas: jest.fn(async () => [{ id: 'u1', nombre: 'Laura Restrepo' }]),
   pedirPermisosVentas: jest.fn(() => new Promise(() => undefined)),
   pedirExportacionVentas: jest.fn(),
 }));
@@ -37,7 +39,7 @@ jest.mock('@/lib/hooks/useOrganization', () => ({
   useOrganization: () => ({ organization: { id: 7, name: 'Mi empresa S.A.S.' }, isLoading: false }),
 }));
 jest.mock('@/lib/context/BranchContext', () => ({
-  useBranch: () => ({ branchFilter: 3, branches: [{ id: 3, name: 'Sucursal Principal' }], isLoading: false }),
+  useBranch: () => ({ branchFilter: 3, branches: [{ id: 3, name: 'Sucursal Principal' }, { id: 4, name: 'Norte' }], isLoading: false, canSelectAll: true, setSelectedBranch }),
 }));
 jest.mock('@/lib/context/OrganizationTimezoneContext', () => ({
   useFormatDate: () => ({ getToday: () => '2026-09-28', formatDate: (v: string | null) => v ?? '', timezone: 'America/Bogota' }),
@@ -56,10 +58,6 @@ jest.mock('@/lib/services/clientesListadoService', () => ({ listarClientes: jest
 jest.mock('@/components/ui/use-toast', () => ({ toastError: jest.fn(), toastSuccess: jest.fn(), toastWarning: jest.fn() }));
 jest.mock('@/components/finanzas/pagos/RegistrarPagoConectado', () => ({ RegistrarPagoConectado: () => null }));
 jest.mock('../AnularVentaDialog', () => ({ AnularVentaDialog: () => null }));
-jest.mock('@/components/kit', () => ({
-  ...jest.requireActual('@/components/kit'),
-  BranchBadgeActiva: () => null,
-}));
 
 import { VentasPage } from '../VentasPage';
 
@@ -89,9 +87,22 @@ const FILA: FilaVenta = {
 const CIFRAS = {
   desde: '2026-09-01',
   hasta: '2026-09-28',
-  desde_anterior: '2026-08-01',
-  actual: { ventas: 1, total: 50000, ticket_promedio: 50000, impuestos: 0, facturado: 0, por_canal: {}, por_sucursal: {} },
-  anterior: { ventas: 0, total: 0 },
+  actual: {
+    ventas: 48320500,
+    transacciones: 1312,
+    efectivas: 1309,
+    pagadas: 1286,
+    pendientes: 23,
+    anuladas: 3,
+    devueltas: 0,
+    ticket_promedio: 36850,
+    impuestos: 7712400,
+    impuestos_detalle: [
+      { codigo: 'IVA_19', tasa: 19, monto: 7402100 },
+      { codigo: 'INC_8', tasa: 8, monto: 310300 },
+    ],
+  },
+  anterior: { ventas: 43143303.57, transacciones: 1200 },
 } as unknown as CifrasVentas;
 
 beforeEach(() => {

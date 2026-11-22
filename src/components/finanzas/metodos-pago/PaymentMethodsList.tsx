@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ArrowDown, ArrowUp, Globe, Pencil, Plug, Plus, Power, Trash2, Zap } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { ToastAction } from "@/components/ui/toast";
 import { supabase } from "@/lib/supabase/config";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import {
   estadoListaMetodos,
   filtrarFilasMetodos,
   moverMetodo,
+  reordenarMetodos,
   resumirMetodos,
   type DestinoMetodo,
   type FilaMetodoPago,
@@ -70,7 +72,9 @@ export interface PaymentMethodsListProps {
  * Las escrituras son las de siempre, desde el navegador con RLS
  * (`organization_payment_methods`, permiso `billing_management`):
  * activar/desactivar (`is_active`, lo que lee el POS), tienda web
- * (`show_on_website`), orden (`website_display_order`, el que lee el POS) y
+ * (`show_on_website`), orden (`website_display_order`, el que leen el POS y la
+ * tienda web: arrastrando el tirador ⠿, manteniendo presionada la tarjeta en el
+ * celular, o con «Subir/Bajar» en ⋯; Figma «ordenar: …», 2026-11-21) y
  * quitar (eliminar solo sin pagos; el trigger 20261107220000 lo impide con pagos).
  */
 export default function PaymentMethodsList({
@@ -93,6 +97,9 @@ export default function PaymentMethodsList({
 
   const [localOrgMethods, setLocalOrgMethods] = useState<OrganizationPaymentMethod[]>(orgPaymentMethods);
   useEffect(() => setLocalOrgMethods(orgPaymentMethods), [orgPaymentMethods]);
+  // «Deshacer» corre desde un aviso creado antes: lee siempre los métodos actuales.
+  const metodosActuales = useRef(localOrgMethods);
+  metodosActuales.current = localOrgMethods;
   const [actualizando, setActualizando] = useState<string | null>(null);
   const [soloRevisar, setSoloRevisar] = useState(false);
 
@@ -172,23 +179,50 @@ export default function PaymentMethodsList({
     }
   };
 
-  /** Subir/Bajar: reescribe `website_display_order` = posición, como hacía el arrastre. */
-  const mover = async (fila: FilaMetodoPago, direccion: -1 | 1) => {
-    const orden = moverMetodo(filas, fila.id, direccion);
-    if (!orden) return;
-    const anteriores = localOrgMethods;
+  /**
+   * Guarda el orden (`website_display_order` = posición) de los métodos
+   * configurados. Solo escribe los que cambiaron; si algo falla vuelve al
+   * orden anterior. Con `deshacible`, el aviso ofrece «Deshacer».
+   */
+  const guardarOrden = async (orden: number[], movido: string | null, deshacible: boolean) => {
+    const anteriores = metodosActuales.current;
+    const previo = new Map(anteriores.map((m) => [m.id, m.website_display_order]));
+    const ordenPrevio = filas.filter((f) => f.original).map((f) => f.original!.id);
     setLocalOrgMethods((prev) => prev.map((m) => (orden.includes(m.id) ? { ...m, website_display_order: orden.indexOf(m.id) } : m)));
     try {
       for (const [indice, id] of orden.entries()) {
+        if (previo.get(id) === indice) continue;
         const { error } = await supabase.from("organization_payment_methods").update({ website_display_order: indice }).eq("id", id);
         if (error) throw error;
       }
-      toast({ title: t("toast.orden") });
+      const lugar = movido ? orden.findIndex((id) => `org-${id}` === movido) + 1 : 0;
+      const nombre = movido ? filas.find((f) => f.id === movido)?.nombre : undefined;
+      toast({
+        title: t("toast.orden"),
+        description: nombre && lugar > 0 ? t("toast.ordenDescripcion", { nombre, n: lugar }) : undefined,
+        action: deshacible ? (
+          <ToastAction altText={t("toast.deshacer")} onClick={() => void guardarOrden(ordenPrevio, null, false)}>
+            {t("toast.deshacer")}
+          </ToastAction>
+        ) : undefined,
+      });
     } catch (error: unknown) {
       setLocalOrgMethods(anteriores);
       console.error("Error al actualizar orden:", error);
       toast({ title: t("toast.errorTitulo"), description: t("toast.errorOrden"), variant: "destructive" });
     }
+  };
+
+  /** Subir/Bajar desde ⋯ (la vía sin arrastre). */
+  const mover = async (fila: FilaMetodoPago, direccion: -1 | 1) => {
+    const orden = moverMetodo(filas, fila.id, direccion);
+    if (orden) await guardarOrden(orden, fila.id, false);
+  };
+
+  /** Arrastrar y soltar: la fila `id` cae en el lugar de `sobre`. */
+  const soltar = (id: string, sobre: string) => {
+    const orden = reordenarMetodos(filas, id, sobre);
+    if (orden) void guardarOrden(orden, id, true);
   };
 
   // «Quitar» (Finanzas ronda 2, A12): con pagos se desactiva; sin pagos se elimina.
@@ -492,6 +526,11 @@ export default function PaymentMethodsList({
         tonoFila={(f) => (f.incompleta ? "advertencia" : undefined)}
         atributosFila={(f) => ({ "data-metodo": f.codigo, "data-incompleta": f.incompleta ? "true" : undefined })}
         tarjetaMovil={(f) => tarjeta(f)}
+        arrastre={
+          puedeGestionar && !soloRevisar
+            ? { puedeMover: (f) => Boolean(f.original), onMover: soltar }
+            : undefined
+        }
         filasEsqueleto={5}
         onReintentar={onRefresh}
         onLimpiarFiltros={() => setSoloRevisar(false)}

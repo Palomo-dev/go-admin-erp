@@ -44,8 +44,12 @@
  *   - «Lleve X pague Y» por producto, regalando las unidades más baratas.
  *     Si Y < X, de cada X se regalan X−Y (3 y 2 = 3x2: lleva 3, paga 2).
  *     Si Y ≥ X, Y son gratis además de las X que se pagan;
- *   - franja `start_time` / `end_time` en la zona de la organización (si el
- *     fin es menor que el inicio, cruza la medianoche);
+ *   - horario semanal en la zona de la organización (`vigencia.tramosSemanalesDe`):
+ *     días + franja `start_time` / `end_time` (si el fin es menor que el
+ *     inicio, cruza la medianoche y la madrugada es del día de inicio), o
+ *     `schedule_windows`, franjas «sábado 16:00 → domingo 14:00» con fin
+ *     exclusivo. Una ocurrencia pertenece al día en que empezó frente a
+ *     `end_date`;
  *   - bundle: con `bundle_price` > 0, cada producto incluido aporta
  *     `quantity` unidades por paquete (nulo = 1) y el precio se cobra por
  *     cada paquete completo. El sobrante va a precio normal. Si hay N, como
@@ -68,9 +72,8 @@
  */
 
 import { promocionAplicaConMetodos } from '@/lib/finanzas/metodosPagoAlcance';
-import { JS_DAY_TO_WEEKDAY, type WeekDay } from '@/components/pos/promociones/types';
-import { toPlainDate, DEFAULT_TIMEZONE } from '@/lib/utils/dateCore';
-import { appliesInTimeWindow, appliesOnWeekDay, appliesToBranch, diaEfectivoDeFranja, horaEnZona, isWithinEndDate, weekDayOfPlainDate } from '@/lib/promotions/vigencia';
+import type { WeekDay } from '@/components/pos/promociones/types';
+import { appliesToBranch, diaEnZona, vigenteEnHorario } from '@/lib/promotions/vigencia';
 import { esMedido } from '@/lib/pos/peso/modoVenta';
 import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
 
@@ -124,6 +127,11 @@ export interface FilaPromocion {
   /** `time` de Postgres (`HH:mm:ss`). Nulo = sin franja. */
   start_time?: string | null;
   end_time?: string | null;
+  /**
+   * Franjas semanales que pueden cruzar días (20261120180000). Con una lista
+   * no vacía manda sobre `applicable_days` + `start_time`/`end_time`.
+   */
+  schedule_windows?: unknown;
   /** Precio del paquete. Si es > 0, el bundle descuenta hasta ese precio. */
   bundle_price?: number | string | null;
   applies_to_pos?: boolean | null;
@@ -230,14 +238,7 @@ export function reglasDe(p: FilaPromocion): ReglaPromocion[] {
  * → `DEFAULT_TIMEZONE` (CLAUDE.md: solo como respaldo). Nunca `getDay()`.
  */
 export function diaSemanaEnZona(ahora: Date, zonaHoraria: string): WeekDay {
-  try {
-    const plano = toPlainDate(ahora, zonaHoraria || DEFAULT_TIMEZONE);
-    if (plano) return weekDayOfPlainDate(plano);
-  } catch {
-    /* zona inválida: respaldo */
-  }
-  const respaldo = toPlainDate(ahora, DEFAULT_TIMEZONE);
-  return respaldo ? weekDayOfPlainDate(respaldo) : JS_DAY_TO_WEEKDAY[ahora.getUTCDay()];
+  return diaEnZona(ahora, zonaHoraria);
 }
 
 /** ¿Quedan usos? `usage_limit` nulo = sin límite. */
@@ -252,23 +253,27 @@ function aplicaAlCanal(p: FilaPromocion, canal: CanalPromocion): boolean {
   return flag !== false;
 }
 
-/** ¿La promoción está vigente en este canal, instante, día y sucursal? */
-export function promocionVigente(p: FilaPromocion, ctx: ContextoPromocion, dia?: WeekDay): boolean {
+/**
+ * ¿La promoción está vigente en este canal, instante, horario semanal y
+ * sucursal? El horario (días, franja diaria o franjas semanales que cruzan
+ * días, y la cola de la franja frente a `end_date`) lo decide
+ * `vigenteEnHorario`, el mismo predicado de la cartelera y del aviso de
+ * solapamiento. `_dia` queda por compatibilidad: el día sale de `ctx`.
+ */
+export function promocionVigente(p: FilaPromocion, ctx: ContextoPromocion, _dia?: WeekDay): boolean {
   if (p.is_active === false) return false;
   if (!aplicaAlCanal(p, ctx.canal)) return false;
   if (p.start_date) {
     const inicio = new Date(p.start_date).getTime();
     if (!Number.isFinite(inicio) || inicio > ctx.ahora.getTime()) return false;
   }
-  if (!isWithinEndDate(p, ctx.ahora)) return false;
   if (!tieneUsosDisponibles(p)) return false;
-  const hora = horaEnZona(ctx.ahora, ctx.zonaHoraria);
-  // Franja que cruza la medianoche: la madrugada cuenta como el día anterior.
-  const diaReloj = dia ?? diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria);
-  if (!appliesOnWeekDay(p, diaEfectivoDeFranja(p, diaReloj, hora))) return false;
+  // Días, franja y `end_date` con la cola de la franja: la madrugada del
+  // domingo de «sábado 16:00 → domingo 14:00» sigue viva aunque la promoción
+  // venza el sábado.
+  if (!vigenteEnHorario(p, ctx.ahora, ctx.zonaHoraria)) return false;
   if (!appliesToBranch(p, ctx.sucursalId)) return false;
   if (!promocionAplicaConMetodos(p.payment_method_codes, ctx.metodosPago ?? null)) return false;
-  if (!appliesInTimeWindow(p, hora)) return false;
   return true;
 }
 
@@ -641,11 +646,10 @@ export function evaluarPromociones(
   const validas = lineas.map((l) => l.promo_excluded !== true && num(l.quantity) > 0 && num(l.unit_price) >= 0);
   if (lineas.length === 0 || promociones.length === 0) return VACIO(lineas.length);
 
-  const dia = diaSemanaEnZona(ctx.ahora, ctx.zonaHoraria);
   const subtotalCuenta = lineas.reduce((s, l, i) => s + (validas[i] ? totalLinea(l) : 0), 0);
   const validos = lineas.map((_, i) => i).filter((i) => validas[i]);
 
-  const elegibles = promociones.filter((p) => promocionVigente(p, ctx, dia)).sort(compararPrioridad);
+  const elegibles = promociones.filter((p) => promocionVigente(p, ctx)).sort(compararPrioridad);
 
   const calculos = new Map<string, CalculoListo>();
   const listos: CalculoListo[] = [];

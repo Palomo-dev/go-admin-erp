@@ -3,11 +3,11 @@
 /**
  * Cabecera de «Motivos de devolución» (Figma `874:579636`) con el kit:
  * `PageHeader` con migas (sustituyen al «←»), subtítulo con el conteo,
- * «Nuevo motivo» como primaria, Importar y Exportar en el «⋯», y la barra de
+ * «Importar CSV» y «Nuevo motivo» (primaria), Exportar en el «⋯», y la barra de
  * búsqueda con el filtro de estado en un `SegmentedControl`.
  */
 import { useTranslations } from 'next-intl';
-import { Download, Plus, RefreshCw, Tag, Upload } from 'lucide-react';
+import { ClipboardList, Download, Plus, RefreshCw, Upload } from 'lucide-react';
 import { ListToolbar, PageHeader, RowActionsMenu, SearchInput, SegmentedControl } from '@/components/kit';
 import { Button } from '@/components/ui/button';
 import { ReturnReasonFilters } from '../types';
@@ -56,7 +56,7 @@ export function ReturnReasonsHeader({
       <PageHeader
         titulo={t('titulo')}
         subtitulo={t('subtituloConteo', { total: totalReasons, activos: activeReasons })}
-        icono={Tag}
+        icono={ClipboardList}
         migas={[
           { etiqueta: tPagina('migas.pos'), href: '/app/pos' },
           { etiqueta: tPagina('migas.devoluciones'), href: '/app/pos/devoluciones' },
@@ -67,6 +67,10 @@ export function ReturnReasonsHeader({
             <Button variant="outline" size="icon" className="size-10" onClick={onRefresh} disabled={loading} aria-label={t('actualizar')} title={t('actualizar')}>
               <RefreshCw aria-hidden="true" className={`size-4 ${loading ? 'animate-spin' : ''}`} strokeWidth={1.5} />
             </Button>
+            <Button variant="outline" className="h-10 gap-2" onClick={onImportClick}>
+              <Upload aria-hidden="true" className="size-4" strokeWidth={1.5} />
+              {t('importarCsv')}
+            </Button>
             <Button className="h-10 gap-2" onClick={onNewClick}>
               <Plus aria-hidden="true" className="size-4" strokeWidth={1.5} />
               {t('nuevo')}
@@ -76,7 +80,6 @@ export function ReturnReasonsHeader({
               tamano="md"
               titulo={t('titulo')}
               acciones={[
-                { id: 'importar', etiqueta: t('importar'), icono: Upload, onSelect: onImportClick },
                 { id: 'exportar', etiqueta: t('exportar'), icono: Download, onSelect: onExportClick },
               ]}
             />

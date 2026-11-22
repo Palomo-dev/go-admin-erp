@@ -68,3 +68,6 @@ Claude outputs/
 electron/release-brand*/
 .next-*/
 tsconfig.*.tmp.json
+
+# Sesiones de WhatsApp (credenciales): nunca al repositorio público
+.whatsapp-qr-sessions/

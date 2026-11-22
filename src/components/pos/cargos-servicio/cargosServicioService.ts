@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import {
+  ImpuestoCargo,
   ServiceCharge,
   CreateServiceChargeData,
   UpdateServiceChargeData,
@@ -37,11 +38,18 @@ export class CargosServicioService {
         branch:branches (
           id,
           name
+        ),
+        tax:organization_taxes (
+          id,
+          name,
+          rate
         )
       `)
       .eq('organization_id', organizationId)
       .order('name', { ascending: true });
 
+    if (filters.archivados === true) query = query.not('archived_at', 'is', null);
+    else if (filters.archivados === false) query = query.is('archived_at', null);
     if (filters.is_active !== undefined) query = query.eq('is_active', filters.is_active);
     if (filters.branch_id) query = query.or(filtroSucursalConGlobales(filters.branch_id));
     if (filters.applies_to) query = query.eq('applies_to', filters.applies_to);
@@ -121,20 +129,52 @@ export class CargosServicioService {
     return filas[0] as ServiceCharge;
   }
 
-  /** Eliminar cargo de servicio */
-  static async delete(id: number): Promise<void> {
+  /**
+   * Archivar (reemplaza al borrado físico, migración 20261120180425). El cargo
+   * queda inactivo y fuera de la lista por defecto; se restaura con `restore`.
+   */
+  static async archive(id: number): Promise<ServiceCharge> {
+    return this.escribir(id, { archived_at: new Date().toISOString(), is_active: false });
+  }
+
+  /** Saca el cargo del archivo. Vuelve inactivo: activarlo es otra decisión. */
+  static async restore(id: number): Promise<ServiceCharge> {
+    return this.escribir(id, { archived_at: null });
+  }
+
+  private static async escribir(id: number, cambios: Record<string, unknown>): Promise<ServiceCharge> {
     const { data: filas, error } = await supabase
       .from('service_charges')
-      .delete()
+      .update(cambios)
       .eq('id', id)
       .eq('organization_id', getOrganizationId())
-      .select('id');
+      .select();
 
     if (error) {
-      console.error('Error deleting service charge:', error);
+      console.error('Error archiving service charge:', error);
       throw errorCargo(error);
     }
     if (!filas || filas.length === 0) throw new CargoServicioError('SIN_PERMISO');
+    return filas[0] as ServiceCharge;
+  }
+
+  /** Impuestos que puede llevar un cargo: los activos de la organización, sin retenciones. */
+  static async getImpuestos(): Promise<ImpuestoCargo[]> {
+    const { data, error } = await supabase
+      .from('organization_taxes')
+      .select('id, name, rate, kind, is_default')
+      .eq('organization_id', getOrganizationId())
+      .eq('is_active', true)
+      .order('is_default', { ascending: false })
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching taxes:', error);
+      throw errorCargo(error);
+    }
+    return ((data || []) as { id: string; name: string; rate: number; kind?: string | null }[])
+      .filter((t) => (t.kind ?? 'tax') !== 'withholding')
+      .map((t) => ({ id: t.id, name: t.name, rate: Number(t.rate) || 0 }));
   }
 
   /** Activar/Desactivar cargo */
@@ -156,9 +196,9 @@ export class CargosServicioService {
       min_amount: original.min_amount ?? null,
       min_guests: original.min_guests ?? null,
       applies_to: original.applies_to,
-      is_taxable: original.is_taxable,
       is_optional: original.is_optional,
       branch_id: original.branch_id ?? null,
+      tax_id: original.tax_id ?? null,
     });
   }
 
@@ -212,29 +252,5 @@ export class CargosServicioService {
       p_code: 'billing_management',
     });
     return !error && data === true;
-  }
-
-  /**
-   * Calcular cargo aplicable
-   */
-  static calculateCharge(
-    charge: ServiceCharge,
-    subtotal: number,
-    guests: number = 1
-  ): number {
-    // Verificar condiciones mínimas
-    if (charge.min_amount && subtotal < charge.min_amount) {
-      return 0;
-    }
-    if (charge.min_guests && guests < charge.min_guests) {
-      return 0;
-    }
-
-    // Calcular según tipo
-    if (charge.charge_type === 'percentage') {
-      return (subtotal * charge.charge_value) / 100;
-    } else {
-      return charge.charge_value;
-    }
   }
 }

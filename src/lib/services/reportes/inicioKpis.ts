@@ -25,7 +25,7 @@ export interface FuenteKpiInicio {
 }
 
 export const KPIS_INICIO: readonly FuenteKpiInicio[] = [
-  { id: 'ventas', reportId: 'ventas-periodo', kpi: 'Total Ventas', comparar: true },
+  { id: 'ventas', reportId: 'ventas-periodo', kpi: 'Total vendido', comparar: true },
   { id: 'utilidad', reportId: 'estado-resultados', kpi: 'Utilidad neta', detalle: { reportId: 'estado-resultados', kpi: 'Margen neto' } },
   { id: 'caja', reportId: 'caja-bancos-diario', kpi: 'Saldo final' },
   { id: 'cobrar', reportId: 'cxc-aging', kpi: 'Total CxC', detalle: { reportId: 'cxc-aging', kpi: 'Vencido' } },

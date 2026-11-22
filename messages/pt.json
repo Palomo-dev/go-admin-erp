@@ -5503,7 +5503,19 @@
     "tabla": {
       "seleccionarPagina": "Selecionar esta página",
       "seleccionarFila": "Selecionar linha",
-      "seleccionar": "Selecionar {nombre}"
+      "seleccionar": "Selecionar {nombre}",
+      "arrastre": {
+        "columna": "Ordenar",
+        "asa": "Mover {nombre}",
+        "ayuda": "Arraste para mudar a ordem",
+        "ayudaTeclado": "Teclado: Espaço para pegar · ↑ ↓ para mover · Espaço para soltar",
+        "rol": "item ordenável",
+        "instrucciones": "Pressione Espaço para pegar a linha, use ↑ e ↓ para movê-la e Espaço para soltá-la. Esc cancela.",
+        "tomar": "Você pegou {nombre}. Está na posição {pos} de {total}.",
+        "mover": "{nombre} passa para a posição {pos} de {total}.",
+        "soltar": "{nombre} ficou na posição {pos} de {total}.",
+        "cancelar": "Cancelado. {nombre} voltou para a posição {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Ações de {titulo}",
@@ -8342,7 +8354,9 @@
     "ficha": {
       "comun": {
         "sinNombre": "Sem nome",
-        "usuario": "Usuário"
+        "usuario": "Usuário",
+        "hoyHora": "Hoje {hora}",
+        "ayerHora": "Ontem {hora}"
       },
       "pagina": {
         "noEncontrado": "Cliente não encontrado",
@@ -8360,7 +8374,8 @@
           "sinId": "ID do cliente não encontrado",
           "noExiste": "Não existe ou não pertence à sua organização.",
           "carga": "Erro ao carregar os dados do cliente"
-        }
+        },
+        "noEncontradoDetalle": "Não foi possível encontrar o cliente solicitado. Ele pode ter sido excluído, pertencer a outra organização ou não estar na filial ativa."
       },
       "pestanasAria": "Seções do cliente",
       "pestanas": {
@@ -8370,7 +8385,9 @@
         "actividad": "Atividade",
         "cuentas": "Contas a receber",
         "notas": "Notas e arquivos",
-        "contactos": "Contatos"
+        "contactos": "Contatos",
+        "finanzas": "Finanças",
+        "notasDocumentos": "Notas e documentos"
       },
       "cabecera": {
         "error": "Erro",
@@ -8390,7 +8407,11 @@
           "plata": "Prata",
           "bronce": "Bronze",
           "basico": "Básico"
-        }
+        },
+        "identidad": "Identidade do cliente",
+        "salud": "Saúde {n}",
+        "contactoPrincipal": "Contato principal:",
+        "etiquetas": "Etiquetas:"
       },
       "resumen": {
         "compras": "Compras",
@@ -8417,7 +8438,16 @@
           "reserva": "Reserva {fecha}",
           "pedido": "Pedido nº {numero}",
           "estadoReserva": "reserva"
-        }
+        },
+        "saldoCartera": "Saldo a receber",
+        "facturasVencidas": "{count, plural, one {# fatura vencida} other {# faturas vencidas}}",
+        "facturasVencidasHace": "{count, plural, one {# fatura vencida há {dias} d} other {# faturas vencidas, a mais antiga há {dias} d}}",
+        "carteraSinPermiso": "Sem permissão para ver as contas a receber",
+        "carteraError": "Não foi possível consultar as contas a receber",
+        "verTodaActividad": "Ver toda a atividade",
+        "productos": "{count, plural, one {# produto} other {# produtos}}",
+        "kpisAria": "Indicadores do cliente",
+        "comprasConteo": "{count, plural, =0 {Sem compras} one {# compra} other {# compras}}"
       },
       "info": {
         "titulo": "Informações completas do cliente",
@@ -8473,7 +8503,13 @@
         "error": "Erro: {mensaje}",
         "errorCarga": "Erro ao carregar as informações do cliente",
         "sinDatos": "Nenhum dado do cliente foi encontrado",
-        "noSePudoCargar": "Não foi possível carregar as informações do cliente"
+        "noSePudoCargar": "Não foi possível carregar as informações do cliente",
+        "noLlamar": "Não ligar",
+        "zonaHoraria": "Fuso horário",
+        "tamanoEmpresa": "Tamanho da empresa",
+        "preferenciasContacto": "Preferências e contato",
+        "soloLectura": "Somente leitura",
+        "editarSeccion": "Editar {seccion}"
       },
       "oportunidades": {
         "estados": {
@@ -8488,7 +8524,8 @@
         "abiertas": "Abertas",
         "ganadas": "Ganhas",
         "titulo": "Oportunidades ({n})",
-        "cierreEsperado": "Fechamento previsto: {fecha}"
+        "cierreEsperado": "Fechamento previsto: {fecha}",
+        "kpisAria": "Resumo de oportunidades"
       },
       "actividad": {
         "titulo": "Histórico de atividade",
@@ -8536,7 +8573,9 @@
           "complete": "Concluído",
           "scheduled": "Agendado",
           "cancelled": "Cancelado"
-        }
+        },
+        "hoy": "Hoje",
+        "ayer": "Ontem"
       },
       "cuentas": {
         "errorCarga": "Erro ao carregar as contas a receber",
@@ -8589,7 +8628,8 @@
         "errorCarga": "Erro ao carregar as notas",
         "fijar": "Fixar nota",
         "desfijar": "Desafixar nota",
-        "eliminar": "Excluir nota"
+        "eliminar": "Excluir nota",
+        "fijada": "Fixada"
       },
       "tareas": {
         "titulo": "Tarefas",
@@ -8613,7 +8653,108 @@
           "enProgreso": "Em andamento",
           "completada": "Concluída",
           "cancelada": "Cancelada"
+        },
+        "verTodasCliente": "Ver todas as tarefas do cliente",
+        "verMenos": "Ver menos",
+        "vence": {
+          "vencida": "Vencida",
+          "hoy": "Vence hoje",
+          "manana": "Vence amanhã",
+          "enDias": "{count, plural, one {Em # dia} other {Em # dias}}"
         }
+      },
+      "columnaLateral": "Tarefas e saúde do cliente",
+      "estado": {
+        "cliente": "Cliente",
+        "lead": "Lead",
+        "prospecto": "Prospecto",
+        "inactivo": "Inativo"
+      },
+      "menu": {
+        "editar": "Editar cliente",
+        "registrarPago": "Registrar pagamento",
+        "nuevaVenta": "Nova venda",
+        "nuevaOportunidad": "Nova oportunidade",
+        "estadoCuenta": "Extrato de conta (PDF)",
+        "exportarFicha": "Exportar ficha",
+        "marcarInactivo": "Marcar como inativo",
+        "reactivar": "Reativar",
+        "unificar": "Unificar com outro cliente",
+        "eliminar": "Excluir cliente"
+      },
+      "motivos": {
+        "cargandoCartera": "Consultando as contas a receber do cliente…",
+        "sinPermisoCobro": "Você não tem permissão para registrar pagamentos.",
+        "errorCartera": "Não foi possível consultar as contas a receber do cliente.",
+        "sinSaldo": "Sem saldo a receber",
+        "sinPermisoCartera": "Você não tem permissão para ver as contas a receber.",
+        "exportarFicha": "Ainda não disponível: a exportação da ficha está em construção."
+      },
+      "salud": {
+        "titulo": "Saúde do cliente",
+        "puntaje": "{n} / 100",
+        "alertasLinea": "Alertas: {lista}",
+        "alertas": {
+          "overdue": "contas vencidas",
+          "noInvoice": "sem compras há {dias} d",
+          "noInvoiceNunca": "sem compras registradas",
+          "noActivity": "sem atividade há {dias} d",
+          "noActivityNunca": "sem atividade registrada"
+        },
+        "bandas": {
+          "green": "Saudável",
+          "yellow": "Atenção",
+          "red": "Crítico"
+        },
+        "sinDatos": "A saúde é medida apenas para clientes: ainda não há faturas nem atividade mensurável.",
+        "etapaSinFacturas": "A saúde é medida apenas para clientes; esta ficha é {etapa} sem faturas.",
+        "etapaConFacturas": "A saúde é medida apenas para clientes; esta ficha é {etapa} com {count, plural, one {# fatura} other {# faturas}}. Mude-a para cliente para medi-la.",
+        "etapas": {
+          "lead": "um lead",
+          "prospect": "um prospecto",
+          "otra": "“{etapa}”"
+        }
+      },
+      "finanzas": {
+        "kpisAria": "Resumo financeiro do cliente",
+        "deudaTotal": "Dívida total",
+        "facturasMasFolios": "Faturas + fólios",
+        "sinDeuda": "Sem dívida pendente",
+        "foliosPendientes": "Fólios pendentes",
+        "foliosDetalle": "{items, plural, one {# item} other {# itens}} em {count, plural, one {# fólio aberto} other {# fólios abertos}}",
+        "sinFolios": "Sem fólios abertos",
+        "facturasPorCobrar": "Faturas a receber",
+        "vencidasDetalle": "{count, plural, one {# vencida há {dias} d} other {# vencidas, a mais antiga há {dias} d}}",
+        "alDia": "Em dia",
+        "enviarRecordatorio": "Enviar lembrete",
+        "estadoCuenta": "Extrato de conta (PDF)",
+        "moneda": "Moeda: {codigo}",
+        "listaTitulo": "Faturas a receber ({facturas}) · Fólios de reservas ({folios}) · Contas a receber ({cuentas})",
+        "factura": "Fatura {numero}",
+        "cuenta": "Conta a receber",
+        "cuentaNumero": "Conta a receber · {numero}",
+        "folio": "Fólio de reserva",
+        "vence": "Vence: {fecha}",
+        "sinVencimiento": "Sem data de vencimento",
+        "cuotas": "{pendientes} de {count} parcelas pendentes",
+        "deMonto": "de {monto}",
+        "items": "{count, plural, one {# item} other {# itens}}",
+        "ver": "Ver",
+        "pagar": "Pagar",
+        "vencidaDias": "Vencida {dias} d",
+        "sinPermiso": "Você não tem permissão para ver as contas a receber deste cliente: apenas os fólios são exibidos.",
+        "reintentar": "Tentar novamente",
+        "sinVencidas": "Sem faturas vencidas",
+        "verCartera": "Ver as contas a receber do cliente em Finanças",
+        "sustantivo": {
+          "singular": "conta",
+          "plural": "contas"
+        },
+        "recordatorioTitulo": "Enviar lembrete de pagamento",
+        "recordatorioDescripcion": "{count, plural, one {Será enviado um e-mail ao cliente pela conta vencida.} other {Será enviado um e-mail ao cliente por cada uma das # contas vencidas.}}",
+        "recordatorioEnviado": "{count, plural, one {Lembrete enviado} other {# lembretes enviados}}",
+        "recordatorioSinEnviar": "Não foi possível enviar o lembrete. Verifique se o cliente tem e-mail.",
+        "recordatorioParcial": "{count, plural, one {# lembrete enviado; os demais falharam.} other {# lembretes enviados; os demais falharam.}}"
       }
     },
     "formulario": {
@@ -13481,7 +13622,17 @@
       "cantidad": "Gorjetas"
     },
     "acciones": {
-      "anular": "Anular"
+      "anular": "Anular com motivo",
+      "anularCorto": "Anular",
+      "anularLiquidacion": "Anular liquidação",
+      "corregir": "Corrigir valor",
+      "imprimir": "Imprimir comprovante",
+      "reasignar": "Reatribuir pessoa",
+      "sinPago": "Marcar liquidada sem pagamento",
+      "verDetalle": "Ver detalhe",
+      "verLiquidacion": "Ver liquidação {codigo}",
+      "verMesa": "Ver mesa {mesa}",
+      "verVenta": "Ver venda {numero}"
     },
     "anular": {
       "titulo": "Anular gorjeta?",
@@ -13503,7 +13654,10 @@
       "distribuidas": "{count, plural, one {# gorjeta marcada como distribuída} other {# gorjetas marcadas como distribuídas}}",
       "ningunaDistribuida": "Não havia gorjetas pendentes para distribuir: já estavam distribuídas ou anuladas.",
       "actualizada": "Gorjeta atualizada com sucesso",
-      "registrada": "Gorjeta registrada com sucesso"
+      "registrada": "Gorjeta registrada com sucesso",
+      "liquidada": "Liquidação {codigo} registrada",
+      "liquidacionAnulada": "Liquidação {codigo} anulada",
+      "reasignada": "Gorjeta reatribuída"
     },
     "errores": {
       "SIN_PERMISO": "Você não tem permissão para esta ação.",
@@ -13513,7 +13667,26 @@
       "PROPINA_INEXISTENTE": "A gorjeta não existe nesta organização.",
       "PERIODO_CERRADO": "O período contábil de hoje está fechado: não é possível registrar o estorno.",
       "SIN_SUCURSAL": "Selecione uma filial para registrar a gorjeta.",
-      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente.",
+      "MOTIVO_REQUERIDO": "Escreva o motivo (pelo menos 3 caracteres).",
+      "MOTIVO_AJUSTE_REQUERIDO": "Um valor ajustado à mão precisa de motivo.",
+      "SIN_PROPINAS": "Escolha pelo menos uma gorjeta para liquidar.",
+      "PROPINAS_NO_DISPONIBLES": "Algumas gorjetas já não estão a liquidar (outra pessoa as liquidou ou anulou). Recarregue.",
+      "VENTA_ABIERTA": "Há gorjetas de vendas ainda não cobradas: serão liquidadas quando a venda for cobrada.",
+      "REPARTO_INVALIDO": "Essa forma de divisão ainda não está disponível.",
+      "PORCENTAJES_INVALIDOS": "As participações devem somar 100 %.",
+      "PERSONA_INVALIDA": "Uma pessoa da divisão já não é membro ativo.",
+      "AJUSTES_NO_SUMAN_CERO": "Os ajustes devem somar zero: o que se tira de uma pessoa vai para outra.",
+      "AJUSTE_NEGATIVO": "Ninguém pode ficar com valor negativo.",
+      "MEDIO_INVALIDO": "Esse meio de pagamento ainda não está disponível.",
+      "REFERENCIA_REQUERIDA": "Escreva a referência de cada transferência.",
+      "CAJA_CERRADA": "Não há caixa aberto nesta filial: abra-o para pagar em dinheiro.",
+      "LIQUIDACION_INEXISTENTE": "A liquidação não existe nesta organização.",
+      "LIQUIDACION_ANULADA": "A liquidação está anulada: não pode ser paga.",
+      "PAGADA_POR_NOMINA": "Parte desta liquidação foi paga pela folha: corrija na folha de pagamento.",
+      "SIN_CUENTA": "Falta uma conta contábil de gorjetas (28150501 ou 28150502) ou a de caixa ou banco.",
+      "SOLICITUD_REQUERIDA": "Não foi possível identificar a solicitação. Tente novamente.",
+      "DATOS_INVALIDOS": "Revise os filtros: há um valor inválido."
     },
     "cabecera": {
       "titulo": "Gestão de gorjetas",
@@ -13575,6 +13748,326 @@
       "pendiente": "Pendente",
       "editar": "Editar",
       "marcarDistribuida": "Marcar como distribuída"
+    },
+    "anularV2": {
+      "titulo": "Anular a gorjeta de {monto}",
+      "tituloVarias": "{count, plural, one {Anular # gorjeta} other {Anular # gorjetas}} por {monto}",
+      "descripcion": "{documento}. É gerado o estorno contábil; a venda não muda.",
+      "descripcionVarias": "Cada gorjeta é anulada com seu estorno; as vendas não mudam.",
+      "confirmar": "Anular gorjeta",
+      "motivo": "Motivo",
+      "consecuencia1": "A gorjeta deixa de contar nos totais e no que falta liquidar.",
+      "consecuencia2": "Se tiver lançamento contábil, o estorno é registrado com a data de hoje.",
+      "rapidos": {
+        "duplicada": "Registrada duas vezes",
+        "errorMonto": "Valor errado",
+        "devuelta": "Devolvida ao cliente",
+        "noEra": "Não era gorjeta"
+      }
+    },
+    "anularLiquidacion": {
+      "titulo": "Anular a liquidação {codigo}",
+      "descripcion": "Fica no histórico como anulada, com seu motivo.",
+      "confirmar": "Anular liquidação",
+      "consecuenciaCaja": "Entram {monto} no caixa aberto como reingresso da saída.",
+      "consecuenciaAsiento": "O lançamento da liquidação é estornado, se houver.",
+      "consecuenciaPropinas": "Suas gorjetas voltam para «A liquidar»."
+    },
+    "sinPagoDialogo": {
+      "titulo": "Marcar liquidada sem pagamento ({monto})",
+      "descripcion": "Fica como uma liquidação sem movimento de dinheiro (por exemplo, já paga por fora). Nada sai do caixa.",
+      "confirmar": "Marcar liquidada",
+      "rapidos": {
+        "pagadaPorFuera": "Já foi paga por fora",
+        "nomina": "Paga na folha de pagamento"
+      }
+    },
+    "columnas": {
+      "atendio": "Atendeu",
+      "cargo": "Cargo",
+      "documento": "Documento",
+      "estado": "Status",
+      "fecha": "Data",
+      "mesa": "Mesa",
+      "monto": "Valor",
+      "motivo": "Motivo",
+      "tipo": "Tipo"
+    },
+    "detalle": {
+      "titulo": "Liquidação",
+      "tituloCodigo": "Liquidação {codigo}",
+      "subtitulo": "{periodo} · {sucursal} · liquidada por {persona} em {fecha}",
+      "noExiste": "Esta liquidação não existe na sua organização",
+      "volver": "Voltar às liquidações",
+      "imprimir": "Imprimir comprovante",
+      "avisoAnulada": "Anulada em {fecha}: {motivo}",
+      "reparto": "Divisão",
+      "firma": "Assinatura",
+      "ref": "Ref. {ref}",
+      "motivoAjuste": "Motivo do ajuste: {motivo}",
+      "incluidas": "Gorjetas incluídas ({count})",
+      "verTodas": "Ver as {count} gorjetas",
+      "pago": "Pagamento",
+      "totalPropinas": "Total de gorjetas",
+      "efectivo": "Em dinheiro",
+      "banco": "Com cartão ou online",
+      "ajustes": "Ajustes",
+      "pagado": "Pago",
+      "medio": "Meio",
+      "egreso": "Saída de caixa",
+      "reingreso": "Reingresso no caixa",
+      "asiento": "Lançamento contábil",
+      "asientoEnCobro": "O de cada gorjeta, ao cobrá-la",
+      "sinAsiento": "Sem lançamento",
+      "motivoSinPago": "Motivo",
+      "comprobante": "Comprovante",
+      "comprobanteFirmas": "{count, plural, one {Para assinatura de # pessoa} other {Para assinatura de # pessoas}}",
+      "historialTitulo": "Histórico",
+      "historial": {
+        "liquidada": "Liquidada por {persona}",
+        "egreso": "Saída {numero} no Caixa {caja}",
+        "asiento": "Lançamento {numero}",
+        "anulada": "Anulada por {persona}: {motivo}",
+        "reingreso": "Reingresso {numero} no Caixa {caja}"
+      }
+    },
+    "estados": {
+      "cargando": "Carregando…",
+      "reintentar": "Tentar novamente",
+      "por_liquidar": "A liquidar",
+      "liquidada": "Liquidada",
+      "anulada": "Anulada",
+      "ventaAbierta": "Venda não cobrada"
+    },
+    "filtros": {
+      "buscar": "Buscar por documento, mesa ou pessoa",
+      "buscarLiquidaciones": "Buscar por número ou pessoa",
+      "buscarEtiqueta": "Buscar gorjetas",
+      "estado": "Status",
+      "medio": "Pago com",
+      "periodo": "Data",
+      "persona": "Pessoa",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "fechaHoy": "Data: hoje",
+      "fechaChip": "Data: {rango}",
+      "tipoChip": "Tipo: {tipo}",
+      "personaChip": "Pessoa: {persona}",
+      "verN": "{count, plural, =0 {Sem resultados} one {Ver # resultado} other {Ver {n} resultados}}"
+    },
+    "formularioV2": {
+      "tituloNueva": "Nova gorjeta",
+      "tituloReasignar": "Reatribuir pessoa",
+      "tituloCorregir": "Corrigir valor",
+      "descripcion": "Gorjeta de {monto} · {persona}",
+      "persona": "Pessoa que atendeu",
+      "guardar": "Salvar",
+      "motivo": "Motivo da correção",
+      "motivoAyuda": "Fica nas notas da gorjeta.",
+      "motivoRequerido": "Escreva o motivo (pelo menos 3 caracteres).",
+      "notaCorreccion": "[Correção] Antes {antes}: {motivo}"
+    },
+    "kpis": {
+      "etiqueta": "Resumo de gorjetas",
+      "porLiquidar": "A liquidar",
+      "porLiquidarDetalle": "{count, plural, =0 {Nada pendente} one {# gorjeta de {personas, plural, one {# pessoa} other {# pessoas}}} other {{n} gorjetas de {personas, plural, one {# pessoa} other {# pessoas}}}}",
+      "liquidadoMes": "Liquidado em {mes}",
+      "liquidaciones": "{count, plural, =0 {Sem liquidações} one {# liquidação} other {# liquidações}}",
+      "promedio": "Gorjeta média",
+      "promedioDetalle": "{count, plural, =0 {Sem gorjetas no período} one {De # gorjeta} other {De # gorjetas}}",
+      "ventasConPropina": "Vendas com gorjeta",
+      "ventasDetalle": "{con} de {total} vendas do período",
+      "propinas": "Gorjetas",
+      "conPropina": "Com gorjeta"
+    },
+    "liquidaciones": {
+      "titulo": "Liquidações",
+      "sustantivo": {
+        "singular": "liquidação",
+        "plural": "liquidações"
+      },
+      "columnas": {
+        "numero": "Número",
+        "periodo": "Período",
+        "personas": "Pessoas",
+        "reparto": "Divisão",
+        "pagadoCon": "Pago com",
+        "total": "Total",
+        "estado": "Status"
+      },
+      "estados": {
+        "por_pagar": "A pagar",
+        "pagada": "Paga",
+        "anulada": "Anulada"
+      },
+      "liquidadaEl": "liquidada em {fecha}",
+      "anuladaEl": "anulada em {fecha}",
+      "efectivoCaja": "Dinheiro · Caixa {caja}",
+      "egreso": "Saída {numero}",
+      "egresoAnulado": "Saída anulada",
+      "referencias": "Ref. {refs}",
+      "personasN": "{count, plural, one {# pessoa} other {# pessoas}}"
+    },
+    "liquidar": {
+      "titulo": "Liquidar gorjetas",
+      "descripcionPaso1": "{sucursal} · {caja}",
+      "descripcion": "{periodo} · {sucursal} · {personas, plural, one {# pessoa} other {# pessoas}} · {monto}",
+      "cajaAbierta": "Caixa {caja} aberto",
+      "sinCaja": "sem caixa aberto",
+      "eligeSucursal": "Escolha uma filial na barra superior para liquidar.",
+      "cancelar": "Cancelar",
+      "atras": "Voltar",
+      "siguienteReparto": "Próximo · Como se divide",
+      "continuar": "Continuar",
+      "confirmar": "Liquidar {monto}",
+      "liquidando": "Liquidando…",
+      "errorCarga": "Não foi possível carregar as gorjetas a liquidar.",
+      "pasos": {
+        "etiqueta": "Etapas da liquidação",
+        "que": "O que se liquida",
+        "queResumen": "{count, plural, one {# gorjeta} other {{n} gorjetas}} · {monto}",
+        "reparto": "Como se divide",
+        "repartoResumen": "Para quem atendeu",
+        "repartoConAjustes": "{reparto} · {count, plural, one {# ajuste} other {# ajustes}}",
+        "pago": "Como se paga",
+        "pendiente": "Pendente",
+        "efectivoDeCaja": "Dinheiro do Caixa {caja}"
+      },
+      "periodo": "Período",
+      "periodoAyuda": "Dias da organização.",
+      "persona": "Pessoa",
+      "personaAyuda": "Pessoas com gorjetas pendentes.",
+      "todasPersonas": "Todas as pessoas",
+      "medio": "Meio",
+      "medioAyuda": "O de cartão entrou no banco.",
+      "medios": {
+        "todos": "Dinheiro e cartão",
+        "efectivo": "Só dinheiro",
+        "banco": "Cartão e online"
+      },
+      "todas": "Todas ({n} de {total} selecionadas)",
+      "sinPropinas": "Não há gorjetas a liquidar neste período.",
+      "ventaSinCerrar": "venda não fechada",
+      "efectivo": "Dinheiro (sai do caixa)",
+      "efectivoSaleDe": "Dinheiro (sai do Caixa {caja})",
+      "banco": "Cartão e pedidos web (entrou no banco)",
+      "totalALiquidar": "Total a liquidar",
+      "ventasAbiertas": "{count, plural, one {A venda {venta} continua aberta: sua gorjeta poderá ser liquidada quando for cobrada.} other {Há # vendas abertas (como {venta}): suas gorjetas poderão ser liquidadas quando forem cobradas.}}",
+      "reparto": "Forma de divisão",
+      "porcentajesNoSuman": "As participações somam {pct} %: devem somar 100 %.",
+      "columnas": {
+        "persona": "Pessoa",
+        "base": "Base",
+        "participacion": "Participação",
+        "calculado": "Calculado",
+        "ajuste": "Ajuste",
+        "aPagar": "A pagar"
+      },
+      "participacionDe": "Participação de {persona}",
+      "ajusteDe": "Ajuste de {persona}",
+      "agregarAlPozo": "Adicionar ao fundo",
+      "agregarAlPozoPlaceholder": "Escolha uma pessoa da filial",
+      "motivoAjuste": "Motivo do ajuste",
+      "motivoAjusteAyuda": "Obrigatório quando um valor é ajustado à mão.",
+      "motivoCorto": "Escreva pelo menos 3 caracteres.",
+      "ajustesNoSuman": "Os ajustes somam {monto}: devem somar zero.",
+      "totalPropinas": "Total de gorjetas",
+      "ajustesSumanCero": "Ajustes (somam zero)",
+      "aPagar": "A pagar",
+      "pago": {
+        "efectivo": "Dinheiro do caixa aberto",
+        "efectivoDetalle": "Caixa {caja} · aberto por {persona} · dinheiro esperado {esperado}. Sai como saída «Liquidação de gorjetas».",
+        "esperadoOculto": "oculto (fechamento cego)",
+        "recomendado": "Recomendado",
+        "sinCaja": "Não há caixa aberto nesta filial.",
+        "sinCajaTitulo": "Para pagar em dinheiro é preciso abrir o caixa",
+        "sinCajaDescripcion": "O dinheiro sai como saída do caixa aberto, igual a devoluções e cobranças.",
+        "abrirCaja": "Abrir caixa",
+        "transferencia": "Transferência",
+        "transferenciaDetalle": "Uma por pessoa; registra-se a referência de cada uma.",
+        "referenciaDe": "Referência · {persona} ({monto})",
+        "nomina": "Na folha de pagamento",
+        "nominaDetalle": "Somada como rendimento não salarial na próxima quinzena (módulo RH).",
+        "requiereHrm": "Requer RH",
+        "notaEfectivo": "As gorjetas com cartão já entraram no banco: o dinheiro que sai do caixa as compensa. Gera-se o comprovante para assinatura.",
+        "notaTransferencia": "Não sai dinheiro do caixa: registra-se a reclassificação de caixa para bancos e o comprovante para assinatura.",
+        "imprimir": "Imprimir o comprovante para assinatura de cada pessoa"
+      }
+    },
+    "medios": {
+      "efectivo": "Dinheiro",
+      "transferencia": "Transferência",
+      "nomina": "Folha de pagamento",
+      "sin_pago": "Sem pagamento"
+    },
+    "motivos": {
+      "eligeSucursal": "Escolha uma filial na barra superior",
+      "nadaQueExportar": "Não há gorjetas na lista",
+      "sinPermisoAnular": "Você precisa da permissão para anular no PDV",
+      "sinPermisoAnularLiquidacion": "Você precisa das permissões de liquidar gorjetas e de anular",
+      "sinPermisoLiquidar": "Você precisa da permissão «Liquidar gorjetas»",
+      "sinPermisoRegistrar": "Você precisa da permissão para vender no PDV",
+      "ventaAbierta": "A venda ainda não foi cobrada"
+    },
+    "origenes": {
+      "domicilio": "Entrega",
+      "mostrador": "Balcão",
+      "web": "Pedido web"
+    },
+    "pagina": {
+      "titulo": "Gorjetas",
+      "migaPos": "PDV",
+      "actualizar": "Atualizar",
+      "nueva": "Nova gorjeta",
+      "liquidar": "Liquidar ({n})",
+      "liquidarMovil": "{count, plural, one {Liquidar # gorjeta} other {Liquidar # gorjetas}} · {monto}",
+      "exportar": "Exportar",
+      "dineroTerceros": "Ver em Dinheiro de terceiros",
+      "todasSucursales": "Todas as filiais",
+      "todasLasFechas": "todas as datas",
+      "sustantivo": {
+        "singular": "gorjeta",
+        "plural": "gorjetas"
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Vistas de gorjetas",
+      "por_liquidar": "A liquidar",
+      "liquidaciones": "Liquidações",
+      "anuladas": "Anuladas",
+      "todas": "Todas"
+    },
+    "porPersona": {
+      "titulo": "Por pessoa",
+      "liquidarTodos": "Liquidar todos",
+      "propinas": "{count, plural, one {# gorjeta} other {# gorjetas}}",
+      "total": "Total a liquidar"
+    },
+    "repartos": {
+      "atendio": "Para quem atendeu",
+      "horas": "Fundo por horas",
+      "porcentaje": "Fundo por porcentagem"
+    },
+    "seleccion": {
+      "liquidar": "Liquidar · {monto}",
+      "resumen": "{count, plural, one {# selecionada} other {# selecionadas}} · {monto}"
+    },
+    "tabla": {
+      "manual": "Registro manual",
+      "sinDocumento": "Sem documento",
+      "sinNumero": "Sem número"
+    },
+    "vacios": {
+      "titulo": "Não há gorjetas a liquidar",
+      "descripcion": "As gorjetas aparecem aqui quando são cobradas no PDV, nas mesas ou nos pedidos web.",
+      "anuladasTitulo": "Não há gorjetas anuladas",
+      "anuladasDescripcion": "Aqui ficam as gorjetas anuladas, com seu motivo.",
+      "liquidacionesTitulo": "Ainda não há liquidações",
+      "liquidacionesDescripcion": "Cada vez que você liquida gorjetas fica um documento LIQ com sua divisão, pagamento e comprovante.",
+      "sinResultados": "Nenhuma gorjeta corresponde à busca ou aos filtros.",
+      "error": "Não foi possível carregar as gorjetas",
+      "sinPermisoTitulo": "Você não tem acesso a Gorjetas",
+      "sinPermisoDescripcion": "Peça a um administrador a permissão para ver o PDV ou para liquidar gorjetas."
     }
   },
   "posCargosServicio": {
@@ -13911,7 +14404,8 @@
         "todos": "Todos",
         "inactivos": "Inativos",
         "actualizar": "Atualizar",
-        "subtituloConteo": "{total, plural, one {# motivo} other {# motivos}} · {activos, plural, one {# ativo} other {# ativos}}"
+        "subtituloConteo": "{total, plural, one {# motivo} other {# motivos}} · {activos, plural, one {# ativo} other {# ativos}}",
+        "importarCsv": "Importar CSV"
       },
       "lista": {
         "eliminado": "Motivo excluído com sucesso",
@@ -13964,7 +14458,11 @@
           "descripcionLarga": "A descrição não pode ter mais de 500 caracteres"
         },
         "orden": "Ordem",
-        "ordenAyuda": "Posição do motivo na lista (0 vem primeiro)"
+        "ordenAyuda": "Posição do motivo na lista (0 vem primeiro)",
+        "descripcionDialogo": "Aparece ao criar devoluções, na ordem que você definir.",
+        "codigoAyuda": "Salvo em maiúsculas; único na organização.",
+        "descripcionOpcional": "Descrição (opcional)",
+        "guardar": "Salvar motivo"
       },
       "errores": {
         "codigoDuplicado": "Já existe um motivo com o código \"{codigo}\"",
@@ -13975,7 +14473,264 @@
         "duplicar": "Não foi possível duplicar o motivo",
         "cambiarEstado": "Não foi possível alterar o status",
         "importar": "Não foi possível importar"
+      },
+      "tabla": {
+        "orden": "Ordem",
+        "afectaInventario": "Afeta o estoque",
+        "requiereFoto": "Exige foto",
+        "usos": "Usos",
+        "usosN": "{n, plural, one {# uso} other {# usos}}",
+        "activo": "Ativo",
+        "inactivo": "Inativo",
+        "activar": "Ativar",
+        "desactivar": "Desativar",
+        "enUsoNoBorrar": "Tem devoluções: desative-o em vez de excluí-lo"
       }
+    },
+    "listado": {
+      "titulo": "Devoluções",
+      "migas": {
+        "pos": "PDV",
+        "devoluciones": "Devoluções"
+      },
+      "actualizar": "Atualizar",
+      "motivos": "Motivos",
+      "nueva": "Nova devolução",
+      "exportar": "Exportar CSV",
+      "exportando": "Exportando…",
+      "exportarError": "Não foi possível exportar as devoluções",
+      "irVentas": "Ver vendas",
+      "todasSucursales": "Todas as filiais",
+      "sustantivo": {
+        "singular": "devolução",
+        "plural": "devoluções"
+      },
+      "buscar": {
+        "placeholder": "Buscar por n.º de devolução, fatura, cliente ou documento…",
+        "etiqueta": "Buscar devoluções"
+      },
+      "columnas": {
+        "numero": "N.º",
+        "documentos": "Venda e documentos",
+        "cliente": "Cliente",
+        "motivo": "Motivo",
+        "unidades": "Unidades",
+        "reintegro": "Reembolso",
+        "metodo": "Método",
+        "estado": "Status"
+      },
+      "unidadesDe": "{devueltas} de {vendidas}",
+      "consumidorFinal": "Cliente avulso",
+      "mostrador": "Balcão",
+      "sinMotivo": "Sem motivo",
+      "ventaSinNumero": "Venda sem fatura",
+      "parcial": "Parcial",
+      "metodos": {
+        "cash": "Dinheiro",
+        "store_credit": "Crédito do cliente",
+        "sin_definir": "Não definido"
+      },
+      "metodoCaja": "Dinheiro · Caixa #{sesion}",
+      "estados": {
+        "processed": "Processada",
+        "pending": "Pendente",
+        "cancelled": "Anulada"
+      },
+      "acciones": {
+        "ver": "Ver detalhes",
+        "verVenta": "Ver venda {numero}",
+        "verVentaSinNumero": "Ver venda",
+        "verNc": "Ver nota de crédito {numero}",
+        "imprimir": "Imprimir comprovante",
+        "enviar": "Enviar ao cliente",
+        "anular": "Anular devolução"
+      },
+      "motivosAccion": {
+        "sinNc": "A devolução não tem nota de crédito para imprimir",
+        "enviarPronto": "O envio ao cliente ainda não está disponível",
+        "anularPronto": "Anular uma devolução ainda não está disponível"
+      },
+      "vacio": {
+        "titulo": "Ainda não há devoluções",
+        "descripcion": "Quando um cliente devolver produtos, a devolução aparecerá aqui com sua nota de crédito e seu reembolso."
+      },
+      "sinResultados": "Nenhuma devolução corresponde à busca ou aos filtros.",
+      "errorCarga": "Não foi possível carregar as devoluções",
+      "sinPermiso": {
+        "titulo": "Você não tem acesso às devoluções",
+        "descripcion": "Peça a um administrador permissão para ver o PDV ou processar devoluções."
+      },
+      "filtros": {
+        "nota": "As datas são as da devolução, no fuso horário da organização.",
+        "periodo": "Período",
+        "desdeHasta": "Datas",
+        "estado": "Status",
+        "metodo": "Método de reembolso",
+        "motivo": "Motivo",
+        "todos": "Todos",
+        "periodoChip": "Período: {rango}",
+        "estadoChip": "Status: {estado}",
+        "metodoChip": "Método: {metodo}",
+        "motivoChip": "Motivo: {motivo}",
+        "verN": "{count, plural, one {Ver # devolução} other {Ver {n} devoluções}}"
+      },
+      "csv": {
+        "numero": "N.º",
+        "fecha": "Data",
+        "factura": "Fatura",
+        "notaCredito": "Nota de crédito",
+        "cliente": "Cliente",
+        "documento": "Documento",
+        "motivo": "Motivo",
+        "unidades": "Unidades",
+        "reintegro": "Reembolso",
+        "metodo": "Método",
+        "estado": "Status",
+        "sucursal": "Filial"
+      }
+    },
+    "kpis": {
+      "etiqueta": "Números das devoluções",
+      "devuelto": "Devolvido no período",
+      "devoluciones": "Devoluções",
+      "sobreVentas": "Sobre as vendas",
+      "motivoPrincipal": "Motivo principal",
+      "detalleUnidades": "{unidades, plural, one {# unidade} other {# unidades}} · {parciales, plural, one {# parcial} other {# parciais}}",
+      "deVendido": "de {monto} vendidos no período",
+      "sinVentas": "Sem vendas no período",
+      "motivoDetalle": "{n} de {total} devoluções",
+      "sinDevuelto": "Sem devoluções processadas",
+      "devueltoCorto": "Devolvido",
+      "sobreVentasCorto": "Sobre vendas"
+    },
+    "nueva": {
+      "titulo": "Nova devolução",
+      "descripcion": "Busque a venda paga que o cliente quer devolver.",
+      "buscar": "Buscar por fatura, cliente, documento ou telefone",
+      "elegir": "Escolher",
+      "elegirDe": "Escolher {numero} · {cliente}",
+      "yaDevuelta": "Já devolvida por completo",
+      "resumen": "{fecha} · {productos, plural, one {# produto} other {# produtos}} · {total}",
+      "devueltasN": "{count, plural, one {# unidade já devolvida} other {{n} unidades já devolvidas}}",
+      "sinNumero": "Venda sem fatura",
+      "clienteGenerico": "Cliente avulso",
+      "aviso": "Só aparecem vendas pagas. Uma venda com devoluções anteriores continua disponível enquanto tiver unidades a devolver.",
+      "vacio": "Nenhuma venda paga corresponde.",
+      "error": "Não foi possível buscar as vendas",
+      "sinPermiso": "Você não tem permissão para processar devoluções.",
+      "cancelar": "Cancelar"
+    },
+    "crear": {
+      "titulo": "Criar devolução · {numero}",
+      "tituloSinNumero": "Criar devolução",
+      "descripcion": "Venda de {fecha} · {cliente} · paga em {metodo}",
+      "descripcionSinMetodo": "Venda de {fecha} · {cliente}",
+      "clienteGenerico": "Cliente avulso",
+      "ventaSinNumero": "Venda sem fatura",
+      "avisoSinCaja": "Não há caixa aberto para esta filial. O reembolso em dinheiro fica bloqueado para que o fechamento bata: escolha outro método ou abra o caixa.",
+      "abrirCaja": "Abrir caixa",
+      "pasoLineas": "1. O que é devolvido",
+      "pasoMotivo": "2. Motivo",
+      "pasoReintegro": "3. Como é reembolsado",
+      "vendidas": "Vendidas {vendidas} · devolvidas {devueltas} · disponíveis {disponibles}",
+      "yaDevuelta": "Vendidas {vendidas} · já devolvida",
+      "agotada": "Esgotada",
+      "cantidadDe": "{producto}: quantidade a devolver",
+      "impuestoIncluido": "Imposto incluído {monto}",
+      "motivo": "Motivo da devolução",
+      "motivoPlaceholder": "Escolha um motivo",
+      "motivoAyuda": "Do catálogo de motivos.",
+      "motivoAyudaRepone": "Do catálogo de motivos. Este motivo devolve o produto ao estoque.",
+      "motivoAyudaNoRepone": "Do catálogo de motivos. Este motivo não devolve o produto ao estoque.",
+      "requiereFoto": "Este motivo pede foto do produto: tire-a antes de processar.",
+      "notas": "Notas (opcional)",
+      "notasAyuda": "Texto simples, fica na devolução.",
+      "efectivo": "Dinheiro do caixa aberto",
+      "cajaCargando": "Buscando o caixa aberto…",
+      "efectivoDescripcion": "Sai do caixa (sessão #{sesion}) como saída «Devolução».",
+      "efectivoBloqueado": "Bloqueado: o dinheiro só sai de um caixa aberto desta filial.",
+      "saldo": "Crédito do cliente",
+      "saldoDescripcion": "Fica na ficha de {cliente} e é aplicado na próxima compra (nota de crédito interna).",
+      "saldoSinCliente": "A venda não tem cliente: o crédito precisa de um.",
+      "original": "Meio de pagamento original",
+      "originalDescripcion": "Por enquanto é reembolsado em dinheiro do caixa aberto; o estorno na maquininha ou no gateway é registrado à parte.",
+      "resumen": "Resumo do reembolso",
+      "base": "Base devolvida",
+      "impuestos": "Impostos",
+      "descuento": "Desconto rateado",
+      "total": "Total a reembolsar",
+      "efectoNc": "A nota de crédito será registrada sobre {factura}.",
+      "efectoInventario": "{n, plural, =0 {Nenhuma unidade volta ao estoque.} one {# unidade voltará ao estoque.} other {# unidades voltarão ao estoque.}}",
+      "efectoVentaParcial": "A venda ficará «Devolvida parcialmente».",
+      "efectoVentaTotal": "A venda ficará «Devolvida».",
+      "cancelar": "Cancelar",
+      "procesando": "Processando…",
+      "procesar": "Processar devolução · {monto}",
+      "hecha": "Devolução {numero} processada. Reembolso: {monto}",
+      "errorCarga": "Não foi possível carregar a venda"
+    },
+    "detalle": {
+      "titulo": "Devolução {numero}",
+      "cargando": "Carregando devolução…",
+      "subtitulo": "{fecha} · {sucursal} · processada por {usuario}",
+      "subtituloSinUsuario": "{fecha} · {sucursal}",
+      "noExiste": {
+        "titulo": "Esta devolução não existe",
+        "descripcion": "O link pode estar errado ou a devolução pode ser de outra organização."
+      },
+      "error": "Não foi possível carregar a devolução",
+      "volver": "Voltar às devoluções",
+      "imprimir": "Imprimir nota de crédito",
+      "ncEstado": "NC {estado}",
+      "parcial": "Parcial · {unidades} de {vendidas} unidades",
+      "total": "Total · {unidades} de {vendidas} unidades",
+      "cadena": "Cadeia do documento",
+      "productos": "Produtos devolvidos ({n})",
+      "sinLineas": "A devolução não tem linhas",
+      "colProducto": "Produto",
+      "colCantidad": "Qtd.",
+      "colNeto": "Líquido",
+      "colImpuesto": "Imposto",
+      "colReintegro": "Reembolso",
+      "colInventario": "Estoque",
+      "lineaDe": "linha {n} de {factura}",
+      "serialesLinea": "Números de série: {lista}",
+      "repuesto": "Reposto",
+      "noRepuesto": "Não reposto",
+      "reintegro": "Reembolso",
+      "metodo": "Método",
+      "movimientoCaja": "Movimento de caixa",
+      "movimientoTexto": "Saída {monto} · {hora} · «{numero}»",
+      "saldoFavor": "Crédito do cliente",
+      "saldoTexto": "{monto} · saldo {saldo}",
+      "notaCredito": "Nota de crédito",
+      "ncTexto": "{numero} · {monto}",
+      "asiento": "Lançamento contábil",
+      "totalReintegrado": "Total reembolsado",
+      "historial": "Histórico",
+      "eventos": {
+        "creada": "Criou e processou a devolução",
+        "egreso_caja": "Saída de caixa registrada na sessão #{sesion}",
+        "nota_credito": "Nota de crédito {numero} registrada",
+        "saldo_a_favor": "Crédito registrado na ficha do cliente",
+        "asiento": "Lançamento {numero} contabilizado"
+      },
+      "sistema": "Sistema",
+      "ventaOriginal": "Venda original",
+      "cliente": "Cliente",
+      "fecha": "Data",
+      "totalVenta": "Total da venda",
+      "devueltoAntes": "Devolvido antes",
+      "devueltoAhora": "Devolvido agora",
+      "estadoVenta": "Status da venda",
+      "motivoTitulo": "Motivo",
+      "motivo": "Motivo",
+      "afectaInventario": "Afeta o estoque",
+      "requiereFoto": "Exige foto",
+      "notas": "Notas",
+      "si": "Sim",
+      "no": "Não",
+      "sinDato": "—"
     }
   },
   "posCobroServidor": {
@@ -15417,14 +16172,15 @@
       "pendiente_pago": "Pagamento pendente"
     },
     "listado": {
-      "titulo": "Vendas",
+      "titulo": "Histórico de vendas",
       "subtitulo": "{count, plural, one {{n} venda} other {{n} vendas}}",
       "migas": {
-        "pos": "Ponto de venda"
+        "pos": "Ponto de venda",
+        "ventas": "Vendas"
       },
       "actualizar": "Atualizar",
       "nueva": "Nova venda",
-      "exportar": "Exportar CSV",
+      "exportar": "Exportar",
       "exportando": "Exportando…",
       "exportarError": "Não foi possível exportar as vendas. Tente novamente.",
       "exportarTruncado": "Foram exportadas as primeiras {n} vendas. Reduza o período ou os filtros para exportar o restante.",
@@ -15466,7 +16222,8 @@
         "devolver": "Criar devolução",
         "imprimir": "Imprimir",
         "duplicar": "Duplicar no PDV",
-        "anular": "Cancelar venda"
+        "anular": "Cancelar venda",
+        "verCxc": "Ver conta a receber"
       },
       "motivos": {
         "sin_permiso": "Você não tem permissão para esta ação.",
@@ -15499,7 +16256,24 @@
         "min": "Valor mínimo",
         "max": "Valor máximo",
         "minChip": "A partir de {monto}",
-        "maxChip": "Até {monto}"
+        "maxChip": "Até {monto}",
+        "periodoChip": "Período: {rango}",
+        "desdeHasta": "De / Até",
+        "sucursal": "Filial",
+        "sucursalChip": "Filial: {sucursal}",
+        "todosEstados": "Todos os status",
+        "cajero": "Caixa",
+        "cajeroChipNombre": "Caixa: {nombre}",
+        "pago": "Status do pagamento",
+        "pagoChip": "Pagamento: {pago}",
+        "metodoPlaceholder": "Todos os métodos",
+        "nota": "As alterações são aplicadas na hora · a filial também pode ser trocada no cabeçalho",
+        "casillas": {
+          "titulo": "Opções",
+          "saldo": "Com saldo pendente",
+          "devolucion": "Com devolução",
+          "sync": "Pendentes de sincronização"
+        }
       },
       "vacio": {
         "titulo": "Ainda não há vendas neste período",
@@ -15510,6 +16284,21 @@
       "sinPermiso": {
         "titulo": "Sem acesso às vendas",
         "descripcion": "Peça a um administrador a permissão para ver as vendas do PDV."
+      },
+      "masDocumentos": "{count, plural, one {Mais # documento: {documentos}} other {Mais # documentos: {documentos}}}",
+      "encontradas": "{count, plural, one {{n} venda encontrada} other {{n} vendas encontradas}}",
+      "todasSucursales": "Todas as filiais",
+      "credito": "Crédito",
+      "saldoLinea": "saldo {monto}",
+      "pedidoWeb": "pedido web",
+      "mesaN": "Mesa {n}",
+      "sinNombre": "Sem nome",
+      "pedidosOnline": "Ver pedidos online",
+      "pagos": {
+        "paid": "Pago",
+        "partial": "Pagamento parcial",
+        "pending": "Pendente",
+        "refunded": "Reembolsado"
       }
     },
     "kpis": {
@@ -15521,7 +16310,23 @@
       "facturado": "Faturado: {monto}",
       "ventasCobradas": "{count, plural, one {{n} venda recebida} other {{n} vendas recebidas}}",
       "vsAnterior": "{pct}% em relação ao período anterior",
-      "sinAnterior": "Sem recebimentos no período anterior"
+      "sinAnterior": "Sem vendas no período anterior",
+      "ventas": "Vendas do período",
+      "ventasCorto": "Vendas",
+      "ticketCorto": "Ticket",
+      "transacciones": "Transações",
+      "transaccionesCorto": "Trans.",
+      "impuestos": "Impostos",
+      "sobreTransacciones": "{count, plural, one {sobre {n} transação} other {sobre {n} transações}}",
+      "impuestoTasa": "{tipo} {tasa}%",
+      "impuestoSinDetalle": "Outros impostos",
+      "sinImpuestos": "Sem impostos no período",
+      "partes": {
+        "pagadas": "{count, plural, one {{n} paga} other {{n} pagas}}",
+        "pendientes": "{count, plural, one {{n} pendente} other {{n} pendentes}}",
+        "anuladas": "{count, plural, one {{n} anulada} other {{n} anuladas}}",
+        "devueltas": "{count, plural, one {{n} devolvida} other {{n} devolvidas}}"
+      }
     },
     "anular": {
       "titulo": "Cancelar venda",
@@ -31801,7 +32606,20 @@
       "todaLaOrganizacion": "Toda a organização",
       "todasLasSucursales": "Todas as filiais",
       "franjaNoAplica": "Faixa: não se aplica",
-      "franjaNoAplicaMotivo": "Este relatório é calculado por dia"
+      "franjaNoAplicaMotivo": "Este relatório é calculado por dia",
+      "persona": "Pessoa",
+      "personaTodas": "Todas as pessoas",
+      "personaBuscar": "Buscar pessoa",
+      "personaOtra": "Pessoa escolhida",
+      "metodoPago": "Forma de pagamento",
+      "metodoTodos": "Todas as formas",
+      "metodoBuscar": "Buscar forma",
+      "sinResultados": "Sem resultados",
+      "contarPor": "Contar por",
+      "contarCajero": "Caixa",
+      "contarVendedor": "Vendedor",
+      "contarMesero": "Garçom",
+      "contarAyuda": "Caixa: quem recebeu · Vendedor: quem registrou a venda · Garçom: quem atendeu a mesa"
     },
     "alcance": {
       "titulo": "{n, plural, =0 {Você não tem filiais atribuídas} one {Você está vendo só {sucursales}} other {Você está vendo só {sucursales}}}",
@@ -34149,7 +34967,8 @@
         "sinPermisoPublicar": "Seu perfil não pode publicar o site. Peça a permissão “Publicar site”.",
         "nadaQuePublicar": "Não há alterações para publicar",
         "nadaQueGuardar": "Não há alterações para salvar",
-        "sitio": "Site ou unidade que você edita"
+        "sitio": "Site ou unidade que você edita",
+        "plantillasTienda": "Modelos da loja"
       },
       "acciones": {
         "reintentar": "Tentar novamente",
@@ -34205,7 +35024,17 @@
         "seccion": "{seccion} · clique para editar",
         "seccionPropia": "{seccion} · tipografia própria · pré-visualização ao vivo",
         "encabezado": "Cabeçalho · global · clique em um link para editar o menu",
-        "pie": "Rodapé · global · clique em um link para editar o menu"
+        "pie": "Rodapé · global · clique em um link para editar o menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Ver com o produto",
+            "category_detail": "Ver com a categoria",
+            "space_detail": "Ver com o espaço"
+          },
+          "sinOpciones": "Ainda não há registros ativos para a prévia: a tela mostra a listagem da loja.",
+          "publicada": "A tela mostra a versão publicada deste modelo: suas alterações aparecem aqui depois de publicar.",
+          "borrador": "Mostrando o seu rascunho: a cada salvamento, a visualização é atualizada."
+        }
       },
       "inspector": {
         "etiqueta": "Inspetor: {nombre}",
@@ -34888,6 +35717,321 @@
       "controles": {
         "degradado1": "Cor inicial do degradê",
         "degradado2": "Cor final do degradê"
+      },
+      "cabeceraTienda": {
+        "volver": "Voltar ao Cabeçalho",
+        "comoHoy": "Voltar a como está hoje",
+        "iconos": {
+          "titulo": "Cabeçalho › Ícones",
+          "migas": "Global · aparece em todas as páginas",
+          "abrir": "Ícones do cabeçalho",
+          "abrirAyuda": "Estilo, tamanho, textos e contador do carrinho",
+          "estilo": "Estilo dos ícones",
+          "estiloAyuda": "Vale para conta, carrinho, favoritos e moeda. Só ícone e Círculo usam a caixa de ícones que você já tem; ela é mantida.",
+          "estiloOpcion": {
+            "icono": "Só ícone",
+            "texto": "Com texto",
+            "pildora": "Pílula",
+            "relleno": "Preenchido",
+            "circulo": "Círculo"
+          },
+          "miniTexto": "Carrinho",
+          "posicionTexto": "Texto",
+          "debajo": "Abaixo",
+          "alLado": "Ao lado",
+          "tamano": "Tamanho",
+          "trazo": "Traço",
+          "trazoOpcion": {
+            "fino": "Fino",
+            "normal": "Normal"
+          },
+          "mostrarTexto": "Mostrar texto",
+          "mostrarTextoAyuda": "Com «Com texto» fica abaixo do ícone; com «Pílula» e «Preenchido», ao lado.",
+          "mostrarTextoSinTexto": "Só ícone e Círculo não têm texto.",
+          "cuales": "Quais ícones aparecem",
+          "cualesAyuda": "Cada texto é editável. Vazio = o texto padrão.",
+          "cuenta": "Conta",
+          "carrito": "Carrinho",
+          "favoritos": "Favoritos",
+          "moneda": "Moeda",
+          "texto": "Texto",
+          "porDefecto": "Padrão: «{texto}».",
+          "contador": "Contador",
+          "contadorOpcion": {
+            "numero": "Número",
+            "punto": "Ponto",
+            "oculto": "Oculto"
+          },
+          "glifo": "Ícone",
+          "glifoOpcion": {
+            "carrito": "Carrinho",
+            "bolsa": "Sacola"
+          },
+          "favoritosAyuda": "Abre Minha conta › Favoritos: os produtos que o cliente marcou com o coração.",
+          "monedaEstilo": "Estilo e moedas",
+          "monedaVer": "Ver «Seletor de moeda»",
+          "favoritosAyudaPanel": "Abre o painel de favoritos ou a página /favoritos (Cabeçalho › Favoritos).",
+          "favoritosVer": "Ver «Favoritos»"
+        },
+        "moneda": {
+          "titulo": "Cabeçalho › Seletor de moeda",
+          "migas": "Global · aparece em todas as páginas",
+          "abrir": "Seletor de moeda",
+          "abrirAyuda": "Estilo, moedas visíveis e moeda ao entrar",
+          "selector": "Seletor de moeda",
+          "mostrar": "Mostrar no cabeçalho",
+          "mostrarAyuda": "Só aparece se a loja oferecer mais de uma moeda.",
+          "estilo": "Estilo do seletor",
+          "estiloAyuda": "Sem escolha, o de hoje: globo, código e seta.",
+          "estiloOpcion": {
+            "codigo": "Código",
+            "bandera": "Bandeira + código",
+            "simbolo": "Código + símbolo",
+            "icono": "Só ícone",
+            "segmento": "Segmento"
+          },
+          "flecha": "Mostrar seta",
+          "visibles": "Moedas visíveis na loja",
+          "visiblesAyuda": "Aqui você só escolhe quais o cliente vê.",
+          "base": "(base)",
+          "visiblesPie": "A moeda base sempre aparece e vem primeiro.",
+          "alEntrar": "Moeda ao entrar",
+          "alEntrarOpcion": {
+            "pais": "Conforme o país do visitante",
+            "base": "Sempre a moeda base ({base})"
+          },
+          "alEntrarAyuda": "Hoje a loja detecta o país. Se o país não tiver uma moeda visível, usa-se {base}.",
+          "celular": "No celular",
+          "celularOpcion": {
+            "hoja": "Folha inferior",
+            "lateral": "Menu lateral",
+            "chips": "Chips",
+            "barra": "Na barra"
+          },
+          "celularAyuda": {
+            "hoja": "Como hoje: uma linha no menu abre a folha com as moedas.",
+            "lateral": "A lista se abre dentro do menu lateral.",
+            "chips": "As moedas aparecem como chips dentro do menu.",
+            "barra": "A bandeira (ou o código) fica ao lado do carrinho e abre a folha."
+          }
+        },
+        "carrito": {
+          "titulo": "Cabeçalho › Carrinho",
+          "migas": "Global · gaveta que abre pelo ícone do carrinho",
+          "abrir": "Gaveta do carrinho",
+          "abrirAyuda": "Botão principal, links e frete grátis",
+          "boton": "Botão principal do carrinho",
+          "botonAyuda": "Antes só no editor anterior (Ajustes globais). Agora aqui, com os mesmos textos.",
+          "modo": {
+            "al_abrir": "Dinâmico (alterna)",
+            "fijo": "Texto fixo"
+          },
+          "modoAyuda": {
+            "al_abrir": "Alterna entre vários textos",
+            "fijo": "Sempre o mesmo"
+          },
+          "textos": "Textos que alternam",
+          "textoN": "Texto {n}",
+          "quitarTexto": "Remover o texto {n}",
+          "agregarTexto": "Adicionar texto",
+          "textosAyuda": "Arraste para ordenar. Até {max} textos de {largo} letras.",
+          "cuando": "Quando muda",
+          "cuandoAlAbrir": "Cada vez que o carrinho abre",
+          "textoFijo": "Texto do botão",
+          "textoFijoAyuda": "Vazio = «{texto}».",
+          "sinBorrador": "Este site ainda não tem rascunho: o botão é salvo nos ajustes de sempre.",
+          "enlace": "Link secundário",
+          "enlaceMostrar": "Mostrar",
+          "enlaceTexto": "Texto",
+          "enlaceAyuda": "Abre a página do carrinho.",
+          "enlaceEstilo": "Estilo",
+          "enlaceEstiloOpcion": {
+            "borde": "Com borda",
+            "enlace": "Link"
+          },
+          "envio": "Frete grátis",
+          "envioBarra": "Mostrar barra de progresso",
+          "envioFalta": "Enquanto falta",
+          "envioFaltaAyuda": "'{monto}' é trocado pelo valor que falta. O limite está em Vendas online › Envios.",
+          "envioLogrado": "Ao alcançar",
+          "otros": "Outros textos",
+          "tituloCajon": "Título da gaveta",
+          "seguir": "Continuar comprando",
+          "textosSoloBorrador": "Os textos da gaveta são salvos quando o site passa ao novo rascunho; enquanto isso, aparecem na pré-visualização.",
+          "botonAyudaModos": "Escolha como muda o texto do botão. A pré-visualização mostra o resultado.",
+          "comoCambia": "Como o texto muda",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixo (sempre o mesmo)",
+              "ayuda": "Um único texto para o botão"
+            },
+            "al_abrir": {
+              "titulo": "Muda cada vez que o carrinho abre",
+              "ayuda": "Sai um diferente em cada abertura"
+            },
+            "mientras_abierto": {
+              "titulo": "Muda só enquanto está aberto",
+              "ayuda": "Alterna a cada poucos segundos, com transição"
+            },
+            "segun_carrito": {
+              "titulo": "Conforme o carrinho",
+              "ayuda": "Depende do frete grátis e das ofertas"
+            }
+          },
+          "opcionesDe": "Opções de «{modo}»",
+          "textoFijoAyudaLargo": "Vazio = «{texto}» (o texto padrão). Máximo de {largo} caracteres.",
+          "orden": "Ordem",
+          "ordenOpcion": {
+            "azar": "Aleatório",
+            "orden": "Em ordem"
+          },
+          "ordenAyuda": "«Aleatório»: sai qualquer um, sem repetir o da vez anterior. «Em ordem»: o 1.º na primeira vez, o 2.º na seguinte… e recomeça.",
+          "segundos": "A cada quantos segundos",
+          "segundosValor": "{n} s",
+          "transicion": "Transição",
+          "transicionOpcion": {
+            "fundido": "Esmaecer",
+            "deslizar": "Deslizar",
+            "ninguna": "Sem efeito"
+          },
+          "pausar": "Pausar ao passar o mouse",
+          "pausarAyuda": "No celular pausa enquanto o dedo está sobre o botão. Se o visitante pediu «reduzir movimento», muda sem efeito.",
+          "reglas": {
+            "faltaEnvio": "1 · Se falta para o frete grátis",
+            "oferta": "2 · Se há produtos em oferta",
+            "envioGratis": "3 · Se já tem frete grátis",
+            "porDefecto": "Padrão (nenhuma se cumpre)"
+          },
+          "reglaVacia": "Vazio: pula para a seguinte",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' é trocado pelo que falta. Só se houver valor mínimo para frete grátis.",
+            "oferta": "Conta se algum produto do carrinho tem preço anterior.",
+            "pie": "Se várias se cumprem, vence a de número menor. Um campo vazio pula para a seguinte."
+          },
+          "usarEnPagina": "Usar o mesmo em «Comprar» do carrinho completo",
+          "usarEnPaginaAyuda": "Ligado, o botão «Comprar» da página /carrito muda igual ao da gaveta. Desligado, tem a sua própria configuração.",
+          "botonPagina": "Botão «Comprar» de /carrito",
+          "soloBorrador": "Disponível quando o site passar para o novo rascunho.",
+          "vistaPrevia": {
+            "etiqueta": "Pré-visualização",
+            "fijo": "Resultado · sempre o mesmo texto",
+            "al_abrir_azar": "Resultado · um texto diferente cada vez que abre (aleatório)",
+            "al_abrir_orden": "Resultado · um texto diferente cada vez que abre (em ordem)",
+            "mientras_abierto": "Resultado · alterna a cada {n} s enquanto a gaveta continua aberta",
+            "segun_carrito": "Resultado · o texto depende do que há no carrinho",
+            "vez": "{n}.ª vez",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "Cabeçalho › Favoritos",
+          "migas": "Global · coração, painel lateral e página /favoritos",
+          "abrir": "Favoritos",
+          "abrirAyuda": "Coração, painel lateral e página /favoritos",
+          "corazon": "Coração no cabeçalho",
+          "mostrar": "Mostrar o coração",
+          "contador": "Contador de produtos salvos",
+          "corazonAyuda": "O estilo do ícone (só ícone, com texto, pílula…) é escolhido em Cabeçalho › Ícones.",
+          "alTocar": "Ao tocar no coração",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Abrir o painel lateral",
+              "ayuda": "Lista rápida sem sair"
+            },
+            "pagina": {
+              "titulo": "Ir para a página",
+              "ayuda": "Leva a /favoritos"
+            }
+          },
+          "alTocarAyuda": "No celular o painel abre em tela cheia.",
+          "textos": "Textos",
+          "textosAyuda": "O texto em cinza é o padrão. Se deixar o campo vazio, a loja usa esse.",
+          "texto": {
+            "tituloPagina": "Título da página",
+            "tituloPanel": "Título do painel",
+            "botonPrincipal": "Botão principal",
+            "botonBorde": "Botão com borda",
+            "vacioTitulo": "Mensagem vazia · título",
+            "vacioTexto": "Mensagem vazia · texto",
+            "avisoSesion": "Aviso para visitante sem sessão"
+          },
+          "paginaPanel": "Página /favoritos e painel",
+          "sugerencias": "Mostrar «Você também pode gostar»",
+          "fuente": "De onde vêm as sugestões",
+          "fuenteOpcion": {
+            "categorias": "Das mesmas categorias",
+            "mas_vendidos": "Mais vendidos",
+            "destacados": "Produtos em destaque"
+          },
+          "fuenteAyuda": "«Em destaque»: primeiro os que estão em oferta, depois os mais vendidos. Oculta-se se não houver produtos.",
+          "avisoSesion": "Mostrar aviso de sessão",
+          "compartir": "Botão «Compartilhar lista»",
+          "tarjetas": "Cartões de produto",
+          "corazonTarjetas": "Coração nos cartões",
+          "corazonFicha": "Coração na página do produto",
+          "tarjetasAyuda": "O estilo e a posição do coração no cartão continuam em Estilo do site › Cartão de produto."
+        },
+        "accesos": {
+          "titulo": "Ícones, moeda e carrinho"
+        }
+      },
+      "accionesFicha": {
+        "distribucion": "Distribuição pronta",
+        "personalizada": "Personalizada",
+        "distribuciones": {
+          "clasica": "Clássica",
+          "dos_mitad": "Duas metades",
+          "compacta": "Compacta",
+          "solo_agregar": "Só adicionar",
+          "comprar_primero": "Comprar primeiro",
+          "con_whatsapp": "Com WhatsApp"
+        },
+        "ayudaDistribucion": "Ao escolher uma, os botões abaixo se reorganizam e os textos que você escreveu são mantidos. Depois você pode ajustar cada botão.",
+        "ayudaPersonalizada": "Você mudou a ordem ou um botão: já não coincide com nenhuma distribuição pronta. Toque em um cartão para voltar a ela.",
+        "botones": "Botões e ordem",
+        "ayudaBotones": "Arraste pela alça para ordenar. Os botões dentro do mesmo quadro azul dividem a linha. O olho os mostra ou oculta.",
+        "mismaFila": "Mesma linha · {nombres}",
+        "tipos": {
+          "cantidad": "Quantidade",
+          "agregar": "Adicionar ao carrinho",
+          "comprar": "Comprar agora",
+          "favorito": "Favorito (coração)",
+          "whatsapp": "Pedir pelo WhatsApp",
+          "compartir": "Compartilhar"
+        },
+        "conEtiqueta": "Com rótulo",
+        "tamanos": {
+          "largo": "Longo",
+          "mitad": "Metade",
+          "pequeno": "Pequeno"
+        },
+        "estilos": {
+          "relleno": "Preenchido",
+          "borde": "Com borda",
+          "enlace": "Link"
+        },
+        "mostrar": "Mostrar na página do produto",
+        "ocultar": "Ocultar {nombre}",
+        "mostrarBoton": "Mostrar {nombre}",
+        "noSeOculta": "«Adicionar ao carrinho» não pode ser ocultado: pode ser movido e alterado.",
+        "abrir": "Opções de {nombre}",
+        "tamano": "Tamanho",
+        "estilo": "Estilo",
+        "texto": "Texto do botão",
+        "ayudaTexto": "Vazio = «{texto}» (texto padrão).",
+        "textoCorto": "Texto curto no celular",
+        "ayudaTextoCorto": "Em cinza, o texto padrão. Usado no celular quando o botão divide a linha.",
+        "ayudaCantidad": "A quantidade não tem tamanho nem estilo: ocupa sua própria largura. Mostra o rótulo «Quantidade» quando não divide a linha com um botão.",
+        "ayudaFavorito": "O coração não aparece se você desligar «Coração na página do produto» (Cabeçalho › Favoritos), nem no cardápio do restaurante.",
+        "compartirFila": "Dividir linha com o seguinte",
+        "ayudaCompartirFila": "Une este botão com «{siguiente}» mesmo que não se unissem sozinhos (máximo 3 por linha).",
+        "ultimo": "É o último da lista: não há seguinte.",
+        "sinWhatsapp": {
+          "titulo": "O WhatsApp não tem número",
+          "descripcion": "Sem número, «Pedir pelo WhatsApp» não aparece na loja. Adicione-o em Configuração › Contato.",
+          "ir": "Ir para Contato"
+        },
+        "comportamiento": "Comportamento"
       }
     },
     "paginas": {
@@ -36213,6 +37357,27 @@
           "editar": "Editar",
           "vacio": "Seu site usa os modelos de detalhe do seu design. Eles são criados ao abrir o editor.",
           "soloV2": "Este modelo é editado quando o site passar para o novo editor.",
+          "crear": {
+            "product_detail": {
+              "titulo": "Página do produto",
+              "descripcion": "Um único modelo para todos os produtos: a ordem e as seções são editadas no editor e valem em todas as páginas de produto.",
+              "vacioTitulo": "Seu site ainda não tem uma página de produto editável",
+              "vacioTexto": "Hoje cada produto usa o design padrão. Crie a página com esses mesmos blocos (galeria, nome e preço, comprar, benefícios, descrição, relacionados e avaliações) e edite-a no editor. O resto do site não muda.",
+              "boton": "Criar página de produto editável"
+            },
+            "category_detail": {
+              "titulo": "Página de categoria",
+              "descripcion": "Modelo de /categorias/[slug]: cabeçalho, filtros e grade. O texto e a imagem vêm da categoria no Inventário.",
+              "vacioTitulo": "Seu site ainda não tem uma página de categoria editável",
+              "vacioTexto": "Hoje as categorias usam o design padrão. Crie a página com esses mesmos blocos e edite-a no editor. O resto do site não muda.",
+              "boton": "Criar página editável"
+            },
+            "creando": "Criando…",
+            "sinPermiso": "Somente leitura: peça a permissão «Editar site».",
+            "conflicto": "Alguém salvou o site nesse meio-tempo. Recarregamos a tela: tente de novo.",
+            "error": "Não foi possível criar a página: {mensaje}",
+            "publicar": "Criada no rascunho: aparece no seu site quando você publicar."
+          },
           "tipos": {
             "product_detail": "Detalhe de produto",
             "category_detail": "Detalhe de categoria",
@@ -39286,7 +40451,12 @@
       "creada": "Promoção criada",
       "errorGuardar": "Não foi possível salvar a promoção",
       "pasoDe": "Passo {n} de {total} · {etiqueta}",
-      "pasosEtiqueta": "Passos da promoção"
+      "pasosEtiqueta": "Passos da promoção",
+      "seccionVigencia": "Vigência",
+      "seccionDondeAplica": "Onde se aplica",
+      "ayudaHoraOrganizacion": "Horário da organização ({zona}).",
+      "ayudaUltimoDia": "O último dia conta inteiro.",
+      "ayudaLimiteUsos": "Ao atingir o limite, a promoção deixa de ser aplicada."
     },
     "pantalla": {
       "titulo": "Promoções",
@@ -39302,7 +40472,13 @@
       "todos": "Todos",
       "tipo": "Tipo",
       "actualizar": "Atualizar",
-      "errorCargar": "Não foi possível carregar as promoções"
+      "errorCargar": "Não foi possível carregar as promoções",
+      "subtituloConteo": "{n, plural, one {# promoção} other {# promoções}} · {activas, plural, one {# ativa} other {# ativas}} agora mesmo",
+      "totalDetalle": "nesta organização",
+      "activasAhora": "Ativas agora",
+      "activasAhoraDetalle": "dentro do seu horário",
+      "programadas": "Programadas",
+      "programadasDetalle": "começam mais adiante"
     },
     "masivo": {
       "accion": "Dias e horário",
@@ -39321,7 +40497,8 @@
       "aplicar": "Aplicar a {n}",
       "aplicado": "{n, plural, one {# promoção atualizada} other {# promoções atualizadas}}",
       "parcial": "Só {n} de {total} foram atualizadas: as demais não pertencem a esta organização ou não existem mais.",
-      "error": "Não foi possível atualizar as promoções"
+      "error": "Não foi possível atualizar as promoções",
+      "descripcionHorario": "{n, plural, one {# promoção será alterada.} other {# promoções serão alteradas.}} O horário escolhido substitui o que elas tinham."
     },
     "lista": {
       "todoElDia": "O dia todo",
@@ -39354,7 +40531,22 @@
       "errorDuplicar": "Não foi possível duplicar a promoção",
       "desactivada": "Promoção desativada",
       "activada": "Promoção ativada",
-      "errorEstado": "Não foi possível mudar o estado"
+      "errorEstado": "Não foi possível mudar o estado",
+      "canales": "Canais",
+      "canalPos": "PDV",
+      "canalWeb": "Web",
+      "canalFinanzas": "Finanças",
+      "sinFechaFin": "sem data de término",
+      "sinResultadosTitulo": "Nenhuma promoção corresponde à busca",
+      "sinResultadosConTermino": "Não há promoções com «{termino}» e os filtros escolhidos. Tente outro nome ou remova os filtros.",
+      "sinResultadosDescripcion": "Não há promoções com os filtros escolhidos. Remova os filtros para ver todas.",
+      "errorTitulo": "Não foi possível carregar as promoções",
+      "errorDescripcion": "Verifique sua conexão e tente novamente.",
+      "sinPermisoTitulo": "Você não tem permissão para gerenciar promoções",
+      "sinPermisoDescripcion": "Peça a um administrador acesso às Promoções. As promoções vigentes continuam sendo aplicadas no caixa mesmo que você não as veja aqui.",
+      "volverPos": "Voltar ao PDV",
+      "sustantivoSingular": "promoção",
+      "sustantivoPlural": "promoções"
     },
     "detalle": {
       "cantidadMinima": "Quantidade mínima",
@@ -39403,7 +40595,57 @@
       "errorDuplicar": "Não foi possível duplicar a promoção",
       "desactivada": "Promoção desativada",
       "activada": "Promoção ativada",
-      "errorEstado": "Não foi possível mudar o estado"
+      "errorEstado": "Não foi possível mudar o estado",
+      "horaOrganizacion": "Horário da organização: {zona} ({desfase})."
+    },
+    "horario": {
+      "titulo": "Quando está ativa",
+      "descripcion": "Escolha como se repete a cada semana. Os horários são os da organização: {zona} ({desfase}), não os do navegador.",
+      "descripcionCorta": "Horário da organização · {zona} ({desfase}).",
+      "modoTodo": "O dia todo",
+      "modoCadaDia": "Mesmo horário todo dia",
+      "modoCadaDiaCorto": "Todo dia",
+      "modoCruza": "Faixa que atravessa dias",
+      "modoCruzaCorto": "Atravessa dias",
+      "todoAyuda": "Ativa a qualquer hora, todos os dias da vigência.",
+      "dias": "Dias",
+      "diasAyuda": "Sem dias marcados, aplica todos os dias.",
+      "horaInicio": "Hora de início",
+      "horaFin": "Hora de término",
+      "terminaDiaSiguiente": "Termina no dia seguinte · {duracion}",
+      "dura": "Dura {duracion}",
+      "duraCruza": "Dura {duracion} · passa da meia-noite",
+      "franjaN": "Faixa {n}",
+      "quitarFranja": "Remover faixa {n}",
+      "desdeDia": "De (dia)",
+      "hastaDia": "Até (dia)",
+      "hora": "Hora",
+      "elegirDia": "Escolha um dia",
+      "agregarFranja": "Adicionar outra faixa",
+      "todosLosDias": "todos os dias",
+      "resumenCadaDia": "Ativa {dias} das {inicio} às {fin}.",
+      "resumenCadaDiaCruza": "Ativa {dias} das {inicio} às {fin} do dia seguinte. A madrugada (00:00–{fin}) conta como parte do dia em que começou.",
+      "resumenFranja": "Ativa toda semana de {desdeDia} às {desdeHora} até {hastaDia} às {hastaHora} ({duracion} seguidas).",
+      "resumenEjemplo": "Uma venda de {hastaDia} às {antes} recebe o desconto; às {hastaHora} já não.",
+      "vistaPrevia": "Prévia da semana",
+      "leyendaActiva": "Ativa",
+      "leyendaMadrugada": "Madrugada do dia anterior",
+      "leyendaSin": "Sem desconto",
+      "hastaHora": "até {hora}",
+      "proximas": "Próximas ativações (dentro da vigência)",
+      "ninguna": "Não restam ativações dentro da vigência.",
+      "sinFin": "Repete toda semana: a promoção não tem data de término.",
+      "masUltima": "… e mais {n}; a última termina em {fecha} às {hora}.",
+      "minutos": "{m} min",
+      "horas": "{h} h",
+      "horasMinutos": "{h} h {m} min",
+      "errorHorasFaltantes": "Escolha a hora de início e a de término.",
+      "errorHorasIguales": "A hora de término deve ser diferente da de início.",
+      "errorFranjaIncompleta": "Complete os dias e os horários da faixa {n}.",
+      "errorFranjaSinDuracion": "A faixa {n} começa e termina no mesmo momento.",
+      "errorSinFranjas": "Adicione pelo menos uma faixa.",
+      "errorDemasiadasFranjas": "No máximo {max} faixas por promoção.",
+      "errorRevisar": "Revise quando a promoção está ativa."
     }
   },
   "pedidosManuales": {
@@ -40986,7 +42228,7 @@
       },
       "propinas": {
         "nombre": "Gorjetas",
-        "ayuda": "O 5105 somente quando o documento é uma gorjeta."
+        "ayuda": "28150501, passivo com os funcionários: a gorjeta não é receita nem despesa."
       },
       "comisiones": {
         "nombre": "Comissões",
@@ -41614,6 +42856,27 @@
         "codigo": "O código deve ter pelo menos 2 caracteres",
         "guardar": "Não foi possível salvar a forma de pagamento",
         "estado": "Não foi possível alterar o status da forma"
+      },
+      "selector": {
+        "buscar": "Buscar método, banco ou gateway…",
+        "vacio": "Não há métodos para adicionar",
+        "sinResultados": "Nenhum método corresponde",
+        "crearTexto": "Criar «{texto}» como método personalizado",
+        "filtrosEtiqueta": "Tipo de método",
+        "requiereConexion": "Requer conexão",
+        "yaLoTienes": "Você já tem",
+        "conectada": "Conectado",
+        "sinConectar": "Não conectado",
+        "grupo": {
+          "manual": "Método",
+          "pasarela": "Gateway"
+        },
+        "filtros": {
+          "efectivo_bancos": "Dinheiro e bancos",
+          "billeteras": "Carteiras",
+          "pasarelas": "Gateways",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -47443,9 +48706,8 @@
           "O dinheiro chega à sua conta Bold; a GO Admin não o toca."
         ],
         "queNecesitas": [
-          "Uma conta Bold com suas chaves de integração.",
-          "O número de série de cada maquininha e sua filial.",
-          "10 minutos."
+          "Uma conta Bold com a chave de identidade e a chave secreta.",
+          "5 minutos."
         ]
       },
       "stripe": {
@@ -47873,6 +49135,11 @@
           "As credenciais de integração.",
           "10 minutos."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "Você cobra com maquininhas Bold no PDV?",
+        "texto": "As chaves servem para os links de pagamento e a loja virtual. As maquininhas de cada unidade são configuradas à parte, com o número de série.",
+        "enlace": "Configurar maquininhas Bold"
       }
     },
     "misConexiones": {
@@ -48225,6 +49492,11 @@
             "p1": "Vá para SendGrid › Settings › API Keys.",
             "p2": "Crie uma chave com permissão de envio de e-mails.",
             "p3": "Copie-a e informe o remetente verificado que vai usar."
+          },
+          "bold": {
+            "p1": "Entre em panel.bold.co com seu usuário.",
+            "p2": "Vá em Integrações e abra as chaves de integração de {ambiente}.",
+            "p3": "Copie a chave de identidade e a chave secreta."
           }
         },
         "abrirPanel": "Abrir o painel de {nombre} em outra aba",
@@ -48300,7 +49572,8 @@
             "payu": "Na PayU, cole como URL de confirmação da sua conta.",
             "stripe": "Na Stripe, vá para Desenvolvedores › Webhooks › Adicionar endpoint e cole.",
             "paypal": "No PayPal, abra sua aplicação › Webhooks › Adicionar webhook e cole.",
-            "sendgrid": "No SendGrid, vá para Settings › Mail Settings › Event Webhook e cole."
+            "sendgrid": "No SendGrid, vá para Settings › Mail Settings › Event Webhook e cole.",
+            "bold": "No painel da Bold, vá em Integrações › Webhooks e cole como URL de notificações."
           },
           "p3": "Salve em {nombre} e volte aqui.",
           "sinUrl": "Este provedor não envia avisos ao GO Admin",
@@ -48337,6 +49610,10 @@
           "descripcion": "O provedor aceitou as chaves e elas foram guardadas no servidor. Você só verá os últimos 4 caracteres.",
           "webhookPendiente": "Quando chegar o primeiro evento, você o verá em Atividade.",
           "verConexion": "Ver conexão"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} não permite verificar chaves de teste",
+          "descripcion": "Elas são salvas sem verificação. Faça um pagamento de teste na sua loja para confirmar que funcionam."
         }
       },
       "ota": {
@@ -49952,7 +51229,9 @@
       "errorOrden": "Não foi possível salvar a ordem.",
       "errorEliminar": "Não foi possível excluir o método de pagamento.",
       "sinPermisoEliminar": "Não foi possível excluir o método de pagamento: seu cargo ou função não tem a permissão de faturamento.",
-      "eliminado": "{nombre} excluído"
+      "eliminado": "{nombre} excluído",
+      "ordenDescripcion": "O PDV e a loja virtual já mostram {nombre} na posição {n}.",
+      "deshacer": "Desfazer"
     },
     "estados": {
       "vacioTitulo": "Você ainda não tem métodos de pagamento",
@@ -60584,5 +61863,1246 @@
       "sinPermiso": "Você não tem permissão para ver esta foto.",
       "error": "Não conseguimos carregar a foto."
     }
+  },
+  "posCargos": {
+    "titulo": "Taxas de serviço",
+    "subtitulo": "Somam-se à conta antes dos impostos e vão para a fatura como linha própria · não são gorjeta",
+    "migaPos": "PDV",
+    "todasSucursales": "Todas as filiais",
+    "todas": "Todas",
+    "sinImpuesto": "Nenhum",
+    "copiaSufijo": " (cópia)",
+    "actualizar": "Atualizar",
+    "importarBoton": "Importar",
+    "plantilla": "Baixar modelo CSV",
+    "verArchivados": "Ver arquivados",
+    "nuevo": "Nova taxa",
+    "buscar": "Buscar por nome",
+    "sustantivo": {
+      "singular": "taxa",
+      "plural": "taxas"
+    },
+    "tipo": {
+      "percentage": "Porcentagem",
+      "fixed_amount": "Valor fixo"
+    },
+    "aplicaA": {
+      "all": "Todos os serviços",
+      "dine_in": "Mesa",
+      "delivery": "Entrega",
+      "takeout": "Para viagem"
+    },
+    "estado": {
+      "activo": "Ativa",
+      "inactivo": "Inativa",
+      "archivado": "Arquivada"
+    },
+    "cobro": {
+      "obligatorio": "Obrigatória",
+      "opcional": "Opcional"
+    },
+    "condicion": {
+      "comensales": "{n}+ pessoas",
+      "compraMinima": "Compra mínima",
+      "compraMinimaCorta": "Compra mínima {monto}",
+      "sinCompraMinima": "sem compra mínima",
+      "siempre": "Sempre"
+    },
+    "columnas": {
+      "nombre": "Nome",
+      "tipo": "Tipo",
+      "valor": "Valor",
+      "aplicaA": "Aplica-se a",
+      "impuesto": "Imposto",
+      "condicion": "Condição",
+      "sucursal": "Filial",
+      "cobro": "Cobrança",
+      "estado": "Status"
+    },
+    "acciones": {
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "verVentas": "Ver vendas com esta taxa",
+      "verVentasMotivo": "O PDV ainda não cobra taxas de serviço: ainda não há vendas com taxa.",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "archivar": "Arquivar",
+      "restaurar": "Restaurar"
+    },
+    "toast": {
+      "duplicado": "Taxa duplicada",
+      "activado": "Taxa ativada",
+      "desactivado": "Taxa desativada",
+      "archivado": "Taxa arquivada. Ela está em “Ver arquivados”.",
+      "restaurado": "Taxa restaurada. Ficou inativa: ative-a quando quiser cobrá-la."
+    },
+    "errores": {
+      "SIN_PERMISO": "Você não tem permissão para gerenciar taxas de serviço.",
+      "NO_ENCONTRADO": "A taxa não existe nesta organização.",
+      "TIPO_INVALIDO": "Tipo de taxa inválido: use porcentagem ou valor fixo.",
+      "IMPUESTO_INVALIDO": "O imposto escolhido não pertence a esta organização.",
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "kpi": {
+      "etiqueta": "Resumo das taxas",
+      "activos": "Ativas",
+      "activosValor": "{activos} de {total}",
+      "inactivos": "{n, plural, =0 {nenhuma inativa} one {# inativa} other {# inativas}}",
+      "cobrado": "Cobrado este mês",
+      "ventasConCargo": "Vendas com taxa",
+      "quitados": "Removidas pelo caixa",
+      "sinCobro": "O PDV ainda não as cobra"
+    },
+    "filtros": {
+      "estado": "Status",
+      "aplicaA": "Aplica-se a",
+      "aplicaAAyuda": "Inclui as taxas que se aplicam a todos os serviços.",
+      "cobro": "Cobrança",
+      "verResultados": "Ver {n, plural, one {# taxa} other {# taxas}}",
+      "estados": {
+        "todos": "Todas",
+        "activos": "Ativas",
+        "inactivos": "Inativas",
+        "archivados": "Arquivadas"
+      }
+    },
+    "vacio": {
+      "titulo": "Ainda não há taxas de serviço",
+      "descripcion": "Crie uma taxa para mesas grandes, entregas ou embalagens. Ela soma à conta antes dos impostos."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar as taxas",
+      "descripcion": "Verifique a conexão e tente novamente."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso às taxas de serviço",
+      "descripcion": "Peça a um administrador da organização acesso ao PDV."
+    },
+    "formulario": {
+      "tituloNuevo": "Nova taxa de serviço",
+      "tituloEditar": "Editar taxa de serviço",
+      "descripcion": "Calculada sobre o subtotal depois dos descontos e antes dos impostos.",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Ex.: Serviço mesa grande",
+      "tipo": "Tipo de taxa",
+      "porcentaje": "Porcentagem",
+      "montoFijo": "Valor fixo",
+      "valor": "Valor",
+      "impuesto": "Imposto da taxa",
+      "impuestoAyuda": "Normalmente, o mesmo dos produtos.",
+      "impuestoSinConfigurar": "A organização não tem impostos ativos: configure-os em Finanças.",
+      "sinImpuesto": "Nenhum",
+      "aplicaA": "Aplica-se a",
+      "comensalesMinimos": "Mínimo de pessoas",
+      "comensalesAyuda": "Vazio: sem mínimo.",
+      "compraMinima": "Compra mínima",
+      "compraMinimaAyuda": "Antes dos impostos. Vazio: sem mínimo.",
+      "sucursal": "Filial",
+      "todasSucursales": "Todas as filiais",
+      "cobro": "Como é cobrada",
+      "obligatorio": "Obrigatória",
+      "obligatorioDescripcion": "Aplica-se sozinha. Removê-la exige motivo e a permissão “Remover taxa” (ou um supervisor).",
+      "opcional": "Opcional",
+      "opcionalDescripcion": "O caixa pergunta ao cliente; se não aceitar, não é cobrada.",
+      "parecePropina": "Isto parece uma gorjeta sugerida",
+      "parecePropinaDescripcion": "A gorjeta é voluntária, é dos trabalhadores e não vai na fatura. Configure-a em Gorjetas, não como taxa.",
+      "irAPropinas": "Ir para Gorjetas",
+      "pareceFlete": "É o frete?",
+      "pareceFleteDescripcion": "A entrega é cobrada como frete no pagamento. Use esta taxa só para serviços como a embalagem.",
+      "vistaPrevia": "Como ficará no recibo",
+      "subtotalComensales": "Subtotal ({n} pessoas)",
+      "subtotalEjemplo": "Subtotal de exemplo",
+      "totalFactura": "Total da fatura",
+      "propinaFuera": "Gorjeta voluntária sugerida: fora da fatura. O exemplo supõe que os produtos têm o mesmo imposto da taxa.",
+      "cargoSinNombre": "Taxa",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar taxa",
+      "guardando": "Salvando…",
+      "actualizado": "Taxa atualizada",
+      "creado": "Taxa criada",
+      "error": {
+        "nombre": "Digite um nome.",
+        "valor": "O valor deve ser maior que 0.",
+        "porcentajeMaximo": "A porcentagem não pode passar de 100%."
+      }
+    },
+    "importar": {
+      "titulo": "Importar taxas",
+      "descripcion": "Envie um arquivo CSV com uma taxa por linha.",
+      "cancelar": "Cancelar",
+      "plantilla": "Modelo",
+      "importar": "Importar",
+      "importando": "Importando…",
+      "eligeArchivo": "Escolha um arquivo CSV",
+      "formato": "Colunas: name, charge_type, charge_value e, opcionais, min_amount, min_guests, applies_to, is_optional.",
+      "ayudaImpuesto": "As taxas importadas entram sem imposto: escolha-o ao editá-las."
+    }
+  },
+  "posCupones": {
+    "titulo": "Cupons",
+    "subtitulo": "Vigência no dia da organização",
+    "subtituloSucursal": "{sucursal} · vigência no dia da organização",
+    "subtituloMovil": "{total, plural, one {# cupom} other {# cupons}} · {activos, plural, one {# ativo} other {# ativos}}",
+    "migaPos": "PDV",
+    "actualizar": "Atualizar",
+    "verArchivados": "Ver arquivados",
+    "crearLote": "Criar lote",
+    "nuevo": "Novo cupom",
+    "buscar": "Buscar por código ou cliente",
+    "sustantivo": {
+      "singular": "cupom",
+      "plural": "cupons"
+    },
+    "estado": {
+      "activo": "Ativo",
+      "programado": "Agendado",
+      "agotado": "Esgotado",
+      "vencido": "Vencido",
+      "inactivo": "Inativo",
+      "archivado": "Arquivado"
+    },
+    "acciones": {
+      "ver": "Ver detalhes",
+      "editar": "Editar",
+      "duplicar": "Duplicar",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "archivar": "Arquivar",
+      "restaurar": "Restaurar"
+    },
+    "toast": {
+      "duplicado": "Cupom duplicado com um código novo. A cópia ficou inativa.",
+      "activado": "Cupom ativado",
+      "desactivado": "Cupom desativado",
+      "archivado": "Cupom arquivado. O histórico de resgates é mantido.",
+      "restaurado": "Cupom restaurado. Ficou inativo: ative-o quando quiser usá-lo."
+    },
+    "errores": {
+      "SIN_PERMISO": "Você não tem permissão para gerenciar cupons.",
+      "CODIGO_DUPLICADO": "Já existe um cupom com esse código na organização.",
+      "NO_ENCONTRADO": "O cupom não existe nesta organização.",
+      "PREFIJO_INVALIDO": "O prefixo só aceita letras e números (máximo 12).",
+      "CANTIDAD_INVALIDA": "A quantidade deve estar entre 1 e 5.000.",
+      "VALOR_INVALIDO": "O desconto não é válido.",
+      "VIGENCIA_INVALIDA": "A data final não pode ser anterior à inicial.",
+      "PROMOCION_INVALIDA": "A promoção não pertence a esta organização.",
+      "SIN_CODIGOS": "Não há códigos livres com esse prefixo. Use outro prefixo.",
+      "DESCONOCIDO": "Não foi possível concluir a operação. Tente novamente."
+    },
+    "columnas": {
+      "codigo": "Código",
+      "descuento": "Desconto",
+      "condiciones": "Condições",
+      "usos": "Usos",
+      "vigencia": "Vigência",
+      "estado": "Status"
+    },
+    "kpi": {
+      "etiqueta": "Resumo dos cupons",
+      "activos": "Ativos",
+      "activosDetalle": "de {n, plural, one {# cupom} other {# cupons}}",
+      "canjes": "Resgates este mês",
+      "canjesDetalle": "{monto} de desconto",
+      "tasa": "Taxa de resgate",
+      "tasaDetalle": "cupons resgatados / emitidos",
+      "agotados": "Esgotados ou vencidos",
+      "agotadosDetalle": "revisar vigência",
+      "agotadosNinguno": "tudo em ordem"
+    },
+    "filtros": {
+      "estado": "Status",
+      "verResultados": "Ver {n, plural, one {# cupom} other {# cupons}}",
+      "estados": {
+        "todos": "Todos",
+        "activo": "Ativos",
+        "programado": "Agendados",
+        "agotado": "Esgotados",
+        "vencido": "Vencidos",
+        "inactivo": "Inativos",
+        "archivados": "Arquivados"
+      }
+    },
+    "vacio": {
+      "titulo": "Ainda não há cupons",
+      "descripcion": "Crie um cupom para um cliente ou um lote para uma campanha. São resgatados no PDV e na loja online."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os cupons",
+      "descripcion": "Verifique a conexão e tente novamente."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso aos cupons",
+      "descripcion": "Peça a um administrador da organização acesso ao PDV."
+    },
+    "lista": {
+      "lote": "lote {prefijo} ({n})",
+      "montoFijo": "valor fixo",
+      "tope": "teto {monto}",
+      "sinTope": "sem teto",
+      "promocion": "Promoção “{nombre}”",
+      "compraMinima": "Compra mínima {monto}",
+      "primeraCompra": "Primeira compra",
+      "sinCondiciones": "Sem condições",
+      "cliente": "cliente: {nombre}",
+      "soloNuevos": "só clientes novos",
+      "porCliente": "{n} por cliente",
+      "usosSinLimite": "{n, plural, one {# uso} other {# usos}}",
+      "sinLimite": "sem limite",
+      "usos": "{usados} de {limite}",
+      "usoUnico": "uso único",
+      "quedan": "{n, plural, one {resta #} other {restam #}}",
+      "desde": "A partir de {fecha}",
+      "hasta": "Até {fecha}",
+      "sinVencimiento": "Sem vencimento",
+      "venceEn": "{n, plural, =0 {vence hoje} one {vence em # dia} other {vence em # dias}}",
+      "empiezaEn": "{n, plural, =0 {começa hoje} one {começa em # dia} other {começa em # dias}}"
+    },
+    "formulario": {
+      "tituloNuevo": "Novo cupom",
+      "tituloEditar": "Editar cupom",
+      "descripcion": "O código é salvo em maiúsculas e é único na organização.",
+      "codigo": "Código",
+      "generar": "Gerar um aleatório",
+      "nombre": "Nome",
+      "nombrePlaceholder": "Ex.: Desconto de boas-vindas",
+      "tipo": "Tipo de desconto",
+      "porcentaje": "Porcentagem",
+      "montoFijo": "Valor fixo",
+      "valor": "Valor",
+      "tope": "Desconto máximo",
+      "topeAyuda": "Só faz sentido com porcentagem.",
+      "compraMinima": "Compra mínima",
+      "desde": "De",
+      "desdeAyuda": "Hora da organização.",
+      "hasta": "Até",
+      "hastaAyuda": "O último dia conta inteiro.",
+      "sinFechaInicio": "A partir de hoje",
+      "sinFechaFin": "Sem data de fim",
+      "limiteUsos": "Limite de usos",
+      "usosPorCliente": "Usos por cliente",
+      "vacioSinLimite": "Vazio: sem limite.",
+      "cliente": "Cliente",
+      "clienteAyuda": "Vazio: qualquer cliente.",
+      "promocion": "Promoção vinculada",
+      "ninguna": "Nenhuma",
+      "primeraCompra": "Só primeira compra",
+      "primeraCompraAyuda": "Só para clientes sem compras anteriores.",
+      "activo": "Ativo",
+      "activoAyuda": "Pode ser resgatado no PDV e na loja online.",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar alterações",
+      "crear": "Criar cupom",
+      "guardando": "Salvando…",
+      "actualizado": "Cupom atualizado",
+      "creado": "Cupom criado",
+      "error": {
+        "codigoVacio": "Digite um código.",
+        "codigoFormato": "Use letras, números, hífen ou sublinhado (2 a 40).",
+        "valor": "O valor deve ser maior que 0.",
+        "porcentajeMaximo": "A porcentagem não pode passar de 100%.",
+        "vigencia": "A data final não pode ser anterior à inicial.",
+        "usosCliente": "Não pode superar o limite de usos."
+      }
+    },
+    "lote": {
+      "titulo": "Criar lote de cupons",
+      "descripcion": "Gera códigos únicos para uma campanha ou feira. Todos são criados numa única operação no servidor.",
+      "prefijo": "Prefixo",
+      "prefijoAyuda": "Só letras e números; salvo em maiúsculas.",
+      "cantidad": "Quantidade",
+      "cantidadAyuda": "Máximo {max} por lote.",
+      "descuento": "Desconto",
+      "usosPorCupon": "Usos por cupom",
+      "porCliente": "Por cliente",
+      "vigenciaAyuda": "Dias completos no fuso da organização.",
+      "promocion": "Promoção vinculada (opcional)",
+      "asiSeVeran": "Como ficarão (6 caracteres aleatórios depois do prefixo)",
+      "cancelar": "Cancelar",
+      "creando": "Criando…",
+      "crear": "Criar {n, plural, one {# cupom} other {# cupons}}",
+      "error": {
+        "prefijo": "Digite um prefixo de letras e números (máximo 12).",
+        "cantidad": "Entre 1 e 5.000.",
+        "valor": "O desconto deve ser maior que 0.",
+        "porcentajeMaximo": "A porcentagem não pode passar de 100%.",
+        "vigencia": "A data final não pode ser anterior à inicial."
+      }
+    },
+    "loteCreado": {
+      "titulo": "Lote {prefijo} criado",
+      "cupones": "{n, plural, one {# cupom} other {# cupons}}",
+      "conTope": "{valor} com teto de {tope}",
+      "compraMinima": "compra mínima {monto}",
+      "usos": "{n, plural, one {# uso por cupom} other {# usos por cupom}}",
+      "exito": "{n, plural, one {Foi criado # cupom} other {Foram criados # cupons}} “{prefijo}-…”",
+      "exitoProgramado": "{n, plural, one {Foi criado # cupom} other {Foram criados # cupons}} “{prefijo}-…” · agendados para {fecha}",
+      "codigos": "Códigos do lote",
+      "yMas": "e mais {n}",
+      "imprimir": "Imprimir cartões",
+      "exportar": "Exportar CSV",
+      "listo": "Pronto"
+    },
+    "detalle": {
+      "cargando": "Carregando cupom…",
+      "noEncontrado": "Este cupom não existe na organização",
+      "volver": "Voltar para Cupons",
+      "sinFechaFin": "sem data de fim",
+      "exportarCanjes": "Exportar resgates (CSV)",
+      "exportarLote": "Exportar códigos do lote",
+      "sinCanjes": "Ainda não foi resgatado",
+      "sinCanjesDescripcion": "Quando for usado no PDV ou na loja online, o resgate aparece aqui com a venda.",
+      "csvEncabezado": "data,venda,cliente,filial,desconto",
+      "columnas": {
+        "fecha": "Data",
+        "venta": "Venda",
+        "cliente": "Cliente",
+        "sucursal": "Filial",
+        "canal": "Canal",
+        "descuento": "Desconto"
+      },
+      "verVenta": "Ver venda",
+      "consumidorFinal": "Consumidor final",
+      "web": "Web",
+      "pos": "PDV",
+      "detalles": "Detalhes do cupom",
+      "descuento": "Desconto",
+      "descuentoConTope": "{valor} · teto {tope}",
+      "compraMinima": "Compra mínima",
+      "ninguna": "Nenhuma",
+      "vigencia": "Vigência",
+      "limiteUsos": "Limite de usos",
+      "enTotal": "{n} no total",
+      "cliente": "Cliente",
+      "cualquiera": "Qualquer um",
+      "primeraCompra": "Só primeira compra",
+      "si": "Sim",
+      "no": "Não",
+      "promocion": "Promoção associada",
+      "historial": "Histórico de resgates · {n}",
+      "canje": "resgate",
+      "canjes": "resgates",
+      "estado": "Status",
+      "estadoTexto": {
+        "activo": "Ativo. Pode ser resgatado no PDV e na loja online.",
+        "programado": "Agendado. Poderá ser resgatado a partir da data de início.",
+        "agotado": "Esgotado. Foi usado todas as vezes permitidas.",
+        "vencido": "Vencido. A vigência terminou.",
+        "inactivo": "Inativo. Não pode ser resgatado até você ativá-lo.",
+        "archivado": "Arquivado. Não pode ser resgatado; o histórico é mantido."
+      },
+      "estadisticas": "Estatísticas",
+      "redenciones": "Resgates",
+      "descuentoEntregado": "Desconto concedido",
+      "ticketMedio": "Tíquete médio",
+      "canal": "Canal",
+      "canalValor": "{web} web · {pos} PDV",
+      "ultimaVez": "Última vez",
+      "usoCupo": "Uso da cota"
+    }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Processadores de pagamento",
+    "subtitulo": "O que a maquininha e os gateways receberam e ainda não repassaram ao banco · {mes}",
+    "migas": {
+      "finanzas": "Finanças",
+      "tesoreria": "Tesouraria"
+    },
+    "acciones": {
+      "actualizar": "Atualizar",
+      "datos": "Dados dos processadores",
+      "registrarAbono": "Registrar repasse",
+      "abonar": "Registrar",
+      "completar": "Completar",
+      "cancelar": "Cancelar",
+      "guardar": "Salvar"
+    },
+    "pestanas": {
+      "saldos": "Saldos",
+      "abonos": "Repasses",
+      "alertas": "Alertas"
+    },
+    "mes": {
+      "etiqueta": "Mês",
+      "anterior": "Mês anterior",
+      "siguiente": "Próximo mês"
+    },
+    "kpi": {
+      "porCobrar": "A receber dos processadores",
+      "porCobrarDetalle": "Saldo das contas 138020xx",
+      "cobrado": "Recebido em {mes}",
+      "cobradoDetalle": "Cartão e gateways · venda + gorjeta",
+      "abonado": "Repassado em {mes}",
+      "abonadoDetalle": "Bruto dos repasses registrados",
+      "alertas": "Com alerta",
+      "sinAlertas": "Todos em dia"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# processador com alerta} other {# processadores com alerta}}",
+      "sinAbono": "{procesador} está há {dias} dias úteis sem repasse (cobrança mais antiga: {fecha}, {saldo} pendentes).",
+      "sinRetiro": "{procesador} retém {saldo} e está há {dias} dias sem nenhum saque para o banco.",
+      "negativo": "{procesador} tem saldo negativo ({saldo}): foi repassado mais do que recebido. Revise os repasses.",
+      "verAlertas": "Ver alertas"
+    },
+    "columnas": {
+      "procesador": "Processador",
+      "origen": "Origem",
+      "cobrado": "Recebido",
+      "abonado": "Repassado",
+      "saldo": "Saldo",
+      "pendienteDesde": "Pendente desde",
+      "estado": "Status"
+    },
+    "origen": {
+      "nacional": "Nacional",
+      "exterior": "Exterior"
+    },
+    "estado": {
+      "alDia": "Em dia",
+      "sinAbono": "Alerta · mais de 5 dias úteis",
+      "sinRetiro": "Alerta · 30 dias sem saque",
+      "negativo": "Saldo negativo",
+      "retenido": "Saldo retido no processador",
+      "faltaNit": "Falta o NIT do processador"
+    },
+    "nitCorto": "NIT {nit}",
+    "sinNit": "Sem NIT",
+    "diasHabiles": "{count, plural, =0 {hoje} one {# dia útil} other {# dias úteis}}",
+    "diasSinRetiro": "{count, plural, =0 {saque hoje} one {# dia sem saque} other {# dias sem saque}}",
+    "etiquetaFila": "{procesador} · saldo {saldo}",
+    "total": "Total",
+    "errorCarga": "Não foi possível carregar os processadores de pagamento",
+    "sinPermiso": {
+      "titulo": "Você não tem acesso aos processadores de pagamento",
+      "descripcion": "Peça a permissão de ver finanças."
+    },
+    "vacio": {
+      "titulo": "Ainda não há cobranças com cartão nem gateways",
+      "descripcion": "Quando você cobrar com maquininha, Wompi, Bold, Mercado Pago ou outro gateway, verá aqui o que lhe devem e quando repassam.",
+      "sinAlertasTitulo": "Sem alertas",
+      "sinAlertasDescripcion": "Nenhum processador passa de 5 dias úteis sem repasse nem de 30 dias sem saque."
+    },
+    "pie": "Recebido e repassado: do mês escolhido. Saldo: tudo o que está pendente até hoje. Dias úteis: de segunda a sexta, sem feriados; os repasses quitam primeiro as cobranças mais antigas. Os processadores que retêm saldo de propósito (por padrão Stripe e PayPal) não alertam após 5 dias úteis: alertam se passarem mais de 30 dias sem nenhum saque para o banco.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Data",
+        "bruto": "Bruto",
+        "descuentos": "Descontos",
+        "neto": "Líquido no banco",
+        "factura": "Fatura"
+      },
+      "estado": {
+        "registrado": "Registrado",
+        "anulado": "Cancelado"
+      },
+      "anular": "Cancelar repasse",
+      "anulado": "Repasse cancelado: o saldo do processador voltou a subir.",
+      "anularTitulo": "Cancelar repasse",
+      "anularDescripcion": "É registrado um estorno do repasse de {neto} de {fecha} e o saldo do processador volta a subir.",
+      "etiquetaFila": "Repasse de {fecha} · líquido {neto}",
+      "vacioTitulo": "Sem repasses registrados",
+      "vacioDescripcion": "Quando o processador depositar, registre o repasse com os valores do extrato."
+    },
+    "abono": {
+      "titulo": "Registrar repasse",
+      "tituloDe": "Registrar repasse de {procesador}",
+      "descripcion": "Copie os valores do extrato do processador. O líquido é o que chegou ao banco.",
+      "registrar": "Registrar repasse",
+      "corregir": "Corrija o que está marcado para registrar o repasse.",
+      "procesador": "Processador",
+      "elegirProcesador": "Escolha o processador",
+      "fecha": "Data do repasse",
+      "banco": "Banco onde chegou",
+      "sinBancos": "Não há contas bancárias ativas: será usada a conta de bancos padrão.",
+      "elegirBanco": "Escolha a conta",
+      "bruto": "Bruto do extrato",
+      "neto": "Líquido recebido no banco",
+      "descuentos": "O que o processador descontou",
+      "descuentosAyuda": "Como aparece no extrato.",
+      "comision": "Comissão",
+      "ivaComision": "IVA da comissão",
+      "retencionFuente": "Retenção na fonte",
+      "retencionIva": "Retenção de IVA",
+      "retencionIca": "Retenção de ICA",
+      "iva": {
+        "descontable": "Sua organização é contribuinte de IVA segundo o perfil tributário: o IVA da comissão é deduzido.",
+        "gasto": "Sua organização não é contribuinte de IVA: o IVA da comissão soma à despesa.",
+        "exterior": "Serviço do exterior: sua organização não é contribuinte de IVA, então não se retém IVA.",
+        "sinIva": "Sem IVA na comissão: não há nada a deduzir.",
+        "sinPerfil": "Defina o perfil tributário da organização para saber se o IVA da comissão é dedutível.",
+        "reverseCharge": "Serviço do exterior sem IVA colombiano: retém-se 19 % da comissão ({valor}) como IVA (reverse charge). Vai para o IVA dedutível 24081003 e para a retenção de IVA 23670502, e é declarado nos formulários 300 e 350 do mesmo período."
+      },
+      "ivaInsignia": {
+        "descontable": "IVA dedutível · 24081001",
+        "proporcional": "IVA dedutível · 24081001",
+        "gasto": "IVA na despesa · 53051501",
+        "exterior": "Exterior · sem retenção",
+        "sin_iva": "Sem IVA na comissão",
+        "sin_perfil": "Falta o perfil tributário",
+        "reverse_charge": "Reverse charge · 19 % retido"
+      },
+      "factura": "Fatura eletrônica do processador",
+      "facturaOpcional": "Fatura do processador (opcional)",
+      "facturaAyuda": "Obrigatória porque o IVA é dedutível.",
+      "facturaOpcionalAyuda": "Opcional: o IVA não é dedutível.",
+      "facturaEjemplo": "Ex.: FE 118240",
+      "referencia": "Referência do extrato (opcional)",
+      "registrado": "Repasse de {procesador} registrado.",
+      "validacion": {
+        "procesador": "Escolha o processador.",
+        "fecha": "Informe a data do extrato.",
+        "nit": "Falta o NIT de {procesador}: complete em «Dados dos processadores» para registrar o repasse.",
+        "bruto": "Informe o bruto do extrato.",
+        "neto": "Informe o que chegou ao banco.",
+        "descuadre": "Não fecha: o bruto menos os descontos dá {calculado}.",
+        "factura": "Obrigatória quando o IVA é dedutível."
+      },
+      "cuadre": {
+        "titulo": "Conferência do repasse",
+        "bruto": "Bruto do extrato",
+        "comision": "− Comissão",
+        "iva": "− IVA da comissão",
+        "retenciones": "− Retenções",
+        "calculado": "Líquido calculado",
+        "banco": "Líquido que chegou ao banco",
+        "cuadra": "✓ Fecha",
+        "diferencia": "Diferença {valor}",
+        "regla": "Bruto = líquido + comissão + IVA + retenções. Não é possível salvar até fechar."
+      },
+      "asiento": {
+        "titulo": "Lançamento gerado",
+        "banco": "Banco",
+        "comision": "Comissões",
+        "ivaDescontable": "IVA dedutível",
+        "retefuente": "Antecipação retenção na fonte",
+        "reteiva": "Antecipação retenção de IVA",
+        "reteica": "Antecipação retenção de ICA",
+        "saldo": "Saldo do processador: {antes} → {despues}",
+        "ivaExterior": "IVA dedutível por serviços do exterior",
+        "reteivaExterior": "Retenção de IVA por serviços do exterior"
+      }
+    },
+    "datos": {
+      "titulo": "Dados dos processadores",
+      "descripcion": "Cada processador é o terceiro da sua conta 138020xx. A origem define como é tratado o IVA da comissão.",
+      "sinPermiso": "Somente leitura: peça a permissão de criar em finanças.",
+      "guardado": "Dados dos processadores salvos.",
+      "columnas": {
+        "procesador": "Processador",
+        "nit": "NIT ou ID fiscal",
+        "nombre": "Nome como terceiro",
+        "origen": "Origem",
+        "retiene": "Retém saldo",
+        "retieneLargo": "Retém saldo de propósito",
+        "identificacion": "Identificação"
+      },
+      "etiquetaNit": "NIT de {procesador}",
+      "etiquetaNombre": "Nome de {procesador} como terceiro",
+      "etiquetaOrigen": "Origem de {procesador}",
+      "etiquetaRetiene": "{procesador} retém saldo de propósito",
+      "nitEjemplo": "Ex.: 900.123.456-7",
+      "deFabrica": "Padrão",
+      "faltaNit": "Falta: sem NIT o repasse não pode ser registrado.",
+      "notaFabrica": "Wompi, Bold, Mercado Pago e PayU vêm com o NIT padrão. A maquininha cada organização informa. Stripe e PayPal não: informe a empresa e o número do seu contrato ou extrato, com o tipo de documento (42 se for um número fiscal do país; 43 se o país não usa número fiscal, e é atribuído 444444001). Sem identificação, a cobrança segue normal, mas o repasse não pode ser registrado.",
+      "notaExterior": "O processador presta o serviço de fora da Colômbia. Se o extrato não traz IVA colombiano e sua organização é contribuinte de IVA, ao registrar o repasse retém-se 19 % da comissão (reverse charge, art. 437-2 núm. 3 ET). Mudar a origem só afeta os repasses registrados a partir daí.",
+      "notaRetiene": "O processador guarda o dinheiro e ele é sacado quando se decide. Não dispara o alerta de 5 dias úteis: o painel mostra o saldo retido e alerta se passarem mais de 30 dias sem nenhum saque para o banco. Vem ativado para Stripe e PayPal e desativado para os demais.",
+      "etiquetaTipo": "Tipo de documento de {procesador}",
+      "tipoElegir": "Tipo de documento",
+      "tipos": {
+        "31": "31 · NIT (DIAN)",
+        "42": "42 · Número fiscal do exterior",
+        "43": "43 · Sem número fiscal"
+      },
+      "nitGenerico": "É atribuído 444444001…",
+      "faltaTipo": "Escolha o tipo de documento: sem ele não é possível reportar na exógena."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Sua sessão terminou. Entre novamente.",
+      "SIN_PERMISO": "Você não tem permissão para esta ação.",
+      "PROCESADOR_INVALIDO": "Escolha um processador da lista.",
+      "FECHA_REQUERIDA": "Informe a data do repasse conforme o extrato.",
+      "FECHA_FUTURA": "O repasse não pode ter data futura.",
+      "PERIODO_CERRADO": "O período contábil dessa data está fechado.",
+      "IMPORTE_INVALIDO": "Revise os valores: o bruto deve ser maior que zero e os descontos não podem ser negativos.",
+      "NETO_INVALIDO": "Os descontos são maiores que o bruto.",
+      "NETO_DESCUADRADO": "Não fecha: o bruto menos os descontos não dá o líquido recebido.",
+      "SUCURSAL_INVALIDA": "A unidade não é da sua organização.",
+      "CUENTA_BANCARIA_INVALIDA": "A conta bancária não é da sua organização ou não tem conta contábil.",
+      "PROPORCION_INVALIDA": "A proporção dedutível vai de 0 a 1.",
+      "PROPORCION_NO_APLICA": "Sua organização não é contribuinte de IVA: o IVA da comissão é despesa.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Defina o perfil tributário da organização para saber se o IVA da comissão é dedutível.",
+      "FACTURA_REQUERIDA": "Para deduzir o IVA da comissão é necessária a fatura eletrônica do processador.",
+      "ABONO_MAYOR_QUE_SALDO": "O repasse é maior do que o processador devia nessa data.",
+      "NIT_PROCESADOR_REQUERIDO": "Falta o NIT do processador: complete em «Dados dos processadores».",
+      "SIN_CUENTA": "Faltam contas contábeis para este lançamento. Revise o plano de contas.",
+      "SOLICITUD_REQUERIDA": "Não foi possível identificar a solicitação. Tente de novo.",
+      "ORIGEN_INVALIDO": "A origem é nacional ou exterior.",
+      "RETIENE_SALDO_INVALIDO": "«Retém saldo» é sim ou não.",
+      "ABONO_INEXISTENTE": "O repasse não existe ou não é da sua organização.",
+      "MOTIVO_REQUERIDO": "Informe o motivo do cancelamento.",
+      "datos_invalidos": "Revise os dados do formulário.",
+      "DESCONOCIDO": "Não foi possível concluir. Tente de novo em instantes.",
+      "TIPO_DOCUMENTO_INVALIDO": "O tipo de documento é 31 (NIT), 42 (número fiscal do exterior) ou 43 (sem número fiscal)."
+    }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Novo imposto",
+    "subtitulo": "{impuestos, plural, =0 {Sem impostos de venda e compra} one {# imposto de venda e compra} other {# impostos de venda e compra}} · {retenciones, plural, =0 {sem retenções} one {# retenção} other {# retenções}}",
+    "subtituloTarifa": "alíquota padrão: {tarifa}",
+    "subtituloSinTarifa": "sem alíquota padrão",
+    "subtituloMovil": "{impuestos, plural, one {# imposto} other {# impostos}} · {activos, plural, one {# ativo} other {# ativos}}",
+    "pestanas": {
+      "impuestos": "Impostos"
+    },
+    "tablaEtiqueta": "Impostos de venda e compra da organização",
+    "buscar": "Buscar imposto por nome ou alíquota",
+    "columnas": {
+      "nombre": "Nome",
+      "tipo": "Tipo",
+      "tarifa": "Alíquota",
+      "codigoDian": "Código DIAN",
+      "productos": "Produtos",
+      "estado": "Status"
+    },
+    "tipos": {
+      "iva": "IVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Outro"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Ativo",
+      "inactivo": "Inativo"
+    },
+    "insignias": {
+      "exento": "Isento",
+      "predeterminado": "Padrão",
+      "incluido": "Incluído",
+      "incluidoLargo": "incluído no preço"
+    },
+    "filtros": {
+      "titulo": "Filtrar impostos",
+      "estado": "Status",
+      "tipo": "Tipo",
+      "todos": "Todos",
+      "activos": "Ativos",
+      "inactivos": "Inativos"
+    },
+    "acciones": {
+      "editar": "Editar imposto",
+      "duplicar": "Duplicar",
+      "predeterminado": "Tornar padrão",
+      "predeterminadoInactivo": "Ative-o primeiro: um imposto inativo não pode ser a alíquota padrão.",
+      "activar": "Ativar",
+      "desactivar": "Desativar",
+      "activarNombre": "Ativar {nombre}",
+      "desactivarNombre": "Desativar {nombre}",
+      "eliminar": "Excluir imposto",
+      "eliminarPredeterminado": "É a alíquota padrão: escolha outra antes de excluí-lo.",
+      "eliminarEnUso": "{count, plural, one {Usado por # produto} other {Usado por # produtos}}: remova-o deles ou desative-o.",
+      "actualizar": "Atualizar"
+    },
+    "vacio": {
+      "titulo": "Ainda não há impostos",
+      "descripcion": "Crie o IVA e os outros impostos que você cobra, ou carregue o modelo do seu país."
+    },
+    "sinResultados": {
+      "titulo": "Nenhum imposto corresponde",
+      "descripcion": "Tente outro nome ou alíquota, ou limpe os filtros."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar os impostos",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "sinPermiso": {
+      "titulo": "Você não tem acesso aos impostos",
+      "descripcion": "Peça a um administrador da organização acesso a Finanças."
+    },
+    "sustantivo": {
+      "singular": "imposto",
+      "plural": "impostos"
+    },
+    "plantilla": {
+      "cargar": "Carregar modelo de {pais}",
+      "cargada": "Os impostos que faltavam do modelo de {pais} foram adicionados.",
+      "error": "Não foi possível carregar o modelo de impostos."
+    },
+    "toast": {
+      "errorTitulo": "Erro",
+      "sinOrganizacion": "Nenhuma organização ativa foi encontrada.",
+      "errorOrganizacion": "Não foi possível obter as informações da organização.",
+      "activado": "{nombre} ficou ativo.",
+      "desactivado": "{nombre} ficou inativo.",
+      "errorEstado": "Não foi possível mudar o status do imposto.",
+      "predeterminado": "{nombre} agora é a alíquota padrão.",
+      "errorPredeterminado": "Não foi possível mudar a alíquota padrão."
+    },
+    "tarifa": {
+      "titulo": "Alíquota para produtos sem imposto: {tarifa}",
+      "ninguna": "Nenhuma ({tasa})",
+      "cobertura": "{con} de {total} produtos têm imposto atribuído. Os outros {sin} são vendidos com esta alíquota. Um produto isento ou excluído é marcado assim no produto: nunca usa esta alíquota.",
+      "ayuda": "Aplica-se em faturas, orçamentos e PDV aos produtos sem imposto próprio. Se escolher «Nenhuma», essas vendas saem sem IVA e você verá um aviso antes de emitir.",
+      "barraEtiqueta": "Produtos com imposto atribuído",
+      "leyenda": "Com imposto {con} % · Isento ou excluído {exentos} % · Sem configurar {sin} %",
+      "cambiar": "Mudar alíquota",
+      "dialogoTitulo": "Alíquota para produtos sem imposto",
+      "etiqueta": "Alíquota padrão",
+      "elegir": "Selecione uma alíquota",
+      "opcionNinguna": "Nenhuma — vendo produtos excluídos ou isentos",
+      "guardar": "Salvar alíquota",
+      "guardadaTitulo": "Alíquota padrão atualizada",
+      "guardadaNinguna": "Os produtos sem imposto atribuído serão vendidos sem IVA.",
+      "guardadaTarifa": "Os produtos sem imposto atribuído usarão esta alíquota.",
+      "errorTitulo": "Erro",
+      "error": "Não foi possível salvar a alíquota padrão. Tente novamente."
+    },
+    "eliminar": {
+      "titulo": "Excluir {nombre}?",
+      "descripcion": "Você vai excluir <b>{nombre}</b> ({tasa}). Esta ação não pode ser desfeita. Se produtos o usam ou se é a alíquota padrão, não é excluído.",
+      "confirmar": "Excluir",
+      "errorTitulo": "Não excluído",
+      "error": "Não foi possível excluir o imposto. Tente novamente.",
+      "hecho": "Imposto excluído."
+    },
+    "formulario": {
+      "nuevo": "Novo imposto",
+      "editar": "Editar imposto",
+      "duplicar": "Duplicar imposto",
+      "nombreCopia": "{nombre} (cópia)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {sem produtos} one {usado em # produto} other {usado em # produtos}}",
+      "guardar": "Salvar",
+      "guardarCambios": "Salvar alterações",
+      "plantillas": {
+        "aviso": "São mostrados os modelos de impostos do seu país. Você pode usar um como base ou criar um imposto personalizado.",
+        "usar": "Usar modelo de imposto",
+        "etiqueta": "Modelos de impostos disponíveis",
+        "etiquetaPais": "Modelos de impostos disponíveis ({pais})",
+        "ayuda": "Apenas os modelos do seu país de operação.",
+        "sinPlantillas": "Não há modelos de impostos para o seu país.",
+        "elegir": "Selecione o modelo"
+      },
+      "nombre": "Nome",
+      "nombreEjemplo": "Ex.: IVA 19 %",
+      "tasa": "Alíquota (%)",
+      "tasaEjemplo": "Ex.: 19",
+      "tasaAyuda": "Entre 0 e 100. Até 3 decimais (ICA por mil: 0,966).",
+      "codigoDian": "Código DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Não vai como imposto da linha",
+      "codigoDianAyuda": "Usado pela fatura eletrônica; vem do modelo ou do nome.",
+      "tipos": {
+        "iva": "IVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Outro"
+      },
+      "descripcion": "Descrição",
+      "descripcionEjemplo": "Descrição do imposto",
+      "cuentaIva": "Conta a pagar (plano de contas)",
+      "elegirCuenta": "Selecione a conta",
+      "cuentaIvaAyuda": "O IVA a pagar é 2408. Só são oferecidas contas de passivo de detalhe que existem no plano.",
+      "cuentaIvaInexistente": "O mapeamento atual ({cuenta}) não existe no plano. Escolha uma conta real; 2408 é o IVA a pagar.",
+      "cuentaIvaSinDetalle": "O plano não tem conta de detalhe sob 2408 (IVA a pagar). Escolha outra de passivo de detalhe ou crie-a no plano de contas.",
+      "cuentaIvaAuxiliar": "A 2408 é de título no seu plano; o IVA é registrado na sua subconta {cuenta}.",
+      "cuentaRetencionInexistente": "A conta {cuenta} não está no plano ou é de título. Escolha uma de detalhe.",
+      "opciones": "Opções do imposto",
+      "activo": "Imposto ativo",
+      "activaRetencion": "Retenção ativa",
+      "predeterminado": "Alíquota padrão",
+      "predeterminadoAyuda": "Usada pelos produtos sem imposto atribuído (não os isentos). Só existe uma.",
+      "incluido": "Incluído no preço",
+      "incluidoAyuda": "O preço do produto já inclui este imposto. Não é somado ao total.",
+      "errorTitulo": "Erro",
+      "errorGuardar": "Não foi possível salvar o imposto. Tente novamente.",
+      "creado": "Imposto criado.",
+      "actualizado": "Imposto atualizado.",
+      "validacion": {
+        "nombre": "O nome do imposto é obrigatório.",
+        "tasa": "A alíquota deve estar entre 0 e 100 %.",
+        "cuentaTitulo": "Conta contábil obrigatória",
+        "cuenta": "O IVA a pagar precisa de uma conta de passivo de detalhe. A conta canônica é 2408."
+      },
+      "cuentaGuardadaSinCuenta": "O imposto foi salvo, mas não a conta",
+      "cuentaErrorDetalle": "O IVA a pagar é 2408: {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "a conta não existe no plano de contas.",
+        "cuenta_de_titulo": "a conta é de título e não recebe o IVA. Escolha uma de detalhe.",
+        "cuenta_no_es_pasivo": "a conta não é de passivo.",
+        "otro": "verifique se a conta existe e se você tem permissão de impostos."
+      }
+    }
+  },
+  "finanzasComisiones": {
+    "titulo": "Comissões",
+    "migas": {
+      "finanzas": "Finanças",
+      "configuracion": "Configuração"
+    },
+    "pagarComisiones": "Pagar comissões",
+    "sinNombre": "Sem nome",
+    "todasLasFechas": "Todas as datas",
+    "nVendedores": "{count, plural, =0 {sem vendedores} one {# vendedor} other {# vendedores}}",
+    "nComisiones": "{count, plural, one {# comissão} other {# comissões}}",
+    "tablaEtiqueta": "Comissões agrupadas por vendedor",
+    "pestanas": {
+      "etiqueta": "Status das comissões",
+      "porPagar": "A pagar",
+      "pagadas": "Pagas",
+      "canceladas": "Canceladas",
+      "todas": "Todas"
+    },
+    "columnas": {
+      "vendedor": "Vendedor / documento",
+      "fecha": "Data",
+      "base": "Base",
+      "metodo": "Método",
+      "comision": "Comissão",
+      "estado": "Status",
+      "asiento": "Lançamento"
+    },
+    "estado": {
+      "porPagar": "A pagar",
+      "sinPendientes": "Em dia",
+      "devengada": "Apurada",
+      "pagada": "Paga",
+      "clawback": "Clawback",
+      "rechazada": "Rejeitada",
+      "cancelada": "Cancelada"
+    },
+    "origen": {
+      "sale": "Venda PDV",
+      "invoice_sale": "Fatura de venda",
+      "invoice_purchase": "Fatura de compra",
+      "opportunity": "Oportunidade"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixo",
+    "motivo": "Motivo: {motivo}",
+    "plegar": "Ocultar as comissões de {nombre}",
+    "desplegar": "Mostrar as comissões de {nombre}",
+    "acciones": {
+      "pagar": "Pagar",
+      "pagarPendientes": "{count, plural, one {Pagar a pendente} other {Pagar as # pendentes}}",
+      "rechazar": "Rejeitar",
+      "rechazarPendientes": "{count, plural, one {Rejeitar a pendente} other {Rejeitar as # pendentes}}",
+      "clawback": "Reverter pagamento (clawback)",
+      "verOrigen": "Ver documento de origem",
+      "verAsiento": "Ver lançamento",
+      "actualizar": "Atualizar",
+      "reglas": "Regras de comissão"
+    },
+    "cifras": {
+      "etiqueta": "Resumo das comissões do filtro",
+      "devengado": "Apurado",
+      "devengadoDetalle": "{count, plural, one {# comissão vigente} other {# comissões vigentes}}",
+      "porPagar": "A pagar",
+      "porPagarDetalle": "{count, plural, =0 {nada pendente} one {# comissão a pagar} other {# comissões a pagar}}",
+      "pagado": "Pago",
+      "pagadoDetalle": "{count, plural, one {# paga} other {# pagas}}",
+      "sinPagos": "Ainda não há pagamentos",
+      "vendedores": "Vendedores",
+      "vendedoresAbiertas": "com comissões abertas",
+      "vendedoresLista": "na lista",
+      "noDisponible": "Não foi possível carregar",
+      "canceladas": "{count, plural, one {# cancelada} other {# canceladas}}: {rechazadas} rejeitadas · {clawback} em clawback",
+      "otrasMonedas": "Comissões em outras moedas",
+      "otraMoneda": "+ {count, plural, one {# comissão} other {# comissões}} em {moneda}: {devengado} apurado · {pagado} pago · {pendiente} pendente"
+    },
+    "filtros": {
+      "buscar": "Buscar vendedor ou nota",
+      "fechas": "Datas",
+      "titulo": "Filtrar comissões",
+      "origen": "Origem",
+      "miembro": "Vendedor",
+      "todos": "Todos"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "Não há comissões a pagar",
+        "descripcion": "As comissões são geradas sozinhas ao faturar com vendedor ou ganhar uma oportunidade, com a taxa das regras de comissão."
+      },
+      "pagadas": {
+        "titulo": "Ainda não há comissões pagas",
+        "descripcion": "Quando você pagar comissões, elas aparecerão aqui com o lançamento."
+      },
+      "canceladas": {
+        "titulo": "Não há comissões canceladas",
+        "descripcion": "Aqui aparecem as rejeitadas e as revertidas (clawback), com o motivo."
+      },
+      "todas": {
+        "titulo": "Ainda não há comissões",
+        "descripcion": "São geradas sozinhas ao faturar com vendedor ou ganhar uma oportunidade, com a taxa das regras de comissão."
+      }
+    },
+    "sinResultados": {
+      "titulo": "Nenhuma comissão corresponde",
+      "descripcion": "Tente ampliar as datas, trocar o vendedor ou limpar os filtros."
+    },
+    "error": {
+      "titulo": "Não foi possível carregar as comissões",
+      "descripcion": "Verifique sua conexão e tente novamente."
+    },
+    "errorParcial": "Não foi possível atualizar a lista ({error}). Mostrando a última conhecida.",
+    "mostrando": "Mostrando {shown} de {total} comissões · {vendedores, plural, one {# vendedor} other {# vendedores}}",
+    "mostrandoTodo": "{count, plural, one {# comissão} other {# comissões}} · {vendedores, plural, one {# vendedor} other {# vendedores}}",
+    "cargarMas": "Carregar mais",
+    "cargando": "Carregando…",
+    "errores": {
+      "pagar": "Não foi possível pagar",
+      "rechazar": "Não foi possível rejeitar",
+      "clawback": "Não foi possível reverter"
+    },
+    "pagar": {
+      "titulo": "Pagar comissões de {nombre}",
+      "tituloVarios": "Pagar comissões de {count, plural, one {# vendedor} other {# vendedores}}",
+      "subtitulo": "{count, plural, one {# comissão pendente} other {# comissões pendentes}}. Só são pagas as que continuarem pendentes.",
+      "base": "Base das vendas",
+      "baseMoneda": "Base das vendas ({moneda})",
+      "total": "Total a pagar",
+      "totalMoneda": "Total a pagar ({moneda})",
+      "variasMonedas": "Há comissões em várias moedas: cada uma é paga na sua, nunca são somadas.",
+      "fecha": "Data do pagamento",
+      "fechaAyuda": "O pagamento fica com a data de hoje.",
+      "referencia": "Referência",
+      "referenciaEjemplo": "Ex.: Transferência 99120",
+      "asiento": "O lançamento do pagamento debita comissões a pagar e credita a conta de onde sai o dinheiro.",
+      "confirmar": "Pagar",
+      "confirmarTotal": "Pagar {total}",
+      "nadaPendiente": "Não há comissões pendentes para pagar."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Rejeitar comissão} other {Rejeitar # comissões}}",
+      "descripcion": "{count, plural, one {A comissão de {nombre} ficará cancelada (rejeitada).} other {As # comissões de {nombre} ficarão canceladas (rejeitadas).}}",
+      "consecuencia": "Seu lançamento de apuração é estornado e o motivo fica em cada comissão.",
+      "confirmar": "Rejeitar"
+    },
+    "clawback": {
+      "titulo": "Reverter comissão paga (clawback)",
+      "descripcion": "Você vai reverter {importe} de {nombre}.",
+      "consecuencia1": "A comissão passa a cancelada; a data de pagamento é mantida como evidência.",
+      "consecuencia2": "Seus lançamentos são estornados. Não pode ser desfeito daqui.",
+      "confirmar": "Reverter"
+    }
+  },
+  "posDevolucionesAnular": {
+    "menu": {
+      "imprimir": "Imprimir comprovante",
+      "anular": "Anular devolução…",
+      "anularAyuda": "Abre o diálogo que corresponde ao estado da nota de crédito.",
+      "motivoAnulada": "A devolução já está anulada.",
+      "motivoSinPermiso": "Você precisa da permissão «Anular vendas».",
+      "reenviar": "Reenviar nota de crédito à DIAN",
+      "reenviando": "Reenviando a nota de crédito…",
+      "motivoSinPermisoFinanzas": "Você precisa da permissão «Registrar em finanças» para reenviar à DIAN.",
+      "reenviada": "{numero} ficou na fila para ser reenviada à DIAN.",
+      "errorReenvio": "Não foi possível reenviar a nota de crédito. Tente de novo ou confira em Faturamento eletrônico."
+    },
+    "estadosNota": {
+      "aceptada": "aceita",
+      "rechazada": "rejeitada",
+      "en_envio": "em envio à DIAN",
+      "sin_transmitir": "não transmitida",
+      "anulada": "anulada"
+    },
+    "dialogo": {
+      "titulo": "Anular {numero}",
+      "descEfectivo": "Reembolso em dinheiro de {monto}",
+      "descSaldo": "Saldo a favor de {monto}",
+      "descNota": "{numero} {estado}",
+      "avisoRechazada": {
+        "titulo": "Pode ser anulada: a DIAN rejeitou a nota de crédito {numero}.",
+        "texto": "Uma nota de crédito rejeitada ou não transmitida não tem efeito fiscal; por isso a devolução é revertida com um lançamento espelho."
+      },
+      "avisoSinTransmitir": {
+        "titulo": "Pode ser anulada: a nota de crédito {numero} não foi transmitida à DIAN.",
+        "texto": "É revertida com um lançamento espelho."
+      },
+      "avisoSinNota": {
+        "titulo": "Pode ser anulada: a venda não tem fatura, então não há nota de crédito.",
+        "texto": "É revertida com um lançamento espelho."
+      },
+      "periodoCerradoHoy": "O período da devolução está fechado, então o espelho vai com a data de hoje."
+    },
+    "queSeRevierte": "O que é revertido",
+    "consecuencias": {
+      "asientos": "Revertido com um lançamento espelho: {numeros}.",
+      "sinAsientos": "Não há lançamentos publicados para reverter.",
+      "inventario": "{unidades, plural, one {# unidade} other {# unidades}} de {productos} volta a sair do estoque ({sucursal}).",
+      "notaRechazada": "A nota de crédito {numero} fica anulada: a DIAN não a validou, não há nada a reverter lá.",
+      "notaSinTransmitir": "A nota de crédito {numero} nunca foi transmitida: é anulada sem enviar nada à DIAN.",
+      "caja": "O caixa (sessão #{sesion}) registra a entrada de {monto} que o cliente devolve.",
+      "cajaSinSesion": "Um caixa aberto registra a entrada de {monto} que o cliente devolve (requer caixa aberto).",
+      "saldo": "O saldo a favor de {monto} fica anulado.",
+      "venta": "A venda {venta} volta a «Paga» e a devolução fica visível como «Anulada» com seu motivo.",
+      "laVenta": "original",
+      "saldoUsado": "O saldo a favor não usado ({disponible}) é cancelado e o usado ({usado}) passa a conta a receber do cliente."
+    },
+    "fecha": {
+      "etiqueta": "Data do lançamento espelho",
+      "hoy": "Hoje · {dia}",
+      "hoyCerrado": "Hoje · fechado",
+      "original": "Data original · {dia}",
+      "originalCerrado": "Data original · fechado",
+      "ayudaAbierto": "{mes} continua aberto: você pode deixar o espelho na data original. Com «Hoje» ele fica em {mesHoy}.",
+      "ayudaMismoMes": "{mes} continua aberto: com qualquer das duas datas o espelho fica no mesmo período.",
+      "ayudaCerrado": "{mes} está fechado. Nunca se reverte dentro de um período fechado: o espelho vai com a data de hoje.",
+      "ayudaHoyCerrado": "{mesHoy} está fechado: o espelho vai com a data original."
+    },
+    "motivosRapidos": {
+      "error": "Registrada por engano",
+      "producto": "Produto errado",
+      "noDevolvio": "O cliente não o devolveu"
+    },
+    "etiquetaMotivo": "Motivo",
+    "placeholder": "Por que a devolução é anulada. Fica no histórico.",
+    "confirmar": "Anular devolução",
+    "cargando": "Verificando a nota de crédito, o período e o caixa…",
+    "errorCarga": "Não foi possível verificar a devolução. Feche e tente de novo.",
+    "hecho": "{numero} foi anulada",
+    "hechoPendiente": "{numero} foi anulada; {n, plural, one {# lançamento espelho ficou} other {# lançamentos espelho ficaram}} em Pendências contábeis.",
+    "noSePuede": {
+      "titulo": "Não é possível anular {numero}",
+      "descripcion": "{numero} aceita pela DIAN em {fecha}",
+      "descripcionSinFecha": "{numero} aceita pela DIAN",
+      "avisoTitulo": "A nota de crédito {numero} já foi validada pela DIAN.",
+      "avisoTexto": "Uma devolução com nota de crédito aceita não é revertida: nem com lançamento espelho nem apagando-a.",
+      "queHacer": "O que fazer no lugar",
+      "pasos": {
+        "venta": "Se o cliente ficar de novo com o produto, registre uma venda nova com sua nova fatura eletrônica.",
+        "sinCambios": "A devolução e a nota de crédito não mudam; o estoque e o caixa se movem com a venda nova.",
+        "enlace": "A venda nova fica vinculada a esta devolução: aparece na cadeia Venda → Devolução → NC → Venda nova."
+      },
+      "cerrar": "Fechar",
+      "registrarVenta": "Registrar venda nova"
+    },
+    "errores": {
+      "motivoObligatorio": "Escreva o motivo (mínimo 5 caracteres).",
+      "fechaEspejoInvalida": "Escolha a data do lançamento espelho.",
+      "devolucionNoEncontrada": "A devolução não existe.",
+      "devolucionInvalida": "A devolução não é válida.",
+      "sinAccesoSucursal": "Você não tem acesso à filial desta devolução.",
+      "sinPermiso": "Você precisa da permissão «Anular vendas» para anular uma devolução. Peça ao administrador da organização.",
+      "yaAnulada": "A devolução já está anulada.",
+      "estadoInvalido": "Só se anula uma devolução processada.",
+      "notaAceptadaDian": "A DIAN já aceitou a nota de crédito: a devolução não é anulada.",
+      "notaEnEnvioDian": "A nota de crédito está sendo enviada à DIAN e ainda não há resposta. Espere alguns minutos e abra este diálogo de novo: se for rejeitada, poderá ser anulada; se for aceita, registre uma venda nova.",
+      "notaYaAnulada": "A nota de crédito já foi anulada em Finanças, então seu lançamento já está revertido. Revise a devolução com o Contador antes de mexer nela: daqui não pode ser anulada.",
+      "devolucionDeGarantia": "Esta devolução nasceu de uma garantia e suas unidades danificadas têm movimentos próprios. Gerencie-a a partir da garantia (Estoque › Números de série) em vez de anulá-la aqui.",
+      "devolucionConMembresia": "A devolução reduziu ou cancelou uma assinatura e isso não se desfaz automaticamente. Ajuste a assinatura em Assinaturas e, se o cliente a mantiver, registre uma venda nova.",
+      "saldoAFavorAplicado": "O cliente já usou (total ou parcialmente) o saldo a favor que esta devolução gerou. Anule primeiro esse uso em Finanças › Saldos a favor e tente de novo.",
+      "serialNoDisponible": "Um número de série da devolução já não está como a devolução o deixou: foi vendido ou mudou de filial. Confira seu histórico em Estoque › Números de série; enquanto isso, a devolução não pode ser anulada.",
+      "periodoCerrado": "O período da devolução e o de hoje estão fechados, e nunca se reverte dentro de um período fechado. Peça ao Contador para reabrir um dos dois.",
+      "periodoOriginalCerrado": "O período da data original está fechado: use a data de hoje.",
+      "periodoHoyCerrado": "O período de hoje está fechado: use a data original.",
+      "efectivoSinCaja": "O reembolso foi em dinheiro e o dinheiro que o cliente devolve precisa entrar em um caixa. Abra o caixa da filial em PDV › Caixas e tente de novo.",
+      "stockInsuficiente": "O produto já não está no estoque da filial (foi vendido de novo): não pode sair outra vez.",
+      "generico": "Não foi possível anular a devolução. Tente de novo.",
+      "saldoAFavorNoVigente": "O saldo a favor desta devolução já foi anulado ou venceu em Finanças › Saldos a favor. Revise com o contador: daqui não é possível anular.",
+      "confirmarSaldoUsado": "Confirme que o que o cliente já usou do saldo ficará como conta a receber.",
+      "mercanciaEnBodega": "Se a mercadoria fica no depósito, a devolução não é anulada: registre uma venda nova com nota fiscal nova.",
+      "asientoSaldoNoEncontrado": "O saldo a favor não tem lançamento contábil publicado. Verifique Finanças › Pendências contábeis e tente de novo.",
+      "sinCuentaPorCobrar": "Falta a conta de clientes na configuração contábil. Peça ao contador para configurá-la."
+    },
+    "detalle": {
+      "avisoTitulo": "Anulada em {fecha} por {usuario} · «{motivo}»",
+      "avisoTituloSinUsuario": "Anulada em {fecha} · «{motivo}»",
+      "avisoEspejo": "Lançamento espelho {numeros}",
+      "avisoIngreso": "entrada de {monto} na sessão #{sesion}",
+      "avisoUnidades": "{unidades, plural, one {# unidade voltou} other {# unidades voltaram}} a sair do estoque",
+      "avisoNota": "{numero} anulada",
+      "avisoNotaRechazada": "{numero} anulada (a DIAN a havia rejeitado)",
+      "devueltoAnulada": "{monto} · anulada",
+      "estadoVentaAnulada": "{estado} (devolução anulada)",
+      "eventos": {
+        "anulada": "Anulou a devolução · «{motivo}»",
+        "espejo": "Lançamento espelho {numeros}",
+        "espejoIngreso": "Lançamento espelho {numeros} e entrada de {monto} na sessão #{sesion}",
+        "ingreso": "Entrada de {monto} na sessão #{sesion}"
+      }
+    },
+    "cadena": {
+      "ventaNueva": "Venda nova",
+      "reventaDe": "Revenda de"
+    },
+    "saldoUsado": {
+      "titulo": "O cliente já usou {usado} do saldo a favor",
+      "texto": "Esse valor ficará como conta a receber de {cliente} na carteira, contada a partir da data da anulação. A compra onde foi gasto ({compras}) não muda.",
+      "textoSinCompra": "Esse valor ficará como conta a receber de {cliente} na carteira, contada a partir da data da anulação.",
+      "elCliente": "o cliente"
+    },
+    "confirmaciones": {
+      "mercancia": "O cliente leva a mercadoria de volta.",
+      "mercanciaAyudaAntes": "A mercadoria fica no depósito? Então não se anula:",
+      "mercanciaAyudaEnlace": "registre uma venda nova",
+      "mercanciaAyudaDespues": " com nota fiscal nova.",
+      "saldo": "Entendo que {usado} ficarão como conta a receber do cliente.",
+      "faltaMercancia": "Marque que o cliente leva a mercadoria de volta. Se ela ficar no depósito, registre uma venda nova.",
+      "faltaSaldo": "Confirme que {usado} ficarão como conta a receber do cliente."
+    }
+  },
+  "detallesMarca": {
+    "producto": {
+      "eliminado": "Produto excluído",
+      "abrirFicha": "Abrir a ficha do produto"
+    },
+    "pagos": {
+      "metodo": "Método",
+      "referencia": "Referência",
+      "fecha": "Data",
+      "cobrado": "Recebido",
+      "importe": "Valor",
+      "seCobraAlEntregar": "Cobrado na entrega",
+      "pagoDe": "Pagamento com {metodo}",
+      "concilia": "Conciliado em <enlace>Processadores de pagamento</enlace>.",
+      "submetodos": {
+        "card": "Cartão",
+        "transfer": "Transferência",
+        "cash": "Dinheiro",
+        "botonBancolombia": "Botão Bancolombia",
+        "corresponsalBancolombia": "Correspondente Bancolombia",
+        "cuotasBancolombia": "Parcelas Bancolombia",
+        "dineroEnCuenta": "Saldo em conta",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tienda": {
+      "ver": "Ver na loja",
+      "otraPestana": "(abre em outra aba)",
+      "abre": "Abre este produto na sua loja, em outra aba",
+      "noPublicado": "Não publicado na loja online",
+      "motivos": {
+        "inactivo": "Só produtos ativos aparecem na loja: ative-o para poder vê-lo.",
+        "eliminado": "O produto foi excluído e a loja não o mostra.",
+        "padreInactivo": "O produto pai não está ativo: ative-o para ver esta variante na loja.",
+        "padreEliminado": "O produto pai foi excluído e a loja não o mostra."
+      }
+    }
+  },
+  "accesoSucursal": {
+    "titulo": "Em qual filial você trabalha hoje?",
+    "descripcion": "{organizacion} · você tem acesso a {total} filiais. Você pode trocá-la quando quiser na barra superior.",
+    "buscar": "Buscar filial…",
+    "sinResultados": "Nenhuma filial corresponde a “{texto}”.",
+    "ultimaUsada": "Última usada",
+    "abierta": "Aberta",
+    "cerrada": "Fechada",
+    "abreHoy": "abre às {hora}",
+    "abreDia": "abre {dia} às {hora}",
+    "cajaAbierta": "Caixa #{id} aberto",
+    "todas": "Todas as filiais",
+    "todasDetalle": "Visão geral da organização",
+    "resumen": "Resumo",
+    "entrarA": "Entrar em {nombre}",
+    "cambiarOrganizacion": "Trocar de organização",
+    "noEsTuCuenta": "Não é sua conta?",
+    "entrarConOtra": "Entrar com outra",
+    "error": "Não foi possível carregar suas filiais.",
+    "entrarSinElegir": "Entrar sem escolher filial",
+    "rechazada": "Você não tem mais acesso a essa filial. Escolha outra."
   }
 }

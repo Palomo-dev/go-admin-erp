@@ -1,7 +1,7 @@
 // ============================================================
 // Reportes de Inventario
 // Llama a las RPCs: fn_reporte_stock_critico_detalle, fn_reporte_movimientos_inventario, fn_reporte_rotacion_inventario,
-// fn_reporte_rentabilidad_producto, fn_reporte_movimiento_valorizado
+// fn_reporte_rentabilidad_producto, fn_reporte_movimiento_valorizado, fn_reporte_despachos
 // ============================================================
 
 import { supabase as browserSupabase } from '@/lib/supabase/config';
@@ -15,6 +15,7 @@ import { normalizeBranchParam } from '@/lib/services/branchFilterHelper';
 import type { DefinicionModulo, ReportData, PeriodoCierre } from '../types';
 import { rangoDelPeriodo } from '../rangoPeriodo';
 import { vistaRentabilidadProducto } from './rentabilidadProducto';
+import { nombreDePerfil } from '../programados/programacion';
 
 function buildReportData(
   id: string,
@@ -131,6 +132,145 @@ export function agruparStockCritico(filas: readonly FilaStockCritico[]): FilaSto
       };
     })
     .sort((a, b) => b.faltante - a.faltante || a.nombre.localeCompare(b.nombre));
+}
+
+// ── Despacho de mercancías ──────────────────────────────────────────────
+
+type NumDespacho = number | string | null | undefined;
+
+/** Respuesta de `fn_reporte_despachos`: envíos a clientes (shipments) y traslados entre sedes. */
+export interface RespuestaDespachos {
+  totales?: { despachos?: NumDespacho; items?: NumDespacho; entregados?: NumDespacho; cancelados?: NumDespacho; pendientes?: NumDespacho } | null;
+  despachos?: Array<{
+    tipo: string;
+    id: string;
+    numero: string | null;
+    fecha: string | null;
+    origen_id: number | null;
+    destino_sucursal_id: number | null;
+    destino: string | null;
+    ciudad: string | null;
+    responsable_id: string | null;
+    estado: string | null;
+    entregado: string | null;
+    items: NumDespacho;
+  }> | null;
+  por_responsable?: Array<{ responsable_id: string | null; despachos: NumDespacho; items: NumDespacho; entregados: NumDespacho }> | null;
+  items?: Array<{ producto_id: number | null; producto: string | null; sku: string | null; cantidad: NumDespacho; despachos: NumDespacho }> | null;
+}
+
+/**
+ * Estado del envío (`shipments.status`, ver `SHIPMENT_STATUSES`) o del traslado
+ * (`inventory_transfers.status`) en español. Lo desconocido sale tal cual.
+ */
+const ESTADO_DESPACHO: Record<string, string> = {
+  draft: 'Borrador',
+  pending: 'Preparando',
+  assigned: 'Preparando',
+  ready: 'Listo para despachar',
+  picked: 'Recogido',
+  dispatched: 'En camino',
+  in_transit: 'En camino',
+  out_for_delivery: 'En reparto',
+  delivered: 'Entregado',
+  received: 'Recibido',
+  completed: 'Entregado',
+  failed: 'Fallido',
+  returned: 'Devuelto',
+  cancelled: 'Cancelado',
+  canceled: 'Cancelado',
+};
+
+export function estadoDespacho(estado: string | null | undefined): string {
+  return estado ? (ESTADO_DESPACHO[estado] ?? estado) : '—';
+}
+
+/** Tabla, pestañas y KPI de «Despacho de mercancías» (puro: los nombres llegan resueltos). */
+export function armarDespachos(
+  d: RespuestaDespachos,
+  nombres: { sede: (id: number | null | undefined) => string; persona: (id: string | null | undefined) => string },
+): Pick<ReportData, 'kpis' | 'columnas' | 'filas' | 'totales' | 'vistaPrincipal' | 'vistas' | 'lectura'> {
+  const n = (v: NumDespacho) => Number(v ?? 0) || 0;
+  const t = d.totales ?? {};
+  const despachos = d.despachos ?? [];
+  const lectura: NonNullable<ReportData['lectura']> = [];
+  if (n(t.despachos) > despachos.length) {
+    lectura.push({ tono: 'aviso', texto: `La tabla muestra los ${despachos.length} despachos más recientes de ${n(t.despachos)}; los indicadores cubren todos.` });
+  }
+  return {
+    kpis: [
+      { titulo: 'Despachos', valor: n(t.despachos), formato: 'numero' },
+      { titulo: 'Ítems despachados', valor: n(t.items), formato: 'numero' },
+      { titulo: 'Entregados', valor: n(t.entregados), formato: 'numero' },
+      { titulo: 'Pendientes', valor: n(t.pendientes), formato: 'numero' },
+    ],
+    columnas: [
+      { key: 'numero', titulo: 'N.º', tipo: 'texto' },
+      { key: 'tipo', titulo: 'Tipo', tipo: 'texto' },
+      { key: 'fecha', titulo: 'Fecha y hora', tipo: 'fecha' },
+      { key: 'origen', titulo: 'Origen', tipo: 'texto' },
+      { key: 'destino', titulo: 'Destino', tipo: 'texto' },
+      { key: 'items', titulo: 'Ítems', tipo: 'numero', alinear: 'right' },
+      { key: 'responsable', titulo: 'Quién despachó', tipo: 'texto' },
+      { key: 'estado', titulo: 'Estado', tipo: 'texto' },
+      { key: 'entregado', titulo: 'Fecha de entrega', tipo: 'fecha' },
+    ],
+    filas: despachos.map((x) => {
+      const destino = x.destino_sucursal_id ? nombres.sede(x.destino_sucursal_id) : x.destino || '—';
+      return {
+        numero: x.numero || '—',
+        tipo: x.tipo === 'traslado' ? 'Traslado' : 'Envío',
+        fecha: x.fecha,
+        origen: nombres.sede(x.origen_id),
+        destino: x.ciudad && !x.destino_sucursal_id ? `${destino} · ${x.ciudad}` : destino,
+        items: n(x.items),
+        responsable: nombres.persona(x.responsable_id),
+        estado: estadoDespacho(x.estado),
+        entregado: x.entregado,
+      };
+    }),
+    totales: { items: n(t.items) },
+    vistaPrincipal: 'Despachos',
+    vistas: [
+      {
+        id: 'items',
+        titulo: 'Ítems',
+        columnas: [
+          { key: 'producto', titulo: 'Producto', tipo: 'texto' },
+          { key: 'sku', titulo: 'SKU', tipo: 'texto' },
+          { key: 'cantidad', titulo: 'Cantidad', tipo: 'numero', alinear: 'right' },
+          { key: 'despachos', titulo: 'Despachos', tipo: 'numero', alinear: 'right' },
+        ],
+        filas: (d.items ?? []).map((i) => ({
+          producto: i.producto || (i.producto_id ? `Producto #${i.producto_id}` : '—'),
+          sku: i.sku || '—',
+          cantidad: n(i.cantidad),
+          despachos: n(i.despachos),
+        })),
+        totales: { cantidad: (d.items ?? []).reduce((s, i) => s + n(i.cantidad), 0) },
+      },
+      {
+        id: 'por-responsable',
+        titulo: 'Por responsable',
+        columnas: [
+          { key: 'responsable', titulo: 'Responsable', tipo: 'texto' },
+          { key: 'despachos', titulo: 'Despachos', tipo: 'numero', alinear: 'right' },
+          { key: 'items', titulo: 'Ítems', tipo: 'numero', alinear: 'right' },
+          { key: 'entregados', titulo: 'Entregados', tipo: 'numero', alinear: 'right' },
+          { key: 'pct_entregados', titulo: '% entregados', tipo: 'porcentaje', alinear: 'right' },
+        ],
+        filas: (d.por_responsable ?? []).map((r) => ({
+          responsable: nombres.persona(r.responsable_id),
+          despachos: n(r.despachos),
+          items: n(r.items),
+          entregados: n(r.entregados),
+          pct_entregados: n(r.despachos) > 0 ? Math.round((n(r.entregados) / n(r.despachos)) * 1000) / 10 : 0,
+        })),
+        totales: { despachos: n(t.despachos), items: n(t.items), entregados: n(t.entregados) },
+      },
+    ],
+    lectura,
+  };
 }
 
 export const inventarioReports: DefinicionModulo[] = [
@@ -432,6 +572,52 @@ export const inventarioReports: DefinicionModulo[] = [
           },
         ),
         lectura,
+      };
+    },
+  },
+  {
+    id: 'despacho-mercancias',
+    modulo: 'inventory',
+    titulo: 'Despacho de mercancías',
+    descripcion: 'Envíos a clientes y traslados entre sedes: qué salió, de dónde, a dónde, quién lo despachó y si llegó',
+    categoria: 'operativo',
+    alcance: 'sucursal',
+    periodosSugeridos: ['diario', 'semanal', 'mensual'],
+    async fetch(orgId: number, periodo: PeriodoCierre, branchId?: number | null, client?: ReportesClient): Promise<ReportData> {
+      const db = client ?? browserSupabase;
+      const { start, end } = await rangoDelPeriodo(orgId, periodo, db);
+      const { data, error } = await db.rpc('fn_reporte_despachos', {
+        p_organization_id: orgId,
+        p_from: start,
+        p_to: end,
+        p_branch_id: normalizeBranchParam(branchId),
+      });
+      if (error) throw error;
+      const d = (data ?? {}) as RespuestaDespachos;
+
+      // Nombres de sedes (origen y destino) y de quien despachó.
+      const sedeIds = [...new Set((d.despachos ?? []).flatMap((x) => [Number(x.origen_id), Number(x.destino_sucursal_id)]).filter((id) => id > 0))];
+      const personaIds = [
+        ...new Set([...(d.despachos ?? []).map((x) => x.responsable_id), ...(d.por_responsable ?? []).map((r) => r.responsable_id)].filter((id): id is string => !!id)),
+      ];
+      const [sedesRes, perfilesRes] = await Promise.all([
+        sedeIds.length ? db.from('branches').select('id, name').in('id', sedeIds) : Promise.resolve({ data: [] }),
+        personaIds.length ? db.from('profiles').select('id, first_name, last_name, email').in('id', personaIds) : Promise.resolve({ data: [] }),
+      ]);
+      const sede = new Map(((sedesRes.data ?? []) as Array<{ id: number; name: string | null }>).map((b) => [Number(b.id), b.name ?? '—']));
+      const persona = new Map(
+        ((perfilesRes.data ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null; email: string | null }>).map((p) => [String(p.id), nombreDePerfil(p) ?? '—']),
+      );
+
+      const armado = armarDespachos(d, {
+        sede: (id) => (id ? (sede.get(Number(id)) ?? '—') : '—'),
+        persona: (id) => (id ? (persona.get(id) ?? '—') : 'Sin registrar'),
+      });
+      return {
+        ...buildReportData('despacho-mercancias', 'Despacho de mercancías', 'inventory', periodo, armado.kpis, armado.columnas, armado.filas, armado.totales),
+        vistaPrincipal: armado.vistaPrincipal,
+        vistas: armado.vistas,
+        ...(armado.lectura?.length ? { lectura: armado.lectura } : {}),
       };
     },
   },

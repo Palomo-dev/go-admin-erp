@@ -7,6 +7,7 @@ import { OrderTimeline } from '@/components/pos/pedidos-online';
 import { ChipsAvisos, useAvisosPedido } from '@/components/pos/pedidos-online/avisos/AvisosPedidoPanel';
 import type { AvisoDePedido } from '@/components/pos/pedidos-online/avisos/avisosClienteApi';
 import type { WebOrder } from '@/lib/services/webOrdersService';
+import { IconoCabecera } from './IconoCabecera';
 
 interface OrderTimelineCardProps {
   order: WebOrder;
@@ -26,7 +27,7 @@ export function OrderTimelineCard({ order, timezone }: OrderTimelineCardProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <History className="size-5" strokeWidth={1.5} aria-hidden="true" />
+          <IconoCabecera icono={History} />
           {t('historialPedido')}
         </CardTitle>
       </CardHeader>

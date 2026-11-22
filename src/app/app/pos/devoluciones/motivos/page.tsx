@@ -1,25 +1,30 @@
 'use client';
 
+/**
+ * Motivos de devolución (Figma `874:579636`; diálogo nuevo/editar `874:580752`).
+ * Catálogo de `return_reasons` con la columna «Usos» (`pos_motivos_devolucion_usos`):
+ * un motivo con devoluciones se desactiva en lugar de borrarse. Importar CSV
+ * respeta comillas y «;» (`filasCsvMotivos`, D16 de la spec).
+ */
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { useOrganization } from '@/lib/hooks/useOrganization';
-import { Tag } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 import { PageHeader } from '@/components/kit';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  ReturnReasonsList, 
-  ReturnReasonForm, 
-  ReturnReasonsHeader,
-  ReturnReasonsService 
-} from '@/components/pos/devoluciones/motivos';
+import { ReturnReasonsList, ReturnReasonForm, ReturnReasonsHeader, ReturnReasonsService } from '@/components/pos/devoluciones/motivos';
 import { claveErrorMotivo } from '@/components/pos/devoluciones/motivos/returnReasonsService';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
+import { guardarArchivo } from '@/lib/documents/cliente';
+import { filasACsv } from '@/lib/utils/csv';
+import { filasCsvMotivos } from '@/lib/pos/devoluciones/motivosCsv';
 import { ReturnReason, ReturnReasonFilters, CreateReturnReasonData } from '@/components/pos/devoluciones/types';
 import { toast } from 'sonner';
 
 export default function MotivosDevolucionPage() {
   const { organization, isLoading: orgLoading } = useOrganization();
   const [reasons, setReasons] = useState<ReturnReason[]>([]);
+  const [usos, setUsos] = useState<Record<number, number> | null>(null);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ReturnReasonFilters>({});
   const [showForm, setShowForm] = useState(false);
@@ -31,11 +36,12 @@ export default function MotivosDevolucionPage() {
 
   const loadReasons = useCallback(async () => {
     if (!organization?.id) return;
-    
+
     setLoading(true);
     try {
-      const data = await ReturnReasonsService.getAll(filters);
+      const [data, conteo] = await Promise.all([ReturnReasonsService.getAll(filters), ReturnReasonsService.getUsos().catch(() => null)]);
       setReasons(data);
+      setUsos(conteo);
     } catch (error) {
       console.error('Error loading reasons:', error);
       toast.error(t('errorCarga'));
@@ -48,10 +54,6 @@ export default function MotivosDevolucionPage() {
     loadReasons();
   }, [loadReasons]);
 
-  const handleFiltersChange = (newFilters: ReturnReasonFilters) => {
-    setFilters(newFilters);
-  };
-
   const handleNewClick = () => {
     setEditingReason(null);
     setShowForm(true);
@@ -62,42 +64,27 @@ export default function MotivosDevolucionPage() {
     setShowForm(true);
   };
 
-  const handleFormSuccess = () => {
-    loadReasons();
-  };
-
   const handleExport = () => {
     try {
       if (reasons.length === 0) {
         toast.error(t('sinDatosExportar'));
         return;
       }
-
       // El importador lee por posición e ignora la fila de encabezados, así que
       // estos se traducen. Los valores «Sí»/«No» NO: el importador los interpreta.
-      const csvData = reasons.map(reason => ({
-        [t('csv.codigo')]: reason.code,
-        [t('csv.nombre')]: reason.name,
-        [t('csv.descripcion')]: reason.description || '',
-        [t('csv.requiereFoto')]: reason.requires_photo ? 'Sí' : 'No',
-        [t('csv.afectaInventario')]: reason.affects_inventory ? 'Sí' : 'No',
-        [t('csv.activo')]: reason.is_active ? 'Sí' : 'No',
-        [t('csv.orden')]: reason.display_order
-      }));
-
-      const csvContent = [
-        Object.keys(csvData[0]).join(','),
-        ...csvData.map(row => Object.values(row).map(v => `"${v}"`).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.setAttribute('href', url);
-      a.setAttribute('download', `motivos-devolucion-${getToday()}.csv`);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      
+      const csv = filasACsv(
+        [t('csv.codigo'), t('csv.nombre'), t('csv.descripcion'), t('csv.requiereFoto'), t('csv.afectaInventario'), t('csv.activo'), t('csv.orden')],
+        reasons.map((r) => [
+          r.code,
+          r.name,
+          r.description || '',
+          r.requires_photo ? 'Sí' : 'No',
+          r.affects_inventory ? 'Sí' : 'No',
+          r.is_active ? 'Sí' : 'No',
+          r.display_order,
+        ]),
+      );
+      guardarArchivo(new Blob([csv], { type: 'text/csv;charset=utf-8' }), `motivos-devolucion-${getToday()}.csv`);
       toast.success(t('exportado'));
     } catch {
       toast.error(t('errorExportar'));
@@ -114,41 +101,20 @@ export default function MotivosDevolucionPage() {
 
       try {
         const text = await file.text();
-        let data: CreateReturnReasonData[] = [];
+        const data: CreateReturnReasonData[] = file.name.endsWith('.json') ? JSON.parse(text) : filasCsvMotivos(text);
 
-        if (file.name.endsWith('.json')) {
-          data = JSON.parse(text);
-        } else if (file.name.endsWith('.csv')) {
-          const lines = text.split('\n');
-          // La fila 0 son los encabezados: se lee por posición desde la fila 1.
-          for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-            if (values.length >= 2) {
-              data.push({
-                code: values[0] || `CODE_${i}`,
-                name: values[1] || `Motivo ${i}`,
-                description: values[2] || undefined,
-                requires_photo: values[3]?.toLowerCase() === 'sí' || values[3]?.toLowerCase() === 'si',
-                affects_inventory: values[4]?.toLowerCase() !== 'no',
-                is_active: values[5]?.toLowerCase() !== 'no',
-                display_order: parseInt(values[6]) || 0
-              });
-            }
-          }
-        }
-
-        if (data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
           toast.error(t('sinDatosArchivo'));
           return;
         }
 
         const result = await ReturnReasonsService.importFromData(data);
-        
+
         if (result.success > 0) {
           toast.success(t('importados', { n: result.success }));
           loadReasons();
         }
-        
+
         if (result.errors.length > 0) {
           toast.warning(t('noImportados', { n: result.errors.length }), {
             description: result.errors
@@ -157,7 +123,7 @@ export default function MotivosDevolucionPage() {
                 const { clave, valores } = claveErrorMotivo(error, 'importar');
                 return `${code}: ${tErrores(clave, valores)}`;
               })
-              .join(', ')
+              .join(', '),
           });
         }
       } catch (error) {
@@ -168,46 +134,35 @@ export default function MotivosDevolucionPage() {
     input.click();
   };
 
-  const activeReasons = reasons.filter(r => r.is_active).length;
+  const activeReasons = reasons.filter((r) => r.is_active).length;
+  const hayFiltros = !!filters.search || filters.is_active !== undefined;
 
   if (orgLoading) {
     return (
-      <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6" aria-busy="true">
-        <PageHeader titulo={tEncabezado('titulo')} icono={Tag} cargando />
+      <div className="flex flex-col gap-4 p-4 sm:p-6" aria-busy="true">
+        <PageHeader titulo={tEncabezado('titulo')} icono={ClipboardList} cargando />
         <Skeleton className="h-64 w-full rounded-xl" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <ReturnReasonsHeader
-          filters={filters}
-          onFiltersChange={handleFiltersChange}
-          onNewClick={handleNewClick}
-          onImportClick={handleImport}
-          onExportClick={handleExport}
-          onRefresh={loadReasons}
-          totalReasons={reasons.length}
-          activeReasons={activeReasons}
-          loading={loading}
-        />
+    <div className="flex flex-col gap-4 p-4 sm:p-6 lg:gap-5">
+      <ReturnReasonsHeader
+        filters={filters}
+        onFiltersChange={setFilters}
+        onNewClick={handleNewClick}
+        onImportClick={handleImport}
+        onExportClick={handleExport}
+        onRefresh={loadReasons}
+        totalReasons={reasons.length}
+        activeReasons={activeReasons}
+        loading={loading}
+      />
 
-        <ReturnReasonsList
-          reasons={reasons}
-          loading={loading}
-          onEdit={handleEdit}
-          onRefresh={loadReasons}
-        />
+      <ReturnReasonsList reasons={reasons} loading={loading} usos={usos} hayFiltros={hayFiltros} onEdit={handleEdit} onRefresh={loadReasons} />
 
-        <ReturnReasonForm
-          open={showForm}
-          onOpenChange={setShowForm}
-          reason={editingReason}
-          onSuccess={handleFormSuccess}
-        />
-      </div>
+      <ReturnReasonForm open={showForm} onOpenChange={setShowForm} reason={editingReason} onSuccess={loadReasons} />
     </div>
   );
 }

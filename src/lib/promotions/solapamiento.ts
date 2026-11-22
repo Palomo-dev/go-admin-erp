@@ -7,10 +7,10 @@
  * «Todos los productos» se pisa con cualquiera. El padre de una variante
  * cuenta como el mismo producto (igual que el motor). Sucursal vacía = todas.
  * La vigencia reutiliza `vigencia.ts` (día de la semana y franja, incluida
- * la que cruza la medianoche).
+ * la que cruza la medianoche, y las franjas semanales que cruzan días).
  */
 import type { WeekDay } from '@/components/pos/promociones/types';
-import { appliesInTimeWindow, appliesOnWeekDay } from '@/lib/promotions/vigencia';
+import { appliesInTimeWindow, appliesOnWeekDay, SEGUNDOS_SEMANA, tramosSemanalesDe } from '@/lib/promotions/vigencia';
 
 const DIAS: WeekDay[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -35,6 +35,8 @@ export interface PromoSolape {
   applicable_days?: unknown;
   start_time?: string | null;
   end_time?: string | null;
+  /** Franjas semanales (20261120180000). Con lista no vacía manda sobre días y franja. */
+  schedule_windows?: unknown;
   rules?: ReglaSolape[] | null;
   promotion_rules?: ReglaSolape[] | null;
 }
@@ -111,39 +113,19 @@ export function franjasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
   return [...marcas(a), ...marcas(b)].some((hora) => appliesInTimeWindow(a, hora) && appliesInTimeWindow(b, hora));
 }
 
-const MIN_DIA = 24 * 60;
-const MIN_SEMANA = 7 * MIN_DIA;
-
 /**
- * Tramos de la semana (minutos desde el lunes 00:00, extremos incluidos) en
- * que la promoción está vigente. Una franja que cruza la medianoche se
- * asigna al día en que EMPIEZA: «lunes 18:00–02:00» ocupa del lunes 18:00 al
- * martes 02:00, igual que lo evalúa el motor (`diaEfectivoDeFranja`).
+ * ¿Comparten algún segundo de la semana, contando días y franja juntos? Los
+ * tramos salen de `vigencia.tramosSemanalesDe`, el mismo criterio del
+ * motor: esquema diario (una franja que cruza la medianoche se asigna al día
+ * en que EMPIEZA) o franjas semanales `schedule_windows` que cruzan días.
  */
-function tramosSemanales(p: PromoSolape): Array<[number, number]> {
-  const ini = minutos(p.start_time);
-  const fin = minutos(p.end_time);
-  let desde: number;
-  let hasta: number;
-  if (ini == null && fin == null) { desde = 0; hasta = MIN_DIA - 1; }
-  else if (ini != null && fin == null) { desde = ini; hasta = MIN_DIA - 1; }
-  else if (ini == null && fin != null) { desde = 0; hasta = fin; }
-  else if (ini! <= fin!) { desde = ini!; hasta = fin!; }
-  else { desde = ini!; hasta = MIN_DIA + fin!; }
-  return DIAS.filter((dia) => appliesOnWeekDay(p, dia)).map((dia) => {
-    const base = DIAS.indexOf(dia) * MIN_DIA;
-    return [base + desde, base + hasta] as [number, number];
-  });
-}
-
-/** ¿Comparten algún minuto de la semana, contando días y franja juntos? */
 export function semanasSeCruzan(a: PromoSolape, b: PromoSolape): boolean {
-  const ta = tramosSemanales(a);
-  const tb = tramosSemanales(b);
+  const ta = tramosSemanalesDe(a);
+  const tb = tramosSemanalesDe(b);
   return ta.some(([a0, a1]) =>
     tb.some(([b0, b1]) =>
-      // El domingo que cruza la medianoche cae en el lunes siguiente: se prueba desplazado una semana.
-      [-MIN_SEMANA, 0, MIN_SEMANA].some((d) => a0 <= b1 + d && b0 + d <= a1),
+      // Un tramo que pasa del domingo cae en el lunes siguiente: se prueba desplazado una semana.
+      [-SEGUNDOS_SEMANA, 0, SEGUNDOS_SEMANA].some((d) => a0 < b1 + d && b0 + d < a1),
     ),
   );
 }

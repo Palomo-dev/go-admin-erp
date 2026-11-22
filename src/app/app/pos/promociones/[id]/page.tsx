@@ -21,36 +21,34 @@ import { RowActionsMenu } from '@/components/kit/RowActionsMenu';
 import { localeIntl } from '@/components/kit/idioma';
 import { useOrganization } from '@/lib/hooks/useOrganization';
 import { PromotionsService } from '@/components/pos/promociones/promotionsService';
+import { usePuedeGestionarPromociones } from '@/components/pos/promociones/usePuedeGestionarPromociones';
 import { PromotionWizard } from '@/components/pos/promociones/nuevo';
 import { Promotion } from '@/components/pos/promociones/types';
 import { cantidadMinimaEfectiva } from '@/lib/promotions/cantidadMinima';
 import { diasDelIdioma } from '@/components/pos/promociones/diasPromocion';
+import { estadoDePromocion } from '@/components/pos/promociones/estadoPromocion';
+import { lineasHorario, textoDesfase } from '@/components/pos/promociones/horario/textoHorario';
+import { VistaSemanaPromocion } from '@/components/pos/promociones/horario/VistaSemanaPromocion';
+import { useOrgTimezone } from '@/lib/context/OrganizationTimezoneContext';
+import { formatDateInTz } from '@/lib/utils/dateDisplay';
 import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { toast } from 'sonner';
 
-type EstadoPromo = 'inactiva' | 'programada' | 'expirada' | 'activa';
-
 function textoPlano(valor: string): string {
   return valor.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function estadoPromo(promo: Promotion): EstadoPromo {
-  if (!promo.is_active) return 'inactiva';
-  const now = new Date();
-  if (new Date(promo.start_date) > now) return 'programada';
-  if (promo.end_date && new Date(promo.end_date) < now) return 'expirada';
-  return 'activa';
 }
 
 export default function PromocionDetallePage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoading: orgLoading } = useOrganization();
+  const { organization, isLoading: orgLoading } = useOrganization();
+  const puedeGestionar = usePuedeGestionarPromociones(organization?.id);
   const { formatear } = useMonedaOrganizacion();
   const t = useTranslations('posPromociones');
   const locale = useLocale();
   const diasSemana = diasDelIdioma(locale);
+  const { timezone } = useOrgTimezone();
 
   const promotionId = params?.id as string;
   const isEditMode = searchParams?.get('edit') === 'true';
@@ -152,18 +150,11 @@ export default function PromocionDetallePage() {
     });
   };
 
-  // Para fechas de vigencia: el asistente guarda "10 de septiembre" como
-  // 2026-09-10 00:00 UTC. Mostrarlo en hora de Colombia (UTC-5) lo retrocedía
-  // a las 19:00 del día 9 y salía "09 de septiembre". Se pinta en UTC para
-  // que se lea la fecha que el usuario eligió.
-  const formatFechaVigencia = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(localeIntl(locale), {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
-  };
+  // Fechas de vigencia: el servicio guarda el inicio a las 00:00 y el fin a las
+  // 23:59:59.999 de la ZONA DE LA ORGANIZACIÓN. Pintarlas en UTC corría el fin
+  // al día siguiente («hasta el 31» salía «1 de enero»). Se pintan en esa zona.
+  const formatFechaVigencia = (dateString: string) =>
+    formatDateInTz(dateString, timezone, { locale: localeIntl(locale), day: '2-digit', month: 'long', year: 'numeric' });
 
   if (orgLoading || loading) {
     return (
@@ -177,7 +168,7 @@ export default function PromocionDetallePage() {
   if (!promotion) {
     return (
       <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl rounded-xl border border-line bg-surface">
+        <div className="w-full rounded-xl border border-line bg-surface">
           <EmptyState
             titulo={t('detalle.noEncontrada')}
             descripcion={t('detalle.noEncontradaAyuda')}
@@ -194,7 +185,7 @@ export default function PromocionDetallePage() {
   if (isEditMode) {
     return (
       <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <div className="flex w-full flex-col gap-4">
           <PageHeader
             variante="form"
             titulo={promotion.name}
@@ -223,6 +214,10 @@ export default function PromocionDetallePage() {
               max_discount_amount: promotion.max_discount_amount,
               start_time: promotion.start_time ?? null,
               end_time: promotion.end_time ?? null,
+              // Franjas que cruzan días (20261120180000) y métodos de pago: sin
+              // pasarlos, el asistente abría «Todo el día» / «Cualquier método».
+              schedule_windows: promotion.schedule_windows ?? null,
+              payment_method_codes: promotion.payment_method_codes ?? null,
               bundle_price: promotion.bundle_price ?? null,
               applies_to: promotion.applies_to,
               start_date: promotion.start_date,
@@ -277,13 +272,13 @@ export default function PromocionDetallePage() {
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <div className="flex w-full flex-col gap-4">
         <PageHeader
           variante="detail"
           titulo={promotion.name}
           subtitulo={t(`tipos.${promotion.promotion_type}`)}
           icono={Tag}
-          badge={<StatusBadge estado={estadoPromo(promotion)} tamano="md" />}
+          badge={<StatusBadge estado={estadoDePromocion(promotion, new Date(), timezone)} tamano="md" />}
           volverA="/app/pos/promociones"
           migas={[
             { etiqueta: t('pantalla.migasPos'), href: '/app/pos' },
@@ -291,7 +286,7 @@ export default function PromocionDetallePage() {
             { etiqueta: promotion.name },
           ]}
           acciones={
-            <>
+            !puedeGestionar ? undefined : <>
               <Link
                 href={`/app/pos/promociones/${promotionId}?edit=true`}
                 className={clasesBoton({ variante: 'primario', tamano: 'sm' })}
@@ -313,7 +308,7 @@ export default function PromocionDetallePage() {
               </button>
             </>
           }
-          movil={{ accion: <RowActionsMenu acciones={accionesMenu} titulo={promotion.name} tamano="md" orientacion="horizontal" /> }}
+          movil={{ accion: puedeGestionar ? <RowActionsMenu acciones={accionesMenu} titulo={promotion.name} tamano="md" orientacion="horizontal" /> : undefined }}
         />
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -340,22 +335,19 @@ export default function PromocionDetallePage() {
                 />
               </ListaDatos>
 
-              <div>
-                <h3 className="text-xs font-medium leading-4 text-fg-secondary">{t('detalle.dias')}</h3>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {promotion.applicable_days && promotion.applicable_days.length > 0 ? (
-                    diasSemana.map((d) => {
-                      const activo = promotion.applicable_days!.includes(d.value);
-                      return (
-                        <Badge key={d.value} tono={activo ? 'marca' : 'neutro'} apariencia={activo ? 'suave' : 'contorno'} tamano="sm">
-                          {d.corto}
-                        </Badge>
-                      );
-                    })
-                  ) : (
-                    <span className="text-sm text-fg">{t('detalle.todosLosDias')}</span>
-                  )}
+              <div className="flex flex-col gap-3">
+                <div>
+                  <h3 className="text-xs font-medium leading-4 text-fg-secondary">{t('horario.titulo')}</h3>
+                  <ul className="mt-1 flex flex-col gap-0.5 text-sm tabular-nums text-fg">
+                    {lineasHorario(promotion, t, diasSemana).map((linea) => (
+                      <li key={linea}>{linea}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-1 text-[13px] leading-[18px] text-fg-secondary">
+                    {t('detalle.horaOrganizacion', { zona: timezone, desfase: textoDesfase(timezone) })}
+                  </p>
                 </div>
+                <VistaSemanaPromocion horario={promotion} madrugadaAparte={!promotion.schedule_windows} />
               </div>
 
               {(promotion.min_purchase_amount || minimoUnidades || promotion.repeat_every_quantity) && (
@@ -419,8 +411,8 @@ export default function PromocionDetallePage() {
           <div className="flex flex-col gap-4">
             <Tarjeta titulo={t('detalle.estado')}>
               <SettingGroup>
-                <SettingRow titulo={t('detalle.estado')} descripcion={<StatusBadge estado={estadoPromo(promotion)} />}>
-                  <Switch checked={promotion.is_active} onCheckedChange={handleToggleActive} disabled={toggling} />
+                <SettingRow titulo={t('detalle.estado')} descripcion={<StatusBadge estado={estadoDePromocion(promotion, new Date(), timezone)} />}>
+                  <Switch checked={promotion.is_active} onCheckedChange={handleToggleActive} disabled={toggling || !puedeGestionar} />
                 </SettingRow>
               </SettingGroup>
             </Tarjeta>

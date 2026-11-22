@@ -506,6 +506,8 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/finanzas/tesoreria/transferencias', nombre: 'Transferencias', icono: Repeat, grupo: 'Tesorería' },
       // R4-B: propinas y recaudos para terceros; se registran y liquidan con el formulario único de Movimientos.
       { href: '/app/finanzas/tesoreria/dinero-de-terceros', nombre: 'Dinero de terceros', icono: Users, grupo: 'Tesorería' },
+      // Datáfono y pasarelas (Contador 2026-11-21): lo cobrado con tarjeta o pasarela y no abonado aún.
+      { href: '/app/finanzas/tesoreria/procesadores-pago', nombre: 'Procesadores de pago', icono: CreditCard, grupo: 'Tesorería' },
       { href: '/app/finanzas/categorias-tesoreria', nombre: 'Categorías de tesorería', icono: Tags, grupo: 'Tesorería' },
       // Finanzas ronda 2 (Figma A3–A10): operación, no reportes. Las alertas de
       // bancos y los cobros QR son pestañas de Cuentas de dinero y de Métodos de pago.

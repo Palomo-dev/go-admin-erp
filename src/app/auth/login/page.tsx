@@ -42,6 +42,7 @@ import {
 import { supabase } from '@/lib/supabase/config';
 import { destinoInternoSeguro, destinoTrasLogin, registrarIntentoRecuperacion } from '@/lib/auth/recuperacionSesion';
 import { avisoDesdeParametros, vieneDeSesionVencida, type AvisoUrl } from '@/lib/auth/avisosAcceso';
+import { rutaPasoSucursal } from '@/lib/auth/seleccionSucursal';
 import { FormField } from '@/components/kit/FormField';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { Input } from '@/components/ui/input';
@@ -202,7 +203,11 @@ function LoginContent() {
       const decision = decidirOrganizacion(organizaciones);
       if (decision.tipo === 'una') {
         activarOrganizacion(decision.organizacion);
-        await proceedWithLogin(rememberMe, correo);
+        // Mismo destino que antes (redirectTo validado o /app/inicio), pasando
+        // por el paso de sucursal: directo si solo tiene una.
+        await proceedWithLogin(rememberMe, correo, {
+          destino: rutaPasoSucursal(destinoTrasLogin(sessionStorage.getItem('redirectTo'))),
+        });
         return;
       }
       if (decision.tipo === 'varias') {

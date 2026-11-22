@@ -1,21 +1,14 @@
 "use client";
 
-import React, { useEffect, useId, useState } from 'react';
-import { Loader2, Percent } from 'lucide-react';
-import { Tarjeta } from '@/components/kit';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import React, { useEffect, useState } from 'react';
+import { useLocale, useTranslations } from 'next-intl';
+import { Percent, TriangleAlert } from 'lucide-react';
+import { BarraProgreso, Dialogo, FormField, Tarjeta, clasesBoton, formatearTarifa } from '@/components/kit';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase/config';
 import { setOrganizationDefaultTax, SIN_TARIFA_POR_DEFECTO } from '@/lib/services/defaultTaxService';
-import { formatPercent } from '@/utils/Utils';
+import { cobertura, type UsoProductos } from './impuestosLogica';
 
 interface ImpuestoOpcion {
   id: string;
@@ -28,54 +21,53 @@ interface ImpuestoOpcion {
 interface TarifaPorDefectoCardProps {
   organizationId: number;
   taxes: ImpuestoOpcion[];
+  /** Cobertura de productos (`fn_impuestos_uso_productos`); null mientras carga o si falló. */
+  uso: UsoProductos | null;
+  /** Sin permiso de gestión de impuestos no se ofrece «Cambiar tarifa». */
+  puedeGestionar: boolean;
   /** Se llama tras guardar para recargar la tabla. */
   onSaved: () => void;
 }
 
 /**
- * «Tarifa por defecto para productos sin impuesto asignado»: la marca
+ * «Tarifa para productos sin impuesto» (Figma 1012:86383): la marca
  * `is_default` de `organization_taxes` que usa `resolveLineTax` cuando el
- * producto no tiene impuestos propios. Una sola a la vez, o ninguna.
+ * producto no tiene impuestos propios. Una sola a la vez, o ninguna. Se cambia
+ * con `setOrganizationDefaultTax` (RPC `fn_impuesto_fijar_por_defecto`).
  */
-export default function TarifaPorDefectoCard({ organizationId, taxes, onSaved }: TarifaPorDefectoCardProps) {
+export default function TarifaPorDefectoCard({ organizationId, taxes, uso, puedeGestionar, onSaved }: TarifaPorDefectoCardProps) {
+  const t = useTranslations('finanzasImpuestos.tarifa');
+  const locale = useLocale();
   const { toast } = useToast();
-  const selectId = useId();
-  const ayudaId = useId();
 
-  const actual = taxes.find((t) => t.is_default && t.is_active)?.id ?? SIN_TARIFA_POR_DEFECTO;
+  const vigente = taxes.find((x) => x.is_default && x.is_active) ?? null;
+  const actual = vigente?.id ?? SIN_TARIFA_POR_DEFECTO;
+  const [abierto, setAbierto] = useState(false);
   const [seleccion, setSeleccion] = useState<string>(actual);
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    setSeleccion(actual);
-  }, [actual]);
+    if (!abierto) setSeleccion(actual);
+  }, [actual, abierto]);
 
-  const activos = taxes.filter((t) => t.is_active);
-  const hayCambios = seleccion !== actual;
+  const activos = taxes.filter((x) => x.is_active);
+  const tasa = (rate: number) => formatearTarifa(Number(rate), locale) ?? `${rate} %`;
+  const entero = (n: number) => n.toLocaleString(locale);
+  const pct = (n: number) => n.toLocaleString(locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 });
 
   const guardar = async () => {
     setGuardando(true);
     try {
-      await setOrganizationDefaultTax(
-        supabase,
-        organizationId,
-        seleccion === SIN_TARIFA_POR_DEFECTO ? null : seleccion,
-      );
+      await setOrganizationDefaultTax(supabase, organizationId, seleccion === SIN_TARIFA_POR_DEFECTO ? null : seleccion);
       toast({
-        title: 'Tarifa por defecto actualizada',
-        description:
-          seleccion === SIN_TARIFA_POR_DEFECTO
-            ? 'Los productos sin impuesto asignado se venderán sin IVA.'
-            : 'Los productos sin impuesto asignado usarán esta tarifa.',
+        title: t('guardadaTitulo'),
+        description: seleccion === SIN_TARIFA_POR_DEFECTO ? t('guardadaNinguna') : t('guardadaTarifa'),
       });
+      setAbierto(false);
       onSaved();
     } catch (error) {
       console.error('Error al guardar la tarifa por defecto:', error);
-      toast({
-        title: 'Error',
-        description: 'No se pudo guardar la tarifa por defecto. Intente de nuevo.',
-        variant: 'destructive',
-      });
+      toast({ title: t('errorTitulo'), description: t('error'), variant: 'destructive' });
     } finally {
       setGuardando(false);
     }
@@ -83,45 +75,77 @@ export default function TarifaPorDefectoCard({ organizationId, taxes, onSaved }:
 
   // Sin tarifa por defecto, la tarjeta va en tono advertencia (esas ventas salen sin IVA).
   const sinDefecto = actual === SIN_TARIFA_POR_DEFECTO;
+  const nombreTarifa = vigente ? `${vigente.name} (${tasa(vigente.rate)})` : t('ninguna', { tasa: tasa(0) });
+  const cob = uso ? cobertura(uso) : null;
 
   return (
-    <Tarjeta
-      titulo="Tarifa por defecto para productos sin impuesto asignado"
-      icono={Percent}
-      tono={sinDefecto ? 'advertencia' : 'neutro'}
-      descripcion={
-        <span id={ayudaId}>
-          Se aplica en facturas, cotizaciones y POS a los productos que no tienen un impuesto propio.
-          Si eliges «Ninguna», esas ventas salen sin IVA y verás una advertencia antes de emitir.
-        </span>
-      }
-    >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1 space-y-1.5">
-          <Label htmlFor={selectId} className="text-sm text-fg">
-            Tarifa por defecto
-          </Label>
-          <Select value={seleccion} onValueChange={setSeleccion} disabled={guardando}>
-            <SelectTrigger id={selectId} aria-describedby={ayudaId} className="w-full sm:max-w-md">
-              <SelectValue placeholder="Selecciona una tarifa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={SIN_TARIFA_POR_DEFECTO}>
-                Ninguna — vendo productos excluidos/exentos
-              </SelectItem>
-              {activos.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name} ({formatPercent(t.rate)})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Button onClick={guardar} disabled={!hayCambios || guardando} size="sm" className="w-full sm:w-auto">
-          {guardando && <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />}
-          {guardando ? 'Guardando...' : 'Guardar tarifa'}
-        </Button>
-      </div>
-    </Tarjeta>
+    <>
+      <Tarjeta
+        titulo={t('titulo', { tarifa: nombreTarifa })}
+        icono={sinDefecto ? TriangleAlert : Percent}
+        tono={sinDefecto ? 'advertencia' : 'neutro'}
+        descripcion={
+          uso && uso.total > 0 && cob
+            ? t('cobertura', {
+                con: entero(uso.conImpuesto + uso.exentos),
+                total: entero(uso.total),
+                sin: entero(cob.sinConfigurar),
+              })
+            : t('ayuda')
+        }
+        accion={
+          puedeGestionar ? (
+            <button type="button" className={clasesBoton({ variante: 'secundario', tamano: 'sm' })} onClick={() => setAbierto(true)}>
+              {t('cambiar')}
+            </button>
+          ) : undefined
+        }
+      >
+        {uso && uso.total > 0 && cob ? (
+          <div className="flex flex-col gap-1.5">
+            <BarraProgreso
+              valor={uso.conImpuesto + uso.exentos}
+              max={uso.total}
+              etiqueta={t('barraEtiqueta')}
+              textoValor={t('leyenda', { con: pct(cob.pctConImpuesto), exentos: pct(cob.pctExentos), sin: pct(cob.pctSinConfigurar) })}
+              tono={sinDefecto ? 'advertencia' : 'marca'}
+              tamano="sm"
+              className="max-w-xl"
+            />
+            <p className="text-xs text-fg-secondary">
+              {t('leyenda', { con: pct(cob.pctConImpuesto), exentos: pct(cob.pctExentos), sin: pct(cob.pctSinConfigurar) })}
+            </p>
+          </div>
+        ) : null}
+      </Tarjeta>
+
+      <Dialogo
+        abierto={abierto}
+        onAbiertoChange={(v) => !guardando && setAbierto(v)}
+        titulo={t('dialogoTitulo')}
+        descripcion={t('ayuda')}
+        icono={Percent}
+        ancho={440}
+        primario={{ etiqueta: t('guardar'), onClick: () => void guardar(), cargando: guardando, deshabilitada: seleccion === actual }}
+      >
+        <FormField etiqueta={t('etiqueta')}>
+          {(c) => (
+            <Select value={seleccion} onValueChange={setSeleccion} disabled={guardando}>
+              <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} className="h-10 border-line-strong bg-surface">
+                <SelectValue placeholder={t('elegir')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SIN_TARIFA_POR_DEFECTO}>{t('opcionNinguna')}</SelectItem>
+                {activos.map((x) => (
+                  <SelectItem key={x.id} value={x.id}>
+                    {x.name} ({tasa(x.rate)})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+      </Dialogo>
+    </>
   );
 }

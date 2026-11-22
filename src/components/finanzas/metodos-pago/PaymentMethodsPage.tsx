@@ -340,6 +340,7 @@ export default function PaymentMethodsPage({ pestanaInicial = "metodos" }: { pes
           globalMethods={paymentMethods}
           selectedMethod={selectedMethod}
           codigoInicial={codigoInicial}
+          codigosOrganizacion={orgPaymentMethods.map((m) => m.payment_method_code)}
           onSaveComplete={recargarTodo}
         />
       ) : null}

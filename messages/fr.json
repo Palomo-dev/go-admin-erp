@@ -5502,7 +5502,19 @@
     "tabla": {
       "seleccionarPagina": "Sélectionner cette page",
       "seleccionarFila": "Sélectionner la ligne",
-      "seleccionar": "Sélectionner {nombre}"
+      "seleccionar": "Sélectionner {nombre}",
+      "arrastre": {
+        "columna": "Réordonner",
+        "asa": "Déplacer {nombre}",
+        "ayuda": "Faites glisser pour changer l’ordre",
+        "ayudaTeclado": "Clavier : Espace pour saisir · ↑ ↓ pour déplacer · Espace pour déposer",
+        "rol": "élément ordonnable",
+        "instrucciones": "Appuyez sur Espace pour saisir la ligne, utilisez ↑ et ↓ pour la déplacer et Espace pour la déposer. Échap annule.",
+        "tomar": "{nombre} saisi. Position {pos} sur {total}.",
+        "mover": "{nombre} passe en position {pos} sur {total}.",
+        "soltar": "{nombre} est maintenant en position {pos} sur {total}.",
+        "cancelar": "Annulé. {nombre} est revenu en position {pos}."
+      }
     },
     "menu": {
       "accionesDe": "Actions pour {titulo}",
@@ -8341,7 +8353,9 @@
     "ficha": {
       "comun": {
         "sinNombre": "Sans nom",
-        "usuario": "Utilisateur"
+        "usuario": "Utilisateur",
+        "hoyHora": "Aujourd'hui {hora}",
+        "ayerHora": "Hier {hora}"
       },
       "pagina": {
         "noEncontrado": "Client introuvable",
@@ -8359,7 +8373,8 @@
           "sinId": "ID client introuvable",
           "noExiste": "Il n’existe pas ou n’appartient pas à votre organisation.",
           "carga": "Erreur lors du chargement des données du client"
-        }
+        },
+        "noEncontradoDetalle": "Le client demandé est introuvable. Il a peut-être été supprimé, appartient à une autre organisation ou n'est pas dans l'agence active."
       },
       "pestanasAria": "Sections du client",
       "pestanas": {
@@ -8369,7 +8384,9 @@
         "actividad": "Activité",
         "cuentas": "Créances clients",
         "notas": "Notes et fichiers",
-        "contactos": "Contacts"
+        "contactos": "Contacts",
+        "finanzas": "Finances",
+        "notasDocumentos": "Notes et documents"
       },
       "cabecera": {
         "error": "Erreur",
@@ -8389,7 +8406,11 @@
           "plata": "Argent",
           "bronce": "Bronze",
           "basico": "Basique"
-        }
+        },
+        "identidad": "Identité du client",
+        "salud": "Santé {n}",
+        "contactoPrincipal": "Contact principal :",
+        "etiquetas": "Étiquettes :"
       },
       "resumen": {
         "compras": "Achats",
@@ -8416,7 +8437,16 @@
           "reserva": "Réservation du {fecha}",
           "pedido": "Commande nº {numero}",
           "estadoReserva": "réservation"
-        }
+        },
+        "saldoCartera": "Solde des créances",
+        "facturasVencidas": "{count, plural, one {# facture échue} other {# factures échues}}",
+        "facturasVencidasHace": "{count, plural, one {# facture échue depuis {dias} j} other {# factures échues, la plus ancienne depuis {dias} j}}",
+        "carteraSinPermiso": "Pas d’autorisation pour voir les créances",
+        "carteraError": "Impossible de consulter les créances",
+        "verTodaActividad": "Voir toute l’activité",
+        "productos": "{count, plural, one {# produit} other {# produits}}",
+        "kpisAria": "Indicateurs du client",
+        "comprasConteo": "{count, plural, =0 {Aucun achat} one {# achat} other {# achats}}"
       },
       "info": {
         "titulo": "Informations complètes du client",
@@ -8472,7 +8502,13 @@
         "error": "Erreur : {mensaje}",
         "errorCarga": "Erreur lors du chargement des informations du client",
         "sinDatos": "Aucune donnée trouvée pour ce client",
-        "noSePudoCargar": "Impossible de charger les informations du client"
+        "noSePudoCargar": "Impossible de charger les informations du client",
+        "noLlamar": "Ne pas appeler",
+        "zonaHoraria": "Fuseau horaire",
+        "tamanoEmpresa": "Taille de l'entreprise",
+        "preferenciasContacto": "Préférences et contact",
+        "soloLectura": "Lecture seule",
+        "editarSeccion": "Modifier {seccion}"
       },
       "oportunidades": {
         "estados": {
@@ -8487,7 +8523,8 @@
         "abiertas": "Ouvertes",
         "ganadas": "Gagnées",
         "titulo": "Opportunités ({n})",
-        "cierreEsperado": "Clôture prévue : {fecha}"
+        "cierreEsperado": "Clôture prévue : {fecha}",
+        "kpisAria": "Résumé des opportunités"
       },
       "actividad": {
         "titulo": "Historique d’activité",
@@ -8535,7 +8572,9 @@
           "complete": "Terminé",
           "scheduled": "Planifié",
           "cancelled": "Annulé"
-        }
+        },
+        "hoy": "Aujourd'hui",
+        "ayer": "Hier"
       },
       "cuentas": {
         "errorCarga": "Erreur lors du chargement des créances clients",
@@ -8588,7 +8627,8 @@
         "errorCarga": "Erreur lors du chargement des notes",
         "fijar": "Épingler la note",
         "desfijar": "Désépingler la note",
-        "eliminar": "Supprimer la note"
+        "eliminar": "Supprimer la note",
+        "fijada": "Épinglée"
       },
       "tareas": {
         "titulo": "Tâches",
@@ -8612,7 +8652,108 @@
           "enProgreso": "En cours",
           "completada": "Terminée",
           "cancelada": "Annulée"
+        },
+        "verTodasCliente": "Voir toutes les tâches du client",
+        "verMenos": "Voir moins",
+        "vence": {
+          "vencida": "En retard",
+          "hoy": "Échéance aujourd'hui",
+          "manana": "Échéance demain",
+          "enDias": "{count, plural, one {Dans # jour} other {Dans # jours}}"
         }
+      },
+      "columnaLateral": "Tâches et santé du client",
+      "estado": {
+        "cliente": "Client",
+        "lead": "Lead",
+        "prospecto": "Prospect",
+        "inactivo": "Inactif"
+      },
+      "menu": {
+        "editar": "Modifier le client",
+        "registrarPago": "Enregistrer un paiement",
+        "nuevaVenta": "Nouvelle vente",
+        "nuevaOportunidad": "Nouvelle opportunité",
+        "estadoCuenta": "Relevé de compte (PDF)",
+        "exportarFicha": "Exporter la fiche",
+        "marcarInactivo": "Marquer comme inactif",
+        "reactivar": "Réactiver",
+        "unificar": "Fusionner avec un autre client",
+        "eliminar": "Supprimer le client"
+      },
+      "motivos": {
+        "cargandoCartera": "Consultation des créances du client…",
+        "sinPermisoCobro": "Vous n'avez pas l'autorisation d'enregistrer des paiements.",
+        "errorCartera": "Impossible de consulter les créances du client.",
+        "sinSaldo": "Aucun solde à encaisser",
+        "sinPermisoCartera": "Vous n'avez pas l'autorisation de voir les créances.",
+        "exportarFicha": "Pas encore disponible : l'export de la fiche est en construction."
+      },
+      "salud": {
+        "titulo": "Santé du client",
+        "puntaje": "{n} / 100",
+        "alertasLinea": "Alertes : {lista}",
+        "alertas": {
+          "overdue": "créances échues",
+          "noInvoice": "pas d'achat depuis {dias} j",
+          "noInvoiceNunca": "aucun achat enregistré",
+          "noActivity": "pas d'activité depuis {dias} j",
+          "noActivityNunca": "aucune activité enregistrée"
+        },
+        "bandas": {
+          "green": "En bonne santé",
+          "yellow": "Attention",
+          "red": "Critique"
+        },
+        "sinDatos": "La santé ne se mesure que pour les clients : pas encore de factures ni d'activité mesurable.",
+        "etapaSinFacturas": "La santé ne se mesure que pour les clients ; cette fiche est {etapa} sans factures.",
+        "etapaConFacturas": "La santé ne se mesure que pour les clients ; cette fiche est {etapa} avec {count, plural, one {# facture} other {# factures}}. Passez-la en client pour la mesurer.",
+        "etapas": {
+          "lead": "un lead",
+          "prospect": "un prospect",
+          "otra": "« {etapa} »"
+        }
+      },
+      "finanzas": {
+        "kpisAria": "Résumé financier du client",
+        "deudaTotal": "Dette totale",
+        "facturasMasFolios": "Factures + folios",
+        "sinDeuda": "Aucune dette en cours",
+        "foliosPendientes": "Folios en attente",
+        "foliosDetalle": "{items, plural, one {# article} other {# articles}} dans {count, plural, one {# folio ouvert} other {# folios ouverts}}",
+        "sinFolios": "Aucun folio ouvert",
+        "facturasPorCobrar": "Factures à encaisser",
+        "vencidasDetalle": "{count, plural, one {# échue depuis {dias} j} other {# échues, la plus ancienne depuis {dias} j}}",
+        "alDia": "À jour",
+        "enviarRecordatorio": "Envoyer un rappel",
+        "estadoCuenta": "Relevé de compte (PDF)",
+        "moneda": "Devise : {codigo}",
+        "listaTitulo": "Factures à encaisser ({facturas}) · Folios de réservation ({folios}) · Comptes clients ({cuentas})",
+        "factura": "Facture {numero}",
+        "cuenta": "Compte client",
+        "cuentaNumero": "Compte client · {numero}",
+        "folio": "Folio de réservation",
+        "vence": "Échéance : {fecha}",
+        "sinVencimiento": "Sans date d'échéance",
+        "cuotas": "{pendientes} échéances sur {count} en attente",
+        "deMonto": "sur {monto}",
+        "items": "{count, plural, one {# article} other {# articles}}",
+        "ver": "Voir",
+        "pagar": "Payer",
+        "vencidaDias": "Échue {dias} j",
+        "sinPermiso": "Vous n'avez pas l'autorisation de voir les créances de ce client : seuls les folios sont affichés.",
+        "reintentar": "Réessayer",
+        "sinVencidas": "Aucune facture échue",
+        "verCartera": "Voir les créances du client dans Finances",
+        "sustantivo": {
+          "singular": "compte",
+          "plural": "comptes"
+        },
+        "recordatorioTitulo": "Envoyer un rappel de paiement",
+        "recordatorioDescripcion": "{count, plural, one {Un e-mail sera envoyé au client pour le compte échu.} other {Un e-mail sera envoyé au client pour chacun des # comptes échus.}}",
+        "recordatorioEnviado": "{count, plural, one {Rappel envoyé} other {# rappels envoyés}}",
+        "recordatorioSinEnviar": "Le rappel n'a pas pu être envoyé. Vérifiez que le client a un e-mail.",
+        "recordatorioParcial": "{count, plural, one {# rappel envoyé ; les autres ont échoué.} other {# rappels envoyés ; les autres ont échoué.}}"
       }
     },
     "formulario": {
@@ -13480,7 +13621,17 @@
       "cantidad": "Pourboires"
     },
     "acciones": {
-      "anular": "Annuler"
+      "anular": "Annuler avec motif",
+      "anularCorto": "Annuler",
+      "anularLiquidacion": "Annuler la répartition",
+      "corregir": "Corriger le montant",
+      "imprimir": "Imprimer le justificatif",
+      "reasignar": "Réattribuer la personne",
+      "sinPago": "Marquer réglé sans paiement",
+      "verDetalle": "Voir le détail",
+      "verLiquidacion": "Voir la répartition {codigo}",
+      "verMesa": "Voir la table {mesa}",
+      "verVenta": "Voir la vente {numero}"
     },
     "anular": {
       "titulo": "Annuler le pourboire ?",
@@ -13502,7 +13653,10 @@
       "distribuidas": "{count, plural, one {# pourboire marqué comme distribué} other {# pourboires marqués comme distribués}}",
       "ningunaDistribuida": "Aucun pourboire en attente à distribuer : ils étaient déjà distribués ou annulés.",
       "actualizada": "Pourboire mis à jour",
-      "registrada": "Pourboire enregistré"
+      "registrada": "Pourboire enregistré",
+      "liquidada": "Répartition {codigo} enregistrée",
+      "liquidacionAnulada": "Répartition {codigo} annulée",
+      "reasignada": "Pourboire réattribué"
     },
     "errores": {
       "SIN_PERMISO": "Vous n'avez pas l'autorisation pour cette action.",
@@ -13512,7 +13666,26 @@
       "PROPINA_INEXISTENTE": "Le pourboire n'existe pas dans cette organisation.",
       "PERIODO_CERRADO": "La période comptable d'aujourd'hui est clôturée : la contre-passation ne peut pas être enregistrée.",
       "SIN_SUCURSAL": "Sélectionnez une succursale pour enregistrer le pourboire.",
-      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez."
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez.",
+      "MOTIVO_REQUERIDO": "Saisissez le motif (au moins 3 caractères).",
+      "MOTIVO_AJUSTE_REQUERIDO": "Un montant ajusté à la main doit avoir un motif.",
+      "SIN_PROPINAS": "Choisissez au moins un pourboire à répartir.",
+      "PROPINAS_NO_DISPONIBLES": "Certains pourboires ne sont plus à répartir (quelqu’un d’autre les a réglés ou annulés). Rechargez.",
+      "VENTA_ABIERTA": "Certains pourboires viennent de ventes non encore encaissées : ils se répartiront une fois la vente encaissée.",
+      "REPARTO_INVALIDO": "Ce mode de répartition n’est pas encore disponible.",
+      "PORCENTAJES_INVALIDOS": "Les parts doivent faire 100 %.",
+      "PERSONA_INVALIDA": "Une personne de la répartition n’est plus un membre actif.",
+      "AJUSTES_NO_SUMAN_CERO": "Les ajustements doivent faire zéro : ce qu’on retire à l’un va à un autre.",
+      "AJUSTE_NEGATIVO": "Personne ne peut avoir un montant négatif.",
+      "MEDIO_INVALIDO": "Ce moyen de paiement n’est pas encore disponible.",
+      "REFERENCIA_REQUERIDA": "Saisissez la référence de chaque virement.",
+      "CAJA_CERRADA": "Aucune caisse ouverte dans cette succursale : ouvrez-la pour payer en espèces.",
+      "LIQUIDACION_INEXISTENTE": "La répartition n’existe pas dans cette organisation.",
+      "LIQUIDACION_ANULADA": "La répartition est annulée : elle ne peut pas être payée.",
+      "PAGADA_POR_NOMINA": "Une partie de cette répartition a été payée par la paie : corrigez-la dans la paie.",
+      "SIN_CUENTA": "Il manque un compte de pourboires (28150501 ou 28150502) ou le compte de caisse ou de banque.",
+      "SOLICITUD_REQUERIDA": "La demande n’a pas pu être identifiée. Réessayez.",
+      "DATOS_INVALIDOS": "Vérifiez les filtres : une valeur n’est pas valide."
     },
     "cabecera": {
       "titulo": "Gestion des pourboires",
@@ -13574,6 +13747,326 @@
       "pendiente": "En attente",
       "editar": "Modifier",
       "marcarDistribuida": "Marquer comme réparti"
+    },
+    "anularV2": {
+      "titulo": "Annuler le pourboire de {monto}",
+      "tituloVarias": "{count, plural, one {Annuler # pourboire} other {Annuler # pourboires}} pour {monto}",
+      "descripcion": "{documento}. Une écriture d’extourne est générée ; la vente ne change pas.",
+      "descripcionVarias": "Chaque pourboire est annulé avec son écriture d’extourne ; les ventes ne changent pas.",
+      "confirmar": "Annuler le pourboire",
+      "motivo": "Motif",
+      "consecuencia1": "Le pourboire ne compte plus dans les totaux ni dans ce qui reste à répartir.",
+      "consecuencia2": "S’il a une écriture comptable, son extourne est enregistrée à la date du jour.",
+      "rapidos": {
+        "duplicada": "Enregistré deux fois",
+        "errorMonto": "Montant erroné",
+        "devuelta": "Rendu au client",
+        "noEra": "Ce n’était pas un pourboire"
+      }
+    },
+    "anularLiquidacion": {
+      "titulo": "Annuler la répartition {codigo}",
+      "descripcion": "Elle reste dans l’historique comme annulée, avec son motif.",
+      "confirmar": "Annuler la répartition",
+      "consecuenciaCaja": "{monto} reviennent dans la caisse ouverte comme réintégration de la sortie.",
+      "consecuenciaAsiento": "L’écriture de la répartition est extournée, s’il y en a une.",
+      "consecuenciaPropinas": "Ses pourboires reviennent dans « À répartir »."
+    },
+    "sinPagoDialogo": {
+      "titulo": "Marquer réglé sans paiement ({monto})",
+      "descripcion": "Enregistré comme une répartition sans mouvement d’argent (par exemple, déjà payé en dehors). Rien ne sort de la caisse.",
+      "confirmar": "Marquer réglé",
+      "rapidos": {
+        "pagadaPorFuera": "Déjà payé en dehors",
+        "nomina": "Payé avec la paie"
+      }
+    },
+    "columnas": {
+      "atendio": "Servi par",
+      "cargo": "Poste",
+      "documento": "Document",
+      "estado": "Statut",
+      "fecha": "Date",
+      "mesa": "Table",
+      "monto": "Montant",
+      "motivo": "Motif",
+      "tipo": "Type"
+    },
+    "detalle": {
+      "titulo": "Répartition",
+      "tituloCodigo": "Répartition {codigo}",
+      "subtitulo": "{periodo} · {sucursal} · réglée par {persona} le {fecha}",
+      "noExiste": "Cette répartition n’existe pas dans votre organisation",
+      "volver": "Retour aux répartitions",
+      "imprimir": "Imprimer le justificatif",
+      "avisoAnulada": "Annulée le {fecha} : {motivo}",
+      "reparto": "Répartition",
+      "firma": "Signature",
+      "ref": "Réf. {ref}",
+      "motivoAjuste": "Motif de l’ajustement : {motivo}",
+      "incluidas": "Pourboires inclus ({count})",
+      "verTodas": "Voir les {count} pourboires",
+      "pago": "Paiement",
+      "totalPropinas": "Total des pourboires",
+      "efectivo": "En espèces",
+      "banco": "Par carte ou en ligne",
+      "ajustes": "Ajustements",
+      "pagado": "Payé",
+      "medio": "Moyen",
+      "egreso": "Sortie de caisse",
+      "reingreso": "Réintégration en caisse",
+      "asiento": "Écriture comptable",
+      "asientoEnCobro": "Celle de chaque pourboire, à l’encaissement",
+      "sinAsiento": "Sans écriture",
+      "motivoSinPago": "Motif",
+      "comprobante": "Justificatif",
+      "comprobanteFirmas": "{count, plural, one {À signer par # personne} other {À signer par # personnes}}",
+      "historialTitulo": "Historique",
+      "historial": {
+        "liquidada": "Réglée par {persona}",
+        "egreso": "Sortie {numero} de la caisse {caja}",
+        "asiento": "Écriture {numero}",
+        "anulada": "Annulée par {persona} : {motivo}",
+        "reingreso": "Réintégration {numero} dans la caisse {caja}"
+      }
+    },
+    "estados": {
+      "cargando": "Chargement…",
+      "reintentar": "Réessayer",
+      "por_liquidar": "À répartir",
+      "liquidada": "Réglé",
+      "anulada": "Annulé",
+      "ventaAbierta": "Vente non encaissée"
+    },
+    "filtros": {
+      "buscar": "Rechercher par document, table ou personne",
+      "buscarLiquidaciones": "Rechercher par numéro ou personne",
+      "buscarEtiqueta": "Rechercher des pourboires",
+      "estado": "Statut",
+      "medio": "Payé par",
+      "periodo": "Date",
+      "persona": "Personne",
+      "tipo": "Type",
+      "todos": "Tous",
+      "fechaHoy": "Date : aujourd’hui",
+      "fechaChip": "Date : {rango}",
+      "tipoChip": "Type : {tipo}",
+      "personaChip": "Personne : {persona}",
+      "verN": "{count, plural, =0 {Aucun résultat} one {Voir # résultat} other {Voir {n} résultats}}"
+    },
+    "formularioV2": {
+      "tituloNueva": "Nouveau pourboire",
+      "tituloReasignar": "Réattribuer la personne",
+      "tituloCorregir": "Corriger le montant",
+      "descripcion": "Pourboire de {monto} · {persona}",
+      "persona": "Personne qui a servi",
+      "guardar": "Enregistrer",
+      "motivo": "Motif de la correction",
+      "motivoAyuda": "Il reste dans les notes du pourboire.",
+      "motivoRequerido": "Saisissez le motif (au moins 3 caractères).",
+      "notaCorreccion": "[Correction] Avant {antes} : {motivo}"
+    },
+    "kpis": {
+      "etiqueta": "Résumé des pourboires",
+      "porLiquidar": "À répartir",
+      "porLiquidarDetalle": "{count, plural, =0 {Rien en attente} one {# pourboire de {personas, plural, one {# personne} other {# personnes}}} other {{n} pourboires de {personas, plural, one {# personne} other {# personnes}}}}",
+      "liquidadoMes": "Réparti en {mes}",
+      "liquidaciones": "{count, plural, =0 {Aucune répartition} one {# répartition} other {# répartitions}}",
+      "promedio": "Pourboire moyen",
+      "promedioDetalle": "{count, plural, =0 {Aucun pourboire sur la période} one {Sur # pourboire} other {Sur # pourboires}}",
+      "ventasConPropina": "Ventes avec pourboire",
+      "ventasDetalle": "{con} sur {total} ventes de la période",
+      "propinas": "Pourboires",
+      "conPropina": "Avec pourboire"
+    },
+    "liquidaciones": {
+      "titulo": "Répartitions",
+      "sustantivo": {
+        "singular": "répartition",
+        "plural": "répartitions"
+      },
+      "columnas": {
+        "numero": "Numéro",
+        "periodo": "Période",
+        "personas": "Personnes",
+        "reparto": "Répartition",
+        "pagadoCon": "Payé par",
+        "total": "Total",
+        "estado": "Statut"
+      },
+      "estados": {
+        "por_pagar": "À payer",
+        "pagada": "Payée",
+        "anulada": "Annulée"
+      },
+      "liquidadaEl": "réglée le {fecha}",
+      "anuladaEl": "annulée le {fecha}",
+      "efectivoCaja": "Espèces · Caisse {caja}",
+      "egreso": "Sortie {numero}",
+      "egresoAnulado": "Sortie annulée",
+      "referencias": "Réf. {refs}",
+      "personasN": "{count, plural, one {# personne} other {# personnes}}"
+    },
+    "liquidar": {
+      "titulo": "Répartir les pourboires",
+      "descripcionPaso1": "{sucursal} · {caja}",
+      "descripcion": "{periodo} · {sucursal} · {personas, plural, one {# personne} other {# personnes}} · {monto}",
+      "cajaAbierta": "Caisse {caja} ouverte",
+      "sinCaja": "aucune caisse ouverte",
+      "eligeSucursal": "Choisissez une succursale dans la barre supérieure pour répartir.",
+      "cancelar": "Annuler",
+      "atras": "Retour",
+      "siguienteReparto": "Suivant · Comment répartir",
+      "continuar": "Continuer",
+      "confirmar": "Répartir {monto}",
+      "liquidando": "Répartition…",
+      "errorCarga": "Impossible de charger les pourboires à répartir.",
+      "pasos": {
+        "etiqueta": "Étapes de la répartition",
+        "que": "Ce qui est réparti",
+        "queResumen": "{count, plural, one {# pourboire} other {{n} pourboires}} · {monto}",
+        "reparto": "Comment répartir",
+        "repartoResumen": "À qui a servi",
+        "repartoConAjustes": "{reparto} · {count, plural, one {# ajustement} other {# ajustements}}",
+        "pago": "Comment payer",
+        "pendiente": "En attente",
+        "efectivoDeCaja": "Espèces de la caisse {caja}"
+      },
+      "periodo": "Période",
+      "periodoAyuda": "Jours de l’organisation.",
+      "persona": "Personne",
+      "personaAyuda": "Personnes avec des pourboires en attente.",
+      "todasPersonas": "Toutes les personnes",
+      "medio": "Moyen",
+      "medioAyuda": "Les pourboires par carte sont arrivés à la banque.",
+      "medios": {
+        "todos": "Espèces et carte",
+        "efectivo": "Espèces seulement",
+        "banco": "Carte et en ligne"
+      },
+      "todas": "Tous ({n} sur {total} sélectionnés)",
+      "sinPropinas": "Aucun pourboire à répartir sur cette période.",
+      "ventaSinCerrar": "vente non clôturée",
+      "efectivo": "Espèces (sortent de la caisse)",
+      "efectivoSaleDe": "Espèces (sortent de la caisse {caja})",
+      "banco": "Carte et commandes web (arrivés à la banque)",
+      "totalALiquidar": "Total à répartir",
+      "ventasAbiertas": "{count, plural, one {La vente {venta} est encore ouverte : son pourboire se répartira une fois encaissée.} other {Il y a # ventes ouvertes (comme {venta}) : leurs pourboires se répartiront une fois encaissées.}}",
+      "reparto": "Mode de répartition",
+      "porcentajesNoSuman": "Les parts font {pct} % : elles doivent faire 100 %.",
+      "columnas": {
+        "persona": "Personne",
+        "base": "Base",
+        "participacion": "Part",
+        "calculado": "Calculé",
+        "ajuste": "Ajustement",
+        "aPagar": "À payer"
+      },
+      "participacionDe": "Part de {persona}",
+      "ajusteDe": "Ajustement de {persona}",
+      "agregarAlPozo": "Ajouter à la cagnotte",
+      "agregarAlPozoPlaceholder": "Choisissez une personne de la succursale",
+      "motivoAjuste": "Motif de l’ajustement",
+      "motivoAjusteAyuda": "Obligatoire quand un montant est ajusté à la main.",
+      "motivoCorto": "Saisissez au moins 3 caractères.",
+      "ajustesNoSuman": "Les ajustements font {monto} : ils doivent faire zéro.",
+      "totalPropinas": "Total des pourboires",
+      "ajustesSumanCero": "Ajustements (font zéro)",
+      "aPagar": "À payer",
+      "pago": {
+        "efectivo": "Espèces de la caisse ouverte",
+        "efectivoDetalle": "Caisse {caja} · ouverte par {persona} · espèces attendues {esperado}. Sort comme sortie « Répartition des pourboires ».",
+        "esperadoOculto": "masqué (clôture à l’aveugle)",
+        "recomendado": "Recommandé",
+        "sinCaja": "Aucune caisse ouverte dans cette succursale.",
+        "sinCajaTitulo": "Pour payer en espèces, ouvrez la caisse",
+        "sinCajaDescripcion": "Les espèces sortent de la caisse ouverte, comme pour les remboursements et les encaissements.",
+        "abrirCaja": "Ouvrir la caisse",
+        "transferencia": "Virement",
+        "transferenciaDetalle": "Un par personne ; la référence de chacun est enregistrée.",
+        "referenciaDe": "Référence · {persona} ({monto})",
+        "nomina": "Avec la paie",
+        "nominaDetalle": "Ajouté comme revenu non salarial à la prochaine paie (module RH).",
+        "requiereHrm": "Nécessite RH",
+        "notaEfectivo": "Les pourboires par carte sont déjà à la banque : les espèces qui sortent de la caisse les compensent. Un justificatif à signer est généré.",
+        "notaTransferencia": "Aucune espèce ne sort de la caisse : le reclassement de la caisse vers la banque et le justificatif à signer sont enregistrés.",
+        "imprimir": "Imprimer le justificatif à faire signer par chaque personne"
+      }
+    },
+    "medios": {
+      "efectivo": "Espèces",
+      "transferencia": "Virement",
+      "nomina": "Paie",
+      "sin_pago": "Sans paiement"
+    },
+    "motivos": {
+      "eligeSucursal": "Choisissez une succursale dans la barre supérieure",
+      "nadaQueExportar": "Aucun pourboire dans la liste",
+      "sinPermisoAnular": "Il vous faut le droit d’annuler au point de vente",
+      "sinPermisoAnularLiquidacion": "Il vous faut les droits de répartir les pourboires et d’annuler",
+      "sinPermisoLiquidar": "Il vous faut le droit « Répartir les pourboires »",
+      "sinPermisoRegistrar": "Il vous faut le droit de vendre au point de vente",
+      "ventaAbierta": "La vente n’est pas encore encaissée"
+    },
+    "origenes": {
+      "domicilio": "Livraison",
+      "mostrador": "Comptoir",
+      "web": "Commande web"
+    },
+    "pagina": {
+      "titulo": "Pourboires",
+      "migaPos": "PDV",
+      "actualizar": "Actualiser",
+      "nueva": "Nouveau pourboire",
+      "liquidar": "Répartir ({n})",
+      "liquidarMovil": "{count, plural, one {Répartir # pourboire} other {Répartir # pourboires}} · {monto}",
+      "exportar": "Exporter",
+      "dineroTerceros": "Voir dans Argent de tiers",
+      "todasSucursales": "Toutes les succursales",
+      "todasLasFechas": "toutes les dates",
+      "sustantivo": {
+        "singular": "pourboire",
+        "plural": "pourboires"
+      }
+    },
+    "pestanas": {
+      "etiqueta": "Vues des pourboires",
+      "por_liquidar": "À répartir",
+      "liquidaciones": "Répartitions",
+      "anuladas": "Annulés",
+      "todas": "Tous"
+    },
+    "porPersona": {
+      "titulo": "Par personne",
+      "liquidarTodos": "Tout répartir",
+      "propinas": "{count, plural, one {# pourboire} other {# pourboires}}",
+      "total": "Total à répartir"
+    },
+    "repartos": {
+      "atendio": "À qui a servi",
+      "horas": "Cagnotte par heures",
+      "porcentaje": "Cagnotte par pourcentage"
+    },
+    "seleccion": {
+      "liquidar": "Répartir · {monto}",
+      "resumen": "{count, plural, one {# sélectionné} other {# sélectionnés}} · {monto}"
+    },
+    "tabla": {
+      "manual": "Saisie manuelle",
+      "sinDocumento": "Sans document",
+      "sinNumero": "Sans numéro"
+    },
+    "vacios": {
+      "titulo": "Aucun pourboire à répartir",
+      "descripcion": "Les pourboires apparaissent ici quand ils sont encaissés au point de vente, aux tables ou dans les commandes web.",
+      "anuladasTitulo": "Aucun pourboire annulé",
+      "anuladasDescripcion": "Les pourboires annulés restent ici, avec leur motif.",
+      "liquidacionesTitulo": "Pas encore de répartitions",
+      "liquidacionesDescripcion": "Chaque répartition garde un document LIQ avec sa répartition, son paiement et son justificatif.",
+      "sinResultados": "Aucun pourboire ne correspond à la recherche ou aux filtres.",
+      "error": "Impossible de charger les pourboires",
+      "sinPermisoTitulo": "Vous n’avez pas accès aux Pourboires",
+      "sinPermisoDescripcion": "Demandez à un administrateur le droit de voir le point de vente ou de répartir les pourboires."
     }
   },
   "posCargosServicio": {
@@ -13910,7 +14403,8 @@
         "todos": "Tous",
         "inactivos": "Inactifs",
         "actualizar": "Actualiser",
-        "subtituloConteo": "{total, plural, one {# motif} other {# motifs}} · {activos, plural, one {# actif} other {# actifs}}"
+        "subtituloConteo": "{total, plural, one {# motif} other {# motifs}} · {activos, plural, one {# actif} other {# actifs}}",
+        "importarCsv": "Importer un CSV"
       },
       "lista": {
         "eliminado": "Motif supprimé avec succès",
@@ -13963,7 +14457,11 @@
           "descripcionLarga": "La description ne peut pas dépasser 500 caractères"
         },
         "orden": "Ordre",
-        "ordenAyuda": "Position du motif dans la liste (0 en premier)"
+        "ordenAyuda": "Position du motif dans la liste (0 en premier)",
+        "descripcionDialogo": "Apparaît lors de la création des retours, dans l'ordre que vous définissez.",
+        "codigoAyuda": "Enregistré en majuscules ; unique dans l'organisation.",
+        "descripcionOpcional": "Description (facultatif)",
+        "guardar": "Enregistrer le motif"
       },
       "errores": {
         "codigoDuplicado": "Un motif avec le code « {codigo} » existe déjà",
@@ -13974,7 +14472,264 @@
         "duplicar": "Impossible de dupliquer le motif",
         "cambiarEstado": "Impossible de changer le statut",
         "importar": "Import impossible"
+      },
+      "tabla": {
+        "orden": "Ordre",
+        "afectaInventario": "Impacte le stock",
+        "requiereFoto": "Photo requise",
+        "usos": "Utilisations",
+        "usosN": "{n, plural, one {# utilisation} other {# utilisations}}",
+        "activo": "Actif",
+        "inactivo": "Inactif",
+        "activar": "Activer",
+        "desactivar": "Désactiver",
+        "enUsoNoBorrar": "Il a des retours : désactivez-le au lieu de le supprimer"
       }
+    },
+    "listado": {
+      "titulo": "Retours",
+      "migas": {
+        "pos": "PDV",
+        "devoluciones": "Retours"
+      },
+      "actualizar": "Actualiser",
+      "motivos": "Motifs",
+      "nueva": "Nouveau retour",
+      "exportar": "Exporter en CSV",
+      "exportando": "Exportation…",
+      "exportarError": "Impossible d'exporter les retours",
+      "irVentas": "Voir les ventes",
+      "todasSucursales": "Toutes les succursales",
+      "sustantivo": {
+        "singular": "retour",
+        "plural": "retours"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par n° de retour, facture, client ou pièce d'identité…",
+        "etiqueta": "Rechercher des retours"
+      },
+      "columnas": {
+        "numero": "N°",
+        "documentos": "Vente et documents",
+        "cliente": "Client",
+        "motivo": "Motif",
+        "unidades": "Unités",
+        "reintegro": "Remboursement",
+        "metodo": "Mode",
+        "estado": "Statut"
+      },
+      "unidadesDe": "{devueltas} sur {vendidas}",
+      "consumidorFinal": "Client de passage",
+      "mostrador": "Comptoir",
+      "sinMotivo": "Sans motif",
+      "ventaSinNumero": "Vente sans facture",
+      "parcial": "Partiel",
+      "metodos": {
+        "cash": "Espèces",
+        "store_credit": "Avoir client",
+        "sin_definir": "Non défini"
+      },
+      "metodoCaja": "Espèces · Caisse #{sesion}",
+      "estados": {
+        "processed": "Traité",
+        "pending": "En attente",
+        "cancelled": "Annulé"
+      },
+      "acciones": {
+        "ver": "Voir le détail",
+        "verVenta": "Voir la vente {numero}",
+        "verVentaSinNumero": "Voir la vente",
+        "verNc": "Voir l'avoir {numero}",
+        "imprimir": "Imprimer le justificatif",
+        "enviar": "Envoyer au client",
+        "anular": "Annuler le retour"
+      },
+      "motivosAccion": {
+        "sinNc": "Ce retour n'a pas d'avoir à imprimer",
+        "enviarPronto": "L'envoi au client n'est pas encore disponible",
+        "anularPronto": "L'annulation d'un retour n'est pas encore disponible"
+      },
+      "vacio": {
+        "titulo": "Aucun retour pour l'instant",
+        "descripcion": "Quand un client retourne des produits, le retour apparaîtra ici avec son avoir et son remboursement."
+      },
+      "sinResultados": "Aucun retour ne correspond à la recherche ou aux filtres.",
+      "errorCarga": "Impossible de charger les retours",
+      "sinPermiso": {
+        "titulo": "Vous n'avez pas accès aux retours",
+        "descripcion": "Demandez à un administrateur l'autorisation de voir le PDV ou de traiter des retours."
+      },
+      "filtros": {
+        "nota": "Les dates sont celles du retour, dans le fuseau horaire de l'organisation.",
+        "periodo": "Période",
+        "desdeHasta": "Dates",
+        "estado": "Statut",
+        "metodo": "Mode de remboursement",
+        "motivo": "Motif",
+        "todos": "Tous",
+        "periodoChip": "Période : {rango}",
+        "estadoChip": "Statut : {estado}",
+        "metodoChip": "Mode : {metodo}",
+        "motivoChip": "Motif : {motivo}",
+        "verN": "{count, plural, one {Voir # retour} other {Voir {n} retours}}"
+      },
+      "csv": {
+        "numero": "N°",
+        "fecha": "Date",
+        "factura": "Facture",
+        "notaCredito": "Avoir",
+        "cliente": "Client",
+        "documento": "Pièce d'identité",
+        "motivo": "Motif",
+        "unidades": "Unités",
+        "reintegro": "Remboursement",
+        "metodo": "Mode",
+        "estado": "Statut",
+        "sucursal": "Succursale"
+      }
+    },
+    "kpis": {
+      "etiqueta": "Chiffres des retours",
+      "devuelto": "Remboursé sur la période",
+      "devoluciones": "Retours",
+      "sobreVentas": "Part des ventes",
+      "motivoPrincipal": "Motif principal",
+      "detalleUnidades": "{unidades, plural, one {# unité} other {# unités}} · {parciales, plural, one {# partiel} other {# partiels}}",
+      "deVendido": "sur {monto} vendus sur la période",
+      "sinVentas": "Aucune vente sur la période",
+      "motivoDetalle": "{n} sur {total} retours",
+      "sinDevuelto": "Aucun retour traité",
+      "devueltoCorto": "Remboursé",
+      "sobreVentasCorto": "Part des ventes"
+    },
+    "nueva": {
+      "titulo": "Nouveau retour",
+      "descripcion": "Recherchez la vente payée que le client veut retourner.",
+      "buscar": "Rechercher par facture, client, pièce d'identité ou téléphone",
+      "elegir": "Choisir",
+      "elegirDe": "Choisir {numero} · {cliente}",
+      "yaDevuelta": "Déjà retournée en totalité",
+      "resumen": "{fecha} · {productos, plural, one {# produit} other {# produits}} · {total}",
+      "devueltasN": "{count, plural, one {# unité déjà retournée} other {{n} unités déjà retournées}}",
+      "sinNumero": "Vente sans facture",
+      "clienteGenerico": "Client de passage",
+      "aviso": "Seules les ventes payées apparaissent. Une vente avec des retours antérieurs reste disponible tant qu'il lui reste des unités à retourner.",
+      "vacio": "Aucune vente payée ne correspond.",
+      "error": "Impossible de rechercher les ventes",
+      "sinPermiso": "Vous n'avez pas l'autorisation de traiter des retours.",
+      "cancelar": "Annuler"
+    },
+    "crear": {
+      "titulo": "Créer un retour · {numero}",
+      "tituloSinNumero": "Créer un retour",
+      "descripcion": "Vente du {fecha} · {cliente} · payée en {metodo}",
+      "descripcionSinMetodo": "Vente du {fecha} · {cliente}",
+      "clienteGenerico": "Client de passage",
+      "ventaSinNumero": "Vente sans facture",
+      "avisoSinCaja": "Aucune caisse n'est ouverte pour cette succursale. Le remboursement en espèces est bloqué pour que le comptage tombe juste : choisissez un autre mode ou ouvrez la caisse.",
+      "abrirCaja": "Ouvrir la caisse",
+      "pasoLineas": "1. Ce qui est retourné",
+      "pasoMotivo": "2. Motif",
+      "pasoReintegro": "3. Mode de remboursement",
+      "vendidas": "Vendues {vendidas} · retournées {devueltas} · disponibles {disponibles}",
+      "yaDevuelta": "Vendues {vendidas} · déjà retournée",
+      "agotada": "Épuisée",
+      "cantidadDe": "{producto} : quantité à retourner",
+      "impuestoIncluido": "Taxe incluse {monto}",
+      "motivo": "Motif du retour",
+      "motivoPlaceholder": "Choisissez un motif",
+      "motivoAyuda": "Du catalogue des motifs.",
+      "motivoAyudaRepone": "Du catalogue des motifs. Ce motif remet le produit en stock.",
+      "motivoAyudaNoRepone": "Du catalogue des motifs. Ce motif ne remet pas le produit en stock.",
+      "requiereFoto": "Ce motif demande une photo du produit : prenez-la avant de traiter.",
+      "notas": "Notes (facultatif)",
+      "notasAyuda": "Texte brut, enregistré avec le retour.",
+      "efectivo": "Espèces de la caisse ouverte",
+      "cajaCargando": "Recherche de la caisse ouverte…",
+      "efectivoDescripcion": "Sort de la caisse (session #{sesion}) comme dépense « Retour ».",
+      "efectivoBloqueado": "Bloqué : les espèces ne sortent que d'une caisse ouverte de cette succursale.",
+      "saldo": "Avoir du client",
+      "saldoDescripcion": "Reste sur la fiche de {cliente} et s'applique à son prochain achat (avoir interne).",
+      "saldoSinCliente": "La vente n'a pas de client : l'avoir en a besoin d'un.",
+      "original": "Moyen de paiement d'origine",
+      "originalDescripcion": "Pour l'instant, le remboursement se fait en espèces depuis la caisse ouverte ; l'annulation sur le terminal ou la passerelle s'enregistre à part.",
+      "resumen": "Résumé du remboursement",
+      "base": "Base retournée",
+      "impuestos": "Taxes",
+      "descuento": "Remise au prorata",
+      "total": "Total à rembourser",
+      "efectoNc": "L'avoir sera enregistré sur {factura}.",
+      "efectoInventario": "{n, plural, =0 {Aucune unité ne revient en stock.} one {# unité reviendra en stock.} other {# unités reviendront en stock.}}",
+      "efectoVentaParcial": "La vente passera à « Retournée partiellement ».",
+      "efectoVentaTotal": "La vente passera à « Retournée ».",
+      "cancelar": "Annuler",
+      "procesando": "Traitement…",
+      "procesar": "Traiter le retour · {monto}",
+      "hecha": "Retour {numero} traité. Remboursement : {monto}",
+      "errorCarga": "Impossible de charger la vente"
+    },
+    "detalle": {
+      "titulo": "Retour {numero}",
+      "cargando": "Chargement du retour…",
+      "subtitulo": "{fecha} · {sucursal} · traité par {usuario}",
+      "subtituloSinUsuario": "{fecha} · {sucursal}",
+      "noExiste": {
+        "titulo": "Ce retour n'existe pas",
+        "descripcion": "Le lien est peut-être erroné ou le retour appartient à une autre organisation."
+      },
+      "error": "Impossible de charger le retour",
+      "volver": "Retour aux retours",
+      "imprimir": "Imprimer l'avoir",
+      "ncEstado": "Avoir {estado}",
+      "parcial": "Partiel · {unidades} sur {vendidas} unités",
+      "total": "Total · {unidades} sur {vendidas} unités",
+      "cadena": "Chaîne du document",
+      "productos": "Produits retournés ({n})",
+      "sinLineas": "Le retour n'a pas de lignes",
+      "colProducto": "Produit",
+      "colCantidad": "Qté",
+      "colNeto": "Net",
+      "colImpuesto": "Taxe",
+      "colReintegro": "Remboursement",
+      "colInventario": "Stock",
+      "lineaDe": "ligne {n} de {factura}",
+      "serialesLinea": "Numéros de série : {lista}",
+      "repuesto": "Remis en stock",
+      "noRepuesto": "Non remis en stock",
+      "reintegro": "Remboursement",
+      "metodo": "Mode",
+      "movimientoCaja": "Mouvement de caisse",
+      "movimientoTexto": "Dépense {monto} · {hora} · « {numero} »",
+      "saldoFavor": "Avoir client",
+      "saldoTexto": "{monto} · solde {saldo}",
+      "notaCredito": "Avoir",
+      "ncTexto": "{numero} · {monto}",
+      "asiento": "Écriture comptable",
+      "totalReintegrado": "Total remboursé",
+      "historial": "Historique",
+      "eventos": {
+        "creada": "A créé et traité le retour",
+        "egreso_caja": "Dépense de caisse enregistrée dans la session #{sesion}",
+        "nota_credito": "Avoir {numero} enregistré",
+        "saldo_a_favor": "Avoir enregistré sur la fiche du client",
+        "asiento": "Écriture {numero} comptabilisée"
+      },
+      "sistema": "Système",
+      "ventaOriginal": "Vente d'origine",
+      "cliente": "Client",
+      "fecha": "Date",
+      "totalVenta": "Total de la vente",
+      "devueltoAntes": "Retourné avant",
+      "devueltoAhora": "Retourné maintenant",
+      "estadoVenta": "Statut de la vente",
+      "motivoTitulo": "Motif",
+      "motivo": "Motif",
+      "afectaInventario": "Impacte le stock",
+      "requiereFoto": "Photo requise",
+      "notas": "Notes",
+      "si": "Oui",
+      "no": "Non",
+      "sinDato": "—"
     }
   },
   "posCobroServidor": {
@@ -15416,14 +16171,15 @@
       "pendiente_pago": "Paiement en attente"
     },
     "listado": {
-      "titulo": "Ventes",
+      "titulo": "Historique des ventes",
       "subtitulo": "{count, plural, one {{n} vente} other {{n} ventes}}",
       "migas": {
-        "pos": "Point de vente"
+        "pos": "Point de vente",
+        "ventas": "Ventes"
       },
       "actualizar": "Actualiser",
       "nueva": "Nouvelle vente",
-      "exportar": "Exporter en CSV",
+      "exportar": "Exporter",
       "exportando": "Exportation…",
       "exportarError": "Les ventes n'ont pas pu être exportées. Réessayez.",
       "exportarTruncado": "Les {n} premières ventes ont été exportées. Réduisez la période ou les filtres pour exporter le reste.",
@@ -15465,7 +16221,8 @@
         "devolver": "Créer un retour",
         "imprimir": "Imprimer",
         "duplicar": "Dupliquer dans le PDV",
-        "anular": "Annuler la vente"
+        "anular": "Annuler la vente",
+        "verCxc": "Voir la créance"
       },
       "motivos": {
         "sin_permiso": "Vous n'avez pas l'autorisation pour cette action.",
@@ -15498,7 +16255,24 @@
         "min": "Montant minimum",
         "max": "Montant maximum",
         "minChip": "À partir de {monto}",
-        "maxChip": "Jusqu'à {monto}"
+        "maxChip": "Jusqu'à {monto}",
+        "periodoChip": "Période : {rango}",
+        "desdeHasta": "Du / Au",
+        "sucursal": "Succursale",
+        "sucursalChip": "Succursale : {sucursal}",
+        "todosEstados": "Tous les statuts",
+        "cajero": "Caissier",
+        "cajeroChipNombre": "Caissier : {nombre}",
+        "pago": "Statut du paiement",
+        "pagoChip": "Paiement : {pago}",
+        "metodoPlaceholder": "Tous les moyens",
+        "nota": "Les changements s'appliquent immédiatement · la succursale se change aussi depuis l'en-tête",
+        "casillas": {
+          "titulo": "Options",
+          "saldo": "Avec solde dû",
+          "devolucion": "Avec retour",
+          "sync": "En attente de synchronisation"
+        }
       },
       "vacio": {
         "titulo": "Aucune vente sur cette période",
@@ -15509,6 +16283,21 @@
       "sinPermiso": {
         "titulo": "Pas d'accès aux ventes",
         "descripcion": "Demandez à un administrateur l'autorisation de voir les ventes du PDV."
+      },
+      "masDocumentos": "{count, plural, one {# autre document : {documentos}} other {# autres documents : {documentos}}}",
+      "encontradas": "{count, plural, one {{n} vente trouvée} other {{n} ventes trouvées}}",
+      "todasSucursales": "Toutes les succursales",
+      "credito": "Crédit",
+      "saldoLinea": "solde {monto}",
+      "pedidoWeb": "commande web",
+      "mesaN": "Table {n}",
+      "sinNombre": "Sans nom",
+      "pedidosOnline": "Voir les commandes en ligne",
+      "pagos": {
+        "paid": "Payé",
+        "partial": "Paiement partiel",
+        "pending": "En attente",
+        "refunded": "Remboursé"
       }
     },
     "kpis": {
@@ -15520,7 +16309,23 @@
       "facturado": "Facturé : {monto}",
       "ventasCobradas": "{count, plural, one {{n} vente encaissée} other {{n} ventes encaissées}}",
       "vsAnterior": "{pct} % par rapport à la période précédente",
-      "sinAnterior": "Aucun encaissement sur la période précédente"
+      "sinAnterior": "Aucune vente sur la période précédente",
+      "ventas": "Ventes de la période",
+      "ventasCorto": "Ventes",
+      "ticketCorto": "Panier",
+      "transacciones": "Transactions",
+      "transaccionesCorto": "Trans.",
+      "impuestos": "Taxes",
+      "sobreTransacciones": "{count, plural, one {sur {n} transaction} other {sur {n} transactions}}",
+      "impuestoTasa": "{tipo} {tasa} %",
+      "impuestoSinDetalle": "Autres taxes",
+      "sinImpuestos": "Aucune taxe sur la période",
+      "partes": {
+        "pagadas": "{count, plural, one {{n} payée} other {{n} payées}}",
+        "pendientes": "{count, plural, one {{n} en attente} other {{n} en attente}}",
+        "anuladas": "{count, plural, one {{n} annulée} other {{n} annulées}}",
+        "devueltas": "{count, plural, one {{n} retournée} other {{n} retournées}}"
+      }
     },
     "anular": {
       "titulo": "Annuler la vente",
@@ -31800,7 +32605,20 @@
       "todaLaOrganizacion": "Toute l'organisation",
       "todasLasSucursales": "Toutes les succursales",
       "franjaNoAplica": "Plage : sans objet",
-      "franjaNoAplicaMotivo": "Ce rapport se calcule par jour"
+      "franjaNoAplicaMotivo": "Ce rapport se calcule par jour",
+      "persona": "Personne",
+      "personaTodas": "Toutes les personnes",
+      "personaBuscar": "Rechercher une personne",
+      "personaOtra": "Personne choisie",
+      "metodoPago": "Moyen de paiement",
+      "metodoTodos": "Tous les moyens",
+      "metodoBuscar": "Rechercher un moyen",
+      "sinResultados": "Aucun résultat",
+      "contarPor": "Compter par",
+      "contarCajero": "Caissier",
+      "contarVendedor": "Vendeur",
+      "contarMesero": "Serveur",
+      "contarAyuda": "Caissier : qui a encaissé · Vendeur : qui a enregistré la vente · Serveur : qui a servi la table"
     },
     "alcance": {
       "titulo": "{n, plural, =0 {Vous n'avez aucune succursale assignée} one {Vous ne voyez que {sucursales}} other {Vous ne voyez que {sucursales}}}",
@@ -34139,7 +34957,8 @@
         "sinPermisoPublicar": "Ton rôle ne peut pas publier le site. Demande l’autorisation « Publier le site web ».",
         "nadaQuePublicar": "Aucune modification à publier",
         "nadaQueGuardar": "Aucune modification à enregistrer",
-        "sitio": "Site ou établissement que vous modifiez"
+        "sitio": "Site ou établissement que vous modifiez",
+        "plantillasTienda": "Modèles de la boutique"
       },
       "acciones": {
         "reintentar": "Réessayer",
@@ -34195,7 +35014,17 @@
         "seccion": "{seccion} · cliquez pour modifier",
         "seccionPropia": "{seccion} · typographie propre · aperçu en direct",
         "encabezado": "En-tête · global · cliquez sur un lien pour modifier le menu",
-        "pie": "Pied de page · global · cliquez sur un lien pour modifier le menu"
+        "pie": "Pied de page · global · cliquez sur un lien pour modifier le menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Voir avec le produit",
+            "category_detail": "Voir avec la catégorie",
+            "space_detail": "Voir avec l'espace"
+          },
+          "sinOpciones": "Aucun enregistrement actif pour l'aperçu : le canevas affiche la liste de la boutique.",
+          "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication.",
+          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour."
+        }
       },
       "inspector": {
         "etiqueta": "Inspecteur : {nombre}",
@@ -34878,6 +35707,321 @@
       "controles": {
         "degradado1": "Couleur de début du dégradé",
         "degradado2": "Couleur de fin du dégradé"
+      },
+      "cabeceraTienda": {
+        "volver": "Retour à l’en-tête",
+        "comoHoy": "Revenir à l’état actuel",
+        "iconos": {
+          "titulo": "En-tête › Icônes",
+          "migas": "Global · visible sur toutes les pages",
+          "abrir": "Icônes de l’en-tête",
+          "abrirAyuda": "Style, taille, libellés et compteur du panier",
+          "estilo": "Style des icônes",
+          "estiloAyuda": "S’applique au compte, au panier, aux favoris et à la devise. Icône seule et Cercle utilisent votre boîte d’icônes actuelle, qui est conservée.",
+          "estiloOpcion": {
+            "icono": "Icône seule",
+            "texto": "Avec libellé",
+            "pildora": "Pilule",
+            "relleno": "Plein",
+            "circulo": "Cercle"
+          },
+          "miniTexto": "Panier",
+          "posicionTexto": "Libellé",
+          "debajo": "Dessous",
+          "alLado": "À côté",
+          "tamano": "Taille",
+          "trazo": "Trait",
+          "trazoOpcion": {
+            "fino": "Fin",
+            "normal": "Normal"
+          },
+          "mostrarTexto": "Afficher le libellé",
+          "mostrarTextoAyuda": "Avec «Avec libellé» il va sous l’icône ; avec «Pilule» et «Plein», à côté.",
+          "mostrarTextoSinTexto": "Icône seule et Cercle n’ont pas de libellé.",
+          "cuales": "Icônes affichées",
+          "cualesAyuda": "Chaque libellé est modifiable. Vide = le libellé par défaut.",
+          "cuenta": "Compte",
+          "carrito": "Panier",
+          "favoritos": "Favoris",
+          "moneda": "Devise",
+          "texto": "Libellé",
+          "porDefecto": "Par défaut : «{texto}».",
+          "contador": "Compteur",
+          "contadorOpcion": {
+            "numero": "Nombre",
+            "punto": "Point",
+            "oculto": "Masqué"
+          },
+          "glifo": "Icône",
+          "glifoOpcion": {
+            "carrito": "Chariot",
+            "bolsa": "Sac"
+          },
+          "favoritosAyuda": "Ouvre Mon compte › Favoris : les produits que le client a marqués d’un cœur.",
+          "monedaEstilo": "Style et devises",
+          "monedaVer": "Voir «Sélecteur de devise»",
+          "favoritosAyudaPanel": "Ouvre le panneau des favoris ou la page /favoritos (En-tête › Favoris).",
+          "favoritosVer": "Voir « Favoris »"
+        },
+        "moneda": {
+          "titulo": "En-tête › Sélecteur de devise",
+          "migas": "Global · visible sur toutes les pages",
+          "abrir": "Sélecteur de devise",
+          "abrirAyuda": "Style, devises visibles et devise à l’arrivée",
+          "selector": "Sélecteur de devise",
+          "mostrar": "Afficher dans l’en-tête",
+          "mostrarAyuda": "Visible seulement si la boutique propose plus d’une devise.",
+          "estilo": "Style du sélecteur",
+          "estiloAyuda": "Sans choix, celui d’aujourd’hui : globe, code et flèche.",
+          "estiloOpcion": {
+            "codigo": "Code",
+            "bandera": "Drapeau + code",
+            "simbolo": "Code + symbole",
+            "icono": "Icône seule",
+            "segmento": "Segment"
+          },
+          "flecha": "Afficher la flèche",
+          "visibles": "Devises visibles dans la boutique",
+          "visiblesAyuda": "Ici vous choisissez seulement celles que voit le client.",
+          "base": "(base)",
+          "visiblesPie": "La devise de base est toujours visible et en premier.",
+          "alEntrar": "Devise à l’arrivée",
+          "alEntrarOpcion": {
+            "pais": "Selon le pays du visiteur",
+            "base": "Toujours la devise de base ({base})"
+          },
+          "alEntrarAyuda": "Aujourd’hui la boutique détecte le pays. Si ce pays n’a pas de devise visible, {base} est utilisée.",
+          "celular": "Sur mobile",
+          "celularOpcion": {
+            "hoja": "Feuille du bas",
+            "lateral": "Menu latéral",
+            "chips": "Puces",
+            "barra": "Dans la barre"
+          },
+          "celularAyuda": {
+            "hoja": "Comme aujourd’hui : une ligne du menu ouvre la feuille des devises.",
+            "lateral": "La liste se déplie dans le menu latéral.",
+            "chips": "Les devises s’affichent en puces dans le menu.",
+            "barra": "Le drapeau (ou le code) est à côté du panier et ouvre la feuille."
+          }
+        },
+        "carrito": {
+          "titulo": "En-tête › Panier",
+          "migas": "Global · tiroir ouvert depuis l’icône du panier",
+          "abrir": "Tiroir du panier",
+          "abrirAyuda": "Bouton principal, liens et livraison gratuite",
+          "boton": "Bouton principal du panier",
+          "botonAyuda": "Avant, seulement dans l’ancien éditeur (Réglages globaux). Maintenant ici, avec les mêmes libellés.",
+          "modo": {
+            "al_abrir": "Dynamique (alterne)",
+            "fijo": "Libellé fixe"
+          },
+          "modoAyuda": {
+            "al_abrir": "Alterne entre plusieurs libellés",
+            "fijo": "Toujours le même"
+          },
+          "textos": "Libellés qui alternent",
+          "textoN": "Libellé {n}",
+          "quitarTexto": "Retirer le libellé {n}",
+          "agregarTexto": "Ajouter un libellé",
+          "textosAyuda": "Glissez pour réordonner. Jusqu’à {max} libellés de {largo} caractères.",
+          "cuando": "Quand il change",
+          "cuandoAlAbrir": "À chaque ouverture du panier",
+          "textoFijo": "Libellé du bouton",
+          "textoFijoAyuda": "Vide = «{texto}».",
+          "sinBorrador": "Ce site n’a pas encore de brouillon : le bouton est enregistré dans les réglages habituels.",
+          "enlace": "Lien secondaire",
+          "enlaceMostrar": "Afficher",
+          "enlaceTexto": "Libellé",
+          "enlaceAyuda": "Ouvre la page du panier.",
+          "enlaceEstilo": "Style",
+          "enlaceEstiloOpcion": {
+            "borde": "Avec bordure",
+            "enlace": "Lien"
+          },
+          "envio": "Livraison gratuite",
+          "envioBarra": "Afficher la barre de progression",
+          "envioFalta": "Tant qu’il manque",
+          "envioFaltaAyuda": "'{monto}' est remplacé par le montant restant. Le seuil est dans Ventes en ligne › Livraisons.",
+          "envioLogrado": "Une fois atteint",
+          "otros": "Autres libellés",
+          "tituloCajon": "Titre du tiroir",
+          "seguir": "Continuer mes achats",
+          "textosSoloBorrador": "Les libellés du tiroir sont enregistrés quand le site passe au nouveau brouillon ; en attendant, ils s’affichent dans l’aperçu.",
+          "botonAyudaModos": "Choisissez comment le texte du bouton change. L’aperçu montre le résultat.",
+          "comoCambia": "Comment le texte change",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixe (toujours le même)",
+              "ayuda": "Un seul texte pour le bouton"
+            },
+            "al_abrir": {
+              "titulo": "Change à chaque ouverture du panier",
+              "ayuda": "Un texte différent à chaque ouverture"
+            },
+            "mientras_abierto": {
+              "titulo": "Change seulement tant qu’il est ouvert",
+              "ayuda": "Tourne toutes les quelques secondes, avec transition"
+            },
+            "segun_carrito": {
+              "titulo": "Selon le panier",
+              "ayuda": "Dépend de la livraison gratuite et des offres"
+            }
+          },
+          "opcionesDe": "Options de « {modo} »",
+          "textoFijoAyudaLargo": "Vide = « {texto} » (le texte par défaut). {largo} caractères maximum.",
+          "orden": "Ordre",
+          "ordenOpcion": {
+            "azar": "Au hasard",
+            "orden": "Dans l’ordre"
+          },
+          "ordenAyuda": "« Au hasard » : n’importe lequel, sans répéter le précédent. « Dans l’ordre » : le 1er la première fois, le 2e la suivante… puis on recommence.",
+          "segundos": "Toutes les combien de secondes",
+          "segundosValor": "{n} s",
+          "transicion": "Transition",
+          "transicionOpcion": {
+            "fundido": "Fondu",
+            "deslizar": "Glisser",
+            "ninguna": "Sans effet"
+          },
+          "pausar": "Pause au survol de la souris",
+          "pausarAyuda": "Sur mobile, pause tant que le doigt est sur le bouton. Si le visiteur a demandé « réduire les animations », change sans effet.",
+          "reglas": {
+            "faltaEnvio": "1 · S’il manque pour la livraison gratuite",
+            "oferta": "2 · S’il y a des produits en promotion",
+            "envioGratis": "3 · S’il a déjà la livraison gratuite",
+            "porDefecto": "Par défaut (aucune ne s’applique)"
+          },
+          "reglaVacia": "Vide : passe à la suivante",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' est remplacé par le montant manquant. Seulement s’il existe un seuil de livraison gratuite.",
+            "oferta": "Compte si un produit du panier a un prix barré.",
+            "pie": "Si plusieurs s’appliquent, le plus petit numéro l’emporte. Un champ vide passe à la suivante."
+          },
+          "usarEnPagina": "Utiliser la même chose pour « Acheter » du panier complet",
+          "usarEnPaginaAyuda": "Activé, le bouton « Acheter » de la page /carrito change comme celui du tiroir. Désactivé, il a sa propre configuration.",
+          "botonPagina": "Bouton « Acheter » de /carrito",
+          "soloBorrador": "Disponible quand le site passe au nouveau brouillon.",
+          "vistaPrevia": {
+            "etiqueta": "Aperçu",
+            "fijo": "Résultat · toujours le même texte",
+            "al_abrir_azar": "Résultat · un texte différent à chaque ouverture (au hasard)",
+            "al_abrir_orden": "Résultat · un texte différent à chaque ouverture (dans l’ordre)",
+            "mientras_abierto": "Résultat · tourne toutes les {n} s tant que le tiroir reste ouvert",
+            "segun_carrito": "Résultat · le texte dépend du contenu du panier",
+            "vez": "{n}e fois",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "En-tête › Favoris",
+          "migas": "Global · cœur, panneau latéral et page /favoritos",
+          "abrir": "Favoris",
+          "abrirAyuda": "Cœur, panneau latéral et page /favoritos",
+          "corazon": "Cœur dans l’en-tête",
+          "mostrar": "Afficher le cœur",
+          "contador": "Compteur de produits enregistrés",
+          "corazonAyuda": "Le style de l’icône (icône seule, avec texte, pilule…) se choisit dans En-tête › Icônes.",
+          "alTocar": "En touchant le cœur",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Ouvrir le panneau latéral",
+              "ayuda": "Liste rapide sans quitter la page"
+            },
+            "pagina": {
+              "titulo": "Aller à la page",
+              "ayuda": "Mène à /favoritos"
+            }
+          },
+          "alTocarAyuda": "Sur mobile, le panneau s’ouvre en plein écran.",
+          "textos": "Textes",
+          "textosAyuda": "Le texte en gris est celui par défaut. Si vous laissez le champ vide, la boutique l’utilise.",
+          "texto": {
+            "tituloPagina": "Titre de la page",
+            "tituloPanel": "Titre du panneau",
+            "botonPrincipal": "Bouton principal",
+            "botonBorde": "Bouton avec bordure",
+            "vacioTitulo": "Message vide · titre",
+            "vacioTexto": "Message vide · texte",
+            "avisoSesion": "Avis pour le visiteur non connecté"
+          },
+          "paginaPanel": "Page /favoritos et panneau",
+          "sugerencias": "Afficher « Vous aimerez aussi »",
+          "fuente": "Origine des suggestions",
+          "fuenteOpcion": {
+            "categorias": "Des mêmes catégories",
+            "mas_vendidos": "Meilleures ventes",
+            "destacados": "Produits mis en avant"
+          },
+          "fuenteAyuda": "« Mis en avant » : d’abord ceux en promotion, puis les meilleures ventes. Masqué s’il n’y a pas de produits.",
+          "avisoSesion": "Afficher l’avis de connexion",
+          "compartir": "Bouton « Partager la liste »",
+          "tarjetas": "Cartes produit",
+          "corazonTarjetas": "Cœur sur les cartes",
+          "corazonFicha": "Cœur sur la fiche produit",
+          "tarjetasAyuda": "Le style et la position du cœur sur la carte restent dans Style du site › Carte produit."
+        },
+        "accesos": {
+          "titulo": "Icônes, devise et panier"
+        }
+      },
+      "accionesFicha": {
+        "distribucion": "Disposition prête",
+        "personalizada": "Personnalisée",
+        "distribuciones": {
+          "clasica": "Classique",
+          "dos_mitad": "Deux moitiés",
+          "compacta": "Compacte",
+          "solo_agregar": "Ajouter seulement",
+          "comprar_primero": "Acheter d’abord",
+          "con_whatsapp": "Avec WhatsApp"
+        },
+        "ayudaDistribucion": "En choisir une réorganise les boutons ci-dessous et conserve les textes saisis. Vous pouvez ensuite ajuster chaque bouton.",
+        "ayudaPersonalizada": "Vous avez changé l’ordre ou un bouton : cela ne correspond plus à aucune disposition prête. Touchez une carte pour y revenir.",
+        "botones": "Boutons et ordre",
+        "ayudaBotones": "Faites glisser par la poignée pour réordonner. Les boutons dans le même cadre bleu partagent une ligne. L’œil les affiche ou les masque.",
+        "mismaFila": "Même ligne · {nombres}",
+        "tipos": {
+          "cantidad": "Quantité",
+          "agregar": "Ajouter au panier",
+          "comprar": "Acheter maintenant",
+          "favorito": "Favori (cœur)",
+          "whatsapp": "Commander par WhatsApp",
+          "compartir": "Partager"
+        },
+        "conEtiqueta": "Avec libellé",
+        "tamanos": {
+          "largo": "Long",
+          "mitad": "Moitié",
+          "pequeno": "Petit"
+        },
+        "estilos": {
+          "relleno": "Plein",
+          "borde": "Contour",
+          "enlace": "Lien"
+        },
+        "mostrar": "Afficher sur la fiche",
+        "ocultar": "Masquer {nombre}",
+        "mostrarBoton": "Afficher {nombre}",
+        "noSeOculta": "« Ajouter au panier » ne peut pas être masqué : il peut être déplacé et modifié.",
+        "abrir": "Options de {nombre}",
+        "tamano": "Taille",
+        "estilo": "Style",
+        "texto": "Texte du bouton",
+        "ayudaTexto": "Vide = « {texto} » (texte par défaut).",
+        "textoCorto": "Texte court sur mobile",
+        "ayudaTextoCorto": "En gris, le texte par défaut. Utilisé sur mobile quand le bouton partage sa ligne.",
+        "ayudaCantidad": "La quantité n’a ni taille ni style : elle prend sa propre largeur. Elle affiche le libellé « Quantité » quand elle ne partage pas la ligne avec un bouton.",
+        "ayudaFavorito": "Le cœur ne s’affiche pas si vous désactivez « Cœur sur la fiche » (En-tête › Favoris), ni sur la carte du restaurant.",
+        "compartirFila": "Partager la ligne avec le suivant",
+        "ayudaCompartirFila": "Réunit ce bouton avec « {siguiente} » même s’ils ne se réuniraient pas seuls (3 maximum par ligne).",
+        "ultimo": "C’est le dernier de la liste : il n’y a pas de suivant.",
+        "sinWhatsapp": {
+          "titulo": "WhatsApp n’a pas de numéro",
+          "descripcion": "Sans numéro, « Commander par WhatsApp » ne s’affiche pas dans la boutique. Ajoutez-le dans Configuration › Contact.",
+          "ir": "Aller à Contact"
+        },
+        "comportamiento": "Comportement"
       }
     },
     "paginas": {
@@ -36203,6 +37347,27 @@
           "editar": "Modifier",
           "vacio": "Votre site utilise les modèles de détail de son design. Ils sont créés en ouvrant l'éditeur.",
           "soloV2": "Ce modèle se modifie lorsque le site passera au nouvel éditeur.",
+          "crear": {
+            "product_detail": {
+              "titulo": "Fiche produit",
+              "descripcion": "Un seul modèle pour tous les produits : l’ordre et les sections se modifient dans l’éditeur et s’appliquent à toutes les fiches.",
+              "vacioTitulo": "Votre site n’a pas encore de fiche produit modifiable",
+              "vacioTexto": "Pour l’instant, chaque produit utilise le design par défaut. Créez la fiche avec ces mêmes blocs (galerie, nom et prix, achat, avantages, description, produits associés et avis) et modifiez-la dans l’éditeur. Le reste du site ne change pas.",
+              "boton": "Créer une fiche modifiable"
+            },
+            "category_detail": {
+              "titulo": "Page de catégorie",
+              "descripcion": "Modèle de /categorias/[slug] : en-tête, filtres et grille. Le texte et l’image viennent de la catégorie dans l’Inventaire.",
+              "vacioTitulo": "Votre site n’a pas encore de page de catégorie modifiable",
+              "vacioTexto": "Pour l’instant, les catégories utilisent le design par défaut. Créez la page avec ces mêmes blocs et modifiez-la dans l’éditeur. Le reste du site ne change pas.",
+              "boton": "Créer une page modifiable"
+            },
+            "creando": "Création…",
+            "sinPermiso": "Lecture seule : demandez l’autorisation « Modifier le site web ».",
+            "conflicto": "Quelqu’un a enregistré le site entre-temps. Nous avons rechargé l’écran : réessayez.",
+            "error": "Impossible de créer la page : {mensaje}",
+            "publicar": "Créée dans le brouillon : elle apparaît sur votre site quand vous publiez."
+          },
           "tipos": {
             "product_detail": "Détail du produit",
             "category_detail": "Détail de la catégorie",
@@ -39276,7 +40441,12 @@
       "creada": "Promotion créée",
       "errorGuardar": "Impossible d'enregistrer la promotion",
       "pasoDe": "Étape {n} sur {total} · {etiqueta}",
-      "pasosEtiqueta": "Étapes de la promotion"
+      "pasosEtiqueta": "Étapes de la promotion",
+      "seccionVigencia": "Validité",
+      "seccionDondeAplica": "Où elle s’applique",
+      "ayudaHoraOrganizacion": "Heure de l’organisation ({zona}).",
+      "ayudaUltimoDia": "Le dernier jour compte en entier.",
+      "ayudaLimiteUsos": "Une fois la limite atteinte, la promotion ne s’applique plus."
     },
     "pantalla": {
       "titulo": "Promotions",
@@ -39292,7 +40462,13 @@
       "todos": "Tous",
       "tipo": "Type",
       "actualizar": "Actualiser",
-      "errorCargar": "Impossible de charger les promotions"
+      "errorCargar": "Impossible de charger les promotions",
+      "subtituloConteo": "{n, plural, one {# promotion} other {# promotions}} · {activas, plural, one {# active} other {# actives}} en ce moment",
+      "totalDetalle": "dans cette organisation",
+      "activasAhora": "Actives maintenant",
+      "activasAhoraDetalle": "dans leur horaire",
+      "programadas": "Programmées",
+      "programadasDetalle": "commencent plus tard"
     },
     "masivo": {
       "accion": "Jours et horaires",
@@ -39311,7 +40487,8 @@
       "aplicar": "Appliquer à {n}",
       "aplicado": "{n, plural, one {# promotion mise à jour} other {# promotions mises à jour}}",
       "parcial": "Seulement {n} sur {total} mises à jour : les autres n’appartiennent pas à cette organisation ou n’existent plus.",
-      "error": "Impossible de mettre à jour les promotions"
+      "error": "Impossible de mettre à jour les promotions",
+      "descripcionHorario": "{n, plural, one {# promotion sera modifiée.} other {# promotions seront modifiées.}} L’horaire choisi remplace celui qu’elles avaient."
     },
     "lista": {
       "todoElDia": "Toute la journée",
@@ -39344,7 +40521,22 @@
       "errorDuplicar": "Impossible de dupliquer la promotion",
       "desactivada": "Promotion désactivée",
       "activada": "Promotion activée",
-      "errorEstado": "Impossible de changer l'état"
+      "errorEstado": "Impossible de changer l'état",
+      "canales": "Canaux",
+      "canalPos": "POS",
+      "canalWeb": "Web",
+      "canalFinanzas": "Finances",
+      "sinFechaFin": "sans date de fin",
+      "sinResultadosTitulo": "Aucune promotion ne correspond à la recherche",
+      "sinResultadosConTermino": "Aucune promotion avec « {termino} » et les filtres choisis. Essayez un autre nom ou retirez les filtres.",
+      "sinResultadosDescripcion": "Aucune promotion avec les filtres choisis. Retirez les filtres pour toutes les voir.",
+      "errorTitulo": "Impossible de charger les promotions",
+      "errorDescripcion": "Vérifiez votre connexion et réessayez.",
+      "sinPermisoTitulo": "Vous n’avez pas la permission de gérer les promotions",
+      "sinPermisoDescripcion": "Demandez à un administrateur l’accès aux Promotions. Les promotions en vigueur continuent de s’appliquer en caisse même si vous ne les voyez pas ici.",
+      "volverPos": "Retour au POS",
+      "sustantivoSingular": "promotion",
+      "sustantivoPlural": "promotions"
     },
     "detalle": {
       "cantidadMinima": "Quantité minimale",
@@ -39393,7 +40585,57 @@
       "errorDuplicar": "Impossible de dupliquer la promotion",
       "desactivada": "Promotion désactivée",
       "activada": "Promotion activée",
-      "errorEstado": "Impossible de changer l'état"
+      "errorEstado": "Impossible de changer l'état",
+      "horaOrganizacion": "Heure de l’organisation : {zona} ({desfase})."
+    },
+    "horario": {
+      "titulo": "Quand elle est active",
+      "descripcion": "Choisissez comment elle se répète chaque semaine. Les heures sont celles de l’organisation : {zona} ({desfase}), pas celles du navigateur.",
+      "descripcionCorta": "Heures de l’organisation · {zona} ({desfase}).",
+      "modoTodo": "Toute la journée",
+      "modoCadaDia": "Même horaire chaque jour",
+      "modoCadaDiaCorto": "Chaque jour",
+      "modoCruza": "Plage sur plusieurs jours",
+      "modoCruzaCorto": "Sur plusieurs jours",
+      "todoAyuda": "Active à toute heure, tous les jours de la période de validité.",
+      "dias": "Jours",
+      "diasAyuda": "Sans jour coché, elle s’applique tous les jours.",
+      "horaInicio": "Heure de début",
+      "horaFin": "Heure de fin",
+      "terminaDiaSiguiente": "Se termine le lendemain · {duracion}",
+      "dura": "Dure {duracion}",
+      "duraCruza": "Dure {duracion} · passe minuit",
+      "franjaN": "Plage {n}",
+      "quitarFranja": "Retirer la plage {n}",
+      "desdeDia": "Du (jour)",
+      "hastaDia": "Au (jour)",
+      "hora": "Heure",
+      "elegirDia": "Choisissez un jour",
+      "agregarFranja": "Ajouter une autre plage",
+      "todosLosDias": "tous les jours",
+      "resumenCadaDia": "Active {dias} de {inicio} à {fin}.",
+      "resumenCadaDiaCruza": "Active {dias} de {inicio} à {fin} le lendemain. Les petites heures (00:00–{fin}) comptent pour le jour où elle a commencé.",
+      "resumenFranja": "Active chaque semaine du {desdeDia} à {desdeHora} au {hastaDia} à {hastaHora} ({duracion} d’affilée).",
+      "resumenEjemplo": "Une vente du {hastaDia} à {antes} reçoit la remise ; à {hastaHora}, plus maintenant.",
+      "vistaPrevia": "Aperçu de la semaine",
+      "leyendaActiva": "Active",
+      "leyendaMadrugada": "Petites heures du jour précédent",
+      "leyendaSin": "Sans remise",
+      "hastaHora": "jusqu’à {hora}",
+      "proximas": "Prochaines activations (dans la période de validité)",
+      "ninguna": "Plus aucune activation dans la période de validité.",
+      "sinFin": "Se répète chaque semaine : la promotion n’a pas de date de fin.",
+      "masUltima": "… et {n} de plus ; la dernière se termine le {fecha} à {hora}.",
+      "minutos": "{m} min",
+      "horas": "{h} h",
+      "horasMinutos": "{h} h {m} min",
+      "errorHorasFaltantes": "Choisissez l’heure de début et l’heure de fin.",
+      "errorHorasIguales": "L’heure de fin doit être différente de l’heure de début.",
+      "errorFranjaIncompleta": "Complétez les jours et les heures de la plage {n}.",
+      "errorFranjaSinDuracion": "La plage {n} commence et se termine au même moment.",
+      "errorSinFranjas": "Ajoutez au moins une plage.",
+      "errorDemasiadasFranjas": "Au maximum {max} plages par promotion.",
+      "errorRevisar": "Vérifiez quand la promotion est active."
     }
   },
   "pedidosManuales": {
@@ -40976,7 +42218,7 @@
       },
       "propinas": {
         "nombre": "Pourboires",
-        "ayuda": "Le 5105 seulement quand le document est un pourboire."
+        "ayuda": "28150501, dette envers le personnel : le pourboire n'est ni un produit ni une charge."
       },
       "comisiones": {
         "nombre": "Commissions",
@@ -41604,6 +42846,27 @@
         "codigo": "Le code doit comporter au moins 2 caractères",
         "guardar": "Impossible d'enregistrer le moyen de paiement",
         "estado": "Impossible de changer le statut du moyen"
+      },
+      "selector": {
+        "buscar": "Rechercher un moyen, une banque ou une passerelle…",
+        "vacio": "Aucun moyen à ajouter",
+        "sinResultados": "Aucun moyen ne correspond",
+        "crearTexto": "Créer « {texto} » comme moyen personnalisé",
+        "filtrosEtiqueta": "Type de moyen",
+        "requiereConexion": "Connexion requise",
+        "yaLoTienes": "Vous l’avez déjà",
+        "conectada": "Connectée",
+        "sinConectar": "Non connectée",
+        "grupo": {
+          "manual": "Moyen",
+          "pasarela": "Passerelle"
+        },
+        "filtros": {
+          "efectivo_bancos": "Espèces et banques",
+          "billeteras": "Portefeuilles",
+          "pasarelas": "Passerelles",
+          "qr": "QR"
+        }
       }
     },
     "qr": {
@@ -47433,9 +48696,8 @@
           "L’argent arrive sur votre compte Bold ; GO Admin n’y touche pas."
         ],
         "queNecesitas": [
-          "Un compte Bold avec ses clés d’intégration.",
-          "Le numéro de série de chaque terminal et son agence.",
-          "10 minutes."
+          "Un compte Bold avec sa clé d’identité et sa clé secrète.",
+          "5 minutes."
         ]
       },
       "stripe": {
@@ -47863,6 +49125,11 @@
           "Ses identifiants d’intégration.",
           "10 minutes."
         ]
+      },
+      "datafonosBold": {
+        "titulo": "Vous encaissez avec des TPE Bold au point de vente ?",
+        "texto": "Les clés servent aux liens de paiement et à la boutique en ligne. Les TPE de chaque établissement se configurent à part, avec leur numéro de série.",
+        "enlace": "Configurer les TPE Bold"
       }
     },
     "misConexiones": {
@@ -48215,6 +49482,11 @@
             "p1": "Allez dans SendGrid › Settings › API Keys.",
             "p2": "Créez une clé avec le droit d'envoi d'e-mails.",
             "p3": "Copiez-la et saisissez l'expéditeur vérifié que vous utiliserez."
+          },
+          "bold": {
+            "p1": "Connectez-vous à panel.bold.co.",
+            "p2": "Allez dans Intégrations et ouvrez les clés d’intégration de {ambiente}.",
+            "p3": "Copiez la clé d’identité et la clé secrète."
           }
         },
         "abrirPanel": "Ouvrir le tableau de bord de {nombre} dans un nouvel onglet",
@@ -48290,7 +49562,8 @@
             "payu": "Dans PayU, collez-la comme URL de confirmation de votre compte.",
             "stripe": "Dans Stripe, allez dans Développeurs › Webhooks › Ajouter un endpoint et collez-la.",
             "paypal": "Dans PayPal, ouvrez votre application › Webhooks › Ajouter un webhook et collez-la.",
-            "sendgrid": "Dans SendGrid, allez dans Settings › Mail Settings › Event Webhook et collez-la."
+            "sendgrid": "Dans SendGrid, allez dans Settings › Mail Settings › Event Webhook et collez-la.",
+            "bold": "Dans le panneau Bold, allez dans Intégrations › Webhooks et collez-la comme URL de notification."
           },
           "p3": "Enregistrez dans {nombre} et revenez ici.",
           "sinUrl": "Ce fournisseur n'envoie pas d'avis à GO Admin",
@@ -48327,6 +49600,10 @@
           "descripcion": "Le fournisseur a accepté les clés et elles ont été enregistrées sur le serveur. Vous ne verrez que leurs 4 derniers caractères.",
           "webhookPendiente": "Quand le premier événement arrivera, vous le verrez dans Activité.",
           "verConexion": "Voir la connexion"
+        },
+        "sinPruebaEnAmbiente": {
+          "titulo": "{nombre} ne permet pas de vérifier les clés de test",
+          "descripcion": "Elles sont enregistrées sans vérification. Faites un paiement test dans votre boutique pour confirmer qu’elles fonctionnent."
         }
       },
       "ota": {
@@ -49942,7 +51219,9 @@
       "errorOrden": "Impossible d'enregistrer l'ordre.",
       "errorEliminar": "Impossible de supprimer le moyen de paiement.",
       "sinPermisoEliminar": "Impossible de supprimer le moyen de paiement : votre poste ou rôle n'a pas l'autorisation de facturation.",
-      "eliminado": "{nombre} supprimé"
+      "eliminado": "{nombre} supprimé",
+      "ordenDescripcion": "Le POS et la boutique en ligne affichent désormais {nombre} en position {n}.",
+      "deshacer": "Annuler"
     },
     "estados": {
       "vacioTitulo": "Vous n'avez encore aucun moyen de paiement",
@@ -60574,5 +61853,1246 @@
       "sinPermiso": "Vous n’avez pas l’autorisation de voir cette photo.",
       "error": "Impossible de charger la photo."
     }
+  },
+  "posCargos": {
+    "titulo": "Frais de service",
+    "subtitulo": "Ajoutés à l’addition avant taxes et facturés sur une ligne à part · ce n’est pas un pourboire",
+    "migaPos": "PDV",
+    "todasSucursales": "Toutes les succursales",
+    "todas": "Toutes",
+    "sinImpuesto": "Aucune",
+    "copiaSufijo": " (copie)",
+    "actualizar": "Actualiser",
+    "importarBoton": "Importer",
+    "plantilla": "Télécharger le modèle CSV",
+    "verArchivados": "Voir les archivés",
+    "nuevo": "Nouveaux frais",
+    "buscar": "Rechercher par nom",
+    "sustantivo": {
+      "singular": "frais",
+      "plural": "frais"
+    },
+    "tipo": {
+      "percentage": "Pourcentage",
+      "fixed_amount": "Montant fixe"
+    },
+    "aplicaA": {
+      "all": "Tous les services",
+      "dine_in": "Sur place",
+      "delivery": "Livraison",
+      "takeout": "À emporter"
+    },
+    "estado": {
+      "activo": "Actif",
+      "inactivo": "Inactif",
+      "archivado": "Archivé"
+    },
+    "cobro": {
+      "obligatorio": "Obligatoire",
+      "opcional": "Facultatif"
+    },
+    "condicion": {
+      "comensales": "{n}+ convives",
+      "compraMinima": "Achat minimum",
+      "compraMinimaCorta": "Achat minimum {monto}",
+      "sinCompraMinima": "sans achat minimum",
+      "siempre": "Toujours"
+    },
+    "columnas": {
+      "nombre": "Nom",
+      "tipo": "Type",
+      "valor": "Valeur",
+      "aplicaA": "S’applique à",
+      "impuesto": "Taxe",
+      "condicion": "Condition",
+      "sucursal": "Succursale",
+      "cobro": "Facturation",
+      "estado": "Statut"
+    },
+    "acciones": {
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "verVentas": "Voir les ventes avec ces frais",
+      "verVentasMotivo": "Le PDV ne facture pas encore les frais de service : aucune vente n’en contient.",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "archivar": "Archiver",
+      "restaurar": "Restaurer"
+    },
+    "toast": {
+      "duplicado": "Frais dupliqués",
+      "activado": "Frais activés",
+      "desactivado": "Frais désactivés",
+      "archivado": "Frais archivés. Retrouvez-les dans « Voir les archivés ».",
+      "restaurado": "Frais restaurés. Ils sont inactifs : activez-les quand vous voulez les facturer."
+    },
+    "errores": {
+      "SIN_PERMISO": "Vous n’avez pas l’autorisation de gérer les frais de service.",
+      "NO_ENCONTRADO": "Ces frais n’existent pas dans cette organisation.",
+      "TIPO_INVALIDO": "Type de frais non valide : utilisez pourcentage ou montant fixe.",
+      "IMPUESTO_INVALIDO": "La taxe choisie n’appartient pas à cette organisation.",
+      "DESCONOCIDO": "L’opération n’a pas pu aboutir. Réessayez."
+    },
+    "kpi": {
+      "etiqueta": "Résumé des frais",
+      "activos": "Actifs",
+      "activosValor": "{activos} sur {total}",
+      "inactivos": "{n, plural, =0 {aucun inactif} one {# inactif} other {# inactifs}}",
+      "cobrado": "Facturé ce mois-ci",
+      "ventasConCargo": "Ventes avec frais",
+      "quitados": "Retirés par le caissier",
+      "sinCobro": "Le PDV ne les facture pas encore"
+    },
+    "filtros": {
+      "estado": "Statut",
+      "aplicaA": "S’applique à",
+      "aplicaAAyuda": "Inclut les frais qui s’appliquent à tous les services.",
+      "cobro": "Facturation",
+      "verResultados": "Voir {n, plural, one {# frais} other {# frais}}",
+      "estados": {
+        "todos": "Tous",
+        "activos": "Actifs",
+        "inactivos": "Inactifs",
+        "archivados": "Archivés"
+      }
+    },
+    "vacio": {
+      "titulo": "Aucuns frais de service pour l’instant",
+      "descripcion": "Créez des frais pour les grandes tables, les livraisons ou les emballages. Ils s’ajoutent avant taxes."
+    },
+    "error": {
+      "titulo": "Impossible de charger les frais",
+      "descripcion": "Vérifiez la connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n’avez pas accès aux frais de service",
+      "descripcion": "Demandez à un administrateur de l’organisation l’accès au PDV."
+    },
+    "formulario": {
+      "tituloNuevo": "Nouveaux frais de service",
+      "tituloEditar": "Modifier les frais de service",
+      "descripcion": "Calculés sur le sous-total après remises et avant taxes.",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Service grande table",
+      "tipo": "Type de frais",
+      "porcentaje": "Pourcentage",
+      "montoFijo": "Montant fixe",
+      "valor": "Valeur",
+      "impuesto": "Taxe des frais",
+      "impuestoAyuda": "En général, la même que celle des produits.",
+      "impuestoSinConfigurar": "L’organisation n’a aucune taxe active : configurez-les dans Finances.",
+      "sinImpuesto": "Aucune",
+      "aplicaA": "S’applique à",
+      "comensalesMinimos": "Convives minimum",
+      "comensalesAyuda": "Vide : pas de minimum.",
+      "compraMinima": "Achat minimum",
+      "compraMinimaAyuda": "Avant taxes. Vide : pas de minimum.",
+      "sucursal": "Succursale",
+      "todasSucursales": "Toutes les succursales",
+      "cobro": "Mode de facturation",
+      "obligatorio": "Obligatoire",
+      "obligatorioDescripcion": "S’applique automatiquement. Le retirer exige un motif et l’autorisation « Retirer les frais » (ou un superviseur).",
+      "opcional": "Facultatif",
+      "opcionalDescripcion": "Le caissier demande au client ; s’il refuse, ce n’est pas facturé.",
+      "parecePropina": "Cela ressemble à un pourboire suggéré",
+      "parecePropinaDescripcion": "Le pourboire est volontaire, revient au personnel et n’est pas facturé. Configurez-le dans Pourboires, pas comme frais.",
+      "irAPropinas": "Aller aux Pourboires",
+      "pareceFlete": "S’agit-il des frais de livraison ?",
+      "pareceFleteDescripcion": "La livraison se facture comme frais de livraison à l’encaissement. Utilisez ces frais seulement pour des services comme l’emballage.",
+      "vistaPrevia": "Aperçu sur le reçu",
+      "subtotalComensales": "Sous-total ({n} convives)",
+      "subtotalEjemplo": "Sous-total d’exemple",
+      "totalFactura": "Total de la facture",
+      "propinaFuera": "Pourboire volontaire suggéré : hors facture. L’exemple suppose que les produits ont la même taxe que les frais.",
+      "cargoSinNombre": "Frais",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "guardando": "Enregistrement…",
+      "actualizado": "Frais mis à jour",
+      "creado": "Frais créés",
+      "error": {
+        "nombre": "Saisissez un nom.",
+        "valor": "La valeur doit être supérieure à 0.",
+        "porcentajeMaximo": "Le pourcentage ne peut pas dépasser 100 %."
+      }
+    },
+    "importar": {
+      "titulo": "Importer des frais",
+      "descripcion": "Téléversez un fichier CSV avec des frais par ligne.",
+      "cancelar": "Annuler",
+      "plantilla": "Modèle",
+      "importar": "Importer",
+      "importando": "Importation…",
+      "eligeArchivo": "Choisissez un fichier CSV",
+      "formato": "Colonnes : name, charge_type, charge_value et, en option, min_amount, min_guests, applies_to, is_optional.",
+      "ayudaImpuesto": "Les frais importés n’ont pas de taxe : choisissez-la en les modifiant."
+    }
+  },
+  "posCupones": {
+    "titulo": "Coupons",
+    "subtitulo": "Validité selon le jour de l’organisation",
+    "subtituloSucursal": "{sucursal} · validité selon le jour de l’organisation",
+    "subtituloMovil": "{total, plural, one {# coupon} other {# coupons}} · {activos, plural, one {# actif} other {# actifs}}",
+    "migaPos": "PDV",
+    "actualizar": "Actualiser",
+    "verArchivados": "Voir les archivés",
+    "crearLote": "Créer un lot",
+    "nuevo": "Nouveau coupon",
+    "buscar": "Rechercher par code ou client",
+    "sustantivo": {
+      "singular": "coupon",
+      "plural": "coupons"
+    },
+    "estado": {
+      "activo": "Actif",
+      "programado": "Programmé",
+      "agotado": "Épuisé",
+      "vencido": "Expiré",
+      "inactivo": "Inactif",
+      "archivado": "Archivé"
+    },
+    "acciones": {
+      "ver": "Voir le détail",
+      "editar": "Modifier",
+      "duplicar": "Dupliquer",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "archivar": "Archiver",
+      "restaurar": "Restaurer"
+    },
+    "toast": {
+      "duplicado": "Coupon dupliqué avec un nouveau code. La copie est inactive.",
+      "activado": "Coupon activé",
+      "desactivado": "Coupon désactivé",
+      "archivado": "Coupon archivé. Son historique d’utilisations est conservé.",
+      "restaurado": "Coupon restauré. Il est inactif : activez-le quand vous voulez l’utiliser."
+    },
+    "errores": {
+      "SIN_PERMISO": "Vous n’avez pas l’autorisation de gérer les coupons.",
+      "CODIGO_DUPLICADO": "Un coupon avec ce code existe déjà dans l’organisation.",
+      "NO_ENCONTRADO": "Ce coupon n’existe pas dans cette organisation.",
+      "PREFIJO_INVALIDO": "Le préfixe n’accepte que des lettres et des chiffres (12 max).",
+      "CANTIDAD_INVALIDA": "La quantité doit être comprise entre 1 et 5 000.",
+      "VALOR_INVALIDO": "La remise n’est pas valide.",
+      "VIGENCIA_INVALIDA": "La date de fin ne peut pas précéder la date de début.",
+      "PROMOCION_INVALIDA": "La promotion n’appartient pas à cette organisation.",
+      "SIN_CODIGOS": "Plus de codes libres avec ce préfixe. Utilisez-en un autre.",
+      "DESCONOCIDO": "L’opération n’a pas pu aboutir. Réessayez."
+    },
+    "columnas": {
+      "codigo": "Code",
+      "descuento": "Remise",
+      "condiciones": "Conditions",
+      "usos": "Utilisations",
+      "vigencia": "Validité",
+      "estado": "Statut"
+    },
+    "kpi": {
+      "etiqueta": "Résumé des coupons",
+      "activos": "Actifs",
+      "activosDetalle": "sur {n, plural, one {# coupon} other {# coupons}}",
+      "canjes": "Utilisations ce mois-ci",
+      "canjesDetalle": "{monto} de remise",
+      "tasa": "Taux d’utilisation",
+      "tasaDetalle": "coupons utilisés / émis",
+      "agotados": "Épuisés ou expirés",
+      "agotadosDetalle": "vérifier la validité",
+      "agotadosNinguno": "tout est en ordre"
+    },
+    "filtros": {
+      "estado": "Statut",
+      "verResultados": "Voir {n, plural, one {# coupon} other {# coupons}}",
+      "estados": {
+        "todos": "Tous",
+        "activo": "Actifs",
+        "programado": "Programmés",
+        "agotado": "Épuisés",
+        "vencido": "Expirés",
+        "inactivo": "Inactifs",
+        "archivados": "Archivés"
+      }
+    },
+    "vacio": {
+      "titulo": "Aucun coupon pour l’instant",
+      "descripcion": "Créez un coupon pour un client ou un lot pour une campagne. Ils s’utilisent au PDV et dans la boutique en ligne."
+    },
+    "error": {
+      "titulo": "Impossible de charger les coupons",
+      "descripcion": "Vérifiez la connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n’avez pas accès aux coupons",
+      "descripcion": "Demandez à un administrateur de l’organisation l’accès au PDV."
+    },
+    "lista": {
+      "lote": "lot {prefijo} ({n})",
+      "montoFijo": "montant fixe",
+      "tope": "plafond {monto}",
+      "sinTope": "sans plafond",
+      "promocion": "Promotion « {nombre} »",
+      "compraMinima": "Achat minimum {monto}",
+      "primeraCompra": "Premier achat",
+      "sinCondiciones": "Sans conditions",
+      "cliente": "client : {nombre}",
+      "soloNuevos": "nouveaux clients uniquement",
+      "porCliente": "{n} par client",
+      "usosSinLimite": "{n, plural, one {# utilisation} other {# utilisations}}",
+      "sinLimite": "sans limite",
+      "usos": "{usados} sur {limite}",
+      "usoUnico": "usage unique",
+      "quedan": "{n, plural, one {# restant} other {# restants}}",
+      "desde": "À partir du {fecha}",
+      "hasta": "Jusqu’au {fecha}",
+      "sinVencimiento": "Sans expiration",
+      "venceEn": "{n, plural, =0 {expire aujourd’hui} one {expire dans # jour} other {expire dans # jours}}",
+      "empiezaEn": "{n, plural, =0 {commence aujourd’hui} one {commence dans # jour} other {commence dans # jours}}"
+    },
+    "formulario": {
+      "tituloNuevo": "Nouveau coupon",
+      "tituloEditar": "Modifier le coupon",
+      "descripcion": "Le code est enregistré en majuscules et est unique dans l’organisation.",
+      "codigo": "Code",
+      "generar": "En générer un au hasard",
+      "nombre": "Nom",
+      "nombrePlaceholder": "Ex. : Remise de bienvenue",
+      "tipo": "Type de remise",
+      "porcentaje": "Pourcentage",
+      "montoFijo": "Montant fixe",
+      "valor": "Valeur",
+      "tope": "Remise maximale",
+      "topeAyuda": "Uniquement avec un pourcentage.",
+      "compraMinima": "Achat minimum",
+      "desde": "Du",
+      "desdeAyuda": "Heure de l’organisation.",
+      "hasta": "Au",
+      "hastaAyuda": "Le dernier jour compte en entier.",
+      "sinFechaInicio": "À partir d’aujourd’hui",
+      "sinFechaFin": "Sans date de fin",
+      "limiteUsos": "Limite d’utilisations",
+      "usosPorCliente": "Utilisations par client",
+      "vacioSinLimite": "Vide : sans limite.",
+      "cliente": "Client",
+      "clienteAyuda": "Vide : n’importe quel client.",
+      "promocion": "Promotion liée",
+      "ninguna": "Aucune",
+      "primeraCompra": "Premier achat uniquement",
+      "primeraCompraAyuda": "Uniquement pour les clients sans achat précédent.",
+      "activo": "Actif",
+      "activoAyuda": "Utilisable au PDV et dans la boutique en ligne.",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer",
+      "crear": "Créer le coupon",
+      "guardando": "Enregistrement…",
+      "actualizado": "Coupon mis à jour",
+      "creado": "Coupon créé",
+      "error": {
+        "codigoVacio": "Saisissez un code.",
+        "codigoFormato": "Utilisez lettres, chiffres, tiret ou tiret bas (2 à 40).",
+        "valor": "La valeur doit être supérieure à 0.",
+        "porcentajeMaximo": "Le pourcentage ne peut pas dépasser 100 %.",
+        "vigencia": "La date de fin ne peut pas précéder la date de début.",
+        "usosCliente": "Ne peut pas dépasser la limite d’utilisations."
+      }
+    },
+    "lote": {
+      "titulo": "Créer un lot de coupons",
+      "descripcion": "Génère des codes uniques pour une campagne ou un salon. Ils sont tous créés en une seule opération serveur.",
+      "prefijo": "Préfixe",
+      "prefijoAyuda": "Lettres et chiffres uniquement ; enregistré en majuscules.",
+      "cantidad": "Quantité",
+      "cantidadAyuda": "{max} maximum par lot.",
+      "descuento": "Remise",
+      "usosPorCupon": "Utilisations par coupon",
+      "porCliente": "Par client",
+      "vigenciaAyuda": "Jours complets dans le fuseau de l’organisation.",
+      "promocion": "Promotion liée (facultatif)",
+      "asiSeVeran": "Aperçu (6 caractères aléatoires après le préfixe)",
+      "cancelar": "Annuler",
+      "creando": "Création…",
+      "crear": "Créer {n, plural, one {# coupon} other {# coupons}}",
+      "error": {
+        "prefijo": "Saisissez un préfixe de lettres et chiffres (12 max).",
+        "cantidad": "Entre 1 et 5 000.",
+        "valor": "La remise doit être supérieure à 0.",
+        "porcentajeMaximo": "Le pourcentage ne peut pas dépasser 100 %.",
+        "vigencia": "La date de fin ne peut pas précéder la date de début."
+      }
+    },
+    "loteCreado": {
+      "titulo": "Lot {prefijo} créé",
+      "cupones": "{n, plural, one {# coupon} other {# coupons}}",
+      "conTope": "{valor} plafonné à {tope}",
+      "compraMinima": "achat minimum {monto}",
+      "usos": "{n, plural, one {# utilisation par coupon} other {# utilisations par coupon}}",
+      "exito": "{n, plural, one {# coupon} other {# coupons}} « {prefijo}-… » {n, plural, one {créé} other {créés}}",
+      "exitoProgramado": "{n, plural, one {# coupon} other {# coupons}} « {prefijo}-… » {n, plural, one {créé} other {créés}} · programmés pour le {fecha}",
+      "codigos": "Codes du lot",
+      "yMas": "et {n} de plus",
+      "imprimir": "Imprimer les cartes",
+      "exportar": "Exporter en CSV",
+      "listo": "Terminé"
+    },
+    "detalle": {
+      "cargando": "Chargement du coupon…",
+      "noEncontrado": "Ce coupon n’existe pas dans l’organisation",
+      "volver": "Retour aux coupons",
+      "sinFechaFin": "sans date de fin",
+      "exportarCanjes": "Exporter les utilisations (CSV)",
+      "exportarLote": "Exporter les codes du lot",
+      "sinCanjes": "Pas encore utilisé",
+      "sinCanjesDescripcion": "Lorsqu’il est utilisé au PDV ou en ligne, l’utilisation apparaît ici avec sa vente.",
+      "csvEncabezado": "date,vente,client,succursale,remise",
+      "columnas": {
+        "fecha": "Date",
+        "venta": "Vente",
+        "cliente": "Client",
+        "sucursal": "Succursale",
+        "canal": "Canal",
+        "descuento": "Remise"
+      },
+      "verVenta": "Voir la vente",
+      "consumidorFinal": "Client de passage",
+      "web": "Web",
+      "pos": "PDV",
+      "detalles": "Détails du coupon",
+      "descuento": "Remise",
+      "descuentoConTope": "{valor} · plafond {tope}",
+      "compraMinima": "Achat minimum",
+      "ninguna": "Aucune",
+      "vigencia": "Validité",
+      "limiteUsos": "Limite d’utilisations",
+      "enTotal": "{n} au total",
+      "cliente": "Client",
+      "cualquiera": "N’importe lequel",
+      "primeraCompra": "Premier achat uniquement",
+      "si": "Oui",
+      "no": "Non",
+      "promocion": "Promotion associée",
+      "historial": "Historique des utilisations · {n}",
+      "canje": "utilisation",
+      "canjes": "utilisations",
+      "estado": "Statut",
+      "estadoTexto": {
+        "activo": "Actif. Utilisable au PDV et dans la boutique en ligne.",
+        "programado": "Programmé. Utilisable à partir de la date de début.",
+        "agotado": "Épuisé. Il a été utilisé le nombre de fois autorisé.",
+        "vencido": "Expiré. Sa validité est terminée.",
+        "inactivo": "Inactif. Inutilisable tant que vous ne l’activez pas.",
+        "archivado": "Archivé. Inutilisable ; son historique est conservé."
+      },
+      "estadisticas": "Statistiques",
+      "redenciones": "Utilisations",
+      "descuentoEntregado": "Remise accordée",
+      "ticketMedio": "Panier moyen",
+      "canal": "Canal",
+      "canalValor": "{web} web · {pos} PDV",
+      "ultimaVez": "Dernière fois",
+      "usoCupo": "Quota utilisé"
+    }
+  },
+  "finanzasProcesadores": {
+    "titulo": "Prestataires de paiement",
+    "subtitulo": "Ce que le TPE et les passerelles ont encaissé et pas encore versé à la banque · {mes}",
+    "migas": {
+      "finanzas": "Finances",
+      "tesoreria": "Trésorerie"
+    },
+    "acciones": {
+      "actualizar": "Actualiser",
+      "datos": "Données des prestataires",
+      "registrarAbono": "Enregistrer un versement",
+      "abonar": "Verser",
+      "completar": "Compléter",
+      "cancelar": "Annuler",
+      "guardar": "Enregistrer"
+    },
+    "pestanas": {
+      "saldos": "Soldes",
+      "abonos": "Versements",
+      "alertas": "Alertes"
+    },
+    "mes": {
+      "etiqueta": "Mois",
+      "anterior": "Mois précédent",
+      "siguiente": "Mois suivant"
+    },
+    "kpi": {
+      "porCobrar": "À recevoir des prestataires",
+      "porCobrarDetalle": "Solde des comptes 138020xx",
+      "cobrado": "Encaissé en {mes}",
+      "cobradoDetalle": "Carte et passerelles · vente + pourboire",
+      "abonado": "Versé en {mes}",
+      "abonadoDetalle": "Brut des versements enregistrés",
+      "alertas": "En alerte",
+      "sinAlertas": "Tous à jour"
+    },
+    "aviso": {
+      "titulo": "{count, plural, one {# prestataire en alerte} other {# prestataires en alerte}}",
+      "sinAbono": "{procesador} n’a rien versé depuis {dias} jours ouvrés (encaissement le plus ancien : {fecha}, {saldo} en attente).",
+      "sinRetiro": "{procesador} conserve {saldo} et aucun retrait vers la banque depuis {dias} jours.",
+      "negativo": "{procesador} a un solde négatif ({saldo}) : plus versé qu’encaissé. Vérifiez les versements.",
+      "verAlertas": "Voir les alertes"
+    },
+    "columnas": {
+      "procesador": "Prestataire",
+      "origen": "Origine",
+      "cobrado": "Encaissé",
+      "abonado": "Versé",
+      "saldo": "Solde",
+      "pendienteDesde": "En attente depuis",
+      "estado": "Statut"
+    },
+    "origen": {
+      "nacional": "National",
+      "exterior": "Étranger"
+    },
+    "estado": {
+      "alDia": "À jour",
+      "sinAbono": "Alerte · plus de 5 jours ouvrés",
+      "sinRetiro": "Alerte · 30 jours sans retrait",
+      "negativo": "Solde négatif",
+      "retenido": "Solde conservé chez le prestataire",
+      "faltaNit": "NIT du prestataire manquant"
+    },
+    "nitCorto": "NIT {nit}",
+    "sinNit": "Sans NIT",
+    "diasHabiles": "{count, plural, =0 {aujourd’hui} one {# jour ouvré} other {# jours ouvrés}}",
+    "diasSinRetiro": "{count, plural, =0 {retrait aujourd’hui} one {# jour sans retrait} other {# jours sans retrait}}",
+    "etiquetaFila": "{procesador} · solde {saldo}",
+    "total": "Total",
+    "errorCarga": "Impossible de charger les prestataires de paiement",
+    "sinPermiso": {
+      "titulo": "Vous n’avez pas accès aux prestataires de paiement",
+      "descripcion": "Demandez l’autorisation de consulter les finances."
+    },
+    "vacio": {
+      "titulo": "Aucun encaissement par carte ou passerelle pour l’instant",
+      "descripcion": "Quand vous encaissez par TPE, Wompi, Bold, Mercado Pago ou une autre passerelle, vous verrez ici ce qu’on vous doit et quand c’est versé.",
+      "sinAlertasTitulo": "Aucune alerte",
+      "sinAlertasDescripcion": "Aucun prestataire ne dépasse 5 jours ouvrés sans versement ni 30 jours sans retrait."
+    },
+    "pie": "Encaissé et versé : du mois choisi. Solde : tout ce qui est en attente à ce jour. Jours ouvrés : du lundi au vendredi, hors jours fériés ; les versements soldent d’abord les encaissements les plus anciens. Les prestataires qui conservent un solde volontairement (Stripe et PayPal par défaut) n’alertent pas après 5 jours ouvrés : ils alertent après plus de 30 jours sans retrait vers la banque.",
+    "abonos": {
+      "columnas": {
+        "fecha": "Date",
+        "bruto": "Brut",
+        "descuentos": "Retenues",
+        "neto": "Net à la banque",
+        "factura": "Facture"
+      },
+      "estado": {
+        "registrado": "Enregistré",
+        "anulado": "Annulé"
+      },
+      "anular": "Annuler le versement",
+      "anulado": "Versement annulé : le solde du prestataire est remonté.",
+      "anularTitulo": "Annuler le versement",
+      "anularDescripcion": "Une contre-écriture est passée pour le versement de {neto} du {fecha} et le solde du prestataire remonte.",
+      "etiquetaFila": "Versement du {fecha} · net {neto}",
+      "vacioTitulo": "Aucun versement enregistré",
+      "vacioDescripcion": "Quand le prestataire verse les fonds, enregistrez le versement avec les montants de son relevé."
+    },
+    "abono": {
+      "titulo": "Enregistrer un versement",
+      "tituloDe": "Enregistrer un versement de {procesador}",
+      "descripcion": "Recopiez les montants du relevé du prestataire. Le net est ce qui est arrivé à la banque.",
+      "registrar": "Enregistrer le versement",
+      "corregir": "Corrigez les champs signalés pour enregistrer le versement.",
+      "procesador": "Prestataire",
+      "elegirProcesador": "Choisissez le prestataire",
+      "fecha": "Date du versement",
+      "banco": "Banque de réception",
+      "sinBancos": "Aucun compte bancaire actif : le compte bancaire par défaut sera utilisé.",
+      "elegirBanco": "Choisissez le compte",
+      "bruto": "Brut du relevé",
+      "neto": "Net reçu à la banque",
+      "descuentos": "Ce que le prestataire a retenu",
+      "descuentosAyuda": "Tel qu’indiqué sur le relevé.",
+      "comision": "Commission",
+      "ivaComision": "TVA de la commission",
+      "retencionFuente": "Retenue à la source",
+      "retencionIva": "Retenue de TVA",
+      "retencionIca": "Retenue ICA",
+      "iva": {
+        "descontable": "Votre organisation est assujettie à la TVA selon son profil fiscal : la TVA de la commission est déduite.",
+        "gasto": "Votre organisation n’est pas assujettie à la TVA : la TVA de la commission s’ajoute à la charge.",
+        "exterior": "Service étranger : votre organisation n’est pas assujettie à la TVA, aucune TVA n’est retenue.",
+        "sinIva": "Pas de TVA sur la commission : rien à déduire.",
+        "sinPerfil": "Définissez le profil fiscal de l’organisation pour savoir si la TVA de la commission est déductible.",
+        "reverseCharge": "Service étranger sans TVA colombienne : 19 % de la commission ({valor}) est retenu au titre de la TVA (autoliquidation). Il va à la TVA déductible 24081003 et à la retenue de TVA 23670502, et se déclare dans les formulaires 300 et 350 de la même période."
+      },
+      "ivaInsignia": {
+        "descontable": "TVA déductible · 24081001",
+        "proporcional": "TVA déductible · 24081001",
+        "gasto": "TVA en charge · 53051501",
+        "exterior": "Étranger · sans retenue",
+        "sin_iva": "Sans TVA sur la commission",
+        "sin_perfil": "Profil fiscal manquant",
+        "reverse_charge": "Autoliquidation · 19 % retenu"
+      },
+      "factura": "Facture électronique du prestataire",
+      "facturaOpcional": "Facture du prestataire (facultatif)",
+      "facturaAyuda": "Obligatoire car la TVA est déductible.",
+      "facturaOpcionalAyuda": "Facultatif : la TVA n’est pas déductible.",
+      "facturaEjemplo": "Ex. : FE 118240",
+      "referencia": "Référence du relevé (facultatif)",
+      "registrado": "Versement de {procesador} enregistré.",
+      "validacion": {
+        "procesador": "Choisissez le prestataire.",
+        "fecha": "Saisissez la date du relevé.",
+        "nit": "Le NIT de {procesador} manque : complétez-le dans « Données des prestataires » pour enregistrer le versement.",
+        "bruto": "Saisissez le brut du relevé.",
+        "neto": "Saisissez ce qui est arrivé à la banque.",
+        "descuadre": "Ça ne s’équilibre pas : le brut moins les retenues donne {calculado}.",
+        "factura": "Obligatoire quand la TVA est déductible."
+      },
+      "cuadre": {
+        "titulo": "Équilibre du versement",
+        "bruto": "Brut du relevé",
+        "comision": "− Commission",
+        "iva": "− TVA de la commission",
+        "retenciones": "− Retenues",
+        "calculado": "Net calculé",
+        "banco": "Net arrivé à la banque",
+        "cuadra": "✓ Équilibré",
+        "diferencia": "Écart {valor}",
+        "regla": "Brut = net + commission + TVA + retenues. Impossible d’enregistrer tant que ce n’est pas équilibré."
+      },
+      "asiento": {
+        "titulo": "Écriture générée",
+        "banco": "Banque",
+        "comision": "Commissions",
+        "ivaDescontable": "TVA déductible",
+        "retefuente": "Avance retenue à la source",
+        "reteiva": "Avance retenue de TVA",
+        "reteica": "Avance retenue ICA",
+        "saldo": "Solde du prestataire : {antes} → {despues}",
+        "ivaExterior": "TVA déductible sur services étrangers",
+        "reteivaExterior": "Retenue de TVA sur services étrangers"
+      }
+    },
+    "datos": {
+      "titulo": "Données des prestataires",
+      "descripcion": "Chaque prestataire est le tiers de son compte 138020xx. L’origine détermine le traitement de la TVA de sa commission.",
+      "sinPermiso": "Lecture seule : demandez l’autorisation de création en finances.",
+      "guardado": "Données des prestataires enregistrées.",
+      "columnas": {
+        "procesador": "Prestataire",
+        "nit": "NIT ou identifiant fiscal",
+        "nombre": "Nom en tant que tiers",
+        "origen": "Origine",
+        "retiene": "Conserve un solde",
+        "retieneLargo": "Conserve un solde volontairement",
+        "identificacion": "Identification"
+      },
+      "etiquetaNit": "NIT de {procesador}",
+      "etiquetaNombre": "Nom de {procesador} en tant que tiers",
+      "etiquetaOrigen": "Origine de {procesador}",
+      "etiquetaRetiene": "{procesador} conserve un solde volontairement",
+      "nitEjemplo": "Ex. : 900.123.456-7",
+      "deFabrica": "Par défaut",
+      "faltaNit": "Manquant : sans NIT le versement ne peut pas être enregistré.",
+      "notaFabrica": "Wompi, Bold, Mercado Pago et PayU ont leur NIT par défaut. Chaque organisation saisit le TPE. Stripe et PayPal non : saisissez la société et le numéro indiqués dans votre contrat ou relevé, avec leur type de document (42 pour un numéro fiscal de leur pays ; 43 si leur pays n’en a pas, et 444444001 est attribué). Sans identification, l’encaissement continue normalement mais le versement ne peut pas être enregistré.",
+      "notaExterior": "Le prestataire fournit le service depuis l’étranger. Si son relevé n’a pas de TVA colombienne et que votre organisation est assujettie, l’enregistrement du versement retient 19 % de la commission (autoliquidation, art. 437-2 n° 3 ET). Changer l’origine n’affecte que les versements enregistrés ensuite.",
+      "notaRetiene": "Le prestataire garde l’argent et on le retire quand on le décide. Pas d’alerte à 5 jours ouvrés : le tableau affiche le solde conservé et alerte après plus de 30 jours sans retrait vers la banque. Activé par défaut pour Stripe et PayPal, désactivé pour les autres.",
+      "etiquetaTipo": "Type de document de {procesador}",
+      "tipoElegir": "Type de document",
+      "tipos": {
+        "31": "31 · NIT (DIAN)",
+        "42": "42 · Numéro fiscal étranger",
+        "43": "43 · Sans numéro fiscal"
+      },
+      "nitGenerico": "444444001… est attribué",
+      "faltaTipo": "Choisissez le type de document : sans lui, l’exógena ne peut pas être déclarée."
+    },
+    "errores": {
+      "SESION_REQUERIDA": "Votre session a expiré. Reconnectez-vous.",
+      "SIN_PERMISO": "Vous n'avez pas l'autorisation pour cette action.",
+      "PROCESADOR_INVALIDO": "Choisissez un prestataire dans la liste.",
+      "FECHA_REQUERIDA": "Saisissez la date du versement indiquée sur le relevé.",
+      "FECHA_FUTURA": "Le versement ne peut pas avoir une date future.",
+      "PERIODO_CERRADO": "La période comptable de cette date est clôturée.",
+      "IMPORTE_INVALIDO": "Vérifiez les montants : le brut doit être supérieur à zéro et les retenues ne peuvent pas être négatives.",
+      "NETO_INVALIDO": "Les retenues sont supérieures au brut.",
+      "NETO_DESCUADRADO": "Ça ne s'équilibre pas : le brut moins les retenues ne donne pas le net reçu.",
+      "SUCURSAL_INVALIDA": "L'établissement n'appartient pas à votre organisation.",
+      "CUENTA_BANCARIA_INVALIDA": "Le compte bancaire n'appartient pas à votre organisation ou n'a pas de compte comptable.",
+      "PROPORCION_INVALIDA": "La part déductible va de 0 à 1.",
+      "PROPORCION_NO_APLICA": "Votre organisation n'est pas assujettie à la TVA : la TVA de la commission est une charge.",
+      "PERFIL_TRIBUTARIO_REQUERIDO": "Définissez le profil fiscal de l'organisation pour savoir si la TVA de la commission est déductible.",
+      "FACTURA_REQUERIDA": "Pour déduire la TVA de la commission, la facture électronique du prestataire est nécessaire.",
+      "ABONO_MAYOR_QUE_SALDO": "Le versement dépasse ce que le prestataire devait à cette date.",
+      "NIT_PROCESADOR_REQUERIDO": "Le NIT du prestataire manque : complétez-le dans « Données des prestataires ».",
+      "SIN_CUENTA": "Des comptes comptables manquent pour cette écriture. Vérifiez le plan comptable.",
+      "SOLICITUD_REQUERIDA": "La demande n'a pas pu être identifiée. Réessayez.",
+      "ORIGEN_INVALIDO": "L'origine est nationale ou étrangère.",
+      "RETIENE_SALDO_INVALIDO": "« Conserve un solde » est oui ou non.",
+      "ABONO_INEXISTENTE": "Le versement n'existe pas ou n'appartient pas à votre organisation.",
+      "MOTIVO_REQUERIDO": "Indiquez le motif de l'annulation.",
+      "datos_invalidos": "Vérifiez les données du formulaire.",
+      "DESCONOCIDO": "L'opération n'a pas pu aboutir. Réessayez dans un instant.",
+      "TIPO_DOCUMENTO_INVALIDO": "Le type de document est 31 (NIT), 42 (numéro fiscal étranger) ou 43 (sans numéro fiscal)."
+    }
+  },
+  "finanzasImpuestos": {
+    "nuevo": "Nouvelle taxe",
+    "subtitulo": "{impuestos, plural, =0 {Aucune taxe de vente et d'achat} one {# taxe de vente et d'achat} other {# taxes de vente et d'achat}} · {retenciones, plural, =0 {aucune retenue} one {# retenue} other {# retenues}}",
+    "subtituloTarifa": "taux par défaut : {tarifa}",
+    "subtituloSinTarifa": "sans taux par défaut",
+    "subtituloMovil": "{impuestos, plural, one {# taxe} other {# taxes}} · {activos, plural, one {# active} other {# actives}}",
+    "pestanas": {
+      "impuestos": "Taxes"
+    },
+    "tablaEtiqueta": "Taxes de vente et d'achat de l'organisation",
+    "buscar": "Rechercher une taxe par nom ou taux",
+    "columnas": {
+      "nombre": "Nom",
+      "tipo": "Type",
+      "tarifa": "Taux",
+      "codigoDian": "Code DIAN",
+      "productos": "Produits",
+      "estado": "Statut"
+    },
+    "tipos": {
+      "iva": "TVA",
+      "inc": "INC",
+      "ibua": "IBUA",
+      "ica": "ICA",
+      "otro": "Autre"
+    },
+    "codigoDian": "{codigo} · {tipo}",
+    "estado": {
+      "activo": "Active",
+      "inactivo": "Inactive"
+    },
+    "insignias": {
+      "exento": "Exonérée",
+      "predeterminado": "Par défaut",
+      "incluido": "Incluse",
+      "incluidoLargo": "incluse dans le prix"
+    },
+    "filtros": {
+      "titulo": "Filtrer les taxes",
+      "estado": "Statut",
+      "tipo": "Type",
+      "todos": "Toutes",
+      "activos": "Actives",
+      "inactivos": "Inactives"
+    },
+    "acciones": {
+      "editar": "Modifier la taxe",
+      "duplicar": "Dupliquer",
+      "predeterminado": "Définir par défaut",
+      "predeterminadoInactivo": "Activez-la d'abord : une taxe inactive ne peut pas être le taux par défaut.",
+      "activar": "Activer",
+      "desactivar": "Désactiver",
+      "activarNombre": "Activer {nombre}",
+      "desactivarNombre": "Désactiver {nombre}",
+      "eliminar": "Supprimer la taxe",
+      "eliminarPredeterminado": "C'est le taux par défaut : choisissez-en un autre avant de la supprimer.",
+      "eliminarEnUso": "{count, plural, one {Utilisée par # produit} other {Utilisée par # produits}} : retirez-la ou désactivez-la.",
+      "actualizar": "Actualiser"
+    },
+    "vacio": {
+      "titulo": "Aucune taxe pour l'instant",
+      "descripcion": "Créez la TVA et les autres taxes que vous facturez, ou chargez le modèle de votre pays."
+    },
+    "sinResultados": {
+      "titulo": "Aucune taxe ne correspond",
+      "descripcion": "Essayez un autre nom ou taux, ou retirez les filtres."
+    },
+    "error": {
+      "titulo": "Impossible de charger les taxes",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "sinPermiso": {
+      "titulo": "Vous n'avez pas accès aux taxes",
+      "descripcion": "Demandez à un administrateur de l'organisation de vous donner accès à Finances."
+    },
+    "sustantivo": {
+      "singular": "taxe",
+      "plural": "taxes"
+    },
+    "plantilla": {
+      "cargar": "Charger le modèle {pais}",
+      "cargada": "Les taxes manquantes du modèle {pais} ont été ajoutées.",
+      "error": "Impossible de charger le modèle de taxes."
+    },
+    "toast": {
+      "errorTitulo": "Erreur",
+      "sinOrganizacion": "Aucune organisation active n'a été trouvée.",
+      "errorOrganizacion": "Impossible d'obtenir les informations de l'organisation.",
+      "activado": "{nombre} est maintenant active.",
+      "desactivado": "{nombre} est maintenant inactive.",
+      "errorEstado": "Impossible de changer le statut de la taxe.",
+      "predeterminado": "{nombre} est maintenant le taux par défaut.",
+      "errorPredeterminado": "Impossible de changer le taux par défaut."
+    },
+    "tarifa": {
+      "titulo": "Taux pour les produits sans taxe : {tarifa}",
+      "ninguna": "Aucun ({tasa})",
+      "cobertura": "{con} produits sur {total} ont une taxe assignée. Les {sin} autres sont vendus avec ce taux. Un produit exonéré ou exclu est marqué ainsi sur le produit : il n'utilise jamais ce taux.",
+      "ayuda": "S'applique aux factures, devis et au POS pour les produits sans taxe propre. Si vous choisissez « Aucun », ces ventes sortent sans TVA et un avertissement s'affiche avant l'émission.",
+      "barraEtiqueta": "Produits avec une taxe assignée",
+      "leyenda": "Avec taxe {con} % · Exonéré ou exclu {exentos} % · Non configuré {sin} %",
+      "cambiar": "Changer le taux",
+      "dialogoTitulo": "Taux pour les produits sans taxe",
+      "etiqueta": "Taux par défaut",
+      "elegir": "Sélectionnez un taux",
+      "opcionNinguna": "Aucun — je vends des produits exclus ou exonérés",
+      "guardar": "Enregistrer le taux",
+      "guardadaTitulo": "Taux par défaut mis à jour",
+      "guardadaNinguna": "Les produits sans taxe assignée seront vendus sans TVA.",
+      "guardadaTarifa": "Les produits sans taxe assignée utiliseront ce taux.",
+      "errorTitulo": "Erreur",
+      "error": "Impossible d'enregistrer le taux par défaut. Réessayez."
+    },
+    "eliminar": {
+      "titulo": "Supprimer {nombre} ?",
+      "descripcion": "Vous allez supprimer <b>{nombre}</b> ({tasa}). Cette action est irréversible. Si des produits l'utilisent ou si c'est le taux par défaut, elle n'est pas supprimée.",
+      "confirmar": "Supprimer",
+      "errorTitulo": "Non supprimée",
+      "error": "Impossible de supprimer la taxe. Réessayez.",
+      "hecho": "Taxe supprimée."
+    },
+    "formulario": {
+      "nuevo": "Nouvelle taxe",
+      "editar": "Modifier la taxe",
+      "duplicar": "Dupliquer la taxe",
+      "nombreCopia": "{nombre} (copie)",
+      "subtituloUso": "{nombre} · {count, plural, =0 {aucun produit} one {utilisée dans # produit} other {utilisée dans # produits}}",
+      "guardar": "Enregistrer",
+      "guardarCambios": "Enregistrer les modifications",
+      "plantillas": {
+        "aviso": "Les modèles de taxes de votre pays sont affichés. Vous pouvez en utiliser un comme base ou créer une taxe personnalisée.",
+        "usar": "Utiliser un modèle de taxe",
+        "etiqueta": "Modèles de taxes disponibles",
+        "etiquetaPais": "Modèles de taxes disponibles ({pais})",
+        "ayuda": "Seulement les modèles de votre pays d'activité.",
+        "sinPlantillas": "Il n'y a pas de modèles de taxes pour votre pays.",
+        "elegir": "Sélectionnez le modèle"
+      },
+      "nombre": "Nom",
+      "nombreEjemplo": "Ex. : TVA 19 %",
+      "tasa": "Taux (%)",
+      "tasaEjemplo": "Ex. : 19",
+      "tasaAyuda": "Entre 0 et 100. Jusqu'à 3 décimales (ICA pour mille : 0,966).",
+      "codigoDian": "Code DIAN",
+      "codigoDianValor": "{codigo} · {tipo}",
+      "codigoDianNinguno": "Non envoyée comme taxe de ligne",
+      "codigoDianAyuda": "Utilisé par la facture électronique ; vient du modèle ou du nom.",
+      "tipos": {
+        "iva": "TVA",
+        "inc": "INC",
+        "ibua": "IBUA",
+        "ica": "ICA",
+        "otro": "Autre"
+      },
+      "descripcion": "Description",
+      "descripcionEjemplo": "Description de la taxe",
+      "cuentaIva": "Compte à payer (plan comptable)",
+      "elegirCuenta": "Sélectionnez le compte",
+      "cuentaIvaAyuda": "La TVA à payer est le 2408. Seuls les comptes de passif de détail existants sont proposés.",
+      "cuentaIvaInexistente": "Le mappage actuel ({cuenta}) n'existe pas dans le plan. Choisissez un compte réel ; 2408 est la TVA à payer.",
+      "cuentaIvaSinDetalle": "Le plan n'a pas de compte de détail sous 2408 (TVA à payer). Choisissez un autre compte de passif de détail ou créez-le dans le plan comptable.",
+      "cuentaIvaAuxiliar": "Le 2408 est un compte de titre dans votre plan ; la TVA est enregistrée dans son sous-compte {cuenta}.",
+      "cuentaRetencionInexistente": "Le compte {cuenta} n'est pas dans le plan ou est un compte de titre. Choisissez un compte de détail.",
+      "opciones": "Options de la taxe",
+      "activo": "Taxe active",
+      "activaRetencion": "Retenue active",
+      "predeterminado": "Taux par défaut",
+      "predeterminadoAyuda": "Utilisé par les produits sans taxe assignée (pas les exonérés). Il n'y en a qu'un.",
+      "incluido": "Incluse dans le prix",
+      "incluidoAyuda": "Le prix du produit inclut déjà cette taxe. Elle ne s'ajoute pas au total.",
+      "errorTitulo": "Erreur",
+      "errorGuardar": "Impossible d'enregistrer la taxe. Réessayez.",
+      "creado": "Taxe créée.",
+      "actualizado": "Taxe mise à jour.",
+      "validacion": {
+        "nombre": "Le nom de la taxe est obligatoire.",
+        "tasa": "Le taux doit être compris entre 0 et 100 %.",
+        "cuentaTitulo": "Compte comptable requis",
+        "cuenta": "La TVA à payer nécessite un compte de passif de détail. Le compte canonique est 2408."
+      },
+      "cuentaGuardadaSinCuenta": "La taxe a été enregistrée, mais pas le compte",
+      "cuentaErrorDetalle": "La TVA à payer est le 2408 : {detalle}",
+      "cuentaErrores": {
+        "cuenta_no_existe": "le compte n'existe pas dans le plan comptable.",
+        "cuenta_de_titulo": "le compte est un compte de titre et ne reçoit pas la TVA. Choisissez un compte de détail.",
+        "cuenta_no_es_pasivo": "le compte n'est pas un passif.",
+        "otro": "vérifiez que le compte existe et que vous avez la permission sur les taxes."
+      }
+    }
+  },
+  "finanzasComisiones": {
+    "titulo": "Commissions",
+    "migas": {
+      "finanzas": "Finances",
+      "configuracion": "Configuration"
+    },
+    "pagarComisiones": "Payer les commissions",
+    "sinNombre": "Sans nom",
+    "todasLasFechas": "Toutes les dates",
+    "nVendedores": "{count, plural, =0 {aucun vendeur} one {# vendeur} other {# vendeurs}}",
+    "nComisiones": "{count, plural, one {# commission} other {# commissions}}",
+    "tablaEtiqueta": "Commissions regroupées par vendeur",
+    "pestanas": {
+      "etiqueta": "Statut des commissions",
+      "porPagar": "À payer",
+      "pagadas": "Payées",
+      "canceladas": "Annulées",
+      "todas": "Toutes"
+    },
+    "columnas": {
+      "vendedor": "Vendeur / document",
+      "fecha": "Date",
+      "base": "Base",
+      "metodo": "Méthode",
+      "comision": "Commission",
+      "estado": "Statut",
+      "asiento": "Écriture"
+    },
+    "estado": {
+      "porPagar": "À payer",
+      "sinPendientes": "À jour",
+      "devengada": "Acquise",
+      "pagada": "Payée",
+      "clawback": "Clawback",
+      "rechazada": "Rejetée",
+      "cancelada": "Annulée"
+    },
+    "origen": {
+      "sale": "Vente POS",
+      "invoice_sale": "Facture de vente",
+      "invoice_purchase": "Facture d'achat",
+      "opportunity": "Opportunité"
+    },
+    "tasa": "{tasa} %",
+    "fijo": "{valor} fixe",
+    "motivo": "Motif : {motivo}",
+    "plegar": "Masquer les commissions de {nombre}",
+    "desplegar": "Afficher les commissions de {nombre}",
+    "acciones": {
+      "pagar": "Payer",
+      "pagarPendientes": "{count, plural, one {Payer celle en attente} other {Payer les # en attente}}",
+      "rechazar": "Rejeter",
+      "rechazarPendientes": "{count, plural, one {Rejeter celle en attente} other {Rejeter les # en attente}}",
+      "clawback": "Annuler le paiement (clawback)",
+      "verOrigen": "Voir le document d'origine",
+      "verAsiento": "Voir l'écriture",
+      "actualizar": "Actualiser",
+      "reglas": "Règles de commission"
+    },
+    "cifras": {
+      "etiqueta": "Résumé des commissions du filtre",
+      "devengado": "Acquis",
+      "devengadoDetalle": "{count, plural, one {# commission en cours} other {# commissions en cours}}",
+      "porPagar": "À payer",
+      "porPagarDetalle": "{count, plural, =0 {rien en attente} one {# commission à payer} other {# commissions à payer}}",
+      "pagado": "Payé",
+      "pagadoDetalle": "{count, plural, one {# payée} other {# payées}}",
+      "sinPagos": "Aucun paiement pour l'instant",
+      "vendedores": "Vendeurs",
+      "vendedoresAbiertas": "avec des commissions ouvertes",
+      "vendedoresLista": "dans la liste",
+      "noDisponible": "Chargement impossible",
+      "canceladas": "{count, plural, one {# annulée} other {# annulées}} : {rechazadas} rejetées · {clawback} en clawback",
+      "otrasMonedas": "Commissions dans d'autres devises",
+      "otraMoneda": "+ {count, plural, one {# commission} other {# commissions}} en {moneda} : {devengado} acquis · {pagado} payé · {pendiente} en attente"
+    },
+    "filtros": {
+      "buscar": "Rechercher un vendeur ou une note",
+      "fechas": "Dates",
+      "titulo": "Filtrer les commissions",
+      "origen": "Origine",
+      "miembro": "Vendeur",
+      "todos": "Tous"
+    },
+    "vacio": {
+      "porPagar": {
+        "titulo": "Aucune commission à payer",
+        "descripcion": "Les commissions sont créées automatiquement en facturant avec un vendeur ou en gagnant une opportunité, avec le taux des règles de commission."
+      },
+      "pagadas": {
+        "titulo": "Aucune commission payée pour l'instant",
+        "descripcion": "Quand vous payerez des commissions, elles apparaîtront ici avec leur écriture."
+      },
+      "canceladas": {
+        "titulo": "Aucune commission annulée",
+        "descripcion": "Les commissions rejetées et annulées (clawback) apparaissent ici avec leur motif."
+      },
+      "todas": {
+        "titulo": "Aucune commission pour l'instant",
+        "descripcion": "Elles sont créées automatiquement en facturant avec un vendeur ou en gagnant une opportunité, avec le taux des règles de commission."
+      }
+    },
+    "sinResultados": {
+      "titulo": "Aucune commission ne correspond",
+      "descripcion": "Élargissez les dates, changez de vendeur ou retirez des filtres."
+    },
+    "error": {
+      "titulo": "Impossible de charger les commissions",
+      "descripcion": "Vérifiez votre connexion et réessayez."
+    },
+    "errorParcial": "Impossible d'actualiser la liste ({error}). La dernière connue est affichée.",
+    "mostrando": "{shown} sur {total} commissions · {vendedores, plural, one {# vendeur} other {# vendeurs}}",
+    "mostrandoTodo": "{count, plural, one {# commission} other {# commissions}} · {vendedores, plural, one {# vendeur} other {# vendeurs}}",
+    "cargarMas": "Charger plus",
+    "cargando": "Chargement…",
+    "errores": {
+      "pagar": "Paiement impossible",
+      "rechazar": "Rejet impossible",
+      "clawback": "Annulation impossible"
+    },
+    "pagar": {
+      "titulo": "Payer les commissions de {nombre}",
+      "tituloVarios": "Payer les commissions de {count, plural, one {# vendeur} other {# vendeurs}}",
+      "subtitulo": "{count, plural, one {# commission en attente} other {# commissions en attente}}. Seules celles toujours en attente sont payées.",
+      "base": "Base des ventes",
+      "baseMoneda": "Base des ventes ({moneda})",
+      "total": "Total à payer",
+      "totalMoneda": "Total à payer ({moneda})",
+      "variasMonedas": "Il y a des commissions dans plusieurs devises : chacune est payée dans la sienne, jamais additionnées.",
+      "fecha": "Date de paiement",
+      "fechaAyuda": "Le paiement est enregistré à la date du jour.",
+      "referencia": "Référence",
+      "referenciaEjemplo": "Ex. : Virement 99120",
+      "asiento": "L'écriture du paiement débite les commissions à payer et crédite le compte d'où sort l'argent.",
+      "confirmar": "Payer",
+      "confirmarTotal": "Payer {total}",
+      "nadaPendiente": "Il n'y a aucune commission en attente à payer."
+    },
+    "rechazar": {
+      "titulo": "{count, plural, one {Rejeter la commission} other {Rejeter # commissions}}",
+      "descripcion": "{count, plural, one {La commission de {nombre} sera annulée (rejetée).} other {Les # commissions de {nombre} seront annulées (rejetées).}}",
+      "consecuencia": "Son écriture d'acquisition est contrepassée et le motif est conservé sur chaque commission.",
+      "confirmar": "Rejeter"
+    },
+    "clawback": {
+      "titulo": "Annuler une commission payée (clawback)",
+      "descripcion": "Vous allez annuler {importe} de {nombre}.",
+      "consecuencia1": "La commission passe à annulée ; la date de paiement est conservée comme preuve.",
+      "consecuencia2": "Ses écritures sont contrepassées. Irréversible depuis cet écran.",
+      "confirmar": "Annuler le paiement"
+    }
+  },
+  "posDevolucionesAnular": {
+    "menu": {
+      "imprimir": "Imprimer le justificatif",
+      "anular": "Annuler le retour…",
+      "anularAyuda": "Ouvre la boîte de dialogue adaptée à l’état de l’avoir.",
+      "motivoAnulada": "Le retour est déjà annulé.",
+      "motivoSinPermiso": "Il vous faut l’autorisation « Annuler des ventes ».",
+      "reenviar": "Renvoyer l’avoir à la DIAN",
+      "reenviando": "Renvoi de l’avoir…",
+      "motivoSinPermisoFinanzas": "Il vous faut l’autorisation « Enregistrer en finances » pour renvoyer à la DIAN.",
+      "reenviada": "{numero} est en file d’attente pour être renvoyé à la DIAN.",
+      "errorReenvio": "Impossible de renvoyer l’avoir. Réessayez ou consultez-le dans Facturation électronique."
+    },
+    "estadosNota": {
+      "aceptada": "accepté",
+      "rechazada": "rejeté",
+      "en_envio": "en cours d’envoi à la DIAN",
+      "sin_transmitir": "non transmis",
+      "anulada": "annulé"
+    },
+    "dialogo": {
+      "titulo": "Annuler {numero}",
+      "descEfectivo": "Remboursement en espèces de {monto}",
+      "descSaldo": "Avoir client de {monto}",
+      "descNota": "{numero} {estado}",
+      "avisoRechazada": {
+        "titulo": "Annulation possible : la DIAN a rejeté l’avoir {numero}.",
+        "texto": "Un avoir rejeté ou non transmis n’a pas d’effet fiscal ; le retour est donc contrepassé par une écriture miroir."
+      },
+      "avisoSinTransmitir": {
+        "titulo": "Annulation possible : l’avoir {numero} n’a pas été transmis à la DIAN.",
+        "texto": "Il est contrepassé par une écriture miroir."
+      },
+      "avisoSinNota": {
+        "titulo": "Annulation possible : la vente n’a pas de facture, donc pas d’avoir.",
+        "texto": "Il est contrepassé par une écriture miroir."
+      },
+      "periodoCerradoHoy": "La période du retour est clôturée : l’écriture miroir est datée d’aujourd’hui."
+    },
+    "queSeRevierte": "Ce qui est contrepassé",
+    "consecuencias": {
+      "asientos": "Contrepassé par une écriture miroir : {numeros}.",
+      "sinAsientos": "Aucune écriture comptabilisée à contrepasser.",
+      "inventario": "{unidades, plural, one {# unité} other {# unités}} de {productos} ressort du stock ({sucursal}).",
+      "notaRechazada": "L’avoir {numero} est annulé : la DIAN ne l’a pas validé, il n’y a rien à contrepasser de ce côté.",
+      "notaSinTransmitir": "L’avoir {numero} n’a jamais été transmis : il est annulé sans rien envoyer à la DIAN.",
+      "caja": "La caisse (session n° {sesion}) enregistre l’entrée des {monto} que le client rend.",
+      "cajaSinSesion": "Une caisse ouverte enregistre l’entrée des {monto} que le client rend (caisse ouverte requise).",
+      "saldo": "L’avoir client de {monto} est annulé.",
+      "venta": "La vente {venta} redevient « Payée » et le retour reste visible comme « Annulé » avec son motif.",
+      "laVenta": "d’origine",
+      "saldoUsado": "L'avoir non utilisé ({disponible}) est annulé et la partie utilisée ({usado}) devient une créance sur le client."
+    },
+    "fecha": {
+      "etiqueta": "Date de l’écriture miroir",
+      "hoy": "Aujourd’hui · {dia}",
+      "hoyCerrado": "Aujourd’hui · clôturée",
+      "original": "Date d’origine · {dia}",
+      "originalCerrado": "Date d’origine · clôturée",
+      "ayudaAbierto": "{mes} est encore ouvert : vous pouvez garder l’écriture miroir à la date d’origine. Avec « Aujourd’hui », elle tombe en {mesHoy}.",
+      "ayudaMismoMes": "{mes} est encore ouvert : avec l’une ou l’autre date, l’écriture miroir reste dans la même période.",
+      "ayudaCerrado": "{mes} est clôturé. On ne contrepasse jamais dans une période clôturée : l’écriture miroir est datée d’aujourd’hui.",
+      "ayudaHoyCerrado": "{mesHoy} est clôturé : l’écriture miroir prend la date d’origine."
+    },
+    "motivosRapidos": {
+      "error": "Saisi par erreur",
+      "producto": "Mauvais produit",
+      "noDevolvio": "Le client ne l’a pas rendu"
+    },
+    "etiquetaMotivo": "Motif",
+    "placeholder": "Pourquoi le retour est annulé. Il reste dans l’historique.",
+    "confirmar": "Annuler le retour",
+    "cargando": "Vérification de l’avoir, de la période et de la caisse…",
+    "errorCarga": "Impossible de vérifier le retour. Fermez et réessayez.",
+    "hecho": "{numero} a été annulé",
+    "hechoPendiente": "{numero} a été annulé ; {n, plural, one {# écriture miroir est restée} other {# écritures miroir sont restées}} en attente comptable.",
+    "noSePuede": {
+      "titulo": "Impossible d’annuler {numero}",
+      "descripcion": "{numero} accepté par la DIAN le {fecha}",
+      "descripcionSinFecha": "{numero} accepté par la DIAN",
+      "avisoTitulo": "L’avoir {numero} a déjà été validé par la DIAN.",
+      "avisoTexto": "Un retour avec un avoir accepté n’est pas contrepassé : ni par une écriture miroir ni en le supprimant.",
+      "queHacer": "Que faire à la place",
+      "pasos": {
+        "venta": "Si le client garde de nouveau le produit, enregistrez une nouvelle vente avec sa nouvelle facture électronique.",
+        "sinCambios": "Le retour et l’avoir ne changent pas ; le stock et la caisse bougent avec la nouvelle vente.",
+        "enlace": "La nouvelle vente est liée à ce retour : elle apparaît dans la chaîne Vente → Retour → Avoir → Nouvelle vente."
+      },
+      "cerrar": "Fermer",
+      "registrarVenta": "Enregistrer une nouvelle vente"
+    },
+    "errores": {
+      "motivoObligatorio": "Saisissez le motif (5 caractères minimum).",
+      "fechaEspejoInvalida": "Choisissez la date de l’écriture miroir.",
+      "devolucionNoEncontrada": "Le retour n’existe pas.",
+      "devolucionInvalida": "Le retour n’est pas valide.",
+      "sinAccesoSucursal": "Vous n’avez pas accès à l’agence de ce retour.",
+      "sinPermiso": "Il vous faut l’autorisation « Annuler des ventes » pour annuler un retour. Demandez-la à l’administrateur de l’organisation.",
+      "yaAnulada": "Le retour est déjà annulé.",
+      "estadoInvalido": "Seul un retour traité peut être annulé.",
+      "notaAceptadaDian": "La DIAN a déjà accepté l’avoir : le retour n’est pas annulé.",
+      "notaEnEnvioDian": "L’avoir est en cours d’envoi à la DIAN et il n’y a pas encore de réponse. Attendez quelques minutes et rouvrez cette boîte de dialogue : s’il est rejeté, il pourra être annulé ; s’il est accepté, enregistrez une nouvelle vente.",
+      "notaYaAnulada": "L’avoir a déjà été annulé depuis Finances : son écriture est déjà contrepassée. Revoyez le retour avec le comptable avant d’y toucher : il ne peut pas être annulé ici.",
+      "devolucionDeGarantia": "Ce retour provient d’une garantie et ses unités endommagées ont leurs propres mouvements. Gérez-le depuis la garantie (Stock › Numéros de série) au lieu de l’annuler ici.",
+      "devolucionConMembresia": "Le retour a réduit ou annulé un abonnement et cela ne s’annule pas automatiquement. Ajustez l’abonnement dans Abonnements et, si le client le garde, enregistrez une nouvelle vente.",
+      "saldoAFavorAplicado": "Le client a déjà utilisé (tout ou partie de) l’avoir créé par ce retour. Annulez d’abord cette utilisation dans Finances › Avoirs clients puis réessayez.",
+      "serialNoDisponible": "Un numéro de série du retour n’est plus dans l’état laissé par le retour : il a été vendu ou changé d’agence. Consultez son historique dans Stock › Numéros de série ; d’ici là, le retour ne peut pas être annulé.",
+      "periodoCerrado": "La période du retour et celle d’aujourd’hui sont clôturées, et on ne contrepasse jamais dans une période clôturée. Demandez au comptable de rouvrir l’une des deux.",
+      "periodoOriginalCerrado": "La période de la date d’origine est clôturée : utilisez la date d’aujourd’hui.",
+      "periodoHoyCerrado": "La période d’aujourd’hui est clôturée : utilisez la date d’origine.",
+      "efectivoSinCaja": "Le remboursement a été fait en espèces et l’argent que le client rend doit entrer dans une caisse. Ouvrez la caisse de l’agence dans PDV › Caisses puis réessayez.",
+      "stockInsuficiente": "Le produit n’est plus dans le stock de l’agence (il a été revendu) : il ne peut pas ressortir.",
+      "generico": "Impossible d’annuler le retour. Réessayez.",
+      "saldoAFavorNoVigente": "L'avoir issu de ce retour a déjà été annulé ou a expiré dans Finances › Avoirs. Vérifiez-le avec le comptable : il ne peut pas être annulé ici.",
+      "confirmarSaldoUsado": "Confirmez que ce que le client a déjà utilisé de l'avoir deviendra une créance.",
+      "mercanciaEnBodega": "Si la marchandise reste à l'entrepôt, le retour n'est pas annulé : enregistrez une nouvelle vente avec une nouvelle facture.",
+      "asientoSaldoNoEncontrado": "L'avoir n'a pas d'écriture comptable publiée. Vérifiez Finances › En attente comptable et réessayez.",
+      "sinCuentaPorCobrar": "Le compte clients manque dans la configuration comptable. Demandez au comptable de le configurer."
+    },
+    "detalle": {
+      "avisoTitulo": "Annulé le {fecha} par {usuario} · « {motivo} »",
+      "avisoTituloSinUsuario": "Annulé le {fecha} · « {motivo} »",
+      "avisoEspejo": "Écriture miroir {numeros}",
+      "avisoIngreso": "entrée de {monto} dans la session n° {sesion}",
+      "avisoUnidades": "{unidades, plural, one {# unité est ressortie} other {# unités sont ressorties}} du stock",
+      "avisoNota": "{numero} annulé",
+      "avisoNotaRechazada": "{numero} annulé (la DIAN l’avait rejeté)",
+      "devueltoAnulada": "{monto} · annulé",
+      "estadoVentaAnulada": "{estado} (retour annulé)",
+      "eventos": {
+        "anulada": "A annulé le retour · « {motivo} »",
+        "espejo": "Écriture miroir {numeros}",
+        "espejoIngreso": "Écriture miroir {numeros} et entrée de {monto} dans la session n° {sesion}",
+        "ingreso": "Entrée de {monto} dans la session n° {sesion}"
+      }
+    },
+    "cadena": {
+      "ventaNueva": "Nouvelle vente",
+      "reventaDe": "Revente de"
+    },
+    "saldoUsado": {
+      "titulo": "Le client a déjà utilisé {usado} de l'avoir",
+      "texto": "Ce montant deviendra une créance sur {cliente} dans son compte client, comptée à partir de la date d'annulation. L'achat où il l'a dépensé ({compras}) ne change pas.",
+      "textoSinCompra": "Ce montant deviendra une créance sur {cliente} dans son compte client, comptée à partir de la date d'annulation.",
+      "elCliente": "le client"
+    },
+    "confirmaciones": {
+      "mercancia": "Le client reprend la marchandise.",
+      "mercanciaAyudaAntes": "La marchandise reste-t-elle à l'entrepôt ? Alors le retour n'est pas annulé :",
+      "mercanciaAyudaEnlace": "enregistrez une nouvelle vente",
+      "mercanciaAyudaDespues": " avec une nouvelle facture.",
+      "saldo": "Je comprends que {usado} deviendront une créance sur le client.",
+      "faltaMercancia": "Cochez que le client reprend la marchandise. Si elle reste à l'entrepôt, enregistrez une nouvelle vente.",
+      "faltaSaldo": "Confirmez que {usado} deviendront une créance sur le client."
+    }
+  },
+  "detallesMarca": {
+    "producto": {
+      "eliminado": "Produit supprimé",
+      "abrirFicha": "Ouvrir la fiche du produit"
+    },
+    "pagos": {
+      "metodo": "Méthode",
+      "referencia": "Référence",
+      "fecha": "Date",
+      "cobrado": "Encaissé",
+      "importe": "Montant",
+      "seCobraAlEntregar": "Encaissé à la livraison",
+      "pagoDe": "Paiement par {metodo}",
+      "concilia": "Rapproché dans <enlace>Processeurs de paiement</enlace>.",
+      "submetodos": {
+        "card": "Carte",
+        "transfer": "Virement",
+        "cash": "Espèces",
+        "botonBancolombia": "Bouton Bancolombia",
+        "corresponsalBancolombia": "Correspondant Bancolombia",
+        "cuotasBancolombia": "Paiement échelonné Bancolombia",
+        "dineroEnCuenta": "Solde du compte",
+        "nequi": "Nequi",
+        "pse": "PSE",
+        "daviplata": "Daviplata",
+        "suPlus": "SU+ Pay"
+      }
+    },
+    "tienda": {
+      "ver": "Voir dans la boutique",
+      "otraPestana": "(s’ouvre dans un nouvel onglet)",
+      "abre": "Ouvre ce produit dans votre boutique, dans un nouvel onglet",
+      "noPublicado": "Non publié dans la boutique en ligne",
+      "motivos": {
+        "inactivo": "Seuls les produits actifs apparaissent dans la boutique : activez-le pour le voir.",
+        "eliminado": "Le produit est supprimé et la boutique ne l’affiche pas.",
+        "padreInactivo": "Le produit parent n’est pas actif : activez-le pour voir cette variante dans la boutique.",
+        "padreEliminado": "Le produit parent est supprimé et la boutique ne l’affiche pas."
+      }
+    }
+  },
+  "accesoSucursal": {
+    "titulo": "Dans quelle succursale travaillez-vous aujourd’hui ?",
+    "descripcion": "{organizacion} · vous avez accès à {total} succursales. Vous pouvez la changer à tout moment depuis la barre supérieure.",
+    "buscar": "Rechercher une succursale…",
+    "sinResultados": "Aucune succursale ne correspond à « {texto} ».",
+    "ultimaUsada": "Dernière utilisée",
+    "abierta": "Ouverte",
+    "cerrada": "Fermée",
+    "abreHoy": "ouvre à {hora}",
+    "abreDia": "ouvre {dia} à {hora}",
+    "cajaAbierta": "Caisse n° {id} ouverte",
+    "todas": "Toutes les succursales",
+    "todasDetalle": "Vue d’ensemble de l’organisation",
+    "resumen": "Résumé",
+    "entrarA": "Entrer dans {nombre}",
+    "cambiarOrganizacion": "Changer d’organisation",
+    "noEsTuCuenta": "Ce n’est pas votre compte ?",
+    "entrarConOtra": "Se connecter avec un autre",
+    "error": "Impossible de charger vos succursales.",
+    "entrarSinElegir": "Continuer sans choisir de succursale",
+    "rechazada": "Vous n’avez plus accès à cette succursale. Choisissez-en une autre."
   }
 }

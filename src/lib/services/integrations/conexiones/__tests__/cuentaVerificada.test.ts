@@ -50,6 +50,31 @@ describe('probarLlaves devuelve con quién quedó conectado', () => {
     expect(String(f.mock.calls[0][0])).toBe('https://api.mercadopago.com/users/me');
   });
 
+  it('Mercado Pago: las llaves de prueba nuevas empiezan por APP_USR- y son de un usuario de prueba', async () => {
+    expect(validarFormatoLlaves('mercadopago', 'sandbox', { public_key: 'APP_USR-x', access_token: 'APP_USR-y' })).toEqual([]);
+    const prueba = jest.fn(async (_url: string) => responder({ id: 1, nickname: 'TESTUSER123', tags: ['normal', 'test_user'], country_id: 'CO' }));
+    const p = await probarLlaves('mercadopago', 'sandbox', { public_key: 'APP_USR-x', access_token: 'APP_USR-y' }, prueba as unknown as typeof fetch);
+    expect(p.cuenta?.ambiente).toBe('sandbox');
+    const real = jest.fn(async (_url: string) => responder({ id: 2, nickname: 'TIENDAREAL', tags: ['normal'], country_id: 'CO' }));
+    const q = await probarLlaves('mercadopago', 'sandbox', { public_key: 'APP_USR-x', access_token: 'APP_USR-y' }, real as unknown as typeof fetch);
+    expect(q.cuenta?.ambiente).toBe('production');
+  });
+
+  it('Bold: producción se prueba con la API de links; en pruebas no hay API que acepte la llave (sin_prueba, sin llamar)', async () => {
+    const llaves = { identity_key: 'id-x', secret_key: 'sec-y' };
+    const real = jest.fn(async (_url: string) => responder({ payment_methods: [{ name: 'CREDIT_CARD' }, { name: 'PSE' }] }));
+    const p = await probarLlaves('bold', 'production', llaves, real as unknown as typeof fetch);
+    expect(p).toMatchObject({ resultado: 'correcta', cuenta: { nombre: 'Bold', metodos: ['CREDIT_CARD', 'PSE'] } });
+    expect(String(real.mock.calls[0][0])).toBe('https://integrations.api.bold.co/online/link/v1/payment_methods');
+    // Bold responde 403 a toda llave de prueba (igual que a una inventada): no se llama.
+    const nunca = jest.fn(async (_url: string) => responder({}, 403));
+    const q = await probarLlaves('bold', 'sandbox', llaves, nunca as unknown as typeof fetch);
+    expect(q).toMatchObject({ resultado: 'sin_prueba', cuenta: { ambiente: 'sandbox' } });
+    expect(nunca).not.toHaveBeenCalled();
+    const mala = jest.fn(async (_url: string) => responder({ message: 'denied' }, 403));
+    expect((await probarLlaves('bold', 'production', llaves, mala as unknown as typeof fetch)).resultado).toBe('rechazada');
+  });
+
   it('Stripe: /v1/account (nombre del negocio, país, modo)', async () => {
     const f = jest.fn(async (_url: string) => responder({ id: 'acct_1', country: 'US', business_profile: { name: 'Negocio Prueba' } }));
     const p = await probarLlaves('stripe', 'production', { publishable_key: 'pk_live_x', secret_key: 'sk_live_y' }, f as unknown as typeof fetch);
@@ -90,6 +115,23 @@ describe('se guarda y se muestra («Conectado como …»)', () => {
     expect(JSON.stringify(settings)).not.toMatch(/prv_prod|prod_events|prod_integrity/);
     const [c] = await listarConexiones(b.db, ORG);
     expect(c.conectadoComo).toBe('Tienda de prueba');
+  });
+
+  it('Bold en pruebas: las llaves se guardan sin prueba (Bold no deja probarlas); en producción con 403, no', async () => {
+    const BOLD_LINK = 'aaaaaaaa-aaaa-4aaa-8aaa-000000000002';
+    const b = crearBaseFalsa({
+      integration_providers: [{ code: 'bold', name: 'Bold', category: 'payments', is_active: true }],
+      integration_connectors: [{ id: BOLD_LINK, code: 'bold_link', name: 'Bold link', is_active: true, provider: { code: 'bold', name: 'Bold', category: 'payments' } }],
+    });
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation((async () => responder({}, 403)) as unknown as typeof fetch);
+    const r = await guardarLlaves(b.db, { organizationId: ORG, userId: 'u' }, { proveedor: 'bold', ambiente: 'sandbox', valores: { identity_key: 'id-p', secret_key: 'sec-p' } });
+    expect(r.guardadaSinPrueba).toBe(true);
+    expect(b.tablas.integration_connections[0]).toMatchObject({ status: 'connected', environment: 'sandbox' });
+    expect(b.tablas.integration_credentials.map((c) => c.purpose).sort()).toEqual(['identity_key', 'secret_key']);
+    expect(fetchMock).not.toHaveBeenCalled();
+    const p = await guardarLlaves(b.db, { organizationId: ORG, userId: 'u' }, { proveedor: 'bold', ambiente: 'production', valores: { identity_key: 'id-r', secret_key: 'sec-r' } });
+    expect(p.prueba.resultado).toBe('rechazada');
+    expect(b.tablas.integration_connections).toHaveLength(1);
   });
 
   it('«Probar» de una conexión existente lo actualiza sin pisar otros ajustes', async () => {

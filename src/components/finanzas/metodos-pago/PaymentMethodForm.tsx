@@ -3,13 +3,19 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase/config";
-import { Dialogo, FormField, SeccionPlegable, clasesBoton } from "@/components/kit";
+import { Dialogo, FormField, SeccionPlegable, SelectorEntidad, clasesBoton } from "@/components/kit";
+import {
+  FILTROS_METODO_PAGO,
+  construirOpcionesMetodoPago,
+  filtrarOpcionesMetodoPago,
+  type OpcionMetodoPago,
+} from "@/lib/finanzas/metodosPagoSelector";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/shared/RichTextEditor";
 import { PaymentMethod, OrganizationPaymentMethod } from "./PaymentMethodsPage";
 import { claveErrorMetodoPago, requiereReferenciaMetodo } from "@/lib/finanzas/metodosPagoOrganizacion";
@@ -25,6 +31,8 @@ interface PaymentMethodFormProps {
   selectedMethod: OrganizationPaymentMethod | null;
   /** Nuevo método con el código ya elegido («Agregar» de un método usado sin configurar). */
   codigoInicial?: string;
+  /** Códigos que la organización ya tiene: en el buscador salen como «Ya lo tienes». */
+  codigosOrganizacion?: readonly string[];
   onSaveComplete: () => void;
 }
 
@@ -103,6 +111,7 @@ export default function PaymentMethodForm({
   globalMethods,
   selectedMethod,
   codigoInicial,
+  codigosOrganizacion = [],
   onSaveComplete,
 }: PaymentMethodFormProps) {
   const { toast } = useToast();
@@ -120,6 +129,8 @@ export default function PaymentMethodForm({
   const [sucursales, setSucursales] = useState<number[] | null>(normalizarSucursales(selectedMethod?.branch_ids));
   const [cuentasContables, setCuentasContables] = useState<CuentaContable[]>([]);
   const [cuentasBancarias, setCuentasBancarias] = useState<CuentaBancaria[]>([]);
+  // Conectores con conexión activa: el buscador dice «Conectada» o «Sin conectar» en cada pasarela.
+  const [conectoresConectados, setConectoresConectados] = useState<string[]>([]);
 
   const currentMethod = globalMethods.find((m) => m.code === valores.payment_method_code);
   const editando = selectedMethod !== null;
@@ -171,6 +182,37 @@ export default function PaymentMethodForm({
       vigente = false;
     };
   }, [abierto, organizationId]);
+
+  // Pasarelas conectadas de la organización (solo al crear: es para el buscador de métodos).
+  useEffect(() => {
+    if (!abierto || !organizationId || selectedMethod) return;
+    let vigente = true;
+    void supabase
+      .from("integration_connections")
+      .select("status, connector:integration_connectors(code)")
+      .eq("organization_id", organizationId)
+      .eq("status", "connected")
+      .then(({ data, error }) => {
+        if (error) console.error("Error al cargar conexiones:", error);
+        const codigos = ((data ?? []) as { connector: { code?: string } | { code?: string }[] | null }[])
+          .map((f) => (Array.isArray(f.connector) ? f.connector[0]?.code : f.connector?.code))
+          .filter((c): c is string => typeof c === "string");
+        if (vigente) setConectoresConectados(codigos);
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [abierto, organizationId, selectedMethod]);
+
+  const opcionesMetodo = construirOpcionesMetodoPago({
+    manuales: globalMethods.filter((m) => MANUAL_METHODS.includes(m.code)),
+    integraciones: PAYMENT_INTEGRATIONS,
+    codigosOrganizacion,
+    conectoresConectados,
+  });
+  const opcionElegida: OpcionMetodoPago | null = isNewMethod
+    ? { valor: "new", codigo: "new", nombre: t("metodo.crearPersonalizado"), grupo: "manual", tipo: "efectivo_bancos", yaLoTiene: false, conectada: null }
+    : opcionesMetodo.find((o) => o.valor === valores.payment_method_code) ?? null;
 
   const poner = <K extends keyof Valores>(campo: K, valor: Valores[K]) => {
     setValores((v) => ({ ...v, [campo]: valor }));
@@ -437,30 +479,47 @@ export default function PaymentMethodForm({
         {!editando && (
           <FormField etiqueta={t("metodo.campos.metodo")} obligatorio error={errores.payment_method_code}>
             {(c) => (
-              <Select value={isNewMethod ? "new" : valores.payment_method_code || undefined} onValueChange={handlePaymentMethodChange}>
-                <SelectTrigger id={c.id} aria-labelledby={c.idEtiqueta} aria-describedby={c["aria-describedby"]} className={CLASE_CONTROL}>
-                  <SelectValue placeholder={t("metodo.elegir")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>{t("metodo.grupos.manuales")}</SelectLabel>
-                    {globalMethods.filter((m) => MANUAL_METHODS.includes(m.code)).map((m) => (
-                      <SelectItem key={m.code} value={m.code}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectGroup>
-                    <SelectLabel>{t("metodo.grupos.integraciones")}</SelectLabel>
-                    {PAYMENT_INTEGRATIONS.map((i) => (
-                      <SelectItem key={i.code} value={`integration_${i.code}`}>
-                        {i.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                  <SelectItem value="new">{t("metodo.crearPersonalizado")}</SelectItem>
-                </SelectContent>
-              </Select>
+              // Buscador del kit (Figma 2714:150934): filtros por tipo, «Ya lo tienes» deshabilitado,
+              // estado de conexión de cada pasarela y «Crear método personalizado» fijo abajo.
+              <SelectorEntidad<OpcionMetodoPago>
+                id={c.id}
+                aria-describedby={c["aria-describedby"]}
+                aria-invalid={c["aria-invalid"]}
+                valor={opcionElegida}
+                aOpcion={(o) => ({
+                  id: o.valor,
+                  titulo: o.nombre,
+                  subtitulo: o.grupo === "pasarela" ? t("metodo.selector.requiereConexion") : null,
+                  etiqueta: t(`metodo.selector.grupo.${o.grupo}`),
+                  tonoEtiqueta: o.grupo === "pasarela" ? "informacion" : "neutro",
+                  deshabilitada: o.yaLoTiene,
+                  motivo: o.yaLoTiene ? t("metodo.selector.yaLoTienes") : undefined,
+                  insignia:
+                    o.conectada === null
+                      ? null
+                      : { texto: o.conectada ? t("metodo.selector.conectada") : t("metodo.selector.sinConectar"), tono: o.conectada ? "exito" : "neutro" },
+                })}
+                buscar={(texto, _senal, filtros) => Promise.resolve(filtrarOpcionesMetodoPago(opcionesMetodo, texto, filtros))}
+                onCambiar={(o) => handlePaymentMethodChange(o.valor)}
+                onCrear={(texto) => {
+                  handlePaymentMethodChange("new");
+                  if (texto) setValores((v) => ({ ...v, name: texto }));
+                }}
+                filtros={FILTROS_METODO_PAGO.map((f) => ({ id: f, etiqueta: t(`metodo.selector.filtros.${f}`) }))}
+                icono={Wallet}
+                layout="campo"
+                etiqueta={t("metodo.campos.metodo")}
+                textoCrearNuevo={t("metodo.crearPersonalizado")}
+                textos={{
+                  placeholder: t("metodo.elegir"),
+                  buscar: t("metodo.selector.buscar"),
+                  titulo: t("metodo.campos.metodo"),
+                  vacio: t("metodo.selector.vacio"),
+                  sinResultados: t("metodo.selector.sinResultados"),
+                  crear: (texto) => t("metodo.selector.crearTexto", { texto }),
+                  filtros: t("metodo.selector.filtrosEtiqueta"),
+                }}
+              />
             )}
           </FormField>
         )}

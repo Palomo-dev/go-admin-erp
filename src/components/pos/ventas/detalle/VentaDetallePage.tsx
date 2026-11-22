@@ -28,6 +28,7 @@ import { useMonedaOrganizacion } from '@/lib/hooks/useOrgCurrency';
 import { abrirDocumento, imprimirDocumento } from '@/lib/documents/cliente';
 import { PrintJobsService } from '@/lib/services/printJobsService';
 import { BADGE_ESTADO_VENTA } from '@/lib/pos/ventas/estadoVenta';
+import { numeroDevolucion } from '@/lib/pos/devoluciones/presentacionDevoluciones';
 import { accionesDeVenta, destinoCobro, type DisponibilidadAccion } from '@/lib/pos/ventas/accionesVenta';
 import { ErrorPeticionVentas, pedirDetalleVenta } from '@/lib/pos/ventas/clienteVentas';
 import type { DetalleVenta } from '@/lib/pos/ventas/detalleServidor';
@@ -55,6 +56,7 @@ const RUTA = '/app/pos/ventas';
 
 export function VentaDetallePage({ ventaId }: { ventaId: string }) {
   const t = useTranslations('posVentas');
+  const tAnular = useTranslations('posDevolucionesAnular');
   const router = useRouter();
   const params = useSearchParams();
   const moneda = useMonedaOrganizacion();
@@ -273,7 +275,26 @@ export function VentaDetallePage({ ventaId }: { ventaId: string }) {
         ]
       : []),
     ...venta.pagos.map((p) => ({ id: `pago-${p.id}`, tipo: 'pago' as const, numero: fechaHora(p.fecha), importe: formatear(p.monto), estado: p.estado })),
-    ...venta.devoluciones.map((d) => ({ id: `dev-${d.id}`, tipo: 'devolucion' as const, numero: `#${d.id}`, importe: formatear(d.total), estado: d.estado })),
+    // Venta nueva que revende una devolución con nota crédito aceptada por la DIAN.
+    ...(venta.reventa_de
+      ? [
+          {
+            id: `reventa-${venta.reventa_de.id}`,
+            tipo: 'devolucion' as const,
+            etiquetaTipo: tAnular('cadena.reventaDe'),
+            numero: venta.reventa_de.numero,
+            href: `/app/pos/devoluciones/${venta.reventa_de.id}`,
+          },
+        ]
+      : []),
+    ...venta.devoluciones.map((d) => ({
+      id: `dev-${d.id}`,
+      tipo: 'devolucion' as const,
+      numero: numeroDevolucion(d.id),
+      importe: formatear(d.total),
+      estado: d.estado,
+      href: `/app/pos/devoluciones/${d.id}`,
+    })),
     ...venta.notas_credito.map((n) => ({
       id: `nc-${n.id}`,
       tipo: 'notaCredito' as const,

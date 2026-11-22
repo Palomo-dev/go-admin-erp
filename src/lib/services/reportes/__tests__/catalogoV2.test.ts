@@ -48,6 +48,32 @@ describe('catálogo v2', () => {
     expect(mal.map((r) => r.id)).toEqual([]);
   });
 
+  // Persona, método de pago y «Contar por» viajan a la RPC como `p_persona`,
+  // `p_metodos` y `p_contar_por` solo a través de `parametrosRpcVentas(opciones)`.
+  // Declararlos sin pasarlos sería filtrar de mentira; pasarlos sin declararlos,
+  // un filtro que la barra no deja tocar.
+  test('«persona», «método de pago» y «contar por» van juntos y llegan a la RPC', () => {
+    // Compilado a CommonJS la llamada queda `(0, filtrosVentas_1.parametrosRpcVentas)(opciones)`.
+    const pasa = (r: ReportDefinition) => /parametrosRpcVentas\)?\(opciones\b/.test(cuerpoDeFetch(r));
+    const declarados = (r: ReportDefinition) => (['persona', 'metodoPago', 'contarPor'] as const).filter((f) => r.filtros.includes(f));
+    const incompletos = TODOS.filter((r) => declarados(r).length > 0 && declarados(r).length < 3);
+    expect(incompletos.map((r) => r.id)).toEqual([]);
+    const sinPasarlos = TODOS.filter((r) => declarados(r).length > 0 && !pasa(r));
+    expect(sinPasarlos.map((r) => r.id)).toEqual([]);
+    const sinDeclararlos = TODOS.filter((r) => pasa(r) && declarados(r).length === 0);
+    expect(sinDeclararlos.map((r) => r.id)).toEqual([]);
+  });
+
+  test('los reportes de ventas ampliados declaran sus filtros', () => {
+    for (const id of ['ventas-periodo', 'ventas-vendedor', 'devoluciones-descuentos', 'mas-vendido', 'items-vendidos']) {
+      expect(getReporteById(id)?.filtros).toEqual(['comparativo', 'sucursal', 'franja', 'persona', 'metodoPago', 'contarPor']);
+    }
+    expect(getReporteById('ventas-hora')?.filtros).toEqual(['comparativo', 'sucursal', 'franja']);
+    expect(getReporteById('despacho-mercancias')).toMatchObject({ grupo: 'inventario', modulo: 'inventory', alcance: 'sucursal', nuevo: true });
+    expect(getReporteById('mas-vendido')).toMatchObject({ grupo: 'ventas', modulo: 'pos', nuevo: true });
+    expect(getReporteById('items-vendidos')).toMatchObject({ grupo: 'ventas', modulo: 'pos', nuevo: true });
+  });
+
   test('los alias apuntan a un reporte listado', () => {
     for (const r of TODOS.filter((d) => d.alias)) {
       const destino = getReporteById(r.alias!.destino);

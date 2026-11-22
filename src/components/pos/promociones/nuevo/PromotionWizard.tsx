@@ -16,6 +16,8 @@ import {
   DollarSign,
   Package,
   Truck,
+  CalendarClock,
+  Store,
   type LucideIcon,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -43,15 +45,14 @@ import {
   MinPurchaseScope,
   RuleType,
   RuleTypeDB,
-  WeekDay,
   PROMOTION_TYPE_LABELS,
   APPLIES_TO_LABELS,
 } from '../types';
 import { toast } from 'sonner';
 import { CampoFecha } from '@/components/kit/CampoFecha';
-import { CampoHora } from '@/components/kit/CampoHora';
 import { formatearEnteroEn } from '@/components/kit/idioma';
-import { diasDelIdioma } from '../diasPromocion';
+import { SelectorHorarioPromocion } from '../horario/SelectorHorarioPromocion';
+import { columnasDeHorario, horarioDesdeColumnas, validarHorario, type HorarioFormulario } from '@/lib/promotions/horarioPromocion';
 
 /** Fila de `PromotionsService.getProducts` que usa el paso «Productos». */
 interface ProductoPromocion {
@@ -97,21 +98,6 @@ type Traductor = (clave: string, valores?: Record<string, string | number>) => s
  */
 function diaDelFormulario(valor: string, timezone: string): string {
   return valor.length <= 10 ? valor : plainDayOfInstant(valor, timezone);
-}
-
-/** `HH:mm` del formulario (`CampoHora`). La columna `time` llega como `HH:mm:ss`. */
-function horaDelFormulario(valor: string | null | undefined): string {
-  if (!valor) return '';
-  const m = String(valor).match(/^(\d{1,2}):(\d{2})/);
-  if (!m) return '';
-  return `${m[1].padStart(2, '0')}:${m[2]}`;
-}
-
-/** ¿La franja termina al día siguiente (fin anterior al inicio)? */
-function cruzaMedianoche(inicio: string | null | undefined, fin: string | null | undefined): boolean {
-  const a = horaDelFormulario(inicio);
-  const b = horaDelFormulario(fin);
-  return Boolean(a && b && b < a);
 }
 
 function enteroDelCampo(valor: string): number | null {
@@ -160,7 +146,6 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const router = useRouter();
   const t = useTranslations('posPromociones');
   const locale = useLocale();
-  const diasSemana = diasDelIdioma(locale);
   const ejemploRepetir = `$${formatearEnteroEn(5000, locale)}`;
   // `promotions.start_date` / `.end_date` son timestamptz. En el formulario se
   // manejan como dias de la organizacion; el servicio los convierte a instantes
@@ -177,6 +162,11 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
   const [conflictos, setConflictos] = useState<ConflictoSolape[]>([]);
   const [errorFechaFin, setErrorFechaFin] = useState<string | null>(null);
   const [erroresPaso, setErroresPaso] = useState<Partial<Record<CampoDescuento, string>>>({});
+  // «Cuándo está activa»: el control guarda los tres modos a la vez (cambiar de
+  // modo no borra lo escrito); al guardar se escriben solo las columnas del modo elegido.
+  const [horario, setHorario] = useState<HorarioFormulario>(() => horarioDesdeColumnas(initialData ?? {}));
+  const [mostrarErroresHorario, setMostrarErroresHorario] = useState(false);
+  const columnasHorario = columnasDeHorario(horario);
   const [formData, setFormData] = useState<CreatePromotionData>(() => {
     const base: CreatePromotionData = {
       name: '',
@@ -266,9 +256,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     formData.applies_to,
     formData.start_date,
     formData.end_date,
-    formData.start_time,
-    formData.end_time,
-    (formData.applicable_days ?? []).join(','),
+    JSON.stringify(columnasHorario),
     (formData.branches ?? []).join(','),
     formData.applies_to_web,
     formData.applies_to_pos,
@@ -311,9 +299,10 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
         applies_to_finances: formData.applies_to_finances,
         start_date: formData.start_date,
         end_date: formData.end_date,
-        applicable_days: formData.applicable_days,
-        start_time: formData.start_time,
-        end_time: formData.end_time,
+        applicable_days: columnasHorario.applicable_days,
+        start_time: columnasHorario.start_time,
+        end_time: columnasHorario.end_time,
+        schedule_windows: columnasHorario.schedule_windows,
         rules: reglas,
       })
         .then((lista) => {
@@ -419,6 +408,11 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
           return false;
         }
         setErrorFechaFin(null);
+        if (validarHorario(horario)) {
+          setMostrarErroresHorario(true);
+          toast.error(t('horario.errorRevisar'));
+          return false;
+        }
         return true;
       case 3:
         return validarPaquete();
@@ -494,6 +488,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
     try {
       const dataToSave = {
         ...formData,
+        ...columnasHorario,
         rules: buildRules()
       };
 
@@ -532,6 +527,7 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
         etiqueta={t('formulario.pasosEtiqueta')}
       />
 
+      {currentStep !== 2 && (
       <FormSection titulo={t(`pasos.${pasoActual.id}`)} icono={pasoActual.icon}>
           {/* Step 0: Datos Básicos */}
           {currentStep === 0 && (
@@ -833,239 +829,6 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
             </div>
           )}
 
-          {/* Step 2: Vigencia */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-fg">{t('formulario.fechaInicio')}</Label>
-                  <CampoFecha
-                    aria-label={t('formulario.fechaInicio')}
-                    valor={formData.start_date || ''}
-                    onValorChange={(dia) => cambiarFecha('start_date', dia)}
-                  />
-                </div>
-                <div>
-                  <Label className="text-fg">{t('formulario.fechaFin')}</Label>
-                  <CampoFecha
-                    aria-label={t('formulario.fechaFin')}
-                    valor={formData.end_date || ''}
-                    min={formData.start_date || undefined}
-                    aria-invalid={errorFechaFin ? true : undefined}
-                    aria-describedby={errorFechaFin ? 'promo-error-fecha-fin' : undefined}
-                    onValorChange={(dia) => cambiarFecha('end_date', dia)}
-                  />
-                  {errorFechaFin && (
-                    <p id="promo-error-fecha-fin" role="alert" className="mt-1 text-xs text-danger-text">
-                      {errorFechaFin}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label id="promo-hora-inicio" className="text-fg">{t('formulario.horaInicio')}</Label>
-                  <CampoHora
-                    aria-labelledby="promo-hora-inicio"
-                    valor={horaDelFormulario(formData.start_time)}
-                    onValorChange={(hora) => handleChange('start_time', hora || null)}
-                    paso={15}
-                    formato24h
-                    limpiable
-                    placeholder={t('formulario.todoElDia')}
-                  />
-                </div>
-                <div>
-                  <Label id="promo-hora-fin" className="text-fg">{t('formulario.horaFin')}</Label>
-                  <CampoHora
-                    aria-labelledby="promo-hora-fin"
-                    valor={horaDelFormulario(formData.end_time)}
-                    onValorChange={(hora) => handleChange('end_time', hora || null)}
-                    paso={15}
-                    formato24h
-                    limpiable
-                    placeholder={t('formulario.todoElDia')}
-                  />
-                </div>
-              </div>
-              <div className="-mt-2 flex flex-col gap-1">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[13px] leading-[18px] text-fg-secondary">
-                    {t('formulario.franjaAyuda')}
-                  </p>
-                  {(formData.start_time || formData.end_time) && (
-                    <button
-                      type="button"
-                      className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
-                      onClick={() => setFormData((prev) => ({ ...prev, start_time: null, end_time: null }))}
-                    >
-                      {t('formulario.quitarHorario')}
-                    </button>
-                  )}
-                </div>
-                {cruzaMedianoche(formData.start_time, formData.end_time) && (
-                  <p className="text-[13px] leading-[18px] text-fg">{t('formulario.franjaCruzaMedianoche')}</p>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-fg">{t('formulario.sucursales')}</p>
-                    <p className="text-[13px] leading-[18px] text-fg-secondary">
-                      {t('formulario.sucursalesAyuda')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
-                    onClick={() => handleChange('branches', undefined)}
-                  >
-                    {t('formulario.todas')}
-                  </button>
-                </div>
-                {sucursales.length === 0 ? (
-                  <p className="text-[13px] leading-[18px] text-fg-secondary">{t('formulario.sinSucursales')}</p>
-                ) : (
-                  <ChipsOpcion
-                    multiple
-                    etiqueta={t('formulario.sucursales')}
-                    opciones={sucursales.map((sucursal) => ({ valor: String(sucursal.id), etiqueta: sucursal.name }))}
-                    valor={(formData.branches || []).map(String)}
-                    onValorChange={(valor) => {
-                      const ids = valor.map((id) => Number(id)).filter((id) => Number.isFinite(id));
-                      handleChange('branches', ids.length === 0 ? undefined : ids);
-                    }}
-                  />
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3" data-testid="promo-metodos-pago">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p id="etiqueta-promo-metodos" className="text-sm font-medium text-fg">Métodos de pago</p>
-                    <p className="text-[13px] leading-[18px] text-fg-secondary">
-                      {(formData.payment_method_codes ?? []).length === 0
-                        ? 'Aplica con cualquier método de pago.'
-                        : 'Solo aplica cuando el cobro usa uno de estos métodos.'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
-                    onClick={() => handleChange('payment_method_codes', null)}
-                  >
-                    Cualquiera
-                  </button>
-                </div>
-                {metodosPagoParaPromocion(metodosPago, formData.branches).length === 0 ? (
-                  <p className="text-[13px] leading-[18px] text-fg-secondary">No hay métodos de pago activos.</p>
-                ) : (
-                  <ChipsOpcion
-                    multiple
-                    aria-labelledby="etiqueta-promo-metodos"
-                    opciones={metodosPagoParaPromocion(metodosPago, formData.branches).map((m) => ({ valor: m.code, etiqueta: m.name }))}
-                    valor={formData.payment_method_codes ?? []}
-                    onValorChange={(valor) => handleChange('payment_method_codes', valor.length === 0 ? null : valor)}
-                  />
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-fg">{t('formulario.limiteUsos')}</Label>
-                  <Input
-                    type="number"
-                    value={formData.usage_limit || ''}
-                    onChange={(e) => handleChange('usage_limit', parseInt(e.target.value) || undefined)}
-                    min={1}
-                    placeholder={t('formulario.sinLimite')}
-                  />
-                </div>
-                <SettingGroup>
-                  <SettingRow titulo={t('formulario.activa')} descripcion={t('formulario.activaAyuda')}>
-                    <Switch
-                      checked={formData.is_active}
-                      onCheckedChange={(checked) => handleChange('is_active', checked)}
-                    />
-                  </SettingRow>
-                </SettingGroup>
-              </div>
-
-              {/* Canales de aplicación */}
-              <div className="flex flex-col gap-3">
-                <div>
-                  <p className="text-sm font-medium text-fg">{t('formulario.canales')}</p>
-                  <p className="text-[13px] leading-[18px] text-fg-secondary">
-                    {t('formulario.canalesAyuda')}
-                  </p>
-                </div>
-                <SettingGroup etiqueta={t('formulario.canales')}>
-                  <SettingRow titulo={t('formulario.canalWeb')} descripcion={t('formulario.canalWebAyuda')}>
-                    <Switch
-                      checked={formData.applies_to_web ?? true}
-                      onCheckedChange={(checked) => handleChange('applies_to_web', checked)}
-                    />
-                  </SettingRow>
-                  <SettingRow titulo={t('formulario.canalPos')} descripcion={t('formulario.canalPosAyuda')}>
-                    <Switch
-                      checked={formData.applies_to_pos ?? true}
-                      onCheckedChange={(checked) => handleChange('applies_to_pos', checked)}
-                    />
-                  </SettingRow>
-                  <SettingRow titulo={t('formulario.canalFinanzas')} descripcion={t('formulario.canalFinanzasAyuda')}>
-                    <Switch
-                      checked={formData.applies_to_finances ?? false}
-                      onCheckedChange={(checked) => handleChange('applies_to_finances', checked)}
-                    />
-                  </SettingRow>
-                </SettingGroup>
-              </div>
-
-              {/* Días de la semana recurrentes */}
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-fg">{t('formulario.dias')}</p>
-                    <p className="text-[13px] leading-[18px] text-fg-secondary">
-                      {t('formulario.diasAyuda')}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
-                    onClick={() => handleChange('applicable_days', null)}
-                  >
-                    {t('formulario.todosLosDias')}
-                  </button>
-                </div>
-                <ChipsOpcion<WeekDay>
-                  multiple
-                  etiqueta={t('formulario.dias')}
-                  opciones={diasSemana.map((day) => ({ valor: day.value, etiqueta: day.largo }))}
-                  valor={formData.applicable_days || []}
-                  onValorChange={(valor) => handleChange('applicable_days', valor.length === 0 ? null : valor)}
-                />
-                {formData.applicable_days && formData.applicable_days.length > 0 && (
-                  <p className="text-[13px] leading-[18px] text-brand-deep">
-                    {t('formulario.aplicaLos', {
-                      dias: formData.applicable_days
-                        .map((d) => diasSemana.find((wd) => wd.value === d)?.largo)
-                        .filter((nombre): nombre is string => Boolean(nombre))
-                        .join(', '),
-                    })}
-                  </p>
-                )}
-                {(!formData.applicable_days || formData.applicable_days.length === 0) && (
-                  <p className="text-[13px] leading-[18px] text-fg-secondary">
-                    {t('formulario.aplicaTodos')}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Step 3: Reglas */}
           {currentStep === 3 && (
             <div className="space-y-6">
@@ -1302,6 +1065,176 @@ export function PromotionWizard({ initialData, promotionId, onSuccess }: Promoti
             </div>
           )}
         </FormSection>
+      )}
+
+      {/* Paso 3 de 4 (Figma 2693:189260): Vigencia · Cuándo está activa · Dónde se aplica */}
+      {currentStep === 2 && (
+        <>
+          <FormSection titulo={t('formulario.seccionVigencia')} icono={Calendar}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-fg">
+                  {t('formulario.fechaInicio')} <span className="text-danger-text" aria-hidden="true">*</span>
+                </Label>
+                <CampoFecha
+                  aria-label={t('formulario.fechaInicio')}
+                  valor={formData.start_date || ''}
+                  onValorChange={(dia) => cambiarFecha('start_date', dia)}
+                />
+                <p className="text-[13px] leading-[18px] text-fg-secondary">{t('formulario.ayudaHoraOrganizacion', { zona: timezone })}</p>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-fg">{t('formulario.fechaFin')}</Label>
+                <CampoFecha
+                  aria-label={t('formulario.fechaFin')}
+                  valor={formData.end_date || ''}
+                  min={formData.start_date || undefined}
+                  aria-invalid={errorFechaFin ? true : undefined}
+                  aria-describedby={errorFechaFin ? 'promo-error-fecha-fin' : undefined}
+                  onValorChange={(dia) => cambiarFecha('end_date', dia)}
+                />
+                {errorFechaFin ? (
+                  <p id="promo-error-fecha-fin" role="alert" className="text-xs text-danger-text">
+                    {errorFechaFin}
+                  </p>
+                ) : (
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">{t('formulario.ayudaUltimoDia')}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="promo-limite-usos" className="text-fg">{t('formulario.limiteUsos')}</Label>
+                <Input
+                  id="promo-limite-usos"
+                  type="number"
+                  value={formData.usage_limit || ''}
+                  onChange={(e) => handleChange('usage_limit', parseInt(e.target.value) || undefined)}
+                  min={1}
+                  placeholder={t('formulario.sinLimite')}
+                />
+                <p className="text-[13px] leading-[18px] text-fg-secondary">{t('formulario.ayudaLimiteUsos')}</p>
+              </div>
+            </div>
+            <SettingGroup>
+              <SettingRow titulo={t('formulario.activa')} descripcion={t('formulario.activaAyuda')}>
+                <Switch
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => handleChange('is_active', checked)}
+                />
+              </SettingRow>
+            </SettingGroup>
+          </FormSection>
+
+          <FormSection titulo={t('horario.titulo')} icono={CalendarClock}>
+            <SelectorHorarioPromocion
+              valor={horario}
+              onValorChange={setHorario}
+              zona={timezone}
+              vigencia={{ desde: formData.start_date ?? null, hasta: formData.end_date ?? null }}
+              mostrarErrores={mostrarErroresHorario}
+            />
+          </FormSection>
+
+          <FormSection titulo={t('formulario.seccionDondeAplica')} icono={Store}>
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-sm font-medium text-fg">{t('formulario.canales')}</p>
+                <p className="text-[13px] leading-[18px] text-fg-secondary">
+                  {t('formulario.canalesAyuda')}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3" role="group" aria-label={t('formulario.canales')}>
+                <SettingGroup>
+                  <SettingRow titulo={t('formulario.canalPos')} descripcion={t('formulario.canalPosAyuda')}>
+                    <Switch
+                      checked={formData.applies_to_pos ?? true}
+                      onCheckedChange={(checked) => handleChange('applies_to_pos', checked)}
+                    />
+                  </SettingRow>
+                </SettingGroup>
+                <SettingGroup>
+                  <SettingRow titulo={t('formulario.canalWeb')} descripcion={t('formulario.canalWebAyuda')}>
+                    <Switch
+                      checked={formData.applies_to_web ?? true}
+                      onCheckedChange={(checked) => handleChange('applies_to_web', checked)}
+                    />
+                  </SettingRow>
+                </SettingGroup>
+                <SettingGroup>
+                  <SettingRow titulo={t('formulario.canalFinanzas')} descripcion={t('formulario.canalFinanzasAyuda')}>
+                    <Switch
+                      checked={formData.applies_to_finances ?? false}
+                      onCheckedChange={(checked) => handleChange('applies_to_finances', checked)}
+                    />
+                  </SettingRow>
+                </SettingGroup>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-fg">{t('formulario.sucursales')}</p>
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {t('formulario.sucursalesAyuda')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+                  onClick={() => handleChange('branches', undefined)}
+                >
+                  {t('formulario.todas')}
+                </button>
+              </div>
+              {sucursales.length === 0 ? (
+                <p className="text-[13px] leading-[18px] text-fg-secondary">{t('formulario.sinSucursales')}</p>
+              ) : (
+                <ChipsOpcion
+                  multiple
+                  etiqueta={t('formulario.sucursales')}
+                  opciones={sucursales.map((sucursal) => ({ valor: String(sucursal.id), etiqueta: sucursal.name }))}
+                  valor={(formData.branches || []).map(String)}
+                  onValorChange={(valor) => {
+                    const ids = valor.map((id) => Number(id)).filter((id) => Number.isFinite(id));
+                    handleChange('branches', ids.length === 0 ? undefined : ids);
+                  }}
+                />
+              )}
+            </div>
+
+            <div className="flex flex-col gap-3" data-testid="promo-metodos-pago">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p id="etiqueta-promo-metodos" className="text-sm font-medium text-fg">Métodos de pago</p>
+                  <p className="text-[13px] leading-[18px] text-fg-secondary">
+                    {(formData.payment_method_codes ?? []).length === 0
+                      ? 'Aplica con cualquier método de pago.'
+                      : 'Solo aplica cuando el cobro usa uno de estos métodos.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={clasesBoton({ variante: 'fantasma', tamano: 'sm' })}
+                  onClick={() => handleChange('payment_method_codes', null)}
+                >
+                  Cualquiera
+                </button>
+              </div>
+              {metodosPagoParaPromocion(metodosPago, formData.branches).length === 0 ? (
+                <p className="text-[13px] leading-[18px] text-fg-secondary">No hay métodos de pago activos.</p>
+              ) : (
+                <ChipsOpcion
+                  multiple
+                  aria-labelledby="etiqueta-promo-metodos"
+                  opciones={metodosPagoParaPromocion(metodosPago, formData.branches).map((m) => ({ valor: m.code, etiqueta: m.name }))}
+                  valor={formData.payment_method_codes ?? []}
+                  onValorChange={(valor) => handleChange('payment_method_codes', valor.length === 0 ? null : valor)}
+                />
+              )}
+            </div>
+          </FormSection>
+        </>
+      )}
 
       {currentStep === WIZARD_STEPS.length - 1 && (
         <div className="max-w-xl">

@@ -1,6 +1,6 @@
 import { supabase, ensureSessionSynced } from '@/lib/supabase/config';
 import { saveBiometricCredentials } from '@/lib/services/biometricService';
-import { guardarOrganizacionActiva, invalidateBranchIdCache } from '@/lib/hooks/useOrganization';
+import { guardarOrganizacionActiva, invalidateBranchIdCache, organizacionGuardadaId } from '@/lib/hooks/useOrganization';
 import { destinoTrasLogin } from '@/lib/auth/recuperacionSesion';
 import { huellaDispositivo } from '@/lib/auth/huellaDispositivo';
 import { sesionAuthDeToken } from '@/lib/auth/sesionAuth';
@@ -32,8 +32,15 @@ export interface Organization {
  */
 export function activarOrganizacion(organization: Pick<Organization, 'id' | 'name' | 'logo_url'>): void {
   localStorage.removeItem('appLayout_userData_cache');
-  localStorage.removeItem('currentBranchId');
-  sessionStorage.removeItem('currentBranchId');
+  // La sucursal guardada se conserva si se vuelve a entrar a la MISMA
+  // organización en este equipo: es la «última usada» del paso de sucursal
+  // (/auth/select-organization/sucursal). De otra organización, se borra. El
+  // servidor y el BranchProvider la validan de todos modos contra el alcance.
+  if (organizacionGuardadaId() !== Number(organization.id)) {
+    localStorage.removeItem('currentBranchId');
+    sessionStorage.removeItem('currentBranchId');
+    localStorage.removeItem('branchFilterAll');
+  }
   invalidateBranchIdCache();
   guardarOrganizacionActiva({
     id: Number(organization.id),
@@ -422,10 +429,6 @@ export const registerUserDevice = async (sessionOrUserId: string | { user?: { id
     // Generar una huella digital simple del dispositivo
     const deviceFingerprint = await generateDeviceFingerprint();
     
-    // Obtener ubicación del navegador según preferencia guardada
-    const { getLocationFromBrowser } = await import('@/lib/utils/geolocation')
-    const location = await getLocationFromBrowser()
-    
     // Preparar los datos para la API
     const deviceData = {
       user_id: userId,
@@ -437,7 +440,6 @@ export const registerUserDevice = async (sessionOrUserId: string | { user?: { id
       os: browserInfo.os,
       os_version: browserInfo.osVersion,
       device_fingerprint: deviceFingerprint,
-      location: location, // Incluir ubicación si está disponible
       // La IP se captura en el servidor
       is_active: true,
       first_seen_at: new Date().toISOString(),
@@ -485,6 +487,10 @@ export const registerUserDevice = async (sessionOrUserId: string | { user?: { id
       if (updateError) throw updateError;
       console.log('Dispositivo actualizado exitosamente:', existingDevice.id);
     } else {
+      // Ubicación solo al crear el dispositivo (el UPDATE nunca la tocaba) y sin
+      // abrir el aviso de permiso: ver `getLocationFromBrowser`.
+      const { getLocationFromBrowser } = await import('@/lib/utils/geolocation')
+      const location = await getLocationFromBrowser()
       // Insertar nuevo dispositivo
       const { error: insertError } = await supabase
         .from('user_devices')

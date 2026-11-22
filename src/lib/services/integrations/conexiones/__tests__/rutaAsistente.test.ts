@@ -2,7 +2,8 @@
  * Toda entrada «Conectar» lleva al asistente NUEVO de Conexiones (Frente INT, fallo del dueño
  * 2026-11-07: desde Métodos de pago se abría el formulario viejo, con el logo de Mastercard para
  * Mercado Pago). `/app/integraciones/conexiones/nueva` redirige en el servidor; el formulario
- * viejo solo queda para Bold, los QR propios, WhatsApp y Twilio.
+ * viejo solo queda para los datáfonos Bold (2026-11-21: las llaves de Bold ya van por el nuevo),
+ * los QR propios, WhatsApp y Twilio.
  */
 const redirect = jest.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { url });
@@ -55,10 +56,17 @@ describe('rutaAsistente', () => {
     expect(rutaConectar('MP', { volver: VOLVER })).toBe('/app/integraciones/conexiones?conectar=mercadopago&return=%2Fapp%2Ffinanzas%2Fmetodos-pago');
   });
 
-  it('Bold y los QR propios siguen en el formulario viejo', () => {
-    for (const c of ['bold', 'bold_link', 'bancolombia_qr', 'breb_qr', 'redeban_qr', 'whatsapp', 'twilio']) {
+  it('Bold (llaves del link y la tienda) va al asistente nuevo, también por su método «bold_link»', () => {
+    expect(rutaConectar('bold')).toBe('/app/integraciones/conexiones?conectar=bold');
+    expect(rutaConectar('bold_link')).toBe('/app/integraciones/conexiones?conectar=bold');
+  });
+
+  it('los datáfonos Bold y los QR propios siguen en el formulario viejo', () => {
+    for (const c of ['bancolombia_qr', 'breb_qr', 'redeban_qr', 'whatsapp', 'twilio']) {
       expect(rutaConectar(c)).toBeNull();
     }
+    expect(destinoDelAsistenteViejo({ proveedor: 'bold', conector: 'bold_pos' })).toBeNull();
+    expect(destinoDelAsistenteViejo({ mode: 'edit', id: CONEXION, proveedorDeConexion: 'bold', conector: 'bold_pos' })).toBeNull();
   });
 
   it('nunca devuelve a otro origen', () => {
@@ -69,7 +77,7 @@ describe('rutaAsistente', () => {
   it('logística va a su propio flujo; editar una conexión cubierta va a su detalle', () => {
     expect(rutaConectar('coordinadora')).toBe('/app/integraciones/conexiones/logistica?proveedor=coordinadora');
     expect(destinoDelAsistenteViejo({ mode: 'edit', id: CONEXION, proveedorDeConexion: 'wompi' })).toBe(`/app/integraciones/conexiones/${CONEXION}`);
-    expect(destinoDelAsistenteViejo({ mode: 'edit', id: CONEXION, proveedorDeConexion: 'bold' })).toBeNull();
+    expect(destinoDelAsistenteViejo({ mode: 'edit', id: CONEXION, proveedorDeConexion: 'bold', conector: 'bold_link' })).toBe(`/app/integraciones/conexiones/${CONEXION}`);
   });
 });
 
@@ -89,9 +97,9 @@ describe('/app/integraciones/conexiones/nueva redirige en el servidor', () => {
     );
   });
 
-  it('Bold se queda en el formulario viejo (no redirige)', async () => {
-    expect(await abrir({ provider: BOLD })).toBeNull();
-    expect(redirect).not.toHaveBeenCalled();
+  it('Bold (por uuid) va al asistente nuevo; sus datáfonos se quedan en el formulario viejo', async () => {
+    expect(await abrir({ provider: BOLD })).toBe('/app/integraciones/conexiones?conectar=bold');
+    expect(await abrir({ provider: BOLD, conector: 'bold_pos' })).toBeNull();
   });
 
   it('editar una conexión de Wompi → su detalle; sin proveedor → catálogo', async () => {

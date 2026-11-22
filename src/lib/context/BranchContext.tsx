@@ -8,7 +8,7 @@ import {
   getCurrentBranchId,
   invalidateBranchIdCache,
   setBranchFilterAllCache,
-  BRANCH_CHANGED_EVENT,
+  guardarSucursalActiva,
   ORGANIZATION_CHANGED_EVENT,
 } from '@/lib/hooks/useOrganization';
 import { getMobileStorage, setMobileStorage } from '@/lib/utils/mobileStorage';
@@ -139,34 +139,15 @@ export const BranchProvider = ({ children }: { children: React.ReactNode }) => {
   }, [loadBranches]);
 
   const setSelectedBranch = useCallback((selection: BranchSelection) => {
-    try {
-      if (selection === ALL_BRANCHES) {
-        localStorage.setItem(BRANCH_ALL_KEY, '1');
-        void setMobileStorage(BRANCH_ALL_KEY, '1');
-        setBranchFilterAllCache(true);
-        setIsAllSelected(true);
-      } else {
-        const selStr = selection.toString();
-        localStorage.setItem(BRANCH_ALL_KEY, '0');
-        localStorage.setItem('currentBranchId', selStr);
-        sessionStorage.setItem('currentBranchId', selStr);
-        void setMobileStorage(BRANCH_ALL_KEY, '0');
-        void setMobileStorage('currentBranchId', selStr);
-        setBranchFilterAllCache(false);
-        invalidateBranchIdCache();
-        setIsAllSelected(false);
-        setSelectedBranchId(selection);
-      }
-    } catch (error) {
-      console.error('Error guardando selección de sucursal:', error);
+    // La escritura (storage, cachés y evento) es la misma que usa el paso de
+    // sucursal al entrar: `guardarSucursalActiva`. Aquí solo el estado React.
+    if (selection === ALL_BRANCHES) {
+      setIsAllSelected(true);
+    } else {
+      setIsAllSelected(false);
+      setSelectedBranchId(selection);
     }
-
-    // Notificar globalmente para que páginas/servicios reaccionen
-    try {
-      window.dispatchEvent(new CustomEvent(BRANCH_CHANGED_EVENT));
-    } catch {
-      /* noop */
-    }
+    guardarSucursalActiva(selection);
   }, []);
 
   const branchFilter = isAllSelected ? null : selectedBranchId;

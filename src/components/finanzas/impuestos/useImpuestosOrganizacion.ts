@@ -1,10 +1,29 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { supabase } from '@/lib/supabase/config';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { useToast } from '@/components/ui/use-toast';
 import { sinRetenciones, soloRetenciones, type ClaseImpuesto } from '@/lib/services/taxResolverCore';
+import { leerUsoProductos, type UsoProductos } from './impuestosLogica';
+
+/** Plantilla del país de la organización (`get_tax_templates_by_organization_country`). */
+export interface PlantillaImpuesto {
+  id: number;
+  country: string;
+  code: string;
+  name: string;
+  rate: number;
+  description: string | null;
+  kind?: string | null;
+}
+
+/** 42501: la base rechazó el acceso a la organización (sin permiso). */
+function esSinPermiso(err: unknown): boolean {
+  const e = err as { code?: string; message?: string } | null;
+  return e?.code === '42501' || /acceso denegado|permission denied/i.test(e?.message ?? '');
+}
 
 /** Fila de `list_organization_taxes` (SETOF organization_taxes). */
 export interface OrganizationTax {
@@ -31,10 +50,16 @@ export interface OrganizationTax {
  */
 export function useImpuestosOrganizacion() {
   const { toast } = useToast();
+  const t = useTranslations('finanzasImpuestos');
   const [organizationId, setOrganizationId] = useState<number | null>(null);
   const [taxes, setTaxes] = useState<OrganizationTax[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [sinPermiso, setSinPermiso] = useState(false);
+  // Conteo de productos por impuesto y cobertura (Figma 1012:86383). Si falla, la
+  // tabla muestra «—»: no es motivo para tumbar el listado.
+  const [uso, setUso] = useState<UsoProductos | null>(null);
+  const [plantillas, setPlantillas] = useState<PlantillaImpuesto[]>([]);
 
   useEffect(() => {
     try {
@@ -43,12 +68,12 @@ export function useImpuestosOrganizacion() {
         setOrganizationId(orgId);
       } else {
         setLoading(false);
-        toast({ title: 'Advertencia', description: 'No se encontró una organización activa.', variant: 'destructive' });
+        toast({ title: t('toast.errorTitulo'), description: t('toast.sinOrganizacion'), variant: 'destructive' });
       }
     } catch (err) {
       console.error('Error al obtener la organización activa:', err);
       setLoading(false);
-      toast({ title: 'Error', description: 'No se pudo obtener la información de la organización.', variant: 'destructive' });
+      toast({ title: t('toast.errorTitulo'), description: t('toast.errorOrganizacion'), variant: 'destructive' });
     }
     // Solo al montar: la organización activa no cambia sin recargar la página.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,19 +84,29 @@ export function useImpuestosOrganizacion() {
     setLoading(true);
     setError(false);
     try {
-      const { data, error: rpcError } = await supabase.rpc('list_organization_taxes', {
-        p_organization_id: organizationId,
-      });
-      if (rpcError) throw rpcError;
-      setTaxes((data ?? []) as OrganizationTax[]);
+      const [lista, usoRes, plantillasRes] = await Promise.all([
+        supabase.rpc('list_organization_taxes', { p_organization_id: organizationId }),
+        supabase.rpc('fn_impuestos_uso_productos', { p_organization_id: organizationId }),
+        supabase.rpc('get_tax_templates_by_organization_country', { org_id: organizationId }),
+      ]);
+      if (lista.error) throw lista.error;
+      setSinPermiso(false);
+      setTaxes((lista.data ?? []) as OrganizationTax[]);
+      if (usoRes.error) console.error('Error al contar los productos por impuesto:', usoRes.error);
+      setUso(usoRes.error ? null : leerUsoProductos(usoRes.data));
+      setPlantillas(plantillasRes.error ? [] : ((plantillasRes.data ?? []) as PlantillaImpuesto[]));
     } catch (err) {
       console.error('Error al cargar los impuestos:', err);
-      setError(true);
-      toast({ title: 'Error', description: 'No se pudieron cargar los impuestos. Intente de nuevo.', variant: 'destructive' });
+      if (esSinPermiso(err)) {
+        setSinPermiso(true);
+      } else {
+        // La tabla muestra el estado de error con «Reintentar».
+        setError(true);
+      }
     } finally {
       setLoading(false);
     }
-  }, [organizationId, toast]);
+  }, [organizationId]);
 
   useEffect(() => {
     if (organizationId) void recargar();
@@ -80,5 +115,5 @@ export function useImpuestosOrganizacion() {
   const impuestos = useMemo(() => sinRetenciones(taxes), [taxes]);
   const retenciones = useMemo(() => soloRetenciones(taxes), [taxes]);
 
-  return { organizationId, impuestos, retenciones, loading, error, recargar };
+  return { organizationId, todos: taxes, impuestos, retenciones, uso, plantillas, loading, error, sinPermiso, recargar };
 }

@@ -263,6 +263,23 @@ export function moverMetodo(filas: readonly FilaMetodoPago[], id: string, direcc
   return orden;
 }
 
+/**
+ * Nuevo orden al arrastrar la fila `id` y soltarla en el lugar de `sobre`
+ * (ids de fila, `org-<n>`). Solo se ordenan las configuradas: soltar sobre una
+ * sin configurar, o sobre sí misma, no mueve nada. Devuelve los ids de
+ * `organization_payment_methods` en su nuevo orden, o `null`.
+ */
+export function reordenarMetodos(filas: readonly FilaMetodoPago[], id: string, sobre: string): number[] | null {
+  const configuradas = filas.filter((f) => f.original);
+  const desde = configuradas.findIndex((f) => f.id === id);
+  const hasta = configuradas.findIndex((f) => f.id === sobre);
+  if (desde < 0 || hasta < 0 || desde === hasta) return null;
+  const orden = configuradas.map((f) => f.original!.id);
+  const [movido] = orden.splice(desde, 1);
+  orden.splice(hasta, 0, movido);
+  return orden;
+}
+
 /** Estado de la lista: un error de carga no es «no hay métodos». */
 export function estadoListaMetodos(m: {
   cargando: boolean;

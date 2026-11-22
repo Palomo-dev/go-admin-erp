@@ -35,6 +35,7 @@ import {
   leerFavoritas,
   ordenarOrganizaciones,
 } from '@/lib/auth/seleccionOrganizacion';
+import { rutaPasoSucursal } from '@/lib/auth/seleccionSucursal';
 import { SearchInput } from '@/components/kit/SearchInput';
 import { FormField } from '@/components/kit/FormField';
 import { clasesBoton } from '@/components/kit/botonClases';
@@ -108,8 +109,9 @@ function SelectOrganizationContent() {
       try {
         activarOrganizacion({ id: org.id, name: org.name, logo_url: org.logo_url });
         // proceedWithLogin guarda last_org_id, registra el dispositivo y hace
-        // UNA sola redirección (al destino validado).
-        await proceedWithLogin(false, s.user.email || '', { destino });
+        // UNA sola redirección: al paso de sucursal, que sigue al destino
+        // validado (directo si la persona tiene una sola sucursal).
+        await proceedWithLogin(false, s.user.email || '', { destino: rutaPasoSucursal(destino) });
       } catch (err) {
         console.error('[select-organization] No se pudo entrar:', err);
         if (await sesionMurio(err)) {

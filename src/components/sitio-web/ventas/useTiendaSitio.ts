@@ -13,8 +13,10 @@ import type { AccionResena, RespuestaResenas, RespuestaTienda } from '@/lib/webs
 import type { EstadoResena } from '@/lib/services/website/resenasProducto';
 import type { CambioProducto, FiltroCartaSede, RespuestaListadoCartaSede } from '@/lib/services/website/cartaSede';
 import { ErrorApiVentas, pedirJson, type FalloVentas } from './useVentasSitio';
+import type { TipoPaginaDetalle } from '../paginas/paginasDetalle';
 
 export const RUTA_API_TIENDA = '/api/sitio-web/tienda';
+export const RUTA_API_TIENDA_DETALLE = '/api/sitio-web/tienda/detalle';
 export const RUTA_API_CARTA_SEDE = '/api/website/carta-sede';
 
 export function useTiendaSitio() {
@@ -52,7 +54,23 @@ export function useTiendaSitio() {
     }
   }, []);
 
-  return { datos, cargando, fallo, recargar, refrescar, alternarAutoAprobar };
+  /**
+   * «Crear ficha editable» / «Crear página editable»: agrega la página de detalle al borrador y
+   * devuelve su id para abrir el editor. Lanza `ErrorApiVentas` (p. ej. `conflicto_version`).
+   */
+  const crearDetalle = useCallback(
+    async (tipo: TipoPaginaDetalle): Promise<string> => {
+      const r = await pedirJson<{ paginaId?: string }>(RUTA_API_TIENDA_DETALLE, {
+        method: 'POST',
+        cuerpo: { tipo, version: datos?.detalles.version ?? null },
+      });
+      if (!r.paginaId) throw new ErrorApiVentas('error', 'Respuesta sin página');
+      return r.paginaId;
+    },
+    [datos?.detalles.version],
+  );
+
+  return { datos, cargando, fallo, recargar, refrescar, alternarAutoAprobar, crearDetalle };
 }
 
 export interface ConsultaCatalogo {

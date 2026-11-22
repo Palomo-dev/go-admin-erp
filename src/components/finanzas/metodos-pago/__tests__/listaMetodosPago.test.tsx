@@ -257,18 +257,22 @@ describe('caracterización de las acciones conservadas (1440 px)', () => {
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining({ id: 2, payment_method_code: 'transfer' }));
   });
 
-  test('Subir reescribe website_display_order de todos, como el arrastre', async () => {
+  test('Subir escribe website_display_order solo de los que cambian de lugar (igual que el arrastre)', async () => {
     montar();
     await esperarDatos();
     await elegirEnMenu(filaDe('transfer'), 'Transferencia', 'Subir');
-    await waitFor(() => expect(escrituras('update')).toHaveLength(5));
+    await waitFor(() => expect(escrituras('update')).toHaveLength(2));
     expect(escrituras('update').map((l) => [l.filtros[0][1], (l.payload as { website_display_order: number }).website_display_order])).toEqual([
       [2, 0],
       [1, 1],
-      [3, 2],
-      [4, 3],
-      [5, 4],
     ]);
+  });
+
+  test('cada método configurado tiene su tirador para arrastrar; los usados sin configurar no', async () => {
+    montar();
+    await esperarDatos();
+    expect(screen.getAllByRole('button', { name: /^Mover / }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Mover Nequi' })).toBeNull();
   });
 
   test('Configurar integración de Mercado Pago lleva al asistente nuevo de Conexiones', async () => {

@@ -334,7 +334,8 @@ describe('documento reporte', () => {
       hasta: '2026-09-30',
       parametros: { sucursal: '1', hi: '20:00', hf: '03:00', periodo: 'mensual' },
     });
-    expect(ejecutar).toHaveBeenCalledWith('ventas-periodo', ORG, expect.objectContaining({ tipo: 'mensual', horaInicio: '20:00', horaFin: '03:00' }), 1, s.ctx.supabase);
+    // Sin persona, métodos ni «Contar por» declarados, viajan vacíos.
+    expect(ejecutar).toHaveBeenCalledWith('ventas-periodo', ORG, expect.objectContaining({ tipo: 'mensual', horaInicio: '20:00', horaFin: '03:00' }), 1, s.ctx.supabase, { persona: null, metodos: null });
     expect(payload.numero).toBe('Reporte ventas-periodo');
     expect(html).toContain('Sucursal Norte');
     expect(html).toContain('20:00 – 03:00');
@@ -345,7 +346,20 @@ describe('documento reporte', () => {
     permisos.add('reports.export');
     ejecutar.mockResolvedValue(datos('balance-general', 1));
     const { html } = await pedir(sesion(), 'reporte', 'balance-general', { desde: '2026-09-01', hasta: '2026-09-30', parametros: { sucursal: '2' } });
-    expect(ejecutar).toHaveBeenCalledWith('balance-general', ORG, expect.anything(), null, expect.anything());
+    expect(ejecutar).toHaveBeenCalledWith('balance-general', ORG, expect.anything(), null, expect.anything(), expect.anything());
     expect(html).toContain('Toda la organización');
+  });
+
+  test('persona, métodos y «Contar por» llegan al reporte que los declara (y se validan)', async () => {
+    permisos.add('reports.export');
+    defsReporte.set('ventas-vendedor', def('ventas-vendedor', 'ventas', ['sucursal', 'persona', 'metodoPago', 'contarPor']));
+    ejecutar.mockResolvedValue(datos('ventas-vendedor', 1));
+    const persona = '0b6f1c2e-5a4d-4e7f-9a1b-2c3d4e5f6a7b';
+    await pedir(sesion(), 'reporte', 'ventas-vendedor', {
+      desde: '2026-09-01',
+      hasta: '2026-09-30',
+      parametros: { sucursal: '1', persona, metodo: 'cash,<x>,nequi', contar: 'mesero' },
+    });
+    expect(ejecutar).toHaveBeenCalledWith('ventas-vendedor', ORG, expect.anything(), 1, expect.anything(), { persona, metodos: ['cash', 'nequi'], contarPor: 'mesero' });
   });
 });

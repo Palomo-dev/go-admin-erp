@@ -34,9 +34,42 @@ export function saveGeolocationPreference(preference: GeolocationPreference) {
 }
 
 /**
- * Intenta obtener la ubicación del navegador. El único permiso es el del propio
- * navegador (o el del sistema en la app móvil): GO Admin ya no pregunta antes.
- * Solo se deja de intentar si quedó guardado un rechazo o que no hay soporte.
+ * ¿El navegador (o el sistema, en la app móvil) YA concedió la ubicación?
+ * Solo consulta el estado: nunca abre el aviso de permiso. Sin forma de
+ * saberlo (Permissions API ausente), responde `false`.
+ */
+async function ubicacionYaConcedida(): Promise<boolean> {
+  if (isMobile()) {
+    const geo = getMobilePlugin('Geolocation');
+    if (geo?.checkPermissions) {
+      try {
+        const estado = await geo.checkPermissions();
+        return estado?.location === 'granted';
+      } catch {
+        return false;
+      }
+    }
+  }
+  try {
+    const permisos = typeof navigator !== 'undefined' ? navigator.permissions : undefined;
+    if (!permisos?.query) return false;
+    const estado = await permisos.query({ name: 'geolocation' as PermissionName });
+    return estado.state === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Ubicación para el registro del dispositivo al iniciar sesión, SIN pedir
+ * permiso (2026-11-20). Antes se llamaba a `getCurrentPosition` al entrar: en
+ * iPhone salía el aviso del sistema sobre «Elige una organización», la
+ * redirección del login cortaba la espera, quedaba `pendingDeviceRegister` y
+ * `AppLayout` lo reintentaba en la página siguiente → el aviso volvía a salir
+ * respondiera lo que respondiera. Ahora solo se lee la posición si el permiso
+ * ya estaba concedido; si no, se devuelve un estado y no se pregunta. Las
+ * pantallas que sí necesitan la ubicación (marcar turno, mapas) la piden en su
+ * contexto.
  */
 export async function getLocationFromBrowser(): Promise<string | null> {
   const preference = getGeolocationPreference()
@@ -45,33 +78,30 @@ export async function getLocationFromBrowser(): Promise<string | null> {
     return getLocationStatusMessage(preference)
   }
 
-  // Rama móvil (Capacitor): usar plugin nativo de geolocalización
+  if (!(await ubicacionYaConcedida())) {
+    return 'Ubicación no solicitada al iniciar sesión'
+  }
+
+  // Rama móvil (Capacitor): plugin nativo, con el permiso ya concedido.
   if (isMobile()) {
     const geo = getMobilePlugin('Geolocation');
     if (geo?.getCurrentPosition) {
       try {
         const position = await geo.getCurrentPosition({ enableHighAccuracy: false, timeout: 5000 });
         return `Coordenadas GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
-      } catch (error: any) {
-        console.log('Error al obtener geolocalización nativa:', error.message);
+      } catch {
         return 'Error al obtener ubicación GPS';
       }
     }
-    // Si el plugin no está disponible, caer al flujo web
   }
 
-  if (!navigator.geolocation) {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
     return getLocationStatusMessage('not_supported')
   }
 
   try {
-    console.log('Obteniendo geolocalización (permitida por usuario)...')
-    
     const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error('Timeout'))
-      }, 5000)
-      
+      const timeoutId = setTimeout(() => reject(new Error('Timeout')), 5000)
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           clearTimeout(timeoutId)
@@ -81,22 +111,13 @@ export async function getLocationFromBrowser(): Promise<string | null> {
           clearTimeout(timeoutId)
           reject(err)
         },
-        { 
-          timeout: 4000,
-          enableHighAccuracy: false,
-          maximumAge: 300000 // 5 minutos
-        }
+        { timeout: 4000, enableHighAccuracy: false, maximumAge: 300000 }
       )
     })
-    
     saveGeolocationPreference('allowed')
     return `Coordenadas GPS: ${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`
-    
-  } catch (error: any) {
-    console.log('Error al obtener geolocalización:', error.message)
-    // Código 1: la persona dijo que no en el navegador. Un tiempo agotado no es
-    // un rechazo y no se guarda: el navegador puede volver a preguntar.
-    if (error?.code === 1) saveGeolocationPreference('denied')
+  } catch (error: unknown) {
+    if ((error as { code?: number })?.code === 1) saveGeolocationPreference('denied')
     return 'Error al obtener ubicación GPS'
   }
 }

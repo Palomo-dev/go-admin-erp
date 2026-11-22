@@ -7,6 +7,7 @@ import { aQuery, escribirFiltrosReportes, filtrosEfectivos, leerFiltrosReportes,
 import { etiquetaDePeriodo, etiquetaFranja } from '@/components/reportes/etiquetaPeriodo';
 
 const HOY = '2026-09-30';
+const PERSONA = '0b6f1c2e-5a4d-4e7f-9a1b-2c3d4e5f6a7b';
 const q = (o: Record<string, string>) => new URLSearchParams(o);
 
 describe('leerFiltrosReportes', () => {
@@ -54,6 +55,19 @@ describe('escribirFiltrosReportes', () => {
     expect(leerFiltrosReportes(q(salida), HOY)).toEqual(f);
   });
 
+  test('ida y vuelta con persona, métodos y «contar por»; cajero es el valor por defecto', () => {
+    const entrada = { persona: PERSONA, metodo: 'cash,bold_link', contar: 'vendedor' };
+    const f = leerFiltrosReportes(q(entrada), HOY);
+    expect(f).toMatchObject({ persona: PERSONA, metodos: ['cash', 'bold_link'], contarPor: 'vendedor' });
+    expect(escribirFiltrosReportes(f, HOY)).toEqual(entrada);
+    expect(escribirFiltrosReportes({ ...f, persona: null, metodos: [], contarPor: null }, HOY)).toEqual({});
+  });
+
+  test('descarta persona que no es uuid, métodos raros y «contar por» desconocido', () => {
+    const f = leerFiltrosReportes(q({ persona: 'abc; drop', metodo: 'cash,<x>,CASH,nequi,cash', contar: 'jefe' }), HOY);
+    expect(f).toMatchObject({ persona: null, metodos: ['cash', 'nequi'], contarPor: null });
+  });
+
   test('personalizado lleva desde y hasta, no ref', () => {
     const f = leerFiltrosReportes(q({ periodo: 'personalizado', desde: '2026-09-01', hasta: '2026-09-15' }), HOY);
     expect(escribirFiltrosReportes(f, HOY)).toEqual({ periodo: 'personalizado', desde: '2026-09-01', hasta: '2026-09-15' });
@@ -78,6 +92,17 @@ describe('filtrosEfectivos y documento', () => {
       hasta: '2026-09-30',
       parametros: { periodo: 'mensual', sucursal: '7', hi: '16:00', hf: '02:00', vista: 'por-cuenta', comparar: 'anterior' },
     });
+  });
+
+  test('persona, métodos y «contar por» solo en los reportes que los declaran, y viajan al documento', () => {
+    const ventas = leerFiltrosReportes(q({ persona: PERSONA, metodo: 'cash,nequi', contar: 'mesero' }), HOY);
+    const sinVentas = filtrosEfectivos({ filtros: ['franja', 'comparativo', 'sucursal'], alcance: 'sucursal' }, ventas, 7);
+    expect(sinVentas).toMatchObject({ persona: null, metodos: [], contarPor: null });
+    expect(parametrosDocumento(sinVentas).parametros).not.toHaveProperty('persona');
+
+    const conVentas = filtrosEfectivos({ filtros: ['sucursal', 'persona', 'metodoPago', 'contarPor'], alcance: 'sucursal' }, ventas, 7);
+    expect(conVentas).toMatchObject({ persona: PERSONA, metodos: ['cash', 'nequi'], contarPor: 'mesero' });
+    expect(parametrosDocumento(conVentas).parametros).toEqual({ periodo: 'mensual', sucursal: '7', persona: PERSONA, metodo: 'cash,nequi', contar: 'mesero' });
   });
 
   test('periodo comparado', () => {

@@ -61,6 +61,8 @@ const MODULOS: Record<string, string[]> = {
   posCobroServidor: POS,
   posPropinas: POS,
   posCargosServicio: POS,
+  posCargos: ['src/components/pos/cargos-servicio', 'src/app/app/pos/cargos-servicio'],
+  posCupones: ['src/components/pos/cupones', 'src/app/app/pos/cupones'],
   posPromociones: ['src/components/pos/promociones', 'src/app/app/pos/promociones'],
   posDevoluciones: POS,
   posComandas: POS,

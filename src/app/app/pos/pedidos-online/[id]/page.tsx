@@ -207,20 +207,7 @@ export default function WebOrderDetailPage() {
               {cambios.abierto?.estado === 'pending_payment' ? t('cambio.verLink') : t('cambio.boton')}
             </button>
           )}
-          <OrderCustomerCard order={order} />
-          {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
-          {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
-          <OrderDeliveryCard
-            order={order}
-            onAssignDelivery={() => {
-              // Si es delivery propio y está listo, crear shipment primero
-              if (order.delivery_type === 'delivery_own' && order.status === 'ready') {
-                handleCreateShipment();
-              } else {
-                setAssignDeliveryOpen(true);
-              }
-            }}
-          />
+          {/* «Pagos» arriba de Cliente y Entrega (Figma 2725:192149). */}
           <OrderPaymentsCard
             order={order}
             pagos={trazabilidad.pagos}
@@ -237,6 +224,20 @@ export default function WebOrderDetailPage() {
                   }
                 : undefined
             }
+          />
+          <OrderCustomerCard order={order} />
+          {/* Carta QR: lo que la mesa valoró al terminar la visita. */}
+          {order.table_session_id && <ValoracionVisitaCard tableSessionId={order.table_session_id} />}
+          <OrderDeliveryCard
+            order={order}
+            onAssignDelivery={() => {
+              // Si es delivery propio y está listo, crear shipment primero
+              if (order.delivery_type === 'delivery_own' && order.status === 'ready') {
+                handleCreateShipment();
+              } else {
+                setAssignDeliveryOpen(true);
+              }
+            }}
           />
         </div>
       </div>

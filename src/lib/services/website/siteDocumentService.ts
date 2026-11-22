@@ -17,7 +17,7 @@
  * web pública: crear, guardar y publicar no cambian lo que ven los clientes; solo
  * `set_site_v2_adoption` lo hace, y es una acción explícita (ADR-002 D4).
  */
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   validarDocumentoSitio,
@@ -46,6 +46,7 @@ import {
   type TipoSedePlantilla,
 } from '@/lib/website/v2/plantillaSede';
 import { COLUMNAS_IMPORTADAS, igualesEstructural } from '@/lib/website/v2/mapeoAjustes';
+import { asegurarFichaProducto } from '@/components/sitio-web/paginas/paginasDetalle';
 import type {
   BasePrincipal,
   BorradorSitio,
@@ -468,6 +469,9 @@ export async function crearSitio(cliente: SupabaseClient, org: number, branchId:
   let avisos: string[] = [];
   if (branchId === null) {
     ({ documento, avisos } = await importarPrincipalLegacy(cliente, org));
+    // La ficha de producto nace editable, con el diseño fijo de la tienda (si el sitio importado
+    // ya traía una, se conserva la suya).
+    documento = asegurarFichaProducto(documento, randomUUID).documento;
   } else {
     const plantilla = await documentoPlantillaDeSede(cliente, org, tipoSede);
     if (plantilla && esTipoSedePlantilla(tipoSede)) {
@@ -490,6 +494,28 @@ export async function crearSitio(cliente: SupabaseClient, org: number, branchId:
   return { sitio: await resumenDe(cliente, org, respuesta.site_id), creado: respuesta.creado, avisos };
 }
 
+/**
+ * Ids de la ficha de producto que se agrega al leer el borrador: UUID con forma de v5, derivados
+ * del sitio y del orden de creación. Estables entre lecturas (el editor abre la ficha por su id y
+ * la recarga la vuelve a encontrar) y distintos en cada sitio. Al guardarse quedan tal cual.
+ */
+export function generadorIdsFicha(sitioId: string): () => string {
+  let n = 0;
+  return () => {
+    const h = createHash('sha1').update(`ficha-producto:${sitioId}:${n++}`).digest('hex');
+    const variante = ((parseInt(h.slice(16, 18), 16) & 0x3f) | 0x80).toString(16).padStart(2, '0');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${variante}${h.slice(18, 20)}-${h.slice(20, 32)}`;
+  };
+}
+
+/**
+ * Lee el borrador. Sitio principal sin ficha de producto (`plantillas/product-detail`): el
+ * documento devuelto ya la trae (`asegurarFichaProducto`, los bloques del diseño fijo de la tienda,
+ * ids de `generadorIdsFicha`), SIN escribir: se guarda con el siguiente guardado normal del
+ * borrador (compare-and-swap de siempre) y solo sale a la web al publicar. El estado de
+ * publicación se calcula con lo guardado, así que abrir el editor no inventa «cambios sin
+ * publicar», y «Descartar cambios» no entra en un ciclo (decisión del dueño 2026-11-22, opción A).
+ */
 export async function obtenerBorrador(cliente: SupabaseClient, org: number, sitioId: string): Promise<BorradorSitio> {
   const estado = await estadoDeOrg(cliente, org, sitioId);
   const borrador = await borradorDe(cliente, org, sitioId);
@@ -503,9 +529,14 @@ export async function obtenerBorrador(cliente: SupabaseClient, org: number, siti
           .then((doc) => doc !== null && igualesEstructural(borrador.document, doc))
           .catch(() => false)
       : false;
+  const documento = validacion.ok
+    ? estado.branch_id === null
+      ? asegurarFichaProducto(validacion.documento, generadorIdsFicha(sitioId)).documento
+      : validacion.documento
+    : (borrador.document as DocumentoSitio);
   return {
     sitio: resumen(estado, borrador, fuente, igual),
-    documento: (validacion.ok ? validacion.documento : borrador.document) as DocumentoSitio,
+    documento,
     version: borrador.version,
     actualizadoEn: borrador.updated_at,
     revisionBaseId: borrador.base_revision_id ?? null,

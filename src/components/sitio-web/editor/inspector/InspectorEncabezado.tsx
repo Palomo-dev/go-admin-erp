@@ -52,6 +52,7 @@ import {
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
+import { CabeceraVistaTienda, FilaAbrirVistaTienda, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
 import { CabeceraBoton, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonEncabezado } from './PildoraYBoton';
 import type { BotonEncabezado } from './pildoraLogica';
 import {
@@ -102,6 +103,8 @@ export interface InspectorEncabezadoProps {
   pestanaInicial?: PestanaZona;
   /** Giro del sitio: el menú inferior del restaurante arranca con «Reservar · Llamar · Cómo llegar · Pedir». */
   giro?: string | null;
+  /** Organización del sitio: la vista «Selector de moneda» marca su moneda base. */
+  organizationId?: number | null;
 }
 
 const COMPOSICIONES = ['default', 'centered', 'split', 'minimal', 'mega', 'pill'] as const;
@@ -121,6 +124,23 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
   const [vistaBoton, setVistaBoton] = useState<BotonEncabezado | null>(null);
   const abrirBoton = () => setVistaBoton('principal');
   const abrirSegundo = () => setVistaBoton('segundo');
+  // Cabecera de la tienda (Figma 2754:59674, 2757:60344, 2754:60110, 2772:62317): Íconos, Selector
+  // de moneda, Carrito y Favoritos, cada una en su vista con «volver», como el botón principal.
+  const [vistaTienda, setVistaTienda] = useState<VistaCabeceraTienda | null>(null);
+
+  if (vistaTienda) {
+    return (
+      <aside aria-label={t('inspector.etiqueta', { nombre: titulo })} className="flex h-full min-h-0 w-full flex-col bg-surface text-fg">
+        <CabeceraVistaTienda vista={vistaTienda} onVolver={() => setVistaTienda(null)} />
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3" data-vista={`tienda-${vistaTienda}`}>
+          {vistaTienda === 'iconos' && <VistaIconos ajustes={a} cambiar={cambiar} onAbrir={setVistaTienda} />}
+          {vistaTienda === 'moneda' && <VistaMoneda ajustes={a} cambiar={cambiar} organizationId={p.organizationId} />}
+          {vistaTienda === 'carrito' && <VistaCarrito ajustes={a} cambiar={cambiar} enBorrador={p.enBorrador} />}
+          {vistaTienda === 'favoritos' && <VistaFavoritos ajustes={a} cambiar={cambiar} />}
+        </div>
+      </aside>
+    );
+  }
 
   if (vistaBoton) {
     const segundo = vistaBoton === 'segundo';
@@ -163,21 +183,26 @@ export function InspectorEncabezado(p: InspectorEncabezadoProps) {
       />
       <div role="tabpanel" id={idPanel(idTabs, pestana)} aria-labelledby={idPestana(idTabs, pestana)} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-3">
         <BandaGlobal />
-        {pestana === 'contenido' && <Contenido {...p} cambiar={cambiar} texto={texto} onAbrirBoton={abrirBoton} onAbrirSegundo={abrirSegundo} />}
+        {pestana === 'contenido' && <Contenido {...p} cambiar={cambiar} texto={texto} onAbrirBoton={abrirBoton} onAbrirSegundo={abrirSegundo} onAbrirVista={setVistaTienda} />}
         {pestana === 'diseno' && (
           <>
             <TarjetaPlantilla nombre={p.porDefecto.nombre} enBorrador={p.enBorrador} />
             <Diseno {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} />
           </>
         )}
-        {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} />}
+        {pestana === 'estilo' && <Estilo {...p} cambiar={cambiar} onAbrirBoton={abrirBoton} onAbrirVista={setVistaTienda} />}
         {pestana === 'celular' && <CelularEncabezado ajustes={p.ajustes} cambiar={cambiar} coloresTema={p.coloresTema} giro={p.giro} />}
       </div>
     </aside>
   );
 }
 
-type Interno = InspectorEncabezadoProps & { cambiar: (c: Record<string, unknown>) => void; onAbrirBoton?: () => void; onAbrirSegundo?: () => void };
+type Interno = InspectorEncabezadoProps & {
+  cambiar: (c: Record<string, unknown>) => void;
+  onAbrirBoton?: () => void;
+  onAbrirSegundo?: () => void;
+  onAbrirVista?: (v: VistaCabeceraTienda) => void;
+};
 
 // ─── Menú (en Contenido y en Diseño, como en Figma) ───────────────────────────────────────────
 
@@ -387,6 +412,8 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
         {/* DUP-28oct: el buscador (mostrar u ocultar) se elige una sola vez, en Diseño › Buscador (`search_style`). */}
         <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
         {opcionBooleana(a, 'show_header_cart') && <SelectorIconoAccion accion="cart" ajustes={a} cambiar={cambiar} />}
+        {opcionBooleana(a, 'show_header_cart') && p.onAbrirVista && <FilaAbrirVistaTienda vista="carrito" onAbrir={p.onAbrirVista} />}
+        {opcionBooleana(a, 'show_header_cart') && p.onAbrirVista && <FilaAbrirVistaTienda vista="favoritos" onAbrir={p.onAbrirVista} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.cuenta')}
           ayuda={t('zonaGlobal.acciones.cuentaAyuda')}
@@ -401,6 +428,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           onCambiar={(v) => cambiar({ header_show_currency: v })}
         />
         {opcionBooleana(a, 'header_show_currency') && <SelectorIconoAccion accion="currency" ajustes={a} cambiar={cambiar} />}
+        {opcionBooleana(a, 'header_show_currency') && p.onAbrirVista && <FilaAbrirVistaTienda vista="moneda" onAbrir={p.onAbrirVista} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}
@@ -678,6 +706,10 @@ function Estilo(p: Interno) {
       {p.onAbrirBoton && <FilaAbrirBoton onAbrir={p.onAbrirBoton} />}
       <section className="flex flex-col gap-3">
         <TituloBloque>{t('zonaGlobal.estilo.iconos')}</TituloBloque>
+        {p.onAbrirVista && <FilaAbrirVistaTienda vista="iconos" onAbrir={p.onAbrirVista} />}
+        {p.onAbrirVista && <FilaAbrirVistaTienda vista="moneda" onAbrir={p.onAbrirVista} />}
+        {p.onAbrirVista && <FilaAbrirVistaTienda vista="carrito" onAbrir={p.onAbrirVista} />}
+        {p.onAbrirVista && <FilaAbrirVistaTienda vista="favoritos" onAbrir={p.onAbrirVista} />}
         <CajaIconos ajustes={a} cambiar={cambiar} coloresTema={p.coloresTema} />
         <IconosAcciones ajustes={a} cambiar={cambiar} />
         {circuloAcentoActivo(a) && !cajaIconos(a) && (() => {

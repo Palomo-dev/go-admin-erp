@@ -24,6 +24,7 @@ import {
 } from '@/components/sitio-web/ui/dispositivos';
 import { usePuenteLienzo, type DetalleClic, type OpcionesPuente } from './usePuenteLienzo';
 import { useTextosEditor } from './textos';
+import { MuestraPlantillaLienzo, type MuestraPlantilla } from './MuestraPlantillaLienzo';
 
 export interface LienzoEditorProps {
   url: string | null;
@@ -45,6 +46,8 @@ export interface LienzoEditorProps {
   pagina?: OpcionesPuente['pagina'];
   /** Viendo una versión del historial: banda superior con «Volver al borrador» y «Restaurar». */
   version?: { titulo: string; onVolver: () => void; onRestaurar?: () => void } | null;
+  /** Plantilla de detalle (ficha de producto…): registro real con el que se ve y aviso. */
+  muestra?: MuestraPlantilla | null;
   className?: string;
 }
 
@@ -167,6 +170,7 @@ export function LienzoEditor(p: LienzoEditorProps) {
           </button>
         </div>
       )}
+      {p.muestra && <MuestraPlantillaLienzo muestra={p.muestra} />}
       <div ref={contenedor} className="flex min-h-0 flex-1 justify-center overflow-auto p-6">
         <div className="relative" style={{ width: anchoMarco || '100%' }}>
           {p.etiquetaSeleccion && (

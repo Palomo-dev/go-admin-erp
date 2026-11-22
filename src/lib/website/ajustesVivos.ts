@@ -76,13 +76,24 @@ export const CLAVES_CONTADOR_VIVO = [
   'countdown_show_in_hero', 'checkout_show_countdown', 'countdown_style',
 ] as const;
 
+/**
+ * Botón del carrito en la fila legacy (operación, D12). El cajón lo lee como respaldo cuando el
+ * documento no trae `header_carrito.boton`; en vivo para que el lienzo pinte lo que se edita en
+ * los sitios sin borrador (Encabezado › Carrito, Figma 2754:60110).
+ */
+export const CLAVES_CARRITO_VIVO = ['cart_button_mode', 'cart_button_texts'] as const;
+
 export const CLAVES_AJUSTES_VIVOS: readonly string[] = Array.from(
-  new Set<string>([...CLAVES_ENCABEZADO, ...CLAVES_TEMA_VIVO, ...CLAVES_CONTADOR_VIVO].filter((c) => c !== 'header_menu_id' && c !== 'header_mega_menu_id')),
+  new Set<string>(
+    [...CLAVES_ENCABEZADO, ...CLAVES_TEMA_VIVO, ...CLAVES_CONTADOR_VIVO, ...CLAVES_CARRITO_VIVO].filter(
+      (c) => c !== 'header_menu_id' && c !== 'header_mega_menu_id',
+    ),
+  ),
 );
 
 /** Toma de los ajustes del editor solo las columnas que el lienzo aplica en vivo. */
-// Sin valor en los ajustes no se mandan (no se pisan con `null`): el tema y el contador.
-const TEMA_VIVO = new Set<string>([...CLAVES_TEMA_VIVO, ...CLAVES_CONTADOR_VIVO]);
+// Sin valor en los ajustes no se mandan (no se pisan con `null`): el tema, el contador y el carrito.
+const TEMA_VIVO = new Set<string>([...CLAVES_TEMA_VIVO, ...CLAVES_CONTADOR_VIVO, ...CLAVES_CARRITO_VIVO]);
 
 export function ajustesParaLienzo(ajustes: Record<string, unknown> | null | undefined): Record<string, unknown> {
   const resultado: Record<string, unknown> = {};

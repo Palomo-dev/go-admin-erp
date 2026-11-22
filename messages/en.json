@@ -34957,7 +34957,8 @@
         "sinPermisoPublicar": "Your role can't publish the site. Ask for the “Publish website” permission.",
         "nadaQuePublicar": "No changes to publish",
         "nadaQueGuardar": "No changes to save",
-        "sitio": "Site or location you are editing"
+        "sitio": "Site or location you are editing",
+        "plantillasTienda": "Store templates"
       },
       "acciones": {
         "reintentar": "Retry",
@@ -35013,7 +35014,17 @@
         "seccion": "{seccion} · click to edit",
         "seccionPropia": "{seccion} · own typography · live preview",
         "encabezado": "Header · global · click a link to edit the menu",
-        "pie": "Footer · global · click a link to edit the menu"
+        "pie": "Footer · global · click a link to edit the menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Preview with product",
+            "category_detail": "Preview with category",
+            "space_detail": "Preview with space"
+          },
+          "sinOpciones": "There are no active records to preview yet: the canvas shows the store listing.",
+          "publicada": "The canvas shows the published version of this template: your changes appear here after you publish.",
+          "borrador": "Showing your draft: each time it saves, the preview updates with your changes."
+        }
       },
       "inspector": {
         "etiqueta": "Inspector: {nombre}",
@@ -35696,6 +35707,260 @@
       "controles": {
         "degradado1": "Gradient start color",
         "degradado2": "Gradient end color"
+      },
+      "cabeceraTienda": {
+        "volver": "Back to Header",
+        "comoHoy": "Back to how it is today",
+        "iconos": {
+          "titulo": "Header › Icons",
+          "migas": "Global · shown on every page",
+          "abrir": "Header icons",
+          "abrirAyuda": "Style, size, labels and cart counter",
+          "estilo": "Icon style",
+          "estiloAyuda": "Applies to account, cart, favorites and currency. Icon only and Circle use your current icon box, which is kept.",
+          "estiloOpcion": {
+            "icono": "Icon only",
+            "texto": "With label",
+            "pildora": "Pill",
+            "relleno": "Filled",
+            "circulo": "Circle"
+          },
+          "miniTexto": "Cart",
+          "posicionTexto": "Label",
+          "debajo": "Below",
+          "alLado": "Beside",
+          "tamano": "Size",
+          "trazo": "Stroke",
+          "trazoOpcion": {
+            "fino": "Thin",
+            "normal": "Regular"
+          },
+          "mostrarTexto": "Show label",
+          "mostrarTextoAyuda": "With «With label» it goes below the icon; with «Pill» and «Filled», beside it.",
+          "mostrarTextoSinTexto": "Icon only and Circle have no label.",
+          "cuales": "Which icons are shown",
+          "cualesAyuda": "Every label can be edited. Empty = the default label.",
+          "cuenta": "Account",
+          "carrito": "Cart",
+          "favoritos": "Favorites",
+          "moneda": "Currency",
+          "texto": "Label",
+          "porDefecto": "Default: «{texto}».",
+          "contador": "Counter",
+          "contadorOpcion": {
+            "numero": "Number",
+            "punto": "Dot",
+            "oculto": "Hidden"
+          },
+          "glifo": "Icon",
+          "glifoOpcion": {
+            "carrito": "Cart",
+            "bolsa": "Bag"
+          },
+          "favoritosAyuda": "Opens My account › Favorites: the products the customer saved with the heart.",
+          "monedaEstilo": "Style and currencies",
+          "monedaVer": "See «Currency selector»",
+          "favoritosAyudaPanel": "Opens the favorites panel or the /favoritos page (Header › Favorites).",
+          "favoritosVer": "See “Favorites”"
+        },
+        "moneda": {
+          "titulo": "Header › Currency selector",
+          "migas": "Global · shown on every page",
+          "abrir": "Currency selector",
+          "abrirAyuda": "Style, visible currencies and starting currency",
+          "selector": "Currency selector",
+          "mostrar": "Show in the header",
+          "mostrarAyuda": "Only shown when the store offers more than one currency.",
+          "estilo": "Selector style",
+          "estiloAyuda": "With none chosen, today's: globe, code and arrow.",
+          "estiloOpcion": {
+            "codigo": "Code",
+            "bandera": "Flag + code",
+            "simbolo": "Code + symbol",
+            "icono": "Icon only",
+            "segmento": "Segment"
+          },
+          "flecha": "Show arrow",
+          "visibles": "Currencies visible in the store",
+          "visiblesAyuda": "Here you only choose which ones the customer sees.",
+          "base": "(base)",
+          "visiblesPie": "The base currency is always visible and comes first.",
+          "alEntrar": "Starting currency",
+          "alEntrarOpcion": {
+            "pais": "Based on the visitor's country",
+            "base": "Always the base currency ({base})"
+          },
+          "alEntrarAyuda": "Today the store detects the country. If that country has no visible currency, {base} is used.",
+          "celular": "On mobile",
+          "celularOpcion": {
+            "hoja": "Bottom sheet",
+            "lateral": "Side menu",
+            "chips": "Chips",
+            "barra": "In the bar"
+          },
+          "celularAyuda": {
+            "hoja": "As today: a row in the menu opens the sheet with the currencies.",
+            "lateral": "The list unfolds inside the side menu.",
+            "chips": "Currencies are shown as chips inside the menu.",
+            "barra": "The flag (or the code) sits next to the cart and opens the sheet."
+          }
+        },
+        "carrito": {
+          "titulo": "Header › Cart",
+          "migas": "Global · drawer opened from the cart icon",
+          "abrir": "Cart drawer",
+          "abrirAyuda": "Main button, links and free shipping",
+          "boton": "Main cart button",
+          "botonAyuda": "Previously only in the old editor (Global settings). Now here, with the same labels.",
+          "modo": {
+            "al_abrir": "Dynamic (rotates)",
+            "fijo": "Fixed label"
+          },
+          "modoAyuda": {
+            "al_abrir": "Switches between several labels",
+            "fijo": "Always the same"
+          },
+          "textos": "Rotating labels",
+          "textoN": "Label {n}",
+          "quitarTexto": "Remove label {n}",
+          "agregarTexto": "Add label",
+          "textosAyuda": "Drag to reorder. Up to {max} labels of {largo} characters.",
+          "cuando": "When it changes",
+          "cuandoAlAbrir": "Every time the cart opens",
+          "textoFijo": "Button label",
+          "textoFijoAyuda": "Empty = «{texto}».",
+          "sinBorrador": "This site has no draft yet: the button is saved in the usual settings.",
+          "enlace": "Secondary link",
+          "enlaceMostrar": "Show",
+          "enlaceTexto": "Label",
+          "enlaceAyuda": "Opens the cart page.",
+          "enlaceEstilo": "Style",
+          "enlaceEstiloOpcion": {
+            "borde": "Outlined",
+            "enlace": "Link"
+          },
+          "envio": "Free shipping",
+          "envioBarra": "Show progress bar",
+          "envioFalta": "While missing",
+          "envioFaltaAyuda": "'{monto}' is replaced with the amount left. The threshold is in Online sales › Shipping.",
+          "envioLogrado": "Once reached",
+          "otros": "Other labels",
+          "tituloCajon": "Drawer title",
+          "seguir": "Continue shopping",
+          "textosSoloBorrador": "Drawer labels are saved once the site moves to the new draft; meanwhile they show in the preview.",
+          "botonAyudaModos": "Choose how the button text changes. The preview shows the result.",
+          "comoCambia": "How the text changes",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixed (always the same)",
+              "ayuda": "A single text for the button"
+            },
+            "al_abrir": {
+              "titulo": "Changes every time the cart opens",
+              "ayuda": "A different one on each opening"
+            },
+            "mientras_abierto": {
+              "titulo": "Changes only while it is open",
+              "ayuda": "Rotates every few seconds, with a transition"
+            },
+            "segun_carrito": {
+              "titulo": "Based on the cart",
+              "ayuda": "Depends on free shipping and offers"
+            }
+          },
+          "opcionesDe": "“{modo}” options",
+          "textoFijoAyudaLargo": "Empty = “{texto}” (the default text). Up to {largo} characters.",
+          "orden": "Order",
+          "ordenOpcion": {
+            "azar": "Random",
+            "orden": "In order"
+          },
+          "ordenAyuda": "“Random”: any of them, never the same as last time. “In order”: the 1st the first time, the 2nd the next… and starts over.",
+          "segundos": "Every how many seconds",
+          "segundosValor": "{n} s",
+          "transicion": "Transition",
+          "transicionOpcion": {
+            "fundido": "Fade",
+            "deslizar": "Slide",
+            "ninguna": "No effect"
+          },
+          "pausar": "Pause on mouse hover",
+          "pausarAyuda": "On phones it pauses while the finger is on the button. If the visitor asked for “reduced motion”, it changes with no effect.",
+          "reglas": {
+            "faltaEnvio": "1 · If free shipping is not reached yet",
+            "oferta": "2 · If there are products on sale",
+            "envioGratis": "3 · If it already has free shipping",
+            "porDefecto": "Default (none applies)"
+          },
+          "reglaVacia": "Empty: skips to the next one",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' is replaced with the amount left. Only if there is a free shipping threshold.",
+            "oferta": "Counts if any product in the cart has a previous price.",
+            "pie": "If several apply, the lowest number wins. An empty field skips to the next one."
+          },
+          "usarEnPagina": "Use the same for “Buy” on the full cart",
+          "usarEnPaginaAyuda": "On, the “Buy” button on the /carrito page changes like the drawer one. Off, it has its own settings.",
+          "botonPagina": "“Buy” button on /carrito",
+          "soloBorrador": "Available once the site moves to the new draft.",
+          "vistaPrevia": {
+            "etiqueta": "Preview",
+            "fijo": "Result · always the same text",
+            "al_abrir_azar": "Result · a different text each time it opens (random)",
+            "al_abrir_orden": "Result · a different text each time it opens (in order)",
+            "mientras_abierto": "Result · rotates every {n} s while the drawer stays open",
+            "segun_carrito": "Result · the text depends on what is in the cart",
+            "vez": "Time {n}",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "Header › Favorites",
+          "migas": "Global · heart, side panel and /favoritos page",
+          "abrir": "Favorites",
+          "abrirAyuda": "Heart, side panel and /favoritos page",
+          "corazon": "Heart in the header",
+          "mostrar": "Show the heart",
+          "contador": "Saved products counter",
+          "corazonAyuda": "The icon style (icon only, with text, pill…) is chosen in Header › Icons.",
+          "alTocar": "When tapping the heart",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Open the side panel",
+              "ayuda": "Quick list without leaving"
+            },
+            "pagina": {
+              "titulo": "Go to the page",
+              "ayuda": "Takes you to /favoritos"
+            }
+          },
+          "alTocarAyuda": "On phones the panel opens full screen.",
+          "textos": "Texts",
+          "textosAyuda": "The grey text is the default. If you leave the field empty, the store uses it.",
+          "texto": {
+            "tituloPagina": "Page title",
+            "tituloPanel": "Panel title",
+            "botonPrincipal": "Main button",
+            "botonBorde": "Outlined button",
+            "vacioTitulo": "Empty message · title",
+            "vacioTexto": "Empty message · text",
+            "avisoSesion": "Notice for visitors not signed in"
+          },
+          "paginaPanel": "/favoritos page and panel",
+          "sugerencias": "Show “You may also like”",
+          "fuente": "Where suggestions come from",
+          "fuenteOpcion": {
+            "categorias": "From the same categories",
+            "mas_vendidos": "Best sellers",
+            "destacados": "Featured products"
+          },
+          "fuenteAyuda": "“Featured”: products on sale first, then best sellers. Hidden when there are no products.",
+          "avisoSesion": "Show sign-in notice",
+          "compartir": "“Share list” button",
+          "tarjetas": "Product cards",
+          "corazonTarjetas": "Heart on cards",
+          "corazonFicha": "Heart on the product page",
+          "tarjetasAyuda": "The style and position of the heart on the card stay in Site style › Product card."
+        }
       }
     },
     "paginas": {

@@ -34957,7 +34957,8 @@
         "sinPermisoPublicar": "Ton rôle ne peut pas publier le site. Demande l’autorisation « Publier le site web ».",
         "nadaQuePublicar": "Aucune modification à publier",
         "nadaQueGuardar": "Aucune modification à enregistrer",
-        "sitio": "Site ou établissement que vous modifiez"
+        "sitio": "Site ou établissement que vous modifiez",
+        "plantillasTienda": "Modèles de la boutique"
       },
       "acciones": {
         "reintentar": "Réessayer",
@@ -35013,7 +35014,17 @@
         "seccion": "{seccion} · cliquez pour modifier",
         "seccionPropia": "{seccion} · typographie propre · aperçu en direct",
         "encabezado": "En-tête · global · cliquez sur un lien pour modifier le menu",
-        "pie": "Pied de page · global · cliquez sur un lien pour modifier le menu"
+        "pie": "Pied de page · global · cliquez sur un lien pour modifier le menu",
+        "muestra": {
+          "etiqueta": {
+            "product_detail": "Voir avec le produit",
+            "category_detail": "Voir avec la catégorie",
+            "space_detail": "Voir avec l'espace"
+          },
+          "sinOpciones": "Aucun enregistrement actif pour l'aperçu : le canevas affiche la liste de la boutique.",
+          "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication.",
+          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour."
+        }
       },
       "inspector": {
         "etiqueta": "Inspecteur : {nombre}",
@@ -35696,6 +35707,260 @@
       "controles": {
         "degradado1": "Couleur de début du dégradé",
         "degradado2": "Couleur de fin du dégradé"
+      },
+      "cabeceraTienda": {
+        "volver": "Retour à l’en-tête",
+        "comoHoy": "Revenir à l’état actuel",
+        "iconos": {
+          "titulo": "En-tête › Icônes",
+          "migas": "Global · visible sur toutes les pages",
+          "abrir": "Icônes de l’en-tête",
+          "abrirAyuda": "Style, taille, libellés et compteur du panier",
+          "estilo": "Style des icônes",
+          "estiloAyuda": "S’applique au compte, au panier, aux favoris et à la devise. Icône seule et Cercle utilisent votre boîte d’icônes actuelle, qui est conservée.",
+          "estiloOpcion": {
+            "icono": "Icône seule",
+            "texto": "Avec libellé",
+            "pildora": "Pilule",
+            "relleno": "Plein",
+            "circulo": "Cercle"
+          },
+          "miniTexto": "Panier",
+          "posicionTexto": "Libellé",
+          "debajo": "Dessous",
+          "alLado": "À côté",
+          "tamano": "Taille",
+          "trazo": "Trait",
+          "trazoOpcion": {
+            "fino": "Fin",
+            "normal": "Normal"
+          },
+          "mostrarTexto": "Afficher le libellé",
+          "mostrarTextoAyuda": "Avec «Avec libellé» il va sous l’icône ; avec «Pilule» et «Plein», à côté.",
+          "mostrarTextoSinTexto": "Icône seule et Cercle n’ont pas de libellé.",
+          "cuales": "Icônes affichées",
+          "cualesAyuda": "Chaque libellé est modifiable. Vide = le libellé par défaut.",
+          "cuenta": "Compte",
+          "carrito": "Panier",
+          "favoritos": "Favoris",
+          "moneda": "Devise",
+          "texto": "Libellé",
+          "porDefecto": "Par défaut : «{texto}».",
+          "contador": "Compteur",
+          "contadorOpcion": {
+            "numero": "Nombre",
+            "punto": "Point",
+            "oculto": "Masqué"
+          },
+          "glifo": "Icône",
+          "glifoOpcion": {
+            "carrito": "Chariot",
+            "bolsa": "Sac"
+          },
+          "favoritosAyuda": "Ouvre Mon compte › Favoris : les produits que le client a marqués d’un cœur.",
+          "monedaEstilo": "Style et devises",
+          "monedaVer": "Voir «Sélecteur de devise»",
+          "favoritosAyudaPanel": "Ouvre le panneau des favoris ou la page /favoritos (En-tête › Favoris).",
+          "favoritosVer": "Voir « Favoris »"
+        },
+        "moneda": {
+          "titulo": "En-tête › Sélecteur de devise",
+          "migas": "Global · visible sur toutes les pages",
+          "abrir": "Sélecteur de devise",
+          "abrirAyuda": "Style, devises visibles et devise à l’arrivée",
+          "selector": "Sélecteur de devise",
+          "mostrar": "Afficher dans l’en-tête",
+          "mostrarAyuda": "Visible seulement si la boutique propose plus d’une devise.",
+          "estilo": "Style du sélecteur",
+          "estiloAyuda": "Sans choix, celui d’aujourd’hui : globe, code et flèche.",
+          "estiloOpcion": {
+            "codigo": "Code",
+            "bandera": "Drapeau + code",
+            "simbolo": "Code + symbole",
+            "icono": "Icône seule",
+            "segmento": "Segment"
+          },
+          "flecha": "Afficher la flèche",
+          "visibles": "Devises visibles dans la boutique",
+          "visiblesAyuda": "Ici vous choisissez seulement celles que voit le client.",
+          "base": "(base)",
+          "visiblesPie": "La devise de base est toujours visible et en premier.",
+          "alEntrar": "Devise à l’arrivée",
+          "alEntrarOpcion": {
+            "pais": "Selon le pays du visiteur",
+            "base": "Toujours la devise de base ({base})"
+          },
+          "alEntrarAyuda": "Aujourd’hui la boutique détecte le pays. Si ce pays n’a pas de devise visible, {base} est utilisée.",
+          "celular": "Sur mobile",
+          "celularOpcion": {
+            "hoja": "Feuille du bas",
+            "lateral": "Menu latéral",
+            "chips": "Puces",
+            "barra": "Dans la barre"
+          },
+          "celularAyuda": {
+            "hoja": "Comme aujourd’hui : une ligne du menu ouvre la feuille des devises.",
+            "lateral": "La liste se déplie dans le menu latéral.",
+            "chips": "Les devises s’affichent en puces dans le menu.",
+            "barra": "Le drapeau (ou le code) est à côté du panier et ouvre la feuille."
+          }
+        },
+        "carrito": {
+          "titulo": "En-tête › Panier",
+          "migas": "Global · tiroir ouvert depuis l’icône du panier",
+          "abrir": "Tiroir du panier",
+          "abrirAyuda": "Bouton principal, liens et livraison gratuite",
+          "boton": "Bouton principal du panier",
+          "botonAyuda": "Avant, seulement dans l’ancien éditeur (Réglages globaux). Maintenant ici, avec les mêmes libellés.",
+          "modo": {
+            "al_abrir": "Dynamique (alterne)",
+            "fijo": "Libellé fixe"
+          },
+          "modoAyuda": {
+            "al_abrir": "Alterne entre plusieurs libellés",
+            "fijo": "Toujours le même"
+          },
+          "textos": "Libellés qui alternent",
+          "textoN": "Libellé {n}",
+          "quitarTexto": "Retirer le libellé {n}",
+          "agregarTexto": "Ajouter un libellé",
+          "textosAyuda": "Glissez pour réordonner. Jusqu’à {max} libellés de {largo} caractères.",
+          "cuando": "Quand il change",
+          "cuandoAlAbrir": "À chaque ouverture du panier",
+          "textoFijo": "Libellé du bouton",
+          "textoFijoAyuda": "Vide = «{texto}».",
+          "sinBorrador": "Ce site n’a pas encore de brouillon : le bouton est enregistré dans les réglages habituels.",
+          "enlace": "Lien secondaire",
+          "enlaceMostrar": "Afficher",
+          "enlaceTexto": "Libellé",
+          "enlaceAyuda": "Ouvre la page du panier.",
+          "enlaceEstilo": "Style",
+          "enlaceEstiloOpcion": {
+            "borde": "Avec bordure",
+            "enlace": "Lien"
+          },
+          "envio": "Livraison gratuite",
+          "envioBarra": "Afficher la barre de progression",
+          "envioFalta": "Tant qu’il manque",
+          "envioFaltaAyuda": "'{monto}' est remplacé par le montant restant. Le seuil est dans Ventes en ligne › Livraisons.",
+          "envioLogrado": "Une fois atteint",
+          "otros": "Autres libellés",
+          "tituloCajon": "Titre du tiroir",
+          "seguir": "Continuer mes achats",
+          "textosSoloBorrador": "Les libellés du tiroir sont enregistrés quand le site passe au nouveau brouillon ; en attendant, ils s’affichent dans l’aperçu.",
+          "botonAyudaModos": "Choisissez comment le texte du bouton change. L’aperçu montre le résultat.",
+          "comoCambia": "Comment le texte change",
+          "modos": {
+            "fijo": {
+              "titulo": "Fixe (toujours le même)",
+              "ayuda": "Un seul texte pour le bouton"
+            },
+            "al_abrir": {
+              "titulo": "Change à chaque ouverture du panier",
+              "ayuda": "Un texte différent à chaque ouverture"
+            },
+            "mientras_abierto": {
+              "titulo": "Change seulement tant qu’il est ouvert",
+              "ayuda": "Tourne toutes les quelques secondes, avec transition"
+            },
+            "segun_carrito": {
+              "titulo": "Selon le panier",
+              "ayuda": "Dépend de la livraison gratuite et des offres"
+            }
+          },
+          "opcionesDe": "Options de « {modo} »",
+          "textoFijoAyudaLargo": "Vide = « {texto} » (le texte par défaut). {largo} caractères maximum.",
+          "orden": "Ordre",
+          "ordenOpcion": {
+            "azar": "Au hasard",
+            "orden": "Dans l’ordre"
+          },
+          "ordenAyuda": "« Au hasard » : n’importe lequel, sans répéter le précédent. « Dans l’ordre » : le 1er la première fois, le 2e la suivante… puis on recommence.",
+          "segundos": "Toutes les combien de secondes",
+          "segundosValor": "{n} s",
+          "transicion": "Transition",
+          "transicionOpcion": {
+            "fundido": "Fondu",
+            "deslizar": "Glisser",
+            "ninguna": "Sans effet"
+          },
+          "pausar": "Pause au survol de la souris",
+          "pausarAyuda": "Sur mobile, pause tant que le doigt est sur le bouton. Si le visiteur a demandé « réduire les animations », change sans effet.",
+          "reglas": {
+            "faltaEnvio": "1 · S’il manque pour la livraison gratuite",
+            "oferta": "2 · S’il y a des produits en promotion",
+            "envioGratis": "3 · S’il a déjà la livraison gratuite",
+            "porDefecto": "Par défaut (aucune ne s’applique)"
+          },
+          "reglaVacia": "Vide : passe à la suivante",
+          "reglasAyuda": {
+            "faltaEnvio": "'{monto}' est remplacé par le montant manquant. Seulement s’il existe un seuil de livraison gratuite.",
+            "oferta": "Compte si un produit du panier a un prix barré.",
+            "pie": "Si plusieurs s’appliquent, le plus petit numéro l’emporte. Un champ vide passe à la suivante."
+          },
+          "usarEnPagina": "Utiliser la même chose pour « Acheter » du panier complet",
+          "usarEnPaginaAyuda": "Activé, le bouton « Acheter » de la page /carrito change comme celui du tiroir. Désactivé, il a sa propre configuration.",
+          "botonPagina": "Bouton « Acheter » de /carrito",
+          "soloBorrador": "Disponible quand le site passe au nouveau brouillon.",
+          "vistaPrevia": {
+            "etiqueta": "Aperçu",
+            "fijo": "Résultat · toujours le même texte",
+            "al_abrir_azar": "Résultat · un texte différent à chaque ouverture (au hasard)",
+            "al_abrir_orden": "Résultat · un texte différent à chaque ouverture (dans l’ordre)",
+            "mientras_abierto": "Résultat · tourne toutes les {n} s tant que le tiroir reste ouvert",
+            "segun_carrito": "Résultat · le texte dépend du contenu du panier",
+            "vez": "{n}e fois",
+            "segundo": "{n} s"
+          }
+        },
+        "favoritos": {
+          "titulo": "En-tête › Favoris",
+          "migas": "Global · cœur, panneau latéral et page /favoritos",
+          "abrir": "Favoris",
+          "abrirAyuda": "Cœur, panneau latéral et page /favoritos",
+          "corazon": "Cœur dans l’en-tête",
+          "mostrar": "Afficher le cœur",
+          "contador": "Compteur de produits enregistrés",
+          "corazonAyuda": "Le style de l’icône (icône seule, avec texte, pilule…) se choisit dans En-tête › Icônes.",
+          "alTocar": "En touchant le cœur",
+          "alTocarOpcion": {
+            "panel": {
+              "titulo": "Ouvrir le panneau latéral",
+              "ayuda": "Liste rapide sans quitter la page"
+            },
+            "pagina": {
+              "titulo": "Aller à la page",
+              "ayuda": "Mène à /favoritos"
+            }
+          },
+          "alTocarAyuda": "Sur mobile, le panneau s’ouvre en plein écran.",
+          "textos": "Textes",
+          "textosAyuda": "Le texte en gris est celui par défaut. Si vous laissez le champ vide, la boutique l’utilise.",
+          "texto": {
+            "tituloPagina": "Titre de la page",
+            "tituloPanel": "Titre du panneau",
+            "botonPrincipal": "Bouton principal",
+            "botonBorde": "Bouton avec bordure",
+            "vacioTitulo": "Message vide · titre",
+            "vacioTexto": "Message vide · texte",
+            "avisoSesion": "Avis pour le visiteur non connecté"
+          },
+          "paginaPanel": "Page /favoritos et panneau",
+          "sugerencias": "Afficher « Vous aimerez aussi »",
+          "fuente": "Origine des suggestions",
+          "fuenteOpcion": {
+            "categorias": "Des mêmes catégories",
+            "mas_vendidos": "Meilleures ventes",
+            "destacados": "Produits mis en avant"
+          },
+          "fuenteAyuda": "« Mis en avant » : d’abord ceux en promotion, puis les meilleures ventes. Masqué s’il n’y a pas de produits.",
+          "avisoSesion": "Afficher l’avis de connexion",
+          "compartir": "Bouton « Partager la liste »",
+          "tarjetas": "Cartes produit",
+          "corazonTarjetas": "Cœur sur les cartes",
+          "corazonFicha": "Cœur sur la fiche produit",
+          "tarjetasAyuda": "Le style et la position du cœur sur la carte restent dans Style du site › Carte produit."
+        }
       }
     },
     "paginas": {

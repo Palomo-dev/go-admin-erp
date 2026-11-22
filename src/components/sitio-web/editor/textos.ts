@@ -16,6 +16,7 @@ export const TEXTOS_EDITOR = {
     migas: 'Sitio y página que editas',
     sitio: 'Sitio o sede que editas',
     pagina: 'Página que editas',
+    plantillasTienda: 'Plantillas de la tienda',
     ancho: 'Ver el lienzo como',
     dispositivo: {
       escritorio: 'Computador · {ancho} px',
@@ -97,6 +98,15 @@ export const TEXTOS_EDITOR = {
     seccionPropia: '{seccion} · tipografía propia · vista previa en vivo',
     encabezado: 'Encabezado · global · clic en un enlace para editar el menú',
     pie: 'Pie de página · global · clic en un enlace para editar el menú',
+    muestra: {
+      etiqueta: {
+        product_detail: 'Ver con el producto',
+        category_detail: 'Ver con la categoría',
+        space_detail: 'Ver con el espacio',
+      },
+      sinOpciones: 'Aún no hay registros activos para la vista: el lienzo muestra el listado de la tienda.',
+      publicada: 'El lienzo muestra la versión publicada de esta plantilla: tus cambios se ven aquí después de publicar.',
+    },
   },
   inspector: {
     etiqueta: 'Inspector: {nombre}',

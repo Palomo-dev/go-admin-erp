@@ -22,13 +22,14 @@ import Link from 'next/link';
 import { ArrowLeft, ExternalLink, Eye, Loader2, Redo2, RotateCcw, Save, Send, Undo2 } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { RowActionsMenu, StatusBadge, clasesBoton, type AccionFila } from '@/components/kit';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger } from '@/components/ui/select';
 import { PublishStatusBadge } from '@/components/sitio-web/ui/PublishStatusBadge';
 import type { EstadoPublicacion } from '@/components/sitio-web/ui/estadoPublicacion';
 import { RAIZ_SITIO_WEB } from '@/components/sitio-web/rutasSitioWeb';
 import { SelectorAnchoVista } from '@/components/sitio-web/ui/SelectorAnchoVista';
 import { DISPOSITIVOS_EDITOR, VIEWPORT_DISPOSITIVO, type DispositivoVista } from '@/components/sitio-web/ui/dispositivos';
 import { useTextosEditor } from './textos';
+import { gruposPaginasSelector, type OpcionPaginaSelector, type PaginaSelector } from './paginasSelector';
 
 export const RUTA_PAGINAS_EDITOR = `${RAIZ_SITIO_WEB}/paginas`;
 
@@ -38,7 +39,8 @@ const PRINCIPAL = '__principal__';
 const CLASE_SELECTOR = 'h-10 min-w-0 shrink rounded-lg border-line-strong bg-surface text-sm text-fg';
 
 export interface BarraEditorProps {
-  paginas: readonly { id: string; title: string }[];
+  /** Con `tipo` y `slug`, cada una lleva su icono y las plantillas de la tienda van en su grupo. */
+  paginas: readonly PaginaSelector[];
   paginaId: string;
   onCambiarPagina: (id: string) => void;
   /** Sitio que se edita: `null` = principal; el id es el de la sucursal en texto. */
@@ -78,6 +80,8 @@ export interface BarraEditorProps {
 export function BarraEditor(p: BarraEditorProps) {
   const t = useTextosEditor();
   const paginaActual = p.paginas.find((x) => x.id === p.paginaId);
+  const grupos = gruposPaginasSelector(p.paginas);
+  const IconoActual = [...grupos.sitio, ...grupos.tienda].find((x) => x.id === p.paginaId)?.icono ?? null;
   const nombreSitio = (p.sitioActual ? p.sedes.find((x) => x.id === p.sitioActual)?.nombre : null) ?? t('sede.principal');
   return (
     <header className={cn('flex h-14 min-w-0 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 xl:gap-3', p.className)}>
@@ -116,14 +120,26 @@ export function BarraEditor(p: BarraEditorProps) {
         </span>
         <Select value={p.paginaId} onValueChange={p.onCambiarPagina}>
           <SelectTrigger aria-label={t('barra.pagina')} className={cn(CLASE_SELECTOR, 'w-[140px] xl:w-[190px]')}>
-            <span className="truncate">{paginaActual?.title ?? ''}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              {IconoActual && <IconoActual aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />}
+              <span className="truncate">{paginaActual?.title ?? ''}</span>
+            </span>
           </SelectTrigger>
           <SelectContent>
-            {p.paginas.map((x) => (
-              <SelectItem key={x.id} value={x.id}>
-                {x.title}
-              </SelectItem>
+            {grupos.sitio.map((x) => (
+              <OpcionPagina key={x.id} opcion={x} />
             ))}
+            {grupos.tienda.length > 0 && (
+              <>
+                {grupos.sitio.length > 0 && <SelectSeparator />}
+                <SelectGroup>
+                  <SelectLabel className="text-xs font-medium text-fg-secondary">{t('barra.plantillasTienda')}</SelectLabel>
+                  {grupos.tienda.map((x) => (
+                    <OpcionPagina key={x.id} opcion={x} />
+                  ))}
+                </SelectGroup>
+              </>
+            )}
           </SelectContent>
         </Select>
       </nav>
@@ -242,5 +258,18 @@ export function BarraEditor(p: BarraEditorProps) {
         <RowActionsMenu acciones={p.acciones} orientacion="horizontal" tamano="md" titulo={t('barra.masAcciones')} />
       </div>
     </header>
+  );
+}
+
+/** Una página del selector: icono de su tipo (decorativo) y su nombre. */
+function OpcionPagina({ opcion }: { opcion: OpcionPaginaSelector }) {
+  const Icono = opcion.icono;
+  return (
+    <SelectItem value={opcion.id}>
+      <span className="flex items-center gap-2">
+        <Icono aria-hidden="true" className="size-4 shrink-0 text-fg-secondary" strokeWidth={1.5} />
+        <span>{opcion.title}</span>
+      </span>
+    </SelectItem>
   );
 }

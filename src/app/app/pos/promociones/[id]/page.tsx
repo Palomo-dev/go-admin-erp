@@ -168,7 +168,7 @@ export default function PromocionDetallePage() {
   if (!promotion) {
     return (
       <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-4xl rounded-xl border border-line bg-surface">
+        <div className="w-full rounded-xl border border-line bg-surface">
           <EmptyState
             titulo={t('detalle.noEncontrada')}
             descripcion={t('detalle.noEncontradaAyuda')}
@@ -185,7 +185,7 @@ export default function PromocionDetallePage() {
   if (isEditMode) {
     return (
       <div className="flex min-h-screen flex-col gap-4 bg-canvas p-4 sm:p-6">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <div className="flex w-full flex-col gap-4">
           <PageHeader
             variante="form"
             titulo={promotion.name}

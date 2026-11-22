@@ -14,6 +14,9 @@ import { PageHeader } from '@/components/kit/PageHeader';
 import { KpiStrip } from '@/components/kit/KpiStrip';
 import { StatCard } from '@/components/kit/StatCard';
 import { SearchInput } from '@/components/kit/SearchInput';
+import { ListToolbar } from '@/components/kit/ListToolbar';
+import { FilterPanel } from '@/components/kit/FilterPanel';
+import { FilterChips, type ChipFiltro } from '@/components/kit/FilterChips';
 import { clasesBoton } from '@/components/kit/botonClases';
 import { cn } from '@/utils/Utils';
 import { PromotionFilters, PROMOTION_TYPE_LABELS, type PromotionType } from './types';
@@ -64,6 +67,22 @@ export function PromotionsHeader({
       : { ...filters, promotion_type: value as PromotionFilters['promotion_type'] };
     onFiltersChange(newFilter);
   };
+
+  // Mismo patrón de las demás listas (Pedidos online, Ventas): buscador a lo
+  // ancho + «Filtros» con su panel y los chips debajo, sin marco alrededor.
+  const estadoValor = filters.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive';
+  const tipoValor = filters.promotion_type || 'all';
+  const chips: ChipFiltro[] = [
+    ...(filters.is_active === undefined
+      ? []
+      : [{ clave: 'estado', etiqueta: `${t('pantalla.estado')}: ${filters.is_active ? t('pantalla.activas') : t('pantalla.inactivas')}` }]),
+    ...(filters.promotion_type ? [{ clave: 'tipo', etiqueta: `${t('pantalla.tipo')}: ${t(`tipos.${filters.promotion_type}`)}` }] : []),
+  ];
+  const quitarFiltro = (clave: string) => {
+    if (clave === 'estado') handleStatusChange('all');
+    if (clave === 'tipo') handleTypeChange('all');
+  };
+  const limpiarFiltros = () => onFiltersChange({ ...filters, is_active: undefined, promotion_type: undefined });
 
   const nueva = (
     <Link href="/app/pos/promociones/nuevo" className={clasesBoton({ variante: 'primario', tamano: 'sm' })}>
@@ -126,54 +145,65 @@ export function PromotionsHeader({
         <StatCard etiqueta={t('pantalla.programadas')} valor={scheduledPromotions} detalle={t('pantalla.programadasDetalle')} cargando={loading} />
       </KpiStrip>
 
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-4 sm:flex sm:flex-wrap sm:items-center">
-        <Link
-          href="/app/pos/cupones"
-          className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'col-span-2 lg:hidden')}
-        >
+      <div className="flex gap-2 lg:hidden">
+        <Link href="/app/pos/cupones" className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'flex-1')}>
           {t('pantalla.cupones')}
         </Link>
-        <SearchInput
-          value={filters.search || ''}
-          onChange={handleSearchChange}
-          placeholder={t('pantalla.buscar')}
-          etiqueta={t('pantalla.buscar')}
-          className="col-span-2 min-w-0 sm:flex-1 sm:min-w-[180px]"
-        />
-        <Select
-          value={filters.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive'}
-          onValueChange={handleStatusChange}
-        >
-          <SelectTrigger className="w-full sm:w-[140px]" aria-label={t('pantalla.estado')}>
-            <SelectValue placeholder={t('pantalla.estado')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('pantalla.todos')}</SelectItem>
-            <SelectItem value="active">{t('pantalla.activas')}</SelectItem>
-            <SelectItem value="inactive">{t('pantalla.inactivas')}</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filters.promotion_type || 'all'} onValueChange={handleTypeChange}>
-          <SelectTrigger className="w-full sm:w-[160px]" aria-label={t('pantalla.tipo')}>
-            <SelectValue placeholder={t('pantalla.tipo')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('pantalla.todos')}</SelectItem>
-            {(Object.keys(PROMOTION_TYPE_LABELS) as PromotionType[]).map((key) => (
-              <SelectItem key={key} value={key}>{t(`tipos.${key}`)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <button
           type="button"
           onClick={onRefresh}
           disabled={loading}
           aria-label={t('pantalla.actualizar')}
-          className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'col-span-2 lg:hidden')}
+          className={cn(clasesBoton({ variante: 'secundario', tamano: 'sm' }), 'w-9 px-0')}
         >
           <RefreshCw className={cn('size-4', loading && 'animate-spin')} aria-hidden="true" />
         </button>
       </div>
+
+      <ListToolbar
+        busqueda={
+          <SearchInput
+            value={filters.search || ''}
+            onChange={handleSearchChange}
+            placeholder={t('pantalla.buscar')}
+            etiqueta={t('pantalla.buscar')}
+          />
+        }
+        filtros={
+          <FilterPanel conteo={chips.length} onLimpiar={limpiarFiltros}>
+            <div className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-fg-secondary">
+                {t('pantalla.estado')}
+                <Select value={estadoValor} onValueChange={handleStatusChange}>
+                  <SelectTrigger className="w-full" aria-label={t('pantalla.estado')}>
+                    <SelectValue placeholder={t('pantalla.estado')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('pantalla.todos')}</SelectItem>
+                    <SelectItem value="active">{t('pantalla.activas')}</SelectItem>
+                    <SelectItem value="inactive">{t('pantalla.inactivas')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5 text-xs font-semibold text-fg-secondary">
+                {t('pantalla.tipo')}
+                <Select value={tipoValor} onValueChange={handleTypeChange}>
+                  <SelectTrigger className="w-full" aria-label={t('pantalla.tipo')}>
+                    <SelectValue placeholder={t('pantalla.tipo')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('pantalla.todos')}</SelectItem>
+                    {(Object.keys(PROMOTION_TYPE_LABELS) as PromotionType[]).map((key) => (
+                      <SelectItem key={key} value={key}>{t(`tipos.${key}`)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            </div>
+          </FilterPanel>
+        }
+        chips={<FilterChips chips={chips} onQuitar={quitarFiltro} onLimpiarTodo={limpiarFiltros} />}
+      />
       </>
       )}
     </div>

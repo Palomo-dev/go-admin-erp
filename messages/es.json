@@ -35975,6 +35975,9 @@
           "corazonTarjetas": "Corazón en las tarjetas",
           "corazonFicha": "Corazón en la ficha del producto",
           "tarjetasAyuda": "El estilo y la posición del corazón en la tarjeta siguen en Estilo del sitio › Tarjeta de producto."
+        },
+        "accesos": {
+          "titulo": "Íconos, moneda y carrito"
         }
       }
     },

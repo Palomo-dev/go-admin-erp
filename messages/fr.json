@@ -35960,6 +35960,9 @@
           "corazonTarjetas": "Cœur sur les cartes",
           "corazonFicha": "Cœur sur la fiche produit",
           "tarjetasAyuda": "Le style et la position du cœur sur la carte restent dans Style du site › Carte produit."
+        },
+        "accesos": {
+          "titulo": "Icônes, devise et panier"
         }
       }
     },

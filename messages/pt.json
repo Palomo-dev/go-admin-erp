@@ -35970,6 +35970,9 @@
           "corazonTarjetas": "Coração nos cartões",
           "corazonFicha": "Coração na página do produto",
           "tarjetasAyuda": "O estilo e a posição do coração no cartão continuam em Estilo do site › Cartão de produto."
+        },
+        "accesos": {
+          "titulo": "Ícones, moeda e carrinho"
         }
       }
     },

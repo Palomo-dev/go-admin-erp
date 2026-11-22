@@ -35960,6 +35960,9 @@
           "corazonTarjetas": "Heart on cards",
           "corazonFicha": "Heart on the product page",
           "tarjetasAyuda": "The style and position of the heart on the card stay in Site style › Product card."
+        },
+        "accesos": {
+          "titulo": "Icons, currency and cart"
         }
       }
     },

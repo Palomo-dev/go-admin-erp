@@ -52,7 +52,7 @@ import {
   estiloBotonesExtra,
 } from './encabezadoCapacidades';
 import { CelularEncabezado } from './CelularEncabezado';
-import { CabeceraVistaTienda, FilaAbrirVistaTienda, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
+import { AccesosCabeceraTienda, CabeceraVistaTienda, FilaAbrirVistaTienda, VistaCarrito, VistaFavoritos, VistaIconos, VistaMoneda, type VistaCabeceraTienda } from './CabeceraTiendaVistas';
 import { CabeceraBoton, ColoresBotonPrincipal, FilaAbrirBoton, GrupoPildora, VistaBotonEncabezado } from './PildoraYBoton';
 import type { BotonEncabezado } from './pildoraLogica';
 import {
@@ -339,6 +339,7 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
 
   return (
     <>
+      {p.onAbrirVista && <AccesosCabeceraTienda onAbrir={p.onAbrirVista} />}
       <SelectorMenu {...p} comoTitulo etiqueta={t('zonaGlobal.menu.titulo')} />
       <MenusAdicionales ajustes={a} cambiar={cambiar} />
       <section className="flex flex-col gap-3">
@@ -412,8 +413,6 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
         {/* DUP-28oct: el buscador (mostrar u ocultar) se elige una sola vez, en Diseño › Buscador (`search_style`). */}
         <FilaInterruptor titulo={t('zonaGlobal.acciones.carrito')} valor={opcionBooleana(a, 'show_header_cart')} onCambiar={(v) => cambiar({ show_header_cart: v })} />
         {opcionBooleana(a, 'show_header_cart') && <SelectorIconoAccion accion="cart" ajustes={a} cambiar={cambiar} />}
-        {opcionBooleana(a, 'show_header_cart') && p.onAbrirVista && <FilaAbrirVistaTienda vista="carrito" onAbrir={p.onAbrirVista} />}
-        {opcionBooleana(a, 'show_header_cart') && p.onAbrirVista && <FilaAbrirVistaTienda vista="favoritos" onAbrir={p.onAbrirVista} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.cuenta')}
           ayuda={t('zonaGlobal.acciones.cuentaAyuda')}
@@ -428,7 +427,6 @@ function Contenido(p: Interno & { texto: (k: string) => string }) {
           onCambiar={(v) => cambiar({ header_show_currency: v })}
         />
         {opcionBooleana(a, 'header_show_currency') && <SelectorIconoAccion accion="currency" ajustes={a} cambiar={cambiar} />}
-        {opcionBooleana(a, 'header_show_currency') && p.onAbrirVista && <FilaAbrirVistaTienda vista="moneda" onAbrir={p.onAbrirVista} />}
         <FilaInterruptor
           titulo={t('zonaGlobal.acciones.sede')}
           ayuda={t('zonaGlobal.acciones.sedeAyuda')}

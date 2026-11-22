@@ -35964,6 +35964,64 @@
         "accesos": {
           "titulo": "Icons, currency and cart"
         }
+      },
+      "accionesFicha": {
+        "distribucion": "Preset layout",
+        "personalizada": "Custom",
+        "distribuciones": {
+          "clasica": "Classic",
+          "dos_mitad": "Two halves",
+          "compacta": "Compact",
+          "solo_agregar": "Add only",
+          "comprar_primero": "Buy first",
+          "con_whatsapp": "With WhatsApp"
+        },
+        "ayudaDistribucion": "Choosing one rearranges the buttons below and keeps the texts you wrote. You can then adjust each button.",
+        "ayudaPersonalizada": "You changed the order or a button: it no longer matches any preset layout. Tap a card to go back to it.",
+        "botones": "Buttons and order",
+        "ayudaBotones": "Drag by the handle to reorder. Buttons inside the same blue box share a row. The eye shows or hides them.",
+        "mismaFila": "Same row · {nombres}",
+        "tipos": {
+          "cantidad": "Quantity",
+          "agregar": "Add to cart",
+          "comprar": "Buy now",
+          "favorito": "Favorite (heart)",
+          "whatsapp": "Order via WhatsApp",
+          "compartir": "Share"
+        },
+        "conEtiqueta": "With label",
+        "tamanos": {
+          "largo": "Long",
+          "mitad": "Half",
+          "pequeno": "Small"
+        },
+        "estilos": {
+          "relleno": "Filled",
+          "borde": "Outlined",
+          "enlace": "Link"
+        },
+        "mostrar": "Show on the product page",
+        "ocultar": "Hide {nombre}",
+        "mostrarBoton": "Show {nombre}",
+        "noSeOculta": "“Add to cart” can’t be hidden: it can be moved and changed.",
+        "abrir": "{nombre} options",
+        "tamano": "Size",
+        "estilo": "Style",
+        "texto": "Button text",
+        "ayudaTexto": "Empty = “{texto}” (default text).",
+        "textoCorto": "Short text on mobile",
+        "ayudaTextoCorto": "In gray, the default text. Used on mobile when the button shares its row.",
+        "ayudaCantidad": "Quantity has no size or style: it takes its own width. It shows the “Quantity” label when it doesn’t share the row with a button.",
+        "ayudaFavorito": "The heart doesn’t show if you turn off “Heart on product page” (Header › Favorites), nor on the restaurant menu.",
+        "compartirFila": "Share row with the next one",
+        "ayudaCompartirFila": "Joins this button with “{siguiente}” even if they wouldn’t join on their own (up to 3 per row).",
+        "ultimo": "It’s the last one in the list: there is no next one.",
+        "sinWhatsapp": {
+          "titulo": "WhatsApp has no number",
+          "descripcion": "Without a number, “Order via WhatsApp” doesn’t show in the store. Add it in Settings › Contact.",
+          "ir": "Go to Contact"
+        },
+        "comportamiento": "Behavior"
       }
     },
     "paginas": {

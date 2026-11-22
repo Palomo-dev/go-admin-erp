@@ -34,6 +34,7 @@ import { CampoSeccion, campoVisible } from './CampoSeccion';
 import { campoLayoutCategorias } from './layoutCategorias';
 import { CampoColorIconoCategoria } from './CampoColorIconoCategoria';
 import { InspectorBanners } from './InspectorBanners';
+import { EditorAccionesFicha } from './EditorAccionesFicha';
 import { InspectorTarjetaProducto } from './InspectorTarjetaProducto';
 import { InspectorEstilo, type SedeEstilo, type TemaEstiloSeccion } from './InspectorEstilo';
 import { PanelCarrusel, PanelPaginacion } from './PanelesListaCarrusel';
@@ -406,6 +407,10 @@ export function InspectorSeccion(p: InspectorSeccionProps) {
           </>
         )}
 
+        {/* Acciones de compra de la ficha: distribución y botones (Figma 2779:65038). */}
+        {pestana === 'contenido' && s.section_type === 'product_actions' && (
+          <EditorAccionesFicha contenido={contenido} onCambiar={onCambiarContenido} numeroWhatsapp={ajustesSitio?.whatsapp_number} />
+        )}
         {pestana === 'contenido' &&
           (campos('contenido').length === 0 ? (
             <p className="text-[13px] leading-[18px] text-fg-secondary">{t('inspector.sinContenido')}</p>

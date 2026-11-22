@@ -70,7 +70,6 @@ const OCULTOS: [string, string, string[]][] = [
 const ITEMS_QUITADOS: [string, string, string[]][] = [
   ['cta', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
   ['membership_plans', 'plans', ['highlighted']],
-  ['product_actions', 'buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
   ['specialties', 'card_buttons', ['full_width', 'full_width_mobile', 'icon_only', 'open_new_tab']],
 ];
 
@@ -90,6 +89,13 @@ describe('Interruptores que el sitio no implementa: ocultos en el inspector', ()
     const rep = getSectionDefinition(tipo)!.contentFields.find((f) => f.key === repetidor)!;
     const claves = (rep.itemFields ?? []).map((f) => f.key);
     for (const c of campos) expect(claves).not.toContain(c);
+  });
+
+  it('acciones de la ficha: sin «Posición de botones» ni «Botones personalizados» (la tienda no los lee; Figma 2779:65038)', () => {
+    const claves = getSectionDefinition('product_actions')!.contentFields.map((f) => f.key);
+    expect(claves).not.toContain('position');
+    expect(claves).not.toContain('buttons');
+    expect(claves).toEqual(expect.arrayContaining(['sticky_mobile', 'show_price_in_button', 'button_hint']));
   });
 });
 

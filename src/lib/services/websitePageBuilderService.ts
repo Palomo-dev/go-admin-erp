@@ -3672,29 +3672,18 @@ const RAW_CATALOG: SectionTypeDefinition[] = [
     icon: 'MousePointerClick',
     description: 'Botones de acción: agregar al carrito, comprar ahora',
     variants: [{ id: 'default', label: 'Por defecto' }],
+    // Los botones (distribución, orden, tamaño, estilo y textos) los edita EditorAccionesFicha en
+    // «Contenido» y se guardan en `actions`/`preset` (src/lib/website/v2/accionesFicha.ts, Figma
+    // 2779:65038). `position` y `buttons[]` se quitaron el 2026-11-22: la tienda nunca los leyó;
+    // lo guardado se conserva y se ignora.
     contentFields: [
-      { key: 'sticky_mobile', label: 'Sticky en móvil', type: 'boolean', defaultValue: true, group: 'behavior' },
       {
-        key: 'position',
-        label: 'Posición de botones',
-        type: 'select',
-        group: 'layout',
-        defaultValue: 'below',
-        options: [
-          { value: 'below', label: 'Debajo de la info' },
-          { value: 'sticky', label: 'Sticky al hacer scroll' },
-          { value: 'inline', label: 'En línea con el precio' },
-        ],
-      },
-      {
-        key: 'buttons',
-        label: 'Botones personalizados',
-        type: 'repeater',
+        key: 'sticky_mobile',
+        label: 'Barra fija en el celular',
+        type: 'boolean',
+        defaultValue: true,
         group: 'content',
-        itemLabelKey: 'label',
-        maxItems: 4,
-        helpText: 'Botones personalizados. Si está vacío, se usan los botones por defecto.',
-        itemFields: BUTTON_ITEM_FIELDS,
+        helpText: 'Al bajar, abajo queda «Agregar al carrito» + corazón, sin importar la distribución.',
       },
     ],
   },

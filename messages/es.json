@@ -35979,6 +35979,64 @@
         "accesos": {
           "titulo": "Íconos, moneda y carrito"
         }
+      },
+      "accionesFicha": {
+        "distribucion": "Distribución lista",
+        "personalizada": "Personalizada",
+        "distribuciones": {
+          "clasica": "Clásica",
+          "dos_mitad": "Dos a la mitad",
+          "compacta": "Compacta",
+          "solo_agregar": "Solo agregar",
+          "comprar_primero": "Comprar primero",
+          "con_whatsapp": "Con WhatsApp"
+        },
+        "ayudaDistribucion": "Al elegir una se reacomodan los botones de abajo y se conservan los textos que escribiste. Después puedes ajustar cada botón.",
+        "ayudaPersonalizada": "Cambiaste el orden o un botón: ya no coincide con ninguna distribución lista. Toca una tarjeta para volver a ella.",
+        "botones": "Botones y orden",
+        "ayudaBotones": "Arrastra por la agarradera para ordenar. Los botones dentro del mismo recuadro azul comparten fila. El ojo los muestra u oculta.",
+        "mismaFila": "Misma fila · {nombres}",
+        "tipos": {
+          "cantidad": "Cantidad",
+          "agregar": "Agregar al carrito",
+          "comprar": "Comprar ahora",
+          "favorito": "Favorito (corazón)",
+          "whatsapp": "Pedir por WhatsApp",
+          "compartir": "Compartir"
+        },
+        "conEtiqueta": "Con etiqueta",
+        "tamanos": {
+          "largo": "Largo",
+          "mitad": "Mitad",
+          "pequeno": "Pequeño"
+        },
+        "estilos": {
+          "relleno": "Relleno",
+          "borde": "Con borde",
+          "enlace": "Enlace"
+        },
+        "mostrar": "Mostrar en la ficha",
+        "ocultar": "Ocultar {nombre}",
+        "mostrarBoton": "Mostrar {nombre}",
+        "noSeOculta": "«Agregar al carrito» no se puede ocultar: se puede mover y cambiar.",
+        "abrir": "Opciones de {nombre}",
+        "tamano": "Tamaño",
+        "estilo": "Estilo",
+        "texto": "Texto del botón",
+        "ayudaTexto": "Vacío = «{texto}» (texto por defecto).",
+        "textoCorto": "Texto corto en el celular",
+        "ayudaTextoCorto": "En gris, el texto por defecto. Se usa en el celular cuando el botón comparte fila.",
+        "ayudaCantidad": "La cantidad no tiene tamaño ni estilo: toma su ancho. Lleva la etiqueta «Cantidad» cuando no comparte fila con un botón.",
+        "ayudaFavorito": "El corazón no sale si apagas «Corazón en la ficha» (Encabezado › Favoritos) ni en la carta del restaurante.",
+        "compartirFila": "Compartir fila con el siguiente",
+        "ayudaCompartirFila": "Une este botón con «{siguiente}» aunque no se unirían solos (máximo 3 por fila).",
+        "ultimo": "Es el último de la lista: no hay siguiente.",
+        "sinWhatsapp": {
+          "titulo": "WhatsApp no tiene número",
+          "descripcion": "Sin número, «Pedir por WhatsApp» no sale en la tienda. Escríbelo en Configuración › Contacto.",
+          "ir": "Ir a Contacto"
+        },
+        "comportamiento": "Comportamiento"
       }
     },
     "paginas": {

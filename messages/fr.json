@@ -35964,6 +35964,64 @@
         "accesos": {
           "titulo": "Icônes, devise et panier"
         }
+      },
+      "accionesFicha": {
+        "distribucion": "Disposition prête",
+        "personalizada": "Personnalisée",
+        "distribuciones": {
+          "clasica": "Classique",
+          "dos_mitad": "Deux moitiés",
+          "compacta": "Compacte",
+          "solo_agregar": "Ajouter seulement",
+          "comprar_primero": "Acheter d’abord",
+          "con_whatsapp": "Avec WhatsApp"
+        },
+        "ayudaDistribucion": "En choisir une réorganise les boutons ci-dessous et conserve les textes saisis. Vous pouvez ensuite ajuster chaque bouton.",
+        "ayudaPersonalizada": "Vous avez changé l’ordre ou un bouton : cela ne correspond plus à aucune disposition prête. Touchez une carte pour y revenir.",
+        "botones": "Boutons et ordre",
+        "ayudaBotones": "Faites glisser par la poignée pour réordonner. Les boutons dans le même cadre bleu partagent une ligne. L’œil les affiche ou les masque.",
+        "mismaFila": "Même ligne · {nombres}",
+        "tipos": {
+          "cantidad": "Quantité",
+          "agregar": "Ajouter au panier",
+          "comprar": "Acheter maintenant",
+          "favorito": "Favori (cœur)",
+          "whatsapp": "Commander par WhatsApp",
+          "compartir": "Partager"
+        },
+        "conEtiqueta": "Avec libellé",
+        "tamanos": {
+          "largo": "Long",
+          "mitad": "Moitié",
+          "pequeno": "Petit"
+        },
+        "estilos": {
+          "relleno": "Plein",
+          "borde": "Contour",
+          "enlace": "Lien"
+        },
+        "mostrar": "Afficher sur la fiche",
+        "ocultar": "Masquer {nombre}",
+        "mostrarBoton": "Afficher {nombre}",
+        "noSeOculta": "« Ajouter au panier » ne peut pas être masqué : il peut être déplacé et modifié.",
+        "abrir": "Options de {nombre}",
+        "tamano": "Taille",
+        "estilo": "Style",
+        "texto": "Texte du bouton",
+        "ayudaTexto": "Vide = « {texto} » (texte par défaut).",
+        "textoCorto": "Texte court sur mobile",
+        "ayudaTextoCorto": "En gris, le texte par défaut. Utilisé sur mobile quand le bouton partage sa ligne.",
+        "ayudaCantidad": "La quantité n’a ni taille ni style : elle prend sa propre largeur. Elle affiche le libellé « Quantité » quand elle ne partage pas la ligne avec un bouton.",
+        "ayudaFavorito": "Le cœur ne s’affiche pas si vous désactivez « Cœur sur la fiche » (En-tête › Favoris), ni sur la carte du restaurant.",
+        "compartirFila": "Partager la ligne avec le suivant",
+        "ayudaCompartirFila": "Réunit ce bouton avec « {siguiente} » même s’ils ne se réuniraient pas seuls (3 maximum par ligne).",
+        "ultimo": "C’est le dernier de la liste : il n’y a pas de suivant.",
+        "sinWhatsapp": {
+          "titulo": "WhatsApp n’a pas de numéro",
+          "descripcion": "Sans numéro, « Commander par WhatsApp » ne s’affiche pas dans la boutique. Ajoutez-le dans Configuration › Contact.",
+          "ir": "Aller à Contact"
+        },
+        "comportamiento": "Comportement"
       }
     },
     "paginas": {

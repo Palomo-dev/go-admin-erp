@@ -105,12 +105,6 @@ export const INTERRUPTORES_EN_SITIO: Readonly<Record<string, Readonly<Record<str
   pricing_table: {
     'show_compare_price': [],
   },
-  product_actions: {
-    'buttons[].full_width': [],
-    'buttons[].full_width_mobile': [],
-    'buttons[].icon_only': [],
-    'buttons[].open_new_tab': [],
-  },
   // `space_types` solo tiene `base_rate`: no hay precio anterior.
   room_types: {
     'show_compare_price': [],

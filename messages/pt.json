@@ -35032,7 +35032,8 @@
             "space_detail": "Ver com o espaço"
           },
           "sinOpciones": "Ainda não há registros ativos para a prévia: a tela mostra a listagem da loja.",
-          "publicada": "A tela mostra a versão publicada deste modelo: suas alterações aparecem aqui depois de publicar."
+          "publicada": "A tela mostra a versão publicada deste modelo: suas alterações aparecem aqui depois de publicar.",
+          "borrador": "Mostrando o seu rascunho: a cada salvamento, a visualização é atualizada."
         }
       },
       "inspector": {

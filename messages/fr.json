@@ -35022,7 +35022,8 @@
             "space_detail": "Voir avec l'espace"
           },
           "sinOpciones": "Aucun enregistrement actif pour l'aperçu : le canevas affiche la liste de la boutique.",
-          "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication."
+          "publicada": "Le canevas affiche la version publiée de ce modèle : vos modifications apparaissent ici après la publication.",
+          "borrador": "Affiché avec votre brouillon : à chaque enregistrement, l’aperçu se met à jour."
         }
       },
       "inspector": {

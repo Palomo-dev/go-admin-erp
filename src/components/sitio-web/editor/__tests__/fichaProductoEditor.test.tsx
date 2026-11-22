@@ -103,7 +103,7 @@ describe('MuestraPlantillaLienzo', () => {
     expect(['home', 'cart', 'checkout', null, undefined].some(tieneMuestra)).toBe(false);
   });
 
-  it('dice con qué producto real se ve, deja elegir otro y avisa que pinta lo publicado', () => {
+  it('dice con qué producto real se ve, deja elegir otro y avisa que pinta el borrador', () => {
     const onCambiar = jest.fn();
     renderConIdioma(
       <MuestraPlantillaLienzo
@@ -112,10 +112,15 @@ describe('MuestraPlantillaLienzo', () => {
     );
     const selector = screen.getByRole('combobox', { name: 'Ver con el producto' });
     expect(selector.textContent).toContain('Camisa azul (SKU-1)');
-    expect(screen.getByText(/muestra la versión publicada de esta plantilla/)).toBeTruthy();
+    expect(screen.getByText(/Se ve con tu borrador/)).toBeTruthy();
     fireEvent.keyDown(selector, { key: 'Enter' });
     fireEvent.click(screen.getByRole('option', { name: 'Gorra' }));
     expect(onCambiar).toHaveBeenCalledWith('u2');
+  });
+
+  it('la ficha de espacio sigue avisando que pinta lo publicado', () => {
+    renderConIdioma(<MuestraPlantillaLienzo muestra={{ tipo: 'space_detail', opciones: [], valor: null, onCambiar: jest.fn() }} />);
+    expect(screen.getByText(/muestra la versión publicada de esta plantilla/)).toBeTruthy();
   });
 
   it.each<[IdiomaPrueba, string, string]>([

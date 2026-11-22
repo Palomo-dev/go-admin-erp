@@ -105,6 +105,9 @@ export const ESPERA_AUTOGUARDADO_MS = 1500;
 
 const UUID_MENU = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Plantillas de detalle que la tienda pinta con el BORRADOR en la vista previa del lienzo. */
+const DETALLE_EN_BORRADOR = new Set(['product_detail', 'category_detail']);
+
 /** Rutas reales de las plantillas de detalle y de flujo (F9.4). */
 const RUTA_DETALLE: Record<string, string> = {
   product_detail: 'productos',
@@ -186,6 +189,12 @@ export function useEditorSitio() {
   const [previewEntities, setPreviewEntities] = useState<{ id: string; label: string }[]>([]);
   const [previewEntityId, setPreviewEntityId] = useState<string | null>(null);
   const [previewRefreshKey, setPreviewRefreshKey] = useState(0);
+  /**
+   * La ficha de producto y la categoría se pintan con el borrador pero sin el puente en vivo de
+   * las secciones (el renderer de la ficha es de servidor): tras cada guardado del borrador el
+   * lienzo se recarga para mostrar lo guardado. Se actualiza en cada render (ver `detalleEnBorrador`).
+   */
+  const recargarLienzoTrasGuardarRef = useRef(false);
   /** Revalida la tienda pública y recarga la vista previa (datos del Inventario cambiados desde el editor). */
   const refrescarLienzo = useCallback(() => {
     revalidarSitioPublico();
@@ -563,6 +572,7 @@ export function useEditorSitio() {
       toast(t('guardado.operacionSoloPrincipal'));
     }
     setDocLocal(documento);
+    if (recargarLienzoTrasGuardarRef.current) setPreviewRefreshKey((k) => k + 1);
     // Si hubo cambios mientras se guardaba, el autoguardado vuelve a programarse solo.
     if (!autoguardadoRef.current?.pendiente()) {
       setHasChanges(false);
@@ -1697,14 +1707,23 @@ export function useEditorSitio() {
     return () => clearTimeout(temporizador);
   }, [firmaLienzo]);
   const firmaDelSitio = sitioLienzoId && firmaLienzo?.sitioId === sitioLienzoId ? firmaLienzo : null;
-  /** El lienzo pinta el borrador (no las plantillas de detalle: `/productos/<id>` no pasa por él). */
-  const lienzoEnBorrador = !!sitioLienzoId && !esDetalle;
+  /**
+   * El lienzo pinta el borrador. De las plantillas de detalle, la ficha de producto y la página de
+   * categoría también (la tienda las sirve con el borrador en `/vista-previa/<token>/productos/<id>`
+   * y `/categorias/<slug>`); las demás (carrito, checkout, espacios…) siguen con la publicada.
+   */
+  const detalleEnBorrador = !!currentPage && DETALLE_EN_BORRADOR.has(currentPage.page_type) && !!previewEntityId;
+  const lienzoEnBorrador = !!sitioLienzoId && (!esDetalle || detalleEnBorrador);
+  recargarLienzoTrasGuardarRef.current = lienzoEnBorrador && detalleEnBorrador;
 
   const urlLienzo = useMemo(() => {
     if (!currentPage || !direccionLista) return null;
     if (lienzoEnBorrador) {
       if (!firmaDelSitio) return null; // firma en camino: `preparandoLienzo`
-      if (firmaDelSitio.token && previewUrlBase) return urlLienzoBorrador(previewUrlBase, firmaDelSitio.token, currentPage.slug);
+      if (firmaDelSitio.token && previewUrlBase) {
+        const ruta = detalleEnBorrador ? `${RUTA_DETALLE[currentPage.page_type]}/${previewEntityId}` : currentPage.slug;
+        return urlLienzoBorrador(previewUrlBase, firmaDelSitio.token, ruta);
+      }
       // Sin firma: la dirección pública, como antes.
     }
     const base = baseLienzo;
@@ -1712,7 +1731,7 @@ export function useEditorSitio() {
     if (currentPage.slug === 'home') return base;
     if (esDetalle) return `${base}/${RUTA_DETALLE[currentPage.page_type]}${previewEntityId ? `/${previewEntityId}` : ''}`;
     return `${base}/${currentPage.slug}`;
-  }, [direccionLista, lienzoEnBorrador, firmaDelSitio, previewUrlBase, baseLienzo, currentPage, esDetalle, previewEntityId]);
+  }, [direccionLista, lienzoEnBorrador, detalleEnBorrador, firmaDelSitio, previewUrlBase, baseLienzo, currentPage, esDetalle, previewEntityId]);
   /** Sin `urlLienzo` porque aún se espera la dirección, la sede o la firma: el lienzo muestra el esqueleto. */
   const preparandoLienzo =
     !!currentPage && !urlLienzo && (!direccionLista || (lienzoEnBorrador ? !firmaDelSitio : baseLienzo === undefined));

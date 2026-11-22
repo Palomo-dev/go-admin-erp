@@ -3,17 +3,20 @@
 /**
  * Banda del lienzo en una plantilla de detalle (ficha de producto, página de categoría, ficha de
  * espacio): con qué registro REAL de la organización se ve —el primero, o el que elija la
- * persona— y el aviso de que el lienzo pinta la versión publicada.
+ * persona— y qué versión pinta el lienzo.
  *
- * Por qué el aviso: `/productos/<id>` de la tienda no pasa por la vista previa del borrador ni
- * escucha el puente del lienzo, así que los cambios de la ficha se ven aquí al publicar. Mientras
- * no se edite, la ficha del borrador es el diseño fijo de la tienda: lo que se ve es lo mismo.
+ * Ficha de producto y página de categoría: la tienda las sirve con el BORRADOR en la vista previa
+ * firmada (`/vista-previa/<token>/productos/<id>`), pero sin el puente en vivo de las secciones:
+ * el lienzo se recarga después de cada guardado. La ficha de espacio sigue con la publicada.
  */
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTextosEditor } from './textos';
 
 /** Plantillas con registro de ejemplo (`getPreviewEntities`). */
 export const TIPOS_CON_MUESTRA = ['product_detail', 'category_detail', 'space_detail'] as const;
+
+/** Plantillas que el lienzo pinta con el borrador (la tienda las sirve en la vista previa firmada). */
+export const TIPOS_EN_BORRADOR: readonly string[] = ['product_detail', 'category_detail'];
 
 export function tieneMuestra(tipo: string | null | undefined): boolean {
   return !!tipo && (TIPOS_CON_MUESTRA as readonly string[]).includes(tipo);
@@ -50,7 +53,9 @@ export function MuestraPlantillaLienzo({ muestra }: { muestra: MuestraPlantilla 
       ) : (
         <p className="text-sm text-fg-secondary">{t('lienzo.muestra.sinOpciones')}</p>
       )}
-      <p className="min-w-0 flex-1 text-xs text-fg-muted">{t('lienzo.muestra.publicada')}</p>
+      <p className="min-w-0 flex-1 text-xs text-fg-muted">
+        {t(TIPOS_EN_BORRADOR.includes(muestra.tipo) ? 'lienzo.muestra.borrador' : 'lienzo.muestra.publicada')}
+      </p>
     </div>
   );
 }

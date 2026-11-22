@@ -35022,7 +35022,8 @@
             "space_detail": "Preview with space"
           },
           "sinOpciones": "There are no active records to preview yet: the canvas shows the store listing.",
-          "publicada": "The canvas shows the published version of this template: your changes appear here after you publish."
+          "publicada": "The canvas shows the published version of this template: your changes appear here after you publish.",
+          "borrador": "Showing your draft: each time it saves, the preview updates with your changes."
         }
       },
       "inspector": {

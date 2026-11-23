@@ -34943,6 +34943,13 @@
             "enabled": "Barra inferior activa",
             "showLabel": "Mostrar texto"
           }
+        },
+        "movilEncabezado": {
+          "mi": {
+            "accion": {
+              "favorites": "Favoritos"
+            }
+          }
         }
       },
       "barra": {
@@ -36070,7 +36077,13 @@
             "quedarse": "Quedarse en la página",
             "cuenta": "Ir a Mi cuenta"
           },
-          "despuesAyuda": "«Quedarse» cierra el acceso y deja al cliente donde estaba (carrito o pago incluidos)."
+          "despuesAyuda": "«Quedarse» cierra el acceso y deja al cliente donde estaba (carrito o pago incluidos).",
+          "textoAyuda": "Por defecto: «{texto}». Con sesión: «{sesion}».",
+          "textoSesion": "Texto con sesión",
+          "textoSesionAyuda": "Con la sesión iniciada. {marcador} es el primer nombre del cliente; si no se conoce, se ve el texto de arriba. Vacío = «{texto}».",
+          "beneficiosEditables": "Cada texto es editable (vacío = texto por defecto).",
+          "beneficiosTitulo": "Título de los beneficios",
+          "beneficioLinea": "Línea {n}"
         }
       },
       "accionesFicha": {
@@ -36130,6 +36143,66 @@
           "ir": "Ir a Contacto"
         },
         "comportamiento": "Comportamiento"
+      },
+      "barraFija": {
+        "titulo": "Barra fija al bajar",
+        "celular": "Celular",
+        "computador": "Computador",
+        "celularEncendida": "Barra fija en el celular",
+        "celularAyuda": "Al bajar, abajo queda «Agregar al carrito» + corazón, sin importar la distribución.",
+        "estilo": "Estilo",
+        "estilos": {
+          "flat": "Plana",
+          "floating": "Flotante",
+          "glass": "Vidrio"
+        },
+        "hoy": "Hoy",
+        "queMuestra": "Qué muestra",
+        "miniaturaPrecio": "Miniatura y precio",
+        "cantidad": "Cantidad",
+        "comprarAhora": "«Comprar ahora»",
+        "favorito": "Corazón de favoritos",
+        "favoritoAyuda": "También se oculta con «Corazón en la ficha» apagado y en restaurantes.",
+        "texto": "Texto del botón",
+        "textoAyuda": "Hasta {max} letras. Vacío = «{texto}».",
+        "aparece": "Cuándo aparece",
+        "apariciones": {
+          "scroll": "Al bajar 400 px (hoy)",
+          "pass": "Al pasar el botón"
+        },
+        "aparicionesComputador": {
+          "scroll": "Al bajar 400 px",
+          "pass": "Al pasar el botón"
+        },
+        "aparecePasarAyuda": "Aparece justo cuando «Agregar al carrito» de la ficha sale de la pantalla.",
+        "alAgregar": "Al agregar",
+        "efectos": {
+          "check": "Check verde (hoy)",
+          "fly": "Vuela al carrito"
+        },
+        "vuelaAyuda": "La miniatura vuela hasta el ícono del carrito, que late. Con «menos movimiento» en el teléfono, solo el check.",
+        "vibracion": "Vibración suave",
+        "vibracionAyuda": "Solo en los teléfonos que la permiten.",
+        "chatAyuda": "El chat flotante sube sobre la barra mientras se ve y baja cuando se va.",
+        "computadorEncendida": "Barra fija en el computador",
+        "computadorAyuda": "Apagada por defecto: hoy no existe. Desde 1024 px de ancho.",
+        "posicion": "Posición",
+        "posiciones": {
+          "top": "Arriba, bajo la cabecera",
+          "replace": "En lugar de la cabecera",
+          "bottom": "Abajo, flotante"
+        },
+        "sugerida": "Sugerida",
+        "posicionesAyuda": {
+          "top": "La cabecera queda y la barra se pega debajo: menú y compra a la vez.",
+          "replace": "Al bajar, la cabecera se esconde y la barra ocupa su lugar con el logo; vuelve al subir.",
+          "bottom": "Flotante abajo, separada del borde; no toca la cabecera y el chat sube sobre ella."
+        },
+        "miniaturaNombre": "Miniatura y nombre",
+        "precio": "Precio",
+        "variante": "Variante compacta",
+        "varianteAyuda": "Un desplegable por atributo (Color, Talla…), sincronizado con el de la ficha.",
+        "compartidoAyuda": "El texto del botón y la animación al agregar son los del celular."
       }
     },
     "paginas": {

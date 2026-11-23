@@ -150,4 +150,39 @@ describe('Al tocar el ícono de cuenta', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'cuenta.beneficios' }));
     expect(cambiar).toHaveBeenLastCalledWith({ header_cuenta: { modo: 'panel', beneficios: false } });
   });
+
+  test('beneficios editables (Figma E-A1): título y tres líneas con el texto de siempre de guía; vacío borra', () => {
+    const { cambiar } = vista({ header_cuenta: { modo: 'panel', beneficio2: 'Lista de deseos' } });
+    const titulo = screen.getByRole('textbox', { name: 'cuenta.beneficiosTitulo' }) as HTMLInputElement;
+    expect(titulo.placeholder).toBe('Con tu cuenta puedes');
+    expect(titulo.maxLength).toBe(40);
+    const lineas = screen.getAllByRole('textbox', { name: 'cuenta.beneficioLinea' }) as HTMLInputElement[];
+    expect(lineas).toHaveLength(3);
+    expect(lineas.map((l) => l.value)).toEqual(['', 'Lista de deseos', '']);
+    expect(lineas[0].placeholder).toBe('Ver tus pedidos y en qué va cada uno');
+    expect(lineas[0].maxLength).toBe(80);
+    expect(cambiar).not.toHaveBeenCalled();
+    fireEvent.change(titulo, { target: { value: 'Ventajas' } });
+    expect(cambiar).toHaveBeenLastCalledWith({ header_cuenta: { modo: 'panel', beneficio2: 'Lista de deseos', beneficiosTitulo: 'Ventajas' } });
+    fireEvent.change(lineas[1], { target: { value: '' } });
+    expect(cambiar).toHaveBeenLastCalledWith({ header_cuenta: { modo: 'panel' } });
+  });
+
+  test('beneficios apagados o ventana: sin campos de texto de los beneficios', () => {
+    vista({ header_cuenta: { modo: 'panel', beneficios: false } });
+    expect(screen.queryByRole('textbox', { name: 'cuenta.beneficiosTitulo' })).toBeNull();
+  });
+
+  test('«Texto con sesión»: solo con un estilo con texto; vacío = «Hola, {nombre}»', () => {
+    vista({});
+    expect(screen.queryByRole('textbox', { name: 'cuenta.textoSesion' })).toBeNull();
+    document.body.innerHTML = '';
+    const { cambiar } = vista({ header_iconos: { estilo: 'texto' } });
+    const sesion = screen.getByRole('textbox', { name: 'cuenta.textoSesion' }) as HTMLInputElement;
+    expect(sesion.placeholder).toBe('Hola, {nombre}');
+    expect(sesion.maxLength).toBe(24);
+    fireEvent.change(sesion, { target: { value: 'Bienvenida, {nombre}' } });
+    expect(cambiar).toHaveBeenLastCalledWith({ header_cuenta: { textoSesion: 'Bienvenida, {nombre}' } });
+    expect(screen.getByText('cuenta.textoAyuda')).toBeTruthy();
+  });
 });

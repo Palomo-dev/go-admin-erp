@@ -10,7 +10,7 @@
  */
 
 export const ACCIONES_MENU = [
-  'home', 'categories_modal', 'categories_page', 'search', 'cart', 'account', 'menu',
+  'home', 'categories_modal', 'categories_page', 'search', 'cart', 'favorites', 'account', 'menu',
   'call', 'whatsapp', 'location', 'booking', 'appointment', 'order', 'track_order', 'trial',
   'page', 'url',
 ] as const
@@ -82,6 +82,7 @@ export const DEFECTO_ACCION: Record<AccionMenu, { label: string; icon: IconoMenu
   categories_page: { label: 'Categorías', icon: 'grid' },
   search: { label: 'Buscar', icon: 'search' },
   cart: { label: 'Carrito', icon: 'bag' },
+  favorites: { label: 'Favoritos', icon: 'heart' },
   account: { label: 'Cuenta', icon: 'user' },
   menu: { label: 'Menú', icon: 'menu' },
   call: { label: 'Llamar', icon: 'phone' },
@@ -305,12 +306,17 @@ export interface DestinosTienda {
   comoLlegar: string | null
   reservar: string | null
   pedir: string | null
+  /**
+   * Favoritos: qué abre el botón, lo mismo que el corazón de la cabecera (`header_favoritos.alTocar`):
+   * el panel lateral (sin la clave) o la página /favoritos.
+   */
+  favoritos?: 'panel' | 'pagina'
 }
 
 export type DestinoBoton =
   | { tipo: 'ruta'; href: string }
   | { tipo: 'externo'; href: string }
-  | { tipo: 'evento'; evento: 'search' | 'categories' | 'cart' | 'menu' }
+  | { tipo: 'evento'; evento: 'search' | 'categories' | 'cart' | 'menu' | 'favorites' }
 
 const RUTA_FIJA: Partial<Record<AccionMenu, string>> = {
   home: '/', categories_page: '/categorias', account: '/auth', appointment: '/agendar', track_order: '/consultar-pedido', trial: '/membresias',
@@ -350,6 +356,7 @@ export function destinoBoton(b: BotonMenu, d: DestinosTienda): DestinoBoton | nu
     case 'categories_modal': return { tipo: 'evento', evento: 'categories' }
     case 'cart': return { tipo: 'evento', evento: 'cart' }
     case 'menu': return { tipo: 'evento', evento: 'menu' }
+    case 'favorites': return d.favoritos === 'pagina' ? { tipo: 'ruta', href: '/favoritos' } : { tipo: 'evento', evento: 'favorites' }
     case 'call': {
       const href = t ? telDe(t) : d.llamar
       return href ? { tipo: 'externo', href } : null

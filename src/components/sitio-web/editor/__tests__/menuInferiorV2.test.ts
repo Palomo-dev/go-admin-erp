@@ -1,4 +1,4 @@
-import { leerMenuInferior, menuInicial, botonesVisibles } from '@/lib/website/menuInferior';
+import { leerMenuInferior, menuInicial, botonesVisibles, destinoBoton } from '@/lib/website/menuInferior';
 import { accionesDisponibles, accionesSinDestino, avisoBoton, botonConAccion, botonNuevo, cambioMenuV2, conVariante, menuDelEditor, mover } from '../inspector/menuInferiorLogica';
 
 const D = { llamar: 'tel:+5760000000', whatsapp: 'https://wa.me/570000000000', comoLlegar: null, reservar: '/reservas', pedir: '/productos' };
@@ -53,9 +53,18 @@ describe('Menú inferior v2 (Encabezado › Celular)', () => {
     expect(accionesDisponibles({ mobile_menu_style: 'none' })).not.toContain('menu');
     expect(accionesDisponibles({})).toContain('menu');
   });
-  it('sin Favoritos (la tienda no tiene esa página)', () => {
-    expect(accionesDisponibles({})).not.toContain('favorites' as never);
-    expect(menuInicial({}).menu.items.every((b) => b.action !== ('favorites' as never))).toBe(true);
+  it('Favoritos (2026-11-23, ya hay panel y página /favoritos): se ofrece en «Acción», pero ningún menú de hoy lo trae', () => {
+    expect(accionesDisponibles({})).toContain('favorites');
+    expect(menuInicial({}).menu.items.every((b) => b.action !== 'favorites')).toBe(true);
+    expect(menuInicial({ mobile_menu_style: 'tabs' }).menu.items.every((b) => b.action !== 'favorites')).toBe(true);
+    const fav = botonConAccion({ id: 'x', action: 'home', label: 'Inicio', icon: 'home', visible: true }, 'favorites');
+    expect(fav).toMatchObject({ action: 'favorites', label: 'Favoritos', icon: 'heart' });
+    expect(avisoBoton(fav)).toBeNull();
+    // Lo mismo que el corazón de la cabecera: el panel (sin header_favoritos) o la página.
+    expect(destinoBoton(fav, D)).toEqual({ tipo: 'evento', evento: 'favorites' });
+    expect(destinoBoton(fav, { ...D, favoritos: 'pagina' })).toEqual({ tipo: 'ruta', href: '/favoritos' });
+    const leido = leerMenuInferior({ mobile_header: { bottom_nav: { v: 2, enabled: true, variant: 'tabs', items: [fav], style: { labels: 'always' } } } });
+    expect(leido?.items[0].action).toBe('favorites');
   });
   it('barras de texto de antes («reservar», «whatsapp,llamar») dan la misma barra que hoy', () => {
     expect(menuDelEditor({ mobile_menu_style: 'fullscreen', mobile_bottom_bar: 'whatsapp,llamar' }).menu.items.map((b) => b.action)).toEqual(['whatsapp', 'call']);

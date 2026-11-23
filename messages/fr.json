@@ -34928,6 +34928,30 @@
             "enabled": "Barre inférieure active",
             "showLabel": "Afficher le texte"
           }
+        },
+        "movilEncabezado": {
+          "mi": {
+            "accion": {
+              "home": "Accueil",
+              "categories_modal": "Catégories (feuille)",
+              "categories_page": "Page des catégories",
+              "search": "Rechercher",
+              "cart": "Panier",
+              "favorites": "Favoris",
+              "account": "Compte",
+              "menu": "Ouvrir le menu",
+              "call": "Appeler",
+              "whatsapp": "WhatsApp",
+              "location": "Itinéraire",
+              "booking": "Réserver",
+              "appointment": "Prendre rendez-vous",
+              "order": "Commander",
+              "track_order": "Suivre la commande",
+              "trial": "Essai gratuit",
+              "page": "Page du site",
+              "url": "Lien externe"
+            }
+          }
         }
       },
       "barra": {
@@ -36055,7 +36079,13 @@
             "quedarse": "Rester sur la page",
             "cuenta": "Aller à Mon compte"
           },
-          "despuesAyuda": "«Rester» ferme la connexion et laisse le client où il était (panier ou paiement compris)."
+          "despuesAyuda": "«Rester» ferme la connexion et laisse le client où il était (panier ou paiement compris).",
+          "textoAyuda": "Par défaut : «{texto}». Une fois connecté : «{sesion}».",
+          "textoSesion": "Texte une fois connecté",
+          "textoSesionAyuda": "Quand le client est connecté. {marcador} est le prénom du client ; s’il est inconnu, le texte ci-dessus s’affiche. Vide = «{texto}».",
+          "beneficiosEditables": "Chaque texte est modifiable (vide = texte par défaut).",
+          "beneficiosTitulo": "Titre des avantages",
+          "beneficioLinea": "Ligne {n}"
         }
       },
       "accionesFicha": {
@@ -36115,6 +36145,66 @@
           "ir": "Aller à Contact"
         },
         "comportamiento": "Comportement"
+      },
+      "barraFija": {
+        "titulo": "Barre fixe au défilement",
+        "celular": "Mobile",
+        "computador": "Ordinateur",
+        "celularEncendida": "Barre fixe sur mobile",
+        "celularAyuda": "En défilant, « Ajouter au panier » + cœur restent en bas, quelle que soit la disposition.",
+        "estilo": "Style",
+        "estilos": {
+          "flat": "Plate",
+          "floating": "Flottante",
+          "glass": "Verre"
+        },
+        "hoy": "Actuel",
+        "queMuestra": "Ce qu’elle affiche",
+        "miniaturaPrecio": "Miniature et prix",
+        "cantidad": "Quantité",
+        "comprarAhora": "« Acheter maintenant »",
+        "favorito": "Cœur des favoris",
+        "favoritoAyuda": "Masqué aussi quand « Cœur sur la fiche » est désactivé et dans les restaurants.",
+        "texto": "Texte du bouton",
+        "textoAyuda": "Jusqu’à {max} caractères. Vide = « {texto} ».",
+        "aparece": "Quand elle apparaît",
+        "apariciones": {
+          "scroll": "Après 400 px (actuel)",
+          "pass": "Après le bouton"
+        },
+        "aparicionesComputador": {
+          "scroll": "Après 400 px",
+          "pass": "Après le bouton"
+        },
+        "aparecePasarAyuda": "Elle apparaît dès que « Ajouter au panier » de la fiche sort de l’écran.",
+        "alAgregar": "À l’ajout",
+        "efectos": {
+          "check": "Coche verte (actuel)",
+          "fly": "Vole vers le panier"
+        },
+        "vuelaAyuda": "La miniature vole jusqu’à l’icône du panier, qui bat. Avec « réduire les animations » sur le téléphone, seulement la coche.",
+        "vibracion": "Vibration légère",
+        "vibracionAyuda": "Seulement sur les téléphones qui l’autorisent.",
+        "chatAyuda": "Le chat flottant monte au-dessus de la barre tant qu’elle est visible et redescend quand elle part.",
+        "computadorEncendida": "Barre fixe sur ordinateur",
+        "computadorAyuda": "Désactivée par défaut : elle n’existe pas aujourd’hui. À partir de 1024 px de large.",
+        "posicion": "Position",
+        "posiciones": {
+          "top": "En haut, sous l’en-tête",
+          "replace": "À la place de l’en-tête",
+          "bottom": "En bas, flottante"
+        },
+        "sugerida": "Suggérée",
+        "posicionesAyuda": {
+          "top": "L’en-tête reste et la barre se colle dessous : menu et achat à la fois.",
+          "replace": "En descendant, l’en-tête se cache et la barre prend sa place avec le logo ; il revient en remontant.",
+          "bottom": "Flottante en bas, détachée du bord ; elle ne touche pas l’en-tête et le chat monte au-dessus."
+        },
+        "miniaturaNombre": "Miniature et nom",
+        "precio": "Prix",
+        "variante": "Variante compacte",
+        "varianteAyuda": "Une liste par attribut (Couleur, Taille…), synchronisée avec celle de la fiche.",
+        "compartidoAyuda": "Le texte du bouton et l’animation à l’ajout sont ceux du mobile."
       }
     },
     "paginas": {

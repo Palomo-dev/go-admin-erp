@@ -8,7 +8,8 @@
  * Íconos y esta vista). Ahora aquí: estilo general, forma en el celular, un solo tamaño, un solo
  * trazo, mostrar texto, el fondo de los íconos (plegado) y una tarjeta por ícono (Buscar,
  * Favoritos, Carrito, Cuenta y Moneda) con mostrar/ocultar, dibujo, forma propia, texto y lo suyo.
- * La tarjeta Cuenta trae «Al tocar el ícono de cuenta» (Figma 2839:69662, 2839:70276, 2839:70417).
+ * La tarjeta Cuenta trae «Al tocar el ícono de cuenta» (Figma 2839:69662, 2839:70276, 2839:70417),
+ * el texto con sesión («Hola, {nombre}») y los textos de «Con tu cuenta puedes».
  *
  * Mismas columnas y claves de siempre (show_header_cart, show_header_auth, header_show_currency,
  * header_cart_glyph, header_icons, *_icon, header_icons_weight, header_icons_box, header_iconos):
@@ -25,18 +26,24 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+  BENEFICIOS_CUENTA_POR_DEFECTO,
+  CLAVES_LINEAS_BENEFICIOS,
   CONTADORES_CARRITO,
   DESPUES_INGRESAR,
   DESTINOS_VENTANA_CUENTA,
   FORMAS_ICONO,
   ICONOS_EN_CELULAR,
   LARGO_BOTON_CUENTA,
+  LARGO_LINEA_BENEFICIO,
   LARGO_TEXTO_ICONO,
+  LARGO_TITULO_BENEFICIOS,
   LARGO_TITULO_CUENTA,
+  MARCADOR_NOMBRE,
   MODOS_CUENTA,
   TAMANOS_ICONOS,
   TEXTOS_CUENTA_POR_DEFECTO,
   TEXTOS_ICONOS_POR_DEFECTO,
+  TEXTO_SESION_CUENTA_POR_DEFECTO,
   TRAZOS_UNIFICADOS,
   estiloConTexto,
   estiloDeIcono,
@@ -159,6 +166,10 @@ function CampoTexto({ etiqueta, valor, placeholder, ayuda, max, onCambiar }: { e
 const objeto = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null);
 const textoGuardado = (a: Ajustes, k: string) => {
   const v = objeto(objeto(a.header_iconos)?.textos)?.[k];
+  return typeof v === 'string' ? v : '';
+};
+const textoSesionGuardado = (a: Ajustes) => {
+  const v = objeto(a.header_cuenta)?.textoSesion;
   return typeof v === 'string' ? v : '';
 };
 
@@ -597,7 +608,37 @@ function AlTocarCuenta({ ajustes: a, cambiar }: { ajustes: Ajustes; cambiar: Cam
               </Ayuda>
             </div>
           ) : (
-            <FilaInterruptor titulo={t('cuenta.beneficios')} ayuda={t('cuenta.beneficiosAyuda')} valor={op.beneficios} onCambiar={(v) => cambiar(cambioCuenta(a, { beneficios: v }))} />
+            <>
+              <FilaInterruptor
+                titulo={t('cuenta.beneficios')}
+                ayuda={`${t('cuenta.beneficiosAyuda')} ${t('cuenta.beneficiosEditables')}`}
+                valor={op.beneficios}
+                onCambiar={(v) => cambiar(cambioCuenta(a, { beneficios: v }))}
+              />
+              {op.beneficios && (
+                <div className="flex flex-col gap-3 rounded-md border border-line p-2.5" data-textos-beneficios="">
+                  <CampoTexto
+                    etiqueta={t('cuenta.beneficiosTitulo')}
+                    valor={texto('beneficiosTitulo')}
+                    placeholder={BENEFICIOS_CUENTA_POR_DEFECTO.titulo}
+                    ayuda={t('cuenta.vacio', { texto: BENEFICIOS_CUENTA_POR_DEFECTO.titulo })}
+                    max={LARGO_TITULO_BENEFICIOS}
+                    onCambiar={(v) => cambiar(cambioCuenta(a, { beneficiosTitulo: v }))}
+                  />
+                  {CLAVES_LINEAS_BENEFICIOS.map((k, i) => (
+                    <CampoTexto
+                      key={k}
+                      etiqueta={t('cuenta.beneficioLinea', { n: i + 1 })}
+                      valor={texto(k)}
+                      placeholder={BENEFICIOS_CUENTA_POR_DEFECTO.lineas[i]}
+                      ayuda={t('cuenta.vacio', { texto: BENEFICIOS_CUENTA_POR_DEFECTO.lineas[i] })}
+                      max={LARGO_LINEA_BENEFICIO}
+                      onCambiar={(v) => cambiar(cambioCuenta(a, { lineas: { [k]: v } }))}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
           )}
           <div className="flex flex-col gap-1.5">
             <EtiquetaGrupo>{t('cuenta.despues')}</EtiquetaGrupo>
@@ -630,7 +671,7 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
   const trazo = trazoUnificado(a) ?? 'normal';
   const tamCaja = tamanoIcono(a);
   const lleva = (icono: IconoCabecera) => estiloConTexto(estiloDeIcono(op, icono));
-  const campoTexto = (icono: 'cuenta' | 'carrito' | 'favoritos') =>
+  const campoTexto = (icono: 'carrito' | 'favoritos') =>
     lleva(icono) ? (
       <CampoTexto
         etiqueta={t('iconos.texto')}
@@ -822,7 +863,26 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
             <>
               <DibujoIcono accion="account" ajustes={a} cambiar={cambiar} />
               <FormaIconoCampo icono="cuenta" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} />
-              {campoTexto('cuenta')}
+              {lleva('cuenta') && (
+                <>
+                  <CampoTexto
+                    etiqueta={t('iconos.texto')}
+                    valor={textoGuardado(a, 'cuenta')}
+                    placeholder={TEXTOS_ICONOS_POR_DEFECTO.cuenta}
+                    ayuda={t('cuenta.textoAyuda', { texto: TEXTOS_ICONOS_POR_DEFECTO.cuenta, sesion: TEXTO_SESION_CUENTA_POR_DEFECTO })}
+                    max={LARGO_TEXTO_ICONO}
+                    onCambiar={(v) => cambiar(cambioTextoIcono(a, 'cuenta', v ?? ''))}
+                  />
+                  <CampoTexto
+                    etiqueta={t('cuenta.textoSesion')}
+                    valor={textoSesionGuardado(a)}
+                    placeholder={TEXTO_SESION_CUENTA_POR_DEFECTO}
+                    ayuda={t('cuenta.textoSesionAyuda', { marcador: MARCADOR_NOMBRE, texto: TEXTO_SESION_CUENTA_POR_DEFECTO })}
+                    max={LARGO_TEXTO_ICONO}
+                    onCambiar={(v) => cambiar(cambioCuenta(a, { textoSesion: v }))}
+                  />
+                </>
+              )}
               {notaSoloComputador('cuenta')}
               <AlTocarCuenta ajustes={a} cambiar={cambiar} />
             </>

@@ -4,8 +4,11 @@
  * - `header_iconos.movil` y `header_iconos.por_icono`, con lo guardado de hoy intacto.
  * - Trazo unificado: relleno gana sobre `header_iconos.trazo`.
  * - `header_cuenta`: sin valor = «Página», como hoy.
+ * - Beneficios editables y «Hola, {nombre}» con sesión (2026-11-23): vacío = el texto de siempre.
  */
 import {
+  BENEFICIOS_CUENTA_POR_DEFECTO,
+  TEXTO_SESION_CUENTA_POR_DEFECTO,
   destinoVistaAcceso,
   estiloDeIcono,
   estiloEnPantalla,
@@ -14,7 +17,9 @@ import {
   opcionesCuenta,
   opcionesIconos,
   rutaAcceso,
+  primerNombreIcono,
   saludoCuenta,
+  textoCuentaConSesion,
   trazoUnificado,
 } from '../cabeceraTienda';
 import {
@@ -103,6 +108,8 @@ describe('header_cuenta', () => {
       titulo: 'Ingresa a tu cuenta',
       boton: 'Ingresar',
       beneficios: true,
+      textosBeneficios: { titulo: 'Con tu cuenta puedes', lineas: [...BENEFICIOS_CUENTA_POR_DEFECTO.lineas] },
+      textoSesion: 'Hola, {nombre}',
       ventanaDestino: 'panel',
       despues: 'quedarse',
     });
@@ -130,11 +137,38 @@ describe('header_cuenta', () => {
     expect(mensajeRecuperar('a@b.co')).toContain('Si a@b.co tiene una cuenta');
   });
 
+  test('beneficios: título y tres líneas editables; vacío = el texto de siempre', () => {
+    const op = opcionesCuenta({ header_cuenta: { beneficiosTitulo: '  Ventajas ', beneficio1: 'Seguir tus pedidos', beneficio2: '   ', beneficio3: 'x'.repeat(120) } });
+    expect(op.configurado).toBe(true);
+    expect(op.textosBeneficios.titulo).toBe('Ventajas');
+    expect(op.textosBeneficios.lineas[0]).toBe('Seguir tus pedidos');
+    expect(op.textosBeneficios.lineas[1]).toBe(BENEFICIOS_CUENTA_POR_DEFECTO.lineas[1]);
+    expect(op.textosBeneficios.lineas[2]).toHaveLength(80);
+    expect(opcionesCuenta({ header_cuenta: { beneficio2: 42 } }).configurado).toBe(false);
+  });
+
+  test('texto con sesión: «Hola, {nombre}» con el primer nombre; sin nombre, el texto sin sesión', () => {
+    expect(TEXTO_SESION_CUENTA_POR_DEFECTO).toBe('Hola, {nombre}');
+    expect(textoCuentaConSesion('Hola, {nombre}', 'Ana María', 'Mi cuenta')).toBe('Hola, Ana');
+    expect(textoCuentaConSesion('Hola, {nombre}', null, 'Mi cuenta')).toBe('Mi cuenta');
+    expect(textoCuentaConSesion('Hola, {nombre}', '', 'Ingresar')).toBe('Ingresar');
+    expect(textoCuentaConSesion('Mi perfil', null, 'Mi cuenta')).toBe('Mi perfil');
+    expect(primerNombreIcono('Maximilianoooooo')).toBe('Maximilianooo…');
+    expect(opcionesCuenta({ header_cuenta: { textoSesion: ' Hola {nombre} ' } }).textoSesion).toBe('Hola {nombre}');
+    expect(opcionesCuenta({ header_cuenta: { textoSesion: 'x'.repeat(40) } }).textoSesion).toHaveLength(24);
+  });
+
   test('el editor no guarda los valores por defecto', () => {
     expect(cambioCuenta({}, { modo: 'panel' })).toEqual({ header_cuenta: { modo: 'panel' } });
     expect(cambioCuenta({ header_cuenta: { modo: 'panel' } }, { modo: 'pagina' })).toEqual({ header_cuenta: null });
     expect(cambioCuenta({ header_cuenta: { modo: 'dialogo' } }, { beneficios: false, despues: 'cuenta', titulo: '   ' })).toEqual({
       header_cuenta: { modo: 'dialogo', beneficios: false, despues: 'cuenta' },
     });
+    // Beneficios y texto con sesión: vacío borra la clave (vuelve el texto de siempre).
+    expect(cambioCuenta({ header_cuenta: { modo: 'panel' } }, { beneficiosTitulo: 'Ventajas', lineas: { beneficio2: 'Lista de deseos' }, textoSesion: 'Hola {nombre}' })).toEqual({
+      header_cuenta: { modo: 'panel', beneficiosTitulo: 'Ventajas', beneficio2: 'Lista de deseos', textoSesion: 'Hola {nombre}' },
+    });
+    expect(cambioCuenta({ header_cuenta: { beneficio2: 'Lista', textoSesion: 'Hola' } }, { lineas: { beneficio2: '  ' }, textoSesion: '' })).toEqual({ header_cuenta: null });
+    expect((cambioCuenta({}, { lineas: { beneficio1: 'y'.repeat(200) } }).header_cuenta as Record<string, string>).beneficio1).toHaveLength(80);
   });
 });

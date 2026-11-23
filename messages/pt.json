@@ -34938,6 +34938,30 @@
             "enabled": "Barra inferior ativa",
             "showLabel": "Mostrar texto"
           }
+        },
+        "movilEncabezado": {
+          "mi": {
+            "accion": {
+              "home": "Início",
+              "categories_modal": "Categorias (folha)",
+              "categories_page": "Página de categorias",
+              "search": "Buscar",
+              "cart": "Carrinho",
+              "favorites": "Favoritos",
+              "account": "Conta",
+              "menu": "Abrir o menu",
+              "call": "Ligar",
+              "whatsapp": "WhatsApp",
+              "location": "Como chegar",
+              "booking": "Reservar",
+              "appointment": "Agendar",
+              "order": "Pedir",
+              "track_order": "Consultar pedido",
+              "trial": "Teste grátis",
+              "page": "Página do site",
+              "url": "Link externo"
+            }
+          }
         }
       },
       "barra": {
@@ -36065,7 +36089,13 @@
             "quedarse": "Ficar na página",
             "cuenta": "Ir para Minha conta"
           },
-          "despuesAyuda": "«Ficar» fecha o acesso e deixa o cliente onde estava (carrinho ou pagamento incluídos)."
+          "despuesAyuda": "«Ficar» fecha o acesso e deixa o cliente onde estava (carrinho ou pagamento incluídos).",
+          "textoAyuda": "Padrão: «{texto}». Com sessão: «{sesion}».",
+          "textoSesion": "Texto com sessão",
+          "textoSesionAyuda": "Com a sessão iniciada. {marcador} é o primeiro nome do cliente; se não for conhecido, aparece o texto de cima. Vazio = «{texto}».",
+          "beneficiosEditables": "Cada texto é editável (vazio = texto padrão).",
+          "beneficiosTitulo": "Título dos benefícios",
+          "beneficioLinea": "Linha {n}"
         }
       },
       "accionesFicha": {
@@ -36125,6 +36155,66 @@
           "ir": "Ir para Contato"
         },
         "comportamiento": "Comportamento"
+      },
+      "barraFija": {
+        "titulo": "Barra fixa ao rolar",
+        "celular": "Celular",
+        "computador": "Computador",
+        "celularEncendida": "Barra fixa no celular",
+        "celularAyuda": "Ao rolar, «Adicionar ao carrinho» + coração ficam embaixo, seja qual for a distribuição.",
+        "estilo": "Estilo",
+        "estilos": {
+          "flat": "Plana",
+          "floating": "Flutuante",
+          "glass": "Vidro"
+        },
+        "hoy": "Atual",
+        "queMuestra": "O que mostra",
+        "miniaturaPrecio": "Miniatura e preço",
+        "cantidad": "Quantidade",
+        "comprarAhora": "«Comprar agora»",
+        "favorito": "Coração de favoritos",
+        "favoritoAyuda": "Também se oculta com «Coração na ficha» desligado e em restaurantes.",
+        "texto": "Texto do botão",
+        "textoAyuda": "Até {max} letras. Vazio = «{texto}».",
+        "aparece": "Quando aparece",
+        "apariciones": {
+          "scroll": "Ao rolar 400 px (atual)",
+          "pass": "Ao passar o botão"
+        },
+        "aparicionesComputador": {
+          "scroll": "Ao rolar 400 px",
+          "pass": "Ao passar o botão"
+        },
+        "aparecePasarAyuda": "Aparece assim que «Adicionar ao carrinho» da ficha sai da tela.",
+        "alAgregar": "Ao adicionar",
+        "efectos": {
+          "check": "Check verde (atual)",
+          "fly": "Voa até o carrinho"
+        },
+        "vuelaAyuda": "A miniatura voa até o ícone do carrinho, que pulsa. Com «reduzir movimento» no telefone, só o check.",
+        "vibracion": "Vibração suave",
+        "vibracionAyuda": "Só nos telefones que permitem.",
+        "chatAyuda": "O chat flutuante sobe acima da barra enquanto ela aparece e desce quando ela sai.",
+        "computadorEncendida": "Barra fixa no computador",
+        "computadorAyuda": "Desligada por padrão: hoje não existe. A partir de 1024 px de largura.",
+        "posicion": "Posição",
+        "posiciones": {
+          "top": "Em cima, abaixo do cabeçalho",
+          "replace": "No lugar do cabeçalho",
+          "bottom": "Embaixo, flutuante"
+        },
+        "sugerida": "Sugerida",
+        "posicionesAyuda": {
+          "top": "O cabeçalho fica e a barra gruda embaixo dele: menu e compra ao mesmo tempo.",
+          "replace": "Ao descer, o cabeçalho se esconde e a barra ocupa seu lugar com o logo; volta ao subir.",
+          "bottom": "Flutuante embaixo, afastada da borda; não toca o cabeçalho e o chat sobe acima dela."
+        },
+        "miniaturaNombre": "Miniatura e nome",
+        "precio": "Preço",
+        "variante": "Variante compacta",
+        "varianteAyuda": "Um menu por atributo (Cor, Tamanho…), sincronizado com o da ficha.",
+        "compartidoAyuda": "O texto do botão e a animação ao adicionar são os do celular."
       }
     },
     "paginas": {

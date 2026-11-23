@@ -1068,7 +1068,7 @@ export const TEXTOS_EDITOR = {
         accionCampo: 'Acción',
         accion: {
           home: 'Inicio', categories_modal: 'Categorías (hoja)', categories_page: 'Página de categorías', search: 'Buscar', cart: 'Carrito',
-          account: 'Cuenta', menu: 'Abrir el menú', call: 'Llamar', whatsapp: 'WhatsApp', location: 'Cómo llegar', booking: 'Reservar',
+          favorites: 'Favoritos', account: 'Cuenta', menu: 'Abrir el menú', call: 'Llamar', whatsapp: 'WhatsApp', location: 'Cómo llegar', booking: 'Reservar',
           appointment: 'Agendar', order: 'Pedir', track_order: 'Consultar pedido', trial: 'Prueba gratis', page: 'Página del sitio', url: 'Enlace externo',
         },
         destino: { telefono: 'Teléfono', whatsapp: 'Número de WhatsApp', direccion: 'Dirección o enlace de mapa', ruta: 'Página', url: 'Enlace', rutaOpcional: 'Destino' },

@@ -840,6 +840,39 @@ export const TEXTOS_CUENTA_POR_DEFECTO = { titulo: 'Ingresa a tu cuenta', boton:
 export const LARGO_TITULO_CUENTA = 40;
 export const LARGO_BOTON_CUENTA = 30;
 
+/**
+ * «Con tu cuenta puedes» del panel, el diálogo y la hoja (Figma E-A1 2839:69662, M2 2835:69308):
+ * un título y tres líneas, cada uno editable. Se guardan en `header_cuenta.beneficiosTitulo` y
+ * `header_cuenta.beneficio1|2|3`; vacío o sin la clave = el texto por defecto.
+ */
+export const BENEFICIOS_CUENTA_POR_DEFECTO = {
+  titulo: 'Con tu cuenta puedes',
+  lineas: [
+    'Ver tus pedidos y en qué va cada uno',
+    'Tener tus favoritos guardados en cualquier dispositivo',
+    'Guardar tus direcciones para pagar más rápido',
+  ],
+} as const;
+export const CLAVES_LINEAS_BENEFICIOS = ['beneficio1', 'beneficio2', 'beneficio3'] as const;
+export type ClaveLineaBeneficio = (typeof CLAVES_LINEAS_BENEFICIOS)[number];
+export const LARGO_TITULO_BENEFICIOS = 40;
+export const LARGO_LINEA_BENEFICIO = 80;
+
+/**
+ * Texto del ícono de cuenta con la sesión iniciada (estilos con texto): `header_cuenta.textoSesion`.
+ * `{nombre}` es el primer nombre del cliente; sin nombre conocido queda el texto sin sesión
+ * (el propio de la tienda o «Mi cuenta»). Sin la clave, «Hola, {nombre}».
+ */
+export const MARCADOR_NOMBRE = '{nombre}';
+export const TEXTO_SESION_CUENTA_POR_DEFECTO = 'Hola, {nombre}';
+/** Largo del primer nombre dentro del ícono (el resto se corta con «…»). */
+export const LARGO_NOMBRE_ICONO = 14;
+
+export interface TextosBeneficiosCuenta {
+  titulo: string;
+  lineas: readonly [string, string, string];
+}
+
 export interface OpcionesCuenta {
   /** `true` si `header_cuenta` trae al menos una opción válida. */
   configurado: boolean;
@@ -848,6 +881,10 @@ export interface OpcionesCuenta {
   boton: string;
   /** «Con tu cuenta puedes…» (panel, diálogo y hoja; la ventana nunca los muestra). */
   beneficios: boolean;
+  /** Título y líneas de los beneficios (los propios o los de siempre). */
+  textosBeneficios: TextosBeneficiosCuenta;
+  /** Texto del ícono con sesión, con `{nombre}` sin reemplazar. */
+  textoSesion: string;
   ventanaDestino: DestinoVentanaCuenta;
   despues: DespuesIngresar;
 }
@@ -860,15 +897,44 @@ export function opcionesCuenta(ajustes: Ajustes): OpcionesCuenta {
   const beneficios = typeof crudo.beneficios === 'boolean' ? crudo.beneficios : null;
   const ventanaDestino = unoDe(DESTINOS_VENTANA_CUENTA, crudo.ventanaDestino);
   const despues = unoDe(DESPUES_INGRESAR, crudo.despues);
+  const tituloBeneficios = textoCorto(crudo.beneficiosTitulo, LARGO_TITULO_BENEFICIOS);
+  const lineasPropias = CLAVES_LINEAS_BENEFICIOS.map((k) => textoCorto(crudo[k], LARGO_LINEA_BENEFICIO));
+  const textoSesion = textoCorto(crudo.textoSesion, LARGO_TEXTO_ICONO);
+  const [l1, l2, l3] = BENEFICIOS_CUENTA_POR_DEFECTO.lineas;
   return {
-    configurado: modo !== null || titulo !== null || boton !== null || beneficios !== null || ventanaDestino !== null || despues !== null,
+    configurado:
+      modo !== null || titulo !== null || boton !== null || beneficios !== null || ventanaDestino !== null || despues !== null ||
+      tituloBeneficios !== null || lineasPropias.some((l) => l !== null) || textoSesion !== null,
     modo: modo ?? 'pagina',
     titulo: titulo ?? TEXTOS_CUENTA_POR_DEFECTO.titulo,
     boton: boton ?? TEXTOS_CUENTA_POR_DEFECTO.boton,
     beneficios: beneficios ?? true,
+    textosBeneficios: {
+      titulo: tituloBeneficios ?? BENEFICIOS_CUENTA_POR_DEFECTO.titulo,
+      lineas: [lineasPropias[0] ?? l1, lineasPropias[1] ?? l2, lineasPropias[2] ?? l3],
+    },
+    textoSesion: textoSesion ?? TEXTO_SESION_CUENTA_POR_DEFECTO,
     ventanaDestino: ventanaDestino ?? 'panel',
     despues: despues ?? 'quedarse',
   };
+}
+
+/** Primer nombre para el ícono («Ana María» → «Ana»); largo, se corta con «…». Sin nombre, `null`. */
+export function primerNombreIcono(nombre: string | null | undefined): string | null {
+  const primero = (typeof nombre === 'string' ? nombre : '').trim().split(/\s+/)[0];
+  if (!primero) return null;
+  return primero.length <= LARGO_NOMBRE_ICONO ? primero : `${primero.slice(0, LARGO_NOMBRE_ICONO - 1)}…`;
+}
+
+/**
+ * Texto del ícono de cuenta con sesión: la plantilla con el primer nombre en `{nombre}`. Si la
+ * plantilla pide el nombre y no se conoce, `sinNombre` (el texto sin sesión: el de la tienda o
+ * «Mi cuenta»). Una plantilla sin `{nombre}` se muestra tal cual.
+ */
+export function textoCuentaConSesion(plantilla: string, nombre: string | null | undefined, sinNombre: string): string {
+  if (!plantilla.includes(MARCADOR_NOMBRE)) return plantilla;
+  const primero = primerNombreIcono(nombre);
+  return primero ? plantilla.split(MARCADOR_NOMBRE).join(primero) : sinNombre;
 }
 
 /** Vistas del acceso: ingresar, crear cuenta y recuperar la contraseña (con su confirmación). */

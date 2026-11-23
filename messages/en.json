@@ -34928,6 +34928,30 @@
             "enabled": "Bottom bar on",
             "showLabel": "Show label"
           }
+        },
+        "movilEncabezado": {
+          "mi": {
+            "accion": {
+              "home": "Home",
+              "categories_modal": "Categories (sheet)",
+              "categories_page": "Categories page",
+              "search": "Search",
+              "cart": "Cart",
+              "favorites": "Favorites",
+              "account": "Account",
+              "menu": "Open the menu",
+              "call": "Call",
+              "whatsapp": "WhatsApp",
+              "location": "Directions",
+              "booking": "Book",
+              "appointment": "Schedule",
+              "order": "Order",
+              "track_order": "Track order",
+              "trial": "Free trial",
+              "page": "Site page",
+              "url": "External link"
+            }
+          }
         }
       },
       "barra": {
@@ -36055,7 +36079,13 @@
             "quedarse": "Stay on the page",
             "cuenta": "Go to My account"
           },
-          "despuesAyuda": "«Stay» closes the sign-in and leaves the customer where they were (cart or checkout included)."
+          "despuesAyuda": "«Stay» closes the sign-in and leaves the customer where they were (cart or checkout included).",
+          "textoAyuda": "Default: «{texto}». When signed in: «{sesion}».",
+          "textoSesion": "Text when signed in",
+          "textoSesionAyuda": "When the customer is signed in. {marcador} is the customer’s first name; if it is unknown, the text above is shown. Empty = «{texto}».",
+          "beneficiosEditables": "Each text is editable (empty = default text).",
+          "beneficiosTitulo": "Benefits title",
+          "beneficioLinea": "Line {n}"
         }
       },
       "accionesFicha": {
@@ -36115,6 +36145,66 @@
           "ir": "Go to Contact"
         },
         "comportamiento": "Behavior"
+      },
+      "barraFija": {
+        "titulo": "Sticky bar on scroll",
+        "celular": "Mobile",
+        "computador": "Desktop",
+        "celularEncendida": "Sticky bar on mobile",
+        "celularAyuda": "When scrolling, “Add to cart” + heart stay at the bottom, whatever the layout.",
+        "estilo": "Style",
+        "estilos": {
+          "flat": "Flat",
+          "floating": "Floating",
+          "glass": "Glass"
+        },
+        "hoy": "Current",
+        "queMuestra": "What it shows",
+        "miniaturaPrecio": "Thumbnail and price",
+        "cantidad": "Quantity",
+        "comprarAhora": "“Buy now”",
+        "favorito": "Favorites heart",
+        "favoritoAyuda": "Also hidden when “Heart on product page” is off and in restaurants.",
+        "texto": "Button text",
+        "textoAyuda": "Up to {max} characters. Empty = “{texto}”.",
+        "aparece": "When it appears",
+        "apariciones": {
+          "scroll": "After 400 px (current)",
+          "pass": "After passing the button"
+        },
+        "aparicionesComputador": {
+          "scroll": "After 400 px",
+          "pass": "After passing the button"
+        },
+        "aparecePasarAyuda": "It appears right when the product page “Add to cart” button leaves the screen.",
+        "alAgregar": "When adding",
+        "efectos": {
+          "check": "Green check (current)",
+          "fly": "Flies to the cart"
+        },
+        "vuelaAyuda": "The thumbnail flies to the cart icon, which pulses. With “reduce motion” on the phone, only the check.",
+        "vibracion": "Soft vibration",
+        "vibracionAyuda": "Only on phones that allow it.",
+        "chatAyuda": "The floating chat moves above the bar while it is visible and back down when it leaves.",
+        "computadorEncendida": "Sticky bar on desktop",
+        "computadorAyuda": "Off by default: it does not exist today. From 1024 px wide.",
+        "posicion": "Position",
+        "posiciones": {
+          "top": "Top, below the header",
+          "replace": "Instead of the header",
+          "bottom": "Bottom, floating"
+        },
+        "sugerida": "Suggested",
+        "posicionesAyuda": {
+          "top": "The header stays and the bar sticks below it: menu and purchase at once.",
+          "replace": "When scrolling down, the header hides and the bar takes its place with the logo; it returns when scrolling up.",
+          "bottom": "Floating at the bottom, away from the edge; it does not touch the header and the chat moves above it."
+        },
+        "miniaturaNombre": "Thumbnail and name",
+        "precio": "Price",
+        "variante": "Compact variant",
+        "varianteAyuda": "One dropdown per attribute (Color, Size…), in sync with the product page.",
+        "compartidoAyuda": "The button text and the add animation are the mobile ones."
       }
     },
     "paginas": {

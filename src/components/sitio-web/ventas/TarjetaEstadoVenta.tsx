@@ -218,7 +218,7 @@ export function TarjetaEstadoVenta({
 
 /** Módulo dueño de cada tema (clave `nav.*` del catálogo) para el error parcial. */
 const MODULO_TEMA: Partial<Record<TemaVenta, string>> = {
-  envios: 'transport',
+  envios: 'logistics',
   pagos: 'finance',
   pasarela: 'integrations',
   cupones: 'pointOfSale',

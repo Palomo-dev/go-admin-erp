@@ -87,6 +87,7 @@ import {
   MapPin,
   MessageCircle,
   MessageSquare,
+  Navigation,
   Network,
   NotebookPen,
   Package,
@@ -131,7 +132,7 @@ import {
 import { CRM_NAV_ENABLED } from '@/config/crmNav';
 
 /** Secciones del sidebar, en el orden en que se pintan (diseño de Figma, página 03). */
-export type CodigoSeccion = 'principal' | 'ventas' | 'gestion' | 'organizacion' | 'sistema';
+export type CodigoSeccion = 'principal' | 'ventas' | 'operacion' | 'gestion' | 'organizacion' | 'sistema';
 
 export interface PaginaNav {
   href: string;
@@ -213,6 +214,8 @@ export const CAPACIDADES_NAV: readonly CapacidadNav[] = ['gestionarNotificacione
 export const SECCIONES: { codigo: CodigoSeccion; etiqueta: string }[] = [
   { codigo: 'principal', etiqueta: 'sectionMain' },
   { codigo: 'ventas', etiqueta: 'sectionSales' },
+  // «Operación» (Figma 21 Logística, barra lateral 2792:19): Logística y Transporte.
+  { codigo: 'operacion', etiqueta: 'sectionOperation' },
   { codigo: 'gestion', etiqueta: 'sectionManagement' },
   { codigo: 'organizacion', etiqueta: 'sectionOrganization' },
   { codigo: 'sistema', etiqueta: 'sectionSystem' },
@@ -412,31 +415,65 @@ export const CATALOGO_NAV: ModuloNav[] = [
       { href: '/app/parking/mapa', nombre: 'Mapa', icono: LayoutGrid },
     ],
   },
+
+  // ─── Operación ────────────────────────────────────────────────────────────
+  // Figma «21 Logística» (2792:17), 2026-11-23: dos módulos visibles sobre un
+  // mismo núcleo (2793:2382). Logística es para quien vende y despacha;
+  // Transporte, para mover personas o carga. Lo de envíos que vivía en
+  // Transporte se mudó a /app/logistica con redirección 308
+  // (REDIRECCIONES_LOGISTICA en next.config.js). Conductores y vehículos son
+  // «Catálogo común»: la misma pantalla en los dos módulos, cada uno con su
+  // ruta (cada módulo se habilita por separado en el middleware).
+  {
+    codigo: 'logistica',
+    id: 'logistica',
+    etiqueta: 'logistics',
+    icono: Truck,
+    seccion: 'operacion',
+    rutas: ['/app/logistica'],
+    paginas: [
+      { href: '/app/logistica/por-despachar', nombre: 'Por despachar', icono: Package, grupo: 'Operación del día' },
+      { href: '/app/logistica/envios', nombre: 'Envíos', icono: Boxes, grupo: 'Operación del día' },
+      { href: '/app/logistica/domiciliarios', nombre: 'Domiciliarios', icono: Users, grupo: 'Operación del día' },
+      { href: '/app/logistica/cuadres', nombre: 'Cuadres', icono: Wallet, grupo: 'Operación del día' },
+      { href: '/app/logistica/seguimiento', nombre: 'Seguimiento y novedades', icono: Navigation, grupo: 'Operación del día' },
+      // La app del domiciliario: sale en el menú para que quien reparte llegue
+      // a ella (su cargo puede dejarle solo esta página).
+      { href: '/app/logistica/mis-envios', nombre: 'Mis envíos', icono: Truck, grupo: 'Operación del día' },
+      { href: '/app/logistica/conductores', nombre: 'Conductores y domiciliarios', icono: User, grupo: 'Catálogo común' },
+      { href: '/app/logistica/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Catálogo común' },
+      // Zonas y reglas son catálogos del módulo, no ajustes: los ajustes de
+      // Logística viven en el diálogo de Configuración (sección
+      // `logistica.general`, docs/configuracion/UNIFICACION-CONFIGURACION.md),
+      // que las pantallas abren con el atajo «Configurar». Sin página
+      // «Configuración» en el submenú.
+      { href: '/app/logistica/zonas', nombre: 'Zonas y tarifas', icono: MapPin, grupo: 'Cobertura' },
+      { href: '/app/logistica/reglas', nombre: 'Reglas de despacho', icono: ListChecks, grupo: 'Cobertura' },
+      // Fuera del menú (Figma no las lista): se llega desde los envíos. Siguen
+      // siendo páginas activables por organización. Las transportadoras son
+      // conexiones: viven en Integraciones › Conexiones › Logística.
+      { href: '/app/logistica/etiquetas', nombre: 'Etiquetas', icono: Tag, grupo: 'Cobertura', enMenu: false },
+      { href: '/app/logistica/direcciones-clientes', nombre: 'Direcciones de clientes', icono: MapPin, grupo: 'Cobertura', enMenu: false },
+    ],
+  },
   {
     codigo: 'transport',
     id: 'transporte',
     etiqueta: 'transport',
     icono: Bus,
-    seccion: 'ventas',
+    seccion: 'operacion',
     rutas: ['/app/transporte'],
     paginas: [
-      { href: '/app/transporte/viajes', nombre: 'Viajes', icono: Calendar, grupo: 'Pasajeros' },
-      { href: '/app/transporte/boletos', nombre: 'Boletos', icono: Ticket, grupo: 'Pasajeros' },
-      { href: '/app/transporte/tarifas-pasajeros', nombre: 'Tarifas de pasajeros', icono: DollarSign, grupo: 'Pasajeros' },
-      { href: '/app/transporte/envios', nombre: 'Envíos', icono: Package, grupo: 'Envíos' },
-      { href: '/app/transporte/mis-envios', nombre: 'Mis envíos', icono: Truck, grupo: 'Envíos' },
-      { href: '/app/transporte/tarifas-envio', nombre: 'Tarifas de envío', icono: DollarSign, grupo: 'Envíos' },
-      { href: '/app/transporte/tracking', nombre: 'Tracking', icono: Search, grupo: 'Envíos' },
-      { href: '/app/transporte/etiquetas', nombre: 'Etiquetas', icono: Tag, grupo: 'Envíos' },
-      { href: '/app/transporte/manifiestos', nombre: 'Manifiestos', icono: ClipboardList, grupo: 'Envíos' },
-      { href: '/app/transporte/transportadoras', nombre: 'Transportadoras', icono: Truck, grupo: 'Operación' },
-      { href: '/app/transporte/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Operación' },
-      { href: '/app/transporte/conductores', nombre: 'Conductores', icono: User, grupo: 'Operación' },
-      { href: '/app/transporte/paradas', nombre: 'Paradas', icono: MapPin, grupo: 'Operación' },
+      { href: '/app/transporte/viajes', nombre: 'Viajes', icono: Calendar, grupo: 'Operación' },
       { href: '/app/transporte/rutas', nombre: 'Rutas', icono: MapPin, grupo: 'Operación' },
+      { href: '/app/transporte/paradas', nombre: 'Paradas', icono: MapPin, grupo: 'Operación' },
       { href: '/app/transporte/horarios', nombre: 'Horarios', icono: Clock, grupo: 'Operación' },
-      { href: '/app/transporte/direcciones-clientes', nombre: 'Direcciones de clientes', icono: MapPin, grupo: 'Operación' },
+      { href: '/app/transporte/boletos', nombre: 'Boletos', icono: Ticket, grupo: 'Operación' },
+      { href: '/app/transporte/tarifas-pasajeros', nombre: 'Tarifas de pasajeros', icono: DollarSign, grupo: 'Operación' },
+      { href: '/app/transporte/manifiestos', nombre: 'Manifiestos', icono: ClipboardList, grupo: 'Operación' },
       { href: '/app/transporte/incidentes', nombre: 'Incidentes', icono: Shield, grupo: 'Operación' },
+      { href: '/app/transporte/conductores', nombre: 'Conductores', icono: User, grupo: 'Catálogo común' },
+      { href: '/app/transporte/vehiculos', nombre: 'Vehículos', icono: Bus, grupo: 'Catálogo común' },
     ],
   },
 

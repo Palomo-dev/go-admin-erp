@@ -313,7 +313,7 @@ export function IncidentHeader({
                         variant="link"
                         size="sm"
                         className="p-0 h-auto"
-                        onClick={() => router.push(`/app/transporte/envios/${relatedShipment.id}`)}
+                        onClick={() => router.push(`/app/logistica/envios/${relatedShipment.id}`)}
                       >
                         Ver envío →
                       </Button>

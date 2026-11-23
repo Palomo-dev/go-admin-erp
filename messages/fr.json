@@ -4608,7 +4608,19 @@
       "hrm_plazas": "Postes budgétés",
       "hrm_aprobaciones": "Approbations",
       "hrm_novedades": "Événements",
-      "hrm_mi-equipo": "Mon équipe"
+      "hrm_mi-equipo": "Mon équipe",
+      "logistica_por-despachar": "À expédier",
+      "logistica_envios": "Envois",
+      "logistica_domiciliarios": "Livreurs",
+      "logistica_cuadres": "Clôtures",
+      "logistica_seguimiento": "Suivi et incidents",
+      "logistica_mis-envios": "Mes envois",
+      "logistica_conductores": "Chauffeurs et livreurs",
+      "logistica_vehiculos": "Véhicules",
+      "logistica_etiquetas": "Étiquettes",
+      "logistica_direcciones-clientes": "Adresses des clients",
+      "logistica_zonas": "Zones et tarifs",
+      "logistica_reglas": "Règles d’expédition"
     },
     "grupos": {
       "venta": "Vente",
@@ -4646,7 +4658,10 @@
       "sedes": "Sites",
       "plan-y-facturacion": "Forfait et facturation",
       "marca": "Marque",
-      "tributario": "Fiscalité"
+      "tributario": "Fiscalité",
+      "operacion-del-dia": "Opérations du jour",
+      "catalogo-comun": "Catalogue commun",
+      "cobertura": "Couverture"
     },
     "emailNotConfirmed": "E-mail non confirmé",
     "sending": "Envoi...",
@@ -4659,7 +4674,9 @@
       "sitio-web_tienda": "Commerce uniquement",
       "sitio-web_ventas": "Commande, paiements et livraisons",
       "sitio-web_sedes": "Si vous avez plusieurs sites"
-    }
+    },
+    "logistics": "Logistique",
+    "sectionOperation": "Opérations"
   },
   "posCustomerDisplay": {
     "indicator": {
@@ -5155,7 +5172,8 @@
         "reservations": "Réservations",
         "spaces": "Espaces",
         "memberships": "Abonnements",
-        "parking": "Parking"
+        "parking": "Parking",
+        "shipments": "Envois"
       },
       "actions": {
         "reportProblem": "Signaler un problème",
@@ -37570,7 +37588,7 @@
         "origen": {
           "checkout": "Se modifie ici",
           "pagos": "Visibilité et ordre se règlent dans Finances",
-          "envios": "Les tarifs par zone sont dans Transport",
+          "envios": "Les tarifs par zone se gèrent dans Logistique",
           "enviosPlana": "Tarif fixe du site · se modifie ici",
           "cupones": "Se créent dans le PDV",
           "pedidos": "Se traitent dans le PDV",
@@ -37580,7 +37598,7 @@
         "acciones": {
           "editarOpciones": "Modifier les options",
           "irFinanzasMetodos": "Aller à Finances › Moyens de paiement",
-          "irTransporteTarifas": "Aller à Transport › Tarifs de livraison",
+          "irTransporteTarifas": "Aller à Logistique › Zones et tarifs",
           "irPosPromociones": "Aller au PDV › Promotions et coupons",
           "irPosPedidos": "Aller au PDV › Commandes en ligne",
           "irPosReservas": "Aller au PDV › Réservations › Réglages",
@@ -40540,7 +40558,8 @@
       "facturacion": "Facturation électronique",
       "gym": "Abonnements",
       "notificaciones": "Notifications",
-      "datos-offline": "Données hors ligne"
+      "datos-offline": "Données hors ligne",
+      "logistica": "Logistique"
     },
     "secciones": {
       "generalGeneral": {
@@ -40712,6 +40731,11 @@
         "titulo": "Paie",
         "descripcion": "Rubriques de paie, activation et plan comptable",
         "palabras": "paie, rubriques, comptes, activer la paie, tiers, nit, pré-liquidation, ressources humaines, rh"
+      },
+      "logisticaGeneral": {
+        "titulo": "Logistique",
+        "descripcion": "Sans mouvement, livraison gratuite, poids par défaut et avis de livraison",
+        "palabras": "logistique, livraison, envois, sans mouvement, livraison gratuite, poids, dimensions, paiement à la livraison, code de livraison, frais de livraison, zones"
       }
     },
     "ajustes": {
@@ -40726,6 +40750,30 @@
       "agenteVozDesinteres": {
         "titulo": "Quand le client n'est pas intéressé",
         "palabras": "intérêt, pas intéressé, opportunité perdue, clôturer, exception, valeur élevée, étape"
+      },
+      "logisticaSinMovimiento": {
+        "titulo": "Envois sans mouvement",
+        "palabras": "sans mouvement, heures, retard, alerte, suivi, incidents"
+      },
+      "logisticaEnvioGratis": {
+        "titulo": "Livraison gratuite par défaut",
+        "palabras": "livraison gratuite, web, POS, nouvelles zones"
+      },
+      "logisticaPesoOrganizacion": {
+        "titulo": "Poids et carton de l’organisation",
+        "palabras": "poids, dimensions, carton, volumétrique, par défaut"
+      },
+      "logisticaCodigoEntrega": {
+        "titulo": "Code de livraison",
+        "palabras": "code de livraison, paiement à la livraison, vérifier la livraison"
+      },
+      "logisticaCargoDomicilio": {
+        "titulo": "Qui peut modifier les frais de livraison",
+        "palabras": "frais de livraison, POS, permission, modifier le tarif"
+      },
+      "logisticaAvisos": {
+        "titulo": "Avis de livraison au client",
+        "palabras": "avis, en route, livré, incident, e-mail, WhatsApp"
       }
     },
     "telefonia": {
@@ -53633,7 +53681,8 @@
       "gym": "Abonnements",
       "integraciones": "Intégrations",
       "timeline": "Chronologie",
-      "datos-offline": "Données hors ligne"
+      "datos-offline": "Données hors ligne",
+      "logistica": "Logistique"
     },
     "pestanas": {
       "chatGeneral": "Étiquettes et réponses rapides",
@@ -63501,5 +63550,1881 @@
     "error": "Impossible de charger vos succursales.",
     "entrarSinElegir": "Continuer sans choisir de succursale",
     "rechazada": "Vous n’avez plus accès à cette succursale. Choisissez-en une autre."
+  },
+  "logistica": {
+    "misEnvios": {
+      "titulo": "Mes livraisons",
+      "hoy": "Aujourd'hui · {fecha}",
+      "recargar": "Actualiser mes livraisons",
+      "cliente": "Client",
+      "sinDireccion": "Sans adresse",
+      "cobrar": "Encaisser {monto}",
+      "cobrado": "Encaissé",
+      "pagado": "Payé",
+      "volver": "Retour à mes livraisons",
+      "guardando": "Enregistrement…",
+      "sinDomiciliario": {
+        "titulo": "Tu n'as pas de profil de livreur",
+        "descripcion": "Demande à la personne qui expédie dans ton agence de t'enregistrer comme livreur avec ton compte."
+      },
+      "error": {
+        "titulo": "Impossible de charger tes livraisons",
+        "descripcion": "Vérifie le réseau et réessaie."
+      },
+      "ruta": {
+        "etiqueta": "Résumé de la tournée",
+        "vacia": "Aucune livraison assignée aujourd'hui",
+        "terminada": "Tournée terminée",
+        "parada": "Tournée en cours · arrêt {n} sur {total}",
+        "estados": {
+          "sin_salir": "Pas encore parti",
+          "en_ruta": "En tournée",
+          "terminada": "Terminée"
+        },
+        "porEntregar": "À livrer",
+        "entregados": "Livrées",
+        "aCobrar": "À encaisser",
+        "enMano": "En main",
+        "anuncio": "{n, plural, =0 {Plus aucune livraison} one {Il te reste # livraison} other {Il te reste # livraisons}}"
+      },
+      "pestanas": {
+        "etiqueta": "Voir les livraisons",
+        "pendientes": "En attente {n}",
+        "entregados": "Livrées {n}",
+        "novedades": "Incidents {n}"
+      },
+      "vacio": {
+        "pendientes": {
+          "titulo": "Aucune livraison en attente",
+          "descripcion": "Quand on t'en assigne une, elle apparaît ici."
+        },
+        "entregados": {
+          "titulo": "Rien livré aujourd'hui",
+          "descripcion": "Les livraisons du jour apparaissent ici."
+        },
+        "novedades": {
+          "titulo": "Aucun incident",
+          "descripcion": "Les livraisons que tu n'as pas pu faire apparaissent ici."
+        }
+      },
+      "tarjeta": {
+        "abrir": "Ouvrir la livraison {numero} de {nombre}",
+        "intento": "{n}ᵉ tentative"
+      },
+      "terminarJornada": "Terminer la journée et faire la caisse",
+      "estados": {
+        "assigned": "À récupérer",
+        "ready": "Prêt à récupérer",
+        "ready_for_pickup": "Prêt à récupérer",
+        "picked": "Récupéré",
+        "dispatched": "Récupéré",
+        "in_transit": "En transit",
+        "out_for_delivery": "En route",
+        "failed_attempt": "Non livré",
+        "delivered": "Livré",
+        "returned": "Retourné",
+        "cancelled": "Annulé",
+        "otro": "En attente"
+      },
+      "promesa": {
+        "hora": "Promis {hora}",
+        "tarde": "+{minutos} min",
+        "faltan": "encore {minutos} min",
+        "en": "dans {minutos} min"
+      },
+      "contacto": {
+        "llamarA": "Appeler {nombre}",
+        "comoLlegarA": "Itinéraire vers {nombre}",
+        "llamar": "Appeler",
+        "whatsapp": "WhatsApp",
+        "comoLlegar": "Itinéraire",
+        "googleMaps": "Ouvrir Google Maps",
+        "waze": "Ouvrir Waze",
+        "mensajeWhatsApp": "Bonjour, je suis le livreur de ta commande {numero}."
+      },
+      "parada": {
+        "cargando": "Chargement de l'arrêt…",
+        "titulo": "Arrêt · {numero}",
+        "noEncontrada": {
+          "titulo": "Cette livraison n'est pas dans ta tournée",
+          "descripcion": "Elle a peut-être été réassignée. Reviens à tes livraisons."
+        },
+        "tarde": "Tu es en retard sur l'heure promise.",
+        "novedadAnterior": "Tentative précédente : {motivo}",
+        "indicaciones": "Indications : {texto}",
+        "cobra": "Encaisser à la livraison {monto}",
+        "medios": "Espèces, terminal de paiement ou virement acceptés.",
+        "pideCodigo": "Demande au client le code de livraison à 4 chiffres.",
+        "llevas": "Ce que tu transportes ({n})",
+        "envio": "Livraison",
+        "pasos": "Étapes"
+      },
+      "origen": {
+        "tienda": "Boutique en ligne",
+        "pos": "Point de vente",
+        "otro": "Livraison"
+      },
+      "pasos": {
+        "recogido": "J'ai récupéré la commande",
+        "en_camino": "Je suis en route",
+        "entregado": "Livré",
+        "hechoSr": "fait",
+        "actualSr": "étape en cours",
+        "pendienteSr": "à faire",
+        "hecho": {
+          "picked": "Commande récupérée",
+          "out_for_delivery": "Tu es en route : le client a été prévenu"
+        },
+        "boton": {
+          "recoger": "J'ai récupéré la commande",
+          "en_camino": "Je suis en route",
+          "reintentar": "Réessayer : je suis en route",
+          "entregar": "Livré",
+          "noEntregado": "Livraison impossible"
+        }
+      },
+      "errores": {
+        "titulo": "Impossible d'enregistrer",
+        "ERROR": "Un problème est survenu. Vérifie le réseau et réessaie.",
+        "ENVIO_NO_ENCONTRADO": "La livraison n'existe plus.",
+        "SIN_ACCESO_SEDE": "Tu n'as pas accès à l'agence de cette livraison.",
+        "SIN_ACCESO": "Tu n'as pas l'autorisation pour cette livraison.",
+        "TRANSICION_INVALIDA": "La livraison a changé de statut. Actualise et réessaie.",
+        "ESTADO_NO_PERMITIDO": "Cette étape ne peut pas se faire ici.",
+        "YA_ENTREGADO": "Cette livraison était déjà livrée.",
+        "ESTADO_NO_ENTREGABLE": "Cette livraison ne peut pas être livrée dans son statut actuel.",
+        "RECEPTOR_REQUERIDO": "Indique qui a reçu.",
+        "CODIGO_NO_EMITIDO": "Cette livraison n'a pas de code. Préviens la boutique.",
+        "CODIGO_BLOQUEADO": "Le code est bloqué. Un administrateur doit le réinitialiser.",
+        "COBRO_REQUERIDO": "Enregistre l'encaissement du paiement à la livraison.",
+        "MOTIVO_INVALIDO": "Choisis ce qui s'est passé.",
+        "ESTADO_SIN_NOVEDAD": "Cette livraison n'accepte pas d'incident dans son statut actuel.",
+        "ENVIO_AJENO": "Cet envoi ne vous est plus attribué."
+      },
+      "entregar": {
+        "titulo": "Livrer {numero}",
+        "noEntregable": {
+          "titulo": "Cette livraison ne peut pas être livrée",
+          "descripcion": "Elle est déjà livrée, retournée ou annulée."
+        },
+        "hecho": "Livraison enregistrée",
+        "confirmar": "Confirmer la livraison",
+        "confirmarCon": "Confirmer la livraison · {monto}",
+        "nota": {
+          "efectivo": "Espèces reçues",
+          "cambio": "Monnaie",
+          "aprobacion": "Autorisation terminal"
+        },
+        "prueba": {
+          "titulo": "1. Preuve de livraison",
+          "codigo": "Code",
+          "foto": "Photo",
+          "firma": "Signature"
+        },
+        "codigo": {
+          "etiqueta": "Code de livraison",
+          "ayuda": "Demande le code au client : il l'a reçu par WhatsApp et e-mail au départ de la commande.",
+          "falta": "Saisis les 4 chiffres que le client te dicte.",
+          "incorrecto": "{n, plural, one {Code incorrect. Il te reste # tentative.} other {Code incorrect. Il te reste # tentatives.}}",
+          "bloqueado": {
+            "titulo": "Code bloqué",
+            "descripcion": "Il a été erroné {max} fois. Appelle la boutique : un administrateur doit réinitialiser le code."
+          },
+          "sigueObligatorio": "Le code de livraison reste obligatoire pour le paiement à la livraison."
+        },
+        "firma": {
+          "etiqueta": "Signature du destinataire",
+          "borrar": "Effacer la signature",
+          "falta": "Demande la signature du destinataire."
+        },
+        "foto": {
+          "titulo": "Photo du colis livré",
+          "opcional": "Facultative avec code",
+          "obligatoria": "Obligatoire sans code",
+          "quitar": "Retirer la photo",
+          "falta": "Prends une photo du colis livré."
+        },
+        "receptor": {
+          "etiqueta": "Qui a reçu ?",
+          "falta": "Indique qui a reçu.",
+          "relacion": "Lien avec le client",
+          "relaciones": {
+            "customer": "Titulaire",
+            "family": "Famille",
+            "doorman": "Accueil",
+            "other": "Autre"
+          }
+        },
+        "cobro": {
+          "titulo": "2. Encaisser le paiement à la livraison",
+          "medio": "Moyen de paiement",
+          "medios": {
+            "cash": "Espèces",
+            "card": "Terminal",
+            "transfer": "Virement"
+          },
+          "recibido": "Espèces reçues",
+          "insuficiente": "Les espèces ne couvrent pas le total.",
+          "rapidos": "Montants rapides",
+          "exacto": "Exact",
+          "cambio": "Monnaie à rendre",
+          "aprobacion": "Numéro d'autorisation",
+          "faltaAprobacion": "Note le numéro d'autorisation du terminal.",
+          "comprobante": "Photo du justificatif",
+          "comprobanteAyuda": "Prends en photo le virement sur le téléphone du client",
+          "faltaMedio": "Choisis comment le client a payé.",
+          "nota": "Terminal : note le numéro d'autorisation. Virement : prends le justificatif en photo."
+        }
+      },
+      "novedad": {
+        "titulo": "Livraison impossible",
+        "noAplica": {
+          "titulo": "Cette livraison n'accepte pas d'incident",
+          "descripcion": "Récupère-la d'abord et pars avec."
+        },
+        "quePaso": "Que s'est-il passé ?",
+        "motivos": {
+          "not_home": {
+            "titulo": "Client absent",
+            "descripcion": "Personne n'ouvre ni ne répond"
+          },
+          "wrong_address": {
+            "titulo": "Adresse erronée",
+            "descripcion": "Elle n'existe pas ou ne correspond pas"
+          },
+          "incomplete_address": {
+            "titulo": "Adresse incomplète",
+            "descripcion": "Il manque le numéro ou l'appartement"
+          },
+          "rejected": {
+            "titulo": "Refusé",
+            "descripcion": "Le client n'a pas voulu le recevoir"
+          },
+          "damaged": {
+            "titulo": "Colis endommagé",
+            "descripcion": "Il est arrivé en mauvais état"
+          },
+          "lost": {
+            "titulo": "Colis perdu",
+            "descripcion": "Le colis est introuvable"
+          },
+          "access_denied": {
+            "titulo": "Accès refusé",
+            "descripcion": "Impossible d'entrer dans la résidence ou l'immeuble"
+          },
+          "business_closed": {
+            "titulo": "Commerce fermé",
+            "descripcion": "Le local était fermé"
+          },
+          "weather": {
+            "titulo": "Météo",
+            "descripcion": "Pluie ou route fermée"
+          },
+          "vehicle_issue": {
+            "titulo": "Panne du véhicule",
+            "descripcion": "Crevaison ou panne en route"
+          },
+          "customer_request": {
+            "titulo": "Demande du client",
+            "descripcion": "Le client a demandé une autre heure ou un autre jour"
+          },
+          "other": {
+            "titulo": "Autre",
+            "descripcion": "Indique le motif"
+          }
+        },
+        "nota": "Note pour la boutique",
+        "faltaNota": "Écris ce qui s'est passé.",
+        "foto": {
+          "titulo": "Photo de preuve",
+          "ayuda": "La position est enregistrée automatiquement"
+        },
+        "yAhora": "Et maintenant ?",
+        "plan": {
+          "hoy": "Aujourd'hui {hora}",
+          "manana": "Demain",
+          "devolver": "Rapporter à l'agence",
+          "detalleHora": "Nouvelle heure : {hora}"
+        },
+        "aviso": {
+          "reintento": "La boutique voit l'incident et la nouvelle heure dans Logistique. Si la nouvelle tentative échoue aussi, elle décide.",
+          "devolver": "Le colis retourne à l'agence : remets-le en fin de journée."
+        },
+        "guardar": "Enregistrer et continuer la tournée",
+        "hecho": "Incident enregistré"
+      },
+      "finJornada": {
+        "titulo": "Fin de journée",
+        "cifras": "Résumé du jour",
+        "entregados": "Livrées",
+        "noEntregados": "Non livrées",
+        "porDevolver": "À retourner",
+        "paquetes": "{n, plural, one {# colis} other {# colis}}",
+        "cobraste": "Ce que tu as encaissé",
+        "sinCobros": "Tu n'as encaissé aucun paiement à la livraison aujourd'hui.",
+        "medios": {
+          "cash": "{n, plural, one {Espèces · # livraison} other {Espèces · # livraisons}}",
+          "card": "{n, plural, one {Terminal · # ticket} other {Terminal · # tickets}}",
+          "transfer": "{n, plural, one {Virement · # justificatif} other {Virement · # justificatifs}}",
+          "qr": "{n, plural, one {QR · # paiement} other {QR · # paiements}}"
+        },
+        "totalCobrado": "Total encaissé",
+        "entregaEnCaja": "À remettre en caisse",
+        "entregaEnCajaAyuda": "Seules les espèces passent par tes mains. Le terminal et les virements sont rapprochés à l'agence avec le ticket et le justificatif.",
+        "pendientes": "En attente",
+        "reprogramadoPara": "reprogrammé · {fecha}",
+        "reprogramadoHoy": "nouvelle tentative aujourd'hui",
+        "paqueteDevolver": "Colis à retourner",
+        "enviado": {
+          "titulo": "Résumé envoyé",
+          "descripcion": "Ta journée est clôturée. Remets les espèces à la caisse de l'agence : elles sont reçues dans Logistique › Rapprochements."
+        },
+        "notaCuadre": "La personne qui reçoit l'argent le voit dans Logistique › Rapprochements et le met dans la caisse ouverte de l'agence.",
+        "enviar": "Envoyer le résumé pour le rapprochement",
+        "errorEnviar": "Impossible de clôturer la journée. Réessaie."
+      }
+    },
+    "domiciliario": {
+      "titulo": "Livreurs",
+      "subtitulo": "Qui livre, ce qu'il fait et où en est sa journée",
+      "migaLogistica": "Logistique",
+      "sinNombre": "Sans nom",
+      "externo": "Externe",
+      "empleado": "Employé",
+      "noCobraContraentrega": "N'encaisse pas à la livraison",
+      "todasLasSedes": "Toutes les agences",
+      "buscar": "Rechercher un livreur…",
+      "sinResultados": "Aucun livreur ne correspond à la recherche.",
+      "etiquetaFila": "{nombre}, {estado}",
+      "errorAccion": "Impossible d'enregistrer le changement",
+      "estados": {
+        "libre": "Disponible",
+        "en_ruta": "En tournée",
+        "fuera_de_turno": "Hors service",
+        "inactivo": "Inactif"
+      },
+      "carga": {
+        "sinCarga": "Aucune livraison aujourd'hui",
+        "resumen": "{entregados} sur {total} livrées{novedades, plural, =0 {} one { · # incident} other { · # incidents}}"
+      },
+      "columnas": {
+        "domiciliario": "Livreur",
+        "celular": "Portable",
+        "vehiculo": "Véhicule",
+        "sede": "Agence",
+        "estado": "Statut",
+        "carga": "Charge du jour",
+        "porCuadrar": "À rapprocher"
+      },
+      "kpis": {
+        "etiqueta": "Livreurs aujourd'hui",
+        "libres": "Disponibles",
+        "enRuta": "En tournée",
+        "entregasHoy": "{n, plural, one {# livraison aujourd'hui} other {# livraisons aujourd'hui}}",
+        "fuera": "Hors service",
+        "porCuadrar": "À rapprocher"
+      },
+      "acciones": {
+        "registrar": "Enregistrer un livreur",
+        "recargar": "Actualiser",
+        "verFicha": "Voir la fiche",
+        "llamar": "Appeler",
+        "whatsapp": "WhatsApp",
+        "verCuadres": "Voir les rapprochements",
+        "activar": "Activer",
+        "desactivar": "Désactiver",
+        "activado": "{nombre} est actif",
+        "desactivado": "{nombre} est inactif",
+        "noDesactivarEnRuta": "En tournée : attends qu'il finisse ses livraisons."
+      },
+      "vacio": {
+        "titulo": "Aucun livreur pour l'instant",
+        "descripcion": "Enregistre la personne qui livre, même sans contrat dans Ressources humaines."
+      },
+      "error": {
+        "titulo": "Impossible de charger les livreurs",
+        "descripcion": "Réessaie dans un instant."
+      },
+      "sinPermiso": {
+        "titulo": "Sans autorisation",
+        "descripcion": "Les caissiers et les administrateurs enregistrent ou désactivent les livreurs."
+      },
+      "ficha": {
+        "cargaDelDia": "Charge du jour",
+        "asignados": "Assignées",
+        "enCamino": "Avec colis",
+        "entregadosHoy": "Livrées aujourd'hui",
+        "porCuadrar": "À rapprocher",
+        "sinEnvios": "Aucune livraison en cours.",
+        "datos": "Données du livreur",
+        "documento": "Pièce d'identité",
+        "contraentrega": "Encaisse à la livraison",
+        "si": "Oui",
+        "no": "Non",
+        "misEnvios": "Mes livraisons",
+        "conCuenta": "A un compte",
+        "sinCuenta": "Sans compte : ne voit pas Mes livraisons",
+        "licencia": "Permis",
+        "sinLicencia": "Aucun permis enregistré"
+      },
+      "alta": {
+        "titulo": "Enregistrer un livreur",
+        "descripcion": "Disponible tout de suite pour être assigné. Le permis et les documents se complètent ensuite dans Transport › Conducteurs.",
+        "registrar": "Enregistrer",
+        "guardando": "Enregistrement…",
+        "hecho": "{nombre} a été enregistré",
+        "nombre": "Nom complet",
+        "celular": "Portable",
+        "celularAyuda": "Pour l'appeler et lui écrire sur WhatsApp.",
+        "tipoDocumento": "Type",
+        "documento": "Numéro de pièce",
+        "sede": "Agence",
+        "elegirSede": "Choisis l'agence",
+        "vehiculo": "Véhicule (facultatif)",
+        "vehiculoAyuda": "Tu peux le laisser vide. La plaque et l'assurance s'ajoutent plus tard si besoin.",
+        "sinVehiculo": "Sans véhicule",
+        "vehiculos": {
+          "motorcycle": "Moto",
+          "bicycle": "Vélo",
+          "car": "Voiture",
+          "van": "Fourgonnette",
+          "on_foot": "À pied",
+          "other": "Autre"
+        },
+        "cobraContraentrega": "Encaisse à la livraison ?",
+        "cobraContraentregaAyuda": "Si c'est désactivé, on ne lui assigne pas de livraisons payables à la livraison.",
+        "esEmpleado": "Employé de l'entreprise",
+        "esEmpleadoAyuda": "Si oui, il est lié à Ressources humaines. Sinon, il reste livreur externe.",
+        "traerDeRrhh": "Importer depuis Ressources humaines",
+        "elegirEmpleado": "Choisis l'employé",
+        "sinEmpleados": "Aucun employé actif sans profil de livreur.",
+        "cargando": "Chargement…",
+        "cuenta": "Compte pour Mes livraisons (facultatif)",
+        "cuentaAyuda": "S'il est déjà membre de l'organisation, lie-le pour qu'il voie ses livraisons sur son téléphone.",
+        "sinCuenta": "Sans compte pour l'instant",
+        "errores": {
+          "nombre": "Indique le nom complet.",
+          "celular": "Indique un numéro de portable valide.",
+          "documento": "Indique le numéro de pièce.",
+          "branchId": "Choisis l'agence.",
+          "empleo": "Choisis l'employé dans Ressources humaines.",
+          "servidor": {
+            "SIN_PERMISO": "Tu n'as pas l'autorisation d'enregistrer des livreurs.",
+            "DATOS_INVALIDOS": "Vérifie les données du formulaire.",
+            "SEDE": "L'agence n'appartient pas à cette organisation.",
+            "EMPLEO": "Cet employé n'appartient pas à cette organisation.",
+            "USUARIO": "Ce compte n'est pas un membre actif de l'organisation.",
+            "DUPLICADO": "Cet employé ou ce compte a déjà un profil de livreur.",
+            "EMPLEO_AJENO": "Cet employé appartient à une autre organisation.",
+            "ERROR": "Impossible d'enregistrer. Réessaie."
+          }
+        }
+      }
+    },
+    "cuadres": {
+      "titulo": "Rapprochements",
+      "subtitulo": "Ce que les livreurs ont encaissé face à ce qui entre en caisse",
+      "migaLogistica": "Logistique",
+      "sinNombre": "Livreur",
+      "hoy": "Aujourd'hui",
+      "ayer": "Hier",
+      "buscar": "Rechercher un livreur…",
+      "sinResultados": "Aucun rapprochement ne correspond à la recherche.",
+      "nota": "Attendu = paiement à la livraison des commandes livrées. Écart = reçu moins attendu. Un manque est enregistré avec motif et responsable, sans écriture comptable, jusqu'à ce que le Comptable décide comment le comptabiliser.",
+      "etiquetaFila": "{nombre}, {estado}",
+      "nadaPorRecibir": "Il n'y a pas d'argent à recevoir.",
+      "filtroDomiciliario": "Seulement {nombre}",
+      "entregasN": "{n, plural, one {# livraison} other {# livraisons}}",
+      "faltan": "Manque {monto}",
+      "sobran": "Excédent {monto}",
+      "tabs": {
+        "etiqueta": "Type de rapprochement",
+        "domiciliarios": "Livreurs",
+        "transportadoras": "Transporteurs et tiers · Phases 2–3",
+        "transportadorasAviso": "Les transporteurs et tiers arrivent aux phases 2 et 3, dès qu'un sera connecté. Il n'y en a aucun aujourd'hui."
+      },
+      "kpis": {
+        "etiqueta": "Rapprochements du jour",
+        "porRecibir": "À recevoir",
+        "domiciliariosPorRecibir": "{n, plural, one {de # livreur} other {de # livreurs}}",
+        "nadaPorRecibir": "Tout est reçu",
+        "cuadradosHoy": "Rapprochés aujourd'hui",
+        "recibidoHoy": "{monto} déjà en caisse",
+        "conDiferencia": "Avec écart",
+        "faltante": "manque {monto} · avec motif",
+        "sinDiferencias": "Aucun écart aujourd'hui",
+        "abiertosAnteriores": "Ouverts des jours précédents",
+        "cerrarPendientes": "Reçois-les pour les clôturer",
+        "todoCerrado": "Tout est clôturé jusqu'à hier"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "domiciliario": "Livreur",
+        "sede": "Agence",
+        "entregas": "Livraisons",
+        "esperado": "Attendu",
+        "efectivo": "Espèces",
+        "datafono": "Terminal",
+        "transferencia": "Virement",
+        "diferencia": "Écart",
+        "motivo": "Motif",
+        "estado": "Statut"
+      },
+      "estados": {
+        "por_recibir": "À recevoir",
+        "abierto": "Ouvert",
+        "cuadrado": "Rapproché",
+        "con_diferencia": "Avec écart",
+        "anulado": "Annulé"
+      },
+      "acciones": {
+        "recibir": "Recevoir l'argent",
+        "recibirDe": "Recevoir l'argent de {nombre}",
+        "soloEste": "Voir seulement ce livreur",
+        "anular": "Annuler le rapprochement",
+        "recargar": "Actualiser",
+        "exportar": "Exporter"
+      },
+      "vacio": {
+        "titulo": "Aucun rapprochement pour l'instant",
+        "descripcion": "Quand un livreur livre une commande payable à la livraison, l'encaissement apparaît ici pour le recevoir en caisse."
+      },
+      "error": {
+        "titulo": "Impossible de charger les rapprochements",
+        "descripcion": "Réessaie dans un instant."
+      },
+      "medioReportado": {
+        "cash": "Espèces",
+        "card": "Terminal",
+        "transfer": "Virement",
+        "qr": "QR"
+      },
+      "errores": {
+        "ERROR": "Impossible de terminer. Réessaie.",
+        "NO_OPEN_CASH_SESSION": "Aucune caisse ouverte dans l'agence. Ouvre une caisse dans PDV › Caisses pour recevoir les espèces.",
+        "SEDE_INVALIDA": "L'agence n'est pas valide.",
+        "DOMICILIARIO_INVALIDO": "Le livreur n'appartient pas à cette organisation.",
+        "SIN_PERMISO": "Les caissiers et les administrateurs reçoivent les rapprochements.",
+        "SIN_ACCESO_SEDE": "Tu n'as pas accès à cette agence.",
+        "CUADRE_CERRADO": "Ce rapprochement est déjà clôturé.",
+        "CUADRE_NO_ENCONTRADO": "Le rapprochement n'existe plus.",
+        "CUADRE_CON_RECIBOS": "Impossible d'annuler : de l'argent a déjà été reçu.",
+        "LINEA_NO_ENCONTRADA": "Une livraison du rapprochement n'existe plus. Actualise l'écran.",
+        "LINEA_YA_RECIBIDA": "Une livraison était déjà reçue. Actualise l'écran.",
+        "LINEAS_PENDIENTES": "Il reste des livraisons à recevoir.",
+        "MONTO_INVALIDO": "Vérifie les montants comptés.",
+        "MONTO_MAYOR_AL_ESPERADO": "Le montant compté ne peut pas dépasser l'attendu.",
+        "MOTIVO_REQUERIDO": "Le motif de l'écart manque.",
+        "MOTIVO_Y_RESPONSABLE_REQUERIDOS": "Le motif et le responsable de l'écart manquent.",
+        "METODO_INVALIDO": "Le moyen de paiement n'est pas actif.",
+        "FACTURA_REQUERIDA": "La facture de la commande manque.",
+        "FACTURA_DE_VENTA_NO_ENCONTRADA": "La vente n'a pas de facture.",
+        "PEDIDO_DE_PASARELA": "La commande a été payée en ligne : elle ne s'encaisse pas en caisse.",
+        "PEDIDO_SIN_CONFIRMAR": "La commande n'est pas encore confirmée.",
+        "ORIGEN_NO_SOPORTADO": "Cette livraison ne vient ni d'une vente ni d'une commande en ligne.",
+        "RECIBOS_INVALIDOS": "Les montants du rapprochement ne sont pas valides. Actualisez l'écran et recomptez."
+      },
+      "elegir": {
+        "titulo": "De qui reçois-tu ?",
+        "descripcion": "Choisis le livreur qui apporte l'argent.",
+        "cerrar": "Fermer"
+      },
+      "anular": {
+        "titulo": "Annuler le rapprochement",
+        "descripcion": "Le rapprochement ouvert de {nombre} sera annulé. Ses encaissements redeviennent à recevoir.",
+        "confirmar": "Annuler le rapprochement",
+        "hecho": "Rapprochement annulé"
+      },
+      "recibir": {
+        "titulo": "Recevoir l'argent · {nombre}",
+        "descripcion": "{n, plural, one {# livraison} other {# livraisons}} · {sede}",
+        "cancelar": "Annuler",
+        "confirmar": "Recevoir et clôturer",
+        "procesando": "Réception {hechas} sur {total}…",
+        "lineasNuevas": "De nouveaux encaissements sont arrivés pendant le comptage. Vérifie les montants et confirme à nouveau.",
+        "entraALaCaja": "Entre en caisse",
+        "caja": "Caisse {caja} · {sede}",
+        "cajaAbierta": "Ouverte à {hora}",
+        "abierta": "Ouverte",
+        "sinCajaAyuda": "Ouvre une caisse dans PDV › Caisses pour recevoir les espèces.",
+        "tabla": {
+          "etiqueta": "Attendu et compté par moyen de paiement",
+          "medio": "Moyen",
+          "esperado": "Attendu",
+          "contado": "Compté",
+          "diferencia": "Écart",
+          "contadoDe": "Compté en {medio}"
+        },
+        "medios": {
+          "efectivo": "{n, plural, =0 {Espèces} one {Espèces · # livraison} other {Espèces · # livraisons}}",
+          "datafono": "{n, plural, =0 {Terminal} one {Terminal · # ticket} other {Terminal · # tickets}}",
+          "transferencia": "{n, plural, =0 {Virement} one {Virement · # livraison} other {Virement · # livraisons}}"
+        },
+        "faltan": "Manque {monto}",
+        "sobran": "Excédent {monto}",
+        "sobranteAyuda": "Un excédent (par exemple un pourboire dans l'enveloppe) ne passe pas par le rapprochement : enregistre-le à part en caisse.",
+        "bloqueos": {
+          "sinCaja": "Aucune caisse ouverte dans l'agence",
+          "sinLineas": "Aucune livraison à recevoir",
+          "sobrante": "Le montant compté dépasse l'attendu"
+        },
+        "diferencia": {
+          "titulo": "Motif de l'écart",
+          "motivo": "Motif",
+          "elegirMotivo": "Choisis le motif",
+          "faltaMotivo": "Choisis le motif de l'écart.",
+          "nota": "Note",
+          "faltaNota": "Écris ce qui s'est passé.",
+          "responsable": "Responsable",
+          "faltaResponsable": "Choisis le responsable.",
+          "sinAsiento": "Le manque est enregistré avec motif et responsable, sans écriture comptable, jusqu'à ce que le Comptable décide comment le comptabiliser."
+        },
+        "motivos": {
+          "cambio_de_mas": "Trop de monnaie rendue",
+          "cliente_pago_menos": "Le client a payé moins",
+          "dinero_perdido": "Argent perdu",
+          "error_conteo": "Erreur de comptage",
+          "otro": "Autre"
+        },
+        "responsables": {
+          "courier": "Le livreur",
+          "cashier": "La caisse",
+          "customer": "Le client",
+          "other": "Autre"
+        },
+        "envios": "Livraisons du rapprochement ({n})",
+        "verTodos": "Voir {n} de plus",
+        "verMenos": "Voir moins",
+        "pie": {
+          "entranACaja": "Entre en caisse {caja} : {monto}",
+          "sinCaja": "Aucune caisse ouverte dans l'agence",
+          "datafono": "Terminal {monto} : rapproché avec la banque"
+        },
+        "hecho": "Rapprochement clôturé : l'argent est en caisse",
+        "hechoConDiferencia": "Rapprochement clôturé avec un manque de {monto}"
+      }
+    },
+    "zonas": {
+      "pagina": {
+        "migaLogistica": "Logistique",
+        "pestanas": {
+          "etiqueta": "Sections de la configuration logistique",
+          "zonas": "Zones et tarifs",
+          "reglas": "Règles d’expédition"
+        }
+      },
+      "titulo": "Zones et tarifs de livraison",
+      "subtitulo": "Où vous livrez, combien vous facturez et en combien de temps, par point de vente",
+      "simulador": "Simulateur",
+      "nueva": "Nouvelle zone",
+      "buscar": "Rechercher une zone, un quartier ou une commune",
+      "avisoServidor": {
+        "titulo": "Le serveur recalcule toujours les frais de livraison",
+        "descripcion": "Le checkout et le POS affichent seulement le tarif. À la création de la commande, le serveur recherche à nouveau la zone à partir de l’adresse et facture ce montant ; si le navigateur en envoie un autre (par exemple 0 $), il est ignoré et consigné dans le journal."
+      },
+      "kpi": {
+        "etiqueta": "Résumé des zones",
+        "activas": "Zones actives",
+        "activasValor": "{activas} sur {total}",
+        "pausadas": "{n, plural, =0 {Aucune en pause} one {# en pause} other {# en pause}}",
+        "sinZona": "Livraisons sans zone (30 jours)",
+        "sinZonaDetalle": "Facturées sans zone ou au tarif général",
+        "tiempo": "Délai promis moyen",
+        "minutos": "{n} min",
+        "tiempoDetalle": "{n, plural, =0 {Aucun délai promis} one {# zone avec délai promis} other {# zones avec délai promis}}",
+        "gratis": "Livraison gratuite",
+        "gratisValor": "dès {valor}",
+        "sinGratis": "Pas de livraison gratuite"
+      },
+      "todasLasSedes": "Tous les points de vente",
+      "tarifaGeneral": "Tarif général · hors zone",
+      "copia": "{nombre} (copie)",
+      "toast": {
+        "guardada": "Zone enregistrée",
+        "eliminada": "Zone supprimée",
+        "duplicada": "Zone dupliquée (laissée en pause)",
+        "pausada": "Zone mise en pause",
+        "activada": "Zone activée",
+        "error": "Enregistrement impossible. Vérifiez les données ou vos autorisations."
+      },
+      "cobertura": {
+        "general": "Tout ce qui n’entre dans aucune autre zone",
+        "ninguna": "Pas encore de couverture",
+        "polygon": "{n, plural, one {Polygone} other {Polygones (#)}}",
+        "neighborhood": "{n, plural, one {Quartier (#)} other {Quartiers (#)}}",
+        "postal_code": "{n, plural, one {Code postal (#)} other {Codes postaux (#)}}",
+        "municipality": "{n, plural, one {Commune DANE} other {Communes DANE (#)}}"
+      },
+      "acciones": {
+        "editar": "Modifier la zone",
+        "duplicar": "Dupliquer la zone",
+        "simular": "Simuler une livraison",
+        "pausar": "Mettre la zone en pause",
+        "activar": "Activer la zone",
+        "eliminar": "Supprimer la zone…"
+      },
+      "gratisAplica": {
+        "web": "web",
+        "pos": "POS",
+        "both": "web et POS"
+      },
+      "columnas": {
+        "zona": "Zone",
+        "cobertura": "Couverture",
+        "tarifa": "Tarif",
+        "tiempo": "Délai promis",
+        "minimo": "Commande minimum",
+        "gratis": "Gratuit dès",
+        "corte": "Heure limite",
+        "estado": "Statut"
+      },
+      "estado": {
+        "activa": "Active",
+        "pausada": "En pause"
+      },
+      "vacio": {
+        "titulo": "Aucune zone de livraison pour l’instant",
+        "descripcion": "Sans zones, le checkout et le POS facturent comme aujourd’hui (tarif forfaitaire du site ou tarifs de Transport). Créez la première pour facturer par quartier, commune ou code postal."
+      },
+      "mapa": {
+        "titulo": "Carte des zones",
+        "pendiente": "Le tracé des zones sur la carte arrive dans la prochaine version. Pour l’instant, chaque zone se compose de quartiers, de communes DANE et de codes postaux, et le devis respecte déjà les polygones existants."
+      },
+      "eliminar": {
+        "titulo": "Supprimer la zone ?",
+        "descripcion": "« {nombre} » sera supprimée avec sa couverture. Les adresses de cette zone passent à la zone suivante ou au tarif général.",
+        "confirmar": "Supprimer la zone"
+      },
+      "editor": {
+        "nueva": "Nouvelle zone",
+        "subtitulo": "Couverture, tarif et délai promis",
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer la zone",
+        "cobertura": "Couverture",
+        "tipos": {
+          "neighborhood": "Quartiers",
+          "municipality": "Communes DANE",
+          "postal_code": "Codes postaux",
+          "polygon": "Polygones sur la carte"
+        },
+        "poligonoPendiente": {
+          "titulo": "Polygone sur la carte : bientôt disponible",
+          "descripcion": "En attendant, composez la zone avec des quartiers, des communes DANE ou des codes postaux. Si deux zones se chevauchent, celle dont le numéro de priorité est le plus bas l’emporte."
+        },
+        "campo": {
+          "neighborhood": "Quartier",
+          "municipality": "Code DANE",
+          "postal_code": "Code postal"
+        },
+        "placeholder": {
+          "neighborhood": "Chapinero Alto",
+          "municipality": "11001",
+          "postal_code": "110231"
+        },
+        "municipioOpcional": "Commune DANE (facultatif)",
+        "etiquetaOpcional": "Nom affiché (facultatif)",
+        "agregar": "Ajouter",
+        "sinUbicaciones": "Il n’y a encore rien de ce type dans la zone.",
+        "quitar": "Retirer {nombre}",
+        "poligonoSinNombre": "Polygone sans nom",
+        "coberturaAyuda": "Les quartiers sont comparés sans accents ni majuscules. Le code DANE comporte 5 chiffres (05001) ; si vous en saisissez 4, il est complété.",
+        "datos": "Informations de la zone",
+        "nombre": "Nom",
+        "sede": "Point de vente expéditeur",
+        "sedeAyuda": "Les commandes de cette zone partent de ce point de vente.",
+        "prioridad": "Priorité",
+        "prioridadAyuda": "Si deux zones se chevauchent, le numéro le plus bas l’emporte.",
+        "esGeneral": "C’est le tarif général",
+        "esGeneralAyuda": "Appliqué aux adresses qui n’entrent dans aucune zone. Un par point de vente.",
+        "tarifaPromesa": "Tarif et délai promis",
+        "tarifa": "Tarif",
+        "minimo": "Commande minimum",
+        "tiempoMin": "Délai à partir de",
+        "tiempoMax": "Délai jusqu’à",
+        "textoPromesa": "Délai promis en toutes lettres (facultatif)",
+        "textoPromesaAyuda": "Remplace les minutes, par exemple « Le jour même » ou « Le lendemain ».",
+        "textoPromesaPlaceholder": "Le jour même",
+        "gratisDesde": "Livraison gratuite dès",
+        "gratisDesdeAyuda": "Vide : pas de livraison gratuite dans cette zone.",
+        "gratisAplica": "Livraison gratuite applicable sur",
+        "gratisAplicaAyuda": "Par défaut, uniquement sur la boutique en ligne. La commande manuelle de Commandes en ligne compte comme POS.",
+        "corte": "Heure limite",
+        "corteAyuda": "Ce qui arrive après part le lendemain, et le checkout l’indique.",
+        "diasReparto": "Jours de livraison",
+        "dias": {
+          "1": "Lun",
+          "2": "Mar",
+          "3": "Mer",
+          "4": "Jeu",
+          "5": "Ven",
+          "6": "Sam",
+          "7": "Dim"
+        },
+        "estado": "Statut",
+        "activa": "Zone active",
+        "activaAyuda": "Si vous la désactivez, les adresses passent à la zone suivante ou au tarif général.",
+        "errores": {
+          "nombre_requerido": "Saisissez le nom de la zone.",
+          "tarifa_invalida": "Le tarif ne peut pas être négatif.",
+          "promesa_invalida": "Le délai « jusqu’à » ne peut pas être inférieur à « à partir de ».",
+          "minimo_invalido": "La commande minimum ne peut pas être négative.",
+          "envio_gratis_invalido": "La livraison gratuite doit être supérieure à zéro.",
+          "aplica_gratis_invalido": "Choisissez où s’applique la livraison gratuite.",
+          "dias_invalidos": "Choisissez au moins un jour de livraison.",
+          "corte_invalido": "L’heure limite n’est pas valide.",
+          "zona_duplicada": "Une zone portant ce nom ou un tarif général existe déjà pour ce point de vente."
+        },
+        "errorUbicacion": {
+          "tipo_invalido": "Ce type de couverture n’existe pas.",
+          "municipio_invalido": "Le code DANE doit comporter 5 chiffres.",
+          "barrio_requerido": "Saisissez le quartier.",
+          "codigo_postal_invalido": "Le code postal n’est pas valide.",
+          "poligono_invalido": "Le polygone n’est pas valide.",
+          "repetida": "Cet élément est déjà dans la zone."
+        }
+      },
+      "peso": {
+        "alerta": {
+          "titulo": "{n} produits sur {total} ont un poids",
+          "descripcion": "Sans poids, impossible de coter au poids ou de créer des étiquettes de transporteur. Indiquez un poids par catégorie pour couvrir presque tout aujourd’hui, puis complétez les produits au poids différent.",
+          "accion": "Compléter dans Inventaire"
+        },
+        "categoria": {
+          "titulo": "Expédition",
+          "descripcion": "Poids et carton par défaut des produits de cette catégorie qui n’ont pas les leurs. Servent à coter les envois.",
+          "peso": "Poids par défaut",
+          "pesoAyuda": "Vide : celui de l’organisation est utilisé (Configuration › Logistique).",
+          "medidas": {
+            "default_length_cm": "Longueur",
+            "default_width_cm": "Largeur",
+            "default_height_cm": "Hauteur"
+          }
+        },
+        "ficha": {
+          "hereda": "Hérite de {nombre}",
+          "vacioUsa": "Vide : utilise {peso} kg de la catégorie {nombre}",
+          "seUsa": "Poids utilisé",
+          "sinPeso": "Sans poids",
+          "volumetrico": "Poids volumétrique",
+          "cobra": "Le transporteur facture",
+          "fuente": {
+            "producto": "du produit",
+            "categoria": "de la catégorie {nombre}",
+            "organizacion": "de l’organisation"
+          }
+        }
+      },
+      "ajustes": {
+        "cargando": "Chargement…",
+        "errorCargar": "Impossible de lire les réglages de logistique",
+        "guardado": "Réglages de logistique enregistrés",
+        "errorGuardar": "Impossible d’enregistrer. Vérifiez vos permissions.",
+        "soloLectura": "Lecture seule : modifier ces réglages exige la permission « Configurer l’organisation ».",
+        "sinMovimiento": {
+          "titulo": "Envois sans mouvement",
+          "descripcion": "Après combien d’heures sans nouvelles un envoi en cours apparaît « sans mouvement » dans le Suivi.",
+          "propio": "Livreur propre",
+          "transportadora": "Transporteur"
+        },
+        "envioGratis": {
+          "titulo": "Livraison gratuite par défaut",
+          "descripcion": "La valeur de « La livraison gratuite s’applique à » pour chaque nouvelle zone. Chaque zone peut la modifier."
+        },
+        "peso": {
+          "titulo": "Poids et carton de l’organisation",
+          "descripcion": "Dernier recours pour coter : utilisé seulement si le produit et sa catégorie n’ont pas de poids. Le poids par catégorie se règle dans Inventaire › Catégories.",
+          "default_weight_kg": "Poids",
+          "default_length_cm": "Longueur",
+          "default_width_cm": "Largeur",
+          "default_height_cm": "Hauteur"
+        },
+        "informativos": "Fonctionnement",
+        "codigoEntrega": {
+          "titulo": "Code de livraison",
+          "descripcion": "Toujours actif pour le paiement à la livraison avec votre livreur : le client le voit sur la page de suivi et le donne à la réception. Cinq erreurs le bloquent ; un administrateur le réinitialise."
+        },
+        "cargoDomicilio": {
+          "titulo": "Qui peut modifier les frais de livraison",
+          "descripcion": "Dans le POS et la commande manuelle, les frais sont remplis par la zone. Les modifier exige la permission « Configurer l’organisation » et l’auteur est enregistré.",
+          "accion": "Voir les rôles"
+        },
+        "avisos": {
+          "titulo": "Avis de livraison au client",
+          "descripcion": "« En route », « Livré » et « Incident » partent par e-mail avec le lien de suivi. WhatsApp part quand le canal de l’organisation est connecté.",
+          "accion": "Ouvrir les avis"
+        },
+        "zonas": {
+          "titulo": "Zones, tarifs et règles d’expédition",
+          "descripcion": "Ce sont des catalogues du module : ils se modifient dans Logistique.",
+          "accion": "Aller aux zones"
+        }
+      }
+    },
+    "reglas": {
+      "titulo": "Règles d’expédition",
+      "subtitulo": "Qui livre chaque commande : la première règle remplie décide",
+      "nueva": "Nouvelle règle",
+      "probar": "Tester avec une commande",
+      "todasLasSedes": "Tous les points de vente",
+      "copia": "{nombre} (copie)",
+      "siempreAplica": "Sans conditions : s’applique à tout",
+      "activarRegla": "Règle {nombre} active",
+      "chips": {
+        "zona": "Zone : {valor}",
+        "canal": "Canal : {valor}",
+        "metodo": "Paiement : {valor}",
+        "valor": "Montant : de {desde} à {hasta}",
+        "peso": "Poids : de {desde} à {hasta} kg",
+        "dias": "Jours : {valor}",
+        "horario": "Horaire : de {desde} à {hasta}"
+      },
+      "canales": {
+        "web": "Boutique en ligne",
+        "pos": "POS",
+        "manual": "Commande manuelle"
+      },
+      "dias": {
+        "1": "Lun",
+        "2": "Mar",
+        "3": "Mer",
+        "4": "Jeu",
+        "5": "Ven",
+        "6": "Sam",
+        "7": "Dim"
+      },
+      "toast": {
+        "guardada": "Règle enregistrée",
+        "duplicada": "Règle dupliquée (laissée en pause)",
+        "eliminada": "Règle supprimée",
+        "error": "Enregistrement impossible. Vérifiez les données ou vos autorisations."
+      },
+      "acciones": {
+        "editar": "Modifier la règle",
+        "duplicar": "Dupliquer la règle",
+        "probar": "Tester cette règle",
+        "eliminar": "Supprimer la règle…",
+        "propio": "Livreur interne"
+      },
+      "columnas": {
+        "orden": "Ordre",
+        "condiciones": "Si tout ceci est rempli…",
+        "entrega": "…alors c’est livré par",
+        "activa": "Active"
+      },
+      "kpi": {
+        "etiqueta": "Résumé des règles",
+        "activas": "Règles actives",
+        "activasValor": "{activas} sur {total}",
+        "pausadas": "{n, plural, =0 {Aucune en pause} one {# en pause} other {# en pause}}",
+        "fase": "Qui livre",
+        "faseValor": "Livreur interne",
+        "faseDetalle": "Les prestataires et transporteurs arrivent en Phase 2"
+      },
+      "vacio": {
+        "titulo": "Aucune règle d’expédition",
+        "descripcion": "Sans règles, toute commande à livrer est prise en charge par le livreur interne du point de vente."
+      },
+      "final": {
+        "titulo": "Si aucune règle ne s’applique",
+        "entrega": "Livreur interne du point de vente · reste « non attribuée » pour vérification"
+      },
+      "como": {
+        "titulo": "Comment elles sont évaluées",
+        "descripcion": "De haut en bas : d’abord les règles du point de vente, puis celles de tous, par numéro d’ordre. La première remplie décide ; le résultat est inscrit dans la chronologie de l’envoi."
+      },
+      "eliminar": {
+        "titulo": "Supprimer la règle ?",
+        "descripcion": "« {nombre} » sera supprimée. Les commandes qu’elle décidait passent à la règle suivante.",
+        "confirmar": "Supprimer la règle"
+      },
+      "hoja": {
+        "tituloNueva": "Nouvelle règle",
+        "tituloEditar": "Règle {orden} · {nombre}",
+        "subtitulo": "{total, plural, =0 {Première règle} one {# règle au total} other {# règles au total}}",
+        "nombre": "Nom de la règle",
+        "errorNombre": "Saisissez le nom de la règle.",
+        "prioridad": "Ordre",
+        "sede": "Point de vente",
+        "siSeCumple": "Si tout ceci est rempli",
+        "sinCondiciones": "Sans conditions, la règle s’applique à toutes les commandes.",
+        "campo": "Champ de la condition",
+        "campos": {
+          "zona": "Zone",
+          "canal": "Canal",
+          "metodo_pago": "Moyen de paiement",
+          "valor": "Montant de la commande",
+          "peso": "Poids",
+          "dias": "Jours",
+          "horario": "Horaire"
+        },
+        "operador": {
+          "zona": "est",
+          "canal": "est",
+          "metodo_pago": "est",
+          "valor": "entre",
+          "peso": "entre",
+          "dias": "est",
+          "horario": "entre"
+        },
+        "desde": "De",
+        "hasta": "À",
+        "sinZonas": "Aucune zone pour l’instant : créez-les dans « Zones et tarifs ».",
+        "quitarCondicion": "Retirer la condition {campo}",
+        "agregarCondicion": "Ajouter une condition",
+        "camposAyuda": "Champs : zone, canal (boutique en ligne, POS, commande manuelle), moyen de paiement, montant de la commande, poids, jours et horaire.",
+        "entonces": "Alors c’est livré par",
+        "propioAyuda": "S’attribue dans Logistique › Envois.",
+        "salidas": {
+          "tercero": {
+            "titulo": "Prestataire du dernier kilomètre",
+            "ayuda": "Coursier urbain selon le pays",
+            "fase": "Phase 3"
+          },
+          "fija": {
+            "titulo": "Transporteur fixe",
+            "ayuda": "Toujours le même transporteur",
+            "fase": "Phase 2"
+          },
+          "barata": {
+            "titulo": "Le moins cher",
+            "ayuda": "Compare les devis des transporteurs connectés et choisit le moins cher",
+            "fase": "Phase 2"
+          },
+          "rapida": {
+            "titulo": "Le plus rapide",
+            "ayuda": "Compare les devis et choisit le délai promis le plus court",
+            "fase": "Phase 2"
+          }
+        },
+        "cancelar": "Annuler",
+        "guardar": "Enregistrer la règle"
+      },
+      "prueba": {
+        "titulo": "Tester les règles avec une commande",
+        "descripcion": "Ne crée pas l’envoi : montre seulement quelle règle déciderait.",
+        "probar": "Tester",
+        "otro": "Tester une autre commande",
+        "cerrar": "Fermer",
+        "sede": "Part de",
+        "metodo": "Moyen de paiement",
+        "sinMetodo": "Aucun moyen",
+        "ciudad": "Ville ou commune",
+        "valor": "Montant de la commande",
+        "peso": "Poids",
+        "canal": "Canal",
+        "recorrido": "Parcours des règles",
+        "pasos": {
+          "decide": "S’applique : cette règle décide.",
+          "no_aplica": "Ne s’applique pas à cette commande.",
+          "sin_evaluar": "Non évaluée : une règle précédente a déjà décidé.",
+          "en_pausa": "En pause : ne participe pas.",
+          "otra_sede": "Appartient à un autre point de vente : ne participe pas."
+        },
+        "finalUsado": "Aucune règle ne s’est appliquée : le livreur interne s’en charge.",
+        "finalNoUsado": "Non utilisée.",
+        "loEntrega": "Livré par : livreur interne",
+        "regla": "Règle {orden}",
+        "zona": "Zone",
+        "fueraDeZona": "Hors zone",
+        "cobra": "Facture au client",
+        "tiempo": "Délai promis"
+      }
+    },
+    "cotizar": {
+      "buscando": "Recherche de la zone de l’adresse…",
+      "gratis": "Gratuit",
+      "minimo": "Commande minimum {valor}",
+      "gratisDesde": "livraison gratuite dès {valor}",
+      "saleEl": "part le {fecha}",
+      "origen": "Provient de Logistique › Configuration › Zones et tarifs",
+      "ciudad": "Ville",
+      "error": {
+        "titulo": "Impossible de calculer la livraison",
+        "descripcion": "Vérifiez la connexion et réessayez. Le serveur recalcule les frais de livraison à l’enregistrement."
+      },
+      "bajoMinimo": {
+        "titulo": "{zona} : commande minimum non atteinte",
+        "descripcion": "La commande minimum pour la livraison est de {minimo}. Il manque {falta}."
+      },
+      "fuera": {
+        "titulo": "Hors zone : cette adresse n’appartient à aucune zone de livraison",
+        "conGeneral": "Facturez le tarif général {valor} (Logistique › Configuration › Zones et tarifs) ou expédiez par transporteur.",
+        "soloTransportadora": "Pas de livraison interne pour cette adresse : expédiez par transporteur.",
+        "sinCobertura": "Ni livraison ni transporteur pour cette adresse.",
+        "cobrarGeneral": "Facturer le tarif général {valor}",
+        "usarTransportadora": "Utiliser un transporteur"
+      },
+      "pos": {
+        "barrio": "Quartier",
+        "barrioPlaceholder": "Chapinero",
+        "cargo": "Frais de livraison",
+        "cargoSinZona": "Se remplit en choisissant l’une des options ci-dessus.",
+        "cargoDeZonaEditable": "Rempli par {zona}. Si vous le modifiez, l’auteur de la modification est enregistré.",
+        "cargoDeZonaBloqueado": "Rempli par {zona}. Le modifier requiert l’autorisation « Configuration de l’organisation ».",
+        "contraentrega": "Paiement à la livraison",
+        "contraentregaAyuda": "Si vous cochez cette case, le livreur encaisse {valor} à la livraison et cet argent entre dans sa clôture du jour (Logistique › Clôtures).",
+        "contraentregaSinCliente": "Pour encaisser à la livraison, choisissez le client de la vente.",
+        "contraentregaSinDireccion": "Pour encaisser à la livraison, saisissez l’adresse de livraison.",
+        "fueraDeZona": "hors zone"
+      },
+      "manual": {
+        "envioEditable": "Rempli par {zona}. Si vous le modifiez, c’est enregistré.",
+        "envioBloqueado": "Rempli par la zone. Le modifier requiert l’autorisation « Configuration de l’organisation »."
+      },
+      "simulador": {
+        "titulo": "Combien coûte une livraison à… ?",
+        "descripcion": "Le même calcul que fait le serveur au checkout, dans le POS et pour la commande manuelle",
+        "cerrar": "Fermer",
+        "calcular": "Calculer",
+        "verRegla": "Voir la règle d’expédition",
+        "saleDe": "Part de",
+        "metodoPago": "Moyen de paiement",
+        "metodoPagoAyuda": "Le code du moyen de paiement, pour tester les règles.",
+        "metodoPagoPlaceholder": "cash",
+        "ciudad": "Ville ou code DANE",
+        "ciudadAyuda": "Bogotá ou 11001",
+        "codigoPostal": "Code postal",
+        "valor": "Montant de la commande",
+        "peso": "Poids",
+        "canal": "Canal",
+        "canales": {
+          "web": "Boutique en ligne",
+          "pos": "POS",
+          "manual": "Commande manuelle"
+        },
+        "sinZonas": {
+          "titulo": "Cette organisation n’a pas de zones",
+          "descripcion": "Le checkout et le POS facturent comme aujourd’hui : tarif forfaitaire du site ou tarifs de Transport."
+        },
+        "fueraDeZona": "Hors zone",
+        "ganaZona": "Cette zone l’emporte",
+        "estados": {
+          "en_zona": "Dans la zone",
+          "bajo_minimo": "Minimum non atteint",
+          "fuera_tarifa_general": "Tarif général",
+          "fuera_transportadora": "Transporteur uniquement",
+          "sin_cobertura": "Sans couverture"
+        },
+        "envio": "Livraison",
+        "llega": "Arrive",
+        "corte": "Heure limite",
+        "hoy": "Aujourd’hui",
+        "faltaGratis": "Reste pour la livraison gratuite",
+        "faltaMinimo": "Reste pour la commande minimum",
+        "regla": "Règle d’expédition",
+        "reglaAplica": "Une règle s’applique",
+        "reglaNinguna": "Aucune : livreur interne",
+        "dane": "Commune DANE"
+      }
+    },
+    "menu": {
+      "logistica": "Logistique",
+      "transporte": "Transport",
+      "catalogoComun": "Catalogue commun (partagé)"
+    },
+    "despacho": {
+      "titulo": "À expédier",
+      "subtitulo": "Commandes de tous les canaux",
+      "subtituloSede": "Commandes de tous les canaux · départ de {sede}",
+      "migas": {
+        "logistica": "Logistique"
+      },
+      "actualizar": "Actualiser",
+      "imprimirHojaRuta": "Imprimer la feuille de route",
+      "asignarDomiciliario": "Assigner un livreur",
+      "registrarDomiciliario": "Ajouter un livreur",
+      "irDomiciliarios": "Voir les livreurs",
+      "tabla": "Envois à expédier",
+      "errorCarga": "Impossible de charger les envois à expédier.",
+      "sinResultados": "Aucun envoi ne correspond à la recherche ou aux filtres.",
+      "recortada": "Affichage des {n} envois les plus anciens. Expédiez ou filtrez par site pour voir le reste.",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès aux envois",
+        "descripcion": "Demandez à un administrateur l’accès à Logistique."
+      },
+      "sustantivo": {
+        "singular": "commande",
+        "plural": "commandes"
+      },
+      "buscar": {
+        "placeholder": "Rechercher par commande, client, téléphone, adresse ou quartier…",
+        "etiqueta": "Rechercher des envois"
+      },
+      "kpis": {
+        "etiqueta": "Résumé de la file",
+        "porDespachar": "À expédier",
+        "porDespacharDetalle": "{hoy} pour aujourd’hui · {manana} pour demain",
+        "porDespacharVacio": "commandes en attente de départ",
+        "atrasados": "En retard",
+        "atrasadosDetalle": "ont déjà dépassé la promesse de livraison",
+        "atrasadosVacio": "tout est à l’heure",
+        "contraentrega": "Paiement à la livraison à encaisser aujourd’hui",
+        "contraentregaDetalle": "{count, plural, one {sur # envoi} other {sur # envois}} · espèces et terminal de paiement",
+        "contraentregaVacio": "rien à encaisser aujourd’hui",
+        "sinDomiciliario": "Sans livreur",
+        "sinDomiciliarioDetalle": "sur les {total} qui partent aujourd’hui, {n} non assignés",
+        "sinDomiciliarioVacio": "tous ont un livreur",
+        "sinDomiciliariosRegistrados": "0 livreur enregistré"
+      },
+      "sinDomiciliarios": {
+        "titulo": "Aucun livreur enregistré",
+        "tituloSede": "Aucun livreur enregistré à {sede}",
+        "descripcion": "Il y a {n} commandes pour aujourd’hui et personne à qui les assigner. Ajouter un livreur prend une minute : nom, téléphone et pièce d’identité. Le véhicule est facultatif.",
+        "traerRrhh": "Importer depuis les Ressources humaines"
+      },
+      "columnas": {
+        "pedido": "Commande",
+        "cliente": "Client",
+        "direccion": "Adresse et quartier",
+        "promesa": "Promesse",
+        "valor": "Montant",
+        "pago": "Paiement",
+        "modo": "Mode suggéré",
+        "estado": "Statut"
+      },
+      "canales": {
+        "web": "Boutique en ligne",
+        "pos": "Caisse (POS)",
+        "qr": "Menu QR",
+        "manual": "Manuel",
+        "marketplace": "Marketplace"
+      },
+      "modos": {
+        "own": "Propre",
+        "last_mile": "Dernier kilomètre",
+        "national_carrier": "Transporteur",
+        "marketplace": "Marketplace"
+      },
+      "estados": {
+        "por_asignar": "À assigner",
+        "asignado": "Assigné",
+        "listo_para_salir": "Prêt à partir",
+        "por_crear_guia": "Bordereau à créer",
+        "intento_fallido": "Tentative échouée"
+      },
+      "pago": {
+        "contraentrega": "Paiement à la livraison",
+        "pagado": "Payé"
+      },
+      "promesa": {
+        "hoy": "Aujourd’hui {hora}",
+        "otroDia": "{dia} {hora}",
+        "sin": "Pas d’heure promise",
+        "tarde": "+{tiempo}",
+        "faltan": "encore {tiempo}",
+        "en": "dans {tiempo}"
+      },
+      "duracion": {
+        "min": "{n} min",
+        "h": "{n} h",
+        "dias": "{n} jours"
+      },
+      "filtros": {
+        "estado": "Statut",
+        "pago": "Paiement",
+        "canal": "Canal",
+        "todos": "Tous",
+        "pago_contraentrega": "Paiement à la livraison",
+        "pago_pagado": "Payé",
+        "soloAtrasados": "En retard uniquement",
+        "chipEstado": "Statut : {estado}",
+        "chipCanal": "Canal : {canal}",
+        "limpiar": "Tout effacer",
+        "verN": "{count, plural, one {Voir # commande} other {Voir # commandes}}"
+      },
+      "acciones": {
+        "verDetalle": "Voir le détail de l’envoi",
+        "asignar": "Assigner un livreur",
+        "cambiarDomiciliario": "Changer de livreur",
+        "listoParaSalir": "Marquer prêt à partir",
+        "imprimirGuia": "Imprimer le bordereau",
+        "pedirRepartidor": "Demander un livreur",
+        "crearGuia": "Créer le bordereau",
+        "cancelar": "Annuler l’envoi…"
+      },
+      "masivo": {
+        "imprimirGuias": "Imprimer les bordereaux",
+        "listos": "Marquer prêts à partir"
+      },
+      "motivos": {
+        "estado_no_asignable": "Aucun des envois sélectionnés ne peut être assigné : ils sont déjà partis ou clôturés.",
+        "no_es_propio": "Cet envoi n’est pas confié à un livreur interne.",
+        "requiere_tercero": "Nécessite de connecter un prestataire du dernier kilomètre (Intégrations › Connexions › Logistique).",
+        "requiere_transportadora": "Nécessite de connecter un transporteur (Intégrations › Connexions › Logistique).",
+        "ya_listo": "Déjà prêt à partir.",
+        "sin_seleccion": "Aucun envoi pour la feuille de route.",
+        "nada_por_asignar": "Aucune commande du jour à assigner. Sélectionnez des envois dans le tableau."
+      },
+      "cancelar": {
+        "titulo": "Annuler l’envoi {numero} ?",
+        "descripcion": "L’envoi ne part pas. Si le client a déjà payé, le remboursement se fait depuis la commande.",
+        "confirmar": "Annuler l’envoi",
+        "volver": "Retour",
+        "nota": "Annulé depuis À expédier"
+      },
+      "toast": {
+        "nadaAsignable": "Aucun des envois choisis ne peut être assigné.",
+        "listos": "{count, plural, one {# envoi prêt à partir} other {# envois prêts à partir}}",
+        "errorEstado": "Impossible de changer le statut",
+        "cancelado": "Envoi {numero} annulé"
+      },
+      "vacio": {
+        "titulo": "Tout est expédié",
+        "descripcion": "Aucune commande à expédier. Les nouvelles commandes à livrer de la boutique en ligne, de la caisse et du menu QR apparaissent ici automatiquement.",
+        "descripcionSede": "Aucune commande à expédier à {sede}. Les nouvelles commandes à livrer de la boutique en ligne, de la caisse et du menu QR apparaissent ici automatiquement.",
+        "verEnCamino": "Voir les envois en route",
+        "verCuadres": "Voir les clôtures du jour"
+      },
+      "asignar": {
+        "titulo": "{count, plural, one {Assigner # envoi} other {Assigner # envois}}",
+        "subtituloCobro": "paiement à la livraison pour un total de {monto}",
+        "subtituloSinCobro": "sans paiement à la livraison",
+        "laSede": "le site",
+        "sinNombre": "Sans nom",
+        "noAsignables": "{count, plural, one {# envoi ne peut pas être assigné et est exclu} other {# envois ne peuvent pas être assignés et sont exclus}}",
+        "ruta": {
+          "titulo": "Ordre de tournée suggéré",
+          "ayuda": "Trié par heure promise et par quartier depuis {sede}. Le livreur le voit de la même façon dans « Mes envois ».",
+          "promesa": "promis {hora}",
+          "contraentrega": "Paiement à la livraison",
+          "pagado": "Payé"
+        },
+        "domiciliario": {
+          "titulo": "Livreur",
+          "buscar": "Rechercher par nom…",
+          "carga": "{count, plural, =0 {Aucun envoi} one {# envoi} other {# envois}}",
+          "cargaConCobro": "{count, plural, one {# envoi} other {# envois}} · {monto} à encaisser",
+          "errorCarga": "Impossible de charger les livreurs.",
+          "ninguno": "Aucun livreur actif",
+          "ningunoAyuda": "Ajoutez-en un pour pouvoir assigner : nom, téléphone et pièce d’identité. Le véhicule est facultatif.",
+          "registrar": "Ajouter un livreur",
+          "sinCoincidencias": "Aucun livreur ne correspond à la recherche."
+        },
+        "estados": {
+          "libre": "Disponible",
+          "en_ruta": "En tournée",
+          "fuera_de_turno": "Hors service",
+          "inactivo": "Inactif"
+        },
+        "motivos": {
+          "inactivo": "Inactif.",
+          "noCobra": "N’encaisse pas le paiement à la livraison : {n} des {total} envois l’exigent."
+        },
+        "vehiculos": {
+          "motorcycle": "Moto",
+          "bicycle": "Vélo",
+          "car": "Voiture",
+          "van": "Fourgonnette",
+          "on_foot": "À pied",
+          "other": "Autre véhicule",
+          "truck": "Camion",
+          "bus": "Bus",
+          "sin": "Sans véhicule"
+        },
+        "vehiculo": {
+          "titulo": "Véhicule",
+          "opcional": "Facultatif",
+          "ninguno": "Sans véhicule (celui du livreur)",
+          "ayuda": "Seulement si vous voulez suivre la flotte. Pas obligatoire pour assigner."
+        },
+        "opciones": {
+          "imprimir": "{count, plural, one {Imprimer le bordereau à l’assignation} other {Imprimer les # bordereaux à l’assignation}}",
+          "aviso": "Le client reçoit l’avis « En route » quand le livreur part.",
+          "avisoYCodigo": "Le client reçoit l’avis « En route » quand le livreur part. En paiement à la livraison, le code à 4 chiffres est demandé à la remise."
+        },
+        "pie": {
+          "llevara": "{count, plural, one {{nombre} livrera # envoi} other {{nombre} livrera # envois}}",
+          "cobrara": "Encaissera {monto} en espèces ou par terminal de paiement",
+          "nadaPorCobrar": "Rien à encaisser à la porte",
+          "elige": "Choisissez un livreur"
+        },
+        "cancelar": "Annuler",
+        "confirmar": "{count, plural, one {Assigner # envoi} other {Assigner # envois}}",
+        "asignando": "Assignation…",
+        "toast": {
+          "asignados": "{count, plural, one {# envoi assigné à {nombre}} other {# envois assignés à {nombre}}}",
+          "fallidos": "{count, plural, one {# envoi n’a pas pu être assigné} other {# envois n’ont pas pu être assignés}}"
+        },
+        "errores": {
+          "ENVIO_NO_ENCONTRADO": "L’envoi n’existe plus ou n’appartient pas à cette organisation.",
+          "SIN_ACCESO_SEDE": "Vous n’avez pas accès au site de cet envoi.",
+          "SIN_ACCESO": "Vous n’avez pas l’autorisation pour cette action.",
+          "ESTADO_NO_ASIGNABLE": "L’envoi est déjà parti ou clôturé : il ne peut pas être assigné.",
+          "DOMICILIARIO_INVALIDO": "Le livreur n’est pas actif ou appartient à un autre site.",
+          "VEHICULO_INVALIDO": "Le véhicule n’est pas disponible.",
+          "ERROR": "Impossible de terminer. Réessayez.",
+          "DOMICILIARIO_NO_COBRA": "Ce livreur n'encaisse pas le paiement à la livraison et cet envoi a un montant à encaisser.",
+          "ENVIO_AJENO": "Cet envoi appartient à un autre livreur.",
+          "SIN_PERMISO": "Seuls ceux qui expédient peuvent attribuer : caissiers et administrateurs."
+        }
+      },
+      "impresion": {
+        "hojaTitulo": "Feuille de route",
+        "guiasEnviadas": "{count, plural, one {# bordereau envoyé à l’imprimante thermique} other {# bordereaux envoyés à l’imprimante thermique}}",
+        "errorGuias": "Impossible de préparer les bordereaux.",
+        "ventanaBloqueada": "Autorisez les fenêtres pop-up pour imprimer.",
+        "columnas": {
+          "parada": "#",
+          "pedido": "Commande",
+          "cliente": "Client",
+          "direccion": "Adresse",
+          "promesa": "Promesse",
+          "cobrar": "À encaisser",
+          "firma": "Signature",
+          "total": "Total à encaisser",
+          "pagado": "Payé"
+        }
+      },
+      "irZonas": "Zones et tarifs"
+    },
+    "envio": {
+      "titulo": "Envoi",
+      "migas": {
+        "logistica": "Logistique",
+        "envios": "Envois"
+      },
+      "errorCarga": "Impossible de charger l’envoi.",
+      "noExiste": "Cet envoi n’existe pas ou n’appartient pas à cette organisation.",
+      "volverBandeja": "Aller à À expédier",
+      "volver": "Retour",
+      "errorAccion": "Impossible de terminer l’action",
+      "errorAviso": "Impossible d’envoyer l’avis au client.",
+      "reprogramado": "Livraison reprogrammée pour le {dia}.",
+      "subtitulo": {
+        "pedido": "Commande {pedido}",
+        "creado": "créé le {fecha}"
+      },
+      "estados": {
+        "created": "Créé",
+        "ready_for_pickup": "Prêt pour l’enlèvement",
+        "assigned": "Assigné",
+        "picked": "Récupéré",
+        "in_transit": "En transit",
+        "out_for_delivery": "En cours de livraison",
+        "failed_attempt": "Tentative échouée",
+        "delivered": "Livré",
+        "exception": "Incident",
+        "returned": "Retourné",
+        "cancelled": "Annulé"
+      },
+      "motivos": {
+        "not_home": "Client absent",
+        "wrong_address": "Adresse erronée",
+        "incomplete_address": "Adresse incomplète",
+        "rejected": "Refusé par le client",
+        "damaged": "Endommagé",
+        "lost": "Perdu",
+        "access_denied": "Pas d’accès au lieu",
+        "business_closed": "Commerce fermé",
+        "weather": "Météo",
+        "vehicle_issue": "Panne du véhicule",
+        "customer_request": "Demande du client",
+        "other": "Autre motif"
+      },
+      "canales": {
+        "web": "Boutique en ligne",
+        "pos": "Caisse (POS)",
+        "qr": "Menu QR",
+        "manual": "Manuel",
+        "marketplace": "Marketplace"
+      },
+      "modos": {
+        "own": "Livraison interne",
+        "last_mile": "Dernier kilomètre",
+        "national_carrier": "Transporteur",
+        "marketplace": "Marketplace"
+      },
+      "vehiculos": {
+        "motorcycle": "Moto",
+        "bicycle": "Vélo",
+        "car": "Voiture",
+        "van": "Fourgonnette",
+        "on_foot": "À pied",
+        "other": "Autre véhicule",
+        "truck": "Camion",
+        "bus": "Bus",
+        "sin": "Sans véhicule"
+      },
+      "errores": {
+        "ENVIO_NO_ENCONTRADO": "L’envoi n’existe plus ou n’appartient pas à cette organisation.",
+        "SIN_ACCESO_SEDE": "Vous n’avez pas accès au site de cet envoi.",
+        "SIN_ACCESO": "Vous n’avez pas l’autorisation pour cette action.",
+        "SIN_PERMISO": "Vous n’avez pas l’autorisation pour cette action.",
+        "ESTADO_NO_ASIGNABLE": "L’envoi est déjà parti ou clôturé : il ne peut pas être assigné.",
+        "DOMICILIARIO_INVALIDO": "Le livreur n’est pas actif ou appartient à un autre site.",
+        "VEHICULO_INVALIDO": "Le véhicule n’est pas disponible.",
+        "ESTADO_NO_PERMITIDO": "Ce statut ne peut pas être défini manuellement.",
+        "TRANSICION_INVALIDA": "Le statut de l’envoi a changé : actualisez l’écran.",
+        "YA_ENTREGADO": "L’envoi était déjà livré.",
+        "ESTADO_NO_ENTREGABLE": "L’envoi n’est pas en route : il ne peut pas être marqué livré.",
+        "RECEPTOR_REQUERIDO": "Indiquez qui a réceptionné.",
+        "CODIGO_NO_EMITIDO": "Cet envoi n’a pas de code de livraison.",
+        "CODIGO_BLOQUEADO": "Le code a été bloqué après 5 erreurs. Un administrateur doit le réinitialiser.",
+        "COBRO_REQUERIDO": "C’est un paiement à la livraison : enregistrez l’encaissement (moyen et montant).",
+        "MOTIVO_INVALIDO": "Choisissez un motif dans la liste.",
+        "ESTADO_SIN_NOVEDAD": "Impossible d’enregistrer un incident dans ce statut.",
+        "VENTA_NO_ENCONTRADA": "Vente introuvable.",
+        "VENTA_ANULADA": "La vente est annulée.",
+        "DIRECCION_REQUERIDA": "L’adresse de livraison manque.",
+        "ERROR": "Impossible de terminer. Réessayez.",
+        "DOMICILIARIO_NO_COBRA": "Ce livreur n'encaisse pas le paiement à la livraison et cet envoi a un montant à encaisser.",
+        "ENVIO_AJENO": "Cet envoi appartient à un autre livreur."
+      },
+      "chips": {
+        "intento": "Tentative {n}",
+        "contraentrega": "Paiement à la livraison {monto} · {estado}"
+      },
+      "cobro": {
+        "pendiente": "En attente",
+        "cobrado": "Encaissé",
+        "girado": "Remis en caisse"
+      },
+      "acciones": {
+        "avisar": "Prévenir le client",
+        "llamar": "Appeler le client",
+        "asignar": "Assigner un livreur",
+        "cambiarDomiciliario": "Changer de livreur",
+        "listoParaSalir": "Marquer prêt à partir",
+        "recogido": "Marquer récupéré",
+        "enCamino": "Marquer en route",
+        "novedad": "Enregistrer une tentative échouée",
+        "reintentar": "Relancer la livraison",
+        "entregar": "Marquer livré",
+        "imprimirGuia": "Imprimer le bordereau",
+        "devolver": "Retourner au site…",
+        "cancelar": "Annuler l’envoi…"
+      },
+      "ok": {
+        "listo": "Prêt à partir",
+        "recogido": "Marqué comme récupéré",
+        "enCamino": "En route : le client a été prévenu",
+        "reintentar": "Repart en livraison",
+        "devolver": "Envoi retourné au site",
+        "cancelar": "Envoi annulé",
+        "avisar": "Avis envoyé au client"
+      },
+      "linea": {
+        "titulo": "Chronologie",
+        "vacia": "Aucun mouvement pour l’instant.",
+        "porVenir": "à venir",
+        "intento": "{estado} (tentative {n})"
+      },
+      "destinatario": {
+        "titulo": "Destinataire et adresse",
+        "cambiar": "Changer l’adresse",
+        "recibe": "Destinataire",
+        "telefono": "Téléphone",
+        "direccion": "Adresse",
+        "barrio": "Quartier",
+        "ciudad": "Ville",
+        "indicaciones": "Indications",
+        "comoLlegar": "Itinéraire"
+      },
+      "items": {
+        "titulo": "Articles ({n})",
+        "sinItems": "L’envoi n’a aucun article enregistré.",
+        "envio": "Livraison",
+        "total": "Total",
+        "totalCobrar": "Total à encaisser à la livraison"
+      },
+      "intentos": {
+        "titulo": "Tentatives échouées et incidents",
+        "intento": "Tentative {n} · {hora}",
+        "reprogramado": "Reprogrammé {dia}",
+        "foto": "Photo {n}",
+        "reintentarAhora": "Relancer maintenant"
+      },
+      "prueba": {
+        "titulo": "Preuve de livraison",
+        "foto": "Photo",
+        "fotoTomada": "prise par le livreur",
+        "sinFoto": "sans photo",
+        "pendiente": "en attente",
+        "firmaOCodigo": "Signature ou code",
+        "codigoValidado": "Code validé",
+        "validadoCliente": "validé avec le client",
+        "firmaTomada": "signature recueillie",
+        "sinFirma": "sans signature",
+        "codigoCuatro": "code à 4 chiffres",
+        "quien": "Qui a réceptionné",
+        "ubicacion": "Emplacement",
+        "verMapa": "voir sur la carte",
+        "sinUbicacion": "sans emplacement",
+        "alConfirmar": "prise à la confirmation",
+        "recibio": "Reçu par",
+        "documento": "Pièce d’identité",
+        "terminadoEn": "{tipo} se terminant par {fin}",
+        "cobro": "Encaissement",
+        "notas": "Notes",
+        "ayuda": "Enregistrée en marquant « Livré » depuis « Mes envois » ou d’ici."
+      },
+      "avisos": {
+        "titulo": "Avis envoyés au client",
+        "ninguno": "Aucun avis n’a encore été envoyé.",
+        "reenviar": "Renvoyer",
+        "momentos": {
+          "recibido": "Commande reçue",
+          "confirmado": "Commande confirmée",
+          "listo": "Commande prête",
+          "en_camino": "Votre commande est en route",
+          "entregado": "Livré",
+          "rechazado": "Commande refusée",
+          "novedad": "Incident de livraison"
+        },
+        "canales": {
+          "email": "E-mail",
+          "whatsapp": "WhatsApp"
+        },
+        "estados": {
+          "queued": "En file d’attente",
+          "sent": "Envoyé",
+          "delivered": "Remis",
+          "failed": "Échec",
+          "no_data": "Pas de coordonnées"
+        }
+      },
+      "domiciliario": {
+        "titulo": "Livreur",
+        "externo": "Livreur externe",
+        "propio": "Livreur de l’entreprise",
+        "telefono": "Téléphone",
+        "vehiculo": "Véhicule",
+        "sinVehiculo": "Sans véhicule",
+        "asignado": "Assigné",
+        "ninguno": "Pas encore de livreur."
+      },
+      "contraentrega": {
+        "titulo": "Paiement à la livraison",
+        "cobrado": "Encaissé",
+        "cuadre": "Clôturé dans",
+        "sinCuadre": "Pas encore clôturé",
+        "camino": "Statut de l’encaissement",
+        "lineas": {
+          "pending": "Clôture ouverte",
+          "received": "Reçu en caisse",
+          "shortage": "Avec écart",
+          "cancelled": "Annulé"
+        }
+      },
+      "codigo": {
+        "titulo": "Code de livraison",
+        "verificado": "Validé {hora}",
+        "intentos": "{n} sur {max} tentatives erronées",
+        "reiniciar": "Réinitialiser le code",
+        "reiniciado": "Code réinitialisé",
+        "errorReiniciar": "Impossible de réinitialiser le code.",
+        "soloAdmin": "Visible uniquement par les administrateurs. Le client l’a dans son lien de suivi."
+      },
+      "documentos": {
+        "titulo": "Documents",
+        "pedido": "Commande",
+        "guia": "Bordereau",
+        "cuadre": "Clôture",
+        "verSeguimiento": "Voir le suivi"
+      },
+      "devolver": {
+        "titulo": "Retourner l’envoi au site ?",
+        "descripcion": "L’envoi est marqué comme retourné. Le stock est réintégré ou passé en perte depuis Inventaire.",
+        "confirmar": "Retourner au site"
+      },
+      "cancelar": {
+        "titulo": "Annuler l’envoi ?",
+        "descripcion": "L’envoi ne part pas. Si le client a déjà payé, le remboursement se fait depuis la commande.",
+        "confirmar": "Annuler l’envoi"
+      },
+      "entregar": {
+        "titulo": "Marquer livré",
+        "descripcion": "Conservé comme preuve de livraison. En paiement à la livraison, l’encaissement est enregistré.",
+        "receptor": "Qui a réceptionné",
+        "relacion": "Lien",
+        "documento": "Pièce d’identité du destinataire",
+        "documentoAyuda": "Facultatif. Seuls les 4 derniers chiffres sont affichés.",
+        "relaciones": {
+          "titular": "Titulaire",
+          "familiar": "Membre de la famille",
+          "porteria": "Accueil / gardien",
+          "otro": "Autre personne"
+        },
+        "cobroTitulo": "Paiement à la livraison : encaisser {monto}",
+        "codigo": "Code de livraison",
+        "codigoAyuda": "Le client l’a dans son lien de suivi.",
+        "codigoErrado": "Code erroné. Il reste {n} tentatives sur {max}.",
+        "codigoBloqueado": "Le code a été bloqué. Un administrateur doit le réinitialiser.",
+        "metodo": "Moyen d’encaissement",
+        "monto": "Montant encaissé",
+        "elegir": "Choisir…",
+        "medios": {
+          "cash": "Espèces",
+          "card": "Terminal de paiement",
+          "transfer": "Virement",
+          "qr": "QR"
+        },
+        "notas": "Notes",
+        "confirmar": "Marquer livré",
+        "cancelar": "Annuler",
+        "ok": "Envoi livré",
+        "error": "Impossible de marquer comme livré",
+        "faltante": {
+          "receptor": "Indiquez qui a réceptionné.",
+          "codigo": "Le code comporte 4 chiffres.",
+          "metodo": "Choisissez le moyen d’encaissement.",
+          "monto": "Indiquez le montant encaissé."
+        }
+      },
+      "novedad": {
+        "titulo": "Enregistrer une tentative échouée",
+        "descripcion": "L’envoi passe en incident et peut être relancé, réassigné ou retourné.",
+        "motivo": "Motif",
+        "elegir": "Choisir…",
+        "detalle": "Ce qui s’est passé",
+        "reprogramar": "Reprogrammer pour",
+        "reprogramarAyuda": "Facultatif. Jour de la prochaine tentative.",
+        "faltaMotivo": "Choisissez le motif.",
+        "faltaDetalle": "Décrivez ce qui s’est passé.",
+        "avisoPendiente": "Si la commande vient de la boutique, le client reçoit l’avis « Incident » selon les paramètres des Avis au client.",
+        "confirmar": "Enregistrer",
+        "cancelar": "Annuler",
+        "ok": "Incident enregistré",
+        "error": "Impossible d’enregistrer l’incident"
+      },
+      "direccion": {
+        "titulo": "Changer l’adresse",
+        "descripcion": "Le livreur voit la nouvelle adresse dans « Mes envois ».",
+        "direccion": "Adresse",
+        "ciudad": "Ville",
+        "instrucciones": "Indications",
+        "faltaDireccion": "Indiquez l’adresse.",
+        "guardar": "Enregistrer",
+        "cancelar": "Annuler",
+        "ok": "Adresse mise à jour",
+        "error": "Impossible de changer l’adresse"
+      }
+    },
+    "seguimiento": {
+      "titulo": "Suivi",
+      "subtitulo": "Incidents et envois qui nécessitent quelqu’un aujourd’hui",
+      "subtituloMovil": "Logistique · {n} à résoudre",
+      "migas": {
+        "logistica": "Logistique"
+      },
+      "actualizar": "Actualiser",
+      "consultarProveedores": "Interroger les prestataires maintenant",
+      "irPorDespachar": "Aller à À expédier",
+      "tabla": "Envois à résoudre",
+      "errorCarga": "Impossible de charger le suivi.",
+      "sinResultados": "Aucun envoi à résoudre ne correspond à la recherche ou aux filtres.",
+      "sinPermiso": {
+        "titulo": "Vous n’avez pas accès au suivi",
+        "descripcion": "Demandez à un administrateur l’accès à Logistique."
+      },
+      "sustantivo": {
+        "singular": "envoi",
+        "plural": "envois"
+      },
+      "orden": "Trié par échéance : ce qui expire en premier, en haut",
+      "domiciliarioPropio": "Livreur interne",
+      "guia": "Bordereau {guia}",
+      "notaReintento": "Relancé depuis Suivi",
+      "notaDevolucion": "Retourné depuis Suivi",
+      "mensajeCliente": "Bonjour, nous vous écrivons au sujet de votre commande {numero}.",
+      "buscar": {
+        "placeholder": "Rechercher un bordereau, une commande ou un client",
+        "etiqueta": "Rechercher des envois"
+      },
+      "chips": {
+        "etiqueta": "Afficher",
+        "todo": "Tout {n}",
+        "novedades": "Incidents {n}",
+        "sinMovimiento": "Sans mouvement {n}"
+      },
+      "kpis": {
+        "etiqueta": "Résumé du suivi",
+        "novedades": "Incidents ouverts",
+        "vencenHoy": "{count, plural, one {# expire aujourd’hui} other {# expirent aujourd’hui}}",
+        "sinVencer": "aucun n’expire aujourd’hui",
+        "sinMovimiento": "Sans mouvement depuis plus de 24 h",
+        "conTransportadora": "{count, plural, one {# chez un transporteur} other {# chez un transporteur}}",
+        "sinMovimientoDetalle": "envois immobiles",
+        "primerIntento": "Livraisons à la première tentative (30 jours)",
+        "meta": "Objectif {meta}",
+        "avisosHoy": "Avis aux clients aujourd’hui",
+        "fallaronWhatsApp": "{count, plural, one {# a échoué sur WhatsApp} other {# ont échoué sur WhatsApp}}",
+        "avisosDetalle": "e-mail et WhatsApp",
+        "sinMovimientoTitulo": "Sans mouvement",
+        "sinMovimientoUmbral": "interne après {propio} h · transporteur après {transportadora} h"
+      },
+      "columnas": {
+        "envio": "Envoi",
+        "quePaso": "Ce qui s’est passé",
+        "destino": "Destination",
+        "proveedor": "Prestataire",
+        "plazo": "Échéance"
+      },
+      "canales": {
+        "web": "Boutique en ligne",
+        "pos": "Caisse (POS)",
+        "qr": "Menu QR",
+        "manual": "Manuel",
+        "marketplace": "Marketplace"
+      },
+      "quePaso": {
+        "sinMovimiento": "Sans mouvement depuis {horas} h",
+        "motivoIntento": "{motivo} · tentative {n}"
+      },
+      "plazo": {
+        "hoy": "Aujourd’hui {hora}",
+        "otroDia": "{dia} {hora}"
+      },
+      "consecuencias": {
+        "reclamo": "ensuite une réclamation est ouverte",
+        "devolucion": "ensuite il est retourné",
+        "ultimo_intento": "dernière tentative",
+        "vuelve_a_bodega": "ensuite il retourne à l’entrepôt",
+        "revisar": "vérifier avec le livreur"
+      },
+      "acciones": {
+        "reintentar": "Relancer",
+        "cambiar_direccion": "Changer l’adresse",
+        "contactar_cliente": "Contacter le client",
+        "consultar_proveedor": "Interroger le prestataire",
+        "abrir_reclamo": "Ouvrir une réclamation",
+        "ver_detalle": "Voir le détail de l’envoi",
+        "devolver": "Retourner à l’expéditeur…"
+      },
+      "masivo": {
+        "avisar": "Prévenir le client"
+      },
+      "motivos": {
+        "conector": "Nécessite le connecteur du transporteur (Intégrations › Connexions › Logistique).",
+        "propio": "Il est confié à un livreur interne : aucun prestataire à interroger.",
+        "noReintentable": "Aucun des envois sélectionnés ne peut être relancé."
+      },
+      "filtros": {
+        "proveedor": "Prestataire",
+        "todos": "Tous",
+        "propio": "Livreur interne",
+        "transportadora": "Transporteur",
+        "limpiar": "Tout effacer",
+        "verN": "{count, plural, one {Voir # envoi} other {Voir # envois}}"
+      },
+      "devolver": {
+        "titulo": "Retourner {numero} à l’expéditeur ?",
+        "descripcion": "L’envoi est marqué comme retourné et sort de la liste à résoudre.",
+        "confirmar": "Retourner",
+        "volver": "Retour"
+      },
+      "toast": {
+        "reintentados": "{count, plural, one {# envoi repart} other {# envois repartent}}",
+        "devuelto": "Envoi {numero} retourné",
+        "avisados": "{count, plural, one {# client prévenu} other {# clients prévenus}}",
+        "sinAviso": "{count, plural, one {# envoi sans avis} other {# envois sans avis}}",
+        "sinAvisoAyuda": "Seules les commandes de la boutique en route sont prévenues.",
+        "error": "Impossible de terminer"
+      },
+      "vacio": {
+        "titulo": "Rien à résoudre",
+        "descripcion": "Aucun incident ni envoi immobile. Ce qui nécessite quelqu’un apparaît ici."
+      }
+    }
   }
 }

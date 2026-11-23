@@ -18,6 +18,7 @@ import {
   Wallet,
   Bot,
   Phone,
+  Truck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -150,6 +151,17 @@ export const CONFIG_MODULES: ConfigModule[] = [
     title: 'Membresías',
     description: 'Acceso, tolerancias, check-in, clases y notificaciones',
     icon: Dumbbell,
+    grupo: 'operacion',
+  },
+  {
+    // Logística (Fase 1, 2026-11-23): ajustes del módulo. Zonas y reglas son catálogos y siguen
+    // en /app/logistica/zonas y /reglas (con el atajo «Configurar»).
+    id: 'logistica',
+    moduleCode: 'logistica',
+    title: 'Logística',
+    description: 'Sin movimiento, envío gratis, peso por defecto y avisos de entrega',
+    // CATALOGO-ICONOS.md / navigation/catalog.ts: el módulo Logística es `Truck`.
+    icon: Truck,
     grupo: 'operacion',
   },
   {

@@ -9,6 +9,10 @@
  *            datáfono a 13802001 por las reglas vigentes;
  * - cerrar:  logistica_cuadre_cerrar — exige motivo y responsable si no cuadra; el faltante NO
  *            genera asiento (pendiente del Contador: accounting_status = 'pending_accountant');
+ * - recibir y cerrar: logistica_cuadre_recibir_y_cerrar (migración 20261123165634) — varias líneas
+ *            y el cierre en UNA transacción: si algo falla no queda nada a medias; si el cuadre ya
+ *            se cerró (reintento), devuelve su resumen sin cobrar de nuevo. Es lo que usa la hoja
+ *            «Recibir dinero»;
  * - anular:  logistica_cuadre_anular — solo si no se ha recibido dinero.
  *
  * Para una línea de pedido web, la factura (si la venta aún no tiene) la arma el mismo código del
@@ -49,6 +53,7 @@ export const ERRORES_CUADRE = [
   'PEDIDO_DE_PASARELA',
   'PEDIDO_SIN_CONFIRMAR',
   'ORIGEN_NO_SOPORTADO',
+  'RECIBOS_INVALIDOS',
 ] as const;
 export type ErrorCuadre = (typeof ERRORES_CUADRE)[number] | 'ERROR';
 
@@ -107,27 +112,30 @@ export interface RecibirLinea {
   motivoDiferencia?: string | null;
 }
 
-export async function recibirLinea(client: SupabaseClient, r: RecibirLinea): Promise<Cuadre> {
+/** Pedido web: la misma factura que arma «Cobrar» (solo si hay dinero y la venta aún no tiene una). */
+async function facturaDeLinea(client: SupabaseClient, r: RecibirLinea): Promise<Record<string, unknown> | null> {
+  if (!(r.monto > 0) || r.linea.source_type !== 'web_order' || !r.linea.source_id) return null;
+  const [{ webOrderConfirmationService }, { data: pedido, error }] = await Promise.all([
+    import('@/lib/services/webOrderConfirmationService'),
+    client.from('web_orders').select('*, items:web_order_items(*)').eq('id', r.linea.source_id).maybeSingle(),
+  ]);
+  if (error) throw error;
+  if (!pedido) return null;
+  return (await webOrderConfirmationService.facturaParaCobroEnCaja(
+    pedido as Parameters<typeof webOrderConfirmationService.facturaParaCobroEnCaja>[0],
+  )) as Record<string, unknown> | null;
+}
+
+function validarRecibo(r: RecibirLinea): void {
   if (!montoLineaValido(r.linea.esperado, r.monto)) throw new CuadreError('MONTO_INVALIDO');
   if (lineaRequiereMotivo(r.linea.esperado, r.monto) && !(r.motivoDiferencia ?? '').trim()) {
     throw new CuadreError('MOTIVO_REQUERIDO');
   }
+}
 
-  // Pedido web: la misma factura que arma «Cobrar» (solo si la venta aún no tiene una).
-  let factura: Record<string, unknown> | null = null;
-  if (r.monto > 0 && r.linea.source_type === 'web_order' && r.linea.source_id) {
-    const [{ webOrderConfirmationService }, { data: pedido, error }] = await Promise.all([
-      import('@/lib/services/webOrderConfirmationService'),
-      client.from('web_orders').select('*, items:web_order_items(*)').eq('id', r.linea.source_id).maybeSingle(),
-    ]);
-    if (error) throw error;
-    if (pedido) {
-      factura = await webOrderConfirmationService.facturaParaCobroEnCaja(
-        pedido as Parameters<typeof webOrderConfirmationService.facturaParaCobroEnCaja>[0],
-      );
-    }
-  }
-
+export async function recibirLinea(client: SupabaseClient, r: RecibirLinea): Promise<Cuadre> {
+  validarRecibo(r);
+  const factura = await facturaDeLinea(client, r);
   return llamar(client, 'logistica_cuadre_recibir_linea', {
     p_line_id: r.linea.id,
     p_metodo: r.metodo,
@@ -136,6 +144,50 @@ export async function recibirLinea(client: SupabaseClient, r: RecibirLinea): Pro
     p_factura: factura,
     p_motivo_diferencia: r.motivoDiferencia ?? null,
   });
+}
+
+export interface RecibirYCerrar {
+  settlementId: string;
+  recibos: RecibirLinea[];
+  motivo?: string | null;
+  responsable?: ResponsableDiferencia | null;
+  detalleResponsable?: string | null;
+  notas?: string | null;
+}
+
+/** Resultado de recibir y cerrar: el cuadre cerrado y si fue un reintento de uno ya cerrado. */
+export type CuadreCerrado = Cuadre & { ya_cerrado?: boolean; recibidas?: number; omitidas?: number };
+
+/**
+ * «Recibir y cerrar» en un solo paso (RPC transaccional e idempotente). Valida cada recibo y arma
+ * las facturas de los pedidos web ANTES de llamar: la base recibe todo junto o nada.
+ */
+export async function recibirYCerrarCuadre(client: SupabaseClient, p: RecibirYCerrar): Promise<CuadreCerrado> {
+  p.recibos.forEach(validarRecibo);
+  const facturas = await Promise.all(p.recibos.map((r) => facturaDeLinea(client, r)));
+  const { data, error } = await client.rpc('logistica_cuadre_recibir_y_cerrar', {
+    p_settlement_id: p.settlementId,
+    p_recibos: p.recibos.map((r, i) => ({
+      linea_id: r.linea.id,
+      metodo: r.metodo,
+      monto: r.monto,
+      referencia: r.referencia ?? null,
+      factura: facturas[i],
+      motivo_diferencia: r.motivoDiferencia ?? null,
+    })),
+    p_motivo: p.motivo ?? null,
+    p_responsable: p.responsable ?? null,
+    p_detalle_responsable: p.detalleResponsable ?? null,
+    p_notas: p.notas ?? null,
+  });
+  if (error) throw new CuadreError(codigoErrorCuadre(error.message), error.message);
+  const crudo = (data ?? {}) as Record<string, unknown>;
+  return {
+    ...leerCuadre(crudo),
+    ya_cerrado: crudo.ya_cerrado === true,
+    recibidas: Number(crudo.recibidas) || 0,
+    omitidas: Number(crudo.omitidas) || 0,
+  };
 }
 
 export function cerrarCuadre(

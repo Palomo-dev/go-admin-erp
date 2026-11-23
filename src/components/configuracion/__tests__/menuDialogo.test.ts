@@ -26,7 +26,7 @@ describe('agrupación', () => {
       ['organizacion', ['general', 'roles', 'plan', 'asistente']],
       ['ventas', ['pos', 'facturacion', 'sitioweb']],
       ['clientes', ['crm', 'chat', 'telefonia-voz', 'notificaciones']],
-      ['operacion', ['calendario', 'hrm', 'pms', 'parking', 'gym']],
+      ['operacion', ['calendario', 'hrm', 'pms', 'parking', 'gym', 'logistica']],
       ['conexiones', ['integraciones', 'timeline', 'datos-offline']],
     ]);
   });

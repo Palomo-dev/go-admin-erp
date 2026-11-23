@@ -26,6 +26,7 @@ import {
 import { FileCheck, Plus, Image, PenTool, Star, Loader2, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useEvidenciasEnvio } from '@/components/logistica/useEvidenciasEnvio';
 
 interface POD {
   id: string;
@@ -43,6 +44,8 @@ interface POD {
 }
 
 interface ProofOfDeliveryProps {
+  /** Envío de la prueba: las fotos y la firma se ven con enlaces firmados del servidor (bucket privado). */
+  shipmentId?: string | null;
   pod: POD | null;
   isLoading: boolean;
   canRegister: boolean;
@@ -75,7 +78,11 @@ const LOCATION_TYPES = [
   { value: 'other', label: 'Otro' },
 ];
 
-export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: ProofOfDeliveryProps) {
+export function ProofOfDelivery({ shipmentId, pod, isLoading, canRegister, onRegisterPOD }: ProofOfDeliveryProps) {
+  // `shipment-pod` es privado: sin envío no hay enlace firmado y no se pinta nada.
+  const evidencias = useEvidenciasEnvio(shipmentId, !!pod, pod?.id ?? null);
+  const firma = evidencias.enlace(pod?.signature_url);
+  const fotos = (pod?.photo_urls ?? []).map((v) => evidencias.enlace(v)).filter((u): u is string => !!u);
   const [showDialog, setShowDialog] = useState(false);
   const [expandedPhoto, setExpandedPhoto] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -160,24 +167,24 @@ export function ProofOfDelivery({ pod, isLoading, canRegister, onRegisterPOD }: 
             )}
           </div>
 
-          {pod.signature_url && (
+          {firma && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-2">
                 <PenTool className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <span className="text-sm text-gray-500 dark:text-gray-400">Firma:</span>
               </div>
-              <img src={pod.signature_url} alt="Firma" className="max-h-24 border rounded" />
+              <img src={firma} alt="Firma" className="max-h-24 border rounded" />
             </div>
           )}
 
-          {pod.photo_urls && pod.photo_urls.length > 0 && (
+          {fotos.length > 0 && (
             <div className="border-t pt-4">
               <div className="flex items-center gap-2 mb-2">
                 <Image className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                <span className="text-sm text-gray-500 dark:text-gray-400">Fotos ({pod.photo_urls.length}):</span>
+                <span className="text-sm text-gray-500 dark:text-gray-400">Fotos ({fotos.length}):</span>
               </div>
               <div className="flex gap-2 flex-wrap">
-                {pod.photo_urls.map((url, idx) => (
+                {fotos.map((url, idx) => (
                   <img
                     key={idx}
                     src={url}

@@ -411,6 +411,7 @@ function seccionNav(clave: string): string {
   const mapa: Record<string, string> = {
     principal: 'sectionMain',
     ventas: 'sectionSales',
+    operacion: 'sectionOperation',
     gestion: 'sectionManagement',
     organizacion: 'sectionOrganization',
     sistema: 'sectionSystem',

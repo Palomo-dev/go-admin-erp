@@ -1,13 +1,15 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { CheckCircle, Clock, MapPin, Navigation, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/utils/Utils';
 import { FormField } from '@/components/kit';
+import { CampoNumero } from '@/components/kit/CampoNumero';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/kit/PhoneInput';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 
 /**
  * Cuerpo de la sección «Entrega» del cobro (POS-PLAN paso 12, L46): recoger /
@@ -56,6 +58,37 @@ export interface EntregaCobroProps {
   pagoEnvio: PagoEnvio;
   onPagoEnvio: (v: PagoEnvio) => void;
   formatear: (n: number) => string;
+  /**
+   * Logística Fase 1 (Figma 2830:73378): con zonas de domicilio configuradas, la sección suma el
+   * barrio, el aviso de la zona bajo la dirección, el «Cargo de domicilio (flete)» que llena la
+   * zona. Sin zonas no se pasa y la sección queda como antes.
+   */
+  zonas?: EntregaZonasProps;
+  /**
+   * «Paga al recibir (contraentrega)» del domicilio propio, con o sin zonas: la venta queda con
+   * saldo y el domiciliario lo cobra (`cod_amount` = saldo). Reemplaza «Pago del envío».
+   */
+  contraentrega?: EntregaContraentregaProps;
+}
+
+export interface EntregaContraentregaProps {
+  marcado: boolean;
+  onCambio: (v: boolean) => void;
+  /** Motivo por el que no se puede marcar (p. ej. falta el cliente); null = se puede. */
+  motivoNo: string | null;
+  ayuda: string;
+}
+
+export interface EntregaZonasProps {
+  barrio: string;
+  onBarrio: (v: string) => void;
+  /** Aviso de la cotización (AvisoCotizacionDomicilio), debajo de la dirección. */
+  aviso: ReactNode;
+  cargo: number;
+  onCargo: (v: number) => void;
+  /** Sin permiso, el cargo que llenó la zona no se puede cambiar. */
+  cargoEditable: boolean;
+  ayudaCargo: string;
 }
 
 const OPCIONES: readonly { valor: TipoEntrega; icono: typeof Truck; clave: 'recoger' | 'propio' | 'tercero' }[] = [
@@ -76,7 +109,10 @@ function botonOpcion(activo: boolean): string {
 
 export function EntregaCobro(p: EntregaCobroProps) {
   const t = useTranslations('posCobro.entrega');
+  const tz = useTranslations('logistica.cotizar.pos');
   const id = useId();
+  const z = p.tipo === 'delivery_own' ? p.zonas : undefined;
+  const cod = p.tipo === 'delivery_own' ? p.contraentrega : undefined;
   return (
     <div className="flex flex-col gap-3">
       <div role="radiogroup" aria-label={t('tipo')} className="grid grid-cols-3 gap-2">
@@ -151,7 +187,13 @@ export function EntregaCobro(p: EntregaCobroProps) {
               </ul>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {z?.aviso}
+          <div className={cn('grid grid-cols-1 gap-2', z ? 'sm:grid-cols-3' : 'sm:grid-cols-2')}>
+            {z && (
+              <FormField etiqueta={tz('barrio')}>
+                <Input id={`${id}-barrio`} value={z.barrio} onChange={(e) => z.onBarrio(e.target.value)} placeholder={tz('barrioPlaceholder')} />
+              </FormField>
+            )}
             <FormField etiqueta={t('ciudad')}>
               <Input id={`${id}-ciudad`} value={p.ciudad} onChange={(e) => p.onCiudad(e.target.value)} />
             </FormField>
@@ -165,7 +207,21 @@ export function EntregaCobro(p: EntregaCobroProps) {
           <FormField etiqueta={t('instrucciones')}>
             <Input id={`${id}-instrucciones`} value={p.instrucciones} onChange={(e) => p.onInstrucciones(e.target.value)} placeholder={t('instruccionesPlaceholder')} />
           </FormField>
-          {p.tarifas.length > 0 && (
+          {z && (
+            <div className="flex flex-col gap-3 border-t border-line pt-3">
+              <FormField etiqueta={tz('cargo')} ayuda={z.ayudaCargo}>
+                <CampoNumero
+                  id={`${id}-cargo`}
+                  valor={z.cargo}
+                  onValorChange={(v) => z.onCargo(v ?? 0)}
+                  minimo={0}
+                  readOnly={!z.cargoEditable}
+                  aria-readonly={!z.cargoEditable}
+                />
+              </FormField>
+            </div>
+          )}
+          {!z && p.tarifas.length > 0 && (
             <FormField etiqueta={t('tarifa')} id={`${id}-tarifa`} className="border-t border-line pt-3">
               {(campo) => (
                 <Select value={p.tarifaId} onValueChange={p.onTarifa}>
@@ -183,6 +239,21 @@ export function EntregaCobro(p: EntregaCobroProps) {
               )}
             </FormField>
           )}
+          {cod && (
+            <div className="flex flex-col gap-1 border-t border-line pt-3">
+              <label htmlFor={`${id}-contraentrega`} className="flex items-center gap-2 text-sm text-fg">
+                <Checkbox
+                  id={`${id}-contraentrega`}
+                  checked={cod.marcado}
+                  disabled={cod.motivoNo !== null}
+                  onCheckedChange={(v) => cod.onCambio(v === true)}
+                />
+                {tz('contraentrega')}
+              </label>
+              <p className="text-xs text-fg-secondary">{cod.motivoNo ?? cod.ayuda}</p>
+            </div>
+          )}
+          {!cod && (
           <div className="flex flex-col gap-1 border-t border-line pt-3">
             <span id={`${id}-pago`} className={CLASE_ETIQUETA}>
               {t('pagoEnvio')}
@@ -199,6 +270,7 @@ export function EntregaCobro(p: EntregaCobroProps) {
             </div>
             {p.pagoEnvio === 'pending' && <p className="text-xs text-warning-text">{t('avisoPendiente')}</p>}
           </div>
+          )}
         </div>
       )}
     </div>

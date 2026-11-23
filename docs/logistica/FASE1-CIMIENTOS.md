@@ -137,10 +137,12 @@ simples), `postal_code` o `polygon` (GeoJSON `Polygon | MultiPolygon | Feature`,
 
 | Tabla | Leer | Escribir |
 | --- | --- | --- |
-| `driver_credentials` | miembro activo | miembro activo (una política `FOR ALL`; reemplaza la anidada vieja) |
+| `driver_credentials` | quien «ve todo» en la organización; un domiciliario sin permiso, solo su fila (20261123165617) | solo `fn_logistica_gestiona` (= `fn_caja_puede` 'pos.create'); el fin de jornada va por `logistica_fin_jornada` |
+| `shipments` (y por herencia `proof_of_delivery`, `delivery_attempts`, `shipment_items`) | quien «ve todo»; un domiciliario sin permiso, solo los envíos con su `driver_id` (20261123165617) | quien «ve todo»; el domiciliario escribe solo por las RPC `logistica_*` |
+| `transport_events` (lectura) | quien «ve todo»; el domiciliario, solo los eventos de sus envíos (los de viajes y rutas, como antes) | sin cambios |
 | `shipment_delivery_codes` | miembro activo **y** `fn_caja_puede(org, 'logistica.codigo_entrega.ver')` (en la práctica, administradores) | nadie: solo disparadores y RPC |
 | `shipping_zones`, `shipping_zone_locations`, `delivery_rules` | miembro activo | `fn_caja_puede(org, 'organization_settings')`; políticas separadas por comando |
-| `courier_settlements`, `courier_settlement_lines` | miembro activo | nadie: solo RPC |
+| `courier_settlements`, `courier_settlement_lines` | quien «ve todo»; el domiciliario, solo sus cuadres (20261123165617) | nadie: solo RPC |
 
 Patrón en todas: `organization_id IN (SELECT om.organization_id FROM organization_members om
 WHERE om.user_id = (select auth.uid()) AND om.is_active)`. Sin `EXISTS` anidado. Anon no tiene
@@ -351,3 +353,27 @@ reemplazó al anterior (2026-11-03); el primer aviso fallido es del día siguien
 sale porque no depende de `channels`. Arreglo (fuera de esta fase): reconectar el WhatsApp de cada
 organización (o definir un canal de la plataforma) en Integraciones; los avisos vuelven a salir
 sin cambiar código.
+
+## Endurecimiento antes de subir (2026-11-23)
+
+Tres migraciones más, con su reversión en `supabase/rollbacks/`:
+
+| Versión | Nombre | Qué hace |
+| --- | --- | --- |
+| 20261123165515 | `logistica_f1_bucket_pod_privado` | `shipment-pod` pasa a **privado**. Subir y leer: miembro activo de la organización de la carpeta **y** que vea el envío de la segunda carpeta (RLS de `shipments`) |
+| 20261123165617 | `logistica_f1_rls_domiciliarios_envios` | `fn_logistica_gestiona` / `fn_logistica_ve_todo`; RLS de domiciliarios, envíos, eventos y cuadres (tabla de arriba); `fn_logistica_envio_bloquear` rechaza `ENVIO_AJENO`; asignar exige «ve todo» y respeta «¿Cobra contraentrega?» (`DOMICILIARIO_NO_COBRA`); venta POS con domiciliario que no cobra crea el envío sin asignar (`asignacion`); `logistica_fin_jornada` |
+| 20261123165634 | `logistica_f1_cuadre_recibir_y_cerrar` | `logistica_cuadre_recibir_y_cerrar(p_settlement_id, p_recibos jsonb, p_motivo, p_responsable, p_detalle_responsable, p_notas)`: varias líneas y el cierre en una transacción; si el cuadre ya está cerrado devuelve su resumen con `ya_cerrado` (idempotente); líneas ya recibidas se omiten. Error nuevo `RECIBOS_INVALIDOS` |
+
+- **Fotos y firmas**: lo guardado en `proof_of_delivery.photo_urls / signature_url` y
+  `delivery_attempts.photo_urls` es la **ruta** en el bucket (`subirImagenEnvio`). Para verlas, las
+  pantallas usan `useEvidenciasEnvio`, que llama `GET /api/logistica/envios/[id]/evidencias`: el
+  servidor lee las rutas de la base con la sesión y firma solo las de `{organización}/{envío}/`
+  (`src/lib/logistica/evidencias.ts`), enlaces de 5 minutos. El rastreo público no muestra fotos.
+- **«Ve todo»** = miembro activo que no es domiciliario en la organización, o que lo es pero tiene
+  `fn_logistica_gestiona`. Si se crean códigos `logistica.*` (TODO 8), se cambia solo esa función;
+  la ruta de domiciliarios ya la consulta (`permisosDomiciliarios.server.ts`).
+- **Seguimiento**: «sin movimiento» usa `horasSinMovimiento()` con los ajustes de la organización
+  (por defecto 2 h propio, 24 h transportadora), ya no 24 h fijas.
+- **Aviso «novedad»**: `avisarCliente(envio, 'novedad')` manda `{ momento: 'novedad' }` a
+  `/api/web-orders/[id]/aviso-estado`; la ruta solo lo envía si el envío está en `failed_attempt`.
+  Lo llaman el detalle del envío, la app del domiciliario y «Avisar» de Seguimiento.

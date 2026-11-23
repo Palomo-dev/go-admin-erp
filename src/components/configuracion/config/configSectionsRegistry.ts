@@ -122,6 +122,23 @@ export const SECCIONES_CONFIG: readonly SeccionConfig[] = [
   { id: 'pos.numero-pedido', modulo: 'pos', seccion: 'numero-pedido', clave: 'posNumeroPedido', permiso: PERMISO_ADMIN, ajustes: [] },
   // «Etiquetas y respuestas rápidas» (Figma 12.8): el id sigue siendo `chat.general` porque es
   // estable (enlaces y favoritos). Las etiquetas se administran SOLO aquí; CRM enlaza.
+  // Logística (Fase 1): ajustes del módulo. Mismo permiso que escribir zonas y tarifas (RLS de
+  // shipping_zones y `PUT /api/logistica/ajustes`): `organization_settings`.
+  {
+    id: 'logistica.general',
+    modulo: 'logistica',
+    seccion: 'general',
+    clave: 'logisticaGeneral',
+    permiso: 'organization_settings',
+    ajustes: [
+      { ancla: 'sin-movimiento', clave: 'logisticaSinMovimiento' },
+      { ancla: 'envio-gratis', clave: 'logisticaEnvioGratis' },
+      { ancla: 'peso-organizacion', clave: 'logisticaPesoOrganizacion' },
+      { ancla: 'codigo-entrega', clave: 'logisticaCodigoEntrega' },
+      { ancla: 'cargo-domicilio', clave: 'logisticaCargoDomicilio' },
+      { ancla: 'avisos', clave: 'logisticaAvisos' },
+    ],
+  },
   { id: 'chat.general', modulo: 'chat', seccion: 'general', clave: 'chatGeneral', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'chat.ia', modulo: 'chat', seccion: 'ia', clave: 'chatIa', permiso: PERMISO_ADMIN, ajustes: [] },
   { id: 'integraciones.general', modulo: 'integraciones', seccion: 'general', clave: 'integracionesGeneral', permiso: PERMISO_ADMIN, ajustes: [] },

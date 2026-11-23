@@ -114,7 +114,7 @@ export interface RespuestaVentas {
 
 const ENLACES: Record<Exclude<TemaVenta, 'checkout'>, { href: string; texto: string }> = {
   pagos: { href: '/app/finanzas/metodos-pago', texto: 'irFinanzasMetodos' },
-  envios: { href: '/app/transporte/tarifas-envio', texto: 'irTransporteTarifas' },
+  envios: { href: '/app/logistica/zonas', texto: 'irTransporteTarifas' },
   cupones: { href: '/app/pos/cupones', texto: 'irPosPromociones' },
   pedidos: { href: '/app/pos/pedidos-online', texto: 'irPosPedidos' },
   reservas: { href: '/app/pos/reservas-mesas?tab=configuracion', texto: 'irPosReservas' },

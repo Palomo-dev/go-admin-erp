@@ -211,6 +211,9 @@ const CODIGOS_RPC = [
   'ESTADO_NO_PERMITIDO', 'TRANSICION_INVALIDA', 'YA_ENTREGADO', 'ESTADO_NO_ENTREGABLE', 'RECEPTOR_REQUERIDO',
   'CODIGO_NO_EMITIDO', 'CODIGO_BLOQUEADO', 'COBRO_REQUERIDO', 'MOTIVO_INVALIDO', 'ESTADO_SIN_NOVEDAD',
   'VENTA_NO_ENCONTRADA', 'VENTA_ANULADA', 'DIRECCION_REQUERIDA', 'SIN_PERMISO',
+  // Migración 20261123165617: un domiciliario sin permiso sobre un envío que no es suyo, y asignar
+  // contraentrega a quien no la cobra.
+  'ENVIO_AJENO', 'DOMICILIARIO_NO_COBRA',
 ] as const;
 
 function errorDeRpc(error: { message?: string; code?: string }): EnvioError {

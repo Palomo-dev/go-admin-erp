@@ -58,6 +58,8 @@ export function useDescribirResultado(): (r: ResultadoEntidad) => FilaDescrita {
           return { titulo: t('invoice', { number: r.titulo ?? t('noNumber') }), subtitulo: unir(d.cliente, total, est) };
         case 'web_order':
           return { titulo: t('order', { number: r.titulo ?? t('noNumber') }), subtitulo: unir(d.cliente, total, est) };
+        case 'shipment':
+          return { titulo: nombre, subtitulo: unir(d.cliente, [d.direccion, d.ciudad].filter(Boolean).join(', '), est) };
         case 'reservation':
           return {
             titulo: nombre,

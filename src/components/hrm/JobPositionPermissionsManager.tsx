@@ -98,6 +98,7 @@ export default function JobPositionPermissionsManager({
       'admin': 'Administración',
       'reports': 'Reportes',
       'calendar': 'Calendario',
+      'logistica': 'Logística',
       'transport': 'Transporte',
       'notifications': 'Notificaciones',
       'integrations': 'Integraciones',

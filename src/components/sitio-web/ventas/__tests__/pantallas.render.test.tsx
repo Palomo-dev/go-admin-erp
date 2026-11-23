@@ -106,7 +106,7 @@ describe('Ventas en línea', () => {
     }
     expect(screen.getAllByText('Falta').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Opcional').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: 'Ir a Transporte › Tarifas de envío' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Ir a Logística › Zonas y tarifas' })).toBeTruthy();
     expect(screen.getByRole('link', { name: /Probar una compra/ }).getAttribute('href')).toBe('https://tu-marca.goadmin.io');
   });
 

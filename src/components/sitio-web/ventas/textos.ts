@@ -110,7 +110,7 @@ export const TEXTOS_VENTAS = {
     origen: {
       checkout: 'Se edita aquí',
       pagos: 'Visibles y orden se configuran en Finanzas',
-      envios: 'Las tarifas por zona viven en Transporte',
+      envios: 'Las tarifas por zona viven en Logística',
       enviosPlana: 'Tarifa plana del sitio · se edita aquí',
       cupones: 'Se crean en el POS',
       pedidos: 'Se atienden en el POS',
@@ -120,7 +120,7 @@ export const TEXTOS_VENTAS = {
     acciones: {
       editarOpciones: 'Editar opciones',
       irFinanzasMetodos: 'Ir a Finanzas › Métodos de pago',
-      irTransporteTarifas: 'Ir a Transporte › Tarifas de envío',
+      irTransporteTarifas: 'Ir a Logística › Zonas y tarifas',
       irPosPromociones: 'Ir a POS › Promociones y cupones',
       irPosPedidos: 'Ir a POS › Pedidos online',
       irPosReservas: 'Ir a POS › Reservas › Configuración',

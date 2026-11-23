@@ -678,6 +678,15 @@ class WebOrderConfirmationService {
   }
 
   /**
+   * La misma factura que arma «Cobrar» para `fn_cobrar_pedido_web_en_caja`. La usa el cuadre del
+   * domiciliario (cuadresDomiciliarioService → logistica_cuadre_recibir_linea), que cobra el
+   * pedido contraentrega con esa misma RPC: una sola regla de factura para los dos caminos.
+   */
+  async facturaParaCobroEnCaja(order: WebOrder): Promise<Record<string, unknown> | null> {
+    return this.facturaNuevaSiFalta(order);
+  }
+
+  /**
    * Factura para la RPC solo si la venta aún no tiene: número y líneas de la
    * regla única (webOrderTotals). `null` = la RPC usa la factura existente.
    */

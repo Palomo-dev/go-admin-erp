@@ -34,6 +34,9 @@ const CODIGOS_EN_MODULES = new Set([
   'pm', 'gym', 'memberships', 'chat', 'organizations', 'clientes', 'roles', 'configuracion', 'pos',
   'inventory', 'pms_hotel', 'parking', 'transport', 'crm', 'hrm', 'finance', 'reports',
   'notifications', 'integrations', 'calendar', 'operations',
+  // Logística (opcional, no núcleo): migración 20261123153948_logistica_modulo_navegacion,
+  // verificada por MCP el 2026-11-23 en taqjemqjtumhwptchcxk.
+  'logistica',
 ]);
 
 /** Códigos que alguna migración de supabase/migrations inserta en `modules` como núcleo. */

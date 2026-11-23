@@ -4611,7 +4611,19 @@
       "hrm_plazas": "Positions budget",
       "hrm_aprobaciones": "Approvals",
       "hrm_novedades": "Time events",
-      "hrm_mi-equipo": "My team"
+      "hrm_mi-equipo": "My team",
+      "logistica_por-despachar": "To dispatch",
+      "logistica_envios": "Shipments",
+      "logistica_domiciliarios": "Couriers",
+      "logistica_cuadres": "Settlements",
+      "logistica_seguimiento": "Tracking and issues",
+      "logistica_mis-envios": "My shipments",
+      "logistica_conductores": "Drivers and couriers",
+      "logistica_vehiculos": "Vehicles",
+      "logistica_etiquetas": "Labels",
+      "logistica_direcciones-clientes": "Customer addresses",
+      "logistica_zonas": "Zones and rates",
+      "logistica_reglas": "Dispatch rules"
     },
     "grupos": {
       "venta": "Sales",
@@ -4649,7 +4661,10 @@
       "sedes": "Locations",
       "plan-y-facturacion": "Plan and billing",
       "marca": "Brand",
-      "tributario": "Taxes"
+      "tributario": "Taxes",
+      "operacion-del-dia": "Today's operations",
+      "catalogo-comun": "Shared catalog",
+      "cobertura": "Coverage"
     },
     "backToMenu": "Menu",
     "membresias": "Memberships",
@@ -4659,7 +4674,9 @@
       "sitio-web_tienda": "Retail only",
       "sitio-web_ventas": "Checkout, payments and shipping",
       "sitio-web_sedes": "If you have more than one location"
-    }
+    },
+    "logistics": "Logistics",
+    "sectionOperation": "Operations"
   },
   "crm": {
     "title": "CRM",
@@ -9803,7 +9820,8 @@
         "reservations": "Reservations",
         "spaces": "Spaces",
         "memberships": "Memberships",
-        "parking": "Parking"
+        "parking": "Parking",
+        "shipments": "Shipments"
       },
       "actions": {
         "reportProblem": "Report a problem",
@@ -37570,7 +37588,7 @@
         "origen": {
           "checkout": "Edited here",
           "pagos": "Visibility and order are set in Finance",
-          "envios": "Zone rates live in Transport",
+          "envios": "Zone rates live in Logistics",
           "enviosPlana": "Site flat rate · edited here",
           "cupones": "Created in POS",
           "pedidos": "Handled in POS",
@@ -37580,7 +37598,7 @@
         "acciones": {
           "editarOpciones": "Edit options",
           "irFinanzasMetodos": "Go to Finance › Payment methods",
-          "irTransporteTarifas": "Go to Transport › Shipping rates",
+          "irTransporteTarifas": "Go to Logistics › Zones and rates",
           "irPosPromociones": "Go to POS › Promotions and coupons",
           "irPosPedidos": "Go to POS › Online orders",
           "irPosReservas": "Go to POS › Bookings › Settings",
@@ -40540,7 +40558,8 @@
       "facturacion": "Electronic invoicing",
       "gym": "Memberships",
       "notificaciones": "Notifications",
-      "datos-offline": "Offline data"
+      "datos-offline": "Offline data",
+      "logistica": "Logistics"
     },
     "secciones": {
       "generalGeneral": {
@@ -40712,6 +40731,11 @@
         "titulo": "Payroll",
         "descripcion": "Payroll concepts, activation and chart of accounts",
         "palabras": "payroll, concepts, accounts, enable payroll, third parties, tax id, pre-settlement, human resources, hr"
+      },
+      "logisticaGeneral": {
+        "titulo": "Logistics",
+        "descripcion": "No movement, free shipping, default weight and delivery notices",
+        "palabras": "logistics, delivery, shipments, no movement, free shipping, weight, dimensions, cash on delivery, delivery code, delivery fee, zones"
       }
     },
     "ajustes": {
@@ -40726,6 +40750,30 @@
       "agenteVozDesinteres": {
         "titulo": "When the customer is not interested",
         "palabras": "interest, not interested, lost opportunity, close opportunity, exception, high value, stage"
+      },
+      "logisticaSinMovimiento": {
+        "titulo": "Shipments with no movement",
+        "palabras": "no movement, hours, delay, alert, tracking, issues"
+      },
+      "logisticaEnvioGratis": {
+        "titulo": "Default free shipping",
+        "palabras": "free shipping, web, POS, new zones"
+      },
+      "logisticaPesoOrganizacion": {
+        "titulo": "Organization weight and box",
+        "palabras": "weight, dimensions, box, volumetric, default"
+      },
+      "logisticaCodigoEntrega": {
+        "titulo": "Delivery code",
+        "palabras": "delivery code, cash on delivery, verify delivery"
+      },
+      "logisticaCargoDomicilio": {
+        "titulo": "Who can change the delivery fee",
+        "palabras": "delivery fee, POS, permission, change rate"
+      },
+      "logisticaAvisos": {
+        "titulo": "Delivery notices to the customer",
+        "palabras": "notices, on the way, delivered, issue, email, WhatsApp"
       }
     },
     "telefonia": {
@@ -53633,7 +53681,8 @@
       "gym": "Memberships",
       "integraciones": "Integrations",
       "timeline": "Timeline",
-      "datos-offline": "Offline data"
+      "datos-offline": "Offline data",
+      "logistica": "Logistics"
     },
     "pestanas": {
       "chatGeneral": "Tags and quick replies",
@@ -63501,5 +63550,1881 @@
     "error": "We couldn't load your branches.",
     "entrarSinElegir": "Continue without choosing a branch",
     "rechazada": "You no longer have access to that branch. Choose another one."
+  },
+  "logistica": {
+    "misEnvios": {
+      "titulo": "My deliveries",
+      "hoy": "Today · {fecha}",
+      "recargar": "Refresh my deliveries",
+      "cliente": "Customer",
+      "sinDireccion": "No address",
+      "cobrar": "Collect {monto}",
+      "cobrado": "Collected",
+      "pagado": "Paid",
+      "volver": "Back to my deliveries",
+      "guardando": "Saving…",
+      "sinDomiciliario": {
+        "titulo": "You don't have a courier profile",
+        "descripcion": "Ask whoever dispatches at your branch to register you as a courier with your account."
+      },
+      "error": {
+        "titulo": "Your deliveries couldn't be loaded",
+        "descripcion": "Check your signal and try again."
+      },
+      "ruta": {
+        "etiqueta": "Route summary",
+        "vacia": "No deliveries assigned today",
+        "terminada": "Route finished",
+        "parada": "Route in progress · stop {n} of {total}",
+        "estados": {
+          "sin_salir": "Not started",
+          "en_ruta": "On route",
+          "terminada": "Finished"
+        },
+        "porEntregar": "To deliver",
+        "entregados": "Delivered",
+        "aCobrar": "To collect",
+        "enMano": "Cash on hand",
+        "anuncio": "{n, plural, =0 {No deliveries left} one {# delivery left} other {# deliveries left}}"
+      },
+      "pestanas": {
+        "etiqueta": "Show deliveries",
+        "pendientes": "Pending {n}",
+        "entregados": "Delivered {n}",
+        "novedades": "Issues {n}"
+      },
+      "vacio": {
+        "pendientes": {
+          "titulo": "No pending deliveries",
+          "descripcion": "When one is assigned to you, it shows up here."
+        },
+        "entregados": {
+          "titulo": "Nothing delivered yet today",
+          "descripcion": "Today's deliveries show up here."
+        },
+        "novedades": {
+          "titulo": "No issues",
+          "descripcion": "Deliveries you couldn't complete show up here."
+        }
+      },
+      "tarjeta": {
+        "abrir": "Open delivery {numero} for {nombre}",
+        "intento": "Attempt {n}"
+      },
+      "terminarJornada": "End shift and settle",
+      "estados": {
+        "assigned": "To pick up",
+        "ready": "Ready to pick up",
+        "ready_for_pickup": "Ready to pick up",
+        "picked": "Picked up",
+        "dispatched": "Picked up",
+        "in_transit": "In transit",
+        "out_for_delivery": "On the way",
+        "failed_attempt": "Not delivered",
+        "delivered": "Delivered",
+        "returned": "Returned",
+        "cancelled": "Cancelled",
+        "otro": "Pending"
+      },
+      "promesa": {
+        "hora": "Promised {hora}",
+        "tarde": "+{minutos} min",
+        "faltan": "{minutos} min left",
+        "en": "in {minutos} min"
+      },
+      "contacto": {
+        "llamarA": "Call {nombre}",
+        "comoLlegarA": "Directions to {nombre}",
+        "llamar": "Call",
+        "whatsapp": "WhatsApp",
+        "comoLlegar": "Directions",
+        "googleMaps": "Open Google Maps",
+        "waze": "Open Waze",
+        "mensajeWhatsApp": "Hi, I'm the courier for your order {numero}."
+      },
+      "parada": {
+        "cargando": "Loading stop…",
+        "titulo": "Stop · {numero}",
+        "noEncontrada": {
+          "titulo": "This delivery isn't on your route",
+          "descripcion": "It may have been reassigned. Go back to your deliveries."
+        },
+        "tarde": "You're late compared with the promised time.",
+        "novedadAnterior": "Previous attempt: {motivo}",
+        "indicaciones": "Directions: {texto}",
+        "cobra": "Collect on delivery {monto}",
+        "medios": "Cash, card terminal or transfer accepted.",
+        "pideCodigo": "Ask the customer for the 4-digit delivery code.",
+        "llevas": "What you carry ({n})",
+        "envio": "Shipping",
+        "pasos": "Steps"
+      },
+      "origen": {
+        "tienda": "Online store",
+        "pos": "Point of sale",
+        "otro": "Delivery"
+      },
+      "pasos": {
+        "recogido": "I picked up the order",
+        "en_camino": "I'm on my way",
+        "entregado": "Delivered",
+        "hechoSr": "done",
+        "actualSr": "current step",
+        "pendienteSr": "pending",
+        "hecho": {
+          "picked": "Order picked up",
+          "out_for_delivery": "You're on your way: we notified the customer"
+        },
+        "boton": {
+          "recoger": "I picked up the order",
+          "en_camino": "I'm on my way",
+          "reintentar": "Retry: I'm on my way",
+          "entregar": "Delivered",
+          "noEntregado": "Couldn't deliver"
+        }
+      },
+      "errores": {
+        "titulo": "Couldn't save",
+        "ERROR": "Something went wrong. Check your signal and try again.",
+        "ENVIO_NO_ENCONTRADO": "The delivery no longer exists.",
+        "SIN_ACCESO_SEDE": "You don't have access to this delivery's branch.",
+        "SIN_ACCESO": "You don't have permission for this delivery.",
+        "TRANSICION_INVALIDA": "The delivery changed status. Refresh and try again.",
+        "ESTADO_NO_PERMITIDO": "That step can't be done from here.",
+        "YA_ENTREGADO": "This delivery was already delivered.",
+        "ESTADO_NO_ENTREGABLE": "This delivery can't be delivered in its current status.",
+        "RECEPTOR_REQUERIDO": "Write who received it.",
+        "CODIGO_NO_EMITIDO": "This delivery has no delivery code. Tell the store.",
+        "CODIGO_BLOQUEADO": "The code is locked. An administrator must reset it.",
+        "COBRO_REQUERIDO": "Record the cash-on-delivery payment.",
+        "MOTIVO_INVALIDO": "Choose what happened.",
+        "ESTADO_SIN_NOVEDAD": "This delivery can't take an issue in its current status.",
+        "ENVIO_AJENO": "This shipment is no longer assigned to you."
+      },
+      "entregar": {
+        "titulo": "Deliver {numero}",
+        "noEntregable": {
+          "titulo": "This delivery can't be delivered",
+          "descripcion": "It's already delivered, returned or cancelled."
+        },
+        "hecho": "Delivery recorded",
+        "confirmar": "Confirm delivery",
+        "confirmarCon": "Confirm delivery · {monto}",
+        "nota": {
+          "efectivo": "Cash received",
+          "cambio": "Change",
+          "aprobacion": "Card terminal approval"
+        },
+        "prueba": {
+          "titulo": "1. Proof of delivery",
+          "codigo": "Code",
+          "foto": "Photo",
+          "firma": "Signature"
+        },
+        "codigo": {
+          "etiqueta": "Delivery code",
+          "ayuda": "Ask the customer for the code: they got it by WhatsApp and email when the order left.",
+          "falta": "Enter the 4 digits the customer tells you.",
+          "incorrecto": "{n, plural, one {Wrong code. # attempt left.} other {Wrong code. # attempts left.}}",
+          "bloqueado": {
+            "titulo": "Code locked",
+            "descripcion": "It was wrong {max} times. Call the store: an administrator must reset the code."
+          },
+          "sigueObligatorio": "The delivery code is still required for cash on delivery."
+        },
+        "firma": {
+          "etiqueta": "Recipient's signature",
+          "borrar": "Clear signature",
+          "falta": "Ask the recipient to sign."
+        },
+        "foto": {
+          "titulo": "Photo of the delivered package",
+          "opcional": "Optional with code",
+          "obligatoria": "Required without code",
+          "quitar": "Remove photo",
+          "falta": "Take a photo of the delivered package."
+        },
+        "receptor": {
+          "etiqueta": "Who received it?",
+          "falta": "Write who received it.",
+          "relacion": "Relationship to the customer",
+          "relaciones": {
+            "customer": "Customer",
+            "family": "Family",
+            "doorman": "Front desk",
+            "other": "Other"
+          }
+        },
+        "cobro": {
+          "titulo": "2. Collect cash on delivery",
+          "medio": "Payment method",
+          "medios": {
+            "cash": "Cash",
+            "card": "Card terminal",
+            "transfer": "Transfer"
+          },
+          "recibido": "Cash received",
+          "insuficiente": "The cash doesn't cover the total.",
+          "rapidos": "Quick amounts",
+          "exacto": "Exact",
+          "cambio": "Change to give back",
+          "aprobacion": "Approval number",
+          "faltaAprobacion": "Write the card terminal approval number.",
+          "comprobante": "Photo of the receipt",
+          "comprobanteAyuda": "Take a photo of the transfer on the customer's phone",
+          "faltaMedio": "Choose how the customer paid.",
+          "nota": "Card terminal: write the approval number. Transfer: take a photo of the receipt."
+        }
+      },
+      "novedad": {
+        "titulo": "Couldn't deliver",
+        "noAplica": {
+          "titulo": "This delivery can't take an issue",
+          "descripcion": "First pick it up and head out."
+        },
+        "quePaso": "What happened?",
+        "motivos": {
+          "not_home": {
+            "titulo": "Customer not home",
+            "descripcion": "Nobody opens or answers"
+          },
+          "wrong_address": {
+            "titulo": "Wrong address",
+            "descripcion": "It doesn't exist or doesn't match"
+          },
+          "incomplete_address": {
+            "titulo": "Incomplete address",
+            "descripcion": "Missing number or apartment"
+          },
+          "rejected": {
+            "titulo": "Rejected",
+            "descripcion": "The customer refused it"
+          },
+          "damaged": {
+            "titulo": "Damaged package",
+            "descripcion": "It arrived in bad condition"
+          },
+          "lost": {
+            "titulo": "Lost package",
+            "descripcion": "The package can't be found"
+          },
+          "access_denied": {
+            "titulo": "No access",
+            "descripcion": "Not allowed into the building or complex"
+          },
+          "business_closed": {
+            "titulo": "Business closed",
+            "descripcion": "The place was closed"
+          },
+          "weather": {
+            "titulo": "Weather",
+            "descripcion": "Rain or road closed"
+          },
+          "vehicle_issue": {
+            "titulo": "Vehicle problem",
+            "descripcion": "Flat tire or breakdown on the way"
+          },
+          "customer_request": {
+            "titulo": "Customer request",
+            "descripcion": "The customer asked for another time or day"
+          },
+          "other": {
+            "titulo": "Other",
+            "descripcion": "Write the reason"
+          }
+        },
+        "nota": "Note for the store",
+        "faltaNota": "Write what happened.",
+        "foto": {
+          "titulo": "Evidence photo",
+          "ayuda": "Your location is saved automatically"
+        },
+        "yAhora": "What now?",
+        "plan": {
+          "hoy": "Today {hora}",
+          "manana": "Tomorrow",
+          "devolver": "Return to the branch",
+          "detalleHora": "New time: {hora}"
+        },
+        "aviso": {
+          "reintento": "The store sees the issue and the new time in Logistics. If the retry also fails, it decides what to do.",
+          "devolver": "The package goes back to the branch: hand it in at the end of your shift."
+        },
+        "guardar": "Save and continue the route",
+        "hecho": "Issue recorded"
+      },
+      "finJornada": {
+        "titulo": "End of shift",
+        "cifras": "Day summary",
+        "entregados": "Delivered",
+        "noEntregados": "Not delivered",
+        "porDevolver": "To return",
+        "paquetes": "{n, plural, one {# package} other {# packages}}",
+        "cobraste": "What you collected",
+        "sinCobros": "You didn't collect any cash on delivery today.",
+        "medios": {
+          "cash": "{n, plural, one {Cash · # delivery} other {Cash · # deliveries}}",
+          "card": "{n, plural, one {Card terminal · # voucher} other {Card terminal · # vouchers}}",
+          "transfer": "{n, plural, one {Transfer · # receipt} other {Transfer · # receipts}}",
+          "qr": "{n, plural, one {QR · # payment} other {QR · # payments}}"
+        },
+        "totalCobrado": "Total collected",
+        "entregaEnCaja": "Hand in at the register",
+        "entregaEnCajaAyuda": "Only cash goes through your hands. Card terminal and transfers are reconciled at the branch with the voucher and the receipt.",
+        "pendientes": "Pending",
+        "reprogramadoPara": "rescheduled · {fecha}",
+        "reprogramadoHoy": "retry today",
+        "paqueteDevolver": "Package to return",
+        "enviado": {
+          "titulo": "Summary sent",
+          "descripcion": "Your shift is closed. Hand in the cash at the branch register: it's received in Logistics › Settlements."
+        },
+        "notaCuadre": "Whoever receives the money sees it in Logistics › Settlements and puts it in the branch's open register.",
+        "enviar": "Send summary for settlement",
+        "errorEnviar": "Your shift couldn't be closed. Try again."
+      }
+    },
+    "domiciliario": {
+      "titulo": "Couriers",
+      "subtitulo": "Who delivers, what they're doing and how their day is going",
+      "migaLogistica": "Logistics",
+      "sinNombre": "No name",
+      "externo": "External",
+      "empleado": "Employee",
+      "noCobraContraentrega": "Doesn't collect cash on delivery",
+      "todasLasSedes": "All branches",
+      "buscar": "Search courier…",
+      "sinResultados": "No courier matches the search.",
+      "etiquetaFila": "{nombre}, {estado}",
+      "errorAccion": "The change couldn't be saved",
+      "estados": {
+        "libre": "Available",
+        "en_ruta": "On route",
+        "fuera_de_turno": "Off shift",
+        "inactivo": "Inactive"
+      },
+      "carga": {
+        "sinCarga": "No deliveries today",
+        "resumen": "{entregados} of {total} delivered{novedades, plural, =0 {} one { · # issue} other { · # issues}}"
+      },
+      "columnas": {
+        "domiciliario": "Courier",
+        "celular": "Mobile",
+        "vehiculo": "Vehicle",
+        "sede": "Branch",
+        "estado": "Status",
+        "carga": "Today's load",
+        "porCuadrar": "To settle"
+      },
+      "kpis": {
+        "etiqueta": "Couriers today",
+        "libres": "Available",
+        "enRuta": "On route",
+        "entregasHoy": "{n, plural, one {# delivery today} other {# deliveries today}}",
+        "fuera": "Off shift",
+        "porCuadrar": "To settle"
+      },
+      "acciones": {
+        "registrar": "Register courier",
+        "recargar": "Refresh",
+        "verFicha": "View profile",
+        "llamar": "Call",
+        "whatsapp": "WhatsApp",
+        "verCuadres": "View settlements",
+        "activar": "Activate",
+        "desactivar": "Deactivate",
+        "activado": "{nombre} is now active",
+        "desactivado": "{nombre} is now inactive",
+        "noDesactivarEnRuta": "On route: wait until their deliveries are done."
+      },
+      "vacio": {
+        "titulo": "No couriers yet",
+        "descripcion": "Register whoever delivers, even without a contract in Human resources."
+      },
+      "error": {
+        "titulo": "Couriers couldn't be loaded",
+        "descripcion": "Try again in a moment."
+      },
+      "sinPermiso": {
+        "titulo": "No permission",
+        "descripcion": "Cashiers and administrators register or deactivate couriers."
+      },
+      "ficha": {
+        "cargaDelDia": "Today's load",
+        "asignados": "Assigned",
+        "enCamino": "Carrying",
+        "entregadosHoy": "Delivered today",
+        "porCuadrar": "To settle",
+        "sinEnvios": "No deliveries in progress.",
+        "datos": "Courier details",
+        "documento": "ID document",
+        "contraentrega": "Collects cash on delivery",
+        "si": "Yes",
+        "no": "No",
+        "misEnvios": "My deliveries",
+        "conCuenta": "Has an account",
+        "sinCuenta": "No account: can't see My deliveries",
+        "licencia": "License",
+        "sinLicencia": "No license on file"
+      },
+      "alta": {
+        "titulo": "Register courier",
+        "descripcion": "Available to assign right away. License and documents are completed later in Transport › Drivers.",
+        "registrar": "Register",
+        "guardando": "Registering…",
+        "hecho": "{nombre} was registered",
+        "nombre": "Full name",
+        "celular": "Mobile",
+        "celularAyuda": "To call them and message them on WhatsApp.",
+        "tipoDocumento": "Type",
+        "documento": "ID number",
+        "sede": "Branch",
+        "elegirSede": "Choose the branch",
+        "vehiculo": "Vehicle (optional)",
+        "vehiculoAyuda": "You can leave it empty. Plate and insurance can be added later if needed.",
+        "sinVehiculo": "No vehicle",
+        "vehiculos": {
+          "motorcycle": "Motorcycle",
+          "bicycle": "Bicycle",
+          "car": "Car",
+          "van": "Van",
+          "on_foot": "On foot",
+          "other": "Other"
+        },
+        "cobraContraentrega": "Collects cash on delivery?",
+        "cobraContraentregaAyuda": "If off, cash-on-delivery orders aren't assigned to them.",
+        "esEmpleado": "Is a company employee",
+        "esEmpleadoAyuda": "If so, they're linked to Human resources. If not, they're an external courier.",
+        "traerDeRrhh": "Bring from Human resources",
+        "elegirEmpleado": "Choose the employee",
+        "sinEmpleados": "There are no active employees without a courier profile.",
+        "cargando": "Loading…",
+        "cuenta": "Account for My deliveries (optional)",
+        "cuentaAyuda": "If they're already a member of the organization, link them so they see their deliveries on their phone.",
+        "sinCuenta": "No account for now",
+        "errores": {
+          "nombre": "Write the full name.",
+          "celular": "Write a valid mobile number.",
+          "documento": "Write the ID number.",
+          "branchId": "Choose the branch.",
+          "empleo": "Choose the employee from Human resources.",
+          "servidor": {
+            "SIN_PERMISO": "You don't have permission to register couriers.",
+            "DATOS_INVALIDOS": "Check the form details.",
+            "SEDE": "The branch doesn't belong to this organization.",
+            "EMPLEO": "That employee doesn't belong to this organization.",
+            "USUARIO": "That account isn't an active member of the organization.",
+            "DUPLICADO": "That employee or account already has a courier profile.",
+            "EMPLEO_AJENO": "That employee belongs to another organization.",
+            "ERROR": "Couldn't register. Try again."
+          }
+        }
+      }
+    },
+    "cuadres": {
+      "titulo": "Settlements",
+      "subtitulo": "What couriers collected versus what goes into the register",
+      "migaLogistica": "Logistics",
+      "sinNombre": "Courier",
+      "hoy": "Today",
+      "ayer": "Yesterday",
+      "buscar": "Search courier…",
+      "sinResultados": "No settlement matches the search.",
+      "nota": "Expected = cash on delivery of delivered orders. Difference = received minus expected. A shortage is recorded with reason and responsible party, without a journal entry, until the Accountant decides how to book it.",
+      "etiquetaFila": "{nombre}, {estado}",
+      "nadaPorRecibir": "There's no money to receive.",
+      "filtroDomiciliario": "Only {nombre}",
+      "entregasN": "{n, plural, one {# delivery} other {# deliveries}}",
+      "faltan": "Short {monto}",
+      "sobran": "Over {monto}",
+      "tabs": {
+        "etiqueta": "Settlement type",
+        "domiciliarios": "Couriers",
+        "transportadoras": "Carriers and third parties · Phase 2–3",
+        "transportadorasAviso": "Carriers and third parties arrive in phases 2 and 3, once one is connected. There are none today."
+      },
+      "kpis": {
+        "etiqueta": "Today's settlements",
+        "porRecibir": "To receive",
+        "domiciliariosPorRecibir": "{n, plural, one {from # courier} other {from # couriers}}",
+        "nadaPorRecibir": "All received",
+        "cuadradosHoy": "Settled today",
+        "recibidoHoy": "{monto} already in the register",
+        "conDiferencia": "With difference",
+        "faltante": "{monto} short · with reason",
+        "sinDiferencias": "No differences today",
+        "abiertosAnteriores": "Open from previous days",
+        "cerrarPendientes": "Receive them to close them",
+        "todoCerrado": "Everything closed through yesterday"
+      },
+      "columnas": {
+        "fecha": "Date",
+        "domiciliario": "Courier",
+        "sede": "Branch",
+        "entregas": "Deliveries",
+        "esperado": "Expected",
+        "efectivo": "Cash",
+        "datafono": "Card terminal",
+        "transferencia": "Transfer",
+        "diferencia": "Difference",
+        "motivo": "Reason",
+        "estado": "Status"
+      },
+      "estados": {
+        "por_recibir": "To receive",
+        "abierto": "Open",
+        "cuadrado": "Settled",
+        "con_diferencia": "With difference",
+        "anulado": "Voided"
+      },
+      "acciones": {
+        "recibir": "Receive money",
+        "recibirDe": "Receive money from {nombre}",
+        "soloEste": "Show only this courier",
+        "anular": "Void settlement",
+        "recargar": "Refresh",
+        "exportar": "Export"
+      },
+      "vacio": {
+        "titulo": "No settlements yet",
+        "descripcion": "When a courier delivers a cash-on-delivery order, the payment shows up here to receive it at the register."
+      },
+      "error": {
+        "titulo": "Settlements couldn't be loaded",
+        "descripcion": "Try again in a moment."
+      },
+      "medioReportado": {
+        "cash": "Cash",
+        "card": "Card terminal",
+        "transfer": "Transfer",
+        "qr": "QR"
+      },
+      "errores": {
+        "ERROR": "Couldn't complete. Try again.",
+        "NO_OPEN_CASH_SESSION": "There's no open register at the branch. Open one in POS › Registers to receive the cash.",
+        "SEDE_INVALIDA": "The branch isn't valid.",
+        "DOMICILIARIO_INVALIDO": "The courier doesn't belong to this organization.",
+        "SIN_PERMISO": "Cashiers and administrators receive settlements.",
+        "SIN_ACCESO_SEDE": "You don't have access to this branch.",
+        "CUADRE_CERRADO": "This settlement is already closed.",
+        "CUADRE_NO_ENCONTRADO": "The settlement no longer exists.",
+        "CUADRE_CON_RECIBOS": "It can't be voided: money was already received.",
+        "LINEA_NO_ENCONTRADA": "A delivery in the settlement no longer exists. Refresh the screen.",
+        "LINEA_YA_RECIBIDA": "A delivery was already received. Refresh the screen.",
+        "LINEAS_PENDIENTES": "Some deliveries are still to be received.",
+        "MONTO_INVALIDO": "Check the counted amounts.",
+        "MONTO_MAYOR_AL_ESPERADO": "The counted amount can't exceed the expected amount.",
+        "MOTIVO_REQUERIDO": "The reason for the difference is missing.",
+        "MOTIVO_Y_RESPONSABLE_REQUERIDOS": "The reason and the responsible party for the difference are missing.",
+        "METODO_INVALIDO": "The payment method isn't active.",
+        "FACTURA_REQUERIDA": "The order's invoice is missing.",
+        "FACTURA_DE_VENTA_NO_ENCONTRADA": "The sale has no invoice.",
+        "PEDIDO_DE_PASARELA": "The order was paid online: it isn't collected at the register.",
+        "PEDIDO_SIN_CONFIRMAR": "The order isn't confirmed yet.",
+        "ORIGEN_NO_SOPORTADO": "This delivery doesn't come from a sale or an online order.",
+        "RECIBOS_INVALIDOS": "The settlement amounts are not valid. Refresh the screen and count again."
+      },
+      "elegir": {
+        "titulo": "Who are you receiving from?",
+        "descripcion": "Choose the courier bringing the money.",
+        "cerrar": "Close"
+      },
+      "anular": {
+        "titulo": "Void settlement",
+        "descripcion": "{nombre}'s open settlement will be voided. Their payments go back to be received.",
+        "confirmar": "Void settlement",
+        "hecho": "Settlement voided"
+      },
+      "recibir": {
+        "titulo": "Receive money · {nombre}",
+        "descripcion": "{n, plural, one {# delivery} other {# deliveries}} · {sede}",
+        "cancelar": "Cancel",
+        "confirmar": "Receive and close settlement",
+        "procesando": "Receiving {hechas} of {total}…",
+        "lineasNuevas": "New payments came in while you were counting. Check the amounts and confirm again.",
+        "entraALaCaja": "Goes into the register",
+        "caja": "Register {caja} · {sede}",
+        "cajaAbierta": "Opened at {hora}",
+        "abierta": "Open",
+        "sinCajaAyuda": "Open a register in POS › Registers to receive the cash.",
+        "tabla": {
+          "etiqueta": "Expected and counted by payment method",
+          "medio": "Method",
+          "esperado": "Expected",
+          "contado": "Counted",
+          "diferencia": "Difference",
+          "contadoDe": "Counted in {medio}"
+        },
+        "medios": {
+          "efectivo": "{n, plural, =0 {Cash} one {Cash · # delivery} other {Cash · # deliveries}}",
+          "datafono": "{n, plural, =0 {Card terminal} one {Card terminal · # voucher} other {Card terminal · # vouchers}}",
+          "transferencia": "{n, plural, =0 {Transfer} one {Transfer · # delivery} other {Transfer · # deliveries}}"
+        },
+        "faltan": "Short {monto}",
+        "sobran": "Over {monto}",
+        "sobranteAyuda": "An overage (for example, a tip in the envelope) doesn't go through the settlement: record it separately at the register.",
+        "bloqueos": {
+          "sinCaja": "There's no open register at the branch",
+          "sinLineas": "There are no deliveries to receive",
+          "sobrante": "The counted amount is higher than expected"
+        },
+        "diferencia": {
+          "titulo": "Reason for the difference",
+          "motivo": "Reason",
+          "elegirMotivo": "Choose the reason",
+          "faltaMotivo": "Choose the reason for the difference.",
+          "nota": "Note",
+          "faltaNota": "Write what happened.",
+          "responsable": "Responsible party",
+          "faltaResponsable": "Choose the responsible party.",
+          "sinAsiento": "The shortage is recorded with reason and responsible party, without a journal entry, until the Accountant decides how to book it."
+        },
+        "motivos": {
+          "cambio_de_mas": "Too much change given",
+          "cliente_pago_menos": "The customer paid less",
+          "dinero_perdido": "Money lost",
+          "error_conteo": "Counting error",
+          "otro": "Other"
+        },
+        "responsables": {
+          "courier": "The courier",
+          "cashier": "The register",
+          "customer": "The customer",
+          "other": "Other"
+        },
+        "envios": "Deliveries in the settlement ({n})",
+        "verTodos": "Show {n} more",
+        "verMenos": "Show less",
+        "pie": {
+          "entranACaja": "Goes into Register {caja}: {monto}",
+          "sinCaja": "No open register at the branch",
+          "datafono": "Card terminal {monto}: reconciled with the bank"
+        },
+        "hecho": "Settlement closed: the money is in the register",
+        "hechoConDiferencia": "Settlement closed with a shortage of {monto}"
+      }
+    },
+    "zonas": {
+      "pagina": {
+        "migaLogistica": "Logistics",
+        "pestanas": {
+          "etiqueta": "Logistics settings sections",
+          "zonas": "Zones and rates",
+          "reglas": "Dispatch rules"
+        }
+      },
+      "titulo": "Delivery zones and rates",
+      "subtitulo": "Where you deliver, how much you charge and how long it takes, per branch",
+      "simulador": "Simulator",
+      "nueva": "New zone",
+      "buscar": "Search zone, neighborhood or municipality",
+      "avisoServidor": {
+        "titulo": "The server always recalculates the delivery fee",
+        "descripcion": "Checkout and the POS only display the rate. When the order is created, the server looks up the zone again from the address and charges that amount; if the browser sends a different one (for example $ 0), it is ignored and logged."
+      },
+      "kpi": {
+        "etiqueta": "Zones summary",
+        "activas": "Active zones",
+        "activasValor": "{activas} of {total}",
+        "pausadas": "{n, plural, =0 {None paused} one {# paused} other {# paused}}",
+        "sinZona": "Deliveries without a zone (30 days)",
+        "sinZonaDetalle": "Charged without a zone or with the general rate",
+        "tiempo": "Average promised time",
+        "minutos": "{n} min",
+        "tiempoDetalle": "{n, plural, =0 {No promise} one {# zone with a promise} other {# zones with a promise}}",
+        "gratis": "Free delivery",
+        "gratisValor": "from {valor}",
+        "sinGratis": "No free delivery"
+      },
+      "todasLasSedes": "All branches",
+      "tarifaGeneral": "General rate · outside zones",
+      "copia": "{nombre} (copy)",
+      "toast": {
+        "guardada": "Zone saved",
+        "eliminada": "Zone deleted",
+        "duplicada": "Zone duplicated (left paused)",
+        "pausada": "Zone paused",
+        "activada": "Zone activated",
+        "error": "Couldn't save. Check the details or your permissions."
+      },
+      "cobertura": {
+        "general": "Everything not covered by another zone",
+        "ninguna": "No coverage yet",
+        "polygon": "{n, plural, one {Polygon} other {Polygons (#)}}",
+        "neighborhood": "{n, plural, one {Neighborhood (#)} other {Neighborhoods (#)}}",
+        "postal_code": "{n, plural, one {Postal code (#)} other {Postal codes (#)}}",
+        "municipality": "{n, plural, one {DANE municipality} other {DANE municipalities (#)}}"
+      },
+      "acciones": {
+        "editar": "Edit zone",
+        "duplicar": "Duplicate zone",
+        "simular": "Simulate delivery",
+        "pausar": "Pause zone",
+        "activar": "Activate zone",
+        "eliminar": "Delete zone…"
+      },
+      "gratisAplica": {
+        "web": "web",
+        "pos": "POS",
+        "both": "web and POS"
+      },
+      "columnas": {
+        "zona": "Zone",
+        "cobertura": "Coverage",
+        "tarifa": "Rate",
+        "tiempo": "Promised time",
+        "minimo": "Minimum order",
+        "gratis": "Free from",
+        "corte": "Cutoff",
+        "estado": "Status"
+      },
+      "estado": {
+        "activa": "Active",
+        "pausada": "Paused"
+      },
+      "vacio": {
+        "titulo": "No delivery zones yet",
+        "descripcion": "Without zones, checkout and the POS charge as they do today (the site's flat rate or Transport rates). Create the first one to charge by neighborhood, municipality or postal code."
+      },
+      "mapa": {
+        "titulo": "Zone map",
+        "pendiente": "Drawing zones on the map comes in the next release. For now each zone is built from neighborhoods, DANE municipalities and postal codes, and quotes already respect any existing polygons."
+      },
+      "eliminar": {
+        "titulo": "Delete the zone?",
+        "descripcion": "“{nombre}” and its coverage will be deleted. Addresses in that zone fall into the next zone or the general rate.",
+        "confirmar": "Delete zone"
+      },
+      "editor": {
+        "nueva": "New zone",
+        "subtitulo": "Coverage, rate and delivery promise",
+        "cancelar": "Cancel",
+        "guardar": "Save zone",
+        "cobertura": "Coverage",
+        "tipos": {
+          "neighborhood": "Neighborhoods",
+          "municipality": "DANE municipalities",
+          "postal_code": "Postal codes",
+          "polygon": "Polygons on the map"
+        },
+        "poligonoPendiente": {
+          "titulo": "Polygon on the map: coming soon",
+          "descripcion": "In the meantime, build the zone with neighborhoods, DANE municipalities or postal codes. If two zones overlap, the one with the lowest priority number wins."
+        },
+        "campo": {
+          "neighborhood": "Neighborhood",
+          "municipality": "DANE code",
+          "postal_code": "Postal code"
+        },
+        "placeholder": {
+          "neighborhood": "Chapinero Alto",
+          "municipality": "11001",
+          "postal_code": "110231"
+        },
+        "municipioOpcional": "DANE municipality (optional)",
+        "etiquetaOpcional": "Display name (optional)",
+        "agregar": "Add",
+        "sinUbicaciones": "There's nothing of this type in the zone yet.",
+        "quitar": "Remove {nombre}",
+        "poligonoSinNombre": "Unnamed polygon",
+        "coberturaAyuda": "Neighborhoods are matched ignoring accents and capitalization. The DANE code has 5 digits (05001); if you type 4, it's padded.",
+        "datos": "Zone details",
+        "nombre": "Name",
+        "sede": "Dispatching branch",
+        "sedeAyuda": "Orders in this zone ship from this branch.",
+        "prioridad": "Priority",
+        "prioridadAyuda": "If two zones overlap, the lower number wins.",
+        "esGeneral": "This is the general rate",
+        "esGeneralAyuda": "Charged to addresses that don't fall in any zone. One per branch.",
+        "tarifaPromesa": "Rate and promise",
+        "tarifa": "Rate",
+        "minimo": "Minimum order",
+        "tiempoMin": "Time from",
+        "tiempoMax": "Time up to",
+        "textoPromesa": "Promise in words (optional)",
+        "textoPromesaAyuda": "Replaces the minutes, for example “Same day” or “Next day”.",
+        "textoPromesaPlaceholder": "Same day",
+        "gratisDesde": "Free delivery from",
+        "gratisDesdeAyuda": "Empty: no free delivery in this zone.",
+        "gratisAplica": "Free delivery applies to",
+        "gratisAplicaAyuda": "By default only in the online store. Manual orders from Online orders count as POS.",
+        "corte": "Cutoff time",
+        "corteAyuda": "Anything placed later ships the next day, and checkout says so.",
+        "diasReparto": "Delivery days",
+        "dias": {
+          "1": "Mon",
+          "2": "Tue",
+          "3": "Wed",
+          "4": "Thu",
+          "5": "Fri",
+          "6": "Sat",
+          "7": "Sun"
+        },
+        "estado": "Status",
+        "activa": "Zone active",
+        "activaAyuda": "If you turn it off, addresses fall into the next zone or the general rate.",
+        "errores": {
+          "nombre_requerido": "Enter the zone name.",
+          "tarifa_invalida": "The rate can't be negative.",
+          "promesa_invalida": "The “up to” time can't be less than “from”.",
+          "minimo_invalido": "The minimum order can't be negative.",
+          "envio_gratis_invalido": "Free delivery must be greater than zero.",
+          "aplica_gratis_invalido": "Choose where free delivery applies.",
+          "dias_invalidos": "Choose at least one delivery day.",
+          "corte_invalido": "The cutoff time isn't valid.",
+          "zona_duplicada": "A zone with that name or a general rate already exists for that branch."
+        },
+        "errorUbicacion": {
+          "tipo_invalido": "That coverage type doesn't exist.",
+          "municipio_invalido": "The DANE code must have 5 digits.",
+          "barrio_requerido": "Enter the neighborhood.",
+          "codigo_postal_invalido": "The postal code isn't valid.",
+          "poligono_invalido": "The polygon isn't valid.",
+          "repetida": "That's already in the zone."
+        }
+      },
+      "peso": {
+        "alerta": {
+          "titulo": "{n} of {total} products have a weight",
+          "descripcion": "Without weight you cannot quote by weight or create carrier labels. Set a weight per category to cover almost all of them today, then complete the products that weigh differently.",
+          "accion": "Complete in Inventory"
+        },
+        "categoria": {
+          "titulo": "Shipping",
+          "descripcion": "Default weight and box for products in this category that do not have their own. Used to quote shipments.",
+          "peso": "Default weight",
+          "pesoAyuda": "Empty: the organization’s is used (Settings › Logistics).",
+          "medidas": {
+            "default_length_cm": "Length",
+            "default_width_cm": "Width",
+            "default_height_cm": "Height"
+          }
+        },
+        "ficha": {
+          "hereda": "Inherits from {nombre}",
+          "vacioUsa": "Empty: uses {peso} kg from the {nombre} category",
+          "seUsa": "Weight used",
+          "sinPeso": "No weight",
+          "volumetrico": "Volumetric weight",
+          "cobra": "The carrier charges",
+          "fuente": {
+            "producto": "from the product",
+            "categoria": "from the {nombre} category",
+            "organizacion": "from the organization"
+          }
+        }
+      },
+      "ajustes": {
+        "cargando": "Loading…",
+        "errorCargar": "Could not read the logistics settings",
+        "guardado": "Logistics settings saved",
+        "errorGuardar": "Could not save. Check your permissions.",
+        "soloLectura": "Read only: changing these settings requires the “Configure the organization” permission.",
+        "sinMovimiento": {
+          "titulo": "Shipments with no movement",
+          "descripcion": "After how many hours without updates an in-progress shipment shows as “no movement” in Tracking.",
+          "propio": "Own courier",
+          "transportadora": "Carrier"
+        },
+        "envioGratis": {
+          "titulo": "Default free shipping",
+          "descripcion": "The value “Free shipping applies to” starts with in each new zone. Each zone can change it."
+        },
+        "peso": {
+          "titulo": "Organization weight and box",
+          "descripcion": "Last resort for quoting: used only when the product and its category have no weight. Category weight is set in Inventory › Categories.",
+          "default_weight_kg": "Weight",
+          "default_length_cm": "Length",
+          "default_width_cm": "Width",
+          "default_height_cm": "Height"
+        },
+        "informativos": "How it works",
+        "codigoEntrega": {
+          "titulo": "Delivery code",
+          "descripcion": "Always on for cash on delivery with your own courier: the customer sees it on the tracking page and reads it out on receipt. Five wrong attempts lock it; an administrator resets it."
+        },
+        "cargoDomicilio": {
+          "titulo": "Who can change the delivery fee",
+          "descripcion": "In the POS and manual orders, the fee is filled by the zone. Changing it requires the “Configure the organization” permission and records who changed it.",
+          "accion": "View roles"
+        },
+        "avisos": {
+          "titulo": "Delivery notices to the customer",
+          "descripcion": "“On the way”, “Delivered” and “Issue” go out by email with the tracking link. WhatsApp goes out once the organization’s channel is connected.",
+          "accion": "Open notices"
+        },
+        "zonas": {
+          "titulo": "Zones, rates and dispatch rules",
+          "descripcion": "They are module catalogs: edit them in Logistics.",
+          "accion": "Go to zones"
+        }
+      }
+    },
+    "reglas": {
+      "titulo": "Dispatch rules",
+      "subtitulo": "Who delivers each order: the first rule that matches decides",
+      "nueva": "New rule",
+      "probar": "Test with an order",
+      "todasLasSedes": "All branches",
+      "copia": "{nombre} (copy)",
+      "siempreAplica": "No conditions: applies to everything",
+      "activarRegla": "Rule {nombre} active",
+      "chips": {
+        "zona": "Zone: {valor}",
+        "canal": "Channel: {valor}",
+        "metodo": "Payment: {valor}",
+        "valor": "Amount: {desde} to {hasta}",
+        "peso": "Weight: {desde} to {hasta} kg",
+        "dias": "Days: {valor}",
+        "horario": "Hours: {desde} to {hasta}"
+      },
+      "canales": {
+        "web": "Online store",
+        "pos": "POS",
+        "manual": "Manual order"
+      },
+      "dias": {
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat",
+        "7": "Sun"
+      },
+      "toast": {
+        "guardada": "Rule saved",
+        "duplicada": "Rule duplicated (left paused)",
+        "eliminada": "Rule deleted",
+        "error": "Couldn't save. Check the details or your permissions."
+      },
+      "acciones": {
+        "editar": "Edit rule",
+        "duplicar": "Duplicate rule",
+        "probar": "Test this rule",
+        "eliminar": "Delete rule…",
+        "propio": "Own courier"
+      },
+      "columnas": {
+        "orden": "Order",
+        "condiciones": "If all of this is true…",
+        "entrega": "…then it's delivered by",
+        "activa": "Active"
+      },
+      "kpi": {
+        "etiqueta": "Rules summary",
+        "activas": "Active rules",
+        "activasValor": "{activas} of {total}",
+        "pausadas": "{n, plural, =0 {None paused} one {# paused} other {# paused}}",
+        "fase": "Who delivers",
+        "faseValor": "Own courier",
+        "faseDetalle": "Third parties and carriers arrive in Phase 2"
+      },
+      "vacio": {
+        "titulo": "No dispatch rules",
+        "descripcion": "Without rules, every delivery order is taken by the branch's own courier."
+      },
+      "final": {
+        "titulo": "If no rule applies",
+        "entrega": "The branch's own courier · left “unassigned” for review"
+      },
+      "como": {
+        "titulo": "How they're evaluated",
+        "descripcion": "From top to bottom: first the branch's rules, then the ones for all branches, by order number. The first one that matches decides; the result is recorded on the shipment's timeline."
+      },
+      "eliminar": {
+        "titulo": "Delete the rule?",
+        "descripcion": "“{nombre}” will be deleted. The orders it decided move on to the next rule.",
+        "confirmar": "Delete rule"
+      },
+      "hoja": {
+        "tituloNueva": "New rule",
+        "tituloEditar": "Rule {orden} · {nombre}",
+        "subtitulo": "{total, plural, =0 {First rule} one {# rule in total} other {# rules in total}}",
+        "nombre": "Rule name",
+        "errorNombre": "Enter the rule name.",
+        "prioridad": "Order",
+        "sede": "Branch",
+        "siSeCumple": "If all of this is true",
+        "sinCondiciones": "With no conditions, the rule applies to every order.",
+        "campo": "Condition field",
+        "campos": {
+          "zona": "Zone",
+          "canal": "Channel",
+          "metodo_pago": "Payment method",
+          "valor": "Order amount",
+          "peso": "Weight",
+          "dias": "Days",
+          "horario": "Hours"
+        },
+        "operador": {
+          "zona": "is",
+          "canal": "is",
+          "metodo_pago": "is",
+          "valor": "between",
+          "peso": "between",
+          "dias": "is",
+          "horario": "between"
+        },
+        "desde": "From",
+        "hasta": "To",
+        "sinZonas": "No zones yet: create them in “Zones and rates”.",
+        "quitarCondicion": "Remove the {campo} condition",
+        "agregarCondicion": "Add condition",
+        "camposAyuda": "Fields: zone, channel (online store, POS, manual order), payment method, order amount, weight, days and hours.",
+        "entonces": "Then it's delivered by",
+        "propioAyuda": "Assigned in Logistics › Shipments.",
+        "salidas": {
+          "tercero": {
+            "titulo": "Last-mile third party",
+            "ayuda": "Local courier service depending on the country",
+            "fase": "Phase 3"
+          },
+          "fija": {
+            "titulo": "Fixed carrier",
+            "ayuda": "Always the same carrier",
+            "fase": "Phase 2"
+          },
+          "barata": {
+            "titulo": "The cheapest",
+            "ayuda": "Quotes across connected carriers and picks the lowest price",
+            "fase": "Phase 2"
+          },
+          "rapida": {
+            "titulo": "The fastest",
+            "ayuda": "Quotes and picks the shortest promised time",
+            "fase": "Phase 2"
+          }
+        },
+        "cancelar": "Cancel",
+        "guardar": "Save rule"
+      },
+      "prueba": {
+        "titulo": "Test the rules with an order",
+        "descripcion": "It doesn't create the shipment: it only shows which rule would decide.",
+        "probar": "Test",
+        "otro": "Test another order",
+        "cerrar": "Close",
+        "sede": "Ships from",
+        "metodo": "Payment method",
+        "sinMetodo": "No method",
+        "ciudad": "City or municipality",
+        "valor": "Order amount",
+        "peso": "Weight",
+        "canal": "Channel",
+        "recorrido": "Rule walkthrough",
+        "pasos": {
+          "decide": "Applies: this rule decides.",
+          "no_aplica": "Doesn't apply to this order.",
+          "sin_evaluar": "Not evaluated: an earlier rule already decided.",
+          "en_pausa": "Paused: doesn't take part.",
+          "otra_sede": "Belongs to another branch: doesn't take part."
+        },
+        "finalUsado": "No rule applied: the own courier takes it.",
+        "finalNoUsado": "Not used.",
+        "loEntrega": "Delivered by: own courier",
+        "regla": "Rule {orden}",
+        "zona": "Zone",
+        "fueraDeZona": "Outside zones",
+        "cobra": "Charges the customer",
+        "tiempo": "Promised time"
+      }
+    },
+    "cotizar": {
+      "buscando": "Looking up the address's zone…",
+      "gratis": "Free",
+      "minimo": "Minimum order {valor}",
+      "gratisDesde": "free delivery from {valor}",
+      "saleEl": "ships on {fecha}",
+      "origen": "From Logistics › Settings › Zones and rates",
+      "ciudad": "City",
+      "error": {
+        "titulo": "Couldn't calculate the delivery fee",
+        "descripcion": "Check your connection and try again. The server recalculates the delivery fee when saving."
+      },
+      "bajoMinimo": {
+        "titulo": "{zona}: below the minimum order",
+        "descripcion": "The minimum order for delivery is {minimo}. {falta} to go."
+      },
+      "fuera": {
+        "titulo": "Outside zones: this address isn't in any delivery zone",
+        "conGeneral": "Charge the general rate {valor} (Logistics › Settings › Zones and rates) or ship it with a carrier.",
+        "soloTransportadora": "There's no own delivery for this address: ship it with a carrier.",
+        "sinCobertura": "There's no delivery or carrier for this address.",
+        "cobrarGeneral": "Charge general rate {valor}",
+        "usarTransportadora": "Use carrier"
+      },
+      "pos": {
+        "barrio": "Neighborhood",
+        "barrioPlaceholder": "Chapinero",
+        "cargo": "Delivery fee",
+        "cargoSinZona": "Filled in when you choose one of the options above.",
+        "cargoDeZonaEditable": "Filled in by {zona}. If you change it, who changed it is recorded.",
+        "cargoDeZonaBloqueado": "Filled in by {zona}. Changing it requires the “Organization settings” permission.",
+        "contraentrega": "Pay on delivery (COD)",
+        "contraentregaAyuda": "If you check it, the courier collects {valor} on delivery and that money goes into their daily cash-up (Logistics › Cash-ups).",
+        "contraentregaSinCliente": "To collect on delivery, choose the customer for the sale.",
+        "contraentregaSinDireccion": "To collect on delivery, enter the delivery address.",
+        "fueraDeZona": "outside zones"
+      },
+      "manual": {
+        "envioEditable": "Filled in by {zona}. If you change it, it's recorded.",
+        "envioBloqueado": "Filled in by the zone. Changing it requires the “Organization settings” permission."
+      },
+      "simulador": {
+        "titulo": "How much does it cost to deliver to…?",
+        "descripcion": "The same calculation the server does at checkout, in the POS and for manual orders",
+        "cerrar": "Close",
+        "calcular": "Calculate",
+        "verRegla": "View dispatch rule",
+        "saleDe": "Ships from",
+        "metodoPago": "Payment method",
+        "metodoPagoAyuda": "The method's code, to test the rules.",
+        "metodoPagoPlaceholder": "cash",
+        "ciudad": "City or DANE code",
+        "ciudadAyuda": "Bogotá or 11001",
+        "codigoPostal": "Postal code",
+        "valor": "Order amount",
+        "peso": "Weight",
+        "canal": "Channel",
+        "canales": {
+          "web": "Online store",
+          "pos": "POS",
+          "manual": "Manual order"
+        },
+        "sinZonas": {
+          "titulo": "This organization has no zones",
+          "descripcion": "Checkout and the POS charge as they do today: the site's flat rate or Transport rates."
+        },
+        "fueraDeZona": "Outside zones",
+        "ganaZona": "This zone wins",
+        "estados": {
+          "en_zona": "In zone",
+          "bajo_minimo": "Below minimum",
+          "fuera_tarifa_general": "General rate",
+          "fuera_transportadora": "Carrier only",
+          "sin_cobertura": "No coverage"
+        },
+        "envio": "Delivery",
+        "llega": "Arrives",
+        "corte": "Cutoff",
+        "hoy": "Today",
+        "faltaGratis": "Left for free delivery",
+        "faltaMinimo": "Left for the minimum order",
+        "regla": "Dispatch rule",
+        "reglaAplica": "A rule applies",
+        "reglaNinguna": "None: own courier",
+        "dane": "DANE municipality"
+      }
+    },
+    "menu": {
+      "logistica": "Logistics",
+      "transporte": "Transport",
+      "catalogoComun": "Shared catalog"
+    },
+    "despacho": {
+      "titulo": "To dispatch",
+      "subtitulo": "Orders from all channels",
+      "subtituloSede": "Orders from all channels · leaving from {sede}",
+      "migas": {
+        "logistica": "Logistics"
+      },
+      "actualizar": "Refresh",
+      "imprimirHojaRuta": "Print route sheet",
+      "asignarDomiciliario": "Assign courier",
+      "registrarDomiciliario": "Add courier",
+      "irDomiciliarios": "View couriers",
+      "tabla": "Shipments to dispatch",
+      "errorCarga": "We couldn't load the shipments to dispatch.",
+      "sinResultados": "No shipment matches the search or filters.",
+      "recortada": "Showing the {n} oldest shipments. Dispatch or filter by branch to see the rest.",
+      "sinPermiso": {
+        "titulo": "You don't have access to shipments",
+        "descripcion": "Ask an administrator for access to Logistics."
+      },
+      "sustantivo": {
+        "singular": "order",
+        "plural": "orders"
+      },
+      "buscar": {
+        "placeholder": "Search by order, customer, phone, address or neighborhood…",
+        "etiqueta": "Search shipments"
+      },
+      "kpis": {
+        "etiqueta": "Queue summary",
+        "porDespachar": "To dispatch",
+        "porDespacharDetalle": "{hoy} for today · {manana} for tomorrow",
+        "porDespacharVacio": "orders waiting to go out",
+        "atrasados": "Late",
+        "atrasadosDetalle": "already past the delivery promise",
+        "atrasadosVacio": "all on time",
+        "contraentrega": "Cash on delivery to collect today",
+        "contraentregaDetalle": "{count, plural, one {in # shipment} other {in # shipments}} · cash and card terminal",
+        "contraentregaVacio": "nothing to collect today",
+        "sinDomiciliario": "No courier",
+        "sinDomiciliarioDetalle": "of the {total} going out today, {n} unassigned",
+        "sinDomiciliarioVacio": "all have a courier",
+        "sinDomiciliariosRegistrados": "0 couriers registered"
+      },
+      "sinDomiciliarios": {
+        "titulo": "No couriers registered",
+        "tituloSede": "No couriers registered at {sede}",
+        "descripcion": "There are {n} orders for today and no one to assign them to. Adding a courier takes a minute: name, phone and ID. The vehicle is optional.",
+        "traerRrhh": "Import from Human Resources"
+      },
+      "columnas": {
+        "pedido": "Order",
+        "cliente": "Customer",
+        "direccion": "Address and neighborhood",
+        "promesa": "Promise",
+        "valor": "Amount",
+        "pago": "Payment",
+        "modo": "Suggested mode",
+        "estado": "Status"
+      },
+      "canales": {
+        "web": "Online store",
+        "pos": "POS",
+        "qr": "QR menu",
+        "manual": "Manual",
+        "marketplace": "Marketplace"
+      },
+      "modos": {
+        "own": "In-house",
+        "last_mile": "Last mile",
+        "national_carrier": "Carrier",
+        "marketplace": "Marketplace"
+      },
+      "estados": {
+        "por_asignar": "To assign",
+        "asignado": "Assigned",
+        "listo_para_salir": "Ready to go",
+        "por_crear_guia": "Label to create",
+        "intento_fallido": "Failed attempt"
+      },
+      "pago": {
+        "contraentrega": "Cash on delivery",
+        "pagado": "Paid"
+      },
+      "promesa": {
+        "hoy": "Today {hora}",
+        "otroDia": "{dia} {hora}",
+        "sin": "No promised time",
+        "tarde": "+{tiempo}",
+        "faltan": "{tiempo} left",
+        "en": "in {tiempo}"
+      },
+      "duracion": {
+        "min": "{n} min",
+        "h": "{n} h",
+        "dias": "{n} days"
+      },
+      "filtros": {
+        "estado": "Status",
+        "pago": "Payment",
+        "canal": "Channel",
+        "todos": "All",
+        "pago_contraentrega": "Cash on delivery",
+        "pago_pagado": "Paid",
+        "soloAtrasados": "Late only",
+        "chipEstado": "Status: {estado}",
+        "chipCanal": "Channel: {canal}",
+        "limpiar": "Clear all",
+        "verN": "{count, plural, one {View # order} other {View # orders}}"
+      },
+      "acciones": {
+        "verDetalle": "View shipment details",
+        "asignar": "Assign courier",
+        "cambiarDomiciliario": "Change courier",
+        "listoParaSalir": "Mark ready to go",
+        "imprimirGuia": "Print label",
+        "pedirRepartidor": "Request a rider",
+        "crearGuia": "Create label",
+        "cancelar": "Cancel shipment…"
+      },
+      "masivo": {
+        "imprimirGuias": "Print labels",
+        "listos": "Mark ready to go"
+      },
+      "motivos": {
+        "estado_no_asignable": "None of the selected can be assigned: they already left or were closed.",
+        "no_es_propio": "This shipment isn't handled by an in-house courier.",
+        "requiere_tercero": "Requires connecting a last-mile provider (Integrations › Connections › Logistics).",
+        "requiere_transportadora": "Requires connecting a carrier (Integrations › Connections › Logistics).",
+        "ya_listo": "Already ready to go.",
+        "sin_seleccion": "There are no shipments for the route sheet.",
+        "nada_por_asignar": "There are no orders for today to assign. Select shipments in the table."
+      },
+      "cancelar": {
+        "titulo": "Cancel shipment {numero}?",
+        "descripcion": "The shipment won't go out. If the customer already paid, the refund is made from the order.",
+        "confirmar": "Cancel shipment",
+        "volver": "Go back",
+        "nota": "Cancelled from To dispatch"
+      },
+      "toast": {
+        "nadaAsignable": "None of the chosen shipments can be assigned.",
+        "listos": "{count, plural, one {# shipment ready to go} other {# shipments ready to go}}",
+        "errorEstado": "Couldn't change the status",
+        "cancelado": "Shipment {numero} cancelled"
+      },
+      "vacio": {
+        "titulo": "All dispatched",
+        "descripcion": "There are no orders to dispatch. New delivery orders from the online store, the POS and the QR menu show up here automatically.",
+        "descripcionSede": "There are no orders to dispatch at {sede}. New delivery orders from the online store, the POS and the QR menu show up here automatically.",
+        "verEnCamino": "View shipments on the way",
+        "verCuadres": "View today's settlements"
+      },
+      "asignar": {
+        "titulo": "{count, plural, one {Assign # shipment} other {Assign # shipments}}",
+        "subtituloCobro": "cash on delivery totaling {monto}",
+        "subtituloSinCobro": "no cash on delivery",
+        "laSede": "the branch",
+        "sinNombre": "No name",
+        "noAsignables": "{count, plural, one {# shipment can't be assigned and is left out} other {# shipments can't be assigned and are left out}}",
+        "ruta": {
+          "titulo": "Suggested route order",
+          "ayuda": "Sorted by promised time and by neighborhood from {sede}. The courier sees it the same way in “My shipments”.",
+          "promesa": "promised {hora}",
+          "contraentrega": "Cash on delivery",
+          "pagado": "Paid"
+        },
+        "domiciliario": {
+          "titulo": "Courier",
+          "buscar": "Search by name…",
+          "carga": "{count, plural, =0 {No shipments} one {# shipment} other {# shipments}}",
+          "cargaConCobro": "{count, plural, one {# shipment} other {# shipments}} · {monto} to collect",
+          "errorCarga": "We couldn't load the couriers.",
+          "ninguno": "No active couriers",
+          "ningunoAyuda": "Add one to be able to assign: name, phone and ID. The vehicle is optional.",
+          "registrar": "Add courier",
+          "sinCoincidencias": "No courier matches the search."
+        },
+        "estados": {
+          "libre": "Available",
+          "en_ruta": "On route",
+          "fuera_de_turno": "Off shift",
+          "inactivo": "Inactive"
+        },
+        "motivos": {
+          "inactivo": "Inactive.",
+          "noCobra": "Doesn't collect cash on delivery: {n} of the {total} shipments require it."
+        },
+        "vehiculos": {
+          "motorcycle": "Motorcycle",
+          "bicycle": "Bicycle",
+          "car": "Car",
+          "van": "Van",
+          "on_foot": "On foot",
+          "other": "Other vehicle",
+          "truck": "Truck",
+          "bus": "Bus",
+          "sin": "No vehicle"
+        },
+        "vehiculo": {
+          "titulo": "Vehicle",
+          "opcional": "Optional",
+          "ninguno": "No vehicle (the courier's own)",
+          "ayuda": "Only if you want to track the fleet. Not required to assign."
+        },
+        "opciones": {
+          "imprimir": "{count, plural, one {Print the label when assigning} other {Print the # labels when assigning}}",
+          "aviso": "The customer gets the “On the way” notice when the courier leaves.",
+          "avisoYCodigo": "The customer gets the “On the way” notice when the courier leaves. For cash on delivery, the 4-digit code is requested on delivery."
+        },
+        "pie": {
+          "llevara": "{count, plural, one {{nombre} will carry # shipment} other {{nombre} will carry # shipments}}",
+          "cobrara": "Will collect {monto} in cash or by card terminal",
+          "nadaPorCobrar": "Nothing to collect at the door",
+          "elige": "Choose a courier"
+        },
+        "cancelar": "Cancel",
+        "confirmar": "{count, plural, one {Assign # shipment} other {Assign # shipments}}",
+        "asignando": "Assigning…",
+        "toast": {
+          "asignados": "{count, plural, one {# shipment assigned to {nombre}} other {# shipments assigned to {nombre}}}",
+          "fallidos": "{count, plural, one {# shipment couldn't be assigned} other {# shipments couldn't be assigned}}"
+        },
+        "errores": {
+          "ENVIO_NO_ENCONTRADO": "The shipment no longer exists or doesn't belong to this organization.",
+          "SIN_ACCESO_SEDE": "You don't have access to this shipment's branch.",
+          "SIN_ACCESO": "You don't have permission for this action.",
+          "ESTADO_NO_ASIGNABLE": "The shipment already left or was closed: it can't be assigned.",
+          "DOMICILIARIO_INVALIDO": "The courier isn't active or belongs to another branch.",
+          "VEHICULO_INVALIDO": "The vehicle isn't available.",
+          "ERROR": "Couldn't complete. Try again.",
+          "DOMICILIARIO_NO_COBRA": "That courier doesn't collect cash on delivery and this shipment has a payment to collect.",
+          "ENVIO_AJENO": "That shipment belongs to another courier.",
+          "SIN_PERMISO": "Only dispatchers can assign: cashiers and administrators."
+        }
+      },
+      "impresion": {
+        "hojaTitulo": "Route sheet",
+        "guiasEnviadas": "{count, plural, one {# label sent to the thermal printer} other {# labels sent to the thermal printer}}",
+        "errorGuias": "Couldn't prepare the labels.",
+        "ventanaBloqueada": "Allow pop-ups to print.",
+        "columnas": {
+          "parada": "#",
+          "pedido": "Order",
+          "cliente": "Customer",
+          "direccion": "Address",
+          "promesa": "Promise",
+          "cobrar": "Collect",
+          "firma": "Signature",
+          "total": "Total to collect",
+          "pagado": "Paid"
+        }
+      },
+      "irZonas": "Zones and rates"
+    },
+    "envio": {
+      "titulo": "Shipment",
+      "migas": {
+        "logistica": "Logistics",
+        "envios": "Shipments"
+      },
+      "errorCarga": "We couldn't load the shipment.",
+      "noExiste": "This shipment doesn't exist or doesn't belong to this organization.",
+      "volverBandeja": "Go to To dispatch",
+      "volver": "Go back",
+      "errorAccion": "Couldn't complete the action",
+      "errorAviso": "Couldn't send the notice to the customer.",
+      "reprogramado": "Delivery rescheduled for {dia}.",
+      "subtitulo": {
+        "pedido": "Order {pedido}",
+        "creado": "created {fecha}"
+      },
+      "estados": {
+        "created": "Created",
+        "ready_for_pickup": "Ready for pickup",
+        "assigned": "Assigned",
+        "picked": "Picked up",
+        "in_transit": "In transit",
+        "out_for_delivery": "Out for delivery",
+        "failed_attempt": "Failed attempt",
+        "delivered": "Delivered",
+        "exception": "Issue",
+        "returned": "Returned",
+        "cancelled": "Cancelled"
+      },
+      "motivos": {
+        "not_home": "Customer not home",
+        "wrong_address": "Wrong address",
+        "incomplete_address": "Incomplete address",
+        "rejected": "Rejected by the customer",
+        "damaged": "Damaged",
+        "lost": "Lost",
+        "access_denied": "No access to the location",
+        "business_closed": "Business closed",
+        "weather": "Weather",
+        "vehicle_issue": "Vehicle breakdown",
+        "customer_request": "Customer request",
+        "other": "Other reason"
+      },
+      "canales": {
+        "web": "Online store",
+        "pos": "POS",
+        "qr": "QR menu",
+        "manual": "Manual",
+        "marketplace": "Marketplace"
+      },
+      "modos": {
+        "own": "In-house delivery",
+        "last_mile": "Last mile",
+        "national_carrier": "Carrier",
+        "marketplace": "Marketplace"
+      },
+      "vehiculos": {
+        "motorcycle": "Motorcycle",
+        "bicycle": "Bicycle",
+        "car": "Car",
+        "van": "Van",
+        "on_foot": "On foot",
+        "other": "Other vehicle",
+        "truck": "Truck",
+        "bus": "Bus",
+        "sin": "No vehicle"
+      },
+      "errores": {
+        "ENVIO_NO_ENCONTRADO": "The shipment no longer exists or doesn't belong to this organization.",
+        "SIN_ACCESO_SEDE": "You don't have access to this shipment's branch.",
+        "SIN_ACCESO": "You don't have permission for this action.",
+        "SIN_PERMISO": "You don't have permission for this action.",
+        "ESTADO_NO_ASIGNABLE": "The shipment already left or was closed: it can't be assigned.",
+        "DOMICILIARIO_INVALIDO": "The courier isn't active or belongs to another branch.",
+        "VEHICULO_INVALIDO": "The vehicle isn't available.",
+        "ESTADO_NO_PERMITIDO": "That status can't be set manually.",
+        "TRANSICION_INVALIDA": "The shipment changed status: refresh the screen.",
+        "YA_ENTREGADO": "The shipment was already delivered.",
+        "ESTADO_NO_ENTREGABLE": "The shipment isn't on the way: it can't be marked delivered.",
+        "RECEPTOR_REQUERIDO": "Enter who received it.",
+        "CODIGO_NO_EMITIDO": "This shipment has no delivery code.",
+        "CODIGO_BLOQUEADO": "The code was locked after 5 wrong attempts. An administrator must reset it.",
+        "COBRO_REQUERIDO": "It's cash on delivery: record the payment (method and amount).",
+        "MOTIVO_INVALIDO": "Choose a reason from the list.",
+        "ESTADO_SIN_NOVEDAD": "An issue can't be recorded in this status.",
+        "VENTA_NO_ENCONTRADA": "We couldn't find the sale.",
+        "VENTA_ANULADA": "The sale is voided.",
+        "DIRECCION_REQUERIDA": "The delivery address is missing.",
+        "ERROR": "Couldn't complete. Try again.",
+        "DOMICILIARIO_NO_COBRA": "That courier doesn't collect cash on delivery and this shipment has a payment to collect.",
+        "ENVIO_AJENO": "That shipment belongs to another courier."
+      },
+      "chips": {
+        "intento": "Attempt {n}",
+        "contraentrega": "Cash on delivery {monto} · {estado}"
+      },
+      "cobro": {
+        "pendiente": "Pending",
+        "cobrado": "Collected",
+        "girado": "Handed to cash register"
+      },
+      "acciones": {
+        "avisar": "Notify customer",
+        "llamar": "Call customer",
+        "asignar": "Assign courier",
+        "cambiarDomiciliario": "Change courier",
+        "listoParaSalir": "Mark ready to go",
+        "recogido": "Mark picked up",
+        "enCamino": "Mark on the way",
+        "novedad": "Record failed attempt",
+        "reintentar": "Retry delivery",
+        "entregar": "Mark delivered",
+        "imprimirGuia": "Print label",
+        "devolver": "Return to branch…",
+        "cancelar": "Cancel shipment…"
+      },
+      "ok": {
+        "listo": "Ready to go",
+        "recogido": "Marked as picked up",
+        "enCamino": "On the way: the customer was notified",
+        "reintentar": "Going out again for delivery",
+        "devolver": "Shipment returned to branch",
+        "cancelar": "Shipment cancelled",
+        "avisar": "Notice sent to the customer"
+      },
+      "linea": {
+        "titulo": "Timeline",
+        "vacia": "No activity yet.",
+        "porVenir": "upcoming",
+        "intento": "{estado} (attempt {n})"
+      },
+      "destinatario": {
+        "titulo": "Recipient and address",
+        "cambiar": "Change address",
+        "recibe": "Recipient",
+        "telefono": "Phone",
+        "direccion": "Address",
+        "barrio": "Neighborhood",
+        "ciudad": "City",
+        "indicaciones": "Directions",
+        "comoLlegar": "Get directions"
+      },
+      "items": {
+        "titulo": "Items ({n})",
+        "sinItems": "The shipment has no items recorded.",
+        "envio": "Shipping",
+        "total": "Total",
+        "totalCobrar": "Total to collect on delivery"
+      },
+      "intentos": {
+        "titulo": "Failed attempts and issues",
+        "intento": "Attempt {n} · {hora}",
+        "reprogramado": "Rescheduled {dia}",
+        "foto": "Photo {n}",
+        "reintentarAhora": "Retry now"
+      },
+      "prueba": {
+        "titulo": "Proof of delivery",
+        "foto": "Photo",
+        "fotoTomada": "taken by the courier",
+        "sinFoto": "no photo",
+        "pendiente": "pending",
+        "firmaOCodigo": "Signature or code",
+        "codigoValidado": "Code verified",
+        "validadoCliente": "verified with the customer",
+        "firmaTomada": "signature captured",
+        "sinFirma": "no signature",
+        "codigoCuatro": "4-digit code",
+        "quien": "Who received it",
+        "ubicacion": "Location",
+        "verMapa": "view on map",
+        "sinUbicacion": "no location",
+        "alConfirmar": "captured on confirmation",
+        "recibio": "Received by",
+        "documento": "ID",
+        "terminadoEn": "{tipo} ending in {fin}",
+        "cobro": "Payment",
+        "notas": "Notes",
+        "ayuda": "Saved when marking “Delivered” from “My shipments” or from here."
+      },
+      "avisos": {
+        "titulo": "Notices sent to the customer",
+        "ninguno": "No notice has been sent yet.",
+        "reenviar": "Resend",
+        "momentos": {
+          "recibido": "Order received",
+          "confirmado": "Order confirmed",
+          "listo": "Order ready",
+          "en_camino": "Your order is on the way",
+          "entregado": "Delivered",
+          "rechazado": "Order rejected",
+          "novedad": "Delivery issue"
+        },
+        "canales": {
+          "email": "Email",
+          "whatsapp": "WhatsApp"
+        },
+        "estados": {
+          "queued": "Queued",
+          "sent": "Sent",
+          "delivered": "Delivered",
+          "failed": "Failed",
+          "no_data": "No contact details"
+        }
+      },
+      "domiciliario": {
+        "titulo": "Courier",
+        "externo": "External courier",
+        "propio": "Company courier",
+        "telefono": "Phone",
+        "vehiculo": "Vehicle",
+        "sinVehiculo": "No vehicle",
+        "asignado": "Assigned",
+        "ninguno": "No courier yet."
+      },
+      "contraentrega": {
+        "titulo": "Cash on delivery",
+        "cobrado": "Collected",
+        "cuadre": "Settled in",
+        "sinCuadre": "Not settled yet",
+        "camino": "Collection status",
+        "lineas": {
+          "pending": "Settlement open",
+          "received": "Received at cash register",
+          "shortage": "With shortage",
+          "cancelled": "Voided"
+        }
+      },
+      "codigo": {
+        "titulo": "Delivery code",
+        "verificado": "Verified {hora}",
+        "intentos": "{n} of {max} wrong attempts",
+        "reiniciar": "Reset code",
+        "reiniciado": "Code reset",
+        "errorReiniciar": "Couldn't reset the code.",
+        "soloAdmin": "Only administrators see it. The customer has it in their tracking link."
+      },
+      "documentos": {
+        "titulo": "Documents",
+        "pedido": "Order",
+        "guia": "Label",
+        "cuadre": "Settlement",
+        "verSeguimiento": "View tracking"
+      },
+      "devolver": {
+        "titulo": "Return the shipment to the branch?",
+        "descripcion": "The shipment is marked as returned. Stock is restocked or written off from Inventory.",
+        "confirmar": "Return to branch"
+      },
+      "cancelar": {
+        "titulo": "Cancel the shipment?",
+        "descripcion": "The shipment won't go out. If the customer already paid, the refund is made from the order.",
+        "confirmar": "Cancel shipment"
+      },
+      "entregar": {
+        "titulo": "Mark delivered",
+        "descripcion": "It's kept as proof of delivery. For cash on delivery, the payment is recorded.",
+        "receptor": "Who received it",
+        "relacion": "Relationship",
+        "documento": "Recipient's ID",
+        "documentoAyuda": "Optional. Only the last 4 digits are shown.",
+        "relaciones": {
+          "titular": "Account holder",
+          "familiar": "Family member",
+          "porteria": "Front desk",
+          "otro": "Someone else"
+        },
+        "cobroTitulo": "Cash on delivery: collect {monto}",
+        "codigo": "Delivery code",
+        "codigoAyuda": "The customer has it in their tracking link.",
+        "codigoErrado": "Wrong code. {n} of {max} attempts left.",
+        "codigoBloqueado": "The code was locked. An administrator must reset it.",
+        "metodo": "Payment method",
+        "monto": "Amount collected",
+        "elegir": "Choose…",
+        "medios": {
+          "cash": "Cash",
+          "card": "Card terminal",
+          "transfer": "Bank transfer",
+          "qr": "QR"
+        },
+        "notas": "Notes",
+        "confirmar": "Mark delivered",
+        "cancelar": "Cancel",
+        "ok": "Shipment delivered",
+        "error": "Couldn't mark as delivered",
+        "faltante": {
+          "receptor": "Enter who received it.",
+          "codigo": "The code has 4 digits.",
+          "metodo": "Choose the payment method.",
+          "monto": "Enter the amount collected."
+        }
+      },
+      "novedad": {
+        "titulo": "Record failed attempt",
+        "descripcion": "The shipment is flagged with an issue and can be retried, reassigned or returned.",
+        "motivo": "Reason",
+        "elegir": "Choose…",
+        "detalle": "What happened",
+        "reprogramar": "Reschedule for",
+        "reprogramarAyuda": "Optional. Day of the next attempt.",
+        "faltaMotivo": "Choose the reason.",
+        "faltaDetalle": "Describe what happened.",
+        "avisoPendiente": "If the order is from the store, the customer gets the “Issue” notice according to the Customer notices settings.",
+        "confirmar": "Record",
+        "cancelar": "Cancel",
+        "ok": "Issue recorded",
+        "error": "Couldn't record the issue"
+      },
+      "direccion": {
+        "titulo": "Change address",
+        "descripcion": "The courier sees the new address in “My shipments”.",
+        "direccion": "Address",
+        "ciudad": "City",
+        "instrucciones": "Directions",
+        "faltaDireccion": "Enter the address.",
+        "guardar": "Save",
+        "cancelar": "Cancel",
+        "ok": "Address updated",
+        "error": "Couldn't change the address"
+      }
+    },
+    "seguimiento": {
+      "titulo": "Tracking",
+      "subtitulo": "Issues and shipments that need someone today",
+      "subtituloMovil": "Logistics · {n} to resolve",
+      "migas": {
+        "logistica": "Logistics"
+      },
+      "actualizar": "Refresh",
+      "consultarProveedores": "Check providers now",
+      "irPorDespachar": "Go to To dispatch",
+      "tabla": "Shipments to resolve",
+      "errorCarga": "We couldn't load tracking.",
+      "sinResultados": "No shipment to resolve matches the search or filters.",
+      "sinPermiso": {
+        "titulo": "You don't have access to tracking",
+        "descripcion": "Ask an administrator for access to Logistics."
+      },
+      "sustantivo": {
+        "singular": "shipment",
+        "plural": "shipments"
+      },
+      "orden": "Sorted by deadline: what's due first, on top",
+      "domiciliarioPropio": "In-house courier",
+      "guia": "Label {guia}",
+      "notaReintento": "Retried from Tracking",
+      "notaDevolucion": "Returned from Tracking",
+      "mensajeCliente": "Hi, we're writing about your order {numero}.",
+      "buscar": {
+        "placeholder": "Search label, order or customer",
+        "etiqueta": "Search shipments"
+      },
+      "chips": {
+        "etiqueta": "What to show",
+        "todo": "All {n}",
+        "novedades": "Issues {n}",
+        "sinMovimiento": "No movement {n}"
+      },
+      "kpis": {
+        "etiqueta": "Tracking summary",
+        "novedades": "Open issues",
+        "vencenHoy": "{count, plural, one {# due today} other {# due today}}",
+        "sinVencer": "none due today",
+        "sinMovimiento": "No movement for over 24 h",
+        "conTransportadora": "{count, plural, one {# with a carrier} other {# with a carrier}}",
+        "sinMovimientoDetalle": "idle shipments",
+        "primerIntento": "First-attempt deliveries (30 days)",
+        "meta": "Target {meta}",
+        "avisosHoy": "Customer notices today",
+        "fallaronWhatsApp": "{count, plural, one {# failed on WhatsApp} other {# failed on WhatsApp}}",
+        "avisosDetalle": "email and WhatsApp",
+        "sinMovimientoTitulo": "No movement",
+        "sinMovimientoUmbral": "in-house after {propio} h · carrier after {transportadora} h"
+      },
+      "columnas": {
+        "envio": "Shipment",
+        "quePaso": "What happened",
+        "destino": "Destination",
+        "proveedor": "Provider",
+        "plazo": "Deadline"
+      },
+      "canales": {
+        "web": "Online store",
+        "pos": "POS",
+        "qr": "QR menu",
+        "manual": "Manual",
+        "marketplace": "Marketplace"
+      },
+      "quePaso": {
+        "sinMovimiento": "No movement for {horas} h",
+        "motivoIntento": "{motivo} · attempt {n}"
+      },
+      "plazo": {
+        "hoy": "Today {hora}",
+        "otroDia": "{dia} {hora}"
+      },
+      "consecuencias": {
+        "reclamo": "then a claim is opened",
+        "devolucion": "then it's returned",
+        "ultimo_intento": "last attempt",
+        "vuelve_a_bodega": "then it goes back to the warehouse",
+        "revisar": "check with the courier"
+      },
+      "acciones": {
+        "reintentar": "Retry",
+        "cambiar_direccion": "Change address",
+        "contactar_cliente": "Contact customer",
+        "consultar_proveedor": "Check provider",
+        "abrir_reclamo": "Open claim",
+        "ver_detalle": "View shipment details",
+        "devolver": "Return to sender…"
+      },
+      "masivo": {
+        "avisar": "Notify customer"
+      },
+      "motivos": {
+        "conector": "Needs the carrier connector (Integrations › Connections › Logistics).",
+        "propio": "It's handled by an in-house courier: there's no provider to check.",
+        "noReintentable": "None of the selected can be retried."
+      },
+      "filtros": {
+        "proveedor": "Provider",
+        "todos": "All",
+        "propio": "In-house courier",
+        "transportadora": "Carrier",
+        "limpiar": "Clear all",
+        "verN": "{count, plural, one {View # shipment} other {View # shipments}}"
+      },
+      "devolver": {
+        "titulo": "Return {numero} to sender?",
+        "descripcion": "The shipment is marked as returned and leaves the list to resolve.",
+        "confirmar": "Return",
+        "volver": "Go back"
+      },
+      "toast": {
+        "reintentados": "{count, plural, one {# shipment goes out again} other {# shipments go out again}}",
+        "devuelto": "Shipment {numero} returned",
+        "avisados": "{count, plural, one {# customer notified} other {# customers notified}}",
+        "sinAviso": "{count, plural, one {# shipment not notified} other {# shipments not notified}}",
+        "sinAvisoAyuda": "Only store orders on the way get notified.",
+        "error": "Couldn't complete"
+      },
+      "vacio": {
+        "titulo": "Nothing to resolve",
+        "descripcion": "There are no issues or idle shipments. Anything that needs someone shows up here."
+      }
+    }
   }
 }

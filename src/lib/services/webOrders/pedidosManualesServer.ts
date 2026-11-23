@@ -49,6 +49,7 @@ import {
 } from '@/lib/pos/pedidosWeb/pedidoManual';
 import { resolverOrganizacionReferencia } from '@/lib/pos/pedidosWeb/numeroPedido';
 import { insertarConNumero, organizacionDeReferencia, prefijosDeReferencias } from '@/lib/services/webOrders/numeroPedidoServer';
+import { envioPedidoManual, registrarEnvioEditado, type EnvioPedidoManual } from '@/lib/services/logistica/envioPedidoManual.server';
 
 /** Marcar pagado un pedido online: reconstruir y ver pagos sin pedido. */
 export const PERMISO_RECONSTRUIR = 'pos.pedidos_web.marcar_pagado';
@@ -70,6 +71,8 @@ export interface ClienteManual {
   correo?: string | null;
   direccion?: string | null;
   ciudad?: string | null;
+  /** Barrio: con zonas de domicilio, ubica la dirección (logística Fase 1). */
+  barrio?: string | null;
 }
 
 export interface ItemPedido {
@@ -194,7 +197,13 @@ function filaPedido(
     delivery_fee: totales.delivery_fee,
     total: totales.total,
     delivery_type: entrega,
-    delivery_address: direccion ? { address: direccion, ...(texto(body.cliente?.ciudad, 80) ? { city: texto(body.cliente?.ciudad, 80) } : {}) } : {},
+    delivery_address: direccion
+      ? {
+          address: direccion,
+          ...(texto(body.cliente?.ciudad, 80) ? { city: texto(body.cliente?.ciudad, 80) } : {}),
+          ...(texto(body.cliente?.barrio, 80) ? { neighborhood: texto(body.cliente?.barrio, 80) } : {}),
+        }
+      : {},
     payment_status: 'pending',
     customer_name: nombre,
     customer_phone: texto(body.cliente?.celular, 30),
@@ -270,9 +279,35 @@ export async function crearPedidoManual(ctx: ServerOrgContext, body: PedidoManua
     incluido,
   );
   let totales: ReturnType<typeof totalesPedidoManual>;
+  // Domicilio: el servidor vuelve a cotizar con la zona (logística Fase 1); sin zonas, el valor
+  // escrito como antes. Fuera de cobertura o bajo el mínimo, solo con permiso de cambiar el cargo.
+  let envio: EnvioPedidoManual | null = null;
   try {
-    totales = totalesPedidoManual(lineas, { envio: body.delivery_type === 'delivery_own' ? body.envio : 0, impuestoIncluido: incluido });
+    if (body.delivery_type === 'delivery_own') {
+      const subtotal = totalesPedidoManual(lineas, { envio: 0, impuestoIncluido: incluido }).subtotal;
+      envio = await envioPedidoManual(ctx, {
+        branchId,
+        subtotal,
+        enviado: body.envio,
+        ciudad: texto(body.cliente?.ciudad, 80),
+        barrio: texto(body.cliente?.barrio, 80),
+      });
+      if (!envio.decision.ok) {
+        throw new CambioPedidoError(
+          422,
+          envio.decision.codigo,
+          envio.decision.codigo === 'PEDIDO_MINIMO_DOMICILIO'
+            ? 'El pedido no llega al mínimo de domicilio de su zona.'
+            : 'La dirección está fuera de las zonas de domicilio.',
+        );
+      }
+    }
+    totales = totalesPedidoManual(lineas, {
+      envio: envio?.decision.ok ? envio.decision.envio : 0,
+      impuestoIncluido: incluido,
+    });
   } catch (e) {
+    if (e instanceof CambioPedidoError) throw e;
     errorDeLogica(e);
   }
   // El número lo decide la organización (Configuración › POS › Número de pedido); si choca, otro.
@@ -290,6 +325,7 @@ export async function crearPedidoManual(ctx: ServerOrgContext, body: PedidoManua
   );
   if (error || !pedido) throw new CambioPedidoError(500, 'PEDIDO_FALLO', `No se pudo crear el pedido: ${error?.message ?? 'sin datos'}`);
   const orderId = String((pedido as Fila).id);
+  if (envio) await registrarEnvioEditado(ctx, { orderId, branchId, envio });
 
   // Líneas y reserva de stock: lo mismo que la tienda; si falla, el pedido se cancela.
   const errItems = await insertarItems(db, orderId, totales.items);

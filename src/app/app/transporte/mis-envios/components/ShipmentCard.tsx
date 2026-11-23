@@ -314,6 +314,8 @@ export function ShipmentCard({ shipment, updatingId, onUpdateStatus, onMarkPaid,
 
       {/* Dialog de entrega con foto */}
       <DeliveryPhotoDialog
+        organizationId={shipment.organization_id}
+        shipmentId={shipment.id}
         open={showDeliveryDialog}
         onOpenChange={setShowDeliveryDialog}
         initialRecipientName={shipment.delivery_contact_name || undefined}

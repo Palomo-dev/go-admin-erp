@@ -153,8 +153,24 @@ export function ColorTema({ etiqueta, valor, colorTema, onCambiar, fondo, etique
   );
 }
 
-/** Tarjeta de composición seleccionable (Figma «HeaderLayoutThumb»: 64 px de miniatura y nombre). */
-export function TarjetaComposicion({ etiqueta, seleccionada, onElegir, children }: { etiqueta: string; seleccionada: boolean; onElegir: () => void; children: ReactNode }) {
+/**
+ * Tarjeta de composición seleccionable (Figma «HeaderLayoutThumb»: 64 px de miniatura y nombre).
+ * `compacta`: miniatura más baja y etiqueta pequeña que puede ir en dos líneas (la «Forma» dentro
+ * de la tarjeta de cada ícono, 3 por fila).
+ */
+export function TarjetaComposicion({
+  etiqueta,
+  seleccionada,
+  onElegir,
+  children,
+  compacta = false,
+}: {
+  etiqueta: string;
+  seleccionada: boolean;
+  onElegir: () => void;
+  children: ReactNode;
+  compacta?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -162,16 +178,25 @@ export function TarjetaComposicion({ etiqueta, seleccionada, onElegir, children 
       aria-checked={seleccionada}
       onClick={onElegir}
       className={cn(
-        'flex w-full flex-col gap-2 rounded-lg p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+        'flex w-full flex-col rounded-lg text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+        compacta ? 'gap-1 p-1' : 'gap-2 p-1.5',
         seleccionada ? 'border-2 border-brand-action bg-brand-tint' : 'border border-line bg-surface hover:bg-hover',
       )}
     >
-      <span aria-hidden="true" className="relative block h-16 w-full overflow-hidden rounded-md bg-subtle">
+      <span aria-hidden="true" className={cn('relative block w-full overflow-hidden rounded-md bg-subtle', compacta ? 'h-11' : 'h-16')}>
         {children}
       </span>
       <span className="flex items-center gap-1 px-0.5">
-        <span className={cn('min-w-0 flex-1 truncate text-[13px] leading-[18px]', seleccionada ? 'text-brand-deep' : 'text-fg')}>{etiqueta}</span>
-        {seleccionada && <Check aria-hidden="true" className="size-4 text-brand-deep" strokeWidth={1.5} />}
+        <span
+          className={cn(
+            'min-w-0 flex-1',
+            compacta ? 'text-[11px] leading-[14px]' : 'truncate text-[13px] leading-[18px]',
+            seleccionada ? 'text-brand-deep' : 'text-fg',
+          )}
+        >
+          {etiqueta}
+        </span>
+        {seleccionada && <Check aria-hidden="true" className={cn('shrink-0 text-brand-deep', compacta ? 'size-3.5' : 'size-4')} strokeWidth={1.5} />}
       </span>
     </button>
   );

@@ -34677,7 +34677,17 @@
             "coins": "Pièces",
             "wallet": "Portefeuille",
             "banknote": "Billet",
-            "dollar-sign": "Symbole dollar"
+            "dollar-sign": "Symbole dollar",
+            "text-search": "Loupe avec lignes",
+            "search-check": "Loupe avec coche",
+            "zoom-in": "Loupe avec plus",
+            "binoculars": "Jumelles",
+            "shopping-basket": "Panier à provisions",
+            "store": "Boutique",
+            "circle-user-round": "Personne dans un cercle arrondi",
+            "log-in": "Se connecter",
+            "circle-dollar-sign": "Dollar dans un cercle",
+            "languages": "Langues"
           }
         },
         "diseno": {
@@ -35811,7 +35821,11 @@
             "caja": "Boîte des icônes",
             "cajaAyuda": "Forme, fond et ombre du panier, du compte, de la devise, des favoris et de la recherche. Sans choix, l’icône actuelle s’affiche.",
             "tamanoGuardado": "Pas de «Taille» ici : une seule taille, plus haut (S / M / L). La boutique a {n} px enregistrés et les garde tant que vous ne choisissez pas S, M ou L.",
-            "sinTamano": "Pas de «Taille» ici : une seule taille, plus haut (S / M / L)."
+            "sinTamano": "Pas de «Taille» ici : une seule taille, plus haut (S / M / L).",
+            "tamanoCaja": "Taille de la boîte",
+            "tamanoCajaAyuda": "Règle la boîte et, si vous ne choisissez pas S, M ou L plus haut, aussi le dessin à l’intérieur. Normal = celle d’aujourd’hui.",
+            "tamanoNormal": "Normal",
+            "tamanoPx": "{n} px"
           },
           "cualesTitulo": "Lesquelles s’affichent et avec quel dessin",
           "cualesTituloAyuda": "Dans l’ordre de l’en-tête. Pour chacune : afficher ou masquer, le dessin, la forme (si elle doit différer) et son texte.",
@@ -35848,7 +35862,8 @@
           "filaEstilo": "Les icônes se configurent dans Contenu › Icônes",
           "filaEstiloAyuda": "Style, forme, taille, trait, fond et dessins. Touchez pour ouvrir la vue.",
           "buscarEsBarra": "Votre recherche est une barre : son bouton n’utilise pas ce dessin. Le dessin et la forme de la loupe apparaissent ici quand vous choisissez la recherche « Icône » dans Design › Recherche.",
-          "monedaSinDibujo": "Avec le style « {estilo} », la devise n’utilise pas de dessin : elle s’affiche comme vous l’avez choisi dans « Changer l’apparence du sélecteur ». Le dessin ne sert qu’avec « Icône seule »."
+          "monedaSinDibujo": "Avec le style « {estilo} », la devise n’utilise pas de dessin : elle s’affiche comme vous l’avez choisi dans « Changer l’apparence du sélecteur ». Le dessin ne sert qu’avec « Icône seule ».",
+          "buscarFormaBarra": "La forme s’affiche quand la recherche est une icône. Dans la barre, c’est la forme de la barre qui compte (Design › Recherche) ; le dessin apparaît bien sur son bouton et sa loupe."
         },
         "moneda": {
           "titulo": "En-tête › Sélecteur de devise",
@@ -35890,7 +35905,8 @@
             "lateral": "La liste se déplie dans le menu latéral.",
             "chips": "Les devises s’affichent en puces dans le menu.",
             "barra": "Le drapeau (ou le code) est à côté du panier et ouvre la feuille."
-          }
+          },
+          "dibujoAyuda": "C’est le même dessin que la carte Devise dans « Icônes » : ce que vous choisissez ici y apparaît sélectionné."
         },
         "carrito": {
           "titulo": "En-tête › Panier",

@@ -34677,7 +34677,17 @@
             "coins": "Coins",
             "wallet": "Wallet",
             "banknote": "Banknote",
-            "dollar-sign": "Dollar sign"
+            "dollar-sign": "Dollar sign",
+            "text-search": "Magnifier with lines",
+            "search-check": "Magnifier with check",
+            "zoom-in": "Magnifier with plus",
+            "binoculars": "Binoculars",
+            "shopping-basket": "Basket",
+            "store": "Store",
+            "circle-user-round": "Person in round circle",
+            "log-in": "Sign in",
+            "circle-dollar-sign": "Dollar in circle",
+            "languages": "Languages"
           }
         },
         "diseno": {
@@ -35811,7 +35821,11 @@
             "caja": "Icon box",
             "cajaAyuda": "Shape, background and shadow of cart, account, currency, favorites and search. Without choosing, today’s icon is shown.",
             "tamanoGuardado": "No «Size» here: there is one size, above (S / M / L). The store has {n} px saved and keeps it until you choose S, M or L.",
-            "sinTamano": "No «Size» here: there is one size, above (S / M / L)."
+            "sinTamano": "No «Size» here: there is one size, above (S / M / L).",
+            "tamanoCaja": "Box size",
+            "tamanoCajaAyuda": "Sizes the box and, unless you pick S, M or L above, the icon inside it too. Normal = today’s.",
+            "tamanoNormal": "Normal",
+            "tamanoPx": "{n} px"
           },
           "cualesTitulo": "Which ones show and with which drawing",
           "cualesTituloAyuda": "In header order. For each: show or hide, the drawing, the shape (if you want it to differ) and its text.",
@@ -35848,7 +35862,8 @@
           "filaEstilo": "Icons are set up in Content › Icons",
           "filaEstiloAyuda": "Style, shape, size, stroke, background and drawings. Tap to open the view.",
           "buscarEsBarra": "Your search is a bar: its button does not use this icon. The magnifier icon and shape appear here when you choose the «Icon» search in Design › Search.",
-          "monedaSinDibujo": "With the «{estilo}» style the currency uses no icon: it looks the way you set it in «Change how the selector looks». The icon is only used with «Icon only»."
+          "monedaSinDibujo": "With the «{estilo}» style the currency uses no icon: it looks the way you set it in «Change how the selector looks». The icon is only used with «Icon only».",
+          "buscarFormaBarra": "The shape shows when the search is an icon. In the bar, the bar’s own shape applies (Design › Search); the icon does show on its button and magnifier."
         },
         "moneda": {
           "titulo": "Header › Currency selector",
@@ -35890,7 +35905,8 @@
             "lateral": "The list unfolds inside the side menu.",
             "chips": "Currencies are shown as chips inside the menu.",
             "barra": "The flag (or the code) sits next to the cart and opens the sheet."
-          }
+          },
+          "dibujoAyuda": "It’s the same icon as the Currency card in “Icons”: what you pick here shows selected there."
         },
         "carrito": {
           "titulo": "Header › Cart",

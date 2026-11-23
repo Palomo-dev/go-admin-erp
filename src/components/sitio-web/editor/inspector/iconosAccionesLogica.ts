@@ -2,10 +2,12 @@
  * Íconos de las acciones del encabezado (buscar, carrito, cuenta, moneda). La tienda ya los lee con
  * `resolverIconoEncabezado` (copia idéntica en goadmin-websites): `header_icons[accion]` (propio) ›
  * columna (`search_icon`, `cart_icon`, `auth_icon`, `currency_icon`) › `header_cart_glyph` › el de hoy.
- * Los nombres son los del `ICON_MAP` de la tienda (HeaderShared): fuera de él, la tienda pinta el de hoy.
+ * Los nombres son los del `ICON_MAP` de la tienda (HeaderShared; los de Buscar, en header/iconoBuscar.ts):
+ * fuera de él, la tienda pinta el de hoy.
  */
 import {
   Banknote,
+  Binoculars,
   CircleDollarSign,
   CircleUser,
   CircleUserRound,
@@ -18,22 +20,26 @@ import {
   Package,
   ScanSearch,
   Search,
+  SearchCheck,
   ShoppingBag,
   ShoppingBasket,
   ShoppingCart,
   Store,
+  TextSearch,
   User,
   UserCircle,
   UserRound,
   Wallet,
+  ZoomIn,
   type LucideIcon,
 } from 'lucide-react';
-import { resolverIconoEncabezado, type AccionEncabezado } from '@/lib/website/v2/iconosEncabezado';
+import { ICONOS_BUSCAR, resolverIconoEncabezado, type AccionEncabezado } from '@/lib/website/v2/iconosEncabezado';
 
 export const ACCIONES_ICONO: readonly AccionEncabezado[] = ['search', 'cart', 'account', 'currency'];
 
 export const OPCIONES_ICONO_ACCION: Record<AccionEncabezado, readonly string[]> = {
-  search: ['search', 'scan-search'],
+  // Buscar: las del contrato (la tienda las pinta en todos sus buscadores, ícono y barra).
+  search: ICONOS_BUSCAR,
   cart: ['shopping-bag', 'shopping-cart', 'shopping-basket', 'store', 'package', 'gift'],
   account: ['user', 'user-circle', 'user-round', 'circle-user', 'circle-user-round', 'log-in'],
   currency: ['globe', 'languages', 'coins', 'wallet', 'banknote', 'dollar-sign', 'circle-dollar-sign'],
@@ -43,6 +49,10 @@ export const ICONOS_LUCIDE_ENCABEZADO: Record<string, LucideIcon> = {
   search: Search,
   'search-lg': Search,
   'scan-search': ScanSearch,
+  'text-search': TextSearch,
+  'search-check': SearchCheck,
+  'zoom-in': ZoomIn,
+  binoculars: Binoculars,
   'shopping-bag': ShoppingBag,
   'shopping-cart': ShoppingCart,
   package: Package,

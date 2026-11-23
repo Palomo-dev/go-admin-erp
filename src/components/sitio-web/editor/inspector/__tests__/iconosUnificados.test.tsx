@@ -87,6 +87,77 @@ describe('Vista «Íconos» unificada', () => {
     expect(cambiar).toHaveBeenLastCalledWith({ header_iconos: null });
   });
 
+  // Queja del dueño 2026-11-23: «cambié el ícono del buscador y no cambió». La tienda pinta el
+  // dibujo en todos los buscadores, así que se ofrece con cualquiera, y con más opciones.
+  test.each(['icon', 'bar', 'mini', 'mega', 'pill_floating', 'icon_overlay'])('Buscar con buscador «%s»: el dibujo siempre, con 6 opciones', (estilo) => {
+    // En conjunto: el celular usa el mismo buscador que el computador.
+    const { cambiar } = vista({ search_style: estilo, mobile_search_same_as_desktop: true });
+    const buscar = screen.getByRole('radiogroup', { name: 'Ícono de buscar' });
+    expect(within(buscar).getAllByRole('radio').map((r) => r.textContent)).toEqual([
+      'Lupa',
+      'Lupa con marco',
+      'Lupa con líneas',
+      'Lupa con visto bueno',
+      'Lupa con más',
+      'Binoculares',
+    ]);
+    expect(screen.queryByText('iconos.buscarEsBarra')).toBeNull();
+    fireEvent.click(within(buscar).getByRole('radio', { name: 'Binoculares' }));
+    expect(cambiar).toHaveBeenLastCalledWith({ search_icon: 'binoculars' });
+    // La forma de la lupa solo cambia algo con el buscador ícono: con barra, una nota lo dice.
+    const nota = screen.queryByText('iconos.buscarFormaBarra');
+    expect(nota === null).toBe(estilo === 'icon' || estilo === 'icon_overlay');
+  });
+
+  test('Forma: tarjetas con miniatura; «Como los demás» primero y marcada sin forma propia', () => {
+    const { cambiar } = vista({});
+    const carrito = document.querySelector('[data-tarjeta-icono="carrito"]') as HTMLElement;
+    const forma = within(carrito).getByRole('radiogroup', { name: 'iconos.forma' });
+    const tarjetas = within(forma).getAllByRole('radio');
+    // La miniatura es decorativa: el nombre accesible es solo la etiqueta, en este orden.
+    const nombres = ['demas', 'icono', 'circulo', 'texto', 'pildora', 'relleno'];
+    expect(tarjetas).toHaveLength(nombres.length);
+    nombres.forEach((n, i) => expect(within(forma).getByRole('radio', { name: `iconos.formaOpcion.${n}` })).toBe(tarjetas[i]));
+    expect(tarjetas[0].getAttribute('aria-checked')).toBe('true');
+    // Píldora y Relleno siguen con «Solo computador»; ya no hay desplegable de texto.
+    expect(within(forma).getAllByText('iconos.soloComputador')).toHaveLength(2);
+    expect(within(carrito).queryByRole('combobox')).toBeNull();
+    // «Como los demás» ya marcada: tocarla no escribe nada.
+    fireEvent.click(tarjetas[0]);
+    expect(cambiar).not.toHaveBeenCalled();
+    fireEvent.click(within(forma).getByRole('radio', { name: 'iconos.formaOpcion.pildora' }));
+    expect(cambiar).toHaveBeenLastCalledWith({ header_iconos: { por_icono: { carrito: { estilo: 'pildora' } } } });
+  });
+
+  test('Forma: con forma propia se marca esa tarjeta y «Como los demás» la quita', () => {
+    const { cambiar } = vista({ header_iconos: { por_icono: { cuenta: { estilo: 'circulo' } } } });
+    const cuenta = document.querySelector('[data-tarjeta-icono="cuenta"]') as HTMLElement;
+    const forma = within(cuenta).getByRole('radiogroup', { name: 'iconos.forma' });
+    expect(within(forma).getByRole('radio', { name: 'iconos.formaOpcion.circulo' }).getAttribute('aria-checked')).toBe('true');
+    expect(within(forma).getByRole('radio', { name: 'iconos.formaOpcion.demas' }).getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(within(forma).getByRole('radio', { name: 'iconos.formaOpcion.demas' }));
+    expect(cambiar).toHaveBeenLastCalledWith({ header_iconos: null });
+  });
+
+  test('Forma de Buscar: solo las que su componente soporta (Como los demás, Solo ícono y Círculo)', () => {
+    vista({});
+    const buscar = document.querySelector('[data-tarjeta-icono="buscar"]') as HTMLElement;
+    const forma = within(buscar).getByRole('radiogroup', { name: 'iconos.forma' });
+    const tarjetas = within(forma).getAllByRole('radio');
+    expect(tarjetas).toHaveLength(3);
+    ['demas', 'icono', 'circulo'].forEach((n, i) => expect(within(forma).getByRole('radio', { name: `iconos.formaOpcion.${n}` })).toBe(tarjetas[i]));
+  });
+
+  test('Moneda en la vista Íconos: dibujo con «Solo ícono» o sin estilo; nota y enlace con los demás estilos', () => {
+    vista({ header_moneda: { estilo: 'icono' } });
+    expect(screen.getByRole('radiogroup', { name: 'Ícono de moneda' })).toBeTruthy();
+    document.body.innerHTML = '';
+    vista({ header_moneda: { estilo: 'codigo' } });
+    expect(screen.queryByRole('radiogroup', { name: 'Ícono de moneda' })).toBeNull();
+    expect(screen.getByText('iconos.monedaSinDibujo')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /iconos.monedaCambiar/ })).toBeTruthy();
+  });
+
   test('interruptores de siempre y enlaces a Diseño › Buscador, Favoritos y Moneda', () => {
     const onIrBuscador = jest.fn();
     const { cambiar, onAbrir } = vista({ header_iconos: { favoritos: true } }, { onIrBuscador });
@@ -106,16 +177,28 @@ describe('Vista «Íconos» unificada', () => {
     expect(onAbrir).toHaveBeenCalledWith('moneda');
   });
 
-  test('Fondo de los íconos: plegado, sin tamaño propio; abierto cambia la forma de la caja', () => {
+  test('Fondo de los íconos: plegado; abierto cambia la forma de la caja', () => {
     const { cambiar } = vista({ header_icons_box: { shape: 'circle', icon: 22 } });
     expect(document.querySelector('[data-fondo-iconos]')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /iconos.fondo.titulo/ }));
     expect(document.querySelector('[data-fondo-iconos]')).not.toBeNull();
-    // Sin chips de tamaño en px: el tamaño guardado se respeta y se explica.
-    expect(screen.queryByRole('radio', { name: /22 px/ })).toBeNull();
-    expect(screen.getByText('iconos.fondo.tamanoGuardado')).toBeTruthy();
     fireEvent.click(within(screen.getByRole('radiogroup', { name: 'iconos.fondo.caja' })).getAllByRole('radio')[2]);
     expect(cambiar.mock.calls.at(-1)?.[0]).toMatchObject({ header_icons_box: { shape: 'square', icon: 22 } });
+  });
+
+  // Punto 4 (2026-11-23): el tamaño de la caja (Normal, 20, 22, 28 px) existía en Estilo › Íconos y
+  // se había perdido en la vista unificada. Vuelve dentro de «Fondo de los íconos».
+  test('Fondo de los íconos: el tamaño de la caja de siempre (Normal, 20, 22, 28 px) se ve y se cambia', () => {
+    const { cambiar } = vista({ header_icons_box: { shape: 'circle', icon: 22 } });
+    fireEvent.click(screen.getByRole('button', { name: /iconos.fondo.titulo/ }));
+    const tamano = screen.getByRole('radiogroup', { name: 'iconos.fondo.tamanoCaja' });
+    const chips = within(tamano).getAllByRole('radio');
+    expect(chips).toHaveLength(4);
+    expect(chips[2].getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(chips[3]);
+    expect(cambiar).toHaveBeenLastCalledWith({ header_icons_box: { shape: 'circle', icon: 28 } });
+    fireEvent.click(within(tamano).getByRole('radio', { name: 'iconos.fondo.tamanoNormal' }));
+    expect(cambiar).toHaveBeenLastCalledWith({ header_icons_box: { shape: 'circle' } });
   });
 });
 

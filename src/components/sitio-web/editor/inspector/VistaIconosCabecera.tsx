@@ -18,13 +18,12 @@
  */
 import { useId, useState, type ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, ChevronRight, Globe, Heart, Monitor, Search, ShoppingCart, Smartphone, Undo2, User } from 'lucide-react';
+import { ChevronDown, ChevronRight, Globe, Heart, Monitor, Search, ShoppingCart, Smartphone, Undo2, User, type LucideIcon } from 'lucide-react';
 import { cn } from '@/utils/Utils';
 import { ChipsOpcion, SegmentedControl, clasesBoton } from '@/components/kit';
 import { clasesBadgeTono } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BENEFICIOS_CUENTA_POR_DEFECTO,
   CLAVES_LINEAS_BENEFICIOS,
@@ -63,7 +62,7 @@ import { textoSobreAcento } from '@/lib/website/v2/tokensEstilo';
 import { useTextosEditor } from '../textos';
 import { ColorTema, EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion } from './PartesZonaGlobal';
 import { ICONOS_LUCIDE_ENCABEZADO, OPCIONES_ICONO_ACCION, cambioIconoAccion, iconoAccionEncabezado } from './iconosAccionesLogica';
-import { FORMAS_CAJA, SOMBRAS_CAJA, cajaIconos, cambioCaja, cambioForma, formaCaja, tamanoIcono } from './encabezadoCapacidades';
+import { FORMAS_CAJA, SOMBRAS_CAJA, TAMANOS_ICONO, cajaIconos, cambioCaja, cambioForma, cambioTamano, formaCaja, tamanoIcono } from './encabezadoCapacidades';
 import { circuloAcentoActivo } from './anterioresLogica';
 import { buscadorCelular, buscadorComputador, formaBuscadorCelular } from './buscadorCelularLogica';
 import {
@@ -175,11 +174,27 @@ const textoSesionGuardado = (a: Ajustes) => {
 
 // ─── Miniaturas ───────────────────────────────────────────────────────────────────────────────
 
-function MiniaturaIcono({ estilo }: { estilo: EstiloIconos }) {
+/**
+ * Miniatura de un estilo de ícono (Figma A1). La usan «Estilo general» y la «Forma» de cada
+ * tarjeta; en la tarjeta va con el dibujo, el texto y la insignia de ese ícono.
+ */
+function MiniaturaIcono({
+  estilo,
+  Icono = ShoppingCart,
+  texto: textoPropio,
+  conInsignia = true,
+}: {
+  estilo: EstiloIconos;
+  Icono?: LucideIcon;
+  texto?: string;
+  conInsignia?: boolean;
+}) {
   const t = useT();
-  const icono = <ShoppingCart aria-hidden="true" className="size-3.5" strokeWidth={2} />;
-  const insignia = <span className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full bg-brand-action text-[8px] font-bold text-white">3</span>;
-  const texto = t('iconos.miniTexto');
+  const icono = <Icono aria-hidden="true" className="size-3.5" strokeWidth={2} />;
+  const insignia = conInsignia ? (
+    <span className="absolute -right-1.5 -top-1.5 flex size-3.5 items-center justify-center rounded-full bg-brand-action text-[8px] font-bold text-white">3</span>
+  ) : null;
+  const texto = textoPropio ?? t('iconos.miniTexto');
   let cuerpo: ReactNode;
   if (estilo === 'texto') {
     cuerpo = (
@@ -295,8 +310,12 @@ function MiniaturaModoCuenta({ modo }: { modo: ModoCuenta }) {
 
 const ICONO_TITULO: Readonly<Record<IconoCabecera, typeof User>> = { buscar: Search, favoritos: Heart, carrito: ShoppingCart, cuenta: User, moneda: Globe };
 
-/** «Dibujo»: las opciones reales de cada acción (OPCIONES_ICONO_ACCION) y la columna de siempre. */
-function DibujoIcono({ accion, ajustes: a, cambiar }: { accion: AccionEncabezado; ajustes: Ajustes; cambiar: Cambiar }) {
+/**
+ * «Dibujo»: las opciones reales de cada acción (OPCIONES_ICONO_ACCION) y la columna de siempre.
+ * También lo usa la vista «Selector de moneda» con `accion="currency"`: el mismo dato, así lo
+ * elegido en un lugar se ve marcado en el otro.
+ */
+export function DibujoIcono({ accion, ajustes: a, cambiar }: { accion: AccionEncabezado; ajustes: Ajustes; cambiar: Cambiar }) {
   const t = useT();
   const te = useTextosEditor();
   const actual = iconoAccionEncabezado(a, accion);
@@ -324,36 +343,53 @@ function DibujoIcono({ accion, ajustes: a, cambiar }: { accion: AccionEncabezado
   );
 }
 
-const DEMAS = 'demas';
+/** Lo que muestra la miniatura de la «Forma» de una tarjeta: su dibujo, su texto y su insignia. */
+interface MuestraIcono {
+  Icono: LucideIcon;
+  texto?: string;
+  conInsignia?: boolean;
+}
 
-/** «Forma»: «Como los demás» o una forma propia (Figma A2b). */
-function FormaIconoCampo({ icono, op, ajustes: a, cambiar, formas }: { icono: IconoCabecera; op: OpcionesIconos; ajustes: Ajustes; cambiar: Cambiar; formas: readonly FormaIcono[] }) {
+/**
+ * «Forma» (Figma A2b; queja del dueño 2026-11-23): tarjetas con miniatura, igual que «Estilo
+ * general», para ver cómo queda. «Como los demás» va primero y está marcada sin forma propia, con
+ * la miniatura del estilo general de hoy. Píldora y Relleno llevan «Solo computador».
+ */
+function FormaIconoCampo({
+  icono,
+  op,
+  ajustes: a,
+  cambiar,
+  formas,
+  muestra,
+}: {
+  icono: IconoCabecera;
+  op: OpcionesIconos;
+  ajustes: Ajustes;
+  cambiar: Cambiar;
+  formas: readonly FormaIcono[];
+  muestra: MuestraIcono;
+}) {
   const t = useT();
   const id = useId();
   const propia = op.porIcono[icono] ?? null;
   const general = op.estilo === 'texto_lado' ? 'texto' : op.estilo;
+  const miniatura = (estilo: EstiloIconos) => <MiniaturaIcono estilo={estilo} Icono={muestra.Icono} texto={muestra.texto} conInsignia={muestra.conInsignia ?? false} />;
   return (
     <div className="flex flex-col gap-1.5" data-forma-icono={icono}>
-      <div className="flex items-center justify-between gap-3">
-        <span id={id} className="text-[13px] font-medium leading-[18px] text-fg">
-          {t('iconos.forma')}
-        </span>
-        <Select value={propia ?? DEMAS} onValueChange={(v) => cambiar(cambioFormaIcono(a, icono, v === DEMAS ? null : (v as FormaIcono)))}>
-          <SelectTrigger aria-labelledby={id} className="h-9 w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={DEMAS}>{t('iconos.formaOpcion.demas')}</SelectItem>
-            {formas.map((f) => (
-              <SelectItem key={f} value={f}>
-                <span className="flex items-center gap-2">
-                  {t(`iconos.formaOpcion.${f}`)}
-                  {estiloSoloComputador(f) && <InsigniaSoloComputador />}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <EtiquetaGrupo id={id}>{t('iconos.forma')}</EtiquetaGrupo>
+      <div role="radiogroup" aria-labelledby={id} className="grid grid-cols-3 gap-1.5">
+        <TarjetaComposicion compacta etiqueta={t('iconos.formaOpcion.demas')} seleccionada={!propia} onElegir={() => propia && cambiar(cambioFormaIcono(a, icono, null))}>
+          {miniatura(op.estilo)}
+        </TarjetaComposicion>
+        {formas.map((f) => (
+          <div key={f} className="flex flex-col items-center gap-1">
+            <TarjetaComposicion compacta etiqueta={t(`iconos.formaOpcion.${f}`)} seleccionada={propia === f} onElegir={() => cambiar(cambioFormaIcono(a, icono, f))}>
+              {miniatura(f)}
+            </TarjetaComposicion>
+            {estiloSoloComputador(f) && <InsigniaSoloComputador />}
+          </div>
+        ))}
       </div>
       {propia ? (
         <div className="flex items-center justify-between gap-2">
@@ -447,6 +483,9 @@ function FondoIconos({ ajustes: a, cambiar, coloresTema }: { ajustes: Ajustes; c
     .filter(Boolean)
     .join(' · ');
   const tamCaja = tamanoIcono(a);
+  const idTamano = useId();
+  const tamanosCaja: (number | null)[] = [null, ...TAMANOS_ICONO];
+  if (tamCaja !== null && !tamanosCaja.includes(tamCaja)) tamanosCaja.push(tamCaja);
   return (
     <section className="flex flex-col gap-2">
       <button
@@ -480,7 +519,20 @@ function FondoIconos({ ajustes: a, cambiar, coloresTema }: { ajustes: Ajustes; c
               </TarjetaComposicion>
             ))}
           </div>
-          <Ayuda>{tamCaja !== null ? t('iconos.fondo.tamanoGuardado', { n: tamCaja }) : t('iconos.fondo.sinTamano')}</Ayuda>
+          {/* Tamaño de la caja (estaba en Estilo › Íconos y se había perdido): Normal, 20, 22 o 28 px. */}
+          <div className="flex flex-col gap-1.5" data-tamano-caja={tamCaja ?? 'normal'}>
+            <EtiquetaGrupo id={idTamano}>{t('iconos.fondo.tamanoCaja')}</EtiquetaGrupo>
+            <ChipsOpcion
+              aria-labelledby={idTamano}
+              opciones={tamanosCaja.map((n) => ({
+                valor: n === null ? 'normal' : String(n),
+                etiqueta: n === null ? t('iconos.fondo.tamanoNormal') : t('iconos.fondo.tamanoPx', { n }),
+              }))}
+              valor={tamCaja === null ? 'normal' : String(tamCaja)}
+              onValorChange={(v) => cambiar(cambioTamano(a, v === 'normal' ? null : Number(v)))}
+            />
+            <Ayuda>{t('iconos.fondo.tamanoCajaAyuda')}</Ayuda>
+          </div>
           {conCaja && (
             <>
               <ColorTema
@@ -689,10 +741,23 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
   const visibleCarrito = a.show_header_cart !== false;
   const visibleCuenta = a.show_header_auth !== false;
   const visibleMoneda = a.header_show_currency !== false;
-  // Solo se ofrece lo que la tienda de verdad pinta (queja del dueño 2026-11-23: dibujos que no cambian nada).
+  // La forma propia de Buscar solo se ve cuando el buscador es un ícono (computador o celular). El
+  // dibujo, en cambio, lo pintan todos los buscadores (ícono y barras): se ofrece siempre.
   const lupaVisible =
     formaBuscadorCelular(buscadorComputador(a)) === 'icon' || formaBuscadorCelular(buscadorCelular(a)) === 'icon';
   const estiloMoneda = opcionesMoneda(a).estilo;
+  const dibujo = (accion: AccionEncabezado, respaldo: LucideIcon): LucideIcon => {
+    const nombre = iconoAccionEncabezado(a, accion);
+    return Object.prototype.hasOwnProperty.call(ICONOS_LUCIDE_ENCABEZADO, nombre) ? ICONOS_LUCIDE_ENCABEZADO[nombre] : respaldo;
+  };
+  const textoMuestra = (icono: 'carrito' | 'cuenta' | 'favoritos') => textoGuardado(a, icono) || TEXTOS_ICONOS_POR_DEFECTO[icono];
+  const muestras: Readonly<Record<IconoCabecera, MuestraIcono>> = {
+    buscar: { Icono: dibujo('search', Search) },
+    favoritos: { Icono: Heart, texto: textoMuestra('favoritos'), conInsignia: true },
+    carrito: { Icono: dibujo('cart', ShoppingCart), texto: textoMuestra('carrito'), conInsignia: true },
+    cuenta: { Icono: dibujo('account', User), texto: textoMuestra('cuenta') },
+    moneda: { Icono: dibujo('currency', Globe), texto: '$' },
+  };
   const dibujoMonedaVisible = estiloMoneda === null || estiloMoneda === 'icono';
 
   return (
@@ -790,16 +855,11 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
           forma={op.porIcono.buscar ?? null}
           derecha={<span className="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-[10px] font-medium text-fg-secondary">{t('iconos.buscarEnDiseno')}</span>}
         >
-          {/* El dibujo y la forma de la lupa solo se ven cuando el buscador es un ícono (en
-              computador o en el celular). Con barra, el botón de la barra no los usa. */}
-          {lupaVisible ? (
-            <>
-              <DibujoIcono accion="search" ajustes={a} cambiar={cambiar} />
-              <FormaIconoCampo icono="buscar" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_BUSCAR} />
-            </>
-          ) : (
-            <Ayuda>{t('iconos.buscarEsBarra')}</Ayuda>
-          )}
+          {/* El dibujo lo pintan todos los buscadores (el ícono suelto, el que abre encima y el botón
+              y la lupa de las barras), en computador y celular: se ofrece siempre. */}
+          <DibujoIcono accion="search" ajustes={a} cambiar={cambiar} />
+          <FormaIconoCampo icono="buscar" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_BUSCAR} muestra={muestras.buscar} />
+          {!lupaVisible && <Ayuda>{t('iconos.buscarFormaBarra')}</Ayuda>}
           <FilaEnlace texto={t('iconos.buscarMostrar')} enlace={t('iconos.buscarIr')} onClick={onIrBuscador} />
           <NotaCelular>{t('iconos.buscarCelular')}</NotaCelular>
         </TarjetaIcono>
@@ -822,7 +882,7 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
                 />
                 <Ayuda>{t('iconos.soloCorazon')}</Ayuda>
               </div>
-              <FormaIconoCampo icono="favoritos" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} />
+              <FormaIconoCampo icono="favoritos" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} muestra={muestras.favoritos} />
               {campoTexto('favoritos')}
               <FilaEnlace texto={t('iconos.favoritosAbre')} enlace={t('iconos.favoritosVerPanel')} onClick={() => onAbrir('favoritos')} />
               {notaSoloComputador('favoritos') ?? <NotaCelular>{t('iconos.favoritosCelular')}</NotaCelular>}
@@ -840,7 +900,7 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
             <>
               <DibujoIcono accion="cart" ajustes={a} cambiar={cambiar} />
               <Ayuda>{t('iconos.dibujoCarritoAyuda')}</Ayuda>
-              <FormaIconoCampo icono="carrito" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} />
+              <FormaIconoCampo icono="carrito" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} muestra={muestras.carrito} />
               {campoTexto('carrito')}
               <Segmento
                 etiqueta={t('iconos.contador')}
@@ -862,7 +922,7 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
           {visibleCuenta && (
             <>
               <DibujoIcono accion="account" ajustes={a} cambiar={cambiar} />
-              <FormaIconoCampo icono="cuenta" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} />
+              <FormaIconoCampo icono="cuenta" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} muestra={muestras.cuenta} />
               {lleva('cuenta') && (
                 <>
                   <CampoTexto
@@ -907,7 +967,7 @@ export function VistaIconos({ ajustes: a, cambiar, onAbrir, onIrBuscador, colore
               ) : (
                 <Ayuda>{t('iconos.monedaSinDibujo', { estilo: t(`moneda.estiloOpcion.${estiloMoneda}`) })}</Ayuda>
               )}
-              <FormaIconoCampo icono="moneda" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} />
+              <FormaIconoCampo icono="moneda" op={op} ajustes={a} cambiar={cambiar} formas={FORMAS_ICONO} muestra={muestras.moneda} />
               <FilaEnlace texto={t('iconos.monedaEstiloFila')} enlace={t('iconos.monedaCambiar')} onClick={() => onAbrir('moneda')} />
               {notaSoloComputador('moneda') ?? <NotaCelular>{t('iconos.monedaCelular')}</NotaCelular>}
             </>

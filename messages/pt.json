@@ -34687,7 +34687,17 @@
             "coins": "Moedas",
             "wallet": "Carteira",
             "banknote": "Cédula",
-            "dollar-sign": "Cifrão"
+            "dollar-sign": "Cifrão",
+            "text-search": "Lupa com linhas",
+            "search-check": "Lupa com visto",
+            "zoom-in": "Lupa com mais",
+            "binoculars": "Binóculos",
+            "shopping-basket": "Cesta",
+            "store": "Loja",
+            "circle-user-round": "Pessoa em círculo redondo",
+            "log-in": "Entrar",
+            "circle-dollar-sign": "Cifrão em círculo",
+            "languages": "Idiomas"
           }
         },
         "diseno": {
@@ -35821,7 +35831,11 @@
             "caja": "Caixa dos ícones",
             "cajaAyuda": "Forma, fundo e sombra de carrinho, conta, moeda, favoritos e busca. Sem escolher, fica o ícone de hoje.",
             "tamanoGuardado": "Sem «Tamanho» aqui: o tamanho é um só, acima (S / M / L). A loja tem {n} px salvo e continua igual enquanto você não escolher S, M ou L.",
-            "sinTamano": "Sem «Tamanho» aqui: o tamanho é um só, acima (S / M / L)."
+            "sinTamano": "Sem «Tamanho» aqui: o tamanho é um só, acima (S / M / L).",
+            "tamanoCaja": "Tamanho da caixa",
+            "tamanoCajaAyuda": "Define a caixa e, se você não escolher S, M ou L acima, também o desenho de dentro. Normal = o de hoje.",
+            "tamanoNormal": "Normal",
+            "tamanoPx": "{n} px"
           },
           "cualesTitulo": "Quais aparecem e com qual desenho",
           "cualesTituloAyuda": "Na ordem do cabeçalho. Em cada um: mostrar ou ocultar, o desenho, a forma (se quiser diferente dos demais) e o texto.",
@@ -35858,7 +35872,8 @@
           "filaEstilo": "Os ícones são configurados em Conteúdo › Ícones",
           "filaEstiloAyuda": "Estilo, forma, tamanho, traço, fundo e desenhos. Toque para abrir a vista.",
           "buscarEsBarra": "Sua busca é uma barra: o botão dela não usa este desenho. O desenho e a forma da lupa aparecem aqui quando você escolhe a busca «Ícone» em Design › Busca.",
-          "monedaSinDibujo": "Com o estilo «{estilo}» a moeda não usa desenho: ela aparece como você escolheu em «Mudar como o seletor aparece». O desenho só é usado com «Só ícone»."
+          "monedaSinDibujo": "Com o estilo «{estilo}» a moeda não usa desenho: ela aparece como você escolheu em «Mudar como o seletor aparece». O desenho só é usado com «Só ícone».",
+          "buscarFormaBarra": "A forma aparece quando a busca é um ícone. Na barra vale a forma da barra (Design › Busca); o desenho aparece no botão e na lupa dela."
         },
         "moneda": {
           "titulo": "Cabeçalho › Seletor de moeda",
@@ -35900,7 +35915,8 @@
             "lateral": "A lista se abre dentro do menu lateral.",
             "chips": "As moedas aparecem como chips dentro do menu.",
             "barra": "A bandeira (ou o código) fica ao lado do carrinho e abre a folha."
-          }
+          },
+          "dibujoAyuda": "É o mesmo desenho do cartão Moeda em “Ícones”: o que você escolher aqui aparece marcado lá."
         },
         "carrito": {
           "titulo": "Cabeçalho › Carrinho",

@@ -61,6 +61,7 @@ import {
   type TextoFavoritos,
 } from '@/lib/website/v2/cabeceraTienda';
 import { EtiquetaGrupo, FilaInterruptor, InsigniaNuevo, TarjetaComposicion, TituloBloque } from './PartesZonaGlobal';
+import { DibujoIcono } from './VistaIconosCabecera';
 import {
   botonEnModo,
   cambioBotonCarrito,
@@ -333,6 +334,14 @@ export function VistaMoneda({ ajustes: a, cambiar, organizationId }: { ajustes: 
           ))}
         </div>
         {op.estilo && <BotonComoHoy onClick={() => cambiar(cambioMoneda(a, { estilo: null }))} />}
+        {/* «Solo ícono» (o sin estilo, lo de hoy): el dibujo de la moneda aquí mismo. Es el mismo
+            control y el mismo dato que la tarjeta Moneda de «Íconos» (queja del dueño 2026-11-23). */}
+        {(op.estilo === null || op.estilo === 'icono') && (
+          <div className="flex flex-col gap-1.5" data-dibujo-moneda="">
+            <DibujoIcono accion="currency" ajustes={a} cambiar={cambiar} />
+            <Ayuda>{t('moneda.dibujoAyuda')}</Ayuda>
+          </div>
+        )}
         <FilaInterruptor titulo={t('moneda.flecha')} valor={op.flecha} onCambiar={(v) => cambiar(cambioMoneda(a, { flecha: v ? null : false }))} />
       </section>
 

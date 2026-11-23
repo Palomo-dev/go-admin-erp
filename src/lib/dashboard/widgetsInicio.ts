@@ -30,10 +30,25 @@ export interface KpiWidget {
   /** Texto de la cifra cuando no hay número que mostrar («—»). */
   sinCifra?: boolean;
   detalle?: TextoModulo;
-  /** Variación % frente a la base de comparación (null = sin base). */
+  /** Variación frente a la base de comparación (null = sin base: no se pinta). */
   delta?: number | null;
-  /** Unidad de la variación: porcentaje («+8 %») o puntos («+5 pp»). */
-  unidadDelta?: 'porcentaje' | 'puntos';
+  /**
+   * Unidad de la variación: porcentaje («+8 %», por defecto), puntos porcentuales («+5 pp») o
+   * cantidad absoluta («+2»).
+   */
+  unidadDelta?: 'porcentaje' | 'puntos' | 'absoluto';
+  /**
+   * Qué dirección es buena (colorea el badge de la variación). Por defecto `sube`; en
+   * «Atrasados» subir es malo (`baja`).
+   */
+  deltaMejor?: 'sube' | 'baja';
+  /** Contra qué se compara («vs. cierre de ayer»), junto al badge de la variación. */
+  comparadoCon?: TextoModulo;
+  /**
+   * Mini-gráfica bajo la cifra (`MiniaturaSerie`), en orden cronológico y con el último punto =
+   * la cifra de ahora. Con menos de dos puntos no se pinta.
+   */
+  serie?: number[];
   tono?: TonoModulo;
   href?: string | null;
 }
@@ -79,6 +94,17 @@ export interface AccionWidget {
   /** Acción que se resuelve en el cliente (abrir el diálogo existente). */
   dialogo?: 'pedidoManual';
   principal?: boolean;
+}
+
+/**
+ * Enlace a una pantalla con su filtro en la URL («5 atrasados» → Por despachar con
+ * `?atrasados=1`). La pantalla ya se validó contra el menú de la persona (`href` del armado):
+ * sin ella, `null`.
+ */
+export function hrefConFiltro(base: string | null, filtro: Record<string, string>): string | null {
+  if (!base) return null;
+  const q = new URLSearchParams(filtro).toString();
+  return q ? `${base}${base.includes('?') ? '&' : '?'}${q}` : base;
 }
 
 /** Número finito, entero ≥ 0. */

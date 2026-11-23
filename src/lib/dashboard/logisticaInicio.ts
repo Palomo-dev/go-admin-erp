@@ -17,8 +17,10 @@ import type { ConteosSeguimiento } from '@/lib/logistica/seguimiento';
 import type { KpisCuadres } from '@/lib/logistica/cuadresVista';
 import { RUTAS_LOGISTICA } from '@/lib/logistica/rutas';
 import type { CifraModulo, TonoModulo } from './resumenModulos';
+import { comparar, ETIQUETA_COMPARACION, type FotoDia } from './fotosOperacion';
 import {
   entero,
+  hrefConFiltro,
   numero,
   ordenarAtencion,
   porcentajes,
@@ -45,6 +47,12 @@ export interface CrudoLogisticaInicio {
   primerIntento: number | null;
   /** Meta del Figma (0–1). */
   metaPrimerIntento: number;
+  /**
+   * Fotos de los días anteriores (`ops_daily_snapshots`) y el día de hoy en la zona de la
+   * organización: base de «Atrasados +2 vs. cierre de ayer». Sin fotos, sin comparación.
+   */
+  fotos?: FotoDia[] | null;
+  hoy?: string;
 }
 
 export interface LogisticaInicio {
@@ -80,6 +88,15 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
   const porDespachar = entero(d?.porDespachar);
   const atrasados = entero(d?.atrasados);
   const sinDom = entero(d?.sinDomiciliario);
+  // Cada cifra abre su pantalla ya filtrada (los filtros que esa pantalla lee de la URL).
+  const hAtrasados = hrefConFiltro(hPor, { atrasados: '1' });
+  const hSinDom = hrefConFiltro(hPor, { estado: 'por_asignar' });
+  const hContraentrega = hrefConFiltro(hPor, { pago: 'contraentrega' });
+  const hNovedades = hrefConFiltro(hSeg, { chip: 'novedades' });
+  const hSinMovimiento = hrefConFiltro(hSeg, { chip: 'sin_movimiento' });
+  const hConDiferencia = hrefConFiltro(hCua, { filtro: 'con_diferencia_hoy' });
+  const hPorRecibir = hrefConFiltro(hCua, { filtro: 'por_recibir' });
+  const vsAyer = d && c.hoy ? comparar(c.fotos, 'logistica.atrasados', c.hoy, atrasados) : null;
 
   const kpis: KpiWidget[] = d
     ? [
@@ -98,8 +115,11 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
           etiqueta: { clave: 'logistica.kpis.atrasados' },
           cifra: { tipo: 'numero', valor: atrasados },
           detalle: { clave: atrasados > 0 ? 'logistica.detalles.atrasados' : 'logistica.detalles.aTiempo' },
+          ...(vsAyer && vsAyer.delta !== null
+            ? { delta: vsAyer.delta, unidadDelta: 'absoluto' as const, deltaMejor: 'baja' as const, comparadoCon: ETIQUETA_COMPARACION }
+            : {}),
           tono: atrasados > 0 ? 'peligro' : 'neutro',
-          href: atrasados > 0 ? hPor : null,
+          href: atrasados > 0 ? hAtrasados : null,
         },
         {
           id: 'contraentrega',
@@ -109,7 +129,7 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
             entero(d.enviosContraentregaHoy) > 0
               ? { clave: 'logistica.detalles.contraentrega', params: { n: entero(d.enviosContraentregaHoy) } }
               : { clave: 'logistica.detalles.sinContraentrega' },
-          href: entero(d.enviosContraentregaHoy) > 0 ? hPor : null,
+          href: entero(d.enviosContraentregaHoy) > 0 ? hContraentrega : null,
         },
         {
           id: 'sinDomiciliario',
@@ -120,13 +140,13 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
               ? { clave: 'logistica.detalles.todosConDomiciliario' }
               : { clave: 'logistica.detalles.salenHoy', params: { n: entero(d.sinDomiciliarioHoy), total: entero(d.saleHoy) } },
           tono: sinDom > 0 ? 'advertencia' : 'neutro',
-          href: sinDom > 0 ? hPor : null,
+          href: sinDom > 0 ? hSinDom : null,
         },
       ]
     : [];
 
   const atencion: AtencionWidget[] = [];
-  if (atrasados > 0 && hPor) {
+  if (atrasados > 0 && hAtrasados) {
     atencion.push({
       id: 'atrasados',
       icono: 'reloj',
@@ -136,10 +156,10 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
         ? { clave: 'logistica.atencion.masAtrasado', params: { numero: c.masAtrasado.numero, minutos: entero(c.masAtrasado.minutos) } }
         : undefined,
       accion: { clave: 'logistica.acciones.verAtrasados' },
-      href: hPor,
+      href: hAtrasados,
     });
   }
-  if (s && entero(s.vencenHoy) > 0 && hSeg) {
+  if (s && entero(s.vencenHoy) > 0 && hNovedades) {
     atencion.push({
       id: 'novedades',
       icono: 'alerta',
@@ -147,19 +167,19 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
       titulo: { clave: 'logistica.atencion.novedadesHoy', params: { n: entero(s.vencenHoy) } },
       detalle: { clave: 'logistica.atencion.novedadesAbiertas', params: { n: entero(s.novedades) } },
       accion: { clave: 'logistica.acciones.resolver' },
-      href: hSeg,
+      href: hNovedades,
     });
-  } else if (s && entero(s.novedades) > 0 && hSeg) {
+  } else if (s && entero(s.novedades) > 0 && hNovedades) {
     atencion.push({
       id: 'novedades',
       icono: 'alerta',
       tono: 'advertencia',
       titulo: { clave: 'logistica.atencion.novedades', params: { n: entero(s.novedades) } },
       accion: { clave: 'logistica.acciones.resolver' },
-      href: hSeg,
+      href: hNovedades,
     });
   }
-  if (s && entero(s.sinMovimiento) > 0 && hSeg) {
+  if (s && entero(s.sinMovimiento) > 0 && hSinMovimiento) {
     atencion.push({
       id: 'sinMovimiento',
       icono: 'ubicacion',
@@ -170,10 +190,10 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
           ? { clave: 'logistica.atencion.conTransportadora', params: { n: entero(s.sinMovimientoTransportadora) } }
           : undefined,
       accion: { clave: 'logistica.acciones.revisar' },
-      href: hSeg,
+      href: hSinMovimiento,
     });
   }
-  if (q && entero(q.conDiferenciaHoy) > 0 && hCua) {
+  if (q && entero(q.conDiferenciaHoy) > 0 && hConDiferencia) {
     atencion.push({
       id: 'conDiferencia',
       icono: 'billetera',
@@ -182,10 +202,10 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
       detalle: numero(q.faltanteHoy) < 0 ? { clave: 'logistica.atencion.faltante' } : undefined,
       importe: numero(q.faltanteHoy) < 0 ? din(Math.abs(numero(q.faltanteHoy))) : null,
       accion: { clave: 'logistica.acciones.revisar' },
-      href: hCua,
+      href: hConDiferencia,
     });
   }
-  if (q && numero(q.porRecibir) > 0 && hCua) {
+  if (q && numero(q.porRecibir) > 0 && hPorRecibir) {
     atencion.push({
       id: 'porRecibir',
       icono: 'dinero',
@@ -194,7 +214,7 @@ export function armarLogistica(e: EntradaLogistica): LogisticaInicio {
       detalle: { clave: 'logistica.atencion.domiciliariosConDinero', params: { n: entero(q.domiciliariosPorRecibir) } },
       importe: din(q.porRecibir),
       accion: { clave: 'logistica.acciones.recibirDinero' },
-      href: hCua,
+      href: hPorRecibir,
     });
   }
 

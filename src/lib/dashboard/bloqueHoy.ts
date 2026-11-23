@@ -2,7 +2,7 @@
  * Bloque «Hoy» del inicio (Figma `03 Navegación y shell` › «Inicio — dashboard»,
  * frame `445:137185`, componente `TarjetaHoy` `445:195385`).
  *
- * Regla pura, sin dependencias: de las cifras que devuelve el servidor
+ * Regla pura, sin red: de las cifras que devuelve el servidor
  * (`bloqueHoy.server.ts`) a las casillas que se pintan. Cada casilla lleva
  * etiqueta, estado, una cifra, un detalle y EXACTAMENTE una acción.
  *
@@ -20,11 +20,32 @@
  *
  * Una casilla es `null` en los datos cuando su módulo no está activo o la
  * persona no tiene permiso para verla: entonces no se pinta.
+ *
+ * Logística y Transporte (Figma `03` › Inicio, pantalla C 2919:46236; aprobado
+ * el 2026-11-23): «Documentos · 2 vencidos · Renovar», «Despachos · 2 viajes ·
+ * Resolver» y «Envíos · 5 atrasados · Ver atrasados». Son avisos: sin nada
+ * vencido, bloqueado o atrasado no se pintan. Cada acción abre la pantalla ya
+ * filtrada (Flota › Documentos vencidos, Despachos de hoy bloqueados, Por
+ * despachar atrasados).
  */
+import { RUTAS_LOGISTICA } from '@/lib/logistica/rutas';
+
+/** Páginas de Transporte de las casillas (rutas del catálogo, como `PAGINAS_TRANSPORTE`). */
+const PAGINA_VIAJES = '/app/transporte/viajes';
+const PAGINA_FLOTA = '/app/transporte/flota';
 
 export type TonoHoy = 'exito' | 'peligro' | 'advertencia' | 'neutro';
 
-export type IdCasillaHoy = 'porCobrar' | 'stockCritico' | 'pedidosWeb' | 'reservasStock' | 'cajasAnteriores' | 'misTareas';
+export type IdCasillaHoy =
+  | 'porCobrar'
+  | 'stockCritico'
+  | 'pedidosWeb'
+  | 'documentosVencidos'
+  | 'despachosBloqueados'
+  | 'enviosAtrasados'
+  | 'reservasStock'
+  | 'cajasAnteriores'
+  | 'misTareas';
 
 export interface DatosHoy {
   porCobrar: { vencido: number; cuentas: number; diasMasVieja: number; monedas: string[] } | null;
@@ -44,6 +65,24 @@ export interface DatosHoy {
   reservasStock?: { huerfanas: number; unidades: number } | null;
   cajasAnteriores: { cantidad: number; diasMasVieja: number } | null;
   tareas: { abiertas: number; vencenHoy: number; vencidas: number } | null;
+  /**
+   * Logística (módulo activo, `logistica.view` y que la persona vea toda la
+   * operación): envíos atrasados con la regla de Por despachar (`kpisDespacho`)
+   * y el más atrasado.
+   */
+  logistica?: { atrasados: number; masAtrasado: { numero: string; minutos: number } | null } | null;
+  /**
+   * Transporte (módulo activo y `transporte.view`): despachos de hoy bloqueados
+   * (`estadoDespacho` + `fn_transporte_cumplimiento`) con sus códigos, y
+   * documentos vencidos de la flota (`documentosFlota`) con un ejemplo.
+   */
+  transporte?: {
+    bloqueados: number;
+    codigos: string[];
+    documentosVencidos: number;
+    /** `causa`: clave de `transporte.despachos.causas` (se traduce en el cliente). */
+    ejemplo: { nombre: string; causa: string } | null;
+  } | null;
   /** true si el alcance es una sola sucursal (cambia el texto del detalle de stock). */
   unaSucursal: boolean;
 }
@@ -78,7 +117,20 @@ export const MAX_CASILLAS_HOY = 5;
 export const ESTADOS_TAREA_ABIERTA: readonly string[] = ['open', 'in_progress', 'todo'];
 
 /** Orden fijo a igual urgencia. */
-const ORDEN: IdCasillaHoy[] = ['porCobrar', 'stockCritico', 'pedidosWeb', 'reservasStock', 'cajasAnteriores', 'misTareas'];
+const ORDEN: IdCasillaHoy[] = [
+  'porCobrar',
+  'stockCritico',
+  'pedidosWeb',
+  'documentosVencidos',
+  'despachosBloqueados',
+  'enviosAtrasados',
+  'reservasStock',
+  'cajasAnteriores',
+  'misTareas',
+];
+
+/** Códigos que se nombran en el detalle de «Despachos» (el resto: «y N más»). */
+const MAX_CODIGOS = 2;
 const PESO_TONO: Record<TonoHoy, number> = { peligro: 0, advertencia: 1, exito: 2, neutro: 3 };
 
 function casillaPorCobrar(d: NonNullable<DatosHoy['porCobrar']>): CasillaHoy {
@@ -186,6 +238,53 @@ function casillaCajas(d: NonNullable<DatosHoy['cajasAnteriores']>): CasillaHoy |
   };
 }
 
+function casillaDocumentos(d: NonNullable<DatosHoy['transporte']>): CasillaHoy | null {
+  // Solo es un aviso: sin documentos vencidos no se pinta.
+  if (d.documentosVencidos <= 0) return null;
+  return {
+    id: 'documentosVencidos',
+    tono: 'peligro',
+    estado: 'vencido',
+    cifra: { tipo: 'texto', texto: { clave: 'cifras.vencidos', params: { n: d.documentosVencidos } } },
+    detalle: d.ejemplo
+      ? { clave: 'detalles.documentoEjemplo', params: { causa: d.ejemplo.causa, nombre: d.ejemplo.nombre, mas: d.documentosVencidos - 1 } }
+      : { clave: 'detalles.documentosVencidos' },
+    accion: { etiqueta: { clave: 'acciones.renovar' }, href: `${PAGINA_FLOTA}?estado=vencido` },
+  };
+}
+
+function casillaDespachos(d: NonNullable<DatosHoy['transporte']>): CasillaHoy | null {
+  // Solo es un aviso: sin despachos bloqueados no se pinta.
+  if (d.bloqueados <= 0) return null;
+  const nombrados = d.codigos.slice(0, MAX_CODIGOS);
+  return {
+    id: 'despachosBloqueados',
+    tono: 'peligro',
+    estado: 'critico',
+    cifra: { tipo: 'texto', texto: { clave: 'cifras.viajes', params: { n: d.bloqueados } } },
+    detalle:
+      nombrados.length > 0
+        ? { clave: 'detalles.noPuedenSalir', params: { codigos: nombrados.join(' · '), n: d.bloqueados, mas: Math.max(0, d.bloqueados - nombrados.length) } }
+        : { clave: 'detalles.despachosBloqueados' },
+    accion: { etiqueta: { clave: 'acciones.resolver' }, href: `${PAGINA_VIAJES}?pestana=despachos&estado=bloqueado` },
+  };
+}
+
+function casillaAtrasados(d: NonNullable<DatosHoy['logistica']>): CasillaHoy | null {
+  // Solo es un aviso: sin envíos atrasados no se pinta.
+  if (d.atrasados <= 0) return null;
+  return {
+    id: 'enviosAtrasados',
+    tono: 'peligro',
+    estado: 'urgente',
+    cifra: { tipo: 'texto', texto: { clave: 'cifras.atrasados', params: { n: d.atrasados } } },
+    detalle: d.masAtrasado
+      ? { clave: 'detalles.masAtrasado', params: { numero: d.masAtrasado.numero, minutos: d.masAtrasado.minutos } }
+      : { clave: 'detalles.enviosAtrasados' },
+    accion: { etiqueta: { clave: 'acciones.verAtrasados' }, href: `${RUTAS_LOGISTICA.porDespachar}?atrasados=1` },
+  };
+}
+
 function casillaTareas(d: NonNullable<DatosHoy['tareas']>): CasillaHoy {
   const href = '/app/pm/tareas';
   const pendientesHoy = d.vencenHoy + d.vencidas;
@@ -211,6 +310,9 @@ export function casillasHoy(datos: DatosHoy): CasillaHoy[] {
     datos.porCobrar ? casillaPorCobrar(datos.porCobrar) : null,
     datos.stock ? casillaStock(datos.stock, datos.unaSucursal) : null,
     datos.pedidosWeb ? casillaPedidosWeb(datos.pedidosWeb) : null,
+    datos.transporte ? casillaDocumentos(datos.transporte) : null,
+    datos.transporte ? casillaDespachos(datos.transporte) : null,
+    datos.logistica ? casillaAtrasados(datos.logistica) : null,
     datos.reservasStock ? casillaReservas(datos.reservasStock) : null,
     datos.cajasAnteriores ? casillaCajas(datos.cajasAnteriores) : null,
     datos.tareas ? casillaTareas(datos.tareas) : null,

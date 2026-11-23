@@ -699,7 +699,10 @@
         "pedidosWeb": "Web orders",
         "cajasAnteriores": "Registers left open",
         "reservasStock": "Stale stock reservations",
-        "misTareas": "My tasks"
+        "misTareas": "My tasks",
+        "documentosVencidos": "Documents",
+        "despachosBloqueados": "Dispatches",
+        "enviosAtrasados": "Shipments"
       },
       "estados": {
         "vencido": "Overdue",
@@ -718,7 +721,10 @@
         "pendientes": "{n, plural, one {# pending} other {# pending}}",
         "cajasAbiertas": "{n, plural, one {# open register} other {# open registers}}",
         "reservas": "{n, plural, one {# reservation} other {# reservations}}",
-        "abiertas": "{n, plural, one {# open} other {# open}}"
+        "abiertas": "{n, plural, one {# open} other {# open}}",
+        "vencidos": "{n} expired",
+        "viajes": "{n, plural, one {# trip} other {# trips}}",
+        "atrasados": "{n} late"
       },
       "detalles": {
         "carteraAlDia": "No overdue accounts",
@@ -739,7 +745,13 @@
         "cajasDesde": "Open for {dias, plural, one {# day} other {# days}}",
         "tareasVencidas": "{n, plural, one {# overdue} other {# overdue}}{hoy, plural, =0 {} one { · # due today} other { · # due today}}",
         "tareasHoy": "{n, plural, one {# due today} other {# due today}}",
-        "tareasSinVencer": "None due today"
+        "tareasSinVencer": "None due today",
+        "documentoEjemplo": "{causa} for {nombre}{mas, plural, =0 {} other { · and # more}}",
+        "documentosVencidos": "Renew them so trips can depart",
+        "noPuedenSalir": "{codigos}{mas, plural, =0 {} other { and # more}} can't depart",
+        "despachosBloqueados": "They can't depart until the block is resolved",
+        "masAtrasado": "Most overdue: {numero}, {minutos} min",
+        "enviosAtrasados": "Already past the delivery promise"
       },
       "acciones": {
         "verCartera": "View receivables",
@@ -750,7 +762,10 @@
         "atender": "Handle",
         "verCajas": "View registers",
         "revisar": "Review",
-        "abrir": "Open"
+        "abrir": "Open",
+        "renovar": "Renew",
+        "resolver": "Resolve",
+        "verAtrasados": "See late ones"
       },
       "verTodas": "See all {n} · {resto}"
     },
@@ -66028,7 +66043,8 @@
       "alDia": "Up to date",
       "porAtender": "{n} to handle",
       "requiereAtencion": "Needs attention",
-      "parcial": "Part of it could not be read: something may be missing from this list."
+      "parcial": "Part of it could not be read: something may be missing from this list.",
+      "vsCierreAyer": "vs. yesterday's close"
     },
     "canales": {
       "pos": "POS",

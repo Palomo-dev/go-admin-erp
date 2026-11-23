@@ -7,6 +7,10 @@
  * `BarraDesglose` y `ModuloEstado` (vacío «Sin datos»). Todo llega armado del
  * servidor: aquí no hay cálculo ni consulta, solo presentación.
  *
+ * Mini-gráfica de una cifra: basta con que el armado llene `KpiWidget.serie` (la pinta
+ * `MiniaturaSerie`, la misma de «Tienda web»); la variación sale de `delta` con su unidad
+ * (`unidadDelta`), su dirección buena (`deltaMejor`) y contra qué compara (`comparadoCon`).
+ *
  * Textos del namespace `inicioWidgets`; colores por tokens.
  */
 import Link from 'next/link';
@@ -33,6 +37,7 @@ import { formatMoneda } from '@/lib/utils/moneda';
 import type { CifraModulo, TextoModulo, TonoModulo } from '@/lib/dashboard/resumenModulos';
 import type { AccionWidget, AtencionWidget, DesgloseWidget, IconoAtencion, KpiWidget } from '@/lib/dashboard/widgetsInicio';
 import { formatoEntero, formatoVariacion } from '../useLecturaInicio';
+import { MiniaturaSerie } from '../MiniaturaSerie';
 
 type Params = Record<string, string | number>;
 
@@ -52,6 +57,22 @@ export function useCifraWidget(): (c: CifraModulo) => string {
 export function useTextoWidget(): (x: TextoModulo, params?: Params) => string {
   const t = useTranslations('inicioWidgets');
   return (x, params) => t(x.clave, { ...(x.params ?? {}), ...(params ?? {}) });
+}
+
+/** Texto de la variación según su unidad: «+8,0 %», «+5 pp» o «+2». */
+export function textoDelta(k: Pick<KpiWidget, 'delta' | 'unidadDelta'>, locale: string): string {
+  const v = k.delta ?? 0;
+  if (!k.unidadDelta || k.unidadDelta === 'porcentaje') return formatoVariacion(v, locale);
+  const signo = v > 0 ? '+' : v < 0 ? '−' : '';
+  const abs = formatoEntero(Math.abs(Math.round(v)), locale);
+  return k.unidadDelta === 'puntos' ? `${signo}${abs} pp` : `${signo}${abs}`;
+}
+
+/** Tono del badge de la variación: verde si va en la dirección buena, rojo si no, neutro en 0. */
+export function tonoDelta(k: Pick<KpiWidget, 'delta' | 'deltaMejor'>): 'exito' | 'peligro' | 'neutro' {
+  const v = k.delta ?? 0;
+  if (v === 0) return 'neutro';
+  return (v > 0) === ((k.deltaMejor ?? 'sube') === 'sube') ? 'exito' : 'peligro';
 }
 
 const TONO_STAT: Record<TonoModulo, 'neutro' | 'exito' | 'advertencia' | 'peligro' | 'informacion'> = {
@@ -79,12 +100,23 @@ export function KpisWidget({ kpis }: { kpis: readonly KpiWidget[] }) {
             <span className="inline-flex flex-wrap items-center gap-2" data-kpi={k.id}>
               <span>{k.sinCifra || !k.cifra ? '—' : cifra(k.cifra)}</span>
               {k.delta !== undefined && k.delta !== null && (
-                <StatusBadge estado="variacion" etiqueta={formatoVariacion(k.delta, locale)} tono={k.delta >= 0 ? 'exito' : 'peligro'} apariencia="suave" />
+                <StatusBadge
+                  estado="variacion"
+                  etiqueta={textoDelta(k, locale)}
+                  tono={!k.unidadDelta || k.unidadDelta === 'porcentaje' ? (k.delta >= 0 ? 'exito' : 'peligro') : tonoDelta(k)}
+                  apariencia="suave"
+                />
+              )}
+              {k.delta !== undefined && k.delta !== null && k.comparadoCon && (
+                <span className="text-xs font-normal leading-4 text-fg-secondary" data-comparado-con>
+                  {texto(k.comparadoCon)}
+                </span>
               )}
             </span>
           }
           detalle={k.detalle ? texto(k.detalle) : undefined}
           tono={TONO_STAT[k.tono ?? 'neutro']}
+          pie={k.serie && k.serie.length >= 2 ? <MiniaturaSerie valores={k.serie} className="h-6" /> : undefined}
           href={k.href ?? undefined}
         />
       ))}

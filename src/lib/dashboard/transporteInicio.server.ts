@@ -14,10 +14,12 @@
  * fuente falla por separado.
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
-import { cumplimientoDeViajes, listarViajesDelDia } from '@/lib/services/transporte/despachosService';
+import { cumplimientoDeViajes, listarViajesDelDia, type ViajeDelDia } from '@/lib/services/transporte/despachosService';
 import { documentosFlota, kpisDocumentos, type ConductorConFechas, type VehiculoConFechas } from '@/lib/transporte/documentosFlota';
 import type { Cumplimiento } from '@/lib/transporte/despachos';
 import type { CrudoTransporteInicio, ViajeInicio } from './transporteInicio';
+import { METRICAS_TRANSPORTE } from './fotosOperacion';
+import { leerFotosOperacion } from './fotosOperacion.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase'>;
 
@@ -36,9 +38,38 @@ async function seguro<T>(etiqueta: string, ctx: Ctx, f: () => Promise<T>): Promi
 /** Tope de vehículos y conductores que se leen (el mismo de Flota › Documentos). */
 const TOPE_FLOTA = 1000;
 
+/** Los viajes que faltan por salir: a ellos solo se les pide el cumplimiento (criterio de Despachos de hoy). */
+export function pendientesDeSalir(lista: readonly ViajeDelDia[]): ViajeDelDia[] {
+  return lista.filter((v) => !v.despachadoEn && ['scheduled', 'boarding', 'delayed', null].includes(v.status));
+}
+
+/** Un viaje de la lectura de Despachos de hoy, lo justo para el widget (con su retraso declarado). */
+export function aViajeInicio(v: ViajeDelDia, retraso = 0): ViajeInicio {
+  return {
+    id: v.id,
+    codigo: v.codigo,
+    salida: v.salida,
+    status: v.status,
+    despachadoEn: v.despachadoEn,
+    conExcepcion: !!v.excepcion,
+    ruta: v.ruta?.nombre ?? null,
+    placa: v.vehiculo?.placa ?? null,
+    puestos: v.puestos,
+    disponibles: v.disponibles,
+    retraso,
+  };
+}
+
 export async function leerTransporteInicio(
   ctx: Ctx,
-  p: { sucursal: number | null; dia: string; hayViajes: boolean; hayVehiculos: boolean },
+  p: {
+    sucursal: number | null;
+    dia: string;
+    hayViajes: boolean;
+    hayVehiculos: boolean;
+    /** Leer las fotos de días anteriores (comparación del widget). El bloque «Hoy» no las usa. */
+    conFotos?: boolean;
+  },
 ): Promise<CrudoTransporteInicio> {
   const db = ctx.supabase;
   const org = ctx.organizationId;
@@ -46,11 +77,11 @@ export async function leerTransporteInicio(
     return { hayViajes: false, hayVehiculos: false, viajes: [], cumplimiento: new Map(), vehiculos: null, documentos: null };
   }
 
-  const [viajes, flota] = await Promise.all([
+  const [viajes, flota, fotos] = await Promise.all([
     seguro('viajes de hoy', ctx, async () => {
       const lista = await listarViajesDelDia(db, { organizationId: org, fecha: p.dia, branchId: p.sucursal });
       // Mismo criterio que Despachos de hoy: el cumplimiento solo de lo que falta por salir.
-      const pendientes = lista.filter((v) => !v.despachadoEn && ['scheduled', 'boarding', 'delayed', null].includes(v.status));
+      const pendientes = pendientesDeSalir(lista);
       const cumplimiento = await cumplimientoDeViajes(db, pendientes.map((v) => v.id)).catch(() => new Map<string, Cumplimiento>());
       // `delay_minutes` no está en la lectura de Despachos: se pide aparte, solo para hoy.
       const retrasos = new Map<string, number>();
@@ -58,19 +89,7 @@ export async function leerTransporteInicio(
         const { data } = await db.from('trips').select('id, delay_minutes').eq('organization_id', org).eq('trip_date', p.dia).gt('delay_minutes', 0).limit(500);
         for (const r of (data ?? []) as Array<{ id: string; delay_minutes: number | null }>) retrasos.set(r.id, Number(r.delay_minutes) || 0);
       }
-      const filas: ViajeInicio[] = lista.map((v) => ({
-        id: v.id,
-        codigo: v.codigo,
-        salida: v.salida,
-        status: v.status,
-        despachadoEn: v.despachadoEn,
-        conExcepcion: !!v.excepcion,
-        ruta: v.ruta?.nombre ?? null,
-        placa: v.vehiculo?.placa ?? null,
-        puestos: v.puestos,
-        disponibles: v.disponibles,
-        retraso: retrasos.get(v.id) ?? 0,
-      }));
+      const filas: ViajeInicio[] = lista.map((v) => aViajeInicio(v, retrasos.get(v.id) ?? 0));
       return { filas, cumplimiento };
     }),
     seguro('flota', ctx, async () => {
@@ -96,6 +115,8 @@ export async function leerTransporteInicio(
       const conductores = (c.data ?? []) as ConductorConFechas[];
       return { vehiculos, conductores };
     }),
+    // Base de «vs. cierre de ayer» y de la mini-gráfica (falla sola: sin fotos, sin comparación).
+    p.conFotos === false ? Promise.resolve(null) : leerFotosOperacion(ctx, { sucursal: p.sucursal, hoy: p.dia, metricas: METRICAS_TRANSPORTE }),
   ]);
 
   let vehiculos: CrudoTransporteInicio['vehiculos'] = null;
@@ -127,5 +148,7 @@ export async function leerTransporteInicio(
     cumplimiento: viajes?.cumplimiento ?? new Map(),
     vehiculos,
     documentos,
+    fotos,
+    hoy: p.dia,
   };
 }

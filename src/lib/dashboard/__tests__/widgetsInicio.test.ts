@@ -160,7 +160,7 @@ describe('armarLogistica', () => {
     expect(l.fila).toMatchObject({ tono: 'peligro', badge: { clave: 'logistica.fila.atrasados', params: { n: 5 } } });
     expect(l.atencion.map((a) => a.id)).toEqual(['atrasados', 'novedades', 'sinMovimiento', 'conDiferencia', 'porRecibir']);
     expect(l.atencion.find((a) => a.id === 'conDiferencia')?.importe).toEqual({ tipo: 'moneda', valor: 4000, moneda: 'COP' });
-    expect(l.atencion.find((a) => a.id === 'atrasados')?.href).toBe('/app/logistica/por-despachar');
+    expect(l.atencion.find((a) => a.id === 'atrasados')?.href).toBe('/app/logistica/por-despachar?atrasados=1');
     expect(l.abiertos?.total).toEqual({ tipo: 'numero', valor: 84 });
     expect(l.primerIntento).toEqual({ tasa: 0.914, meta: 0.9 });
   });
@@ -246,7 +246,7 @@ describe('armarTransporte', () => {
     expect(tr.fila).toMatchObject({ tono: 'peligro', badge: { clave: 'transporte.fila.bloqueados', params: { n: 1 } } });
     const b = tr.atencion.find((a) => a.id === 'bloqueado-4');
     expect(b?.detalle?.params).toMatchObject({ causa: 'soat', placa: 'WNP104' });
-    expect(b?.href).toBe('/app/transporte/viajes');
+    expect(b?.href).toBe('/app/transporte/viajes?pestana=despachos&estado=bloqueado');
     expect(tr.atencion.map((a) => a.id)).toEqual(['bloqueado-4', 'documentosVencidos', 'mantenimiento']);
     expect(tr.porEstado?.total).toEqual({ tipo: 'numero', valor: 4 });
     expect(tr.kpis.find((k) => k.id === 'viajesHoy')?.cifra).toEqual({ tipo: 'numero', valor: 4 });

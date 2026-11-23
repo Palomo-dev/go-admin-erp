@@ -15,9 +15,19 @@
  * - tareas abiertas asignadas a la persona, cuántas vencen hoy y cuántas ya
  *   vencieron (día calendario de la organización).
  *
+ * - Logística: envíos atrasados con la bandeja y la regla de Por despachar
+ *   (`listarPorDespachar` + `kpisDespacho`), si el módulo está activo, la
+ *   persona tiene `logistica.view` y ve toda la operación (un domiciliario no);
+ * - Transporte: despachos de hoy bloqueados y documentos vencidos con la misma
+ *   lectura del widget (`leerTransporteInicio` → `resumenViajesHoy` y
+ *   `documentosFlota`), si el módulo está activo y la persona tiene
+ *   `transporte.view` (o el código antiguo `transport.trips.view`), igual que
+ *   `fn_inicio_modulos_resumen`.
+ *
  * Cada casilla depende de su módulo (`organization_modules`); si el módulo
  * está apagado, la persona no tiene permiso o la consulta falla, la casilla
- * llega `null` y no se pinta. Un fallo parcial no tumba el bloque.
+ * llega `null` y no se pinta. Un fallo parcial no tumba el bloque. Los
+ * permisos se resuelven en la base (`fn_caja_puede`, `fn_logistica_ve_todo`).
  */
 import type { ServerOrgContext } from '@/lib/utils/orgContext';
 import { moduleManagementService } from '@/lib/services/moduleManagementService';
@@ -26,7 +36,12 @@ import { listarStock } from '@/lib/services/stockService';
 import { getOrganizationTimezone } from '@/lib/services/organizationTimezoneService';
 import { nextPlainDay, plainDateToInstant, todayInTz } from '@/lib/utils/dateDisplay';
 import { limiteReservaHuerfana } from '@/lib/pos/reservasStock';
+import { listarPorDespachar } from '@/lib/services/logistica/despachoService';
+import { kpisDespacho } from '@/lib/logistica/despacho';
 import { diasDesde, enteroNoNegativo, ESTADOS_TAREA_ABIERTA, type DatosHoy } from './bloqueHoy';
+import { masAtrasadoDe } from './logisticaInicio.server';
+import { leerTransporteInicio } from './transporteInicio.server';
+import { bloqueadosPorSalida, resumenViajesHoy } from './transporteInicio';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'userId' | 'supabase'>;
 
@@ -152,6 +167,40 @@ async function tareas(ctx: Ctx, inicioHoy: string, inicioManana: string): Promis
   };
 }
 
+/** Permiso por código resuelto en la base (`fn_caja_puede`); un error cuenta como «no». */
+async function puedeCodigo(ctx: Ctx, codigo: string): Promise<boolean> {
+  const { data, error } = await ctx.supabase.rpc('fn_caja_puede', { p_org: ctx.organizationId, p_code: codigo });
+  return !error && data === true;
+}
+
+/** Envíos atrasados (regla de Por despachar) para quien ve toda la operación de Logística. */
+async function logisticaHoy(ctx: Ctx, sucursal: number | null, zona: string, ahora: Date): Promise<DatosHoy['logistica']> {
+  const [ver, todo] = await Promise.all([
+    puedeCodigo(ctx, 'logistica.view'),
+    ctx.supabase.rpc('fn_logistica_ve_todo', { p_org: ctx.organizationId }).then((r) => !r.error && r.data === true),
+  ]);
+  if (!ver || !todo) return null;
+  const { filas } = await listarPorDespachar(ctx.supabase, { organizationId: ctx.organizationId, branchId: sucursal });
+  return { atrasados: enteroNoNegativo(kpisDespacho(filas, ahora, zona).atrasados), masAtrasado: masAtrasadoDe(filas, ahora) };
+}
+
+/** Despachos de hoy bloqueados y documentos vencidos, con la lectura del widget de Transporte. */
+async function transporteHoy(ctx: Ctx, sucursal: number | null, hoy: string): Promise<DatosHoy['transporte']> {
+  const [ver, antiguo] = await Promise.all([puedeCodigo(ctx, 'transporte.view'), puedeCodigo(ctx, 'transport.trips.view')]);
+  if (!ver && !antiguo) return null;
+  const crudo = await leerTransporteInicio(ctx, { sucursal, dia: hoy, hayViajes: true, hayVehiculos: true, conFotos: false });
+  // Las dos fuentes fallan por separado; si fallan ambas no hay nada que decir.
+  if (!crudo.viajes && !crudo.documentos) throw new Error('transporte: sin lecturas');
+  const bloqueados = crudo.viajes ? bloqueadosPorSalida(resumenViajesHoy(crudo.viajes, crudo.cumplimiento)) : [];
+  const ej = crudo.documentos?.vencidosEjemplo[0] ?? null;
+  return {
+    bloqueados: bloqueados.length,
+    codigos: bloqueados.map((f) => f.v.codigo),
+    documentosVencidos: enteroNoNegativo(crudo.documentos?.vencidos),
+    ejemplo: ej ? { nombre: ej.nombre, causa: ej.tipo } : null,
+  };
+}
+
 /**
  * La sucursal que llega en la query solo se acepta si es de la organización
  * del contexto (con el cliente de la sesión: RLS). Si no, `null` = error del
@@ -181,13 +230,15 @@ export async function datosHoy(ctx: Ctx, sucursal: number | null, ahora: Date = 
   const inicioHoy = plainDateToInstant(hoy, zona);
   const inicioManana = plainDateToInstant(nextPlainDay(hoy), zona);
 
-  const [cartera, existencias, web, reservas, cajas, misTareas] = await Promise.all([
+  const [cartera, existencias, web, reservas, cajas, misTareas, logistica, transporte] = await Promise.all([
     activo('finance') ? seguro('cartera', ctx, () => porCobrar(ctx, sucursal)) : null,
     activo('inventory') ? seguro('stock', ctx, () => stock(ctx, sucursal)) : null,
     activo('pos') ? seguro('pedidos web', ctx, () => pedidosWeb(ctx, sucursal)) : null,
     activo('pos') ? seguro('reservas de stock', ctx, () => reservasStock(ctx, sucursal, ahora)) : null,
     activo('pos') ? seguro('cajas', ctx, () => cajasAnteriores(ctx, sucursal, inicioHoy, ahora)) : null,
     seguro('tareas', ctx, () => tareas(ctx, inicioHoy, inicioManana)),
+    activo('logistica') ? seguro('logística', ctx, () => logisticaHoy(ctx, sucursal, zona, ahora)) : null,
+    activo('transport') ? seguro('transporte', ctx, () => transporteHoy(ctx, sucursal, hoy)) : null,
   ]);
 
   return {
@@ -197,6 +248,8 @@ export async function datosHoy(ctx: Ctx, sucursal: number | null, ahora: Date = 
     reservasStock: reservas,
     cajasAnteriores: cajas,
     tareas: misTareas,
+    logistica,
+    transporte,
     unaSucursal: sucursal !== null,
   };
 }

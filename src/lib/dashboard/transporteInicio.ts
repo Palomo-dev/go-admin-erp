@@ -23,8 +23,10 @@ import {
 } from '@/lib/transporte/despachos';
 import type { KpisDocumentos } from '@/lib/transporte/documentosFlota';
 import type { TonoModulo } from './resumenModulos';
+import { comparar, ETIQUETA_COMPARACION, type FotoDia } from './fotosOperacion';
 import {
   entero,
+  hrefConFiltro,
   ordenarAtencion,
   porcentajes,
   type AccionWidget,
@@ -71,6 +73,12 @@ export interface CrudoTransporteInicio {
   /** Vehículos activos por estado (`vehicles.status`). */
   vehiculos: { total: number; disponibles: number; enUso: number; mantenimiento: number; placasMantenimiento: string[] } | null;
   documentos: (KpisDocumentos & { vencidosEjemplo: Array<{ nombre: string; tipo: CausaBloqueo }> }) | null;
+  /**
+   * Fotos de los días anteriores (`ops_daily_snapshots`) y el día de hoy en la zona de la
+   * organización: base de «Ocupación +5 pp vs. cierre de ayer» y de su mini-gráfica.
+   */
+  fotos?: FotoDia[] | null;
+  hoy?: string;
 }
 
 export interface TransporteInicio {
@@ -100,31 +108,84 @@ export function grupoViaje(v: Pick<ViajeInicio, 'status'>, estado: EstadoDespach
 /** Máximo de despachos bloqueados que se listan uno por uno; el resto va en «Ver despachos». */
 const MAX_BLOQUEADOS = 3;
 
-export function armarTransporte(e: EntradaTransporte): TransporteInicio {
-  const c = e.crudo;
-  const hViajes = e.href(PAGINAS_TRANSPORTE.viajes);
-  const hFlota = e.href(PAGINAS_TRANSPORTE.flota);
-  const hVehiculos = e.href(PAGINAS_TRANSPORTE.vehiculos) ?? hFlota;
-  const parcial = !c.viajes || !c.vehiculos || !c.documentos;
+/** Un viaje de hoy con su cumplimiento, su estado de despacho y su grupo. */
+export interface FilaViajeHoy {
+  v: ViajeInicio;
+  cumplimiento: Cumplimiento | null;
+  estado: EstadoDespacho;
+  grupo: GrupoViaje;
+}
 
-  const filas = (c.viajes ?? []).map((v) => {
-    const cumplimiento = c.cumplimiento.get(v.id) ?? null;
-    const estado = estadoDespacho({ id: v.id, status: v.status, dispatched_at: v.despachadoEn, dispatch_override_by: v.conExcepcion ? 'si' : null }, cumplimiento);
-    return { v, cumplimiento, estado, grupo: grupoViaje(v, estado) };
+/** Los viajes de hoy agrupados por estado y la ocupación de los ya salidos. */
+export interface ResumenViajesHoy {
+  filas: FilaViajeHoy[];
+  completados: number;
+  enRuta: number;
+  porSalir: number;
+  bloqueados: number;
+  /** Viajes de hoy sin contar los cancelados. */
+  total: number;
+  retrasados: number;
+  /** Viajes ya salidos (completados + en ruta). */
+  salidos: number;
+  /** Puestos vendidos / puestos de los salidos, en % entero; null si no ha salido ninguno. */
+  pctOcupacion: number | null;
+}
+
+/**
+ * Estado de cada viaje de hoy (`estadoDespacho` con el cumplimiento de la base, la regla de
+ * Viajes › Despachos de hoy) y la ocupación de los ya salidos (`ocupacion`). Lo comparten el
+ * widget, la casilla del bloque «Hoy» y la foto diaria del cron.
+ */
+export function resumenViajesHoy(viajes: readonly ViajeInicio[], cumplimiento: ReadonlyMap<string, Cumplimiento>): ResumenViajesHoy {
+  const filas: FilaViajeHoy[] = viajes.map((v) => {
+    const cu = cumplimiento.get(v.id) ?? null;
+    const estado = estadoDespacho({ id: v.id, status: v.status, dispatched_at: v.despachadoEn, dispatch_override_by: v.conExcepcion ? 'si' : null }, cu);
+    return { v, cumplimiento: cu, estado, grupo: grupoViaje(v, estado) };
   });
   const cuenta = (g: GrupoViaje) => filas.filter((f) => f.grupo === g).length;
   const completados = cuenta('completados');
   const enRuta = cuenta('enRuta');
   const porSalir = cuenta('porSalir');
   const bloqueados = cuenta('bloqueados');
-  const total = completados + enRuta + porSalir + bloqueados;
   const retrasados = filas.filter((f) => f.grupo !== 'cancelados' && f.grupo !== 'completados' && f.v.retraso > 0).length;
-
   // Ocupación de los viajes ya salidos (puestos vendidos / puestos), con la regla de Despachos.
   const salidos = filas.filter((f) => f.grupo === 'completados' || f.grupo === 'enRuta');
   const puestos = salidos.reduce((s, f) => s + Math.max(0, entero(f.v.puestos)), 0);
   const vendidos = salidos.reduce((s, f) => s + ocupacion(f.v.puestos, f.v.disponibles).vendidos, 0);
-  const pctOcupacion = puestos > 0 ? Math.round((vendidos / puestos) * 100) : null;
+  return {
+    filas,
+    completados,
+    enRuta,
+    porSalir,
+    bloqueados,
+    total: completados + enRuta + porSalir + bloqueados,
+    retrasados,
+    salidos: salidos.length,
+    pctOcupacion: puestos > 0 ? Math.round((vendidos / puestos) * 100) : null,
+  };
+}
+
+/** Despachos bloqueados de hoy, por hora de salida (los que la casilla y el widget nombran). */
+export function bloqueadosPorSalida(r: ResumenViajesHoy): FilaViajeHoy[] {
+  return r.filas.filter((f) => f.grupo === 'bloqueados').sort((a, b) => a.v.salida.localeCompare(b.v.salida));
+}
+
+export function armarTransporte(e: EntradaTransporte): TransporteInicio {
+  const c = e.crudo;
+  const hViajes = e.href(PAGINAS_TRANSPORTE.viajes);
+  const hFlota = e.href(PAGINAS_TRANSPORTE.flota);
+  const hVehiculos = e.href(PAGINAS_TRANSPORTE.vehiculos) ?? hFlota;
+  // Cada cifra abre su pantalla ya filtrada (los filtros que esa pantalla lee de la URL).
+  const hDespachos = hrefConFiltro(hViajes, { pestana: 'despachos' });
+  const hBloqueados = hrefConFiltro(hViajes, { pestana: 'despachos', estado: 'bloqueado' });
+  const hVencidos = hrefConFiltro(hFlota, { estado: 'vencido' });
+  const hPorVencer = hrefConFiltro(hFlota, { estado: 'por_vencer' });
+  const parcial = !c.viajes || !c.vehiculos || !c.documentos;
+
+  const r = resumenViajesHoy(c.viajes ?? [], c.cumplimiento);
+  const { completados, enRuta, porSalir, bloqueados, total, retrasados, pctOcupacion } = r;
+  const vsAyer = c.viajes && c.hoy ? comparar(c.fotos, 'transporte.ocupacion_pct', c.hoy, pctOcupacion) : null;
 
   const veh = c.vehiculos;
   const doc = c.documentos;
@@ -149,7 +210,9 @@ export function armarTransporte(e: EntradaTransporte): TransporteInicio {
       detalle:
         pctOcupacion === null
           ? { clave: 'transporte.detalles.sinSalidos' }
-          : { clave: 'transporte.detalles.ocupacion', params: { n: salidos.length } },
+          : { clave: 'transporte.detalles.ocupacion', params: { n: r.salidos } },
+      ...(vsAyer && vsAyer.delta !== null ? { delta: vsAyer.delta, unidadDelta: 'puntos' as const, comparadoCon: ETIQUETA_COMPARACION } : {}),
+      ...(vsAyer && vsAyer.serie.length > 0 ? { serie: vsAyer.serie } : {}),
     });
   }
   if (veh) {
@@ -176,15 +239,13 @@ export function armarTransporte(e: EntradaTransporte): TransporteInicio {
             ? { clave: 'transporte.detalles.proximos30' }
             : { clave: 'transporte.detalles.nadaVence' },
       tono: entero(doc.vencidos) > 0 ? 'peligro' : entero(doc.porVencer) > 0 ? 'advertencia' : 'neutro',
-      href: hFlota,
+      href: entero(doc.porVencer) > 0 ? hPorVencer : entero(doc.vencidos) > 0 ? hVencidos : hFlota,
     });
   }
 
   const atencion: AtencionWidget[] = [];
-  if (hViajes) {
-    const lista = filas
-      .filter((f) => f.grupo === 'bloqueados')
-      .sort((a, b) => a.v.salida.localeCompare(b.v.salida));
+  if (hBloqueados && hDespachos) {
+    const lista = bloqueadosPorSalida(r);
     for (const f of lista.slice(0, MAX_BLOQUEADOS)) {
       const b = f.cumplimiento?.bloqueos[0];
       atencion.push({
@@ -197,7 +258,7 @@ export function armarTransporte(e: EntradaTransporte): TransporteInicio {
           params: { salida: f.v.salida, ruta: f.v.ruta ?? '—', causa: b?.causa ?? 'sin_vehiculo', placa: f.v.placa ?? '—' },
         },
         accion: { clave: 'transporte.acciones.resolver' },
-        href: hViajes,
+        href: hBloqueados,
       });
     }
     if (lista.length > MAX_BLOQUEADOS) {
@@ -207,7 +268,7 @@ export function armarTransporte(e: EntradaTransporte): TransporteInicio {
         tono: 'peligro',
         titulo: { clave: 'transporte.atencion.masBloqueados', params: { n: lista.length - MAX_BLOQUEADOS } },
         accion: { clave: 'transporte.acciones.verDespachos' },
-        href: hViajes,
+        href: hBloqueados,
       });
     }
     if (retrasados > 0) {
@@ -217,11 +278,11 @@ export function armarTransporte(e: EntradaTransporte): TransporteInicio {
         tono: 'advertencia',
         titulo: { clave: 'transporte.atencion.retrasados', params: { n: retrasados } },
         accion: { clave: 'transporte.acciones.verViajes' },
-        href: hViajes,
+        href: hDespachos,
       });
     }
   }
-  if (doc && entero(doc.vencidos) > 0 && hFlota) {
+  if (doc && entero(doc.vencidos) > 0 && hVencidos) {
     const ej = doc.vencidosEjemplo[0];
     atencion.push({
       id: 'documentosVencidos',
@@ -230,7 +291,7 @@ export function armarTransporte(e: EntradaTransporte): TransporteInicio {
       titulo: { clave: 'transporte.atencion.documentosVencidos', params: { n: entero(doc.vencidos) } },
       detalle: ej ? { clave: 'transporte.atencion.documentoEjemplo', params: { nombre: ej.nombre, causa: ej.tipo } } : undefined,
       accion: { clave: 'transporte.acciones.verDocumentos' },
-      href: hFlota,
+      href: hVencidos,
     });
   }
   if (veh && veh.mantenimiento > 0 && hVehiculos) {

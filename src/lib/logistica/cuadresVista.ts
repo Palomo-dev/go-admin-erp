@@ -180,6 +180,47 @@ export interface KpisCuadres {
   abiertosAnteriores: number;
 }
 
+/** Dinero aún en la calle: lo cobrado sin cuadre y los cuadres abiertos («Por recibir»). */
+export function esPorRecibir(f: Pick<FilaCuadre, 'estado'>): boolean {
+  return f.estado === 'por_recibir' || f.estado === 'abierto';
+}
+
+/** Cuadre cerrado HOY (día de la organización) con diferencia: la cifra «Con diferencia». */
+export function cerradoHoyConDiferencia(
+  cu: Pick<CuadreGuardado, 'status' | 'closed_at' | 'difference'>,
+  hoy: string,
+  zona: string,
+): boolean {
+  return cu.status === 'closed' && !!cu.closed_at && toPlainDate(new Date(cu.closed_at), zona) === hoy && c(cu.difference) !== 0;
+}
+
+/**
+ * Filtros que la pantalla lee de la URL (`?filtro=`): los abre el Inicio desde «1 cuadre con
+ * diferencia» y «2 cuadres abiertos» (Figma `03` › Inicio, 2917:45049). Misma regla que sus
+ * indicadores.
+ */
+export const FILTROS_CUADRES = ['con_diferencia_hoy', 'por_recibir'] as const;
+export type FiltroCuadres = (typeof FILTROS_CUADRES)[number];
+
+export function leerFiltroCuadres(v: string | null | undefined): FiltroCuadres | null {
+  return (FILTROS_CUADRES as readonly string[]).includes(v ?? '') ? (v as FiltroCuadres) : null;
+}
+
+export function filtrarCuadres(
+  filas: readonly FilaCuadre[],
+  cuadres: readonly Pick<CuadreGuardado, 'id' | 'status' | 'closed_at' | 'difference'>[],
+  filtro: FiltroCuadres | null,
+  hoy: string,
+  zona: string,
+): FilaCuadre[] {
+  if (filtro === 'por_recibir') return filas.filter(esPorRecibir);
+  if (filtro === 'con_diferencia_hoy') {
+    const ids = new Set(cuadres.filter((cu) => cerradoHoyConDiferencia(cu, hoy, zona)).map((cu) => cu.id));
+    return filas.filter((f) => f.cuadreId !== null && ids.has(f.cuadreId));
+  }
+  return [...filas];
+}
+
 /** Indicadores del día (en la zona de la organización). */
 export function kpisCuadres(
   filas: readonly FilaCuadre[],
@@ -188,9 +229,9 @@ export function kpisCuadres(
   zona: string,
 ): KpisCuadres {
   const dia = (v: string | null | undefined) => (v ? toPlainDate(new Date(v), zona) : '');
-  const porRecibirFilas = filas.filter((f) => f.estado === 'por_recibir' || f.estado === 'abierto');
+  const porRecibirFilas = filas.filter(esPorRecibir);
   const cerradosHoy = cuadres.filter((cu) => cu.status === 'closed' && dia(cu.closed_at) === hoy);
-  const conDiferencia = cerradosHoy.filter((cu) => c(cu.difference) !== 0);
+  const conDiferencia = cerradosHoy.filter((cu) => cerradoHoyConDiferencia(cu, hoy, zona));
   return {
     porRecibir: p(porRecibirFilas.reduce((s, f) => s + c(f.esperado), 0)),
     domiciliariosPorRecibir: new Set(porRecibirFilas.map((f) => f.driverId)).size,

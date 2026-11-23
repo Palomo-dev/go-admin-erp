@@ -20,7 +20,10 @@ import { kpisDespacho, ordenarDespacho, promesaDe } from '@/lib/logistica/despac
 import { conteosSeguimiento, tasaPrimerIntento, META_PRIMER_INTENTO, ESTADOS_CON_NOVEDAD_ABIERTA } from '@/lib/logistica/seguimiento';
 import { filasCuadres, kpisCuadres, type CuadreGuardado, type EnvioCobrado } from '@/lib/logistica/cuadresVista';
 import { CLAVE_AJUSTES_LOGISTICA, normalizarAjustesLogistica } from '@/lib/logistica/ajustesLogistica';
+import type { FilaDespacho } from '@/lib/logistica/despacho';
 import type { CrudoLogisticaInicio } from './logisticaInicio';
+import { METRICAS_LOGISTICA } from './fotosOperacion';
+import { leerFotosOperacion } from './fotosOperacion.server';
 
 type Ctx = Pick<ServerOrgContext, 'organizationId' | 'supabase'>;
 
@@ -37,6 +40,16 @@ async function seguro<T>(etiqueta: string, ctx: Ctx, f: () => Promise<T>): Promi
     });
     return null;
   }
+}
+
+/**
+ * El envío más atrasado de la bandeja (número del pedido o del envío y minutos tarde), con el
+ * orden y la promesa de Por despachar. Lo comparten el widget y la casilla del bloque «Hoy».
+ */
+export function masAtrasadoDe(filas: readonly FilaDespacho[], ahora: Date): CrudoLogisticaInicio['masAtrasado'] {
+  const primero = ordenarDespacho(filas).find((f) => promesaDe(f, ahora)?.tipo === 'tarde');
+  const pr = primero ? promesaDe(primero, ahora) : null;
+  return primero && pr ? { numero: primero.pedido ?? primero.numero, minutos: pr.minutos } : null;
 }
 
 /**
@@ -66,7 +79,7 @@ export async function leerLogisticaInicio(
   const finDeHoy = startOfDayInstant(addPlainDays(p.dia, 1), p.zona);
   const hace30 = startOfDayInstant(addPlainDays(p.dia, -30), p.zona).toISOString();
 
-  const [ajustes, bandeja, seguimiento, entregados, cuadres] = await Promise.all([
+  const [ajustes, bandeja, seguimiento, entregados, cuadres, fotos] = await Promise.all([
     seguro('ajustes', ctx, async () => {
       const { data } = await db.from('organization_settings').select('settings').eq('organization_id', org).eq('key', CLAVE_AJUSTES_LOGISTICA).maybeSingle();
       return normalizarAjustesLogistica((data as { settings?: unknown } | null)?.settings);
@@ -99,15 +112,12 @@ export async function leerLogisticaInicio(
       const filas = filasCuadres(guardados, cobrados as EnvioCobrado[], enCuadreAbierto);
       return kpisCuadres(filas, guardados, p.dia, p.zona);
     }),
+    // Base de «vs. cierre de ayer» (falla sola: sin fotos, sin comparación).
+    leerFotosOperacion(ctx, { sucursal: p.sucursal, hoy: p.dia, metricas: METRICAS_LOGISTICA }),
   ]);
 
   const filasDespacho = bandeja?.filas ?? null;
-  let masAtrasado: CrudoLogisticaInicio['masAtrasado'] = null;
-  if (filasDespacho) {
-    const primero = ordenarDespacho(filasDespacho).find((f) => promesaDe(f, ahora)?.tipo === 'tarde');
-    const pr = primero ? promesaDe(primero, ahora) : null;
-    if (primero && pr) masAtrasado = { numero: primero.pedido ?? primero.numero, minutos: pr.minutos };
-  }
+  const masAtrasado = filasDespacho ? masAtrasadoDe(filasDespacho, ahora) : null;
 
   // Envíos abiertos por estado: la bandeja de salida y lo que ya va en camino o con novedad.
   let abiertos: CrudoLogisticaInicio['abiertos'] = null;
@@ -136,5 +146,7 @@ export async function leerLogisticaInicio(
     abiertos,
     primerIntento: entregados ? tasaPrimerIntento(entregados) : null,
     metaPrimerIntento: META_PRIMER_INTENTO,
+    fotos,
+    hoy: p.dia,
   };
 }

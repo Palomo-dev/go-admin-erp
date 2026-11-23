@@ -699,7 +699,10 @@
         "pedidosWeb": "Pedidos web",
         "cajasAnteriores": "Cajas sin cerrar",
         "reservasStock": "Reservas de stock sin mover",
-        "misTareas": "Mis tareas"
+        "misTareas": "Mis tareas",
+        "documentosVencidos": "Documentos",
+        "despachosBloqueados": "Despachos",
+        "enviosAtrasados": "Envíos"
       },
       "estados": {
         "vencido": "Vencido",
@@ -718,7 +721,10 @@
         "pendientes": "{n, plural, one {# pendiente} other {# pendientes}}",
         "cajasAbiertas": "{n, plural, one {# caja abierta} other {# cajas abiertas}}",
         "reservas": "{n, plural, one {# reserva} other {# reservas}}",
-        "abiertas": "{n, plural, one {# abierta} other {# abiertas}}"
+        "abiertas": "{n, plural, one {# abierta} other {# abiertas}}",
+        "vencidos": "{n, plural, one {# vencido} other {# vencidos}}",
+        "viajes": "{n, plural, one {# viaje} other {# viajes}}",
+        "atrasados": "{n, plural, one {# atrasado} other {# atrasados}}"
       },
       "detalles": {
         "carteraAlDia": "Ninguna cuenta vencida",
@@ -739,7 +745,13 @@
         "cajasDesde": "Abierta desde hace {dias, plural, one {# día} other {# días}}",
         "tareasVencidas": "{n, plural, one {# vencida} other {# vencidas}}{hoy, plural, =0 {} one { · # vence hoy} other { · # vencen hoy}}",
         "tareasHoy": "{n, plural, one {# vence hoy} other {# vencen hoy}}",
-        "tareasSinVencer": "Ninguna vence hoy"
+        "tareasSinVencer": "Ninguna vence hoy",
+        "documentoEjemplo": "{causa} de {nombre}{mas, plural, =0 {} other { · y # más}}",
+        "documentosVencidos": "Renuévalos para que los viajes puedan salir",
+        "noPuedenSalir": "{codigos}{mas, plural, =0 {} other { y # más}} {n, plural, one {no puede salir} other {no pueden salir}}",
+        "despachosBloqueados": "No pueden salir hasta resolver el bloqueo",
+        "masAtrasado": "El más atrasado: {numero}, {minutos} min",
+        "enviosAtrasados": "Ya pasaron la promesa de entrega"
       },
       "acciones": {
         "verCartera": "Ver cartera",
@@ -750,7 +762,10 @@
         "atender": "Atender",
         "verCajas": "Ver cajas",
         "revisar": "Revisar",
-        "abrir": "Abrir"
+        "abrir": "Abrir",
+        "renovar": "Renovar",
+        "resolver": "Resolver",
+        "verAtrasados": "Ver atrasados"
       },
       "verTodas": "Ver las {n} · {resto}"
     },
@@ -66026,7 +66041,8 @@
       "alDia": "Al día",
       "porAtender": "{n, plural, one {# por atender} other {# por atender}}",
       "requiereAtencion": "Requiere atención",
-      "parcial": "Una parte no se pudo leer: puede faltar algo en esta lista."
+      "parcial": "Una parte no se pudo leer: puede faltar algo en esta lista.",
+      "vsCierreAyer": "vs. cierre de ayer"
     },
     "canales": {
       "pos": "POS",

@@ -45,7 +45,9 @@ import { addPlainDays, toPlainDate } from '@/lib/utils/dateCore';
 import { aCsv, descargarCsv } from '@/lib/finanzas/csv';
 import {
   filasCuadres,
+  filtrarCuadres,
   kpisCuadres,
+  leerFiltroCuadres,
   type CuadreGuardado,
   type EnvioCobrado,
   type EstadoFilaCuadre,
@@ -91,6 +93,9 @@ export function CuadresPantalla() {
   const { getToday, timezone, formatDate, formatTime } = useFormatDate(null);
   const hoy = getToday();
   const filtroDomiciliario = searchParams?.get('domiciliario') ?? null;
+  // `?filtro=con_diferencia_hoy|por_recibir`: lo abre el Inicio («1 cuadre con diferencia»,
+  // «2 cuadres abiertos»), con la misma regla de los indicadores de arriba.
+  const filtroUrl = leerFiltroCuadres(searchParams?.get('filtro'));
 
   const [pestana, setPestana] = useState<Pestana>('domiciliarios');
   const [cuadres, setCuadres] = useState<CuadreGuardado[]>([]);
@@ -155,16 +160,18 @@ export function CuadresPantalla() {
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    return q ? filas.filter((f) => nombreDe(f.driverId).toLowerCase().includes(q)) : filas;
-  }, [filas, busqueda, nombreDe]);
+    const filtradas = filtrarCuadres(filas, cuadres, filtroUrl, hoy, timezone);
+    return q ? filtradas.filter((f) => nombreDe(f.driverId).toLowerCase().includes(q)) : filtradas;
+  }, [filas, cuadres, filtroUrl, hoy, timezone, busqueda, nombreDe]);
   const porRecibir = filas.filter((f) => f.estado === 'por_recibir' || f.estado === 'abierto');
 
-  const quitarFiltroDomiciliario = () => {
+  const quitarDeUrl = (clave: 'domiciliario' | 'filtro') => {
     const q = new URLSearchParams(searchParams?.toString() ?? '');
-    q.delete('domiciliario');
+    q.delete(clave);
     const s = q.toString();
     router.replace(s ? `${pathname}?${s}` : pathname ?? '', { scroll: false });
   };
+  const quitarFiltroDomiciliario = () => quitarDeUrl('domiciliario');
 
   // ── Recibir dinero ───────────────────────────────────────────────────────
   const [lineasHoja, setLineasHoja] = useState<LineaHoja[]>([]);
@@ -432,10 +439,19 @@ export function CuadresPantalla() {
         <ListToolbar
           busqueda={<SearchInput value={busqueda} onChange={setBusqueda} placeholder={t('buscar')} etiqueta={t('buscar')} />}
           chips={
-            nombreFiltro ? (
-              <button type="button" onClick={quitarFiltroDomiciliario} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })}>
-                {t('filtroDomiciliario', { nombre: nombreFiltro })} ×
-              </button>
+            nombreFiltro || filtroUrl ? (
+              <>
+                {nombreFiltro && (
+                  <button type="button" onClick={quitarFiltroDomiciliario} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })}>
+                    {t('filtroDomiciliario', { nombre: nombreFiltro })} ×
+                  </button>
+                )}
+                {filtroUrl && (
+                  <button type="button" onClick={() => quitarDeUrl('filtro')} className={clasesBoton({ variante: 'tinte', tamano: 'sm' })} data-filtro-url={filtroUrl}>
+                    {t(filtroUrl === 'por_recibir' ? 'kpis.porRecibir' : 'kpis.conDiferencia')} ×
+                  </button>
+                )}
+              </>
             ) : undefined
           }
         />
@@ -445,7 +461,7 @@ export function CuadresPantalla() {
           columnas={columnas}
           filas={visibles}
           obtenerId={(f) => f.clave}
-          estado={estado === 'cargando' ? 'cargando' : estado === 'error' ? 'error' : visibles.length > 0 ? 'listo' : busqueda.trim() ? 'sinResultados' : 'vacio'}
+          estado={estado === 'cargando' ? 'cargando' : estado === 'error' ? 'error' : visibles.length > 0 ? 'listo' : busqueda.trim() || filtroUrl ? 'sinResultados' : 'vacio'}
           onFilaClick={(f) => (puedeRecibir(f) ? void abrirRecibir(f) : undefined)}
           etiquetaFila={(f) => t('etiquetaFila', { nombre: nombreDe(f.driverId), estado: t(`estados.${f.estado}`) })}
           tonoFila={(f) => (f.estado === 'con_diferencia' ? 'peligro' : undefined)}
@@ -479,7 +495,10 @@ export function CuadresPantalla() {
           sinResultados={{ descripcion: t('sinResultados') }}
           error={{ titulo: t('error.titulo'), descripcion: t('error.descripcion') }}
           onReintentar={recargar}
-          onLimpiarFiltros={() => setBusqueda('')}
+          onLimpiarFiltros={() => {
+            setBusqueda('');
+            if (filtroUrl) quitarDeUrl('filtro');
+          }}
           termino={busqueda}
         />
         <p className="text-xs text-fg-muted">{t('nota')}</p>

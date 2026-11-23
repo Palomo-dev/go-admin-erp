@@ -145,7 +145,7 @@ describe.each(IDIOMAS)('paneles de widgets del inicio (%s)', (idioma) => {
     const { container } = renderConIdioma(<PanelLogisticaInicio datos={logistica()} />, { idioma });
     sinClavesCrudas(container.textContent);
     expect(container.querySelectorAll('[data-atencion]')).toHaveLength(5);
-    expect(container.querySelector('[data-atencion="atrasados"] a')?.getAttribute('href')).toBe('/app/logistica/por-despachar');
+    expect(container.querySelector('[data-atencion="atrasados"] a')?.getAttribute('href')).toBe('/app/logistica/por-despachar?atrasados=1');
     expect(container.querySelector('[data-desglose="abiertos"]')).not.toBeNull();
     expect(container.querySelector('[data-primer-intento]')).not.toBeNull();
   });

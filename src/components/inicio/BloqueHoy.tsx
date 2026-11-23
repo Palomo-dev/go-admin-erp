@@ -42,6 +42,8 @@ type Estado =
 
 export function BloqueHoy({ organizationId, sucursal, version = 0 }: BloqueHoyProps) {
   const t = useTranslations('home.hoy');
+  // «SOAT de WNP 104»: la causa del documento llega como clave y se nombra en el idioma de la persona.
+  const tCausas = useTranslations('transporte.despachos.causas');
   const { formatTime } = useFormatDate();
   const moneda = useMonedaOrganizacion();
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
@@ -90,7 +92,8 @@ export function BloqueHoy({ organizationId, sucursal, version = 0 }: BloqueHoyPr
   const casillas = useMemo(() => (estado.fase === 'listo' ? casillasHoy(estado.datos) : []), [estado]);
   const porAtender = cosasPorAtender(casillas);
   const ocultasMovil = casillas.slice(VISIBLES_MOVIL).map((c) => t(`etiquetas.${c.id}`));
-  const texto = (x: TextoHoy) => t(x.clave, x.params);
+  const texto = (x: TextoHoy) =>
+    t(x.clave, x.params && typeof x.params.causa === 'string' ? { ...x.params, causa: tCausas.has(x.params.causa) ? tCausas(x.params.causa) : x.params.causa } : x.params);
   const cifra = (c: CasillaHoy) =>
     c.cifra.tipo === 'moneda'
       ? // Formato de la moneda (es-CO para COP: «$ 3.480.000»), como el resto de cifras de la app.

@@ -699,7 +699,10 @@
         "pedidosWeb": "Commandes web",
         "cajasAnteriores": "Caisses non clôturées",
         "reservasStock": "Réservations de stock inactives",
-        "misTareas": "Mes tâches"
+        "misTareas": "Mes tâches",
+        "documentosVencidos": "Documents",
+        "despachosBloqueados": "Départs",
+        "enviosAtrasados": "Envois"
       },
       "estados": {
         "vencido": "Échu",
@@ -718,7 +721,10 @@
         "pendientes": "{n, plural, one {# en attente} other {# en attente}}",
         "cajasAbiertas": "{n, plural, one {# caisse ouverte} other {# caisses ouvertes}}",
         "reservas": "{n, plural, one {# réservation} other {# réservations}}",
-        "abiertas": "{n, plural, one {# ouverte} other {# ouvertes}}"
+        "abiertas": "{n, plural, one {# ouverte} other {# ouvertes}}",
+        "vencidos": "{n, plural, one {# expiré} other {# expirés}}",
+        "viajes": "{n, plural, one {# trajet} other {# trajets}}",
+        "atrasados": "{n} en retard"
       },
       "detalles": {
         "carteraAlDia": "Aucun compte échu",
@@ -739,7 +745,13 @@
         "cajasDesde": "Ouverte depuis {dias, plural, one {# jour} other {# jours}}",
         "tareasVencidas": "{n, plural, one {# en retard} other {# en retard}}{hoy, plural, =0 {} one { · # pour aujourd'hui} other { · # pour aujourd'hui}}",
         "tareasHoy": "{n, plural, one {# pour aujourd'hui} other {# pour aujourd'hui}}",
-        "tareasSinVencer": "Aucune pour aujourd'hui"
+        "tareasSinVencer": "Aucune pour aujourd'hui",
+        "documentoEjemplo": "{causa} de {nombre}{mas, plural, =0 {} other { · et # de plus}}",
+        "documentosVencidos": "Renouvelez-les pour que les trajets puissent partir",
+        "noPuedenSalir": "{codigos}{mas, plural, =0 {} other { et # de plus}} {n, plural, one {ne peut pas partir} other {ne peuvent pas partir}}",
+        "despachosBloqueados": "Ils ne peuvent pas partir tant que le blocage n’est pas levé",
+        "masAtrasado": "Le plus en retard : {numero}, {minutos} min",
+        "enviosAtrasados": "La promesse de livraison est dépassée"
       },
       "acciones": {
         "verCartera": "Voir les créances",
@@ -750,7 +762,10 @@
         "atender": "Traiter",
         "verCajas": "Voir les caisses",
         "revisar": "Vérifier",
-        "abrir": "Ouvrir"
+        "abrir": "Ouvrir",
+        "renovar": "Renouveler",
+        "resolver": "Résoudre",
+        "verAtrasados": "Voir les retards"
       },
       "verTodas": "Voir les {n} · {resto}"
     },
@@ -66028,7 +66043,8 @@
       "alDia": "À jour",
       "porAtender": "{n} à traiter",
       "requiereAtencion": "Requiert votre attention",
-      "parcial": "Une partie n’a pas pu être lue : il peut manquer des éléments dans cette liste."
+      "parcial": "Une partie n’a pas pu être lue : il peut manquer des éléments dans cette liste.",
+      "vsCierreAyer": "vs clôture d’hier"
     },
     "canales": {
       "pos": "Caisse",

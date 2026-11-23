@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/select';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { tripsService } from '@/lib/services/tripsService';
+import { SEVERIDAD_DE_GRAVEDAD } from '@/lib/transporte/ajustesTransporte';
+import { useMotivosNovedad } from '@/components/transporte/ajustes/useMotivosNovedad';
 
 interface ReportIncidentDialogProps {
   open: boolean;
@@ -29,19 +31,6 @@ interface ReportIncidentDialogProps {
   organizationId: number;
   onSuccess: () => void;
 }
-
-const INCIDENT_TYPES = [
-  { value: 'mechanical', label: 'Falla Mecánica' },
-  { value: 'accident', label: 'Accidente' },
-  { value: 'delay', label: 'Retraso Significativo' },
-  { value: 'passenger_issue', label: 'Problema con Pasajero' },
-  { value: 'driver_issue', label: 'Problema con Conductor' },
-  { value: 'route_deviation', label: 'Desvío de Ruta' },
-  { value: 'weather', label: 'Condiciones Climáticas' },
-  { value: 'traffic', label: 'Tráfico / Bloqueo' },
-  { value: 'security', label: 'Seguridad' },
-  { value: 'other', label: 'Otro' },
-];
 
 const SEVERITY_OPTIONS = [
   { value: 'low', label: 'Baja', description: 'No afecta la operación' },
@@ -58,6 +47,10 @@ export function ReportIncidentDialog({
   onSuccess,
 }: ReportIncidentDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Una sola lista de motivos (Configuración › Transporte). `incident_type` del formulario guarda
+  // el id del motivo; a la base va su `tipo` (los códigos viejos de esta lista, como
+  // «mechanical», no pasaban el CHECK de transport_incidents) y el id en metadata.motivo.
+  const motivos = useMotivosNovedad(open);
   const [formData, setFormData] = useState({
     incident_type: '',
     severity: 'medium',
@@ -83,11 +76,13 @@ export function ReportIncidentDialog({
 
     setIsSubmitting(true);
     try {
+      const motivo = motivos.find((m) => m.id === formData.incident_type);
       await tripsService.createIncident({
         organization_id: organizationId,
         reference_type: 'trip',
         reference_id: tripId,
-        incident_type: formData.incident_type,
+        incident_type: motivo?.tipo ?? 'other',
+        metadata: motivo ? { motivo: motivo.id, bloquea_vehiculo: motivo.bloqueaVehiculo } : undefined,
         severity: formData.severity,
         title: formData.title,
         description: formData.description || undefined,
@@ -101,8 +96,6 @@ export function ReportIncidentDialog({
       setIsSubmitting(false);
     }
   };
-
-  const selectedType = INCIDENT_TYPES.find((t) => t.value === formData.incident_type);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -121,11 +114,12 @@ export function ReportIncidentDialog({
               <Select
                 value={formData.incident_type}
                 onValueChange={(v) => {
-                  const type = INCIDENT_TYPES.find((t) => t.value === v);
+                  const motivo = motivos.find((m) => m.id === v);
                   setFormData((p) => ({
                     ...p,
                     incident_type: v,
-                    title: p.title || type?.label || '',
+                    severity: motivo ? SEVERIDAD_DE_GRAVEDAD[motivo.gravedad] : p.severity,
+                    title: p.title || motivo?.etiqueta || '',
                   }));
                 }}
               >
@@ -133,9 +127,9 @@ export function ReportIncidentDialog({
                   <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {INCIDENT_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
+                  {motivos.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.etiqueta}
                     </SelectItem>
                   ))}
                 </SelectContent>

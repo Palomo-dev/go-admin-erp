@@ -428,6 +428,8 @@ class TripsService {
     severity: string;
     title: string;
     description?: string;
+    /** Motivo de la lista de Configuración › Transporte (`{ motivo, bloquea_vehiculo }`). */
+    metadata?: Record<string, unknown>;
   }) {
     const { data, error } = await supabase
       .from('transport_incidents')

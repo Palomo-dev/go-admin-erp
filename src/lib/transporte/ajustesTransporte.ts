@@ -108,6 +108,13 @@ export interface AjustesTransporte {
   excepciones: { documentosVehiculo: boolean; documentosConductor: boolean; manifiesto: boolean; pedirPin: boolean };
 }
 
+/**
+ * El manifiesto electrónico (RNDC) aún no existe (fase Carga): «Por manifiesto de carga
+ * faltante» se guarda y se muestra APAGADO y no se puede encender (decisión del dueño,
+ * 2026-11-23). Cuando llegue el RNDC, esto pasa a `true` y el interruptor vuelve a funcionar.
+ */
+export const RNDC_DISPONIBLE = false;
+
 export const RETENCION_MIN = 1;
 export const RETENCION_MAX = 120;
 export const CAMBIO_MAX_MIN = 1440;
@@ -126,7 +133,7 @@ export const AJUSTES_TRANSPORTE_POR_DEFECTO: AjustesTransporte = {
   administracionAfiliadosPct: 10,
   tiposVehiculo: TIPOS_VEHICULO.map((codigo) => ({ codigo, activo: TIPOS_ACTIVOS_POR_DEFECTO.includes(codigo) })),
   motivosNovedad: MOTIVOS_POR_DEFECTO.map((m) => ({ ...m })),
-  excepciones: { documentosVehiculo: true, documentosConductor: true, manifiesto: true, pedirPin: true },
+  excepciones: { documentosVehiculo: true, documentosConductor: true, manifiesto: RNDC_DISPONIBLE, pedirPin: true },
 };
 
 const esEntero = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
@@ -195,7 +202,7 @@ export function normalizarAjustesTransporte(valor: unknown): AjustesTransporte {
     excepciones: {
       documentosVehiculo: e.documentosVehiculo !== false,
       documentosConductor: e.documentosConductor !== false,
-      manifiesto: e.manifiesto !== false,
+      manifiesto: RNDC_DISPONIBLE && e.manifiesto !== false,
       pedirPin: e.pedirPin !== false,
     },
   };

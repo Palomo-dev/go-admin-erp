@@ -5,6 +5,7 @@
 import {
   AJUSTES_TRANSPORTE_POR_DEFECTO,
   MOTIVOS_POR_DEFECTO,
+  RNDC_DISPONIBLE,
   TIPOS_VEHICULO,
   idMotivoNuevo,
   motivosActivos,
@@ -14,12 +15,13 @@ import {
 } from '../ajustesTransporte';
 
 describe('ajustes de Transporte', () => {
-  it('por defecto: los valores del diseño (5 · 15 · 5 min, 30 min, 2 h, 90 %, 10 %) y todo excepcionable con PIN', () => {
+  it('por defecto: los valores del diseño (5 · 15 · 5 min, 30 min, 2 h, 90 %, 10 %) y excepcionable con PIN', () => {
     const a = normalizarAjustesTransporte(null);
     expect(a).toEqual(AJUSTES_TRANSPORTE_POR_DEFECTO);
     expect(a.retencion).toEqual({ taquilla: 5, web: 15, pos: 5 });
     expect([a.cambioSinCostoMin, a.anulacionHoras, a.reembolsoPct, a.administracionAfiliadosPct]).toEqual([30, 2, 90, 10]);
-    expect(a.excepciones).toEqual({ documentosVehiculo: true, documentosConductor: true, manifiesto: true, pedirPin: true });
+    // Sin RNDC, «por manifiesto faltante» queda apagado (decisión del dueño, 2026-11-23).
+    expect(a.excepciones).toEqual({ documentosVehiculo: true, documentosConductor: true, manifiesto: false, pedirPin: true });
     expect(a.motivosNovedad.map((m) => m.id)).toEqual(MOTIVOS_POR_DEFECTO.map((m) => m.id));
     expect(a.tiposVehiculo.map((t) => t.codigo).sort()).toEqual([...TIPOS_VEHICULO].sort());
     expect(usaEmbarcaciones(a)).toBe(true);
@@ -62,6 +64,14 @@ describe('ajustes de Transporte', () => {
     const conNuevo = { ...base, motivosNovedad: [...base.motivosNovedad, { id: 'pinchazo', nombre: 'Pinchazo', tipo: 'other', gravedad: 'leve', bloqueaVehiculo: false, activo: true }] };
     const r = validarAjustesTransporte(conNuevo);
     expect(r.ok && motivosActivos(r.ajustes).map((m) => m.id).at(-1)).toBe('pinchazo');
+  });
+
+  it('mientras no exista el RNDC, el manifiesto no se puede encender', () => {
+    expect(RNDC_DISPONIBLE).toBe(false);
+    expect(normalizarAjustesTransporte({ excepciones: { manifiesto: true } }).excepciones.manifiesto).toBe(false);
+    const base = JSON.parse(JSON.stringify(AJUSTES_TRANSPORTE_POR_DEFECTO));
+    const r = validarAjustesTransporte({ ...base, excepciones: { ...base.excepciones, manifiesto: true } });
+    expect(r.ok && r.ajustes.excepciones.manifiesto).toBe(false);
   });
 
   it('id de un motivo nuevo: sin tildes y único', () => {

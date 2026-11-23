@@ -65641,7 +65641,8 @@
         "manifiesto": "Por manifesto de carga faltante",
         "manifiestoDescripcion": "A viagem sai e o manifesto é emitido nas 2 horas seguintes. Vale quando chegar o manifesto eletrônico (fase Carga).",
         "pin": "Pedir o PIN do supervisor",
-        "pinDescripcion": "É o PIN de Recursos humanos (o mesmo do quiosque de ponto). É verificado no servidor; nunca é salvo no aparelho."
+        "pinDescripcion": "É o PIN de Recursos humanos (o mesmo do quiosque de ponto). É verificado no servidor; nunca é salvo no aparelho.",
+        "noDisponible": "Ainda não está disponível."
       }
     },
     "pestanas": {
@@ -65743,7 +65744,13 @@
         "motivoMin": "Mínimo de {n} caracteres.",
         "pin": "PIN do supervisor",
         "pinAyuda": "O PIN de Recursos humanos (6 dígitos). É verificado no servidor.",
-        "registro": "Ficam registrados o motivo, quem autoriza, quem despacha e quando. Aparece na planilha e no registro da viagem."
+        "registro": "Ficam registrados o motivo, quem autoriza, quem despacha e quando. Aparece na planilha e no registro da viagem.",
+        "supervisor": "Supervisor que autoriza",
+        "eligeSupervisor": "Escolha quem autoriza",
+        "sinAutorizadores": "Ninguém tem a permissão «Autorizar exceção de despacho»",
+        "sinPinOpcion": "{nombre} (sem PIN)",
+        "sinPin": "Esta pessoa não tem PIN atribuído; atribua-o em Recursos humanos.",
+        "irAsignarPin": "Ir para Recursos humanos › Ponto › PIN e crachás"
       },
       "resultado": {
         "no_admite_excepcion": "Este bloqueio não admite exceção. Revise Configuração › Transporte.",
@@ -65751,7 +65758,8 @@
         "pin_rechazado": "O PIN não é válido ou essa pessoa não pode autorizar exceções.",
         "pin_bloqueado": "Muitos PIN errados. Aguarde 15 minutos.",
         "sin_permiso_excepcion": "Falta a permissão «Autorizar exceção de despacho».",
-        "no_despachable": "Esta viagem já saiu ou foi cancelada."
+        "no_despachable": "Esta viagem já saiu ou foi cancelada.",
+        "supervisor_sin_pin": "Esta pessoa não tem PIN atribuído; atribua-o em Recursos humanos."
       },
       "errores": {
         "sin_permiso": "Falta a permissão «Despachar viagens».",

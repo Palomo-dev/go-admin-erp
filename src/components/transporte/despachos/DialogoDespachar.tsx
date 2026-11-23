@@ -7,10 +7,12 @@
  * «Autorizar excepción de despacho» (decisión 4). Todo se decide en la base
  * (`transporte_despachar_viaje`); aquí solo se arma la petición y se muestra la respuesta.
  *
- * Diferencia con el diseño: no hay selector «Supervisor que autoriza»; el PIN identifica a la
- * persona (es único en la organización) y la base comprueba su permiso.
+ * «Supervisor que autoriza» (decisión del dueño, 2026-11-23): se elige a la persona y se escribe
+ * SU PIN de Recursos humanos; la base lo compara con el de esa persona. Si no tiene PIN asignado,
+ * se dice claramente y se enlaza a Recursos humanos › Marcación, donde se asigna.
  */
 import * as React from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { AlertCircle, CheckCircle2, Clock, Stamp, XCircle } from 'lucide-react';
 import { AvisoTonal, Dialogo } from '@/components/kit';
@@ -18,8 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
-import { MOTIVO_MAX, MOTIVO_MIN, excepcionCompleta, ocupacion, type Cumplimiento, type ResultadoDespacho } from '@/lib/transporte/despachos';
-import type { ViajeDelDia } from '@/lib/services/transporte/despachosService';
+import { MOTIVO_MAX, MOTIVO_MIN, RUTA_ASIGNAR_PIN, excepcionCompleta, ocupacion, type Cumplimiento, type ResultadoDespacho } from '@/lib/transporte/despachos';
+import type { Autorizador, ViajeDelDia } from '@/lib/services/transporte/despachosService';
 
 export interface VehiculoOpcion {
   id: string;
@@ -32,21 +34,25 @@ interface Props {
   viaje: ViajeDelDia;
   cumplimiento: Cumplimiento | null;
   vehiculos: readonly VehiculoOpcion[];
+  /** Quién puede autorizar (con si tiene PIN). */
+  autorizadores: readonly Autorizador[];
   onCerrar: () => void;
   /** Despacha (con o sin excepción) y devuelve la respuesta de la base. */
-  onDespachar: (excepcion?: { motivo: string; pin: string }) => Promise<ResultadoDespacho | null>;
+  onDespachar: (excepcion?: { motivo: string; pin: string; supervisor: string | null }) => Promise<ResultadoDespacho | null>;
   /** Cambia el vehículo del viaje y vuelve a revisar el cumplimiento. */
   onCambiarVehiculo: (vehiculoId: string) => Promise<void>;
 }
 
 type Linea = { clave: string; etiqueta: string; estado: 'ok' | 'vence' | 'vencido' | 'sin_dato' | 'pendiente'; detalle: string };
 
-export function DialogoDespachar({ viaje, cumplimiento, vehiculos, onCerrar, onDespachar, onCambiarVehiculo }: Props) {
+export function DialogoDespachar({ viaje, cumplimiento, vehiculos, autorizadores, onCerrar, onDespachar, onCambiarVehiculo }: Props) {
   const t = useTranslations('transporte.despachos');
   const tTipos = useTranslations('transporte.tiposVehiculo');
   const { formatTime, formatPlain } = useFormatDate(viaje.sedeId);
   const [motivo, setMotivo] = React.useState('');
   const [pin, setPin] = React.useState('');
+  const [supervisorId, setSupervisorId] = React.useState<string>(() => (autorizadores.length === 1 ? autorizadores[0].userId : ''));
+  const supervisor = autorizadores.find((a) => a.userId === supervisorId) ?? null;
   const [otroVehiculo, setOtroVehiculo] = React.useState<string>('');
   const [ocupado, setOcupado] = React.useState<'despachar' | 'vehiculo' | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -80,13 +86,13 @@ export function DialogoDespachar({ viaje, cumplimiento, vehiculos, onCerrar, onD
   const opcionesVehiculo = vehiculos.filter((x) => x.id !== v?.id);
   const admite = !!cumplimiento?.admiteExcepcion;
   const pidePin = cumplimiento?.pidePin !== false;
-  const puedeDespachar = !bloqueado || (admite && excepcionCompleta(motivo, pin, pidePin));
+  const puedeDespachar = !bloqueado || (admite && excepcionCompleta(motivo, pin, pidePin, supervisor));
 
   const despachar = async () => {
     setOcupado('despachar');
     setError(null);
     try {
-      const r = await onDespachar(bloqueado ? { motivo, pin } : undefined);
+      const r = await onDespachar(bloqueado ? { motivo, pin, supervisor: pidePin ? supervisorId || null : null } : undefined);
       if (r && !['despachado', 'despachado_con_excepcion', 'bloqueado'].includes(r.estado)) {
         setError(t(`resultado.${r.estado}`));
         if (r.estado === 'pin_rechazado') setPin('');
@@ -205,6 +211,35 @@ export function DialogoDespachar({ viaje, cumplimiento, vehiculos, onCerrar, onD
               <span className="text-xs font-normal text-fg-muted">{t('excepcion.motivoMin', { n: MOTIVO_MIN })}</span>
             </label>
             {pidePin && (
+              <label className="flex flex-col gap-1 text-sm font-medium text-fg">
+                {t('excepcion.supervisor')}
+                <Select value={supervisorId} onValueChange={(v) => { setSupervisorId(v); setPin(''); }}>
+                  <SelectTrigger className="h-10 border-line-strong bg-surface">
+                    <SelectValue placeholder={autorizadores.length ? t('excepcion.eligeSupervisor') : t('excepcion.sinAutorizadores')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {autorizadores.map((a) => (
+                      <SelectItem key={a.userId} value={a.userId}>
+                        {a.tienePin ? a.nombre : t('excepcion.sinPinOpcion', { nombre: a.nombre })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+            )}
+            {pidePin && supervisor && !supervisor.tienePin && (
+              <AvisoTonal
+                tono="advertencia"
+                compacto
+                titulo={t('excepcion.sinPin')}
+                descripcion={
+                  <Link href={RUTA_ASIGNAR_PIN} className="font-medium text-brand underline-offset-2 hover:underline">
+                    {t('excepcion.irAsignarPin')}
+                  </Link>
+                }
+              />
+            )}
+            {pidePin && (!supervisor || supervisor.tienePin) && (
               <label className="flex w-48 flex-col gap-1 text-sm font-medium text-fg">
                 {t('excepcion.pin')}
                 <Input

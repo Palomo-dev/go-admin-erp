@@ -144,6 +144,7 @@ export type EstadoResultado =
   | 'pin_rechazado'
   | 'pin_bloqueado'
   | 'sin_permiso_excepcion'
+  | 'supervisor_sin_pin'
   | 'no_despachable';
 
 export interface ResultadoDespacho {
@@ -161,6 +162,7 @@ const ESTADOS_RESULTADO: readonly EstadoResultado[] = [
   'pin_rechazado',
   'pin_bloqueado',
   'sin_permiso_excepcion',
+  'supervisor_sin_pin',
   'no_despachable',
 ];
 
@@ -180,10 +182,16 @@ export const MOTIVO_MAX = 500;
 export const PIN = /^[0-9]{6}$/;
 
 /** ¿Está completo el formulario de excepción? (la base vuelve a validar todo). */
-export function excepcionCompleta(motivo: string, pin: string, pidePin: boolean): boolean {
+export function excepcionCompleta(motivo: string, pin: string, pidePin: boolean, supervisor?: { tienePin: boolean } | null): boolean {
   const m = motivo.trim();
-  return m.length >= MOTIVO_MIN && m.length <= MOTIVO_MAX && (!pidePin || PIN.test(pin));
+  if (m.length < MOTIVO_MIN || m.length > MOTIVO_MAX) return false;
+  if (!pidePin) return true;
+  // Con PIN: hay que elegir a quien autoriza y esa persona tiene que tener PIN asignado.
+  return !!supervisor && supervisor.tienePin && PIN.test(pin);
 }
+
+/** Pantalla de Recursos humanos donde se asigna el PIN (Marcación › Métodos › Credenciales). */
+export const RUTA_ASIGNAR_PIN = '/app/hrm/marcacion?vista=metodos&credenciales=1';
 
 /** Documento del pasajero en la planilla: solo los 4 últimos (Figma 2877:4521). */
 export function enmascararDocumento(doc: string | null | undefined): string {

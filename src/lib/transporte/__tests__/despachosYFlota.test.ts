@@ -70,11 +70,16 @@ describe('cumplimiento que devuelve la base', () => {
     expect(leerResultadoDespacho({ estado: 'otra_cosa' })).toBeNull();
   });
 
-  test('formulario de excepción: motivo de 10 a 500 y PIN de 6 dígitos si se pide', () => {
-    expect(excepcionCompleta('corto', '123456', true)).toBe(false);
-    expect(excepcionCompleta('El SOAT se renovó hoy', '12345', true)).toBe(false);
-    expect(excepcionCompleta('El SOAT se renovó hoy', '123456', true)).toBe(true);
+  test('formulario de excepción: motivo de 10 a 500, supervisor con PIN y PIN de 6 dígitos si se pide', () => {
+    const conPin = { tienePin: true };
+    expect(excepcionCompleta('corto', '123456', true, conPin)).toBe(false);
+    expect(excepcionCompleta('El SOAT se renovó hoy', '12345', true, conPin)).toBe(false);
+    expect(excepcionCompleta('El SOAT se renovó hoy', '123456', true, conPin)).toBe(true);
+    // Sin elegir supervisor, o si no tiene PIN asignado, no se puede autorizar.
+    expect(excepcionCompleta('El SOAT se renovó hoy', '123456', true, null)).toBe(false);
+    expect(excepcionCompleta('El SOAT se renovó hoy', '123456', true, { tienePin: false })).toBe(false);
     expect(excepcionCompleta('El SOAT se renovó hoy', '', false)).toBe(true);
+    expect(leerResultadoDespacho({ estado: 'supervisor_sin_pin' })?.estado).toBe('supervisor_sin_pin');
   });
 
   test('documento enmascarado y ocupación', () => {

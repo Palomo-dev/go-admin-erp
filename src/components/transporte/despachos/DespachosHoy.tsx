@@ -8,16 +8,20 @@
  * del kit con la selección.
  *
  * Los datos los lee la página (`useDespachosHoy`) para compartirlos con las StatCards.
+ *
+ * `?estado=bloqueado|listo|despachado|excepcion` filtra la lista (lo abre el Inicio desde
+ * «2 despachos bloqueados», Figma `03` › Inicio 2917:45560); el chip lo quita de la URL.
  */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CalendarCheck, Eye, FileText, Printer, Send, Truck } from 'lucide-react';
 import {
   BulkActionBar,
   DataTable,
   EmptyState,
+  FilterChips,
   ListCard,
   ListToolbar,
   SearchInput,
@@ -30,14 +34,17 @@ import { toastError, toastSuccess } from '@/components/ui/use-toast';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { supabase } from '@/lib/supabase/config';
 import { tripsService } from '@/lib/services/tripsService';
-import { DespachoError, despacharViaje } from '@/lib/services/transporte/despachosService';
-import { ocupacion, porDespachar, yaSalio, type ResultadoDespacho } from '@/lib/transporte/despachos';
+import { DespachoError, despacharViaje, listarAutorizadores, type Autorizador } from '@/lib/services/transporte/despachosService';
+import { ocupacion, porDespachar, yaSalio, type EstadoDespacho, type ResultadoDespacho } from '@/lib/transporte/despachos';
 import { DialogoDespachar, type VehiculoOpcion } from './DialogoDespachar';
 import { InsigniaCumplimiento } from './InsigniaCumplimiento';
 import { useImprimirPlanilla } from './useImprimirPlanilla';
 import type { FilaDespachoHoy } from './useDespachosHoy';
 
 const TONO_ESTADO = { listo: 'exito', bloqueado: 'peligro', despachado: 'marca', excepcion: 'advertencia', cancelado: 'neutro' } as const;
+
+/** Estados que se pueden pedir en `?estado=` (los cancelados no se listan). */
+const ESTADOS_FILTRO: readonly EstadoDespacho[] = ['listo', 'bloqueado', 'despachado', 'excepcion'];
 
 interface Props {
   organizationId: number | null;
@@ -50,12 +57,23 @@ interface Props {
 export function DespachosHoy({ organizationId, filas, cargando, error, recargar }: Props) {
   const t = useTranslations('transporte.despachos');
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const pedido = params?.get('estado') ?? '';
+  const filtroEstado = (ESTADOS_FILTRO as readonly string[]).includes(pedido) ? (pedido as EstadoDespacho) : null;
+  const quitarFiltroEstado = () => {
+    const q = new URLSearchParams(params?.toString() ?? '');
+    q.delete('estado');
+    const r = q.toString();
+    router.replace(r ? `${pathname ?? ''}?${r}` : pathname ?? '', { scroll: false });
+  };
   const { formatTime } = useFormatDate();
   const imprimir = useImprimirPlanilla();
   const [busqueda, setBusqueda] = useState('');
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
   const [abierta, setAbierta] = useState<string | null>(null);
   const [vehiculos, setVehiculos] = useState<VehiculoOpcion[]>([]);
+  const [autorizadores, setAutorizadores] = useState<Autorizador[]>([]);
   const [ocupado, setOcupado] = useState(false);
 
   useEffect(() => {
@@ -64,16 +82,20 @@ export function DespachosHoy({ organizationId, filas, cargando, error, recargar 
       .getVehicles(organizationId)
       .then((v) => setVehiculos(v as VehiculoOpcion[]))
       .catch(() => setVehiculos([]));
+    // Sin permiso de despacho la lista falla: el diálogo lo dice al intentar autorizar.
+    listarAutorizadores(supabase, organizationId)
+      .then(setAutorizadores)
+      .catch(() => setAutorizadores([]));
   }, [organizationId]);
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    const activas = filas.filter((f) => f.estado !== 'cancelado');
+    const activas = filas.filter((f) => f.estado !== 'cancelado' && (!filtroEstado || f.estado === filtroEstado));
     if (!q) return activas;
     return activas.filter((f) =>
       [f.viaje.codigo, f.viaje.ruta?.nombre, f.viaje.ruta?.codigo, f.viaje.vehiculo?.placa, f.viaje.conductor?.nombre].some((x) => x?.toLowerCase().includes(q)),
     );
-  }, [filas, busqueda]);
+  }, [filas, busqueda, filtroEstado]);
   const porId = useMemo(() => new Map(filas.map((f) => [f.id, f])), [filas]);
   const seleccionadas = useMemo(() => Array.from(seleccion, (id) => porId.get(id)).filter((f): f is FilaDespachoHoy => !!f), [seleccion, porId]);
   const fila = abierta ? porId.get(abierta) ?? null : null;
@@ -90,7 +112,7 @@ export function DespachosHoy({ organizationId, filas, cargando, error, recargar 
     }
   };
 
-  const despacharDesdeDialogo = async (f: FilaDespachoHoy, excepcion?: { motivo: string; pin: string }) => {
+  const despacharDesdeDialogo = async (f: FilaDespachoHoy, excepcion?: { motivo: string; pin: string; supervisor: string | null }) => {
     try {
       const r = await despacharViaje(supabase, f.id, excepcion);
       avisarResultado(f, r);
@@ -207,7 +229,7 @@ export function DespachosHoy({ organizationId, filas, cargando, error, recargar 
   ];
 
   const sustantivo = { singular: t('sustantivo.singular'), plural: t('sustantivo.plural'), genero: 'masculino' as const };
-  const estadoTabla = error === 'sin_permiso' ? 'sinPermiso' : cargando && filas.length === 0 ? 'cargando' : error ? 'error' : visibles.length === 0 ? (busqueda ? 'sinResultados' : 'vacio') : 'listo';
+  const estadoTabla = error === 'sin_permiso' ? 'sinPermiso' : cargando && filas.length === 0 ? 'cargando' : error ? 'error' : visibles.length === 0 ? (busqueda || filtroEstado ? 'sinResultados' : 'vacio') : 'listo';
   const sinViajes = !cargando && !error && filas.length === 0;
 
   return (
@@ -222,7 +244,16 @@ export function DespachosHoy({ organizationId, filas, cargando, error, recargar 
         />
       ) : (
         <>
-          <ListToolbar busqueda={<SearchInput value={busqueda} onChange={setBusqueda} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />} />
+          <ListToolbar
+            busqueda={<SearchInput value={busqueda} onChange={setBusqueda} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
+            chips={
+              <FilterChips
+                chips={filtroEstado ? [{ clave: 'estado', etiqueta: t(`estados.${filtroEstado}`) }] : []}
+                onQuitar={quitarFiltroEstado}
+                onLimpiarTodo={quitarFiltroEstado}
+              />
+            }
+          />
           <DataTable
             etiqueta={t('tabla')}
             columnas={columnas}
@@ -253,7 +284,10 @@ export function DespachosHoy({ organizationId, filas, cargando, error, recargar 
             sinResultados={{ descripcion: t('sinResultados') }}
             error={{ titulo: t('errores.carga') }}
             sinPermiso={{ titulo: t('sinPermiso.titulo'), descripcion: t('sinPermiso.descripcion') }}
-            onLimpiarFiltros={() => setBusqueda('')}
+            onLimpiarFiltros={() => {
+              setBusqueda('');
+              if (filtroEstado) quitarFiltroEstado();
+            }}
             onReintentar={recargar}
             termino={busqueda}
           />
@@ -291,6 +325,7 @@ export function DespachosHoy({ organizationId, filas, cargando, error, recargar 
           viaje={fila.viaje}
           cumplimiento={fila.cumplimiento}
           vehiculos={vehiculos}
+          autorizadores={autorizadores}
           onCerrar={() => setAbierta(null)}
           onDespachar={(exc) => despacharDesdeDialogo(fila, exc)}
           onCambiarVehiculo={(id) => cambiarVehiculo(fila, id)}

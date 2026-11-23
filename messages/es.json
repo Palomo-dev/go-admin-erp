@@ -65629,7 +65629,8 @@
         "manifiesto": "Por manifiesto de carga faltante",
         "manifiestoDescripcion": "El viaje sale y el manifiesto se emite en las 2 horas siguientes. Aplica cuando llegue el manifiesto electrónico (fase Carga).",
         "pin": "Pedir el PIN del supervisor",
-        "pinDescripcion": "Es el PIN de Recursos humanos (el mismo del kiosco de marcación). Se verifica en el servidor; nunca se guarda en el equipo."
+        "pinDescripcion": "Es el PIN de Recursos humanos (el mismo del kiosco de marcación). Se verifica en el servidor; nunca se guarda en el equipo.",
+        "noDisponible": "Todavía no está disponible."
       }
     },
     "pestanas": {
@@ -65731,7 +65732,13 @@
         "motivoMin": "Mínimo {n} caracteres.",
         "pin": "PIN del supervisor",
         "pinAyuda": "El PIN de Recursos humanos (6 dígitos). Se verifica en el servidor.",
-        "registro": "Queda registrado el motivo, quién autoriza, quién despacha y cuándo. Sale en la planilla y en la bitácora del viaje."
+        "registro": "Queda registrado el motivo, quién autoriza, quién despacha y cuándo. Sale en la planilla y en la bitácora del viaje.",
+        "supervisor": "Supervisor que autoriza",
+        "eligeSupervisor": "Elige quién autoriza",
+        "sinAutorizadores": "Nadie tiene el permiso «Autorizar excepción de despacho»",
+        "sinPinOpcion": "{nombre} (sin PIN)",
+        "sinPin": "Esta persona no tiene PIN asignado; asígnelo en Recursos humanos.",
+        "irAsignarPin": "Ir a Recursos humanos › Marcación › PIN y carnés"
       },
       "resultado": {
         "no_admite_excepcion": "Este bloqueo no admite excepción. Revisa Configuración › Transporte.",
@@ -65739,7 +65746,8 @@
         "pin_rechazado": "El PIN no es válido o esa persona no puede autorizar excepciones.",
         "pin_bloqueado": "Demasiados PIN errados. Espera 15 minutos.",
         "sin_permiso_excepcion": "Te falta el permiso «Autorizar excepción de despacho».",
-        "no_despachable": "Este viaje ya salió o fue cancelado."
+        "no_despachable": "Este viaje ya salió o fue cancelado.",
+        "supervisor_sin_pin": "Esta persona no tiene PIN asignado; asígnelo en Recursos humanos."
       },
       "errores": {
         "sin_permiso": "Te falta el permiso «Despachar viajes».",

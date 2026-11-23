@@ -65631,7 +65631,8 @@
         "manifiesto": "For a missing cargo manifest",
         "manifiestoDescripcion": "The trip leaves and the manifest is issued within the next 2 hours. Applies once the electronic manifest arrives (Cargo phase).",
         "pin": "Ask for the supervisor's PIN",
-        "pinDescripcion": "It is the Human resources PIN (the same as the time clock kiosk). It is verified on the server; it is never stored on the device."
+        "pinDescripcion": "It is the Human resources PIN (the same as the time clock kiosk). It is verified on the server; it is never stored on the device.",
+        "noDisponible": "Not available yet."
       }
     },
     "pestanas": {
@@ -65733,7 +65734,13 @@
         "motivoMin": "At least {n} characters.",
         "pin": "Supervisor PIN",
         "pinAyuda": "The Human resources PIN (6 digits). It is verified on the server.",
-        "registro": "The reason, who authorizes, who dispatches and when are recorded. It appears on the dispatch sheet and the trip log."
+        "registro": "The reason, who authorizes, who dispatches and when are recorded. It appears on the dispatch sheet and the trip log.",
+        "supervisor": "Authorizing supervisor",
+        "eligeSupervisor": "Choose who authorizes",
+        "sinAutorizadores": "Nobody has the «Authorize dispatch exception» permission",
+        "sinPinOpcion": "{nombre} (no PIN)",
+        "sinPin": "This person has no PIN assigned; assign it in Human resources.",
+        "irAsignarPin": "Go to Human resources › Time clock › PINs and cards"
       },
       "resultado": {
         "no_admite_excepcion": "This block does not allow an exception. Check Settings › Transport.",
@@ -65741,7 +65748,8 @@
         "pin_rechazado": "The PIN is not valid or that person cannot authorize exceptions.",
         "pin_bloqueado": "Too many wrong PINs. Wait 15 minutes.",
         "sin_permiso_excepcion": "You need the «Authorize dispatch exception» permission.",
-        "no_despachable": "This trip already left or was cancelled."
+        "no_despachable": "This trip already left or was cancelled.",
+        "supervisor_sin_pin": "This person has no PIN assigned; assign it in Human resources."
       },
       "errores": {
         "sin_permiso": "You need the «Dispatch trips» permission.",

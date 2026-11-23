@@ -65631,7 +65631,8 @@
         "manifiesto": "Pour un manifeste de fret manquant",
         "manifiestoDescripcion": "Le trajet part et le manifeste est émis dans les 2 heures suivantes. S’applique à l’arrivée du manifeste électronique (phase Fret).",
         "pin": "Demander le PIN du superviseur",
-        "pinDescripcion": "C’est le PIN des Ressources humaines (le même que la borne de pointage). Il est vérifié sur le serveur ; il n’est jamais enregistré sur l’appareil."
+        "pinDescripcion": "C’est le PIN des Ressources humaines (le même que la borne de pointage). Il est vérifié sur le serveur ; il n’est jamais enregistré sur l’appareil.",
+        "noDisponible": "Pas encore disponible."
       }
     },
     "pestanas": {
@@ -65733,7 +65734,13 @@
         "motivoMin": "Au moins {n} caractères.",
         "pin": "PIN du superviseur",
         "pinAyuda": "Le PIN des Ressources humaines (6 chiffres). Il est vérifié sur le serveur.",
-        "registro": "Le motif, qui autorise, qui fait partir et quand sont enregistrés. Cela figure sur la feuille de départ et dans le journal du trajet."
+        "registro": "Le motif, qui autorise, qui fait partir et quand sont enregistrés. Cela figure sur la feuille de départ et dans le journal du trajet.",
+        "supervisor": "Superviseur qui autorise",
+        "eligeSupervisor": "Choisissez qui autorise",
+        "sinAutorizadores": "Personne n’a l’autorisation « Autoriser une exception de départ »",
+        "sinPinOpcion": "{nombre} (sans PIN)",
+        "sinPin": "Cette personne n’a pas de PIN attribué ; attribuez-le dans Ressources humaines.",
+        "irAsignarPin": "Aller à Ressources humaines › Pointage › PIN et cartes"
       },
       "resultado": {
         "no_admite_excepcion": "Ce blocage n’admet pas d’exception. Vérifiez Paramètres › Transport.",
@@ -65741,7 +65748,8 @@
         "pin_rechazado": "Le PIN n’est pas valide ou cette personne ne peut pas autoriser d’exceptions.",
         "pin_bloqueado": "Trop de PIN erronés. Attendez 15 minutes.",
         "sin_permiso_excepcion": "Il vous manque l’autorisation « Autoriser une exception de départ ».",
-        "no_despachable": "Ce trajet est déjà parti ou a été annulé."
+        "no_despachable": "Ce trajet est déjà parti ou a été annulé.",
+        "supervisor_sin_pin": "Cette personne n’a pas de PIN attribué ; attribuez-le dans Ressources humaines."
       },
       "errores": {
         "sin_permiso": "Il vous manque l’autorisation « Faire partir les trajets ».",

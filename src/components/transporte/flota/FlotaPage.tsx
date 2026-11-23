@@ -10,10 +10,13 @@
  * (tablas `vehicle_maintenance` y `fuel_logs` propuestas, sin crear), número y archivo de cada
  * documento y «Pedir renovación» (necesitan `vehicle_documents`). Vehículos y Conductores siguen
  * en sus páginas del catálogo común.
+ *
+ * `?estado=vencido|por_vencer` deja la lista en ese estado (lo abre el Inicio desde «2 documentos
+ * vencidos» y «Documentos por vencer», Figma `03` › Inicio 2917:45560); el chip lo quita de la URL.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Bus, Download, Eye, FileCheck2, RefreshCw, User } from 'lucide-react';
 import {
@@ -40,6 +43,7 @@ import { useBranch } from '@/lib/context/BranchContext';
 import { useFormatDate } from '@/lib/context/OrganizationTimezoneContext';
 import { getOrganizationId } from '@/lib/hooks/useOrganization';
 import { supabase } from '@/lib/supabase/config';
+import { listarConductores } from '@/lib/services/transporte/despachosService';
 import {
   documentosACsv,
   documentosFlota,
@@ -51,11 +55,25 @@ import {
 
 const TONO = { vencido: 'peligro', por_vencer: 'advertencia', vigente: 'exito' } as const;
 
+/** Estados que se pueden pedir en `?estado=`. */
+const ESTADOS_FILTRO = ['vencido', 'por_vencer'] as const;
+type EstadoFiltro = (typeof ESTADOS_FILTRO)[number];
+
 export function FlotaPage() {
   const t = useTranslations('transporte.flota');
   const tCausas = useTranslations('transporte.despachos.causas');
   const tTipos = useTranslations('transporte.tiposVehiculo');
   const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const pedido = params?.get('estado') ?? '';
+  const filtroEstado = (ESTADOS_FILTRO as readonly string[]).includes(pedido) ? (pedido as EstadoFiltro) : null;
+  const quitarFiltroEstado = useCallback(() => {
+    const q = new URLSearchParams(params?.toString() ?? '');
+    q.delete('estado');
+    const r = q.toString();
+    router.replace(r ? `${pathname ?? ''}?${r}` : pathname ?? '', { scroll: false });
+  }, [params, pathname, router]);
   const entero = useFormatoEntero();
   const { formatPlain, getToday } = useFormatDate();
   const { branchFilter } = useBranch();
@@ -86,13 +104,12 @@ export function FlotaPage() {
       .order('plate')
       .limit(1000);
     if (branchFilter) qv = qv.eq('branch_id', branchFilter);
-    let qc = supabase
-      .from('driver_credentials')
-      .select('id, full_name, license_category, license_expiry, medical_certificate_expiry')
-      .eq('organization_id', organizationId)
-      .eq('is_active', true)
-      .limit(1000);
-    if (branchFilter) qc = qc.eq('branch_id', branchFilter);
+    // Conductores en solo lectura con transporte.view (fn_transporte_conductores, columnas acotadas).
+    const qc = listarConductores(supabase, organizationId).then((lista) =>
+      lista
+        .filter((c) => c.activo && (!branchFilter || c.sedeId === branchFilter))
+        .map<ConductorConFechas>((c) => ({ id: c.id, full_name: c.nombre, license_category: c.licenciaCategoria, license_expiry: c.licenciaVence, medical_certificate_expiry: c.examenVence })),
+    ).catch(() => [] as ConductorConFechas[]);
     Promise.all([qv, qc])
       .then(([v, c]) => {
         if (cancelado) return;
@@ -100,8 +117,8 @@ export function FlotaPage() {
         const lista = (v.data ?? []) as (VehiculoConFechas & { status: string | null })[];
         setVehiculos(lista);
         setEnMantenimiento(lista.filter((x) => x.status === 'maintenance').length);
-        // Sin permiso para ver conductores (RLS de Logística), la lista queda vacía: no es error.
-        setConductores((c.data ?? []) as ConductorConFechas[]);
+        // Sin transporte.view la lista de conductores queda vacía: no es error.
+        setConductores(c);
       })
       .catch(() => !cancelado && setError(true))
       .finally(() => !cancelado && setCargando(false));
@@ -120,11 +137,15 @@ export function FlotaPage() {
   const k = kpisDocumentos(docs, sinFecha);
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    return docs.filter((d) => (!soloAtencion || d.estado !== 'vigente') && (!q || [d.nombre, tCausas(d.tipo), d.detalle ?? ''].some((x) => x.toLowerCase().includes(q))));
-  }, [docs, soloAtencion, busqueda, tCausas]);
+    return docs.filter(
+      (d) =>
+        (filtroEstado ? d.estado === filtroEstado : !soloAtencion || d.estado !== 'vigente') &&
+        (!q || [d.nombre, tCausas(d.tipo), d.detalle ?? ''].some((x) => x.toLowerCase().includes(q))),
+    );
+  }, [docs, soloAtencion, filtroEstado, busqueda, tCausas]);
   const porId = useMemo(() => new Map(docs.map((d) => [d.id, d])), [docs]);
   const seleccionados = useMemo(() => Array.from(seleccion, (id) => porId.get(id)).filter((d): d is DocumentoFlota => !!d), [seleccion, porId]);
-  useEffect(() => setSeleccion(new Set()), [soloAtencion, busqueda, branchFilter]);
+  useEffect(() => setSeleccion(new Set()), [soloAtencion, filtroEstado, busqueda, branchFilter]);
 
   const detalleDe = (d: DocumentoFlota) => (d.de === 'vehiculo' ? (d.detalle && tTipos.has(d.detalle) ? tTipos(d.detalle) : d.detalle ?? '') : t('conductor'));
   const relativo = (d: DocumentoFlota) => (d.dias < 0 ? t('hace', { n: -d.dias }) : d.dias === 0 ? t('hoy') : t('en', { n: d.dias }));
@@ -182,7 +203,7 @@ export function FlotaPage() {
 
   const sustantivo = { singular: t('sustantivo.singular'), plural: t('sustantivo.plural'), genero: 'masculino' as const };
   const sinNada = !cargando && !error && vehiculos.length === 0 && conductores.length === 0;
-  const estadoTabla = cargando && docs.length === 0 ? 'cargando' : error ? 'error' : visibles.length === 0 ? (busqueda || soloAtencion ? 'sinResultados' : 'vacio') : 'listo';
+  const estadoTabla = cargando && docs.length === 0 ? 'cargando' : error ? 'error' : visibles.length === 0 ? (busqueda || soloAtencion || filtroEstado ? 'sinResultados' : 'vacio') : 'listo';
 
   return (
     <div className="flex flex-col gap-4 p-4 pb-28 sm:p-6 sm:pb-28 lg:gap-5">
@@ -252,9 +273,18 @@ export function FlotaPage() {
             busqueda={<SearchInput value={busqueda} onChange={setBusqueda} cargando={cargando} placeholder={t('buscar.placeholder')} etiqueta={t('buscar.etiqueta')} />}
             chips={
               <FilterChips
-                chips={soloAtencion ? [{ clave: 'atencion', etiqueta: t('filtroAtencion') }] : []}
-                onQuitar={() => setSoloAtencion(false)}
-                onLimpiarTodo={() => setSoloAtencion(false)}
+                chips={
+                  filtroEstado
+                    ? [{ clave: 'estado', etiqueta: t(`estados.${filtroEstado}`) }]
+                    : soloAtencion
+                      ? [{ clave: 'atencion', etiqueta: t('filtroAtencion') }]
+                      : []
+                }
+                onQuitar={(clave) => (clave === 'estado' ? quitarFiltroEstado() : setSoloAtencion(false))}
+                onLimpiarTodo={() => {
+                  if (filtroEstado) quitarFiltroEstado();
+                  setSoloAtencion(false);
+                }}
                 textoLimpiarTodo={t('verTodos')}
               />
             }
@@ -286,11 +316,12 @@ export function FlotaPage() {
               />
             )}
             vacio={{ icono: FileCheck2, titulo: t('sinDocumentos.titulo'), descripcion: t('sinDocumentos.descripcion') }}
-            sinResultados={{ descripcion: soloAtencion ? t('todoAlDia') : t('sinResultados') }}
+            sinResultados={{ descripcion: soloAtencion || filtroEstado ? t('todoAlDia') : t('sinResultados') }}
             error={{ titulo: t('errorCarga') }}
             onLimpiarFiltros={() => {
               setBusqueda('');
               setSoloAtencion(false);
+              if (filtroEstado) quitarFiltroEstado();
             }}
             onReintentar={recargar}
             termino={busqueda}

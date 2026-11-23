@@ -94,19 +94,17 @@ export async function listarViajesDelDia(
   }
   const conductores = new Map<string, NonNullable<ViajeDelDia['conductor']>>();
   if (usuarios.length > 0) {
-    // Los nombres salen de driver_credentials; si la RLS no los deja ver, la fila muestra «—».
-    const { data: dc } = await db
-      .from('driver_credentials')
-      .select('user_id, full_name, document_number, license_number, license_expiry, medical_certificate_expiry')
-      .eq('organization_id', opciones.organizationId)
-      .in('user_id', usuarios);
-    for (const d of (dc ?? []) as { user_id: string; full_name: string | null; document_number: string | null; license_number: string | null; license_expiry: string | null; medical_certificate_expiry: string | null }[]) {
-      conductores.set(d.user_id, {
-        nombre: d.full_name?.trim() || '',
-        documento: d.document_number,
-        licencia: d.license_number,
-        licenciaVence: d.license_expiry,
-        examenVence: d.medical_certificate_expiry,
+    // Solo lectura y columnas acotadas (fn_transporte_conductores, permiso transporte.view):
+    // la tabla driver_credentials sigue cerrada a quien no gestiona Logística.
+    const lista = await listarConductores(db, opciones.organizationId).catch(() => [] as ConductorLectura[]);
+    for (const d of lista) {
+      if (!d.userId || !usuarios.includes(d.userId)) continue;
+      conductores.set(d.userId, {
+        nombre: d.nombre,
+        documento: d.documento,
+        licencia: d.licenciaCategoria,
+        licenciaVence: d.licenciaVence,
+        examenVence: d.examenVence,
       });
     }
   }
@@ -142,6 +140,64 @@ export async function listarViajesDelDia(
   });
 }
 
+/** Conductor tal como lo ve Transporte en solo lectura (`fn_transporte_conductores`). */
+export interface ConductorLectura {
+  id: string;
+  userId: string | null;
+  nombre: string;
+  documentoTipo: string | null;
+  documento: string | null;
+  telefono: string | null;
+  licenciaCategoria: string | null;
+  licenciaVence: string | null;
+  examenVence: string | null;
+  activo: boolean;
+  sedeId: number | null;
+}
+
+export async function listarConductores(db: SupabaseClient, organizationId: number): Promise<ConductorLectura[]> {
+  const { data, error } = await db.rpc('fn_transporte_conductores', { p_org: organizationId });
+  if (error) throw error;
+  return ((data ?? []) as {
+    id: string;
+    user_id: string | null;
+    nombre: string | null;
+    documento_tipo: string | null;
+    documento: string | null;
+    telefono: string | null;
+    licencia_categoria: string | null;
+    licencia_vence: string | null;
+    examen_vence: string | null;
+    activo: boolean;
+    sede_id: number | null;
+  }[]).map((d) => ({
+    id: d.id,
+    userId: d.user_id,
+    nombre: d.nombre?.trim() || '',
+    documentoTipo: d.documento_tipo,
+    documento: d.documento,
+    telefono: d.telefono,
+    licenciaCategoria: d.licencia_categoria,
+    licenciaVence: d.licencia_vence,
+    examenVence: d.examen_vence,
+    activo: d.activo,
+    sedeId: d.sede_id,
+  }));
+}
+
+/** Quién puede autorizar una excepción de despacho y si tiene PIN (solo el booleano). */
+export interface Autorizador {
+  userId: string;
+  nombre: string;
+  tienePin: boolean;
+}
+
+export async function listarAutorizadores(db: SupabaseClient, organizationId: number): Promise<Autorizador[]> {
+  const { data, error } = await db.rpc('fn_transporte_autorizadores', { p_org: organizationId });
+  if (error) throw error;
+  return ((data ?? []) as { user_id: string; nombre: string; tiene_pin: boolean }[]).map((a) => ({ userId: a.user_id, nombre: a.nombre, tienePin: a.tiene_pin === true }));
+}
+
 export async function cumplimientoDeViajes(db: SupabaseClient, ids: readonly string[]): Promise<Map<string, Cumplimiento>> {
   if (ids.length === 0) return new Map();
   const { data, error } = await db.rpc('fn_transporte_cumplimiento', { p_trips: ids });
@@ -155,11 +211,16 @@ export class DespachoError extends Error {
   }
 }
 
-export async function despacharViaje(db: SupabaseClient, tripId: string, excepcion?: { motivo: string; pin?: string }): Promise<ResultadoDespacho> {
+/**
+ * El PIN viaja a la RPC y se compara ALLÍ con el hash de `hr_credentials` del supervisor elegido;
+ * el navegador nunca recibe ni compara hashes.
+ */
+export async function despacharViaje(db: SupabaseClient, tripId: string, excepcion?: { motivo: string; pin?: string; supervisor?: string | null }): Promise<ResultadoDespacho> {
   const { data, error } = await db.rpc('transporte_despachar_viaje', {
     p_trip: tripId,
     p_motivo: excepcion?.motivo?.trim() || null,
     p_pin: excepcion?.pin || null,
+    p_supervisor: excepcion?.supervisor || null,
   });
   if (error) throw new DespachoError(error.code === '42501' ? 'sin_permiso' : error.code === 'P0002' ? 'no_encontrado' : 'error');
   const r = leerResultadoDespacho(data);

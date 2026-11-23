@@ -38,6 +38,7 @@ import {
   MAX_MOTIVOS,
   MAX_NOMBRE_MOTIVO,
   RETENCION_MAX,
+  RNDC_DISPONIBLE,
   RETENCION_MIN,
   USO_TIPO_VEHICULO,
   idMotivoNuevo,
@@ -429,12 +430,26 @@ export function TransporteConfigPanel({ onAbrirEnlace }: { onAbrirEnlace?: (href
               ['pedirPin', 'pin'],
             ] as const
           ).map(([clave, texto]) => (
-            <SettingRow key={clave} titulo={t(`excepciones.${texto}`)} descripcion={t(`excepciones.${texto}Descripcion`)} htmlFor={`transporte-exc-${clave}`}>
+            <SettingRow
+              key={clave}
+              titulo={t(`excepciones.${texto}`)}
+              descripcion={
+                clave === 'manifiesto' && !RNDC_DISPONIBLE ? (
+                  <>
+                    {t(`excepciones.${texto}Descripcion`)} <span className="font-medium text-fg">{t('excepciones.noDisponible')}</span>
+                  </>
+                ) : (
+                  t(`excepciones.${texto}Descripcion`)
+                )
+              }
+              htmlFor={`transporte-exc-${clave}`}
+            >
               <Switch
                 id={`transporte-exc-${clave}`}
-                checked={editado.excepciones[clave]}
+                // Sin RNDC el manifiesto se ve apagado y no se puede encender.
+                checked={clave === 'manifiesto' && !RNDC_DISPONIBLE ? false : editado.excepciones[clave]}
                 onCheckedChange={(v) => cambiar({ excepciones: { ...editado.excepciones, [clave]: v === true } })}
-                disabled={deshabilitado}
+                disabled={deshabilitado || (clave === 'manifiesto' && !RNDC_DISPONIBLE)}
               />
             </SettingRow>
           ))}

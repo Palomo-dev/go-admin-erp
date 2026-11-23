@@ -116,7 +116,9 @@ export function VistaMetodos({ sede }: { sede: number | null }) {
   const [nuevaExcepcion, setNuevaExcepcion] = useState(false);
   const [baseK, setBaseK] = useState<FormKiosco | null>(null);
   const [formK, setFormK] = useState<FormKiosco | null>(null);
-  const [credencialesAbierto, setCredencialesAbierto] = useState(false);
+  // `?credenciales=1` abre «PIN y carnés» de una vez: lo usa Transporte cuando el supervisor
+  // elegido para autorizar una excepción de despacho no tiene PIN asignado.
+  const [credencialesAbierto, setCredencialesAbierto] = useState(() => sp?.get('credenciales') === '1');
 
   useEffect(() => {
     if (!datos) return;
